@@ -54,7 +54,15 @@ function main() {
     }
     const code = readFileSync(abs, "utf8");
     inlined.push(srcPath);
-    return "<script>\n/* inlined: " + srcPath + " */\n" + code + "\n</script>";
+    // Escape any script-closing sequence so that if a module's source ever
+    // contains the literal text "</script" (e.g. inside a comment or a
+    // string), the browser's HTML parser doesn't terminate this inline
+    // <script> block early and corrupt the page. "<\/script" is still a
+    // valid, equivalent token in every JS context (string/regex/comment), so
+    // this cannot change runtime behavior -- it only changes how the HTML
+    // tokenizer sees the surrounding markup.
+    const safe = code.replace(/<\/script/gi, "<\\/script");
+    return "<script>\n/* inlined: " + srcPath + " */\n" + safe + "\n</script>";
   });
 
   if (missing.length) {
@@ -83,6 +91,22 @@ function main() {
   const cdnTags =
     result.match(/<script\b[^>]*\bsrc\s*=\s*["']https?:\/\/[^"']+["'][^>]*>\s*<\/script>/g) ||
     [];
+
+  // Sanity check 3: every "<script" opening tag must be balanced by a
+  // "</script>" closing tag. This guards against a raw, unescaped
+  // "</script" sequence anywhere in an inlined module's source prematurely
+  // closing an inline <script> block (which would desync this count) --
+  // a broader/last-line-of-defense check that doesn't depend on knowing in
+  // advance where such a sequence could hide.
+  const openCount = (result.match(/<script\b/gi) || []).length;
+  const closeCount = (result.match(/<\/script>/gi) || []).length;
+  if (openCount !== closeCount) {
+    throw new Error(
+      "Bundle has mismatched <script> tags: " + openCount +
+        " opening vs " + closeCount + " closing -- an inlined module's " +
+        "source likely contains an unescaped </script sequence."
+    );
+  }
 
   writeFileSync(HTML_OUT, result, "utf8");
 
