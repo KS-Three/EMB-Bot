@@ -65,17 +65,21 @@ const fillmod = _req
       y: Math.round((cy - p.y) * scalePxToDst),
     });
 
-    // maxStitch threshold in DST units, for jump detection. The fill densifies
-    // in px so no source gap exceeds maxStitchMm*pxPerMm; after the fit scale is
-    // applied that gap maps to maxStitchMm*fit.scale in the final (DST) space.
-    // So a genuine jump is a move that exceeds that scaled spacing. A small
-    // tolerance absorbs per-coordinate rounding.
-    const maxStitchDst = maxStitchMm * fit.scale * DST_UNITS_PER_MM * 1.001 + 2;
+    // maxStitch threshold in DST units, for jump detection. Density and
+    // max-stitch are FINAL-output physical quantities: the fill spacings below
+    // are pre-divided by fit.scale so that after the ×scalePxToDst transform the
+    // final row spacing = densityMm and final max stitch = maxStitchMm exactly.
+    // Therefore a normal intra-fill gap in DST units is <= maxStitchMm*DST, and a
+    // genuine region-to-region gap is larger. A small tolerance absorbs
+    // per-coordinate rounding.
+    const maxStitchDst = maxStitchMm * DST_UNITS_PER_MM * 1.001 + 2;
 
     // Convert mm spacings to px for the fill/outline (which run in px space).
-    const rowSpacingPx = densityMm * pxPerMm;
-    const maxStitchPx = maxStitchMm * pxPerMm;
-    const outlineStitchPx = outlineStitchMm * pxPerMm;
+    // Divide by fit.scale so the values survive the later ×fit.scale transform
+    // and land at the intended physical mm in final (DST) space.
+    const rowSpacingPx = (densityMm * pxPerMm) / fit.scale;
+    const maxStitchPx = (maxStitchMm * pxPerMm) / fit.scale;
+    const outlineStitchPx = (outlineStitchMm * pxPerMm) / fit.scale;
 
     const stitches = [];
     const colors = [];
