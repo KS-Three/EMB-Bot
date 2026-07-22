@@ -196,12 +196,14 @@
   <script src="src/fill.js"></script>
   <script src="src/geometry.js"></script>
   <script src="src/quantize.js"></script>
+  <script src="src/satin.js"></script>
   <script src="src/dst.js"></script>
   <script src="src/exp.js"></script>
   <script src="src/pes.js"></script>
   <script src="src/svgexport.js"></script>
   <script src="src/stitchModel.js"></script>
   <script src="src/fonts.js"></script>
+  <script src="src/digitize.js"></script>
   <script src="src/render.js"></script>
   <script src="src/pdfsheet.js"></script>
   <!-- app LAST -->
@@ -284,6 +286,11 @@
         <label for="outline">Outline stitch around shapes</label>
       </div>
 
+      <div class="field checkline">
+        <input type="checkbox" id="underlay" checked />
+        <label for="underlay">Underlay (recommended)</label>
+      </div>
+
       <div class="buttons">
         <button class="primary" id="btn-generate">Generate</button>
         <button id="btn-download">Download</button>
@@ -293,6 +300,8 @@
       <p class="note">
         Heads up: clean logos and lettering digitize well; photographs and
         gradients work far less well — simplify to a few flat colors first.
+        Text &amp; flat logos: satin + hole-aware fills with underlay. Photos:
+        still approximate — flat art works best.
         PES output is best-effort — always verify it stitches on your machine
         before a production run.
       </p>

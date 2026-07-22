@@ -377,6 +377,13 @@ const units =
 
     // Densify: ensure no two consecutive points exceed maxStitch (this also
     // splits the inter-row travel stitches). Then rotate back by +angleDeg.
+    //
+    // With opts.markConnectors: key indices alternate span-start/span-end, so
+    // the move INTO key[i] for even i (i>0) is a connector (span-to-span
+    // travel), which may legally cross a hole. Long connectors are then
+    // emitted as a single point tagged {travel:true} — needle-up move, not
+    // sewn — instead of being densified into fake stitches across the gap.
+    const markConnectors = !!opts.markConnectors;
     const out = [];
     if (key.length === 0) return out;
     out.push(rotate(key[0], cosP, sinP));
@@ -386,6 +393,13 @@ const units =
       const dx = b.x - a.x;
       const dy = b.y - a.y;
       const dist = Math.hypot(dx, dy);
+      const isConnector = i % 2 === 0;
+      if (markConnectors && isConnector && maxStitch && dist > maxStitch) {
+        const p = rotate(b, cosP, sinP);
+        p.travel = true;
+        out.push(p);
+        continue;
+      }
       if (maxStitch && maxStitch > 0 && dist > maxStitch) {
         const steps = Math.ceil(dist / maxStitch);
         for (let s = 1; s < steps; s++) {
@@ -578,6 +592,98 @@ const units =
     return contours;
   }
 
+  // 4-connected neighbor offsets used for BACKGROUND labeling. Holes are found
+  // via background connectivity, and 4-connectivity is the correct dual of the
+  // 8-connectivity used for foreground blobs: a background region that is only
+  // diagonally "pinched" by foreground is still considered enclosed, matching
+  // the way the 8-connected foreground closes the loop around it.
+  const CONN4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+
+  // Hole-aware region tracing. Returns one entry per 8-connected foreground
+  // blob: { outer, holes } where `outer` is the blob's outer boundary ring
+  // (identical to what traceContours produces) and `holes` is an array of
+  // boundary rings, one per background region FULLY ENCLOSED by that blob.
+  //
+  // A background region is a hole of blob B iff it is 4-connected background,
+  // does NOT touch the image border, and is enclosed by B. Enclosure is decided
+  // by the foreground pixel directly ABOVE the hole's top-left-most pixel: that
+  // pixel is guaranteed to exist (an enclosed region cannot reach row 0) and to
+  // be foreground (a background pixel there would be 4-connected into the same
+  // region), and it belongs to the enclosing blob's inner boundary.
+  //
+  // Each hole ring is traced with the SAME crack/edge tracer used for outer
+  // boundaries, run on an isolated mask of just that background region, so the
+  // hole ring shares the outer ring's coordinate convention and is directly
+  // usable by polygonArea and tatamiFill (even-odd fill).
+  //
+  // Limitation: only the OUTER boundary of each enclosed background region is
+  // returned as the hole ring. For deeply nested topology (a blob inside a
+  // hole inside a blob) each blob is still traced independently and its own
+  // outer ring plus its immediate holes yield a correct even-odd fill; a
+  // foreground island sitting inside a hole is reported as its own separate
+  // region rather than being subtracted from the hole ring.
+  function traceRegions(mask, w, h) {
+    const blobs = labelBlobs(mask, w, h);
+    const regions = blobs.map(({ seed, mask: blobMask }) => ({
+      outer: traceBlobEdges(blobMask, w, h, seed[0], seed[1]),
+      holes: [],
+    }));
+
+    // Label BACKGROUND pixels with 4-connectivity via flood fill. The first
+    // pixel reached for each component (row-major scan) is its top-left-most.
+    const bgVisited = new Uint8Array(w * h);
+    const stack = [];
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const idx = y * w + x;
+        if (mask[idx] === 1 || bgVisited[idx]) continue;
+
+        const seedX = x, seedY = y;
+        let touchesBorder = false;
+        const pixels = [];
+        stack.length = 0;
+        stack.push(idx);
+        bgVisited[idx] = 1;
+        while (stack.length) {
+          const cur = stack.pop();
+          const cx = cur % w;
+          const cy = (cur - cx) / w;
+          if (cx === 0 || cy === 0 || cx === w - 1 || cy === h - 1) touchesBorder = true;
+          pixels.push(cur);
+          for (const [dx, dy] of CONN4) {
+            const nx = cx + dx, ny = cy + dy;
+            if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+            const nidx = ny * w + nx;
+            if (bgVisited[nidx] || mask[nidx] === 1) continue;
+            bgVisited[nidx] = 1;
+            stack.push(nidx);
+          }
+        }
+
+        // A background component touching the border is the "outside", not a hole.
+        if (touchesBorder) continue;
+
+        // Enclosing blob = owner of the foreground pixel directly above the
+        // top-left-most hole pixel. seedY >= 1 here (a row-0 pixel would have
+        // set touchesBorder) and that pixel is guaranteed foreground.
+        const aboveIdx = (seedY - 1) * w + seedX;
+        const blobIndex = blobs.findIndex((b) => b.mask[aboveIdx] === 1);
+        if (blobIndex === -1) continue; // defensive; should not happen
+
+        // Trace the hole boundary as the outer edge of an isolated mask of just
+        // this background region, reusing the same crack/edge tracer.
+        const holeMask = new Uint8Array(w * h);
+        for (const p of pixels) holeMask[p] = 1;
+        const ring = traceBlobEdges(holeMask, w, h, seedX, seedY);
+        if (ring.length >= 4 && polygonArea(ring) > 0) {
+          regions[blobIndex].holes.push(ring);
+        }
+      }
+    }
+
+    return regions;
+  }
+
   function perpendicularDistance(pt, a, b) {
     const dx = b.x - a.x;
     const dy = b.y - a.y;
@@ -627,6 +733,7 @@ const units =
 
   return {
     traceContours,
+    traceRegions,
     simplify,
     polygonArea,
   };
@@ -907,6 +1014,185 @@ const units =
   return {
     medianCut,
     knockoutBackground,
+  };
+});
+
+</script>
+  <script>
+/* inlined: src/satin.js */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  root.EMB = Object.assign(root.EMB || {}, api);
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  const EPS = 1e-9;
+
+  // Indices [i, j] of the two boundary points that are farthest apart
+  // (Euclidean). O(n^2); rings are small after simplification. These
+  // approximate the two "tips"/ends of an elongated shape. Ties resolve to the
+  // first pair found in scan order.
+  function farthestBoundaryPair(ring) {
+    const n = ring ? ring.length : 0;
+    let best = -1, bi = 0, bj = 0;
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        const dx = ring[i].x - ring[j].x;
+        const dy = ring[i].y - ring[j].y;
+        const d2 = dx * dx + dy * dy; // compare squared distance (monotonic)
+        if (d2 > best) { best = d2; bi = i; bj = j; }
+      }
+    }
+    return [bi, bj];
+  }
+
+  // Split the closed ring into its two long sides.
+  //   chainA = ring points walking i -> j (inclusive, forward with wrap)
+  //   chainB = ring points walking j -> i (inclusive, forward with wrap)
+  // The two chains therefore SHARE their endpoints (ring[i] and ring[j]) and
+  // together cover the whole boundary. Points are copied so callers can mutate.
+  function splitBoundary(ring, i, j) {
+    const n = ring.length;
+    const chainA = [];
+    let k = i;
+    while (true) {
+      chainA.push({ x: ring[k].x, y: ring[k].y });
+      if (k === j) break;
+      k = (k + 1) % n;
+    }
+    const chainB = [];
+    k = j;
+    while (true) {
+      chainB.push({ x: ring[k].x, y: ring[k].y });
+      if (k === i) break;
+      k = (k + 1) % n;
+    }
+    return [chainA, chainB];
+  }
+
+  // Total Euclidean length of a polyline.
+  function chainLength(chain) {
+    let total = 0;
+    for (let i = 0; i + 1 < chain.length; i++) {
+      total += Math.hypot(chain[i + 1].x - chain[i].x, chain[i + 1].y - chain[i].y);
+    }
+    return total;
+  }
+
+  // Exactly n points evenly spaced by arc length along the chain (n >= 2),
+  // including both endpoints. Degenerate (zero-length) chains yield n copies of
+  // the first point.
+  function resampleChain(chain, n) {
+    const first = chain[0];
+    const last = chain[chain.length - 1];
+    if (n <= 1) return [{ x: first.x, y: first.y }];
+
+    const total = chainLength(chain);
+    const out = [{ x: first.x, y: first.y }];
+    if (total <= EPS) {
+      for (let k = 1; k < n; k++) out.push({ x: first.x, y: first.y });
+      return out;
+    }
+
+    const step = total / (n - 1);
+    let seg = 0;                                   // current segment start index
+    let accum = 0;                                 // arc length at chain[seg]
+    let segLen = Math.hypot(chain[1].x - chain[0].x, chain[1].y - chain[0].y);
+    for (let k = 1; k < n - 1; k++) {
+      const target = k * step;
+      while (seg < chain.length - 2 && accum + segLen < target) {
+        accum += segLen;
+        seg++;
+        segLen = Math.hypot(chain[seg + 1].x - chain[seg].x, chain[seg + 1].y - chain[seg].y);
+      }
+      const t = segLen > EPS ? (target - accum) / segLen : 0;
+      const a = chain[seg], b = chain[seg + 1];
+      out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+    }
+    out.push({ x: last.x, y: last.y }); // exact final endpoint
+    return out;
+  }
+
+  // Approximate stroke width in mm ~= 2 * area / perimeter (both in px),
+  // divided by pxPerMm. Uses shoelace absolute area and summed edge lengths.
+  function estimateWidthMm(ring, pxPerMm) {
+    const n = ring ? ring.length : 0;
+    if (n < 3 || !pxPerMm) return 0;
+    let cross = 0, per = 0;
+    for (let i = 0; i < n; i++) {
+      const p1 = ring[i], p2 = ring[(i + 1) % n];
+      cross += p1.x * p2.y - p2.x * p1.y;
+      per += Math.hypot(p2.x - p1.x, p2.y - p1.y);
+    }
+    const area = Math.abs(cross) / 2;
+    if (per <= EPS) return 0;
+    return (2 * area / per) / pxPerMm;
+  }
+
+  // Push point p outward from the pair midpoint (mx,my) by `dist` px along the
+  // normalized (p - midpoint) direction. Degenerate (coincident) pairs don't
+  // move — the column has zero width there (e.g. at the shared tips).
+  function pushOut(p, mx, my, dist) {
+    const vx = p.x - mx;
+    const vy = p.y - my;
+    const len = Math.hypot(vx, vy);
+    if (len <= EPS) return { x: p.x, y: p.y };
+    return { x: p.x + (vx / len) * dist, y: p.y + (vy / len) * dist };
+  }
+
+  // Generate zig-zag satin stitch points bouncing between the two long edges of
+  // a thin/elongated ring.
+  //
+  // opts = { spacingMm, pxPerMm, pullCompMm=0 }
+  //
+  // Pairing note: splitBoundary walks A forward (i->j) and B forward (j->i), so
+  // B already runs the OPPOSITE direction along the length. Reversing the
+  // resampled B ("pb") therefore makes pb'[k] progress the same direction as
+  // pa[k], so pa[k] and pb'[k] are the two edge points at the same position
+  // along the column length — the correct edge-to-edge cross pair.
+  //
+  // Emit order pa[0], pb'[0], pa[1], pb'[1], ... : each (pa[k] -> pb'[k]) is a
+  // cross-stitch spanning the width, and consecutive crosses advance along the
+  // length, producing the satin bounce.
+  function satinColumn(ring, opts) {
+    if (!ring || ring.length < 3) return [];
+    const spacingMm = opts.spacingMm;
+    const pxPerMm = opts.pxPerMm;
+    const pullCompMm = opts.pullCompMm || 0;
+
+    const [i, j] = farthestBoundaryPair(ring);
+    const [A, B] = splitBoundary(ring, i, j);
+
+    const denom = spacingMm * pxPerMm;
+    const longest = Math.max(chainLength(A), chainLength(B));
+    const steps = denom > 0 ? Math.max(2, Math.ceil(longest / denom)) : 2;
+
+    const pa = resampleChain(A, steps);
+    const pb = resampleChain(B, steps).reverse(); // pb'[k] pairs with pa[k]
+
+    const offset = (pullCompMm * pxPerMm) / 2;
+    const out = [];
+    for (let k = 0; k < steps; k++) {
+      let a = pa[k];
+      let b = pb[k];
+      if (offset > 0) {
+        const mx = (a.x + b.x) / 2;
+        const my = (a.y + b.y) / 2;
+        a = pushOut(a, mx, my, offset);
+        b = pushOut(b, mx, my, offset);
+      }
+      out.push(a);
+      out.push(b);
+    }
+    return out;
+  }
+
+  return {
+    farthestBoundaryPair,
+    splitBoundary,
+    chainLength,
+    resampleChain,
+    estimateWidthMm,
+    satinColumn,
   };
 });
 
@@ -2048,6 +2334,188 @@ const _sm_fillmod = _sm_req
 
 </script>
   <script>
+/* inlined: src/digitize.js */
+// Quality auto-digitize orchestrator: turns ColorRegions (from raster tracing
+// OR SVG import) into a Design with underlay, satin-for-thin-shapes,
+// fill-with-per-region-angle, and pull compensation. Dual-mode (Node + browser).
+(function (root, factory) {
+  const api = factory(root);
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  root.EMB = Object.assign(root.EMB || {}, api);
+})(typeof globalThis !== "undefined" ? globalThis : this, function (root) {
+  const _node = typeof module !== "undefined" && module.exports;
+  const dep = _node ? require : null;
+  const units = _node ? dep("./units.js") : root.EMB;
+  const garments = _node ? dep("./garments.js") : root.EMB;
+  const fillmod = _node ? dep("./fill.js") : root.EMB;
+  const satinmod = _node ? dep("./satin.js") : root.EMB;
+
+  function polyArea(p) { let a = 0; for (let i = 0, j = p.length - 1; i < p.length; j = i++) a += (p[j].x * p[i].y - p[i].x * p[j].y); return Math.abs(a) / 2; }
+  function polyPerim(p) { let L = 0; for (let i = 0; i < p.length; i++) { const q = p[(i + 1) % p.length]; L += Math.hypot(q.x - p[i].x, q.y - p[i].y); } return L; }
+  function centroid(p) { let x = 0, y = 0; for (const q of p) { x += q.x; y += q.y; } return { x: x / p.length, y: y / p.length }; }
+  // principal-axis angle (degrees) of a set of polygons
+  function pcaAngleDeg(polys) {
+    let n = 0, mx = 0, my = 0;
+    for (const p of polys) for (const q of p) { mx += q.x; my += q.y; n++; }
+    if (!n) return 45;
+    mx /= n; my /= n;
+    let sxx = 0, syy = 0, sxy = 0;
+    for (const p of polys) for (const q of p) { const dx = q.x - mx, dy = q.y - my; sxx += dx * dx; syy += dy * dy; sxy += dx * dy; }
+    return 0.5 * Math.atan2(2 * sxy, sxx - syy) * 180 / Math.PI;
+  }
+  // inset a ring toward its centroid by `d` px (crude but fine for underlay)
+  function insetRing(ring, d) {
+    const c = centroid(ring);
+    return ring.map((q) => {
+      const dx = c.x - q.x, dy = c.y - q.y, L = Math.hypot(dx, dy) || 1;
+      const t = Math.min(d, L * 0.4);
+      return { x: q.x + dx / L * t, y: q.y + dy / L * t };
+    });
+  }
+
+  function pointInPoly(pt, poly) {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const xi = poly[i].x, yi = poly[i].y, xj = poly[j].x, yj = poly[j].y;
+      if ((yi > pt.y) !== (yj > pt.y) && pt.x < (xj - xi) * (pt.y - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+
+  // Group a flat list of rings (e.g. glyph contours) into shapes with holes:
+  // a ring whose centroid lies inside a larger ring becomes that ring's hole.
+  // Handles one nesting level (outer + counters) — enough for text glyphs.
+  function groupRingsIntoShapes(rings, minArea) {
+    const items = rings
+      .filter((p) => p && p.length >= 4)
+      .map((p) => ({ ring: p, area: polyArea(p) }))
+      .filter((it) => it.area > (minArea || 0));
+    items.sort((a, b) => b.area - a.area);
+    const shapes = [];
+    for (const it of items) {
+      const c = centroid(it.ring);
+      let parent = null;
+      for (const s of shapes) if (s._area > it.area && pointInPoly(c, s.outer)) { parent = s; break; }
+      if (parent) parent.holes.push(it.ring);
+      else shapes.push({ outer: it.ring, holes: [], _area: it.area });
+    }
+    return shapes.map((s) => ({ outer: s.outer, holes: s.holes }));
+  }
+
+  // colorRegions: [{rgb:[r,g,b], polygons:[[{x,y}...]...]}] in PIXEL coords.
+  // opts: { garment, pxPerMm, densityMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop }
+  function buildQualityDesign(colorRegions, opts) {
+    const o = opts || {};
+    const pxPerMm = o.pxPerMm || 8;
+    const densityMm = o.densityMm || 0.45;
+    const maxStitchMm = o.maxStitchMm || 4;
+    const satinMaxWidthMm = o.satinMaxWidthMm || 3.0;
+    const pullCompMm = o.pullCompMm == null ? 0.2 : o.pullCompMm;
+    const useUnderlay = o.underlay !== false;
+    const perRegionAngle = o.perRegionAngle !== false;
+    const garment = o.garment || { widthIn: 5, heightIn: 2.25 };
+
+    // filter empty; accept {shapes:[{outer,holes}]} or legacy {polygons:[ring]}
+    const regions = colorRegions.filter((r) => r && ((r.shapes && r.shapes.length) || (r.polygons && r.polygons.length)));
+    for (const r of regions) if (!r.polygons) r.polygons = r.shapes.map((s) => s.outer);
+    if (!regions.length) return { stitches: [{ x: 0, y: 0, type: "end" }], colors: [], widthMM: 0, heightMM: 0, stitchCount: 0, colorCount: 0, _debug: { nSatin: 0, nFill: 0 } };
+
+    // sequence: light colors first, dark last (dark sits on top) unless overridden
+    if (o.darkOnTop !== false) regions.sort((a, b) => (b.rgb[0] + b.rgb[1] + b.rgb[2]) - (a.rgb[0] + a.rgb[1] + a.rgb[2]));
+
+    // bbox in px across all polygons
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const r of regions) for (const p of r.polygons) for (const q of p) { if (q.x < minX) minX = q.x; if (q.x > maxX) maxX = q.x; if (q.y < minY) minY = q.y; if (q.y > maxY) maxY = q.y; }
+    const bboxWmm = (maxX - minX) / pxPerMm, bboxHmm = (maxY - minY) / pxPerMm;
+    const fit = garments.fitScale(bboxWmm || 1, bboxHmm || 1, garment);
+    const sc = (fit.scale > 0 && isFinite(fit.scale)) ? fit.scale : 1;
+    const scalePxToDst = sc * (1 / pxPerMm) * units.DST_UNITS_PER_MM;
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    const T = (q) => ({ x: Math.round((q.x - cx) * scalePxToDst), y: Math.round((cy - q.y) * scalePxToDst) });
+
+    const mmPerPxFinal = scalePxToDst / units.DST_UNITS_PER_MM; // final mm per source px
+    const pxPerFinalMm = 1 / mmPerPxFinal;                       // source px per final mm
+    const rowPx = Math.max(0.8, densityMm * pxPerFinalMm);
+    const maxPx = Math.max(3, maxStitchMm * pxPerFinalMm);
+    const underlayStitchPx = Math.max(4, 2.0 * pxPerFinalMm);
+    const underlayRowPx = Math.max(3, 2.5 * pxPerFinalMm);
+
+    const stitches = [];
+    const colors = [];
+    let first = true, nSatin = 0, nFill = 0;
+
+    function pushRun(pts) {
+      if (!pts || !pts.length) return;
+      const f = T(pts[0]);
+      stitches.push({ x: f.x, y: f.y, type: "jump" });
+      for (const q of pts) {
+        const d = T(q);
+        stitches.push({ x: d.x, y: d.y, type: q.travel ? "jump" : "stitch" });
+      }
+    }
+
+    for (const r of regions) {
+      if (!first) { const last = stitches[stitches.length - 1] || { x: 0, y: 0 }; stitches.push({ x: last.x, y: last.y, type: "color" }); }
+      first = false;
+      colors.push({ r: r.rgb[0], g: r.rgb[1], b: r.rgb[2], name: "Color " + (colors.length + 1) });
+      // shapes: [{outer, holes}] (hole-aware) — or bare polygons for back-compat
+      const shapes = r.shapes || r.polygons.map((p) => ({ outer: p, holes: [] }));
+      const allRings = [];
+      for (const s of shapes) { allRings.push(s.outer); for (const hh of s.holes) allRings.push(hh); }
+      const angle = perRegionAngle ? pcaAngleDeg(allRings) : 45;
+      for (const shape of shapes) {
+        const poly = shape.outer;
+        if (!poly || poly.length < 4) continue;
+        const holes = (shape.holes || []).filter((hh) => hh && hh.length >= 4);
+        const outerArea = polyArea(poly), holeArea = holes.reduce((a, hh) => a + polyArea(hh), 0);
+        const area = Math.max(0, outerArea - holeArea), perim = polyPerim(poly) + holes.reduce((a, hh) => a + polyPerim(hh), 0);
+        if (area <= 0 || perim <= 0) continue;
+        const widthMmFinal = (2 * area / perim) * mmPerPxFinal;
+        // satin only for genuinely thin SOLID strokes; ring-with-hole goes to
+        // even-odd fill (satinColumn can't represent holes)
+        let thin = widthMmFinal <= satinMaxWidthMm && holes.length === 0;
+        // branch guard: a clean column splits into two side chains of similar
+        // length; branched shapes (most letters, Y/T/E forms) don't — satin
+        // would zigzag chaotically across them, so route those to fill.
+        if (thin && satinmod.farthestBoundaryPair) {
+          try {
+            const [bi, bj] = satinmod.farthestBoundaryPair(poly);
+            const [ca, cb] = satinmod.splitBoundary(poly, bi, bj);
+            const la = satinmod.chainLength(ca), lb = satinmod.chainLength(cb);
+            const ratio = Math.max(la, lb) / Math.max(1e-6, Math.min(la, lb));
+            if (ratio > 1.6) thin = false;
+          } catch (e) { thin = false; }
+        }
+        const rings = [poly].concat(holes);
+
+        // underlay (same thread color, laid first)
+        if (useUnderlay) {
+          try {
+            const inset = insetRing(poly, Math.min(2, 0.6 * pxPerFinalMm));
+            pushRun(fillmod.runningOutline(inset, { stitchLen: underlayStitchPx }));
+            if (!thin) pushRun(fillmod.tatamiFill(rings, { rowSpacing: underlayRowPx, angleDeg: angle + 90, maxStitch: maxPx, markConnectors: true }));
+          } catch (e) { /* underlay best-effort */ }
+        }
+
+        // top stitching
+        let pts = [];
+        try {
+          if (thin) { pts = satinmod.satinColumn(poly, { spacingMm: densityMm, pxPerMm: pxPerFinalMm, pullCompMm }); nSatin++; }
+          else { pts = fillmod.tatamiFill(rings, { rowSpacing: rowPx, angleDeg: angle, maxStitch: maxPx, markConnectors: true }); nFill++; }
+        } catch (e) { pts = []; }
+        pushRun(pts);
+      }
+    }
+    stitches.push({ x: 0, y: 0, type: "end" });
+    const stitchCount = stitches.filter((s) => s.type === "stitch").length;
+    return { stitches, colors, widthMM: fit.targetWmm, heightMM: fit.targetHmm, stitchCount, colorCount: colors.length, _debug: { nSatin, nFill } };
+  }
+
+  return { buildQualityDesign, groupRingsIntoShapes };
+});
+
+</script>
+  <script>
 /* inlined: src/render.js */
 (function (root, factory) {
   const api = factory();
@@ -2367,8 +2835,9 @@ const deps =
   var WORK_MAX_PX = 400; // cap the longest side of the working image
   var NOMINAL_LONG_MM = 50; // pre-fit physical size of the source art long side
   var TEXT_SIZE_PX = 200; // glyph size used for tracing text
-  var SIMPLIFY_TOL = 1.5; // Douglas-Peucker tolerance (px)
+  var SIMPLIFY_TOL = 1.6; // Douglas-Peucker tolerance (px)
   var DESPECKLE_AREA = 6; // drop polygons smaller than this (px^2)
+  var MAX_POLYS_PER_COLOR = 30; // cap shapes per color (largest kept first)
 
   // --- Module-level state --------------------------------------------------
   var currentDesign = null;
@@ -2380,6 +2849,12 @@ const deps =
 
   function $(id) {
     return document.getElementById(id);
+  }
+
+  // Absolute polygon area (px^2). Thin wrapper so region/hole filtering reads
+  // cleanly; EMB.polygonArea always returns a non-negative area.
+  function area(poly) {
+    return EMB.polygonArea(poly);
   }
 
   function setStatus(msg, isError) {
@@ -2432,21 +2907,32 @@ const deps =
     var palette = quant.palette;
     var indices = quant.indices;
 
+    var despeckleMin = DESPECKLE_AREA;             // existing per-shape despeckle
+    var holeMin = Math.max(6, despeckleMin * 0.3); // keep smaller holes (counters)
+
     var regions = [];
     for (var ci = 0; ci < palette.length; ci++) {
       var mask = new Uint8Array(w * h);
       for (var p = 0; p < indices.length; p++) {
         if (indices[p] === ci) mask[p] = 1; // 255 = transparent -> skipped
       }
-      var contours = EMB.traceContours(mask, w, h);
-      var polygons = [];
-      for (var c = 0; c < contours.length; c++) {
-        var simplified = EMB.simplify(contours[c], SIMPLIFY_TOL);
-        if (EMB.polygonArea(simplified) < DESPECKLE_AREA) continue;
-        polygons.push(simplified);
-      }
-      if (polygons.length === 0) continue; // no geometry for this color
-      regions.push({ rgb: palette[ci], polygons: polygons });
+      // Hole-aware tracing: each blob -> { outer, holes[] }. Simplify every
+      // ring, drop specks (outer) and pinholes (holes), then keep the largest
+      // shapes up to the per-color cap.
+      var shapes = EMB.traceRegions(mask, w, h)
+        .map(function (s) {
+          return {
+            outer: EMB.simplify(s.outer, SIMPLIFY_TOL),
+            holes: s.holes
+              .map(function (hh) { return EMB.simplify(hh, SIMPLIFY_TOL); })
+              .filter(function (hh) { return hh.length >= 4 && area(hh) > holeMin; }),
+          };
+        })
+        .filter(function (s) { return s.outer.length >= 4 && area(s.outer) > despeckleMin; });
+      shapes.sort(function (a, b) { return area(b.outer) - area(a.outer); });
+      if (shapes.length > MAX_POLYS_PER_COLOR) shapes = shapes.slice(0, MAX_POLYS_PER_COLOR);
+      if (shapes.length === 0) continue; // no geometry for this color
+      regions.push({ rgb: palette[ci], shapes: shapes });
     }
 
     // Map the working image long side to NOMINAL_LONG_MM; fit handles final size.
@@ -2456,9 +2942,15 @@ const deps =
 
   // --- TEXT pipeline: text -> ColorRegion[] -------------------------------
   function textToRegionsPipeline(font, text) {
+    // textToRegions returns a single black region as a flat ring list
+    // ([{ rgb, polygons }]). Measure pxPerMm from those rings (unchanged),
+    // then group the rings into hole-aware shapes (outer + counters) for the
+    // quality engine.
     var regions = EMB.textToRegions(font, text, { sizePx: TEXT_SIZE_PX });
     var pxPerMm = regionsLongSidePx(regions) / NOMINAL_LONG_MM;
-    return { regions: regions, pxPerMm: pxPerMm };
+    var rings = (regions[0] && regions[0].polygons) || [];
+    var shapes = EMB.groupRingsIntoShapes(rings, 4);
+    return { regions: [{ rgb: [0, 0, 0], shapes: shapes }], pxPerMm: pxPerMm };
   }
 
   // --- Read current control values ----------------------------------------
@@ -2466,11 +2958,13 @@ const deps =
     var garment = EMB.getGarment(el.garment.value);
     var densityMm = parseFloat(el.density.value);
     var outline = el.outline.checked;
+    var underlay = el.underlay.checked;
     var nColors = parseInt(el.colors.value, 10);
     return {
       garment: garment,
       densityMm: densityMm,
       outline: outline,
+      underlay: underlay,
       nColors: nColors,
     };
   }
@@ -2494,11 +2988,12 @@ const deps =
           setStatus("No shapes found to stitch. Try a different image/text or fewer colors.", true);
           return;
         }
-        var design = EMB.buildDesign(regionData.regions, {
+        var design = EMB.buildQualityDesign(regionData.regions, {
           garment: opts.garment,
-          densityMm: opts.densityMm,
-          outline: opts.outline,
           pxPerMm: regionData.pxPerMm,
+          densityMm: opts.densityMm,
+          satinMaxWidthMm: 3.0,
+          underlay: opts.underlay,
         });
         currentDesign = design;
         currentGarment = opts.garment;
@@ -2732,6 +3227,7 @@ const deps =
     el.density = $("density");
     el.densityVal = $("density-val");
     el.outline = $("outline");
+    el.underlay = $("underlay");
 
     el.statStitches = $("stat-stitches");
     el.statColors = $("stat-colors");
@@ -2868,6 +3364,11 @@ const deps =
         <label for="outline">Outline stitch around shapes</label>
       </div>
 
+      <div class="field checkline">
+        <input type="checkbox" id="underlay" checked />
+        <label for="underlay">Underlay (recommended)</label>
+      </div>
+
       <div class="buttons">
         <button class="primary" id="btn-generate">Generate</button>
         <button id="btn-download">Download</button>
@@ -2877,6 +3378,8 @@ const deps =
       <p class="note">
         Heads up: clean logos and lettering digitize well; photographs and
         gradients work far less well — simplify to a few flat colors first.
+        Text &amp; flat logos: satin + hole-aware fills with underlay. Photos:
+        still approximate — flat art works best.
         PES output is best-effort — always verify it stitches on your machine
         before a production run.
       </p>

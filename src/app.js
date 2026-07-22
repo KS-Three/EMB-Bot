@@ -13,8 +13,9 @@
   var WORK_MAX_PX = 400; // cap the longest side of the working image
   var NOMINAL_LONG_MM = 50; // pre-fit physical size of the source art long side
   var TEXT_SIZE_PX = 200; // glyph size used for tracing text
-  var SIMPLIFY_TOL = 1.5; // Douglas-Peucker tolerance (px)
+  var SIMPLIFY_TOL = 1.6; // Douglas-Peucker tolerance (px)
   var DESPECKLE_AREA = 6; // drop polygons smaller than this (px^2)
+  var MAX_POLYS_PER_COLOR = 30; // cap shapes per color (largest kept first)
 
   // --- Module-level state --------------------------------------------------
   var currentDesign = null;
@@ -26,6 +27,12 @@
 
   function $(id) {
     return document.getElementById(id);
+  }
+
+  // Absolute polygon area (px^2). Thin wrapper so region/hole filtering reads
+  // cleanly; EMB.polygonArea always returns a non-negative area.
+  function area(poly) {
+    return EMB.polygonArea(poly);
   }
 
   function setStatus(msg, isError) {
@@ -78,21 +85,32 @@
     var palette = quant.palette;
     var indices = quant.indices;
 
+    var despeckleMin = DESPECKLE_AREA;             // existing per-shape despeckle
+    var holeMin = Math.max(6, despeckleMin * 0.3); // keep smaller holes (counters)
+
     var regions = [];
     for (var ci = 0; ci < palette.length; ci++) {
       var mask = new Uint8Array(w * h);
       for (var p = 0; p < indices.length; p++) {
         if (indices[p] === ci) mask[p] = 1; // 255 = transparent -> skipped
       }
-      var contours = EMB.traceContours(mask, w, h);
-      var polygons = [];
-      for (var c = 0; c < contours.length; c++) {
-        var simplified = EMB.simplify(contours[c], SIMPLIFY_TOL);
-        if (EMB.polygonArea(simplified) < DESPECKLE_AREA) continue;
-        polygons.push(simplified);
-      }
-      if (polygons.length === 0) continue; // no geometry for this color
-      regions.push({ rgb: palette[ci], polygons: polygons });
+      // Hole-aware tracing: each blob -> { outer, holes[] }. Simplify every
+      // ring, drop specks (outer) and pinholes (holes), then keep the largest
+      // shapes up to the per-color cap.
+      var shapes = EMB.traceRegions(mask, w, h)
+        .map(function (s) {
+          return {
+            outer: EMB.simplify(s.outer, SIMPLIFY_TOL),
+            holes: s.holes
+              .map(function (hh) { return EMB.simplify(hh, SIMPLIFY_TOL); })
+              .filter(function (hh) { return hh.length >= 4 && area(hh) > holeMin; }),
+          };
+        })
+        .filter(function (s) { return s.outer.length >= 4 && area(s.outer) > despeckleMin; });
+      shapes.sort(function (a, b) { return area(b.outer) - area(a.outer); });
+      if (shapes.length > MAX_POLYS_PER_COLOR) shapes = shapes.slice(0, MAX_POLYS_PER_COLOR);
+      if (shapes.length === 0) continue; // no geometry for this color
+      regions.push({ rgb: palette[ci], shapes: shapes });
     }
 
     // Map the working image long side to NOMINAL_LONG_MM; fit handles final size.
@@ -102,9 +120,15 @@
 
   // --- TEXT pipeline: text -> ColorRegion[] -------------------------------
   function textToRegionsPipeline(font, text) {
+    // textToRegions returns a single black region as a flat ring list
+    // ([{ rgb, polygons }]). Measure pxPerMm from those rings (unchanged),
+    // then group the rings into hole-aware shapes (outer + counters) for the
+    // quality engine.
     var regions = EMB.textToRegions(font, text, { sizePx: TEXT_SIZE_PX });
     var pxPerMm = regionsLongSidePx(regions) / NOMINAL_LONG_MM;
-    return { regions: regions, pxPerMm: pxPerMm };
+    var rings = (regions[0] && regions[0].polygons) || [];
+    var shapes = EMB.groupRingsIntoShapes(rings, 4);
+    return { regions: [{ rgb: [0, 0, 0], shapes: shapes }], pxPerMm: pxPerMm };
   }
 
   // --- Read current control values ----------------------------------------
@@ -112,11 +136,13 @@
     var garment = EMB.getGarment(el.garment.value);
     var densityMm = parseFloat(el.density.value);
     var outline = el.outline.checked;
+    var underlay = el.underlay.checked;
     var nColors = parseInt(el.colors.value, 10);
     return {
       garment: garment,
       densityMm: densityMm,
       outline: outline,
+      underlay: underlay,
       nColors: nColors,
     };
   }
@@ -140,11 +166,12 @@
           setStatus("No shapes found to stitch. Try a different image/text or fewer colors.", true);
           return;
         }
-        var design = EMB.buildDesign(regionData.regions, {
+        var design = EMB.buildQualityDesign(regionData.regions, {
           garment: opts.garment,
-          densityMm: opts.densityMm,
-          outline: opts.outline,
           pxPerMm: regionData.pxPerMm,
+          densityMm: opts.densityMm,
+          satinMaxWidthMm: 3.0,
+          underlay: opts.underlay,
         });
         currentDesign = design;
         currentGarment = opts.garment;
@@ -378,6 +405,7 @@
     el.density = $("density");
     el.densityVal = $("density-val");
     el.outline = $("outline");
+    el.underlay = $("underlay");
 
     el.statStitches = $("stat-stitches");
     el.statColors = $("stat-colors");
