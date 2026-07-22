@@ -23,17 +23,32 @@
     "3":  [1, 0x01], "-3":  [1, 0x02],
     "81": [2, 0x04], "-81": [2, 0x08],
   };
-  const MAGNITUDES = [81, 27, 9, 3, 1];
+  // Weight per balanced-ternary digit position i (3^i), i = 0..4.
+  const MAGNITUDES = [1, 3, 9, 27, 81];
+
+  // Balanced-ternary digits of v: digits[i] in {-1,0,1} for weight 3^i (i=0..4).
+  function balancedTernaryDigits(v) {
+    const digits = [];
+    let n = v;
+    for (let i = 0; i < 5; i++) {
+      let rem = ((n % 3) + 3) % 3; // 0,1,2
+      let d;
+      if (rem === 0) { d = 0; n = n / 3; }
+      else if (rem === 1) { d = 1; n = (n - 1) / 3; }
+      else { d = -1; n = (n + 1) / 3; } // rem === 2
+      digits.push(d);
+      n = Math.trunc(n);
+    }
+    return digits; // [w1, w3, w9, w27, w81]
+  }
 
   function decompose(value, weights, bytes) {
-    const sign = value < 0 ? -1 : 1;
-    let rem = Math.abs(value);
-    for (const m of MAGNITUDES) {
-      if (rem >= m) {
-        rem -= m;
-        const [bi, mask] = weights[String(sign * m)];
-        bytes[bi] |= mask;
-      }
+    const digits = balancedTernaryDigits(value);
+    for (let i = 0; i < MAGNITUDES.length; i++) {
+      const d = digits[i];
+      if (d === 0) continue;
+      const [bi, mask] = weights[String(d * MAGNITUDES[i])];
+      bytes[bi] |= mask;
     }
   }
 
