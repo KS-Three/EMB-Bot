@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EMB Bot — Embroidery Digitizer</title>
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --panel: #ffffff;
+      --ink: #1f2733;
+      --muted: #6b7684;
+      --line: #dfe3e8;
+      --accent: #2f6f4f;
+      --accent-ink: #ffffff;
+      --warn-bg: #fff4e5;
+      --warn-ink: #8a5300;
+      --warn-line: #f0c088;
+      --err-bg: #fdecea;
+      --err-ink: #9b2c22;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    header {
+      background: var(--accent);
+      color: var(--accent-ink);
+      padding: 12px 20px;
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+    header h1 { font-size: 18px; margin: 0; font-weight: 700; letter-spacing: .3px; }
+    header .tag { font-size: 12px; opacity: .85; }
+
+    #cdn-banner {
+      display: none;
+      background: var(--err-bg);
+      color: var(--err-ink);
+      border-bottom: 1px solid #f1b0a8;
+      padding: 10px 20px;
+      font-weight: 600;
+    }
+
+    .layout {
+      display: flex;
+      gap: 16px;
+      padding: 16px;
+      align-items: flex-start;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .controls {
+      width: 300px;
+      flex: 0 0 300px;
+    }
+    .stage {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .field { margin-bottom: 14px; }
+    .field label.lbl {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 5px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      color: var(--muted);
+    }
+    select, input[type="text"], input[type="file"] {
+      width: 100%;
+      padding: 7px 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      font: inherit;
+      background: #fff;
+      color: var(--ink);
+    }
+    input[type="range"] { width: 100%; }
+
+    .seg {
+      display: flex;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .seg label {
+      flex: 1;
+      text-align: center;
+      padding: 8px 0;
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--muted);
+      background: #f7f8fa;
+    }
+    .seg input { display: none; }
+    .seg input:checked + label,
+    .seg label.on { background: var(--accent); color: #fff; }
+
+    .sliderrow { display: flex; justify-content: space-between; align-items: baseline; }
+    .sliderrow .val { font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; }
+
+    .checkline { display: flex; align-items: center; gap: 8px; }
+    .checkline input { width: auto; }
+
+    .buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+    button {
+      font: inherit;
+      font-weight: 600;
+      padding: 9px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      cursor: pointer;
+    }
+    button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    button:hover { filter: brightness(0.97); }
+
+    canvas#preview {
+      width: 100%;
+      max-width: 100%;
+      aspect-ratio: 1 / 1;
+      background:
+        linear-gradient(45deg, #eceef1 25%, transparent 25%),
+        linear-gradient(-45deg, #eceef1 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #eceef1 75%),
+        linear-gradient(-45deg, transparent 75%, #eceef1 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      display: block;
+    }
+
+    .stats {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+    .stat .k { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); }
+    .stat .v { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    #hoop-warning {
+      display: none;
+      background: var(--warn-bg);
+      color: var(--warn-ink);
+      border: 1px solid var(--warn-line);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-weight: 600;
+    }
+
+    .status {
+      min-height: 18px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .status-error { color: var(--err-ink); font-weight: 600; }
+
+    .note {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+  </style>
+
+  <!-- CDN libraries FIRST (classic scripts).
+       opentype.js is PINNED to 1.3.4: v2.x deprecated the callback form of
+       load(url, cb) (it no longer fires the callback) and ships a stricter
+       parser that throws on some Google variable-font GSUB tables. fonts.js
+       uses opentype.load(url, cb), which works correctly on 1.3.4. -->
+  <script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2/dist/jspdf.umd.min.js"></script>
+
+  <!-- Local modules IN DEPENDENCY ORDER -->
+  <script src="src/units.js"></script>
+  <script src="src/garments.js"></script>
+  <script src="src/fill.js"></script>
+  <script src="src/geometry.js"></script>
+  <script src="src/quantize.js"></script>
+  <script src="src/dst.js"></script>
+  <script src="src/exp.js"></script>
+  <script src="src/pes.js"></script>
+  <script src="src/svgexport.js"></script>
+  <script src="src/stitchModel.js"></script>
+  <script src="src/fonts.js"></script>
+  <script src="src/render.js"></script>
+  <script src="src/pdfsheet.js"></script>
+  <!-- app LAST -->
+  <script src="src/app.js"></script>
+</head>
+<body>
+  <header>
+    <h1>EMB Bot</h1>
+    <span class="tag">local embroidery digitizer — logo &amp; lettering to stitch files</span>
+  </header>
+
+  <div id="cdn-banner">Couldn't load required libraries — check your internet connection, then reload.</div>
+
+  <div class="layout">
+    <!-- LEFT: controls -->
+    <aside class="panel controls">
+      <div class="seg">
+        <input type="radio" name="mode" id="mode-image" checked />
+        <label for="mode-image">Image</label>
+        <input type="radio" name="mode" id="mode-text" />
+        <label for="mode-text">Text</label>
+      </div>
+
+      <div id="image-controls">
+        <div class="field">
+          <label class="lbl" for="file">Image file</label>
+          <input type="file" id="file" accept="image/*" />
+        </div>
+        <div class="field checkline">
+          <input type="checkbox" id="remove-bg" />
+          <label for="remove-bg">Remove background</label>
+        </div>
+      </div>
+
+      <div id="text-controls">
+        <div class="field">
+          <label class="lbl" for="text-input">Text</label>
+          <input type="text" id="text-input" placeholder="Your text" value="EMB" />
+        </div>
+        <div class="field">
+          <label class="lbl" for="font">Font</label>
+          <select id="font"></select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="lbl" for="garment">Garment / placement</label>
+        <select id="garment"></select>
+      </div>
+
+      <div class="field">
+        <label class="lbl" for="format">Output format</label>
+        <select id="format">
+          <option value="dst" selected>DST (Tajima)</option>
+          <option value="pes">PES (Brother)</option>
+          <option value="exp">EXP (Melco)</option>
+          <option value="png">PNG (preview)</option>
+          <option value="svg">SVG (vector)</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <div class="sliderrow">
+          <label class="lbl" for="colors">Colors</label>
+          <span class="val" id="colors-val">4</span>
+        </div>
+        <input type="range" id="colors" min="2" max="12" step="1" value="4" />
+      </div>
+
+      <div class="field">
+        <div class="sliderrow">
+          <label class="lbl" for="density">Fill density (row spacing)</label>
+          <span class="val" id="density-val">0.40 mm</span>
+        </div>
+        <input type="range" id="density" min="0.3" max="0.7" step="0.05" value="0.4" />
+      </div>
+
+      <div class="field checkline">
+        <input type="checkbox" id="outline" checked />
+        <label for="outline">Outline stitch around shapes</label>
+      </div>
+
+      <div class="buttons">
+        <button class="primary" id="btn-generate">Generate</button>
+        <button id="btn-download">Download</button>
+        <button id="btn-pdf">Export PDF</button>
+      </div>
+
+      <p class="note">
+        Heads up: clean logos and lettering digitize well; photographs and
+        gradients work far less well — simplify to a few flat colors first.
+        PES output is best-effort — always verify it stitches on your machine
+        before a production run.
+      </p>
+    </aside>
+
+    <!-- CENTER: preview + BOTTOM: stats/buttons -->
+    <section class="stage">
+      <div class="panel">
+        <canvas id="preview" width="800" height="800"></canvas>
+      </div>
+
+      <div id="hoop-warning">
+        ⚠ This design is larger than a typical 305 × 305 mm hoop. It may not fit
+        your machine — reduce the garment size or the art.
+      </div>
+
+      <div class="panel">
+        <div class="stats">
+          <div class="stat"><div class="k">Stitches</div><div class="v" id="stat-stitches">—</div></div>
+          <div class="stat"><div class="k">Colors</div><div class="v" id="stat-colors">—</div></div>
+          <div class="stat"><div class="k">Size</div><div class="v" id="stat-size">—</div></div>
+        </div>
+        <div class="status" id="status"></div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

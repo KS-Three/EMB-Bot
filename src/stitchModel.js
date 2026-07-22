@@ -1,11 +1,16 @@
-const _req = typeof module !== "undefined" && module.exports;
-const units = _req
+// NOTE: top-level names are prefixed (`_sm_`) so that when every module is
+// concatenated as classic <script> tags in the browser (Task 12 integration)
+// they don't collide in the shared global lexical scope with another file's
+// top-level `const` (e.g. garments.js also declares `const units`). In Node
+// each file has its own module scope, so this only matters in the browser.
+const _sm_req = typeof module !== "undefined" && module.exports;
+const _sm_units = _sm_req
   ? require("./units.js")
   : (typeof globalThis !== "undefined" ? globalThis : this).EMB;
-const garments = _req
+const _sm_garments = _sm_req
   ? require("./garments.js")
   : (typeof globalThis !== "undefined" ? globalThis : this).EMB;
-const fillmod = _req
+const _sm_fillmod = _sm_req
   ? require("./fill.js")
   : (typeof globalThis !== "undefined" ? globalThis : this).EMB;
 
@@ -14,9 +19,9 @@ const fillmod = _req
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   root.EMB = Object.assign(root.EMB || {}, api);
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
-  const { DST_UNITS_PER_MM } = units;
-  const { fitScale } = garments;
-  const { tatamiFill, runningOutline } = fillmod;
+  const { DST_UNITS_PER_MM } = _sm_units;
+  const { fitScale } = _sm_garments;
+  const { tatamiFill, runningOutline } = _sm_fillmod;
 
   // Assemble color regions (pixel coords) into a final Design.
   // colorRegions: Array<{ rgb:[r,g,b], polygons: Array<Array<{x,y}>> }>
