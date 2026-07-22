@@ -61,6 +61,34 @@
   // Short form: one signed 7-bit byte per axis when |delta| <= 63.
   // Long form:  two bytes per axis, 0x80 flag + 12-bit value; 0x20 flag = jump/trim.
   // Colour change: 0xFE 0xB0 <needle>. End: 0xFF.
+  // Long-form field is a signed 12-bit two's complement value, so a single
+  // record can only carry a delta in [-PEC_MAX_DELTA, PEC_MAX_DELTA]. Larger
+  // moves (e.g. jumps across a full-back panel) are split into intermediate
+  // jump hops, mirroring the analogous split in dst.js's encodeDST.
+  const PEC_MAX_DELTA = 2047;
+
+  function pecClampStep(delta) {
+    if (delta > PEC_MAX_DELTA) return PEC_MAX_DELTA;
+    if (delta < -PEC_MAX_DELTA) return -PEC_MAX_DELTA;
+    return delta;
+  }
+
+  function pecWriteRecord(w, dx, dy, isJump) {
+    if (!isJump && dx < 64 && dx > -64 && dy < 64 && dy > -64) {
+      w.u8(dx & 0x7f);
+      w.u8(dy & 0x7f);
+    } else {
+      let vx = dx & 0x0fff;
+      vx |= 0x8000;
+      if (isJump) vx |= 0x2000;
+      w.u8((vx >> 8) & 0xff).u8(vx & 0xff);
+      let vy = dy & 0x0fff;
+      vy |= 0x8000;
+      if (isJump) vy |= 0x2000;
+      w.u8((vy >> 8) & 0xff).u8(vy & 0xff);
+    }
+  }
+
   function pecEncodeStitches(w, stitches) {
     let px = 0, py = 0; // previous position in PEC screen space (0.1mm, +Y down)
     let needleToggle = 2;
@@ -75,23 +103,23 @@
       }
       const sx = st.x | 0;
       const sy = -(st.y | 0); // flip Y to PEC screen convention
-      let dx = sx - px;
-      let dy = sy - py;
       const isJump = type === "jump" || type === "trim";
 
-      if (!isJump && dx < 64 && dx > -64 && dy < 64 && dy > -64) {
-        w.u8(dx & 0x7f);
-        w.u8(dy & 0x7f);
-      } else {
-        let vx = dx & 0x0fff;
-        vx |= 0x8000;
-        if (isJump) vx |= 0x2000;
-        w.u8((vx >> 8) & 0xff).u8(vx & 0xff);
-        let vy = dy & 0x0fff;
-        vy |= 0x8000;
-        if (isJump) vy |= 0x2000;
-        w.u8((vy >> 8) & 0xff).u8(vy & 0xff);
+      let dx = sx - px;
+      let dy = sy - py;
+
+      // Emit intermediate jump hops for deltas outside the 12-bit long-form range.
+      while (Math.abs(dx) > PEC_MAX_DELTA || Math.abs(dy) > PEC_MAX_DELTA) {
+        const stepX = pecClampStep(dx);
+        const stepY = pecClampStep(dy);
+        pecWriteRecord(w, stepX, stepY, true);
+        px += stepX;
+        py += stepY;
+        dx = sx - px;
+        dy = sy - py;
       }
+
+      pecWriteRecord(w, dx, dy, isJump);
       px = sx;
       py = sy;
       emitted = true;
