@@ -1,0 +1,2904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EMB Bot — Embroidery Digitizer</title>
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --panel: #ffffff;
+      --ink: #1f2733;
+      --muted: #6b7684;
+      --line: #dfe3e8;
+      --accent: #2f6f4f;
+      --accent-ink: #ffffff;
+      --warn-bg: #fff4e5;
+      --warn-ink: #8a5300;
+      --warn-line: #f0c088;
+      --err-bg: #fdecea;
+      --err-ink: #9b2c22;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    header {
+      background: var(--accent);
+      color: var(--accent-ink);
+      padding: 12px 20px;
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+    header h1 { font-size: 18px; margin: 0; font-weight: 700; letter-spacing: .3px; }
+    header .tag { font-size: 12px; opacity: .85; }
+
+    #cdn-banner {
+      display: none;
+      background: var(--err-bg);
+      color: var(--err-ink);
+      border-bottom: 1px solid #f1b0a8;
+      padding: 10px 20px;
+      font-weight: 600;
+    }
+
+    .layout {
+      display: flex;
+      gap: 16px;
+      padding: 16px;
+      align-items: flex-start;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .controls {
+      width: 300px;
+      flex: 0 0 300px;
+    }
+    .stage {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .field { margin-bottom: 14px; }
+    .field label.lbl {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 5px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      color: var(--muted);
+    }
+    select, input[type="text"], input[type="file"] {
+      width: 100%;
+      padding: 7px 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      font: inherit;
+      background: #fff;
+      color: var(--ink);
+    }
+    input[type="range"] { width: 100%; }
+
+    .seg {
+      display: flex;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .seg label {
+      flex: 1;
+      text-align: center;
+      padding: 8px 0;
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--muted);
+      background: #f7f8fa;
+    }
+    .seg input { display: none; }
+    .seg input:checked + label,
+    .seg label.on { background: var(--accent); color: #fff; }
+
+    .sliderrow { display: flex; justify-content: space-between; align-items: baseline; }
+    .sliderrow .val { font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; }
+
+    .checkline { display: flex; align-items: center; gap: 8px; }
+    .checkline input { width: auto; }
+
+    .buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+    button {
+      font: inherit;
+      font-weight: 600;
+      padding: 9px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      cursor: pointer;
+    }
+    button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    button:hover { filter: brightness(0.97); }
+
+    canvas#preview {
+      width: 100%;
+      max-width: 100%;
+      aspect-ratio: 1 / 1;
+      background:
+        linear-gradient(45deg, #eceef1 25%, transparent 25%),
+        linear-gradient(-45deg, #eceef1 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #eceef1 75%),
+        linear-gradient(-45deg, transparent 75%, #eceef1 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      display: block;
+    }
+
+    .stats {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+    .stat .k { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); }
+    .stat .v { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    #hoop-warning {
+      display: none;
+      background: var(--warn-bg);
+      color: var(--warn-ink);
+      border: 1px solid var(--warn-line);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-weight: 600;
+    }
+
+    .status {
+      min-height: 18px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .status-error { color: var(--err-ink); font-weight: 600; }
+
+    .note {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+  </style>
+
+  <!-- CDN libraries FIRST (classic scripts).
+       opentype.js is PINNED to 1.3.4: v2.x deprecated the callback form of
+       load(url, cb) (it no longer fires the callback) and ships a stricter
+       parser that throws on some Google variable-font GSUB tables. fonts.js
+       uses opentype.load(url, cb), which works correctly on 1.3.4. -->
+  <script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2/dist/jspdf.umd.min.js"></script>
+
+  <!-- Local modules IN DEPENDENCY ORDER -->
+  <script>
+/* inlined: src/units.js */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  root.EMB = Object.assign(root.EMB || {}, api);
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  const MM_PER_INCH = 25.4;
+  const DST_UNITS_PER_MM = 10;
+
+  function inToMm(inch) {
+    return inch * MM_PER_INCH;
+  }
+
+  function mmToInch(mm) {
+    return mm / MM_PER_INCH;
+  }
+
+  function mmToDstUnits(mm) {
+    return Math.round(mm * DST_UNITS_PER_MM);
+  }
+
+  function dstUnitsToMm(u) {
+    return u / DST_UNITS_PER_MM;
+  }
+
+  return {
+    MM_PER_INCH,
+    DST_UNITS_PER_MM,
+    inToMm,
+    mmToInch,
+    mmToDstUnits,
+    dstUnitsToMm,
+  };
+});
+
+</script>
+  <script>
+/* inlined: src/garments.js */
+const units =
+  typeof module !== "undefined" && module.exports
+    ? require("./units.js")
+    : (typeof globalThis !== "undefined" ? globalThis : this).EMB;
+
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  root.EMB = Object.assign(root.EMB || {}, api);
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  const { inToMm } = units;
+
+  const GARMENTS = [
+    { id: "hat_front", label: "Hat Front", widthIn: 5.0, heightIn: 2.25 },
+    { id: "left_chest", label: "Left Chest", widthIn: 4.0, heightIn: 4.0 },
+    { id: "full_back", label: "Full Back", widthIn: 12.0, heightIn: 12.0 },
+    { id: "beanie", label: "Beanie", widthIn: 4.5, heightIn: 2.5 },
+    { id: "sleeve", label: "Sleeve", widthIn: 3.0, heightIn: 3.0 },
+    { id: "tote", label: "Tote", widthIn: 8.0, heightIn: 8.0 },
+    { id: "jacket_back", label: "Jacket Back", widthIn: 12.0, heightIn: 10.0 },
+    { id: "patch", label: "Patch", widthIn: 3.5, heightIn: 3.5 },
+    { id: "towel", label: "Towel", widthIn: 6.0, heightIn: 6.0 },
+    { id: "blanket", label: "Blanket", widthIn: 10.0, heightIn: 8.0 },
+  ];
+
+  function getGarment(id) {
+    return GARMENTS.find((g) => g.id === id);
+  }
+
+  function fitScale(bboxWmm, bboxHmm, garment) {
+    const boxW = inToMm(garment.widthIn);
+    const boxH = inToMm(garment.heightIn);
+    const scale = Math.min(boxW / bboxWmm, boxH / bboxHmm);
+    return {
+      scale,
+      targetWmm: bboxWmm * scale,
+      targetHmm: bboxHmm * scale,
+    };
+  }
+
+  const TYPICAL_HOOP_MM = { w: 200, h: 200 }; // ~8in, a realistic common max hoop
+
+  function exceedsHoop(wmm, hmm) {
+    return wmm > TYPICAL_HOOP_MM.w || hmm > TYPICAL_HOOP_MM.h;
+  }
+
+  return {
+    GARMENTS,
+    getGarment,
+    fitScale,
+    TYPICAL_HOOP_MM,
+    exceedsHoop,
+  };
+});
+
+</script>
+  <script>
+/* inlined: src/fill.js */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  root.EMB = Object.assign(root.EMB || {}, api);
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  const EPS = 1e-9;
+
+  function rotate(p, cos, sin) {
+    return { x: p.x * cos - p.y * sin, y: p.x * sin + p.y * cos };
+  }
+
+  // Tatami scan-line fill across one or more polygons.
+  // polygons: Array<Array<{x,y}>>; even-odd parity across ALL polygons (holes respected).
+  // opts: { rowSpacing, angleDeg=0, maxStitch }
+  function tatamiFill(polygons, opts) {
+    const rowSpacing = opts.rowSpacing;
+    const angleDeg = opts.angleDeg || 0;
+    const maxStitch = opts.maxStitch;
+    const theta = (angleDeg * Math.PI) / 180;
+
+    // Rotate all points by -angleDeg about the origin so scanlines are horizontal.
+    const cosN = Math.cos(-theta);
+    const sinN = Math.sin(-theta);
+    // Rotate back by +angleDeg.
+    const cosP = Math.cos(theta);
+    const sinP = Math.sin(theta);
+
+    // Collect rotated edges and compute bbox.
+    const edges = [];
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (const poly of polygons) {
+      const n = poly.length;
+      if (n < 2) continue;
+      const rp = poly.map((p) => rotate(p, cosN, sinN));
+      for (const p of rp) {
+        if (p.y < minY) minY = p.y;
+        if (p.y > maxY) maxY = p.y;
+      }
+      for (let i = 0; i < n; i++) {
+        const a = rp[i];
+        const b = rp[(i + 1) % n];
+        edges.push([a, b]);
+      }
+    }
+
+    if (!isFinite(minY) || !isFinite(maxY)) return [];
+
+    // Collect ordered span endpoints (in rotated space) following the
+    // boustrophedon path across all rows.
+    const key = [];
+    let rowIndex = 0;
+    for (let y = minY; y <= maxY + EPS; y += rowSpacing) {
+      // Gather x-intersections with all edges using the half-open rule.
+      const xs = [];
+      for (const [a, b] of edges) {
+        const y0 = a.y;
+        const y1 = b.y;
+        if (y0 === y1) continue; // horizontal edge: skip (parity preserved)
+        // Half-open: count edge if min(y0,y1) <= y < max(y0,y1).
+        const lo = Math.min(y0, y1);
+        const hi = Math.max(y0, y1);
+        if (y >= lo && y < hi) {
+          const t = (y - y0) / (y1 - y0);
+          xs.push(a.x + t * (b.x - a.x));
+        }
+      }
+      if (xs.length >= 2) {
+        xs.sort((p, q) => p - q);
+        // Pair spans (even-odd).
+        const spans = [];
+        for (let i = 0; i + 1 < xs.length; i += 2) {
+          spans.push([xs[i], xs[i + 1]]);
+        }
+        // Boustrophedon: reverse span order and endpoints on odd rows.
+        const rev = rowIndex % 2 === 1;
+        const ordered = rev ? spans.slice().reverse() : spans;
+        for (const span of ordered) {
+          const start = rev ? span[1] : span[0];
+          const end = rev ? span[0] : span[1];
+          key.push({ x: start, y });
+          key.push({ x: end, y });
+        }
+      }
+      rowIndex++;
+    }
+
+    // Densify: ensure no two consecutive points exceed maxStitch (this also
+    // splits the inter-row travel stitches). Then rotate back by +angleDeg.
+    const out = [];
+    if (key.length === 0) return out;
+    out.push(rotate(key[0], cosP, sinP));
+    for (let i = 1; i < key.length; i++) {
+      const a = key[i - 1];
+      const b = key[i];
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const dist = Math.hypot(dx, dy);
+      if (maxStitch && maxStitch > 0 && dist > maxStitch) {
+        const steps = Math.ceil(dist / maxStitch);
+        for (let s = 1; s < steps; s++) {
+          const t = s / steps;
+          out.push(rotate({ x: a.x + dx * t, y: a.y + dy * t }, cosP, sinP));
+        }
+      }
+      out.push(rotate(b, cosP, sinP));
+    }
+    return out;
+  }
+
+  // Walk the polygon perimeter emitting a point every stitchLen of arc length.
+  function runningOutline(polygon, opts) {
+    const stitchLen = opts.stitchLen;
+    const out = [];
+    const n = polygon.length;
+    if (n === 0) return out;
+    if (n === 1) return [{ x: polygon[0].x, y: polygon[0].y }];
+
+    out.push({ x: polygon[0].x, y: polygon[0].y });
+    let carry = 0; // distance accumulated since last emitted point
+
+    for (let i = 0; i < n; i++) {
+      const a = polygon[i];
+      const b = polygon[(i + 1) % n]; // closed loop back to start
+      const segDx = b.x - a.x;
+      const segDy = b.y - a.y;
+      const segLen = Math.hypot(segDx, segDy);
+      if (segLen <= EPS) continue;
+      const ux = segDx / segLen;
+      const uy = segDy / segLen;
+      // Position along this segment (from a) of the next point to emit.
+      let dist = stitchLen - carry;
+      while (dist <= segLen + EPS) {
+        const d = Math.min(dist, segLen);
+        out.push({ x: a.x + ux * d, y: a.y + uy * d });
+        dist += stitchLen;
+      }
+      carry = segLen - (dist - stitchLen);
+    }
+    return out;
+  }
+
+  return {
+    tatamiFill,
+    runningOutline,
+  };
+});
+
+</script>
+  <script>
+/* inlined: src/geometry.js */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  root.EMB = Object.assign(root.EMB || {}, api);
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  // 8-connected neighbor offsets used for connected-component labeling.
+  const CONN8 = [
+    [1, 0], [1, -1], [0, -1], [-1, -1],
+    [-1, 0], [-1, 1], [0, 1], [1, 1],
+  ];
+
+  // Label connected foreground components with 8-CONNECTIVITY (diagonal
+  // touches join components). Returns one entry per blob:
+  //   { seed: [x, y], mask: Uint8Array }
+  // where `seed` is the top-left-most pixel found during the row-major scan
+  // (so the cell directly above it is guaranteed background within the blob)
+  // and `mask` is a PER-BLOB mask containing ONLY that blob's pixels.
+  //
+  // Labeling and tracing MUST agree on connectivity. We label with
+  // 8-connectivity here and trace each blob against its own isolated mask, so
+  // the edge tracer can never wander onto a different component's pixels
+  // (the root cause of the old 4-connected-label / 8-connected-trace bug).
+  function labelBlobs(mask, w, h) {
+    const visited = new Uint8Array(w * h);
+    const blobs = [];
+    const stack = [];
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const idx = y * w + x;
+        if (mask[idx] !== 1 || visited[idx]) continue;
+        // New blob found at its first (top-left-most) pixel.
+        const blobMask = new Uint8Array(w * h);
+        stack.length = 0;
+        stack.push(idx);
+        visited[idx] = 1;
+        blobMask[idx] = 1;
+        while (stack.length) {
+          const cur = stack.pop();
+          const cx = cur % w;
+          const cy = (cur - cx) / w;
+          for (const [dx, dy] of CONN8) {
+            const nx = cx + dx, ny = cy + dy;
+            if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+            const nidx = ny * w + nx;
+            if (visited[nidx] || mask[nidx] !== 1) continue;
+            visited[nidx] = 1;
+            blobMask[nidx] = 1;
+            stack.push(nidx);
+          }
+        }
+        blobs.push({ seed: [x, y], mask: blobMask });
+      }
+    }
+    return blobs;
+  }
+
+  // Directed-edge headings: 0=E, 1=S, 2=W, 3=N.
+  const EDGE_DV = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+
+  function fgAt(mask, w, h, x, y) {
+    if (x < 0 || y < 0 || x >= w || y >= h) return 0;
+    return mask[y * w + x];
+  }
+
+  // For a directed edge leaving vertex (x, y) with heading `d`, return the
+  // grid cells immediately to its right and left. Cells are addressed by
+  // their top-left corner; the vertex grid runs 0..w, 0..h.
+  function edgeCells(x, y, d) {
+    switch (d) {
+      case 0: return [[x, y], [x, y - 1]];         // E: right below, left above
+      case 1: return [[x - 1, y], [x, y]];         // S: right west, left east
+      case 2: return [[x - 1, y - 1], [x - 1, y]]; // W: right north, left south
+      default: return [[x, y - 1], [x - 1, y - 1]];// N: right east, left west
+    }
+  }
+
+  // A directed edge is on the clockwise outer boundary when the cell to its
+  // right is foreground and the cell to its left is background.
+  function isBoundaryEdge(mask, w, h, x, y, d) {
+    const [r, l] = edgeCells(x, y, d);
+    return fgAt(mask, w, h, r[0], r[1]) === 1 && fgAt(mask, w, h, l[0], l[1]) !== 1;
+  }
+
+  // Trace the outer contour of a single blob by following pixel OUTER EDGES
+  // (the cracks between foreground and background cells) rather than pixel
+  // centers. An n*m solid blob yields a polygon whose `polygonArea` is exactly
+  // n*m, so area is strictly monotonic in pixel count and a lone pixel is a
+  // unit square (area 1) — no singleton special-case needed.
+  //
+  // Start at the seed's top-left corner heading east: the seed is
+  // top-left-most so its top edge is a boundary edge. At each vertex we prefer
+  // to turn LEFT, then go straight, then turn RIGHT, then reverse; preferring
+  // left keeps diagonally-adjacent foreground cells connected, matching the
+  // 8-connectivity used for labeling.
+  //
+  // Termination is position-AND-heading: we stop only when we re-enter the
+  // start vertex about to repeat the start heading. For this edge tracer the
+  // (vertex, heading) state fully determines the next step, so returning to it
+  // provably closes exactly one loop — there is no pinch-point ambiguity as
+  // there was with the old center tracer, so no separate stopping variable is
+  // needed.
+  const TURN_PREFERENCE = [3, 0, 1, 2]; // left, straight, right, back (relative)
+
+  function traceBlobEdges(mask, w, h, seedX, seedY) {
+    const points = [];
+    let x = seedX, y = seedY, d = 0;
+    const startX = x, startY = y, startD = d;
+    const maxIterations = (w + 1) * (h + 1) * 4 + 16;
+    let iterations = 0;
+
+    while (true) {
+      points.push({ x, y });
+      const [dx, dy] = EDGE_DV[d];
+      x += dx; y += dy;
+
+      let nextD = -1;
+      for (const rel of TURN_PREFERENCE) {
+        const cand = (d + rel) % 4;
+        if (isBoundaryEdge(mask, w, h, x, y, cand)) { nextD = cand; break; }
+      }
+      if (nextD === -1) break; // no continuation (should not happen for a valid blob)
+      d = nextD;
+
+      if (x === startX && y === startY && d === startD) break;
+      if (++iterations > maxIterations) break; // safety guard
+    }
+
+    return points;
+  }
+
+  function traceContours(mask, w, h) {
+    const blobs = labelBlobs(mask, w, h);
+    const contours = [];
+    for (const { seed, mask: blobMask } of blobs) {
+      contours.push(traceBlobEdges(blobMask, w, h, seed[0], seed[1]));
+    }
+    return contours;
+  }
+
+  function perpendicularDistance(pt, a, b) {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq === 0) {
+      const ddx = pt.x - a.x, ddy = pt.y - a.y;
+      return Math.sqrt(ddx * ddx + ddy * ddy);
+    }
+    const num = Math.abs(dy * pt.x - dx * pt.y + b.x * a.y - b.y * a.x);
+    return num / Math.sqrt(lenSq);
+  }
+
+  function douglasPeucker(points, tol) {
+    if (points.length < 3) return points.slice();
+    let maxDist = -1;
+    let idx = 0;
+    const a = points[0];
+    const b = points[points.length - 1];
+    for (let i = 1; i < points.length - 1; i++) {
+      const d = perpendicularDistance(points[i], a, b);
+      if (d > maxDist) { maxDist = d; idx = i; }
+    }
+    if (maxDist > tol) {
+      const left = douglasPeucker(points.slice(0, idx + 1), tol);
+      const right = douglasPeucker(points.slice(idx), tol);
+      return left.slice(0, -1).concat(right);
+    }
+    return [a, b];
+  }
+
+  function simplify(points, tol) {
+    if (!points || points.length < 3) return (points || []).slice();
+    return douglasPeucker(points, tol);
+  }
+
+  function polygonArea(points) {
+    if (!points || points.length < 3) return 0;
+    let sum = 0;
+    const n = points.length;
+    for (let i = 0; i < n; i++) {
+      const p1 = points[i];
+      const p2 = points[(i + 1) % n];
+      sum += p1.x * p2.y - p2.x * p1.y;
+    }
+    return Math.abs(sum) / 2;
+  }
+
+  return {
+    traceContours,
+    simplify,
+    polygonArea,
+  };
+});
+
+</script>
+  <script>
+/* inlined: src/quantize.js */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  root.EMB = Object.assign(root.EMB || {}, api);
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  const TRANSPARENT_INDEX = 255;
+  const KMEANS_ITERATIONS = 10;
+  const MERGE_DIST = 16; // Euclidean RGB distance below which palette entries merge.
+
+  // Build a box (list of pixel positions + cached channel ranges) from an array of
+  // {r,g,b} opaque pixel samples referenced by index into `pixels`.
+  function makeBox(pixelIdxs, pixels) {
+    let rMin = 255, rMax = 0, gMin = 255, gMax = 0, bMin = 255, bMax = 0;
+    for (const idx of pixelIdxs) {
+      const p = pixels[idx];
+      if (p.r < rMin) rMin = p.r;
+      if (p.r > rMax) rMax = p.r;
+      if (p.g < gMin) gMin = p.g;
+      if (p.g > gMax) gMax = p.g;
+      if (p.b < bMin) bMin = p.b;
+      if (p.b > bMax) bMax = p.b;
+    }
+    return { idxs: pixelIdxs, rMin, rMax, gMin, gMax, bMin, bMax };
+  }
+
+  function widestChannel(box) {
+    const rRange = box.rMax - box.rMin;
+    const gRange = box.gMax - box.gMin;
+    const bRange = box.bMax - box.bMin;
+    if (rRange >= gRange && rRange >= bRange) return "r";
+    if (gRange >= rRange && gRange >= bRange) return "g";
+    return "b";
+  }
+
+  function splitBox(box, pixels) {
+    const channel = widestChannel(box);
+    const sorted = box.idxs.slice().sort((a, b) => pixels[a][channel] - pixels[b][channel]);
+    const mid = Math.floor(sorted.length / 2);
+    const left = sorted.slice(0, mid);
+    const right = sorted.slice(mid);
+    return [makeBox(left, pixels), makeBox(right, pixels)];
+  }
+
+  function boxRange(box) {
+    return Math.max(box.rMax - box.rMin, box.gMax - box.gMin, box.bMax - box.bMin);
+  }
+
+  function averageColor(box, pixels) {
+    let rSum = 0, gSum = 0, bSum = 0;
+    for (const idx of box.idxs) {
+      const p = pixels[idx];
+      rSum += p.r; gSum += p.g; bSum += p.b;
+    }
+    const count = box.idxs.length;
+    return [
+      Math.round(rSum / count),
+      Math.round(gSum / count),
+      Math.round(bSum / count),
+    ];
+  }
+
+  // Lloyd's k-means refinement of an initial palette against the opaque pixel
+  // set. Assigns each pixel to its nearest centroid (squared-Euclidean RGB),
+  // recomputes each centroid as the mean of its assigned pixels, and drops any
+  // centroid that ends an iteration with zero assigned pixels (no phantom
+  // entries). Returns { centroids: [[r,g,b],...], counts: [...] } where counts
+  // is the population assigned to each surviving centroid.
+  function refineKMeans(seed, pixels, iterations) {
+    let centroids = seed.map((c) => c.slice());
+    const assign = new Int32Array(pixels.length).fill(-1);
+    let counts = new Array(centroids.length).fill(0);
+
+    for (let iter = 0; iter < iterations; iter++) {
+      let changed = false;
+
+      // Assignment step.
+      for (let j = 0; j < pixels.length; j++) {
+        const p = pixels[j];
+        let best = 0, bestDist = Infinity;
+        for (let k = 0; k < centroids.length; k++) {
+          const c = centroids[k];
+          const dr = p.r - c[0], dg = p.g - c[1], db = p.b - c[2];
+          const d = dr * dr + dg * dg + db * db;
+          if (d < bestDist) { bestDist = d; best = k; }
+        }
+        if (assign[j] !== best) { assign[j] = best; changed = true; }
+      }
+
+      // Update step: mean of assigned pixels; drop empty clusters.
+      const sums = centroids.map(() => [0, 0, 0]);
+      counts = new Array(centroids.length).fill(0);
+      for (let j = 0; j < pixels.length; j++) {
+        const k = assign[j];
+        const p = pixels[j];
+        sums[k][0] += p.r; sums[k][1] += p.g; sums[k][2] += p.b;
+        counts[k]++;
+      }
+      const nextCentroids = [];
+      const nextCounts = [];
+      const remap = new Array(centroids.length).fill(-1);
+      for (let k = 0; k < centroids.length; k++) {
+        if (counts[k] === 0) continue; // drop phantom cluster
+        remap[k] = nextCentroids.length;
+        nextCentroids.push([
+          Math.round(sums[k][0] / counts[k]),
+          Math.round(sums[k][1] / counts[k]),
+          Math.round(sums[k][2] / counts[k]),
+        ]);
+        nextCounts.push(counts[k]);
+      }
+      if (nextCentroids.length !== centroids.length) {
+        // Cluster indices shifted; remap assignments so the next iteration's
+        // change-detection compares against valid indices.
+        for (let j = 0; j < pixels.length; j++) assign[j] = remap[assign[j]];
+        changed = true;
+      }
+      centroids = nextCentroids;
+      counts = nextCounts;
+
+      if (!changed) break; // converged
+    }
+
+    return { centroids, counts };
+  }
+
+  // Repeatedly merge the closest pair of centroids whose Euclidean RGB distance
+  // is < MERGE_DIST into their population-weighted average, until no pair
+  // remains within MERGE_DIST. Collapses duplicate entries that appear when
+  // there are fewer true colors than requested.
+  function mergeNearDuplicates(centroids, counts) {
+    const cents = centroids.map((c) => c.slice());
+    const wts = counts.slice();
+    for (;;) {
+      let bestI = -1, bestJ = -1, bestDist = Infinity;
+      for (let i = 0; i < cents.length; i++) {
+        for (let j = i + 1; j < cents.length; j++) {
+          const dr = cents[i][0] - cents[j][0];
+          const dg = cents[i][1] - cents[j][1];
+          const db = cents[i][2] - cents[j][2];
+          const d = Math.sqrt(dr * dr + dg * dg + db * db);
+          if (d < bestDist) { bestDist = d; bestI = i; bestJ = j; }
+        }
+      }
+      if (bestI === -1 || bestDist >= MERGE_DIST) break;
+      const wi = wts[bestI], wj = wts[bestJ];
+      const w = wi + wj || 1;
+      cents[bestI] = [
+        Math.round((cents[bestI][0] * wi + cents[bestJ][0] * wj) / w),
+        Math.round((cents[bestI][1] * wi + cents[bestJ][1] * wj) / w),
+        Math.round((cents[bestI][2] * wi + cents[bestJ][2] * wj) / w),
+      ];
+      wts[bestI] = w;
+      cents.splice(bestJ, 1);
+      wts.splice(bestJ, 1);
+    }
+    return cents;
+  }
+
+  function medianCut(rgba, n) {
+    const count = Math.floor(rgba.length / 4);
+    const indices = new Uint8Array(count).fill(TRANSPARENT_INDEX);
+
+    // Collect opaque pixels (with their original pixel index) as {r,g,b}.
+    const pixels = []; // pixels[j] = {r,g,b}, parallel array; opaqueIdxs[j] = original pixel index
+    const opaqueOrigIdx = [];
+    for (let i = 0; i < count; i++) {
+      const off = i * 4;
+      const a = rgba[off + 3];
+      if (a === 0) continue;
+      pixels.push({ r: rgba[off], g: rgba[off + 1], b: rgba[off + 2] });
+      opaqueOrigIdx.push(i);
+    }
+
+    if (pixels.length === 0) {
+      return { palette: [], indices };
+    }
+
+    const allIdxs = pixels.map((_, j) => j);
+    let boxes = [makeBox(allIdxs, pixels)];
+
+    while (boxes.length < n) {
+      // Find the box with the greatest channel range that can still be split
+      // (needs at least 2 distinct pixels to split meaningfully).
+      let bestIdx = -1;
+      let bestRange = -1;
+      for (let i = 0; i < boxes.length; i++) {
+        const box = boxes[i];
+        if (box.idxs.length < 2) continue;
+        const range = boxRange(box);
+        if (range > bestRange) {
+          bestRange = range;
+          bestIdx = i;
+        }
+      }
+      if (bestIdx === -1 || bestRange <= 0) break; // nothing left worth splitting
+
+      const box = boxes[bestIdx];
+      const [left, right] = splitBox(box, pixels);
+      if (left.idxs.length === 0 || right.idxs.length === 0) break;
+      boxes.splice(bestIdx, 1, left, right);
+    }
+
+    // Median cut only seeds the palette (it balances pixel population rather
+    // than separating colors). Refine with k-means so flat, few-color art
+    // resolves to its true colors, then merge near-duplicate entries.
+    const seed = boxes.map((box) => averageColor(box, pixels));
+    const { centroids, counts } = refineKMeans(seed, pixels, KMEANS_ITERATIONS);
+    const palette = mergeNearDuplicates(centroids, counts);
+
+    // Assign each opaque pixel to nearest FINAL palette color (Euclidean in RGB).
+    for (let j = 0; j < pixels.length; j++) {
+      const p = pixels[j];
+      let bestPal = 0;
+      let bestDist = Infinity;
+      for (let k = 0; k < palette.length; k++) {
+        const [pr, pg, pb] = palette[k];
+        const dr = p.r - pr, dg = p.g - pg, db = p.b - pb;
+        const dist = dr * dr + dg * dg + db * db;
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestPal = k;
+        }
+      }
+      indices[opaqueOrigIdx[j]] = bestPal;
+    }
+
+    return { palette, indices };
+  }
+
+  function knockoutBackground(rgba, w, h, opts) {
+    const options = opts || {};
+    const tolerance = options.tolerance === undefined ? 24 : options.tolerance;
+    const sampleCorner = options.sampleCorner === undefined ? true : options.sampleCorner;
+
+    const out = new Uint8ClampedArray(rgba.length);
+    out.set(rgba);
+
+    const count = w * h;
+    const whiteThreshold = 255 - tolerance;
+
+    let cornerR = 0, cornerG = 0, cornerB = 0;
+    if (sampleCorner && count > 0) {
+      cornerR = rgba[0];
+      cornerG = rgba[1];
+      cornerB = rgba[2];
+    }
+
+    for (let i = 0; i < count; i++) {
+      const off = i * 4;
+      const r = rgba[off], g = rgba[off + 1], b = rgba[off + 2];
+
+      const isNearWhite = r >= whiteThreshold && g >= whiteThreshold && b >= whiteThreshold;
+
+      let isNearCorner = false;
+      if (sampleCorner) {
+        isNearCorner =
+          Math.abs(r - cornerR) <= tolerance &&
+          Math.abs(g - cornerG) <= tolerance &&
+          Math.abs(b - cornerB) <= tolerance;
+      }
+
+      if (isNearWhite || isNearCorner) {
+        out[off + 3] = 0;
+      }
+    }
+
+    return out;
+  }
+
+  return {
+    medianCut,
+    knockoutBackground,
+  };
+});
+
+</script>
+  <script>
+/* inlined: src/dst.js */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  root.EMB = Object.assign(root.EMB || {}, api);
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  const MAX_DELTA = 121;
+
+  // Signed-weight -> [byteIndex, bitMask], from the authoritative bit-weight table.
+  // Byte0: x+1=0x80 x-1=0x40 x+9=0x20 x-9=0x10  y-9=0x08 y+9=0x04 y-1=0x02 y+1=0x01
+  // Byte1: x+3=0x80 x-3=0x40 x+27=0x20 x-27=0x10 y-27=0x08 y+27=0x04 y-3=0x02 y+3=0x01
+  // Byte2: x+81=0x20 x-81=0x10 y-81=0x08 y+81=0x04
+  const X_WEIGHTS = {
+    "1":  [0, 0x80], "-1":  [0, 0x40],
+    "9":  [0, 0x20], "-9":  [0, 0x10],
+    "3":  [1, 0x80], "-3":  [1, 0x40],
+    "27": [1, 0x20], "-27": [1, 0x10],
+    "81": [2, 0x20], "-81": [2, 0x10],
+  };
+  const Y_WEIGHTS = {
+    "9":  [0, 0x04], "-9":  [0, 0x08],
+    "1":  [0, 0x01], "-1":  [0, 0x02],
+    "27": [1, 0x04], "-27": [1, 0x08],
+    "3":  [1, 0x01], "-3":  [1, 0x02],
+    "81": [2, 0x04], "-81": [2, 0x08],
+  };
+  // Weight per balanced-ternary digit position i (3^i), i = 0..4.
+  const MAGNITUDES = [1, 3, 9, 27, 81];
+
+  // Balanced-ternary digits of v: digits[i] in {-1,0,1} for weight 3^i (i=0..4).
+  function balancedTernaryDigits(v) {
+    const digits = [];
+    let n = v;
+    for (let i = 0; i < 5; i++) {
+      let rem = ((n % 3) + 3) % 3; // 0,1,2
+      let d;
+      if (rem === 0) { d = 0; n = n / 3; }
+      else if (rem === 1) { d = 1; n = (n - 1) / 3; }
+      else { d = -1; n = (n + 1) / 3; } // rem === 2
+      digits.push(d);
+      n = Math.trunc(n);
+    }
+    return digits; // [w1, w3, w9, w27, w81]
+  }
+
+  function decompose(value, weights, bytes) {
+    const digits = balancedTernaryDigits(value);
+    for (let i = 0; i < MAGNITUDES.length; i++) {
+      const d = digits[i];
+      if (d === 0) continue;
+      const [bi, mask] = weights[String(d * MAGNITUDES[i])];
+      bytes[bi] |= mask;
+    }
+  }
+
+  function encodeRecord(dx, dy, flag) {
+    if (dx < -MAX_DELTA || dx > MAX_DELTA || dy < -MAX_DELTA || dy > MAX_DELTA) {
+      throw new RangeError(
+        "DST record delta out of range (-121..121): dx=" + dx + " dy=" + dy
+      );
+    }
+    const bytes = new Uint8Array(3);
+    decompose(dx, X_WEIGHTS, bytes);
+    decompose(dy, Y_WEIGHTS, bytes);
+    // Byte2 low bits 0x03 always set for stitch/jump/color.
+    bytes[2] |= 0x03;
+    if (flag === "jump") bytes[2] |= 0x80;
+    else if (flag === "color") bytes[2] |= 0x40;
+    return bytes;
+  }
+
+  function endRecord() {
+    return Uint8Array.from([0x00, 0x00, 0xf3]);
+  }
+
+  function field(key, value) {
+    return key + ":" + value + "\r";
+  }
+
+  function pad(num, width) {
+    const s = String(Math.abs(Math.round(num)));
+    return s.length >= width ? s.slice(-width) : "0".repeat(width - s.length) + s;
+  }
+
+  function signed(num) {
+    const n = Math.round(num);
+    const sign = n < 0 ? "-" : "+";
+    return sign + pad(n, 5);
+  }
+
+  function buildHeader(meta) {
+    const label = String(meta.label || "").slice(0, 16);
+    let s = "";
+    s += field("LA", label);
+    s += field("ST", pad(meta.stitchCount || 0, 7));
+    s += field("CO", pad(meta.colorCount || 0, 3));
+    s += field("+X", pad(meta.xMax || 0, 5));
+    s += field("-X", pad(meta.xMin || 0, 5));
+    s += field("+Y", pad(meta.yMax || 0, 5));
+    s += field("-Y", pad(meta.yMin || 0, 5));
+    s += field("AX", signed(0));
+    s += field("AY", signed(0));
+    s += field("MX", signed(0));
+    s += field("MY", signed(0));
+    s += field("PD", "******");
+
+    const header = new Uint8Array(512).fill(0x20); // space-padded
+    for (let i = 0; i < s.length && i < 512; i++) {
+      header[i] = s.charCodeAt(i) & 0xff;
+    }
+    return header;
+  }
+
+  function clampStep(delta) {
+    if (delta > MAX_DELTA) return MAX_DELTA;
+    if (delta < -MAX_DELTA) return -MAX_DELTA;
+    return delta;
+  }
+
+  function encodeDST(design) {
+    const stitches = (design && design.stitches) || [];
+    const colors = (design && design.colors) || [];
+    const records = [];
+
+    let lastX = 0;
+    let lastY = 0;
+    let xMin = 0, xMax = 0, yMin = 0, yMax = 0;
+    let haveExtents = false;
+
+    for (let i = 0; i < stitches.length; i++) {
+      const st = stitches[i];
+      const targetX = st.x | 0;
+      const targetY = st.y | 0;
+
+      if (!haveExtents) {
+        xMin = xMax = targetX;
+        yMin = yMax = targetY;
+        haveExtents = true;
+      } else {
+        if (targetX < xMin) xMin = targetX;
+        if (targetX > xMax) xMax = targetX;
+        if (targetY < yMin) yMin = targetY;
+        if (targetY > yMax) yMax = targetY;
+      }
+
+      // trim encoded as jump for v1.
+      const flag = st.type === "color" ? "color" : st.type === "jump" || st.type === "trim" ? "jump" : "stitch";
+
+      // Emit intermediate jump records for oversized moves.
+      let dx = targetX - lastX;
+      let dy = targetY - lastY;
+      while (Math.abs(dx) > MAX_DELTA || Math.abs(dy) > MAX_DELTA) {
+        const stepX = clampStep(dx);
+        const stepY = clampStep(dy);
+        records.push(encodeRecord(stepX, stepY, "jump"));
+        lastX += stepX;
+        lastY += stepY;
+        dx = targetX - lastX;
+        dy = targetY - lastY;
+      }
+
+      records.push(encodeRecord(dx, dy, flag));
+      lastX = targetX;
+      lastY = targetY;
+    }
+
+    records.push(endRecord());
+
+    const header = buildHeader({
+      label: (design && design.label) || "EMBBOT",
+      stitchCount: stitches.length,
+      colorCount: colors.length,
+      xMin, xMax, yMin, yMax,
+    });
+
+    const total = 512 + records.length * 3;
+    const out = new Uint8Array(total);
+    out.set(header, 0);
+    let off = 512;
+    for (const r of records) {
+      out.set(r, off);
+      off += 3;
+    }
+    return out;
+  }
+
+  return {
+    encodeRecord,
+    endRecord,
+    buildHeader,
+    encodeDST,
+  };
+});
+
+</script>
+  <script>
+/* inlined: src/exp.js */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  root.EMB = Object.assign(root.EMB || {}, api);
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  const MAX_DELTA = 127;
+
+  // Two's-complement signed byte.
+  const sb = (v) => (v < 0 ? v + 256 : v);
+
+  function clampStep(delta) {
+    if (delta > MAX_DELTA) return MAX_DELTA;
+    if (delta < -MAX_DELTA) return -MAX_DELTA;
+    return delta;
+  }
+
+  function colorRecord() {
+    return Uint8Array.from([0x80, 0x01, 0x00, 0x00]);
+  }
+
+  function jumpRecord(dx, dy) {
+    return Uint8Array.from([0x80, 0x04, sb(dx), sb(dy)]);
+  }
+
+  function stitchRecord(dx, dy) {
+    return Uint8Array.from([sb(dx), sb(dy)]);
+  }
+
+  function encodeEXP(design) {
+    const stitches = (design && design.stitches) || [];
+    const records = [];
+
+    let lastX = 0;
+    let lastY = 0;
+
+    for (let i = 0; i < stitches.length; i++) {
+      const st = stitches[i];
+      const targetX = st.x | 0;
+      const targetY = st.y | 0;
+
+      if (st.type === "color") {
+        records.push(colorRecord());
+        // Color-change control record carries no positional delta.
+        continue;
+      }
+
+      const isJump = st.type === "jump" || st.type === "trim";
+
+      let dx = targetX - lastX;
+      let dy = targetY - lastY;
+
+      // Split any move with |delta|>127 into multiple records stepping toward the target.
+      while (Math.abs(dx) > MAX_DELTA || Math.abs(dy) > MAX_DELTA) {
+        const stepX = clampStep(dx);
+        const stepY = clampStep(dy);
+        records.push(isJump ? jumpRecord(stepX, stepY) : stitchRecord(stepX, stepY));
+        lastX += stepX;
+        lastY += stepY;
+        dx = targetX - lastX;
+        dy = targetY - lastY;
+      }
+
+      records.push(isJump ? jumpRecord(dx, dy) : stitchRecord(dx, dy));
+      lastX = targetX;
+      lastY = targetY;
+    }
+
+    let total = 0;
+    for (const r of records) total += r.length;
+    const out = new Uint8Array(total);
+    let off = 0;
+    for (const r of records) {
+      out.set(r, off);
+      off += r.length;
+    }
+    return out;
+  }
+
+  return {
+    encodeEXP,
+  };
+});
+
+</script>
+  <script>
+/* inlined: src/pes.js */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  root.EMB = Object.assign(root.EMB || {}, api);
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  // Both PES/PEC coordinates use 0.1mm units, same as the Design (DST) model.
+  // DST origin is centre with +Y up; PEC screen convention is +Y down, so Y is
+  // flipped when emitting PEC/PES stitch coordinates.
+
+  // ---- little byte-buffer helper --------------------------------------
+  function Writer() {
+    this.bytes = [];
+  }
+  Writer.prototype.u8 = function (v) { this.bytes.push(v & 0xff); return this; };
+  Writer.prototype.u16le = function (v) { this.u8(v); this.u8(v >> 8); return this; };
+  Writer.prototype.u16be = function (v) { this.u8(v >> 8); this.u8(v); return this; };
+  Writer.prototype.i16le = function (v) { return this.u16le(v & 0xffff); };
+  Writer.prototype.u32le = function (v) {
+    this.u8(v); this.u8(v >> 8); this.u8(v >> 16); this.u8(v >> 24); return this;
+  };
+  Writer.prototype.f32le = function (v) {
+    const b = new Uint8Array(4);
+    new DataView(b.buffer).setFloat32(0, v, true);
+    for (let i = 0; i < 4; i++) this.u8(b[i]);
+    return this;
+  };
+  Writer.prototype.str = function (s) {
+    for (let i = 0; i < s.length; i++) this.u8(s.charCodeAt(i) & 0xff);
+    return this;
+  };
+  Writer.prototype.lenStr = function (s) { this.u16le(s.length); return this.str(s); };
+  Writer.prototype.tell = function () { return this.bytes.length; };
+  Writer.prototype.patch3le = function (pos, v) {
+    this.bytes[pos] = v & 0xff;
+    this.bytes[pos + 1] = (v >> 8) & 0xff;
+    this.bytes[pos + 2] = (v >> 16) & 0xff;
+  };
+  Writer.prototype.patch4le = function (pos, v) {
+    this.bytes[pos] = v & 0xff;
+    this.bytes[pos + 1] = (v >> 8) & 0xff;
+    this.bytes[pos + 2] = (v >> 16) & 0xff;
+    this.bytes[pos + 3] = (v >> 24) & 0xff;
+  };
+
+  function extents(stitches) {
+    let xMin = 0, xMax = 0, yMin = 0, yMax = 0, have = false;
+    for (const st of stitches) {
+      const x = st.x | 0, y = st.y | 0;
+      if (!have) { xMin = xMax = x; yMin = yMax = y; have = true; }
+      else {
+        if (x < xMin) xMin = x;
+        if (x > xMax) xMax = x;
+        if (y < yMin) yMin = y;
+        if (y > yMax) yMax = y;
+      }
+    }
+    return { xMin, xMax, yMin, yMax, have };
+  }
+
+  // ---- PEC delta stitch encoding --------------------------------------
+  // Short form: one signed 7-bit byte per axis when |delta| <= 63.
+  // Long form:  two bytes per axis, 0x80 flag + 12-bit value; 0x20 flag = jump/trim.
+  // Colour change: 0xFE 0xB0 <needle>. End: 0xFF.
+  // Long-form field is a signed 12-bit two's complement value, so a single
+  // record can only carry a delta in [-PEC_MAX_DELTA, PEC_MAX_DELTA]. Larger
+  // moves (e.g. jumps across a full-back panel) are split into intermediate
+  // jump hops, mirroring the analogous split in dst.js's encodeDST.
+  const PEC_MAX_DELTA = 2047;
+
+  function pecClampStep(delta) {
+    if (delta > PEC_MAX_DELTA) return PEC_MAX_DELTA;
+    if (delta < -PEC_MAX_DELTA) return -PEC_MAX_DELTA;
+    return delta;
+  }
+
+  function pecWriteRecord(w, dx, dy, isJump) {
+    if (!isJump && dx < 64 && dx > -64 && dy < 64 && dy > -64) {
+      w.u8(dx & 0x7f);
+      w.u8(dy & 0x7f);
+    } else {
+      let vx = dx & 0x0fff;
+      vx |= 0x8000;
+      if (isJump) vx |= 0x2000;
+      w.u8((vx >> 8) & 0xff).u8(vx & 0xff);
+      let vy = dy & 0x0fff;
+      vy |= 0x8000;
+      if (isJump) vy |= 0x2000;
+      w.u8((vy >> 8) & 0xff).u8(vy & 0xff);
+    }
+  }
+
+  function pecEncodeStitches(w, stitches) {
+    let px = 0, py = 0; // previous position in PEC screen space (0.1mm, +Y down)
+    let needleToggle = 2;
+    let emitted = false;
+    for (const st of stitches) {
+      const type = st.type || "stitch";
+      if (type === "end") break;
+      if (type === "color") {
+        w.u8(0xfe).u8(0xb0).u8(needleToggle);
+        needleToggle = needleToggle === 2 ? 1 : 2;
+        continue;
+      }
+      const sx = st.x | 0;
+      const sy = -(st.y | 0); // flip Y to PEC screen convention
+      const isJump = type === "jump" || type === "trim";
+
+      let dx = sx - px;
+      let dy = sy - py;
+
+      // Emit intermediate jump hops for deltas outside the 12-bit long-form range.
+      while (Math.abs(dx) > PEC_MAX_DELTA || Math.abs(dy) > PEC_MAX_DELTA) {
+        const stepX = pecClampStep(dx);
+        const stepY = pecClampStep(dy);
+        pecWriteRecord(w, stepX, stepY, true);
+        px += stepX;
+        py += stepY;
+        dx = sx - px;
+        dy = sy - py;
+      }
+
+      pecWriteRecord(w, dx, dy, isJump);
+      px = sx;
+      py = sy;
+      emitted = true;
+    }
+    void emitted;
+    w.u8(0xff); // end of stitch data
+  }
+
+  // ---- PEC section ----------------------------------------------------
+  function writePEC(w, design) {
+    const stitches = (design && design.stitches) || [];
+    const colors = (design && design.colors) || [];
+    const colorCount = Math.max(1, colors.length);
+    const ext = extents(stitches);
+    const width = ext.xMax - ext.xMin;
+    const height = ext.yMax - ext.yMin;
+
+    const label = String((design && design.label) || "EMBBOT").slice(0, 16);
+
+    w.str("LA:");
+    w.str(label);
+    for (let i = label.length; i < 16; i++) w.u8(0x20); // pad to 16
+    w.u8(0x0d);
+    for (let i = 0; i < 12; i++) w.u8(0x20);
+    w.u8(0xff).u8(0x00).u8(0x06).u8(0x26);
+    for (let i = 0; i < 12; i++) w.u8(0x20);
+
+    // colour count (stored as count-1) and palette index list
+    w.u8((colorCount - 1) & 0xff);
+    for (let i = 0; i < colorCount; i++) {
+      const c = colors[i] || {};
+      // Best-effort Brother palette index; fall back to a mid value.
+      const idx = typeof c.paletteIndex === "number" ? c.paletteIndex : (i % 64) + 1;
+      w.u8(idx & 0xff);
+    }
+    // pad colour table region out to the fixed 0x1CF span
+    for (let i = 0; i <= 0x1cf - colorCount; i++) w.u8(0x20);
+
+    w.u16le(0x0000);
+
+    // 3-byte little-endian offset to the thumbnail/graphics section (patched later)
+    const graphicsOffsetPos = w.tell();
+    w.u8(0x00).u8(0x00).u8(0x00);
+
+    w.u8(0x31).u8(0xff).u8(0xf0);
+
+    w.i16le(width);
+    w.i16le(height);
+    w.i16le(0x01e0); // 480 - nominal design area width
+    w.i16le(0x0140); // 320 - nominal design area height
+    // start x/y as big-endian, high nibble flag 0x9000 (best-effort)
+    w.u16be(0x9000 | 0x0000);
+    w.u16be(0x9000 | 0x0000);
+
+    // stitch data
+    pecEncodeStitches(w, stitches);
+
+    // patch graphics offset (relative to the offset field location)
+    const graphicsStart = w.tell();
+    w.patch3le(graphicsOffsetPos, graphicsStart - graphicsOffsetPos + 2);
+
+    // blank thumbnails: 48x38, 1bpp => 6 bytes/row * 38 = 228 bytes each.
+    // One master image plus one per colour. Blank (all zero) is acceptable.
+    const bytesPerImage = 6 * 38;
+    const imageCount = colorCount + 1;
+    for (let n = 0; n < imageCount; n++) {
+      for (let b = 0; b < bytesPerImage; b++) w.u8(0x00);
+    }
+  }
+
+  // ---- PES v1 container -----------------------------------------------
+  function encodePES(design) {
+    const stitches = (design && design.stitches) || [];
+    const colors = (design && design.colors) || [];
+    const colorCount = Math.max(1, colors.length);
+    const ext = extents(stitches);
+    const width = ext.xMax - ext.xMin;
+    const height = ext.yMax - ext.yMin;
+
+    const w = new Writer();
+    w.str("#PES0001");
+
+    // 4-byte offset to the PEC section (patched after the header body).
+    const pecStartPos = w.tell();
+    w.u32le(0x00000000);
+
+    // minimal v1 header body
+    w.u16le(0x0001); // scale to fit page (nominal)
+    w.u16le(0x0001); // hoop code (nominal)
+    w.u16le(0xffff);
+    w.u16le(0x0000);
+
+    // --- CEmbOne section (design container / transform) ---
+    w.lenStr("CEmbOne");
+    // bounding rectangle (twice: extents + clip), in 0.1mm
+    w.i16le(0).i16le(0).i16le(width).i16le(height);
+    w.i16le(0).i16le(0).i16le(width).i16le(height);
+    // affine transform: identity rotation/scale, translate to a nominal origin
+    w.f32le(1).f32le(0);
+    w.f32le(0).f32le(1);
+    w.f32le(50).f32le(50);
+    w.i16le(1);
+    w.i16le(0).i16le(0);
+    w.i16le(width).i16le(height);
+    for (let i = 0; i < 8; i++) w.i16le(0);
+
+    // --- CSewSeg section (stitch/colour block list) ---
+    w.u16le(0xffff);
+    w.u16le(0x0000);
+    w.lenStr("CSewSeg");
+
+    // group consecutive same-kind runs into segments, colour changes split blocks
+    const segments = [];
+    let colorIndex = 0;
+    let run = null;
+    for (const st of stitches) {
+      const type = st.type || "stitch";
+      if (type === "end") break;
+      if (type === "color") { colorIndex++; run = null; continue; }
+      const isJump = type === "jump" || type === "trim";
+      const kind = isJump ? 1 : 0;
+      if (!run || run.kind !== kind || run.colorIndex !== colorIndex) {
+        run = { kind, colorIndex, points: [] };
+        segments.push(run);
+      }
+      run.points.push([st.x | 0, -(st.y | 0)]);
+    }
+
+    w.u16le(colorCount);              // colour count
+    w.u16le(segments.length & 0xffff); // block count
+    for (const seg of segments) {
+      w.u16le(seg.kind);                 // 0 = normal, 1 = jump
+      w.u16le(seg.colorIndex & 0xffff);  // thread index
+      w.u16le(seg.points.length & 0xffff);
+      for (const p of seg.points) {
+        w.i16le(p[0]);
+        w.i16le(p[1]);
+      }
+    }
+    w.u16le(0x0000);
+
+    // --- PEC section ---
+    const pecStart = w.tell();
+    w.patch4le(pecStartPos, pecStart);
+    writePEC(w, design);
+
+    return Uint8Array.from(w.bytes);
+  }
+
+  return { encodePES, writePEC };
+});
+
+</script>
+  <script>
+/* inlined: src/svgexport.js */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  root.EMB = Object.assign(root.EMB || {}, api);
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  // DST units are 0.1mm; divide by 10 for mm.
+  const UNITS_PER_MM = 10;
+
+  function rgb(color) {
+    if (!color) return "#000000";
+    const c = (v) => {
+      const n = Math.max(0, Math.min(255, v | 0));
+      return n.toString(16).padStart(2, "0");
+    };
+    return "#" + c(color.r) + c(color.g) + c(color.b);
+  }
+
+  function fmt(n) {
+    // Trim to a compact fixed-precision string.
+    const r = Math.round(n * 1000) / 1000;
+    return String(r);
+  }
+
+  function designToSVG(design) {
+    const stitches = (design && design.stitches) || [];
+    const colors = (design && design.colors) || [];
+
+    // Compute extents in DST units from stitch coordinates.
+    let xMin = 0, xMax = 0, yMin = 0, yMax = 0;
+    let have = false;
+    for (const st of stitches) {
+      const x = st.x | 0;
+      const y = st.y | 0;
+      if (!have) { xMin = xMax = x; yMin = yMax = y; have = true; }
+      else {
+        if (x < xMin) xMin = x;
+        if (x > xMax) xMax = x;
+        if (y < yMin) yMin = y;
+        if (y > yMax) yMax = y;
+      }
+    }
+    if (!have) { xMin = xMax = yMin = yMax = 0; }
+
+    const widthMM = (xMax - xMin) / UNITS_PER_MM;
+    const heightMM = (yMax - yMin) / UNITS_PER_MM;
+
+    // Screen coords (mm): +X right, Y flipped so +Y(dst)=up maps to top.
+    const sx = (x) => (x - xMin) / UNITS_PER_MM;
+    const sy = (y) => (yMax - y) / UNITS_PER_MM;
+
+    // Group consecutive `stitch` points into runs. color/jump/trim/end break.
+    const paths = [];
+    let colorIndex = 0;
+    let run = [];
+    const flush = () => {
+      if (run.length >= 2) {
+        paths.push({ points: run, colorIndex });
+      }
+      run = [];
+    };
+    for (const st of stitches) {
+      const type = st.type || "stitch";
+      if (type === "stitch") {
+        run.push([sx(st.x | 0), sy(st.y | 0)]);
+      } else {
+        flush();
+        if (type === "color") {
+          colorIndex++;
+        }
+      }
+    }
+    flush();
+
+    const parts = [];
+    const vbW = widthMM > 0 ? widthMM : 1;
+    const vbH = heightMM > 0 ? heightMM : 1;
+    parts.push(
+      '<svg xmlns="http://www.w3.org/2000/svg" ' +
+        'viewBox="0 0 ' + fmt(vbW) + " " + fmt(vbH) + '" ' +
+        'width="' + fmt(vbW) + 'mm" height="' + fmt(vbH) + 'mm">'
+    );
+
+    for (const p of paths) {
+      const color = colors[p.colorIndex] || colors[0];
+      const pts = p.points.map((pt) => fmt(pt[0]) + "," + fmt(pt[1])).join(" ");
+      parts.push(
+        '<polyline fill="none" stroke="' + rgb(color) +
+          '" stroke-width="0.35" stroke-linejoin="round" stroke-linecap="round" ' +
+          'points="' + pts + '"/>'
+      );
+    }
+
+    parts.push("</svg>");
+    return parts.join("\n");
+  }
+
+  return { designToSVG };
+});
+
+</script>
+  <script>
+/* inlined: src/stitchModel.js */
+// NOTE: top-level names are prefixed (`_sm_`) so that when every module is
+// concatenated as classic <script> tags in the browser (Task 12 integration)
+// they don't collide in the shared global lexical scope with another file's
+// top-level `const` (e.g. garments.js also declares `const units`). In Node
+// each file has its own module scope, so this only matters in the browser.
+const _sm_req = typeof module !== "undefined" && module.exports;
+const _sm_units = _sm_req
+  ? require("./units.js")
+  : (typeof globalThis !== "undefined" ? globalThis : this).EMB;
+const _sm_garments = _sm_req
+  ? require("./garments.js")
+  : (typeof globalThis !== "undefined" ? globalThis : this).EMB;
+const _sm_fillmod = _sm_req
+  ? require("./fill.js")
+  : (typeof globalThis !== "undefined" ? globalThis : this).EMB;
+
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  root.EMB = Object.assign(root.EMB || {}, api);
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  const { DST_UNITS_PER_MM } = _sm_units;
+  const { fitScale } = _sm_garments;
+  const { tatamiFill, runningOutline } = _sm_fillmod;
+
+  // Assemble color regions (pixel coords) into a final Design.
+  // colorRegions: Array<{ rgb:[r,g,b], polygons: Array<Array<{x,y}>> }>
+  // opts: { garment, densityMm, outline, maxStitchMm=4.0, outlineStitchMm=1.8, pxPerMm }
+  function buildDesign(colorRegions, opts) {
+    const pxPerMm = opts.pxPerMm;
+    const densityMm = opts.densityMm;
+    const outline = !!opts.outline;
+    const maxStitchMm = opts.maxStitchMm != null ? opts.maxStitchMm : 4.0;
+    const outlineStitchMm =
+      opts.outlineStitchMm != null ? opts.outlineStitchMm : 1.8;
+    const garment = opts.garment;
+
+    // 1. Overall bbox across all polygons in all regions (px).
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const region of colorRegions) {
+      if (!region.polygons) continue;
+      for (const poly of region.polygons) {
+        for (const p of poly) {
+          if (p.x < minX) minX = p.x;
+          if (p.x > maxX) maxX = p.x;
+          if (p.y < minY) minY = p.y;
+          if (p.y > maxY) maxY = p.y;
+        }
+      }
+    }
+
+    const hasBounds = isFinite(minX) && isFinite(maxX) && isFinite(minY) && isFinite(maxY);
+    const bboxWpx = hasBounds ? maxX - minX : 0;
+    const bboxHpx = hasBounds ? maxY - minY : 0;
+    const cx = hasBounds ? (minX + maxX) / 2 : 0;
+    const cy = hasBounds ? (minY + maxY) / 2 : 0;
+
+    // 2. px -> mm, then fit to garment.
+    const bboxWmm = bboxWpx / pxPerMm;
+    const bboxHmm = bboxHpx / pxPerMm;
+    const fit = fitScale(bboxWmm || 1e-9, bboxHmm || 1e-9, garment);
+
+    // 3. px -> DST-unit transform centered at origin (Y flipped up).
+    const scalePxToDst = fit.scale * (1 / pxPerMm) * DST_UNITS_PER_MM;
+    const toDst = (p) => ({
+      x: Math.round((p.x - cx) * scalePxToDst),
+      y: Math.round((cy - p.y) * scalePxToDst),
+    });
+
+    // maxStitch threshold in DST units, for jump detection. Density and
+    // max-stitch are FINAL-output physical quantities: the fill spacings below
+    // are pre-divided by fit.scale so that after the ×scalePxToDst transform the
+    // final row spacing = densityMm and final max stitch = maxStitchMm exactly.
+    // Therefore a normal intra-fill gap in DST units is <= maxStitchMm*DST, and a
+    // genuine region-to-region gap is larger. A small tolerance absorbs
+    // per-coordinate rounding.
+    const maxStitchDst = maxStitchMm * DST_UNITS_PER_MM * 1.001 + 2;
+
+    // Convert mm spacings to px for the fill/outline (which run in px space).
+    // Divide by fit.scale so the values survive the later ×fit.scale transform
+    // and land at the intended physical mm in final (DST) space.
+    const rowSpacingPx = (densityMm * pxPerMm) / fit.scale;
+    const maxStitchPx = (maxStitchMm * pxPerMm) / fit.scale;
+    const outlineStitchPx = (outlineStitchMm * pxPerMm) / fit.scale;
+
+    const stitches = [];
+    const colors = [];
+    let regionOrdinal = 0;
+
+    for (let ri = 0; ri < colorRegions.length; ri++) {
+      const region = colorRegions[ri];
+      const rgb = region.rgb || [0, 0, 0];
+      colors.push({
+        r: rgb[0],
+        g: rgb[1],
+        b: rgb[2],
+        name: "Color " + (ri + 1),
+      });
+
+      const polygons = region.polygons || [];
+      // Skip empty region for stitch generation (but color still counts).
+      const hasGeom = polygons.some((poly) => poly && poly.length >= 2);
+      if (!hasGeom) continue;
+
+      // 4. Fill in px, then transform to DST units.
+      const fillPx = tatamiFill(polygons, {
+        rowSpacing: rowSpacingPx,
+        angleDeg: 0,
+        maxStitch: maxStitchPx,
+      });
+      const regionPts = fillPx.map(toDst);
+
+      if (outline) {
+        for (const poly of polygons) {
+          if (!poly || poly.length < 2) continue;
+          const outPx = runningOutline(poly, { stitchLen: outlineStitchPx });
+          for (const p of outPx) regionPts.push(toDst(p));
+        }
+      }
+
+      if (regionPts.length === 0) continue;
+
+      // Prepend a color-change marker for every region after the first that
+      // actually emits stitches.
+      if (regionOrdinal > 0) {
+        stitches.push({ x: regionPts[0].x, y: regionPts[0].y, type: "color" });
+      }
+      regionOrdinal++;
+
+      // Emit points; mark jumps where the gap exceeds maxStitch.
+      let prev = null;
+      for (const pt of regionPts) {
+        let type = "stitch";
+        if (prev) {
+          const dx = pt.x - prev.x;
+          const dy = pt.y - prev.y;
+          if (Math.hypot(dx, dy) > maxStitchDst) type = "jump";
+        }
+        stitches.push({ x: pt.x, y: pt.y, type });
+        prev = pt;
+      }
+    }
+
+    // 5. Append end marker.
+    if (stitches.length > 0) {
+      const last = stitches[stitches.length - 1];
+      stitches.push({ x: last.x, y: last.y, type: "end" });
+    } else {
+      stitches.push({ x: 0, y: 0, type: "end" });
+    }
+
+    const stitchCount = stitches.filter((s) => s.type === "stitch").length;
+
+    return {
+      stitches,
+      colors,
+      widthMM: fit.targetWmm,
+      heightMM: fit.targetHmm,
+      stitchCount,
+      colorCount: colorRegions.length,
+    };
+  }
+
+  return { buildDesign };
+});
+
+</script>
+  <script>
+/* inlined: src/fonts.js */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  root.EMB = Object.assign(root.EMB || {}, api);
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  // ~137 curated Google Fonts, each pointing at a real TTF/OTF served via
+  // jsDelivr's mirror of the `google/fonts` GitHub repo (CORS-friendly, and
+  // NOT woff2 -- opentype.js cannot inflate woff2). Some entries are
+  // variable-font files (bracketed axis tags, e.g. "Roboto[wdth,wght].ttf");
+  // opentype.js parses these fine and loads the default instance.
+  const FONTS = [
+    // --- Sans-serif ---
+    { family: "Roboto", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/roboto/Roboto%5Bwdth%2Cwght%5D.ttf" },
+    { family: "Open Sans", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/opensans/OpenSans%5Bwdth%2Cwght%5D.ttf" },
+    { family: "Lato", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/lato/Lato-Regular.ttf" },
+    { family: "Montserrat", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/montserrat/Montserrat%5Bwght%5D.ttf" },
+    { family: "Poppins", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/poppins/Poppins-Regular.ttf" },
+    { family: "Inter", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf" },
+    { family: "Noto Sans", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosans/NotoSans%5Bwdth%2Cwght%5D.ttf" },
+    { family: "Source Sans 3", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/sourcesans3/SourceSans3%5Bwght%5D.ttf" },
+    { family: "Nunito", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/nunito/Nunito%5Bwght%5D.ttf" },
+    { family: "Nunito Sans", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/nunitosans/NunitoSans%5BYTLC%2Copsz%2Cwdth%2Cwght%5D.ttf" },
+    { family: "Raleway", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/raleway/Raleway%5Bwght%5D.ttf" },
+    { family: "Ubuntu", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ufl/ubuntu/Ubuntu-Regular.ttf" },
+    { family: "Work Sans", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/worksans/WorkSans%5Bwght%5D.ttf" },
+    { family: "Rubik", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/rubik/Rubik%5Bwght%5D.ttf" },
+    { family: "Karla", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/karla/Karla%5Bwght%5D.ttf" },
+    { family: "Mulish", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/mulish/Mulish%5Bwght%5D.ttf" },
+    { family: "Barlow", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/barlow/Barlow-Regular.ttf" },
+    { family: "DM Sans", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/dmsans/DMSans%5Bopsz%2Cwght%5D.ttf" },
+    { family: "Manrope", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/manrope/Manrope%5Bwght%5D.ttf" },
+    { family: "PT Sans", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/ptsans/PT_Sans-Web-Regular.ttf" },
+    { family: "Fira Sans", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/firasans/FiraSans-Regular.ttf" },
+    { family: "Titillium Web", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/titilliumweb/TitilliumWeb-Regular.ttf" },
+    { family: "Cabin", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/cabin/Cabin%5Bwdth%2Cwght%5D.ttf" },
+    { family: "Hind", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/hind/Hind-Regular.ttf" },
+    { family: "Quicksand", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/quicksand/Quicksand%5Bwght%5D.ttf" },
+    { family: "Heebo", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/heebo/Heebo%5Bwght%5D.ttf" },
+    { family: "Oxygen", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/oxygen/Oxygen-Regular.ttf" },
+    { family: "Assistant", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/assistant/Assistant%5Bwght%5D.ttf" },
+    { family: "Overpass", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/overpass/Overpass%5Bwght%5D.ttf" },
+    { family: "Jost", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/jost/Jost%5Bwght%5D.ttf" },
+    { family: "Archivo", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/archivo/Archivo%5Bwdth%2Cwght%5D.ttf" },
+    { family: "IBM Plex Sans", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/ibmplexsans/IBMPlexSans%5Bwdth%2Cwght%5D.ttf" },
+    { family: "Red Hat Display", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/redhatdisplay/RedHatDisplay%5Bwght%5D.ttf" },
+    { family: "Sora", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/sora/Sora%5Bwght%5D.ttf" },
+    { family: "Outfit", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/outfit/Outfit%5Bwght%5D.ttf" },
+    { family: "Space Grotesk", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/spacegrotesk/SpaceGrotesk%5Bwght%5D.ttf" },
+    { family: "Urbanist", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/urbanist/Urbanist%5Bwght%5D.ttf" },
+    { family: "Figtree", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/figtree/Figtree%5Bwght%5D.ttf" },
+    { family: "Plus Jakarta Sans", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/plusjakartasans/PlusJakartaSans%5Bwght%5D.ttf" },
+    { family: "Lexend", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/lexend/Lexend%5Bwght%5D.ttf" },
+    { family: "Public Sans", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/publicsans/PublicSans%5Bwght%5D.ttf" },
+    { family: "Epilogue", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/epilogue/Epilogue%5Bwght%5D.ttf" },
+    { family: "Comfortaa", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/comfortaa/Comfortaa%5Bwght%5D.ttf" },
+    { family: "Varela Round", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/varelaround/VarelaRound-Regular.ttf" },
+    { family: "Signika", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/signika/Signika%5BGRAD%2Cwght%5D.ttf" },
+    { family: "Exo 2", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/exo2/Exo2%5Bwght%5D.ttf" },
+    { family: "Saira", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/saira/Saira%5Bwdth%2Cwght%5D.ttf" },
+    { family: "Krub", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/krub/Krub-Regular.ttf" },
+    { family: "Prompt", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/prompt/Prompt-Regular.ttf" },
+    { family: "Kanit", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/kanit/Kanit-Regular.ttf" },
+    { family: "Maven Pro", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/mavenpro/MavenPro%5Bwght%5D.ttf" },
+    { family: "Catamaran", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/catamaran/Catamaran%5Bwght%5D.ttf" },
+    { family: "Asap", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/asap/Asap%5Bwdth%2Cwght%5D.ttf" },
+    { family: "Yanone Kaffeesatz", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/yanonekaffeesatz/YanoneKaffeesatz%5Bwght%5D.ttf" },
+    { family: "Dosis", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/dosis/Dosis%5Bwght%5D.ttf" },
+    { family: "Josefin Sans", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/josefinsans/JosefinSans%5Bwght%5D.ttf" },
+    { family: "Baloo 2", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/baloo2/Baloo2%5Bwght%5D.ttf" },
+
+    // --- Serif ---
+    { family: "Playfair Display", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/playfairdisplay/PlayfairDisplay%5Bwght%5D.ttf" },
+    { family: "Merriweather", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/merriweather/Merriweather%5Bopsz%2Cwdth%2Cwght%5D.ttf" },
+    { family: "Lora", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/lora/Lora%5Bwght%5D.ttf" },
+    { family: "PT Serif", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/ptserif/PT_Serif-Web-Regular.ttf" },
+    { family: "Noto Serif", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notoserif/NotoSerif%5Bwdth%2Cwght%5D.ttf" },
+    { family: "Crimson Text", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/crimsontext/CrimsonText-Regular.ttf" },
+    { family: "Crimson Pro", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/crimsonpro/CrimsonPro%5Bwght%5D.ttf" },
+    { family: "Libre Baskerville", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/librebaskerville/LibreBaskerville%5Bwght%5D.ttf" },
+    { family: "EB Garamond", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/ebgaramond/EBGaramond%5Bwght%5D.ttf" },
+    { family: "Cormorant", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/cormorant/Cormorant%5Bwght%5D.ttf" },
+    { family: "Cormorant Garamond", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/cormorantgaramond/CormorantGaramond%5Bwght%5D.ttf" },
+    { family: "Spectral", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/spectral/Spectral-Regular.ttf" },
+    { family: "Domine", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/domine/Domine%5Bwght%5D.ttf" },
+    { family: "Vollkorn", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/vollkorn/Vollkorn%5Bwght%5D.ttf" },
+    { family: "Alegreya", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/alegreya/Alegreya%5Bwght%5D.ttf" },
+    { family: "Frank Ruhl Libre", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/frankruhllibre/FrankRuhlLibre%5Bwght%5D.ttf" },
+    { family: "Source Serif 4", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/sourceserif4/SourceSerif4%5Bopsz%2Cwght%5D.ttf" },
+    { family: "IBM Plex Serif", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/ibmplexserif/IBMPlexSerif-Regular.ttf" },
+    { family: "Neuton", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/neuton/Neuton-Regular.ttf" },
+    { family: "Bree Serif", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/breeserif/BreeSerif-Regular.ttf" },
+    { family: "Arvo", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/arvo/Arvo-Regular.ttf" },
+    { family: "Rokkitt", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/rokkitt/Rokkitt%5Bwght%5D.ttf" },
+    { family: "Old Standard TT", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/oldstandardtt/OldStandard-Regular.ttf" },
+
+    // --- Slab / Display ---
+    { family: "Roboto Slab", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/apache/robotoslab/RobotoSlab%5Bwght%5D.ttf" },
+    { family: "Zilla Slab", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/zillaslab/ZillaSlab-Regular.ttf" },
+    { family: "Bitter", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/bitter/Bitter%5Bwght%5D.ttf" },
+    { family: "Aleo", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/aleo/Aleo%5Bwght%5D.ttf" },
+    { family: "Abril Fatface", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/abrilfatface/AbrilFatface-Regular.ttf" },
+    { family: "Lobster", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/lobster/Lobster-Regular.ttf" },
+    { family: "Pacifico", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/pacifico/Pacifico-Regular.ttf" },
+    { family: "Bebas Neue", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/bebasneue/BebasNeue-Regular.ttf" },
+    { family: "Anton", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/anton/Anton-Regular.ttf" },
+    { family: "Fjalla One", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/fjallaone/FjallaOne-Regular.ttf" },
+    { family: "Passion One", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/passionone/PassionOne-Regular.ttf" },
+    { family: "Alfa Slab One", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/alfaslabone/AlfaSlabOne-Regular.ttf" },
+    { family: "Righteous", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/righteous/Righteous-Regular.ttf" },
+    { family: "Bungee", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/bungee/Bungee-Regular.ttf" },
+    { family: "Fredoka", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/fredoka/Fredoka%5Bwdth%2Cwght%5D.ttf" },
+    { family: "Luckiest Guy", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/apache/luckiestguy/LuckiestGuy-Regular.ttf" },
+    { family: "Staatliches", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/staatliches/Staatliches-Regular.ttf" },
+    { family: "Archivo Black", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/archivoblack/ArchivoBlack-Regular.ttf" },
+    { family: "Oswald", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/oswald/Oswald%5Bwght%5D.ttf" },
+    { family: "Squada One", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/squadaone/SquadaOne-Regular.ttf" },
+    { family: "Titan One", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/titanone/TitanOne-Regular.ttf" },
+
+    // --- Script / Handwriting ---
+    { family: "Dancing Script", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/dancingscript/DancingScript%5Bwght%5D.ttf" },
+    { family: "Great Vibes", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/greatvibes/GreatVibes-Regular.ttf" },
+    { family: "Sacramento", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/sacramento/Sacramento-Regular.ttf" },
+    { family: "Satisfy", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/apache/satisfy/Satisfy-Regular.ttf" },
+    { family: "Kaushan Script", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/kaushanscript/KaushanScript-Regular.ttf" },
+    { family: "Caveat", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/caveat/Caveat%5Bwght%5D.ttf" },
+    { family: "Shadows Into Light", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/shadowsintolight/ShadowsIntoLight.ttf" },
+    { family: "Indie Flower", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/indieflower/IndieFlower-Regular.ttf" },
+    { family: "Amatic SC", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/amaticsc/AmaticSC-Regular.ttf" },
+    { family: "Permanent Marker", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/apache/permanentmarker/PermanentMarker-Regular.ttf" },
+    { family: "Homemade Apple", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/apache/homemadeapple/HomemadeApple-Regular.ttf" },
+    { family: "Courgette", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/courgette/Courgette-Regular.ttf" },
+    { family: "Cookie", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/cookie/Cookie-Regular.ttf" },
+    { family: "Allura", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/allura/Allura-Regular.ttf" },
+    { family: "Parisienne", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/parisienne/Parisienne-Regular.ttf" },
+    { family: "Marck Script", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/marckscript/MarckScript-Regular.ttf" },
+    { family: "Yellowtail", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/apache/yellowtail/Yellowtail-Regular.ttf" },
+    { family: "Handlee", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/handlee/Handlee-Regular.ttf" },
+    { family: "Patrick Hand", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/patrickhand/PatrickHand-Regular.ttf" },
+    { family: "Kalam", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/kalam/Kalam-Regular.ttf" },
+
+    // --- Monospace ---
+    { family: "Roboto Mono", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/robotomono/RobotoMono%5Bwght%5D.ttf" },
+    { family: "Source Code Pro", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/sourcecodepro/SourceCodePro%5Bwght%5D.ttf" },
+    { family: "JetBrains Mono", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/jetbrainsmono/JetBrainsMono%5Bwght%5D.ttf" },
+    { family: "IBM Plex Mono", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/ibmplexmono/IBMPlexMono-Regular.ttf" },
+    { family: "Space Mono", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/spacemono/SpaceMono-Regular.ttf" },
+    { family: "Inconsolata", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/inconsolata/static/Inconsolata-Regular.ttf" },
+    { family: "Fira Code", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/firacode/FiraCode%5Bwght%5D.ttf" },
+    { family: "Fira Mono", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/firamono/FiraMono-Regular.ttf" },
+    { family: "PT Mono", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/ptmono/PTM55FT.ttf" },
+    { family: "Cousine", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/cousine/Cousine-Regular.ttf" },
+    { family: "Courier Prime", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/courierprime/CourierPrime-Regular.ttf" },
+    { family: "Overpass Mono", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/overpassmono/OverpassMono%5Bwght%5D.ttf" },
+    { family: "Ubuntu Mono", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ufl/ubuntumono/UbuntuMono-Regular.ttf" },
+    { family: "Anonymous Pro", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/anonymouspro/AnonymousPro-Regular.ttf" },
+    { family: "DM Mono", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/dmmono/DMMono-Regular.ttf" },
+    { family: "Azeret Mono", url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/azeretmono/AzeretMono%5Bwght%5D.ttf" },
+  ];
+
+  // Load an opentype.Font from a URL. Requires the global `opentype` (loaded
+  // via CDN script tag in the browser shell) -- NOT referenced at module load
+  // time so this file still requires() cleanly under plain Node.
+  function loadFont(url) {
+    return new Promise((resolve, reject) => {
+      const ot = (typeof globalThis !== "undefined" && globalThis.opentype) ||
+        (typeof window !== "undefined" && window.opentype);
+      if (!ot) {
+        reject(new Error("global `opentype` not found (load opentype.js via CDN first)"));
+        return;
+      }
+      ot.load(url, (err, font) => {
+        if (err) reject(err instanceof Error ? err : new Error(String(err)));
+        else resolve(font);
+      });
+    });
+  }
+
+  // Flatten a cubic Bezier (p0..p3) into `segments` line points (excludes p0,
+  // includes the endpoint p3).
+  function flattenCubic(p0, p1, p2, p3, segments, out) {
+    for (let i = 1; i <= segments; i++) {
+      const t = i / segments;
+      const mt = 1 - t;
+      const x = mt * mt * mt * p0.x + 3 * mt * mt * t * p1.x + 3 * mt * t * t * p2.x + t * t * t * p3.x;
+      const y = mt * mt * mt * p0.y + 3 * mt * mt * t * p1.y + 3 * mt * t * t * p2.y + t * t * t * p3.y;
+      out.push({ x, y });
+    }
+  }
+
+  // Flatten a quadratic Bezier (p0,p1,p2) into `segments` line points
+  // (excludes p0, includes the endpoint p2).
+  function flattenQuadratic(p0, p1, p2, segments, out) {
+    for (let i = 1; i <= segments; i++) {
+      const t = i / segments;
+      const mt = 1 - t;
+      const x = mt * mt * p0.x + 2 * mt * t * p1.x + t * t * p2.x;
+      const y = mt * mt * p0.y + 2 * mt * t * p1.y + t * t * p2.y;
+      out.push({ x, y });
+    }
+  }
+
+  // Convert an opentype.js Path into an array of closed polygons (arrays of
+  // {x,y} points), flattening cubic/quadratic curve commands into polylines
+  // with a fixed number of segments per curve.
+  function pathToPolygons(path, curveSegments) {
+    const segments = curveSegments || 8;
+    const polygons = [];
+    let current = [];
+    let cur = { x: 0, y: 0 };
+    let start = { x: 0, y: 0 };
+
+    const commands = (path && path.commands) || [];
+    for (const cmd of commands) {
+      switch (cmd.type) {
+        case "M":
+          if (current.length > 1) polygons.push(current);
+          current = [{ x: cmd.x, y: cmd.y }];
+          cur = { x: cmd.x, y: cmd.y };
+          start = { x: cmd.x, y: cmd.y };
+          break;
+        case "L":
+          current.push({ x: cmd.x, y: cmd.y });
+          cur = { x: cmd.x, y: cmd.y };
+          break;
+        case "C":
+          flattenCubic(
+            cur,
+            { x: cmd.x1, y: cmd.y1 },
+            { x: cmd.x2, y: cmd.y2 },
+            { x: cmd.x, y: cmd.y },
+            segments,
+            current
+          );
+          cur = { x: cmd.x, y: cmd.y };
+          break;
+        case "Q":
+          flattenQuadratic(
+            cur,
+            { x: cmd.x1, y: cmd.y1 },
+            { x: cmd.x, y: cmd.y },
+            segments,
+            current
+          );
+          cur = { x: cmd.x, y: cmd.y };
+          break;
+        case "Z":
+        case "z":
+          if (current.length > 1) polygons.push(current);
+          current = [];
+          cur = { x: start.x, y: start.y };
+          break;
+        default:
+          break;
+      }
+    }
+    if (current.length > 1) polygons.push(current);
+    return polygons;
+  }
+
+  // Build the single-region ColorRegion array for a piece of text, laid out
+  // with the given opentype.Font. Returns:
+  //   [{ rgb:[0,0,0], polygons: Array<Array<{x,y}>> }]
+  // Polygons are in PIXEL coordinates (font units scaled to `sizePx`).
+  function textToRegions(font, text, opts) {
+    const o = opts || {};
+    const sizePx = o.sizePx || 200;
+    const letterSpacing = o.letterSpacing || 0;
+
+    const polygons = [];
+
+    if (letterSpacing) {
+      // Per-glyph layout so we can insert extra spacing between glyphs.
+      let x = 0;
+      const y = 0;
+      const glyphs = font.stringToGlyphs ? font.stringToGlyphs(text) : null;
+      if (glyphs) {
+        const scale = (1 / font.unitsPerEm) * sizePx;
+        for (const glyph of glyphs) {
+          const glyphPath = glyph.getPath(x, y, sizePx);
+          const polys = pathToPolygons(glyphPath, 8);
+          for (const p of polys) polygons.push(p);
+          x += (glyph.advanceWidth || 0) * scale + letterSpacing;
+        }
+      } else {
+        const path = font.getPath(text, 0, 0, sizePx);
+        const polys = pathToPolygons(path, 8);
+        for (const p of polys) polygons.push(p);
+      }
+    } else {
+      const path = font.getPath(text, 0, 0, sizePx);
+      const polys = pathToPolygons(path, 8);
+      for (const p of polys) polygons.push(p);
+    }
+
+    return [{ rgb: [0, 0, 0], polygons }];
+  }
+
+  return { FONTS, loadFont, textToRegions, pathToPolygons };
+});
+
+</script>
+  <script>
+/* inlined: src/render.js */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  root.EMB = Object.assign(root.EMB || {}, api);
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  // DST units are 0.1mm; divide by 10 for mm.
+  const UNITS_PER_MM = 10;
+
+  function rgb(color) {
+    if (!color) return "rgb(0,0,0)";
+    const c = (v) => Math.max(0, Math.min(255, v | 0));
+    return "rgb(" + c(color.r) + "," + c(color.g) + "," + c(color.b) + ")";
+  }
+
+  function extentsOf(stitches) {
+    let xMin = 0, xMax = 0, yMin = 0, yMax = 0;
+    let have = false;
+    for (const st of stitches) {
+      const x = st.x | 0;
+      const y = st.y | 0;
+      if (!have) { xMin = xMax = x; yMin = yMax = y; have = true; }
+      else {
+        if (x < xMin) xMin = x;
+        if (x > xMax) xMax = x;
+        if (y < yMin) yMin = y;
+        if (y > yMax) yMax = y;
+      }
+    }
+    return { xMin, xMax, yMin, yMax, have };
+  }
+
+  // Build a mapper from DST units -> canvas px, fitting `extents` (plus any
+  // extra box extents) into (canvasW - 2*padding) x (canvasH - 2*padding),
+  // preserving aspect ratio, centered, with Y flipped (screen Y grows down).
+  function buildMapper(canvasW, canvasH, padding, extents) {
+    const { xMin, xMax, yMin, yMax } = extents;
+    const spanX = Math.max(1, xMax - xMin);
+    const spanY = Math.max(1, yMax - yMin);
+
+    const availW = Math.max(1, canvasW - 2 * padding);
+    const availH = Math.max(1, canvasH - 2 * padding);
+
+    const scale = Math.min(availW / spanX, availH / spanY);
+
+    const drawW = spanX * scale;
+    const drawH = spanY * scale;
+    const offsetX = (canvasW - drawW) / 2;
+    const offsetY = (canvasH - drawH) / 2;
+
+    const cx = (x) => offsetX + (x - xMin) * scale;
+    const cy = (y) => offsetY + (yMax - y) * scale; // flip: +Y(dst)=up -> smaller screen-y
+
+    return { cx, cy, scale };
+  }
+
+  function renderStitches(canvas, design, opts) {
+    const options = opts || {};
+    const padding = options.padding === undefined ? 20 : options.padding;
+    const showBox = options.showBox || null;
+
+    const ctx = canvas.getContext("2d");
+    ctx.save();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const stitches = (design && design.stitches) || [];
+    const colors = (design && design.colors) || [];
+
+    const stitchExtents = extentsOf(stitches);
+
+    // Include the garment box (in DST units) in the extents used for fitting,
+    // so the box is always visible alongside the stitches.
+    let extents = stitchExtents;
+    if (showBox && showBox.widthMM && showBox.heightMM) {
+      const boxHalfW = (showBox.widthMM * UNITS_PER_MM) / 2;
+      const boxHalfH = (showBox.heightMM * UNITS_PER_MM) / 2;
+      const bXMin = -boxHalfW, bXMax = boxHalfW, bYMin = -boxHalfH, bYMax = boxHalfH;
+      if (extents.have) {
+        extents = {
+          xMin: Math.min(extents.xMin, bXMin),
+          xMax: Math.max(extents.xMax, bXMax),
+          yMin: Math.min(extents.yMin, bYMin),
+          yMax: Math.max(extents.yMax, bYMax),
+          have: true,
+        };
+      } else {
+        extents = { xMin: bXMin, xMax: bXMax, yMin: bYMin, yMax: bYMax, have: true };
+      }
+    }
+
+    if (!extents.have) {
+      // Nothing to draw at all (no stitches, no box). Just leave canvas clear.
+      extents = { xMin: -1, xMax: 1, yMin: -1, yMax: 1, have: true };
+    }
+
+    const mapper = buildMapper(canvas.width, canvas.height, padding, extents);
+
+    // Garment placement box, drawn behind the stitches.
+    if (showBox && showBox.widthMM && showBox.heightMM) {
+      const boxHalfW = (showBox.widthMM * UNITS_PER_MM) / 2;
+      const boxHalfH = (showBox.heightMM * UNITS_PER_MM) / 2;
+      const x0 = mapper.cx(-boxHalfW);
+      const y0 = mapper.cy(boxHalfH);
+      const x1 = mapper.cx(boxHalfW);
+      const y1 = mapper.cy(-boxHalfH);
+      ctx.save();
+      ctx.strokeStyle = "rgba(120,120,120,0.6)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 3]);
+      ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+      ctx.restore();
+    }
+
+    // Walk stitches, drawing thin line segments per run, per current color.
+    let colorIndex = 0;
+    let havePoint = false;
+    let prevPx = 0, prevPy = 0;
+
+    const currentColor = () => colors[colorIndex] || colors[0] || { r: 0, g: 0, b: 0 };
+
+    for (const st of stitches) {
+      const type = st.type || "stitch";
+      if (type === "stitch") {
+        const px = mapper.cx(st.x | 0);
+        const py = mapper.cy(st.y | 0);
+        if (havePoint) {
+          const strokeColor = rgb(currentColor());
+          // Base thread line.
+          ctx.strokeStyle = strokeColor;
+          ctx.lineWidth = 1;
+          ctx.lineCap = "round";
+          ctx.beginPath();
+          ctx.moveTo(prevPx, prevPy);
+          ctx.lineTo(px, py);
+          ctx.stroke();
+          // Subtle highlight for a thread-like sheen.
+          ctx.save();
+          ctx.strokeStyle = "rgba(255,255,255,0.25)";
+          ctx.lineWidth = 0.4;
+          ctx.beginPath();
+          ctx.moveTo(prevPx, prevPy);
+          ctx.lineTo(px, py);
+          ctx.stroke();
+          ctx.restore();
+        }
+        prevPx = px;
+        prevPy = py;
+        havePoint = true;
+      } else {
+        // jump/trim/color/end: break the current run, no visible segment.
+        havePoint = false;
+        if (type === "color") {
+          colorIndex++;
+        }
+      }
+    }
+
+    ctx.restore();
+  }
+
+  function designToPNGBlob(design, cb) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 800;
+    canvas.height = 800;
+    renderStitches(canvas, design, {});
+    canvas.toBlob(cb, "image/png");
+  }
+
+  return {
+    renderStitches,
+    designToPNGBlob,
+  };
+});
+
+</script>
+  <script>
+/* inlined: src/pdfsheet.js */
+const deps =
+  typeof module !== "undefined" && module.exports
+    ? { units: require("./units.js"), render: require("./render.js") }
+    : {
+        units: (typeof globalThis !== "undefined" ? globalThis : this).EMB,
+        render: (typeof globalThis !== "undefined" ? globalThis : this).EMB,
+      };
+
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  root.EMB = Object.assign(root.EMB || {}, api);
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  const { mmToInch } = deps.units;
+  const { renderStitches } = deps.render;
+
+  const PAGE_W_IN = 8.5;
+  const PAGE_H_IN = 11;
+  const MARGIN_IN = 0.5;
+
+  function rgbCss(color) {
+    if (!color) return [0, 0, 0];
+    const c = (v) => Math.max(0, Math.min(255, v | 0));
+    return [c(color.r), c(color.g), c(color.b)];
+  }
+
+  function buildWorksheetPDF(design, meta) {
+    const options = meta || {};
+    const jsPDF = window.jspdf.jsPDF;
+    const doc = new jsPDF({ unit: "in", format: "letter" });
+
+    const widthMM = (design && design.widthMM) || 0;
+    const heightMM = (design && design.heightMM) || 0;
+    const widthIn = mmToInch(widthMM);
+    const heightIn = mmToInch(heightMM);
+    const stitchCount = (design && design.stitchCount) || 0;
+    const colors = (design && design.colors) || [];
+    const colorCount = (design && design.colorCount) || colors.length;
+
+    let cursorY = MARGIN_IN;
+
+    // Title
+    doc.setFontSize(18);
+    doc.setFont(undefined, "bold");
+    doc.text("Embroidery Worksheet", MARGIN_IN, cursorY + 0.25);
+    cursorY += 0.45;
+
+    doc.setFontSize(11);
+    doc.setFont(undefined, "normal");
+    if (options.garmentLabel) {
+      doc.text("Placement: " + options.garmentLabel, MARGIN_IN, cursorY + 0.15);
+      cursorY += 0.3;
+    }
+
+    // Rendered stitch simulation image.
+    const canvas = document.createElement("canvas");
+    canvas.width = 900;
+    canvas.height = 900;
+    renderStitches(canvas, design, {
+      padding: 20,
+      showBox: options.garmentBox || null,
+    });
+    const dataUrl = canvas.toDataURL("image/png");
+
+    const imgSizeIn = PAGE_W_IN - 2 * MARGIN_IN;
+    const imgY = cursorY + 0.1;
+    doc.addImage(dataUrl, "PNG", MARGIN_IN, imgY, imgSizeIn, imgSizeIn);
+    cursorY = imgY + imgSizeIn + 0.25;
+
+    // Stats block.
+    doc.setFontSize(12);
+    doc.setFont(undefined, "bold");
+    doc.text("Design Stats", MARGIN_IN, cursorY);
+    cursorY += 0.22;
+
+    doc.setFontSize(10);
+    doc.setFont(undefined, "normal");
+    const statsLines = [
+      "Dimensions: " +
+        widthIn.toFixed(2) + " in x " + heightIn.toFixed(2) + " in  (" +
+        widthMM.toFixed(1) + " mm x " + heightMM.toFixed(1) + " mm)",
+      "Stitch count: " + stitchCount,
+      "Color count: " + colorCount,
+    ];
+    for (const line of statsLines) {
+      doc.text(line, MARGIN_IN, cursorY);
+      cursorY += 0.18;
+    }
+
+    cursorY += 0.15;
+
+    // Ordered thread list.
+    doc.setFontSize(12);
+    doc.setFont(undefined, "bold");
+    doc.text("Thread Sequence", MARGIN_IN, cursorY);
+    cursorY += 0.22;
+
+    doc.setFontSize(10);
+    doc.setFont(undefined, "normal");
+    const swatchSize = 0.16;
+    for (let i = 0; i < colors.length; i++) {
+      const color = colors[i];
+      const [r, g, b] = rgbCss(color);
+      doc.setFillColor(r, g, b);
+      doc.rect(MARGIN_IN, cursorY - swatchSize + 0.03, swatchSize, swatchSize, "F");
+      const label = (i + 1) + ". " + (color.name || "Color " + (i + 1));
+      doc.text(label, MARGIN_IN + swatchSize + 0.12, cursorY);
+      cursorY += 0.22;
+      if (cursorY > PAGE_H_IN - MARGIN_IN) {
+        doc.addPage();
+        cursorY = MARGIN_IN;
+      }
+    }
+
+    doc.save(options.fileName || "worksheet.pdf");
+    return doc;
+  }
+
+  return {
+    buildWorksheetPDF,
+  };
+});
+
+</script>
+  <!-- app LAST -->
+  <script>
+/* inlined: src/app.js */
+/* EMB Bot — app wiring. Ties the EMB modules to the DOM. Browser-only:
+ * all real work runs inside DOMContentLoaded, so requiring this file in Node
+ * (where `document`/`window` are absent) is a harmless no-op. */
+(function () {
+  "use strict";
+
+  // Node-safety: if there's no document, do nothing. (Lets `require` not crash.)
+  if (typeof document === "undefined") return;
+
+  var EMB = (typeof window !== "undefined" ? window : globalThis).EMB || {};
+
+  // --- Working-resolution + physical-size conventions ---------------------
+  var WORK_MAX_PX = 400; // cap the longest side of the working image
+  var NOMINAL_LONG_MM = 50; // pre-fit physical size of the source art long side
+  var TEXT_SIZE_PX = 200; // glyph size used for tracing text
+  var SIMPLIFY_TOL = 1.5; // Douglas-Peucker tolerance (px)
+  var DESPECKLE_AREA = 6; // drop polygons smaller than this (px^2)
+
+  // --- Module-level state --------------------------------------------------
+  var currentDesign = null;
+  var currentGarment = null;
+  var loadedImage = null; // HTMLImageElement of the uploaded file
+
+  // --- DOM refs (filled on DOMContentLoaded) ------------------------------
+  var el = {};
+
+  function $(id) {
+    return document.getElementById(id);
+  }
+
+  function setStatus(msg, isError) {
+    if (!el.status) return;
+    el.status.textContent = msg || "";
+    el.status.className = "status" + (isError ? " status-error" : "");
+  }
+
+  // --- Bounding-box helper over ColorRegion[] -----------------------------
+  function regionsLongSidePx(regions) {
+    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (var r = 0; r < regions.length; r++) {
+      var polys = regions[r].polygons || [];
+      for (var p = 0; p < polys.length; p++) {
+        var poly = polys[p];
+        for (var i = 0; i < poly.length; i++) {
+          var pt = poly[i];
+          if (pt.x < minX) minX = pt.x;
+          if (pt.x > maxX) maxX = pt.x;
+          if (pt.y < minY) minY = pt.y;
+          if (pt.y > maxY) maxY = pt.y;
+        }
+      }
+    }
+    if (!isFinite(minX)) return 1;
+    return Math.max(maxX - minX, maxY - minY) || 1;
+  }
+
+  // --- IMAGE pipeline: File -> ColorRegion[] ------------------------------
+  // Returns { regions, pxPerMm }.
+  function imageToRegions(img, nColors, removeBg) {
+    // Draw the image to an offscreen canvas, capped at WORK_MAX_PX long side.
+    var longest = Math.max(img.width, img.height) || 1;
+    var scale = Math.min(1, WORK_MAX_PX / longest);
+    var w = Math.max(1, Math.round(img.width * scale));
+    var h = Math.max(1, Math.round(img.height * scale));
+
+    var cv = document.createElement("canvas");
+    cv.width = w;
+    cv.height = h;
+    var ctx = cv.getContext("2d");
+    ctx.drawImage(img, 0, 0, w, h);
+
+    var rgba = ctx.getImageData(0, 0, w, h).data; // Uint8ClampedArray
+    if (removeBg) {
+      rgba = EMB.knockoutBackground(rgba, w, h, {});
+    }
+
+    var quant = EMB.medianCut(rgba, nColors); // {palette, indices}
+    var palette = quant.palette;
+    var indices = quant.indices;
+
+    var regions = [];
+    for (var ci = 0; ci < palette.length; ci++) {
+      var mask = new Uint8Array(w * h);
+      for (var p = 0; p < indices.length; p++) {
+        if (indices[p] === ci) mask[p] = 1; // 255 = transparent -> skipped
+      }
+      var contours = EMB.traceContours(mask, w, h);
+      var polygons = [];
+      for (var c = 0; c < contours.length; c++) {
+        var simplified = EMB.simplify(contours[c], SIMPLIFY_TOL);
+        if (EMB.polygonArea(simplified) < DESPECKLE_AREA) continue;
+        polygons.push(simplified);
+      }
+      if (polygons.length === 0) continue; // no geometry for this color
+      regions.push({ rgb: palette[ci], polygons: polygons });
+    }
+
+    // Map the working image long side to NOMINAL_LONG_MM; fit handles final size.
+    var pxPerMm = Math.max(w, h) / NOMINAL_LONG_MM;
+    return { regions: regions, pxPerMm: pxPerMm };
+  }
+
+  // --- TEXT pipeline: text -> ColorRegion[] -------------------------------
+  function textToRegionsPipeline(font, text) {
+    var regions = EMB.textToRegions(font, text, { sizePx: TEXT_SIZE_PX });
+    var pxPerMm = regionsLongSidePx(regions) / NOMINAL_LONG_MM;
+    return { regions: regions, pxPerMm: pxPerMm };
+  }
+
+  // --- Read current control values ----------------------------------------
+  function readOpts() {
+    var garment = EMB.getGarment(el.garment.value);
+    var densityMm = parseFloat(el.density.value);
+    var outline = el.outline.checked;
+    var nColors = parseInt(el.colors.value, 10);
+    return {
+      garment: garment,
+      densityMm: densityMm,
+      outline: outline,
+      nColors: nColors,
+    };
+  }
+
+  // --- Generate ------------------------------------------------------------
+  function generate() {
+    setStatus("Generating…");
+    var opts;
+    try {
+      opts = readOpts();
+    } catch (e) {
+      setStatus("Bad options: " + e.message, true);
+      return;
+    }
+
+    var mode = getMode();
+
+    var buildFromRegions = function (regionData) {
+      try {
+        if (!regionData.regions || regionData.regions.length === 0) {
+          setStatus("No shapes found to stitch. Try a different image/text or fewer colors.", true);
+          return;
+        }
+        var design = EMB.buildDesign(regionData.regions, {
+          garment: opts.garment,
+          densityMm: opts.densityMm,
+          outline: opts.outline,
+          pxPerMm: regionData.pxPerMm,
+        });
+        currentDesign = design;
+        currentGarment = opts.garment;
+        renderPreview(design, opts.garment);
+        updateStats(design, opts.garment);
+        setStatus("Done.");
+      } catch (e) {
+        setStatus("Generate failed: " + e.message, true);
+        // eslint-disable-next-line no-console
+        console.error(e);
+      }
+    };
+
+    if (mode === "text") {
+      var text = (el.text.value || "").trim();
+      if (!text) {
+        setStatus("Type some text first.", true);
+        return;
+      }
+      var fontUrl = el.font.value;
+      setStatus("Loading font…");
+      EMB.loadFont(fontUrl)
+        .then(function (font) {
+          // Font loaded successfully: from here on, any failure is a
+          // region-building/generate problem, NOT a font-load problem, so it
+          // must be reported separately rather than falling into the
+          // font-load .catch() below.
+          var regionData;
+          try {
+            regionData = textToRegionsPipeline(font, text);
+          } catch (e) {
+            setStatus("Couldn't generate design: " + e.message, true);
+            // eslint-disable-next-line no-console
+            console.error(e);
+            return;
+          }
+          buildFromRegions(regionData);
+        })
+        .catch(function (e) {
+          setStatus("Font load failed: " + e.message, true);
+          // eslint-disable-next-line no-console
+          console.error(e);
+        });
+    } else {
+      if (!loadedImage) {
+        setStatus("Choose an image file first.", true);
+        return;
+      }
+      try {
+        buildFromRegions(imageToRegions(loadedImage, opts.nColors, el.removeBg.checked));
+      } catch (e) {
+        setStatus("Image processing failed: " + e.message, true);
+        // eslint-disable-next-line no-console
+        console.error(e);
+      }
+    }
+  }
+
+  function renderPreview(design, garment) {
+    EMB.renderStitches(el.canvas, design, {
+      showBox: {
+        widthMM: EMB.inToMm(garment.widthIn),
+        heightMM: EMB.inToMm(garment.heightIn),
+      },
+    });
+  }
+
+  function updateStats(design, garment) {
+    var wIn = EMB.mmToInch(design.widthMM);
+    var hIn = EMB.mmToInch(design.heightMM);
+    el.statStitches.textContent = String(design.stitchCount);
+    el.statColors.textContent = String(design.colorCount);
+    el.statSize.textContent =
+      design.widthMM.toFixed(1) + " × " + design.heightMM.toFixed(1) + " mm" +
+      "  (" + wIn.toFixed(2) + " × " + hIn.toFixed(2) + " in)";
+
+    if (EMB.exceedsHoop(design.widthMM, design.heightMM)) {
+      el.hoopWarn.textContent =
+        "Large design: " + design.widthMM.toFixed(1) + " × " + design.heightMM.toFixed(1) + " mm" +
+        " (" + wIn.toFixed(2) + " × " + hIn.toFixed(2) + " in). " +
+        "Make sure your hoop/machine supports this size.";
+      el.hoopWarn.style.display = "block";
+    } else {
+      el.hoopWarn.style.display = "none";
+    }
+  }
+
+  // --- Download ------------------------------------------------------------
+  function triggerDownload(blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    // Revoke a tick later so the download has grabbed the URL.
+    setTimeout(function () {
+      URL.revokeObjectURL(url);
+    }, 1000);
+  }
+
+  function download() {
+    if (!currentDesign) {
+      setStatus("Generate a design first.", true);
+      return;
+    }
+    var fmt = el.format.value;
+    try {
+      if (fmt === "dst") {
+        triggerDownload(new Blob([EMB.encodeDST(currentDesign)], { type: "application/octet-stream" }), "embbot.dst");
+      } else if (fmt === "exp") {
+        triggerDownload(new Blob([EMB.encodeEXP(currentDesign)], { type: "application/octet-stream" }), "embbot.exp");
+      } else if (fmt === "pes") {
+        triggerDownload(new Blob([EMB.encodePES(currentDesign)], { type: "application/octet-stream" }), "embbot.pes");
+      } else if (fmt === "svg") {
+        triggerDownload(new Blob([EMB.designToSVG(currentDesign)], { type: "image/svg+xml" }), "embbot.svg");
+      } else if (fmt === "png") {
+        EMB.designToPNGBlob(currentDesign, function (blob) {
+          if (!blob) {
+            setStatus("PNG export failed.", true);
+            return;
+          }
+          try {
+            triggerDownload(blob, "embbot.png");
+            setStatus("Downloaded embbot.png");
+          } catch (e) {
+            setStatus("Download failed: " + e.message, true);
+            // eslint-disable-next-line no-console
+            console.error(e);
+          }
+        });
+        return; // async; status set in callback
+      } else {
+        setStatus("Unknown format: " + fmt, true);
+        return;
+      }
+      setStatus("Downloaded embbot." + fmt);
+    } catch (e) {
+      setStatus("Download failed: " + e.message, true);
+      // eslint-disable-next-line no-console
+      console.error(e);
+    }
+  }
+
+  // --- Export PDF ----------------------------------------------------------
+  function exportPDF() {
+    if (!currentDesign) {
+      setStatus("Generate a design first.", true);
+      return;
+    }
+    try {
+      EMB.buildWorksheetPDF(currentDesign, {
+        garmentLabel: currentGarment ? currentGarment.label : "",
+        fileName: "embbot-worksheet.pdf",
+        garmentBox: currentGarment
+          ? {
+              widthMM: EMB.inToMm(currentGarment.widthIn),
+              heightMM: EMB.inToMm(currentGarment.heightIn),
+            }
+          : null,
+      });
+      setStatus("PDF worksheet exported.");
+    } catch (e) {
+      setStatus("PDF export failed: " + e.message, true);
+      // eslint-disable-next-line no-console
+      console.error(e);
+    }
+  }
+
+  // --- Mode toggle ---------------------------------------------------------
+  function getMode() {
+    return el.modeText.checked ? "text" : "image";
+  }
+
+  function applyMode() {
+    var mode = getMode();
+    el.imageControls.style.display = mode === "image" ? "block" : "none";
+    el.textControls.style.display = mode === "text" ? "block" : "none";
+  }
+
+  // --- Setup ---------------------------------------------------------------
+  function populateSelects() {
+    // Garments
+    for (var i = 0; i < EMB.GARMENTS.length; i++) {
+      var g = EMB.GARMENTS[i];
+      var o = document.createElement("option");
+      o.value = g.id;
+      o.textContent = g.label;
+      el.garment.appendChild(o);
+    }
+    el.garment.value = "left_chest";
+
+    // Fonts
+    for (var f = 0; f < EMB.FONTS.length; f++) {
+      var font = EMB.FONTS[f];
+      var fo = document.createElement("option");
+      fo.value = font.url;
+      fo.textContent = font.family;
+      el.font.appendChild(fo);
+    }
+  }
+
+  function checkCDN() {
+    var ok = typeof window !== "undefined" && window.opentype && window.jspdf;
+    if (!ok && el.cdnBanner) {
+      el.cdnBanner.style.display = "block";
+    }
+    return ok;
+  }
+
+  function wire() {
+    el.canvas = $("preview");
+    el.status = $("status");
+    el.cdnBanner = $("cdn-banner");
+    el.hoopWarn = $("hoop-warning");
+
+    el.modeImage = $("mode-image");
+    el.modeText = $("mode-text");
+    el.imageControls = $("image-controls");
+    el.textControls = $("text-controls");
+
+    el.file = $("file");
+    el.removeBg = $("remove-bg");
+    el.text = $("text-input");
+    el.font = $("font");
+    el.garment = $("garment");
+    el.format = $("format");
+    el.colors = $("colors");
+    el.colorsVal = $("colors-val");
+    el.density = $("density");
+    el.densityVal = $("density-val");
+    el.outline = $("outline");
+
+    el.statStitches = $("stat-stitches");
+    el.statColors = $("stat-colors");
+    el.statSize = $("stat-size");
+
+    populateSelects();
+
+    // Mode toggle
+    el.modeImage.addEventListener("change", applyMode);
+    el.modeText.addEventListener("change", applyMode);
+    applyMode();
+
+    // File upload
+    el.file.addEventListener("change", function () {
+      var file = el.file.files && el.file.files[0];
+      if (!file) return;
+      var img = new Image();
+      var url = URL.createObjectURL(file);
+      img.onload = function () {
+        loadedImage = img;
+        URL.revokeObjectURL(url);
+        setStatus("Image loaded (" + img.width + "×" + img.height + "px). Click Generate.");
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        setStatus("Couldn't read that image file.", true);
+      };
+      img.src = url;
+    });
+
+    // Slider labels
+    el.colors.addEventListener("input", function () {
+      el.colorsVal.textContent = el.colors.value;
+    });
+    el.colorsVal.textContent = el.colors.value;
+
+    el.density.addEventListener("input", function () {
+      el.densityVal.textContent = parseFloat(el.density.value).toFixed(2) + " mm";
+    });
+    el.densityVal.textContent = parseFloat(el.density.value).toFixed(2) + " mm";
+
+    // Buttons
+    $("btn-generate").addEventListener("click", generate);
+    $("btn-download").addEventListener("click", download);
+    $("btn-pdf").addEventListener("click", exportPDF);
+
+    checkCDN();
+    setStatus("Ready. Pick a mode, set options, and click Generate.");
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", wire);
+  } else {
+    wire();
+  }
+})();
+
+</script>
+</head>
+<body>
+  <header>
+    <h1>EMB Bot</h1>
+    <span class="tag">local embroidery digitizer — logo &amp; lettering to stitch files</span>
+  </header>
+
+  <div id="cdn-banner">Couldn't load required libraries — check your internet connection, then reload.</div>
+
+  <div class="layout">
+    <!-- LEFT: controls -->
+    <aside class="panel controls">
+      <div class="seg">
+        <input type="radio" name="mode" id="mode-image" checked />
+        <label for="mode-image">Image</label>
+        <input type="radio" name="mode" id="mode-text" />
+        <label for="mode-text">Text</label>
+      </div>
+
+      <div id="image-controls">
+        <div class="field">
+          <label class="lbl" for="file">Image file</label>
+          <input type="file" id="file" accept="image/*" />
+        </div>
+        <div class="field checkline">
+          <input type="checkbox" id="remove-bg" />
+          <label for="remove-bg">Remove background</label>
+        </div>
+      </div>
+
+      <div id="text-controls">
+        <div class="field">
+          <label class="lbl" for="text-input">Text</label>
+          <input type="text" id="text-input" placeholder="Your text" value="EMB" />
+        </div>
+        <div class="field">
+          <label class="lbl" for="font">Font</label>
+          <select id="font"></select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="lbl" for="garment">Garment / placement</label>
+        <select id="garment"></select>
+      </div>
+
+      <div class="field">
+        <label class="lbl" for="format">Output format</label>
+        <select id="format">
+          <option value="dst" selected>DST (Tajima)</option>
+          <option value="pes">PES (Brother)</option>
+          <option value="exp">EXP (Melco)</option>
+          <option value="png">PNG (preview)</option>
+          <option value="svg">SVG (vector)</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <div class="sliderrow">
+          <label class="lbl" for="colors">Colors</label>
+          <span class="val" id="colors-val">4</span>
+        </div>
+        <input type="range" id="colors" min="2" max="12" step="1" value="4" />
+      </div>
+
+      <div class="field">
+        <div class="sliderrow">
+          <label class="lbl" for="density">Fill density (row spacing)</label>
+          <span class="val" id="density-val">0.40 mm</span>
+        </div>
+        <input type="range" id="density" min="0.3" max="0.7" step="0.05" value="0.4" />
+      </div>
+
+      <div class="field checkline">
+        <input type="checkbox" id="outline" checked />
+        <label for="outline">Outline stitch around shapes</label>
+      </div>
+
+      <div class="buttons">
+        <button class="primary" id="btn-generate">Generate</button>
+        <button id="btn-download">Download</button>
+        <button id="btn-pdf">Export PDF</button>
+      </div>
+
+      <p class="note">
+        Heads up: clean logos and lettering digitize well; photographs and
+        gradients work far less well — simplify to a few flat colors first.
+        PES output is best-effort — always verify it stitches on your machine
+        before a production run.
+      </p>
+    </aside>
+
+    <!-- CENTER: preview + BOTTOM: stats/buttons -->
+    <section class="stage">
+      <div class="panel">
+        <canvas id="preview" width="800" height="800"></canvas>
+      </div>
+
+      <div id="hoop-warning">Large design warning</div>
+
+      <div class="panel">
+        <div class="stats">
+          <div class="stat"><div class="k">Stitches</div><div class="v" id="stat-stitches">—</div></div>
+          <div class="stat"><div class="k">Colors</div><div class="v" id="stat-colors">—</div></div>
+          <div class="stat"><div class="k">Size</div><div class="v" id="stat-size">—</div></div>
+        </div>
+        <div class="status" id="status"></div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
