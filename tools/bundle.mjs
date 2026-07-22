@@ -92,19 +92,29 @@ function main() {
     result.match(/<script\b[^>]*\bsrc\s*=\s*["']https?:\/\/[^"']+["'][^>]*>\s*<\/script>/g) ||
     [];
 
-  // Sanity check 3: every "<script" opening tag must be balanced by a
-  // "</script>" closing tag. This guards against a raw, unescaped
-  // "</script" sequence anywhere in an inlined module's source prematurely
-  // closing an inline <script> block (which would desync this count) --
-  // a broader/last-line-of-defense check that doesn't depend on knowing in
-  // advance where such a sequence could hide.
-  const openCount = (result.match(/<script\b/gi) || []).length;
-  const closeCount = (result.match(/<\/script>/gi) || []).length;
-  if (openCount !== closeCount) {
+  // Sanity check 3: no unescaped "</script" sequence should have leaked
+  // into the output from an inlined module's source. Every module's own
+  // "</script" text was already escaped to "<\/script" above (inert to the
+  // browser's HTML parser and to the regex below), so the only genuine
+  // "</script>" tags that should exist in `result` are the ones that
+  // legitimately close a real <script> element -- exactly as many as
+  // existed in the original, unmodified HTML (inlining swaps each local
+  // tag's closing "</script>" for a new one; it never adds or removes a
+  // legitimate close). We deliberately do NOT compare this against a count
+  // of "<script" OPEN-looking substrings: plain prose can innocently
+  // contain that exact text (e.g. src/stitchModel.js has a code comment
+  // reading "...classic <script> tags...") without being a real tag or
+  // posing any parsing risk -- per the HTML spec, only an unescaped CLOSE
+  // sequence can prematurely end a script element, so that's the only
+  // thing worth asserting on.
+  const originalCloseCount = (html.match(/<\/script>/gi) || []).length;
+  const finalCloseCount = (result.match(/<\/script>/gi) || []).length;
+  if (finalCloseCount !== originalCloseCount) {
     throw new Error(
-      "Bundle has mismatched <script> tags: " + openCount +
-        " opening vs " + closeCount + " closing -- an inlined module's " +
-        "source likely contains an unescaped </script sequence."
+      "Bundle has " + finalCloseCount + " \"</script>\" closing tag(s) " +
+        "but the source HTML only accounts for " + originalCloseCount +
+        " -- an inlined module's source likely contains an unescaped " +
+        "</script sequence that leaked through."
     );
   }
 
