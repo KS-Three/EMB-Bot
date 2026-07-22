@@ -168,7 +168,20 @@
       setStatus("Loading font…");
       EMB.loadFont(fontUrl)
         .then(function (font) {
-          buildFromRegions(textToRegionsPipeline(font, text));
+          // Font loaded successfully: from here on, any failure is a
+          // region-building/generate problem, NOT a font-load problem, so it
+          // must be reported separately rather than falling into the
+          // font-load .catch() below.
+          var regionData;
+          try {
+            regionData = textToRegionsPipeline(font, text);
+          } catch (e) {
+            setStatus("Couldn't generate design: " + e.message, true);
+            // eslint-disable-next-line no-console
+            console.error(e);
+            return;
+          }
+          buildFromRegions(regionData);
         })
         .catch(function (e) {
           setStatus("Font load failed: " + e.message, true);
@@ -209,6 +222,10 @@
       "  (" + wIn.toFixed(2) + " × " + hIn.toFixed(2) + " in)";
 
     if (EMB.exceedsHoop(design.widthMM, design.heightMM)) {
+      el.hoopWarn.textContent =
+        "Large design: " + design.widthMM.toFixed(1) + " × " + design.heightMM.toFixed(1) + " mm" +
+        " (" + wIn.toFixed(2) + " × " + hIn.toFixed(2) + " in). " +
+        "Make sure your hoop/machine supports this size.";
       el.hoopWarn.style.display = "block";
     } else {
       el.hoopWarn.style.display = "none";
@@ -251,8 +268,14 @@
             setStatus("PNG export failed.", true);
             return;
           }
-          triggerDownload(blob, "embbot.png");
-          setStatus("Downloaded embbot.png");
+          try {
+            triggerDownload(blob, "embbot.png");
+            setStatus("Downloaded embbot.png");
+          } catch (e) {
+            setStatus("Download failed: " + e.message, true);
+            // eslint-disable-next-line no-console
+            console.error(e);
+          }
         });
         return; // async; status set in callback
       } else {

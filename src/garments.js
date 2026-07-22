@@ -38,7 +38,7 @@ const units =
     };
   }
 
-  const TYPICAL_HOOP_MM = { w: 305, h: 305 };
+  const TYPICAL_HOOP_MM = { w: 200, h: 200 }; // ~8in, a realistic common max hoop
 
   function exceedsHoop(wmm, hmm) {
     return wmm > TYPICAL_HOOP_MM.w || hmm > TYPICAL_HOOP_MM.h;
