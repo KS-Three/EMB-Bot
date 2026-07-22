@@ -36,6 +36,35 @@
     });
   }
 
+  function pointInPoly(pt, poly) {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const xi = poly[i].x, yi = poly[i].y, xj = poly[j].x, yj = poly[j].y;
+      if ((yi > pt.y) !== (yj > pt.y) && pt.x < (xj - xi) * (pt.y - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+
+  // Group a flat list of rings (e.g. glyph contours) into shapes with holes:
+  // a ring whose centroid lies inside a larger ring becomes that ring's hole.
+  // Handles one nesting level (outer + counters) — enough for text glyphs.
+  function groupRingsIntoShapes(rings, minArea) {
+    const items = rings
+      .filter((p) => p && p.length >= 4)
+      .map((p) => ({ ring: p, area: polyArea(p) }))
+      .filter((it) => it.area > (minArea || 0));
+    items.sort((a, b) => b.area - a.area);
+    const shapes = [];
+    for (const it of items) {
+      const c = centroid(it.ring);
+      let parent = null;
+      for (const s of shapes) if (s._area > it.area && pointInPoly(c, s.outer)) { parent = s; break; }
+      if (parent) parent.holes.push(it.ring);
+      else shapes.push({ outer: it.ring, holes: [], _area: it.area });
+    }
+    return shapes.map((s) => ({ outer: s.outer, holes: s.holes }));
+  }
+
   // colorRegions: [{rgb:[r,g,b], polygons:[[{x,y}...]...]}] in PIXEL coords.
   // opts: { garment, pxPerMm, densityMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop }
   function buildQualityDesign(colorRegions, opts) {
@@ -49,9 +78,10 @@
     const perRegionAngle = o.perRegionAngle !== false;
     const garment = o.garment || { widthIn: 5, heightIn: 2.25 };
 
-    // filter empty
-    const regions = colorRegions.filter((r) => r && r.polygons && r.polygons.length);
-    if (!regions.length) return { stitches: [{ x: 0, y: 0, type: "end" }], colors: [], widthMM: 0, heightMM: 0, stitchCount: 0, colorCount: 0 };
+    // filter empty; accept {shapes:[{outer,holes}]} or legacy {polygons:[ring]}
+    const regions = colorRegions.filter((r) => r && ((r.shapes && r.shapes.length) || (r.polygons && r.polygons.length)));
+    for (const r of regions) if (!r.polygons) r.polygons = r.shapes.map((s) => s.outer);
+    if (!regions.length) return { stitches: [{ x: 0, y: 0, type: "end" }], colors: [], widthMM: 0, heightMM: 0, stitchCount: 0, colorCount: 0, _debug: { nSatin: 0, nFill: 0 } };
 
     // sequence: light colors first, dark last (dark sits on top) unless overridden
     if (o.darkOnTop !== false) regions.sort((a, b) => (b.rgb[0] + b.rgb[1] + b.rgb[2]) - (a.rgb[0] + a.rgb[1] + a.rgb[2]));
@@ -81,27 +111,52 @@
       if (!pts || !pts.length) return;
       const f = T(pts[0]);
       stitches.push({ x: f.x, y: f.y, type: "jump" });
-      for (const q of pts) { const d = T(q); stitches.push({ x: d.x, y: d.y, type: "stitch" }); }
+      for (const q of pts) {
+        const d = T(q);
+        stitches.push({ x: d.x, y: d.y, type: q.travel ? "jump" : "stitch" });
+      }
     }
 
     for (const r of regions) {
       if (!first) { const last = stitches[stitches.length - 1] || { x: 0, y: 0 }; stitches.push({ x: last.x, y: last.y, type: "color" }); }
       first = false;
       colors.push({ r: r.rgb[0], g: r.rgb[1], b: r.rgb[2], name: "Color " + (colors.length + 1) });
-      const angle = perRegionAngle ? pcaAngleDeg(r.polygons) : 45;
-      for (const poly of r.polygons) {
-        if (poly.length < 4) continue;
-        const area = polyArea(poly), perim = polyPerim(poly);
+      // shapes: [{outer, holes}] (hole-aware) — or bare polygons for back-compat
+      const shapes = r.shapes || r.polygons.map((p) => ({ outer: p, holes: [] }));
+      const allRings = [];
+      for (const s of shapes) { allRings.push(s.outer); for (const hh of s.holes) allRings.push(hh); }
+      const angle = perRegionAngle ? pcaAngleDeg(allRings) : 45;
+      for (const shape of shapes) {
+        const poly = shape.outer;
+        if (!poly || poly.length < 4) continue;
+        const holes = (shape.holes || []).filter((hh) => hh && hh.length >= 4);
+        const outerArea = polyArea(poly), holeArea = holes.reduce((a, hh) => a + polyArea(hh), 0);
+        const area = Math.max(0, outerArea - holeArea), perim = polyPerim(poly) + holes.reduce((a, hh) => a + polyPerim(hh), 0);
         if (area <= 0 || perim <= 0) continue;
         const widthMmFinal = (2 * area / perim) * mmPerPxFinal;
-        const thin = widthMmFinal <= satinMaxWidthMm;
+        // satin only for genuinely thin SOLID strokes; ring-with-hole goes to
+        // even-odd fill (satinColumn can't represent holes)
+        let thin = widthMmFinal <= satinMaxWidthMm && holes.length === 0;
+        // branch guard: a clean column splits into two side chains of similar
+        // length; branched shapes (most letters, Y/T/E forms) don't — satin
+        // would zigzag chaotically across them, so route those to fill.
+        if (thin && satinmod.farthestBoundaryPair) {
+          try {
+            const [bi, bj] = satinmod.farthestBoundaryPair(poly);
+            const [ca, cb] = satinmod.splitBoundary(poly, bi, bj);
+            const la = satinmod.chainLength(ca), lb = satinmod.chainLength(cb);
+            const ratio = Math.max(la, lb) / Math.max(1e-6, Math.min(la, lb));
+            if (ratio > 1.6) thin = false;
+          } catch (e) { thin = false; }
+        }
+        const rings = [poly].concat(holes);
 
         // underlay (same thread color, laid first)
         if (useUnderlay) {
           try {
             const inset = insetRing(poly, Math.min(2, 0.6 * pxPerFinalMm));
             pushRun(fillmod.runningOutline(inset, { stitchLen: underlayStitchPx }));
-            if (!thin) pushRun(fillmod.tatamiFill([poly], { rowSpacing: underlayRowPx, angleDeg: angle + 90, maxStitch: maxPx }));
+            if (!thin) pushRun(fillmod.tatamiFill(rings, { rowSpacing: underlayRowPx, angleDeg: angle + 90, maxStitch: maxPx, markConnectors: true }));
           } catch (e) { /* underlay best-effort */ }
         }
 
@@ -109,7 +164,7 @@
         let pts = [];
         try {
           if (thin) { pts = satinmod.satinColumn(poly, { spacingMm: densityMm, pxPerMm: pxPerFinalMm, pullCompMm }); nSatin++; }
-          else { pts = fillmod.tatamiFill([poly], { rowSpacing: rowPx, angleDeg: angle, maxStitch: maxPx }); nFill++; }
+          else { pts = fillmod.tatamiFill(rings, { rowSpacing: rowPx, angleDeg: angle, maxStitch: maxPx, markConnectors: true }); nFill++; }
         } catch (e) { pts = []; }
         pushRun(pts);
       }
@@ -119,5 +174,5 @@
     return { stitches, colors, widthMM: fit.targetWmm, heightMM: fit.targetHmm, stitchCount, colorCount: colors.length, _debug: { nSatin, nFill } };
   }
 
-  return { buildQualityDesign };
+  return { buildQualityDesign, groupRingsIntoShapes };
 });

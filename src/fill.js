@@ -87,6 +87,13 @@
 
     // Densify: ensure no two consecutive points exceed maxStitch (this also
     // splits the inter-row travel stitches). Then rotate back by +angleDeg.
+    //
+    // With opts.markConnectors: key indices alternate span-start/span-end, so
+    // the move INTO key[i] for even i (i>0) is a connector (span-to-span
+    // travel), which may legally cross a hole. Long connectors are then
+    // emitted as a single point tagged {travel:true} — needle-up move, not
+    // sewn — instead of being densified into fake stitches across the gap.
+    const markConnectors = !!opts.markConnectors;
     const out = [];
     if (key.length === 0) return out;
     out.push(rotate(key[0], cosP, sinP));
@@ -96,6 +103,13 @@
       const dx = b.x - a.x;
       const dy = b.y - a.y;
       const dist = Math.hypot(dx, dy);
+      const isConnector = i % 2 === 0;
+      if (markConnectors && isConnector && maxStitch && dist > maxStitch) {
+        const p = rotate(b, cosP, sinP);
+        p.travel = true;
+        out.push(p);
+        continue;
+      }
       if (maxStitch && maxStitch > 0 && dist > maxStitch) {
         const steps = Math.ceil(dist / maxStitch);
         for (let s = 1; s < steps; s++) {

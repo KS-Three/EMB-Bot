@@ -32,15 +32,21 @@ log(`work ${w}x${h}`);
 const { palette, indices } = Q.medianCut(data, opt.nColors);
 log(`palette ${palette.length}`);
 const despeckle = w * h * opt.despeckleFrac;
+const holeMin = Math.max(6, despeckle * 0.3); // keep smaller holes than blobs (letter counters)
 const regions = [];
 for (let i = 0; i < palette.length; i++) {
   const mask = new Uint8Array(w * h); let cnt = 0;
   for (let p = 0; p < indices.length; p++) if (indices[p] === i) { mask[p] = 1; cnt++; }
   if (cnt < despeckle) continue;
-  let polys = G.traceContours(mask, w, h).map((pl) => G.simplify(pl, opt.simplifyTol)).filter((pl) => pl.length >= 4 && polyArea(pl) > despeckle);
-  polys.sort((a, b) => polyArea(b) - polyArea(a));
-  if (polys.length > opt.maxPolysPerColor) polys = polys.slice(0, opt.maxPolysPerColor);
-  if (polys.length) regions.push({ rgb: palette[i], polygons: polys });
+  let shapes = G.traceRegions(mask, w, h)
+    .map((s) => ({
+      outer: G.simplify(s.outer, opt.simplifyTol),
+      holes: s.holes.map((hh) => G.simplify(hh, opt.simplifyTol)).filter((hh) => hh.length >= 4 && polyArea(hh) > holeMin),
+    }))
+    .filter((s) => s.outer.length >= 4 && polyArea(s.outer) > despeckle);
+  shapes.sort((a, b) => polyArea(b.outer) - polyArea(a.outer));
+  if (shapes.length > opt.maxPolysPerColor) shapes = shapes.slice(0, opt.maxPolysPerColor);
+  if (shapes.length) regions.push({ rgb: palette[i], shapes });
 }
 log(`regions ${regions.length}`);
 const design = DG.buildQualityDesign(regions, opt);
