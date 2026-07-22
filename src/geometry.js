@@ -137,6 +137,98 @@
     return contours;
   }
 
+  // 4-connected neighbor offsets used for BACKGROUND labeling. Holes are found
+  // via background connectivity, and 4-connectivity is the correct dual of the
+  // 8-connectivity used for foreground blobs: a background region that is only
+  // diagonally "pinched" by foreground is still considered enclosed, matching
+  // the way the 8-connected foreground closes the loop around it.
+  const CONN4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+
+  // Hole-aware region tracing. Returns one entry per 8-connected foreground
+  // blob: { outer, holes } where `outer` is the blob's outer boundary ring
+  // (identical to what traceContours produces) and `holes` is an array of
+  // boundary rings, one per background region FULLY ENCLOSED by that blob.
+  //
+  // A background region is a hole of blob B iff it is 4-connected background,
+  // does NOT touch the image border, and is enclosed by B. Enclosure is decided
+  // by the foreground pixel directly ABOVE the hole's top-left-most pixel: that
+  // pixel is guaranteed to exist (an enclosed region cannot reach row 0) and to
+  // be foreground (a background pixel there would be 4-connected into the same
+  // region), and it belongs to the enclosing blob's inner boundary.
+  //
+  // Each hole ring is traced with the SAME crack/edge tracer used for outer
+  // boundaries, run on an isolated mask of just that background region, so the
+  // hole ring shares the outer ring's coordinate convention and is directly
+  // usable by polygonArea and tatamiFill (even-odd fill).
+  //
+  // Limitation: only the OUTER boundary of each enclosed background region is
+  // returned as the hole ring. For deeply nested topology (a blob inside a
+  // hole inside a blob) each blob is still traced independently and its own
+  // outer ring plus its immediate holes yield a correct even-odd fill; a
+  // foreground island sitting inside a hole is reported as its own separate
+  // region rather than being subtracted from the hole ring.
+  function traceRegions(mask, w, h) {
+    const blobs = labelBlobs(mask, w, h);
+    const regions = blobs.map(({ seed, mask: blobMask }) => ({
+      outer: traceBlobEdges(blobMask, w, h, seed[0], seed[1]),
+      holes: [],
+    }));
+
+    // Label BACKGROUND pixels with 4-connectivity via flood fill. The first
+    // pixel reached for each component (row-major scan) is its top-left-most.
+    const bgVisited = new Uint8Array(w * h);
+    const stack = [];
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const idx = y * w + x;
+        if (mask[idx] === 1 || bgVisited[idx]) continue;
+
+        const seedX = x, seedY = y;
+        let touchesBorder = false;
+        const pixels = [];
+        stack.length = 0;
+        stack.push(idx);
+        bgVisited[idx] = 1;
+        while (stack.length) {
+          const cur = stack.pop();
+          const cx = cur % w;
+          const cy = (cur - cx) / w;
+          if (cx === 0 || cy === 0 || cx === w - 1 || cy === h - 1) touchesBorder = true;
+          pixels.push(cur);
+          for (const [dx, dy] of CONN4) {
+            const nx = cx + dx, ny = cy + dy;
+            if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+            const nidx = ny * w + nx;
+            if (bgVisited[nidx] || mask[nidx] === 1) continue;
+            bgVisited[nidx] = 1;
+            stack.push(nidx);
+          }
+        }
+
+        // A background component touching the border is the "outside", not a hole.
+        if (touchesBorder) continue;
+
+        // Enclosing blob = owner of the foreground pixel directly above the
+        // top-left-most hole pixel. seedY >= 1 here (a row-0 pixel would have
+        // set touchesBorder) and that pixel is guaranteed foreground.
+        const aboveIdx = (seedY - 1) * w + seedX;
+        const blobIndex = blobs.findIndex((b) => b.mask[aboveIdx] === 1);
+        if (blobIndex === -1) continue; // defensive; should not happen
+
+        // Trace the hole boundary as the outer edge of an isolated mask of just
+        // this background region, reusing the same crack/edge tracer.
+        const holeMask = new Uint8Array(w * h);
+        for (const p of pixels) holeMask[p] = 1;
+        const ring = traceBlobEdges(holeMask, w, h, seedX, seedY);
+        if (ring.length >= 4 && polygonArea(ring) > 0) {
+          regions[blobIndex].holes.push(ring);
+        }
+      }
+    }
+
+    return regions;
+  }
+
   function perpendicularDistance(pt, a, b) {
     const dx = b.x - a.x;
     const dy = b.y - a.y;
@@ -186,6 +278,7 @@
 
   return {
     traceContours,
+    traceRegions,
     simplify,
     polygonArea,
   };
