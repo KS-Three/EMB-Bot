@@ -146,7 +146,22 @@
             const [ca, cb] = satinmod.splitBoundary(poly, bi, bj);
             const la = satinmod.chainLength(ca), lb = satinmod.chainLength(cb);
             const ratio = Math.max(la, lb) / Math.max(1e-6, Math.min(la, lb));
-            if (ratio > 1.6) thin = false;
+            if (ratio > 1.5) thin = false;
+            // rung containment: in a true column every cross-stitch midpoint
+            // lies inside the shape; on branched shapes (T, M, Y) the rungs
+            // shortcut across concavities and land outside — reject those.
+            if (thin) {
+              const K = 9;
+              const pa = satinmod.resampleChain(ca, K);
+              const pb = satinmod.resampleChain(cb, K);
+              let outside = 0;
+              for (let k = 1; k < K - 1; k++) {
+                const q = pb[K - 1 - k];
+                const mid = { x: (pa[k].x + q.x) / 2, y: (pa[k].y + q.y) / 2 };
+                if (!pointInPoly(mid, poly)) outside++;
+              }
+              if (outside > 0) thin = false;
+            }
           } catch (e) { thin = false; }
         }
         const rings = [poly].concat(holes);
