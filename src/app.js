@@ -10,17 +10,27 @@
   var EMB = (typeof window !== "undefined" ? window : globalThis).EMB || {};
 
   // --- Working-resolution + physical-size conventions ---------------------
-  var WORK_MAX_PX = 400; // cap the longest side of the working image
+  var WORK_MAX_PX = 480; // flatten working resolution (longest side)
   var NOMINAL_LONG_MM = 50; // pre-fit physical size of the source art long side
   var TEXT_SIZE_PX = 200; // glyph size used for tracing text
   var SIMPLIFY_TOL = 1.6; // Douglas-Peucker tolerance (px)
-  var DESPECKLE_AREA = 6; // drop polygons smaller than this (px^2)
-  var MAX_POLYS_PER_COLOR = 30; // cap shapes per color (largest kept first)
+  var MODE_FILTER_ITERS = 2; // majority-smoothing passes over flattened indices
+  var ABSORB_SHARE = 0.0005; // absorb color patches smaller than round(w*h*this) px
+  var DESPECKLE_SHARE = 0.0004; // drop traced shapes below w*h*this (px^2)
+  var MAX_SHAPES_PER_COLOR = 60; // cap shapes per color (largest kept first)
+  var ALPHA_CUTOFF = 128; // pixels with alpha < this become transparent
 
   // --- Module-level state --------------------------------------------------
   var currentDesign = null;
   var currentGarment = null;
   var loadedImage = null; // HTMLImageElement of the uploaded file
+
+  // Flattened-art state (image mode). Recomputed on load / Colors change /
+  // Remove-background change; mutated in place by manual merges. Generate
+  // consumes this exactly, so stitches match the preview.
+  //   { palette:[[r,g,b],...], indices:Uint8Array(255=transparent), w, h, srcW, srcH }
+  var flatState = null;
+  var selectedSwatches = {}; // palette index -> true, cleared on any recompute
 
   // --- DOM refs (filled on DOMContentLoaded) ------------------------------
   var el = {};
@@ -61,12 +71,15 @@
     return Math.max(maxX - minX, maxY - minY) || 1;
   }
 
-  // --- IMAGE pipeline: File -> ColorRegion[] ------------------------------
-  // Returns { regions, pxPerMm }.
-  function imageToRegions(img, nColors, removeBg) {
-    // Draw the image to an offscreen canvas, capped at WORK_MAX_PX long side.
+  // --- Flatten pipeline (image mode) --------------------------------------
+
+  // Draw `img` to an offscreen canvas (longest side capped at maxPx, or natural
+  // size when maxPx is falsy) and return { rgba, w, h }. Pixels with alpha
+  // below ALPHA_CUTOFF are forced fully transparent (alpha 0) so downstream
+  // medianCut / flatten treat them as background.
+  function prepRGBA(img, maxPx) {
     var longest = Math.max(img.width, img.height) || 1;
-    var scale = Math.min(1, WORK_MAX_PX / longest);
+    var scale = maxPx ? Math.min(1, maxPx / longest) : 1;
     var w = Math.max(1, Math.round(img.width * scale));
     var h = Math.max(1, Math.round(img.height * scale));
 
@@ -77,15 +90,194 @@
     ctx.drawImage(img, 0, 0, w, h);
 
     var rgba = ctx.getImageData(0, 0, w, h).data; // Uint8ClampedArray
-    if (removeBg) {
-      rgba = EMB.knockoutBackground(rgba, w, h, {});
+    for (var i = 3; i < rgba.length; i += 4) {
+      if (rgba[i] < ALPHA_CUTOFF) rgba[i] = 0;
     }
+    return { rgba: rgba, w: w, h: h };
+  }
 
+  // Recompute the AUTO flattened art from the loaded image at the current
+  // Colors / Remove-background settings and store it in flatState. Any manual
+  // merges are discarded (spec'd). Re-renders the preview + swatch bar.
+  function recomputeFlatten() {
+    if (!loadedImage) { flatState = null; return; }
+    var prep = prepRGBA(loadedImage, WORK_MAX_PX);
+    var rgba = prep.rgba, w = prep.w, h = prep.h;
+    if (el.removeBg.checked) rgba = EMB.knockoutBackground(rgba, w, h, {});
+
+    var nColors = parseInt(el.colors.value, 10);
     var quant = EMB.medianCut(rgba, nColors); // {palette, indices}
-    var palette = quant.palette;
-    var indices = quant.indices;
+    var indices = EMB.modeFilter(quant.indices, w, h, { iterations: MODE_FILTER_ITERS });
+    var minPx = Math.round(w * h * ABSORB_SHARE);
+    indices = EMB.absorbSmallRegions(indices, w, h, minPx);
 
-    var despeckleMin = DESPECKLE_AREA;             // existing per-shape despeckle
+    flatState = {
+      palette: quant.palette.map(function (c) { return c.slice(); }),
+      indices: indices,
+      w: w,
+      h: h,
+      srcW: loadedImage.width,
+      srcH: loadedImage.height,
+    };
+    selectedSwatches = {};
+    renderFlatten();
+  }
+
+  // Paint the flattened indices onto the preview canvas, upscaled with nearest-
+  // neighbor (imageSmoothingEnabled=false) so the flat art reads crisply.
+  function renderFlatPreview() {
+    var cv = el.flatPreview;
+    if (!cv) return;
+    var ctx = cv.getContext("2d");
+    if (!flatState) {
+      cv.width = 1;
+      cv.height = 1;
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      return;
+    }
+    var w = flatState.w, h = flatState.h;
+    var off = document.createElement("canvas");
+    off.width = w;
+    off.height = h;
+    var rgba = EMB.indicesToRGBA(flatState.indices, flatState.palette, w, h);
+    off.getContext("2d").putImageData(new ImageData(rgba, w, h), 0, 0);
+
+    // Integer upscale for small art; large art stays 1:1 and is capped by CSS.
+    var scale = Math.max(1, Math.round(360 / Math.max(w, h)));
+    cv.width = w * scale;
+    cv.height = h * scale;
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(off, 0, 0, cv.width, cv.height);
+  }
+
+  // One clickable chip per palette entry: color + % of opaque pixels. Click
+  // toggles selection (multi-select) for Merge.
+  function renderSwatches() {
+    var bar = el.flatSwatches;
+    if (!bar) return;
+    bar.innerHTML = "";
+    if (!flatState) {
+      var hint = document.createElement("span");
+      hint.className = "flat-hint";
+      hint.textContent = "Load an image to see the flattened palette.";
+      bar.appendChild(hint);
+      return;
+    }
+    var shares = EMB.paletteShares(flatState.indices, flatState.palette.length);
+    flatState.palette.forEach(function (c, i) {
+      var sw = document.createElement("button");
+      sw.type = "button";
+      sw.className = "flat-swatch" + (selectedSwatches[i] ? " selected" : "");
+      var chip = document.createElement("span");
+      chip.className = "chip";
+      chip.style.background = "rgb(" + c[0] + "," + c[1] + "," + c[2] + ")";
+      var pct = document.createElement("span");
+      pct.className = "pct";
+      pct.textContent = (shares[i] * 100).toFixed(1) + "%";
+      sw.appendChild(chip);
+      sw.appendChild(pct);
+      sw.addEventListener("click", function () {
+        if (selectedSwatches[i]) delete selectedSwatches[i];
+        else selectedSwatches[i] = true;
+        sw.classList.toggle("selected");
+      });
+      bar.appendChild(sw);
+    });
+  }
+
+  function renderFlatten() {
+    renderFlatPreview();
+    renderSwatches();
+  }
+
+  // Merge every selected swatch into one population-weighted color, then re-run
+  // small-region absorb so the merge doesn't leave sub-threshold specks.
+  function mergeSelected() {
+    if (!flatState) { setStatus("Load an image first.", true); return; }
+    var sel = Object.keys(selectedSwatches).map(Number);
+    if (sel.length < 2) {
+      setStatus("Select at least two swatches to merge.", true);
+      return;
+    }
+    var res = EMB.mergeColors(flatState.palette, flatState.indices, sel);
+    var minPx = Math.round(flatState.w * flatState.h * ABSORB_SHARE);
+    var indices = EMB.absorbSmallRegions(res.indices, flatState.w, flatState.h, minPx);
+    flatState.palette = res.palette;
+    flatState.indices = indices;
+    selectedSwatches = {};
+    renderFlatten();
+    setStatus("Merged " + sel.length + " colors → " + flatState.palette.length + " thread color(s).");
+  }
+
+  function resetFlatten() {
+    if (!loadedImage) { setStatus("Load an image first.", true); return; }
+    recomputeFlatten();
+    setStatus("Colors reset to auto flatten (" + (flatState ? flatState.palette.length : 0) + ").");
+  }
+
+  // Export the flattened art at ORIGINAL resolution: map every opaque source
+  // pixel to the CURRENT final palette by nearest RGB, one modeFilter pass to
+  // knock out lone speckles, then encode a transparent-background PNG.
+  function downloadFlatPNG() {
+    if (!flatState) { setStatus("Load an image first.", true); return; }
+    setStatus("Rendering full-resolution flat PNG…");
+    // Defer so the status text paints before the (possibly heavy) work.
+    setTimeout(function () {
+      try {
+        var prep = prepRGBA(loadedImage, null); // natural size
+        var rgba = prep.rgba, w = prep.w, h = prep.h;
+        if (el.removeBg.checked) rgba = EMB.knockoutBackground(rgba, w, h, {});
+
+        var pal = flatState.palette;
+        var n = w * h;
+        var idx = new Uint8Array(n).fill(255);
+        for (var i = 0; i < n; i++) {
+          var o = i * 4;
+          if (rgba[o + 3] === 0) continue; // transparent stays transparent
+          var r = rgba[o], g = rgba[o + 1], b = rgba[o + 2];
+          var best = 0, bestDist = Infinity;
+          for (var k = 0; k < pal.length; k++) {
+            var dr = r - pal[k][0], dg = g - pal[k][1], db = b - pal[k][2];
+            var d = dr * dr + dg * dg + db * db;
+            if (d < bestDist) { bestDist = d; best = k; }
+          }
+          idx[i] = best;
+        }
+        idx = EMB.modeFilter(idx, w, h, { iterations: 1 });
+
+        var out = EMB.indicesToRGBA(idx, pal, w, h);
+        var cv = document.createElement("canvas");
+        cv.width = w;
+        cv.height = h;
+        cv.getContext("2d").putImageData(new ImageData(out, w, h), 0, 0);
+        cv.toBlob(function (blob) {
+          if (!blob) { setStatus("Flat PNG export failed.", true); return; }
+          try {
+            triggerDownload(blob, "flat-art.png");
+            setStatus("Downloaded flat-art.png (" + w + "×" + h + ").");
+          } catch (e) {
+            setStatus("Download failed: " + e.message, true);
+            // eslint-disable-next-line no-console
+            console.error(e);
+          }
+        }, "image/png");
+      } catch (e) {
+        setStatus("Flat PNG export failed: " + e.message, true);
+        // eslint-disable-next-line no-console
+        console.error(e);
+      }
+    }, 20);
+  }
+
+  // --- IMAGE pipeline: flatState -> ColorRegion[] -------------------------
+  // Build per-color masks from the CURRENT flattened indices and trace them,
+  // so the generated stitches match the flatten preview exactly.
+  function imageToRegions() {
+    var w = flatState.w, h = flatState.h;
+    var palette = flatState.palette, indices = flatState.indices;
+
+    var despeckleMin = w * h * DESPECKLE_SHARE;    // area-relative per-shape despeckle
     var holeMin = Math.max(6, despeckleMin * 0.3); // keep smaller holes (counters)
 
     var regions = [];
@@ -108,7 +300,7 @@
         })
         .filter(function (s) { return s.outer.length >= 4 && area(s.outer) > despeckleMin; });
       shapes.sort(function (a, b) { return area(b.outer) - area(a.outer); });
-      if (shapes.length > MAX_POLYS_PER_COLOR) shapes = shapes.slice(0, MAX_POLYS_PER_COLOR);
+      if (shapes.length > MAX_SHAPES_PER_COLOR) shapes = shapes.slice(0, MAX_SHAPES_PER_COLOR);
       if (shapes.length === 0) continue; // no geometry for this color
       regions.push({ rgb: palette[ci], shapes: shapes });
     }
@@ -172,6 +364,7 @@
           densityMm: opts.densityMm,
           satinMaxWidthMm: 3.0,
           underlay: opts.underlay,
+          outline: opts.outline,
         });
         currentDesign = design;
         currentGarment = opts.garment;
@@ -216,12 +409,12 @@
           console.error(e);
         });
     } else {
-      if (!loadedImage) {
-        setStatus("Choose an image file first.", true);
+      if (!flatState) {
+        setStatus("Load an image first.", true);
         return;
       }
       try {
-        buildFromRegions(imageToRegions(loadedImage, opts.nColors, el.removeBg.checked));
+        buildFromRegions(imageToRegions());
       } catch (e) {
         setStatus("Image processing failed: " + e.message, true);
         // eslint-disable-next-line no-console
@@ -351,6 +544,7 @@
     var mode = getMode();
     el.imageControls.style.display = mode === "image" ? "block" : "none";
     el.textControls.style.display = mode === "text" ? "block" : "none";
+    if (el.flatPanel) el.flatPanel.style.display = mode === "image" ? "block" : "none";
   }
 
   // --- Setup ---------------------------------------------------------------
@@ -396,6 +590,9 @@
 
     el.file = $("file");
     el.removeBg = $("remove-bg");
+    el.flatPanel = $("flat-panel");
+    el.flatPreview = $("flat-preview");
+    el.flatSwatches = $("flat-swatches");
     el.text = $("text-input");
     el.font = $("font");
     el.garment = $("garment");
@@ -427,7 +624,15 @@
       img.onload = function () {
         loadedImage = img;
         URL.revokeObjectURL(url);
-        setStatus("Image loaded (" + img.width + "×" + img.height + "px). Click Generate.");
+        setStatus("Flattening image (" + img.width + "×" + img.height + "px)…");
+        try {
+          recomputeFlatten();
+          setStatus("Image loaded (" + img.width + "×" + img.height + "px). Review the flattened art, then click Generate.");
+        } catch (e) {
+          setStatus("Couldn't flatten that image: " + e.message, true);
+          // eslint-disable-next-line no-console
+          console.error(e);
+        }
       };
       img.onerror = function () {
         URL.revokeObjectURL(url);
@@ -436,9 +641,18 @@
       img.src = url;
     });
 
-    // Slider labels
+    // Remove-background toggle re-runs the auto flatten.
+    el.removeBg.addEventListener("change", function () {
+      if (loadedImage) recomputeFlatten();
+    });
+
+    // Slider labels. Colors change re-runs the auto flatten (on release, so we
+    // don't re-quantize on every tick of the drag).
     el.colors.addEventListener("input", function () {
       el.colorsVal.textContent = el.colors.value;
+    });
+    el.colors.addEventListener("change", function () {
+      if (loadedImage) recomputeFlatten();
     });
     el.colorsVal.textContent = el.colors.value;
 
@@ -451,6 +665,12 @@
     $("btn-generate").addEventListener("click", generate);
     $("btn-download").addEventListener("click", download);
     $("btn-pdf").addEventListener("click", exportPDF);
+
+    // Flatten panel buttons
+    $("btn-merge").addEventListener("click", mergeSelected);
+    $("btn-reset-colors").addEventListener("click", resetFlatten);
+    $("btn-flat-png").addEventListener("click", downloadFlatPNG);
+    renderFlatten(); // draw the "load an image" placeholder state
 
     checkCDN();
     setStatus("Ready. Pick a mode, set options, and click Generate.");

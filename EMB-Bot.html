@@ -180,6 +180,69 @@
       color: var(--muted);
       line-height: 1.5;
     }
+
+    /* --- Flatten panel (image mode) --- */
+    #flat-panel h2 {
+      font-size: 14px;
+      margin: 0 0 4px;
+      font-weight: 700;
+    }
+    #flat-panel .flat-sub {
+      margin: 0 0 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    canvas#flat-preview {
+      max-width: 360px;
+      width: 100%;
+      height: auto;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      display: block;
+      background:
+        linear-gradient(45deg, #eceef1 25%, transparent 25%),
+        linear-gradient(-45deg, #eceef1 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #eceef1 75%),
+        linear-gradient(-45deg, transparent 75%, #eceef1 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+    }
+    #flat-swatches {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 12px 0;
+      min-height: 20px;
+    }
+    #flat-swatches .flat-hint { font-size: 12px; color: var(--muted); }
+    .flat-swatch {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px 4px 4px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      cursor: pointer;
+      font: inherit;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      color: var(--ink);
+    }
+    .flat-swatch .chip {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1px solid rgba(0, 0, 0, .15);
+      flex: 0 0 auto;
+    }
+    .flat-swatch.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent);
+    }
+    #flat-panel .buttons { margin-top: 4px; }
   </style>
 
   <!-- CDN libraries FIRST (classic scripts).
@@ -196,6 +259,7 @@
   <script src="src/fill.js"></script>
   <script src="src/geometry.js"></script>
   <script src="src/quantize.js"></script>
+  <script src="src/flatten.js"></script>
   <script src="src/satin.js"></script>
   <script src="src/dst.js"></script>
   <script src="src/exp.js"></script>
@@ -300,6 +364,8 @@
       <p class="note">
         Heads up: clean logos and lettering digitize well; photographs and
         gradients work far less well — simplify to a few flat colors first.
+        Flatten merges your art to N thread colors — check the preview, merge
+        swatches that should be one thread.
         Text &amp; flat logos: satin + hole-aware fills with underlay. Photos:
         still approximate — flat art works best.
         PES output is best-effort — always verify it stitches on your machine
@@ -309,6 +375,19 @@
 
     <!-- CENTER: preview + BOTTOM: stats/buttons -->
     <section class="stage">
+      <div class="panel" id="flat-panel">
+        <h2>Flattened art (what will stitch)</h2>
+        <p class="flat-sub">Your art merged to thread colors. Click swatches that
+          should be one thread, then Merge selected. Generate stitches this exactly.</p>
+        <canvas id="flat-preview" width="1" height="1"></canvas>
+        <div id="flat-swatches"></div>
+        <div class="buttons">
+          <button id="btn-merge">Merge selected</button>
+          <button id="btn-reset-colors">Reset colors</button>
+          <button id="btn-flat-png">Download flat PNG</button>
+        </div>
+      </div>
+
       <div class="panel">
         <canvas id="preview" width="800" height="800"></canvas>
       </div>
