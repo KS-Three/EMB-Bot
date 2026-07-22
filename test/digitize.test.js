@@ -55,6 +55,14 @@ test("buildQualityDesign: thin solid bar goes satin, branched shape goes fill", 
   assert.strictEqual(d2._debug.nFill, 1);
 });
 
+test("buildQualityDesign: outline option adds finishing edge run", () => {
+  const outer = sq(0, 0, 100);
+  const base = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 1, densityMm: 0.5, underlay: false, satinMaxWidthMm: 3 };
+  const noOutline = DG.buildQualityDesign([{ rgb: [0, 0, 0], shapes: [{ outer, holes: [] }] }], base);
+  const withOutline = DG.buildQualityDesign([{ rgb: [0, 0, 0], shapes: [{ outer, holes: [] }] }], Object.assign({ outline: true }, base));
+  assert.ok(withOutline.stitchCount > noOutline.stitchCount + 50, "outline should add perimeter stitches");
+});
+
 test("buildQualityDesign: multi-color design sequences color changes", () => {
   const d = DG.buildQualityDesign(
     [

@@ -2504,6 +2504,14 @@ const _sm_fillmod = _sm_req
           else { pts = fillmod.tatamiFill(rings, { rowSpacing: rowPx, angleDeg: angle, maxStitch: maxPx, markConnectors: true }); nFill++; }
         } catch (e) { pts = []; }
         pushRun(pts);
+
+        // finishing outline: running stitch along the outer edge (and holes)
+        if (o.outline) {
+          try {
+            const edgeLen = Math.max(3, 1.8 * pxPerFinalMm);
+            for (const ring of rings) pushRun(fillmod.runningOutline(ring, { stitchLen: edgeLen }));
+          } catch (e) { /* best-effort */ }
+        }
       }
     }
     stitches.push({ x: 0, y: 0, type: "end" });
