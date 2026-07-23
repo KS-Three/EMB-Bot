@@ -47,8 +47,10 @@
     if (!isFinite(minY) || !isFinite(maxY)) return [];
 
     // Collect ordered span endpoints (in rotated space) following the
-    // boustrophedon path across all rows.
-    const key = [];
+    // boustrophedon path across all rows. Points are grouped per emitted row so
+    // that opts.centerOut can reorder whole rows (each row keeps its own
+    // boustrophedon scan direction, which is keyed to its spatial rowIndex).
+    const rowGroups = [];
     let rowIndex = 0;
     for (let y = minY; y <= maxY + EPS; y += rowSpacing) {
       // Gather x-intersections with all edges using the half-open rule.
@@ -75,15 +77,36 @@
         // Boustrophedon: reverse span order and endpoints on odd rows.
         const rev = rowIndex % 2 === 1;
         const ordered = rev ? spans.slice().reverse() : spans;
+        const grp = [];
         for (const span of ordered) {
           const start = rev ? span[1] : span[0];
           const end = rev ? span[0] : span[1];
-          key.push({ x: start, y });
-          key.push({ x: end, y });
+          grp.push({ x: start, y });
+          grp.push({ x: end, y });
         }
+        rowGroups.push(grp);
       }
       rowIndex++;
     }
+
+    // Row emission order. Default (sequential) flattens groups top-to-bottom —
+    // byte-identical to before. With opts.centerOut, emit rows interleaved from
+    // the center outward — [mid, mid-1, mid+1, mid-2, mid+2, …] — so fabric push
+    // radiates symmetrically. Each group has an even length (span start/end
+    // pairs), so concatenation preserves the connector-marking parity below and
+    // the jump between two non-adjacent rows lands on an even (connector) index.
+    let orderedGroups = rowGroups;
+    if (opts.centerOut && rowGroups.length > 1) {
+      const n = rowGroups.length;
+      const mid = Math.floor(n / 2);
+      orderedGroups = [rowGroups[mid]];
+      for (let step = 1; orderedGroups.length < n; step++) {
+        if (mid - step >= 0) orderedGroups.push(rowGroups[mid - step]);
+        if (mid + step < n) orderedGroups.push(rowGroups[mid + step]);
+      }
+    }
+    const key = [];
+    for (const grp of orderedGroups) for (const p of grp) key.push(p);
 
     // Densify: ensure no two consecutive points exceed maxStitch (this also
     // splits the inter-row travel stitches). Then rotate back by +angleDeg.

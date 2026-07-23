@@ -40,3 +40,32 @@ test("markConnectors default off keeps old dense behavior", () => {
   const pts = fill.tatamiFill(rect, { rowSpacing:50, angleDeg:0, maxStitch:20 });
   assert.ok(pts.every(p => p.travel === undefined));
 });
+
+test("centerOut: same rows as sequential but interleaved-from-center emission order", () => {
+  // tall rectangle 40 wide x 200 tall, horizontal rows every 10 → 21 rows.
+  const tall = [[{x:0,y:0},{x:40,y:0},{x:40,y:200},{x:0,y:200}]];
+  const opts = { rowSpacing:10, angleDeg:0, maxStitch:1000 };
+  const seq = fill.tatamiFill(tall, opts);
+  const ctr = fill.tatamiFill(tall, Object.assign({ centerOut:true }, opts));
+  // identical coverage: same point count and same SET of row y-values
+  assert.strictEqual(ctr.length, seq.length, "point count must match sequential");
+  const yset = (pts) => [...new Set(pts.map(p => Math.round(p.y * 1000)))].sort((a,b)=>a-b);
+  assert.deepStrictEqual(yset(ctr), yset(seq), "same set of row y-values (no row dropped)");
+  // same number of distinct rows
+  assert.strictEqual(yset(ctr).length, yset(seq).length, "row count identical");
+  // DIFFERENT emission order
+  const asStr = (pts) => pts.map(p => p.x.toFixed(3)+","+p.y.toFixed(3)).join(";");
+  assert.notStrictEqual(asStr(ctr), asStr(seq), "emission order must differ");
+  // sequential's first emitted row is near an edge (minY = 0)
+  assert.ok(Math.abs(seq[0].y - 0) <= 10 + 1e-6, "sequential starts near top edge, got y=" + seq[0].y);
+  // center-out's first emitted row is within ~1 row spacing of the mid-y (100)
+  assert.ok(Math.abs(ctr[0].y - 100) <= 10 + 1e-6, "center-out starts near mid-y, got y=" + ctr[0].y);
+});
+
+test("centerOut default off is byte-identical to sequential", () => {
+  const tall = [[{x:0,y:0},{x:40,y:0},{x:40,y:200},{x:0,y:200}]];
+  const opts = { rowSpacing:10, angleDeg:0, maxStitch:1000 };
+  const a = fill.tatamiFill(tall, opts);
+  const b = fill.tatamiFill(tall, Object.assign({ centerOut:false }, opts));
+  assert.deepStrictEqual(a, b, "centerOut:false must equal no-option");
+});

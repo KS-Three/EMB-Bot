@@ -303,8 +303,15 @@ test("buildQualityDesign: no-fabric single-shape output frozen (snapshot, Phase-
     [{ rgb: [10, 20, 30], shapes: [{ outer, holes: [hole] }] }],
     { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 1, densityMm: 0.5, underlay: true, satinMaxWidthMm: 3 }
   );
+  // Phase 4 RE-FREEZE: this fixture's shape is ~100mm final (>15mm both dims), so
+  // its TOP fill now sews center-out. Row COVERAGE is unchanged (total record
+  // count still 3176; first 20 records are the sequential underlay, unchanged),
+  // but reordering rows center-out makes some inter-row repositions long enough
+  // to become travel JUMPS instead of sewn segments — so stitchCount dropped
+  // 3076→2953 (those records flipped stitch→jump). nCenterOut===1 here.
+  assert.strictEqual(d._debug.nCenterOut, 1, "fixture shape is a large fill → center-out");
   assert.strictEqual(d.stitches.length, 3176, "total record count frozen");
-  assert.strictEqual(d.stitchCount, 3076, "stitch count frozen");
+  assert.strictEqual(d.stitchCount, 2953, "stitch count frozen (Phase 4 re-freeze)");
   const first20 = [
     { x: -504, y: 504, type: "jump" }, { x: -504, y: 504, type: "stitch" }, { x: -463, y: 504, type: "stitch" },
     { x: -422, y: 504, type: "stitch" }, { x: -382, y: 504, type: "stitch" }, { x: -341, y: 504, type: "stitch" },
@@ -414,4 +421,68 @@ test("buildQualityDesign: null angleOverride falls back to per-shape auto", () =
   const o = orientHalves(d);
   assert.ok(o.left.sx > o.left.sy * 2, "null override → auto: wide horizontal");
   assert.ok(o.right.sy > o.right.sx * 2, "null override → auto: tall vertical");
+});
+
+// ---- Phase 4: center-out large fills + background-first + minimizeColorChanges ----
+
+test("buildQualityDesign: large fill (>15mm) sews center-out; first row near shape center", () => {
+  // Single large square that fills a 4in garment → final bbox ~100mm both dims,
+  // well above the 15mm large-fill threshold. Square PCA angle is 0 (rows
+  // horizontal) so the first emitted row's DST y is meaningful. Center-out puts
+  // the first row near the shape center (DST y ~ 0), not the top/bottom edge.
+  const outer = sq(0, 0, 800);
+  const base = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 8, densityMm: 0.5, underlay: false, satinMaxWidthMm: 3 };
+  const d = DG.buildQualityDesign([{ rgb: [0, 0, 0], shapes: [{ outer, holes: [] }] }], base);
+  assert.ok(d._debug.nCenterOut >= 1, "large fill must sew center-out, got nCenterOut=" + d._debug.nCenterOut);
+  const first = d.stitches.filter((s) => s.type === "stitch")[0];
+  // shape spans roughly DST y ±500; center-out first row must be within ~1 row
+  // spacing of center (0), an edge start would be near ±500.
+  assert.ok(Math.abs(first.y) < 150, "center-out first fill row near shape center, got y=" + first.y);
+});
+
+test("buildQualityDesign: small fill (<15mm) is NOT center-out", () => {
+  // Two tiny squares far apart fix a large design bbox that downscales each
+  // shape to ~2mm final — below the 15mm threshold → no center-out.
+  const base = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 8, densityMm: 0.5, underlay: false, satinMaxWidthMm: 0.05 };
+  const d = DG.buildQualityDesign(
+    [{ rgb: [0, 0, 0], shapes: [{ outer: sq(0, 0, 40), holes: [] }, { outer: sq(2000, 0, 40), holes: [] }] }],
+    base
+  );
+  assert.strictEqual(d._debug.nCenterOut, 0, "small fills must not center-out, got " + d._debug.nCenterOut);
+});
+
+test("buildQualityDesign: background-first — largest-area shape in a color emits first", () => {
+  // smallA sits at the design center (nearest-neighbor-from-center would pick it
+  // first); the big shape is far to the right (largest area). Background-first
+  // must emit the BIG shape first regardless of proximity to center.
+  const big = { outer: sq(2000, 900, 200), holes: [] };   // area 40000, far right
+  const smallA = { outer: sq(1000, 950, 40), holes: [] }; // near design center
+  const smallB = { outer: sq(0, 950, 40), holes: [] };    // far left
+  const base = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 8, densityMm: 0.5, underlay: false, satinMaxWidthMm: 0.05 };
+  const run = (shapes) => DG.buildQualityDesign([{ rgb: [0, 0, 0], shapes }], base).stitches.filter((s) => s.type === "stitch");
+  const first = run([smallA, big, smallB])[0];
+  // big is the rightmost shape → its stitches carry the largest positive DST x.
+  // If NN-from-center had won, smallA (center) would be first with x ~ 0.
+  assert.ok(first.x > 200, "largest shape (far right) must emit first, got x=" + first.x);
+  // order independence: same first shape regardless of input order
+  const first2 = run([smallB, smallA, big])[0];
+  assert.strictEqual(first.x, first2.x, "background-first is input-order independent");
+});
+
+test("buildQualityDesign: minimizeColorChanges groups identical-rgb regions into one thread", () => {
+  // three regions: two share the EXACT rgb, one differs.
+  const rgbA = [50, 50, 50], rgbB = [200, 10, 10];
+  const regions = [
+    { rgb: rgbA, shapes: [{ outer: sq(0, 0, 60), holes: [] }] },
+    { rgb: rgbB, shapes: [{ outer: sq(200, 0, 60), holes: [] }] },
+    { rgb: rgbA, shapes: [{ outer: sq(400, 0, 60), holes: [] }] },
+  ];
+  const base = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 4, densityMm: 0.5, underlay: false, satinMaxWidthMm: 0.05 };
+  const off = DG.buildQualityDesign(regions, base);
+  const on = DG.buildQualityDesign(regions, Object.assign({ minimizeColorChanges: true }, base));
+  const nColor = (d) => d.stitches.filter((s) => s.type === "color").length;
+  assert.strictEqual(nColor(off), 2, "default: three blocks → 2 color changes");
+  assert.strictEqual(nColor(on), 1, "minimize: two identical-rgb blocks share a thread → 1 color change");
+  assert.strictEqual(on.colorCount, 2, "minimize: only 2 distinct thread colors");
+  assert.strictEqual(off.colorCount, 3, "default: 3 color records");
 });

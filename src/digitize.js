@@ -243,7 +243,12 @@
 
     const stitches = [];
     const colors = [];
-    let first = true, nSatin = 0, nFill = 0, nTrims = 0;
+    let first = true, nSatin = 0, nFill = 0, nTrims = 0, nCenterOut = 0;
+    // Large fills sew center-out (rows interleaved from the vertical center) so
+    // fabric push radiates symmetrically. "Large" = both final-mm bbox dims over
+    // this threshold; applies to the TOP fill only (underlay stays sequential).
+    const centerOutMinMm = 15;
+    const minimizeColorChanges = !!o.minimizeColorChanges;
     let lastPx = { x: cx, y: cy }; // last emitted point in px; origin = design center (DST 0,0)
     let started = false;           // no trim before the very first stitch of the design
     let justChangedColor = false;  // color change already cut the thread; skip the next per-shape travel-trim
@@ -266,8 +271,11 @@
       nTrims++;
     }
 
-    // Order a color block's shapes: cap center-out, else greedy nearest-neighbor
-    // by centroid starting from `startPx` (previous block's last emitted point).
+    // Order a color block's shapes: cap center-out (unchanged, takes precedence),
+    // else background-first — the LARGEST-area shape sews first (it's the
+    // background), then greedy nearest-neighbor from there for the rest. Only the
+    // FIRST pick changed from pure nearest-neighbor-from-previous-position; the
+    // remaining picks still chain by centroid proximity for short travel.
     function orderShapes(list, startPx) {
       if (list.length <= 1) return list.slice();
       const cents = list.map((s) => centroid(s.outer));
@@ -280,9 +288,25 @@
         });
         return idx.map((i) => list[i]);
       }
-      const remaining = list.map((s, i) => ({ s, c: cents[i] }));
+      const remaining = list.map((s, i) => ({ s, c: cents[i], a: polyArea(s.outer) }));
       const out = [];
-      let cur = { x: startPx.x, y: startPx.y };
+      // Background-first: seed the walk at the LARGEST-area shape rather than the
+      // one nearest the previous position, so wide background regions sew before
+      // detail sitting on top of them. Deterministic (input-order independent):
+      // area DESC, then nearest to startPx, then centroid x, then y.
+      let seed = 0;
+      for (let i = 1; i < remaining.length; i++) {
+        const ri = remaining[i], rb = remaining[seed];
+        if (ri.a !== rb.a) { if (ri.a > rb.a) seed = i; continue; }
+        const di = Math.hypot(ri.c.x - startPx.x, ri.c.y - startPx.y);
+        const db = Math.hypot(rb.c.x - startPx.x, rb.c.y - startPx.y);
+        if (di !== db) { if (di < db) seed = i; continue; }
+        if (ri.c.x !== rb.c.x) { if (ri.c.x < rb.c.x) seed = i; continue; }
+        if (ri.c.y < rb.c.y) seed = i;
+      }
+      const pick0 = remaining.splice(seed, 1)[0];
+      out.push(pick0.s);
+      let cur = { x: pick0.c.x, y: pick0.c.y };
       while (remaining.length) {
         let best = 0, bd = Infinity;
         for (let i = 0; i < remaining.length; i++) {
@@ -296,8 +320,18 @@
       return out;
     }
 
+    let prevRgb = null;
     for (const r of regions) {
-      if (!first) {
+      // minimizeColorChanges: when the current region's EXACT rgb matches the
+      // previous emitted region's, keep sewing on the same thread — no color
+      // change, no new color record. Same-rgb regions are contiguous after the
+      // light→dark sort (identical brightness), so a same-as-previous test
+      // groups them all. NOTE: with the flatten pipeline every palette color is
+      // unique, so this is a no-op there; it only bites on repeated-color inputs
+      // (e.g. future SVG import). Default (false) → strict light→dark, unchanged.
+      const sameThread = minimizeColorChanges && prevRgb &&
+        r.rgb[0] === prevRgb[0] && r.rgb[1] === prevRgb[1] && r.rgb[2] === prevRgb[2];
+      if (!first && !sameThread) {
         // Always trim before a color change (thread must be cut), then change.
         emitTrimAtLast();
         const last = stitches[stitches.length - 1] || { x: 0, y: 0 };
@@ -305,7 +339,8 @@
         justChangedColor = true; // thread already cut; don't double-trim the first shape of this block
       }
       first = false;
-      colors.push({ r: r.rgb[0], g: r.rgb[1], b: r.rgb[2], name: "Color " + (colors.length + 1) });
+      prevRgb = r.rgb;
+      if (!sameThread) colors.push({ r: r.rgb[0], g: r.rgb[1], b: r.rgb[2], name: "Color " + (colors.length + 1) });
       // shapes: [{outer, holes}] (hole-aware) — or bare polygons for back-compat
       const shapesRaw = r.shapes || r.polygons.map((p) => ({ outer: p, holes: [] }));
       const shapes0 = shapesRaw.filter((s) => s && s.outer && s.outer.length >= 4);
@@ -407,7 +442,13 @@
               });
               fillRings = [offsetRing(poly, pullCompPx, true)].concat(insetHoles);
             }
-            pts = fillmod.tatamiFill(fillRings, { rowSpacing: rowPx, angleDeg: angle, maxStitch: maxPx, markConnectors: true }); nFill++;
+            // Large-fill center-out: qualify by this shape's final-mm bbox.
+            let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+            for (const q of poly) { if (q.x < bx0) bx0 = q.x; if (q.x > bx1) bx1 = q.x; if (q.y < by0) by0 = q.y; if (q.y > by1) by1 = q.y; }
+            const wMm = (bx1 - bx0) * mmPerPxFinal, hMm = (by1 - by0) * mmPerPxFinal;
+            const largeFill = wMm > centerOutMinMm && hMm > centerOutMinMm;
+            pts = fillmod.tatamiFill(fillRings, { rowSpacing: rowPx, angleDeg: angle, maxStitch: maxPx, markConnectors: true, centerOut: largeFill }); nFill++;
+            if (largeFill) nCenterOut++;
           }
         } catch (e) { pts = []; }
         runs.push(pts);
@@ -433,7 +474,7 @@
     }
     stitches.push({ x: 0, y: 0, type: "end" });
     const stitchCount = stitches.filter((s) => s.type === "stitch").length;
-    return { stitches, colors, widthMM: fit.targetWmm, heightMM: fit.targetHmm, stitchCount, colorCount: colors.length, _debug: { nSatin, nFill, nTrims } };
+    return { stitches, colors, widthMM: fit.targetWmm, heightMM: fit.targetHmm, stitchCount, colorCount: colors.length, _debug: { nSatin, nFill, nTrims, nCenterOut } };
   }
 
   return { buildQualityDesign, groupRingsIntoShapes, offsetRing, signedArea, underlayRuns };
