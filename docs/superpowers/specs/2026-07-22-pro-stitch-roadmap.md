@@ -7,6 +7,21 @@ Craft principle for all phases: the tool encodes known digitizing rules as
 presets and exposes knobs; Kent's on-machine sew-outs are the feedback loop.
 When a preset proves wrong on real fabric, we adjust the preset, not the file.
 
+## Build status
+- Phase 1 (trims + sequencing): **DONE**, review-clean (commits …cdfd921/18bee9a/2549d75).
+- Phase 2 (fabric presets → pull comp + underlay + UI): **DONE**, review-clean
+  (6d44b3c/431c648/b70575d/90e5922/eb972ff). Deviation: uniform outward-normal
+  pull-comp offset instead of perpendicular-to-stitch-axis (documented).
+- Phase 3 (per-shape angle + per-color override + UI): **DONE**, review-clean
+  (3ce956b/a70c05d). NOT built: roadmap's ±30° adjacent-same-color contrast
+  heuristic (needs adjacency detection) — candidate follow-up.
+- Phase 4 (sequencing polish): **assessed as ~80% subsumed by Phases 1–3.**
+  "Minimize color changes" is moot (flatten → unique palette colors, nothing to
+  group); "background-before-border" needs semantic role detection the tool
+  lacks; only all-garment center-out is buildable-but-marginal (may fight
+  nearest-neighbor travel opt). Recommend closing Phase 4 unless Kent wants
+  all-garment center-out. AWAITING KENT'S CALL.
+
 ## Phase 1 — Trims + Sequencing  ← BUILD FIRST (stitchability defect)
 Current files never command a trim: travel is jump-only, which drags thread
 loops across the design on a real machine. Pro files trim deliberately.
