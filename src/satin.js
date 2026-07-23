@@ -245,7 +245,11 @@
     // farthest-pair tips can sit at corners, bending the centerline there).
     // Short strokes keep their full length so tiny shapes still get a column.
     const fullSteps = denom > 0 ? Math.max(2, Math.ceil(cLen / denom)) : 2;
-    const trim = fullSteps >= 8 ? 0.12 * cLen : 0;
+    // Trim only the degenerate end-cap region (~one stroke width), capped at a
+    // fraction of length so long strokes keep tip-to-tip coverage and short
+    // strokes aren't over-trimmed. Width ~= 2*area/perimeter of the ring (px).
+    const widthPx = estimateWidthMm(ring, 1);
+    const trim = fullSteps >= 8 ? Math.min(0.9 * widthPx, 0.12 * cLen) : 0;
     const Ct = trim > EPS ? subChainByArc(C, trim, cLen - trim) : C;
     const ctLen = chainLength(Ct);
     const steps = denom > 0 ? Math.max(2, Math.ceil(ctLen / denom)) : 2;
