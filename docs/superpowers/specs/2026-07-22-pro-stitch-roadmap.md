@@ -15,12 +15,18 @@ When a preset proves wrong on real fabric, we adjust the preset, not the file.
 - Phase 3 (per-shape angle + per-color override + UI): **DONE**, review-clean
   (3ce956b/a70c05d). NOT built: roadmap's ±30° adjacent-same-color contrast
   heuristic (needs adjacency detection) — candidate follow-up.
-- Phase 4 (sequencing polish): **assessed as ~80% subsumed by Phases 1–3.**
-  "Minimize color changes" is moot (flatten → unique palette colors, nothing to
-  group); "background-before-border" needs semantic role detection the tool
-  lacks; only all-garment center-out is buildable-but-marginal (may fight
-  nearest-neighbor travel opt). Recommend closing Phase 4 unless Kent wants
-  all-garment center-out. AWAITING KENT'S CALL.
+- Phase 4 (sequencing polish): **DONE**, review-clean (5e30fdd/5e57476/212cf35).
+  Built: (a) center-out large fills on all garments — TWO-sweep (center→out both
+  halves), the one center reposition is TRIMMED (no long float, consistent with
+  Phase 1); gated to fills >15mm both dims; `_debug.nCenterOut`. (b) background-
+  first within a color (largest shape first, then nearest-neighbor). (c)
+  `opts.minimizeColorChanges` (default off) groups identical-rgb regions — a
+  no-op under flatten (unique palette), engine-only, no UI; matters for future
+  repeated-color inputs (SVG import). Real logo: nCenterOut 5, nTrims 69.
+
+ALL FOUR PHASES COMPLETE. Remaining horizon items (not scheduled): SVG import,
+per-stroke satin for small lettering, directional pull comp, ±30° adjacent-
+same-color angle contrast.
 
 ## Phase 1 — Trims + Sequencing  ← BUILD FIRST (stitchability defect)
 Current files never command a trim: travel is jump-only, which drags thread
