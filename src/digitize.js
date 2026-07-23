@@ -36,6 +36,108 @@
     });
   }
 
+  // Offset a polygon ring by `dPx` along per-vertex OUTWARD normals (miter join).
+  // outward=true grows the ring, outward=false shrinks it — correct regardless of
+  // winding (signed area picks the outward sense). Miter displacement is clamped
+  // at 3*dPx so sharp concave vertices don't produce spikes. Returns a fresh ring.
+  function offsetRing(ring, dPx, outward) {
+    const n = ring ? ring.length : 0;
+    const copy = ring ? ring.map((q) => ({ x: q.x, y: q.y })) : [];
+    if (n < 3 || !(Math.abs(dPx) > 1e-9)) return copy;
+    // signed area (shoelace): >0 and <0 pick opposite outward-normal senses.
+    let area2 = 0;
+    for (let i = 0; i < n; i++) { const a = ring[i], b = ring[(i + 1) % n]; area2 += a.x * b.y - b.x * a.y; }
+    const sgn = area2 >= 0 ? 1 : -1;      // winding sign
+    const dir = outward ? 1 : -1;         // grow vs shrink
+    const maxDisp = 3 * dPx;              // miter clamp
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const prev = ring[(i - 1 + n) % n], cur = ring[i], next = ring[(i + 1) % n];
+      let e1x = cur.x - prev.x, e1y = cur.y - prev.y;
+      let e2x = next.x - cur.x, e2y = next.y - cur.y;
+      const L1 = Math.hypot(e1x, e1y) || 1, L2 = Math.hypot(e2x, e2y) || 1;
+      e1x /= L1; e1y /= L1; e2x /= L2; e2y /= L2;
+      // outward unit normal of an edge (dx,dy) is sgn*(dy,-dx)
+      const n1x = sgn * e1y, n1y = -sgn * e1x;
+      const n2x = sgn * e2y, n2y = -sgn * e2x;
+      let bx = n1x + n2x, by = n1y + n2y;
+      const bl = Math.hypot(bx, by);
+      let dispx, dispy;
+      if (bl < 1e-6) { dispx = n1x * dPx; dispy = n1y * dPx; }  // ~180° cusp
+      else {
+        bx /= bl; by /= bl;
+        const cosH = bx * n1x + by * n1y;         // cos(half exterior angle)
+        let m = dPx / Math.max(cosH, 1e-3);       // miter length = d/cos(halfAngle)
+        if (m > maxDisp) m = maxDisp;             // clamp spikes at sharp vertices
+        dispx = bx * m; dispy = by * m;
+      }
+      out.push({ x: cur.x + dir * dispx, y: cur.y + dir * dispy });
+    }
+    return out;
+  }
+
+  // Build underlay point-runs for a shape under a named style. Returns an array
+  // of runs (each becomes one pushRun). ctx: { fillAngle, pxPerFinalMm, maxStitch,
+  // underlayStitchPx, underlayRowPx, runningOutline, tatamiFill, insetRing,
+  // pcaAngleDeg }. Styles: none | edge_run | center_run | zigzag | edge_zigzag |
+  // edge_lattice | double_lattice.
+  function underlayRuns(shape, styleName, ctx) {
+    const style = styleName || "none";
+    if (style === "none") return [];
+    const outer = shape.outer;
+    const holes = (shape.holes || []).filter((hh) => hh && hh.length >= 4);
+    const rings = [outer].concat(holes);
+    const pxPerFinalMm = ctx.pxPerFinalMm;
+    const fillAngle = ctx.fillAngle || 0;
+    const edgeInset = Math.min(2, 0.6 * pxPerFinalMm);
+    const edgeStitch = ctx.underlayStitchPx;
+    const latticeRow = ctx.underlayRowPx;              // ~2.5mm sparse tatami
+    const zigRow = Math.max(3, 2.0 * pxPerFinalMm);    // ~2.0mm zig-zag rows
+    const maxStitch = ctx.maxStitch;
+
+    function edgeRun() {
+      const r = [ctx.runningOutline(ctx.insetRing(outer, edgeInset), { stitchLen: edgeStitch })];
+      for (const hh of holes) r.push(ctx.runningOutline(ctx.insetRing(hh, edgeInset), { stitchLen: edgeStitch }));
+      return r;
+    }
+    function zigzag() {
+      return [ctx.tatamiFill(rings, { rowSpacing: zigRow, angleDeg: fillAngle + 90, maxStitch, markConnectors: true })];
+    }
+    function lattice(angleOff) {
+      return [ctx.tatamiFill(rings, { rowSpacing: latticeRow, angleDeg: fillAngle + angleOff, maxStitch, markConnectors: true })];
+    }
+    // Single running stitch along the shape's PCA-major axis, clipped to the
+    // interior (longest contiguous inside segment through the centroid).
+    function centerRun() {
+      const c = centroid(outer);
+      const ang = ctx.pcaAngleDeg(rings) * Math.PI / 180;
+      const dx = Math.cos(ang), dy = Math.sin(ang);
+      let ext = 0;
+      for (const q of outer) { const L = Math.hypot(q.x - c.x, q.y - c.y); if (L > ext) ext = L; }
+      ext *= 1.1;
+      const step = Math.max(2, edgeStitch);
+      let best = [], cur = [];
+      for (let t = -ext; t <= ext + 1e-9; t += step) {
+        const p = { x: c.x + dx * t, y: c.y + dy * t };
+        const inside = pointInPoly(p, outer) && !holes.some((hh) => pointInPoly(p, hh));
+        if (inside) cur.push(p);
+        else { if (cur.length > best.length) best = cur; cur = []; }
+      }
+      if (cur.length > best.length) best = cur;
+      return best.length >= 2 ? [best] : [];
+    }
+
+    switch (style) {
+      case "edge_run": return edgeRun();
+      case "center_run": return centerRun();
+      case "zigzag": return zigzag();
+      case "edge_zigzag": return edgeRun().concat(zigzag());
+      case "edge_lattice": return edgeRun().concat(lattice(90));
+      case "double_lattice": return edgeRun().concat(lattice(45)).concat(lattice(-45));
+      default: return edgeRun().concat(lattice(90));
+    }
+  }
+
   function pointInPoly(pt, poly) {
     let inside = false;
     for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -70,10 +172,16 @@
   function buildQualityDesign(colorRegions, opts) {
     const o = opts || {};
     const pxPerMm = o.pxPerMm || 8;
-    const densityMm = o.densityMm || 0.45;
+    // Fabric preset (from getFabric) drives pull comp, density, trim, underlay.
+    // When absent, every derived value falls back to the pre-fabric defaults and
+    // the underlay code path stays byte-identical to before (see below).
+    const fabric = o.fabric || null;
+    const densityAdjust = (fabric && fabric.densityAdjust) ? fabric.densityAdjust : 1;
+    const densityMm = (o.densityMm || 0.45) * densityAdjust;
     const maxStitchMm = o.maxStitchMm || 4;
     const satinMaxWidthMm = o.satinMaxWidthMm || 3.0;
-    const pullCompMm = o.pullCompMm == null ? 0.2 : o.pullCompMm;
+    const pullCompMm = (fabric && fabric.pullCompMm != null) ? fabric.pullCompMm
+      : (o.pullCompMm == null ? 0.2 : o.pullCompMm);
     const useUnderlay = o.underlay !== false;
     const perRegionAngle = o.perRegionAngle !== false;
     const garment = o.garment || { widthIn: 5, heightIn: 2.25 };
@@ -102,9 +210,17 @@
     const maxPx = Math.max(3, maxStitchMm * pxPerFinalMm);
     const underlayStitchPx = Math.max(4, 2.0 * pxPerFinalMm);
     const underlayRowPx = Math.max(3, 2.5 * pxPerFinalMm);
+    const pullCompPx = pullCompMm * pxPerFinalMm; // fill pull-comp offset (px)
+    // Shared context for named underlay styles (used only in fabric mode).
+    const underlayCtxBase = {
+      pxPerFinalMm, maxStitch: maxPx, underlayStitchPx, underlayRowPx,
+      runningOutline: fillmod.runningOutline, tatamiFill: fillmod.tatamiFill,
+      insetRing, pcaAngleDeg,
+    };
 
     // Trim policy: trim before any travel longer than trimAtMm (FINAL mm).
-    const trimAtMm = o.trimAtMm == null ? 3.0 : o.trimAtMm;
+    const trimAtMm = (fabric && fabric.trimAtMm != null) ? fabric.trimAtMm
+      : (o.trimAtMm == null ? 3.0 : o.trimAtMm);
     const trimAtPx = trimAtMm * pxPerFinalMm; // threshold in source px
     // Cap garments sew crown-distortion-safe: center-out per color block.
     const capMode = garment && (garment.id === "hat_front" || garment.id === "beanie");
@@ -225,17 +341,37 @@
         // per shape so we never trim between a shape's own underlay and top.
         const runs = [];
         if (useUnderlay) {
-          try {
-            const inset = insetRing(poly, Math.min(2, 0.6 * pxPerFinalMm));
-            runs.push(fillmod.runningOutline(inset, { stitchLen: underlayStitchPx }));
-            if (!thin) runs.push(fillmod.tatamiFill(rings, { rowSpacing: underlayRowPx, angleDeg: angle + 90, maxStitch: maxPx, markConnectors: true }));
-          } catch (e) { /* underlay best-effort */ }
+          if (fabric) {
+            // Fabric mode: named underlay style per shape type.
+            try {
+              const style = thin ? (fabric.satinUnderlay || "center_run") : (fabric.fillUnderlay || "edge_lattice");
+              const uctx = Object.assign({ fillAngle: angle }, underlayCtxBase);
+              for (const run of underlayRuns(shape, style, uctx)) if (run && run.length) runs.push(run);
+            } catch (e) { /* underlay best-effort */ }
+          } else {
+            // No-fabric path: byte-identical to pre-Phase-2 behavior.
+            try {
+              const inset = insetRing(poly, Math.min(2, 0.6 * pxPerFinalMm));
+              runs.push(fillmod.runningOutline(inset, { stitchLen: underlayStitchPx }));
+              if (!thin) runs.push(fillmod.tatamiFill(rings, { rowSpacing: underlayRowPx, angleDeg: angle + 90, maxStitch: maxPx, markConnectors: true }));
+            } catch (e) { /* underlay best-effort */ }
+          }
         }
-        // top stitching
+        // top stitching. Fills get pull compensation via polygon offset (grow
+        // outer, shrink holes) so they sew to true size on stretchy fabric; this
+        // applies in fabric mode only (no-fabric fills stay unoffset). Satin
+        // compensates internally through pullCompMm (unchanged). Underlay/outline
+        // trace the TRUE edge and are never offset.
         let pts = [];
         try {
           if (thin) { pts = satinmod.satinColumn(poly, { spacingMm: densityMm, pxPerMm: pxPerFinalMm, pullCompMm }); nSatin++; }
-          else { pts = fillmod.tatamiFill(rings, { rowSpacing: rowPx, angleDeg: angle, maxStitch: maxPx, markConnectors: true }); nFill++; }
+          else {
+            let fillRings = rings;
+            if (fabric && pullCompPx > 0) {
+              fillRings = [offsetRing(poly, pullCompPx, true)].concat(holes.map((hh) => offsetRing(hh, pullCompPx, false)));
+            }
+            pts = fillmod.tatamiFill(fillRings, { rowSpacing: rowPx, angleDeg: angle, maxStitch: maxPx, markConnectors: true }); nFill++;
+          }
         } catch (e) { pts = []; }
         runs.push(pts);
         // finishing outline: running stitch along the outer edge (and holes)
@@ -263,5 +399,5 @@
     return { stitches, colors, widthMM: fit.targetWmm, heightMM: fit.targetHmm, stitchCount, colorCount: colors.length, _debug: { nSatin, nFill, nTrims } };
   }
 
-  return { buildQualityDesign, groupRingsIntoShapes };
+  return { buildQualityDesign, groupRingsIntoShapes, offsetRing, underlayRuns };
 });

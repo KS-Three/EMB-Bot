@@ -8,6 +8,7 @@ const Q = require("../src/quantize.js");
 const FL = require("../src/flatten.js");
 const G = require("../src/geometry.js");
 const DG = require("../src/digitize.js");
+const FB = require("../src/fabrics.js");
 const D = require("../src/dst.js");
 
 const IN = process.argv[2] || "scratch_logo.png";
@@ -51,7 +52,14 @@ for (let i = 0; i < palette.length; i++) {
   const cap = +(process.env.MAXPOLYS || 30); if (shapes.length > cap) shapes = shapes.slice(0, cap);
   if (shapes.length) regions.push({ rgb: palette[i], shapes });
 }
-const design = DG.buildQualityDesign(regions, { garment: { widthIn: +(process.env.GW || 5), heightIn: +(process.env.GH || 2.25) }, pxPerMm: 8, densityMm: 0.45, satinMaxWidthMm: 3.0, underlay: true });
+// Fabric: explicit FABRIC env wins; else derive from garment id (GID); else none.
+const GID = process.env.GID || null;
+const FABRIC = process.env.FABRIC || (GID ? FB.fabricForGarment(GID) : null);
+const fabric = FABRIC ? FB.getFabric(FABRIC) : null;
+const garment = { widthIn: +(process.env.GW || 5), heightIn: +(process.env.GH || 2.25) };
+if (GID) garment.id = GID;
+console.error(`garment ${GID || "(none)"} fabric ${fabric ? fabric.id : "(none)"}`);
+const design = DG.buildQualityDesign(regions, { garment, pxPerMm: 8, densityMm: 0.45, satinMaxWidthMm: 3.0, underlay: true, fabric });
 console.error(`design ${design.stitchCount} stitches, ${design.colorCount} colors, satin ${design._debug.nSatin} fill ${design._debug.nFill}`);
 fs.writeFileSync("scratch_flatart.dst", Buffer.from(D.encodeDST(design)));
 fs.writeFileSync("scratch_flatart_colors.json", JSON.stringify(design.colors.map((c) => [c.r, c.g, c.b])));

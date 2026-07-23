@@ -7,6 +7,7 @@ const Q = require("../src/quantize.js");
 const G = require("../src/geometry.js");
 const D = require("../src/dst.js");
 const DG = require("../src/digitize.js");
+const FB = require("../src/fabrics.js");
 
 const IN = process.argv[2] || "scratch_flat.png";
 const OUTDST = process.argv[3] || "scratch_new.dst";
@@ -21,6 +22,12 @@ const opt = {
   garment: { widthIn: +(process.env.GW || 5), heightIn: +(process.env.GH || 2.25) },
   pxPerMm: 8,
 };
+// Fabric: explicit FABRIC env wins; else derive from garment id (GID); else none.
+const GID = process.env.GID || null;
+if (GID) opt.garment.id = GID;
+const FABRIC = process.env.FABRIC || (GID ? FB.fabricForGarment(GID) : null);
+opt.fabric = FABRIC ? FB.getFabric(FABRIC) : null;
+log(`garment ${GID || "(none)"} fabric ${opt.fabric ? opt.fabric.id : "(none)"}`);
 
 function polyArea(p){let a=0;for(let i=0,j=p.length-1;i<p.length;j=i++)a+=(p[j].x*p[i].y-p[i].x*p[j].y);return Math.abs(a)/2;}
 

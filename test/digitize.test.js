@@ -159,6 +159,106 @@ test("buildQualityDesign: stitchCount excludes trim records", () => {
   assert.strictEqual(trimOnly, d._debug.nTrims, "trim records match nTrims and are excluded from stitchCount");
 });
 
+// ---- Phase 2: fabric-driven pull compensation + underlay styles ----
+
+const shoelace = (p) => { let a = 0; for (let i = 0, j = p.length - 1; i < p.length; j = i++) a += (p[j].x * p[i].y - p[i].x * p[j].y); return Math.abs(a) / 2; };
+const fab = (o) => Object.assign({ pullCompMm: 0.4, fillUnderlay: "edge_lattice", satinUnderlay: "center_run", densityAdjust: 1.0, trimAtMm: 3.0 }, o);
+const extentOf = (d) => {
+  const s = d.stitches.filter((x) => x.type === "stitch");
+  let mnx = Infinity, mxx = -Infinity, mny = Infinity, mxy = -Infinity;
+  for (const p of s) { if (p.x < mnx) mnx = p.x; if (p.x > mxx) mxx = p.x; if (p.y < mny) mny = p.y; if (p.y > mxy) mxy = p.y; }
+  return { w: mxx - mnx, h: mxy - mny };
+};
+
+test("offsetRing: outward grows area, inward shrinks, concave spike clamped", () => {
+  const s = sq(0, 0, 10);
+  const grown = DG.offsetRing(s, 1, true);
+  const shrunk = DG.offsetRing(s, 1, false);
+  assert.ok(shoelace(grown) > shoelace(s), "outward offset should grow area");
+  assert.ok(shoelace(shrunk) < shoelace(s), "inward offset should shrink area");
+  // a sharp inward notch: offsetting must not fling any vertex past the miter clamp (3*d)
+  const concave = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 50, y: 5 }, { x: 0, y: 100 }];
+  const d = 5;
+  const off = DG.offsetRing(concave, d, true);
+  for (let i = 0; i < concave.length; i++) {
+    const dist = Math.hypot(off[i].x - concave[i].x, off[i].y - concave[i].y);
+    assert.ok(dist <= 3 * d + 1e-6, "vertex " + i + " moved " + dist + " beyond miter clamp");
+  }
+});
+
+test("buildQualityDesign: fabric pull comp grows fill extents", () => {
+  const outer = sq(0, 0, 100);
+  const base = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 1, densityMm: 0.5, underlay: false, satinMaxWidthMm: 3 };
+  const region = [{ rgb: [0, 0, 0], shapes: [{ outer, holes: [] }] }];
+  const e0 = extentOf(DG.buildQualityDesign(region, Object.assign({ fabric: fab({ pullCompMm: 0 }) }, base)));
+  const e5 = extentOf(DG.buildQualityDesign(region, Object.assign({ fabric: fab({ pullCompMm: 0.5 }) }, base)));
+  assert.ok(e5.w > e0.w && e5.h > e0.h, "pull comp should grow fill extents: w " + e0.w + "->" + e5.w);
+  // grew by ~pull on each side (≈2*0.5mm in DST 0.1mm units ≈ 10, corners diagonal)
+  assert.ok(e5.w - e0.w >= 4 && e5.w - e0.w <= 30, "growth magnitude in range, got " + (e5.w - e0.w));
+});
+
+test("buildQualityDesign: fabric pull comp shrinks holes (fill reaches inward)", () => {
+  const outer = sq(0, 0, 100), hole = sq(30, 30, 40); // hole centered on design center
+  const base = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 1, densityMm: 0.5, underlay: false, satinMaxWidthMm: 3 };
+  const region = [{ rgb: [0, 0, 0], shapes: [{ outer, holes: [hole] }] }];
+  const minR = (d) => Math.min.apply(null, d.stitches.filter((s) => s.type === "stitch").map((s) => Math.hypot(s.x, s.y)));
+  const r0 = minR(DG.buildQualityDesign(region, Object.assign({ fabric: fab({ pullCompMm: 0 }) }, base)));
+  const r5 = minR(DG.buildQualityDesign(region, Object.assign({ fabric: fab({ pullCompMm: 0.6 }) }, base)));
+  assert.ok(r5 < r0, "shrunk hole lets fill reach nearer center: " + r0 + " -> " + r5);
+});
+
+test("buildQualityDesign: underlay style controls underlay stitch volume", () => {
+  const outer = sq(0, 0, 100);
+  const base = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 1, densityMm: 0.5, satinMaxWidthMm: 3, underlay: true };
+  const region = [{ rgb: [0, 0, 0], shapes: [{ outer, holes: [] }] }];
+  const count = (style) => DG.buildQualityDesign(region, Object.assign({ fabric: fab({ fillUnderlay: style, pullCompMm: 0 }) }, base)).stitchCount;
+  const none = count("none"), edge = count("edge_run"), dbl = count("double_lattice");
+  assert.ok(none < edge, "edge_run adds underlay over none: " + none + " < " + edge);
+  assert.ok(dbl > edge, "double_lattice emits more underlay than edge_run: " + dbl + " > " + edge);
+});
+
+test("buildQualityDesign: fabric densityAdjust loosens fill (fewer stitches)", () => {
+  // large square + pxPerMm 8 keeps row spacing above the 0.8px floor so the
+  // density multiplier actually changes the row count.
+  const outer = sq(0, 0, 700);
+  const base = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 8, densityMm: 0.5, underlay: false, satinMaxWidthMm: 3 };
+  const region = [{ rgb: [0, 0, 0], shapes: [{ outer, holes: [] }] }];
+  const c10 = DG.buildQualityDesign(region, Object.assign({ fabric: fab({ densityAdjust: 1.0, pullCompMm: 0 }) }, base)).stitchCount;
+  const c12 = DG.buildQualityDesign(region, Object.assign({ fabric: fab({ densityAdjust: 1.2, pullCompMm: 0 }) }, base)).stitchCount;
+  assert.ok(c12 < c10, "densityAdjust 1.2 loosens rows: " + c10 + " -> " + c12);
+});
+
+test("buildQualityDesign: fabric trimAtMm gates a mid-distance travel trim", () => {
+  const base = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 8, densityMm: 0.5, underlay: false, satinMaxWidthMm: 1 };
+  const anchor = { outer: sq(0, 0, 700), holes: [] };
+  const shapes = [anchor, { outer: sq(760, 340, 16), holes: [] }, { outer: sq(800, 340, 16), holes: [] }];
+  const region = [{ rgb: [0, 0, 0], shapes }];
+  const t3 = DG.buildQualityDesign(region, Object.assign({ fabric: fab({ trimAtMm: 3.0, fillUnderlay: "none", satinUnderlay: "none" }) }, base))._debug.nTrims;
+  const t5 = DG.buildQualityDesign(region, Object.assign({ fabric: fab({ trimAtMm: 5.0, fillUnderlay: "none", satinUnderlay: "none" }) }, base))._debug.nTrims;
+  assert.strictEqual(t3, 2, "at 3mm the dot->dot travel trims (2 total)");
+  assert.strictEqual(t5, 1, "at 5mm the same travel is a plain jump (1 total)");
+});
+
+test("buildQualityDesign: no-fabric output is byte-identical to pre-Phase-2 (snapshot)", () => {
+  const outer = sq(0, 0, 100), hole = sq(20, 20, 60);
+  const d = DG.buildQualityDesign(
+    [{ rgb: [10, 20, 30], shapes: [{ outer, holes: [hole] }] }],
+    { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 1, densityMm: 0.5, underlay: true, satinMaxWidthMm: 3 }
+  );
+  assert.strictEqual(d.stitches.length, 3176, "total record count frozen");
+  assert.strictEqual(d.stitchCount, 3076, "stitch count frozen");
+  const first20 = [
+    { x: -504, y: 504, type: "jump" }, { x: -504, y: 504, type: "stitch" }, { x: -463, y: 504, type: "stitch" },
+    { x: -422, y: 504, type: "stitch" }, { x: -382, y: 504, type: "stitch" }, { x: -341, y: 504, type: "stitch" },
+    { x: -301, y: 504, type: "stitch" }, { x: -260, y: 504, type: "stitch" }, { x: -219, y: 504, type: "stitch" },
+    { x: -179, y: 504, type: "stitch" }, { x: -138, y: 504, type: "stitch" }, { x: -97, y: 504, type: "stitch" },
+    { x: -57, y: 504, type: "stitch" }, { x: -16, y: 504, type: "stitch" }, { x: 25, y: 504, type: "stitch" },
+    { x: 65, y: 504, type: "stitch" }, { x: 106, y: 504, type: "stitch" }, { x: 146, y: 504, type: "stitch" },
+    { x: 187, y: 504, type: "stitch" }, { x: 228, y: 504, type: "stitch" },
+  ];
+  assert.deepStrictEqual(d.stitches.slice(0, 20), first20, "first 20 records unchanged");
+});
+
 test("buildQualityDesign: multi-color design sequences color changes", () => {
   const d = DG.buildQualityDesign(
     [
