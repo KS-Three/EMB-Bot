@@ -186,6 +186,16 @@ test("offsetRing: outward grows area, inward shrinks, concave spike clamped", ()
   }
 });
 
+test("offsetRing: reversed (CW) winding still grows outward, shrinks inward", () => {
+  // sq() winds one way; reverse it to get the opposite winding. offsetRing uses
+  // signed area to pick the outward sense, so both windings must behave the same.
+  const cw = sq(0, 0, 10).slice().reverse();
+  const grown = DG.offsetRing(cw, 1, true);
+  const shrunk = DG.offsetRing(cw, 1, false);
+  assert.ok(shoelace(grown) > shoelace(cw), "CW outward offset should grow area");
+  assert.ok(shoelace(shrunk) < shoelace(cw), "CW inward offset should shrink area");
+});
+
 test("buildQualityDesign: fabric pull comp grows fill extents", () => {
   const outer = sq(0, 0, 100);
   const base = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 1, densityMm: 0.5, underlay: false, satinMaxWidthMm: 3 };
@@ -205,6 +215,49 @@ test("buildQualityDesign: fabric pull comp shrinks holes (fill reaches inward)",
   const r0 = minR(DG.buildQualityDesign(region, Object.assign({ fabric: fab({ pullCompMm: 0 }) }, base)));
   const r5 = minR(DG.buildQualityDesign(region, Object.assign({ fabric: fab({ pullCompMm: 0.6 }) }, base)));
   assert.ok(r5 < r0, "shrunk hole lets fill reach nearer center: " + r0 + " -> " + r5);
+});
+
+test("offsetRing/signedArea: over-inset thin hole flips winding (collapse guard fires)", () => {
+  // A hole only 2px wide. Inset for pull comp by 3px (> half width) crosses its
+  // walls: the ring inverts and its signed area flips sign — a self-intersecting
+  // boundary the miter clamp can't prevent. This is exactly what the fill guard
+  // detects. Pre-fix, this inverted ring was fed straight to the fill.
+  const thinHole = [{ x: 49, y: 10 }, { x: 51, y: 10 }, { x: 51, y: 50 }, { x: 49, y: 50 }];
+  const a0 = DG.signedArea(thinHole);
+  const off = DG.offsetRing(thinHole, 3, false);
+  const a1 = DG.signedArea(off);
+  assert.notStrictEqual(Math.sign(a0), Math.sign(a1),
+    "sanity: over-inset thin hole must invert (sign flip): " + a0 + " -> " + a1);
+  // The guard condition used in buildQualityDesign: sign flip OR near-zero area.
+  const guardTriggers = Math.sign(a0) !== Math.sign(a1) || Math.abs(a1) < 1e-6;
+  assert.ok(guardTriggers, "collapse guard must trigger for the inverted thin hole");
+});
+
+test("buildQualityDesign: thin hole + large pull comp does not produce runaway fill (guard)", () => {
+  // Guard-invariant test. A thin hole with pull comp big enough to collapse it
+  // must NOT yield a self-crossing fill boundary. Practical checks: the region
+  // still fills (stitchCount > 0), and fill stitches stay within the (outset)
+  // outer ring's bounds — i.e. no runaway crossing from an inverted hole.
+  const outer = sq(0, 0, 100);
+  const thinHole = [{ x: 49, y: 20 }, { x: 51, y: 20 }, { x: 51, y: 80 }, { x: 49, y: 80 }];
+  const base = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 1, densityMm: 0.5, underlay: false, satinMaxWidthMm: 3 };
+  const region = [{ rgb: [0, 0, 0], shapes: [{ outer, holes: [thinHole] }] }];
+  const d = DG.buildQualityDesign(region, Object.assign({ fabric: fab({ pullCompMm: 1.0 }) }, base));
+  const sew = d.stitches.filter((s) => s.type === "stitch");
+  assert.ok(sew.length > 0, "region still fills despite the collapsing hole");
+  // Compare against the same design with NO hole: the outer outset is identical,
+  // so a well-behaved fill must not exceed that extent by more than a stitch.
+  const noHole = DG.buildQualityDesign(
+    [{ rgb: [0, 0, 0], shapes: [{ outer, holes: [] }] }],
+    Object.assign({ fabric: fab({ pullCompMm: 1.0 }) }, base)
+  );
+  const eHole = extentOf(d), eNone = extentOf(noHole);
+  // Allow a small margin for tatami row-segmentation rounding (a few DST 0.1mm
+  // units). A runaway from an inverted, self-crossing hole would blow the extent
+  // far past this; the guard keeps it hole-free and bounded.
+  assert.ok(eHole.w <= eNone.w + 12 && eHole.h <= eNone.h + 12,
+    "fill must stay within the outer outset bounds (no runaway): " +
+    JSON.stringify(eHole) + " vs " + JSON.stringify(eNone));
 });
 
 test("buildQualityDesign: underlay style controls underlay stitch volume", () => {
