@@ -580,20 +580,31 @@ const units =
     }
 
     // Row emission order. Default (sequential) flattens groups top-to-bottom —
-    // byte-identical to before. With opts.centerOut, emit rows interleaved from
-    // the center outward — [mid, mid-1, mid+1, mid-2, mid+2, …] — so fabric push
-    // radiates symmetrically. Each group has an even length (span start/end
-    // pairs), so concatenation preserves the connector-marking parity below and
-    // the jump between two non-adjacent rows lands on an even (connector) index.
+    // byte-identical to before. With opts.centerOut, emit rows in TWO sweeps that
+    // each run from the center OUTWARD over ADJACENT rows, so fabric push still
+    // radiates symmetrically from the center but connectors stay small.
+    //
+    //   Upper sweep: mid, mid-1, …, 0    (adjacent each step)
+    //   Lower sweep: mid+1, mid+2, …, last (adjacent each step)
+    //
+    // Each row's boustrophedon scan direction is keyed to its ABSOLUTE spatial
+    // rowIndex (set above), so adjacent rows always have opposite scan parity:
+    // one ends where the next begins → the inter-row connector is short, exactly
+    // like normal boustrophedon. The ONLY long reposition is the single
+    // sweep-to-sweep move (top edge → back near center). This replaces the old
+    // interleaved order [mid, mid-1, mid+1, mid-2, …], whose non-adjacent, same-
+    // parity hops (e.g. mid-1 → mid+1) were nearly all full-width travel jumps.
+    //
+    // Each group has an even length (span start/end pairs), so concatenation
+    // preserves the connector-marking parity below and every inter-row move lands
+    // on an even (connector) index.
     let orderedGroups = rowGroups;
     if (opts.centerOut && rowGroups.length > 1) {
       const n = rowGroups.length;
       const mid = Math.floor(n / 2);
-      orderedGroups = [rowGroups[mid]];
-      for (let step = 1; orderedGroups.length < n; step++) {
-        if (mid - step >= 0) orderedGroups.push(rowGroups[mid - step]);
-        if (mid + step < n) orderedGroups.push(rowGroups[mid + step]);
-      }
+      orderedGroups = [];
+      for (let i = mid; i >= 0; i--) orderedGroups.push(rowGroups[i]); // upper sweep
+      for (let i = mid + 1; i < n; i++) orderedGroups.push(rowGroups[i]); // lower sweep
     }
     const key = [];
     for (const grp of orderedGroups) for (const p of grp) key.push(p);

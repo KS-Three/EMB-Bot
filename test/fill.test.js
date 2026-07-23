@@ -62,6 +62,30 @@ test("centerOut: same rows as sequential but interleaved-from-center emission or
   assert.ok(Math.abs(ctr[0].y - 100) <= 10 + 1e-6, "center-out starts near mid-y, got y=" + ctr[0].y);
 });
 
+test("centerOut: two-sweep keeps inter-row repositions small (few long travels)", () => {
+  // tall rectangle 40 wide x 200 tall, horizontal rows every 10 → 21 rows.
+  // Each row is one span (x: 0..40); bbox width is 40. Big maxStitch so no
+  // densification — inter-row connector moves stay as single points.
+  const tall = [[{x:0,y:0},{x:40,y:0},{x:40,y:200},{x:0,y:200}]];
+  const opts = { rowSpacing:10, angleDeg:0, maxStitch:1000 };
+  const ctr = fill.tatamiFill(tall, Object.assign({ centerOut:true }, opts));
+  const xs = ctr.map(p => p.x);
+  const bboxW = Math.max(...xs) - Math.min(...xs);
+  const thresh = 0.6 * bboxW; // "long" reposition = > 60% of fill width
+  // Connector (inter-row) moves land on EVEN indices (span-start arrivals);
+  // within-row spans land on odd indices. Count only long inter-row moves.
+  let longReposition = 0;
+  for (let i = 2; i < ctr.length; i += 2) {
+    const d = Math.hypot(ctr[i].x - ctr[i-1].x, ctr[i].y - ctr[i-1].y);
+    if (d > thresh) longReposition++;
+  }
+  // Two-sweep: only the single sweep-to-sweep move is long (top edge → center).
+  // The OLD interleaved order made nearly HALF the ~20 inter-row hops long
+  // (full-width, same-parity jumps like mid-1 → mid+1), so this FAILS on
+  // interleaved (~19) and PASSES on two-sweep (1).
+  assert.ok(longReposition <= 2, "expected <=2 long inter-row repositions, got " + longReposition);
+});
+
 test("centerOut default off is byte-identical to sequential", () => {
   const tall = [[{x:0,y:0},{x:40,y:0},{x:40,y:200},{x:0,y:200}]];
   const opts = { rowSpacing:10, angleDeg:0, maxStitch:1000 };

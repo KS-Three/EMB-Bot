@@ -303,15 +303,19 @@ test("buildQualityDesign: no-fabric single-shape output frozen (snapshot, Phase-
     [{ rgb: [10, 20, 30], shapes: [{ outer, holes: [hole] }] }],
     { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 1, densityMm: 0.5, underlay: true, satinMaxWidthMm: 3 }
   );
-  // Phase 4 RE-FREEZE: this fixture's shape is ~100mm final (>15mm both dims), so
-  // its TOP fill now sews center-out. Row COVERAGE is unchanged (total record
-  // count still 3176; first 20 records are the sequential underlay, unchanged),
-  // but reordering rows center-out makes some inter-row repositions long enough
-  // to become travel JUMPS instead of sewn segments — so stitchCount dropped
-  // 3076→2953 (those records flipped stitch→jump). nCenterOut===1 here.
+  // Phase 4 RE-FREEZE (two-sweep center-out): this fixture's shape is ~100mm
+  // final (>15mm both dims), so its TOP fill sews center-out. Row COVERAGE is
+  // unchanged (total record count still 3176; first 20 records are the sequential
+  // underlay, unchanged). The two-sweep order keeps inter-row connectors small
+  // (adjacent rows, alternating scan parity), so only the single sweep-to-sweep
+  // reposition is long enough to become a travel JUMP. Compared with the earlier
+  // INTERLEAVED order — whose many non-adjacent hops flipped stitch→jump and sank
+  // stitchCount to 2953 — two-sweep reclassifies far fewer moves as travel, so
+  // stitchCount rose 2953→3075 (just shy of the 3076 sequential baseline; the one
+  // remaining jump is the center reposition). nCenterOut===1 here.
   assert.strictEqual(d._debug.nCenterOut, 1, "fixture shape is a large fill → center-out");
   assert.strictEqual(d.stitches.length, 3176, "total record count frozen");
-  assert.strictEqual(d.stitchCount, 2953, "stitch count frozen (Phase 4 re-freeze)");
+  assert.strictEqual(d.stitchCount, 3075, "stitch count frozen (Phase 4 two-sweep re-freeze)");
   const first20 = [
     { x: -504, y: 504, type: "jump" }, { x: -504, y: 504, type: "stitch" }, { x: -463, y: 504, type: "stitch" },
     { x: -422, y: 504, type: "stitch" }, { x: -382, y: 504, type: "stitch" }, { x: -341, y: 504, type: "stitch" },
