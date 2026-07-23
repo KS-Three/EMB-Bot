@@ -419,15 +419,36 @@
     return inside;
   }
 
-  // Extend each end of the spine along its end-tangent, staying inside the ring,
-  // so the satin reaches the stroke terminals (the skeleton retracts from ends).
+  // Extend each end of the spine to the terminal, but aim PERPENDICULAR to the
+  // terminal's cut edge (not along the veering skeleton tail) so the spine ends
+  // pointing square into the cap — giving a clean squared terminal instead of a
+  // spine that shoots into the corner.
   function extendSpine(spine, ring, maxExtPx) {
+    const n = ring.length;
+    // outward-normal of the ring edge first hit by the ray from (px,py) along (dx,dy)
+    const capNormal = (px, py, dx, dy) => {
+      let bt = Infinity, ex = 0, ey = 0;
+      for (let k = 0; k < n; k++) {
+        const a = ring[k], b = ring[(k + 1) % n];
+        const t = lineSegX(px, py, dx, dy, a.x, a.y, b.x, b.y);
+        if (t === null || t <= EPS) continue;
+        if (t < bt) { bt = t; ex = b.x - a.x; ey = b.y - a.y; }
+      }
+      if (!isFinite(bt)) return null;
+      let nx = ey, ny = -ex; const nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl;
+      if (nx * dx + ny * dy < 0) { nx = -nx; ny = -ny; } // point outward (with the ray)
+      return { x: nx, y: ny };
+    };
     const ext = (pIdx, qIdx) => {
       const p = spine[pIdx], q = spine[qIdx];
       let dx = p.x - q.x, dy = p.y - q.y; const L = Math.hypot(dx, dy) || 1; dx /= L; dy /= L;
+      // direction to grow: perpendicular to the cut edge the tangent points at
+      // (falls back to the tangent itself if no edge is found)
+      const cap = capNormal(p.x, p.y, dx, dy);
+      const gx = cap ? cap.x : dx, gy = cap ? cap.y : dy;
       let added = null;
       for (let d = 2; d <= maxExtPx; d += 2) {
-        const c = { x: p.x + dx * d, y: p.y + dy * d };
+        const c = { x: p.x + gx * d, y: p.y + gy * d };
         if (pointInRing(c, ring)) added = c; else break;
       }
       return added;
@@ -464,7 +485,17 @@
     // Reach the terminals: extend each end along its tangent (skeleton retracts
     // from stroke ends by ~half the stroke width).
     const halfWidthPx = estimateWidthMm(ring, 1) / 2;
-    if (halfWidthPx > EPS) spine = extendSpine(spine, ring, halfWidthPx * 0.8);
+    if (halfWidthPx > EPS) {
+      // The raw skeleton VEERS toward the corner of an angled terminal (it bends
+      // to the nearest boundary). Drop that unreliable tail (~one stroke width
+      // at each end), then re-extend STRAIGHT along the now-stable stroke
+      // direction, clipped at the terminal edge — so the spine ends pointing the
+      // way the stroke actually runs, not off into the corner.
+      const L0 = chainLength(spine);
+      const trim = halfWidthPx;
+      if (L0 > 2.6 * trim) spine = subChainByArc(spine, trim, L0 - trim);
+      spine = extendSpine(spine, ring, halfWidthPx * 2.6);
+    }
     const denom = spacingMm * pxPerMm;
     const stepPx = denom > 0 ? denom : 4;
     const spineLen = chainLength(spine);
