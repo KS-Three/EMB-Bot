@@ -71,8 +71,10 @@ test("buildQualityDesign: trim inserted for long travel, not for short hop", () 
   const base = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 8, densityMm: 0.5, underlay: false, satinMaxWidthMm: 1 };
   const near = DG.buildQualityDesign([{ rgb: [0, 0, 0], shapes: [anchor, { outer: sq(760, 340, 16), holes: [] }, { outer: sq(784, 340, 16), holes: [] }] }], base);
   const far = DG.buildQualityDesign([{ rgb: [0, 0, 0], shapes: [anchor, { outer: sq(760, 340, 16), holes: [] }, { outer: sq(1100, 340, 16), holes: [] }] }], base);
-  assert.strictEqual(near._debug.nTrims, 1, "close dots: only the anchor->dot travel trims");
-  assert.strictEqual(far._debug.nTrims, 2, "far dot adds one more trim between the two dots");
+  // The 700px anchor is a large fill → sews center-out and cuts its one
+  // sweep-to-sweep reposition (a trim), so every count below is +1 vs pre-Phase-4.
+  assert.strictEqual(near._debug.nTrims, 2, "anchor center-out trim + the anchor->dot travel trim");
+  assert.strictEqual(far._debug.nTrims, 3, "far dot adds one more trim between the two dots");
 });
 
 test("buildQualityDesign: scrambled shapes emit in nearest-neighbor order (input-order independent)", () => {
@@ -144,7 +146,8 @@ test("buildQualityDesign: no redundant trim right after a color change (color-ch
   while (k < d.stitches.length && d.stitches[k].type === "jump") k++;
   assert.strictEqual(d.stitches[k].type, "stitch", "no redundant trim after color change; got " + d.stitches[k].type);
   // total trims: 1 color-change trim + 1 legitimate within-block (color 1) trim
-  assert.strictEqual(d._debug.nTrims, 2, "expected exactly 2 trims (1 color change + 1 within-block), got " + d._debug.nTrims);
+  // + 1 center-out reposition trim (the 700px anchor is a large center-out fill).
+  assert.strictEqual(d._debug.nTrims, 3, "expected exactly 3 trims (1 color change + 1 within-block + 1 center-out), got " + d._debug.nTrims);
 });
 
 test("buildQualityDesign: stitchCount excludes trim records", () => {
@@ -288,8 +291,9 @@ test("buildQualityDesign: fabric trimAtMm gates a mid-distance travel trim", () 
   const region = [{ rgb: [0, 0, 0], shapes }];
   const t3 = DG.buildQualityDesign(region, Object.assign({ fabric: fab({ trimAtMm: 3.0, fillUnderlay: "none", satinUnderlay: "none" }) }, base))._debug.nTrims;
   const t5 = DG.buildQualityDesign(region, Object.assign({ fabric: fab({ trimAtMm: 5.0, fillUnderlay: "none", satinUnderlay: "none" }) }, base))._debug.nTrims;
-  assert.strictEqual(t3, 2, "at 3mm the dot->dot travel trims (2 total)");
-  assert.strictEqual(t5, 1, "at 5mm the same travel is a plain jump (1 total)");
+  // +1 in each: the 700px anchor is a large center-out fill → one reposition trim.
+  assert.strictEqual(t3, 3, "at 3mm the dot->dot travel trims (2) + anchor center-out trim");
+  assert.strictEqual(t5, 2, "at 5mm the dot->dot is a plain jump (1) + anchor center-out trim");
 });
 
 // Snapshot: a SINGLE-shape region. Phase 3 changed the default from one
@@ -442,6 +446,20 @@ test("buildQualityDesign: large fill (>15mm) sews center-out; first row near sha
   // shape spans roughly DST y ±500; center-out first row must be within ~1 row
   // spacing of center (0), an edge start would be near ±500.
   assert.ok(Math.abs(first.y) < 150, "center-out first fill row near shape center, got y=" + first.y);
+});
+
+test("buildQualityDesign: center-out fill cuts its sweep reposition (one trim per center-out fill)", () => {
+  // Single large square → one center-out fill, no color change, no other travel.
+  const outer = sq(0, 0, 800);
+  const base = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 8, densityMm: 0.5, underlay: false, satinMaxWidthMm: 3 };
+  const d = DG.buildQualityDesign([{ rgb: [0, 0, 0], shapes: [{ outer, holes: [] }] }], base);
+  assert.ok(d._debug.nCenterOut >= 1, "fixture is a large center-out fill");
+  // exactly one trim, inside the fill run, matching the center-out count.
+  assert.strictEqual(d._debug.nTrims, d._debug.nCenterOut, "one trim per center-out fill");
+  assert.ok(d.stitches.some((s) => s.type === "trim"), "a type:'trim' record exists in the fill run");
+  // trims are excluded from stitchCount (Phase 1 invariant preserved).
+  assert.strictEqual(d.stitchCount, d.stitches.filter((s) => s.type === "stitch").length);
+  assert.strictEqual(d.stitches.filter((s) => s.type === "trim").length, d._debug.nTrims);
 });
 
 test("buildQualityDesign: small fill (<15mm) is NOT center-out", () => {

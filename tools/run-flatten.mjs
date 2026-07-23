@@ -60,7 +60,7 @@ const garment = { widthIn: +(process.env.GW || 5), heightIn: +(process.env.GH ||
 if (GID) garment.id = GID;
 console.error(`garment ${GID || "(none)"} fabric ${fabric ? fabric.id : "(none)"}`);
 const design = DG.buildQualityDesign(regions, { garment, pxPerMm: 8, densityMm: 0.45, satinMaxWidthMm: 3.0, underlay: true, fabric });
-console.error(`design ${design.stitchCount} stitches, ${design.colorCount} colors, satin ${design._debug.nSatin} fill ${design._debug.nFill} centerOut ${design._debug.nCenterOut}`);
+console.error(`design ${design.stitchCount} stitches, ${design.colorCount} colors, satin ${design._debug.nSatin} fill ${design._debug.nFill} centerOut ${design._debug.nCenterOut} trims ${design._debug.nTrims}`);
 fs.writeFileSync("scratch_flatart.dst", Buffer.from(D.encodeDST(design)));
 fs.writeFileSync("scratch_flatart_colors.json", JSON.stringify(design.colors.map((c) => [c.r, c.g, c.b])));
 console.log(JSON.stringify({ palette: palette.length, stitches: design.stitchCount, sizeMM: [+design.widthMM.toFixed(1), +design.heightMM.toFixed(1)] }));

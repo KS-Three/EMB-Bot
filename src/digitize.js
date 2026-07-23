@@ -259,7 +259,10 @@
       stitches.push({ x: f.x, y: f.y, type: "jump" });
       for (const q of pts) {
         const d = T(q);
-        stitches.push({ x: d.x, y: d.y, type: q.travel ? "jump" : "stitch" });
+        // A point tagged q.trim (the center-out sweep-to-sweep reposition) emits
+        // a trim so the long float is cut, not left as a bare needle-up jump.
+        if (q.trim) { stitches.push({ x: d.x, y: d.y, type: "trim" }); nTrims++; }
+        else stitches.push({ x: d.x, y: d.y, type: q.travel ? "jump" : "stitch" });
       }
       lastPx = pts[pts.length - 1];
     }

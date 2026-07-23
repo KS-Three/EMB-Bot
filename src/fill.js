@@ -109,11 +109,24 @@
     // preserves the connector-marking parity below and every inter-row move lands
     // on an even (connector) index.
     let orderedGroups = rowGroups;
+    // Index (into `key`) of the FIRST point of the lower sweep — the destination
+    // of the single sweep-to-sweep reposition (top edge → back near center).
+    // That one long move is a needle-up float; tag its destination point with
+    // trim:true so the encoder cuts the thread there instead of leaving a bare
+    // jump. -1 when there is no lower sweep (≤1 row group, or n where the lower
+    // sweep is empty), so no trim is emitted for tiny fills.
+    let lowerSweepStartIdx = -1;
     if (opts.centerOut && rowGroups.length > 1) {
       const n = rowGroups.length;
       const mid = Math.floor(n / 2);
       orderedGroups = [];
       for (let i = mid; i >= 0; i--) orderedGroups.push(rowGroups[i]); // upper sweep
+      if (mid + 1 < n) {
+        // count upper-sweep points; that offset is where the lower sweep begins.
+        let upperCount = 0;
+        for (let i = mid; i >= 0; i--) upperCount += rowGroups[i].length;
+        lowerSweepStartIdx = upperCount;
+      }
       for (let i = mid + 1; i < n; i++) orderedGroups.push(rowGroups[i]); // lower sweep
     }
     const key = [];
@@ -138,9 +151,11 @@
       const dy = b.y - a.y;
       const dist = Math.hypot(dx, dy);
       const isConnector = i % 2 === 0;
+      const isSweepBoundary = i === lowerSweepStartIdx;
       if (markConnectors && isConnector && maxStitch && dist > maxStitch) {
         const p = rotate(b, cosP, sinP);
         p.travel = true;
+        if (isSweepBoundary) p.trim = true; // cut the sweep-to-sweep float
         out.push(p);
         continue;
       }
@@ -151,7 +166,9 @@
           out.push(rotate({ x: a.x + dx * t, y: a.y + dy * t }, cosP, sinP));
         }
       }
-      out.push(rotate(b, cosP, sinP));
+      const pb = rotate(b, cosP, sinP);
+      if (isSweepBoundary) pb.trim = true; // cut the sweep-to-sweep float
+      out.push(pb);
     }
     return out;
   }

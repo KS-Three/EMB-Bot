@@ -86,6 +86,31 @@ test("centerOut: two-sweep keeps inter-row repositions small (few long travels)"
   assert.ok(longReposition <= 2, "expected <=2 long inter-row repositions, got " + longReposition);
 });
 
+test("centerOut: exactly ONE trim flag, at the lower-sweep start (center reposition)", () => {
+  // tall rectangle 40 wide x 200 tall, rows every 10 → 21 row groups.
+  // Two-sweep: upper mid..0, lower mid+1..last. The single sweep-to-sweep move
+  // (top edge → back near center) is the only long float and must be tagged trim.
+  const tall = [[{x:0,y:0},{x:40,y:0},{x:40,y:200},{x:0,y:200}]];
+  const opts = { rowSpacing:10, angleDeg:0, maxStitch:1000, markConnectors:true, centerOut:true };
+  const ctr = fill.tatamiFill(tall, opts);
+  const trims = ctr.map((p,i)=>({p,i})).filter(({p}) => p.trim === true);
+  assert.strictEqual(trims.length, 1, "exactly one trim flag in two-sweep output");
+  const { p: tp, i: ti } = trims[0];
+  // the trim point is the lower-sweep start → near shape vertical center (y≈100)
+  assert.ok(Math.abs(tp.y - 100) <= 10 + 1e-6, "trim point near shape center, got y=" + tp.y);
+  // it follows the last upper-sweep point, which is near an edge (y≈0)
+  assert.ok(Math.abs(ctr[ti-1].y - 0) <= 10 + 1e-6, "point before trim near top edge, got y=" + ctr[ti-1].y);
+});
+
+test("centerOut: single row group (no lower sweep) has ZERO trim flags", () => {
+  // short rectangle → only one row group at rowSpacing 10; no sweep-to-sweep move.
+  const shortRect = [[{x:0,y:0},{x:40,y:0},{x:40,y:5},{x:0,y:5}]];
+  const opts = { rowSpacing:10, angleDeg:0, maxStitch:1000, markConnectors:true, centerOut:true };
+  const ctr = fill.tatamiFill(shortRect, opts);
+  assert.ok(ctr.length > 0, "expected some points");
+  assert.strictEqual(ctr.filter(p => p.trim === true).length, 0, "no trim flag when there is no lower sweep");
+});
+
 test("centerOut default off is byte-identical to sequential", () => {
   const tall = [[{x:0,y:0},{x:40,y:0},{x:40,y:200},{x:0,y:200}]];
   const opts = { rowSpacing:10, angleDeg:0, maxStitch:1000 };
