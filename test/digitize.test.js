@@ -121,6 +121,32 @@ test("buildQualityDesign: trim emitted before every color change", () => {
   assert.ok(d._debug.nTrims >= 1);
 });
 
+test("buildQualityDesign: no redundant trim right after a color change (color-change trim already cut)", () => {
+  // Large anchor fixes overall scale; color 1 also has a far dot to force one
+  // LEGITIMATE within-block travel-trim. Color 2's only shape is placed FAR
+  // from where color 1 ended — on the buggy code this fired a SECOND trim
+  // immediately after the color change (thread was already cut → redundant).
+  const base = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 8, densityMm: 0.5, underlay: false, satinMaxWidthMm: 1 };
+  const d = DG.buildQualityDesign(
+    [
+      { rgb: [200, 0, 0], shapes: [{ outer: sq(0, 0, 700), holes: [] }, { outer: sq(1100, 340, 16), holes: [] }] },
+      { rgb: [0, 0, 200], shapes: [{ outer: sq(1100, -500, 16), holes: [] }] },
+    ],
+    base
+  );
+  const ci = d.stitches.findIndex((s) => s.type === "color");
+  assert.ok(ci > 0, "expected a color-change record");
+  // the record before the color change is always the color-change trim
+  assert.strictEqual(d.stitches[ci - 1].type, "trim", "color change must be preceded by its trim");
+  // after the color change, the next non-jump record must be a stitch (the
+  // leading travel jump is allowed), NOT another trim — no double cut
+  let k = ci + 1;
+  while (k < d.stitches.length && d.stitches[k].type === "jump") k++;
+  assert.strictEqual(d.stitches[k].type, "stitch", "no redundant trim after color change; got " + d.stitches[k].type);
+  // total trims: 1 color-change trim + 1 legitimate within-block (color 1) trim
+  assert.strictEqual(d._debug.nTrims, 2, "expected exactly 2 trims (1 color change + 1 within-block), got " + d._debug.nTrims);
+});
+
 test("buildQualityDesign: stitchCount excludes trim records", () => {
   const d = DG.buildQualityDesign(
     [{ rgb: [0, 0, 0], shapes: [{ outer: sq(0, 0, 700), holes: [] }, { outer: sq(760, 340, 16), holes: [] }, { outer: sq(1100, 340, 16), holes: [] }] }],

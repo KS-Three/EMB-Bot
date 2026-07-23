@@ -12,7 +12,7 @@ Current files never command a trim: travel is jump-only, which drags thread
 loops across the design on a real machine. Pro files trim deliberately.
 1. **Trim commands:** new `{type:"trim"}` handling. DST: emit the Tajima
    convention — 3 consecutive zero-delta jump records (machines read ≥3 jumps
-   as trim). EXP: zero-delta `0x80 0x04` control. PES: best-effort (existing
+   as trim). EXP: zero-delta `0x80 0x03` control. PES: best-effort (existing
    long-form jump flag).
 2. **Trim policy in `buildQualityDesign`:** trim before any travel longer than
    `trimAtMm` (default 3.0mm, later fabric-preset-driven) and before every

@@ -114,6 +114,7 @@
     let first = true, nSatin = 0, nFill = 0, nTrims = 0;
     let lastPx = { x: cx, y: cy }; // last emitted point in px; origin = design center (DST 0,0)
     let started = false;           // no trim before the very first stitch of the design
+    let justChangedColor = false;  // color change already cut the thread; skip the next per-shape travel-trim
 
     function pushRun(pts) {
       if (!pts || !pts.length) return;
@@ -169,6 +170,7 @@
         emitTrimAtLast();
         const last = stitches[stitches.length - 1] || { x: 0, y: 0 };
         stitches.push({ x: last.x, y: last.y, type: "color" });
+        justChangedColor = true; // thread already cut; don't double-trim the first shape of this block
       }
       first = false;
       colors.push({ r: r.rgb[0], g: r.rgb[1], b: r.rgb[2], name: "Color " + (colors.length + 1) });
@@ -247,10 +249,11 @@
         const nonEmpty = runs.filter((rn) => rn && rn.length);
         if (!nonEmpty.length) continue;
         const entry = nonEmpty[0][0]; // first sewn point of this shape (px)
-        if (started) {
+        if (started && !justChangedColor) {
           const d = Math.hypot(entry.x - lastPx.x, entry.y - lastPx.y);
           if (d > trimAtPx) emitTrimAtLast(); // long travel → trim at last pos before jump
         }
+        justChangedColor = false; // only the first shape after a color change is exempt
         for (const rn of nonEmpty) pushRun(rn);
         started = true;
       }
