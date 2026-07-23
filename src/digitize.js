@@ -81,7 +81,7 @@
     // filter empty; accept {shapes:[{outer,holes}]} or legacy {polygons:[ring]}
     const regions = colorRegions.filter((r) => r && ((r.shapes && r.shapes.length) || (r.polygons && r.polygons.length)));
     for (const r of regions) if (!r.polygons) r.polygons = r.shapes.map((s) => s.outer);
-    if (!regions.length) return { stitches: [{ x: 0, y: 0, type: "end" }], colors: [], widthMM: 0, heightMM: 0, stitchCount: 0, colorCount: 0, _debug: { nSatin: 0, nFill: 0 } };
+    if (!regions.length) return { stitches: [{ x: 0, y: 0, type: "end" }], colors: [], widthMM: 0, heightMM: 0, stitchCount: 0, colorCount: 0, _debug: { nSatin: 0, nFill: 0, nTrims: 0 } };
 
     // sequence: light colors first, dark last (dark sits on top) unless overridden
     if (o.darkOnTop !== false) regions.sort((a, b) => (b.rgb[0] + b.rgb[1] + b.rgb[2]) - (a.rgb[0] + a.rgb[1] + a.rgb[2]));
@@ -103,9 +103,17 @@
     const underlayStitchPx = Math.max(4, 2.0 * pxPerFinalMm);
     const underlayRowPx = Math.max(3, 2.5 * pxPerFinalMm);
 
+    // Trim policy: trim before any travel longer than trimAtMm (FINAL mm).
+    const trimAtMm = o.trimAtMm == null ? 3.0 : o.trimAtMm;
+    const trimAtPx = trimAtMm * pxPerFinalMm; // threshold in source px
+    // Cap garments sew crown-distortion-safe: center-out per color block.
+    const capMode = garment && (garment.id === "hat_front" || garment.id === "beanie");
+
     const stitches = [];
     const colors = [];
-    let first = true, nSatin = 0, nFill = 0;
+    let first = true, nSatin = 0, nFill = 0, nTrims = 0;
+    let lastPx = { x: cx, y: cy }; // last emitted point in px; origin = design center (DST 0,0)
+    let started = false;           // no trim before the very first stitch of the design
 
     function pushRun(pts) {
       if (!pts || !pts.length) return;
@@ -115,17 +123,62 @@
         const d = T(q);
         stitches.push({ x: d.x, y: d.y, type: q.travel ? "jump" : "stitch" });
       }
+      lastPx = pts[pts.length - 1];
+    }
+    // Emit a trim command at the current (last) position — zero-travel; the
+    // following jump carries the machine to the next shape.
+    function emitTrimAtLast() {
+      const tp = T(lastPx);
+      stitches.push({ x: tp.x, y: tp.y, type: "trim" });
+      nTrims++;
+    }
+
+    // Order a color block's shapes: cap center-out, else greedy nearest-neighbor
+    // by centroid starting from `startPx` (previous block's last emitted point).
+    function orderShapes(list, startPx) {
+      if (list.length <= 1) return list.slice();
+      const cents = list.map((s) => centroid(s.outer));
+      if (capMode) {
+        const idx = list.map((_, i) => i);
+        idx.sort((a, b) => {
+          const da = Math.abs(cents[a].x - cx), db = Math.abs(cents[b].x - cx);
+          if (da !== db) return da - db;          // |x - center| ascending
+          return cents[b].y - cents[a].y;         // tiebreak y DESCENDING (bottom-up)
+        });
+        return idx.map((i) => list[i]);
+      }
+      const remaining = list.map((s, i) => ({ s, c: cents[i] }));
+      const out = [];
+      let cur = { x: startPx.x, y: startPx.y };
+      while (remaining.length) {
+        let best = 0, bd = Infinity;
+        for (let i = 0; i < remaining.length; i++) {
+          const d = Math.hypot(remaining[i].c.x - cur.x, remaining[i].c.y - cur.y);
+          if (d < bd) { bd = d; best = i; }
+        }
+        const pick = remaining.splice(best, 1)[0];
+        out.push(pick.s);
+        cur = pick.c;
+      }
+      return out;
     }
 
     for (const r of regions) {
-      if (!first) { const last = stitches[stitches.length - 1] || { x: 0, y: 0 }; stitches.push({ x: last.x, y: last.y, type: "color" }); }
+      if (!first) {
+        // Always trim before a color change (thread must be cut), then change.
+        emitTrimAtLast();
+        const last = stitches[stitches.length - 1] || { x: 0, y: 0 };
+        stitches.push({ x: last.x, y: last.y, type: "color" });
+      }
       first = false;
       colors.push({ r: r.rgb[0], g: r.rgb[1], b: r.rgb[2], name: "Color " + (colors.length + 1) });
       // shapes: [{outer, holes}] (hole-aware) — or bare polygons for back-compat
-      const shapes = r.shapes || r.polygons.map((p) => ({ outer: p, holes: [] }));
+      const shapesRaw = r.shapes || r.polygons.map((p) => ({ outer: p, holes: [] }));
+      const shapes0 = shapesRaw.filter((s) => s && s.outer && s.outer.length >= 4);
       const allRings = [];
-      for (const s of shapes) { allRings.push(s.outer); for (const hh of s.holes) allRings.push(hh); }
+      for (const s of shapes0) { allRings.push(s.outer); for (const hh of (s.holes || [])) allRings.push(hh); }
       const angle = perRegionAngle ? pcaAngleDeg(allRings) : 45;
+      const shapes = orderShapes(shapes0, lastPx);
       for (const shape of shapes) {
         const poly = shape.outer;
         if (!poly || poly.length < 4) continue;
@@ -166,35 +219,45 @@
         }
         const rings = [poly].concat(holes);
 
-        // underlay (same thread color, laid first)
+        // Build this shape's runs in sew order; trim (if needed) is decided once
+        // per shape so we never trim between a shape's own underlay and top.
+        const runs = [];
         if (useUnderlay) {
           try {
             const inset = insetRing(poly, Math.min(2, 0.6 * pxPerFinalMm));
-            pushRun(fillmod.runningOutline(inset, { stitchLen: underlayStitchPx }));
-            if (!thin) pushRun(fillmod.tatamiFill(rings, { rowSpacing: underlayRowPx, angleDeg: angle + 90, maxStitch: maxPx, markConnectors: true }));
+            runs.push(fillmod.runningOutline(inset, { stitchLen: underlayStitchPx }));
+            if (!thin) runs.push(fillmod.tatamiFill(rings, { rowSpacing: underlayRowPx, angleDeg: angle + 90, maxStitch: maxPx, markConnectors: true }));
           } catch (e) { /* underlay best-effort */ }
         }
-
         // top stitching
         let pts = [];
         try {
           if (thin) { pts = satinmod.satinColumn(poly, { spacingMm: densityMm, pxPerMm: pxPerFinalMm, pullCompMm }); nSatin++; }
           else { pts = fillmod.tatamiFill(rings, { rowSpacing: rowPx, angleDeg: angle, maxStitch: maxPx, markConnectors: true }); nFill++; }
         } catch (e) { pts = []; }
-        pushRun(pts);
-
+        runs.push(pts);
         // finishing outline: running stitch along the outer edge (and holes)
         if (o.outline) {
           try {
             const edgeLen = Math.max(3, 1.8 * pxPerFinalMm);
-            for (const ring of rings) pushRun(fillmod.runningOutline(ring, { stitchLen: edgeLen }));
+            for (const ring of rings) runs.push(fillmod.runningOutline(ring, { stitchLen: edgeLen }));
           } catch (e) { /* best-effort */ }
         }
+
+        const nonEmpty = runs.filter((rn) => rn && rn.length);
+        if (!nonEmpty.length) continue;
+        const entry = nonEmpty[0][0]; // first sewn point of this shape (px)
+        if (started) {
+          const d = Math.hypot(entry.x - lastPx.x, entry.y - lastPx.y);
+          if (d > trimAtPx) emitTrimAtLast(); // long travel → trim at last pos before jump
+        }
+        for (const rn of nonEmpty) pushRun(rn);
+        started = true;
       }
     }
     stitches.push({ x: 0, y: 0, type: "end" });
     const stitchCount = stitches.filter((s) => s.type === "stitch").length;
-    return { stitches, colors, widthMM: fit.targetWmm, heightMM: fit.targetHmm, stitchCount, colorCount: colors.length, _debug: { nSatin, nFill } };
+    return { stitches, colors, widthMM: fit.targetWmm, heightMM: fit.targetHmm, stitchCount, colorCount: colors.length, _debug: { nSatin, nFill, nTrims } };
   }
 
   return { buildQualityDesign, groupRingsIntoShapes };

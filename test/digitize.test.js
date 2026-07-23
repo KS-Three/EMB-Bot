@@ -63,6 +63,76 @@ test("buildQualityDesign: outline option adds finishing edge run", () => {
   assert.ok(withOutline.stitchCount > noOutline.stitchCount + 50, "outline should add perimeter stitches");
 });
 
+test("buildQualityDesign: trim inserted for long travel, not for short hop", () => {
+  // fitScale upscales tiny-only designs, so a large anchor shape fixes the
+  // overall scale; two small dots then have a controllable FINAL separation.
+  // The anchor->dot travel always trims; the dot->dot travel trims only when far.
+  const anchor = { outer: sq(0, 0, 700), holes: [] };
+  const base = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 8, densityMm: 0.5, underlay: false, satinMaxWidthMm: 1 };
+  const near = DG.buildQualityDesign([{ rgb: [0, 0, 0], shapes: [anchor, { outer: sq(760, 340, 16), holes: [] }, { outer: sq(784, 340, 16), holes: [] }] }], base);
+  const far = DG.buildQualityDesign([{ rgb: [0, 0, 0], shapes: [anchor, { outer: sq(760, 340, 16), holes: [] }, { outer: sq(1100, 340, 16), holes: [] }] }], base);
+  assert.strictEqual(near._debug.nTrims, 1, "close dots: only the anchor->dot travel trims");
+  assert.strictEqual(far._debug.nTrims, 2, "far dot adds one more trim between the two dots");
+});
+
+test("buildQualityDesign: scrambled shapes emit in nearest-neighbor order (input-order independent)", () => {
+  const A = { outer: sq(0, 0, 40), holes: [] };
+  const B = { outer: sq(300, 0, 40), holes: [] };
+  const C = { outer: sq(600, 20, 40), holes: [] };
+  const base = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 8, densityMm: 0.5, underlay: false, satinMaxWidthMm: 1 };
+  const seq = (shapes) => DG.buildQualityDesign([{ rgb: [0, 0, 0], shapes }], base).stitches.filter((s) => s.type === "stitch").map((s) => s.x + "," + s.y).join(";");
+  const p1 = seq([A, B, C]);
+  const p2 = seq([C, A, B]);
+  const p3 = seq([B, C, A]);
+  assert.strictEqual(p1, p2, "output must not depend on input order (geometric NN)");
+  assert.strictEqual(p1, p3);
+  // NN from design center visits the middle shape (B, x~300) first: its first
+  // stitch x is near 0 (centered), far from the +/- edges of A and C.
+  const firstX = DG.buildQualityDesign([{ rgb: [0, 0, 0], shapes: [A, B, C] }], base).stitches.filter((s) => s.type === "stitch")[0].x;
+  assert.ok(Math.abs(firstX) < 900, "first sewn shape is the one nearest center, got x=" + firstX);
+});
+
+test("buildQualityDesign: cap garment sews center shape first (center-out)", () => {
+  const left = { outer: sq(0, 50, 30), holes: [] };
+  const center = { outer: sq(200, 50, 30), holes: [] };
+  const right = { outer: sq(400, 50, 30), holes: [] };
+  const d = DG.buildQualityDesign(
+    [{ rgb: [0, 0, 0], shapes: [left, center, right] }],
+    { garment: { id: "hat_front", widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, densityMm: 0.5, underlay: false, satinMaxWidthMm: 1 }
+  );
+  const first = d.stitches.filter((s) => s.type === "stitch")[0];
+  // center shape is at the design center → its first stitch x is near 0; the
+  // left/right shapes would start hundreds of DST units away.
+  assert.ok(Math.abs(first.x) < 200, "cap should sew the center shape first, got x=" + first.x);
+});
+
+test("buildQualityDesign: trim emitted before every color change", () => {
+  const d = DG.buildQualityDesign(
+    [
+      { rgb: [200, 0, 0], shapes: [{ outer: sq(0, 0, 40), holes: [] }] },
+      { rgb: [0, 0, 200], shapes: [{ outer: sq(60, 0, 40), holes: [] }] },
+    ],
+    { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 4, densityMm: 0.5, underlay: false, satinMaxWidthMm: 1 }
+  );
+  // the trim must be emitted immediately before the color-change record
+  const ci = d.stitches.findIndex((s) => s.type === "color");
+  assert.ok(ci > 0);
+  assert.strictEqual(d.stitches[ci - 1].type, "trim", "a trim must precede the color change");
+  assert.ok(d._debug.nTrims >= 1);
+});
+
+test("buildQualityDesign: stitchCount excludes trim records", () => {
+  const d = DG.buildQualityDesign(
+    [{ rgb: [0, 0, 0], shapes: [{ outer: sq(0, 0, 700), holes: [] }, { outer: sq(760, 340, 16), holes: [] }, { outer: sq(1100, 340, 16), holes: [] }] }],
+    { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 8, densityMm: 0.5, underlay: false, satinMaxWidthMm: 1 }
+  );
+  assert.ok(d._debug.nTrims > 0, "expected some trims");
+  const stitchOnly = d.stitches.filter((s) => s.type === "stitch").length;
+  const trimOnly = d.stitches.filter((s) => s.type === "trim").length;
+  assert.strictEqual(d.stitchCount, stitchOnly, "stitchCount counts only stitch records");
+  assert.strictEqual(trimOnly, d._debug.nTrims, "trim records match nTrims and are excluded from stitchCount");
+});
+
 test("buildQualityDesign: multi-color design sequences color changes", () => {
   const d = DG.buildQualityDesign(
     [

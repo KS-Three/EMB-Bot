@@ -22,6 +22,10 @@
     return Uint8Array.from([0x80, 0x04, sb(dx), sb(dy)]);
   }
 
+  function trimRecord() {
+    return Uint8Array.from([0x80, 0x03]);
+  }
+
   function stitchRecord(dx, dy) {
     return Uint8Array.from([sb(dx), sb(dy)]);
   }
@@ -44,7 +48,28 @@
         continue;
       }
 
-      const isJump = st.type === "jump" || st.type === "trim";
+      // Trim: emit the Melco trim control, then any positional delta as
+      // jump record(s). Separate the trim command from the travel move.
+      if (st.type === "trim") {
+        records.push(trimRecord());
+        let dx = targetX - lastX;
+        let dy = targetY - lastY;
+        while (Math.abs(dx) > MAX_DELTA || Math.abs(dy) > MAX_DELTA) {
+          const stepX = clampStep(dx);
+          const stepY = clampStep(dy);
+          records.push(jumpRecord(stepX, stepY));
+          lastX += stepX;
+          lastY += stepY;
+          dx = targetX - lastX;
+          dy = targetY - lastY;
+        }
+        if (dx !== 0 || dy !== 0) records.push(jumpRecord(dx, dy));
+        lastX = targetX;
+        lastY = targetY;
+        continue;
+      }
+
+      const isJump = st.type === "jump";
 
       let dx = targetX - lastX;
       let dy = targetY - lastY;

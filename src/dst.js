@@ -116,6 +116,26 @@
     return delta;
   }
 
+  // Split a trim's total (dx,dy) into >=3 jump records, each within +/-MAX_DELTA,
+  // whose signed deltas sum exactly to (dx,dy). Tajima convention: a machine
+  // reads >=3 consecutive jumps as a trim command. Zero delta -> 3 zero jumps.
+  function splitTrim(dx, dy) {
+    const n = Math.max(
+      3,
+      Math.ceil(Math.abs(dx) / MAX_DELTA),
+      Math.ceil(Math.abs(dy) / MAX_DELTA)
+    );
+    const steps = [];
+    let accX = 0, accY = 0;
+    for (let i = 1; i <= n; i++) {
+      const sx = Math.round((dx * i) / n) - accX;
+      const sy = Math.round((dy * i) / n) - accY;
+      steps.push([sx, sy]);
+      accX += sx; accY += sy;
+    }
+    return steps;
+  }
+
   function encodeDST(design) {
     const stitches = (design && design.stitches) || [];
     const colors = (design && design.colors) || [];
@@ -142,8 +162,18 @@
         if (targetY > yMax) yMax = targetY;
       }
 
-      // trim encoded as jump for v1.
-      const flag = st.type === "color" ? "color" : st.type === "jump" || st.type === "trim" ? "jump" : "stitch";
+      // Trim: Tajima convention is >=3 consecutive jump records covering the
+      // move delta. Always emit at least 3 jumps so the machine reads a trim.
+      if (st.type === "trim") {
+        for (const [sx, sy] of splitTrim(targetX - lastX, targetY - lastY)) {
+          records.push(encodeRecord(sx, sy, "jump"));
+        }
+        lastX = targetX;
+        lastY = targetY;
+        continue;
+      }
+
+      const flag = st.type === "color" ? "color" : st.type === "jump" ? "jump" : "stitch";
 
       // Emit intermediate jump records for oversized moves.
       let dx = targetX - lastX;
