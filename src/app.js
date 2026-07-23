@@ -36,6 +36,13 @@
   // merge (a merged color drops its override — spec'd best-effort).
   var swatchAngles = {};
 
+  // Text mode: per-letter fixed stitch angle overrides, keyed by index into the
+  // NON-SPACE letters (the exact sequence EMB.textToLetters returns — it omits
+  // whitespace glyphs). Blank/absent for an index = auto (per-shape PCA) unless
+  // the design-wide "Default fill angle" is set. Kept keyed by position so
+  // values stay put while editing the text; cleared when the text goes empty.
+  var letterAngles = {};
+
   // --- DOM refs (filled on DOMContentLoaded) ------------------------------
   var el = {};
 
@@ -350,17 +357,51 @@
     return { regions: regions, pxPerMm: pxPerMm };
   }
 
+  // The "non-space letters" of a string — the exact sequence EMB.textToLetters
+  // renders (it omits whitespace glyphs, which produce no polygons). The
+  // per-letter angle inputs iterate this same sequence, so input index i lines
+  // up with letters[i] on Generate. Kept as one helper so the UI and the
+  // Generate path can never drift.
+  function nonSpaceChars(text) {
+    return Array.from(text || "").filter(function (ch) {
+      return !/\s/.test(ch);
+    });
+  }
+
   // --- TEXT pipeline: text -> ColorRegion[] -------------------------------
+  // Per-LETTER region building. Each rendered (non-space) glyph becomes its own
+  // group of hole-aware shapes; a per-letter angle override (or the design-wide
+  // default) is stamped on every shape of that letter. All letters live in ONE
+  // black region so it stitches as a single color.
+  //   letterAngles[i]  — index i is into the non-space letters returned by
+  //                      EMB.textToLetters (whitespace omitted), matching the
+  //                      per-letter input row built in renderLetterAngles().
   function textToRegionsPipeline(font, text) {
-    // textToRegions returns a single black region as a flat ring list
-    // ([{ rgb, polygons }]). Measure pxPerMm from those rings (unchanged),
-    // then group the rings into hole-aware shapes (outer + counters) for the
-    // quality engine.
-    var regions = EMB.textToRegions(font, text, { sizePx: TEXT_SIZE_PX });
-    var pxPerMm = regionsLongSidePx(regions) / NOMINAL_LONG_MM;
-    var rings = (regions[0] && regions[0].polygons) || [];
-    var shapes = EMB.groupRingsIntoShapes(rings, 4);
-    return { regions: [{ rgb: [0, 0, 0], shapes: shapes }], pxPerMm: pxPerMm };
+    var letters = EMB.textToLetters(font, text, { sizePx: TEXT_SIZE_PX });
+    var def = el.textAngle ? el.textAngle.value : ""; // "" = auto
+    var shapes = [];
+    var allPolys = [];
+    letters.forEach(function (L, i) {
+      var per = letterAngles[i];
+      var ang = (per !== undefined && per !== "")
+        ? Number(per)
+        : (def !== "" ? Number(def) : null);
+      var grp = EMB.groupRingsIntoShapes(L.polygons, 4);
+      for (var s = 0; s < grp.length; s++) {
+        if (ang != null && isFinite(ang)) grp[s].angleOverride = ang;
+        shapes.push(grp[s]);
+      }
+      for (var p = 0; p < L.polygons.length; p++) allPolys.push(L.polygons[p]);
+    });
+    // pxPerMm from the full glyph bbox (same convention as before: map the long
+    // side to NOMINAL_LONG_MM; fit handles the final physical size).
+    var pxPerMm = regionsLongSidePx([{ polygons: allPolys }]) / NOMINAL_LONG_MM;
+    var satinSlantDeg = el.satinSlant ? (Number(el.satinSlant.value) || 0) : 0;
+    return {
+      regions: [{ rgb: [0, 0, 0], shapes: shapes }],
+      pxPerMm: pxPerMm,
+      satinSlantDeg: satinSlantDeg,
+    };
   }
 
   // --- Read current control values ----------------------------------------
@@ -406,6 +447,9 @@
           satinMaxWidthMm: 3.0,
           underlay: opts.underlay,
           outline: opts.outline,
+          // Design-wide satin slant (text mode). Absent/0 for image mode is a
+          // no-op in the engine (it reads o.satinSlantDeg || 0 per shape).
+          satinSlantDeg: regionData.satinSlantDeg || 0,
         });
         currentDesign = design;
         currentGarment = opts.garment;
@@ -425,6 +469,7 @@
         setStatus("Type some text first.", true);
         return;
       }
+      renderLetterAngles(); // keep the per-letter row in sync with the text
       var fontUrl = el.font.value;
       setStatus("Loading font…");
       EMB.loadFont(fontUrl)
@@ -586,6 +631,56 @@
     el.imageControls.style.display = mode === "image" ? "block" : "none";
     el.textControls.style.display = mode === "text" ? "block" : "none";
     if (el.flatPanel) el.flatPanel.style.display = mode === "image" ? "block" : "none";
+    renderLetterAngles();
+  }
+
+  // Rebuild the per-letter angle input row. One labeled number input per
+  // non-space character of the current text (placeholder "auto", 0..179).
+  // Values are keyed by position in `letterAngles`, so they stay stable while
+  // the text is edited. Shown only in text mode with non-empty text; the whole
+  // field hides otherwise. Called on text/font change, mode switch, and
+  // Generate. Index i here matches EMB.textToLetters()[i] (both skip spaces).
+  function renderLetterAngles() {
+    var box = el.letterAngles;
+    if (!box) return;
+    var chars = nonSpaceChars(el.text ? el.text.value : "");
+    var show = getMode() === "text" && chars.length > 0;
+    if (el.letterAnglesField) {
+      el.letterAnglesField.style.display = show ? "block" : "none";
+    }
+    box.innerHTML = "";
+    if (!show) return;
+
+    chars.forEach(function (ch, i) {
+      var item = document.createElement("div");
+      item.className = "letter-angle-item";
+
+      var lbl = document.createElement("span");
+      lbl.className = "letter-lbl";
+      lbl.textContent = ch;
+
+      var inp = document.createElement("input");
+      inp.type = "number";
+      inp.className = "letter-angle";
+      inp.min = "0";
+      inp.max = "179";
+      inp.step = "1";
+      inp.placeholder = "auto";
+      inp.title = "Stitch angle for this letter (0–179°). Blank = auto per-shape.";
+      if (letterAngles[i] != null) inp.value = letterAngles[i];
+      inp.addEventListener("input", function () {
+        var v = inp.value.trim();
+        if (v === "") { delete letterAngles[i]; return; }
+        var n = parseFloat(v);
+        if (!isFinite(n)) { delete letterAngles[i]; return; }
+        // wrap into 0..179 (angle is mod 180); leave the field showing raw entry
+        letterAngles[i] = ((n % 180) + 180) % 180;
+      });
+
+      item.appendChild(lbl);
+      item.appendChild(inp);
+      box.appendChild(item);
+    });
   }
 
   // --- Fabric preset -------------------------------------------------------
@@ -667,6 +762,11 @@
     el.flatSwatches = $("flat-swatches");
     el.text = $("text-input");
     el.font = $("font");
+    el.satinSlant = $("satin-slant");
+    el.textAngle = $("text-angle");
+    el.letterAngles = $("letter-angles");
+    el.letterAnglesField = $("letter-angles-field");
+    el.textHelp = $("text-help");
     el.garment = $("garment");
     el.fabric = $("fabric");
     el.fabricNotes = $("fabric-notes");
@@ -688,6 +788,15 @@
     el.modeImage.addEventListener("change", applyMode);
     el.modeText.addEventListener("change", applyMode);
     applyMode();
+
+    // Text mode: rebuild the per-letter angle row when the text changes; a
+    // fully-cleared text resets the stored overrides. The font can change which
+    // glyphs render, so refresh the row on font change too.
+    el.text.addEventListener("input", function () {
+      if (nonSpaceChars(el.text.value).length === 0) letterAngles = {};
+      renderLetterAngles();
+    });
+    el.font.addEventListener("change", renderLetterAngles);
 
     // Fabric: garment change re-applies the garment default; a manual fabric
     // pick persists until the next garment change (just refresh the caption).

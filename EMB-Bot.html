@@ -266,6 +266,40 @@
       background: #fff;
     }
     #flat-panel .buttons { margin-top: 4px; }
+
+    /* --- Per-letter angle row (text mode) --- */
+    #letter-angles {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .letter-angle-item {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+    .letter-angle-item .letter-lbl {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+      max-width: 46px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .letter-angle-item input.letter-angle {
+      width: 46px;
+      padding: 3px 4px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      font: inherit;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      color: var(--ink);
+      background: #fff;
+      text-align: center;
+    }
   </style>
 
   <!-- CDN libraries FIRST (classic scripts).
@@ -335,6 +369,32 @@
           <label class="lbl" for="font">Font</label>
           <select id="font"></select>
         </div>
+        <div class="field">
+          <label class="lbl" for="satin-slant">Satin slant</label>
+          <select id="satin-slant">
+            <option value="0" selected>Upright</option>
+            <option value="-20">Lean left</option>
+            <option value="20">Lean right</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="lbl" for="text-angle">Default fill angle</label>
+          <select id="text-angle">
+            <option value="" selected>Auto</option>
+            <option value="0">0°</option>
+            <option value="45">45°</option>
+            <option value="90">90°</option>
+            <option value="135">135°</option>
+          </select>
+        </div>
+        <div class="field" id="letter-angles-field">
+          <label class="lbl">Per-letter angles</label>
+          <div id="letter-angles"></div>
+        </div>
+        <p class="fabric-notes" id="text-help">
+          Set a stitch angle per letter (blank = auto per-shape). Satin slant
+          leans thin strokes italic-style.
+        </p>
       </div>
 
       <div class="field">
