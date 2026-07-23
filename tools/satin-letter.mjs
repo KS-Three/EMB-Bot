@@ -31,13 +31,22 @@ function area(p) { let a = 0; for (let i = 0, j = p.length - 1; i < p.length; j 
 polys.sort((a, b) => area(b) - area(a));
 const ring = polys[0];
 
+if (process.env.SPINE) globalThis.__DBG_SPINE = 1;
 const fn = process.env.MEDIAL === "0" ? S.satinColumn : S.medialSatin;
 const pts = fn.call(S, ring, { spacingMm: SPACING, pxPerMm: PXPERMM, pullCompMm: PULL });
+const spine = globalThis.__spine || [];
 
 // bounds
 let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9;
 for (const q of ring) { minX = Math.min(minX, q.x); minY = Math.min(minY, q.y); maxX = Math.max(maxX, q.x); maxY = Math.max(maxY, q.y); }
-const pad = 30, sc = 1;
+let pad = 30, sc = 1;
+// ZOOM="frac x0,y0,x1,y1" as fractions of the bbox to crop+magnify a terminal.
+if (process.env.ZOOM) {
+  const [fx0, fy0, fx1, fy1] = process.env.ZOOM.split(",").map(Number);
+  const bx = minX, by = minY, bw = maxX - minX, bh = maxY - minY;
+  minX = bx + fx0 * bw; maxX = bx + fx1 * bw; minY = by + fy0 * bh; maxY = by + fy1 * bh;
+  sc = 620 / Math.max(maxX - minX, maxY - minY); pad = 14;
+}
 const W = Math.ceil((maxX - minX) * sc) + pad * 2, H = Math.ceil((maxY - minY) * sc) + pad * 2;
 const px = new Uint8ClampedArray(W * H * 4); for (let i = 0; i < px.length; i += 4) { px[i] = px[i + 1] = px[i + 2] = 255; px[i + 3] = 255; }
 const TX = (x) => pad + (x - minX) * sc, TY = (y) => pad + (y - minY) * sc;
@@ -51,6 +60,9 @@ for (let k = 0; k + 1 < pts.length; k += 2) {
   line(TX(a.x), TY(a.y), TX(b.x), TY(b.y), 20, 80, 200);
   if (k + 2 < pts.length) { const c = pts[k + 2]; line(TX(b.x), TY(b.y), TX(c.x), TY(c.y), 235, 170, 120); }
 }
+// spine overlay (green), endpoints (red)
+for (let k = 0; k + 1 < spine.length; k++) line(TX(spine[k].x), TY(spine[k].y), TX(spine[k + 1].x), TY(spine[k + 1].y), 20, 160, 20);
+if (spine.length) { for (const e of [spine[0], spine[spine.length - 1]]) for (let dxp = -2; dxp <= 2; dxp++) for (let dyp = -2; dyp <= 2; dyp++) set(TX(e.x) + dxp, TY(e.y) + dyp, 220, 20, 20); }
 fs.writeFileSync(OUT, encodePNG(W, H, px));
 
 // diagnostics

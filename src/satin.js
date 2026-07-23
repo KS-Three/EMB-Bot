@@ -464,12 +464,13 @@
     // Reach the terminals: extend each end along its tangent (skeleton retracts
     // from stroke ends by ~half the stroke width).
     const halfWidthPx = estimateWidthMm(ring, 1) / 2;
-    if (halfWidthPx > EPS) spine = extendSpine(spine, ring, halfWidthPx * 1.3);
+    if (halfWidthPx > EPS) spine = extendSpine(spine, ring, halfWidthPx * 0.8);
     const denom = spacingMm * pxPerMm;
     const stepPx = denom > 0 ? denom : 4;
     const spineLen = chainLength(spine);
     if (!(spineLen > EPS)) return satinColumn(ring, opts);
     spine = resampleChain(spine, Math.max(2, Math.ceil(spineLen / stepPx)));
+    if (typeof globalThis !== "undefined" && globalThis.__DBG_SPINE) globalThis.__spine = spine.map((p) => ({ x: p.x, y: p.y }));
 
     const N = spine.length;
     // Per-station stitch normal from the local spine tangent (+ optional slant).
@@ -482,29 +483,51 @@
       if (slantRad) { const cs = Math.cos(slantRad), sn = Math.sin(slantRad); const rx = nx * cs - ny * sn, ry = nx * sn + ny * cs; nx = rx; ny = ry; }
       norm[t] = { x: nx, y: ny };
     }
-    // Square off the terminals: within ~one stroke width of each end, HOLD the
-    // stitch angle at the "shoulder" so the cap stitches stay parallel to the
-    // last good ones (rather than rotating with the curling spine and fanning
-    // into a crossing at the tip).
-    const arc = new Array(N); arc[0] = 0;
-    for (let t = 1; t < N; t++) arc[t] = arc[t - 1] + Math.hypot(spine[t].x - spine[t - 1].x, spine[t].y - spine[t - 1].y);
-    const total = arc[N - 1];
-    const capLen = halfWidthPx * 1.4;
-    let head = 0; while (head < N - 1 && arc[head] < capLen) head++;
-    let tail = N - 1; while (tail > 0 && (total - arc[tail]) < capLen) tail--;
-    const clampCaps = head < tail; // only when there's a stable middle to borrow from
+    // Smooth the stitch-direction ANGLE along the column (unwrapped; the normal
+    // is undirected → period π). Gradual rotation follows curves for a natural
+    // fan, but can't suddenly flip at a spine kink/terminal — which is exactly
+    // what produced crossed stitches — and keeps the tails parallel.
+    const ang = new Array(N);
+    for (let t = 0; t < N; t++) ang[t] = Math.atan2(norm[t].y, norm[t].x);
+    for (let t = 1; t < N; t++) {
+      while (ang[t] - ang[t - 1] > Math.PI / 2) ang[t] -= Math.PI;
+      while (ang[t] - ang[t - 1] < -Math.PI / 2) ang[t] += Math.PI;
+    }
+    for (let pass = 0; pass < 6; pass++) {
+      const cp = ang.slice();
+      for (let t = 1; t < N - 1; t++) ang[t] = (cp[t - 1] + cp[t] + cp[t + 1]) / 3;
+    }
+
+    // Do two segments properly cross (share interior points, not just endpoints)?
+    const cross2 = (a, b, c, d) => {
+      const o = (p, q, r) => Math.sign((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x));
+      const o1 = o(a, b, c), o2 = o(a, b, d), o3 = o(c, d, a), o4 = o(c, d, b);
+      return o1 !== o2 && o3 !== o4 && o1 !== 0 && o2 !== 0 && o3 !== 0 && o4 !== 0;
+    };
 
     const out = [];
     const offset = (pullCompMm * pxPerMm) / 2;
+    let prevA = null, prevB = null;
     for (let t = 0; t < N; t++) {
       const s = spine[t];
-      let n = norm[t];
-      if (clampCaps) { if (t < head) n = norm[head]; else if (t > tail) n = norm[tail]; }
-      const hitP = rayRingHit(ring, s.x, s.y, n.x, n.y);
-      const hitN = rayRingHit(ring, s.x, s.y, -n.x, -n.y);
-      if (!hitP || !hitN) continue;
-      let pA = hitP, pB = hitN;
-      if (Math.hypot(pA.x - pB.x, pA.y - pB.y) < 0.5) continue;
+      // Within a small window around the smoothed (continuous) angle, take the
+      // SHORTEST crossing. Continuity forbids sudden flips; shortest kills the
+      // long diagonals that appear when a ray runs along the stroke near a curl.
+      let bestLen = Infinity, bA = null, bB = null;
+      for (let da = -25; da <= 25; da += 5) {
+        const a = ang[t] + da * Math.PI / 180;
+        const dx = Math.cos(a), dy = Math.sin(a);
+        const hp = rayRingHit(ring, s.x, s.y, dx, dy);
+        const hn = rayRingHit(ring, s.x, s.y, -dx, -dy);
+        if (!hp || !hn) continue;
+        const L = Math.hypot(hp.x - hn.x, hp.y - hn.y);
+        if (L < bestLen) { bestLen = L; bA = hp; bB = hn; }
+      }
+      if (!bA || bestLen < 0.5) continue;
+      let pA = bA, pB = bB;
+      // Reject a stitch that would cross the previous one (kills the terminal X).
+      if (prevA && cross2(prevA, prevB, pA, pB)) continue;
+      prevA = pA; prevB = pB;
       if (offset > 0) { const mx = (pA.x + pB.x) / 2, my = (pA.y + pB.y) / 2; pA = pushOut(pA, mx, my, offset); pB = pushOut(pB, mx, my, offset); }
       if (t % 2 === 0) { out.push(pA); out.push(pB); } else { out.push(pB); out.push(pA); }
     }
