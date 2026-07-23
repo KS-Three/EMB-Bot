@@ -397,8 +397,17 @@
         // Per-SHAPE stitch angle: a fixed color override wins; otherwise this
         // shape's OWN PCA axis (outer+holes) so each element's stitches follow
         // its own length/axis. perRegionAngle:false disables auto (fixed 45°).
-        const angle = (regionAngle != null) ? regionAngle
+        // Precedence: per-shape override (e.g. per-letter) > region override >
+        // per-shape auto PCA > fixed 45°.
+        const shapeOv = (shape.angleOverride != null && isFinite(shape.angleOverride))
+          ? (((shape.angleOverride % 180) + 180) % 180) : null;
+        const angle = (shapeOv != null) ? shapeOv
+          : (regionAngle != null) ? regionAngle
           : (perRegionAngle ? pcaAngleDeg(rings) : 45);
+        // Satin slant (italic-style lean off perpendicular): per-shape wins, else
+        // the design-wide default. 0 = perpendicular.
+        const slantDeg = (shape.slantDeg != null && isFinite(shape.slantDeg))
+          ? shape.slantDeg : (o.satinSlantDeg || 0);
 
         // Build this shape's runs in sew order; trim (if needed) is decided once
         // per shape so we never trim between a shape's own underlay and top.
@@ -427,7 +436,7 @@
         // trace the TRUE edge and are never offset.
         let pts = [];
         try {
-          if (thin) { pts = satinmod.satinColumn(poly, { spacingMm: densityMm, pxPerMm: pxPerFinalMm, pullCompMm }); nSatin++; }
+          if (thin) { pts = satinmod.satinColumn(poly, { spacingMm: densityMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg }); nSatin++; }
           else {
             let fillRings = rings;
             if (fabric && pullCompPx > 0) {

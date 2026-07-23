@@ -73,6 +73,20 @@ test("straight uniform bar: every cross is ~vertical, length ~= width", () => {
   }
 });
 
+test("satin slantDeg leans the crosses off perpendicular", () => {
+  const bar = [{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 200, y: 20 }, { x: 0, y: 20 }];
+  const meanAngleFromVertical = (pts) => {
+    const cs = crosses(pts);
+    let s = 0, n = 0;
+    for (const [a, b] of cs) { s += Math.atan2(Math.abs(b.x - a.x), Math.abs(b.y - a.y)); n++; }
+    return n ? (s / n) * 180 / Math.PI : 0; // 0 == vertical (perpendicular to the bar)
+  };
+  const upright = meanAngleFromVertical(satin.satinColumn(bar, { spacingMm: 2, pxPerMm: 4 }));
+  const slanted = meanAngleFromVertical(satin.satinColumn(bar, { spacingMm: 2, pxPerMm: 4, slantDeg: 30 }));
+  assert.ok(upright < 8, `upright crosses ~vertical, got ${upright.toFixed(1)}deg`);
+  assert.ok(slanted > 18 && slanted < 42, `slanted crosses ~30deg off vertical, got ${slanted.toFixed(1)}deg`);
+});
+
 test("tapered bar: crosses are perpendicular to the local centerline tangent", () => {
   const taper = [{ x: 40, y: 190 }, { x: 360, y: 150 }, { x: 362, y: 175 }, { x: 42, y: 215 }];
   const pts = satin.satinColumn(taper, { spacingMm: 2, pxPerMm: 4 });

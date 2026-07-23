@@ -399,6 +399,17 @@ test("buildQualityDesign: angleOverride 90 forces BOTH shapes vertical", () => {
   assert.ok(o.right.sy > o.right.sx * 2, "right vertical at 90deg: " + JSON.stringify(o.right));
 });
 
+test("buildQualityDesign: per-SHAPE angleOverride controls each shape independently", () => {
+  // Force each shape AGAINST its natural orientation to prove per-shape control:
+  // the wide-left bar forced vertical, the tall-right bar forced horizontal.
+  const wide = { outer: [{ x: 0, y: 0 }, { x: 240, y: 0 }, { x: 240, y: 60 }, { x: 0, y: 60 }], holes: [], angleOverride: 90 };
+  const tall = { outer: [{ x: 1000, y: 0 }, { x: 1060, y: 0 }, { x: 1060, y: 240 }, { x: 1000, y: 240 }], holes: [], angleOverride: 0 };
+  const d = DG.buildQualityDesign([{ rgb: [0, 0, 0], shapes: [wide, tall] }], twoShapeOpts);
+  const o = orientHalves(d);
+  assert.ok(o.left.sy > o.left.sx * 2, "wide shape forced VERTICAL per-shape: " + JSON.stringify(o.left));
+  assert.ok(o.right.sx > o.right.sy * 2, "tall shape forced HORIZONTAL per-shape: " + JSON.stringify(o.right));
+});
+
 test("buildQualityDesign: opts.angleOverrides keyed by ORIGINAL region index (survives light→dark sort)", () => {
   // Two colors given light-first; the internal sort reorders them dark-first.
   // The override map is keyed by the ORIGINAL input order, so index 1 (the dark

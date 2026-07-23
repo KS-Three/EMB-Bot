@@ -210,6 +210,9 @@
     const spacingMm = opts.spacingMm;
     const pxPerMm = opts.pxPerMm;
     const pullCompMm = opts.pullCompMm || 0;
+    // slantDeg leans the cross direction off perpendicular (italic-style satin):
+    // 0 = perpendicular (default), + / - lean toward the stroke direction.
+    const slantRad = ((opts.slantDeg || 0) * Math.PI) / 180;
 
     const [i, j] = farthestBoundaryPair(ring);
     const [A, B] = splitBoundary(ring, i, j);
@@ -260,8 +263,13 @@
       let tl = Math.hypot(tx, ty);
       if (tl <= EPS) continue; // no meaningful tangent here
       tx /= tl; ty /= tl;
-      // Normal = tangent rotated 90deg.
-      const nx = -ty, ny = tx;
+      // Normal = tangent rotated 90deg, then leaned by the slant angle.
+      let nx = -ty, ny = tx;
+      if (slantRad) {
+        const cs = Math.cos(slantRad), sn = Math.sin(slantRad);
+        const rx = nx * cs - ny * sn, ry = nx * sn + ny * cs;
+        nx = rx; ny = ry;
+      }
 
       // Perpendicular ray hits each rail; fall back to nearest rail point.
       let pA = railHit(A, s.x, s.y, nx, ny) || nearestOnChain(A, s.x, s.y);

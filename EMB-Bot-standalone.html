@@ -1743,6 +1743,9 @@ const units =
     const spacingMm = opts.spacingMm;
     const pxPerMm = opts.pxPerMm;
     const pullCompMm = opts.pullCompMm || 0;
+    // slantDeg leans the cross direction off perpendicular (italic-style satin):
+    // 0 = perpendicular (default), + / - lean toward the stroke direction.
+    const slantRad = ((opts.slantDeg || 0) * Math.PI) / 180;
 
     const [i, j] = farthestBoundaryPair(ring);
     const [A, B] = splitBoundary(ring, i, j);
@@ -1793,8 +1796,13 @@ const units =
       let tl = Math.hypot(tx, ty);
       if (tl <= EPS) continue; // no meaningful tangent here
       tx /= tl; ty /= tl;
-      // Normal = tangent rotated 90deg.
-      const nx = -ty, ny = tx;
+      // Normal = tangent rotated 90deg, then leaned by the slant angle.
+      let nx = -ty, ny = tx;
+      if (slantRad) {
+        const cs = Math.cos(slantRad), sn = Math.sin(slantRad);
+        const rx = nx * cs - ny * sn, ry = nx * sn + ny * cs;
+        nx = rx; ny = ry;
+      }
 
       // Perpendicular ray hits each rail; fall back to nearest rail point.
       let pA = railHit(A, s.x, s.y, nx, ny) || nearestOnChain(A, s.x, s.y);
@@ -3419,8 +3427,17 @@ const _sm_fillmod = _sm_req
         // Per-SHAPE stitch angle: a fixed color override wins; otherwise this
         // shape's OWN PCA axis (outer+holes) so each element's stitches follow
         // its own length/axis. perRegionAngle:false disables auto (fixed 45°).
-        const angle = (regionAngle != null) ? regionAngle
+        // Precedence: per-shape override (e.g. per-letter) > region override >
+        // per-shape auto PCA > fixed 45°.
+        const shapeOv = (shape.angleOverride != null && isFinite(shape.angleOverride))
+          ? (((shape.angleOverride % 180) + 180) % 180) : null;
+        const angle = (shapeOv != null) ? shapeOv
+          : (regionAngle != null) ? regionAngle
           : (perRegionAngle ? pcaAngleDeg(rings) : 45);
+        // Satin slant (italic-style lean off perpendicular): per-shape wins, else
+        // the design-wide default. 0 = perpendicular.
+        const slantDeg = (shape.slantDeg != null && isFinite(shape.slantDeg))
+          ? shape.slantDeg : (o.satinSlantDeg || 0);
 
         // Build this shape's runs in sew order; trim (if needed) is decided once
         // per shape so we never trim between a shape's own underlay and top.
@@ -3449,7 +3466,7 @@ const _sm_fillmod = _sm_req
         // trace the TRUE edge and are never offset.
         let pts = [];
         try {
-          if (thin) { pts = satinmod.satinColumn(poly, { spacingMm: densityMm, pxPerMm: pxPerFinalMm, pullCompMm }); nSatin++; }
+          if (thin) { pts = satinmod.satinColumn(poly, { spacingMm: densityMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg }); nSatin++; }
           else {
             let fillRings = rings;
             if (fabric && pullCompPx > 0) {
