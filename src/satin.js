@@ -294,6 +294,205 @@
     return out;
   }
 
+  // ---- Medial-axis (skeleton) satin, for strokes that double back (S, curves) ----
+
+  // Scanline-fill a ring into a binary grid at `gscale` px-per-unit.
+  function rasterize(ring, gscale, minX, minY, gw, gh) {
+    const mask = new Uint8Array(gw * gh);
+    const n = ring.length;
+    for (let j = 0; j < gh; j++) {
+      const wy = minY + (j + 0.5) / gscale;
+      const xs = [];
+      for (let k = 0; k < n; k++) {
+        const a = ring[k], b = ring[(k + 1) % n];
+        if ((a.y <= wy && b.y > wy) || (b.y <= wy && a.y > wy)) {
+          xs.push(a.x + (b.x - a.x) * ((wy - a.y) / (b.y - a.y)));
+        }
+      }
+      xs.sort((p, q) => p - q);
+      for (let m = 0; m + 1 < xs.length; m += 2) {
+        let i0 = Math.ceil((xs[m] - minX) * gscale - 0.5);
+        let i1 = Math.floor((xs[m + 1] - minX) * gscale - 0.5);
+        if (i0 < 0) i0 = 0; if (i1 >= gw) i1 = gw - 1;
+        for (let i = i0; i <= i1; i++) mask[j * gw + i] = 1;
+      }
+    }
+    return mask;
+  }
+
+  // Zhang–Suen thinning to a 1px skeleton (in place; returns the same array).
+  function thin(mask, w, h) {
+    const P = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? 0 : mask[y * w + x];
+    let changed = true, guard = 0;
+    while (changed && guard++ < 200) {
+      changed = false;
+      for (let step = 0; step < 2; step++) {
+        const del = [];
+        for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+          if (!mask[y * w + x]) continue;
+          const p2 = P(x, y - 1), p3 = P(x + 1, y - 1), p4 = P(x + 1, y), p5 = P(x + 1, y + 1),
+            p6 = P(x, y + 1), p7 = P(x - 1, y + 1), p8 = P(x - 1, y), p9 = P(x - 1, y - 1);
+          const nb = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+          if (nb < 2 || nb > 6) continue;
+          const seq = [p2, p3, p4, p5, p6, p7, p8, p9, p2];
+          let A = 0; for (let k = 0; k < 8; k++) if (seq[k] === 0 && seq[k + 1] === 1) A++;
+          if (A !== 1) continue;
+          if (step === 0) { if (p2 * p4 * p6 !== 0 || p4 * p6 * p8 !== 0) continue; }
+          else { if (p2 * p4 * p8 !== 0 || p2 * p6 * p8 !== 0) continue; }
+          del.push(y * w + x);
+        }
+        if (del.length) { changed = true; for (const d of del) mask[d] = 0; }
+      }
+    }
+    return mask;
+  }
+
+  // Longest path through the skeleton via double BFS (graph diameter). Returns
+  // an ordered list of grid [i,j] pixels — the stroke spine.
+  function skeletonPath(skel, w, h) {
+    const nbrs = (x, y) => {
+      const r = [];
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue;
+        const nx = x + dx, ny = y + dy;
+        if (nx >= 0 && ny >= 0 && nx < w && ny < h && skel[ny * w + nx]) r.push([nx, ny]);
+      }
+      return r;
+    };
+    let start = -1;
+    for (let i = 0; i < skel.length; i++) if (skel[i]) { start = i; break; }
+    if (start < 0) return [];
+    function bfsFar(sx, sy) {
+      const par = new Int32Array(w * h).fill(-2);
+      let q = [[sx, sy]]; par[sy * w + sx] = -1; let last = [sx, sy];
+      while (q.length) {
+        const nq = [];
+        for (const [x, y] of q) {
+          last = [x, y];
+          for (const [nx, ny] of nbrs(x, y)) if (par[ny * w + nx] === -2) { par[ny * w + nx] = y * w + x; nq.push([nx, ny]); }
+        }
+        q = nq;
+      }
+      return { far: last, par };
+    }
+    const a = bfsFar(start % w, (start / w) | 0).far;
+    const { far: b, par } = bfsFar(a[0], a[1]);
+    const path = [];
+    let cur = b[1] * w + b[0];
+    let guard = 0;
+    while (cur !== -1 && guard++ < w * h) { path.push([cur % w, (cur / w) | 0]); cur = par[cur]; }
+    return path;
+  }
+
+  // Moving-average smooth of a polyline (endpoints fixed).
+  function smoothChain(pts, passes) {
+    let cur = pts.map((p) => ({ x: p.x, y: p.y }));
+    for (let s = 0; s < (passes || 1); s++) {
+      const next = cur.map((p) => ({ x: p.x, y: p.y }));
+      for (let i = 1; i < cur.length - 1; i++) {
+        next[i] = { x: (cur[i - 1].x + cur[i].x + cur[i + 1].x) / 3, y: (cur[i - 1].y + cur[i].y + cur[i + 1].y) / 3 };
+      }
+      cur = next;
+    }
+    return cur;
+  }
+
+  // Nearest positive-t intersection of the RAY (o,dir) with the closed ring.
+  function rayRingHit(ring, ox, oy, dx, dy) {
+    let best = null, bt = Infinity;
+    const n = ring.length;
+    for (let k = 0; k < n; k++) {
+      const a = ring[k], b = ring[(k + 1) % n];
+      const t = lineSegX(ox, oy, dx, dy, a.x, a.y, b.x, b.y);
+      if (t === null || t <= EPS) continue;
+      if (t < bt) { bt = t; best = { x: ox + dx * t, y: oy + dy * t }; }
+    }
+    return best;
+  }
+
+  function pointInRing(pt, ring) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const xi = ring[i].x, yi = ring[i].y, xj = ring[j].x, yj = ring[j].y;
+      if ((yi > pt.y) !== (yj > pt.y) && pt.x < (xj - xi) * (pt.y - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+
+  // Extend each end of the spine along its end-tangent, staying inside the ring,
+  // so the satin reaches the stroke terminals (the skeleton retracts from ends).
+  function extendSpine(spine, ring, maxExtPx) {
+    const ext = (pIdx, qIdx) => {
+      const p = spine[pIdx], q = spine[qIdx];
+      let dx = p.x - q.x, dy = p.y - q.y; const L = Math.hypot(dx, dy) || 1; dx /= L; dy /= L;
+      let added = null;
+      for (let d = 2; d <= maxExtPx; d += 2) {
+        const c = { x: p.x + dx * d, y: p.y + dy * d };
+        if (pointInRing(c, ring)) added = c; else break;
+      }
+      return added;
+    };
+    const head = ext(0, 1), tail = ext(spine.length - 1, spine.length - 2);
+    const res = spine.slice();
+    if (tail) res.push(tail);
+    if (head) res.unshift(head);
+    return res;
+  }
+
+  // Satin along the medial axis (skeleton) of a single solid ring. Handles
+  // strokes that double back (S, hooks) that the outline-split satinColumn
+  // cannot. opts = { spacingMm, pxPerMm, pullCompMm=0, slantDeg=0 }.
+  function medialSatin(ring, opts) {
+    if (!ring || ring.length < 3) return [];
+    const spacingMm = opts.spacingMm, pxPerMm = opts.pxPerMm;
+    const pullCompMm = opts.pullCompMm || 0;
+    const slantRad = ((opts.slantDeg || 0) * Math.PI) / 180;
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const q of ring) { if (q.x < minX) minX = q.x; if (q.x > maxX) maxX = q.x; if (q.y < minY) minY = q.y; if (q.y > maxY) maxY = q.y; }
+    const dim = Math.max(maxX - minX, maxY - minY);
+    if (!(dim > EPS)) return [];
+
+    const gscale = Math.min(1.5, 260 / dim);
+    const gw = Math.ceil((maxX - minX) * gscale) + 3, gh = Math.ceil((maxY - minY) * gscale) + 3;
+    const mask = thin(rasterize(ring, gscale, minX, minY, gw, gh), gw, gh);
+    const gridPath = skeletonPath(mask, gw, gh);
+    if (gridPath.length < 3) return satinColumn(ring, opts); // fallback to outline split
+
+    let spine = gridPath.map(([i, j]) => ({ x: minX + (i + 0.5) / gscale, y: minY + (j + 0.5) / gscale }));
+    spine = smoothChain(spine, 3);
+    // Reach the terminals: extend each end along its tangent (skeleton retracts
+    // from stroke ends by ~half the stroke width).
+    const halfWidthPx = estimateWidthMm(ring, 1) / 2;
+    if (halfWidthPx > EPS) spine = extendSpine(spine, ring, halfWidthPx * 1.3);
+    const denom = spacingMm * pxPerMm;
+    const stepPx = denom > 0 ? denom : 4;
+    const spineLen = chainLength(spine);
+    if (!(spineLen > EPS)) return satinColumn(ring, opts);
+    spine = resampleChain(spine, Math.max(2, Math.ceil(spineLen / stepPx)));
+
+    const out = [];
+    const offset = (pullCompMm * pxPerMm) / 2;
+    for (let t = 0; t < spine.length; t++) {
+      const s = spine[t];
+      const prev = spine[Math.max(0, t - 1)], next = spine[Math.min(spine.length - 1, t + 1)];
+      let tx = next.x - prev.x, ty = next.y - prev.y;
+      const tl = Math.hypot(tx, ty);
+      if (tl <= EPS) continue;
+      tx /= tl; ty /= tl;
+      let nx = -ty, ny = tx;
+      if (slantRad) { const cs = Math.cos(slantRad), sn = Math.sin(slantRad); const rx = nx * cs - ny * sn, ry = nx * sn + ny * cs; nx = rx; ny = ry; }
+      const hitP = rayRingHit(ring, s.x, s.y, nx, ny);
+      const hitN = rayRingHit(ring, s.x, s.y, -nx, -ny);
+      if (!hitP || !hitN) continue;
+      let pA = hitP, pB = hitN;
+      if (Math.hypot(pA.x - pB.x, pA.y - pB.y) < 0.5) continue;
+      if (offset > 0) { const mx = (pA.x + pB.x) / 2, my = (pA.y + pB.y) / 2; pA = pushOut(pA, mx, my, offset); pB = pushOut(pB, mx, my, offset); }
+      if (t % 2 === 0) { out.push(pA); out.push(pB); } else { out.push(pB); out.push(pA); }
+    }
+    return out.length >= 4 ? out : satinColumn(ring, opts);
+  }
+
   return {
     farthestBoundaryPair,
     splitBoundary,
@@ -302,5 +501,6 @@
     estimateWidthMm,
     lineSegX,
     satinColumn,
+    medialSatin,
   };
 });
