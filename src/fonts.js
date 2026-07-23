@@ -295,5 +295,33 @@
     return [{ rgb: [0, 0, 0], polygons }];
   }
 
-  return { FONTS, loadFont, textToRegions, pathToPolygons };
+  // Per-LETTER layout: returns one group per rendered glyph so callers can
+  // assign a stitch angle/slant per letter. Returns:
+  //   [{ char, polygons: Array<Array<{x,y}>> }]   (whitespace glyphs omitted)
+  // Polygons are in the same pixel space as textToRegions. Falls back to a
+  // single whole-string group if the font can't enumerate glyphs.
+  function textToLetters(font, text, opts) {
+    const o = opts || {};
+    const sizePx = o.sizePx || 200;
+    const letterSpacing = o.letterSpacing || 0;
+    const glyphs = font.stringToGlyphs ? font.stringToGlyphs(text) : null;
+    const chars = Array.from(text);
+    const out = [];
+    if (glyphs && font.unitsPerEm) {
+      const scale = (1 / font.unitsPerEm) * sizePx;
+      let x = 0;
+      for (let gi = 0; gi < glyphs.length; gi++) {
+        const glyph = glyphs[gi];
+        const polys = pathToPolygons(glyph.getPath(x, 0, sizePx), 8);
+        if (polys.length) out.push({ char: chars[gi] != null ? chars[gi] : "", polygons: polys });
+        x += (glyph.advanceWidth || 0) * scale + letterSpacing;
+      }
+    } else {
+      const polys = pathToPolygons(font.getPath(text, 0, 0, sizePx), 8);
+      if (polys.length) out.push({ char: text, polygons: polys });
+    }
+    return out;
+  }
+
+  return { FONTS, loadFont, textToRegions, textToLetters, pathToPolygons };
 });
