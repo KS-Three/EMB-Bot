@@ -117,20 +117,94 @@
     return { x: p.x + (vx / len) * dist, y: p.y + (vy / len) * dist };
   }
 
-  // Generate zig-zag satin stitch points bouncing between the two long edges of
-  // a thin/elongated ring.
+  // Intersection of the INFINITE line through (ox,oy) with direction (dx,dy)
+  // against the SEGMENT (ax,ay)-(bx,by). Returns the signed distance `t` along
+  // (dx,dy) at which they meet, or null if parallel or the hit falls outside
+  // the segment. Solve o + t*d = a + u*(b-a), u in [0,1].
+  function lineSegX(ox, oy, dx, dy, ax, ay, bx, by) {
+    const ex = bx - ax, ey = by - ay;
+    const det = ex * dy - dx * ey; // determinant of [d | -e]
+    if (Math.abs(det) < EPS) return null; // parallel
+    const rx = ax - ox, ry = ay - oy;
+    // Cramer's rule (see derivation): t solves the line param, u the segment.
+    const t = (ex * ry - ey * rx) / det;
+    const u = (dx * ry - dy * rx) / det;
+    if (u < -EPS || u > 1 + EPS) return null; // outside the segment
+    return t;
+  }
+
+  // Nearest point on a polyline `chain` to (px,py). Used as a tip fallback when
+  // the perpendicular line misses a rail entirely.
+  function nearestOnChain(chain, px, py) {
+    let best = { x: chain[0].x, y: chain[0].y };
+    let bd = Infinity;
+    for (let k = 0; k + 1 < chain.length; k++) {
+      const a = chain[k], b = chain[k + 1];
+      const ex = b.x - a.x, ey = b.y - a.y;
+      const L2 = ex * ex + ey * ey;
+      let u = L2 > EPS ? ((px - a.x) * ex + (py - a.y) * ey) / L2 : 0;
+      if (u < 0) u = 0; else if (u > 1) u = 1;
+      const qx = a.x + ex * u, qy = a.y + ey * u;
+      const d = Math.hypot(px - qx, py - qy);
+      if (d < bd) { bd = d; best = { x: qx, y: qy }; }
+    }
+    return best;
+  }
+
+  // Hit of the infinite line (o,d) against rail polyline `chain`, choosing the
+  // intersection NEAREST to o (smallest |t|). Returns the point or null if no
+  // segment is crossed.
+  function railHit(chain, ox, oy, dx, dy) {
+    let best = null, bt = Infinity;
+    for (let k = 0; k + 1 < chain.length; k++) {
+      const t = lineSegX(ox, oy, dx, dy, chain[k].x, chain[k].y, chain[k + 1].x, chain[k + 1].y);
+      if (t === null) continue;
+      if (Math.abs(t) < Math.abs(bt)) { bt = t; best = { x: ox + dx * t, y: oy + dy * t }; }
+    }
+    return best;
+  }
+
+  // Return the sub-polyline of `chain` between arc-lengths s0..s1 (s0 < s1),
+  // with interpolated endpoints. Used to skip the tip/end-cap region of the
+  // centerline where cross geometry degenerates. Falls back to a copy if the
+  // requested span is degenerate.
+  function subChainByArc(chain, s0, s1) {
+    const out = [];
+    let acc = 0;
+    for (let k = 0; k + 1 < chain.length; k++) {
+      const a = chain[k], b = chain[k + 1];
+      const segLen = Math.hypot(b.x - a.x, b.y - a.y);
+      const segEnd = acc + segLen;
+      if (segEnd < s0) { acc = segEnd; continue; }
+      if (out.length === 0) {
+        const t = segLen > EPS ? (s0 - acc) / segLen : 0;
+        out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+      }
+      if (segEnd >= s1) {
+        const t = segLen > EPS ? (s1 - acc) / segLen : 1;
+        out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+        break;
+      }
+      out.push({ x: b.x, y: b.y });
+      acc = segEnd;
+    }
+    return out.length >= 2 ? out : chain.map((q) => ({ x: q.x, y: q.y }));
+  }
+
+  // Generate zig-zag satin stitch points whose cross-stitches are PERPENDICULAR
+  // to the two edges of a thin/elongated ring and FAN ALONG THE ARC on curves.
   //
   // opts = { spacingMm, pxPerMm, pullCompMm=0 }
   //
-  // Pairing note: splitBoundary walks A forward (i->j) and B forward (j->i), so
-  // B already runs the OPPOSITE direction along the length. Reversing the
-  // resampled B ("pb") therefore makes pb'[k] progress the same direction as
-  // pa[k], so pa[k] and pb'[k] are the two edge points at the same position
-  // along the column length — the correct edge-to-edge cross pair.
+  // Approach: build a centerline from the two rails, then at each station along
+  // the centerline shoot a ray perpendicular to the LOCAL tangent and intersect
+  // both rails. The resulting cross is perpendicular to the centerline tangent
+  // (hence to the edges) and rotates with the arc — no arc-length index skew.
   //
-  // Emit order pa[0], pb'[0], pa[1], pb'[1], ... : each (pa[k] -> pb'[k]) is a
-  // cross-stitch spanning the width, and consecutive crosses advance along the
-  // length, producing the satin bounce.
+  // Emit: the leading edge alternates per station (even -> A then B, odd -> B
+  // then A) so consecutive crosses share a side (a short connector), producing
+  // the satin bounce. Width-spanning crosses are therefore the even-indexed
+  // point pairs (pts[2k], pts[2k+1]); connectors are pts[2k+1]->pts[2k+2].
   function satinColumn(ring, opts) {
     if (!ring || ring.length < 3) return [];
     const spacingMm = opts.spacingMm;
@@ -141,25 +215,69 @@
     const [A, B] = splitBoundary(ring, i, j);
 
     const denom = spacingMm * pxPerMm;
-    const longest = Math.max(chainLength(A), chainLength(B));
-    const steps = denom > 0 ? Math.max(2, Math.ceil(longest / denom)) : 2;
+    const lenA = chainLength(A), lenB = chainLength(B);
+    const longest = Math.max(lenA, lenB);
+    if (!(longest > EPS)) return []; // degenerate
 
-    const pa = resampleChain(A, steps);
-    const pb = resampleChain(B, steps).reverse(); // pb'[k] pairs with pa[k]
+    // Fine common resample of both rails so the centerline is smooth. Reverse B
+    // so index runs the same direction along the length as A.
+    let M;
+    if (denom > 0) M = Math.ceil(longest / denom) * 3;
+    else M = 16;
+    if (!(M >= 16)) M = 16;
+    if (M > 600) M = 600;
+    const fineA = resampleChain(A, M);
+    const fineB = resampleChain(B, M).reverse();
+
+    // Centerline as midpoints of paired fine samples.
+    const C = [];
+    for (let k = 0; k < M; k++) {
+      C.push({ x: (fineA[k].x + fineB[k].x) / 2, y: (fineA[k].y + fineB[k].y) / 2 });
+    }
+    const cLen = chainLength(C);
+    if (!(cLen > EPS)) return []; // zero-length centerline
+
+    // On strokes long enough to have real end caps, start/end the satin a short
+    // margin in from the tips: cross geometry degenerates at the caps (the
+    // farthest-pair tips can sit at corners, bending the centerline there).
+    // Short strokes keep their full length so tiny shapes still get a column.
+    const fullSteps = denom > 0 ? Math.max(2, Math.ceil(cLen / denom)) : 2;
+    const trim = fullSteps >= 8 ? 0.12 * cLen : 0;
+    const Ct = trim > EPS ? subChainByArc(C, trim, cLen - trim) : C;
+    const ctLen = chainLength(Ct);
+    const steps = denom > 0 ? Math.max(2, Math.ceil(ctLen / denom)) : 2;
+    if (!Number.isFinite(steps)) return [];
+    const stations = resampleChain(Ct, steps);
 
     const offset = (pullCompMm * pxPerMm) / 2;
     const out = [];
-    for (let k = 0; k < steps; k++) {
-      let a = pa[k];
-      let b = pb[k];
+    for (let t = 0; t < steps; t++) {
+      const s = stations[t];
+      // Local tangent from neighbor stations (fwd/back difference at the ends).
+      const prev = stations[Math.max(0, t - 1)];
+      const next = stations[Math.min(steps - 1, t + 1)];
+      let tx = next.x - prev.x, ty = next.y - prev.y;
+      let tl = Math.hypot(tx, ty);
+      if (tl <= EPS) continue; // no meaningful tangent here
+      tx /= tl; ty /= tl;
+      // Normal = tangent rotated 90deg.
+      const nx = -ty, ny = tx;
+
+      // Perpendicular ray hits each rail; fall back to nearest rail point.
+      let pA = railHit(A, s.x, s.y, nx, ny) || nearestOnChain(A, s.x, s.y);
+      let pB = railHit(B, s.x, s.y, nx, ny) || nearestOnChain(B, s.x, s.y);
+
+      if (Math.hypot(pA.x - pB.x, pA.y - pB.y) < 0.5) continue; // drop degenerate cross
+
       if (offset > 0) {
-        const mx = (a.x + b.x) / 2;
-        const my = (a.y + b.y) / 2;
-        a = pushOut(a, mx, my, offset);
-        b = pushOut(b, mx, my, offset);
+        const mx = (pA.x + pB.x) / 2, my = (pA.y + pB.y) / 2;
+        pA = pushOut(pA, mx, my, offset);
+        pB = pushOut(pB, mx, my, offset);
       }
-      out.push(a);
-      out.push(b);
+
+      // Alternate the leading edge so consecutive crosses share a side.
+      if (t % 2 === 0) { out.push(pA); out.push(pB); }
+      else { out.push(pB); out.push(pA); }
     }
     return out;
   }
@@ -170,6 +288,7 @@
     chainLength,
     resampleChain,
     estimateWidthMm,
+    lineSegX,
     satinColumn,
   };
 });
