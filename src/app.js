@@ -360,6 +360,7 @@
         }
         var design = EMB.buildQualityDesign(regionData.regions, {
           garment: opts.garment,
+          fabric: EMB.getFabric(el.fabric.value),
           pxPerMm: regionData.pxPerMm,
           densityMm: opts.densityMm,
           satinMaxWidthMm: 3.0,
@@ -547,6 +548,28 @@
     if (el.flatPanel) el.flatPanel.style.display = mode === "image" ? "block" : "none";
   }
 
+  // --- Fabric preset -------------------------------------------------------
+  // Update the notes caption under the Fabric select for the current
+  // selection. Always appends the auto-set reminder so the user knows the
+  // garment drives the default and they can override per design.
+  function updateFabricNotes() {
+    if (!el.fabricNotes) return;
+    var fab = EMB.getFabric(el.fabric.value);
+    var notes = fab ? fab.notes : "";
+    el.fabricNotes.textContent =
+      (notes ? notes + " " : "") +
+      "(auto-set by garment; change to override for this design)";
+  }
+
+  // Re-apply the garment's default fabric. Called on load and on every garment
+  // change: garment change ALWAYS re-applies the garment default (a manual
+  // fabric pick persists only until the next garment change), matching how the
+  // flatten auto-recompute already behaves.
+  function applyGarmentFabric() {
+    el.fabric.value = EMB.fabricForGarment(el.garment.value);
+    updateFabricNotes();
+  }
+
   // --- Setup ---------------------------------------------------------------
   function populateSelects() {
     // Garments
@@ -558,6 +581,15 @@
       el.garment.appendChild(o);
     }
     el.garment.value = "left_chest";
+
+    // Fabrics
+    for (var fa = 0; fa < EMB.FABRICS.length; fa++) {
+      var fb = EMB.FABRICS[fa];
+      var fbo = document.createElement("option");
+      fbo.value = fb.id;
+      fbo.textContent = fb.label;
+      el.fabric.appendChild(fbo);
+    }
 
     // Fonts
     for (var f = 0; f < EMB.FONTS.length; f++) {
@@ -596,6 +628,8 @@
     el.text = $("text-input");
     el.font = $("font");
     el.garment = $("garment");
+    el.fabric = $("fabric");
+    el.fabricNotes = $("fabric-notes");
     el.format = $("format");
     el.colors = $("colors");
     el.colorsVal = $("colors-val");
@@ -614,6 +648,12 @@
     el.modeImage.addEventListener("change", applyMode);
     el.modeText.addEventListener("change", applyMode);
     applyMode();
+
+    // Fabric: garment change re-applies the garment default; a manual fabric
+    // pick persists until the next garment change (just refresh the caption).
+    el.garment.addEventListener("change", applyGarmentFabric);
+    el.fabric.addEventListener("change", updateFabricNotes);
+    applyGarmentFabric(); // auto-default on load
 
     // File upload
     el.file.addEventListener("change", function () {

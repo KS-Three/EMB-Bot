@@ -91,6 +91,13 @@
     }
     input[type="range"] { width: 100%; }
 
+    .fabric-notes {
+      margin: 6px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
     .seg {
       display: flex;
       border: 1px solid var(--line);
@@ -256,6 +263,7 @@
   <!-- Local modules IN DEPENDENCY ORDER -->
   <script src="src/units.js"></script>
   <script src="src/garments.js"></script>
+  <script src="src/fabrics.js"></script>
   <script src="src/fill.js"></script>
   <script src="src/geometry.js"></script>
   <script src="src/quantize.js"></script>
@@ -319,6 +327,12 @@
       </div>
 
       <div class="field">
+        <label class="lbl" for="fabric">Fabric</label>
+        <select id="fabric"></select>
+        <p class="fabric-notes" id="fabric-notes"></p>
+      </div>
+
+      <div class="field">
         <label class="lbl" for="format">Output format</label>
         <select id="format">
           <option value="dst" selected>DST (Tajima)</option>
@@ -368,6 +382,8 @@
         swatches that should be one thread.
         Text &amp; flat logos: satin + hole-aware fills with underlay. Photos:
         still approximate — flat art works best.
+        Fabric preset sets pull compensation and underlay — verify on your
+        machine and tell me if a fabric needs tuning.
         PES output is best-effort — always verify it stitches on your machine
         before a production run.
       </p>
