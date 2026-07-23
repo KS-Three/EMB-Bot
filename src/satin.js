@@ -471,19 +471,37 @@
     if (!(spineLen > EPS)) return satinColumn(ring, opts);
     spine = resampleChain(spine, Math.max(2, Math.ceil(spineLen / stepPx)));
 
-    const out = [];
-    const offset = (pullCompMm * pxPerMm) / 2;
-    for (let t = 0; t < spine.length; t++) {
-      const s = spine[t];
-      const prev = spine[Math.max(0, t - 1)], next = spine[Math.min(spine.length - 1, t + 1)];
+    const N = spine.length;
+    // Per-station stitch normal from the local spine tangent (+ optional slant).
+    const norm = new Array(N);
+    for (let t = 0; t < N; t++) {
+      const prev = spine[Math.max(0, t - 1)], next = spine[Math.min(N - 1, t + 1)];
       let tx = next.x - prev.x, ty = next.y - prev.y;
-      const tl = Math.hypot(tx, ty);
-      if (tl <= EPS) continue;
-      tx /= tl; ty /= tl;
+      const tl = Math.hypot(tx, ty) || 1; tx /= tl; ty /= tl;
       let nx = -ty, ny = tx;
       if (slantRad) { const cs = Math.cos(slantRad), sn = Math.sin(slantRad); const rx = nx * cs - ny * sn, ry = nx * sn + ny * cs; nx = rx; ny = ry; }
-      const hitP = rayRingHit(ring, s.x, s.y, nx, ny);
-      const hitN = rayRingHit(ring, s.x, s.y, -nx, -ny);
+      norm[t] = { x: nx, y: ny };
+    }
+    // Square off the terminals: within ~one stroke width of each end, HOLD the
+    // stitch angle at the "shoulder" so the cap stitches stay parallel to the
+    // last good ones (rather than rotating with the curling spine and fanning
+    // into a crossing at the tip).
+    const arc = new Array(N); arc[0] = 0;
+    for (let t = 1; t < N; t++) arc[t] = arc[t - 1] + Math.hypot(spine[t].x - spine[t - 1].x, spine[t].y - spine[t - 1].y);
+    const total = arc[N - 1];
+    const capLen = halfWidthPx * 1.4;
+    let head = 0; while (head < N - 1 && arc[head] < capLen) head++;
+    let tail = N - 1; while (tail > 0 && (total - arc[tail]) < capLen) tail--;
+    const clampCaps = head < tail; // only when there's a stable middle to borrow from
+
+    const out = [];
+    const offset = (pullCompMm * pxPerMm) / 2;
+    for (let t = 0; t < N; t++) {
+      const s = spine[t];
+      let n = norm[t];
+      if (clampCaps) { if (t < head) n = norm[head]; else if (t > tail) n = norm[tail]; }
+      const hitP = rayRingHit(ring, s.x, s.y, n.x, n.y);
+      const hitN = rayRingHit(ring, s.x, s.y, -n.x, -n.y);
       if (!hitP || !hitN) continue;
       let pA = hitP, pB = hitN;
       if (Math.hypot(pA.x - pB.x, pA.y - pB.y) < 0.5) continue;
