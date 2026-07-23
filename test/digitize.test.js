@@ -292,7 +292,12 @@ test("buildQualityDesign: fabric trimAtMm gates a mid-distance travel trim", () 
   assert.strictEqual(t5, 1, "at 5mm the same travel is a plain jump (1 total)");
 });
 
-test("buildQualityDesign: no-fabric output is byte-identical to pre-Phase-2 (snapshot)", () => {
+// Snapshot: a SINGLE-shape region. Phase 3 changed the default from one
+// per-COLOR angle to one per-SHAPE angle, but for a region with a single shape
+// the per-shape PCA (outer+hole rings) equals the old per-color PCA, so this
+// snapshot is invariant across the Phase 3 change and stays frozen at the same
+// values. (The per-shape divergence is exercised by the two-shape test below.)
+test("buildQualityDesign: no-fabric single-shape output frozen (snapshot, Phase-3-invariant)", () => {
   const outer = sq(0, 0, 100), hole = sq(20, 20, 60);
   const d = DG.buildQualityDesign(
     [{ rgb: [10, 20, 30], shapes: [{ outer, holes: [hole] }] }],
@@ -323,4 +328,90 @@ test("buildQualityDesign: multi-color design sequences color changes", () => {
   assert.strictEqual(d.colorCount, 2);
   assert.strictEqual(d.stitches.filter((s) => s.type === "color").length, 1);
   assert.strictEqual(d.stitches[d.stitches.length - 1].type, "end");
+});
+
+// ---- Phase 3: per-shape auto stitch angle + per-color angle override ----
+
+// A horizontal fill runs its long stitches along x (big |dx|, small |dy|);
+// a vertical fill runs them along y. Classify a run of sew stitches by which
+// half of the design (x<0 or x>0 in DST) it lands in, then sum |dx|/|dy| per
+// group. Returns {left:{sx,sy}, right:{sx,sy}} — orientation of each shape.
+const orientHalves = (d) => {
+  const sew = d.stitches.filter((s) => s.type === "stitch");
+  const acc = { left: { sx: 0, sy: 0 }, right: { sx: 0, sy: 0 } };
+  for (let i = 1; i < sew.length; i++) {
+    const a = sew[i - 1], b = sew[i];
+    const side = (a.x < 0 && b.x < 0) ? "left" : (a.x > 0 && b.x > 0) ? "right" : null;
+    if (!side) continue; // skip the cross-design travel between the two shapes
+    acc[side].sx += Math.abs(b.x - a.x);
+    acc[side].sy += Math.abs(b.y - a.y);
+  }
+  return acc;
+};
+
+// One region, two shapes of opposite orientation, well separated in x so each
+// occupies its own half of the (centered) design: a WIDE-horizontal bar on the
+// left, a TALL-vertical bar on the right. Forcing fill (satinMaxWidthMm ~ 0) so
+// both are tatami. pxPerMm 8, big garment.
+const twoShapeRegion = (extra) => {
+  const wide = { outer: [{ x: 0, y: 0 }, { x: 240, y: 0 }, { x: 240, y: 60 }, { x: 0, y: 60 }], holes: [] };
+  const tall = { outer: [{ x: 1000, y: 0 }, { x: 1060, y: 0 }, { x: 1060, y: 240 }, { x: 1000, y: 240 }], holes: [] };
+  return Object.assign({ rgb: [0, 0, 0], shapes: [wide, tall] }, extra || {});
+};
+const twoShapeOpts = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 8, densityMm: 0.5, underlay: false, satinMaxWidthMm: 0.05 };
+
+test("buildQualityDesign: per-shape auto angle — wide vs tall shapes fill at DIFFERENT angles", () => {
+  const d = DG.buildQualityDesign([twoShapeRegion()], twoShapeOpts);
+  const o = orientHalves(d);
+  // wide bar (left): stitches run horizontally → |dx| dominates
+  assert.ok(o.left.sx > o.left.sy * 2, "wide shape fills horizontally: " + JSON.stringify(o.left));
+  // tall bar (right): stitches run vertically → |dy| dominates
+  assert.ok(o.right.sy > o.right.sx * 2, "tall shape fills vertically: " + JSON.stringify(o.right));
+  // Pre-Phase-3 (single shared per-color angle) both would match; now they differ.
+});
+
+test("buildQualityDesign: angleOverride 0 forces BOTH shapes horizontal", () => {
+  const d = DG.buildQualityDesign([twoShapeRegion({ angleOverride: 0 })], twoShapeOpts);
+  const o = orientHalves(d);
+  assert.ok(o.left.sx > o.left.sy * 2, "left horizontal at 0deg: " + JSON.stringify(o.left));
+  assert.ok(o.right.sx > o.right.sy * 2, "right (naturally tall) forced horizontal at 0deg: " + JSON.stringify(o.right));
+});
+
+test("buildQualityDesign: angleOverride 90 forces BOTH shapes vertical", () => {
+  const d = DG.buildQualityDesign([twoShapeRegion({ angleOverride: 90 })], twoShapeOpts);
+  const o = orientHalves(d);
+  assert.ok(o.left.sy > o.left.sx * 2, "left (naturally wide) forced vertical at 90deg: " + JSON.stringify(o.left));
+  assert.ok(o.right.sy > o.right.sx * 2, "right vertical at 90deg: " + JSON.stringify(o.right));
+});
+
+test("buildQualityDesign: opts.angleOverrides keyed by ORIGINAL region index (survives light→dark sort)", () => {
+  // Two colors given light-first; the internal sort reorders them dark-first.
+  // The override map is keyed by the ORIGINAL input order, so index 1 (the dark
+  // wide bar) must be the one forced vertical regardless of sew order.
+  const light = { rgb: [240, 240, 240], shapes: [{ outer: [{ x: 0, y: 0 }, { x: 240, y: 0 }, { x: 240, y: 60 }, { x: 0, y: 60 }], holes: [] }] };
+  const dark = { rgb: [10, 10, 10], shapes: [{ outer: [{ x: 0, y: 400 }, { x: 240, y: 400 }, { x: 240, y: 460 }, { x: 0, y: 460 }], holes: [] }] };
+  const base = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 8, densityMm: 0.5, underlay: false, satinMaxWidthMm: 0.05 };
+  // original index 1 = dark → force vertical (90); index 0 = light → auto
+  const d = DG.buildQualityDesign([light, dark], Object.assign({ angleOverrides: { 1: 90 } }, base));
+  // Both bars are wide-horizontal, so auto → horizontal. The dark one is forced
+  // vertical. Split sew stitches by color block and check orientation.
+  const recs = d.stitches;
+  const ci = recs.findIndex((s) => s.type === "color");
+  // darkOnTop sorts LIGHT first, dark last: block A = light (orig idx 0),
+  // block B = dark (orig idx 1, the one forced vertical).
+  const blockA = recs.slice(0, ci).filter((s) => s.type === "stitch"); // first block (light)
+  const blockB = recs.slice(ci).filter((s) => s.type === "stitch");    // second block (dark)
+  const orient = (arr) => { let sx = 0, sy = 0; for (let i = 1; i < arr.length; i++) { sx += Math.abs(arr[i].x - arr[i - 1].x); sy += Math.abs(arr[i].y - arr[i - 1].y); } return { sx, sy }; };
+  const oA = orient(blockA), oB = orient(blockB);
+  // light bar (orig idx 0) → auto → horizontal (its natural axis)
+  assert.ok(oA.sx > oA.sy * 2, "light bar (orig idx 0) auto-horizontal: " + JSON.stringify(oA));
+  // dark bar (orig idx 1) → forced vertical by the override map
+  assert.ok(oB.sy > oB.sx * 2, "dark bar (orig idx 1) forced vertical: " + JSON.stringify(oB));
+});
+
+test("buildQualityDesign: null angleOverride falls back to per-shape auto", () => {
+  const d = DG.buildQualityDesign([twoShapeRegion({ angleOverride: null })], twoShapeOpts);
+  const o = orientHalves(d);
+  assert.ok(o.left.sx > o.left.sy * 2, "null override → auto: wide horizontal");
+  assert.ok(o.right.sy > o.right.sx * 2, "null override → auto: tall vertical");
 });

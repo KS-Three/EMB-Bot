@@ -31,6 +31,10 @@
   //   { palette:[[r,g,b],...], indices:Uint8Array(255=transparent), w, h, srcW, srcH }
   var flatState = null;
   var selectedSwatches = {}; // palette index -> true, cleared on any recompute
+  // palette index -> fixed stitch angle in degrees (0..179). Blank/absent = auto
+  // (per-shape PCA). Keyed by CURRENT palette index; cleared on any recompute or
+  // merge (a merged color drops its override — spec'd best-effort).
+  var swatchAngles = {};
 
   // --- DOM refs (filled on DOMContentLoaded) ------------------------------
   var el = {};
@@ -120,6 +124,7 @@
       srcH: loadedImage.height,
     };
     selectedSwatches = {};
+    swatchAngles = {}; // auto flatten resets any manual angle overrides
     renderFlatten();
   }
 
@@ -182,7 +187,34 @@
         else selectedSwatches[i] = true;
         sw.classList.toggle("selected");
       });
-      bar.appendChild(sw);
+
+      // Per-color stitch-angle override. Blank = auto (per-shape PCA); a number
+      // 0..179 forces every shape of this color to that fixed angle on Generate.
+      var ang = document.createElement("input");
+      ang.type = "number";
+      ang.className = "flat-angle";
+      ang.min = "0";
+      ang.max = "179";
+      ang.step = "1";
+      ang.placeholder = "auto";
+      ang.title = "Stitch angle for this color (0–179°). Blank = auto.";
+      if (swatchAngles[i] != null) ang.value = swatchAngles[i];
+      ang.addEventListener("input", function () {
+        var v = ang.value.trim();
+        if (v === "") { delete swatchAngles[i]; return; }
+        var n = parseFloat(v);
+        if (!isFinite(n)) { delete swatchAngles[i]; return; }
+        // wrap into 0..179 (angle is mod 180); keep the field showing raw entry
+        swatchAngles[i] = ((n % 180) + 180) % 180;
+      });
+      // Clicking/typing in the field must not toggle swatch selection.
+      ang.addEventListener("click", function (e) { e.stopPropagation(); });
+
+      var wrap = document.createElement("span");
+      wrap.className = "flat-swatch-wrap";
+      wrap.appendChild(sw);
+      wrap.appendChild(ang);
+      bar.appendChild(wrap);
     });
   }
 
@@ -206,6 +238,9 @@
     flatState.palette = res.palette;
     flatState.indices = indices;
     selectedSwatches = {};
+    // Merge remaps palette indices; dropping angle overrides is spec'd (a merged
+    // color loses its override). Simplest robust behavior: clear them.
+    swatchAngles = {};
     renderFlatten();
     setStatus("Merged " + sel.length + " colors → " + flatState.palette.length + " thread color(s).");
   }
@@ -302,7 +337,12 @@
       shapes.sort(function (a, b) { return area(b.outer) - area(a.outer); });
       if (shapes.length > MAX_SHAPES_PER_COLOR) shapes = shapes.slice(0, MAX_SHAPES_PER_COLOR);
       if (shapes.length === 0) continue; // no geometry for this color
-      regions.push({ rgb: palette[ci], shapes: shapes });
+      // Carry this color's fixed angle override (if the swatch field is set);
+      // absent/null → per-shape auto in the engine. Keyed by palette index ci,
+      // which matches the swatch order in renderSwatches().
+      var region = { rgb: palette[ci], shapes: shapes };
+      if (swatchAngles[ci] != null) region.angleOverride = swatchAngles[ci];
+      regions.push(region);
     }
 
     // Map the working image long side to NOMINAL_LONG_MM; fit handles final size.

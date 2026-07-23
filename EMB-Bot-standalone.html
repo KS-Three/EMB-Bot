@@ -249,6 +249,22 @@
       border-color: var(--accent);
       box-shadow: 0 0 0 2px var(--accent);
     }
+    .flat-swatch-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .flat-swatch-wrap .flat-angle {
+      width: 46px;
+      padding: 3px 4px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      font: inherit;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      color: var(--ink);
+      background: #fff;
+    }
     #flat-panel .buttons { margin-top: 4px; }
   </style>
 
@@ -3006,7 +3022,18 @@ const _sm_fillmod = _sm_req
   }
 
   // colorRegions: [{rgb:[r,g,b], polygons:[[{x,y}...]...]}] in PIXEL coords.
-  // opts: { garment, pxPerMm, densityMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop }
+  // opts: { garment, pxPerMm, densityMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides }
+  //
+  // Stitch angle (Phase 3): by DEFAULT each fill SHAPE gets its OWN PCA angle
+  // from its own rings (outer+holes) — long thin fills align to their length,
+  // adjacent elements read separately. A fixed angle can be forced per COLOR two
+  // ways (both keyed to the ORIGINAL caller region order, before the internal
+  // light→dark sort): set `region.angleOverride` (number degrees, or null=auto)
+  // on the input region, OR pass `opts.angleOverrides` as a map/array from the
+  // original region index → degrees. region.angleOverride wins when both given.
+  // When an override is present, ALL that region's shapes (fill + derived
+  // underlay) use it; otherwise per-shape auto. `perRegionAngle:false` disables
+  // auto entirely (fixed 45°).
   function buildQualityDesign(colorRegions, opts) {
     const o = opts || {};
     const pxPerMm = o.pxPerMm || 8;
@@ -3029,6 +3056,9 @@ const _sm_fillmod = _sm_req
     for (const r of regions) if (!r.polygons) r.polygons = r.shapes.map((s) => s.outer);
     if (!regions.length) return { stitches: [{ x: 0, y: 0, type: "end" }], colors: [], widthMM: 0, heightMM: 0, stitchCount: 0, colorCount: 0, _debug: { nSatin: 0, nFill: 0, nTrims: 0 } };
 
+    // Tag each region with its ORIGINAL caller index before we reorder, so
+    // opts.angleOverrides (keyed by original index) survives the sort below.
+    regions.forEach((r, i) => { r._origIdx = i; });
     // sequence: light colors first, dark last (dark sits on top) unless overridden
     if (o.darkOnTop !== false) regions.sort((a, b) => (b.rgb[0] + b.rgb[1] + b.rgb[2]) - (a.rgb[0] + a.rgb[1] + a.rgb[2]));
 
@@ -3131,9 +3161,13 @@ const _sm_fillmod = _sm_req
       // shapes: [{outer, holes}] (hole-aware) — or bare polygons for back-compat
       const shapesRaw = r.shapes || r.polygons.map((p) => ({ outer: p, holes: [] }));
       const shapes0 = shapesRaw.filter((s) => s && s.outer && s.outer.length >= 4);
-      const allRings = [];
-      for (const s of shapes0) { allRings.push(s.outer); for (const hh of (s.holes || [])) allRings.push(hh); }
-      const angle = perRegionAngle ? pcaAngleDeg(allRings) : 45;
+      // Resolve a fixed per-color angle override (degrees) if the caller set one.
+      // region.angleOverride wins; else opts.angleOverrides[originalIndex]. A
+      // finite number forces every shape in this color; null/absent → per-shape.
+      let regionAngle = null;
+      const ov = (r.angleOverride != null) ? r.angleOverride
+        : (o.angleOverrides != null ? o.angleOverrides[r._origIdx] : null);
+      if (ov != null && isFinite(ov)) regionAngle = ((ov % 180) + 180) % 180;
       const shapes = orderShapes(shapes0, lastPx);
       for (const shape of shapes) {
         const poly = shape.outer;
@@ -3174,6 +3208,11 @@ const _sm_fillmod = _sm_req
           } catch (e) { thin = false; }
         }
         const rings = [poly].concat(holes);
+        // Per-SHAPE stitch angle: a fixed color override wins; otherwise this
+        // shape's OWN PCA axis (outer+holes) so each element's stitches follow
+        // its own length/axis. perRegionAngle:false disables auto (fixed 45°).
+        const angle = (regionAngle != null) ? regionAngle
+          : (perRegionAngle ? pcaAngleDeg(rings) : 45);
 
         // Build this shape's runs in sew order; trim (if needed) is decided once
         // per shape so we never trim between a shape's own underlay and top.
@@ -3591,6 +3630,10 @@ const deps =
   //   { palette:[[r,g,b],...], indices:Uint8Array(255=transparent), w, h, srcW, srcH }
   var flatState = null;
   var selectedSwatches = {}; // palette index -> true, cleared on any recompute
+  // palette index -> fixed stitch angle in degrees (0..179). Blank/absent = auto
+  // (per-shape PCA). Keyed by CURRENT palette index; cleared on any recompute or
+  // merge (a merged color drops its override — spec'd best-effort).
+  var swatchAngles = {};
 
   // --- DOM refs (filled on DOMContentLoaded) ------------------------------
   var el = {};
@@ -3680,6 +3723,7 @@ const deps =
       srcH: loadedImage.height,
     };
     selectedSwatches = {};
+    swatchAngles = {}; // auto flatten resets any manual angle overrides
     renderFlatten();
   }
 
@@ -3742,7 +3786,34 @@ const deps =
         else selectedSwatches[i] = true;
         sw.classList.toggle("selected");
       });
-      bar.appendChild(sw);
+
+      // Per-color stitch-angle override. Blank = auto (per-shape PCA); a number
+      // 0..179 forces every shape of this color to that fixed angle on Generate.
+      var ang = document.createElement("input");
+      ang.type = "number";
+      ang.className = "flat-angle";
+      ang.min = "0";
+      ang.max = "179";
+      ang.step = "1";
+      ang.placeholder = "auto";
+      ang.title = "Stitch angle for this color (0–179°). Blank = auto.";
+      if (swatchAngles[i] != null) ang.value = swatchAngles[i];
+      ang.addEventListener("input", function () {
+        var v = ang.value.trim();
+        if (v === "") { delete swatchAngles[i]; return; }
+        var n = parseFloat(v);
+        if (!isFinite(n)) { delete swatchAngles[i]; return; }
+        // wrap into 0..179 (angle is mod 180); keep the field showing raw entry
+        swatchAngles[i] = ((n % 180) + 180) % 180;
+      });
+      // Clicking/typing in the field must not toggle swatch selection.
+      ang.addEventListener("click", function (e) { e.stopPropagation(); });
+
+      var wrap = document.createElement("span");
+      wrap.className = "flat-swatch-wrap";
+      wrap.appendChild(sw);
+      wrap.appendChild(ang);
+      bar.appendChild(wrap);
     });
   }
 
@@ -3766,6 +3837,9 @@ const deps =
     flatState.palette = res.palette;
     flatState.indices = indices;
     selectedSwatches = {};
+    // Merge remaps palette indices; dropping angle overrides is spec'd (a merged
+    // color loses its override). Simplest robust behavior: clear them.
+    swatchAngles = {};
     renderFlatten();
     setStatus("Merged " + sel.length + " colors → " + flatState.palette.length + " thread color(s).");
   }
@@ -3862,7 +3936,12 @@ const deps =
       shapes.sort(function (a, b) { return area(b.outer) - area(a.outer); });
       if (shapes.length > MAX_SHAPES_PER_COLOR) shapes = shapes.slice(0, MAX_SHAPES_PER_COLOR);
       if (shapes.length === 0) continue; // no geometry for this color
-      regions.push({ rgb: palette[ci], shapes: shapes });
+      // Carry this color's fixed angle override (if the swatch field is set);
+      // absent/null → per-shape auto in the engine. Keyed by palette index ci,
+      // which matches the swatch order in renderSwatches().
+      var region = { rgb: palette[ci], shapes: shapes };
+      if (swatchAngles[ci] != null) region.angleOverride = swatchAngles[ci];
+      regions.push(region);
     }
 
     // Map the working image long side to NOMINAL_LONG_MM; fit handles final size.

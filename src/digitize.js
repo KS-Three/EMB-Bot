@@ -170,7 +170,18 @@
   }
 
   // colorRegions: [{rgb:[r,g,b], polygons:[[{x,y}...]...]}] in PIXEL coords.
-  // opts: { garment, pxPerMm, densityMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop }
+  // opts: { garment, pxPerMm, densityMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides }
+  //
+  // Stitch angle (Phase 3): by DEFAULT each fill SHAPE gets its OWN PCA angle
+  // from its own rings (outer+holes) — long thin fills align to their length,
+  // adjacent elements read separately. A fixed angle can be forced per COLOR two
+  // ways (both keyed to the ORIGINAL caller region order, before the internal
+  // light→dark sort): set `region.angleOverride` (number degrees, or null=auto)
+  // on the input region, OR pass `opts.angleOverrides` as a map/array from the
+  // original region index → degrees. region.angleOverride wins when both given.
+  // When an override is present, ALL that region's shapes (fill + derived
+  // underlay) use it; otherwise per-shape auto. `perRegionAngle:false` disables
+  // auto entirely (fixed 45°).
   function buildQualityDesign(colorRegions, opts) {
     const o = opts || {};
     const pxPerMm = o.pxPerMm || 8;
@@ -193,6 +204,9 @@
     for (const r of regions) if (!r.polygons) r.polygons = r.shapes.map((s) => s.outer);
     if (!regions.length) return { stitches: [{ x: 0, y: 0, type: "end" }], colors: [], widthMM: 0, heightMM: 0, stitchCount: 0, colorCount: 0, _debug: { nSatin: 0, nFill: 0, nTrims: 0 } };
 
+    // Tag each region with its ORIGINAL caller index before we reorder, so
+    // opts.angleOverrides (keyed by original index) survives the sort below.
+    regions.forEach((r, i) => { r._origIdx = i; });
     // sequence: light colors first, dark last (dark sits on top) unless overridden
     if (o.darkOnTop !== false) regions.sort((a, b) => (b.rgb[0] + b.rgb[1] + b.rgb[2]) - (a.rgb[0] + a.rgb[1] + a.rgb[2]));
 
@@ -295,9 +309,13 @@
       // shapes: [{outer, holes}] (hole-aware) — or bare polygons for back-compat
       const shapesRaw = r.shapes || r.polygons.map((p) => ({ outer: p, holes: [] }));
       const shapes0 = shapesRaw.filter((s) => s && s.outer && s.outer.length >= 4);
-      const allRings = [];
-      for (const s of shapes0) { allRings.push(s.outer); for (const hh of (s.holes || [])) allRings.push(hh); }
-      const angle = perRegionAngle ? pcaAngleDeg(allRings) : 45;
+      // Resolve a fixed per-color angle override (degrees) if the caller set one.
+      // region.angleOverride wins; else opts.angleOverrides[originalIndex]. A
+      // finite number forces every shape in this color; null/absent → per-shape.
+      let regionAngle = null;
+      const ov = (r.angleOverride != null) ? r.angleOverride
+        : (o.angleOverrides != null ? o.angleOverrides[r._origIdx] : null);
+      if (ov != null && isFinite(ov)) regionAngle = ((ov % 180) + 180) % 180;
       const shapes = orderShapes(shapes0, lastPx);
       for (const shape of shapes) {
         const poly = shape.outer;
@@ -338,6 +356,11 @@
           } catch (e) { thin = false; }
         }
         const rings = [poly].concat(holes);
+        // Per-SHAPE stitch angle: a fixed color override wins; otherwise this
+        // shape's OWN PCA axis (outer+holes) so each element's stitches follow
+        // its own length/axis. perRegionAngle:false disables auto (fixed 45°).
+        const angle = (regionAngle != null) ? regionAngle
+          : (perRegionAngle ? pcaAngleDeg(rings) : 45);
 
         // Build this shape's runs in sew order; trim (if needed) is decided once
         // per shape so we never trim between a shape's own underlay and top.
