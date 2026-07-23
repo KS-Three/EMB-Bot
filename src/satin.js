@@ -460,6 +460,69 @@
     return res;
   }
 
+  // Nearest ring-vertex index to a point.
+  function nearestRingIndex(ring, p) {
+    let bi = 0, bd = Infinity;
+    for (let i = 0; i < ring.length; i++) { const dx = ring[i].x - p.x, dy = ring[i].y - p.y; const d = dx * dx + dy * dy; if (d < bd) { bd = d; bi = i; } }
+    return bi;
+  }
+  // Walk the ring iFrom->iTo forward (wrapping); return the arc-length midpoint
+  // of that sub-chain and the local boundary tangent there.
+  function arcMidDir(ring, iFrom, iTo) {
+    const n = ring.length; const chain = []; let k = iFrom;
+    for (let g = 0; g <= n; g++) { chain.push(ring[k]); if (k === iTo) break; k = (k + 1) % n; }
+    let total = 0; for (let i = 0; i + 1 < chain.length; i++) total += Math.hypot(chain[i + 1].x - chain[i].x, chain[i + 1].y - chain[i].y);
+    let half = total / 2, acc = 0, mid = chain[0], dir = { x: 1, y: 0 };
+    for (let i = 0; i + 1 < chain.length; i++) {
+      const a = chain[i], b = chain[i + 1]; const seg = Math.hypot(b.x - a.x, b.y - a.y);
+      if (acc + seg >= half) { const t = seg > EPS ? (half - acc) / seg : 0; mid = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }; dir = { x: b.x - a.x, y: b.y - a.y }; break; }
+      acc += seg;
+    }
+    const dl = Math.hypot(dir.x, dir.y) || 1; dir.x /= dl; dir.y /= dl;
+    return { mid, dir };
+  }
+  // Fill a terminal with cap stitches ALIGNED TO THE CUT EDGE. `e` is the last
+  // stable medial point and `d` the outward stroke direction there. Marches from
+  // e to the cut's midpoint, laying stitches parallel to the cut edge so the end
+  // squares off cleanly (instead of the medial axis veering into the corner).
+  function capStitches(ring, e, d, spacingPx, fromTip) {
+    const px = -d.y, py = d.x; // across the column at e
+    const hA = rayRingHit(ring, e.x, e.y, px, py);
+    const hB = rayRingHit(ring, e.x, e.y, -px, -py);
+    if (!hA || !hB) return [];
+    const localW = Math.hypot(hA.x - hB.x, hA.y - hB.y); // stroke width at the shoulder
+    const iA = nearestRingIndex(ring, hA), iB = nearestRingIndex(ring, hB);
+    const a1 = arcMidDir(ring, iA, iB), a2 = arcMidDir(ring, iB, iA);
+    const fwd = (m) => (m.x - e.x) * d.x + (m.y - e.y) * d.y; // projection along the stroke
+    const tip = fwd(a1.mid) >= fwd(a2.mid) ? a1 : a2;         // the terminal-side arc
+    if (fwd(tip.mid) <= 0) return [];
+    const mx = tip.mid.x - e.x, my = tip.mid.y - e.y; const mLen = Math.hypot(mx, my);
+    // Guard: if the terminal is farther than ~1.5 stroke widths, the cut
+    // detection is unreliable for this geometry — skip the cap (leave it to the
+    // body) rather than emit long spanning stitches.
+    if (mLen < 1 || mLen > 2.4 * localW) return [];
+    const cutx = tip.dir.x, cuty = tip.dir.y;                 // stitch runs along the cut edge
+    const maxStitch = 2.2 * localW;
+    const steps = Math.max(1, Math.ceil(mLen / spacingPx));
+    const pairs = [];
+    for (let s = 1; s <= steps; s++) {
+      const t = s / steps;
+      const cxp = e.x + mx * t, cyp = e.y + my * t;
+      const hp = rayRingHit(ring, cxp, cyp, cutx, cuty);
+      const hn = rayRingHit(ring, cxp, cyp, -cutx, -cuty);
+      if (!hp || !hn) continue;
+      if (Math.hypot(hp.x - hn.x, hp.y - hn.y) > maxStitch) continue; // reject spanning stitch
+      pairs.push(s % 2 === 0 ? [hp, hn] : [hn, hp]);
+    }
+    // fromTip: sew tip->e (used for the START cap so it lands where the body
+    // begins). Reverse by PAIRS so each cross stays intact (reversing the flat
+    // point list would swap cross endpoints and create a long jump).
+    if (fromTip) pairs.reverse();
+    const out = [];
+    for (const pr of pairs) { out.push(pr[0]); out.push(pr[1]); }
+    return out;
+  }
+
   // Satin along the medial axis (skeleton) of a single solid ring. Handles
   // strokes that double back (S, hooks) that the outline-split satinColumn
   // cannot. opts = { spacingMm, pxPerMm, pullCompMm=0, slantDeg=0 }.
@@ -482,19 +545,14 @@
 
     let spine = gridPath.map(([i, j]) => ({ x: minX + (i + 0.5) / gscale, y: minY + (j + 0.5) / gscale }));
     spine = smoothChain(spine, 3);
-    // Reach the terminals: extend each end along its tangent (skeleton retracts
-    // from stroke ends by ~half the stroke width).
+    // The raw skeleton VEERS toward the corner of an angled terminal. Drop that
+    // unreliable tail (~one stroke width each end); the terminals are filled by
+    // squared caps (below) instead of trusting the medial axis there.
     const halfWidthPx = estimateWidthMm(ring, 1) / 2;
     if (halfWidthPx > EPS) {
-      // The raw skeleton VEERS toward the corner of an angled terminal (it bends
-      // to the nearest boundary). Drop that unreliable tail (~one stroke width
-      // at each end), then re-extend STRAIGHT along the now-stable stroke
-      // direction, clipped at the terminal edge — so the spine ends pointing the
-      // way the stroke actually runs, not off into the corner.
       const L0 = chainLength(spine);
       const trim = halfWidthPx;
-      if (L0 > 2.6 * trim) spine = subChainByArc(spine, trim, L0 - trim);
-      spine = extendSpine(spine, ring, halfWidthPx * 2.6);
+      if (L0 > 3.0 * trim) spine = subChainByArc(spine, trim, L0 - trim);
     }
     const denom = spacingMm * pxPerMm;
     const stepPx = denom > 0 ? denom : 4;
@@ -502,6 +560,13 @@
     if (!(spineLen > EPS)) return satinColumn(ring, opts);
     spine = resampleChain(spine, Math.max(2, Math.ceil(spineLen / stepPx)));
     if (typeof globalThis !== "undefined" && globalThis.__DBG_SPINE) globalThis.__spine = spine.map((p) => ({ x: p.x, y: p.y }));
+
+    // Stable end points + outward directions for the terminal caps.
+    const sp0 = spine[0], sp1 = spine[Math.min(1, spine.length - 1)];
+    const spN = spine[spine.length - 1], spN1 = spine[Math.max(0, spine.length - 2)];
+    const norm2 = (x, y) => { const l = Math.hypot(x, y) || 1; return { x: x / l, y: y / l }; };
+    const startE = sp0, startD = norm2(sp0.x - sp1.x, sp0.y - sp1.y);
+    const endE = spN, endD = norm2(spN.x - spN1.x, spN.y - spN1.y);
 
     const N = spine.length;
     // Per-station stitch normal from the local spine tangent (+ optional slant).
@@ -562,7 +627,13 @@
       if (offset > 0) { const mx = (pA.x + pB.x) / 2, my = (pA.y + pB.y) / 2; pA = pushOut(pA, mx, my, offset); pB = pushOut(pB, mx, my, offset); }
       if (t % 2 === 0) { out.push(pA); out.push(pB); } else { out.push(pB); out.push(pA); }
     }
-    return out.length >= 4 ? out : satinColumn(ring, opts);
+
+    // Squared terminal caps, aligned to the cut edge, joined to the body ends.
+    const capStep = denom > 0 ? denom : 4;
+    const startCap = capStitches(ring, startE, startD, capStep, true);  // tip -> body start
+    const endCap = capStitches(ring, endE, endD, capStep, false);       // body end -> tip
+    const full = startCap.concat(out, endCap);
+    return full.length >= 4 ? full : satinColumn(ring, opts);
   }
 
   return {
