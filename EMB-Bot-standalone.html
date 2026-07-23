@@ -2850,6 +2850,8 @@ const _sm_fillmod = _sm_req
   const satinmod = _node ? dep("./satin.js") : root.EMB;
 
   function polyArea(p) { let a = 0; for (let i = 0, j = p.length - 1; i < p.length; j = i++) a += (p[j].x * p[i].y - p[i].x * p[j].y); return Math.abs(a) / 2; }
+  // SIGNED shoelace area (sign encodes winding). Do NOT confuse with polyArea (abs).
+  function signedArea(p) { let a = 0; for (let i = 0, j = p.length - 1; i < p.length; j = i++) a += (p[j].x * p[i].y - p[i].x * p[j].y); return a / 2; }
   function polyPerim(p) { let L = 0; for (let i = 0; i < p.length; i++) { const q = p[(i + 1) % p.length]; L += Math.hypot(q.x - p[i].x, q.y - p[i].y); } return L; }
   function centroid(p) { let x = 0, y = 0; for (const q of p) { x += q.x; y += q.y; } return { x: x / p.length, y: y / p.length }; }
   // principal-axis angle (degrees) of a set of polygons
@@ -3204,7 +3206,19 @@ const _sm_fillmod = _sm_req
           else {
             let fillRings = rings;
             if (fabric && pullCompPx > 0) {
-              fillRings = [offsetRing(poly, pullCompPx, true)].concat(holes.map((hh) => offsetRing(hh, pullCompPx, false)));
+              // Outer outset never inverts (growing). Hole insets can: a hole
+              // thinner than ~2*pullCompPx collapses and flips winding (walls
+              // cross), yielding a self-intersecting boundary the miter clamp
+              // can't prevent. Per hole: if the inset flips signed-area sign vs
+              // the original (winding inverted) or its area is ~0 (collapsed),
+              // discard the offset and keep the ORIGINAL hole ring.
+              const insetHoles = holes.map((hh) => {
+                const off = offsetRing(hh, pullCompPx, false);
+                const a0 = signedArea(hh), a1 = signedArea(off);
+                if (Math.sign(a0) !== Math.sign(a1) || Math.abs(a1) < 1e-6) return hh;
+                return off;
+              });
+              fillRings = [offsetRing(poly, pullCompPx, true)].concat(insetHoles);
             }
             pts = fillmod.tatamiFill(fillRings, { rowSpacing: rowPx, angleDeg: angle, maxStitch: maxPx, markConnectors: true }); nFill++;
           }
@@ -3235,7 +3249,7 @@ const _sm_fillmod = _sm_req
     return { stitches, colors, widthMM: fit.targetWmm, heightMM: fit.targetHmm, stitchCount, colorCount: colors.length, _debug: { nSatin, nFill, nTrims } };
   }
 
-  return { buildQualityDesign, groupRingsIntoShapes, offsetRing, underlayRuns };
+  return { buildQualityDesign, groupRingsIntoShapes, offsetRing, signedArea, underlayRuns };
 });
 
 </script>
