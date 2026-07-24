@@ -518,7 +518,7 @@
     const ls = o.letterSpacingMm || 0;
     // Pass 1: measure the glyph extent (bbox is spacing-independent) so we can
     // fit-to-garment. Coarse spacing keeps it cheap.
-    const probe = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: 2, pullCompMm: 0, letterSpacingMm: ls });
+    const probe = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: 2, pullCompMm: 0, letterSpacingMm: ls, underlay: false });
     if (!probe.runs.length) return empty;
     const bb = probe.bbox;
     const bboxWmm = (bb.x1 - bb.x0) / pxPerMm, bboxHmm = (bb.y1 - bb.y0) / pxPerMm;
@@ -529,7 +529,7 @@
     // Pass 2: generate at fit-corrected density so the FINAL satin spacing and
     // pull-comp land at the requested mm regardless of the fit scale (short text
     // scaled up would otherwise sew too sparse).
-    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: densityMm / sc, pullCompMm: pullCompMm / sc, letterSpacingMm: ls });
+    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: densityMm / sc, pullCompMm: pullCompMm / sc, letterSpacingMm: ls, underlay: o.underlay !== false });
     if (!lay.runs.length) return empty;
     const cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2;
     const T = (q) => ({ x: Math.round((q.x - cx) * scalePxToDst), y: Math.round((cy - q.y) * scalePxToDst) });
@@ -537,19 +537,35 @@
 
     const stitches = [];
     const colors = [{ r: rgb[0], g: rgb[1], b: rgb[2], name: "Color 1" }];
-    let nTrims = 0, lastPt = null;
-    for (const pts of lay.runs) {
+    const maxStitchMm = o.maxStitchMm || 4;
+    const maxStepPx = maxStitchMm / finalMmPerPx;   // longest single stitch (px)
+    const runConnectMm = o.runConnectMm == null ? 2.5 : o.runConnectMm; // short-gap → walk
+    let nTrims = 0, nSatin = 0, lastPt = null;
+    for (const run of lay.runs) {
+      const pts = run.pts;
+      if (!pts || pts.length < 2) continue;
+      if (run.kind === "satin") nSatin++;
+      const start = pts[0];
       if (lastPt) {
-        const travelMm = Math.hypot(pts[0].x - lastPt.x, pts[0].y - lastPt.y) * finalMmPerPx;
-        if (travelMm > trimAtMm) { const tp = T(lastPt); stitches.push({ x: tp.x, y: tp.y, type: "trim" }); nTrims++; }
+        const gap = Math.hypot(start.x - lastPt.x, start.y - lastPt.y);
+        const gapMm = gap * finalMmPerPx;
+        if (gapMm <= runConnectMm) {
+          // Short junction gap: needle-DOWN running connector (subdivided), so
+          // the travel is a covered running stitch, not a bare jump/trim.
+          const steps = Math.max(1, Math.ceil(gap / maxStepPx));
+          for (let s = 1; s <= steps; s++) { const t = s / steps; const d = T({ x: lastPt.x + (start.x - lastPt.x) * t, y: lastPt.y + (start.y - lastPt.y) * t }); stitches.push({ x: d.x, y: d.y, type: "stitch" }); }
+        } else {
+          if (gapMm > trimAtMm) { const tp = T(lastPt); stitches.push({ x: tp.x, y: tp.y, type: "trim" }); nTrims++; }
+          const f = T(start); stitches.push({ x: f.x, y: f.y, type: "jump" });
+        }
+      } else {
+        const f = T(start); stitches.push({ x: f.x, y: f.y, type: "jump" });
       }
-      const f = T(pts[0]);
-      stitches.push({ x: f.x, y: f.y, type: "jump" });
       for (const q of pts) { const d = T(q); stitches.push({ x: d.x, y: d.y, type: "stitch" }); }
       lastPt = pts[pts.length - 1];
     }
     const stitchCount = stitches.filter((s) => s.type === "stitch").length;
-    return { stitches, colors, widthMM: fit.targetWmm, heightMM: fit.targetHmm, stitchCount, colorCount: 1, _debug: { nSatin: lay.runs.length, nFill: 0, nTrims } };
+    return { stitches, colors, widthMM: fit.targetWmm, heightMM: fit.targetHmm, stitchCount, colorCount: 1, _debug: { nSatin, nFill: 0, nTrims } };
   }
 
   return { buildQualityDesign, buildLetteringDesign, groupRingsIntoShapes, offsetRing, signedArea, underlayRuns };

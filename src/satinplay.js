@@ -128,5 +128,20 @@
     return emitZigzag(A, B, opts || {});
   }
 
-  return { satinFromRails, correspond };
+  // Center-walk underlay: a running stitch down the column centerline (midpoints
+  // of the corresponded rails), resampled to ~stepMm. Sewn before the top satin
+  // to stabilize the column; hidden under it. opts = { stepMm=2, pxPerMm=1 }.
+  function centerRun(railA, railB, rungs, opts) {
+    if (!railA || !railB || railA.length < 2 || railB.length < 2) return [];
+    const o = opts || {};
+    const { A, B } = correspond(railA, railB, rungs || [], o.samplesPerSection || 12);
+    const C = []; for (let i = 0; i < A.length; i++) C.push({ x: (A[i].x + B[i].x) / 2, y: (A[i].y + B[i].y) / 2 });
+    if (C.length < 2) return [];
+    const step = (o.stepMm || 2) * (o.pxPerMm || 1);
+    const len = chainLength(C);
+    const n = step > 0 ? Math.max(2, Math.ceil(len / step)) : Math.max(2, C.length);
+    return resampleChain(C, n);
+  }
+
+  return { satinFromRails, centerRun, correspond };
 });

@@ -483,6 +483,7 @@
             fabric: EMB.getFabric(el.fabric.value),
             pxPerMm: 8,
             densityMm: opts.densityMm,
+            underlay: opts.underlay,
           });
           if (!sdesign.stitchCount) { setStatus("No stitches — those characters aren't in this font yet.", true); return; }
           currentDesign = sdesign;

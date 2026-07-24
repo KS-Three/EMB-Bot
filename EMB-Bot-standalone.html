@@ -2492,7 +2492,22 @@ const units =
     return emitZigzag(A, B, opts || {});
   }
 
-  return { satinFromRails, correspond };
+  // Center-walk underlay: a running stitch down the column centerline (midpoints
+  // of the corresponded rails), resampled to ~stepMm. Sewn before the top satin
+  // to stabilize the column; hidden under it. opts = { stepMm=2, pxPerMm=1 }.
+  function centerRun(railA, railB, rungs, opts) {
+    if (!railA || !railB || railA.length < 2 || railB.length < 2) return [];
+    const o = opts || {};
+    const { A, B } = correspond(railA, railB, rungs || [], o.samplesPerSection || 12);
+    const C = []; for (let i = 0; i < A.length; i++) C.push({ x: (A[i].x + B[i].x) / 2, y: (A[i].y + B[i].y) / 2 });
+    if (C.length < 2) return [];
+    const step = (o.stepMm || 2) * (o.pxPerMm || 1);
+    const len = chainLength(C);
+    const n = step > 0 ? Math.max(2, Math.ceil(len / step)) : Math.max(2, C.length);
+    return resampleChain(C, n);
+  }
+
+  return { satinFromRails, centerRun, correspond };
 });
 
 </script>
@@ -2510,24 +2525,51 @@ const units =
   const _node = typeof module !== "undefined" && module.exports;
   const satinplay = _node ? require("./satinplay.js") : root.EMB;
   const satinFromRails = satinplay.satinFromRails;
+  const centerRun = satinplay.centerRun;
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+  // Order a glyph's columns for sewing: greedy nearest-neighbour from the pen
+  // position, reversing a column when its far end is the closer entry — so the
+  // needle always enters the nearest column end and inter-column travel stays
+  // short (and local to a junction).
+  function orderColumns(cols, startPt) {
+    const rem = cols.slice(), out = [];
+    let cur = startPt;
+    while (rem.length) {
+      let bi = 0, brev = false, bd = Infinity;
+      for (let i = 0; i < rem.length; i++) {
+        const rA = rem[i].railA; const s = rA[0], e = rA[rA.length - 1];
+        const ds = dist(s, cur), de = dist(e, cur);
+        if (ds < bd) { bd = ds; bi = i; brev = false; }
+        if (de < bd) { bd = de; bi = i; brev = true; }
+      }
+      const c = rem.splice(bi, 1)[0];
+      if (brev) { c.railA.reverse(); c.railB.reverse(); if (c.rungs) c.rungs.reverse(); }
+      out.push(c);
+      const rA = c.railA; cur = rA[rA.length - 1];
+    }
+    return out;
+  }
 
   // Lay out `text` in a pre-digitized font. Returns:
-  //   { runs:[[{x,y}…]], travels:[[from,to]], bbox:{x0,y0,x1,y1} }
-  // in DESIGN PIXELS (y-down). runs are satin zig-zag point lists (consecutive
-  // pairs = crosses); travels are needle-up hops between columns.
-  // opts = { emMm=18, pxPerMm=10, spacingMm=0.4, pullCompMm=0, letterSpacingMm=0 }.
+  //   { runs:[{pts:[{x,y}…], kind:"underlay"|"satin"}], bbox:{x0,y0,x1,y1} }
+  // in DESIGN PIXELS (y-down). Each satin column gets a center-walk underlay run
+  // (sewn first, hidden under the satin). Columns are ordered nearest-neighbour
+  // so travel between them is short. opts = { emMm=18, pxPerMm=10, spacingMm=0.4,
+  // pullCompMm=0, letterSpacingMm=0, underlay=true }.
   function layoutText(font, text, opts) {
     const o = opts || {};
     const emMm = o.emMm || 18;
     const pxPerMm = o.pxPerMm || 10;
     const spacingMm = o.spacingMm || 0.4;
     const pullCompMm = o.pullCompMm || 0;
+    const doUnderlay = o.underlay !== false;
     const u2px = (emMm / font.unitsPerEm) * pxPerMm;       // font units -> design px
     const lsUnits = (o.letterSpacingMm || 0) * font.unitsPerEm / emMm;
     const chars = Array.from(text);
 
-    const runs = [], travels = [];
-    let penX = 0, prev = null, lastPt = null;
+    const runs = [];
+    let penX = 0, prev = null;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     const acc = (p) => { if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x; if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y; };
 
@@ -2538,22 +2580,30 @@ const units =
       if (prev != null && font.kerning) { const k = font.kerning[prev + ch]; if (k) penX += k; }
       const ox = penX;
       const TX = (x) => (x + ox) * u2px, TY = (y) => y * u2px;
-      for (const col of g.cols) {
-        const railA = col.railA.map((p) => ({ x: TX(p[0]), y: TY(p[1]) }));
-        const railB = col.railB.map((p) => ({ x: TX(p[0]), y: TY(p[1]) }));
-        const rungs = (col.rungs || []).map((rg) => [{ x: TX(rg[0][0]), y: TY(rg[0][1]) }, { x: TX(rg[1][0]), y: TY(rg[1][1]) }]);
-        const pts = satinFromRails(railA, railB, rungs, { spacingMm, pxPerMm, pullCompMm });
-        if (pts.length >= 2) {
-          if (lastPt) travels.push([lastPt, pts[0]]);
-          runs.push(pts);
-          for (const p of pts) acc(p);
-          lastPt = pts[pts.length - 1];
+      const cols = g.cols.map((col) => ({
+        railA: col.railA.map((p) => ({ x: TX(p[0]), y: TY(p[1]) })),
+        railB: col.railB.map((p) => ({ x: TX(p[0]), y: TY(p[1]) })),
+        rungs: (col.rungs || []).map((rg) => [{ x: TX(rg[0][0]), y: TY(rg[0][1]) }, { x: TX(rg[1][0]), y: TY(rg[1][1]) }]),
+      }));
+      for (const c of orderColumns(cols, { x: ox * u2px, y: 0 })) {
+        const satin = satinFromRails(c.railA, c.railB, c.rungs, { spacingMm, pxPerMm, pullCompMm });
+        if (satin.length < 2) continue;
+        if (doUnderlay) {
+          let under = centerRun(c.railA, c.railB, c.rungs, { stepMm: 2, pxPerMm });
+          // orient underlay to END where the satin STARTS (contiguous, no jump)
+          if (under.length >= 2) {
+            if (dist(under[under.length - 1], satin[0]) > dist(under[0], satin[0])) under = under.slice().reverse();
+            runs.push({ pts: under, kind: "underlay" });
+            for (const p of under) acc(p);
+          }
         }
+        runs.push({ pts: satin, kind: "satin" });
+        for (const p of satin) acc(p);
       }
       penX += g.adv + lsUnits;
       prev = ch;
     }
-    return { runs, travels, bbox: { x0, y0, x1, y1 } };
+    return { runs, bbox: { x0, y0, x1, y1 } };
   }
 
   return { layoutText };
@@ -4301,7 +4351,7 @@ const _sm_fillmod = _sm_req
     const ls = o.letterSpacingMm || 0;
     // Pass 1: measure the glyph extent (bbox is spacing-independent) so we can
     // fit-to-garment. Coarse spacing keeps it cheap.
-    const probe = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: 2, pullCompMm: 0, letterSpacingMm: ls });
+    const probe = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: 2, pullCompMm: 0, letterSpacingMm: ls, underlay: false });
     if (!probe.runs.length) return empty;
     const bb = probe.bbox;
     const bboxWmm = (bb.x1 - bb.x0) / pxPerMm, bboxHmm = (bb.y1 - bb.y0) / pxPerMm;
@@ -4312,7 +4362,7 @@ const _sm_fillmod = _sm_req
     // Pass 2: generate at fit-corrected density so the FINAL satin spacing and
     // pull-comp land at the requested mm regardless of the fit scale (short text
     // scaled up would otherwise sew too sparse).
-    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: densityMm / sc, pullCompMm: pullCompMm / sc, letterSpacingMm: ls });
+    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: densityMm / sc, pullCompMm: pullCompMm / sc, letterSpacingMm: ls, underlay: o.underlay !== false });
     if (!lay.runs.length) return empty;
     const cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2;
     const T = (q) => ({ x: Math.round((q.x - cx) * scalePxToDst), y: Math.round((cy - q.y) * scalePxToDst) });
@@ -4320,19 +4370,35 @@ const _sm_fillmod = _sm_req
 
     const stitches = [];
     const colors = [{ r: rgb[0], g: rgb[1], b: rgb[2], name: "Color 1" }];
-    let nTrims = 0, lastPt = null;
-    for (const pts of lay.runs) {
+    const maxStitchMm = o.maxStitchMm || 4;
+    const maxStepPx = maxStitchMm / finalMmPerPx;   // longest single stitch (px)
+    const runConnectMm = o.runConnectMm == null ? 2.5 : o.runConnectMm; // short-gap → walk
+    let nTrims = 0, nSatin = 0, lastPt = null;
+    for (const run of lay.runs) {
+      const pts = run.pts;
+      if (!pts || pts.length < 2) continue;
+      if (run.kind === "satin") nSatin++;
+      const start = pts[0];
       if (lastPt) {
-        const travelMm = Math.hypot(pts[0].x - lastPt.x, pts[0].y - lastPt.y) * finalMmPerPx;
-        if (travelMm > trimAtMm) { const tp = T(lastPt); stitches.push({ x: tp.x, y: tp.y, type: "trim" }); nTrims++; }
+        const gap = Math.hypot(start.x - lastPt.x, start.y - lastPt.y);
+        const gapMm = gap * finalMmPerPx;
+        if (gapMm <= runConnectMm) {
+          // Short junction gap: needle-DOWN running connector (subdivided), so
+          // the travel is a covered running stitch, not a bare jump/trim.
+          const steps = Math.max(1, Math.ceil(gap / maxStepPx));
+          for (let s = 1; s <= steps; s++) { const t = s / steps; const d = T({ x: lastPt.x + (start.x - lastPt.x) * t, y: lastPt.y + (start.y - lastPt.y) * t }); stitches.push({ x: d.x, y: d.y, type: "stitch" }); }
+        } else {
+          if (gapMm > trimAtMm) { const tp = T(lastPt); stitches.push({ x: tp.x, y: tp.y, type: "trim" }); nTrims++; }
+          const f = T(start); stitches.push({ x: f.x, y: f.y, type: "jump" });
+        }
+      } else {
+        const f = T(start); stitches.push({ x: f.x, y: f.y, type: "jump" });
       }
-      const f = T(pts[0]);
-      stitches.push({ x: f.x, y: f.y, type: "jump" });
       for (const q of pts) { const d = T(q); stitches.push({ x: d.x, y: d.y, type: "stitch" }); }
       lastPt = pts[pts.length - 1];
     }
     const stitchCount = stitches.filter((s) => s.type === "stitch").length;
-    return { stitches, colors, widthMM: fit.targetWmm, heightMM: fit.targetHmm, stitchCount, colorCount: 1, _debug: { nSatin: lay.runs.length, nFill: 0, nTrims } };
+    return { stitches, colors, widthMM: fit.targetWmm, heightMM: fit.targetHmm, stitchCount, colorCount: 1, _debug: { nSatin, nFill: 0, nTrims } };
   }
 
   return { buildQualityDesign, buildLetteringDesign, groupRingsIntoShapes, offsetRing, signedArea, underlayRuns };
@@ -5142,6 +5208,7 @@ const deps =
             fabric: EMB.getFabric(el.fabric.value),
             pxPerMm: 8,
             densityMm: opts.densityMm,
+            underlay: opts.underlay,
           });
           if (!sdesign.stitchCount) { setStatus("No stitches — those characters aren't in this font yet.", true); return; }
           currentDesign = sdesign;
