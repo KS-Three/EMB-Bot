@@ -89,9 +89,11 @@ for (const p of ps) {
 }
 
 // playback
+const SPACING = +(process.env.SPACING || 0.4);
+const PXPERMM = +(process.env.PXPERMM || 3);
 const runs = [];
 for (const c of columns) {
-  const pts = SP.satinFromRails(c.railA, c.railB, c.rungs, { spacingMm: 0.4, pxPerMm: 3, pullCompMm: 0 });
+  const pts = SP.satinFromRails(c.railA, c.railB, c.rungs, { spacingMm: SPACING, pxPerMm: PXPERMM, pullCompMm: 0 });
   if (pts.length >= 2) runs.push(pts);
 }
 
