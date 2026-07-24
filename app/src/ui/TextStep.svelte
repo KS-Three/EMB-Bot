@@ -1,5 +1,5 @@
 <script>
-  import FontGallery from "./FontGallery.svelte";
+  import FontSelect from "./FontSelect.svelte";
   import { createEventDispatcher } from "svelte";
   export let project;
   const d = createEventDispatcher();
@@ -25,4 +25,4 @@
   <input type="color" value={rgbToHex(project.colorRgb)} on:input={(e) => d("update", { colorRgb: hexToRgb(e.target.value) })} />
 </label>
 <h3>Font</h3>
-<FontGallery selected={project.fontKey} on:pick={(e) => d("update", { fontKey: e.detail })} />
+<FontSelect selected={project.fontKey} on:pick={(e) => d("update", { fontKey: e.detail })} />
