@@ -30,10 +30,12 @@ const polys = F.pathToPolygons(path, 8);
 function area(p) { let a = 0; for (let i = 0, j = p.length - 1; i < p.length; j = i++) a += p[j].x * p[i].y - p[i].x * p[j].y; return Math.abs(a) / 2; }
 polys.sort((a, b) => area(b) - area(a));
 const ring = polys[0];
+// treat every smaller ring as a counter/hole (fine for single glyphs B/R/A/O)
+const holes = polys.slice(1);
 
 if (process.env.SPINE) globalThis.__DBG_SPINE = 1;
 const fn = process.env.MEDIAL === "0" ? S.satinColumn : S.medialSatin;
-const pts = fn.call(S, ring, { spacingMm: SPACING, pxPerMm: PXPERMM, pullCompMm: PULL });
+const pts = fn.call(S, ring, { spacingMm: SPACING, pxPerMm: PXPERMM, pullCompMm: PULL, holes });
 const spine = globalThis.__spine || [];
 
 // bounds

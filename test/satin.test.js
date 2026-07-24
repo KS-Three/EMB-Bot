@@ -187,3 +187,48 @@ test("a nearly-square ring still produces a valid finite column", () => {
   assert.ok(pts.length >= 4, `expected some stitches, got ${pts.length}`);
   assert.ok(pts.every(p => Number.isFinite(p.x) && Number.isFinite(p.y)), "all finite");
 });
+
+// ---- medial-axis satin with counters (holes) & closed loops -----------------
+
+test("rasterize leaves enclosed holes unfilled (even-odd across contours)", () => {
+  const outer = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }];
+  const hole = [{ x: 30, y: 30 }, { x: 70, y: 30 }, { x: 70, y: 70 }, { x: 30, y: 70 }];
+  const gw = 104, gh = 104;
+  const mask = satin.rasterize([outer, hole], 1, 0, 0, gw, gh);
+  assert.strictEqual(mask[50 * gw + 50], 0, "center (inside counter) must be unfilled");
+  assert.strictEqual(mask[50 * gw + 10], 1, "band (outside counter) must be filled");
+});
+
+test("skeletonEdges returns a closed cycle for a loop with no nodes", () => {
+  const gw = 20, gh = 20; const skel = new Uint8Array(gw * gh);
+  for (let x = 4; x <= 14; x++) { skel[4 * gw + x] = 1; skel[14 * gw + x] = 1; }
+  for (let y = 4; y <= 14; y++) { skel[y * gw + 4] = 1; skel[y * gw + 14] = 1; }
+  const edges = satin.skeletonEdges(skel, gw, gh);
+  assert.ok(edges.some((e) => e.closed), "a nodeless loop should decompose to a closed-cycle edge");
+});
+
+test("medialSatin on a solid bar (no holes) returns a valid column", () => {
+  const bar = [{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 200, y: 24 }, { x: 0, y: 24 }];
+  const pts = satin.medialSatin(bar, { spacingMm: 2, pxPerMm: 4 });
+  assert.ok(pts.length >= 8, `expected a column, got ${pts.length}`);
+  assert.ok(pts.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y)), "all finite");
+});
+
+test("medialSatin stitches an annulus as a ring without crossing the counter", () => {
+  // Circular annulus (like an O counter): outer r90, inner r45, center (100,100).
+  const N = 48, cx = 100, cy = 100;
+  const outer = [], hole = [];
+  for (let k = 0; k < N; k++) { const a = 2 * Math.PI * k / N; outer.push({ x: cx + 90 * Math.cos(a), y: cy + 90 * Math.sin(a) }); }
+  for (let k = 0; k < N; k++) { const a = 2 * Math.PI * k / N; hole.push({ x: cx + 45 * Math.cos(a), y: cy + 45 * Math.sin(a) }); }
+  const pts = satin.medialSatin(outer, { spacingMm: 3, pxPerMm: 4, holes: [hole] });
+  assert.ok(pts.length >= 20, `expected a full ring of crosses, got ${pts.length}`);
+  // No width-spanning cross may have its midpoint inside the open counter (r<45).
+  let midInHole = 0;
+  for (let k = 0; k + 1 < pts.length; k += 2) {
+    const a = pts[k], b = pts[k + 1];
+    if (a.travel || b.travel) continue; // skip needle-up hops
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    if (Math.hypot(mx - cx, my - cy) < 43) midInHole++;
+  }
+  assert.strictEqual(midInHole, 0, `no stitch may sew across the counter, got ${midInHole}`);
+});

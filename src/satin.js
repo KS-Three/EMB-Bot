@@ -296,17 +296,25 @@
 
   // ---- Medial-axis (skeleton) satin, for strokes that double back (S, curves) ----
 
-  // Scanline-fill a ring into a binary grid at `gscale` px-per-unit.
-  function rasterize(ring, gscale, minX, minY, gw, gh) {
+  // Scanline-fill one-or-more contours into a binary grid at `gscale`
+  // px-per-unit. Accepts a single ring OR an array of rings [outer, ...holes];
+  // all edges feed one even-odd crossing test per scanline, so enclosed holes
+  // (letter counters in B/R/A/O) come out UNFILLED automatically — winding
+  // direction is irrelevant to even-odd.
+  function rasterize(ringOrContours, gscale, minX, minY, gw, gh) {
+    const contours = Array.isArray(ringOrContours) && ringOrContours[0] && !("x" in ringOrContours[0])
+      ? ringOrContours : [ringOrContours];
     const mask = new Uint8Array(gw * gh);
-    const n = ring.length;
     for (let j = 0; j < gh; j++) {
       const wy = minY + (j + 0.5) / gscale;
       const xs = [];
-      for (let k = 0; k < n; k++) {
-        const a = ring[k], b = ring[(k + 1) % n];
-        if ((a.y <= wy && b.y > wy) || (b.y <= wy && a.y > wy)) {
-          xs.push(a.x + (b.x - a.x) * ((wy - a.y) / (b.y - a.y)));
+      for (const ring of contours) {
+        const n = ring.length;
+        for (let k = 0; k < n; k++) {
+          const a = ring[k], b = ring[(k + 1) % n];
+          if ((a.y <= wy && b.y > wy) || (b.y <= wy && a.y > wy)) {
+            xs.push(a.x + (b.x - a.x) * ((wy - a.y) / (b.y - a.y)));
+          }
         }
       }
       xs.sort((p, q) => p - q);
@@ -345,6 +353,32 @@
       }
     }
     return mask;
+  }
+
+  // Strip short dead-end branches (spurs) from a 1px skeleton: iteratively
+  // delete deg<=1 pixels for `maxLen` rounds. Thinning leaves tiny hairs at
+  // corners that would fragment a clean loop (O) or stroke into arcs; this
+  // removes them. Real strokes are far longer than maxLen, so their tips only
+  // shrink by a few px (the rail pass trims free ends anyway).
+  function pruneSkeleton(skel, w, h, maxLen) {
+    const idx = (x, y) => y * w + x;
+    const degOf = (x, y) => {
+      let d = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue; const nx = x + dx, ny = y + dy;
+        if (nx >= 0 && ny >= 0 && nx < w && ny < h && skel[idx(nx, ny)]) d++;
+      }
+      return d;
+    };
+    for (let iter = 0; iter < maxLen; iter++) {
+      const del = [];
+      for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+        if (skel[idx(x, y)] && degOf(x, y) <= 1) del.push(idx(x, y));
+      }
+      if (!del.length) break;
+      for (const d of del) skel[d] = 0;
+    }
+    return skel;
   }
 
   // Longest path through the skeleton via double BFS (graph diameter). Returns
@@ -410,11 +444,28 @@
     return best;
   }
 
+  // Nearest positive-t ray hit across MANY contours (outer + holes). The stroke
+  // ribbon of a counter-bearing glyph is bounded by whichever edge is closer —
+  // the outer wall or the counter wall — so the rail stops at the nearer of the
+  // two. Distance measured Euclidean (rayRingHit only returns forward hits).
+  function rayContoursHit(contours, ox, oy, dx, dy) {
+    let best = null, bd = Infinity;
+    for (const ring of contours) {
+      const h = rayRingHit(ring, ox, oy, dx, dy);
+      if (!h) continue;
+      const d = Math.hypot(h.x - ox, h.y - oy);
+      if (d < bd) { bd = d; best = h; }
+    }
+    return best;
+  }
+
   // Rail-satin ONE spine (world coords). Smooth; optionally trim the veering
   // tail at FREE ends only (junction ends run in); resample; build two rails
   // (spine ± smoothed half-width along the smoothed normal) and emit crosses.
+  // `contours` = [outer, ...holes]; rails stop at the nearest wall (so a stroke
+  // beside a counter narrows against the counter edge, not the far outer edge).
   // opts._halfWidthPx is the ring's approx half-width (for trim sizing).
-  function railSatinFromSpine(ring, spinePx, opts, trimStart, trimEnd) {
+  function railSatinFromSpine(contours, spinePx, opts, trimStart, trimEnd) {
     const spacingMm = opts.spacingMm, pxPerMm = opts.pxPerMm;
     const pullCompMm = opts.pullCompMm || 0;
     const slantRad = ((opts.slantDeg || 0) * Math.PI) / 180;
@@ -450,8 +501,8 @@
     const dA = new Array(N), dB = new Array(N);
     for (let t = 0; t < N; t++) {
       const s = spine[t], nx = Math.cos(ang[t]), ny = Math.sin(ang[t]);
-      const hp = rayRingHit(ring, s.x, s.y, nx, ny);
-      const hn = rayRingHit(ring, s.x, s.y, -nx, -ny);
+      const hp = rayContoursHit(contours, s.x, s.y, nx, ny);
+      const hn = rayContoursHit(contours, s.x, s.y, -nx, -ny);
       dA[t] = hp ? Math.hypot(hp.x - s.x, hp.y - s.y) : NaN;
       dB[t] = hn ? Math.hypot(hn.x - s.x, hn.y - s.y) : NaN;
     }
@@ -480,49 +531,110 @@
     return out;
   }
 
-  // Decompose a 1px skeleton into edges (strokes) between nodes (endpoints deg1
-  // / branch points deg>=3). Returns [{pts:[[i,j]...], freeStart, freeEnd}].
+  // Decompose a 1px skeleton into edges (strokes) between nodes. Nodes are
+  // ENDPOINTS (one neighbor) and BRANCH points, where "branch" is detected by
+  // the Rutovitz CROSSING NUMBER (count of arms leaving the pixel), NOT the raw
+  // 8-neighbor count. This matters: a pixelated curve is a staircase, and a
+  // staircase pixel has 3 raw neighbors yet is an ordinary through-point — raw
+  // degree would flag it as a false branch and shatter a smooth loop (O) into
+  // hundreds of fragments. Returns [{pts:[[i,j]…], freeStart, freeEnd, closed}].
   function skeletonEdges(skel, w, h) {
     const id = (x, y) => y * w + x;
+    const on = (x, y) => x >= 0 && y >= 0 && x < w && y < h && !!skel[id(x, y)];
     const nbrs = (x, y) => {
       const r = [];
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-        if (!dx && !dy) continue; const nx = x + dx, ny = y + dy;
-        if (nx >= 0 && ny >= 0 && nx < w && ny < h && skel[id(nx, ny)]) r.push([nx, ny]);
+        if (!dx && !dy) continue; if (on(x + dx, y + dy)) r.push([x + dx, y + dy]);
       }
       return r;
     };
-    const deg = (x, y) => nbrs(x, y).length;
-    const isNode = (x, y) => deg(x, y) !== 2;
+    // Ordered 8-ring (clockwise); crossing number = # of 0→1 transitions around
+    // it = # of distinct neighbor runs = # of arms.
+    const RING = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]];
+    const crossing = (x, y) => {
+      let c = 0;
+      for (let k = 0; k < 8; k++) {
+        const a = on(x + RING[k][0], y + RING[k][1]) ? 1 : 0;
+        const b = on(x + RING[(k + 1) % 8][0], y + RING[(k + 1) % 8][1]) ? 1 : 0;
+        if (a === 0 && b === 1) c++;
+      }
+      return c;
+    };
+    const isEnd = (x, y) => nbrs(x, y).length === 1;
+    const isNode = (x, y) => isEnd(x, y) || crossing(x, y) >= 3;
     const edges = [];
-    const used = new Set();
+    const usedDir = new Set();  // directed first-steps already walked
+    const seen = new Set();     // every skeleton pixel covered by an edge
+
+    // Walk from node (sx,sy) toward neighbor (fx,fy) until the next node. At a
+    // staircase pixel with two forward candidates prefer the unvisited one so we
+    // don't ping-pong; mark every pixel seen.
+    const walk = (sx, sy, fx, fy) => {
+      const path = [[sx, sy], [fx, fy]];
+      seen.add(id(sx, sy)); seen.add(id(fx, fy));
+      let px = sx, py = sy, cx = fx, cy = fy, guard = 0;
+      while (guard++ < w * h) {
+        if (isNode(cx, cy)) break;
+        const cand = nbrs(cx, cy).filter(([a, b]) => !(a === px && b === py));
+        if (!cand.length) break;
+        let nx = cand[0][0], ny = cand[0][1];
+        for (const [a, b] of cand) if (!seen.has(id(a, b))) { nx = a; ny = b; break; }
+        px = cx; py = cy; cx = nx; cy = ny;
+        path.push([cx, cy]); seen.add(id(cx, cy));
+      }
+      return path;
+    };
+
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       if (!skel[id(x, y)] || !isNode(x, y)) continue;
       for (const [nx, ny] of nbrs(x, y)) {
         const k = id(x, y) + ':' + id(nx, ny);
-        if (used.has(k)) continue;
-        used.add(k);
-        const path = [[x, y]]; let px = x, py = y, cx = nx, cy = ny, guard = 0;
-        while (guard++ < w * h) {
-          path.push([cx, cy]);
-          if (isNode(cx, cy)) { used.add(id(cx, cy) + ':' + id(px, py)); break; }
-          const ns = nbrs(cx, cy).filter(([a, b]) => !(a === px && b === py));
-          if (!ns.length) break;
-          px = cx; py = cy; [cx, cy] = ns[0];
-        }
-        const s = path[0], e = path[path.length - 1];
-        edges.push({ pts: path, freeStart: deg(s[0], s[1]) === 1, freeEnd: deg(e[0], e[1]) === 1 });
+        if (usedDir.has(k)) continue;
+        usedDir.add(k);
+        const path = walk(x, y, nx, ny);
+        const e = path[path.length - 1], b = path[path.length - 2];
+        if (b) usedDir.add(id(e[0], e[1]) + ':' + id(b[0], b[1])); // reverse walk
+        edges.push({ pts: path, freeStart: isEnd(x, y), freeEnd: isEnd(e[0], e[1]) });
       }
+    }
+    // Pure cycles (O, 0, counters, closed bowls) contain no node, so the scan
+    // above never touched them. Walk each remaining loop as a CLOSED stroke:
+    // no free ends → no terminal trim, rails close back on themselves.
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (!skel[id(x, y)] || seen.has(id(x, y))) continue;
+      const start = nbrs(x, y);
+      if (start.length !== 2) continue; // not part of a clean loop
+      const path = [[x, y]]; seen.add(id(x, y));
+      let px = x, py = y, cx = start[0][0], cy = start[0][1], guard = 0;
+      while (guard++ < w * h) {
+        if (cx === x && cy === y) break; // closed the loop
+        path.push([cx, cy]); seen.add(id(cx, cy));
+        const cand = nbrs(cx, cy).filter(([a, b]) => !(a === px && b === py));
+        if (!cand.length) break;
+        let nx = cand[0][0], ny = cand[0][1];
+        for (const [a, b] of cand) if (!seen.has(id(a, b)) || (a === x && b === y)) { nx = a; ny = b; break; }
+        px = cx; py = cy; cx = nx; cy = ny;
+      }
+      path.push([x, y]); // close ring explicitly
+      if (path.length >= 5) edges.push({ pts: path, freeStart: false, freeEnd: false, closed: true });
     }
     return edges;
   }
 
+  // Signed-area magnitude and closed perimeter of a ring (px).
+  function ringArea(r) { let a = 0; for (let i = 0, j = r.length - 1; i < r.length; j = i++) a += r[j].x * r[i].y - r[i].x * r[j].y; return Math.abs(a) / 2; }
+  function ringPerim(r) { let p = 0; for (let i = 0; i < r.length; i++) { const a = r[i], b = r[(i + 1) % r.length]; p += Math.hypot(b.x - a.x, b.y - a.y); } return p; }
+
   // Satin along the medial axis (skeleton). Decomposes branched letters (B, R,
   // T…) into individual strokes and rail-satins each; single strokes (S, C, I)
-  // satin as one column. Falls back to outline-split satinColumn for tiny rings.
-  // opts = { spacingMm, pxPerMm, pullCompMm=0, slantDeg=0 }.
+  // satin as one column. Counters (opts.holes: [ring,…]) are punched out of the
+  // raster so the skeleton follows the stroke ribbons AROUND the hole and the
+  // rails stop at the counter edge. Falls back to outline-split satinColumn for
+  // tiny rings. opts = { spacingMm, pxPerMm, pullCompMm=0, slantDeg=0, holes=[] }.
   function medialSatin(ring, opts) {
     if (!ring || ring.length < 3) return [];
+    const holes = ((opts && opts.holes) || []).filter((h) => h && h.length >= 3);
+    const contours = [ring].concat(holes);
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const q of ring) { if (q.x < minX) minX = q.x; if (q.x > maxX) maxX = q.x; if (q.y < minY) minY = q.y; if (q.y > maxY) maxY = q.y; }
     const dim = Math.max(maxX - minX, maxY - minY);
@@ -530,8 +642,28 @@
 
     const gscale = Math.min(1.5, 260 / dim);
     const gw = Math.ceil((maxX - minX) * gscale) + 3, gh = Math.ceil((maxY - minY) * gscale) + 3;
-    const mask = thin(rasterize(ring, gscale, minX, minY, gw, gh), gw, gh);
-    const halfWidthPx = estimateWidthMm(ring, 1) / 2;
+    // Net ribbon half-width (outer area minus counters) over total wall length.
+    const netArea = Math.max(0, ringArea(ring) - holes.reduce((s, h) => s + ringArea(h), 0));
+    const totPerim = ringPerim(ring) + holes.reduce((s, h) => s + ringPerim(h), 0);
+    const halfWidthPx = (totPerim > EPS ? (2 * netArea / totPerim) : 0) / 2;
+    const mask = thin(rasterize(contours, gscale, minX, minY, gw, gh), gw, gh);
+    // Strip thinning SPURS — short dead-end twigs (one free end, other end on a
+    // branch) that thinning grows at curvature bumps. Removing them keeps closed
+    // loops (O) a single clean cycle. Only short one-free-end edges are erased,
+    // so real open strokes (both ends free) and long arms are untouched. Iterate
+    // because erasing one spur can expose another.
+    const spurLenGrid = Math.max(3, halfWidthPx * gscale * 1.6);
+    for (let pass = 0; pass < 4; pass++) {
+      let removed = 0;
+      for (const e of skeletonEdges(mask, gw, gh)) {
+        if (((e.freeStart ? 1 : 0) + (e.freeEnd ? 1 : 0)) !== 1) continue; // spur = exactly one free end
+        let L = 0; for (let i = 0; i + 1 < e.pts.length; i++) L += Math.hypot(e.pts[i + 1][0] - e.pts[i][0], e.pts[i + 1][1] - e.pts[i][1]);
+        if (L >= spurLenGrid) continue;
+        const keep = e.freeStart ? e.pts[e.pts.length - 1] : e.pts[0]; // preserve the branch node
+        for (const [gx, gy] of e.pts) { if (gx === keep[0] && gy === keep[1]) continue; mask[gy * gw + gx] = 0; removed++; }
+      }
+      if (!removed) break;
+    }
     const toWorld = (p) => ({ x: minX + (p[0] + 0.5) / gscale, y: minY + (p[1] + 0.5) / gscale });
 
     let strokes = skeletonEdges(mask, gw, gh).map((e) => ({ spine: e.pts.map(toWorld), freeStart: e.freeStart, freeEnd: e.freeEnd }));
@@ -550,7 +682,7 @@
     const out = [];
     let started = false;
     for (const st of strokes) {
-      const pts = railSatinFromSpine(ring, st.spine, o, st.freeStart, st.freeEnd);
+      const pts = railSatinFromSpine(contours, st.spine, o, st.freeStart, st.freeEnd);
       if (pts.length < 2) continue;
       if (started) pts[0] = { x: pts[0].x, y: pts[0].y, travel: true }; // needle-up jump between strokes
       for (const p of pts) out.push(p);
@@ -568,5 +700,11 @@
     lineSegX,
     satinColumn,
     medialSatin,
+    // internals exposed for testing/diagnostics
+    rasterize,
+    thin,
+    pruneSkeleton,
+    skeletonEdges,
+    skeletonPath,
   };
 });
