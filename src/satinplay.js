@@ -38,6 +38,38 @@
     return best;
   }
 
+  // Arc-length fraction where the SEGMENT p0-p1 crosses the polyline `chain`,
+  // or null if it never crosses. A rung is authored to INTERSECT both rails
+  // (Ink/Stitch: "each rung should intersect both rails once") — the crossing
+  // is the true anchor. Nearest-point anchoring can grab the wrong pass of a
+  // rail that doubles back (a cursive eye), which is what fanned those glyphs.
+  // If it crosses more than once, the crossing nearest the segment midpoint is
+  // used. The segment is extended slightly (5% each end) for robustness.
+  function segCrossFrac(chain, p0, p1) {
+    const ex0 = p0.x - 0.05 * (p1.x - p0.x), ey0 = p0.y - 0.05 * (p1.y - p0.y);
+    const ex1 = p1.x + 0.05 * (p1.x - p0.x), ey1 = p1.y + 0.05 * (p1.y - p0.y);
+    const rx = ex1 - ex0, ry = ey1 - ey0;
+    const total = chainLength(chain) || 1;
+    let best = null, bestScore = Infinity;
+    let acc = 0;
+    for (let k = 0; k + 1 < chain.length; k++) {
+      const a = chain[k], b = chain[k + 1];
+      const sx = b.x - a.x, sy = b.y - a.y;
+      const den = rx * sy - ry * sx;
+      const segLen = Math.hypot(sx, sy);
+      if (Math.abs(den) > EPS) {
+        const t = ((a.x - ex0) * sy - (a.y - ey0) * sx) / den;   // along rung
+        const u = ((a.x - ex0) * ry - (a.y - ey0) * rx) / den;   // along rail seg
+        if (t >= -0.01 && t <= 1.01 && u >= -0.01 && u <= 1.01) {
+          const score = Math.abs(t - 0.5);                        // prefer mid-rung crossing
+          if (score < bestScore) { bestScore = score; best = (acc + u * segLen) / total; }
+        }
+      }
+      acc += segLen;
+    }
+    return best;
+  }
+
   // Sub-polyline of `chain` between arc-fractions f0..f1 (0<=f0<f1<=1), with
   // interpolated endpoints. Returns >=2 points.
   function subByFrac(chain, f0, f1) {
@@ -65,25 +97,50 @@
   // Each rung is [{x,y}(near railA), {x,y}(near railB)]; order along the column
   // is inferred from its position on rail A.
   function correspond(railA, railB, rungs, samplesPerSection) {
-    const sps = samplesPerSection || 12;
-    // Cut fractions on each rail, from rungs, plus the two ends (0 and 1).
+    const floor = samplesPerSection || 12;   // minimum samples per section
+    const STEP = 2;                            // px between corresponded samples
+    // Cut fractions on each rail. A rung's anchor on a rail is where it CROSSES
+    // that rail (true intersection); nearest-point is only a fallback. This
+    // matters on rails that double back (cursive eyes): nearest-point could
+    // anchor a rung to the wrong pass of the rail, producing a section whose
+    // rail-B span ran BACKWARD — subByFrac then degenerated to a straight chord
+    // across the glyph, which read as a fan/spray of long stitches.
     const cuts = [{ a: 0, b: 0 }, { a: 1, b: 1 }];
     if (rungs && rungs.length) {
       for (const rg of rungs) {
         const pa = rg[0], pb = rg[1];
-        cuts.push({ a: nearestFrac(railA, pa.x, pa.y), b: nearestFrac(railB, pb.x, pb.y) });
+        const a = segCrossFrac(railA, pa, pb);
+        const b = segCrossFrac(railB, pa, pb);
+        cuts.push({
+          a: a != null ? a : nearestFrac(railA, pa.x, pa.y),
+          b: b != null ? b : nearestFrac(railB, pb.x, pb.y),
+        });
       }
     }
     cuts.sort((p, q) => p.a - q.a);
+    // Enforce monotonic rail-B fractions: a rung whose B anchor goes backward
+    // relative to the previous cut would create a reversed section — drop it.
+    const mono = [cuts[0]];
+    for (let i = 1; i < cuts.length; i++) {
+      if (cuts[i].b >= mono[mono.length - 1].b - 1e-6) mono.push(cuts[i]);
+    }
+    if (mono[mono.length - 1].a !== 1) mono.push({ a: 1, b: 1 });
     const A = [], B = [];
-    for (let i = 0; i + 1 < cuts.length; i++) {
-      const c0 = cuts[i], c1 = cuts[i + 1];
+    for (let i = 0; i + 1 < mono.length; i++) {
+      const c0 = mono[i], c1 = mono[i + 1];
       if (c1.a - c0.a < 1e-6) continue; // degenerate/duplicate cut
-      const sa = resampleChain(subByFrac(railA, c0.a, c1.a), sps);
-      const sb = resampleChain(subByFrac(railB, c0.b, c1.b), sps);
+      const subA = subByFrac(railA, c0.a, c1.a);
+      const subB = subByFrac(railB, Math.min(c0.b, c1.b), Math.max(c0.b, c1.b));
+      // Sample density scales with the section's length, so long / tightly
+      // curved sections (e.g. the eye of an "e") are followed finely instead of
+      // corner-cut by a flat count — which skewed the cross-stitches.
+      const secLen = Math.max(chainLength(subA), chainLength(subB));
+      const nn = Math.max(floor, Math.min(600, Math.ceil(secLen / STEP)));
+      const sa = resampleChain(subA, nn);
+      const sb = resampleChain(subB, nn);
       // drop the shared first point of every section after the first (continuity)
       const startK = i === 0 ? 0 : 1;
-      for (let k = startK; k < sps; k++) { A.push(sa[k]); B.push(sb[k]); }
+      for (let k = startK; k < nn; k++) { A.push(sa[k]); B.push(sb[k]); }
     }
     return { A, B };
   }
