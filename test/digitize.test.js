@@ -1,5 +1,6 @@
 const assert = require("node:assert");
 const { test } = require("node:test");
+const fs = require("node:fs");
 const DG = require("../src/digitize.js");
 
 const sq = (x0, y0, s) => [{ x: x0, y: y0 }, { x: x0 + s, y: y0 }, { x: x0 + s, y: y0 + s }, { x: x0, y: y0 + s }];
@@ -518,4 +519,69 @@ test("buildQualityDesign: minimizeColorChanges groups identical-rgb regions into
   assert.strictEqual(nColor(on), 1, "minimize: two identical-rgb blocks share a thread → 1 color change");
   assert.strictEqual(on.colorCount, 2, "minimize: only 2 distinct thread colors");
   assert.strictEqual(off.colorCount, 3, "default: 3 color records");
+});
+
+// ---- Slice 3 Task 1: explicit size (targetWidthMm) + offset (offsetXMm/offsetYMm) ----
+
+const expect_close = (a, b, tol) => assert.ok(Math.abs(a - b) <= tol, `expected ${a} close to ${b} (tol ${tol})`);
+
+test("buildLetteringDesign: targetWidthMm sets the final width (clamped to hoop)", () => {
+  const font = JSON.parse(fs.readFileSync(__dirname + "/../src/fonts/geneva_simple.json", "utf8"));
+  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8 };
+  const d40 = DG.buildLetteringDesign(font, "AB", { ...base, targetWidthMm: 40 });
+  expect_close(d40.widthMM, 40, 1.5);
+  const dHuge = DG.buildLetteringDesign(font, "AB", { ...base, targetWidthMm: 500 });
+  assert.ok(dHuge.widthMM <= 5 * 25.4 + 1, "clamped to hoop width");
+});
+
+test("buildLetteringDesign: offsets translate all stitches", () => {
+  const font = JSON.parse(fs.readFileSync(__dirname + "/../src/fonts/geneva_simple.json", "utf8"));
+  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40 };
+  const d0 = DG.buildLetteringDesign(font, "AB", base);
+  const d10 = DG.buildLetteringDesign(font, "AB", { ...base, offsetXMm: 10, offsetYMm: -5 });
+  const s0 = d0.stitches.find((s) => s.type === "stitch");
+  const s1 = d10.stitches.find((s) => s.type === "stitch");
+  assert.strictEqual(s1.x - s0.x, 100); // 10mm = 100 DST units
+  assert.strictEqual(s1.y - s0.y, -50); // -5mm = -50 DST units
+});
+
+test("buildLetteringDesign: opts absent (no targetWidthMm/offsets) stays back-compat", () => {
+  const font = JSON.parse(fs.readFileSync(__dirname + "/../src/fonts/geneva_simple.json", "utf8"));
+  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8 };
+  const a = DG.buildLetteringDesign(font, "AB", base);
+  const b = DG.buildLetteringDesign(font, "AB", { ...base });
+  assert.deepStrictEqual(a, b);
+});
+
+test("buildQualityDesign: targetWidthMm sets the final width (clamped to hoop)", () => {
+  // 400x400 px square at pxPerMm 8 -> 50x50mm natural bbox (square, so width and
+  // height scale identically, making the expected result easy to reason about).
+  const outer = sq(0, 0, 400);
+  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, densityMm: 0.5, underlay: false, satinMaxWidthMm: 3 };
+  const region = [{ rgb: [0, 0, 0], shapes: [{ outer, holes: [] }] }];
+  const d40 = DG.buildQualityDesign(region, { ...base, targetWidthMm: 40 });
+  expect_close(d40.widthMM, 40, 1.5);
+  const dHuge = DG.buildQualityDesign(region, { ...base, targetWidthMm: 500 });
+  assert.ok(dHuge.widthMM <= 5 * 25.4 + 1, "clamped to hoop width");
+});
+
+test("buildQualityDesign: offsets translate all stitches", () => {
+  const outer = sq(0, 0, 400);
+  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, densityMm: 0.5, underlay: false, satinMaxWidthMm: 3, targetWidthMm: 40 };
+  const region = [{ rgb: [0, 0, 0], shapes: [{ outer, holes: [] }] }];
+  const d0 = DG.buildQualityDesign(region, base);
+  const d10 = DG.buildQualityDesign(region, { ...base, offsetXMm: 10, offsetYMm: -5 });
+  const s0 = d0.stitches.find((s) => s.type === "stitch");
+  const s1 = d10.stitches.find((s) => s.type === "stitch");
+  assert.strictEqual(s1.x - s0.x, 100); // 10mm = 100 DST units
+  assert.strictEqual(s1.y - s0.y, -50); // -5mm = -50 DST units
+});
+
+test("buildQualityDesign: opts absent (no targetWidthMm/offsets) stays back-compat", () => {
+  const outer = sq(0, 0, 400);
+  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, densityMm: 0.5, underlay: false, satinMaxWidthMm: 3 };
+  const region = [{ rgb: [0, 0, 0], shapes: [{ outer, holes: [] }] }];
+  const a = DG.buildQualityDesign(region, base);
+  const b = DG.buildQualityDesign(JSON.parse(JSON.stringify(region)), { ...base });
+  assert.deepStrictEqual(a, b);
 });
