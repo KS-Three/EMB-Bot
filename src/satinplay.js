@@ -65,7 +65,8 @@
   // Each rung is [{x,y}(near railA), {x,y}(near railB)]; order along the column
   // is inferred from its position on rail A.
   function correspond(railA, railB, rungs, samplesPerSection) {
-    const sps = samplesPerSection || 12;
+    const floor = samplesPerSection || 12;   // minimum samples per section
+    const STEP = 2;                            // px between corresponded samples
     // Cut fractions on each rail, from rungs, plus the two ends (0 and 1).
     const cuts = [{ a: 0, b: 0 }, { a: 1, b: 1 }];
     if (rungs && rungs.length) {
@@ -79,11 +80,18 @@
     for (let i = 0; i + 1 < cuts.length; i++) {
       const c0 = cuts[i], c1 = cuts[i + 1];
       if (c1.a - c0.a < 1e-6) continue; // degenerate/duplicate cut
-      const sa = resampleChain(subByFrac(railA, c0.a, c1.a), sps);
-      const sb = resampleChain(subByFrac(railB, c0.b, c1.b), sps);
+      const subA = subByFrac(railA, c0.a, c1.a);
+      const subB = subByFrac(railB, c0.b, c1.b);
+      // Sample density scales with the section's length, so long / tightly
+      // curved sections (e.g. the eye of an "e") are followed finely instead of
+      // corner-cut by a flat count — which was skewing the cross-stitches.
+      const secLen = Math.max(chainLength(subA), chainLength(subB));
+      const nn = Math.max(floor, Math.min(600, Math.ceil(secLen / STEP)));
+      const sa = resampleChain(subA, nn);
+      const sb = resampleChain(subB, nn);
       // drop the shared first point of every section after the first (continuity)
       const startK = i === 0 ? 0 : 1;
-      for (let k = startK; k < sps; k++) { A.push(sa[k]); B.push(sb[k]); }
+      for (let k = startK; k < nn; k++) { A.push(sa[k]); B.push(sb[k]); }
     }
     return { A, B };
   }
