@@ -410,47 +410,30 @@
     return best;
   }
 
-  // Satin along the medial axis (skeleton) of a single solid ring. Handles
-  // strokes that double back (S, hooks) that the outline-split satinColumn
-  // cannot. opts = { spacingMm, pxPerMm, pullCompMm=0, slantDeg=0 }.
-  function medialSatin(ring, opts) {
-    if (!ring || ring.length < 3) return [];
+  // Rail-satin ONE spine (world coords). Smooth; optionally trim the veering
+  // tail at FREE ends only (junction ends run in); resample; build two rails
+  // (spine ± smoothed half-width along the smoothed normal) and emit crosses.
+  // opts._halfWidthPx is the ring's approx half-width (for trim sizing).
+  function railSatinFromSpine(ring, spinePx, opts, trimStart, trimEnd) {
     const spacingMm = opts.spacingMm, pxPerMm = opts.pxPerMm;
     const pullCompMm = opts.pullCompMm || 0;
     const slantRad = ((opts.slantDeg || 0) * Math.PI) / 180;
+    const halfWidthPx = opts._halfWidthPx || 0;
 
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (const q of ring) { if (q.x < minX) minX = q.x; if (q.x > maxX) maxX = q.x; if (q.y < minY) minY = q.y; if (q.y > maxY) maxY = q.y; }
-    const dim = Math.max(maxX - minX, maxY - minY);
-    if (!(dim > EPS)) return [];
-
-    const gscale = Math.min(1.5, 260 / dim);
-    const gw = Math.ceil((maxX - minX) * gscale) + 3, gh = Math.ceil((maxY - minY) * gscale) + 3;
-    const mask = thin(rasterize(ring, gscale, minX, minY, gw, gh), gw, gh);
-    const gridPath = skeletonPath(mask, gw, gh);
-    if (gridPath.length < 3) return satinColumn(ring, opts); // fallback to outline split
-
-    let spine = gridPath.map(([i, j]) => ({ x: minX + (i + 0.5) / gscale, y: minY + (j + 0.5) / gscale }));
-    spine = smoothChain(spine, 3);
-    // Trim a little of the veering skeleton tail; the rails built below end
-    // where the spine ends, so terminals cap cleanly by construction.
-    const halfWidthPx = estimateWidthMm(ring, 1) / 2;
-    if (halfWidthPx > EPS) {
+    let spine = smoothChain(spinePx, 3);
+    if (halfWidthPx > EPS && (trimStart || trimEnd)) {
       const L0 = chainLength(spine);
       const trim = 0.5 * halfWidthPx;
-      if (L0 > 3.0 * trim) spine = subChainByArc(spine, trim, L0 - trim);
+      const s0 = trimStart ? trim : 0, s1 = trimEnd ? L0 - trim : L0;
+      if (s1 - s0 > 2 * trim) spine = subChainByArc(spine, s0, s1);
     }
     const denom = spacingMm * pxPerMm;
     const stepPx = denom > 0 ? denom : 4;
     const spineLen = chainLength(spine);
-    if (!(spineLen > EPS)) return satinColumn(ring, opts);
+    if (!(spineLen > EPS)) return [];
     spine = resampleChain(spine, Math.max(2, Math.ceil(spineLen / stepPx)));
-    if (typeof globalThis !== "undefined" && globalThis.__DBG_SPINE) globalThis.__spine = spine.map((p) => ({ x: p.x, y: p.y }));
 
     const N = spine.length;
-    // Smoothed stitch-direction angle per station (angle of the spine NORMAL;
-    // unwrapped since the normal is undirected, period π). Smoothing keeps the
-    // direction rotating gradually so it can't flip at a kink.
     const ang = new Array(N);
     for (let t = 0; t < N; t++) {
       const prev = spine[Math.max(0, t - 1)], next = spine[Math.min(N - 1, t + 1)];
@@ -464,10 +447,6 @@
     for (let pass = 0; pass < 6; pass++) { const cp = ang.slice(); for (let t = 1; t < N - 1; t++) ang[t] = (cp[t - 1] + cp[t] + cp[t + 1]) / 3; }
     if (slantRad) for (let t = 0; t < N; t++) ang[t] += slantRad; // italic lean
 
-    // Measure the local half-widths by casting the smoothed normal to the
-    // outline on each side; fill gaps from neighbours and smooth, so the two
-    // RAILS come out clean (Ink/Stitch approach: build smooth rails, don't
-    // ray-cast each stitch independently).
     const dA = new Array(N), dB = new Array(N);
     for (let t = 0; t < N; t++) {
       const s = spine[t], nx = Math.cos(ang[t]), ny = Math.sin(ang[t]);
@@ -489,10 +468,6 @@
       for (let t = 1; t < N - 1; t++) { dA[t] = (a[t - 1] + a[t] + a[t + 1]) / 3; dB[t] = (b[t - 1] + b[t] + b[t + 1]) / 3; }
     }
 
-    // Build the two rails (spine ± smoothed half-width along the smoothed
-    // normal, + pull compensation) and emit satin crosses A[t]–B[t]. Because the
-    // rails are smooth and simply END where the spine ends, terminals cap
-    // cleanly — no separate cap logic, no per-stitch ray search, no crossing.
     const offset = (pullCompMm * pxPerMm) / 2;
     const out = [];
     for (let t = 0; t < N; t++) {
@@ -501,6 +476,85 @@
       const pB = { x: s.x - nx * (dB[t] + offset), y: s.y - ny * (dB[t] + offset) };
       if (Math.hypot(pA.x - pB.x, pA.y - pB.y) < 0.5) continue;
       if (t % 2 === 0) { out.push(pA); out.push(pB); } else { out.push(pB); out.push(pA); }
+    }
+    return out;
+  }
+
+  // Decompose a 1px skeleton into edges (strokes) between nodes (endpoints deg1
+  // / branch points deg>=3). Returns [{pts:[[i,j]...], freeStart, freeEnd}].
+  function skeletonEdges(skel, w, h) {
+    const id = (x, y) => y * w + x;
+    const nbrs = (x, y) => {
+      const r = [];
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue; const nx = x + dx, ny = y + dy;
+        if (nx >= 0 && ny >= 0 && nx < w && ny < h && skel[id(nx, ny)]) r.push([nx, ny]);
+      }
+      return r;
+    };
+    const deg = (x, y) => nbrs(x, y).length;
+    const isNode = (x, y) => deg(x, y) !== 2;
+    const edges = [];
+    const used = new Set();
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (!skel[id(x, y)] || !isNode(x, y)) continue;
+      for (const [nx, ny] of nbrs(x, y)) {
+        const k = id(x, y) + ':' + id(nx, ny);
+        if (used.has(k)) continue;
+        used.add(k);
+        const path = [[x, y]]; let px = x, py = y, cx = nx, cy = ny, guard = 0;
+        while (guard++ < w * h) {
+          path.push([cx, cy]);
+          if (isNode(cx, cy)) { used.add(id(cx, cy) + ':' + id(px, py)); break; }
+          const ns = nbrs(cx, cy).filter(([a, b]) => !(a === px && b === py));
+          if (!ns.length) break;
+          px = cx; py = cy; [cx, cy] = ns[0];
+        }
+        const s = path[0], e = path[path.length - 1];
+        edges.push({ pts: path, freeStart: deg(s[0], s[1]) === 1, freeEnd: deg(e[0], e[1]) === 1 });
+      }
+    }
+    return edges;
+  }
+
+  // Satin along the medial axis (skeleton). Decomposes branched letters (B, R,
+  // T…) into individual strokes and rail-satins each; single strokes (S, C, I)
+  // satin as one column. Falls back to outline-split satinColumn for tiny rings.
+  // opts = { spacingMm, pxPerMm, pullCompMm=0, slantDeg=0 }.
+  function medialSatin(ring, opts) {
+    if (!ring || ring.length < 3) return [];
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const q of ring) { if (q.x < minX) minX = q.x; if (q.x > maxX) maxX = q.x; if (q.y < minY) minY = q.y; if (q.y > maxY) maxY = q.y; }
+    const dim = Math.max(maxX - minX, maxY - minY);
+    if (!(dim > EPS)) return [];
+
+    const gscale = Math.min(1.5, 260 / dim);
+    const gw = Math.ceil((maxX - minX) * gscale) + 3, gh = Math.ceil((maxY - minY) * gscale) + 3;
+    const mask = thin(rasterize(ring, gscale, minX, minY, gw, gh), gw, gh);
+    const halfWidthPx = estimateWidthMm(ring, 1) / 2;
+    const toWorld = (p) => ({ x: minX + (p[0] + 0.5) / gscale, y: minY + (p[1] + 0.5) / gscale });
+
+    let strokes = skeletonEdges(mask, gw, gh).map((e) => ({ spine: e.pts.map(toWorld), freeStart: e.freeStart, freeEnd: e.freeEnd }));
+    const minEdgeLen = Math.max(3, 1.2 * halfWidthPx);
+    strokes = strokes.filter((s) => { const L = chainLength(s.spine); return L > EPS && (L >= minEdgeLen || (s.freeStart && s.freeEnd)); });
+    if (strokes.length === 0) {
+      const gp = skeletonPath(mask, gw, gh);
+      if (gp.length < 3) return satinColumn(ring, opts);
+      strokes = [{ spine: gp.map(toWorld), freeStart: true, freeEnd: true }];
+    }
+    strokes.sort((a, b) => chainLength(b.spine) - chainLength(a.spine));
+    if (strokes.length > 24) strokes = strokes.slice(0, 24);
+    if (typeof globalThis !== "undefined" && globalThis.__DBG_SPINE) globalThis.__spine = strokes.reduce((acc, s) => acc.concat(s.spine), []);
+
+    const o = Object.assign({ _halfWidthPx: halfWidthPx }, opts);
+    const out = [];
+    let started = false;
+    for (const st of strokes) {
+      const pts = railSatinFromSpine(ring, st.spine, o, st.freeStart, st.freeEnd);
+      if (pts.length < 2) continue;
+      if (started) pts[0] = { x: pts[0].x, y: pts[0].y, travel: true }; // needle-up jump between strokes
+      for (const p of pts) out.push(p);
+      started = true;
     }
     return out.length >= 4 ? out : satinColumn(ring, opts);
   }

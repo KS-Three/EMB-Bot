@@ -1861,6 +1861,271 @@ const units =
     return out;
   }
 
+  // ---- Medial-axis (skeleton) satin, for strokes that double back (S, curves) ----
+
+  // Scanline-fill a ring into a binary grid at `gscale` px-per-unit.
+  function rasterize(ring, gscale, minX, minY, gw, gh) {
+    const mask = new Uint8Array(gw * gh);
+    const n = ring.length;
+    for (let j = 0; j < gh; j++) {
+      const wy = minY + (j + 0.5) / gscale;
+      const xs = [];
+      for (let k = 0; k < n; k++) {
+        const a = ring[k], b = ring[(k + 1) % n];
+        if ((a.y <= wy && b.y > wy) || (b.y <= wy && a.y > wy)) {
+          xs.push(a.x + (b.x - a.x) * ((wy - a.y) / (b.y - a.y)));
+        }
+      }
+      xs.sort((p, q) => p - q);
+      for (let m = 0; m + 1 < xs.length; m += 2) {
+        let i0 = Math.ceil((xs[m] - minX) * gscale - 0.5);
+        let i1 = Math.floor((xs[m + 1] - minX) * gscale - 0.5);
+        if (i0 < 0) i0 = 0; if (i1 >= gw) i1 = gw - 1;
+        for (let i = i0; i <= i1; i++) mask[j * gw + i] = 1;
+      }
+    }
+    return mask;
+  }
+
+  // Zhang–Suen thinning to a 1px skeleton (in place; returns the same array).
+  function thin(mask, w, h) {
+    const P = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? 0 : mask[y * w + x];
+    let changed = true, guard = 0;
+    while (changed && guard++ < 200) {
+      changed = false;
+      for (let step = 0; step < 2; step++) {
+        const del = [];
+        for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+          if (!mask[y * w + x]) continue;
+          const p2 = P(x, y - 1), p3 = P(x + 1, y - 1), p4 = P(x + 1, y), p5 = P(x + 1, y + 1),
+            p6 = P(x, y + 1), p7 = P(x - 1, y + 1), p8 = P(x - 1, y), p9 = P(x - 1, y - 1);
+          const nb = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+          if (nb < 2 || nb > 6) continue;
+          const seq = [p2, p3, p4, p5, p6, p7, p8, p9, p2];
+          let A = 0; for (let k = 0; k < 8; k++) if (seq[k] === 0 && seq[k + 1] === 1) A++;
+          if (A !== 1) continue;
+          if (step === 0) { if (p2 * p4 * p6 !== 0 || p4 * p6 * p8 !== 0) continue; }
+          else { if (p2 * p4 * p8 !== 0 || p2 * p6 * p8 !== 0) continue; }
+          del.push(y * w + x);
+        }
+        if (del.length) { changed = true; for (const d of del) mask[d] = 0; }
+      }
+    }
+    return mask;
+  }
+
+  // Longest path through the skeleton via double BFS (graph diameter). Returns
+  // an ordered list of grid [i,j] pixels — the stroke spine.
+  function skeletonPath(skel, w, h) {
+    const nbrs = (x, y) => {
+      const r = [];
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue;
+        const nx = x + dx, ny = y + dy;
+        if (nx >= 0 && ny >= 0 && nx < w && ny < h && skel[ny * w + nx]) r.push([nx, ny]);
+      }
+      return r;
+    };
+    let start = -1;
+    for (let i = 0; i < skel.length; i++) if (skel[i]) { start = i; break; }
+    if (start < 0) return [];
+    function bfsFar(sx, sy) {
+      const par = new Int32Array(w * h).fill(-2);
+      let q = [[sx, sy]]; par[sy * w + sx] = -1; let last = [sx, sy];
+      while (q.length) {
+        const nq = [];
+        for (const [x, y] of q) {
+          last = [x, y];
+          for (const [nx, ny] of nbrs(x, y)) if (par[ny * w + nx] === -2) { par[ny * w + nx] = y * w + x; nq.push([nx, ny]); }
+        }
+        q = nq;
+      }
+      return { far: last, par };
+    }
+    const a = bfsFar(start % w, (start / w) | 0).far;
+    const { far: b, par } = bfsFar(a[0], a[1]);
+    const path = [];
+    let cur = b[1] * w + b[0];
+    let guard = 0;
+    while (cur !== -1 && guard++ < w * h) { path.push([cur % w, (cur / w) | 0]); cur = par[cur]; }
+    return path;
+  }
+
+  // Moving-average smooth of a polyline (endpoints fixed).
+  function smoothChain(pts, passes) {
+    let cur = pts.map((p) => ({ x: p.x, y: p.y }));
+    for (let s = 0; s < (passes || 1); s++) {
+      const next = cur.map((p) => ({ x: p.x, y: p.y }));
+      for (let i = 1; i < cur.length - 1; i++) {
+        next[i] = { x: (cur[i - 1].x + cur[i].x + cur[i + 1].x) / 3, y: (cur[i - 1].y + cur[i].y + cur[i + 1].y) / 3 };
+      }
+      cur = next;
+    }
+    return cur;
+  }
+
+  // Nearest positive-t intersection of the RAY (o,dir) with the closed ring.
+  function rayRingHit(ring, ox, oy, dx, dy) {
+    let best = null, bt = Infinity;
+    const n = ring.length;
+    for (let k = 0; k < n; k++) {
+      const a = ring[k], b = ring[(k + 1) % n];
+      const t = lineSegX(ox, oy, dx, dy, a.x, a.y, b.x, b.y);
+      if (t === null || t <= EPS) continue;
+      if (t < bt) { bt = t; best = { x: ox + dx * t, y: oy + dy * t }; }
+    }
+    return best;
+  }
+
+  // Rail-satin ONE spine (world coords). Smooth; optionally trim the veering
+  // tail at FREE ends only (junction ends run in); resample; build two rails
+  // (spine ± smoothed half-width along the smoothed normal) and emit crosses.
+  // opts._halfWidthPx is the ring's approx half-width (for trim sizing).
+  function railSatinFromSpine(ring, spinePx, opts, trimStart, trimEnd) {
+    const spacingMm = opts.spacingMm, pxPerMm = opts.pxPerMm;
+    const pullCompMm = opts.pullCompMm || 0;
+    const slantRad = ((opts.slantDeg || 0) * Math.PI) / 180;
+    const halfWidthPx = opts._halfWidthPx || 0;
+
+    let spine = smoothChain(spinePx, 3);
+    if (halfWidthPx > EPS && (trimStart || trimEnd)) {
+      const L0 = chainLength(spine);
+      const trim = 0.5 * halfWidthPx;
+      const s0 = trimStart ? trim : 0, s1 = trimEnd ? L0 - trim : L0;
+      if (s1 - s0 > 2 * trim) spine = subChainByArc(spine, s0, s1);
+    }
+    const denom = spacingMm * pxPerMm;
+    const stepPx = denom > 0 ? denom : 4;
+    const spineLen = chainLength(spine);
+    if (!(spineLen > EPS)) return [];
+    spine = resampleChain(spine, Math.max(2, Math.ceil(spineLen / stepPx)));
+
+    const N = spine.length;
+    const ang = new Array(N);
+    for (let t = 0; t < N; t++) {
+      const prev = spine[Math.max(0, t - 1)], next = spine[Math.min(N - 1, t + 1)];
+      let tx = next.x - prev.x, ty = next.y - prev.y; const tl = Math.hypot(tx, ty) || 1; tx /= tl; ty /= tl;
+      ang[t] = Math.atan2(tx, -ty); // angle of the normal (-ty, tx)
+    }
+    for (let t = 1; t < N; t++) {
+      while (ang[t] - ang[t - 1] > Math.PI / 2) ang[t] -= Math.PI;
+      while (ang[t] - ang[t - 1] < -Math.PI / 2) ang[t] += Math.PI;
+    }
+    for (let pass = 0; pass < 6; pass++) { const cp = ang.slice(); for (let t = 1; t < N - 1; t++) ang[t] = (cp[t - 1] + cp[t] + cp[t + 1]) / 3; }
+    if (slantRad) for (let t = 0; t < N; t++) ang[t] += slantRad; // italic lean
+
+    const dA = new Array(N), dB = new Array(N);
+    for (let t = 0; t < N; t++) {
+      const s = spine[t], nx = Math.cos(ang[t]), ny = Math.sin(ang[t]);
+      const hp = rayRingHit(ring, s.x, s.y, nx, ny);
+      const hn = rayRingHit(ring, s.x, s.y, -nx, -ny);
+      dA[t] = hp ? Math.hypot(hp.x - s.x, hp.y - s.y) : NaN;
+      dB[t] = hn ? Math.hypot(hn.x - s.x, hn.y - s.y) : NaN;
+    }
+    const fillNaN = (arr) => {
+      let last = NaN;
+      for (let t = 0; t < N; t++) { if (!isNaN(arr[t])) last = arr[t]; else if (!isNaN(last)) arr[t] = last; }
+      last = NaN;
+      for (let t = N - 1; t >= 0; t--) { if (!isNaN(arr[t])) last = arr[t]; else if (!isNaN(last)) arr[t] = last; }
+      for (let t = 0; t < N; t++) if (isNaN(arr[t])) arr[t] = 0;
+    };
+    fillNaN(dA); fillNaN(dB);
+    for (let pass = 0; pass < 3; pass++) {
+      const a = dA.slice(), b = dB.slice();
+      for (let t = 1; t < N - 1; t++) { dA[t] = (a[t - 1] + a[t] + a[t + 1]) / 3; dB[t] = (b[t - 1] + b[t] + b[t + 1]) / 3; }
+    }
+
+    const offset = (pullCompMm * pxPerMm) / 2;
+    const out = [];
+    for (let t = 0; t < N; t++) {
+      const s = spine[t], nx = Math.cos(ang[t]), ny = Math.sin(ang[t]);
+      const pA = { x: s.x + nx * (dA[t] + offset), y: s.y + ny * (dA[t] + offset) };
+      const pB = { x: s.x - nx * (dB[t] + offset), y: s.y - ny * (dB[t] + offset) };
+      if (Math.hypot(pA.x - pB.x, pA.y - pB.y) < 0.5) continue;
+      if (t % 2 === 0) { out.push(pA); out.push(pB); } else { out.push(pB); out.push(pA); }
+    }
+    return out;
+  }
+
+  // Decompose a 1px skeleton into edges (strokes) between nodes (endpoints deg1
+  // / branch points deg>=3). Returns [{pts:[[i,j]...], freeStart, freeEnd}].
+  function skeletonEdges(skel, w, h) {
+    const id = (x, y) => y * w + x;
+    const nbrs = (x, y) => {
+      const r = [];
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue; const nx = x + dx, ny = y + dy;
+        if (nx >= 0 && ny >= 0 && nx < w && ny < h && skel[id(nx, ny)]) r.push([nx, ny]);
+      }
+      return r;
+    };
+    const deg = (x, y) => nbrs(x, y).length;
+    const isNode = (x, y) => deg(x, y) !== 2;
+    const edges = [];
+    const used = new Set();
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (!skel[id(x, y)] || !isNode(x, y)) continue;
+      for (const [nx, ny] of nbrs(x, y)) {
+        const k = id(x, y) + ':' + id(nx, ny);
+        if (used.has(k)) continue;
+        used.add(k);
+        const path = [[x, y]]; let px = x, py = y, cx = nx, cy = ny, guard = 0;
+        while (guard++ < w * h) {
+          path.push([cx, cy]);
+          if (isNode(cx, cy)) { used.add(id(cx, cy) + ':' + id(px, py)); break; }
+          const ns = nbrs(cx, cy).filter(([a, b]) => !(a === px && b === py));
+          if (!ns.length) break;
+          px = cx; py = cy; [cx, cy] = ns[0];
+        }
+        const s = path[0], e = path[path.length - 1];
+        edges.push({ pts: path, freeStart: deg(s[0], s[1]) === 1, freeEnd: deg(e[0], e[1]) === 1 });
+      }
+    }
+    return edges;
+  }
+
+  // Satin along the medial axis (skeleton). Decomposes branched letters (B, R,
+  // T…) into individual strokes and rail-satins each; single strokes (S, C, I)
+  // satin as one column. Falls back to outline-split satinColumn for tiny rings.
+  // opts = { spacingMm, pxPerMm, pullCompMm=0, slantDeg=0 }.
+  function medialSatin(ring, opts) {
+    if (!ring || ring.length < 3) return [];
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const q of ring) { if (q.x < minX) minX = q.x; if (q.x > maxX) maxX = q.x; if (q.y < minY) minY = q.y; if (q.y > maxY) maxY = q.y; }
+    const dim = Math.max(maxX - minX, maxY - minY);
+    if (!(dim > EPS)) return [];
+
+    const gscale = Math.min(1.5, 260 / dim);
+    const gw = Math.ceil((maxX - minX) * gscale) + 3, gh = Math.ceil((maxY - minY) * gscale) + 3;
+    const mask = thin(rasterize(ring, gscale, minX, minY, gw, gh), gw, gh);
+    const halfWidthPx = estimateWidthMm(ring, 1) / 2;
+    const toWorld = (p) => ({ x: minX + (p[0] + 0.5) / gscale, y: minY + (p[1] + 0.5) / gscale });
+
+    let strokes = skeletonEdges(mask, gw, gh).map((e) => ({ spine: e.pts.map(toWorld), freeStart: e.freeStart, freeEnd: e.freeEnd }));
+    const minEdgeLen = Math.max(3, 1.2 * halfWidthPx);
+    strokes = strokes.filter((s) => { const L = chainLength(s.spine); return L > EPS && (L >= minEdgeLen || (s.freeStart && s.freeEnd)); });
+    if (strokes.length === 0) {
+      const gp = skeletonPath(mask, gw, gh);
+      if (gp.length < 3) return satinColumn(ring, opts);
+      strokes = [{ spine: gp.map(toWorld), freeStart: true, freeEnd: true }];
+    }
+    strokes.sort((a, b) => chainLength(b.spine) - chainLength(a.spine));
+    if (strokes.length > 24) strokes = strokes.slice(0, 24);
+    if (typeof globalThis !== "undefined" && globalThis.__DBG_SPINE) globalThis.__spine = strokes.reduce((acc, s) => acc.concat(s.spine), []);
+
+    const o = Object.assign({ _halfWidthPx: halfWidthPx }, opts);
+    const out = [];
+    let started = false;
+    for (const st of strokes) {
+      const pts = railSatinFromSpine(ring, st.spine, o, st.freeStart, st.freeEnd);
+      if (pts.length < 2) continue;
+      if (started) pts[0] = { x: pts[0].x, y: pts[0].y, travel: true }; // needle-up jump between strokes
+      for (const p of pts) out.push(p);
+      started = true;
+    }
+    return out.length >= 4 ? out : satinColumn(ring, opts);
+  }
+
   return {
     farthestBoundaryPair,
     splitBoundary,
@@ -1869,6 +2134,7 @@ const units =
     estimateWidthMm,
     lineSegX,
     satinColumn,
+    medialSatin,
   };
 });
 
@@ -3532,7 +3798,13 @@ const _sm_fillmod = _sm_req
         // trace the TRUE edge and are never offset.
         let pts = [];
         try {
-          if (thin) { pts = satinmod.satinColumn(poly, { spacingMm: densityMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg }); nSatin++; }
+          if (thin) {
+            // Medial-axis satin (rail-based) — clean on curves/terminals; falls
+            // back to the outline-split satin internally for tiny/degenerate rings.
+            const sat = satinmod.medialSatin || satinmod.satinColumn;
+            pts = sat(poly, { spacingMm: densityMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg });
+            nSatin++;
+          }
           else {
             let fillRings = rings;
             if (fabric && pullCompPx > 0) {
