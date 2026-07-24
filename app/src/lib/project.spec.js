@@ -8,6 +8,12 @@ test("defaultProject has sane beginner defaults", () => {
   expect(p.colorRgb).toEqual([20, 20, 20]);
   expect(p.underlay).toBe(true);
 });
+test("defaults include image-mode fields", () => {
+  const p = defaultProject();
+  expect(p.mode).toBe("text");
+  expect(p.nColors).toBe(4);
+  expect(p.removeBg).toBe(true);
+});
 test("update returns a new object and merges", () => {
   const p = defaultProject();
   const q = update(p, { text: "Kent" });

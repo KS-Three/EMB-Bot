@@ -12,7 +12,6 @@
   }
 </script>
 
-<h2>Your text</h2>
 <input
   class="textin"
   type="text"

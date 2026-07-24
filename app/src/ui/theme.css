@@ -251,6 +251,102 @@ button.primary {
 button.primary:hover { background: var(--accent-dark); }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
 
+/* Create step — settings recap */
+.createstep .summary { margin: 1.25rem 0; }
+.createstep .summary > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.createstep .summary dt { color: var(--muted); margin: 0; }
+.createstep .summary dd { margin: 0; font-weight: 600; text-align: right; }
+
+/* Image panel — upload */
+.uploadbox {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 1rem;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  margin-bottom: 0.5rem;
+}
+
+.uploadbox input[type="file"] { flex: 1; min-width: 0; }
+
+.filename { font-size: 0.9rem; color: var(--muted); }
+
+.hint {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin: 0 0 1.25rem;
+}
+
+/* Flattened-art preview — checkerboard shows through transparent pixels */
+.flatprev {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: #f0f0f0;
+  background-image:
+    linear-gradient(45deg, #e2e2e2 25%, transparent 25%, transparent 75%, #e2e2e2 75%, #e2e2e2),
+    linear-gradient(45deg, #e2e2e2 25%, transparent 25%, transparent 75%, #e2e2e2 75%, #e2e2e2);
+  background-size: 16px 16px;
+  background-position: 0 0, 8px 8px;
+}
+
+.flatprev.hidden { display: none; }
+
+/* Swatch chips — flattened palette + share %, click to select for merge */
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 52px;
+  margin-bottom: 1rem;
+}
+
+.swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  width: 52px;
+  height: 52px;
+  padding: 0.25rem;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.swatch.sel {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.swatch .pct {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+}
+
+.swatch-hint { color: var(--muted); font-size: 0.9rem; }
+
+.swatch-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
 /* Step nav — sits at the bottom of the left panel */
 .stepnav {
   display: flex;
