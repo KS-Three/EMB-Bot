@@ -436,7 +436,13 @@
         // trace the TRUE edge and are never offset.
         let pts = [];
         try {
-          if (thin) { pts = satinmod.satinColumn(poly, { spacingMm: densityMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg }); nSatin++; }
+          if (thin) {
+            // Medial-axis satin (rail-based) — clean on curves/terminals; falls
+            // back to the outline-split satin internally for tiny/degenerate rings.
+            const sat = satinmod.medialSatin || satinmod.satinColumn;
+            pts = sat(poly, { spacingMm: densityMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg });
+            nSatin++;
+          }
           else {
             let fillRings = rings;
             if (fabric && pullCompPx > 0) {
