@@ -93,6 +93,7 @@
       hasDesign = false;
       hint = "Upload a logo or clean art — flat colors stitch best.";
       clearToFabric();
+      dispatch("dims", null);
       return;
     }
     try {
@@ -102,11 +103,13 @@
       renderResult = renderRealistic(canvas, design, { hoop: { garment: garmentFor(project) } });
       hasDesign = true;
       drawOverlay();
+      dispatch("dims", { widthMM: design.widthMM, heightMM: design.heightMM });
     } catch (e) {
       error = e.message;
       hasDesign = false;
       renderResult = null;
       clearToFabric();
+      dispatch("dims", null);
     }
   }
 
@@ -116,6 +119,7 @@
       hasDesign = false;
       hint = "Your embroidery appears here as you add text.";
       clearToFabric();
+      dispatch("dims", null);
       return;
     }
     try {
@@ -125,11 +129,13 @@
       renderResult = renderRealistic(canvas, design, { colorOverride: project.colorRgb, hoop: { garment: garmentFor(project) } });
       hasDesign = true;
       drawOverlay();
+      dispatch("dims", { widthMM: design.widthMM, heightMM: design.heightMM });
     } catch (e) {
       error = e.message;
       hasDesign = false;
       renderResult = null;
       clearToFabric();
+      dispatch("dims", null);
     }
   }
 

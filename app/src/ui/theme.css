@@ -256,6 +256,61 @@ button.primary {
 button.primary:hover { background: var(--accent-dark); }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
 
+/* Size panel — compact W × H row with unit toggle + auto-fit, shown below
+   the content controls in both Text and Image modes (and on the Create
+   step recap). */
+.sizepanel {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.sizepanel h3 { margin-bottom: 0.75rem; }
+
+.sizerow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.sizelabel { color: var(--muted); font-size: 0.9rem; }
+.sizex { color: var(--muted); }
+
+.sizeinput {
+  width: 5.5rem;
+  padding: 0.5rem 0.6rem;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  font-size: 1rem;
+  font: inherit;
+}
+.sizeinput:focus { outline: none; border-color: var(--accent); }
+.sizeinput[readonly] { background: var(--bg); color: var(--muted); }
+
+.unitselect {
+  padding: 0.5rem 0.4rem;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font: inherit;
+  background: var(--card);
+  cursor: pointer;
+}
+
+.autofit {
+  padding: 0.5rem 0.9rem;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  cursor: pointer;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+.autofit:hover { border-color: var(--accent); }
+
+.sizepanel .warn { margin: 0.5rem 0 0; font-size: 0.9rem; }
+
 /* Create step — settings recap */
 .createstep .summary { margin: 1.25rem 0; }
 .createstep .summary > div {
