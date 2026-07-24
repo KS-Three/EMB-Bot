@@ -471,6 +471,32 @@
       }
       renderLetterAngles(); // keep the per-letter row in sync with the text
       var fontUrl = el.font.value;
+      // Pre-digitized satin font: no download, no tracing — play the authored
+      // columns straight through the engine.
+      if (fontUrl.indexOf("satin:") === 0) {
+        var satinKey = fontUrl.slice(6);
+        var fontData = (EMB.SATIN_FONTS || {})[satinKey];
+        if (!fontData) { setStatus("Satin font not found: " + satinKey, true); return; }
+        try {
+          var sdesign = EMB.buildLetteringDesign(fontData, text, {
+            garment: opts.garment,
+            fabric: EMB.getFabric(el.fabric.value),
+            pxPerMm: 8,
+            densityMm: opts.densityMm,
+          });
+          if (!sdesign.stitchCount) { setStatus("No stitches — those characters aren't in this font yet.", true); return; }
+          currentDesign = sdesign;
+          currentGarment = opts.garment;
+          renderPreview(sdesign, opts.garment);
+          updateStats(sdesign, opts.garment);
+          setStatus("Done.");
+        } catch (e) {
+          setStatus("Generate failed: " + e.message, true);
+          // eslint-disable-next-line no-console
+          console.error(e);
+        }
+        return;
+      }
       setStatus("Loading font…");
       EMB.loadFont(fontUrl)
         .then(function (font) {
@@ -726,14 +752,32 @@
       el.fabric.appendChild(fbo);
     }
 
-    // Fonts
+    // Fonts. Pre-digitized SATIN fonts first (hand-authored columns → cleanest
+    // stitch-out), grouped separately from the outline-traced Google fonts.
+    var satinFonts = EMB.SATIN_FONTS || {};
+    var satinKeys = Object.keys(satinFonts);
+    if (satinKeys.length) {
+      var sg = document.createElement("optgroup");
+      sg.label = "Satin fonts (best quality)";
+      for (var s = 0; s < satinKeys.length; s++) {
+        var sf = satinFonts[satinKeys[s]];
+        var so = document.createElement("option");
+        so.value = "satin:" + satinKeys[s];
+        so.textContent = (sf && sf.name ? sf.name : satinKeys[s]);
+        sg.appendChild(so);
+      }
+      el.font.appendChild(sg);
+    }
+    var og = document.createElement("optgroup");
+    og.label = "Outline fonts (auto-traced)";
     for (var f = 0; f < EMB.FONTS.length; f++) {
       var font = EMB.FONTS[f];
       var fo = document.createElement("option");
       fo.value = font.url;
       fo.textContent = font.family;
-      el.font.appendChild(fo);
+      og.appendChild(fo);
     }
+    el.font.appendChild(og);
   }
 
   function checkCDN() {
