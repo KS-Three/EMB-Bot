@@ -21,7 +21,8 @@ function parsePath(d) {
   const toks = d.match(/[a-zA-Z]|-?\d*\.?\d+(?:e-?\d+)?/g) || [];
   let i = 0; const num = () => parseFloat(toks[i++]);
   const subs = []; let cur = null, cx = 0, cy = 0, sx = 0, sy = 0, cmd = "";
-  const bez = (x0, y0, x1, y1, x2, y2, x3, y3) => { const N = 8; for (let k = 1; k <= N; k++) { const t = k / N, u = 1 - t; cur.push({ x: u * u * u * x0 + 3 * u * u * t * x1 + 3 * u * t * t * x2 + t * t * t * x3, y: u * u * u * y0 + 3 * u * u * t * y1 + 3 * u * t * t * y2 + t * t * t * y3 }); } };
+  const FLAT = +(process.env.FLATTEN || 8);
+  const bez = (x0, y0, x1, y1, x2, y2, x3, y3) => { const N = FLAT; for (let k = 1; k <= N; k++) { const t = k / N, u = 1 - t; cur.push({ x: u * u * u * x0 + 3 * u * u * t * x1 + 3 * u * t * t * x2 + t * t * t * x3, y: u * u * u * y0 + 3 * u * u * t * y1 + 3 * u * t * t * y2 + t * t * t * y3 }); } };
   while (i < toks.length) {
     if (/[a-zA-Z]/.test(toks[i])) cmd = toks[i++];
     const rel = cmd === cmd.toLowerCase(), C = cmd.toUpperCase();
@@ -112,7 +113,15 @@ while ((m = re.exec(svg))) {
     else if (subs.length) for (const s of subs) runs.push(enc(s));
   }
   if (!cols.length && !runs.length) continue;
-  const advance = (meta.horiz_adv_x && meta.horiz_adv_x[ch] != null) ? meta.horiz_adv_x[ch] : meta.horiz_adv_x_default;
+  let advance = (meta.horiz_adv_x && meta.horiz_adv_x[ch] != null) ? meta.horiz_adv_x[ch] : meta.horiz_adv_x_default;
+  if (advance == null) {
+    // Font provides no metrics (e.g. medium_font) — derive advance from the
+    // glyph's right edge + a side bearing, so glyphs don't collapse onto x=0.
+    let maxX = -Infinity;
+    for (const c of cols) { for (const p of c.railA) if (p[0] > maxX) maxX = p[0]; for (const p of c.railB) if (p[0] > maxX) maxX = p[0]; }
+    for (const rr of runs) for (const p of rr) if (p[0] > maxX) maxX = p[0];
+    advance = isFinite(maxX) ? Math.round(maxX + 0.08 * meta.units_per_em) : meta.units_per_em;
+  }
   glyphs[ch] = { adv: advance, cols, runs };
   count++;
 }
@@ -120,7 +129,8 @@ while ((m = re.exec(svg))) {
 const outObj = {
   name: meta.name, license, source: "Ink/Stitch embroidery-fonts",
   unitsPerEm: meta.units_per_em, sizeMm: meta.size, leading: meta.leading,
-  advDefault: meta.horiz_adv_x_default, advSpace: meta.horiz_adv_x_space,
+  advDefault: meta.horiz_adv_x_default != null ? meta.horiz_adv_x_default : Math.round(0.55 * meta.units_per_em),
+  advSpace: meta.horiz_adv_x_space != null ? meta.horiz_adv_x_space : Math.round(0.3 * meta.units_per_em),
   kerning: meta.kerning_pairs || {}, glyphCount: count, glyphs,
 };
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
