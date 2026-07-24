@@ -12,6 +12,7 @@
   const garments = _node ? dep("./garments.js") : root.EMB;
   const fillmod = _node ? dep("./fill.js") : root.EMB;
   const satinmod = _node ? dep("./satin.js") : root.EMB;
+  const satinfontmod = _node ? dep("./satinfont.js") : root.EMB;
 
   function polyArea(p) { let a = 0; for (let i = 0, j = p.length - 1; i < p.length; j = i++) a += (p[j].x * p[i].y - p[i].x * p[j].y); return Math.abs(a) / 2; }
   // SIGNED shoelace area (sign encodes winding). Do NOT confuse with polyArea (abs).
@@ -495,5 +496,54 @@
     return { stitches, colors, widthMM: fit.targetWmm, heightMM: fit.targetHmm, stitchCount, colorCount: colors.length, _debug: { nSatin, nFill, nTrims, nCenterOut } };
   }
 
-  return { buildQualityDesign, groupRingsIntoShapes, offsetRing, signedArea, underlayRuns };
+  // Build a Design from a PRE-DIGITIZED satin font (src/satinfont.js) instead of
+  // auto-tracing. `fontData` is a parsed glyph library (tools/build-font.mjs);
+  // each glyph's authored satin columns are played and laid out, then fit to the
+  // garment, centered, and Y-flipped into DST units — same coordinate convention
+  // and return shape as buildQualityDesign, so DST/preview/PDF just work.
+  // opts = { garment, pxPerMm=8, emMm=18, rgb=[20,20,20], densityMm, pullCompMm,
+  //          letterSpacingMm, fabric, trimAtMm }.
+  function buildLetteringDesign(fontData, text, opts) {
+    const o = opts || {};
+    const pxPerMm = o.pxPerMm || 8;
+    const garment = o.garment || { widthIn: 5, heightIn: 2.25 };
+    const fabric = o.fabric || null;
+    const emMm = o.emMm || 18;
+    const rgb = o.rgb || [20, 20, 20];
+    const densityMm = (o.densityMm || 0.4) * ((fabric && fabric.densityAdjust) ? fabric.densityAdjust : 1);
+    const pullCompMm = (fabric && fabric.pullCompMm != null) ? fabric.pullCompMm : (o.pullCompMm == null ? 0.2 : o.pullCompMm);
+    const empty = { stitches: [{ x: 0, y: 0, type: "end" }], colors: [], widthMM: 0, heightMM: 0, stitchCount: 0, colorCount: 0, _debug: { nSatin: 0, nFill: 0, nTrims: 0 } };
+    if (!fontData || !text) return empty;
+
+    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: densityMm, pullCompMm, letterSpacingMm: o.letterSpacingMm || 0 });
+    if (!lay.runs.length) return empty;
+
+    const bb = lay.bbox;
+    const bboxWmm = (bb.x1 - bb.x0) / pxPerMm, bboxHmm = (bb.y1 - bb.y0) / pxPerMm;
+    const fit = garments.fitScale(bboxWmm || 1, bboxHmm || 1, garment);
+    const sc = (fit.scale > 0 && isFinite(fit.scale)) ? fit.scale : 1;
+    const scalePxToDst = sc * (1 / pxPerMm) * units.DST_UNITS_PER_MM;
+    const finalMmPerPx = sc / pxPerMm;
+    const cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2;
+    const T = (q) => ({ x: Math.round((q.x - cx) * scalePxToDst), y: Math.round((cy - q.y) * scalePxToDst) });
+    const trimAtMm = (fabric && fabric.trimAtMm != null) ? fabric.trimAtMm : (o.trimAtMm == null ? 3.0 : o.trimAtMm);
+
+    const stitches = [];
+    const colors = [{ r: rgb[0], g: rgb[1], b: rgb[2], name: "Color 1" }];
+    let nTrims = 0, lastPt = null;
+    for (const pts of lay.runs) {
+      if (lastPt) {
+        const travelMm = Math.hypot(pts[0].x - lastPt.x, pts[0].y - lastPt.y) * finalMmPerPx;
+        if (travelMm > trimAtMm) { const tp = T(lastPt); stitches.push({ x: tp.x, y: tp.y, type: "trim" }); nTrims++; }
+      }
+      const f = T(pts[0]);
+      stitches.push({ x: f.x, y: f.y, type: "jump" });
+      for (const q of pts) { const d = T(q); stitches.push({ x: d.x, y: d.y, type: "stitch" }); }
+      lastPt = pts[pts.length - 1];
+    }
+    const stitchCount = stitches.filter((s) => s.type === "stitch").length;
+    return { stitches, colors, widthMM: fit.targetWmm, heightMM: fit.targetHmm, stitchCount, colorCount: 1, _debug: { nSatin: lay.runs.length, nFill: 0, nTrims } };
+  }
+
+  return { buildQualityDesign, buildLetteringDesign, groupRingsIntoShapes, offsetRing, signedArea, underlayRuns };
 });
