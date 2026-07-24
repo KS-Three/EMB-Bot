@@ -1,0 +1,23 @@
+<script>
+  import { createEventDispatcher } from "svelte";
+  import TextStep from "./TextStep.svelte";
+  import ImagePanel from "./ImagePanel.svelte";
+  export let project;
+  const d = createEventDispatcher();
+</script>
+
+<h2>What are you making?</h2>
+<div class="tiles">
+  <button class="tile" class:sel={project.mode === "text"} on:click={() => d("update", { mode: "text" })}>
+    Text
+  </button>
+  <button class="tile" class:sel={project.mode === "image"} on:click={() => d("update", { mode: "image" })}>
+    Logo or image
+  </button>
+</div>
+
+{#if project.mode === "image"}
+  <ImagePanel {project} on:update={(e) => d("update", e.detail)} on:flat={(e) => d("flat", e.detail)} />
+{:else}
+  <TextStep {project} on:update={(e) => d("update", e.detail)} />
+{/if}

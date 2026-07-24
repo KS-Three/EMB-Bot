@@ -1,13 +1,22 @@
 <script>
-  import { generateDesign } from "../lib/generate.js";
+  import { generateDesign, generateImageDesign } from "../lib/generate.js";
   import { exportDesign } from "../lib/exporters.js";
   import { triggerDownload } from "../lib/download.js";
   export let project;
+  export let flat = null;
   let msg = "";
+
+  function buildDesign() {
+    if (project.mode === "image") {
+      if (!flat) throw new Error("Upload a logo or image first.");
+      return generateImageDesign(flat, project);
+    }
+    return generateDesign(project);
+  }
 
   function dl(fmt) {
     try {
-      triggerDownload(exportDesign(generateDesign(project), fmt));
+      triggerDownload(exportDesign(buildDesign(), fmt));
       msg = "Downloaded " + fmt.toUpperCase();
     } catch (e) {
       msg = e.message;
