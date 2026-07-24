@@ -10,6 +10,9 @@ export function generateDesign(project) {
   const design = EMB.buildLetteringDesign(fontData, text, {
     garment, pxPerMm: 8, densityMm: 0.4, underlay: project.underlay,
     rgb: project.colorRgb,
+    targetWidthMm: project.sizeMm || undefined,
+    offsetXMm: project.offsetXMm || 0,
+    offsetYMm: project.offsetYMm || 0,
   });
   if (!design.stitchCount) throw new Error("No characters in this font yet — try different text.");
   return design;
@@ -22,6 +25,9 @@ export function generateImageDesign(flat, project) {
   const fabric = EMB.getFabric(EMB.fabricForGarment(project.garmentId));
   const design = EMB.buildQualityDesign(regions, {
     garment, fabric, pxPerMm, densityMm: 0.4, satinMaxWidthMm: 3.0, underlay: project.underlay,
+    targetWidthMm: project.sizeMm || undefined,
+    offsetXMm: project.offsetXMm || 0,
+    offsetYMm: project.offsetYMm || 0,
   });
   return design;
 }

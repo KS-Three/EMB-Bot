@@ -14,6 +14,12 @@ test("defaults include image-mode fields", () => {
   expect(p.nColors).toBe(4);
   expect(p.removeBg).toBe(true);
 });
+test("defaults include sizing and offset fields", () => {
+  const p = defaultProject();
+  expect(p.sizeMm).toBeNull();
+  expect(p.offsetXMm).toBe(0);
+  expect(p.offsetYMm).toBe(0);
+});
 test("update returns a new object and merges", () => {
   const p = defaultProject();
   const q = update(p, { text: "Kent" });
