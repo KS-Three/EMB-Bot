@@ -72,20 +72,31 @@ export function dragResize(startWidthMm, startHeightMm, handle, dxMm, dyMm, minW
   return newW;
 }
 
-// Translates the design's offset (from hoop center, mm, +y UP) by a canvas
-// pixel-space drag delta already converted to mm. Canvas dy is DOWN, but
-// offset-space y is UP, so a positive canvas dyMm SUBTRACTS from offsetYMm.
-// Clamped so the design's mm bbox stays fully inside the hoop; if the
-// design is larger than the hoop on an axis, the clamp range collapses to
-// 0 (centered) on that axis rather than going negative.
-export function dragMove(startOffXMm, startOffYMm, dxMm, dyMm, designWmm, designHmm, hoopWmm, hoopHmm) {
-  let offsetXMm = startOffXMm + dxMm;
-  let offsetYMm = startOffYMm - dyMm;
+// Clamps an absolute design offset (from hoop center, mm, +y UP) so the
+// design's mm bbox stays fully inside the hoop. If the design is larger
+// than the hoop on an axis, the clamp range collapses to 0 (centered) on
+// that axis rather than going negative.
+//
+// Standalone (not just via dragMove) so callers that already have an
+// absolute offset in hand -- e.g. EmbroideryField re-validating a
+// persisted/stale offset after a garment or size change, rather than a
+// live pointer drag -- can re-clamp without synthesizing a fake drag delta.
+export function clampOffsets(offXMm, offYMm, designWmm, designHmm, hoopWmm, hoopHmm) {
   const maxOffX = Math.max(0, (hoopWmm - designWmm) / 2);
   const maxOffY = Math.max(0, (hoopHmm - designHmm) / 2);
-  offsetXMm = Math.min(maxOffX, Math.max(-maxOffX, offsetXMm));
-  offsetYMm = Math.min(maxOffY, Math.max(-maxOffY, offsetYMm));
+  const offsetXMm = Math.min(maxOffX, Math.max(-maxOffX, offXMm));
+  const offsetYMm = Math.min(maxOffY, Math.max(-maxOffY, offYMm));
   // Normalize -0 (e.g. clamping a large negative delta to a 0-width range)
   // to +0 so callers doing strict equality checks don't trip on the sign bit.
   return { offsetXMm: offsetXMm + 0, offsetYMm: offsetYMm + 0 };
+}
+
+// Translates the design's offset (from hoop center, mm, +y UP) by a canvas
+// pixel-space drag delta already converted to mm, then delegates to
+// clampOffsets. Canvas dy is DOWN, but offset-space y is UP, so a positive
+// canvas dyMm SUBTRACTS from offsetYMm.
+export function dragMove(startOffXMm, startOffYMm, dxMm, dyMm, designWmm, designHmm, hoopWmm, hoopHmm) {
+  const offsetXMm = startOffXMm + dxMm;
+  const offsetYMm = startOffYMm - dyMm;
+  return clampOffsets(offsetXMm, offsetYMm, designWmm, designHmm, hoopWmm, hoopHmm);
 }

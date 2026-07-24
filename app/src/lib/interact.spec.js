@@ -1,5 +1,5 @@
 import { test, expect } from "vitest";
-import { designRectPx, hitTest, dragResize, dragMove } from "./interact.js";
+import { designRectPx, hitTest, dragResize, dragMove, clampOffsets } from "./interact.js";
 
 // ---- designRectPx ---------------------------------------------------------
 
@@ -107,4 +107,40 @@ test("dragMove collapses the clamp range to 0 when the design is bigger than the
   const r = dragMove(0, 0, 1000, 1000, 300, 300, 100, 100);
   expect(r.offsetXMm).toBe(0);
   expect(r.offsetYMm).toBe(0);
+});
+
+// ---- clampOffsets ---------------------------------------------------------
+// Same clamp math dragMove uses, exposed standalone so EmbroideryField can
+// re-clamp a persisted/stale offset (e.g. after a garment or size change)
+// without synthesizing a fake drag delta.
+
+test("clampOffsets passes through an offset that's already inside the hoop", () => {
+  // hoop 100x100, design 20x20 -> max offset = 40; 10 is well inside.
+  const r = clampOffsets(10, -10, 20, 20, 100, 100);
+  expect(r.offsetXMm).toBeCloseTo(10, 5);
+  expect(r.offsetYMm).toBeCloseTo(-10, 5);
+});
+
+test("clampOffsets clamps an over-the-edge offset back to the max on each axis", () => {
+  const r = clampOffsets(1000, -1000, 20, 20, 100, 100);
+  expect(r.offsetXMm).toBeCloseTo(40, 5);
+  expect(r.offsetYMm).toBeCloseTo(-40, 5);
+});
+
+test("clampOffsets collapses the clamp range to 0 when the design is bigger than the hoop", () => {
+  const r = clampOffsets(15, 15, 300, 300, 100, 100);
+  expect(r.offsetXMm).toBe(0);
+  expect(r.offsetYMm).toBe(0);
+});
+
+test("clampOffsets normalizes -0 to +0", () => {
+  const r = clampOffsets(-1000, 0, 300, 20, 100, 100);
+  expect(Object.is(r.offsetXMm, -0)).toBe(false);
+  expect(r.offsetXMm).toBe(0);
+});
+
+test("dragMove delegates to clampOffsets (same result for the equivalent absolute offset)", () => {
+  const viaDrag = dragMove(5, 5, 10, -20, 20, 20, 100, 100); // start (5,5), dx=10, dy=-20 -> raw (15, 25)
+  const viaClamp = clampOffsets(15, 25, 20, 20, 100, 100);
+  expect(viaDrag).toEqual(viaClamp);
 });

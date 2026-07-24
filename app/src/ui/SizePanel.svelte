@@ -1,5 +1,6 @@
 <script>
   import { createEventDispatcher } from "svelte";
+  import { EMB } from "../lib/emb.js";
 
   export let project;
   // Dims of the last generated design ({ widthMM, heightMM }) or null when
@@ -20,13 +21,23 @@
   // since Kent (the primary user) is US-based.
   let unit = "in";
 
-  // The width shown always reflects the *real* current width: an explicit
-  // sizeMm if one is set (by the user or by a handle drag), otherwise the
-  // auto-fit width from the last generated design.
-  $: widthMm = project.sizeMm != null ? project.sizeMm : (designDims ? designDims.widthMM : null);
+  // The width shown always reflects the *actual* generated width
+  // (designDims.widthMM), not the requested sizeMm -- the engine clamps
+  // sizeMm to the hoop (typed over-hoop value) or further limits it when a
+  // tall-aspect design is height-bound, so the two can legitimately differ.
+  // Falls back to the requested sizeMm only before anything has stitched.
+  $: widthMm = designDims ? designDims.widthMM : project.sizeMm;
   // Height is never user-editable -- it's always whatever the last
   // generated design came out to, so aspect ratio follows automatically.
   $: heightMm = designDims ? designDims.heightMM : null;
+
+  // Hoop width in mm for the current garment -- upper bound for typed W
+  // input. Infinity (no clamp) when the garment can't be resolved.
+  function hoopWidthMm(p) {
+    const garment = p && EMB.getGarment(p.garmentId);
+    return garment ? garment.widthIn * MM_PER_INCH : Infinity;
+  }
+  $: hoopWmm = hoopWidthMm(project);
 
   // `unit` is passed in (rather than closed over) so Svelte's dependency
   // tracking for the `$:` statements below -- which only sees identifiers
@@ -40,6 +51,8 @@
 
   $: wDisplay = fromMm(widthMm, unit);
   $: hDisplay = fromMm(heightMm, unit);
+  $: wMin = fromMm(MIN_SIZE_MM, unit);
+  $: wMax = isFinite(hoopWmm) ? fromMm(hoopWmm, unit) : undefined;
 
   $: warn = !!designDims && (designDims.widthMM < MIN_SIZE_MM || designDims.heightMM < MIN_SIZE_MM);
 
@@ -47,7 +60,8 @@
     const v = parseFloat(e.target.value);
     if (!Number.isFinite(v)) return;
     const mm = unit === "in" ? v * MM_PER_INCH : v;
-    d("update", { sizeMm: Math.max(MIN_SIZE_MM, mm) });
+    const clamped = Math.min(hoopWmm, Math.max(MIN_SIZE_MM, mm));
+    d("update", { sizeMm: clamped });
   }
 
   function autoFit() {
@@ -63,7 +77,8 @@
       class="sizeinput"
       type="number"
       step={unit === "in" ? "0.01" : "1"}
-      min="0"
+      min={wMin}
+      max={wMax}
       value={wDisplay}
       on:change={onWidthChange}
     />

@@ -3,7 +3,7 @@
   import { generateDesign, generateImageDesign } from "../lib/generate.js";
   import { renderRealistic, hoopTransform, drawHoopOutline } from "../lib/preview.js";
   import { EMB } from "../lib/emb.js";
-  import { designRectPx, hitTest, dragResize, dragMove } from "../lib/interact.js";
+  import { designRectPx, hitTest, dragResize, dragMove, clampOffsets } from "../lib/interact.js";
 
   export let project;
   export let flat = null;
@@ -139,6 +139,35 @@
     }
   }
 
+  // Invariant: the persisted offset must always keep the design's bbox
+  // inside the hoop. dragMove enforces this live, but a stale offset
+  // (garment switched to a smaller hoop, size changed, or a reload) is
+  // never re-validated on its own -- it would otherwise render, and
+  // export, partly outside the hoop until the user happens to drag again.
+  // Called after every generation, so it re-clamps regardless of *why*
+  // the design changed.
+  //
+  // Loop safety: if this dispatches a correction, `project` changes, which
+  // re-triggers `paint()` (via the `$: if (canvas) { project; flat; paint(); }`
+  // reactive block below), which calls this again -- but that second pass
+  // clamps the now-already-clamped offset, which is a no-op (clampOffsets
+  // is a pure min/max clamp, idempotent on a value already in range), so
+  // the diff is ~0 and nothing is dispatched. One correction, then it settles.
+  function reclampOffsets() {
+    if (!renderResult || !renderResult.designBBoxMm) return;
+    const bbox = renderResult.designBBoxMm;
+    const designWmm = bbox.x1 - bbox.x0;
+    const designHmm = bbox.y1 - bbox.y0;
+    const { wMm: hoopWmm, hMm: hoopHmm } = hoopSizeMm(project);
+    if (!hoopWmm || !hoopHmm) return; // unknown garment -- nothing to clamp against
+    const curOffX = project.offsetXMm || 0;
+    const curOffY = project.offsetYMm || 0;
+    const clamped = clampOffsets(curOffX, curOffY, designWmm, designHmm, hoopWmm, hoopHmm);
+    if (Math.abs(clamped.offsetXMm - curOffX) > 0.01 || Math.abs(clamped.offsetYMm - curOffY) > 0.01) {
+      dispatch("update", clamped);
+    }
+  }
+
   function paint() {
     if (!canvas) return;
     error = "";
@@ -148,6 +177,7 @@
     renderResult = null;
     if (project.mode === "image") paintImage();
     else paintText();
+    reclampOffsets();
   }
 
   onMount(paint);
