@@ -1,11 +1,15 @@
 import { designToStrands } from "./strands.js";
+// Design stitches are in DST units, whose Y axis points UP; canvas Y points
+// DOWN. fitTransform therefore returns a transform whose TY NEGATES y
+// (canvasY = oy - y*scale) — without that flip every glyph renders vertically
+// mirrored (upside-down letters).
 export function fitTransform(design, cw, ch, pad) {
   let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9;
   for (const s of design.stitches) { if (s.type === "color" || s.type === "end") continue; if (s.x < minX) minX = s.x; if (s.x > maxX) maxX = s.x; if (s.y < minY) minY = s.y; if (s.y > maxY) maxY = s.y; }
   const w = Math.max(1, maxX - minX), h = Math.max(1, maxY - minY);
   const scale = Math.min((cw - 2 * pad) / w, (ch - 2 * pad) / h);
   const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
-  return { scale, ox: cw / 2 - cx * scale, oy: ch / 2 - cy * scale };
+  return { scale, ox: cw / 2 - cx * scale, oy: ch / 2 + cy * scale };
 }
 export function renderRealistic(canvas, design, opts) {
   const o = opts || {};
@@ -14,7 +18,7 @@ export function renderRealistic(canvas, design, opts) {
   ctx.fillStyle = o.fabric || "#e9e6df";
   ctx.fillRect(0, 0, cw, ch);
   const t = fitTransform(design, cw, ch, o.pad || 24);
-  const TX = (x) => t.ox + x * t.scale, TY = (y) => t.oy + y * t.scale;
+  const TX = (x) => t.ox + x * t.scale, TY = (y) => t.oy - y * t.scale; // Y-flip: DST y-up -> canvas y-down
   const strands = designToStrands(design, { colorOverride: o.colorOverride });
   const lw = Math.max(1.5, 2.2 * t.scale); // thread thickness in px (DST units ~0.1mm)
   ctx.lineCap = "round";
