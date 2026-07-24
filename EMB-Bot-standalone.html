@@ -2485,6 +2485,48 @@ const units =
     return out;
   }
 
+  // Precompute a column's corresponded rails + centerline + arc-length table, so
+  // satin OR running can be generated for any FRACTION SPAN [f0,f1] of the
+  // column (needed for underpath routing that enters/exits columns partway).
+  function columnGeom(railA, railB, rungs, samplesPerSection) {
+    const { A, B } = correspond(railA, railB, rungs || [], samplesPerSection || 12);
+    const C = []; for (let i = 0; i < A.length; i++) C.push({ x: (A[i].x + B[i].x) / 2, y: (A[i].y + B[i].y) / 2 });
+    const cum = [0]; for (let i = 1; i < C.length; i++) cum.push(cum[i - 1] + Math.hypot(C[i].x - C[i - 1].x, C[i].y - C[i - 1].y));
+    return { A, B, C, cum, total: cum[cum.length - 1] || 0 };
+  }
+
+  // Slice several index-parallel point arrays to arc-length span [s0,s1] along
+  // `cum`, with interpolated endpoints. Returns one sliced array per input.
+  function sliceParallel(arrs, cum, s0, s1) {
+    const n = cum.length, total = cum[n - 1] || 0;
+    s0 = Math.max(0, Math.min(total, s0)); s1 = Math.max(0, Math.min(total, s1));
+    const interp = (arr, i, t) => ({ x: arr[i].x + (arr[i + 1].x - arr[i].x) * t, y: arr[i].y + (arr[i + 1].y - arr[i].y) * t });
+    const at = (s) => { if (s <= 0) return { i: 0, t: 0 }; if (s >= total) return { i: n - 2, t: 1 }; let i = 0; while (i < n - 2 && cum[i + 1] < s) i++; const seg = cum[i + 1] - cum[i] || 1; return { i, t: (s - cum[i]) / seg }; };
+    const a = at(s0), b = at(s1);
+    return arrs.map((arr) => {
+      const out = [interp(arr, a.i, a.t)];
+      for (let i = a.i + 1; i <= b.i; i++) out.push({ x: arr[i].x, y: arr[i].y });
+      out.push(interp(arr, b.i, b.t));
+      return out;
+    });
+  }
+
+  // Satin over centerline fraction span [f0,f1] of a precomputed columnGeom.
+  function satinFromGeom(geom, f0, f1, opts) {
+    if (!geom || geom.total <= EPS || geom.A.length < 2) return [];
+    const [As, Bs] = sliceParallel([geom.A, geom.B], geom.cum, f0 * geom.total, f1 * geom.total);
+    return emitZigzag(As, Bs, opts || {});
+  }
+
+  // Running-stitch centerline over span [f0,f1], resampled to ~stepMm.
+  function centerFromGeom(geom, f0, f1, stepMm, pxPerMm) {
+    if (!geom || geom.total <= EPS) return [];
+    const [Cs] = sliceParallel([geom.C], geom.cum, f0 * geom.total, f1 * geom.total);
+    let len = 0; for (let i = 0; i + 1 < Cs.length; i++) len += Math.hypot(Cs[i + 1].x - Cs[i].x, Cs[i + 1].y - Cs[i].y);
+    const step = (stepMm || 2) * (pxPerMm || 1);
+    return resampleChain(Cs, Math.max(2, Math.ceil(len / (step > 0 ? step : 4))));
+  }
+
   // Main entry: explicit rails (+optional rungs) -> satin zig-zag point list.
   function satinFromRails(railA, railB, rungs, opts) {
     if (!railA || !railB || railA.length < 2 || railB.length < 2) return [];
@@ -2507,7 +2549,7 @@ const units =
     return resampleChain(C, n);
   }
 
-  return { satinFromRails, centerRun, correspond };
+  return { satinFromRails, centerRun, correspond, columnGeom, satinFromGeom, centerFromGeom };
 });
 
 </script>
@@ -2524,68 +2566,117 @@ const units =
 })(typeof globalThis !== "undefined" ? globalThis : this, function (root) {
   const _node = typeof module !== "undefined" && module.exports;
   const satinplay = _node ? require("./satinplay.js") : root.EMB;
-  const satinFromRails = satinplay.satinFromRails;
-  const centerRun = satinplay.centerRun;
+  const columnGeom = satinplay.columnGeom;
+  const satinFromGeom = satinplay.satinFromGeom;
+  const centerFromGeom = satinplay.centerFromGeom;
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
-  // Route ONE glyph's satin columns with underpathing. Each column is sewn as a
-  // round trip that ENTERS and EXITS at the same end: a center-walk underlay in
-  // (hidden under the satin that follows) then the satin back out. Column ends
-  // are merged into shared JUNCTION nodes; the router prefers the next column
-  // that shares the current node, so the connecting stitch is a short needle-
-  // DOWN run tucked at the junction (no trim). A column at a different node gets
-  // a real jump (marked jump:true → the caller trims if it's long). This is the
-  // Ink/Stitch underpathing idea: travel is only hidden when the satin covers
-  // it, so we only ever run under a column we are about to sew, and otherwise
-  // jump honestly. Returns [{pts,kind:"underlay"|"satin",jump}].
+  // Nearest arc-length fraction on a centerline chain C (with cumulative table
+  // cum,total) to point p, plus that distance.
+  function nearestOnCenter(C, cum, total, p) {
+    let bd = Infinity, bf = 0;
+    for (let i = 0; i + 1 < C.length; i++) {
+      const ax = C[i].x, ay = C[i].y, ex = C[i + 1].x - ax, ey = C[i + 1].y - ay;
+      const L2 = ex * ex + ey * ey; let t = L2 > 1e-9 ? ((p.x - ax) * ex + (p.y - ay) * ey) / L2 : 0;
+      if (t < 0) t = 0; else if (t > 1) t = 1;
+      const qx = ax + ex * t, qy = ay + ey * t, d = Math.hypot(p.x - qx, p.y - qy);
+      if (d < bd) { bd = d; bf = total > 0 ? (cum[i] + t * (cum[i + 1] - cum[i])) / total : 0; }
+    }
+    return { d: bd, f: bf };
+  }
+
+  // Route ONE glyph's satin columns with UNDERPATHING (Ink/Stitch method).
+  // Dice each column centerline at its endpoints AND wherever another column's
+  // end lands on it (mid-stroke junctions), giving graph nodes; each diced span
+  // is a satin edge. Merge coincident nodes. Per connected component find an
+  // Euler circuit over the doubled edge set (each edge traversed both ways);
+  // walking it in REVERSE, a span's LAST visit sews as satin and earlier visits
+  // as RUNNING — so the running underpath is always laid first and the satin
+  // covers it. Result: one continuous needle-down path per component (no trims
+  // inside it); jumps only BETWEEN components (dots) and between glyphs.
+  // Returns [{pts, kind:"satin"|"underlay", jump}].
   function routeGlyph(cols, opts) {
     const pxPerMm = opts.pxPerMm, spacingMm = opts.spacingMm, pullCompMm = opts.pullCompMm || 0;
-    const doUnderlay = opts.underlay !== false;
-    const info = [];
+    const satinOpts = { spacingMm, pxPerMm, pullCompMm };
+    const G = [];
     for (const c of cols) {
-      const satin = satinFromRails(c.railA, c.railB, c.rungs, { spacingMm, pxPerMm, pullCompMm });
-      if (satin.length < 2) continue;
-      const center = centerRun(c.railA, c.railB, c.rungs, { stepMm: 1.5, pxPerMm });
-      if (!center || center.length < 2) continue;
+      const geom = columnGeom(c.railA, c.railB, c.rungs, 12);
+      if (!geom || geom.total <= 1e-6 || geom.C.length < 2) continue;
       const w = Math.max(dist(c.railA[0], c.railB[0]), dist(c.railA[c.railA.length - 1], c.railB[c.railB.length - 1]));
-      info.push({ satin, center, w });
+      G.push({ geom, w });
     }
-    if (!info.length) return [];
-    const ws = info.map((x) => x.w).sort((a, b) => a - b);
+    if (!G.length) return [];
+    const ws = G.map((g) => g.w).sort((a, b) => a - b);
     const medW = ws[ws.length >> 1] || 4;
-    const mergeR = Math.max(2, 1.3 * medW);   // endpoints this close share a junction
+    const mergeR = Math.max(2, 1.3 * medW);
+
+    // Endpoints of every column (to find mid-stroke junctions on others).
+    const endpts = [];
+    for (const g of G) { const C = g.geom.C; endpts.push(C[0], C[C.length - 1]); }
+    // Cut fractions per column.
+    for (const g of G) {
+      const { C, cum, total } = g.geom; const cuts = [0, 1];
+      for (const p of endpts) { const nr = nearestOnCenter(C, cum, total, p); if (nr.d <= mergeR && nr.f > 0.06 && nr.f < 0.94) cuts.push(nr.f); }
+      cuts.sort((a, b) => a - b);
+      const uniq = [cuts[0]]; for (let i = 1; i < cuts.length; i++) if (cuts[i] - uniq[uniq.length - 1] > 0.04) uniq.push(cuts[i]);
+      g.cuts = uniq;
+    }
+    // Nodes + satin edges (one per diced span).
     const nodes = [];
     const nodeOf = (p) => { for (let i = 0; i < nodes.length; i++) if (dist(nodes[i], p) <= mergeR) return i; nodes.push({ x: p.x, y: p.y }); return nodes.length - 1; };
-    for (const x of info) { x.n0 = nodeOf(x.center[0]); x.n1 = nodeOf(x.center[x.center.length - 1]); }
+    const ptAtFrac = (geom, f) => { const { C, cum, total } = geom; const s = f * total; let i = 0; while (i < C.length - 2 && cum[i + 1] < s) i++; const seg = cum[i + 1] - cum[i] || 1; const t = (s - cum[i]) / seg; return { x: C[i].x + (C[i + 1].x - C[i].x) * t, y: C[i].y + (C[i + 1].y - C[i].y) * t }; };
+    const edges = []; // {gi, f0, f1, na, nb}
+    G.forEach((g, gi) => { for (let k = 0; k + 1 < g.cuts.length; k++) { const f0 = g.cuts[k], f1 = g.cuts[k + 1]; edges.push({ gi, f0, f1, na: nodeOf(ptAtFrac(g.geom, f0)), nb: nodeOf(ptAtFrac(g.geom, f1)) }); } });
+    if (!edges.length) return [];
 
-    const runs = [], unsewn = info.slice();
-    let curNode = -1, curPos = null;
-    while (unsewn.length) {
-      let best = null;
-      for (const x of unsewn) {
-        for (const which of [0, 1]) {
-          const enter = which === 0 ? x.center[0] : x.center[x.center.length - 1];
-          const enNode = which === 0 ? x.n0 : x.n1;
-          const shares = curNode >= 0 && enNode === curNode;
-          const d = curNode < 0 ? enter.x : dist(curPos, enter);
-          const cost = curNode < 0 ? enter.x : (shares ? d - 1e6 : d); // strongly prefer a shared junction
-          if (!best || cost < best.cost) best = { x, which, enter, enNode, cost };
-        }
+    // Directed-edge adjacency (each undirected span usable both ways).
+    const dedges = []; edges.forEach((e, ei) => { dedges.push({ from: e.na, to: e.nb, ei, fwd: true }); dedges.push({ from: e.nb, to: e.na, ei, fwd: false }); });
+    const outAdj = nodes.map(() => []); dedges.forEach((de, i) => outAdj[de.from].push(i));
+    const usedDE = dedges.map(() => false);
+    const ptr = nodes.map(() => 0);
+    function euler(start) { // Hierholzer → ordered list of directed-edge indices
+      const stackN = [start], stackE = [], circ = [];
+      while (stackN.length) {
+        const v = stackN[stackN.length - 1];
+        while (ptr[v] < outAdj[v].length && usedDE[outAdj[v][ptr[v]]]) ptr[v]++;
+        if (ptr[v] < outAdj[v].length) { const dei = outAdj[v][ptr[v]++]; usedDE[dei] = true; stackE.push(dei); stackN.push(dedges[dei].to); }
+        else { stackN.pop(); if (stackE.length) circ.push(stackE.pop()); }
       }
-      const x = best.x; unsewn.splice(unsewn.indexOf(x), 1);
-      const enter = best.enter, enNode = best.enNode;
-      let center = x.center.slice(); if (best.which === 1) center.reverse();  // center[0] = enter
-      const far = center[center.length - 1];
-      const jump = curNode < 0 || enNode !== curNode;
-      if (doUnderlay) {
-        let satin = x.satin.slice(); if (dist(satin[0], far) > dist(satin[satin.length - 1], far)) satin.reverse(); // satin: far -> enter
-        runs.push({ pts: center, kind: "underlay", jump });     // enter -> far (hidden under satin)
-        runs.push({ pts: satin, kind: "satin", jump: false });  // far -> enter (exit at enter)
-        curNode = enNode; curPos = enter;
-      } else {
-        let satin = x.satin.slice(); if (dist(satin[0], enter) > dist(satin[satin.length - 1], enter)) satin.reverse(); // enter -> far
-        runs.push({ pts: satin, kind: "satin", jump });
-        curNode = (enNode === x.n0) ? x.n1 : x.n0; curPos = far; // exit at the far end
+      return circ.reverse();
+    }
+
+    // Emit: iterate components (start at each node that still has unused edges,
+    // preferring smaller x so words read left→right). Each component = one
+    // Euler circuit → typed spans → geometry.
+    const runs = [];
+    const nodeOrder = nodes.map((n, i) => i).sort((a, b) => nodes[a].x - nodes[b].x);
+    for (const start of nodeOrder) {
+      if (ptr[start] >= outAdj[start].length || outAdj[start].every((i) => usedDE[i])) continue;
+      const circ = euler(start);
+      if (!circ.length) continue;
+      // reverse-dedupe: last visit of an edge = satin, earlier = running
+      const isSatin = new Array(circ.length);
+      const seen = new Set();
+      for (let k = circ.length - 1; k >= 0; k--) { const ei = dedges[circ[k]].ei; if (seen.has(ei)) isSatin[k] = false; else { seen.add(ei); isSatin[k] = true; } }
+      // build typed spans, collapsing contiguous same-column-same-type steps
+      const spans = [];
+      for (let k = 0; k < circ.length; k++) {
+        const de = dedges[circ[k]], e = edges[de.ei];
+        const f0 = de.fwd ? e.f0 : e.f1, f1 = de.fwd ? e.f1 : e.f0;
+        const sat = isSatin[k];
+        const prev = spans[spans.length - 1];
+        if (prev && prev.gi === e.gi && prev.sat === sat && Math.abs(prev.f1 - f0) < 1e-6) prev.f1 = f1;
+        else spans.push({ gi: e.gi, sat, f0, f1 });
+      }
+      let first = true;
+      for (const sp of spans) {
+        const geom = G[sp.gi].geom;
+        const lo = Math.min(sp.f0, sp.f1), hi = Math.max(sp.f0, sp.f1);
+        let pts = sp.sat ? satinFromGeom(geom, lo, hi, satinOpts) : centerFromGeom(geom, lo, hi, 2, pxPerMm);
+        if (!pts || pts.length < 2) continue;
+        if (sp.f1 < sp.f0) pts = pts.slice().reverse(); // follow traversal direction
+        runs.push({ pts, kind: sp.sat ? "satin" : "underlay", jump: first });
+        first = false;
       }
     }
     return runs;

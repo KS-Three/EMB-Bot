@@ -121,6 +121,48 @@
     return out;
   }
 
+  // Precompute a column's corresponded rails + centerline + arc-length table, so
+  // satin OR running can be generated for any FRACTION SPAN [f0,f1] of the
+  // column (needed for underpath routing that enters/exits columns partway).
+  function columnGeom(railA, railB, rungs, samplesPerSection) {
+    const { A, B } = correspond(railA, railB, rungs || [], samplesPerSection || 12);
+    const C = []; for (let i = 0; i < A.length; i++) C.push({ x: (A[i].x + B[i].x) / 2, y: (A[i].y + B[i].y) / 2 });
+    const cum = [0]; for (let i = 1; i < C.length; i++) cum.push(cum[i - 1] + Math.hypot(C[i].x - C[i - 1].x, C[i].y - C[i - 1].y));
+    return { A, B, C, cum, total: cum[cum.length - 1] || 0 };
+  }
+
+  // Slice several index-parallel point arrays to arc-length span [s0,s1] along
+  // `cum`, with interpolated endpoints. Returns one sliced array per input.
+  function sliceParallel(arrs, cum, s0, s1) {
+    const n = cum.length, total = cum[n - 1] || 0;
+    s0 = Math.max(0, Math.min(total, s0)); s1 = Math.max(0, Math.min(total, s1));
+    const interp = (arr, i, t) => ({ x: arr[i].x + (arr[i + 1].x - arr[i].x) * t, y: arr[i].y + (arr[i + 1].y - arr[i].y) * t });
+    const at = (s) => { if (s <= 0) return { i: 0, t: 0 }; if (s >= total) return { i: n - 2, t: 1 }; let i = 0; while (i < n - 2 && cum[i + 1] < s) i++; const seg = cum[i + 1] - cum[i] || 1; return { i, t: (s - cum[i]) / seg }; };
+    const a = at(s0), b = at(s1);
+    return arrs.map((arr) => {
+      const out = [interp(arr, a.i, a.t)];
+      for (let i = a.i + 1; i <= b.i; i++) out.push({ x: arr[i].x, y: arr[i].y });
+      out.push(interp(arr, b.i, b.t));
+      return out;
+    });
+  }
+
+  // Satin over centerline fraction span [f0,f1] of a precomputed columnGeom.
+  function satinFromGeom(geom, f0, f1, opts) {
+    if (!geom || geom.total <= EPS || geom.A.length < 2) return [];
+    const [As, Bs] = sliceParallel([geom.A, geom.B], geom.cum, f0 * geom.total, f1 * geom.total);
+    return emitZigzag(As, Bs, opts || {});
+  }
+
+  // Running-stitch centerline over span [f0,f1], resampled to ~stepMm.
+  function centerFromGeom(geom, f0, f1, stepMm, pxPerMm) {
+    if (!geom || geom.total <= EPS) return [];
+    const [Cs] = sliceParallel([geom.C], geom.cum, f0 * geom.total, f1 * geom.total);
+    let len = 0; for (let i = 0; i + 1 < Cs.length; i++) len += Math.hypot(Cs[i + 1].x - Cs[i].x, Cs[i + 1].y - Cs[i].y);
+    const step = (stepMm || 2) * (pxPerMm || 1);
+    return resampleChain(Cs, Math.max(2, Math.ceil(len / (step > 0 ? step : 4))));
+  }
+
   // Main entry: explicit rails (+optional rungs) -> satin zig-zag point list.
   function satinFromRails(railA, railB, rungs, opts) {
     if (!railA || !railB || railA.length < 2 || railB.length < 2) return [];
@@ -143,5 +185,5 @@
     return resampleChain(C, n);
   }
 
-  return { satinFromRails, centerRun, correspond };
+  return { satinFromRails, centerRun, correspond, columnGeom, satinFromGeom, centerFromGeom };
 });
