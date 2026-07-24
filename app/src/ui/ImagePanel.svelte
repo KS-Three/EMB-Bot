@@ -3,6 +3,17 @@
   import { flattenRGBA, flatToRGBA, flatShares, mergeFlat, WORK_MAX_PX, ALPHA_CUTOFF } from "../lib/flatten.js";
 
   export let project;
+  // Working image state is owned by App (not this component) and passed
+  // down as props, so it survives ImagePanel being destroyed and recreated
+  // whenever the user navigates steps or toggles Text/Image mode (App ->
+  // ContentStep -> ImagePanel are all {#if} blocks). See
+  // .superpowers/sdd/final-review-s2.md Important #1.
+  // workImage: prepped working source ({ rgba, w, h }, alpha-cut, at
+  // WORK_MAX_PX) -- "Reset colors" and the colors/remove-bg controls
+  // re-flatten from this prop, never from local state.
+  export let workImage = null;
+  // flat: current flattened palette state, derived from workImage.
+  export let flat = null;
   const d = createEventDispatcher();
 
   let previewCanvas;
@@ -10,13 +21,8 @@
   let error = "";
   let busy = false;
 
-  // Working RGBA at WORK_MAX_PX resolution, alpha-cut, kept around so "Reset
-  // colors" can re-flatten without re-reading the file.
-  let workingRGBA = null;
-  let workW = 0;
-  let workH = 0;
-
-  let flat = null; // current flattened palette state (component-local mirror; App holds the copy it needs)
+  // Merge-selection is ephemeral UI state (not part of the working image), so
+  // it's fine for it to reset when the panel remounts.
   let selected = {}; // palette index -> true, toggled for "Merge selected"
 
   // Draw an image (ImageBitmap or HTMLImageElement) to an offscreen canvas at
@@ -64,23 +70,22 @@
     }
   }
 
-  function emitFlat(f) {
-    flat = f;
-    d("flat", f);
-    renderPreview();
-  }
-
-  // Re-run the flatten pipeline from the kept working RGBA at the current
-  // project settings (colors / remove-bg).
-  function recompute() {
-    if (!workingRGBA) {
-      selected = {};
-      emitFlat(null);
+  // Flatten `img` ({ rgba, w, h }) at the given settings and dispatch the
+  // result up to App (which owns `flat`); `img` may be null to clear.
+  function flattenFrom(img, nColors, removeBg) {
+    selected = {};
+    if (!img) {
+      d("flat", null);
       return;
     }
-    const f = flattenRGBA(workingRGBA, workW, workH, { nColors: project.nColors, removeBg: project.removeBg });
-    selected = {};
-    emitFlat(f);
+    const f = flattenRGBA(img.rgba, img.w, img.h, { nColors, removeBg });
+    d("flat", f);
+  }
+
+  // Re-run the flatten pipeline from the workImage PROP (never local state)
+  // at the current project settings (colors / remove-bg).
+  function recompute() {
+    flattenFrom(workImage, project.nColors, project.removeBg);
   }
 
   async function onFileChange(e) {
@@ -91,20 +96,21 @@
     try {
       const img = await loadImage(file);
       const prep = prepRGBA(img);
-      workingRGBA = prep.rgba;
-      workW = prep.w;
-      workH = prep.h;
       fileName = file.name;
       // keep the reactive re-flatten guard in sync so it doesn't immediately
       // re-fire with stale "previous" values
       prevNColors = project.nColors;
       prevRemoveBg = project.removeBg;
-      recompute();
+      // Dispatch the new working image up to App first, then flatten from
+      // the freshly-read `prep` directly (not the workImage prop -- the
+      // round trip through App hasn't happened yet at this point).
+      d("image", prep);
+      flattenFrom(prep, project.nColors, project.removeBg);
     } catch (err) {
       error = (err && err.message) || "Could not read this image file.";
-      workingRGBA = null;
       fileName = "";
-      emitFlat(null);
+      d("image", null);
+      flattenFrom(null, project.nColors, project.removeBg);
     } finally {
       busy = false;
       e.target.value = ""; // allow re-selecting the same file later
@@ -123,7 +129,7 @@
   // project settings (they round-trip through App before landing back here).
   let prevNColors = project.nColors;
   let prevRemoveBg = project.removeBg;
-  $: if (workingRGBA && (project.nColors !== prevNColors || project.removeBg !== prevRemoveBg)) {
+  $: if (workImage && (project.nColors !== prevNColors || project.removeBg !== prevRemoveBg)) {
     prevNColors = project.nColors;
     prevRemoveBg = project.removeBg;
     recompute();
@@ -141,7 +147,7 @@
     if (!flat || idxList.length < 2) return;
     const merged = mergeFlat(flat, idxList);
     selected = {};
-    emitFlat(merged);
+    d("flat", merged);
   }
 
   function resetColors() {
@@ -152,29 +158,33 @@
   // upscaled so flat art reads crisply. Ported from src/app.js renderFlatPreview
   // (lines 140-164). The canvas element itself always exists (see markup) so
   // this ref is stable across flat null <-> non-null transitions.
-  function renderPreview() {
-    if (!previewCanvas) return;
-    const ctx = previewCanvas.getContext("2d");
-    if (!flat) {
-      previewCanvas.width = 1;
-      previewCanvas.height = 1;
+  function renderPreview(f, canvasEl) {
+    if (!canvasEl) return;
+    const ctx = canvasEl.getContext("2d");
+    if (!f) {
+      canvasEl.width = 1;
+      canvasEl.height = 1;
       ctx.clearRect(0, 0, 1, 1);
       return;
     }
-    const w = flat.w, h = flat.h;
+    const w = f.w, h = f.h;
     const off = document.createElement("canvas");
     off.width = w;
     off.height = h;
-    const rgba = flatToRGBA(flat);
+    const rgba = flatToRGBA(f);
     off.getContext("2d").putImageData(new ImageData(rgba, w, h), 0, 0);
 
     const scale = Math.max(1, Math.round(360 / Math.max(w, h)));
-    previewCanvas.width = w * scale;
-    previewCanvas.height = h * scale;
+    canvasEl.width = w * scale;
+    canvasEl.height = h * scale;
     ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-    ctx.drawImage(off, 0, 0, previewCanvas.width, previewCanvas.height);
+    ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+    ctx.drawImage(off, 0, 0, canvasEl.width, canvasEl.height);
   }
+  // Reactive on both `flat` (prop, updates after any re-flatten) and
+  // `previewCanvas` (bound after mount) so a remount with an existing `flat`
+  // prop re-hydrates the preview immediately -- not just fresh flattens.
+  $: renderPreview(flat, previewCanvas);
 
   $: shares = flat ? flatShares(flat) : [];
   $: selectedCount = Object.keys(selected).length;

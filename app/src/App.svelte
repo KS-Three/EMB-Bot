@@ -11,13 +11,23 @@
 
   let project = loadLocal() || defaultProject();
   let step = "garment";
-  // Runtime image state: the flattened palette (flatState) produced by
-  // ImagePanel. Not persisted via saveLocal — only project settings are.
+  // Runtime image state, owned here (not by ImagePanel) so it survives
+  // ContentStep/ImagePanel being destroyed and recreated whenever the user
+  // navigates steps or toggles Text/Image mode (both are {#if} blocks).
+  // workImage is the prepped working source ({ rgba, w, h }, alpha-cut, at
+  // WORK_MAX_PX) that ImagePanel re-flattens from; flat is the flattened
+  // palette derived from it. Neither is persisted via saveLocal — only
+  // project settings are.
+  let workImage = null;
   let flat = null;
 
   function apply(patch) {
     project = update(project, patch);
     saveLocal(project);
+  }
+
+  function onImage(detail) {
+    workImage = detail;
   }
 
   function onFlat(detail) {
@@ -46,7 +56,14 @@
       {#if step === "garment"}
         <GarmentStep {project} on:update={(e) => apply(e.detail)} />
       {:else if step === "content"}
-        <ContentStep {project} on:update={(e) => apply(e.detail)} on:flat={(e) => onFlat(e.detail)} />
+        <ContentStep
+          {project}
+          {workImage}
+          {flat}
+          on:update={(e) => apply(e.detail)}
+          on:image={(e) => onImage(e.detail)}
+          on:flat={(e) => onFlat(e.detail)}
+        />
       {:else if step === "create"}
         <div class="createstep">
           <h2>Ready to stitch</h2>
