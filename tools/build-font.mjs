@@ -60,10 +60,18 @@ function paths(layer) {
   return out;
 }
 
+// Decode the XML entities Inkscape writes into layer labels so glyph keys are
+// the real characters (" & < > ' and numeric refs), letting text lookups hit.
+function decodeEntities(s) {
+  return s.replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)))
+    .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+}
+
 const glyphs = {};
 const re = /inkscape:label="GlyphLayer-([\s\S]*?)"/g; let m; let count = 0;
 while ((m = re.exec(svg))) {
-  const ch = m[1];
+  const ch = decodeEntities(m[1]);
   const g0 = svg.lastIndexOf("<g", m.index);
   let depth = 0; const gre = /<\/?g\b/g; gre.lastIndex = g0; let gm, end = -1;
   while ((gm = gre.exec(svg))) { if (svg[gm.index + 1] === "/") { depth--; if (depth === 0) { end = gm.index; break; } } else depth++; }
