@@ -13,34 +13,75 @@
   const centerRun = satinplay.centerRun;
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
-  // Order a glyph's columns for sewing: greedy nearest-neighbour from the pen
-  // position, reversing a column when its far end is the closer entry — so the
-  // needle always enters the nearest column end and inter-column travel stays
-  // short (and local to a junction).
-  function orderColumns(cols, startPt) {
-    const rem = cols.slice(), out = [];
-    let cur = startPt;
-    while (rem.length) {
-      let bi = 0, brev = false, bd = Infinity;
-      for (let i = 0; i < rem.length; i++) {
-        const rA = rem[i].railA; const s = rA[0], e = rA[rA.length - 1];
-        const ds = dist(s, cur), de = dist(e, cur);
-        if (ds < bd) { bd = ds; bi = i; brev = false; }
-        if (de < bd) { bd = de; bi = i; brev = true; }
-      }
-      const c = rem.splice(bi, 1)[0];
-      if (brev) { c.railA.reverse(); c.railB.reverse(); if (c.rungs) c.rungs.reverse(); }
-      out.push(c);
-      const rA = c.railA; cur = rA[rA.length - 1];
+  // Route ONE glyph's satin columns with underpathing. Each column is sewn as a
+  // round trip that ENTERS and EXITS at the same end: a center-walk underlay in
+  // (hidden under the satin that follows) then the satin back out. Column ends
+  // are merged into shared JUNCTION nodes; the router prefers the next column
+  // that shares the current node, so the connecting stitch is a short needle-
+  // DOWN run tucked at the junction (no trim). A column at a different node gets
+  // a real jump (marked jump:true → the caller trims if it's long). This is the
+  // Ink/Stitch underpathing idea: travel is only hidden when the satin covers
+  // it, so we only ever run under a column we are about to sew, and otherwise
+  // jump honestly. Returns [{pts,kind:"underlay"|"satin",jump}].
+  function routeGlyph(cols, opts) {
+    const pxPerMm = opts.pxPerMm, spacingMm = opts.spacingMm, pullCompMm = opts.pullCompMm || 0;
+    const doUnderlay = opts.underlay !== false;
+    const info = [];
+    for (const c of cols) {
+      const satin = satinFromRails(c.railA, c.railB, c.rungs, { spacingMm, pxPerMm, pullCompMm });
+      if (satin.length < 2) continue;
+      const center = centerRun(c.railA, c.railB, c.rungs, { stepMm: 1.5, pxPerMm });
+      if (!center || center.length < 2) continue;
+      const w = Math.max(dist(c.railA[0], c.railB[0]), dist(c.railA[c.railA.length - 1], c.railB[c.railB.length - 1]));
+      info.push({ satin, center, w });
     }
-    return out;
+    if (!info.length) return [];
+    const ws = info.map((x) => x.w).sort((a, b) => a - b);
+    const medW = ws[ws.length >> 1] || 4;
+    const mergeR = Math.max(2, 1.3 * medW);   // endpoints this close share a junction
+    const nodes = [];
+    const nodeOf = (p) => { for (let i = 0; i < nodes.length; i++) if (dist(nodes[i], p) <= mergeR) return i; nodes.push({ x: p.x, y: p.y }); return nodes.length - 1; };
+    for (const x of info) { x.n0 = nodeOf(x.center[0]); x.n1 = nodeOf(x.center[x.center.length - 1]); }
+
+    const runs = [], unsewn = info.slice();
+    let curNode = -1, curPos = null;
+    while (unsewn.length) {
+      let best = null;
+      for (const x of unsewn) {
+        for (const which of [0, 1]) {
+          const enter = which === 0 ? x.center[0] : x.center[x.center.length - 1];
+          const enNode = which === 0 ? x.n0 : x.n1;
+          const shares = curNode >= 0 && enNode === curNode;
+          const d = curNode < 0 ? enter.x : dist(curPos, enter);
+          const cost = curNode < 0 ? enter.x : (shares ? d - 1e6 : d); // strongly prefer a shared junction
+          if (!best || cost < best.cost) best = { x, which, enter, enNode, cost };
+        }
+      }
+      const x = best.x; unsewn.splice(unsewn.indexOf(x), 1);
+      const enter = best.enter, enNode = best.enNode;
+      let center = x.center.slice(); if (best.which === 1) center.reverse();  // center[0] = enter
+      const far = center[center.length - 1];
+      const jump = curNode < 0 || enNode !== curNode;
+      if (doUnderlay) {
+        let satin = x.satin.slice(); if (dist(satin[0], far) > dist(satin[satin.length - 1], far)) satin.reverse(); // satin: far -> enter
+        runs.push({ pts: center, kind: "underlay", jump });     // enter -> far (hidden under satin)
+        runs.push({ pts: satin, kind: "satin", jump: false });  // far -> enter (exit at enter)
+        curNode = enNode; curPos = enter;
+      } else {
+        let satin = x.satin.slice(); if (dist(satin[0], enter) > dist(satin[satin.length - 1], enter)) satin.reverse(); // enter -> far
+        runs.push({ pts: satin, kind: "satin", jump });
+        curNode = (enNode === x.n0) ? x.n1 : x.n0; curPos = far; // exit at the far end
+      }
+    }
+    return runs;
   }
 
   // Lay out `text` in a pre-digitized font. Returns:
-  //   { runs:[{pts:[{x,y}…], kind:"underlay"|"satin"}], bbox:{x0,y0,x1,y1} }
-  // in DESIGN PIXELS (y-down). Each satin column gets a center-walk underlay run
-  // (sewn first, hidden under the satin). Columns are ordered nearest-neighbour
-  // so travel between them is short. opts = { emMm=18, pxPerMm=10, spacingMm=0.4,
+  //   { runs:[{pts:[{x,y}…], kind, jump}], bbox:{x0,y0,x1,y1} }
+  // in DESIGN PIXELS (y-down). Columns are routed per glyph with underpathing
+  // (see routeGlyph). A run's jump=true means "lift needle & travel to its
+  // start" (the caller trims if far); jump=false means "continue with a needle-
+  // down running connector". opts = { emMm=18, pxPerMm=10, spacingMm=0.4,
   // pullCompMm=0, letterSpacingMm=0, underlay=true }.
   function layoutText(font, text, opts) {
     const o = opts || {};
@@ -70,21 +111,8 @@
         railB: col.railB.map((p) => ({ x: TX(p[0]), y: TY(p[1]) })),
         rungs: (col.rungs || []).map((rg) => [{ x: TX(rg[0][0]), y: TY(rg[0][1]) }, { x: TX(rg[1][0]), y: TY(rg[1][1]) }]),
       }));
-      for (const c of orderColumns(cols, { x: ox * u2px, y: 0 })) {
-        const satin = satinFromRails(c.railA, c.railB, c.rungs, { spacingMm, pxPerMm, pullCompMm });
-        if (satin.length < 2) continue;
-        if (doUnderlay) {
-          let under = centerRun(c.railA, c.railB, c.rungs, { stepMm: 2, pxPerMm });
-          // orient underlay to END where the satin STARTS (contiguous, no jump)
-          if (under.length >= 2) {
-            if (dist(under[under.length - 1], satin[0]) > dist(under[0], satin[0])) under = under.slice().reverse();
-            runs.push({ pts: under, kind: "underlay" });
-            for (const p of under) acc(p);
-          }
-        }
-        runs.push({ pts: satin, kind: "satin" });
-        for (const p of satin) acc(p);
-      }
+      const gRuns = routeGlyph(cols, { pxPerMm, spacingMm, pullCompMm, underlay: doUnderlay });
+      for (const r of gRuns) { runs.push(r); for (const p of r.pts) acc(p); }
       penX += g.adv + lsUnits;
       prev = ch;
     }

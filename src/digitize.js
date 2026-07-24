@@ -539,27 +539,25 @@
     const colors = [{ r: rgb[0], g: rgb[1], b: rgb[2], name: "Color 1" }];
     const maxStitchMm = o.maxStitchMm || 4;
     const maxStepPx = maxStitchMm / finalMmPerPx;   // longest single stitch (px)
-    const runConnectMm = o.runConnectMm == null ? 2.5 : o.runConnectMm; // short-gap → walk
     let nTrims = 0, nSatin = 0, lastPt = null;
+    // The router (satinfont) decides jump vs. underpath per run: jump=false means
+    // travel as a needle-DOWN running connector (tucked at a junction, covered);
+    // jump=true means lift the needle (and trim if the hop is long).
     for (const run of lay.runs) {
       const pts = run.pts;
       if (!pts || pts.length < 2) continue;
       if (run.kind === "satin") nSatin++;
       const start = pts[0];
-      if (lastPt) {
-        const gap = Math.hypot(start.x - lastPt.x, start.y - lastPt.y);
-        const gapMm = gap * finalMmPerPx;
-        if (gapMm <= runConnectMm) {
-          // Short junction gap: needle-DOWN running connector (subdivided), so
-          // the travel is a covered running stitch, not a bare jump/trim.
-          const steps = Math.max(1, Math.ceil(gap / maxStepPx));
-          for (let s = 1; s <= steps; s++) { const t = s / steps; const d = T({ x: lastPt.x + (start.x - lastPt.x) * t, y: lastPt.y + (start.y - lastPt.y) * t }); stitches.push({ x: d.x, y: d.y, type: "stitch" }); }
-        } else {
-          if (gapMm > trimAtMm) { const tp = T(lastPt); stitches.push({ x: tp.x, y: tp.y, type: "trim" }); nTrims++; }
-          const f = T(start); stitches.push({ x: f.x, y: f.y, type: "jump" });
-        }
-      } else {
+      if (!lastPt) {
         const f = T(start); stitches.push({ x: f.x, y: f.y, type: "jump" });
+      } else if (run.jump) {
+        const gapMm = Math.hypot(start.x - lastPt.x, start.y - lastPt.y) * finalMmPerPx;
+        if (gapMm > trimAtMm) { const tp = T(lastPt); stitches.push({ x: tp.x, y: tp.y, type: "trim" }); nTrims++; }
+        const f = T(start); stitches.push({ x: f.x, y: f.y, type: "jump" });
+      } else {
+        const gap = Math.hypot(start.x - lastPt.x, start.y - lastPt.y);
+        const steps = Math.max(1, Math.ceil(gap / maxStepPx));
+        for (let s = 1; s <= steps; s++) { const t = s / steps; const d = T({ x: lastPt.x + (start.x - lastPt.x) * t, y: lastPt.y + (start.y - lastPt.y) * t }); stitches.push({ x: d.x, y: d.y, type: "stitch" }); }
       }
       for (const q of pts) { const d = T(q); stitches.push({ x: d.x, y: d.y, type: "stitch" }); }
       lastPt = pts[pts.length - 1];
