@@ -41,11 +41,39 @@ const d2 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const r1 = (n) => Math.round(n * 10) / 10;
 const enc = (poly) => poly.map((p) => [r1(p.x), r1(p.y)]);
 
+// Do polylines P and Q have any crossing segments? (rung↔rail intersection test)
+function segCross(a, b, c, d) { const rx = b.x - a.x, ry = b.y - a.y, sx = d.x - c.x, sy = d.y - c.y; const den = rx * sy - ry * sx; if (Math.abs(den) < 1e-9) return false; const t = ((c.x - a.x) * sy - (c.y - a.y) * sx) / den, u = ((c.x - a.x) * ry - (c.y - a.y) * rx) / den; return t >= -0.01 && t <= 1.01 && u >= -0.01 && u <= 1.01; }
+function polyCross(P, Q) { for (let i = 0; i + 1 < P.length; i++) for (let j = 0; j + 1 < Q.length; j++) if (segCross(P[i], P[i + 1], Q[j], Q[j + 1])) return true; return false; }
+
+// Ink/Stitch's rail identification (satin_column.py rail_indices): rungs cross
+// both rails, so classify by how many OTHER subpaths each intersects — NOT by
+// length (a rung can be longer than short rails on cursive/wide columns).
+function railIndices(subs) {
+  const n = subs.length; const lens = subs.map(plen);
+  const byLen = subs.map((_, i) => i).sort((a, b) => lens[b] - lens[a]);
+  if (n <= 2) return [0, 1].slice(0, n);
+  const inter = subs.map((_, i) => subs.reduce((acc, __, j) => acc + (i !== j && polyCross(subs[i], subs[j]) ? 1 : 0), 0));
+  // 3 subpaths → a rail meets the single rung once; >3 → a rail meets many rungs (>2).
+  const cand = (n === 3)
+    ? subs.map((_, i) => i).filter((i) => inter[i] === 1 && lens[i] > 0.1)
+    : subs.map((_, i) => i).filter((i) => inter[i] > 2 && lens[i] > 0.1);
+  return cand.length === 2 ? cand : byLen.slice(0, 2); // ambiguous (#-shape) → longest
+}
+
+// Sample-based rail orientation (satin_column.py _get_rails_to_reverse): if the
+// average corresponding-point distance is smaller with railB reversed, it was
+// drawn backwards — reverse it so both rails run the same direction.
+function orientRailB(railA, railB) {
+  const at = (poly, f) => { const L = plen(poly), s = f * L; let acc = 0; for (let i = 0; i + 1 < poly.length; i++) { const seg = Math.hypot(poly[i + 1].x - poly[i].x, poly[i + 1].y - poly[i].y); if (acc + seg >= s) { const t = seg > 1e-9 ? (s - acc) / seg : 0; return { x: poly[i].x + (poly[i + 1].x - poly[i].x) * t, y: poly[i].y + (poly[i + 1].y - poly[i].y) * t }; } acc += seg; } return poly[poly.length - 1]; };
+  let fwd = 0, rev = 0;
+  for (let k = 1; k <= 9; k++) { const f = k / 10; const a = at(railA, f); fwd += d2(a, at(railB, f)); rev += d2(a, at(railB, 1 - f)); }
+  return rev < fwd ? railB.slice().reverse() : railB;
+}
+
 function toColumn(subs) {
-  const sorted = subs.slice().sort((a, b) => plen(b) - plen(a));
-  let railA = sorted[0], railB = sorted[1];
-  if (d2(railA[0], railB[0]) > d2(railA[0], railB[railB.length - 1])) railB = railB.slice().reverse();
-  const rungs = sorted.slice(2).map((r) => {
+  const ri = railIndices(subs);
+  let railA = subs[ri[0]], railB = orientRailB(subs[ri[0]], subs[ri[1]]);
+  const rungs = subs.filter((_, i) => i !== ri[0] && i !== ri[1]).map((r) => {
     const p0 = r[0], p1 = r[r.length - 1];
     const p0A = Math.min(...railA.map((q) => d2(p0, q))), p0B = Math.min(...railB.map((q) => d2(p0, q)));
     return p0A <= p0B ? [p0, p1] : [p1, p0];

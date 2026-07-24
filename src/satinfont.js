@@ -73,51 +73,75 @@
     if (!edges.length) return [];
 
     // Directed-edge adjacency (each undirected span usable both ways).
-    const dedges = []; edges.forEach((e, ei) => { dedges.push({ from: e.na, to: e.nb, ei, fwd: true }); dedges.push({ from: e.nb, to: e.na, ei, fwd: false }); });
-    const outAdj = nodes.map(() => []); dedges.forEach((de, i) => outAdj[de.from].push(i));
-    const usedDE = dedges.map(() => false);
-    const ptr = nodes.map(() => 0);
-    function euler(start) { // Hierholzer → ordered list of directed-edge indices
-      const stackN = [start], stackE = [], circ = [];
-      while (stackN.length) {
-        const v = stackN[stackN.length - 1];
-        while (ptr[v] < outAdj[v].length && usedDE[outAdj[v][ptr[v]]]) ptr[v]++;
-        if (ptr[v] < outAdj[v].length) { const dei = outAdj[v][ptr[v]++]; usedDE[dei] = true; stackE.push(dei); stackN.push(dedges[dei].to); }
-        else { stackN.pop(); if (stackE.length) circ.push(stackE.pop()); }
-      }
-      return circ.reverse();
-    }
+    // Undirected multigraph of edge INSTANCES. Chinese-Postman: per component,
+    // make it Eulerian by DUPLICATING only a minimal set of edges (greedy odd-
+    // node pairing along shortest edge-paths). Duplicated instances become the
+    // running underpath (covered by the satin); every other edge is sewn once as
+    // satin. This adds travel ONLY where needed — no doubling everywhere, so
+    // intersections don't pile up extra density.
+    const adj = nodes.map(() => []);       // per node: {inst, to}
+    const inst = [];                        // {ei, a, b}
+    const addInst = (ei, a, b) => { const id = inst.length; inst.push({ ei, a, b }); adj[a].push({ inst: id, to: b }); adj[b].push({ inst: id, to: a }); };
+    edges.forEach((e, ei) => addInst(ei, e.na, e.nb));
 
-    // Emit: iterate components (start at each node that still has unused edges,
-    // preferring smaller x so words read left→right). Each component = one
-    // Euler circuit → typed spans → geometry.
+    // connected components
+    const comp = nodes.map(() => -1); let nc = 0;
+    for (let s = 0; s < nodes.length; s++) {
+      if (comp[s] !== -1 || !adj[s].length) continue;
+      comp[s] = nc; const q = [s];
+      while (q.length) { const u = q.pop(); for (const e of adj[u]) if (comp[e.to] === -1) { comp[e.to] = nc; q.push(e.to); } }
+      nc++;
+    }
+    const compNodes = []; for (let c = 0; c < nc; c++) compNodes.push([]);
+    nodes.forEach((n, i) => { if (comp[i] >= 0) compNodes[comp[i]].push(i); });
+    compNodes.sort((a, b) => Math.min.apply(null, a.map((i) => nodes[i].x)) - Math.min.apply(null, b.map((i) => nodes[i].x)));
+
     const runs = [];
-    const nodeOrder = nodes.map((n, i) => i).sort((a, b) => nodes[a].x - nodes[b].x);
-    for (const start of nodeOrder) {
-      if (ptr[start] >= outAdj[start].length || outAdj[start].every((i) => usedDE[i])) continue;
-      const circ = euler(start);
-      if (!circ.length) continue;
-      // reverse-dedupe: last visit of an edge = satin, earlier = running
-      const isSatin = new Array(circ.length);
-      const seen = new Set();
-      for (let k = circ.length - 1; k >= 0; k--) { const ei = dedges[circ[k]].ei; if (seen.has(ei)) isSatin[k] = false; else { seen.add(ei); isSatin[k] = true; } }
-      // build typed spans, collapsing contiguous same-column-same-type steps
+    for (const cnodes of compNodes) {
+      if (!cnodes.length) continue;
+      const deg = {}; for (const i of cnodes) deg[i] = adj[i].length;
+      let odd = cnodes.filter((i) => deg[i] % 2 === 1);
+      // greedy: pair odd nodes, duplicating edges along the shortest path between
+      // them (parity of interior nodes is preserved; both endpoints go even).
+      let guard = 0;
+      while (odd.length > 2 && guard++ < 200) {
+        const u = odd[0];
+        const prevN = {}, prevI = {}, seen = new Set([u]); const q = [u]; let tgt = -1;
+        while (q.length) { const x = q.shift(); if (x !== u && deg[x] % 2 === 1) { tgt = x; break; } for (const e of adj[x]) if (!seen.has(e.to)) { seen.add(e.to); prevN[e.to] = x; prevI[e.to] = e.inst; q.push(e.to); } }
+        if (tgt < 0) break;
+        let x = tgt; while (x !== u) { const p = prevN[x]; const ii = inst[prevI[x]]; addInst(ii.ei, ii.a, ii.b); deg[x]++; deg[p]++; x = p; }
+        odd = cnodes.filter((i) => deg[i] % 2 === 1);
+      }
+      // Hierholzer Euler trail over the (now near-Eulerian) multigraph.
+      const start = odd.length ? odd[0] : cnodes.reduce((a, b) => (nodes[a].x <= nodes[b].x ? a : b));
+      const used = new Set(); const ptr = {}; for (const i of cnodes) ptr[i] = 0;
+      const st = [start], edgeSt = [], circuit = [];
+      while (st.length) {
+        const v = st[st.length - 1];
+        while (ptr[v] < adj[v].length && used.has(adj[v][ptr[v]].inst)) ptr[v]++;
+        if (ptr[v] < adj[v].length) { const e = adj[v][ptr[v]++]; used.add(e.inst); edgeSt.push({ inst: e.inst, from: v }); st.push(e.to); }
+        else { st.pop(); if (edgeSt.length) circuit.push(edgeSt.pop()); }
+      }
+      circuit.reverse();
+      if (!circuit.length) continue;
+      // reverse-dedupe by span id: LAST visit sews as satin, earlier as running
+      const isSatin = new Array(circuit.length); const seenEi = new Set();
+      for (let k = circuit.length - 1; k >= 0; k--) { const ei = inst[circuit[k].inst].ei; if (seenEi.has(ei)) isSatin[k] = false; else { seenEi.add(ei); isSatin[k] = true; } }
+      // typed spans (with traversal direction), collapse contiguous
       const spans = [];
-      for (let k = 0; k < circ.length; k++) {
-        const de = dedges[circ[k]], e = edges[de.ei];
-        const f0 = de.fwd ? e.f0 : e.f1, f1 = de.fwd ? e.f1 : e.f0;
-        const sat = isSatin[k];
-        const prev = spans[spans.length - 1];
+      for (let k = 0; k < circuit.length; k++) {
+        const c = circuit[k], e = edges[inst[c.inst].ei];
+        const fwd = c.from === e.na; const f0 = fwd ? e.f0 : e.f1, f1 = fwd ? e.f1 : e.f0;
+        const sat = isSatin[k]; const prev = spans[spans.length - 1];
         if (prev && prev.gi === e.gi && prev.sat === sat && Math.abs(prev.f1 - f0) < 1e-6) prev.f1 = f1;
         else spans.push({ gi: e.gi, sat, f0, f1 });
       }
       let first = true;
       for (const sp of spans) {
-        const geom = G[sp.gi].geom;
-        const lo = Math.min(sp.f0, sp.f1), hi = Math.max(sp.f0, sp.f1);
+        const geom = G[sp.gi].geom; const lo = Math.min(sp.f0, sp.f1), hi = Math.max(sp.f0, sp.f1);
         let pts = sp.sat ? satinFromGeom(geom, lo, hi, satinOpts) : centerFromGeom(geom, lo, hi, 2, pxPerMm);
         if (!pts || pts.length < 2) continue;
-        if (sp.f1 < sp.f0) pts = pts.slice().reverse(); // follow traversal direction
+        if (sp.f1 < sp.f0) pts = pts.slice().reverse();
         runs.push({ pts, kind: sp.sat ? "satin" : "underlay", jump: first });
         first = false;
       }
