@@ -1,7 +1,8 @@
 <script>
   import { onMount } from "svelte";
   import { generateDesign, generateImageDesign } from "../lib/generate.js";
-  import { renderRealistic } from "../lib/preview.js";
+  import { renderRealistic, hoopTransform, drawHoopOutline } from "../lib/preview.js";
+  import { EMB } from "../lib/emb.js";
 
   export let project;
   export let flat = null;
@@ -12,11 +13,19 @@
   let hasDesign = false;
   let hint = "";
 
+  function garmentFor(p) {
+    return p && EMB.getGarment(p.garmentId);
+  }
+
   function clearToFabric() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     ctx.fillStyle = "#e9e6df";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Nice-to-have: still show the hoop bounds on the empty-state canvas
+    // when we know the garment, so the field never looks unrelated to size.
+    const garment = garmentFor(project);
+    if (garment) drawHoopOutline(ctx, hoopTransform(garment, canvas.width, canvas.height, 24));
   }
 
   function paintImage() {
@@ -29,7 +38,7 @@
     try {
       const design = generateImageDesign(flat, project);
       stats = `${design.stitchCount} stitches · ${design.widthMM.toFixed(0)}×${design.heightMM.toFixed(0)} mm`;
-      renderRealistic(canvas, design, {});
+      renderRealistic(canvas, design, { hoop: { garment: garmentFor(project) } });
       hasDesign = true;
     } catch (e) {
       error = e.message;
@@ -49,7 +58,7 @@
     try {
       const design = generateDesign(project);
       stats = `${design.stitchCount} stitches · ${design.widthMM.toFixed(0)}×${design.heightMM.toFixed(0)} mm`;
-      renderRealistic(canvas, design, { colorOverride: project.colorRgb });
+      renderRealistic(canvas, design, { colorOverride: project.colorRgb, hoop: { garment: garmentFor(project) } });
       hasDesign = true;
     } catch (e) {
       error = e.message;
