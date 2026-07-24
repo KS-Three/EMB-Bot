@@ -625,20 +625,17 @@
   function ringArea(r) { let a = 0; for (let i = 0, j = r.length - 1; i < r.length; j = i++) a += r[j].x * r[i].y - r[i].x * r[j].y; return Math.abs(a) / 2; }
   function ringPerim(r) { let p = 0; for (let i = 0; i < r.length; i++) { const a = r[i], b = r[(i + 1) % r.length]; p += Math.hypot(b.x - a.x, b.y - a.y); } return p; }
 
-  // Satin along the medial axis (skeleton). Decomposes branched letters (B, R,
-  // T…) into individual strokes and rail-satins each; single strokes (S, C, I)
-  // satin as one column. Counters (opts.holes: [ring,…]) are punched out of the
-  // raster so the skeleton follows the stroke ribbons AROUND the hole and the
-  // rails stop at the counter edge. Falls back to outline-split satinColumn for
-  // tiny rings. opts = { spacingMm, pxPerMm, pullCompMm=0, slantDeg=0, holes=[] }.
-  function medialSatin(ring, opts) {
-    if (!ring || ring.length < 3) return [];
+  // Rasterize a ring(+counters) to a 1px skeleton and decompose it into stroke
+  // spines in WORLD coords. Shared by medialSatin (stitch immediately) and
+  // glyphColumns (extract storable rails). Returns
+  // { strokes:[{spine,freeStart,freeEnd,closed}], contours, halfWidthPx }.
+  function ringToSpines(ring, opts) {
     const holes = ((opts && opts.holes) || []).filter((h) => h && h.length >= 3);
     const contours = [ring].concat(holes);
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const q of ring) { if (q.x < minX) minX = q.x; if (q.x > maxX) maxX = q.x; if (q.y < minY) minY = q.y; if (q.y > maxY) maxY = q.y; }
     const dim = Math.max(maxX - minX, maxY - minY);
-    if (!(dim > EPS)) return [];
+    if (!(dim > EPS)) return { strokes: [], contours, halfWidthPx: 0 };
 
     const gscale = Math.min(1.5, 260 / dim);
     const gw = Math.ceil((maxX - minX) * gscale) + 3, gh = Math.ceil((maxY - minY) * gscale) + 3;
@@ -666,16 +663,29 @@
     }
     const toWorld = (p) => ({ x: minX + (p[0] + 0.5) / gscale, y: minY + (p[1] + 0.5) / gscale });
 
-    let strokes = skeletonEdges(mask, gw, gh).map((e) => ({ spine: e.pts.map(toWorld), freeStart: e.freeStart, freeEnd: e.freeEnd }));
+    let strokes = skeletonEdges(mask, gw, gh).map((e) => ({ spine: e.pts.map(toWorld), freeStart: e.freeStart, freeEnd: e.freeEnd, closed: !!e.closed }));
     const minEdgeLen = Math.max(3, 1.2 * halfWidthPx);
     strokes = strokes.filter((s) => { const L = chainLength(s.spine); return L > EPS && (L >= minEdgeLen || (s.freeStart && s.freeEnd)); });
     if (strokes.length === 0) {
       const gp = skeletonPath(mask, gw, gh);
-      if (gp.length < 3) return satinColumn(ring, opts);
-      strokes = [{ spine: gp.map(toWorld), freeStart: true, freeEnd: true }];
+      if (gp.length < 3) return { strokes: [], contours, halfWidthPx };
+      strokes = [{ spine: gp.map(toWorld), freeStart: true, freeEnd: true, closed: false }];
     }
     strokes.sort((a, b) => chainLength(b.spine) - chainLength(a.spine));
     if (strokes.length > 24) strokes = strokes.slice(0, 24);
+    return { strokes, contours, halfWidthPx };
+  }
+
+  // Satin along the medial axis (skeleton). Decomposes branched letters (B, R,
+  // T…) into individual strokes and rail-satins each; single strokes (S, C, I)
+  // satin as one column. Counters (opts.holes: [ring,…]) are punched out of the
+  // raster so the skeleton follows the stroke ribbons AROUND the hole and the
+  // rails stop at the counter edge. Falls back to outline-split satinColumn for
+  // tiny rings. opts = { spacingMm, pxPerMm, pullCompMm=0, slantDeg=0, holes=[] }.
+  function medialSatin(ring, opts) {
+    if (!ring || ring.length < 3) return [];
+    const { strokes, contours, halfWidthPx } = ringToSpines(ring, opts);
+    if (!strokes.length) return satinColumn(ring, opts);
     if (typeof globalThis !== "undefined" && globalThis.__DBG_SPINE) globalThis.__spine = strokes.reduce((acc, s) => acc.concat(s.spine), []);
 
     const o = Object.assign({ _halfWidthPx: halfWidthPx }, opts);
@@ -691,6 +701,78 @@
     return out.length >= 4 ? out : satinColumn(ring, opts);
   }
 
+  // Like railSatinFromSpine but returns the two RAILS (+corresponding rungs)
+  // for STORAGE — a pre-digitized satin column that satinplay.satinFromRails
+  // plays back. Same smoothing/normal/ray logic. Trims FREE ends by ~half-width
+  // (the terminal veer) and JUNCTION ends by a smaller amount (so abutting
+  // strokes don't overlap into a knot). Closed loops (O) are never trimmed.
+  function spineToRails(contours, spinePx, opts, trimStart, trimEnd, closed) {
+    const pullCompMm = opts.pullCompMm || 0, pxPerMm = opts.pxPerMm || 1;
+    const slantRad = ((opts.slantDeg || 0) * Math.PI) / 180;
+    const halfWidthPx = opts._halfWidthPx || 0;
+    const spacingMm = opts.spacingMm;
+
+    let spine = smoothChain(spinePx, 3);
+    if (halfWidthPx > EPS && !closed) {
+      const L0 = chainLength(spine);
+      const freeTrim = 0.5 * halfWidthPx;   // veer at a true terminal
+      const juncTrim = 0.4 * halfWidthPx;   // pull back from a junction
+      const s0 = trimStart ? freeTrim : juncTrim;
+      const s1 = L0 - (trimEnd ? freeTrim : juncTrim);
+      if (s1 - s0 > 0.5 * halfWidthPx) spine = subChainByArc(spine, s0, s1);
+    }
+    const denom = spacingMm * pxPerMm, stepPx = denom > 0 ? denom : 4;
+    const spineLen = chainLength(spine);
+    if (!(spineLen > EPS)) return null;
+    spine = resampleChain(spine, Math.max(2, Math.ceil(spineLen / stepPx)));
+    const N = spine.length;
+    const ang = new Array(N);
+    for (let t = 0; t < N; t++) {
+      const prev = spine[Math.max(0, t - 1)], next = spine[Math.min(N - 1, t + 1)];
+      let tx = next.x - prev.x, ty = next.y - prev.y; const tl = Math.hypot(tx, ty) || 1; tx /= tl; ty /= tl;
+      ang[t] = Math.atan2(tx, -ty);
+    }
+    for (let t = 1; t < N; t++) { while (ang[t] - ang[t - 1] > Math.PI / 2) ang[t] -= Math.PI; while (ang[t] - ang[t - 1] < -Math.PI / 2) ang[t] += Math.PI; }
+    for (let pass = 0; pass < 6; pass++) { const cp = ang.slice(); for (let t = 1; t < N - 1; t++) ang[t] = (cp[t - 1] + cp[t] + cp[t + 1]) / 3; }
+    if (slantRad) for (let t = 0; t < N; t++) ang[t] += slantRad;
+    const dA = new Array(N), dB = new Array(N);
+    for (let t = 0; t < N; t++) {
+      const s = spine[t], nx = Math.cos(ang[t]), ny = Math.sin(ang[t]);
+      const hp = rayContoursHit(contours, s.x, s.y, nx, ny), hn = rayContoursHit(contours, s.x, s.y, -nx, -ny);
+      dA[t] = hp ? Math.hypot(hp.x - s.x, hp.y - s.y) : NaN;
+      dB[t] = hn ? Math.hypot(hn.x - s.x, hn.y - s.y) : NaN;
+    }
+    const fillNaN = (arr) => { let last = NaN; for (let t = 0; t < N; t++) { if (!isNaN(arr[t])) last = arr[t]; else if (!isNaN(last)) arr[t] = last; } last = NaN; for (let t = N - 1; t >= 0; t--) { if (!isNaN(arr[t])) last = arr[t]; else if (!isNaN(last)) arr[t] = last; } for (let t = 0; t < N; t++) if (isNaN(arr[t])) arr[t] = 0; };
+    fillNaN(dA); fillNaN(dB);
+    for (let pass = 0; pass < 3; pass++) { const a = dA.slice(), b = dB.slice(); for (let t = 1; t < N - 1; t++) { dA[t] = (a[t - 1] + a[t] + a[t + 1]) / 3; dB[t] = (b[t - 1] + b[t] + b[t + 1]) / 3; } }
+    const offset = (pullCompMm * pxPerMm) / 2;
+    const railA = [], railB = [];
+    for (let t = 0; t < N; t++) {
+      const s = spine[t], nx = Math.cos(ang[t]), ny = Math.sin(ang[t]);
+      railA.push({ x: s.x + nx * (dA[t] + offset), y: s.y + ny * (dA[t] + offset) });
+      railB.push({ x: s.x - nx * (dB[t] + offset), y: s.y - ny * (dB[t] + offset) });
+    }
+    const rungs = []; for (let t = 0; t < N; t += 6) rungs.push([railA[t], railB[t]]);
+    if (rungs.length && rungs[rungs.length - 1][0] !== railA[N - 1]) rungs.push([railA[N - 1], railB[N - 1]]);
+    return { railA, railB, rungs };
+  }
+
+  // Extract storable satin columns (rails+rungs) for a glyph/region — the same
+  // skeleton decomposition medialSatin uses, but returning geometry for
+  // satinplay.satinFromRails instead of stitching immediately. This is the
+  // offline "digitizer" half of the pre-digitized-font pipeline.
+  function glyphColumns(ring, opts) {
+    if (!ring || ring.length < 3) return [];
+    const { strokes, contours, halfWidthPx } = ringToSpines(ring, opts);
+    const o = Object.assign({ _halfWidthPx: halfWidthPx }, opts);
+    const cols = [];
+    for (const st of strokes) {
+      const c = spineToRails(contours, st.spine, o, st.freeStart, st.freeEnd, st.closed);
+      if (c && c.railA.length >= 2) { c.closed = !!st.closed; cols.push(c); }
+    }
+    return cols;
+  }
+
   return {
     farthestBoundaryPair,
     splitBoundary,
@@ -700,6 +782,7 @@
     lineSegX,
     satinColumn,
     medialSatin,
+    glyphColumns,
     // internals exposed for testing/diagnostics
     rasterize,
     thin,
