@@ -515,15 +515,22 @@
     const empty = { stitches: [{ x: 0, y: 0, type: "end" }], colors: [], widthMM: 0, heightMM: 0, stitchCount: 0, colorCount: 0, _debug: { nSatin: 0, nFill: 0, nTrims: 0 } };
     if (!fontData || !text) return empty;
 
-    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: densityMm, pullCompMm, letterSpacingMm: o.letterSpacingMm || 0 });
-    if (!lay.runs.length) return empty;
-
-    const bb = lay.bbox;
+    const ls = o.letterSpacingMm || 0;
+    // Pass 1: measure the glyph extent (bbox is spacing-independent) so we can
+    // fit-to-garment. Coarse spacing keeps it cheap.
+    const probe = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: 2, pullCompMm: 0, letterSpacingMm: ls });
+    if (!probe.runs.length) return empty;
+    const bb = probe.bbox;
     const bboxWmm = (bb.x1 - bb.x0) / pxPerMm, bboxHmm = (bb.y1 - bb.y0) / pxPerMm;
     const fit = garments.fitScale(bboxWmm || 1, bboxHmm || 1, garment);
     const sc = (fit.scale > 0 && isFinite(fit.scale)) ? fit.scale : 1;
     const scalePxToDst = sc * (1 / pxPerMm) * units.DST_UNITS_PER_MM;
     const finalMmPerPx = sc / pxPerMm;
+    // Pass 2: generate at fit-corrected density so the FINAL satin spacing and
+    // pull-comp land at the requested mm regardless of the fit scale (short text
+    // scaled up would otherwise sew too sparse).
+    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: densityMm / sc, pullCompMm: pullCompMm / sc, letterSpacingMm: ls });
+    if (!lay.runs.length) return empty;
     const cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2;
     const T = (q) => ({ x: Math.round((q.x - cx) * scalePxToDst), y: Math.round((cy - q.y) * scalePxToDst) });
     const trimAtMm = (fabric && fabric.trimAtMm != null) ? fabric.trimAtMm : (o.trimAtMm == null ? 3.0 : o.trimAtMm);
