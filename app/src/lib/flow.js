@@ -1,4 +1,6 @@
-export const STEPS = ["garment", "text", "preview", "download"];
+// The embroidery field is shown persistently on the right, so "preview" is no
+// longer a screen of its own — the guided steps are just the left-panel flow.
+export const STEPS = ["garment", "text", "download"];
 
 export function canAdvance(step, project) {
   if (step === "garment") return !!project.garmentId;
