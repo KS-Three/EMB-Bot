@@ -1,0 +1,212 @@
+/* EMB Bot Studio — minimal, beginner-friendly theme */
+:root {
+  --accent: #2f6fed;
+  --accent-dark: #1f52bd;
+  --ink: #1c1f26;
+  --muted: #6b7280;
+  --bg: #f6f7fb;
+  --card: #ffffff;
+  --border: #e2e5eb;
+  --radius: 12px;
+  --gap: 1rem;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+
+.logo {
+  font-weight: 700;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
+}
+
+.stage {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 6rem;
+}
+
+.stage h2 {
+  margin-top: 0;
+  font-size: 1.4rem;
+}
+
+.stage h3 {
+  font-size: 1rem;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+
+/* Garment / font tiles */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--gap);
+}
+
+.tile {
+  padding: 1.25rem 0.75rem;
+  min-height: 64px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.1s ease;
+}
+
+.tile:hover { border-color: var(--accent); }
+.tile.sel { border-color: var(--accent); background: #eaf1ff; font-weight: 600; }
+
+/* Text step */
+.textin {
+  width: 100%;
+  font-size: 1.25rem;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+}
+
+.textin:focus { outline: none; border-color: var(--accent); }
+
+label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+input[type="color"] {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* Font gallery */
+.fontgallery {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 0.6rem;
+}
+
+.fontgallery button {
+  width: 100%;
+  padding: 0.75rem 0.5rem;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.fontgallery button:hover { border-color: var(--accent); }
+.fontgallery button.sel { border-color: var(--accent); background: #eaf1ff; font-weight: 600; }
+
+/* Preview step */
+canvas {
+  display: block;
+  width: 100%;
+  max-width: 640px;
+  height: auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: #e9e6df;
+}
+
+.stats { color: var(--muted); margin-top: 0.5rem; }
+.err { color: #c0392b; font-weight: 600; }
+
+/* Download step */
+.formats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+/* Buttons */
+button {
+  font: inherit;
+  border-radius: var(--radius);
+}
+
+.formats button, .primary {
+  padding: 0.75rem 1.5rem;
+  min-height: 48px;
+  border: 2px solid var(--border);
+  background: var(--card);
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+button.primary:hover { background: var(--accent-dark); }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Step nav */
+.stepnav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+}
+
+.stepnav ol {
+  display: flex;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.stepnav li {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.stepnav li.active { background: var(--accent); }
+
+.stepnav button {
+  padding: 0.65rem 1.25rem;
+  min-height: 44px;
+  border: 2px solid var(--border);
+  background: var(--card);
+  cursor: pointer;
+  font-size: 1rem;
+}
