@@ -1,8 +1,14 @@
-# EMB Bot Studio (Slice 1 — Guided Text)
+# EMB Bot Studio
 
-A browser-only, beginner-first embroidery **text** tool: pick what you're making →
-type your text and pick a satin font → see a realistic 2.5D preview → download a
-stitch file. No accounts, no server.
+A browser-only, beginner-first embroidery tool: pick what you're making → add
+**text** (pre-digitized satin fonts) or a **logo/image** (auto-flattened to
+thread colors, with swatch merging) → watch the realistic 2.5D field render
+live → download a stitch file. No accounts, no server.
+
+Image mode notes: art is flattened to 2–8 thread colors (median-cut + smoothing,
+optional background removal); chips show each color's share and can be merged.
+Clean, flat-color art stitches best — photos with gradients won't stitch cleanly,
+and the UI says so.
 
 It reuses the proven stitch engine in the repo's `../src` (satin fonts,
 underpathing, exporters) — that engine is the source of truth and is **not**

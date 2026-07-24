@@ -202,17 +202,21 @@
 
 <div class="swatches">
   {#if flat}
+    <!-- Hide empty palette slots (median-cut can return more entries than the
+         art uses — a 0.0% chip is just noise to a beginner). -->
     {#each flat.palette as c, i}
-      <button
-        type="button"
-        class="swatch"
-        class:sel={!!selected[i]}
-        style="background: rgb({c[0]},{c[1]},{c[2]})"
-        on:click={() => toggleSwatch(i)}
-        title={(shares[i] * 100).toFixed(1) + "%"}
-      >
-        <span class="pct">{(shares[i] * 100).toFixed(1)}%</span>
-      </button>
+      {#if shares[i] > 0.0005}
+        <button
+          type="button"
+          class="swatch"
+          class:sel={!!selected[i]}
+          style="background: rgb({c[0]},{c[1]},{c[2]})"
+          on:click={() => toggleSwatch(i)}
+          title={(shares[i] * 100).toFixed(1) + "%"}
+        >
+          <span class="pct">{(shares[i] * 100).toFixed(1)}%</span>
+        </button>
+      {/if}
     {/each}
   {:else}
     <span class="swatch-hint">Upload an image to see its flattened colors here.</span>
