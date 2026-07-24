@@ -10,6 +10,9 @@
   import "./ui/theme.css";
 
   let project = loadLocal() || defaultProject();
+  // The image itself (workImage/flat) never survives a reload, so a persisted
+  // _hasImage flag would let the flow gate pass with nothing loaded — reset it.
+  if (project._hasImage) project = update(project, { _hasImage: false });
   let step = "garment";
   // Runtime image state, owned here (not by ImagePanel) so it survives
   // ContentStep/ImagePanel being destroyed and recreated whenever the user
