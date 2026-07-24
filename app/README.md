@@ -5,6 +5,8 @@ A browser-only, beginner-first embroidery tool: pick what you're making → add
 thread colors, with swatch merging) → watch the realistic 2.5D field render
 live → download a stitch file. No accounts, no server.
 
+Sizing: the field shows the real hoop/garment area — drag the design's corner handles to resize (stitches truly regenerate at each size, so density stays correct), drag the body to reposition, or use the Size panel (W/H, inches or mm, Auto-fit). Below ~5 mm the app warns that thread can't stitch that small.
+
 Image mode notes: art is flattened to 2–8 thread colors (median-cut + smoothing,
 optional background removal); chips show each color's share and can be merged.
 Clean, flat-color art stitches best — photos with gradients won't stitch cleanly,

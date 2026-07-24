@@ -2,11 +2,15 @@
   import { createEventDispatcher } from "svelte";
   import TextStep from "./TextStep.svelte";
   import ImagePanel from "./ImagePanel.svelte";
+  import SizePanel from "./SizePanel.svelte";
   export let project;
   // Passed straight through to ImagePanel; owned by App so image state
   // survives this component (and ImagePanel) being torn down and recreated.
   export let workImage = null;
   export let flat = null;
+  // Dims of the last generated design, owned by App (from EmbroideryField's
+  // "dims" event) -- passed straight through to SizePanel.
+  export let designDims = null;
   const d = createEventDispatcher();
 </script>
 
@@ -32,3 +36,5 @@
 {:else}
   <TextStep {project} on:update={(e) => d("update", e.detail)} />
 {/if}
+
+<SizePanel {project} {designDims} on:update={(e) => d("update", e.detail)} />

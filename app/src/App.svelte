@@ -7,6 +7,7 @@
   import DownloadStep from "./ui/DownloadStep.svelte";
   import StepNav from "./ui/StepNav.svelte";
   import EmbroideryField from "./ui/EmbroideryField.svelte";
+  import SizePanel from "./ui/SizePanel.svelte";
   import "./ui/theme.css";
 
   let project = loadLocal() || defaultProject();
@@ -23,6 +24,11 @@
   // project settings are.
   let workImage = null;
   let flat = null;
+  // Dims of the last design EmbroideryField generated ({ widthMM, heightMM })
+  // or null on failure/no-content -- fed to SizePanel so its W/H display
+  // (and the below-5mm warning) always reflects the real current design,
+  // including while the user drags the field's resize handles.
+  let designDims = null;
 
   function apply(patch) {
     project = update(project, patch);
@@ -36,6 +42,10 @@
   function onFlat(detail) {
     flat = detail;
     apply({ _hasImage: !!detail });
+  }
+
+  function onDims(detail) {
+    designDims = detail;
   }
 
   function go(dir) {
@@ -63,6 +73,7 @@
           {project}
           {workImage}
           {flat}
+          {designDims}
           on:update={(e) => apply(e.detail)}
           on:image={(e) => onImage(e.detail)}
           on:flat={(e) => onFlat(e.detail)}
@@ -82,6 +93,7 @@
             {/if}
           </dl>
           <p class="hint">Not quite right? Go back to adjust the garment or content — the field updates live.</p>
+          <SizePanel {project} {designDims} on:update={(e) => apply(e.detail)} />
         </div>
       {:else}
         <DownloadStep {project} {flat} />
@@ -91,6 +103,6 @@
   </aside>
 
   <section class="field">
-    <EmbroideryField {project} {flat} />
+    <EmbroideryField {project} {flat} on:update={(e) => apply(e.detail)} on:dims={(e) => onDims(e.detail)} />
   </section>
 </div>

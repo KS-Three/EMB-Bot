@@ -216,10 +216,28 @@
     for (const r of regions) for (const p of r.polygons) for (const q of p) { if (q.x < minX) minX = q.x; if (q.x > maxX) maxX = q.x; if (q.y < minY) minY = q.y; if (q.y > maxY) maxY = q.y; }
     const bboxWmm = (maxX - minX) / pxPerMm, bboxHmm = (maxY - minY) / pxPerMm;
     const fit = garments.fitScale(bboxWmm || 1, bboxHmm || 1, garment);
-    const sc = (fit.scale > 0 && isFinite(fit.scale)) ? fit.scale : 1;
+    let sc = (fit.scale > 0 && isFinite(fit.scale)) ? fit.scale : 1;
+    let designWmm = fit.targetWmm, designHmm = fit.targetHmm;
+    // Explicit width override (Slice 3): replaces the auto garment fit. Clamp the
+    // requested width into [1, hoopWmm], then ALSO clamp so height still fits the
+    // hoop — same two-constraint min() fitScale itself uses, just seeded from the
+    // requested width instead of the natural bbox. Reported widthMM/heightMM
+    // become the actual design dims (bbox*sc), not the (unused) fit target.
+    if (typeof o.targetWidthMm === "number" && isFinite(o.targetWidthMm) && o.targetWidthMm > 0) {
+      const bw = bboxWmm || 1, bh = bboxHmm || 1;
+      const hoopWmm = units.inToMm(garment.widthIn), hoopHmm = units.inToMm(garment.heightIn);
+      const clampedTargetWmm = Math.min(Math.max(o.targetWidthMm, 1), hoopWmm);
+      sc = Math.min(clampedTargetWmm / bw, hoopHmm / bh);
+      designWmm = bw * sc;
+      designHmm = bh * sc;
+    }
     const scalePxToDst = sc * (1 / pxPerMm) * units.DST_UNITS_PER_MM;
     const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
-    const T = (q) => ({ x: Math.round((q.x - cx) * scalePxToDst), y: Math.round((cy - q.y) * scalePxToDst) });
+    // Explicit placement offset (Slice 3): applied AFTER the center transform, in
+    // DST space — +x right, +y up (DST convention, already matches T()'s y-flip).
+    const offXu = Math.round((o.offsetXMm || 0) * units.DST_UNITS_PER_MM);
+    const offYu = Math.round((o.offsetYMm || 0) * units.DST_UNITS_PER_MM);
+    const T = (q) => ({ x: Math.round((q.x - cx) * scalePxToDst) + offXu, y: Math.round((cy - q.y) * scalePxToDst) + offYu });
 
     const mmPerPxFinal = scalePxToDst / units.DST_UNITS_PER_MM; // final mm per source px
     const pxPerFinalMm = 1 / mmPerPxFinal;                       // source px per final mm
@@ -493,7 +511,7 @@
     }
     stitches.push({ x: 0, y: 0, type: "end" });
     const stitchCount = stitches.filter((s) => s.type === "stitch").length;
-    return { stitches, colors, widthMM: fit.targetWmm, heightMM: fit.targetHmm, stitchCount, colorCount: colors.length, _debug: { nSatin, nFill, nTrims, nCenterOut } };
+    return { stitches, colors, widthMM: designWmm, heightMM: designHmm, stitchCount, colorCount: colors.length, _debug: { nSatin, nFill, nTrims, nCenterOut } };
   }
 
   // Build a Design from a PRE-DIGITIZED satin font (src/satinfont.js) instead of
@@ -523,7 +541,21 @@
     const bb = probe.bbox;
     const bboxWmm = (bb.x1 - bb.x0) / pxPerMm, bboxHmm = (bb.y1 - bb.y0) / pxPerMm;
     const fit = garments.fitScale(bboxWmm || 1, bboxHmm || 1, garment);
-    const sc = (fit.scale > 0 && isFinite(fit.scale)) ? fit.scale : 1;
+    let sc = (fit.scale > 0 && isFinite(fit.scale)) ? fit.scale : 1;
+    let designWmm = fit.targetWmm, designHmm = fit.targetHmm;
+    // Explicit width override (Slice 3): replaces the auto garment fit. Clamp the
+    // requested width into [1, hoopWmm], then ALSO clamp so height still fits the
+    // hoop — same two-constraint min() fitScale itself uses, just seeded from the
+    // requested width instead of the natural bbox. Reported widthMM/heightMM
+    // become the actual design dims (bbox*sc), not the (unused) fit target.
+    if (typeof o.targetWidthMm === "number" && isFinite(o.targetWidthMm) && o.targetWidthMm > 0) {
+      const bw = bboxWmm || 1, bh = bboxHmm || 1;
+      const hoopWmm = units.inToMm(garment.widthIn), hoopHmm = units.inToMm(garment.heightIn);
+      const clampedTargetWmm = Math.min(Math.max(o.targetWidthMm, 1), hoopWmm);
+      sc = Math.min(clampedTargetWmm / bw, hoopHmm / bh);
+      designWmm = bw * sc;
+      designHmm = bh * sc;
+    }
     const scalePxToDst = sc * (1 / pxPerMm) * units.DST_UNITS_PER_MM;
     const finalMmPerPx = sc / pxPerMm;
     // Pass 2: generate at fit-corrected density so the FINAL satin spacing and
@@ -532,7 +564,11 @@
     const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: densityMm / sc, pullCompMm: pullCompMm / sc, letterSpacingMm: ls, underlay: o.underlay !== false });
     if (!lay.runs.length) return empty;
     const cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2;
-    const T = (q) => ({ x: Math.round((q.x - cx) * scalePxToDst), y: Math.round((cy - q.y) * scalePxToDst) });
+    // Explicit placement offset (Slice 3): applied AFTER the center transform, in
+    // DST space — +x right, +y up (DST convention, already matches T()'s y-flip).
+    const offXu = Math.round((o.offsetXMm || 0) * units.DST_UNITS_PER_MM);
+    const offYu = Math.round((o.offsetYMm || 0) * units.DST_UNITS_PER_MM);
+    const T = (q) => ({ x: Math.round((q.x - cx) * scalePxToDst) + offXu, y: Math.round((cy - q.y) * scalePxToDst) + offYu });
     const trimAtMm = (fabric && fabric.trimAtMm != null) ? fabric.trimAtMm : (o.trimAtMm == null ? 3.0 : o.trimAtMm);
 
     const stitches = [];
@@ -563,7 +599,7 @@
       lastPt = pts[pts.length - 1];
     }
     const stitchCount = stitches.filter((s) => s.type === "stitch").length;
-    return { stitches, colors, widthMM: fit.targetWmm, heightMM: fit.targetHmm, stitchCount, colorCount: 1, _debug: { nSatin, nFill: 0, nTrims } };
+    return { stitches, colors, widthMM: designWmm, heightMM: designHmm, stitchCount, colorCount: 1, _debug: { nSatin, nFill: 0, nTrims } };
   }
 
   return { buildQualityDesign, buildLetteringDesign, groupRingsIntoShapes, offsetRing, signedArea, underlayRuns };
