@@ -218,6 +218,11 @@ canvas {
 
 .stats { color: var(--muted); margin-top: 0.5rem; }
 .err { color: #c0392b; font-weight: 600; }
+.warn { color: #b45309; font-weight: 600; }
+
+/* Selection handles live on the canvas itself (drawn via ctx), but the
+   cursor feedback needs the canvas to accept custom cursors crisply. */
+canvas { touch-action: none; }
 
 /* Download step */
 .formats {

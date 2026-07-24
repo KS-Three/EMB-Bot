@@ -91,6 +91,6 @@
   </aside>
 
   <section class="field">
-    <EmbroideryField {project} {flat} />
+    <EmbroideryField {project} {flat} on:update={(e) => apply(e.detail)} />
   </section>
 </div>
