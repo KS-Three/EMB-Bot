@@ -118,6 +118,36 @@ body {
 .tile:hover { border-color: var(--accent); }
 .tile.sel { border-color: var(--accent); background: #eaf1ff; font-weight: 600; }
 
+/* Quick-start template cards — one-click starters shown above the garment
+   tiles on the first step. 2x2 on the narrow left panel, auto-fill lets a
+   wider layout flow to 4-up. */
+.templates {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--gap);
+  margin-bottom: 1.75rem;
+}
+
+.tcard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  padding: 1rem 0.9rem;
+  min-height: 64px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.1s ease;
+}
+
+.tcard:hover { border-color: var(--accent); }
+
+.tcard-label { font-weight: 600; font-size: 0.95rem; }
+.tcard-hint { font-size: 0.8rem; color: var(--muted); }
+
 /* Text step */
 .textin {
   width: 100%;
