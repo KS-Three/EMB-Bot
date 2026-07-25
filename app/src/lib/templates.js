@@ -42,5 +42,6 @@ export function applyTemplate(project, template) {
     offsetXMm: patch.offsetXMm !== undefined ? patch.offsetXMm : 0,
     offsetYMm: patch.offsetYMm !== undefined ? patch.offsetYMm : 0,
     sizeMm: patch.sizeMm !== undefined ? patch.sizeMm : null,
+    letterSpacingMm: patch.letterSpacingMm !== undefined ? patch.letterSpacingMm : 0,
   });
 }
