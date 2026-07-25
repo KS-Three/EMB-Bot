@@ -29,6 +29,24 @@ test("flatToRegions traces one region per palette color", async () => {
   expect(regions[0].shapes.length).toBeGreaterThan(0);
   expect(pxPerMm).toBeCloseTo(96 / 50, 2);
 });
+
+test("flatToRegions respects per-swatch thread color overrides", async () => {
+  const { flattenRGBA } = await import("./flatten.js");
+  const { flatToRegions } = await import("./imageRegions.js");
+  const w = 96, h = 64;
+  const flat = flattenRGBA(synthRGBA(w, h), w, h, { nColors: 2, removeBg: false });
+  // Get regions without override to compare
+  const { regions: regionsNoOverride } = flatToRegions(flat);
+  // Get regions with thread color override on palette index 0
+  const overrideRgb = [255, 0, 0];
+  const { regions: regionsWithOverride } = flatToRegions(flat, { threadRgb: { 0: overrideRgb } });
+  // Verify the override was applied to region for palette index 0
+  expect(regionsWithOverride[0].rgb).toEqual(overrideRgb);
+  // Verify the other region keeps its palette color
+  expect(regionsWithOverride[1].rgb).toEqual(regionsNoOverride[1].rgb);
+  // Verify region for palette index 1 was not affected
+  expect(regionsWithOverride[1].rgb).not.toEqual(overrideRgb);
+});
 test("generateImageDesign produces stitches from a flat", async () => {
   const { flattenRGBA } = await import("./flatten.js");
   const { generateImageDesign } = await import("./generate.js");

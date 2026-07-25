@@ -17,9 +17,12 @@ function area(poly) {
 // Build per-color masks from a flattened image (palette + indices) and trace
 // them into ColorRegion[], so the generated stitches match the flatten
 // preview exactly. flat: { palette, indices, w, h } from flattenRGBA().
-export function flatToRegions(flat) {
+// opts (optional): { threadRgb: { [paletteIndex]: [r,g,b] } } to override
+// per-swatch colors.
+export function flatToRegions(flat, opts) {
   const w = flat.w, h = flat.h;
   const palette = flat.palette, indices = flat.indices;
+  const threadRgb = (opts && opts.threadRgb) || {};
 
   const despeckleMin = w * h * DESPECKLE_SHARE; // area-relative per-shape despeckle
   const holeMin = Math.max(6, despeckleMin * 0.3); // keep smaller holes (counters)
@@ -44,7 +47,9 @@ export function flatToRegions(flat) {
     shapes.sort((a, b) => area(b.outer) - area(a.outer));
     if (shapes.length > MAX_SHAPES_PER_COLOR) shapes = shapes.slice(0, MAX_SHAPES_PER_COLOR);
     if (shapes.length === 0) continue; // no geometry for this color
-    regions.push({ rgb: palette[ci], shapes });
+    // Use thread color override if present, else palette color
+    const rgb = ci in threadRgb ? [...threadRgb[ci]] : palette[ci];
+    regions.push({ rgb, shapes });
   }
 
   // Map the working image long side to NOMINAL_LONG_MM; fit handles final size.
