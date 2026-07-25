@@ -13,6 +13,7 @@ export function generateDesign(project) {
     targetWidthMm: project.sizeMm || undefined,
     offsetXMm: project.offsetXMm || 0,
     offsetYMm: project.offsetYMm || 0,
+    letterSpacingMm: project.letterSpacingMm || 0,
   });
   if (!design.stitchCount) throw new Error("No characters in this font yet — try different text.");
   return design;

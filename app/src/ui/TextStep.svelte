@@ -25,3 +25,15 @@
 </label>
 <h3>Font</h3>
 <FontSelect selected={project.fontKey} on:pick={(e) => d("update", { fontKey: e.detail })} />
+<label class="letterspacing">
+  <span>Letter spacing</span>
+  <input
+    type="range"
+    min="-1"
+    max="6"
+    step="0.5"
+    value={project.letterSpacingMm || 0}
+    on:input={(e) => d("update", { letterSpacingMm: parseFloat(e.target.value) })}
+  />
+  <span class="label">{(project.letterSpacingMm || 0).toFixed(1)} mm</span>
+</label>

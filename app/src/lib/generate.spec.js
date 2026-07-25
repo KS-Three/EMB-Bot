@@ -46,3 +46,21 @@ test("offsetXMm shifts stitches on x-axis", async () => {
   // offsetXMm: 10 should shift x by exactly 100 DST units (1 DST unit = 0.1mm)
   expect(offsetFirstStitch.x).toBe(baseFirstStitch.x + 100);
 });
+
+test("letterSpacingMm changes design dimensions", async () => {
+  const { generateDesign } = await import("./generate.js");
+  const { defaultProject, update } = await import("./project.js");
+
+  // Generate with no letter spacing
+  const baseProject = update(defaultProject(), { text: "AB", fontKey: "geneva_simple", sizeMm: 40 });
+  const baseDesign = generateDesign(baseProject);
+
+  // Generate with letter spacing
+  const spacedProject = update(baseProject, { letterSpacingMm: 4 });
+  const spacedDesign = generateDesign(spacedProject);
+
+  // With same width constraint (40mm), adding letter spacing makes the text wider,
+  // forcing it to fit in less vertical space (taller aspect ratio squeezed into same width).
+  // Therefore heightMM should be smaller with spacing.
+  expect(spacedDesign.heightMM).toBeLessThan(baseDesign.heightMM);
+});
