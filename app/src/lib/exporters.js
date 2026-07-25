@@ -14,3 +14,16 @@ export function exportDesign(design, format) {
       throw new Error("Unknown format: " + format);
   }
 }
+
+// Builds and saves a PDF worksheet (title, stitch-simulation render, stats,
+// thread sequence). jsPDF is loaded lazily so it never bloats the initial
+// bundle — this is the only place that touches it.
+export async function exportWorksheetPDF(design, garment) {
+  const mod = await import("jspdf");
+  window.jspdf = window.jspdf || { jsPDF: mod.jsPDF };
+  EMB.buildWorksheetPDF(design, {
+    garmentLabel: garment.label || "",
+    fileName: "embbot-worksheet.pdf",
+    garmentBox: { widthMM: garment.widthIn * 25.4, heightMM: garment.heightIn * 25.4 },
+  });
+}
