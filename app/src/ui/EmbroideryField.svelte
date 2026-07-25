@@ -1,12 +1,18 @@
 <script>
   import { onMount, createEventDispatcher } from "svelte";
-  import { generateDesign, generateImageDesign } from "../lib/generate.js";
+  import { generateAll } from "../lib/generate.js";
   import { renderRealistic, hoopTransform, drawHoopOutline } from "../lib/preview.js";
   import { EMB } from "../lib/emb.js";
-  import { designRectPx, hitTest, dragResize, dragMove, clampOffsets } from "../lib/interact.js";
+  import { designRectPx, hitTest, pickElement, dragResize, dragMove, clampOffsets } from "../lib/interact.js";
 
+  // Task 4 (Slice 5): the field now renders every element in the project
+  // (generateAll's combined design) instead of a single design, and drag/
+  // resize/selection are scoped to whichever element is currently selected
+  // (project.selectedId). `runtime` carries the per-element flattened image
+  // state (see generate.js's generateAll) -- it replaces the old singleton
+  // `flat` prop.
   export let project;
-  export let flat = null;
+  export let runtime;
 
   const dispatch = createEventDispatcher();
   const MM_PER_INCH = 25.4;
@@ -25,17 +31,28 @@
   // draw against the exact transform that was just used to paint the canvas.
   let renderResult = null;
 
+  // Per-element canvas rects computed from the last paint(), one per ready
+  // element (see generate.js's generateAll perElement), each shaped
+  // { id, x, y, w, h } — exactly what interact.js's pickElement/hitTest
+  // expect. Array order matches project.elements order (paint order), which
+  // is also the "topmost" order pickElement resolves overlaps with.
+  let perElementRects = [];
+  // The last paint()'s perElement entries, keyed by id, so drag handlers can
+  // look up a specific element's design/bboxMm without re-running generateAll.
+  let peById = {};
+
   // Drag state (module-local to this component instance, not reactive —
   // none of it needs to trigger a re-render on its own).
   let dragMode = null; // null | "resize" | "move"
   let dragHandle = null; // "nw"|"ne"|"sw"|"se" when dragMode === "resize"
+  let dragTargetId = null; // element id the current drag applies to
   let dragStartPx = null; // {x,y} canvas-space pointer start
   let dragStartWidthMm = 0;
   let dragStartHeightMm = 0;
   let dragStartOffXMm = 0;
   let dragStartOffYMm = 0;
   let rafScheduled = false;
-  let pendingPatch = null;
+  let pendingPatch = null; // { id, patch }
 
   function garmentFor(p) {
     return p && EMB.getGarment(p.garmentId);
@@ -65,10 +82,12 @@
     return v || "#2f6fed";
   }
 
-  // Draws the selection box + 4 corner handles over the just-rendered design.
+  // Draws the selection box + 4 corner handles ONLY around the SELECTED
+  // element's rect — every other element renders plain (no overlay), even
+  // if it's also "ready" this paint.
   function drawOverlay() {
-    if (!canvas || !renderResult || !renderResult.designBBoxMm) return;
-    const rect = designRectPx(renderResult.designBBoxMm, renderResult.toCanvas);
+    if (!canvas) return;
+    const rect = perElementRects.find((r) => r.id === project.selectedId);
     if (!rect) return;
     const ctx = canvas.getContext("2d");
     const color = accentColor();
@@ -88,83 +107,50 @@
     ctx.restore();
   }
 
-  function paintImage() {
-    if (!flat) {
-      hasDesign = false;
-      hint = "Upload a logo or clean art — flat colors stitch best.";
-      clearToFabric();
+  // Emits the SELECTED element's bbox dims (not the combined design's) —
+  // SizePanel binds to whatever's selected, so its W/H display and the
+  // sub-5mm warning both need to track selection, not the whole project.
+  function emitSelectedDims(perElement) {
+    const pe = perElement.find((p) => p.id === project.selectedId);
+    if (!pe) {
+      warn = false;
       dispatch("dims", null);
       return;
     }
-    try {
-      const design = generateImageDesign(flat, project);
-      stats = `${design.stitchCount} stitches · ${design.widthMM.toFixed(0)}×${design.heightMM.toFixed(0)} mm`;
-      warn = design.widthMM < MIN_SIZE_MM || design.heightMM < MIN_SIZE_MM;
-      renderResult = renderRealistic(canvas, design, { hoop: { garment: garmentFor(project) } });
-      hasDesign = true;
-      drawOverlay();
-      dispatch("dims", { widthMM: design.widthMM, heightMM: design.heightMM });
-    } catch (e) {
-      error = e.message;
-      hasDesign = false;
-      renderResult = null;
-      clearToFabric();
-      dispatch("dims", null);
-    }
+    const widthMM = pe.bboxMm.x1 - pe.bboxMm.x0;
+    const heightMM = pe.bboxMm.y1 - pe.bboxMm.y0;
+    warn = widthMM < MIN_SIZE_MM || heightMM < MIN_SIZE_MM;
+    dispatch("dims", { widthMM, heightMM });
   }
 
-  function paintText() {
-    const hasText = project && project.text && project.text.trim().length > 0;
-    if (!hasText) {
-      hasDesign = false;
-      hint = "Your embroidery appears here as you add text.";
-      clearToFabric();
-      dispatch("dims", null);
-      return;
-    }
-    try {
-      const design = generateDesign(project);
-      stats = `${design.stitchCount} stitches · ${design.widthMM.toFixed(0)}×${design.heightMM.toFixed(0)} mm`;
-      warn = design.widthMM < MIN_SIZE_MM || design.heightMM < MIN_SIZE_MM;
-      renderResult = renderRealistic(canvas, design, { colorOverride: project.colorRgb, hoop: { garment: garmentFor(project) } });
-      hasDesign = true;
-      drawOverlay();
-      dispatch("dims", { widthMM: design.widthMM, heightMM: design.heightMM });
-    } catch (e) {
-      error = e.message;
-      hasDesign = false;
-      renderResult = null;
-      clearToFabric();
-      dispatch("dims", null);
-    }
-  }
-
-  // Invariant: the persisted offset must always keep the design's bbox
-  // inside the hoop. dragMove enforces this live, but a stale offset
-  // (garment switched to a smaller hoop, size changed, or a reload) is
-  // never re-validated on its own -- it would otherwise render, and
-  // export, partly outside the hoop until the user happens to drag again.
-  // Called after every generation, so it re-clamps regardless of *why*
-  // the design changed.
+  // Invariant: every element's persisted offset must keep ITS bbox inside
+  // the hoop. dragMove enforces this live for whichever element is being
+  // dragged, but a stale offset (garment switched to a smaller hoop, size
+  // changed elsewhere, or a reload) is never re-validated on its own for
+  // elements that AREN'T being dragged right now — so this re-clamps EVERY
+  // ready element after every generation, regardless of *why* it changed.
   //
-  // Loop safety: if this dispatches a correction, `project` changes, which
-  // re-triggers `paint()` (via the `$: if (canvas) { project; flat; paint(); }`
-  // reactive block below), which calls this again -- but that second pass
-  // clamps the now-already-clamped offset, which is a no-op (clampOffsets
-  // is a pure min/max clamp, idempotent on a value already in range), so
-  // the diff is ~0 and nothing is dispatched. One correction, then it settles.
-  function reclampOffsets() {
-    if (!renderResult || !renderResult.designBBoxMm) return;
-    const bbox = renderResult.designBBoxMm;
-    const designWmm = bbox.x1 - bbox.x0;
-    const designHmm = bbox.y1 - bbox.y0;
+  // Loop safety: same as the single-element version this replaces — a
+  // dispatched correction changes `project`, which re-triggers paint() (via
+  // the `$: if (canvas) { project; runtime; paint(); }` reactive block
+  // below), which calls this again, but that second pass clamps an
+  // already-clamped offset (clampOffsets is a pure min/max clamp, idempotent
+  // on an in-range value) — diff is ~0, nothing dispatched, settles after
+  // one correction per element.
+  function reclampAll(perElement) {
     const { wMm: hoopWmm, hMm: hoopHmm } = hoopSizeMm(project);
     if (!hoopWmm || !hoopHmm) return; // unknown garment -- nothing to clamp against
-    const curOffX = project.offsetXMm || 0;
-    const curOffY = project.offsetYMm || 0;
-    const clamped = clampOffsets(curOffX, curOffY, designWmm, designHmm, hoopWmm, hoopHmm);
-    if (Math.abs(clamped.offsetXMm - curOffX) > 0.01 || Math.abs(clamped.offsetYMm - curOffY) > 0.01) {
-      dispatch("update", clamped);
+    for (const pe of perElement) {
+      const el = project.elements.find((e) => e.id === pe.id);
+      if (!el) continue;
+      const designWmm = pe.bboxMm.x1 - pe.bboxMm.x0;
+      const designHmm = pe.bboxMm.y1 - pe.bboxMm.y0;
+      const curOffX = el.offsetXMm || 0;
+      const curOffY = el.offsetYMm || 0;
+      const clamped = clampOffsets(curOffX, curOffY, designWmm, designHmm, hoopWmm, hoopHmm);
+      if (Math.abs(clamped.offsetXMm - curOffX) > 0.01 || Math.abs(clamped.offsetYMm - curOffY) > 0.01) {
+        dispatch("elupdate", { id: pe.id, patch: clamped });
+      }
     }
   }
 
@@ -175,18 +161,57 @@
     warn = false;
     hint = "";
     renderResult = null;
-    if (project.mode === "image") paintImage();
-    else paintText();
-    reclampOffsets();
+    perElementRects = [];
+    peById = {};
+
+    let result;
+    try {
+      result = generateAll(project, runtime);
+    } catch (e) {
+      error = e.message;
+      hasDesign = false;
+      clearToFabric();
+      dispatch("dims", null);
+      return;
+    }
+
+    if (!result.combined) {
+      hasDesign = false;
+      hint = "Your embroidery appears here as you add content.";
+      clearToFabric();
+      dispatch("dims", null);
+      return;
+    }
+
+    const garment = garmentFor(project);
+    const c = result.combined;
+    stats = `${c.stitchCount} stitches · ${c.widthMM.toFixed(0)}×${c.heightMM.toFixed(0)} mm`;
+    // colorOverride is gone — each element now bakes its own color into its
+    // stitches at generation time (see generate.js's generateElement), so
+    // the combined design already carries the right colors per-part.
+    renderResult = renderRealistic(canvas, c, { hoop: { garment } });
+    hasDesign = true;
+
+    if (renderResult && renderResult.toCanvas) {
+      for (const pe of result.perElement) {
+        peById[pe.id] = pe;
+        const rect = designRectPx(pe.bboxMm, renderResult.toCanvas);
+        if (rect) perElementRects.push({ id: pe.id, ...rect });
+      }
+    }
+
+    drawOverlay();
+    emitSelectedDims(result.perElement);
+    reclampAll(result.perElement);
   }
 
   onMount(paint);
-  // repaint whenever the project (garment/text/font/color/mode/size/offset)
-  // or the flattened image state changes. Drag-move deliberately reuses this
-  // same path (cheap full regen) rather than a separate translate-only
-  // fast path — regeneration is fast enough here and it keeps one code path
-  // for "the project changed" instead of two.
-  $: if (canvas) { project; flat; paint(); }
+  // repaint whenever the project (garment/elements/selection) or the
+  // runtime image state changes. Drag-move deliberately reuses this same
+  // path (cheap full regen) rather than a separate translate-only fast path
+  // — regeneration is fast enough here and it keeps one code path for "the
+  // project changed" instead of two.
+  $: if (canvas) { project; runtime; paint(); }
 
   // ---- pointer interaction -------------------------------------------------
 
@@ -209,15 +234,21 @@
     return "default";
   }
 
-  function currentRect() {
-    if (!renderResult || !renderResult.designBBoxMm) return null;
-    return designRectPx(renderResult.designBBoxMm, renderResult.toCanvas);
+  function rectFor(id) {
+    return perElementRects.find((r) => r.id === id) || null;
   }
 
   function updateHoverCursor(p) {
     if (!canvas) return;
-    const rect = currentRect();
-    const handle = rect ? hitTest(rect, p.x, p.y, HANDLE_R) : "none";
+    const selRect = rectFor(project.selectedId);
+    let handle = selRect ? hitTest(selRect, p.x, p.y, HANDLE_R) : "none";
+    if (handle === "none") {
+      // Nothing on the selected element under the pointer — is some OTHER
+      // element's body there instead? (Other elements don't show handles,
+      // so this is a plain bounding-box test via pickElement, not hitTest.)
+      const hitId = pickElement(perElementRects, p.x, p.y);
+      handle = hitId ? "body" : "none";
+    }
     canvas.style.cursor = cursorForHandle(handle);
   }
 
@@ -227,28 +258,46 @@
     requestAnimationFrame(() => {
       rafScheduled = false;
       if (pendingPatch) {
-        const patch = pendingPatch;
+        const p = pendingPatch;
         pendingPatch = null;
-        dispatch("update", patch);
+        dispatch("elupdate", p);
       }
     });
   }
 
   function onPointerDown(e) {
     if (!canvas || !renderResult) return;
-    const rect = currentRect();
-    if (!rect) return;
     const p = canvasPointFromEvent(e);
-    const handle = hitTest(rect, p.x, p.y, HANDLE_R);
-    if (handle === "none") return;
+
+    // Hit-test the SELECTED element's rect first (corners win over body) —
+    // that's the only element with visible handles, so it's the only one a
+    // resize can start on.
+    let targetId = project.selectedId;
+    let rect = rectFor(targetId);
+    let handle = rect ? hitTest(rect, p.x, p.y, HANDLE_R) : "none";
+
+    if (handle === "none") {
+      // Missed the selected element entirely — see if some OTHER element's
+      // body is under the pointer instead (topmost wins on overlap).
+      const hitId = pickElement(perElementRects, p.x, p.y);
+      if (!hitId) return; // empty space: no drag, selection unchanged
+      if (hitId !== targetId) dispatch("select", hitId);
+      targetId = hitId;
+      rect = rectFor(targetId);
+      handle = "body"; // pickElement only tests bounding boxes -> always a body-drag start
+    }
+
+    const pe = peById[targetId];
+    const el = project.elements.find((e2) => e2.id === targetId);
+    if (!pe || !el) return; // defensive: rect implies both should exist
 
     canvas.setPointerCapture(e.pointerId);
+    dragTargetId = targetId;
     dragStartPx = p;
-    dragStartOffXMm = project.offsetXMm || 0;
-    dragStartOffYMm = project.offsetYMm || 0;
-    const bbox = renderResult.designBBoxMm;
-    dragStartWidthMm = bbox.x1 - bbox.x0;
-    dragStartHeightMm = bbox.y1 - bbox.y0;
+    dragStartOffXMm = el.offsetXMm || 0;
+    dragStartOffYMm = el.offsetYMm || 0;
+    dragStartWidthMm = pe.bboxMm.x1 - pe.bboxMm.x0;
+    dragStartHeightMm = pe.bboxMm.y1 - pe.bboxMm.y0;
     canvas.style.cursor = cursorForHandle(handle);
 
     if (handle === "body") {
@@ -260,8 +309,8 @@
       // CURRENT on-screen width so the drag continues from what's visible
       // instead of jumping to whatever the auto-fit width happens to be
       // recomputed as on the next paint.
-      if (project.sizeMm == null) {
-        dispatch("update", { sizeMm: dragStartWidthMm });
+      if (el.sizeMm == null) {
+        dispatch("elupdate", { id: targetId, patch: { sizeMm: dragStartWidthMm } });
       }
     }
   }
@@ -276,14 +325,14 @@
     const scale = renderResult && renderResult.scale ? renderResult.scale : 1; // px per mm
     const dxMm = (p.x - dragStartPx.x) / scale;
     const dyMm = (p.y - dragStartPx.y) / scale;
+    const { wMm: hoopWmm, hMm: hoopHmm } = hoopSizeMm(project);
 
     if (dragMode === "resize") {
-      const { wMm: hoopWmm } = hoopSizeMm(project);
       const newWidthMm = dragResize(dragStartWidthMm, dragStartHeightMm, dragHandle, dxMm, dyMm, MIN_SIZE_MM, hoopWmm || dragStartWidthMm);
-      pendingPatch = { sizeMm: newWidthMm };
+      pendingPatch = { id: dragTargetId, patch: { sizeMm: newWidthMm } };
     } else if (dragMode === "move") {
-      const { wMm: hoopWmm, hMm: hoopHmm } = hoopSizeMm(project);
-      pendingPatch = dragMove(dragStartOffXMm, dragStartOffYMm, dxMm, dyMm, dragStartWidthMm, dragStartHeightMm, hoopWmm, hoopHmm);
+      const moved = dragMove(dragStartOffXMm, dragStartOffYMm, dxMm, dyMm, dragStartWidthMm, dragStartHeightMm, hoopWmm, hoopHmm);
+      pendingPatch = { id: dragTargetId, patch: moved };
     }
     schedulePatchFlush();
   }
@@ -294,6 +343,7 @@
     }
     dragMode = null;
     dragHandle = null;
+    dragTargetId = null;
     dragStartPx = null;
   }
 

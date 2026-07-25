@@ -1,5 +1,5 @@
 import { test, expect } from "vitest";
-import { designRectPx, hitTest, dragResize, dragMove, clampOffsets } from "./interact.js";
+import { designRectPx, hitTest, dragResize, dragMove, clampOffsets, pickElement } from "./interact.js";
 
 // ---- designRectPx ---------------------------------------------------------
 
@@ -143,4 +143,47 @@ test("dragMove delegates to clampOffsets (same result for the equivalent absolut
   const viaDrag = dragMove(5, 5, 10, -20, 20, 20, 100, 100); // start (5,5), dx=10, dy=-20 -> raw (15, 25)
   const viaClamp = clampOffsets(15, 25, 20, 20, 100, 100);
   expect(viaDrag).toEqual(viaClamp);
+});
+
+// ---- pickElement -----------------------------------------------------------
+// Topmost-wins hit-testing for multi-element click-to-select.
+
+test("pickElement returns null (a miss) when no rect contains the point", () => {
+  const rects = [{ id: "a", x: 0, y: 0, w: 10, h: 10 }];
+  expect(pickElement(rects, 50, 50)).toBeNull();
+});
+
+test("pickElement returns null for an empty rects array", () => {
+  expect(pickElement([], 10, 10)).toBeNull();
+});
+
+test("pickElement returns the id of the single rect containing the point", () => {
+  const rects = [{ id: "a", x: 0, y: 0, w: 10, h: 10 }];
+  expect(pickElement(rects, 5, 5)).toBe("a");
+});
+
+test("pickElement returns the only matching rect's id when rects don't overlap at that point", () => {
+  const rects = [
+    { id: "a", x: 0, y: 0, w: 10, h: 10 },
+    { id: "b", x: 50, y: 50, w: 10, h: 10 },
+  ];
+  expect(pickElement(rects, 2, 2)).toBe("a");
+  expect(pickElement(rects, 52, 52)).toBe("b");
+});
+
+test("pickElement picks the LAST matching rect on overlap (topmost wins, matching paint order)", () => {
+  const rects = [
+    { id: "a", x: 0, y: 0, w: 20, h: 20 },
+    { id: "b", x: 5, y: 5, w: 20, h: 20 },
+  ];
+  // (10,10) is inside both -- "b" is later in array order (drawn on top), so it wins.
+  expect(pickElement(rects, 10, 10)).toBe("b");
+  // Reversed order flips the winner too -- it's purely array-order, not geometry.
+  expect(pickElement([rects[1], rects[0]], 10, 10)).toBe("a");
+});
+
+test("pickElement treats rect edges as inclusive", () => {
+  const rects = [{ id: "a", x: 10, y: 10, w: 10, h: 10 }];
+  expect(pickElement(rects, 10, 10)).toBe("a"); // nw corner
+  expect(pickElement(rects, 20, 20)).toBe("a"); // se corner
 });
