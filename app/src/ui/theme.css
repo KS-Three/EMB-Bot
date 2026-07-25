@@ -148,6 +148,95 @@ body {
 .tcard-label { font-weight: 600; font-size: 0.95rem; }
 .tcard-hint { font-size: 0.8rem; color: var(--muted); }
 
+/* Element manager (ContentStep) — one compact row per project.elements,
+   click to select (syncs with the field's own selection), ✕ to remove
+   (disabled once only one element is left), plus "+ Text"/"+ Image" to add
+   more. Replaces the old Text/Logo mode tiles. */
+.ellist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.elrow {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem 0.75rem;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.elrow:hover { border-color: var(--accent); }
+.elrow.sel { border-color: var(--accent); background: #eaf1ff; }
+
+.elicon {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.elrow.sel .elicon { background: var(--accent); color: #fff; }
+
+.elsummary {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.95rem;
+}
+
+.elrow-x {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.elrow-x:hover:not(:disabled) { border-color: #c0392b; color: #c0392b; }
+
+.eladd-row {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 1.5rem;
+}
+
+.eladd {
+  flex: 1;
+  padding: 0.6rem 0.75rem;
+  min-height: 44px;
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.eladd:hover { border-color: var(--accent); color: var(--accent); }
+
 /* Text step */
 .textin {
   width: 100%;
@@ -483,6 +572,48 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   gap: 0.75rem;
   margin-bottom: 1rem;
 }
+
+/* Per-swatch thread color override — a small color input (+ reset button
+   once overridden) beneath each palette chip. Distinct control from the
+   swatch button above it: clicking the swatch still just toggles
+   merge-selection. */
+.swatchwrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.swatchthread {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+input.threadinput[type="color"] {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.threadreset {
+  width: 20px;
+  height: 20px;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.threadreset:hover { border-color: var(--accent); color: var(--accent); }
 
 /* Step nav — sits at the bottom of the left panel */
 .stepnav {

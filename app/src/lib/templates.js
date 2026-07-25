@@ -1,47 +1,66 @@
 // One-click starter templates for the first screen. Each template's `patch`
-// is a plain project patch (same shape update() expects) that gives a
+// is a v2 project patch — { garmentId, selectedId, elements } — that gives a
 // beginner a fully-configured, ready-to-stitch starting point.
-import { update } from "./project.js";
+import { defaultProject, defaultTextElement, defaultImageElement } from "./project.js";
 
 export const TEMPLATES = [
   {
     id: "hat-name",
     label: "Name on a hat",
     hint: "Bold block letters, hat front",
-    patch: { garmentId: "hat_front", mode: "text", fontKey: "manga_impact", text: "YOUR NAME", sizeMm: null, offsetXMm: 0, offsetYMm: 0 },
+    patch: {
+      garmentId: "hat_front",
+      selectedId: "e1",
+      elements: [{ ...defaultTextElement("e1"), fontKey: "manga_impact", text: "YOUR NAME" }],
+    },
   },
   {
     id: "chest-name",
     label: "Left-chest name",
     hint: "Clean sans, business look",
-    patch: { garmentId: "left_chest", mode: "text", fontKey: "geneva_simple", text: "Your Name", sizeMm: 76.2 },
+    patch: {
+      garmentId: "left_chest",
+      selectedId: "e1",
+      elements: [{ ...defaultTextElement("e1"), fontKey: "geneva_simple", text: "Your Name", sizeMm: 76.2 }],
+    },
   },
   {
     id: "script-name",
     label: "Script monogram",
     hint: "Flowing cursive",
-    patch: { garmentId: "left_chest", mode: "text", fontKey: "aventurina", text: "Yours", sizeMm: null },
+    patch: {
+      garmentId: "left_chest",
+      selectedId: "e1",
+      elements: [{ ...defaultTextElement("e1"), fontKey: "aventurina", text: "Yours" }],
+    },
   },
   {
     id: "logo-patch",
     label: "Logo patch",
     hint: "Upload your logo next",
-    patch: { garmentId: "patch", mode: "image" },
+    patch: {
+      garmentId: "patch",
+      selectedId: "e1",
+      elements: [defaultImageElement("e1")],
+    },
   },
 ];
 
-// Applies a template's patch to a project, immutably (like update()). Unlike
-// a plain update(), this always resets offsetXMm/offsetYMm to 0 and sizeMm
-// to null — a starter template should never inherit stale positioning/sizing
-// left over from whatever the user was doing before — unless the template's
-// own patch explicitly sets those fields.
+// Applies a template to a project. A template REPLACES the design entirely —
+// that's the semantics of "start from template" — so this is just fresh
+// defaults overlaid with the template's patch, not a merge onto whatever the
+// user had going before.
+//
+// template.patch's `elements` array (and the element objects inside it) are
+// the MODULE-LEVEL TEMPLATES constants -- a shallow spread would hand the
+// resulting project's caller a live reference into those constants. Any code
+// that later mutates a returned element in place (e.g. TextStep previously
+// two-way-bound its text input directly to the selected element) would
+// corrupt the shared TEMPLATES entry for the rest of the session (see
+// final-review-s5.md Important #2). `patch` is plain JSON-serializable data
+// (strings/numbers/plain objects), so a JSON round-trip is a cheap, safe deep
+// clone that keeps TEMPLATES pristine regardless of what callers do with the
+// project this returns.
 export function applyTemplate(project, template) {
-  const patch = template.patch;
-  return update(project, {
-    ...patch,
-    offsetXMm: patch.offsetXMm !== undefined ? patch.offsetXMm : 0,
-    offsetYMm: patch.offsetYMm !== undefined ? patch.offsetYMm : 0,
-    sizeMm: patch.sizeMm !== undefined ? patch.sizeMm : null,
-    letterSpacingMm: patch.letterSpacingMm !== undefined ? patch.letterSpacingMm : 0,
-  });
+  return { ...defaultProject(), ...JSON.parse(JSON.stringify(template.patch)) };
 }

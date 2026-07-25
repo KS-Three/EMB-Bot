@@ -1,19 +1,21 @@
 <script>
-  import { generateDesign, generateImageDesign } from "../lib/generate.js";
+  import { generateAll } from "../lib/generate.js";
   import { exportDesign, exportWorksheetPDF } from "../lib/exporters.js";
   import { triggerDownload } from "../lib/download.js";
   import { EMB } from "../lib/emb.js";
   export let project;
-  export let flat = null;
+  // Task 4 (Slice 5): export now covers every ready element in the project
+  // (generateAll's combined design), not just a single text/image design —
+  // `runtime` (the per-element flattened-image map, owned by App) is needed
+  // for that, replacing the old singleton `flat` prop.
+  export let runtime;
   let msg = "";
   let worksheetBusy = false;
 
   function buildDesign() {
-    if (project.mode === "image") {
-      if (!flat) throw new Error("Upload a logo or image first.");
-      return generateImageDesign(flat, project);
-    }
-    return generateDesign(project);
+    const { combined } = generateAll(project, runtime);
+    if (!combined) throw new Error("Nothing to stitch yet — add some content first.");
+    return combined;
   }
 
   function dl(fmt) {

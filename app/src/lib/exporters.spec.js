@@ -12,8 +12,12 @@ beforeAll(async () => {
   for (const f of ["units","garments","fabrics","fill","geometry","satin","satinplay","satinfont","dst","exp","pes","svgexport","fonts","digitize"]) require("../../../src/" + f + ".js");
   new Function(require("node:fs").readFileSync(require("node:path").join(__dirname, "../../../src/fonts/satin-fonts.js"), "utf8"))();
   const { generateDesign } = await import("./generate.js");
-  const { defaultProject, update } = await import("./project.js");
-  design = generateDesign(update(defaultProject(), { text: "AB" }));
+  const { defaultProject, updateElement } = await import("./project.js");
+  // Real v2 project (garmentId + elements) — generateDesign is a thin
+  // generateAll(project) wrapper for the single-ready-element case, so no
+  // compat shim is needed here anymore (Task 2 reworked generate.js).
+  const project = updateElement(defaultProject(), "e1", { text: "AB" });
+  design = generateDesign(project);
 });
 test("DST export yields bytes and a .dst filename", async () => {
   const { exportDesign } = await import("./exporters.js");

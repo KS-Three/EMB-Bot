@@ -1,8 +1,23 @@
 <script>
   import FontSelect from "./FontSelect.svelte";
   import { createEventDispatcher } from "svelte";
-  export let project;
+
+  // Element-scoped text editor (Task 5, Slice 5): bound to whichever text
+  // element is currently selected in ContentStep's element list, not a
+  // single project-wide text field like the old v1 shape.
+  //
+  // Patch convention (documented here, ImagePanel.svelte follows the same
+  // one): every edit dispatches an "elupdate" event shaped
+  // { id: element.id, patch } directly -- this component already knows its
+  // own element's id, so it wraps the patch itself instead of dispatching a
+  // bare patch and making the parent guess whose id to attach. ContentStep
+  // just bubbles these straight through to App unchanged.
+  export let element;
   const d = createEventDispatcher();
+
+  function patch(p) {
+    d("elupdate", { id: element.id, patch: p });
+  }
 
   function rgbToHex([r, g, b]) {
     return "#" + [r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("");
@@ -15,16 +30,16 @@
 <input
   class="textin"
   type="text"
-  bind:value={project.text}
-  on:input={() => d("update", { text: project.text })}
+  value={element.text}
+  on:input={(e) => patch({ text: e.target.value })}
   placeholder="Type a name or word"
 />
 <label>
   Color
-  <input type="color" value={rgbToHex(project.colorRgb)} on:input={(e) => d("update", { colorRgb: hexToRgb(e.target.value) })} />
+  <input type="color" value={rgbToHex(element.colorRgb)} on:input={(e) => patch({ colorRgb: hexToRgb(e.target.value) })} />
 </label>
 <h3>Font</h3>
-<FontSelect selected={project.fontKey} on:pick={(e) => d("update", { fontKey: e.detail })} />
+<FontSelect selected={element.fontKey} on:pick={(e) => patch({ fontKey: e.detail })} />
 <label class="letterspacing">
   <span>Letter spacing</span>
   <input
@@ -32,8 +47,8 @@
     min="-1"
     max="6"
     step="0.5"
-    value={project.letterSpacingMm || 0}
-    on:input={(e) => d("update", { letterSpacingMm: parseFloat(e.target.value) })}
+    value={element.letterSpacingMm || 0}
+    on:input={(e) => patch({ letterSpacingMm: parseFloat(e.target.value) })}
   />
-  <span class="label">{(project.letterSpacingMm || 0).toFixed(1)} mm</span>
+  <span class="label">{(element.letterSpacingMm || 0).toFixed(1)} mm</span>
 </label>

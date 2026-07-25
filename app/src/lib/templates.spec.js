@@ -13,69 +13,91 @@ test("TEMPLATES has exactly 4 entries with id/label/hint/patch", async () => {
   expect(TEMPLATES.map((t) => t.id)).toEqual(["hat-name", "chest-name", "script-name", "logo-patch"]);
 });
 
-test("applyTemplate merges patch fields into the project", async () => {
+test("every TEMPLATES patch is v2-shaped: garmentId, selectedId 'e1', one element", async () => {
+  const { TEMPLATES } = await import("./templates.js");
+  for (const t of TEMPLATES) {
+    expect(typeof t.patch.garmentId).toBe("string");
+    expect(t.patch.selectedId).toBe("e1");
+    expect(t.patch.elements).toHaveLength(1);
+    expect(t.patch.elements[0].id).toBe("e1");
+  }
+});
+
+test("applyTemplate merges patch fields into a fresh project", async () => {
   const { TEMPLATES, applyTemplate } = await import("./templates.js");
   const { defaultProject } = await import("./project.js");
   const hatName = TEMPLATES.find((t) => t.id === "hat-name");
   const p = applyTemplate(defaultProject(), hatName);
+  expect(p.version).toBe(2);
   expect(p.garmentId).toBe("hat_front");
-  expect(p.mode).toBe("text");
-  expect(p.fontKey).toBe("manga_impact");
-  expect(p.text).toBe("YOUR NAME");
+  expect(p.elements[0].type).toBe("text");
+  expect(p.elements[0].fontKey).toBe("manga_impact");
+  expect(p.elements[0].text).toBe("YOUR NAME");
 });
 
 test("applyTemplate does not mutate the original project", async () => {
   const { TEMPLATES, applyTemplate } = await import("./templates.js");
   const { defaultProject } = await import("./project.js");
   const original = defaultProject();
-  const snapshot = { ...original };
+  const snapshot = JSON.parse(JSON.stringify(original));
   applyTemplate(original, TEMPLATES[0]);
   expect(original).toEqual(snapshot);
 });
 
-test("applyTemplate resets offsets to 0 when the patch omits them", async () => {
+test("applyTemplate REPLACES the project entirely, ignoring prior dirty state", async () => {
   const { TEMPLATES, applyTemplate } = await import("./templates.js");
-  const { defaultProject, update } = await import("./project.js");
-  // chest-name's patch has no offsetXMm/offsetYMm keys.
+  const { defaultProject, addElement, updateElement } = await import("./project.js");
+
+  let dirty = defaultProject();
+  dirty = addElement(dirty, "text", 100); // now has 2 elements, offsets/size dirtied
+  dirty = updateElement(dirty, "e1", { offsetXMm: 12, offsetYMm: -8, text: "leftover" });
+
   const chestName = TEMPLATES.find((t) => t.id === "chest-name");
-  expect(chestName.patch.offsetXMm).toBeUndefined();
-  const dirty = update(defaultProject(), { offsetXMm: 12, offsetYMm: -8 });
   const p = applyTemplate(dirty, chestName);
-  expect(p.offsetXMm).toBe(0);
-  expect(p.offsetYMm).toBe(0);
+
+  expect(p.elements).toHaveLength(1); // the stray second element is gone
+  expect(p.elements[0].offsetXMm).toBe(0);
+  expect(p.elements[0].offsetYMm).toBe(0);
+  expect(p.elements[0].sizeMm).toBe(76.2);
+  expect(p.elements[0].text).toBe("Your Name");
 });
 
-test("applyTemplate keeps offsets when the patch explicitly sets them", async () => {
-  const { applyTemplate } = await import("./templates.js");
-  const { defaultProject, update } = await import("./project.js");
-  const dirty = update(defaultProject(), { offsetXMm: 12, offsetYMm: -8 });
-  const customTemplate = { id: "x", label: "x", hint: "x", patch: { garmentId: "left_chest", offsetXMm: 5, offsetYMm: 3 } };
-  const p = applyTemplate(dirty, customTemplate);
-  expect(p.offsetXMm).toBe(5);
-  expect(p.offsetYMm).toBe(3);
-});
-
-test("applyTemplate resets sizeMm to the patch's value or null", async () => {
+test("applyTemplate does not share element objects with TEMPLATES (regression: final-review-s5.md Important #2)", async () => {
   const { TEMPLATES, applyTemplate } = await import("./templates.js");
-  const { defaultProject, update } = await import("./project.js");
-  const dirty = update(defaultProject(), { sizeMm: 40 });
+  const { defaultProject } = await import("./project.js");
+  const hatName = TEMPLATES.find((t) => t.id === "hat-name");
+  const originalText = hatName.patch.elements[0].text;
 
-  const chestName = TEMPLATES.find((t) => t.id === "chest-name");
-  const withSize = applyTemplate(dirty, chestName);
-  expect(withSize.sizeMm).toBe(76.2);
+  const p = applyTemplate(defaultProject(), hatName);
+  // Mutate the returned project's element in place, the way a two-way
+  // `bind:value` would have before it was fixed -- this must NOT reach back
+  // into the TEMPLATES constant.
+  p.elements[0].text = "Smith";
 
-  const scriptName = TEMPLATES.find((t) => t.id === "script-name");
-  const withoutSize = applyTemplate(dirty, scriptName);
-  expect(withoutSize.sizeMm).toBeNull();
+  expect(hatName.patch.elements[0].text).toBe(originalText);
+  expect(TEMPLATES.find((t) => t.id === "hat-name").patch.elements[0].text).toBe(originalText);
 
+  // Applying the same template again must hand back a fresh copy with the
+  // original starter text, not the mutated "Smith".
+  const p2 = applyTemplate(defaultProject(), hatName);
+  expect(p2.elements[0].text).toBe(originalText);
+  expect(p2.elements[0]).not.toBe(p.elements[0]);
+});
+
+test("logo-patch template produces a fresh default image element", async () => {
+  const { TEMPLATES, applyTemplate } = await import("./templates.js");
+  const { defaultProject } = await import("./project.js");
   const logoPatch = TEMPLATES.find((t) => t.id === "logo-patch");
-  expect(logoPatch.patch.sizeMm).toBeUndefined();
-  const logoResult = applyTemplate(dirty, logoPatch);
-  expect(logoResult.sizeMm).toBeNull();
+  const p = applyTemplate(defaultProject(), logoPatch);
+  expect(p.garmentId).toBe("patch");
+  expect(p.elements[0].type).toBe("image");
+  expect(p.elements[0].nColors).toBe(4);
+  expect(p.elements[0].removeBg).toBe(true);
+  expect(p.elements[0].sizeMm).toBeNull();
 });
 
 // Engine-backed validation: every template must reference a real garment
-// and (for text-mode templates) a real font in the satin font registry.
+// and (for text elements) a real font in the satin font registry.
 // Loads the actual engine scripts the same way generate.spec.js does.
 beforeAll(() => {
   const require = createRequire(import.meta.url);
@@ -92,11 +114,12 @@ test("every TEMPLATES entry resolves a real garment via EMB.getGarment", async (
   }
 });
 
-test("every non-image TEMPLATES entry's fontKey exists in EMB.SATIN_FONTS", async () => {
+test("every text-element TEMPLATES entry's fontKey exists in EMB.SATIN_FONTS", async () => {
   const { EMB } = await import("./emb.js");
   const { TEMPLATES } = await import("./templates.js");
   for (const t of TEMPLATES) {
-    if (t.patch.mode === "image") continue;
-    expect(EMB.SATIN_FONTS[t.patch.fontKey], `${t.id}: fontKey "${t.patch.fontKey}"`).toBeTruthy();
+    const el = t.patch.elements[0];
+    if (el.type === "image") continue;
+    expect(EMB.SATIN_FONTS[el.fontKey], `${t.id}: fontKey "${el.fontKey}"`).toBeTruthy();
   }
 });

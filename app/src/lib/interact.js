@@ -91,6 +91,23 @@ export function clampOffsets(offXMm, offYMm, designWmm, designHmm, hoopWmm, hoop
   return { offsetXMm: offsetXMm + 0, offsetYMm: offsetYMm + 0 };
 }
 
+// Picks which element (by id) a canvas point falls in, for click-to-select
+// on a multi-element field. `rects` is an array of { id, x, y, w, h } canvas
+// rects (see designRectPx), one per ready element, in the SAME order as
+// project.elements -- i.e. paint order, later entries drawn on top of
+// earlier ones. Overlap resolution therefore means "topmost wins": we scan
+// every rect and keep overwriting the hit on each match, so the LAST
+// matching rect in array order is what's returned. No match anywhere ->
+// null (a miss, e.g. an empty-space click, which callers should treat as
+// "leave the current selection alone").
+export function pickElement(rects, px, py) {
+  let hit = null;
+  for (const r of rects || []) {
+    if (px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h) hit = r.id;
+  }
+  return hit;
+}
+
 // Translates the design's offset (from hoop center, mm, +y UP) by a canvas
 // pixel-space drag delta already converted to mm, then delegates to
 // clampOffsets. Canvas dy is DOWN, but offset-space y is UP, so a positive
