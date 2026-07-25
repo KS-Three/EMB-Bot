@@ -1,11 +1,13 @@
 # EMB Bot Studio
 
-A browser-only, beginner-first embroidery tool (21 satin fonts, quick-start templates, letter spacing, printable PDF worksheet): pick what you're making → add
+A browser-only, beginner-first embroidery tool (21 satin fonts, quick-start templates, letter spacing, printable PDF worksheet, MULTI-ELEMENT designs): pick what you're making → add
 **text** (pre-digitized satin fonts) or a **logo/image** (auto-flattened to
 thread colors, with swatch merging) → watch the realistic 2.5D field render
 live → download a stitch file. No accounts, no server.
 
 Sizing: the field shows the real hoop/garment area — drag the design's corner handles to resize (stitches truly regenerate at each size, so density stays correct), drag the body to reposition, or use the Size panel (W/H, inches or mm, Auto-fit). Below ~5 mm the app warns that thread can't stitch that small.
+
+Multi-element: a design can hold several elements (text lines and images) — add via "+ Text"/"+ Image", click to select on the field or in the list, move/resize each independently; elements sew in list order with a trim + color change between them. Image swatches each get a THREAD color picker (art stays the same, the thread color changes).
 
 Image mode notes: art is flattened to 2–8 thread colors (median-cut + smoothing,
 optional background removal); chips show each color's share and can be merged.
