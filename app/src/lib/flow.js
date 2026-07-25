@@ -6,8 +6,9 @@ export function canAdvance(step, project) {
   if (step === "garment") return !!project.garmentId;
   if (step === "content") return true;
   if (step === "create") {
-    if (project.mode === "image") return project._hasImage === true;
-    return project.text.trim().length > 0 && !!project.fontKey;
+    return project.elements.some((el) =>
+      el.type === "text" ? el.text.trim().length > 0 : el._hasImage === true
+    );
   }
   return true;
 }

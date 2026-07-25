@@ -32,10 +32,13 @@ test("flatToRegions traces one region per palette color", async () => {
 test("generateImageDesign produces stitches from a flat", async () => {
   const { flattenRGBA } = await import("./flatten.js");
   const { generateImageDesign } = await import("./generate.js");
-  const { defaultProject } = await import("./project.js");
+  const { defaultImageElement } = await import("./project.js");
   const w = 96, h = 64;
   const flat = flattenRGBA(synthRGBA(w, h), w, h, { nColors: 2, removeBg: false });
-  const d = generateImageDesign(flat, defaultProject());
+  // generate.js still expects a flat v1-ish project object (Task 2 reworks
+  // it); build a COMPAT object from the v2 default image element — see
+  // generate.spec.js for the full rationale.
+  const d = generateImageDesign(flat, { ...defaultImageElement("e1"), garmentId: "left_chest" });
   expect(d.stitchCount).toBeGreaterThan(100);
   expect(d.colorCount).toBe(2);
 });

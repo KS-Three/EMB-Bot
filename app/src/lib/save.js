@@ -1,4 +1,4 @@
-import { defaultProject } from "./project.js";
+import { defaultProject, migrateProject } from "./project.js";
 
 export function serialize(project) {
   return JSON.stringify(project);
@@ -7,7 +7,7 @@ export function serialize(project) {
 export function deserialize(str) {
   try {
     const o = JSON.parse(str);
-    return { ...defaultProject(), ...o };
+    return migrateProject(o);
   } catch (e) {
     return defaultProject();
   }
