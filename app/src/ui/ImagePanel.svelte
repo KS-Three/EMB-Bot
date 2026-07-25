@@ -2,12 +2,19 @@
   import { createEventDispatcher } from "svelte";
   import { flattenRGBA, flatToRGBA, flatShares, mergeFlat, WORK_MAX_PX, ALPHA_CUTOFF } from "../lib/flatten.js";
 
-  export let project;
+  // Element-scoped image editor (Task 5, Slice 5). Pattern (see
+  // TextStep.svelte for the same convention): settings patches dispatch an
+  // "elupdate" event shaped { id: element.id, patch } directly. The
+  // "image"/"flat" events stay id-less on purpose -- App always applies them
+  // to whichever element is CURRENTLY SELECTED (project.selectedId), which
+  // is safe because this panel only ever edits the selected element (it's
+  // remounted via ContentStep's `{#key el.id}` whenever selection changes,
+  // so there's never a stale in-flight upload for a different element).
+  export let element;
   // Working image state is owned by App (not this component) and passed
   // down as props, so it survives ImagePanel being destroyed and recreated
-  // whenever the user navigates steps or toggles Text/Image mode (App ->
-  // ContentStep -> ImagePanel are all {#if} blocks). See
-  // .superpowers/sdd/final-review-s2.md Important #1.
+  // whenever the user navigates steps or switches which element is
+  // selected. See .superpowers/sdd/final-review-s2.md Important #1.
   // workImage: prepped working source ({ rgba, w, h }, alpha-cut, at
   // WORK_MAX_PX) -- "Reset colors" and the colors/remove-bg controls
   // re-flatten from this prop, never from local state.
@@ -15,6 +22,10 @@
   // flat: current flattened palette state, derived from workImage.
   export let flat = null;
   const d = createEventDispatcher();
+
+  function patch(p) {
+    d("elupdate", { id: element.id, patch: p });
+  }
 
   let previewCanvas;
   let fileName = "";
@@ -83,9 +94,9 @@
   }
 
   // Re-run the flatten pipeline from the workImage PROP (never local state)
-  // at the current project settings (colors / remove-bg).
+  // at the current element settings (colors / remove-bg).
   function recompute() {
-    flattenFrom(workImage, project.nColors, project.removeBg);
+    flattenFrom(workImage, element.nColors, element.removeBg);
   }
 
   async function onFileChange(e) {
@@ -99,18 +110,18 @@
       fileName = file.name;
       // keep the reactive re-flatten guard in sync so it doesn't immediately
       // re-fire with stale "previous" values
-      prevNColors = project.nColors;
-      prevRemoveBg = project.removeBg;
+      prevNColors = element.nColors;
+      prevRemoveBg = element.removeBg;
       // Dispatch the new working image up to App first, then flatten from
       // the freshly-read `prep` directly (not the workImage prop -- the
       // round trip through App hasn't happened yet at this point).
       d("image", prep);
-      flattenFrom(prep, project.nColors, project.removeBg);
+      flattenFrom(prep, element.nColors, element.removeBg);
     } catch (err) {
       error = (err && err.message) || "Could not read this image file.";
       fileName = "";
       d("image", null);
-      flattenFrom(null, project.nColors, project.removeBg);
+      flattenFrom(null, element.nColors, element.removeBg);
     } finally {
       busy = false;
       e.target.value = ""; // allow re-selecting the same file later
@@ -118,20 +129,20 @@
   }
 
   function onColorsInput(e) {
-    d("update", { nColors: parseInt(e.target.value, 10) });
+    patch({ nColors: parseInt(e.target.value, 10) });
   }
 
   function onRemoveBgChange(e) {
-    d("update", { removeBg: e.target.checked });
+    patch({ removeBg: e.target.checked });
   }
 
   // Re-flatten whenever the colors slider / remove-bg checkbox change the
-  // project settings (they round-trip through App before landing back here).
-  let prevNColors = project.nColors;
-  let prevRemoveBg = project.removeBg;
-  $: if (workImage && (project.nColors !== prevNColors || project.removeBg !== prevRemoveBg)) {
-    prevNColors = project.nColors;
-    prevRemoveBg = project.removeBg;
+  // element settings (they round-trip through App before landing back here).
+  let prevNColors = element.nColors;
+  let prevRemoveBg = element.removeBg;
+  $: if (workImage && (element.nColors !== prevNColors || element.removeBg !== prevRemoveBg)) {
+    prevNColors = element.nColors;
+    prevRemoveBg = element.removeBg;
     recompute();
   }
 
@@ -188,6 +199,41 @@
 
   $: shares = flat ? flatShares(flat) : [];
   $: selectedCount = Object.keys(selected).length;
+
+  // ---- per-swatch thread color overrides (Task 5, Slice 5) ----------------
+  // element.threadRgb is a { [paletteIndex]: [r,g,b] } map (see
+  // lib/project.js's defaultImageElement and lib/imageRegions.js's
+  // flatToRegions, which already reads it at generation time -- this panel
+  // is just the UI for setting it).
+  function rgbToHex([r, g, b]) {
+    return "#" + [r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("");
+  }
+  function hexToRgb(h) {
+    return [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  }
+  // Reactive (not a plain function called from the template) on purpose:
+  // Svelte's dependency tracking for a template expression only sees
+  // identifiers referenced TEXTUALLY in that expression, not ones read
+  // inside a called function's body (the same caveat SizePanel.svelte
+  // documents for its `$:` statements) -- a template call like
+  // `hasOverride(i)` that internally reads `element` would never be
+  // re-evaluated when `element.threadRgb` changes, since `element` never
+  // appears in the mustache expression itself. Exposing the map as a plain
+  // reactive value the template reads directly (`threadOverrides[i]`,
+  // `i in threadOverrides`) sidesteps that entirely.
+  $: threadOverrides = element.threadRgb || {};
+
+  function threadHex(override, paletteColor) {
+    return rgbToHex(override || paletteColor);
+  }
+  function onThreadInput(i, e) {
+    patch({ threadRgb: { ...(element.threadRgb || {}), [i]: hexToRgb(e.target.value) } });
+  }
+  function clearThread(i) {
+    const next = { ...(element.threadRgb || {}) };
+    delete next[i];
+    patch({ threadRgb: next });
+  }
 </script>
 
 <div class="uploadbox">
@@ -202,11 +248,11 @@
 <canvas class="flatprev" class:hidden={!flat} bind:this={previewCanvas}></canvas>
 
 <label>
-  Colors: {project.nColors}
-  <input type="range" min="2" max="8" step="1" value={project.nColors} on:input={onColorsInput} />
+  Colors: {element.nColors}
+  <input type="range" min="2" max="8" step="1" value={element.nColors} on:input={onColorsInput} />
 </label>
 <label>
-  <input type="checkbox" checked={project.removeBg} on:change={onRemoveBgChange} />
+  <input type="checkbox" checked={element.removeBg} on:change={onRemoveBgChange} />
   Remove background
 </label>
 
@@ -216,16 +262,43 @@
          art uses — a 0.0% chip is just noise to a beginner). -->
     {#each flat.palette as c, i}
       {#if shares[i] > 0.0005}
-        <button
-          type="button"
-          class="swatch"
-          class:sel={!!selected[i]}
-          style="background: rgb({c[0]},{c[1]},{c[2]})"
-          on:click={() => toggleSwatch(i)}
-          title={(shares[i] * 100).toFixed(1) + "%"}
-        >
-          <span class="pct">{(shares[i] * 100).toFixed(1)}%</span>
-        </button>
+        <div class="swatchwrap">
+          <button
+            type="button"
+            class="swatch"
+            class:sel={!!selected[i]}
+            style="background: rgb({c[0]},{c[1]},{c[2]})"
+            on:click={() => toggleSwatch(i)}
+            title={(shares[i] * 100).toFixed(1) + "%"}
+          >
+            <span class="pct">{(shares[i] * 100).toFixed(1)}%</span>
+          </button>
+          <!-- Thread color override for this swatch -- a distinct control
+               from the swatch button above (merge-select stays a plain
+               click; stopPropagation here keeps the color picker and the
+               reset button from ever being mistaken for a swatch click). -->
+          <div class="swatchthread">
+            <input
+              type="color"
+              class="threadinput"
+              value={threadHex(threadOverrides[i], c)}
+              on:click|stopPropagation
+              on:input|stopPropagation={(e) => onThreadInput(i, e)}
+              title="Thread color for this swatch"
+            />
+            {#if i in threadOverrides}
+              <button
+                type="button"
+                class="threadreset"
+                on:click|stopPropagation={() => clearThread(i)}
+                title="Reset to the original color"
+                aria-label="Reset thread color to original"
+              >
+                ↺
+              </button>
+            {/if}
+          </div>
+        </div>
       {/if}
     {/each}
   {:else}

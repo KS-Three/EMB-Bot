@@ -13,59 +13,118 @@
   export let designDims = null;
   const d = createEventDispatcher();
 
-  // ---- Task 4 (Slice 5) compile-compat adapter -----------------------------
-  // TextStep/ImagePanel/SizePanel below are still v1-shaped: they read/write
-  // top-level project fields (project.mode, project.text, project.fontKey,
-  // project.nColors, project.sizeMm, ...) that the v2 model moved onto
-  // project.elements[i]. Reworking those three components into real
-  // per-element editors is Task 5's job, not this one — so instead of
-  // touching their internals, we adapt right here: flatten the SELECTED
-  // element's fields onto a project-shaped view object for them to read,
-  // and route their "update" patches back onto that same element via a new
-  // "elupdate" event (App: updateElement(project, id, patch)). This is a
-  // stand-in for real multi-element editing (it only ever edits ONE
-  // element, whichever is selected) — just enough to keep the build and
-  // runtime working without crashing.
+  // ---- Task 5 (Slice 5): the real element manager --------------------------
+  // Replaces the Task 4 compile-compat adapter (mode tiles + a flattened
+  // v1-shaped "view project") with the real thing: a compact list of every
+  // element in the project (click a row to select it, ✕ to remove it),
+  // "+ Text" / "+ Image" to add more, and below that the SELECTED element's
+  // own editor (TextStep or ImagePanel, both element-scoped now) plus the
+  // size panel.
+  //
+  // Patch convention (see TextStep.svelte / ImagePanel.svelte for the same
+  // note): both dispatch "elupdate" events already shaped { id, patch } --
+  // this component just bubbles those straight through to App unchanged.
+  // SizePanel is the one child that ISN'T element-scoped (out of scope for
+  // this task -- it still speaks a plain "update" patch against a
+  // project-shaped view object) so it gets wrapped into the same shape here.
   $: el = project.elements.find((e) => e.id === project.selectedId) || project.elements[0];
-  $: viewProject = { ...project, ...el, mode: el.type };
 
-  function onChildUpdate(patch) {
-    // The Text/Logo tiles below dispatch a `{ mode }` patch to switch which
-    // panel is shown. In v2, an element's type is fixed at creation (there's
-    // no "change this element's type" op in project.js — only addElement()
-    // for a NEW element) so `mode` isn't a real element field. Forward it
-    // through as a plain top-level project patch (harmless/inert — Task 5
-    // owns rebuilding this tile-switcher for real multi-element add/select)
-    // rather than routing it onto the element like every other patch here.
-    if ("mode" in patch) {
-      d("update", patch);
-      return;
+  function truncate(s, n) {
+    return s.length > n ? s.slice(0, n) + "…" : s;
+  }
+
+  // One-line summary shown in an element's list row: quoted truncated text
+  // for text elements, color count (or "empty") for image elements.
+  function summarize(element) {
+    if (element.type === "text") {
+      const t = (element.text || "").trim();
+      return t ? `"${truncate(t, 18)}"` : "Text · empty";
     }
-    d("elupdate", { id: el.id, patch });
+    const n = element.nColors || 0;
+    return element._hasImage ? `Image · ${n} color${n === 1 ? "" : "s"}` : "Image · empty";
+  }
+
+  function selectRow(id) {
+    d("select", id);
+  }
+
+  function onRowKeydown(e, id) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      selectRow(id);
+    }
   }
 </script>
 
 <h2>What are you making?</h2>
-<div class="tiles">
-  <button class="tile" class:sel={el.type === "text"} on:click={() => onChildUpdate({ mode: "text" })}>
-    Text
-  </button>
-  <button class="tile" class:sel={el.type === "image"} on:click={() => onChildUpdate({ mode: "image" })}>
-    Logo or image
-  </button>
+
+<div class="ellist">
+  {#each project.elements as row (row.id)}
+    <div
+      class="elrow"
+      class:sel={row.id === project.selectedId}
+      role="button"
+      tabindex="0"
+      on:click={() => selectRow(row.id)}
+      on:keydown={(e) => onRowKeydown(e, row.id)}
+    >
+      <span class="elicon">
+        {#if row.type === "text"}
+          T
+        {:else}
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+            <rect x="2" y="4" width="20" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2" />
+            <circle cx="8" cy="10" r="1.6" fill="currentColor" />
+            <path
+              d="M3 17l5-5 4 4 3-3 6 6"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        {/if}
+      </span>
+      <span class="elsummary">{summarize(row)}</span>
+      <button
+        type="button"
+        class="elrow-x"
+        disabled={project.elements.length <= 1}
+        title="Remove"
+        aria-label="Remove element"
+        on:click|stopPropagation={() => d("removeelement", row.id)}
+      >
+        ✕
+      </button>
+    </div>
+  {/each}
 </div>
 
-{#if el.type === "image"}
-  <ImagePanel
-    project={viewProject}
-    {workImage}
-    {flat}
-    on:update={(e) => onChildUpdate(e.detail)}
-    on:image={(e) => d("image", e.detail)}
-    on:flat={(e) => d("flat", e.detail)}
-  />
-{:else}
-  <TextStep project={viewProject} on:update={(e) => onChildUpdate(e.detail)} />
-{/if}
+<div class="eladd-row">
+  <button type="button" class="eladd" on:click={() => d("addelement", "text")}>+ Text</button>
+  <button type="button" class="eladd" on:click={() => d("addelement", "image")}>+ Image</button>
+</div>
 
-<SizePanel project={viewProject} {designDims} on:update={(e) => onChildUpdate(e.detail)} />
+<!-- Keyed on the selected element's id so switching selection (even between
+     two elements of the SAME type, e.g. two image elements) always remounts
+     a fresh TextStep/ImagePanel instance -- otherwise per-instance local
+     state (ImagePanel's merge-selection, its prevNColors/prevRemoveBg
+     re-flatten guard, ...) would leak from whichever element was selected
+     before onto the newly-selected one. -->
+{#key el.id}
+  {#if el.type === "image"}
+    <ImagePanel
+      element={el}
+      {workImage}
+      {flat}
+      on:elupdate={(e) => d("elupdate", e.detail)}
+      on:image={(e) => d("image", e.detail)}
+      on:flat={(e) => d("flat", e.detail)}
+    />
+  {:else}
+    <TextStep element={el} on:elupdate={(e) => d("elupdate", e.detail)} />
+  {/if}
+{/key}
+
+<SizePanel project={{ ...project, ...el }} {designDims} on:update={(e) => d("elupdate", { id: el.id, patch: e.detail })} />

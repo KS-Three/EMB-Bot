@@ -1,8 +1,9 @@
 <script>
-  import { defaultProject, update, updateElement, selectElement } from "./lib/project.js";
+  import { defaultProject, update, updateElement, selectElement, addElement, removeElement } from "./lib/project.js";
   import { applyTemplate } from "./lib/templates.js";
   import { canAdvance, nextStep, prevStep } from "./lib/flow.js";
   import { saveLocal, loadLocal } from "./lib/save.js";
+  import { EMB } from "./lib/emb.js";
   import GarmentStep from "./ui/GarmentStep.svelte";
   import ContentStep from "./ui/ContentStep.svelte";
   import DownloadStep from "./ui/DownloadStep.svelte";
@@ -43,16 +44,51 @@
   // sync with whatever the user clicked on the field).
   $: selectedElement = project.elements.find((el) => el.id === project.selectedId) || project.elements[0];
 
+  const MM_PER_INCH = 25.4;
+
   function apply(patch) {
     project = update(project, patch);
     saveLocal(project);
   }
 
   // Patches a single element (by id) — used by EmbroideryField's drag/resize/
-  // reclamp "elupdate" events and by ContentStep's adapter for the
-  // still-v1-shaped TextStep/ImagePanel/SizePanel controls (see ContentStep.svelte).
+  // reclamp "elupdate" events and by ContentStep's element-scoped TextStep/
+  // ImagePanel/SizePanel controls (see ContentStep.svelte), which all funnel
+  // their patches through this same { id, patch } shape.
   function elUpdate(id, patch) {
     project = updateElement(project, id, patch);
+    saveLocal(project);
+  }
+
+  // Hoop width in mm for the current garment — new elements are seeded with
+  // a size relative to it (see project.js's addElement). Falls back to a
+  // sane default if the garment can't be resolved (shouldn't happen: the
+  // "content" step, where adding elements happens, is unreachable until a
+  // garment is picked — see flow.js's canAdvance).
+  function hoopWidthMm(p) {
+    const garment = p && EMB.getGarment(p.garmentId);
+    return garment ? garment.widthIn * MM_PER_INCH : 300;
+  }
+
+  function onAddElement(type) {
+    project = addElement(project, type, hoopWidthMm(project));
+    saveLocal(project);
+  }
+
+  function onRemoveElement(id) {
+    project = removeElement(project, id);
+    // Element ids can be reused (nextElementId in project.js picks the next
+    // number after whatever's left once the removed one is gone), so a
+    // stale runtime.flats/workImages entry for this id must be dropped now
+    // — otherwise a LATER element that happens to land on the same id could
+    // silently inherit this removed element's flattened art / working image.
+    if (id in runtime.flats || id in runtime.workImages) {
+      const flats = { ...runtime.flats };
+      const workImages = { ...runtime.workImages };
+      delete flats[id];
+      delete workImages[id];
+      runtime = { flats, workImages };
+    }
     saveLocal(project);
   }
 
@@ -106,8 +142,10 @@
           workImage={runtime.workImages[project.selectedId]}
           flat={runtime.flats[project.selectedId]}
           {designDims}
-          on:update={(e) => apply(e.detail)}
           on:elupdate={(e) => elUpdate(e.detail.id, e.detail.patch)}
+          on:select={(e) => onSelect(e.detail)}
+          on:addelement={(e) => onAddElement(e.detail)}
+          on:removeelement={(e) => onRemoveElement(e.detail)}
           on:image={(e) => onImage(project.selectedId, e.detail)}
           on:flat={(e) => onFlat(project.selectedId, e.detail)}
         />
