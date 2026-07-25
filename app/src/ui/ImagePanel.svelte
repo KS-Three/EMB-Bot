@@ -83,8 +83,20 @@
 
   // Flatten `img` ({ rgba, w, h }) at the given settings and dispatch the
   // result up to App (which owns `flat`); `img` may be null to clear.
+  //
+  // element.threadRgb is keyed by PALETTE INDEX, and every call here derives
+  // a brand-new palette from scratch (median-cut over the source pixels) --
+  // the old indices don't correspond to anything in the new palette (a
+  // stale key could silently color the wrong swatch, or vanish entirely).
+  // Rather than try to remap indices through a re-flatten with no old->new
+  // mapping to remap through, clear overrides here: a predictable reset the
+  // user can react to (re-pick colors) beats silent corruption they can't
+  // see. mergeSelected below does the same for the merge case, which DOES
+  // have an old->new map but keeps the same clear-on-change policy for
+  // consistency (see final-review-s5.md Important #1).
   function flattenFrom(img, nColors, removeBg) {
     selected = {};
+    patch({ threadRgb: {} });
     if (!img) {
       d("flat", null);
       return;
@@ -158,6 +170,11 @@
     if (!flat || idxList.length < 2) return;
     const merged = mergeFlat(flat, idxList);
     selected = {};
+    // Merging compacts and remaps every palette index (src/flatten.js
+    // mergeColors), so any existing threadRgb override keys point at the
+    // wrong (or a now-nonexistent) swatch -- clear them (see flattenFrom's
+    // comment above for why "clear" over "remap").
+    patch({ threadRgb: {} });
     d("flat", merged);
   }
 

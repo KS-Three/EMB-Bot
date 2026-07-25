@@ -50,6 +50,17 @@ export const TEMPLATES = [
 // that's the semantics of "start from template" — so this is just fresh
 // defaults overlaid with the template's patch, not a merge onto whatever the
 // user had going before.
+//
+// template.patch's `elements` array (and the element objects inside it) are
+// the MODULE-LEVEL TEMPLATES constants -- a shallow spread would hand the
+// resulting project's caller a live reference into those constants. Any code
+// that later mutates a returned element in place (e.g. TextStep previously
+// two-way-bound its text input directly to the selected element) would
+// corrupt the shared TEMPLATES entry for the rest of the session (see
+// final-review-s5.md Important #2). `patch` is plain JSON-serializable data
+// (strings/numbers/plain objects), so a JSON round-trip is a cheap, safe deep
+// clone that keeps TEMPLATES pristine regardless of what callers do with the
+// project this returns.
 export function applyTemplate(project, template) {
-  return { ...defaultProject(), ...template.patch };
+  return { ...defaultProject(), ...JSON.parse(JSON.stringify(template.patch)) };
 }

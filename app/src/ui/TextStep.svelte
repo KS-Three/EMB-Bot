@@ -30,8 +30,8 @@
 <input
   class="textin"
   type="text"
-  bind:value={element.text}
-  on:input={() => patch({ text: element.text })}
+  value={element.text}
+  on:input={(e) => patch({ text: e.target.value })}
   placeholder="Type a name or word"
 />
 <label>

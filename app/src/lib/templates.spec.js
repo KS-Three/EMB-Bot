@@ -62,6 +62,28 @@ test("applyTemplate REPLACES the project entirely, ignoring prior dirty state", 
   expect(p.elements[0].text).toBe("Your Name");
 });
 
+test("applyTemplate does not share element objects with TEMPLATES (regression: final-review-s5.md Important #2)", async () => {
+  const { TEMPLATES, applyTemplate } = await import("./templates.js");
+  const { defaultProject } = await import("./project.js");
+  const hatName = TEMPLATES.find((t) => t.id === "hat-name");
+  const originalText = hatName.patch.elements[0].text;
+
+  const p = applyTemplate(defaultProject(), hatName);
+  // Mutate the returned project's element in place, the way a two-way
+  // `bind:value` would have before it was fixed -- this must NOT reach back
+  // into the TEMPLATES constant.
+  p.elements[0].text = "Smith";
+
+  expect(hatName.patch.elements[0].text).toBe(originalText);
+  expect(TEMPLATES.find((t) => t.id === "hat-name").patch.elements[0].text).toBe(originalText);
+
+  // Applying the same template again must hand back a fresh copy with the
+  // original starter text, not the mutated "Smith".
+  const p2 = applyTemplate(defaultProject(), hatName);
+  expect(p2.elements[0].text).toBe(originalText);
+  expect(p2.elements[0]).not.toBe(p.elements[0]);
+});
+
 test("logo-patch template produces a fresh default image element", async () => {
   const { TEMPLATES, applyTemplate } = await import("./templates.js");
   const { defaultProject } = await import("./project.js");

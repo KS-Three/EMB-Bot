@@ -47,6 +47,32 @@ test("flatToRegions respects per-swatch thread color overrides", async () => {
   // Verify region for palette index 1 was not affected
   expect(regionsWithOverride[1].rgb).not.toEqual(overrideRgb);
 });
+// Regression note (final-review-s5.md Important #1): element.threadRgb is
+// keyed by PALETTE INDEX, and that palette is rebuilt from scratch on every
+// re-flatten/merge (ImagePanel.svelte now clears threadRgb whenever that
+// happens -- see flattenFrom/mergeSelected there). This is the lib-level
+// half of that guard: flatToRegions must reference threadRgb defensively
+// (`ci in threadRgb` for `ci` in `0..palette.length-1` only), so if a stale
+// override key ever DID slip through (out of range for the current
+// palette), it's ignored harmlessly rather than throwing or corrupting an
+// unrelated swatch.
+test("flatToRegions ignores threadRgb overrides for indices beyond the current palette (stale-key safety net)", async () => {
+  const { flattenRGBA } = await import("./flatten.js");
+  const { flatToRegions } = await import("./imageRegions.js");
+  const w = 96, h = 64;
+  const flat = flattenRGBA(synthRGBA(w, h), w, h, { nColors: 2, removeBg: false });
+  expect(flat.palette.length).toBe(2);
+
+  const { regions: regionsNoOverride } = flatToRegions(flat);
+  // Index 5 doesn't exist on a 2-color flat -- as if a prior merge/re-flatten
+  // shrank the palette out from under a stale threadRgb key.
+  expect(() => flatToRegions(flat, { threadRgb: { 5: [1, 2, 3] } })).not.toThrow();
+  const { regions: regionsWithStaleOverride } = flatToRegions(flat, { threadRgb: { 5: [1, 2, 3] } });
+
+  expect(regionsWithStaleOverride.length).toBe(regionsNoOverride.length);
+  expect(regionsWithStaleOverride.map((r) => r.rgb)).toEqual(regionsNoOverride.map((r) => r.rgb));
+});
+
 test("generateImageDesign produces stitches from a flat", async () => {
   const { flattenRGBA } = await import("./flatten.js");
   const { generateImageDesign } = await import("./generate.js");
