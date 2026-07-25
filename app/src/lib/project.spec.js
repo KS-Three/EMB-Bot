@@ -19,6 +19,7 @@ test("defaults include sizing and offset fields", () => {
   expect(p.sizeMm).toBeNull();
   expect(p.offsetXMm).toBe(0);
   expect(p.offsetYMm).toBe(0);
+  expect(p.letterSpacingMm).toBe(0);
 });
 test("update returns a new object and merges", () => {
   const p = defaultProject();

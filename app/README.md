@@ -1,6 +1,6 @@
 # EMB Bot Studio
 
-A browser-only, beginner-first embroidery tool: pick what you're making → add
+A browser-only, beginner-first embroidery tool (21 satin fonts, quick-start templates, letter spacing, printable PDF worksheet): pick what you're making → add
 **text** (pre-digitized satin fonts) or a **logo/image** (auto-flattened to
 thread colors, with swatch merging) → watch the realistic 2.5D field render
 live → download a stitch file. No accounts, no server.

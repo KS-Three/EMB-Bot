@@ -1,6 +1,7 @@
 <script>
   import { EMB } from "../lib/emb.js";
   import { createEventDispatcher } from "svelte";
+  import TemplateRow from "./TemplateRow.svelte";
   export let project;
   const d = createEventDispatcher();
 
@@ -16,6 +17,8 @@
     label: g.label || g.name || readable(g.id),
   }));
 </script>
+
+<TemplateRow on:pick={(e) => d("template", e.detail)} />
 
 <h2>What are you putting this on?</h2>
 <div class="tiles">

@@ -1,10 +1,12 @@
 <script>
   import { generateDesign, generateImageDesign } from "../lib/generate.js";
-  import { exportDesign } from "../lib/exporters.js";
+  import { exportDesign, exportWorksheetPDF } from "../lib/exporters.js";
   import { triggerDownload } from "../lib/download.js";
+  import { EMB } from "../lib/emb.js";
   export let project;
   export let flat = null;
   let msg = "";
+  let worksheetBusy = false;
 
   function buildDesign() {
     if (project.mode === "image") {
@@ -22,6 +24,20 @@
       msg = e.message;
     }
   }
+
+  async function dlWorksheet() {
+    worksheetBusy = true;
+    try {
+      const design = buildDesign();
+      const garment = EMB.getGarment(project.garmentId);
+      await exportWorksheetPDF(design, garment);
+      msg = "Worksheet saved.";
+    } catch (e) {
+      msg = e.message;
+    } finally {
+      worksheetBusy = false;
+    }
+  }
 </script>
 
 <h2>Download</h2>
@@ -30,5 +46,6 @@
   <button on:click={() => dl("pes")}>PES</button>
   <button on:click={() => dl("exp")}>EXP</button>
   <button on:click={() => dl("svg")}>SVG</button>
+  <button on:click={dlWorksheet} disabled={worksheetBusy}>PDF worksheet</button>
 </div>
 <p>{msg}</p>

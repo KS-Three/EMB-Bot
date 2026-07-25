@@ -1,5 +1,6 @@
 <script>
   import { defaultProject, update } from "./lib/project.js";
+  import { applyTemplate } from "./lib/templates.js";
   import { canAdvance, nextStep, prevStep } from "./lib/flow.js";
   import { saveLocal, loadLocal } from "./lib/save.js";
   import GarmentStep from "./ui/GarmentStep.svelte";
@@ -35,6 +36,12 @@
     saveLocal(project);
   }
 
+  function pickTemplate(template) {
+    project = applyTemplate(project, template);
+    saveLocal(project);
+    step = "content";
+  }
+
   function onImage(detail) {
     workImage = detail;
   }
@@ -67,7 +74,7 @@
   <aside class="panel">
     <div class="panel-body">
       {#if step === "garment"}
-        <GarmentStep {project} on:update={(e) => apply(e.detail)} />
+        <GarmentStep {project} on:update={(e) => apply(e.detail)} on:template={(e) => pickTemplate(e.detail)} />
       {:else if step === "content"}
         <ContentStep
           {project}

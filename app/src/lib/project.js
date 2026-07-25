@@ -1,5 +1,5 @@
 export function defaultProject() {
-  return { garmentId: "left_chest", text: "", fontKey: "geneva_simple", sizeMm: null, offsetXMm: 0, offsetYMm: 0, colorRgb: [20, 20, 20], underlay: true, mode: "text", nColors: 4, removeBg: true };
+  return { garmentId: "left_chest", text: "", fontKey: "geneva_simple", sizeMm: null, offsetXMm: 0, offsetYMm: 0, colorRgb: [20, 20, 20], underlay: true, mode: "text", nColors: 4, removeBg: true, letterSpacingMm: 0 };
 }
 export function update(project, patch) {
   return { ...project, ...patch };
