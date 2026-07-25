@@ -35,9 +35,10 @@ test("generateImageDesign produces stitches from a flat", async () => {
   const { defaultImageElement } = await import("./project.js");
   const w = 96, h = 64;
   const flat = flattenRGBA(synthRGBA(w, h), w, h, { nColors: 2, removeBg: false });
-  // generate.js still expects a flat v1-ish project object (Task 2 reworks
-  // it); build a COMPAT object from the v2 default image element — see
-  // generate.spec.js for the full rationale.
+  // generateImageDesign is the deliberately-kept-deprecated shim for callers
+  // still passing a flat, v1-ish object (element fields spread onto a
+  // garmentId-bearing object) instead of a real project + element — see the
+  // "Deprecated" note on generateImageDesign in generate.js.
   const d = generateImageDesign(flat, { ...defaultImageElement("e1"), garmentId: "left_chest" });
   expect(d.stitchCount).toBeGreaterThan(100);
   expect(d.colorCount).toBe(2);

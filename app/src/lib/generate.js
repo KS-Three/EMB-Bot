@@ -1,34 +1,108 @@
 import { EMB } from "./emb.js";
 import { flatToRegions } from "./imageRegions.js";
+import { combineDesigns, bboxMmFromStitches } from "./combine.js";
 
-export function generateDesign(project) {
-  const text = (project.text || "").trim();
-  if (!text) throw new Error("Type some text first.");
-  const fontData = (EMB.SATIN_FONTS || {})[project.fontKey];
-  if (!fontData) throw new Error("Unknown font: " + project.fontKey);
-  const garment = EMB.getGarment(project.garmentId);
-  const design = EMB.buildLetteringDesign(fontData, text, {
-    garment, pxPerMm: 8, densityMm: 0.4, underlay: project.underlay,
-    rgb: project.colorRgb,
-    targetWidthMm: project.sizeMm || undefined,
-    offsetXMm: project.offsetXMm || 0,
-    offsetYMm: project.offsetYMm || 0,
-    letterSpacingMm: project.letterSpacingMm || 0,
+// Generates a single element's Design, or null if the element isn't ready
+// to sew yet (empty text / no flattened image state). Throws only on real
+// errors — e.g. an element referencing a font key the engine doesn't have.
+//
+// `garment` is the resolved garment object (EMB.getGarment(project.garmentId)),
+// shared across every element in a project so callers only look it up once.
+// `runtime` carries per-project state that doesn't belong on the persisted
+// project itself: `runtime.flats[element.id]` is the flattened palette/index
+// image (from flattenRGBA) for an image element, keyed by element id so each
+// image element in a multi-element project keeps its own working image.
+export function generateElement(element, garment, runtime) {
+  if (!element) return null;
+
+  if (element.type === "image") {
+    const flats = (runtime && runtime.flats) || {};
+    const flat = flats[element.id];
+    if (!flat) return null;
+    // { threadRgb: element.threadRgb } is forward-compatible: flatToRegions
+    // doesn't read a second argument yet (Task 3 adds threadRgb overrides to
+    // imageRegions.js) so this is simply ignored today.
+    const { regions, pxPerMm } = flatToRegions(flat, { threadRgb: element.threadRgb });
+    const fabric = EMB.getFabric(EMB.fabricForGarment(garment.id));
+    return EMB.buildQualityDesign(regions, {
+      garment, fabric, pxPerMm, densityMm: 0.4, satinMaxWidthMm: 3.0,
+      underlay: element.underlay,
+      targetWidthMm: element.sizeMm || undefined,
+      offsetXMm: element.offsetXMm || 0,
+      offsetYMm: element.offsetYMm || 0,
+    });
+  }
+
+  // text
+  const text = (element.text || "").trim();
+  if (!text) return null;
+  const fontData = (EMB.SATIN_FONTS || {})[element.fontKey];
+  if (!fontData) throw new Error("Unknown font: " + element.fontKey);
+  return EMB.buildLetteringDesign(fontData, text, {
+    garment, pxPerMm: 8, densityMm: 0.4, underlay: element.underlay,
+    rgb: element.colorRgb,
+    targetWidthMm: element.sizeMm || undefined,
+    offsetXMm: element.offsetXMm || 0,
+    offsetYMm: element.offsetYMm || 0,
+    letterSpacingMm: element.letterSpacingMm || 0,
   });
-  if (!design.stitchCount) throw new Error("No characters in this font yet — try different text.");
-  return design;
 }
 
-export function generateImageDesign(flat, project) {
-  const { regions, pxPerMm } = flatToRegions(flat);
-  if (!regions.length) throw new Error("No shapes found to stitch — try a simpler image or fewer colors.");
+// Generates every ready element in a project (in array order), combines them
+// into one sewable design, and reports each element's own bbox (mm) so the
+// UI can draw a per-element selection overlay against the combined preview.
+// Elements that aren't ready (see generateElement) are silently skipped —
+// not an error, just nothing to contribute yet. Returns
+// { combined: null, perElement: [] } when nothing in the project is ready.
+export function generateAll(project, runtime) {
   const garment = EMB.getGarment(project.garmentId);
-  const fabric = EMB.getFabric(EMB.fabricForGarment(project.garmentId));
-  const design = EMB.buildQualityDesign(regions, {
-    garment, fabric, pxPerMm, densityMm: 0.4, satinMaxWidthMm: 3.0, underlay: project.underlay,
-    targetWidthMm: project.sizeMm || undefined,
-    offsetXMm: project.offsetXMm || 0,
-    offsetYMm: project.offsetYMm || 0,
-  });
+  const designs = [];
+  const perElement = [];
+  for (const element of project.elements || []) {
+    const design = generateElement(element, garment, runtime);
+    if (!design) continue;
+    designs.push(design);
+    perElement.push({ id: element.id, design, bboxMm: bboxMmFromStitches(design.stitches) });
+  }
+  if (!designs.length) return { combined: null, perElement: [] };
+  return { combined: combineDesigns(designs), perElement };
+}
+
+// Back-compat convenience for a SINGLE-text-element project: everything the
+// pre-multi-element UI/specs need from "give me the one design for this
+// project" without them having to know about generateAll's { combined,
+// perElement } shape. Works for any project with >=1 ready element (not just
+// text) since it's just generateAll's combined result — the "single text
+// element" framing is the common case, not an enforced constraint.
+export function generateDesign(project) {
+  const { combined } = generateAll(project, {});
+  if (!combined) throw new Error("Type some text first.");
+  return combined;
+}
+
+// Deprecated: legacy shim for callers (pre-Task-4/5 UI) that still hand
+// generate.js a flat, v1-ish object — element fields (nColors/removeBg/
+// threadRgb/underlay/sizeMm/offsetXMm/offsetYMm) spread directly onto a
+// `garmentId`-bearing object rather than nested under project.elements.
+// Builds a throwaway image element from those fields, feeds it through the
+// same generateElement() path a real project would use, and keeps the old
+// "no shapes" error message existing callers' catch blocks expect. Prefer
+// generateAll(project, runtime)/generateElement for anything new.
+export function generateImageDesign(flat, projectLike) {
+  const garment = EMB.getGarment(projectLike.garmentId);
+  const element = {
+    id: projectLike.id || "e1",
+    type: "image",
+    nColors: projectLike.nColors,
+    removeBg: projectLike.removeBg,
+    threadRgb: projectLike.threadRgb || {},
+    underlay: projectLike.underlay,
+    sizeMm: projectLike.sizeMm,
+    offsetXMm: projectLike.offsetXMm,
+    offsetYMm: projectLike.offsetYMm,
+  };
+  const design = generateElement(element, garment, { flats: { [element.id]: flat } });
+  if (!design) throw new Error("Upload a logo or image first.");
+  if (!design.stitchCount) throw new Error("No shapes found to stitch — try a simpler image or fewer colors.");
   return design;
 }
