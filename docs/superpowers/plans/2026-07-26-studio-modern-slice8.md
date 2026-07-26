@@ -78,3 +78,21 @@
 - `renderRealistic` return contract (toCanvas/scale/designBBoxMm) is consumed by EmbroideryField interaction code — extending the transform with zoom/pan MUST keep that contract correct (interaction math depends on it; update the px→mm conversions for zoom).
 - FontSelect thumbnails use the design-fit path — don't regress it.
 - Template preview generation must not block first paint (generate lazily/idle; cache).
+
+---
+
+## PLAN AMENDMENTS (from 4-lens adversarial critique — OVERRIDE the sections above)
+
+**B1 (BLOCKING) — zoom contract rule:** `renderRealistic`'s returned contract is **POST-VIEW**: `scale = base.scale * view.zoom` and `toCanvas` includes pan — so EmbroideryField's existing px→mm conversions, designRectPx, hitTest (HANDLE_R stays canvas-px), pickElement, drag/clamp math need **ZERO changes**. `view` defaults to identity ({zoom:1,panX:0,panY:0}) so FontSelect/exportPNG (design-fit) are unaffected. Do NOT "update px→mm conversions" anywhere — that note is rescinded. Thread lw already scales via pxPerMm (post-view) — correct as-is.
+**B2 — view-only repaints:** cache the last `generateAll` result in EmbroideryField; wheel/pan/zoom-button changes re-run ONLY renderRealistic + recompute perElementRects (they're canvas-px and go stale on every view change) via the existing rAF throttle. No generateAll on view-only changes.
+**B3 — wheel during drag:** ignore wheel events while a drag is active (dragMode !== null).
+**B4 — single render path:** `clearToFabric` (the empty state) must render through the SAME fabric/contrast/view logic — refactor so both paths share helpers (fabricRgb fill, luminance-aware hoop outline, view transform). No hardcoded #e9e6df / rgba(60,50,40) anywhere in the field path; also replace theme.css's hardcoded canvas background.
+**B5 — renderRealistic opts compat:** the existing `o.fabric` (CSS string) and `o.colorOverride` stay working (FontSelect.svelte:24, exporters.js exportPNG depend on them). New `o.fabricRgb` ([r,g,b]) takes precedence over `o.fabric` when both provided.
+**B6 — ThreadPicker is NOT a floating popover** (the .panel-body overflow clipping trap — Slice-7 A9 lesson): it EXPANDS IN-FLOW (button → an inline grid section below it, collapsing on pick/Esc). Same for the fabric-color row (already in-flow).
+**B7 — dark-fabric legibility covers the SELECTION chrome too:** the accent selection box + corner handles drawn on canvas must switch to a light variant on dark fabric (same luminance helper as the hoop outline; pure helper + spec).
+**B8 — token completeness:** add `--danger` (+hover), `--warn`, `--tint` (accent-tinted selection bg), `--field-bg` tokens; ALL hardcoded #c0392b/#b45309/#eaf1ff/#f2f5fb/#cfe0fb/#eceef3/#e9e6df/bespoke rgba shadows in theme.css migrate to tokens.
+**B9 — focus-visible:** add a global `:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }` and REMOVE the four `outline: none` suppressions (lines ~55/235/517/721) — replace with :focus-visible-aware styles. The drawer-rename input must have a visible focus state.
+**B10 — topbar layout:** 3-column CSS grid (logo | centered name | actions); topbar height becomes a token `--topbar-h` consumed by `.studio { height: calc(100vh - var(--topbar-h)) }` (kill the hardcoded 61px).
+**B11 — stepper fit:** the 320px footer cannot fit 4 labels + Back/Next in one row — StepNav becomes TWO rows: row 1 = the 4 step labels (small, clickable per gating), row 2 = Back/Next. Label mapping: Garment / Content / **Review = step id "create"** / Download.
+**B12 — template previews:** buildLetteringDesign's option is **densityMm** (there is no spacingMm at that layer) — use `densityMm: 1.2` for fast previews.
+**B13 — fabricRgb migration:** `migrateV1` returns a literal object (no spread-merge) — fix `migrateProject` so BOTH branches spread-merge over `defaultProject()` (v1 result too); spec: a v1 blob migrates to a project WITH fabricRgb default.
