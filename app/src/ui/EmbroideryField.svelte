@@ -1,9 +1,9 @@
 <script>
   import { onMount, createEventDispatcher } from "svelte";
   import { generateAll } from "../lib/generate.js";
-  import { renderRealistic, hoopTransform, drawHoopOutline } from "../lib/preview.js";
+  import { renderRealistic, isDark } from "../lib/preview.js";
   import { EMB } from "../lib/emb.js";
-  import { designRectPx, hitTest, pickElement, dragResize, dragMove, clampOffsets } from "../lib/interact.js";
+  import { designRectPx, hitTest, pickElement, dragResize, dragMove, clampOffsets, clampPan } from "../lib/interact.js";
   import Hint from "./Hint.svelte";
 
   // Task 4 (Slice 5): the field now renders every element in the project
@@ -48,9 +48,25 @@
   // look up a specific element's design/bboxMm without re-running generateAll.
   let peById = {};
 
+  // B2: the last successful generateAll() result ({ combined, perElement }),
+  // kept so a view-only change (wheel/pan/zoom buttons) can re-paint against
+  // the SAME stitches without paying for another full generateAll — only
+  // renderRealistic + perElementRects need to redo work when just the camera
+  // moved. null whenever there's no design (paint()'s error/empty branches).
+  let lastGenerateResult = null;
+
+  // Zoom/pan view state (Slice 8 Task 2). Not part of `project` -- it's
+  // ephemeral field-viewport UI state, not project data, and never persisted.
+  // Fed to renderRealistic's `view` opt (B1: POST-VIEW contract -- see
+  // preview.js) on every paint, full or view-only.
+  let view = { zoom: 1, panX: 0, panY: 0 };
+  const MIN_ZOOM = 1;
+  const MAX_ZOOM = 4;
+  let rafViewScheduled = false;
+
   // Drag state (module-local to this component instance, not reactive —
   // none of it needs to trigger a re-render on its own).
-  let dragMode = null; // null | "resize" | "move"
+  let dragMode = null; // null | "resize" | "move" | "pan"
   let dragHandle = null; // "nw"|"ne"|"sw"|"se" when dragMode === "resize"
   let dragTargetId = null; // element id the current drag applies to
   let dragStartPx = null; // {x,y} canvas-space pointer start
@@ -58,6 +74,8 @@
   let dragStartHeightMm = 0;
   let dragStartOffXMm = 0;
   let dragStartOffYMm = 0;
+  let dragStartPanX = 0; // view.panX at the start of a "pan" drag
+  let dragStartPanY = 0; // view.panY at the start of a "pan" drag
   let rafScheduled = false;
   let pendingPatch = null; // { id, patch }
 
@@ -72,21 +90,42 @@
       : { wMm: 0, hMm: 0 };
   }
 
+  const EMPTY_DESIGN = { stitches: [] };
+
+  // B4: the empty state shares the SAME renderRealistic() call the populated
+  // state uses below (fabricRgb fill, luminance-aware hoop outline, weave,
+  // view) -- no separate hardcoded-color fill path. An empty design just
+  // means designToStrands() inside renderRealistic contributes zero strands;
+  // the background/hoop-outline/weave painting is identical either way.
   function clearToFabric() {
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#e9e6df";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    // Nice-to-have: still show the hoop bounds on the empty-state canvas
-    // when we know the garment, so the field never looks unrelated to size.
     const garment = garmentFor(project);
-    if (garment) drawHoopOutline(ctx, hoopTransform(garment, canvas.width, canvas.height, 24));
+    renderResult = renderRealistic(canvas, EMPTY_DESIGN, {
+      hoop: garment ? { garment } : undefined,
+      fabricRgb: project && project.fabricRgb,
+      weave: true,
+      view,
+    });
   }
 
   function accentColor() {
     if (typeof document === "undefined") return "#2f6fed";
     const v = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
     return v || "#2f6fed";
+  }
+
+  // B7: on dark fabric the plain accent color reads poorly (indigo-on-navy is
+  // low contrast), so the selection chrome switches to a light accent-tinted
+  // variant -- same isDark() luminance helper drawHoopOutline uses in
+  // preview.js, so "what counts as dark" never drifts between the two.
+  function selectionColor() {
+    const rgb = project && project.fabricRgb;
+    if (rgb && isDark(rgb)) {
+      if (typeof document === "undefined") return "#ccd6fb";
+      const v = getComputedStyle(document.documentElement).getPropertyValue("--tint-border").trim();
+      return v || "#ccd6fb";
+    }
+    return accentColor();
   }
 
   // Draws the selection box + 4 corner handles ONLY around the SELECTED
@@ -97,7 +136,7 @@
     const rect = perElementRects.find((r) => r.id === project.selectedId);
     if (!rect) return;
     const ctx = canvas.getContext("2d");
-    const color = accentColor();
+    const color = selectionColor();
     ctx.save();
     ctx.strokeStyle = color;
     ctx.lineWidth = 1;
@@ -177,6 +216,7 @@
     } catch (e) {
       error = e.message;
       hasDesign = false;
+      lastGenerateResult = null;
       clearToFabric();
       dispatch("dims", null);
       // No design generated at all -- report zero stitches so App's
@@ -188,6 +228,7 @@
     if (!result.combined) {
       hasDesign = false;
       hint = "Your embroidery appears here as you add content.";
+      lastGenerateResult = null;
       clearToFabric();
       dispatch("dims", null);
       dispatch("stats", { stitchCount: 0 });
@@ -205,7 +246,13 @@
     // colorOverride is gone — each element now bakes its own color into its
     // stitches at generation time (see generate.js's generateElement), so
     // the combined design already carries the right colors per-part.
-    renderResult = renderRealistic(canvas, c, { hoop: { garment } });
+    lastGenerateResult = result; // B2: cached for view-only repaints below
+    renderResult = renderRealistic(canvas, c, {
+      hoop: { garment },
+      fabricRgb: project.fabricRgb,
+      weave: true,
+      view,
+    });
     hasDesign = true;
 
     if (renderResult && renderResult.toCanvas) {
@@ -221,13 +268,101 @@
     reclampAll(result.perElement);
   }
 
+  // B2: view-only repaint -- wheel/pan/zoom-button changes call THIS (via
+  // scheduleViewRepaint's rAF throttle), never paint(). Re-runs ONLY
+  // renderRealistic (against the cached lastGenerateResult, no generateAll)
+  // + recomputes perElementRects (they're canvas-px, so they go stale on
+  // every view change) and redraws the selection overlay. Stats/dims/warn/
+  // reclamp are all mm-space and unaffected by the view, so none of them
+  // re-run here -- exactly what B2 asks for.
+  function repaintView() {
+    if (!canvas) return;
+    if (lastGenerateResult && lastGenerateResult.combined) {
+      const garment = garmentFor(project);
+      renderResult = renderRealistic(canvas, lastGenerateResult.combined, {
+        hoop: { garment },
+        fabricRgb: project.fabricRgb,
+        weave: true,
+        view,
+      });
+      perElementRects = [];
+      if (renderResult && renderResult.toCanvas) {
+        for (const pe of lastGenerateResult.perElement) {
+          const rect = designRectPx(pe.bboxMm, renderResult.toCanvas);
+          if (rect) perElementRects.push({ id: pe.id, ...rect });
+        }
+      }
+      drawOverlay();
+    } else {
+      clearToFabric();
+    }
+  }
+
+  function scheduleViewRepaint() {
+    if (rafViewScheduled) return;
+    rafViewScheduled = true;
+    requestAnimationFrame(() => {
+      rafViewScheduled = false;
+      repaintView();
+    });
+  }
+
   onMount(paint);
   // repaint whenever the project (garment/elements/selection) or the
   // runtime image state changes. Drag-move deliberately reuses this same
   // path (cheap full regen) rather than a separate translate-only fast path
   // — regeneration is fast enough here and it keeps one code path for "the
-  // project changed" instead of two.
+  // project changed" instead of two. `view` is deliberately NOT a dependency
+  // here (B2) -- wheel/pan/zoom-button handlers call scheduleViewRepaint()
+  // directly instead, so a view-only change never pays for a full generateAll.
   $: if (canvas) { project; runtime; paint(); }
+
+  // ---- zoom / pan -----------------------------------------------------------
+
+  // Zooms from view.zoom to view.zoom*factor, solving for the panX/panY that
+  // keep `anchorPx` (a canvas-px point, e.g. the cursor, or the canvas center
+  // for the +/- buttons) fixed on screen -- the standard "zoom around a
+  // point" recurrence, in canvas-px terms only (no need to know the mm point
+  // under the anchor): for k = newZoom/oldZoom,
+  //   pan' = (anchor - canvasCenter) * (1 - k) + pan * k
+  // This is the same math preview.spec.js's B1 tests solve independently to
+  // verify renderRealistic's view contract keeps an arbitrary mm-point fixed.
+  function zoomBy(factor, anchorPx) {
+    if (!canvas) return;
+    const cw = canvas.width, ch = canvas.height;
+    const ccx = cw / 2, ccy = ch / 2;
+    const p = anchorPx || { x: ccx, y: ccy };
+    const oldZoom = view.zoom;
+    const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, oldZoom * factor));
+    if (newZoom === oldZoom) return;
+    const k = newZoom / oldZoom;
+    const rawPanX = (p.x - ccx) * (1 - k) + view.panX * k;
+    const rawPanY = (p.y - ccy) * (1 - k) + view.panY * k;
+    // Soft clamp so panning/zooming can never push the hoop entirely off
+    // canvas -- keeps at least some of the field's edge reachable. Shared
+    // (lib/interact.js's clampPan) with the pan-drag branch of onPointerMove
+    // below, so a pointer-capture drag gets the exact same clamp this does.
+    const { panX, panY } = clampPan(rawPanX, rawPanY, newZoom, cw, ch);
+    view = { zoom: newZoom, panX, panY };
+    scheduleViewRepaint();
+  }
+
+  function onWheel(e) {
+    e.preventDefault();
+    if (dragMode) return; // B3: ignore wheel while a drag (move/resize/pan) is active
+    if (!canvas) return;
+    const p = canvasPointFromEvent(e);
+    const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+    zoomBy(factor, p);
+  }
+
+  function zoomIn() { zoomBy(1.25); }
+  function zoomOut() { zoomBy(1 / 1.25); }
+  function resetView() {
+    if (view.zoom === 1 && view.panX === 0 && view.panY === 0) return;
+    view = { zoom: 1, panX: 0, panY: 0 };
+    scheduleViewRepaint();
+  }
 
   // ---- pointer interaction -------------------------------------------------
 
@@ -263,7 +398,13 @@
       // element's body there instead? (Other elements don't show handles,
       // so this is a plain bounding-box test via pickElement, not hitTest.)
       const hitId = pickElement(perElementRects, p.x, p.y);
-      handle = hitId ? "body" : "none";
+      if (hitId) {
+        handle = "body";
+      } else if (view.zoom > 1) {
+        // Empty space, but there's room to pan -- hint it's draggable.
+        canvas.style.cursor = "grab";
+        return;
+      }
     }
     canvas.style.cursor = cursorForHandle(handle);
   }
@@ -305,7 +446,21 @@
       // Missed the selected element entirely — see if some OTHER element's
       // body is under the pointer instead (topmost wins on overlap).
       const hitId = pickElement(perElementRects, p.x, p.y);
-      if (!hitId) return; // empty space: no drag, selection unchanged
+      if (!hitId) {
+        // Empty space, no design hit -- pan the view instead when there's
+        // room to (zoom > 1). Design-drag always wins over pan (this branch
+        // is only reached once neither the selected element's handles nor
+        // any other element's body matched), per the spec.
+        if (view.zoom > 1) {
+          canvas.setPointerCapture(e.pointerId);
+          dragMode = "pan";
+          dragStartPx = p;
+          dragStartPanX = view.panX;
+          dragStartPanY = view.panY;
+          canvas.style.cursor = "grabbing";
+        }
+        return; // selection unchanged either way
+      }
       if (hitId !== targetId) dispatch("select", hitId);
       targetId = hitId;
       rect = rectFor(targetId);
@@ -347,6 +502,19 @@
       updateHoverCursor(p);
       return;
     }
+    if (dragMode === "pan") {
+      // B-fix (Slice 8 final review): pointer capture lets this drag travel
+      // far past the canvas edge, so the raw delta must go through the SAME
+      // clampPan() zoomBy() uses -- an unclamped assignment here could push
+      // the hoop entirely off canvas with no way back except the fit-reset
+      // zoom button.
+      const rawPanX = dragStartPanX + (p.x - dragStartPx.x);
+      const rawPanY = dragStartPanY + (p.y - dragStartPx.y);
+      const { panX, panY } = clampPan(rawPanX, rawPanY, view.zoom, canvas.width, canvas.height);
+      view = { zoom: view.zoom, panX, panY };
+      scheduleViewRepaint();
+      return;
+    }
     const scale = renderResult && renderResult.scale ? renderResult.scale : 1; // px per mm
     const dxMm = (p.x - dragStartPx.x) / scale;
     const dyMm = (p.y - dragStartPx.y) / scale;
@@ -370,6 +538,8 @@
     dragHandle = null;
     dragTargetId = null;
     dragStartPx = null;
+    dragStartPanX = 0;
+    dragStartPanY = 0;
   }
 
   function onPointerLeave() {
@@ -388,15 +558,22 @@
       on:pointerup={endDrag}
       on:pointercancel={endDrag}
       on:pointerleave={onPointerLeave}
+      on:wheel={onWheel}
     ></canvas>
     {#if !hasDesign && !error && hint}
-      <p class="fieldhint">{hint}</p>
+      <p class="fieldhint" class:on-dark={project && project.fabricRgb && isDark(project.fabricRgb)}>{hint}</p>
     {/if}
     {#if showDragHint}
       <Hint floating on:dismiss={() => dispatch("dismisshint")}>
         Drag the design to move it — corners resize.
       </Hint>
     {/if}
+    <div class="zoomctl">
+      <button type="button" class="zoombtn" on:click={zoomOut} disabled={view.zoom <= MIN_ZOOM} aria-label="Zoom out">−</button>
+      <span class="zoompct">{Math.round(view.zoom * 100)}%</span>
+      <button type="button" class="zoombtn" on:click={zoomIn} disabled={view.zoom >= MAX_ZOOM} aria-label="Zoom in">+</button>
+      <button type="button" class="zoombtn zoomfit" on:click={resetView} aria-label="Fit to hoop" title="Fit to hoop">⤢</button>
+    </div>
   </div>
   <div class="fieldmeta">
     {#if error}<span class="err">{error}</span>

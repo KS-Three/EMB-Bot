@@ -382,16 +382,29 @@
 </script>
 
 <header class="topbar">
-  <span class="logo">EMB&nbsp;Bot Studio</span>
+  <div class="topbar-logo">
+    <span class="logomark" aria-hidden="true">EMB</span>
+    <span class="logo">Bot Studio</span>
+  </div>
   <input
     class="projectname"
     value={projectName}
     on:change={(e) => renameCurrent(e.currentTarget.value)}
     aria-label="Project name"
   />
-  <button type="button" class="mydesigns" bind:this={myDesignsBtn} on:click={() => (drawerOpen = !drawerOpen)}>
-    My designs <span class="badge">{projects.length}</span>
-  </button>
+  <div class="topbar-actions">
+    <button
+      type="button"
+      class="topbar-download"
+      disabled={!hasStitches}
+      on:click={() => (step = "download")}
+    >
+      Download
+    </button>
+    <button type="button" class="mydesigns" bind:this={myDesignsBtn} on:click={() => (drawerOpen = !drawerOpen)}>
+      My designs <span class="badge">{projects.length}</span>
+    </button>
+  </div>
 </header>
 
 {#if drawerOpen}
@@ -454,7 +467,14 @@
         <DownloadStep {project} {runtime} />
       {/if}
     </div>
-    <StepNav {step} canNext={canAdvance(step, project)} on:back={() => go(-1)} on:next={() => go(1)} />
+    <StepNav
+      {step}
+      {project}
+      canNext={canAdvance(step, project)}
+      on:back={() => go(-1)}
+      on:next={() => go(1)}
+      on:goto={(e) => (step = e.detail)}
+    />
   </aside>
 
   <section class="field">

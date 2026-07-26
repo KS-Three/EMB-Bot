@@ -39,6 +39,12 @@ export function defaultProject() {
     garmentId: "left_chest",
     selectedId: "e1",
     elements: [defaultTextElement("e1")],
+    // Project-level (not per-element) — the embroidery field's fabric render
+    // color, [r,g,b]. Render-only: never touches stitch generation (see
+    // generate.js). "Natural" canvas tone, matching the pre-Slice-8 hardcoded
+    // field background so existing projects look unchanged until a user
+    // picks a different swatch on the Garment step.
+    fabricRgb: [235, 232, 223],
   };
 }
 
@@ -135,8 +141,13 @@ export function migrateProject(input) {
     return merged;
   }
 
+  // B13: migrateV1 returns a literal object with no notion of newer
+  // project-level fields (e.g. fabricRgb) — spread-merge its result over
+  // defaultProject() just like the v2 branch above does, so a v1 blob
+  // migrates into a project that ALSO gets fabricRgb (and any future
+  // project-level default) rather than being missing it forever.
   const looksLikeV1 = "mode" in input || "text" in input || "fontKey" in input;
-  if (looksLikeV1) return migrateV1(input);
+  if (looksLikeV1) return { ...defaultProject(), ...migrateV1(input) };
 
   return defaultProject();
 }

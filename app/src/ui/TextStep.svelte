@@ -1,5 +1,6 @@
 <script>
   import FontSelect from "./FontSelect.svelte";
+  import ThreadPicker from "./ThreadPicker.svelte";
   import { createEventDispatcher } from "svelte";
 
   // Element-scoped text editor (Task 5, Slice 5): bound to whichever text
@@ -18,13 +19,6 @@
   function patch(p) {
     d("elupdate", { id: element.id, patch: p });
   }
-
-  function rgbToHex([r, g, b]) {
-    return "#" + [r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("");
-  }
-  function hexToRgb(h) {
-    return [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
-  }
 </script>
 
 <textarea
@@ -34,10 +28,7 @@
   on:input={(e) => patch({ text: e.target.value })}
   placeholder="Type a name or word"
 ></textarea>
-<label>
-  Color
-  <input type="color" value={rgbToHex(element.colorRgb)} on:input={(e) => patch({ colorRgb: hexToRgb(e.target.value) })} />
-</label>
+<ThreadPicker label="Color" rgb={element.colorRgb} on:pick={(e) => patch({ colorRgb: e.detail })} />
 <h3>Font</h3>
 <FontSelect selected={element.fontKey} on:pick={(e) => patch({ fontKey: e.detail })} />
 <label class="letterspacing">

@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher } from "svelte";
   import { flattenRGBA, flatToRGBA, flatShares, mergeFlat, WORK_MAX_PX, ALPHA_CUTOFF } from "../lib/flatten.js";
+  import ThreadPicker from "./ThreadPicker.svelte";
 
   // Element-scoped image editor (Task 5, Slice 5). Pattern (see
   // TextStep.svelte for the same convention): settings patches dispatch an
@@ -222,12 +223,6 @@
   // lib/project.js's defaultImageElement and lib/imageRegions.js's
   // flatToRegions, which already reads it at generation time -- this panel
   // is just the UI for setting it).
-  function rgbToHex([r, g, b]) {
-    return "#" + [r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("");
-  }
-  function hexToRgb(h) {
-    return [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
-  }
   // Reactive (not a plain function called from the template) on purpose:
   // Svelte's dependency tracking for a template expression only sees
   // identifiers referenced TEXTUALLY in that expression, not ones read
@@ -240,11 +235,8 @@
   // `i in threadOverrides`) sidesteps that entirely.
   $: threadOverrides = element.threadRgb || {};
 
-  function threadHex(override, paletteColor) {
-    return rgbToHex(override || paletteColor);
-  }
-  function onThreadInput(i, e) {
-    patch({ threadRgb: { ...(element.threadRgb || {}), [i]: hexToRgb(e.target.value) } });
+  function onThreadPick(i, rgb) {
+    patch({ threadRgb: { ...(element.threadRgb || {}), [i]: rgb } });
   }
   function clearThread(i) {
     const next = { ...(element.threadRgb || {}) };
@@ -292,16 +284,14 @@
           </button>
           <!-- Thread color override for this swatch -- a distinct control
                from the swatch button above (merge-select stays a plain
-               click; stopPropagation here keeps the color picker and the
-               reset button from ever being mistaken for a swatch click). -->
+               click; ThreadPicker's own trigger stopPropagates internally,
+               and the reset button does the same, so neither is ever
+               mistaken for a swatch click). -->
           <div class="swatchthread">
-            <input
-              type="color"
-              class="threadinput"
-              value={threadHex(threadOverrides[i], c)}
-              on:click|stopPropagation
-              on:input|stopPropagation={(e) => onThreadInput(i, e)}
-              title="Thread color for this swatch"
+            <ThreadPicker
+              compact
+              rgb={threadOverrides[i] || c}
+              on:pick={(e) => onThreadPick(i, e.detail)}
             />
             {#if i in threadOverrides}
               <button
