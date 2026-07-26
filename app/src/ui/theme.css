@@ -468,8 +468,13 @@ body {
 }
 
 .tile {
-  padding: var(--space-5) var(--space-3);
-  min-height: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-3);
+  min-height: 92px;
   border: 2px solid var(--border);
   border-radius: var(--radius-m);
   background: var(--surface);
@@ -478,7 +483,25 @@ body {
 }
 
 .tile:hover { border-color: var(--accent); }
-.tile.sel { border-color: var(--accent); background: var(--tint); font-weight: 600; }
+.tile.sel { border-color: var(--accent); background: var(--tint); }
+.tile.sel .tile-label { font-weight: 600; color: var(--accent); }
+
+/* Garment icon (Slice 8 Task 3) -- one inline SVG per garment id (see
+   garmentArt.js), icon-over-label. Icon strokes `currentColor` (the tile's
+   own text color) except the ONE accent detail each icon carries via
+   `class="acc"`, which always stays the confident accent regardless of
+   selection state. */
+.gart {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+.tile.sel .gart, .tile:hover .gart { color: var(--ink); }
+.gart svg { width: 34px; height: 34px; display: block; }
+.gart .acc { stroke: var(--accent); }
+
+.tile-label { font-size: var(--fs-sm); line-height: 1.2; }
 
 /* Fabric color row (Garment step, Slice 8 Task 2) -- ~8 common garment
    tones + a raw-input "Custom" swatch, always in-flow (B6: no popover). */
@@ -513,7 +536,7 @@ input.fabriccustom[type="color"] {
    wider layout flow to 4-up. */
 .templates {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: var(--gap);
   margin-bottom: var(--space-5);
 }
@@ -523,7 +546,7 @@ input.fabriccustom[type="color"] {
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-1);
-  padding: var(--space-4) var(--space-3);
+  padding: var(--space-3) var(--space-3) var(--space-4);
   min-height: 64px;
   border: 2px solid var(--border);
   border-radius: var(--radius-m);
@@ -533,6 +556,31 @@ input.fabriccustom[type="color"] {
 }
 
 .tcard:hover { border-color: var(--accent); }
+
+/* Mini stitch preview (Slice 8 Task 3) -- generated lazily via the same
+   buildLetteringDesign -> renderRealistic path used elsewhere, cached
+   module-level in TemplateRow.svelte. Fixed-height box so the card doesn't
+   jump once the (idle-scheduled) preview lands. */
+.tcard-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 52px;
+  border-radius: var(--radius-s);
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.tcard-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.tcard-preview svg { width: 30px; height: 30px; color: var(--muted); }
+.tcard-preview .acc { stroke: var(--accent); }
 
 .tcard-label { font-weight: 600; font-size: var(--fs-md); }
 .tcard-hint { font-size: var(--fs-xs); color: var(--muted); }
@@ -774,7 +822,7 @@ input[type="color"] {
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
-  min-height: 56px;
+  min-height: 64px;
   border: 2px solid var(--border);
   border-radius: var(--radius-m);
   background: var(--surface);
@@ -782,7 +830,10 @@ input[type="color"] {
 }
 .fs-trigger:hover { border-color: var(--accent); }
 
-.fs-thumb { height: 34px; width: auto; max-width: 210px; border-radius: var(--radius-s); display: block; }
+/* Bigger thumbnails (Slice 8 Task 3): 280x44 renders (up from 220x56) --
+   height/max-width scaled to match so the wider aspect ratio still fits the
+   trigger/list rows without overflowing. */
+.fs-thumb { height: 40px; width: auto; max-width: 260px; border-radius: var(--radius-s); display: block; }
 .fs-name { font-size: var(--fs-md); color: var(--ink); }
 .fs-chevron { margin-left: auto; color: var(--muted); }
 .fs-chevron.open { transform: rotate(180deg); }
@@ -803,6 +854,24 @@ input[type="color"] {
   box-shadow: var(--shadow-2);
 }
 .fs-list li { list-style: none; }
+
+/* Group headers (Sans/Serif/Script/Display/More) -- plain, NON-sticky rows
+   (a sticky header inside this scrollable list is fragile: same overflow
+   trap as the Slice 7 popover lesson) that just sit in the document flow
+   between groups of options. */
+.fs-group-header {
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.fs-group-header:not(:first-child) {
+  margin-top: var(--space-1);
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-2);
+}
 
 .fs-opt {
   width: 100%;

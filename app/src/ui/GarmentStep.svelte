@@ -3,6 +3,7 @@
   import { createEventDispatcher } from "svelte";
   import TemplateRow from "./TemplateRow.svelte";
   import Hint from "./Hint.svelte";
+  import { garmentArt } from "./garmentArt.js";
   export let project;
   // Whether the "templates" onboarding hint should render right now -- App
   // computes this from hints.js's shouldShow("templates") plus the A7
@@ -67,7 +68,8 @@
 <div class="tiles">
   {#each tiles as t}
     <button class="tile" class:sel={project.garmentId === t.id} on:click={() => d("update", { garmentId: t.id })}>
-      {t.label}
+      <span class="gart" aria-hidden="true">{@html garmentArt(t.id)}</span>
+      <span class="tile-label">{t.label}</span>
     </button>
   {/each}
 </div>
