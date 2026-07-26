@@ -3,7 +3,7 @@
   import { generateAll } from "../lib/generate.js";
   import { renderRealistic, isDark } from "../lib/preview.js";
   import { EMB } from "../lib/emb.js";
-  import { designRectPx, hitTest, pickElement, dragResize, dragMove, clampOffsets } from "../lib/interact.js";
+  import { designRectPx, hitTest, pickElement, dragResize, dragMove, clampOffsets, clampPan } from "../lib/interact.js";
   import Hint from "./Hint.svelte";
 
   // Task 4 (Slice 5): the field now renders every element in the project
@@ -336,14 +336,13 @@
     const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, oldZoom * factor));
     if (newZoom === oldZoom) return;
     const k = newZoom / oldZoom;
-    let panX = (p.x - ccx) * (1 - k) + view.panX * k;
-    let panY = (p.y - ccy) * (1 - k) + view.panY * k;
+    const rawPanX = (p.x - ccx) * (1 - k) + view.panX * k;
+    const rawPanY = (p.y - ccy) * (1 - k) + view.panY * k;
     // Soft clamp so panning/zooming can never push the hoop entirely off
-    // canvas -- keeps at least some of the field's edge reachable.
-    const maxPanX = (cw * (newZoom - 1)) / 2 + 40;
-    const maxPanY = (ch * (newZoom - 1)) / 2 + 40;
-    panX = Math.min(maxPanX, Math.max(-maxPanX, panX));
-    panY = Math.min(maxPanY, Math.max(-maxPanY, panY));
+    // canvas -- keeps at least some of the field's edge reachable. Shared
+    // (lib/interact.js's clampPan) with the pan-drag branch of onPointerMove
+    // below, so a pointer-capture drag gets the exact same clamp this does.
+    const { panX, panY } = clampPan(rawPanX, rawPanY, newZoom, cw, ch);
     view = { zoom: newZoom, panX, panY };
     scheduleViewRepaint();
   }
@@ -504,11 +503,15 @@
       return;
     }
     if (dragMode === "pan") {
-      view = {
-        zoom: view.zoom,
-        panX: dragStartPanX + (p.x - dragStartPx.x),
-        panY: dragStartPanY + (p.y - dragStartPx.y),
-      };
+      // B-fix (Slice 8 final review): pointer capture lets this drag travel
+      // far past the canvas edge, so the raw delta must go through the SAME
+      // clampPan() zoomBy() uses -- an unclamped assignment here could push
+      // the hoop entirely off canvas with no way back except the fit-reset
+      // zoom button.
+      const rawPanX = dragStartPanX + (p.x - dragStartPx.x);
+      const rawPanY = dragStartPanY + (p.y - dragStartPx.y);
+      const { panX, panY } = clampPan(rawPanX, rawPanY, view.zoom, canvas.width, canvas.height);
+      view = { zoom: view.zoom, panX, panY };
       scheduleViewRepaint();
       return;
     }
@@ -558,7 +561,7 @@
       on:wheel={onWheel}
     ></canvas>
     {#if !hasDesign && !error && hint}
-      <p class="fieldhint">{hint}</p>
+      <p class="fieldhint" class:on-dark={project && project.fabricRgb && isDark(project.fabricRgb)}>{hint}</p>
     {/if}
     {#if showDragHint}
       <Hint floating on:dismiss={() => dispatch("dismisshint")}>

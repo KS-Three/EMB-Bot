@@ -1,5 +1,5 @@
 import { test, expect } from "vitest";
-import { designRectPx, hitTest, dragResize, dragMove, clampOffsets, pickElement } from "./interact.js";
+import { designRectPx, hitTest, dragResize, dragMove, clampOffsets, pickElement, clampPan } from "./interact.js";
 
 // ---- designRectPx ---------------------------------------------------------
 
@@ -143,6 +143,45 @@ test("dragMove delegates to clampOffsets (same result for the equivalent absolut
   const viaDrag = dragMove(5, 5, 10, -20, 20, 20, 100, 100); // start (5,5), dx=10, dy=-20 -> raw (15, 25)
   const viaClamp = clampOffsets(15, 25, 20, 20, 100, 100);
   expect(viaDrag).toEqual(viaClamp);
+});
+
+// ---- clampPan --------------------------------------------------------------
+// Same soft-clamp rule zoomBy() has always applied on zoom, now shared with
+// the pan-drag branch of onPointerMove (EmbroideryField.svelte) so a
+// pointer-capture drag that travels far past the canvas edge can't push the
+// hoop entirely off-canvas.
+
+test("clampPan passes through a pan that's already within range", () => {
+  // canvas 760x560, zoom 2 -> maxPanX = (760*1)/2+40 = 420, maxPanY = (560*1)/2+40 = 320
+  const r = clampPan(100, -50, 2, 760, 560);
+  expect(r.panX).toBeCloseTo(100, 5);
+  expect(r.panY).toBeCloseTo(-50, 5);
+});
+
+test("clampPan clamps an over-the-edge pan back to the max on each axis", () => {
+  const r = clampPan(10000, -10000, 2, 760, 560);
+  expect(r.panX).toBeCloseTo(420, 5);
+  expect(r.panY).toBeCloseTo(-320, 5);
+});
+
+test("clampPan still allows the flat 40px slack at MIN_ZOOM (zoom=1)", () => {
+  // At zoom=1 the "(cw*(zoom-1))/2" term is 0, leaving just the flat +40 slack.
+  const r = clampPan(1000, 1000, 1, 760, 560);
+  expect(r.panX).toBe(40);
+  expect(r.panY).toBe(40);
+});
+
+test("clampPan's reachable range grows with zoom", () => {
+  const atZoom2 = clampPan(10000, 0, 2, 760, 560);
+  const atZoom4 = clampPan(10000, 0, 4, 760, 560);
+  expect(atZoom4.panX).toBeGreaterThan(atZoom2.panX);
+});
+
+test("clampPan is symmetric (negative pan clamps to -max, matching positive's +max)", () => {
+  const pos = clampPan(10000, 10000, 2, 760, 560);
+  const neg = clampPan(-10000, -10000, 2, 760, 560);
+  expect(neg.panX).toBeCloseTo(-pos.panX, 5);
+  expect(neg.panY).toBeCloseTo(-pos.panY, 5);
 });
 
 // ---- pickElement -----------------------------------------------------------

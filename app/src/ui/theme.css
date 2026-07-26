@@ -410,6 +410,18 @@ body {
   pointer-events: none;
 }
 
+/* B7-consistent dark-fabric variant: the empty-state canvas paints
+   project.fabricRgb (clearToFabric() in EmbroideryField.svelte), so on a
+   dark swatch (Black/Navy/Forest) --muted measures only ~3.8:1 against it --
+   under WCAG AA's 4.5:1. Reuses --tint-border, the SAME light-chrome token
+   EmbroideryField's selectionColor() switches the selection box/handles to
+   on dark fabric (both keyed off lib/preview.js's isDark()), so the
+   dark-fabric palette stays identical between canvas-drawn and CSS-drawn
+   chrome instead of introducing a new one-off color. */
+.fieldhint.on-dark {
+  color: var(--tint-border);
+}
+
 .fieldmeta { min-height: 1.25rem; font-size: var(--fs-md); }
 
 /* Zoom control -- overlaid on the field's bottom-right corner (Slice 8 Task

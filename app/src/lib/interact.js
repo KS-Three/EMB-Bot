@@ -91,6 +91,23 @@ export function clampOffsets(offXMm, offYMm, designWmm, designHmm, hoopWmm, hoop
   return { offsetXMm: offsetXMm + 0, offsetYMm: offsetYMm + 0 };
 }
 
+// Clamps a view pan offset so a pan/zoom can never push the hoop entirely
+// off canvas -- the reachable travel grows with zoom (more zoomed in => more
+// slack to pan around), plus a flat 40px of slack so even at zoom===MIN_ZOOM
+// there's a little play. Shared by EmbroideryField's zoomBy() (wheel/button
+// zoom, which solves for a new pan to keep the zoom anchor fixed) AND the
+// pan-drag branch of onPointerMove -- pointer capture lets a pan drag travel
+// across the whole screen, well past the canvas edge, so the drag branch
+// needs the SAME clamp zoomBy already applied, not an unclamped assignment.
+export function clampPan(panX, panY, zoom, cw, ch) {
+  const maxPanX = (cw * (zoom - 1)) / 2 + 40;
+  const maxPanY = (ch * (zoom - 1)) / 2 + 40;
+  return {
+    panX: Math.min(maxPanX, Math.max(-maxPanX, panX)),
+    panY: Math.min(maxPanY, Math.max(-maxPanY, panY)),
+  };
+}
+
 // Picks which element (by id) a canvas point falls in, for click-to-select
 // on a multi-element field. `rects` is an array of { id, x, y, w, h } canvas
 // rects (see designRectPx), one per ready element, in the SAME order as
