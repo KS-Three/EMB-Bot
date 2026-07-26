@@ -441,6 +441,67 @@ body {
 
 .eladd:hover { border-color: var(--accent); color: var(--accent); }
 
+/* Onboarding hints (Slice 7 Task 3) — a small dismissible bubble (icon +
+   sentence + ✕), at most one shown at a time (see App.svelte's hints.js
+   wiring for the priority rule). `templates`/`add-elements` render in-flow
+   next to their anchor with a distinct background (plan amendment A9);
+   only `drag-field` floats, absolutely positioned over the field canvas's
+   corner where nothing else is interactive. No animation either way.
+   Named `.hintbubble*` (not `.hint*`) — `.hint` is already a plain muted
+   helper-text class used elsewhere (ImagePanel.svelte, App.svelte's create
+   step), unrelated to this dismissible-bubble component. */
+.hintbubble {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+}
+
+.hintbubble-icon { flex: 0 0 auto; line-height: 1.3; }
+
+.hintbubble-text { flex: 1; min-width: 0; margin: 0; line-height: 1.35; }
+
+.hintbubble-x {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.hintbubble-x:hover { color: var(--ink); }
+
+/* In-flow: a distinct-background callout row inserted next to its anchor
+   (above the Quick-start row for templates; by +Text/+Image for
+   add-elements). Plain document flow -- no absolute positioning. */
+.hintbubble-inflow {
+  background: #eaf1ff;
+  border: 1px solid #cfe0fb;
+  margin-bottom: 1rem;
+}
+
+/* Floating: drag-field ONLY. Sits over the field canvas's top-right corner
+   -- `.hoop` (its host, in EmbroideryField.svelte) is already
+   `position: relative`. */
+.hintbubble-floating {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  max-width: 220px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 20px rgba(20, 30, 60, 0.18);
+}
+
 /* Text step */
 .textin {
   width: 100%;

@@ -14,6 +14,7 @@
     duplicateProject,
     listProjects,
   } from "./lib/projects.js";
+  import { shouldShow, dismiss, visibleHint } from "./lib/hints.js";
   import { EMB } from "./lib/emb.js";
   import GarmentStep from "./ui/GarmentStep.svelte";
   import ContentStep from "./ui/ContentStep.svelte";
@@ -86,6 +87,63 @@
   $: selectedElement = project.elements.find((el) => el.id === project.selectedId) || project.elements[0];
 
   const MM_PER_INCH = 25.4;
+
+  // ---- Onboarding hints (Slice 7 Task 3) ------------------------------------
+  //
+  // Each hint has its own "still shown" boolean, seeded once at boot from
+  // hints.js's shouldShow() (storage-backed, defaults to true) and flipped
+  // locally the instant it's dismissed -- see dismissHint(), the single path
+  // that also persists the dismissal via hints.js's dismiss(). App.svelte is
+  // only ever instantiated once (main.js), so this top-level `let` runs
+  // exactly once per page load, which is the right lifetime for "seen this
+  // session/before".
+  //
+  // At most one hint renders at a time (plan amendment A7): `eligibleHints`
+  // collects whichever of the three are BOTH still-shown AND contextually
+  // eligible right now --
+  //   drag-field   ⇔ the combined design has stitches (hasStitches, from
+  //                  EmbroideryField's "stats" event -- A8)
+  //   add-elements ⇔ on the content step with < 2 elements
+  //   templates    ⇔ on the garment step
+  // -- and hands that list to hints.js's visibleHint(), which picks the
+  // single highest-priority one (drag-field > add-elements > templates).
+  // Note the embroidery field (and therefore drag-field's eligibility) is
+  // visible alongside EVERY step, so it can legitimately outrank templates
+  // even while step === "garment".
+  let templatesShown = shouldShow("templates");
+  let addElementsShown = shouldShow("add-elements");
+  let dragFieldShown = shouldShow("drag-field");
+  let hasStitches = false;
+
+  function dismissHint(key) {
+    dismiss(key);
+    if (key === "templates") templatesShown = false;
+    else if (key === "add-elements") addElementsShown = false;
+    else if (key === "drag-field") dragFieldShown = false;
+  }
+
+  // EmbroideryField's "stats" event -- reports the COMBINED design's stitch
+  // count after every generate attempt (0 on error/no-content).
+  function onStats(detail) {
+    hasStitches = !!(detail && detail.stitchCount > 0);
+  }
+
+  $: eligibleHints = [
+    dragFieldShown && hasStitches ? "drag-field" : null,
+    addElementsShown && step === "content" && project.elements.length < 2 ? "add-elements" : null,
+    templatesShown && step === "garment" ? "templates" : null,
+  ].filter(Boolean);
+  $: visibleHintKey = visibleHint(eligibleHints);
+  $: showTemplatesHint = visibleHintKey === "templates";
+  $: showAddElementsHint = visibleHintKey === "add-elements";
+  $: showDragFieldHint = visibleHintKey === "drag-field";
+
+  // Permanent auto-dismiss (same effect as clicking ✕): once a second
+  // element exists, the user has already discovered +Text/+Image, so this
+  // never shows again even if they later remove elements back down to one.
+  // Guarded on addElementsShown so it only ever fires the one time it
+  // transitions true -> false.
+  $: if (addElementsShown && project.elements.length >= 2) dismissHint("add-elements");
 
   // Single write path to the registry (Slice 7 Task 2) — replaces every old
   // saveLocal(project) call site. saveProject is a safe no-op if currentId
@@ -309,19 +367,27 @@
   <aside class="panel">
     <div class="panel-body">
       {#if step === "garment"}
-        <GarmentStep {project} on:update={(e) => apply(e.detail)} on:template={(e) => pickTemplate(e.detail)} />
+        <GarmentStep
+          {project}
+          {showTemplatesHint}
+          on:update={(e) => apply(e.detail)}
+          on:template={(e) => pickTemplate(e.detail)}
+          on:dismisshint={() => dismissHint("templates")}
+        />
       {:else if step === "content"}
         <ContentStep
           {project}
           workImage={runtime.workImages[project.selectedId]}
           flat={runtime.flats[project.selectedId]}
           {designDims}
+          {showAddElementsHint}
           on:elupdate={(e) => elUpdate(e.detail.id, e.detail.patch)}
           on:select={(e) => onSelect(e.detail)}
           on:addelement={(e) => onAddElement(e.detail)}
           on:removeelement={(e) => onRemoveElement(e.detail)}
           on:image={(e) => onImage(project.selectedId, e.detail)}
           on:flat={(e) => onFlat(project.selectedId, e.detail)}
+          on:dismisshint={() => dismissHint("add-elements")}
         />
       {:else if step === "create"}
         <div class="createstep">
@@ -351,9 +417,12 @@
     <EmbroideryField
       {project}
       {runtime}
+      showDragHint={showDragFieldHint}
       on:elupdate={(e) => elUpdate(e.detail.id, e.detail.patch)}
       on:select={(e) => onSelect(e.detail)}
       on:dims={(e) => onDims(e.detail)}
+      on:stats={(e) => onStats(e.detail)}
+      on:dismisshint={() => dismissHint("drag-field")}
     />
   </section>
 </div>

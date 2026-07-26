@@ -4,6 +4,7 @@
   import { renderRealistic, hoopTransform, drawHoopOutline } from "../lib/preview.js";
   import { EMB } from "../lib/emb.js";
   import { designRectPx, hitTest, pickElement, dragResize, dragMove, clampOffsets } from "../lib/interact.js";
+  import Hint from "./Hint.svelte";
 
   // Task 4 (Slice 5): the field now renders every element in the project
   // (generateAll's combined design) instead of a single design, and drag/
@@ -13,6 +14,12 @@
   // `flat` prop.
   export let project;
   export let runtime;
+  // Whether the floating "drag-field" onboarding hint should render right
+  // now -- App.svelte computes this from hints.js's shouldShow("drag-field")
+  // + the A8 eligibility condition (the combined design has stitchCount > 0,
+  // reported via this component's own "stats" event below) + the A7
+  // cross-hint priority rule.
+  export let showDragHint = false;
 
   const dispatch = createEventDispatcher();
   const MM_PER_INCH = 25.4;
@@ -172,6 +179,9 @@
       hasDesign = false;
       clearToFabric();
       dispatch("dims", null);
+      // No design generated at all -- report zero stitches so App's
+      // "drag-field" hint eligibility (A8) drops out too.
+      dispatch("stats", { stitchCount: 0 });
       return;
     }
 
@@ -180,12 +190,18 @@
       hint = "Your embroidery appears here as you add content.";
       clearToFabric();
       dispatch("dims", null);
+      dispatch("stats", { stitchCount: 0 });
       return;
     }
 
     const garment = garmentFor(project);
     const c = result.combined;
     stats = `${c.stitchCount} stitches · ${c.widthMM.toFixed(0)}×${c.heightMM.toFixed(0)} mm`;
+    // Reports the COMBINED design's stitch count (not just the selected
+    // element's) -- App uses this for the "drag-field" hint's A8 eligibility
+    // condition, which is about whether there's anything on the field to
+    // drag at all, regardless of which element happens to be selected.
+    dispatch("stats", { stitchCount: c.stitchCount });
     // colorOverride is gone — each element now bakes its own color into its
     // stitches at generation time (see generate.js's generateElement), so
     // the combined design already carries the right colors per-part.
@@ -266,6 +282,15 @@
   }
 
   function onPointerDown(e) {
+    // Auto-dismiss the drag-field hint on the first pointerdown on the
+    // canvas WHILE it's actually showing -- gating on showDragHint (rather
+    // than dismissing unconditionally) means a click on an empty field
+    // before any design exists can never burn the one teaching moment this
+    // hint exists for (it isn't eligible/shown yet at that point). App.svelte
+    // owns the persisted hints.js dismiss() call; this only reports that the
+    // interaction happened.
+    if (showDragHint) dispatch("dismisshint");
+
     if (!canvas || !renderResult) return;
     const p = canvasPointFromEvent(e);
 
@@ -366,6 +391,11 @@
     ></canvas>
     {#if !hasDesign && !error && hint}
       <p class="fieldhint">{hint}</p>
+    {/if}
+    {#if showDragHint}
+      <Hint floating on:dismiss={() => dispatch("dismisshint")}>
+        Drag the design to move it — corners resize.
+      </Hint>
     {/if}
   </div>
   <div class="fieldmeta">
