@@ -772,8 +772,15 @@ input[type="range"] {
   height: 6px;
   border-radius: 3px;
   background: var(--border);
-  outline: none;
   -webkit-appearance: none;
+}
+
+/* Sliders keep the global :focus-visible ring — a bare `outline: none` here
+   would out-specify it (0,1,1 beats 0,1,0) and leave keyboard users with no
+   focus indicator on the curve / letter-spacing controls. */
+input[type="range"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }
 
 input[type="range"]::-webkit-slider-thumb {
