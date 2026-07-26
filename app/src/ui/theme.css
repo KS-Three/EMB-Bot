@@ -911,6 +911,42 @@ canvas {
 canvas { touch-action: none; }
 
 /* Download step */
+
+/* "Threads" summary (Slice 8 Task 4) -- the combined design's raw stitch
+   colors mapped onto the closest named shade (lib/threads.js's
+   nearestThread), one row per color block, above the format buttons. */
+.threadsummary { margin-bottom: var(--space-5); }
+
+.threadlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.threadrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  background: var(--surface);
+}
+
+.threadrow-swatch {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--border);
+}
+
+.threadrow-name { flex: 1; min-width: 0; font-weight: 600; font-size: var(--fs-sm); }
+.threadrow-block { flex: 0 0 auto; color: var(--muted); font-size: var(--fs-xs); white-space: nowrap; }
+
 .formats {
   display: flex;
   flex-wrap: wrap;
@@ -1110,13 +1146,111 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   gap: var(--space-1);
 }
 
-input.threadinput[type="color"] {
-  width: 22px;
-  height: 22px;
+/* Thread color picker (Slice 8 Task 4) -- B6 (NON-NEGOTIABLE): NOT a
+   floating popover. `.tp-panel` renders IN NORMAL DOCUMENT FLOW directly
+   below `.tp-trigger`, same in-flow pattern as the fabric-color row above --
+   the scrollable .panel-body clips absolutely-positioned overlays (the
+   Slice-7 A9 lesson), so nothing here uses position: absolute/z-index. */
+.threadpicker { display: flex; flex-direction: column; align-items: flex-start; }
+
+.tp-label {
+  margin-bottom: var(--space-1);
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.tp-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  min-height: 44px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-s);
+  background: var(--surface);
+  cursor: pointer;
+}
+.tp-trigger:hover { border-color: var(--accent); }
+
+.tp-swatch {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--border);
+}
+
+.tp-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  font-size: var(--fs-sm);
+  color: var(--ink);
+}
+
+.tp-chevron { flex: 0 0 auto; color: var(--muted); }
+.tp-chevron.open { transform: rotate(180deg); }
+
+/* Compact variant (ImagePanel's per-swatch thread override): swatch-only
+   trigger, no name text, so it fits alongside the palette chip + reset
+   button in a narrow row. */
+.threadpicker.compact .tp-trigger {
+  width: auto;
+  padding: var(--space-1);
+  min-height: 0;
+  gap: 0;
+}
+.threadpicker.compact .tp-swatch { width: 22px; height: 22px; }
+.threadpicker.compact .tp-chevron { font-size: var(--fs-xs); }
+
+/* The in-flow expanded panel -- a wrap grid of every named shade (~9
+   columns of 24px swatches; names live on the `title` attribute only, not
+   as visible text, so the grid stays compact) plus a "Custom…" row. */
+.tp-panel {
+  width: 100%;
+  margin-top: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+
+.tp-grid {
+  display: grid;
+  grid-template-columns: repeat(9, 24px);
+  gap: var(--space-1);
+}
+
+.tp-cell {
+  width: 24px;
+  height: 24px;
   padding: 0;
-  border: none;
+  border: 2px solid transparent;
   border-radius: var(--radius-s);
   cursor: pointer;
+}
+.tp-cell.sel { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+
+.tp-custom {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.tp-custom input[type="color"] {
+  width: 26px;
+  height: 26px;
 }
 
 .threadreset {
@@ -1215,12 +1349,14 @@ input.threadinput[type="color"] {
   .drawer-close,
   .elrow-x,
   .threadreset,
+  .tp-trigger,
+  .tp-cell,
   button.primary,
   .stepnav-controls button {
     transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease;
   }
 
-  .fs-chevron { transition: transform 150ms ease; }
+  .fs-chevron, .tp-chevron { transition: transform 150ms ease; }
 
   .tile:hover, .tcard:hover { transform: translateY(-1px); }
 }
