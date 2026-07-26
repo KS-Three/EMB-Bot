@@ -1,6 +1,6 @@
 <script>
   import { generateAll } from "../lib/generate.js";
-  import { exportDesign, exportWorksheetPDF } from "../lib/exporters.js";
+  import { exportDesign, exportWorksheetPDF, exportPNG } from "../lib/exporters.js";
   import { triggerDownload } from "../lib/download.js";
   import { EMB } from "../lib/emb.js";
   export let project;
@@ -40,6 +40,17 @@
       worksheetBusy = false;
     }
   }
+
+  async function dlPNG() {
+    try {
+      const design = buildDesign();
+      const out = await exportPNG(design);
+      triggerDownload({ bytes: out.blob, filename: out.filename, mime: out.mime });
+      msg = "Downloaded PNG";
+    } catch (e) {
+      msg = e.message;
+    }
+  }
 </script>
 
 <h2>Download</h2>
@@ -48,6 +59,7 @@
   <button on:click={() => dl("pes")}>PES</button>
   <button on:click={() => dl("exp")}>EXP</button>
   <button on:click={() => dl("svg")}>SVG</button>
+  <button on:click={dlPNG}>PNG</button>
   <button on:click={dlWorksheet} disabled={worksheetBusy}>PDF worksheet</button>
 </div>
 <p>{msg}</p>

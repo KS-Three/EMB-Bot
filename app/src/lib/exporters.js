@@ -1,4 +1,5 @@
 import { EMB } from "./emb.js";
+import { renderRealistic } from "./preview.js";
 
 export function exportDesign(design, format) {
   switch (format) {
@@ -26,4 +27,41 @@ export async function exportWorksheetPDF(design, garment) {
     fileName: "embbot-worksheet.pdf",
     garmentBox: { widthMM: garment.widthIn * 25.4, heightMM: garment.heightIn * 25.4 },
   });
+}
+
+// Renders design to a PNG preview image. Long side is 1200px, other side
+// scaled to preserve the design's aspect ratio (widthMM/heightMM). Uses
+// renderRealistic with design-fit (no hoop).
+export async function exportPNG(design) {
+  const aspectW = design.widthMM || 1;
+  const aspectH = design.heightMM || 1;
+  // Guard against zero: if either is 0 or missing, use 1:1 aspect.
+  const aspect = (aspectH !== 0) ? (aspectW / aspectH) : 1;
+
+  let w, h;
+  if (aspect >= 1) {
+    w = 1200;
+    h = Math.round(1200 / aspect);
+  } else {
+    h = 1200;
+    w = Math.round(1200 * aspect);
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+
+  renderRealistic(canvas, design, { pad: 40 });
+
+  const blob = await new Promise((resolve, reject) => {
+    canvas.toBlob((b) => {
+      if (b === null) {
+        reject(new Error("Failed to generate PNG: canvas.toBlob returned null"));
+      } else {
+        resolve(b);
+      }
+    }, "image/png");
+  });
+
+  return { blob, filename: "design.png", mime: "image/png" };
 }
