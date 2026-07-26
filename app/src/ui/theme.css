@@ -23,6 +23,8 @@ body {
 .topbar {
   display: flex;
   align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
   padding: 1rem 1.5rem;
   background: var(--card);
   border-bottom: 1px solid var(--border);
@@ -32,6 +34,208 @@ body {
   font-weight: 700;
   font-size: 1.15rem;
   letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+/* Editable project name — borderless until focused/hovered so it reads as
+   plain text, not a form control, until the user actually wants to edit it. */
+.projectname {
+  flex: 0 1 320px;
+  min-width: 120px;
+  padding: 0.4rem 0.6rem;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+}
+
+.projectname:hover { background: var(--bg); }
+.projectname:focus { outline: none; border-color: var(--accent); background: var(--card); }
+
+/* "My designs" — opens the ProjectsDrawer; badge shows the saved-project
+   count. Pinned to the right of the topbar. */
+.mydesigns {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  padding: 0.55rem 1rem;
+  min-height: 40px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mydesigns:hover { border-color: var(--accent); }
+
+.mydesigns .badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.4rem;
+  height: 1.4rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* Projects drawer — right-side overlay listing every saved design
+   (App.svelte's ProjectsDrawer). Fixed over the whole viewport (backdrop +
+   sliding panel) so it sits above the field regardless of scroll position. */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(20, 24, 34, 0.35);
+}
+
+.drawer {
+  width: 320px;
+  max-width: 90vw;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  box-shadow: -12px 0 32px rgba(20, 30, 60, 0.2);
+}
+
+.drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.drawer-head h2 { margin: 0; font-size: 1.1rem; }
+
+.drawer-close {
+  width: 32px;
+  height: 32px;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.drawer-close:hover { border-color: var(--accent); color: var(--accent); }
+
+.drawer-new {
+  margin: 1rem 1.25rem 0.5rem;
+  padding: 0.7rem 1rem;
+  min-height: 44px;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.drawer-new:hover { border-color: var(--accent); background: #eaf1ff; }
+
+.drawer-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.5rem 1.25rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.drawer-empty { color: var(--muted); font-size: 0.9rem; }
+
+.drawer-row {
+  padding: 0.75rem 0.85rem;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+}
+
+.drawer-row.current { border-color: var(--accent); background: #eaf1ff; }
+
+.drawer-row-info {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.drawer-row-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.drawer-row-date {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.drawer-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.drawer-row-actions button {
+  padding: 0.4rem 0.65rem;
+  min-height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.drawer-row-actions button:hover { border-color: var(--accent); color: var(--accent); }
+
+.drawer-row-actions button.danger { color: #c0392b; }
+.drawer-row-actions button.danger:hover { border-color: #c0392b; }
+
+/* Armed two-tap delete state (plan amendment A5) — filled red instead of
+   just red text, so "Really delete?" reads as a distinct, urgent state. */
+.drawer-row-actions button.danger.armed {
+  background: #c0392b;
+  border-color: #c0392b;
+  color: #fff;
+}
+.drawer-row-actions button.danger.armed:hover { border-color: #a5311f; }
+
+.drawer-rename-row { margin-bottom: 0.5rem; }
+
+.drawer-rename-row input {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  font: inherit;
+}
+.drawer-rename-row input:focus { outline: none; }
+
+@media (max-width: 480px) {
+  .drawer { width: 100%; max-width: 100%; }
 }
 
 /* Two-pane studio: guided steps on the left, live embroidery field on the right */
@@ -236,6 +440,67 @@ body {
 }
 
 .eladd:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Onboarding hints (Slice 7 Task 3) — a small dismissible bubble (icon +
+   sentence + ✕), at most one shown at a time (see App.svelte's hints.js
+   wiring for the priority rule). `templates`/`add-elements` render in-flow
+   next to their anchor with a distinct background (plan amendment A9);
+   only `drag-field` floats, absolutely positioned over the field canvas's
+   corner where nothing else is interactive. No animation either way.
+   Named `.hintbubble*` (not `.hint*`) — `.hint` is already a plain muted
+   helper-text class used elsewhere (ImagePanel.svelte, App.svelte's create
+   step), unrelated to this dismissible-bubble component. */
+.hintbubble {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+}
+
+.hintbubble-icon { flex: 0 0 auto; line-height: 1.3; }
+
+.hintbubble-text { flex: 1; min-width: 0; margin: 0; line-height: 1.35; }
+
+.hintbubble-x {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.hintbubble-x:hover { color: var(--ink); }
+
+/* In-flow: a distinct-background callout row inserted next to its anchor
+   (above the Quick-start row for templates; by +Text/+Image for
+   add-elements). Plain document flow -- no absolute positioning. */
+.hintbubble-inflow {
+  background: #eaf1ff;
+  border: 1px solid #cfe0fb;
+  margin-bottom: 1rem;
+}
+
+/* Floating: drag-field ONLY. Sits over the field canvas's top-right corner
+   -- `.hoop` (its host, in EmbroideryField.svelte) is already
+   `position: relative`. */
+.hintbubble-floating {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  max-width: 220px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 20px rgba(20, 30, 60, 0.18);
+}
 
 /* Text step */
 .textin {

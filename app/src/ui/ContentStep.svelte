@@ -3,7 +3,13 @@
   import TextStep from "./TextStep.svelte";
   import ImagePanel from "./ImagePanel.svelte";
   import SizePanel from "./SizePanel.svelte";
+  import Hint from "./Hint.svelte";
   export let project;
+  // Whether the "add-elements" onboarding hint should render right now --
+  // App computes this (shouldShow("add-elements") + the A7 priority rule +
+  // the elements.length < 2 eligibility condition) and also owns the
+  // permanent auto-dismiss once a second element gets added (see App.svelte).
+  export let showAddElementsHint = false;
   // Passed straight through to ImagePanel; owned by App so image state
   // survives this component (and ImagePanel) being torn down and recreated.
   export let workImage = null;
@@ -101,6 +107,9 @@
   {/each}
 </div>
 
+{#if showAddElementsHint}
+  <Hint on:dismiss={() => d("dismisshint")}>Combine text and a logo in one design.</Hint>
+{/if}
 <div class="eladd-row">
   <button type="button" class="eladd" on:click={() => d("addelement", "text")}>+ Text</button>
   <button type="button" class="eladd" on:click={() => d("addelement", "image")}>+ Image</button>
