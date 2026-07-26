@@ -20,20 +20,37 @@
   // For straight layout that arbitrary origin doesn't matter (every glyph
   // shares it, so rows stay level); for arcing text we need a real pivot
   // height, or rotation swings the ink (which can be 60+ units from y=0) by a
-  // huge lateral distance and scrambles glyph order. Derive it from the data:
-  // each glyph's own vertical midpoint (min/max of its rail points, in font
-  // units), memoized per glyph object since the same glyph repeats often.
-  const glyphYCenterCache = new WeakMap();
-  function glyphYCenterUnits(g) {
-    if (glyphYCenterCache.has(g)) return glyphYCenterCache.get(g);
-    let miny = Infinity, maxy = -Infinity;
+  // huge lateral distance and scrambles glyph order.
+  //
+  // The pivot MUST be the baseline (where letters rest — i.e. the BOTTOM of a
+  // glyph's ink, the max y in this y-down font space), not its vertical
+  // CENTER: a glyph's center varies hugely with its own height (a full
+  // cap-height "A"/"t" vs an x-height "a"/"n"), so averaging centers across a
+  // line put the whole arc's baseline ~30% of a letter's height away from
+  // where it should sit — every letter floated off the intended curve by the
+  // same large, constant amount (confirmed empirically: ~5mm inward at
+  // emMm=18). Bottoms, by contrast, are nearly IDENTICAL across almost every
+  // non-descending glyph in this font (empirically ~62-63 font units for caps
+  // AND x-height letters alike) — descenders (g/j/p/q/y) are the exception,
+  // dropping well below. So: take each glyph's own bottom, memoized per glyph
+  // object since the same glyph repeats often, and combine them with the
+  // MEDIAN (not mean) across the line so a stray descender can't drag the
+  // whole line's reference down.
+  const glyphBottomCache = new WeakMap();
+  function glyphBottomUnits(g) {
+    if (glyphBottomCache.has(g)) return glyphBottomCache.get(g);
+    let maxy = -Infinity;
     for (const col of g.cols) {
-      for (const p of col.railA) { if (p[1] < miny) miny = p[1]; if (p[1] > maxy) maxy = p[1]; }
-      for (const p of col.railB) { if (p[1] < miny) miny = p[1]; if (p[1] > maxy) maxy = p[1]; }
+      for (const p of col.railA) { if (p[1] > maxy) maxy = p[1]; }
+      for (const p of col.railB) { if (p[1] > maxy) maxy = p[1]; }
     }
-    const c = miny <= maxy ? (miny + maxy) / 2 : 0;
-    glyphYCenterCache.set(g, c);
+    const c = maxy > -Infinity ? maxy : 0;
+    glyphBottomCache.set(g, c);
     return c;
+  }
+  function medianOf(nums) {
+    const s = nums.slice().sort((a, b) => a - b);
+    return s.length ? s[s.length >> 1] : 0;
   }
 
   // Nearest arc-length fraction on a centerline chain C (with cumulative table
@@ -242,11 +259,14 @@
       const lineOriginXunits = arcDeg ? 0 : (maxAdvUnits - line.adv) / 2; // straight multi-line: center vs widest
       const lineAdvPx = line.adv * u2px;
       const R = arcDeg ? (lineAdvPx / arcRad) : 0;                 // px; arc radius for this line
-      // Shared rotation-pivot height for every glyph in this line (see
-      // glyphYCenterUnits above) — using ONE value per line (not each
-      // glyph's own center) keeps every letter's baseline aligned on the arc.
+      // Shared rotation-pivot height for every glyph in this line: the MEDIAN
+      // of each glyph's own baseline (see glyphBottomUnits above). One value
+      // per line (not each glyph's own reference) keeps every letter's
+      // baseline aligned on the SAME arc; using the true baseline (not the
+      // vertical center) keeps that arc at the radius the curve was actually
+      // designed for, instead of collapsed inward by half a letter-height.
       const baselinePx = arcDeg && line.glyphs.length
-        ? (line.glyphs.reduce((s, gl) => s + glyphYCenterUnits(gl.g), 0) / line.glyphs.length) * u2px
+        ? medianOf(line.glyphs.map((gl) => glyphBottomUnits(gl.g))) * u2px
         : 0;
 
       for (const { g, ox } of line.glyphs) {

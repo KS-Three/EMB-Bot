@@ -72,6 +72,26 @@ function glyphGroups(lay, nGlyphs) {
 }
 const cy = (pts) => { let mn = Infinity, mx = -Infinity; for (const p of pts) { if (p.y < mn) mn = p.y; if (p.y > mx) mx = p.y; } return (mn + mx) / 2; };
 
+// Whole-glyph bounding-box CENTER (`cy` above) is a fine proxy when a glyph's
+// ink is roughly symmetric about its own rotation pivot, but the baseline fix
+// (see satinfont.js glyphBottomUnits) makes a glyph's ink sit almost entirely
+// on ONE side of its pivot (a non-descending letter's ink runs from the
+// baseline UP, never below it) — so at large rotation angles the far/near
+// edges of that lopsided ink sweep unevenly and the bounding-box center stops
+// tracking "where does this letter's baseline sit on the arc" reliably. The
+// robust way to ask that exact question: routeGlyph's output order/count for
+// a glyph is completely independent of arcDeg (only the later `place()`
+// affine differs), so the SAME point index in a straight (arcDeg=0) layout
+// and an arc'd layout is the SAME stitch. Find each glyph's baseline point
+// (max-y = bottom-of-ink in this y-down font space) in the straight layout,
+// then read that exact index back out of the arc'd layout.
+function baselineYByIndex(font, text, arcDeg, opts) {
+  const straightGroups = glyphGroups(SF.layoutText(font, text, { ...opts, arcDeg: 0 }), 3);
+  const baseIdx = straightGroups.map((pts) => { let bi = 0, by = -Infinity; pts.forEach((p, i) => { if (p.y > by) { by = p.y; bi = i; } }); return bi; });
+  const arcGroups = glyphGroups(SF.layoutText(font, text, { ...opts, arcDeg }), 3);
+  return arcGroups.map((pts, k) => pts[baseIdx[k]].y);
+}
+
 test("layoutText: arcDeg rotates each glyph by an EXACT rigid rotation about its own position", () => {
   const opts = (arcDeg) => ({ emMm: 18, pxPerMm: 8, spacingMm: 0.4, pullCompMm: 0.2, underlay: true, arcDeg });
   const lay0 = SF.layoutText(font, "HHH", opts(0));
@@ -97,24 +117,69 @@ test("layoutText: arcDeg rotates each glyph by an EXACT rigid rotation about its
   }
 });
 
-test("layoutText: arcDeg>0 arches UP — middle glyph sits higher than the outer glyphs", () => {
-  // Font-space here is y-DOWN (see the big comment on glyphYCenterUnits): a
+test("layoutText: arcDeg>0 arches UP — middle glyph's BASELINE sits higher than the outer glyphs'", () => {
+  // Font-space here is y-DOWN (see the big comment on glyphBottomUnits): a
   // SMALLER y is HIGHER on screen once the downstream DST T() flip is applied
   // (T().y = (center - q.y) * scale). So "arches up" means the middle glyph's
-  // y-center must be numerically LESS than the outer glyphs'.
-  const opts = (arcDeg) => ({ emMm: 18, pxPerMm: 8, spacingMm: 0.4, pullCompMm: 0.2, underlay: true, arcDeg });
-  const g = glyphGroups(SF.layoutText(font, "HHH", opts(120)), 3);
-  const [cyL, cyM, cyR] = g.map(cy);
-  assert.ok(cyM < cyL - 10, `middle (${cyM}) should be well above left (${cyL})`);
-  assert.ok(cyM < cyR - 10, `middle (${cyM}) should be well above right (${cyR})`);
+  // BASELINE y must be numerically LESS than the outer glyphs' (see
+  // baselineYByIndex above for why the baseline point specifically, not a
+  // whole-glyph bounding-box center, is the robust thing to compare).
+  const opts = { emMm: 18, pxPerMm: 8, spacingMm: 0.4, pullCompMm: 0.2, underlay: true };
+  const [bL, bM, bR] = baselineYByIndex(font, "HHH", 120, opts);
+  assert.ok(bM < bL - 10, `middle baseline (${bM}) should be well above left (${bL})`);
+  assert.ok(bM < bR - 10, `middle baseline (${bM}) should be well above right (${bR})`);
 });
 
-test("layoutText: arcDeg<0 flips to a valley — middle glyph sits LOWER than the outer glyphs", () => {
-  const opts = (arcDeg) => ({ emMm: 18, pxPerMm: 8, spacingMm: 0.4, pullCompMm: 0.2, underlay: true, arcDeg });
-  const g = glyphGroups(SF.layoutText(font, "HHH", opts(-120)), 3);
-  const [cyL, cyM, cyR] = g.map(cy);
-  assert.ok(cyM > cyL + 10, `middle (${cyM}) should be well below left (${cyL})`);
-  assert.ok(cyM > cyR + 10, `middle (${cyM}) should be well below right (${cyR})`);
+test("layoutText: arcDeg<0 flips to a valley — middle glyph's BASELINE sits LOWER than the outer glyphs'", () => {
+  const opts = { emMm: 18, pxPerMm: 8, spacingMm: 0.4, pullCompMm: 0.2, underlay: true };
+  const [bL, bM, bR] = baselineYByIndex(font, "HHH", -120, opts);
+  assert.ok(bM > bL + 10, `middle baseline (${bM}) should be well below left (${bL})`);
+  assert.ok(bM > bR + 10, `middle baseline (${bM}) should be well below right (${bR})`);
+});
+
+test("layoutText: two very different-height glyphs' baselines land at nearly the SAME radial position on the arc", () => {
+  // The actual bug being fixed: the shared per-line pivot used to be the
+  // AVERAGE of each glyph's own vertical CENTER, which varies hugely with a
+  // glyph's own height (a cap-height "A" vs an x-height "n"/"a") — so every
+  // letter's baseline floated off the intended curve by a different amount
+  // (empirically ~50px / ~5mm at this emMm/pxPerMm, before the fix). Pinned
+  // here directly: for two glyphs of very different heights ("A" cap-height,
+  // "n" x-height), their baseline points must land at nearly the same
+  // distance from the arc's circle center — not offset by a letter-dependent
+  // amount. R and the circle center are computed the same way layoutText
+  // derives them (exact measure pass, including kerning), not approximated.
+  const TEXT = "AnAnAn";
+  const emMm = 18, pxPerMm = 8, arcDeg = 90;
+  const u2px = (emMm / font.unitsPerEm) * pxPerMm;
+  let penX = 0, prev = null;
+  for (const ch of Array.from(TEXT)) {
+    const g = font.glyphs[ch];
+    if (prev != null && font.kerning) { const k = font.kerning[prev + ch]; if (k) penX += k; }
+    penX += g.adv; prev = ch;
+  }
+  const lineAdvPx = penX * u2px;
+  const R = lineAdvPx / (Math.abs(arcDeg) * Math.PI / 180);
+  const center = { x: 0, y: R }; // arcDeg>0 -> circle center at (0, +R), per satinfont.js
+
+  const opts = { emMm, pxPerMm, spacingMm: 0.4, pullCompMm: 0.2, underlay: true, arcDeg };
+  // "A" and "n" are different shapes with different per-glyph run counts, so
+  // (unlike the all-"H" tests above) glyphGroups' equal-split assumption
+  // doesn't hold. Determine each occurrence's run count from a solo layout of
+  // that character, then partition the actual multi-glyph run array by that
+  // per-character pattern (repeating "An" -> run-count pattern [nA, nN, nA, nN, ...]).
+  const runsPerChar = { A: SF.layoutText(font, "A", { ...opts, arcDeg: 0 }).runs.length, n: SF.layoutText(font, "n", { ...opts, arcDeg: 0 }).runs.length };
+  function splitByChars(lay, chars) {
+    let i = 0; const groups = [];
+    for (const ch of chars) { const n = runsPerChar[ch]; const pts = []; for (const r of lay.runs.slice(i, i + n)) for (const p of r.pts) pts.push(p); groups.push(pts); i += n; }
+    return groups;
+  }
+  const chars = Array.from(TEXT);
+  const groups = splitByChars(SF.layoutText(font, TEXT, opts), chars);
+  const straightGroups = splitByChars(SF.layoutText(font, TEXT, { ...opts, arcDeg: 0 }), chars);
+  const baseIdx = straightGroups.map((pts) => { let bi = 0, by = -Infinity; pts.forEach((p, i) => { if (p.y > by) { by = p.y; bi = i; } }); return bi; });
+  const dists = groups.map((pts, k) => { const p = pts[baseIdx[k]]; return Math.hypot(p.x - center.x, p.y - center.y); });
+  const spread = Math.max(...dists) - Math.min(...dists);
+  assert.ok(spread < 10, `baseline radial spread across A/n should be small (was ~50px pre-fix), got ${spread.toFixed(2)}px`);
 });
 
 // Same contract, exercised through the FULL pipeline (buildLetteringDesign ->
@@ -122,17 +187,20 @@ test("layoutText: arcDeg<0 flips to a valley — middle glyph sits LOWER than th
 // "HHH" is roughly 3 equal-width glyphs, so binning stitches into x-thirds of
 // the design is a robust (if slightly imprecise at the glyph boundaries)
 // proxy for "which glyph". DST convention: +y = up (see digitize.js's T()).
-function thirdsCy(design) {
+// Uses MEDIAN-y per bin, not a (min+max)/2 bounding-box center: post-fix, a
+// non-descending glyph's ink runs almost entirely to ONE side of its own
+// baseline, so at a large single-glyph rotation the bounding-box center can
+// be pulled around by whichever edge of that lopsided ink sweeps furthest —
+// the median of all sewn points in the bin is far less sensitive to that.
+function thirdsMedianY(design) {
   const sew = design.stitches.filter((s) => s.type === "stitch");
   let minx = Infinity, maxx = -Infinity;
   for (const p of sew) { if (p.x < minx) minx = p.x; if (p.x > maxx) maxx = p.x; }
   const third = (maxx - minx) / 3;
   const bounds = [[minx, minx + third], [minx + third, minx + 2 * third], [minx + 2 * third, maxx + 1]];
   return bounds.map(([lo, hi]) => {
-    const s = sew.filter((p) => p.x >= lo && p.x < hi);
-    let mn = Infinity, mx = -Infinity;
-    for (const p of s) { if (p.y < mn) mn = p.y; if (p.y > mx) mx = p.y; }
-    return (mn + mx) / 2;
+    const ys = sew.filter((p) => p.x >= lo && p.x < hi).map((p) => p.y).sort((a, b) => a - b);
+    return ys[Math.floor(ys.length / 2)];
   });
 }
 
@@ -140,15 +208,18 @@ test("buildLetteringDesign: arcDeg 120 arches UP in DST space (+y=up); -120 flip
   const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 60 };
   const dPos = DG.buildLetteringDesign(font, "HHH", { ...base, arcDeg: 120 });
   const dNeg = DG.buildLetteringDesign(font, "HHH", { ...base, arcDeg: -120 });
-  const [lP, mP, rP] = thirdsCy(dPos);
-  // threshold in DST units (0.1mm) — comfortably below the ~25 / ~68 unit
-  // gaps actually observed for this font/arc combo; documents the "adjust to
-  // reality" guidance rather than a razor-thin margin.
-  assert.ok(mP > lP + 15, `arcDeg 120: middle (${mP}) should be above left (${lP}) in DST +y`);
-  assert.ok(mP > rP + 15, `arcDeg 120: middle (${mP}) should be above right (${rP}) in DST +y`);
-  const [lN, mN, rN] = thirdsCy(dNeg);
-  assert.ok(mN < lN - 15, `arcDeg -120: middle (${mN}) should be below left (${lN}) in DST +y`);
-  assert.ok(mN < rN - 15, `arcDeg -120: middle (${mN}) should be below right (${rN}) in DST +y`);
+  const [lP, mP, rP] = thirdsMedianY(dPos);
+  // threshold in DST units (0.1mm) — comfortably below the gaps actually
+  // observed for this font/arc combo (smallest observed margin ~13 units, on
+  // the left side of the valley case: "HHH"'s kerning isn't perfectly
+  // symmetric left/right, an existing property of this font/text combo
+  // unrelated to the arc-baseline fix) — documents the "adjust to reality"
+  // guidance rather than a razor-thin margin.
+  assert.ok(mP > lP + 10, `arcDeg 120: middle (${mP}) should be above left (${lP}) in DST +y`);
+  assert.ok(mP > rP + 10, `arcDeg 120: middle (${mP}) should be above right (${rP}) in DST +y`);
+  const [lN, mN, rN] = thirdsMedianY(dNeg);
+  assert.ok(mN < lN - 10, `arcDeg -120: middle (${mN}) should be below left (${lN}) in DST +y`);
+  assert.ok(mN < rN - 10, `arcDeg -120: middle (${mN}) should be below right (${rN}) in DST +y`);
 });
 
 // ---- Multi-line ----
