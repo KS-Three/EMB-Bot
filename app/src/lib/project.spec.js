@@ -22,6 +22,11 @@ test("defaultProject has sane v2 beginner defaults", () => {
   expect(p.elements[0]).toEqual(defaultTextElement("e1"));
 });
 
+test("defaultProject has a project-level fabricRgb default (Slice 8 Task 2)", () => {
+  const p = defaultProject();
+  expect(p.fabricRgb).toEqual([235, 232, 223]);
+});
+
 test("defaultTextElement has sane beginner defaults", () => {
   const el = defaultTextElement("e1");
   expect(el).toEqual({
@@ -231,6 +236,15 @@ test("migrateProject converts a real v1 image-mode fixture into one image elemen
   expect(el.type).toBe("image");
   expect(el.nColors).toBe(6);
   expect(el.removeBg).toBe(false);
+});
+
+test("migrateProject (B13) merges fabricRgb (and other project-level defaults) onto a migrated v1 blob", () => {
+  const v1 = { garmentId: "hat_front", text: "Kent", mode: "text" };
+  const m = migrateProject(v1);
+  expect(m.fabricRgb).toEqual([235, 232, 223]);
+  // and the v1 fields that WERE present still won out over the defaults
+  expect(m.garmentId).toBe("hat_front");
+  expect(m.elements[0].text).toBe("Kent");
 });
 
 test("migrateProject only carries over v1 fields that were actually present", () => {

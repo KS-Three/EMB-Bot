@@ -412,6 +412,47 @@ body {
 
 .fieldmeta { min-height: 1.25rem; font-size: var(--fs-md); }
 
+/* Zoom control -- overlaid on the field's bottom-right corner (Slice 8 Task
+   2). `.hoop` is already `position: relative`, so this just anchors there. */
+.zoomctl {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-1);
+}
+
+.zoombtn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--fs-md);
+  line-height: 1;
+  cursor: pointer;
+}
+.zoombtn:hover:not(:disabled) { background: var(--bg); }
+.zoombtn:disabled { color: var(--muted); cursor: default; opacity: 0.5; }
+.zoomfit { font-size: var(--fs-sm); }
+
+.zoompct {
+  min-width: 3.2em;
+  text-align: center;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
 /* Stack on narrow screens: field above the panel */
 @media (max-width: 820px) {
   .studio { grid-template-columns: 1fr; height: auto; }
@@ -438,6 +479,34 @@ body {
 
 .tile:hover { border-color: var(--accent); }
 .tile.sel { border-color: var(--accent); background: var(--tint); font-weight: 600; }
+
+/* Fabric color row (Garment step, Slice 8 Task 2) -- ~8 common garment
+   tones + a raw-input "Custom" swatch, always in-flow (B6: no popover). */
+.fabricrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+
+.fabricswatch {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-s);
+  cursor: pointer;
+}
+
+.fabricswatch.sel {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+input.fabriccustom[type="color"] {
+  width: 36px;
+  height: 36px;
+}
 
 /* Quick-start template cards — one-click starters shown above the garment
    tiles on the first step. 2x2 on the narrow left panel, auto-fill lets a
