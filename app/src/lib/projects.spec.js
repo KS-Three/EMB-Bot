@@ -50,6 +50,27 @@ function makeThrowingStorage(initial = {}) {
   };
 }
 
+// Simulates a PARTIAL storage failure: only the keys named in `throwingKeys`
+// throw on setItem (everything else behaves like normal memory storage).
+// Used to reproduce "the project record write succeeds but the index write
+// doesn't" -- the exact partial-failure shape createProject/duplicateProject
+// must roll back cleanly instead of leaving an orphaned, unindexed record
+// behind.
+function makePartialThrowingStorage(throwingKeys, initial = {}) {
+  const store = new Map(Object.entries(initial));
+  return {
+    getItem: (k) => (store.has(k) ? store.get(k) : null),
+    setItem: (k, v) => {
+      if (throwingKeys.includes(k)) throw new Error("storage full (partial)");
+      store.set(k, String(v));
+    },
+    removeItem: (k) => {
+      store.delete(k);
+    },
+    _store: store,
+  };
+}
+
 beforeEach(() => {
   globalThis.localStorage = makeMemoryStorage();
 });
@@ -77,6 +98,46 @@ test("createProject/duplicateProject mint distinct ids on consecutive calls", ()
   const c = duplicateProject(a.id);
   expect(c.id).not.toBe(a.id);
   expect(c.id).not.toBe(b.id);
+});
+
+// --- createProject/duplicateProject: partial storage failure --------------
+// (record write succeeds, index write fails -- the exact "orphan record"
+// hazard that used to poison auto-save for the rest of every future
+// session, since saveProject/renameProject/deleteProject all treat an
+// unindexed id as a no-op.)
+
+test("createProject rolls back the record and does not set CURRENT_KEY when only the index write fails", () => {
+  globalThis.localStorage = makePartialThrowingStorage(["embstudio:index"]);
+
+  const { id, project } = createProject("Hat");
+
+  // still returns a working in-memory project (degraded-but-consistent)
+  expect(project).toEqual(defaultProject());
+  // the record write that happened before the failed index write must be
+  // undone -- no orphan record left behind
+  expect(localStorage.getItem("embstudio:p:" + id)).toBeNull();
+  // and CURRENT_KEY must NOT point at an id the index doesn't know about
+  expect(currentProjectId()).toBeNull();
+  expect(listProjects()).toEqual([]);
+});
+
+test("duplicateProject rolls back the new record and returns null when only the index write fails", () => {
+  const { id } = createProject("Original"); // succeeds on normal memory storage
+  const seed = Object.fromEntries(globalThis.localStorage._store);
+  globalThis.localStorage = makePartialThrowingStorage(["embstudio:index"], seed);
+
+  const before = listProjects();
+  const dup = duplicateProject(id);
+
+  expect(dup).toBeNull();
+  expect(listProjects()).toEqual(before);
+  // no unindexed duplicate record left behind under a new id
+  const recordKeys = Array.from(globalThis.localStorage._store.keys()).filter((k) =>
+    k.startsWith("embstudio:p:")
+  );
+  expect(recordKeys).toEqual(["embstudio:p:" + id]);
+  // and the original is untouched
+  expect(loadProject(id)).not.toBeNull();
 });
 
 test("listProjects is empty when nothing has been created", () => {
@@ -107,6 +168,20 @@ test("listProjects sorts by updatedAt descending, and saveProject re-bumps order
 
 test("loadProject returns null for an id that was never created", () => {
   expect(loadProject("nope")).toBeNull();
+});
+
+test("loadProject returns null for a corrupt record and leaves the raw record untouched", () => {
+  const { id } = createProject("Hat");
+  const key = "embstudio:p:" + id;
+  localStorage.setItem(key, "{not valid json");
+
+  expect(loadProject(id)).toBeNull();
+  // the corrupt-but-maybe-recoverable raw string must survive the failed
+  // load untouched -- NOT get silently replaced by a fresh defaultProject()
+  // the way save.js's deserialize() would (see loadProject's own comment).
+  expect(localStorage.getItem(key)).toBe("{not valid json");
+  // and the record staying corrupt-on-disk must not have de-registered it
+  expect(listProjects().find((p) => p.id === id)).not.toBeUndefined();
 });
 
 test("saveProject round-trips edits through loadProject", () => {

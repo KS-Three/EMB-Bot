@@ -5,9 +5,13 @@
 //                        saved project, newest-first once sorted by
 //                        listProjects().
 //   embstudio:p:<id>     one JSON project record per id (same shape as the
-//                        legacy `embstudio:last` blob — written/read via
-//                        save.js's serialize/deserialize, which also runs
-//                        migrateProject on read).
+//                        legacy `embstudio:last` blob). Written via save.js's
+//                        serialize(); read via loadProject()'s own
+//                        JSON.parse + migrateProject — NOT save.js's
+//                        deserialize(), which swallows a corrupt record into
+//                        a fresh defaultProject() instead of surfacing null
+//                        (see loadProject's own comment for why that
+//                        distinction matters here).
 //   embstudio:current    the id of the currently-open project (plain
 //                        string, not JSON), or absent if none.
 //
@@ -30,7 +34,7 @@
 //      never lost even if storage fails mid-migration (see A1).
 
 import { defaultProject, migrateProject } from "./project.js";
-import { serialize, deserialize } from "./save.js";
+import { serialize } from "./save.js";
 
 const INDEX_KEY = "embstudio:index";
 const CURRENT_KEY = "embstudio:current";
@@ -99,8 +103,23 @@ export function createProject(name) {
     localStorage.setItem(projectKey(id), serialize(project));
     const idx = readIndex();
     idx.push({ id, name: finalName, updatedAt: Date.now() });
-    writeIndex(idx);
-    localStorage.setItem(CURRENT_KEY, id);
+    if (writeIndex(idx)) {
+      localStorage.setItem(CURRENT_KEY, id);
+    } else {
+      // Partial failure: the record write above succeeded but the index
+      // write didn't, so this id would otherwise be an orphan -- a project
+      // record with no index entry and no current pointer. Every other
+      // registry function (saveProject/renameProject/deleteProject) treats
+      // an unindexed id as a no-op, so if we left the record AND pointed
+      // CURRENT_KEY at it, auto-save would be permanently dead for the rest
+      // of this session and every session after. Undo the record write and
+      // leave CURRENT_KEY alone so the caller falls back to the same
+      // degraded-but-consistent in-memory-only state as a total storage
+      // failure (below): a working project the app just can't persist.
+      try {
+        localStorage.removeItem(projectKey(id));
+      } catch (e2) {}
+    }
   } catch (e) {
     // Storage failed entirely — the app still gets a working in-memory
     // project, it just won't persist (matches the try/catch-safe contract).
@@ -108,11 +127,27 @@ export function createProject(name) {
   return { id, project };
 }
 
+// Returns null for a missing OR corrupt record. Unlike save.js's
+// deserialize() (which swallows a JSON.parse failure into a fresh
+// defaultProject() — the right call for the legacy single-blob path, where
+// there's nowhere else to route a "load"), a corrupt registry record must
+// NOT be silently replaced: the caller (App's boot / openProject) treats
+// null as "nothing to open" and falls back to a brand-new project, and the
+// very next auto-save would then overwrite this id's corrupt-but-maybe-
+// recoverable raw string with that fresh blank one. So the parse happens
+// here, directly, and a parse failure returns null WITHOUT touching
+// storage — the raw record is left in place for a human to recover later.
 export function loadProject(id) {
   try {
     const raw = localStorage.getItem(projectKey(id));
     if (!raw) return null;
-    return deserialize(raw);
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (e) {
+      return null; // corrupt: leave the raw record untouched
+    }
+    return migrateProject(parsed);
   } catch (e) {
     return null;
   }
@@ -184,7 +219,16 @@ export function duplicateProject(id, name) {
     const newName = name || srcEntry.name + " copy";
     localStorage.setItem(projectKey(newId), serialize(project));
     idx.push({ id: newId, name: newName, updatedAt: Date.now() });
-    writeIndex(idx);
+    if (!writeIndex(idx)) {
+      // Same orphan hazard as createProject: the record write above
+      // succeeded but the index write didn't, so undo it rather than leave
+      // an unindexed record behind, and report failure so the caller never
+      // believes a duplicate exists that the registry doesn't know about.
+      try {
+        localStorage.removeItem(projectKey(newId));
+      } catch (e2) {}
+      return null;
+    }
     return { id: newId, project };
   } catch (e) {
     return null;

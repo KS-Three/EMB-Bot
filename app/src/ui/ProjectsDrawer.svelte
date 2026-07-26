@@ -5,10 +5,70 @@
   // every action -- App owns all the actual registry calls (see App.svelte's
   // openProject/newDesign/renameFromDrawer/duplicateFromDrawer/
   // deleteFromDrawer).
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
   export let projects = [];
   export let currentId = null;
   const d = createEventDispatcher();
+
+  // ---- Focus handling (A11Y/UX finding 5) ----------------------------------
+  // The dialog is role="dialog" aria-modal="true", which is a lie unless
+  // focus actually moves in, stays trapped, and comes back out again. This
+  // drawer previously did none of that: opening it left focus wherever it
+  // was on the page behind the backdrop, Tab could walk focus straight out
+  // of the dialog into that hidden page, and closing it never gave focus
+  // back to whatever opened it (that last part is App.svelte's job -- see
+  // its myDesignsBtn/drawerWasOpen handling).
+  let drawerEl;
+
+  onMount(() => {
+    // tabindex="-1" on the drawer div (below) makes it a legal, if unusual,
+    // focus target: programmatically focusable via .focus() but skipped by
+    // normal Tab navigation, which is exactly what a dialog's initial focus
+    // should be when there's no obviously-more-specific control to land on
+    // (e.g. a heading, not the first button, so screen readers announce the
+    // dialog before its content).
+    if (drawerEl) drawerEl.focus();
+  });
+
+  function focusableEls() {
+    if (!drawerEl) return [];
+    return Array.from(
+      drawerEl.querySelectorAll(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter((el) => el.offsetParent !== null); // skip hidden elements
+  }
+
+  // Wraps Tab/Shift+Tab between the drawer's first and last focusable
+  // elements so focus can never escape to the page behind the backdrop
+  // while the dialog is open.
+  function onDrawerKeydown(e) {
+    if (e.key !== "Tab") return;
+    const els = focusableEls();
+    if (els.length === 0) return;
+    const first = els[0];
+    const last = els[els.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first || !drawerEl.contains(document.activeElement)) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else if (document.activeElement === last || !drawerEl.contains(document.activeElement)) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
+  // ---- Autofocus action (A11Y/UX finding 6) --------------------------------
+  // Applied to the inline rename <input> (use:autofocus below). Without
+  // this the input rendered on "Rename" click but never received focus, so
+  // the blur-commit in commitRename() was unreachable by keyboard (nothing
+  // to Tab away FROM) and mouse users got a caretless field they had to
+  // click a second time just to start typing.
+  function autofocus(node) {
+    node.focus();
+    node.select();
+  }
 
   // ---- Two-tap delete (plan amendment A5) ----------------------------------
   // First click arms a row's Delete button ("Really delete?"). A second
@@ -90,7 +150,15 @@
     if (e.target === e.currentTarget) d("close");
   }}
 >
-  <div class="drawer" role="dialog" aria-modal="true" aria-label="My designs">
+  <div
+    class="drawer"
+    role="dialog"
+    aria-modal="true"
+    aria-label="My designs"
+    tabindex="-1"
+    bind:this={drawerEl}
+    on:keydown={onDrawerKeydown}
+  >
     <div class="drawer-head">
       <h2>My designs</h2>
       <button type="button" class="drawer-close" on:click={() => d("close")} aria-label="Close">✕</button>
@@ -106,6 +174,7 @@
               <input
                 type="text"
                 bind:value={renameValue}
+                use:autofocus
                 on:keydown={(e) => onRenameKeydown(e, row.id)}
                 on:blur={() => commitRename(row.id)}
                 aria-label="Rename project"

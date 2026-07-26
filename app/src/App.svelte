@@ -1,5 +1,5 @@
 <script>
-  import { defaultProject, update, updateElement, selectElement, addElement, removeElement } from "./lib/project.js";
+  import { update, updateElement, selectElement, addElement, removeElement } from "./lib/project.js";
   import { applyTemplate } from "./lib/templates.js";
   import { canAdvance, nextStep, prevStep } from "./lib/flow.js";
   import {
@@ -52,7 +52,16 @@
   migrateLegacy();
   let projects = listProjects();
   let currentId = currentProjectId();
-  let bootProject = currentId ? loadProject(currentId) : null;
+  // currentId must also be present in the index -- a stale/orphaned pointer
+  // (e.g. left over from a partial createProject/duplicateProject failure,
+  // or a record that's since been deleted) is otherwise indistinguishable
+  // from a real id, and loadProject() would happily return whatever record
+  // happens to still sit under that key. Requiring it to also appear in
+  // `projects` means an orphaned pointer routes through the same
+  // createProject() fallback below as "no current project at all", which
+  // sets a fresh, index-backed CURRENT_KEY instead of leaving auto-save
+  // pointed at an id the registry doesn't know about.
+  let bootProject = currentId && projects.some((p) => p.id === currentId) ? loadProject(currentId) : null;
   if (!bootProject) {
     const created = createProject("Untitled design");
     currentId = created.id;
@@ -64,6 +73,25 @@
   let projectName = nameFor(currentId);
   let step = "garment";
   let drawerOpen = false;
+  // ---- Drawer focus restore (A11Y/UX finding 5) -----------------------------
+  // ProjectsDrawer moves focus INTO itself on mount and traps Tab while
+  // open (see its own comments), but restoring focus back to whatever
+  // opened it is App's job, since App is what destroys the drawer (the
+  // {#if drawerOpen} block) in the first place. myDesignsBtn is bound to
+  // the "My designs" button below; drawerWasOpen lets the reactive block
+  // fire exactly once per open->close transition (not on initial mount,
+  // when drawerOpen starts false and there's nothing to restore focus
+  // from) regardless of which of the several code paths (openProject,
+  // newDesign, the drawer's own "close" event, or the toggle button click
+  // itself) flipped drawerOpen back to false.
+  let myDesignsBtn;
+  let drawerWasOpen = false;
+  $: if (drawerOpen) {
+    drawerWasOpen = true;
+  } else if (drawerWasOpen) {
+    drawerWasOpen = false;
+    if (myDesignsBtn) myDesignsBtn.focus();
+  }
   // Runtime image state, owned here (not by ImagePanel) so it survives
   // ContentStep/ImagePanel being destroyed and recreated whenever the user
   // navigates steps or toggles Text/Image mode (both are {#if} blocks).
@@ -324,11 +352,27 @@
     refreshProjects();
     if (!wasCurrent) return;
 
-    if (projects.length > 0) {
-      const next = projects[0]; // listProjects() sorts newest-updated first
-      const loaded = loadProject(next.id);
-      setCurrentProject(next.id);
-      enterProject(next.id, loaded || defaultProject(), next.name, "content");
+    // Walk survivors newest-updated first (listProjects()'s sort) and adopt
+    // the first one whose record actually loads. A registry entry can
+    // outlive its record -- e.g. a corrupt/missing embstudio:p:<id> value --
+    // and fabricating a defaultProject() stand-in for it (as this used to
+    // do) would mean the very next persist() overwrites that survivor's
+    // real, still-stored-somewhere-if-corrupt data with a blank design
+    // under its id. So an unloadable entry is skipped, not adopted; only if
+    // NONE of them load do we fall through to the same fresh-project
+    // branch used when there are zero survivors at all.
+    let survivor = null;
+    for (const entry of projects) {
+      const loaded = loadProject(entry.id);
+      if (loaded) {
+        survivor = { id: entry.id, project: loaded, name: entry.name };
+        break;
+      }
+    }
+
+    if (survivor) {
+      setCurrentProject(survivor.id);
+      enterProject(survivor.id, survivor.project, survivor.name, "content");
     } else {
       const created = createProject("Untitled design");
       enterProject(created.id, created.project, "Untitled design", "garment");
@@ -345,7 +389,7 @@
     on:change={(e) => renameCurrent(e.currentTarget.value)}
     aria-label="Project name"
   />
-  <button type="button" class="mydesigns" on:click={() => (drawerOpen = !drawerOpen)}>
+  <button type="button" class="mydesigns" bind:this={myDesignsBtn} on:click={() => (drawerOpen = !drawerOpen)}>
     My designs <span class="badge">{projects.length}</span>
   </button>
 </header>
