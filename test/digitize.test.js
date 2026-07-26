@@ -308,27 +308,30 @@ test("buildQualityDesign: no-fabric single-shape output frozen (snapshot, Phase-
     [{ rgb: [10, 20, 30], shapes: [{ outer, holes: [hole] }] }],
     { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 1, densityMm: 0.5, underlay: true, satinMaxWidthMm: 3 }
   );
-  // Phase 4 RE-FREEZE (two-sweep center-out): this fixture's shape is ~100mm
-  // final (>15mm both dims), so its TOP fill sews center-out. Row COVERAGE is
-  // unchanged (total record count still 3176; first 20 records are the sequential
-  // underlay, unchanged). The two-sweep order keeps inter-row connectors small
-  // (adjacent rows, alternating scan parity), so only the single sweep-to-sweep
-  // reposition is long enough to become a travel JUMP. Compared with the earlier
-  // INTERLEAVED order — whose many non-adjacent hops flipped stitch→jump and sank
-  // stitchCount to 2953 — two-sweep reclassifies far fewer moves as travel, so
-  // stitchCount rose 2953→3075 (just shy of the 3076 sequential baseline; the one
-  // remaining jump is the center reposition). nCenterOut===1 here.
+  // RE-FREEZE (resize-density fix, 2026-07-27): this fixture has pxPerMm:1
+  // with a ~100mm shape against a 101.6mm (4in) hoop, so sc≈1 and
+  // pxPerFinalMm≈1 — meaning underlayStitchPx (2.0mm requested) and rowPx
+  // (0.5mm requested) both used to land BELOW the old fixed px floors
+  // (4px, 0.8px) and get silently overridden by them. The floor was meant
+  // as loop-safety only but doubled as an unintended density ceiling (see
+  // PX_LOOP_EPS comment in buildQualityDesign) — this fixture's old frozen
+  // numbers were pinning that bug (underlay stepping ~4.1mm instead of the
+  // requested 2.0mm). Post-fix, underlay steps a clean 20 DST-units (2.0mm,
+  // matches request) instead of the old ~41-unit (4.1mm, floor-clamped)
+  // step, and total record/stitch counts rose (finer fill rows too, from
+  // rowPx no longer floor-clamped either). nCenterOut/large-fill sweep
+  // structure is unaffected by this fix, so that invariant stays.
   assert.strictEqual(d._debug.nCenterOut, 1, "fixture shape is a large fill → center-out");
-  assert.strictEqual(d.stitches.length, 3176, "total record count frozen");
-  assert.strictEqual(d.stitchCount, 3075, "stitch count frozen (Phase 4 two-sweep re-freeze)");
+  assert.strictEqual(d.stitches.length, 4923, "total record count frozen");
+  assert.strictEqual(d.stitchCount, 4772, "stitch count frozen (resize-density re-freeze)");
   const first20 = [
-    { x: -504, y: 504, type: "jump" }, { x: -504, y: 504, type: "stitch" }, { x: -463, y: 504, type: "stitch" },
-    { x: -422, y: 504, type: "stitch" }, { x: -382, y: 504, type: "stitch" }, { x: -341, y: 504, type: "stitch" },
-    { x: -301, y: 504, type: "stitch" }, { x: -260, y: 504, type: "stitch" }, { x: -219, y: 504, type: "stitch" },
-    { x: -179, y: 504, type: "stitch" }, { x: -138, y: 504, type: "stitch" }, { x: -97, y: 504, type: "stitch" },
-    { x: -57, y: 504, type: "stitch" }, { x: -16, y: 504, type: "stitch" }, { x: 25, y: 504, type: "stitch" },
-    { x: 65, y: 504, type: "stitch" }, { x: 106, y: 504, type: "stitch" }, { x: 146, y: 504, type: "stitch" },
-    { x: 187, y: 504, type: "stitch" }, { x: 228, y: 504, type: "stitch" },
+    { x: -504, y: 504, type: "jump" }, { x: -504, y: 504, type: "stitch" }, { x: -484, y: 504, type: "stitch" },
+    { x: -464, y: 504, type: "stitch" }, { x: -444, y: 504, type: "stitch" }, { x: -424, y: 504, type: "stitch" },
+    { x: -404, y: 504, type: "stitch" }, { x: -384, y: 504, type: "stitch" }, { x: -364, y: 504, type: "stitch" },
+    { x: -344, y: 504, type: "stitch" }, { x: -324, y: 504, type: "stitch" }, { x: -304, y: 504, type: "stitch" },
+    { x: -284, y: 504, type: "stitch" }, { x: -264, y: 504, type: "stitch" }, { x: -244, y: 504, type: "stitch" },
+    { x: -224, y: 504, type: "stitch" }, { x: -204, y: 504, type: "stitch" }, { x: -184, y: 504, type: "stitch" },
+    { x: -164, y: 504, type: "stitch" }, { x: -144, y: 504, type: "stitch" },
   ];
   assert.deepStrictEqual(d.stitches.slice(0, 20), first20, "first 20 records unchanged");
 });

@@ -95,7 +95,7 @@
     const edgeInset = Math.min(2, 0.6 * pxPerFinalMm);
     const edgeStitch = ctx.underlayStitchPx;
     const latticeRow = ctx.underlayRowPx;              // ~2.5mm sparse tatami
-    const zigRow = Math.max(3, 2.0 * pxPerFinalMm);    // ~2.0mm zig-zag rows
+    const zigRow = Math.max(0.02, 2.0 * pxPerFinalMm); // ~2.0mm zig-zag rows (floor is loop-safety only -- see PX_LOOP_EPS note in buildQualityDesign)
     const maxStitch = ctx.maxStitch;
 
     function edgeRun() {
@@ -241,10 +241,23 @@
 
     const mmPerPxFinal = scalePxToDst / units.DST_UNITS_PER_MM; // final mm per source px
     const pxPerFinalMm = 1 / mmPerPxFinal;                       // source px per final mm
-    const rowPx = Math.max(0.8, densityMm * pxPerFinalMm);
-    const maxPx = Math.max(3, maxStitchMm * pxPerFinalMm);
-    const underlayStitchPx = Math.max(4, 2.0 * pxPerFinalMm);
-    const underlayRowPx = Math.max(3, 2.5 * pxPerFinalMm);
+    // PX_LOOP_EPS guards against a literal zero/degenerate loop step (rowPx=0
+    // would spin fillmod.tatamiFill's `for (y=minY; y<=maxY; y+=rowSpacing)`
+    // forever) -- NOT a functional minimum density. These four used to be
+    // floored at 0.8/3/4/3 px, which LOOKS like a sane minimum but silently
+    // broke resize: pxPerFinalMm shrinks as the design is scaled UP (bigger
+    // targetWidthMm -> larger sc -> pxPerFinalMm=pxPerMm/sc smaller), so past
+    // roughly 4-10x the design's native size the mm*pxPerFinalMm product fell
+    // below those floors and got overridden -- the row/stitch spacing then
+    // scaled with sc instead of staying fixed at the requested mm value,
+    // i.e. exactly "spacing doesn't re-digitize, gaps open up when enlarged"
+    // (Kent's report). A floor two orders of magnitude smaller still prevents
+    // the degenerate case at any realistic resize while never engaging early.
+    const PX_LOOP_EPS = 0.02;
+    const rowPx = Math.max(PX_LOOP_EPS, densityMm * pxPerFinalMm);
+    const maxPx = Math.max(PX_LOOP_EPS, maxStitchMm * pxPerFinalMm);
+    const underlayStitchPx = Math.max(PX_LOOP_EPS, 2.0 * pxPerFinalMm);
+    const underlayRowPx = Math.max(PX_LOOP_EPS, 2.5 * pxPerFinalMm);
     const pullCompPx = pullCompMm * pxPerFinalMm; // fill pull-comp offset (px)
     // Shared context for named underlay styles (used only in fabric mode).
     const underlayCtxBase = {
@@ -492,7 +505,7 @@
         // finishing outline: running stitch along the outer edge (and holes)
         if (o.outline) {
           try {
-            const edgeLen = Math.max(3, 1.8 * pxPerFinalMm);
+            const edgeLen = Math.max(0.02, 1.8 * pxPerFinalMm); // loop-safety floor only, see PX_LOOP_EPS note above
             for (const ring of rings) runs.push(fillmod.runningOutline(ring, { stitchLen: edgeLen }));
           } catch (e) { /* best-effort */ }
         }
