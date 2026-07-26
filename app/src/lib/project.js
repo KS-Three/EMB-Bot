@@ -11,6 +11,7 @@ export function defaultTextElement(id) {
     fontKey: "geneva_simple",
     colorRgb: [20, 20, 20],
     letterSpacingMm: 0,
+    arcDeg: 0,
     underlay: true,
     sizeMm: null,
     offsetXMm: 0,

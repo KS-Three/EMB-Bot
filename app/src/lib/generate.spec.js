@@ -14,7 +14,7 @@ beforeAll(() => {
 function textElement(overrides = {}) {
   return {
     id: "e1", type: "text", text: "", fontKey: "geneva_simple",
-    colorRgb: [20, 20, 20], letterSpacingMm: 0, underlay: true,
+    colorRgb: [20, 20, 20], letterSpacingMm: 0, arcDeg: 0, underlay: true,
     sizeMm: null, offsetXMm: 0, offsetYMm: 0, ...overrides,
   };
 }
@@ -79,6 +79,17 @@ test("letterSpacingMm changes design dimensions", async () => {
   // text wider, forcing it to fit in less vertical space (taller aspect
   // ratio squeezed into the same width) -> heightMM shrinks with spacing.
   expect(spacedDesign.heightMM).toBeLessThan(baseDesign.heightMM);
+});
+
+test("arcDeg curves text and changes heightMM differently than straight text", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const straightDesign = generateElement(textElement({ text: "HELLO", sizeMm: 40, arcDeg: 0 }), garment, {});
+  const arcedDesign = generateElement(textElement({ text: "HELLO", sizeMm: 40, arcDeg: 120 }), garment, {});
+
+  // Curved text should have different heightMM than straight text
+  expect(arcedDesign.heightMM).not.toBeCloseTo(straightDesign.heightMM, 1);
 });
 
 test("generateElement returns null for an image element with no flat state", async () => {

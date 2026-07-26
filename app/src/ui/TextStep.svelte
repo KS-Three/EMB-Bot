@@ -27,13 +27,13 @@
   }
 </script>
 
-<input
+<textarea
   class="textin"
-  type="text"
+  rows="2"
   value={element.text}
   on:input={(e) => patch({ text: e.target.value })}
   placeholder="Type a name or word"
-/>
+></textarea>
 <label>
   Color
   <input type="color" value={rgbToHex(element.colorRgb)} on:input={(e) => patch({ colorRgb: hexToRgb(e.target.value) })} />
@@ -51,4 +51,16 @@
     on:input={(e) => patch({ letterSpacingMm: parseFloat(e.target.value) })}
   />
   <span class="label">{(element.letterSpacingMm || 0).toFixed(1)} mm</span>
+</label>
+<label class="letterspacing">
+  <span>Curve</span>
+  <input
+    type="range"
+    min="-180"
+    max="180"
+    step="10"
+    value={element.arcDeg || 0}
+    on:input={(e) => patch({ arcDeg: parseInt(e.target.value, 10) })}
+  />
+  <span class="label">{element.arcDeg || 0}°</span>
 </label>

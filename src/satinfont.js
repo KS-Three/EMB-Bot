@@ -14,6 +14,28 @@
   const centerFromGeom = satinplay.centerFromGeom;
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
+  // This font format has no explicit baseline field — glyph y-coordinates are
+  // authored relative to an arbitrary top-of-canvas origin (e.g. this repo's
+  // geneva_simple font sits its cap letters around y=27..63, not near y=0).
+  // For straight layout that arbitrary origin doesn't matter (every glyph
+  // shares it, so rows stay level); for arcing text we need a real pivot
+  // height, or rotation swings the ink (which can be 60+ units from y=0) by a
+  // huge lateral distance and scrambles glyph order. Derive it from the data:
+  // each glyph's own vertical midpoint (min/max of its rail points, in font
+  // units), memoized per glyph object since the same glyph repeats often.
+  const glyphYCenterCache = new WeakMap();
+  function glyphYCenterUnits(g) {
+    if (glyphYCenterCache.has(g)) return glyphYCenterCache.get(g);
+    let miny = Infinity, maxy = -Infinity;
+    for (const col of g.cols) {
+      for (const p of col.railA) { if (p[1] < miny) miny = p[1]; if (p[1] > maxy) maxy = p[1]; }
+      for (const p of col.railB) { if (p[1] < miny) miny = p[1]; if (p[1] > maxy) maxy = p[1]; }
+    }
+    const c = miny <= maxy ? (miny + maxy) / 2 : 0;
+    glyphYCenterCache.set(g, c);
+    return c;
+  }
+
   // Nearest arc-length fraction on a centerline chain C (with cumulative table
   // cum,total) to point p, plus that distance.
   function nearestOnCenter(C, cum, total, p) {
@@ -155,7 +177,25 @@
   // (see routeGlyph). A run's jump=true means "lift needle & travel to its
   // start" (the caller trims if far); jump=false means "continue with a needle-
   // down running connector". opts = { emMm=18, pxPerMm=10, spacingMm=0.4,
-  // pullCompMm=0, letterSpacingMm=0, underlay=true }.
+  // pullCompMm=0, letterSpacingMm=0, underlay=true, arcDeg=0 }.
+  //
+  // `text` may contain "\n" for multiple lines, stacked by `font.leading`
+  // (falls back to unitsPerEm). `opts.arcDeg` bends a line onto a circular
+  // arc: positive arcs ARCH UP (rainbow — middle higher than the ends) in the
+  // final rendered/sewn output; negative flips to a valley (ends higher). 0
+  // or absent is today's straight behavior, unchanged.
+  //
+  // Two-pass per line: MEASURE walks the existing advance/kerning/letter-
+  // spacing logic to record each glyph's pen offset (font units) and the
+  // line's total advance, WITHOUT placing anything. PLACEMENT then routes
+  // each glyph in its own straight/local frame — byte-identical inputs to the
+  // pre-arc/multi-line code — and applies a per-glyph affine to the FINISHED
+  // run points (routeGlyph is a rigid, orientation-agnostic geometry step, so
+  // transforming its output is equivalent to transforming its input, and
+  // touches none of its internals): for straight lines this is just a
+  // per-line translate (identity for single-line text, so the single-line
+  // legacy output is byte-for-byte unchanged); for an arc, a rotation about
+  // the glyph's own pen-center followed by a translation onto the circle.
   function layoutText(font, text, opts) {
     const o = opts || {};
     const emMm = o.emMm || 18;
@@ -163,32 +203,101 @@
     const spacingMm = o.spacingMm || 0.4;
     const pullCompMm = o.pullCompMm || 0;
     const doUnderlay = o.underlay !== false;
+    const arcDeg = o.arcDeg || 0;
     const u2px = (emMm / font.unitsPerEm) * pxPerMm;       // font units -> design px
     const lsUnits = (o.letterSpacingMm || 0) * font.unitsPerEm / emMm;
-    const chars = Array.from(text);
+    const leadingUnits = font.leading || font.unitsPerEm;
+
+    // ---- MEASURE pass: split on "\n"; per line, walk chars accumulating pen
+    // position (kerning resets at each line start) and record each glyph's
+    // {g, ox} (ox = pen x at glyph start, font units) plus the line's total
+    // advance. No placement happens here.
+    const lineList = String(text).split("\n").map((lineText) => {
+      const chars = Array.from(lineText);
+      let penX = 0, prev = null;
+      const glyphs = [];
+      for (const ch of chars) {
+        if (ch === " " || ch === "\t") { penX += (font.advSpace || font.advDefault); prev = null; continue; }
+        const g = font.glyphs[ch] || font.glyphs[ch.toUpperCase()] || font.glyphs[ch.toLowerCase()];
+        if (!g) { penX += font.advDefault; prev = null; continue; }
+        if (prev != null && font.kerning) { const k = font.kerning[prev + ch]; if (k) penX += k; }
+        glyphs.push({ g, ox: penX });
+        penX += g.adv + lsUnits;
+        prev = ch;
+      }
+      return { glyphs, adv: penX };
+    });
+    const maxAdvUnits = lineList.reduce((m, ln) => Math.max(m, ln.adv), 0);
 
     const runs = [];
-    let penX = 0, prev = null;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     const acc = (p) => { if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x; if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y; };
 
-    for (const ch of chars) {
-      if (ch === " " || ch === "\t") { penX += (font.advSpace || font.advDefault); prev = null; continue; }
-      const g = font.glyphs[ch] || font.glyphs[ch.toUpperCase()] || font.glyphs[ch.toLowerCase()];
-      if (!g) { penX += font.advDefault; prev = null; continue; }
-      if (prev != null && font.kerning) { const k = font.kerning[prev + ch]; if (k) penX += k; }
-      const ox = penX;
-      const TX = (x) => (x + ox) * u2px, TY = (y) => y * u2px;
-      const cols = g.cols.map((col) => ({
-        railA: col.railA.map((p) => ({ x: TX(p[0]), y: TY(p[1]) })),
-        railB: col.railB.map((p) => ({ x: TX(p[0]), y: TY(p[1]) })),
-        rungs: (col.rungs || []).map((rg) => [{ x: TX(rg[0][0]), y: TY(rg[0][1]) }, { x: TX(rg[1][0]), y: TY(rg[1][1]) }]),
-      }));
-      const gRuns = routeGlyph(cols, { pxPerMm, spacingMm, pullCompMm, underlay: doUnderlay });
-      for (const r of gRuns) { runs.push(r); for (const p of r.pts) acc(p); }
-      penX += g.adv + lsUnits;
-      prev = ch;
-    }
+    const signArc = arcDeg > 0 ? 1 : (arcDeg < 0 ? -1 : 0);
+    const arcRad = arcDeg ? Math.abs(arcDeg) * Math.PI / 180 : 0;
+
+    // ---- PLACEMENT pass.
+    lineList.forEach((line, lineIdx) => {
+      const lineYunits = lineIdx * leadingUnits;                  // font units, y-down: later lines sit below
+      const lineOriginXunits = arcDeg ? 0 : (maxAdvUnits - line.adv) / 2; // straight multi-line: center vs widest
+      const lineAdvPx = line.adv * u2px;
+      const R = arcDeg ? (lineAdvPx / arcRad) : 0;                 // px; arc radius for this line
+      // Shared rotation-pivot height for every glyph in this line (see
+      // glyphYCenterUnits above) — using ONE value per line (not each
+      // glyph's own center) keeps every letter's baseline aligned on the arc.
+      const baselinePx = arcDeg && line.glyphs.length
+        ? (line.glyphs.reduce((s, gl) => s + glyphYCenterUnits(gl.g), 0) / line.glyphs.length) * u2px
+        : 0;
+
+      for (const { g, ox } of line.glyphs) {
+        // Route in the glyph's own straight/local frame — identical to the
+        // pre-refactor TX/TY, so routeGlyph's inputs (and thus its internal
+        // distance-based decisions) are completely unaffected by arc/multi-line.
+        const TX = (x) => (x + ox) * u2px, TY = (y) => y * u2px;
+        const cols = g.cols.map((col) => ({
+          railA: col.railA.map((p) => ({ x: TX(p[0]), y: TY(p[1]) })),
+          railB: col.railB.map((p) => ({ x: TX(p[0]), y: TY(p[1]) })),
+          rungs: (col.rungs || []).map((rg) => [{ x: TX(rg[0][0]), y: TY(rg[0][1]) }, { x: TX(rg[1][0]), y: TY(rg[1][1]) }]),
+        }));
+        const gRuns = routeGlyph(cols, { pxPerMm, spacingMm, pullCompMm, underlay: doUnderlay });
+
+        let place;
+        if (!arcDeg) {
+          // Straight: pure per-line translate. Single-line text has
+          // lineOriginXunits===0 and lineYunits===0, so `place` is the
+          // identity — the legacy single-line output is unchanged.
+          const dx = lineOriginXunits * u2px, dy = lineYunits * u2px;
+          place = dx === 0 && dy === 0 ? (p) => p : (p) => ({ x: p.x + dx, y: p.y + dy });
+        } else {
+          // Arc: rotate this glyph's points about its own pen-center by
+          // phi = signArc*theta (theta = signed pen-center offset from the
+          // line's middle, in radians of arc), then translate the pen-center
+          // onto the circle. The circle's center sits `R` further along +y
+          // (font-space y-down) than the line's baseline when arcDeg>0 (so
+          // the line's middle — theta=0 — is the circle's topmost point and
+          // the ends sag down into the render's up direction after the
+          // downstream y-flip: ARCH UP); arcDeg<0 puts the center at -R
+          // (middle is the circle's bottommost point: a valley).
+          const penCenterPx = (ox + g.adv / 2) * u2px;
+          const sPx = penCenterPx - lineAdvPx / 2;
+          const theta = R > 0 ? sPx / R : 0;
+          const phi = signArc * theta;
+          const cosPhi = Math.cos(phi), sinPhi = Math.sin(phi);
+          const Wx = R * Math.sin(theta);
+          const Wy = lineYunits * u2px + signArc * R * (1 - Math.cos(theta));
+          place = (p) => {
+            const lx = p.x - penCenterPx, ly = p.y - baselinePx;
+            return { x: Wx + lx * cosPhi - ly * sinPhi, y: Wy + lx * sinPhi + ly * cosPhi };
+          };
+        }
+
+        for (const r of gRuns) {
+          const pts = r.pts.map(place);
+          for (const q of pts) acc(q);
+          runs.push({ pts, kind: r.kind, jump: r.jump });
+        }
+      }
+    });
     return { runs, bbox: { x0, y0, x1, y1 } };
   }
 

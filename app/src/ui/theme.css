@@ -245,6 +245,8 @@ body {
   border: 2px solid var(--border);
   border-radius: var(--radius);
   margin-bottom: 1rem;
+  font-family: inherit;
+  resize: vertical;
 }
 
 .textin:focus { outline: none; border-color: var(--accent); }
