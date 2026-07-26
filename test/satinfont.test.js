@@ -1,0 +1,187 @@
+// Slice 6 Task 1: ARC + MULTI-LINE support in satinfont's layoutText.
+//
+// Reference values for the back-compat snapshots below were captured by
+// running the PRE-refactor code (git history: src/satinfont.js before this
+// change) with the exact same inputs, then hard-coded here so any accidental
+// change to the straight, single-line code path fails loudly.
+const assert = require("node:assert");
+const { test } = require("node:test");
+const fs = require("node:fs");
+const SF = require("../src/satinfont.js");
+global.window = global; // digitize.js's UMD wrapper expects a browser-ish global
+const DG = require("../src/digitize.js");
+
+const font = JSON.parse(fs.readFileSync(__dirname + "/../src/fonts/geneva_simple.json", "utf8"));
+
+const closeTo = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol, `${msg || ""}: expected ${a} close to ${b} (tol ${tol})`);
+
+// ---- Back-compat: straight single-line output must be BYTE-IDENTICAL to the
+// pre-arc/multi-line refactor (captured before editing src/satinfont.js). ----
+
+test("layoutText: straight single-line 'AB' is byte-identical to the pre-refactor snapshot", () => {
+  const opts = { emMm: 18, pxPerMm: 8, spacingMm: 0.4, pullCompMm: 0.2, letterSpacingMm: 0, underlay: true };
+  const lay = SF.layoutText(font, "AB", opts);
+  assert.deepStrictEqual(lay.bbox, { x0: 23.2, y0: 61.6, x1: 180.3195335344653, y1: 152 });
+  assert.strictEqual(lay.runs.length, 14, "run count frozen");
+  const totalPts = lay.runs.reduce((n, r) => n + r.pts.length, 0);
+  assert.strictEqual(totalPts, 351, "total stitch-point count frozen");
+  assert.deepStrictEqual(lay.runs[0].pts[0], { x: 79.97699763999032, y: 128.2379669598646 });
+  assert.strictEqual(lay.runs[0].kind, "satin");
+  assert.strictEqual(lay.runs[0].jump, true);
+  const last = lay.runs[lay.runs.length - 1];
+  assert.deepStrictEqual(last.pts[last.pts.length - 1], { x: 157.06136346377406, y: 98.76715817738118 });
+});
+
+test("buildLetteringDesign: straight 'AB' targetWidthMm 40 matches the pre-refactor snapshot", () => {
+  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40 };
+  const d = DG.buildLetteringDesign(font, "AB", base);
+  assert.strictEqual(d.stitchCount, 701, "stitchCount frozen");
+  closeTo(d.widthMM, 40, 0.2, "widthMM");
+  closeTo(d.heightMM, 22.839506172839506, 0.2, "heightMM");
+  const sew = d.stitches.filter((s) => s.type === "stitch");
+  assert.strictEqual(sew.length, 701);
+  assert.deepStrictEqual(sew[0], { x: -56, y: -54, type: "stitch" });
+  assert.deepStrictEqual(sew[sew.length - 1], { x: 142, y: 20, type: "stitch" });
+});
+
+test("buildLetteringDesign: arcDeg absent/0 is identical to not passing arcDeg at all", () => {
+  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40 };
+  const a = DG.buildLetteringDesign(font, "AB", base);
+  const b = DG.buildLetteringDesign(font, "AB", { ...base, arcDeg: 0 });
+  assert.deepStrictEqual(a, b);
+});
+
+// ---- Arc: rotation is exact (rigid isometry), and the visual contract is
+// "arcDeg > 0 arches UP (rainbow: middle higher than the ends) in the
+// rendered/sewn output" — verified numerically here (and by eye via the
+// rendered PNGs the harness produces; see tools/render-dst.mjs). ----
+
+// Group a layoutText() result's runs by glyph, given each glyph in "HHH"
+// produces the SAME run count (identical glyph, so routeGlyph's output shape
+// is identical up to the per-glyph affine) — verified below before relying on it.
+function glyphGroups(lay, nGlyphs) {
+  assert.strictEqual(lay.runs.length % nGlyphs, 0, "expected equal run-count split across identical glyphs");
+  const per = lay.runs.length / nGlyphs;
+  const groups = [];
+  for (let k = 0; k < nGlyphs; k++) {
+    const pts = [];
+    for (const r of lay.runs.slice(k * per, (k + 1) * per)) for (const p of r.pts) pts.push(p);
+    groups.push(pts);
+  }
+  return groups;
+}
+const cy = (pts) => { let mn = Infinity, mx = -Infinity; for (const p of pts) { if (p.y < mn) mn = p.y; if (p.y > mx) mx = p.y; } return (mn + mx) / 2; };
+
+test("layoutText: arcDeg rotates each glyph by an EXACT rigid rotation about its own position", () => {
+  const opts = (arcDeg) => ({ emMm: 18, pxPerMm: 8, spacingMm: 0.4, pullCompMm: 0.2, underlay: true, arcDeg });
+  const lay0 = SF.layoutText(font, "HHH", opts(0));
+  const layArc = SF.layoutText(font, "HHH", opts(120));
+  const g0 = glyphGroups(lay0, 3), gArc = glyphGroups(layArc, 3);
+  // 120deg swept symmetrically over 3 identical glyphs -> each glyph's own
+  // angular position is arcDeg/3 apart: -40, 0, +40 degrees.
+  const expectedDeg = [-40, 0, 40];
+  for (let k = 0; k < 3; k++) {
+    assert.strictEqual(g0[k].length, gArc[k].length, "arc must not change point count, glyph " + k);
+    // Every segment vector must be the straight-layout vector rotated by the
+    // SAME exact angle (rotation is a rigid isometry: lengths preserved, and
+    // the angle shift is constant across every segment of the glyph).
+    for (const j of [0, Math.floor(g0[k].length / 3), g0[k].length - 2]) {
+      const v0 = { x: g0[k][j + 1].x - g0[k][j].x, y: g0[k][j + 1].y - g0[k][j].y };
+      const vA = { x: gArc[k][j + 1].x - gArc[k][j].x, y: gArc[k][j + 1].y - gArc[k][j].y };
+      const len0 = Math.hypot(v0.x, v0.y), lenA = Math.hypot(vA.x, vA.y);
+      closeTo(lenA, len0, 1e-6, `glyph ${k} seg ${j} length preserved by rotation`);
+      let d = (Math.atan2(vA.y, vA.x) - Math.atan2(v0.y, v0.x)) * 180 / Math.PI;
+      while (d > 180) d -= 360; while (d < -180) d += 360;
+      closeTo(d, expectedDeg[k], 0.05, `glyph ${k} seg ${j} rotation angle`);
+    }
+  }
+});
+
+test("layoutText: arcDeg>0 arches UP — middle glyph sits higher than the outer glyphs", () => {
+  // Font-space here is y-DOWN (see the big comment on glyphYCenterUnits): a
+  // SMALLER y is HIGHER on screen once the downstream DST T() flip is applied
+  // (T().y = (center - q.y) * scale). So "arches up" means the middle glyph's
+  // y-center must be numerically LESS than the outer glyphs'.
+  const opts = (arcDeg) => ({ emMm: 18, pxPerMm: 8, spacingMm: 0.4, pullCompMm: 0.2, underlay: true, arcDeg });
+  const g = glyphGroups(SF.layoutText(font, "HHH", opts(120)), 3);
+  const [cyL, cyM, cyR] = g.map(cy);
+  assert.ok(cyM < cyL - 10, `middle (${cyM}) should be well above left (${cyL})`);
+  assert.ok(cyM < cyR - 10, `middle (${cyM}) should be well above right (${cyR})`);
+});
+
+test("layoutText: arcDeg<0 flips to a valley — middle glyph sits LOWER than the outer glyphs", () => {
+  const opts = (arcDeg) => ({ emMm: 18, pxPerMm: 8, spacingMm: 0.4, pullCompMm: 0.2, underlay: true, arcDeg });
+  const g = glyphGroups(SF.layoutText(font, "HHH", opts(-120)), 3);
+  const [cyL, cyM, cyR] = g.map(cy);
+  assert.ok(cyM > cyL + 10, `middle (${cyM}) should be well below left (${cyL})`);
+  assert.ok(cyM > cyR + 10, `middle (${cyM}) should be well below right (${cyR})`);
+});
+
+// Same contract, exercised through the FULL pipeline (buildLetteringDesign ->
+// DST-space stitches), where the caller of this task actually consumes it.
+// "HHH" is roughly 3 equal-width glyphs, so binning stitches into x-thirds of
+// the design is a robust (if slightly imprecise at the glyph boundaries)
+// proxy for "which glyph". DST convention: +y = up (see digitize.js's T()).
+function thirdsCy(design) {
+  const sew = design.stitches.filter((s) => s.type === "stitch");
+  let minx = Infinity, maxx = -Infinity;
+  for (const p of sew) { if (p.x < minx) minx = p.x; if (p.x > maxx) maxx = p.x; }
+  const third = (maxx - minx) / 3;
+  const bounds = [[minx, minx + third], [minx + third, minx + 2 * third], [minx + 2 * third, maxx + 1]];
+  return bounds.map(([lo, hi]) => {
+    const s = sew.filter((p) => p.x >= lo && p.x < hi);
+    let mn = Infinity, mx = -Infinity;
+    for (const p of s) { if (p.y < mn) mn = p.y; if (p.y > mx) mx = p.y; }
+    return (mn + mx) / 2;
+  });
+}
+
+test("buildLetteringDesign: arcDeg 120 arches UP in DST space (+y=up); -120 flips it", () => {
+  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 60 };
+  const dPos = DG.buildLetteringDesign(font, "HHH", { ...base, arcDeg: 120 });
+  const dNeg = DG.buildLetteringDesign(font, "HHH", { ...base, arcDeg: -120 });
+  const [lP, mP, rP] = thirdsCy(dPos);
+  // threshold in DST units (0.1mm) — comfortably below the ~25 / ~68 unit
+  // gaps actually observed for this font/arc combo; documents the "adjust to
+  // reality" guidance rather than a razor-thin margin.
+  assert.ok(mP > lP + 15, `arcDeg 120: middle (${mP}) should be above left (${lP}) in DST +y`);
+  assert.ok(mP > rP + 15, `arcDeg 120: middle (${mP}) should be above right (${rP}) in DST +y`);
+  const [lN, mN, rN] = thirdsCy(dNeg);
+  assert.ok(mN < lN - 15, `arcDeg -120: middle (${mN}) should be below left (${lN}) in DST +y`);
+  assert.ok(mN < rN - 15, `arcDeg -120: middle (${mN}) should be below right (${rN}) in DST +y`);
+});
+
+// ---- Multi-line ----
+
+test("layoutText: '\\n' stacks a second line strictly BELOW the first (font-space y-down)", () => {
+  const opts = { emMm: 18, pxPerMm: 8, spacingMm: 0.4, pullCompMm: 0.2, underlay: true };
+  const layAB = SF.layoutText(font, "AB", opts);
+  const layMulti = SF.layoutText(font, "AB\nCD", opts);
+  const nLine0 = layAB.runs.length;
+  const line0Runs = layMulti.runs.slice(0, nLine0);
+  const line1Runs = layMulti.runs.slice(nLine0);
+  assert.ok(line1Runs.length > 0, "second line produced runs");
+  let maxY0 = -Infinity, minY1 = Infinity;
+  for (const r of line0Runs) for (const p of r.pts) if (p.y > maxY0) maxY0 = p.y;
+  for (const r of line1Runs) for (const p of r.pts) if (p.y < minY1) minY1 = p.y;
+  assert.ok(maxY0 < minY1, `line 0 (max y ${maxY0}) must sit entirely above line 1 (min y ${minY1}) in font-space`);
+});
+
+test("buildLetteringDesign: 'AB\\nCD' is ~2x the height and a comparable width of single-line 'AB'", () => {
+  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40 };
+  const single = DG.buildLetteringDesign(font, "AB", base);
+  const multi = DG.buildLetteringDesign(font, "AB\nCD", base);
+  const ratio = multi.heightMM / single.heightMM;
+  assert.ok(ratio > 1.4 && ratio < 2.6, `height ratio ${ratio} should be ~2x (+/-30%)`);
+  const wRatio = multi.widthMM / single.widthMM;
+  assert.ok(wRatio > 0.8 && wRatio < 1.2, `width ratio ${wRatio} should stay within 20% of single-line`);
+});
+
+test("digitize.buildLetteringDesign: arcDeg is threaded through both layoutText passes (probe + final)", () => {
+  // A straight vs arced design must differ (arcDeg actually reached the
+  // engine, not silently dropped by digitize.js's probe/final calls).
+  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 60 };
+  const straight = DG.buildLetteringDesign(font, "HHH", base);
+  const arced = DG.buildLetteringDesign(font, "HHH", { ...base, arcDeg: 120 });
+  assert.notStrictEqual(straight.heightMM, arced.heightMM, "arcDeg must change the design's bbox height");
+});
