@@ -78,3 +78,27 @@
 - `defaultProject()`/`migrateProject` live in `app/src/lib/project.js` (v2 model, Slice 5).
 - App currently boots via `loadLocal() || defaultProject()` + strips `_hasImage` — that logic moves into the registry load path.
 - Keep `save.js`'s exported names working if other modules import them (grep first).
+
+---
+
+## PLAN AMENDMENTS (from 4-lens adversarial critique — these OVERRIDE the sections above)
+
+**A1 (BLOCKING) — migrateLegacy write-ordering, no data loss ever:** migrateLegacy MUST: (1) write the project record `embstudio:p:<id>`; (2) READ IT BACK and verify it parses; (3) write index + current pointer; (4) ONLY THEN `removeItem("embstudio:last")`. On ANY failure along the way, leave `embstudio:last` untouched (migration retries next boot). Spec test: a storage stub whose `setItem` throws → legacy key still present, no partial index.
+
+**A2 (BLOCKING) — delete-current semantics:** After the drawer deletes the CURRENTLY-OPEN project, App must immediately switch: load the most-recent remaining project, or `createProject("Untitled design")` if none — updating in-memory `currentId` BEFORE any persist can fire. `saveProject(id, project)` with an id NOT in the index is a defined NO-OP (spec-tested) — auto-save can never resurrect a deleted record. Task 4 acceptance adds: delete-current and delete-last flows.
+
+**A3 — ids:** all minted ids use `crypto.randomUUID()` (fallback `"p" + Date.now() + "-" + Math.random().toString(36).slice(2, 8)` if unavailable). Spec: two consecutive createProject/duplicateProject calls yield distinct ids.
+
+**A4 — migration spec coverage:** Task 1 specs must cover BOTH a v1 blob AND a v2 blob in `embstudio:last`, plus a corrupt/unparseable blob (→ no registry entry created, legacy key removed only if unparseable-and-unrecoverable... NO: on corrupt blob, create a project from `defaultProject()`? SIMPLEST SAFE: corrupt blob → leave key, create nothing, boot proceeds to createProject; document).
+
+**A5 — two-tap delete hardening:** after the button arms ("Really delete?"), IGNORE clicks for 300ms (double-click protection); disarm after 3s.
+
+**A6 — Open lands on "content"** (the editing hub), not "garment" — switching projects mid-work shouldn't dump users at the start. (Open-on-current still just closes.)
+
+**A7 — hint semantics:** hints are show-until-dismissed (✕ or auto-dismiss action) — reword "shows ONCE" accordingly. AND at most ONE hint is visible at a time, priority `drag-field` > `add-elements` > `templates` (lower-priority hints stay hidden while a higher one is eligible; they may appear later if still un-dismissed).
+
+**A8 — drag-field trigger:** eligible only when the generated design has `stitchCount > 0` (an empty default project has an element but no stitches — must NOT trigger).
+
+**A9 — hint presentation:** hints `templates` and `add-elements` are IN-FLOW callout rows (icon + sentence + ✕, distinct background) inserted in the panel markup next to their anchor — no absolute positioning inside the scrollable panel. Only `drag-field` floats (over the canvas corner, where nothing interactive underlies it). Task 3 file list therefore also includes `app/src/ui/GarmentStep.svelte` (hosts the templates callout above TemplateRow).
+
+**A10 — saveProject upsert-vs-noop:** explicitly: update-only (no-op for unknown ids) per A2; `renameProject`/`deleteProject` on unknown ids are also safe no-ops.
