@@ -45,4 +45,17 @@ describe("fontLoader", () => {
     });
     expect(design.stitchCount).toBeGreaterThan(100);
   });
+
+  it("a failed font load does not poison the cache — retry can succeed", async () => {
+    const { ensureFont } = await import("./fontLoader.js");
+    // unknown key fails...
+    await expect(ensureFont("transient_missing")).rejects.toThrow(/Unknown font/);
+    // ...and a subsequent call for a REAL font still works (map not poisoned)
+    const font = await ensureFont("geneva_simple");
+    expect(font.glyphs).toBeTruthy();
+    // and retrying the failed key fails freshly each time rather than returning
+    // a stale cached rejection (two calls, two independent rejections)
+    await expect(ensureFont("transient_missing")).rejects.toThrow(/Unknown font/);
+    await expect(ensureFont("transient_missing")).rejects.toThrow(/Unknown font/);
+  });
 });

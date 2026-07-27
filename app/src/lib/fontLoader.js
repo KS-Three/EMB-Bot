@@ -33,6 +33,9 @@ export function loadManifest() {
       const man = JSON.parse(new TextDecoder().decode(b));
       man.fonts = man.fonts.filter((f) => f.tier === "verified"); // belt & braces
       return man;
+    }).catch((err) => {
+      manifestPromise = null; // transient failure must not poison the session
+      throw err;
     });
   }
   return manifestPromise;
@@ -44,16 +47,17 @@ export function ensureFont(key) {
   if (!fontPromises.has(key)) {
     fontPromises.set(key, (async () => {
       const man = await loadManifest();
-      if (!man.fonts.some((f) => f.key === key)) {
-        fontPromises.delete(key);
+      if (!man.fonts.some((f) => f.key === key))
         throw new Error("Unknown font: " + key);
-      }
       const bytes = await readBytes("bin/" + key + ".embf");
       const font = EMB.decodeFontBin(bytes);
       EMB.SATIN_FONTS = EMB.SATIN_FONTS || {};
       EMB.SATIN_FONTS[key] = font;
       return font;
-    })());
+    })().catch((err) => {
+      fontPromises.delete(key); // any failure is retryable; success caches via SATIN_FONTS
+      throw err;
+    }));
   }
   return fontPromises.get(key);
 }
