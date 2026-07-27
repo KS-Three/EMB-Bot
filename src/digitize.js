@@ -602,11 +602,31 @@
     };
     const trimAtMm = (fabric && fabric.trimAtMm != null) ? fabric.trimAtMm : (o.trimAtMm == null ? 3.0 : o.trimAtMm);
 
+    // Per-letter color (Font editing abilities Round 1): colorRanges is a
+    // list of { startIdx, endIdx, colorRgb } over the ORIGINAL text string's
+    // indices (startIdx inclusive, endIdx exclusive — matches
+    // text.slice(startIdx,endIdx) / a <textarea>'s selectionStart/End, see
+    // layoutText's charIdx tagging). A character not covered by any range
+    // uses the element's base `rgb`. Overlapping ranges resolve to whichever
+    // one appears FIRST in the array. colorRanges absent/empty means every
+    // charIdx resolves to the base rgb, which reproduces today's exact
+    // single-color output (colors.length stays 1, no "color" records).
+    const colorRanges = Array.isArray(o.colorRanges) ? o.colorRanges : [];
+    function colorForCharIdx(idx) {
+      for (const r of colorRanges) { if (idx >= r.startIdx && idx < r.endIdx) return r.colorRgb; }
+      return rgb;
+    }
     const stitches = [];
-    const colors = [{ r: rgb[0], g: rgb[1], b: rgb[2], name: "Color 1" }];
+    const colors = [];
+    let curRgb = null;
+    function ensureColor(targetRgb) {
+      if (curRgb && targetRgb[0] === curRgb[0] && targetRgb[1] === curRgb[1] && targetRgb[2] === curRgb[2]) return;
+      colors.push({ r: targetRgb[0], g: targetRgb[1], b: targetRgb[2], name: "Color " + (colors.length + 1) });
+      curRgb = targetRgb;
+    }
     const maxStitchMm = o.maxStitchMm || 4;
     const maxStepPx = maxStitchMm / finalMmPerPx;   // longest single stitch (px)
-    let nTrims = 0, nSatin = 0, lastPt = null;
+    let nTrims = 0, nSatin = 0, lastPt = null, forceJumpNext = false;
     // The router (satinfont) decides jump vs. underpath per run: jump=false means
     // travel as a needle-DOWN running connector (tucked at a junction, covered);
     // jump=true means lift the needle (and trim if the hop is long).
@@ -614,13 +634,25 @@
       const pts = run.pts;
       if (!pts || pts.length < 2) continue;
       if (run.kind === "satin") nSatin++;
+      const runRgb = colorForCharIdx(run.charIdx);
+      if (curRgb === null) {
+        ensureColor(runRgb);
+      } else if (runRgb[0] !== curRgb[0] || runRgb[1] !== curRgb[1] || runRgb[2] !== curRgb[2]) {
+        // Color-range boundary: trim (needle up) + color-change marker at the
+        // last sewn point, same pattern app/src/lib/combine.js already uses
+        // to splice separate elements together.
+        if (lastPt) { const tp = T(lastPt); stitches.push({ x: tp.x, y: tp.y, type: "trim" }); stitches.push({ x: tp.x, y: tp.y, type: "color" }); nTrims++; }
+        ensureColor(runRgb);
+        forceJumpNext = true;
+      }
       const start = pts[0];
       if (!lastPt) {
         const f = T(start); stitches.push({ x: f.x, y: f.y, type: "jump" });
-      } else if (run.jump) {
+      } else if (run.jump || forceJumpNext) {
         const gapMm = Math.hypot(start.x - lastPt.x, start.y - lastPt.y) * finalMmPerPx;
-        if (gapMm > trimAtMm) { const tp = T(lastPt); stitches.push({ x: tp.x, y: tp.y, type: "trim" }); nTrims++; }
+        if (gapMm > trimAtMm && !forceJumpNext) { const tp = T(lastPt); stitches.push({ x: tp.x, y: tp.y, type: "trim" }); nTrims++; }
         const f = T(start); stitches.push({ x: f.x, y: f.y, type: "jump" });
+        forceJumpNext = false;
       } else {
         const gap = Math.hypot(start.x - lastPt.x, start.y - lastPt.y);
         const steps = Math.max(1, Math.ceil(gap / maxStepPx));
@@ -653,7 +685,7 @@
         outHmm = (maxY - minY) / units.DST_UNITS_PER_MM;
       }
     }
-    return { stitches, colors, widthMM: outWmm, heightMM: outHmm, stitchCount, colorCount: 1, _debug: { nSatin, nFill: 0, nTrims } };
+    return { stitches, colors, widthMM: outWmm, heightMM: outHmm, stitchCount, colorCount: colors.length, _debug: { nSatin, nFill: 0, nTrims } };
   }
 
   return { buildQualityDesign, buildLetteringDesign, groupRingsIntoShapes, offsetRing, signedArea, underlayRuns };

@@ -588,6 +588,47 @@ test("buildLetteringDesign: rotationDeg 90 swaps the reported width/height orien
   assert.ok(d90.heightMM > d90.widthMM * 2, "rotated 90deg text must report portrait dimensions");
 });
 
+test("buildLetteringDesign: colorRanges absent/empty is byte-identical to today's single-color output", () => {
+  const garment = { widthIn: 8, heightIn: 8 };
+  const font = require("../src/fonts/geneva_simple.json");
+  const base = { garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false, rgb: [10, 20, 30] };
+  const dNoField = DG.buildLetteringDesign(font, "AB", base);
+  const dEmpty = DG.buildLetteringDesign(font, "AB", Object.assign({ colorRanges: [] }, base));
+  assert.deepStrictEqual(dEmpty, dNoField);
+  assert.strictEqual(dNoField.colors.length, 1);
+  assert.ok(!dNoField.stitches.some((s) => s.type === "color"), "no color-change record when there's only one color");
+});
+
+test("buildLetteringDesign: a colorRange covering only the first character inserts exactly one trim+color pair at the glyph boundary", () => {
+  const garment = { widthIn: 8, heightIn: 8 };
+  const font = require("../src/fonts/geneva_simple.json");
+  const d = DG.buildLetteringDesign(font, "AB", {
+    garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false,
+    rgb: [10, 20, 30], colorRanges: [{ startIdx: 0, endIdx: 1, colorRgb: [200, 30, 30] }],
+  });
+  assert.strictEqual(d.colors.length, 2, "range color + base color");
+  assert.deepStrictEqual([d.colors[0].r, d.colors[0].g, d.colors[0].b], [200, 30, 30], "the FIRST-used color is the range's, since char 0 sews first");
+  assert.deepStrictEqual([d.colors[1].r, d.colors[1].g, d.colors[1].b], [10, 20, 30]);
+  const colorChangeIdxs = d.stitches.map((s, i) => (s.type === "color" ? i : -1)).filter((i) => i >= 0);
+  assert.strictEqual(colorChangeIdxs.length, 1, "exactly one color-change boundary for one range covering one of two characters");
+  // Every "color" record is immediately preceded by a "trim" record at the same point.
+  const ci = colorChangeIdxs[0];
+  assert.strictEqual(d.stitches[ci - 1].type, "trim");
+  assert.strictEqual(d.stitches[ci - 1].x, d.stitches[ci].x);
+  assert.strictEqual(d.stitches[ci - 1].y, d.stitches[ci].y);
+});
+
+test("buildLetteringDesign: a colorRange spanning the WHOLE string produces only one color and no color-change records", () => {
+  const garment = { widthIn: 8, heightIn: 8 };
+  const font = require("../src/fonts/geneva_simple.json");
+  const d = DG.buildLetteringDesign(font, "AB", {
+    garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false,
+    rgb: [10, 20, 30], colorRanges: [{ startIdx: 0, endIdx: 2, colorRgb: [200, 30, 30] }],
+  });
+  assert.strictEqual(d.colors.length, 1);
+  assert.ok(!d.stitches.some((s) => s.type === "color"));
+});
+
 test("buildQualityDesign: targetWidthMm sets the final width (clamped to hoop)", () => {
   // 400x400 px square at pxPerMm 8 -> 50x50mm natural bbox (square, so width and
   // height scale identically, making the expected result easy to reason about).
