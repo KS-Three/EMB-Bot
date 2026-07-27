@@ -266,7 +266,7 @@
    "name": "Cogs KOR",
    "tier": "verified",
    "group": "Display",
-   "licenseId": "SEE-LICENSE-FILE",
+   "licenseId": "CC-BY-4.0",
    "sizeMm": 38,
    "glyphCount": 141,
    "bytes": 374272
@@ -600,16 +600,6 @@
    "sizeMm": 50,
    "glyphCount": 155,
    "bytes": 1515966
-  },
-  {
-   "key": "precious",
-   "name": "Precious",
-   "tier": "verified",
-   "group": "Script",
-   "licenseId": "SEE-LICENSE-FILE",
-   "sizeMm": 40,
-   "glyphCount": 107,
-   "bytes": 420025
   },
   {
    "key": "roaring_twenties_KOR",

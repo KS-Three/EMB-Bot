@@ -39,3 +39,26 @@ test("manifest lists every shipped font exactly once, verified tier only", () =>
     assert.ok(fs.existsSync(path.join(BIN_DIR, f.key + ".embf")), "manifest entry without bin: " + f.key);
   }
 });
+
+test("every verified-tier font is in the manifest or explicitly excluded by license", () => {
+  const tiersPath = path.join(__dirname, "..", "scratch_ink", "_tiers.json");
+  if (!fs.existsSync(tiersPath)) return; // scratch material absent in some checkouts
+  const tiers = JSON.parse(fs.readFileSync(tiersPath, "utf8"));
+  const man = JSON.parse(fs.readFileSync(path.join(FONT_DIR, "manifest.json"), "utf8"));
+  const manKeys = new Set(man.fonts.map((f) => f.key));
+  const ALLOWED_MISSING = new Set(["precious"]); // GPL-3.0 — outside license policy
+  for (const t of tiers.filter((x) => x.tier === "verified"))
+    if (!manKeys.has(t.pack))
+      assert.ok(ALLOWED_MISSING.has(t.pack), "verified font missing from manifest: " + t.pack);
+});
+
+test("no shipped NEW font has a license outside the allowed policy set", () => {
+  const man = JSON.parse(fs.readFileSync(path.join(FONT_DIR, "manifest.json"), "utf8"));
+  const ALLOWED = new Set(["OFL-1.1", "CC-BY-4.0", "CC-BY-SA-4.0", "CC0"]);
+  const grandfathered = new Set(fs.readdirSync(FONT_DIR)
+    .filter((f) => f.endsWith(".json") && f !== "manifest.json")
+    .map((f) => f.replace(/\.json$/, "")));
+  for (const f of man.fonts)
+    if (!grandfathered.has(f.key))
+      assert.ok(ALLOWED.has(f.licenseId), f.key + " ships with disallowed license " + f.licenseId);
+});
