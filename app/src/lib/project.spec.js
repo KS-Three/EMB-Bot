@@ -37,6 +37,7 @@ test("defaultTextElement has sane beginner defaults", () => {
     colorRgb: [20, 20, 20],
     colorRanges: [],
     weightPreset: "normal",
+    slantDeg: 0,
     letterSpacingMm: 0,
     arcDeg: 0,
     rotationDeg: 0,

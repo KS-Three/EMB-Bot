@@ -43,6 +43,7 @@ export function generateElement(element, garment, runtime) {
     rgb: element.colorRgb,
     colorRanges: element.colorRanges || [],
     weightPreset: element.weightPreset || "normal",
+    slantDeg: element.slantDeg || 0,
     targetWidthMm: element.sizeMm || undefined,
     offsetXMm: element.offsetXMm || 0,
     offsetYMm: element.offsetYMm || 0,

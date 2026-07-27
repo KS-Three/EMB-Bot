@@ -14,7 +14,7 @@ beforeAll(() => {
 function textElement(overrides = {}) {
   return {
     id: "e1", type: "text", text: "", fontKey: "geneva_simple",
-    colorRgb: [20, 20, 20], colorRanges: [], weightPreset: "normal", letterSpacingMm: 0, arcDeg: 0, rotationDeg: 0, underlay: true,
+    colorRgb: [20, 20, 20], colorRanges: [], weightPreset: "normal", slantDeg: 0, letterSpacingMm: 0, arcDeg: 0, rotationDeg: 0, underlay: true,
     sizeMm: null, offsetXMm: 0, offsetYMm: 0, ...overrides,
   };
 }
@@ -166,6 +166,23 @@ test("generateElement: weightPreset 'bold' produces a wider average stitch spaci
   const thin = generateElement(textElement({ text: "H", weightPreset: "thin" }), garment, {});
   const bold = generateElement(textElement({ text: "H", weightPreset: "bold" }), garment, {});
   expect(avgSpacing(bold)).toBeGreaterThan(avgSpacing(thin));
+});
+
+test("generateElement: slantDeg 15 produces different stitch geometry than slantDeg 0 for the same text", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const straight = generateElement(textElement({ text: "H" }), garment, {});
+  const slanted = generateElement(textElement({ text: "H", slantDeg: 15 }), garment, {});
+  // buildLetteringDesign's two-pass fit-to-width scaling means slant's tiny
+  // bbox shift (the clamped-end taper nudges the outermost rail contact by a
+  // fraction of a mm) can nudge the fit scale enough to push one column's
+  // step count across a Math.ceil() rounding boundary — see the equivalent,
+  // more detailed note in test/digitize.test.js. A stitch or two of
+  // difference here is expected noise, not a regression.
+  expect(Math.abs(slanted.stitches.length - straight.stitches.length)).toBeLessThanOrEqual(10);
+  const anyDiffer = straight.stitches.some((s, i) => Math.abs(s.x - slanted.stitches[i].x) > 1 || Math.abs(s.y - slanted.stitches[i].y) > 1);
+  expect(anyDiffer).toBe(true);
 });
 
 test("generateAll over a 2-element project combines both, with per-element bboxes that differ in y", async () => {
