@@ -1,9 +1,11 @@
 <script>
+  import { onMount } from "svelte";
   import { generateAll } from "../lib/generate.js";
   import { exportDesign, exportWorksheetPDF, exportPNG } from "../lib/exporters.js";
   import { triggerDownload } from "../lib/download.js";
   import { EMB } from "../lib/emb.js";
   import { nearestThread } from "../lib/threads.js";
+  import { ensureFonts } from "../lib/fontLoader.js";
   export let project;
   // Task 4 (Slice 5): export now covers every ready element in the project
   // (generateAll's combined design), not just a single text/image design —
@@ -12,6 +14,32 @@
   export let runtime;
   let msg = "";
   let worksheetBusy = false;
+
+  // Task 4 review fix (single-click race): text elements' fontKeys must be
+  // resolved (lib/fontLoader.js) BEFORE generateAll runs, same as
+  // EmbroideryField.svelte's paint(). Reopening a saved project can land
+  // directly on this step (StepNav's gating only checks project data, not
+  // font readiness) with EmbroideryField's own ensureFonts still in flight,
+  // so this component can't just assume its sibling already loaded them.
+  function fontKeysOf(proj) {
+    return (proj.elements || [])
+      .filter((el) => el.type === "text" && el.fontKey)
+      .map((el) => el.fontKey);
+  }
+
+  // fontsReady gates the (necessarily synchronous, template-bound)
+  // combinedColors() derivation below -- it starts false so the very first
+  // render never runs generateAll against a possibly-missing font, then
+  // flips true once the mount-time ensureFonts() resolves, which re-triggers
+  // the `$:` derivation. A load failure just leaves it false forever;
+  // combinedColors' own try/catch keeps returning [] in that case, same as
+  // any other "nothing to summarize yet" state.
+  let fontsReady = false;
+  onMount(() => {
+    ensureFonts(fontKeysOf(project)).then(() => {
+      fontsReady = true;
+    });
+  });
 
   function buildDesign() {
     const { combined } = generateAll(project, runtime);
@@ -27,7 +55,7 @@
   // as explicit args (not read from closure) so Svelte's static dependency
   // tracking on the `$:` statement below actually sees them (same caveat
   // ImagePanel.svelte documents for its own reactive statements).
-  function combinedColors(project, runtime) {
+  function combinedColors(project, runtime, fontsReady) {
     try {
       const { combined } = generateAll(project, runtime);
       return (combined && combined.colors) || [];
@@ -35,13 +63,14 @@
       return [];
     }
   }
-  $: threadRows = combinedColors(project, runtime).map((c, i) => {
+  $: threadRows = combinedColors(project, runtime, fontsReady).map((c, i) => {
     const nearest = nearestThread([c.r, c.g, c.b]);
     return { block: i + 1, rgb: nearest.rgb, name: nearest.name };
   });
 
-  function dl(fmt) {
+  async function dl(fmt) {
     try {
+      await ensureFonts(fontKeysOf(project));
       triggerDownload(exportDesign(buildDesign(), fmt));
       msg = "Downloaded " + fmt.toUpperCase();
     } catch (e) {
@@ -52,6 +81,7 @@
   async function dlWorksheet() {
     worksheetBusy = true;
     try {
+      await ensureFonts(fontKeysOf(project));
       const design = buildDesign();
       const garment = EMB.getGarment(project.garmentId);
       await exportWorksheetPDF(design, garment);
@@ -65,6 +95,7 @@
 
   async function dlPNG() {
     try {
+      await ensureFonts(fontKeysOf(project));
       const design = buildDesign();
       const out = await exportPNG(design);
       triggerDownload({ bytes: out.blob, filename: out.filename, mime: out.mime });
