@@ -78,8 +78,8 @@
   // inside it); jumps only BETWEEN components (dots) and between glyphs.
   // Returns [{pts, kind:"satin"|"underlay", jump}].
   function routeGlyph(cols, opts) {
-    const pxPerMm = opts.pxPerMm, spacingMm = opts.spacingMm, pullCompMm = opts.pullCompMm || 0;
-    const satinOpts = { spacingMm, pxPerMm, pullCompMm };
+    const pxPerMm = opts.pxPerMm, spacingMm = opts.spacingMm, pullCompMm = opts.pullCompMm || 0, slantDeg = opts.slantDeg || 0;
+    const satinOpts = { spacingMm, pxPerMm, pullCompMm, slantDeg };
     const G = [];
     for (const c of cols) {
       const geom = columnGeom(c.railA, c.railB, c.rungs, 12);
@@ -219,6 +219,7 @@
     const pxPerMm = o.pxPerMm || 10;
     const spacingMm = o.spacingMm || 0.4;
     const pullCompMm = o.pullCompMm || 0;
+    const slantDeg = o.slantDeg || 0;
     const doUnderlay = o.underlay !== false;
     const arcDeg = o.arcDeg || 0;
     const u2px = (emMm / font.unitsPerEm) * pxPerMm;       // font units -> design px
@@ -288,7 +289,7 @@
           railB: col.railB.map((p) => ({ x: TX(p[0]), y: TY(p[1]) })),
           rungs: (col.rungs || []).map((rg) => [{ x: TX(rg[0][0]), y: TY(rg[0][1]) }, { x: TX(rg[1][0]), y: TY(rg[1][1]) }]),
         }));
-        const gRuns = routeGlyph(cols, { pxPerMm, spacingMm, pullCompMm, underlay: doUnderlay });
+        const gRuns = routeGlyph(cols, { pxPerMm, spacingMm, pullCompMm, slantDeg, underlay: doUnderlay });
 
         let place;
         if (!arcDeg) {

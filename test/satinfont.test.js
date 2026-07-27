@@ -275,3 +275,21 @@ test("digitize.buildLetteringDesign: arcDeg is threaded through both layoutText 
   const arced = DG.buildLetteringDesign(font, "HHH", { ...base, arcDeg: 120 });
   assert.notStrictEqual(straight.heightMM, arced.heightMM, "arcDeg must change the design's bbox height");
 });
+
+test("layoutText: slantDeg absent/0 is byte-identical to today's straight output; a nonzero value visibly leans a satin run's cross-stitches", () => {
+  const opts = { emMm: 18, pxPerMm: 8, spacingMm: 0.4, pullCompMm: 0.2, underlay: false };
+  const lay0 = SF.layoutText(font, "H", opts);
+  const layExplicit0 = SF.layoutText(font, "H", Object.assign({ slantDeg: 0 }, opts));
+  assert.deepStrictEqual(layExplicit0, lay0);
+  const layShear = SF.layoutText(font, "H", Object.assign({ slantDeg: 15 }, opts));
+  // Same run/point COUNT (slant re-samples the same stations, doesn't add/remove any).
+  assert.strictEqual(layShear.runs.length, lay0.runs.length);
+  const totalPts0 = lay0.runs.reduce((s, r) => s + r.pts.length, 0);
+  const totalPtsShear = layShear.runs.reduce((s, r) => s + r.pts.length, 0);
+  assert.strictEqual(totalPtsShear, totalPts0);
+  // But the actual point positions differ (the lean visibly changed the geometry).
+  const flat0 = lay0.runs.flatMap((r) => r.pts);
+  const flatShear = layShear.runs.flatMap((r) => r.pts);
+  const anyDiffer = flat0.some((p, i) => Math.abs(p.x - flatShear[i].x) > 0.5 || Math.abs(p.y - flatShear[i].y) > 0.5);
+  assert.ok(anyDiffer, "slantDeg:15 must produce visibly different point positions than slantDeg:0");
+});
