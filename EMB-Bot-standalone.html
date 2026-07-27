@@ -2509,11 +2509,39 @@ const units =
     return { A, B };
   }
 
+  // Interpolate a point on `arr` at arc-length position `s` along `cum`
+  // (arr's own cumulative arc-length table, same length as arr). Used by
+  // slantDeg below to sample rail A and rail B at DIFFERENT arc-length
+  // positions (a lean) instead of always the same one (perpendicular).
+  function interpAt(arr, cum, s) {
+    const n = arr.length;
+    if (s <= 0) return { x: arr[0].x, y: arr[0].y };
+    const total = cum[n - 1];
+    if (s >= total) return { x: arr[n - 1].x, y: arr[n - 1].y };
+    let i = 0;
+    while (i < n - 2 && cum[i + 1] < s) i++;
+    const segLen = cum[i + 1] - cum[i] || 1;
+    const f = (s - cum[i]) / segLen;
+    return { x: arr[i].x + (arr[i + 1].x - arr[i].x) * f, y: arr[i].y + (arr[i + 1].y - arr[i].y) * f };
+  }
+
   // Turn corresponded pairs into zig-zag satin at the given density.
-  // opts = { spacingMm, pxPerMm, pullCompMm=0 }.
+  // opts = { spacingMm, pxPerMm, pullCompMm=0, slantDeg=0 }.
+  //
+  // slantDeg (Font editing abilities Round 1, italic-style lean): 0 keeps
+  // the cross-stitch perpendicular to the column (today's behavior,
+  // byte-identical). A nonzero value samples rail A AHEAD of the centerline
+  // target and rail B BEHIND it (or vice versa) by halfWidth*tan(slantDeg) —
+  // the same "shift the far-rail contact point along the column" trick a
+  // real italic satin lean uses — verified analytically before this task was
+  // written: on a synthetic straight column this produces a cross-stitch
+  // angle of EXACTLY 90+slantDeg degrees away from the column's clamped end
+  // stations (where the shifted target runs off the column and clamps back
+  // toward perpendicular — an intentional, graceful taper, not a bug).
   function emitZigzag(A, B, opts) {
     const denom = (opts.spacingMm || 0.4) * (opts.pxPerMm || 1);
     const offset = ((opts.pullCompMm || 0) * (opts.pxPerMm || 1)) / 2;
+    const slantRad = ((opts.slantDeg || 0) * Math.PI) / 180;
     const M = A.length;
     if (M < 2) return [];
     // Centerline cumulative arc length, to space stations evenly along the run.
@@ -2531,6 +2559,14 @@ const units =
       const f = segLen > EPS ? (target - cum[seg]) / segLen : 0;
       let ax = A[seg].x + (A[seg + 1].x - A[seg].x) * f, ay = A[seg].y + (A[seg + 1].y - A[seg].y) * f;
       let bx = B[seg].x + (B[seg + 1].x - B[seg].x) * f, by = B[seg].y + (B[seg + 1].y - B[seg].y) * f;
+      if (slantRad) {
+        const halfW = Math.hypot(ax - bx, ay - by) / 2;
+        const shift = halfW * Math.tan(slantRad);
+        const clampS = (s) => Math.max(0, Math.min(total, s));
+        const pA1 = interpAt(A, cum, clampS(target + shift));
+        const pB1 = interpAt(B, cum, clampS(target - shift));
+        ax = pA1.x; ay = pA1.y; bx = pB1.x; by = pB1.y;
+      }
       if (offset > 0) {
         let vx = ax - bx, vy = ay - by; const L = Math.hypot(vx, vy) || 1; vx /= L; vy /= L;
         ax += vx * offset; ay += vy * offset; bx -= vx * offset; by -= vy * offset;
@@ -2692,8 +2728,8 @@ const units =
   // inside it); jumps only BETWEEN components (dots) and between glyphs.
   // Returns [{pts, kind:"satin"|"underlay", jump}].
   function routeGlyph(cols, opts) {
-    const pxPerMm = opts.pxPerMm, spacingMm = opts.spacingMm, pullCompMm = opts.pullCompMm || 0;
-    const satinOpts = { spacingMm, pxPerMm, pullCompMm };
+    const pxPerMm = opts.pxPerMm, spacingMm = opts.spacingMm, pullCompMm = opts.pullCompMm || 0, slantDeg = opts.slantDeg || 0;
+    const satinOpts = { spacingMm, pxPerMm, pullCompMm, slantDeg };
     const G = [];
     for (const c of cols) {
       const geom = columnGeom(c.railA, c.railB, c.rungs, 12);
@@ -2833,6 +2869,7 @@ const units =
     const pxPerMm = o.pxPerMm || 10;
     const spacingMm = o.spacingMm || 0.4;
     const pullCompMm = o.pullCompMm || 0;
+    const slantDeg = o.slantDeg || 0;
     const doUnderlay = o.underlay !== false;
     const arcDeg = o.arcDeg || 0;
     const u2px = (emMm / font.unitsPerEm) * pxPerMm;       // font units -> design px
@@ -2902,7 +2939,7 @@ const units =
           railB: col.railB.map((p) => ({ x: TX(p[0]), y: TY(p[1]) })),
           rungs: (col.rungs || []).map((rg) => [{ x: TX(rg[0][0]), y: TY(rg[0][1]) }, { x: TX(rg[1][0]), y: TY(rg[1][1]) }]),
         }));
-        const gRuns = routeGlyph(cols, { pxPerMm, spacingMm, pullCompMm, underlay: doUnderlay });
+        const gRuns = routeGlyph(cols, { pxPerMm, spacingMm, pullCompMm, slantDeg, underlay: doUnderlay });
 
         let place;
         if (!arcDeg) {
@@ -4732,7 +4769,7 @@ const _sm_fillmod = _sm_req
     const ls = o.letterSpacingMm || 0;
     // Pass 1: measure the glyph extent (bbox is spacing-independent) so we can
     // fit-to-garment. Coarse spacing keeps it cheap.
-    const probe = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: 2, pullCompMm: 0, letterSpacingMm: ls, underlay: false, arcDeg: o.arcDeg || 0 });
+    const probe = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: 2, pullCompMm: 0, letterSpacingMm: ls, underlay: false, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0 });
     if (!probe.runs.length) return empty;
     const bb = probe.bbox;
     const bboxWmm = (bb.x1 - bb.x0) / pxPerMm, bboxHmm = (bb.y1 - bb.y0) / pxPerMm;
@@ -4757,7 +4794,7 @@ const _sm_fillmod = _sm_req
     // Pass 2: generate at fit-corrected density so the FINAL satin spacing and
     // pull-comp land at the requested mm regardless of the fit scale (short text
     // scaled up would otherwise sew too sparse).
-    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: densityMm / sc, pullCompMm: pullCompMm / sc, letterSpacingMm: ls, underlay: o.underlay !== false, arcDeg: o.arcDeg || 0 });
+    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: densityMm / sc, pullCompMm: pullCompMm / sc, letterSpacingMm: ls, underlay: o.underlay !== false, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0 });
     if (!lay.runs.length) return empty;
     const cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2;
     // Explicit placement offset (Slice 3): applied AFTER the center transform, in

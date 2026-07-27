@@ -112,6 +112,19 @@
   </div>
 </div>
 
+<label class="letterspacing">
+  <span>Slant</span>
+  <input
+    type="range"
+    min="-20"
+    max="20"
+    step="2"
+    value={element.slantDeg || 0}
+    on:input={(e) => patch({ slantDeg: parseInt(e.target.value, 10) })}
+  />
+  <span class="label">{element.slantDeg || 0}°</span>
+</label>
+
 <style>
   .upsidedown {
     margin-top: 8px;
