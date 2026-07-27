@@ -1,18 +1,25 @@
-# Font library expansion + shape elements (Slice 9) — design
+# Font library expansion (Slice 10) — design
 
 Date: 2026-07-27
 Status: approved in brainstorming, pending plan
+Sequenced **after** `2026-07-27-svg-import-and-shapes-design.md`
 
 ## 1. Goal
 
-Grow the pre-digitized satin font library from 21 to roughly 140–160 fonts, add
-pictogram/shape packs as a first-class element type, and replace the font
-dropdown with a browser that stays usable at that scale.
+Grow the pre-digitized satin font library from 21 to roughly 140–160 fonts and
+replace the font dropdown with a browser that stays usable at that scale.
 
 Kent's request was "more fonts, and simple shapes like a star, sun or flower."
-Both are satisfiable from the same upstream source the current 21 came from,
-using the existing `tools/build-font.mjs` pipeline. No new stitch-generation
-math is required — this is a data, delivery, QC, and UI slice.
+
+**The shapes half of that request moved out of this spec.** It was originally
+scoped here on the assumption that pictogram packs were satin fonts structurally
+identical to the current 21. That was verified false on 2026-07-27 — they are
+fill-based SVG artwork, and consuming them requires the vector path parser. See
+§2 of the SVG import spec for the measurements. Shapes now ship in that slice;
+this spec covers fonts only.
+
+What remains is a data, delivery, QC, and UI slice. No new stitch-generation
+math is required.
 
 ## 2. Source and eligible set
 
@@ -30,19 +37,25 @@ as provisional until then.
 |---|---|---|
 | Plain Latin text | ~105 | Yes |
 | `_small` / `_tiny` size variants | ~20 | Yes |
-| Pictogram / shape packs | ~14 | Yes |
+| Pictogram / shape packs | ~14 | No — moved to the SVG import slice |
 | Monogram sets | ~4 | No |
 | Non-Latin (Hebrew, Cyrillic, Greek, Braille) | ~8 | No |
 | Multi-color / applique / tartan / tricolore | ~10 | No |
 | Texture / fill-effect variants | ~4 | No |
 
-Target: **~140 new, ~160 total** — with the caveat that QC rejections (§5) will
-reduce this. At the 12.5% historical rejection rate, expect roughly **~122 to
-survive**, for ~143 total. Any figure in this spec above 140 is optimistic.
+Target: **~125 new, ~145 total** — with the caveat that QC rejections (§5) will
+reduce this. At the 12.5% historical rejection rate, expect roughly **~109 to
+survive**, for ~130 total. Treat any figure above 125 as optimistic.
 
 The excluded categories need engine features that do not exist: applique
 tackdown/cutline sequencing, per-glyph multi-color, RTL layout, and fill-effect
 variants. Each is a candidate for a later slice, not a silent drop.
+
+A caution the pictogram finding earned: **`satin_column` count is the eligibility
+test, not the directory name.** Several packs assumed to be satin fonts turned
+out to contain zero satin columns. The manifest build must measure this per font
+before any font is counted as importable, and the estimates above should be
+expected to move once it does.
 
 ### Why the `_small` variants matter more than their count suggests
 
@@ -60,43 +73,45 @@ tell users to work around into a supported case.
    restricted "local-only" font tier was considered and **skipped** — its only
    plausible content was free-for-personal-use *outline* fonts, which can only
    be auto-traced, and auto-tracing was rejected on quality on 2026-07-24.
-3. **`EMB-Bot-standalone.html` is retired.** 175 fonts inlined would be ~63 MB
-   in a single local file, where gzip does not apply. Studio is the product.
+3. **`EMB-Bot-standalone.html` is retired.** ~145 fonts inlined would be tens of
+   MB in a single local file, where gzip does not apply. Studio is the product.
    `tools/bundle.mjs` and the standing "rebuild the standalone after any `src/`
    change" rule retire with it.
-4. **Slice order: this slice, then SVG import.** The pictogram packs already
-   satisfy the star/sun/flower request, so SVG vector import (designed
-   separately, same date) moves to the following slice.
+4. **Slice order: SVG import first, this slice second.** Originally decided the
+   other way round, on the assumption that pictogram packs were satin fonts and
+   would satisfy the star/sun/flower request without a vector parser. Measurement
+   disproved that (see the SVG spec §2), so the order reversed. Fonts and vector
+   import are otherwise independent — nothing here depends on that slice's code.
 5. **QC is automated**, with human review only of what the harness flags.
-6. **Font browser + separate shape grid**, not a longer dropdown.
+6. **Font browser**, not a longer dropdown. The shape grid moved to the SVG slice
+   along with shapes themselves.
 
 `EMB-Bot.html` (the non-inlined original tool) is **not** retired here. It may
 still expose controls the Studio lacks — per-swatch stitch-angle override, the
 explicit fabric dropdown. Audit before retiring it; that is separate work.
 
-## 3a. Recommended split into two slices
+## 3a. Recommended split into two stages
 
-This spec is larger than any slice this project has shipped. Slices 1–8 ran 4–6
-tasks each and all merged clean; the work here is closer to 10 and spans three
-distinct risk areas (bulk data import, a delivery-architecture change, and new
-UI plus a model migration). The project's own convention — narrow slices ship
-clean — argues against doing it in one pass.
+Moving shapes and the model v3 migration into the SVG slice shrank this spec
+meaningfully, but it still spans two distinct risk areas: a bulk data import
+plus a delivery-architecture change, and new UI. Slices 1–8 ran 4–6 tasks each
+and all merged clean; this is closer to 8.
 
-**Slice 9a — library and delivery (no visible UI change)**
+**Stage A — library and delivery (no visible change)**
 Manifest build, lazy font loading, removal of `satin-fonts.js`, the QC harness,
-bulk import, licensing metadata. Ends with ~140 fonts present and loadable, the
-existing dropdown still in place and still working. Verifiable on its own: font
-output for the existing 21 must be byte-identical, and the app must behave
-exactly as it does today.
+bulk import, licensing metadata. Ends with ~125 new fonts present and loadable
+with the existing dropdown still in place and still working. Verifiable on its
+own: output for the existing 21 fonts must be byte-identical and the app must
+behave exactly as it does today.
 
-**Slice 9b — browser and shapes (visible)**
-Font browser, shape grid, `+ Shape` element, project model v3, credits screen.
-Builds on a library that is already proven loadable.
+**Stage B — browser and credits (visible)**
+Font browser with search, filters and live text previews; credits screen
+generated from the manifest. Builds on a library already proven loadable.
 
-The split is recommended, not mandatory. Its main benefit is that 9a's riskiest
-change — removing the eager registry every existing call site depends on — gets
-verified against unchanged UI, so any regression is unambiguously the delivery
-change rather than the new picker.
+The split is recommended, not mandatory. Its value is that Stage A's riskiest
+change — removing the eager registry that every existing call site depends on —
+gets verified against unchanged UI, so any regression is unambiguously the
+delivery change rather than the new picker.
 
 ## 4. Architecture
 
@@ -126,25 +141,11 @@ The browser's "preview my actual text" feature renders live, but only for fonts
 currently visible in the viewport, debounced, and capped in flight. Static PNGs
 carry the grid; live rendering is an enhancement layered on top.
 
-### 4.3 Shape elements
+### 4.3 No project model change
 
-The project model (v2) knows `text` and `image` elements. A shape is neither: it
-is a glyph from a pictogram pack, chosen visually.
-
-Add a third element type:
-
-```js
-{ type: "shape", pack: "mai_en_fleur", glyph: "k", sizeMm, offsetXMm, offsetYMm,
-  colorRgb, underlay }
-```
-
-Bumps the model to **v3** with a `migrateProject` step, following the existing
-v1→v2 precedent. Generation reuses `buildLetteringDesign` with a single-glyph
-string — pictogram packs are structurally ordinary satin fonts, so no new
-engine path is needed.
-
-Shape packs are excluded from the font browser's list (they are not usable as
-text fonts) and appear only in the shape grid.
+This slice adds no element types and no model migration. Fonts are selected by
+key on existing text elements, exactly as today. The `shape` element type and
+the v2→v3 migration live in the SVG import slice.
 
 ## 5. QC harness
 
@@ -185,17 +186,7 @@ Replaces `FontSelect`'s dropdown.
   shrunk below what thread holds.
 - Current selection is always visible and restorable.
 
-## 7. Shape grid UI
-
-- New `+ Shape` action in ContentStep alongside `+ Text` and `+ Image`.
-- Opens a grid of pre-rendered shape thumbnails, grouped by pack, searchable by
-  pack name and shape label where upstream provides one.
-- Clicking inserts a shape element; it then behaves like any other element —
-  drag, resize, thread colour, hoop clamp.
-- Shape labels come from the manifest, authored during import. Glyph letters are
-  never surfaced to the user.
-
-## 8. Licensing deliverables
+## 7. Licensing deliverables
 
 These are scope in this slice, not follow-up paperwork:
 
@@ -210,7 +201,7 @@ These are scope in this slice, not follow-up paperwork:
 its own license, application code does not inherit it — is standard practice but
 should be confirmed by a lawyer before a paid launch.
 
-## 9. Testing
+## 8. Testing
 
 - `tools/qc-font.mjs` gets unit tests per check, with fixtures built from the
   known-bad fonts already identified (`medium_font` metrics, a running-stitch-only
@@ -220,33 +211,33 @@ should be confirmed by a lawyer before a paid launch.
 - Lazy font loading is tested at the adapter level — cache hit/miss, concurrent
   requests for the same font, and failed fetch surfacing an error rather than a
   silent empty design.
-- Project model v2→v3 migration gets the same treatment v1→v2 received.
-- Shape element generation is tested through `buildLetteringDesign` to confirm
-  single-glyph output matches a text element with the same glyph.
 - Existing engine suite must stay green; no stitch-math changes are in scope, so
   any diff in generated stitches for existing fonts is a regression.
 
-## 10. Out of scope
+## 9. Out of scope
 
 - Monogram sets, non-Latin scripts, multi-color/applique/tartan/tricolore
   variants, texture variants (each needs engine work).
-- SVG vector import (next slice, separate spec, same date).
+- Pictogram/shape packs, the `shape` element type, the shape grid, and the model
+  v2→v3 migration — all moved to the SVG import slice, which precedes this one.
+- SVG vector import itself (separate spec, same date, sequenced first).
 - Retiring `EMB-Bot.html` (needs a feature audit first).
 - Stroke→satin conversion.
 - Outline-font (.otf/.ttf) import — auto-tracing was rejected on quality.
 
-## 11. Risks
+## 10. Risks
 
-1. **Pictogram packs may not all be satin columns.** Some could be fills or
-   multi-color, which would move them into the excluded set. The QC harness
-   catches this at import, but ~14 could shrink. Mitigation: verify the packs
-   first, before building the shape grid around them.
-2. **Preview performance.** Even with pre-rendered PNGs, a 175-tile grid with
+1. **Eligible font count is unverified.** Category estimates come from directory
+   names, and the pictogram investigation proved names unreliable — several
+   assumed-satin packs contained zero satin columns. The real count lands when
+   the manifest build measures every font. Mitigation: measure first, and treat
+   ~125 as an upper bound rather than a target.
+2. **Preview performance.** Even with pre-rendered PNGs, a ~145-tile grid with
    live text rendering layered on is the most likely part of this slice to need
    rework. Mitigation: static PNGs must stand alone as an acceptable experience.
-3. **Import volume.** ~140 fonts is far more than any prior font batch (max 7).
+3. **Import volume.** ~125 fonts is far more than any prior font batch (max 7).
    Mitigation: the harness runs unattended; only flagged fonts consume attention.
-4. **Repo size.** ~140 JSON files plus preview PNGs is a large committed
+4. **Repo size.** ~125 JSON files plus preview PNGs is a large committed
    addition. Worth confirming the delivery story before committing them all.
 5. **Removing `satin-fonts.js` touches every existing font call site.** The lazy
    accessor must preserve current behaviour exactly; existing font output should
