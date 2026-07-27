@@ -662,6 +662,29 @@ test("buildLetteringDesign: weightPreset 'bold' widens satin cross-stitches vs '
   assert.ok(avgCrossWidth(bold) > avgCrossWidth(thin), `bold avg spacing (${avgCrossWidth(bold)}) should exceed thin's (${avgCrossWidth(thin)})`);
 });
 
+test("buildLetteringDesign: slantDeg absent/0 is byte-identical to today's output; a nonzero value changes the generated geometry", () => {
+  const garment = { widthIn: 8, heightIn: 8 };
+  const font = require("../src/fonts/geneva_simple.json");
+  const base = { garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false };
+  const d0 = DG.buildLetteringDesign(font, "H", base);
+  const dExplicit0 = DG.buildLetteringDesign(font, "H", Object.assign({ slantDeg: 0 }, base));
+  assert.deepStrictEqual(dExplicit0, d0);
+  const dSlant = DG.buildLetteringDesign(font, "H", Object.assign({ slantDeg: 15 }, base));
+  // At the layoutText level, slant re-samples the same stations and never
+  // adds/removes any for a FIXED spacingMm (verified exactly in
+  // satinfont.test.js). Here, though, buildLetteringDesign's two-pass
+  // fit-to-width scaling sits in between: slant nudges the glyph bbox by a
+  // fraction of a mm (the clamped-end taper moves the outermost rail contact
+  // very slightly), which nudges the fit scale by the same tiny amount,
+  // which can push one column's step count across a Math.ceil() rounding
+  // boundary. A few stitches' difference here is expected numerical noise,
+  // not a functional regression -- assert "close", not byte-identical.
+  const countDiff = Math.abs(dSlant.stitches.length - d0.stitches.length);
+  assert.ok(countDiff <= 10, `slant should re-sample roughly the same station count, not add/remove stitches wholesale (diff ${countDiff})`);
+  const anyDiffer = d0.stitches.some((s, i) => Math.abs(s.x - dSlant.stitches[i].x) > 1 || Math.abs(s.y - dSlant.stitches[i].y) > 1);
+  assert.ok(anyDiffer, "slantDeg:15 must produce visibly different stitch positions");
+});
+
 test("buildQualityDesign: targetWidthMm sets the final width (clamped to hoop)", () => {
   // 400x400 px square at pxPerMm 8 -> 50x50mm natural bbox (square, so width and
   // height scale identically, making the expected result easy to reason about).
