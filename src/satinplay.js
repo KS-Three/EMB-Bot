@@ -145,11 +145,39 @@
     return { A, B };
   }
 
+  // Interpolate a point on `arr` at arc-length position `s` along `cum`
+  // (arr's own cumulative arc-length table, same length as arr). Used by
+  // slantDeg below to sample rail A and rail B at DIFFERENT arc-length
+  // positions (a lean) instead of always the same one (perpendicular).
+  function interpAt(arr, cum, s) {
+    const n = arr.length;
+    if (s <= 0) return { x: arr[0].x, y: arr[0].y };
+    const total = cum[n - 1];
+    if (s >= total) return { x: arr[n - 1].x, y: arr[n - 1].y };
+    let i = 0;
+    while (i < n - 2 && cum[i + 1] < s) i++;
+    const segLen = cum[i + 1] - cum[i] || 1;
+    const f = (s - cum[i]) / segLen;
+    return { x: arr[i].x + (arr[i + 1].x - arr[i].x) * f, y: arr[i].y + (arr[i + 1].y - arr[i].y) * f };
+  }
+
   // Turn corresponded pairs into zig-zag satin at the given density.
-  // opts = { spacingMm, pxPerMm, pullCompMm=0 }.
+  // opts = { spacingMm, pxPerMm, pullCompMm=0, slantDeg=0 }.
+  //
+  // slantDeg (Font editing abilities Round 1, italic-style lean): 0 keeps
+  // the cross-stitch perpendicular to the column (today's behavior,
+  // byte-identical). A nonzero value samples rail A AHEAD of the centerline
+  // target and rail B BEHIND it (or vice versa) by halfWidth*tan(slantDeg) —
+  // the same "shift the far-rail contact point along the column" trick a
+  // real italic satin lean uses — verified analytically before this task was
+  // written: on a synthetic straight column this produces a cross-stitch
+  // angle of EXACTLY 90+slantDeg degrees away from the column's clamped end
+  // stations (where the shifted target runs off the column and clamps back
+  // toward perpendicular — an intentional, graceful taper, not a bug).
   function emitZigzag(A, B, opts) {
     const denom = (opts.spacingMm || 0.4) * (opts.pxPerMm || 1);
     const offset = ((opts.pullCompMm || 0) * (opts.pxPerMm || 1)) / 2;
+    const slantRad = ((opts.slantDeg || 0) * Math.PI) / 180;
     const M = A.length;
     if (M < 2) return [];
     // Centerline cumulative arc length, to space stations evenly along the run.
@@ -167,6 +195,14 @@
       const f = segLen > EPS ? (target - cum[seg]) / segLen : 0;
       let ax = A[seg].x + (A[seg + 1].x - A[seg].x) * f, ay = A[seg].y + (A[seg + 1].y - A[seg].y) * f;
       let bx = B[seg].x + (B[seg + 1].x - B[seg].x) * f, by = B[seg].y + (B[seg + 1].y - B[seg].y) * f;
+      if (slantRad) {
+        const halfW = Math.hypot(ax - bx, ay - by) / 2;
+        const shift = halfW * Math.tan(slantRad);
+        const clampS = (s) => Math.max(0, Math.min(total, s));
+        const pA1 = interpAt(A, cum, clampS(target + shift));
+        const pB1 = interpAt(B, cum, clampS(target - shift));
+        ax = pA1.x; ay = pA1.y; bx = pB1.x; by = pB1.y;
+      }
       if (offset > 0) {
         let vx = ax - bx, vy = ay - by; const L = Math.hypot(vx, vy) || 1; vx /= L; vy /= L;
         ax += vx * offset; ay += vy * offset; bx -= vx * offset; by -= vy * offset;
