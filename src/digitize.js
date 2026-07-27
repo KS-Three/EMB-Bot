@@ -542,7 +542,19 @@
     const emMm = o.emMm || 18;
     const rgb = o.rgb || [20, 20, 20];
     const densityMm = (o.densityMm || 0.4) * ((fabric && fabric.densityAdjust) ? fabric.densityAdjust : 1);
-    const pullCompMm = (fabric && fabric.pullCompMm != null) ? fabric.pullCompMm : (o.pullCompMm == null ? 0.2 : o.pullCompMm);
+    // Bold/thin (Font editing abilities Round 1): reuses the EXISTING,
+    // already-tested pullCompMm column-widening mechanism (satinplay.js's
+    // emitZigzag pushes the two rails apart by pullCompMm/2 each) instead of
+    // any new geometry -- pullCompMm was built for fabric-pull compensation,
+    // but geometrically "push the rails apart by N mm" is exactly what a
+    // bolder stroke needs too. "normal" adds 0, so it's byte-identical to
+    // today. These two constants are a starting point verified against the
+    // default font's tightest letterforms in this task's own steps below;
+    // if a different font's tightest glyph collapses a counter at "bold",
+    // shrink WEIGHT_OFFSET_MM.bold rather than adding new mechanism.
+    const WEIGHT_OFFSET_MM = { thin: -0.15, normal: 0, bold: 0.3 };
+    const weightPreset = (o.weightPreset && WEIGHT_OFFSET_MM[o.weightPreset] != null) ? o.weightPreset : "normal";
+    const pullCompMm = ((fabric && fabric.pullCompMm != null) ? fabric.pullCompMm : (o.pullCompMm == null ? 0.2 : o.pullCompMm)) + WEIGHT_OFFSET_MM[weightPreset];
     const empty = { stitches: [{ x: 0, y: 0, type: "end" }], colors: [], widthMM: 0, heightMM: 0, stitchCount: 0, colorCount: 0, _debug: { nSatin: 0, nFill: 0, nTrims: 0 } };
     if (!fontData || !text) return empty;
 

@@ -630,6 +630,38 @@ test("buildLetteringDesign: a colorRange spanning the WHOLE string produces only
   assert.ok(!d.stitches.some((s) => s.type === "color"));
 });
 
+test("buildLetteringDesign: weightPreset 'normal' (or absent) is byte-identical to today's output", () => {
+  const garment = { widthIn: 8, heightIn: 8 };
+  const font = require("../src/fonts/geneva_simple.json");
+  const base = { garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false };
+  const dNoField = DG.buildLetteringDesign(font, "Kent", base);
+  const dNormal = DG.buildLetteringDesign(font, "Kent", Object.assign({ weightPreset: "normal" }, base));
+  assert.deepStrictEqual(dNormal, dNoField);
+});
+
+test("buildLetteringDesign: weightPreset 'bold' widens satin cross-stitches vs 'thin', measured on the same glyph", () => {
+  const garment = { widthIn: 8, heightIn: 8 };
+  const font = require("../src/fonts/geneva_simple.json");
+  const base = { garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false };
+  function avgCrossWidth(design) {
+    // Consecutive "stitch" records alternate rail-A/rail-B in a satin run;
+    // the width-spanning crosses are adjacent pairs. Average the distance
+    // between EVERY adjacent stitch pair as a coarse but monotonic proxy for
+    // "how wide is this column" -- sufficient to confirm bold > thin without
+    // needing to reconstruct which pairs are crosses vs connectors.
+    let sum = 0, n = 0, prev = null;
+    for (const s of design.stitches) {
+      if (s.type !== "stitch") { prev = null; continue; }
+      if (prev) { sum += Math.hypot(s.x - prev.x, s.y - prev.y); n++; }
+      prev = s;
+    }
+    return n ? sum / n : 0;
+  }
+  const thin = DG.buildLetteringDesign(font, "H", Object.assign({ weightPreset: "thin" }, base));
+  const bold = DG.buildLetteringDesign(font, "H", Object.assign({ weightPreset: "bold" }, base));
+  assert.ok(avgCrossWidth(bold) > avgCrossWidth(thin), `bold avg spacing (${avgCrossWidth(bold)}) should exceed thin's (${avgCrossWidth(thin)})`);
+});
+
 test("buildQualityDesign: targetWidthMm sets the final width (clamped to hoop)", () => {
   // 400x400 px square at pxPerMm 8 -> 50x50mm natural bbox (square, so width and
   // height scale identically, making the expected result easy to reason about).
