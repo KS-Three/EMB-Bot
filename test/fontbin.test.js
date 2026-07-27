@@ -55,6 +55,17 @@ test("empty arrays and negative/large coords survive", () => {
   assert.deepStrictEqual(fb.decodeFontBin(fb.encodeFontBin(f, 4)), fb.quantizeFont(f, 4));
 });
 
+test("quantize never emits negative zero (would break deepStrictEqual round-trips)", () => {
+  const f = { glyphs: { Z: { adv: 0, cols: [], runs: [],
+    weird: [[-0.1, -0.05], [0.05, -0.12]] } } };
+  const q = fb.quantizeFont(f, 4);
+  for (const [x, y] of q.glyphs.Z.weird) {
+    assert.ok(!Object.is(x, -0), "found -0 in x");
+    assert.ok(!Object.is(y, -0), "found -0 in y");
+  }
+  assert.deepStrictEqual(fb.decodeFontBin(fb.encodeFontBin(f, 4)), fb.quantizeFont(f, 4));
+});
+
 test("decode rejects garbage", () => {
   assert.throws(() => fb.decodeFontBin(new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9])), /EMBF/);
 });

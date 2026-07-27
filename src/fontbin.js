@@ -24,7 +24,7 @@
     const q = Q || 4;
     return walk(font);
     function walk(v) {
-      if (isRing(v)) return v.map((p) => [Math.round(p[0] * q) / q, Math.round(p[1] * q) / q]);
+      if (isRing(v)) return v.map((p) => [(Math.round(p[0] * q) / q) || 0, (Math.round(p[1] * q) / q) || 0]);
       if (Array.isArray(v)) return v.map(walk);
       if (v && typeof v === "object") {
         const o = {};
