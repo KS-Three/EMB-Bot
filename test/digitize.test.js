@@ -607,6 +607,7 @@ test("buildLetteringDesign: a colorRange covering only the first character inser
     rgb: [10, 20, 30], colorRanges: [{ startIdx: 0, endIdx: 1, colorRgb: [200, 30, 30] }],
   });
   assert.strictEqual(d.colors.length, 2, "range color + base color");
+  assert.strictEqual(d.colorCount, 2, "colorCount matches colors.length");
   assert.deepStrictEqual([d.colors[0].r, d.colors[0].g, d.colors[0].b], [200, 30, 30], "the FIRST-used color is the range's, since char 0 sews first");
   assert.deepStrictEqual([d.colors[1].r, d.colors[1].g, d.colors[1].b], [10, 20, 30]);
   const colorChangeIdxs = d.stitches.map((s, i) => (s.type === "color" ? i : -1)).filter((i) => i >= 0);
