@@ -1,10 +1,11 @@
 import { test, expect, beforeAll } from "vitest";
 import { createRequire } from "node:module";
+import { preloadAllFontsSync } from "./testFonts.js";
 beforeAll(() => {
   const require = createRequire(import.meta.url);
   globalThis.window = globalThis;
-  for (const f of ["units","garments","fabrics","fill","geometry","quantize","flatten","satin","satinplay","satinfont","dst","exp","fonts","digitize"]) require("../../../src/" + f + ".js");
-  new Function(require("node:fs").readFileSync(require("node:path").join(__dirname, "../../../src/fonts/satin-fonts.js"), "utf8"))();
+  for (const f of ["units","garments","fabrics","fill","geometry","quantize","flatten","satin","satinplay","satinfont","fontbin","dst","exp","fonts","digitize"]) require("../../../src/" + f + ".js");
+  preloadAllFontsSync();
 });
 
 // build a synthetic 24x16 two-color image: left half red, right half blue
