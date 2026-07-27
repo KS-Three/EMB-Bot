@@ -46,6 +46,7 @@ export function generateElement(element, garment, runtime) {
     offsetYMm: element.offsetYMm || 0,
     letterSpacingMm: element.letterSpacingMm || 0,
     arcDeg: element.arcDeg || 0,
+    rotationDeg: element.rotationDeg || 0,
   });
 }
 

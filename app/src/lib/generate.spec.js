@@ -14,7 +14,7 @@ beforeAll(() => {
 function textElement(overrides = {}) {
   return {
     id: "e1", type: "text", text: "", fontKey: "geneva_simple",
-    colorRgb: [20, 20, 20], letterSpacingMm: 0, arcDeg: 0, underlay: true,
+    colorRgb: [20, 20, 20], letterSpacingMm: 0, arcDeg: 0, rotationDeg: 0, underlay: true,
     sizeMm: null, offsetXMm: 0, offsetYMm: 0, ...overrides,
   };
 }
@@ -125,6 +125,16 @@ test("generateElement builds an image design from runtime.flats[element.id]", as
   const design = generateElement(el, garment, { flats: { e1: flat } });
   expect(design.stitchCount).toBeGreaterThan(100);
   expect(design.colorCount).toBe(2);
+});
+
+test("generateElement: rotationDeg 180 flips the reported bbox — heightMM stays the same as unrotated (fixture is landscape)", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const flat = generateElement(textElement({ text: "SD WHEEL" }), garment, {});
+  const rotated = generateElement(textElement({ text: "SD WHEEL", rotationDeg: 180 }), garment, {});
+  expect(Math.abs(rotated.widthMM - flat.widthMM)).toBeLessThan(0.5);
+  expect(Math.abs(rotated.heightMM - flat.heightMM)).toBeLessThan(0.5);
 });
 
 test("generateAll over a 2-element project combines both, with per-element bboxes that differ in y", async () => {
