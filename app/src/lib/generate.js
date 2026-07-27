@@ -42,6 +42,7 @@ export function generateElement(element, garment, runtime) {
     garment, pxPerMm: 8, densityMm: 0.4, underlay: element.underlay,
     rgb: element.colorRgb,
     colorRanges: element.colorRanges || [],
+    weightPreset: element.weightPreset || "normal",
     targetWidthMm: element.sizeMm || undefined,
     offsetXMm: element.offsetXMm || 0,
     offsetYMm: element.offsetYMm || 0,

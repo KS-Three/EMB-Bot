@@ -14,7 +14,7 @@ beforeAll(() => {
 function textElement(overrides = {}) {
   return {
     id: "e1", type: "text", text: "", fontKey: "geneva_simple",
-    colorRgb: [20, 20, 20], colorRanges: [], letterSpacingMm: 0, arcDeg: 0, rotationDeg: 0, underlay: true,
+    colorRgb: [20, 20, 20], colorRanges: [], weightPreset: "normal", letterSpacingMm: 0, arcDeg: 0, rotationDeg: 0, underlay: true,
     sizeMm: null, offsetXMm: 0, offsetYMm: 0, ...overrides,
   };
 }
@@ -148,6 +148,24 @@ test("generateElement: rotationDeg 180 flips the reported bbox — heightMM stay
   const rotated = generateElement(textElement({ text: "SD WHEEL", rotationDeg: 180 }), garment, {});
   expect(Math.abs(rotated.widthMM - flat.widthMM)).toBeLessThan(0.5);
   expect(Math.abs(rotated.heightMM - flat.heightMM)).toBeLessThan(0.5);
+});
+
+test("generateElement: weightPreset 'bold' produces a wider average stitch spacing than 'thin' for the same text", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  function avgSpacing(d) {
+    let sum = 0, n = 0, prev = null;
+    for (const s of d.stitches) {
+      if (s.type !== "stitch") { prev = null; continue; }
+      if (prev) { sum += Math.hypot(s.x - prev.x, s.y - prev.y); n++; }
+      prev = s;
+    }
+    return n ? sum / n : 0;
+  }
+  const thin = generateElement(textElement({ text: "H", weightPreset: "thin" }), garment, {});
+  const bold = generateElement(textElement({ text: "H", weightPreset: "bold" }), garment, {});
+  expect(avgSpacing(bold)).toBeGreaterThan(avgSpacing(thin));
 });
 
 test("generateAll over a 2-element project combines both, with per-element bboxes that differ in y", async () => {
