@@ -10,6 +10,7 @@
   import { createEventDispatcher, onMount } from "svelte";
   import { EMB } from "../lib/emb.js";
   import { renderRealistic } from "../lib/preview.js";
+  import { ensureFont } from "../lib/fontLoader.js";
   import { TEMPLATES } from "../lib/templates.js";
   const d = createEventDispatcher();
 
@@ -29,15 +30,20 @@
   // densityMm: 1.2 (plan amendment B12 -- buildLetteringDesign's option is
   // `densityMm`, there is no `spacingMm` at this layer) keeps generation fast
   // since these run off the idle queue, not on a user gesture.
-  function generatePreview(t) {
+  // Awaits the template's font (lib/fontLoader.js -- lazy-loaded, Slice 10A)
+  // before building the preview design; buildLetteringDesign no longer reads
+  // EMB.SATIN_FONTS[el.fontKey] directly since that entry may not exist yet
+  // the first time a given template's font is needed.
+  async function generatePreview(t) {
     if (templatePreviewCache.has(t.id)) return templatePreviewCache.get(t.id);
     let url = "";
     try {
       const el = t.patch.elements[0];
+      const font = await ensureFont(el.fontKey);
       const c = document.createElement("canvas");
       c.width = PREVIEW_W;
       c.height = PREVIEW_H;
-      const design = EMB.buildLetteringDesign(EMB.SATIN_FONTS[el.fontKey], el.text, {
+      const design = EMB.buildLetteringDesign(font, el.text, {
         garment: EMB.getGarment(t.patch.garmentId),
         pxPerMm: 8,
         densityMm: 1.2,
@@ -70,8 +76,9 @@
         previews = { ...previews, [t.id]: templatePreviewCache.get(t.id) };
         continue;
       }
-      onIdle(() => {
-        previews = { ...previews, [t.id]: generatePreview(t) };
+      onIdle(async () => {
+        const url = await generatePreview(t);
+        previews = { ...previews, [t.id]: url };
       });
     }
   });

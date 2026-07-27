@@ -1,6 +1,7 @@
 <script>
   import { onMount, createEventDispatcher } from "svelte";
   import { generateAll } from "../lib/generate.js";
+  import { ensureFonts } from "../lib/fontLoader.js";
   import { renderRealistic, isDark } from "../lib/preview.js";
   import { EMB } from "../lib/emb.js";
   import { designRectPx, hitTest, pickElement, dragResize, dragMove, clampOffsets, clampPan } from "../lib/interact.js";
@@ -200,8 +201,37 @@
     }
   }
 
-  function paint() {
+  // Text elements' fontKeys must be resolved (see lib/fontLoader.js) BEFORE
+  // generateAll runs -- fonts are now lazy-loaded (Slice 10A), so
+  // EMB.SATIN_FONTS can be missing an entry the very first time a font is
+  // used. `genToken` guards against overlap: paint() is async (it awaits
+  // ensureFonts), and the reactive block below fires it again, uncoordinated,
+  // on every project/runtime change -- if a second paint() starts before the
+  // first one's await resolves, only the LAST one (the one matching the
+  // current token when its await returns) is allowed to touch canvas/state,
+  // so a slow-to-resolve stale call can never clobber a newer paint's result.
+  let genToken = 0;
+
+  function fontKeysOf(proj) {
+    return (proj.elements || [])
+      .filter((el) => el.type === "text" && el.fontKey)
+      .map((el) => el.fontKey);
+  }
+
+  async function paint() {
     if (!canvas) return;
+    const myToken = ++genToken;
+    const fontKeys = fontKeysOf(project);
+    let fontErr = null;
+    try {
+      await ensureFonts(fontKeys);
+    } catch (e) {
+      fontErr = e;
+    }
+    // Superseded by a later paint() while we were awaiting, or the component
+    // unmounted -- neither should touch shared UI state at this point.
+    if (myToken !== genToken || !canvas) return;
+
     error = "";
     stats = "";
     warn = false;
@@ -209,6 +239,19 @@
     renderResult = null;
     perElementRects = [];
     peById = {};
+
+    if (fontErr) {
+      // Font load failure surfaces through the existing element-error UI
+      // (same treatment as a generateAll() throw below), never an unhandled
+      // rejection.
+      error = String(fontErr.message || fontErr);
+      hasDesign = false;
+      lastGenerateResult = null;
+      clearToFabric();
+      dispatch("dims", null);
+      dispatch("stats", { stitchCount: 0 });
+      return;
+    }
 
     let result;
     try {
