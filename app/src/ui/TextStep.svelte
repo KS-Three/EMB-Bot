@@ -1,6 +1,7 @@
 <script>
   import FontSelect from "./FontSelect.svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
+  import ColorRangesEditor from "./ColorRangesEditor.svelte";
   import { createEventDispatcher } from "svelte";
 
   // Element-scoped text editor (Task 5, Slice 5): bound to whichever text
@@ -19,15 +20,37 @@
   function patch(p) {
     d("elupdate", { id: element.id, patch: p });
   }
+
+  // Per-letter color (Font editing abilities Round 1): tracks the textarea's
+  // OWN native selection (selectionStart/selectionEnd) so ColorRangesEditor
+  // can offer "color the highlighted text" without any custom range-picker
+  // widget. null (no/collapsed selection) hides that offer.
+  let textareaEl;
+  let selection = null;
+  function updateSelection() {
+    if (!textareaEl) return;
+    const s = textareaEl.selectionStart, e = textareaEl.selectionEnd;
+    selection = e > s ? { start: s, end: e } : null;
+  }
 </script>
 
 <textarea
+  bind:this={textareaEl}
   class="textin"
   rows="2"
   value={element.text}
   on:input={(e) => patch({ text: e.target.value })}
+  on:select={updateSelection}
+  on:mouseup={updateSelection}
+  on:keyup={updateSelection}
   placeholder="Type a name or word"
 ></textarea>
+<ColorRangesEditor
+  text={element.text}
+  colorRanges={element.colorRanges || []}
+  {selection}
+  on:change={(e) => patch({ colorRanges: e.detail })}
+/>
 <ThreadPicker label="Color" rgb={element.colorRgb} on:pick={(e) => patch({ colorRgb: e.detail })} />
 <h3>Font</h3>
 <FontSelect selected={element.fontKey} on:pick={(e) => patch({ fontKey: e.detail })} />
