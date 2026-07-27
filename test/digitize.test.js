@@ -556,6 +556,38 @@ test("buildLetteringDesign: opts absent (no targetWidthMm/offsets) stays back-co
   assert.deepStrictEqual(a, b);
 });
 
+test("buildLetteringDesign: rotationDeg 180 negates every stitch point relative to unrotated (upside-down = point negation about center)", () => {
+  const garment = { widthIn: 8, heightIn: 8 };
+  const font = require("../src/fonts/geneva_simple.json");
+  const base = { garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false };
+  const d0 = DG.buildLetteringDesign(font, "AB", base);
+  const d180 = DG.buildLetteringDesign(font, "AB", Object.assign({ rotationDeg: 180 }, base));
+  assert.strictEqual(d180.stitches.length, d0.stitches.length, "rotation must not add/remove stitch records");
+  for (let i = 0; i < d0.stitches.length; i++) {
+    assert.strictEqual(d180.stitches[i].type, d0.stitches[i].type, `type mismatch at record ${i}`);
+    assert.ok(Math.abs(d180.stitches[i].x - -d0.stitches[i].x) <= 1, `x mismatch at record ${i}: ${d180.stitches[i].x} vs ${-d0.stitches[i].x}`);
+    assert.ok(Math.abs(d180.stitches[i].y - -d0.stitches[i].y) <= 1, `y mismatch at record ${i}: ${d180.stitches[i].y} vs ${-d0.stitches[i].y}`);
+  }
+  // 180 preserves the bounding box dimensions exactly (a rectangle rotated
+  // 180 about its own center has the same axis-aligned bbox).
+  assert.ok(Math.abs(d180.widthMM - d0.widthMM) < 0.5, "width should be unchanged at 180deg");
+  assert.ok(Math.abs(d180.heightMM - d0.heightMM) < 0.5, "height should be unchanged at 180deg");
+});
+
+test("buildLetteringDesign: rotationDeg 90 swaps the reported width/height orientation and rotationDeg 0/absent is byte-identical to today", () => {
+  const garment = { widthIn: 8, heightIn: 8 };
+  const font = require("../src/fonts/geneva_simple.json");
+  const base = { garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false };
+  const d0 = DG.buildLetteringDesign(font, "SD WHEEL", base);
+  const dExplicit0 = DG.buildLetteringDesign(font, "SD WHEEL", Object.assign({ rotationDeg: 0 }, base));
+  assert.deepStrictEqual(dExplicit0, d0, "rotationDeg:0 must be byte-identical to omitting it");
+  const d90 = DG.buildLetteringDesign(font, "SD WHEEL", Object.assign({ rotationDeg: 90 }, base));
+  // "SD WHEEL" is much wider than tall unrotated; rotated 90 it must become
+  // much taller than wide.
+  assert.ok(d0.widthMM > d0.heightMM * 2, "fixture assumption: unrotated text is landscape");
+  assert.ok(d90.heightMM > d90.widthMM * 2, "rotated 90deg text must report portrait dimensions");
+});
+
 test("buildQualityDesign: targetWidthMm sets the final width (clamped to hoop)", () => {
   // 400x400 px square at pxPerMm 8 -> 50x50mm natural bbox (square, so width and
   // height scale identically, making the expected result easy to reason about).
