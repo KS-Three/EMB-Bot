@@ -55,3 +55,34 @@
   />
   <span class="label">{element.arcDeg || 0}°</span>
 </label>
+<label class="letterspacing">
+  <span>Rotation</span>
+  <input
+    type="range"
+    min="0"
+    max="360"
+    step="5"
+    value={element.rotationDeg || 0}
+    on:input={(e) => patch({ rotationDeg: parseInt(e.target.value, 10) })}
+  />
+  <span class="label">{element.rotationDeg || 0}°</span>
+</label>
+<button
+  type="button"
+  class="upsidedown"
+  on:click={() => patch({ rotationDeg: (element.rotationDeg || 0) === 180 ? 0 : 180 })}
+>
+  {(element.rotationDeg || 0) === 180 ? "Right-side up" : "Flip upside-down"}
+</button>
+
+<style>
+  .upsidedown {
+    margin-top: 8px;
+    padding: 6px 12px;
+    border: 1px solid var(--tint-border, #ccd6fb);
+    border-radius: var(--radius-s, 6px);
+    background: var(--surface, #fff);
+    cursor: pointer;
+    font-size: var(--fs-xs, 12px);
+  }
+</style>

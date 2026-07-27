@@ -4743,7 +4743,25 @@ const _sm_fillmod = _sm_req
     // DST space — +x right, +y up (DST convention, already matches T()'s y-flip).
     const offXu = Math.round((o.offsetXMm || 0) * units.DST_UNITS_PER_MM);
     const offYu = Math.round((o.offsetYMm || 0) * units.DST_UNITS_PER_MM);
-    const T = (q) => ({ x: Math.round((q.x - cx) * scalePxToDst) + offXu, y: Math.round((cy - q.y) * scalePxToDst) + offYu });
+    // Whole-element rotation (Font editing abilities Round 1): a rigid rotation
+    // of the ALREADY-centered, already-scaled point, applied BEFORE the
+    // placement offset -- i.e. rotate the element about its own center, then
+    // move the rotated result to its placed position. This never touches
+    // column/satin geometry (routeGlyph/layoutText run identically regardless
+    // of rotationDeg), so it carries zero stitch-quality risk -- same
+    // reasoning as arcDeg/offsetXMm being pure placement, not generation,
+    // concerns. rotationDeg=0 (absent) must be byte-identical to no rotation
+    // at all: cosR=1/sinR=0 makes the rotated branch collapse to the original
+    // px/py unchanged.
+    const rotDeg = o.rotationDeg || 0;
+    const rotRad = (rotDeg * Math.PI) / 180;
+    const cosR = Math.cos(rotRad), sinR = Math.sin(rotRad);
+    const T = (q) => {
+      const px = (q.x - cx) * scalePxToDst, py = (cy - q.y) * scalePxToDst;
+      const rx = rotDeg ? px * cosR - py * sinR : px;
+      const ry = rotDeg ? px * sinR + py * cosR : py;
+      return { x: Math.round(rx) + offXu, y: Math.round(ry) + offYu };
+    };
     const trimAtMm = (fabric && fabric.trimAtMm != null) ? fabric.trimAtMm : (o.trimAtMm == null ? 3.0 : o.trimAtMm);
 
     const stitches = [];
@@ -4774,7 +4792,30 @@ const _sm_fillmod = _sm_req
       lastPt = pts[pts.length - 1];
     }
     const stitchCount = stitches.filter((s) => s.type === "stitch").length;
-    return { stitches, colors, widthMM: designWmm, heightMM: designHmm, stitchCount, colorCount: 1, _debug: { nSatin, nFill: 0, nTrims } };
+    // Rotation (other than a multiple of 180) changes the axis-aligned
+    // bounding box relative to the unrotated glyph bbox (e.g. landscape text
+    // rotated 90 becomes portrait) -- widthMM/heightMM must reflect the
+    // ACTUAL rotated footprint (the field's stats line, SizePanel, and
+    // hoop-clamping all ultimately trace back to this value for a
+    // single-element project; see combine.js's bboxMmFromStitches for the
+    // identical pattern used once multiple elements are combined). Gated on
+    // rotDeg (falsy at 0/absent) so the overwhelmingly common unrotated case
+    // -- including every existing test -- computes designWmm/designHmm
+    // exactly as before, unchanged.
+    let outWmm = designWmm, outHmm = designHmm;
+    if (rotDeg) {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const s of stitches) {
+        if (s.type === "color" || s.type === "end") continue;
+        if (s.x < minX) minX = s.x; if (s.x > maxX) maxX = s.x;
+        if (s.y < minY) minY = s.y; if (s.y > maxY) maxY = s.y;
+      }
+      if (isFinite(minX)) {
+        outWmm = (maxX - minX) / units.DST_UNITS_PER_MM;
+        outHmm = (maxY - minY) / units.DST_UNITS_PER_MM;
+      }
+    }
+    return { stitches, colors, widthMM: outWmm, heightMM: outHmm, stitchCount, colorCount: 1, _debug: { nSatin, nFill: 0, nTrims } };
   }
 
   return { buildQualityDesign, buildLetteringDesign, groupRingsIntoShapes, offsetRing, signedArea, underlayRuns };
