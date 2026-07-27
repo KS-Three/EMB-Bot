@@ -32,6 +32,25 @@ test("layoutText: straight single-line 'AB' is byte-identical to the pre-refacto
   assert.deepStrictEqual(last.pts[last.pts.length - 1], { x: 157.06136346377406, y: 98.76715817738118 });
 });
 
+test("layoutText: each run carries the charIdx of its source character, matching the original string's index", () => {
+  const opts = { emMm: 18, pxPerMm: 8, spacingMm: 0.4, pullCompMm: 0.2, underlay: false };
+  const lay = SF.layoutText(font, "AB", opts);
+  // "AB" — every run belongs to either char 0 ("A") or char 1 ("B").
+  const idxs = new Set(lay.runs.map((r) => r.charIdx));
+  assert.deepStrictEqual([...idxs].sort(), [0, 1]);
+  // Runs for "A" all come before runs for "B" (glyphs are placed left to right).
+  const firstBIdx = lay.runs.findIndex((r) => r.charIdx === 1);
+  assert.ok(lay.runs.slice(0, firstBIdx).every((r) => r.charIdx === 0), "all runs before the first B-run belong to char 0");
+});
+
+test("layoutText: charIdx accounts for a skipped space and a newline exactly like the original string's indices", () => {
+  const opts = { emMm: 18, pxPerMm: 8, spacingMm: 0.4, pullCompMm: 0.2, underlay: false };
+  // "A B\nC" -> indices: A=0, space=1, B=2, \n=3, C=4
+  const lay = SF.layoutText(font, "A B\nC", opts);
+  const idxs = new Set(lay.runs.map((r) => r.charIdx));
+  assert.deepStrictEqual([...idxs].sort((a, b) => a - b), [0, 2, 4], "space(1) and newline(3) produce no glyph runs, so their indices never appear");
+});
+
 test("buildLetteringDesign: straight 'AB' targetWidthMm 40 matches the pre-refactor snapshot", () => {
   const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40 };
   const d = DG.buildLetteringDesign(font, "AB", base);

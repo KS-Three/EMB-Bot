@@ -229,19 +229,28 @@
     // position (kerning resets at each line start) and record each glyph's
     // {g, ox} (ox = pen x at glyph start, font units) plus the line's total
     // advance. No placement happens here.
-    const lineList = String(text).split("\n").map((lineText) => {
+    // charIdx (Font editing abilities Round 1, per-letter color): the index
+    // of each glyph's SOURCE CHARACTER in the original `text` string,
+    // counting "\n" as one position — matching a <textarea>'s native
+    // selectionStart/selectionEnd exactly, so the UI can let a user select
+    // text and tag that range with a color with zero custom index math.
+    const rawLines = String(text).split("\n");
+    let globalIdx = 0;
+    const lineList = rawLines.map((lineText, lineNum) => {
       const chars = Array.from(lineText);
       let penX = 0, prev = null;
       const glyphs = [];
       for (const ch of chars) {
+        const charIdx = globalIdx++;
         if (ch === " " || ch === "\t") { penX += (font.advSpace || font.advDefault); prev = null; continue; }
         const g = font.glyphs[ch] || font.glyphs[ch.toUpperCase()] || font.glyphs[ch.toLowerCase()];
         if (!g) { penX += font.advDefault; prev = null; continue; }
         if (prev != null && font.kerning) { const k = font.kerning[prev + ch]; if (k) penX += k; }
-        glyphs.push({ g, ox: penX });
+        glyphs.push({ g, ox: penX, charIdx });
         penX += g.adv + lsUnits;
         prev = ch;
       }
+      if (lineNum < rawLines.length - 1) globalIdx++; // the "\n" separator itself
       return { glyphs, adv: penX };
     });
     const maxAdvUnits = lineList.reduce((m, ln) => Math.max(m, ln.adv), 0);
@@ -269,7 +278,7 @@
         ? medianOf(line.glyphs.map((gl) => glyphBottomUnits(gl.g))) * u2px
         : 0;
 
-      for (const { g, ox } of line.glyphs) {
+      for (const { g, ox, charIdx } of line.glyphs) {
         // Route in the glyph's own straight/local frame — identical to the
         // pre-refactor TX/TY, so routeGlyph's inputs (and thus its internal
         // distance-based decisions) are completely unaffected by arc/multi-line.
@@ -314,7 +323,7 @@
         for (const r of gRuns) {
           const pts = r.pts.map(place);
           for (const q of pts) acc(q);
-          runs.push({ pts, kind: r.kind, jump: r.jump });
+          runs.push({ pts, kind: r.kind, jump: r.jump, charIdx });
         }
       }
     });
