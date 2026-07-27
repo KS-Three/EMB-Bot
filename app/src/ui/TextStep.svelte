@@ -98,6 +98,20 @@
   {(element.rotationDeg || 0) === 180 ? "Right-side up" : "Flip upside-down"}
 </button>
 
+<div class="weightpresets">
+  <span class="weightlabel">Weight</span>
+  <div class="weightbtns">
+    {#each ["thin", "normal", "bold"] as w}
+      <button
+        type="button"
+        class="weightbtn"
+        class:active={(element.weightPreset || "normal") === w}
+        on:click={() => patch({ weightPreset: w })}
+      >{w[0].toUpperCase() + w.slice(1)}</button>
+    {/each}
+  </div>
+</div>
+
 <style>
   .upsidedown {
     margin-top: 8px;
@@ -107,5 +121,21 @@
     background: var(--surface, #fff);
     cursor: pointer;
     font-size: var(--fs-xs, 12px);
+  }
+  .weightpresets { margin-top: 10px; }
+  .weightlabel { display: block; font-size: var(--fs-xs, 12px); margin-bottom: 4px; }
+  .weightbtns { display: flex; gap: 6px; }
+  .weightbtn {
+    padding: 5px 10px;
+    border: 1px solid var(--tint-border, #ccd6fb);
+    border-radius: var(--radius-s, 6px);
+    background: var(--surface, #fff);
+    cursor: pointer;
+    font-size: var(--fs-xs, 12px);
+  }
+  .weightbtn.active {
+    background: var(--accent, #4f46e5);
+    color: #fff;
+    border-color: var(--accent, #4f46e5);
   }
 </style>
