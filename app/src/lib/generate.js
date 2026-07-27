@@ -41,6 +41,7 @@ export function generateElement(element, garment, runtime) {
   return EMB.buildLetteringDesign(fontData, text, {
     garment, pxPerMm: 8, densityMm: 0.4, underlay: element.underlay,
     rgb: element.colorRgb,
+    colorRanges: element.colorRanges || [],
     targetWidthMm: element.sizeMm || undefined,
     offsetXMm: element.offsetXMm || 0,
     offsetYMm: element.offsetYMm || 0,

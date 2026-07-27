@@ -14,7 +14,7 @@ beforeAll(() => {
 function textElement(overrides = {}) {
   return {
     id: "e1", type: "text", text: "", fontKey: "geneva_simple",
-    colorRgb: [20, 20, 20], letterSpacingMm: 0, arcDeg: 0, rotationDeg: 0, underlay: true,
+    colorRgb: [20, 20, 20], colorRanges: [], letterSpacingMm: 0, arcDeg: 0, rotationDeg: 0, underlay: true,
     sizeMm: null, offsetXMm: 0, offsetYMm: 0, ...overrides,
   };
 }
@@ -26,6 +26,19 @@ test("generateElement produces stitches for text", async () => {
   const d = generateElement(textElement({ text: "AB" }), garment, {});
   expect(d.stitchCount).toBeGreaterThan(50);
   expect(d.widthMM).toBeGreaterThan(0);
+});
+
+test("generateElement: a colorRange covering the first character produces a second thread color", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const d = generateElement(
+    textElement({ text: "AB", colorRanges: [{ startIdx: 0, endIdx: 1, colorRgb: [200, 30, 30] }] }),
+    garment,
+    {}
+  );
+  expect(d.colors.length).toBe(2);
+  expect(d.colors[0]).toMatchObject({ r: 200, g: 30, b: 30 });
 });
 
 test("empty text returns null, not a throw", async () => {

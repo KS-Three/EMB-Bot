@@ -35,6 +35,7 @@ test("defaultTextElement has sane beginner defaults", () => {
     text: "",
     fontKey: "geneva_simple",
     colorRgb: [20, 20, 20],
+    colorRanges: [],
     letterSpacingMm: 0,
     arcDeg: 0,
     rotationDeg: 0,
