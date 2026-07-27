@@ -58,3 +58,8 @@ test("empty arrays and negative/large coords survive", () => {
 test("decode rejects garbage", () => {
   assert.throws(() => fb.decodeFontBin(new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9])), /EMBF/);
 });
+
+test("encode rejects fonts containing the reserved __r key", () => {
+  const f = { glyphs: { A: { meta: { __r: 5 }, cols: [{ railA: [[0, 0], [1, 1], [2, 2]] }] } } };
+  assert.throws(() => fb.encodeFontBin(f, 4), /__r/);
+});

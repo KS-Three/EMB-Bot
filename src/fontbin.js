@@ -54,6 +54,8 @@
       }
       if (Array.isArray(v)) return v.map(walk);
       if (v && typeof v === "object") {
+        if (Object.prototype.hasOwnProperty.call(v, "__r"))
+          throw new Error("fontbin: font data uses reserved key __r — cannot encode");
         const o = {};
         for (const k of Object.keys(v)) o[k] = walk(v[k]);
         return o;
