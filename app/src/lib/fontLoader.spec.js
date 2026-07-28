@@ -11,7 +11,10 @@ describe("fontLoader", () => {
   it("loadManifest returns verified fonts and caches", async () => {
     const { loadManifest } = await import("./fontLoader.js");
     const m1 = await loadManifest();
-    expect(m1.fonts.length).toBeGreaterThanOrEqual(70);
+    // Floor, not exact: QC can demote individual fonts (e.g. ondulamarif_XL
+    // dropped for 0-stitch letter glyphs). 60 is far above the pre-Slice-10
+    // library of 21 while tolerating a handful of future demotions.
+    expect(m1.fonts.length).toBeGreaterThanOrEqual(60);
     expect(m1.fonts.every((f) => f.tier === "verified")).toBe(true);
     expect(await loadManifest()).toBe(m1); // same object -> cached
   });

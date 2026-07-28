@@ -11,5 +11,6 @@ beforeAll(() => {
 test("emb accessor exposes buildLetteringDesign + satin fonts", async () => {
   const { EMB } = await import("./emb.js");
   expect(typeof EMB.buildLetteringDesign).toBe("function");
-  expect(Object.keys(EMB.SATIN_FONTS).length).toBeGreaterThanOrEqual(70);
+  // Floor, not exact — QC demotions shrink the library slightly over time.
+  expect(Object.keys(EMB.SATIN_FONTS).length).toBeGreaterThanOrEqual(60);
 });
