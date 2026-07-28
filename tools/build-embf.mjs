@@ -95,6 +95,14 @@ for (const s of sources.sort((a, b) => a.key.localeCompare(b.key))) {
     throw new Error("round-trip mismatch: " + s.key + " — " + e.message);
   }
   writeFileSync(join(BIN_DIR, s.key + ".embf"), bytes);
+  // First non-empty line of the upstream license text is the human
+  // attribution ("This font X has been adapted for Ink/Stitch by Y...").
+  // NOTE: most shipped license blobs use bare CR (old-Mac) line endings with
+  // no LF at all, so a plain /\r?\n/ split never fires and "first line"
+  // degenerates to the whole blob truncated mid-word. Split on CRLF/CR/LF.
+  const attribution = String(font.license || "").split(/\r\n|\r|\n/)
+    .map((l) => l.trim()).filter(Boolean)[0]?.slice(0, 200)
+    || (font.name + " — see license inside the font binary");
   manifest.push({
     key: s.key,
     name: font.name || s.key,
@@ -104,6 +112,8 @@ for (const s of sources.sort((a, b) => a.key.localeCompare(b.key))) {
     sizeMm: font.sizeMm || 0,
     glyphCount: Object.keys(font.glyphs || {}).length,
     bytes: bytes.length,
+    attribution,
+    source: font.source || "Ink/Stitch embroidery-fonts",
   });
 }
 writeFileSync(join(FONT_DIR, "manifest.json"),

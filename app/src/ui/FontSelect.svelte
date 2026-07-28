@@ -7,7 +7,7 @@
   export let selected;
   const dispatch = createEventDispatcher();
 
-  const GROUP_ORDER = ["Sans", "Serif", "Script", "Display", "More"];
+  const GROUP_ORDER = ["Sans", "Serif", "Script", "Display", "Small", "More"];
 
   // Font list now comes from the manifest (single source of truth for name +
   // group -- see tools/font-categories.json, which feeds the manifest at

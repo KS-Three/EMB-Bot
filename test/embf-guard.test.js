@@ -36,8 +36,19 @@ test("manifest lists every shipped font exactly once, verified tier only", () =>
   for (const f of man.fonts) {
     assert.strictEqual(f.tier, "verified");
     assert.ok(f.name && f.licenseId && f.sizeMm > 0 && f.glyphCount > 0, "bad entry " + f.key);
+    assert.ok(typeof f.attribution === "string" && f.attribution.length > 0 && f.attribution.length <= 200,
+      "missing/oversized attribution: " + f.key);
+    assert.ok(typeof f.source === "string" && f.source.length > 0, "missing source: " + f.key);
     assert.ok(fs.existsSync(path.join(BIN_DIR, f.key + ".embf")), "manifest entry without bin: " + f.key);
   }
+});
+
+test("category coverage: known groups only, More is a small remainder", () => {
+  const man = JSON.parse(fs.readFileSync(path.join(FONT_DIR, "manifest.json"), "utf8"));
+  const KNOWN = new Set(["Sans", "Serif", "Script", "Display", "Small", "More"]);
+  for (const f of man.fonts) assert.ok(KNOWN.has(f.group), `unknown group ${f.group} on ${f.key}`);
+  const more = man.fonts.filter((f) => f.group === "More");
+  assert.ok(more.length <= 5, "More is a dumping ground: " + more.map((f) => f.key).join(", "));
 });
 
 test("no orphan .embf files — every binary has a manifest entry", () => {
