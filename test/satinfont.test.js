@@ -116,9 +116,27 @@ test("layoutText: arcDeg rotates each glyph by an EXACT rigid rotation about its
   const lay0 = SF.layoutText(font, "HHH", opts(0));
   const layArc = SF.layoutText(font, "HHH", opts(120));
   const g0 = glyphGroups(lay0, 3), gArc = glyphGroups(layArc, 3);
-  // 120deg swept symmetrically over 3 identical glyphs -> each glyph's own
-  // angular position is arcDeg/3 apart: -40, 0, +40 degrees.
-  const expectedDeg = [-40, 0, 40];
+  // Expected angles derived from the documented arc contract (arc-tilt fix,
+  // 2026-07-28): the line's INK span (rail x-extents, not the advance span —
+  // advance carries invisible side bearings + a trailing letter-spacing gap
+  // that used to tilt the whole arch) maps onto arcDeg, and each glyph is
+  // positioned AND pivoted by its own ink center: phi = (inkCenter - inkMid)
+  // / R with R = inkSpanPx / arcRad. For three identical glyphs the ink
+  // centers are spaced exactly one advance apart, so this is symmetric by
+  // construction — [-a, 0, +a] with the middle glyph upright at the apex.
+  const H = font.glyphs["H"];
+  let inkMin = Infinity, inkMax = -Infinity;
+  for (const col of H.cols) {
+    for (const p of col.railA) { if (p[0] < inkMin) inkMin = p[0]; if (p[0] > inkMax) inkMax = p[0]; }
+    for (const p of col.railB) { if (p[0] < inkMin) inkMin = p[0]; if (p[0] > inkMax) inkMax = p[0]; }
+  }
+  const arcRad = 120 * Math.PI / 180;
+  const spanU = (2 * H.adv + inkMax) - inkMin;       // ink of "HHH" in font units
+  const inkMidU = (inkMin + 2 * H.adv + inkMax) / 2;
+  const phiDeg = (k) => ((k * H.adv + (inkMin + inkMax) / 2 - inkMidU) / (spanU / arcRad)) * 180 / Math.PI;
+  const expectedDeg = [phiDeg(0), phiDeg(1), phiDeg(2)];
+  closeTo(expectedDeg[1], 0, 1e-9, "middle glyph must sit upright at the arc apex");
+  closeTo(expectedDeg[0], -expectedDeg[2], 1e-9, "end glyphs must be symmetric about the apex");
   for (let k = 0; k < 3; k++) {
     assert.strictEqual(g0[k].length, gArc[k].length, "arc must not change point count, glyph " + k);
     // Every segment vector must be the straight-layout vector rotated by the

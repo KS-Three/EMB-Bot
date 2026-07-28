@@ -53,6 +53,28 @@
     return s.length ? s[s.length >> 1] : 0;
   }
 
+  // Horizontal INK extent of a glyph in its own frame (font units) — the min/
+  // max x its rails actually reach, as opposed to its advance box. Arc layout
+  // centers on ink (see below): advance includes side bearings AND the
+  // trailing letter-spacing gap after the last glyph, neither of which is
+  // visible, so centering on advance rotates the whole arch toward the
+  // trailing end — most visibly at max letter spacing, where the end letters'
+  // baselines miss each other by the full spacing amount (Kent's SCHAEFER
+  // -180° report: 4.6mm end-to-end tilt at 5.5mm spacing).
+  const glyphInkXCache = new WeakMap();
+  function glyphInkXUnits(g) {
+    let hit = glyphInkXCache.get(g);
+    if (hit) return hit;
+    let min = Infinity, max = -Infinity;
+    for (const col of g.cols) {
+      for (const p of col.railA) { if (p[0] < min) min = p[0]; if (p[0] > max) max = p[0]; }
+      for (const p of col.railB) { if (p[0] < min) min = p[0]; if (p[0] > max) max = p[0]; }
+    }
+    hit = min <= max ? { min, max } : { min: 0, max: 0 };
+    glyphInkXCache.set(g, hit);
+    return hit;
+  }
+
   // Nearest arc-length fraction on a centerline chain C (with cumulative table
   // cum,total) to point p, plus that distance.
   function nearestOnCenter(C, cum, total, p) {
@@ -267,8 +289,25 @@
     lineList.forEach((line, lineIdx) => {
       const lineYunits = lineIdx * leadingUnits;                  // font units, y-down: later lines sit below
       const lineOriginXunits = arcDeg ? 0 : (maxAdvUnits - line.adv) / 2; // straight multi-line: center vs widest
-      const lineAdvPx = line.adv * u2px;
-      const R = arcDeg ? (lineAdvPx / arcRad) : 0;                 // px; arc radius for this line
+      // Arc geometry references the line's INK span, not its advance span:
+      // advance carries invisible width (side bearings + one trailing
+      // letter-spacing gap), and centering/radius built from it tilt the arch
+      // toward the trailing end. Ink start/end come from each glyph's actual
+      // rail extents (glyphInkXUnits) offset by its pen position.
+      let inkStartPx = 0, inkEndPx = 0;
+      if (arcDeg && line.glyphs.length) {
+        let minU = Infinity, maxU = -Infinity;
+        for (const gl of line.glyphs) {
+          const ext = glyphInkXUnits(gl.g);
+          if (gl.ox + ext.min < minU) minU = gl.ox + ext.min;
+          if (gl.ox + ext.max > maxU) maxU = gl.ox + ext.max;
+        }
+        inkStartPx = minU * u2px;
+        inkEndPx = maxU * u2px;
+      }
+      const inkSpanPx = inkEndPx - inkStartPx;
+      const inkMidPx = (inkStartPx + inkEndPx) / 2;
+      const R = arcDeg && inkSpanPx > 0 ? (inkSpanPx / arcRad) : 0; // px; arc radius for this line
       // Shared rotation-pivot height for every glyph in this line: the MEDIAN
       // of each glyph's own baseline (see glyphBottomUnits above). One value
       // per line (not each glyph's own reference) keeps every letter's
@@ -308,15 +347,21 @@
           // the ends sag down into the render's up direction after the
           // downstream y-flip: ARCH UP); arcDeg<0 puts the center at -R
           // (middle is the circle's bottommost point: a valley).
-          const penCenterPx = (ox + g.adv / 2) * u2px;
-          const sPx = penCenterPx - lineAdvPx / 2;
+          // The glyph's INK CENTER is both its arc-position parameter and its
+          // rotation pivot — using the pen center for either re-introduces
+          // the glyph's own bearing asymmetry as a visible tilt (an H whose
+          // ink sits right-of-center in its advance box would lean ~8° at the
+          // apex if positioned by ink but pivoted by pen).
+          const ext = glyphInkXUnits(g);
+          const inkCenterPx = (ox + (ext.min + ext.max) / 2) * u2px;
+          const sPx = inkCenterPx - inkMidPx;
           const theta = R > 0 ? sPx / R : 0;
           const phi = signArc * theta;
           const cosPhi = Math.cos(phi), sinPhi = Math.sin(phi);
           const Wx = R * Math.sin(theta);
           const Wy = lineYunits * u2px + signArc * R * (1 - Math.cos(theta));
           place = (p) => {
-            const lx = p.x - penCenterPx, ly = p.y - baselinePx;
+            const lx = p.x - inkCenterPx, ly = p.y - baselinePx;
             return { x: Wx + lx * cosPhi - ly * sinPhi, y: Wy + lx * sinPhi + ly * cosPhi };
           };
         }
