@@ -73,9 +73,14 @@ but still used by legacy `EMB-Bot.html` pending its audit — do not delete it.
 - **Credits** (`FontCredits.svelte` + `app/src/lib/credits.js`): generated
   from manifest `attribution`/`licenseId`/`source` fields — never
   hand-edited. Entry points: topbar "Font credits" + DownloadStep footer.
-  The served `/fonts/bin/*.embf` files are the public derived-data artifacts
-  for CC-BY-SA (full upstream license text ships inside each binary).
+  Fonts are adapted from the Ink/Stitch open embroidery font collection
+  (github.com/inkstitch/embroidery-fonts). Each font's binary embeds only its
+  attribution summary (104–301 chars) — NOT the full upstream license text;
+  full license texts live in the upstream collection, not in the binaries.
   `SEE-LICENSE-FILE` sentinel renders as "See license file".
+  Backlog: embed full license texts in the binaries (currently summary
+  blurbs only — a compliance gap for OFL/CC-BY-SA redistribution, flagged
+  2026-07-28).
 - **QC harness** (`tools/qc-font.mjs`, tested): the versioned tier gate.
   Per-GLYPH satin check (100% satinless letters = hard fail, >10% fail,
   ≤10% warn), advances incl. digits, finite geometry, coverage warnings.

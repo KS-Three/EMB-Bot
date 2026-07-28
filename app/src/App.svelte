@@ -109,8 +109,8 @@
     creditsWasOpen = true;
   } else if (creditsWasOpen) {
     creditsWasOpen = false;
-    if (creditsOpener) creditsOpener.focus();
-    else if (creditsBtn) creditsBtn.focus();
+    if (creditsOpener?.isConnected) creditsOpener.focus();
+    else creditsBtn?.focus();
     creditsOpener = null;
   }
   function openCredits(opener) {

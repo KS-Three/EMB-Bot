@@ -82,6 +82,10 @@ test("no shipped NEW font has a license outside the allowed policy set", () => {
   const grandfathered = new Set(fs.readdirSync(FONT_DIR)
     .filter((f) => f.endsWith(".json") && f !== "manifest.json")
     .map((f) => f.replace(/\.json$/, "")));
+  // geneva_rounded ships from scratch_ink (a trial import, not a static
+  // src/fonts/<key>.json) but is the same grandfathered CC-BY-SA-2.5 grant
+  // as its geneva_simple sibling — see build-embf.mjs's licenseId() comment.
+  grandfathered.add("geneva_rounded");
   for (const f of man.fonts)
     if (!grandfathered.has(f.key))
       assert.ok(ALLOWED.has(f.licenseId), f.key + " ships with disallowed license " + f.licenseId);

@@ -56,7 +56,6 @@
 <FontSelect
   selected={element.fontKey}
   currentText={element.text}
-  currentHeightMm={element.sizeMm ?? null}
   on:pick={(e) => patch({ fontKey: e.detail })}
 />
 <label class="letterspacing">

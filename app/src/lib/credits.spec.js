@@ -10,7 +10,7 @@ describe("creditLines", () => {
   it("sorts by display name and carries license fields through", () => {
     const lines = creditLines(FONTS);
     expect(lines.map((l) => l.name)).toEqual(["Alpha", "Bravo"]);
-    expect(lines[0]).toMatchObject({ licenseId: "OFL-1.1", attribution: "Adapted by Y", binHref: "/fonts/bin/a_font.embf" });
+    expect(lines[0]).toMatchObject({ licenseId: "OFL-1.1", attribution: "Adapted by Y", source: "Ink/Stitch", binHref: "/fonts/bin/a_font.embf" });
   });
   it("tolerates missing attribution without throwing", () => {
     const lines = creditLines([{ key: "x", name: "X", licenseId: "CC0" }]);

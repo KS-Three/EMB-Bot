@@ -46,7 +46,7 @@
    "sizeMm": 23,
    "glyphCount": 115,
    "bytes": 473570,
-   "attribution": "This font has been adapted for Ink/Stitch by Claudette Venneugues-Aminot, and is licensed under the SIL Open Font License, Version 1.1.  This font is a derivative work from Amita font also licensed un",
+   "attribution": "This font has been adapted for Ink/Stitch by Claudette Venneugues-Aminot, and is licensed under the SIL Open Font License, Version 1.1.  This font is a derivative work from Amita font also licensed…",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -178,7 +178,7 @@
    "sizeMm": 30,
    "glyphCount": 108,
    "bytes": 117283,
-   "attribution": "This font has been adapted for Ink/Stitch by Célia Imbert Sabater, Claudette Venneugues-Aminot, Corinne Renaud, Françoise Lapierre Baillet, Laure Doisneau, Marie Françoise Bris,and is licensed under t",
+   "attribution": "This font has been adapted for Ink/Stitch by Célia Imbert Sabater, Claudette Venneugues-Aminot, Corinne Renaud, Françoise Lapierre Baillet, Laure Doisneau, Marie Françoise Bris,and is licensed under…",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -190,7 +190,7 @@
    "sizeMm": 30,
    "glyphCount": 108,
    "bytes": 117289,
-   "attribution": "This font has been adapted for Ink/Stitch by Célia Imbert Sabater, Claudette Venneugues-Aminot, Corinne Renaud, Françoise Lapierre Baillet, Laure Doisneau, Marie Françoise Bris,and is licensed under t",
+   "attribution": "This font has been adapted for Ink/Stitch by Célia Imbert Sabater, Claudette Venneugues-Aminot, Corinne Renaud, Françoise Lapierre Baillet, Laure Doisneau, Marie Françoise Bris,and is licensed under…",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -202,7 +202,7 @@
    "sizeMm": 24,
    "glyphCount": 99,
    "bytes": 99212,
-   "attribution": "This font has been adapted for Ink/Stitch by Karen J. Cravens/Silver Seams with permission. (see https://github.com/inkstitch/inkstitch/pull/1686 for copy of the permission) and is licensed CC-BY-SA (",
+   "attribution": "This font has been adapted for Ink/Stitch by Karen J. Cravens/Silver Seams with permission. (see https://github.com/inkstitch/inkstitch/pull/1686 for copy of the permission) and is licensed CC-BY-SA…",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -214,7 +214,7 @@
    "sizeMm": 26,
    "glyphCount": 114,
    "bytes": 195370,
-   "attribution": "Caesarus SC FI  has been adapted for Ink/Stitch by Marie-Françoise Bris, Celia Imbert Sabater, Françoise Lapierre Baillet, Claudine Peyrat, Corinne Renaud and Claudette Venneugues-Aminot,and is licens",
+   "attribution": "Caesarus SC FI  has been adapted for Ink/Stitch by Marie-Françoise Bris, Celia Imbert Sabater, Françoise Lapierre Baillet, Claudine Peyrat, Corinne Renaud and Claudette Venneugues-Aminot,and is…",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -341,7 +341,7 @@
    "key": "dejavufont",
    "name": "Dejavu Serif",
    "tier": "verified",
-   "group": "Sans",
+   "group": "Serif",
    "licenseId": "CC-BY-SA-4.0",
    "sizeMm": 16,
    "glyphCount": 97,
@@ -358,7 +358,7 @@
    "sizeMm": 16,
    "glyphCount": 101,
    "bytes": 92892,
-   "attribution": "This font has been adapted for Ink/Stitch by Tina, and is licensed under the SIL Open Font License, Version 1.1.  This font is a derivative work from Digory doodles font (also licensed under SIL Open ",
+   "attribution": "This font has been adapted for Ink/Stitch by Tina, and is licensed under the SIL Open Font License, Version 1.1.  This font is a derivative work from Digory doodles font (also licensed under SIL Open…",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -382,7 +382,7 @@
    "sizeMm": 49,
    "glyphCount": 36,
    "bytes": 91654,
-   "attribution": "This font has been adapted for Ink/Stitch by Célia Imbert Sabater, and is licensed CC-BY-SA (http://creativecommons.org/licenses/by-sa/4.0/).  ORIGINAL FONT DOWNLOAD: https://www.1001fonts.com/emilio-",
+   "attribution": "This font has been adapted for Ink/Stitch by Célia Imbert Sabater, and is licensed CC-BY-SA (http://creativecommons.org/licenses/by-sa/4.0/).  ORIGINAL FONT DOWNLOAD:…",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -438,7 +438,7 @@
    "name": "Geneva Simple Sans Rounded",
    "tier": "verified",
    "group": "Sans",
-   "licenseId": "CC-BY-SA-4.0",
+   "licenseId": "CC-BY-SA-2.5",
    "sizeMm": 10.5,
    "glyphCount": 120,
    "bytes": 81957,
@@ -450,11 +450,11 @@
    "name": "Geneva Simple Sans",
    "tier": "verified",
    "group": "Sans",
-   "licenseId": "CC-BY-SA-4.0",
+   "licenseId": "CC-BY-SA-2.5",
    "sizeMm": 10,
    "glyphCount": 118,
    "bytes": 56182,
-   "attribution": "This ink/stitch font is licenced under CC-BY-SA 2.5 https://creativecommons.org/licenses/by-sa/2.5/  This work is based on the 1-stroke Hershey font available in InkScape http://evilmadscientist.com/g",
+   "attribution": "This ink/stitch font is licenced under CC-BY-SA 2.5 https://creativecommons.org/licenses/by-sa/2.5/  This work is based on the 1-stroke Hershey font available in InkScape…",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -562,7 +562,7 @@
    "sizeMm": 24.5,
    "glyphCount": 89,
    "bytes": 463983,
-   "attribution": "This font has been adapted for Ink/Stitch by Marie-Ange Martin, and is licensed under the SIL Open Font License, Version 1.1.  This font is a derivative work from Kaushan Script font (also licensed un",
+   "attribution": "This font has been adapted for Ink/Stitch by Marie-Ange Martin, and is licensed under the SIL Open Font License, Version 1.1.  This font is a derivative work from Kaushan Script font (also licensed…",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -670,7 +670,7 @@
    "sizeMm": 17,
    "glyphCount": 125,
    "bytes": 109744,
-   "attribution": "This font has been adapted for Ink/Stitch by Claudette Venneugues-Aminot, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2021 Claudette Venneugues-Aminot This font is a de",
+   "attribution": "This font has been adapted for Ink/Stitch by Claudette Venneugues-Aminot, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2021 Claudette Venneugues-Aminot This font is a…",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {

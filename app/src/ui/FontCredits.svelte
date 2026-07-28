@@ -82,7 +82,9 @@
     </div>
 
     <p class="fc-note">
-      Fonts adapted from the Ink/Stitch open embroidery font collection. Each font's full license text ships inside its binary.
+      Fonts adapted from the Ink/Stitch open embroidery font collection
+      (<a href="https://github.com/inkstitch/embroidery-fonts" target="_blank" rel="noopener">github.com/inkstitch/embroidery-fonts</a>).
+      Each font's binary embeds its attribution summary; full license texts are available from the collection.
     </p>
 
     <div class="fc-body">
@@ -103,6 +105,9 @@
               {/if}
               {#if line.attribution}
                 <small class="fc-attribution">{line.attribution}</small>
+              {/if}
+              {#if line.source}
+                <small class="fc-source">{line.source}</small>
               {/if}
               <a href={line.binHref} download class="fc-link">font data</a>
             </li>
@@ -206,6 +211,11 @@
 
   .fc-attribution {
     flex-basis: 100%;
+    color: var(--muted);
+    font-size: var(--fs-xs);
+  }
+
+  .fc-source {
     color: var(--muted);
     font-size: var(--fs-xs);
   }

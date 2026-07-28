@@ -5,6 +5,7 @@ export function creditLines(manifestFonts) {
       name: f.name || f.key,
       licenseId: f.licenseId || "",
       attribution: f.attribution || "",
+      source: f.source || "",
       binHref: "/fonts/bin/" + f.key + ".embf",
     }))
     .sort((a, b) => a.name.localeCompare(b.name));

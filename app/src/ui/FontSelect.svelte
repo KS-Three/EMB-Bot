@@ -16,19 +16,17 @@
 
   export let selected;
   export let currentText = "";
-  // Approximation of the element's current size, forwarded straight through
-  // to FontBrowser's "sized outside this font's best range" note -- see
-  // FontBrowser.svelte for why this is the user-set size, not a measured
-  // rendered height.
-  export let currentHeightMm = null;
   const dispatch = createEventDispatcher();
 
   let fonts = [];
+  let manifestLoaded = false;
   loadManifest().then((man) => {
     fonts = man.fonts.map((f) => ({ key: f.key, name: f.name, group: f.group }));
-  });
+    manifestLoaded = true;
+  }).catch(() => { manifestLoaded = true; });
 
-  $: selName = (fonts.find((f) => f.key === selected) || {}).name || "Choose a font";
+  $: selName = (fonts.find((f) => f.key === selected) || {}).name
+    || (manifestLoaded ? "Choose a font" : "Loading fonts…");
 
   // ---- Selected-font trigger preview ---------------------------------------
   // Mirrors the old dropdown's trigger behavior: the ONE font that's already
@@ -92,7 +90,6 @@
   <FontBrowser
     {selected}
     {currentText}
-    {currentHeightMm}
     on:pick={onPick}
     on:close={closeBrowser}
   />

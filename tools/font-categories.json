@@ -1,12 +1,13 @@
 {
   "geneva_simple": "Sans", "medium_font": "Sans", "barstitch_regular": "Sans",
   "barstitch_bold": "Sans", "excalibur_KOR": "Sans", "milli_marif_bold": "Sans",
-  "chicken_little": "Sans", "dejavufont": "Sans", "geneva_rounded": "Sans",
+  "chicken_little": "Sans", "geneva_rounded": "Sans",
   "gingo200": "Sans",
 
   "apex_simple_AGS": "Serif", "violin_serif": "Serif", "emilio_20": "Serif",
   "emilio_20_bold": "Serif", "roman_ags": "Serif", "caesarus_SC_FI": "Serif",
   "emilio_20_simple": "Serif", "kum_tsoan_AGS": "Serif", "venezia": "Serif",
+  "dejavufont": "Serif",
 
   "aventurina": "Script", "pacificlo": "Script", "amitaclo": "Script",
   "mam_script": "Script", "chicken_scratch": "Script", "monicha": "Script",

@@ -44,6 +44,13 @@ for (const f of readdirSync(PREV_DIR)) {
   }
 }
 
+// Sidecar of thread colors so previews match the dark live-tile thread color
+// (FontBrowser's live "your text" tiles render with colorOverride [45,45,50]
+// -- committed previews were using render-dst's default red/blue palette
+// instead, which looked wrong next to a live tile of the same font).
+const colorsPath = join(PREV_DIR, "_tmp_colors.json");
+writeFileSync(colorsPath, JSON.stringify([[45, 45, 50]]));
+
 let made = 0;
 for (const entry of man.fonts) {
   const font = EMB.decodeFontBin(readFileSync(join(FONT_DIR, "bin", entry.key + ".embf")));
@@ -55,8 +62,9 @@ for (const entry of man.fonts) {
   if (!design.stitchCount) { console.error("EMPTY preview for " + entry.key + " — investigate"); process.exitCode = 1; continue; }
   const tmp = join(PREV_DIR, "_tmp.dst");
   writeFileSync(tmp, Buffer.from(EMB.encodeDST(design)));
-  execFileSync("node", [join(root, "tools", "render-dst.mjs"), tmp, join(PREV_DIR, entry.key + ".png"), "4"]);
+  execFileSync("node", [join(root, "tools", "render-dst.mjs"), tmp, join(PREV_DIR, entry.key + ".png"), "4", colorsPath]);
   made++;
 }
 if (existsSync(join(PREV_DIR, "_tmp.dst"))) unlinkSync(join(PREV_DIR, "_tmp.dst"));
+if (existsSync(colorsPath)) unlinkSync(colorsPath);
 console.log("previews:", made, "of", man.fonts.length);

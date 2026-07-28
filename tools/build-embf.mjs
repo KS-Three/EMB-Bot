@@ -26,10 +26,26 @@ function licenseId(text) {
   const t = String(text || "");
   if (/GNU General Public License|GPL/i.test(t)) return "GPL-3.0";
   if (/SIL Open Font License|OFL/i.test(t)) return "OFL-1.1";
-  if (/CC[- ]BY[- ]SA/i.test(t)) return "CC-BY-SA-4.0";
-  if (/CC[- ]BY/i.test(t)) return "CC-BY-4.0";
+  if (/CC[- ]BY[- ]SA/i.test(t)) {
+    const m = /CC[- ]BY[- ]SA[^\d]{0,10}(\d\.\d)/i.exec(t);
+    return "CC-BY-SA-" + (m ? m[1] : "4.0");
+  }
+  if (/CC[- ]BY/i.test(t)) {
+    const m = /CC[- ]BY[^\d]{0,10}(\d\.\d)/i.exec(t);
+    return "CC-BY-" + (m ? m[1] : "4.0");
+  }
   if (/public domain|CC0/i.test(t)) return "CC0";
   return "SEE-LICENSE-FILE";
+}
+
+// Truncate at a word boundary instead of mid-word/mid-URL: cut at the last
+// space before the limit and append an ellipsis. Result stays <= limit chars.
+function truncateWords(s, limit) {
+  if (s.length <= limit) return s;
+  const cut = s.slice(0, limit);
+  const lastSpace = cut.lastIndexOf(" ");
+  const base = lastSpace > 0 ? cut.slice(0, lastSpace) : cut.slice(0, limit - 1);
+  return base + "…";
 }
 
 // Fix 2: license policy — only these ids may ship for NEW (non-grandfathered) fonts.
@@ -39,6 +55,12 @@ const GRANDFATHERED = new Set(
     .filter((f) => f.endsWith(".json") && f !== "manifest.json")
     .map((f) => f.replace(/\.json$/, ""))
 );
+// geneva_rounded ships from scratch_ink (a trial import, not a static
+// src/fonts/<key>.json), so it isn't picked up by the readdir scan above.
+// It's the same grandfathered CC-BY-SA-2.5 grant as its geneva_simple
+// sibling (previously shipped mislabeled as 4.0) -- ships regardless of
+// ALLOWED_LICENSES, just correctly labeled now (Fix 6).
+GRANDFATHERED.add("geneva_rounded");
 
 // 1. Shipped fonts: every src/fonts/<key>.json is verified by definition
 //    (they are the 21 Kent already ships).
@@ -100,8 +122,9 @@ for (const s of sources.sort((a, b) => a.key.localeCompare(b.key))) {
   // NOTE: most shipped license blobs use bare CR (old-Mac) line endings with
   // no LF at all, so a plain /\r?\n/ split never fires and "first line"
   // degenerates to the whole blob truncated mid-word. Split on CRLF/CR/LF.
-  const attribution = String(font.license || "").split(/\r\n|\r|\n/)
-    .map((l) => l.trim()).filter(Boolean)[0]?.slice(0, 200)
+  const firstLine = String(font.license || "").split(/\r\n|\r|\n/)
+    .map((l) => l.trim()).filter(Boolean)[0];
+  const attribution = (firstLine ? truncateWords(firstLine, 200) : "")
     || (font.name + " — see license inside the font binary");
   manifest.push({
     key: s.key,
