@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from "svelte";
+  import { onMount, createEventDispatcher } from "svelte";
   import { generateAll } from "../lib/generate.js";
   import { exportDesign, exportWorksheetPDF, exportPNG } from "../lib/exporters.js";
   import { triggerDownload } from "../lib/download.js";
@@ -12,8 +12,17 @@
   // `runtime` (the per-element flattened-image map, owned by App) is needed
   // for that, replacing the old singleton `flat` prop.
   export let runtime;
+  const d = createEventDispatcher();
   let msg = "";
   let worksheetBusy = false;
+
+  // Secondary entry point to the font credits dialog (Slice 10B Task 5) --
+  // App.svelte owns FontCredits itself (same pattern as the topbar's own
+  // "Font credits" button); this just dispatches "credits" upward with the
+  // clicked link so App can restore focus to it on close.
+  function openCredits(e) {
+    d("credits", e.currentTarget);
+  }
 
   // Task 4 review fix (single-click race): text elements' fontKeys must be
   // resolved (lib/fontLoader.js) BEFORE generateAll runs, same as
@@ -135,3 +144,6 @@
   <button on:click={dlWorksheet} disabled={worksheetBusy}>PDF worksheet</button>
 </div>
 <p>{msg}</p>
+<p class="fontcredits-footer">
+  <button type="button" class="linklike" on:click={openCredits}>Fonts: open-source — see credits</button>
+</p>

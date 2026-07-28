@@ -189,6 +189,21 @@ body {
 
 .mydesigns:hover { border-color: var(--accent); }
 
+/* "Font credits" — opens FontCredits, the generated OFL/CC credits dialog.
+   Quiet text button, deliberately smaller than "My designs" since it's
+   informational, not a workflow action. */
+.font-credits-btn {
+  padding: var(--space-2) var(--space-3);
+  min-height: 40px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.font-credits-btn:hover { color: var(--accent); }
+
 .mydesigns .badge {
   display: inline-flex;
   align-items: center;
@@ -920,6 +935,24 @@ canvas { touch-action: none; }
   flex-wrap: wrap;
   gap: var(--space-3);
 }
+
+/* Footer link to FontCredits (Slice 10B Task 5) — a <button> styled as a
+   link (not a real <a>) since it dispatches an event rather than
+   navigating; keeps it keyboard/AT accessible without a fake href. */
+.fontcredits-footer { margin-top: var(--space-4); }
+
+.linklike {
+  padding: 0;
+  min-height: 0;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-sm);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.linklike:hover { color: var(--accent); }
 
 /* Buttons */
 button {

@@ -23,6 +23,7 @@
   import EmbroideryField from "./ui/EmbroideryField.svelte";
   import SizePanel from "./ui/SizePanel.svelte";
   import ProjectsDrawer from "./ui/ProjectsDrawer.svelte";
+  import FontCredits from "./ui/FontCredits.svelte";
   import "./ui/theme.css";
 
   // The image itself never survives a reload (see `runtime` below), so a
@@ -91,6 +92,30 @@
   } else if (drawerWasOpen) {
     drawerWasOpen = false;
     if (myDesignsBtn) myDesignsBtn.focus();
+  }
+
+  // ---- Font credits dialog (Slice 10B Task 5) -------------------------------
+  // Same focus-restore contract as the drawer above: FontCredits moves focus
+  // INTO itself on mount and traps Tab while open, but restoring focus to
+  // whichever control opened it is App's job. Two openers exist -- the
+  // topbar "Font credits" button and DownloadStep's footer link -- so
+  // creditsOpener tracks whichever one was actually clicked instead of
+  // assuming it was always the topbar button.
+  let creditsOpen = false;
+  let creditsBtn;
+  let creditsWasOpen = false;
+  let creditsOpener = null;
+  $: if (creditsOpen) {
+    creditsWasOpen = true;
+  } else if (creditsWasOpen) {
+    creditsWasOpen = false;
+    if (creditsOpener) creditsOpener.focus();
+    else if (creditsBtn) creditsBtn.focus();
+    creditsOpener = null;
+  }
+  function openCredits(opener) {
+    creditsOpener = opener || null;
+    creditsOpen = true;
   }
   // Runtime image state, owned here (not by ImagePanel) so it survives
   // ContentStep/ImagePanel being destroyed and recreated whenever the user
@@ -404,6 +429,9 @@
     <button type="button" class="mydesigns" bind:this={myDesignsBtn} on:click={() => (drawerOpen = !drawerOpen)}>
       My designs <span class="badge">{projects.length}</span>
     </button>
+    <button type="button" class="font-credits-btn" bind:this={creditsBtn} on:click={() => openCredits(creditsBtn)}>
+      Font credits
+    </button>
   </div>
 </header>
 
@@ -418,6 +446,10 @@
     on:delete={(e) => deleteFromDrawer(e.detail)}
     on:close={() => (drawerOpen = false)}
   />
+{/if}
+
+{#if creditsOpen}
+  <FontCredits on:close={() => (creditsOpen = false)} />
 {/if}
 
 <div class="studio">
@@ -464,7 +496,7 @@
           <SizePanel project={{ ...project, ...selectedElement }} {designDims} on:update={(e) => elUpdate(selectedElement.id, e.detail)} />
         </div>
       {:else}
-        <DownloadStep {project} {runtime} />
+        <DownloadStep {project} {runtime} on:credits={(e) => openCredits(e.detail)} />
       {/if}
     </div>
     <StepNav
