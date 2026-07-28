@@ -1,5 +1,6 @@
 import { test, expect, beforeAll } from "vitest";
 import { createRequire } from "node:module";
+import { preloadAllFontsSync } from "./testFonts.js";
 
 test("TEMPLATES has exactly 4 entries with id/label/hint/patch", async () => {
   const { TEMPLATES } = await import("./templates.js");
@@ -102,8 +103,8 @@ test("logo-patch template produces a fresh default image element", async () => {
 beforeAll(() => {
   const require = createRequire(import.meta.url);
   globalThis.window = globalThis;
-  for (const f of ["units", "garments", "fabrics", "fill", "geometry", "satin", "satinplay", "satinfont", "dst", "exp", "fonts", "digitize"]) require("../../../src/" + f + ".js");
-  new Function(require("node:fs").readFileSync(require("node:path").join(__dirname, "../../../src/fonts/satin-fonts.js"), "utf8"))();
+  for (const f of ["units", "garments", "fabrics", "fill", "geometry", "satin", "satinplay", "satinfont", "fontbin", "dst", "exp", "fonts", "digitize"]) require("../../../src/" + f + ".js");
+  preloadAllFontsSync();
 });
 
 test("every TEMPLATES entry resolves a real garment via EMB.getGarment", async () => {

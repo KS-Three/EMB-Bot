@@ -1,5 +1,6 @@
 import { test, expect, beforeAll, vi } from "vitest";
 import { createRequire } from "node:module";
+import { preloadAllFontsSync } from "./testFonts.js";
 
 // Registered up front so exporters.js's dynamic `import("jspdf")` resolves to
 // this fake instead of the real (browser-oriented) package.
@@ -32,8 +33,8 @@ beforeAll(async () => {
     };
   }
 
-  for (const f of ["units","garments","fabrics","fill","geometry","satin","satinplay","satinfont","dst","exp","pes","svgexport","fonts","digitize"]) require("../../../src/" + f + ".js");
-  new Function(require("node:fs").readFileSync(require("node:path").join(__dirname, "../../../src/fonts/satin-fonts.js"), "utf8"))();
+  for (const f of ["units","garments","fabrics","fill","geometry","satin","satinplay","satinfont","fontbin","dst","exp","pes","svgexport","fonts","digitize"]) require("../../../src/" + f + ".js");
+  preloadAllFontsSync();
   const { generateDesign } = await import("./generate.js");
   const { defaultProject, updateElement } = await import("./project.js");
   // Real v2 project (garmentId + elements) — generateDesign is a thin

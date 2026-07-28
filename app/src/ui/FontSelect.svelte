@@ -1,90 +1,80 @@
 <script>
   import { EMB } from "../lib/emb.js";
   import { renderRealistic } from "../lib/preview.js";
+  import { loadManifest, ensureFont } from "../lib/fontLoader.js";
   import { createEventDispatcher } from "svelte";
 
   export let selected;
   const dispatch = createEventDispatcher();
 
-  // Hardcoded key -> group map (Slice 8 Task 3) for the 21 shipped font keys.
-  // Any key not listed here (future additions) lands in "More" rather than
-  // being dropped, so the list never silently loses a font.
-  const FONT_GROUP_MAP = {
-    geneva_simple: "Sans",
-    medium_font: "Sans",
-    barstitch_regular: "Sans",
-    barstitch_bold: "Sans",
-    excalibur_KOR: "Sans",
-    milli_marif_bold: "Sans",
-
-    apex_simple_AGS: "Serif",
-    violin_serif: "Serif",
-    emilio_20: "Serif",
-    emilio_20_bold: "Serif",
-    roman_ags: "Serif",
-
-    aventurina: "Script",
-    pacificlo: "Script",
-    amitaclo: "Script",
-    mam_script: "Script",
-    chicken_scratch: "Script",
-    monicha: "Script",
-    auberge_marif: "Script",
-    digory_doodles_bean: "Script",
-
-    manga_impact: "Display",
-    tt_masters: "Display",
-  };
   const GROUP_ORDER = ["Sans", "Serif", "Script", "Display", "More"];
 
-  function groupFor(key) {
-    return FONT_GROUP_MAP[key] || "More";
-  }
-
-  const fonts = Object.entries(EMB.SATIN_FONTS).map(([key, f]) => ({
-    key,
-    name: f.name || key,
-    group: groupFor(key),
-  }));
+  // Font list now comes from the manifest (single source of truth for name +
+  // group -- see tools/font-categories.json, which feeds the manifest at
+  // build time), not from Object.entries(EMB.SATIN_FONTS): that map starts
+  // EMPTY at boot under lazy font loading (Slice 10A), so deriving the list
+  // from it would render an empty dropdown until something happened to
+  // populate SATIN_FONTS. loadManifest() is small and cached (fontLoader.js),
+  // so this resolves quickly without needing any font binary fetched yet.
+  let fonts = [];
+  loadManifest().then((man) => {
+    fonts = man.fonts.map((f) => ({ key: f.key, name: f.name, group: f.group }));
+  });
 
   // Fonts grouped under headers, in a fixed group order, groups with no
-  // members omitted entirely (e.g. no unknown keys today -> no "More").
-  const groupedFonts = GROUP_ORDER
+  // members omitted entirely. Recomputes reactively once `fonts` arrives
+  // from the manifest (starts [] -> groupedFonts starts [] too, then fills
+  // in when the promise above resolves).
+  $: groupedFonts = GROUP_ORDER
     .map((group) => ({ group, items: fonts.filter((f) => f.group === group) }))
     .filter((g) => g.items.length > 0);
 
   let open = false;
   let root;
-  let thumbs = {}; // key -> dataURL (cached; the font rendered as real satin)
+  let thumbs = {}; // key -> dataURL, filled in once that font's thumbnail resolves
+  const thumbsPending = new Set(); // keys currently being fetched/rendered -- de-dupes concurrent requests
 
   // Bigger thumbnails (Slice 8 Task 3): 280x44 "Sample" renders, up from the
   // previous 220x56 -- easier to judge a script/display font's shape at a
   // glance. Render "Sample" in a font to a small canvas -> data URL. Cached.
   const THUMB_W = 280, THUMB_H = 44;
 
-  function thumbFor(key) {
-    if (thumbs[key] !== undefined) return thumbs[key];
-    let url = "";
-    try {
-      const c = document.createElement("canvas");
-      c.width = THUMB_W; c.height = THUMB_H;
-      const design = EMB.buildLetteringDesign(EMB.SATIN_FONTS[key], "Sample", {
-        garment: EMB.getGarment("left_chest"), pxPerMm: 8, densityMm: 0.5, underlay: false,
-      });
-      renderRealistic(c, design, { colorOverride: [45, 45, 50], fabric: "#ffffff", pad: 8 });
-      url = c.toDataURL();
-    } catch (e) { url = ""; }
-    thumbs[key] = url;
-    return url;
+  // Fire-and-forget: fetches/decodes the font (ensureFont -- cached after the
+  // first call, instant if already resolved elsewhere) then renders its
+  // thumbnail. `thumbs` is reassigned on completion so every reader (the
+  // selected-font trigger button, each option row) re-renders as soon as its
+  // own font arrives -- thumbnails fill in progressively rather than
+  // blocking the dropdown open.
+  function ensureThumb(key) {
+    if (thumbs[key] !== undefined || thumbsPending.has(key)) return;
+    thumbsPending.add(key);
+    (async () => {
+      let url = "";
+      try {
+        const font = await ensureFont(key);
+        const c = document.createElement("canvas");
+        c.width = THUMB_W; c.height = THUMB_H;
+        const design = EMB.buildLetteringDesign(font, "Sample", {
+          garment: EMB.getGarment("left_chest"), pxPerMm: 8, densityMm: 0.5, underlay: false,
+        });
+        renderRealistic(c, design, { colorOverride: [45, 45, 50], fabric: "#ffffff", pad: 8 });
+        url = c.toDataURL();
+      } catch (e) { url = ""; }
+      thumbsPending.delete(key);
+      thumbs = { ...thumbs, [key]: url };
+    })();
   }
 
-  function ensureAll() { for (const f of fonts) thumbFor(f.key); thumbs = thumbs; }
+  function ensureAll() { for (const f of fonts) ensureThumb(f.key); }
   function toggle() { open = !open; if (open) ensureAll(); }
   function pick(key) { dispatch("pick", key); open = false; }
   function onWinClick(e) { if (open && root && !root.contains(e.target)) open = false; }
 
   $: selName = (fonts.find((f) => f.key === selected) || {}).name || "Choose a font";
-  $: selThumb = selected ? thumbFor(selected) : "";
+  // The collapsed trigger button shows the selected font's thumbnail even
+  // before the dropdown is ever opened, so it needs its own fetch trigger.
+  $: if (selected) ensureThumb(selected);
+  $: selThumb = selected ? thumbs[selected] || "" : "";
 </script>
 
 <svelte:window on:click={onWinClick} />

@@ -10,12 +10,24 @@ client-side in JavaScript.
 
 ## Quick start
 
-Open one of these in a modern desktop browser (Chrome, Edge, Firefox):
+**EMB Bot Studio** (the `app/` folder) is the primary product — a guided
+Svelte app with a live stitch preview, multi-element designs, saved projects,
+and a **69-font pre-digitized satin library** loaded on demand:
 
-- **`EMB-Bot.html`** — the development version. Loads its modules from the
-  `src/` folder next to it, so keep the folder structure intact.
-- **`EMB-Bot-standalone.html`** — a single portable file with every local
-  module inlined. Copy just this one file anywhere and it still works.
+```
+cd app
+npm install   # first time only
+npm run dev   # then open http://localhost:5173
+```
+
+The original single-page tool still works for direct/manual use:
+
+- **`EMB-Bot.html`** — loads its modules from the `src/` folder next to it,
+  so keep the folder structure intact. Still uses the older eager 21-font
+  registry (`src/fonts/satin-fonts.js`), pending its feature audit.
+- **`EMB-Bot-standalone.html`** — a single portable inlined file. **Retired:**
+  kept as a frozen artifact, no longer rebuilt as features land. Use the
+  Studio.
 
 Either way **you need an internet connection**, even though everything runs
 locally: the page loads two libraries and (in Text mode) font data from a
@@ -136,6 +148,13 @@ replacement for a professional digitizer's judgment on complex or critical work.
   node tools/bundle.mjs
   ```
 
+- **`src/fonts/`** — the satin font library. `manifest.json` (per-font
+  metadata: tier, group, license id, glyph count) + `bin/*.embf`, a compact
+  binary format (quantize ×4 → per-ring delta → Int16; decoder in
+  `src/fontbin.js`). The Studio fetches the manifest at boot and each font's
+  binary on first use. Rebuild after tier/source changes:
+  `node tools/build-embf.mjs` (needs `scratch_ink/` — see COOKBOOK).
+  Only fonts classified **verified** ship; see the tier rules in COOKBOOK.md.
 - **`tools/`** — `bundle.mjs` (standalone builder), `check-fonts.mjs` (font-URL
   health check), `png.mjs` + `render-dst.mjs` + `run-flatten.mjs` /
   `run-digitize.mjs` (Node-side decode/render/pipeline harness for testing
