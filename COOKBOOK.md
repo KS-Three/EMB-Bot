@@ -21,6 +21,44 @@ user-facing (outputs, fabric presets, honest limits, file map). This cookbook
 covers what the README doesn't: current work-in-progress state, gotchas, and
 where the bodies are buried.
 
+## Binary font library (Slice 10 Stage A, 2026-07-27)
+
+The Studio's fonts live in `src/fonts/manifest.json` + `src/fonts/bin/*.embf`
+(**69 fonts**), lazily fetched per font by `app/src/lib/fontLoader.js`. The
+old eager `src/fonts/satin-fonts.js` (21 fonts) is OUT of the Studio pipeline
+but still used by legacy `EMB-Bot.html` pending its audit — do not delete it.
+
+- **EMBF format** (`src/fontbin.js`): quantize coords ×4 → per-ring delta →
+  Int16 stream; skeleton JSON carries everything else. Guard test
+  `test/embf-guard.test.js` pins `decode(encode(font)) == quantizeFont(font)`
+  for all 21 original fonts — it must stay green through any codec change.
+  Acceptance evidence (0.00–1.07% stitch drift, visually cleared):
+  `docs/superpowers/notes/2026-07-27-embf-acceptance.md`.
+- **Rebuild**: `node tools/build-embf.mjs`. Requires `scratch_ink/`
+  (gitignored): `_tiers.json` (tier classification) + `_out/*.json` (trial
+  imports). Recreate `scratch_ink/` by copying from Kent's Desktop
+  `Ink-Stitch Fonts` clone and re-running the classify/import steps; the
+  committed `.embf` files are the artifacts of record either way.
+- **Tier rule (Kent's decision): only `tier:"verified"` ships.** Unverified =
+  internal work queue with a concrete reason per font in `_tiers.json`.
+  License policy for NEW fonts: OFL-1.1 / CC-BY-4.0 / CC-BY-SA-4.0 / CC0
+  only — `precious` is excluded (GPL-3.0); `milli_marif_bold` is
+  grandfathered with an ad-hoc license (flagged to Kent). `ondulamarif_XL`
+  was demoted by QC (letter glyphs runs-only → 0 stitches).
+- **Engine-file lists live in THREE places** for the Studio: `app/scripts/
+  copy-engine.mjs` (ENGINE_FILES), `app/src/lib/emb.js` (ENGINE_KEYS), and
+  the `<script>` tags in **`app/index.html`** — the third one was missed once
+  and broke fonts only in the live browser (tests preload differently and
+  stayed green). Keep all three in sync; legacy `EMB-Bot.html` is a separate,
+  fourth list that stays on the old registry.
+- **Classifier gap**: tier classification counts satin columns per FILE, not
+  per GLYPH. A font can classify as satin while its letters are runs-only
+  (that's exactly what ondulamarif_XL was). If a font generates 0 stitches,
+  check per-glyph `cols` first.
+- Known perf item for Stage B: opening the font dropdown lazily fetches ALL
+  fonts for thumbnails (~30 MB). Stage B's browser must use pre-rendered
+  preview images instead.
+
 ## Font editing abilities Round 1 — merged 2026-07-27
 
 Rotation, per-letter color, bold/thin weight, slant/italic for text elements.
@@ -40,11 +78,14 @@ user-confirm action, not done automatically.
 ## Running things
 
 ```bash
-node --test                 # engine tests (root) — 169/169 as of this writing
+node --test                 # engine tests (root) — 202/202 as of this writing
 cd app && npm install && npm run dev     # Studio dev server
-cd app && npm test          # Studio tests (vitest) — 182/182 as of this writing
-node tools/bundle.mjs        # rebuild EMB-Bot-standalone.html after any src/ or EMB-Bot.html change
+cd app && npm test          # Studio tests (vitest) — 188/188 as of this writing
+node tools/build-embf.mjs   # rebuild the binary font library (see section above)
 ```
+
+The standalone rebuild step (`node tools/bundle.mjs`) is RETIRED along with
+`EMB-Bot-standalone.html` — do not rebuild it as features land.
 
 Opening `EMB-Bot.html` needs internet (CDN: opentype.js@1.3.4 — **pinned,
 v2 hangs** — jsPDF, ~137 Google Fonts). `file://` renders static-only; serve
