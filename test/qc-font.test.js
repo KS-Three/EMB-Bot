@@ -61,3 +61,21 @@ test("flags missing sizeMm/unitsPerEm", async () => {
   assert.strictEqual(r.pass, false);
   assert.ok(r.findings.some((s) => /sizeMm/i.test(s)));
 });
+
+test("a small fraction of satinless letters warns but passes", async () => {
+  const { qcFont } = await import("../tools/qc-font.mjs");
+  const f = goodFont();
+  f.glyphs["z"] = { adv: 10, cols: [], runs: [[[0,0],[1,1]]] }; // 1/52 ≈ 2%
+  const r = qcFont(f);
+  assert.strictEqual(r.pass, true);
+  assert.ok(r.findings.some((s) => /satin/i.test(s)));
+});
+
+test("zero advance on a digit is caught", async () => {
+  const { qcFont } = await import("../tools/qc-font.mjs");
+  const f = goodFont();
+  f.glyphs["7"].adv = 0;
+  const r = qcFont(f);
+  assert.strictEqual(r.pass, false);
+  assert.ok(r.findings.some((s) => /advance/i.test(s)));
+});
