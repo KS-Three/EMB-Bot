@@ -9,6 +9,8 @@
 // manufacturer/brand names) so the list stays useful regardless of which
 // actual thread brand a shop stocks -- rgb values are hand-picked, sensible
 // approximations of each shade, not sampled from any particular catalog.
+import { THREAD_BRANDS } from "./threadBrands.js";
+
 export const THREADS = [
   // Whites / creams
   { name: "Snow White", rgb: [255, 255, 255] },
@@ -98,11 +100,19 @@ export const THREADS = [
 // between two equidistant shades resolve to whichever comes first in
 // THREADS.
 export function nearestThread(rgb) {
+  return nearestInList(THREADS, rgb);
+}
+
+// Same Euclidean-nearest scan as nearestThread, over ANY thread list (the
+// generic THREADS or a brand catalog's .threads). Entries may carry a `code`
+// (manufacturer catalog number); it's passed through when present so callers
+// can render "1902 Poinsettia" style labels.
+export function nearestInList(list, rgb) {
   const [r, g, b] = rgb;
   let bestIndex = 0;
   let bestDist = Infinity;
-  for (let i = 0; i < THREADS.length; i++) {
-    const t = THREADS[i];
+  for (let i = 0; i < list.length; i++) {
+    const t = list[i];
     const dr = r - t.rgb[0];
     const dg = g - t.rgb[1];
     const db = b - t.rgb[2];
@@ -112,6 +122,52 @@ export function nearestThread(rgb) {
       bestIndex = i;
     }
   }
-  const best = THREADS[bestIndex];
-  return { name: best.name, rgb: best.rgb, index: bestIndex };
+  const best = list[bestIndex];
+  return { name: best.name, code: best.code || "", rgb: best.rgb, index: bestIndex };
+}
+
+// Every selectable palette: the generic Studio list first (default), then the
+// real manufacturer charts from threadBrands.js (generated, see
+// tools/build-threads.mjs). Shape is uniform -- { id, label, threads } with
+// threads entries { name, code?, rgb } -- so pickers can treat them all alike.
+export const PALETTES = [
+  { id: "studio", label: "Studio basics", threads: THREADS },
+  ...THREAD_BRANDS,
+];
+
+export function paletteById(id) {
+  return PALETTES.find((p) => p.id === id) || PALETTES[0];
+}
+
+// App-wide "which thread chart does this shop stitch with" preference,
+// shared by ThreadPicker (where it's set) and DownloadStep's thread summary/
+// PDF worksheet (where it decides which brand's codes appear). Storage
+// failures (private mode, disabled) just mean "studio" every session.
+export const PALETTE_STORAGE_KEY = "embstudio:threadPalette";
+
+export function loadPreferredPaletteId() {
+  try {
+    const id = localStorage.getItem(PALETTE_STORAGE_KEY);
+    return PALETTES.some((p) => p.id === id) ? id : "studio";
+  } catch (e) {
+    return "studio";
+  }
+}
+
+export function savePreferredPaletteId(id) {
+  try {
+    localStorage.setItem(PALETTE_STORAGE_KEY, id);
+  } catch (e) {
+    // Non-persistent is fine; the session still works.
+  }
+}
+
+// Case-insensitive name/code filter for the brand picker's search box.
+// Pure + tested; an empty/whitespace query returns the list untouched.
+export function filterThreads(list, query) {
+  const q = (query || "").trim().toLowerCase();
+  if (!q) return list;
+  return list.filter(
+    (t) => t.name.toLowerCase().includes(q) || (t.code || "").toLowerCase().includes(q)
+  );
 }

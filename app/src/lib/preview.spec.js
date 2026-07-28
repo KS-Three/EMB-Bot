@@ -201,3 +201,38 @@ test("renderRealistic view contract (B1): the pan that keeps an arbitrary cursor
   expect(p2.x).toBeCloseTo(p1.x, 6);
   expect(p2.y).toBeCloseTo(p1.y, 6);
 });
+
+// --- renderRealistic: limitStrands (stitch simulator) ----------------------
+
+test("renderRealistic limitStrands draws only the first N strands; omitting it draws everything (simulator contract)", () => {
+  // 4 chained stitches = 3 strands; each strand is drawn by 3 passes
+  // (shadow, color, sheen) -> moveTo fires 3 * strands times. No hoop and no
+  // weave, so strands are the ONLY moveTo source in this render.
+  const design = { stitches: [
+    { x: 0, y: 0, type: "stitch" },
+    { x: 10, y: 0, type: "stitch" },
+    { x: 20, y: 0, type: "stitch" },
+    { x: 30, y: 0, type: "stitch" },
+  ] };
+  const full = makeCtxSpy();
+  renderRealistic({ width: 100, height: 100, getContext: () => full }, design, {});
+  expect(full.moveTo).toHaveBeenCalledTimes(9);
+
+  const limited = makeCtxSpy();
+  renderRealistic({ width: 100, height: 100, getContext: () => limited }, design, { limitStrands: 1 });
+  expect(limited.moveTo).toHaveBeenCalledTimes(3);
+
+  const zero = makeCtxSpy();
+  renderRealistic({ width: 100, height: 100, getContext: () => zero }, design, { limitStrands: 0 });
+  expect(zero.moveTo).toHaveBeenCalledTimes(0);
+});
+
+test("renderRealistic limitStrands past the end is a plain full render (clamps, never throws)", () => {
+  const design = { stitches: [
+    { x: 0, y: 0, type: "stitch" },
+    { x: 10, y: 0, type: "stitch" },
+  ] };
+  const ctx = makeCtxSpy();
+  renderRealistic({ width: 100, height: 100, getContext: () => ctx }, design, { limitStrands: 999 });
+  expect(ctx.moveTo).toHaveBeenCalledTimes(3); // 1 strand x 3 passes
+});

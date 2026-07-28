@@ -1,11 +1,17 @@
 <script>
   import { createEventDispatcher } from "svelte";
-  import { THREADS, nearestThread } from "../lib/threads.js";
+  import { PALETTES, paletteById, nearestInList, filterThreads, loadPreferredPaletteId, savePreferredPaletteId } from "../lib/threads.js";
 
   // Named-thread color picker (Slice 8 Task 4), used everywhere a thread
   // color is chosen (TextStep's element color, ImagePanel's per-swatch
   // thread overrides, and — via the same swatch-grid pattern — anywhere
   // else a raw <input type="color"> used to live).
+  //
+  // Brand catalogs (Ember-audit follow-up): alongside the generic "Studio
+  // basics" list the picker now offers real manufacturer charts (Isacord,
+  // Madeira, Robison-Anton -- see lib/threadBrands.js) with a name/code
+  // search. The chosen palette is remembered app-wide (localStorage) so a
+  // shop that stitches with Isacord sees Isacord everywhere by default.
   //
   // B6 (NON-NEGOTIABLE, plan amendment): this is NOT a floating popover.
   // The scrollable .panel-body clips absolutely-positioned overlays (the
@@ -19,6 +25,14 @@
   const d = createEventDispatcher();
 
   let open = false;
+  let query = "";
+  let paletteId = loadPreferredPaletteId();
+
+  function onPaletteChange(e) {
+    paletteId = e.currentTarget.value;
+    query = "";
+    savePreferredPaletteId(paletteId);
+  }
 
   function toHex(c) {
     return "#" + c.map((v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, "0")).join("");
@@ -28,10 +42,16 @@
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
   }
 
+  function threadLabel(t) {
+    return t.code ? `${t.code} ${t.name}` : t.name;
+  }
+
   // Reactive so both the trigger's name/swatch and the grid's selected ring
-  // stay in sync whenever the `rgb` prop changes (including from outside,
-  // e.g. a project load).
-  $: nearest = nearestThread(rgb);
+  // stay in sync whenever the `rgb` prop OR the chosen palette changes
+  // (including from outside, e.g. a project load).
+  $: palette = paletteById(paletteId);
+  $: nearest = nearestInList(palette.threads, rgb);
+  $: shown = filterThreads(palette.threads, query);
 
   function toggle() {
     open = !open;
@@ -40,6 +60,7 @@
   function pick(t) {
     d("pick", t.rgb);
     open = false;
+    query = "";
   }
 
   // The native color dialog stays open across repeated "input" events while
@@ -68,29 +89,49 @@
     on:click|stopPropagation={toggle}
     aria-haspopup="true"
     aria-expanded={open}
-    title={nearest.name}
+    title={threadLabel(nearest)}
   >
     <span class="tp-swatch" style="background: rgb({rgb[0]},{rgb[1]},{rgb[2]})"></span>
-    {#if !compact}<span class="tp-name">{nearest.name}</span>{/if}
+    {#if !compact}<span class="tp-name">{threadLabel(nearest)}</span>{/if}
     <span class="tp-chevron" class:open aria-hidden="true">▾</span>
   </button>
 
   {#if open}
     <div class="tp-panel">
-      <div class="tp-grid" role="listbox" aria-label={label || "Thread color"}>
-        {#each THREADS as t, i (t.name)}
+      <div class="tp-tools">
+        <select class="tp-brand" value={paletteId} on:change={onPaletteChange} on:click|stopPropagation aria-label="Thread brand">
+          {#each PALETTES as p (p.id)}
+            <option value={p.id}>{p.label}</option>
+          {/each}
+        </select>
+        {#if palette.id !== "studio"}
+          <input
+            type="search"
+            class="tp-search"
+            placeholder="Search name or number…"
+            bind:value={query}
+            on:click|stopPropagation
+            aria-label="Search threads"
+          />
+        {/if}
+      </div>
+      <div class="tp-grid" class:big={palette.id !== "studio"} role="listbox" aria-label={label || "Thread color"}>
+        {#each shown as t, i (threadLabel(t) + i)}
           <button
             type="button"
             class="tp-cell"
-            class:sel={i === nearest.index}
+            class:sel={t === palette.threads[nearest.index]}
             style="background: rgb({t.rgb[0]},{t.rgb[1]},{t.rgb[2]})"
-            title={t.name}
-            aria-label={t.name}
+            title={threadLabel(t)}
+            aria-label={threadLabel(t)}
             role="option"
-            aria-selected={i === nearest.index}
+            aria-selected={t === palette.threads[nearest.index]}
             on:click|stopPropagation={() => pick(t)}
           ></button>
         {/each}
+        {#if !shown.length}
+          <p class="tp-empty">No threads match “{query}”.</p>
+        {/if}
       </div>
       <label class="tp-custom">
         <span>Custom…</span>

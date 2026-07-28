@@ -473,6 +473,33 @@ body {
 .zoombtn:disabled { color: var(--muted); cursor: default; opacity: 0.5; }
 .zoomfit { font-size: var(--fs-sm); }
 
+/* Stitch simulator bar -- overlaid bottom-center of the field, same surface
+   treatment as .zoomctl. The scrub slider stretches; counter stays fixed. */
+.simbar {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-1);
+  width: min(420px, 70%);
+}
+.simscrub { flex: 1; min-width: 80px; }
+.simcount {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.simspeed { font-size: var(--fs-xs); width: auto; padding: 0 6px; }
+.zoombtn.simon { background: var(--tint); color: var(--accent); }
+
 .zoompct {
   min-width: 3.2em;
   text-align: center;
@@ -1227,6 +1254,36 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   grid-template-columns: repeat(9, 24px);
   gap: var(--space-1);
 }
+
+/* Brand catalogs are 350-450 colors -- the grid caps its height and scrolls
+   (still in-flow: it's the GRID that scrolls, the panel itself never
+   overlays anything). */
+.tp-grid.big {
+  max-height: 190px;
+  overflow-y: auto;
+  padding-right: var(--space-1);
+}
+
+.tp-tools {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.tp-brand { flex: 0 1 auto; min-width: 0; font-size: var(--fs-sm); }
+.tp-search { flex: 1 1 60px; min-width: 0; font-size: var(--fs-sm); }
+.tp-empty { font-size: var(--fs-sm); color: var(--muted); grid-column: 1 / -1; margin: 0; }
+
+/* DownloadStep's thread-chart chooser (sits between the Threads heading and
+   the block list). */
+.threadbrand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-sm);
+  color: var(--muted);
+  margin-bottom: var(--space-2);
+}
+.threadbrand select { font-size: var(--fs-sm); }
 
 .tp-cell {
   width: 24px;

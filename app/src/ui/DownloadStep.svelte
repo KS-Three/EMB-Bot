@@ -4,7 +4,7 @@
   import { exportDesign, exportWorksheetPDF, exportPNG } from "../lib/exporters.js";
   import { triggerDownload } from "../lib/download.js";
   import { EMB } from "../lib/emb.js";
-  import { nearestThread } from "../lib/threads.js";
+  import { PALETTES, paletteById, nearestInList, loadPreferredPaletteId, savePreferredPaletteId } from "../lib/threads.js";
   import { ensureFonts } from "../lib/fontLoader.js";
   export let project;
   // Task 4 (Slice 5): export now covers every ready element in the project
@@ -75,9 +75,23 @@
       return [];
     }
   }
+  // Which thread chart the summary (and PDF worksheet) names cones from --
+  // shared preference with ThreadPicker, changeable right here too so a
+  // shopper can flip between "generic shade names" and their actual brand's
+  // catalog numbers at the moment they're writing the shopping list.
+  let paletteId = loadPreferredPaletteId();
+  function onPaletteChange(e) {
+    paletteId = e.currentTarget.value;
+    savePreferredPaletteId(paletteId);
+  }
+
+  function threadLabel(t) {
+    return t.code ? `${t.code} ${t.name}` : t.name;
+  }
+
   $: threadRows = combinedColors(project, runtime, fontsReady).map((c, i) => {
-    const nearest = nearestThread([c.r, c.g, c.b]);
-    return { block: i + 1, rgb: nearest.rgb, name: nearest.name };
+    const nearest = nearestInList(paletteById(paletteId).threads, [c.r, c.g, c.b]);
+    return { block: i + 1, rgb: nearest.rgb, name: threadLabel(nearest) };
   });
 
   async function dl(fmt) {
@@ -95,6 +109,16 @@
     try {
       await ensureFonts(fontKeysOf(project));
       const design = buildDesign();
+      // pdfsheet.js prints color.name when present -- label each block with
+      // the preferred chart's nearest cone ("1902 Poinsettia" beats "Color
+      // 2" when you're standing in front of the thread rack). buildDesign()
+      // returns a freshly-generated design, so annotating it here can't leak
+      // into any cached/shared state.
+      const list = paletteById(paletteId).threads;
+      design.colors = (design.colors || []).map((c) => ({
+        ...c,
+        name: threadLabel(nearestInList(list, [c.r, c.g, c.b])),
+      }));
       const garment = EMB.getGarment(project.garmentId);
       await exportWorksheetPDF(design, garment);
       msg = "Worksheet saved.";
@@ -123,6 +147,14 @@
 {#if threadRows.length}
   <div class="threadsummary">
     <h3>Threads</h3>
+    <label class="threadbrand">
+      <span>Chart</span>
+      <select value={paletteId} on:change={onPaletteChange} aria-label="Thread chart">
+        {#each PALETTES as p (p.id)}
+          <option value={p.id}>{p.label}</option>
+        {/each}
+      </select>
+    </label>
     <ul class="threadlist">
       {#each threadRows as row}
         <li class="threadrow">

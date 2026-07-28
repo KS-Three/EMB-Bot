@@ -3,6 +3,8 @@
   import { generateAll } from "../lib/generate.js";
   import { ensureFonts } from "../lib/fontLoader.js";
   import { renderRealistic, isDark } from "../lib/preview.js";
+  import { designToStrands } from "../lib/strands.js";
+  import { advanceIndex, clampIndex, nextSpeed } from "../lib/simulate.js";
   import { EMB } from "../lib/emb.js";
   import { designRectPx, hitTest, pickElement, dragResize, dragMove, clampOffsets, clampPan } from "../lib/interact.js";
   import Hint from "./Hint.svelte";
@@ -64,6 +66,20 @@
   const MIN_ZOOM = 1;
   const MAX_ZOOM = 4;
   let rafViewScheduled = false;
+
+  // ---- stitch simulator state (see lib/simulate.js for the pure math) ----
+  // simIndex is a FLOAT while playing (fractional progress carries across
+  // frames); everything that renders/display floors it. The simulator is a
+  // view of the CURRENT generated design only — any project/runtime change
+  // regenerates stitches, so paint() force-stops it (stopSim) rather than
+  // trying to keep a stale strand count alive.
+  let simActive = false;
+  let simPlaying = false;
+  let simIndex = 0;
+  let simTotal = 0;
+  let simSpeed = 1;
+  let simRafId = 0;
+  let simLastTs = 0;
 
   // Drag state (module-local to this component instance, not reactive —
   // none of it needs to trigger a re-render on its own).
@@ -220,6 +236,9 @@
 
   async function paint() {
     if (!canvas) return;
+    // Any regeneration invalidates the simulator's strand count -- stop it
+    // (harmless no-op when it isn't running).
+    stopSim();
     const myToken = ++genToken;
     const fontKeys = fontKeysOf(project);
     let fontErr = null;
@@ -327,6 +346,10 @@
         fabricRgb: project.fabricRgb,
         weave: true,
         view,
+        // While simulating, every repaint (zoom/pan included) draws only the
+        // sewn-so-far prefix -- otherwise a mid-playback wheel event would
+        // flash the finished design.
+        limitStrands: simActive ? Math.floor(simIndex) : undefined,
       });
       perElementRects = [];
       if (renderResult && renderResult.toCanvas) {
@@ -335,7 +358,9 @@
           if (rect) perElementRects.push({ id: pe.id, ...rect });
         }
       }
-      drawOverlay();
+      // Selection chrome is hidden during playback -- the simulator is a
+      // watch-mode, not an edit-mode (pointer editing is disabled below too).
+      if (!simActive) drawOverlay();
     } else {
       clearToFabric();
     }
@@ -348,6 +373,69 @@
       rafViewScheduled = false;
       repaintView();
     });
+  }
+
+  // ---- stitch simulator ----------------------------------------------------
+
+  function simFrame(ts) {
+    simRafId = 0;
+    if (!simActive || !simPlaying) return;
+    const dt = simLastTs ? ts - simLastTs : 0;
+    simLastTs = ts;
+    simIndex = advanceIndex(simIndex, dt, simSpeed, simTotal);
+    repaintView();
+    if (simIndex >= simTotal) {
+      simPlaying = false; // finished -- leave the completed design showing
+      return;
+    }
+    simRafId = requestAnimationFrame(simFrame);
+  }
+
+  function simPlay() {
+    if (!simActive) return;
+    if (simIndex >= simTotal) simIndex = 0; // replay from the start
+    simPlaying = true;
+    simLastTs = 0;
+    if (!simRafId) simRafId = requestAnimationFrame(simFrame);
+  }
+
+  function simPause() {
+    simPlaying = false;
+    if (simRafId) { cancelAnimationFrame(simRafId); simRafId = 0; }
+  }
+
+  function startSim() {
+    if (!lastGenerateResult || !lastGenerateResult.combined) return;
+    simTotal = designToStrands(lastGenerateResult.combined).length;
+    if (!simTotal) return;
+    simActive = true;
+    simIndex = 0;
+    simSpeed = 1;
+    simPlay();
+  }
+
+  function stopSim() {
+    if (!simActive) return;
+    simPause();
+    simActive = false;
+    simIndex = 0;
+    // Back to the normal full render + selection chrome.
+    repaintView();
+  }
+
+  function simScrub(e) {
+    simPause();
+    simIndex = clampIndex(e.currentTarget.value, simTotal);
+    scheduleViewRepaint();
+  }
+
+  function simCycleSpeed() {
+    simSpeed = nextSpeed(simSpeed);
+  }
+
+  function simTogglePlay() {
+    if (simPlaying) simPause();
+    else simPlay();
   }
 
   onMount(paint);
@@ -475,6 +563,7 @@
     // interaction happened.
     if (showDragHint) dispatch("dismisshint");
 
+    if (simActive) return; // watch-mode: no select/drag/resize during playback
     if (!canvas || !renderResult) return;
     const p = canvasPointFromEvent(e);
 
@@ -540,6 +629,7 @@
 
   function onPointerMove(e) {
     if (!canvas) return;
+    if (simActive) { canvas.style.cursor = "default"; return; }
     const p = canvasPointFromEvent(e);
     if (!dragMode) {
       updateHoverCursor(p);
@@ -616,7 +706,39 @@
       <span class="zoompct">{Math.round(view.zoom * 100)}%</span>
       <button type="button" class="zoombtn" on:click={zoomIn} disabled={view.zoom >= MAX_ZOOM} aria-label="Zoom in">+</button>
       <button type="button" class="zoombtn zoomfit" on:click={resetView} aria-label="Fit to hoop" title="Fit to hoop">⤢</button>
+      <button
+        type="button"
+        class="zoombtn"
+        class:simon={simActive}
+        on:click={() => (simActive ? stopSim() : startSim())}
+        disabled={!hasDesign}
+        aria-label="Stitch simulator"
+        aria-pressed={simActive}
+        title="Stitch simulator — watch the sew order"
+      >▶</button>
     </div>
+    {#if simActive}
+      <div class="simbar" role="group" aria-label="Stitch simulator controls">
+        <button type="button" class="zoombtn" on:click={simTogglePlay} aria-label={simPlaying ? "Pause" : "Play"}>
+          {simPlaying ? "⏸" : "▶"}
+        </button>
+        <input
+          type="range"
+          class="simscrub"
+          min="0"
+          max={simTotal}
+          step="1"
+          value={Math.floor(simIndex)}
+          on:input={simScrub}
+          aria-label="Stitch progress"
+        />
+        <span class="simcount">{Math.floor(simIndex)} / {simTotal}</span>
+        <button type="button" class="zoombtn simspeed" on:click={simCycleSpeed} aria-label="Playback speed">
+          {simSpeed}x
+        </button>
+        <button type="button" class="zoombtn" on:click={stopSim} aria-label="Close simulator">✕</button>
+      </div>
+    {/if}
   </div>
   <div class="fieldmeta">
     {#if error}<span class="err">{error}</span>

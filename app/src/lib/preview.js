@@ -185,7 +185,12 @@ export function renderRealistic(canvas, design, opts) {
   const SX = hooped ? (x) => TX(x / 10) : TX;
   const SY = hooped ? (y) => TY(y / 10) : TY;
 
-  const strands = designToStrands(design, { colorOverride: o.colorOverride });
+  let strands = designToStrands(design, { colorOverride: o.colorOverride });
+  // Simulator support: draw only the first `limitStrands` segments (sew
+  // order IS strand order — designToStrands walks design.stitches start to
+  // finish), so scrubbing/playing renders the design exactly as the machine
+  // would sew it. undefined/null = draw everything (every existing caller).
+  if (o.limitStrands != null) strands = strands.slice(0, Math.max(0, o.limitStrands));
   const lw = Math.max(1.5, 0.22 * pxPerMm); // thread thickness in px
   ctx.lineCap = "round";
   // shadow pass
