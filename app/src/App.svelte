@@ -1,5 +1,6 @@
 <script>
   import { update, updateElement, selectElement, addElement, removeElement } from "./lib/project.js";
+  import { createHistory } from "./lib/history.js";
   import { applyTemplate } from "./lib/templates.js";
   import { canAdvance, nextStep, prevStep } from "./lib/flow.js";
   import {
@@ -73,6 +74,67 @@
   let project = resetHasImage(bootProject);
   let projectName = nameFor(currentId);
   let step = "garment";
+
+  // ---- Undo/redo (Ember-audit follow-up) ------------------------------------
+  // Per-project, in-memory only (never persisted). Every committed project
+  // change routes through persist() below, which records a snapshot; pure
+  // selection changes opt out (persist(false)) so undo never burns steps on
+  // clicks. Drag storms coalesce inside history.js (500ms window).
+  const history = createHistory(project);
+  let canUndo = false;
+  let canRedo = false;
+  function syncHistoryFlags() {
+    canUndo = history.canUndo();
+    canRedo = history.canRedo();
+  }
+
+  // A restored snapshot's _hasImage flags may reference runtime image state
+  // that no longer exists (removing an image element also drops its
+  // runtime.flats entry — see onRemoveElement — and undo can't bring the
+  // pixels back). Re-truth the flag against what runtime actually holds so
+  // the flow gate can't pass on an image that isn't really loaded.
+  function truthHasImage(p) {
+    if (!p.elements.some((el) => el._hasImage && !runtime.flats[el.id])) return p;
+    return {
+      ...p,
+      elements: p.elements.map((el) =>
+        el._hasImage && !runtime.flats[el.id] ? { ...el, _hasImage: false } : el
+      ),
+    };
+  }
+
+  function applyHistorySnapshot(p) {
+    if (!p) return;
+    project = truthHasImage(p);
+    saveProject(currentId, project);
+    refreshProjects();
+    syncHistoryFlags();
+  }
+
+  function undoEdit() {
+    applyHistorySnapshot(history.undo());
+  }
+
+  function redoEdit() {
+    applyHistorySnapshot(history.redo());
+  }
+
+  // Ctrl/Cmd+Z and Ctrl+Y / Ctrl/Cmd+Shift+Z — skipped while a text control
+  // has focus so the browser's native input-level undo stays intact.
+  function onGlobalKey(e) {
+    if (!(e.ctrlKey || e.metaKey)) return;
+    const t = e.target;
+    const tag = t && t.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (t && t.isContentEditable)) return;
+    const k = e.key.toLowerCase();
+    if (k === "z" && !e.shiftKey) {
+      e.preventDefault();
+      undoEdit();
+    } else if (k === "y" || (k === "z" && e.shiftKey)) {
+      e.preventDefault();
+      redoEdit();
+    }
+  }
   let drawerOpen = false;
   // ---- Drawer focus restore (A11Y/UX finding 5) -----------------------------
   // ProjectsDrawer moves focus INTO itself on mount and traps Tab while
@@ -204,7 +266,11 @@
   // no-op contract in projects.js), and bumps the registry's updatedAt, so
   // every persist also refreshes the `projects` snapshot (see instruction 3
   // in the task brief: refresh after every registry mutation).
-  function persist() {
+  function persist(record = true) {
+    if (record) {
+      history.record(project);
+      syncHistoryFlags();
+    }
     saveProject(currentId, project);
     refreshProjects();
   }
@@ -222,9 +288,9 @@
   // reclamp "elupdate" events and by ContentStep's element-scoped TextStep/
   // ImagePanel/SizePanel controls (see ContentStep.svelte), which all funnel
   // their patches through this same { id, patch } shape.
-  function elUpdate(id, patch) {
+  function elUpdate(id, patch, record = true) {
     project = updateElement(project, id, patch);
-    persist();
+    persist(record);
   }
 
   // Hoop width in mm for the current garment — new elements are seeded with
@@ -267,7 +333,10 @@
 
   function onSelect(id) {
     project = selectElement(project, id);
-    persist();
+    // record=false: pure selection isn't an edit — undo should never spend a
+    // step un-clicking (the restored snapshots still carry whatever
+    // selectedId they had when a real edit recorded them).
+    persist(false);
   }
 
   function onImage(elementId, workImage) {
@@ -310,6 +379,8 @@
     currentId = id;
     projectName = name;
     step = targetStep;
+    history.reset(project); // history is per-project; a switch starts fresh
+    syncHistoryFlags();
   }
 
   // Drawer "Open" (plan amendment A6): lands on "content", not "garment" --
@@ -406,10 +477,16 @@
   }
 </script>
 
+<svelte:window on:keydown={onGlobalKey} />
+
 <header class="topbar">
   <div class="topbar-logo">
     <span class="logomark" aria-hidden="true">EMB</span>
     <span class="logo">Bot Studio</span>
+    <span class="undoredo">
+      <button type="button" class="undo-btn" disabled={!canUndo} on:click={undoEdit} title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
+      <button type="button" class="undo-btn" disabled={!canRedo} on:click={redoEdit} title="Redo (Ctrl+Y)" aria-label="Redo">↷</button>
+    </span>
   </div>
   <input
     class="projectname"
@@ -514,7 +591,7 @@
       {project}
       {runtime}
       showDragHint={showDragFieldHint}
-      on:elupdate={(e) => elUpdate(e.detail.id, e.detail.patch)}
+      on:elupdate={(e) => elUpdate(e.detail.id, e.detail.patch, !e.detail.quiet)}
       on:select={(e) => onSelect(e.detail)}
       on:dims={(e) => onDims(e.detail)}
       on:stats={(e) => onStats(e.detail)}

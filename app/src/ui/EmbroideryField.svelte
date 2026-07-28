@@ -67,6 +67,13 @@
   const MAX_ZOOM = 4;
   let rafViewScheduled = false;
 
+  // Diagnostic overlays (view-only, ephemeral — same lifecycle as zoom/pan):
+  // dashed needle-up travel lines and X markers at trims.
+  let showJumps = false;
+  let showTrims = false;
+  function toggleJumps() { showJumps = !showJumps; scheduleViewRepaint(); }
+  function toggleTrims() { showTrims = !showTrims; scheduleViewRepaint(); }
+
   // ---- stitch simulator state (see lib/simulate.js for the pure math) ----
   // simIndex is a FLOAT while playing (fractional progress carries across
   // frames); everything that renders/display floors it. The simulator is a
@@ -212,7 +219,10 @@
       const curOffY = el.offsetYMm || 0;
       const clamped = clampOffsets(curOffX, curOffY, designWmm, designHmm, hoopWmm, hoopHmm);
       if (Math.abs(clamped.offsetXMm - curOffX) > 0.01 || Math.abs(clamped.offsetYMm - curOffY) > 0.01) {
-        dispatch("elupdate", { id: pe.id, patch: clamped });
+        // quiet: a programmatic correction, not a user edit — it must never
+        // seed an undo step (a boot-time reclamp would otherwise light up
+        // the Undo button before the user has touched anything).
+        dispatch("elupdate", { id: pe.id, patch: clamped, quiet: true });
       }
     }
   }
@@ -314,6 +324,8 @@
       fabricRgb: project.fabricRgb,
       weave: true,
       view,
+      showJumps,
+      showTrims,
     });
     hasDesign = true;
 
@@ -346,6 +358,8 @@
         fabricRgb: project.fabricRgb,
         weave: true,
         view,
+        showJumps,
+        showTrims,
         // While simulating, every repaint (zoom/pan included) draws only the
         // sewn-so-far prefix -- otherwise a mid-playback wheel event would
         // flash the finished design.
@@ -706,6 +720,26 @@
       <span class="zoompct">{Math.round(view.zoom * 100)}%</span>
       <button type="button" class="zoombtn" on:click={zoomIn} disabled={view.zoom >= MAX_ZOOM} aria-label="Zoom in">+</button>
       <button type="button" class="zoombtn zoomfit" on:click={resetView} aria-label="Fit to hoop" title="Fit to hoop">⤢</button>
+      <button
+        type="button"
+        class="zoombtn viewtoggle"
+        class:simon={showJumps}
+        on:click={toggleJumps}
+        disabled={!hasDesign}
+        aria-pressed={showJumps}
+        aria-label="Show jumps"
+        title="Show needle-up travel (jumps)"
+      >⤳</button>
+      <button
+        type="button"
+        class="zoombtn viewtoggle"
+        class:simon={showTrims}
+        on:click={toggleTrims}
+        disabled={!hasDesign}
+        aria-pressed={showTrims}
+        aria-label="Show trims"
+        title="Show thread trims"
+      >✂</button>
       <button
         type="button"
         class="zoombtn"

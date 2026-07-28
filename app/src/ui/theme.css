@@ -1273,6 +1273,24 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .tp-search { flex: 1 1 60px; min-width: 0; font-size: var(--fs-sm); }
 .tp-empty { font-size: var(--fs-sm); color: var(--muted); grid-column: 1 / -1; margin: 0; }
 
+/* Topbar undo/redo pair (next to the logo). */
+.undoredo { display: inline-flex; gap: 2px; margin-left: var(--space-3); }
+.undo-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  font-size: var(--fs-md);
+  line-height: 1;
+  cursor: pointer;
+}
+.undo-btn:hover:not(:disabled) { background: var(--bg); }
+.undo-btn:disabled { color: var(--muted); cursor: default; opacity: 0.45; }
+
 /* DesignPanel -- imported .dst design editor (upload, stats, per-block
    thread pickers, resize note). */
 .designpanel { display: flex; flex-direction: column; gap: var(--space-3); }
