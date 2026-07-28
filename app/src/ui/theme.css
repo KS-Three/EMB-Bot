@@ -1273,6 +1273,29 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .tp-search { flex: 1 1 60px; min-width: 0; font-size: var(--fs-sm); }
 .tp-empty { font-size: var(--fs-sm); color: var(--muted); grid-column: 1 / -1; margin: 0; }
 
+/* DesignPanel -- imported .dst design editor (upload, stats, per-block
+   thread pickers, resize note). */
+.designpanel { display: flex; flex-direction: column; gap: var(--space-3); }
+.dp-upload input[type="file"] { display: none; }
+.dp-upload-btn {
+  display: inline-block;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  font-size: var(--fs-md);
+  cursor: pointer;
+}
+.dp-upload-btn:hover { background: var(--bg); }
+.dp-error { color: var(--danger); font-size: var(--fs-sm); margin: 0; }
+.dp-stats { font-size: var(--fs-sm); color: var(--muted); margin: 0; }
+.dp-blocks { display: flex; flex-direction: column; gap: var(--space-1); }
+.dp-blocks-label { font-size: var(--fs-sm); font-weight: 600; }
+.dp-block { display: flex; align-items: center; gap: var(--space-2); }
+.dp-block-n { font-size: var(--fs-sm); color: var(--muted); min-width: 4.5em; }
+.dp-note { font-size: var(--fs-sm); color: var(--muted); margin: 0; }
+.dp-note.warn { color: var(--warn); }
+
 /* DownloadStep's thread-chart chooser (sits between the Threads heading and
    the block list). */
 .threadbrand {

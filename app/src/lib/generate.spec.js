@@ -4,7 +4,7 @@ import { preloadAllFontsSync } from "./testFonts.js";
 beforeAll(() => {
   const require = createRequire(import.meta.url);
   globalThis.window = globalThis;
-  for (const f of ["units","garments","fabrics","fill","geometry","quantize","flatten","satin","satinplay","satinfont","fontbin","dst","exp","fonts","digitize"]) require("../../../src/" + f + ".js");
+  for (const f of ["units","garments","fabrics","fill","geometry","quantize","flatten","satin","satinplay","satinfont","fontbin","dst","dstimport","exp","fonts","digitize"]) require("../../../src/" + f + ".js");
   preloadAllFontsSync();
 });
 
@@ -222,4 +222,72 @@ test("generateDesign throws when nothing in the project is ready", async () => {
   const { generateDesign } = await import("./generate.js");
   const { defaultProject } = await import("./project.js");
   expect(() => generateDesign(defaultProject())).toThrow();
+});
+
+// --- imported-design elements (DST import) -----------------------------
+
+function designElement(overrides = {}) {
+  return {
+    id: "e1", type: "design", name: "test.dst", dstBase64: null,
+    blockColors: {}, sizeMm: null, offsetXMm: 0, offsetYMm: 0, ...overrides,
+  };
+}
+
+function makeDstBase64(EMB) {
+  const bytes = EMB.encodeDST({
+    stitches: [
+      { x: -100, y: -50, type: "stitch" },
+      { x: 100, y: -50, type: "stitch" },
+      { x: 100, y: 50, type: "color" },
+      { x: 100, y: 50, type: "stitch" },
+      { x: -100, y: 50, type: "stitch" },
+      { x: -100, y: 50, type: "end" },
+    ],
+    colors: [{ r: 0, g: 0, b: 0 }, { r: 1, g: 1, b: 1 }],
+    label: "SPEC",
+  });
+  return Buffer.from(bytes).toString("base64");
+}
+
+test("generateElement decodes a DST design element at native size with default block colors", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const d = generateElement(designElement({ dstBase64: makeDstBase64(EMB) }), garment, {});
+  expect(d.widthMM).toBeCloseTo(20, 5); // 200 units native
+  expect(d.heightMM).toBeCloseTo(10, 5);
+  expect(d.colorCount).toBe(2);
+  expect(d.stitchCount).toBeGreaterThan(0);
+  expect(d.stitches[d.stitches.length - 1].type).toBe("end");
+});
+
+test("generateElement: design element without a file yet returns null (not ready), and blockColors/sizeMm flow through", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  expect(generateElement(designElement(), garment, {})).toBeNull();
+
+  const d = generateElement(
+    designElement({ dstBase64: makeDstBase64(EMB), sizeMm: 40, blockColors: { 0: [7, 8, 9] } }),
+    garment,
+    {}
+  );
+  expect(d.widthMM).toBeCloseTo(40, 5);
+  expect(d.colors[0]).toMatchObject({ r: 7, g: 8, b: 9 });
+});
+
+test("generateAll combines an imported design with a text element into one multi-color design", async () => {
+  const { generateAll } = await import("./generate.js");
+  const { EMB } = await import("./emb.js");
+  const project = {
+    version: 2, garmentId: "left_chest", selectedId: "e1", fabricRgb: [235, 232, 223],
+    elements: [
+      textElement({ id: "e1", text: "AB" }),
+      designElement({ id: "e2", dstBase64: makeDstBase64(EMB), offsetYMm: -20 }),
+    ],
+  };
+  const { combined, perElement } = generateAll(project, {});
+  expect(perElement).toHaveLength(2);
+  expect(combined.stitchCount).toBeGreaterThan(50);
+  expect(combined.colors.length).toBeGreaterThanOrEqual(3); // text 1 + design 2
 });

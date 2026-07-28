@@ -2,6 +2,7 @@
   import { createEventDispatcher } from "svelte";
   import TextStep from "./TextStep.svelte";
   import ImagePanel from "./ImagePanel.svelte";
+  import DesignPanel from "./DesignPanel.svelte";
   import SizePanel from "./SizePanel.svelte";
   import Hint from "./Hint.svelte";
   export let project;
@@ -46,6 +47,9 @@
       const t = (element.text || "").trim();
       return t ? `"${truncate(t, 18)}"` : "Text · empty";
     }
+    if (element.type === "design") {
+      return element.dstBase64 ? `File · ${truncate(element.name || "design.dst", 18)}` : "File · empty";
+    }
     const n = element.nColors || 0;
     return element._hasImage ? `Image · ${n} color${n === 1 ? "" : "s"}` : "Image · empty";
   }
@@ -77,6 +81,12 @@
       <span class="elicon">
         {#if row.type === "text"}
           T
+        {:else if row.type === "design"}
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"
+              fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+            <path d="M13 2v7h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+          </svg>
         {:else}
           <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
             <rect x="2" y="4" width="20" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2" />
@@ -113,6 +123,7 @@
 <div class="eladd-row">
   <button type="button" class="eladd" on:click={() => d("addelement", "text")}>+ Text</button>
   <button type="button" class="eladd" on:click={() => d("addelement", "image")}>+ Image</button>
+  <button type="button" class="eladd" on:click={() => d("addelement", "design")}>+ Design file</button>
 </div>
 
 <!-- Keyed on the selected element's id so switching selection (even between
@@ -122,7 +133,9 @@
      re-flatten guard, ...) would leak from whichever element was selected
      before onto the newly-selected one. -->
 {#key el.id}
-  {#if el.type === "image"}
+  {#if el.type === "design"}
+    <DesignPanel element={el} on:elupdate={(e) => d("elupdate", e.detail)} />
+  {:else if el.type === "image"}
     <ImagePanel
       element={el}
       {workImage}

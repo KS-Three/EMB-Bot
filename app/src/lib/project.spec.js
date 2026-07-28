@@ -266,3 +266,28 @@ test("migrateProject falls back to defaultProject() for unparseable input", () =
   expect(migrateProject({})).toEqual(defaultProject());
   expect(migrateProject({ foo: "bar" })).toEqual(defaultProject());
 });
+
+// --- design (imported DST) elements ------------------------------------
+
+import { defaultDesignElement } from "./project.js";
+
+test("defaultDesignElement has the imported-design shape (no file yet, native size)", () => {
+  const el = defaultDesignElement("e9");
+  expect(el).toMatchObject({
+    id: "e9", type: "design", name: "", dstBase64: null,
+    blockColors: {}, sizeMm: null, offsetXMm: 0, offsetYMm: 0,
+  });
+});
+
+test("addElement 'design' appends a design element, selects it, and never seeds sizeMm (native size must survive)", () => {
+  let p = defaultProject();
+  p = addElement(p, "design", 100);
+  expect(p.elements).toHaveLength(2);
+  const el = p.elements[1];
+  expect(el.type).toBe("design");
+  expect(p.selectedId).toBe(el.id);
+  // Staggered like any second element, but NOT pre-resized -- a pre-digitized
+  // file defaults to its native stitch size.
+  expect(el.sizeMm).toBeNull();
+  expect(el.offsetYMm).toBe(-10);
+});

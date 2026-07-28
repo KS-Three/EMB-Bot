@@ -12,8 +12,43 @@ import { combineDesigns, bboxMmFromStitches } from "./combine.js";
 // project itself: `runtime.flats[element.id]` is the flattened palette/index
 // image (from flattenRGBA) for an image element, keyed by element id so each
 // image element in a multi-element project keeps its own working image.
+// Decoded-DST cache. Drag/resize regenerate every element per frame (the
+// deliberate "one cheap full regen path" choice in EmbroideryField), so the
+// base64 -> bytes -> record-walk decode must not re-run 60x/s for a design
+// that never changes. Keyed by the base64 string itself: a re-import is a
+// new string = new entry, and the tiny cap just stops a long session from
+// pinning every file ever uploaded.
+const dstCache = new Map();
+const DST_CACHE_MAX = 8;
+
+function decodeCached(dstBase64) {
+  let hit = dstCache.get(dstBase64);
+  if (hit) return hit;
+  const bin = atob(dstBase64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  hit = EMB.decodeDST(bytes);
+  if (dstCache.size >= DST_CACHE_MAX) {
+    dstCache.delete(dstCache.keys().next().value); // drop oldest insertion
+  }
+  dstCache.set(dstBase64, hit);
+  return hit;
+}
+
 export function generateElement(element, garment, runtime) {
   if (!element) return null;
+
+  if (element.type === "design") {
+    if (!element.dstBase64) return null;
+    const decoded = decodeCached(element.dstBase64);
+    return EMB.buildImportedDesign(decoded, {
+      garment,
+      targetWidthMm: element.sizeMm || undefined,
+      offsetXMm: element.offsetXMm || 0,
+      offsetYMm: element.offsetYMm || 0,
+      blockColors: element.blockColors || {},
+    });
+  }
 
   if (element.type === "image") {
     const flats = (runtime && runtime.flats) || {};

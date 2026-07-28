@@ -13,6 +13,6 @@ export const ENGINE_KEYS = [
   "units.js", "garments.js", "fabrics.js", "fill.js", "geometry.js",
   "quantize.js", "flatten.js", "satin.js", "satinplay.js", "satinfont.js",
   "fontbin.js",
-  "dst.js", "exp.js", "pes.js", "svgexport.js", "stitchModel.js",
+  "dst.js", "dstimport.js", "exp.js", "pes.js", "svgexport.js", "stitchModel.js",
   "fonts.js", "digitize.js", "render.js", "pdfsheet.js",
 ];

@@ -37,6 +37,24 @@ export function defaultImageElement(id) {
   };
 }
 
+// An imported pre-digitized design file (DST). `dstBase64` holds the raw
+// file bytes (base64) — small enough for localStorage (DSTs are KB-scale;
+// DesignPanel enforces a size cap on upload) and the only representation
+// that survives a save/load round-trip losslessly. `blockColors` maps color-
+// block index -> [r,g,b] thread overrides (DST files carry no color data).
+export function defaultDesignElement(id) {
+  return {
+    id,
+    type: "design",
+    name: "",
+    dstBase64: null,
+    blockColors: {},
+    sizeMm: null,
+    offsetXMm: 0,
+    offsetYMm: 0,
+  };
+}
+
 export function defaultProject() {
   return {
     version: 2,
@@ -74,11 +92,19 @@ function nextElementId(elements) {
 // of existing elements.
 export function addElement(project, type, hoopWmm) {
   const id = nextElementId(project.elements);
-  const factory = type === "image" ? defaultImageElement : defaultTextElement;
+  const factory =
+    type === "image" ? defaultImageElement :
+    type === "design" ? defaultDesignElement :
+    defaultTextElement;
   let el = factory(id);
   const n = project.elements.length;
   if (n > 0) {
-    el = { ...el, sizeMm: Math.round(0.4 * hoopWmm), offsetYMm: -10 * n };
+    // Imported designs keep sizeMm null (= the file's native stitch size,
+    // hoop-clamped) — seeding a resize would silently rescale pre-digitized
+    // stitches before the user ever sees them at true size.
+    el = type === "design"
+      ? { ...el, offsetYMm: -10 * n }
+      : { ...el, sizeMm: Math.round(0.4 * hoopWmm), offsetYMm: -10 * n };
   }
   return { ...project, elements: [...project.elements, el], selectedId: id };
 }
