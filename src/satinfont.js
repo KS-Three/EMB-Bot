@@ -244,6 +244,12 @@
     const slantDeg = o.slantDeg || 0;
     const doUnderlay = o.underlay !== false;
     const arcDeg = o.arcDeg || 0;
+    // Multi-line justification: how shorter lines sit relative to the widest
+    // line. "center" (default) is the pre-existing behavior; "left"/"right"
+    // flush-align instead. Single-line text and arc'd lines are unaffected
+    // (one line has nothing to justify against; each arc'd line centers on
+    // its own circle).
+    const align = o.align === "left" || o.align === "right" ? o.align : "center";
     const u2px = (emMm / font.unitsPerEm) * pxPerMm;       // font units -> design px
     const lsUnits = (o.letterSpacingMm || 0) * font.unitsPerEm / emMm;
     const leadingUnits = font.leading || font.unitsPerEm;
@@ -288,7 +294,9 @@
     // ---- PLACEMENT pass.
     lineList.forEach((line, lineIdx) => {
       const lineYunits = lineIdx * leadingUnits;                  // font units, y-down: later lines sit below
-      const lineOriginXunits = arcDeg ? 0 : (maxAdvUnits - line.adv) / 2; // straight multi-line: center vs widest
+      // Straight multi-line: place this line against the widest per `align`.
+      const slack = maxAdvUnits - line.adv;
+      const lineOriginXunits = arcDeg ? 0 : align === "left" ? 0 : align === "right" ? slack : slack / 2;
       // Arc geometry references the line's INK span, not its advance span:
       // advance carries invisible width (side bearings + one trailing
       // letter-spacing gap), and centering/radius built from it tilt the arch

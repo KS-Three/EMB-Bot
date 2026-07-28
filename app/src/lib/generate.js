@@ -85,6 +85,7 @@ export function generateElement(element, garment, runtime) {
     letterSpacingMm: element.letterSpacingMm || 0,
     arcDeg: element.arcDeg || 0,
     rotationDeg: element.rotationDeg || 0,
+    align: element.align || "center",
   });
 }
 

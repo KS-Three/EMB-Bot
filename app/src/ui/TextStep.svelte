@@ -116,6 +116,26 @@
   </div>
 </div>
 
+<!-- Justification only means something across multiple lines (single-line
+     text auto-centers as a whole, and arc'd lines center on their own
+     circle), so the control appears once the text actually has a line
+     break. -->
+{#if (element.text || "").includes("\n")}
+  <div class="weightpresets">
+    <span class="weightlabel">Align</span>
+    <div class="weightbtns">
+      {#each [["left", "Left"], ["center", "Center"], ["right", "Right"]] as [val, label]}
+        <button
+          type="button"
+          class="weightbtn"
+          class:active={(element.align || "center") === val}
+          on:click={() => patch({ align: val })}
+        >{label}</button>
+      {/each}
+    </div>
+  </div>
+{/if}
+
 <label class="letterspacing">
   <span>Slant</span>
   <input

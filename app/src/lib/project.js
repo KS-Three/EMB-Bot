@@ -16,6 +16,7 @@ export function defaultTextElement(id) {
     letterSpacingMm: 0,
     arcDeg: 0,
     rotationDeg: 0,
+    align: "center",
     underlay: true,
     sizeMm: null,
     offsetXMm: 0,

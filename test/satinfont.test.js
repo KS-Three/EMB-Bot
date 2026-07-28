@@ -311,3 +311,31 @@ test("layoutText: slantDeg absent/0 is byte-identical to today's straight output
   const anyDiffer = flat0.some((p, i) => Math.abs(p.x - flatShear[i].x) > 0.5 || Math.abs(p.y - flatShear[i].y) > 0.5);
   assert.ok(anyDiffer, "slantDeg:15 must produce visibly different point positions than slantDeg:0");
 });
+
+// ---- Multi-line justification (align) ----
+
+test("layoutText: align left/center/right position a short second line correctly against the widest", () => {
+  const opts = (align) => ({ emMm: 18, pxPerMm: 8, spacingMm: 0.4, pullCompMm: 0.2, underlay: false, align });
+  // "HHH" over "H": line 2 has 2 advances of slack.
+  const minX = (lay, charIdx) => {
+    let m = Infinity;
+    for (const r of lay.runs) if (r.charIdx === charIdx) for (const p of r.pts) if (p.x < m) m = p.x;
+    return m;
+  };
+  const text = "HHH\nH";
+  const L = SF.layoutText(font, text, opts("left"));
+  const C = SF.layoutText(font, text, opts("center"));
+  const R = SF.layoutText(font, text, opts("right"));
+  const D = SF.layoutText(font, text, opts(undefined)); // default = center
+  // charIdx 4 is the lone H on line 2 ("HHH"=0,1,2, "\n"=3, "H"=4).
+  const lLeft = minX(L, 4), lCenter = minX(C, 4), lRight = minX(R, 4);
+  // left: flush with line 1s left edge (same min x as the first H).
+  closeTo(lLeft, minX(L, 0), 1e-6, "left-aligned line 2 starts at line 1s left edge");
+  // right: flush with line 1s right end -- shifted by exactly 2 advances.
+  const advPx = font.glyphs["H"].adv * (18 / font.unitsPerEm) * 8;
+  closeTo(lRight - lLeft, 2 * advPx, 1e-6, "right-aligned line 2 sits 2 advances right of left-aligned");
+  // center: exactly halfway between.
+  closeTo(lCenter, (lLeft + lRight) / 2, 1e-6, "centered line 2 is midway");
+  // default is center (back-compat).
+  closeTo(minX(D, 4), lCenter, 1e-6, "align absent = center");
+});

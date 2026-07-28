@@ -291,3 +291,19 @@ test("generateAll combines an imported design with a text element into one multi
   expect(combined.stitchCount).toBeGreaterThan(50);
   expect(combined.colors.length).toBeGreaterThanOrEqual(3); // text 1 + design 2
 });
+
+test("generateElement: align left vs right shifts a short second line (justification plumbs through)", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const mk = (align) => generateElement(textElement({ text: "AAA\nA", align, sizeMm: 60 }), garment, {});
+  const left = mk("left"), right = mk("right");
+  // Same overall design bbox either way (widest line dominates), but the
+  // stitch distribution differs -- identical output would mean align was
+  // silently dropped.
+  expect(left.widthMM).toBeCloseTo(right.widthMM, 1);
+  // Compare the FULL stitch stream: line 1 ("AAA") is identical either way,
+  // so an early-slice signature would false-pass — only line 2 moves.
+  const sig = (d) => JSON.stringify(d.stitches);
+  expect(sig(left)).not.toBe(sig(right));
+});
