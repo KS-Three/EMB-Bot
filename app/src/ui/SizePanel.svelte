@@ -46,7 +46,19 @@
   // recomputes the display strings when it changes.
   function fromMm(mm, u) {
     if (mm == null) return "";
-    return u === "in" ? (mm / MM_PER_INCH).toFixed(2) : String(Math.round(mm));
+    if (u === "in") return (mm / MM_PER_INCH).toFixed(2);
+    if (u === "cm") return (mm / 10).toFixed(1);
+    return String(Math.round(mm));
+  }
+
+  function toMm(v, u) {
+    if (u === "in") return v * MM_PER_INCH;
+    if (u === "cm") return v * 10;
+    return v;
+  }
+
+  function stepFor(u) {
+    return u === "in" ? "0.01" : u === "cm" ? "0.1" : "1";
   }
 
   $: wDisplay = fromMm(widthMm, unit);
@@ -59,8 +71,23 @@
   function onWidthChange(e) {
     const v = parseFloat(e.target.value);
     if (!Number.isFinite(v)) return;
-    const mm = unit === "in" ? v * MM_PER_INCH : v;
+    const mm = toMm(v, unit);
     const clamped = Math.min(hoopWmm, Math.max(MIN_SIZE_MM, mm));
+    d("update", { sizeMm: clamped });
+  }
+
+  // Height input (Ember-audit follow-up): the engine's only size knob is
+  // targetWidthMm (aspect is always locked), so a typed height converts to
+  // the width that produces it via the CURRENT design's aspect ratio.
+  // Editable only once something has generated (no designDims = no ratio to
+  // solve with; the input stays disabled).
+  function onHeightChange(e) {
+    const v = parseFloat(e.target.value);
+    if (!Number.isFinite(v) || !designDims || !designDims.heightMM) return;
+    const hMm = toMm(v, unit);
+    const aspect = designDims.widthMM / designDims.heightMM;
+    const wMm = hMm * aspect;
+    const clamped = Math.min(hoopWmm, Math.max(MIN_SIZE_MM, wMm));
     d("update", { sizeMm: clamped });
   }
 
@@ -76,7 +103,7 @@
     <input
       class="sizeinput"
       type="number"
-      step={unit === "in" ? "0.01" : "1"}
+      step={stepFor(unit)}
       min={wMin}
       max={wMax}
       value={wDisplay}
@@ -84,9 +111,18 @@
     />
     <span class="sizex">×</span>
     <span class="sizelabel">H</span>
-    <input class="sizeinput" type="text" readonly value={hDisplay} />
+    <input
+      class="sizeinput"
+      type="number"
+      step={stepFor(unit)}
+      value={hDisplay}
+      disabled={!designDims}
+      on:change={onHeightChange}
+      aria-label="Height"
+    />
     <select class="unitselect" bind:value={unit}>
       <option value="in">in</option>
+      <option value="cm">cm</option>
       <option value="mm">mm</option>
     </select>
     <button type="button" class="autofit" on:click={autoFit}>Auto-fit</button>

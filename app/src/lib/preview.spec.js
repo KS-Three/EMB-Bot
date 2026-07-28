@@ -236,3 +236,30 @@ test("renderRealistic limitStrands past the end is a plain full render (clamps, 
   renderRealistic({ width: 100, height: 100, getContext: () => ctx }, design, { limitStrands: 999 });
   expect(ctx.moveTo).toHaveBeenCalledTimes(3); // 1 strand x 3 passes
 });
+
+// --- renderRealistic: jump/trim overlays -----------------------------------
+
+test("renderRealistic showJumps draws dashed travel lines; showTrims draws X markers; both off draws neither", () => {
+  const design = { stitches: [
+    { x: 0, y: 0, type: "stitch" },
+    { x: 10, y: 0, type: "stitch" },
+    { x: 50, y: 50, type: "jump" },
+    { x: 60, y: 50, type: "stitch" },
+    { x: 60, y: 50, type: "trim" },
+  ] };
+  const off = makeCtxSpy();
+  renderRealistic({ width: 100, height: 100, getContext: () => off }, design, {});
+  expect(off.setLineDash).not.toHaveBeenCalled();
+
+  const jumps = makeCtxSpy();
+  renderRealistic({ width: 100, height: 100, getContext: () => jumps }, design, { showJumps: true });
+  // dash pattern set, then cleared
+  expect(jumps.setLineDash).toHaveBeenCalledWith([4, 3]);
+  expect(jumps.setLineDash).toHaveBeenCalledWith([]);
+  expect(jumps.strokeStyleLog).toContain("rgba(37,99,235,0.8)");
+
+  const trims = makeCtxSpy();
+  renderRealistic({ width: 100, height: 100, getContext: () => trims }, design, { showTrims: true });
+  expect(trims.strokeStyleLog).toContain("rgba(220,38,38,0.9)");
+  expect(trims.setLineDash).not.toHaveBeenCalled(); // trim markers are solid
+});

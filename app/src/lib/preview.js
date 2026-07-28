@@ -1,4 +1,4 @@
-import { designToStrands } from "./strands.js";
+import { designToStrands, jumpTrimMarks } from "./strands.js";
 
 // ---- Fabric contrast helpers (Slice 8 Task 2, B7) --------------------------
 // Perceived brightness (ITU-R BT.709 relative-luminance weights), normalized
@@ -204,6 +204,40 @@ export function renderRealistic(canvas, design, opts) {
   ctx.strokeStyle = "rgba(255,255,255,0.35)";
   ctx.lineWidth = Math.max(0.6, lw * 0.35);
   for (const s of strands) { ctx.beginPath(); ctx.moveTo(SX(s.x0) - 0.6, SY(s.y0) - 0.9); ctx.lineTo(SX(s.x1) - 0.6, SY(s.y1) - 0.9); ctx.stroke(); }
+
+  // Diagnostic overlays (drawn ON TOP of thread so they're never buried):
+  // showJumps -> dashed travel lines; showTrims -> an X marker per trim.
+  if (o.showJumps || o.showTrims) {
+    const marks = jumpTrimMarks(design);
+    ctx.save();
+    if (o.showJumps) {
+      ctx.strokeStyle = "rgba(37,99,235,0.8)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 3]);
+      for (const j of marks.jumps) {
+        ctx.beginPath();
+        ctx.moveTo(SX(j.x0), SY(j.y0));
+        ctx.lineTo(SX(j.x1), SY(j.y1));
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+    }
+    if (o.showTrims) {
+      ctx.strokeStyle = "rgba(220,38,38,0.9)";
+      ctx.lineWidth = 1.5;
+      const r = 4;
+      for (const t of marks.trims) {
+        const cx2 = SX(t.x), cy2 = SY(t.y);
+        ctx.beginPath();
+        ctx.moveTo(cx2 - r, cy2 - r);
+        ctx.lineTo(cx2 + r, cy2 + r);
+        ctx.moveTo(cx2 - r, cy2 + r);
+        ctx.lineTo(cx2 + r, cy2 - r);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
 
   if (!hooped) return undefined;
 
