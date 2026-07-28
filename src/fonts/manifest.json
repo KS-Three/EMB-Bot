@@ -552,16 +552,6 @@
    "bytes": 1866870
   },
   {
-   "key": "ondulamarif_XL",
-   "name": "Ondulamarif XL",
-   "tier": "verified",
-   "group": "More",
-   "licenseId": "OFL-1.1",
-   "sizeMm": 117,
-   "glyphCount": 108,
-   "bytes": 416515
-  },
-  {
    "key": "pacificlo",
    "name": "Pacificlo",
    "tier": "verified",
