@@ -38,6 +38,9 @@
   onMount(() => {
     ensureFonts(fontKeysOf(project)).then(() => {
       fontsReady = true;
+    }).catch(() => {
+      // Font fetch failed; fontsReady stays false, so combinedColors derivation
+      // returns [] — the intended degrade when fonts aren't available.
     });
   });
 
