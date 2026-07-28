@@ -55,9 +55,35 @@ but still used by legacy `EMB-Bot.html` pending its audit — do not delete it.
   per GLYPH. A font can classify as satin while its letters are runs-only
   (that's exactly what ondulamarif_XL was). If a font generates 0 stitches,
   check per-glyph `cols` first.
-- Known perf item for Stage B: opening the font dropdown lazily fetches ALL
-  fonts for thumbnails (~30 MB). Stage B's browser must use pre-rendered
-  preview images instead.
+- ~~Known perf item for Stage B: opening the font dropdown lazily fetches ALL
+  fonts for thumbnails (~30 MB).~~ **FIXED in Stage B:** the font browser
+  grid uses committed preview PNGs (`src/fonts/previews/`, regenerate with
+  `node tools/build-previews.mjs` after any library change — it orphan-cleans);
+  `.embf` binaries are fetched ONLY on pick. THE RULE: nothing in browsing UI
+  may call `ensureFont` except the picked font and the selected-font trigger
+  preview. Live your-text tiles render only fonts already in
+  `EMB.SATIN_FONTS`, memoized per (font, text).
+
+## Stage B additions (2026-07-28)
+
+- **Font browser** (`FontBrowser.svelte`): dialog (ProjectsDrawer mechanics),
+  search + group chips, size-band subtitles from manifest `sizeMm`
+  (0.75x–2.0x, spec-declared starting point — validate on real stitch-outs).
+  Pure logic in `app/src/lib/fontFilter.js` (tested).
+- **Credits** (`FontCredits.svelte` + `app/src/lib/credits.js`): generated
+  from manifest `attribution`/`licenseId`/`source` fields — never
+  hand-edited. Entry points: topbar "Font credits" + DownloadStep footer.
+  The served `/fonts/bin/*.embf` files are the public derived-data artifacts
+  for CC-BY-SA (full upstream license text ships inside each binary).
+  `SEE-LICENSE-FILE` sentinel renders as "See license file".
+- **QC harness** (`tools/qc-font.mjs`, tested): the versioned tier gate.
+  Per-GLYPH satin check (100% satinless letters = hard fail, >10% fail,
+  ≤10% warn), advances incl. digits, finite geometry, coverage warnings.
+  Run on any candidate font JSON before tiering it. The old gitignored
+  scratch classifier is retired as the gate of record.
+- **Attribution parsing gotcha:** upstream license blobs mostly use bare-CR
+  (old-Mac) line endings — split on `/\r\n|\r|\n/` or "first line" becomes
+  the whole blob.
 
 ## Font editing abilities Round 1 — merged 2026-07-27
 
