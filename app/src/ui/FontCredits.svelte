@@ -96,7 +96,10 @@
             <li class="fc-row">
               <strong class="fc-name">{line.name}</strong>
               {#if line.licenseId}
-                <span class="fc-license">{line.licenseId}</span>
+                <!-- "SEE-LICENSE-FILE" is an internal sentinel for one
+                     grandfathered font whose license is an ad-hoc grant, not
+                     a standard id — show readable text, not the token. -->
+                <span class="fc-license">{line.licenseId === "SEE-LICENSE-FILE" ? "See license file" : line.licenseId}</span>
               {/if}
               {#if line.attribution}
                 <small class="fc-attribution">{line.attribution}</small>
