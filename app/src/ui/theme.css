@@ -831,8 +831,10 @@ input[type="color"] {
   cursor: pointer;
 }
 
-/* Font dropdown — trigger shows the selected font rendered; list shows each
-   font as a real satin thumbnail. Stays compact as the catalog grows. */
+/* Font picker trigger (Slice 10B Task 4) — collapsed to a single button
+   showing the selected font's rendered/static preview + name; opens
+   FontBrowser.svelte's dialog (see .fb-* rules further down) instead of an
+   inline dropdown. */
 .fontselect { position: relative; }
 
 .fs-trigger {
@@ -851,62 +853,9 @@ input[type="color"] {
 
 /* Bigger thumbnails (Slice 8 Task 3): 280x44 renders (up from 220x56) --
    height/max-width scaled to match so the wider aspect ratio still fits the
-   trigger/list rows without overflowing. */
+   trigger row without overflowing. */
 .fs-thumb { height: 40px; width: auto; max-width: 260px; border-radius: var(--radius-s); display: block; }
 .fs-name { font-size: var(--fs-md); color: var(--ink); }
-.fs-chevron { margin-left: auto; color: var(--muted); }
-.fs-chevron.open { transform: rotate(180deg); }
-
-.fs-list {
-  position: absolute;
-  z-index: 20;
-  top: calc(100% + 4px);
-  left: 0; right: 0;
-  max-height: 320px;
-  overflow-y: auto;
-  margin: 0;
-  padding: var(--space-2);
-  list-style: none;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-m);
-  box-shadow: var(--shadow-2);
-}
-.fs-list li { list-style: none; }
-
-/* Group headers (Sans/Serif/Script/Display/More) -- plain, NON-sticky rows
-   (a sticky header inside this scrollable list is fragile: same overflow
-   trap as the Slice 7 popover lesson) that just sit in the document flow
-   between groups of options. */
-.fs-group-header {
-  padding: var(--space-2) var(--space-2) var(--space-1);
-  color: var(--muted);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.fs-group-header:not(:first-child) {
-  margin-top: var(--space-1);
-  border-top: 1px solid var(--border);
-  padding-top: var(--space-2);
-}
-
-.fs-opt {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-2);
-  border: 2px solid transparent;
-  border-radius: var(--radius-s);
-  background: transparent;
-  cursor: pointer;
-  text-align: left;
-}
-.fs-opt:hover { background: var(--bg); }
-.fs-opt.sel { border-color: var(--accent); background: var(--tint); }
-.fs-optname { font-size: var(--fs-sm); color: var(--muted); margin-left: auto; white-space: nowrap; }
 
 /* Embroidery field canvas -- shares --field-bg with `.field` (see above). */
 canvas {
@@ -1363,19 +1312,21 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   .drawer-new,
   .eladd,
   .fs-trigger,
-  .fs-opt,
   .autofit,
   .drawer-close,
   .elrow-x,
   .threadreset,
   .tp-trigger,
   .tp-cell,
+  .fb-chip,
+  .fb-tile,
+  .fb-close,
   button.primary,
   .stepnav-controls button {
     transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease;
   }
 
-  .fs-chevron, .tp-chevron { transition: transform 150ms ease; }
+  .tp-chevron { transition: transform 150ms ease; }
 
   .tile:hover, .tcard:hover { transform: translateY(-1px); }
 }

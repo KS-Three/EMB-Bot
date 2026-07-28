@@ -53,7 +53,12 @@
 />
 <ThreadPicker label="Color" rgb={element.colorRgb} on:pick={(e) => patch({ colorRgb: e.detail })} />
 <h3>Font</h3>
-<FontSelect selected={element.fontKey} on:pick={(e) => patch({ fontKey: e.detail })} />
+<FontSelect
+  selected={element.fontKey}
+  currentText={element.text}
+  currentHeightMm={element.sizeMm ?? null}
+  on:pick={(e) => patch({ fontKey: e.detail })}
+/>
 <label class="letterspacing">
   <span>Letter spacing</span>
   <input
