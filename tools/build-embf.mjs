@@ -59,8 +59,16 @@ if (existsSync(tiersPath)) {
     if (!existsSync(p)) { console.warn("SKIP (no trial import):", t.pack); continue; }
     sources.push({ key: t.pack, path: p, tier: "verified" });
   }
+} else if (process.argv.includes("--shipped-only")) {
+  console.warn("scratch_ink/_tiers.json absent — building shipped fonts only (--shipped-only)");
 } else {
-  console.warn("scratch_ink/_tiers.json absent — building shipped fonts only");
+  // Without the tier data this build would write a 21-font manifest while
+  // leaving the other ~48 .embf files in place — bin/ and manifest would go
+  // silently inconsistent. Refuse instead; see COOKBOOK for recreating
+  // scratch_ink/, or pass --shipped-only to accept the reduced build.
+  console.error("ERROR: scratch_ink/_tiers.json absent. Refusing to build an " +
+    "inconsistent library. Recreate scratch_ink/ (see COOKBOOK.md) or pass --shipped-only.");
+  process.exit(1);
 }
 
 mkdirSync(BIN_DIR, { recursive: true });

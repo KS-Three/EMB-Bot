@@ -40,6 +40,19 @@ test("manifest lists every shipped font exactly once, verified tier only", () =>
   }
 });
 
+test("no orphan .embf files — every binary has a manifest entry", () => {
+  // The reverse direction of the entry-has-bin check above. Without it, a
+  // demoted or license-excluded font's stale binary could linger in bin/ and
+  // ship from a dirty tree (this exact thing happened with ondulamarif_XL).
+  const man = JSON.parse(fs.readFileSync(path.join(FONT_DIR, "manifest.json"), "utf8"));
+  const manKeys = new Set(man.fonts.map((f) => f.key));
+  for (const f of fs.readdirSync(BIN_DIR)) {
+    if (!f.endsWith(".embf")) continue;
+    const key = f.replace(/\.embf$/, "");
+    assert.ok(manKeys.has(key), "orphan binary with no manifest entry: " + f);
+  }
+});
+
 test("every verified-tier font is in the manifest or explicitly excluded by license", () => {
   const tiersPath = path.join(__dirname, "..", "scratch_ink", "_tiers.json");
   if (!fs.existsSync(tiersPath)) return; // scratch material absent in some checkouts
