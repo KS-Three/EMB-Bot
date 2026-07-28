@@ -5,11 +5,13 @@
    "key": "alchemy",
    "name": "Alchemy",
    "tier": "verified",
-   "group": "More",
+   "group": "Display",
    "licenseId": "OFL-1.1",
    "sizeMm": 50,
    "glyphCount": 469,
-   "bytes": 4589102
+   "bytes": 4589102,
+   "attribution": "This font has been adapted for Ink/Stitch,",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "allegria55",
@@ -19,7 +21,9 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 55,
    "glyphCount": 170,
-   "bytes": 255704
+   "bytes": 255704,
+   "attribution": "This font has been adapted for Ink/Stitch and is licensed under the SIL Open Font License, Version 1.1.",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "ambigue",
@@ -29,7 +33,9 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 27,
    "glyphCount": 158,
-   "bytes": 320569
+   "bytes": 320569,
+   "attribution": "This font has been adapted for Ink/Stitch and is licensed under the SIL Open Font License, Version 1.1.",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "amitaclo",
@@ -39,17 +45,21 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 23,
    "glyphCount": 115,
-   "bytes": 473570
+   "bytes": 473570,
+   "attribution": "This font has been adapted for Ink/Stitch by Claudette Venneugues-Aminot, and is licensed under the SIL Open Font License, Version 1.1.  This font is a derivative work from Amita font also licensed…",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "amitaclo_small",
    "name": "Amitaclo small",
    "tier": "verified",
-   "group": "More",
+   "group": "Small",
    "licenseId": "OFL-1.1",
    "sizeMm": 23,
    "glyphCount": 115,
-   "bytes": 504887
+   "bytes": 504887,
+   "attribution": "This font has been adapted for Ink/Stitch by Claudette Venneugues-Aminot, and is licensed under the SIL Open Font License, Version 1.1.",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "apex_lake",
@@ -59,7 +69,9 @@
    "licenseId": "CC-BY-SA-4.0",
    "sizeMm": 57,
    "glyphCount": 38,
-   "bytes": 620316
+   "bytes": 620316,
+   "attribution": "This font has been adapted for Ink/Stitch by Françoise Lapierre Baillet  and is licensed CC-BY-SA (http://creativecommons.org/licenses/by-sa/4.0/).",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "apex_simple_AGS",
@@ -69,17 +81,21 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 33.6,
    "glyphCount": 125,
-   "bytes": 1259375
+   "bytes": 1259375,
+   "attribution": "This font Apex Simple AGS has been adapted for Ink/Stitch by",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "apex_simple_small_AGS",
    "name": "Apex Simple Small AGS",
    "tier": "verified",
-   "group": "More",
+   "group": "Small",
    "licenseId": "OFL-1.1",
    "sizeMm": 33.6,
    "glyphCount": 125,
-   "bytes": 1299376
+   "bytes": 1299376,
+   "attribution": "This font Apex Simple AGS has been adapted for Ink/Stitch by",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "auberge_marif",
@@ -89,17 +105,21 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 34,
    "glyphCount": 134,
-   "bytes": 227454
+   "bytes": 227454,
+   "attribution": "This font has been adapted for Ink/Stitch by @Marie-Françoise BRIS Copyright (c) 2022, @Marie-Françoise BRIS (mfbris@gmail.com) and is licensed under the SIL Open Font License, Version 1.1.",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "auberge_small",
    "name": "Auberge Small",
    "tier": "verified",
-   "group": "More",
+   "group": "Small",
    "licenseId": "OFL-1.1",
    "sizeMm": 34,
    "glyphCount": 134,
-   "bytes": 281906
+   "bytes": 281906,
+   "attribution": "This font has been adapted for Ink/Stitch by @Marie-Françoise BRIS",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "aventurina",
@@ -109,7 +129,9 @@
    "licenseId": "CC-BY-SA-4.0",
    "sizeMm": 20,
    "glyphCount": 143,
-   "bytes": 156939
+   "bytes": 156939,
+   "attribution": "This font has been adapted for Ink/Stitch by Sandrine Ratkoff Rojnoff",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "barstitch_bold",
@@ -119,7 +141,9 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 23,
    "glyphCount": 157,
-   "bytes": 340948
+   "bytes": 340948,
+   "attribution": "This font has been adapted for Ink/Stitch",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "barstitch_regular",
@@ -129,17 +153,21 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 23,
    "glyphCount": 160,
-   "bytes": 465963
+   "bytes": 465963,
+   "attribution": "This font has been adapted for Ink/Stitch and is licensed under the SIL Open Font License, Version 1.1.",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "barstitch_textured",
    "name": "Barstitch textured",
    "tier": "verified",
-   "group": "More",
+   "group": "Display",
    "licenseId": "OFL-1.1",
    "sizeMm": 40,
    "glyphCount": 157,
-   "bytes": 735290
+   "bytes": 735290,
+   "attribution": "This font has been adapted for Ink/Stitch and is licensed under the SIL Open Font License, Version 1.1.",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "bathaus_FI",
@@ -149,17 +177,21 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 30,
    "glyphCount": 108,
-   "bytes": 117283
+   "bytes": 117283,
+   "attribution": "This font has been adapted for Ink/Stitch by Célia Imbert Sabater, Claudette Venneugues-Aminot, Corinne Renaud, Françoise Lapierre Baillet, Laure Doisneau, Marie Françoise Bris,and is licensed under…",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "bathaus_FI_Small",
    "name": "Bathaus FI Small",
    "tier": "verified",
-   "group": "More",
+   "group": "Small",
    "licenseId": "OFL-1.1",
    "sizeMm": 30,
    "glyphCount": 108,
-   "bytes": 117289
+   "bytes": 117289,
+   "attribution": "This font has been adapted for Ink/Stitch by Célia Imbert Sabater, Claudette Venneugues-Aminot, Corinne Renaud, Françoise Lapierre Baillet, Laure Doisneau, Marie Françoise Bris,and is licensed under…",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "bluenesia_satin",
@@ -169,7 +201,9 @@
    "licenseId": "CC-BY-SA-4.0",
    "sizeMm": 24,
    "glyphCount": 99,
-   "bytes": 99212
+   "bytes": 99212,
+   "attribution": "This font has been adapted for Ink/Stitch by Karen J. Cravens/Silver Seams with permission. (see https://github.com/inkstitch/inkstitch/pull/1686 for copy of the permission) and is licensed CC-BY-SA…",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "caesarus_SC_FI",
@@ -179,7 +213,9 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 26,
    "glyphCount": 114,
-   "bytes": 195370
+   "bytes": 195370,
+   "attribution": "Caesarus SC FI  has been adapted for Ink/Stitch by Marie-Françoise Bris, Celia Imbert Sabater, Françoise Lapierre Baillet, Claudine Peyrat, Corinne Renaud and Claudette Venneugues-Aminot,and is…",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "caffeine_KOR",
@@ -189,17 +225,21 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 16.2,
    "glyphCount": 118,
-   "bytes": 130704
+   "bytes": 130704,
+   "attribution": "This font has been adapted for Ink/Stitch by Corinne Renaud, and is licensed under the SIL Open Font License, Version 1.1.",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "caffeine_tiny",
    "name": "Caffeine tiny",
    "tier": "verified",
-   "group": "More",
+   "group": "Small",
    "licenseId": "OFL-1.1",
    "sizeMm": 16.2,
    "glyphCount": 118,
-   "bytes": 129862
+   "bytes": 129862,
+   "attribution": "This font has been adapted for Ink/Stitch by Corinne Renaud, and is licensed under the SIL Open Font License, Version 1.1.",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "cats",
@@ -209,7 +249,9 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 40,
    "glyphCount": 115,
-   "bytes": 228190
+   "bytes": 228190,
+   "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1.",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "cherryforinkstitch",
@@ -219,7 +261,9 @@
    "licenseId": "CC-BY-SA-4.0",
    "sizeMm": 46,
    "glyphCount": 99,
-   "bytes": 472085
+   "bytes": 472085,
+   "attribution": "This font has been adapted for Ink/Stitch by Célia Imbert Sabater, Claudette Venneugues-Aminot, Corinne Renaud, Françoise Lapierre Baillet, Laure Doisneau, Marie Françoise Bris",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "cherryforkaalleen",
@@ -229,7 +273,9 @@
    "licenseId": "CC-BY-SA-4.0",
    "sizeMm": 75,
    "glyphCount": 36,
-   "bytes": 1195798
+   "bytes": 1195798,
+   "attribution": "This font has been adapted for Ink/Stitch by Célia Imbert Sabater, Claudette Venneugues-Aminot, Corinne Renaud, Françoise Lapierre Baillet, Laure Doisneau, Marie Françoise Bris",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "chicken_little",
@@ -239,17 +285,21 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 26,
    "glyphCount": 138,
-   "bytes": 301549
+   "bytes": 301549,
+   "attribution": "This font has been adapted for Ink/Stitch by Corinne Renaud, and is licensed under the SIL Open Font License, Version 1.1.",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "chicken_little_small",
    "name": "Chicken Little KOR Small",
    "tier": "verified",
-   "group": "More",
+   "group": "Small",
    "licenseId": "OFL-1.1",
    "sizeMm": 26,
    "glyphCount": 138,
-   "bytes": 301555
+   "bytes": 301555,
+   "attribution": "This font has been adapted for Ink/Stitch by Corinne Renaud, and is licensed under the SIL Open Font License, Version 1.1.",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "chicken_scratch",
@@ -259,7 +309,9 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 23,
    "glyphCount": 102,
-   "bytes": 70008
+   "bytes": 70008,
+   "attribution": "This font has been adapted for Ink/Stitch by safire3002, and is licensed under the SIL Open Font License, Version 1.1.",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "cogs_KOR",
@@ -269,7 +321,9 @@
    "licenseId": "CC-BY-4.0",
    "sizeMm": 38,
    "glyphCount": 141,
-   "bytes": 374272
+   "bytes": 374272,
+   "attribution": "This ink/stitch font has been adapted for Ink/Stitch by Corinne Renaud",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "cooper_marif",
@@ -279,17 +333,21 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 85,
    "glyphCount": 121,
-   "bytes": 587947
+   "bytes": 587947,
+   "attribution": "This font has been adapted for Ink/Stitch by @Marie-Françoise BRIS, and is licensed under the SIL Open Font License, Version 1.1.",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "dejavufont",
    "name": "Dejavu Serif",
    "tier": "verified",
-   "group": "Sans",
+   "group": "Serif",
    "licenseId": "CC-BY-SA-4.0",
    "sizeMm": 16,
    "glyphCount": 97,
-   "bytes": 151786
+   "bytes": 151786,
+   "attribution": "This font has been adapted for Ink/Stitch by @Augusa and is licensed CC-BY-SA (http://creativecommons.org/licenses/by-sa/4.0/).",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "digory_doodles_bean",
@@ -299,7 +357,9 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 16,
    "glyphCount": 101,
-   "bytes": 92892
+   "bytes": 92892,
+   "attribution": "This font has been adapted for Ink/Stitch by Tina, and is licensed under the SIL Open Font License, Version 1.1.  This font is a derivative work from Digory doodles font (also licensed under SIL Open…",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "emilio_20",
@@ -309,7 +369,9 @@
    "licenseId": "CC-BY-SA-4.0",
    "sizeMm": 48.5,
    "glyphCount": 36,
-   "bytes": 52979
+   "bytes": 52979,
+   "attribution": "This font has been adapted for Ink/Stitch by Célia Imbert Sabater, and is licensed CC-BY-SA (http://creativecommons.org/licenses/by-sa/4.0/).",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "emilio_20_bold",
@@ -319,7 +381,9 @@
    "licenseId": "CC-BY-SA-4.0",
    "sizeMm": 49,
    "glyphCount": 36,
-   "bytes": 91654
+   "bytes": 91654,
+   "attribution": "This font has been adapted for Ink/Stitch by Célia Imbert Sabater, and is licensed CC-BY-SA (http://creativecommons.org/licenses/by-sa/4.0/).  ORIGINAL FONT DOWNLOAD:…",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "emilio_20_simple",
@@ -329,17 +393,21 @@
    "licenseId": "CC-BY-SA-4.0",
    "sizeMm": 42,
    "glyphCount": 36,
-   "bytes": 30394
+   "bytes": 30394,
+   "attribution": "This font has been adapted for Ink/Stitch by Célia Imbert Sabater, with the frame removed by Karen Cravens, and is licensed CC-BY-SA (http://creativecommons.org/licenses/by-sa/4.0/).",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "emilio_20_simple_small",
    "name": "Emilio 20 Simple Small",
    "tier": "verified",
-   "group": "More",
+   "group": "Small",
    "licenseId": "CC-BY-SA-4.0",
    "sizeMm": 42,
    "glyphCount": 36,
-   "bytes": 30440
+   "bytes": 30440,
+   "attribution": "This font has been adapted for Ink/Stitch by Célia Imbert Sabater, with the frame removed by Karen Cravens, and is licensed CC-BY-SA (http://creativecommons.org/licenses/by-sa/4.0/).",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "excalibur_KOR",
@@ -349,37 +417,45 @@
    "licenseId": "CC0",
    "sizeMm": 18,
    "glyphCount": 144,
-   "bytes": 464325
+   "bytes": 464325,
+   "attribution": "This font has been adapted for Ink/Stitch by Corinne Renaud. This ink/stitch font is public domain.",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "excalibur_small",
    "name": "Excalibur small",
    "tier": "verified",
-   "group": "Sans",
+   "group": "Small",
    "licenseId": "CC0",
    "sizeMm": 18,
    "glyphCount": 143,
-   "bytes": 521556
+   "bytes": 521556,
+   "attribution": "This font has been adapted for Ink/Stitch by Corinne Renaud.",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "geneva_rounded",
    "name": "Geneva Simple Sans Rounded",
    "tier": "verified",
    "group": "Sans",
-   "licenseId": "CC-BY-SA-4.0",
+   "licenseId": "CC-BY-SA-2.5",
    "sizeMm": 10.5,
    "glyphCount": 120,
-   "bytes": 81957
+   "bytes": 81957,
+   "attribution": "This ink/stitch font is licensed under CC-BY-SA 2.5 https://creativecommons.org/licenses/by-sa/2.5/",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "geneva_simple",
    "name": "Geneva Simple Sans",
    "tier": "verified",
    "group": "Sans",
-   "licenseId": "CC-BY-SA-4.0",
+   "licenseId": "CC-BY-SA-2.5",
    "sizeMm": 10,
    "glyphCount": 118,
-   "bytes": 56182
+   "bytes": 56182,
+   "attribution": "This ink/stitch font is licenced under CC-BY-SA 2.5 https://creativecommons.org/licenses/by-sa/2.5/  This work is based on the 1-stroke Hershey font available in InkScape…",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "gingo200",
@@ -389,17 +465,21 @@
    "licenseId": "CC-BY-SA-4.0",
    "sizeMm": 36,
    "glyphCount": 158,
-   "bytes": 229729
+   "bytes": 229729,
+   "attribution": "This font has been created for Ink/Stitch by Sorm Prak, and is licensed CC-BY-SA (http://creativecommons.org/licenses/by-sa/4.0/).",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "glacial_tiny",
    "name": "Glacial Tiny 60 AGS",
    "tier": "verified",
-   "group": "Sans",
+   "group": "Small",
    "licenseId": "OFL-1.1",
    "sizeMm": 5.6,
    "glyphCount": 160,
-   "bytes": 193112
+   "bytes": 193112,
+   "attribution": "This font has been adapted for Ink/Stitch by Françoise Lapierre Baillet, and is licensed under the SIL Open Font License, Version 1.1.",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "initials_medium",
@@ -409,17 +489,21 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 70,
    "glyphCount": 48,
-   "bytes": 222212
+   "bytes": 222212,
+   "attribution": "This font has been adapted for Ink/Stitch , and is licensed under the SIL Open Font License, Version 1.1.",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "initials_XL",
    "name": "Initials XL",
    "tier": "verified",
-   "group": "More",
+   "group": "Display",
    "licenseId": "OFL-1.1",
    "sizeMm": 137,
    "glyphCount": 48,
-   "bytes": 444770
+   "bytes": 444770,
+   "attribution": "This font has been adapted for Ink/Stitch , and is licensed under the SIL Open Font License, Version 1.1.",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "kum_tsoan_AGS",
@@ -429,7 +513,9 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 82,
    "glyphCount": 44,
-   "bytes": 354501
+   "bytes": 354501,
+   "attribution": "Kum Tsoan has been adapted for Ink/Stitch by Françoise Lapierre Baillet, and is licensed under the SIL Open Font License, Version 1.1.",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "magnolia_KOR",
@@ -439,27 +525,33 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 20,
    "glyphCount": 114,
-   "bytes": 322860
+   "bytes": 322860,
+   "attribution": "This font has been adapted for Ink/Stitch by Corinne Renaud,",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "magnolia_small",
    "name": "Magnolia Small",
    "tier": "verified",
-   "group": "More",
+   "group": "Small",
    "licenseId": "OFL-1.1",
    "sizeMm": 20,
    "glyphCount": 114,
-   "bytes": 322862
+   "bytes": 322862,
+   "attribution": "This font has been adapted for Ink/Stitch by Corinne Renaud,",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "magnolia_tamed",
    "name": "Magnolia tamed",
    "tier": "verified",
-   "group": "More",
+   "group": "Script",
    "licenseId": "OFL-1.1",
    "sizeMm": 30,
    "glyphCount": 114,
-   "bytes": 506092
+   "bytes": 506092,
+   "attribution": "This font has been adapted for Ink/Stitch by Corinne Renaud,",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "mam_script",
@@ -469,7 +561,9 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 24.5,
    "glyphCount": 89,
-   "bytes": 463983
+   "bytes": 463983,
+   "attribution": "This font has been adapted for Ink/Stitch by Marie-Ange Martin, and is licensed under the SIL Open Font License, Version 1.1.  This font is a derivative work from Kaushan Script font (also licensed…",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "manga_impact",
@@ -479,7 +573,9 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 21.4,
    "glyphCount": 101,
-   "bytes": 218271
+   "bytes": 218271,
+   "attribution": "This font has been adapted for Ink/Stitch by Célia Imbert Sabater,",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "marifenda",
@@ -489,7 +585,9 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 52,
    "glyphCount": 162,
-   "bytes": 285545
+   "bytes": 285545,
+   "attribution": "This font has been adapted for Ink/Stitch by Marie-Françoise BRIS and is licensed under the SIL Open Font License, Version 1.1.",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "medium_font",
@@ -499,7 +597,9 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 15.24,
    "glyphCount": 100,
-   "bytes": 44345
+   "bytes": 44345,
+   "attribution": "Copyright (c) 2017, Lex Neva.  This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is copied below, and is also available with a FAQ at:",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "milli_marif_bold",
@@ -509,7 +609,9 @@
    "licenseId": "SEE-LICENSE-FILE",
    "sizeMm": 21.2,
    "glyphCount": 102,
-   "bytes": 69147
+   "bytes": 69147,
+   "attribution": "This font has been adapted for Ink/Stitch by @Marie-Françoise BRIS with the kind permission of the original font author:  \"Bonjour Marie-Françoise, merci beaucoup pour votre email!",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "mimosa_large",
@@ -519,7 +621,9 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 54,
    "glyphCount": 165,
-   "bytes": 920373
+   "bytes": 920373,
+   "attribution": "This font has been adapted for Ink/Stitch,",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "mimosa_medium",
@@ -529,7 +633,9 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 27.5,
    "glyphCount": 165,
-   "bytes": 909586
+   "bytes": 909586,
+   "attribution": "This font has been adapted for Ink/Stitch,",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "monicha",
@@ -539,17 +645,21 @@
    "licenseId": "CC-BY-SA-4.0",
    "sizeMm": 24,
    "glyphCount": 262,
-   "bytes": 307307
+   "bytes": 307307,
+   "attribution": "This font has been adapted for Ink/Stitch by Sandrine Ratkoff Rojnoff,  and is licensed CC-BY-SA (http://creativecommons.org/licenses/by-sa/4.0/).",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "neon",
    "name": "Néon",
    "tier": "verified",
-   "group": "More",
+   "group": "Display",
    "licenseId": "OFL-1.1",
    "sizeMm": 70,
    "glyphCount": 634,
-   "bytes": 1866870
+   "bytes": 1866870,
+   "attribution": "This font has been adapted for Ink/Stitch,",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "pacificlo",
@@ -559,27 +669,33 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 17,
    "glyphCount": 125,
-   "bytes": 109744
+   "bytes": 109744,
+   "attribution": "This font has been adapted for Ink/Stitch by Claudette Venneugues-Aminot, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2021 Claudette Venneugues-Aminot This font is a…",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "pacificlo_tiny",
    "name": "Pacificlo tiny",
    "tier": "verified",
-   "group": "Script",
+   "group": "Small",
    "licenseId": "OFL-1.1",
    "sizeMm": 17,
    "glyphCount": 125,
-   "bytes": 139235
+   "bytes": 139235,
+   "attribution": "This font has been adapted for Ink/Stitch by Claudette Venneugues-Aminot,",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "pisankris",
    "name": "Pisankris",
    "tier": "verified",
-   "group": "More",
+   "group": "Display",
    "licenseId": "OFL-1.1",
    "sizeMm": 30,
    "glyphCount": 110,
-   "bytes": 233811
+   "bytes": 233811,
+   "attribution": "This font has been adapted for Ink/Stitch by Françoise Lapierre Baillet,",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "pixel10",
@@ -589,27 +705,33 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 50,
    "glyphCount": 155,
-   "bytes": 1515966
+   "bytes": 1515966,
+   "attribution": "This font has been adapted for Ink/Stitch,",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "roaring_twenties_KOR",
    "name": "Roaring Twenties KOR",
    "tier": "verified",
-   "group": "More",
+   "group": "Display",
    "licenseId": "OFL-1.1",
    "sizeMm": 15.7,
    "glyphCount": 156,
-   "bytes": 141461
+   "bytes": 141461,
+   "attribution": "This font has been adapted for Ink/Stitch by Corinne Renaud,",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "roaring_twenties_KOR_small",
    "name": "Roaring Twenties KOR Small",
    "tier": "verified",
-   "group": "More",
+   "group": "Small",
    "licenseId": "OFL-1.1",
    "sizeMm": 15.7,
    "glyphCount": 156,
-   "bytes": 140443
+   "bytes": 140443,
+   "attribution": "This font has been adapted for Ink/Stitch by Corinne Renaud,",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "roman_ags",
@@ -619,17 +741,21 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 25,
    "glyphCount": 107,
-   "bytes": 233005
+   "bytes": 233005,
+   "attribution": "This font Roman AGS has been adapted for Ink/Stitch by Françoise Lapierre Baillet",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "small_font",
    "name": "Ink/Stitch Small Font",
    "tier": "verified",
-   "group": "Sans",
+   "group": "Small",
    "licenseId": "OFL-1.1",
    "sizeMm": 5.08,
    "glyphCount": 98,
-   "bytes": 57900
+   "bytes": 57900,
+   "attribution": "Copyright (c) 2017, Lex Neva.",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "stebor_AGS",
@@ -639,7 +765,9 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 19.8,
    "glyphCount": 104,
-   "bytes": 328563
+   "bytes": 328563,
+   "attribution": "This font has been adapted for Ink/Stitch by Françoise Lapierre Baillet,",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "tt_directors",
@@ -649,7 +777,9 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 18.5,
    "glyphCount": 90,
-   "bytes": 65410
+   "bytes": 65410,
+   "attribution": "This font has been adapted for Ink/Stitch,",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "tt_masters",
@@ -659,27 +789,33 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 18.5,
    "glyphCount": 115,
-   "bytes": 92668
+   "bytes": 92668,
+   "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1.",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "venezia",
    "name": "Venezia",
    "tier": "verified",
-   "group": "More",
+   "group": "Serif",
    "licenseId": "OFL-1.1",
    "sizeMm": 17,
    "glyphCount": 171,
-   "bytes": 1556333
+   "bytes": 1556333,
+   "attribution": "This font has been adapted for Ink/Stitch,",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "venezia_small",
    "name": "Venezia small",
    "tier": "verified",
-   "group": "Serif",
+   "group": "Small",
    "licenseId": "OFL-1.1",
    "sizeMm": 17,
    "glyphCount": 171,
-   "bytes": 1556404
+   "bytes": 1556404,
+   "attribution": "This font has been adapted for Ink/Stitch,",
+   "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "violin_serif",
@@ -689,7 +825,9 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 28,
    "glyphCount": 100,
-   "bytes": 272247
+   "bytes": 272247,
+   "attribution": "This font has been adapted for Ink/Stitch by safire3002,",
+   "source": "Ink/Stitch embroidery-fonts"
   }
  ]
 }

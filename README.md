@@ -12,7 +12,12 @@ client-side in JavaScript.
 
 **EMB Bot Studio** (the `app/` folder) is the primary product — a guided
 Svelte app with a live stitch preview, multi-element designs, saved projects,
-and a **69-font pre-digitized satin library** loaded on demand:
+and a **69-font pre-digitized satin library** loaded on demand. Fonts are
+picked in a searchable browser (search box, Sans/Serif/Script/Display/Small
+filters, per-font recommended size ranges) whose grid uses pre-rendered
+preview images — browsing never downloads font data; only picking a font
+does. A "Font credits" screen lists every font's license and attribution,
+generated from the library manifest:
 
 ```
 cd app
