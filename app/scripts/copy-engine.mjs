@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync, existsSync, readdirSync } from "node:fs";
+import { copyFileSync, mkdirSync, existsSync, readdirSync, unlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
@@ -28,3 +28,16 @@ for (const f of readdirSync(join(srcDir, "fonts", "bin")))
   if (f.endsWith(".embf"))
     copyFileSync(join(srcDir, "fonts", "bin", f), join(fontsOut, "bin", f));
 console.log("copied font manifest + binaries to", fontsOut);
+
+// Preview PNGs -> public/fonts/previews (served at /fonts/previews/*).
+// Stale files are DELETED from the dest, not just overwritten: a demoted
+// font's preview lingering in a dirty local tree is the same trap as the
+// orphan-.embf case the guard test closes.
+const prevSrc = join(srcDir, "fonts", "previews");
+const prevOut = join(fontsOut, "previews");
+mkdirSync(prevOut, { recursive: true });
+const srcPngs = new Set(readdirSync(prevSrc).filter((f) => f.endsWith(".png")));
+for (const f of readdirSync(prevOut))
+  if (f.endsWith(".png") && !srcPngs.has(f)) unlinkSync(join(prevOut, f));
+for (const f of srcPngs) copyFileSync(join(prevSrc, f), join(prevOut, f));
+console.log("copied", srcPngs.size, "font previews");
