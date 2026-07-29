@@ -80,9 +80,29 @@
   }
 
   // Pre-digitized stitches only scale, they don't re-digitize — density
-  // changes with size. Warn once the resize leaves the "looks the same" zone.
-  $: scaleFactor = decoded && element.sizeMm ? element.sizeMm / Math.max(0.1, decoded.widthMM) : 1;
-  $: scaleWarn = scaleFactor < 0.75 || scaleFactor > 1.5;
+  // changes with size. sizeMm means POST-rotATION width (the engine rotates
+  // before its scale/clamp math), so the scale factor compares it against
+  // the decoded design's extents in the CURRENT orientation.
+  $: rotation = element.rotationDeg || 0;
+  $: nativeWidthNow = rotatedWidth(decoded, rotation);
+  $: scaleFactor = decoded && element.sizeMm ? element.sizeMm / Math.max(0.1, nativeWidthNow) : 1;
+  // Kent's rule (2026-07-29): ANY resize of an uploaded stitch file gets a
+  // warning — density silently changes from the first percent, not just
+  // past the old 75–150% band. The band still marks the "expect visible
+  // problems" escalation.
+  $: resized = Math.abs(scaleFactor - 1) > 0.02;
+  $: scaleWarnHard = scaleFactor < 0.75 || scaleFactor > 1.5;
+
+  function rotatedWidth(dec, deg) {
+    if (!dec) return 0.1;
+    const rot = ((deg % 360) + 360) % 360;
+    if (rot === 0 || rot === 180) return dec.widthMM;
+    if (rot === 90 || rot === 270) return dec.heightMM;
+    const rad = (rot * Math.PI) / 180;
+    // Bbox width of a rotated axis-aligned box — close enough for a warning
+    // threshold (the engine computes the true rotated stitch bbox itself).
+    return Math.abs(dec.widthMM * Math.cos(rad)) + Math.abs(dec.heightMM * Math.sin(rad));
+  }
 </script>
 
 <div class="designpanel">
@@ -110,12 +130,36 @@
       {/each}
     </div>
 
-    <p class="dp-note" class:warn={scaleWarn}>
-      {#if scaleWarn}
-        Resized to {(scaleFactor * 100).toFixed(0)}% — pre-digitized stitches scale with the design,
-        so density and detail change too. Best kept near the original size.
+    <label class="letterspacing">
+      <span>Rotation</span>
+      <input
+        type="range"
+        min="0"
+        max="360"
+        step="1"
+        value={rotation}
+        on:input={(e) => patch({ rotationDeg: parseInt(e.target.value, 10) })}
+      />
+      <span class="label">{rotation}°</span>
+    </label>
+    <button
+      type="button"
+      class="upsidedown"
+      on:click={() => patch({ rotationDeg: rotation === 180 ? 0 : 180 })}
+    >
+      {rotation === 180 ? "Right-side up" : "Flip upside-down"}
+    </button>
+
+    <p class="dp-note" class:warn={resized}>
+      {#if resized}
+        ⚠ Resized to {(scaleFactor * 100).toFixed(0)}% — a stitch file is NOT re-digitized when
+        you resize it: the existing stitches just scale, so thread density and detail change
+        with the size.{#if scaleWarnHard}&nbsp;This is well outside the safe 75–150% range —
+        expect gaps or bunching when it sews.{:else}&nbsp;Small changes are usually fine; stay
+        inside 75–150% of the original.{/if}
       {:else}
-        Pre-digitized file: it sews exactly as digitized. Resizing scales the stitches themselves.
+        Pre-digitized file: it sews exactly as digitized. Resizing scales the stitches
+        themselves (no re-digitizing), so density changes with size.
       {/if}
     </p>
   {:else}
@@ -126,3 +170,17 @@
     </p>
   {/if}
 </div>
+
+<style>
+  /* Same look as TextStep's flip button (that one is component-scoped, so
+     the rule can't be shared). */
+  .upsidedown {
+    margin-top: 8px;
+    padding: 6px 12px;
+    border: 1px solid var(--tint-border, #ccd6fb);
+    border-radius: var(--radius-s, 6px);
+    background: var(--surface, #fff);
+    cursor: pointer;
+    font-size: var(--fs-xs, 12px);
+  }
+</style>

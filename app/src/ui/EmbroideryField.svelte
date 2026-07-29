@@ -205,12 +205,13 @@
     return (project && project.elements && project.elements.find((el) => el.id === project.selectedId)) || null;
   }
 
-  // Only text elements get the rotate lollipop — rotation rides the
-  // lettering engine's existing rotationDeg path; image/design elements
-  // have no rotation support (yet), so they show no dead handle.
+  // Text elements rotate via the lettering engine's rotationDeg path;
+  // imported design elements via buildImportedDesign's (rotate-before-
+  // scale/clamp, 2026-07-29). Image elements have no rotation support
+  // (yet), so they alone show no dead handle.
   function rotatable() {
     const el = selectedElement();
-    return !!el && el.type === "text";
+    return !!el && (el.type === "text" || el.type === "design");
   }
 
   // Full-canvas smart-guide lines at the mm positions a live move-snap

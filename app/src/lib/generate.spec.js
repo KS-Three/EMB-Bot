@@ -276,6 +276,32 @@ test("generateElement: design element without a file yet returns null (not ready
   expect(d.colors[0]).toMatchObject({ r: 7, g: 8, b: 9 });
 });
 
+test("generateElement passes a design element's rotationDeg through (90 swaps dims; sizeMm is post-rotation width)", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+
+  const rotated = generateElement(
+    designElement({ dstBase64: makeDstBase64(EMB), rotationDeg: 90 }),
+    garment,
+    {}
+  );
+  expect(rotated.widthMM).toBeCloseTo(10, 1); // native 20x10 -> 10x20
+  expect(rotated.heightMM).toBeCloseTo(20, 1);
+
+  const sized = generateElement(
+    designElement({ dstBase64: makeDstBase64(EMB), rotationDeg: 90, sizeMm: 15 }),
+    garment,
+    {}
+  );
+  expect(sized.widthMM).toBeCloseTo(15, 1); // 15mm wide IN the rotated orientation
+  expect(sized.heightMM).toBeCloseTo(30, 1);
+
+  // absent rotationDeg stays the unrotated path
+  const plain = generateElement(designElement({ dstBase64: makeDstBase64(EMB) }), garment, {});
+  expect(plain.widthMM).toBeCloseTo(20, 5);
+});
+
 test("generateAll combines an imported design with a text element into one multi-color design", async () => {
   const { generateAll } = await import("./generate.js");
   const { EMB } = await import("./emb.js");

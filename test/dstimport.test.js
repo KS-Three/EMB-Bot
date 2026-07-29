@@ -120,6 +120,80 @@ test("buildImportedDesign clamps to the hoop on BOTH dims (a tall design can't o
   assert.ok(design._debug.scale < 1);
 });
 
+test("rotationDeg 0 (and absent) is byte-identical to the pre-rotation path", () => {
+  const d = decodeDST(dst.encodeDST(fixtureDesign()));
+  const plain = buildImportedDesign(d, { garment: GARMENT });
+  const rot0 = buildImportedDesign(d, { garment: GARMENT, rotationDeg: 0 });
+  const rot360 = buildImportedDesign(d, { garment: GARMENT, rotationDeg: 360 });
+  assert.deepStrictEqual(rot0, plain);
+  assert.deepStrictEqual(rot360, plain);
+});
+
+test("rotationDeg 90 swaps the design's reported and actual extents", () => {
+  const d = decodeDST(dst.encodeDST(fixtureDesign())); // 10 x 4 mm
+  const design = buildImportedDesign(d, { garment: GARMENT, rotationDeg: 90 });
+  assert.ok(Math.abs(design.widthMM - 4) < 0.05, `widthMM ${design.widthMM}`);
+  assert.ok(Math.abs(design.heightMM - 10) < 0.05, `heightMM ${design.heightMM}`);
+  assert.strictEqual(design.stitchCount, 7);
+  // (x, y) -> (-y, x): the first real stitch (-50,-20) lands at (20,-50).
+  const first = design.stitches.find((s) => s.type === "stitch");
+  assert.deepStrictEqual([first.x, first.y], [20, -50]);
+});
+
+test("rotationDeg 180 preserves extents and negates stitch positions", () => {
+  const d = decodeDST(dst.encodeDST(fixtureDesign()));
+  const plain = buildImportedDesign(d, { garment: GARMENT });
+  const design = buildImportedDesign(d, { garment: GARMENT, rotationDeg: 180 });
+  assert.strictEqual(design.widthMM, plain.widthMM);
+  assert.strictEqual(design.heightMM, plain.heightMM);
+  const first = design.stitches.find((s) => s.type === "stitch");
+  const firstPlain = plain.stitches.find((s) => s.type === "stitch");
+  assert.deepStrictEqual([first.x, first.y], [-firstPlain.x, -firstPlain.y]);
+});
+
+test("targetWidthMm means POST-rotation width, and the hoop clamps by rotated extents", () => {
+  const d = decodeDST(dst.encodeDST(fixtureDesign())); // 10 x 4 mm native
+  // Rotated 90 the design is 4mm wide; asking for 8mm wide = scale 2.
+  const design = buildImportedDesign(d, { garment: GARMENT, rotationDeg: 90, targetWidthMm: 8 });
+  assert.ok(Math.abs(design.widthMM - 8) < 0.1, `widthMM ${design.widthMM}`);
+  assert.ok(Math.abs(design._debug.scale - 2) < 0.05);
+
+  // A 2x200mm design rotated 90 becomes 200mm WIDE — the width clamp (not
+  // the height clamp) must now be the one that catches it in a 101.6mm hoop.
+  const tall = {
+    stitches: [
+      { x: 0, y: -1000, type: "stitch" },
+      { x: 20, y: 1000, type: "stitch" },
+      { x: 20, y: 1000, type: "end" },
+    ],
+    colors: [{ r: 0, g: 0, b: 0 }],
+  };
+  const dt = decodeDST(dst.encodeDST(tall));
+  const rotated = buildImportedDesign(dt, { garment: GARMENT, rotationDeg: 90, targetWidthMm: 500 });
+  assert.ok(rotated.widthMM <= 101.6 + 1e-9, `widthMM ${rotated.widthMM}`);
+});
+
+test("rotation re-centers on the rotated stitch bbox (asymmetric cloud stays bbox-centered)", () => {
+  // An L-shaped cloud: rotating about the old center shifts the new bbox,
+  // so the builder must re-center before scaling/placing.
+  const ell = {
+    stitches: [
+      { x: -100, y: -50, type: "stitch" },
+      { x: 100, y: -50, type: "stitch" },
+      { x: 100, y: 50, type: "stitch" },
+      { x: 100, y: 50, type: "end" },
+    ],
+    colors: [{ r: 0, g: 0, b: 0 }],
+  };
+  const d = decodeDST(dst.encodeDST(ell));
+  const design = buildImportedDesign(d, { garment: GARMENT, rotationDeg: 45 });
+  const pts = design.stitches.filter((s) => s.type === "stitch");
+  const xs = pts.map((s) => s.x);
+  const ys = pts.map((s) => s.y);
+  assert.ok(Math.abs(Math.min(...xs) + Math.max(...xs)) <= 1, "x bbox centered");
+  assert.ok(Math.abs(Math.min(...ys) + Math.max(...ys)) <= 1, "y bbox centered");
+});
+
 test("buildImportedDesign honors per-block color overrides and falls back to distinct defaults", () => {
   const d = decodeDST(dst.encodeDST(fixtureDesign()));
   const design = buildImportedDesign(d, {

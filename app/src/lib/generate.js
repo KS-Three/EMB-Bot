@@ -44,6 +44,7 @@ export function generateElement(element, garment, runtime) {
     return EMB.buildImportedDesign(decoded, {
       garment,
       targetWidthMm: element.sizeMm || undefined,
+      rotationDeg: element.rotationDeg || 0,
       offsetXMm: element.offsetXMm || 0,
       offsetYMm: element.offsetYMm || 0,
       blockColors: element.blockColors || {},

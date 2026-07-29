@@ -156,8 +156,14 @@
   //
   // opts:
   //   garment        resolved garment (hoop clamp); required.
-  //   targetWidthMm  desired width; default = native width, clamped so BOTH
-  //                  dims fit the hoop.
+  //   targetWidthMm  desired width AFTER rotation; default = native width,
+  //                  clamped so BOTH dims fit the hoop.
+  //   rotationDeg    rotation about the design's own center (CCW in +y-up
+  //                  space, same convention as the lettering engine's
+  //                  rotationDeg). Applied BEFORE the scale/clamp math, so
+  //                  targetWidthMm and the hoop clamps always speak about
+  //                  the dimensions the user actually sees — a landscape
+  //                  design rotated 90 clamps by its new (portrait) extents.
   //   offsetXMm/offsetYMm  placement translation, DST-space (+y up), mm.
   //   blockColors    { [blockIndex]: [r,g,b] } overrides; missing blocks get
   //                  IMPORT_BLOCK_COLORS defaults.
@@ -168,8 +174,50 @@
     const hoopWmm = garment.widthIn * MM_PER_INCH;
     const hoopHmm = garment.heightIn * MM_PER_INCH;
 
-    const nativeWmm = Math.max(0.1, decoded.widthMM);
-    const nativeHmm = Math.max(0.1, decoded.heightMM);
+    // Rotation happens in decoded (unscaled, centered) space, in floats —
+    // rounding waits for the single scale-time round below so a rotated
+    // design doesn't accumulate two quantization passes. The rot === 0 path
+    // must stay byte-identical to the pre-rotation code: source points and
+    // native dims pass through untouched.
+    const rot = (((o.rotationDeg || 0) % 360) + 360) % 360;
+    let srcPoints = decoded.stitches;
+    let srcWmm = decoded.widthMM;
+    let srcHmm = decoded.heightMM;
+    if (rot !== 0) {
+      // Exact values for quadrant angles: Math.sin(Math.PI) leaves ~1e-16
+      // of noise that would otherwise leak into widthMM/heightMM (and the
+      // SizePanel display) every time someone uses the flip-180 shortcut.
+      const QUAD = { 0: [1, 0], 90: [0, 1], 180: [-1, 0], 270: [0, -1] };
+      const rad = (rot * Math.PI) / 180;
+      const cos = QUAD[rot] ? QUAD[rot][0] : Math.cos(rad);
+      const sin = QUAD[rot] ? QUAD[rot][1] : Math.sin(rad);
+      srcPoints = decoded.stitches.map((s) => ({
+        x: s.x * cos - s.y * sin,
+        y: s.x * sin + s.y * cos,
+        type: s.type,
+      }));
+      // Re-center on the ROTATED stitch bbox midpoint: rotating a point
+      // cloud about the old bbox center does not generally leave the new
+      // bbox centered (only a perfect rectangle would), and every consumer
+      // (placement offsets, hoop clamps, the field's selection box) assumes
+      // bbox-centered output — the same contract decodeDST establishes.
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (const s of srcPoints) {
+        if (s.type !== "stitch") continue;
+        if (s.x < minX) minX = s.x;
+        if (s.x > maxX) maxX = s.x;
+        if (s.y < minY) minY = s.y;
+        if (s.y > maxY) maxY = s.y;
+      }
+      const cx = (minX + maxX) / 2;
+      const cy = (minY + maxY) / 2;
+      for (const s of srcPoints) { s.x -= cx; s.y -= cy; }
+      srcWmm = (maxX - minX) / DST_UNITS_PER_MM;
+      srcHmm = (maxY - minY) / DST_UNITS_PER_MM;
+    }
+
+    const nativeWmm = Math.max(0.1, srcWmm);
+    const nativeHmm = Math.max(0.1, srcHmm);
 
     // Native size unless asked otherwise, then clamp so both dims fit.
     let targetWmm = (typeof o.targetWidthMm === "number" && isFinite(o.targetWidthMm) && o.targetWidthMm > 0)
@@ -182,9 +230,9 @@
     const offXu = Math.round((o.offsetXMm || 0) * DST_UNITS_PER_MM);
     const offYu = Math.round((o.offsetYMm || 0) * DST_UNITS_PER_MM);
 
-    const stitches = new Array(decoded.stitches.length);
-    for (let i = 0; i < decoded.stitches.length; i++) {
-      const s = decoded.stitches[i];
+    const stitches = new Array(srcPoints.length);
+    for (let i = 0; i < srcPoints.length; i++) {
+      const s = srcPoints[i];
       stitches[i] = { x: Math.round(s.x * sc) + offXu, y: Math.round(s.y * sc) + offYu, type: s.type };
     }
     stitches.push({ x: offXu, y: offYu, type: "end" });
