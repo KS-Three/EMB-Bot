@@ -73,41 +73,86 @@ test("nearestThread picks the CLOSEST shade (Euclidean), not just the first clos
 
 // --- Brand catalogs (Ember-audit follow-up) ----------------------------
 
-import { PALETTES, paletteById, nearestInList, filterThreads, loadPreferredPaletteId } from "./threads.js";
-import { THREAD_BRANDS } from "./threadBrands.js";
+import {
+  PALETTE_INDEX,
+  STUDIO_PALETTE,
+  getCachedPalette,
+  loadPalette,
+  nearestInList,
+  filterThreads,
+  loadPreferredPaletteId,
+} from "./threads.js";
+import { THREAD_BRAND_INDEX } from "./threadBrandsIndex.js";
+import { THREAD_BRANDS } from "./threadBrandsData.js";
 
-test("PALETTES leads with the generic Studio list, then every generated brand", () => {
-  expect(PALETTES[0].id).toBe("studio");
-  expect(PALETTES[0].threads).toBe(THREADS);
-  expect(PALETTES).toHaveLength(1 + THREAD_BRANDS.length);
-  expect(THREAD_BRANDS.length).toBeGreaterThanOrEqual(4);
+test("PALETTE_INDEX leads with the generic Studio list, then every generated brand", () => {
+  expect(PALETTE_INDEX[0].id).toBe("studio");
+  expect(PALETTE_INDEX[0].count).toBe(THREADS.length);
+  expect(PALETTE_INDEX).toHaveLength(1 + THREAD_BRAND_INDEX.length);
+  // The full Ink/Stitch sweep: this only ever grows.
+  expect(THREAD_BRAND_INDEX.length).toBeGreaterThanOrEqual(74);
 });
 
-test("every brand entry is { name, code, rgb } with a valid 0-255 triple and a real catalog code", () => {
-  for (const brand of THREAD_BRANDS) {
-    expect(brand.threads.length).toBeGreaterThan(300); // real charts are big
-    for (const t of brand.threads) {
-      expect(typeof t.name).toBe("string");
-      expect(t.name.length).toBeGreaterThan(0);
-      expect(typeof t.code).toBe("string");
-      expect(t.rgb).toHaveLength(3);
-      for (const v of t.rgb) {
-        expect(Number.isInteger(v)).toBe(true);
-        expect(v).toBeGreaterThanOrEqual(0);
-        expect(v).toBeLessThanOrEqual(255);
-      }
-    }
-    // Codes must be present on essentially the whole chart (a few oddball
-    // rows without one are tolerable, a systematically code-less parse is not).
-    const withCode = brand.threads.filter((t) => t.code.length > 0).length;
-    expect(withCode / brand.threads.length).toBeGreaterThan(0.95);
+test("the static index and the lazy data module agree brand-for-brand", () => {
+  expect(THREAD_BRAND_INDEX.length).toBe(THREAD_BRANDS.length);
+  THREAD_BRAND_INDEX.forEach((entry, i) => {
+    const brand = THREAD_BRANDS[i];
+    expect(entry.id).toBe(brand.id);
+    expect(entry.label).toBe(brand.label);
+    expect(entry.count).toBe(brand.threads.length);
+  });
+  // The four pre-sweep charts keep their original ids so the stored
+  // embstudio:threadPalette preference of an existing user still resolves.
+  for (const legacy of ["isacord", "polyneon", "madeira-rayon", "robison-anton"]) {
+    expect(THREAD_BRAND_INDEX.some((e) => e.id === legacy)).toBe(true);
   }
 });
 
-test("paletteById returns the matching palette and falls back to studio for unknown ids", () => {
-  expect(paletteById("isacord").label).toMatch(/Isacord/);
-  expect(paletteById("nope").id).toBe("studio");
-  expect(paletteById(undefined).id).toBe("studio");
+test("every brand entry is { name, code, rgb } with a valid 0-255 triple and a real catalog code", () => {
+  // Plain-JS validation with aggregate assertions: ~20k entries x 8
+  // expect() calls each blows straight through vitest's 5s test timeout,
+  // so collect violations and assert once (the violation list names the
+  // offenders on failure, which is better diagnostics anyway).
+  const badEntries = [];
+  const undersized = [];
+  const codePoor = [];
+  let total = 0;
+  for (const brand of THREAD_BRANDS) {
+    // Smallest legitimate chart is 15 colors (Simthread Glow In The Dark).
+    if (brand.threads.length < 10) undersized.push(brand.id);
+    total += brand.threads.length;
+    let withCode = 0;
+    for (const t of brand.threads) {
+      const rgbOk =
+        Array.isArray(t.rgb) &&
+        t.rgb.length === 3 &&
+        t.rgb.every((v) => Number.isInteger(v) && v >= 0 && v <= 255);
+      if (typeof t.name !== "string" || t.name.length === 0 || typeof t.code !== "string" || !rgbOk) {
+        badEntries.push(brand.id + ":" + JSON.stringify(t));
+      }
+      if (t.code.length > 0) withCode++;
+    }
+    // Codes must be present on essentially the whole chart (a few oddball
+    // rows without one are tolerable, a systematically code-less parse is not).
+    if (withCode / brand.threads.length <= 0.95) codePoor.push(brand.id);
+  }
+  expect(undersized).toEqual([]);
+  expect(badEntries.slice(0, 5)).toEqual([]);
+  expect(codePoor).toEqual([]);
+  expect(total).toBeGreaterThan(15000); // the whole sweep, not a subset
+});
+
+test("loadPalette resolves brands lazily, caches them, and falls back to studio for unknown ids", async () => {
+  const isacord = await loadPalette("isacord");
+  expect(isacord.label).toMatch(/Isacord/);
+  expect(isacord.threads.length).toBeGreaterThan(300);
+  // After one successful load every brand is a synchronous cache hit
+  // (the data module ships all brands in one chunk).
+  expect(getCachedPalette("isacord")).toBe(isacord);
+  expect(getCachedPalette("sulky-rayon")).not.toBeNull();
+  expect((await loadPalette("nope")).id).toBe("studio");
+  expect((await loadPalette(undefined)).id).toBe("studio");
+  expect(getCachedPalette("studio")).toBe(STUDIO_PALETTE);
 });
 
 test("nearestInList matches nearestThread on the generic list and carries codes on brand lists", () => {
@@ -117,14 +162,14 @@ test("nearestInList matches nearestThread on the generic list and carries codes 
   expect(viaNew.index).toBe(viaOld.index);
   expect(viaNew.code).toBe("");
 
-  const isacord = paletteById("isacord").threads;
+  const isacord = THREAD_BRANDS.find((b) => b.id === "isacord").threads;
   const black = nearestInList(isacord, [0, 0, 0]);
   expect(black.code.length).toBeGreaterThan(0);
   expect(isacord[black.index].name).toBe(black.name);
 });
 
 test("filterThreads matches on name OR catalog code, case-insensitively; empty query returns the list untouched", () => {
-  const isacord = paletteById("isacord").threads;
+  const isacord = THREAD_BRANDS.find((b) => b.id === "isacord").threads;
   expect(filterThreads(isacord, "")).toBe(isacord);
   expect(filterThreads(isacord, "   ")).toBe(isacord);
 

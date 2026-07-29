@@ -1,6 +1,6 @@
 <script>
   import { createEventDispatcher } from "svelte";
-  import { PALETTES, paletteById, nearestInList, filterThreads, loadPreferredPaletteId, savePreferredPaletteId } from "../lib/threads.js";
+  import { PALETTE_INDEX, STUDIO_PALETTE, getCachedPalette, loadPalette, nearestInList, filterThreads, loadPreferredPaletteId, savePreferredPaletteId } from "../lib/threads.js";
 
   // Named-thread color picker (Slice 8 Task 4), used everywhere a thread
   // color is chosen (TextStep's element color, ImagePanel's per-swatch
@@ -46,10 +46,41 @@
     return t.code ? `${t.code} ${t.name}` : t.name;
   }
 
+  // Brand thread lists load lazily (threads.js loadPalette — the ~1.1MB
+  // data chunk stays out of the main bundle). While a brand chart is in
+  // flight, `palette` falls back to Studio so nearest/grid math always has
+  // a real list, and `pending` keeps the UI honest about it (the trigger
+  // shows "…" instead of claiming a Studio shade name under a brand
+  // preference). After the first load every palette switch is a sync cache
+  // hit. The id equality check on resolve drops stale responses if the
+  // user flips palettes faster than the chunk arrives.
+  let palette = STUDIO_PALETTE;
+  let pending = false;
+  function ensurePalette(id) {
+    const hit = getCachedPalette(id);
+    if (hit) {
+      palette = hit;
+      pending = false;
+      return;
+    }
+    pending = true;
+    loadPalette(id).then(
+      (p) => {
+        if (paletteId !== id) return; // stale — a newer selection won
+        palette = p;
+        pending = false;
+      },
+      () => {
+        if (paletteId !== id) return;
+        pending = false; // chunk failed to load; Studio fallback stays up
+      }
+    );
+  }
+
   // Reactive so both the trigger's name/swatch and the grid's selected ring
   // stay in sync whenever the `rgb` prop OR the chosen palette changes
   // (including from outside, e.g. a project load).
-  $: palette = paletteById(paletteId);
+  $: ensurePalette(paletteId);
   $: nearest = nearestInList(palette.threads, rgb);
   $: shown = filterThreads(palette.threads, query);
 
@@ -92,7 +123,7 @@
     title={threadLabel(nearest)}
   >
     <span class="tp-swatch" style="background: rgb({rgb[0]},{rgb[1]},{rgb[2]})"></span>
-    {#if !compact}<span class="tp-name">{threadLabel(nearest)}</span>{/if}
+    {#if !compact}<span class="tp-name">{pending ? "…" : threadLabel(nearest)}</span>{/if}
     <span class="tp-chevron" class:open aria-hidden="true">▾</span>
   </button>
 
@@ -100,11 +131,11 @@
     <div class="tp-panel">
       <div class="tp-tools">
         <select class="tp-brand" value={paletteId} on:change={onPaletteChange} on:click|stopPropagation aria-label="Thread brand">
-          {#each PALETTES as p (p.id)}
+          {#each PALETTE_INDEX as p (p.id)}
             <option value={p.id}>{p.label}</option>
           {/each}
         </select>
-        {#if palette.id !== "studio"}
+        {#if paletteId !== "studio"}
           <input
             type="search"
             class="tp-search"
@@ -115,7 +146,10 @@
           />
         {/if}
       </div>
-      <div class="tp-grid" class:big={palette.id !== "studio"} role="listbox" aria-label={label || "Thread color"}>
+      <div class="tp-grid" class:big={paletteId !== "studio"} role="listbox" aria-label={label || "Thread color"}>
+        {#if pending}
+          <p class="tp-empty">Loading chart…</p>
+        {:else}
         {#each shown as t, i (threadLabel(t) + i)}
           <button
             type="button"
@@ -131,6 +165,7 @@
         {/each}
         {#if !shown.length}
           <p class="tp-empty">No threads match “{query}”.</p>
+        {/if}
         {/if}
       </div>
       <label class="tp-custom">

@@ -4,7 +4,7 @@
   import { exportDesign, exportWorksheetPDF, exportPNG } from "../lib/exporters.js";
   import { triggerDownload } from "../lib/download.js";
   import { EMB } from "../lib/emb.js";
-  import { PALETTES, paletteById, nearestInList, loadPreferredPaletteId, savePreferredPaletteId } from "../lib/threads.js";
+  import { PALETTE_INDEX, STUDIO_PALETTE, getCachedPalette, loadPalette, nearestInList, loadPreferredPaletteId, savePreferredPaletteId } from "../lib/threads.js";
   import { ensureFonts } from "../lib/fontLoader.js";
   export let project;
   // Task 4 (Slice 5): export now covers every ready element in the project
@@ -85,12 +85,42 @@
     savePreferredPaletteId(paletteId);
   }
 
+  // Same lazy-chart pattern as ThreadPicker: brand thread lists live in a
+  // dynamic-imported chunk (threads.js loadPalette), so the summary renders
+  // from Studio's list while a brand chart is in flight (chartPending keeps
+  // the header honest) and swaps to real catalog names the moment it lands.
+  // The id equality check drops a stale response if the user flips charts
+  // faster than the chunk loads.
+  let chart = STUDIO_PALETTE;
+  let chartPending = false;
+  function ensureChart(id) {
+    const hit = getCachedPalette(id);
+    if (hit) {
+      chart = hit;
+      chartPending = false;
+      return;
+    }
+    chartPending = true;
+    loadPalette(id).then(
+      (p) => {
+        if (paletteId !== id) return;
+        chart = p;
+        chartPending = false;
+      },
+      () => {
+        if (paletteId !== id) return;
+        chartPending = false;
+      }
+    );
+  }
+  $: ensureChart(paletteId);
+
   function threadLabel(t) {
     return t.code ? `${t.code} ${t.name}` : t.name;
   }
 
   $: threadRows = combinedColors(project, runtime, fontsReady).map((c, i) => {
-    const nearest = nearestInList(paletteById(paletteId).threads, [c.r, c.g, c.b]);
+    const nearest = nearestInList(chart.threads, [c.r, c.g, c.b]);
     return { block: i + 1, rgb: nearest.rgb, name: threadLabel(nearest) };
   });
 
@@ -113,8 +143,10 @@
       // the preferred chart's nearest cone ("1902 Poinsettia" beats "Color
       // 2" when you're standing in front of the thread rack). buildDesign()
       // returns a freshly-generated design, so annotating it here can't leak
-      // into any cached/shared state.
-      const list = paletteById(paletteId).threads;
+      // into any cached/shared state. The palette load is awaited here (not
+      // read from `chart`) so a worksheet clicked before the lazy chunk
+      // lands still bakes the RIGHT chart's names, never Studio's.
+      const list = (await loadPalette(paletteId)).threads;
       design.colors = (design.colors || []).map((c) => ({
         ...c,
         name: threadLabel(nearestInList(list, [c.r, c.g, c.b])),
@@ -150,10 +182,11 @@
     <label class="threadbrand">
       <span>Chart</span>
       <select value={paletteId} on:change={onPaletteChange} aria-label="Thread chart">
-        {#each PALETTES as p (p.id)}
+        {#each PALETTE_INDEX as p (p.id)}
           <option value={p.id}>{p.label}</option>
         {/each}
       </select>
+      {#if chartPending}<span class="threadbrand-loading">Loading chart…</span>{/if}
     </label>
     <ul class="threadlist">
       {#each threadRows as row}

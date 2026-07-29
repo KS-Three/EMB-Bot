@@ -1325,6 +1325,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   margin-bottom: var(--space-2);
 }
 .threadbrand select { font-size: var(--fs-sm); }
+.threadbrand-loading { font-size: var(--fs-sm); color: var(--muted); font-style: italic; }
 
 .tp-cell {
   width: 24px;

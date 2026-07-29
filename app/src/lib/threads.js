@@ -9,7 +9,7 @@
 // manufacturer/brand names) so the list stays useful regardless of which
 // actual thread brand a shop stocks -- rgb values are hand-picked, sensible
 // approximations of each shade, not sampled from any particular catalog.
-import { THREAD_BRANDS } from "./threadBrands.js";
+import { THREAD_BRAND_INDEX } from "./threadBrandsIndex.js";
 
 export const THREADS = [
   // Whites / creams
@@ -126,17 +126,55 @@ export function nearestInList(list, rgb) {
   return { name: best.name, code: best.code || "", rgb: best.rgb, index: bestIndex };
 }
 
-// Every selectable palette: the generic Studio list first (default), then the
-// real manufacturer charts from threadBrands.js (generated, see
-// tools/build-threads.mjs). Shape is uniform -- { id, label, threads } with
-// threads entries { name, code?, rgb } -- so pickers can treat them all alike.
-export const PALETTES = [
-  { id: "studio", label: "Studio basics", threads: THREADS },
-  ...THREAD_BRANDS,
+// Every selectable palette, WITHOUT thread data: the generic Studio list
+// first (default), then one { id, label, count } entry per manufacturer
+// chart from threadBrandsIndex.js (generated, see tools/build-threads.mjs).
+// This is all a dropdown or a preference check needs; the actual brand
+// thread lists (~20k entries, ~1.1MB) live in threadBrandsData.js and are
+// loaded on demand via loadPalette() below so they never weigh down the
+// main bundle.
+export const STUDIO_PALETTE = { id: "studio", label: "Studio basics", threads: THREADS };
+
+export const PALETTE_INDEX = [
+  { id: "studio", label: "Studio basics", count: THREADS.length },
+  ...THREAD_BRAND_INDEX,
 ];
 
-export function paletteById(id) {
-  return PALETTES.find((p) => p.id === id) || PALETTES[0];
+// Cache of full palettes by id. Studio is present from the start; every
+// brand lands at once on the first successful loadPalette() call, because
+// the data module ships all brands in one chunk anyway.
+const paletteCache = new Map([["studio", STUDIO_PALETTE]]);
+let brandsPromise = null;
+
+// Synchronous cache probe: { id, label, threads } if this palette's thread
+// list is already in memory, else null. Lets components render an
+// already-loaded chart without an async hop (after the first load, every
+// mount is a sync hit).
+export function getCachedPalette(id) {
+  return paletteCache.get(id) || null;
+}
+
+// Resolves to the full { id, label, threads } palette for `id`, falling
+// back to Studio for unknown ids (mirrors the old paletteById contract).
+// The heavy data module is dynamic-imported exactly once; on a FAILED
+// import the promise is evicted so a later call retries instead of caching
+// the rejection forever (the fontLoader.js lesson).
+export function loadPalette(id) {
+  const hit = paletteCache.get(id);
+  if (hit) return Promise.resolve(hit);
+  if (!PALETTE_INDEX.some((p) => p.id === id)) return Promise.resolve(STUDIO_PALETTE);
+  if (!brandsPromise) {
+    brandsPromise = import("./threadBrandsData.js").then(
+      (m) => {
+        for (const b of m.THREAD_BRANDS) paletteCache.set(b.id, b);
+      },
+      (e) => {
+        brandsPromise = null;
+        throw e;
+      }
+    );
+  }
+  return brandsPromise.then(() => paletteCache.get(id) || STUDIO_PALETTE);
 }
 
 // App-wide "which thread chart does this shop stitch with" preference,
@@ -148,7 +186,7 @@ export const PALETTE_STORAGE_KEY = "embstudio:threadPalette";
 export function loadPreferredPaletteId() {
   try {
     const id = localStorage.getItem(PALETTE_STORAGE_KEY);
-    return PALETTES.some((p) => p.id === id) ? id : "studio";
+    return PALETTE_INDEX.some((p) => p.id === id) ? id : "studio";
   } catch (e) {
     return "studio";
   }
