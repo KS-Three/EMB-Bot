@@ -97,16 +97,28 @@ export function generateElement(element, garment, runtime) {
 // { combined: null, perElement: [] } when nothing in the project is ready.
 export function generateAll(project, runtime) {
   const garment = EMB.getGarment(project.garmentId);
-  const designs = [];
   const perElement = [];
   for (const element of project.elements || []) {
     const design = generateElement(element, garment, runtime);
     if (!design) continue;
-    designs.push(design);
     perElement.push({ id: element.id, design, bboxMm: bboxMmFromStitches(design.stitches) });
   }
-  if (!designs.length) return { combined: null, perElement: [] };
-  return { combined: combineDesigns(designs), perElement };
+  if (!perElement.length) return { combined: null, perElement: [] };
+  // SEW order: on cap garments (same predicate as the engine's capMode)
+  // elements sew bottom-up — lowest bbox first, bill toward crown — matching
+  // the engine's per-element center-out rule, so a stacked cap design pushes
+  // fabric up off the unstable crown seam. bboxMm is +y UP, so ascending
+  // y0 = lowest first. Everywhere else the order stays element-list order,
+  // unchanged. perElement is returned in the SAME (sew) order as the
+  // combined stitches because sew order IS paint order: EmbroideryField's
+  // topmost-wins hit-testing walks perElement-derived rects assuming later
+  // entries are drawn on top, and later-sewn thread genuinely sits on top.
+  // The element LIST rows key off project.elements directly, not this.
+  const capMode = garment && (garment.id === "hat_front" || garment.id === "beanie");
+  const ordered = capMode
+    ? perElement.slice().sort((a, b) => a.bboxMm.y0 - b.bboxMm.y0)
+    : perElement;
+  return { combined: combineDesigns(ordered.map((pe) => pe.design)), perElement: ordered };
 }
 
 // Back-compat convenience for a SINGLE-text-element project: everything the

@@ -6,7 +6,8 @@
   import { designToStrands } from "../lib/strands.js";
   import { advanceIndex, clampIndex, nextSpeed } from "../lib/simulate.js";
   import { EMB } from "../lib/emb.js";
-  import { designRectPx, hitTest, pickElement, dragResize, dragMove, clampOffsets, clampPan } from "../lib/interact.js";
+  import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizePatches } from "../lib/interact.js";
+  import { selectedIdsOf } from "../lib/project.js";
   import Hint from "./Hint.svelte";
 
   // Task 4 (Slice 5): the field now renders every element in the project
@@ -28,6 +29,13 @@
   const MM_PER_INCH = 25.4;
   const MIN_SIZE_MM = 5;
   const HANDLE_R = 8;
+  // Auto-snap: screen-space radius, converted to mm through the current
+  // render scale on every use — zooming in naturally shrinks the mm radius,
+  // which is the fine-control escape hatch alongside Alt/the magnet toggle.
+  const SNAP_PX = 7;
+  const GUIDE_COLOR = "#e0308c";
+  const ROTATE_STALK_PX = 22;
+  const ROTATE_GRIP_R = 7;
 
   let canvas;
   let error = "";
@@ -90,7 +98,7 @@
 
   // Drag state (module-local to this component instance, not reactive —
   // none of it needs to trigger a re-render on its own).
-  let dragMode = null; // null | "resize" | "move" | "pan"
+  let dragMode = null; // null | "resize" | "move" | "rotate" | "pan"
   let dragHandle = null; // "nw"|"ne"|"sw"|"se" when dragMode === "resize"
   let dragTargetId = null; // element id the current drag applies to
   let dragStartPx = null; // {x,y} canvas-space pointer start
@@ -102,6 +110,47 @@
   let dragStartPanY = 0; // view.panY at the start of a "pan" drag
   let rafScheduled = false;
   let pendingPatch = null; // { id, patch }
+
+  // Auto-snap + rotate state. `snapEnabled` is an app-wide UI preference
+  // (like zoom, it's not project data — but unlike zoom it survives reloads
+  // via localStorage; holding Alt suspends it for the current drag events).
+  // The rest is per-drag overlay chrome, cleared by endDrag.
+  let snapEnabled = (() => {
+    try { return localStorage.getItem("embbot-snap") !== "0"; } catch { return true; }
+  })();
+  let activeGuides = null; // { vXMm, hYMm } while a move-snap is live (null members = axis not snapped)
+  let sizeMatch = null; // "width" | "height" while a resize is size-matched to another element
+  let moveBadge = null; // { xMm, yMm } center-offset readout during a move drag
+  let rotateBadgeDeg = null; // live degrees during a rotate drag
+  let dragStartBBoxMm = null; // dragged element's absolute mm bbox at pointerdown
+  let dragStartTargetMm = 0; // element's sizeMm at pointerdown (see size-match note below)
+  let dragStartRotationDeg = 0;
+  let dragRotateCenterPx = null; // element center (canvas px), fixed at rotate-grab
+
+  // Multi-select (Ctrl+click) group-drag state. dragMembers snapshots each
+  // selected member's offsets/size at pointerdown; dragGroupBBoxMm is the
+  // union mm bbox the group moves/resizes as.
+  let dragMembers = null; // [{ id, offX, offY, widthMm, targetMm }]
+  let dragGroupBBoxMm = null;
+
+  $: selIds = selectedIdsOf(project);
+  $: multiSel = selIds.length > 1;
+
+  // Union canvas-px rect of every selected member — the group's visible box.
+  function groupRectPx() {
+    const rects = perElementRects.filter((r) => selIds.includes(r.id));
+    if (!rects.length) return null;
+    const x = Math.min(...rects.map((r) => r.x));
+    const y = Math.min(...rects.map((r) => r.y));
+    const x1 = Math.max(...rects.map((r) => r.x + r.w));
+    const y1 = Math.max(...rects.map((r) => r.y + r.h));
+    return { x, y, w: x1 - x, h: y1 - y };
+  }
+
+  function toggleSnap() {
+    snapEnabled = !snapEnabled;
+    try { localStorage.setItem("embbot-snap", snapEnabled ? "1" : "0"); } catch {}
+  }
 
   function garmentFor(p) {
     return p && EMB.getGarment(p.garmentId);
@@ -152,15 +201,115 @@
     return accentColor();
   }
 
+  function selectedElement() {
+    return (project && project.elements && project.elements.find((el) => el.id === project.selectedId)) || null;
+  }
+
+  // Only text elements get the rotate lollipop — rotation rides the
+  // lettering engine's existing rotationDeg path; image/design elements
+  // have no rotation support (yet), so they show no dead handle.
+  function rotatable() {
+    const el = selectedElement();
+    return !!el && el.type === "text";
+  }
+
+  // Full-canvas smart-guide lines at the mm positions a live move-snap
+  // locked onto. Drawn under the selection chrome.
+  function drawGuides(ctx) {
+    if (!activeGuides || !renderResult || !renderResult.toCanvas) return;
+    ctx.save();
+    ctx.strokeStyle = GUIDE_COLOR;
+    ctx.lineWidth = 1;
+    if (activeGuides.vXMm != null) {
+      const x = Math.round(renderResult.toCanvas(activeGuides.vXMm, 0).x) + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, canvas.height);
+      ctx.stroke();
+    }
+    if (activeGuides.hYMm != null) {
+      const y = Math.round(renderResult.toCanvas(0, activeGuides.hYMm).y) + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvas.width, y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Grip placement, shared by drawing and hit-testing so the two can never
+  // disagree: the lollipop flips BELOW the box when its normal above-the-top
+  // position would land off-canvas (top edge panned/zoomed above y=0) —
+  // an off-canvas grip can't be pointed at, making rotation unreachable.
+  function rotateGripPos(rect) {
+    const flip = rect.y - ROTATE_STALK_PX - ROTATE_GRIP_R < 0;
+    return { ...rotateHandlePx(rect, ROTATE_STALK_PX, { flip }), flip };
+  }
+
+  function drawRotateHandle(ctx, rect, color) {
+    const grip = rotateGripPos(rect);
+    const stalkAnchorY = grip.flip ? rect.y + rect.h : rect.y;
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(Math.round(rect.x + rect.w / 2) + 0.5, Math.round(stalkAnchorY) + 0.5);
+    ctx.lineTo(Math.round(grip.x) + 0.5, Math.round(grip.y) + 0.5);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(grip.x, grip.y, ROTATE_GRIP_R, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Small dark pill with white text — shared by the move-offset readout,
+  // the "same width/height" resize indicator, and the rotate degree badge.
+  // Position is clamped so it never renders off-canvas.
+  function drawBadge(ctx, cx, cy, text) {
+    ctx.save();
+    ctx.font = "11px system-ui, sans-serif";
+    const w = ctx.measureText(text).width + 12;
+    const h = 18;
+    const x = Math.round(Math.min(Math.max(cx - w / 2, 4), canvas.width - w - 4));
+    const y = Math.round(Math.min(Math.max(cy - h / 2, 4), canvas.height - h - 4));
+    ctx.fillStyle = "rgba(24, 26, 38, 0.85)";
+    if (ctx.roundRect) {
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, 4);
+      ctx.fill();
+    } else {
+      ctx.fillRect(x, y, w, h);
+    }
+    ctx.fillStyle = "#fff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, x + w / 2, y + h / 2 + 0.5);
+    ctx.restore();
+  }
+
+  const fmtMm = (v) => (v >= 0 ? "+" : "") + v.toFixed(1);
+
+  function drawDragBadges(ctx, rect) {
+    if (moveBadge) {
+      // Center offset from hoop center in mm (+y up) — the number an
+      // embroiderer would transfer to a hooping aid.
+      drawBadge(ctx, rect.x + rect.w / 2, rect.y + rect.h + 14, `x ${fmtMm(moveBadge.xMm)} · y ${fmtMm(moveBadge.yMm)} mm`);
+    } else if (sizeMatch) {
+      drawBadge(ctx, rect.x + rect.w / 2, rect.y + rect.h + 14, sizeMatch === "width" ? "same width" : "same height");
+    } else if (rotateBadgeDeg != null) {
+      // Badge sits on the grip's outward side (above normally, below when
+      // the lollipop is flipped under the box) so it never covers the box.
+      const grip = rotateGripPos(rect);
+      drawBadge(ctx, grip.x, grip.y + (grip.flip ? 16 : -16), `${rotateBadgeDeg}°`);
+    }
+  }
+
   // Draws the selection box + 4 corner handles ONLY around the SELECTED
   // element's rect — every other element renders plain (no overlay), even
-  // if it's also "ready" this paint.
-  function drawOverlay() {
-    if (!canvas) return;
-    const rect = perElementRects.find((r) => r.id === project.selectedId);
-    if (!rect) return;
-    const ctx = canvas.getContext("2d");
-    const color = selectionColor();
+  // if it's also "ready" this paint. Snap guides go underneath, the rotate
+  // lollipop (text elements) and any live drag badge on top.
+  function drawBoxWithHandles(ctx, rect, color) {
     ctx.save();
     ctx.strokeStyle = color;
     ctx.lineWidth = 1;
@@ -175,6 +324,35 @@
     ];
     for (const [cx, cy] of corners) ctx.fillRect(cx - s / 2, cy - s / 2, s, s);
     ctx.restore();
+  }
+
+  function drawOverlay() {
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    drawGuides(ctx);
+    const color = selectionColor();
+    if (multiSel) {
+      // Group mode: a thin dashed outline per member, then ONE group box
+      // with corner handles (group resize). No rotate grip — group rotation
+      // isn't a thing yet, so no dead control.
+      const memberRects = perElementRects.filter((r) => selIds.includes(r.id));
+      if (!memberRects.length) return;
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 3]);
+      for (const r of memberRects) ctx.strokeRect(Math.round(r.x) + 0.5, Math.round(r.y) + 0.5, r.w, r.h);
+      ctx.restore();
+      const g = groupRectPx();
+      drawBoxWithHandles(ctx, g, color);
+      drawDragBadges(ctx, g);
+      return;
+    }
+    const rect = perElementRects.find((r) => r.id === project.selectedId);
+    if (!rect) return;
+    drawBoxWithHandles(ctx, rect, color);
+    if (rotatable()) drawRotateHandle(ctx, rect, color);
+    drawDragBadges(ctx, rect);
   }
 
   // Emits the SELECTED element's bbox dims (not the combined design's) —
@@ -534,9 +712,46 @@
     return perElementRects.find((r) => r.id === id) || null;
   }
 
+  // Is the pointer on the selected element's rotate grip? (Grip hit area is
+  // slightly larger than the drawn circle — same forgiveness corner handles
+  // get from HANDLE_R.)
+  function rotateGripHit(selRect, p) {
+    if (!selRect || !rotatable()) return false;
+    const grip = rotateGripPos(selRect);
+    const dx = p.x - grip.x, dy = p.y - grip.y;
+    return Math.sqrt(dx * dx + dy * dy) <= ROTATE_GRIP_R + 3;
+  }
+
+  // All ready elements' absolute mm bboxes EXCEPT the dragged one — the
+  // snap candidates. peById is refreshed by every paint, so mid-drag these
+  // track the latest generation (only the dragged element moves; it's
+  // excluded precisely because it does).
+  function otherBBoxes() {
+    const out = [];
+    for (const id in peById) {
+      if (id !== dragTargetId && peById[id] && peById[id].bboxMm) out.push(peById[id].bboxMm);
+    }
+    return out;
+  }
+
   function updateHoverCursor(p) {
     if (!canvas) return;
+    if (multiSel) {
+      const g = groupRectPx();
+      const handle = g ? hitTest(g, p.x, p.y, HANDLE_R) : "none";
+      if (handle !== "none") {
+        canvas.style.cursor = cursorForHandle(handle);
+        return;
+      }
+      const hitId = pickElement(perElementRects, p.x, p.y);
+      canvas.style.cursor = hitId ? "move" : view.zoom > 1 ? "grab" : "default";
+      return;
+    }
     const selRect = rectFor(project.selectedId);
+    if (rotateGripHit(selRect, p)) {
+      canvas.style.cursor = "grab";
+      return;
+    }
     let handle = selRect ? hitTest(selRect, p.x, p.y, HANDLE_R) : "none";
     if (handle === "none") {
       // Nothing on the selected element under the pointer — is some OTHER
@@ -562,7 +777,10 @@
       if (pendingPatch) {
         const p = pendingPatch;
         pendingPatch = null;
-        dispatch("elupdate", p);
+        // Group drags carry one patch PER member ({ multi: { id: patch } });
+        // single-element drags keep the original { id, patch } shape.
+        if (p.multi) dispatch("elupdatemany", p.multi);
+        else dispatch("elupdate", p);
       }
     });
   }
@@ -580,6 +798,83 @@
     if (simActive) return; // watch-mode: no select/drag/resize during playback
     if (!canvas || !renderResult) return;
     const p = canvasPointFromEvent(e);
+
+    // Ctrl/Cmd+click: toggle the clicked element in the multi-selection.
+    // Toggling never starts a drag — the NEXT (plain) pointerdown drags the
+    // group. A ctrl-click on empty field is a no-op (selection stays).
+    if (e.ctrlKey || e.metaKey) {
+      const hitId = pickElement(perElementRects, p.x, p.y);
+      if (hitId) dispatch("toggleselect", hitId);
+      return;
+    }
+
+    // Group mode: the union box owns its area — corners group-resize, body
+    // group-moves. A plain click OUTSIDE the group box collapses selection
+    // to whatever was clicked (or falls through to pan on empty space).
+    if (multiSel) {
+      const g = groupRectPx();
+      const handle = g ? hitTest(g, p.x, p.y, HANDLE_R) : "none";
+      if (handle !== "none") {
+        const members = [];
+        const memberBoxes = [];
+        for (const id of selIds) {
+          const el2 = project.elements.find((x) => x.id === id);
+          const pe2 = peById[id];
+          if (!el2 || !pe2) continue;
+          const w = pe2.bboxMm.x1 - pe2.bboxMm.x0;
+          // Field names deliberately match groupResizePatches' member
+          // contract (offsetXMm/offsetYMm) — a short alias here once
+          // silently zeroed every offset in the resize fan-out.
+          members.push({ id, offsetXMm: el2.offsetXMm || 0, offsetYMm: el2.offsetYMm || 0, widthMm: w, targetMm: el2.sizeMm != null ? el2.sizeMm : w });
+          memberBoxes.push(pe2.bboxMm);
+        }
+        if (!members.length) return;
+        canvas.setPointerCapture(e.pointerId);
+        dragMembers = members;
+        dragGroupBBoxMm = unionBBox(memberBoxes);
+        dragStartPx = p;
+        dragTargetId = null;
+        if (handle === "body") {
+          dragMode = "gmove";
+        } else {
+          dragMode = "gresize";
+          dragHandle = handle;
+        }
+        canvas.style.cursor = cursorForHandle(handle);
+        return;
+      }
+      const hitId = pickElement(perElementRects, p.x, p.y);
+      if (hitId) {
+        dispatch("select", hitId); // plain click: collapse to that element
+        return;
+      }
+      if (view.zoom > 1) {
+        canvas.setPointerCapture(e.pointerId);
+        dragMode = "pan";
+        dragStartPx = p;
+        dragStartPanX = view.panX;
+        dragStartPanY = view.panY;
+        canvas.style.cursor = "grabbing";
+      }
+      return;
+    }
+
+    // Rotate grip first — it sits OUTSIDE the selection rect (above the top
+    // edge), so it can never shadow a corner/body hit and must be tested
+    // before them. Selected element only (it's the only one drawn a grip).
+    const selRect = rectFor(project.selectedId);
+    if (rotateGripHit(selRect, p)) {
+      const el = selectedElement();
+      canvas.setPointerCapture(e.pointerId);
+      dragMode = "rotate";
+      dragTargetId = project.selectedId;
+      dragStartPx = p;
+      dragStartRotationDeg = (el && el.rotationDeg) || 0;
+      dragRotateCenterPx = { x: selRect.x + selRect.w / 2, y: selRect.y + selRect.h / 2 };
+      rotateBadgeDeg = dragStartRotationDeg;
+      canvas.style.cursor = "grabbing";
+      return;
+    }
 
     // Hit-test the SELECTED element's rect first (corners win over body) —
     // that's the only element with visible handles, so it's the only one a
@@ -624,6 +919,8 @@
     dragStartOffYMm = el.offsetYMm || 0;
     dragStartWidthMm = pe.bboxMm.x1 - pe.bboxMm.x0;
     dragStartHeightMm = pe.bboxMm.y1 - pe.bboxMm.y0;
+    dragStartBBoxMm = pe.bboxMm; // move-snap translates this by the live drag delta
+    dragStartTargetMm = el.sizeMm != null ? el.sizeMm : dragStartWidthMm;
     canvas.style.cursor = cursorForHandle(handle);
 
     if (handle === "body") {
@@ -662,17 +959,125 @@
       scheduleViewRepaint();
       return;
     }
+    if (dragMode === "rotate") {
+      // Alt = free rotation (skip the 45° magnets), mirroring Alt's
+      // suspend-snap role on move/resize.
+      const deg = dragRotate(dragStartRotationDeg, dragRotateCenterPx, dragStartPx, p, { free: e.altKey });
+      rotateBadgeDeg = deg;
+      pendingPatch = { id: dragTargetId, patch: { rotationDeg: deg } };
+      schedulePatchFlush();
+      return;
+    }
+    if (dragMode === "gmove" || dragMode === "gresize") {
+      const gscale = renderResult && renderResult.scale ? renderResult.scale : 1;
+      const gdxMm = (p.x - dragStartPx.x) / gscale;
+      const gdyMm = (p.y - dragStartPx.y) / gscale;
+      const hoop = hoopSizeMm(project);
+      if (dragMode === "gmove") {
+        // Same shape as the single-element move: snap the (shifted) union
+        // bbox against NON-selected elements + hoop centerlines, then clamp
+        // the whole group to the hoop; clamp wins over snap.
+        let dX = gdxMm, dY = -gdyMm;
+        activeGuides = null;
+        if (snapEnabled && !e.altKey && dragGroupBBoxMm) {
+          const bbox = {
+            x0: dragGroupBBoxMm.x0 + dX, x1: dragGroupBBoxMm.x1 + dX,
+            y0: dragGroupBBoxMm.y0 + dY, y1: dragGroupBBoxMm.y1 + dY,
+          };
+          const others = [];
+          for (const id in peById) {
+            if (!selIds.includes(id) && peById[id] && peById[id].bboxMm) others.push(peById[id].bboxMm);
+          }
+          const s = snapMove(bbox, buildSnapLines(others), SNAP_PX / gscale);
+          dX += s.dx;
+          dY += s.dy;
+          if (s.guideXMm != null || s.guideYMm != null) activeGuides = { vXMm: s.guideXMm, hYMm: s.guideYMm };
+        }
+        const cl = clampGroupDelta(dX, dY, dragGroupBBoxMm, hoop.wMm, hoop.hMm);
+        if (activeGuides) {
+          if (activeGuides.vXMm != null && Math.abs(cl.dxMm - dX) > 0.01) activeGuides.vXMm = null;
+          if (activeGuides.hYMm != null && Math.abs(cl.dyMm - dY) > 0.01) activeGuides.hYMm = null;
+          if (activeGuides.vXMm == null && activeGuides.hYMm == null) activeGuides = null;
+        }
+        moveBadge = {
+          xMm: (dragGroupBBoxMm.x0 + dragGroupBBoxMm.x1) / 2 + cl.dxMm,
+          yMm: (dragGroupBBoxMm.y0 + dragGroupBBoxMm.y1) / 2 + cl.dyMm,
+        };
+        const patches = {};
+        for (const m of dragMembers) patches[m.id] = { offsetXMm: m.offsetXMm + cl.dxMm, offsetYMm: m.offsetYMm + cl.dyMm };
+        pendingPatch = { multi: patches };
+      } else {
+        // Group resize: one factor from the union box's aspect-locked
+        // corner drag, fanned out to every member (targets AND offsets
+        // scale about the group center). Factor capped so the scaled
+        // union still fits the hoop; groupResizePatches raises it if any
+        // member would fall below the stitchable minimum.
+        const gW = dragGroupBBoxMm.x1 - dragGroupBBoxMm.x0;
+        const gH = dragGroupBBoxMm.y1 - dragGroupBBoxMm.y0;
+        const newW = dragResize(gW, gH, dragHandle, gdxMm, gdyMm, MIN_SIZE_MM, hoop.wMm || gW);
+        let f = gW > 0 ? newW / gW : 1;
+        const fMax = Math.min(hoop.wMm ? hoop.wMm / gW : Infinity, hoop.hMm ? hoop.hMm / gH : Infinity);
+        if (f > fMax) f = fMax;
+        const gcx = (dragGroupBBoxMm.x0 + dragGroupBBoxMm.x1) / 2;
+        const gcy = (dragGroupBBoxMm.y0 + dragGroupBBoxMm.y1) / 2;
+        const r = groupResizePatches(dragMembers, f, gcx, gcy, MIN_SIZE_MM);
+        pendingPatch = { multi: r.patches };
+      }
+      schedulePatchFlush();
+      return;
+    }
     const scale = renderResult && renderResult.scale ? renderResult.scale : 1; // px per mm
     const dxMm = (p.x - dragStartPx.x) / scale;
     const dyMm = (p.y - dragStartPx.y) / scale;
     const { wMm: hoopWmm, hMm: hoopHmm } = hoopSizeMm(project);
+    const snapping = snapEnabled && !e.altKey;
 
     if (dragMode === "resize") {
-      const newWidthMm = dragResize(dragStartWidthMm, dragStartHeightMm, dragHandle, dxMm, dyMm, MIN_SIZE_MM, hoopWmm || dragStartWidthMm);
+      let newWidthMm = dragResize(dragStartWidthMm, dragStartHeightMm, dragHandle, dxMm, dyMm, MIN_SIZE_MM, hoopWmm || dragStartWidthMm);
+      sizeMatch = null;
+      if (snapping) {
+        const aspect = dragStartHeightMm > 0 ? dragStartWidthMm / dragStartHeightMm : 1;
+        const dims = otherBBoxes().map((b) => ({ w: b.x1 - b.x0, h: b.y1 - b.y0 }));
+        const s = snapResizeWidth(newWidthMm, aspect, dims, SNAP_PX / scale);
+        // A snapped width must still respect dragResize's own clamp range.
+        const maxW = hoopWmm || dragStartWidthMm;
+        if (s.match && s.widthMm >= MIN_SIZE_MM && s.widthMm <= maxW) {
+          // s.widthMm is the OTHER element's rendered bbox width, but sizeMm
+          // is a generation TARGET, and generation grows output past the
+          // target by a fixed pull-comp/outline margin. Subtract the dragged
+          // element's own measured growth (rendered minus target at drag
+          // start) so the REGENERATED bbox — the thing the user sees — is
+          // what matches, not the pre-growth target.
+          newWidthMm = s.widthMm - (dragStartWidthMm - dragStartTargetMm);
+          sizeMatch = s.match;
+        }
+      }
       pendingPatch = { id: dragTargetId, patch: { sizeMm: newWidthMm } };
     } else if (dragMode === "move") {
-      const moved = dragMove(dragStartOffXMm, dragStartOffYMm, dxMm, dyMm, dragStartWidthMm, dragStartHeightMm, hoopWmm, hoopHmm);
-      pendingPatch = { id: dragTargetId, patch: moved };
+      // Raw (unclamped) offset first so snapping sees the true pointer
+      // position; hoop containment is applied AFTER the snap — the clamp
+      // always wins, and a guide whose axis the clamp overrode is dropped.
+      let offX = dragStartOffXMm + dxMm;
+      let offY = dragStartOffYMm - dyMm;
+      activeGuides = null;
+      if (snapping && dragStartBBoxMm) {
+        const bbox = {
+          x0: dragStartBBoxMm.x0 + dxMm, x1: dragStartBBoxMm.x1 + dxMm,
+          y0: dragStartBBoxMm.y0 - dyMm, y1: dragStartBBoxMm.y1 - dyMm,
+        };
+        const s = snapMove(bbox, buildSnapLines(otherBBoxes()), SNAP_PX / scale);
+        offX += s.dx;
+        offY += s.dy;
+        if (s.guideXMm != null || s.guideYMm != null) activeGuides = { vXMm: s.guideXMm, hYMm: s.guideYMm };
+      }
+      const clamped = clampOffsets(offX, offY, dragStartWidthMm, dragStartHeightMm, hoopWmm, hoopHmm);
+      if (activeGuides) {
+        if (activeGuides.vXMm != null && Math.abs(clamped.offsetXMm - offX) > 0.01) activeGuides.vXMm = null;
+        if (activeGuides.hYMm != null && Math.abs(clamped.offsetYMm - offY) > 0.01) activeGuides.hYMm = null;
+        if (activeGuides.vXMm == null && activeGuides.hYMm == null) activeGuides = null;
+      }
+      moveBadge = { xMm: clamped.offsetXMm, yMm: clamped.offsetYMm };
+      pendingPatch = { id: dragTargetId, patch: clamped };
     }
     schedulePatchFlush();
   }
@@ -687,6 +1092,20 @@
     dragStartPx = null;
     dragStartPanX = 0;
     dragStartPanY = 0;
+    dragStartBBoxMm = null;
+    dragRotateCenterPx = null;
+    dragMembers = null;
+    dragGroupBBoxMm = null;
+    // Erase drag-only overlay chrome (guides/badges). One view repaint —
+    // cheaper than a full generate, and the final patch's paint() (if still
+    // in flight) draws with this already-cleared state anyway.
+    if (activeGuides || sizeMatch || moveBadge || rotateBadgeDeg != null) {
+      activeGuides = null;
+      sizeMatch = null;
+      moveBadge = null;
+      rotateBadgeDeg = null;
+      scheduleViewRepaint();
+    }
   }
 
   function onPointerLeave() {
@@ -720,6 +1139,15 @@
       <span class="zoompct">{Math.round(view.zoom * 100)}%</span>
       <button type="button" class="zoombtn" on:click={zoomIn} disabled={view.zoom >= MAX_ZOOM} aria-label="Zoom in">+</button>
       <button type="button" class="zoombtn zoomfit" on:click={resetView} aria-label="Fit to hoop" title="Fit to hoop">⤢</button>
+      <button
+        type="button"
+        class="zoombtn viewtoggle"
+        class:simon={snapEnabled}
+        on:click={toggleSnap}
+        aria-pressed={snapEnabled}
+        aria-label="Auto-snap"
+        title="Auto-snap to other elements and hoop center (hold Alt to suspend)"
+      >🧲</button>
       <button
         type="button"
         class="zoombtn viewtoggle"

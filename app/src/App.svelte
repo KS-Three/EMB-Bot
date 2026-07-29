@@ -1,5 +1,5 @@
 <script>
-  import { update, updateElement, selectElement, addElement, removeElement } from "./lib/project.js";
+  import { update, updateElement, updateElements, selectElement, toggleSelectElement, addElement, removeElement } from "./lib/project.js";
   import { createHistory } from "./lib/history.js";
   import { applyTemplate } from "./lib/templates.js";
   import { canAdvance, nextStep, prevStep } from "./lib/flow.js";
@@ -298,6 +298,19 @@
   function elUpdate(id, patch, record = true) {
     project = updateElement(project, id, patch);
     persist(record);
+  }
+
+  // Multi-select group edits (EmbroideryField's group move/resize and
+  // ContentStep's bulk-edit panel): one patch per member, applied in a
+  // single immutable pass so undo records ONE step for the whole gesture.
+  function elUpdateMany(patchById, record = true) {
+    project = updateElements(project, patchById);
+    persist(record);
+  }
+
+  function onToggleSelect(id) {
+    project = toggleSelectElement(project, id);
+    persist(false); // pure selection, same no-undo-step rule as onSelect
   }
 
   // Hoop width in mm for the current garment — new elements are seeded with
@@ -608,7 +621,9 @@
           {designDims}
           {showAddElementsHint}
           on:elupdate={(e) => elUpdate(e.detail.id, e.detail.patch)}
+          on:elupdatemany={(e) => elUpdateMany(e.detail)}
           on:select={(e) => onSelect(e.detail)}
+          on:toggleselect={(e) => onToggleSelect(e.detail)}
           on:addelement={(e) => onAddElement(e.detail)}
           on:removeelement={(e) => onRemoveElement(e.detail)}
           on:image={(e) => onImage(project.selectedId, e.detail)}
@@ -652,7 +667,9 @@
       {runtime}
       showDragHint={showDragFieldHint}
       on:elupdate={(e) => elUpdate(e.detail.id, e.detail.patch, !e.detail.quiet)}
+      on:elupdatemany={(e) => elUpdateMany(e.detail)}
       on:select={(e) => onSelect(e.detail)}
+      on:toggleselect={(e) => onToggleSelect(e.detail)}
       on:dims={(e) => onDims(e.detail)}
       on:stats={(e) => onStats(e.detail)}
       on:dismisshint={() => dismissHint("drag-field")}

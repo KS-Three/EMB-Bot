@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher } from "svelte";
   import { EMB } from "../lib/emb.js";
+  import { alignOffset } from "../lib/interact.js";
 
   export let project;
   // Dims of the last generated design ({ widthMM, heightMM }) or null when
@@ -94,6 +95,35 @@
   function autoFit() {
     d("update", { sizeMm: null, offsetXMm: 0, offsetYMm: 0 });
   }
+
+  // ---- Align in hoop --------------------------------------------------------
+  // Element-level placement, distinct from TextStep's "Justify lines" (which
+  // positions LINES against each other inside one text block). This moves the
+  // whole selected element -- any type -- flush against a hoop edge, i.e. the
+  // one-click version of dragging until the field's snap catches.
+  //
+  // Needs the element's GENERATED width (designDims), so it stays disabled
+  // until something has stitched -- same rule the height input follows -- and
+  // when the garment can't be resolved (hoopWmm Infinity).
+  $: canAlign = !!designDims && isFinite(hoopWmm);
+
+  function alignTo(mode) {
+    if (!canAlign) return;
+    d("update", { offsetXMm: alignOffset(mode, designDims.widthMM, hoopWmm) });
+  }
+
+  // Which of the three positions the element is currently sitting at (null =
+  // somewhere in between, e.g. hand-dragged). "center" is tested FIRST so a
+  // design too wide to have any slack -- where all three modes collapse to
+  // offset 0 -- reads as centered rather than arbitrarily matching "left".
+  $: alignActive = (() => {
+    if (!canAlign) return null;
+    const cur = project.offsetXMm || 0;
+    for (const mode of ["center", "left", "right"]) {
+      if (Math.abs(alignOffset(mode, designDims.widthMM, hoopWmm) - cur) < 0.05) return mode;
+    }
+    return null;
+  })();
 </script>
 
 <div class="sizepanel">
@@ -127,7 +157,44 @@
     </select>
     <button type="button" class="autofit" on:click={autoFit}>Auto-fit</button>
   </div>
+  <div class="alignrow">
+    <span class="alignlabel">Align in hoop</span>
+    <div class="alignbtns">
+      {#each [["left", "Left"], ["center", "Center"], ["right", "Right"]] as [mode, label]}
+        <button
+          type="button"
+          class="alignbtn"
+          class:active={alignActive === mode}
+          disabled={!canAlign}
+          title={canAlign
+            ? `Move this element flush ${mode === "center" ? "to the hoop's center" : "against the hoop's " + mode + " edge"}`
+            : "Available once the design has stitched"}
+          on:click={() => alignTo(mode)}
+        >{label}</button>
+      {/each}
+    </div>
+  </div>
   {#if warn}
     <p class="warn">Smaller than 5 mm — thread can't stitch this cleanly</p>
   {/if}
 </div>
+
+<style>
+  .alignrow { margin-top: 10px; }
+  .alignlabel { display: block; font-size: var(--fs-xs, 12px); margin-bottom: 4px; }
+  .alignbtns { display: flex; gap: 6px; }
+  .alignbtn {
+    padding: 5px 10px;
+    border: 1px solid var(--tint-border, #ccd6fb);
+    border-radius: var(--radius-s, 6px);
+    background: var(--surface, #fff);
+    cursor: pointer;
+    font-size: var(--fs-xs, 12px);
+  }
+  .alignbtn.active {
+    background: var(--accent, #4f46e5);
+    color: #fff;
+    border-color: var(--accent, #4f46e5);
+  }
+  .alignbtn:disabled { opacity: 0.45; cursor: not-allowed; }
+</style>

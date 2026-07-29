@@ -61,6 +61,13 @@ export function defaultProject() {
     version: 2,
     garmentId: "left_chest",
     selectedId: "e1",
+    // Multi-select (Ctrl+click): the FULL selection. Invariants, maintained
+    // by every selection-touching function here: never empty, and
+    // selectedId (the "primary" — the element the single-element editor
+    // panels bind to) is always a member. Single selection is the
+    // one-element array; selectedId alone remains authoritative for every
+    // pre-multi-select consumer, which is why it stays a plain string.
+    selectedIds: ["e1"],
     elements: [defaultTextElement("e1")],
     // Project-level (not per-element) — the embroidery field's fabric render
     // color, [r,g,b]. Render-only: never touches stitch generation (see
@@ -107,28 +114,65 @@ export function addElement(project, type, hoopWmm) {
       ? { ...el, offsetYMm: -10 * n }
       : { ...el, sizeMm: Math.round(0.4 * hoopWmm), offsetYMm: -10 * n };
   }
-  return { ...project, elements: [...project.elements, el], selectedId: id };
+  return { ...project, elements: [...project.elements, el], selectedId: id, selectedIds: [id] };
 }
 
 // Removes an element by id. A project must always keep at least one
 // element, so removing the last remaining element is a no-op. If the
 // removed element was selected, selection falls back to the first
-// remaining element.
+// remaining element; it's also dropped from the multi-selection (which
+// falls back the same way if that empties it).
 export function removeElement(project, id) {
   if (project.elements.length <= 1) return project;
   const elements = project.elements.filter((el) => el.id !== id);
   if (elements.length === project.elements.length) return project; // id not found
   const selectedId = project.selectedId === id ? elements[0].id : project.selectedId;
-  return { ...project, elements, selectedId };
+  let selectedIds = selectedIdsOf(project).filter((sid) => sid !== id);
+  if (!selectedIds.length) selectedIds = [selectedId];
+  if (!selectedIds.includes(selectedId)) selectedIds = [...selectedIds, selectedId];
+  return { ...project, elements, selectedId, selectedIds };
 }
 
+// The full selection, tolerating projects saved before selectedIds existed
+// (loaded snapshots, undo history from an old session): falls back to the
+// single selectedId.
+export function selectedIdsOf(project) {
+  const ids = project.selectedIds;
+  if (Array.isArray(ids) && ids.length) return ids;
+  return project.selectedId ? [project.selectedId] : [];
+}
+
+// Plain click: collapse the selection to just this element.
 export function selectElement(project, id) {
-  return { ...project, selectedId: id };
+  return { ...project, selectedId: id, selectedIds: [id] };
+}
+
+// Ctrl/Cmd+click: toggle this element in the multi-selection. Adding makes
+// it the primary (selectedId — matching "last clicked wins" in every design
+// tool); removing the primary promotes the last remaining member. Removing
+// the only member is a no-op — a selection is never empty.
+export function toggleSelectElement(project, id) {
+  const ids = selectedIdsOf(project);
+  if (ids.includes(id)) {
+    if (ids.length <= 1) return project;
+    const selectedIds = ids.filter((sid) => sid !== id);
+    const selectedId = project.selectedId === id ? selectedIds[selectedIds.length - 1] : project.selectedId;
+    return { ...project, selectedId, selectedIds };
+  }
+  return { ...project, selectedId: id, selectedIds: [...ids, id] };
 }
 
 // Patches a single element by id, leaving all other elements untouched.
 export function updateElement(project, id, patch) {
   const elements = project.elements.map((el) => (el.id === id ? { ...el, ...patch } : el));
+  return { ...project, elements };
+}
+
+// Bulk patch (multi-select group move / bulk-edit): one immutable pass,
+// each listed id merged with ITS OWN patch — { id: patch, ... }. Ids not in
+// the map pass through untouched.
+export function updateElements(project, patchById) {
+  const elements = project.elements.map((el) => (patchById[el.id] ? { ...el, ...patchById[el.id] } : el));
   return { ...project, elements };
 }
 
@@ -169,6 +213,16 @@ export function migrateProject(input) {
     if (!Array.isArray(merged.elements) || merged.elements.length === 0) {
       merged.elements = base.elements;
     }
+    // selectedIds invariants for pre-multi-select saves (and corrupt input):
+    // members must be real element ids, the array must be non-empty, and
+    // selectedId must be a member. Anything off -> collapse to [selectedId]
+    // (the exact selection the project had before selectedIds existed).
+    const known = new Set(merged.elements.map((el) => el.id));
+    const ids = Array.isArray(merged.selectedIds) ? merged.selectedIds.filter((id) => known.has(id)) : [];
+    merged.selectedIds =
+      Array.isArray(input.selectedIds) && ids.length && ids.includes(merged.selectedId)
+        ? ids
+        : [merged.selectedId];
     return merged;
   }
 

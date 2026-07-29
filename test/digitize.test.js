@@ -717,3 +717,53 @@ test("buildQualityDesign: opts absent (no targetWidthMm/offsets) stays back-comp
   const b = DG.buildQualityDesign(JSON.parse(JSON.stringify(region)), { ...base });
   assert.deepStrictEqual(a, b);
 });
+
+// ---- Cap center-out lettering (crown-distortion-safe sew order) ------------
+// On cap garments (hat_front / beanie — the same capMode predicate the image
+// pipeline uses) lettering glyphs sew bottom-line-first and center-out within
+// each line. Everywhere else (including every garment object without an `id`,
+// like all the fixtures above) the order is untouched.
+
+test("buildLetteringDesign: cap garment sews the middle glyph first (center-out)", () => {
+  const font = require("../src/fonts/geneva_simple.json");
+  const base = { pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false };
+  const flat = DG.buildLetteringDesign(font, "AVA", Object.assign({ garment: { widthIn: 5, heightIn: 2.25 } }, base));
+  const cap = DG.buildLetteringDesign(font, "AVA", Object.assign({ garment: { id: "hat_front", widthIn: 5, heightIn: 2.25 } }, base));
+  const firstStitch = (d) => d.stitches.find((s) => s.type === "stitch");
+  const halfW = (d) => (d.widthMM * 10) / 2; // DST units
+  // Non-cap: text order — the leading "A" sews first, well left of center.
+  assert.ok(firstStitch(flat).x < -halfW(flat) / 3, "non-cap first stitch is in the left third");
+  // Cap: the middle "V" sews first — first stitch lands in the central third.
+  assert.ok(Math.abs(firstStitch(cap).x) < halfW(cap) / 3, "cap first stitch is in the central third");
+  // Same glyphs, same geometry: stitch COUNT is preserved (order-only change
+  // aside from connector/trim differences, sewn-stitch totals stay close).
+  assert.ok(Math.abs(cap.stitchCount - flat.stitchCount) <= flat.stitchCount * 0.1, "reorder must not meaningfully change stitch count");
+});
+
+test("buildLetteringDesign: cap garment sews the bottom line before the top line", () => {
+  const font = require("../src/fonts/geneva_simple.json");
+  const base = { pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false };
+  const flat = DG.buildLetteringDesign(font, "AAA\nVVV", Object.assign({ garment: { widthIn: 5, heightIn: 2.25 } }, base));
+  const cap = DG.buildLetteringDesign(font, "AAA\nVVV", Object.assign({ garment: { id: "hat_front", widthIn: 5, heightIn: 2.25 } }, base));
+  const firstStitch = (d) => d.stitches.find((s) => s.type === "stitch");
+  // DST +y is UP and the design is centered: top line has y > 0, bottom < 0.
+  assert.ok(firstStitch(flat).y > 0, "non-cap starts on the TOP line (text order)");
+  assert.ok(firstStitch(cap).y < 0, "cap starts on the BOTTOM line (bill toward crown)");
+});
+
+test("buildLetteringDesign: cap reorder is deterministic and never drops glyph stitches", () => {
+  const font = require("../src/fonts/geneva_simple.json");
+  const base = { garment: { id: "hat_front", widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false };
+  const a = DG.buildLetteringDesign(font, "SD WHEEL\nJR", base);
+  const b = DG.buildLetteringDesign(font, "SD WHEEL\nJR", base);
+  assert.deepStrictEqual(a, b, "same input, same output");
+  assert.ok(a.stitchCount > 0);
+});
+
+test("buildLetteringDesign: garment without an id (all pre-cap fixtures) is untouched by capMode", () => {
+  const font = require("../src/fonts/geneva_simple.json");
+  const base = { garment: { widthIn: 8, heightIn: 8 }, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false };
+  const d = DG.buildLetteringDesign(font, "AB", base);
+  const firstStitch = d.stitches.find((s) => s.type === "stitch");
+  assert.ok(firstStitch.x < 0, "no-id garment still sews in text order (left glyph first)");
+});

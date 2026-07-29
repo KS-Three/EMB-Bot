@@ -1,5 +1,8 @@
 import { test, expect } from "vitest";
-import { designRectPx, hitTest, dragResize, dragMove, clampOffsets, pickElement, clampPan } from "./interact.js";
+import {
+  designRectPx, hitTest, dragResize, dragMove, clampOffsets, pickElement, clampPan,
+  buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, alignOffset,
+} from "./interact.js";
 
 // ---- designRectPx ---------------------------------------------------------
 
@@ -225,4 +228,252 @@ test("pickElement treats rect edges as inclusive", () => {
   const rects = [{ id: "a", x: 10, y: 10, w: 10, h: 10 }];
   expect(pickElement(rects, 10, 10)).toBe("a"); // nw corner
   expect(pickElement(rects, 20, 20)).toBe("a"); // se corner
+});
+
+// ---- alignOffset -----------------------------------------------------------
+// One-click flush align of an element inside the hoop (SizePanel's
+// "Align in hoop" row). Shares clampOffsets' (hoop-design)/2 bound.
+
+test("alignOffset: left/center/right land at -max / 0 / +max", () => {
+  // hoop 100, design 20 -> max offset 40
+  expect(alignOffset("left", 20, 100)).toBeCloseTo(-40, 5);
+  expect(alignOffset("center", 20, 100)).toBe(0);
+  expect(alignOffset("right", 20, 100)).toBeCloseTo(40, 5);
+});
+
+test("alignOffset: y-axis modes respect +y UP (top is positive)", () => {
+  expect(alignOffset("top", 20, 100)).toBeCloseTo(40, 5);
+  expect(alignOffset("bottom", 20, 100)).toBeCloseTo(-40, 5);
+});
+
+test("alignOffset: an unknown/absent mode centers", () => {
+  expect(alignOffset(undefined, 20, 100)).toBe(0);
+  expect(alignOffset("middle", 20, 100)).toBe(0);
+});
+
+test("alignOffset: a design bigger than the hoop has no slack — every mode centers", () => {
+  expect(alignOffset("left", 300, 100)).toBe(0);
+  expect(alignOffset("right", 300, 100)).toBe(0);
+  expect(alignOffset("center", 300, 100)).toBe(0);
+});
+
+test("alignOffset: an exactly hoop-sized design pins to 0 on every mode", () => {
+  expect(alignOffset("left", 100, 100)).toBe(0);
+  expect(alignOffset("right", 100, 100)).toBe(0);
+});
+
+test("alignOffset results are already inside clampOffsets' range (clamping is a no-op)", () => {
+  for (const mode of ["left", "center", "right"]) {
+    const offX = alignOffset(mode, 20, 100);
+    const r = clampOffsets(offX, 0, 20, 20, 100, 100);
+    expect(r.offsetXMm).toBeCloseTo(offX, 5);
+  }
+});
+
+// ---- buildSnapLines / snapMove ---------------------------------------------
+// Move-drag auto-snap: other elements' edges/centers + the hoop centerlines.
+
+test("buildSnapLines collects each bbox's edges and center per axis, plus the hoop centerlines", () => {
+  const lines = buildSnapLines([{ x0: 10, y0: -20, x1: 30, y1: 0 }]);
+  expect(lines.xs).toEqual([0, 10, 20, 30]); // hoop center, left, center, right
+  expect(lines.ys).toEqual([0, -20, -10, 0]); // hoop center, bottom, center, top
+});
+
+test("buildSnapLines can exclude the hoop centerlines", () => {
+  const lines = buildSnapLines([{ x0: 10, y0: 10, x1: 30, y1: 30 }], { hoopCenter: false });
+  expect(lines.xs).toEqual([10, 20, 30]);
+  expect(lines.ys).toEqual([10, 20, 30]);
+});
+
+test("snapMove snaps an edge to a nearby line within threshold and reports the guide", () => {
+  // bbox right edge at 9.2, candidate line at 10, threshold 2 -> dx +0.8
+  const bbox = { x0: -10.8, y0: 50, x1: 9.2, y1: 70 }; // y far from any candidate
+  const s = snapMove(bbox, { xs: [10], ys: [0] }, 2);
+  expect(s.dx).toBeCloseTo(0.8, 5);
+  expect(s.guideXMm).toBe(10);
+  expect(s.dy).toBe(0);
+  expect(s.guideYMm).toBeNull();
+});
+
+test("snapMove snaps centers to the hoop centerline (the centering use case)", () => {
+  // bbox center at x=1.5, y=-1.0; hoop centerlines at 0 -> pulls to dead center
+  const bbox = { x0: -8.5, y0: -11, x1: 11.5, y1: 9 };
+  const s = snapMove(bbox, buildSnapLines([]), 2);
+  expect(s.dx).toBeCloseTo(-1.5, 5);
+  expect(s.dy).toBeCloseTo(1.0, 5);
+  expect(s.guideXMm).toBe(0);
+  expect(s.guideYMm).toBe(0);
+});
+
+test("snapMove does not snap beyond the threshold", () => {
+  const bbox = { x0: -10, y0: -10, x1: 10, y1: 10 }; // center (0,0), edges ±10
+  const s = snapMove(bbox, { xs: [15], ys: [-16] }, 2); // nearest own lines 5 and 6 away
+  expect(s.dx).toBe(0);
+  expect(s.dy).toBe(0);
+  expect(s.guideXMm).toBeNull();
+  expect(s.guideYMm).toBeNull();
+});
+
+test("snapMove picks the nearest candidate when several are in range", () => {
+  // right edge 10: candidates 10.5 (0.5 away) and 11.9 (1.9 away) -> 10.5 wins
+  const bbox = { x0: -10, y0: 100, x1: 10, y1: 120 };
+  const s = snapMove(bbox, { xs: [10.5, 11.9], ys: [] }, 2);
+  expect(s.dx).toBeCloseTo(0.5, 5);
+  expect(s.guideXMm).toBe(10.5);
+});
+
+test("snapMove axes are independent (y snaps to center while x stays put)", () => {
+  // x: center 5, edges -5/15 — all > 2mm from the only candidate (0) -> no snap.
+  // y: center 0.8 -> snaps to the hoop centerline.
+  const bbox = { x0: -5, y0: -9.2, x1: 15, y1: 10.8 };
+  const s = snapMove(bbox, buildSnapLines([]), 2);
+  expect(s.dx).toBe(0);
+  expect(s.guideXMm).toBeNull();
+  expect(s.dy).toBeCloseTo(-0.8, 5);
+  expect(s.guideYMm).toBe(0);
+});
+
+// ---- snapResizeWidth --------------------------------------------------------
+// Aspect-locked resize snapping to another element's exact width or height.
+
+test("snapResizeWidth snaps to another element's width within threshold", () => {
+  const s = snapResizeWidth(41.2, 2, [{ w: 40, h: 100 }], 1.5);
+  expect(s.widthMm).toBe(40);
+  expect(s.match).toBe("width");
+});
+
+test("snapResizeWidth snaps via HEIGHT equality through the aspect ratio", () => {
+  // dragged aspect w/h=2 -> matching other's h=15 needs width 30
+  const s = snapResizeWidth(30.8, 2, [{ w: 100, h: 15 }], 1.5);
+  expect(s.widthMm).toBeCloseTo(30, 5);
+  expect(s.match).toBe("height");
+});
+
+test("snapResizeWidth leaves the width alone beyond the threshold", () => {
+  const s = snapResizeWidth(45, 2, [{ w: 40, h: 100 }], 1.5);
+  expect(s.widthMm).toBe(45);
+  expect(s.match).toBeNull();
+});
+
+test("snapResizeWidth picks the nearest candidate across elements and kinds", () => {
+  // width candidates: 40 (1.2 away); height candidates: 20.5*2=41 (0.2 away) -> height wins
+  const s = snapResizeWidth(41.2, 2, [{ w: 40, h: 20.5 }], 1.5);
+  expect(s.widthMm).toBeCloseTo(41, 5);
+  expect(s.match).toBe("height");
+});
+
+// ---- rotateHandlePx / dragRotate -------------------------------------------
+// The lollipop rotate handle above the selection box (text elements only).
+
+test("rotateHandlePx sits centered above the rect's top edge by stalkPx", () => {
+  const p = rotateHandlePx({ x: 100, y: 50, w: 200, h: 100 }, 22);
+  expect(p.x).toBe(200);
+  expect(p.y).toBe(28);
+});
+
+// Canvas-px point at `deg` (y-up screen convention) on a 100px circle around c.
+const ptAt = (c, deg) => ({
+  x: c.x + Math.cos((deg * Math.PI) / 180) * 100,
+  y: c.y - Math.sin((deg * Math.PI) / 180) * 100,
+});
+const C = { x: 400, y: 300 };
+
+test("dragRotate: sweeping the pointer counterclockwise 90° adds 90° (engine's +deg direction)", () => {
+  expect(dragRotate(0, C, ptAt(C, 90), ptAt(C, 180))).toBe(90);
+});
+
+test("dragRotate is delta-based: starting rotation is preserved under a small sweep", () => {
+  expect(dragRotate(30, C, ptAt(C, 90), ptAt(C, 100))).toBe(40);
+});
+
+test("dragRotate normalizes into [0,360) across the wrap", () => {
+  expect(dragRotate(350, C, ptAt(C, 90), ptAt(C, 110))).toBe(10); // 350+20 -> 10
+  expect(dragRotate(10, C, ptAt(C, 90), ptAt(C, 70))).toBe(350); // 10-20 -> 350
+});
+
+test("dragRotate magnets onto 45° multiples within 3°", () => {
+  expect(dragRotate(0, C, ptAt(C, 90), ptAt(C, 134))).toBe(45); // raw 44 -> 45
+  expect(dragRotate(0, C, ptAt(C, 90), ptAt(C, 178))).toBe(90); // raw 88 -> 90
+  expect(dragRotate(0, C, ptAt(C, 90), ptAt(C, 92))).toBe(0); // raw 2 -> 0
+});
+
+test("dragRotate with free:true skips the magnets", () => {
+  expect(dragRotate(0, C, ptAt(C, 90), ptAt(C, 134), { free: true })).toBe(44);
+});
+
+test("dragRotate magnet near 360 wraps to 0", () => {
+  expect(dragRotate(0, C, ptAt(C, 90), ptAt(C, 88), { magnetDeg: 3 })).toBe(0); // raw 358 -> 0
+});
+
+test("dragRotate leaves an angle mid-way between magnets untouched", () => {
+  expect(dragRotate(0, C, ptAt(C, 90), ptAt(C, 112))).toBe(22); // raw 22, nearest 45 is 23 away
+});
+
+// ---- multi-select group geometry -------------------------------------------
+
+import { unionBBox, clampGroupDelta, groupResizePatches } from "./interact.js";
+
+test("unionBBox spans all members; null for empty", () => {
+  expect(unionBBox([])).toBeNull();
+  const u = unionBBox([
+    { x0: -10, y0: 0, x1: 10, y1: 8 },
+    { x0: -14, y0: -20, x1: 6, y1: -12 },
+  ]);
+  expect(u).toEqual({ x0: -14, y0: -20, x1: 10, y1: 8 });
+});
+
+test("clampGroupDelta passes an in-range delta and clamps at hoop edges", () => {
+  const g = { x0: -10, y0: -5, x1: 10, y1: 5 }; // 20x10 group, centered
+  // hoop 100x50: slack 40 each side in x, 20 in y
+  expect(clampGroupDelta(15, -10, g, 100, 50)).toEqual({ dxMm: 15, dyMm: -10 });
+  expect(clampGroupDelta(1000, -1000, g, 100, 50)).toEqual({ dxMm: 40, dyMm: -20 });
+});
+
+test("clampGroupDelta collapses to 0 on an axis where the group exceeds the hoop", () => {
+  const g = { x0: -60, y0: -5, x1: 60, y1: 5 }; // 120 wide vs 100 hoop
+  const r = clampGroupDelta(10, 3, g, 100, 50);
+  expect(r.dxMm).toBe(0);
+  expect(r.dyMm).toBe(3);
+});
+
+test("groupResizePatches scales targets and offsets about the group center", () => {
+  const members = [
+    { id: "e1", widthMm: 40, targetMm: 40, offsetXMm: -15, offsetYMm: 10 },
+    { id: "e2", widthMm: 20, targetMm: 20, offsetXMm: 15, offsetYMm: -10 },
+  ];
+  const { patches, factor } = groupResizePatches(members, 2, 5, 0, 5);
+  expect(factor).toBe(2);
+  expect(patches.e1).toEqual({ sizeMm: 80, offsetXMm: 5 + (-15 - 5) * 2, offsetYMm: 20 });
+  expect(patches.e2).toEqual({ sizeMm: 40, offsetXMm: 5 + (15 - 5) * 2, offsetYMm: -20 });
+});
+
+test("groupResizePatches raises the factor so no member drops below minWmm", () => {
+  const members = [
+    { id: "big", widthMm: 100, targetMm: 100, offsetXMm: 0, offsetYMm: 0 },
+    { id: "small", widthMm: 10, targetMm: 10, offsetXMm: 20, offsetYMm: 0 },
+  ];
+  // requested 0.2 would take "small" to 2mm; min 5 -> factor raised to 0.5
+  const { patches, factor } = groupResizePatches(members, 0.2, 0, 0, 5);
+  expect(factor).toBeCloseTo(0.5, 10);
+  expect(patches.small.sizeMm).toBeCloseTo(5, 10);
+  expect(patches.big.sizeMm).toBeCloseTo(50, 10);
+});
+
+test("groupResizePatches with factor 1 is an identity for offsets and targets", () => {
+  const members = [{ id: "e1", widthMm: 30, targetMm: 28, offsetXMm: -7, offsetYMm: 3 }];
+  const { patches } = groupResizePatches(members, 1, 0, 0, 5);
+  expect(patches.e1).toEqual({ sizeMm: 28, offsetXMm: -7, offsetYMm: 3 });
+});
+
+// ---- rotateHandlePx flip (grip reachable at high zoom) ----------------------
+
+test("rotateHandlePx default hangs above the top edge; flip hangs below the bottom", () => {
+  const r = { x: 100, y: 50, w: 200, h: 100 };
+  expect(rotateHandlePx(r, 22)).toEqual({ x: 200, y: 28 });
+  expect(rotateHandlePx(r, 22, { flip: true })).toEqual({ x: 200, y: 172 }); // y + h + stalk
+});
+
+test("rotateHandlePx flip:false matches the default exactly", () => {
+  const r = { x: 0, y: 40, w: 60, h: 30 };
+  expect(rotateHandlePx(r, 22, { flip: false })).toEqual(rotateHandlePx(r, 22));
 });

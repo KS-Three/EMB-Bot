@@ -614,6 +614,66 @@
     };
     const trimAtMm = (fabric && fabric.trimAtMm != null) ? fabric.trimAtMm : (o.trimAtMm == null ? 3.0 : o.trimAtMm);
 
+    // Cap garments sew crown-distortion-safe — the same rule the image
+    // pipeline's capMode ordering applies (center-out per color block),
+    // extended to LETTERING: lines sew bottom-up (bill toward crown) and each
+    // line's glyphs sew center-out (middle letter first, working outward), so
+    // fabric push radiates off the unstable crown seam instead of piling into
+    // it. Grouping is by SOURCE GLYPH (charIdx): a glyph's own runs
+    // (underlay + satin, already routed) keep their internal order — only the
+    // order OF glyphs changes, so column geometry is byte-identical.
+    // Ordering uses FINAL-space centroids (the same rotation T() applies,
+    // offsets omitted — ordering is relative), so rotated/arc'd text still
+    // sews bottom-up/center-out as the machine will actually see it. Line
+    // membership comes from the source text's "\n" positions (charIdx counts
+    // "\n" as one index, matching layoutText), not geometry guessing.
+    // Reordering breaks the router's adjacent-glyph connector assumption, so
+    // every relocated group's first run is forced to jump — the loop's
+    // existing trim policy then cuts the long hops. Extra trims on caps are
+    // the standard professional trade for crown control. Non-cap garments
+    // take the `runsOrdered = lay.runs` identity path: byte-identical output.
+    const capMode = garment && (garment.id === "hat_front" || garment.id === "beanie");
+    let runsOrdered = lay.runs;
+    if (capMode) {
+      const groups = [];
+      let cur = null;
+      for (const run of lay.runs) {
+        if (!cur || run.charIdx !== cur.charIdx) { cur = { charIdx: run.charIdx, runs: [] }; groups.push(cur); }
+        cur.runs.push(run);
+      }
+      const lineOfChar = [];
+      { let line = 0; for (const ch of String(text)) { lineOfChar.push(line); if (ch === "\n") line++; } }
+      for (const g of groups) {
+        let sx = 0, sy = 0, n = 0;
+        for (const r of g.runs) for (const p of r.pts) { sx += p.x; sy += p.y; n++; }
+        // px-space centroid -> final-space (rotation only; same math as T()).
+        const px = (sx / n - cx), py = (cy - sy / n);
+        g.x = rotDeg ? px * cosR - py * sinR : px;
+        g.y = rotDeg ? px * sinR + py * cosR : py;
+        g.line = lineOfChar[g.charIdx] || 0;
+      }
+      const acc = (map, key, v) => { const a = map.get(key) || { s: 0, n: 0 }; a.s += v; a.n++; map.set(key, a); };
+      const lineY = new Map(), lineX = new Map();
+      for (const g of groups) { acc(lineY, g.line, g.y); acc(lineX, g.line, g.x); }
+      // Bottom-up: final-space +y is UP, so ascending mean y = lowest line first.
+      const lineRank = new Map(
+        [...lineY.entries()].sort((a, b) => a[1].s / a[1].n - b[1].s / b[1].n).map((e, i) => [e[0], i])
+      );
+      const sorted = groups.slice().sort((a, b) => {
+        const lr = lineRank.get(a.line) - lineRank.get(b.line);
+        if (lr) return lr;
+        const mA = lineX.get(a.line), mB = lineX.get(b.line);
+        const dA = Math.abs(a.x - mA.s / mA.n), dB = Math.abs(b.x - mB.s / mB.n);
+        return dA - dB || a.charIdx - b.charIdx; // center-out; index tie-break for determinism
+      });
+      runsOrdered = [];
+      sorted.forEach((g, gi) => {
+        g.runs.forEach((r, ri) => {
+          runsOrdered.push(gi > 0 && ri === 0 ? { ...r, jump: true } : r);
+        });
+      });
+    }
+
     // Per-letter color (Font editing abilities Round 1): colorRanges is a
     // list of { startIdx, endIdx, colorRgb } over the ORIGINAL text string's
     // indices (startIdx inclusive, endIdx exclusive — matches
@@ -642,7 +702,8 @@
     // The router (satinfont) decides jump vs. underpath per run: jump=false means
     // travel as a needle-DOWN running connector (tucked at a junction, covered);
     // jump=true means lift the needle (and trim if the hop is long).
-    for (const run of lay.runs) {
+    // runsOrdered is lay.runs verbatim except on cap garments (see capMode above).
+    for (const run of runsOrdered) {
       const pts = run.pts;
       if (!pts || pts.length < 2) continue;
       if (run.kind === "satin") nSatin++;

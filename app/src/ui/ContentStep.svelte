@@ -4,7 +4,10 @@
   import ImagePanel from "./ImagePanel.svelte";
   import DesignPanel from "./DesignPanel.svelte";
   import SizePanel from "./SizePanel.svelte";
+  import ThreadPicker from "./ThreadPicker.svelte";
+  import FontSelect from "./FontSelect.svelte";
   import Hint from "./Hint.svelte";
+  import { selectedIdsOf } from "../lib/project.js";
   export let project;
   // Whether the "add-elements" onboarding hint should render right now --
   // App computes this (shouldShow("add-elements") + the A7 priority rule +
@@ -36,6 +39,37 @@
   // project-shaped view object) so it gets wrapped into the same shape here.
   $: el = project.elements.find((e) => e.id === project.selectedId) || project.elements[0];
 
+  // Multi-select (Ctrl+click): while 2+ elements are selected the
+  // single-element editor gives way to a compact group panel showing only
+  // controls that make sense in bulk. Bulk edits dispatch the same
+  // "elupdatemany" shape EmbroideryField's group drags use ({ id: patch }),
+  // built over the TEXT members only — image/design elements have no
+  // colorRgb/fontKey/weight to bulk-set, so they pass through untouched.
+  $: selIds = selectedIdsOf(project);
+  $: multi = selIds.length > 1;
+  $: selMembers = project.elements.filter((e) => selIds.includes(e.id));
+  $: selTextMembers = selMembers.filter((e) => e.type === "text");
+  $: primaryText = selTextMembers.find((e) => e.id === project.selectedId) || selTextMembers[0];
+
+  // "All text members agree" per bulk-editable field — drives the active /
+  // mixed presentation. null = mixed (or no text members).
+  function shared(field) {
+    if (!selTextMembers.length) return null;
+    const v = JSON.stringify(selTextMembers[0][field] ?? null);
+    return selTextMembers.every((e) => JSON.stringify(e[field] ?? null) === v)
+      ? selTextMembers[0][field]
+      : null;
+  }
+  $: sharedColor = multi ? shared("colorRgb") : null;
+  $: sharedWeight = multi ? shared("weightPreset") : null;
+  $: sharedFont = multi ? shared("fontKey") : null;
+
+  function bulkPatch(patch) {
+    const patchById = {};
+    for (const e of selTextMembers) patchById[e.id] = patch;
+    if (Object.keys(patchById).length) d("elupdatemany", patchById);
+  }
+
   function truncate(s, n) {
     return s.length > n ? s.slice(0, n) + "…" : s;
   }
@@ -54,14 +88,17 @@
     return element._hasImage ? `Image · ${n} color${n === 1 ? "" : "s"}` : "Image · empty";
   }
 
-  function selectRow(id) {
-    d("select", id);
+  function selectRow(id, e) {
+    // Ctrl/Cmd+click toggles membership in the multi-selection, matching
+    // the canvas. Plain click collapses to a single selection.
+    if (e && (e.ctrlKey || e.metaKey)) d("toggleselect", id);
+    else d("select", id);
   }
 
   function onRowKeydown(e, id) {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
-      selectRow(id);
+      selectRow(id, e);
     }
   }
 </script>
@@ -72,10 +109,10 @@
   {#each project.elements as row (row.id)}
     <div
       class="elrow"
-      class:sel={row.id === project.selectedId}
+      class:sel={selIds.includes(row.id)}
       role="button"
       tabindex="0"
-      on:click={() => selectRow(row.id)}
+      on:click={(e) => selectRow(row.id, e)}
       on:keydown={(e) => onRowKeydown(e, row.id)}
     >
       <span class="elicon">
@@ -132,21 +169,82 @@
      state (ImagePanel's merge-selection, its prevNColors/prevRemoveBg
      re-flatten guard, ...) would leak from whichever element was selected
      before onto the newly-selected one. -->
-{#key el.id}
-  {#if el.type === "design"}
-    <DesignPanel element={el} on:elupdate={(e) => d("elupdate", e.detail)} />
-  {:else if el.type === "image"}
-    <ImagePanel
-      element={el}
-      {workImage}
-      {flat}
-      on:elupdate={(e) => d("elupdate", e.detail)}
-      on:image={(e) => d("image", e.detail)}
-      on:flat={(e) => d("flat", e.detail)}
-    />
-  {:else}
-    <TextStep element={el} on:elupdate={(e) => d("elupdate", e.detail)} />
-  {/if}
-{/key}
+{#if multi}
+  <div class="groupsel">
+    <h3>{selIds.length} selected</h3>
+    <p class="groupsel-hint">
+      Drag on the field to move together — corners resize the group.
+      {#if selTextMembers.length < selMembers.length}
+        Controls below apply to the {selTextMembers.length} text element{selTextMembers.length === 1 ? "" : "s"} only.
+      {/if}
+    </p>
+    {#if selTextMembers.length}
+      <div class="groupsel-row">
+        <span class="groupsel-label">Color{sharedColor ? "" : " · mixed"}</span>
+        <ThreadPicker rgb={sharedColor || (primaryText && primaryText.colorRgb) || [20, 20, 20]} compact on:pick={(e) => bulkPatch({ colorRgb: e.detail })} />
+      </div>
+      <div class="groupsel-row">
+        <span class="groupsel-label">Weight{sharedWeight ? "" : " · mixed"}</span>
+        <div class="groupsel-btns">
+          {#each ["thin", "normal", "bold"] as w}
+            <button
+              type="button"
+              class="groupsel-btn"
+              class:active={sharedWeight === w}
+              on:click={() => bulkPatch({ weightPreset: w })}
+            >{w[0].toUpperCase() + w.slice(1)}</button>
+          {/each}
+        </div>
+      </div>
+      <div class="groupsel-row">
+        <span class="groupsel-label">Font{sharedFont ? "" : " · mixed"}</span>
+        <FontSelect
+          selected={sharedFont || (primaryText && primaryText.fontKey)}
+          currentText={(primaryText && primaryText.text) || ""}
+          on:pick={(e) => bulkPatch({ fontKey: e.detail })}
+        />
+      </div>
+    {/if}
+  </div>
+{:else}
+  {#key el.id}
+    {#if el.type === "design"}
+      <DesignPanel element={el} on:elupdate={(e) => d("elupdate", e.detail)} />
+    {:else if el.type === "image"}
+      <ImagePanel
+        element={el}
+        {workImage}
+        {flat}
+        on:elupdate={(e) => d("elupdate", e.detail)}
+        on:image={(e) => d("image", e.detail)}
+        on:flat={(e) => d("flat", e.detail)}
+      />
+    {:else}
+      <TextStep element={el} on:elupdate={(e) => d("elupdate", e.detail)} />
+    {/if}
+  {/key}
 
-<SizePanel project={{ ...project, ...el }} {designDims} on:update={(e) => d("elupdate", { id: el.id, patch: e.detail })} />
+  <SizePanel project={{ ...project, ...el }} {designDims} on:update={(e) => d("elupdate", { id: el.id, patch: e.detail })} />
+{/if}
+
+<style>
+  .groupsel { margin-top: var(--space-4, 12px); }
+  .groupsel h3 { margin-bottom: var(--space-2, 6px); }
+  .groupsel-hint { font-size: var(--fs-xs, 12px); color: var(--muted, #667); margin: 0 0 10px; }
+  .groupsel-row { margin-top: 10px; }
+  .groupsel-label { display: block; font-size: var(--fs-xs, 12px); margin-bottom: 4px; }
+  .groupsel-btns { display: flex; gap: 6px; }
+  .groupsel-btn {
+    padding: 5px 10px;
+    border: 1px solid var(--tint-border, #ccd6fb);
+    border-radius: var(--radius-s, 6px);
+    background: var(--surface, #fff);
+    cursor: pointer;
+    font-size: var(--fs-xs, 12px);
+  }
+  .groupsel-btn.active {
+    background: var(--accent, #4f46e5);
+    color: #fff;
+    border-color: var(--accent, #4f46e5);
+  }
+</style>

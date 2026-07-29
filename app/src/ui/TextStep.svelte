@@ -21,6 +21,11 @@
     d("elupdate", { id: element.id, patch: p });
   }
 
+  // Line justification is meaningless on a single line (nothing to justify
+  // against), so the control renders disabled rather than hidden -- see the
+  // "Justify lines" block below.
+  $: multiline = (element.text || "").includes("\n");
+
   // Per-letter color (Font editing abilities Round 1): tracks the textarea's
   // OWN native selection (selectionStart/selectionEnd) so ColorRangesEditor
   // can offer "color the highlighted text" without any custom range-picker
@@ -88,7 +93,7 @@
     type="range"
     min="0"
     max="360"
-    step="5"
+    step="1"
     value={element.rotationDeg || 0}
     on:input={(e) => patch({ rotationDeg: parseInt(e.target.value, 10) })}
   />
@@ -118,23 +123,28 @@
 
 <!-- Justification only means something across multiple lines (single-line
      text auto-centers as a whole, and arc'd lines center on their own
-     circle), so the control appears once the text actually has a line
-     break. -->
-{#if (element.text || "").includes("\n")}
-  <div class="weightpresets">
-    <span class="weightlabel">Align</span>
-    <div class="weightbtns">
-      {#each [["left", "Left"], ["center", "Center"], ["right", "Right"]] as [val, label]}
-        <button
-          type="button"
-          class="weightbtn"
-          class:active={(element.align || "center") === val}
-          on:click={() => patch({ align: val })}
-        >{label}</button>
-      {/each}
-    </div>
+     circle). This used to be HIDDEN until the text had a line break, which
+     read as "the feature doesn't exist" -- it now always renders, disabled
+     with an explanatory tooltip, so it's discoverable. Named "Justify lines"
+     (not "Align") to distinguish it from SizePanel's "Align in hoop", which
+     moves the whole ELEMENT rather than lines within it. -->
+<div class="weightpresets">
+  <span class="weightlabel">Justify lines</span>
+  <div class="weightbtns">
+    {#each [["left", "Left"], ["center", "Center"], ["right", "Right"]] as [val, label]}
+      <button
+        type="button"
+        class="weightbtn"
+        class:active={multiline && (element.align || "center") === val}
+        disabled={!multiline}
+        title={multiline
+          ? `Justify shorter lines ${val === "center" ? "centered on" : "flush " + val + " against"} the widest line`
+          : "Press Enter in the text box to add a second line — justification positions lines against each other"}
+        on:click={() => patch({ align: val })}
+      >{label}</button>
+    {/each}
   </div>
-{/if}
+</div>
 
 <label class="letterspacing">
   <span>Slant</span>
@@ -175,4 +185,5 @@
     color: #fff;
     border-color: var(--accent, #4f46e5);
   }
+  .weightbtn:disabled { opacity: 0.45; cursor: not-allowed; }
 </style>

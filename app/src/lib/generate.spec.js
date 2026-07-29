@@ -307,3 +307,39 @@ test("generateElement: align left vs right shifts a short second line (justifica
   const sig = (d) => JSON.stringify(d.stitches);
   expect(sig(left)).not.toBe(sig(right));
 });
+
+// ---- Cap sew order: elements splice bottom-up on cap garments ---------------
+// generateAll on hat_front/beanie combines element designs lowest-bbox-first
+// (bill toward crown) and returns perElement in that same sew order (sew
+// order IS paint order — EmbroideryField's topmost-wins hit-testing depends
+// on the two matching). Non-cap garments keep element-list order.
+
+function twoStackedElements() {
+  // e1 sits ABOVE e2 in the hoop (offsetYMm is +y UP). Explicit small
+  // sizeMm — auto-fit would inflate both to hoop size and make them
+  // overlap, muddying the "first stitch is below center" assertions.
+  return [
+    textElement({ id: "e1", text: "AAA", sizeMm: 30, offsetYMm: 10 }),
+    textElement({ id: "e2", text: "VVV", sizeMm: 30, offsetYMm: -10 }),
+  ];
+}
+
+test("generateAll on a cap sews the LOWER element first and returns perElement in sew order", async () => {
+  const { generateAll } = await import("./generate.js");
+  const project = { version: 2, garmentId: "hat_front", selectedId: "e1", fabricRgb: [235, 232, 223], elements: twoStackedElements() };
+  const { combined, perElement } = generateAll(project, {});
+  expect(perElement.map((p) => p.id)).toEqual(["e2", "e1"]); // lower first
+  // The combined design's first sewn stitch comes from e2 (the lower element):
+  // its y sits below hoop center (DST +y up -> negative-ish y).
+  const first = combined.stitches.find((s) => s.type === "stitch");
+  expect(first.y).toBeLessThan(0);
+});
+
+test("generateAll on a non-cap garment keeps element-list order", async () => {
+  const { generateAll } = await import("./generate.js");
+  const project = { version: 2, garmentId: "left_chest", selectedId: "e1", fabricRgb: [235, 232, 223], elements: twoStackedElements() };
+  const { combined, perElement } = generateAll(project, {});
+  expect(perElement.map((p) => p.id)).toEqual(["e1", "e2"]); // list order
+  const first = combined.stitches.find((s) => s.type === "stitch");
+  expect(first.y).toBeGreaterThan(0); // e1, the upper element, sews first
+});

@@ -292,3 +292,96 @@ test("addElement 'design' appends a design element, selects it, and never seeds 
   expect(el.sizeMm).toBeNull();
   expect(el.offsetYMm).toBe(-10);
 });
+
+// ---- multi-select (Ctrl+click): selectedIds ---------------------------------
+// Invariants: selectedIds is never empty and always contains selectedId (the
+// "primary"). selectedId stays a plain string so every pre-multi-select
+// consumer keeps working unchanged.
+
+import { toggleSelectElement, selectedIdsOf, updateElements } from "./project.js";
+
+test("defaultProject starts with a single-member selectedIds matching selectedId", () => {
+  const p = defaultProject();
+  expect(p.selectedIds).toEqual(["e1"]);
+});
+
+test("selectElement collapses a multi-selection to the clicked element", () => {
+  let p = { ...defaultProject() };
+  p = addElement(p, "text", 100);
+  p = toggleSelectElement(p, "e1"); // e2 (added, primary) + e1
+  expect(selectedIdsOf(p).sort()).toEqual(["e1", "e2"]);
+  p = selectElement(p, "e2");
+  expect(p.selectedIds).toEqual(["e2"]);
+  expect(p.selectedId).toBe("e2");
+});
+
+test("toggleSelectElement adds an unselected element and makes it primary", () => {
+  let p = addElement(defaultProject(), "text", 100); // e2 selected
+  p = toggleSelectElement(p, "e1");
+  expect(selectedIdsOf(p)).toEqual(["e2", "e1"]);
+  expect(p.selectedId).toBe("e1"); // last clicked wins
+});
+
+test("toggleSelectElement removes a selected member; removing the primary promotes the last remaining", () => {
+  let p = addElement(defaultProject(), "text", 100);
+  p = toggleSelectElement(p, "e1"); // [e2, e1], primary e1
+  p = toggleSelectElement(p, "e1"); // remove the primary
+  expect(p.selectedIds).toEqual(["e2"]);
+  expect(p.selectedId).toBe("e2");
+});
+
+test("toggleSelectElement on the only selected element is a no-op (selection never empties)", () => {
+  const p = defaultProject();
+  expect(toggleSelectElement(p, "e1")).toBe(p);
+});
+
+test("addElement resets the selection to just the new element", () => {
+  let p = addElement(defaultProject(), "text", 100);
+  p = toggleSelectElement(p, "e1"); // two selected
+  p = addElement(p, "text", 100);   // e3
+  expect(p.selectedIds).toEqual(["e3"]);
+  expect(p.selectedId).toBe("e3");
+});
+
+test("removeElement drops the removed id from the multi-selection", () => {
+  let p = addElement(defaultProject(), "text", 100);
+  p = toggleSelectElement(p, "e1"); // [e2, e1], primary e1
+  p = removeElement(p, "e2");
+  expect(p.selectedIds).toEqual(["e1"]);
+  expect(p.selectedId).toBe("e1");
+});
+
+test("selectedIdsOf falls back to selectedId for pre-multi-select project shapes", () => {
+  expect(selectedIdsOf({ selectedId: "e7" })).toEqual(["e7"]);
+  expect(selectedIdsOf({ selectedId: "e7", selectedIds: [] })).toEqual(["e7"]);
+});
+
+test("updateElements patches each listed element with ITS OWN patch, others untouched", () => {
+  let p = addElement(defaultProject(), "text", 100);
+  p = addElement(p, "text", 100); // e1, e2, e3
+  const q = updateElements(p, { e1: { offsetXMm: 5 }, e3: { offsetXMm: -5 } });
+  expect(q.elements.find((e) => e.id === "e1").offsetXMm).toBe(5);
+  expect(q.elements.find((e) => e.id === "e2").offsetXMm).toBe(0);
+  expect(q.elements.find((e) => e.id === "e3").offsetXMm).toBe(-5);
+  expect(p.elements.find((e) => e.id === "e1").offsetXMm).toBe(0); // immutable
+});
+
+test("migrateProject: a v2 save without selectedIds gets [selectedId]", () => {
+  const v2 = { version: 2, garmentId: "hat_front", selectedId: "e2",
+    elements: [defaultTextElement("e1"), defaultTextElement("e2")] };
+  const m = migrateProject(v2);
+  expect(m.selectedIds).toEqual(["e2"]);
+});
+
+test("migrateProject: selectedIds referencing unknown elements collapses to [selectedId]", () => {
+  const v2 = { version: 2, garmentId: "left_chest", selectedId: "e1", selectedIds: ["e1", "ghost"],
+    elements: [defaultTextElement("e1")] };
+  // "ghost" filtered out; remaining still contains selectedId, so it survives filtered.
+  expect(migrateProject(v2).selectedIds).toEqual(["e1"]);
+});
+
+test("migrateProject: a valid multi-selection survives migration intact", () => {
+  const v2 = { version: 2, garmentId: "left_chest", selectedId: "e2", selectedIds: ["e1", "e2"],
+    elements: [defaultTextElement("e1"), defaultTextElement("e2")] };
+  expect(migrateProject(v2).selectedIds).toEqual(["e1", "e2"]);
+});
