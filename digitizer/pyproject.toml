@@ -1,0 +1,28 @@
+[project]
+name = "digitizer-core"
+version = "0.1.0"
+description = "Fritsch's Stitches auto-digitizing engine core: flat artwork -> embroidery stitch plan (stages 1-4 skeleton)"
+requires-python = ">=3.12"
+license = { text = "Proprietary" }
+dependencies = [
+    # cv2 behavior (kmeans, contours) feeds golden tests — exact-pin and bump
+    # deliberately (regenerate goldens on purpose, never by accident).
+    "opencv-python-headless==5.0.0.93",
+    "numpy>=2.0",
+    "scipy>=1.11",
+    "shapely>=2.0",
+    "scikit-image>=0.22",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["digitizer_core"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
