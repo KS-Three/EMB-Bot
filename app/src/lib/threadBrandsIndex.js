@@ -88,16 +88,6 @@ export const THREAD_BRAND_INDEX = [
   "count": 260
  },
  {
-  "id": "brother-country",
-  "label": "Brother Country",
-  "count": 61
- },
- {
-  "id": "brother-embroidery",
-  "label": "Brother Embroidery",
-  "count": 61
- },
- {
   "id": "brothread-40",
   "label": "Brothread 40",
   "count": 40
@@ -148,11 +138,6 @@ export const THREAD_BRAND_INDEX = [
   "count": 213
  },
  {
-  "id": "floriani-polyester",
-  "label": "Floriani Polyester",
-  "count": 286
- },
- {
   "id": "fufu-polyester",
   "label": "FuFu Polyester",
   "count": 713
@@ -173,11 +158,6 @@ export const THREAD_BRAND_INDEX = [
   "count": 200
  },
  {
-  "id": "hemingworth",
-  "label": "Hemingworth",
-  "count": 294
- },
- {
   "id": "isacord",
   "label": "Isacord Polyester 40",
   "count": 398
@@ -191,11 +171,6 @@ export const THREAD_BRAND_INDEX = [
   "id": "isalon-polyester",
   "label": "Isalon Polyester",
   "count": 414
- },
- {
-  "id": "janome",
-  "label": "Janome",
-  "count": 78
  },
  {
   "id": "king-star",
@@ -356,11 +331,6 @@ export const THREAD_BRAND_INDEX = [
   "id": "tristar-rayon",
   "label": "Tristar Rayon",
   "count": 406
- },
- {
-  "id": "viking-palette",
-  "label": "Viking Palette",
-  "count": 29
  },
  {
   "id": "vyapar-rayon",

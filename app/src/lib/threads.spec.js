@@ -89,8 +89,14 @@ test("PALETTE_INDEX leads with the generic Studio list, then every generated bra
   expect(PALETTE_INDEX[0].id).toBe("studio");
   expect(PALETTE_INDEX[0].count).toBe(THREADS.length);
   expect(PALETTE_INDEX).toHaveLength(1 + THREAD_BRAND_INDEX.length);
-  // The full Ink/Stitch sweep: this only ever grows.
-  expect(THREAD_BRAND_INDEX.length).toBeGreaterThanOrEqual(74);
+  // The full Ink/Stitch sweep minus the software-company policy exclusions
+  // (Brother x2, Janome, Viking, Floriani, Hemingworth — see
+  // tools/build-threads.mjs POLICY_EXCLUDED). Grows only via new imports
+  // from pure thread manufacturers.
+  expect(THREAD_BRAND_INDEX.length).toBeGreaterThanOrEqual(68);
+  for (const banned of ["brother-country", "brother-embroidery", "janome", "viking-palette", "floriani-polyester", "hemingworth"]) {
+    expect(THREAD_BRAND_INDEX.some((e) => e.id === banned)).toBe(false);
+  }
 });
 
 test("the static index and the lazy data module agree brand-for-brand", () => {

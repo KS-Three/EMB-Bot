@@ -32,6 +32,20 @@ const PALETTE_DIR = join(root, "tools", "palettes");
 const OUT_INDEX = join(root, "app", "src", "lib", "threadBrandsIndex.js");
 const OUT_DATA = join(root, "app", "src", "lib", "threadBrandsData.js");
 
+// POLICY (Kent, 2026-07-29 blueprint grill): no thread charts from companies
+// that sell or make embroidery software/machines — we don't carry a
+// competitor's brand inside the product. Enforced here (not just by file
+// deletion) so a wholesale re-copy from upstream can't silently reintroduce
+// them; matches are skipped with a loud log line.
+const POLICY_EXCLUDED = [
+  "InkStitch Brother Country.gpl",      // Brother: machines + PE-Design
+  "InkStitch Brother Embroidery.gpl",   // Brother: machines + PE-Design
+  "InkStitch Janome.gpl",               // Janome: machines + software
+  "InkStitch Viking Palette.gpl",       // Husqvarna Viking: machines + software
+  "InkStitch Floriani Polyester.gpl",   // RNK: Floriani embroidery software
+  "InkStitch Hemingworth.gpl",          // DIME: embroidery software
+];
+
 // The four charts that shipped before the full sweep keep their original
 // ids/labels so the stored app-wide preference (embstudio:threadPalette)
 // keeps resolving for existing users.
@@ -85,6 +99,10 @@ const files = readdirSync(PALETTE_DIR).filter((f) => f.endsWith(".gpl")).sort();
 const seenIds = new Set();
 const brands = [];
 for (const file of files) {
+  if (POLICY_EXCLUDED.includes(file)) {
+    console.log(`EXCLUDED (software-company policy): ${file}`);
+    continue;
+  }
   const meta = LEGACY[file] || (() => { const label = labelFor(file); return { id: idFor(label), label }; })();
   if (seenIds.has(meta.id)) throw new Error(`duplicate brand id "${meta.id}" from ${file}`);
   seenIds.add(meta.id);
