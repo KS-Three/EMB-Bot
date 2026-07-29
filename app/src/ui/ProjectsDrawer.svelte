@@ -8,7 +8,25 @@
   import { createEventDispatcher, onMount } from "svelte";
   export let projects = [];
   export let currentId = null;
+  // One-line status/error from App's .embproj import handling ("" hides it).
+  // Presentational like everything else here: App owns the actual file
+  // parsing/registry calls and just feeds the outcome back down.
+  export let notice = "";
   const d = createEventDispatcher();
+
+  // ---- .embproj import (hidden file input) ---------------------------------
+  // The drawer only picks the file; App does the reading/parsing (same
+  // separation as every other drawer action). Clearing .value after each
+  // pick lets the user re-select the same file after a failed attempt —
+  // without it the input's change event never re-fires for an unchanged
+  // path.
+  let fileInput;
+
+  function onFilePicked(e) {
+    const file = e.currentTarget.files && e.currentTarget.files[0];
+    e.currentTarget.value = "";
+    if (file) d("importfile", file);
+  }
 
   // ---- Focus handling (A11Y/UX finding 5) ----------------------------------
   // The dialog is role="dialog" aria-modal="true", which is a lie unless
@@ -165,6 +183,20 @@
     </div>
 
     <button type="button" class="drawer-new" on:click={() => d("new")}>+ New design</button>
+    <button type="button" class="drawer-new" on:click={() => fileInput && fileInput.click()}>
+      Import design file (.embproj)
+    </button>
+    <input
+      type="file"
+      accept=".embproj,application/json"
+      hidden
+      bind:this={fileInput}
+      on:change={onFilePicked}
+      aria-label="Import design file"
+    />
+    {#if notice}
+      <p class="drawer-notice" role="alert">{notice}</p>
+    {/if}
 
     <div class="drawer-list">
       {#each projects as row (row.id)}
@@ -190,6 +222,7 @@
             <button type="button" on:click={() => d("open", row.id)}>Open</button>
             <button type="button" on:click={() => startRename(row.id, row.name)}>Rename</button>
             <button type="button" on:click={() => d("duplicate", row.id)}>Duplicate</button>
+            <button type="button" on:click={() => d("export", row.id)}>Export</button>
             <button
               type="button"
               class="danger"

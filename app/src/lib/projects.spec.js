@@ -7,6 +7,7 @@ import {
   renameProject,
   deleteProject,
   duplicateProject,
+  importProject,
   currentProjectId,
   setCurrentProject,
   migrateLegacy,
@@ -392,4 +393,48 @@ test("A1: other localStorage ops also swallow a throwing setItem without crashin
   expect(() => createProject("A")).not.toThrow();
   expect(() => saveProject("x", defaultProject())).not.toThrow();
   expect(() => setCurrentProject("x")).not.toThrow();
+});
+
+// --- importProject (.embproj import, 2026-07-29 market-parity scope) -------
+
+test("importProject registers a new entry under the given name WITHOUT touching the current pointer", () => {
+  const { id: existingId } = createProject("Already open");
+  const incoming = defaultProject();
+  const result = importProject(incoming, "From a file");
+
+  expect(result).not.toBeNull();
+  expect(result.id).not.toBe(existingId);
+  // like duplicateProject: the caller decides whether to open the import
+  expect(currentProjectId()).toBe(existingId);
+  const row = listProjects().find((p) => p.id === result.id);
+  expect(row.name).toBe("From a file");
+  // the stored record loads back as the same (migrated) project
+  expect(loadProject(result.id)).toEqual(incoming);
+});
+
+test("importProject never overwrites: importing twice mints two independent entries", () => {
+  const a = importProject(defaultProject(), "Same design");
+  const b = importProject(defaultProject(), "Same design");
+  expect(a.id).not.toBe(b.id);
+  expect(listProjects()).toHaveLength(2);
+});
+
+test("importProject defaults the name when omitted", () => {
+  const { id } = importProject(defaultProject());
+  expect(listProjects().find((p) => p.id === id).name).toBe("Imported design");
+});
+
+test("importProject rolls back the record and returns null when only the index write fails", () => {
+  globalThis.localStorage = makePartialThrowingStorage(["embstudio:index"]);
+  const result = importProject(defaultProject(), "Doomed");
+  expect(result).toBeNull();
+  expect(listProjects()).toEqual([]);
+  // no orphaned embstudio:p:<id> record left behind
+  const keys = Array.from(globalThis.localStorage._store.keys());
+  expect(keys.filter((k) => k.startsWith("embstudio:p:"))).toEqual([]);
+});
+
+test("importProject returns null (and does not throw) on total storage failure", () => {
+  globalThis.localStorage = makeThrowingStorage();
+  expect(importProject(defaultProject(), "X")).toBeNull();
 });

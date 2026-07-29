@@ -235,6 +235,31 @@ export function duplicateProject(id, name) {
   }
 }
 
+// Registers an EXISTING project object (parsed from an .embproj file) as a
+// brand-new registry entry. Never overwrites anything: a fresh id every
+// time, and — like duplicateProject — it does NOT touch the current
+// pointer; the caller decides whether to open the import. Returns
+// { id, project } or null on storage failure, with the same
+// orphan-rollback discipline as createProject/duplicateProject (a record
+// whose index write failed must not be left behind).
+export function importProject(project, name) {
+  try {
+    const id = genId();
+    localStorage.setItem(projectKey(id), serialize(project));
+    const idx = readIndex();
+    idx.push({ id, name: name || "Imported design", updatedAt: Date.now() });
+    if (!writeIndex(idx)) {
+      try {
+        localStorage.removeItem(projectKey(id));
+      } catch (e2) {}
+      return null;
+    }
+    return { id, project };
+  } catch (e) {
+    return null;
+  }
+}
+
 // One-time migration of the old single-project `embstudio:last` blob into
 // the registry, run once at app boot before anything else reads storage.
 //

@@ -13,8 +13,11 @@
     renameProject,
     deleteProject,
     duplicateProject,
+    importProject,
     listProjects,
   } from "./lib/projects.js";
+  import { buildProjectFile, parseProjectFile, projectFileName } from "./lib/projectFile.js";
+  import { triggerDownload } from "./lib/download.js";
   import { shouldShow, dismiss, visibleHint } from "./lib/hints.js";
   import { EMB } from "./lib/emb.js";
   import GarmentStep from "./ui/GarmentStep.svelte";
@@ -136,6 +139,10 @@
     }
   }
   let drawerOpen = false;
+  // .embproj import outcome line, shown inside the drawer. Reset on every
+  // open/close so a stale error never greets the next visit.
+  let drawerNotice = "";
+  $: if (!drawerOpen) drawerNotice = "";
   // ---- Drawer focus restore (A11Y/UX finding 5) -----------------------------
   // ProjectsDrawer moves focus INTO itself on mount and traps Tab while
   // open (see its own comments), but restoring focus back to whatever
@@ -442,6 +449,56 @@
   // moment where an in-flight persist could fire against a half-switched
   // state -- and saveProject is a no-op for unknown ids regardless (see
   // projects.js).
+  // ---- .embproj export/import (2026-07-29 market-parity launch scope) ------
+  // The drawer picks files and clicks buttons; the actual work lives here
+  // (same App-owns-the-registry split as every other drawer action).
+
+  // Export the current project from live in-memory state (never a stale
+  // storage read mid-edit); any other row loads from the registry.
+  function exportFromDrawer(id) {
+    const proj = id === currentId ? project : loadProject(id);
+    if (!proj) {
+      drawerNotice = "Couldn't load that design to export it.";
+      return;
+    }
+    const name = nameFor(id);
+    triggerDownload({
+      bytes: buildProjectFile(proj, name),
+      filename: projectFileName(name),
+      mime: "application/json",
+    });
+    drawerNotice = "";
+  }
+
+  // A successful import lands like Open: registered as a NEW entry (an
+  // import can never overwrite an existing design), made current, entered
+  // on "content". Failures set the drawer's notice line and leave
+  // everything else untouched.
+  async function importFromDrawer(file) {
+    let text;
+    try {
+      text = await file.text();
+    } catch (e) {
+      drawerNotice = "Couldn't read that file.";
+      return;
+    }
+    const parsed = parseProjectFile(text);
+    if (!parsed) {
+      drawerNotice = "That doesn't look like a design file (.embproj).";
+      return;
+    }
+    const imported = importProject(parsed.project, parsed.name);
+    if (!imported) {
+      drawerNotice = "Couldn't save the imported design — storage may be full.";
+      return;
+    }
+    drawerNotice = "";
+    refreshProjects();
+    setCurrentProject(imported.id);
+    enterProject(imported.id, imported.project, parsed.name, "content");
+    drawerOpen = false;
+  }
+
   function deleteFromDrawer(id) {
     const wasCurrent = id === currentId;
     deleteProject(id);
@@ -521,7 +578,10 @@
     on:rename={(e) => renameFromDrawer(e.detail.id, e.detail.name)}
     on:duplicate={(e) => duplicateFromDrawer(e.detail)}
     on:delete={(e) => deleteFromDrawer(e.detail)}
+    on:export={(e) => exportFromDrawer(e.detail)}
+    on:importfile={(e) => importFromDrawer(e.detail)}
     on:close={() => (drawerOpen = false)}
+    notice={drawerNotice}
   />
 {/if}
 
