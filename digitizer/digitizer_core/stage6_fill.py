@@ -150,22 +150,32 @@ def _row_points(x0: float, x1: float, y: float, row_index: int, stitch_mm: float
 
     Interior stitches sit on a global grid shifted by the row's stagger phase,
     so rows only realign every `staggers` rows. Both row ends land exactly on
-    the boundary: that is what makes the edge crisp, and a stub shorter than a
-    real stitch is absorbed rather than emitted.
+    the boundary: that is what makes the edge crisp.
+
+    An interior penetration is only kept when BOTH of its neighbours are a real
+    stitch — `MIN_STITCH_MM` away, not merely longer than the tiny-stitch
+    floor. The grid is anchored globally, so the first grid point inside a row
+    lands an arbitrary fraction of a stitch past the edge; keeping it put two
+    penetrations a few tenths of a millimetre apart, which is the needle
+    landing beside the hole it just made. Skipping it can leave a step longer
+    than `stitch_mm`, and `split_long_moves` in `emit` subdivides that back
+    into legal stitches.
     """
-    if x1 - x0 < machine.TINY_STITCH_MM:
+    span = x1 - x0
+    if span < machine.TINY_STITCH_MM:
         mid = (x0 + x1) / 2.0
         return [(mid, y)]
-    phase = (row_index % max(1, staggers)) / max(1, staggers) * stitch_mm
-    first = math.ceil((x0 - phase) / stitch_mm) * stitch_mm + phase
     xs = [x0]
-    x = first
-    while x < x1 - machine.TINY_STITCH_MM:
-        if x - xs[-1] >= machine.TINY_STITCH_MM:
-            xs.append(x)
-        x += stitch_mm
-    if x1 - xs[-1] < machine.TINY_STITCH_MM and len(xs) > 1:
-        xs.pop()
+    # Below two stitches' worth of room there is no interior penetration that
+    # clears both edges; the row is the single stitch between them, which is
+    # what keeps a tapering tip's edge on the boundary.
+    if span >= 2 * machine.MIN_STITCH_MM:
+        phase = (row_index % max(1, staggers)) / max(1, staggers) * stitch_mm
+        x = math.ceil((x0 - phase) / stitch_mm) * stitch_mm + phase
+        while x < x1:
+            if x - xs[-1] >= machine.MIN_STITCH_MM and x1 - x >= machine.MIN_STITCH_MM:
+                xs.append(x)
+            x += stitch_mm
     xs.append(x1)
     pts = [(vx, y) for vx in xs]
     return list(reversed(pts)) if reverse else pts

@@ -14,6 +14,7 @@ from shapely.geometry import LineString, Point, Polygon
 from digitizer_core import machine
 from digitizer_core.stage6_fill import (
     _fill_paths,
+    _row_points,
     _row_spans,
     principal_angle_deg,
     stitch_shape,
@@ -60,6 +61,35 @@ def test_no_stitch_is_longer_than_the_fill_stitch_length():
                            underlay_style="none", trim_at_mm=3.0)
     longest = max(math.dist(a, b) for r in runs for a, b in zip(r.points, r.points[1:]))
     assert longest <= 4.0 + 1e-6
+
+
+def test_no_penetration_lands_beside_the_hole_the_needle_just_made():
+    """The interior grid is anchored globally, so the first grid point inside a
+    row sits an arbitrary fraction of a stitch past the edge. Keeping it put two
+    penetrations tenths of a millimetre apart — thread shredding, a hot needle,
+    and a lumpy edge where the fill should be crisp."""
+    for x0 in (0.0, 0.13, 0.37, 0.61, 0.94, 2.5):
+        for row in range(8):
+            xs = [p[0] for p in _row_points(x0, x0 + 17.0, 0.0, row, 4.0, 4,
+                                            reverse=False)]
+            gaps = [b - a for a, b in zip(xs, xs[1:])]
+            assert min(gaps) >= machine.MIN_STITCH_MM - 1e-9, \
+                f"row {row} from {x0}: {[round(g, 3) for g in gaps]}"
+
+    # And on real shapes. Rows run horizontally at angle 0, so a step that
+    # holds y is along a row and must clear the minimum; a step that changes y
+    # is the turn between two rows, which is one row spacing by design. The
+    # ring is here for its curved edge, where spans are every length at once.
+    for name, poly in (("rect", RECT), ("ring", RING)):
+        for path in _fill_paths(poly, 0.0, 0.4, 4.0, 4):
+            for a, b in zip(path, path[1:]):
+                if abs(b[1] - a[1]) > 1e-9:
+                    continue                # a row turn, not a stitch
+                d = abs(b[0] - a[0])
+                if d < machine.TINY_STITCH_MM:
+                    continue                # a whole row this short IS the tip
+                assert d >= machine.MIN_STITCH_MM - 1e-9, \
+                    f"{d:.3f} mm stitch along a row of the {name}"
 
 
 def test_row_ends_land_on_the_shape_edge():
