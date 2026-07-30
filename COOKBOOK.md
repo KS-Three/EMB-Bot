@@ -6,15 +6,22 @@ store, not this repo) — this file is the repo-local, self-contained version.
 
 ## What this is
 
-Browser-based embroidery auto-digitizer + guided lettering studio. Zero
-server, zero Python/OpenCV — all stitch math is hand-written JS. Two
-front-ends share one engine:
+Browser-based embroidery auto-digitizer + guided lettering studio, plus a
+Python digitizing engine that runs as a localhost service. Three parts:
 
 - **`EMB-Bot.html`** / **`EMB-Bot-standalone.html`** — original single-page
   tool (image-to-stitch + text-to-stitch, manual controls).
 - **`app/`** — "EMB Bot Studio", a Svelte 5 + Vite guided wizard (garment →
   content → review → download) built on top of the same engine via
   `window.EMB` (loaded through `<script>` tags, engine untouched).
+- **`digitizer/`** — Python 3.14 auto-digitizing pipeline (OpenCV, scikit-image,
+  shapely) + an optional FastAPI service. See the digitizer section below.
+
+**This claim used to read "zero server, zero Python/OpenCV — all stitch math is
+hand-written JS."** That was true until 2026-07-29 and is now wrong in every
+part: the browser engine still owns text and DST import, but the image path's
+future is the Python pipeline. Check `digitizer/README.md` before assuming
+where a piece of stitch math lives.
 
 Read the top-level [README.md](README.md) first — it's accurate and
 user-facing (outputs, fabric presets, honest limits, file map). This cookbook
@@ -103,8 +110,59 @@ abilities were explicitly deferred (condensed/expanded width, mixed
 per-letter size) — both risk distorting satin column width unevenly along
 curves; prototype before committing.
 
-`main` is ahead of `origin/main` locally (not pushed) — push is a
-user-confirm action, not done automatically.
+~~`main` is ahead of `origin/main` locally (not pushed).~~ **As of 2026-07-30
+`main` == `origin/main` at `d81842c`** (the digitizer service). Push is still a
+user-confirm action. Two branches sit ahead of it, neither merged:
+`feat/stitch-quality` (fill/stagger/cap fixes + the audit tooling) and
+`feat/satin-rails` (satin rails rebuilt as parallel offsets).
+
+## The Python digitizer (`digitizer/`, added 2026-07-29/30)
+
+The auto-digitizing pipeline Kent's blueprint asked for. Stages 1–4 are
+classical CV (prep → quantize → segment → vectorize), stages 5–7 plan stitches
+(overlap → fill/satin → sequence), and `digitizer_service/` wraps it in FastAPI
+on 127.0.0.1:8721. `/digitize` deliberately returns an EMB-Bot `Design`, NOT a
+DST — see the axis note in `digitizer/README.md`.
+
+```bash
+cd digitizer && .venv/Scripts/python -m pytest -q   # 132 tests; MUST be `python -m pytest`
+.venv/Scripts/python -m digitizer_service           # the service
+.venv/Scripts/python tools/audit.py                 # defect numbers per case
+```
+
+**Read `digitizer/README.md` before touching stage 6.** It carries the physics
+constants, the sew-order reasoning, and a list of open questions that are
+Kent's calls rather than bugs.
+
+### Hard-won lessons — do not relearn these
+
+- **Measure on Kent's real art, not the fixtures.** `testdata/logo_whitebg.png`
+  routes 1 of 5 regions to satin and reproduces almost nothing he complains
+  about. The benchmark is `Downloads/enthusiast enterprises logo.png` (flat
+  two-colour: hex shield + star, ENTHUSIAST wordmark, ENTERPRISES INC.
+  subline). At 90 mm it makes 13 regions — 10 letters, 2 shield halves, 1 star
+  — and **the whole subline is dropped as unsewable**. That drop is warned
+  (`DROPPED_SMALL_SHAPES`) but from the user's side a line of the logo simply
+  vanishes; still unfixed, and the most customer-visible defect in the pipeline.
+- **Validate a quality metric on known-good geometry before you trust it.** A
+  fan metric that assumed satin crosses sat at a fixed parity in the point list
+  scored a CLEAN curved ribbon at 30.7% — identical to the logo that visibly
+  sprays. Two code changes were evaluated against it, and one hypothesis was
+  "refuted", before a clean fixture exposed it. Crosses are identified by
+  LENGTH now (a cross spans the column, a rail step spans one spacing), and the
+  clean fixtures read 0.0%. `tests/test_satin.py::_cross_rotations` is the
+  version of record.
+- **Green tests are not evidence of quality.** Step 4 shipped "done" on 68
+  green tests that pinned determinism, no phantom loops and nothing outside the
+  artwork — every one a mechanical property, none asking whether the output
+  looks like embroidery. It stayed green while the engine produced starbursts.
+- **Do not chase `trim_at_mm` to reduce trims.** Needle-lifts went 58 → 13 on
+  the real logo purely from not fragmenting glyphs into many satin runs. The
+  3.0 mm value is shared with `src/fabrics.js` and moving it moves the browser
+  engine too.
+- **Never edit a source file with a PowerShell `(Get-Content -Raw) -replace |
+  Set-Content` round-trip.** It re-encodes the file: BOM added, every em-dash
+  and ± mangled. Bit this repo twice. Use the Edit tool.
 
 ## Running things
 
