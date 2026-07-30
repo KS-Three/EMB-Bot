@@ -51,6 +51,16 @@ _RASTER_PX_PER_MM = 6.0
 _RASTER_MAX_PX = 900
 # A stroke shorter than this many half-widths is skeleton noise, not artwork.
 _MIN_STROKE_HALFWIDTHS = 1.2
+# The half-width profile is median-filtered over this many samples to drop rays
+# that escaped through a junction, then averaged this many times to make the
+# two rails run parallel instead of tracking every wobble in the boundary.
+_WIDTH_MEDIAN_WINDOW = 5
+_WIDTH_SMOOTH_PASSES = 4
+# Distance, in stroke half-widths, over which a cross's direction is measured.
+_TANGENT_WIDTHS = 1.0
+# How opposed two arms must be to count as one stroke through a node. -0.5 welds
+# arms 120 deg apart -- a stroke turning 60 deg, which pivots and sprays.
+_WELD_MAX_DOT = -0.5
 _RING8 = ((0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1))
 
 
@@ -327,9 +337,10 @@ def _merge_through_junctions(edges: list[dict]) -> list[dict]:
                     dot = da[0] * db[0] + da[1] * db[1]
                     if best is None or dot < best[0]:
                         best = (dot, (ei, es), (ej, js))
-            # Anti-aligned means straight-through; -0.5 admits a gentle bend
-            # but refuses a right angle, which stays a separate yielding arm.
-            if best is None or best[0] >= -0.5:
+            # Anti-aligned means straight-through; the threshold admits a bend
+            # but refuses a corner sharp enough that the column would have to
+            # pivot, which no parallel-rail satin can sew.
+            if best is None or best[0] >= _WELD_MAX_DOT:
                 break
             welded.add(best[1])
             welded.add(best[2])
@@ -445,6 +456,21 @@ def _smooth(pts: list[tuple[float, float]], passes: int, closed: bool) -> list[t
     return out
 
 
+def _median_filter(vals: list[float], window: int) -> list[float]:
+    """Median of each value's neighbourhood — drops single-sample outliers.
+
+    A ray that escapes a junction reports one wildly long half-width between
+    two honest ones. An average would spread that error over the neighbours; a
+    median discards it outright, which is what a width profile needs.
+    """
+    n = len(vals)
+    if n == 0 or window < 3:
+        return list(vals)
+    half = window // 2
+    return [sorted(vals[max(0, i - half):min(n, i + half + 1)])[
+        len(vals[max(0, i - half):min(n, i + half + 1)]) // 2] for i in range(n)]
+
+
 def _resample(pts: list[tuple[float, float]], n: int) -> list[tuple[float, float]]:
     line = LineString(pts)
     if line.length <= 0 or n < 2:
@@ -468,10 +494,23 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
     boundary = poly.boundary
 
     # Tangent angles, unwrapped so a cross never flips direction mid-stroke.
+    # The tangent is measured across ONE STROKE WIDTH, not one sample. The
+    # spine is a raster staircase: over a ±1-sample baseline (a third of a
+    # millimetre here) its direction can only take the eight neighbour
+    # directions, so every cross inherits up to ±22.5 deg of quantisation
+    # noise. With ray-cast rails that noise was partly hidden — the two
+    # boundary hits smoothed it away — but a parallel-offset rail lays the
+    # cross exactly along the normal, so the path itself has to be honest. A
+    # satin column cannot resolve curvature finer than its own width, so
+    # measuring the direction over that distance discards nothing real.
+    seg = [math.dist(spine[i], spine[i + 1]) for i in range(n - 1)]
+    spacing = sorted(seg)[len(seg) // 2] if seg else 0.0
+    k = 1 if spacing <= 0 else max(1, round(fallback_half_mm * _TANGENT_WIDTHS / spacing))
+
     angles: list[float] = []
     for i in range(n):
-        a = spine[max(0, i - 1)] if not closed else spine[(i - 1) % n]
-        b = spine[min(n - 1, i + 1)] if not closed else spine[(i + 1) % n]
+        a = spine[max(0, i - k)] if not closed else spine[(i - k) % n]
+        b = spine[min(n - 1, i + k)] if not closed else spine[(i + k) % n]
         angles.append(math.atan2(b[1] - a[1], b[0] - a[0]) + math.pi / 2)
     for i in range(1, n):
         while angles[i] - angles[i - 1] > math.pi / 2:
@@ -486,6 +525,9 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
     reach = max(fallback_half_mm * 4.0, 2.0)
     rail_a: list = []
     rail_b: list = []
+    norms: list[tuple[float, float]] = []
+    raw: list[float] = []
+    floors: list[float] = []
     for i, (px, py) in enumerate(spine):
         nx, ny = math.cos(angles[i]), math.sin(angles[i])
 
@@ -526,45 +568,55 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
 
         pa = hit(nx, ny) or fallback(nx, ny)
         pb = hit(-nx, -ny) or fallback(-nx, -ny)
+        norms.append((nx, ny))
+        # The HALF-WIDTH this sample is evidence for. The nearer of the two hits
+        # is the honest one: a ray that escapes through a junction into the next
+        # arm reports a distance belonging to a different part of the shape, and
+        # it is always the longer of the pair.
+        raw.append(min(math.dist((px, py), pa), math.dist((px, py), pb)))
+        floors.append(max(field.half_at((px, py)), 0.75 * fallback_half_mm)
+                      if field is not None else fallback_half_mm)
 
-        if field is not None:
-            # Floor at the stroke's own half-width: at a cap the distance
-            # transform reads ~0 (the station sits on the boundary after the
-            # cap extension), and capping with it would delete the very
-            # crosses that cover the cap — measured as the fixture bar's satin
-            # stopping 0.4 mm short of its compensated edge.
-            corridor = max(field.half_at((px, py)), 0.75 * fallback_half_mm)
-            if corridor > 0:
-                cap = corridor * 1.6 + 0.2
-                da = math.dist((px, py), pa)
-                if da > cap:
-                    pa = (px + nx * cap, py + ny * cap)
-                db = math.dist((px, py), pb)
-                if db > cap:
-                    pb = (px - nx * cap, py - ny * cap)
-        rail_a.append(pa)
-        rail_b.append(pb)
+    # --- width profile -> parallel rails ----------------------------------
+    #
+    # The rails are PARALLEL OFFSETS of the spine at a smoothed half-width, not
+    # two independently ray-cast boundary points. Casting per sample and taking
+    # the nearest hit lets consecutive samples land on different boundary
+    # features — one cross ends on the edge it belongs to, the next on the far
+    # side of a junction — and clamping each side on its own then walks the
+    # column's centre off its own spine. Measured on the real logo, 27% of
+    # crosses ended up rotated more than 15 deg from the cross two before them:
+    # that is the spray, and it is a property of the model, not a tuning error.
+    #
+    # The medial axis is equidistant from both edges by construction, so a
+    # symmetric offset is the correct shape for a ribbon; a median filter drops
+    # the junction escapes before the profile is smoothed, and the result is
+    # capped by the local corridor so a cross can never span a junction.
+    width = _median_filter(raw, _WIDTH_MEDIAN_WINDOW)
+    for _ in range(_WIDTH_SMOOTH_PASSES):
+        prev = list(width)
+        for i in range(1, n - 1):
+            width[i] = (prev[i - 1] + prev[i] + prev[i + 1]) / 3.0
+    for i in range(n):
+        width[i] = min(width[i], floors[i] * 1.6 + 0.2)
 
-    # Smooth the half-widths, not the rail points: jitter in a ray hit reads as
-    # a ragged satin edge, but the direction of each cross must stay exact.
-    # Smoothing may only SHORTEN a rail, never stretch it past its ray hit —
-    # where the ribbon narrows, the neighbour average exceeds the local width
-    # and the stitch would land outside the artwork (measured: 6 escaped
-    # points on the O-ring fixture).
-    for rail in (rail_a, rail_b):
-        hit_d = [math.dist(s, r) for s, r in zip(spine, rail)]
-        d = list(hit_d)
-        for _ in range(3):
-            prev = list(d)
-            for i in range(1, n - 1):
-                d[i] = (prev[i - 1] + prev[i] + prev[i + 1]) / 3.0
-        for i in range(n):
-            d[i] = min(d[i], hit_d[i])
-            L = math.dist(spine[i], rail[i])
-            if L > 1e-9:
-                ux = (rail[i][0] - spine[i][0]) / L
-                uy = (rail[i][1] - spine[i][1]) / L
-                rail[i] = (spine[i][0] + ux * d[i], spine[i][1] + uy * d[i])
+    for i, (px, py) in enumerate(spine):
+        nx, ny = norms[i]
+        w = width[i]
+        # Containment still governs: a smoothed width can overshoot where the
+        # ribbon pinches, and thread outside the artwork is the one defect this
+        # module is never allowed to ship. Each side yields on its own — pulling
+        # both in because one overshot drags the good rail off the artwork edge,
+        # which is what left the fixture bar's cap bare by 0.06 mm.
+        def place(sx: float, sy: float) -> tuple[float, float]:
+            for f in (1.0, 0.85, 0.7, 0.5, 0.3):
+                q = (px + sx * w * f, py + sy * w * f)
+                if poly.covers(SPoint(q)):
+                    return q
+            return (px, py)
+
+        rail_a.append(place(nx, ny))
+        rail_b.append(place(-nx, -ny))
     return rail_a, rail_b
 
 
@@ -862,3 +914,4 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
             cur.trim = d > trim_at_mm
             report["jumps"] += 1
     return runs, report
+
