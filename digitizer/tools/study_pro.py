@@ -179,6 +179,20 @@ def fill_stats(pts):
     }
 
 
+def tail_lock(pts: list[tuple[float, float]]) -> bool:
+    """Does this run END in a lock — a cluster of tiny stitches?
+
+    Locks live in the last few stitches of the run they secure, not in a
+    separate run: the first version of this tool classified whole runs and
+    reported "0 locks" on files that certainly have them.
+    """
+    if len(pts) < 4:
+        return False
+    tail = pts[-5:]
+    tiny = sum(1 for a, b in zip(tail, tail[1:]) if math.dist(a, b) <= 0.8)
+    return tiny >= 2
+
+
 def render(runs, out_dir: Path, corner_pts):
     xs = [p[0] for r in runs for p in r["pts"]]
     ys = [p[1] for r in runs for p in r["pts"]]
@@ -255,9 +269,9 @@ def study(path: Path) -> None:
                 print(f"FILL: rows={f['rows']} angle={f['angle_deg']}deg "
                       f"row_gap={f['row_gap_med']:.2f}mm stitch={f['stitch_med']:.2f}mm "
                       f"stagger_offsets={f['stagger_offsets']}")
-    locks = by.get("lock", 0)
-    print(f"LOCKS: {locks} lock runs for {n_trim} trims "
-          f"({'every trim locked' if locks >= n_trim > 0 else 'partial/none'})")
+    locked_tails = sum(1 for r in runs if tail_lock(r["pts"]))
+    print(f"LOCKS: {locked_tails}/{len(runs)} runs end in a tie-off cluster "
+          f"({by.get('lock', 0)} standalone lock runs); trims={n_trim}")
     render(runs, OUT_BASE / path.stem.replace(" ", "_"), corner_pts)
 
 
