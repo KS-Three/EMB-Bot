@@ -43,6 +43,34 @@ class PipelineConfig:
     # Stage 4
     simplify_tol_mm: float = 0.2
 
+    # Stage 5 — sew order, underlap, pull compensation
+    # Which garment/fabric the design is going on. The fabric preset supplies
+    # pull compensation, underlay style, density adjustment and trim distance;
+    # naming a garment picks its usual fabric. An explicit fabric_id wins.
+    garment_id: str | None = None
+    fabric_id: str | None = None
+    # How far a color extends underneath the color that sews after it. Enough
+    # to survive fabric pull, small enough never to read as a color error.
+    overlap_mm: float = 0.25
+
+    # Stage 6 — fill. None means "use the machine default", so a caller can
+    # override density without knowing the whole table.
+    fill_row_mm: float | None = None
+    fill_stitch_mm: float | None = None
+    # None = per-region principal axis (what the browser engine does, and what
+    # beat a fixed angle in practice). A number forces every region to it.
+    fill_angle_deg: float | None = None
+    # None = the fabric preset's fill underlay style.
+    underlay_style: str | None = None
+    underlay: bool = True
+
+    # Satin classification. Ribbons up to this wide sew as satin columns;
+    # None = the machine default (3.0 mm, matching the browser engine).
+    # satin=False forces everything to fill — the pre-step-4 behaviour,
+    # kept as an escape hatch for comparison sew-outs.
+    satin: bool = True
+    satin_max_width_mm: float | None = None
+
     # Debug artifacts: written per stage when set
     debug_dir: Path | None = None
 

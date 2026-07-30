@@ -1,9 +1,13 @@
-"""Stage orchestration — the one entry point callers use.
+"""Stage orchestration — the entry points callers use.
 
-`run_stages` is stages 1-4 only (blueprint build step 1). Stitch planning,
-the stitch processor, and export arrive in later steps and will consume
-PipelineResult without changing it: the regions, palette, and px_per_mm here
-are exactly what stage 5 (overlap resolution) needs to begin.
+`run_stages` is stages 1-4: artwork in, thread-snapped mm polygons out.
+`digitize` continues through stages 5-7 and returns stitches.
+
+They are kept separate because they answer different questions. Stages 1-4 ask
+"what shapes are in this artwork, in what threads" and their output is what a
+review screen edits. Stages 5-7 ask "how does a machine sew that", and rerunning
+them is cheap. The service (build step 8) re-plans stitches after every
+parameter tweak while reusing one run of the expensive half.
 """
 from __future__ import annotations
 
@@ -15,6 +19,7 @@ from shapely.geometry import Polygon
 
 from . import debugviz
 from .config import PipelineConfig
+from .fabrics import Fabric, fabric_for_garment, get_fabric
 from .regions import Region
 from .stage1_prep import Prep, prep
 from .stage2_quantize import Quant, quantize
@@ -25,6 +30,9 @@ from .stage3_segment import (
     resolve_small_regions,
 )
 from .stage4_vectorize import vectorize
+from .stage5_overlap import resolve_overlaps
+from .stage7_sequence import sequence
+from .stitches import StitchPlan
 from .threads import CHART
 from .warnings_codes import DROPPED_SMALL_SHAPES, warn
 
@@ -164,3 +172,45 @@ def run_stages(
         segmenter=seg.name,
         debug_dir=dbg,
     )
+
+
+def fabric_for(cfg: PipelineConfig) -> Fabric:
+    """An explicit fabric wins; otherwise the garment picks its usual one."""
+    if cfg.fabric_id:
+        return get_fabric(cfg.fabric_id)
+    return fabric_for_garment(cfg.garment_id)
+
+
+def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> StitchPlan:
+    """Stages 5-7: regions -> stitches. Safe to re-run on one PipelineResult."""
+    cfg = cfg or PipelineConfig()
+    fabric = fabric_for(cfg)
+    dbg = Path(cfg.debug_dir) if cfg.debug_dir else None
+
+    planned, overlap_warnings = resolve_overlaps(result.regions, fabric, cfg)
+    if dbg:
+        debugviz.stage5(dbg, planned, result.design_size_mm)
+
+    blocks, seq_warnings = sequence(planned, fabric, cfg)
+
+    plan = StitchPlan(
+        blocks=blocks,
+        palette=result.palette,
+        warnings=[*result.warnings, *overlap_warnings, *seq_warnings],
+        design_size_mm=result.design_size_mm,
+    )
+    if dbg:
+        debugviz.stage6(dbg, plan, result.design_size_mm)
+    return plan
+
+
+def digitize(
+    image: str | Path | bytes | np.ndarray,
+    cfg: PipelineConfig | None = None,
+    segmenter: Segmenter | None = None,
+) -> tuple[PipelineResult, StitchPlan]:
+    """Artwork in, stitches out. Returns both halves: the regions a review
+    screen edits, and the plan a machine sews."""
+    cfg = cfg or PipelineConfig()
+    result = run_stages(image, cfg, segmenter)
+    return result, plan_stitches(result, cfg)

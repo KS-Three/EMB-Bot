@@ -1,7 +1,7 @@
 [project]
 name = "digitizer-core"
-version = "0.1.0"
-description = "Fritsch's Stitches auto-digitizing engine core: flat artwork -> embroidery stitch plan (stages 1-4 skeleton)"
+version = "0.4.0"
+description = "Fritsch's Stitches auto-digitizing engine core: flat artwork -> embroidery stitch plan (stages 1-7, fill + satin)"
 requires-python = ">=3.12"
 license = { text = "Proprietary" }
 dependencies = [
@@ -12,6 +12,9 @@ dependencies = [
     "scipy>=1.11",
     "shapely>=2.0",
     "scikit-image>=0.22",
+    # Machine-file writer (MIT, pure Python). Build step 8 grows this into the
+    # universal export adapter for every EMB-Bot design.
+    "pyembroidery>=1.5.1",
 ]
 
 [project.optional-dependencies]

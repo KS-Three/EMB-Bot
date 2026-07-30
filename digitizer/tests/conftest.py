@@ -39,3 +39,32 @@ def uncertain():
 
 def codes(result) -> set[str]:
     return {w["code"] for w in result.warnings}
+
+
+# --- Stitch planning (build step 3) ---------------------------------------
+
+PLAN_CFG_KW = {"garment_id": "left_chest"}   # pique knit: 0.3 mm pull comp
+
+
+@pytest.fixture(scope="session")
+def plan(whitebg):
+    """The fixture logo planned for stitching, with its sewing geometry.
+
+    Both halves are returned because the interesting invariants are about the
+    relationship between them — a stitch is only inside or outside a hole
+    relative to the geometry it was planned against, not the raw artwork.
+    """
+    from digitizer_core import plan_stitches
+    from digitizer_core.pipeline import fabric_for
+    from digitizer_core.stage5_overlap import resolve_overlaps
+
+    c = cfg(**PLAN_CFG_KW)
+    planned, warnings = resolve_overlaps(whitebg.regions, fabric_for(c), c)
+    return plan_stitches(whitebg, c), planned, warnings
+
+
+def segments(stitch_plan):
+    """Every needle-DOWN move in the plan, as (block, run, a, b)."""
+    for b, run in stitch_plan.iter_runs():
+        for a, c in zip(run.points, run.points[1:]):
+            yield b, run, a, c

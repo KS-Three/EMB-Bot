@@ -79,3 +79,67 @@ def stage4(dir_: Path, rgb: np.ndarray, regions, px_per_mm: float, art_bbox) -> 
             cv2.LINE_AA,
         )
     _write(dir_ / "stage4_vectors.png", viz)
+
+
+# --- Stitch-level renders (build step 3) ----------------------------------
+#
+# These are drawn in mm space at a fixed scale rather than over the source
+# image: what matters now is the stitch path itself, and at source resolution
+# a 0.4 mm row spacing collapses into a solid block where nothing is judgable.
+
+_MM_SCALE = 12          # px per mm in stitch renders
+_MM_MARGIN = 6          # mm of empty space around the design
+
+
+def _mm_canvas(size_mm, scale: int = _MM_SCALE):
+    w_mm, h_mm = size_mm
+    w = int((w_mm + 2 * _MM_MARGIN) * scale)
+    h = int((h_mm + 2 * _MM_MARGIN) * scale)
+    img = np.full((max(h, 1), max(w, 1), 3), 250, np.uint8)
+
+    def to_px(x_mm: float, y_mm: float) -> tuple[int, int]:
+        return (int(round((x_mm + w_mm / 2 + _MM_MARGIN) * scale)),
+                int(round((y_mm + h_mm / 2 + _MM_MARGIN) * scale)))
+
+    return img, to_px
+
+
+def stage5(dir_: Path, planned, size_mm) -> None:
+    """Sewing geometry after underlap and pull compensation, in sew order."""
+    viz, to_px = _mm_canvas(size_mm)
+    for p in planned:
+        color = tuple(int(v) for v in CHART[p.region.thread_index].rgb)
+        pts = np.array([to_px(x, y) for x, y in p.polygon.exterior.coords], np.int32)
+        cv2.fillPoly(viz, [pts], color)
+        for hole in p.polygon.interiors:
+            hp = np.array([to_px(x, y) for x, y in hole.coords], np.int32)
+            cv2.fillPoly(viz, [hp], (250, 250, 250))
+    for i, p in enumerate(planned):
+        c = p.polygon.centroid
+        cv2.putText(viz, str(i), to_px(c.x, c.y), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5, (10, 10, 10), 2, cv2.LINE_AA)
+    _write(dir_ / "stage5_sewgeometry.png", viz)
+
+
+def stage6(dir_: Path, plan, size_mm) -> None:
+    """Every stitch, in thread color: fill and underlay solid, travel dashed,
+    needle-up moves in magenta, needle penetrations dotted on the second image.
+    """
+    viz, to_px = _mm_canvas(size_mm)
+    dots, _ = _mm_canvas(size_mm)
+    prev = None
+    for block, run in plan.iter_runs():
+        color = tuple(int(v) for v in block.rgb)
+        if run.jump and prev is not None:
+            cv2.line(viz, to_px(*prev), to_px(*run.points[0]),
+                     (255, 0, 255) if run.trim else (120, 120, 255), 1, cv2.LINE_AA)
+        light = tuple(min(255, int(c * 0.4 + 255 * 0.6)) for c in color)
+        draw = light if run.kind == "underlay" else color
+        thickness = 1 if run.kind in ("underlay", "travel") else 2
+        for a, b in zip(run.points, run.points[1:]):
+            cv2.line(viz, to_px(*a), to_px(*b), draw, thickness, cv2.LINE_AA)
+        for x, y in run.points:
+            cv2.circle(dots, to_px(x, y), 1, color, -1)
+        prev = run.points[-1]
+    _write(dir_ / "stage6_stitches.png", viz)
+    _write(dir_ / "stage6_penetrations.png", dots)
