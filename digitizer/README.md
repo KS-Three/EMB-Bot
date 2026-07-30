@@ -33,7 +33,7 @@ python -m venv .venv
 ## Run
 
 ```
-.venv/Scripts/python -m pytest -q                   # 68 tests, all offline
+.venv/Scripts/python -m pytest -q                   # 127 tests, all offline
 ```
 
 Digitize one image and dump per-stage debug PNGs:
@@ -203,9 +203,36 @@ prefers a straight run, falls back to following the shape's own inset edge, and
 lifts the needle only when the detour would exceed `max(20 mm, 4x direct)` —
 past that, running travel back over finished fill shows worse than a trim does.
 
-**Penetrations are staggered.** Every row's stitches are offset by a quarter of
-a stitch length, realigning every fourth row. Without it the needle holes line
-up into visible channels; `stage6_penetrations.png` is the view that shows it.
+**Every shape starts where the needle already is.** `stitch_shape` and
+`satin_shape` take a `start_near` point: the fill picks its first column
+nearest it, a closed underlay edge walk begins at the nearest point of its own
+ring, the fill then picks up from wherever the underlay finished, and satin
+orders its strokes nearest-first. Stage 7 therefore settles the ORDER before
+the geometry exists — on the distance from the needle to the sewing polygon,
+which is the honest proxy for the hop. Generating first and ordering on the
+result made every shape begin at its own top-left corner: on a row of tall
+shapes the needle finished each one at the bottom and flew back to the top of
+the next, 41 mm a time. A color also starts at an extreme of its group rather
+than in the middle of it, because nearest-neighbour from the middle strands the
+far end and pays for it with one long haul at the finish.
+
+**Penetrations are staggered, and the stagger does not march.** Every row's
+stitches are offset by a quarter of a stitch length, realigning every fourth
+row. Which quarter matters as much as the size: taking them in order (0, 1, 2,
+3) moves every penetration the same distance sideways as the rows step down, so
+the holes line up along a diagonal — the channel tilted, not removed. The slots
+come from the bit-reversal of the row index instead, so 4 staggers run
+(0, 2, 1, 3) and no three rows in a row share a slope.
+`stage6_penetrations.png` is the view that shows it.
+
+**No stitch along a row is shorter than the needle minimum.** The interior grid
+is anchored globally, so its first point inside a row lands an arbitrary
+fraction of a stitch past the edge; keeping it whenever it merely cleared the
+tiny-stitch floor put two penetrations tenths of a millimetre apart. An
+interior penetration has to clear `MIN_STITCH_MM` against both neighbours or it
+is skipped, and `split_long_moves` subdivides whatever gap that leaves. A whole
+ROW shorter than the minimum still sews — at a tapering tip the only
+alternative is to give up the edge.
 
 **Satin for ribbons** (`stage6_satin.py`). Shapes whose ribbon width
 (2·area/perimeter) is ≤ 3 mm and whose length is ≥ 3× that width sew as zigzag
@@ -215,7 +242,10 @@ Classification runs on the ARTWORK polygon so fabric choice can never flip a
 logo's structure; sewing runs on the stage-5 compensated one. The skeleton walk
 stops at junction nodes and consumes pixels exactly once; collinear arms weld
 into through-strokes (a T is a bar plus a yielding stem, never two half-bars);
-free ends extend to the cap edge and finish with a square-end terminal cross;
+free ends are first walked back OUT of the cap corner the medial axis runs into
+— a flat cap's skeleton forks toward its corners, and crosses built on what
+pruning leaves behind pivot on one needle hole and fan across the cap — then
+extended to the cap edge, finishing with a square-end terminal cross;
 `medial_axis(rng=0)` is REQUIRED — unseeded it is nondeterministic and the same
 artwork digitizes differently run to run. Every consecutive pair of runs is
 linked with an explicit jump/trim decision and oriented to start at the end
@@ -227,6 +257,35 @@ land exactly on the shape boundary (that is what makes an edge crisp, and the
 must not touch fill paths), and lock stitches only ever reach *into* a shape,
 never past the point they tie at — ties laid symmetrically put a whisker of
 thread outside the artwork, which the first smoke run duly produced.
+
+## Open questions the renders cannot settle
+
+Three things the stitch-quality review measured but did not change, because
+each is a trade Kent has to see sewn rather than one a debug PNG can decide.
+
+**Satin on a curve is under-dense on the outside.** Crosses are spaced along
+the SPINE, but the thread lands on the RAILS, and on a bend the outer rail runs
+further than the spine by (half-width x angle turned). Measured on a tight ring:
+0.59 mm between outer penetrations against the 0.4 mm target, 47% short. Spacing
+by the outer rail instead fixes that (outer starvation 0.26 mm -> 0.20 mm) but
+drives the INNER rail straight into the short-stitch guard's 0.3 mm threshold,
+where every other penetration is pulled off the rail — on a moderate ring that
+made the inside edge worse (0.18 mm -> 0.30 mm) than it started. Which reads
+worse on fabric is a sew-out question.
+
+**The trim distance is 3.0 mm and almost every hop exceeds it.** On eight
+filled letters, seven of the eight hops between letters are 4-13 mm — the
+letter spacing itself — so each one is cut. That is Kent's "too many trims",
+and the number lives in the fabric presets, which mirror `src/fabrics.js`
+exactly. Moving it moves it for the browser engine too, and where a Tajima
+should stop jumping and start cutting is his call.
+
+**Fill angle is per shape, from the polygon's vertices.** Each region gets its
+own principal axis, so a word of filled letters comes out a patchwork of
+angles, and the axis is computed from the vertex cloud rather than the area —
+`approxPolyDP` puts vertices where curvature is, not where the shape is.
+`cfg.fill_angle_deg` already forces one angle on everything. Which default
+Kent wants — per shape, per color, or one for the design — is a look, not a bug.
 
 ## Determinism
 
@@ -254,6 +313,9 @@ geometry, so tests assert exact structure). Regenerate with
 a blob, a ring (hole preservation), a ~2 mm bar (satin candidate), touching
 different-color rectangles, a sub-sewable patch (absorb path), an isolated
 sub-sewable dot (drop path), anti-aliased edges throughout.
+`ribbon_curve.png` is a second file for one job the flat logo cannot do: its
+only ribbon is a straight bar, whose medial axis has no cap corner to run into,
+so the satin cap defect had nowhere to show.
 
 `tools/gen_charts.py` generates `chart_data/` — 68 manufacturer charts, 19,857
 colors — from the repo's `tools/palettes/*.gpl`. Thread numbers and RGB values
