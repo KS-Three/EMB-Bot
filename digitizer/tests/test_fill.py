@@ -16,6 +16,7 @@ from digitizer_core.stage6_fill import (
     _fill_paths,
     _row_points,
     _row_spans,
+    _stagger_slots,
     principal_angle_deg,
     stitch_shape,
     travel_path,
@@ -90,6 +91,26 @@ def test_no_penetration_lands_beside_the_hole_the_needle_just_made():
                     continue                # a whole row this short IS the tip
                 assert d >= machine.MIN_STITCH_MM - 1e-9, \
                     f"{d:.3f} mm stitch along a row of the {name}"
+
+
+def test_stagger_offsets_do_not_walk_the_holes_into_a_diagonal():
+    """A stagger that advances one notch per row shifts every penetration the
+    same distance sideways as the rows step down: the channel is not removed,
+    only tilted, and light still runs along it. Consecutive rows must jump
+    around the cycle, never march through it."""
+    assert _stagger_slots(4) == (0, 2, 1, 3)
+    assert sorted(_stagger_slots(8)) == list(range(8)), "still a permutation"
+
+    paths = _fill_paths(RECT, 0.0, 0.4, 4.0, 4)
+    rows = _rows_of(paths[0])
+    ys = sorted(rows)
+    firsts = [min(x for x in rows[y] if 0.001 < x < 39.999) for y in ys[:16]]
+    steps = [round(b - a, 6) for a, b in zip(firsts, firsts[1:])]
+    longest = run = 1
+    for a, b in zip(steps, steps[1:]):
+        run = run + 1 if b == a else 1
+        longest = max(longest, run)
+    assert longest < 3, f"holes march in a straight diagonal: {steps}"
 
 
 def test_row_ends_land_on_the_shape_edge():

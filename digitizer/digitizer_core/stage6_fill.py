@@ -24,6 +24,7 @@ Everything works in mm, y-down, the same space stage 4 produced.
 from __future__ import annotations
 
 import math
+from functools import lru_cache
 
 import numpy as np
 from shapely import affinity
@@ -144,6 +145,37 @@ def _columns(rows: list[tuple[int, float, list[tuple[float, float]]]]) -> list[l
     return [c for c in columns if c]
 
 
+@lru_cache(maxsize=16)
+def _stagger_slots(n: int) -> tuple[int, ...]:
+    """Which offset slot each row in a stagger cycle uses.
+
+    The obvious answer — row `i` takes slot `i` — is what a naive tatami does,
+    and it is wrong for a reason that only shows on fabric. Walking the offset
+    one notch per row moves every penetration a constant step sideways as the
+    rows step down, so the holes line up along a diagonal and light runs down
+    it: the channel is still there, just tilted. Reversing the bits of the row
+    index (a van der Corput ordering) makes consecutive rows jump about half
+    the pattern instead of one notch, so no three rows in a row share a slope.
+    Rows still realign every `n` rows, which is what the density depends on.
+
+    n = 4 gives slots (0, 2, 1, 3).
+    """
+    n = max(1, n)
+    if n == 1:
+        return (0,)
+    bits = max(1, (n - 1).bit_length())
+    rev = [int(format(i, f"0{bits}b")[::-1], 2) for i in range(n)]
+    slots = [0] * n
+    for slot, row in enumerate(sorted(range(n), key=lambda i: (rev[i], i))):
+        slots[row] = slot
+    return tuple(slots)
+
+
+def _stagger_phase(row_index: int, staggers: int, stitch_mm: float) -> float:
+    n = max(1, staggers)
+    return _stagger_slots(n)[row_index % n] / n * stitch_mm
+
+
 def _row_points(x0: float, x1: float, y: float, row_index: int, stitch_mm: float,
                 staggers: int, reverse: bool) -> list[tuple[float, float]]:
     """Penetrations across one row, staggered against its neighbours.
@@ -170,7 +202,7 @@ def _row_points(x0: float, x1: float, y: float, row_index: int, stitch_mm: float
     # clears both edges; the row is the single stitch between them, which is
     # what keeps a tapering tip's edge on the boundary.
     if span >= 2 * machine.MIN_STITCH_MM:
-        phase = (row_index % max(1, staggers)) / max(1, staggers) * stitch_mm
+        phase = _stagger_phase(row_index, staggers, stitch_mm)
         x = math.ceil((x0 - phase) / stitch_mm) * stitch_mm + phase
         while x < x1:
             if x - xs[-1] >= machine.MIN_STITCH_MM and x1 - x >= machine.MIN_STITCH_MM:
