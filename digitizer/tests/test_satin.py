@@ -19,6 +19,7 @@ from digitizer_core.stage6_satin import (
     ribbon_width_mm,
     satin_shape,
 )
+from tests.conftest import TESTDATA
 
 BAR = Polygon([(0, 0), (24, 0), (24, 2), (0, 2)])
 O_RING = Polygon(
@@ -151,6 +152,33 @@ def test_curve_inside_rail_does_not_chew_one_hole():
                 crowded += 1
     assert crowded <= len(inner) // 10, \
         f"{crowded} near-coincident penetrations on the inside rail"
+
+
+def test_a_satin_free_end_does_not_fan_into_a_starburst():
+    """Regression, measured on testdata/ribbon_curve.png: spur pruning left the
+    last millimetre of the spine running diagonally into a cap corner instead
+    of down the middle of the stroke. Every cross built there pivoted on the
+    same needle hole and swung out across the cap — a starburst, thread laid
+    outside the ribbon, and the cap itself left bare.
+
+    A column may finish each free end with one wide terminal cross reaching the
+    cap corners; a fan is several of them in a row. Counted on the rail
+    penetrations, the fan showed as four over-wide gaps stacked at one end.
+    """
+    from digitizer_core import PipelineConfig, digitize
+
+    _result, plan = digitize(TESTDATA / "ribbon_curve.png",
+                             PipelineConfig(target_width_mm=80.0,
+                                            garment_id="left_chest"))
+    pts = [p for _b, r in plan.iter_runs() if r.kind == "satin" for p in r.points]
+    assert len(pts) > 200, "the curved ribbon should sew as one long column"
+
+    # Points come out A, B, B, A, A, B ... so p[i] and p[i+3] are consecutive
+    # penetrations on the same rail.
+    wide = [i for i in range(0, len(pts) - 3, 2)
+            if math.dist(pts[i], pts[i + 3]) > 2 * machine.SATIN_SPACING_MM]
+    assert len(wide) <= 2, \
+        f"{len(wide)} over-wide rail gaps — a free end is fanning: {wide}"
 
 
 # --- Underlay --------------------------------------------------------------

@@ -11,6 +11,9 @@ Fixtures:
   bg_uncertain.png   a navy block with a white notch cut in from the border —
                      the border flood legitimately intrudes deep past the
                      artwork margin, which must raise BACKGROUND_UNCERTAIN.
+  ribbon_curve.png   one ~2 mm stroke curved through an S — the satin case the
+                     flat logo cannot pose, where the medial axis runs into a
+                     cap corner and the column has to survive it.
 
 Art inventory (what each element exercises):
   red filled circle          blob -> fill; absorb target for the teal patch
@@ -23,6 +26,7 @@ Art inventory (what each element exercises):
 """
 from __future__ import annotations
 
+import math
 from pathlib import Path
 
 import cv2
@@ -93,6 +97,19 @@ def main() -> None:
     # punch the ring hole out of color AND alpha
     punch_hole(bgra, (0, 0, 0, 0))
     cv2.imwrite(str(OUT / "logo_alpha.png"), down(bgra))
+
+    # --- ribbon_curve.png (one long thin curved stroke, nothing else) -------
+    # The satin stress case the flat logo cannot pose: a stroke that is thin
+    # enough for a column AND curved enough that its medial axis runs into a
+    # cap corner at each free end. Drawn as a stroked polyline so its caps are
+    # square, which is where the corner forks.
+    rib = np.full((H * S, W * S, 3), 255, np.uint8)
+    curve = np.array(
+        [[int((60 + t / 199 * 680) * S),
+          int((250 + 120 * math.sin(t / 199 * math.pi * 1.6)) * S)]
+         for t in range(200)], np.int32)
+    cv2.polylines(rib, [curve], False, RED, int(2.2 * S * W / 80))
+    cv2.imwrite(str(OUT / "ribbon_curve.png"), down(rib))
 
     # --- bg_uncertain.png (white notch from border deep into the art) -------
     unc = np.full((H * S, W * S, 3), 255, np.uint8)

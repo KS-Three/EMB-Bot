@@ -611,7 +611,10 @@ def _extend_to_cap(spine: list[tuple[float, float]], poly: Polygon, half_mm: flo
     if d < 1e-9:
         return spine
     ux, uy = (tip[0] - prev[0]) / d, (tip[1] - prev[1]) / d
-    reach = half_mm * 2.5 + 0.5
+    # Long enough to still find the cap after `_retract_cap_corner` has walked
+    # the end back in. The nearest hit is the one taken, so a longer ray can
+    # only find a cap where there was none — never move one.
+    reach = half_mm * 4.5 + 0.5
     ray = LineString([tip, (tip[0] + ux * reach, tip[1] + uy * reach)])
     inter = ray.intersection(poly.boundary)
     if inter.is_empty:
@@ -626,6 +629,52 @@ def _extend_to_cap(spine: list[tuple[float, float]], poly: Polygon, half_mm: flo
         return spine
     cap = min(cands, key=lambda q: (q[0] - tip[0]) ** 2 + (q[1] - tip[1]) ** 2)
     pts.append(cap)
+    return list(reversed(pts)) if at_start else pts
+
+
+# A free end whose corridor is narrower than this fraction of the stroke's own
+# half-width is not the stroke any more, it is a cap corner.
+_CAP_CORNER_FRAC = 0.8
+# Never chase a corner further in than this many half-widths: on a genuinely
+# tapering stroke the corridor narrows all the way and there is nothing wrong
+# with that.
+_CAP_CORNER_REACH_HALFWIDTHS = 1.5
+
+
+def _retract_cap_corner(spine: list[tuple[float, float]], field: _WidthField | None,
+                        half_mm: float, at_start: bool) -> list[tuple[float, float]]:
+    """Walk a free spine end back out of the cap corner it ran into.
+
+    A flat cap's medial axis forks toward the two corners. Spur pruning removes
+    most of each fork, but what survives leaves the last millimetre of the
+    spine running diagonally at a corner instead of down the middle of the
+    stroke. Every cross built on that stretch pivots on the same needle hole
+    and swings across the cap — the starburst measured on the curved-ribbon
+    case: five penetrations in one hole and 3.3 mm crosses on a 2.8 mm ribbon,
+    thread laid outside the artwork at the tip and the cap itself left bare.
+
+    The corridor width is the tell — at a corner the distance transform reads a
+    fraction of the stroke's half-width. Walk in until it does not, and let
+    `_extend_to_cap` rebuild a square end from a point that is genuinely in the
+    middle of the stroke.
+    """
+    if field is None or len(spine) < 4 or half_mm <= 0:
+        return spine
+    pts = list(reversed(spine)) if at_start else list(spine)
+    floor = _CAP_CORNER_FRAC * half_mm
+    budget = _CAP_CORNER_REACH_HALFWIDTHS * half_mm
+    eaten = 0.0
+    cut = 0
+    for i in range(len(pts) - 1, 1, -1):
+        if field.half_at(pts[i]) >= floor:
+            break
+        eaten += math.dist(pts[i], pts[i - 1])
+        if eaten > budget:
+            break
+        cut += 1
+    if not cut:
+        return spine
+    pts = pts[: len(pts) - cut]
     return list(reversed(pts)) if at_start else pts
 
 
@@ -663,8 +712,10 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
             spine = _trim_chain(spine, t0, t1)
 
     if stroke.free_start:
+        spine = _retract_cap_corner(spine, field, half_mm, at_start=True)
         spine = _extend_to_cap(spine, poly, half_mm, at_start=True)
     if stroke.free_end:
+        spine = _retract_cap_corner(spine, field, half_mm, at_start=False)
         spine = _extend_to_cap(spine, poly, half_mm, at_start=False)
     length = sum(math.dist(a, b) for a, b in zip(spine, spine[1:]))
     if length <= 0:
