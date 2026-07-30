@@ -24,7 +24,7 @@ from .config import PipelineConfig
 from .regions import Region, assign_shape_ids
 from .stage1_prep import Prep
 from .stage3_segment import RegionMask
-from .threads import CHART
+from .threads import chart_for
 
 
 def _to_mm(pts: np.ndarray, cx: float, cy: float, px_per_mm: float) -> np.ndarray:
@@ -48,6 +48,7 @@ def vectorize(
     because a shape disappearing with no trace is the failure mode that
     makes an auto-digitizer untrustworthy.
     """
+    chart = chart_for(cfg)
     x0, y0, x1, y1 = p.art_bbox
     cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
     eps_px = max(0.5, cfg.simplify_tol_mm * p.px_per_mm)
@@ -113,7 +114,7 @@ def vectorize(
             note_drop(rm)
             continue
 
-        thread = CHART[thread_indices[rm.layer]]
+        thread = chart[thread_indices[rm.layer]]
         regions.append(
             Region(
                 shape_id="",

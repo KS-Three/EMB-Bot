@@ -33,7 +33,7 @@ from .stage4_vectorize import vectorize
 from .stage5_overlap import resolve_overlaps
 from .stage7_sequence import sequence
 from .stitches import StitchPlan
-from .threads import CHART
+from .threads import chart_for
 from .warnings_codes import DROPPED_SMALL_SHAPES, warn
 
 
@@ -75,7 +75,7 @@ def run_stages(
 
     q: Quant = quantize(p, cfg)
     if dbg:
-        debugviz.stage2(dbg, q.labels, q.thread_indices)
+        debugviz.stage2(dbg, q.labels, q.thread_indices, chart_for(cfg))
 
     masks = seg.segment(q, p, cfg)
     masks, small_warnings = resolve_small_regions(masks, cfg, p.px_per_mm)
@@ -104,7 +104,7 @@ def run_stages(
                 )
             )
     if dbg:
-        debugviz.stage4(dbg, p.rgb, regions, p.px_per_mm, p.art_bbox)
+        debugviz.stage4(dbg, p.rgb, regions, p.px_per_mm, p.art_bbox, chart_for(cfg))
 
     x0, y0, x1, y1 = p.art_bbox
     design = ((x1 - x0) / p.px_per_mm, (y1 - y0) / p.px_per_mm)
@@ -146,12 +146,14 @@ def run_stages(
                 )
         return out
 
+    chart = chart_for(cfg)
     palette = [
         {
-            "brand": "Isacord",
-            "number": CHART[t].number,
-            "name": CHART[t].name,
-            "rgb": list(CHART[t].rgb),
+            "brand": chart.label,
+            "brand_id": chart.id,
+            "number": chart[t].number,
+            "name": chart[t].name,
+            "rgb": list(chart[t].rgb),
         }
         for t in thread_indices
     ]
@@ -189,7 +191,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
 
     planned, overlap_warnings = resolve_overlaps(result.regions, fabric, cfg)
     if dbg:
-        debugviz.stage5(dbg, planned, result.design_size_mm)
+        debugviz.stage5(dbg, planned, result.design_size_mm, chart_for(cfg))
 
     blocks, seq_warnings = sequence(planned, fabric, cfg)
 

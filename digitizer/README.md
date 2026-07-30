@@ -5,20 +5,22 @@ embroidery out. Python, independently testable, independently sellable — see
 `docs/superpowers/plans/2026-07-29-digitizer-step1-skeleton.md` for the plan
 this implements and the blueprint it comes from.
 
-**Status: build steps 1, 3 and 4 of 11 — stages 1–7, fill + satin.** Artwork
-goes in and a sewable DST comes out: background-masked, thread-snapped,
-segmented and vectorized (step 1); sew-ordered, underlapped, filled with
-underlay, sequenced with lock stitches, and exported (step 3); and ribbons —
-lettering, borders, thin strokes — sewn as satin columns along their medial
-axis (step 4). `SHAPE_TOO_THIN_TO_FILL` now means "thin but not stroke-like
-enough for satin": compact slivers worth review-screen eyes.
+**Status: build steps 1, 3, 4 and 8 of 11 — stages 1–7, fill + satin, and the
+service.** Artwork goes in and a sewable design comes out: background-masked,
+thread-snapped, segmented and vectorized (step 1); sew-ordered, underlapped,
+filled with underlay, sequenced with lock stitches, and exported (step 3);
+ribbons — lettering, borders, thin strokes — sewn as satin columns along their
+medial axis (step 4); and all of it reachable over HTTP, in the thread brand
+the shop actually stocks, with machine files in nine formats (step 8).
+`SHAPE_TOO_THIN_TO_FILL` means "thin but not stroke-like enough for satin":
+compact slivers worth review-screen eyes.
 
 SAM 2 segmentation (step 2) was deferred by Kent in favour of steps 3–4 — the
 `Segmenter` seam means it drops in later without touching stitch code. Still
-to come: the stitch processor, the FastAPI service (step 8) and EMB-Bot
-integration (step 10). See
+to come: the stitch processor, preflight scoring (step 9) and the EMB-Bot
+review UI (step 10) — whose adapter is already built here. See
 `docs/superpowers/plans/2026-07-30-digitizer-step4-satin.md` for the satin
-design and the eleven defects found and pinned while building it.
+design and `2026-07-30-digitizer-step8-service.md` for the service.
 
 ## Setup
 
@@ -82,6 +84,44 @@ first half.
 Run pytest via `python -m pytest` (not the `pytest` script) so the working
 directory lands on `sys.path` and `digitizer_core` imports without an install.
 
+## The service (build step 8)
+
+```
+.venv/Scripts/python -m pip install -e ".[service,dev]"
+.venv/Scripts/python -m digitizer_service          # 127.0.0.1:8721
+```
+
+| Route | Does |
+|---|---|
+| `GET /health` | Is it running, which brands, which formats, what limits |
+| `POST /digitize` | Artwork + config → a job id (202). Multipart: `image`, `config` |
+| `GET /jobs/{id}` | `queued`/`running`/`done`/`error`; when done, `design` + `review` + `stats` |
+| `POST /export` | Any EMB-Bot design + a format → the machine file |
+
+`/digitize` returns an EMB-Bot **`Design`**, not a stitch file — see the DST
+codec finding below for why that matters. `review` is the shapes-and-threads
+half a review screen edits; `design` is the sewable half.
+
+Resubmitting an identical request returns the finished job immediately: results
+are keyed by sha256(artwork) + config, which is what makes a review screen's
+"change one parameter" loop usable. Digitizing runs one at a time.
+
+`config` accepts any `PipelineConfig` field except `debug_dir`, including
+`thread_brand` — Studio's stored brand preference resolves here because the ids
+are generated to match `app/src/lib/threadBrandsIndex.js` exactly, and a test
+asserts they still do. An unknown brand is rejected rather than quietly
+substituted, because the operator buys the cone the palette names.
+
+Posture: binds loopback, no auth. Set `EMBBOT_SERVICE_TOKEN` and every route but
+`/health` requires `X-EMBBOT-Token` — throw that switch before this listens on
+anything but localhost.
+
+Regenerate the thread charts after changing `tools/palettes/`:
+
+```
+.venv/Scripts/python tools/gen_charts.py
+```
+
 ## Conventions that other code depends on
 
 | Thing | Convention |
@@ -97,9 +137,9 @@ directory lands on `sys.path` and `digitizer_core` imports without an install.
 | `StitchRun.jump` / `.trim` | Properties of the run being moved TO, since that is the run whose first stitch has to be reached |
 
 **y-axis:** the contract is y-down (screen convention). EMB-Bot's own engine
-is +y **up**, so the browser adapter (build step 10) owns that flip.
-`test_coordinates_are_y_down_and_centered` is what makes a silent mirror
-there detectable.
+is +y **up**, so `adapter.py` owns that flip and is the only place one happens.
+`test_coordinates_are_y_down_and_centered` makes a silent mirror in the
+pipeline detectable; `tests/test_adapter.py` does the same for the boundary.
 
 pyembroidery's stitch space is also y-down, so `export.py` scales mm to 0.1 mm
 units and does nothing else. That was measured, not assumed — see below.
@@ -122,11 +162,23 @@ back through pyembroidery reproduces it: a 127 × 43.4 mm hat design reports as
 
 This has NOT been changed. Kent has sewn EMB-Bot files on his Tajima, so
 something reconciles this on real hardware, and rotating every design he has
-made on a theory would be reckless. What it means for this package: DST
-verification goes through pyembroidery, never through the browser codec, and
-build step 10's adapter needs its own round-trip golden rather than an
-assumption. Resolving it needs a sew-out or a third opinion (any machine or
-viewer that is not either of these two implementations).
+made on a theory would be reckless. Resolving it needs a sew-out or a third
+opinion (any machine or viewer that is not either of these two
+implementations).
+
+**Build step 8 routes around it rather than betting on an answer.** The service
+hands the browser a `Design` — the same structure `buildLetteringDesign`
+produces — not a DST, so the disputed format never crosses the boundary and a
+digitized design cannot arrive transposed. Studio bakes its own DST with its
+own encoder if it wants one, which round-trips with its own decoder. Machine
+files from `/export` are written by pyembroidery in the standard convention and
+every response says so in `X-Stitch-Convention`; for DST specifically, Studio's
+own encoder stays the default because it is the one with sewn evidence behind
+it. PES and JEF, the formats the service exists to unlock, have no competing
+implementation and no conflict.
+
+DST verification on this side still goes through pyembroidery, never through
+the browser codec.
 
 ## Stitch planning: what makes it look professional
 
@@ -203,10 +255,12 @@ a blob, a ring (hole preservation), a ~2 mm bar (satin candidate), touching
 different-color rectangles, a sub-sewable patch (absorb path), an isolated
 sub-sewable dot (drop path), anti-aliased edges throughout.
 
-`tools/gen_isacord.py` generates the 398-color Isacord chart from the repo's
-palette data. Thread numbers and RGB values are factual manufacturer data;
-Isacord is a trademark of the Amann Group, used only to identify the thread
-line.
+`tools/gen_charts.py` generates `chart_data/` — 68 manufacturer charts, 19,857
+colors — from the repo's `tools/palettes/*.gpl`. Thread numbers and RGB values
+are factual manufacturer data; each brand name is a trademark of its
+manufacturer, used only to identify the thread line. The generator re-applies
+the no-embroidery-software-companies policy by filename, so re-copying the
+upstream palette set wholesale cannot quietly reintroduce a competitor's brand.
 
 ## License policy
 

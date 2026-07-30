@@ -15,6 +15,12 @@ class PipelineConfig:
     target_width_mm: float = 80.0
 
     # Stage 2
+    # Which manufacturer's chart the design is snapped to. Ids match the
+    # browser's (app/src/lib/threadBrandsIndex.js) because Studio sends its
+    # stored preference straight through; None = Isacord, the shop default and
+    # what every golden here is pinned to. The operator buys the cone this
+    # names, so an unknown id raises rather than silently substituting.
+    thread_brand: str | None = None
     max_colors: int = 12
     seed: int = 0                      # k-means RNG seed — fixed for determinism
     # Cluster centers within this CIE76 distance are the SAME flat color that

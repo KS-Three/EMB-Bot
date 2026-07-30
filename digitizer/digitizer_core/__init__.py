@@ -17,7 +17,7 @@ from .pipeline import (
 from .regions import Region
 from .stage3_segment import ClassicalSegmenter, Segmenter
 from .stitches import PlanStats, StitchBlock, StitchPlan, StitchRun
-from .threads import CHART, Thread
+from .threads import CHART, Chart, Thread, brand_index, load_chart
 
 __all__ = [
     "PipelineConfig",
@@ -27,7 +27,10 @@ __all__ = [
     "Segmenter",
     "ClassicalSegmenter",
     "Thread",
+    "Chart",
     "CHART",
+    "load_chart",
+    "brand_index",
     "Fabric",
     "FABRICS",
     "get_fabric",

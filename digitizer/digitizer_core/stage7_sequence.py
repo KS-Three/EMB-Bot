@@ -27,7 +27,7 @@ from .stage5_overlap import PlannedRegion
 from .stage6_fill import stitch_shape
 from .stage6_satin import is_satin_candidate, satin_shape
 from .stitches import StitchBlock, StitchRun, tie_run
-from .threads import CHART
+from .threads import chart_for
 from .warnings_codes import LONG_JUMPS_TRIMMED, SHAPE_NOT_STITCHED, SHAPE_TOO_THIN_TO_FILL, warn
 
 
@@ -155,7 +155,7 @@ def sequence(
         ordered[0].trim = True
         _apply_ties(ordered)
 
-        thread = CHART[group[0].region.thread_index]
+        thread = chart_for(cfg)[group[0].region.thread_index]
         blocks.append(
             StitchBlock(
                 thread_index=group[0].region.thread_index,

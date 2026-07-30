@@ -30,7 +30,7 @@ import numpy as np
 
 from .config import PipelineConfig
 from .stage1_prep import Prep
-from .threads import CHART, nearest_thread_index, rgb_to_lab
+from .threads import chart_for, rgb_to_lab
 from .warnings_codes import COLOR_CAP_APPLIED, warn
 
 FIT_SAMPLE_MAX = 40_000
@@ -230,7 +230,8 @@ def quantize(p: Prep, cfg: PipelineConfig) -> Quant:
         merged_members.append(members)
 
     # snap to spools; same spool -> same layer
-    spool_of = [nearest_thread_index(c) for c in merged_centers]
+    chart = chart_for(cfg)
+    spool_of = [chart.nearest_index(c) for c in merged_centers]
     by_spool: dict[int, list[int]] = {}
     for i, s in enumerate(spool_of):
         by_spool.setdefault(s, []).append(i)
@@ -287,6 +288,6 @@ def quantize(p: Prep, cfg: PipelineConfig) -> Quant:
     return Quant(
         labels=out,
         thread_indices=final_spools,
-        cluster_rgb=np.array([CHART[s].rgb for s in final_spools], np.float64),
+        cluster_rgb=np.array([chart[s].rgb for s in final_spools], np.float64),
         warnings=warnings,
     )

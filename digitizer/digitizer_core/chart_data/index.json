@@ -1,0 +1,342 @@
+[
+ {
+  "id": "admelody-polyester",
+  "label": "Admelody Polyester",
+  "count": 320
+ },
+ {
+  "id": "admelody-rayon",
+  "label": "Admelody Rayon",
+  "count": 420
+ },
+ {
+  "id": "anchor",
+  "label": "Anchor",
+  "count": 423
+ },
+ {
+  "id": "arc-polyester",
+  "label": "ARC Polyester",
+  "count": 288
+ },
+ {
+  "id": "arc-rayon",
+  "label": "ARC Rayon",
+  "count": 288
+ },
+ {
+  "id": "aurifil-lana",
+  "label": "Aurifil Lana",
+  "count": 106
+ },
+ {
+  "id": "aurifil-mako",
+  "label": "Aurifil Mako",
+  "count": 158
+ },
+ {
+  "id": "aurifil-polyester",
+  "label": "Aurifil Polyester",
+  "count": 204
+ },
+ {
+  "id": "aurifil-rayon",
+  "label": "Aurifil Rayon",
+  "count": 180
+ },
+ {
+  "id": "aurifil-royal",
+  "label": "Aurifil Royal",
+  "count": 499
+ },
+ {
+  "id": "bfc-polyester",
+  "label": "BFC Polyester",
+  "count": 320
+ },
+ {
+  "id": "brildor-ac",
+  "label": "Brildor AC",
+  "count": 120
+ },
+ {
+  "id": "brildor-co",
+  "label": "Brildor CO",
+  "count": 70
+ },
+ {
+  "id": "brildor-mf",
+  "label": "Brildor MF",
+  "count": 210
+ },
+ {
+  "id": "brildor-ny",
+  "label": "Brildor NY",
+  "count": 180
+ },
+ {
+  "id": "brildor-pb",
+  "label": "Brildor PB",
+  "count": 260
+ },
+ {
+  "id": "brothread-40",
+  "label": "Brothread 40",
+  "count": 40
+ },
+ {
+  "id": "brothread-80",
+  "label": "Brothread 80",
+  "count": 78
+ },
+ {
+  "id": "coats-alcazar",
+  "label": "Coats Alcazar",
+  "count": 500
+ },
+ {
+  "id": "coats-alcazar-jazz",
+  "label": "Coats Alcazar Jazz",
+  "count": 304
+ },
+ {
+  "id": "coats-sylko",
+  "label": "Coats Sylko",
+  "count": 399
+ },
+ {
+  "id": "coats-sylko-usa",
+  "label": "Coats Sylko USA",
+  "count": 303
+ },
+ {
+  "id": "dmc",
+  "label": "DMC",
+  "count": 458
+ },
+ {
+  "id": "embroidex",
+  "label": "Embroidex",
+  "count": 258
+ },
+ {
+  "id": "emmel",
+  "label": "Emmel",
+  "count": 521
+ },
+ {
+  "id": "fil-tec-glide",
+  "label": "Fil-Tec Glide",
+  "count": 213
+ },
+ {
+  "id": "fufu-polyester",
+  "label": "FuFu Polyester",
+  "count": 713
+ },
+ {
+  "id": "fufu-rayon",
+  "label": "FuFu Rayon",
+  "count": 713
+ },
+ {
+  "id": "gunold-polyester",
+  "label": "Gunold Polyester",
+  "count": 300
+ },
+ {
+  "id": "gutermann-creativ-dekor",
+  "label": "Gutermann Creativ Dekor",
+  "count": 200
+ },
+ {
+  "id": "isacord",
+  "label": "Isacord Polyester 40",
+  "count": 398
+ },
+ {
+  "id": "isafil-rayon",
+  "label": "Isafil Rayon",
+  "count": 286
+ },
+ {
+  "id": "isalon-polyester",
+  "label": "Isalon Polyester",
+  "count": 414
+ },
+ {
+  "id": "king-star",
+  "label": "King Star",
+  "count": 430
+ },
+ {
+  "id": "madeira-burmilana",
+  "label": "Madeira Burmilana",
+  "count": 121
+ },
+ {
+  "id": "madeira-matt",
+  "label": "Madeira Matt",
+  "count": 161
+ },
+ {
+  "id": "madeira-rayon",
+  "label": "Madeira Rayon 40",
+  "count": 357
+ },
+ {
+  "id": "magnifico",
+  "label": "Magnifico",
+  "count": 200
+ },
+ {
+  "id": "marathon-polyester",
+  "label": "Marathon Polyester",
+  "count": 301
+ },
+ {
+  "id": "marathon-rayon",
+  "label": "Marathon Rayon",
+  "count": 317
+ },
+ {
+  "id": "marathon-rayon-v3",
+  "label": "Marathon Rayon V3",
+  "count": 384
+ },
+ {
+  "id": "metro",
+  "label": "Metro",
+  "count": 168
+ },
+ {
+  "id": "mettler-embroidery",
+  "label": "Mettler Embroidery",
+  "count": 152
+ },
+ {
+  "id": "mettler-poly-sheen",
+  "label": "Mettler Poly Sheen",
+  "count": 351
+ },
+ {
+  "id": "mtb-embroidex",
+  "label": "MTB - Embroidex",
+  "count": 107
+ },
+ {
+  "id": "outback-embroidery-rayon",
+  "label": "Outback Embroidery Rayon",
+  "count": 100
+ },
+ {
+  "id": "poly-x40",
+  "label": "Poly X40",
+  "count": 286
+ },
+ {
+  "id": "polyneon",
+  "label": "Madeira Polyneon 40",
+  "count": 349
+ },
+ {
+  "id": "princess",
+  "label": "Princess",
+  "count": 120
+ },
+ {
+  "id": "radiant-rayon",
+  "label": "Radiant Rayon",
+  "count": 102
+ },
+ {
+  "id": "robison-anton",
+  "label": "Robison-Anton Polyester 40",
+  "count": 452
+ },
+ {
+  "id": "robison-anton-rayon",
+  "label": "Robison-Anton Rayon",
+  "count": 419
+ },
+ {
+  "id": "royal-polyester",
+  "label": "Royal Polyester",
+  "count": 473
+ },
+ {
+  "id": "royal-viscose-rayon",
+  "label": "Royal Viscose Rayon",
+  "count": 494
+ },
+ {
+  "id": "sigma",
+  "label": "Sigma",
+  "count": 150
+ },
+ {
+  "id": "simthread-glow-in-the-dark-15-colors",
+  "label": "Simthread Glow In The Dark 15 Colors",
+  "count": 15
+ },
+ {
+  "id": "simthread-polyester",
+  "label": "Simthread Polyester",
+  "count": 107
+ },
+ {
+  "id": "simthread-polyester-63-brother-colors",
+  "label": "Simthread Polyester 63 Brother Colors",
+  "count": 63
+ },
+ {
+  "id": "simthread-rayon",
+  "label": "Simthread Rayon",
+  "count": 384
+ },
+ {
+  "id": "sulky-polyester",
+  "label": "Sulky Polyester",
+  "count": 907
+ },
+ {
+  "id": "sulky-rayon",
+  "label": "Sulky Rayon",
+  "count": 289
+ },
+ {
+  "id": "swist-rayon",
+  "label": "Swist Rayon",
+  "count": 227
+ },
+ {
+  "id": "threadart",
+  "label": "Threadart",
+  "count": 223
+ },
+ {
+  "id": "tristar-polyester",
+  "label": "Tristar Polyester",
+  "count": 298
+ },
+ {
+  "id": "tristar-rayon",
+  "label": "Tristar Rayon",
+  "count": 406
+ },
+ {
+  "id": "vyapar-rayon",
+  "label": "Vyapar Rayon",
+  "count": 288
+ },
+ {
+  "id": "wonderfil-polyester",
+  "label": "Wonderfil Polyester",
+  "count": 170
+ },
+ {
+  "id": "wonderfil-rayon",
+  "label": "Wonderfil Rayon",
+  "count": 342
+ }
+]

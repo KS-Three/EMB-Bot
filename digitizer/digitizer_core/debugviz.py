@@ -10,7 +10,13 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from .threads import CHART
+from .threads import CHART, Chart
+
+
+def _chart(chart: Chart | None) -> Chart:
+    """Debug renders take the chart as an optional argument: callers that have
+    a config pass its brand, and ad-hoc calls from a REPL get the default."""
+    return chart if chart is not None else CHART
 
 
 def _write(path: Path, rgb: np.ndarray) -> None:
@@ -25,7 +31,8 @@ def stage1(dir_: Path, rgb: np.ndarray, bg_mask: np.ndarray) -> None:
     _write(dir_ / "stage1_bg.png", over)
 
 
-def stage2(dir_: Path, labels: np.ndarray, thread_indices: list[int]) -> None:
+def stage2(dir_: Path, labels: np.ndarray, thread_indices: list[int],
+           chart: Chart | None = None) -> None:
     rng = np.random.default_rng(7)
     palette = rng.integers(40, 235, size=(max(1, labels.max() + 1), 3))
     viz = np.zeros(labels.shape + (3,), np.uint8)
@@ -33,9 +40,10 @@ def stage2(dir_: Path, labels: np.ndarray, thread_indices: list[int]) -> None:
         viz[labels == j] = palette[j]
     _write(dir_ / "stage2_labels.png", viz)
 
+    ch = _chart(chart)
     snapped = np.full(labels.shape + (3,), 255, np.uint8)
     for j, t in enumerate(thread_indices):
-        snapped[labels == j] = CHART[t].rgb
+        snapped[labels == j] = ch[t].rgb
     _write(dir_ / "stage2_snapped.png", snapped)
 
 
@@ -51,7 +59,9 @@ def stage3(dir_: Path, rgb: np.ndarray, region_masks) -> None:
     _write(dir_ / "stage3_regions.png", viz)
 
 
-def stage4(dir_: Path, rgb: np.ndarray, regions, px_per_mm: float, art_bbox) -> None:
+def stage4(dir_: Path, rgb: np.ndarray, regions, px_per_mm: float, art_bbox,
+           chart: Chart | None = None) -> None:
+    ch = _chart(chart)
     x0, y0, x1, y1 = art_bbox
     cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
     viz = (rgb * 0.3 + 255 * 0.7).astype(np.uint8)
@@ -63,7 +73,7 @@ def stage4(dir_: Path, rgb: np.ndarray, regions, px_per_mm: float, art_bbox) -> 
         return a.astype(np.int32)
 
     for r in regions:
-        thread_rgb = tuple(int(v) for v in CHART[r.thread_index].rgb)
+        thread_rgb = tuple(int(v) for v in ch[r.thread_index].rgb)
         cv2.polylines(viz, [to_px(r.polygon.exterior.coords)], True, thread_rgb, 2)
         for hole in r.polygon.interiors:
             cv2.polylines(viz, [to_px(hole.coords)], True, (255, 0, 255), 2)
@@ -104,11 +114,12 @@ def _mm_canvas(size_mm, scale: int = _MM_SCALE):
     return img, to_px
 
 
-def stage5(dir_: Path, planned, size_mm) -> None:
+def stage5(dir_: Path, planned, size_mm, chart: Chart | None = None) -> None:
     """Sewing geometry after underlap and pull compensation, in sew order."""
+    ch = _chart(chart)
     viz, to_px = _mm_canvas(size_mm)
     for p in planned:
-        color = tuple(int(v) for v in CHART[p.region.thread_index].rgb)
+        color = tuple(int(v) for v in ch[p.region.thread_index].rgb)
         pts = np.array([to_px(x, y) for x, y in p.polygon.exterior.coords], np.int32)
         cv2.fillPoly(viz, [pts], color)
         for hole in p.polygon.interiors:
