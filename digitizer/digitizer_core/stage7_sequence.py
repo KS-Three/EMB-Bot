@@ -4,10 +4,14 @@ Stage 5 fixed which thread goes first. What is left is the order shapes are
 sewn inside one thread, and the housekeeping that decides whether a finished
 design runs clean on a machine or produces a garment covered in loose ends:
 
-- **Order within a color** is nearest-neighbour on the actual stitch start
-  points, not centroids: the distance that matters is the one the needle
-  travels, and a long thin shape's centroid can sit nowhere near where its
-  stitching begins.
+- **Order within a color** is nearest-neighbour on the sewing geometry, not on
+  centroids: the distance that matters is the one the needle travels, and a
+  long thin shape's centroid can sit nowhere near the part of it the needle
+  can actually reach. Order is settled BEFORE the stitches exist, because
+  where a shape starts now depends on where the needle already is — stage 6
+  takes `start_near` and enters the shape there. Generating first and ordering
+  on the result meant every shape began at its own top-left corner and the
+  needle was sent back across the design to get there.
 - **Ties.** A lock stitch goes in wherever the thread starts and wherever it is
   about to be cut. Without them the first stitches pull out the moment the
   garment is worn, which is the kind of defect that surfaces after delivery.
@@ -18,6 +22,9 @@ design runs clean on a machine or produces a garment covered in loose ends:
 from __future__ import annotations
 
 import math
+
+from shapely.geometry import Point
+from shapely.ops import unary_union
 
 from . import stitches
 from .config import PipelineConfig
@@ -83,11 +90,7 @@ def sequence(
     for sew_index in sorted({p.sew_index for p in planned}):
         group = [p for p in planned if p.sew_index == sew_index]
 
-        # Stitches first, order second: a shape's runs do not depend on when it
-        # is sewn, so generating them up front lets the ordering use real start
-        # points instead of guessing from geometry.
-        made: list[tuple[PlannedRegion, list[StitchRun]]] = []
-        for p in group:
+        def stitch_one(p: PlannedRegion, entry: tuple[float, float] | None):
             # Satin or fill is decided per shape, not per design: one logo
             # routinely holds both a big filled emblem and thin satin lettering.
             # Classified on the ARTWORK polygon, not the stage-5 grown one —
@@ -100,47 +103,61 @@ def sequence(
                     p.shape_id,
                     underlay_style=satin_underlay,
                     trim_at_mm=trim_at,
+                    start_near=entry,
                 )
                 # A ribbon the skeleton could not resolve still has to sew:
                 # fall through to fill rather than silently dropping artwork.
-                if report["empty"]:
-                    runs, report = stitch_shape(
-                        p.polygon, p.shape_id, angle_deg=cfg.fill_angle_deg,
-                        row_mm=row_mm, stitch_mm=stitch_mm,
-                        underlay_style=underlay_style, trim_at_mm=trim_at,
-                    )
-                    thin += int(report["too_thin"])
+                if not report["empty"]:
+                    return runs, report, False
+            runs, report = stitch_shape(
+                p.polygon,
+                p.shape_id,
+                angle_deg=cfg.fill_angle_deg,
+                row_mm=row_mm,
+                stitch_mm=stitch_mm,
+                underlay_style=underlay_style,
+                trim_at_mm=trim_at,
+                start_near=entry,
+            )
+            return runs, report, True
+
+        # Order first, stitches second. A shape's path now depends on where the
+        # needle is when it starts, so the order has to be settled before the
+        # geometry exists — and the honest proxy for "how far must the needle
+        # fly" is the distance to the shape itself, not to one arbitrary point
+        # on it. Picking on a start point the shape had not chosen yet is what
+        # sent the needle to every shape's top-left corner: on eight filled
+        # letters that was 112 mm of thread flown and nine trims.
+        rank = {i: r for r, i in enumerate(sorted(
+            range(len(group)),
+            key=lambda i: (group[i].polygon.bounds[1], group[i].polygon.bounds[0],
+                           group[i].shape_id)))}
+        # Where a color starts when nothing is sewn yet. Nearest-neighbour from
+        # a shape in the MIDDLE of a group strands the far end and pays for it
+        # with one long haul at the finish — on eight letters of a word, a
+        # 42 mm flight back across the whole design. Starting at an extreme of
+        # the group means the sweep never has to come back.
+        centre = unary_union([p.polygon for p in group]).centroid
+        far = {i: round(group[i].polygon.centroid.distance(centre), 6)
+               for i in range(len(group))}
+
+        remaining = list(range(len(group)))
+        ordered: list[StitchRun] = []
+        while remaining:
+            if cursor is None:
+                pick = min(remaining, key=lambda i: (-far[i], rank[i]))
             else:
-                runs, report = stitch_shape(
-                    p.polygon,
-                    p.shape_id,
-                    angle_deg=cfg.fill_angle_deg,
-                    row_mm=row_mm,
-                    stitch_mm=stitch_mm,
-                    underlay_style=underlay_style,
-                    trim_at_mm=trim_at,
-                )
-                thin += int(report["too_thin"])
+                here = Point(cursor)
+                pick = min(remaining, key=lambda i: (
+                    round(group[i].polygon.distance(here), 6), rank[i]))
+            p = group[pick]
+            remaining.remove(pick)
+            runs, report, filled = stitch_one(p, cursor)
+            thin += int(filled and report["too_thin"])
             jumps += report["jumps"]
             if report["empty"] or not runs:
                 empty += 1
                 continue
-            made.append((p, runs))
-        if not made:
-            continue
-
-        # Nearest-neighbour from wherever the previous color left the needle.
-        remaining = list(range(len(made)))
-        remaining.sort(key=lambda i: (made[i][1][0].points[0][1], made[i][1][0].points[0][0]))
-        ordered: list[StitchRun] = []
-        while remaining:
-            if cursor is None:
-                pick = remaining[0]
-            else:
-                pick = min(remaining, key=lambda i: (
-                    round(math.dist(cursor, made[i][1][0].points[0]), 6), i))
-            p, runs = made[pick]
-            remaining.remove(pick)
             if cursor is not None:
                 d = math.dist(cursor, runs[0].points[0])
                 if d >= TINY_STITCH_MM:
@@ -148,6 +165,8 @@ def sequence(
                     runs[0].trim = d > trim_at
             ordered.extend(runs)
             cursor = runs[-1].points[-1]
+        if not ordered:
+            continue
 
         # The needle always lifts into a new color, and the thread is always cut
         # coming out of the previous one.

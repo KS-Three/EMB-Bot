@@ -22,6 +22,7 @@ from digitizer_core import (
 from digitizer_core.export import read_dst_points
 from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import resolve_overlaps
+from digitizer_core.stage7_sequence import sequence
 from digitizer_core.warnings_codes import HOLE_NEARLY_CLOSED
 
 from .conftest import PLAN_CFG_KW, cfg, segments
@@ -155,6 +156,43 @@ def test_underlay_is_sewn_before_the_fill_it_supports(plan):
         for shape_id, kinds in by_shape.items():
             if "underlay" in kinds and "fill" in kinds:
                 assert kinds.index("underlay") < kinds.index("fill"), shape_id
+
+
+def test_a_shape_is_entered_at_its_nearest_point_not_at_its_own_top_left_corner():
+    """Regression: a shape's stitches were generated before its turn came, so
+    every fill began at the column that started highest and leftmost, whatever
+    the last stitch of the shape before it happened to be.
+
+    On a row of tall shapes the needle finished each one at the bottom and was
+    sent straight back to the top of the next: 41.1 mm flown per gap, 287.6 mm
+    over a row of eight, all of it thread showing across the design. The
+    shapes here sit 3 mm apart and the underlay walks 1 mm inside the edge, so
+    about 4 mm is the whole hop there is to make.
+    """
+    fabric = get_fabric("canvas_tote")
+    conf = PipelineConfig()
+    regions = [
+        Region(shape_id=f"S{i}",
+               polygon=Polygon([(x, 0), (x + 8, 0), (x + 8, 40), (x, 40)]),
+               thread_index=0, thread_number="1000", area_mm2=320.0,
+               meta={"layer": 0})
+        for i, x in enumerate(range(0, 88, 11))
+    ]
+    planned, _ = resolve_overlaps(regions, fabric, conf)
+    blocks, _ = sequence(planned, fabric, conf)
+
+    hops = []
+    prev = None
+    for block in blocks:
+        for run in block.runs:
+            if run.jump and prev is not None:
+                hops.append(math.dist(prev, run.points[0]))
+            prev = run.points[-1]
+
+    assert len(hops) == 7, "one hop between each pair of the eight shapes"
+    assert max(hops) < 5.0, \
+        f"the needle is being sent back across a shape: {[round(h, 1) for h in hops]}"
+    assert sum(hops) < 40.0, f"{sum(hops):.0f} mm of needle-up travel"
 
 
 # --- Export ---------------------------------------------------------------

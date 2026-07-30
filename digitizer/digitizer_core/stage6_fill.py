@@ -283,12 +283,18 @@ def travel_path(poly: Polygon, ring: LineString | None, a: tuple[float, float],
 
 
 def _fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_mm: float,
-                staggers: int) -> list[list[tuple[float, float]]]:
+                staggers: int, start_near: tuple[float, float] | None = None
+                ) -> list[list[tuple[float, float]]]:
     """Fill one polygon; -> continuous stitch paths in original (unrotated) mm space.
 
     Columns are visited nearest-first from the end of the previous one, and each
     is entered from whichever of its two ends is closer, so ordering never
     invents a long haul it could have avoided.
+
+    `start_near` is where the needle already is. Without it the first column is
+    picked by geometry alone — topmost, then leftmost — so every shape began at
+    its own top-left corner however far that was from the last stitch of the
+    shape before it.
     """
     rotated = affinity.rotate(poly, -angle_deg, origin=(0, 0), use_radians=False)
     rows = _row_spans(rotated, row_mm)
@@ -312,11 +318,17 @@ def _fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_mm: float
     # linear amount of work into a quadratic amount on shapes with many columns.
     variants = [(col_points(c, False), col_points(c, True)) for c in cols]
 
-    # Deterministic start: the column that begins highest, then leftmost.
+    # Deterministic start: nearest to the needle if it is already somewhere,
+    # otherwise the column that begins highest, then leftmost.
     remaining = [i for i in range(len(cols)) if variants[i][0]]
     remaining.sort(key=lambda i: (cols[i][0][0], cols[i][0][2]))
     order: list[list[tuple[float, float]]] = []
     cur: tuple[float, float] | None = None
+    if start_near is not None:
+        # The columns live in the rotated frame, so the entry point has to.
+        sp = affinity.rotate(Point(start_near), -angle_deg, origin=(0, 0),
+                             use_radians=False)
+        cur = (sp.x, sp.y)
     while remaining:
         if cur is None:
             pick, flip = remaining[0], 0
@@ -341,12 +353,17 @@ def _fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_mm: float
     return back
 
 
-def _underlay_paths(poly: Polygon, style: str, angle_deg: float) -> list[list[tuple[float, float]]]:
+def _underlay_paths(poly: Polygon, style: str, angle_deg: float,
+                    start_near: tuple[float, float] | None = None
+                    ) -> list[list[tuple[float, float]]]:
     """Underlay runs for one shape, in the named style.
 
     Underlay lives inside the finished edge — its whole job is to hold the
     fabric still and give the top stitching something to sit on, and any of it
     that peeks past the edge is a defect.
+
+    `start_near` is where the needle already is. A closed edge walk may begin
+    anywhere on its ring, so it begins at the point nearest the needle.
     """
     if style == "none":
         return []
@@ -362,14 +379,18 @@ def _underlay_paths(poly: Polygon, style: str, angle_deg: float) -> list[list[tu
         out = []
         for ring in [inner.exterior, *inner.interiors]:
             line = LineString(ring.coords)
-            n = max(2, math.ceil(line.length / machine.UNDERLAY_STITCH_MM))
-            pts = [line.interpolate(line.length * i / n) for i in range(n + 1)]
+            total = line.length
+            n = max(2, math.ceil(total / machine.UNDERLAY_STITCH_MM))
+            s0 = line.project(Point(start_near)) if (start_near is not None and total > 0) else 0.0
+            pts = [line.interpolate((s0 + total * i / n) % total) for i in range(n)]
+            pts.append(line.interpolate(s0))
             out.append([(p.x, p.y) for p in pts])
         return out
 
     def lattice(offset_deg: float, row_mm: float) -> list[list[tuple[float, float]]]:
         return _fill_paths(inner, angle_deg + offset_deg, row_mm,
-                           machine.UNDERLAY_STITCH_MM, staggers=1)
+                           machine.UNDERLAY_STITCH_MM, staggers=1,
+                           start_near=start_near)
 
     def center_run() -> list[list[tuple[float, float]]]:
         c = inner.centroid
@@ -406,8 +427,14 @@ def _underlay_paths(poly: Polygon, style: str, angle_deg: float) -> list[list[tu
 
 def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                  row_mm: float, stitch_mm: float, underlay_style: str,
-                 trim_at_mm: float) -> tuple[list[StitchRun], dict]:
+                 trim_at_mm: float,
+                 start_near: tuple[float, float] | None = None
+                 ) -> tuple[list[StitchRun], dict]:
     """One shape -> its runs, in sew order (underlay first), plus a small report.
+
+    `start_near` is where the needle is when this shape's turn comes; the
+    underlay and the fill both begin at whichever of their own valid starting
+    points is nearest it.
 
     Report keys: `too_thin` (nowhere wide enough for a fill), `jumps` (travel
     that had to lift the needle), `empty` (produced nothing).
@@ -452,9 +479,13 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                                           shape_id=shape_id))
             runs.append(StitchRun(points=pts, kind=kind, shape_id=shape_id))
 
-    emit(_underlay_paths(poly, underlay_style, angle), stitches.UNDERLAY,
-         machine.UNDERLAY_STITCH_MM)
-    emit(_fill_paths(poly, angle, row_mm, stitch_mm, machine.FILL_STAGGERS),
+    emit(_underlay_paths(poly, underlay_style, angle, start_near),
+         stitches.UNDERLAY, machine.UNDERLAY_STITCH_MM)
+    # The fill picks up where the underlay put the needle down — otherwise it
+    # starts at the shape's top-left corner and the first travel of the fill is
+    # a haul back across everything the underlay just laid.
+    entry = runs[-1].points[-1] if runs else start_near
+    emit(_fill_paths(poly, angle, row_mm, stitch_mm, machine.FILL_STAGGERS, entry),
          stitches.FILL, stitch_mm)
 
     if not runs:

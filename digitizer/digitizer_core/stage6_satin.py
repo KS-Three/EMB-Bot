@@ -775,15 +775,52 @@ def _stroke_underlay(poly: Polygon, st: Stroke, style: str, shape_id: str,
     return runs
 
 
+def _order_strokes(strokes: list[Stroke],
+                   start_near: tuple[float, float] | None) -> list[Stroke]:
+    """Sew order within one shape: whichever stroke's nearer end is closest to
+    where the needle already is, then on by the same rule.
+
+    `extract_strokes` sorts longest-first, which keeps a letter's main stem
+    ahead of its serifs but says nothing about the hops between them. Sewing
+    in that order alone means the needle can be sent back across a whole
+    glyph — and between shapes it meant every letter started at its own
+    longest stroke however far that was from the last stitch of the letter
+    before it. With nothing sewn yet the longest stroke still goes first.
+    """
+    remaining = list(range(len(strokes)))
+    out: list[Stroke] = []
+    cur = start_near
+    while remaining:
+        if cur is None:
+            pick = remaining[0]
+        else:
+            pick = min(remaining, key=lambda i: (
+                round(min(math.dist(cur, strokes[i].spine[0]),
+                          math.dist(cur, strokes[i].spine[-1])), 6), i))
+        st = strokes[pick]
+        remaining.remove(pick)
+        out.append(st)
+        # It comes out of the end it did not go in at.
+        a, b = st.spine[0], st.spine[-1]
+        cur = a if (cur is not None and math.dist(cur, b) < math.dist(cur, a)) else b
+    return out
+
+
 def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
-                trim_at_mm: float) -> tuple[list[StitchRun], dict]:
+                trim_at_mm: float,
+                start_near: tuple[float, float] | None = None
+                ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
-    contract `stitch_shape` uses, so stage 7 can treat the two identically."""
+    contract `stitch_shape` uses, so stage 7 can treat the two identically.
+
+    `start_near` is where the needle is when this shape's turn comes.
+    """
     report = {"too_thin": False, "jumps": 0, "empty": False}
     strokes, half_mm, field = extract_strokes(poly)
     if not strokes:
         report["empty"] = True
         return [], report
+    strokes = _order_strokes(strokes, start_near)
 
     # Per stroke: its underlay, then its column, then move on. Sewing ALL the
     # underlay first meant hopping back across the whole letter to start the
@@ -803,10 +840,10 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
             continue
         for run in [*_stroke_underlay(poly, st, underlay_style, shape_id, field),
                     StitchRun(points=pts, kind=stitches.SATIN, shape_id=shape_id)]:
-            if runs:
-                cursor = runs[-1].points[-1]
-                if math.dist(cursor, run.points[-1]) < math.dist(cursor, run.points[0]):
-                    run.points.reverse()
+            cursor = runs[-1].points[-1] if runs else start_near
+            if cursor is not None and \
+                    math.dist(cursor, run.points[-1]) < math.dist(cursor, run.points[0]):
+                run.points.reverse()
             runs.append(run)
 
     if not any(r.kind == stitches.SATIN for r in runs):
