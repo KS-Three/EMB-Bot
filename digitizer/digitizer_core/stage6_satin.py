@@ -765,17 +765,35 @@ def _short_stitch_guard(rail_a: list, rail_b: list) -> list[tuple]:
     the middle. On the inside of a curve the rail is shorter than the spine, so
     penetrations land closer together than the satin spacing; below the
     threshold the needle starts re-entering the same hole and the edge frays.
+
+    The pull is a FRACTION of the cross capped at an ABSOLUTE distance. Its job
+    is to clear the previous needle hole, and a hole is the same size whatever
+    the column width — but a plain fraction scales with the column, and on a
+    wide column it threw the retracted penetration far past where any hole
+    could be: 0.35 x a 2.78 mm cross moved the point 0.97 mm off its rail,
+    which any rail-based density read (the pinned tests, tools/audit.py) sees
+    as two ~1.0 mm same-rail gaps. Capped, the same stitch retracts 0.6 mm —
+    two same-hole radii: a full radius clear of the old hole, still supporting
+    the inner edge it was pulled from.
     """
     out = []
     for i, (pa, pb) in enumerate(zip(rail_a, rail_b)):
         if 0 < i and i % 2 == 1:
-            pull = machine.SATIN_SHORT_STITCH_PULL
             if math.dist(pa, rail_a[i - 1]) < machine.SATIN_SHORT_STITCH_AT_MM:
-                pa = (pa[0] + (pb[0] - pa[0]) * pull, pa[1] + (pb[1] - pa[1]) * pull)
+                pa = _pull_short(pa, pb)
             if math.dist(pb, rail_b[i - 1]) < machine.SATIN_SHORT_STITCH_AT_MM:
-                pb = (pb[0] + (pa[0] - pb[0]) * pull, pb[1] + (pa[1] - pb[1]) * pull)
+                pb = _pull_short(pb, pa)
         out.append((pa, pb))
     return out
+
+
+def _pull_short(p: tuple, toward: tuple) -> tuple:
+    """Retract one penetration toward the far rail, by fraction-with-a-cap."""
+    cross = math.dist(p, toward)
+    f = machine.SATIN_SHORT_STITCH_PULL
+    if cross > 1e-9:
+        f = min(f, machine.SATIN_SHORT_STITCH_PULL_MAX_MM / cross)
+    return (p[0] + (toward[0] - p[0]) * f, p[1] + (toward[1] - p[1]) * f)
 
 
 # --- The column ------------------------------------------------------------

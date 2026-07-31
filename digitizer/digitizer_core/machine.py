@@ -80,6 +80,13 @@ SATIN_MIN_CROSS_MM = 0.5
 # fraction so alternate penetrations land away from the rail.
 SATIN_SHORT_STITCH_AT_MM = 0.3
 SATIN_SHORT_STITCH_PULL = 0.35
+# Absolute ceiling on that pull. Clearing a needle hole takes the same few
+# tenths of a millimetre whatever the column width, but the fraction scales
+# with the column: measured on ribbon_curve.png at 80 mm, 0.35 x a 2.78 mm
+# cross retracted a penetration 0.97 mm off its rail and read as two ~1.0 mm
+# same-rail gaps against the 0.40 mm spacing target. 0.6 = 2 x
+# SATIN_SHORT_STITCH_AT_MM: one full same-hole radius clear of the old hole.
+SATIN_SHORT_STITCH_PULL_MAX_MM = 0.6
 
 # --- Border (the outline tier) ---------------------------------------------
 # Measured over 39 professional DSTs (tools/border_pro.py): 18 satin borders,

@@ -277,13 +277,20 @@ def test_a_satin_free_end_does_not_fan_into_a_starburst():
     penetrations, the fan showed as four over-wide gaps STACKED AT ONE END —
     which is why this is measured per end zone and not as one total.
 
-    The interior count is pinned separately and is not a fan. Two neighbouring
-    outer-rail intervals near the middle of the bend run 0.98 and 1.00 mm
-    against the 0.40 target — one station's worth of coverage missing at a
-    single spot. It predates the emitter's rail ordering (measured identical
-    on both) and it is pinned here so it cannot spread; the earlier version of
-    this test stepped through the points by two, saw only half the same-rail
-    intervals, and never reported it.
+    The interior count is pinned at ZERO, and how it got there matters: two
+    neighbouring same-rail intervals mid-bend used to read 0.98 and 1.00 mm
+    against the 0.40 target. That was never missing thread — it was the
+    short-stitch guard's pull scaling with column width. Rail refinement
+    inserted a station where the outer rail ran 0.5203 mm, a hair over its
+    1.3x gate; the inserted station's inner penetration landed 0.174 mm from
+    its neighbour, and the guard retracted it 0.35 x the 2.78 mm cross =
+    0.97 mm off the rail. The two ~1.0 mm "gaps" were this metric stepping
+    through that one displaced point. With the pull capped at an absolute
+    0.6 mm (SATIN_SHORT_STITCH_PULL_MAX_MM) the same intervals measure 0.61
+    and 0.64 mm. History: it predates the emitter's rail ordering (measured
+    identical on both), and the earlier version of this test stepped through
+    the points by two, saw only half the same-rail intervals, and never
+    reported it.
     """
     from digitizer_core import PipelineConfig, digitize
 
@@ -307,7 +314,7 @@ def test_a_satin_free_end_does_not_fan_into_a_starburst():
 
     assert len(head) <= 2, f"the start cap is fanning: {head}"
     assert len(tail) <= 2, f"the end cap is fanning: {tail}"
-    assert len(interior) <= 2, \
+    assert interior == [], \
         f"{len(interior)} over-wide rail gaps away from the caps: {interior}"
 
 
