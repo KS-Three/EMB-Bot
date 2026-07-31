@@ -3,6 +3,8 @@ import {
   defaultProject,
   defaultTextElement,
   defaultImageElement,
+  defaultDigitizedElement,
+  DEFAULT_DIGITIZE_PARAMS,
   update,
   addElement,
   removeElement,
@@ -384,4 +386,58 @@ test("migrateProject: a valid multi-selection survives migration intact", () => 
   const v2 = { version: 2, garmentId: "left_chest", selectedId: "e2", selectedIds: ["e1", "e2"],
     elements: [defaultTextElement("e1"), defaultTextElement("e2")] };
   expect(migrateProject(v2).selectedIds).toEqual(["e1", "e2"]);
+});
+
+// --- digitized elements (build step 10) -------------------------------------
+
+test("defaultDigitizedElement carries the hybrid-persistence trio: source, params (service field names), baked result", () => {
+  const el = defaultDigitizedElement("e9");
+  expect(el.type).toBe("digitized");
+  expect(el.sourcePng).toBeNull();
+  expect(el.result).toBeNull();
+  expect(el.params).toEqual(DEFAULT_DIGITIZE_PARAMS);
+  expect(el.params).not.toBe(DEFAULT_DIGITIZE_PARAMS); // own copy, never the shared object
+  expect(el.sizeMm).toBeNull();
+  expect(el.warnings).toEqual([]);
+  expect(el.blockColors).toEqual({});
+});
+
+test("addElement 'digitized' staggers placement but keeps sizeMm null (native = digitized target size)", () => {
+  let p = defaultProject();
+  p = addElement(p, "digitized", 100); // e2
+  const el = p.elements.find((e) => e.id === "e2");
+  expect(el.type).toBe("digitized");
+  expect(el.sizeMm).toBeNull();
+  expect(el.offsetYMm).toBe(-10);
+  expect(p.selectedId).toBe("e2");
+});
+
+test("migrateProject fills a digitized element's missing fields (additive migration, same as top-level)", () => {
+  // A save from a build where params had fewer knobs and warnings didn't exist.
+  const old = {
+    version: 2, garmentId: "left_chest", selectedId: "e1",
+    elements: [{
+      id: "e1", type: "digitized", name: "logo.png", sourcePng: "QQ==",
+      params: { target_width_mm: 55 },
+      result: { stitches: [], colors: [] },
+      offsetXMm: 3, offsetYMm: -4,
+    }],
+  };
+  const m = migrateProject(old);
+  const el = m.elements[0];
+  expect(el.params.target_width_mm).toBe(55); // saved value wins
+  expect(el.params.border).toBe("off"); // newer knob defaulted
+  expect(el.params.satin).toBe(true);
+  expect(el.warnings).toEqual([]);
+  expect(el.blockColors).toEqual({});
+  expect(el.offsetXMm).toBe(3);
+  expect(el.result).toEqual({ stitches: [], colors: [] });
+});
+
+test("migrateProject leaves non-digitized elements byte-identical (old projects load unchanged)", () => {
+  const text = defaultTextElement("e1");
+  const image = { ...defaultImageElement("e2"), nColors: 5 };
+  const m = migrateProject({ version: 2, garmentId: "left_chest", selectedId: "e1", elements: [text, image] });
+  expect(m.elements[0]).toBe(text); // same object, untouched by the map
+  expect(m.elements[1]).toBe(image);
 });

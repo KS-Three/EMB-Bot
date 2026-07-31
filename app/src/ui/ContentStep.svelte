@@ -3,6 +3,7 @@
   import TextStep from "./TextStep.svelte";
   import ImagePanel from "./ImagePanel.svelte";
   import DesignPanel from "./DesignPanel.svelte";
+  import DigitizePanel from "./DigitizePanel.svelte";
   import SizePanel from "./SizePanel.svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
   import FontSelect from "./FontSelect.svelte";
@@ -21,6 +22,11 @@
   // Dims of the last generated design, owned by App (from EmbroideryField's
   // "dims" event) -- passed straight through to SizePanel.
   export let designDims = null;
+  // The digitizer service's /health payload, or null when it's unreachable.
+  // App owns the probe (re-run on entering this step and on "checkservice");
+  // this component only gates the "+ Auto-digitize" tile and hands the value
+  // to DigitizePanel so an offline panel can say so honestly.
+  export let digitizerHealth = null;
   const d = createEventDispatcher();
 
   // ---- Task 5 (Slice 5): the real element manager --------------------------
@@ -84,6 +90,9 @@
     if (element.type === "design") {
       return element.dstBase64 ? `File · ${truncate(element.name || "design.dst", 18)}` : "File · empty";
     }
+    if (element.type === "digitized") {
+      return element.result ? `Digitized · ${truncate(element.name || "artwork", 18)}` : "Digitized · empty";
+    }
     const n = element.nColors || 0;
     return element._hasImage ? `Image · ${n} color${n === 1 ? "" : "s"}` : "Image · empty";
   }
@@ -124,6 +133,13 @@
               fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
             <path d="M13 2v7h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
           </svg>
+        {:else if row.type === "digitized"}
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+            <path d="M20 4L8 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            <path d="M8 16l-4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="1 3" />
+            <circle cx="20" cy="4" r="1.6" fill="currentColor" />
+            <path d="M5 5l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="currentColor" />
+          </svg>
         {:else}
           <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
             <rect x="2" y="4" width="20" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2" />
@@ -161,7 +177,17 @@
   <button type="button" class="eladd" on:click={() => d("addelement", "text")}>+ Text</button>
   <button type="button" class="eladd" on:click={() => d("addelement", "image")}>+ Image</button>
   <button type="button" class="eladd" on:click={() => d("addelement", "design")}>+ Design file</button>
+  {#if digitizerHealth}
+    <button type="button" class="eladd" on:click={() => d("addelement", "digitized")}>+ Auto-digitize</button>
+  {/if}
 </div>
+{#if !digitizerHealth}
+  <p class="digitize-offline">
+    Auto-digitize (art in, stitches out) needs the local digitizer service.
+    Start it, then
+    <button type="button" class="digitize-recheck" on:click={() => d("checkservice")}>check again</button>.
+  </p>
+{/if}
 
 <!-- Keyed on the selected element's id so switching selection (even between
      two elements of the SAME type, e.g. two image elements) always remounts
@@ -210,6 +236,14 @@
   {#key el.id}
     {#if el.type === "design"}
       <DesignPanel element={el} on:elupdate={(e) => d("elupdate", e.detail)} />
+    {:else if el.type === "digitized"}
+      <DigitizePanel
+        element={el}
+        {project}
+        health={digitizerHealth}
+        on:elupdate={(e) => d("elupdate", e.detail)}
+        on:checkservice={() => d("checkservice")}
+      />
     {:else if el.type === "image"}
       <ImagePanel
         element={el}
@@ -228,6 +262,20 @@
 {/if}
 
 <style>
+  .digitize-offline {
+    font-size: var(--fs-xs, 12px);
+    color: var(--muted, #667);
+    margin: 6px 0 0;
+  }
+  .digitize-recheck {
+    border: none;
+    background: none;
+    padding: 0;
+    color: var(--accent, #4f46e5);
+    cursor: pointer;
+    font-size: inherit;
+    text-decoration: underline;
+  }
   .groupsel { margin-top: var(--space-4, 12px); }
   .groupsel h3 { margin-bottom: var(--space-2, 6px); }
   .groupsel-hint { font-size: var(--fs-xs, 12px); color: var(--muted, #667); margin: 0 0 10px; }

@@ -1,6 +1,7 @@
 import { EMB } from "./emb.js";
 import { flatToRegions } from "./imageRegions.js";
 import { combineDesigns, bboxMmFromStitches } from "./combine.js";
+import { decodedFromDesignCached, digitizedBlockColors } from "./digitizer.js";
 
 // Generates a single element's Design, or null if the element isn't ready
 // to sew yet (empty text / no flattened image state). Throws only on real
@@ -48,6 +49,28 @@ export function generateElement(element, garment, runtime) {
       offsetXMm: element.offsetXMm || 0,
       offsetYMm: element.offsetYMm || 0,
       blockColors: element.blockColors || {},
+    });
+  }
+
+  if (element.type === "digitized") {
+    // Auto-digitized artwork. The element carries the BAKED service result
+    // (a Design in decodeDST's exact space: 0.1 mm ints, +y up), so
+    // generation is fully offline and rides the SAME imported-design path a
+    // .dst upload does — scale/hoop-clamp/rotate/offset in one place, no
+    // second implementation to drift. digitizer.js adapts result -> the
+    // decoded shape (strips the trailing "end", centers on the stitch bbox)
+    // and supplies the service's real thread palette as block colors, with
+    // the user's per-block overrides on top.
+    if (!element.result) return null;
+    const decoded = decodedFromDesignCached(element.result);
+    if (!decoded) return null;
+    return EMB.buildImportedDesign(decoded, {
+      garment,
+      targetWidthMm: element.sizeMm || undefined,
+      rotationDeg: element.rotationDeg || 0,
+      offsetXMm: element.offsetXMm || 0,
+      offsetYMm: element.offsetYMm || 0,
+      blockColors: digitizedBlockColors(element),
     });
   }
 

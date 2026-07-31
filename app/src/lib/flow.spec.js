@@ -36,3 +36,18 @@ test("nav", () => {
   expect(prevStep("content")).toBe("garment");
   expect(nextStep("download")).toBe(null);
 });
+
+test("create step gates design and digitized elements on their baked content, not _hasImage", () => {
+  let p = defaultProject();
+  p = updateElement(p, "e1", { text: "" });
+  p = addElement(p, "design", 100); // e2
+  expect(canAdvance("create", p)).toBe(false);
+  expect(canAdvance("create", updateElement(p, "e2", { dstBase64: "QQ==" }))).toBe(true);
+
+  let q = defaultProject();
+  q = updateElement(q, "e1", { text: "" });
+  q = addElement(q, "digitized", 100); // e2
+  expect(canAdvance("create", q)).toBe(false);
+  const ready = updateElement(q, "e2", { result: { stitches: [], colors: [] } });
+  expect(canAdvance("create", ready)).toBe(true);
+});

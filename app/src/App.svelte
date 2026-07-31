@@ -19,6 +19,7 @@
   import { buildProjectFile, parseProjectFile, projectFileName } from "./lib/projectFile.js";
   import { triggerDownload } from "./lib/download.js";
   import { shouldShow, dismiss, visibleHint } from "./lib/hints.js";
+  import { fetchHealth } from "./lib/digitizer.js";
   import { EMB } from "./lib/emb.js";
   import GarmentStep from "./ui/GarmentStep.svelte";
   import ContentStep from "./ui/ContentStep.svelte";
@@ -197,6 +198,24 @@
   // flattened palette derived from it. Neither is persisted -- only project
   // settings are (see persist() below).
   let runtime = { flats: {}, workImages: {} };
+
+  // ---- Digitizer service health (build step 10) -----------------------------
+  // Whether the localhost auto-digitize service is reachable gates the
+  // "+ Auto-digitize" tile (and turns DigitizePanel's controls off with an
+  // explanation instead of a dead button). Probed at boot, re-probed every
+  // time the user lands on the content step (so starting the service and
+  // navigating back is enough), and on demand from the UI's "check again"
+  // affordances. The token guard drops a stale slow probe that resolves
+  // after a newer one already answered.
+  let digitizerHealth = null;
+  let digitizerProbeToken = 0;
+  async function checkDigitizer() {
+    const token = ++digitizerProbeToken;
+    const h = await fetchHealth();
+    if (token === digitizerProbeToken) digitizerHealth = h;
+  }
+  checkDigitizer();
+  $: if (step === "content") checkDigitizer();
   // Dims of the SELECTED element's last generated design ({ widthMM, heightMM })
   // or null on failure/no-content -- fed to SizePanel so its W/H display
   // (and the below-5mm warning) always reflects the real current design,
@@ -619,7 +638,9 @@
           workImage={runtime.workImages[project.selectedId]}
           flat={runtime.flats[project.selectedId]}
           {designDims}
+          {digitizerHealth}
           {showAddElementsHint}
+          on:checkservice={checkDigitizer}
           on:elupdate={(e) => elUpdate(e.detail.id, e.detail.patch)}
           on:elupdatemany={(e) => elUpdateMany(e.detail)}
           on:select={(e) => onSelect(e.detail)}

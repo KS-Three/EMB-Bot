@@ -207,11 +207,12 @@
 
   // Text elements rotate via the lettering engine's rotationDeg path;
   // imported design elements via buildImportedDesign's (rotate-before-
-  // scale/clamp, 2026-07-29). Image elements have no rotation support
+  // scale/clamp, 2026-07-29), and digitized elements ride that same
+  // buildImportedDesign path. Image elements have no rotation support
   // (yet), so they alone show no dead handle.
   function rotatable() {
     const el = selectedElement();
-    return !!el && (el.type === "text" || el.type === "design");
+    return !!el && (el.type === "text" || el.type === "design" || el.type === "digitized");
   }
 
   // Full-canvas smart-guide lines at the mm positions a live move-snap

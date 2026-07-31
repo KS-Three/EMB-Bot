@@ -56,6 +56,47 @@ export function defaultDesignElement(id) {
   };
 }
 
+// Digitizing params, in the service's OWN field names (PipelineConfig,
+// digitizer_core/config.py) so the persisted params object IS the /digitize
+// config — no translation layer to drift. Lives here (not digitizer.js)
+// because the element factory below needs it and the model layer imports
+// nothing. fill_angle_deg null = per-shape auto (the service's default).
+export const DEFAULT_DIGITIZE_PARAMS = {
+  target_width_mm: 80,
+  max_colors: 6,
+  satin: true,
+  fill_angle_deg: null,
+  border: "off",
+};
+
+// An auto-digitized artwork element (build step 10). Persistence is hybrid
+// (owner decision, do not relitigate): the element stores the SOURCE image
+// (downscaled to processing size, PNG base64), the digitizing params, and
+// the BAKED result Design — so save/load/export work fully offline. The
+// localhost digitizer service is only needed to RE-digitize with new params.
+// `result` is the service's Design verbatim ({ stitches, colors, widthMM,
+// heightMM, ... }, 0.1 mm integer units, +y UP — the same space decodeDST
+// outputs, which is what lets generation reuse the imported-design path).
+// `warnings` is the last job's pipeline warnings, kept so the review panel
+// can still explain the result after a reload. `blockColors` overrides the
+// service palette per color block, same shape as a design element's.
+export function defaultDigitizedElement(id) {
+  return {
+    id,
+    type: "digitized",
+    name: "",
+    sourcePng: null,
+    params: { ...DEFAULT_DIGITIZE_PARAMS },
+    result: null,
+    warnings: [],
+    blockColors: {},
+    sizeMm: null,
+    offsetXMm: 0,
+    offsetYMm: 0,
+    rotationDeg: 0,
+  };
+}
+
 export function defaultProject() {
   return {
     version: 2,
@@ -103,14 +144,17 @@ export function addElement(project, type, hoopWmm) {
   const factory =
     type === "image" ? defaultImageElement :
     type === "design" ? defaultDesignElement :
+    type === "digitized" ? defaultDigitizedElement :
     defaultTextElement;
   let el = factory(id);
   const n = project.elements.length;
   if (n > 0) {
     // Imported designs keep sizeMm null (= the file's native stitch size,
     // hoop-clamped) — seeding a resize would silently rescale pre-digitized
-    // stitches before the user ever sees them at true size.
-    el = type === "design"
+    // stitches before the user ever sees them at true size. Digitized
+    // elements too: their native size IS params.target_width_mm, the size
+    // the stitches were generated for.
+    el = type === "design" || type === "digitized"
       ? { ...el, offsetYMm: -10 * n }
       : { ...el, sizeMm: Math.round(0.4 * hoopWmm), offsetYMm: -10 * n };
   }
@@ -213,6 +257,17 @@ export function migrateProject(input) {
     if (!Array.isArray(merged.elements) || merged.elements.length === 0) {
       merged.elements = base.elements;
     }
+    // Digitized elements get the same additive treatment the project's
+    // top-level fields get above: spread over the factory defaults so a
+    // project saved before a digitized field existed (or with an older
+    // params set) loads with today's defaults filled in, never undefined.
+    // Other element types pass through untouched — identical to how every
+    // pre-digitize project has always loaded.
+    merged.elements = merged.elements.map((el) => {
+      if (!el || el.type !== "digitized") return el;
+      const d = defaultDigitizedElement(el.id);
+      return { ...d, ...el, params: { ...d.params, ...(el.params || {}) } };
+    });
     // selectedIds invariants for pre-multi-select saves (and corrupt input):
     // members must be real element ids, the array must be non-empty, and
     // selectedId must be a member. Anything off -> collapse to [selectedId]
