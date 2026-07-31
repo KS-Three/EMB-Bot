@@ -98,6 +98,37 @@ def test_every_archetype_keeps_its_crosses_parallel(name, poly, worst):
     assert max(rot) <= worst, f"{name} sprays: worst {max(rot):.1f} deg"
 
 
+def test_outer_rail_holds_density_on_a_curve():
+    """Regression: crosses were STATIONED along the spine, but thread lands on
+    the rails, and on a bend the outer rail runs further than the spine —
+    measured 47% under density on a tight ring (0.59 mm between outer
+    penetrations against the 0.40 target). Over-wide intervals now get
+    interpolated stations. Rails are reconstructed pairwise from the emitted
+    zigzag — crosses alternate (A,B),(B,A), so a fixed-parity slice hops
+    rails and reads garbage (that mistake produced two false conclusions in
+    one day before this helper pinned the correct method).
+    """
+    satin, _, _ = _satin_runs(C_STROKE)
+    adv: list[float] = []
+    for r in satin:
+        pts = r.points
+        rail_a: list[tuple[float, float]] = []
+        rail_b: list[tuple[float, float]] = []
+        for c in range(len(pts) // 2):
+            p, q = pts[2 * c], pts[2 * c + 1]
+            if c % 2 == 0:
+                rail_a.append(p), rail_b.append(q)
+            else:
+                rail_a.append(q), rail_b.append(p)
+        for rail in (rail_a, rail_b):
+            adv += [math.dist(x, y) for x, y in zip(rail, rail[1:])]
+    adv = sorted(a for a in adv if a > 0.03)
+    assert adv, "no rail advances measured"
+    n = len(adv)
+    assert adv[n // 2] <= 0.45, f"median rail advance {adv[n // 2]:.2f}"
+    assert adv[int(n * 0.95)] <= 0.60, f"p95 rail advance {adv[int(n * 0.95)]:.2f}"
+
+
 def test_a_straight_bar_is_parallel_but_for_the_cap_entry():
     """The floor case, and it documents the one blemish left on it.
 

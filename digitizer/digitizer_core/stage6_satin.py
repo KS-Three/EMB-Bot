@@ -694,24 +694,68 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
     for i in range(n):
         width[i] = min(width[i], floors[i] * 1.6 + 0.2)
 
+    # Containment still governs: a smoothed width can overshoot where the
+    # ribbon pinches, and thread outside the artwork is the one defect this
+    # module is never allowed to ship. Each side yields on its own — pulling
+    # both in because one overshot drags the good rail off the artwork edge,
+    # which is what left the fixture bar's cap bare by 0.06 mm.
+    def place(px: float, py: float, sx: float, sy: float, w: float):
+        for f in (1.0, 0.85, 0.7, 0.5, 0.3):
+            q = (px + sx * w * f, py + sy * w * f)
+            if poly.covers(SPoint(q)):
+                return q
+        return (px, py)
+
     for i, (px, py) in enumerate(spine):
         nx, ny = norms[i]
-        w = width[i]
-        # Containment still governs: a smoothed width can overshoot where the
-        # ribbon pinches, and thread outside the artwork is the one defect this
-        # module is never allowed to ship. Each side yields on its own — pulling
-        # both in because one overshot drags the good rail off the artwork edge,
-        # which is what left the fixture bar's cap bare by 0.06 mm.
-        def place(sx: float, sy: float) -> tuple[float, float]:
-            for f in (1.0, 0.85, 0.7, 0.5, 0.3):
-                q = (px + sx * w * f, py + sy * w * f)
-                if poly.covers(SPoint(q)):
-                    return q
-            return (px, py)
+        rail_a.append(place(px, py, nx, ny, width[i]))
+        rail_b.append(place(px, py, -nx, -ny, width[i]))
 
-        rail_a.append(place(nx, ny))
-        rail_b.append(place(-nx, -ny))
-    return rail_a, rail_b
+    # --- outer-rail density -----------------------------------------------
+    #
+    # Stations are spaced along the SPINE, but thread lands on the RAILS, and
+    # on a bend the outer rail runs further than the spine by (half-width x
+    # angle turned) — measured 0.59 mm between outer penetrations against the
+    # 0.40 target on a tight ring, 47% under density. Where the faster rail
+    # outruns SATIN_SPACING, extra stations are INTERPOLATED into that
+    # interval: spine, normal angle, and width all lerp between two already
+    # -filtered stations, so the proven profile is untouched, no new rays are
+    # cast, and a straight column (every interval already at spacing) comes
+    # out byte-identical. A first attempt fine-sampled the whole spine and
+    # re-ran the profile instead — the width filters are sample-count-based,
+    # so 3x sampling shrank their mm reach 3x and rail noise tripled (outer
+    # p95 0.49 -> 1.04 mm). Interpolation is the version that does not touch
+    # what already works.
+    ref_a: list = [rail_a[0]]
+    ref_b: list = [rail_b[0]]
+    for i in range(1, n):
+        # Only refine intervals that are genuinely over-wide: at exactly one
+        # spacing, adv/SPACING is 1.0 plus float dust and a bare ceil() doubled
+        # EVERY interval of a straight bar (measured: 120 crosses where 60
+        # belong, alternating full and guard-mangled). And never refine the
+        # cap zone — those stations are the deliberate terminal fan onto the
+        # cap corners, and packing crosses into it rebuilds the starburst this
+        # module exists to prevent.
+        near_cap = not closed and (i <= 2 or i >= n - 2)
+        adv = max(math.dist(rail_a[i - 1], rail_a[i]),
+                  math.dist(rail_b[i - 1], rail_b[i]))
+        if near_cap or adv <= machine.SATIN_SPACING_MM * 1.3:
+            ref_a.append(rail_a[i])
+            ref_b.append(rail_b[i])
+            continue
+        m = int(math.ceil(adv / machine.SATIN_SPACING_MM))
+        for j in range(1, m):
+            t = j / m
+            px = spine[i - 1][0] * (1 - t) + spine[i][0] * t
+            py = spine[i - 1][1] * (1 - t) + spine[i][1] * t
+            ang = angles[i - 1] * (1 - t) + angles[i] * t   # unwrapped: lerp-safe
+            w = width[i - 1] * (1 - t) + width[i] * t
+            nx, ny = math.cos(ang), math.sin(ang)
+            ref_a.append(place(px, py, nx, ny, w))
+            ref_b.append(place(px, py, -nx, -ny, w))
+        ref_a.append(rail_a[i])
+        ref_b.append(rail_b[i])
+    return ref_a, ref_b
 
 
 def _short_stitch_guard(rail_a: list, rail_b: list) -> list[tuple]:
@@ -1196,16 +1240,25 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
         report["empty"] = True
         return [], report
 
-    # Link EVERY consecutive run pair, underlay included: two spines can sit a
-    # letter-width apart, and a plain needle-down continuation between their
-    # runs would sew a stitch across the gap (over bare fabric, and past the
-    # 12.1 mm record ceiling on wide letters). The count matches the fill
-    # path's honesty rule: every lift counts, trimmed or not.
+    # Link EVERY consecutive run pair, underlay included. A short hop whose
+    # stitch would stay INSIDE the shape is sewn as a stitch, not jumped —
+    # this is where the corpus's 180-880-stitch runs come from: a column's
+    # cap-extended start sits a millimetre past the underlay walk that led to
+    # it, and lifting there fragmented every stroke into ~25-stitch runs
+    # (measured: ~50 short jumps on the benchmark logo). A hop is only a jump
+    # when it is long, or when the straight line between the runs would cross
+    # outside the artwork (a counter's hole, the gap between two strokes) —
+    # thread over bare fabric is a float no matter how short.
+    poly_link = poly.buffer(0.1)
     for prev, cur in zip(runs, runs[1:]):
-        d = math.dist(prev.points[-1], cur.points[0])
-        if d >= machine.TINY_STITCH_MM:
-            cur.jump = True
-            cur.trim = d > trim_at_mm
-            report["jumps"] += 1
+        a, b = prev.points[-1], cur.points[0]
+        d = math.dist(a, b)
+        if d < machine.TINY_STITCH_MM:
+            continue
+        if d <= trim_at_mm and poly_link.covers(LineString([a, b])):
+            continue        # needle-down: encoder sews end -> start as one stitch
+        cur.jump = True
+        cur.trim = d > trim_at_mm
+        report["jumps"] += 1
     return runs, report
 
