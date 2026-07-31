@@ -186,3 +186,29 @@ def tie_run(at: tuple[float, float], toward: tuple[float, float], kind: str = TI
     if pts[-1] != at:
         pts.append(at)
     return StitchRun(points=pts, kind=kind, shape_id=shape_id)
+
+
+def strip_ties(points: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """The points of a plan-level run with its folded-in lock stitches removed.
+
+    Stage 7 splices `tie_run` bounces INTO the runs they protect (see
+    `_apply_ties`), which is right for the machine and wrong for any instrument
+    that reads a satin run's points as rail penetrations: the four appended
+    points pair the last real penetration with a tie midpoint, and the "rail
+    gap" measured across that seam is `final_cross - TIE_STITCH_MM` — a number
+    about the column's width, not its density. Measured on the benchmark logo,
+    the audit's headline gap was a 1.61 mm tie phantom over a 0.86 mm truth,
+    an instrument error found by adversarial review of the emitter change.
+
+    Detection is exact, not heuristic: a tie is a bounce between exactly two
+    coordinates (`[at, inner, at, inner]` leading, `[inner, at, inner, at]`
+    trailing), so points two apart are EQUAL. Real satin penetrations are
+    never equal two apart — rails advance a spacing per station and the
+    emitter drops coincident crosses.
+    """
+    pts = list(points)
+    while len(pts) >= 5 and pts[0] == pts[2] and pts[1] == pts[3]:
+        pts = pts[4:]
+    while len(pts) >= 5 and pts[-1] == pts[-3] and pts[-2] == pts[-4]:
+        pts = pts[:-4]
+    return pts

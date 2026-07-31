@@ -32,12 +32,14 @@ sews as one blob. Measured on the benchmark logo at 90 mm on pique knit, eight
 letter pairs fused this way and "ENTERPRISES INC." sewed as "ENERPRSES NC".
 
 The gap between two letters is artwork exactly as much as the counter inside an
-"e" is, so it gets the same treatment the counter already gets: it is held open
-at its original size. The corridor a shape may not grow into is the bare fabric
-within reach of both it and a same-thread neighbour; because compensation can
-only close a gap narrower than two of itself, a span of 2 x pull covers every gap
-that is in danger and no gap that is not. Underlap is untouched — the corridor is
-bare fabric only, and an underlap by definition runs under another colour.
+"e" is, so it gets the same treatment the counter already gets: it is held open.
+The corridor a shape may not grow into is the bare fabric within ONE pull of both
+it and a same-thread neighbour — the lens the two compensations would jointly
+cover. That lens is non-empty exactly when the gap is under 2 x pull (the gaps
+compensation can actually close) and never reaches a face whose local separation
+is wider, so every face keeps its full compensation except where growing would
+fuse. Underlap is untouched — the corridor is bare fabric only, and an underlap
+by definition runs under another colour.
 """
 from __future__ import annotations
 
@@ -162,14 +164,30 @@ def resolve_overlaps(
             # Hold open the bare fabric between this shape and any neighbour on
             # the same thread. Nothing else separates them: they share a colour,
             # so neither the sew order nor the underlap rule above ever applies.
+            #
+            # The corridor is the lens each side reaches by ONE pull — the
+            # region both compensations would jointly cover — so it is
+            # non-empty exactly for gaps under 2 x pull, the ones compensation
+            # can actually close, and it never touches a face whose local
+            # separation is wider. Adversarial review caught the first version
+            # buffering both sides by 2 x pull: that carved compensation off
+            # frontage out to nearly 4 x pull of separation (faces that were
+            # never in danger sewed up to ~0.5 mm short on terry towel), and
+            # whether it happened at all rode on STRtree bounding boxes, so
+            # the same artwork sewed differently rotated 45 degrees.
             if pull > 0 and len(by_layer[L]) > 1:
-                near = poly.buffer(fuse_reach)
+                # Candidates come from a 2 x pull query — the bbox of a ONE-pull
+                # reach misses an axis-aligned neighbour whose gap sits between
+                # pull and 2 x pull, which is still a gap in danger. The lens
+                # itself is built at one pull per side.
                 others = [
-                    by_layer[L][i] for i in trees[L].query(near) if by_layer[L][i] is not r
+                    by_layer[L][i]
+                    for i in trees[L].query(poly.buffer(fuse_reach))
+                    if by_layer[L][i] is not r
                 ]
                 if others:
-                    corridor = near.intersection(
-                        unary_union([o.polygon for o in others]).buffer(fuse_reach)
+                    corridor = poly.buffer(pull).intersection(
+                        unary_union([o.polygon for o in others]).buffer(pull)
                     ).difference(all_art)
                     if not corridor.is_empty:
                         grown = grown.difference(corridor)

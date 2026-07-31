@@ -63,7 +63,12 @@ def audit(plan):
                 if d < machine.MIN_STITCH_MM:
                     short_fill += 1
         if run.kind == stitches.SATIN:
-            pts = run.points
+            # Lock stitches are folded into the run by stage 7 and are not
+            # rail penetrations: scanned raw, the tie seam reads as a phantom
+            # gap of final_cross - 0.8 mm (1.61 on the benchmark, over a real
+            # 0.86) and the headline number stops responding to real density
+            # changes in either direction.
+            pts = stitches.strip_ties(run.points)
             for i in range(0, len(pts) - 2):
                 # Rails alternate A, B, A, B ... so two apart is the same rail.
                 satin_gap_max = max(satin_gap_max, math.dist(pts[i], pts[i + 2]))

@@ -111,4 +111,13 @@ def match_shape_ids(
         current[ci].shape_id = previous[pi].shape_id
         if old != previous[pi].shape_id:
             remap[old] = previous[pi].shape_id
+        # Operator intent rides the identity, not just the label. Stage 4
+        # rebuilds every Region's meta from scratch each generation, so a
+        # review-screen decision stored there (today: the per-shape border
+        # override) evaporates on re-digitize unless the match carries it —
+        # which is exactly what the config docstring promises. Pipeline facts
+        # (layer) stay the current generation's own.
+        for key in ("border",):
+            if key in previous[pi].meta and key not in current[ci].meta:
+                current[ci].meta[key] = previous[pi].meta[key]
     return remap

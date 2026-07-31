@@ -36,6 +36,17 @@ OUTSIDE its shape with no exception and no warning. `buffer(-d)` cannot express
 that bug, returns every ring of a shape with holes in one call, and returns
 empty — rather than a curve in the wrong place — when the shape is too thin to
 hold a column.
+
+KNOWN LIMITATION (adversarial review, unfixed by choice): under `border="auto"`
+two different-color shapes that ABUT get coincident border rails on the shared
+seam — stage 5 makes both visible edges the same line, so each circuit's outer
+rail rides it at full density: a double-thick bar in two threads, penetrating
+each other's holes for the seam's whole length. The real fix is seam-aware
+suppression (one shape yields its border along frontage another bordered shape
+already covers), which needs cross-shape coordination stage 7 does not yet
+have. It is livable today because the default is `off` and per-shape intent
+(`Region.meta["border"] = False` on one side of the seam) is the manual
+escape; it must be fixed before `auto` becomes a default anywhere.
 """
 from __future__ import annotations
 
@@ -67,6 +78,12 @@ _SLACK_MM = 1e-3
 # derived from the corner radius; this only bounds the relaxation so a
 # pathological ring cannot spin.
 _RELAX_ITERS = 240
+
+# The deepest a corner relaxation may retreat from the true edge: half a
+# border column width (machine.BORDER_WIDTH_MM / 2), so a rounded tip stays
+# within the column's own thread coverage. See `_relax_corners` for the
+# measured defect this caps.
+_BITE_MAX_MM = machine.BORDER_WIDTH_MM / 2.0
 
 
 # --- Ring sampling ---------------------------------------------------------
@@ -146,6 +163,7 @@ def _relax_corners(pts: list[tuple[float, float]], r_corner: float, k: int
     if n < 8:
         return pts
     p = np.asarray(pts, dtype=float)
+    p0 = p.copy()
     for _ in range(_RELAX_ITERS):
         r = _turn_radius(p, k)
         sharp = r < r_corner
@@ -160,6 +178,19 @@ def _relax_corners(pts: list[tuple[float, float]], r_corner: float, k: int
         nxt = np.roll(p, -1, axis=0)
         moved = 0.25 * prev + 0.5 * p + 0.25 * nxt
         new = np.where(mask[:, None], moved, p)
+        # Cap how far any sample may retreat from the true edge. Uncapped, the
+        # Laplacian's fixed point on a spike-sharp tip sits ~1.85 mm inside it
+        # (measured on 12-24 mm five-point stars) — the outline visibly cuts
+        # the corner off while the fill under it reaches the real apex, and
+        # the corpus law is the opposite: pros sew THROUGH corners. Half a
+        # column width keeps the true tip inside the column's own thread
+        # coverage, so the cap reads as rounding, never as a missing corner.
+        disp = new - p0
+        d = np.hypot(disp[:, 0], disp[:, 1])
+        over = d > _BITE_MAX_MM
+        if over.any():
+            scale = (_BITE_MAX_MM / np.where(d > 1e-12, d, 1.0))[:, None]
+            new = np.where(over[:, None], p0 + disp * scale, new)
         if float(np.abs(new - p).max()) < 1e-5:
             p = new
             break
@@ -173,11 +204,17 @@ def round_inward(poly: Polygon, r_corner: float, step_mm: float) -> Polygon:
     Intersecting the relaxed shape back with the original means the rounding
     can only ever REMOVE material, so a border built on the result is contained
     in the original by construction — for the exterior and every hole at once.
-    Measured bite at r = 2.10 mm: 0.074 mm at a right angle, saturating at
-    ~0.66 mm on a spike-sharp tip, ~1% of a 20 mm star's area. That bite is
-    invisible only because the border rides over a fill that already reaches
-    the true corner, which is why the "no border without coverage under it"
-    rule and this one must move together.
+
+    Measured bite at r = 2.10 mm, WITH the `_BITE_MAX_MM` cap: 0.70 mm at a
+    right angle, 0.70-0.79 mm at a spike-sharp star tip, 1.4% of a 20 mm
+    square's area and 3.2% of a 20 mm star's. (This docstring once claimed
+    0.074 / 0.66 / 1% for the uncapped relaxation; adversarial review measured
+    the truth at 1.01 / 1.85 / 7.4% — the fixed point of the Laplacian sits
+    far deeper than anyone had checked, and the cap now exists because of it.)
+    A sub-column-width bite reads as rounding; it stays invisible because the
+    border rides over a fill that already reaches the true corner, which is
+    why the "no border without coverage under it" rule and this one must move
+    together.
     """
     rings: list[list[tuple[float, float]]] = []
     for ring in [poly.exterior, *poly.interiors]:
@@ -293,17 +330,30 @@ def _loop_stations(pts: list[tuple[float, float]], total: float, step: float,
     """Station indices for one circuit, plus the phase-shifted closing overlap.
 
     The loop runs the full ring and then continues PAST its own start by
-    `overlap_mm`, offset by half a station so the closing penetrations land
-    between the opening ones instead of back in them. A butt joint is visible;
-    one column width of doubled thread is not, and re-entering three needle
-    holes frays the edge.
+    `overlap_mm`, phased so the closing penetrations land midway between the
+    opening ones ON THEIR OWN RAIL. A butt joint is visible; one column width
+    of doubled thread is not, and re-entering three needle holes frays the
+    edge.
+
+    The phase is a whole station, not half a one — and which whole depends on
+    the ring's parity. Stations alternate rails, so same-rail holes sit TWO
+    stations apart; a half-station shift puts every closing penetration a
+    quarter-pitch (0.11 mm, inside the same-hole radius) from an existing hole
+    on its own rail — precisely the re-entry the overlap exists to avoid,
+    found by adversarial review. The closing pass continues the emitter's
+    alternation, so its rail parity at a given ring position flips with n:
+    for even n a one-station shift lands each closing cross at the position
+    of an OPPOSITE-rail opening (own-rail holes a full station away on both
+    sides); for odd n the wrap itself flips parity and a zero shift does the
+    same thing.
     """
     n = len(pts)
     out: list[int | float] = [(start + i) % n for i in range(n)]
     if overlap_mm > 0 and total > 0:
         extra = int(overlap_mm / step)
+        shift = 1 if n % 2 == 0 else 0
         for j in range(extra):
-            out.append(((start + j + 0.5) % n))
+            out.append((start + j + shift) % n)
     return out
 
 

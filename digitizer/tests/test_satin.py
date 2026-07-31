@@ -39,6 +39,29 @@ def _satin_runs(poly, style="none"):
     return [r for r in runs if r.kind == "satin"], runs, report
 
 
+def _cross_angles(run) -> list[float]:
+    """The direction of each long segment of a run, in [0, 180) degrees.
+
+    Crosses are identified by LENGTH rather than position: an earlier version
+    keyed off a fixed parity, scored a clean curved ribbon at 30%, and graded
+    nothing. Anything built on that had to be re-measured.
+    """
+    pts = run.points
+    segs = [(math.dist(pts[i], pts[i + 1]), pts[i], pts[i + 1])
+            for i in range(len(pts) - 1)]
+    segs = [s for s in segs if s[0] > 1e-9]
+    if len(segs) < 4:
+        return []
+    longest = sorted(s[0] for s in segs)[int(len(segs) * 0.9)]
+    return [math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])) % 180.0
+            for L, a, b in segs if L >= longest * 0.5]
+
+
+def _rotations(angs: list[float], step: int = 2) -> list[float]:
+    d = [abs(x - y) % 180.0 for x, y in zip(angs, angs[step:])]
+    return [min(r, 180.0 - r) for r in d]
+
+
 def _cross_rotations(runs) -> list[float]:
     """How far each satin cross turns from the one BEFORE LAST, in degrees.
 
@@ -51,29 +74,17 @@ def _cross_rotations(runs) -> list[float]:
     that zigzag, not spray. Comparing each cross to the one two back holds the
     lean constant and leaves only the drift this metric exists to catch.
 
-    Crosses are still identified by LENGTH rather than position: an earlier
-    version keyed off a fixed parity, scored a clean curved ribbon at 30%, and
-    graded nothing. Anything built on that had to be re-measured.
+    The first and last cross are dropped: a column deliberately finishes with
+    a square-end terminal stitch onto the cap CORNERS, diagonal to the column
+    by design. NOTE what that trim costs: the cap-ENTRY stitch is also the
+    first element, so this aggregate is blind to it — the straight-bar test
+    pins the entry separately on the untrimmed list. (Adversarial review
+    caught that pin silently dying when this trim first met the new emitter.)
     """
     out: list[float] = []
     for run in runs:
-        pts = run.points
-        segs = [(math.dist(pts[i], pts[i + 1]), pts[i], pts[i + 1])
-                for i in range(len(pts) - 1)]
-        segs = [s for s in segs if s[0] > 1e-9]
-        if len(segs) < 4:
-            continue
-        longest = sorted(s[0] for s in segs)[int(len(segs) * 0.9)]
-        angs = [math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])) % 180.0
-                for L, a, b in segs if L >= longest * 0.5]
-        # Drop the first and last cross: a column deliberately finishes with a
-        # square-end terminal stitch onto the cap CORNERS, which is diagonal to
-        # the column by design. Counting it as spray measures the feature, not
-        # the defect — it is why a straight bar scored 23.9 deg.
-        angs = angs[1:-1]
-        for x, y in zip(angs, angs[2:]):
-            d = abs(x - y) % 180.0
-            out.append(min(d, 180.0 - d))
+        angs = _cross_angles(run)[1:-1]
+        out.extend(_rotations(angs, step=2))
     return out
 
 
@@ -136,18 +147,34 @@ def test_outer_rail_holds_density_on_a_curve():
 def test_a_straight_bar_is_parallel_but_for_the_cap_entry():
     """The floor case, and it documents the one blemish left on it.
 
-    A straight column's crosses are parallel by definition, and the mean
-    rotation is 0.41 deg. Exactly ONE cross breaks that: the column enters from
-    the cap face at the bar's mid-height and reaches the near rail diagonally
-    ((0.00, 1.08) -> (0.41, 0.17) on this fixture, 23.9 deg). That is a
-    cap-entry artifact, not the spray this module was rebuilt to fix, and it is
-    pinned here so it cannot quietly become two.
+    A straight column's crosses are parallel by definition. Exactly ONE
+    stitch breaks that: the column enters from the cap face at the bar's
+    mid-height and reaches the near rail diagonally — 23.9 deg against its
+    neighbour on this fixture. That is a cap-entry artifact, not the spray
+    this module was rebuilt to fix, and it is pinned here so it can neither
+    quietly become two nor quietly worsen.
+
+    The pin reads the UNTRIMMED, ADJACENT rotation list on purpose.
+    `_cross_rotations` trims the ends (the terminal cross is diagonal by
+    design) and compares two apart (the zigzag lean cancels) — both correct
+    for measuring spray, and both blind to the entry: adversarial review
+    found the original pin reading zero once the emitter made every segment
+    a cross, at which point a worsening entry — 23.9 to any angle — was
+    invisible. Measured now: adjacent untrimmed shows exactly one reading
+    over 15 (23.9 at index 0); two-apart trimmed spray tops out at 11.4.
     """
     satin, _, _ = _satin_runs(BAR)
+    assert len(satin) == 1
     rot = _cross_rotations(satin)
     assert rot, "no crosses measured"
-    assert sum(r > 15.0 for r in rot) <= 1, f"more than one bad cross: {rot}"
-    assert sum(rot) / len(rot) <= 1.0, f"bar wobbles on average {sum(rot) / len(rot):.2f} deg"
+    assert max(rot) <= 12.5, f"bar sprays: worst two-apart rotation {max(rot):.1f}"
+
+    entry = _rotations(_cross_angles(satin[0]), step=1)
+    big = [(i, r) for i, r in enumerate(entry) if r > 15.0]
+    assert len(big) <= 1, f"more than one bad stitch: {big}"
+    for i, r in big:
+        assert i == 0, f"a >15 deg turn away from the entry, at {i}: {r:.1f}"
+        assert r <= 30.0, f"the cap entry worsened: {r:.1f} deg (was 23.9)"
 
 
 # --- Classification --------------------------------------------------------
@@ -293,29 +320,43 @@ def test_a_satin_free_end_does_not_fan_into_a_starburst():
     reported it.
     """
     from digitizer_core import PipelineConfig, digitize
+    from digitizer_core.stitches import strip_ties
 
     _result, plan = digitize(TESTDATA / "ribbon_curve.png",
                              PipelineConfig(target_width_mm=80.0,
                                             garment_id="left_chest"))
     runs = [r for _b, r in plan.iter_runs() if r.kind == "satin"]
     assert len(runs) == 1, f"the ribbon should sew as one column, got {len(runs)}"
-    pts = runs[0].points
+    # Stage 7 folds lock stitches into the run; scanned raw they pair the last
+    # real penetration with a tie midpoint and read as a phantom gap of
+    # final_cross - 0.8 mm. Adversarial review found this test's tail
+    # allowance calibrated against that artifact — the ribbon's tail is
+    # actually CLEAN, provable once the ties are stripped.
+    pts = strip_ties(runs[0].points)
     assert len(pts) > 200, "the curved ribbon should sew as one long column"
 
     # Points come out A, B, A, B ... so p[i] and p[i+2] are consecutive
     # penetrations on the same rail, and stepping i by ONE covers both rails
     # and every interval on them. Cross number is i // 2.
     ncross = len(pts) // 2
-    wide = [i for i in range(len(pts) - 2)
+    wide = [(i, math.dist(pts[i], pts[i + 2])) for i in range(len(pts) - 2)
             if math.dist(pts[i], pts[i + 2]) > 2 * machine.SATIN_SPACING_MM]
-    head = [i for i in wide if i // 2 < 5]
-    tail = [i for i in wide if i // 2 >= ncross - 5]
-    interior = [i for i in wide if i not in head and i not in tail]
+    head = [w for w in wide if w[0] // 2 < 5]
+    tail = [w for w in wide if w[0] // 2 >= ncross - 5]
+    interior = [w for w in wide if w not in head and w not in tail]
 
+    assert interior == [], f"over-wide rail gaps away from the caps: {interior}"
+    assert tail == [], f"the end cap is fanning: {tail}"
+    # The head's two readings are NOT terminal-cross allowance — they are real
+    # coverage holes where the tapered tip runs narrower than the refinement
+    # can station (crosses 0 and 3, measured 0.96 and 0.83 mm). Pinned by
+    # count AND magnitude so they can neither multiply into the starburst this
+    # test polices nor quietly deepen while the count stays flat. (The old
+    # assertion bounded count only; two adjacent dropped stations at any depth
+    # kept it green.)
     assert len(head) <= 2, f"the start cap is fanning: {head}"
-    assert len(tail) <= 2, f"the end cap is fanning: {tail}"
-    assert interior == [], \
-        f"{len(interior)} over-wide rail gaps away from the caps: {interior}"
+    for i, d in head:
+        assert d <= 1.05, f"taper coverage hole deepened at {i}: {d:.2f} mm"
 
 
 # --- Underlay --------------------------------------------------------------

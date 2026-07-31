@@ -63,8 +63,12 @@ def test_a_square_sews_as_one_circuit():
 
     pts = border[0].points
     # A closed circuit ends where it began, within the deliberate overlap that
-    # closes the seam.
-    assert math.dist(pts[0], pts[-1]) <= machine.BORDER_CLOSURE_OVERLAP_MM + 0.5
+    # closes the seam — plus the whole-station phase the closure carries so its
+    # penetrations land between the opening ones, and up to a column width
+    # because start and end may sit on opposite rails.
+    slack = machine.BORDER_CLOSURE_OVERLAP_MM + machine.BORDER_DENSITY_MM / 2 \
+        + machine.BORDER_WIDTH_MM / 2
+    assert math.dist(pts[0], pts[-1]) <= slack + 0.1
 
 
 def test_a_counter_gets_its_own_circuit():
@@ -157,3 +161,75 @@ def test_auto_borders_the_fills_and_warns_when_it_lightens():
                     cfg(garment_id="hat_front", border="bean"))[1]
     assert "bean" in {r.kind for _b, r in bean.iter_runs()}
     assert "BORDER_LIGHTENED" in {w["code"] for w in bean.warnings}
+
+
+# --- The review wave: closure phase, meta carry, corner bite ----------------
+
+def test_closing_penetrations_avoid_their_own_rails_holes():
+    """Regression, from adversarial review: the closing overlap was phased by
+    HALF a station, but stations alternate rails, so same-rail holes sit two
+    stations apart and the half shift put every closing penetration a
+    quarter-pitch (0.11 mm — inside the same-hole radius) from an existing
+    hole on its own rail. The whole-station phase lands each closing cross at
+    an opposite-rail opening's position instead: 0.225 mm, dead midway, from
+    the nearest own-rail hole."""
+    runs, _ = _runs(SQUARE)
+    pts = [r.points for r in runs if r.kind == "border"][0]
+    extra = int(machine.BORDER_CLOSURE_OVERLAP_MM / (machine.BORDER_DENSITY_MM / 2))
+    assert extra >= 4, "fixture too small to exercise the closure"
+    opening, closing = pts[:len(pts) - extra], pts[len(pts) - extra:]
+    for gi in range(len(pts) - extra, len(pts)):
+        c = pts[gi]
+        same_rail = [p for j, p in enumerate(opening) if j % 2 == gi % 2]
+        dmin = min(math.dist(c, p) for p in same_rail)
+        assert dmin >= 0.2, \
+            f"closing penetration {gi} lands {dmin:.3f} mm from an own-rail hole"
+
+
+def test_border_intent_survives_a_redigitize():
+    """Regression, from adversarial review: config.py promises the per-shape
+    override 'rides the existing match_shape_ids carry-forward', but the match
+    copied only the id and stage 4 rebuilds meta each generation — so a
+    review-screen border decision silently reverted on every re-digitize."""
+    from digitizer_core.regions import Region, match_shape_ids
+
+    def region(sid, dx=0.0, **meta):
+        poly = Polygon([(dx, 0), (10 + dx, 0), (10 + dx, 4), (dx, 4)])
+        return Region(shape_id=sid, polygon=poly, thread_index=0,
+                      thread_number="1", area_mm2=poly.area,
+                      meta={"layer": 0, **meta})
+
+    prev = [region("S_kept", border=False)]
+    cur = [region("S_new", dx=0.3)]          # same art, nudged a hair
+    match_shape_ids(prev, cur)
+    assert cur[0].shape_id == "S_kept"
+    assert cur[0].meta.get("border") is False, \
+        "the operator's border decision must ride the id carry-forward"
+    assert cur[0].meta["layer"] == 0, "pipeline facts stay the new generation's"
+
+
+def test_corner_rounding_never_bites_deeper_than_half_a_column():
+    """Regression, from adversarial review: the uncapped relaxation's fixed
+    point on a spike-sharp star tip sat 1.85 mm inside it (its docstring
+    claimed 0.66) — the outline visibly cut every corner off while the fill
+    reached the true apex. Capped, a tip retreats at most about half a border
+    width plus one sampling step, which stays inside the column's own thread."""
+    from digitizer_core.stage6_border import round_inward
+
+    for size in (24.0, 12.0):
+        half = size / 2
+        tips = []
+        pts = []
+        for i in range(10):
+            ang = math.pi / 2 + i * math.pi / 5
+            rad = half if i % 2 == 0 else size / 5
+            pts.append((rad * math.cos(ang), rad * math.sin(ang)))
+            if i % 2 == 0:
+                tips.append(pts[-1])
+        star = Polygon(pts)
+        rounded = round_inward(star, machine.BORDER_CORNER_RADIUS_MM,
+                               machine.BORDER_DENSITY_MM / 2)
+        for t in tips:
+            bite = Point(t).distance(rounded)
+            assert bite <= machine.BORDER_WIDTH_MM / 2 + 0.15, \
+                f"{size} mm star tip bitten {bite:.2f} mm"
