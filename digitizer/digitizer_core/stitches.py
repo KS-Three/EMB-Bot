@@ -26,6 +26,7 @@ FILL = "fill"
 SATIN = "satin"        # reserved for build step 4
 BORDER = "border"      # a closed outline circuit, sewn as a satin column
 BEAN = "bean"          # the light outline tier: a triple run on the same ring
+RUN = "run"            # the run tier: a rescued small shape's outline, bean technique
 TRAVEL = "travel"
 TIE = "tie"
 

@@ -143,6 +143,28 @@ BORDER_JOIN_SEARCH_MM = 3.0
 BEAN_PASSES = 3
 BEAN_STITCH_MM = 0.73
 
+# --- The run tier (small-shape rescue) --------------------------------------
+# A shape too small to hold fill rows or satin crosses sews as a bean run on
+# its own outline instead of being dropped — the same technique Wilcom's Hatch
+# course teaches for small lettering, at sizes where satin and fill both die.
+# Two floors decide what is still too small for even that; below them a shape
+# is smaller than the mark the thread would leave sewing it, and it drops.
+
+# The smallest closed circuit a bean run can sew: three stations at
+# BEAN_STITCH_MM (3 x 0.73 = 2.19). Under three stations the "loop" is the
+# needle re-entering its own holes, which reads as lint. Benchmark measurement
+# (enthusiast logo at 90 mm): the period of "ENTERPRISES INC." has a ~1.2 mm
+# outline and correctly dies here; the thinnest letter (the "I", 0.26 x
+# 1.91 mm) has a 4.3 mm outline and survives.
+RUN_MIN_LOOP_MM = 2.2
+
+# The thread's own visual weight, squared. A 40 wt line lays ~0.4 mm wide —
+# the same measurement behind SATIN_SPACING_MM (adjacent threads just touch
+# at 0.4) — so a shape with less area than one thread-width square is smaller
+# than a single penetration's worth of thread. Benchmark: the period is
+# 0.10 mm² (dies), the thinnest subline letter is 0.50 mm² (survives).
+RUN_MIN_AREA_MM2 = 0.16
+
 # --- Travel ----------------------------------------------------------------
 
 TRAVEL_STITCH_MM = 2.5  # shorter than fill so travel disappears under coverage

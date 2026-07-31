@@ -31,14 +31,14 @@ from .config import PipelineConfig
 from .fabrics import Fabric
 from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITCH_MM
 from .stage5_overlap import PlannedRegion
-from .stage6_border import border_runs
+from .stage6_border import border_runs, run_outline
 from .stage6_fill import stitch_shape
 from .stage6_satin import is_satin_candidate, satin_shape
 from .stitches import StitchBlock, StitchRun, tie_run
 from .threads import chart_for
 from .warnings_codes import (BORDER_LIGHTENED, BORDER_SKIPPED_TOO_NARROW,
                              LONG_JUMPS_TRIMMED, SHAPE_NOT_STITCHED,
-                             SHAPE_TOO_THIN_TO_FILL, warn)
+                             SHAPE_TOO_THIN_TO_FILL, SMALL_SHAPES_AS_RUN, warn)
 
 
 def _apply_ties(runs: list[StitchRun]) -> None:
@@ -87,8 +87,12 @@ def sequence(
     trim_at = fabric.trim_at_mm
 
     border_style = (cfg.border or "off").lower()
+    rescue = cfg.small_shape_rescue
+    # The sewable-detail floor, as an area: stage 3 keeps shapes under it only
+    # for the run tier, and this is where they are routed to it.
+    detail_mm2 = cfg.min_detail_mm ** 2
 
-    thin = empty = jumps = 0
+    thin = empty = jumps = as_run = 0
     bordered = lightened = border_narrow = 0
     blocks: list[StitchBlock] = []
     cursor: tuple[float, float] | None = None
@@ -97,6 +101,19 @@ def sequence(
         group = [p for p in planned if p.sew_index == sew_index]
 
         def stitch_one(p: PlannedRegion, entry: tuple[float, float] | None):
+            # The run tier comes first: a shape below the sewable-detail floor
+            # has nowhere to put fill rows (MIN_FILL_WIDTH_MM) and pinches
+            # every satin cross under SATIN_MIN_CROSS_MM, so both real tiers
+            # produce a smear of degenerate stitches or nothing. Its outline
+            # sews as a bean run instead — on the ARTWORK polygon, because a
+            # run does not pull fabric and compensation would fatten a
+            # thread-width stroke past its own letterform (see `run_outline`).
+            if rescue and p.region.polygon.area < detail_mm2:
+                runs, report = run_outline(p.region.polygon, p.shape_id,
+                                           entry=entry, trim_at_mm=trim_at)
+                if not report["empty"]:
+                    report["as_run"] = 1
+                    return runs, report, False
             # Satin or fill is decided per shape, not per design: one logo
             # routinely holds both a big filled emblem and thin satin lettering.
             # Classified on the ARTWORK polygon, not the stage-5 grown one —
@@ -125,6 +142,18 @@ def sequence(
                 trim_at_mm=trim_at,
                 start_near=entry,
             )
+
+            # The reactive rescue: a shape can pass every size floor and still
+            # defeat both tiers — a skeleton the satin module cannot resolve
+            # falling through to a fill whose every row degenerates. That used
+            # to be a silent SHAPE_NOT_STITCHED; its outline still exists, and
+            # sewing it as a run beats leaving a hole in the artwork.
+            if rescue and not runs:
+                r_runs, r_report = run_outline(p.region.polygon, p.shape_id,
+                                               entry=entry, trim_at_mm=trim_at)
+                if r_runs:
+                    r_report["as_run"] = 1
+                    return r_runs, r_report, False
 
             # The border goes on AFTER the fill it covers, and only on a filled
             # shape: a satin column already IS an outline, so bordering one
@@ -185,6 +214,7 @@ def sequence(
             runs, report, filled = stitch_one(p, cursor)
             thin += int(filled and report["too_thin"])
             jumps += report["jumps"]
+            as_run += report.get("as_run", 0)
             bordered += report.get("bordered", 0)
             lightened += report.get("lightened", 0)
             border_narrow += report.get("border_narrow", 0)
@@ -227,6 +257,16 @@ def sequence(
                 "fill cleanly but not stroke-like enough for satin — worth a "
                 "look on the review screen.",
                 count=thin,
+            )
+        )
+    if as_run:
+        warnings.append(
+            warn(
+                SMALL_SHAPES_AS_RUN,
+                f"{as_run} shape{'s were' if as_run != 1 else ' was'} too small "
+                "to hold a fill or satin and sewed as a light outline run "
+                "instead.",
+                count=as_run,
             )
         )
     if empty:

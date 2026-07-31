@@ -11,8 +11,11 @@ determinism reference: byte-identical labels for byte-identical input.
 
 Small-region policy (blueprint min detail 1.5 mm): a region below the
 sewable area threshold is ABSORBED into whichever neighbor shares the most
-boundary with it, or DROPPED when it has no neighbor. Both are counted and
-warned — silently deleting art is the failure mode that erodes trust.
+boundary with it, or — when it has no neighbor — KEPT for the run tier if it
+is at least the size of the mark the thread itself would leave, and DROPPED
+only below that. Both drop and absorb are counted and warned — silently
+deleting art is the failure mode that erodes trust, and it was exactly small
+isolated text (a logo's subline) that the old drop-everything rule deleted.
 """
 from __future__ import annotations
 
@@ -22,6 +25,7 @@ from dataclasses import dataclass
 import cv2
 import numpy as np
 
+from . import machine
 from .config import PipelineConfig
 from .stage1_prep import Prep
 from .stage2_quantize import Quant
@@ -106,6 +110,15 @@ def resolve_small_regions(
     report_floor_px = min_area_px * cfg.report_absorb_frac
     absorbed = dropped = 0
     absorbed_reportable = dropped_reportable = 0
+    rescued: list[int] = []
+
+    # The run-tier floors, in mask units. The loop test uses 2*max(w, h) as a
+    # perimeter proxy — a lower bound (the boundary must traverse the longer
+    # extent twice), so a mask passing here definitely holds a sewable loop.
+    # Stage 4 re-tests on the real polygon; this one only has to be cheap and
+    # never rescue what geometry would then reject silently.
+    noise_area_px = machine.RUN_MIN_AREA_MM2 * px_per_mm ** 2
+    loop_floor_px = machine.RUN_MIN_LOOP_MM * px_per_mm
 
     # Deterministic order: smallest first, then by top-left position.
     def sort_key(i: int) -> tuple:
@@ -138,6 +151,16 @@ def resolve_small_regions(
 
         reportable = areas[i] >= report_floor_px
         if best is None:
+            # No neighbour to absorb into: this is isolated artwork, and the
+            # benchmark showed exactly what it tends to be — a logo's small
+            # text, sitting alone on background. Keep it for the run tier
+            # when it is at least the thread's own visual weight; below that
+            # it is lint, and lint drops.
+            box_h, box_w = box[2] - box[0], box[3] - box[1]
+            if (cfg.small_shape_rescue and areas[i] >= noise_area_px
+                    and 2 * max(box_h, box_w) >= loop_floor_px):
+                rescued.append(i)
+                continue
             dropped += 1
             dropped_reportable += int(reportable)
             continue
@@ -151,7 +174,10 @@ def resolve_small_regions(
         absorbed += 1
         absorbed_reportable += int(reportable)
 
-    kept = [regions[i] for i in keep]
+    # Rescued masks ride along after the full-size ones; stage 4 re-sorts its
+    # output, so their position here only has to be deterministic (it is:
+    # `rescued` fills in the same smallest-first order the loop walks).
+    kept = [regions[i] for i in keep] + [regions[i] for i in rescued]
     warnings: list[dict] = []
     # Only regions big enough to have been intentional artwork are reported;
     # anti-alias slivers are cleaned up silently (see cfg.report_absorb_frac).

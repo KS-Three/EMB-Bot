@@ -563,3 +563,70 @@ def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
 
     report["empty"] = not runs
     return runs, report
+
+
+def run_outline(poly, shape_id: str, *, entry: tuple[float, float] | None,
+                trim_at_mm: float) -> tuple[list[StitchRun], dict]:
+    """The run tier: a shape too small to fill or satin, sewn as bean runs on
+    its own outline instead of being dropped.
+
+    Same light tier the border falls back to, on different geometry. The
+    border's bean rides an inset spine because it stands in for a column over
+    a fill's edge; here there is no fill — the outline IS the artwork — so the
+    run traces the ring exactly, and on the artwork polygon rather than the
+    pull-compensated one (a run lays single lines of thread that do not pull
+    fabric, and growing a 0.26 mm stroke by 0.3 mm of compensation would sew
+    it at twice its own weight). At rescue sizes the two sides of a stroke sit
+    closer together than the thread is wide, so the traced outline reads as a
+    solid monoline glyph — which is exactly how run lettering should read, and
+    how the benchmark subline renders.
+
+    No corner rounding and no short-stitch guard: a bean run has no rails to
+    fold and no density to hold, so corners are simply sewn through (law 12).
+    A ring shorter than `RUN_MIN_LOOP_MM` is skipped — under three bean
+    stations the needle is re-entering its own holes.
+
+    Report keys: `loops`, `jumps`, `empty` (plus `too_thin`, always False,
+    so stage 7 can treat every tier's report identically).
+    """
+    report = {"loops": 0, "jumps": 0, "empty": True, "too_thin": False}
+    runs: list[StitchRun] = []
+    cursor = entry
+    for part in _parts(poly):
+        for ring in [part.exterior, *part.interiors]:
+            coords = list(ring.coords)
+            length = LineString(coords).length
+            if length < machine.RUN_MIN_LOOP_MM:
+                continue           # smaller than the mark the thread makes
+            n = max(3, int(round(length / machine.BEAN_STITCH_MM)))
+            ring_pts, _total = _ring_arc_samples(coords, n)
+            if not ring_pts:
+                continue
+            pts = _bean_loop(ring_pts, cursor, machine.BEAN_STITCH_MM,
+                             machine.BEAN_PASSES)
+            if len(pts) < 2:
+                continue
+            # A rescued shape is thread-width scaled: there is no interior for
+            # a travel run to hide in, so a hop between its rings gets the
+            # plain jump-or-trim call, no bridging. Only BETWEEN rings: the
+            # hop from the previous shape into this one is the sequence
+            # loop's decision, exactly as it is for a fill — booking it here
+            # too double-counted every rescued shape's entry as a lifted
+            # thread (measured on the benchmark: 13 phantom jumps warned).
+            jump = trim = False
+            if runs and cursor is not None:
+                d = math.dist(cursor, pts[0])
+                if d >= machine.TINY_STITCH_MM:
+                    jump = True
+                    trim = d > trim_at_mm
+                    report["jumps"] += 1
+            # `stitches.RUN`, not BEAN: same technique, different tier. The
+            # kind records WHY the run exists, and "border off changes
+            # nothing" must stay checkable with the rescue active.
+            runs.append(StitchRun(points=stitches.split_long_moves(pts),
+                                  kind=stitches.RUN, jump=jump, trim=trim,
+                                  shape_id=shape_id))
+            cursor = pts[-1]
+            report["loops"] += 1
+    report["empty"] = not runs
+    return runs, report

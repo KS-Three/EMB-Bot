@@ -45,6 +45,14 @@ class PipelineConfig:
     # screen's warning stays meaningful ("30 details merged" from AA slivers
     # is noise that trains the user to ignore warnings).
     report_absorb_frac: float = 0.25
+    # The run-tier rescue (stages 3, 4 and 7 together). A shape below the
+    # sewable floor that would otherwise be dropped is kept and sewn as a
+    # light bean run on its outline: on the benchmark logo at 90 mm the whole
+    # "ENTERPRISES INC." subline sits under the floor, and dropping it means
+    # a line of the customer's text silently vanishing. Shapes below the
+    # thread's own visual weight (machine.RUN_MIN_LOOP_MM / RUN_MIN_AREA_MM2)
+    # still drop. False restores the old drop-everything behaviour.
+    small_shape_rescue: bool = True
 
     # Stage 4
     simplify_tol_mm: float = 0.2

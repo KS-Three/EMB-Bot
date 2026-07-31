@@ -98,10 +98,14 @@ def test_antialias_cleanup_is_not_reported_as_lost_artwork(whitebg):
 
 
 def test_touching_regions_of_different_colors_stay_separate(whitebg):
-    purple = [r for r in whitebg.regions if r.thread_number == "2905"]
-    orange = [r for r in whitebg.regions if r.thread_number == "1305"]
-    assert len(purple) == 1 and len(orange) == 1
-    assert purple[0].polygon.intersection(orange[0].polygon).area < 1.0
+    # The rectangles are the LARGEST region of each thread, not the only one:
+    # the fixture's orange layer also holds a 1 mm dot that the run-tier
+    # rescue now keeps (it used to be dropped without a trace).
+    purple = max((r for r in whitebg.regions if r.thread_number == "2905"),
+                 key=lambda r: r.area_mm2)
+    orange = max((r for r in whitebg.regions if r.thread_number == "1305"),
+                 key=lambda r: r.area_mm2)
+    assert purple.polygon.intersection(orange.polygon).area < 1.0
 
 
 # --- stage 4: vectorization ----------------------------------------------

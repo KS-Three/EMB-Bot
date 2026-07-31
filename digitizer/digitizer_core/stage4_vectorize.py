@@ -20,6 +20,7 @@ import numpy as np
 from shapely.geometry import Polygon
 from shapely.validation import make_valid
 
+from . import machine
 from .config import PipelineConfig
 from .regions import Region, assign_shape_ids
 from .stage1_prep import Prep
@@ -47,12 +48,28 @@ def vectorize(
     swallowed — the pipeline folds them into the same warning stage 3 uses,
     because a shape disappearing with no trace is the failure mode that
     makes an auto-digitizer untrustworthy.
+
+    Masks below the min-detail area (stage 3's run-tier rescues) get two
+    special treatments, both measured on the benchmark subline (1.9 mm
+    letters at 90 mm target width):
+
+    - **A sub-pixel simplify eps.** The stage tolerance is sized for shapes
+      with room to spare — 0.2 mm is 3 px at benchmark resolution, and on
+      29 px glyphs it deleted both "I"s outright and mangled the rest into
+      "ENTERPR SES NC". A sub-detail shape's features ARE tolerance-sized,
+      so it gets the 0.5 px floor: de-staircasing only, no simplification.
+    - **The run-tier floor instead of the sliver floor.** The sliver floor
+      (min detail squared, quartered) sits above the thinnest real letter
+      (0.56 vs 0.50 mm²). What the run tier needs is exactly what it can
+      sew: a loop the bean run can close, on a shape at least the thread's
+      own visual weight. Anything under that is still noted as dropped.
     """
     chart = chart_for(cfg)
     x0, y0, x1, y1 = p.art_bbox
     cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
     eps_px = max(0.5, cfg.simplify_tol_mm * p.px_per_mm)
     min_area_mm2 = (cfg.min_detail_mm ** 2) * 0.25  # a sliver after simplification
+    min_detail_px2 = (cfg.min_detail_mm * p.px_per_mm) ** 2
 
     regions: list[Region] = []
     dropped: list[float] = []
@@ -78,7 +95,12 @@ def vectorize(
         # simplification splintered it, keep the largest.
         outer = max(outers, key=lambda i: cv2.contourArea(contours[i]))
 
-        shell_px = cv2.approxPolyDP(contours[outer], eps_px, True).reshape(-1, 2)
+        # Sub-detail masks are simplified at the floor only — see docstring.
+        sub_detail = (cfg.small_shape_rescue
+                      and cv2.contourArea(contours[outer]) < min_detail_px2)
+        eps = 0.5 if sub_detail else eps_px
+
+        shell_px = cv2.approxPolyDP(contours[outer], eps, True).reshape(-1, 2)
         if len(shell_px) < 3:
             note_drop(rm)
             continue
@@ -88,7 +110,7 @@ def vectorize(
         for i in range(len(contours)):
             if hier[i][3] != outer:
                 continue
-            h_px = cv2.approxPolyDP(contours[i], eps_px, True).reshape(-1, 2)
+            h_px = cv2.approxPolyDP(contours[i], eps, True).reshape(-1, 2)
             if len(h_px) < 3:
                 continue
             ring = _to_mm(h_px, cx, cy, p.px_per_mm)
@@ -110,9 +132,19 @@ def vectorize(
             else:
                 note_drop(rm)
                 continue
-        if poly.is_empty or poly.area < min_area_mm2:
+        if poly.is_empty:
             note_drop(rm)
             continue
+        if poly.area < min_area_mm2:
+            # The run-tier floor, now on real geometry: stage 3's proxy was a
+            # lower bound, so this is the authoritative test of whether the
+            # bean run has a sewable loop and the shape outweighs the thread.
+            rescueable = (sub_detail
+                          and poly.area >= machine.RUN_MIN_AREA_MM2
+                          and poly.exterior.length >= machine.RUN_MIN_LOOP_MM)
+            if not rescueable:
+                note_drop(rm)
+                continue
 
         thread = chart[thread_indices[rm.layer]]
         regions.append(
