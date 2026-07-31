@@ -185,6 +185,39 @@ def test_unknown_job_is_404(client):
     assert client.get("/jobs/nosuchjob").status_code == 404
 
 
+# --- preflight (build step 9) ----------------------------------------------
+
+def test_a_finished_job_carries_a_preflight_report(client):
+    """The report is the point of digitizing through the service: Studio
+    shows the operator what will go wrong on the machine before sewing."""
+    state = _digitize(client, {"target_width_mm": 80.0})
+    report = state["preflight"]
+
+    assert report["grade"] in "ABCDF"
+    assert 0 <= report["score"] <= 100
+    assert isinstance(report["findings"], list)
+    for f in report["findings"]:
+        assert f["severity"] in ("info", "warn", "block")
+        assert f["code"] and f["message"]
+    # The service has the artwork in hand, so the thread check always runs.
+    assert report["metrics"]["thread_match_checked"] is True
+
+
+def test_preflight_off_is_none_not_a_passing_report(client):
+    """Studio must be able to tell 'clean' apart from 'never checked'."""
+    state = _digitize(client, {"target_width_mm": 80.0, "preflight": False})
+    assert state["preflight"] is None
+
+
+def test_a_poor_brand_match_reaches_the_operator(client):
+    """End to end: the madeira purple that motivated the whole check arrives
+    on the job payload as a THREAD_MATCH_POOR finding."""
+    state = _digitize(client, {"target_width_mm": 80.0,
+                               "thread_brand": "madeira-rayon"})
+    codes = {f["code"] for f in state["preflight"]["findings"]}
+    assert "THREAD_MATCH_POOR" in codes
+
+
 # --- export ---------------------------------------------------------------
 
 @pytest.mark.parametrize("fmt", ["dst", "pes", "jef", "exp", "vp3", "xxx", "u01", "pec"])

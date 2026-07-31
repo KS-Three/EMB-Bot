@@ -103,3 +103,12 @@ class PipelineConfig:
     debug_dir: Path | None = None
 
     extra: dict = field(default_factory=dict)  # forward-compat scratch
+
+    # Step 9 — preflight scoring. Whether the service attaches a preflight
+    # report to a finished job. On by default because the report is the point
+    # of digitizing through the service at all; off is for callers that score
+    # separately (or benchmark the pipeline without the extra stage-1 pass
+    # the thread-match check costs). Thresholds live in preflight.py with
+    # their citations, deliberately not here: they are measurements, not
+    # preferences.
+    preflight: bool = True

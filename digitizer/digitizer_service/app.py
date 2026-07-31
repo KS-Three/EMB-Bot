@@ -29,6 +29,7 @@ from starlette.concurrency import run_in_threadpool
 from digitizer_core import PipelineConfig, __doc__ as core_doc  # noqa: F401
 from digitizer_core.adapter import design_size_mm, design_to_pattern, plan_to_design
 from digitizer_core.pipeline import digitize
+from digitizer_core.preflight import run_preflight
 from digitizer_core.threads import DEFAULT_BRAND, brand_index, load_chart
 
 from . import formats
@@ -230,6 +231,11 @@ async def start_digitize(
             "review": _review_payload(result),
             "stats": _stats_payload(plan, design),
             "warnings": plan.warnings,
+            # Step 9: what will go wrong on the machine, said before sewing.
+            # None (not a passing report) when the caller turned it off, so
+            # Studio can tell "clean" apart from "never checked".
+            "preflight": run_preflight(result, plan, cfg, image=pixels)
+                         if cfg.preflight else None,
         }
 
     job, cached = registry.submit(key, work)
