@@ -24,6 +24,8 @@ from . import machine
 UNDERLAY = "underlay"
 FILL = "fill"
 SATIN = "satin"        # reserved for build step 4
+BORDER = "border"      # a closed outline circuit, sewn as a satin column
+BEAN = "bean"          # the light outline tier: a triple run on the same ring
 TRAVEL = "travel"
 TIE = "tie"
 

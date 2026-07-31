@@ -81,6 +81,61 @@ SATIN_MIN_CROSS_MM = 0.5
 SATIN_SHORT_STITCH_AT_MM = 0.3
 SATIN_SHORT_STITCH_PULL = 0.35
 
+# --- Border (the outline tier) ---------------------------------------------
+# Measured over 39 professional DSTs (tools/border_pro.py): 18 satin borders,
+# 14 bean outlines. NOTHING here is mirrored in the browser engine — it has no
+# border tier at all — so the "a mirrored value moves in both or neither" rule
+# has nothing to move.
+
+# A border column is THINNER than a lettering column: median 1.40 mm
+# (p10 0.78, p90 2.98) against 2.21 mm for satin generally. An outline is a
+# line, not a stroke of letterform weight; bordering at lettering width is
+# most of why a machine outline reads heavy.
+BORDER_WIDTH_MM = 1.40
+
+# Looser than lettering's 0.40-0.42: median 0.45 mm. A border rides an edge
+# that already has coverage under it. Measured on the RAILS, like law 4 — the
+# spacing between consecutive penetrations on the same side of the column.
+BORDER_DENSITY_MM = 0.45
+
+# UNMEASURED, and deliberately not invented. How far a professional's border
+# centreline sits from the fill edge it covers: the over-a-fill detector fired
+# ZERO times across 39 files while Hotel Fremont visibly has one, so the corpus
+# has not answered it. 0.0 is the boundary condition rather than a guess — the
+# column's outer rail lies exactly on the region's visible edge and the whole
+# column lies inside it. When the number arrives this constant is the entire
+# change; see stage6_border._centre_inset.
+BORDER_SEAM_OFFSET_MM = 0.0
+
+# Minimum turn radius forced on a ring before it is offset, so neither rail
+# ever has zero radius. 1.5x the column width, which leaves the inner rail's
+# own radius at r - W = 0.70 mm > 0: the inside of a corner crowds (short
+# stitches fix that) but can never fold back on itself. Below that a corner is
+# not a corner, it is a fold, and law 3 says folds are the only thing
+# professionals split for.
+BORDER_CORNER_RADIUS_MM = 2.10
+
+# A shape must have something left inside the column or the "border" is just a
+# heavy re-fill of the whole shape. Below it the light tier takes over.
+BORDER_HOST_MARGIN_MM = 0.20
+
+# A closed loop shorter than the circumference of a circle of radius
+# BORDER_WIDTH_MM is a dot, not an outline. 2*pi*1.40.
+BORDER_MIN_LOOP_MM = 8.80
+
+# The circuit closes by running past its own start for one column width, at a
+# half-station phase shift so the repeated penetrations miss the first holes.
+BORDER_CLOSURE_OVERLAP_MM = 1.40
+
+# How far the join may slide from the nearest station to find a flat stretch.
+BORDER_JOIN_SEARCH_MM = 3.0
+
+# Bean / triple run — the light outline tier, and the fallback wherever a
+# column will not fit. 14 found: 2.75 passes median (p90 3.27) at 0.73 mm
+# stitch length (p10 0.67, p90 1.87).
+BEAN_PASSES = 3
+BEAN_STITCH_MM = 0.73
+
 # --- Travel ----------------------------------------------------------------
 
 TRAVEL_STITCH_MM = 2.5  # shorter than fill so travel disappears under coverage

@@ -65,6 +65,22 @@ class PlannedRegion:
     region: Region
     polygon: Polygon      # after underlap + pull compensation
     sew_index: int        # thread order; equal for regions of the same thread
+    # `polygon` minus everything that sews AFTER this layer — the part of this
+    # color a person will actually see. `polygon` deliberately includes the
+    # underlap tongue, which is scaffolding hidden under the next color, so
+    # anything decorative (build step 11's border) must be drawn on this
+    # instead: a border on the tongue is sewn under another thread, invisible,
+    # costing stitches and adding bulk exactly where two colors already stack.
+    # None means "not computed" and callers fall back to `polygon`, so every
+    # existing construction site stays valid.
+    visible: object | None = None
+
+    @property
+    def visible_geom(self):
+        """The visible part, or the whole sewing polygon when it was not set."""
+        if self.visible is None or self.visible.is_empty:
+            return self.polygon
+        return self.visible
 
     @property
     def shape_id(self) -> str:
@@ -187,7 +203,20 @@ def resolve_overlaps(
                     lost += 1
                     continue
 
-            planned.append(PlannedRegion(region=r, polygon=grown, sew_index=sew_index))
+            # `later[L]` is already computed for the underlap reach above and
+            # was previously discarded. Keeping it is the whole cost of knowing
+            # which part of this color is visible: subtract the layers that
+            # sew after it and what remains is the finished visible edge.
+            # NOT run through `_largest_polygon` — a later color can legitimately
+            # split this one in two, and dropping the smaller half would silently
+            # lose a real visible piece.
+            visible = None
+            if later[L] is not None:
+                vis = grown.difference(later[L])
+                visible = None if vis.is_empty else vis
+
+            planned.append(PlannedRegion(region=r, polygon=grown,
+                                         sew_index=sew_index, visible=visible))
 
     if fusing_pairs:
         n = len(fusing_pairs)

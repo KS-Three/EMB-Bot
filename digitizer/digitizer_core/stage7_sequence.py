@@ -26,16 +26,19 @@ import math
 from shapely.geometry import Point
 from shapely.ops import unary_union
 
-from . import stitches
+from . import machine, stitches
 from .config import PipelineConfig
 from .fabrics import Fabric
 from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITCH_MM
 from .stage5_overlap import PlannedRegion
+from .stage6_border import border_runs
 from .stage6_fill import stitch_shape
 from .stage6_satin import is_satin_candidate, satin_shape
 from .stitches import StitchBlock, StitchRun, tie_run
 from .threads import chart_for
-from .warnings_codes import LONG_JUMPS_TRIMMED, SHAPE_NOT_STITCHED, SHAPE_TOO_THIN_TO_FILL, warn
+from .warnings_codes import (BORDER_LIGHTENED, BORDER_SKIPPED_TOO_NARROW,
+                             LONG_JUMPS_TRIMMED, SHAPE_NOT_STITCHED,
+                             SHAPE_TOO_THIN_TO_FILL, warn)
 
 
 def _apply_ties(runs: list[StitchRun]) -> None:
@@ -83,7 +86,10 @@ def sequence(
     satin_max = cfg.satin_max_width_mm or SATIN_MAX_WIDTH_MM
     trim_at = fabric.trim_at_mm
 
+    border_style = (cfg.border or "off").lower()
+
     thin = empty = jumps = 0
+    bordered = lightened = border_narrow = 0
     blocks: list[StitchBlock] = []
     cursor: tuple[float, float] | None = None
 

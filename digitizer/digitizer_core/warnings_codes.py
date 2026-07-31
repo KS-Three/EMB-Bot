@@ -27,6 +27,10 @@ SHAPE_TOO_THIN_TO_FILL = "SHAPE_TOO_THIN_TO_FILL"  # narrower than a fill can ho
 SHAPE_NOT_STITCHED = "SHAPE_NOT_STITCHED"          # geometry produced no stitches at all. extra: {"count": int}
 LONG_JUMPS_TRIMMED = "LONG_JUMPS_TRIMMED"          # travel could not stay inside the shape. extra: {"count": int}
 
+# Stage 6 (border tier)
+BORDER_SKIPPED_TOO_NARROW = "BORDER_SKIPPED_TOO_NARROW"  # no room for an outline. extra: {"count": int}
+BORDER_LIGHTENED = "BORDER_LIGHTENED"                    # column would not fit; bean run instead. extra: {"count": int}
+
 
 def warn(code: str, message: str, **extra) -> dict:
     w = {"code": code, "message": message}

@@ -77,6 +77,28 @@ class PipelineConfig:
     satin: bool = True
     satin_max_width_mm: float | None = None
 
+    # Stage 6 — the border tier (an outline sewn as one closed circuit).
+    #
+    # "off"  – no borders. THE DEFAULT, and it is a measured choice, not
+    #          timidity: our tatami fill has no ragged edge to cover (measured
+    #          starvation 0.00 mm with zero variance on 13 real letterforms at
+    #          three sizes, because `_row_points` puts both row ends on the
+    #          shape's edge by construction), and the corpus shows a plain
+    #          majority of fills going unbordered — 18 borders against 21 fill
+    #          elements and 150 satin elements in the same 19 files. An
+    #          unearned border is ~400 stitches per ring and a heavier logo for
+    #          nothing, and Kent pays for machine time.
+    # "auto" – satin border on every fill-classified shape wide enough to host
+    #          a column, bean run where it is not. A shape classified as satin
+    #          never gets one; see stage 7.
+    # "bean" – the light tier wherever a centreline fits.
+    #
+    # Per-shape intent overrides the mode: `Region.meta["border"] = True/False`
+    # rides the existing `match_shape_ids` carry-forward, so a review-screen
+    # decision survives a re-digitize with no new contract.
+    border: str = "off"
+    border_width_mm: float | None = None
+
     # Debug artifacts: written per stage when set
     debug_dir: Path | None = None
 
