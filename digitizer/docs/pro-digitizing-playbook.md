@@ -56,6 +56,37 @@ running-stitch passes (corgi, snowman, rose files — 6 runs, 12k stitches,
 1 trim). Nothing in our engine emits it; parked as a possible "small text /
 light art" rendering mode.
 
+## Border laws (`tools/border_pro.py`, 39 files)
+
+**11. A border column is THINNER than a lettering column.** 18 satin borders
+found: width median **1.40 mm** (p10 0.78, p90 2.98) against 2.21 mm median
+for satin generally. An outline is a line, not a stroke of letterform weight —
+sewing a border at lettering width is a large part of why our outlines read
+heavy.
+
+**12. Border density is slightly looser: median 0.45 mm** (p90 0.64) against
+0.40–0.42 for lettering columns. A border rides over an edge that already has
+coverage under it, so it does not need lettering density.
+
+**13. Every border found is a CLOSED LOOP** (18/18). A border is generated
+from a perimeter path, sewn as one continuous circuit — not assembled from
+per-side strokes with joins. Our skeleton-derived strokes have no equivalent
+concept.
+
+**14. Bean / triple run is the light-outline technique.** 14 found:
+**2.75 passes** median (p90 3.27 — i.e. a true triple run: forward, back,
+forward) at **0.73 mm** stitch length (p10 0.67, p90 1.87). Used for detail
+outlines and sketch-tier work where a satin border would be too heavy.
+
+**Instrument limit, stated plainly:** the over-a-fill border detector fired
+**zero** times, yet the Hotel Fremont renders visibly show a satin border
+sewn over a fill edge. The detector needs a fill-classified run earlier in
+the same colour block with an overlapping bbox, and Fremont's fill classifies
+as a single run. So the seam-coverage OFFSET — how far a border's centreline
+sits from the fill edge — remains **unmeasured**. Do not invent a number for
+it; fix the detector or measure it by hand from the render before building
+border-over-fill.
+
 ## Engine mapping (as of feat/satin-rails)
 
 | Law | Mechanism | Status |
@@ -70,6 +101,18 @@ light art" rendering mode.
 | 8 | 2.5 → 2.0 candidate | not changed |
 | 9 | weld pairs through crossings | partial — X handled, overlap semantics not |
 | 10 | — | not built |
+| 11 | `machine.BORDER_WIDTH_MM` 1.40 | built — measured 1.42 mm median on output |
+| 12 | `machine.BORDER_DENSITY_MM` 0.45 | built — measured 0.45 mm median on output |
+| 13 | `stage6_border.border_runs`, one circuit per ring | built — `cfg.border="auto"`, OFF by default |
+| 14 | `BEAN_PASSES` 3 @ `BEAN_STITCH_MM` 0.73 | built — `cfg.border="bean"`, or auto's fallback |
+
+Laws 11–14 are built but **off by default**, and that is a measured choice
+rather than caution: our tatami fill ends both row ends on the shape's edge by
+construction, so there is no ragged edge for a border to cover, and the corpus
+shows a plain majority of fills going unbordered (18 borders against 21 fill
+elements and 150 satin elements in the same 19 files). The seam OFFSET below
+is still unmeasured, so `BORDER_SEAM_OFFSET_MM` is pinned at 0.0 — the
+boundary condition, not a guess.
 
 ## Known limits of the instruments
 
