@@ -40,13 +40,20 @@ def _satin_runs(poly, style="none"):
 
 
 def _cross_rotations(runs) -> list[float]:
-    """Angle each satin cross turns from the one before it, in degrees.
+    """How far each satin cross turns from the one BEFORE LAST, in degrees.
 
-    A run interleaves long CROSSES (about the stroke width) with short steps
-    ALONG a rail (about the stitch spacing), so a cross is identified by being
-    long — NOT by its position in the list. An earlier version of this measure
-    assumed a fixed parity and scored a clean curved ribbon at 30%, which meant
-    it graded nothing; anything built on it has to be re-measured.
+    Every segment of the emitted run is a cross now — the rails strictly
+    alternate, so there are no short steps along a rail to skip past. What
+    replaces them is a built-in lean: the outbound leg A(i)->B(i) goes square
+    across and the return leg B(i)->A(i+1) leans one spacing forward, so
+    NEIGHBOURING crosses differ by about 2*atan(spacing/width) no matter how
+    clean the column is (9 deg on a 5 mm bar). Comparing neighbours measures
+    that zigzag, not spray. Comparing each cross to the one two back holds the
+    lean constant and leaves only the drift this metric exists to catch.
+
+    Crosses are still identified by LENGTH rather than position: an earlier
+    version keyed off a fixed parity, scored a clean curved ribbon at 30%, and
+    graded nothing. Anything built on that had to be re-measured.
     """
     out: list[float] = []
     for run in runs:
@@ -64,7 +71,7 @@ def _cross_rotations(runs) -> list[float]:
         # the column by design. Counting it as spray measures the feature, not
         # the defect — it is why a straight bar scored 23.9 deg.
         angs = angs[1:-1]
-        for x, y in zip(angs, angs[1:]):
+        for x, y in zip(angs, angs[2:]):
             d = abs(x - y) % 180.0
             out.append(min(d, 180.0 - d))
     return out
@@ -103,24 +110,21 @@ def test_outer_rail_holds_density_on_a_curve():
     the rails, and on a bend the outer rail runs further than the spine —
     measured 47% under density on a tight ring (0.59 mm between outer
     penetrations against the 0.40 target). Over-wide intervals now get
-    interpolated stations. Rails are reconstructed pairwise from the emitted
-    zigzag — crosses alternate (A,B),(B,A), so a fixed-parity slice hops
-    rails and reads garbage (that mistake produced two false conclusions in
-    one day before this helper pinned the correct method).
+    interpolated stations.
+
+    Rails come straight off the emitted zigzag: the order is A, B, A, B, ...
+    without exception, so the even points are one rail and the odd points are
+    the other. An earlier emitter flipped alternate crosses to (B, A), which
+    made a fixed-parity slice hop rails and read garbage — that produced two
+    false conclusions in one day. Reading rails by parity is only safe BECAUSE
+    the emitter no longer alternates; if that ever changes, this breaks loudly
+    rather than quietly, since the slices would then measure column width.
     """
     satin, _, _ = _satin_runs(C_STROKE)
     adv: list[float] = []
     for r in satin:
         pts = r.points
-        rail_a: list[tuple[float, float]] = []
-        rail_b: list[tuple[float, float]] = []
-        for c in range(len(pts) // 2):
-            p, q = pts[2 * c], pts[2 * c + 1]
-            if c % 2 == 0:
-                rail_a.append(p), rail_b.append(q)
-            else:
-                rail_a.append(q), rail_b.append(p)
-        for rail in (rail_a, rail_b):
+        for rail in (pts[0::2], pts[1::2]):
             adv += [math.dist(x, y) for x, y in zip(rail, rail[1:])]
     adv = sorted(a for a in adv if a > 0.03)
     assert adv, "no rail advances measured"
@@ -270,22 +274,41 @@ def test_a_satin_free_end_does_not_fan_into_a_starburst():
 
     A column may finish each free end with one wide terminal cross reaching the
     cap corners; a fan is several of them in a row. Counted on the rail
-    penetrations, the fan showed as four over-wide gaps stacked at one end.
+    penetrations, the fan showed as four over-wide gaps STACKED AT ONE END —
+    which is why this is measured per end zone and not as one total.
+
+    The interior count is pinned separately and is not a fan. Two neighbouring
+    outer-rail intervals near the middle of the bend run 0.98 and 1.00 mm
+    against the 0.40 target — one station's worth of coverage missing at a
+    single spot. It predates the emitter's rail ordering (measured identical
+    on both) and it is pinned here so it cannot spread; the earlier version of
+    this test stepped through the points by two, saw only half the same-rail
+    intervals, and never reported it.
     """
     from digitizer_core import PipelineConfig, digitize
 
     _result, plan = digitize(TESTDATA / "ribbon_curve.png",
                              PipelineConfig(target_width_mm=80.0,
                                             garment_id="left_chest"))
-    pts = [p for _b, r in plan.iter_runs() if r.kind == "satin" for p in r.points]
+    runs = [r for _b, r in plan.iter_runs() if r.kind == "satin"]
+    assert len(runs) == 1, f"the ribbon should sew as one column, got {len(runs)}"
+    pts = runs[0].points
     assert len(pts) > 200, "the curved ribbon should sew as one long column"
 
-    # Points come out A, B, B, A, A, B ... so p[i] and p[i+3] are consecutive
-    # penetrations on the same rail.
-    wide = [i for i in range(0, len(pts) - 3, 2)
-            if math.dist(pts[i], pts[i + 3]) > 2 * machine.SATIN_SPACING_MM]
-    assert len(wide) <= 2, \
-        f"{len(wide)} over-wide rail gaps — a free end is fanning: {wide}"
+    # Points come out A, B, A, B ... so p[i] and p[i+2] are consecutive
+    # penetrations on the same rail, and stepping i by ONE covers both rails
+    # and every interval on them. Cross number is i // 2.
+    ncross = len(pts) // 2
+    wide = [i for i in range(len(pts) - 2)
+            if math.dist(pts[i], pts[i + 2]) > 2 * machine.SATIN_SPACING_MM]
+    head = [i for i in wide if i // 2 < 5]
+    tail = [i for i in wide if i // 2 >= ncross - 5]
+    interior = [i for i in wide if i not in head and i not in tail]
+
+    assert len(head) <= 2, f"the start cap is fanning: {head}"
+    assert len(tail) <= 2, f"the end cap is fanning: {tail}"
+    assert len(interior) <= 2, \
+        f"{len(interior)} over-wide rail gaps away from the caps: {interior}"
 
 
 # --- Underlay --------------------------------------------------------------

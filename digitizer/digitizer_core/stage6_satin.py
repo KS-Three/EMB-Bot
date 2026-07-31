@@ -933,7 +933,13 @@ def _round_corners(spine: list[tuple[float, float]], half_mm: float,
 
 def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  field: _WidthField | None = None) -> list[tuple[float, float]]:
-    """One stroke -> flat zigzag points (A, B, B, A, A, B, ...)."""
+    """One stroke -> flat zigzag points (A1, B1, A2, B2, ...).
+
+    Rails strictly alternate, so EVERY consecutive pair of points is a stitch
+    that crosses the column: the outbound leg A(i)->B(i) square across, the
+    return leg B(i)->A(i+1) leaning one spacing forward. That is what a satin
+    column is on the machine.
+    """
     spine = _smooth(stroke.spine, 3, stroke.closed)
     spine = _round_corners(spine, half_mm, stroke.closed)
 
@@ -975,7 +981,14 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                 math.dist(pa, prev_kept[0]) < 0.05 and math.dist(pb, prev_kept[1]) < 0.05:
             continue
         prev_kept = (pa, pb)
-        out.extend((pa, pb) if i % 2 == 0 else (pb, pa))
+        # Rail order is CONSTANT: A, B, A, B, ... Flipping alternate crosses to
+        # (B, A) makes consecutive crosses meet on the same rail, and the step
+        # between them is then a hop ALONG that rail — one satin spacing long,
+        # 0.41 mm measured, into the hole the previous penetration just made.
+        # Keeping the order constant turns that step into the RETURN LEG of the
+        # zigzag: same two penetrations, but the thread crosses the column
+        # instead of running up its edge.
+        out.extend((pa, pb))
     return out
 
 

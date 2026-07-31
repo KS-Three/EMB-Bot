@@ -64,9 +64,9 @@ def audit(plan):
                     short_fill += 1
         if run.kind == stitches.SATIN:
             pts = run.points
-            for i in range(0, len(pts) - 3, 2):
-                # consecutive penetrations on the same rail
-                satin_gap_max = max(satin_gap_max, math.dist(pts[i], pts[i + 3]))
+            for i in range(0, len(pts) - 2):
+                # Rails alternate A, B, A, B ... so two apart is the same rail.
+                satin_gap_max = max(satin_gap_max, math.dist(pts[i], pts[i + 2]))
             for a, b in zip(pts, pts[1:]):
                 if math.dist(a, b) < machine.SATIN_MIN_CROSS_MM:
                     short_satin += 1
