@@ -125,6 +125,30 @@ def sequence(
                 trim_at_mm=trim_at,
                 start_near=entry,
             )
+
+            # The border goes on AFTER the fill it covers, and only on a filled
+            # shape: a satin column already IS an outline, so bordering one
+            # sews a second column on top of the first. Per-shape intent from
+            # the review screen beats the mode in both directions — a shape
+            # marked True is bordered with the mode off, and one marked False
+            # is left alone with the mode on.
+            want = p.region.meta.get("border")
+            if want is None:
+                want = border_style != "off"
+            if want and runs:
+                b_runs, b_report = border_runs(
+                    p.visible_geom,
+                    p.shape_id,
+                    entry=runs[-1].points[-1],
+                    trim_at_mm=trim_at,
+                    style="bean" if border_style == "bean" else "auto",
+                    width_mm=cfg.border_width_mm,
+                )
+                report["jumps"] += b_report["jumps"]
+                report["bordered"] = b_report["loops"]
+                report["lightened"] = b_report["bean_loops"]
+                report["border_narrow"] = b_report["too_narrow"]
+                runs.extend(b_runs)
             return runs, report, True
 
         # Order first, stitches second. A shape's path now depends on where the
@@ -161,6 +185,9 @@ def sequence(
             runs, report, filled = stitch_one(p, cursor)
             thin += int(filled and report["too_thin"])
             jumps += report["jumps"]
+            bordered += report.get("bordered", 0)
+            lightened += report.get("lightened", 0)
+            border_narrow += report.get("border_narrow", 0)
             if report["empty"] or not runs:
                 empty += 1
                 continue
@@ -218,6 +245,24 @@ def sequence(
                 f"The thread had to be lifted {jumps} time"
                 f"{'s' if jumps != 1 else ''} inside a shape.",
                 count=jumps,
+            )
+        )
+    if lightened:
+        warnings.append(
+            warn(
+                BORDER_LIGHTENED,
+                f"{lightened} outline{'s' if lightened != 1 else ''} had no room "
+                "for a satin column and sewed as a bean run instead.",
+                count=lightened,
+            )
+        )
+    if border_narrow:
+        warnings.append(
+            warn(
+                BORDER_SKIPPED_TOO_NARROW,
+                f"{border_narrow} shape{'s were' if border_narrow != 1 else ' was'} "
+                "too narrow to hold an outline at all, and went unbordered.",
+                count=border_narrow,
             )
         )
     return blocks, warnings
