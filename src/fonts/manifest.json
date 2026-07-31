@@ -2,6 +2,18 @@
  "version": 1,
  "fonts": [
   {
+   "key": "ags_garamond_latin_grec",
+   "name": "AGS Γαραμου Garamond",
+   "tier": "verified",
+   "group": "Serif",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 22,
+   "glyphCount": 255,
+   "bytes": 2421678,
+   "attribution": "This font AGS Γαραμου has been adapted for Ink/Stitch by Françoise Lapierre Baillet and is licensed under the SIL Open Font License, Version 1.1.",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
    "key": "alchemy",
    "name": "Alchemy",
    "tier": "verified",
@@ -554,6 +566,18 @@
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
+   "key": "mai_en_fleur",
+   "name": "Mai En Fleur AGS",
+   "tier": "verified",
+   "group": "Display",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 102,
+   "glyphCount": 67,
+   "bytes": 1105670,
+   "attribution": "This font has been adapted for Ink/Stitch by Françoise Lapierre Baillet,",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
    "key": "mam_script",
    "name": "MAM Script",
    "tier": "verified",
@@ -767,6 +791,18 @@
    "glyphCount": 104,
    "bytes": 328563,
    "attribution": "This font has been adapted for Ink/Stitch by Françoise Lapierre Baillet,",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
+   "key": "sunset",
+   "name": "Sunset",
+   "tier": "verified",
+   "group": "Display",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 55,
+   "glyphCount": 150,
+   "bytes": 913665,
+   "attribution": "This font has been adapted for Ink/Stitch,",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {

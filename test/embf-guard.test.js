@@ -76,6 +76,41 @@ test("every verified-tier font is in the manifest or explicitly excluded by lice
       assert.ok(ALLOWED_MISSING.has(t.pack), "verified font missing from manifest: " + t.pack);
 });
 
+test("qc gate: every committed font JSON passes the tier gate", async () => {
+  // The ltr/-dir import (mai_en_fleur wave) made committed JSONs the shipping
+  // path for new fonts again, so the tier gate has to hold for ALL of them,
+  // not just at import time. Aggregate failures into one assert — per-entry
+  // asserts over 24 multi-MB fonts have blown test timeouts before.
+  const { qcFont } = await import("../tools/qc-font.mjs");
+  const failures = [];
+  for (const k of keys) {
+    const font = JSON.parse(fs.readFileSync(path.join(FONT_DIR, k + ".json"), "utf8"));
+    const r = qcFont(font);
+    if (!r.pass) failures.push(k + ": " + r.findings.join("; "));
+  }
+  assert.deepStrictEqual(failures, []);
+});
+
+test("ltr/-dir layout imports: shipped set is exactly the license+QC survivors", () => {
+  const man = JSON.parse(fs.readFileSync(path.join(FONT_DIR, "manifest.json"), "utf8"));
+  const byKey = Object.fromEntries(man.fonts.map((f) => [f.key, f]));
+  // The five ltr/-directory fonts in scratch_ink: three shipped...
+  const want = { ags_garamond_latin_grec: 255, mai_en_fleur: 67, sunset: 150 };
+  const got = {};
+  for (const k of Object.keys(want)) if (byKey[k]) got[k] = byKey[k].glyphCount;
+  assert.deepStrictEqual(got, want, "shipped ltr/-dir fonts drifted");
+  for (const k of Object.keys(want)) {
+    assert.strictEqual(byKey[k].licenseId, "OFL-1.1", k + " license drifted");
+    assert.ok(fs.existsSync(path.join(FONT_DIR, k + ".LICENSE.txt")), "missing LICENSE.txt for " + k);
+    assert.ok(fs.existsSync(path.join(FONT_DIR, "previews", k + ".png")), "missing preview for " + k);
+  }
+  // ...and two dropped: honoka (QC hard fail — no Latin letter glyphs) and
+  // roman_ags_bicolor (single-color pipeline stacks its two color layers as
+  // doubled satin; its mono variant would just duplicate shipped roman_ags).
+  for (const k of ["honoka", "roman_ags_bicolor"])
+    assert.ok(!byKey[k], k + " must not ship (dropped by the ltr/ import)");
+});
+
 test("no shipped NEW font has a license outside the allowed policy set", () => {
   const man = JSON.parse(fs.readFileSync(path.join(FONT_DIR, "manifest.json"), "utf8"));
   const ALLOWED = new Set(["OFL-1.1", "CC-BY-4.0", "CC-BY-SA-4.0", "CC0"]);

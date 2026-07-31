@@ -1,8 +1,19 @@
-// OFFLINE: parse an Ink/Stitch font (ltr.svg + font.json) into a compact
-// pre-digitized glyph library JSON that src/satinfont.js plays back at runtime.
+// OFFLINE: parse an Ink/Stitch font into a compact pre-digitized glyph
+// library JSON that src/satinfont.js plays back at runtime.
 // Usage: node tools/build-font.mjs <fontDir> <outJson>
 //   e.g. node tools/build-font.mjs scratch_ink/geneva_simple src/fonts/geneva_simple.json
-// where fontDir has ltr.svg + font.json + LICENSE.
+// where fontDir has font.json + LICENSE and EITHER
+//   ltr.svg              — the standard single-file variant, OR
+//   ltr/*.svg            — the multi-file variant directory layout (e.g.
+//                          mai_en_fleur, sunset): every .svg in the dir holds a
+//                          subset of GlyphLayer-* layers and the union is the
+//                          font. Upstream (inkstitch lib/lettering/
+//                          font_variant.py) globs the dir and dict-assigns
+//                          glyphs per file, so on duplicate labels the LAST
+//                          file wins (roman_ags_bicolor: zbi.svg's bicolor
+//                          capitals override mono.svg's, which matches the
+//                          font's own preview). We sort filenames for
+//                          determinism where upstream trusts os.listdir.
 import fs from "node:fs";
 import path from "node:path";
 
@@ -12,28 +23,63 @@ if (!SRC || !OUT) { console.error("usage: build-font.mjs <fontDir|svgFile> <outJ
 const svgFile = SRC.endsWith(".svg") ? SRC : path.join(SRC, "ltr.svg");
 const metaFile = SRC.endsWith(".svg") ? SRC.replace(/ltr\.svg$/, "font.json") : path.join(SRC, "font.json");
 const licFile = SRC.endsWith(".svg") ? SRC.replace(/ltr\.svg$/, "LICENSE") : path.join(SRC, "LICENSE");
-const svg = fs.readFileSync(svgFile, "utf8");
+const ltrDir = SRC.endsWith(".svg") ? null : path.join(SRC, "ltr");
+const dirLayout = !fs.existsSync(svgFile) && ltrDir && fs.existsSync(ltrDir) && fs.statSync(ltrDir).isDirectory();
+const svgFiles = dirLayout
+  ? fs.readdirSync(ltrDir).filter((f) => f.endsWith(".svg")).sort((a, b) => a.localeCompare(b)).map((f) => path.join(ltrDir, f))
+  : [svgFile];
 const meta = JSON.parse(fs.readFileSync(metaFile, "utf8"));
 const license = fs.existsSync(licFile) ? fs.readFileSync(licFile, "utf8").split("\n").slice(0, 4).join(" ").trim() : "";
 
-// --- SVG path parser -> subpaths (polylines); flattens C/Q beziers ---
+// --- SVG path parser -> subpaths (polylines); flattens C/S/Q/T beziers and
+// A arcs. S/T reflect the previous control point (tracked via px2/py2 + the
+// last curve family); A uses the endpoint->center conversion from the SVG
+// spec (F.6.5) and samples the swept angle. The ltr/-dir fonts are the first
+// to exercise S/T/A — the old parser silently DROPPED those segments' tokens.
 function parsePath(d) {
   const toks = d.match(/[a-zA-Z]|-?\d*\.?\d+(?:e-?\d+)?/g) || [];
   let i = 0; const num = () => parseFloat(toks[i++]);
   const subs = []; let cur = null, cx = 0, cy = 0, sx = 0, sy = 0, cmd = "";
+  let px2 = 0, py2 = 0, lastFam = ""; // reflection seed for S ("c") / T ("q")
   const FLAT = +(process.env.FLATTEN || 8);
   const bez = (x0, y0, x1, y1, x2, y2, x3, y3) => { const N = FLAT; for (let k = 1; k <= N; k++) { const t = k / N, u = 1 - t; cur.push({ x: u * u * u * x0 + 3 * u * u * t * x1 + 3 * u * t * t * x2 + t * t * t * x3, y: u * u * u * y0 + 3 * u * u * t * y1 + 3 * u * t * t * y2 + t * t * t * y3 }); } };
+  const arc = (rx, ry, phiDeg, fa, fs, x2, y2) => {
+    // SVG spec F.6.5 endpoint -> center parameterization, then angle sampling.
+    if (rx === 0 || ry === 0) { cur.push({ x: x2, y: y2 }); return; }
+    rx = Math.abs(rx); ry = Math.abs(ry);
+    const phi = phiDeg * Math.PI / 180, cosP = Math.cos(phi), sinP = Math.sin(phi);
+    const dx = (cx - x2) / 2, dy = (cy - y2) / 2;
+    const x1p = cosP * dx + sinP * dy, y1p = -sinP * dx + cosP * dy;
+    const lam = (x1p * x1p) / (rx * rx) + (y1p * y1p) / (ry * ry);
+    if (lam > 1) { const s = Math.sqrt(lam); rx *= s; ry *= s; }
+    let rad = (rx * rx * ry * ry - rx * rx * y1p * y1p - ry * ry * x1p * x1p) / (rx * rx * y1p * y1p + ry * ry * x1p * x1p);
+    rad = rad < 0 ? 0 : Math.sqrt(rad); if (fa === fs) rad = -rad;
+    const cxp = rad * rx * y1p / ry, cyp = -rad * ry * x1p / rx;
+    const ccx = cosP * cxp - sinP * cyp + (cx + x2) / 2, ccy = sinP * cxp + cosP * cyp + (cy + y2) / 2;
+    const ang = (ux, uy, vx, vy) => { const dot = ux * vx + uy * vy, len = Math.hypot(ux, uy) * Math.hypot(vx, vy); let a = Math.acos(Math.min(1, Math.max(-1, dot / len))); if (ux * vy - uy * vx < 0) a = -a; return a; };
+    const th1 = ang(1, 0, (x1p - cxp) / rx, (y1p - cyp) / ry);
+    let dth = ang((x1p - cxp) / rx, (y1p - cyp) / ry, (-x1p - cxp) / rx, (-y1p - cyp) / ry);
+    if (!fs && dth > 0) dth -= 2 * Math.PI; else if (fs && dth < 0) dth += 2 * Math.PI;
+    const N = Math.max(2, Math.ceil(Math.abs(dth) / (Math.PI / FLAT)));
+    for (let k = 1; k <= N; k++) { const t = th1 + dth * k / N; cur.push({ x: ccx + rx * Math.cos(t) * cosP - ry * Math.sin(t) * sinP, y: ccy + rx * Math.cos(t) * sinP + ry * Math.sin(t) * cosP }); }
+    cur[cur.length - 1] = { x: x2, y: y2 }; // pin the exact endpoint
+  };
   while (i < toks.length) {
     if (/[a-zA-Z]/.test(toks[i])) cmd = toks[i++];
     const rel = cmd === cmd.toLowerCase(), C = cmd.toUpperCase();
+    let fam = "";
     if (C === "M") { const x = num(), y = num(); cx = rel ? cx + x : x; cy = rel ? cy + y : y; sx = cx; sy = cy; cur = [{ x: cx, y: cy }]; subs.push(cur); cmd = rel ? "l" : "L"; }
     else if (C === "L") { const x = num(), y = num(); cx = rel ? cx + x : x; cy = rel ? cy + y : y; cur.push({ x: cx, y: cy }); }
     else if (C === "H") { const x = num(); cx = rel ? cx + x : x; cur.push({ x: cx, y: cy }); }
     else if (C === "V") { const y = num(); cy = rel ? cy + y : y; cur.push({ x: cx, y: cy }); }
-    else if (C === "C") { const a = num(), b = num(), c = num(), d2 = num(), e = num(), f = num(); const X1 = rel ? cx + a : a, Y1 = rel ? cy + b : b, X2 = rel ? cx + c : c, Y2 = rel ? cy + d2 : d2, X = rel ? cx + e : e, Y = rel ? cy + f : f; bez(cx, cy, X1, Y1, X2, Y2, X, Y); cx = X; cy = Y; }
-    else if (C === "Q") { const a = num(), b = num(), e = num(), f = num(); const X1 = rel ? cx + a : a, Y1 = rel ? cy + b : b, X = rel ? cx + e : e, Y = rel ? cy + f : f; bez(cx, cy, cx + 2 / 3 * (X1 - cx), cy + 2 / 3 * (Y1 - cy), X + 2 / 3 * (X1 - X), Y + 2 / 3 * (Y1 - Y), X, Y); cx = X; cy = Y; }
+    else if (C === "C") { const a = num(), b = num(), c = num(), d2 = num(), e = num(), f = num(); const X1 = rel ? cx + a : a, Y1 = rel ? cy + b : b, X2 = rel ? cx + c : c, Y2 = rel ? cy + d2 : d2, X = rel ? cx + e : e, Y = rel ? cy + f : f; bez(cx, cy, X1, Y1, X2, Y2, X, Y); cx = X; cy = Y; px2 = X2; py2 = Y2; fam = "c"; }
+    else if (C === "S") { const c = num(), d2 = num(), e = num(), f = num(); const X1 = lastFam === "c" ? 2 * cx - px2 : cx, Y1 = lastFam === "c" ? 2 * cy - py2 : cy; const X2 = rel ? cx + c : c, Y2 = rel ? cy + d2 : d2, X = rel ? cx + e : e, Y = rel ? cy + f : f; bez(cx, cy, X1, Y1, X2, Y2, X, Y); cx = X; cy = Y; px2 = X2; py2 = Y2; fam = "c"; }
+    else if (C === "Q") { const a = num(), b = num(), e = num(), f = num(); const X1 = rel ? cx + a : a, Y1 = rel ? cy + b : b, X = rel ? cx + e : e, Y = rel ? cy + f : f; bez(cx, cy, cx + 2 / 3 * (X1 - cx), cy + 2 / 3 * (Y1 - cy), X + 2 / 3 * (X1 - X), Y + 2 / 3 * (Y1 - Y), X, Y); cx = X; cy = Y; px2 = X1; py2 = Y1; fam = "q"; }
+    else if (C === "T") { const e = num(), f = num(); const X1 = lastFam === "q" ? 2 * cx - px2 : cx, Y1 = lastFam === "q" ? 2 * cy - py2 : cy; const X = rel ? cx + e : e, Y = rel ? cy + f : f; bez(cx, cy, cx + 2 / 3 * (X1 - cx), cy + 2 / 3 * (Y1 - cy), X + 2 / 3 * (X1 - X), Y + 2 / 3 * (Y1 - Y), X, Y); cx = X; cy = Y; px2 = X1; py2 = Y1; fam = "q"; }
+    else if (C === "A") { const rx = num(), ry = num(), rot = num(), fa = num(), fs = num(), e = num(), f = num(); const X = rel ? cx + e : e, Y = rel ? cy + f : f; arc(rx, ry, rot, fa ? 1 : 0, fs ? 1 : 0, X, Y); cx = X; cy = Y; }
     else if (C === "Z") { if (cur) cur.push({ x: sx, y: sy }); cx = sx; cy = sy; }
     else i++;
+    lastFam = fam;
   }
   return subs.filter((s) => s.length >= 2);
 }
@@ -82,10 +128,73 @@ function toColumn(subs) {
   return { railA: enc(railA), railB: enc(railB), rungs: rungs.map((rg) => [[r1(rg[0].x), r1(rg[0].y)], [r1(rg[1].x), r1(rg[1].y)]]) };
 }
 
+// --- 2D affine transforms (SVG transform attribute) ---
+// The single-file fonts ship with paths in final coordinates, but the ltr/-dir
+// fonts position their art through nested <g transform="..."> (mai_en_fleur's
+// flowers are one drawn motif re-placed via matrix() dozens of times per
+// glyph) and per-path transforms — ignoring them scatters the geometry.
+const M_ID = [1, 0, 0, 1, 0, 0]; // x' = a x + c y + e ; y' = b x + d y + f
+const mmul = (A, B) => [
+  A[0] * B[0] + A[2] * B[1], A[1] * B[0] + A[3] * B[1],
+  A[0] * B[2] + A[2] * B[3], A[1] * B[2] + A[3] * B[3],
+  A[0] * B[4] + A[2] * B[5] + A[4], A[1] * B[4] + A[3] * B[5] + A[5],
+];
+const mapply = (M, p) => ({ x: M[0] * p.x + M[2] * p.y + M[4], y: M[1] * p.x + M[3] * p.y + M[5] });
+function parseTransform(str) {
+  let M = M_ID;
+  const re = /(matrix|translate|scale|rotate)\s*\(([^)]*)\)/g; let m;
+  while ((m = re.exec(str || ""))) {
+    const n = m[2].split(/[\s,]+/).filter(Boolean).map(Number);
+    let T = null;
+    if (m[1] === "matrix" && n.length === 6) T = n;
+    else if (m[1] === "translate") T = [1, 0, 0, 1, n[0] || 0, n[1] || 0];
+    else if (m[1] === "scale") T = [n[0] != null ? n[0] : 1, 0, 0, n.length > 1 ? n[1] : (n[0] != null ? n[0] : 1), 0, 0];
+    else if (m[1] === "rotate") {
+      const a = (n[0] || 0) * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
+      T = [cos, sin, -sin, cos, 0, 0];
+      if (n.length === 3) T = mmul(mmul([1, 0, 0, 1, n[1], n[2]], T), [1, 0, 0, 1, -n[1], -n[2]]);
+    }
+    if (T) M = mmul(M, T);
+  }
+  return M;
+}
+
 // --- iterate every glyph layer ---
 function paths(layer) {
   const out = []; const re = /<path\b[\s\S]*?\/>/g; let m;
   while ((m = re.exec(layer))) { const t = m[0]; const dq = t.match(/\sd="([^"]*)"/); if (!dq) continue; out.push({ d: dq[1], satin: /satin_column="True"/i.test(t), running: /running_stitch_length_mm/i.test(t) && !/satin_column="True"/i.test(t) }); }
+  return out;
+}
+
+// Transform-aware variant of paths() for the ltr/-dir layout: walk the layer's
+// g/path tags keeping a matrix stack (the glyph layer's OWN transform counts —
+// sunset puts one on every layer), apply the composed transform to each path's
+// points, and skip what Ink/Stitch itself never stitches:
+//   - pattern-marker paths (marker*:url(#inkstitch-pattern-marker...)) — they
+//     texture a satin column, they are not stitch geometry (mai_en_fleur has
+//     ~17 per glyph; imported as runs they'd scribble over the flowers);
+//   - display:none paths — lettering command connectors (sunset's "Position
+//     de fin" groups) are hidden hairlines, not stitches.
+// Satin detection and toColumn() downstream are IDENTICAL to the single-file
+// path — this function only changes which coordinates the columns see.
+function pathsTf(layer) {
+  const out = []; const re = /<\/?(?:g|path)\b[\s\S]*?>/g; let m;
+  const stack = [M_ID];
+  while ((m = re.exec(layer))) {
+    const t = m[0];
+    if (t[1] === "/") { if (stack.length > 1) stack.pop(); continue; }
+    const selfClosed = /\/>$/.test(t);
+    const tfm = t.match(/\stransform="([^"]*)"/);
+    const M = tfm ? mmul(stack[stack.length - 1], parseTransform(tfm[1])) : stack[stack.length - 1];
+    if (/^<g\b/.test(t)) { if (!selfClosed) stack.push(M); continue; }
+    const dq = t.match(/\sd="([^"]*)"/); if (!dq) continue;
+    if (/marker-(?:start|mid|end)\s*:\s*url\(#inkstitch-pattern-marker/i.test(t)) continue;
+    if (/style="[^"]*display\s*:\s*none/i.test(t)) continue;
+    out.push({
+      subs: parsePath(dq[1]).map((sub) => sub.map((p) => mapply(M, p))),
+      satin: /satin_column="True"/i.test(t),
+    });
+  }
   return out;
 }
 
@@ -98,33 +207,43 @@ function decodeEntities(s) {
 }
 
 const glyphs = {};
-const re = /inkscape:label="GlyphLayer-([\s\S]*?)"/g; let m; let count = 0;
-while ((m = re.exec(svg))) {
-  const ch = decodeEntities(m[1]);
-  const g0 = svg.lastIndexOf("<g", m.index);
-  let depth = 0; const gre = /<\/?g\b/g; gre.lastIndex = g0; let gm, end = -1;
-  while ((gm = gre.exec(svg))) { if (svg[gm.index + 1] === "/") { depth--; if (depth === 0) { end = gm.index; break; } } else depth++; }
-  if (end < 0) continue;
-  const layer = svg.slice(g0, end);
-  const cols = [], runs = [];
-  for (const p of paths(layer)) {
-    const subs = parsePath(p.d);
-    if (p.satin && subs.length >= 2) cols.push(toColumn(subs));
-    else if (subs.length) for (const s of subs) runs.push(enc(s));
+for (const file of svgFiles) {
+  const svg = fs.readFileSync(file, "utf8");
+  const re = /inkscape:label="GlyphLayer-([\s\S]*?)"/g; let m;
+  while ((m = re.exec(svg))) {
+    const ch = decodeEntities(m[1]);
+    const g0 = svg.lastIndexOf("<g", m.index);
+    let depth = 0; const gre = /<\/?g\b/g; gre.lastIndex = g0; let gm, end = -1;
+    while ((gm = gre.exec(svg))) { if (svg[gm.index + 1] === "/") { depth--; if (depth === 0) { end = gm.index; break; } } else depth++; }
+    if (end < 0) continue;
+    const layer = svg.slice(g0, end);
+    const cols = [], runs = [];
+    if (dirLayout) {
+      for (const p of pathsTf(layer)) {
+        if (p.satin && p.subs.length >= 2) cols.push(toColumn(p.subs));
+        else if (p.subs.length) for (const s of p.subs) runs.push(enc(s));
+      }
+    } else {
+      for (const p of paths(layer)) {
+        const subs = parsePath(p.d);
+        if (p.satin && subs.length >= 2) cols.push(toColumn(subs));
+        else if (subs.length) for (const s of subs) runs.push(enc(s));
+      }
+    }
+    if (!cols.length && !runs.length) continue;
+    let advance = (meta.horiz_adv_x && meta.horiz_adv_x[ch] != null) ? meta.horiz_adv_x[ch] : meta.horiz_adv_x_default;
+    if (advance == null) {
+      // Font provides no metrics (e.g. medium_font) — derive advance from the
+      // glyph's right edge + a side bearing, so glyphs don't collapse onto x=0.
+      let maxX = -Infinity;
+      for (const c of cols) { for (const p of c.railA) if (p[0] > maxX) maxX = p[0]; for (const p of c.railB) if (p[0] > maxX) maxX = p[0]; }
+      for (const rr of runs) for (const p of rr) if (p[0] > maxX) maxX = p[0];
+      advance = isFinite(maxX) ? Math.round(maxX + 0.08 * meta.units_per_em) : meta.units_per_em;
+    }
+    glyphs[ch] = { adv: advance, cols, runs }; // duplicate label => later file wins
   }
-  if (!cols.length && !runs.length) continue;
-  let advance = (meta.horiz_adv_x && meta.horiz_adv_x[ch] != null) ? meta.horiz_adv_x[ch] : meta.horiz_adv_x_default;
-  if (advance == null) {
-    // Font provides no metrics (e.g. medium_font) — derive advance from the
-    // glyph's right edge + a side bearing, so glyphs don't collapse onto x=0.
-    let maxX = -Infinity;
-    for (const c of cols) { for (const p of c.railA) if (p[0] > maxX) maxX = p[0]; for (const p of c.railB) if (p[0] > maxX) maxX = p[0]; }
-    for (const rr of runs) for (const p of rr) if (p[0] > maxX) maxX = p[0];
-    advance = isFinite(maxX) ? Math.round(maxX + 0.08 * meta.units_per_em) : meta.units_per_em;
-  }
-  glyphs[ch] = { adv: advance, cols, runs };
-  count++;
 }
+const count = Object.keys(glyphs).length;
 
 const outObj = {
   name: meta.name, license, source: "Ink/Stitch embroidery-fonts",
