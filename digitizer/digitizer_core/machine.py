@@ -31,8 +31,14 @@ TINY_STITCH_MM = 0.5
 
 # --- Fill ------------------------------------------------------------------
 
-FILL_STITCH_MM = 4.0    # run length along a tatami row
-FILL_ROW_MM = 0.40      # row spacing = density; 0.40 mm is 2.5 rows/mm
+# Run length along a tatami row. Measured across 19 professional files
+# (2026-07-30 corpus study, tools/study_pro.py): pro fills run 2.0-3.4 mm with
+# a median near 2.6; the old 4.0 sat outside the observed range entirely.
+FILL_STITCH_MM = 3.0
+# Row spacing = density. Dense pro fills measure ~0.20 mm EFFECTIVE spacing in
+# the corpus — but that may be two interleaved 0.40 passes, and doubling
+# density doubles stitch count, so 0.40 stands until a sew-out decides.
+FILL_ROW_MM = 0.40
 
 # Penetrations realign every Nth row. Without a stagger, every row starts its
 # stitches at the same offset and the needle holes line up into visible
@@ -52,9 +58,16 @@ MIN_FILL_WIDTH_MM = 1.2
 SATIN_SPACING_MM = 0.4
 
 # Ribbons wider than this sew better as fill: long satin crosses float, snag,
-# and pull the fabric visibly. Same default the browser engine uses
-# (satinMaxWidthMm), so both products classify shapes the same way.
-SATIN_MAX_WIDTH_MM = 3.0
+# and pull the fabric visibly. The 19-file corpus study says professionals
+# satin much wider than the old 3.0 — little-romeo lettering runs 3.4 mm
+# median / 4.2 max, beckers 4.2 / 5.1 — always over underlay. 5.0 matches
+# practice; columns past ~2.5 mm force zigzag underlay in stage 6. NOTE: the
+# browser engine still classifies at 3.0 (satinMaxWidthMm) — divergence is
+# deliberate, corpus-driven, and Python-side only until its own sew-out.
+SATIN_MAX_WIDTH_MM = 5.0
+# Above this ribbon width a column must carry zigzag underlay: wide crosses
+# float without it. Every wide-satin file in the corpus shows support passes.
+SATIN_ZIGZAG_ABOVE_MM = 2.5
 
 # A cross shorter than this is degenerate — the two rails have pinched
 # together (shared tips, stroke ends) and sewing it would pile thread on a

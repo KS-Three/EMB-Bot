@@ -32,6 +32,7 @@ Everything works in mm, y-down, the space stage 4 produced.
 """
 from __future__ import annotations
 
+import heapq
 import math
 from dataclasses import dataclass
 
@@ -61,6 +62,13 @@ _TANGENT_WIDTHS = 1.0
 # How opposed two arms must be to count as one stroke through a node. -0.5 welds
 # arms 120 deg apart -- a stroke turning 60 deg, which pivots and sprays.
 _WELD_MAX_DOT = -0.5
+# A spine turning more than this many degrees within about one stroke width
+# gets the column CUT there. This started at 35 and the corpus overruled it:
+# across 19 professional files, 1,436 corner events sit INSIDE a continuing
+# run and only 18 are splits — pros sew through corners, letting the outside
+# rail fan while the short-stitch guard protects the inside. Splitting is the
+# fallback for corners so sharp the column would fold back over itself.
+_SPLIT_TURN_DEG = 90.0
 _RING8 = ((0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1))
 
 
@@ -400,6 +408,91 @@ def _prune_spurs(mask: np.ndarray, spur_len_px: float) -> None:
             return
 
 
+def _split_sharp_corners(strokes: list[Stroke], half_mm: float) -> list[Stroke]:
+    """Cut stroke spines at concentrated corners so each piece sews as its own
+    column, meeting its neighbour in a mitred overlap at the joint.
+
+    The turn at each sample is measured over a baseline of one half-width per
+    side — the same resolution the crosses themselves have — so a smooth curve
+    (turn spread over many widths, like the C fixture's 13 mm radius) never
+    trips it, while the N's diagonal junctions, a star's points and a hexagon
+    border's corners all do. Cut ends become free ends: the existing cap
+    machinery extends each piece to the boundary, which is exactly the overlap
+    a mitred satin joint wants.
+    """
+    if half_mm <= 0:
+        return strokes
+    out: list[Stroke] = []
+    for st in strokes:
+        pts = st.spine
+        n = len(pts)
+        seg = [math.dist(pts[i], pts[i + 1]) for i in range(n - 1)]
+        spacing = sorted(seg)[len(seg) // 2] if seg else 0.0
+        if n < 5 or spacing <= 0:
+            out.append(st)
+            continue
+        k = max(1, round(half_mm / spacing))
+        if n <= 2 * k + 1 and not st.closed:
+            out.append(st)          # shorter than one baseline: nothing to see
+            continue
+
+        # Turns are measured on a SMOOTHED copy of the spine (cuts are applied
+        # to the original — indices align). The raw medial axis dips toward the
+        # stem at every junction weld, and over a one-half-width baseline that
+        # raster dip reads ~36 deg — the T fixture's bar was being cut at a
+        # corner the artwork does not have. Smoothing flattens the dip; a real
+        # corner (N diagonal 56 deg, hexagon 60, star point 100+) survives it.
+        sm = _smooth(pts, 3, st.closed)
+        idx = range(n) if st.closed else range(k, n - k)
+        turns: list[tuple[float, int]] = []
+        for i in idx:
+            a, b, c = sm[(i - k) % n], sm[i], sm[(i + k) % n]
+            d1 = math.atan2(b[1] - a[1], b[0] - a[0])
+            d2 = math.atan2(c[1] - b[1], c[0] - b[0])
+            turn = abs(math.degrees((d2 - d1 + math.pi) % (2 * math.pi) - math.pi))
+            turns.append((turn, i))
+
+        # Strongest corners first, and no second cut within a baseline of one
+        # already made — a corner is one apex, not every sample on its shoulder.
+        cuts: list[int] = []
+        for turn, i in sorted(turns, reverse=True):
+            if turn < _SPLIT_TURN_DEG:
+                break
+            gap = (min(abs(i - j), n - abs(i - j)) for j in cuts) if st.closed \
+                else (abs(i - j) for j in cuts)
+            if all(g > 2 * k for g in gap):
+                cuts.append(i)
+        if not cuts:
+            out.append(st)
+            continue
+        cuts.sort()
+
+        def keep(piece: list[tuple[float, float]]) -> bool:
+            return len(piece) >= 3 and \
+                sum(math.dist(a, b) for a, b in zip(piece, piece[1:])) >= 0.6 * half_mm
+
+        if st.closed:
+            ring = cuts + [cuts[0] + n]
+            for s0, s1 in zip(ring, ring[1:]):
+                piece = [pts[j % n] for j in range(s0, s1 + 1)]
+                if keep(piece):
+                    out.append(Stroke(spine=piece, free_start=True,
+                                      free_end=True, closed=False))
+        else:
+            bounds = [0, *cuts, n - 1]
+            for bi, (s0, s1) in enumerate(zip(bounds, bounds[1:])):
+                piece = pts[s0:s1 + 1]
+                if not keep(piece):
+                    continue
+                out.append(Stroke(
+                    spine=piece,
+                    free_start=st.free_start if bi == 0 else True,
+                    free_end=st.free_end if s1 == n - 1 else True,
+                    closed=False,
+                ))
+    return out
+
+
 def extract_strokes(poly: Polygon) -> tuple[list[Stroke], float, _WidthField | None]:
     """-> (strokes in mm, mean half-width in mm, local width field).
 
@@ -436,6 +529,7 @@ def extract_strokes(poly: Polygon) -> tuple[list[Stroke], float, _WidthField | N
             free_end=e["free_end"],
             closed=e["closed"],
         ))
+    strokes = _split_sharp_corners(strokes, half_px / scale)
     strokes.sort(key=lambda s: -sum(math.dist(a, b) for a, b in zip(s.spine, s.spine[1:])))
     return strokes, half_px / scale, field
 
@@ -746,10 +840,58 @@ def _trim_chain(pts: list[tuple[float, float]], from_start_mm: float,
 _JUNCTION_TUCK_MM = 0.4
 
 
+def _round_corners(spine: list[tuple[float, float]], half_mm: float,
+                   closed: bool) -> list[tuple[float, float]]:
+    """Spread each sharp corner's turn across about one column width.
+
+    The professional in-run corner (every file in the corpus) is a gradual
+    fan: crosses rotate a few degrees each, spokes around the bend. That falls
+    out of the geometry only if the SPINE bends gradually — a hard apex packs
+    the whole turn into the two or three crosses nearest it, which is the
+    uncontrolled sweep the N junction showed once splitting was demoted.
+    Extra smoothing passes confined to a window around each apex turn the
+    corner into an arc of roughly the column's own radius; straight stretches
+    keep their exact line because the window never reaches them.
+    """
+    n = len(spine)
+    if n < 5 or half_mm <= 0:
+        return spine
+    seg = [math.dist(spine[i], spine[i + 1]) for i in range(n - 1)]
+    spacing = sorted(seg)[len(seg) // 2] if seg else 0.0
+    if spacing <= 0:
+        return spine
+    k = max(1, round(half_mm / spacing))
+    sm = _smooth(spine, 3, closed)
+    apexes: list[int] = []
+    idx = range(n) if closed else range(k, n - k)
+    for i in idx:
+        a, b, c = sm[(i - k) % n], sm[i], sm[(i + k) % n]
+        d1 = math.atan2(b[1] - a[1], b[0] - a[0])
+        d2 = math.atan2(c[1] - b[1], c[0] - b[0])
+        turn = abs(math.degrees((d2 - d1 + math.pi) % (2 * math.pi) - math.pi))
+        if turn >= 30.0 and (not apexes or i - apexes[-1] > k):
+            apexes.append(i)
+    if not apexes:
+        return spine
+    out = list(spine)
+    for ap in apexes:
+        lo, hi = ap - k, ap + k
+        for _ in range(8):
+            prev = list(out)
+            for i in range(lo, hi + 1):
+                j = i % n if closed else i
+                if not closed and (j <= 0 or j >= n - 1):
+                    continue
+                a, b, c = prev[(j - 1) % n], prev[j], prev[(j + 1) % n]
+                out[j] = ((a[0] + b[0] + c[0]) / 3.0, (a[1] + b[1] + c[1]) / 3.0)
+    return out
+
+
 def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  field: _WidthField | None = None) -> list[tuple[float, float]]:
     """One stroke -> flat zigzag points (A, B, B, A, A, B, ...)."""
     spine = _smooth(stroke.spine, 3, stroke.closed)
+    spine = _round_corners(spine, half_mm, stroke.closed)
 
     # An end at a branch NODE sits in the middle of the junction — the skeleton
     # of a T puts the node halfway up the bar, so an untrimmed stem sews right
@@ -827,6 +969,116 @@ def _stroke_underlay(poly: Polygon, st: Stroke, style: str, shape_id: str,
     return runs
 
 
+def _build_travel_graph(strokes: list[Stroke]):
+    """-> (nodes, edges, adjacency) over the strokes' spines.
+
+    The skeleton the strokes came from is one connected web for a connected
+    shape, and the professional trick the corpus files all use is to TRAVEL
+    along that web with the needle down — the leg is covered when the stroke
+    it follows sews its own column later. Endpoints within 0.5 mm share a
+    node; a stroke whose end lands on another's interior (a T's stem on its
+    bar) splits that spine so the junction is reachable.
+    """
+    endpoints = []
+    for st in strokes:
+        endpoints += [st.spine[0], st.spine[-1]]
+    segs: list[tuple[int, list]] = []
+    for k, st in enumerate(strokes):
+        sp = st.spine
+        cuts: set[int] = set()
+        for p in endpoints:
+            best_i, best_d = None, 0.5
+            for i in range(1, len(sp) - 1):
+                d = math.dist(p, sp[i])
+                if d < best_d:
+                    best_i, best_d = i, d
+            if best_i is not None:
+                cuts.add(best_i)
+        idxs = [0, *sorted(cuts), len(sp) - 1]
+        for a, b in zip(idxs, idxs[1:]):
+            if b > a:
+                segs.append((k, sp[a:b + 1]))
+
+    nodes: list[tuple[float, float]] = []
+
+    def node_at(p) -> int:
+        for i, q in enumerate(nodes):
+            if math.dist(p, q) <= 0.5:
+                return i
+        nodes.append(p)
+        return len(nodes) - 1
+
+    edges: list[dict] = []
+    adj: dict[int, list[int]] = {}
+    for k, poly in segs:
+        if len(poly) < 2:
+            continue
+        a, b = node_at(poly[0]), node_at(poly[-1])
+        ei = len(edges)
+        edges.append({"a": a, "b": b, "k": k, "pts": poly,
+                      "len": sum(math.dist(p, q) for p, q in zip(poly, poly[1:]))})
+        adj.setdefault(a, []).append(ei)
+        adj.setdefault(b, []).append(ei)
+    return nodes, edges, adj
+
+
+def _graph_travel(cur, target, sewn: set[int], allow: set[int],
+                  nodes, edges, adj) -> list[tuple[float, float]] | None:
+    """Needle-down path from cur to target over UNSEWN spines, or None.
+
+    Edges belonging to already-sewn strokes are forbidden: running stitches on
+    top of finished satin show, which is the same reason the fill path prefers
+    a trim over long travel across finished coverage.
+    """
+    def snap(p):
+        best, bd = None, 0.8
+        for i, q in enumerate(nodes):
+            d = math.dist(p, q)
+            if d < bd:
+                best, bd = i, d
+        return best
+
+    s, t = snap(cur), snap(target)
+    if s is None or t is None:
+        return None
+    if s == t:
+        return []
+    dist = {s: 0.0}
+    prev: dict[int, tuple[int, int]] = {}
+    pq = [(0.0, s)]
+    while pq:
+        d, u = heapq.heappop(pq)
+        if u == t:
+            break
+        if d > dist.get(u, 1e18):
+            continue
+        for ei in adj.get(u, []):
+            e = edges[ei]
+            if e["k"] in sewn and e["k"] not in allow:
+                continue
+            v = e["b"] if e["a"] == u else e["a"]
+            nd = d + e["len"]
+            if nd < dist.get(v, 1e18):
+                dist[v] = nd
+                prev[v] = (u, ei)
+                heapq.heappush(pq, (nd, v))
+    if t not in prev:
+        return None
+    chain: list[list] = []
+    u = t
+    while u != s:
+        pu, ei = prev[u]
+        e = edges[ei]
+        pts = list(e["pts"]) if e["a"] == pu else list(reversed(e["pts"]))
+        chain.append(pts)
+        u = pu
+    chain.reverse()
+    out: list[tuple[float, float]] = []
+    for pts in chain:
+        out.extend(pts if not out else pts[1:])
+    return out
+
+
 def _order_strokes(strokes: list[Stroke],
                    start_near: tuple[float, float] | None) -> list[Stroke]:
     """Sew order within one shape: whichever stroke's nearer end is closest to
@@ -885,18 +1137,60 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     # stroke-length hop between them, once per stroke. Reversing an
     # alternating zigzag keeps it an alternating zigzag, so orientation is
     # free to choose.
-    runs: list[StitchRun] = []
+    kept: list[tuple[Stroke, list]] = []
     for st in strokes:
         pts = satin_stroke(poly, st, half_mm, field)
-        if len(pts) < 4:
-            continue
-        for run in [*_stroke_underlay(poly, st, underlay_style, shape_id, field),
-                    StitchRun(points=pts, kind=stitches.SATIN, shape_id=shape_id)]:
+        if len(pts) >= 4:
+            kept.append((st, pts))
+    if not kept:
+        report["empty"] = True
+        return [], report
+
+    # The travel graph spans only strokes that will actually sew — a leg over
+    # a stub the emitter skipped would never be covered by anything.
+    nodes, g_edges, g_adj = _build_travel_graph([st for st, _ in kept])
+    sewn: set[int] = set()
+
+    runs: list[StitchRun] = []
+    for ki, (st, pts) in enumerate(kept):
+        # Wide columns carry zigzag underlay or their crosses float — every
+        # wide-satin file in the corpus shows the support passes.
+        if field is not None and st.spine:
+            step = max(1, len(st.spine) // 8)
+            halves = [field.half_at(p) for p in st.spine[::step]]
+            stroke_w = 2.0 * (sum(halves) / len(halves)) if halves else 2.0 * half_mm
+        else:
+            stroke_w = 2.0 * half_mm
+        eff_style = "zigzag" if (underlay_style != "none"
+                                 and stroke_w > machine.SATIN_ZIGZAG_ABOVE_MM) \
+            else underlay_style
+
+        stroke_runs = [*_stroke_underlay(poly, st, eff_style, shape_id, field),
+                       StitchRun(points=pts, kind=stitches.SATIN, shape_id=shape_id)]
+        first_of_stroke = True
+        for run in stroke_runs:
             cursor = runs[-1].points[-1] if runs else start_near
             if cursor is not None and \
                     math.dist(cursor, run.points[-1]) < math.dist(cursor, run.points[0]):
                 run.points.reverse()
+            if first_of_stroke and cursor is not None:
+                # Between strokes, walk the unsewn web instead of lifting.
+                direct = math.dist(cursor, run.points[0])
+                if direct >= machine.TINY_STITCH_MM:
+                    path = _graph_travel(cursor, run.points[0], sewn, {ki},
+                                         nodes, g_edges, g_adj)
+                    if path is not None and len(path) >= 2:
+                        plen = sum(math.dist(a, b) for a, b in zip(path, path[1:]))
+                        # Same cap as the fill path: past this, travel under
+                        # future coverage reads worse than the trim it saves.
+                        if plen <= max(20.0, 4.0 * direct):
+                            n = max(2, int(math.ceil(plen / machine.TRAVEL_STITCH_MM)) + 1)
+                            runs.append(StitchRun(points=_resample(path, n),
+                                                  kind=stitches.TRAVEL,
+                                                  shape_id=shape_id))
+            first_of_stroke = False
             runs.append(run)
+        sewn.add(ki)
 
     if not any(r.kind == stitches.SATIN for r in runs):
         report["empty"] = True

@@ -235,7 +235,7 @@ ROW shorter than the minimum still sews — at a tapering tip the only
 alternative is to give up the edge.
 
 **Satin for ribbons** (`stage6_satin.py`). Shapes whose ribbon width
-(2·area/perimeter) is ≤ 3 mm and whose length is ≥ 3× that width sew as zigzag
+(2·area/perimeter) is ≤ 5 mm and whose length is ≥ 3× that width sew as zigzag
 columns perpendicular to a medial-axis spine, not as fill — the single
 technique that most separates professional output from hobby output.
 Classification runs on the ARTWORK polygon so fabric choice can never flip a
@@ -247,9 +247,31 @@ free ends are first walked back OUT of the cap corner the medial axis runs into
 pruning leaves behind pivot on one needle hole and fan across the cap — then
 extended to the cap edge, finishing with a square-end terminal cross;
 `medial_axis(rng=0)` is REQUIRED — unseeded it is nondeterministic and the same
-artwork digitizes differently run to run. Every consecutive pair of runs is
-linked with an explicit jump/trim decision and oriented to start at the end
-nearer the needle; on the drone-logo benchmark that halved the trim count.
+artwork digitizes differently run to run.
+
+The satin numbers and structure follow a 19-file study of professionally
+digitized DSTs (`tools/study_pro.py`, 2026-07-30; Kent's three commissioned
+files plus sixteen from embroideres.com's free library, ~230k stitches):
+
+- **Rails are parallel offsets** of the spine at a median-filtered, smoothed
+  width profile — never independent per-sample ray hits, which is what made
+  columns spray.
+- **Corners sew THROUGH, in-run.** Corpus census: 1,436 corner events inside
+  a continuing run, 18 splits. `_round_corners` spreads each apex over about
+  one column width so the crosses fan gradually (the pro spoke pattern);
+  `_split_sharp_corners` still exists but only fires past 90°.
+- **Columns run to 5 mm wide** (was 3) — little-romeo runs 3.4/4.2, beckers
+  4.2/5.1 — and anything past 2.5 mm forces zigzag underlay
+  (`SATIN_ZIGZAG_ABOVE_MM`); wide corpus satin always shows support passes.
+  The browser engine still classifies at 3 mm; the divergence is deliberate
+  and Python-only until its own sew-out.
+- **Between strokes the needle travels the unsewn skeleton web**
+  (`_build_travel_graph` / `_graph_travel`): needle-down running along spines
+  whose columns sew later and cover the leg — the corpus trick behind
+  740-stitch runs and 0.8 trims per 1000. Legs over already-sewn strokes are
+  forbidden (they would show); disconnected components still jump/trim with
+  the same explicit decision as before, oriented to start at the end nearer
+  the needle.
 
 Two things the fill does that look wrong until you know why: row ends always
 land exactly on the shape boundary (that is what makes an edge crisp, and the
