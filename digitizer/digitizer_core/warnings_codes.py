@@ -20,6 +20,7 @@ EMPTY_THREAD_LAYER = "EMPTY_THREAD_LAYER"          # a thread's every region abs
 
 # Stage 5 (overlap resolution / pull compensation)
 HOLE_NEARLY_CLOSED = "HOLE_NEARLY_CLOSED"          # pull comp would swallow a hole; held open. extra: {"count": int}
+SAME_THREAD_SHAPES_MERGED = "SAME_THREAD_SHAPES_MERGED"  # pull comp would fuse two shapes of one thread; gap held open. extra: {"count": int}
 
 # Stage 6 (stitch planning)
 SHAPE_TOO_THIN_TO_FILL = "SHAPE_TOO_THIN_TO_FILL"  # narrower than a fill can hold; satin's job (step 4). extra: {"count": int}

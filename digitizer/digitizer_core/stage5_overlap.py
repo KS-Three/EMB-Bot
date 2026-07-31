@@ -23,18 +23,39 @@ fabric preset's amount. It is uniform here; true pull comp acts perpendicular to
 the stitch direction only, which needs the fill angle and belongs with a later
 directional-compensation pass. Uniform matches the browser engine's behaviour,
 so both products are wrong in the same direction until sew-outs correct them.
+
+**Keeping same-thread neighbours apart.** Compensation grows every shape, and two
+shapes of the SAME thread have no seam logic to separate them: the order rules
+above only ever compare different colours. So two letters sitting a third of a
+millimetre apart each grow toward the other and meet in the middle, and the pair
+sews as one blob. Measured on the benchmark logo at 90 mm on pique knit, eight
+letter pairs fused this way and "ENTERPRISES INC." sewed as "ENERPRSES NC".
+
+The gap between two letters is artwork exactly as much as the counter inside an
+"e" is, so it gets the same treatment the counter already gets: it is held open
+at its original size. The corridor a shape may not grow into is the bare fabric
+within reach of both it and a same-thread neighbour; because compensation can
+only close a gap narrower than two of itself, a span of 2 x pull covers every gap
+that is in danger and no gap that is not. Underlap is untouched — the corridor is
+bare fabric only, and an underlap by definition runs under another colour.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 
+from shapely import STRtree
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
 
 from .config import PipelineConfig
 from .fabrics import Fabric
 from .regions import Region
-from .warnings_codes import HOLE_NEARLY_CLOSED, SHAPE_NOT_STITCHED, warn
+from .warnings_codes import (
+    HOLE_NEARLY_CLOSED,
+    SAME_THREAD_SHAPES_MERGED,
+    SHAPE_NOT_STITCHED,
+    warn,
+)
 
 
 @dataclass
@@ -82,6 +103,16 @@ def resolve_overlaps(
     by_layer = {L: [r for r in regions if r.meta["layer"] == L] for L in layers}
     geom_by_layer = {L: unary_union([r.polygon for r in by_layer[L]]) for L in layers}
 
+    # Bare fabric is everything the artwork does not cover. A same-thread gap is
+    # only a gap where no other colour is filling it, so the keep-apart corridor
+    # is carved out of this and an underlap under a later colour never qualifies.
+    all_art = unary_union([r.polygon for r in regions])
+
+    # How far compensation can push two same-thread shapes together: each one
+    # grows by `pull`, so any gap narrower than two of those is at risk.
+    fuse_reach = 2.0 * pull
+    trees = {L: STRtree([r.polygon for r in by_layer[L]]) for L in layers} if pull > 0 else {}
+
     # Prefix/suffix unions: what is already on the fabric when this layer sews,
     # and what will cover it afterwards. Built once instead of per region.
     earlier: dict[int, object] = {}
@@ -99,6 +130,7 @@ def resolve_overlaps(
     planned: list[PlannedRegion] = []
     holes_held = 0
     lost = 0
+    fusing_pairs: set[tuple[str, str]] = set()
 
     for sew_index, L in enumerate(layers):
         for r in by_layer[L]:
@@ -110,6 +142,24 @@ def resolve_overlaps(
                 reach = poly.buffer(pull + overlap).intersection(later[L])
                 if not reach.is_empty:
                     grown = grown.union(reach)
+
+            # Hold open the bare fabric between this shape and any neighbour on
+            # the same thread. Nothing else separates them: they share a colour,
+            # so neither the sew order nor the underlap rule above ever applies.
+            if pull > 0 and len(by_layer[L]) > 1:
+                near = poly.buffer(fuse_reach)
+                others = [
+                    by_layer[L][i] for i in trees[L].query(near) if by_layer[L][i] is not r
+                ]
+                if others:
+                    corridor = near.intersection(
+                        unary_union([o.polygon for o in others]).buffer(fuse_reach)
+                    ).difference(all_art)
+                    if not corridor.is_empty:
+                        grown = grown.difference(corridor)
+                    for other in others:
+                        if poly.distance(other.polygon) < fuse_reach:
+                            fusing_pairs.add(tuple(sorted((r.shape_id, other.shape_id))))
 
             # Never grow back over a color that is already down.
             if earlier[L] is not None:
@@ -139,6 +189,17 @@ def resolve_overlaps(
 
             planned.append(PlannedRegion(region=r, polygon=grown, sew_index=sew_index))
 
+    if fusing_pairs:
+        n = len(fusing_pairs)
+        warnings.append(
+            warn(
+                SAME_THREAD_SHAPES_MERGED,
+                f"{n} pair{'s' if n != 1 else ''} of shapes in the same thread sit "
+                "closer together than pull compensation would have grown them, and "
+                "were kept apart so they do not sew as one shape.",
+                count=n,
+            )
+        )
     if holes_held:
         warnings.append(
             warn(
