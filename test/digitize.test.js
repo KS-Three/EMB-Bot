@@ -767,3 +767,101 @@ test("buildLetteringDesign: garment without an id (all pre-cap fixtures) is unto
   const firstStitch = d.stitches.find((s) => s.type === "stitch");
   assert.ok(firstStitch.x < 0, "no-id garment still sews in text order (left glyph first)");
 });
+
+// ---- Lettering parity round: mirrorX / mirrorY --------------------------
+// Mirror is a pure post-transform on the generated DST-space stitches,
+// applied about the element's bbox center in the documented order
+// center -> MIRROR -> ROTATE -> offset (see buildLetteringDesign). The
+// record STREAM (types, counts, order) must be untouched — only positions
+// reflect.
+
+test("buildLetteringDesign: mirrorX/mirrorY absent or false is byte-identical to today's output", () => {
+  const font = require("../src/fonts/geneva_simple.json");
+  const base = { garment: { widthIn: 8, heightIn: 8 }, pxPerMm: 8, emMm: 18, densityMm: 0.4 };
+  const d0 = DG.buildLetteringDesign(font, "Kent", base);
+  const dFalse = DG.buildLetteringDesign(font, "Kent", { ...base, mirrorX: false, mirrorY: false });
+  assert.deepStrictEqual(dFalse, d0);
+});
+
+test("buildLetteringDesign: mirrorX on 'Kent' is an exact reflection — x negated about center, y untouched, every record's type preserved index-for-index", () => {
+  const font = require("../src/fonts/geneva_simple.json");
+  // underlay ON and a colorRange so the stream really contains trims, jumps
+  // AND a color-change record — the per-record loop below then pins that a
+  // mirror moves none of them and mirrors all their positions exactly.
+  const base = {
+    garment: { widthIn: 8, heightIn: 8 }, pxPerMm: 8, emMm: 18, densityMm: 0.4,
+    rgb: [10, 20, 30], colorRanges: [{ startIdx: 0, endIdx: 1, colorRgb: [200, 30, 30] }],
+  };
+  const d0 = DG.buildLetteringDesign(font, "Kent", base);
+  const dX = DG.buildLetteringDesign(font, "Kent", { ...base, mirrorX: true });
+  assert.strictEqual(dX.stitches.length, d0.stitches.length, "mirror must not add/remove records");
+  for (let i = 0; i < d0.stitches.length; i++) {
+    assert.strictEqual(dX.stitches[i].type, d0.stitches[i].type, `record type at ${i}`);
+    // Math.round(-v) vs -Math.round(v) differ by at most 1 (the exact-.5 case).
+    assert.ok(Math.abs(dX.stitches[i].x - -d0.stitches[i].x) <= 1, `x at ${i}: ${dX.stitches[i].x} vs ${-d0.stitches[i].x}`);
+    assert.strictEqual(dX.stitches[i].y, d0.stitches[i].y, `y at ${i} must be untouched by mirrorX`);
+  }
+  // The fixture actually exercises what the loop pins.
+  const count = (d, t) => d.stitches.filter((s) => s.type === t).length;
+  assert.ok(count(d0, "trim") > 0, "fixture must contain trims");
+  assert.ok(count(d0, "jump") > 0, "fixture must contain jumps");
+  assert.strictEqual(count(d0, "color"), 1, "fixture must contain a color change");
+  for (const t of ["trim", "jump", "color", "stitch"]) assert.strictEqual(count(dX, t), count(d0, t), t + " count preserved");
+  // bbox is symmetric about the very center being mirrored across:
+  // reported dims unchanged, exactly.
+  assert.strictEqual(dX.widthMM, d0.widthMM);
+  assert.strictEqual(dX.heightMM, d0.heightMM);
+  assert.strictEqual(dX.stitchCount, d0.stitchCount);
+});
+
+test("buildLetteringDesign: mirrorY negates y about center and leaves x untouched", () => {
+  const font = require("../src/fonts/geneva_simple.json");
+  const base = { garment: { widthIn: 8, heightIn: 8 }, pxPerMm: 8, emMm: 18, densityMm: 0.4 };
+  const d0 = DG.buildLetteringDesign(font, "Kent", base);
+  const dY = DG.buildLetteringDesign(font, "Kent", { ...base, mirrorY: true });
+  assert.strictEqual(dY.stitches.length, d0.stitches.length);
+  for (let i = 0; i < d0.stitches.length; i++) {
+    assert.strictEqual(dY.stitches[i].type, d0.stitches[i].type, `record type at ${i}`);
+    assert.strictEqual(dY.stitches[i].x, d0.stitches[i].x, `x at ${i} must be untouched by mirrorY`);
+    assert.ok(Math.abs(dY.stitches[i].y - -d0.stitches[i].y) <= 1, `y at ${i}: ${dY.stitches[i].y} vs ${-d0.stitches[i].y}`);
+  }
+  assert.strictEqual(dY.widthMM, d0.widthMM);
+  assert.strictEqual(dY.heightMM, d0.heightMM);
+});
+
+test("buildLetteringDesign: mirror composes with rotation in the documented order — mirror about the bbox center FIRST, then rotationDeg", () => {
+  const font = require("../src/fonts/geneva_simple.json");
+  const base = { garment: { widthIn: 8, heightIn: 8 }, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false };
+  const d0 = DG.buildLetteringDesign(font, "Kent", base);
+  const dMR = DG.buildLetteringDesign(font, "Kent", { ...base, mirrorX: true, rotationDeg: 90 });
+  // Documented order on a point (x,y): mirrorX -> (-x,y), then rotate 90
+  // (T()'s convention: (px,py) -> (-py,px)) -> (-y,-x).
+  // The REVERSE order (rotate then mirror) would give (y,x) instead — the
+  // loop below distinguishes the two on every record.
+  assert.strictEqual(dMR.stitches.length, d0.stitches.length);
+  let distinguishes = false;
+  for (let i = 0; i < d0.stitches.length; i++) {
+    const a = d0.stitches[i], b = dMR.stitches[i];
+    assert.strictEqual(b.type, a.type, `record type at ${i}`);
+    assert.ok(Math.abs(b.x - -a.y) <= 1, `x at ${i}: expected ~${-a.y}, got ${b.x}`);
+    assert.ok(Math.abs(b.y - -a.x) <= 1, `y at ${i}: expected ~${-a.x}, got ${b.y}`);
+    if (Math.abs(b.x - a.y) > 2 || Math.abs(b.y - a.x) > 2) distinguishes = true;
+  }
+  assert.ok(distinguishes, "fixture must actually distinguish mirror-then-rotate from rotate-then-mirror");
+});
+
+test("buildLetteringDesign: cap garment's bottom-up sew order follows where lines ACTUALLY land after mirrorY", () => {
+  const font = require("../src/fonts/geneva_simple.json");
+  // Line 1 "AAA" tagged red via colorRanges; base color for "VVV". On a cap,
+  // the FIRST-SEWN line's color is colors[0]: without mirror the bottom line
+  // is VVV (base), with mirrorY the AAA line lands at the bottom and must
+  // sew first — the reorder uses post-mirror final-space centroids.
+  const base = {
+    garment: { id: "hat_front", widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, emMm: 18, densityMm: 0.4,
+    underlay: false, rgb: [10, 20, 30], colorRanges: [{ startIdx: 0, endIdx: 3, colorRgb: [200, 0, 0] }],
+  };
+  const capPlain = DG.buildLetteringDesign(font, "AAA\nVVV", base);
+  const capMirY = DG.buildLetteringDesign(font, "AAA\nVVV", { ...base, mirrorY: true });
+  assert.deepStrictEqual([capPlain.colors[0].r, capPlain.colors[0].g, capPlain.colors[0].b], [10, 20, 30], "no mirror: bottom line VVV (base color) sews first");
+  assert.deepStrictEqual([capMirY.colors[0].r, capMirY.colors[0].g, capMirY.colors[0].b], [200, 0, 0], "mirrorY: AAA (red) is now the bottom line and sews first");
+});

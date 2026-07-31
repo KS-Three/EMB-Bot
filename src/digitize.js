@@ -533,7 +533,8 @@
   // garment, centered, and Y-flipped into DST units — same coordinate convention
   // and return shape as buildQualityDesign, so DST/preview/PDF just work.
   // opts = { garment, pxPerMm=8, emMm=18, rgb=[20,20,20], densityMm, pullCompMm,
-  //          letterSpacingMm, fabric, trimAtMm }.
+  //          letterSpacingMm, fabric, trimAtMm, mirrorX=false, mirrorY=false,
+  //          circleLayout (see satinfont.js layoutText) }.
   function buildLetteringDesign(fontData, text, opts) {
     const o = opts || {};
     const pxPerMm = o.pxPerMm || 8;
@@ -561,7 +562,7 @@
     const ls = o.letterSpacingMm || 0;
     // Pass 1: measure the glyph extent (bbox is spacing-independent) so we can
     // fit-to-garment. Coarse spacing keeps it cheap.
-    const probe = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: 2, pullCompMm: 0, letterSpacingMm: ls, underlay: false, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align });
+    const probe = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: 2, pullCompMm: 0, letterSpacingMm: ls, underlay: false, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align, circleLayout: o.circleLayout });
     if (!probe.runs.length) return empty;
     const bb = probe.bbox;
     const bboxWmm = (bb.x1 - bb.x0) / pxPerMm, bboxHmm = (bb.y1 - bb.y0) / pxPerMm;
@@ -586,7 +587,7 @@
     // Pass 2: generate at fit-corrected density so the FINAL satin spacing and
     // pull-comp land at the requested mm regardless of the fit scale (short text
     // scaled up would otherwise sew too sparse).
-    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: densityMm / sc, pullCompMm: pullCompMm / sc, letterSpacingMm: ls, underlay: o.underlay !== false, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align });
+    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: densityMm / sc, pullCompMm: pullCompMm / sc, letterSpacingMm: ls, underlay: o.underlay !== false, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align, circleLayout: o.circleLayout });
     if (!lay.runs.length) return empty;
     const cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2;
     // Explicit placement offset (Slice 3): applied AFTER the center transform, in
@@ -606,8 +607,31 @@
     const rotDeg = o.rotationDeg || 0;
     const rotRad = (rotDeg * Math.PI) / 180;
     const cosR = Math.cos(rotRad), sinR = Math.sin(rotRad);
+    // Mirror X / Mirror Y (Lettering parity round): reflect the ALREADY-
+    // centered, already-scaled point about the element's own bbox-center axis
+    // — mirrorX negates the centered x (left/right flip), mirrorY the
+    // centered y (top/bottom flip). The transform order is fixed and
+    // documented: center → MIRROR → ROTATE → placement offset. The mirror
+    // happens in the element's own frame BEFORE rotationDeg spins it, so
+    // "flip, then tilt" — flipping a rotated element reads as flipping the
+    // artwork and re-applying the same tilt, which is what Hatch's Mirror
+    // X/Y does (it flips the whole design INCLUDING the glyphs; the point is
+    // flipping a design, e.g. for in-the-hoop back pieces — not per-letter
+    // mirror-writing). Like rotationDeg this is a pure post-transform on the
+    // generated DST-space stitches: layoutText/routeGlyph run identically,
+    // the stitch/trim/jump/color RECORD sequence is untouched (a coordinate
+    // map moves positions, never records), and widthMM/heightMM are
+    // unchanged (the bbox is symmetric about the very center being mirrored
+    // across). A mirror does flip each satin run's traversal direction in
+    // space — that is exactly the reflected geometry a flipped design must
+    // sew; start/end/trim positions are the mirrored images of today's.
+    // mirrorX/mirrorY absent or false leave px/py untouched: byte-identical
+    // to today's output (house back-compat law, snapshot-pinned in tests).
+    const mirX = !!o.mirrorX, mirY = !!o.mirrorY;
     const T = (q) => {
-      const px = (q.x - cx) * scalePxToDst, py = (cy - q.y) * scalePxToDst;
+      let px = (q.x - cx) * scalePxToDst, py = (cy - q.y) * scalePxToDst;
+      if (mirX) px = -px;
+      if (mirY) py = -py;
       const rx = rotDeg ? px * cosR - py * sinR : px;
       const ry = rotDeg ? px * sinR + py * cosR : py;
       return { x: Math.round(rx) + offXu, y: Math.round(ry) + offYu };
@@ -646,8 +670,12 @@
       for (const g of groups) {
         let sx = 0, sy = 0, n = 0;
         for (const r of g.runs) for (const p of r.pts) { sx += p.x; sy += p.y; n++; }
-        // px-space centroid -> final-space (rotation only; same math as T()).
-        const px = (sx / n - cx), py = (cy - sy / n);
+        // px-space centroid -> final-space (mirror + rotation, same order as
+        // T(): center → mirror → rotate — so cap bottom-up/center-out
+        // ordering follows where glyphs ACTUALLY land after a flip).
+        let px = (sx / n - cx), py = (cy - sy / n);
+        if (mirX) px = -px;
+        if (mirY) py = -py;
         g.x = rotDeg ? px * cosR - py * sinR : px;
         g.y = rotDeg ? px * sinR + py * cosR : py;
         g.line = lineOfChar[g.charIdx] || 0;

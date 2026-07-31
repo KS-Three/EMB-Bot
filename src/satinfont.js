@@ -216,7 +216,9 @@
   // (see routeGlyph). A run's jump=true means "lift needle & travel to its
   // start" (the caller trims if far); jump=false means "continue with a needle-
   // down running connector". opts = { emMm=18, pxPerMm=10, spacingMm=0.4,
-  // pullCompMm=0, letterSpacingMm=0, underlay=true, arcDeg=0 }.
+  // pullCompMm=0, letterSpacingMm=0, underlay=true, arcDeg=0,
+  // circleLayout=false (two-line circular badge — contract documented at the
+  // option below) }.
   //
   // `text` may contain "\n" for multiple lines, stacked by `font.leading`
   // (falls back to unitsPerEm). `opts.arcDeg` bends a line onto a circular
@@ -244,6 +246,37 @@
     const slantDeg = o.slantDeg || 0;
     const doUnderlay = o.underlay !== false;
     const arcDeg = o.arcDeg || 0;
+    // Two-line circular badge layout (Lettering parity round). Falsy (absent/
+    // false/null) = today's behavior byte-identical (snapshot-pinned). Truthy:
+    //   - The FIRST line arcs along the TOP of a circle (arch up, exactly the
+    //     existing arcDeg>0 math) and the LAST line arcs along the BOTTOM
+    //     (arch DOWN — the existing negative-arc "valley" math with one
+    //     baseline-side correction, see the placement branch below), BOTH
+    //     sharing ONE circle center, so a badge comes out concentric: every
+    //     arc'd glyph's baseline sits at radius R from that shared center
+    //     EXACTLY (derivation at the branch). The bottom line's glyphs stay
+    //     upright (middle glyph rotation 0, tangent rotation elsewhere) and
+    //     read left-to-right — not upside-down.
+    //   - 3+ lines: first and last arc as above; the lines BETWEEN them stack
+    //     STRAIGHT through the middle, each ink-centered on the circle's
+    //     vertical axis, baseline-spaced by leading and vertically centered
+    //     on the circle center — the classic badge "name arcs / EST. 2020
+    //     straight / city arcs" composition.
+    //   - Single line: that one line arcs along the top only (identical to a
+    //     plain arcDeg layout at the derived span — pinned by test).
+    // Radius contract — circleLayout is `true` or `{ radiusMm }`:
+    //   - { radiusMm: N } pins the baseline-circle radius at N mm (nominal,
+    //     BEFORE any downstream garment-fit scaling — the same nominal-mm
+    //     semantics emMm/letterSpacingMm already have). Each arc'd line then
+    //     spans inkSpanPx/R radians of the circle.
+    //   - true (or an object without a positive radiusMm) derives R the same
+    //     way single-line arcs already do — R = inkSpanPx / arcRad — using
+    //     the WIDEST arc'd line's ink span, so no line ever exceeds |arcDeg|
+    //     (default 180: the widest line hugs its full semicircle). arcDeg's
+    //     SIGN is ignored in badge mode (top/bottom arch directions are what
+    //     define a badge); `align` is ignored too (every line centers on the
+    //     circle's own vertical axis).
+    const circle = o.circleLayout ? (typeof o.circleLayout === "object" ? o.circleLayout : {}) : null;
     // Multi-line justification: how shorter lines sit relative to the widest
     // line. "center" (default) is the pre-existing behavior; "left"/"right"
     // flush-align instead. Single-line text and arc'd lines are unaffected
@@ -291,6 +324,42 @@
     const signArc = arcDeg > 0 ? 1 : (arcDeg < 0 ? -1 : 0);
     const arcRad = arcDeg ? Math.abs(arcDeg) * Math.PI / 180 : 0;
 
+    // Ink x-extent of a measured line in design px (the same glyph-ink logic
+    // the arc branch uses inline); null when the line has no glyphs.
+    const lineInkPx = (line) => {
+      if (!line.glyphs.length) return null;
+      let minU = Infinity, maxU = -Infinity;
+      for (const gl of line.glyphs) {
+        const ext = glyphInkXUnits(gl.g);
+        if (gl.ox + ext.min < minU) minU = gl.ox + ext.min;
+        if (gl.ox + ext.max > maxU) maxU = gl.ox + ext.max;
+      }
+      return { start: minU * u2px, end: maxU * u2px };
+    };
+    // Circle-badge shared geometry (see the circleLayout contract above). One
+    // radius R for the whole badge; the circle CENTER is fixed at (0, R) in
+    // this layout's font-space (y-down), i.e. R below the top line's apex:
+    // the top line's apex baseline then lands at y=0, exactly where a plain
+    // arcDeg>0 first line would put it.
+    let circleParams = null;
+    if (circle) {
+      const nLines = lineList.length;
+      const topIdx = 0, botIdx = nLines > 1 ? nLines - 1 : -1;
+      let maxSpanPx = 0;
+      for (const li of (botIdx >= 0 ? [topIdx, botIdx] : [topIdx])) {
+        const ink = lineInkPx(lineList[li]);
+        if (ink && ink.end - ink.start > maxSpanPx) maxSpanPx = ink.end - ink.start;
+      }
+      let R;
+      if (typeof circle.radiusMm === "number" && isFinite(circle.radiusMm) && circle.radiusMm > 0) {
+        R = circle.radiusMm * pxPerMm;
+      } else {
+        const arcAbsRad = (Math.abs(arcDeg) || 180) * Math.PI / 180;
+        R = maxSpanPx > 0 ? maxSpanPx / arcAbsRad : 0;
+      }
+      circleParams = { topIdx, botIdx, R, cy: R };
+    }
+
     // ---- PLACEMENT pass.
     lineList.forEach((line, lineIdx) => {
       const lineYunits = lineIdx * leadingUnits;                  // font units, y-down: later lines sit below
@@ -302,29 +371,39 @@
       // letter-spacing gap), and centering/radius built from it tilt the arch
       // toward the trailing end. Ink start/end come from each glyph's actual
       // rail extents (glyphInkXUnits) offset by its pen position.
+      // Which role this line plays in circle-badge mode (null when off):
+      // "top" arcs up, "bottom" arcs down on the same circle, "middle"
+      // stacks straight through the center.
+      const circleRole = circleParams
+        ? (lineIdx === circleParams.topIdx ? "top" : lineIdx === circleParams.botIdx ? "bottom" : "middle")
+        : null;
       let inkStartPx = 0, inkEndPx = 0;
-      if (arcDeg && line.glyphs.length) {
-        let minU = Infinity, maxU = -Infinity;
-        for (const gl of line.glyphs) {
-          const ext = glyphInkXUnits(gl.g);
-          if (gl.ox + ext.min < minU) minU = gl.ox + ext.min;
-          if (gl.ox + ext.max > maxU) maxU = gl.ox + ext.max;
-        }
-        inkStartPx = minU * u2px;
-        inkEndPx = maxU * u2px;
+      if ((arcDeg || circleParams) && line.glyphs.length) {
+        const ink = lineInkPx(line);
+        inkStartPx = ink.start;
+        inkEndPx = ink.end;
       }
       const inkSpanPx = inkEndPx - inkStartPx;
       const inkMidPx = (inkStartPx + inkEndPx) / 2;
-      const R = arcDeg && inkSpanPx > 0 ? (inkSpanPx / arcRad) : 0; // px; arc radius for this line
+      const R = arcDeg && inkSpanPx > 0 ? (inkSpanPx / arcRad) : 0; // px; arc radius for this line (plain-arc mode)
       // Shared rotation-pivot height for every glyph in this line: the MEDIAN
       // of each glyph's own baseline (see glyphBottomUnits above). One value
       // per line (not each glyph's own reference) keeps every letter's
       // baseline aligned on the SAME arc; using the true baseline (not the
       // vertical center) keeps that arc at the radius the curve was actually
       // designed for, instead of collapsed inward by half a letter-height.
-      const baselinePx = arcDeg && line.glyphs.length
+      const baselinePx = (arcDeg || circleParams) && line.glyphs.length
         ? medianOf(line.glyphs.map((gl) => glyphBottomUnits(gl.g))) * u2px
         : 0;
+      // Circle-badge middle band: baseline of middle line k (0-based within
+      // the band) sits at cy + (k - (count-1)/2) * leading — the band is
+      // vertically centered on the circle center and keeps normal leading.
+      let midBaseY = 0;
+      if (circleRole === "middle") {
+        const midCount = lineList.length - 2;
+        const midRank = lineIdx - 1;
+        midBaseY = circleParams.cy + (midRank - (midCount - 1) / 2) * leadingUnits * u2px;
+      }
 
       for (const { g, ox, charIdx } of line.glyphs) {
         // Route in the glyph's own straight/local frame — identical to the
@@ -339,7 +418,48 @@
         const gRuns = routeGlyph(cols, { pxPerMm, spacingMm, pullCompMm, slantDeg, underlay: doUnderlay });
 
         let place;
-        if (!arcDeg) {
+        if (circleRole === "middle") {
+          // Straight middle band: ink-centered on the circle's vertical axis
+          // (x=0 through the shared center), baseline moved onto this line's
+          // stacked position. A pure translate — glyphs are not rotated.
+          place = (p) => ({ x: p.x - inkMidPx, y: p.y - baselinePx + midBaseY });
+        } else if (circleRole) {
+          // Circle-badge top/bottom arc. Same rigid per-glyph motion as the
+          // plain-arc branch below with the line-level knobs swapped: the
+          // radius is the SHARED badge radius Rc (not this line's own
+          // span-derived one), the arch sign is fixed per role (+1 top arch-
+          // up, -1 bottom arch-down), and the line's vertical anchor WyBase
+          // replaces lineYunits — chosen so both arcs share ONE center:
+          //   center = (0, cy). Top:    WyBase = cy - Rc (apex baseline at
+          //   the circle's topmost point). Bottom: WyBase = cy + Rc (middle
+          //   glyph's baseline at the circle's bottommost point).
+          // Derivation that baselines sit ON the circle exactly: a glyph at
+          // arc angle theta maps its baseline anchor to
+          //   (Rc*sin(theta), WyBase + sgn*Rc*(1 - cos(theta)))
+          // and center.y - that.y = sgn*Rc - sgn*Rc*(1-cos) = sgn*Rc*cos, so
+          // dist from center = Rc*sqrt(sin^2+cos^2) = Rc for EVERY glyph on
+          // BOTH lines — the badge is concentric by construction.
+          // The bottom line is thus the existing negated-curvature "valley"
+          // path (phi = -theta keeps each glyph's baseline tangent to the
+          // circle with its ink pointing INWARD — i.e. screen-up at the
+          // bottom of the circle: upright, reading left-to-right) plus the
+          // baseline-side correction WyBase = cy + Rc that drops the
+          // valley's midpoint onto the shared circle's bottom.
+          const sgnC = circleRole === "top" ? 1 : -1;
+          const Rc = circleParams.R;
+          const ext = glyphInkXUnits(g);
+          const inkCenterPx = (ox + (ext.min + ext.max) / 2) * u2px;
+          const sPx = inkCenterPx - inkMidPx;
+          const theta = Rc > 0 ? sPx / Rc : 0;
+          const phi = sgnC * theta;
+          const cosPhi = Math.cos(phi), sinPhi = Math.sin(phi);
+          const Wx = Rc * Math.sin(theta);
+          const Wy = (circleParams.cy - sgnC * Rc) + sgnC * Rc * (1 - Math.cos(theta));
+          place = (p) => {
+            const lx = p.x - inkCenterPx, ly = p.y - baselinePx;
+            return { x: Wx + lx * cosPhi - ly * sinPhi, y: Wy + lx * sinPhi + ly * cosPhi };
+          };
+        } else if (!arcDeg) {
           // Straight: pure per-line translate. Single-line text has
           // lineOriginXunits===0 and lineYunits===0, so `place` is the
           // identity — the legacy single-line output is unchanged.

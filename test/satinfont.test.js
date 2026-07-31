@@ -339,3 +339,221 @@ test("layoutText: align left/center/right position a short second line correctly
   // default is center (back-compat).
   closeTo(minX(D, 4), lCenter, 1e-6, "align absent = center");
 });
+
+// ---- Lettering parity round: two-line circular badge layout (circleLayout) ----
+// Contract (documented in src/satinfont.js): the FIRST line arcs along the
+// TOP of a circle, the LAST line arcs along the BOTTOM (upright, reading
+// left-to-right — not upside-down), both baselines on ONE shared circle;
+// middle lines (3+ line input) stack straight through the center; single-line
+// input arcs the top only. R derives from |arcDeg| (default 180) applied to
+// the widest arc'd line's ink span, or is pinned by { radiusMm }.
+
+const circOpts = { emMm: 18, pxPerMm: 8, spacingMm: 0.4, pullCompMm: 0, underlay: true };
+
+// Ink x-span (design px) of one line of text, replicated from the documented
+// ink contract (advance+kerning pen walk; rail x-extents) — the same
+// derivation the arc tests above already use.
+function lineInkSpanPx(lineText, emMm, pxPerMm) {
+  const u2px = (emMm / font.unitsPerEm) * pxPerMm;
+  let penX = 0, prev = null, minU = Infinity, maxU = -Infinity;
+  for (const ch of Array.from(lineText)) {
+    if (ch === " " || ch === "\t") { penX += (font.advSpace || font.advDefault); prev = null; continue; }
+    const g = font.glyphs[ch] || font.glyphs[ch.toUpperCase()] || font.glyphs[ch.toLowerCase()];
+    if (!g) { penX += font.advDefault; prev = null; continue; }
+    if (prev != null && font.kerning) { const k = font.kerning[prev + ch]; if (k) penX += k; }
+    let mn = Infinity, mx = -Infinity;
+    for (const col of g.cols) for (const arr of [col.railA, col.railB]) for (const p of arr) { if (p[0] < mn) mn = p[0]; if (p[0] > mx) mx = p[0]; }
+    if (penX + mn < minU) minU = penX + mn;
+    if (penX + mx > maxU) maxU = penX + mx;
+    penX += g.adv; prev = ch;
+  }
+  return (maxU - minU) * u2px;
+}
+
+// All of a layout's points grouped by source character index.
+function groupPtsByChar(lay) {
+  const m = new Map();
+  for (const r of lay.runs) { if (!m.has(r.charIdx)) m.set(r.charIdx, []); for (const p of r.pts) m.get(r.charIdx).push(p); }
+  return m;
+}
+
+// Recover the rigid motion (rotation + translation) that maps a glyph's
+// straight-layout points onto its circle-layout points. routeGlyph's output
+// is placement-independent, so index i is the SAME stitch in both layouts —
+// two index-matched correspondences pin the motion exactly.
+function rigidMotion(S, C) {
+  const i = 0, j = Math.floor(S.length / 2);
+  let delta = Math.atan2(C[j].y - C[i].y, C[j].x - C[i].x) - Math.atan2(S[j].y - S[i].y, S[j].x - S[i].x);
+  while (delta > Math.PI) delta -= 2 * Math.PI;
+  while (delta < -Math.PI) delta += 2 * Math.PI;
+  const cos = Math.cos(delta), sin = Math.sin(delta);
+  return { deg: delta * 180 / Math.PI, cos, sin, tx: C[i].x - (S[i].x * cos - S[i].y * sin), ty: C[i].y - (S[i].x * sin + S[i].y * cos) };
+}
+
+test("layoutText: circleLayout falsy (absent/false/null) is byte-identical to today's multi-line output", () => {
+  const a = SF.layoutText(font, "AB\nCD", circOpts);
+  const b = SF.layoutText(font, "AB\nCD", { ...circOpts, circleLayout: false });
+  const c = SF.layoutText(font, "AB\nCD", { ...circOpts, circleLayout: null });
+  assert.deepStrictEqual(b, a);
+  assert.deepStrictEqual(c, a);
+});
+
+test("layoutText: circleLayout on SINGLE-line text arcs that one line along the top — exactly a plain arcDeg layout at the derived span", () => {
+  // Derived-R contract: R = inkSpan/arcRad, |arcDeg| default 180 — for one
+  // line that is the plain-arc formula verbatim, so the outputs must be
+  // IDENTICAL, not merely close.
+  assert.deepStrictEqual(
+    SF.layoutText(font, "KENT", { ...circOpts, circleLayout: true }),
+    SF.layoutText(font, "KENT", { ...circOpts, arcDeg: 180 }));
+  assert.deepStrictEqual(
+    SF.layoutText(font, "KENT", { ...circOpts, circleLayout: true, arcDeg: 120 }),
+    SF.layoutText(font, "KENT", { ...circOpts, arcDeg: 120 }));
+  // arcDeg's SIGN is ignored in badge mode (top/bottom arch directions are
+  // what define a badge): -120 behaves as 120, not as a valley.
+  assert.deepStrictEqual(
+    SF.layoutText(font, "KENT", { ...circOpts, circleLayout: true, arcDeg: -120 }),
+    SF.layoutText(font, "KENT", { ...circOpts, arcDeg: 120 }));
+});
+
+test("layoutText: circleLayout 'SCHAEFER\\nEMBROIDERY' — line 1 upright on the top arc, line 2 upright on the bottom arc, concentric, baseline radial spread < 0.2mm", () => {
+  const TEXT = "SCHAEFER\nEMBROIDERY";
+  const straight = SF.layoutText(font, TEXT, circOpts);
+  const circ = SF.layoutText(font, TEXT, { ...circOpts, circleLayout: true });
+  // Derived geometry per the documented contract: R from the widest line's
+  // ink span over 180 deg; shared center at (0, R) (top apex at y=0).
+  const R = Math.max(lineInkSpanPx("SCHAEFER", 18, 8), lineInkSpanPx("EMBROIDERY", 18, 8)) / Math.PI;
+  const center = { x: 0, y: R };
+  const gs = groupPtsByChar(straight), gc = groupPtsByChar(circ);
+  // "SCHAEFER"=0..7, "\n"=8, "EMBROIDERY"=9..18.
+  const lineOf = (ci) => (ci <= 7 ? 0 : 1);
+  // Shared baseline per line, measured in straight-layout space: the median
+  // of per-glyph ink bottoms (pullCompMm 0 in circOpts, so stitch max-y IS
+  // the rail bottom) — same median rule as the engine's baseline pivot.
+  const bottoms = { 0: [], 1: [] };
+  const bottomIdx = new Map(); // per glyph: index of its max-y point (for the side check below)
+  for (const [ci, S] of gs) {
+    let by = -Infinity, bi = 0;
+    S.forEach((p, i) => { if (p.y > by) { by = p.y; bi = i; } });
+    bottoms[lineOf(ci)].push(by);
+    bottomIdx.set(ci, bi);
+  }
+  const median = (a) => { const s = a.slice().sort((x, y) => x - y); return s[s.length >> 1]; };
+  const baseY = { 0: median(bottoms[0]), 1: median(bottoms[1]) };
+  const perLine = { 0: [], 1: [] };
+  for (const [ci, S] of gs) {
+    const C = gc.get(ci);
+    assert.strictEqual(C.length, S.length, `circle layout must not change point count (char ${ci})`);
+    const m = rigidMotion(S, C);
+    // Where did this glyph's stretch of the SHARED BASELINE go? Map two
+    // points of the straight-space baseline line (y = baseY) through the
+    // recovered motion; the perpendicular distance from the shared center
+    // to that mapped line is the baseline's radial position — free of the
+    // tangential offset a single stitch-point probe would carry.
+    let mnx = Infinity, mxx = -Infinity;
+    for (const p of S) { if (p.x < mnx) mnx = p.x; if (p.x > mxx) mxx = p.x; }
+    const by = baseY[lineOf(ci)];
+    const A = { x: mnx * m.cos - by * m.sin + m.tx, y: mnx * m.sin + by * m.cos + m.ty };
+    const B = { x: mxx * m.cos - by * m.sin + m.tx, y: mxx * m.sin + by * m.cos + m.ty };
+    const ex = B.x - A.x, ey = B.y - A.y, L = Math.hypot(ex, ey);
+    const radial = Math.abs((center.x - A.x) * ey - (center.y - A.y) * ex) / L;
+    perLine[lineOf(ci)].push({ ci, rot: m.deg, radial, meanX: (() => { let s = 0; for (const p of C) s += p.x; return s / C.length; })() });
+  }
+  // (a) Baselines sit ON the shared circle: every glyph of BOTH lines within
+  // 0.1mm of R, i.e. total spread < 0.2mm (0.2mm = 1.6px at pxPerMm 8) —
+  // one radius, one center: concentric by measurement, not assumption.
+  for (const ln of [0, 1]) for (const g of perLine[ln]) {
+    assert.ok(Math.abs(g.radial - R) < 0.8, `line ${ln} char ${g.ci}: baseline radial ${g.radial.toFixed(3)}px vs R ${R.toFixed(3)}px`);
+  }
+  for (const ln of [0, 1]) {
+    const glyphs = perLine[ln].sort((a, b) => a.ci - b.ci);
+    // (b) Upright: some glyph near the line's angular middle stands nearly
+    // unrotated, and NO glyph is past 90 deg (nothing upside-down).
+    assert.ok(Math.min(...glyphs.map((g) => Math.abs(g.rot))) < 15, `line ${ln}: middle glyph should stand upright`);
+    for (const g of glyphs) assert.ok(Math.abs(g.rot) < 90, `line ${ln} char ${g.ci}: rotation ${g.rot.toFixed(1)} deg must stay below 90 (readable, not upside-down)`);
+    // (c) Reads left-to-right: successive characters land at increasing x.
+    for (let i = 1; i < glyphs.length; i++) assert.ok(glyphs[i].meanX > glyphs[i - 1].meanX, `line ${ln}: char ${glyphs[i].ci} must sit right of char ${glyphs[i - 1].ci}`);
+    // (d) Tangent rotation follows the arc: the top line's glyph angles
+    // INCREASE left-to-right (lean left before the apex, right after), the
+    // bottom line's DECREASE (opposite curvature).
+    for (let i = 1; i < glyphs.length; i++) {
+      if (ln === 0) assert.ok(glyphs[i].rot > glyphs[i - 1].rot, `top line: rotation must increase left-to-right at char ${glyphs[i].ci}`);
+      else assert.ok(glyphs[i].rot < glyphs[i - 1].rot, `bottom line: rotation must decrease left-to-right at char ${glyphs[i].ci}`);
+    }
+    // (e) Right side of the circle: the top line's upright glyph sits near
+    // the circle's topmost point, the bottom line's near its bottommost
+    // (y-down font space: top = small y).
+    const mid = glyphs.reduce((a, b) => (Math.abs(a.rot) <= Math.abs(b.rot) ? a : b));
+    const bp = gc.get(mid.ci)[bottomIdx.get(mid.ci)]; // that glyph's baseline stitch, circle layout
+    if (ln === 0) assert.ok(bp.y < center.y - 0.9 * R, `top line's upright glyph baseline (y=${bp.y.toFixed(1)}) must sit near the circle top`);
+    else assert.ok(bp.y > center.y + 0.9 * R, `bottom line's upright glyph baseline (y=${bp.y.toFixed(1)}) must sit near the circle bottom`);
+  }
+});
+
+test("layoutText: circleLayout { radiusMm } pins the baseline circle radius regardless of text width", () => {
+  const TEXT = "AB\nCD";
+  const R = 40 * 8; // radiusMm 40 at pxPerMm 8 -> 320px; center (0, 320)
+  const center = { x: 0, y: R };
+  const straight = SF.layoutText(font, TEXT, circOpts);
+  const circ = SF.layoutText(font, TEXT, { ...circOpts, circleLayout: { radiusMm: 40 } });
+  const gs = groupPtsByChar(straight), gc = groupPtsByChar(circ);
+  const lineOf = (ci) => (ci <= 1 ? 0 : 1);
+  const bottoms = { 0: [], 1: [] };
+  for (const [ci, S] of gs) { let by = -Infinity; for (const p of S) if (p.y > by) by = p.y; bottoms[lineOf(ci)].push(by); }
+  const median = (a) => { const s = a.slice().sort((x, y) => x - y); return s[s.length >> 1]; };
+  const baseY = { 0: median(bottoms[0]), 1: median(bottoms[1]) };
+  for (const [ci, S] of gs) {
+    const m = rigidMotion(S, gc.get(ci));
+    let mnx = Infinity, mxx = -Infinity;
+    for (const p of S) { if (p.x < mnx) mnx = p.x; if (p.x > mxx) mxx = p.x; }
+    const by = baseY[lineOf(ci)];
+    const A = { x: mnx * m.cos - by * m.sin + m.tx, y: mnx * m.sin + by * m.cos + m.ty };
+    const B = { x: mxx * m.cos - by * m.sin + m.tx, y: mxx * m.sin + by * m.cos + m.ty };
+    const ex = B.x - A.x, ey = B.y - A.y, L = Math.hypot(ex, ey);
+    const radial = Math.abs((center.x - A.x) * ey - (center.y - A.y) * ex) / L;
+    assert.ok(Math.abs(radial - R) < 0.8, `char ${ci}: baseline radial ${radial.toFixed(3)}px must sit on the pinned 320px circle`);
+  }
+});
+
+test("layoutText: circleLayout on 3+ lines arcs first and last, stacks the middle line straight and centered on the circle", () => {
+  const TEXT = "AAA\nBB\nCCC"; // AAA=0..2, \n=3, BB=4..5, \n=6, CCC=7..9
+  const straight = SF.layoutText(font, TEXT, circOpts);
+  const circ = SF.layoutText(font, TEXT, { ...circOpts, circleLayout: true });
+  const R = Math.max(lineInkSpanPx("AAA", 18, 8), lineInkSpanPx("CCC", 18, 8)) / Math.PI;
+  const gs = groupPtsByChar(straight), gc = groupPtsByChar(circ);
+  // Middle line "BB": pure TRANSLATE (no rotation), so index-matched segment
+  // vectors must be identical between the straight and circle layouts.
+  for (const ci of [4, 5]) {
+    const S = gs.get(ci), C = gc.get(ci);
+    assert.strictEqual(C.length, S.length);
+    for (let i = 1; i < S.length; i++) {
+      closeTo(C[i].x - C[i - 1].x, S[i].x - S[i - 1].x, 1e-9, `middle line char ${ci} seg ${i} dx`);
+      closeTo(C[i].y - C[i - 1].y, S[i].y - S[i - 1].y, 1e-9, `middle line char ${ci} seg ${i} dy`);
+    }
+  }
+  // ...its baseline sits AT the circle center height (single middle line:
+  // vertically centered on the center; pullCompMm 0 makes stitch max-y the
+  // exact rail bottom = baseline)...
+  let maxY = -Infinity, mnx = Infinity, mxx = -Infinity;
+  for (const ci of [4, 5]) for (const p of gc.get(ci)) { if (p.y > maxY) maxY = p.y; if (p.x < mnx) mnx = p.x; if (p.x > mxx) mxx = p.x; }
+  closeTo(maxY, R, 1e-6, "middle line baseline must sit at the circle center height (cy = R)");
+  // ...and its ink is centered on the circle's vertical axis.
+  assert.ok(Math.abs((mnx + mxx) / 2) < 2, `middle line ink must center on x=0, got ${((mnx + mxx) / 2).toFixed(2)}`);
+  // First and last lines still arc: their glyphs are genuinely rotated.
+  const rotOf = (ci) => Math.abs(rigidMotion(gs.get(ci), gc.get(ci)).deg);
+  assert.ok(rotOf(0) > 10, "first line's first glyph must be arc-rotated");
+  assert.ok(rotOf(9) > 10, "last line's last glyph must be arc-rotated");
+});
+
+test("buildLetteringDesign: circleLayout absent/false is byte-identical; truthy reaches BOTH layout passes and yields a badge-shaped design", () => {
+  const base = { garment: { widthIn: 8, heightIn: 8 }, pxPerMm: 8, emMm: 18, densityMm: 0.4 };
+  const a = DG.buildLetteringDesign(font, "SCHAEFER\nEMBROIDERY", base);
+  const b = DG.buildLetteringDesign(font, "SCHAEFER\nEMBROIDERY", { ...base, circleLayout: false });
+  assert.deepStrictEqual(b, a);
+  const c = DG.buildLetteringDesign(font, "SCHAEFER\nEMBROIDERY", { ...base, circleLayout: true });
+  // Threading guard: the option must reach BOTH layoutText calls (probe +
+  // final) — a straight probe with a circular final (or vice versa) would
+  // mis-fit the badge badly and break the aspect assertion below.
+  assert.notStrictEqual(c.heightMM, a.heightMM, "circleLayout must change the design bbox");
+  const ratio = c.widthMM / c.heightMM;
+  assert.ok(ratio > 0.8 && ratio < 1.4, `badge should be roughly circular, got aspect ${ratio.toFixed(2)}`);
+});
