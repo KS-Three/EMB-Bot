@@ -69,6 +69,10 @@ def main() -> int:
           f"shortsatin={m['satin_short_fraction']:.0%} "
           f"fillrow={m['fill_advance_mm']} satinadv={m['satin_advance_mm']} "
           f"dEmax={m['thread_worst_delta_e']}")
+    print(f"coverage units (law 27, 1.0 = one full layer): "
+          f"p50={m['coverage_p50']} p95={m['coverage_p95']} max={m['coverage_max']}"
+          f"  over {m['coverage_area_mm2']} mm2 of fabric"
+          f"  samehole={m['same_hole_fraction']}")
     if not report["findings"]:
         print("clean — nothing to fix before sewing.")
         return 0

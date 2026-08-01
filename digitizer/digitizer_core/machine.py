@@ -238,3 +238,59 @@ THREAD_LENGTH_FACTOR = 1.35
 def clamp_stitch_mm(value: float) -> float:
     """Keep a requested stitch length inside what the machine can actually do."""
     return max(MIN_STITCH_MM, min(MAX_STITCH_MM, value))
+
+
+# --- Coverage budget (law 27) ----------------------------------------------
+# "The density budget is a per-region sum, not a per-object setting:
+#  coverage_units = SUM(0.4 / spacing) over everything overlapping a region,
+#  underlay included" — docs/machine-physics-playbook-2026-07-31.md, law 27.
+# One unit is one full covering layer of 40wt thread. Preflight's coverage map
+# is the instrument; these are its physical constants.
+
+# The width of the thread itself, and therefore the width of the ribbon a
+# single stitch lays on the fabric. Law 16 [P] (Coats, Madeira): "40wt thread
+# is 0.4 mm wide, and that is the unit of everything" — lines spaced 0.40 mm
+# sit edge to edge, exactly one full-coverage layer. Same number as
+# SATIN_SPACING_MM and FILL_ROW_MM, and that is the point: at those spacings
+# the ribbons tile and the map reads exactly 1.0.
+COVERAGE_THREAD_W_MM = 0.40
+
+# Side of one coverage cell: the patch of fabric whose thread budget law 27
+# is about. NOT the thread quantum. At 0.40 mm a cell answers "is a thread
+# here" (binary) rather than "how many layers", so a single running line
+# would read 1.0 and a 3-pass bean outline 3.0 — condemning the light outline
+# tier, which exists precisely for shapes too small for anything heavier.
+# 1.0 mm is 2.5 thread widths, and law 27's own smallest reasoned-about
+# region is 5x5 mm (its no-holes-under-small-objects rule), so a cell is
+# 1/25th of the smallest region the law discusses. Law 29 [P] agrees on the
+# scale: pucker is the FABRIC buckling as an Euler column, a patch
+# phenomenon, not a thread one. Cost: the benchmark's 90x19 mm design is
+# 1,710 cells and a full 200x200 mm hoop 40,000 — runtime is set by stitch
+# count, not by the grid.
+COVERAGE_CELL_MM = 1.0
+
+# Step along a stitch when its thread ribbon is sampled into cells: a quarter
+# of the thread width, so a cell's share of a stitch is exact to ~0.04
+# coverage units and a correctly spaced 0.40 mm fill reads 1.000 with no
+# phase or moire artifact against the cell grid.
+COVERAGE_SUBSAMPLE_MM = 0.1
+
+# Law 27's own stack arithmetic: "the safe classic stack is underlay + fill +
+# satin detail ~= 2.5 units. Never more than two full-density fills stacked."
+# Both numbers are tagged [D] in the playbook (our own derivation, medium
+# confidence, sew-out-gated at part 4 item 2 against Embrilliance's 6-thread-
+# layer red line) — they are NOT primary-sourced, and are carried here with
+# that provenance intact.
+#
+# Checked against what our own output actually produces, 2026-08-01, rather
+# than adopted on the playbook's word. The stacking ladder lands exactly on
+# law 27's prose: one full-density fill measures 1.00 units, two 2.00 ("never
+# more than two full-density fills stacked" — permitted, silent), three 3.00
+# ("a third layer means cutting a hole in the base" — warn), four 4.00
+# (block). Real plans: the fixture logo p50 1.20 / p95 1.82 / max 2.55 and
+# the benchmark at 90 mm p50 1.19 / p95 3.15 / max 4.58 — both clean, both
+# silent, because the check gates on connected patch area and neither has a
+# patch over 2.5 bigger than 11 mm2. An auto border over a 0.20 mm fill
+# reaches 4.85 across 408 mm2 and warns; 0.13 mm rows block.
+COVERAGE_WARN_UNITS = 2.5
+COVERAGE_BLOCK_UNITS = 3.5

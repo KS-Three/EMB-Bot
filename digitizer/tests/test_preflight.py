@@ -15,16 +15,19 @@ import math
 import pytest
 
 from digitizer_core import (PipelineConfig, StitchBlock, StitchPlan,
-                            StitchRun, run_stages)
+                            StitchRun, machine, run_stages)
 from digitizer_core import stitches as st
 from digitizer_core.preflight import (
     DELTA_E_CLEARLY_DIFFERENT,
     DENSITY_EXTREME,
+    DENSITY_STACKED,
     LETTERING_TOO_SMALL,
+    SAME_HOLE_HEAVY,
     STITCHES_TOO_LONG,
     STITCHES_TOO_SHORT,
     THREAD_MATCH_POOR,
     TRIM_HEAVY,
+    _coverage_map,
     run_preflight,
 )
 from tests.conftest import PLAN_CFG_KW, TESTDATA, cfg
@@ -69,6 +72,10 @@ def test_a_clean_real_plan_earns_a_clean_report(whitebg, plan):
     assert m["fill_advance_mm"] == pytest.approx(0.40, abs=0.05)
     assert m["satin_advance_mm"] == pytest.approx(0.40, abs=0.05)
     assert m["satin_short_fraction"] < 0.25
+    # Law 27's region sum measured, and comfortably inside its budget.
+    assert m["coverage_p50"] == pytest.approx(1.2, abs=0.15)
+    assert m["coverage_over_warn_mm2"] == 0.0
+    assert m["same_hole_fraction"] is not None
 
 
 # --- Thread color fidelity ---------------------------------------------------
@@ -233,6 +240,187 @@ def test_a_deliberate_density_override_is_not_extreme():
     report = run_preflight(None, plan, cfg(fill_row_mm=1.0))
 
     assert DENSITY_EXTREME not in _codes(report)
+
+
+# --- Per-region coverage (law 27) --------------------------------------------
+
+def _square_fill(side_mm: float = 14.0,
+                 spacing_mm: float = machine.FILL_ROW_MM,
+                 shape_id: str = "F1") -> StitchRun:
+    """A boustrophedon fill of one square, rows `spacing_mm` apart.
+
+    Rows run 2 mm per stitch, which is what stage 6 emits; the square is big
+    enough (14 mm) that a stacked patch clears law 27's 5x5 mm floor.
+    """
+    pts: list[tuple[float, float]] = []
+    row, y = 0, -side_mm / 2
+    while y <= side_mm / 2:
+        xs = [-side_mm / 2 + 2.0 * i for i in range(int(side_mm / 2.0) + 1)]
+        if row % 2:
+            xs.reverse()
+        pts.extend((x, y) for x in xs)
+        y += spacing_mm
+        row += 1
+    return StitchRun(points=pts, kind=st.FILL, shape_id=shape_id)
+
+
+def _stacked(layers: int) -> StitchPlan:
+    """The same square filled `layers` times — one patch, N full layers."""
+    return _plan(*(_square_fill(shape_id=f"F{i}") for i in range(layers)))
+
+
+def test_one_full_density_fill_measures_exactly_one_covering_layer():
+    """The instrument's zero point. Law 16: 40wt thread is 0.4 mm wide, so
+    rows at the 0.40 mm default sit edge to edge and ARE one full covering
+    layer. If this reads anything but 1.0, every threshold above is nonsense.
+    """
+    m = run_preflight(None, _stacked(1), cfg())["metrics"]
+
+    assert m["coverage_p50"] == pytest.approx(1.0, abs=0.02)
+    assert m["coverage_max"] == pytest.approx(1.0, abs=0.05)
+
+
+def test_a_satin_column_counts_one_layer_per_same_rail_advance():
+    """Law 27's unit for satin is 0.4 / SAME-RAIL advance, so a column at the
+    0.40 mm default is ONE layer. A zigzag lays two legs between consecutive
+    same-rail penetrations, so counting raw thread would read 2.0 here and
+    would score the playbook's own 'safe classic stack' at 3.2 instead of
+    2.5 — flagging the arrangement law 27 calls safe.
+    """
+    column = _plan(_satin_column(60, width_mm=4.0, spacing_mm=0.4))
+    m = run_preflight(None, column, cfg())["metrics"]
+
+    assert m["coverage_p50"] == pytest.approx(1.0, abs=0.1)
+    assert DENSITY_STACKED not in _codes(run_preflight(None, column, cfg()))
+
+
+def test_underlay_is_charged_to_the_budget_not_ignored():
+    """Law 28: underlay costs ~0.1-0.2 coverage units — cheap, but not zero,
+    and law 27's region sum includes it. A zigzag underlay at the 2.0 mm
+    house spacing must price at 0.4 / 2.0 = 0.20, the top of law 28's band,
+    derived from the stitch geometry alone rather than assumed.
+
+    Asserted areally, over the band the underlay sweeps, because that is the
+    figure law 28 quotes. A percentile would answer a different question: at
+    2.0 mm the zigzag is coarser than a 1.0 mm cell, so the map resolves its
+    individual legs (0.4 on a leg, less between) instead of averaging them —
+    correct, and not what "0.1-0.2 units" means.
+    """
+    crosses = 40
+    zig = _satin_column(crosses, width_mm=6.0,
+                        spacing_mm=machine.UNDERLAY_ZIGZAG_MM, shape_id="U1")
+    zig.kind = st.UNDERLAY
+    grid, _origin = _coverage_map(_plan(zig))
+
+    swept_mm2 = 6.0 * (crosses - 1) * machine.UNDERLAY_ZIGZAG_MM
+    laid = float(grid.sum()) * machine.COVERAGE_CELL_MM ** 2
+    assert laid / swept_mm2 == pytest.approx(0.20, abs=0.02)
+
+
+def test_two_full_density_fills_stay_inside_the_budget():
+    """Law 27 permits it in as many words — 'never more than TWO full-density
+    fills stacked' — so 2.0 units must not be a finding, or the check
+    condemns a legal construction."""
+    report = run_preflight(None, _stacked(2), cfg())
+
+    assert report["metrics"]["coverage_p50"] == pytest.approx(2.0, abs=0.05)
+    assert DENSITY_STACKED not in _codes(report)
+
+
+def test_a_third_stacked_layer_warns_though_every_object_passes_alone():
+    """THE defect this check exists for. Three fills at the correct 0.40 mm
+    spacing on one patch of fabric: every per-OBJECT density check passes,
+    because each layer is exactly on target — DENSITY_EXTREME compares
+    emitted spacing against the planner's own, and 0.40 is the planner's own.
+    Only the per-REGION sum sees it. Law 27: 'a third layer means cutting a
+    hole in the base'. Measured 3.00 units over 175 mm2.
+    """
+    report = run_preflight(None, _stacked(3), cfg())
+
+    assert DENSITY_EXTREME not in _codes(report), \
+        "the per-object check must be blind to this — that is the defect"
+    hit = [f for f in report["findings"] if f["code"] == DENSITY_STACKED]
+    assert len(hit) == 1
+    assert hit[0]["severity"] == "warn"
+    assert hit[0]["extra"]["peak_units"] == pytest.approx(3.0, abs=0.1)
+    assert hit[0]["extra"]["over_warn_mm2"] > 100.0
+    assert hit[0]["extra"]["over_block_mm2"] == 0.0
+
+
+def test_a_fourth_stacked_layer_blocks():
+    """Past 3.5 units the file is not a judgement call. Embrilliance's red
+    line is 6 thread layers ~ 3 lockstitch passes and we are over it."""
+    hit = [f for f in run_preflight(None, _stacked(4), cfg())["findings"]
+           if f["code"] == DENSITY_STACKED]
+
+    assert len(hit) == 1
+    assert hit[0]["severity"] == "block"
+    assert hit[0]["extra"]["peak_units"] == pytest.approx(4.0, abs=0.1)
+
+
+def test_a_stacked_speckle_too_small_to_act_on_is_not_a_finding():
+    """Law 27's remedy stops at 5x5 mm ('no holes under objects < 5x5 mm'),
+    and clean work does speckle over 2.5 where satin columns join or a shape
+    too small for anything else is rescued with a triple run. Measured on the
+    house fixtures, the biggest such speckle is 11 mm2 on the benchmark and
+    6 mm2 on the fixture logo. Four stacked layers on a 3 mm square is 9 mm2
+    of fabric — over the threshold, under the floor, and silent."""
+    report = run_preflight(None, _plan(*(_square_fill(side_mm=3.0, shape_id=f"F{i}")
+                                         for i in range(4))), cfg())
+
+    assert report["metrics"]["coverage_max"] > machine.COVERAGE_BLOCK_UNITS
+    assert DENSITY_STACKED not in _codes(report)
+
+
+def test_coverage_reads_stitch_geometry_through_ties_and_splits(plan):
+    """The playbook's two parity traps, which would double every satin
+    number. Stage 7 splices tie bounces INTO the runs they protect and a
+    bounce is a 180 deg reversal; split satin inserts mid-cross penetrations
+    that make consecutive segments collinear. Either one, unstripped, moves a
+    real satin column across the reversal gate and gets it charged at twice
+    its density. The fixture's real plan carries both, and its satin still
+    prices at one layer."""
+    stitch_plan, _planned, _warnings = plan
+    m = run_preflight(None, stitch_plan, cfg(**PLAN_CFG_KW))["metrics"]
+
+    # Fill at 0.40 + underlay at law 28's 0.1-0.2: the classic stack's floor.
+    assert m["coverage_p50"] == pytest.approx(1.2, abs=0.15)
+    assert m["coverage_p95"] < machine.COVERAGE_WARN_UNITS
+
+
+# --- Same-hole strikes (law 17) ----------------------------------------------
+
+def test_same_hole_stays_silent_on_the_practice_professionals_share(plan):
+    """The field note of 2026-08-01 measured 9.455% of penetrations landing
+    on points struck 2+ times across the 36-file corpus, ALL 36 files
+    containing 3+ stacked points, against our benchmark's 9.8% — the same
+    practice, and both charges against the engine were dismissed. A check
+    that fires there is wrong, and 'the naive fix would have been damaging':
+    reading law 17 strictly 'would condemn every satin column ever sewn'.
+    """
+    stitch_plan, _planned, _warnings = plan
+    report = run_preflight(None, stitch_plan, cfg(**PLAN_CFG_KW))
+
+    assert SAME_HOLE_HEAVY not in _codes(report)
+    assert report["metrics"]["same_hole_fraction"] < 0.09455
+
+
+def test_same_hole_fires_only_on_a_rate_far_above_the_corpus():
+    """A regression that revisits every penetration once more: 50% of
+    landings are on an already-struck point, five times the corpus's 9.455%.
+    INFO severity — law 17's mechanism is real but its trade phrasing is
+    stricter than professional files, so this must never cost score."""
+    pts: list[tuple[float, float]] = []
+    for i in range(40):
+        a, b = (2.0 * i, 0.0), (2.0 * i, 4.0)
+        pts.extend([a, b, a, b])
+    report = run_preflight(None, _plan(StitchRun(points=pts, kind=st.RUN)), cfg())
+
+    hit = [f for f in report["findings"] if f["code"] == SAME_HOLE_HEAVY]
+    assert len(hit) == 1
+    assert hit[0]["severity"] == "info"
+    assert hit[0]["extra"]["fraction"] > 0.25
+    assert report["score"] == 100, "an info finding must not cost score"
 
 
 # --- Scoring -----------------------------------------------------------------
