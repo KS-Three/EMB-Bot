@@ -44,7 +44,10 @@
       pullCompMm: 0.5,
       fillUnderlay: "double_lattice",
       satinUnderlay: "zigzag",
-      densityAdjust: 1.05,
+      // Below 1.0 on purpose: this scales row SPACING, and pile needs
+      // TIGHTER rows (physics law 30) -- stitches sink into the nap. Shipped
+      // inverted (1.05/1.1) until 2026-08-01; see digitizer fabrics.py.
+      densityAdjust: 0.90,
       trimAtMm: 3.5,
       notes: "Thick nap; heavy underlay, topping helps.",
     },
@@ -64,7 +67,7 @@
       pullCompMm: 0.6,
       fillUnderlay: "double_lattice",
       satinUnderlay: "zigzag",
-      densityAdjust: 1.1,
+      densityAdjust: 0.85, // pile: tighter, not looser -- see fleece note
       trimAtMm: 4.0,
       notes: "High loops; heavy underlay + topping essential.",
     },

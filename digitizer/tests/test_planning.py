@@ -37,7 +37,10 @@ def test_fabric_table_matches_the_browser_engine():
     cap = get_fabric("structured_cap")
     assert (cap.pull_comp_mm, cap.fill_underlay, cap.trim_at_mm) == (0.4, "edge_zigzag", 3.0)
     towel = get_fabric("terry_towel")
-    assert (towel.pull_comp_mm, towel.density_adjust, towel.trim_at_mm) == (0.6, 1.1, 4.0)
+    # 0.85 < 1.0 on purpose: density_adjust scales row SPACING and pile needs
+    # tighter rows (physics law 30). The 1.1 this pinned before 2026-08-01 was
+    # the inversion itself — sparser rows on the fabric that swallows stitches.
+    assert (towel.pull_comp_mm, towel.density_adjust, towel.trim_at_mm) == (0.6, 0.85, 4.0)
     assert fabric_for_garment("hat_front").id == "structured_cap"
     assert get_fabric("no_such_fabric").id == "pique_knit", "an unknown id must not raise"
 

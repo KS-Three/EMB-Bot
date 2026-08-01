@@ -33,12 +33,22 @@ FABRICS: list[Fabric] = [
            1.0, 3.0, "Polo pique; moderate stretch."),
     Fabric("jersey_tee", "Jersey / t-shirt", 0.35, "edge_lattice", "center_run",
            1.0, 3.0, "Stretchy knit; needs solid underlay."),
+    # Pile fabrics run BELOW 1.0: the multiplier scales row SPACING, and pile
+    # needs tighter rows, not looser — stitches sink into the nap (physics law
+    # 30: density +10-20% on lofty goods, and more total thread on loft
+    # puckers LESS because the loft absorbs it). These shipped at 1.05/1.1 for
+    # months: the field reads like "more density" and is applied as "more
+    # spacing", so towels and blankets — the two garments already mapped to
+    # these presets — sewed 5-10% SPARSER than a polo. Caught independently by
+    # the specialty-techniques research, the preflight coverage instrument,
+    # and a direct code read, same day. Exact values are sew-out-gated; the
+    # DIRECTION is not.
     Fabric("fleece_sweatshirt", "Fleece / sweatshirt", 0.5, "double_lattice", "zigzag",
-           1.05, 3.5, "Thick nap; heavy underlay, topping helps."),
+           0.90, 3.5, "Thick nap; heavy underlay, topping helps."),
     Fabric("canvas_tote", "Canvas / twill", 0.2, "edge_run", "center_run",
            1.0, 3.0, "Stable woven; minimal compensation."),
     Fabric("terry_towel", "Terry towel", 0.6, "double_lattice", "zigzag",
-           1.1, 4.0, "High loops; heavy underlay + topping essential."),
+           0.85, 4.0, "High loops; heavy underlay + topping essential."),
     Fabric("woven_dress", "Woven dress shirt", 0.2, "edge_run", "center_run",
            1.0, 3.0, "Stable woven; minimal compensation."),
 ]
