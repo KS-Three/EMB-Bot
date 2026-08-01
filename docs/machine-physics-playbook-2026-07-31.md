@@ -116,3 +116,64 @@ Unverified, in priority order, each with its test patch:
 8. **DST axis orientation (carried over from the codec worksheet).** Our JS bit table is transposed vs pyembroidery/Tajima standard — unresolved. *Test:* the asymmetric L-mark patch, first thing on the card; everything else on the sew-out is uninterpretable if X/Y are flipped.
 
 One hooping of twill + one of jersey + one cap covers tests 1–6 and 8. That is the next revision of the sew-out card.
+---
+
+## Field note — Law 17 tested against our own output and the corpus (2026-08-01)
+
+Law 17 (needle blade 0.75 mm; two penetrations within ~0.5 mm share a hole;
+"tie-in/tie-off must never stack on one point") reads like an indictment of two
+things in our engine. Both were measured. **Both charges are dismissed**, and
+the measurements are recorded here because the naive fix in either direction
+would have been damaging.
+
+### Charge 1: `SATIN_SHORT_STITCH_AT_MM = 0.3` sits inside the 0.5 mm same-hole radius
+
+Same-rail penetration census, ties and split points stripped first:
+
+| fixture | 0.00–0.15 | 0.15–0.30 | **0.30–0.50** | 0.50–0.80 | 0.80+ | median |
+|---|---|---|---|---|---|---|
+| ribbon_curve 80 mm | 0.0% | 0.6% | **97.4%** | 1.9% | 0.0% | 0.408 |
+| logo_whitebg 80 mm | 0.0% | 0.0% | **98.3%** | 0.0% | 1.7% | 0.409 |
+| benchmark 90 mm | 0.6% | 2.6% | **59.3%** | 36.0% | 1.6% | 0.447 |
+
+Essentially every same-rail interval we sew lands in the 0.30–0.50 mm band —
+**because that band is the target.** `SATIN_SPACING_MM` is 0.40, which is
+Law 16's physical thread width and the corpus's measured professional density
+(0.40–0.51, outer rail median 0.41). Reading Law 17 as "no two penetrations
+within 0.5 mm" would condemn every satin column ever sewn, professional ones
+included. The 0.5 mm figure describes a needle re-entering a hole whose thread
+is already anchored there; adjacent rail penetrations at one thread width are
+the intended structure, laid edge to edge.
+
+The guard's 0.3 mm threshold therefore measures the right thing: penetrations
+that have bunched **below** the design spacing, which happens on the inside of
+curves. On the benchmark that is 3.2% of intervals — the guard's actual
+customers. Raising it toward 0.5 would fire the guard on correctly-spaced
+satin and, given the guard retracts stations off the rail, manufacture the
+very coverage holes commits 493a548 and c6046ff removed. **No change.**
+
+### Charge 2: `tie_run` strikes one point three times
+
+True as stated — the lock bounces `[at, inner, at, inner, at]`, so `at` takes
+three strikes and `inner` two. On the benchmark, 268 points are struck 2+ times
+(237 of them 3+), worst case 6. So we asked whether professionals avoid it.
+
+**They do not.** Across the 36-file corpus (732,246 penetrations): points struck
+2+ times are **9.455%** of penetrations, and **all 36 files** contain 3+ stacked
+points. Our benchmark rate is 9.8% — the same practice.
+
+Timing tells the same story. Of the corpus's 49,879 repeat-strike pairs,
+**19.9% are two or fewer stitches apart** — a lock bouncing in place, exactly
+our pattern — with the rest spread across later revisits (median gap 14).
+Ours: 34.9% at gap ≤ 2, median gap 8, and zero long revisits (we never
+re-cross an old object, which is a *different* difference and a favorable one).
+
+Where we do match Law 17 exactly: consecutive strikes closer than 0.15 mm are
+**zero** in our output, and the corpus makes such a move only 584 times in
+189,736 short moves (0.3%).
+
+**Verdict: no defect on either charge.** Law 17's mechanism is sound and its
+trade-advice phrasing is stricter than professional files themselves. What it
+*does* justify is a preflight INFO check on same-hole strike counts far above
+the corpus's ~9.5% rate, which would catch a genuine future regression without
+condemning present-day correct behavior. Filed as the honest use of this law.

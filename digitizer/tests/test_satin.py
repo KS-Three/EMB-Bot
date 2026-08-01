@@ -502,3 +502,38 @@ def test_split_satin_off_is_a_config_choice():
              for a, b in zip(r.points, r.points[1:])]
     assert max(steps) > machine.SPLIT_SATIN_ABOVE_MM, \
         "inf threshold must sew raw crosses (the jolly-af house style)"
+
+
+def test_same_rail_spacing_sits_on_the_thread_width_not_below_the_guard():
+    """Law 17 field note, pinned: the short-stitch guard's 0.3 mm threshold is
+    BELOW the design spacing on purpose, and must stay there.
+
+    40 wt thread is 0.4 mm wide (physics law 16) and the professional corpus
+    sews same-rail penetrations at 0.40-0.51 mm, so essentially every interval
+    we emit lands in the 0.30-0.50 mm band: measured 97.4% on ribbon_curve,
+    98.3% on logo_whitebg. That is the target, not a violation of the ~0.5 mm
+    same-hole radius — which describes re-entering a hole that already holds
+    anchored thread, not laying neighbouring stitches edge to edge.
+
+    The guard exists for penetrations that bunch BELOW the spacing on the
+    inside of a curve. Raising its threshold toward 0.5 would fire it on
+    correctly-spaced satin, and since it retracts stations off the rail, that
+    manufactures the coverage holes commits 493a548 and c6046ff removed. This
+    test fails if anyone tries.
+    """
+    assert machine.SATIN_SHORT_STITCH_AT_MM < machine.SATIN_SPACING_MM, \
+        "the guard must trip below the design spacing, never at or above it"
+
+    satin, _, _ = _satin_runs(C_STROKE)
+    adv = [math.dist(a, b)
+           for r in satin
+           for rail in (r.points[0::2], r.points[1::2])
+           for a, b in zip(rail, rail[1:])]
+    adv = [d for d in adv if d > 1e-9]
+    assert adv, "no rail advances measured"
+    in_band = sum(1 for d in adv if 0.30 <= d < 0.50)
+    assert in_band / len(adv) >= 0.85, \
+        f"only {100 * in_band / len(adv):.0f}% of intervals sit on the thread width"
+    below_guard = sum(1 for d in adv if d < machine.SATIN_SHORT_STITCH_AT_MM)
+    assert below_guard / len(adv) <= 0.05, \
+        f"{below_guard} intervals bunched under the guard threshold — the guard is not doing its job"
