@@ -88,6 +88,10 @@ def sequence(
 
     border_style = (cfg.border or "off").lower()
     rescue = cfg.small_shape_rescue
+    # The config-to-emitter mapping the split-satin knobs document: False
+    # sews raw crosses however long (a real house style — jolly-af ships
+    # 7 mm stitches), None defers to the corpus-median machine default.
+    split_above = math.inf if not cfg.split_satin else cfg.split_satin_above_mm
     # The sewable-detail floor, as an area: stage 3 keeps shapes under it only
     # for the run tier, and this is where they are routed to it.
     detail_mm2 = cfg.min_detail_mm ** 2
@@ -127,6 +131,7 @@ def sequence(
                     underlay_style=satin_underlay,
                     trim_at_mm=trim_at,
                     start_near=entry,
+                    split_above_mm=split_above,
                 )
                 # A ribbon the skeleton could not resolve still has to sew:
                 # fall through to fill rather than silently dropping artwork.

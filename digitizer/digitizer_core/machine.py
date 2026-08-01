@@ -74,6 +74,46 @@ SATIN_ZIGZAG_ABOVE_MM = 2.5
 # point. Dropped during emission, exactly as the browser engine does.
 SATIN_MIN_CROSS_MM = 0.5
 
+# --- Split satin (wide-cross intermediate penetrations) ---------------------
+# Measured 2026-07-31 over the 36-file professional corpus (scratch_corpus)
+# plus Kent's three commissioned files, with a traverse-level instrument:
+# study_pro.classify is BLIND to splits, because a split cross reads as two
+# collinear segments and the reversal fraction falls below its satin gate —
+# which is why the earlier study reported wide satin as unsplit.
+
+# Above this cross length the needle penetrates mid-cross instead of throwing
+# one long stitch. Corpus split fraction by cross length: 14% at 3.0 mm, 27%
+# at 4.0, 24% at 4.5, 53% at 5.0, 65% at 5.5, 92% at 7.0, ~100% from 7.5 —
+# the majority crossover sits between the 4.5 and 5.0 buckets. House styles
+# disagree (PRECISION DRON HAT splits from ~3.5 mm; be-joy from ~5.0; beckers
+# logo hat sews raw crosses to ~6; jolly-af and sweet-heart to ~7), so 5.0 is
+# the corpus-wide median vote. It coincides with SATIN_MAX_WIDTH_MM: a column
+# that CLASSIFIES satin (mean ribbon width <= 5.0) splits only where it
+# locally bulges past its mean — junctions and flares, exactly the crosses
+# that float. This is the structural fix long before the format ceiling
+# (MAX_STITCH_MM 12.1) forces anything.
+SPLIT_SATIN_ABOVE_MM = 5.0
+
+# Target segment of a split cross: k = ceil(cross / this) segments, interior
+# penetrations at j/k. Corpus: implied segment W/k med 2.51 (p25 2.07, p75
+# 2.95), raw segment med inside wide columns 3.10, and the observed k mode
+# matches ceil(W / 3.0) at 5, 6, 7 and 9 mm widths (k=2 at 83% / 68%, k=3 at
+# 49% / 79%). Equal to FILL_STITCH_MM, and that is no accident: a cross too
+# long to lie flat penetrates at fill pitch.
+SPLIT_SEGMENT_MM = 3.0
+
+# Stagger: the penetration comb shifts along the cross station to station so
+# split holes never trench a straight line down the column — the same defect
+# FILL_STAGGERS exists for. Corpus (27,256 k=2 split crosses): offset from
+# mid-cross |t-0.5| med 0.117 of the cross, station-to-station shift med
+# 0.214, and the aligned-hole minority is 131 columns of 1,922. Observed
+# cycles run 3 stations (best-friend, amplitude ~0.26) to 6 (be-joy, ~0.13).
+# A 4-station wave at +-0.23 of one segment reproduces the medians — at k=2,
+# 0.23/2 = 0.115 of the cross — and matches FILL_STAGGERS' period.
+SPLIT_STAGGER_PERIOD = 4
+SPLIT_STAGGER_STEP_SEGS = 0.23
+SPLIT_STAGGER_WAVE = (1.0, -1.0, 1.0 / 3.0, -1.0 / 3.0)
+
 # Inside-curve protection ("short stitches"). On a bend the inside rail is
 # shorter than the outside one, so penetrations bunch up; closer than this and
 # the needle chews the same spot. Every other cross is shortened by the pull

@@ -406,3 +406,99 @@ def test_a_shape_whose_skeleton_prunes_away_still_sews_as_fill():
         assert runs == [], "an empty report with runs attached would double-sew"
     else:
         assert any(r.kind == "satin" for r in runs)
+
+
+# --- Split satin ------------------------------------------------------------
+
+WIDE_BAR = Polygon([(0, 0), (24, 0), (24, 7), (0, 7)])   # 7 mm crosses: splits
+
+
+def test_no_split_below_threshold_is_byte_identical():
+    """The contract that lets every parity instrument stay honest: a column
+    with no over-threshold cross emits EXACTLY what it emitted before split
+    satin existed. BAR's crosses are ~2 mm against the 5.0 threshold."""
+    from digitizer_core.stage6_satin import satin_stroke, extract_strokes, _WidthField
+
+    plain, _, _ = _satin_runs(BAR)
+    raw, report = satin_shape(BAR, "S1", underlay_style="none", trim_at_mm=3.0,
+                              split_above_mm=math.inf)
+    raw = [r for r in raw if r.kind == "satin"]
+    assert [r.points for r in plain] == [r.points for r in raw], \
+        "an unsplittable column must not notice the feature exists"
+
+
+def test_wide_crosses_split_and_stay_under_the_threshold():
+    """Corpus law: 53% of 5 mm crosses split, ~100% from 7.5. On a 7 mm bar
+    no stitch may exceed the threshold itself — full-width crosses split into
+    pieces (longest 1.23 x segment = 3.7 mm), while cap-zone crosses that
+    measure under 5.0 sew raw, exactly as the corpus majority does."""
+    from digitizer_core.stage6_satin import strip_splits
+
+    satin, _, _ = _satin_runs(WIDE_BAR)
+    main = max(satin, key=lambda r: len(r.points))
+    steps = [math.dist(a, b) for a, b in zip(main.points, main.points[1:])]
+    assert max(steps) <= machine.SPLIT_SATIN_ABOVE_MM + 1e-6, \
+        f"unsplit stitch survived: {max(steps):.2f} mm"
+    # And the splits really are extra penetrations, not moved rails:
+    rails = strip_splits(main.points)
+    assert len(rails) < len(main.points), "no split points were inserted"
+
+
+def test_strip_splits_recovers_the_exact_rails():
+    """strip_splits is the reading contract: rails recovered from a split
+    column must equal the rails of the same column emitted unsplit."""
+    from digitizer_core.stage6_satin import strip_splits
+
+    split_runs, _, _ = _satin_runs(WIDE_BAR)
+    raw_runs, _ = satin_shape(WIDE_BAR, "S1", underlay_style="none",
+                              trim_at_mm=3.0, split_above_mm=math.inf)
+    raw_runs = [r for r in raw_runs if r.kind == "satin"]
+    assert len(split_runs) == len(raw_runs)
+    for s, r in zip(split_runs, raw_runs):
+        stripped = strip_splits(s.points)
+        assert len(stripped) == len(r.points), \
+            f"rail count drifted: {len(stripped)} vs {len(r.points)}"
+        worst = max(math.dist(a, b) for a, b in zip(stripped, r.points))
+        assert worst <= 1e-6, f"a recovered rail moved {worst:.4f} mm"
+
+
+def test_split_points_stagger_between_stations():
+    """Aligned split holes trench a visible line down the column (corpus:
+    aligned is the minority, 131 of 1,922 split columns). Consecutive
+    same-rail stations must not put their first split point at the same
+    fraction of the cross."""
+    from digitizer_core.stage6_satin import strip_splits
+
+    satin, _, _ = _satin_runs(WIDE_BAR)
+    pts = satin[0].points
+    rails = strip_splits(pts)
+    # Walk crosses: rails alternate A,B; find each cross's split fractions.
+    fracs = []
+    ri = 0
+    i = 0
+    while i < len(pts) - 1 and ri < len(rails) - 1:
+        assert pts[i] == rails[ri]
+        j = i + 1
+        mids = []
+        while j < len(pts) and pts[j] != rails[ri + 1]:
+            mids.append(pts[j])
+            j += 1
+        if mids:
+            a, b = rails[ri], rails[ri + 1]
+            span = math.dist(a, b)
+            fracs.append(round(math.dist(a, mids[0]) / span, 3))
+        i, ri = j, ri + 1
+    assert len(fracs) >= 6, "expected many split crosses on a 7 mm bar"
+    assert len(set(fracs)) >= 2, f"split holes trench a line: all at {fracs[0]}"
+
+
+def test_split_satin_off_is_a_config_choice():
+    from digitizer_core import PipelineConfig
+    assert PipelineConfig().split_satin is True
+    raw, _ = satin_shape(WIDE_BAR, "S1", underlay_style="none",
+                         trim_at_mm=3.0, split_above_mm=math.inf)
+    steps = [math.dist(a, b)
+             for r in raw if r.kind == "satin"
+             for a, b in zip(r.points, r.points[1:])]
+    assert max(steps) > machine.SPLIT_SATIN_ABOVE_MM, \
+        "inf threshold must sew raw crosses (the jolly-af house style)"

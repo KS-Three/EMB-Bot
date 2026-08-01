@@ -28,6 +28,34 @@ design lessons were learned the hard way and are kept deliberately:
 - Free stroke ends are **trimmed by about half the stroke width**: the medial
   axis bends toward corners at a cap, and crosses placed there degenerate.
 
+Split satin, and the rail-parity contract
+-----------------------------------------
+A cross longer than `machine.SPLIT_SATIN_ABOVE_MM` carries intermediate
+penetrations (split satin): long stitches float, snag, and pull, and the
+professional corpus splits them — 53% of 5 mm crosses, ~100% from 7.5 mm.
+The split points are staggered station to station so the holes never trench a
+line down the column, mirroring the corpus's 3-6-station cycles.
+
+That collides with a load-bearing contract: emitted satin points strictly
+alternate rails (A, B, A, B, ...), and every instrument reads them that way —
+the tests slice rails as even/odd points, `tools/audit.py` and the fan test
+scan same-rail pairs two apart. The resolution, chosen over flagging split
+crosses as separate runs or length-classifying in every instrument:
+
+1. Below the threshold nothing changes — a column with no over-threshold
+   cross emits byte-identical points, so every existing fixture, benchmark
+   and instrument keeps its exact parity read (current fixtures top out at
+   3.71 mm crosses against the 5.0 threshold).
+2. An over-threshold cross keeps its rail penetrations in strict A/B order
+   and inserts split points BETWEEN them, exactly on the cross segment
+   (`_split_points` lerps along A->B). `strip_splits` removes them exactly —
+   a point collinear with and between its neighbours can only be a split
+   penetration, because a real rail-to-rail step always turns (the return
+   leg reverses; degenerate crosses are dropped) — the same
+   strip-before-reading contract `stitches.strip_ties` established for lock
+   stitches. Instruments that may meet wide columns strip ties first, then
+   splits, then read parity as ever.
+
 Everything works in mm, y-down, the space stage 4 produced.
 """
 from __future__ import annotations
@@ -1000,14 +1028,87 @@ def _round_corners(spine: list[tuple[float, float]], half_mm: float,
     return out
 
 
+def _split_points(pa: tuple[float, float], pb: tuple[float, float],
+                  station: int, above_mm: float) -> list[tuple[float, float]]:
+    """Intermediate penetrations for one cross, or [] when it needs none.
+
+    A cross longer than `above_mm` is divided into k = ceil(len /
+    SPLIT_SEGMENT_MM) segments with penetrations at j/k along it, the whole
+    comb shifted by the station's phase of the stagger wave so consecutive
+    stations never stack their holes (corpus: aligned split holes are the
+    minority, 131 columns of 1,922 — see machine.py for all the numbers).
+
+    Points are exact lerps on the A->B segment: `strip_splits` depends on
+    that collinearity to remove them exactly. The shift is +-0.23 of one
+    segment, so the shortest end segment is 0.77 * len/k — above 1.9 mm at
+    the 5.0 threshold, comfortably clear of MIN_STITCH_MM — and the longest
+    is 1.23 * len/k, under 3.7 mm for any splittable cross up to the format
+    ceiling.
+    """
+    cross = math.dist(pa, pb)
+    if cross <= above_mm:
+        return []
+    k = int(math.ceil(cross / machine.SPLIT_SEGMENT_MM))
+    wave = machine.SPLIT_STAGGER_WAVE[station % machine.SPLIT_STAGGER_PERIOD]
+    shift = machine.SPLIT_STAGGER_STEP_SEGS * wave
+    out = []
+    for j in range(1, k):
+        t = (j + shift) / k
+        out.append((pa[0] + (pb[0] - pa[0]) * t, pa[1] + (pb[1] - pa[1]) * t))
+    return out
+
+
+def _on_segment(a: tuple, p: tuple, b: tuple, eps: float = 1e-6) -> bool:
+    """Is p strictly between a and b, on the segment to within eps mm?"""
+    abx, aby = b[0] - a[0], b[1] - a[1]
+    apx, apy = p[0] - a[0], p[1] - a[1]
+    len2 = abx * abx + aby * aby
+    if len2 <= eps * eps:
+        return False
+    if abs(apx * aby - apy * abx) > eps * math.sqrt(len2):
+        return False
+    t = (apx * abx + apy * aby) / len2
+    return 0.0 < t < 1.0
+
+
+def strip_splits(points: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """A satin run's points with split penetrations removed — rails only.
+
+    The exact inverse of `_split_points`, for any instrument that reads a
+    run's points as alternating rail penetrations: split points lie ON the
+    segment between their neighbours (they are lerps along the cross), and no
+    real rail penetration ever can — consecutive rail points always turn,
+    because the return leg reverses direction and degenerate crosses are
+    dropped at SATIN_MIN_CROSS_MM. Same reading contract as
+    `stitches.strip_ties`; strip ties first on plan-level runs (tie bounces
+    revisit one point, so their zero-length base segments never read as
+    collinear here).
+    """
+    if len(points) < 3:
+        return list(points)
+    out = [points[0]]
+    for i in range(1, len(points) - 1):
+        if _on_segment(out[-1], points[i], points[i + 1]):
+            continue
+        out.append(points[i])
+    out.append(points[-1])
+    return out
+
+
 def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
-                 field: _WidthField | None = None) -> list[tuple[float, float]]:
+                 field: _WidthField | None = None,
+                 split_above_mm: float | None = None) -> list[tuple[float, float]]:
     """One stroke -> flat zigzag points (A1, B1, A2, B2, ...).
 
     Rails strictly alternate, so EVERY consecutive pair of points is a stitch
     that crosses the column: the outbound leg A(i)->B(i) square across, the
     return leg B(i)->A(i+1) leaning one spacing forward. That is what a satin
     column is on the machine.
+
+    One exception, and it is fenced: a cross longer than `split_above_mm`
+    (None = machine.SPLIT_SATIN_ABOVE_MM) carries intermediate split
+    penetrations between its rail points — see the module docstring for the
+    contract and `strip_splits` for the exact way back to pure rails.
     """
     spine = _smooth(stroke.spine, 3, stroke.closed)
     spine = _round_corners(spine, half_mm, stroke.closed)
@@ -1038,9 +1139,11 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
     spine = _resample(spine, steps)
     rail_a, rail_b = _rail_points(poly, spine, stroke.closed, half_mm, field)
     crosses = _short_stitch_guard(rail_a, rail_b)
+    above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
 
     out: list[tuple[float, float]] = []
     prev_kept: tuple | None = None
+    kept = 0
     for i, (pa, pb) in enumerate(crosses):
         if math.dist(pa, pb) < machine.SATIN_MIN_CROSS_MM:
             continue  # rails pinched together: shared tip or degenerate cap
@@ -1057,7 +1160,21 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
         # Keeping the order constant turns that step into the RETURN LEG of the
         # zigzag: same two penetrations, but the thread crosses the column
         # instead of running up its edge.
-        out.extend((pa, pb))
+        #
+        # An over-threshold stitch gets its split penetrations HERE, between
+        # its rail points, from the final guarded geometry — so the guard,
+        # the dedup and the rail order never see them. BOTH legs split: the
+        # return leg B(i)->A(i+1) spans the same column as the cross (one
+        # spacing of lean longer), and the corpus's split columns split every
+        # traverse in both directions — splitting only the outbound leg would
+        # leave every other stitch over-length. Stagger phase runs on the
+        # KEPT-station count: dropped stations must not advance the wave.
+        if out:
+            out.extend(_split_points(out[-1], pa, kept, above))
+        out.append(pa)
+        out.extend(_split_points(pa, pb, kept, above))
+        out.append(pb)
+        kept += 1
     return out
 
 
@@ -1238,12 +1355,16 @@ def _order_strokes(strokes: list[Stroke],
 
 def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 trim_at_mm: float,
-                start_near: tuple[float, float] | None = None
+                start_near: tuple[float, float] | None = None,
+                split_above_mm: float | None = None
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
     contract `stitch_shape` uses, so stage 7 can treat the two identically.
 
     `start_near` is where the needle is when this shape's turn comes.
+    `split_above_mm` caps the stitch length before crosses split (None =
+    machine.SPLIT_SATIN_ABOVE_MM; `math.inf` disables splitting — the
+    mapping stage 7 applies for `PipelineConfig.split_satin = False`).
     """
     report = {"too_thin": False, "jumps": 0, "empty": False}
     strokes, half_mm, field = extract_strokes(poly)
@@ -1265,7 +1386,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     # free to choose.
     kept: list[tuple[Stroke, list]] = []
     for st in strokes:
-        pts = satin_stroke(poly, st, half_mm, field)
+        pts = satin_stroke(poly, st, half_mm, field, split_above_mm)
         if len(pts) >= 4:
             kept.append((st, pts))
     if not kept:

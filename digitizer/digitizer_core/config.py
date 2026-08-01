@@ -85,6 +85,19 @@ class PipelineConfig:
     satin: bool = True
     satin_max_width_mm: float | None = None
 
+    # Split satin. A satin cross longer than the threshold carries
+    # intermediate penetrations, staggered station to station so the holes
+    # never line up (machine.SPLIT_* carry the corpus measurements: the
+    # majority of professional crosses split from ~5 mm, ~100% by 7.5).
+    # True is the corpus-majority default; False sews raw crosses however
+    # long — a real house style (jolly-af and sweet-heart ship 6.5-7 mm raw
+    # crosses), not a safety toggle. None = machine.SPLIT_SATIN_ABOVE_MM.
+    # Wiring: stage 7's satin_shape call maps these to its `split_above_mm`
+    # kwarg (False -> math.inf). Until that one-line wiring lands, the
+    # machine default applies — identical behaviour for this default config.
+    split_satin: bool = True
+    split_satin_above_mm: float | None = None
+
     # Stage 6 — the border tier (an outline sewn as one closed circuit).
     #
     # "off"  – no borders. THE DEFAULT, and it is a measured choice, not
