@@ -69,6 +69,14 @@ _WELD_MAX_DOT = -0.5
 # rail fan while the short-stitch guard protects the inside. Splitting is the
 # fallback for corners so sharp the column would fold back over itself.
 _SPLIT_TURN_DEG = 90.0
+# A free end is a TAPERED TIP (not a square cap) when the ray-measured
+# corridor ONE STATION IN is already narrower than this fraction of the
+# stroke's half-width. Square caps read 0.85-0.94 there (BAR 0.851 is the
+# floor of the measured fixtures — the terminal ray tilt costs a few percent);
+# the ribbon_curve taper reads 0.59. The terminal station itself cannot be
+# the tell: ON a cap face the perpendicular ray skims the boundary and reads
+# 0.0 for square caps and tips alike (measured 0.0 on BAR, C and the ribbon).
+_TAPER_ZONE_FRAC = 0.8
 _RING8 = ((0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1))
 
 
@@ -694,6 +702,36 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
     for i in range(n):
         width[i] = min(width[i], floors[i] * 1.6 + 0.2)
 
+    # --- taper zones at free ends ------------------------------------------
+    #
+    # Where a stroke ends in a TAPERED TIP the corridor pinches to zero, and
+    # the smoothed profile above — a median over neighbours — cannot follow
+    # it down (it read 0.938 mm at the ribbon_curve tip whose true corridor
+    # is 0). The containment fallback in `place` then decides the rails by
+    # which discrete shrink factor happens to fit, and on the pinched side
+    # the offsets jump between factors instead of ramping with the taper:
+    # measured on ribbon_curve at 80 mm, the tip's pinched-side penetration
+    # degenerated onto the spine (no factor fit), the next station's offset
+    # popped to 0.93 mm — a 0.96 mm same-rail hole — and two stations later
+    # the recovering offset cancelled the spine advance down to a 0.16 mm
+    # crawl, tripping the short-stitch guard mid-taper. Capping the interior
+    # taper-zone widths to the honest per-station ray measurement makes the
+    # rails ramp with the taper itself: the same intervals measure 0.30-0.56.
+    # The terminal station is NOT capped — its cross is the designed cap
+    # finish — and a floor of half the minimum cross keeps a mid-zone ray
+    # miss from collapsing a station that `place` can still fit.
+    zs = ze = 0
+    if not closed and n >= 4:
+        while zs + 1 < n - 1 and raw[zs + 1] < _TAPER_ZONE_FRAC * fallback_half_mm:
+            zs += 1
+            width[zs] = min(width[zs],
+                            max(raw[zs], machine.SATIN_MIN_CROSS_MM / 2))
+        while ze + 1 < n - 1 - zs and \
+                raw[n - 2 - ze] < _TAPER_ZONE_FRAC * fallback_half_mm:
+            ze += 1
+            width[n - 1 - ze] = min(width[n - 1 - ze],
+                                    max(raw[n - 1 - ze], machine.SATIN_MIN_CROSS_MM / 2))
+
     # Containment still governs: a smoothed width can overshoot where the
     # ribbon pinches, and thread outside the artwork is the one defect this
     # module is never allowed to ship. Each side yields on its own — pulling
@@ -735,8 +773,14 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
         # belong, alternating full and guard-mangled). And never refine the
         # cap zone — those stations are the deliberate terminal fan onto the
         # cap corners, and packing crosses into it rebuilds the starburst this
-        # module exists to prevent.
-        near_cap = not closed and (i <= 2 or i >= n - 2)
+        # module exists to prevent. EXCEPT at a tapered tip: there is no fan
+        # to protect (the rails pinch, the terminal cross is a fraction of the
+        # column), and the tip's first interval is where the pinched rail
+        # jumps — 0.96 mm on ribbon_curve — so the taper zone refines by the
+        # same gate as everywhere else.
+        in_taper = not closed and ((zs and i <= zs + 1)
+                                   or (ze and i >= n - 1 - ze))
+        near_cap = not closed and (i <= 2 or i >= n - 2) and not in_taper
         adv = max(math.dist(rail_a[i - 1], rail_a[i]),
                   math.dist(rail_b[i - 1], rail_b[i]))
         if near_cap or adv <= machine.SATIN_SPACING_MM * 1.3:
@@ -744,6 +788,13 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
             ref_b.append(rail_b[i])
             continue
         m = int(math.ceil(adv / machine.SATIN_SPACING_MM))
+        if in_taper:
+            # In the taper zone the pieces must also stay ABOVE the guard
+            # threshold: a bare ceil splits a 0.53 mm interval into 0.26 mm
+            # halves, the guard fires on every one, and the retracted points
+            # read as fresh ~0.8 mm same-rail steps — the defect rebuilt by
+            # its own repair (measured on the ribbon tail before this floor).
+            m = max(1, min(m, int(adv / machine.SATIN_SHORT_STITCH_AT_MM)))
         for j in range(1, m):
             t = j / m
             px = spine[i - 1][0] * (1 - t) + spine[i][0] * t

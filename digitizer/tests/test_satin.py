@@ -347,16 +347,15 @@ def test_a_satin_free_end_does_not_fan_into_a_starburst():
 
     assert interior == [], f"over-wide rail gaps away from the caps: {interior}"
     assert tail == [], f"the end cap is fanning: {tail}"
-    # The head's two readings are NOT terminal-cross allowance — they are real
-    # coverage holes where the tapered tip runs narrower than the refinement
-    # can station (crosses 0 and 3, measured 0.96 and 0.83 mm). Pinned by
-    # count AND magnitude so they can neither multiply into the starburst this
-    # test polices nor quietly deepen while the count stays flat. (The old
-    # assertion bounded count only; two adjacent dropped stations at any depth
-    # kept it green.)
-    assert len(head) <= 2, f"the start cap is fanning: {head}"
-    for i, d in head:
-        assert d <= 1.05, f"taper coverage hole deepened at {i}: {d:.2f} mm"
+    # The head zone is CLEAN too, and stays pinned that way. Its two readings
+    # (0.96/0.83 mm at crosses 0 and 3) were taper coverage holes: the
+    # smoothed width profile could not follow the tip's pinch to zero, so the
+    # containment fallback jumped between discrete shrink factors instead of
+    # ramping. `_rail_points` now caps taper-zone widths to the per-station
+    # ray measurement and lets the zone refine — the same intervals measure
+    # 0.30-0.56 mm. A tapered tip has no terminal fan to excuse, so the head
+    # gets no allowance at all.
+    assert head == [], f"the start cap is fanning: {head}"
 
 
 # --- Underlay --------------------------------------------------------------
