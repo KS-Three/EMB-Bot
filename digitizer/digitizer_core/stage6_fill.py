@@ -49,9 +49,11 @@ def principal_angle_deg(poly: Polygon) -> float:
     penetrations piling up on the edges, and a fill that follows the shape
     instead of cutting across it.
     """
-    pts = list(poly.exterior.coords)
+    # A ring's coords repeat the first vertex at the close; keeping it would
+    # double-weight that one point and bend the axis of every rotated shape.
+    pts = list(poly.exterior.coords[:-1])
     for ring in poly.interiors:
-        pts.extend(ring.coords)
+        pts.extend(ring.coords[:-1])
     if len(pts) < 3:
         return 45.0
     a = np.asarray(pts, dtype=np.float64)

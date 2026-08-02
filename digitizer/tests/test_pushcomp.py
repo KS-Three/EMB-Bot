@@ -134,9 +134,15 @@ def rail_overhang(art: Polygon, pts) -> float:
 # towel lands on the same moved value with chaining on or off, so neither
 # directional comp nor chaining is in it. Isotropic compensation still produces
 # byte-identical output to the engine of its own day.
+# BOTH WHITEBG ENTRIES RE-BASELINED 2026-08-02: `principal_angle_deg` was
+# double-counting each ring's closing duplicate vertex, bending the fill axis
+# of every rotated shape (measured 1.99deg off on a rect; exact after
+# `coords[:-1]`). The whitebg fill shapes re-fill along the corrected axis;
+# ribbon is satin-only and holds to the digit, exactly the blast radius the
+# patch+revert measurement predicted.
 GOLDEN_FLAG_OFF = {
-    ("logo_whitebg.png", "left_chest"): ("fefe10faed0698c2df14", 2596, 8366),
-    ("logo_whitebg.png", "towel"): ("583d5c08d3a47e90378f", 3445, 10916),
+    ("logo_whitebg.png", "left_chest"): ("99c3c24dddd83ad1238d", 2621, 8444),
+    ("logo_whitebg.png", "towel"): ("c73f25796cff1fa4f82f", 3440, 10898),
     ("ribbon_curve.png", "left_chest"): ("9686247280255d9e5899", 1019, 3581),
     ("ribbon_curve.png", "hat_front"): ("3162101dd0c42ff6054e", 1033, 3623),
 }

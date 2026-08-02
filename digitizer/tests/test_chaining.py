@@ -466,8 +466,11 @@ def test_chaining_currently_puts_thread_on_bare_fabric(alpha):
     told it may travel over ground its own colour never reaches.
 
     Measured on this committed fixture, chaining takes bare exposure from
-    0.50 mm over 2 travel runs to 5.54 mm over 6, and the worst clearance from
-    0.206 mm to 0.528 mm — further from any thread than a whole thread is wide.
+    0.30 mm over 2 travel runs to 5.34 mm over 6, and the worst clearance from
+    0.205 mm to 0.528 mm — further from any thread than a whole thread is wide.
+    (Re-measured 2026-08-02 after the `principal_angle_deg` closing-vertex fix
+    moved the fill axis; the baseline IMPROVED from 0.50 mm, the on-figures
+    barely moved, and the defect's shape is unchanged.)
     The off figure is not zero because stage 6's own in-shape travel already
     crosses a little bare ground; that is pre-existing and separate.
 
@@ -487,7 +490,7 @@ def test_chaining_currently_puts_thread_on_bare_fabric(alpha):
     _l0, exp0, bare0, worst0 = _thread_bare_mm(off)
     _l1, exp1, bare1, worst1 = _thread_bare_mm(on)
 
-    assert (exp0, round(bare0, 1), round(worst0, 2)) == (2, 0.5, 0.21), \
+    assert (exp0, round(bare0, 1), round(worst0, 2)) == (2, 0.3, 0.2), \
         "the pre-chaining baseline moved; re-measure before touching the rest"
     assert exp1 > exp0 and bare1 > bare0, \
         "chaining no longer adds bare-fabric exposure — if that is real, this " \
