@@ -121,6 +121,13 @@ class StitchPlan:
             for r in b.runs:
                 trims += int(r.trim)
                 jumps += int(r.jump and not r.trim)
+                if r.jump and prev is not None:
+                    # The needle lifts here, so the next point is a new
+                    # penetration however close it lands. Same rule and same
+                    # reason as `export.plan_to_pattern`; the two counts are
+                    # what the sheet and the file each tell the operator, and
+                    # they have to be the same number.
+                    prev = None
                 for x, y in r.points:
                     # Count what the machine sews: the DST writer skips a point
                     # coincident with the previous one (two runs can share an

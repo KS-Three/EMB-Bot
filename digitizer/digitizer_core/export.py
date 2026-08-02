@@ -30,6 +30,11 @@ from .stitches import StitchPlan
 _UNITS_PER_MM = 10.0
 # Two positions closer than this are the same needle position, and emitting a
 # stitch between them would be a zero-length record the machine skips anyway.
+#
+# "The same needle position" is only true while the needle stays down. A JUMP
+# moves it WITHOUT penetrating, so the first stitch after one is not a repeat of
+# the position before it — it is the first penetration of the new path, and
+# `plan_to_pattern` forgets `last` across a jump for exactly that reason.
 _SAME_POINT_MM = 0.01
 
 
@@ -58,6 +63,16 @@ def plan_to_pattern(plan: StitchPlan) -> pyembroidery.EmbPattern:
             if run.jump and last is not None:
                 x, y = _to_units(run.points[0])
                 pattern.add_stitch_absolute(pyembroidery.JUMP, x, y)
+                # The needle is now at points[0] with nothing sewn there. Carry
+                # `last` across this and the coincidence test below deletes the
+                # penetration that starts the new path — measured on the
+                # appliqué benchmark, where a block's first run enters the ring
+                # nearest the cursor, which after a same-offset layer change is
+                # the previous block's last stitch EXACTLY (distance 0.000000).
+                # What went missing was the first of the five penetrations in
+                # `stitches.tie_run`'s 0.8 mm lock (at, in, at, in, at), i.e.
+                # the anchor holding a thread the trim just cut, landing 4 of 5.
+                last = None
             for pt in run.points:
                 if last is not None and math.dist(last, pt) < _SAME_POINT_MM:
                     continue
