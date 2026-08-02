@@ -51,6 +51,83 @@ FILL_STAGGERS = 4
 # such shapes there, and only what satin also cannot take gets warned.
 MIN_FILL_WIDTH_MM = 1.2
 
+# --- Contour fill (rings instead of rows) -----------------------------------
+# The offset-ring tier: uniform inward offsets of the outline, sewn inner to
+# outer. Numbers are the pins from docs/fill-techniques-2026-08-01.md §1.3;
+# the physics they sit on (0.40 spacing, the 1.0-12.1 stitch window) is
+# tatami's, unchanged. Nothing here is mirrored in the browser engine.
+
+# The outermost ring sits half a spacing inside the edge, so the gap between
+# the edge and ring 1 matches the gap between ring 1 and ring 2. Insetting a
+# full spacing leaves a visible bare margin all the way round the shape.
+CONTOUR_FIRST_INSET_FRAC = 0.5
+
+# How far a ring may sit from the path in hand and still be linked into it, as
+# a multiple of spacing. Past SOFT the link is stretched and counted; past HARD
+# the ring belongs to a different subtree (a neck split the forest) and starts
+# a new path that travel bridges. 2.05 rather than 2.0 so a ring exactly two
+# spacings away — the ordinary diagonal across a one-ring gap — is not thrown
+# out by float noise.
+CONTOUR_ENTRY_SOFT = 1.5
+CONTOUR_ENTRY_HARD = 2.05
+
+# Law 44. Rings sit one spacing apart — 0.40 mm — so a perpendicular hop to
+# the next ring is a 0.40 mm stitch: under MIN_STITCH_MM and inside the
+# needle's own hole. The crossing walks at least this far ALONG the ring while
+# it translates, making the hop a diagonal of hypot(this, spacing). 1.2 rather
+# than the doc's 1.0 because 1.0 IS the floor and a transition landing exactly
+# on it has no margin for the float error of two interpolations; 1.2 gives
+# hypot(1.2, 0.4) = 1.26 mm, comfortably clear.
+CONTOUR_TRANSITION_MIN_MM = 1.2
+
+# Each ring's resample starts this fraction of its own length further round
+# than the last. The golden ratio, not a quarter turn: ring circumferences all
+# differ, so a fixed rational fraction re-aligns quasi-periodically and
+# rebuilds the radial seam it exists to break.
+CONTOUR_PHASE_STEP = 0.618
+
+# A ring shorter than three minimum stitches is not a ring, it is the needle
+# re-entering its own holes. Dropped, and counted.
+CONTOUR_MIN_RING_MM = 3.0
+
+# Offset slivers below this are numerical debris, not fabric to cover.
+CONTOUR_MIN_RING_AREA_MM2 = 0.1
+
+# When the rings a shape had to drop add up to more than this fraction of its
+# area, the operator hears about it. The doc's own C1 gate ("uncovered area >
+# 1 % of shape"), and it exists because the raw ring count is not the question:
+# EVERY shape drops its last ring, the sliver where the offsets converge on
+# themselves. Measured on the fixture logo, that is 0.14-0.30 mm2 against
+# regions of several hundred — 0.1 %, three warnings nobody should read. A comb
+# whose arms starve is the same counter at 40 %.
+CONTOUR_STARVED_FRAC = 0.01
+
+# Mitre limit on the inward offset. The reference implementations use 10, which
+# lets a sharp corner throw a long spike the needle has to chase out and back.
+CONTOUR_MITRE_LIMIT = 2.0
+
+# Law 42's tolerance: how far a chord may bow off the ring it approximates.
+# Caps stitch length by curvature at L <= sqrt(8*R*tol). At 0.10 the bow stays
+# inside the half-spacing the first ring is already inset by, so a chord on a
+# hole ring cannot reach the hole.
+CONTOUR_TOLERANCE_MM = 0.10
+
+# Float slack on the post-emission containment clip. Same 0.01 mm the fill's
+# travel test uses: enough for interpolation noise on a ring that is inset by
+# 0.20 mm anyway, not enough to admit a real escape.
+CONTOUR_CLIP_TOL_MM = 0.01
+
+# Underlay rings run this many times the fill spacing — the doc's "coarse ring
+# set at 3*s". Contour underlay that follows contours is the one call the
+# reference implementations skip: theirs runs at the FILL ANGLE, putting
+# straight rows under curved ones.
+CONTOUR_UNDERLAY_SPACING_FRAC = 3.0
+
+# Termination guard on the offset loop. A 200 mm hoop at 0.40 mm spacing needs
+# 250 generations to reach the middle; this is twice that, and exists only so a
+# degenerate offset that never empties cannot spin forever.
+CONTOUR_MAX_GENERATIONS = 512
+
 # --- Satin ----------------------------------------------------------------
 
 # Spacing of zigzag crosses along the stroke. Satin reads as a solid band of

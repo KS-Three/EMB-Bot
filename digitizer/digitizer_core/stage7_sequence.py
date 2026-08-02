@@ -44,13 +44,15 @@ from .fabrics import Fabric
 from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITCH_MM
 from .stage5_overlap import PlannedRegion
 from .stage6_border import border_runs, run_outline
+from .stage6_contour import contour_fill
 from .stage6_fill import stitch_shape
 from .stage6_satin import is_satin_candidate, satin_shape
 from .stitches import StitchBlock, StitchRun, tie_run
 from .threads import chart_for
 from .warnings_codes import (BORDER_LIGHTENED, BORDER_SKIPPED_TOO_NARROW,
-                             LONG_JUMPS_TRIMMED, SHAPE_NOT_STITCHED,
-                             SHAPE_TOO_THIN_TO_FILL, SMALL_SHAPES_AS_RUN, warn)
+                             CONTOUR_RING_UNREACHABLE, LONG_JUMPS_TRIMMED,
+                             SHAPE_NOT_STITCHED, SHAPE_TOO_THIN_TO_FILL,
+                             SMALL_SHAPES_AS_RUN, warn)
 
 
 # How many waypoints the link router may consider. The candidates are already
@@ -350,8 +352,15 @@ def sequence(
     # for the run tier, and this is where they are routed to it.
     detail_mm2 = cfg.min_detail_mm ** 2
 
+    # The fill tier. Contour rings follow the silhouette; tatami rows cut across
+    # it. Density is the same either way — the ring spacing IS the row spacing
+    # unless the caller opens it up on its own.
+    contour = (cfg.fill_technique or "tatami").lower() == "contour"
+    contour_spacing = cfg.contour_spacing_mm or row_mm
+
     thin = empty = jumps = as_run = 0
     bordered = lightened = border_narrow = 0
+    rings_skipped = starved = 0
     blocks: list[StitchBlock] = []
     cursor: tuple[float, float] | None = None
 
@@ -391,16 +400,35 @@ def sequence(
                 # fall through to fill rather than silently dropping artwork.
                 if not report["empty"]:
                     return runs, report, False
-            runs, report = stitch_shape(
-                p.polygon,
-                p.shape_id,
-                angle_deg=cfg.fill_angle_deg,
-                row_mm=row_mm,
-                stitch_mm=stitch_mm,
-                underlay_style=underlay_style,
-                trim_at_mm=trim_at,
-                start_near=entry,
-            )
+            # The ring tier. Tried first when it is on, and only when it is:
+            # every golden in the suite is pinned to tatami, and the branch is
+            # what keeps them byte-identical. A shape contour cannot ring — one
+            # narrower than a single offset — falls through to tatami rather
+            # than vanishing, the same contract the satin tier already has.
+            runs = []
+            report = {}
+            if contour:
+                runs, report = contour_fill(
+                    p.polygon,
+                    p.shape_id,
+                    spacing_mm=contour_spacing,
+                    stitch_mm=stitch_mm,
+                    underlay_style=underlay_style,
+                    trim_at_mm=trim_at,
+                    tolerance_mm=cfg.contour_tolerance_mm,
+                    start_near=entry,
+                )
+            if not contour or report["empty"]:
+                runs, report = stitch_shape(
+                    p.polygon,
+                    p.shape_id,
+                    angle_deg=cfg.fill_angle_deg,
+                    row_mm=row_mm,
+                    stitch_mm=stitch_mm,
+                    underlay_style=underlay_style,
+                    trim_at_mm=trim_at,
+                    start_near=entry,
+                )
 
             # The reactive rescue: a shape can pass every size floor and still
             # defeat both tiers — a skeleton the satin module cannot resolve
@@ -481,6 +509,9 @@ def sequence(
             bordered += report.get("bordered", 0)
             lightened += report.get("lightened", 0)
             border_narrow += report.get("border_narrow", 0)
+            if report.get("starved"):
+                starved += 1
+                rings_skipped += report.get("skipped_rings", 0)
             if report["empty"] or not runs:
                 empty += 1
                 continue
@@ -565,6 +596,17 @@ def sequence(
                 f"{lightened} outline{'s' if lightened != 1 else ''} had no room "
                 "for a satin column and sewed as a bean run instead.",
                 count=lightened,
+            )
+        )
+    if starved:
+        warnings.append(
+            warn(
+                CONTOUR_RING_UNREACHABLE,
+                f"{starved} shape{'s' if starved != 1 else ''} had contour rings too "
+                "short to sew, leaving a visible patch unfilled — worth a look on the "
+                "review screen.",
+                count=starved,
+                rings=rings_skipped,
             )
         )
     if border_narrow:

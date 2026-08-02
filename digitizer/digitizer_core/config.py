@@ -78,6 +78,29 @@ class PipelineConfig:
     underlay_style: str | None = None
     underlay: bool = True
 
+    # Which fill technique a fill-classified shape sews with.
+    #
+    # "tatami"  – straight rows at one angle. THE DEFAULT, and every golden in
+    #             the suite is pinned to it.
+    # "contour" – uniform inward offsets of the outline, sewn inner to outer
+    #             (stage6_contour). Rows follow the silhouette instead of
+    #             cutting across it, which is the one thing tatami structurally
+    #             cannot do: even needle distribution in a shape whose width
+    #             varies along its length. Rings, letterforms, crescents.
+    #             Falls back to tatami on any shape contour produces nothing
+    #             for, so turning it on can never drop artwork.
+    #
+    # Satin classification runs first either way — a ribbon is still a ribbon.
+    fill_technique: str = "tatami"
+    # None = fill_row_mm (or the machine default). Contour rings are the same
+    # 0.40 mm apart as tatami rows; this exists so the ring tier can be opened
+    # up independently, which is what "best used for open fills with low stitch
+    # counts" means in Wilcom's own positioning of Offset Fill.
+    contour_spacing_mm: float | None = None
+    # How far a chord may bow off the ring it approximates (Ink/Stitch calls it
+    # running stitch tolerance). None = machine.CONTOUR_TOLERANCE_MM.
+    contour_tolerance_mm: float | None = None
+
     # Satin classification. Ribbons up to this wide sew as satin columns;
     # None = the machine default (3.0 mm, matching the browser engine).
     # satin=False forces everything to fill — the pre-step-4 behaviour,
