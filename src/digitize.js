@@ -587,7 +587,14 @@
     // Pass 2: generate at fit-corrected density so the FINAL satin spacing and
     // pull-comp land at the requested mm regardless of the fit scale (short text
     // scaled up would otherwise sew too sparse).
-    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: densityMm / sc, pullCompMm: pullCompMm / sc, letterSpacingMm: ls, underlay: o.underlay !== false, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align, circleLayout: o.circleLayout });
+    // `fitScale: sc` is what lets Law 50's underlay ladder work. The ladder is
+    // keyed to FINAL SEWN cap height, and the fit scale is the only place that
+    // is known — emMm is nominal, and `sc` can move a nominal 18 mm em by a
+    // factor of two either way to land the text in the garment. Passing it
+    // also puts the underlay's own mm constants (3 mm stitch, 0.4 mm inset)
+    // through the same pre-division this line already does for spacing and
+    // pull comp, so they land at their published values on the fabric.
+    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: densityMm / sc, pullCompMm: pullCompMm / sc, letterSpacingMm: ls, underlay: o.underlay !== false, fitScale: sc, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align, circleLayout: o.circleLayout });
     if (!lay.runs.length) return empty;
     const cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2;
     // Explicit placement offset (Slice 3): applied AFTER the center transform, in

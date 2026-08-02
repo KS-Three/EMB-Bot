@@ -18,8 +18,15 @@ const closeTo = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol, `${msg || 
 // ---- Back-compat: straight single-line output must be BYTE-IDENTICAL to the
 // pre-arc/multi-line refactor (captured before editing src/satinfont.js). ----
 
+// NOTE (lettering underlay commit): this snapshot used to pass `underlay: true`
+// — which was the same thing as `underlay: false`, because routeGlyph never
+// read the option. Now that it does, `underlay: false` is the setting that
+// carries the byte-identity guarantee, so that is what this pins. The values
+// below are UNCHANGED from the pre-refactor capture. The `underlay: true`
+// output is pinned separately, and deliberately, in the underlay tests further
+// down this file.
 test("layoutText: straight single-line 'AB' is byte-identical to the pre-refactor snapshot", () => {
-  const opts = { emMm: 18, pxPerMm: 8, spacingMm: 0.4, pullCompMm: 0.2, letterSpacingMm: 0, underlay: true };
+  const opts = { emMm: 18, pxPerMm: 8, spacingMm: 0.4, pullCompMm: 0.2, letterSpacingMm: 0, underlay: false };
   const lay = SF.layoutText(font, "AB", opts);
   assert.deepStrictEqual(lay.bbox, { x0: 23.2, y0: 61.6, x1: 180.3195335344653, y1: 152 });
   assert.strictEqual(lay.runs.length, 14, "run count frozen");
@@ -51,8 +58,12 @@ test("layoutText: charIdx accounts for a skipped space and a newline exactly lik
   assert.deepStrictEqual([...idxs].sort((a, b) => a - b), [0, 2, 4], "space(1) and newline(3) produce no glyph runs, so their indices never appear");
 });
 
+// Same note as the layoutText snapshot above: `underlay: false` is now what
+// carries byte-identity, and 701 is the unchanged pre-refactor number. With
+// underlay ON (the default) this same design is 855 stitches — see
+// "underlay ladder: default-on is a real, intended output change" below.
 test("buildLetteringDesign: straight 'AB' targetWidthMm 40 matches the pre-refactor snapshot", () => {
-  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40 };
+  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40, underlay: false };
   const d = DG.buildLetteringDesign(font, "AB", base);
   assert.strictEqual(d.stitchCount, 701, "stitchCount frozen");
   closeTo(d.widthMM, 40, 0.2, "widthMM");
@@ -556,4 +567,215 @@ test("buildLetteringDesign: circleLayout absent/false is byte-identical; truthy 
   assert.notStrictEqual(c.heightMM, a.heightMM, "circleLayout must change the design bbox");
   const ratio = c.widthMM / c.heightMM;
   assert.ok(ratio > 0.8 && ratio < 1.4, `badge should be roughly circular, got aspect ${ratio.toFixed(2)}`);
+});
+
+// ---- STRUCTURAL UNDERLAY: Law 50's ladder ------------------------------
+//
+// Before this commit `layoutText` computed `doUnderlay` and passed it to
+// `routeGlyph`, which never read it. Every satin letter this engine produced
+// went down bare, and the app shipped an underlay switch that changed nothing.
+// The runs tagged `kind: "underlay"` were Euler-walk TRAVEL between satin
+// spans — they are now `kind: "underpath"`, and `"underlay"` means the real
+// thing. These tests pin all of it.
+
+// geneva_simple's cap/em is 0.600 (measured off its own H), so emMm*0.6 = cap.
+const emForCap = (mm) => mm / 0.6;
+const kinds = (lay) => lay.runs.reduce((m, r) => (m[r.kind] = (m[r.kind] || 0) + 1, m), {});
+const UL_OPTS = { pxPerMm: 8, spacingMm: 0.4, pullCompMm: 0.2 };
+// Rebuild a satin run's two rails: emitZigzag pushes (pA,pB) at even stations
+// and (pB,pA) at odd ones, so the leading edge alternates.
+function railsOfSatin(pts) {
+  const A = [], B = [];
+  for (let k = 0; 2 * k + 1 < pts.length; k++) {
+    const a = pts[2 * k], b = pts[2 * k + 1];
+    if (k % 2 === 0) { A.push(a); B.push(b); } else { A.push(b); B.push(a); }
+  }
+  return { A, B };
+}
+// Where a point sits across the nearest cross-stitch: 0 = on rail A, 1 = on
+// rail B, 0.5 = the column axis. Plus its distance off that cross-line.
+function acrossColumn(p, A, B) {
+  let best = Infinity, bt = 0;
+  for (let k = 0; k < A.length; k++) {
+    const a = A[k], b = B[k];
+    const ex = b.x - a.x, ey = b.y - a.y, L2 = ex * ex + ey * ey;
+    let t = L2 > 1e-12 ? ((p.x - a.x) * ex + (p.y - a.y) * ey) / L2 : 0;
+    const tc = t < 0 ? 0 : t > 1 ? 1 : t;
+    const d = Math.hypot(p.x - (a.x + ex * tc), p.y - (a.y + ey * tc));
+    if (d < best) { best = d; bt = tc; }
+  }
+  return { d: best, t: bt };
+}
+
+test("underlay ladder: a 4mm cap gets none, an 8mm cap gets a center run, a 12mm cap gets an edge run", () => {
+  const at = (capMm) => SF.layoutText(font, "FRITSCH", { ...UL_OPTS, emMm: emForCap(capMm), underlay: true });
+  const small = at(4), mid = at(8), big = at(12);
+  closeTo(small.cap.finalMm, 4, 0.01, "measured cap at the small size");
+  closeTo(mid.cap.finalMm, 8, 0.01, "measured cap at the mid size");
+  closeTo(big.cap.finalMm, 12, 0.01, "measured cap at the large size");
+  assert.strictEqual(small.cap.underlay, null, "under 5mm: lettering under 5mm should not have underlay");
+  assert.strictEqual(mid.cap.underlay, "center", "5-10mm: center run");
+  assert.strictEqual(big.cap.underlay, "edge", "over 10mm: edge run");
+  assert.strictEqual(kinds(small).underlay, undefined, "a 4mm cap emits ZERO underlay runs");
+  assert.ok(kinds(mid).underlay > 0, "an 8mm cap emits underlay runs");
+  assert.ok(kinds(big).underlay > 0, "a 12mm cap emits underlay runs");
+  // the boundaries themselves
+  assert.strictEqual(SF.underlayModeForCapMm(4.99), null);
+  assert.strictEqual(SF.underlayModeForCapMm(5), "center");
+  assert.strictEqual(SF.underlayModeForCapMm(10), "center");
+  assert.strictEqual(SF.underlayModeForCapMm(10.01), "edge");
+});
+
+test("underlay ladder: center rides the column axis, edge rides both rails at 0.4mm inset", () => {
+  for (const [capMm, mode] of [[8, "center"], [12, "edge"]]) {
+    const lay = SF.layoutText(font, "FRITSCH", { ...UL_OPTS, emMm: emForCap(capMm), underlay: true });
+    assert.strictEqual(lay.cap.underlay, mode);
+    const ts = [];
+    for (let i = 0; i < lay.runs.length; i++) {
+      if (lay.runs[i].kind !== "underlay") continue;
+      const sat = lay.runs[i + 1];
+      const { A, B } = railsOfSatin(sat.pts);
+      if (A.length < 2) continue;
+      for (const p of lay.runs[i].pts) ts.push(acrossColumn(p, A, B).t);
+    }
+    assert.ok(ts.length > 50, "enough sample points to be meaningful");
+    if (mode === "center") {
+      // 0.06 rather than 0.5-exact: `t` is measured against the NEAREST satin
+      // cross-stitch, and on a curved column that cross-line sits at a
+      // slightly different station than the centerline sample. Measured worst
+      // case across this string is 0.039 — an order below the edge run's 0.36.
+      for (const t of ts) assert.ok(Math.abs(t - 0.5) < 0.06, `center run should ride the axis, got t=${t.toFixed(3)}`);
+    } else {
+      const nearRails = ts.filter((t) => t < 0.35 || t > 0.65).length;
+      assert.ok(nearRails / ts.length > 0.8, `edge run should ride the rails, only ${(100 * nearRails / ts.length).toFixed(0)}% did`);
+      assert.ok(ts.some((t) => t < 0.35) && ts.some((t) => t > 0.65), "and reach BOTH rails");
+    }
+  }
+});
+
+test("underlay lies INSIDE its column and is sewn BEFORE the satin that covers it", () => {
+  const lay = SF.layoutText(font, "Hamburgefonstiv Fritsch", { ...UL_OPTS, emMm: emForCap(12), underlay: true });
+  let checked = 0;
+  for (let i = 0; i < lay.runs.length; i++) {
+    const r = lay.runs[i];
+    if (r.kind !== "underlay") continue;
+    const sat = lay.runs[i + 1];
+    assert.ok(sat && sat.kind === "satin", `underlay run ${i} must be immediately followed by its satin`);
+    assert.strictEqual(r.charIdx, sat.charIdx, "and belong to the same source glyph");
+    const { A, B } = railsOfSatin(sat.pts);
+    if (A.length < 2) continue;
+    for (const p of r.pts) {
+      const { d, t } = acrossColumn(p, A, B);
+      checked++;
+      // t strictly between the rails, and sitting ON the cross-line family
+      assert.ok(t > 0.001 && t < 0.999, `underlay point escaped its rails (t=${t})`);
+      assert.ok(d / UL_OPTS.pxPerMm < 0.45, `underlay point is ${(d / UL_OPTS.pxPerMm).toFixed(3)}mm off its own column`);
+    }
+  }
+  assert.ok(checked > 500, `expected a real sample, checked ${checked}`);
+  // most satin spans should be underlaid (the exceptions are spans too short
+  // to carry even one minimum-length stitch)
+  const sats = lay.runs.filter((r) => r.kind === "satin").length;
+  const unders = lay.runs.filter((r) => r.kind === "underlay").length;
+  assert.ok(unders / sats > 0.8, `most satin spans should be underlaid, got ${unders}/${sats}`);
+});
+
+test("every underlay stitch clears the 0.5mm minimum and the 12.1mm DST record ceiling", () => {
+  const names = ["geneva_simple", "emilio_20_bold", "chicken_scratch", "mam_script"];
+  let n = 0, longest = 0;
+  for (const name of names) {
+    const f = JSON.parse(fs.readFileSync(`${__dirname}/../src/fonts/${name}.json`, "utf8"));
+    for (const emMm of [12, 18, 30, 60]) {
+      const lay = SF.layoutText(f, "Hamburgefonstiv 8@", { ...UL_OPTS, emMm, underlay: true });
+      for (const r of lay.runs) {
+        if (r.kind !== "underlay") continue;
+        for (let k = 0; k + 1 < r.pts.length; k++) {
+          const L = Math.hypot(r.pts[k + 1].x - r.pts[k].x, r.pts[k + 1].y - r.pts[k].y) / UL_OPTS.pxPerMm;
+          n++; if (L > longest) longest = L;
+          assert.ok(L >= 0.5 - 1e-9, `${name}@${emMm}: ${L.toFixed(4)}mm is under the 0.5mm floor (Law 51)`);
+          assert.ok(L <= 12.1, `${name}@${emMm}: ${L.toFixed(4)}mm exceeds the DST record ceiling`);
+        }
+      }
+    }
+  }
+  assert.ok(n > 10000, `expected a real corpus sweep, measured ${n} stitches`);
+  assert.ok(longest <= 4, `underlay should also respect the 4mm max stitch, longest was ${longest.toFixed(3)}mm`);
+});
+
+test("cap height is MEASURED from the font's own H, not assumed equal to the em (Law 46)", () => {
+  const emilio = JSON.parse(fs.readFileSync(`${__dirname}/../src/fonts/emilio_20_bold.json`, "utf8"));
+  const gen = SF.capHeightMm(font, 18), emi = SF.capHeightMm(emilio, 18);
+  assert.strictEqual(gen.ref, "H"); assert.strictEqual(gen.proxy, false);
+  assert.strictEqual(emi.ref, "H"); assert.strictEqual(emi.proxy, false);
+  closeTo(gen.mm, 10.8, 0.05, "geneva_simple cap/em is 0.600");
+  closeTo(emi.mm, 16.47, 0.05, "emilio_20_bold cap/em is 0.915");
+  // Same nominal em, different real cap -> DIFFERENT rungs. Gating on emMm
+  // would have put both of these on the same one.
+  const a = SF.layoutText(font, "AB", { ...UL_OPTS, emMm: 15, underlay: true });
+  const b = SF.layoutText(emilio, "AB", { ...UL_OPTS, emMm: 15, underlay: true });
+  closeTo(a.cap.finalMm, 9.0, 0.05); closeTo(b.cap.finalMm, 13.7, 0.05);
+  assert.strictEqual(a.cap.underlay, "center");
+  assert.strictEqual(b.cap.underlay, "edge");
+});
+
+test("fitScale moves the ladder, because the ladder is keyed to FINAL SEWN cap height", () => {
+  const em = emForCap(12);       // 12mm cap at fitScale 1 -> edge
+  const opts = { ...UL_OPTS, emMm: em, underlay: true };
+  assert.strictEqual(SF.layoutText(font, "AB", opts).cap.underlay, "edge");
+  assert.strictEqual(SF.layoutText(font, "AB", { ...opts, fitScale: 0.7 }).cap.underlay, "center"); // 8.4mm
+  assert.strictEqual(SF.layoutText(font, "AB", { ...opts, fitScale: 0.3 }).cap.underlay, null);     // 3.6mm
+  // and the ladder's own mm constants scale with it, so the 3mm step lands at
+  // 3mm on the GARMENT rather than 3mm in layout space
+  const lay = SF.layoutText(font, "AB", { ...opts, fitScale: 0.5 });
+  const u = lay.runs.find((r) => r.kind === "underlay");
+  let longest = 0;
+  for (let k = 0; k + 1 < u.pts.length; k++) longest = Math.max(longest, Math.hypot(u.pts[k + 1].x - u.pts[k].x, u.pts[k + 1].y - u.pts[k].y));
+  const finalMm = longest * 0.5 / UL_OPTS.pxPerMm;
+  assert.ok(finalMm <= 3 + 1e-6, `final sewn stitch should be <=3mm, got ${finalMm.toFixed(3)}mm`);
+});
+
+test("underlay:false emits ZERO underlay runs at EVERY size, and travel is tagged underpath", () => {
+  for (const capMm of [3, 4, 6, 8, 12, 20, 40]) {
+    const lay = SF.layoutText(font, "Fritsch Stitches", { ...UL_OPTS, emMm: emForCap(capMm), underlay: false });
+    const k = kinds(lay);
+    assert.strictEqual(k.underlay, undefined, `cap ${capMm}mm: underlay:false must emit no underlay`);
+    assert.strictEqual(lay.cap.underlay, null);
+    assert.ok(k.satin > 0, "but still emits satin");
+    assert.ok(k.underpath > 0, "and still emits needle-down travel, now tagged underpath");
+    for (const r of lay.runs) assert.ok(r.kind === "satin" || r.kind === "underpath", `unexpected kind ${r.kind}`);
+  }
+});
+
+test("underlay can be forced to a rung, overriding the ladder", () => {
+  const at = (u) => SF.layoutText(font, "AB", { ...UL_OPTS, emMm: emForCap(4), underlay: u });
+  assert.strictEqual(at(true).cap.underlay, null, "the ladder says none at a 4mm cap");
+  assert.strictEqual(at("none").cap.underlay, null);
+  assert.strictEqual(at("center").cap.underlay, "center", "but it can be forced on");
+  assert.strictEqual(at("edge").cap.underlay, "edge");
+  assert.ok(kinds(at("center")).underlay > 0);
+  assert.deepStrictEqual(at("none").runs, at(false).runs, "none and false are the same output");
+});
+
+test("underlay ladder: default-on is a real, intended output change — pinned deliberately", () => {
+  // The companion to the two `underlay: false` byte-identity snapshots at the
+  // top of this file. `underlay` has ALWAYS defaulted to true and has always
+  // done nothing; now that it works, the DEFAULT output of every lettering
+  // design changes. These are the new numbers for the same AB design.
+  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40 };
+  const off = DG.buildLetteringDesign(font, "AB", { ...base, underlay: false });
+  const on = DG.buildLetteringDesign(font, "AB", base);
+  assert.strictEqual(off.stitchCount, 701, "underlay off: the unchanged pre-fix number");
+  assert.strictEqual(on.stitchCount, 855, "underlay on (the default): +154 stitches, +22.0%");
+  assert.strictEqual(on._debug.nTrims, off._debug.nTrims, "underlay must not add a single trim");
+  closeTo(on.widthMM, off.widthMM, 1e-9, "and must not move the design bbox");
+  closeTo(on.heightMM, off.heightMM, 1e-9, "or its height");
+  assert.deepStrictEqual(on.colors, off.colors, "or its color sequence");
+  // The ladder ran on the FINAL sewn size, not the nominal em. At 40mm wide
+  // this AB fits to a 22.2mm cap (edge rung); squeeze the SAME nominal emMm
+  // down to 8mm wide and the cap lands at 4.4mm, under the floor, and the
+  // default-on design becomes byte-identical to the default-off one again.
+  const tinyOn = DG.buildLetteringDesign(font, "AB", { ...base, targetWidthMm: 8 });
+  const tinyOff = DG.buildLetteringDesign(font, "AB", { ...base, targetWidthMm: 8, underlay: false });
+  assert.deepStrictEqual(tinyOn, tinyOff, "an 8mm-wide AB fits to a 4.4mm cap — under the floor, so no underlay at all");
+  assert.strictEqual(tinyOn.stitchCount, 189);
 });

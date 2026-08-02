@@ -256,6 +256,216 @@
     return resampleChain(Cs, Math.max(2, Math.ceil(len / (step > 0 ? step : 4))));
   }
 
+  // ---- STRUCTURAL UNDERLAY (Law 50) --------------------------------------
+  //
+  // These emit the stitches that go UNDER a satin column to stabilise it: they
+  // are sewn before the satin over the SAME span and end up hidden by it.
+  //
+  // They are NOT the same thing as the Euler-walk travel that satinfont's
+  // router lays between satin spans. That travel is `underpath` — it exists to
+  // get the needle somewhere without a trim, it follows the centerline because
+  // the centerline is the hideable place to walk, and it appears only on spans
+  // the walk visits more than once. Structural underlay is chosen by cap
+  // height, applies to EVERY satin span, and is a stitch-quality decision.
+  // The two used to share the tag `kind: "underlay"`, which is precisely why
+  // nobody noticed lettering had no real underlay for as long as it didn't.
+  //
+  // Published constants these are built to (Law 50): center walk 2 repeats at
+  // 3 mm stitch length, 50% position; contour 3 mm length, 0.4 mm inset each
+  // side. All mm here are in the CALLER's mm — satinfont pre-divides by the
+  // downstream fit scale exactly the way it already does for spacingMm.
+
+  // Total ABSOLUTE turning of a polyline, in radians. Absolute (not signed) so
+  // an S-curve counts both bends — that errs toward more subdivision, which is
+  // the safe direction here.
+  function chainTurn(chain) {
+    let t = 0;
+    for (let i = 1; i + 1 < chain.length; i++) {
+      const ax = chain[i].x - chain[i - 1].x, ay = chain[i].y - chain[i - 1].y;
+      const bx = chain[i + 1].x - chain[i].x, by = chain[i + 1].y - chain[i].y;
+      const la = Math.hypot(ax, ay), lb = Math.hypot(bx, by);
+      if (la < EPS || lb < EPS) continue;
+      let c = (ax * bx + ay * by) / (la * lb);
+      t += Math.acos(c < -1 ? -1 : c > 1 ? 1 : c);
+    }
+    return t;
+  }
+
+  // Resample `chain` so no emitted segment exceeds stepPx AND no emitted
+  // segment CHORDS more than maxDevPx away from the curve it replaces.
+  // Returns null when the chain is shorter than minPx — a span too short to
+  // carry one stitch at the minimum length gets no underlay at all, rather
+  // than a needle stab in place that rounds to a zero-delta DST record
+  // (Law 51: the min-stitch floor is real, but it must never be applied as a
+  // global 1 mm cull).
+  //
+  // The chord bound is the part that is easy to forget and impossible to miss
+  // once rendered. A running stitch is a straight line between two points on a
+  // curve, so on a tightly curved column a 3 mm underlay stitch cuts across
+  // the bend and can leave the column entirely — a 4.5 mm-tall "o" has a
+  // centerline radius near 2.2 mm, where a 3 mm chord sags 0.57 mm off the
+  // curve while the column's own half-width is only about 0.45 mm. The
+  // underlay would sit outside the satin that is supposed to cover it.
+  //
+  // For a segment of arc length s on a curve of radius R the sag is s^2/(8R),
+  // and R = len/turn over the span, so bounding the sag by `maxDevPx` gives
+  // nSeg >= sqrt(len*turn / (8*maxDevPx)). Straight columns have turn ~ 0 and
+  // are untouched by this; only curves subdivide, and only as much as their
+  // own curvature demands.
+  //
+  // nSeg is then capped at len/minPx, which both stops a doubling-back cursive
+  // span from exploding and makes "every segment >= minPx" true by
+  // construction rather than by cleanup.
+  function walkChain(chain, stepPx, minPx, maxDevPx) {
+    if (!chain || chain.length < 2) return null;
+    const len = chainLength(chain);
+    if (!(len > 0) || len < minPx) return null;
+    let nSeg = stepPx > 0 ? Math.max(1, Math.ceil(len / stepPx)) : 1;
+    if (maxDevPx > 0) {
+      const turn = chainTurn(chain);
+      if (turn > EPS) nSeg = Math.max(nSeg, Math.ceil(Math.sqrt((len * turn) / (8 * maxDevPx))));
+    }
+    if (minPx > 0) nSeg = Math.min(nSeg, Math.max(1, Math.floor(len / minPx)));
+    return resampleChain(chain, nSeg + 1);
+  }
+
+  // Narrowest half-width across a corresponded span, in px. Used to size the
+  // chord tolerance above: how far the underlay may stray from the centerline
+  // is a question about how much room the column has.
+  function minHalfWidth(As, Bs) {
+    let m = Infinity;
+    const n = Math.min(As.length, Bs.length);
+    for (let i = 0; i < n; i++) m = Math.min(m, Math.hypot(As[i].x - Bs[i].x, As[i].y - Bs[i].y) / 2);
+    return isFinite(m) ? m : 0;
+  }
+
+  // Append `leg` onto `out`, dropping leg's first point (it duplicates out's
+  // last). Skips the whole leg if it is degenerate.
+  function appendLeg(out, leg) {
+    if (!leg || leg.length < 2) return out;
+    for (let i = out.length ? 1 : 0; i < leg.length; i++) out.push(leg[i]);
+    return out;
+  }
+
+  // Drop points that would emit a stitch shorter than minPx (Law 51's filter,
+  // applied LOCALLY to an underlay path rather than globally to the design —
+  // a global 1 mm cull is what shreds small satin).
+  //
+  // walkChain alone cannot guarantee the floor once legs are joined: an edge
+  // run's cross-over at a tapered column tip is only as long as the column is
+  // wide there, which can round to a zero-delta DST record — a needle stab in
+  // place. The path's LAST point is preserved exactly even when it is culled
+  // (the previous kept point is moved onto it instead), because the whole
+  // point of these closed walks is that they finish where the satin starts.
+  function cullShort(pts, minPx) {
+    if (!pts || pts.length < 2) return [];
+    if (!(minPx > 0)) return pts;
+    const near = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < minPx;
+    const out = [pts[0]];
+    for (let i = 1; i < pts.length - 1; i++) if (!near(out[out.length - 1], pts[i])) out.push(pts[i]);
+    // The endpoint is non-negotiable, so make room for it rather than snapping
+    // an already-kept point onto it — dropping points until the last survivor
+    // clears the floor is what keeps "every segment >= minPx" true. (Snapping
+    // instead leaves a segment of |P - last|, which can be arbitrarily small.)
+    const last = pts[pts.length - 1];
+    while (out.length > 1 && near(out[out.length - 1], last)) out.pop();
+    if (near(out[out.length - 1], last)) return [];
+    out.push(last);
+    return out;
+  }
+
+  // Slice the geom's arrays to the span, oriented in the TRAVERSAL direction
+  // f0 -> f1 (which may run backward along the column). Orientation matters:
+  // the underlay has to hand the needle back to wherever the satin starts.
+  function spanArrays(geom, arrs, f0, f1) {
+    const lo = Math.min(f0, f1), hi = Math.max(f0, f1);
+    const out = sliceParallel(arrs, geom.cum, lo * geom.total, hi * geom.total);
+    return f0 > f1 ? out.map((a) => a.slice().reverse()) : out;
+  }
+
+  // CENTER-WALK underlay over traversal span f0 -> f1 of a precomputed
+  // columnGeom. Walks the column centerline (the 50% position) `repeats`
+  // times, alternating direction. The published default of 2 repeats is not
+  // just Ink/Stitch's number — it is also what the router needs: an even
+  // repeat count ends the walk back at f0, which is exactly where the satin
+  // for this span begins, so real underlay costs ZERO extra travel.
+  // opts = { stepMm=3, repeats=2, minStitchMm=0.5, pxPerMm=1 }.
+  function centerUnderlayFromGeom(geom, f0, f1, opts) {
+    if (!geom || geom.total <= EPS || geom.C.length < 2) return [];
+    const o = opts || {};
+    const pxPerMm = o.pxPerMm || 1;
+    const [Cs, As, Bs] = spanArrays(geom, [geom.C, geom.A, geom.B], f0, f1);
+    const minPx = (o.minStitchMm == null ? 0.5 : o.minStitchMm) * pxPerMm;
+    // A center walk has the whole half-width to play with; spend at most a
+    // third of it on chord error, and never let a pinched-to-nothing tip drive
+    // the tolerance to zero (walkChain's min-stitch cap is the real backstop).
+    const devPx = Math.max(0.05 * pxPerMm, 0.35 * minHalfWidth(As, Bs));
+    const fwd = walkChain(Cs, (o.stepMm == null ? 3 : o.stepMm) * pxPerMm, minPx, devPx);
+    if (!fwd) return [];
+    const repeats = Math.max(1, Math.round(o.repeats == null ? 2 : o.repeats));
+    const out = fwd.slice();
+    for (let r = 1; r < repeats; r++) appendLeg(out, r % 2 === 1 ? fwd.slice().reverse() : fwd.slice());
+    return cullShort(out, (o.minStitchMm == null ? 0.5 : o.minStitchMm) * pxPerMm);
+  }
+
+  // Move each corresponded rail pair inward along its OWN cross-line by
+  // `insetPx`. Because A[i] and B[i] are the two ends of one cross-stitch, an
+  // offset along A->B is "inset N mm per side" measured across the column,
+  // which is the measurement Embrilliance's 0.4 mm ("half a needle width or
+  // slightly more") actually refers to.
+  //
+  // The inset is capped at 40% of the LOCAL column width so the two inset
+  // rails can never cross: in a hairline column an edge run collapses toward
+  // the centerline instead of turning inside out. This also makes "the
+  // underlay lies inside its column" true by construction, not by luck.
+  function insetPair(As, Bs, insetPx) {
+    const Ai = [], Bi = [];
+    const n = Math.min(As.length, Bs.length);
+    for (let i = 0; i < n; i++) {
+      const ax = As[i].x, ay = As[i].y, bx = Bs[i].x, by = Bs[i].y;
+      const dx = bx - ax, dy = by - ay, w = Math.hypot(dx, dy);
+      if (!(w > EPS)) { Ai.push({ x: ax, y: ay }); Bi.push({ x: bx, y: by }); continue; }
+      const d = Math.min(insetPx, 0.4 * w), ux = dx / w, uy = dy / w;
+      Ai.push({ x: ax + ux * d, y: ay + uy * d });
+      Bi.push({ x: bx - ux * d, y: by - uy * d });
+    }
+    return [Ai, Bi];
+  }
+
+  // EDGE / CONTOUR underlay over traversal span f0 -> f1: a closed outline
+  // just inside both rails. Runs down inset-rail A, crosses the column, comes
+  // back along inset-rail B, and closes across — so like the center walk it
+  // finishes at the f0 end where the satin starts.
+  // opts = { stepMm=3, insetMm=0.4, minStitchMm=0.5, pxPerMm=1 }.
+  function edgeUnderlayFromGeom(geom, f0, f1, opts) {
+    if (!geom || geom.total <= EPS || geom.A.length < 2) return [];
+    const o = opts || {};
+    const pxPerMm = o.pxPerMm || 1;
+    const stepPx = (o.stepMm == null ? 3 : o.stepMm) * pxPerMm;
+    const minPx = (o.minStitchMm == null ? 0.5 : o.minStitchMm) * pxPerMm;
+    const [As, Bs] = spanArrays(geom, [geom.A, geom.B], f0, f1);
+    const insetPx = (o.insetMm == null ? 0.4 : o.insetMm) * pxPerMm;
+    const [Ai, Bi] = insetPair(As, Bs, insetPx);
+    // An inset rail has LESS room than the centerline does: chord error always
+    // pulls toward the centre of curvature, and on the inside rail of a bowl
+    // that direction is straight out of the column, with only the inset itself
+    // standing in the way. So bound by the inset as well as by the half-width.
+    const devPx = Math.max(0.05 * pxPerMm, Math.min(0.35 * minHalfWidth(As, Bs), 0.5 * insetPx));
+    const legA = walkChain(Ai, stepPx, minPx, devPx);
+    const legB = walkChain(Bi.slice().reverse(), stepPx, minPx, devPx);
+    if (!legA || !legB) return [];
+    const out = legA.slice();
+    // cross at the far end, back along B, then close across at the near end.
+    // The crossings are only as long as the column is wide, so they can fall
+    // under the min stitch (or to nothing at all, at a tapered tip) — cullShort
+    // below removes those rather than emitting a stab in place.
+    const cross = (from, to) => walkChain([from, to], stepPx, 0) || [from, to];
+    appendLeg(out, cross(out[out.length - 1], legB[0]));
+    appendLeg(out, legB);
+    appendLeg(out, cross(out[out.length - 1], legA[0]));
+    return cullShort(out, minPx);
+  }
+
   // Main entry: explicit rails (+optional rungs) -> satin zig-zag point list.
   function satinFromRails(railA, railB, rungs, opts) {
     if (!railA || !railB || railA.length < 2 || railB.length < 2) return [];
@@ -263,20 +473,30 @@
     return emitZigzag(A, B, opts || {});
   }
 
-  // Center-walk underlay: a running stitch down the column centerline (midpoints
-  // of the corresponded rails), resampled to ~stepMm. Sewn before the top satin
-  // to stabilize the column; hidden under it. opts = { stepMm=2, pxPerMm=1 }.
+  // Whole-column convenience form of centerUnderlayFromGeom, for callers that
+  // hold raw rails rather than a precomputed columnGeom.
+  //
+  // This function existed before this commit and had never run: zero callers
+  // anywhere in the tree. It was also not usable as written, for three
+  // reasons worth recording so it is not "fixed" back:
+  //   1. it asked resampleChain for `ceil(len/step)` POINTS while meaning that
+  //      many SEGMENTS, so emitted stitches ran up to 2x the requested length;
+  //   2. it walked the column once, leaving the needle at the FAR end, so
+  //      every column would have paid a full-column travel before its satin;
+  //   3. it took raw rails, so it could not serve satinfont's router at all —
+  //      that router works in fraction spans of an already-corresponded
+  //      columnGeom and would have had to re-run `correspond` per column.
+  // It is now a wrapper over the geom form, which fixes all three.
+  // opts = { stepMm=3, repeats=2, minStitchMm=0.5, pxPerMm=1 }.
   function centerRun(railA, railB, rungs, opts) {
     if (!railA || !railB || railA.length < 2 || railB.length < 2) return [];
     const o = opts || {};
-    const { A, B } = correspond(railA, railB, rungs || [], o.samplesPerSection || 12);
-    const C = []; for (let i = 0; i < A.length; i++) C.push({ x: (A[i].x + B[i].x) / 2, y: (A[i].y + B[i].y) / 2 });
-    if (C.length < 2) return [];
-    const step = (o.stepMm || 2) * (o.pxPerMm || 1);
-    const len = chainLength(C);
-    const n = step > 0 ? Math.max(2, Math.ceil(len / step)) : Math.max(2, C.length);
-    return resampleChain(C, n);
+    const geom = columnGeom(railA, railB, rungs || [], o.samplesPerSection || 12);
+    return centerUnderlayFromGeom(geom, 0, 1, o);
   }
 
-  return { satinFromRails, centerRun, correspond, columnGeom, satinFromGeom, centerFromGeom };
+  return {
+    satinFromRails, centerRun, correspond, columnGeom, satinFromGeom, centerFromGeom,
+    centerUnderlayFromGeom, edgeUnderlayFromGeom,
+  };
 });

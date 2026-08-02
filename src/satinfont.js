@@ -12,7 +12,40 @@
   const columnGeom = satinplay.columnGeom;
   const satinFromGeom = satinplay.satinFromGeom;
   const centerFromGeom = satinplay.centerFromGeom;
+  const centerUnderlayFromGeom = satinplay.centerUnderlayFromGeom;
+  const edgeUnderlayFromGeom = satinplay.edgeUnderlayFromGeom;
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+  // Law 50's underlay ladder, keyed to CAP height (see capHeightMm below for
+  // how cap is obtained — it is measured from the font's own glyphs, not
+  // assumed equal to the em). Thresholds are in FINAL SEWN mm.
+  //
+  //   under 5 mm   none      "Lettering with heights under 5 mm should not
+  //                           have underlay"
+  //   5 - 10 mm    center    center walk, 2 repeats, 3 mm stitch, 50% position
+  //   over 10 mm   edge      contour, 3 mm stitch, 0.4 mm inset per side
+  //
+  // The published table's fourth row — extra-large jacket-back work gets a
+  // second layer and a double zigzag for loft — is deliberately NOT
+  // implemented. No vendor publishes the cap height where "large" becomes
+  // "extra-large", so the threshold would be invented, and the same is true of
+  // the >4 mm column-width zigzag cross-cut (the mechanism is cheap, but our
+  // corpus is overwhelmingly sub-3 mm columns, so it would ship untested on
+  // real work). Both are follow-ups, not silent approximations.
+  const UNDERLAY_CAP_MIN_MM = 5;    // below this: none
+  const UNDERLAY_CAP_EDGE_MM = 10;  // above this: edge run instead of center
+  const UNDERLAY_STEP_MM = 3;       // Ink/Stitch center-walk + contour default
+  const UNDERLAY_REPEATS = 2;       // Ink/Stitch center-walk default
+  const UNDERLAY_INSET_MM = 0.4;    // Ink/Stitch contour default, per side
+  // Law 51: ship a min-stitch floor, keep it at or under 0.5 mm, and never
+  // apply a 1 mm floor globally — that is what shreds small lettering.
+  const UNDERLAY_MIN_STITCH_MM = 0.5;
+
+  // Which rung of the ladder a given final-sewn cap height lands on.
+  function underlayModeForCapMm(capMm) {
+    if (!(capMm > 0) || capMm < UNDERLAY_CAP_MIN_MM) return null;
+    return capMm > UNDERLAY_CAP_EDGE_MM ? "edge" : "center";
+  }
 
   // This font format has no explicit baseline field — glyph y-coordinates are
   // authored relative to an arbitrary top-of-canvas origin (e.g. this repo's
@@ -75,6 +108,56 @@
     return hit;
   }
 
+  // CAP HEIGHT, measured — not assumed (Law 46).
+  //
+  // Every published lettering rule (the underlay ladder, the small-text floor,
+  // placement charts) is keyed to UPPER-CASE height. This runtime's size knob
+  // is `emMm`, which is em height: `u2px = (emMm/unitsPerEm)*pxPerMm`. Those
+  // are not the same number and the gap is not small — measured cap/em across
+  // the 24 shipped JSON fonts runs 0.58 (chicken_scratch) to 0.97 (monicha),
+  // with digory_doodles_bean a 1.50 outlier whose unitsPerEm is smaller than
+  // its own cap. Gating the ladder on emMm would put geneva_simple's 5 mm cap
+  // and monicha's 8.1 mm cap on the same rung.
+  //
+  // So measure it. A glyph's rails ARE its stroke outline, so the y-extent of
+  // an upper-case reference glyph's rails is its ink height, i.e. the font's
+  // cap height in font units. `H` is the standard reference (flat terminals,
+  // no overshoot); every font in the corpus has one, and the fallback chain
+  // below only exists for fonts we have not seen.
+  //
+  // If a font has NO upper-case reference glyph at all, we fall back to a
+  // PROXY — emMm * 0.73, the measured median cap/em of the corpus — and say so
+  // here rather than pretending em is cap. `capIsProxy` is returned alongside
+  // so callers can tell the two apart. This path is unreachable for every font
+  // we currently ship.
+  const CAP_REF_CHARS = ["H", "E", "T", "I", "L", "F", "B", "D", "N", "M"];
+  const CAP_EM_PROXY = 0.73;
+  const capUnitsCache = new WeakMap();
+  function capUnitsOf(font) {
+    if (capUnitsCache.has(font)) return capUnitsCache.get(font);
+    let out = null;
+    for (const ch of CAP_REF_CHARS) {
+      const g = font.glyphs && font.glyphs[ch];
+      if (!g || !g.cols || !g.cols.length) continue;
+      let mn = Infinity, mx = -Infinity;
+      for (const col of g.cols) {
+        for (const p of col.railA) { if (p[1] < mn) mn = p[1]; if (p[1] > mx) mx = p[1]; }
+        for (const p of col.railB) { if (p[1] < mn) mn = p[1]; if (p[1] > mx) mx = p[1]; }
+      }
+      if (mx > mn) { out = { units: mx - mn, ref: ch }; break; }
+    }
+    capUnitsCache.set(font, out);
+    return out;
+  }
+  // Cap height of `font` at nominal size `emMm`, in mm. `proxy` is true when
+  // no upper-case glyph was available and the corpus-median ratio was used.
+  function capHeightMm(font, emMm) {
+    const upm = font && font.unitsPerEm;
+    const hit = upm > 0 ? capUnitsOf(font) : null;
+    if (!hit) return { mm: emMm * CAP_EM_PROXY, proxy: true, ref: null };
+    return { mm: (hit.units / upm) * emMm, proxy: false, ref: hit.ref };
+  }
+
   // Nearest arc-length fraction on a centerline chain C (with cumulative table
   // cum,total) to point p, plus that distance.
   function nearestOnCenter(C, cum, total, p) {
@@ -98,10 +181,38 @@
   // as RUNNING — so the running underpath is always laid first and the satin
   // covers it. Result: one continuous needle-down path per component (no trims
   // inside it); jumps only BETWEEN components (dots) and between glyphs.
-  // Returns [{pts, kind:"satin"|"underlay", jump}].
+  //
+  // STRUCTURAL UNDERLAY (opts.underlay, Law 50). Before this commit this
+  // option was passed in by layoutText and never read, so every satin letter
+  // this engine has ever sewn went down bare and the app's underlay switch
+  // moved nothing. It is now honored: when set, each span that sews as SATIN
+  // gets its own underlay run emitted immediately before it, over the same
+  // fraction span, in the same traversal direction. Both underlay forms are
+  // closed walks that finish back at the span's f0 — the point the satin then
+  // starts from — so real underlay adds no travel and no extra trims.
+  //   opts.underlay = "center" | "edge" | null/false
+  //   opts.underlayStepMm / underlayInsetMm / minStitchMm  (caller-space mm)
+  //
+  // Returns [{pts, kind:"satin"|"underlay"|"underpath", jump}].
+  //
+  // KIND RENAME, same commit. The Euler-walk travel spans used to be tagged
+  // `kind: "underlay"`. They are not underlay — they are needle-down travel
+  // between satin spans. They are now `"underpath"`, which is what the rest of
+  // this file already called them in prose, and `"underlay"` now means only
+  // the real thing. Downstream only ever tested for `"satin"` (digitize.js's
+  // nSatin counter), so the stitch stream is unaffected; the tags are what
+  // change, and they change so that these two can never be confused again.
   function routeGlyph(cols, opts) {
     const pxPerMm = opts.pxPerMm, spacingMm = opts.spacingMm, pullCompMm = opts.pullCompMm || 0, slantDeg = opts.slantDeg || 0;
     const satinOpts = { spacingMm, pxPerMm, pullCompMm, slantDeg };
+    const underlayMode = opts.underlay === "center" || opts.underlay === "edge" ? opts.underlay : null;
+    const underlayOpts = underlayMode ? {
+      pxPerMm,
+      stepMm: opts.underlayStepMm == null ? UNDERLAY_STEP_MM : opts.underlayStepMm,
+      insetMm: opts.underlayInsetMm == null ? UNDERLAY_INSET_MM : opts.underlayInsetMm,
+      minStitchMm: opts.minStitchMm == null ? UNDERLAY_MIN_STITCH_MM : opts.minStitchMm,
+      repeats: UNDERLAY_REPEATS,
+    } : null;
     const G = [];
     for (const c of cols) {
       const geom = columnGeom(c.railA, c.railB, c.rungs, 12);
@@ -203,7 +314,17 @@
         let pts = sp.sat ? satinFromGeom(geom, lo, hi, satinOpts) : centerFromGeom(geom, lo, hi, 2, pxPerMm);
         if (!pts || pts.length < 2) continue;
         if (sp.f1 < sp.f0) pts = pts.slice().reverse();
-        runs.push({ pts, kind: sp.sat ? "satin" : "underlay", jump: first });
+        // Underlay first, then the satin that covers it. The generators take
+        // the span in TRAVERSAL order (f0,f1 — not lo,hi), so the walk ends
+        // where this satin run begins. A span too short to carry one stitch at
+        // the minimum length returns [] and simply gets no underlay.
+        if (sp.sat && underlayOpts) {
+          const upts = underlayMode === "edge"
+            ? edgeUnderlayFromGeom(geom, sp.f0, sp.f1, underlayOpts)
+            : centerUnderlayFromGeom(geom, sp.f0, sp.f1, underlayOpts);
+          if (upts && upts.length >= 2) { runs.push({ pts: upts, kind: "underlay", jump: first }); first = false; }
+        }
+        runs.push({ pts, kind: sp.sat ? "satin" : "underpath", jump: first });
         first = false;
       }
     }
@@ -211,14 +332,26 @@
   }
 
   // Lay out `text` in a pre-digitized font. Returns:
-  //   { runs:[{pts:[{x,y}…], kind, jump}], bbox:{x0,y0,x1,y1} }
+  //   { runs:[{pts:[{x,y}…], kind, jump}], bbox:{x0,y0,x1,y1}, cap:{…} }
   // in DESIGN PIXELS (y-down). Columns are routed per glyph with underpathing
   // (see routeGlyph). A run's jump=true means "lift needle & travel to its
   // start" (the caller trims if far); jump=false means "continue with a needle-
   // down running connector". opts = { emMm=18, pxPerMm=10, spacingMm=0.4,
-  // pullCompMm=0, letterSpacingMm=0, underlay=true, arcDeg=0,
+  // pullCompMm=0, letterSpacingMm=0, underlay=true, fitScale=1, arcDeg=0,
   // circleLayout=false (two-line circular badge — contract documented at the
   // option below) }.
+  //
+  // `kind` is one of:
+  //   "satin"     the cover stitching
+  //   "underlay"  STRUCTURAL underlay under a satin span (Law 50's ladder)
+  //   "underpath" needle-down Euler-walk travel between satin spans
+  // "underpath" was called "underlay" before this commit, which conflated the
+  // two — see routeGlyph's note.
+  //
+  // `cap` reports what the ladder decided and what it decided it from:
+  //   { mm, finalMm, ref, proxy, underlay }
+  // `ref` is the glyph the cap height was measured off; `proxy: true` means no
+  // upper-case glyph existed and a corpus-median ratio was used instead.
   //
   // `text` may contain "\n" for multiple lines, stacked by `font.leading`
   // (falls back to unitsPerEm). `opts.arcDeg` bends a line onto a circular
@@ -244,8 +377,38 @@
     const spacingMm = o.spacingMm || 0.4;
     const pullCompMm = o.pullCompMm || 0;
     const slantDeg = o.slantDeg || 0;
-    const doUnderlay = o.underlay !== false;
     const arcDeg = o.arcDeg || 0;
+    // ---- Structural underlay: Law 50's ladder, decided HERE (layoutText is
+    // where the font, the size and the fit scale are all known at once) and
+    // handed to routeGlyph as a resolved mode string.
+    //
+    // `o.underlay`:
+    //   false          off — byte-identical geometry to before this commit.
+    //   true / absent  AUTO: pick the ladder rung from the measured cap height.
+    //   "none" | "center" | "edge"   force a rung (tests, and a future UI that
+    //                  wants to override; the ladder is a default, not a law
+    //                  of physics).
+    //
+    // `o.fitScale` (default 1) is the uniform scale a downstream caller will
+    // apply to this layout — digitize.js's garment fit. It matters twice:
+    // the ladder is keyed to FINAL SEWN cap height, and the ladder's own mm
+    // constants (3 mm stitch, 0.4 mm inset, 0.5 mm floor) have to land at
+    // those values on the garment, not in layout space. Both are handled by
+    // dividing through here, exactly the way digitize.js already pre-divides
+    // spacingMm and pullCompMm so the final density lands where it was asked.
+    const fitScale = (typeof o.fitScale === "number" && isFinite(o.fitScale) && o.fitScale > 0) ? o.fitScale : 1;
+    const cap = capHeightMm(font, emMm);
+    const capFinalMm = cap.mm * fitScale;
+    const forced = o.underlay === "none" || o.underlay === "center" || o.underlay === "edge" ? o.underlay : null;
+    const underlayMode = o.underlay === false ? null
+      : forced ? (forced === "none" ? null : forced)
+      : underlayModeForCapMm(capFinalMm);
+    const underlayOpts = underlayMode ? {
+      underlay: underlayMode,
+      underlayStepMm: UNDERLAY_STEP_MM / fitScale,
+      underlayInsetMm: UNDERLAY_INSET_MM / fitScale,
+      minStitchMm: UNDERLAY_MIN_STITCH_MM / fitScale,
+    } : { underlay: null };
     // Two-line circular badge layout (Lettering parity round). Falsy (absent/
     // false/null) = today's behavior byte-identical (snapshot-pinned). Truthy:
     //   - The FIRST line arcs along the TOP of a circle (arch up, exactly the
@@ -415,7 +578,7 @@
           railB: col.railB.map((p) => ({ x: TX(p[0]), y: TY(p[1]) })),
           rungs: (col.rungs || []).map((rg) => [{ x: TX(rg[0][0]), y: TY(rg[0][1]) }, { x: TX(rg[1][0]), y: TY(rg[1][1]) }]),
         }));
-        const gRuns = routeGlyph(cols, { pxPerMm, spacingMm, pullCompMm, slantDeg, underlay: doUnderlay });
+        const gRuns = routeGlyph(cols, Object.assign({ pxPerMm, spacingMm, pullCompMm, slantDeg }, underlayOpts));
 
         let place;
         if (circleRole === "middle") {
@@ -501,8 +664,12 @@
         }
       }
     });
-    return { runs, bbox: { x0, y0, x1, y1 } };
+    return {
+      runs,
+      bbox: { x0, y0, x1, y1 },
+      cap: { mm: cap.mm, finalMm: capFinalMm, ref: cap.ref, proxy: cap.proxy, underlay: underlayMode },
+    };
   }
 
-  return { layoutText };
+  return { layoutText, capHeightMm, underlayModeForCapMm };
 });
