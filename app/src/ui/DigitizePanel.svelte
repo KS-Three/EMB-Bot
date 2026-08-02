@@ -6,7 +6,12 @@
     digitize,
     decodedFromDesignCached,
     describeWarnings,
+    canonicalShapeEdits,
+    editsKey,
+    reviewFromJob,
+    reconcileReview,
   } from "../lib/digitizer.js";
+  import { loadPalette, nearestInList } from "../lib/threads.js";
 
   // Editor panel for an auto-digitized artwork element (build step 10).
   // The element stores the source image (processing size, PNG base64), the
@@ -88,8 +93,13 @@
         error = "That image is too heavy to save with the design — the limit is about 1.5 MB after downscaling. Simplify or shrink it and try again.";
         return;
       }
-      // New artwork resets everything the old artwork produced.
-      patch({ sourcePng: b64, name: file.name, result: null, warnings: [], blockColors: {}, sizeMm: null });
+      // New artwork resets everything the old artwork produced — including
+      // the layer list and its edits, which are keyed to the OLD art's
+      // shape ids and would only produce SHAPE_EDIT_UNKNOWN_ID noise here.
+      patch({
+        sourcePng: b64, name: file.name, result: null, warnings: [], blockColors: {}, sizeMm: null,
+        review: null, shapeOverrides: {}, deletedShapeIds: [], appliedEdits: null,
+      });
     } catch (err) {
       error = String((err && err.message) || err);
     } finally {
@@ -119,7 +129,21 @@
         isCancelled: () => destroyed,
       });
       if (destroyed || !job) return;
-      patch({ result: job.design, warnings: job.warnings || [] });
+      // One patch = one undo step (App.persist snapshots per elupdate).
+      // `appliedEdits` records the edits THIS result was digitized with —
+      // taken from the submitted cfg, not the live element, so an edit made
+      // mid-flight still reads as pending afterwards. The review is
+      // reconciled so shapes the user deleted keep a struck-through,
+      // restorable row (the fresh review no longer contains them).
+      patch({
+        result: job.design,
+        warnings: job.warnings || [],
+        review: reconcileReview(el.review, reviewFromJob(job.review), el.deletedShapeIds),
+        appliedEdits: editsKey({
+          deleted_shape_ids: cfg.deleted_shape_ids,
+          shape_overrides: cfg.shape_overrides,
+        }),
+      });
     } catch (err) {
       if (!destroyed) error = String((err && err.message) || err);
     } finally {
@@ -216,6 +240,196 @@
   function onAngleChange(e) {
     const v = e.currentTarget.value;
     setParam("fill_angle_deg", v === "auto" ? null : parseFloat(v));
+  }
+
+  // ---- the Layers list (shape-layers contract v1) ---------------------------
+  //
+  // One row per shape, keyed by shape_id (content-derived ids survive a
+  // re-digitize via the engine's match_shape_ids). Edits accumulate on the
+  // element (shapeOverrides / deletedShapeIds) and only restitch on Apply —
+  // the review payload the rows render from is the LAST job's, so live-
+  // editing it would show stitches that don't exist yet.
+
+  const SHAPE_ANGLES = [{ value: null, label: "Auto angle" }, ...FILL_ANGLES.slice(1)];
+
+  $: overrides = element.shapeOverrides || {};
+  $: deletedIds = element.deletedShapeIds || [];
+  $: reviewShapes = (element.review && element.review.shapes) || [];
+  $: orderedShapes = sortShapes(reviewShapes, overrides);
+  $: knownIds = new Set(reviewShapes.map((s) => s.id));
+  $: unmatchedCount = new Set(
+    [...Object.keys(overrides), ...deletedIds].filter((sid) => !knownIds.has(sid))
+  ).size;
+  // Pending = the element's canonical edits differ from the ones the current
+  // result was digitized with. Canonical on both sides, so a toggled-then-
+  // untoggled edit reads as "nothing pending", exactly like the job cache.
+  $: hasPendingEdits =
+    reviewShapes.length > 0 &&
+    editsKey(canonicalShapeEdits(element)) !== (element.appliedEdits || editsKey({}));
+
+  // Effective layer: the user's explicit sew-order override, else the layer
+  // the engine assigned (one per thread), else last. Rows sort by it, then
+  // by the emitted sew position — the list IS the sew order.
+  function effLayer(row, ov) {
+    const e = ov[row.id] || {};
+    if (Number.isInteger(e.layer)) return e.layer;
+    if (row.layer != null) return row.layer;
+    return row.sewIndex == null ? 1e9 : row.sewIndex;
+  }
+
+  function sortShapes(shapes, ov) {
+    return [...shapes].sort(
+      (a, b) =>
+        effLayer(a, ov) - effLayer(b, ov) ||
+        (a.sewIndex == null ? 1e9 : a.sewIndex) - (b.sewIndex == null ? 1e9 : b.sewIndex) ||
+        (a.id < b.id ? -1 : 1)
+    );
+  }
+
+  function effRgb(row, ov) {
+    const e = ov[row.id] || {};
+    return e.rgb || row.rgb || [136, 136, 136];
+  }
+
+  // The tier the shape will sew as: a forced tier wins; otherwise the tier
+  // the engine's plan actually emitted (review.tier — read off the plan, not
+  // re-derived). null = the shape produced no stitches.
+  function effTier(row, ov) {
+    const e = ov[row.id] || {};
+    return e.tier && e.tier !== "auto" ? e.tier : row.tier;
+  }
+
+  function overrideTier(row, ov) {
+    const e = ov[row.id] || {};
+    return e.tier || "auto";
+  }
+
+  function overrideAngle(row, ov) {
+    const e = ov[row.id] || {};
+    return e.fill_angle_deg == null ? "auto" : String(e.fill_angle_deg);
+  }
+
+  function rowName(row) {
+    return row.threadNumber ? "#" + row.threadNumber : "Shape";
+  }
+
+  function fmtArea(a) {
+    if (a == null) return "";
+    return (a >= 100 ? Math.round(a) : a.toFixed(1)) + " mm²";
+  }
+
+  // Tiny outline thumbnail: the stored review keeps a decimated outline per
+  // shape (thinOutline), scaled here into a 24-box. Image-space mm is y-down
+  // and so is SVG, so no flip — the thumb matches the artwork.
+  function thumbPath(row) {
+    const pts = row.outline || [];
+    if (pts.length < 3) return "";
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const [x, y] of pts) {
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    const s = 20 / Math.max(maxX - minX, maxY - minY, 0.001);
+    const ox = (24 - (maxX - minX) * s) / 2;
+    const oy = (24 - (maxY - minY) * s) / 2;
+    return (
+      pts
+        .map(
+          ([x, y], i) =>
+            (i ? "L" : "M") + ((x - minX) * s + ox).toFixed(1) + " " + ((y - minY) * s + oy).toFixed(1)
+        )
+        .join(" ") + " Z"
+    );
+  }
+
+  // Merge fields into one shape's override entry; null (and tier "auto")
+  // clears a field, an emptied entry disappears entirely. Every call is one
+  // element patch = one undo step (App's 500 ms coalescing merges rapid
+  // clicks, same as any slider).
+  function setOverride(sid, fields) {
+    const cur = { ...(element.shapeOverrides || {}) };
+    const entry = { ...(cur[sid] || {}), ...fields };
+    for (const k of Object.keys(entry)) {
+      if (entry[k] == null || (k === "tier" && entry[k] === "auto")) delete entry[k];
+    }
+    if (Object.keys(entry).length) cur[sid] = entry;
+    else delete cur[sid];
+    patch({ shapeOverrides: cur });
+  }
+
+  function setShapeTier(sid, v) {
+    setOverride(sid, { tier: v === "auto" ? null : v });
+  }
+
+  function setShapeAngle(sid, v) {
+    setOverride(sid, { fill_angle_deg: v === "auto" ? null : parseFloat(v) });
+  }
+
+  // Recolor: ThreadPicker hands back an rgb; the engine wants an index into
+  // the chart of the job's brand. The app's brand lists and the service's
+  // chart_data are generated from the same source in the same order
+  // (digitizer_core/threads.py points back at threadBrandsIndex.js), so
+  // nearest-in-the-brand-list IS the chart index. rgb rides along app-side
+  // for the swatch; canonicalShapeEdits strips it before the wire.
+  async function recolorShape(sid, rgb) {
+    const brand = (element.review && element.review.brandId) || "isacord";
+    try {
+      const pal = await loadPalette(brand);
+      if (pal.id !== brand) throw new Error("chart mismatch");
+      const n = nearestInList(pal.threads, rgb);
+      setOverride(sid, { thread_index: n.index, rgb: [...n.rgb] });
+    } catch (e) {
+      error = "Couldn't match that color to the job's thread chart (" + brand + ").";
+    }
+  }
+
+  function deleteShape(sid) {
+    if (deletedIds.includes(sid)) return;
+    patch({ deletedShapeIds: [...deletedIds, sid] });
+  }
+
+  function restoreShape(sid) {
+    patch({ deletedShapeIds: deletedIds.filter((id) => id !== sid) });
+  }
+
+  // "Sew earlier/later", within what the integer layer field can express:
+  // join the adjacent row's layer when it differs; when the neighbour
+  // already shares this layer, step past the whole group instead — order
+  // WITHIN a layer belongs to the machine's pathing (stage 6 nearest-
+  // neighbour), not to this list, and pretending otherwise would show an
+  // order the file won't sew.
+  function moveShape(row, dir) {
+    const rows = orderedShapes;
+    const i = rows.findIndex((r) => r.id === row.id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= rows.length) return;
+    const mine = effLayer(row, overrides);
+    const theirs = effLayer(rows[j], overrides);
+    let target = theirs !== mine ? theirs : mine + dir;
+    // Joining a layer places the shape by its emitted sew position WITHIN
+    // that layer, which can re-sort it right back where it was (measured in
+    // the live probe: a restored shape "moved earlier" into the last block
+    // and stayed visually last). If the join wouldn't move the row, step
+    // past the neighbour's whole layer instead — a click always moves.
+    const test = { ...overrides, [row.id]: { ...(overrides[row.id] || {}), layer: target } };
+    if (sortShapes(reviewShapes, test).findIndex((r) => r.id === row.id) === i) {
+      target = theirs + dir;
+    }
+    setOverride(row.id, { layer: target });
+  }
+
+  // A stale edit (the art changed under it — e.g. a re-digitize at a new
+  // width regenerates shape ids) keeps its warning until the user clears it;
+  // silently dropping a user's edit is the one thing this panel never does.
+  function clearUnmatched() {
+    const keep = {};
+    for (const sid of Object.keys(overrides)) if (knownIds.has(sid)) keep[sid] = overrides[sid];
+    patch({
+      shapeOverrides: keep,
+      deletedShapeIds: deletedIds.filter((sid) => knownIds.has(sid)),
+    });
   }
 </script>
 
@@ -350,6 +564,141 @@
         </button>
       {/if}
 
+      {#if reviewShapes.length}
+        <div class="dgp-layers">
+          <div class="dgp-layers-head">
+            <span class="dgp-layers-title">Layers</span>
+            <!-- TOP SEWS FIRST — chosen, labeled, and here is why: an
+                 operator reads the machine's color-change sheet top-to-
+                 bottom in the order the needle runs, and the service's
+                 review arrives in that same order. Graphics-app z-order
+                 (bottom sews first) would put "first on the fabric" at the
+                 BOTTOM of a list that is entirely about sewing sequence. -->
+            <span class="dgp-layers-order">top sews first</span>
+          </div>
+          <ol class="dgp-layerlist">
+            {#each orderedShapes as row, i (row.id)}
+              {@const dead = deletedIds.includes(row.id)}
+              {@const rgb = effRgb(row, overrides)}
+              {@const tier = effTier(row, overrides)}
+              <li class="dgp-layer" class:dead>
+                <svg class="dgp-lthumb" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d={thumbPath(row)}
+                    fill="rgb({rgb[0]},{rgb[1]},{rgb[2]})"
+                    fill-opacity="0.9"
+                    stroke="currentColor"
+                    stroke-opacity="0.35"
+                    stroke-width="0.6"
+                  />
+                </svg>
+                <div class="dgp-lmain">
+                  <div class="dgp-lrow">
+                    {#if dead}
+                      <span class="dgp-lname">{rowName(row)}</span>
+                      <span class="dgp-larea">{fmtArea(row.areaMm2)}</span>
+                      <span class="dgp-ltier">hidden</span>
+                    {:else}
+                      <ThreadPicker {rgb} compact on:pick={(e) => recolorShape(row.id, e.detail)} />
+                      <span class="dgp-lname">{rowName(row)}</span>
+                      <span class="dgp-larea">{fmtArea(row.areaMm2)}</span>
+                      <span class="dgp-ltier tier-{tier || 'none'}">{tier || "not sewn"}</span>
+                    {/if}
+                  </div>
+                  {#if !dead}
+                    <div class="dgp-lrow">
+                      <select
+                        class="dgp-lsel"
+                        value={overrideTier(row, overrides)}
+                        on:change={(e) => setShapeTier(row.id, e.currentTarget.value)}
+                        aria-label="Stitch type"
+                      >
+                        <option value="auto">Auto{row.tier ? " (" + row.tier + ")" : ""}</option>
+                        <option value="satin">Satin</option>
+                        <option value="fill">Fill</option>
+                        <option value="run">Run</option>
+                      </select>
+                      {#if tier === "fill"}
+                        <select
+                          class="dgp-lsel"
+                          value={overrideAngle(row, overrides)}
+                          on:change={(e) => setShapeAngle(row.id, e.currentTarget.value)}
+                          aria-label="Fill angle"
+                        >
+                          {#each SHAPE_ANGLES as a}
+                            <option value={a.value == null ? "auto" : String(a.value)}>{a.label}</option>
+                          {/each}
+                        </select>
+                      {/if}
+                    </div>
+                  {/if}
+                </div>
+                <div class="dgp-lbtns">
+                  {#if dead}
+                    <button type="button" class="dgp-lbtn dgp-restore" on:click={() => restoreShape(row.id)}>
+                      Restore
+                    </button>
+                  {:else}
+                    <button
+                      type="button"
+                      class="dgp-lbtn"
+                      disabled={i === 0}
+                      title="Sew earlier"
+                      aria-label="Sew earlier"
+                      on:click={() => moveShape(row, -1)}
+                    >↑</button>
+                    <button
+                      type="button"
+                      class="dgp-lbtn"
+                      disabled={i === orderedShapes.length - 1}
+                      title="Sew later"
+                      aria-label="Sew later"
+                      on:click={() => moveShape(row, 1)}
+                    >↓</button>
+                    <button
+                      type="button"
+                      class="dgp-lbtn"
+                      title="Hide this shape (restorable)"
+                      aria-label="Hide this shape"
+                      on:click={() => deleteShape(row.id)}
+                    >✕</button>
+                  {/if}
+                </div>
+              </li>
+            {/each}
+          </ol>
+
+          {#if unmatchedCount}
+            <p class="dgp-unmatched">
+              {unmatchedCount} layer edit{unmatchedCount === 1 ? "" : "s"} point at shapes that are
+              no longer in the art.
+              <button type="button" class="dgp-lbtn dgp-clearun" on:click={clearUnmatched}>Clear them</button>
+            </p>
+          {/if}
+
+          {#if hasPendingEdits}
+            {#if health}
+              <button
+                type="button"
+                class="dgp-apply"
+                disabled={pending}
+                on:click={() => runDigitize(element)}
+              >
+                {pending ? "Digitizing…" : "Apply layer changes"}
+              </button>
+              <p class="dgp-note">Layer changes restitch only when you apply them.</p>
+            {:else}
+              <p class="dgp-queued">
+                The digitizer isn't running — these layer changes are saved with the design and
+                apply the next time you digitize.
+              </p>
+            {/if}
+          {/if}
+        </div>
+      {:else if health}
+        <p class="dgp-note">Digitize again to get an editable layer list for this result.</p>
+      {/if}
+
       <div class="dgp-blocks">
         <span class="dgp-blocks-label">Thread per color</span>
         {#each Array.from({ length: (element.result.colors || []).length }) as _, i}
@@ -460,4 +809,75 @@
   .dgp-blocks-label { display: block; font-size: var(--fs-xs, 12px); margin-bottom: 4px; }
   .dgp-block { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
   .dgp-block-n { font-size: var(--fs-xs, 12px); min-width: 130px; }
+  .dgp-layers { margin-top: 12px; }
+  .dgp-layers-head { display: flex; align-items: baseline; gap: 8px; }
+  .dgp-layers-title { font-size: var(--fs-xs, 12px); font-weight: 600; }
+  .dgp-layers-order { font-size: 11px; color: var(--muted, #667); }
+  .dgp-layerlist { list-style: none; margin: 6px 0 0; padding: 0; }
+  .dgp-layer {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 6px 4px;
+    border-top: 1px solid var(--tint-border, #ccd6fb);
+  }
+  .dgp-layer:last-child { border-bottom: 1px solid var(--tint-border, #ccd6fb); }
+  .dgp-layer.dead .dgp-lname,
+  .dgp-layer.dead .dgp-larea { text-decoration: line-through; }
+  .dgp-layer.dead { opacity: 0.6; }
+  .dgp-lthumb {
+    width: 24px;
+    height: 24px;
+    flex: none;
+    margin-top: 2px;
+    color: var(--muted, #667);
+  }
+  .dgp-lmain { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .dgp-lrow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .dgp-lname { font-size: var(--fs-xs, 12px); font-weight: 600; }
+  .dgp-larea { font-size: 11px; color: var(--muted, #667); }
+  .dgp-ltier {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 1px 5px;
+    border: 1px solid var(--tint-border, #ccd6fb);
+    border-radius: 8px;
+    color: var(--muted, #667);
+  }
+  .dgp-lsel { font-size: 11px; max-width: 110px; }
+  .dgp-lbtns { display: flex; flex-direction: column; gap: 2px; flex: none; }
+  .dgp-lbtn {
+    padding: 2px 6px;
+    border: 1px solid var(--tint-border, #ccd6fb);
+    border-radius: var(--radius-s, 6px);
+    background: var(--surface, #fff);
+    cursor: pointer;
+    font-size: 11px;
+    line-height: 1.3;
+  }
+  .dgp-lbtn:disabled { opacity: 0.4; cursor: default; }
+  .dgp-restore { white-space: nowrap; }
+  .dgp-unmatched {
+    font-size: var(--fs-xs, 12px);
+    color: var(--warn-text, #8a6d1a);
+    margin: 8px 0 0;
+  }
+  .dgp-clearun { margin-left: 4px; }
+  .dgp-apply {
+    margin-top: 10px;
+    padding: 6px 14px;
+    border: 1px solid var(--accent, #4f46e5);
+    border-radius: var(--radius-s, 6px);
+    background: var(--accent, #4f46e5);
+    color: #fff;
+    cursor: pointer;
+    font-size: var(--fs-xs, 12px);
+  }
+  .dgp-apply:disabled { opacity: 0.6; cursor: default; }
+  .dgp-queued {
+    font-size: var(--fs-xs, 12px);
+    color: var(--warn-text, #8a6d1a);
+    margin: 8px 0 0;
+  }
 </style>

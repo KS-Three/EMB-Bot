@@ -80,6 +80,22 @@ export const DEFAULT_DIGITIZE_PARAMS = {
 // `warnings` is the last job's pipeline warnings, kept so the review panel
 // can still explain the result after a reload. `blockColors` overrides the
 // service palette per color block, same shape as a design element's.
+//
+// Shape-layers (contract v1) — the same hybrid-persistence decision extended,
+// not relitigated: the element also stores everything the Layers list needs
+// to render and edit OFFLINE, after a reload, with no service running:
+//   `review`          — slimmed per-shape payload from the last job
+//                       ({ brandId, shapes: [{ id, rgb, tier, layer,
+//                       sewIndex, ... }] }, see digitizer.js reviewFromJob).
+//   `shapeOverrides`  — keyed by shape_id; PipelineConfig.shape_overrides
+//                       field names verbatim (thread_index, fill_angle_deg,
+//                       tier, border, layer) plus an app-only `rgb` for the
+//                       swatch, stripped before the wire.
+//   `deletedShapeIds` — shapes the user removed in review; they stay in the
+//                       stored review so the list can strike them through.
+//   `appliedEdits`    — canonical key of the edits the CURRENT result was
+//                       digitized with (digitizer.js editsKey), so the panel
+//                       knows honestly whether edits are still pending.
 export function defaultDigitizedElement(id) {
   return {
     id,
@@ -90,6 +106,10 @@ export function defaultDigitizedElement(id) {
     result: null,
     warnings: [],
     blockColors: {},
+    review: null,
+    shapeOverrides: {},
+    deletedShapeIds: [],
+    appliedEdits: null,
     sizeMm: null,
     offsetXMm: 0,
     offsetYMm: 0,

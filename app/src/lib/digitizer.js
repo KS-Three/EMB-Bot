@@ -80,7 +80,143 @@ export function buildDigitizeConfig(element, project) {
   const brand = loadPreferredPaletteId();
   if (brand && brand !== "studio") cfg.thread_brand = brand;
   if (project && project.garmentId) cfg.garment_id = project.garmentId;
+  // Shape-layers edits (contract v1) ride the same config — already in the
+  // service's canonical spelling (canonicalShapeEdits below), so the job
+  // cache key changes exactly when an edit changes and a no-op edit stays a
+  // cache hit.
+  const edits = canonicalShapeEdits(element || {});
+  if (edits.deleted_shape_ids) cfg.deleted_shape_ids = edits.deleted_shape_ids;
+  if (edits.shape_overrides) cfg.shape_overrides = edits.shape_overrides;
+  // A recolor's thread_index indexes the CHART OF THE JOB IT WAS PICKED
+  // AGAINST (element.review.brandId). If the user's brand preference moved
+  // on since, sending the new brand would silently re-aim every picked
+  // index at a different manufacturer's numbers — so a config carrying
+  // recolors pins the brand the indexes were computed for.
+  if (
+    edits.shape_overrides &&
+    Object.values(edits.shape_overrides).some((e) => e.thread_index != null) &&
+    element && element.review && element.review.brandId
+  ) {
+    cfg.thread_brand = element.review.brandId;
+  }
   return cfg;
+}
+
+// ---- shape-layers edits (review-screen contract v1) ------------------------
+
+// Closed vocabularies, mirrored from the service's _canonicalize_shape_edits
+// (digitizer_service/app.py). "auto" tier is the absence of an override on
+// both ends.
+const SHAPE_TIERS = new Set(["satin", "fill", "run"]);
+const SHAPE_BORDERS = new Set(["off", "auto", "bean"]);
+
+// The element's shape edits in the service's own canonical wire form:
+// deleted ids sorted + deduped, override keys sorted, null/"auto"/app-only
+// fields (rgb) dropped, empty entries dropped, and overrides for deleted
+// shapes omitted (the engine would only warn SHAPE_EDIT_UNKNOWN_ID for
+// them). Canonical HERE, not just server-side, because the panel compares
+// this against `element.appliedEdits` to know whether edits are pending —
+// two spellings of the same edit must never read as "pending changes".
+export function canonicalShapeEdits(element) {
+  const out = {};
+  const deleted = Array.from(new Set(element.deletedShapeIds || []))
+    .filter((s) => typeof s === "string" && s)
+    .sort();
+  if (deleted.length) out.deleted_shape_ids = deleted;
+  const del = new Set(deleted);
+  const src = element.shapeOverrides || {};
+  const overrides = {};
+  for (const sid of Object.keys(src).sort()) {
+    if (del.has(sid)) continue;
+    const e = src[sid] || {};
+    const entry = {};
+    if (Number.isInteger(e.thread_index) && e.thread_index >= 0) entry.thread_index = e.thread_index;
+    if (typeof e.fill_angle_deg === "number" && isFinite(e.fill_angle_deg)) entry.fill_angle_deg = e.fill_angle_deg;
+    if (SHAPE_TIERS.has(e.tier)) entry.tier = e.tier;
+    if (SHAPE_BORDERS.has(e.border)) entry.border = e.border;
+    if (Number.isInteger(e.layer)) entry.layer = e.layer;
+    if (Object.keys(entry).length) overrides[sid] = entry;
+  }
+  if (Object.keys(overrides).length) out.shape_overrides = overrides;
+  return out;
+}
+
+// Stable string identity for a canonical edit set (canonicalShapeEdits
+// builds its objects in sorted key order, so JSON.stringify is
+// deterministic). Stored as element.appliedEdits when a result lands;
+// compared against the current edits to drive the "Apply changes" state.
+export function editsKey(edits) {
+  return JSON.stringify([
+    (edits && edits.deleted_shape_ids) || [],
+    (edits && edits.shape_overrides) || {},
+  ]);
+}
+
+// Outline decimation for the row thumbnails: keep at most `max` points,
+// evenly strided, endpoints preserved. The review outlines are already
+// simplified polygons, but a complex logo shape can still carry hundreds of
+// vertices — far more than a 24 px thumbnail can show, and this rides
+// localStorage with the project.
+export function thinOutline(points, max = 48) {
+  const pts = points || [];
+  if (pts.length <= max) return pts.map((p) => [p[0], p[1]]);
+  const step = (pts.length - 1) / (max - 1);
+  const out = [];
+  for (let i = 0; i < max; i++) {
+    const p = pts[Math.round(i * step)];
+    out.push([p[0], p[1]]);
+  }
+  return out;
+}
+
+// Slim the job's review payload down to what the Layers list renders and
+// persists with the element. Field name mapping is deliberate: the wire
+// names (shape_id, thread_index, ...) stay in digitizer.js; the element
+// stores app-shaped camelCase like every other element field.
+//   rgb — the shape's OWN thread color, resolved by thread number against
+//   the job palette first (a shape that produced no stitches has no
+//   sew_block but still has a thread), block index as the fallback.
+export function reviewFromJob(review) {
+  if (!review || !Array.isArray(review.shapes)) return null;
+  const palette = review.palette || [];
+  const brandId = (palette.length && palette[0].brand_id) || null;
+  const byNumber = new Map(palette.map((p) => [p.number, p.rgb]));
+  return {
+    brandId,
+    shapes: review.shapes.map((s) => ({
+      id: s.shape_id,
+      threadIndex: s.thread_index,
+      threadNumber: s.thread_number,
+      rgb:
+        byNumber.get(s.thread_number) ||
+        (s.sew_block != null && palette[s.sew_block] && palette[s.sew_block].rgb) ||
+        null,
+      areaMm2: s.area_mm2,
+      layer: s.layer,
+      sewIndex: s.sew_index,
+      sewBlock: s.sew_block,
+      tier: s.tier,
+      outline: thinOutline(s.outline_mm),
+    })),
+  };
+}
+
+// A digitize run with deletions returns a review WITHOUT the deleted shapes
+// (they are dropped after stage 4, so the engine never planned them). The
+// Layers list must keep showing them — struck through, restorable — so the
+// stored review carries each deleted shape's LAST KNOWN row forward from
+// the previous review. Restoring is then just removing the id from
+// deletedShapeIds; the next apply brings the shape back for real.
+export function reconcileReview(prev, fresh, deletedShapeIds) {
+  if (!fresh) return prev || null;
+  const have = new Set(fresh.shapes.map((s) => s.id));
+  const carried = [];
+  for (const sid of deletedShapeIds || []) {
+    if (have.has(sid)) continue;
+    const old = prev && (prev.shapes || []).find((s) => s.id === sid);
+    if (old) carried.push(old);
+  }
+  return carried.length ? { ...fresh, shapes: [...fresh.shapes, ...carried] } : fresh;
 }
 
 function b64ToBytes(b64) {
@@ -280,6 +416,14 @@ const WARNING_TEXT = {
     plural(w.count || 0,
       "One border sews as a light run line — the shape was too narrow for a satin border.",
       "{n} borders sew as light run lines — those shapes were too narrow for satin borders."),
+  SHAPES_DELETED_BY_USER: (w) =>
+    plural(w.count || 0,
+      "One shape is hidden by you. Restore it from the Layers list to sew it again.",
+      "{n} shapes are hidden by you. Restore them from the Layers list to sew them again."),
+  SHAPE_EDIT_UNKNOWN_ID: (w) =>
+    plural(w.count || 0,
+      "One layer edit no longer matches any shape in the art, so it wasn't applied.",
+      "{n} layer edits no longer match any shape in the art, so they weren't applied."),
 };
 
 // [{ code, message, ...extra }] -> [{ code, text }] for the panel.

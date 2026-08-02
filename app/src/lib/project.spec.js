@@ -434,6 +434,42 @@ test("migrateProject fills a digitized element's missing fields (additive migrat
   expect(el.result).toEqual({ stitches: [], colors: [] });
 });
 
+test("migrateProject fills the shape-layers fields on a pre-layers digitized save (review/overrides/deletions/appliedEdits)", () => {
+  // A save from the build right before the Layers panel existed: it has a
+  // result but none of the layer-list fields. It must load with today's
+  // defaults, not undefined — the panel dereferences all four.
+  const old = {
+    version: 2, garmentId: "left_chest", selectedId: "e1",
+    elements: [{
+      id: "e1", type: "digitized", name: "logo.png", sourcePng: "QQ==",
+      params: { target_width_mm: 80, max_colors: 6, satin: true, fill_angle_deg: null, border: "off" },
+      result: { stitches: [], colors: [] }, warnings: [], blockColors: {},
+      sizeMm: null, offsetXMm: 0, offsetYMm: 0, rotationDeg: 0,
+    }],
+  };
+  const el = migrateProject(old).elements[0];
+  expect(el.review).toBeNull();
+  expect(el.shapeOverrides).toEqual({});
+  expect(el.deletedShapeIds).toEqual([]);
+  expect(el.appliedEdits).toBeNull();
+  // And a save that HAS them keeps them verbatim.
+  const edited = {
+    ...old,
+    elements: [{
+      ...old.elements[0],
+      review: { brandId: "isacord", shapes: [{ id: "Sabc", tier: "fill" }] },
+      shapeOverrides: { Sabc: { thread_index: 3, rgb: [1, 2, 3] } },
+      deletedShapeIds: ["Sdef"],
+      appliedEdits: '[["Sdef"],{}]',
+    }],
+  };
+  const kept = migrateProject(edited).elements[0];
+  expect(kept.review.shapes[0].id).toBe("Sabc");
+  expect(kept.shapeOverrides.Sabc.thread_index).toBe(3);
+  expect(kept.deletedShapeIds).toEqual(["Sdef"]);
+  expect(kept.appliedEdits).toBe('[["Sdef"],{}]');
+});
+
 test("migrateProject leaves non-digitized elements byte-identical (old projects load unchanged)", () => {
   const text = defaultTextElement("e1");
   const image = { ...defaultImageElement("e2"), nColors: 5 };

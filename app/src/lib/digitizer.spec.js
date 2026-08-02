@@ -54,7 +54,7 @@ const PIPELINE_CONFIG_FIELDS = [
   "min_detail_mm", "report_absorb_frac", "simplify_tol_mm", "garment_id",
   "fabric_id", "overlap_mm", "fill_row_mm", "fill_stitch_mm", "fill_angle_deg",
   "underlay_style", "underlay", "satin", "satin_max_width_mm", "border",
-  "border_width_mm",
+  "border_width_mm", "deleted_shape_ids", "shape_overrides",
 ];
 
 test("buildDigitizeConfig sends the stored thread-brand preference and the project garment, in service field names", async () => {
@@ -162,6 +162,144 @@ test("fetchHealth returns the payload when the service is up and null for down/n
   expect(up && up.status).toBe("ok");
   expect(await fetchHealth(async () => ({ ok: false, status: 500, json: async () => ({}) }))).toBeNull();
   expect(await fetchHealth(async () => { throw new TypeError("fetch failed"); })).toBeNull();
+});
+
+// ---- shape-layers edits (review-screen contract v1) ------------------------
+//
+// The other end of this seam is digitizer_service/app.py's
+// _canonicalize_shape_edits: the job cache keys on sha256(image) + the
+// canonical config, so the app must send edits ALREADY canonical — sorted,
+// deduped, no null/"auto"/app-only fields — or two spellings of one edit
+// would be two jobs (and the panel's pending-edits check would lie).
+
+test("canonicalShapeEdits: sorts+dedupes deletions, strips rgb/null/auto, drops empty entries and overrides for deleted shapes", async () => {
+  stubStorage({});
+  const { canonicalShapeEdits } = await import("./digitizer.js");
+  const el = digitizedElement({
+    deletedShapeIds: ["Sbbb", "Saaa", "Sbbb"],
+    shapeOverrides: {
+      Szzz: { thread_index: 4, rgb: [1, 2, 3], tier: "auto", fill_angle_deg: null },
+      Saaa: { tier: "satin" }, // deleted above -> omitted (engine would only warn)
+      Smmm: { tier: "auto", rgb: [9, 9, 9] }, // canonicalizes to nothing -> dropped
+      Sfff: { fill_angle_deg: 90, layer: 2, border: "bean" },
+    },
+  });
+  expect(canonicalShapeEdits(el)).toEqual({
+    deleted_shape_ids: ["Saaa", "Sbbb"],
+    shape_overrides: {
+      Sfff: { fill_angle_deg: 90, border: "bean", layer: 2 },
+      Szzz: { thread_index: 4 },
+    },
+  });
+  // No edits at all -> a config indistinguishable from the pre-layers one.
+  expect(canonicalShapeEdits(digitizedElement())).toEqual({});
+});
+
+test("editsKey is stable across edit spellings and distinguishes real differences (the pending-edits check)", async () => {
+  stubStorage({});
+  const { canonicalShapeEdits, editsKey } = await import("./digitizer.js");
+  const a = editsKey(canonicalShapeEdits(digitizedElement({ deletedShapeIds: ["Sb", "Sa"] })));
+  const b = editsKey(canonicalShapeEdits(digitizedElement({ deletedShapeIds: ["Sa", "Sb", "Sa"] })));
+  expect(a).toBe(b);
+  const c = editsKey(canonicalShapeEdits(digitizedElement({ deletedShapeIds: ["Sa"] })));
+  expect(c).not.toBe(a);
+  expect(editsKey(canonicalShapeEdits(digitizedElement()))).toBe(editsKey({}));
+});
+
+test("buildDigitizeConfig carries the edits — two elements differing only in shape_overrides produce different configs (cache-key proof, app side)", async () => {
+  stubStorage({});
+  const { buildDigitizeConfig } = await import("./digitizer.js");
+  const plain = buildDigitizeConfig(digitizedElement(), PROJECT);
+  const edited = buildDigitizeConfig(
+    digitizedElement({ shapeOverrides: { S1: { tier: "fill" } }, deletedShapeIds: ["S9"] }),
+    PROJECT
+  );
+  expect("shape_overrides" in plain).toBe(false);
+  expect("deleted_shape_ids" in plain).toBe(false);
+  expect(edited.shape_overrides).toEqual({ S1: { tier: "fill" } });
+  expect(edited.deleted_shape_ids).toEqual(["S9"]);
+  expect(JSON.stringify(edited)).not.toBe(JSON.stringify(plain));
+  for (const k of Object.keys(edited)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
+});
+
+test("buildDigitizeConfig pins thread_brand to the chart a recolor's indexes were picked against, and only then", async () => {
+  // Preference moved to madeira AFTER the user picked threads against an
+  // isacord job: sending madeira would re-aim every stored thread_index at
+  // a different manufacturer's chart, so the config pins isacord.
+  stubStorage({ "embstudio:threadPalette": "madeira-rayon" });
+  const { buildDigitizeConfig } = await import("./digitizer.js");
+  const recolored = buildDigitizeConfig(
+    digitizedElement({
+      review: { brandId: "isacord", shapes: [] },
+      shapeOverrides: { S1: { thread_index: 7, rgb: [1, 2, 3] } },
+    }),
+    PROJECT
+  );
+  expect(recolored.thread_brand).toBe("isacord");
+  // No thread_index override -> the preference rides as always.
+  const tiered = buildDigitizeConfig(
+    digitizedElement({
+      review: { brandId: "isacord", shapes: [] },
+      shapeOverrides: { S1: { tier: "fill" } },
+    }),
+    PROJECT
+  );
+  expect(tiered.thread_brand).toBe("madeira-rayon");
+});
+
+test("reviewFromJob slims the wire review: per-shape thread rgb by number, sew facts kept, outlines thinned", async () => {
+  stubStorage({});
+  const { reviewFromJob, thinOutline } = await import("./digitizer.js");
+  const bigOutline = Array.from({ length: 300 }, (_, i) => [i, i * 2]);
+  const wire = {
+    palette: [
+      { brand: "Isacord Polyester 40", brand_id: "isacord", number: "0020", name: "Black", rgb: [0, 0, 0] },
+      { brand: "Isacord Polyester 40", brand_id: "isacord", number: "1902", name: "Poinsettia", rgb: [204, 0, 0] },
+    ],
+    design_size_mm: [80, 40],
+    shapes: [
+      { shape_id: "Sa", thread_index: 4, thread_number: "1902", area_mm2: 412.126, source: "quant",
+        layer: 1, sew_index: 1, sew_block: 1, tier: "fill", outline_mm: bigOutline, holes_mm: [] },
+      // Unstitched shape: no sew facts, but its thread still resolves by number.
+      { shape_id: "Sb", thread_index: 0, thread_number: "0020", area_mm2: 3.2, source: "quant",
+        layer: null, sew_index: null, sew_block: null, tier: null, outline_mm: [[0, 0], [1, 0], [1, 1]], holes_mm: [] },
+    ],
+  };
+  const r = reviewFromJob(wire);
+  expect(r.brandId).toBe("isacord");
+  expect(r.shapes).toHaveLength(2);
+  expect(r.shapes[0]).toMatchObject({
+    id: "Sa", threadNumber: "1902", rgb: [204, 0, 0], areaMm2: 412.126,
+    layer: 1, sewIndex: 1, sewBlock: 1, tier: "fill",
+  });
+  expect(r.shapes[0].outline.length).toBeLessThanOrEqual(48);
+  // Endpoints survive thinning (aggregate check, not per-entry).
+  expect(r.shapes[0].outline[0]).toEqual([0, 0]);
+  expect(r.shapes[0].outline[r.shapes[0].outline.length - 1]).toEqual([299, 598]);
+  expect(r.shapes[1].rgb).toEqual([0, 0, 0]);
+  expect(r.shapes[1].tier).toBeNull();
+  expect(thinOutline([[0, 0], [1, 1]])).toEqual([[0, 0], [1, 1]]); // short outlines pass through
+  expect(reviewFromJob(null)).toBeNull();
+});
+
+test("reconcileReview keeps a deleted shape's last known row so the panel can strike it through and restore it", async () => {
+  stubStorage({});
+  const { reconcileReview } = await import("./digitizer.js");
+  const prev = { brandId: "isacord", shapes: [
+    { id: "Sa", tier: "fill" }, { id: "Sdead", tier: "satin", areaMm2: 5 },
+  ]};
+  // The fresh review after digitizing WITH the deletion: Sdead is gone (the
+  // engine dropped it after stage 4 — it was never planned).
+  const fresh = { brandId: "isacord", shapes: [{ id: "Sa", tier: "fill" }] };
+  const merged = reconcileReview(prev, fresh, ["Sdead"]);
+  expect(merged.shapes.map((s) => s.id)).toEqual(["Sa", "Sdead"]);
+  expect(merged.shapes[1].areaMm2).toBe(5); // the carried row is the old one
+  // A deletion the previous review never knew either simply isn't renderable.
+  expect(reconcileReview(prev, fresh, ["Sghost"]).shapes.map((s) => s.id)).toEqual(["Sa"]);
+  // Un-deleted (restored, then applied): the fresh review wins outright.
+  expect(reconcileReview(prev, fresh, []).shapes).toHaveLength(1);
+  // No fresh review (a failed run patches nothing, but be safe): keep prev.
+  expect(reconcileReview(prev, null, ["Sdead"])).toBe(prev);
 });
 
 // ---- adapter ---------------------------------------------------------------
@@ -318,6 +456,17 @@ test("describeWarnings translates pipeline codes to customer language, with coun
   expect(out[0].text).toBe("3 parts of the art were too small to sew and were left out.");
   expect(out[1].text).toBe("One part of the art was too small to sew and was left out.");
   expect(out[2].text).toBe("The thread gets cut 2 times where it has to travel a long way.");
+});
+
+test("describeWarnings speaks the two shape-edit codes: deletions agree with the panel's count, unmatched edits are named, not swallowed", async () => {
+  stubStorage({});
+  const { describeWarnings } = await import("./digitizer.js");
+  const out = describeWarnings([
+    { code: "SHAPES_DELETED_BY_USER", message: "engine prose", count: 2, ids: ["Sa", "Sb"] },
+    { code: "SHAPE_EDIT_UNKNOWN_ID", message: "engine prose", count: 1, ids: ["Sz"] },
+  ]);
+  expect(out[0].text).toBe("2 shapes are hidden by you. Restore them from the Layers list to sew them again.");
+  expect(out[1].text).toBe("One layer edit no longer matches any shape in the art, so it wasn't applied.");
 });
 
 test("describeWarnings falls back to the service's own message for a code it doesn't know (codes are append-only)", async () => {
