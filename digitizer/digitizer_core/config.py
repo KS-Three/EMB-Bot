@@ -220,7 +220,47 @@ class PipelineConfig:
     # being the decision variable — coverage is — and `fabric.trim_at_mm` is
     # left governing only the moves that cannot be covered.
     #
-    # True is the measured default: professionals link roughly two thirds of
-    # transitions at every gap out to 40 mm. False restores the pure distance
-    # test, and is what the pre-chaining goldens are pinned to.
-    chain_links: bool = True
+    # OFF BY DEFAULT AS OF 2026-08-02, and it shipped on for less than a day.
+    # The laws are right and the win is real — benchmark trims/1k 8.42 -> 2.63,
+    # inside the professional band for the first time — but the COVERAGE TEST
+    # that makes a link safe is measured against polygons, and a polygon is not
+    # thread.
+    #
+    # `_link_cover` quotes `p.polygon` for every shape the block has sewn. A
+    # fill does not stitch its whole polygon (its first row sits half a row
+    # inside the boundary, and `_columns` drops non-monotone spans), and a
+    # satin column does not either (it stops short at the tips and fans on
+    # curves). So the router is told it may travel over ground its own colour
+    # never reaches, and it does.
+    #
+    # Measured on the benchmark at 90 mm, against the union of every emitted
+    # non-travel stitch in the design, over each link's REAL sewn path
+    # (previous run's last point -> link -> next run's first point), bare being
+    # further than half a thread width from any thread of any colour:
+    #
+    #     left_chest  chain off:  0 links,  0 exposed,  0.00 mm bare
+    #     left_chest  chain ON:  23 links, 17 exposed, 12.38 mm, worst 0.673 mm
+    #     full_back   chain off:  1 link,   0 exposed,  0.00 mm bare
+    #     full_back   chain ON:  31 links, 26 exposed, 29.11 mm, worst 1.055 mm
+    #
+    # full_back is fleece_sweatshirt, a stock preset. The control is exactly
+    # zero, so every millimetre of that is chaining's.
+    #
+    # Neither shipped instrument can see it, and that is structural, not an
+    # oversight: `tests/test_chaining.py::_uncovered_links` and
+    # `tools/chain_probe.py::uncovered_travel` both rebuild the cover from the
+    # same polygons the router trusted, both skip one-point links (37% of the
+    # benchmark's), and both test `LineString(run.points)` when `_link_stitches`
+    # returns only the route's INTERIOR — so up to RUN_STITCH_MM at each end is
+    # never examined by anything.
+    #
+    # Turning this off costs a needle-up move, not a thread cut: refusing a
+    # link makes it a jump, and the measured trims/1k does not move. That is
+    # the cheap direction to be wrong in, and a float on fleece is not.
+    #
+    # What it takes to turn back on: cover built from EMITTED THREAD rather
+    # than polygons for the block's own tiers, an inset on `covered_by` for the
+    # layers whose stitches do not exist yet, and a sew-out that says at what
+    # clearance a needle-down float actually shows — LINK_COVER_TOL_MM is a
+    # thread spec today, not a measurement.
+    chain_links: bool = False

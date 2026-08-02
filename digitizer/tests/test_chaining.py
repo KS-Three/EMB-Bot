@@ -33,6 +33,12 @@ from .conftest import PLAN_CFG_KW, cfg
 
 FABRIC = fabric_for_garment(PLAN_CFG_KW["garment_id"])   # pique knit, trims at 3.0 mm
 
+# Chaining ships OFF (see `PipelineConfig.chain_links` for the measurement that
+# turned it off). Every test in this file is a test OF chaining, so each one
+# turns it on for itself rather than inheriting a default — which also means
+# this file keeps telling the truth whichever way that default settles.
+CHAIN_ON = {**PLAN_CFG_KW, "chain_links": True}
+
 
 # --- Instruments -----------------------------------------------------------
 
@@ -105,7 +111,7 @@ def _two_bars(bridge: Polygon | None):
                _region(_bar(16, 26), 0, "Sright", 0)]
     if bridge is not None:
         regions.append(_region(bridge, 1, "Sbridge", 1))
-    conf = PipelineConfig(**PLAN_CFG_KW)
+    conf = PipelineConfig(**CHAIN_ON)
     planned, _ = resolve_overlaps(regions, FABRIC, conf)
     blocks, _ = sequence(planned, FABRIC, conf)
     return planned, blocks
@@ -294,7 +300,7 @@ def test_no_link_is_left_uncovered(plan, alpha):
     stitch_plan, planned, _ = plan
     assert not _uncovered_links(planned, stitch_plan.blocks)
 
-    conf = cfg(**PLAN_CFG_KW)
+    conf = cfg(**CHAIN_ON)
     a_planned, _ = resolve_overlaps(alpha.regions, FABRIC, conf)
     a_blocks, _ = sequence(a_planned, FABRIC, conf)
     assert not _uncovered_links(a_planned, a_blocks)
@@ -309,7 +315,7 @@ def test_chaining_removes_trims_without_removing_locks(alpha):
     fewer ties by construction — and the risk is that a chained sequence loses
     the lock it still needs. Every block must still open and close with one,
     and every surviving cut must still be locked on both sides."""
-    conf = cfg(**PLAN_CFG_KW)
+    conf = cfg(**CHAIN_ON)
     planned, _ = resolve_overlaps(alpha.regions, FABRIC, conf)
     blocks, _ = sequence(planned, FABRIC, conf)
 
@@ -334,7 +340,7 @@ def test_chaining_removes_trims_without_removing_locks(alpha):
 def test_a_link_is_never_sewn_across_a_colour_change(alpha):
     """It would be sewn in the wrong thread. The first run of every block
     stays a cut, whatever the geometry says."""
-    conf = cfg(**PLAN_CFG_KW)
+    conf = cfg(**CHAIN_ON)
     planned, _ = resolve_overlaps(alpha.regions, FABRIC, conf)
     blocks, _ = sequence(planned, FABRIC, conf)
     for block in blocks:
@@ -346,7 +352,7 @@ def test_an_uncovered_needle_up_move_still_obeys_the_trim_distance(alpha):
     """Law 59 retires distance as the LINK decision, not as the trim decision.
     Whatever cannot be buried is still governed by the fabric preset: a float
     long enough to catch a finger is still cut."""
-    conf = cfg(**PLAN_CFG_KW)
+    conf = cfg(**CHAIN_ON)
     planned, _ = resolve_overlaps(alpha.regions, FABRIC, conf)
     blocks, _ = sequence(planned, FABRIC, conf)
     for run, gap in _needle_up(blocks):
@@ -372,7 +378,7 @@ def test_chaining_cuts_the_benchmark_fixtures_trim_rate(alpha):
     """The measured reason this exists: 8.4 trims per 1,000 stitches against a
     professional corpus that runs 0.1-4.1. Pinned on a committed fixture so the
     gain cannot silently regress."""
-    conf = cfg(**PLAN_CFG_KW)
+    conf = cfg(**CHAIN_ON)
     off = plan_stitches(alpha, cfg(**PLAN_CFG_KW, chain_links=False))
     on = plan_stitches(alpha, conf)
     assert on.stats.trims < off.stats.trims, "chaining removed no trims at all"
@@ -381,3 +387,120 @@ def test_chaining_cuts_the_benchmark_fixtures_trim_rate(alpha):
     # Links are cheap and ties are not: each cut costs a lock at both ends, so
     # replacing cuts with 2 mm running stitches pays for itself.
     assert on.stats.stitch_count <= off.stats.stitch_count
+
+
+# --- The instrument that was missing ---------------------------------------
+
+def _thread_bare_mm(plan, step_mm: float = 0.1):
+    """(links, exposed links, mm on bare fabric, worst clearance) for one plan.
+
+    THE THIRD INSTRUMENT, and the only honest one. `_uncovered_links` above and
+    `tools/chain_probe.py` both rebuild the cover from the same polygons the
+    router already trusted, so neither can report the router wrong about them.
+    This one never looks at a polygon. It asks where thread physically lands.
+
+    It also fixes two structural blind spots those two share, each of which
+    hides real stitches:
+
+    - **One-point links are not skipped.** Both shipped instruments `continue`
+      on `len(run.points) < 2`, and a one-point link is 37% of the benchmark's.
+      They are real: export emits a plain STITCH record for a run with
+      `jump=False`, so the machine sews straight through the point, needle
+      down. The guard cannot simply be deleted — `LineString` of one point
+      raises — which is why the path has to be rebuilt from the neighbours.
+    - **The real sewn path is measured, not the stored one.** `_link_stitches`
+      returns only the route's INTERIOR, so the first and last segments the
+      needle actually sews — up to RUN_STITCH_MM each — appear in no run's
+      points and are examined by nothing. The path here runs from the previous
+      run's last penetration, through the link, to the next run's first.
+
+    Bare means further than half a thread width from ANY emitted non-travel
+    stitch, of any colour, at any point in the sew order. That is generous to
+    the engine on purpose: it credits cover from threads laid long before and
+    long after, and it still finds exposure.
+    """
+    runs = [r for b in plan.blocks for r in b.runs]
+    laid = [LineString(r.points) for r in runs
+            if r.kind != stitches.TRAVEL and len(r.points) >= 2]
+    if not laid:
+        return 0, 0, 0.0, 0.0
+    thread = unary_union(laid)
+    half = machine.COVERAGE_THREAD_W_MM / 2.0
+
+    links = exposed = 0
+    bare_mm = worst = 0.0
+    for i, run in enumerate(runs):
+        if run.kind != stitches.TRAVEL:
+            continue
+        links += 1
+        pts = list(run.points)
+        if i and runs[i - 1].points:
+            pts.insert(0, runs[i - 1].points[-1])
+        if i + 1 < len(runs) and runs[i + 1].points:
+            pts.append(runs[i + 1].points[0])
+        if len(pts) < 2:
+            continue
+        path = LineString(pts)
+        n = max(2, int(path.length / step_mm))
+        bad = 0.0
+        for k in range(n + 1):
+            d = thread.distance(path.interpolate(k / n, normalized=True))
+            if d > half:
+                bad += path.length / n
+                worst = max(worst, d)
+        if bad:
+            exposed += 1
+        bare_mm += bad
+    return links, exposed, bare_mm, worst
+
+
+def test_chaining_currently_puts_thread_on_bare_fabric(alpha):
+    """A KNOWN DEFECT, pinned so it cannot drift unseen, and the reason
+    `chain_links` ships off.
+
+    A link is only safe where thread will bury it, and `_link_cover` decides
+    that against `p.polygon` — the whole sewing polygon of every shape the
+    block has stitched. But no tier stitches its whole polygon. A fill starts
+    half a row inside the boundary and `_columns` drops non-monotone spans; a
+    satin column stops short at its tips and fans on curves. So the router is
+    told it may travel over ground its own colour never reaches.
+
+    Measured on this committed fixture, chaining takes bare exposure from
+    0.50 mm over 2 travel runs to 5.54 mm over 6, and the worst clearance from
+    0.206 mm to 0.528 mm — further from any thread than a whole thread is wide.
+    The off figure is not zero because stage 6's own in-shape travel already
+    crosses a little bare ground; that is pre-existing and separate.
+
+    On artwork outside the repo the same measurement is worse: the benchmark
+    logo at 90 mm on `full_back` (fleece_sweatshirt, a stock preset) goes from
+    1 travel run and zero exposure to 31 links, 26 exposed, 29.11 mm bare and a
+    worst clearance of 1.055 mm. That fixture is not committed, so it cannot be
+    asserted here — which is its own finding.
+
+    This test does NOT assert the defect is small. It asserts it has not grown,
+    and it will fail loudly when the cover is rebuilt from emitted thread —
+    which is the point. Delete it in the commit that fixes this, and say so.
+    """
+    off = plan_stitches(alpha, cfg(**{**PLAN_CFG_KW, "chain_links": False}))
+    on = plan_stitches(alpha, cfg(**CHAIN_ON))
+
+    _l0, exp0, bare0, worst0 = _thread_bare_mm(off)
+    _l1, exp1, bare1, worst1 = _thread_bare_mm(on)
+
+    assert (exp0, round(bare0, 1), round(worst0, 2)) == (2, 0.5, 0.21), \
+        "the pre-chaining baseline moved; re-measure before touching the rest"
+    assert exp1 > exp0 and bare1 > bare0, \
+        "chaining no longer adds bare-fabric exposure — if that is real, this " \
+        "test has done its job and should be deleted with the fix that did it"
+    assert bare1 <= 5.6, f"chaining's exposure GREW to {bare1:.2f} mm"
+    assert worst1 <= 0.53, f"worst clearance GREW to {worst1:.4f} mm"
+
+
+def test_with_chaining_off_no_link_is_worse_than_stage_6_already_was(alpha):
+    """The guarantee the shipped default actually makes. Chaining off, the only
+    needle-down travel in a plan is stage 6's own in-shape bridging, and that
+    is the engine this repo has been sewing from all along."""
+    off = plan_stitches(alpha, cfg(**{**PLAN_CFG_KW, "chain_links": False}))
+    _links, _exposed, _bare, worst = _thread_bare_mm(off)
+    assert worst <= machine.COVERAGE_THREAD_W_MM, \
+        "stage 6 travel is now further from thread than one thread width"
