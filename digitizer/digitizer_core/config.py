@@ -107,6 +107,40 @@ class PipelineConfig:
     #             for, so turning it on can never drop artwork.
     #
     # Satin classification runs first either way — a ribbon is still a ribbon.
+    #
+    # DO NOT TURN "contour" ON WITHOUT READING THIS. An adversarial pass on
+    # 2026-08-02 confirmed three defects, none of which any shipped test can
+    # see, and all of which survive at this commit. It stays here because
+    # "tatami" is byte-identical to the engine that has always shipped, so the
+    # tier costs nothing while it is off — not because it is ready.
+    #
+    #  1. A BARE CORE INSIDE ORDINARY SHAPES. `_rings` stops when `_offset`
+    #     returns nothing, and the fabric inside the last surviving ring is
+    #     never a ring and is never charged to `skipped_area_mm2`. On this
+    #     repo's own primary fixture at its shipped width, logo_whitebg's
+    #     Sb253ebba leaves a 0.640 mm bare radius against tatami's 0.090 — 7x
+    #     — and a synthetic 10-point star leaves a 2.94 mm bare disc while
+    #     reporting `skipped_area_mm2` 0.21 and `starved` 0. Mechanism:
+    #     `buffer(-d, join_style=2)` annihilates a notched interior, so a star
+    #     of inradius 10.00 exhausts its offsets at 5.60 mm of inset.
+    #  2. `starved` IS MISCALIBRATED IN BOTH DIRECTIONS — silent on that
+    #     1.47 mm bare radius, and firing on 0.51 mm elsewhere; 0 of 122 zoo
+    #     shapes trip it. The gate is an AREA fraction and the thing that
+    #     matters is the widest bare SPOT, which is what the fix should
+    #     measure.
+    #  3. THE RING-TO-RING TRANSITION CHORD IS NEVER CONTAINMENT-TESTED.
+    #     `_entry_arc` deliberately lengthens the hop to clear MIN_STITCH_MM
+    #     (law 44) and `_link` checks only the chord length and the gap, never
+    #     `room.covers`. 23 emitted stitches leave the polygon over a 124-shape
+    #     zoo; worst measured 1.10 mm outside with both endpoints inside.
+    #     Underlay is ~3x worse exposed than fill. The shipped
+    #     `test_every_stitch_stays_inside_the_shape` FAILS VERBATIM on a 15 mm
+    #     disc with a 0.3 mm hole, and on a 0.45 mm neck. The six committed
+    #     fixtures are green only because none of them has a hole under ~1 mm.
+    #
+    # The first thing to build is the widest-inscribed-bare-circle instrument
+    # as the DEFINITION of `starved`; it reproduces this module's own numbers
+    # on the fixtures the commit cites and disagrees everywhere else.
     fill_technique: str = "tatami"
     # None = fill_row_mm (or the machine default). Contour rings are the same
     # 0.40 mm apart as tatami rows; this exists so the ring tier can be opened
