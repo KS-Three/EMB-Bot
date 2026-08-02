@@ -151,6 +151,25 @@ SATIN_ZIGZAG_ABOVE_MM = 2.5
 # point. Dropped during emission, exactly as the browser engine does.
 SATIN_MIN_CROSS_MM = 0.5
 
+# --- Push compensation (Law 24) --------------------------------------------
+# Pull and push are two different effects in two different directions. Thread
+# tension pulls each stitch's two penetrations together, so a column loses
+# width ALONG its stitch direction — that is `Fabric.pull_comp_mm`, and it is
+# what stage 5 compensates. The fabric that width displaces has to go
+# somewhere, and it goes out the ENDS of the column, perpendicular to the
+# stitches: a column sewn to the artwork edge lands past it.
+#
+# The fix is a cutback at each open end, and unlike pull comp it is a length,
+# not a width. 0.4 mm is one satin spacing — the single terminal cross — which
+# is how the trade describes it ("cut the end back one stitch"). 0.8 mm where
+# a border will cover the junction; the border tier does not consume this yet.
+#
+# Source: Law 24, Embroidery Legacy, medium-high confidence. SEW-OUT GATED —
+# playbook Part 4 test 4 is bordered squares at cutback 0/0.4/0.8 mm measuring
+# how far the fill peeks past the border. Until that runs this is one expert's
+# number, which is why `PipelineConfig.directional_comp` defaults to False.
+PUSH_CUTBACK_MM = 0.4
+
 # --- Split satin (wide-cross intermediate penetrations) ---------------------
 # Measured 2026-07-31 over the 36-file professional corpus (scratch_corpus)
 # plus Kent's three commissioned files, with a traverse-level instrument:

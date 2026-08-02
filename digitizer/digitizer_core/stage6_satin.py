@@ -1097,7 +1097,8 @@ def strip_splits(points: list[tuple[float, float]]) -> list[tuple[float, float]]
 
 def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  field: _WidthField | None = None,
-                 split_above_mm: float | None = None) -> list[tuple[float, float]]:
+                 split_above_mm: float | None = None,
+                 end_cutback_mm: float = 0.0) -> list[tuple[float, float]]:
     """One stroke -> flat zigzag points (A1, B1, A2, B2, ...).
 
     Rails strictly alternate, so EVERY consecutive pair of points is a stitch
@@ -1109,6 +1110,10 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
     (None = machine.SPLIT_SATIN_ABOVE_MM) carries intermediate split
     penetrations between its rail points — see the module docstring for the
     contract and `strip_splits` for the exact way back to pure rails.
+
+    `end_cutback_mm` is push compensation (Law 24), applied to OPEN ends only.
+    Zero is the shipped behaviour; stage 7 supplies the number when
+    `PipelineConfig.directional_comp` is on.
     """
     spine = _smooth(stroke.spine, 3, stroke.closed)
     spine = _round_corners(spine, half_mm, stroke.closed)
@@ -1131,6 +1136,27 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
     if stroke.free_end:
         spine = _retract_cap_corner(spine, field, half_mm, at_start=False)
         spine = _extend_to_cap(spine, poly, half_mm, at_start=False)
+
+    # Push compensation (Law 24). Pull comp is a WIDTH and stage 5 owns it;
+    # push is a LENGTH and only this line of the pipeline knows where a column's
+    # length ends. The stitches run across the column, so the fabric their
+    # tension gathers is shoved out the ends — a column sewn flush to the
+    # artwork cap lands past it, which is exactly what a border is later asked
+    # to hide. Cutting the last cross back fixes it at the source.
+    #
+    # Only OPEN ends: an end at a junction is not a cap, it is tucked under the
+    # arm it meets (`_JUNCTION_TUCK_MM` above), and shortening it would open the
+    # gap that tuck exists to close. A closed stroke has no ends at all.
+    #
+    # `_trim_chain` leaves a stroke alone when the cutbacks would take it under
+    # half a millimetre, so a short stub degrades to today's behaviour instead
+    # of vanishing.
+    if end_cutback_mm > 0 and not stroke.closed:
+        c0 = end_cutback_mm if stroke.free_start else 0.0
+        c1 = end_cutback_mm if stroke.free_end else 0.0
+        if c0 or c1:
+            spine = _trim_chain(spine, c0, c1)
+
     length = sum(math.dist(a, b) for a, b in zip(spine, spine[1:]))
     if length <= 0:
         return []
@@ -1356,7 +1382,8 @@ def _order_strokes(strokes: list[Stroke],
 def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 trim_at_mm: float,
                 start_near: tuple[float, float] | None = None,
-                split_above_mm: float | None = None
+                split_above_mm: float | None = None,
+                end_cutback_mm: float = 0.0
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
     contract `stitch_shape` uses, so stage 7 can treat the two identically.
@@ -1365,6 +1392,10 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     `split_above_mm` caps the stitch length before crosses split (None =
     machine.SPLIT_SATIN_ABOVE_MM; `math.inf` disables splitting — the
     mapping stage 7 applies for `PipelineConfig.split_satin = False`).
+
+    `end_cutback_mm` is push compensation at open column ends (Law 24); 0.0 is
+    the shipped behaviour. It is a length taken off the spine, NOT a shrink of
+    `poly`, which is why it cannot live in stage 5 — see `satin_stroke`.
     """
     report = {"too_thin": False, "jumps": 0, "empty": False}
     strokes, half_mm, field = extract_strokes(poly)
@@ -1386,7 +1417,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     # free to choose.
     kept: list[tuple[Stroke, list]] = []
     for st in strokes:
-        pts = satin_stroke(poly, st, half_mm, field, split_above_mm)
+        pts = satin_stroke(poly, st, half_mm, field, split_above_mm,
+                           end_cutback_mm)
         if len(pts) >= 4:
             kept.append((st, pts))
     if not kept:

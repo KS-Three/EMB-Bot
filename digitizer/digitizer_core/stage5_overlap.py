@@ -19,10 +19,51 @@ This is why the order must be settled before the geometry is touched: reverse
 the two, and every seam sits proud of where it belongs.
 
 **Pull compensation** grows the free edges — the ones facing background — by the
-fabric preset's amount. It is uniform here; true pull comp acts perpendicular to
-the stitch direction only, which needs the fill angle and belongs with a later
-directional-compensation pass. Uniform matches the browser engine's behaviour,
-so both products are wrong in the same direction until sew-outs correct them.
+fabric preset's amount.
+
+By default that growth is UNIFORM: one `buffer(pull)` outward in every
+direction. That matches the browser engine, and it is wrong in a specific way
+(Law 22). Thread tension pulls each stitch's two penetration points together,
+so an object loses size ALONG its stitch direction and gains it across —
+one effect, two directions, and no major package compensates isotropically.
+Uniform growth is right on average and wrong everywhere specific: it under-
+compensates nothing and over-compensates the two faces the stitches run
+parallel to.
+
+`cfg.directional_comp` turns on the version that follows the stitches, and the
+two tiers need opposite treatment:
+
+- **Fill.** Rows run along the fill angle, so the row ENDS are where the
+  penetrations pull together. Growth goes on those edges only, tapering as
+  `pull x |n . axis|` around the outline, and the edges the rows run parallel
+  to keep their artwork size. This is why the fill angle is computed HERE and
+  handed forward (see below).
+- **Satin.** Growth stays uniform, and that is not a shortcut — it is exact.
+  A column's stitch direction is perpendicular to its rails, which is to say
+  parallel to the boundary normal there, so `pull x |n . axis|` IS `pull` all
+  the way along both rails. The uniform buffer is only wrong at the two CAPS,
+  where it adds `pull` in the one direction that should be losing length. That
+  is corrected where the caps actually exist, in stage 6 — see below.
+
+**Where the fill angle comes from, and why that is a seam problem.** Pull
+direction is the stitch direction. For a fill that is the per-region principal
+axis, and `stage6_fill.stitch_shape` has always computed it from the polygon
+stage 5 hands it — so compensating along it here is circular: the angle depends
+on the growth that depends on the angle. The cut is to compute the angle ONCE,
+on the artwork polygon, before any growth, and carry it on `PlannedRegion.
+stitch_angle_deg` for stage 7 to pass back down. Comp direction and fill
+direction are then the same number by construction instead of by luck. With the
+flag off nothing is computed and stage 6 keeps deriving its own angle.
+
+**Where push compensation lives, and why it is not here.** Law 24's end cutback
+is a satin-cap correction, and stage 5 has no caps: a column's ends are the ends
+of a SPINE that stage 6 extracts by skeletonising the polygon. On a curved
+column the cap normal is different at each end and neither one is a property of
+the outline. So stage 5 cannot express it, and the cutback is applied in
+`stage6_satin.satin_stroke`, on the spine, right after `_extend_to_cap` puts the
+end on the boundary. Stage 7 carries the number across. What stage 5 owes that
+correction is the `pull` its uniform buffer wrongly added at the cap, which is
+why the cutback stage 7 passes is `pull + PUSH_CUTBACK_MM` and not `0.4` alone.
 
 **Keeping same-thread neighbours apart.** Compensation grows every shape, and two
 shapes of the SAME thread have no seam logic to separate them: the order rules
@@ -45,13 +86,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from shapely import STRtree
+from shapely import STRtree, affinity
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
 
 from .config import PipelineConfig
 from .fabrics import Fabric
+from .machine import SATIN_MAX_WIDTH_MM
 from .regions import Region
+from .stage6_fill import principal_angle_deg
+from .stage6_satin import is_satin_candidate
 from .warnings_codes import (
     HOLE_NEARLY_CLOSED,
     SAME_THREAD_SHAPES_MERGED,
@@ -97,6 +141,17 @@ class PlannedRegion:
     # None on the last layer — nothing sews after it — and callers must treat
     # that as "no coverage from other colours", not as "not computed".
     covered_by: object | None = None
+    # The stitch axis this shape was compensated along, in degrees, or None
+    # when compensation was isotropic (flag off, or a satin-tier shape, whose
+    # axis is not one number — it turns with the spine). Stage 7 hands it back
+    # to stage 6 so the fill sews along the axis it was compensated for; None
+    # leaves stage 6 deriving its own, which is the shipped behaviour.
+    stitch_angle_deg: float | None = None
+    # Which tier stage 5 believed this shape would sew as, decided by the same
+    # `is_satin_candidate` call on the same artwork polygon stage 7 uses, so
+    # the two cannot disagree. Recorded rather than re-derived because the
+    # compensation already committed to it.
+    satin_tier: bool = False
 
     @property
     def visible_geom(self):
@@ -112,6 +167,90 @@ class PlannedRegion:
     @property
     def layer(self) -> int:
         return self.region.meta["layer"]
+
+
+# The structuring element for directional compensation is a SEGMENT lying on
+# the stitch axis: dilating by it offsets each face by `amount x |n . axis|`,
+# which is the whole of Law 22 in one operation — full compensation where the
+# stitches penetrate head-on, none where they run parallel. A segment is an
+# ellipse with a zero minor axis, and an ellipse dilation is a circular buffer
+# with the plane squashed, so that is how it is built. The minor axis is held a
+# hair off zero to keep the squash factor finite; 10 microns is a hundredth of
+# the 0.1 mm DST grid and a fiftieth of `simplify_tol_mm`, so it can never
+# reach the file. Measured on a 30x8 rectangle at six axes: 0.3000 mm along,
+# 0.0100 across, and the oblique offsets match `amount x |cos|` to 4 decimals.
+_COMP_MINOR_MM = 0.01
+# The buffer's circle approximation is what limits accuracy after unsquashing;
+# 64 segments per quadrant puts the worst-case shortfall at 1 - cos(pi/256),
+# about 75 nanometres.
+_COMP_QUAD_SEGS = 64
+
+
+def _axial_offset(geom, amount_mm: float, axis_deg: float, sign: float):
+    """Offset `geom` by `amount_mm` ALONG `axis_deg` only. sign -1 erodes.
+
+    The result is simplified before it is returned, and that is not tidiness.
+    Squashing puts `_COMP_QUAD_SEGS * 4` vertices on every corner's arc, and
+    unsquashing flattens most of them into a near-straight run along the minor
+    axis: a 5-vertex rectangle came back with 261, and `principal_angle_deg`
+    sums second moments over VERTICES, so the cloud — not the shape — decided
+    the answer. Measured: the artwork's 26.2 deg axis read as -22.7 deg off the
+    dilated polygon. `stage6_fill._underlay_paths` asks exactly that question
+    about exactly this polygon, so it is a live wrong answer, not a latent one.
+    Simplifying at the minor axis collapses the flattened arcs and nothing else
+    — the arcs deviate from their chord by at most `_COMP_MINOR_MM` by
+    construction. Measured after: 5-9 vertices, axial offset still 0.3000 mm.
+    """
+    if amount_mm <= 0:
+        return geom
+    rot = affinity.rotate(geom, -axis_deg, origin=(0, 0))
+    sq = affinity.scale(rot, 1.0 / amount_mm, 1.0 / _COMP_MINOR_MM, origin=(0, 0))
+    sq = sq.buffer(sign, quad_segs=_COMP_QUAD_SEGS)
+    if sq.is_empty:
+        return sq
+    sq = affinity.scale(sq, amount_mm, _COMP_MINOR_MM, origin=(0, 0))
+    out = affinity.rotate(sq, axis_deg, origin=(0, 0))
+    # 0.01 mm is a tenth of the DST grid and a twentieth of `simplify_tol_mm`,
+    # so this cannot move a penetration.
+    return out.simplify(_COMP_MINOR_MM, preserve_topology=True)
+
+
+def _grow(poly, pull: float, axis_deg: float | None):
+    """The compensation dilation for one shape.
+
+    `axis_deg is None` is the isotropic case — the shipped behaviour, and the
+    exact one for a satin column, whose rails face their own stitch direction
+    the whole way along.
+    """
+    if pull <= 0:
+        return poly
+    if axis_deg is None:
+        return poly.buffer(pull)
+    return _axial_offset(poly, pull, axis_deg, 1.0)
+
+
+def _shrink(poly, pull: float, axis_deg: float | None):
+    """The matching erosion, for asking whether a hole survives compensation."""
+    if pull <= 0:
+        return poly
+    if axis_deg is None:
+        return poly.buffer(-pull)
+    return _axial_offset(poly, pull, axis_deg, -1.0)
+
+
+def _comp_axis(region: Region, cfg: PipelineConfig, satin_max: float) -> tuple[float | None, bool]:
+    """-> (stitch axis to compensate along or None for isotropic, satin tier?).
+
+    Classified on the ARTWORK polygon with the same call stage 7 makes, for the
+    same reason stage 7 makes it there: compensation must not be able to flip a
+    shape's tier, or a logo would sew differently structured on a towel than on
+    a polo.
+    """
+    if is_satin_candidate(region.polygon, satin_max):
+        return None, True
+    if cfg.fill_angle_deg is not None:
+        return cfg.fill_angle_deg, False
+    return principal_angle_deg(region.polygon), False
 
 
 def _largest_polygon(geom) -> Polygon | None:
@@ -138,6 +277,17 @@ def resolve_overlaps(
     overlap = max(0.0, cfg.overlap_mm)
     hole_floor = cfg.min_detail_mm ** 2
 
+    # Law 22. Off: one axis of None per shape, so every `_grow` below is the
+    # `poly.buffer(pull)` this stage has always done, byte for byte.
+    directional = bool(cfg.directional_comp) and pull > 0
+    satin_max = cfg.satin_max_width_mm or SATIN_MAX_WIDTH_MM
+    axis_by_id: dict[str, float | None] = {}
+    satin_by_id: dict[str, bool] = {}
+    for r in regions:
+        axis, is_satin = _comp_axis(r, cfg, satin_max) if directional else (None, False)
+        axis_by_id[r.shape_id] = axis
+        satin_by_id[r.shape_id] = is_satin
+
     layers = sorted({r.meta["layer"] for r in regions})
     by_layer = {L: [r for r in regions if r.meta["layer"] == L] for L in layers}
     geom_by_layer = {L: unary_union([r.polygon for r in by_layer[L]]) for L in layers}
@@ -151,6 +301,16 @@ def resolve_overlaps(
     # grows by `pull`, so any gap narrower than two of those is at risk.
     fuse_reach = 2.0 * pull
     trees = {L: STRtree([r.polygon for r in by_layer[L]]) for L in layers} if pull > 0 else {}
+
+    # Each shape's own compensated reach, for the keep-apart corridor below.
+    # Isotropic growth distributes over a union, so with the flag off the
+    # corridor is built the cheap way it always was; directional growth does
+    # not — every shape has its own axis — so the reaches are unioned per
+    # shape instead. Only built when the flag is on.
+    reach_by_id: dict[str, object] = (
+        {r.shape_id: _grow(r.polygon, pull, axis_by_id[r.shape_id]) for r in regions}
+        if directional else {}
+    )
 
     # Prefix/suffix unions: what is already on the fabric when this layer sews,
     # and what will cover it afterwards. Built once instead of per region.
@@ -174,7 +334,8 @@ def resolve_overlaps(
     for sew_index, L in enumerate(layers):
         for r in by_layer[L]:
             poly = r.polygon
-            grown = poly.buffer(pull) if pull > 0 else poly
+            axis = axis_by_id[r.shape_id]
+            grown = _grow(poly, pull, axis)
 
             # Extend under whatever sews later — the underlap that hides the seam.
             if overlap > 0 and later[L] is not None:
@@ -207,8 +368,13 @@ def resolve_overlaps(
                     if by_layer[L][i] is not r
                 ]
                 if others:
-                    corridor = poly.buffer(pull).intersection(
-                        unary_union([o.polygon for o in others]).buffer(pull)
+                    others_reach = (
+                        unary_union([reach_by_id[o.shape_id] for o in others])
+                        if directional
+                        else unary_union([o.polygon for o in others]).buffer(pull)
+                    )
+                    corridor = _grow(poly, pull, axis).intersection(
+                        others_reach
                     ).difference(all_art)
                     if not corridor.is_empty:
                         grown = grown.difference(corridor)
@@ -233,7 +399,7 @@ def resolve_overlaps(
                 hole = Polygon(ring)
                 if hole.area < hole_floor:
                     continue           # already below the floor; stage 3's call
-                if hole.buffer(-pull).area < hole_floor:
+                if _shrink(hole, pull, axis).area < hole_floor:
                     held.append(hole)
             if held:
                 holes_held += len(held)
@@ -256,7 +422,9 @@ def resolve_overlaps(
 
             planned.append(PlannedRegion(region=r, polygon=grown,
                                          sew_index=sew_index, visible=visible,
-                                         covered_by=later[L]))
+                                         covered_by=later[L],
+                                         stitch_angle_deg=axis,
+                                         satin_tier=satin_by_id[r.shape_id]))
 
     if fusing_pairs:
         n = len(fusing_pairs)

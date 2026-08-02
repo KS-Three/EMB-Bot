@@ -66,6 +66,22 @@ class PipelineConfig:
     # How far a color extends underneath the color that sews after it. Enough
     # to survive fabric pull, small enough never to read as a color error.
     overlap_mm: float = 0.25
+    # Directional pull/push compensation (Laws 22-24). False is the shipped
+    # behaviour: one isotropic `buffer(pull)` outward in every direction, which
+    # is right on average and wrong everywhere specific — no major package does
+    # it, because pull acts ALONG the stitch direction and push acts across it.
+    #
+    # True compensates each tier the way its stitches actually run:
+    #   fill  – growth only along the fill angle, on the edges its rows
+    #           penetrate; the edges the rows run parallel to keep artwork size.
+    #   satin – growth stays isotropic, which is already exact on the rails (a
+    #           column's stitch direction IS its boundary normal there), and
+    #           each open END is cut back by `machine.PUSH_CUTBACK_MM` plus the
+    #           pull the isotropic step wrongly added there.
+    #
+    # Default False because the cutback is sew-out-gated (playbook Part 4 test
+    # 4) and because every committed golden is pinned to the isotropic result.
+    directional_comp: bool = False
 
     # Stage 6 — fill. None means "use the machine default", so a caller can
     # override density without knowing the whole table.

@@ -348,6 +348,13 @@ def sequence(
     # sews raw crosses however long (a real house style — jolly-af ships
     # 7 mm stitches), None defers to the corpus-median machine default.
     split_above = math.inf if not cfg.split_satin else cfg.split_satin_above_mm
+    # Push comp (Law 24), the half of directional compensation stage 5 cannot
+    # express because it has no spine to shorten. Two terms, and both are owed:
+    # PUSH_CUTBACK_MM is the physical effect, and `pull_comp_mm` gives back
+    # what stage 5's isotropic buffer added at the cap — correct on the rails,
+    # wrong in the one direction a column is already gaining length.
+    end_cutback = (fabric.pull_comp_mm + machine.PUSH_CUTBACK_MM
+                   if cfg.directional_comp else 0.0)
     # The sewable-detail floor, as an area: stage 3 keeps shapes under it only
     # for the run tier, and this is where they are routed to it.
     detail_mm2 = cfg.min_detail_mm ** 2
@@ -395,6 +402,7 @@ def sequence(
                     trim_at_mm=trim_at,
                     start_near=entry,
                     split_above_mm=split_above,
+                    end_cutback_mm=end_cutback,
                 )
                 # A ribbon the skeleton could not resolve still has to sew:
                 # fall through to fill rather than silently dropping artwork.
@@ -405,6 +413,14 @@ def sequence(
             # what keeps them byte-identical. A shape contour cannot ring — one
             # narrower than a single offset — falls through to tatami rather
             # than vanishing, the same contract the satin tier already has.
+            #
+            # Contour takes no fill angle, and that is not an omission: rings
+            # follow the silhouette, so there is no one direction the stitches
+            # run. It does mean `directional_comp` and `fill_technique="contour"`
+            # do not compose — stage 5 would have compensated this shape along a
+            # fill axis the rings then decline to sew along. Both flags default
+            # off, neither is selected automatically, and nothing measures that
+            # pair yet; it is recorded here rather than silently combined.
             runs = []
             report = {}
             if contour:
@@ -419,10 +435,18 @@ def sequence(
                     start_near=entry,
                 )
             if not contour or report["empty"]:
+                # The fill angle stage 5 already committed to, when it did.
+                # Passing it back is what makes directional comp honest:
+                # compensation went on the edges THIS angle penetrates, so the
+                # rows have to run along it. Left None (the shipped path) stage
+                # 6 derives its own from the compensated polygon, which is a
+                # different number.
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=cfg.fill_angle_deg,
+                    angle_deg=(cfg.fill_angle_deg
+                               if cfg.fill_angle_deg is not None
+                               else p.stitch_angle_deg),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=underlay_style,
