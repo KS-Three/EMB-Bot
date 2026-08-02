@@ -14,6 +14,23 @@ Each finding is {code, severity, message, extra}. Severity means:
 The message is written for the person at the machine: sentence case, says
 what to DO, never engine vocabulary.
 
+Three checks answer for tiers that landed after this module was written, and
+all three read the FINISHED STITCHES rather than the geometry the planner
+reasoned about, because that is where those tiers and their own instruments
+part company:
+  * `_link_findings` — chaining (laws 59-62) sews a needle-down link where a
+    trim used to go, legal only where something buries it. Stage 7 tests that
+    against polygons; a polygon says where a shape is, not where its thread
+    landed, and the run tier sews a small shape's outline and leaves the
+    inside bare. Measured over 60 configurations, stage 7's own re-derivation
+    reports zero uncovered links in every one while the thread says up to
+    2.29 mm of link lies on open fabric.
+  * `_contour_findings` — the contour tier's per-shape starvation report,
+    which went to `plan.warnings` and reached nobody reading this report.
+  * `_fill_row_advance_mm`'s axis gate — the row-density instrument answered
+    confidently and wrongly on contour rings, warning on three house fixtures
+    out of four whose coverage was healthy. It now declines instead.
+
 Most checks read one object at a time. `_coverage_findings` does not, and
 that is deliberate: law 27 of the machine-physics playbook says the density
 budget is a per-REGION sum — everything overlapping one patch of fabric,
@@ -60,6 +77,13 @@ TRIM_HEAVY = "TRIM_HEAVY"                      # extra: {per_1000, trims, stitch
 DENSITY_EXTREME = "DENSITY_EXTREME"            # extra: {kind, measured_mm, target_mm, ratio}
 DENSITY_STACKED = "DENSITY_STACKED"            # extra: {peak_units, p95_units, over_warn_mm2, over_block_mm2, cell_mm}
 SAME_HOLE_HEAVY = "SAME_HOLE_HEAVY"            # extra: {fraction, repeat_points, penetrations, baseline}
+LINK_UNCOVERED = "LINK_UNCOVERED"              # extra: {max_mm, limit_mm, total_mm, at_mm, thread_mm}
+CONTOUR_STARVED = "CONTOUR_STARVED"            # extra: {count, rings, shapes}
+
+# The stage-6 warning this module re-reads. Owned by the contour-fill lane
+# (warnings_codes.CONTOUR_RING_UNREACHABLE); named by string so preflight
+# neither imports it nor breaks in a tree where that lane has not landed.
+_CONTOUR_RING_UNREACHABLE = "CONTOUR_RING_UNREACHABLE"
 
 # --- Thresholds, each with its measurement ---------------------------------
 
@@ -103,6 +127,47 @@ TRIMS_PER_1000_MAX = 4.1
 # fabric preset's adjustment and means the geometry diverged from intent —
 # gapping (too sparse) or fabric bunching (too dense) on the machine.
 DENSITY_RATIO_MAX = 1.5
+
+# How concentrated a fill run's step directions must be about ONE axis before
+# `_fill_row_advance_mm` is willing to call its perpendicular steps "row
+# advance". The instrument's whole model is rows along an axis with short turns
+# between them, and a CONTOUR fill has no such axis — its rings sweep every
+# direction — so on contour geometry the model does not degrade, it inverts:
+# nearly every step reads as a turn and the median "row advance" it returns is
+# really the ring chord.
+#
+# Measured 2026-08-02, length-weighted axial concentration |R| per fill run
+# (1.0 = every step on one axis, 0 = uniform):
+#
+#   design (80 mm, left_chest)     tatami            contour
+#   logo_whitebg                   0.913-0.974       0.004-0.150
+#   logo_alpha                     0.915-0.974       0.003-0.024
+#   bg_uncertain                   0.979-0.991       0.031-0.270
+#
+# Two populations with nothing between 0.270 and 0.913. Ungated, the contour
+# side reported 2.19 / 2.35 / 2.98 mm against the 0.40 mm target and raised a
+# DENSITY_EXTREME warn on three fixtures out of four whose coverage map read a
+# perfectly healthy 1.36-1.39 units — a false alarm on every contour design
+# ever scored. 0.6 sits in the middle of the gap with room on both sides.
+#
+# A plan whose fills are all below the gate reports `fill_advance_mm: None`.
+# That is the honest answer, not a fallback: contour ring spacing is a real
+# quantity and this instrument does not measure it.
+_FILL_AXIS_MIN = 0.6
+
+# --- Uncovered links, chaining law 60 ---------------------------------------
+
+# Cell of the raster that answers "is there thread on this patch of fabric".
+# A tenth of a millimetre is a quarter of the thread's own width, so a ribbon
+# is four cells across and the reported length of a bare stretch is exact to
+# one cell. NOT `COVERAGE_CELL_MM` (1.0 mm): that cell answers "how many
+# layers", which is a different question at a different scale, and at 1.0 mm a
+# link running beside a shape would read as covered by it.
+_LINK_CELL_MM = 0.1
+
+# Ceiling on the raster, in cells, before it is coarsened. A 200x200 mm hoop is
+# 4M cells at 0.1 mm; this only bites on artwork far larger than a hoop.
+_LINK_MAX_CELLS = 64_000_000
 
 # --- Per-region coverage, law 27 --------------------------------------------
 
@@ -400,8 +465,14 @@ def _trim_findings(plan: StitchPlan) -> tuple[list[dict], float]:
 
 # --- Density ----------------------------------------------------------------
 
-def _fill_row_advance_mm(plan: StitchPlan) -> float | None:
-    """Median row-to-row advance of the emitted fill, or None without fill.
+def _fill_row_advance_mm(plan: StitchPlan) -> tuple[float | None, float | None]:
+    """-> (median row-to-row advance of the emitted fill, best fill axis |R|).
+
+    The advance is None when the plan holds no fill, and — since 2026-08-02 —
+    also when no fill run is ROWS: see `_FILL_AXIS_MIN`. A contour fill's rings
+    have no dominant axis, and this instrument answers confidently and wrongly
+    on them, so it now declines instead. The concentration rides out beside the
+    advance so a caller can tell "no fill" from "fill this cannot measure".
 
     A fill run is rows along one dominant axis with short turns between
     them. Each run's axis is recovered from its own steps (length-weighted
@@ -419,6 +490,7 @@ def _fill_row_advance_mm(plan: StitchPlan) -> float | None:
     transitions and row skips, which are routing, not density.
     """
     adv: list[float] = []
+    best_conc: float | None = None
     for _b, run in plan.iter_runs():
         if run.kind != stitches.FILL:
             continue
@@ -426,7 +498,7 @@ def _fill_row_advance_mm(plan: StitchPlan) -> float | None:
         if len(pts) < 3:
             continue
         # Length-weighted axial mean of the step directions.
-        sx = sy = 0.0
+        sx = sy = total = 0.0
         steps: list[tuple[float, float, float]] = []
         for a, b in zip(pts, pts[1:]):
             dx, dy = b[0] - a[0], b[1] - a[1]
@@ -436,9 +508,16 @@ def _fill_row_advance_mm(plan: StitchPlan) -> float | None:
             ang = math.atan2(dy, dx)
             sx += d * math.cos(2 * ang)
             sy += d * math.sin(2 * ang)
+            total += d
             steps.append((dx, dy, d))
-        if not steps:
+        if not steps or total <= 0.0:
             continue
+        # How much of that mean survived the averaging. Rows on one axis
+        # reinforce (|R| -> 1); rings sweeping every direction cancel (-> 0).
+        conc = math.hypot(sx, sy) / total
+        best_conc = conc if best_conc is None else max(best_conc, conc)
+        if conc < _FILL_AXIS_MIN:
+            continue                       # not rows: this instrument declines
         axis = math.atan2(sy, sx) / 2.0
         ax, ay = math.cos(axis), math.sin(axis)
         for dx, dy, d in steps:
@@ -448,9 +527,9 @@ def _fill_row_advance_mm(plan: StitchPlan) -> float | None:
             if perp > 1e-6:
                 adv.append(perp)
     if len(adv) < _MIN_SAMPLES:
-        return None
+        return None, best_conc
     adv.sort()
-    return adv[len(adv) // 2]
+    return adv[len(adv) // 2], best_conc
 
 
 def _satin_rail_advance_mm(plan: StitchPlan) -> float | None:
@@ -487,10 +566,12 @@ def _density_findings(plan: StitchPlan,
     fill_target = (cfg.fill_row_mm or machine.FILL_ROW_MM) * max(0.1, fabric.density_adjust)
     satin_target = machine.SATIN_SPACING_MM
 
+    fill_adv, fill_conc = _fill_row_advance_mm(plan)
     findings: list[dict] = []
-    metrics: dict = {}
+    metrics: dict = {"fill_axis_concentration":
+                     None if fill_conc is None else round(fill_conc, 3)}
     for kind, measured, target in (
-        ("fill", _fill_row_advance_mm(plan), fill_target),
+        ("fill", fill_adv, fill_target),
         ("satin", _satin_rail_advance_mm(plan), satin_target),
     ):
         metrics[f"{kind}_advance_mm"] = None if measured is None else round(measured, 3)
@@ -716,6 +797,305 @@ def _coverage_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
     )], metrics
 
 
+# --- Uncovered links (chaining law 60) --------------------------------------
+
+def _transport_and_content(plan: StitchPlan
+                           ) -> tuple[list[tuple], list[tuple]]:
+    """Split every needle-DOWN segment into transport and content.
+
+    -> ([(a, b, block_index)] transport, [(a, b, block_index)] content)
+
+    Transport is thread whose job is to get somewhere: a TRAVEL run, and the
+    connection into any run the machine reaches with the needle still down
+    (`jump` False). That connection is easy to miss and is exactly the thread
+    chaining creates — it is not a step inside any run's own point list, so
+    every instrument that iterates a run's consecutive pairs is blind to it,
+    `_coverage_map` included.
+
+    Everything else — fill rows, satin crosses, borders, beans, underlay,
+    ties — is content: thread the design is made of. A fill row lying on bare
+    fabric is the design; a link lying on bare fabric is a defect. That is the
+    whole distinction, and it is why this cannot be asked of the plan as a
+    whole.
+    """
+    transport: list[tuple] = []
+    content: list[tuple] = []
+    for bi, block in enumerate(plan.blocks):
+        prev: tuple[float, float] | None = None
+        for run in block.runs:
+            pts = run.points
+            if not pts:
+                continue
+            if prev is not None and not run.jump:
+                transport.append((prev, pts[0], bi))
+            bucket = transport if run.kind == stitches.TRAVEL else content
+            for a, b in zip(pts, pts[1:]):
+                bucket.append((a, b, bi))
+            prev = pts[-1]
+    return transport, content
+
+
+def _link_coverage(plan: StitchPlan) -> dict | None:
+    """How much transport thread lies on bare fabric. -> metrics, or None.
+
+    THE independent instrument for chaining law 60. Stage 7 decides a link is
+    legal by testing its route against POLYGONS — the block's own sewing
+    polygons plus stage 5's `covered_by` union — and a polygon says where an
+    object is, not where its thread landed. Three tiers break that equivalence:
+    the run tier sews a small shape's OUTLINE and leaves its polygon's interior
+    bare, the satin tier can leave a junction its skeleton could not resolve,
+    and a shape that came back empty covers nothing at all. So this asks the
+    finished stitches instead, and it disagrees: measured 2026-08-02 over 60
+    configurations (5 artworks x 4 sizes x 3 garments, chaining on), stage 7's
+    own re-derivation reports ZERO uncovered links in every one, while this
+    reads up to 2.29 mm of link on bare fabric. Spot-checked raster-free on the
+    worst of them — logo_alpha at 80 mm, left chest — where the nearest
+    non-travel stitch to the bare stretch is 0.494 mm away, past the 0.20 mm
+    a thread's own half-width could reach.
+
+    Cover is thread from the link's OWN colour block, or from any block that
+    sews after it. Those are law 60's two mechanisms exactly — a link is buried
+    under what follows, or rides on work its own thread already laid — and
+    nothing else counts: thread from an EARLIER, different colour would leave
+    the link legible as a line in the wrong colour across it.
+
+    Blocks are walked last to first so one accumulating mask serves them all.
+    """
+    transport, content = _transport_and_content(plan)
+    if not transport:
+        return None
+
+    pts = [p for group in (transport, content) for seg in group
+           for p in (seg[0], seg[1])]
+    xs = [p[0] for p in pts]
+    ys = [p[1] for p in pts]
+    cell = _LINK_CELL_MM
+    pad = machine.COVERAGE_THREAD_W_MM
+    x0, y0 = min(xs) - pad, min(ys) - pad
+    span_x, span_y = max(xs) + pad - x0, max(ys) + pad - y0
+    while (int(span_x / cell) + 2) * (int(span_y / cell) + 2) > _LINK_MAX_CELLS:
+        cell *= 2.0
+    nx = int(span_x / cell) + 2
+    ny = int(span_y / cell) + 2
+
+    rad = max(1, int(round(machine.COVERAGE_THREAD_W_MM / 2.0 / cell)))
+    offsets = [(dx, dy)
+               for dy in range(-rad, rad + 1) for dx in range(-rad, rad + 1)
+               if dx * dx + dy * dy <= rad * rad]
+
+    def sample(segs: list[tuple]) -> tuple[np.ndarray, np.ndarray, np.ndarray,
+                                           np.ndarray]:
+        """-> (cell x, cell y, per-sample mm, samples per segment).
+
+        Every segment of the batch sampled in ONE pass, the same lattice trick
+        `_coverage_map` uses: a per-segment Python loop with a handful of numpy
+        calls in it costs more in call overhead than the arithmetic, and on the
+        biggest house artwork that alone was six seconds of preflight.
+        """
+        a = np.asarray([s[0] for s in segs], np.float64)
+        b = np.asarray([s[1] for s in segs], np.float64)
+        d = b - a
+        ln = np.hypot(d[:, 0], d[:, 1])
+        n = np.maximum(1, np.ceil(ln / cell).astype(np.int64))
+        idx = np.repeat(np.arange(len(segs)), n)
+        starts = np.concatenate([[0], np.cumsum(n)[:-1]])
+        t = (np.arange(int(n.sum())) - np.repeat(starts, n) + 0.5) / n[idx]
+        cx = ((a[idx, 0] + d[idx, 0] * t - x0) / cell).astype(np.int64)
+        cy = ((a[idx, 1] + d[idx, 1] * t - y0) / cell).astype(np.int64)
+        return (np.clip(cx, 0, nx - 1), np.clip(cy, 0, ny - 1),
+                (ln / n)[idx], n)
+
+    by_block: dict[int, list] = {}
+    for seg in content:
+        by_block.setdefault(seg[2], []).append(seg)
+    moves: dict[int, list] = {}
+    for seg in transport:
+        moves.setdefault(seg[2], []).append(seg)
+
+    laid = np.zeros((ny, nx), bool)
+    total_mm = uncovered_mm = 0.0
+    worst_mm = 0.0
+    worst_at: tuple[float, float] | None = None
+    for bi in range(len(plan.blocks) - 1, -1, -1):
+        batch = by_block.get(bi)
+        if batch:
+            cx, cy, _step, _n = sample(batch)
+            for dx, dy in offsets:
+                laid[np.clip(cy + dy, 0, ny - 1),
+                     np.clip(cx + dx, 0, nx - 1)] = True
+        batch = moves.get(bi)
+        if not batch:
+            continue
+        cx, cy, step, n = sample(batch)
+        total_mm += float(step.sum())
+        covered = laid[cy, cx]
+        uncovered_mm += float(step[~covered].sum())
+        # Longest unbroken bare stretch. It is carried ACROSS consecutive
+        # transport segments that touch, because that is what the thread does:
+        # a chained link is many 2 mm stitches end to end, and the fabric under
+        # it does not know where one stitch stops. Resetting per segment
+        # measured 1.89 mm on the case that is really 2.29 mm — it reports the
+        # longest bare STITCH rather than the longest bare stretch.
+        carry_mm = 0.0
+        carry_end: tuple[float, float] | None = None
+        at = 0
+        for seg_i, count in enumerate(n):
+            count = int(count)
+            end = at + count
+            joined = (carry_end is not None
+                      and math.dist(batch[seg_i][0], batch[seg_i - 1][1]) < 1e-9)
+            lead_mm = carry_mm if joined else 0.0
+            v = covered[at:end]
+            wide = float(step[at])
+            hit = np.flatnonzero(v)
+
+            def note(mm: float, last: int) -> None:
+                nonlocal worst_mm, worst_at
+                if mm > worst_mm:
+                    worst_mm = mm
+                    worst_at = (float(x0 + (cx[last] + 0.5) * cell),
+                                float(y0 + (cy[last] + 0.5) * cell))
+
+            if hit.size == 0:                       # the whole segment is bare
+                carry_mm = lead_mm + count * wide
+                carry_end = (cx[end - 1], cy[end - 1])
+                note(carry_mm, end - 1)
+            else:
+                leading = int(hit[0])
+                if leading or lead_mm:
+                    note(lead_mm + leading * wide,
+                         at + max(0, leading - 1) if leading else at)
+                edges = np.concatenate([[-1], hit, [count]])
+                gaps = np.diff(edges) - 1
+                if gaps.size > 2:
+                    k = int(gaps[1:-1].argmax()) + 1
+                    g = int(gaps[k])
+                    if g > 0:
+                        note(g * wide, at + int(edges[k]) + g)
+                trailing = count - 1 - int(hit[-1])
+                carry_mm = trailing * wide
+                carry_end = (cx[end - 1], cy[end - 1]) if trailing else None
+                if trailing:
+                    note(carry_mm, end - 1)
+            at = end
+    return {"segments": len(transport), "thread_mm": total_mm,
+            "uncovered_mm": uncovered_mm, "max_mm": worst_mm, "at": worst_at,
+            "cell_mm": cell}
+
+
+def _link_findings(plan: StitchPlan,
+                   cfg: PipelineConfig) -> tuple[list[dict], dict]:
+    """Transport thread the garment will show, against the fabric's own float
+    ceiling.
+
+    The threshold is `fabric.trim_at_mm` and it is not a new number: it is the
+    one this engine already uses to decide when exposed thread may not be left
+    on a garment ("a float long enough to catch a finger is a float someone has
+    to remove with scissors" — stage 7). Chaining spends exactly that rule: it
+    declines a trim on the promise the thread will be buried. Where the promise
+    fails by more than the trim rule's own ceiling, the design carries a line of
+    stitching across bare fabric that the operator was going to have cut out —
+    strictly worse than the trim it replaced, which is why it blocks rather than
+    warns, and it is the failure chaining laws 59 and 60 say must ship together.
+
+    Under the ceiling this stays silent, and deliberately: a stretch shorter
+    than `trim_at_mm` is less exposed thread than the same engine leaves lying
+    as a jump, in a tacked-down form that cannot be pulled into a loop. Measured
+    over the 60-configuration sweep the longest bare stretch is 2.29 mm with a
+    p90 of 1.07, against a 3.0 mm ceiling on pique knit and 4.0 on terry — so
+    clean work is silent on every fixture the house owns, with the margin coming
+    from measurement rather than from rounding the threshold up to fit.
+
+    `link_uncovered_max_mm` rides out in the metrics whether or not it fires:
+    the number is the point, and an operator watching it move across a
+    re-digitize learns more than a boolean.
+    """
+    got = _link_coverage(plan)
+    empty = {"link_segments": 0, "link_thread_mm": 0.0,
+             "link_uncovered_mm": 0.0, "link_uncovered_max_mm": 0.0}
+    if got is None:
+        return [], empty
+    limit = max(0.0, fabric_for(cfg).trim_at_mm)
+    metrics = {
+        "link_segments": got["segments"],
+        "link_thread_mm": round(got["thread_mm"], 1),
+        "link_uncovered_mm": round(got["uncovered_mm"], 2),
+        "link_uncovered_max_mm": round(got["max_mm"], 2),
+    }
+    if limit <= 0.0 or got["max_mm"] <= limit:
+        return [], metrics
+    at = got["at"] or (0.0, 0.0)
+    return [finding(
+        LINK_UNCOVERED,
+        "block",
+        f"{got['max_mm']:.1f} mm of thread crosses bare fabric between shapes "
+        f"— longer than the {limit:g} mm this fabric cuts a float at. It will "
+        f"show as a stray line on the garment. Re-digitize, or trim that "
+        f"connection instead of sewing it.",
+        max_mm=round(got["max_mm"], 2),
+        limit_mm=round(limit, 2),
+        total_mm=round(got["uncovered_mm"], 2),
+        thread_mm=round(got["thread_mm"], 1),
+        at_mm=[round(at[0], 1), round(at[1], 1)],
+    )], metrics
+
+
+# --- Contour fill starvation (laws 39-44) -----------------------------------
+
+def _contour_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
+    """The contour tier's own starvation report, put in front of the operator.
+
+    Stage 6 counts a contour-filled shape `starved` when the rings it had to
+    drop — too short to sew — leave more than
+    `machine.CONTOUR_STARVED_FRAC` of the shape bare, and stage 7 raises
+    CONTOUR_RING_UNREACHABLE. That warning goes to `plan.warnings`, which the
+    review screen reads and the preflight report did not, so the one number
+    that says a fill has a hole in it reached nobody scoring a file.
+
+    It is re-emitted rather than re-measured, and that is a measured decision.
+    Preflight can raster the laid thread and find bare patches inside a shape
+    without trusting stage 6 at all — the honest instrument this module would
+    normally insist on — but it does not separate the populations. Over 80
+    configurations (5 artworks x 4 sizes x 2 garments x both techniques,
+    2026-08-02) the largest connected bare patch inside a shape reaches
+    15.44 mm2 on plain TATAMI and 15.48 mm2 on contour, with the tatami p90 at
+    1.40 against contour's 2.84: any threshold that catches a starved contour
+    shape also flags clean tatami work. A check like that would train the
+    operator to skip the report, so it is not shipped. Stage 6 knows which
+    rings it dropped and why; preflight's job here is to carry that.
+
+    `shapes` in the warning's extra is honoured when present and the finding
+    names them. The contour lane does not put it there yet — its extra carries
+    `count` and `rings` — so today this says how many and how many rings, and
+    gains the names the moment that lane adds them.
+    """
+    hits = [w for w in plan.warnings if w.get("code") == _CONTOUR_RING_UNREACHABLE]
+    if not hits:
+        return [], {"contour_starved_shapes": 0}
+    count = rings = 0
+    shapes: list[str] = []
+    for w in hits:
+        extra = w.get("extra") or w
+        count += int(extra.get("count", 1) or 1)
+        rings += int(extra.get("rings", 0) or 0)
+        for s in extra.get("shapes") or ():
+            shapes.append(s if isinstance(s, str) else str(s.get("shape_id", s)))
+    noun = "shape" if count == 1 else "shapes"
+    which = f" ({', '.join(shapes)})" if shapes else ""
+    return [finding(
+        CONTOUR_STARVED,
+        "warn",
+        f"{count} filled {noun}{which} {'has' if count == 1 else 'have'} a "
+        f"bare patch where contour rings were too short to sew. The fabric "
+        f"will show through there. Check {'it' if count == 1 else 'them'} on "
+        f"the review screen, or fill {'that shape' if count == 1 else 'those '
+        'shapes'} with tatami rows instead.",
+        count=count,
+        rings=rings,
+        shapes=shapes,
+    )], {"contour_starved_shapes": count}
+
+
 # --- Same-hole strikes (law 17) ---------------------------------------------
 
 def _same_hole_findings(plan: StitchPlan) -> tuple[list[dict], float | None]:
@@ -815,6 +1195,14 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     coverage_findings, coverage_metrics = _coverage_findings(plan)
     findings.extend(coverage_findings)
     metrics.update(coverage_metrics)
+
+    link_findings, link_metrics = _link_findings(plan, cfg)
+    findings.extend(link_findings)
+    metrics.update(link_metrics)
+
+    contour_findings, contour_metrics = _contour_findings(plan)
+    findings.extend(contour_findings)
+    metrics.update(contour_metrics)
 
     hole_findings, hole_rate = _same_hole_findings(plan)
     findings.extend(hole_findings)

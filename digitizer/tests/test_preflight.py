@@ -18,15 +18,18 @@ from digitizer_core import (PipelineConfig, StitchBlock, StitchPlan,
                             StitchRun, machine, run_stages)
 from digitizer_core import stitches as st
 from digitizer_core.preflight import (
+    CONTOUR_STARVED,
     DELTA_E_CLEARLY_DIFFERENT,
     DENSITY_EXTREME,
     DENSITY_STACKED,
     LETTERING_TOO_SMALL,
+    LINK_UNCOVERED,
     SAME_HOLE_HEAVY,
     STITCHES_TOO_LONG,
     STITCHES_TOO_SHORT,
     THREAD_MATCH_POOR,
     TRIM_HEAVY,
+    _CONTOUR_RING_UNREACHABLE,
     _coverage_map,
     run_preflight,
 )
@@ -76,6 +79,12 @@ def test_a_clean_real_plan_earns_a_clean_report(whitebg, plan):
     assert m["coverage_p50"] == pytest.approx(1.2, abs=0.15)
     assert m["coverage_over_warn_mm2"] == 0.0
     assert m["same_hole_fraction"] is not None
+    # Chaining law 60 and the contour tier, both measured rather than skipped:
+    # the fixture travels 99.4 mm needle-down and leaves 0.40 mm of it bare.
+    assert m["link_thread_mm"] == pytest.approx(99.4, abs=1.0)
+    assert m["link_uncovered_max_mm"] == pytest.approx(0.40, abs=0.05)
+    assert m["fill_axis_concentration"] == pytest.approx(0.974, abs=0.02)
+    assert m["contour_starved_shapes"] == 0
 
 
 # --- Thread color fidelity ---------------------------------------------------
@@ -388,6 +397,230 @@ def test_coverage_reads_stitch_geometry_through_ties_and_splits(plan):
     assert m["coverage_p95"] < machine.COVERAGE_WARN_UNITS
 
 
+# --- Uncovered links (chaining law 60) ---------------------------------------
+
+def _fill_rect(x0: float, y0: float, x1: float, y1: float,
+               spacing: float = machine.FILL_ROW_MM,
+               shape_id: str = "F") -> StitchRun:
+    """A boustrophedon fill of an axis-aligned rectangle, rows `spacing` apart."""
+    pts: list[tuple[float, float]] = []
+    y, row = y0, 0
+    cols = [x0 + 2.0 * i for i in range(int((x1 - x0) / 2.0) + 1)]
+    while y <= y1 + 1e-9:
+        xs = cols[::-1] if row % 2 else cols
+        pts.extend((x, y) for x in xs)
+        y += spacing
+        row += 1
+    return StitchRun(points=pts, kind=st.FILL, shape_id=shape_id)
+
+
+def _outline_rect(x0: float, y0: float, x1: float, y1: float,
+                  shape_id: str = "R") -> StitchRun:
+    """The run tier's answer to a small shape: its OUTLINE, nothing inside."""
+    corners = [(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)]
+    pts: list[tuple[float, float]] = [corners[0]]
+    for a, b in zip(corners, corners[1:]):
+        n = max(1, int(math.ceil(math.dist(a, b) / machine.BEAN_STITCH_MM)))
+        pts.extend((a[0] + (b[0] - a[0]) * i / n, a[1] + (b[1] - a[1]) * i / n)
+                   for i in range(1, n + 1))
+    return StitchRun(points=pts, kind=st.RUN, shape_id=shape_id)
+
+
+def _link_run(a: tuple[float, float], b: tuple[float, float],
+              shape_id: str = "L") -> StitchRun:
+    """A needle-DOWN link between two shapes, at the chaining law's 2.0 mm."""
+    n = max(1, int(math.ceil(math.dist(a, b) / 2.0)))
+    return StitchRun(
+        points=[(a[0] + (b[0] - a[0]) * i / n, a[1] + (b[1] - a[1]) * i / n)
+                for i in range(n + 1)],
+        kind=st.TRAVEL, shape_id=shape_id)
+
+
+def _two_shapes_linked(*later_runs: StitchRun) -> StitchPlan:
+    """Two filled squares 12 mm apart, joined by a needle-down link, and
+    whatever sews after them in a second colour."""
+    first = StitchBlock(thread_index=0, thread_number="1704", rgb=(230, 60, 60),
+                        runs=[_fill_rect(-14.0, -4.0, -6.0, 4.0, shape_id="F1"),
+                              _link_run((-6.0, 0.0), (6.0, 0.0)),
+                              _fill_rect(6.0, -4.0, 14.0, 4.0, shape_id="F2")])
+    blocks = [first]
+    if later_runs:
+        blocks.append(StitchBlock(thread_index=1, thread_number="3902",
+                                  rgb=(60, 120, 200), runs=list(later_runs)))
+    return StitchPlan(blocks=blocks, palette=[])
+
+
+def test_a_link_across_bare_fabric_blocks():
+    """Chaining declines a trim on the promise the thread will be buried. Here
+    nothing buries it: 12 mm of needle-down thread crosses open fabric between
+    two squares, which is the float the trim rule exists to cut out, now sewn
+    in instead. The limit is the fabric's own trim distance — 3.0 mm on pique
+    knit — because that is the number this engine already uses to decide when
+    exposed thread may not be left on a garment."""
+    report = run_preflight(None, _two_shapes_linked(), cfg())
+
+    hit = [f for f in report["findings"] if f["code"] == LINK_UNCOVERED]
+    assert len(hit) == 1
+    assert hit[0]["severity"] == "block"
+    assert hit[0]["extra"]["limit_mm"] == 3.0
+    assert hit[0]["extra"]["max_mm"] == pytest.approx(11.6, abs=0.3)
+    # And it names where to look on the garment.
+    assert hit[0]["extra"]["at_mm"][1] == pytest.approx(0.0, abs=0.3)
+
+
+def test_a_link_buried_under_the_next_colour_is_silent():
+    """Law 60's main mechanism, and the anti-noise half of the pair: the same
+    link under a colour that sews after it is invisible on the finished
+    garment, so it must not cost the design a thing."""
+    buried = _two_shapes_linked(_fill_rect(-7.0, -3.0, 7.0, 3.0, shape_id="F3"))
+    report = run_preflight(None, buried, cfg())
+
+    assert LINK_UNCOVERED not in _codes(report)
+    assert report["metrics"]["link_uncovered_max_mm"] == 0.0
+    assert report["score"] == 100
+
+
+def test_the_link_check_reads_laid_thread_not_the_shape_that_claims_to_cover_it():
+    """THE defect this instrument exists for, and the known gap in stage 7's
+    own test. A link is legal there when its route lies inside the covering
+    geometry — POLYGONS — and the run tier sews a small shape's outline and
+    nothing else, so its polygon claims cover that no thread provides. Same
+    link, same covering shape, same polygon: filled it is buried, outlined it
+    is a stray line across bare fabric. Only an instrument that reads the
+    stitches can tell those apart, and the difference is the whole finding.
+    """
+    box = (-7.0, -3.0, 7.0, 3.0)
+    filled = run_preflight(None, _two_shapes_linked(
+        _fill_rect(*box, shape_id="F3")), cfg())
+    outlined = run_preflight(None, _two_shapes_linked(
+        _outline_rect(*box, shape_id="R3")), cfg())
+
+    # The link runs straight through the middle of that shape either way.
+    assert box[0] < -6.0 and box[2] > 6.0 and box[1] < 0.0 < box[3]
+
+    assert LINK_UNCOVERED not in _codes(filled)
+    assert LINK_UNCOVERED in _codes(outlined)
+    assert outlined["metrics"]["link_uncovered_max_mm"] > 3.0
+
+
+def test_content_thread_on_bare_fabric_is_not_a_link():
+    """A fill row lying on open fabric IS the design; only thread whose job is
+    to get somewhere can be a stray line. Three stacked fills therefore raise
+    nothing — while the two needle-down moves BETWEEN them are still counted,
+    because the machine really does sew from the end of one run to the start of
+    the next. That connection belongs to no run's point list, so every
+    instrument that walks a run's consecutive pairs is blind to it,
+    `_coverage_map` included; here it is transport, and it is covered."""
+    report = run_preflight(None, _stacked(3), cfg())
+
+    assert LINK_UNCOVERED not in _codes(report)
+    assert report["metrics"]["link_segments"] == 2
+    assert report["metrics"]["link_uncovered_max_mm"] == 0.0
+
+
+def test_the_real_fixture_leaves_no_link_on_bare_fabric(plan):
+    """The promise every threshold here was validated against. Measured
+    2026-08-02 over 60 configurations (5 artworks x 4 sizes x 3 garments, with
+    chaining on) the longest bare stretch is 2.29 mm and the p90 is 1.07,
+    against a 3.0 mm ceiling on pique knit — so real work is silent, and the
+    margin comes from measurement rather than from a threshold rounded up to
+    fit."""
+    stitch_plan, _planned, _warnings = plan
+    m = run_preflight(None, stitch_plan, cfg(**PLAN_CFG_KW))["metrics"]
+
+    assert m["link_segments"] > 0, "the fixture does travel; measure it"
+    assert m["link_uncovered_max_mm"] < 3.0
+    assert m["link_uncovered_mm"] < m["link_thread_mm"] * 0.05
+
+
+# --- Contour fill starvation (laws 39-44) ------------------------------------
+
+def _starved_plan(**extra) -> StitchPlan:
+    """A clean plan carrying stage 6's contour-starvation warning."""
+    p = _plan(_square_fill())
+    p.warnings = [dict(code=_CONTOUR_RING_UNREACHABLE,
+                       message="rings too short to sew", **extra)]
+    return p
+
+
+def test_contour_starvation_reaches_the_operator():
+    """Stage 6 knows a shape's dropped rings left more than 1% of it bare and
+    says so in `plan.warnings`, which the preflight report never read — the one
+    number that says a fill has a hole in it reached nobody scoring the file."""
+    report = run_preflight(None, _starved_plan(count=2, rings=4), cfg())
+
+    hit = [f for f in report["findings"] if f["code"] == CONTOUR_STARVED]
+    assert len(hit) == 1
+    assert hit[0]["severity"] == "warn"
+    assert hit[0]["extra"]["count"] == 2
+    assert hit[0]["extra"]["rings"] == 4
+
+
+def test_contour_starvation_names_the_shapes_when_stage_6_carries_them():
+    """'Which shape' is the operator's actual question. The contour lane's
+    warning carries only a count today, so the finding degrades to that; the
+    moment it carries `shapes`, this says which ones with no further change."""
+    report = run_preflight(None, _starved_plan(count=1, rings=2,
+                                               shapes=["Sb253ebba"]), cfg())
+
+    hit = [f for f in report["findings"] if f["code"] == CONTOUR_STARVED][0]
+    assert hit["extra"]["shapes"] == ["Sb253ebba"]
+    assert "Sb253ebba" in hit["message"]
+
+
+def test_a_plan_with_no_starved_shape_says_nothing_about_contours(plan):
+    """The silent half. A tatami fixture carries no such warning and must not
+    grow one — and the metric must read 0 rather than going missing, so a
+    caller can tell 'none' from 'not checked'."""
+    stitch_plan, _planned, _warnings = plan
+    report = run_preflight(None, stitch_plan, cfg(**PLAN_CFG_KW))
+
+    assert CONTOUR_STARVED not in _codes(report)
+    assert report["metrics"]["contour_starved_shapes"] == 0
+
+
+# --- The fill-density instrument declines what it cannot measure -------------
+
+def _rings(outer_mm: float = 8.0, inner_mm: float = 2.0,
+           spacing: float = machine.FILL_ROW_MM) -> StitchRun:
+    """Concentric rings at `spacing`, sewn outer to inner — a contour fill's
+    geometry, which has no dominant stitch axis by construction."""
+    pts: list[tuple[float, float]] = []
+    r = outer_mm
+    while r >= inner_mm:
+        n = max(8, int(math.ceil(2 * math.pi * r / 1.5)))
+        pts.extend((r * math.cos(2 * math.pi * i / n),
+                    r * math.sin(2 * math.pi * i / n)) for i in range(n + 1))
+        r -= spacing
+    return StitchRun(points=pts, kind=st.FILL, shape_id="C1")
+
+
+def test_the_row_density_instrument_declines_on_contour_rings():
+    """Warning noise, caught before it shipped. `_fill_row_advance_mm` models a
+    fill as rows along one axis with short turns between them; a contour fill
+    has no such axis, so the model does not degrade on it, it inverts — nearly
+    every step reads as a turn and the median 'row advance' returned is really
+    the ring chord. Measured on the real tier: 2.19 / 2.35 / 2.98 mm against
+    the 0.40 mm target, a DENSITY_EXTREME warn on three house fixtures out of
+    four whose coverage map read a healthy 1.36-1.39 units. The instrument now
+    checks its own assumption and stays quiet when it does not hold."""
+    report = run_preflight(None, _plan(_rings()), cfg())
+
+    assert report["metrics"]["fill_axis_concentration"] < 0.6
+    assert report["metrics"]["fill_advance_mm"] is None
+    assert DENSITY_EXTREME not in _codes(report)
+
+
+def test_the_gate_does_not_blind_the_instrument_to_real_rows():
+    """The other half: tatami rows concentrate hard on one axis (measured
+    0.913-0.991 on the house fixtures against 0.003-0.270 for contour), so the
+    gate must be invisible to them and the 0.40 mm reading must survive it."""
+    m = run_preflight(None, _stacked(1), cfg())["metrics"]
+
+    assert m["fill_axis_concentration"] > 0.6
+    assert m["fill_advance_mm"] == pytest.approx(0.40, abs=0.02)
+
+
 # --- Same-hole strikes (law 17) ----------------------------------------------
 
 def test_same_hole_stays_silent_on_the_practice_professionals_share(plan):
@@ -451,3 +684,8 @@ def test_the_report_is_json_safe():
     plan = _plan(_satin_column(40, width_mm=0.7, spacing_mm=0.4),
                  StitchRun(points=[(0.0, 0.0), (15.0, 0.0)], kind=st.FILL))
     json.dumps(run_preflight(None, plan, cfg()))
+    # The link check builds its answer out of numpy arrays; a stray numpy
+    # scalar in the coordinate or the length would 500 the job endpoint.
+    json.dumps(run_preflight(None, _two_shapes_linked(), cfg()))
+    json.dumps(run_preflight(None, _starved_plan(count=1, rings=1,
+                                                 shapes=["S1"]), cfg()))
