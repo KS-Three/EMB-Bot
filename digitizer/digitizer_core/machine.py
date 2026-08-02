@@ -465,3 +465,103 @@ LINK_MEDIAN_STITCHES = 7
 # whole node allowance on waypoints strewn along a straight line it has
 # already established is not covered.
 LINK_DETOUR_FACTOR = 2.5
+
+
+# --- Appliqué (docs/specialty-techniques-2026-08-01.md §2) ------------------
+# Every number below is carried from that spec with its source tier intact:
+# [V] vendor doc, [S] supplier tech sheet, [P] production/trade writeup,
+# [D] derived. Nothing here is invented. The offsets are SIGNED NORMALS on the
+# digitized boundary B: s < 0 inward (onto the appliqué fabric), s > 0 outward
+# (onto the ground garment) — §2.2.
+
+# 1 DST coordinate unit = 1 Melco point = 0.1 mm. Every offset is quantized to
+# this BEFORE rail generation so the two cover rails cannot accumulate a
+# half-unit drift against each other — §2.2 unit note.
+APPLIQUE_QUANTIZE_MM = 0.1
+
+# Layer 1, placement / guide run (§2.5). Single run, never bean: a bean triples
+# the perforations that later sit OUTSIDE the cover satin on any shape you
+# shrink.
+APPLIQUE_PLACEMENT_STITCH_MM = 2.50   # [P]; Melco outline/detail 15-25 pt [V]
+APPLIQUE_PLACEMENT_OFFSET_MM = 0.00   # [V] relative to the outline B
+APPLIQUE_PLACEMENT_PASSES = 1         # [P] 2 if the base is dark or textured
+
+# Layer 2, cutting line (§2.6). Trim-in-place only, and only where scissors fit.
+APPLIQUE_CUTTING_STITCH_MM = 2.00     # [D] shorter than placement — you cut against it
+APPLIQUE_CUTTING_OFFSET_MM = 0.00     # [V] coincident with B
+
+# Layer 3, tackdown (§2.7). Offset is relative to the GUIDE RUN, not to B, and
+# is a run-stitch-only parameter — §2.2. Inward because the tackdown must
+# compress the appliqué against the stabilizer, not the ground fabric: outside
+# stitches compress background fabric and cause peeling [P].
+APPLIQUE_TACK_OFFSET_MM = -1.00       # [V][P] run / double-run / E spine
+APPLIQUE_TACK_STITCH_MM = 2.50        # [V]
+APPLIQUE_TACK_PASSES = 2              # [V] double run
+APPLIQUE_TACK_WIDTH_MM = 2.00         # [V] zigzag/E only; = W_cover - 2*bury at the 3.0 default
+
+# Layer 4, cover (§2.8).
+APPLIQUE_COVER_SPACING_MM = 0.40      # [P]; Melco 4.2 pt [V]
+APPLIQUE_COVER_SPACING_MIN_MM = 0.30  # [P] below this the needle cuts the fabric
+APPLIQUE_COVER_SPACING_MAX_MM = 0.60  # [P] above this the raw edge shows through
+APPLIQUE_COVER_PULL_COMP_MM = 0.20    # [P] up to 0.30 on knits
+# Stahls' publishes 4-8 stitches of closure overlap past the start point [S].
+APPLIQUE_CLOSURE_OVERLAP_STITCHES = 6
+
+# The tolerance stack (§2.3). No source states it as an equation; it is [D],
+# and it then validates against four independent published number sets.
+APPLIQUE_MARGIN_BURY_MM = 0.50        # [D] margin to hide the tackdown thread
+APPLIQUE_MARGIN_EDGE_MM = 0.50        # [D] margin to overshoot the raw edge
+# Trim clearance band [t_lo, t_hi] by shop discipline. t_hi is the published
+# axis (§2.3 validation table); t_lo = 0.30 is recovered from §2.4's worked
+# default, where the raw edge lands at s = o_tack + t_lo = -1.00 + 0.30 = -0.70.
+APPLIQUE_TRIM_CLEARANCE_MM = {
+    "tight":  (0.30, 1.5),   # [P] duckbill scissors -> W_req 2.5 mm ("risky")
+    "normal": (0.30, 2.0),   # [P] beginner safe zone 3.0-3.8; Hatch baseline 3.00
+    "loose":  (0.30, 3.0),   # [P] Melco DS11 practice: cover 40 pt = 4.0 mm
+}
+# Pre-cut placement error e. Governs W_req = 2*(e + m_edge) instead of the trim
+# band — §2.3, and the heat-tacked row is the strongest confirmation available
+# (Stahls' Poly-Twill publishes 2 mm for 1"-3" letters at e ~ 0.4).
+APPLIQUE_PLACEMENT_ERROR_MM = {"hand": 0.75, "heat_tacked": 0.40}   # [V][S]
+
+# Surplus goes INWARD: an operator can under-trim, but the tackdown thread hard-
+# stops over-trimming. The production floor calls this the 65/35 rule [P].
+# Pre-cut has no trim step and therefore no asymmetry — 50/50, centred on B [V].
+APPLIQUE_INSIDE_SHARE_TRIM = 0.65     # [P]
+APPLIQUE_INSIDE_SHARE_PRECUT = 0.50   # [V]
+
+# Cover width bounds. The 2.5 floor is §2.13's own clamp ("absolute minimum:
+# 2.5 mm (risky)" [P]); note it sits ABOVE the twill material floor below and
+# above Stahls' published 2 mm, so the clamp is what binds on pre-cut twill —
+# a deliberate conservatism, not an oversight. 5.0 is the snag ceiling [D].
+APPLIQUE_COVER_WIDTH_FLOOR_MM = 2.50
+APPLIQUE_COVER_WIDTH_MAX_MM = 5.00
+# W_floor_material, §2.13. Only binds where it exceeds the 2.5 clamp floor.
+APPLIQUE_COVER_FLOOR_BY_MATERIAL = {
+    "twill": 2.0, "felt": 2.5, "woven": 3.0, "knit": 3.0, "loose_weave": 3.5,
+}
+
+# Gates (§2.12) — all [D], all must be enforced.
+# A shape narrower than `2*|c_in| + this` has no fabric left showing between the
+# two inner rails. §2.12 prints 5.9 mm, which is the floor for §2.4's rails
+# (c_in -1.95); we sew §2.13's (c_in -1.50, see stage6_applique.cover_rails), so
+# the shipped floor is 4.0 mm — measured by ribbon sweep, the gate fires at
+# 3.5 mm and clears at 4.0 mm exactly. It falls through to plain satin and the
+# engine must SAY it did.
+APPLIQUE_MIN_FEATURE_MARGIN_MM = 1.0
+# Scissors must physically fit inside the shape to trim in place.
+APPLIQUE_MIN_INSCRIBED_PRECUT_MM = 8.0
+APPLIQUE_MIN_INSCRIBED_TRIM_MM = 12.0
+# Below |c_in| + this, the cover's inner rail self-intersects on a concave turn.
+APPLIQUE_MIN_CONCAVE_MARGIN_MM = 0.3
+# A hole smaller than this cannot be trimmed in the hoop; force pre-cut.
+APPLIQUE_MIN_HOLE_DIAMETER_MM = 15.0
+
+# Multi-piece (§2.11). The one hard vendor number: Wilcom states it directly —
+# "Set the cutting overlap to half the width of the cover stitching" [V], and
+# Hatch's Partial Appliqué tool is documented accurate to +-1/2 the cover width.
+APPLIQUE_OVERLAP_ALLOWANCE_FRAC = 0.5
+
+# Machine speed for the worksheet — the Tajima will not infer it [P] (§2.10).
+APPLIQUE_COVER_SPM = 700
+APPLIQUE_TRIM_HEAVY_SPM = 650

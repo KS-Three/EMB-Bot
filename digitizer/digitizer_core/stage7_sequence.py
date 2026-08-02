@@ -43,6 +43,7 @@ from .config import PipelineConfig
 from .fabrics import Fabric
 from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITCH_MM
 from .stage5_overlap import PlannedRegion
+from .stage6_applique import applique_pass, nn_group_key
 from .stage6_border import border_runs, run_outline
 from .stage6_contour import contour_fill
 from .stage6_fill import stitch_shape
@@ -371,8 +372,27 @@ def sequence(
     blocks: list[StitchBlock] = []
     cursor: tuple[float, float] | None = None
 
-    for sew_index in sorted({p.sew_index for p in planned}):
-        group = [p for p in planned if p.sew_index == sew_index]
+    # --- The appliqué tier (stage6_applique, docs §2). Off unless asked for,
+    # and when off this returns ([], [], planned, None) and changes nothing.
+    # Appliqué pieces sew first and leave the normal color loop entirely: the
+    # fabric goes down before anything decorates it, and a piece's steps must
+    # be consecutive blocks so no other color lands between "lay the twill"
+    # and "trim it".
+    applique_blocks, applique_warnings, planned, applique_cursor = applique_pass(
+        planned, cfg, chart_for(cfg))
+    blocks.extend(applique_blocks)
+    if applique_cursor is not None:
+        cursor = applique_cursor
+
+    # Group by (sew_index, step_key) rather than by sew_index alone — §0's
+    # third consequence, as code. The nearest-neighbour pass below reorders
+    # shapes to save needle travel and merges a whole group into ONE block;
+    # left unguarded it would weld two steps together to save a color stop and
+    # destroy an operator instruction with it. Regions carrying no `step_key`
+    # all key on "", so a design with no steps groups and sorts exactly as it
+    # always did.
+    for _group_key in sorted({nn_group_key(p) for p in planned}):
+        group = [p for p in planned if nn_group_key(p) == _group_key]
 
         def stitch_one(p: PlannedRegion, entry: tuple[float, float] | None):
             # The run tier comes first: a shape below the sewable-detail floor
@@ -574,7 +594,7 @@ def sequence(
         )
         cursor = ordered[-1].points[-1]
 
-    warnings: list[dict] = []
+    warnings: list[dict] = list(applique_warnings)
     if thin:
         warnings.append(
             warn(

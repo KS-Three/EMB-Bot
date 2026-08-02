@@ -35,6 +35,33 @@ CONTOUR_RING_UNREACHABLE = "CONTOUR_RING_UNREACHABLE"  # offset ring too short t
 BORDER_SKIPPED_TOO_NARROW = "BORDER_SKIPPED_TOO_NARROW"  # no room for an outline. extra: {"count": int}
 BORDER_LIGHTENED = "BORDER_LIGHTENED"                    # column would not fit; bean run instead. extra: {"count": int}
 
+# Stage 6 (appliqué tier) — docs/specialty-techniques-2026-08-01.md §2.12 gates.
+# Every one of these is a gate the spec says "must be enforced", and every one
+# describes something the operator will otherwise discover at the machine.
+APPLIQUE_NO_FABRIC_VISIBLE = "APPLIQUE_NO_FABRIC_VISIBLE"
+# Shape narrower than 2*|c_in| + 1.0 mm: the two inner cover rails meet and no
+# appliqué fabric shows. Falls through to plain satin, and SAYS SO (§2.12).
+# extra: {"count": int}
+APPLIQUE_CUTTING_LINE_SUPPRESSED = "APPLIQUE_CUTTING_LINE_SUPPRESSED"
+# Trim-in-place asked for, but the min inscribed diameter is under 12 mm and
+# scissors do not fit. The cutting line is dropped (§2.6). extra: {"count": int}
+APPLIQUE_FORCED_PRE_CUT = "APPLIQUE_FORCED_PRE_CUT"
+# A hole under 15 mm cannot be trimmed in the hoop, so the piece is switched to
+# pre-cut whatever was requested (§2.12). extra: {"count": int}
+APPLIQUE_COVER_MARGINAL = "APPLIQUE_COVER_MARGINAL"
+# The solved cover reaches less than m_edge past the outermost place the raw
+# edge can land. §2.4 ships this at the "normal" default (0.05 mm of 0.50) and
+# says so; it is the §2.15 "fabric peeking outside the satin" failure waiting
+# to happen. extra: {"count": int, "headroom_mm": float}
+APPLIQUE_PIECES_OVERLAP = "APPLIQUE_PIECES_OVERLAP"
+# Two appliqué pieces overlap. Partial-cover arc suppression (§2.11) is not
+# built, so two satins would stack on one band — 0.20 mm effective at the 0.40
+# default, below the 0.30 fabric-damage floor. extra: {"count": int}
+APPLIQUE_STEP_EMPTY = "APPLIQUE_STEP_EMPTY"
+# A step generated no stitches. Its color change would vanish with it and the
+# operator would lose an instruction — the §0.2 failure, caught upstream of the
+# writer. extra: {"count": int}
+
 
 def warn(code: str, message: str, **extra) -> dict:
     w = {"code": code, "message": message}

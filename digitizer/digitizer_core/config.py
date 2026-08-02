@@ -159,6 +159,46 @@ class PipelineConfig:
     border: str = "off"
     border_width_mm: float | None = None
 
+    # Stage 6 — the appliqué tier (docs/specialty-techniques-2026-08-01.md §2).
+    #
+    # OFF by default, and that default is load-bearing: with `applique` False
+    # nothing in this block is read, no step metadata is attached, and a design
+    # sews byte-for-byte what it sewed before the tier existed. `tests/
+    # test_applique.py::test_applique_off_is_byte_identical` pins that.
+    #
+    # Per-shape intent overrides the mode in both directions, exactly as
+    # `border` does: `Region.meta["applique"] = True/False` rides the existing
+    # `match_shape_ids` carry-forward, so a review-screen decision survives a
+    # re-digitize with no new contract.
+    applique: bool = False
+    # "trim_in_place" (4 layers, 2 stops) | "pre_cut" (3 layers, 1 stop).
+    # Wilcom's guide-run panel makes this an explicit switch and §2.1 calls it
+    # "the single biggest branch in the feature".
+    applique_mode: str = "trim_in_place"
+    # Shop-level trim discipline: tight | normal | loose. §2.3's implementation
+    # corollary is emphatic — expose THIS and derive the cover width from the
+    # tolerance stack. Do not expose cover width as a free number the user
+    # guesses at.
+    applique_trim_discipline: str = "normal"
+    # Pre-cut only: how accurately the piece lands. "hand" (0.75 mm) or
+    # "heat_tacked" (0.40 mm). Laser cutting adds no geometry, it removes
+    # tolerance — the whole benefit shows up here (§2.9).
+    applique_placement: str = "hand"
+    # Which material floor the solved width may not go under: twill | felt |
+    # woven | knit | loose_weave (§2.13 W_floor_material).
+    applique_material: str = "woven"
+    # Tackdown stitch type: run | double_run | zigzag | e_stitch | none.
+    # Trim-in-place wants run/double_run — a zigzag tack gets clipped by the
+    # scissors and leaves fabric whiskers (§2.7). None = pick from the mode.
+    applique_tackdown: str | None = None
+    # Cover stitch type: satin | zigzag | e_stitch. Zigzag at 1.69 mm is the
+    # tackle-twill look and a genuinely different aesthetic, not a cheap satin.
+    applique_cover: str = "satin"
+    # Override the solved cover width, in mm. None = solve from the tolerance
+    # stack, which is what you want; a number here is an escape hatch for a
+    # sew-out comparison and is still clamped to [2.5, 5.0].
+    applique_cover_width_mm: float | None = None
+
     # Debug artifacts: written per stage when set
     debug_dir: Path | None = None
 

@@ -53,12 +53,26 @@ class StitchRun:
 
 @dataclass
 class StitchBlock:
-    """Everything sewn with one thread, in sew order."""
+    """Everything sewn between two machine functions, in sew order.
+
+    A block was "everything sewn with one thread" until the specialty tiers
+    arrived. It is still exactly that for ordinary artwork — but a block
+    boundary is a color change in the file, and on a single head a color change
+    IS a stop, so the boundary is really "the machine halts and a human does
+    something". Appliqué and puff both sew consecutive blocks on ONE thread and
+    depend on the stop between them. See `step`.
+    """
 
     thread_index: int          # index into threads.CHART
     thread_number: str
     rgb: tuple[int, int, int]
     runs: list[StitchRun] = field(default_factory=list)
+    # Operator step metadata, or None for an ordinary artwork block. A plain
+    # JSON-shaped dict so it rides the service response with no schema work;
+    # `stage6_applique.plan_steps` is the reader and documents the keys. The
+    # load-bearing one is `action` — the human instruction at the stop that
+    # ENDS this block. One color stop = one human action.
+    step: dict | None = None
 
     @property
     def stitch_count(self) -> int:
