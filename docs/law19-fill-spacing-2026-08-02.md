@@ -1,6 +1,8 @@
 # Law 19 — fill row spacing: 0.20 mm or 0.40 mm?
 
-**Verdict: REFUTED.** `machine.FILL_ROW_MM = 0.40` stands. No constant changed.
+**Verdict: REFUTED for the freebie script corpus; ALIVE for the commissioned
+caps — see §8.** `machine.FILL_ROW_MM = 0.40` stands pending sew-out card
+block 2. No constant changed.
 
 Law 19 (`digitizer/docs/pro-digitizing-playbook.md:39`) records professional fill
 row spacing as **~0.20 mm effective**, against our 0.40. If true, every filled
@@ -238,3 +240,43 @@ Law 19's number is not wrong, its *object* is. Suggested restatement for
 > points alternate rails. Corpus fills sew rows in geometric order; two-pass
 > interleave does not appear (2/427 patches). Stagger irregular, never a rigid
 > cycle.
+
+## 8. Correction — the caps were found, and the verdict above was too broad
+
+§5.1 was right to flag the gap and wrong about the tree. The commissioned cap
+files exist on disk: 43 `.DST` under `scratch_kent/Embroidery Files/`, including
+every file round 3 named as law 19's source. They are invisible from a worktree
+because `.gitignore:3` (`scratch_*`) hides them — the same rule that hides
+`scratch_corpus`, which §4's probe *did* read. "Absent from the whole repo tree"
+was a search error, not an absence.
+
+Measured — the close-out's instrument and an independent re-probe agree — the
+caps' dense patches can be neither satin nor fans:
+
+- traverse spans run 6–54 mm against `SATIN_MAX_WIDTH_MM = 5.0`
+  (beckers logo hat: 48–54 mm spans at pitch 0.19–0.21 mm);
+- each traverse carries 3–17 penetrations at 2.7–3.5 mm steps — that is
+  `FILL_STITCH_MM`, not a satin crossing's two penetrations, and not a
+  split-satin midpoint;
+- both rail ends wander 31–88 mm along the traverse axis, so neither rail is
+  pinned — not a fan column either.
+
+They are genuine 2-D boustrophedon area fills at **0.161–0.193 mm** pitch.
+
+**The correct state of law 19 is TWO POPULATIONS, not one verdict:**
+
+| population | 0.20 mm means | evidence |
+|---|---|---|
+| freebie script/lettering files (29 files, §4) | the satin crossing half-step of a 0.40–0.51 mm column | 427 patches, sew/geo ratio 1.0, 2/427 interleave signatures |
+| commissioned cap logos (43 files) | a real fill row pitch | traverse spans 6–54 mm, 3–17 penetrations per traverse |
+
+Both measurements are sound. They describe different work: freebie script art is
+mostly lettering, and cap logos are dense area fills sewn on a fabric that
+swallows thread.
+
+**What this does and does not change.** §7's proposed playbook restatement above
+is therefore **not to be applied as written** — it erases the cap population.
+`FILL_ROW_MM` still does not move on analysis: the decisive experiment is block 2
+of the sew-out card (0.40 vs 0.20 vs interleaved), which was built before this
+law existed and is waiting on one hooping. The reason the constant holds is that
+the question is unsettled, **not** that the law is refuted everywhere.
