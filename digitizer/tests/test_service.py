@@ -299,6 +299,104 @@ def test_filename_is_derived_safely_from_the_label(client):
     assert ".." not in disposition
 
 
+# --- the shape-layers contract over HTTP -----------------------------------
+
+def test_review_payload_carries_what_a_layers_panel_needs(client):
+    """Per shape: its layer, WHEN it sews and AS WHAT — read off the emitted
+    plan, not re-guessed from geometry."""
+    review = _digitize(client, {"target_width_mm": 80.0, "preflight": False})["review"]
+    shapes = review["shapes"]
+
+    assert all({"layer", "sew_index", "sew_block", "tier"} <= set(s) for s in shapes)
+    sewn = [s for s in shapes if s["sew_index"] is not None]
+    assert sorted(s["sew_index"] for s in sewn) == list(range(len(sewn)))
+    tiers = {s["thread_number"]: s["tier"] for s in sewn}
+    assert tiers["5510"] == "satin", "the green bar is the design's satin shape"
+    assert tiers["1704"] == "fill"
+
+
+def test_the_whole_edit_round_trip_over_http(client):
+    """digitize -> read shape_ids -> re-digitize with a recolor, a delete and
+    a tier flip -> a DIFFERENT job whose survivors keep their ids."""
+    first = _digitize(client, {"target_width_mm": 80.0, "preflight": False})
+    shapes = {s["thread_number"]: s for s in first["review"]["shapes"]}
+    green = shapes["5510"]                      # satin bar
+    purple = shapes["2905"]                     # rectangle
+    red = shapes["1704"]
+    tiny = min((s for s in first["review"]["shapes"] if s["thread_number"] == "1305"),
+               key=lambda s: s["area_mm2"])
+
+    second = _digitize(client, {
+        "target_width_mm": 80.0, "preflight": False,
+        "deleted_shape_ids": [tiny["shape_id"], "S-GONE"],
+        "shape_overrides": {
+            purple["shape_id"]: {"thread_index": red["thread_index"]},
+            green["shape_id"]: {"tier": "fill"},
+        },
+    })
+
+    ids_before = {s["shape_id"] for s in first["review"]["shapes"]}
+    after = {s["shape_id"]: s for s in second["review"]["shapes"]}
+    assert set(after) == ids_before - {tiny["shape_id"]}, "stable ids, one gone"
+    assert after[purple["shape_id"]]["thread_number"] == "1704"
+    assert after[purple["shape_id"]]["sew_block"] == after[red["shape_id"]]["sew_block"]
+    assert after[green["shape_id"]]["tier"] == "fill"
+    codes = {w["code"] for w in second["warnings"]}
+    assert {"SHAPES_DELETED_BY_USER", "SHAPE_EDIT_UNKNOWN_ID"} <= codes
+    assert second["design"]["stitchCount"] != first["design"]["stitchCount"]
+
+
+def test_an_edit_is_a_different_job_not_a_stale_cache_hit(client):
+    """The cache keys on the canonical config: two configs differing only in
+    shape_overrides are two jobs; the same edit twice is one."""
+    plain = {"target_width_mm": 47.0, "preflight": False}
+    edit = {**plain, "shape_overrides": {"Sdeadbeef": {"tier": "run"}}}
+
+    def submit(cfg):
+        with ART.open("rb") as f:
+            return client.post("/digitize", files={"image": (ART.name, f, "image/png")},
+                               data={"config": json.dumps(cfg)}).json()
+
+    a, b, b2 = submit(plain), submit(edit), submit(edit)
+    assert a["job_id"] != b["job_id"], "an edited re-digitize must re-run"
+    assert b2["job_id"] == b["job_id"], "the same edit twice is one job"
+
+
+def test_parse_config_canonicalizes_the_edit_fields():
+    """Two spellings of one edit are ONE cache key: the deleted list sorts and
+    dedupes, empty containers vanish, and a no-op override ('auto', null)
+    vanishes with them."""
+    from digitizer_service.app import _parse_config
+
+    assert _parse_config(json.dumps({"deleted_shape_ids": ["b", "a", "a"]})) == \
+        {"deleted_shape_ids": ["a", "b"]}
+    assert _parse_config(json.dumps({"deleted_shape_ids": [],
+                                     "shape_overrides": {}})) == {}
+    assert _parse_config(json.dumps({"deleted_shape_ids": None,
+                                     "shape_overrides": None})) == {}
+    assert _parse_config(json.dumps(
+        {"shape_overrides": {"S1": {"tier": None}, "S2": {"tier": "auto"},
+                             "S3": {"tier": "Satin"}}})) == \
+        {"shape_overrides": {"S3": {"tier": "satin"}}}
+
+
+@pytest.mark.parametrize("bad", [
+    {"deleted_shape_ids": "S1"},                            # not a list
+    {"shape_overrides": {"S1": {"tier": "zigzag"}}},        # unknown tier
+    {"shape_overrides": {"S1": {"border": "dotted"}}},      # unknown border
+    {"shape_overrides": {"S1": {"speed": 9}}},              # unknown key
+    {"shape_overrides": {"S1": {"thread_index": 99999}}},   # off the chart
+    {"shape_overrides": {"S1": {"thread_index": True}}},    # bool is not an index
+    {"shape_overrides": {"S1": {"fill_angle_deg": "flat"}}},
+    {"shape_overrides": {"S1": "fill"}},                    # entry not an object
+])
+def test_bad_shape_edits_are_a_400_at_submit_not_a_failed_job(client, bad):
+    with ART.open("rb") as f:
+        r = client.post("/digitize", files={"image": (ART.name, f, "image/png")},
+                        data={"config": json.dumps(bad)})
+    assert r.status_code == 400, r.text
+
+
 # --- job registry ---------------------------------------------------------
 
 def test_cache_key_ignores_key_order_but_not_values():

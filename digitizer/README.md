@@ -324,7 +324,9 @@ deliberately, then re-check the fixtures.
 Shape IDs have two mechanisms because one is not enough: a content-derived
 hash labels new shapes, and `match_shape_ids()` carries IDs forward across a
 regeneration by geometry matching. The service round-trips
-`deleted_shape_ids`, and hashing alone churns when a value crosses a
+`deleted_shape_ids` and per-shape `shape_overrides` (recolor, tier, fill
+angle, border, sew layer — the shape-layers contract v1, applied by
+`regions.apply_shape_edits`), and hashing alone churns when a value crosses a
 quantization boundary — measured, not theoretical.
 
 ## Fixtures

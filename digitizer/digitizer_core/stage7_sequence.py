@@ -395,6 +395,12 @@ def sequence(
         group = [p for p in planned if nn_group_key(p) == _group_key]
 
         def stitch_one(p: PlannedRegion, entry: tuple[float, float] | None):
+            # The review screen's per-shape tier (shape-layers contract v1):
+            # "auto" is the ladder below exactly as it always ran; "satin",
+            # "fill" and "run" force one rung. A forced rung that produces
+            # nothing falls back to "auto" rather than dropping artwork — the
+            # same contract the auto ladder already has between its own rungs.
+            tier = str(p.region.meta.get("tier", "auto")).lower()
             # The run tier comes first: a shape below the sewable-detail floor
             # has nowhere to put fill rows (MIN_FILL_WIDTH_MM) and pinches
             # every satin cross under SATIN_MIN_CROSS_MM, so both real tiers
@@ -402,19 +408,24 @@ def sequence(
             # sews as a bean run instead — on the ARTWORK polygon, because a
             # run does not pull fabric and compensation would fatten a
             # thread-width stroke past its own letterform (see `run_outline`).
-            if rescue and p.region.polygon.area < detail_mm2:
+            if tier == "run" or (tier == "auto" and rescue
+                                 and p.region.polygon.area < detail_mm2):
                 runs, report = run_outline(p.region.polygon, p.shape_id,
                                            entry=entry, trim_at_mm=trim_at)
                 if not report["empty"]:
                     report["as_run"] = 1
                     return runs, report, False
+                tier = "auto"
             # Satin or fill is decided per shape, not per design: one logo
             # routinely holds both a big filled emblem and thin satin lettering.
             # Classified on the ARTWORK polygon, not the stage-5 grown one —
             # otherwise heavy fabric (0.6 mm pull comp widens a ribbon 1.2 mm)
             # flips the same artwork from satin to fill, and a logo would sew
-            # differently structured on a towel than on a polo.
-            if cfg.satin and is_satin_candidate(p.region.polygon, satin_max):
+            # differently structured on a towel than on a polo. A forced
+            # "satin" skips the classifier (and the global satin switch): the
+            # user has already answered the question it asks.
+            if tier == "satin" or (tier == "auto" and cfg.satin
+                                   and is_satin_candidate(p.region.polygon, satin_max)):
                 runs, report = satin_shape(
                     p.polygon,
                     p.shape_id,
@@ -461,10 +472,25 @@ def sequence(
                 # rows have to run along it. Left None (the shipped path) stage
                 # 6 derives its own from the compensated polygon, which is a
                 # different number.
+                #
+                # FILL-ANGLE PRECEDENCE, decided here and nowhere else:
+                #   1. the shape's own review-screen angle
+                #      (meta["fill_angle_deg"], shape-layers contract v1)
+                #   2. the global cfg.fill_angle_deg
+                #   3. the axis stage 5 compensated along
+                #      (p.stitch_angle_deg — the directional-comp lane; None
+                #      when compensation was isotropic)
+                #   4. None: stage 6 derives its own per-shape PCA.
+                # Stage 5's `_comp_axis` follows the same 1 > 2 order, so with
+                # directional comp on, the axis a shape was compensated along
+                # and the axis it sews along stay one number by construction.
+                shape_angle = p.region.meta.get("fill_angle_deg")
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=(cfg.fill_angle_deg
+                    angle_deg=(float(shape_angle)
+                               if shape_angle is not None
+                               else cfg.fill_angle_deg
                                if cfg.fill_angle_deg is not None
                                else p.stitch_angle_deg),
                     row_mm=row_mm,
@@ -493,6 +519,14 @@ def sequence(
             # marked True is bordered with the mode off, and one marked False
             # is left alone with the mode on.
             want = p.region.meta.get("border")
+            style = "bean" if border_style == "bean" else "auto"
+            if isinstance(want, str):
+                # The contract's per-shape border mode ("off"|"auto"|"bean")
+                # carries its own style; the bool form predates it and defers
+                # to the global mode for style, as it always has.
+                w = want.lower()
+                style = "bean" if w == "bean" else "auto"
+                want = w != "off"
             if want is None:
                 want = border_style != "off"
             if want and runs:
@@ -501,7 +535,7 @@ def sequence(
                     p.shape_id,
                     entry=runs[-1].points[-1],
                     trim_at_mm=trim_at,
-                    style="bean" if border_style == "bean" else "auto",
+                    style=style,
                     width_mm=cfg.border_width_mm,
                 )
                 report["jumps"] += b_report["jumps"]

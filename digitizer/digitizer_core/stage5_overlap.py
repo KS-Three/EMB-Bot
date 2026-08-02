@@ -244,10 +244,18 @@ def _comp_axis(region: Region, cfg: PipelineConfig, satin_max: float) -> tuple[f
     Classified on the ARTWORK polygon with the same call stage 7 makes, for the
     same reason stage 7 makes it there: compensation must not be able to flip a
     shape's tier, or a logo would sew differently structured on a towel than on
-    a polo.
+    a polo. The review screen's per-shape tier and fill angle (shape-layers
+    contract v1) are honoured here in stage 7's own precedence — per-shape
+    beats global — so the axis a shape is compensated along stays the axis it
+    sews along.
     """
-    if is_satin_candidate(region.polygon, satin_max):
+    tier = str(region.meta.get("tier", "auto")).lower()
+    if tier == "satin" or (tier == "auto"
+                           and is_satin_candidate(region.polygon, satin_max)):
         return None, True
+    angle = region.meta.get("fill_angle_deg")
+    if angle is not None:
+        return float(angle), False
     if cfg.fill_angle_deg is not None:
         return cfg.fill_angle_deg, False
     return principal_angle_deg(region.polygon), False

@@ -73,6 +73,103 @@ def _require_token(supplied: str | None) -> None:
         raise HTTPException(status_code=401, detail="Missing or wrong X-EMBBOT-Token.")
 
 
+# The shape-layers contract v1: what a shape_overrides entry may hold, and the
+# closed vocabularies two of its fields draw from. Kept in lockstep with
+# `digitizer_core.regions.apply_shape_edits`, which enforces the same rules —
+# the service checks here so a bad edit is a 400 at submit, not a failed job.
+_OVERRIDE_KEYS = {"thread_index", "fill_angle_deg", "tier", "border", "layer"}
+_TIER_VALUES = {"auto", "satin", "fill", "run"}
+_BORDER_VALUES = {"off", "auto", "bean"}
+
+
+def _canonicalize_shape_edits(data: dict, chart_len: int) -> None:
+    """Validate and canonicalize the review-edit fields, in place.
+
+    Canonicalization is load-bearing, not tidiness: the job cache keys on
+    sha256(image) + the JSON-canonical config (`jobs.content_key`), so two
+    spellings of one edit — a reordered deleted list, an explicitly-empty
+    overrides dict, a null field — must collapse to one key or an edited
+    re-digitize returns a stale cached job (and a no-op edit re-runs a job the
+    cache already holds).
+    """
+    # A JSON null is the same statement as absence, for both fields.
+    for key in ("deleted_shape_ids", "shape_overrides"):
+        if key in data and data[key] is None:
+            data.pop(key)
+
+    deleted = data.get("deleted_shape_ids")
+    if deleted is not None:
+        if not isinstance(deleted, list) or not all(isinstance(s, str) for s in deleted):
+            raise HTTPException(
+                status_code=400,
+                detail="deleted_shape_ids must be a list of shape id strings.",
+            )
+        deleted = sorted(set(deleted))
+        if deleted:
+            data["deleted_shape_ids"] = deleted
+        else:
+            data.pop("deleted_shape_ids")
+
+    overrides = data.get("shape_overrides")
+    if overrides is None:
+        return
+    if not isinstance(overrides, dict):
+        raise HTTPException(
+            status_code=400,
+            detail="shape_overrides must be an object keyed by shape_id.",
+        )
+    clean: dict = {}
+    for sid, ov in overrides.items():
+        if not isinstance(ov, dict):
+            raise HTTPException(
+                status_code=400,
+                detail=f"shape_overrides[{sid!r}] must be an object.",
+            )
+        unknown = sorted(set(ov) - _OVERRIDE_KEYS)
+        if unknown:
+            raise HTTPException(
+                status_code=400,
+                detail=f"unknown shape_overrides[{sid!r}] field(s): {', '.join(unknown)}. "
+                       f"Allowed: {', '.join(sorted(_OVERRIDE_KEYS))}",
+            )
+        entry = {k: v for k, v in ov.items() if v is not None}
+        bad = None
+        t = entry.get("thread_index")
+        if t is not None and (not isinstance(t, int) or isinstance(t, bool)
+                              or not 0 <= t < chart_len):
+            bad = f"thread_index must be an integer 0..{chart_len - 1}"
+        L = entry.get("layer")
+        if L is not None and (not isinstance(L, int) or isinstance(L, bool)):
+            bad = "layer must be an integer"
+        a = entry.get("fill_angle_deg")
+        if a is not None and (not isinstance(a, (int, float)) or isinstance(a, bool)):
+            bad = "fill_angle_deg must be a number"
+        tier = entry.get("tier")
+        if tier is not None:
+            if not isinstance(tier, str) or tier.lower() not in _TIER_VALUES:
+                bad = f"tier must be one of {', '.join(sorted(_TIER_VALUES))}"
+            else:
+                entry["tier"] = tier.lower()
+                if entry["tier"] == "auto":
+                    entry.pop("tier")      # "auto" IS the absence of an override
+        border = entry.get("border")
+        if border is not None and not isinstance(border, bool):
+            if not isinstance(border, str) or border.lower() not in _BORDER_VALUES:
+                bad = f"border must be one of {', '.join(sorted(_BORDER_VALUES))}"
+            else:
+                entry["border"] = border.lower()
+        if bad:
+            raise HTTPException(
+                status_code=400, detail=f"shape_overrides[{sid!r}]: {bad}.",
+            )
+        if entry:
+            clean[sid] = entry
+    if clean:
+        data["shape_overrides"] = clean
+    else:
+        data.pop("shape_overrides")
+
+
 def _parse_config(raw: str | None) -> dict:
     if not raw:
         return {}
@@ -97,6 +194,7 @@ def _parse_config(raw: str | None) -> dict:
                 status_code=400,
                 detail=f"unknown thread brand {brand!r}. See /health for the list.",
             ) from exc
+    _canonicalize_shape_edits(data, len(load_chart(brand or DEFAULT_BRAND)))
     return data
 
 
@@ -126,8 +224,40 @@ def _decode(data: bytes) -> np.ndarray:
     return raw
 
 
-def _review_payload(result) -> dict:
-    """The half a review screen edits: what shapes are here, in what thread."""
+# What a plan-level run kind says about the tier a shape ACTUALLY sewed as.
+# Underlay, travel, ties and borders are companions to a tier, not a tier.
+_KIND_TIER_RANK = {"satin": 3, "fill": 2, "run": 1, "bean": 1}
+_RANK_TIER = {3: "satin", 2: "fill", 1: "run"}
+
+
+def _sew_facts(plan) -> dict[str, dict]:
+    """shape_id -> {sew_index, sew_block, tier}, read off the EMITTED plan.
+
+    The layers panel needs to order shapes by when they sew and to name the
+    tier each one sewed as. Both are read from the finished plan rather than
+    re-deriving stage 7's classification: the plan's runs carry shape_id and
+    kind, so this is the same decision stage 7 made — including every rescue
+    and fall-through — not a prediction of it.
+    """
+    facts: dict[str, dict] = {}
+    for bi, block in enumerate(plan.blocks):
+        for run in block.runs:
+            sid = run.shape_id
+            if not sid:
+                continue
+            f = facts.setdefault(sid, {"sew_index": len(facts), "sew_block": bi,
+                                       "_rank": 0})
+            f["_rank"] = max(f["_rank"], _KIND_TIER_RANK.get(run.kind, 0))
+    for f in facts.values():
+        f["tier"] = _RANK_TIER.get(f.pop("_rank"))
+    return facts
+
+
+def _review_payload(result, plan=None) -> dict:
+    """The half a review screen edits: what shapes are here, in what thread —
+    and, when the plan is in hand, when each sews and as what tier."""
+    facts = _sew_facts(plan) if plan is not None else {}
+    none = {"sew_index": None, "sew_block": None, "tier": None}
     return {
         "palette": result.palette,
         "design_size_mm": list(result.design_size_mm),
@@ -145,6 +275,12 @@ def _review_payload(result) -> dict:
                 "thread_number": r.thread_number,
                 "area_mm2": round(r.area_mm2, 3),
                 "source": r.source,
+                "layer": r.meta.get("layer"),
+                # The sew position and effective tier the layers panel orders
+                # by. None means the shape produced no stitches (the plan's
+                # SHAPE_NOT_STITCHED warning says how many did).
+                **{k: facts.get(r.shape_id, none)[k]
+                   for k in ("sew_index", "sew_block", "tier")},
                 "outline_mm": [[round(x, 3), round(y, 3)] for x, y in r.polygon.exterior.coords],
                 "holes_mm": [
                     [[round(x, 3), round(y, 3)] for x, y in h.coords]
@@ -228,7 +364,7 @@ async def start_digitize(
         design = plan_to_design(plan, name=cfg_dict.get("name") or "Digitized design")
         return {
             "design": design,
-            "review": _review_payload(result),
+            "review": _review_payload(result, plan),
             "stats": _stats_payload(plan, design),
             "warnings": plan.warnings,
             # Step 9: what will go wrong on the machine, said before sewing.

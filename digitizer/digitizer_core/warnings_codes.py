@@ -18,6 +18,10 @@ DROPPED_SMALL_SHAPES = "DROPPED_SMALL_SHAPES"      # extra: {"count": int}
 ABSORBED_SMALL_SHAPES = "ABSORBED_SMALL_SHAPES"    # extra: {"count": int}
 EMPTY_THREAD_LAYER = "EMPTY_THREAD_LAYER"          # a thread's every region absorbed/dropped; layer removed
 
+# Stage 4.5 (review-screen shape edits — the shape-layers contract v1)
+SHAPES_DELETED_BY_USER = "SHAPES_DELETED_BY_USER"  # shapes the user removed in review; dropped after IDs were assigned. extra: {"count": int, "ids": list[str]}
+SHAPE_EDIT_UNKNOWN_ID = "SHAPE_EDIT_UNKNOWN_ID"    # a deleted/overridden shape_id matched nothing (the art may have changed under the edit). extra: {"count": int, "ids": list[str]}
+
 # Stage 5 (overlap resolution / pull compensation)
 HOLE_NEARLY_CLOSED = "HOLE_NEARLY_CLOSED"          # pull comp would swallow a hole; held open. extra: {"count": int}
 SAME_THREAD_SHAPES_MERGED = "SAME_THREAD_SHAPES_MERGED"  # pull comp would fuse two shapes of one thread; gap held open. extra: {"count": int}

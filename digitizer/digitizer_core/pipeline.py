@@ -20,7 +20,7 @@ from shapely.geometry import Polygon
 from . import debugviz
 from .config import PipelineConfig
 from .fabrics import Fabric, fabric_for_garment, get_fabric
-from .regions import Region
+from .regions import Region, apply_layer_overrides, apply_shape_edits
 from .stage1_prep import Prep, prep
 from .stage2_quantize import Quant, quantize
 from .stage3_segment import (
@@ -87,7 +87,21 @@ def run_stages(
     # once the surviving geometry is known.
     regions: list[Region]
     regions, dropped_areas = vectorize(masks, q.thread_indices, p, cfg)
-    thread_indices, layer_warnings = compact_layers(regions, q.thread_indices)
+
+    # Review-screen edits (shape-layers contract v1). Here — after stage 4 has
+    # assigned ids against the full generation, before the palette compacts —
+    # so a deletion that empties a thread drops its cone from the color list,
+    # and a recolor to a brand-new thread gains one. This is the single seam
+    # both `digitize()` and a service re-digitize pass through.
+    regions, quant_indices, edit_warnings = apply_shape_edits(
+        regions, list(q.thread_indices), cfg.deleted_shape_ids,
+        cfg.shape_overrides, chart_for(cfg))
+
+    thread_indices, layer_warnings = compact_layers(regions, quant_indices)
+    # Explicit sew-order layers wait until the palette is settled: moving a
+    # shape between layers must reorder sewing, never drop a thread from the
+    # color list (see `apply_layer_overrides`).
+    apply_layer_overrides(regions, cfg.shape_overrides)
 
     vec_warnings: list[dict] = []
     if dropped_areas:
@@ -169,7 +183,8 @@ def run_stages(
         px_per_mm=p.px_per_mm,
         design_size_mm=design,
         warnings=merge_warnings(
-            [*p.warnings, *q.warnings, *small_warnings, *vec_warnings, *layer_warnings]
+            [*p.warnings, *q.warnings, *small_warnings, *vec_warnings,
+             *edit_warnings, *layer_warnings]
         ),
         segmenter=seg.name,
         debug_dir=dbg,

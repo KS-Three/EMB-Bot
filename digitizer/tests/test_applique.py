@@ -217,8 +217,12 @@ def test_applique_off_leaves_the_resequencer_grouping_untouched():
     result = digitize(TESTDATA / "logo_whitebg.png", c)[0]
     planned, _ = resolve_overlaps(result.regions, fabric_for(c), c)
 
-    old = [(i, "") for i in sorted({p.sew_index for p in planned})]
-    assert sorted({nn_group_key(p) for p in planned}) == old
+    keys = sorted({nn_group_key(p) for p in planned})
+    # Same partition, same order: one group per sew_index (no group split, no
+    # two merged — the key's step and thread elements are constant within a
+    # layer on an unedited design), iterated in sew order.
+    assert [k[0] for k in keys] == sorted({p.sew_index for p in planned})
+    assert all(k[1] == "" for k in keys)
 
 
 # =========================================================================
@@ -622,14 +626,16 @@ def test_a_hole_too_small_to_trim_forces_pre_cut():
 # =========================================================================
 
 class _FakeRegion:
-    def __init__(self, meta):
+    def __init__(self, meta, thread_index=0):
         self.meta = meta
+        self.thread_index = thread_index
 
 
 class _FakePlanned:
-    def __init__(self, sew_index, step_key=None):
+    def __init__(self, sew_index, step_key=None, thread_index=0):
         self.sew_index = sew_index
-        self.region = _FakeRegion({} if step_key is None else {"step_key": step_key})
+        self.region = _FakeRegion({} if step_key is None else {"step_key": step_key},
+                                  thread_index)
 
 
 def test_resequencer_cannot_merge_two_steps_into_one_block():
@@ -649,13 +655,27 @@ def test_resequencer_cannot_merge_two_steps_into_one_block():
 
 
 def test_regions_without_steps_group_exactly_as_before():
-    """The guard is a strict refinement: with no step keys every region keys on
-    `(sew_index, "")`, so the group set and its sort order are what
+    """The guard is a strict refinement: with no step keys (and one thread per
+    layer, which is every unedited design) every region keys on
+    `(sew_index, "", thread)`, so the group set and its sort order are what
     `sorted({p.sew_index})` always produced. Anything else silently reorders
     every design in the shop.
     """
     planned = [_FakePlanned(i) for i in (2, 0, 1, 0, 2)]
-    assert sorted({nn_group_key(p) for p in planned}) == [(0, ""), (1, ""), (2, "")]
+    assert sorted({nn_group_key(p) for p in planned}) == \
+        [(0, "", 0), (1, "", 0), (2, "", 0)]
+
+
+def test_a_layer_override_shares_the_sew_position_but_never_the_block():
+    """The shape-layers contract's `layer` override can put two THREADS in one
+    layer. A block is sewn in one thread and stage 7 takes the block's thread
+    from its first region, so a mixed layer must split into per-thread groups
+    — deterministically, thread order breaking the tie."""
+    red = _FakePlanned(2, thread_index=148)
+    green = _FakePlanned(2, thread_index=364)
+    assert nn_group_key(red) != nn_group_key(green)
+    assert sorted([nn_group_key(red), nn_group_key(green)]) == \
+        [nn_group_key(red), nn_group_key(green)]
 
 
 # =========================================================================

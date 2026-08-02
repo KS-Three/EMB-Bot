@@ -843,10 +843,18 @@ def nn_group_key(planned) -> tuple:
     So a region carrying `meta["step_key"]` never shares a pool, and therefore
     never shares a BLOCK, with a region from another step. Regions without one
     key on `("", )` and group exactly as they always did: for a design with no
-    steps this returns `(sew_index, "")` for every region and the sort order is
-    identical to the old `sorted({p.sew_index for p in planned})`.
+    steps this returns `(sew_index, "", thread)` for every region and the sort
+    order is identical to the old `sorted({p.sew_index for p in planned})`.
+
+    The thread is in the key for the shape-layers contract's `layer` override:
+    a shape moved into another thread's layer shares that layer's SEW POSITION
+    but must not share its block — a block is sewn in ONE thread, and stage 7
+    takes the block's thread from its first region. In every unedited design a
+    layer holds exactly one thread, so the extra key partitions nothing and
+    the order is untouched.
     """
-    return (planned.sew_index, str(planned.region.meta.get("step_key", "")))
+    return (planned.sew_index, str(planned.region.meta.get("step_key", "")),
+            planned.region.thread_index)
 
 
 # --- Stage 7 entry point ---------------------------------------------------

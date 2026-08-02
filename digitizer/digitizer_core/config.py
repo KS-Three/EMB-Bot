@@ -233,6 +233,53 @@ class PipelineConfig:
     # sew-out comparison and is still clamped to [2.5, 5.0].
     applique_cover_width_mm: float | None = None
 
+    # --- Review-screen shape edits (the shape-layers contract v1) ----------
+    #
+    # Both fields are keyed by the content-derived shape_id the review payload
+    # reports (`regions.assign_shape_ids`): the same artwork re-digitized with
+    # the same stage 1-4 parameters produces the same ids, which is what makes
+    # a stateless edit round-trip possible at all. Applied by
+    # `regions.apply_shape_edits` / `apply_layer_overrides`, called from
+    # `pipeline.run_stages` so both `digitize()` and a service re-digitize
+    # pass through them. Empty (the defaults) is byte-identical to the engine
+    # before the contract existed.
+    #
+    # Shapes the user removed on the review screen. Dropped AFTER stage 4 —
+    # ids are assigned against the full generation first, so the survivors'
+    # ids cannot churn — and reported via SHAPES_DELETED_BY_USER so the panel
+    # can say "2 shapes hidden by you" rather than losing them silently. An id
+    # that matches nothing is a SHAPE_EDIT_UNKNOWN_ID warning, never an error:
+    # the art may have changed under the edit.
+    deleted_shape_ids: list = field(default_factory=list)
+    # Per-shape decisions, keyed by shape_id. Each value is a dict that may
+    # hold any of:
+    #   thread_index: int     – recolor: index into the job's chart. Applied
+    #                           to the Region itself before stage-5 grouping,
+    #                           so the shape moves to that thread's color
+    #                           block; the palette gains the thread if nothing
+    #                           else sews it.
+    #   fill_angle_deg: float – this shape's fill angle. Beats the global
+    #                           fill_angle_deg and the per-region PCA; the
+    #                           full precedence is stated where stage 7
+    #                           decides it.
+    #   tier: str             – "auto" (default) | "satin" | "fill" | "run".
+    #                           Forces the stitch tier. Geometry the forced
+    #                           tier cannot sew falls through the same rescue
+    #                           ladder the auto path uses, so artwork never
+    #                           silently vanishes.
+    #   border: str           – "off" | "auto" | "bean". Per-shape border
+    #                           intent; beats the global `border` mode in both
+    #                           directions. (The pre-contract True/False meta
+    #                           form is still honoured.)
+    #   layer: int            – explicit sew-order layer; stage 5 already
+    #                           orders color blocks by meta["layer"]. Applied
+    #                           AFTER the palette is compacted, so moving a
+    #                           shape never drops its thread from the color
+    #                           list.
+    # Values ride Region.meta so stages 5 and 7 pick them up where each
+    # decision is made. Unknown shape_ids warn (SHAPE_EDIT_UNKNOWN_ID).
+    shape_overrides: dict = field(default_factory=dict)
+
     # Debug artifacts: written per stage when set
     debug_dir: Path | None = None
 
