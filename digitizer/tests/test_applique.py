@@ -862,3 +862,51 @@ def test_applique_blocks_survive_export_with_their_stops(mode):
     pattern = pyembroidery.read_dst(io.BytesIO(data))
     assert sum(1 for s in pattern.stitches
                if s[2] == pyembroidery.COLOR_CHANGE) == len(plan.blocks) - 1
+
+
+def test_a_jump_does_not_eat_the_penetration_it_lands_on():
+    """A jump moves the needle WITHOUT penetrating, so the stitch that follows
+    it is the first penetration of the new path, not a repeat of the last one.
+
+    `plan_to_pattern` used to carry `last` across the jump and delete that
+    stitch whenever the new block entered within 0.01 mm of where the previous
+    one ended — which for appliqué is not a rare coincidence but the normal
+    case, because a layer change at the same offset re-enters the ring at the
+    point nearest the needle, i.e. exactly where it already is. Measured on the
+    benchmark logo: 1 penetration lost in trim-in-place and 5 in pre-cut, every
+    one of them run 0 point 0, and every one the FIRST of the five penetrations
+    in `stitches.tie_run`'s 0.8 mm lock (at, in, at, in, at) — the anchor that
+    holds a thread the trim just cut, landing 4 of 5.
+
+    Both directions are pinned here, because the dedup is right when the needle
+    never left: without the jump flag the coincident point IS the same needle
+    position and skipping it is correct.
+
+    The counts are taken from the decoded file and from `plan.stats`
+    independently — `stats` re-derives the rule rather than reading the
+    exporter, so a fix applied to only one of them fails here.
+    """
+    square = _sq(0, 0)
+
+    lifted = StitchPlan(palette=[], blocks=[
+        StitchBlock(0, "1801", RED, [StitchRun(points=list(square), kind="run")]),
+        StitchBlock(0, "1801", RED, [StitchRun(points=list(square), kind="run",
+                                               jump=True, trim=True)]),
+    ])
+    stayed = StitchPlan(palette=[], blocks=[
+        StitchBlock(0, "1801", RED, [StitchRun(points=list(square), kind="run")]),
+        StitchBlock(0, "1801", RED, [StitchRun(points=list(square), kind="run")]),
+    ])
+    # The two plans hold the identical points; only the needle-up flag differs.
+    assert (lifted.blocks[1].runs[0].points == stayed.blocks[1].runs[0].points
+            == list(square))
+
+    assert [s.count("STITCH") for s in _dst_segments(export.export_dst(lifted))] \
+        == [5, 5]
+    assert [s.count("STITCH") for s in _dst_segments(export.export_dst(stayed))] \
+        == [5, 4]
+
+    # And the plan's own count agrees with the file in both cases, or the
+    # worksheet and the machine tell the operator different numbers.
+    assert lifted.stats.stitch_count == 10
+    assert stayed.stats.stitch_count == 9
