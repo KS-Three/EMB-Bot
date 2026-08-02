@@ -133,3 +133,15 @@ class PipelineConfig:
     # their citations, deliberately not here: they are measurements, not
     # preferences.
     preflight: bool = True
+
+    # Stage 7 — chaining. Whether a needle-up move that would be trimmed may
+    # instead be sewn as a needle-down link, when its path is buried under a
+    # colour that sews later or rides over work this colour has already laid
+    # (chaining laws 59-62; docs/chaining-laws-2026-08-01.md). Distance stops
+    # being the decision variable — coverage is — and `fabric.trim_at_mm` is
+    # left governing only the moves that cannot be covered.
+    #
+    # True is the measured default: professionals link roughly two thirds of
+    # transitions at every gap out to 40 mm. False restores the pure distance
+    # test, and is what the pre-chaining goldens are pinned to.
+    chain_links: bool = True

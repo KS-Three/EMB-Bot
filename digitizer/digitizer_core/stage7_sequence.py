@@ -15,15 +15,27 @@ design runs clean on a machine or produces a garment covered in loose ends:
 - **Ties.** A lock stitch goes in wherever the thread starts and wherever it is
   about to be cut. Without them the first stitches pull out the moment the
   garment is worn, which is the kind of defect that surfaces after delivery.
-- **Jump or trim.** A short hop stays a jump; anything past the fabric preset's
-  trim distance is cut, because a float long enough to catch a finger is a
-  float someone has to remove with scissors.
+- **Link, jump or trim.** The needle only has to lift when the thread would
+  show. Where the path between two shapes runs under a colour that sews later,
+  or over work this colour has already laid, it is sewn as a needle-down link
+  instead — 434 transitions in the professional corpus say distance is not what
+  decides this (chaining laws 59-62), coverage is, and professionals link about
+  two thirds of transitions at every gap out to 40 mm. Only where nothing will
+  bury the path does the old rule apply: a short hop stays a jump, and anything
+  past the fabric preset's trim distance is cut, because a float long enough to
+  catch a finger is a float someone has to remove with scissors.
+
+  Those two laws ship together on purpose. Linking on distance alone, without
+  the coverage test, converts trims into visible floats on bare fabric — which
+  is strictly worse than the trims it removes.
 """
 from __future__ import annotations
 
+import heapq
 import math
 
-from shapely.geometry import Point
+import shapely
+from shapely.geometry import LineString, Point
 from shapely.ops import unary_union
 
 from . import machine, stitches
@@ -39,6 +51,248 @@ from .threads import chart_for
 from .warnings_codes import (BORDER_LIGHTENED, BORDER_SKIPPED_TOO_NARROW,
                              LONG_JUMPS_TRIMMED, SHAPE_NOT_STITCHED,
                              SHAPE_TOO_THIN_TO_FILL, SMALL_SHAPES_AS_RUN, warn)
+
+
+# How many waypoints the link router may consider. The candidates are already
+# filtered to those that could lie on a path inside this link's own budget, so
+# this only caps the pathological case: a colour whose covering geometry packs
+# thousands of vertices into that ellipse.
+_LINK_SEARCH_NODES = 120
+
+
+def _link_budget_mm(direct_mm: float) -> float:
+    """How much path this link may spend, in millimetres.
+
+    Law 62 budgets links in stitches, and this is that budget expressed as
+    length so the route search can prune with it: at least the median link
+    (7 stitches), at most the p90 one (36), and in between no more than
+    LINK_DETOUR_FACTOR times the gap it is crossing.
+    """
+    return min(machine.LINK_MAX_STITCHES * machine.RUN_STITCH_MM,
+               max(machine.LINK_MEDIAN_STITCHES * machine.RUN_STITCH_MM,
+                   direct_mm * machine.LINK_DETOUR_FACTOR))
+
+
+def _densify(a: tuple[float, float], b: tuple[float, float],
+             step_mm: float) -> list[tuple[float, float]]:
+    """Points from a (exclusive) to b (inclusive), no step longer than step_mm.
+
+    Deliberately a local copy of stage 6's helper rather than an import of its
+    private: a link's pitch is a chaining law (61) and a fill bridge's is a
+    fill decision, and the two are already different numbers.
+    """
+    d = math.dist(a, b)
+    if d <= step_mm:
+        return [b]
+    n = math.ceil(d / step_mm)
+    return [(a[0] + (b[0] - a[0]) * i / n, a[1] + (b[1] - a[1]) * i / n)
+            for i in range(1, n + 1)]
+
+
+def _ring_points(geom) -> list[tuple[float, float]]:
+    """Every boundary vertex of a polygon or multipolygon, rings closed once."""
+    polys = ([geom] if geom.geom_type == "Polygon"
+             else [g for g in getattr(geom, "geoms", []) if g.geom_type == "Polygon"])
+    out: list[tuple[float, float]] = []
+    for g in polys:
+        out.extend(g.exterior.coords[:-1])
+        for ring in g.interiors:
+            out.extend(ring.coords[:-1])
+    return out
+
+
+def _link_cover(regions: list[PlannedRegion]):
+    """Where this colour's needle may travel down without showing.
+
+    -> (cover geometry, candidate waypoints), or (None, []) with nothing to go on.
+
+    Law 60: professionals route a link to be COVERED, not to be short, and the
+    corpus shows them using two kinds of cover. Geometry that sews LATER buries
+    the link under another thread — that is `covered_by`, handed over by stage 5
+    rather than recomputed here. Geometry this colour has ALREADY laid carries
+    the link on top of itself, in its own thread, where it cannot read as a
+    stray line. Every shape in the block is one or the other by the time the
+    block finishes, so the block's own sewing polygons go in whole; which side
+    of "now" a given shape falls on never changes the answer.
+
+    Only shapes that actually produced stitches are passed in. A shape that
+    came back empty covers nothing, and routing a link under one would put a
+    float on bare fabric — the exact defect this test exists to prevent.
+
+    The cover is buffered by LINK_COVER_TOL_MM (the reach of the covering
+    element's own edge thread) for the containment test, while the waypoints
+    come from the UNBUFFERED union: buffering rounds every corner into an arc
+    and multiplies the vertex count for waypoints that say nothing new, and a
+    vertex of the raw union sits a full tolerance inside the cover.
+
+    Those waypoints are simplified by HALF the tolerance before they are taken.
+    Simplification moves a vertex by at most that much, so every waypoint is
+    still a half-tolerance inside the cover — and the corner detail it drops is
+    detail no route needs, at a scale finer than the thread that would cover it.
+    """
+    parts = [p.polygon for p in regions]
+    seen: list[object] = []
+    for p in regions:
+        c = p.covered_by
+        if c is not None and not c.is_empty and not any(c is s for s in seen):
+            seen.append(c)
+    parts.extend(seen)
+    parts = [g for g in parts if g is not None and not g.is_empty]
+    if not parts:
+        return None, []
+    raw = unary_union(parts)
+    if raw.is_empty:
+        return None, []
+    cover = raw.buffer(machine.LINK_COVER_TOL_MM)
+    shapely.prepare(cover)
+    lean = raw.simplify(machine.LINK_COVER_TOL_MM / 2.0)
+    return cover, _ring_points(raw if lean.is_empty else lean)
+
+
+def _link_route(a: tuple[float, float], b: tuple[float, float], cover,
+                waypoints: list[tuple[float, float]]
+                ) -> list[tuple[float, float]] | None:
+    """Shortest path from a to b that never leaves `cover`, or None.
+
+    The straight segment is the floor and answers most transitions. Where it
+    does not, the route bends into the covering geometry instead of giving up —
+    which is the whole of law 60: a 27 mm link shows no float because it was
+    routed under something, not because it was short. Shortest-path over a
+    visibility graph on the cover's own corners, pruned to the waypoints that
+    could lie on a path within budget (dist(a,v) + dist(v,b) <= budget is
+    exactly the ellipse a feasible detour must stay inside).
+
+    Every segment of the returned path has been tested against `cover`, so the
+    caller may sew it without re-checking: coverage is a property of the route
+    by construction, not an assertion made about it afterwards.
+    """
+    if cover is None:
+        return None
+    if cover.covers(LineString([a, b])):
+        return [a, b]
+
+    budget_mm = _link_budget_mm(math.dist(a, b))
+    inside = [v for v in waypoints
+              if math.dist(a, v) + math.dist(v, b) <= budget_mm]
+    if not inside:
+        return None
+    inside.sort(key=lambda v: math.dist(a, v) + math.dist(v, b))
+    pts = [a, *inside[:_LINK_SEARCH_NODES], b]
+    n = len(pts)
+    end = n - 1
+
+    best = [math.inf] * n
+    prev = [-1] * n
+    done = [False] * n
+    best[0] = 0.0
+    heap: list[tuple[float, int]] = [(0.0, 0)]
+    while heap:
+        d, u = heapq.heappop(heap)
+        if done[u]:
+            continue
+        done[u] = True
+        if u == end:
+            break
+        for v in range(n):
+            if done[v] or v == u:
+                continue
+            nd = d + math.dist(pts[u], pts[v])
+            # Both cheap tests first: a segment test is the expensive part, and
+            # most candidate edges are already too long to be worth one.
+            if nd > budget_mm or nd >= best[v]:
+                continue
+            if not cover.covers(LineString([pts[u], pts[v]])):
+                continue
+            best[v] = nd
+            prev[v] = u
+            heapq.heappush(heap, (nd, v))
+
+    if not done[end]:
+        return None
+    route: list[tuple[float, float]] = []
+    u = end
+    while u != -1:
+        route.append(pts[u])
+        u = prev[u]
+    route.reverse()
+    return route
+
+
+def _link_stitches(route: list[tuple[float, float]]) -> list[tuple[float, float]] | None:
+    """A route's interior stitch positions at link pitch, or None if too dear.
+
+    The endpoints belong to the runs on either side and are not repeated, the
+    same convention stage 6's in-shape bridges use.
+
+    Law 62 budgets a link in STITCHES, not millimetres — the median link is 7
+    stitches and a link is short in stitches even when long in millimetres — so
+    a legal-but-enormous route is refused here rather than silently costing
+    more than the trim it replaced.
+    """
+    pts: list[tuple[float, float]] = []
+    for a, b in zip(route, route[1:]):
+        pts.extend(_densify(a, b, machine.RUN_STITCH_MM))
+    inner = pts[:-1]
+    if len(inner) > machine.LINK_MAX_STITCHES:
+        return None
+    return inner
+
+
+def _chain(runs: list[StitchRun], regions: list[PlannedRegion]
+           ) -> tuple[list[StitchRun], int]:
+    """Sew every needle-up move this colour can bury. -> (runs, in-shape links).
+
+    Runs in one pass over the finished block, after every shape has stitched,
+    because that is the first moment the full covering geometry is known — and
+    because it makes ONE rule govern every needle lift in the block, the ones
+    stage 6 raised inside a shape as well as the ones this stage raised between
+    them. Stage 6 decides on the shape's own polygon, which is all it can see;
+    it cannot know that the gap it is jumping is about to be covered by the next
+    colour, and on the benchmark that blind spot is eight of its ten trims.
+
+    `runs[0]` is never touched. The thread is always cut into a new colour, and
+    a link across a colour change would be sewn in the wrong thread.
+
+    The returned count is how many of the links replaced a lift INSIDE a shape,
+    so the operator-facing "the thread had to be lifted N times inside a shape"
+    warning still reports what the machine will actually do.
+
+    Distance is refused a vote on everything except the far end of the range.
+    Law 59's curve is flat out to 40 mm and then turns over, so a gap wider than
+    LINK_MAX_GAP_MM is left to the needle even when the geometry would bury it —
+    see that constant for why the knee and not the p90, and why the two errors
+    are not worth trading evenly.
+    """
+    if len(runs) < 2 or not regions:
+        return runs, 0
+    cover, waypoints = _link_cover(regions)
+    if cover is None:
+        return runs, 0
+
+    out = [runs[0]]
+    in_shape = 0
+    for run in runs[1:]:
+        if not run.jump:
+            out.append(run)
+            continue
+        a, b = out[-1].points[-1], run.points[0]
+        if math.dist(a, b) > machine.LINK_MAX_GAP_MM:
+            out.append(run)
+            continue
+        route = _link_route(a, b, cover, waypoints)
+        inner = _link_stitches(route) if route is not None else None
+        if inner is None:
+            out.append(run)
+            continue
+        if run.shape_id == out[-1].shape_id:
+            in_shape += 1
+        if inner:
+            out.append(StitchRun(points=inner, kind=stitches.TRAVEL,
+                                 shape_id=run.shape_id))
+        run.jump = False
+        run.trim = False
+        out.append(run)
+    return out, in_shape
 
 
 def _apply_ties(runs: list[StitchRun]) -> None:
@@ -207,6 +461,10 @@ def sequence(
 
         remaining = list(range(len(group)))
         ordered: list[StitchRun] = []
+        # Which shapes actually put thread down. A link may only be routed
+        # under geometry that will really be sewn, so a shape that produced
+        # nothing must not be allowed to "cover" anything.
+        sewn: list[PlannedRegion] = []
         while remaining:
             if cursor is None:
                 pick = min(remaining, key=lambda i: (-far[i], rank[i]))
@@ -232,6 +490,7 @@ def sequence(
                     runs[0].jump = True
                     runs[0].trim = d > trim_at
             ordered.extend(runs)
+            sewn.append(p)
             cursor = runs[-1].points[-1]
         if not ordered:
             continue
@@ -240,6 +499,13 @@ def sequence(
         # coming out of the previous one.
         ordered[0].jump = True
         ordered[0].trim = True
+        # Chaining comes before the ties, because the ties are a consequence of
+        # it: a lock stitch goes in wherever the thread is cut, so every lift
+        # this turns into a link is also two locks that no longer have to be
+        # sewn (`_apply_ties` reads `run.trim` and finds one fewer).
+        if cfg.chain_links:
+            ordered, linked_in_shape = _chain(ordered, sewn)
+            jumps -= linked_in_shape
         _apply_ties(ordered)
 
         thread = chart_for(cfg)[group[0].region.thread_index]

@@ -76,6 +76,27 @@ class PlannedRegion:
     # None means "not computed" and callers fall back to `polygon`, so every
     # existing construction site stays valid.
     visible: object | None = None
+    # The union of every layer that sews AFTER this one — `later[L]` below,
+    # the same object `visible` is derived from and the underlap reaches into,
+    # shared by reference across every region of the layer.
+    #
+    # Stage 7 needs it to decide whether a needle-down link between two shapes
+    # will be buried (chaining law 60: professionals route links to be COVERED,
+    # not to be short). It is a stage-5 fact — which colours sew after this one,
+    # and where — so stage 7 is handed it rather than recomputing it; two
+    # copies of one derivation is how the underlap and the chaining test would
+    # drift apart the first time either side changed.
+    #
+    # ARTWORK geometry, not the grown sewing polygons: a later layer's grown
+    # polygon is a superset of its artwork (pull compensation only adds, and
+    # `difference(earlier)` can only remove area that belongs to an EARLIER
+    # layer, which is disjoint from this one). Handing over the artwork union
+    # therefore under-promises coverage, which is the safe direction for a test
+    # whose failure mode is a visible float.
+    #
+    # None on the last layer — nothing sews after it — and callers must treat
+    # that as "no coverage from other colours", not as "not computed".
+    covered_by: object | None = None
 
     @property
     def visible_geom(self):
@@ -234,7 +255,8 @@ def resolve_overlaps(
                 visible = None if vis.is_empty else vis
 
             planned.append(PlannedRegion(region=r, polygon=grown,
-                                         sew_index=sew_index, visible=visible))
+                                         sew_index=sew_index, visible=visible,
+                                         covered_by=later[L]))
 
     if fusing_pairs:
         n = len(fusing_pairs)

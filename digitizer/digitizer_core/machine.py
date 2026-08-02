@@ -294,3 +294,78 @@ COVERAGE_SUBSAMPLE_MM = 0.1
 # reaches 4.85 across 408 mm2 and warns; 0.13 mm rows block.
 COVERAGE_WARN_UNITS = 2.5
 COVERAGE_BLOCK_UNITS = 3.5
+
+
+# --- Chaining: the needle-down link between two shapes (laws 59-62) ---------
+# Measured 2026-08-01 over 434 inter-element transitions in the 36-file
+# professional corpus — 273 needle-down links against 161 trims. See
+# docs/chaining-laws-2026-08-01.md. These are the constants of the link
+# itself; the decision of whether a link is legal at all is geometry, and
+# lives in stage 7.
+
+# Stitch length along a link. Law 61 [M]: median 1.96 mm, p10 1.20, p90 2.48.
+# Deliberately NOT the same number as TRAVEL_STITCH_MM (2.5, stage 6's
+# in-shape bridge, which sits above the professional p90 and moves only with
+# its own sew-out and its browser mirror). A link crosses ground the operator
+# may see through a single covering layer, so it takes the measured figure.
+RUN_STITCH_MM = 2.0
+
+# How far outside the covering geometry a link may stray and still count as
+# buried. Half of COVERAGE_THREAD_W_MM: the covering element's own edge
+# stitches are 0.4 mm-wide ribbons centred on its boundary, so they physically
+# lap this far past the polygon edge. Larger than that and the tolerance is
+# inventing cover that no thread provides — measured on the benchmark, 0.3 mm
+# starts admitting links across bare inter-letter fabric.
+LINK_COVER_TOL_MM = 0.2
+
+# The gap past which a link is refused outright, whatever the coverage. Law 59
+# [M] is flat — professionals link 56-75% of transitions at every bucket from 0
+# to 40 mm — and then it is not: past 40 mm the corpus flips to 69.7% trimmed
+# (33 transitions, only 10 linked). 40 mm is that knee, read straight off law
+# 59's own table.
+#
+# It is deliberately NOT the p90 of linked gaps (27.6 mm). A p90 says one link
+# in ten is longer, so capping there would refuse a tenth of what professionals
+# actually do. The knee says something different and stronger: past it, the
+# profession's own answer flips.
+#
+# The 30% that still link past 40 mm are real (the longest observed is
+# 61.7 mm), and we cannot tell from geometry which transitions they are — that
+# call is made by a digitizer who knows what the garment is for. So we take the
+# majority answer, because the two errors are not symmetric: an unnecessary
+# trim costs two seconds of machine time and is invisible in the finished
+# garment, and an unnecessary 60 mm link is either a float or a detour long
+# enough to read as one.
+#
+# Without this the stitch budget alone lets a 60 mm gap through — 36 stitches
+# at 2.0 mm is 72 mm of allowance — so this is the cap that actually binds at
+# distance, and the stitch cap is what binds on detour.
+LINK_MAX_GAP_MM = 40.0
+
+# The ceiling on a link, in stitches. Law 62 [M]: the median link is 7
+# stitches and p90 is 36, so 36 is "no longer than nine in ten professional
+# links". It is also where a link stops being cheaper than the trim it
+# replaces: a trim costs 2-3 s of trimmer time (~33 stitches at 800 spm) plus
+# a lock at each end. Budgeting in STITCHES rather than millimetres is law 62's
+# own point — a link is short in stitches even when long in millimetres — and
+# at RUN_STITCH_MM this cap allows 72 mm of path, past the corpus's longest
+# observed linked gap of 61.7 mm (law 59).
+LINK_MAX_STITCHES = 36
+
+# The median link, in stitches. Law 62 [M]. Every link is allowed at least
+# this much path however short its gap, so a one-millimetre hop around a
+# corner is still permitted the detour a professional would spend on it.
+LINK_MEDIAN_STITCHES = 7
+
+# How much longer than the gap a link's PATH may run. From the corpus's own
+# two medians read against each other: the median link is 7 stitches of
+# 1.96 mm (13.7 mm of path) across a median 7.83 mm gap, a ratio of 1.75, and
+# at p90 it is 36 stitches (70.6 mm) across 27.6 mm, a ratio of 2.56. 2.5 is
+# the p90 figure — a link may bend as far out of its way as nine in ten
+# professional links do, and no further.
+#
+# This is a budget, not a preference: it is what keeps the route search from
+# considering a detour nobody would sew, and without it the search spends its
+# whole node allowance on waypoints strewn along a straight line it has
+# already established is not covered.
+LINK_DETOUR_FACTOR = 2.5
