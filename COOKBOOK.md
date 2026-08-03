@@ -233,8 +233,15 @@ Decision doc: `docs/superpowers/plans/2026-08-03-dt-first-sequencing.md`.
 Session handoff with the full context:
 `docs/superpowers/handoffs/2026-08-03-gradient-defects-handoff.md`.
 
-1. **The two gradient/enclosed-white regressions** (see Known bugs below) +
-   land `fix/bg-existence-guard`. Active now.
+1. **The two gradient/enclosed-white regressions** (see Known bugs below).
+   The angle-fragmentation half is FIXED (2026-08-03, same-day follow-up
+   session). `BACKGROUND_ENCLOSED` remains open, re-scoped as a
+   cross-cutting feature (stage 1 through the service/Studio round-trip),
+   not a small next step — needs its own brainstorm/spec/plan pass, see the
+   plan doc's "Defect 2 update." Also still queued: land
+   `fix/bg-existence-guard` (this remote session's checkout has no such
+   branch/worktree — re-verify locally, per this section's own warning,
+   before assuming it's gone or merged).
 2. **M0 + M1 of the DT-first migration** — this is the sequencing call that
    is easy to miss: once the regressions close, do **not** go straight to
    photo-digitizing steps 5+. M0 instruments `digitizer/tools/shape_lens.py`
@@ -270,18 +277,39 @@ don't push for it.
   every existing EMB-Bot DST is affected. Fixing it means a migration path
   for old files. See `dst-codec-axis-discrepancy` in Kent's memory and
   `docs/dst-axis-verdict-2026-07-31.md`.
-- **Gradient-class designs fragment before blend treatment, and enclosed
-  white design elements silently drop as holes.** Found 2026-08-03 on a
-  real gradient logo run through Studio: `gradient` class still segments
-  via plain k-means (23 regions on the repro fixture) before blend
-  treatment, so each fragment picks its own independent fill angle instead
-  of one shared gradient direction — a patchwork, not a smooth ramp.
-  Separately, `BACKGROUND_ENCLOSED` drops enclosed white icon linework as
-  a hole even when it survives stage 1's background detection intact —
-  general to the whole pipeline, not classifier-specific, just newly
-  customer-visible on exactly the art the gradient tier targets. Repro
-  fixture: `digitizer/testdata/photo/repro_gradient_white_icon.png`. Full
-  diagnosis + fix directions:
+- **Gradient-class designs fragment before blend treatment** — **FIXED
+  2026-08-03**, same-day follow-up session. `gradient` class still segments
+  via plain k-means (23 regions on the repro fixture, unchanged), but every
+  fragment now sews its fill rows at one shared angle
+  (`SourcePixels.design_row_angle_deg`, `stage6_blend.
+  detect_design_ramp_angle`) instead of each independently computing its
+  own — the "patchwork of differently angled wedges" is closed. Root cause
+  was narrower than first suspected: all 23 fragments were hitting
+  `blend_fill`'s plain-tatami FALLBACK (post-quantize color bands are
+  already near-uniform, so per-fragment ramp detection rarely fires), and
+  that fallback's hardcoded `angle_deg=None` was the actual bug. Also:
+  fitting lightness alone (as `detect_ramp` does per-region) misses the
+  repro fixture's ramp entirely (r2 0.003) because it's a hue rotation, not
+  a lightness slope — the design-wide detector fits L/a/b independently and
+  takes whichever channel carries it. Fragment count and radial-ramp angle
+  sharing are explicit non-goals, left open. Full writeup: the plan doc's
+  "Defect 1 update" section.
+- **`BACKGROUND_ENCLOSED` drops enclosed white icon linework as a hole**
+  even when it survives stage 1's background detection intact — still
+  open, root-caused this same session. Corrected location:
+  `stage1_prep.py::prep`'s no-alpha color-heuristic branch (`enclosed =
+  close & ~border_bg`, folded into `bg` before `fg`), NOT
+  `stage3_segment.py` as first suspected — enclosed pixels never reach
+  stage 3, or vectorization, or ever get a `shape_id`. That means the
+  warning's own "toggle it back on in review" claim is currently **false**:
+  there's no shape for a review edit to name. General to the whole
+  pipeline, not classifier-specific, just newly customer-visible on exactly
+  the art the gradient tier targets. A real fix is a cross-cutting,
+  multi-file feature (stage 1 through the service/Studio round-trip) on the
+  scale of a DT-first M0/M1 slice, not a small next step — scoped, not
+  built. Repro fixture:
+  `digitizer/testdata/photo/repro_gradient_white_icon.png`. Full diagnosis
+  + recommended shape for the fix:
   `docs/superpowers/plans/2026-08-03-gradient-tier-fragmentation-and-enclosed-white-defects.md`.
 
 ## Running things
@@ -295,9 +323,22 @@ cd app && npm install && npm run dev     # Studio dev server
 cd app && npm test          # Studio tests (vitest) — 321/321
 node tools/build-embf.mjs   # rebuild the binary font library (see section above)
 
-cd digitizer && .venv/Scripts/python -m pytest -q   # Python digitizer tests -- 402/402 (~3 min)
+cd digitizer && .venv/Scripts/python -m pytest -q   # Python digitizer tests -- 404/407 (~3-4 min)
 cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0.1:8721
 ```
+
+**404/407, not 402/402** as of the gradient angle-fragmentation fix's
+follow-up session (adds 4 tests, net +2 vs. the prior 402/402 baseline).
+The 3 failures — `test_flat_lane_byte_identical.py::…[logo_alpha.png]`,
+`test_pushcomp.py::…[logo_whitebg.png-towel]`, `test_stage2_photo_segment.py
+::…[logo_alpha.png]` — are confirmed **pre-existing on `main`**, reproduced
+by stashing this session's changes and re-running: all three are
+byte-identical/golden-hash assertions off by a handful of stitches/bytes in
+THIS container, unrelated to the gradient work (not investigated further —
+likely a numpy/opencv/shapely point-version difference between this
+environment and whatever machine the golden was pinned on, but that's a
+guess, not confirmed). Worth a look before trusting "402/402" as this
+environment's steady state again.
 
 The standalone rebuild step (`node tools/bundle.mjs`) is RETIRED along with
 `EMB-Bot-standalone.html` — do not rebuild it as features land.

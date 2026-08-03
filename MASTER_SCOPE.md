@@ -11,8 +11,9 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-03 (checkpoint — verified against `git log`, working
-tree, and PR #1 status; no changes since the chaining coverage fix).
+**Last updated:** 2026-08-03 (the gradient angle-fragmentation fix landed
+this session; `BACKGROUND_ENCLOSED`'s root cause was corrected to
+`stage1_prep.py`, still unresolved).
 
 ---
 
@@ -135,8 +136,39 @@ is now fixed (see below), four remain open:
 - **Gradient blend tier** — shipped (`stage6_blend.py`), then within one day
   found to fragment into 23 independent-angle regions instead of one shared
   ramp, plus a separate `BACKGROUND_ENCLOSED` defect that silently drops
-  enclosed white icon linework as holes. Both unresolved
+  enclosed white icon linework as holes
   (`docs/superpowers/plans/2026-08-03-gradient-tier-fragmentation-and-enclosed-white-defects.md`).
+  **The angle-fragmentation half is FIXED, same-day follow-up session.**
+  Root cause turned out narrower than first diagnosed: all 23 k-means
+  fragments were falling to `blend_fill`'s ordinary-tatami fallback (already
+  near-uniform post-quantize color, so per-fragment ramp detection almost
+  never fires), and that fallback hardcoded `angle_deg=None` — 23
+  independent `principal_angle_deg` calls on small, irregular silhouettes,
+  the actual "patchwork of differently angled wedges." Fix: one shared
+  `design_row_angle_deg` computed per-design (`stage6_blend.
+  detect_design_ramp_angle`, fitting L/a/b independently and taking
+  whichever channel actually carries the ramp — plain lightness fit misses
+  the repro fixture entirely, r2 0.003, because it's a hue rotation not a
+  lightness slope; b* carries it at r2 0.45), threaded into both the
+  fallback and the true-ramp branch. Verified against the repro fixture end
+  to end: every fragment's fill rows now land within 0.55° of each other,
+  vs. up to 64° apart before. Fragment COUNT (still 23) and radial-ramp
+  angle sharing remain explicit, documented non-goals of this fix. Full
+  writeup: the plan doc's "Defect 1 update" section.
+
+  **`BACKGROUND_ENCLOSED` (enclosed-white-icon drop) remains unresolved**,
+  and its root cause was corrected this same session: it lives in
+  `stage1_prep.py::prep` (the no-alpha color-heuristic branch), not
+  `stage3_segment.py` as first suspected — enclosed pixels are folded into
+  `bg`/excluded from `fg` before stage 3 or vectorization ever run, so they
+  never become a `Region` with a `shape_id`. That means the warning's own
+  "toggle it back on in review" claim is currently **false**: there is no
+  shape for a review-screen edit to reference. A real fix needs enclosed
+  pixels to flow through as tagged, restorable regions plus a new
+  service/Studio override — a cross-cutting, multi-file feature on the
+  scale of a DT-first M0/M1 slice, not a small next step; scoped but
+  deliberately not built this session (see the plan doc's "Defect 2 update"
+  for the recommended shape).
 - **Contour fill** — explicitly marked not-ready (commit `eac414e`): a
   0.640mm bare core in the primary fixture (7× worse than tatami's
   0.090mm), a starved-fill gate miscalibrated in both directions, and
@@ -155,9 +187,12 @@ is now fixed (see below), four remain open:
 Every claim about visual/sew quality beyond internal geometry checks is
 **pending sew-out** — see the cross-cutting item above.
 
-**Next step:** the chaining fix (highest severity, cheapest per the closeout
-doc) is landed — close the gradient fragmentation gap next, then schedule
-the first sew-out session.
+**Next step:** the chaining fix and the gradient angle-fragmentation fix are
+both landed. Next: the enclosed-white-icon drop (`BACKGROUND_ENCLOSED`,
+root-caused this session to `stage1_prep.py` — see cross-cutting notes
+above and the plan doc's "Defect 2 update") needs its own brainstorm/spec/
+plan pass before building, being a cross-cutting feature rather than a
+contained fix. Then schedule the first sew-out session.
 
 ---
 
