@@ -1,6 +1,6 @@
 # EMB-Bot — read this first
 
-Read `COOKBOOK.md` before touching code — it's the handoff doc (architecture, running things, working conventions). Full narrative history/decisions live in Kent's Claude memory (`emb-bot-digitizer`, `dst-codec-axis-discrepancy`), not this repo.
+Read `COOKBOOK.md` before touching code — it's the handoff doc (architecture, running things, working conventions). Read `PRODUCT.md` before making a scope call — it's the launch-scope decisions and non-goals, previously only in Kent's memory. Full narrative history/decisions live in Kent's Claude memory (`emb-bot-digitizer`, `dst-codec-axis-discrepancy`), not this repo.
 
 ## Three things that will silently go wrong if you skip them
 
