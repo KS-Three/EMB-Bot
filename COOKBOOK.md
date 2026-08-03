@@ -110,29 +110,44 @@ abilities were explicitly deferred (condensed/expanded width, mixed
 per-letter size) — both risk distorting satin column width unevenly along
 curves; prototype before committing.
 
-~~`main` is ahead of `origin/main` locally (not pushed).~~ **As of 2026-07-30
-`main` == `origin/main` at `d81842c`** (the digitizer service). Push is still a
-user-confirm action. Two branches sit ahead of it, neither merged:
-`feat/stitch-quality` (fill/stagger/cap fixes + the audit tooling) and
-`feat/satin-rails` (satin rails rebuilt as parallel offsets).
+**As of 2026-08-02, `feat/satin-rails` (56 commits: satin rewrite, chaining,
+contour fill, push-comp, appliqué, the fill-axis geometry fix) is
+fast-forward merged into `main`.** `feat/stitch-quality` no longer exists as
+a branch — folded in along the way. `main` is still ahead of `origin/main`
+locally; push is a user-confirm action, not automatic.
 
-## The Python digitizer (`digitizer/`, added 2026-07-29/30)
+## The Python digitizer (`digitizer/`, added 2026-07-29, grown continuously since)
 
-The auto-digitizing pipeline Kent's blueprint asked for. Stages 1–4 are
-classical CV (prep → quantize → segment → vectorize), stages 5–7 plan stitches
-(overlap → fill/satin → sequence), and `digitizer_service/` wraps it in FastAPI
-on 127.0.0.1:8721. `/digitize` deliberately returns an EMB-Bot `Design`, NOT a
-DST — see the axis note in `digitizer/README.md`.
+Separate Python engine + optional FastAPI service for auto-digitizing
+photos/logos — built because the JS engine's auto-digitize path was retired
+in favor of "feed it clean flat art" (see "the one rule" below); this
+subsystem exists to do classical-CV auto-digitizing properly instead of
+hand-rolling it in JS.
 
-```bash
-cd digitizer && .venv/Scripts/python -m pytest -q   # 132 tests; MUST be `python -m pytest`
-.venv/Scripts/python -m digitizer_service           # the service
-.venv/Scripts/python tools/audit.py                 # defect numbers per case
-```
-
-**Read `digitizer/README.md` before touching stage 6.** It carries the physics
-constants, the sew-order reasoning, and a list of open questions that are
-Kent's calls rather than bugs.
+- **Env**: Python 3.14 venv at `digitizer/.venv` (gitignored). Run tests with
+  `cd digitizer && .venv/Scripts/python -m pytest -q` — a bare
+  `python probe.py` will NOT put cwd on `sys.path`, must use `python -m pytest`
+  or set `PYTHONPATH=.`. 352 tests as of this writing.
+- **Pipeline**: image → color clustering (k-means, CIEDE2000 thread
+  snapping) → contour vectorize (stages 1–4) → stitch planning: overlap
+  resolution, fill/satin/border/contour/appliqué tiers, sequencing (stages
+  5–7) → DST/PES/EXP/SVG export via pyembroidery.
+- **Run the service**: `.venv/Scripts/python -m digitizer_service` →
+  `127.0.0.1:8721`. `GET /health`, `POST /digitize` (image+config → job),
+  `GET /jobs/{id}`, `POST /export`. Binds loopback only, CORS localhost-only.
+- **The load-bearing boundary decision**: `/digitize` returns an EMB-Bot
+  `Design` object, never a DST — see [[dst-codec-axis-discrepancy]] / the
+  "Known bugs" section below. Routing the disputed DST format off this
+  boundary means a digitized design can't arrive pre-rotated while the axis
+  bug is unresolved. `digitizer_core/adapter.py` owns the one y-flip.
+- **Gitignored reference material that is NOT disposable**: `scratch_corpus/`
+  (pro-digitized DST corpus the stitch-physics constants were derived from),
+  `scratch_ink/` (Ink/Stitch font clone), `scratch_kent/` (Kent's
+  commissioned files), `scratch_packs/`. Gitignored means "not in git
+  history," not "safe to delete."
+- **Read `digitizer/README.md` before touching stage 6.** It carries the
+  physics constants, the sew-order reasoning, and a list of open questions
+  that are Kent's calls rather than bugs.
 
 ### Hard-won lessons — do not relearn these
 
@@ -164,13 +179,40 @@ Kent's calls rather than bugs.
   Set-Content` round-trip.** It re-encodes the file: BOM added, every em-dash
   and ± mangled. Bit this repo twice. Use the Edit tool.
 
+## Branches & worktrees
+
+This repo uses git worktrees under `.claude/worktrees/` for parallel feature
+lanes. **Don't trust any doc's snapshot of which worktrees/branches are
+active — including this one.** Run `git worktree list` and `git branch -a`
+yourself before assuming a lane is gone, merged, or still in flight. `main`
+commonly sits behind the active feature branch (`git log main..<branch>
+--oneline` to check) — merging/pushing is Kent's explicit call, never
+automatic.
+
+Never `git add -A` from the repo root without reviewing what it's about to
+stage first — a worktree holding another lane's live uncommitted work is
+exactly the kind of thing that gets swept in by accident.
+
+## Known bugs (unresolved, not accepted — Kent's call on the fix)
+
+- **DST axis transposition.** EMB-Bot's own DST codec (`src/dst.js` /
+  `src/dstimport.js`) is transposed vs. the Tajima/pyembroidery standard —
+  confirmed via 4 independent sources + a clean-room decode. Browser DST
+  round-trips correctly against itself, so it's shipped this way undetected;
+  every existing EMB-Bot DST is affected. Fixing it means a migration path
+  for old files. See `dst-codec-axis-discrepancy` in Kent's memory and
+  `docs/dst-axis-verdict-2026-07-31.md`.
+
 ## Running things
 
 ```bash
-node --test                 # engine tests (root) — 202/202 as of this writing
+node --test                 # engine tests (root) — 265/265 as of this writing
 cd app && npm install && npm run dev     # Studio dev server
-cd app && npm test          # Studio tests (vitest) — 188/188 as of this writing
+cd app && npm test          # Studio tests (vitest) — 321/321 as of this writing
 node tools/build-embf.mjs   # rebuild the binary font library (see section above)
+
+cd digitizer && .venv/Scripts/python -m pytest -q   # Python digitizer tests -- 352/352
+cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0.1:8721
 ```
 
 The standalone rebuild step (`node tools/bundle.mjs`) is RETIRED along with
@@ -212,6 +254,9 @@ and controllable to the user.
   (bridges to engine), `combine.js` (multi-element stitch merge), `preview.js`
   (2.5D canvas render), `projects.js` (localStorage save/load registry),
   `threads.js` (named thread-color catalog), `hints.js` (onboarding).
+- **`digitizer/`** — Python auto-digitizing engine + optional FastAPI
+  service (`digitizer_core/` importable lib, `digitizer_service/` wrapper).
+  Own venv, own test suite, own docs. See "The Python digitizer" above.
 - **`tools/`** — `bundle.mjs` (standalone builder — **run after any src/
   change**), `build-font.mjs` (Ink/Stitch font → JSON font library),
   `run-digitize.mjs` / `run-flatten.mjs` / `render-dst.mjs` (Node-side
