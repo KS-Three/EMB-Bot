@@ -22,13 +22,16 @@ things happen here, in order:
    ramp and snapping each average to the nearest thread (`threads.py`'s
    existing CIEDE2000 lookup — no new color model here beyond the
    barycentric split itself).
-3. **Emission.** N interleaved tatami layers, ONE shared fill angle (reused
-   from `stage6_fill.principal_angle_deg` — not re-derived), each layer
-   restricted to a band of the ramp centered on its own shade and sewn at
-   `stage6_fill.stitch_shape`'s ordinary row spacing of `FILL_ROW_MM * N`.
-   Adjacent bands overlap by a small margin so the shades blend at the seam
-   instead of leaving a hard edge, which is also what pushes total coverage
-   over 1.0 (see `_BAND_OVERLAP_T`).
+3. **Emission.** N interleaved tatami layers, ONE shared fill angle per
+   region — `SourcePixels.design_row_angle_deg` when the whole design fit a
+   single linear ramp (`detect_design_ramp_angle`, so every fragment of a
+   k-means-split gradient sews the same direction instead of each picking
+   its own), else `stage6_fill.principal_angle_deg` of this region alone.
+   Each layer is restricted to a band of the ramp centered on its own shade
+   and sewn at `stage6_fill.stitch_shape`'s ordinary row spacing of
+   `FILL_ROW_MM * N`. Adjacent bands overlap by a small margin so the
+   shades blend at the seam instead of leaving a hard edge, which is also
+   what pushes total coverage over 1.0 (see `_BAND_OVERLAP_T`).
 
 Coordinates are the same convention as everywhere past stage 4: millimetres,
 origin at the artwork bbox center, y-axis down.
@@ -46,6 +49,7 @@ from skimage.color import deltaE_ciede2000
 
 from . import debugviz, machine
 from .regions import Region
+from .stage1_prep import Prep
 from .stage6_fill import principal_angle_deg, stitch_shape
 from .stitches import StitchRun
 from .threads import chart_for, rgb_to_lab
@@ -316,7 +320,7 @@ def detect_ramp(poly: Polygon, sp: SourcePixels) -> RampModel | None:
 DESIGN_RAMP_R2_MIN = 0.4
 
 
-def detect_design_ramp_angle(prep, max_samples: int = RAMP_MAX_SAMPLES,
+def detect_design_ramp_angle(design_prep: Prep, max_samples: int = RAMP_MAX_SAMPLES,
                              seed: int = RAMP_SAMPLE_SEED) -> float | None:
     """The one shared fill-row angle every blend group in a `gradient`
     design should sew at, or None (each region falls back to its own
@@ -335,17 +339,18 @@ def detect_design_ramp_angle(prep, max_samples: int = RAMP_MAX_SAMPLES,
     documented gap — see
     `docs/superpowers/plans/2026-08-03-gradient-tier-fragmentation-and-enclosed-white-defects.md`).
 
-    Sampled straight from `prep.rgb` / `~prep.bg_mask` (the whole design's
-    foreground), not any one region's polygon — this runs once per design,
-    before stage 2 fragments it into however many k-means regions.
+    Sampled straight from `design_prep.rgb` / `~design_prep.bg_mask` (the
+    whole design's foreground), not any one region's polygon — this runs
+    once per design, before stage 2 fragments it into however many k-means
+    regions.
     """
-    fg = ~prep.bg_mask
+    fg = ~design_prep.bg_mask
     all_ys, all_xs = np.nonzero(fg)
     if len(all_xs) < 12:
         return None
 
-    mm_x_all = all_xs.astype(np.float64) / prep.px_per_mm
-    mm_y_all = all_ys.astype(np.float64) / prep.px_per_mm
+    mm_x_all = all_xs.astype(np.float64) / design_prep.px_per_mm
+    mm_y_all = all_ys.astype(np.float64) / design_prep.px_per_mm
 
     if len(all_xs) > max_samples:
         rng = np.random.default_rng(seed)
@@ -353,7 +358,7 @@ def detect_design_ramp_angle(prep, max_samples: int = RAMP_MAX_SAMPLES,
     else:
         idx = np.arange(len(all_xs))
     mm_x, mm_y = mm_x_all[idx], mm_y_all[idx]
-    lab = rgb_to_lab(prep.rgb[all_ys[idx], all_xs[idx]])
+    lab = rgb_to_lab(design_prep.rgb[all_ys[idx], all_xs[idx]])
     centroid_mm = (float(mm_x_all.mean()), float(mm_y_all.mean()))
 
     best_r2, best_kind, best_direction = -1.0, None, None
