@@ -103,7 +103,9 @@ Rotation, per-letter color, bold/thin weight, slant/italic for text elements.
 Was previously sitting unmerged in a worktree (a memory note wrongly called
 it "merged" — always verify with `git log`, don't trust prior claims at face
 value). Fast-forward merged into `main`, worktree removed, branch deleted.
-169/169 engine + 182/182 app tests green on `main` as of this writing.
+169/169 engine + 182/182 app tests green on `main` **at that merge
+(2026-07-27)** — a historical record of that slice, not current counts; see
+"Running things" for those.
 Spec/plan: `docs/superpowers/specs/2026-07-27-font-editing-abilities-design.md`
 and `docs/superpowers/plans/2026-07-27-font-editing-abilities.md`. Two
 abilities were explicitly deferred (condensed/expanded width, mixed
@@ -127,11 +129,36 @@ hand-rolling it in JS.
 - **Env**: Python 3.14 venv at `digitizer/.venv` (gitignored). Run tests with
   `cd digitizer && .venv/Scripts/python -m pytest -q` — a bare
   `python probe.py` will NOT put cwd on `sys.path`, must use `python -m pytest`
-  or set `PYTHONPATH=.`. 352 tests as of this writing.
-- **Pipeline**: image → color clustering (k-means, CIEDE2000 thread
-  snapping) → contour vectorize (stages 1–4) → stitch planning: overlap
-  resolution, fill/satin/border/contour/appliqué tiers, sequencing (stages
-  5–7) → DST/PES/EXP/SVG export via pyembroidery.
+  or set `PYTHONPATH=.`. 402 tests (verified 2026-08-03).
+- **Pipeline**: image → **classify** (`stage0_classify.py`) → prep
+  (background mask, `stage1_prep.py`) → segment, one of two stages depending
+  on class: `stage2_quantize.py` (global k-means + CIEDE2000 thread snapping,
+  used for `flat`/`gradient`) or `stage2_photo_segment.py` (SLIC superpixels
+  + region-adjacency-graph merge, used for `photo_subject`/`photo_scene`) →
+  small-region absorb + enclosed-hole handling (`stage3_segment.py`) →
+  contour vectorize (`stage4_vectorize.py`) → stitch planning: overlap
+  resolution, fill/satin/border/contour/appliqué/**blend** tiers, sequencing
+  (stages 5–7) → DST/PES/EXP/SVG export via pyembroidery.
+- **The input classifier (`stage0_classify.py`, 2026-08-02)** is 4-way —
+  `flat` / `gradient` / `photo_subject` / `photo_scene` — on three signals:
+  `unique_color_mass`, `gradient_smoothness` (Sobel local variance,
+  edge-excluded with a raw-variance fallback), `alpha_softness`. Tuned on
+  real production art (`enthusiast_logo.png`, `drone_render.png`), not
+  synthetic fixtures. **`unique_color_mass` is the real photo/non-photo
+  gate, not `gradient_smoothness`** — `drone_render.png` reads rough on
+  smoothness because of glow halos and an inset scene. The threshold order
+  is documented in the module; read the why before "fixing" it.
+- **`stage2_photo_segment.py`** is a drop-in alternative to
+  `stage2_quantize.quantize()` with the same `Quant` output contract, so
+  stages 3–4 run unchanged. It exists because global k-means clusters color
+  independent of position, so a smooth gradient dithers into per-pixel
+  speckle; SLIC groups by color *and* space (a superpixel never straddles a
+  real edge), then the RAG merges perceptually close superpixels. Scope cuts
+  taken deliberately vs. the source plan: no rembg, no face detection, no
+  face-local threshold drop (documented no-op hook, additive later).
+- **`stage6_blend.py`** is the gradient blend fill tier; its `detect_ramp`
+  fitting logic is what the queued gradient-fragmentation fix wants to reuse
+  one stage earlier (see Known bugs).
 - **Run the service**: `.venv/Scripts/python -m digitizer_service` →
   `127.0.0.1:8721`. `GET /health`, `POST /digitize` (image+config → job),
   `GET /jobs/{id}`, `POST /export`. Binds loopback only, CORS localhost-only.
@@ -193,6 +220,47 @@ Never `git add -A` from the repo root without reviewing what it's about to
 stage first — a worktree holding another lane's live uncommitted work is
 exactly the kind of thing that gets swept in by accident.
 
+**Snapshot as of 2026-08-03 (re-verify, don't trust it):** one worktree,
+`.claude/worktrees/bg-guard` on `fix/bg-existence-guard`, clean tree, one
+commit ahead of `main` (`fix(digitizer): stage 1 asks whether a background
+exists`) — **not merged**. It's the nearest live thread; six stale worktrees
+were cleaned up on 2026-08-02, so this is the only lane in flight. `main`
+also sits one docs commit ahead of `origin/main` locally.
+
+## What's next (queue as of 2026-08-03)
+
+Decision doc: `docs/superpowers/plans/2026-08-03-dt-first-sequencing.md`.
+Session handoff with the full context:
+`docs/superpowers/handoffs/2026-08-03-gradient-defects-handoff.md`.
+
+1. **The two gradient/enclosed-white regressions** (see Known bugs below) +
+   land `fix/bg-existence-guard`. Active now.
+2. **M0 + M1 of the DT-first migration** — this is the sequencing call that
+   is easy to miss: once the regressions close, do **not** go straight to
+   photo-digitizing steps 5+. M0 instruments `digitizer/tools/shape_lens.py`
+   with distance-transform stats (`max/μ/σ` at skeletal pixels) against the
+   current `2·area/perimeter` satin-vs-fill call, on the fixture logo and all
+   37 `scratch_corpus/` files — zero engine change, zero golden impact. M1
+   adds `digitizer_core/shapefield.py` (`ShapeField`: mask, skeleton, exact
+   EDT, scale, origin), hoisting one `medial_axis(rng=0)` so skeleton and DT
+   are computed together, behind `cfg.extra["shapefield"]` defaulting to
+   today's path — **byte-identical output is a hard requirement**. ~3 days
+   combined, both desk-safe. Rationale: `stage7_sequence.py:97` makes the
+   satin/fill call from `2·area/perimeter` (a statistic the source patent
+   warns against — it satins a 20mm disc under a 5mm cap once the edge is
+   serrated) *before* the DT even exists in `stage6_satin.py`. Steps 5+ all
+   lean harder on that classifier than anything shipped so far. Full
+   architecture: `docs/dt-first-architecture-2026-08-01.md` §2 and
+   `docs/masters-teardown-2026-08-01.md`.
+3. **Photo-digitizing plan steps 5+** (`docs/photo-digitizing-plan-2026-07-31.md`)
+   — direction fields, mono-tonal tiers, streamline/portrait.
+4. **DT-first M2/M3 onward** — the classifier swap itself, the change a
+   customer can see. Corpus-gated *and* sew-out-gated, and it needs the
+   corpus disagreement table M0 produces before it can be judged.
+
+A sew-out is still not scheduled — Kent's explicit call: more work first,
+don't push for it.
+
 ## Known bugs (unresolved, not accepted — Kent's call on the fix)
 
 - **DST axis transposition.** EMB-Bot's own DST codec (`src/dst.js` /
@@ -218,13 +286,16 @@ exactly the kind of thing that gets swept in by accident.
 
 ## Running things
 
+All three counts below were re-run and verified 2026-08-03 — if one comes
+back lower, something regressed; don't assume the doc drifted.
+
 ```bash
-node --test                 # engine tests (root) — 265/265 as of this writing
+node --test                 # engine tests (root) — 265/265
 cd app && npm install && npm run dev     # Studio dev server
-cd app && npm test          # Studio tests (vitest) — 321/321 as of this writing
+cd app && npm test          # Studio tests (vitest) — 321/321
 node tools/build-embf.mjs   # rebuild the binary font library (see section above)
 
-cd digitizer && .venv/Scripts/python -m pytest -q   # Python digitizer tests -- 352/352
+cd digitizer && .venv/Scripts/python -m pytest -q   # Python digitizer tests -- 402/402 (~3 min)
 cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0.1:8721
 ```
 
