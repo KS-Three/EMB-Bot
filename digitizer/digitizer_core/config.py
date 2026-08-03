@@ -14,6 +14,14 @@ class PipelineConfig:
     # factor derives from this against the non-background artwork bbox.
     target_width_mm: float = 80.0
 
+    # Stage 0
+    # Skip signal computation, force this classification instead — the UI
+    # override the plan calls for, and the escape hatch every test that
+    # needs a specific class without depending on threshold tuning uses.
+    # One of "flat" | "gradient" | "photo_subject" | "photo_scene", or None
+    # to classify normally.
+    forced_class: str | None = None
+
     # Stage 2
     # Which manufacturer's chart the design is snapped to. Ids match the
     # browser's (app/src/lib/threadBrandsIndex.js) because Studio sends its

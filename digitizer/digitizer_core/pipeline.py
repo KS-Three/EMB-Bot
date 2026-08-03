@@ -21,6 +21,7 @@ from . import debugviz
 from .config import PipelineConfig
 from .fabrics import Fabric, fabric_for_garment, get_fabric
 from .regions import Region, apply_layer_overrides, apply_shape_edits
+from .stage0_classify import classify
 from .stage1_prep import Prep, prep
 from .stage2_quantize import Quant, quantize
 from .stage3_segment import (
@@ -31,6 +32,7 @@ from .stage3_segment import (
 )
 from .stage4_vectorize import vectorize
 from .stage5_overlap import resolve_overlaps
+from .stage6_blend import SourcePixels
 from .stage7_sequence import sequence
 from .stitches import StitchPlan
 from .threads import chart_for
@@ -54,6 +56,12 @@ class PipelineResult:
     warnings: list[dict] = field(default_factory=list)
     segmenter: str = "classical"
     debug_dir: Path | None = None
+    # Only populated when stage 0 classifies this design "gradient" — the
+    # source_pixels the blend fill tier samples from during stitch planning.
+    # None for every other class (flat included) so the common case carries
+    # no extra raster data forward, and so a design's byte-for-byte identity
+    # on the flat lane is unaffected by this field simply existing.
+    source_pixels: SourcePixels | None = None
 
     @property
     def shape_ids(self) -> list[str]:
@@ -68,6 +76,13 @@ def run_stages(
     cfg = cfg or PipelineConfig()
     seg = segmenter or ClassicalSegmenter()
     dbg = Path(cfg.debug_dir) if cfg.debug_dir else None
+
+    # Stage 0. Owns its own image decode (see its module docstring) — cheap,
+    # and it means this call sits independently of everything stage 1 does.
+    # Every class except "gradient" takes the exact code path this pipeline
+    # already ran before stage 0 existed; only "gradient" branches, via
+    # source_pixels below and the blend tier stage 7 reads it for.
+    classification = classify(image, cfg, forced_class=cfg.forced_class)
 
     p: Prep = prep(image, cfg)
     if dbg:
@@ -123,9 +138,17 @@ def run_stages(
     x0, y0, x1, y1 = p.art_bbox
     design = ((x1 - x0) / p.px_per_mm, (y1 - y0) / p.px_per_mm)
 
+    # Same mm<->px origin as bg_outline_mm below and as debugviz.stage4 —
+    # SourcePixels.to_mm/to_px depend on this being the one true mapping.
+    art_cx, art_cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+    source_pixels = (
+        SourcePixels(rgb=p.rgb, px_per_mm=p.px_per_mm, origin_px=(art_cx, art_cy))
+        if classification.class_ == "gradient" else None
+    )
+
     bg_outline_mm = None
     if p.bg_outline_px is not None and len(p.bg_outline_px) >= 3:
-        cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+        cx, cy = art_cx, art_cy
         pts = p.bg_outline_px.astype(np.float64)
         ring = np.column_stack(
             [(pts[:, 0] - cx) / p.px_per_mm, (pts[:, 1] - cy) / p.px_per_mm]
@@ -183,11 +206,12 @@ def run_stages(
         px_per_mm=p.px_per_mm,
         design_size_mm=design,
         warnings=merge_warnings(
-            [*p.warnings, *q.warnings, *small_warnings, *vec_warnings,
-             *edit_warnings, *layer_warnings]
+            [*classification.warnings, *p.warnings, *q.warnings, *small_warnings,
+             *vec_warnings, *edit_warnings, *layer_warnings]
         ),
         segmenter=seg.name,
         debug_dir=dbg,
+        source_pixels=source_pixels,
     )
 
 
@@ -208,7 +232,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     if dbg:
         debugviz.stage5(dbg, planned, result.design_size_mm, chart_for(cfg))
 
-    blocks, seq_warnings = sequence(planned, fabric, cfg)
+    blocks, seq_warnings = sequence(planned, fabric, cfg, source_pixels=result.source_pixels)
 
     plan = StitchPlan(
         blocks=blocks,

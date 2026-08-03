@@ -5,6 +5,12 @@ and optional extra keys documented per code}. Codes are append-only — never
 renumber or reuse.
 """
 
+# Stage 0 (input classification — docs/superpowers/plans/2026-08-02-photo-digitizing-steps1-2.md)
+CLASSIFIED_GRADIENT = "CLASSIFIED_GRADIENT"            # routed to the blend fill tier instead of flat quantize
+CLASSIFIED_PHOTO_SUBJECT = "CLASSIFIED_PHOTO_SUBJECT"  # portrait/pet/product; no dedicated handling yet (step 3+)
+CLASSIFIED_PHOTO_SCENE = "CLASSIFIED_PHOTO_SCENE"      # scenery/landscape; no dedicated handling yet (step 6+)
+CLASSIFICATION_UNCERTAIN = "CLASSIFICATION_UNCERTAIN"  # below the confidence floor; treated as flat rather than guessed
+
 # Stage 1
 BACKGROUND_UNCERTAIN = "BACKGROUND_UNCERTAIN"      # border flood intruded deep past the artwork margin
 INPUT_LOW_RESOLUTION = "INPUT_LOW_RESOLUTION"      # px_per_mm below floor even after capped upscale

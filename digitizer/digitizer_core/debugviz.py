@@ -154,3 +154,41 @@ def stage6(dir_: Path, plan, size_mm) -> None:
         prev = run.points[-1]
     _write(dir_ / "stage6_stitches.png", viz)
     _write(dir_ / "stage6_penetrations.png", dots)
+
+
+# --- Gradient blend fill (stage6_blend.py) ---------------------------------
+#
+# Its own pair, distinct from stage6() above: a blend group is several
+# interleaved fill layers sharing one shape, and neither the merged stitch
+# render nor the penetration dots make a phase-offset or shade-decomposition
+# bug visible. These do.
+
+_SWATCH_PX = 60
+
+
+def stage6_blend_shades(dir_: Path, shade_rgbs: list[tuple[int, int, int]]) -> None:
+    """A strip of the N decomposed shades, in ramp order — the review record
+    for whether the chart-snap picked colors that actually step from light
+    to dark instead of, say, all landing on the same cone."""
+    n = max(1, len(shade_rgbs))
+    img = np.full((_SWATCH_PX, _SWATCH_PX * n, 3), 250, np.uint8)
+    for i, rgb in enumerate(shade_rgbs):
+        img[:, i * _SWATCH_PX:(i + 1) * _SWATCH_PX] = rgb
+    _write(dir_ / "stage6_blend_shades.png", img)
+
+
+def stage6_blend_rows(dir_: Path, layer_runs: list[list], shade_rgbs: list[tuple[int, int, int]],
+                      size_mm) -> None:
+    """Every interleaved layer, BEFORE they merge into one fill, each drawn in
+    its own shade's color. A phase-offset bug (rows that should interleave but
+    land on top of each other instead) shows immediately here; it is
+    invisible once the layers are merged into ordinary fill stitches.
+    """
+    viz, to_px = _mm_canvas(size_mm)
+    for i, runs in enumerate(layer_runs):
+        color = (tuple(int(v) for v in shade_rgbs[i % len(shade_rgbs)])
+                if shade_rgbs else (20, 20, 20))
+        for run in runs:
+            for a, b in zip(run.points, run.points[1:]):
+                cv2.line(viz, to_px(*a), to_px(*b), color, 1, cv2.LINE_AA)
+    _write(dir_ / "stage6_blend_rows.png", viz)

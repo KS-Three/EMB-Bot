@@ -44,6 +44,7 @@ from .fabrics import Fabric
 from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITCH_MM
 from .stage5_overlap import PlannedRegion
 from .stage6_applique import applique_pass, nn_group_key
+from .stage6_blend import SourcePixels, blend_fill
 from .stage6_border import border_runs, run_outline
 from .stage6_contour import contour_fill
 from .stage6_fill import stitch_shape
@@ -333,7 +334,8 @@ def _apply_ties(runs: list[StitchRun]) -> None:
 
 
 def sequence(
-    planned: list[PlannedRegion], fabric: Fabric, cfg: PipelineConfig
+    planned: list[PlannedRegion], fabric: Fabric, cfg: PipelineConfig,
+    source_pixels: SourcePixels | None = None,
 ) -> tuple[list[StitchBlock], list[dict]]:
     """-> (blocks in sew order, warnings)."""
     row_mm = (cfg.fill_row_mm or FILL_ROW_MM) * max(0.1, fabric.density_adjust)
@@ -454,7 +456,17 @@ def sequence(
             # pair yet; it is recorded here rather than silently combined.
             runs = []
             report = {}
-            if contour:
+            if source_pixels is not None:
+                # Stage 0 classified the whole design "gradient" — every
+                # auto-tier shape routes through the blend fill instead of
+                # tatami/contour. blend_fill's own ramp detection already
+                # falls back to ordinary tatami internally when THIS shape
+                # isn't actually a ramp (ramp-or-not is a per-shape question,
+                # gradient-or-not is a per-design one), so unlike contour
+                # there is no further fallback needed here — if blend_fill
+                # came back empty, plain tatami would have too.
+                runs, report = blend_fill(p.region, source_pixels, cfg)
+            elif contour:
                 runs, report = contour_fill(
                     p.polygon,
                     p.shape_id,
@@ -465,7 +477,7 @@ def sequence(
                     tolerance_mm=cfg.contour_tolerance_mm,
                     start_near=entry,
                 )
-            if not contour or report["empty"]:
+            if source_pixels is None and (not contour or report["empty"]):
                 # The fill angle stage 5 already committed to, when it did.
                 # Passing it back is what makes directional comp honest:
                 # compensation went on the edges THIS angle penetrates, so the
