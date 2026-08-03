@@ -11,7 +11,7 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-03 (initial version).
+**Last updated:** 2026-08-03 (chaining coverage fix landed).
 
 ---
 
@@ -105,15 +105,32 @@ stitch processor / preflight scoring / review-UI polish still to come.
 
 **Confidence: Low** beyond flat spot-color art. Flat-logo digitizing (both
 implementations) is Medium — 265/265 JS tests and 402/402 Python tests pass,
-and the geometry is internally consistent. But `hardening-closeout-2026-08-02.md`
+and the geometry is internally consistent. `hardening-closeout-2026-08-02.md`
 independently re-measured the five newest Python features and found
-defects the shipped test suites can't see in all five:
+defects the shipped test suites couldn't see in all five; one of those five
+is now fixed (see below), four remain open:
 
-- **Chaining (needle-down travel between shapes)** — sews needle-down thread
-  on bare fabric on a stock preset, up to 16.15mm exposed, invisible to the
-  shipped [204-test] suite because it skips one-point links (37% of cases)
-  and measures polygon cover instead of actual thread position. **Highest
-  severity, cheapest fix** per the closeout doc's own priority order.
+- **Chaining (needle-down travel between shapes) — FIXED 2026-08-03.** Was:
+  sews needle-down thread on bare fabric on a stock preset, up to 16.15mm
+  exposed, invisible to the shipped test suite because it measured polygon
+  cover instead of actual thread position. `_link_cover`
+  (`digitizer_core/stage7_sequence.py`) now builds the "already laid" half
+  of its cover from the block's own emitted stitch centrelines (buffered to
+  real thread width) instead of each shape's sewing polygon. Measured on the
+  committed `logo_alpha` fixture: chaining's extra links (10→14) now add
+  **zero** bare-fabric exposure — exposed-run count and worst clearance both
+  land exactly on the chain-off baseline — while still cutting trims (13→9)
+  and stitch count (3012→2992); confirmed independently via the rebuilt
+  `tools/chain_probe.py` (which had its own pre-existing bug making its
+  before/after comparison a no-op — also fixed). `chain_links` **stays off
+  by default**: the fix closes one of the three preconditions
+  `PipelineConfig.chain_links`'s docstring names for reopening it — still
+  open are an inset on `covered_by` (a later colour's sewing polygon,
+  standing in for thread that hasn't been planned yet — the same class of
+  approximation, just not yet fixable the same way) and a physical sew-out
+  to validate `LINK_COVER_TOL_MM`, which is still a thread spec, not a
+  measurement. The other four closeout defects below are unaffected by this
+  fix and remain open.
 - **Gradient blend tier** — shipped (`stage6_blend.py`), then within one day
   found to fragment into 23 independent-angle regions instead of one shared
   ramp, plus a separate `BACKGROUND_ENCLOSED` defect that silently drops
@@ -137,8 +154,8 @@ defects the shipped test suites can't see in all five:
 Every claim about visual/sew quality beyond internal geometry checks is
 **pending sew-out** — see the cross-cutting item above.
 
-**Next step:** land the chaining fix first (highest severity, cheapest per
-the closeout doc), then close the gradient fragmentation gap, then schedule
+**Next step:** the chaining fix (highest severity, cheapest per the closeout
+doc) is landed — close the gradient fragmentation gap next, then schedule
 the first sew-out session.
 
 ---
