@@ -16,8 +16,19 @@ Svelte + Vite. This is what most feature work touches.
 ```
 cd app
 npm install        # first time only
-npm run dev         # http://localhost:5173
+npm run dev         # blocks this terminal — leave it running
 ```
+
+**Viewing it:** `npm run dev` doesn't return control — it stays running until
+you stop it (Ctrl+C). Leave that terminal window/tab alone; don't reuse it
+for other commands. Read its own output for the URL to open — it's usually
+`http://localhost:5173`, but Vite auto-increments to `5174`, `5175`, etc. if
+that port's already taken on your machine, and prints whichever one it
+actually bound. Open the printed URL in a normal browser tab, separate from
+the terminal running the server. The single most common "site can't be
+reached" cause here isn't a broken dev server — it's checking a *different*
+terminal or session than the one `npm run dev` is actually running in, or a
+port other than the one it printed.
 
 - `npm run build` — production build (also runs `predev`/`prebuild`'s
   `node scripts/copy-engine.mjs` automatically, which syncs the engine from
