@@ -177,6 +177,59 @@ def stage6_blend_shades(dir_: Path, shade_rgbs: list[tuple[int, int, int]]) -> N
     _write(dir_ / "stage6_blend_shades.png", img)
 
 
+# --- Photo segmentation (stage2_photo_segment.py) ---------------------------
+#
+# Three artifacts, each answering a different question a plain stage2()
+# render can't: did SLIC's raw oversegmentation look reasonable at all, did
+# the hierarchical merge actually consolidate it (the boundary overlay is
+# the point — a merge that did nothing still LOOKS like SLIC without one),
+# and what did the region-count/area numbers actually land on.
+
+
+def stage2_photo_slic(dir_: Path, rgb: np.ndarray, slic_labels: np.ndarray) -> None:
+    """Raw SLIC superpixel boundaries over the source image — the BEFORE
+    picture for stage2_photo_merged, so an empty-looking merge is obviously
+    a no-op rather than a guess."""
+    from skimage.segmentation import mark_boundaries
+
+    viz = mark_boundaries(rgb, slic_labels, color=(1, 0, 1), mode="thick")
+    _write(dir_ / "stage2_photo_slic.png", (viz * 255).round())
+
+
+def stage2_photo_merged(
+    dir_: Path, rgb: np.ndarray, labels: np.ndarray, mean_rgb: dict[int, tuple]
+) -> None:
+    """Final merged region boundaries, filled with each region's own mean
+    color — the one that shows whether merging actually worked: a real
+    consolidation shows a handful of flat-filled blobs, a no-op still shows
+    SLIC's raw grid tinted per-superpixel."""
+    from skimage.segmentation import mark_boundaries
+
+    fill = rgb.copy()
+    for lbl, region_rgb in mean_rgb.items():
+        fill[labels == lbl] = region_rgb
+    viz = mark_boundaries(fill, np.where(labels < 0, 0, labels), color=(1, 0, 1), mode="thick")
+    _write(dir_ / "stage2_photo_merged.png", (viz * 255).round())
+
+
+def stage2_photo_regions(
+    dir_: Path, slic_count: int, merged_count: int, final_count: int, areas_px: list[int]
+) -> None:
+    """Count and area-distribution record: raw SLIC segment count, count
+    after hierarchical merge (before the min-area floor), and the final
+    region count the floor step leaves — the acceptance-check numbers for
+    whoever tunes this next against a real photo."""
+    dir_.mkdir(parents=True, exist_ok=True)
+    lines = [
+        f"slic_segments: {slic_count}",
+        f"after_merge: {merged_count}",
+        f"final_regions: {final_count}",
+        "area_px (sorted ascending):",
+        *(f"  {a}" for a in sorted(areas_px)),
+    ]
+    (dir_ / "stage2_photo_regions.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def stage6_blend_rows(dir_: Path, layer_runs: list[list], shade_rgbs: list[tuple[int, int, int]],
                       size_mm) -> None:
     """Every interleaved layer, BEFORE they merge into one fill, each drawn in

@@ -23,6 +23,7 @@ from .fabrics import Fabric, fabric_for_garment, get_fabric
 from .regions import Region, apply_layer_overrides, apply_shape_edits
 from .stage0_classify import classify
 from .stage1_prep import Prep, prep
+from .stage2_photo_segment import segment as photo_segment
 from .stage2_quantize import Quant, quantize
 from .stage3_segment import (
     ClassicalSegmenter,
@@ -88,7 +89,15 @@ def run_stages(
     if dbg:
         debugviz.stage1(dbg, p.rgb, p.bg_mask)
 
-    q: Quant = quantize(p, cfg)
+    # Only "photo_subject"/"photo_scene" branch here — flat and gradient
+    # take the exact quantize() call this pipeline has always made. Purely
+    # additive: neither of those two classes had any dedicated stage 2
+    # handling before this dispatch existed.
+    q: Quant = (
+        photo_segment(p, cfg)
+        if classification.class_ in ("photo_subject", "photo_scene")
+        else quantize(p, cfg)
+    )
     if dbg:
         debugviz.stage2(dbg, q.labels, q.thread_indices, chart_for(cfg))
 
