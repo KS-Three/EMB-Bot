@@ -202,6 +202,19 @@ exactly the kind of thing that gets swept in by accident.
   every existing EMB-Bot DST is affected. Fixing it means a migration path
   for old files. See `dst-codec-axis-discrepancy` in Kent's memory and
   `docs/dst-axis-verdict-2026-07-31.md`.
+- **Gradient-class designs fragment before blend treatment, and enclosed
+  white design elements silently drop as holes.** Found 2026-08-03 on a
+  real gradient logo run through Studio: `gradient` class still segments
+  via plain k-means (23 regions on the repro fixture) before blend
+  treatment, so each fragment picks its own independent fill angle instead
+  of one shared gradient direction — a patchwork, not a smooth ramp.
+  Separately, `BACKGROUND_ENCLOSED` drops enclosed white icon linework as
+  a hole even when it survives stage 1's background detection intact —
+  general to the whole pipeline, not classifier-specific, just newly
+  customer-visible on exactly the art the gradient tier targets. Repro
+  fixture: `digitizer/testdata/photo/repro_gradient_white_icon.png`. Full
+  diagnosis + fix directions:
+  `docs/superpowers/plans/2026-08-03-gradient-tier-fragmentation-and-enclosed-white-defects.md`.
 
 ## Running things
 
