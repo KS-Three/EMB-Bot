@@ -2,3 +2,4 @@ node_modules/
 .superpowers/
 scratch_*
 scratch_corpus/
+.claude/worktrees/

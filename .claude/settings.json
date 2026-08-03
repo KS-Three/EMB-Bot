@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Browser__read_page",
+      "mcp__Claude_Browser__read_console_messages",
+      "mcp__Claude_Browser__get_page_text",
+      "mcp__Claude_Browser__find",
+      "mcp__Claude_Preview__preview_screenshot",
+      "mcp__claude-in-chrome__tabs_context_mcp",
+      "mcp__claude-in-chrome__get_page_text",
+      "mcp__claude-in-chrome__find"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"C:\\Users\\EE-LT-11030\\EMB-Bot\\.claude\\hooks\\block-powershell-replace.js\""
+          },
+          {
+            "type": "command",
+            "command": "node \"C:\\Users\\EE-LT-11030\\EMB-Bot\\.claude\\hooks\\block-worktree-mutation.js\""
+          },
+          {
+            "type": "command",
+            "command": "node \"C:\\Users\\EE-LT-11030\\EMB-Bot\\.claude\\hooks\\warn-git-add-a.js\""
+          }
+        ]
+      }
+    ]
+  }
+}
