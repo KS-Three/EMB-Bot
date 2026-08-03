@@ -29,6 +29,15 @@ If you changed anything under `src/`, the Studio picks it up via
 `copy-engine.mjs` on its own `predev`/`prebuild` hook — no manual step needed
 for the app itself. The manual step below is only for the *standalone* file.
 
+## Verifying a UI change live (Playwright MCP)
+
+With `npm run dev` running, the `playwright` MCP server (declared in
+`.mcp.json`, launched via `tools/mcp-playwright.mjs`) can drive a real
+headless browser against `http://localhost:5173` — navigate the wizard,
+click through garment/font pickers, and take snapshots/screenshots to
+confirm a change actually works, not just that tests pass. Prefer this over
+claiming a frontend change works from reading the diff alone.
+
 ## Standalone bundle — rebuild after any `src/` or `EMB-Bot.html` change
 
 `EMB-Bot-standalone.html` is a committed, inlined artifact — it is **not**
