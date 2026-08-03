@@ -221,6 +221,41 @@ def test_blend_geometry_matches_the_plan_contract(region_factory, source_factory
         )
 
 
+def test_blend_true_ramp_branch_honors_the_shared_design_angle():
+    """`test_blend_geometry_matches_the_plan_contract` above never sets
+    `design_row_angle_deg` on either fixture, so it never exercises
+    `blend_fill`'s OTHER branch — this region's own ramp genuinely detected
+    (`model.kind == "linear"`) AND a shared design angle set — leaving that
+    combination unguarded by any regression test (a gap an independent
+    review of the 2026-08-03 fix flagged). Forces a design angle that
+    visibly differs from `_linear_region`'s own `principal_angle_deg` and
+    checks every layer's rows actually land there instead."""
+    region = _linear_region()
+    source = _linear_source()
+    forced_angle = 10.0
+    natural_angle = principal_angle_deg(region.polygon)
+    assert _angle_diff_deg(natural_angle, forced_angle) > 5.0, (
+        "test fixture's natural angle must differ from the forced one to be a real check"
+    )
+    source.design_row_angle_deg = forced_angle
+    cfg = PipelineConfig()
+
+    assert detect_ramp(region.polygon, source) is not None, (
+        "this test exists specifically to exercise the true-ramp branch"
+    )
+    runs, report = blend_fill(region, source, cfg)
+    assert runs
+    assert report["empty"] is False
+
+    for sid, layer_runs in _layers_of(runs).items():
+        gaps = _row_spacings_mm(layer_runs, forced_angle)
+        assert gaps, f"{sid}: no distinct rows found at the forced angle"
+        measured = _dominant_angle_deg(layer_runs)
+        assert _angle_diff_deg(measured, forced_angle) <= 1.0, (
+            f"{sid}: angle {measured} did not honor the forced design angle {forced_angle}"
+        )
+
+
 def test_blend_falls_back_to_ordinary_tatami_on_speckle():
     """Random noise has no structured residual at all — ramp detection must
     refuse it and this must sew exactly like `stage6_fill.stitch_shape`
