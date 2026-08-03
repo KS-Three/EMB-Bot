@@ -42,25 +42,71 @@ _TRAVEL_DETOUR_FACTOR = 4.0
 _TRAVEL_DETOUR_FLOOR_MM = 20.0
 
 
+def _ring_moments(coords) -> tuple[float, float, float, float, float, float]:
+    """Signed area and raw second moments of one closed ring, exactly.
+
+    -> (area, mx, my, ixx, iyy, ixy), all about the origin. The sign follows
+    the ring's winding, so summing a shell with its holes subtracts them
+    without anyone having to know which way shapely wound them.
+    """
+    a = np.asarray(coords, dtype=np.float64)
+    if len(a) > 1 and a[0][0] == a[-1][0] and a[0][1] == a[-1][1]:
+        a = a[:-1]
+    if len(a) < 3:
+        return (0.0,) * 6
+    x0, y0 = a[:, 0], a[:, 1]
+    x1, y1 = np.roll(x0, -1), np.roll(y0, -1)
+    cross = x0 * y1 - x1 * y0
+    return (
+        float(cross.sum()) / 2.0,
+        float((cross * (x0 + x1)).sum()) / 6.0,
+        float((cross * (y0 + y1)).sum()) / 6.0,
+        float((cross * (y0 * y0 + y0 * y1 + y1 * y1)).sum()) / 12.0,
+        float((cross * (x0 * x0 + x0 * x1 + x1 * x1)).sum()) / 12.0,
+        float((cross * (x0 * y1 + 2 * x0 * y0 + 2 * x1 * y1 + x1 * y0)).sum()) / 24.0,
+    )
+
+
 def principal_angle_deg(poly: Polygon) -> float:
     """Angle of the shape's long axis, in degrees.
 
     Rows run ALONG this axis: long rows mean fewer turns, fewer row-end
     penetrations piling up on the edges, and a fill that follows the shape
     instead of cutting across it.
+
+    Measured from the polygon's AREA, not from its vertices. A vertex cloud
+    answers "where are the points dense", which is a question about how the
+    boundary happens to be sampled — and stage 5 hands this function a
+    pull-compensated polygon whose corners carry a buffer's arc of ~16
+    vertices each. Weighted by vertex, four such corners outvote the shape:
+    a plain 24 mm square measured that way returns -87.3 deg and sews its
+    rows across the diagonal. By area it returns 0.
     """
-    # A ring's coords repeat the first vertex at the close; keeping it would
-    # double-weight that one point and bend the axis of every rotated shape.
-    pts = list(poly.exterior.coords[:-1])
+    area, mx, my, ixx, iyy, ixy = _ring_moments(poly.exterior.coords)
     for ring in poly.interiors:
-        pts.extend(ring.coords[:-1])
-    if len(pts) < 3:
+        r = _ring_moments(ring.coords)
+        area, mx, my = area + r[0], mx + r[1], my + r[2]
+        ixx, iyy, ixy = ixx + r[3], iyy + r[4], ixy + r[5]
+    if abs(area) < 1e-12:
         return 45.0
-    a = np.asarray(pts, dtype=np.float64)
-    a -= a.mean(axis=0)
-    sxx = float((a[:, 0] ** 2).sum())
-    syy = float((a[:, 1] ** 2).sum())
-    sxy = float((a[:, 0] * a[:, 1]).sum())
+    cx, cy = mx / area, my / area
+    # Parallel-axis shift onto the centroid, where the principal axes live.
+    sxx = iyy - area * cx * cx          # the spread in x is the moment about y
+    syy = ixx - area * cy * cy
+    sxy = ixy - area * cx * cy
+    if area < 0:
+        # A clockwise ring measures every moment negative, which swaps which
+        # axis looks longer and turns the answer a quarter turn. Shapely does
+        # not promise a winding — `buffer` returns the opposite of what these
+        # literals use — so normalise rather than trusting one.
+        sxx, syy, sxy = -sxx, -syy, -sxy
+    # A square and a disc have no long axis: their two principal moments are
+    # equal, so the angle is whatever the arithmetic noise says, and a buffered
+    # square swings 50 deg between join styles. Rows on such a shape have to
+    # run SOMEWHERE, and level is the answer that does not look like a mistake.
+    spread = math.hypot(sxx - syy, 2 * sxy)
+    if spread <= 1e-3 * abs(sxx + syy):
+        return 0.0
     return math.degrees(0.5 * math.atan2(2 * sxy, sxx - syy))
 
 

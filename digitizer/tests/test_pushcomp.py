@@ -140,9 +140,18 @@ def rail_overhang(art: Polygon, pts) -> float:
 # `coords[:-1]`). The whitebg fill shapes re-fill along the corrected axis;
 # ribbon is satin-only and holds to the digit, exactly the blast radius the
 # patch+revert measurement predicted.
+#
+# RE-MEASURED AGAIN (2026-08-02) for the area-moment `principal_angle_deg`
+# rewrite (vertex-weighted PCA -> polygon second moments, `_ring_moments`):
+# vertex weighting let a pull-comp'd shape's buffer-arc corners (~16 extra
+# vertices each) outvote the shape itself, up to 87 degrees off on a plain
+# square. Same blast radius as the closing-vertex fix, for the same reason —
+# only whitebg's FILL shapes move; ribbon stays satin-only and untouched.
+# Stitch counts fell (2621->2469, 3440->3226): rows now run the shape's true
+# long axis instead of a spurious diagonal, so they run longer and turn less.
 GOLDEN_FLAG_OFF = {
-    ("logo_whitebg.png", "left_chest"): ("99c3c24dddd83ad1238d", 2621, 8444),
-    ("logo_whitebg.png", "towel"): ("c73f25796cff1fa4f82f", 3440, 10898),
+    ("logo_whitebg.png", "left_chest"): ("04515f611818f7fbe102", 2469, 7988),
+    ("logo_whitebg.png", "towel"): ("e689ce24ca58412bff89", 3226, 10253),
     ("ribbon_curve.png", "left_chest"): ("9686247280255d9e5899", 1019, 3581),
     ("ribbon_curve.png", "hat_front"): ("3162101dd0c42ff6054e", 1033, 3623),
 }
