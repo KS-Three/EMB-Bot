@@ -354,20 +354,15 @@ and controllable to the user.
   worktree, not `subagent-driven-development`) — see the spec/plan above for
   that instead.
 
-## Known limitations (all intentional, all explained to Kent, all accepted)
+## Known limitations
 
-- Photographic/gradient art can't reach pro quality via auto-digitizing —
-  see "the one rule" above.
-- Small stacked text (< ~4mm cap height at final size) drops below what
-  thread can hold — physics, not a bug. Size up or drop small lines.
-- PES output is best-effort (reverse-engineered format); verify on-machine.
-- Fabric presets are starting points, not guarantees — Kent test-stitches
-  and reports back if one needs tuning.
-- Rotation doesn't re-trigger hoop auto-fit — a design that auto-fit before
-  a non-180° rotation can visually overflow the hoop. Documented, not yet
-  fixed.
-- `±30°` adjacent-same-color contrast heuristic (roadmap item) — not built.
-- Condensed/expanded width and mixed per-letter size — deferred, see above.
+**See [`MASTER_SCOPE.md`](MASTER_SCOPE.md) for current status, confidence,
+and open issues per capability area** — that's the live dashboard now; this
+section used to duplicate it and the two drifted, so it doesn't try to be
+exhaustive here anymore. The one exception: the *design decision* that
+photographic/gradient art can't reach pro quality via auto-digitizing is
+architectural, not a status snapshot — see "the one rule" above, which stays
+here since it explains *why*, not *what's currently true*.
 
 ## Working conventions this project has settled on (don't relitigate)
 
