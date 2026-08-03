@@ -11,7 +11,8 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-03 (chaining coverage fix landed).
+**Last updated:** 2026-08-03 (checkpoint — verified against `git log`, working
+tree, and PR #1 status; no changes since the chaining coverage fix).
 
 ---
 
