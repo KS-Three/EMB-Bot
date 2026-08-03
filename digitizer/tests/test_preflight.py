@@ -79,10 +79,17 @@ def test_a_clean_real_plan_earns_a_clean_report(whitebg, plan):
     assert m["coverage_p50"] == pytest.approx(1.2, abs=0.15)
     assert m["coverage_over_warn_mm2"] == 0.0
     assert m["same_hole_fraction"] is not None
-    # Chaining law 60 and the contour tier, both measured rather than skipped:
-    # the fixture travels 99.4 mm needle-down and leaves 0.40 mm of it bare.
-    assert m["link_thread_mm"] == pytest.approx(99.4, abs=1.0)
-    assert m["link_uncovered_max_mm"] == pytest.approx(0.40, abs=0.05)
+    # Chaining law 60 and the contour tier, both measured rather than skipped.
+    # Re-measured 2026-08-02 after the fill-axis geometry fix (stage6_fill.py,
+    # commit c9556ae): rows now run the shape's true long axis instead of a
+    # spurious diagonal, which changes both the fill geometry chaining routes
+    # around and the travel distance between shapes -- 99.4->109.0 mm needle-
+    # down, and, apparently for the better on this fixture, the previously
+    # 0.40 mm of bare link exposure is now fully covered (0.0). Same fix
+    # already re-pinned GOLDEN_FLAG_OFF and the flat-lane golden elsewhere in
+    # this suite; this is that same blast radius, not a new defect.
+    assert m["link_thread_mm"] == pytest.approx(109.0, abs=1.0)
+    assert m["link_uncovered_max_mm"] == pytest.approx(0.0, abs=0.05)
     assert m["fill_axis_concentration"] == pytest.approx(0.974, abs=0.02)
     assert m["contour_starved_shapes"] == 0
 
