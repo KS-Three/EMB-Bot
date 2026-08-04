@@ -219,7 +219,17 @@ def run_stages(
     # flat lane's byte-for-byte identity is untouched by this field
     # existing.
     want_tonal = (cfg.fill_technique or "tatami").lower() in (
-        "scanline_tonal", "meander_tonal", "streamline") or cfg.detail_layer
+        "scanline_tonal", "meander_tonal", "streamline", "sketch") or cfg.detail_layer
+    # The per-shape form of the sketch opt-in (shape-layers contract v1.3,
+    # `tier: "sketch"`): a review-screen edit forcing ONE shape to sketch
+    # rendering needs the same raster the design-wide preset does, so
+    # requesting it counts as the explicit opt-in too. Scanned here, not
+    # resolved — a stale id still warns downstream as every stale edit
+    # does, and carrying pixels for it changes no stitch (nothing else
+    # reads them unless a tier consumes them).
+    want_tonal = want_tonal or any(
+        str((ov or {}).get("tier", "")).lower() == "sketch"
+        for ov in cfg.shape_overrides.values())
     if classification.class_ == "gradient" or want_tonal:
         source_pixels = SourcePixels(rgb=p.rgb, px_per_mm=p.px_per_mm,
                                      origin_px=(art_cx, art_cy),

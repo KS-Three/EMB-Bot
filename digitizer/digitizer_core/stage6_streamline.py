@@ -630,9 +630,18 @@ def _trace_layer(poly, tangent_at, darkness_map, ring, slack, shape_id: str
     return runs, len(paths), jumps
 
 
-def streamline_fill(region: Region, source_pixels: SourcePixels, cfg
+def streamline_fill(region: Region, source_pixels: SourcePixels, cfg,
+                    *, darkness_scale: float = 1.0
                     ) -> tuple[list[StitchRun], dict]:
     """One shape -> its streamline runs plus the standard tier report.
+
+    `darkness_scale` attenuates the darkness field every downstream decision
+    reads — d_sep, the highlight cutoff, layered mode's shade split alike —
+    before any of them see it. 1.0 (the default) adds no wrapper at all, so
+    every existing caller is byte-identical by construction; the sketch tier
+    (stage6_sketch, technique row 12) is the one caller that passes less,
+    which is exactly how it buys sparser lines and more bare fabric out of
+    this tier's machinery without owning a second copy of any of it.
 
     Same `(runs, report)` contract as `stitch_shape` and every stage-6
     sibling: `too_thin`, `jumps` (needle lifts this tier itself raised),
@@ -662,6 +671,11 @@ def streamline_fill(region: Region, source_pixels: SourcePixels, cfg
         report["too_thin"] = True
 
     darkness = _darkness_sampler(source_pixels)
+    if darkness_scale != 1.0:
+        raw = darkness
+
+        def darkness(x_mm: float, y_mm: float) -> float:
+            return darkness_scale * raw(x_mm, y_mm)
     sampler = _field_for(source_pixels)
     rd = sampler.region_summary(poly)
     report["field_coherence"] = round(rd.coherence, 4)

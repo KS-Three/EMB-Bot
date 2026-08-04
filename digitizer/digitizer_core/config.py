@@ -169,6 +169,21 @@ class PipelineConfig:
     #             dark→light layering is `streamline_mode` below, built as
     #             the seam documented in stage6_streamline's module
     #             docstring.
+    # "sketch" – the sketch tier (photo plan, technique row 12,
+    #             stage6_sketch): the row-12 PRESET over rows 10+11, not a
+    #             new engine — sparse mono streamline line work (row 10's
+    #             tracer with the darkness field read at half strength, so
+    #             strokes seed ~2.6x sparser at full black and give up to
+    #             bare fabric at twice the highlight cutoff) PLUS the FDoG
+    #             detail block (row 11) appended last, implied by this
+    #             technique whether or not `detail_layer` is set — law 10's
+    #             corpus fingerprint (layered run passes + detail lines,
+    #             fabric as the tone value). Same opt-in plumbing,
+    #             source-pixel gate and tatami-on-empty fallback as the
+    #             three tonal tiers above; `streamline_mode` is ignored
+    #             (a sketch is mono by definition). Also available
+    #             per-shape as the review screen's `tier: "sketch"`
+    #             override (contract v1.3, see the shape_overrides block).
     # "contour" – uniform inward offsets of the outline, sewn inner to outer
     #             (stage6_contour). Rows follow the silhouette instead of
     #             cutting across it, which is the one thing tatami structurally
@@ -394,7 +409,13 @@ class PipelineConfig:
     #                           fill_angle_deg and the per-region PCA; the
     #                           full precedence is stated where stage 7
     #                           decides it.
-    #   tier: str             – "auto" (default) | "satin" | "fill" | "run".
+    #   tier: str             – "auto" (default) | "satin" | "fill" | "run"
+    #                           | "sketch" (contract v1.3, photo plan row
+    #                           12: sparse mono sketch rendering for this
+    #                           one shape — requesting it is also an
+    #                           explicit source-pixel opt-in, and it does
+    #                           NOT imply the design-wide detail block the
+    #                           fill_technique="sketch" preset appends).
     #                           Forces the stitch tier. Geometry the forced
     #                           tier cannot sew falls through the same rescue
     #                           ladder the auto path uses, so artwork never
