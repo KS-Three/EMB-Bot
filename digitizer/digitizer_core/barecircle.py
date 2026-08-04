@@ -153,29 +153,37 @@ def starved_threshold_mm(spacing_mm: float) -> float:
 
     Two terms, both from the tier's own geometry:
 
-      * `machine.CONTOUR_BARE_CORE_MM` (0.87) — the bare dot every healthy
-        shape leaves at its own centre, MEASURED with this instrument at the
-        shipped 0.40 mm spacing (discs of r = 3, 5 and 15 mm and the dumbbell
-        fixture all read 0.863 mm; see that constant's comment for why it is
-        machine-driven, not shape-driven). The `(spacing - FILL_ROW_MM)` term
-        carries the one part of that residue that scales with density — the
-        gap between the dropped terminal ring and the last sewn one — so an
-        opened-up ring tier is allowed a proportionally wider centre.
+      * `machine.CONTOUR_BARE_CORE_MM` (0.13, since the 2026-08-04 shrink —
+        see that constant's comment for the terminal-refine + finishing-pass
+        fix and its own before/after measurements) — the bare dot every
+        healthy shape leaves at its own centre, MEASURED with this
+        instrument at the shipped 0.40 mm spacing. The `(spacing -
+        FILL_ROW_MM)` term carries the one part of that residue that scales
+        with density — the gap between the dropped terminal ring and the
+        last sewn one — so an opened-up ring tier is allowed a
+        proportionally wider centre.
       * half a `spacing_mm` of margin: fire only when the core is at least
         one full ring spacing wider in DIAMETER than the structural dot,
         i.e. when a ring that geometrically had room to exist is MISSING.
         That is the "~one ring spacing" definition of starved, with the
         constants named.
 
-    At the shipped 0.40 mm spacing the line sits at 1.07 mm. Calibration
-    against measured ground truth (`tests/test_barecircle.py` reproduces all
-    of these): tatami's worst bare spot on the fixture logo is 0.090 mm — an
-    order of magnitude under, the reference for what a fill CAN do; healthy
-    contour fixtures read 0.11-0.86; the shapes the old area gate false-fired
-    on read 0.499 (whitebg Sf5200f3f, the config block's "firing on 0.51"),
-    0.644 (Sb253ebba) and 0.863 (dumbbell) — all now silent; the 10-point
-    star's annihilated core reads 1.33 (the config block's "silent on
-    1.47 mm bare" class) — now fires, at 24 % past the line.
+    At the shipped 0.40 mm spacing the line sits at 0.33 mm (was 1.07 before
+    the shrink — the formula and this docstring were both re-derived off the
+    new `CONTOUR_BARE_CORE_MM`, not just the constant swapped in). Current
+    calibration against measured ground truth (`tests/test_barecircle.py`
+    reproduces all of these): tatami's worst bare spot on the fixture logo
+    is 0.090 mm — still under this line but no longer an order of magnitude
+    under it, since a healthy contour fixture is now close to tatami's own
+    floor (discs 0.067-0.070 mm, dumbbell 0.129 mm — all comfortably silent).
+    For history, the shapes the old area gate false-fired on (whitebg
+    Sf5200f3f at 0.499 mm "cited as firing on 0.51", Sb253ebba at 0.644 mm,
+    the dumbbell at its OLD 0.863 mm pre-shrink reading) are silent against
+    either threshold. The 10-point star's annihilated core — still the
+    worst case even after the shrink, because a notched interior the
+    mitred offset annihilates outright is a different failure mode than a
+    healthy shape's structural dot — now measures 0.441 mm (was 1.33 mm
+    pre-shrink) and still fires, at 34 % past the current 0.33 mm line.
     """
     return (machine.CONTOUR_BARE_CORE_MM
             + (spacing_mm - machine.FILL_ROW_MM)
