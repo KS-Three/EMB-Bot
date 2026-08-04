@@ -42,7 +42,7 @@ LONG_JUMPS_TRIMMED = "LONG_JUMPS_TRIMMED"          # travel could not stay insid
 SMALL_SHAPES_AS_RUN = "SMALL_SHAPES_AS_RUN"        # too small for fill or satin; sewn as run outlines instead. extra: {"count": int}
 
 # Stage 6 (contour fill tier)
-CONTOUR_RING_UNREACHABLE = "CONTOUR_RING_UNREACHABLE"  # offset ring too short to sew; that band of fabric is uncovered. extra: {"count": int}
+CONTOUR_RING_UNREACHABLE = "CONTOUR_RING_UNREACHABLE"  # contour left a bare patch wider than a ring spacing (measured, barecircle.py). extra: {"count": int, "rings": int}
 
 # Stage 6 (border tier)
 BORDER_SKIPPED_TOO_NARROW = "BORDER_SKIPPED_TOO_NARROW"  # no room for an outline. extra: {"count": int}

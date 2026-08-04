@@ -21,32 +21,12 @@ const FONT_DIR = join(root, "src", "fonts");
 const BIN_DIR = join(FONT_DIR, "bin");
 const GROUPS = JSON.parse(readFileSync(join(root, "tools", "font-categories.json"), "utf8"));
 
-// license id from the first line of the font's license text
-function licenseId(text) {
-  const t = String(text || "");
-  if (/GNU General Public License|GPL/i.test(t)) return "GPL-3.0";
-  if (/SIL Open Font License|OFL/i.test(t)) return "OFL-1.1";
-  if (/CC[- ]BY[- ]SA/i.test(t)) {
-    const m = /CC[- ]BY[- ]SA[^\d]{0,10}(\d\.\d)/i.exec(t);
-    return "CC-BY-SA-" + (m ? m[1] : "4.0");
-  }
-  if (/CC[- ]BY/i.test(t)) {
-    const m = /CC[- ]BY[^\d]{0,10}(\d\.\d)/i.exec(t);
-    return "CC-BY-" + (m ? m[1] : "4.0");
-  }
-  if (/public domain|CC0/i.test(t)) return "CC0";
-  return "SEE-LICENSE-FILE";
-}
-
-// Truncate at a word boundary instead of mid-word/mid-URL: cut at the last
-// space before the limit and append an ellipsis. Result stays <= limit chars.
-function truncateWords(s, limit) {
-  if (s.length <= limit) return s;
-  const cut = s.slice(0, limit);
-  const lastSpace = cut.lastIndexOf(" ");
-  const base = lastSpace > 0 ? cut.slice(0, lastSpace) : cut.slice(0, limit - 1);
-  return base + "…";
-}
+// License id detection + attribution extraction live in tools/font-license.mjs,
+// SHARED with tools/patch-embf-licenses.mjs so a scratch_ink rebuild and an
+// in-place patch can never derive different notices from the same text.
+// (Audit item 4: the old first-line extraction truncated credits mid-sentence
+// and dropped names that sat past a bare-CR line break.)
+import { licenseId, deriveLicenseFields } from "./font-license.mjs";
 
 // docs/font-license-audit-2026-07-31.md, action checklist items 1-3: these 4
 // fonts are PULLED from the shipping library regardless of grandfathered
@@ -133,7 +113,19 @@ for (const s of sources.sort((a, b) => a.key.localeCompare(b.key))) {
   }
 
   const font = JSON.parse(readFileSync(s.path, "utf8"));
-  const id = licenseId(font.license);
+  // Audit items 5+8: the sidecar src/fonts/<key>.LICENSE.txt is the license
+  // text of record (full upstream text, reconstructed 2026-08-04 for all 68
+  // fonts). Embed the FULL text in the binary's license field — the OFL
+  // requires the complete license + copyright notice to travel with every
+  // copy, and machine-readable metadata is an explicitly blessed channel
+  // (~4.5 KB per font). A font with no sidecar falls back to whatever its
+  // source JSON carried, and the guard test will flag the missing file.
+  const licPath = join(FONT_DIR, s.key + ".LICENSE.txt");
+  const fullLicense = existsSync(licPath)
+    ? readFileSync(licPath, "utf8").trim()
+    : String(font.license || "");
+  font.license = fullLicense;
+  const id = licenseId(fullLicense);
 
   // Fix 2: enforce license policy on NEW (non-grandfathered) fonts.
   if (!GRANDFATHERED.has(s.key) && !ALLOWED_LICENSES.has(id)) {
@@ -153,18 +145,16 @@ for (const s of sources.sort((a, b) => a.key.localeCompare(b.key))) {
     throw new Error("round-trip mismatch: " + s.key + " — " + e.message);
   }
   writeFileSync(join(BIN_DIR, s.key + ".embf"), bytes);
-  // First non-empty line of the upstream license text is the human
-  // attribution ("This font X has been adapted for Ink/Stitch by Y...").
-  // NOTE: most shipped license blobs use bare CR (old-Mac) line endings with
-  // no LF at all, so a plain /\r?\n/ split never fires and "first line"
-  // degenerates to the whole blob truncated mid-word. Split on CRLF/CR/LF.
-  const firstLine = String(font.license || "").split(/\r\n|\r|\n/)
-    .map((l) => l.trim()).filter(Boolean)[0];
-  const attribution = (firstLine ? truncateWords(firstLine, 200) : "")
+  // User-visible attribution: first paragraph of the license text plus the
+  // upstream copyright notice — see extractAttribution in font-license.mjs
+  // for the full rules (and ATTRIBUTION_OVERRIDES for the hand-checked
+  // exceptions like the Geneva/Hershey credit).
+  const attribution = deriveLicenseFields(s.key, fullLicense).attribution
     || (font.name + " — see license inside the font binary");
   manifest.push({
     key: s.key,
-    name: font.name || s.key,
+    // .trim(): initials_medium shipped as "Initials Medium " (audit §2)
+    name: (font.name || s.key).trim(),
     tier: s.tier,
     group: GROUPS[s.key] || "More",
     licenseId: id,
