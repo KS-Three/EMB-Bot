@@ -270,6 +270,33 @@ test("canonicalShapeEdits round-trips every border value — off, auto AND bean 
   });
 });
 
+// ---- underlay_style override (shape-layers contract v1) --------------------
+//
+// Mirrors digitizer_service/app.py's own closed vocabulary (fabrics.py's
+// underlay ids). Unlike `tier`/`border` it has no "auto" spelling of its
+// own — the absence of the key IS auto, exactly like `stitched` above and
+// `fill_angle_deg`'s null.
+
+test("canonicalShapeEdits accepts a valid underlay_style, rejects an unknown one, and combines it with the other override fields", async () => {
+  stubStorage({});
+  const { canonicalShapeEdits } = await import("./digitizer.js");
+  const el = digitizedElement({
+    shapeOverrides: {
+      Sedge: { underlay_style: "edge_zigzag" },
+      Snone: { underlay_style: "none" },
+      Sjunk: { underlay_style: "sparkly" }, // not in the vocabulary -> dropped
+      Sboth: { underlay_style: "zigzag", tier: "fill", thread_index: 3 },
+    },
+  });
+  expect(canonicalShapeEdits(el)).toEqual({
+    shape_overrides: {
+      Sedge: { underlay_style: "edge_zigzag" },
+      Snone: { underlay_style: "none" },
+      Sboth: { thread_index: 3, tier: "fill", underlay_style: "zigzag" },
+    },
+  });
+});
+
 test("a border override rides buildDigitizeConfig and changes the cache key (editsKey), and clearing it restores the no-edits config", async () => {
   stubStorage({});
   const { buildDigitizeConfig, canonicalShapeEdits, editsKey } = await import("./digitizer.js");
@@ -396,6 +423,37 @@ test("reorderWithinLayer on a two-shape layer is a full reversal either directio
   const { reorderWithinLayer } = await import("./digitizer.js");
   expect(reorderWithinLayer(["A", "B"], "A", 1)).toEqual({ B: 0, A: 1 });
   expect(reorderWithinLayer(["A", "B"], "B", -1)).toEqual({ B: 0, A: 1 });
+});
+
+test("editsKey distinguishes an underlay_style override from no edits, and a no-op round trip stays stable", async () => {
+  stubStorage({});
+  const { canonicalShapeEdits, editsKey } = await import("./digitizer.js");
+  const plain = editsKey(canonicalShapeEdits(digitizedElement()));
+  const edited = editsKey(
+    canonicalShapeEdits(digitizedElement({ shapeOverrides: { Sa: { underlay_style: "none" } } }))
+  );
+  expect(edited).not.toBe(plain);
+  const again = editsKey(
+    canonicalShapeEdits(digitizedElement({ shapeOverrides: { Sa: { underlay_style: "none" } } }))
+  );
+  expect(again).toBe(edited);
+});
+
+test("editsKey distinguishes standalone tier: fill, underlay: 'zigzag', and both together as three different edits", async () => {
+  stubStorage({});
+  const { canonicalShapeEdits, editsKey } = await import("./digitizer.js");
+  const tierOnly = editsKey(
+    canonicalShapeEdits(digitizedElement({ shapeOverrides: { Sa: { tier: "fill" } } }))
+  );
+  const underlayOnly = editsKey(
+    canonicalShapeEdits(digitizedElement({ shapeOverrides: { Sa: { underlay_style: "zigzag" } } }))
+  );
+  const both = editsKey(
+    canonicalShapeEdits(
+      digitizedElement({ shapeOverrides: { Sa: { tier: "fill", underlay_style: "zigzag" } } })
+    )
+  );
+  expect(new Set([tierOnly, underlayOnly, both]).size).toBe(3);
 });
 
 test("editsKey distinguishes a `stitched` restore from no edits, and a no-op stitched round trip stays stable", async () => {

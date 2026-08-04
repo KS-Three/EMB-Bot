@@ -376,6 +376,23 @@ def test_sew_order_override_resequences_shapes_within_a_layer_over_http(client):
     assert after[sewn_second["shape_id"]]["sew_block"] == sewn_first["sew_block"]
 
 
+def test_underlay_style_override_round_trips_over_http_and_changes_stitch_count(client):
+    """A per-shape underlay_style override reaches the emitted design over the
+    real HTTP seam, not just the pipeline's internal Region.meta — the fill-
+    classified shape's stitch count actually changes when its underlay is
+    turned off."""
+    first = _digitize(client, {"target_width_mm": 80.0, "preflight": False})
+    shapes = {s["thread_number"]: s for s in first["review"]["shapes"]}
+    red = shapes["1704"]     # big filled circle, fill tier
+    assert red["tier"] == "fill"
+
+    second = _digitize(client, {
+        "target_width_mm": 80.0, "preflight": False,
+        "shape_overrides": {red["shape_id"]: {"underlay_style": "none"}},
+    })
+    assert second["design"]["stitchCount"] < first["design"]["stitchCount"]
+
+
 def test_stitched_default_and_override_round_trip_over_http(client):
     """The service-layer half of the enclosed-background restore fix: an
     `enclosed_background`-tagged region reports `stitched: False` by default
@@ -446,6 +463,22 @@ def test_parse_config_accepts_a_sew_order_override():
     assert _parse_config(json.dumps({"shape_overrides": {"S1": {"sew_order": None}}})) == {}
 
 
+def test_parse_config_accepts_and_lowercases_an_underlay_style_override():
+    """Same closed-vocabulary canonicalization as `border`/`tier`: a valid
+    style lowercases and survives; `null` is absence, same as every other
+    field here."""
+    from digitizer_service.app import _parse_config
+
+    assert _parse_config(json.dumps(
+        {"shape_overrides": {"S1": {"underlay_style": "Edge_Zigzag"}}})) == \
+        {"shape_overrides": {"S1": {"underlay_style": "edge_zigzag"}}}
+    assert _parse_config(json.dumps(
+        {"shape_overrides": {"S1": {"underlay_style": "none"}}})) == \
+        {"shape_overrides": {"S1": {"underlay_style": "none"}}}
+    assert _parse_config(json.dumps(
+        {"shape_overrides": {"S1": {"underlay_style": None}}})) == {}
+
+
 def test_parse_config_accepts_a_stitched_override():
     """A plain boolean, either direction — and `False` survives canonicalization
     (it is a real override value, not an absence, unlike `None`)."""
@@ -461,6 +494,8 @@ def test_parse_config_accepts_a_stitched_override():
     {"deleted_shape_ids": "S1"},                            # not a list
     {"shape_overrides": {"S1": {"tier": "zigzag"}}},        # unknown tier
     {"shape_overrides": {"S1": {"border": "dotted"}}},      # unknown border
+    {"shape_overrides": {"S1": {"underlay_style": "sparkly"}}},  # unknown underlay style
+    {"shape_overrides": {"S1": {"underlay_style": 3}}},     # not a string
     {"shape_overrides": {"S1": {"speed": 9}}},              # unknown key
     {"shape_overrides": {"S1": {"thread_index": 99999}}},   # off the chart
     {"shape_overrides": {"S1": {"thread_index": True}}},    # bool is not an index

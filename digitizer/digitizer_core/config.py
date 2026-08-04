@@ -98,7 +98,15 @@ class PipelineConfig:
     # None = per-region principal axis (what the browser engine does, and what
     # beat a fixed angle in practice). A number forces every region to it.
     fill_angle_deg: float | None = None
-    # None = the fabric preset's fill underlay style.
+    # None = the fabric preset's fill underlay style. One of "none" |
+    # "edge_run" | "center_run" | "edge_zigzag" | "edge_lattice" |
+    # "double_lattice" | "zigzag" (fabrics.py's own vocabulary). Feeds the
+    # fill and contour tiers only — satin underlay is a separate, narrower
+    # knob (fabric.satin_underlay, gated by `underlay` below, not this field);
+    # see the shape_overrides block for why that stays engine-internal for
+    # now. Per-shape intent overrides this the same way border's mode is
+    # overridden: `Region.meta["underlay_style"]` beats it in both
+    # directions, rides `match_shape_ids` the same as border/tier/fill_angle.
     underlay_style: str | None = None
     underlay: bool = True
 
@@ -372,6 +380,23 @@ class PipelineConfig:
     #                           it, and fills every unpinned slot with
     #                           nearest-neighbour exactly as before, so a
     #                           layer with no override sews byte-identical.
+    #   underlay_style: str    – this shape's fill/contour underlay style
+    #                           (the `underlay_style` field's own vocabulary,
+    #                           "none" included). Beats the global
+    #                           `underlay_style` AND `underlay` in both
+    #                           directions — an explicit per-shape style wins
+    #                           even with underlay off design-wide, and an
+    #                           explicit "none" wins even with it on — the
+    #                           same "beats the mode both ways" contract
+    #                           `border` already has. Does not reach satin:
+    #                           satin's own underlay is `fabric.satin_underlay`,
+    #                           gated only by `underlay`, and stays engine-
+    #                           internal — its vocabulary is effectively binary
+    #                           (a spine run, plus zigzag above
+    #                           machine.SATIN_ZIGZAG_ABOVE_MM) where fill's is
+    #                           seven styles, so it was a materially different,
+    #                           lower-value knob to expose and is deferred, not
+    #                           forgotten.
     # Values ride Region.meta so stages 5 and 7 pick them up where each
     # decision is made. Unknown shape_ids warn (SHAPE_EDIT_UNKNOWN_ID).
     shape_overrides: dict = field(default_factory=dict)

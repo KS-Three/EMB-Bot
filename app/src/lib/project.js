@@ -93,8 +93,9 @@ export const DEFAULT_DIGITIZE_PARAMS = {
 //                       sewIndex, ... }] }, see digitizer.js reviewFromJob).
 //   `shapeOverrides`  — keyed by shape_id; PipelineConfig.shape_overrides
 //                       field names verbatim (thread_index, fill_angle_deg,
-//                       tier, border, layer, stitched) plus an app-only
-//                       `rgb` for the swatch, stripped before the wire.
+//                       tier, border, layer, stitched, underlay_style) plus
+//                       an app-only `rgb` for the swatch, stripped before
+//                       the wire.
 //                       `stitched: true` restores a BACKGROUND_ENCLOSED
 //                       region the digitizer excluded by default (contract
 //                       v1.1) — distinct from `deletedShapeIds`, which is a

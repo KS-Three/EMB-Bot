@@ -253,6 +253,22 @@
 
   const SHAPE_ANGLES = [{ value: null, label: "Auto angle" }, ...FILL_ANGLES.slice(1)];
 
+  // Underlay style (shape-layers contract v1): fabrics.py's own vocabulary,
+  // "none" included. Fill/contour-classified shapes only — a satin shape's
+  // underlay is a separate, fabric-driven knob this override does not touch
+  // (digitizer_core/config.py's shape_overrides docstring), so the control
+  // only shows for tier === "fill" below, same as the fill-angle dropdown.
+  const SHAPE_UNDERLAYS = [
+    { value: null, label: "Auto underlay" },
+    { value: "none", label: "None" },
+    { value: "edge_run", label: "Edge run" },
+    { value: "center_run", label: "Center run" },
+    { value: "edge_lattice", label: "Edge + lattice" },
+    { value: "edge_zigzag", label: "Edge + zigzag" },
+    { value: "double_lattice", label: "Double lattice" },
+    { value: "zigzag", label: "Zigzag" },
+  ];
+
   $: overrides = element.shapeOverrides || {};
   $: deletedIds = element.deletedShapeIds || [];
   $: reviewShapes = (element.review && element.review.shapes) || [];
@@ -369,6 +385,15 @@
     setOverride(sid, { border: v === "default" ? null : v });
   }
 
+  // Per-shape underlay-style override (shape_overrides[sid].underlay_style,
+  // shape-layers contract v1). Unlike border, it has no "auto" override
+  // spelling of its own — absence of the key IS "use the design setting" —
+  // so "auto" is only ever the no-override sentinel here.
+  function overrideUnderlay(row, ov) {
+    const e = ov[row.id] || {};
+    return e.underlay_style == null ? "auto" : e.underlay_style;
+  }
+
   function rowName(row) {
     return row.threadNumber ? "#" + row.threadNumber : "Shape";
   }
@@ -425,6 +450,10 @@
 
   function setShapeAngle(sid, v) {
     setOverride(sid, { fill_angle_deg: v === "auto" ? null : parseFloat(v) });
+  }
+
+  function setShapeUnderlay(sid, v) {
+    setOverride(sid, { underlay_style: v === "auto" ? null : v });
   }
 
   // Recolor: ThreadPicker hands back an rgb; the engine wants an index into
@@ -738,6 +767,16 @@
                         >
                           {#each SHAPE_ANGLES as a}
                             <option value={a.value == null ? "auto" : String(a.value)}>{a.label}</option>
+                          {/each}
+                        </select>
+                        <select
+                          class="dgp-lsel"
+                          value={overrideUnderlay(row, overrides)}
+                          on:change={(e) => setShapeUnderlay(row.id, e.currentTarget.value)}
+                          aria-label="Underlay style"
+                        >
+                          {#each SHAPE_UNDERLAYS as u}
+                            <option value={u.value == null ? "auto" : u.value}>{u.label}</option>
                           {/each}
                         </select>
                       {/if}
