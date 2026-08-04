@@ -136,24 +136,28 @@ test("stale layer edits: service flags them, the panel surfaces them, Clear + Ap
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
   await page.getByRole("button", { name: "Digitize", exact: true }).click();
 
-  // Three shapes, each an editable layer row: black square, red square, AND
-  // the white ground -- the panel's canvas re-encode writes an OPAQUE-ALPHA
-  // PNG, and the pipeline reads a fully opaque alpha channel as "no
-  // background here", so white becomes a real region (verified against the
-  // live service with an RGBA copy of the fixture: 2 shapes as RGB, 3 as
-  // RGBA).
+  // Editable layer rows: the black square and the red square -- plus,
+  // depending on the service's stage1 build, the white ground. The panel's
+  // canvas re-encode writes an OPAQUE-ALPHA PNG; a pipeline that trusts a
+  // fully opaque alpha channel as "no background here" promotes white to a
+  // real region (3 rows), while one that discards the information-free
+  // all-opaque channel detects the white ground as background (2 rows).
+  // This spec's subject is stale-edit recovery, not background detection,
+  // so it accepts either and only pins that the count stays stable through
+  // the recovery flow below.
   const rows = page.locator(".dgp-layer");
-  await expect(rows).toHaveCount(3, { timeout: 120_000 });
-  await expect(page.locator(".dgp-stats")).toBeVisible();
+  await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
+  const rowCount = await rows.count();
+  expect([2, 3]).toContain(rowCount);
 
   // ---- make a real per-shape edit and apply it ---------------------------
   // The edit vehicle is the Border override select (area 5's other flagged
   // gap -- this doubles as its live-wire verification): bean border on the
   // BLACK SQUARE's shape, an override the service accepts and sews. The
-  // black square, not the first row: the first row is the white ground,
-  // whose centroid sits at the design center -- bucket (0,0) at ANY width,
-  // so an edit on IT would never go stale. The off-center square is the one
-  // whose id regenerates.
+  // black square specifically, never a white-ground row (present only in
+  // the 3-row case): the ground's centroid sits at the design center --
+  // bucket (0,0) at ANY width, so an edit on IT would never go stale. The
+  // off-center square is the one whose id regenerates.
   const blackRow = rows.filter({ hasText: "#0020" });
   const statsBefore = await page.locator(".dgp-stats").innerText();
   await blackRow.getByLabel("Border").selectOption("bean");
@@ -208,6 +212,6 @@ test("stale layer edits: service flags them, the panel surfaces them, Clear + Ap
     page.getByText("One layer edit no longer matches any shape in the art, so it wasn't applied.")
   ).toBeHidden();
   await expect(unmatched).toBeHidden();
-  await expect(rows).toHaveCount(3);
+  await expect(rows).toHaveCount(rowCount);
   await expect(blackRow.getByLabel("Border")).toHaveValue("default");
 });
