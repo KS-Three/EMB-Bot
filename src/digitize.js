@@ -566,16 +566,45 @@
     if (!probe.runs.length) return empty;
     const bb = probe.bbox;
     const bboxWmm = (bb.x1 - bb.x0) / pxPerMm, bboxHmm = (bb.y1 - bb.y0) / pxPerMm;
-    const fit = garments.fitScale(bboxWmm || 1, bboxHmm || 1, garment);
+    // rotDeg is needed here (ahead of its other use below, near T()) because
+    // the fit-to-hoop scale/clamp must be computed against the ROTATED
+    // footprint, not the unrotated glyph bbox. Rotation is applied only as a
+    // pure post-transform on the emitted stitches (T(), further down) — if
+    // the scale were chosen from the unrotated bbox, a non-180 rotation could
+    // (and did — Kent's report) push the actual, correctly-reported rotated
+    // bbox outside the hoop with nothing left to reclamp it. 180 alone never
+    // exposed this: a rectangle rotated 180 about its own center keeps the
+    // same axis-aligned bbox, so the stale unrotated scale still happened to
+    // fit. Mirrors buildImportedDesign's rotate-before-scale/clamp pattern
+    // (dstimport.js, 2026-07-29) in spirit, but computed as the exact AABB of
+    // the UNROTATED glyph bbox RECTANGLE rotated by rotDeg (the standard
+    // |cos|+|sin| rotated-bounding-box formula), not by rotating the probe's
+    // actual (coarsely-sampled) outline points. The glyph ink is always a
+    // subset of its own bbox rectangle, so this bound can only be >= the
+    // true rotated glyph bbox — guaranteed never to under-clamp (no overflow
+    // risk), at the cost of being mildly conservative off quadrant angles
+    // (e.g. 45deg) versus the glyph's exact rotated silhouette. Text's satin
+    // routing itself stays entirely in the unrotated glyph frame — rotating
+    // column geometry would change stitch quality, which this must not touch.
+    const rotDeg = o.rotationDeg || 0;
+    let fitBboxWmm = bboxWmm, fitBboxHmm = bboxHmm;
+    if (rotDeg) {
+      const fitRad = (rotDeg * Math.PI) / 180;
+      const absCos = Math.abs(Math.cos(fitRad)), absSin = Math.abs(Math.sin(fitRad));
+      fitBboxWmm = bboxWmm * absCos + bboxHmm * absSin;
+      fitBboxHmm = bboxWmm * absSin + bboxHmm * absCos;
+    }
+    const fit = garments.fitScale(fitBboxWmm || 1, fitBboxHmm || 1, garment);
     let sc = (fit.scale > 0 && isFinite(fit.scale)) ? fit.scale : 1;
     let designWmm = fit.targetWmm, designHmm = fit.targetHmm;
     // Explicit width override (Slice 3): replaces the auto garment fit. Clamp the
     // requested width into [1, hoopWmm], then ALSO clamp so height still fits the
     // hoop — same two-constraint min() fitScale itself uses, just seeded from the
-    // requested width instead of the natural bbox. Reported widthMM/heightMM
+    // requested (POST-rotation, same convention as buildImportedDesign's
+    // targetWidthMm) width instead of the natural bbox. Reported widthMM/heightMM
     // become the actual design dims (bbox*sc), not the (unused) fit target.
     if (typeof o.targetWidthMm === "number" && isFinite(o.targetWidthMm) && o.targetWidthMm > 0) {
-      const bw = bboxWmm || 1, bh = bboxHmm || 1;
+      const bw = fitBboxWmm || 1, bh = fitBboxHmm || 1;
       const hoopWmm = units.inToMm(garment.widthIn), hoopHmm = units.inToMm(garment.heightIn);
       const clampedTargetWmm = Math.min(Math.max(o.targetWidthMm, 1), hoopWmm);
       sc = Math.min(clampedTargetWmm / bw, hoopHmm / bh);
@@ -610,8 +639,8 @@
     // reasoning as arcDeg/offsetXMm being pure placement, not generation,
     // concerns. rotationDeg=0 (absent) must be byte-identical to no rotation
     // at all: cosR=1/sinR=0 makes the rotated branch collapse to the original
-    // px/py unchanged.
-    const rotDeg = o.rotationDeg || 0;
+    // px/py unchanged. (rotDeg itself is declared earlier, above the fit/
+    // scale computation — it's needed there now too; see that comment.)
     const rotRad = (rotDeg * Math.PI) / 180;
     const cosR = Math.cos(rotRad), sinR = Math.sin(rotRad);
     // Mirror X / Mirror Y (Lettering parity round): reflect the ALREADY-
