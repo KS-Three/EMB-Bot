@@ -157,7 +157,8 @@ hand-rolling it in JS.
 - **Env**: Python 3.14 venv at `digitizer/.venv` (gitignored). Run tests with
   `cd digitizer && .venv/Scripts/python -m pytest -q` — a bare
   `python probe.py` will NOT put cwd on `sys.path`, must use `python -m pytest`
-  or set `PYTHONPATH=.`. 402 tests (verified 2026-08-03).
+  or set `PYTHONPATH=.`. 567 tests as of 2026-08-04 — see "Running things"
+  below for the current pass/fail split, this count only grows.
 - **Pipeline**: image → **classify** (`stage0_classify.py`) → prep
   (background mask, `stage1_prep.py`) → segment, one of two stages depending
   on class: `stage2_quantize.py` (global k-means + CIEDE2000 thread snapping,
@@ -248,12 +249,17 @@ Never `git add -A` from the repo root without reviewing what it's about to
 stage first — a worktree holding another lane's live uncommitted work is
 exactly the kind of thing that gets swept in by accident.
 
-**Snapshot as of 2026-08-03 (re-verify, don't trust it):** one worktree,
-`.claude/worktrees/bg-guard` on `fix/bg-existence-guard`, clean tree, one
-commit ahead of `main` (`fix(digitizer): stage 1 asks whether a background
-exists`) — **not merged**. It's the nearest live thread; six stale worktrees
-were cleaned up on 2026-08-02, so this is the only lane in flight. `main`
-also sits one docs commit ahead of `origin/main` locally.
+**Snapshot as of 2026-08-04 (re-verify, don't trust it):** the 2026-08-03
+snapshot's one worktree (`bg-guard` / `fix/bg-existence-guard`) no longer
+exists — gone from both `git worktree list` and `git log --all` this pass,
+so either merged under a different branch name or abandoned; not
+independently confirmed either way. What's actually live now is a large
+parallel-lanes fleet under `.claude/worktrees/` (dozens of `agent-*`
+worktrees, one per feature slice — this is the normal way work happens
+here, not an anomaly), most sitting on already-merged branch tips. Don't
+assume any specific one is still in flight without checking; a couple were
+observed `locked` (actively in use by another session) during this pass and
+were left untouched, per the "never touch worktrees" rule.
 
 ## What's next (queue as of 2026-08-03)
 
@@ -270,9 +276,13 @@ Session handoff with the full context:
    real Studio uploads) is fixed too, merged PR #22; see MASTER_SCOPE.md
    area 1 for the full breakdown, including the one thing still not
    verified (a live browser run of the fix, vs. the HTTP-level
-   reproduction done so far). Also still queued: land `fix/bg-existence-guard` (this remote
-   session's checkout has no such branch/worktree — re-verify locally, per
-   this section's own warning, before assuming it's gone or merged).
+   reproduction done so far). The `fix/bg-existence-guard` branch/worktree
+   this bullet used to queue no longer exists anywhere in this checkout
+   (confirmed 2026-08-04, see "Branches & worktrees" above) — its content
+   appears superseded by PR #22's opaque-alpha fix (same problem class:
+   background detection defeated on real uploads), but that wasn't traced
+   commit-for-commit, so treat it as closed-by-inference, not
+   confirmed-merged.
 2. **M0 + M1 of the DT-first migration** — this is the sequencing call that
    is easy to miss: once the regressions close, do **not** go straight to
    photo-digitizing steps 5+. M0 instruments `digitizer/tools/shape_lens.py`
@@ -308,7 +318,12 @@ Session handoff with the full context:
    architecture: `docs/dt-first-architecture-2026-08-01.md` §2 and
    `docs/masters-teardown-2026-08-01.md`.
 3. **Photo-digitizing plan steps 5+** (`docs/photo-digitizing-plan-2026-07-31.md`)
-   — direction fields, mono-tonal tiers, streamline/portrait.
+   — **rows 6/8/9/10 are now built and merged**: direction field (row 6),
+   scan-line mono tonal (row 8), meander mono tonal (row 9), and streamline
+   thread-paint in both its mono and layered-multicolour slices (row 10) —
+   see MASTER_SCOPE.md area 1 for the commit-level breakdown. Whatever the
+   plan doc queues past row 10 is still open; re-check the plan doc itself
+   rather than trust this bullet's row count going forward.
 4. **DT-first M2/M3 onward** — the classifier swap itself, the change a
    customer can see. Corpus-gated *and* sew-out-gated, and it needs the
    corpus disagreement table M0 produces before it can be judged.
@@ -374,20 +389,20 @@ don't push for it.
 ## Running things
 
 All three counts below were re-run and verified 2026-08-04 (latest pass, on
-`origin/main` post PR #22/#23 — the two most recent merges) — if one comes
-back lower, something regressed; don't assume the doc drifted.
+`origin/main` post PR #28 — all of #16–#28 merged) — if one comes back
+lower, something regressed; don't assume the doc drifted.
 
 ```bash
-node --test                 # engine tests (root) — 266/266
+node --test                 # engine tests (root) — 267/267
 cd app && npm install && npm run dev     # Studio dev server
-cd app && npm test          # Studio tests (vitest) — 331/331 (24 files)
+cd app && npm test          # Studio tests (vitest) — 344/344 (24 files)
 node tools/build-embf.mjs   # rebuild the binary font library (see section above)
 
-cd digitizer && .venv/Scripts/python -m pytest -q   # Python digitizer tests -- 507/510 (~4 min)
+cd digitizer && .venv/Scripts/python -m pytest -q   # Python digitizer tests -- 564/567 (~5 min)
 cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0.1:8721
 ```
 
-**507/510, not 404/407.** The 3 failures are all **pre-existing,
+**564/567, not 404/407.** The 3 failures are all **pre-existing,
 container-environment** byte-identical/golden-hash mismatches this note has
 flagged since 2026-08-03 (`test_flat_lane_byte_identical.py::…
 [logo_alpha.png]`, `test_pushcomp.py::…[logo_whitebg.png-towel]`,
