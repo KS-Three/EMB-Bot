@@ -11,7 +11,44 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-04 (font-license audit items 4–10 + 12 executed —
+**Last updated:** 2026-08-04, later the same day — docs refresh after PRs
+#8–#15 finished merging into `main` (this doc's previous pass, dated below,
+was written mid-batch and undercounted what had already landed), touched up
+once when **PR #23 (meander tonal tier, row 9) merged mid-refresh**, then
+again minutes later when **PR #22 (opaque-alpha fix + `debugviz.
+direction_field` restore) also merged**. Both touch-ups were re-verified
+directly against the new `main` tip each time, not assumed: combined suite
+on current `main` (`c0cb246`) now reads engine `node --test` **266/266**,
+Studio `npx vitest run` **331/331** (24 files), digitizer `pytest` **507
+passed / 3 failed** — back down to exactly the three long-standing
+container-environment golden mismatches cited repeatedly in this project's
+PR history (`test_flat_lane_byte_identical`, `test_pushcomp`,
+`test_stage2_photo_segment`, all `logo_alpha.png`/`logo_whitebg.png`-towel).
+
+The `test_directionfield::test_drone_render_smoke_and_debug_artifact`
+failure this note tracked through two earlier revisions (the direction-field
+branch had merged without its `debugviz.direction_field` render function —
+an agent lane's uncommitted worktree edit) **is gone, confirmed**: #22
+restored the function and is now on `main`. Verified by running the
+digitizer suite against a fresh `origin/main` worktree after the merge, not
+by assuming the PR description was correct.
+
+Substance changes found on `main` since the prior pass below: the full
+`BACKGROUND_ENCLOSED` stack (pipeline + service contract + Studio Layers-panel
+restore UI) is now merged — area 1's bullet below was still describing it as
+"not built"; the rotation/hoop-fit auto-fit bug flagged as unfixed in area 3
+is fixed (`8e668d3`); a Playwright wizard-smoke e2e exists and passes
+(1/1, re-run this session); the PDF worksheet export gained dedicated test
+coverage (area 4 was still describing zero coverage); direction field (photo
+plan row 6), scan-line mono tonal (row 8), and meander tonal (row 9, PR #23)
+all landed; the opaque-alpha bug that silently defeated background
+detection on every real Studio upload (PR #22) is fixed, so
+`BACKGROUND_ENCLOSED` is now genuinely end-to-end, not just unit/service-
+tested. Separately, **6 PRs (#16–#21) remain open/draft against `main`,
+pending review** — none of that work is described as shipped below, only
+flagged per-area with its PR number.
+
+Prior update 2026-08-04 (font-license audit items 4–10 + 12 executed —
 full license texts on disk/served/embedded, complete attributions, credits
 links; the lawyer consult (item 11) is now the only open compliance gate.
 Prior update 2026-08-03: the gradient angle-fragmentation fix landed
@@ -59,6 +96,21 @@ it's worth Kent confirming the intended reading rather than assuming.
 (the "third opinion" `digitizer/README.md` calls for). Fixing the codec itself
 is explicitly Kent's call — every existing EMB-Bot DST is affected by any fix.
 
+**Independent corroboration exists but is not yet on `main`:** open PR #18
+(`pes-crossval`, pending review) adds a browser-encode → pyembroidery-decode
+cross-validation harness with DST as the control case — it reproduces the
+transposition independently (anti-transpose, rms 0.0), which the PR frames as
+validating the harness method itself, not as new information about the bug.
+The PR's real news is about the other two encoders, previously unchecked
+against an independent implementation: it reports the browser **PES**
+encoder as unreadable by standard readers (a 5-byte stitch-stream
+mis-framing plus two non-standard fields), worse off than DST since there's
+no PES importer to create a migration trap; and **EXP** as geometrically
+standard-conformant but truncated by conformant readers at the first trim
+(2-byte trim record vs. the standard's 4-byte form). No encoder was changed —
+this is a findings-only PR, same Kent's-call posture as the DST bug — and
+it is **not merged**, so treat these as reported-not-verified until it lands.
+
 ### Font license compliance gap — REMEDIATED 2026-08-04 except the lawyer consult
 
 `docs/font-license-audit-2026-07-31.md` action checklist: **items 1–3 done**
@@ -80,6 +132,19 @@ is Kent's real-world action, before first dollar. Worst case per the audit:
 relabel 14 binaries + customer note, or pull 14 fonts. Also parked for Kent:
 the `satin-fonts.js` legacy-registry residual (audit §7) if `EMB-Bot.html` is
 ever distributed, and the bluenesia permission screenshots (audit §8).
+
+**A different resolution to this same gate is drafted but not merged:** open
+PR #16 (`sharealike-pull`, pending review) executes a different, already-made
+Kent decision — pull all 13 ShareAlike fonts (11 CC-BY-SA-4.0 + 2
+CC-BY-SA-2.5) from the shipping library rather than wait on the consult,
+taking the library 68 → 55 with zero ShareAlike remaining and, per the PR,
+making the lawyer consult non-launch-blocking (the brief stays on file as a
+restore path). Stacked on it, PR #17 (`legacy-font-audit`, pending review)
+removes the same pulled fonts from the legacy `satin-fonts.js` registry
+(21 → 14 entries) that audit §7 flagged as a residual exposure. **Neither PR
+is on `main`** — the 68-font count and the open lawyer-consult gate above are
+still what's actually shipping; if/when #16 merges this whole subsection
+should be rewritten, not just updated.
 
 ### No physical sew-out testing has occurred yet
 
@@ -112,10 +177,21 @@ notes it was retired in favor of "feed it clean flat art," not because it's
 broken. The Python pipeline is the active target: `digitizer/README.md`
 states "build steps 1, 3, 4 and 8 of 11" — SAM2 segmentation deferred,
 stitch processor / preflight scoring / review-UI polish still to come.
+Running in parallel with that step numbering, `docs/photo-digitizing-plan-
+2026-07-31.md`'s mono-tonal/portrait technique rows have started landing:
+direction field (row 6, structure-tensor + ETF per Kang 2007), scan-line
+mono tonal (row 8), and now meander tonal (row 9, **PR #23, merged**) are
+all on `main` and counted below. One more sits in open, unmerged PRs:
+streamline mono slice (row 10, PR #20), with a multi-color layered-mode
+follow-up stacked on top (PR #25) — neither on `main`, neither counted
+below.
 
 **Confidence: Low** beyond flat spot-color art. Flat-logo digitizing (both
-implementations) is Medium — 265/265 JS tests and 402/402 Python tests pass,
-and the geometry is internally consistent. `hardening-closeout-2026-08-02.md`
+implementations) is Medium — **266/266** JS tests and **507/510** Python
+tests pass (verified this session on `origin/main`; see the "Last updated"
+note above — exactly the 3 pre-existing container goldens now, the 4th
+regression this note tracked through two revisions is fixed), and the
+geometry is internally consistent. `hardening-closeout-2026-08-02.md`
 independently re-measured the five newest Python features and found
 defects the shipped test suites couldn't see in all five; one of those five
 is now fixed (see below), four remain open:
@@ -170,24 +246,47 @@ is now fixed (see below), four remain open:
   angle sharing remain explicit, documented non-goals of this fix. Full
   writeup: the plan doc's "Defect 1 update" section.
 
-  **`BACKGROUND_ENCLOSED` (enclosed-white-icon drop) remains unresolved.**
-  Root cause: `stage1_prep.py::prep` (the no-alpha color-heuristic branch),
-  not `stage3_segment.py` as first suspected — enclosed pixels are folded
-  into `bg`/excluded from `fg` before stage 3 or vectorization ever run, so
-  they never become a `Region` with a `shape_id`. The warning's own "toggle
-  it back on in review" claim is currently **false**: there is no shape for
-  a review-screen edit to reference. **A full design pass landed
-  2026-08-04**
-  (`docs/superpowers/plans/2026-08-04-enclosed-background-restore-design.md`):
-  enclosed pixels join `fg` instead of `bg`, get tagged
-  `meta["enclosed_background"]` post-vectorization, a new `stitched`
-  shape-override key (same shape as `border`/`tier`) restores one,
-  excluded from stitching at `plan_stitches` only — never from
-  `PipelineResult.regions`, so Studio's existing Layers-panel delete/
-  restore UI has something real to render. Still not built — bigger than a
-  DT-first M0/M1 slice, spans pipeline internals, the service contract, and
-  Studio UI. Open questions (overlap-threshold tuning, stage-5 interaction)
-  are flagged in the design doc for whoever builds it.
+  **`BACKGROUND_ENCLOSED` (enclosed-white-icon drop) — the full stack is now
+  BUILT and merged to `main`**, closing out the design pass this section
+  used to describe as "not built." Root cause was `stage1_prep.py::prep`
+  (the no-alpha color-heuristic branch): enclosed pixels used to fold into
+  `bg`/get excluded from `fg` before stage 3 or vectorization ever ran, so
+  they never became a `Region` with a `shape_id`, which made the warning's
+  own "toggle it back on in review" claim false — there was no shape for a
+  review edit to reference. All three layers of the fix landed: **pipeline**
+  (`c1b9e35` — enclosed pixels join `fg`, `stage4_vectorize.
+  tag_enclosed_background` tags `meta["enclosed_background"]`
+  post-vectorization, `pipeline.py` resolves a `stitched` shape-override key
+  defaulting to "not enclosed," and exclusion happens at `plan_stitches`
+  only — never from `PipelineResult.regions`); **service contract**
+  (`6651c96`, merged via PR #9 — `digitizer_service/app.py` accepts/
+  validates `stitched` as a shape-override key and exposes it per-shape on
+  `review.shapes`, with a real end-to-end round trip against the repro
+  fixture in `test_service.py`); **Studio UI** (`8e42313`, merged via PR
+  #10 — the Layers panel gives an unstitched shape its own dimmed row state
+  ("not sewn — enclosed area", distinct from user-deleted), a restore
+  action staged through the existing "Apply layer changes" flow, and an
+  undo control). All of this is inside the 507/510 Python and 331/331
+  Studio counts verified above.
+
+  **The one caveat blocking real end-to-end verification is FIXED, merged
+  PR #22:** Studio's actual upload path re-encodes every image through a
+  canvas, which manufactures an all-255 opaque alpha channel; `stage1_prep`'s
+  alpha branch used to treat *any* alpha channel as ground truth, so a
+  fully-opaque one read as "nothing here is background" — background
+  detection, and `BACKGROUND_ENCLOSED` with it, silently didn't fire for
+  **every real Studio panel upload**, found on a two-squares fixture that
+  digitized to 2 shapes as RGB but 3 as RGBA. Fix: an alpha channel with no
+  pixel under the detection threshold now carries zero background
+  information and is discarded. Same PR restored the `debugviz.
+  direction_field` function that had gone missing from `main` (see the
+  "Last updated" note above). **Verified post-merge:** POSTed the same
+  opaque-RGBA two-squares fixture directly to the live service on current
+  `main` — background now detected, 2 shapes, matching the RGB original
+  exactly. **Not yet verified:** driving this through the actual Studio
+  browser UI end to end (upload → digitize → see the restored shape in the
+  Layers panel) — the HTTP-level reproduction above proves the fix, but
+  nobody has watched it happen in a real browser session yet.
 - **Contour fill** — still off by default, but two of the three 2026-08-02
   defects are fixed (2026-08-04): the widest-inscribed-bare-circle
   instrument (`digitizer_core/barecircle.py`) now exists and *is* the
@@ -226,21 +325,32 @@ is now fixed (see below), four remain open:
 Every claim about visual/sew quality beyond internal geometry checks is
 **pending sew-out** — see the cross-cutting item above.
 
-**Next step:** the chaining fix and the gradient angle-fragmentation fix are
-both landed. M0 of the DT-first migration is measured (see the satin/fill
-classifier item above) — corpus leg pending a local run, M1 (`ShapeField`
-hoist, byte-identical) not started. The enclosed-white-icon drop
-(`BACKGROUND_ENCLOSED`) has a full design pass as of 2026-08-04
-(`docs/superpowers/plans/2026-08-04-enclosed-background-restore-design.md`)
-— ready to build, not started; the Python-side slice (stage 1 + tagging +
-tests, no service/Studio change yet) is buildable on its own per the design
-doc's sizing note. Then schedule the first sew-out session.
+**Next step:** the chaining fix, the gradient angle-fragmentation fix, and
+the full `BACKGROUND_ENCLOSED` stack (including the opaque-alpha fix, PR
+#22, merged) are all landed. What's left to close this out: watch the
+opaque-alpha fix run through the actual Studio browser UI once (verified
+so far only at the HTTP level — see the caveat note above), then schedule
+the first sew-out session. M0 of the DT-first migration is measured (see
+the satin/fill classifier item
+above) — corpus leg pending a local run. **M1 (`ShapeField` hoist) is
+already merged** (`bc1e59e`, `digitizer_core/shapefield.py` +
+`tests/test_shapefield.py` + `tests/test_shapefield_byte_identical.py`, all
+present on `origin/main`) — pure infrastructure behind
+`cfg.extra["shapefield"]`, off by default, duplicating
+`stage6_satin._rasterize`'s rasterization number-for-number rather than
+reimplementing it, so the byte-identity test is load-bearing, not
+decorative. M2/M3 (the actual classifier change this hoist sets up,
+corpus-gated) have not started; a separate, zero-engine-change measurement
+pass (open PR #19, `classifier-lens`) instrumented the stage-0 router and
+concluded the current thresholds should be left alone, not yet merged.
+One more photo-plan technique row sits in an open PR, not yet merged:
+streamline (#20) — meander (#23) landed.
 
 ---
 
 ### 2. Font library & lettering
 
-The 69-font pre-digitized satin library, browser UI, EMBF binary format, the
+The 68-font pre-digitized satin library, browser UI, EMBF binary format, the
 add-font QC/tier pipeline, and Text mode. Expandable — but every addition is
 gated by the license rule below (Kent: don't risk copyright infringement if
 this ever sells).
@@ -271,7 +381,12 @@ distortion) — minor, not blocking.
 **Next step:** Kent books the lawyer consult (send
 `docs/lawyer-brief-cc-by-sa-2026-08-04.md` as-is); font-library expansion is
 unblocked otherwise, with the add-font skill's compliance note now backed by
-guard tests.
+guard tests. Alternatively, open PR #16 (pending review — see the
+cross-cutting font-license section above) would resolve this a different
+way, by pulling all 13 remaining ShareAlike fonts instead of waiting on the
+consult; stacked PR #17 (pending review) closes the related legacy-registry
+residual. Neither is merged, so the 68-font count and the open consult gate
+above remain what's actually shipping.
 
 ---
 
@@ -286,24 +401,36 @@ inputs, not a separate product surface.
 feature commits (the auto-digitize review flow, the Layers panel). README
 calls it "the primary product."
 
-**Confidence: Medium** for wizard navigability/UI quality. 321/321 Studio
-(vitest) tests pass, and nearly every `app/src/lib/*.js` logic module has a
-paired spec — but that coverage is **logic-only**, not UI-behavior; no
-component/interaction tests exist for the actual step screens. One
-documented, unfixed UI bug: rotation doesn't re-trigger hoop auto-fit, so a
-design that auto-fit before a non-180° rotation can visually overflow the
-hoop.
+**Confidence: Medium** for wizard navigability/UI quality. **331/331** Studio
+(vitest) tests pass (verified this session), and nearly every
+`app/src/lib/*.js` logic module has a paired spec — but that coverage is
+still mostly **logic-only**, not UI-behavior. One gap this used to widen is
+closed: `app/e2e/wizard-smoke.spec.js` (merged, PR #6) now drives the full
+garment→content→review→download path in a real browser and asserts real
+cross-step state (garment selection, live stitch count, the review-step
+recap reflecting what was actually picked, a real DST file landing on
+disk) — re-run this session, **1/1 passing**. It stays a single happy path
+(one garment type, text content, one export format) — not broad
+component/interaction coverage — so this is left at Medium rather than
+bumped a full tier; Kent can override if a single passing e2e path is
+enough evidence for him. The previously-documented rotation/hoop-fit bug is
+**FIXED** (`8e668d3`, merged): text auto-fit's scale/clamp now computes
+against the exact rotated-bbox footprint instead of the unrotated glyph
+bbox, with two regression tests reproducing the original overflow on a
+non-square hoop across several non-180° angles (267/267 engine, 321/321 app
+at that commit).
 
 **Fabric-preset accuracy: pending sew-out** — kept as an explicit separate
 note, not blended into the wizard's own score. README says it outright:
 "Presets are starting points — stitch a test on your machine and tell me if
 a fabric needs tuning." No physical validation has happened yet.
 
-**Next step:** a thin Playwright smoke test covering the full
-garment→content→review→download path end-to-end (the new `playwright` MCP
-server makes this practical now) — would move navigability confidence from
-Medium to High and catch regressions like the rotation/hoop-fit bug class
-before they ship.
+**Next step:** broaden `wizard-smoke.spec.js` beyond its one happy path —
+other garment types, the image-content path (not just text), multiple
+export formats — before navigability confidence moves past Medium. Open PR
+#21 (pending review, stacked on the now-merged PR #10) is relevant to area 5
+below, not this one, but adds a second live e2e spec (stale-edit recovery)
+worth folding into the same broadening pass once it lands.
 
 ---
 
@@ -326,17 +453,33 @@ the Python digitizer service's `/export` route (pyembroidery-based).
   engineered" framing. Thinnest coverage of the stitch formats (3 tests).
 - **SVG: Medium** — lower stakes (vector proof, not a stitch file), but thin
   coverage (1 test).
-- **PDF worksheet: Low-Medium** — no dedicated test file exists at all;
-  functionality is asserted by README description only.
+- **PDF worksheet: Medium** — was "no dedicated test file exists at all";
+  now has one. `app/src/lib/pdfsheet.spec.js` (merged, PR #4) drives
+  `src/pdfsheet.js` directly and covers title, the placement line (and its
+  omission), the stats block, the thread sequence (incl. its no-name
+  fallback), the stitch-sim image embed, `garmentBox` forwarding,
+  multi-page pagination, and the zero-design/no-throw path (5 tests, part
+  of the 331/331 vitest total verified this session, no flakiness observed
+  on a plain default-parallel run). Real gap that remains: assertions are
+  on the FakeJsPDF call sequence, not a rendered/pixel-level check of the
+  actual PDF output.
 
-**Open issues:** DST axis bug (cross-cutting, see above); PES has had no
-hardening evidence found since README's best-effort caveat was written; PDF
-worksheet has zero automated test coverage.
+**Open issues:** DST axis bug (cross-cutting, see above). PES/EXP now have
+independent cross-validation findings — see the DST cross-cutting section
+above — but they live in **open PR #18, not yet merged**: PES reportedly
+decodes as garbage in standard readers (byte-mis-framed stitch stream), and
+EXP reportedly aborts at the first trim in pyembroidery-convention readers
+(non-standard 2-byte trim record). Until #18 merges, the confidence bullets
+above are the ones actually in effect; the PR's own suggested downgrades
+(PES Medium-Low → Low, EXP Medium → Medium-Low) are **not applied here**,
+consistent with the doc's own note that MASTER_SCOPE was churning across
+parallel lanes when the PR was opened.
 
 **Next step:** same as the DST cross-cutting item — a third-party sew-out/
 read settles the axis question, which is the one thing actually blocking a
-clean DST confidence rating. Separately, a PDF worksheet test would close
-the one format with literally no automated coverage.
+clean DST confidence rating. Separately, review and merge PR #18 (or verify
+its findings independently) before applying its suggested PES/EXP downgrades
+here.
 
 ---
 
@@ -360,6 +503,12 @@ reorder, delete/restore. The landing commit reports live-browser
 measurements against the real service confirming all of the above plus
 undo/redo and offline-queued edits.
 
+Since this section was last written, the Layers panel gained one more
+control of this same kind — restoring a `BACKGROUND_ENCLOSED`-excluded
+shape (merged, PR #10) — described under area 1 above rather than
+duplicated here, per this doc's own "documented once" convention for
+cross-cutting features.
+
 **Open issues (self-flagged in the landing commit, not undocumented gaps):**
 - No true shape-recognition re-editing — no reshaping/redrawing outlines,
   no splitting/merging shapes, no manual point editing.
@@ -373,7 +522,20 @@ undo/redo and offline-queued edits.
 
 **Next step:** browser-drive the untested stale-edit-recovery flow, and
 decide whether per-shape border override deserves a Layers-panel control —
-both explicitly flagged as gaps in the landing commit itself.
+both explicitly flagged as gaps in the landing commit itself. **Open PR #21
+(pending review, stacked on the now-merged PR #10) claims to close both**:
+a live Playwright spec that spawns the real digitizer service and drives
+digitize → edit → id-churn → the stale-edit notice → recovery with no
+mocks, plus a Border select per Layers row wired through the same
+`setOverride`/"Apply layer changes" path the tier select uses. Not merged —
+treat as reported-not-verified until it lands, same posture as the other
+open-PR notes in this document. **Open PR #26** (pending review, stacked on
+#21) claims the fifth and last self-flagged gap on this list too: a
+`sew_order` shape-override key following the same override pattern as
+`border`/`tier`, a second ▲/▼ control per Layers row for shapes sharing one
+color, and `stage7_sequence.py`'s nearest-neighbor picker forcing pinned
+shapes into their slot while unpinned shapes keep competing exactly as
+before. Also not merged — same reported-not-verified posture.
 
 ---
 
