@@ -11,49 +11,70 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-04, later the same day — docs refresh after PRs
-#8–#15 finished merging into `main` (this doc's previous pass, dated below,
-was written mid-batch and undercounted what had already landed), touched up
-once when **PR #23 (meander tonal tier, row 9) merged mid-refresh**, then
-again minutes later when **PR #22 (opaque-alpha fix + `debugviz.
-direction_field` restore) also merged**. Both touch-ups were re-verified
-directly against the new `main` tip each time, not assumed: combined suite
-on current `main` (`c0cb246`) now reads engine `node --test` **266/266**,
-Studio `npx vitest run` **331/331** (24 files), digitizer `pytest` **507
-passed / 3 failed** — back down to exactly the three long-standing
-container-environment golden mismatches cited repeatedly in this project's
-PR history (`test_flat_lane_byte_identical`, `test_pushcomp`,
-`test_stage2_photo_segment`, all `logo_alpha.png`/`logo_whitebg.png`-towel).
+**Last updated:** 2026-08-04, later still — verification pass confirming
+**all 11 PRs from the prior pass's "#16–#21 pending review" list, plus #22
+though #28, are now merged to `main`** (`4cf8760`, the `backstitch-
+underlay-control` merge; every PR number from #16 through #28 shows a
+"Merge pull request" commit in `git log origin/main`, checked directly, not
+inferred from titles). Fresh suite run this pass, in this worktree, against
+that tip: engine `node --test` **267/267**; Studio `cd app && npx vitest
+run` **344/344** (24 files, after `npm install` — this worktree had no
+`node_modules`); digitizer `.venv/bin/python -m pytest tests/ -q` **564
+passed / 3 failed** (310.78s) — still exactly the same three long-standing
+container-environment golden mismatches this doc has cited every pass since
+2026-08-03 (`test_flat_lane_byte_identical[logo_alpha.png]`,
+`test_pushcomp[logo_whitebg.png-towel]`,
+`test_stage2_photo_segment[logo_alpha.png]`), not new regressions.
 
-The `test_directionfield::test_drone_render_smoke_and_debug_artifact`
-failure this note tracked through two earlier revisions (the direction-field
-branch had merged without its `debugviz.direction_field` render function —
-an agent lane's uncommitted worktree edit) **is gone, confirmed**: #22
-restored the function and is now on `main`. Verified by running the
-digitizer suite against a fresh `origin/main` worktree after the merge, not
-by assuming the PR description was correct.
+What actually changed in the code, verified against source rather than PR
+titles: the 13-font ShareAlike pull (**PR #16**, `src/fonts/manifest.json`
+recounted directly at **55** entries, license breakdown 52 OFL-1.1 + 2 CC0 +
+1 CC-BY-4.0, zero ShareAlike) and its legacy-registry follow-up (**PR #17**,
+`satin-fonts.js` diff-verified 21 → 14 entries) together retire the
+lawyer-consult gate as launch-blocking (area 2, and the cross-cutting
+font-license section below, both rewritten this pass — they'd drifted out
+of sync with each other, one already describing the post-pull state and one
+still describing it as an unmerged proposal); the PES/EXP pyembroidery
+cross-validation (**PR #18**, `docs/pes-crossval-verdict-2026-08-04.md`) —
+mis-framed PES stitch stream, EXP's fatal-on-first-trim record — is now
+corroborated evidence on `main`, not a pending finding (area 4,
+cross-cutting DST section); the classifier-lens measurement (**PR #19**)
+confirming the shipped stage-0 four-way router's thresholds should be left
+alone is merged (area 1); the streamline thread-paint tier's mono slice
+(**PR #20**) and its layered multi-colour follow-up (**PR #25**) are both
+merged (photo plan row 10, area 1 — both slices now built, not one); the
+stale-edit e2e spec and per-shape border-override UI (**PR #21**) closed
+area 5's first two self-flagged gaps; the within-layer sew-order control
+(**PR #26**) closed its third; the contour bare-core shrink (**PR #27**,
+confirmed directly in `digitizer_core/config.py`'s `fill_technique` comment
+block — all three of the 2026-08-02 audit's defects now read "FIXED
+2026-08-04", including the bare-core dot this doc previously described as
+"measured, not yet shrunk") closed the one remaining defect keeping contour
+fill's quality bar down (area 1); and the per-shape underlay-style override
+(**PR #28**, `digitizer_service/app.py`'s `_OVERRIDE_KEYS` re-read directly:
+`{thread_index, fill_angle_deg, tier, border, layer, sew_order, stitched,
+underlay_style}`) closed area 5's fourth. Every "open PR #N, pending
+review" callout this doc was carrying for that range is folded into its
+area's prose below and removed, per this doc's own convention for landed
+work (see how #9/#10/#25's/#26's/#27's own predecessors were folded rather
+than kept as standing callouts). One thing this pass did NOT find any new
+evidence for: physical sew-out testing — still zero, see the cross-cutting
+item below, unchanged.
 
-Substance changes found on `main` since the prior pass below: the full
-`BACKGROUND_ENCLOSED` stack (pipeline + service contract + Studio Layers-panel
-restore UI) is now merged — area 1's bullet below was still describing it as
-"not built"; the rotation/hoop-fit auto-fit bug flagged as unfixed in area 3
-is fixed (`8e668d3`); a Playwright wizard-smoke e2e exists and passes
-(1/1, re-run this session); the PDF worksheet export gained dedicated test
-coverage (area 4 was still describing zero coverage); direction field (photo
-plan row 6), scan-line mono tonal (row 8), and meander tonal (row 9, PR #23)
-all landed; the opaque-alpha bug that silently defeated background
-detection on every real Studio upload (PR #22) is fixed, so
-`BACKGROUND_ENCLOSED` is now genuinely end-to-end, not just unit/service-
-tested. Separately, **6 PRs (#16–#21) remain open/draft against `main`,
-pending review** — none of that work is described as shipped below, only
-flagged per-area with its PR number.
-
-Prior update 2026-08-04 (font-license audit items 4–10 + 12 executed —
-full license texts on disk/served/embedded, complete attributions, credits
-links; the lawyer consult (item 11) is now the only open compliance gate.
-Prior update 2026-08-03: the gradient angle-fragmentation fix landed
-that session; `BACKGROUND_ENCLOSED`'s root cause was corrected to
-`stage1_prep.py`, still unresolved).
+Prior update 2026-08-04, earlier the same day: docs refresh once PRs #8–#15
+had finished merging (written mid-batch, so it undercounted at first),
+touched up twice more that pass as #23 (meander tonal tier) then #22
+(opaque-alpha fix + `debugviz.direction_field` restore) landed mid-refresh.
+Combined suite at that point: engine 266/266, Studio 331/331 (24 files),
+digitizer 507/510 (same 3 known container goldens). Substance folded in
+then: the full `BACKGROUND_ENCLOSED` stack (pipeline + service contract +
+Studio Layers-panel restore UI), the rotation/hoop-fit auto-fit fix
+(`8e668d3`), a passing Playwright wizard-smoke e2e, and PDF-worksheet test
+coverage. Prior update 2026-08-04 (font-license audit items 4–10 + 12
+executed — full license texts on disk/served/embedded, complete
+attributions, credits links). Prior update 2026-08-03: the gradient
+angle-fragmentation fix landed that session; `BACKGROUND_ENCLOSED`'s root
+cause was corrected to `stage1_prep.py`, still unresolved at that time.
 
 ---
 
@@ -62,7 +83,7 @@ that session; `BACKGROUND_ENCLOSED`'s root cause was corrected to
 | Area | Status | Confidence |
 |---|---|---|
 | 1. Auto-digitizing quality (image → stitches) | In progress | **Low** beyond flat spot-color art |
-| 2. Font library & lettering | Implemented (library + license remediation) | High (tech) / Medium (compliance — one lawyer consult still open, blocking first dollar) |
+| 2. Font library & lettering | Implemented (library + license remediation) | High (tech) / High (compliance — resolved 2026-08-04 by removal, lawyer consult now an optional restore path) |
 | 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: pending sew-out) |
 | 4. Export formats | Implemented | Varies by format — see below |
 | 5. Stitch-out review & manual editing tools | Implemented (narrow scope) | High |
@@ -96,59 +117,58 @@ it's worth Kent confirming the intended reading rather than assuming.
 (the "third opinion" `digitizer/README.md` calls for). Fixing the codec itself
 is explicitly Kent's call — every existing EMB-Bot DST is affected by any fix.
 
-**Independent corroboration exists but is not yet on `main`:** open PR #18
-(`pes-crossval`, pending review) adds a browser-encode → pyembroidery-decode
-cross-validation harness with DST as the control case — it reproduces the
-transposition independently (anti-transpose, rms 0.0), which the PR frames as
-validating the harness method itself, not as new information about the bug.
-The PR's real news is about the other two encoders, previously unchecked
-against an independent implementation: it reports the browser **PES**
-encoder as unreadable by standard readers (a 5-byte stitch-stream
-mis-framing plus two non-standard fields), worse off than DST since there's
-no PES importer to create a migration trap; and **EXP** as geometrically
-standard-conformant but truncated by conformant readers at the first trim
-(2-byte trim record vs. the standard's 4-byte form). No encoder was changed —
-this is a findings-only PR, same Kent's-call posture as the DST bug — and
-it is **not merged**, so treat these as reported-not-verified until it lands.
+**Independent corroboration, merged 2026-08-04 (PR #18, `pes-crossval`):** a
+browser-encode → pyembroidery-decode cross-validation harness
+(`tools/crossval-stitch-formats.mjs` + `tools/crossval_decode.py`, pinned by
+`test/crossval-stitch-formats.test.js`, part of the 267/267 engine count
+above) with DST as the control case reproduces the transposition
+independently (anti-transpose, rms 0.0) — the PR frames this as validating
+the harness method itself, not as new information about the DST bug. The
+harness's real news is about the other two encoders, previously unchecked
+against an independent implementation: the browser **PES** encoder is
+unreadable by standard readers (a 5-byte stitch-stream mis-framing — one
+extra header pad byte plus two non-standard `0x9000` fields — makes a
+standard reader decode 354 phantom stitches from 15 real ones), worse off
+than DST since there's no PES importer to create a migration trap; and
+**EXP** is geometrically standard-conformant but truncated by
+pyembroidery-convention readers at the first trim (`src/exp.js`'s 2-byte
+`0x80 0x03` trim record vs. the 4-byte form readers expect — real designs
+trim routinely, so this bites in practice). Full writeup:
+`docs/pes-crossval-verdict-2026-08-04.md`. No encoder was changed — same
+Kent's-call posture as the DST bug — but the findings themselves are now
+confirmed-and-merged, not reported-not-verified, so the Export-formats
+confidence bullets below apply the downgrade this pass.
 
-### Font license compliance gap — REMEDIATED 2026-08-04 except the lawyer consult
+### Font license compliance gap — RESOLVED 2026-08-04 by removal
 
 `docs/font-license-audit-2026-07-31.md` action checklist: **items 1–3 done**
 (the 4 flagged fonts pulled, 72 → 68 — see the audit's §7) and **items 4–10 +
-12 done** the same day (see its §8): every one of the 68 fonts now has its
-full upstream license text on disk (`src/fonts/<key>.LICENSE.txt`), shipped
+12 done** the same day (see its §8): every surviving font had its full
+upstream license text on disk (`src/fonts/<key>.LICENSE.txt`), shipped
 by `copy-engine.mjs` at `/fonts/<key>.LICENSE.txt`, linked per-font in the
 credits dialog, AND embedded verbatim in the `.embf` binary metadata (closes
 the bare-download hole); manifest attributions are complete notices
 (adapter + upstream copyright + Reserved-Font-Name declarations, emails
-stripped); guard tests pin all of it. No Reserved Font Name surfaces as a
-primary name anywhere.
+stripped); guard tests pin all of it.
 
-**Still open — the one remaining launch gate:** audit item 11, the one-hour
-lawyer consult on the CC-BY-SA ShareAlike question (does BY-SA attach to the
-14 CC-BY-SA-derived `.embf` binaries and customers' stitch files?). The
-ready-to-send brief is `docs/lawyer-brief-cc-by-sa-2026-08-04.md`; booking it
-is Kent's real-world action, before first dollar. Worst case per the audit:
-relabel 14 binaries + customer note, or pull 14 fonts. The `satin-fonts.js`
-legacy-registry residual (audit §7/§9) was CLOSED 2026-08-04 by the
-legacy-registry audit (audit §10): all 7 pulled fonts removed from the
-registry, `EMB-Bot.html` clean; only the retired `EMB-Bot-standalone.html`
+**The one-hour lawyer consult this gap used to gate on (audit item 11) is
+now optional, not launch-blocking — merged 2026-08-04 (PR #16,
+`sharealike-pull`):** rather than wait on the consult, Kent's call was to
+pull all 13 ShareAlike fonts (11 CC-BY-SA-4.0 + 2 CC-BY-SA-2.5) from the
+shipping library outright. Recounted directly from `src/fonts/manifest.json`
+this pass: **55 entries**, license breakdown 52 OFL-1.1 + 2 CC0 + 1
+CC-BY-4.0 — zero ShareAlike remaining, zero Reserved Font Name as a primary
+name anywhere. The ready-to-send brief,
+`docs/lawyer-brief-cc-by-sa-2026-08-04.md`, stays on file as the restore
+path if Kent ever wants those 13 fonts back, but booking the consult is no
+longer something first dollar waits on. Stacked on it, **PR #17
+(`legacy-font-audit`), merged same day,** removes the same 7 pulled fonts
+(the original 2 + the 5 ShareAlike) from the legacy `satin-fonts.js`
+registry — diff-verified this pass at 21 → 14 entries — so `EMB-Bot.html`
+carries nothing pulled either; only the retired `EMB-Bot-standalone.html`
 still embeds a pre-audit inlined copy (frozen artifact, not to be
 distributed — Kent's call whether to delete or regenerate it once). Still
 parked for Kent: the bluenesia permission screenshots (audit §8).
-
-**A different resolution to this same gate is drafted but not merged:** open
-PR #16 (`sharealike-pull`, pending review) executes a different, already-made
-Kent decision — pull all 13 ShareAlike fonts (11 CC-BY-SA-4.0 + 2
-CC-BY-SA-2.5) from the shipping library rather than wait on the consult,
-taking the library 68 → 55 with zero ShareAlike remaining and, per the PR,
-making the lawyer consult non-launch-blocking (the brief stays on file as a
-restore path). Stacked on it, PR #17 (`legacy-font-audit`, pending review)
-removes the same pulled fonts from the legacy `satin-fonts.js` registry
-(21 → 14 entries) that audit §7 flagged as a residual exposure. **Neither PR
-is on `main`** — the 68-font count and the open lawyer-consult gate above are
-still what's actually shipping; if/when #16 merges this whole subsection
-should be rewritten, not just updated.
 
 ### No physical sew-out testing has occurred yet
 
@@ -184,18 +204,23 @@ stitch processor / preflight scoring / review-UI polish still to come.
 Running in parallel with that step numbering, `docs/photo-digitizing-plan-
 2026-07-31.md`'s mono-tonal/portrait technique rows have started landing:
 direction field (row 6, structure-tensor + ETF per Kang 2007), scan-line
-mono tonal (row 8), and now meander tonal (row 9, **PR #23, merged**) are
-all on `main` and counted below. One more sits in open, unmerged PRs:
-streamline mono slice (row 10, PR #20), with a multi-color layered-mode
-follow-up stacked on top (PR #25) — neither on `main`, neither counted
-below.
+mono tonal (row 8), meander tonal (row 9), and now streamline thread-paint
+(row 10) are all on `main` and counted below — **streamline landed in two
+merged slices, both on `main` as of this pass:** the mono slice (PR #20,
+Jobard-Lefer evenly-spaced streamlines traced in the row-6 direction field)
+and its multi-colour layered follow-up (PR #25, decomposes a region into
+3–5 chart shades via `stage6_blend`'s own shade-selection machinery and
+traces one streamline set per shade, dark-to-light). Row 10 was the last
+one this doc was still tracking as open; all of rows 6/8/9/10 are now
+built.
 
 **Confidence: Low** beyond flat spot-color art. Flat-logo digitizing (both
-implementations) is Medium — **266/266** JS tests and **507/510** Python
-tests pass (verified this session on `origin/main`; see the "Last updated"
-note above — exactly the 3 pre-existing container goldens now, the 4th
-regression this note tracked through two revisions is fixed), and the
-geometry is internally consistent. `hardening-closeout-2026-08-02.md`
+implementations) is Medium — **267/267** JS tests and **564/567** Python
+tests pass (fresh run this session against `origin/main`; see the "Last
+updated" note above — the 3 failures are the same long-standing
+container-environment goldens this doc has cited every pass since
+2026-08-03, not new regressions), and the geometry is internally
+consistent. `hardening-closeout-2026-08-02.md`
 independently re-measured the five newest Python features and found
 defects the shipped test suites couldn't see in all five; one of those five
 is now fixed (see below), four remain open:
@@ -270,8 +295,8 @@ is now fixed (see below), four remain open:
   #10 — the Layers panel gives an unstitched shape its own dimmed row state
   ("not sewn — enclosed area", distinct from user-deleted), a restore
   action staged through the existing "Apply layer changes" flow, and an
-  undo control). All of this is inside the 507/510 Python and 331/331
-  Studio counts verified above.
+  undo control). All of this is inside the digitizer and Studio test counts
+  cited in the "Last updated" note above (both grown further since).
 
   **The one caveat blocking real end-to-end verification is FIXED, merged
   PR #22:** Studio's actual upload path re-encodes every image through a
@@ -291,19 +316,35 @@ is now fixed (see below), four remain open:
   browser UI end to end (upload → digitize → see the restored shape in the
   Layers panel) — the HTTP-level reproduction above proves the fix, but
   nobody has watched it happen in a real browser session yet.
-- **Contour fill** — still off by default, but two of the three 2026-08-02
-  defects are fixed (2026-08-04): the widest-inscribed-bare-circle
-  instrument (`digitizer_core/barecircle.py`) now exists and *is* the
-  `starved` gate (fires past the measured structural centre dot + half a
-  ring spacing = 1.07mm; the old area-fraction gate's false alarms and
-  blind spots both proven fixed in `tests/test_barecircle.py`), and
-  ring-to-ring transition chords are containment-tested (`_link` banks
-  instead of stitching outside; 0.3mm-hole regression pinned). Remaining
-  and why it stays off: the bare core itself — every healthy shape leaves
-  a ~0.86mm bare dot at its centre (~10× tatami's 0.090mm), measured, not
-  yet shrunk. One cited figure did not reproduce as written: the star's
-  "2.94mm bare disc" is a diameter (radius ≈1.47mm; measured 1.33mm) —
-  see `config.py`'s fill_technique block.
+- **Contour fill** — **all three of the 2026-08-02 audit's defects are now
+  fixed, confirmed 2026-08-04 (PR #27, `contour-bare-core-shrink`, merged);
+  it still ships off by default, but no longer because of any open defect
+  in this list.** The widest-inscribed-bare-circle instrument
+  (`digitizer_core/barecircle.py`) exists and *is* the `starved` gate (the
+  old area-fraction gate's false alarms and blind spots both proven fixed
+  in `tests/test_barecircle.py`), ring-to-ring transition chords are
+  containment-tested (`_link` banks instead of stitching outside;
+  0.3mm-hole regression pinned), and **the bare core itself — the item this
+  doc previously described as "measured, not yet shrunk" — is shrunk**:
+  `_refine_terminal_generation` bisects the last ring onto the true
+  sewability floor instead of wherever the fixed spacing grid landed, and a
+  finishing pass patches whatever `barecircle.widest_bare_circle` still
+  calls the worst remaining bare spot with an ordinary tatami patch.
+  Re-measured directly from `digitizer_core/config.py`'s `fill_technique`
+  comment block this pass: discs and the dumbbell fixture went **0.863mm →
+  0.067–0.13mm**; `machine.CONTOUR_BARE_CORE_MM` was recalibrated
+  0.87 → 0.13 to match, and `starved_threshold_mm` re-derives to 0.33mm at
+  shipped spacing (was 1.07mm). The 10-point star — a different, more
+  severe failure mode (its mitred-offset annihilates most of the interior)
+  — shrinks too (1.33mm → 0.441mm) but correctly stays `starved`, which is
+  the right outcome for a shape this poorly suited to contour, not a
+  regression to chase. One cited figure never reproduced as written across
+  either pass: the star's "2.94mm bare disc" is a diameter, not a radius
+  (radius ≈1.47mm; measured 1.28–1.43mm depending on reconstruction).
+  Flipping the tier's own default is still explicitly Kent's call, not a
+  geometry question — `fill_technique` stays `"tatami"` for byte-identical
+  compatibility with the engine that has always shipped, same posture as
+  every other opt-in tier here.
 - **Satin/fill classifier** — the shipped rule misclassifies compact/noisy
   shapes (a serrated 20mm disc computes as "5.03mm" and gets satin-stitched
   instead of filled). The proposed DT-based replacement (`VP90`) was
@@ -329,40 +370,47 @@ is now fixed (see below), four remain open:
 Every claim about visual/sew quality beyond internal geometry checks is
 **pending sew-out** — see the cross-cutting item above.
 
-**Next step:** the chaining fix, the gradient angle-fragmentation fix, and
-the full `BACKGROUND_ENCLOSED` stack (including the opaque-alpha fix, PR
-#22, merged) are all landed. What's left to close this out: watch the
-opaque-alpha fix run through the actual Studio browser UI once (verified
-so far only at the HTTP level — see the caveat note above), then schedule
-the first sew-out session. M0 of the DT-first migration is measured (see
-the satin/fill classifier item
-above) — corpus leg pending a local run. **M1 (`ShapeField` hoist) is
-already merged** (`bc1e59e`, `digitizer_core/shapefield.py` +
+**Next step:** the chaining fix, the gradient angle-fragmentation fix, the
+full `BACKGROUND_ENCLOSED` stack (including the opaque-alpha fix, PR #22),
+and the contour bare-core shrink (PR #27) are all landed. What's left to
+close this out: watch the opaque-alpha fix run through the actual Studio
+browser UI once (verified so far only at the HTTP level — see the caveat
+note above), then schedule the first sew-out session. M0 of the DT-first
+migration is measured (see the satin/fill classifier item above) — corpus
+leg still pending a local run (`scratch_corpus/` is gitignored and
+confirmed empty in this checkout). **M1 (`ShapeField` hoist) is already
+merged** (`bc1e59e`, `digitizer_core/shapefield.py` +
 `tests/test_shapefield.py` + `tests/test_shapefield_byte_identical.py`, all
 present on `origin/main`) — pure infrastructure behind
 `cfg.extra["shapefield"]`, off by default, duplicating
 `stage6_satin._rasterize`'s rasterization number-for-number rather than
 reimplementing it, so the byte-identity test is load-bearing, not
 decorative. M2/M3 (the actual classifier change this hoist sets up,
-corpus-gated) have not started; a separate, zero-engine-change measurement
-pass (open PR #19, `classifier-lens`) instrumented the stage-0 router and
-concluded the current thresholds should be left alone, not yet merged.
-One more photo-plan technique row sits in an open PR, not yet merged:
-streamline (#20) — meander (#23) landed.
+corpus-gated) have not started. A separate, zero-engine-change measurement
+pass — **merged 2026-08-04, PR #19, `classifier-lens`** — instrumented
+`stage0_classify.py`'s four-way router (`flat`/`gradient`/`photo_subject`/
+`photo_scene`, a different classifier from the satin-vs-fill one M0/M1
+target) and concluded no threshold move is needed: 12/12 fixtures agree
+with adjudicated truth, and every ±50% sweep of the 7 documented constants
+only creates misroutes, never fixes one (`docs/classifier-lens-2026-08-04.md`).
+All four photo-plan technique rows queued as of the prior pass (direction
+field row 6, scan-line row 8, meander row 9, streamline row 10 in both its
+mono and layered slices) are now merged — none remain open.
 
 ---
 
 ### 2. Font library & lettering
 
-The 68-font pre-digitized satin library, browser UI, EMBF binary format, the
+The 55-font pre-digitized satin library, browser UI, EMBF binary format, the
 add-font QC/tier pipeline, and Text mode. Expandable — but every addition is
 gated by the license rule below (Kent: don't risk copyright infringement if
 this ever sells).
 
 **Status:** Implemented (library/UI/format itself) — license remediation
-**done 2026-08-04** (audit items 1–10 + 12; see the cross-cutting item
-above), with the lawyer consult (item 11) as the one remaining compliance
-gate.
+**resolved 2026-08-04** (audit items 1–10 + 12, plus items 1–3's pulls
+followed by the full 13-font ShareAlike removal, PR #16; see the
+cross-cutting item above). The item-11 lawyer consult is no longer a
+launch gate — it's an optional restore path now.
 
 **Confidence:**
 - Library/tech: **High.** `src/fontbin.js` (EMBF codec), `manifest.json` +
@@ -380,23 +428,19 @@ gate.
   OPTIONAL — kept as the restore path for the 13
   (`docs/lawyer-brief-cc-by-sa-2026-08-04.md`), no longer launch-gating.
 
-**Open issues:** the item-11 consult (above); the retired
-`EMB-Bot-standalone.html` still embeds a pre-audit inlined font registry
-(the live `satin-fonts.js` residual itself was closed 2026-08-04, audit
-§10 — Kent's call whether to delete or regenerate the standalone). On the
-tech side: the font-editing round deferred
-condensed/expanded width and mixed per-letter size (both risk uneven satin
-distortion) — minor, not blocking.
+**Open issues:** the item-11 consult is optional now, not blocking (above);
+the retired `EMB-Bot-standalone.html` still embeds a pre-audit inlined font
+registry (the live `satin-fonts.js` residual itself was closed 2026-08-04,
+audit §10 — Kent's call whether to delete or regenerate the standalone). On
+the tech side: the font-editing round deferred condensed/expanded width and
+mixed per-letter size (both risk uneven satin distortion) — minor, not
+blocking.
 
-**Next step:** Kent books the lawyer consult (send
-`docs/lawyer-brief-cc-by-sa-2026-08-04.md` as-is); font-library expansion is
-unblocked otherwise, with the add-font skill's compliance note now backed by
-guard tests. Alternatively, open PR #16 (pending review — see the
-cross-cutting font-license section above) would resolve this a different
-way, by pulling all 13 remaining ShareAlike fonts instead of waiting on the
-consult; stacked PR #17 (pending review) closes the related legacy-registry
-residual. Neither is merged, so the 68-font count and the open consult gate
-above remain what's actually shipping.
+**Next step:** font-library expansion is unblocked — the license gate is
+resolved by removal (PR #16 + #17, both merged), and the add-font skill's
+compliance note is backed by guard tests. Booking the lawyer consult (send
+`docs/lawyer-brief-cc-by-sa-2026-08-04.md` as-is) is now purely optional,
+Kent's call, only relevant if he wants the 13 pulled ShareAlike fonts back.
 
 ---
 
@@ -411,24 +455,27 @@ inputs, not a separate product surface.
 feature commits (the auto-digitize review flow, the Layers panel). README
 calls it "the primary product."
 
-**Confidence: Medium** for wizard navigability/UI quality. **331/331** Studio
-(vitest) tests pass (verified this session), and nearly every
+**Confidence: Medium** for wizard navigability/UI quality. **344/344** Studio
+(vitest) tests pass (fresh run this session, 24 files), and nearly every
 `app/src/lib/*.js` logic module has a paired spec — but that coverage is
 still mostly **logic-only**, not UI-behavior. One gap this used to widen is
-closed: `app/e2e/wizard-smoke.spec.js` (merged, PR #6) now drives the full
+closed: `app/e2e/wizard-smoke.spec.js` (merged, PR #6) drives the full
 garment→content→review→download path in a real browser and asserts real
 cross-step state (garment selection, live stitch count, the review-step
 recap reflecting what was actually picked, a real DST file landing on
-disk) — re-run this session, **1/1 passing**. It stays a single happy path
-(one garment type, text content, one export format) — not broad
-component/interaction coverage — so this is left at Medium rather than
-bumped a full tier; Kent can override if a single passing e2e path is
-enough evidence for him. The previously-documented rotation/hoop-fit bug is
-**FIXED** (`8e668d3`, merged): text auto-fit's scale/clamp now computes
-against the exact rotated-bbox footprint instead of the unrotated glyph
-bbox, with two regression tests reproducing the original overflow on a
-non-square hoop across several non-180° angles (267/267 engine, 321/321 app
-at that commit).
+disk). It stays a single happy path (one garment type, text content, one
+export format) — not broad component/interaction coverage — so this is
+left at Medium rather than bumped a full tier; Kent can override if a
+single passing e2e path is enough evidence for him. A second live e2e spec
+now exists alongside it — `app/e2e/digitize-stale-edits.spec.js` (merged,
+PR #21) — covering the stale-edit-recovery path; see area 5 below, since
+that's the gap it was built to close. The previously-documented
+rotation/hoop-fit bug is **FIXED** (`8e668d3`, merged): text auto-fit's
+scale/clamp now computes against the exact rotated-bbox footprint instead
+of the unrotated glyph bbox, with two regression tests reproducing the
+original overflow on a non-square hoop across several non-180° angles
+(267/267 engine, 321/321 app at that historical commit — not today's
+totals, which have since grown further).
 
 **Fabric-preset accuracy: pending sew-out** — kept as an explicit separate
 note, not blended into the wizard's own score. README says it outright:
@@ -437,10 +484,10 @@ a fabric needs tuning." No physical validation has happened yet.
 
 **Next step:** broaden `wizard-smoke.spec.js` beyond its one happy path —
 other garment types, the image-content path (not just text), multiple
-export formats — before navigability confidence moves past Medium. Open PR
-#21 (pending review, stacked on the now-merged PR #10) is relevant to area 5
-below, not this one, but adds a second live e2e spec (stale-edit recovery)
-worth folding into the same broadening pass once it lands.
+export formats — before navigability confidence moves past Medium. The
+stale-edit e2e spec (PR #21, merged, see above) is a second live spec of
+its own scope, not a broadening of `wizard-smoke.spec.js` itself — that
+broadening is still the open item here.
 
 ---
 
@@ -457,10 +504,22 @@ the Python digitizer service's `/export` route (pyembroidery-based).
   see the cross-cutting DST item, this is the same bug. Python `/export` DST
   (pyembroidery, standard-conformant) is Medium-High by spec, not yet
   sew-verified itself.
-- **EXP: Medium.** README: "Solid, standard support, incl. trim control."
-  4 targeted tests, no known open issues.
-- **PES: Medium-Low**, matching README's own "best-effort — reverse-
-  engineered" framing. Thinnest coverage of the stitch formats (3 tests).
+- **EXP: Medium-Low**, downgraded from Medium this pass. README calls it
+  "Solid, standard support, incl. trim control" and 4 targeted tests still
+  pass, but the merged PR #18 cross-validation (see the cross-cutting DST
+  section above) found the browser encoder's geometry/color/jump encoding
+  is genuinely standard-conformant — except its 2-byte trim record aborts
+  pyembroidery-convention readers at the first trim, and real designs trim
+  routinely. Multi-trim browser EXP is not safe to hand to third-party
+  tooling; the Python `/export` path is unaffected (different writer).
+- **PES: Low**, downgraded from Medium-Low this pass. README's own
+  "best-effort — reverse-engineered" framing already set expectations low;
+  merged PR #18 found the browser PEC block is mis-framed by 5 bytes badly
+  enough that a standard reader decodes 354 phantom stitches from the real
+  15 and loses the color change entirely — not a subtle defect, a
+  non-functional export for any third-party reader. Thinnest coverage of
+  the stitch formats (3 tests), none of which catch this since they don't
+  cross-validate against an independent decoder.
 - **SVG: Medium** — lower stakes (vector proof, not a stitch file), but thin
   coverage (1 test).
 - **PDF worksheet: Medium** — was "no dedicated test file exists at all";
@@ -469,27 +528,28 @@ the Python digitizer service's `/export` route (pyembroidery-based).
   omission), the stats block, the thread sequence (incl. its no-name
   fallback), the stitch-sim image embed, `garmentBox` forwarding,
   multi-page pagination, and the zero-design/no-throw path (5 tests, part
-  of the 331/331 vitest total verified this session, no flakiness observed
-  on a plain default-parallel run). Real gap that remains: assertions are
+  of the Studio vitest total cited in the "Last updated" note above, no
+  flakiness observed on a plain default-parallel run). Real gap that
+  remains: assertions are
   on the FakeJsPDF call sequence, not a rendered/pixel-level check of the
   actual PDF output.
 
 **Open issues:** DST axis bug (cross-cutting, see above). PES/EXP now have
-independent cross-validation findings — see the DST cross-cutting section
-above — but they live in **open PR #18, not yet merged**: PES reportedly
-decodes as garbage in standard readers (byte-mis-framed stitch stream), and
-EXP reportedly aborts at the first trim in pyembroidery-convention readers
-(non-standard 2-byte trim record). Until #18 merges, the confidence bullets
-above are the ones actually in effect; the PR's own suggested downgrades
-(PES Medium-Low → Low, EXP Medium → Medium-Low) are **not applied here**,
-consistent with the doc's own note that MASTER_SCOPE was churning across
-parallel lanes when the PR was opened.
+independent, merged cross-validation findings (PR #18 — see the DST
+cross-cutting section above): PES decodes as garbage in standard readers
+(byte-mis-framed stitch stream), and EXP aborts at the first trim in
+pyembroidery-convention readers (non-standard 2-byte trim record). Neither
+encoder was changed — same Kent's-call posture as the DST bug — but the
+confidence bullets above now apply the PR's suggested downgrades (PES
+Medium-Low → Low, EXP Medium → Medium-Low), since the findings are
+confirmed-and-merged rather than reported-not-verified.
 
 **Next step:** same as the DST cross-cutting item — a third-party sew-out/
 read settles the axis question, which is the one thing actually blocking a
-clean DST confidence rating. Separately, review and merge PR #18 (or verify
-its findings independently) before applying its suggested PES/EXP downgrades
-here.
+clean DST confidence rating. Separately, the PES/EXP fixes themselves
+(described as low-risk in the verdict memo, since neither format has a
+browser-side importer to create a migration trap) are still unbuilt —
+Kent's call on sequencing against the DST fix.
 
 ---
 
@@ -519,52 +579,55 @@ shape (merged, PR #10) — described under area 1 above rather than
 duplicated here, per this doc's own "documented once" convention for
 cross-cutting features.
 
-**Open issues (self-flagged in the landing commit, not undocumented gaps):**
+**Open issues:** of the five gaps the landing commit self-flagged, **four are
+now closed** (all merged 2026-08-04, all confirmed against source this
+pass — `digitizer_service/app.py`'s `_OVERRIDE_KEYS` now reads
+`{thread_index, fill_angle_deg, tier, border, layer, sew_order, stitched,
+underlay_style}`):
+- ~~Per-shape border override is engine-supported but has no UI
+  control.~~ **Closed, PR #21** — a Border select per Layers row.
+- ~~The "stale/unmatched edit" recovery flow was never driven in a live
+  browser.~~ **Closed, PR #21** — `app/e2e/digitize-stale-edits.spec.js`
+  drives the real digitizer service through the real `DigitizePanel` in a
+  real browser (Playwright), forces an edit stale via a width change, and
+  asserts the unmatched-edit notice, clear, and re-apply all work.
+- ~~Within-layer sew order is shown, not controllable.~~ **Closed, PR
+  #26** — a `sew_order` shape-override key plus a second ▲/▼ control per
+  Layers row for shapes sharing one color layer.
+- ~~Backstitch/underlay adjustment is entirely engine-internal.~~
+  **Closed, PR #28** — the fill/contour underlay-style knob
+  (`PipelineConfig.underlay_style`, seven named styles) is now a per-shape
+  override, following the border/tier/fill_angle_deg pattern exactly:
+  validated at the service, applied in `regions.apply_shape_edits`, carried
+  across re-digitize via `match_shape_ids`, resolved per-shape in
+  `stage7_sequence.sequence` ahead of both the tatami and contour emitters,
+  and a Layers-panel dropdown next to the fill-angle control (shown only
+  when a shape's tier is "fill", since satin ignores it). Deliberately does
+  NOT touch satin's own underlay (`fabric.satin_underlay`) — a materially
+  narrower, effectively-binary knob (spine run, or zigzag above
+  `machine.SATIN_ZIGZAG_ABOVE_MM`) versus fill's seven styles, so it stays
+  engine-internal on purpose. Backed by Python tests asserting the override
+  actually changes emitted underlay stitch geometry (not just a config
+  round-trip) and Studio vitest coverage of the wire contract, but — unlike
+  the border control it was modeled on, which PR #21's e2e spec now drives
+  live — this one has no live-browser coverage yet: the Layers-panel
+  dropdown itself has no automated coverage (no svelte-component test
+  harness exists in this repo yet, matching tier/border/fill-angle's own
+  testing gap).
+
+**Only one self-flagged gap remains open:**
 - No true shape-recognition re-editing — no reshaping/redrawing outlines,
-  no splitting/merging shapes, no manual point editing.
-- Per-shape border override is engine-supported but has no UI control.
-- Within-layer sew order is shown, not controllable — it's the machine's
-  nearest-neighbor pathing.
-- The "stale/unmatched edit" recovery flow was never driven in a live
-  browser.
+  no splitting/merging shapes, no manual point editing. Not addressed by
+  any of PRs #21/#26/#28; a materially bigger lift than an override-pattern
+  slice.
 
-**Update 2026-08-04 (underlay style):** the fill/contour underlay-style knob
-(`PipelineConfig.underlay_style`, seven named styles — fabrics.py's own
-vocabulary) is now a per-shape override, following the border/tier/
-fill_angle_deg pattern exactly: validated the same way at the service
-(`_OVERRIDE_KEYS`/`_UNDERLAY_VALUES`), applied in `regions.apply_shape_edits`,
-carried across re-digitize via `match_shape_ids`, resolved per-shape in
-`stage7_sequence.sequence` ahead of both the tatami and contour emitters, and
-a Layers-panel dropdown next to the fill-angle control (shown only when a
-shape's tier is "fill", since satin ignores it). Deliberately does NOT touch
-satin's own underlay (`fabric.satin_underlay`) — a materially narrower,
-effectively-binary knob (spine run, or zigzag above
-`machine.SATIN_ZIGZAG_ABOVE_MM`) versus fill's seven styles, so it stays
-engine-internal rather than being folded into the same control. Backed by
-Python tests asserting the override actually changes emitted underlay
-stitch geometry (not just a config round-trip), a stale-override test
-through the same unmatched-edit path every other override uses, and Studio
-vitest coverage of the wire contract — but, like the border UI control
-above it, this was NOT driven in a live browser; the Layers-panel dropdown
-itself has no automated coverage (no svelte-component test harness exists
-in this repo yet, matching tier/border/fill-angle's own testing gap).
-
-**Next step:** browser-drive the untested stale-edit-recovery flow, and
-decide whether per-shape border override deserves a Layers-panel control —
-both explicitly flagged as gaps in the landing commit itself. **Open PR #21
-(pending review, stacked on the now-merged PR #10) claims to close both**:
-a live Playwright spec that spawns the real digitizer service and drives
-digitize → edit → id-churn → the stale-edit notice → recovery with no
-mocks, plus a Border select per Layers row wired through the same
-`setOverride`/"Apply layer changes" path the tier select uses. Not merged —
-treat as reported-not-verified until it lands, same posture as the other
-open-PR notes in this document. **Open PR #26** (pending review, stacked on
-#21) claims the fifth and last self-flagged gap on this list too: a
-`sew_order` shape-override key following the same override pattern as
-`border`/`tier`, a second ▲/▼ control per Layers row for shapes sharing one
-color, and `stage7_sequence.py`'s nearest-neighbor picker forcing pinned
-shapes into their slot while unpinned shapes keep competing exactly as
-before. Also not merged — same reported-not-verified posture.
+**Next step:** the underlay-style dropdown (PR #28, above) is the one
+control in this area's whole override family without a live-browser check
+— worth folding into the next Playwright pass. Beyond that, this area's
+remaining open work is squarely the true shape-recognition re-editing item
+above, which is a different scale of project (outline reshaping, splitting/
+merging shapes, point editing) from the override-pattern slices that closed
+everything else.
 
 ---
 
