@@ -180,11 +180,19 @@ is now fixed (see below), four remain open:
   DT-first M0/M1 slice, spans pipeline internals, the service contract, and
   Studio UI. Open questions (overlap-threshold tuning, stage-5 interaction)
   are flagged in the design doc for whoever builds it.
-- **Contour fill** — explicitly marked not-ready (commit `eac414e`): a
-  0.640mm bare core in the primary fixture (7× worse than tatami's
-  0.090mm), a starved-fill gate miscalibrated in both directions, and
-  ring-to-ring transition chords that land stitches outside the polygon.
-  Ships off by default.
+- **Contour fill** — still off by default, but two of the three 2026-08-02
+  defects are fixed (2026-08-04): the widest-inscribed-bare-circle
+  instrument (`digitizer_core/barecircle.py`) now exists and *is* the
+  `starved` gate (fires past the measured structural centre dot + half a
+  ring spacing = 1.07mm; the old area-fraction gate's false alarms and
+  blind spots both proven fixed in `tests/test_barecircle.py`), and
+  ring-to-ring transition chords are containment-tested (`_link` banks
+  instead of stitching outside; 0.3mm-hole regression pinned). Remaining
+  and why it stays off: the bare core itself — every healthy shape leaves
+  a ~0.86mm bare dot at its centre (~10× tatami's 0.090mm), measured, not
+  yet shrunk. One cited figure did not reproduce as written: the star's
+  "2.94mm bare disc" is a diameter (radius ≈1.47mm; measured 1.33mm) —
+  see `config.py`'s fill_technique block.
 - **Satin/fill classifier** — the shipped rule misclassifies compact/noisy
   shapes (a serrated 20mm disc computes as "5.03mm" and gets satin-stitched
   instead of filled). The proposed DT-based replacement (`VP90`) was
