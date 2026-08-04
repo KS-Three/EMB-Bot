@@ -356,7 +356,7 @@ class PipelineConfig:
     # link makes it a jump, and the measured trims/1k does not move. That is
     # the cheap direction to be wrong in, and a float on fleece is not.
     #
-    # UPDATE 2026-08-03: the first of the three things below is done.
+    # UPDATE 2026-08-03: the first of the three preconditions is done.
     # `_link_cover` now builds the already-laid half of its cover from `runs`
     # — the block's real emitted stitch centrelines, buffered to their real
     # thread width — instead of from `p.polygon`. Measured on the committed
@@ -368,13 +368,36 @@ class PipelineConfig:
     # `tests/test_chaining.py::test_chaining_adds_no_bare_fabric_exposure_on_
     # the_committed_fixture`.
     #
+    # UPDATE 2026-08-04: the second is done too. `covered_by` — the half of
+    # the cover whose stitches do not exist yet at routing time — is now
+    # eroded by LINK_COVER_INSET_MM (0.75 mm, machine.py has the full
+    # derivation table) before it may bury a link. Derived from measurement
+    # on both committed fixtures, real emitted runs vs the artwork polygon
+    # `covered_by` quotes: fill's nearest centreline stops up to 0.223 mm
+    # inside the boundary (thread edge 0.023 mm shy), satin's up to 0.501 mm
+    # (edge 0.301 mm shy — tips stop short, columns fan), and a run-tier
+    # shape covers no interior at all, honest only once eroded away at its
+    # inradius (0.527/0.539 mm measured). Worst measured 0.539 +
+    # LINK_COVER_TOL_MM the cover buffers back on = 0.739, rounded up to
+    # 0.75. Re-measured with chaining ON after the inset (chain_probe, both
+    # committed fixtures): every link the inset disqualifies becomes a jump,
+    # never an exposure, and on these fixtures none needed it — logo_alpha
+    # still links 13 -> 17 and trims 14 -> 10 (st 3312 -> 3292), logo_whitebg
+    # unchanged (chaining adds nothing there, with or without the inset),
+    # chaining's ADDED bare exposure 0.00 mm on both (exp/bare/worst land on
+    # exactly the chain-off floor: 0.7 mm/0.2057 and 0.8 mm/0.2045, stage 6's
+    # own pre-existing in-shape travel). The inset is live, not idle: it
+    # removes 20-32% of each block's future-colour cover area on logo_alpha
+    # and erodes the run-tier sliver out of the cover entirely; the fixtures'
+    # links just never rode the dishonest margin. Pinned by
+    # `tests/test_chaining.py::test_a_sliver_of_a_future_colour_no_longer_
+    # counts_as_cover` (a 1.2 mm band that linked pre-inset must now cut).
+    # What no inset can fix, measured so nobody re-derives it: hairline gaps
+    # between fanned satin crosses persist at any inset (<= 0.127 mm
+    # inscribed radius, <= 0.121 mm beyond the thread edge) — under one
+    # thread width, left to the sew-out below.
+    #
     # Still outstanding, and still why this stays off by default:
-    #   - An inset on `covered_by`, for the layers whose stitches do not exist
-    #     yet. That half of the cover is still a future colour's sewing
-    #     POLYGON — the same approximation this whole fix just proved wrong
-    #     for the block's OWN tiers, just not yet correctable the same way
-    #     (that colour has not been planned when this block's links are
-    #     routed, so there is no real thread to measure it against).
     #   - A sew-out that says at what clearance a needle-down float actually
     #     shows — LINK_COVER_TOL_MM is still a thread spec, not a measurement.
     chain_links: bool = False
