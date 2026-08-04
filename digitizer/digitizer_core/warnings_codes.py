@@ -16,6 +16,13 @@ BACKGROUND_UNCERTAIN = "BACKGROUND_UNCERTAIN"      # border flood intruded deep 
 INPUT_LOW_RESOLUTION = "INPUT_LOW_RESOLUTION"      # px_per_mm below floor even after capped upscale
 BACKGROUND_ENCLOSED = "BACKGROUND_ENCLOSED"        # enclosed bg-colored region treated as hole (review-toggleable)
 
+# Stage 1.5 (photo prep — photo plan §2 rows 3-4, build step 3 first slice)
+# Info, not a problem: tone prep + texture kill ran on this photo-classified
+# design. extra: {"technique": str, "fallback": bool (rolling_guidance
+# requested but contrib absent), "kill_px": int, "tone_ms": float,
+# "texture_ms": float}
+PHOTO_PREP_APPLIED = "PHOTO_PREP_APPLIED"
+
 # Stage 2
 COLOR_CAP_APPLIED = "COLOR_CAP_APPLIED"            # more threads than max_colors; smallest layers reassigned
 
