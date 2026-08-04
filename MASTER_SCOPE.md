@@ -362,16 +362,19 @@ gate.
 
 **Confidence:**
 - Library/tech: **High.** `src/fontbin.js` (EMBF codec), `manifest.json` +
-  68 `.embf` files (72 → 68 after the audit pulls), lazy loading,
+  55 `.embf` files (72 → 68 after the audit pulls → 55 after the 2026-08-04
+  ShareAlike removal), lazy loading,
   `FontBrowser.svelte`/credits UI, and the QC/tier pipeline
   (`tools/qc-font.mjs`, `tools/build-embf.mjs`, `tools/font-license.mjs`,
   `tools/patch-embf-licenses.mjs`) all exist and pass the engine suite.
-- License compliance: **Medium — one open legal question, everything
-  mechanical is done.** Full license texts ship three ways (sidecar file,
-  served `/fonts/<key>.LICENSE.txt`, embedded in each binary), attributions
-  are complete notices, guard tests pin it. The CC-BY-SA ShareAlike
-  question (14 fonts) awaits the item-11 consult — brief ready at
-  `docs/lawyer-brief-cc-by-sa-2026-08-04.md`. Get it before first dollar.
+- License compliance: **High — the open legal question was resolved by
+  removal (Kent's call, 2026-08-04).** All 13 ShareAlike fonts pulled
+  (audit §9); the remaining 55 are 52 OFL-1.1 + 1 CC-BY-4.0 + 2 CC0, zero
+  ShareAlike. Full license texts ship three ways (sidecar file, served
+  `/fonts/<key>.LICENSE.txt`, embedded in each binary), attributions are
+  complete notices, guard tests pin it. The item-11 lawyer consult is now
+  OPTIONAL — kept as the restore path for the 13
+  (`docs/lawyer-brief-cc-by-sa-2026-08-04.md`), no longer launch-gating.
 
 **Open issues:** the item-11 consult (above); the `satin-fonts.js` legacy
 residual (audit §7). On the tech side: the font-editing round deferred

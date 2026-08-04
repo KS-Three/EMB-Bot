@@ -12,9 +12,10 @@ describe("fontLoader", () => {
     const { loadManifest } = await import("./fontLoader.js");
     const m1 = await loadManifest();
     // Floor, not exact: QC can demote individual fonts (e.g. ondulamarif_XL
-    // dropped for 0-stitch letter glyphs). 60 is far above the pre-Slice-10
+    // dropped for 0-stitch letter glyphs; 13 ShareAlike fonts pulled 2026-08-04,
+    // audit §9 — library 55). 50 is far above the pre-Slice-10
     // library of 21 while tolerating a handful of future demotions.
-    expect(m1.fonts.length).toBeGreaterThanOrEqual(60);
+    expect(m1.fonts.length).toBeGreaterThanOrEqual(50);
     expect(m1.fonts.every((f) => f.tier === "verified")).toBe(true);
     expect(await loadManifest()).toBe(m1); // same object -> cached
   });
@@ -22,10 +23,10 @@ describe("fontLoader", () => {
   it("ensureFont populates EMB.SATIN_FONTS and returns the font", async () => {
     const { ensureFont } = await import("./fontLoader.js");
     const g = globalThis;
-    delete (g.EMB.SATIN_FONTS || {}).geneva_simple;
-    const font = await ensureFont("geneva_simple");
+    delete (g.EMB.SATIN_FONTS || {}).medium_font;
+    const font = await ensureFont("medium_font");
     expect(font.glyphs).toBeTruthy();
-    expect(g.EMB.SATIN_FONTS.geneva_simple).toBe(font);
+    expect(g.EMB.SATIN_FONTS.medium_font).toBe(font);
   });
 
   it("concurrent ensureFont calls share one load", async () => {
@@ -54,7 +55,7 @@ describe("fontLoader", () => {
     // unknown key fails...
     await expect(ensureFont("transient_missing")).rejects.toThrow(/Unknown font/);
     // ...and a subsequent call for a REAL font still works (map not poisoned)
-    const font = await ensureFont("geneva_simple");
+    const font = await ensureFont("medium_font");
     expect(font.glyphs).toBeTruthy();
     // and retrying the failed key fails freshly each time rather than returning
     // a stale cached rejection (two calls, two independent rejections)
