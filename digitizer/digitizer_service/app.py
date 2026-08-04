@@ -77,7 +77,7 @@ def _require_token(supplied: str | None) -> None:
 # closed vocabularies two of its fields draw from. Kept in lockstep with
 # `digitizer_core.regions.apply_shape_edits`, which enforces the same rules —
 # the service checks here so a bad edit is a 400 at submit, not a failed job.
-_OVERRIDE_KEYS = {"thread_index", "fill_angle_deg", "tier", "border", "layer"}
+_OVERRIDE_KEYS = {"thread_index", "fill_angle_deg", "tier", "border", "layer", "sew_order"}
 _TIER_VALUES = {"auto", "satin", "fill", "run"}
 _BORDER_VALUES = {"off", "auto", "bean"}
 
@@ -141,6 +141,9 @@ def _canonicalize_shape_edits(data: dict, chart_len: int) -> None:
         L = entry.get("layer")
         if L is not None and (not isinstance(L, int) or isinstance(L, bool)):
             bad = "layer must be an integer"
+        so = entry.get("sew_order")
+        if so is not None and (not isinstance(so, int) or isinstance(so, bool) or so < 0):
+            bad = "sew_order must be a non-negative integer"
         a = entry.get("fill_angle_deg")
         if a is not None and (not isinstance(a, (int, float)) or isinstance(a, bool)):
             bad = "fill_angle_deg must be a number"
@@ -276,6 +279,11 @@ def _review_payload(result, plan=None) -> dict:
                 "area_mm2": round(r.area_mm2, 3),
                 "source": r.source,
                 "layer": r.meta.get("layer"),
+                # The within-layer sew-order override in effect, if any
+                # (shape-layers contract v1.2) — echoed back the same way
+                # `layer` is, so the panel can tell an applied override from
+                # the nearest-neighbour default it falls back to.
+                "sew_order": r.meta.get("sew_order"),
                 # The sew position and effective tier the layers panel orders
                 # by. None means the shape produced no stitches (the plan's
                 # SHAPE_NOT_STITCHED warning says how many did).

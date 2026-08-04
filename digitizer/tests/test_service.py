@@ -346,6 +346,33 @@ def test_the_whole_edit_round_trip_over_http(client):
     assert second["design"]["stitchCount"] != first["design"]["stitchCount"]
 
 
+def test_sew_order_override_resequences_shapes_within_a_layer_over_http(client):
+    """1305 carries two shapes (a rectangle and a run-tier satellite) that
+    share one sew block by default. Pinning whichever sews second to slot 0
+    must flip which one sews first — read off the emitted `sew_index`, not
+    just the override round-tripping through the review payload."""
+    first = _digitize(client, {"target_width_mm": 80.0, "preflight": False})
+    orange = [s for s in first["review"]["shapes"] if s["thread_number"] == "1305"]
+    assert len(orange) >= 2, "fixture must carry >1 shape on this thread"
+    ordered = sorted((s for s in orange if s["sew_index"] is not None),
+                      key=lambda s: s["sew_index"])
+    sewn_first, sewn_second = ordered[0], ordered[1]
+    assert sewn_first["layer"] == sewn_second["layer"], "must be one within-layer test"
+
+    second = _digitize(client, {
+        "target_width_mm": 80.0, "preflight": False,
+        "shape_overrides": {sewn_second["shape_id"]: {"sew_order": 0}},
+    })
+    after = {s["shape_id"]: s for s in second["review"]["shapes"]}
+    assert after[sewn_second["shape_id"]]["sew_order"] == 0, "echoed back, contract v1.2"
+    assert after[sewn_second["shape_id"]]["sew_index"] < after[sewn_first["shape_id"]]["sew_index"], \
+        "the pinned shape must now sew before the one that used to sew first"
+    # Only the WITHIN-layer order moved — the block itself sews in the same
+    # position, and every other layer's shapes are untouched.
+    assert after[sewn_second["shape_id"]]["sew_block"] == after[sewn_first["shape_id"]]["sew_block"]
+    assert after[sewn_second["shape_id"]]["sew_block"] == sewn_first["sew_block"]
+
+
 def test_an_edit_is_a_different_job_not_a_stale_cache_hit(client):
     """The cache keys on the canonical config: two configs differing only in
     shape_overrides are two jobs; the same edit twice is one."""
@@ -380,6 +407,16 @@ def test_parse_config_canonicalizes_the_edit_fields():
         {"shape_overrides": {"S3": {"tier": "satin"}}}
 
 
+def test_parse_config_accepts_a_sew_order_override():
+    """A plain non-negative integer, passed through unchanged — sew_order has
+    no closed vocabulary or lowercasing to normalize, unlike tier/border."""
+    from digitizer_service.app import _parse_config
+
+    assert _parse_config(json.dumps({"shape_overrides": {"S1": {"sew_order": 0}}})) == \
+        {"shape_overrides": {"S1": {"sew_order": 0}}}
+    assert _parse_config(json.dumps({"shape_overrides": {"S1": {"sew_order": None}}})) == {}
+
+
 @pytest.mark.parametrize("bad", [
     {"deleted_shape_ids": "S1"},                            # not a list
     {"shape_overrides": {"S1": {"tier": "zigzag"}}},        # unknown tier
@@ -389,6 +426,9 @@ def test_parse_config_canonicalizes_the_edit_fields():
     {"shape_overrides": {"S1": {"thread_index": True}}},    # bool is not an index
     {"shape_overrides": {"S1": {"fill_angle_deg": "flat"}}},
     {"shape_overrides": {"S1": "fill"}},                    # entry not an object
+    {"shape_overrides": {"S1": {"sew_order": -1}}},         # negative
+    {"shape_overrides": {"S1": {"sew_order": True}}},       # bool is not a position
+    {"shape_overrides": {"S1": {"sew_order": 1.5}}},        # not an integer
 ])
 def test_bad_shape_edits_are_a_400_at_submit_not_a_failed_job(client, bad):
     with ART.open("rb") as f:

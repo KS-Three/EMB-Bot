@@ -120,10 +120,11 @@ def match_shape_ids(
         # rebuilds every Region's meta from scratch each generation, so a
         # review-screen decision stored there evaporates on re-digitize unless
         # the match carries it — which is exactly what the config docstring
-        # promises, for the border, the appliqué flag, and the shape-layers
-        # contract's per-shape tier and fill angle alike. Pipeline facts
-        # (layer) stay the current generation's own.
-        for key in ("border", "applique", "tier", "fill_angle_deg"):
+        # promises, for the border, the appliqué flag, the shape-layers
+        # contract's per-shape tier and fill angle, and the within-layer sew
+        # order alike. Pipeline facts (layer) stay the current generation's
+        # own.
+        for key in ("border", "applique", "tier", "fill_angle_deg", "sew_order"):
             if key in previous[pi].meta and key not in current[ci].meta:
                 current[ci].meta[key] = previous[pi].meta[key]
     return remap
@@ -233,6 +234,15 @@ def apply_shape_edits(
                         f"not one of {sorted(_BORDER_VALUES)}"
                     )
             r.meta["border"] = b
+
+        if ov.get("sew_order") is not None:
+            so = ov["sew_order"]
+            if not isinstance(so, int) or isinstance(so, bool) or so < 0:
+                raise ValueError(
+                    f"shape_overrides[{sid!r}].sew_order {ov['sew_order']!r} "
+                    "must be a non-negative integer"
+                )
+            r.meta["sew_order"] = so
 
     if unknown:
         missing = sorted(unknown)
