@@ -266,3 +266,39 @@ test("buildWorksheetPDF treats a missing design as all-zero stats rather than th
     globalThis.window.jspdf = originalJspdf;
   }
 });
+
+test("buildWorksheetPDF prescribes cutaway stabilizer past 25k stitches, and only past it", () => {
+  // The craft rule [P -- OESD, via docs/photo-digitizing-plan-2026-07-31.md
+  // section 2 row 15]: est. > 25k stitches -> cutaway prescription on the
+  // worksheet. The worksheet carries the rule itself (twin of the digitizer
+  // preflight's STABILIZER_CUTAWAY finding) because it also serves designs
+  // that never pass through the digitizer service -- lettering, imports,
+  // combined designs -- whose stitch count is only known here.
+  const dom = installFakeDom();
+  const originalJspdf = globalThis.window.jspdf;
+  globalThis.window.jspdf = { jsPDF: FakeJsPDF };
+
+  try {
+    const heavy = buildWorksheetPDF(baseDesign({ stitchCount: 26676 }), {
+      fileName: "heavy.pdf",
+    });
+    const heavyStrings = heavy.texts.map((t) => t.str);
+    expect(heavyStrings).toContain(
+      "Stabilizer: cutaway (over 25,000 stitches - tear-away releases under this much thread)"
+    );
+
+    // The quiet side: the base design (4,321 stitches) and the boundary
+    // itself (exactly 25,000 is not "over") both stay silent -- a worksheet
+    // line that shows on every design trains the operator to ignore it.
+    for (const count of [4321, 25000]) {
+      const doc = buildWorksheetPDF(baseDesign({ stitchCount: count }), {
+        fileName: "modest.pdf",
+      });
+      const strings = doc.texts.map((t) => t.str);
+      expect(strings.some((s) => s.startsWith("Stabilizer:"))).toBe(false);
+    }
+  } finally {
+    dom.restore();
+    globalThis.window.jspdf = originalJspdf;
+  }
+});
