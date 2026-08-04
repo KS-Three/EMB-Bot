@@ -183,8 +183,13 @@ hand-rolling it in JS.
   independent of position, so a smooth gradient dithers into per-pixel
   speckle; SLIC groups by color *and* space (a superpixel never straddles a
   real edge), then the RAG merges perceptually close superpixels. Scope cuts
-  taken deliberately vs. the source plan: no rembg, no face detection, no
-  face-local threshold drop (documented no-op hook, additive later).
+  vs. the source plan that have since landed: rembg background removal
+  (`stage1_photo_prep.remove_background_seam`, wired 2026-08-04 via an
+  isolated venv — see `digitizer/rembg_isolated/README.md` and
+  `docs/photo-prep-deps-probe-2026-08-04.md`) and YuNet face priors
+  (`detect_faces_seam`, plus the face-local threshold drop this module
+  applies) are both real now, gated behind `photo_prep` (background removal
+  behind its own extra flag on top of that — see `config.py`).
 - **`stage6_blend.py`** is the gradient blend fill tier; its `detect_ramp`
   fitting logic is what the queued gradient-fragmentation fix wants to reuse
   one stage earlier (see Known bugs).

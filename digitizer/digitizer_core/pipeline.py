@@ -26,6 +26,7 @@ from .stage1_photo_prep import (
     detect_faces_seam,
     face_detector_unavailable_reason,
     photo_prep,
+    remove_background_seam,
 )
 from .stage1_prep import Prep, prep
 from .stage2_photo_segment import segment as photo_segment
@@ -44,6 +45,8 @@ from .stitches import StitchPlan
 from .threads import chart_for
 from .warnings_codes import (
     DROPPED_SMALL_SHAPES,
+    PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE,
+    PHOTO_BACKGROUND_REMOVED,
     PHOTO_FACE_PRIORS_UNAVAILABLE,
     PHOTO_FACES_DETECTED,
     warn,
@@ -116,6 +119,42 @@ def run_stages(
     prep_warnings: list[dict] = []
     face_regions = None
     if cfg.photo_prep and classification.class_ in ("photo_subject", "photo_scene"):
+        # rembg subject cutout (plan §2 row 1) — runs FIRST in this block,
+        # before face detection and tone prep, because both of those read
+        # `p.bg_mask` (tone prep's foreground-only percentile stretch;
+        # face detection doesn't today, but a cleaner bg_mask can only help
+        # a later consumer, never hurt this one). Its OWN opt-in flag on top
+        # of photo_prep — see config.py's comment for why.
+        if cfg.photo_prep_background_removal:
+            bg_removed, bg_reason = remove_background_seam(p.rgb, p.px_per_mm, cfg)
+            if bg_removed is None:
+                # The documented no-op fallback: this environment cannot run
+                # the isolated rembg subprocess (venv missing, worker
+                # crashed, timed out, ...). The job proceeds with stage 1's
+                # border-flood bg_mask exactly as before — and says so.
+                prep_warnings.append(
+                    warn(
+                        PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE,
+                        f"Background removal was skipped — {bg_reason}. "
+                        "This photo keeps stage 1's border-flood background "
+                        "only.",
+                        reason=bg_reason,
+                    )
+                )
+            else:
+                frac_before = round(float(p.bg_mask.mean()), 3)
+                p.bg_mask = p.bg_mask | bg_removed
+                frac_after = round(float(p.bg_mask.mean()), 3)
+                prep_warnings.append(
+                    warn(
+                        PHOTO_BACKGROUND_REMOVED,
+                        "Background removed via rembg subject cutout — "
+                        f"background pixel fraction {frac_before:.0%} -> "
+                        f"{frac_after:.0%}.",
+                        background_frac_before=frac_before,
+                        background_frac_after=frac_after,
+                    )
+                )
         # YuNet face priors (plan §2 row 2) — detected on the raster BEFORE
         # texture kill, because a face the smoothing has already softened is
         # exactly the face most likely to slip under the detector; the boxes

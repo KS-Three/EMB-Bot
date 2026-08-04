@@ -1,4 +1,5 @@
 .venv/
+rembg_isolated/venv/
 __pycache__/
 *.pyc
 *.egg-info/
