@@ -77,7 +77,11 @@ def _require_token(supplied: str | None) -> None:
 # closed vocabularies two of its fields draw from. Kept in lockstep with
 # `digitizer_core.regions.apply_shape_edits`, which enforces the same rules —
 # the service checks here so a bad edit is a 400 at submit, not a failed job.
-_OVERRIDE_KEYS = {"thread_index", "fill_angle_deg", "tier", "border", "layer"}
+# Exception: "stitched" is not read by `apply_shape_edits` — `pipeline.py`
+# resolves it directly off `cfg.shape_overrides` (see the comment above that
+# resolution) — but it is still validated here, in this same closed set, so a
+# bad value is still a 400 at submit.
+_OVERRIDE_KEYS = {"thread_index", "fill_angle_deg", "tier", "border", "layer", "stitched"}
 _TIER_VALUES = {"auto", "satin", "fill", "run"}
 _BORDER_VALUES = {"off", "auto", "bean"}
 
@@ -158,6 +162,9 @@ def _canonicalize_shape_edits(data: dict, chart_len: int) -> None:
                 bad = f"border must be one of {', '.join(sorted(_BORDER_VALUES))}"
             else:
                 entry["border"] = border.lower()
+        st = entry.get("stitched")
+        if st is not None and not isinstance(st, bool):
+            bad = "stitched must be a boolean"
         if bad:
             raise HTTPException(
                 status_code=400, detail=f"shape_overrides[{sid!r}]: {bad}.",
@@ -276,6 +283,11 @@ def _review_payload(result, plan=None) -> dict:
                 "area_mm2": round(r.area_mm2, 3),
                 "source": r.source,
                 "layer": r.meta.get("layer"),
+                # Effective stitched state (pipeline.py resolves this off
+                # shape_overrides, defaulting an enclosed-background region to
+                # False) — exposed so a client can tell which shapes are
+                # excluded by default and need a restore action.
+                "stitched": r.meta.get("stitched", True),
                 # The sew position and effective tier the layers panel orders
                 # by. None means the shape produced no stitches (the plan's
                 # SHAPE_NOT_STITCHED warning says how many did).
