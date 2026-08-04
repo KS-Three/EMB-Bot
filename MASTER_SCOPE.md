@@ -11,7 +11,58 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-04, later still — verification pass confirming
+**Last updated:** 2026-08-04, latest — a large batch landed since the prior
+entry below: **CI now exists** (Kent added a stock GitHub Actions conda
+workflow, first run failed on wrong Python/no environment.yml; rewritten in
+**PR #37** to run this repo's real suites — engine `node --test`, Studio
+`vitest`, digitizer `pytest` with the 3 known container goldens deselected —
+and every PR from here on is gated on its Actions run going green before
+merge, not just local suite passes). On top of that, photo plan rows 11
+(FDoG detail layer), 12 (sketch tier), 14 (depth-sorted sequencing), and a
+15-guard subset (preflight) landed, plus the last two step-3 dependency
+gaps closed: **PR #38** shipped the zero-dep photo-prep slice (CLAHE tone +
+texture kill) with a full dependency probe (`docs/photo-prep-deps-probe-
+2026-08-04.md`) establishing rembg/YuNet/contrib-opencv were all installable
+but not yet wired; **PR #39** applied the probe-verified opencv-contrib
+swap (`opencv-contrib-python-headless` replaces plain `opencv-python-
+headless` in `requirements.txt`/`pyproject.toml`, same cv2 build plus
+`cv2.ximgproc`), which lights up `rolling_guidance`'s real texture-kill path
+instead of its bilateral fallback — golden-safe, re-verified in a fresh
+throwaway venv both before and after landing; **PR #41** wired real YuNet
+face detection into the face-priors seam PR #38 had landed as a documented
+no-op — `cv2.FaceDetectorYN` on the committed, sha-pinned model
+(`digitizer_core/model_data/face_detection_yunet_2023mar.onnx`), true-
+positive detection proven on `skimage.data.astronaut()` (a rights-safe
+public-domain photo shipped inside the scikit-image wheel, not a committed
+photograph), wired into the face-local merge-threshold drop, region-class
+mapping, and a new `FACE_TOO_SMALL` preflight guard. **This closes the
+caveat this doc has carried since the palette-k-medoids pass** — the
+eyes/skin class multipliers that used to run at a flat 1.0 "until step 3's
+face priors exist" now receive real face regions. An independent geometry
+audit (fresh measurement from raw output, not the shipped tests' own
+assertions) confirmed all of PR #41's claims and caught one real defect
+before merge: `FACE_BLOCK_HOOP_MM` used a rounded 100.0mm instead of this
+codebase's own literal-inch hoop convention (`src/units.js`: `inch × 25.4`,
+already used by the guard's sibling `FACE_MIN_HOOP_MM`), leaving a ~1.6mm
+dead band where a design that still needed a real 4×4in hoop got no
+warning — fixed to 101.6mm same-PR, with a boundary regression test. A
+parallel geometry audit of PR #40 (sketch tier — `fill_technique="sketch"`,
+a config preset over rows 10/11 with zero new algorithms, `stage6_streamline`
+gaining an additive `darkness_scale` kwarg) independently re-derived its
+seed-spacing and highlight-cutoff numbers from raw emitted stitch
+coordinates and bit-exact-diffed the default-kwarg path against the
+pre-change parent commit across 7 scenarios — full confirmation, no defects
+found. Photo plan status: **rows 0, 2–15 are now all built** (row 1,
+background removal via rembg, remains the one open row — installable per
+the probe doc but blocked on a `numba` vs. this repo's `numpy==2.5.1` pin;
+documented as a seam, `remove_background_seam`, not attempted this pass).
+Combined suite on the final composed `main` (`354f075`): engine **267/267**,
+Studio **348/348** (25 files), digitizer **654 passed / 3 failed / 1
+skipped** — the 3 failures are the same long-standing container-environment
+goldens this doc has cited every pass since 2026-08-03. Main-branch CI run
+green on all 3 jobs.
+
+Prior update below, 2026-08-04, later still — verification pass confirming
 **all 11 PRs from the prior pass's "#16–#21 pending review" list, plus #22
 though #28, are now merged to `main`** (`4cf8760`, the `backstitch-
 underlay-control` merge; every PR number from #16 through #28 shows a
@@ -225,9 +276,12 @@ PAM selection over the config's thread chart, ΔE00 objective, region
 weight = area × class multiplier — measured on the committed `fur_ramp.png`
 fixture: 8 ramp regions that nearest-snap scattered across 7 near-duplicate
 spools now resolve to 5 one-family browns, max excess 2.34 ΔE00. The
-eyes/skin/subject/background multipliers are wired and test-proven but run
-at 1.0 (plain area) until plan step 3's face priors exist — the seam is
-documented in that module's docstring. Flat/gradient lanes untouched
+eyes/skin/subject/background multipliers are wired and test-proven — **the
+eyes/skin half is no longer a flat 1.0 placeholder**: PR #41 (below) wired
+real face priors, so a detected face's eye/skin regions now receive their
+documented class multipliers; subject/background remain 1.0 pending the
+rembg background-removal seam (row 1, still open — see the "Last updated"
+note above). Flat/gradient lanes untouched
 (byte-identical goldens re-verified). Row 14 (sequencing + underlay
 deltas) landed the same pass: photo-classified designs (or
 `cfg.extra["photo_sequencing"]` opt-in) sew depth-sorted —
@@ -244,13 +298,41 @@ construction and by the committed goldens. TRUE instance-level depth
 a seam in `depth_sort_layers`' docstring, not faked
 (`tests/test_photo_sequencing.py`).
 
+Row 11 (FDoG detail layer, `stage6_detail.py`) landed in a later pass: Kang
+2007's coherent-line-drawing edges (the same machinery row 6's direction
+field reimplements from) drive bean-run detail strokes over the fill,
+appended last so they never merge into fill quantization; `SourcePixels.
+gradient_class` was fixed the same pass (`gradient_class` gates blend
+routing, a separate concern from `design_class` gating photo sequencing/
+underlay — the two were composing incorrectly before). Row 12 (sketch tier,
+`stage6_sketch.py`) landed this pass, closing photo plan **law 10** — the
+corpus-measured target (corgi/snowman/rose: ~6 runs, 12k stitches, 1 trim)
+the plan doc predicted would fall out of rows 8–11 "nearly free, a config
+preset, not a new engine": `fill_technique="sketch"` reads row 10's
+darkness field at half strength (`SKETCH_DARKNESS_SCALE=0.5`) via a new
+additive `darkness_scale` kwarg on `stage6_streamline.streamline_fill`
+(default `1.0`, bit-exact identical to every existing caller — independently
+re-verified across 7 scenarios, parent commit vs. this one), and appends
+row 11's detail block. Row 15 (preflight guardrails) grew a `FACE_TOO_SMALL`
+guard this pass (a detected face in a design that only fits a 4×4in hoop
+blocks with a size-up-to-5×7 suggestion) alongside the guards already
+landed in the prior preflight pass (low px/mm, low subject/background
+contrast, heavy stabilizer estimate, many color stops). Photo plan status
+as of this pass: **rows 0, 2–15 are all built**; row 1 (rembg background
+removal) is the one row still open — see the "Last updated" note above for
+why.
+
 **Confidence: Low** beyond flat spot-color art. Flat-logo digitizing (both
-implementations) is Medium — **267/267** JS tests and **564/567** Python
-tests pass (fresh run this session against `origin/main`; see the "Last
-updated" note above — the 3 failures are the same long-standing
+implementations) is Medium — **267/267** JS tests and **654/658** Python
+tests pass (fresh run this session against `origin/main` at `354f075`; see
+the "Last updated" note above — the 3 failures are the same long-standing
 container-environment goldens this doc has cited every pass since
-2026-08-03, not new regressions), and the geometry is internally
-consistent. `hardening-closeout-2026-08-02.md`
+2026-08-03, not new regressions; the 4th non-pass count is the fixture
+harness's own intentional skip), and the geometry is internally
+consistent — independent geometry/behavior audits (fresh measurement from
+raw pipeline output, not the shipped tests' own assertions) have now run
+against the sketch tier and the face-priors wiring specifically, on top of
+the standing per-PR verification practice. `hardening-closeout-2026-08-02.md`
 independently re-measured the five newest Python features and found
 defects the shipped test suites couldn't see in all five; one of those five
 is now fixed (see below), four remain open:
@@ -425,7 +507,21 @@ with adjudicated truth, and every ±50% sweep of the 7 documented constants
 only creates misroutes, never fixes one (`docs/classifier-lens-2026-08-04.md`).
 All four photo-plan technique rows queued as of the prior pass (direction
 field row 6, scan-line row 8, meander row 9, streamline row 10 in both its
-mono and layered slices) are now merged — none remain open.
+mono and layered slices) are now merged — none remain open. Since then,
+rows 11 (FDoG detail), 12 (sketch tier), 13 (palette), 14 (depth sequencing),
+a 15 subset (preflight guards), and the face-priors half of row 2 (YuNet)
+have all landed too — **row 1 (rembg background removal) is now the only
+open photo-plan row**, blocked on a real dependency conflict (`numba`
+requires `numpy<2.5`, this repo pins `numpy==2.5.1` for reasons unrelated to
+photo work) rather than a licensing or install-path problem; the probe doc
+(`docs/photo-prep-deps-probe-2026-08-04.md`) confirms rembg itself installs
+and its `isnet-general-use` model downloads cleanly through the proxy. The
+natural next step there is an isolated-subprocess harness (a throwaway venv
+pinned to a compatible numpy, invoked as a subprocess from the main
+pipeline) rather than touching the shared venv's numpy pin. CI now gates
+every merge (`.github/workflows/python-package-conda.yml`, PR #37) — three
+jobs (engine/studio/digitizer), the digitizer job deselecting the same 3
+known container goldens this doc has always excluded from its own counts.
 
 ---
 
