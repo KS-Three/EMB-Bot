@@ -124,6 +124,12 @@ const SHAPE_BORDERS = new Set(["off", "auto", "bean"]);
 // `stitched` mapping), `false` explicitly excludes one. Unlike the other
 // fields it has no "auto" spelling — the absence of the key IS auto,
 // exactly like every other override here.
+//
+// `sew_order` (contract v1.2) is a shape's explicit position within its OWN
+// color layer's sew sequence — distinct from `layer`, which picks WHICH
+// layer a shape sews in. Like `layer`, absence is the whole "no override"
+// spelling (there is no "auto" word for it): the service falls back to
+// nearest-neighbour for any shape in the layer that carries no override.
 export function canonicalShapeEdits(element) {
   const out = {};
   const deleted = Array.from(new Set(element.deletedShapeIds || []))
@@ -143,6 +149,7 @@ export function canonicalShapeEdits(element) {
     if (SHAPE_BORDERS.has(e.border)) entry.border = e.border;
     if (Number.isInteger(e.layer)) entry.layer = e.layer;
     if (typeof e.stitched === "boolean") entry.stitched = e.stitched;
+    if (Number.isInteger(e.sew_order) && e.sew_order >= 0) entry.sew_order = e.sew_order;
     if (Object.keys(entry).length) overrides[sid] = entry;
   }
   if (Object.keys(overrides).length) out.shape_overrides = overrides;
@@ -158,6 +165,35 @@ export function editsKey(edits) {
     (edits && edits.deleted_shape_ids) || [],
     (edits && edits.shape_overrides) || {},
   ]);
+}
+
+// Within-layer sew-order reorder (contract v1.2, the Layers panel's up/down
+// control for shapes sharing one color). `rowIds` is the layer's OWN shapes
+// in their currently displayed order — already accounting for any sew_order
+// override in effect and, absent one, the natural nearest-neighbour order —
+// `targetId` the shape being moved, `dir` -1 (earlier) or 1 (later).
+//
+// Returns { shape_id: newSewOrder, ... } for EVERY shape in the layer, or
+// null when the move is out of bounds (already first/last). Every member is
+// assigned an explicit slot, not just the two that swapped: a partial pin —
+// "move these two, leave the rest to nearest-neighbour" — cannot express
+// "swap adjacent items" unambiguously once nearest-neighbour is free to
+// reshuffle the untouched slots around them (the service falls back to it
+// per shape, not per layer). Committing the whole layer's order the first
+// time the user touches it is the predictable reading: from then on, this
+// layer sews exactly the order the list shows.
+export function reorderWithinLayer(rowIds, targetId, dir) {
+  const i = rowIds.indexOf(targetId);
+  if (i < 0) return null;
+  const j = i + dir;
+  if (j < 0 || j >= rowIds.length) return null;
+  const next = rowIds.slice();
+  [next[i], next[j]] = [next[j], next[i]];
+  const out = {};
+  next.forEach((id, idx) => {
+    out[id] = idx;
+  });
+  return out;
 }
 
 // Outline decimation for the row thumbnails: keep at most `max` points,
@@ -207,6 +243,11 @@ export function reviewFromJob(review) {
         null,
       areaMm2: s.area_mm2,
       layer: s.layer,
+      // The within-layer sew-order override in effect (contract v1.2), or
+      // null when this shape falls back to nearest-neighbour — echoed back
+      // the same way `layer` is, so the panel can tell an applied override
+      // from the computed default.
+      sewOrder: s.sew_order == null ? null : s.sew_order,
       sewIndex: s.sew_index,
       sewBlock: s.sew_block,
       tier: s.tier,

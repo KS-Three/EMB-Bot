@@ -350,6 +350,15 @@ class PipelineConfig:
     #                           AFTER the palette is compacted, so moving a
     #                           shape never drops its thread from the color
     #                           list.
+    #   sew_order: int         – explicit position (0-based) in this shape's
+    #                           color layer's OWN sew sequence (contract
+    #                           v1.2) — distinct from `layer`, which picks
+    #                           which layer a shape sews in; this picks where
+    #                           within it. Stage 7 forces a pinned shape into
+    #                           its slot once the running pick count reaches
+    #                           it, and fills every unpinned slot with
+    #                           nearest-neighbour exactly as before, so a
+    #                           layer with no override sews byte-identical.
     # Values ride Region.meta so stages 5 and 7 pick them up where each
     # decision is made. Unknown shape_ids warn (SHAPE_EDIT_UNKNOWN_ID).
     shape_overrides: dict = field(default_factory=dict)

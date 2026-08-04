@@ -288,6 +288,116 @@ test("a border override rides buildDigitizeConfig and changes the cache key (edi
   expect(buildDigitizeConfig(cleared, PROJECT)).toEqual(buildDigitizeConfig(plain, PROJECT));
 });
 
+// ---- within-layer sew order (contract v1.2; Layers-panel reorder control) --
+//
+// The wire contract (digitizer_service/app.py's sew_order validation,
+// enforced again engine-side in regions.apply_shape_edits) accepts a
+// non-negative integer — a shape's explicit slot within its OWN color
+// layer's sew sequence. Unlike `layer` (which picks WHICH layer sews), this
+// picks WHERE within it, and unlike tier/border it has no closed vocabulary
+// to normalize — just an integer bound.
+
+test("canonicalShapeEdits accepts a non-negative sew_order and rejects junk (negative, float, non-numeric)", async () => {
+  stubStorage({});
+  const { canonicalShapeEdits } = await import("./digitizer.js");
+  const el = digitizedElement({
+    shapeOverrides: {
+      Sfirst: { sew_order: 0 },
+      Slater: { sew_order: 3 },
+      Sneg: { sew_order: -1 },       // rejected -> entry canonicalizes to nothing
+      Sfloat: { sew_order: 1.5 },    // not an integer -> dropped
+      Sstr: { sew_order: "2" },      // not a number -> dropped
+      Snull: { sew_order: null },    // absence -> canonicalizes away
+    },
+  });
+  expect(canonicalShapeEdits(el)).toEqual({
+    shape_overrides: {
+      Sfirst: { sew_order: 0 },
+      Slater: { sew_order: 3 },
+    },
+  });
+});
+
+test("sew_order combines with layer and other override fields on one shape", async () => {
+  stubStorage({});
+  const { canonicalShapeEdits } = await import("./digitizer.js");
+  const el = digitizedElement({
+    shapeOverrides: { S1: { layer: 2, sew_order: 1, tier: "fill" } },
+  });
+  expect(canonicalShapeEdits(el)).toEqual({
+    shape_overrides: { S1: { tier: "fill", layer: 2, sew_order: 1 } },
+  });
+});
+
+test("a sew_order override rides buildDigitizeConfig and changes the cache key (editsKey)", async () => {
+  stubStorage({});
+  const { buildDigitizeConfig, canonicalShapeEdits, editsKey } = await import("./digitizer.js");
+  const plain = digitizedElement();
+  const edited = digitizedElement({ shapeOverrides: { S1: { sew_order: 0 } } });
+  expect(editsKey(canonicalShapeEdits(edited))).not.toBe(editsKey(canonicalShapeEdits(plain)));
+  // Distinct positions are distinct edits (distinct jobs).
+  const other = digitizedElement({ shapeOverrides: { S1: { sew_order: 1 } } });
+  expect(editsKey(canonicalShapeEdits(other))).not.toBe(editsKey(canonicalShapeEdits(edited)));
+  const cfg = buildDigitizeConfig(edited, PROJECT);
+  expect(cfg.shape_overrides).toEqual({ S1: { sew_order: 0 } });
+  for (const k of Object.keys(cfg)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
+  // Clearing it (null) reads as no edits at all — the pre-layers config.
+  const cleared = digitizedElement({ shapeOverrides: { S1: { sew_order: null } } });
+  expect(buildDigitizeConfig(cleared, PROJECT)).toEqual(buildDigitizeConfig(plain, PROJECT));
+});
+
+test("reviewFromJob maps the sew_order override in effect, and null when the shape has none", async () => {
+  stubStorage({});
+  const { reviewFromJob } = await import("./digitizer.js");
+  const wire = {
+    palette: [{ brand_id: "isacord", number: "0020", name: "Black", rgb: [0, 0, 0] }],
+    shapes: [
+      { shape_id: "Spinned", thread_index: 0, thread_number: "0020", area_mm2: 10, source: "quant",
+        layer: 0, sew_order: 0, sew_index: 0, sew_block: 0, tier: "fill",
+        outline_mm: [[0, 0], [1, 0], [1, 1]], holes_mm: [] },
+      { shape_id: "Sauto", thread_index: 0, thread_number: "0020", area_mm2: 5, source: "quant",
+        layer: 0, sew_order: null, sew_index: 1, sew_block: 0, tier: "fill",
+        outline_mm: [[0, 0], [1, 0], [1, 1]], holes_mm: [] },
+    ],
+  };
+  const r = reviewFromJob(wire);
+  expect(r.shapes.map((s) => [s.id, s.sewOrder])).toEqual([
+    ["Spinned", 0],
+    ["Sauto", null],
+  ]);
+});
+
+// ---- reorderWithinLayer (pure logic behind the within-layer up/down UI) ----
+
+test("reorderWithinLayer swaps the target with its neighbour and assigns every sibling an explicit slot", async () => {
+  stubStorage({});
+  const { reorderWithinLayer } = await import("./digitizer.js");
+  const ids = ["L", "M", "R"];
+  expect(reorderWithinLayer(ids, "M", -1)).toEqual({ M: 0, L: 1, R: 2 });
+  expect(reorderWithinLayer(ids, "M", 1)).toEqual({ L: 0, R: 1, M: 2 });
+});
+
+test("reorderWithinLayer refuses to move a shape past either edge", async () => {
+  stubStorage({});
+  const { reorderWithinLayer } = await import("./digitizer.js");
+  const ids = ["L", "M", "R"];
+  expect(reorderWithinLayer(ids, "L", -1)).toBeNull();
+  expect(reorderWithinLayer(ids, "R", 1)).toBeNull();
+});
+
+test("reorderWithinLayer is a no-op (null) for a shape id it doesn't know", async () => {
+  stubStorage({});
+  const { reorderWithinLayer } = await import("./digitizer.js");
+  expect(reorderWithinLayer(["L", "M", "R"], "GHOST", 1)).toBeNull();
+});
+
+test("reorderWithinLayer on a two-shape layer is a full reversal either direction", async () => {
+  stubStorage({});
+  const { reorderWithinLayer } = await import("./digitizer.js");
+  expect(reorderWithinLayer(["A", "B"], "A", 1)).toEqual({ B: 0, A: 1 });
+  expect(reorderWithinLayer(["A", "B"], "B", -1)).toEqual({ B: 0, A: 1 });
+});
+
 test("editsKey distinguishes a `stitched` restore from no edits, and a no-op stitched round trip stays stable", async () => {
   stubStorage({});
   const { canonicalShapeEdits, editsKey } = await import("./digitizer.js");

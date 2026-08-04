@@ -127,6 +127,7 @@ def edited(base):
     purple = only(result, "2905")    # rectangle, the only 2905 shape
     orange = [r for r in result.regions if r.thread_number == "1305"]
     tiny = min(orange, key=lambda r: r.area_mm2)     # the run-tier satellite
+    big_orange = max(orange, key=lambda r: r.area_mm2)  # the surviving 1305 shape
 
     c = cfg(
         deleted_shape_ids=[tiny.shape_id, "SNOPE"],
@@ -135,14 +136,16 @@ def edited(base):
             green.shape_id: {"tier": "fill"},                     # tier flip
             red.shape_id: {"fill_angle_deg": 90.0},               # angle
             blue.shape_id: {"layer": 99},                         # sew last
+            big_orange.shape_id: {"sew_order": 0},                # within-layer order
             "SNOPE2": {"tier": "satin"},                          # stale
+            "SNOPE3": {"sew_order": 3},                           # stale
         },
     )
     result2, plan2 = digitize(ART, c)
     return {
         "result": result2, "plan": plan2,
         "red": red, "blue": blue, "green": green, "purple": purple,
-        "tiny": tiny,
+        "tiny": tiny, "big_orange": big_orange,
     }
 
 
@@ -184,7 +187,7 @@ def test_delete_removes_exactly_that_shape_and_warns(base, edited):
 def test_unknown_ids_warn_and_never_error(edited):
     w = next(w for w in edited["result"].warnings
              if w["code"] == "SHAPE_EDIT_UNKNOWN_ID")
-    assert w["count"] == 2 and w["ids"] == ["SNOPE", "SNOPE2"]
+    assert w["count"] == 3 and w["ids"] == ["SNOPE", "SNOPE2", "SNOPE3"]
 
 
 # --- recolor -----------------------------------------------------------------
@@ -284,6 +287,66 @@ def test_layer_override_changes_sew_order(base, edited):
     assert "3902" in [p["number"] for p in edited["result"].palette]
 
 
+# --- sew_order (within-layer order, contract v1.2) ---------------------------
+#
+# Distinct from `layer` above: `layer` picks WHICH color block a shape sews
+# in; `sew_order` picks WHERE within that block's own nearest-neighbour
+# sequence. Both live on Region.meta and both flow through the same
+# apply_shape_edits / SHAPE_EDIT_UNKNOWN_ID machinery, but sew_order is
+# resolved one stage later, inside stage 7's own picking loop.
+
+def test_the_sew_order_config_override_reaches_the_needle(edited):
+    big_orange = edited["big_orange"].shape_id
+    r = next(r for r in edited["result"].regions if r.shape_id == big_orange)
+    assert r.meta.get("sew_order") == 0
+
+
+def test_sew_order_forces_explicit_position_within_layer():
+    """Three same-layer bars naturally sweep left, middle, right — nearest-
+    neighbour never backtracks over ground it is already standing on.
+    Pinning the RIGHT bar to slot 0 must reverse the whole order: not just
+    relabel it first, but actually route the middle bar's entry from
+    wherever the right bar's real stitching ended, same as the layer
+    override already proves for block order."""
+    left, middle, right = bar(8, 8, cx=-20), bar(8, 8, cx=0), bar(8, 8, cx=20)
+
+    auto, _ = plan_for([region(left, "L"), region(middle, "M"), region(right, "R")])
+    order_auto = sorted(sew_rank(auto), key=lambda sid: sew_rank(auto)[sid][1])
+    assert order_auto == ["L", "M", "R"], "baseline: nearest-neighbour sweeps left to right"
+
+    pinned, _ = plan_for([
+        region(left, "L"), region(middle, "M"),
+        region(right, "R", {"sew_order": 0}),
+    ])
+    order_pinned = sorted(sew_rank(pinned), key=lambda sid: sew_rank(pinned)[sid][1])
+    assert order_pinned == ["R", "M", "L"], \
+        "R is forced first; M and L still resolve by nearest-neighbour from there"
+
+
+def test_sew_order_falls_back_to_nearest_neighbour_for_unpinned_shapes():
+    """Pinning ONE shape to a late slot must not disturb how the UNPINNED
+    shapes are chosen relative to each other — they still compete for every
+    slot nearest-neighbour would have given them, exactly the fallback the
+    contract promises."""
+    left, middle, right = bar(8, 8, cx=-20), bar(8, 8, cx=0), bar(8, 8, cx=20)
+
+    pinned, _ = plan_for([
+        region(left, "L"), region(middle, "M", {"sew_order": 2}), region(right, "R"),
+    ])
+    order = sorted(sew_rank(pinned), key=lambda sid: sew_rank(pinned)[sid][1])
+    assert order == ["L", "R", "M"], \
+        "M is deferred to last; L and R still sew in nearest-neighbour order"
+
+
+def test_sew_order_absent_layer_is_untouched():
+    """No shape in the layer carries an override: byte-identical to the
+    pre-feature picking loop (same three shapes, no meta key at all)."""
+    left, middle, right = bar(8, 8, cx=-20), bar(8, 8, cx=0), bar(8, 8, cx=20)
+    plan, _ = plan_for([region(left, "L"), region(middle, "M"), region(right, "R")])
+    order = sorted(sew_rank(plan), key=lambda sid: sew_rank(plan)[sid][1])
+    assert order == ["L", "M", "R"]
+
+
 # --- border strings ----------------------------------------------------------
 
 def test_border_override_strings_beat_the_global_mode():
@@ -302,10 +365,10 @@ def test_border_override_strings_beat_the_global_mode():
 def test_review_intent_rides_the_id_carry_forward():
     """`match_shape_ids` carries the operator's per-shape decisions onto the
     next generation, exactly as the config docstring promises for border and
-    appliqué — and now for tier and fill angle too."""
+    appliqué — and now for tier, fill angle and within-layer sew order too."""
     prev = [region(bar(10, 4), "OLD",
                    {"tier": "satin", "fill_angle_deg": 45.0, "border": "bean",
-                    "applique": True, "layer": 3})]
+                    "applique": True, "layer": 3, "sew_order": 1})]
     cur = [region(bar(10.2, 4.1), "NEW")]
     match_shape_ids(prev, cur)
     assert cur[0].shape_id == "OLD"
@@ -313,6 +376,7 @@ def test_review_intent_rides_the_id_carry_forward():
     assert cur[0].meta.get("fill_angle_deg") == 45.0
     assert cur[0].meta.get("border") == "bean"
     assert cur[0].meta.get("applique") is True
+    assert cur[0].meta.get("sew_order") == 1
     assert cur[0].meta["layer"] == 0, "pipeline facts stay the new generation's"
 
 

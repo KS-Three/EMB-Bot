@@ -10,6 +10,7 @@
     editsKey,
     reviewFromJob,
     reconcileReview,
+    reorderWithinLayer,
   } from "../lib/digitizer.js";
   import { loadPalette, nearestInList } from "../lib/threads.js";
 
@@ -267,6 +268,13 @@
     reviewShapes.length > 0 &&
     editsKey(canonicalShapeEdits(element)) !== (element.appliedEdits || editsKey({}));
 
+  // The shapes a within-layer reorder may touch: not hidden, not sitting out
+  // as an unstitched enclosed area — the same live subset the up/down
+  // buttons render for.
+  $: sewableShapes = orderedShapes.filter(
+    (r) => !deletedIds.includes(r.id) && effStitched(r, overrides)
+  );
+
   // Effective layer: the user's explicit sew-order override, else the layer
   // the engine assigned (one per thread), else last. Rows sort by it, then
   // by the emitted sew position — the list IS the sew order.
@@ -284,6 +292,29 @@
         (a.sewIndex == null ? 1e9 : a.sewIndex) - (b.sewIndex == null ? 1e9 : b.sewIndex) ||
         (a.id < b.id ? -1 : 1)
     );
+  }
+
+  // Effective within-layer sew order (contract v1.2): the user's explicit
+  // override, else what the LAST applied result actually sewed (row.sewOrder
+  // — set only when a previous override took effect), else the emitted sew
+  // position, which is nearest-neighbour's own answer. Distinct from
+  // effLayer: that picks WHICH color block a shape sews in, this picks WHERE
+  // within it — the two overrides are independent and can both be set.
+  function effSewOrder(row, ov) {
+    const e = ov[row.id] || {};
+    if (Number.isInteger(e.sew_order)) return e.sew_order;
+    if (Number.isInteger(row.sewOrder)) return row.sewOrder;
+    return row.sewIndex == null ? 1e9 : row.sewIndex;
+  }
+
+  // The shapes sharing `row`'s effective layer, in their current within-
+  // layer order — the pool `moveShapeWithinLayer` reorders and the up/down
+  // buttons enable/disable against.
+  function layerSiblings(row, shapes, ov) {
+    const layer = effLayer(row, ov);
+    return shapes
+      .filter((r) => effLayer(r, ov) === layer)
+      .sort((a, b) => effSewOrder(a, ov) - effSewOrder(b, ov) || (a.id < b.id ? -1 : 1));
   }
 
   function effRgb(row, ov) {
@@ -437,12 +468,11 @@
     setOverride(sid, { stitched: null });
   }
 
-  // "Sew earlier/later", within what the integer layer field can express:
-  // join the adjacent row's layer when it differs; when the neighbour
-  // already shares this layer, step past the whole group instead — order
-  // WITHIN a layer belongs to the machine's pathing (stage 6 nearest-
-  // neighbour), not to this list, and pretending otherwise would show an
-  // order the file won't sew.
+  // "Sew earlier/later" ACROSS layers, within what the integer layer field
+  // can express: join the adjacent row's layer when it differs; when the
+  // neighbour already shares this layer, step past the whole group instead
+  // — order WITHIN a layer is a SEPARATE control (moveShapeWithinLayer,
+  // sew_order, contract v1.2) below, not this one.
   function moveShape(row, dir) {
     const rows = orderedShapes;
     const i = rows.findIndex((r) => r.id === row.id);
@@ -461,6 +491,22 @@
       target = theirs + dir;
     }
     setOverride(row.id, { layer: target });
+  }
+
+  // "Sew earlier/later" WITHIN one color layer (contract v1.2): reorders the
+  // shapes sharing `row`'s effective layer via the sew_order override —
+  // distinct from moveShape above, which moves a shape to a DIFFERENT layer.
+  // The whole layer's order is committed at once (reorderWithinLayer's
+  // contract), one patch = one undo step, the same as every other edit here.
+  function moveShapeWithinLayer(row, dir) {
+    const siblingIds = layerSiblings(row, sewableShapes, overrides).map((r) => r.id);
+    const next = reorderWithinLayer(siblingIds, row.id, dir);
+    if (!next) return;
+    const cur = { ...(element.shapeOverrides || {}) };
+    for (const sid of Object.keys(next)) {
+      cur[sid] = { ...(cur[sid] || {}), sew_order: next[sid] };
+    }
+    patch({ shapeOverrides: cur });
   }
 
   // A stale edit (the art changed under it — e.g. a re-digitize at a new
@@ -631,6 +677,8 @@
               {@const restoredEnclosed = !dead && stitched && row.stitched === false}
               {@const rgb = effRgb(row, overrides)}
               {@const tier = effTier(row, overrides)}
+              {@const siblings = dead || unstitched ? [] : layerSiblings(row, sewableShapes, overrides)}
+              {@const siblingIdx = siblings.findIndex((r) => r.id === row.id)}
               <li class="dgp-layer" class:dead class:unstitched>
                 <svg class="dgp-lthumb" viewBox="0 0 24 24" aria-hidden="true">
                   <path
@@ -738,6 +786,24 @@
                       aria-label="Sew later"
                       on:click={() => moveShape(row, 1)}
                     >↓</button>
+                    {#if siblings.length > 1}
+                      <button
+                        type="button"
+                        class="dgp-lbtn"
+                        disabled={siblingIdx <= 0}
+                        title="Sew earlier within this color"
+                        aria-label="Sew earlier within this color"
+                        on:click={() => moveShapeWithinLayer(row, -1)}
+                      >▲</button>
+                      <button
+                        type="button"
+                        class="dgp-lbtn"
+                        disabled={siblingIdx < 0 || siblingIdx === siblings.length - 1}
+                        title="Sew later within this color"
+                        aria-label="Sew later within this color"
+                        on:click={() => moveShapeWithinLayer(row, 1)}
+                      >▼</button>
+                    {/if}
                     {#if restoredEnclosed}
                       <button
                         type="button"

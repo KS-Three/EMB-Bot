@@ -12,6 +12,10 @@ design runs clean on a machine or produces a garment covered in loose ends:
   takes `start_near` and enters the shape there. Generating first and ordering
   on the result meant every shape began at its own top-left corner and the
   needle was sent back across the design to get there.
+  The review screen may pin a shape to an explicit slot in this order
+  (`Region.meta["sew_order"]`, shape-layers contract v1.2) — nearest-neighbour
+  still fills every slot no one pinned, so an unedited design, and every shape
+  in an edited one that carries no override, sews exactly as before.
 - **Ties.** A lock stitch goes in wherever the thread starts and wherever it is
   about to be cut. Without them the first stitches pull out the moment the
   garment is worn, which is the kind of defect that surfaces after delivery.
@@ -681,6 +685,21 @@ def sequence(
         far = {i: round(group[i].polygon.centroid.distance(centre), 6)
                for i in range(len(group))}
 
+        # The review screen's within-layer sew order (shape-layers contract
+        # v1.2, `Region.meta["sew_order"]`): a shape carrying one is "due" at
+        # that 0-based slot in THIS group's pick sequence and is forced next
+        # once the slot count reaches it, pre-empting nearest-neighbour.
+        # Shapes with no override are untouched — they keep competing for
+        # every slot nearest-neighbour would have given them, which is the
+        # fallback the contract promises. Ties among several shapes due at
+        # once break on `rank`, the same deterministic tiebreak the geometry
+        # picks already use. A sparse or colliding set of values still
+        # terminates cleanly: a pinned shape not yet due when every unpinned
+        # shape is gone is simply forced early rather than stalling the loop.
+        sew_order = {i: group[i].region.meta.get("sew_order")
+                     for i in range(len(group))
+                     if group[i].region.meta.get("sew_order") is not None}
+
         remaining = list(range(len(group)))
         ordered: list[StitchRun] = []
         # Which shapes actually put thread down. A link may only be routed
@@ -688,11 +707,17 @@ def sequence(
         # nothing must not be allowed to "cover" anything.
         sewn: list[PlannedRegion] = []
         while remaining:
-            if cursor is None:
-                pick = min(remaining, key=lambda i: (-far[i], rank[i]))
+            next_slot = len(group) - len(remaining)
+            pinned = [i for i in remaining if i in sew_order]
+            due = min(pinned, key=lambda i: (sew_order[i], rank[i])) if pinned else None
+            unpinned = [i for i in remaining if i not in sew_order]
+            if due is not None and (sew_order[due] <= next_slot or not unpinned):
+                pick = due
+            elif cursor is None:
+                pick = min(unpinned, key=lambda i: (-far[i], rank[i]))
             else:
                 here = Point(cursor)
-                pick = min(remaining, key=lambda i: (
+                pick = min(unpinned, key=lambda i: (
                     round(group[i].polygon.distance(here), 6), rank[i]))
             p = group[pick]
             remaining.remove(pick)
