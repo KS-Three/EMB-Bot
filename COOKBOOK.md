@@ -247,16 +247,29 @@ Session handoff with the full context:
    photo-digitizing steps 5+. M0 instruments `digitizer/tools/shape_lens.py`
    with distance-transform stats (`max/μ/σ` at skeletal pixels) against the
    current `2·area/perimeter` satin-vs-fill call, on the fixture logo and all
-   37 `scratch_corpus/` files — zero engine change, zero golden impact. M1
-   adds `digitizer_core/shapefield.py` (`ShapeField`: mask, skeleton, exact
-   EDT, scale, origin), hoisting one `medial_axis(rng=0)` so skeleton and DT
-   are computed together, behind `cfg.extra["shapefield"]` defaulting to
-   today's path — **byte-identical output is a hard requirement**. ~3 days
-   combined, both desk-safe. Rationale: `stage7_sequence.py:97` makes the
-   satin/fill call from `2·area/perimeter` (a statistic the source patent
-   warns against — it satins a 20mm disc under a 5mm cap once the edge is
-   serrated) *before* the DT even exists in `stage6_satin.py`. Steps 5+ all
-   lean harder on that classifier than anything shipped so far. Full
+   37 `scratch_corpus/` files — zero engine change, zero golden impact.
+   **The instrument existed already (2026-08-02, `70a14e8`) but had never
+   been run to completion — done 2026-08-04, unit-fixture + real-art +
+   timing + taper legs measured and written up
+   (`docs/superpowers/plans/2026-08-04-m0-shape-lens-measurement.md`). The
+   37-file corpus leg is still blocked** — `scratch_corpus/` is gitignored
+   and local-only, empty in this remote checkout; Kent needs to run
+   `shape_lens.py corpus scratch_corpus/` locally and hand back the output
+   before M0 fully closes per the architecture doc's original spec. Key
+   finding so far: the shipped rule sews the SAME shape (`logo_alpha.png` vs
+   `logo_whitebg.png`, same design, different file encoding) as satin on one
+   file and fill on the other, purely from antialiasing noise landing
+   `2*area/perimeter` on opposite sides of the 5.0mm cap — every DT arm
+   agrees "fill" on both. M1 adds `digitizer_core/shapefield.py`
+   (`ShapeField`: mask, skeleton, exact EDT, scale, origin), hoisting one
+   `medial_axis(rng=0)` so skeleton and DT are computed together, behind
+   `cfg.extra["shapefield"]` defaulting to today's path — **byte-identical
+   output is a hard requirement**. Not started. ~3 days combined, both
+   desk-safe. Rationale: `stage7_sequence.py:97` makes the satin/fill call
+   from `2·area/perimeter` (a statistic the source patent warns against —
+   it satins a 20mm disc under a 5mm cap once the edge is serrated) *before*
+   the DT even exists in `stage6_satin.py`. Steps 5+ all lean harder on that
+   classifier than anything shipped so far. Full
    architecture: `docs/dt-first-architecture-2026-08-01.md` §2 and
    `docs/masters-teardown-2026-08-01.md`.
 3. **Photo-digitizing plan steps 5+** (`docs/photo-digitizing-plan-2026-07-31.md`)

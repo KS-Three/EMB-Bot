@@ -176,9 +176,21 @@ is now fixed (see below), four remain open:
   Ships off by default.
 - **Satin/fill classifier** — the shipped rule misclassifies compact/noisy
   shapes (a serrated 20mm disc computes as "5.03mm" and gets satin-stitched
-  instead of filled). The proposed DT-based replacement was measured and
-  **rejected** — it scores worse at the shipped threshold, and its own
-  safety claim was proven logically inverted. Verdict: "do not land."
+  instead of filled). The proposed DT-based replacement (`VP90`) was
+  measured and **rejected 2026-08-02** at `SATIN_MAX_WIDTH_MM = 3.0`
+  (`main`'s cap at the time) — it scored worse than the shipped rule there,
+  and its "pure tightening, cannot get worse" safety claim was proven
+  logically inverted (it can only convert true positives into false
+  negatives, never the reverse, and FN is the expensive error). **Verdict
+  status: STALE, not confirmed or reversed.** An unrelated, later,
+  corpus-driven change moved the shipped cap to 5.0 (already on `main`);
+  re-running the SAME instrument at the new cap flips the result (`VP90`
+  0/21 wrong vs. the shipped rule's 6/21) — but that's the same class of
+  small-synthetic-set evidence 2026-08-02's audit already showed can't be
+  trusted alone. Needs the 37-file `scratch_corpus/` run at today's cap
+  before this verdict can be re-decided either way — see
+  `docs/superpowers/plans/2026-08-04-m0-shape-lens-measurement.md`
+  ("M0" of the DT-first migration).
 - **Fill row spacing (law 19)** — unresolved two-population finding: the
   0.20mm figure is a satin-rail artifact for one file population (refuted)
   but looks like a genuine denser pitch on 43 commissioned cap logos (still
@@ -188,11 +200,14 @@ Every claim about visual/sew quality beyond internal geometry checks is
 **pending sew-out** — see the cross-cutting item above.
 
 **Next step:** the chaining fix and the gradient angle-fragmentation fix are
-both landed. Next: the enclosed-white-icon drop (`BACKGROUND_ENCLOSED`,
-root-caused this session to `stage1_prep.py` — see cross-cutting notes
-above and the plan doc's "Defect 2 update") needs its own brainstorm/spec/
-plan pass before building, being a cross-cutting feature rather than a
-contained fix. Then schedule the first sew-out session.
+both landed. M0 of the DT-first migration is measured (see the satin/fill
+classifier item above) — corpus leg pending a local run, M1 (`ShapeField`
+hoist, byte-identical) not started. In parallel: the enclosed-white-icon
+drop (`BACKGROUND_ENCLOSED`, root-caused this session to `stage1_prep.py` —
+see cross-cutting notes above and the plan doc's "Defect 2 update") needs
+its own brainstorm/spec/plan pass before building, being a cross-cutting
+feature rather than a contained fix. Then schedule the first sew-out
+session.
 
 ---
 
