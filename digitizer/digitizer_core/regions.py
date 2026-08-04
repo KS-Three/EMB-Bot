@@ -120,11 +120,12 @@ def match_shape_ids(
         # rebuilds every Region's meta from scratch each generation, so a
         # review-screen decision stored there evaporates on re-digitize unless
         # the match carries it — which is exactly what the config docstring
-        # promises, for the border, the appliqué flag, the shape-layers
-        # contract's per-shape tier and fill angle, and the within-layer sew
-        # order alike. Pipeline facts (layer) stay the current generation's
-        # own.
-        for key in ("border", "applique", "tier", "fill_angle_deg", "sew_order"):
+        # promises, for the border, the appliqué flag, and the shape-layers
+        # contract's per-shape tier, fill angle, within-layer sew order and
+        # underlay style alike. Pipeline facts (layer) stay the current
+        # generation's own.
+        for key in ("border", "applique", "tier", "fill_angle_deg",
+                    "sew_order", "underlay_style"):
             if key in previous[pi].meta and key not in current[ci].meta:
                 current[ci].meta[key] = previous[pi].meta[key]
     return remap
@@ -134,6 +135,10 @@ def match_shape_ids(
 
 _TIER_VALUES = {"auto", "satin", "fill", "run"}
 _BORDER_VALUES = {"off", "auto", "bean"}
+# fabrics.py's own vocabulary, verbatim (mirrored in digitizer_service.app's
+# copy, which 400s the wire before this ever raises).
+_UNDERLAY_VALUES = {"none", "edge_run", "center_run", "edge_zigzag", "edge_lattice",
+                    "double_lattice", "zigzag"}
 
 
 def apply_shape_edits(
@@ -243,6 +248,15 @@ def apply_shape_edits(
                     "must be a non-negative integer"
                 )
             r.meta["sew_order"] = so
+
+        if ov.get("underlay_style") is not None:
+            u = str(ov["underlay_style"]).lower()
+            if u not in _UNDERLAY_VALUES:
+                raise ValueError(
+                    f"shape_overrides[{sid!r}].underlay_style {ov['underlay_style']!r} "
+                    f"is not one of {sorted(_UNDERLAY_VALUES)}"
+                )
+            r.meta["underlay_style"] = u
 
     if unknown:
         missing = sorted(unknown)

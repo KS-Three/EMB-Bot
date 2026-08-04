@@ -523,12 +523,31 @@ cross-cutting features.
 - No true shape-recognition re-editing — no reshaping/redrawing outlines,
   no splitting/merging shapes, no manual point editing.
 - Per-shape border override is engine-supported but has no UI control.
-- Backstitch/underlay adjustment is entirely engine-internal, not exposed
-  to the user at all.
 - Within-layer sew order is shown, not controllable — it's the machine's
   nearest-neighbor pathing.
 - The "stale/unmatched edit" recovery flow was never driven in a live
   browser.
+
+**Update 2026-08-04 (underlay style):** the fill/contour underlay-style knob
+(`PipelineConfig.underlay_style`, seven named styles — fabrics.py's own
+vocabulary) is now a per-shape override, following the border/tier/
+fill_angle_deg pattern exactly: validated the same way at the service
+(`_OVERRIDE_KEYS`/`_UNDERLAY_VALUES`), applied in `regions.apply_shape_edits`,
+carried across re-digitize via `match_shape_ids`, resolved per-shape in
+`stage7_sequence.sequence` ahead of both the tatami and contour emitters, and
+a Layers-panel dropdown next to the fill-angle control (shown only when a
+shape's tier is "fill", since satin ignores it). Deliberately does NOT touch
+satin's own underlay (`fabric.satin_underlay`) — a materially narrower,
+effectively-binary knob (spine run, or zigzag above
+`machine.SATIN_ZIGZAG_ABOVE_MM`) versus fill's seven styles, so it stays
+engine-internal rather than being folded into the same control. Backed by
+Python tests asserting the override actually changes emitted underlay
+stitch geometry (not just a config round-trip), a stale-override test
+through the same unmatched-edit path every other override uses, and Studio
+vitest coverage of the wire contract — but, like the border UI control
+above it, this was NOT driven in a live browser; the Layers-panel dropdown
+itself has no automated coverage (no svelte-component test harness exists
+in this repo yet, matching tier/border/fill-angle's own testing gap).
 
 **Next step:** browser-drive the untested stale-edit-recovery flow, and
 decide whether per-shape border override deserves a Layers-panel control —

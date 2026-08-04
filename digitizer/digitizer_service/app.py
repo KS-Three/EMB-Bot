@@ -82,9 +82,18 @@ def _require_token(supplied: str | None) -> None:
 # resolution) — but it is still validated here, in this same closed set, so a
 # bad value is still a 400 at submit.
 _OVERRIDE_KEYS = {"thread_index", "fill_angle_deg", "tier", "border", "layer",
-                  "sew_order", "stitched"}
+                  "sew_order", "stitched", "underlay_style"}
 _TIER_VALUES = {"auto", "satin", "fill", "run"}
 _BORDER_VALUES = {"off", "auto", "bean"}
+# fabrics.py's own vocabulary, verbatim — the one place that spells out the
+# closed set stage6_fill._underlay_paths actually interprets. Anything
+# outside it silently falls through to "edge_lattice" there (unrecognised ->
+# the coarse default), which is fine for a fabric-preset id nobody mistypes
+# by hand but not for a free-text field a review-screen edit sends over the
+# wire — so this validates it as a 400 instead of a shape quietly getting the
+# wrong underlay.
+_UNDERLAY_VALUES = {"none", "edge_run", "center_run", "edge_zigzag", "edge_lattice",
+                    "double_lattice", "zigzag"}
 
 
 def _canonicalize_shape_edits(data: dict, chart_len: int) -> None:
@@ -166,6 +175,12 @@ def _canonicalize_shape_edits(data: dict, chart_len: int) -> None:
                 bad = f"border must be one of {', '.join(sorted(_BORDER_VALUES))}"
             else:
                 entry["border"] = border.lower()
+        underlay = entry.get("underlay_style")
+        if underlay is not None:
+            if not isinstance(underlay, str) or underlay.lower() not in _UNDERLAY_VALUES:
+                bad = f"underlay_style must be one of {', '.join(sorted(_UNDERLAY_VALUES))}"
+            else:
+                entry["underlay_style"] = underlay.lower()
         st = entry.get("stitched")
         if st is not None and not isinstance(st, bool):
             bad = "stitched must be a boolean"

@@ -109,6 +109,15 @@ export function buildDigitizeConfig(element, project) {
 // both ends.
 const SHAPE_TIERS = new Set(["satin", "fill", "run"]);
 const SHAPE_BORDERS = new Set(["off", "auto", "bean"]);
+// fabrics.py's own vocabulary, verbatim. Unlike `tier`/`border`, this set has
+// no "auto" member of its own — the absence of the key IS auto (inherit the
+// design-wide underlay_style/fabric default), same convention `fill_angle_deg`
+// uses. Reaches fill/contour-classified shapes only; a satin-classified shape
+// ignores it (see digitizer_core/config.py's shape_overrides docstring).
+const SHAPE_UNDERLAYS = new Set([
+  "none", "edge_run", "center_run", "edge_zigzag", "edge_lattice",
+  "double_lattice", "zigzag",
+]);
 
 // The element's shape edits in the service's own canonical wire form:
 // deleted ids sorted + deduped, override keys sorted, null/"auto"/app-only
@@ -147,6 +156,7 @@ export function canonicalShapeEdits(element) {
     if (typeof e.fill_angle_deg === "number" && isFinite(e.fill_angle_deg)) entry.fill_angle_deg = e.fill_angle_deg;
     if (SHAPE_TIERS.has(e.tier)) entry.tier = e.tier;
     if (SHAPE_BORDERS.has(e.border)) entry.border = e.border;
+    if (SHAPE_UNDERLAYS.has(e.underlay_style)) entry.underlay_style = e.underlay_style;
     if (Number.isInteger(e.layer)) entry.layer = e.layer;
     if (typeof e.stitched === "boolean") entry.stitched = e.stitched;
     if (Number.isInteger(e.sew_order) && e.sew_order >= 0) entry.sew_order = e.sew_order;

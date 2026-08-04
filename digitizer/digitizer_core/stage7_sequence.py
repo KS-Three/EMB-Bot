@@ -475,6 +475,19 @@ def sequence(
             # nothing falls back to "auto" rather than dropping artwork — the
             # same contract the auto ladder already has between its own rungs.
             tier = str(p.region.meta.get("tier", "auto")).lower()
+            # UNDERLAY-STYLE PRECEDENCE (shape-layers contract v1): the
+            # shape's own review-screen style beats the design-wide one — in
+            # BOTH directions, exactly like `border` beats `border_style`.
+            # `underlay_style` here already folds in `cfg.underlay` (line
+            # ~390: forced to "none" when the design-wide switch is off), so
+            # an explicit per-shape style overrides that switch too — a shape
+            # marked "zigzag" gets underlay with underlay=False design-wide,
+            # and one marked "none" gets none with it on. Reaches the fill
+            # and contour tiers only (both consult it below); satin keeps its
+            # own separate, narrower underlay knob untouched.
+            shape_underlay = p.region.meta.get("underlay_style")
+            eff_underlay_style = (shape_underlay if shape_underlay is not None
+                                  else underlay_style)
             # The run tier comes first: a shape below the sewable-detail floor
             # has nowhere to put fill rows (MIN_FILL_WIDTH_MM) and pinches
             # every satin cross under SATIN_MIN_CROSS_MM, so both real tiers
@@ -573,7 +586,7 @@ def sequence(
                     p.shape_id,
                     spacing_mm=contour_spacing,
                     stitch_mm=stitch_mm,
-                    underlay_style=underlay_style,
+                    underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     tolerance_mm=cfg.contour_tolerance_mm,
                     start_near=entry,
@@ -615,7 +628,7 @@ def sequence(
                                else p.stitch_angle_deg),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
-                    underlay_style=underlay_style,
+                    underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     start_near=entry,
                 )

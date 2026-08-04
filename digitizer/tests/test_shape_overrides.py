@@ -28,7 +28,7 @@ from shapely.geometry import Polygon
 from digitizer_core import PipelineConfig, get_fabric, plan_stitches, run_stages
 from digitizer_core.export import export_dst
 from digitizer_core.pipeline import digitize
-from digitizer_core.regions import Region, match_shape_ids
+from digitizer_core.regions import Region, apply_shape_edits, match_shape_ids
 from digitizer_core.stage5_overlap import resolve_overlaps
 from digitizer_core.stage7_sequence import sequence
 
@@ -132,13 +132,17 @@ def edited(base):
     c = cfg(
         deleted_shape_ids=[tiny.shape_id, "SNOPE"],
         shape_overrides={
-            purple.shape_id: {"thread_index": red.thread_index},  # recolor
+            # recolor + underlay style on the same shape: two edits, one
+            # override entry, exactly what a real review-screen edit looks
+            # like once a shape has more than one field touched.
+            purple.shape_id: {"thread_index": red.thread_index, "underlay_style": "none"},
             green.shape_id: {"tier": "fill"},                     # tier flip
             red.shape_id: {"fill_angle_deg": 90.0},               # angle
             blue.shape_id: {"layer": 99},                         # sew last
             big_orange.shape_id: {"sew_order": 0},                # within-layer order
             "SNOPE2": {"tier": "satin"},                          # stale
             "SNOPE3": {"sew_order": 3},                           # stale
+            "SNOPE4": {"underlay_style": "zigzag"},               # stale
         },
     )
     result2, plan2 = digitize(ART, c)
@@ -187,7 +191,7 @@ def test_delete_removes_exactly_that_shape_and_warns(base, edited):
 def test_unknown_ids_warn_and_never_error(edited):
     w = next(w for w in edited["result"].warnings
              if w["code"] == "SHAPE_EDIT_UNKNOWN_ID")
-    assert w["count"] == 3 and w["ids"] == ["SNOPE", "SNOPE2", "SNOPE3"]
+    assert w["count"] == 4 and w["ids"] == ["SNOPE", "SNOPE2", "SNOPE3", "SNOPE4"]
 
 
 # --- recolor -----------------------------------------------------------------
@@ -360,15 +364,85 @@ def test_border_override_strings_beat_the_global_mode():
     assert kinds_by_shape(auto)["Q"]["border"] > 0
 
 
+# --- underlay style ----------------------------------------------------------
+#
+# Fill-classified shapes only: a 30x30 square is well past satin's default
+# max width (3.0 mm), so `plan_for` always routes it through `stitch_shape`,
+# the tatami emitter `underlay_style` (via `eff_underlay_style`) actually
+# reaches.
+
+def test_underlay_style_override_changes_emitted_underlay_geometry():
+    sq = bar(30, 30)
+    auto, _ = plan_for([region(sq, "Q")])              # pique_knit -> edge_lattice
+    off, _ = plan_for([region(sq, "Q", {"underlay_style": "none"})])
+    on, _ = plan_for([region(sq, "Q", {"underlay_style": "zigzag"})])
+    assert kinds_by_shape(auto)["Q"]["underlay"] > 0, "fabric default sews underlay"
+    assert kinds_by_shape(off)["Q"]["underlay"] == 0, "an explicit none sews none"
+    assert kinds_by_shape(on)["Q"]["underlay"] > 0
+    # And it is not just present/absent — a different named style is a
+    # different stitch count, not a coincidence of the same geometry.
+    assert kinds_by_shape(auto)["Q"]["underlay"] != kinds_by_shape(on)["Q"]["underlay"]
+
+
+def test_underlay_style_override_beats_the_global_config_in_both_directions():
+    sq = bar(30, 30)
+    # Global underlay is OFF design-wide; the per-shape style still wins.
+    on, _ = plan_for([region(sq, "Q", {"underlay_style": "zigzag"})], underlay=False)
+    # Global underlay style is zigzag; the per-shape "none" still wins.
+    off, _ = plan_for([region(sq, "Q", {"underlay_style": "none"})], underlay_style="zigzag")
+    # No override at all: inherits whatever the global config says.
+    inherited, _ = plan_for([region(sq, "Q")], underlay_style="edge_run")
+    assert kinds_by_shape(on)["Q"]["underlay"] > 0
+    assert kinds_by_shape(off)["Q"]["underlay"] == 0
+    assert kinds_by_shape(inherited)["Q"]["underlay"] > 0
+
+
+def test_underlay_style_reaches_the_contour_tier_too():
+    """Same override, same precedence, when the design-wide fill technique is
+    contour instead of tatami — `eff_underlay_style` feeds both call sites."""
+    sq = bar(30, 30)
+    off, _ = plan_for([region(sq, "Q", {"underlay_style": "none"})],
+                      fill_technique="contour")
+    on, _ = plan_for([region(sq, "Q", {"underlay_style": "zigzag"})],
+                     fill_technique="contour")
+    assert kinds_by_shape(off)["Q"]["underlay"] == 0
+    assert kinds_by_shape(on)["Q"]["underlay"] > 0
+
+
+def test_underlay_style_override_does_not_reach_satin():
+    """Satin keeps its own fabric-preset underlay knob — the shape-override
+    field is documented (config.py) as fill/contour only, and this pins that
+    a satin-classified shape's underlay is unaffected by it."""
+    ribbon = bar(30, 2.2)     # narrow enough to classify as satin
+    plain, _ = plan_for([region(ribbon, "T")])
+    overridden, _ = plan_for([region(ribbon, "T", {"underlay_style": "none"})])
+    assert kinds_by_shape(plain)["T"]["satin"] > 0
+    assert kinds_by_shape(overridden)["T"]["satin"] > 0
+    # Satin's own underlay (spine center-run) is fabric-driven either way —
+    # the override changed nothing about it.
+    assert kinds_by_shape(plain)["T"]["underlay"] == kinds_by_shape(overridden)["T"]["underlay"]
+
+
+def test_underlay_style_override_rejects_an_unknown_style():
+    """Core-level defense in depth, same as `tier`/`border`'s own ValueError:
+    the service's own vocabulary check (test_service.py) is the first line,
+    but `apply_shape_edits` enforces it independently for any other caller."""
+    regs = [region(bar(12, 12), "Q")]
+    with pytest.raises(ValueError):
+        apply_shape_edits(regs, [0], [], {"Q": {"underlay_style": "sparkly"}}, chart=[0] * 20)
+
+
 # --- carry-forward -----------------------------------------------------------
 
 def test_review_intent_rides_the_id_carry_forward():
     """`match_shape_ids` carries the operator's per-shape decisions onto the
     next generation, exactly as the config docstring promises for border and
-    appliqué — and now for tier, fill angle and within-layer sew order too."""
+    appliqué — and now for tier, fill angle, within-layer sew order and
+    underlay style too."""
     prev = [region(bar(10, 4), "OLD",
                    {"tier": "satin", "fill_angle_deg": 45.0, "border": "bean",
-                    "applique": True, "layer": 3, "sew_order": 1})]
+                    "applique": True, "layer": 3, "sew_order": 1,
+                    "underlay_style": "zigzag"})]
     cur = [region(bar(10.2, 4.1), "NEW")]
     match_shape_ids(prev, cur)
     assert cur[0].shape_id == "OLD"
@@ -377,6 +451,7 @@ def test_review_intent_rides_the_id_carry_forward():
     assert cur[0].meta.get("border") == "bean"
     assert cur[0].meta.get("applique") is True
     assert cur[0].meta.get("sew_order") == 1
+    assert cur[0].meta.get("underlay_style") == "zigzag"
     assert cur[0].meta["layer"] == 0, "pipeline facts stay the new generation's"
 
 
