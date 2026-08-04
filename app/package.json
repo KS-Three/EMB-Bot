@@ -8,9 +8,11 @@
     "prebuild": "node scripts/copy-engine.mjs",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@sveltejs/vite-plugin-svelte": "^7.2.0",
     "svelte": "^5.56.7",
     "vite": "^8.1.5",
