@@ -29,7 +29,14 @@ const svgFiles = dirLayout
   ? fs.readdirSync(ltrDir).filter((f) => f.endsWith(".svg")).sort((a, b) => a.localeCompare(b)).map((f) => path.join(ltrDir, f))
   : [svgFile];
 const meta = JSON.parse(fs.readFileSync(metaFile, "utf8"));
-const license = fs.existsSync(licFile) ? fs.readFileSync(licFile, "utf8").split("\n").slice(0, 4).join(" ").trim() : "";
+// FULL license text, verbatim — audit item 8 (docs/font-license-audit-
+// 2026-07-31.md): the OFL requires the complete license + copyright notice
+// to accompany every copy, and machine-readable metadata inside the binary
+// is an explicitly blessed delivery channel. The old 4-LF-line truncation
+// here is what produced the mid-sentence attribution fragments the audit
+// flagged (and with bare-CR upstream files, "4 lines" was often the whole
+// blob mangled into one).
+const license = fs.existsSync(licFile) ? fs.readFileSync(licFile, "utf8").trim() : "";
 
 // --- SVG path parser -> subpaths (polylines); flattens C/S/Q/T beziers and
 // A arcs. S/T reflect the previous control point (tracked via px2/py2 + the

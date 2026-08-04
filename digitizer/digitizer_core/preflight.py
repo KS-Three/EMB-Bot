@@ -1045,9 +1045,11 @@ def _link_findings(plan: StitchPlan,
 def _contour_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
     """The contour tier's own starvation report, put in front of the operator.
 
-    Stage 6 counts a contour-filled shape `starved` when the rings it had to
-    drop — too short to sew — leave more than
-    `machine.CONTOUR_STARVED_FRAC` of the shape bare, and stage 7 raises
+    Stage 6 counts a contour-filled shape `starved` when the widest circle of
+    bare fabric between its emitted stitches (measured per shape by
+    `barecircle.widest_bare_circle` — since 2026-08-04 the gate is that
+    measurement, not the dropped-ring area sum) beats
+    `barecircle.starved_threshold_mm`, and stage 7 raises
     CONTOUR_RING_UNREACHABLE. That warning goes to `plan.warnings`, which the
     review screen reads and the preflight report did not, so the one number
     that says a fill has a hole in it reached nobody scoring a file.
