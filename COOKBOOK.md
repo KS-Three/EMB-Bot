@@ -252,17 +252,14 @@ Session handoff with the full context:
 
 1. **The two gradient/enclosed-white regressions** (see Known bugs below).
    The angle-fragmentation half is FIXED (2026-08-03, same-day follow-up
-   session). `BACKGROUND_ENCLOSED` remains open, but has a full design pass
-   now (2026-08-04):
-   `docs/superpowers/plans/2026-08-04-enclosed-background-restore-design.md`
-   — enclosed pixels join `fg`, get tagged post-vectorization, a new
-   `stitched` shape-override restores one, exclusion happens at
-   `plan_stitches` only so Studio's existing delete/restore Layers UI has a
-   real shape to work with. Not built — still a cross-cutting feature (stage
-   1 through the service/Studio round-trip), bigger than a quick fix. Also
-   still queued: land `fix/bg-existence-guard` (this remote session's
-   checkout has no such branch/worktree — re-verify locally, per this
-   section's own warning, before assuming it's gone or merged).
+   session). **`BACKGROUND_ENCLOSED` is now FIXED too, later 2026-08-04** —
+   pipeline, service contract, and Studio Layers-panel restore UI all
+   merged to `main`; see MASTER_SCOPE.md area 1 for the full breakdown and
+   the one open caveat (an opaque-alpha bug that currently defeats
+   background detection on real Studio uploads, fix pending in open PR
+   #22). Also still queued: land `fix/bg-existence-guard` (this remote
+   session's checkout has no such branch/worktree — re-verify locally, per
+   this section's own warning, before assuming it's gone or merged).
 2. **M0 + M1 of the DT-first migration** — this is the sequencing call that
    is easy to miss: once the regressions close, do **not** go straight to
    photo-digitizing steps 5+. M0 instruments `digitizer/tools/shape_lens.py`
@@ -329,52 +326,62 @@ don't push for it.
   sharing are explicit non-goals, left open. Full writeup: the plan doc's
   "Defect 1 update" section.
 - **`BACKGROUND_ENCLOSED` drops enclosed white icon linework as a hole**
-  even when it survives stage 1's background detection intact — still
-  open, root-caused this same session. Corrected location:
-  `stage1_prep.py::prep`'s no-alpha color-heuristic branch (`enclosed =
-  close & ~border_bg`, folded into `bg` before `fg`), NOT
-  `stage3_segment.py` as first suspected — enclosed pixels never reach
-  stage 3, or vectorization, or ever get a `shape_id`. That means the
-  warning's own "toggle it back on in review" claim is currently **false**:
-  there's no shape for a review edit to name. General to the whole
-  pipeline, not classifier-specific, just newly customer-visible on exactly
-  the art the gradient tier targets. A real fix is a cross-cutting,
-  multi-file feature (stage 1 through the service/Studio round-trip) on the
-  scale of a DT-first M0/M1 slice, not a small next step — a full design
-  pass exists (2026-08-04), not built. Repro fixture:
+  even when it survives stage 1's background detection intact — root-caused
+  2026-08-04 (same session as this bullet was first written). Corrected
+  location: `stage1_prep.py::prep`'s no-alpha color-heuristic branch
+  (`enclosed = close & ~border_bg`, folded into `bg` before `fg`), NOT
+  `stage3_segment.py` as first suspected — enclosed pixels never reached
+  stage 3, or vectorization, or ever got a `shape_id`, which made the
+  warning's own "toggle it back on in review" claim false: there was no
+  shape for a review edit to name. Repro fixture:
   `digitizer/testdata/photo/repro_gradient_white_icon.png`. Original
   diagnosis:
   `docs/superpowers/plans/2026-08-03-gradient-tier-fragmentation-and-enclosed-white-defects.md`.
-  Buildable design:
-  `docs/superpowers/plans/2026-08-04-enclosed-background-restore-design.md`.
+  Design: `docs/superpowers/plans/2026-08-04-enclosed-background-restore-design.md`.
+
+  **FIXED, later 2026-08-04 — the full cross-cutting slice landed:**
+  `stage1_prep.py` now joins enclosed pixels to `fg`, `stage4_vectorize.
+  tag_enclosed_background` tags them post-vectorization, `pipeline.py`
+  resolves a `stitched` shape-override defaulting to "not enclosed" and
+  excludes only at `plan_stitches`, the service (`digitizer_service/app.py`)
+  accepts/validates/exposes the `stitched` key, and the Studio Layers panel
+  gained a restore control for it. See MASTER_SCOPE.md area 1 for the
+  commit-level breakdown. One caveat is not yet fixed on `main`: Studio's
+  real upload path currently manufactures an opaque alpha channel that
+  defeats background detection entirely, so this doesn't yet work
+  end-to-end through the actual UI — fix sits in open PR #22.
 
 ## Running things
 
-All three counts below were re-run and verified 2026-08-03 — if one comes
-back lower, something regressed; don't assume the doc drifted.
+All three counts below were re-run and verified 2026-08-04 (later same
+session batch, on `origin/main` post PR #8–#15) — if one comes back lower,
+something regressed; don't assume the doc drifted.
 
 ```bash
-node --test                 # engine tests (root) — 265/265
+node --test                 # engine tests (root) — 266/266
 cd app && npm install && npm run dev     # Studio dev server
-cd app && npm test          # Studio tests (vitest) — 321/321
+cd app && npm test          # Studio tests (vitest) — 331/331 (24 files)
 node tools/build-embf.mjs   # rebuild the binary font library (see section above)
 
-cd digitizer && .venv/Scripts/python -m pytest -q   # Python digitizer tests -- 404/407 (~3-4 min)
+cd digitizer && .venv/Scripts/python -m pytest -q   # Python digitizer tests -- 489/493 (~4 min)
 cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0.1:8721
 ```
 
-**404/407, not 402/402** as of the gradient angle-fragmentation fix's
-follow-up session (adds 4 tests, net +2 vs. the prior 402/402 baseline).
-The 3 failures — `test_flat_lane_byte_identical.py::…[logo_alpha.png]`,
-`test_pushcomp.py::…[logo_whitebg.png-towel]`, `test_stage2_photo_segment.py
-::…[logo_alpha.png]` — are confirmed **pre-existing on `main`**, reproduced
-by stashing this session's changes and re-running: all three are
-byte-identical/golden-hash assertions off by a handful of stitches/bytes in
-THIS container, unrelated to the gradient work (not investigated further —
-likely a numpy/opencv/shapely point-version difference between this
-environment and whatever machine the golden was pinned on, but that's a
-guess, not confirmed). Worth a look before trusting "402/402" as this
-environment's steady state again.
+**489/493, not 404/407.** The 4 failures: 3 are the same **pre-existing,
+container-environment** byte-identical/golden-hash mismatches this note has
+flagged since 2026-08-03 (`test_flat_lane_byte_identical.py::…
+[logo_alpha.png]`, `test_pushcomp.py::…[logo_whitebg.png-towel]`,
+`test_stage2_photo_segment.py::…[logo_alpha.png]`) — still not investigated
+further, still a guess (numpy/opencv/shapely point-version difference vs.
+whatever machine the goldens were pinned on), still worth a look before
+trusting either count as this environment's steady state. The 4th is new
+and NOT environmental: `test_directionfield.py::
+test_drone_render_smoke_and_debug_artifact` fails on plain `origin/main`
+because the direction-field branch merged without its
+`debugviz.direction_field` render function — an agent lane's uncommitted
+worktree edit that never made it into the PR. The fix exists but sits
+unmerged in open PR #22; don't be surprised by this specific failure until
+that PR lands.
 
 The standalone rebuild step (`node tools/bundle.mjs`) is RETIRED along with
 `EMB-Bot-standalone.html` — do not rebuild it as features land.
