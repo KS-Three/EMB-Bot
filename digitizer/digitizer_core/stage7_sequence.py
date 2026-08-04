@@ -68,6 +68,7 @@ from .stage6_detail import detail_runs
 from .stage6_fill import stitch_shape
 from .stage6_meander import meander_fill
 from .stage6_scanline import scanline_fill
+from .stage6_sketch import sketch_fill
 from .stage6_satin import is_satin_candidate, satin_shape
 from .stage6_streamline import streamline_fill
 from .stitches import StitchBlock, StitchRun, tie_run
@@ -586,6 +587,12 @@ def sequence(
     # slice): same opt-in and fallback contract, but reads the direction
     # field's raster instead of raw tone for its spacing.
     streamline = technique == "streamline"
+    # The sketch tier (photo plan, technique row 12 — stage6_sketch): the
+    # row-12 preset over rows 10+11, sparse mono streamlines plus the FDoG
+    # detail block appended below. Same opt-in and fallback contract as
+    # every tonal tier above. Design-wide only here; the per-shape
+    # tier == "sketch" override is handled inside stitch_one.
+    sketch = technique == "sketch"
 
     thin = empty = jumps = as_run = 0
     bordered = lightened = border_narrow = 0
@@ -616,11 +623,12 @@ def sequence(
         group = [p for p in planned if nn_group_key(p) == _group_key]
 
         def stitch_one(p: PlannedRegion, entry: tuple[float, float] | None):
-            # The review screen's per-shape tier (shape-layers contract v1):
-            # "auto" is the ladder below exactly as it always ran; "satin",
-            # "fill" and "run" force one rung. A forced rung that produces
-            # nothing falls back to "auto" rather than dropping artwork — the
-            # same contract the auto ladder already has between its own rungs.
+            # The review screen's per-shape tier (shape-layers contract v1;
+            # "sketch" added in v1.3): "auto" is the ladder below exactly as
+            # it always ran; "satin", "fill", "run" and "sketch" force one
+            # rung. A forced rung that produces nothing falls back to "auto"
+            # rather than dropping artwork — the same contract the auto
+            # ladder already has between its own rungs.
             tier = str(p.region.meta.get("tier", "auto")).lower()
             # UNDERLAY-STYLE PRECEDENCE (shape-layers contract v1): the
             # shape's own review-screen style beats the design-wide one — in
@@ -690,7 +698,18 @@ def sequence(
             runs = []
             report = {}
             need_tatami = False
-            if scanline and source_pixels is not None:
+            if (sketch or tier == "sketch") and source_pixels is not None:
+                # The sketch tier (row 12): the design-wide preset OR this
+                # one shape's review-screen tier override — the per-shape
+                # form is checked here so it beats whatever technique the
+                # rest of the design sews with, the same precedence every
+                # other forced tier value gets. Empty is honest (an
+                # all-highlight shape sews nothing) and falls through to
+                # tatami below rather than dropping artwork — the standing
+                # contract of every tonal tier in this chain.
+                runs, report = sketch_fill(p.region, source_pixels, cfg)
+                need_tatami = report["empty"]
+            elif scanline and source_pixels is not None:
                 # The explicit scanline_tonal opt-in beats the gradient
                 # class's blend routing — the caller already chose the mono
                 # look. Empty is a legitimate outcome for this tier (a shape
@@ -945,7 +964,12 @@ def sequence(
     # block does; the result-level sew-order palette is regions-derived and
     # deliberately not grown here, the same block-level-is-authoritative
     # convention the layered streamline shades already established.
-    if cfg.detail_layer and source_pixels is not None:
+    # The sketch technique IMPLIES this layer (row 12's recipe is "layered
+    # run passes + FDoG detail lines" — one preset, not two knobs; see
+    # stage6_sketch's module docstring). Design-wide sketch only: a single
+    # shape's tier == "sketch" override changes that shape's fill, never
+    # the design's detail pass.
+    if (cfg.detail_layer or sketch) and source_pixels is not None:
         d_runs, d_report = detail_runs(source_pixels, cfg, entry=cursor,
                                        trim_at_mm=trim_at)
         if d_runs:

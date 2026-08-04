@@ -83,7 +83,7 @@ def _require_token(supplied: str | None) -> None:
 # bad value is still a 400 at submit.
 _OVERRIDE_KEYS = {"thread_index", "fill_angle_deg", "tier", "border", "layer",
                   "sew_order", "stitched", "underlay_style"}
-_TIER_VALUES = {"auto", "satin", "fill", "run"}
+_TIER_VALUES = {"auto", "satin", "fill", "run", "sketch"}
 _BORDER_VALUES = {"off", "auto", "bean"}
 # fabrics.py's own vocabulary, verbatim — the one place that spells out the
 # closed set stage6_fill._underlay_paths actually interprets. Anything

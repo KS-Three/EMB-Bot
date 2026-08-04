@@ -133,7 +133,11 @@ def match_shape_ids(
 
 # --- Review-screen shape edits (the shape-layers contract v1) ---------------
 
-_TIER_VALUES = {"auto", "satin", "fill", "run"}
+# "sketch" (contract v1.3, photo plan row 12) forces the sparse mono
+# sketch rendering (stage6_sketch) on one shape; like every tonal tier it
+# needs source pixels, which pipeline.run_stages carries whenever an
+# override requests it, and it sews tatami when they are absent anyway.
+_TIER_VALUES = {"auto", "satin", "fill", "run", "sketch"}
 _BORDER_VALUES = {"off", "auto", "bean"}
 # fabrics.py's own vocabulary, verbatim (mirrored in digitizer_service.app's
 # copy, which 400s the wire before this ever raises).
