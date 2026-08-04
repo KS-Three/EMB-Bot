@@ -195,6 +195,62 @@ test("canonicalShapeEdits: sorts+dedupes deletions, strips rgb/null/auto, drops 
   expect(canonicalShapeEdits(digitizedElement())).toEqual({});
 });
 
+// ---- BACKGROUND_ENCLOSED restore (contract v1.1: shapes[].stitched, ------
+// shape_overrides[sid].stitched) --------------------------------------------
+//
+// The other end is the same digitizer_service/app.py seam as the rest of
+// this section, extended with a `stitched` boolean field — restoring an
+// enclosed-background region the digitizer excluded by default. Unlike
+// tier/border it has no "auto" spelling of its own; the absence of the key
+// IS auto, so only a real true/false survives canonicalization.
+
+test("canonicalShapeEdits accepts and round-trips a `stitched` override (both true and false), rejecting non-booleans", async () => {
+  stubStorage({});
+  const { canonicalShapeEdits } = await import("./digitizer.js");
+  const el = digitizedElement({
+    shapeOverrides: {
+      Srestore: { stitched: true },
+      Sskip: { stitched: false },
+      Sjunk: { stitched: "yes" }, // not a boolean -> canonicalizes to nothing
+    },
+  });
+  expect(canonicalShapeEdits(el)).toEqual({
+    shape_overrides: {
+      Srestore: { stitched: true },
+      Sskip: { stitched: false },
+    },
+  });
+});
+
+test("canonicalShapeEdits combines `stitched` with the other override fields on one shape, and still drops it for a deleted shape", async () => {
+  stubStorage({});
+  const { canonicalShapeEdits } = await import("./digitizer.js");
+  const el = digitizedElement({
+    deletedShapeIds: ["Sdeleted"],
+    shapeOverrides: {
+      Sboth: { stitched: true, tier: "fill", thread_index: 2 },
+      Sdeleted: { stitched: true }, // deleted wins -> omitted from shape_overrides
+    },
+  });
+  expect(canonicalShapeEdits(el)).toEqual({
+    deleted_shape_ids: ["Sdeleted"],
+    shape_overrides: {
+      Sboth: { thread_index: 2, tier: "fill", stitched: true },
+    },
+  });
+});
+
+test("editsKey distinguishes a `stitched` restore from no edits, and a no-op stitched round trip stays stable", async () => {
+  stubStorage({});
+  const { canonicalShapeEdits, editsKey } = await import("./digitizer.js");
+  const plain = editsKey(canonicalShapeEdits(digitizedElement()));
+  const restored = editsKey(canonicalShapeEdits(digitizedElement({ shapeOverrides: { Sa: { stitched: true } } })));
+  expect(restored).not.toBe(plain);
+  // Same edit, re-canonicalized twice (e.g. after a reload) -> identical key.
+  const again = editsKey(canonicalShapeEdits(digitizedElement({ shapeOverrides: { Sa: { stitched: true } } })));
+  expect(again).toBe(restored);
+});
+
 test("editsKey is stable across edit spellings and distinguishes real differences (the pending-edits check)", async () => {
   stubStorage({});
   const { canonicalShapeEdits, editsKey } = await import("./digitizer.js");
@@ -280,6 +336,30 @@ test("reviewFromJob slims the wire review: per-shape thread rgb by number, sew f
   expect(r.shapes[1].tier).toBeNull();
   expect(thinOutline([[0, 0], [1, 1]])).toEqual([[0, 0], [1, 1]]); // short outlines pass through
   expect(reviewFromJob(null)).toBeNull();
+});
+
+test("reviewFromJob maps `stitched` (contract v1.1): explicit false for an excluded enclosed region, true when explicit, and true when the field is absent (a pre-contract service)", async () => {
+  stubStorage({});
+  const { reviewFromJob } = await import("./digitizer.js");
+  const wire = {
+    palette: [{ brand_id: "isacord", number: "0020", name: "Black", rgb: [0, 0, 0] }],
+    shapes: [
+      { shape_id: "Snormal", thread_index: 0, thread_number: "0020", area_mm2: 10, source: "quant",
+        layer: 0, sew_index: 0, sew_block: 0, tier: "fill", outline_mm: [[0, 0], [1, 0], [1, 1]], holes_mm: [] },
+      { shape_id: "Senclosed", thread_index: 0, thread_number: "0020", area_mm2: 2, source: "quant",
+        layer: null, sew_index: null, sew_block: null, tier: null, stitched: false,
+        outline_mm: [[0, 0], [1, 0], [1, 1]], holes_mm: [] },
+      { shape_id: "Sexplicit", thread_index: 0, thread_number: "0020", area_mm2: 5, source: "quant",
+        layer: 0, sew_index: 1, sew_block: 0, tier: "fill", stitched: true,
+        outline_mm: [[0, 0], [1, 0], [1, 1]], holes_mm: [] },
+    ],
+  };
+  const r = reviewFromJob(wire);
+  expect(r.shapes.map((s) => [s.id, s.stitched])).toEqual([
+    ["Snormal", true], // field absent -> stitched, same as every shape before this contract
+    ["Senclosed", false], // BACKGROUND_ENCLOSED, excluded by default
+    ["Sexplicit", true],
+  ]);
 });
 
 test("reconcileReview keeps a deleted shape's last known row so the panel can strike it through and restore it", async () => {
