@@ -71,6 +71,7 @@ from shapely.geometry import Point as SPoint
 from skimage.morphology import medial_axis
 
 from . import machine, stitches
+from .shapefield import build_shape_field
 from .stitches import StitchRun
 
 # Raster resolution for the medial axis. Enough that a 0.8 mm stroke is ~5 px
@@ -125,6 +126,12 @@ class _WidthField:
     its own stroke: at a junction (the top of a T) a perpendicular ray from the
     stem hits the BAR's far boundary, and without a local cap those crosses
     span the whole junction as an X of thread.
+
+    A thin view over the same numbers `digitizer_core.shapefield.ShapeField`
+    carries (`dist`/`scale`/`ox`/`oy`, and `half_at` reads them identically) —
+    this class predates that module and stays the type `extract_strokes`
+    returns either way; `ShapeField` additionally carries `mask`/`skel` for
+    whatever downstream stage the DT-first migration eventually gives them to.
     """
 
     dist: np.ndarray
@@ -529,20 +536,39 @@ def _split_sharp_corners(strokes: list[Stroke], half_mm: float) -> list[Stroke]:
     return out
 
 
-def extract_strokes(poly: Polygon) -> tuple[list[Stroke], float, _WidthField | None]:
+def extract_strokes(poly: Polygon, *,
+                     use_shapefield: bool = False,
+                     ) -> tuple[list[Stroke], float, _WidthField | None]:
     """-> (strokes in mm, mean half-width in mm, local width field).
 
     Strokes are sorted longest first, so a letter's main stem sews before its
     serifs and the between-stroke hops stay short.
+
+    `use_shapefield` (DT-first migration M1, off by default) routes the
+    rasterize + `medial_axis(rng=0)` pair below through
+    `digitizer_core.shapefield.build_shape_field` instead of the inline call
+    that follows. Both paths compute the identical raster and the identical
+    `medial_axis` result — the flag exists purely to prove the new, shared
+    module byte-identical before anything downstream depends on it; see
+    `shapefield.py`'s module docstring and
+    `tests/test_shapefield_byte_identical.py`. Off (the default) never
+    imports or executes any of `shapefield.py`'s work.
     """
-    mask, scale, ox, oy = _rasterize(poly)
-    if not mask.any():
-        return [], 0.0, None
-    # rng is REQUIRED for determinism: medial_axis breaks ties between equally
-    # valid skeleton pixels in a randomly permuted order, and unseeded it
-    # returns a different skeleton on every call — which came out as the same
-    # artwork digitizing to different stitches run to run.
-    skel, dist = medial_axis(mask > 0, return_distance=True, rng=0)
+    if use_shapefield:
+        sf = build_shape_field(poly)
+        if sf is None:
+            return [], 0.0, None
+        scale, ox, oy, skel, dist = sf.scale, sf.ox, sf.oy, sf.skel, sf.dist
+    else:
+        mask, scale, ox, oy = _rasterize(poly)
+        if not mask.any():
+            return [], 0.0, None
+        # rng is REQUIRED for determinism: medial_axis breaks ties between
+        # equally valid skeleton pixels in a randomly permuted order, and
+        # unseeded it returns a different skeleton on every call — which
+        # came out as the same artwork digitizing to different stitches run
+        # to run.
+        skel, dist = medial_axis(mask > 0, return_distance=True, rng=0)
     skel_mask = skel.astype(np.uint8)
     half_px = float(dist[skel].mean()) if skel.any() else 0.0
     field = _WidthField(dist=dist, scale=scale, ox=ox, oy=oy)
@@ -1383,7 +1409,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 trim_at_mm: float,
                 start_near: tuple[float, float] | None = None,
                 split_above_mm: float | None = None,
-                end_cutback_mm: float = 0.0
+                end_cutback_mm: float = 0.0,
+                use_shapefield: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
     contract `stitch_shape` uses, so stage 7 can treat the two identically.
@@ -1396,9 +1423,12 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     `end_cutback_mm` is push compensation at open column ends (Law 24); 0.0 is
     the shipped behaviour. It is a length taken off the spine, NOT a shrink of
     `poly`, which is why it cannot live in stage 5 — see `satin_stroke`.
+
+    `use_shapefield` forwards to `extract_strokes` — see its docstring. Off
+    by default; stage 7 sets it from `cfg.extra["shapefield"]`.
     """
     report = {"too_thin": False, "jumps": 0, "empty": False}
-    strokes, half_mm, field = extract_strokes(poly)
+    strokes, half_mm, field = extract_strokes(poly, use_shapefield=use_shapefield)
     if not strokes:
         report["empty"] = True
         return [], report

@@ -361,6 +361,13 @@ def sequence(
     # The sewable-detail floor, as an area: stage 3 keeps shapes under it only
     # for the run tier, and this is where they are routed to it.
     detail_mm2 = cfg.min_detail_mm ** 2
+    # DT-first migration M1 (docs/dt-first-architecture-2026-08-01.md §2):
+    # off by default, so `bool(cfg.extra.get(...))` reads False on both an
+    # absent key and every falsy value a caller might pass. On, satin_shape
+    # sources its skeleton/DT through digitizer_core/shapefield.py instead
+    # of stage6_satin's own inline call — see that module's docstring. This
+    # is infrastructure only: it must not change one stitch coordinate.
+    use_shapefield = bool(cfg.extra.get("shapefield"))
 
     # The fill tier. Contour rings follow the silhouette; tatami rows cut across
     # it. Density is the same either way — the ring spacing IS the row spacing
@@ -436,6 +443,7 @@ def sequence(
                     start_near=entry,
                     split_above_mm=split_above,
                     end_cutback_mm=end_cutback,
+                    use_shapefield=use_shapefield,
                 )
                 # A ribbon the skeleton could not resolve still has to sew:
                 # fall through to fill rather than silently dropping artwork.
