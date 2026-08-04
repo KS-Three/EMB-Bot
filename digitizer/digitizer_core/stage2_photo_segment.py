@@ -30,20 +30,22 @@ Pipeline, in order (the plan's 7-step contract):
   4. Min-area floor: sub-detail regions force-merge into whichever neighbor
      shares the longest boundary — literally `stage3_segment
      .resolve_small_regions`, reused rather than reinvented.
-  5. Face-local threshold drop: `_face_local_threshold` — documented no-op
-     for this slice (step 3's face priors don't exist yet; see the plan
-     doc's "Deviations").
+  5. Face-local threshold drop: `_face_local_threshold` — REAL as of
+     2026-08-04 (YuNet face priors, `stage1_photo_prep.detect_faces_seam`):
+     edges touching a detected face's ellipse merge against a locally
+     halved threshold so eyes/mouth survive as their own regions. No
+     detections (or no detector) = the pre-face-priors path, bit for bit.
   6. Palette selection: chart-restricted weighted k-medoids over the
      surviving regions' mean Lab colors (`palette.select_palette` —
      technique-menu row 13, build-order step 7), region weight = area ×
-     class multiplier via `palette.region_weight`. Region CLASSES (eyes/
-     skin/subject/background) come from step 3's face priors, which are
-     not built — `_region_classes` is this stage's documented no-op seam
-     for them, so every multiplier is 1.0 (plain area) today; see
-     `palette.py`'s THE CLASS-WEIGHT SEAM. Before step 7 this line was a
-     per-region `chart.nearest_index` snap, which scattered a multi-shade
-     ramp across near-duplicate spools from different families — the
-     measured before/after lives in `palette.py`'s docstring.
+     class multiplier via `palette.region_weight`. Region CLASSES: "eyes"
+     and "skin" come from the YuNet face priors via `_region_classes`
+     (real as of 2026-08-04); "subject"/"background" still await rembg
+     (see `_region_classes`' docstring), so non-face regions stay class
+     None and weigh plain area. Before step 7 this line was a per-region
+     `chart.nearest_index` snap, which scattered a multi-shade ramp across
+     near-duplicate spools from different families — the measured
+     before/after lives in `palette.py`'s docstring.
   7. `Quant` output, plus the info-level `PHOTO_SEGMENT_REGION_COUNT` and
      `PHOTO_PALETTE_SELECTED` warnings.
 
@@ -108,41 +110,158 @@ def _merge_mean_color(g, src: int, dst: int) -> None:
     g.nodes[dst]["total color"] += g.nodes[src]["total color"]
     g.nodes[dst]["pixel count"] += g.nodes[src]["pixel count"]
     g.nodes[dst]["mean color"] = g.nodes[dst]["total color"] / g.nodes[dst]["pixel count"]
+    # Face membership is sticky: a merged region touching a face keeps its
+    # protection (`.get` so the attribute's absence — every no-face run —
+    # stays a byte-for-byte no-op).
+    if g.nodes[src].get("face"):
+        g.nodes[dst]["face"] = True
 
 
 def _weight_mean_color(g, src: int, dst: int, n: int) -> dict:
     da = g.nodes[dst]["mean color"].reshape(1, 3)
     na = g.nodes[n]["mean color"].reshape(1, 3)
-    return {"weight": float(deltaE_ciede2000(da, na)[0])}
+    w = float(deltaE_ciede2000(da, na)[0])
+    # The face-local threshold drop's recompute half — see
+    # `_face_local_threshold`. No-face runs never set the attribute, so `w`
+    # is untouched there (the pre-face-priors float, bit for bit).
+    if g.nodes[dst].get("face") or g.nodes[n].get("face"):
+        w /= FACE_MERGE_FACTOR
+    return {"weight": w}
 
 
-def _face_local_threshold(face_regions) -> None:
-    """Documented no-op (step 4 deviation #1): lowering the merge threshold
-    near a detected face so eyes/mouth survive as their own regions needs
-    step 3's face priors, which don't exist yet. `face_regions` is accepted
-    (always `None` today) so wiring a real value in later is additive, not a
-    rewrite of this module's call sites."""
-    return None
+# --- Face priors (photo plan §2 row 2, wired 2026-08-04) ----------------------
+#
+# `face_regions` throughout this module is what `stage1_photo_prep.
+# detect_faces_seam` returned: a list of FaceRegion (box + 5 landmarks +
+# score, raster px), or None. `pipeline.run_stages` only passes a non-empty
+# list when the photo_prep double gate held AND YuNet found faces; every
+# other run takes the exact pre-face-priors path.
+
+# How far the merge threshold drops inside a face: an edge touching a face
+# superpixel has its weight divided by this factor, which under the one
+# global `merge_hierarchical` threshold is exactly a local threshold of
+# MERGE_DELTAE00_THRESH * factor (10.0 -> 5.0). Half, because the plan's own
+# eye/mouth motivation needs shade steps the global elbow was TUNED to merge
+# (a blob's internal band sweep, ~15-20 dE00 end to end in 3-4 bands) to
+# survive inside a face — one binary octave down is the smallest move that
+# reliably splits them, and eyes/mouth vs surrounding skin measure well
+# apart even after CLAHE.
+FACE_MERGE_FACTOR = 0.5
+
+# A superpixel "is face" when the majority of its pixels sit inside a face
+# ellipse; a surviving region is classed "eyes"/"skin" when the majority of
+# ITS pixels sit inside an eye disk / face ellipse. Majority, not any-touch:
+# a background region grazing a face boundary must not inherit protection.
+FACE_MAJORITY_FRAC = 0.5
+
+# Eye-disk radius as a fraction of the face box WIDTH. YuNet's interpupil
+# distance runs ~0.4x its box width (measured on the astronaut detection:
+# eyes 47 px apart in a 90 px box), so 0.12 gives each eye a disk about
+# half the interpupil gap across — covers iris + lids without the two disks
+# ever fusing across the nose bridge.
+EYE_RADIUS_FRAC = 0.12
+
+
+def _face_ellipse_mask(shape: tuple[int, int], face_regions) -> np.ndarray:
+    """(H, W) bool — the plan row 2 "elliptical importance masks": one
+    filled ellipse inscribed in each detected face box."""
+    m = np.zeros(shape, np.uint8)
+    for f in face_regions:
+        x, y, w, h = f.box_px
+        cv2.ellipse(
+            m,
+            (int(round(x + w / 2.0)), int(round(y + h / 2.0))),
+            (max(1, int(round(w / 2.0))), max(1, int(round(h / 2.0)))),
+            0, 0, 360, 1, -1,
+        )
+    return m.astype(bool)
+
+
+def _eye_disk_mask(shape: tuple[int, int], face_regions) -> np.ndarray:
+    """(H, W) bool — a disk over each eye landmark (YuNet landmarks 0-1)."""
+    m = np.zeros(shape, np.uint8)
+    for f in face_regions:
+        r = max(1, int(round(EYE_RADIUS_FRAC * f.box_px[2])))
+        for lx, ly in f.landmarks_px[:2]:
+            cv2.circle(m, (int(round(lx)), int(round(ly))), r, 1, -1)
+    return m.astype(bool)
+
+
+def _face_local_threshold(rag, slic_labels: np.ndarray, face_mask: np.ndarray) -> None:
+    """Step 5 of the plan's contract, REAL as of 2026-08-04: drop the merge
+    threshold locally inside detected faces so eyes/mouth survive as their
+    own regions instead of fusing into skin.
+
+    `merge_hierarchical` takes ONE global threshold, so the drop is
+    implemented as its exact dual: every edge that touches a face node has
+    its weight INFLATED by 1/FACE_MERGE_FACTOR, both here (the initial
+    weights `rag_mean_color` computed) and in `_weight_mean_color` (every
+    recompute after a merge) — under the unchanged global threshold that is
+    identical to judging face-local edges against a threshold of
+    MERGE_DELTAE00_THRESH * FACE_MERGE_FACTOR. Mutates `rag` in place: tags
+    each node's `face` membership (majority-of-pixels inside the ellipse
+    mask) and inflates the initial face-edge weights. Never called on a
+    no-face run — those never build a mask, and their nodes never carry the
+    attribute, which is what keeps them byte-identical to the
+    pre-face-priors engine."""
+    labels = np.unique(slic_labels[slic_labels > 0])
+    if labels.size == 0:
+        return
+    n_bins = int(slic_labels.max()) + 1
+    total = np.bincount(slic_labels.ravel(), minlength=n_bins)
+    inside = np.bincount(slic_labels[face_mask].ravel(), minlength=n_bins)
+    for lbl in labels:
+        node = int(lbl)
+        if node in rag.nodes:
+            rag.nodes[node]["face"] = bool(
+                total[node] > 0
+                and inside[node] / total[node] >= FACE_MAJORITY_FRAC
+            )
+    for u, v, d in rag.edges(data=True):
+        if rag.nodes[u].get("face") or rag.nodes[v].get("face"):
+            d["weight"] = float(d["weight"]) / FACE_MERGE_FACTOR
 
 
 def _region_classes(kept: list[RegionMask], face_regions) -> list[str | None]:
-    """Documented no-op seam (step 7, same deviation family as
-    `_face_local_threshold` above): mapping each surviving region to the
-    palette weight class it belongs to — "eyes" / "skin" / "subject" /
-    "background", `palette.CLASS_MULTIPLIERS`' vocabulary — needs step 3's
-    face priors (rembg subject mask + YuNet landmarks), which are not
-    built. Until they are, every region is class `None` and
-    `palette.region_weight` degrades to plain area, by that module's own
-    documented contract. When step 3 lands, this function is where its
-    masks turn into per-region class labels; nothing else in this stage
-    changes. `face_regions` is accepted (always `None` today) for the same
-    additive-wiring reason `_face_local_threshold` accepts it."""
-    return [None] * len(kept)
+    """Step 7's class labels (palette.CLASS_MULTIPLIERS vocabulary), from
+    the YuNet face priors — REAL as of 2026-08-04 for the two classes a
+    face detection can honestly assert:
+
+    * "eyes" — the majority of the region's pixels sit inside an eye disk
+      (landmarks 0-1, `_eye_disk_mask`); checked first, so a small dark
+      region ON an eye outranks the skin ellipse it also sits in.
+    * "skin" — the majority of the region's pixels sit inside a face
+      ellipse (`_face_ellipse_mask`).
+
+    "subject"/"background" REMAIN a documented seam: they need plan step
+    3's rembg subject mask (`stage1_photo_prep.remove_background_seam`,
+    still a no-op — the numba/numpy conflict recorded there), and nothing
+    in a face box can honestly say where the subject's torso ends. Until
+    rembg lands, every non-face region stays class None and
+    `palette.region_weight` degrades to plain area for it, by that module's
+    own documented contract. No faces (None or empty) means every region is
+    None — the pre-face-priors behaviour, bit for bit."""
+    if not face_regions or not kept:
+        return [None] * len(kept)
+    shape = kept[0].mask.shape
+    face_mask = _face_ellipse_mask(shape, face_regions)
+    eyes_mask = _eye_disk_mask(shape, face_regions)
+    classes: list[str | None] = []
+    for r in kept:
+        area = int(r.mask.sum())
+        if area == 0:
+            classes.append(None)
+            continue
+        if int((r.mask & eyes_mask).sum()) / area >= FACE_MAJORITY_FRAC:
+            classes.append("eyes")
+        elif int((r.mask & face_mask).sum()) / area >= FACE_MAJORITY_FRAC:
+            classes.append("skin")
+        else:
+            classes.append(None)
+    return classes
 
 
 def segment(p: Prep, cfg: PipelineConfig, face_regions=None) -> Quant:
-    _face_local_threshold(face_regions)
-
     h, w = p.rgb.shape[:2]
     valid = ~p.bg_mask
     lab_img = rgb_to_lab(p.rgb.reshape(-1, 3)).reshape(h, w, 3)
@@ -184,6 +303,13 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None) -> Quant:
         # never from the merged label array's own 0/nonzero convention, so
         # it does not matter which numeric id background ends up wearing.
         rag = skgraph.rag_mean_color(lab_img, slic_labels, connectivity=2, mode="distance")
+        if face_regions:
+            # Step 5 — the face-local threshold drop. Only a run that
+            # actually has detections builds the mask or touches a weight;
+            # everything else is the pre-face-priors graph, bit for bit.
+            _face_local_threshold(
+                rag, slic_labels, _face_ellipse_mask((h, w), face_regions)
+            )
         merged = skgraph.merge_hierarchical(
             slic_labels,
             rag,
@@ -219,13 +345,14 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None) -> Quant:
     kept, floor_warnings = resolve_small_regions(regions, cfg, p.px_per_mm)
 
     # --- 6. Palette selection (chart-restricted weighted k-medoids) -----------
-    # (Step 5, face-local threshold, already ran as a no-op above.)
+    # (Step 5, the face-local threshold drop, already ran inside the RAG
+    # merge above when detections exist.)
     # Was a per-region `chart.nearest_index` snap before step 7; now the
     # whole region set selects a bounded palette TOGETHER — a fur ramp's
     # regions share consolidated family shades instead of each grabbing its
-    # own near-duplicate spool. Weights are area × class multiplier; classes
-    # are the `_region_classes` seam (all None until step 3's face priors),
-    # so today weight = plain area.
+    # own near-duplicate spool. Weights are area × class multiplier;
+    # `_region_classes` maps eye/skin regions from the YuNet detections
+    # (everything else — and every no-face run — stays None = plain area).
     chart = chart_for(cfg)
     region_labs = [
         rgb_to_lab(p.rgb[r.mask].reshape(-1, 3).mean(axis=0, keepdims=True))[0]

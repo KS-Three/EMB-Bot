@@ -90,6 +90,7 @@ PHOTO_RESOLUTION_LOW = "PHOTO_RESOLUTION_LOW"  # extra: {px_per_mm, min_px_per_m
 SUBJECT_CONTRAST_LOW = "SUBJECT_CONTRAST_LOW"  # extra: {delta_l, min_delta_l, bg_lightness}
 STABILIZER_CUTAWAY = "STABILIZER_CUTAWAY"      # extra: {stitch_count, threshold}
 COLOR_STOPS_HEAVY = "COLOR_STOPS_HEAVY"        # extra: {color_changes, max_stops}
+FACE_TOO_SMALL = "FACE_TOO_SMALL"              # extra: {count, design_mm, fits_hoop_mm, min_hoop_mm}
 
 # The stage-6 warning this module re-reads. Owned by the contour-fill lane
 # (warnings_codes.CONTOUR_RING_UNREACHABLE); named by string so preflight
@@ -256,22 +257,18 @@ _MIN_COLOR_PIXELS = 50
 
 # --- Photo guardrails (photo plan §2 row 15) ---------------------------------
 #
-# THE FACE-GATED REMAINDER, documented here the way stage6_streamline's
-# docstring documents its multi-color seam: §2 row 15 lists two more guards
-# that CANNOT be built until their upstream signals exist, and this comment
-# is where they plug in when they can.
-#   * Face-below-the-5x7"-floor BLOCK (with a size-up suggestion): needs the
-#     face priors from plan step 3 — `cv2.FaceDetectorYN` (YuNet, model MIT,
-#     present in the current cv2 wheel but not yet wired into any stage).
-#     When step 3 lands, its detection should ride the pipeline the way the
-#     classifier's verdict does (a warning code or a PipelineResult field),
-#     and a `_face_size_findings` check joins the row-15 family below,
-#     blocking when the detected face's span at target size falls under the
-#     5x7" hoop floor (127x178 mm) [S — Brother's own guidance, plan §1(c)].
-#   * Nap-fabric water-soluble-topping line: needs a fabric nap signal that
-#     `fabrics.py` presets do not carry today (no `nap` field exists). When
-#     a preset grows one, the check is one comparison against `fabric_for
-#     (cfg)` plus a worksheet line, same shape as STABILIZER_CUTAWAY below.
+# THE FACE-GATED REMAINDER — half CLOSED 2026-08-04:
+#   * Face-size guard: BUILT (`_face_size_findings` below), exactly the way
+#     this comment specified — the YuNet detection rides the pipeline the
+#     way the classifier's verdict does (the PHOTO_FACES_DETECTED warning
+#     from `pipeline.run_stages`, behind the photo_prep gate), and the check
+#     re-reads it here rather than re-running a net. Thresholds at
+#     FACE_MIN_HOOP_MM / FACE_BLOCK_HOOP_MM with their derivations.
+#   * Nap-fabric water-soluble-topping line: STILL A SEAM — needs a fabric
+#     nap signal that `fabrics.py` presets do not carry today (no `nap`
+#     field exists). When a preset grows one, the check is one comparison
+#     against `fabric_for(cfg)` plus a worksheet line, same shape as
+#     STABILIZER_CUTAWAY below.
 #
 # Photo-class gate, measured 2026-08-04. Preflight has no class gate anywhere
 # else and these two checks (resolution, subject contrast) still need one —
@@ -344,6 +341,33 @@ STITCHES_CUTAWAY_MIN = 25_000
 # photo plan's own palette step (build step 7, chart-restricted k-medoids)
 # is what brings photo-class palettes back inside it.
 COLOR_STOPS_MAX = 10
+
+# The face-size guard's two hoop constants (photo plan §1(c) hard floors +
+# §2 row 15). The plan states both halves of the rule separately and this
+# guard uses both:
+#   * "face work needs a 5x7\" hoop minimum" [S — Brother's own guidance via
+#     the plan] — FACE_MIN_HOOP_MM names that floor in the finding's message
+#     and extra, so the operator is told what to size UP to.
+#   * "Impossible: ... Faces at 4x4\"" [plan §1(c)] — FACE_BLOCK_HOOP_MM is
+#     the trigger: the finding fires (block — the plan's row 15 says block,
+#     with a size-up suggestion) when the whole design FITS a 4x4" hoop,
+#     because a design that small cannot be using anything approaching the
+#     5x7 minimum, and the plan calls faces at that scale impossible
+#     outright. A design between the two hoops (say 120x80 mm) already
+#     NEEDS a hoop bigger than 4x4 — the 5x7 — so the stated minimum is
+#     met and the guard stays silent; blocking there would flag work the
+#     plan itself calls viable.
+# Faces are read from the PHOTO_FACES_DETECTED warning (pipeline.run_stages,
+# YuNet — plan step 3's face priors), which only exists when the photo_prep
+# gate held, so this guard needs no class gate of its own: no photo lane, no
+# warning, no finding.
+FACE_MIN_HOOP_MM = (127.0, 178.0)     # 5x7" hoop, the stated face-work floor
+FACE_BLOCK_HOOP_MM = 101.6            # 4x4" hoop (4 * 25.4mm/in) — faces at this scale: impossible
+
+# The pipeline warning the face guard re-reads — named by string, the
+# _CONTOUR_RING_UNREACHABLE / _CLASSIFIED_PHOTO pattern (that code is owned
+# by warnings_codes.py, emitted by pipeline.run_stages).
+_PHOTO_FACES_DETECTED = "PHOTO_FACES_DETECTED"
 
 # Score deductions. A block is most of a letter grade on its own; two warns
 # cost one. Grades: A >= 90, B >= 75, C >= 60, D >= 40, F below.
@@ -528,6 +552,42 @@ def _subject_contrast_findings(p, plan: StitchPlan,
         delta_l=round(p90, 2),
         min_delta_l=SUBJECT_DELTA_L_MIN,
         bg_lightness=round(l_bg, 1),
+    )], metrics
+
+
+def _face_size_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
+    """A detected face in a design small enough to fit a 4x4" hoop — the
+    scale the photo plan calls impossible for face work (§1(c); constants
+    and both hoop derivations at FACE_MIN_HOOP_MM above).
+
+    Faces ride in on the PHOTO_FACES_DETECTED warning the pipeline emitted
+    (the `_contour_findings` re-read pattern: the stage that ran the
+    detector says what it found in its own warning, preflight carries that
+    to the operator rather than re-running a net on a plan that may no
+    longer have its artwork). `faces_detected` rides out in the metrics
+    either way, so a photo job's report says whether detection saw anything
+    even when nothing fires."""
+    hits = [w for w in plan.warnings if w.get("code") == _PHOTO_FACES_DETECTED]
+    count = sum(int(w.get("count", 1) or 1) for w in hits)
+    metrics = {"faces_detected": count}
+    if not count:
+        return [], metrics
+    d1, d2 = sorted(float(v) for v in plan.design_size_mm)
+    if d2 > FACE_BLOCK_HOOP_MM:
+        return [], metrics
+    noun = "A face is" if count == 1 else f"{count} faces are"
+    return [finding(
+        FACE_TOO_SMALL,
+        "block",
+        f"{noun} in this design, but at {plan.design_size_mm[0]:.0f} x "
+        f"{plan.design_size_mm[1]:.0f} mm it fits a 4x4\" hoop — face "
+        f"embroidery needs at least a 5x7\" hoop "
+        f"({FACE_MIN_HOOP_MM[0]:g} x {FACE_MIN_HOOP_MM[1]:g} mm) of design "
+        "to hold facial detail. Size the design up before sewing.",
+        count=count,
+        design_mm=[round(float(v), 1) for v in plan.design_size_mm],
+        fits_hoop_mm=FACE_BLOCK_HOOP_MM,
+        min_hoop_mm=list(FACE_MIN_HOOP_MM),
     )], metrics
 
 
@@ -1465,6 +1525,10 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     hole_findings, hole_rate = _same_hole_findings(plan)
     findings.extend(hole_findings)
     metrics["same_hole_fraction"] = None if hole_rate is None else round(hole_rate, 3)
+
+    face_findings, face_metrics = _face_size_findings(plan)
+    findings.extend(face_findings)
+    metrics.update(face_metrics)
 
     findings.extend(_stabilizer_findings(plan))
 

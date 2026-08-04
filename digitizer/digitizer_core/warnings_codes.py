@@ -23,6 +23,19 @@ BACKGROUND_ENCLOSED = "BACKGROUND_ENCLOSED"        # enclosed bg-colored region 
 # "texture_ms": float}
 PHOTO_PREP_APPLIED = "PHOTO_PREP_APPLIED"
 
+# Stage 1.5 (YuNet face priors — photo plan §2 row 2). Both ride the same
+# photo_prep double gate as PHOTO_PREP_APPLIED above.
+# Info, not a problem: faces were detected and get protective treatment
+# (face-local merge-threshold drop, eyes/skin palette weights, the preflight
+# face-size guard reads this). extra: {"count": int, "faces": [{"span_mm":
+# [w, h], "score": float}, ...]}
+PHOTO_FACES_DETECTED = "PHOTO_FACES_DETECTED"
+# Face detection was gated ON but cannot run in this environment (model file
+# missing/corrupt, or cv2.FaceDetectorYN absent) — the documented no-op
+# fallback: the job proceeds exactly as if no faces existed.
+# extra: {"reason": str}
+PHOTO_FACE_PRIORS_UNAVAILABLE = "PHOTO_FACE_PRIORS_UNAVAILABLE"
+
 # Stage 2
 COLOR_CAP_APPLIED = "COLOR_CAP_APPLIED"            # more threads than max_colors; smallest layers reassigned
 

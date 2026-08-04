@@ -22,7 +22,11 @@ from .config import PipelineConfig
 from .fabrics import Fabric, fabric_for_garment, get_fabric
 from .regions import Region, apply_layer_overrides, apply_shape_edits
 from .stage0_classify import classify
-from .stage1_photo_prep import photo_prep
+from .stage1_photo_prep import (
+    detect_faces_seam,
+    face_detector_unavailable_reason,
+    photo_prep,
+)
 from .stage1_prep import Prep, prep
 from .stage2_photo_segment import segment as photo_segment
 from .stage2_quantize import Quant, quantize
@@ -38,7 +42,12 @@ from .stage6_blend import SourcePixels, detect_design_ramp_angle
 from .stage7_sequence import PHOTO_CLASSES, depth_sort_layers, sequence
 from .stitches import StitchPlan
 from .threads import chart_for
-from .warnings_codes import DROPPED_SMALL_SHAPES, warn
+from .warnings_codes import (
+    DROPPED_SMALL_SHAPES,
+    PHOTO_FACE_PRIORS_UNAVAILABLE,
+    PHOTO_FACES_DETECTED,
+    warn,
+)
 
 
 @dataclass
@@ -105,10 +114,52 @@ def run_stages(
     # image; that is the point (texture below the sewable floor should not
     # reach any consumer).
     prep_warnings: list[dict] = []
+    face_regions = None
     if cfg.photo_prep and classification.class_ in ("photo_subject", "photo_scene"):
+        # YuNet face priors (plan §2 row 2) — detected on the raster BEFORE
+        # texture kill, because a face the smoothing has already softened is
+        # exactly the face most likely to slip under the detector; the boxes
+        # and landmarks are pure geometry, valid on the prepped raster too
+        # (same frame, same px). Behind the same double gate as photo_prep
+        # itself so no non-photo (or non-opted-in) lane ever runs a net.
+        faces = detect_faces_seam(p.rgb, cfg)
+        if faces is None:
+            # The documented no-op fallback: this environment cannot run the
+            # detector (model missing/corrupt, or no cv2.FaceDetectorYN).
+            # The job proceeds exactly as if no faces existed — and says so.
+            reason = face_detector_unavailable_reason() or "detector unavailable"
+            prep_warnings.append(
+                warn(
+                    PHOTO_FACE_PRIORS_UNAVAILABLE,
+                    f"Face detection was skipped — {reason}. Faces in this "
+                    "photo get no protective treatment this run.",
+                    reason=reason,
+                )
+            )
+        elif faces:
+            face_regions = faces
+            n = len(faces)
+            prep_warnings.append(
+                warn(
+                    PHOTO_FACES_DETECTED,
+                    f"{n} face{'s' if n != 1 else ''} detected — eyes and "
+                    "skin get protective segmentation and palette weight.",
+                    count=n,
+                    faces=[
+                        {
+                            "span_mm": [
+                                round(f.box_px[2] / p.px_per_mm, 1),
+                                round(f.box_px[3] / p.px_per_mm, 1),
+                            ],
+                            "score": round(f.score, 3),
+                        }
+                        for f in faces
+                    ],
+                )
+            )
         pp = photo_prep(p.rgb, p.bg_mask, p.px_per_mm, cfg)
         p.rgb = pp.rgb
-        prep_warnings = pp.warnings
+        prep_warnings.extend(pp.warnings)
         if dbg:
             debugviz.stage1_photo_prep(dbg, pp.rgb_tone, pp.rgb)
 
@@ -117,7 +168,7 @@ def run_stages(
     # additive: neither of those two classes had any dedicated stage 2
     # handling before this dispatch existed.
     q: Quant = (
-        photo_segment(p, cfg)
+        photo_segment(p, cfg, face_regions=face_regions)
         if classification.class_ in ("photo_subject", "photo_scene")
         else quantize(p, cfg)
     )

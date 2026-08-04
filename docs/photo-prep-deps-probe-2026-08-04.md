@@ -128,6 +128,14 @@ plus the `photo_prep*` config block and `tests/test_photo_prep.py`).
   (suggest `digitizer_core/model_data/` or an env-var cache dir + sha256
   check), who downloads it, and the elliptical importance masks. Wiring
   seam: `stage1_photo_prep.detect_faces_seam`.
+* **RESOLVED — the YuNet wiring slice (same branch family, later
+  2026-08-04) built all of it**: the model is committed at
+  `digitizer_core/model_data/face_detection_yunet_2023mar.onnx`
+  (sha256-verified at every load, provenance in `model_data/README.md`),
+  `detect_faces_seam` is real, the elliptical masks drive
+  `stage2_photo_segment`'s face-local merge threshold and eyes/skin
+  palette classes, and preflight gained the face-size guard
+  (`FACE_TOO_SMALL`) — all behind the existing `photo_prep` double gate.
 
 ## 4. CLAHE + zero-dep texture kill — shipped, this branch
 

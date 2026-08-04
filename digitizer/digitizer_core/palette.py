@@ -53,15 +53,15 @@ THE CLASS-WEIGHT SEAM (this slice's honest scope, same pattern as
 region area × a class multiplier — eyes 8-10, skin 4-5, subject 2,
 background 1 — so that under a binding color cap the palette spends its
 spools where a portrait's fidelity actually lives. `CLASS_MULTIPLIERS`
-carries those values and `region_weight` applies them TODAY, but the eye/
-skin/subject/background CLASSES themselves come from plan step 3's face
-priors (rembg + YuNet), which are NOT BUILT — nothing in the repo can yet
-say "this region is an eye". Until step 3 lands, every caller passes
-`region_class=None` and the multiplier is 1.0: weight degrades to plain
-region area, which is exactly the area-honest behavior the region former
-wants meanwhile. Wiring real classes in later is additive — step 3 hands
-`stage2_photo_segment` a per-region class and it flows through the
-already-present parameter; no call site changes shape. Measured proof the
+carries those values and `region_weight` applies them. STATUS 2026-08-04:
+the seam is HALF-WIRED for real — "eyes" and "skin" now flow from the
+YuNet face priors (`stage1_photo_prep.detect_faces_seam` ->
+`stage2_photo_segment._region_classes`, behind the photo_prep gate), while
+"subject"/"background" still await rembg (`remove_background_seam`, the
+numba/numpy conflict recorded there) — nothing in a face box can honestly
+say where a torso ends. Regions no prior covers (and every run without
+detections) still pass `region_class=None` and weigh plain area, exactly
+the area-honest degradation this paragraph always promised. Measured proof the
 seam is live, not decorative (pinned in tests): a 300 px near-black eye
 region against two 9000 px tan patches under a k=2 cap loses its dark
 entirely at multiplier 1 (assigned to Pecan, 44.5 ΔE00 off) and keeps a
