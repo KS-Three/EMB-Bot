@@ -176,13 +176,13 @@ def run_stages(
     source_pixels = None
     # Two ways to earn a raster payload, both narrow on purpose: the
     # "gradient" classification (the blend tier reads it), or the caller
-    # EXPLICITLY opting into a mono tonal tier (scan-line or meander) — a
-    # per-request config choice, never an automatic route (automatic photo
-    # routing is a later slice). Every other configuration carries no pixels
-    # forward and the flat lane's byte-for-byte identity is untouched by
-    # this field existing.
+    # EXPLICITLY opting into a mono tonal tier (scan-line, meander, or
+    # streamline) — a per-request config choice, never an automatic route
+    # (automatic photo routing is a later slice). Every other configuration
+    # carries no pixels forward and the flat lane's byte-for-byte identity
+    # is untouched by this field existing.
     want_tonal = (cfg.fill_technique or "tatami").lower() in (
-        "scanline_tonal", "meander_tonal")
+        "scanline_tonal", "meander_tonal", "streamline")
     if classification.class_ == "gradient" or want_tonal:
         source_pixels = SourcePixels(rgb=p.rgb, px_per_mm=p.px_per_mm,
                                      origin_px=(art_cx, art_cy))
@@ -194,7 +194,8 @@ def run_stages(
         # shared direction found): `blend_fill` falls back to each region's
         # own angle exactly as it always has in that case. Gradient-class
         # only: the scanline tier has its own grain-angle precedence and
-        # never reads this field.
+        # never reads this field, and the streamline tier reads the
+        # direction FIELD instead, never this either.
         source_pixels.design_row_angle_deg = detect_design_ramp_angle(p)
 
     bg_outline_mm = None

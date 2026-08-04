@@ -51,6 +51,7 @@ from .stage6_fill import stitch_shape
 from .stage6_meander import meander_fill
 from .stage6_scanline import scanline_fill
 from .stage6_satin import is_satin_candidate, satin_shape
+from .stage6_streamline import streamline_fill
 from .stitches import StitchBlock, StitchRun, tie_run
 from .threads import chart_for
 from .warnings_codes import (BORDER_LIGHTENED, BORDER_SKIPPED_TOO_NARROW,
@@ -430,6 +431,10 @@ def sequence(
     # opt-in and fallback contract to the scanline tier above — off unless
     # named, tone read from the same source-pixel plumbing, tatami on empty.
     meander = technique == "meander_tonal"
+    # The streamline thread-paint tier (photo plan, technique row 10, first
+    # slice): same opt-in and fallback contract, but reads the direction
+    # field's raster instead of raw tone for its spacing.
+    streamline = technique == "streamline"
 
     thin = empty = jumps = as_run = 0
     bordered = lightened = border_narrow = 0
@@ -541,6 +546,13 @@ def sequence(
                 # dropping artwork.
                 runs, report = meander_fill(p.region, source_pixels, cfg)
                 need_tatami = report["empty"]
+            elif streamline and source_pixels is not None:
+                # Same contract again, thread-paint look: the explicit
+                # opt-in beats the gradient class's blend routing, empty is
+                # honest (an all-highlight shape sews nothing) and falls
+                # through to tatami below rather than dropping artwork.
+                runs, report = streamline_fill(p.region, source_pixels, cfg)
+                need_tatami = report["empty"]
             elif source_pixels is not None:
                 # Stage 0 classified the whole design "gradient" — every
                 # auto-tier shape routes through the blend fill instead of
@@ -564,8 +576,9 @@ def sequence(
                 )
                 need_tatami = report["empty"]
             else:
-                # Plain tatami — and also the scanline flag with no source
-                # pixels to read tone from, which sews as tatami rather than
+                # Plain tatami — and also any tonal-tier flag (scanline,
+                # meander, streamline) with no source pixels to read tone
+                # from, which sews as tatami rather than
                 # dropping the shape.
                 need_tatami = True
             if need_tatami:

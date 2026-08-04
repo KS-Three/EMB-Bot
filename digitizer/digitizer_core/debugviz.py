@@ -261,6 +261,23 @@ def direction_field(dir_: Path, rgb: np.ndarray, field) -> None:
     _write(dir_ / "direction_field.png", viz)
 
 
+def stage6_streamline_paths(dir_: Path, runs: list, size_mm) -> None:
+    """The streamline tier's human-review record: every emitted run stroke in
+    ink, travel faint — the one artifact that answers the tier's whole
+    reason to exist (do the strokes follow the image's structure?), which no
+    assertion can. Stitch penetrations dotted so spacing is judgeable too."""
+    viz, to_px = _mm_canvas(size_mm)
+    for run in runs:
+        travel = run.kind == "travel"
+        color = (200, 200, 200) if travel else (30, 30, 30)
+        for a, b in zip(run.points, run.points[1:]):
+            cv2.line(viz, to_px(*a), to_px(*b), color, 1, cv2.LINE_AA)
+        if not travel:
+            for x, y in run.points:
+                cv2.circle(viz, to_px(x, y), 1, (90, 90, 200), -1)
+    _write(dir_ / "stage6_streamline_paths.png", viz)
+
+
 def stage6_scanline_rows(dir_: Path, runs: list, size_mm) -> None:
     """The scan-line tonal tier's emitted geometry (stage6_scanline.py),
     drawn dark-on-light at thread weight so the halftone read — rows

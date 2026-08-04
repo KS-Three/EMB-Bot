@@ -124,6 +124,22 @@ class PipelineConfig:
     #             Reef/Sfumato look, fabric left bare as the highlight
     #             value. Same opt-in plumbing, source-pixel gate and
     #             tatami-on-empty fallback as "scanline_tonal".
+    # "streamline" – the streamline thread-paint tier, first (mono) slice
+    #             (photo plan, technique row 10, stage6_streamline):
+    #             Jobard–Lefer evenly-spaced streamlines traced in the ETF
+    #             direction field (directionfield.py), separation modulated
+    #             by local source-image darkness (highlight sews nothing —
+    #             fabric shows), resampled to 2.5–4 mm run stitches. Regions
+    #             whose field coherence is too low fall back to parallel
+    #             lines at the house angle, per the field's own contract.
+    #             Strictly opt-in: setting this is ALSO what makes
+    #             pipeline.run_stages carry source pixels forward for
+    #             non-gradient classes, so the flat lane grows no raster
+    #             payload while the flag is off. A shape the tier sews
+    #             nothing for (all highlight) falls back to tatami — the
+    #             same never-drop-artwork contract contour has. Multi-color
+    #             dark→light layering is the next slice; the seam is
+    #             documented in stage6_streamline's module docstring.
     # "contour" – uniform inward offsets of the outline, sewn inner to outer
     #             (stage6_contour). Rows follow the silhouette instead of
     #             cutting across it, which is the one thing tatami structurally
