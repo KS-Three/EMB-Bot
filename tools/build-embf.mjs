@@ -48,6 +48,33 @@ function truncateWords(s, limit) {
   return base + "…";
 }
 
+// docs/font-license-audit-2026-07-31.md, action checklist items 1-3: these 4
+// fonts are PULLED from the shipping library regardless of grandfathered
+// status. Skipped unconditionally below, before the license-policy check.
+//   - milli_marif_bold: standing PULL decision (§4) — the sidecar LICENSE.txt
+//     is an ad-hoc French permission email plus an appended full OFL-1.1
+//     text, but no written confirmation on file that the grant covers
+//     commercial embroidery distribution. Revisit if that confirmation is
+//     obtained.
+//   - tt_directors, tt_masters: the OFL-1.1 claim is traceable only to a
+//     1001fonts aggregator listing while the TypeType foundry sells these
+//     families commercially on MyFonts — no verifiable primary source.
+//   - dejavufont: labeled CC-BY-SA-4.0, but the upstream LICENSE (fetched
+//     2026-08-04 from github.com/inkstitch/embroidery-fonts/src/dejavufont/
+//     LICENSE, sourced from fontsquirrel.com/license/dejavu-serif) is
+//     actually the Bitstream Vera Fonts License v1.00 + Arev Fonts License —
+//     neither is CC-BY-SA, neither is in ALLOWED_LICENSES below, and both
+//     forbid selling the font typeface by itself (only "as part of a larger
+//     software package"). The digitizer's own CC-BY-SA claim only covers
+//     their embroidery adaptation, not the underlying Bitstream/Arev
+//     copyright — and licenseId() below would keep mislabeling it CC-BY-SA
+//     on any rebuild, since the CC-BY-SA regex matches the adapter's header
+//     line before ever reaching the real license text further down the same
+//     blob. Pulled rather than relabeled until that detection gap is fixed
+//     and/or Kent decides whether Bitstream-Vera-derived fonts should join
+//     the allowed policy set.
+const PULLED = new Set(["milli_marif_bold", "tt_directors", "tt_masters", "dejavufont"]);
+
 // Fix 2: license policy — only these ids may ship for NEW (non-grandfathered) fonts.
 const ALLOWED_LICENSES = new Set(["OFL-1.1", "CC-BY-4.0", "CC-BY-SA-4.0", "CC0"]);
 const GRANDFATHERED = new Set(
@@ -96,6 +123,15 @@ if (existsSync(tiersPath)) {
 mkdirSync(BIN_DIR, { recursive: true });
 const manifest = [];
 for (const s of sources.sort((a, b) => a.key.localeCompare(b.key))) {
+  // font-license-audit-2026-07-31.md items 1-3: pulled regardless of
+  // grandfathered status — see the PULLED comment above for per-font reasons.
+  if (PULLED.has(s.key)) {
+    console.warn("PULLED (license audit):", s.key);
+    const stale = join(BIN_DIR, s.key + ".embf");
+    if (existsSync(stale)) unlinkSync(stale);
+    continue;
+  }
+
   const font = JSON.parse(readFileSync(s.path, "utf8"));
   const id = licenseId(font.license);
 

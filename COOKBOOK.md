@@ -31,7 +31,10 @@ where the bodies are buried.
 ## Binary font library (Slice 10 Stage A, 2026-07-27)
 
 The Studio's fonts live in `src/fonts/manifest.json` + `src/fonts/bin/*.embf`
-(**69 fonts**), lazily fetched per font by `app/src/lib/fontLoader.js`. The
+(**68 fonts** as of 2026-08-04, after the 4 license-audit pulls below —
+previously drifted to 72 without this doc being updated; don't trust either
+number without recounting `manifest.json`), lazily fetched per font by
+`app/src/lib/fontLoader.js`. The
 old eager `src/fonts/satin-fonts.js` (21 fonts) is OUT of the Studio pipeline
 but still used by legacy `EMB-Bot.html` pending its audit — do not delete it.
 
@@ -49,9 +52,17 @@ but still used by legacy `EMB-Bot.html` pending its audit — do not delete it.
 - **Tier rule (Kent's decision): only `tier:"verified"` ships.** Unverified =
   internal work queue with a concrete reason per font in `_tiers.json`.
   License policy for NEW fonts: OFL-1.1 / CC-BY-4.0 / CC-BY-SA-4.0 / CC0
-  only — `precious` is excluded (GPL-3.0); `milli_marif_bold` is
-  grandfathered with an ad-hoc license (flagged to Kent). `ondulamarif_XL`
-  was demoted by QC (letter glyphs runs-only → 0 stitches).
+  only — `precious` is excluded (GPL-3.0). `ondulamarif_XL`
+  was demoted by QC (letter glyphs runs-only → 0 stitches). `milli_marif_bold`,
+  `tt_directors`, `tt_masters`, and `dejavufont` were PULLED from the build
+  2026-08-04 per `docs/font-license-audit-2026-07-31.md` action items 1-3
+  (ad-hoc/aggregator-only/mislabeled licenses — see `PULLED` in
+  `tools/build-embf.mjs` for the per-font reasoning). They still linger in
+  the legacy `src/fonts/satin-fonts.js` / `EMB-Bot.html` pipeline mentioned
+  above (milli_marif_bold, tt_masters) — that file is explicitly out of this
+  audit's scope and still says "do not delete", so it wasn't touched; flag
+  this to Kent as a residual exposure if `EMB-Bot.html`/`EMB-Bot-standalone.html`
+  are ever actually distributed.
 - **Engine-file lists live in THREE places** for the Studio: `app/scripts/
   copy-engine.mjs` (ENGINE_FILES), `app/src/lib/emb.js` (ENGINE_KEYS), and
   the `<script>` tags in **`app/index.html`** — the third one was missed once
