@@ -52,15 +52,30 @@ pin `opencv-contrib-python-headless==5.0.0.93`, re-verified golden-safe in
 a fresh venv (see the probe doc's addendum). This module needed no change
 — it feature-detects `cv2.ximgproc` either way.
 
-**rembg / YuNet seams** (§2 rows 1-2, the other half of build step 3) are
-`remove_background_seam` / `detect_faces_seam` at the bottom of this module
-— documented no-ops today, with the same-day probe results in their
-docstrings so wiring them is an environment decision, not a research task.
+**rembg seam** (§2 row 1, part of build step 3) is `remove_background_seam`
+at the bottom of this module — a documented no-op today, with the 2026-08-04
+probe results in its docstring so wiring it is an environment decision, not
+a research task.
+
+**YuNet face priors** (§2 row 2) are REAL as of this slice:
+`detect_faces_seam` runs `cv2.FaceDetectorYN` against the committed model at
+`model_data/face_detection_yunet_2023mar.onnx` (sha256-verified at load) and
+returns `FaceRegion`s. The model-dir convention this slice picked: small
+committed inference models live in `digitizer_core/model_data/` — the same
+shape as the existing `digitizer_core/chart_data/` convention for committed
+data files; see `model_data/README.md` for source/sha/license per model.
+Consumers: `pipeline.run_stages` (behind the same photo_prep double gate as
+this module's own entry point), `stage2_photo_segment._face_local_threshold`
+and `._region_classes` (protective segmentation + palette class weights),
+and preflight's `_face_size_findings` (the face-size guard, via the
+PHOTO_FACES_DETECTED warning).
 """
 from __future__ import annotations
 
+import hashlib
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -248,7 +263,9 @@ def photo_prep(rgb: np.ndarray, bg_mask: np.ndarray, px_per_mm: float,
     )
 
 
-# --- Build-step-3 dependency seams (documented, not built) --------------------
+# --- Build-step-3 dependency seams ---------------------------------------------
+# rembg (below) is still a documented no-op; the YuNet face priors that used
+# to share this section are real — see the YuNet block further down.
 
 def remove_background_seam(rgb: np.ndarray, cfg: PipelineConfig) -> np.ndarray | None:
     """SEAM (photo plan §2 row 1): rembg subject cutout — binary subject
@@ -276,29 +293,121 @@ def remove_background_seam(rgb: np.ndarray, cfg: PipelineConfig) -> np.ndarray |
     return None
 
 
-def detect_faces_seam(rgb: np.ndarray, cfg: PipelineConfig) -> list | None:
-    """SEAM (photo plan §2 row 2): YuNet 5-landmark face detection ->
-    elliptical importance masks. Returns None (no faces, callers change
-    nothing) until the model file ships.
+# --- YuNet face priors (photo plan §2 row 2 — REAL as of this slice) ----------
+#
+# The model is COMMITTED (232,589 bytes — small enough that vendoring beats a
+# download-cache policy) at `model_data/face_detection_yunet_2023mar.onnx`,
+# fetched 2026-08-04 from opencv/opencv_zoo's LFS media endpoint
+# (https://media.githubusercontent.com/media/opencv/opencv_zoo/main/models/
+# face_detection_yunet/face_detection_yunet_2023mar.onnx — the plain raw URLs
+# serve a 403 / the 131-byte LFS pointer; probe record in
+# docs/photo-prep-deps-probe-2026-08-04.md §3). Model license: MIT (the
+# opencv_zoo YuNet directory's own license — plan §2 row 2 "[P]");
+# provenance/sha are also recorded in `model_data/README.md`.
+YUNET_MODEL_PATH = Path(__file__).resolve().parent / "model_data" / (
+    "face_detection_yunet_2023mar.onnx")
+# sha256 of the model as fetched — matches the upstream LFS pointer's oid,
+# verified at download AND re-verified at every load (cached per file stat):
+# a truncated/corrupted checkout must degrade to the documented no-op, never
+# feed garbage weights to the detector.
+YUNET_MODEL_SHA256 = "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4"
 
-    Probe record, 2026-08-04, this sandbox (full detail in
-    docs/photo-prep-deps-probe-2026-08-04.md):
+# Detection knobs — YuNet's own published defaults, not tuned here: the
+# consumers of a detection (merge-threshold drop, palette weights, the
+# preflight size guard) are all conservative-protective, so the detector's
+# stock operating point is the right one until a measurement says otherwise.
+YUNET_SCORE_THRESHOLD = 0.9
+YUNET_NMS_THRESHOLD = 0.3
+YUNET_TOP_K = 5000
 
-    * `cv2.FaceDetectorYN` EXISTS in the shipped venv's cv2 5.0.0
-      (opencv-python-headless — the plan's "[M present]" holds); no wheel
-      change needed for this row.
-    * The model file `face_detection_yunet_2023mar.onnx` (232,589 bytes,
-      sha256 8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4)
-      is Git-LFS-stored in opencv/opencv_zoo — the plain
-      `github.com/.../raw/...` and `raw.githubusercontent.com` URLs return
-      a 403 / the 131-byte LFS pointer respectively. The WORKING fetch is
-      the LFS media endpoint:
-      https://media.githubusercontent.com/media/opencv/opencv_zoo/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx
-      (verified: downloads through this proxy, sha256 matches the pointer,
-      and `cv2.FaceDetectorYN.create(path, ...)` + `.detect(...)` run
-      end-to-end in the shipped venv).
-    * Remaining work is model-cache policy (where the .onnx lives on disk,
-      who downloads it) + the elliptical importance masks — an integration
-      decision, not a feasibility question.
+# sha verification cache, keyed by (path, size, mtime_ns) so an edited file
+# re-hashes but a steady one hashes once per process. 232 KB, so even a miss
+# costs a millisecond — the cache exists to keep per-job cost at zero, not
+# because hashing is expensive.
+_MODEL_HASH_OK: dict[tuple[str, int, int], bool] = {}
+
+
+@dataclass(frozen=True)
+class FaceRegion:
+    """One YuNet detection, in RASTER PIXELS of the image it was run on
+    (the stage-1 prep raster — the same frame `Prep.bg_mask`, SLIC labels
+    and every RegionMask live in; divide by `Prep.px_per_mm` for mm)."""
+    box_px: tuple[float, float, float, float]      # x, y, w, h
+    # YuNet's 5 landmarks, in its own fixed order: right eye, left eye,
+    # nose tip, right mouth corner, left mouth corner.
+    landmarks_px: tuple[tuple[float, float], ...]
+    score: float
+
+
+def face_detector_unavailable_reason() -> str | None:
+    """None when YuNet can run here; otherwise one honest sentence why not.
+
+    Shared by `detect_faces_seam` (to decide) and `pipeline.run_stages` (to
+    say so in the PHOTO_FACE_PRIORS_UNAVAILABLE warning) so the two can
+    never disagree about why detection was skipped.
     """
+    if not hasattr(cv2, "FaceDetectorYN"):
+        return "cv2.FaceDetectorYN is not present in this OpenCV build"
+    path = YUNET_MODEL_PATH
+    if not path.is_file():
+        return f"YuNet model file missing at {path}"
+    st = path.stat()
+    key = (str(path), st.st_size, st.st_mtime_ns)
+    if key not in _MODEL_HASH_OK:
+        _MODEL_HASH_OK[key] = (
+            hashlib.sha256(path.read_bytes()).hexdigest() == YUNET_MODEL_SHA256
+        )
+    if not _MODEL_HASH_OK[key]:
+        return (f"YuNet model file at {path} fails its sha256 integrity "
+                "check (corrupted or wrong-version download)")
     return None
+
+
+def detect_faces_seam(rgb: np.ndarray, cfg: PipelineConfig) -> list[FaceRegion] | None:
+    """Photo plan §2 row 2: YuNet 5-landmark face detection on the prep-stage
+    raster.
+
+    Returns:
+      * `None` — the detector CANNOT run here (no `cv2.FaceDetectorYN`,
+        model file missing, or model integrity check failed). The documented
+        no-op: callers change nothing, exactly the pre-slice behaviour, and
+        `pipeline.run_stages` says so in a PHOTO_FACE_PRIORS_UNAVAILABLE
+        warning (reason from `face_detector_unavailable_reason`).
+      * `[]` — the detector ran and found no faces.
+      * a list of `FaceRegion` — detections in raster px, ordered by
+        descending score (ties by x then y) for determinism.
+
+    `cfg` is accepted for signature stability with the other stage-1.5
+    entry points (nothing in it is read today — the detector runs at YuNet's
+    stock operating point, see the YUNET_* constants).
+
+    Deterministic: same raster, same model file, same detections —
+    `cv2.FaceDetectorYN` has no RNG (verified by back-to-back runs on the
+    same frame while wiring this).
+    """
+    del cfg  # reserved — see docstring
+    if face_detector_unavailable_reason() is not None:
+        return None
+    h, w = rgb.shape[:2]
+    detector = cv2.FaceDetectorYN.create(
+        str(YUNET_MODEL_PATH), "", (int(w), int(h)),
+        YUNET_SCORE_THRESHOLD, YUNET_NMS_THRESHOLD, YUNET_TOP_K,
+    )
+    # YuNet was trained on OpenCV-convention BGR frames; the pipeline's
+    # rasters are RGB (stage 1's contract), so convert rather than feeding
+    # swapped channels to the net.
+    _rc, rows = detector.detect(cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
+    if rows is None:
+        return []
+    faces = [
+        FaceRegion(
+            box_px=(float(r[0]), float(r[1]), float(r[2]), float(r[3])),
+            landmarks_px=tuple(
+                (float(r[4 + 2 * i]), float(r[5 + 2 * i])) for i in range(5)
+            ),
+            score=float(r[14]),
+        )
+        for r in np.asarray(rows, np.float64)
+    ]
+    faces.sort(key=lambda f: (-f.score, f.box_px[0], f.box_px[1]))
+    return faces

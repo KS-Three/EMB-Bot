@@ -54,7 +54,11 @@ class PipelineConfig:
     # with it off — or on for any non-photo class — the pipeline is
     # byte-identical to before this module existed (pinned in
     # tests/test_photo_prep.py; the flat lane additionally by the
-    # byte-identical suites).
+    # byte-identical suites). The YuNet face priors (plan §2 row 2, wired
+    # 2026-08-04 — detection, face-local merge threshold, eyes/skin palette
+    # weights, the preflight face-size guard) ride this SAME double gate:
+    # no separate flag, no face machinery on any lane this flag doesn't
+    # open. See stage1_photo_prep.detect_faces_seam.
     photo_prep: bool = False
     # Texture-kill technique: "bilateral" (default, zero-dep) | "meanshift"
     # (zero-dep) | "rolling_guidance" (real path since the 2026-08-04
