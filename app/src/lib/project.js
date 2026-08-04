@@ -8,7 +8,11 @@ export function defaultTextElement(id) {
     id,
     type: "text",
     text: "",
-    fontKey: "geneva_simple",
+    // Default font for new text elements. Was geneva_simple until the
+    // 2026-08-04 ShareAlike pull removed it from the shipping library
+    // (font-license audit §9); medium_font is the OFL-licensed Ink/Stitch
+    // workhorse with full charset coverage.
+    fontKey: "medium_font",
     colorRgb: [20, 20, 20],
     colorRanges: [],
     weightPreset: "normal",

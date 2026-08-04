@@ -11,7 +11,7 @@ const SF = require("../src/satinfont.js");
 global.window = global; // digitize.js's UMD wrapper expects a browser-ish global
 const DG = require("../src/digitize.js");
 
-const font = JSON.parse(fs.readFileSync(__dirname + "/../src/fonts/geneva_simple.json", "utf8"));
+const font = JSON.parse(fs.readFileSync(__dirname + "/../test/fixtures/fonts/geneva_simple.json", "utf8"));
 
 const closeTo = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol, `${msg || ""}: expected ${a} close to ${b} (tol ${tol})`);
 
@@ -681,10 +681,15 @@ test("underlay lies INSIDE its column and is sewn BEFORE the satin that covers i
 });
 
 test("every underlay stitch clears the 0.5mm minimum and the 12.1mm DST record ceiling", () => {
+  // geneva_simple and emilio_20_bold moved to test/fixtures/fonts/ in the
+  // 2026-08-04 ShareAlike pull (they no longer ship); the other two are
+  // still shipped statics. The measured-coverage mix is unchanged.
   const names = ["geneva_simple", "emilio_20_bold", "chicken_scratch", "mam_script"];
   let n = 0, longest = 0;
   for (const name of names) {
-    const f = JSON.parse(fs.readFileSync(`${__dirname}/../src/fonts/${name}.json`, "utf8"));
+    const dir = ["geneva_simple", "emilio_20_bold"].includes(name)
+      ? `${__dirname}/fixtures/fonts` : `${__dirname}/../src/fonts`;
+    const f = JSON.parse(fs.readFileSync(`${dir}/${name}.json`, "utf8"));
     for (const emMm of [12, 18, 30, 60]) {
       const lay = SF.layoutText(f, "Hamburgefonstiv 8@", { ...UL_OPTS, emMm, underlay: true });
       for (const r of lay.runs) {
@@ -703,7 +708,7 @@ test("every underlay stitch clears the 0.5mm minimum and the 12.1mm DST record c
 });
 
 test("cap height is MEASURED from the font's own H, not assumed equal to the em (Law 46)", () => {
-  const emilio = JSON.parse(fs.readFileSync(`${__dirname}/../src/fonts/emilio_20_bold.json`, "utf8"));
+  const emilio = JSON.parse(fs.readFileSync(`${__dirname}/../test/fixtures/fonts/emilio_20_bold.json`, "utf8"));
   const gen = SF.capHeightMm(font, 18), emi = SF.capHeightMm(emilio, 18);
   assert.strictEqual(gen.ref, "H"); assert.strictEqual(gen.proxy, false);
   assert.strictEqual(emi.ref, "H"); assert.strictEqual(emi.proxy, false);

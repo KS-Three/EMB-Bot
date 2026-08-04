@@ -199,3 +199,33 @@ Executed in checklist order in a session **without `scratch_ink/`** (gitignored,
 - **Item 12 — final pass. Done with one substitution:** full app build (`npm run build`) confirms `dist/` serves all 68 license files + 68 binaries; decode checks confirm embedded full license text (spot samples + the new all-68 guard test); the credits **data source** was verified end-to-end — `creditLines()` over the built manifest yields 68 rows and every row's `licenseHref`/`binHref` resolves to a real served file. A live browser click-through wasn't possible (Playwright MCP disconnected in this session) — the component itself is unchanged except two additive template lines, and its data path is what was verified.
 
 **Verification (before → after this session's items 4–12):** `node --test` 265/265 → **266/266** (+1: the new embedded-license guard); `cd app && npx vitest run` **327 passed** (326 baseline measured today + 1 new credits spec; the `e2e/wizard-smoke.spec.js` *file* failure is pre-existing/environmental — a Playwright spec vitest can't host — identical before and after, and the COOKBOOK's "321/321" count had already drifted before this session). Two test changes were deliberate content updates, not regressions: the manifest attribution cap rose 200 → 500 (complete notices are longer; longest real one ~350 chars), and new guards pin: no truncation artifacts, trimmed names, sidecar present per font, embedded license == sidecar.
+
+## 9. ShareAlike removal — 2026-08-04, Kent's explicit decision
+
+Rather than gate the paid launch on the §5 legal question, **every
+ShareAlike font was pulled from the shipping library**: all 13 then present
+(11 CC-BY-SA-4.0 + the 2 CC-BY-SA-2.5 Geneva fonts — §5's "14" counted
+dejavufont, already pulled in §7 for unrelated reasons). Library 68 → 55;
+post-pull license census: 52 OFL-1.1, 1 CC-BY-4.0, 2 CC0 — **zero
+ShareAlike**. `PULLED` in `tools/build-embf.mjs` carries the full reasoning
+and the explicit restore path; CC-BY-SA-4.0 was also removed from
+`ALLOWED_LICENSES` so no new ShareAlike font can enter while the question
+stands. Removed per font: manifest entry, `.embf` binary, preview PNG,
+LICENSE.txt sidecar, `font-categories.json` entry, and (where present) the
+static `src/fonts/<key>.json` source — key-set equality re-verified at
+55/55/55/55.
+
+Consequences:
+- **The §5 lawyer consult is no longer launch-gating.** The brief
+  (`docs/lawyer-brief-cc-by-sa-2026-08-04.md`) stays on file as the restore
+  path: a favorable opinion lets any or all 13 return (git history holds
+  every artifact).
+- The items 4–12 work in §8 (extraction, sidecars, embedding, credits)
+  fully applies to the remaining 55 — none of it was ShareAlike-specific.
+- Known residuals: 5 of the 13 (`aventurina`, `emilio_20`,
+  `emilio_20_bold`, `geneva_simple`, `monicha`) remain in the legacy
+  `src/fonts/satin-fonts.js` registry used by `EMB-Bot.html` — same §7
+  caveat, same "audit that file before ever distributing the legacy HTML"
+  condition, now with ShareAlike stakes attached. The Bluenesia
+  permission-grant archive (§8 item 9) stays on file for the same
+  restore-path reason.

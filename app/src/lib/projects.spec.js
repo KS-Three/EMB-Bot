@@ -288,7 +288,7 @@ test("migrateLegacy converts a v1 legacy blob into a registry project named 'My 
   const v1 = {
     garmentId: "hat_front",
     text: "Crew",
-    fontKey: "geneva_simple",
+    fontKey: "medium_font",
     sizeMm: null,
     offsetXMm: 0,
     offsetYMm: 0,

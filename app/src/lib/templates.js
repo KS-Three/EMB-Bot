@@ -21,7 +21,7 @@ export const TEMPLATES = [
     patch: {
       garmentId: "left_chest",
       selectedId: "e1",
-      elements: [{ ...defaultTextElement("e1"), fontKey: "geneva_simple", text: "Your Name", sizeMm: 76.2 }],
+      elements: [{ ...defaultTextElement("e1"), fontKey: "medium_font", text: "Your Name", sizeMm: 76.2 }],
     },
   },
   {
@@ -31,7 +31,7 @@ export const TEMPLATES = [
     patch: {
       garmentId: "left_chest",
       selectedId: "e1",
-      elements: [{ ...defaultTextElement("e1"), fontKey: "aventurina", text: "Yours" }],
+      elements: [{ ...defaultTextElement("e1"), fontKey: "mam_script", text: "Yours" }],
     },
   },
   {

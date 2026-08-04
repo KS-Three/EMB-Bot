@@ -14,8 +14,15 @@ const keys = fs.readdirSync(FONT_DIR)
   .filter((f) => f.endsWith(".json") && f !== "manifest.json")
   .map((f) => f.replace(/\.json$/, ""));
 
-test("all 21 shipped fonts have a committed .embf", () => {
-  assert.ok(keys.length >= 21, "expected >=21 font JSONs, found " + keys.length);
+test("every static shipped font has a committed .embf", () => {
+  // Was ">= 21" (the original static library). License-audit pulls shrank
+  // the static set: items 1-3 removed milli_marif_bold + tt_masters
+  // (2026-08-04), and the same-day ShareAlike removal (audit §9) pulled
+  // aventurina, emilio_20, emilio_20_bold, geneva_simple, monicha —
+  // geneva_simple and emilio_20_bold live on as test fixtures under
+  // test/fixtures/fonts/, deliberately OUTSIDE this directory so the
+  // "static JSON here ⇒ shipped" invariant this file pins stays true.
+  assert.ok(keys.length >= 14, "expected >=14 font JSONs, found " + keys.length);
   for (const k of keys)
     assert.ok(fs.existsSync(path.join(BIN_DIR, k + ".embf")), "missing bin for " + k);
 });

@@ -31,7 +31,10 @@ where the bodies are buried.
 ## Binary font library (Slice 10 Stage A, 2026-07-27)
 
 The Studio's fonts live in `src/fonts/manifest.json` + `src/fonts/bin/*.embf`
-(**68 fonts** as of 2026-08-04, after the 4 license-audit pulls below —
+(**55 fonts** as of 2026-08-04, after the 4 license-audit pulls below and the
+same-day removal of all 13 ShareAlike fonts (Kent's call — see the audit
+doc's §9; removal made the paid launch independent of the CC-BY-SA legal
+question, and the lawyer brief is now the optional restore path) —
 previously drifted to 72 without this doc being updated; don't trust either
 number without recounting `manifest.json`), lazily fetched per font by
 `app/src/lib/fontLoader.js`. The
