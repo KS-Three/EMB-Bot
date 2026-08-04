@@ -49,7 +49,11 @@ caught:
 - **A dropped ring is unfilled fabric.** When a ring is too short to sew, the
   honest move is to count it and warn. Silently dropping it — which is what the
   reference implementations do — leaves bare fabric that nothing downstream can
-  see.
+  see. And counting alone is not enough (2026-08-04): the mitred offset can
+  ANNIHILATE a notched interior wholesale — a core that was never a ring and
+  never reached the ledger — so the `starved` warning is decided by measuring
+  the emitted stitches against the polygon (barecircle.py), not by trusting
+  this module's own accounting of what it knows it dropped.
 """
 from __future__ import annotations
 
@@ -61,6 +65,7 @@ from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import substring
 
 from . import machine, stitches
+from .barecircle import starved_threshold_mm, widest_bare_circle
 from .stage6_fill import _inset_ring, travel_path
 from .stitches import StitchRun
 
@@ -420,6 +425,18 @@ def _link(rings: list[_Ring], spacing: float, stitch_mm: float, tol: float,
                     # needle. Bank.
                     paths.append(current)
                     current = []
+                elif not room.covers(LineString(
+                        [anchor, rings[pick].line.interpolate(entry)])):
+                    # Law 42 applies to the crossing stitch too. `_entry_arc`
+                    # solves only for LENGTH, so around a hole or across a neck
+                    # its chord can leave the shape with both endpoints inside
+                    # — measured before this test existed: 23 stitches outside
+                    # over a 124-shape zoo, worst 1.10 mm out, and the shipped
+                    # containment test failed verbatim on a 15 mm disc with a
+                    # 0.3 mm hole. Banking turns the illegal stitch into a
+                    # travel that `emit` routes inside the shape.
+                    paths.append(current)
+                    current = []
                 elif gap > soft:
                     report["reach_stretched"] += 1
         if not current:
@@ -475,8 +492,13 @@ def contour_fill(poly: Polygon, shape_id: str, *, spacing_mm: float,
     no ties (stage 7 owns those), entry nearest `start_near`.
 
     Report keys: `too_thin`, `jumps`, `empty` (the shared contract), plus
-    `rings` (emitted), `skipped_rings` (too short to sew — unfilled fabric, and
-    a warning), `reach_stretched` (linked past the soft radius), `clipped`
+    `rings` (emitted), `skipped_rings` (too short to sew — unfilled fabric),
+    `skipped_area_mm2` (the KNOWN-drop ledger — honest but structurally blind
+    to the annihilated core, which is why it no longer decides anything),
+    `bare_radius_mm` / `starved` (the widest circle of bare fabric between the
+    emitted stitches, measured by barecircle.py, and whether it beats
+    `starved_threshold_mm` — the warning gate since 2026-08-04),
+    `reach_stretched` (linked past the soft radius), `clipped`
     (chords law 42 pulled back inside), `short_stitches` (penetrations that
     stayed under the floor because moving them would have left the shape — the
     one place laws 18 and 42 genuinely conflict, counted rather than hidden),
@@ -488,7 +510,7 @@ def contour_fill(poly: Polygon, shape_id: str, *, spacing_mm: float,
               "rings": 0, "skipped_rings": 0, "reach_stretched": 0,
               "clipped": 0, "short_stitches": 0, "paths": 0,
               "transitions": 0, "min_transition_mm": math.inf,
-              "skipped_area_mm2": 0.0, "starved": 0}
+              "skipped_area_mm2": 0.0, "starved": 0, "bare_radius_mm": 0.0}
     tol = machine.CONTOUR_TOLERANCE_MM if tolerance_mm is None else tolerance_mm
     spacing = max(0.05, spacing_mm)
 
@@ -563,11 +585,20 @@ def contour_fill(poly: Polygon, shape_id: str, *, spacing_mm: float,
     report["paths"] = len(body)
     emit(body, stitches.FILL)
 
-    # The raw ring count is not the question. EVERY shape drops its innermost
-    # ring — the sliver where the offsets converge on themselves — so warning on
-    # the count would warn on every shape, and a warning that always fires is a
-    # warning nobody reads. What matters is how much fabric is left bare.
-    report["starved"] = int(
-        report["skipped_area_mm2"] > machine.CONTOUR_STARVED_FRAC * poly.area)
+    # The raw ring count is not the question, and neither — as of 2026-08-04 —
+    # is the skipped-area ledger: `skipped_area_mm2` charges only the rings
+    # this module KNOWS it dropped, and the bare core the mitred offset
+    # annihilates was never a ring, so the ledger is structurally blind to the
+    # worst case (a 10-point star of inradius 10.00 loses everything past
+    # 5.60 mm of inset and charges 0.21 mm2 for it). `starved` is therefore
+    # DEFINED by measurement, not bookkeeping: the widest circle of bare
+    # fabric between the emitted stitches (barecircle.py — the instrument
+    # trusts only the polygon and the runs), fired when it is wider than the
+    # structural centre dot every healthy shape leaves plus half a ring
+    # spacing (see `starved_threshold_mm` for the derivation and calibration).
+    # The ledger stays in the report as the honest count of KNOWN drops.
+    bare = widest_bare_circle(poly, runs)
+    report["bare_radius_mm"] = bare.radius_mm
+    report["starved"] = int(bare.radius_mm > starved_threshold_mm(spacing))
     report["empty"] = not runs
     return runs, report
