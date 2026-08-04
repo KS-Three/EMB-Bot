@@ -14,7 +14,7 @@ Customers type text; the app renders it using a library of **68 embroidery
 fonts** adapted from the open-source Ink/Stitch embroidery font collection
 (github.com/inkstitch/embroidery-fonts) and lets the customer download
 industry-standard stitch files (DST/PES/EXP) to sew on their own machines.
-First **paid** launch is gated on this question.
+First **paid** launch was gated on this question until 2026-08-04, when the ShareAlike fonts were removed (see Scope) — the consult is now optional background for a possible restore.
 
 Each font ships as a compiled binary (our `.embf` format): satin-stitch path
 coordinates mechanically derived from the Ink/Stitch vector sources —
@@ -23,8 +23,8 @@ step occurs in the compilation; it is a lossy mechanical format conversion.
 
 ## Scope of the question
 
-**14 of the 68 fonts** are under Creative Commons ShareAlike licenses:
-12 × CC-BY-SA-4.0 and 2 × CC-BY-SA-2.5 (the two "Geneva" Hershey-derived
+**RESOLVED BY REMOVAL 2026-08-04 — consult now OPTIONAL, kept as the restore path** (audit §9): all ShareAlike fonts were pulled from the library rather than gating launch on this question. Original scope: **13 of the then-68 fonts** under Creative Commons ShareAlike licenses:
+11 × CC-BY-SA-4.0 and 2 × CC-BY-SA-2.5 (the two "Geneva" Hershey-derived
 fonts). The rest of the library (51 OFL-1.1, 1 CC-BY-4.0, 2 CC0) is not part
 of this question.
 
@@ -69,12 +69,13 @@ Either way — reproduction or adaptation — distribution already triggered the
 attribution and notice duties, and those are shipped. Only two things ride on
 your answer:
 
-- the license **labeling** of the 14 `.embf` binaries (relabel BY-SA or not);
+- the license **labeling** of the 13 `.embf` binaries if restored (relabel BY-SA or not);
 - whether a **customer-facing note** about downstream stitch files is needed.
 
-Worst case as we understand it: relabel 14 binaries BY-SA and add a customer
-note — or pull 14 fonts from the library. We would like your view on which,
-if any, of those steps the licenses actually compel.
+Worst case as we understood it: relabel the binaries BY-SA and add a customer
+note — or pull the fonts from the library. The pull has since been taken
+preemptively (audit §9); we would like your view on whether restoring the 13
+fonts requires either of the other steps.
 
 ## One adjacent fact worth knowing
 

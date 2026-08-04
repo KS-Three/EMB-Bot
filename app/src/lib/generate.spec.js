@@ -14,7 +14,7 @@ beforeAll(() => {
 // No more flat "compat" project object standing in for a real element.
 function textElement(overrides = {}) {
   return {
-    id: "e1", type: "text", text: "", fontKey: "geneva_simple",
+    id: "e1", type: "text", text: "", fontKey: "medium_font",
     colorRgb: [20, 20, 20], colorRanges: [], weightPreset: "normal", slantDeg: 0, letterSpacingMm: 0, arcDeg: 0, rotationDeg: 0, underlay: true,
     sizeMm: null, offsetXMm: 0, offsetYMm: 0, ...overrides,
   };

@@ -35,7 +35,7 @@ test("defaultTextElement has sane beginner defaults", () => {
     id: "e1",
     type: "text",
     text: "",
-    fontKey: "geneva_simple",
+    fontKey: "medium_font",
     colorRgb: [20, 20, 20],
     colorRanges: [],
     weightPreset: "normal",
@@ -224,7 +224,7 @@ test("migrateProject converts a real v1 image-mode fixture into one image elemen
   const v1 = {
     garmentId: "patch",
     text: "",
-    fontKey: "geneva_simple",
+    fontKey: "medium_font",
     sizeMm: null,
     offsetXMm: 0,
     offsetYMm: 0,

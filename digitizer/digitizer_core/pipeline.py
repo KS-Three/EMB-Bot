@@ -129,12 +129,15 @@ def run_stages(
         regions, list(q.thread_indices), cfg.deleted_shape_ids,
         cfg.shape_overrides, chart_for(cfg))
 
-    # Default resolution of a region's effective "stitched" state: an
-    # enclosed-background-tagged region is unstitched by default, everything
-    # else stitched. Written to go through a `shape_overrides[sid]["stitched"]`
-    # entry first — that override key does not exist yet (a later, service-
-    # contract slice), so this always falls through to the default branch
-    # today, but the shape is already in place for when it lands.
+    # Resolution of a region's effective "stitched" state: a
+    # `shape_overrides[sid]["stitched"]` entry wins when present (the service
+    # validates it in `_canonicalize_shape_edits`); otherwise an enclosed-
+    # background-tagged region is unstitched by default, everything else
+    # stitched. Deliberately read straight off cfg here, NOT through
+    # `apply_shape_edits`'s meta write path: the default half depends on
+    # `enclosed_background`, a fact re-tagged THIS generation, so override
+    # and default belong in one expression after tagging — not split between
+    # an edit pass and a fallback pass.
     shape_overrides = cfg.shape_overrides or {}
     for r in regions:
         r.meta["stitched"] = (shape_overrides.get(r.shape_id) or {}).get(
@@ -171,15 +174,28 @@ def run_stages(
     # SourcePixels.to_mm/to_px depend on this being the one true mapping.
     art_cx, art_cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
     source_pixels = None
-    if classification.class_ == "gradient":
+    # Two ways to earn a raster payload, both narrow on purpose: the
+    # "gradient" classification (the blend tier reads it), or the caller
+    # EXPLICITLY opting into a mono tonal tier (scan-line, meander, or
+    # streamline) — a per-request config choice, never an automatic route
+    # (automatic photo routing is a later slice). Every other configuration
+    # carries no pixels forward and the flat lane's byte-for-byte identity
+    # is untouched by this field existing.
+    want_tonal = (cfg.fill_technique or "tatami").lower() in (
+        "scanline_tonal", "meander_tonal", "streamline")
+    if classification.class_ == "gradient" or want_tonal:
         source_pixels = SourcePixels(rgb=p.rgb, px_per_mm=p.px_per_mm,
                                      origin_px=(art_cx, art_cy))
+    if classification.class_ == "gradient":
         # One shared fill-row angle for the whole design (2026-08-03 angle-
         # fragmentation fix) — computed here, once, against `p`'s full
         # foreground, before stage 2 fragments it into however many k-means
         # regions. None when the whole-design fit itself declines (no single
         # shared direction found): `blend_fill` falls back to each region's
-        # own angle exactly as it always has in that case.
+        # own angle exactly as it always has in that case. Gradient-class
+        # only: the scanline tier has its own grain-angle precedence and
+        # never reads this field, and the streamline tier reads the
+        # direction FIELD instead, never this either.
         source_pixels.design_row_angle_deg = detect_design_ramp_angle(p)
 
     bg_outline_mm = None
