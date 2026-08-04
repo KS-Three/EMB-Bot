@@ -152,11 +152,13 @@ class PipelineConfig:
     # Satin classification runs first either way — a ribbon is still a ribbon.
     #
     # READ THIS BEFORE TURNING "contour" ON. An adversarial pass on 2026-08-02
-    # confirmed three defects no shipped test could see. As of 2026-08-04 the
-    # instrument that pass mandated exists and two of the three are fixed;
-    # the tier still ships off because "tatami" is byte-identical to the
-    # engine that has always shipped and contour's remaining cost (defect 1)
-    # is real, measured, and un-sew-out-gated — not because nothing changed.
+    # confirmed three defects no shipped test could see. As of 2026-08-04,
+    # later the same day, the instrument that pass mandated exists and all
+    # three are fixed; the tier still ships off because "tatami" is
+    # byte-identical to the engine that has always shipped and this whole
+    # class of claim is un-sew-out-gated regardless of how good the geometry
+    # measures — flipping the default is Kent's call, not a geometry
+    # question this file can settle on its own.
     #
     # THE INSTRUMENT (built first, as mandated): `barecircle.py` measures the
     # widest circle of bare fabric inscribable in a shape further than half a
@@ -171,26 +173,37 @@ class PipelineConfig:
     # measures 1.28-1.43 mm bare RADIUS, and defect 2's own "silent on that
     # 1.47 mm bare radius" (= 2.94/2) only coheres under that reading.
     #
-    #  1. A BARE CORE INSIDE ORDINARY SHAPES — STILL OPEN, NOW MEASURED.
-    #     `_rings` stops when the mitred `_offset` returns nothing, and the
-    #     fabric inside the last ring is never charged to `skipped_area_mm2`.
-    #     Every healthy shape leaves a 0.86 mm structural centre dot
-    #     (machine.CONTOUR_BARE_CORE_MM — ~10x tatami's 0.090); notched
-    #     interiors can be annihilated wholesale (the star's 1.33 mm core).
-    #     The gate now CATCHES the pathological cores and the report carries
-    #     `bare_radius_mm` per shape, but shrinking the structural dot itself
-    #     (a finishing pass? tighter terminal offsets?) is unbuilt and is the
-    #     reason this tier is not default-quality yet.
+    #  1. A BARE CORE INSIDE ORDINARY SHAPES — FIXED 2026-08-04 (the shrink,
+    #     later than the measurement above). `_rings` used to stop the
+    #     moment the mitred `_offset` returned nothing, leaving every healthy
+    #     shape a 0.86 mm structural centre dot (~10x tatami's 0.090); a
+    #     notched interior could be annihilated wholesale (the star's
+    #     1.33 mm core). Two fixes close most of it: `_refine_terminal_
+    #     generation` (stage6_contour.py) bisects the LAST ring's own inset
+    #     onto the true sewability floor instead of wherever the fixed
+    #     spacing grid happened to land, and a finishing pass patches
+    #     whatever `barecircle.widest_bare_circle` still calls the widest
+    #     bare spot with an ordinary tatami patch, iterating on the
+    #     instrument itself rather than a vector reconstruction (tried
+    #     first, measured worse — see the finishing-pass comment in
+    #     stage6_contour.py). Re-measured: discs and the dumbbell now read
+    #     0.067-0.13 mm (was 0.86 mm uniformly); `machine.CONTOUR_BARE_CORE_MM`
+    #     recalibrated 0.87 -> 0.13 to match, with `starved_threshold_mm`
+    #     re-derived off it (see item 2 below — the formula didn't change,
+    #     what it evaluates to did). The star's annihilated core — a
+    #     different failure mode than a healthy shape's structural dot —
+    #     shrinks too (1.33 -> 0.441 mm) but stays correctly `starved`.
     #  2. `starved` MISCALIBRATION — FIXED 2026-08-04, both directions.
     #     The area-fraction gate is gone; `starved` IS the instrument's
     #     measurement, fired when the widest bare spot beats
     #     `barecircle.starved_threshold_mm` (the measured structural dot plus
-    #     half a ring spacing — 1.07 mm at shipped density; derivation at the
-    #     function). The old gate's silence on the star's 1.47 mm class now
-    #     fires; its false alarms — whitebg's Sf5200f3f at 0.499 mm bare (the
-    #     cited "firing on 0.51") and Sb253ebba at 0.644, both under a
-    #     healthy disc's own dot — are now silent. Proven in both directions
-    #     in tests/test_barecircle.py and tests/test_contour.py.
+    #     half a ring spacing — 0.33 mm at shipped density post-shrink, was
+    #     1.07 mm pre-shrink; derivation at the function). The old gate's
+    #     silence on the star's 1.47 mm class now fires; its false alarms —
+    #     whitebg's Sf5200f3f at 0.499 mm bare (the cited "firing on 0.51")
+    #     and Sb253ebba at 0.644, both under a healthy disc's OLD, pre-shrink
+    #     dot — are now silent against either threshold. Proven in both
+    #     directions in tests/test_barecircle.py and tests/test_contour.py.
     #  3. TRANSITION-CHORD CONTAINMENT — FIXED 2026-08-04. `_link` now
     #     containment-tests the ring-to-ring crossing chord and banks the
     #     path (travel, not an escaping stitch) when it fails. The cited
