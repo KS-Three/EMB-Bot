@@ -31,7 +31,7 @@ from .stage3_segment import (
     compact_layers,
     resolve_small_regions,
 )
-from .stage4_vectorize import vectorize
+from .stage4_vectorize import tag_enclosed_background, vectorize
 from .stage5_overlap import resolve_overlaps
 from .stage6_blend import SourcePixels, detect_design_ramp_angle
 from .stage7_sequence import sequence
@@ -112,6 +112,14 @@ def run_stages(
     regions: list[Region]
     regions, dropped_areas = vectorize(masks, q.thread_indices, p, cfg)
 
+    # Post-vectorization: tag any Region that is substantially the enclosed
+    # bg-colored area stage 1 found (see `tag_enclosed_background`'s
+    # docstring for the overlap test and threshold). A computed FACT re-
+    # derived every generation — like `layer`, unlike the review-screen
+    # fields `match_shape_ids` carries forward — so it belongs before shape
+    # edits, not after.
+    tag_enclosed_background(regions, p)
+
     # Review-screen edits (shape-layers contract v1). Here — after stage 4 has
     # assigned ids against the full generation, before the palette compacts —
     # so a deletion that empties a thread drops its cone from the color list,
@@ -120,6 +128,18 @@ def run_stages(
     regions, quant_indices, edit_warnings = apply_shape_edits(
         regions, list(q.thread_indices), cfg.deleted_shape_ids,
         cfg.shape_overrides, chart_for(cfg))
+
+    # Default resolution of a region's effective "stitched" state: an
+    # enclosed-background-tagged region is unstitched by default, everything
+    # else stitched. Written to go through a `shape_overrides[sid]["stitched"]`
+    # entry first — that override key does not exist yet (a later, service-
+    # contract slice), so this always falls through to the default branch
+    # today, but the shape is already in place for when it lands.
+    shape_overrides = cfg.shape_overrides or {}
+    for r in regions:
+        r.meta["stitched"] = (shape_overrides.get(r.shape_id) or {}).get(
+            "stitched", not r.meta.get("enclosed_background", False)
+        )
 
     thread_indices, layer_warnings = compact_layers(regions, quant_indices)
     # Explicit sew-order layers wait until the palette is settled: moving a
@@ -244,7 +264,23 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     fabric = fabric_for(cfg)
     dbg = Path(cfg.debug_dir) if cfg.debug_dir else None
 
-    planned, overlap_warnings = resolve_overlaps(result.regions, fabric, cfg)
+    # `result.regions` keeps every region — including enclosed-background
+    # ones tagged unstitched by default — so a review screen has a real
+    # shape to list and restore. Stitching itself excludes them here, the
+    # one seam where "stitched: False" actually removes a shape from the
+    # machine's work: stage 5 (resolve_overlaps) never sees an excluded
+    # region, so its neighbor-interaction logic (pull comp, underlap, same-
+    # thread keep-apart) is exactly what it always was for every OTHER
+    # shape — an enclosed region touches nothing but the shape that
+    # encloses it, and that shape's own polygon already carries this area
+    # as a hole in its topology independent of whether the enclosed pixels
+    # are separately vectorized (confirmed by reading `stage2_quantize.
+    # quantize`: clustering is restricted to `~bg_mask` either way, and an
+    # enclosed region's color differs from its enclosing shape's, so the
+    # enclosing shape's own mask never included those pixels before this
+    # slice either — only whether THEY got a Region of their own changed).
+    stitched_regions = [r for r in result.regions if r.meta.get("stitched", True)]
+    planned, overlap_warnings = resolve_overlaps(stitched_regions, fabric, cfg)
     if dbg:
         debugviz.stage5(dbg, planned, result.design_size_mm, chart_for(cfg))
 

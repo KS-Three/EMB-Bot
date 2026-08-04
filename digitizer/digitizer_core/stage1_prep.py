@@ -12,9 +12,12 @@ Background rules (blueprint v2.1):
   * Otherwise a border flood: pixels close to the dominant border color AND
     connected to the border. Restricting to border-connected components is
     what stops an interior white shape from being eaten...
-  * ...but an ENCLOSED bg-colored area (a donut hole) must still not be
-    stitched, so those are detected separately and reported as
-    BACKGROUND_ENCLOSED (review can toggle them back on).
+  * ...but an ENCLOSED bg-colored area (a donut hole) is not automatically
+    background either — it joins `fg` like any other pixel and is reported
+    as BACKGROUND_ENCLOSED, but the pixels themselves become a real `Region`
+    downstream (see `Prep.enclosed_mask` and `stage4_vectorize.
+    tag_enclosed_background`), tagged `enclosed_background` and unstitched
+    by DEFAULT rather than deleted outright — review can toggle it back on.
   * Uncertainty guard: if border-connected background intrudes deeper than
     cfg.bg_margin_mm inside the artwork's convex hull, the flood probably ate
     real art (white text touching a white border) -> BACKGROUND_UNCERTAIN.
@@ -49,6 +52,14 @@ class Prep:
     # anti-alias blend: the outermost halo blends art toward THIS color, and
     # without it those halos survive as phantom thread layers.
     bg_edge_rgb: np.ndarray | None = None
+    # (H, W) bool, True where a pixel matched the background color/alpha test
+    # but is NOT connected to the true canvas border (a donut hole, or white
+    # icon linework enclosed by a colored logo). These pixels are part of
+    # `fg` — not excluded — so later stages can find them without re-deriving
+    # the border-flood: `stage4_vectorize.tag_enclosed_background` uses this
+    # to tag the Region(s) they end up in. None when no such pixels exist,
+    # mirroring `bg_outline_px`/`bg_edge_rgb` above.
+    enclosed_mask: np.ndarray | None = None
     warnings: list[dict] = field(default_factory=list)
 
 
@@ -129,15 +140,29 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
     if alpha is not None:
         bg = alpha < 128
         border_bg = _border_connected(bg)
+        # Was `bg & ~border_bg`, then folded back into `bg` below — an
+        # enclosed transparent hole was therefore indistinguishable from
+        # ordinary background and never became stitchable. Now `enclosed`
+        # stays OUT of `bg`, so it joins `fg` a few lines down.
         enclosed = bg & ~border_bg
+        bg = border_bg
     else:
         bg_color = _dominant_border_color(rgb)
         close = _color_close_mask(rgb, bg_color, cfg.bg_tolerance_lab)
         border_bg = _border_connected(close)
         enclosed = close & ~border_bg
-        bg = border_bg | enclosed
+        # Was `border_bg | enclosed` — the same fold described above, for the
+        # far more common no-alpha path (BACKGROUND_ENCLOSED's usual trigger:
+        # bg-colored icon linework enclosed by the surrounding artwork).
+        bg = border_bg
 
-    if not bg.any():
+    # Same guard as before the fold-in existed (`not (border_bg.any() or
+    # enclosed.any())`, which is what `not bg.any()` used to mean when `bg`
+    # still included `enclosed`): only a total detection miss resets
+    # everything to empty. A design whose ONLY background match is fully
+    # enclosed (no border-connected background at all) is real and must
+    # survive this guard now that `enclosed` carries real, taggable pixels.
+    if not (border_bg.any() or enclosed.any()):
         bg = np.zeros((h, w), bool)
         border_bg = bg
         enclosed = bg
@@ -220,6 +245,11 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
         bg = (
             cv2.resize(bg.astype(np.uint8), new_size, interpolation=cv2.INTER_NEAREST) > 0
         )
+        if enclosed.any():
+            enclosed = (
+                cv2.resize(enclosed.astype(np.uint8), new_size,
+                           interpolation=cv2.INTER_NEAREST) > 0
+            )
         px_per_mm *= want
         art_bbox = tuple(int(round(v * want)) for v in art_bbox)  # type: ignore[assignment]
         if bg_outline_px is not None:
@@ -253,5 +283,6 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
         art_bbox=art_bbox,  # type: ignore[arg-type]
         bg_outline_px=bg_outline_px,
         bg_edge_rgb=bg_edge_rgb,
+        enclosed_mask=enclosed if enclosed.any() else None,
         warnings=warnings,
     )

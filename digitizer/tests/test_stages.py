@@ -1,7 +1,7 @@
 """Stage-level invariants on the committed golden fixtures."""
 import numpy as np
 import pytest
-from shapely.geometry import Point
+from shapely.geometry import Point, Polygon
 
 from digitizer_core.config import PipelineConfig
 from digitizer_core.stage1_prep import prep
@@ -28,7 +28,35 @@ def test_white_background_is_detected_without_crying_uncertain(whitebg):
 
 
 def test_ring_hole_is_reported_as_enclosed_background(whitebg):
+    """Outcome preserved (still unstitched by default, warning still fires),
+    mechanism changed (2026-08-04): the ring's donut hole is no longer
+    quietly folded into `bg` and excluded before it can become a Region —
+    it is now a REAL, tagged Region that a review screen could restore.
+    See docs/superpowers/plans/2026-08-04-enclosed-background-restore-
+    design.md.
+    """
     assert BACKGROUND_ENCLOSED in codes(whitebg)
+
+    enclosed = [r for r in whitebg.regions if r.meta.get("enclosed_background")]
+    assert len(enclosed) == 1, "the ring's hole should be exactly one tagged region"
+    ring_hole = enclosed[0]
+    assert ring_hole.meta["stitched"] is False, "unstitched by default"
+
+    ring = next(r for r in whitebg.regions if r.thread_number == "3902")
+    # The hole sits inside the ring's own OUTER shell (ignore the ring's own
+    # hole when testing this — the point under test is exactly that hole's
+    # centroid), same relationship the old "it's a literal polygon hole"
+    # mechanism guaranteed geometrically.
+    ring_shell = Polygon(ring.polygon.exterior)
+    assert ring_shell.buffer(0.5).contains(ring_hole.polygon.centroid)
+
+    # And it must actually be excluded from what gets stitched by default.
+    from digitizer_core import plan_stitches
+    from .conftest import cfg as _cfg
+
+    plan = plan_stitches(whitebg, _cfg(garment_id="left_chest"))
+    stitched_shape_ids = {r.shape_id for _b, r in plan.iter_runs()}
+    assert ring_hole.shape_id not in stitched_shape_ids
 
 
 def test_border_flood_reaching_inside_a_shape_warns(uncertain):
@@ -61,10 +89,25 @@ def test_quantize_finds_the_real_colors_and_no_antialias_phantoms():
 
     numbers = {CHART[t].number for t in q.thread_indices}
     assert set(EXPECTED_THREADS).issubset(numbers)
+
+    # The ring's donut hole (BACKGROUND_ENCLOSED) is quantized separately
+    # from the design's own foreground (2026-08-04) and is legitimately
+    # near-white — it IS the enclosed white icon area, not an anti-alias
+    # halo. Exclude whichever label(s) it landed on before checking the
+    # design's OWN colors below.
+    enclosed_labels = (
+        set(np.unique(q.labels[p.enclosed_mask]))
+        if p.enclosed_mask is not None
+        else set()
+    )
+
     # Anti-alias halos against the white background used to survive as pale
-    # phantom threads ("Lavender", "Luster"). Nothing near-white may appear:
-    # the artwork contains no white.
-    for t in q.thread_indices:
+    # phantom threads ("Lavender", "Luster"). Nothing near-white may appear
+    # among the design's OWN colors: the artwork's own foreground contains
+    # no white.
+    for label, t in enumerate(q.thread_indices):
+        if label in enclosed_labels:
+            continue
         r, g, b = CHART[t].rgb
         assert min(r, g, b) < 200, f"phantom pale thread {CHART[t].number} {CHART[t].name}"
 

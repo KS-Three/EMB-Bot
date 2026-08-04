@@ -145,17 +145,31 @@ def _merge_similar(centers: np.ndarray, weights: np.ndarray, tol: float) -> list
     return out
 
 
-def quantize(p: Prep, cfg: PipelineConfig) -> Quant:
-    h, w = p.rgb.shape[:2]
-    valid = ~p.bg_mask
-    flat_rgb = p.rgb.reshape(-1, 3)
-    fg_idx = np.nonzero(valid.reshape(-1))[0]
-    fg_lab = rgb_to_lab(flat_rgb[fg_idx])
+def _quantize_population(
+    flat_rgb: np.ndarray,
+    valid: np.ndarray,
+    h: int,
+    w: int,
+    cfg: PipelineConfig,
+    bg_edge_rgb: np.ndarray | None,
+) -> tuple[np.ndarray, list[int], list[dict]]:
+    """Fit -> assign -> anti-alias cleanup -> spool-snap, over exactly the
+    pixels in `valid`. This is the entire body `quantize()` has always run,
+    extracted verbatim so it can run TWICE against two DISJOINT populations
+    (see `quantize`) without either one's clustering, majority-filter
+    voting, or phantom-blend dissolve ever comparing against — or being
+    reassigned into — a cluster the other population produced.
 
-    k = max(1, min(cfg.max_colors, len(np.unique(flat_rgb[fg_idx], axis=0))))
-    centers = _kmeans(fg_lab, k, cfg.seed)
+    -> (labels (h, w) int32, -1 outside `valid`; final spool indices, one
+    per output label; warnings).
+    """
+    idx = np.nonzero(valid.reshape(-1))[0]
+    lab = rgb_to_lab(flat_rgb[idx])
+
+    k = max(1, min(cfg.max_colors, len(np.unique(flat_rgb[idx], axis=0))))
+    centers = _kmeans(lab, k, cfg.seed)
     lab_flat = np.full(h * w, -1, np.int32)
-    lab_flat[fg_idx] = _assign(fg_lab, centers)
+    lab_flat[idx] = _assign(lab, centers)
     labels = lab_flat.reshape(h, w)
 
     # --- anti-alias: majority filter, then phantom-blend dissolve -----------
@@ -169,8 +183,8 @@ def quantize(p: Prep, cfg: PipelineConfig) -> Quant:
     # (measured on the golden fixture: two extra pale "threads", plus ~30
     # sliver regions that then had to be absorbed downstream).
     bg_endpoint = (
-        rgb_to_lab(np.asarray(p.bg_edge_rgb, np.float64).reshape(1, 3))[0]
-        if p.bg_edge_rgb is not None
+        rgb_to_lab(np.asarray(bg_edge_rgb, np.float64).reshape(1, 3))[0]
+        if bg_edge_rgb is not None
         else None
     )
 
@@ -246,6 +260,11 @@ def quantize(p: Prep, cfg: PipelineConfig) -> Quant:
         final_members.append([m for i in idxs for m in merged_members[i]])
 
     warnings: list[dict] = []
+    # `cfg.max_colors` is enforced per population, not on the combined total
+    # (see `quantize`) — a rare simplification the enclosed-population call
+    # can only ever exceed on its own if a single enclosed patch alone needs
+    # more distinct colors than the whole design's budget, which does not
+    # happen on either fixture this slice ships with.
     if len(final_spools) > cfg.max_colors:
         sizes = [
             sum(float((labels == m).sum()) for m in mem) for mem in final_members
@@ -285,9 +304,66 @@ def quantize(p: Prep, cfg: PipelineConfig) -> Quant:
         for m in members:
             out[labels == m] = new_label
 
+    return out, final_spools, warnings
+
+
+def quantize(p: Prep, cfg: PipelineConfig) -> Quant:
+    h, w = p.rgb.shape[:2]
+    valid = ~p.bg_mask
+    flat_rgb = p.rgb.reshape(-1, 3)
+
+    # `Prep.enclosed_mask` pixels (BACKGROUND_ENCLOSED) are real content now
+    # (stage 1, 2026-08-04) — but content the design's ORIGINAL foreground
+    # never had to share ANY of this stage's decisions with. Running one
+    # shared pass over both populations means the enclosed area's colors
+    # can shift the k-means fit AND — the bigger effect, measured — can
+    # supply a new "nearest keep cluster" for OTHER shapes' own outer
+    # anti-alias halos during phantom-blend dissolve: every shape's edge
+    # against the background is a blend toward roughly that background
+    # color, and an enclosed patch is BY DEFINITION close to that same
+    # color, so it competes to reabsorb halos that used to fold back into
+    # their own shape. Measured on `logo_whitebg.png` with a single shared
+    # pass: two rectangles nowhere near the enclosed ring-hole lost part of
+    # their own boundary to the new "White" cluster, shrank by ~1-2%, and
+    # that was enough to flip `2*area/perimeter` across the satin/fill cap
+    # for both — tripling their stitch count from a change that has nothing
+    # to do with satin vs. fill. That is exactly the antialiasing-noise
+    # fragility `docs/superpowers/plans/2026-08-04-m0-shape-lens-
+    # measurement.md` already flagged as a live, unresolved problem (the
+    # DT-first migration's whole reason for existing) — this slice must not
+    # newly trigger it. So the two populations run through
+    # `_quantize_population` SEPARATELY and are merged only after each has
+    # finished independently: the design's own pass sees exactly the pixels
+    # it always did, byte-identical whether or not an enclosed region
+    # exists anywhere else in the same image (and trivially so when there
+    # is none — this reduces to one call, the pre-existing code path).
+    enclosed = p.enclosed_mask
+    has_enclosed = enclosed is not None and enclosed.any()
+    base_valid = valid & ~enclosed if has_enclosed else valid
+
+    base_labels, base_spools, warnings = _quantize_population(
+        flat_rgb, base_valid, h, w, cfg, p.bg_edge_rgb
+    )
+
+    if has_enclosed:
+        enc_labels, enc_spools, enc_warnings = _quantize_population(
+            flat_rgb, enclosed, h, w, cfg, p.bg_edge_rgb
+        )
+        warnings = warnings + enc_warnings
+        base_k = len(base_spools)
+        combined = base_labels.copy()
+        enc_valid = enc_labels >= 0
+        combined[enc_valid] = enc_labels[enc_valid] + base_k
+        labels_out = combined
+        thread_indices = base_spools + enc_spools
+    else:
+        labels_out = base_labels
+        thread_indices = base_spools
+
+    chart = chart_for(cfg)
     return Quant(
-        labels=out,
-        thread_indices=final_spools,
-        cluster_rgb=np.array([chart[s].rgb for s in final_spools], np.float64),
+        labels=labels_out,
+        thread_indices=thread_indices,
+        cluster_rgb=np.array([chart[s].rgb for s in thread_indices], np.float64),
         warnings=warnings,
     )
