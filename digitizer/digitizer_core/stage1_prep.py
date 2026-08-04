@@ -46,6 +46,20 @@ class Prep:
     bg_mask: np.ndarray      # (H, W) bool, True = background
     px_per_mm: float
     art_bbox: tuple[int, int, int, int]  # x0, y0, x1, y1 (px, x1/y1 exclusive)
+    # px_per_mm as the INPUT delivered it, before the resolution-floor
+    # Lanczos upscale below. The upscale changes `px_per_mm` because every
+    # downstream px<->mm mapping must use the raster as it now is, but it
+    # manufactures pixels, not information — so any question about whether
+    # the SOURCE resolves detail at the target size (preflight's photo
+    # resolution guard) must read this, never `px_per_mm`.
+    input_px_per_mm: float = 0.0
+    # True when the background came from the alpha channel rather than a
+    # border color flood. An alpha cutout's background is the GARMENT, whose
+    # color this pipeline cannot know (the RGB under transparency is whatever
+    # the exporter left there — see bg_edge_rgb's caveat below), so any check
+    # comparing artwork against "the background color" must decline when this
+    # is set.
+    bg_from_alpha: bool = False
     bg_outline_px: np.ndarray | None = None  # (N, 2) largest border-bg contour
     # Mean color of the background pixels hugging the artwork edge. Stage 2
     # needs it as a virtual endpoint when testing whether a cluster is an
@@ -152,6 +166,7 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
     if alpha is not None and not (alpha < 128).any():
         alpha = None
 
+    bg_from_alpha = alpha is not None
     if alpha is not None:
         bg = alpha < 128
         border_bg = _border_connected(bg)
@@ -190,6 +205,7 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
     art_bbox = (int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1)
     art_w_px = max(1, art_bbox[2] - art_bbox[0])
     px_per_mm = art_w_px / float(cfg.target_width_mm)
+    input_px_per_mm = px_per_mm   # recorded before the upscale below
 
     # --- uncertainty guard --------------------------------------------------
     # PER-COMPONENT hulls, not one hull over all the artwork: a logo is
@@ -296,6 +312,8 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
         bg_mask=bg,
         px_per_mm=px_per_mm,
         art_bbox=art_bbox,  # type: ignore[arg-type]
+        input_px_per_mm=input_px_per_mm,
+        bg_from_alpha=bg_from_alpha,
         bg_outline_px=bg_outline_px,
         bg_edge_rgb=bg_edge_rgb,
         enclosed_mask=enclosed if enclosed.any() else None,

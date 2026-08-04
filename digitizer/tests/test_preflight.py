@@ -10,23 +10,35 @@ ignore the report — that failure mode has already cost this project once.
 """
 from __future__ import annotations
 
+import json
 import math
 
+import cv2
+import numpy as np
 import pytest
 
 from digitizer_core import (PipelineConfig, StitchBlock, StitchPlan,
                             StitchRun, machine, run_stages)
 from digitizer_core import stitches as st
+from digitizer_core.pipeline import digitize, plan_stitches
 from digitizer_core.preflight import (
+    COLOR_STOPS_HEAVY,
+    COLOR_STOPS_MAX,
     CONTOUR_STARVED,
     DELTA_E_CLEARLY_DIFFERENT,
     DENSITY_EXTREME,
     DENSITY_STACKED,
     LETTERING_TOO_SMALL,
     LINK_UNCOVERED,
+    PHOTO_MIN_PX_PER_MM,
+    PHOTO_RESOLUTION_LOW,
     SAME_HOLE_HEAVY,
+    STABILIZER_CUTAWAY,
+    STITCHES_CUTAWAY_MIN,
     STITCHES_TOO_LONG,
     STITCHES_TOO_SHORT,
+    SUBJECT_CONTRAST_LOW,
+    SUBJECT_DELTA_L_MIN,
     THREAD_MATCH_POOR,
     TRIM_HEAVY,
     _CONTOUR_RING_UNREACHABLE,
@@ -36,6 +48,10 @@ from digitizer_core.preflight import (
 from tests.conftest import PLAN_CFG_KW, TESTDATA, cfg
 
 ART = TESTDATA / "logo_whitebg.png"
+PHOTO = TESTDATA / "photo"
+
+PHOTO_GUARD_CODES = {PHOTO_RESOLUTION_LOW, SUBJECT_CONTRAST_LOW,
+                     STABILIZER_CUTAWAY, COLOR_STOPS_HEAVY}
 
 
 def _plan(*runs: StitchRun) -> StitchPlan:
@@ -92,6 +108,14 @@ def test_a_clean_real_plan_earns_a_clean_report(whitebg, plan):
     assert m["link_uncovered_max_mm"] == pytest.approx(0.0, abs=0.05)
     assert m["fill_axis_concentration"] == pytest.approx(0.974, abs=0.02)
     assert m["contour_starved_shapes"] == 0
+    # The photo-guardrail instruments measured too (photo plan §2 row 15):
+    # the fixture sits UNDER the 10 px/mm photo floor and nothing fires,
+    # because it is flat art and the floor is a photo-class fact — the
+    # measured table at PHOTO_MIN_PX_PER_MM is exactly this number.
+    assert m["input_px_per_mm"] == pytest.approx(8.39, abs=0.05)
+    assert m["input_px_per_mm"] < PHOTO_MIN_PX_PER_MM
+    assert m["subject_bg_delta_l"] == pytest.approx(59.2, abs=0.5)
+    assert m["color_changes"] == 4
 
 
 # --- Thread color fidelity ---------------------------------------------------
@@ -661,6 +685,205 @@ def test_same_hole_fires_only_on_a_rate_far_above_the_corpus():
     assert hit[0]["severity"] == "info"
     assert hit[0]["extra"]["fraction"] > 0.25
     assert report["score"] == 100, "an info finding must not cost score"
+
+
+# --- Photo guardrails (photo plan §2 row 15) ---------------------------------
+#
+# The plan's own step-9 acceptance, held on both sides for every guard:
+# fires on a constructed negative, stays quiet on the committed happy-path
+# fixtures — measured from real preflight output on real pipeline runs, not
+# mocked findings. The constructed negatives are deterministic ndarrays built
+# in-test (the same rule F6 states for gradient goldens: constructed inputs,
+# never found photographs).
+
+def _digitize_report(image, **kw):
+    c = cfg(**kw)
+    result, stitch_plan = digitize(image, c)
+    return run_preflight(result, stitch_plan, c, image=image)
+
+
+@pytest.fixture(scope="module")
+def scene_stub_report():
+    """The committed photo-class happy path (photo_scene_stub classifies
+    photo_scene NATURALLY, so this also exercises the plan.warnings half of
+    the class gate — the forced-class half is exercised by the negatives).
+    Measured: 12.5 px/mm input, subject/bg delta-L p90 27.6, 4 color
+    changes, ~8k stitches — above every floor and under every ceiling."""
+    return _digitize_report(str(PHOTO / "photo_scene_stub.png"))
+
+
+def test_every_photo_guard_stays_quiet_on_the_committed_photo_happy_path(scene_stub_report):
+    m = scene_stub_report["metrics"]
+    assert not (_codes(scene_stub_report) & PHOTO_GUARD_CODES)
+    # And quiet because measured clear of the floors, not because skipped.
+    assert m["input_px_per_mm"] == pytest.approx(12.5, abs=0.05)
+    assert m["subject_bg_delta_l"] == pytest.approx(27.6, abs=0.5)
+    assert m["color_changes"] <= COLOR_STOPS_MAX
+    assert m["stitch_count"] <= STITCHES_CUTAWAY_MIN
+
+
+def test_every_photo_guard_stays_quiet_on_the_committed_flat_fixtures():
+    """The flat lane's committed fixtures, planned by the real pipeline. All
+    of them sit UNDER the 10 px/mm photo floor (8.4-8.8 at 80 mm, measured
+    table at PHOTO_MIN_PX_PER_MM) — the class gate is what keeps the photo
+    floor from condemning clean flat work, and this is where that promise is
+    pinned. logo_whitebg is pinned by the clean-report test above."""
+    for art in ("logo_alpha.png", "ribbon_curve.png"):
+        report = _digitize_report(str(TESTDATA / art))
+        assert not (_codes(report) & PHOTO_GUARD_CODES), art
+        assert report["metrics"]["input_px_per_mm"] < PHOTO_MIN_PX_PER_MM, art
+
+
+# --- guard 1: the photo resolution floor -------------------------------------
+
+def test_underresolved_photo_input_warns():
+    """The constructed low-res negative: the photo lane's own integration
+    fixture forced photo-class at 80 mm delivers 7.15 px per output mm —
+    under Embird's 10 px/mm floor. (Forced class: this half of the gate reads
+    cfg.forced_class, since a forced classification writes no warning.)"""
+    report = _digitize_report(str(PHOTO / "region_blobs.png"),
+                              forced_class="photo_scene")
+
+    hit = [f for f in report["findings"] if f["code"] == PHOTO_RESOLUTION_LOW]
+    assert len(hit) == 1
+    assert hit[0]["severity"] == "warn"
+    assert hit[0]["extra"]["px_per_mm"] == pytest.approx(7.15, abs=0.1)
+    assert hit[0]["extra"]["min_px_per_mm"] == PHOTO_MIN_PX_PER_MM
+    json.dumps(report)
+
+
+def test_the_resolution_instrument_reads_input_pixels_not_the_upscaled_raster():
+    """Stage 1's Lanczos rescue inflates px_per_mm below cfg.min_px_per_mm
+    (4.0), and upscaling manufactures pixels, not detail — the guard must
+    judge the resolution the INPUT delivered. region_blobs at 160 mm is
+    3.57 px/mm raw; prep upscales the raster but `input_px_per_mm` holds."""
+    from digitizer_core.stage1_prep import prep
+
+    p = prep(str(PHOTO / "region_blobs.png"), cfg(target_width_mm=160.0))
+
+    assert p.input_px_per_mm == pytest.approx(3.57, abs=0.05)
+    assert p.px_per_mm > p.input_px_per_mm   # the rescue really ran
+
+
+# --- guard 2: subject/background contrast ------------------------------------
+
+def _isoluminant_photo() -> np.ndarray:
+    """The plan's 'iso-luminant pair' negative: a saturated red subject on
+    the green whose L* matches it to 0.16 (searched over sRGB greens —
+    derivation at SUBJECT_DELTA_L_MIN). BGR, the convention an ndarray input
+    is read in (stage1_prep._load treats it as cv2-decoded). The circle is
+    840 px across so the input stays ABOVE the 10 px/mm photo floor at
+    80 mm — one defect per negative."""
+    img = np.zeros((900, 1000, 3), np.uint8)
+    img[:, :] = (0, 130, 0)                       # BGR green, L* 46.93
+    cv2.circle(img, (500, 450), 420, (60, 60, 200), -1)   # BGR red, L* 46.77
+    return img
+
+
+def test_an_isoluminant_subject_warns_it_will_vanish():
+    report = _digitize_report(_isoluminant_photo(), forced_class="photo_subject")
+
+    hit = [f for f in report["findings"] if f["code"] == SUBJECT_CONTRAST_LOW]
+    assert len(hit) == 1
+    assert hit[0]["severity"] == "warn"
+    assert hit[0]["extra"]["delta_l"] == pytest.approx(0.16, abs=0.1)
+    assert hit[0]["extra"]["min_delta_l"] == SUBJECT_DELTA_L_MIN
+    # One defect per negative: the input is above the resolution floor.
+    assert PHOTO_RESOLUTION_LOW not in _codes(report)
+    assert report["metrics"]["input_px_per_mm"] >= PHOTO_MIN_PX_PER_MM
+    json.dumps(report)
+
+
+def test_flat_art_is_never_told_it_will_vanish():
+    """The class gate's other half, on the SAME iso-luminant art: unforced,
+    stage 0 classifies this flat (two hard-edged colors), and a flat logo
+    sews its actual hue — red thread on the garment vanishes nowhere. The
+    metric still rides out; only the finding is photo-gated."""
+    report = _digitize_report(_isoluminant_photo())
+
+    assert SUBJECT_CONTRAST_LOW not in _codes(report)
+    assert report["metrics"]["subject_bg_delta_l"] == pytest.approx(0.16, abs=0.1)
+
+
+def test_an_alpha_cutout_background_declines_the_contrast_instrument(alpha):
+    """An alpha cutout's background is the garment, whose color the pipeline
+    cannot know (the RGB under transparency is whatever the exporter left) —
+    the instrument declines with the metric None rather than judging a
+    lightness gap it never measured."""
+    c = cfg()
+    report = run_preflight(alpha, plan_stitches(alpha, c), c,
+                           image=str(TESTDATA / "logo_alpha.png"))
+
+    assert SUBJECT_CONTRAST_LOW not in _codes(report)
+    assert report["metrics"]["subject_bg_delta_l"] is None
+
+
+# --- guard 3: the cutaway-stabilizer prescription ----------------------------
+
+def test_a_heavy_design_prescribes_cutaway_stabilizer():
+    """The constructed 25k+ negative: a solid 160 mm square fills to 26.7k
+    stitches through the real pipeline. INFO severity — nothing is wrong
+    with the file, the operator just hoops cutaway under it [P — OESD, via
+    the photo plan §2 row 15] — so it must not cost score, same contract as
+    SAME_HOLE_HEAVY."""
+    square = np.full((820, 820, 3), 255, np.uint8)
+    square[10:810, 10:810] = (40, 40, 120)
+    report = _digitize_report(square, target_width_mm=160.0)
+
+    hit = [f for f in report["findings"] if f["code"] == STABILIZER_CUTAWAY]
+    assert len(hit) == 1
+    assert hit[0]["severity"] == "info"
+    assert hit[0]["extra"]["stitch_count"] > STITCHES_CUTAWAY_MIN
+    assert "cutaway" in hit[0]["message"]
+    # The single-defect construction: the prescription is the WHOLE report.
+    assert _codes(report) == {STABILIZER_CUTAWAY}
+    assert report["score"] == 100, "a prescription must not cost score"
+    json.dumps(report)
+
+
+def test_a_modest_design_gets_no_prescription(plan):
+    stitch_plan, _planned, _warnings = plan
+    report = run_preflight(None, stitch_plan, cfg(**PLAN_CFG_KW))
+
+    assert STABILIZER_CUTAWAY not in _codes(report)
+    assert report["metrics"]["stitch_count"] < STITCHES_CUTAWAY_MIN
+
+
+# --- guard 4: the single-needle color-stop wall ------------------------------
+
+def test_color_stops_past_the_single_needle_wall_warn():
+    """The constructed 11-stop negative: twelve distinct color patches
+    through the real pipeline plan eleven thread changes — one past the
+    ~10-stop single-needle default the plan cites (COLOR_STOPS_MAX has the
+    derivation). Every change is a machine stop and a manual re-thread."""
+    colors = [(230, 40, 40), (40, 180, 40), (40, 40, 230), (230, 230, 40),
+              (230, 40, 230), (40, 230, 230), (140, 70, 20), (250, 140, 20),
+              (120, 20, 160), (20, 120, 90), (90, 90, 90), (10, 10, 10)]
+    patches = np.full((340, 460, 3), 255, np.uint8)
+    for i, c in enumerate(colors):
+        row, col = divmod(i, 4)
+        y, x = 20 + row * 105, 20 + col * 110
+        patches[y:y + 85, x:x + 90] = c
+    report = _digitize_report(patches, target_width_mm=100.0)
+
+    hit = [f for f in report["findings"] if f["code"] == COLOR_STOPS_HEAVY]
+    assert len(hit) == 1
+    assert hit[0]["severity"] == "warn"
+    assert hit[0]["extra"]["color_changes"] == 11
+    assert hit[0]["extra"]["max_stops"] == COLOR_STOPS_MAX
+    assert report["metrics"]["color_changes"] == 11
+    json.dumps(report)
+
+
+def test_a_design_at_the_stop_cap_is_not_warned(plan):
+    """<= 10 stops is inside every vendor's single-needle default; the wall
+    is at 11. The fixture's own 4 changes are pinned in the clean-report
+    test; here the metric must read rather than go missing."""
+    stitch_plan, _planned, _warnings = plan
+    report = run_preflight(None, stitch_plan, cfg(**PLAN_CFG_KW))
+
+    assert COLOR_STOPS_HEAVY not in _codes(report)
+    assert report["metrics"]["color_changes"] == 4
 
 
 # --- Scoring -----------------------------------------------------------------
