@@ -16,11 +16,16 @@ at the bottom for the authority model behind the confidence ratings.
 though #28, are now merged to `main`** (`4cf8760`, the `backstitch-
 underlay-control` merge; every PR number from #16 through #28 shows a
 "Merge pull request" commit in `git log origin/main`, checked directly, not
-inferred from titles). Fresh suite run this pass, in this worktree, against
-that tip: engine `node --test` **267/267**; Studio `cd app && npx vitest
-run` **344/344** (24 files, after `npm install` — this worktree had no
-`node_modules`); digitizer `.venv/bin/python -m pytest tests/ -q` **564
-passed / 3 failed** (310.78s) — still exactly the same three long-standing
+inferred from titles), rebased and re-verified once more when **two more
+PRs landed on top mid-pass — #29 (wizard-smoke e2e broadened along three
+axes: garment type, image-content path, export formats) and #30 (a
+real-jsPDF byte/text-extraction test tier for the worksheet export,
+replacing "call-sequence-only" as the PDF coverage's honest description)**.
+Fresh suite run against the final tip (`8544713`): engine `node --test`
+**267/267**; Studio `cd app && npx vitest run` **347/347** (25 files, up
+from 24 — #30's new spec file); digitizer `.venv/bin/python -m pytest
+tests/ -q` **564 passed / 3 failed** — still exactly the same three
+long-standing
 container-environment golden mismatches this doc has cited every pass since
 2026-08-03 (`test_flat_lane_byte_identical[logo_alpha.png]`,
 `test_pushcomp[logo_whitebg.png-towel]`,
@@ -455,39 +460,41 @@ inputs, not a separate product surface.
 feature commits (the auto-digitize review flow, the Layers panel). README
 calls it "the primary product."
 
-**Confidence: Medium** for wizard navigability/UI quality. **344/344** Studio
-(vitest) tests pass (fresh run this session, 24 files), and nearly every
-`app/src/lib/*.js` logic module has a paired spec — but that coverage is
-still mostly **logic-only**, not UI-behavior. One gap this used to widen is
-closed: `app/e2e/wizard-smoke.spec.js` (merged, PR #6) drives the full
-garment→content→review→download path in a real browser and asserts real
-cross-step state (garment selection, live stitch count, the review-step
-recap reflecting what was actually picked, a real DST file landing on
-disk). It stays a single happy path (one garment type, text content, one
-export format) — not broad component/interaction coverage — so this is
-left at Medium rather than bumped a full tier; Kent can override if a
-single passing e2e path is enough evidence for him. A second live e2e spec
-now exists alongside it — `app/e2e/digitize-stale-edits.spec.js` (merged,
-PR #21) — covering the stale-edit-recovery path; see area 5 below, since
-that's the gap it was built to close. The previously-documented
-rotation/hoop-fit bug is **FIXED** (`8e668d3`, merged): text auto-fit's
-scale/clamp now computes against the exact rotated-bbox footprint instead
-of the unrotated glyph bbox, with two regression tests reproducing the
-original overflow on a non-square hoop across several non-180° angles
-(267/267 engine, 321/321 app at that historical commit — not today's
-totals, which have since grown further).
+**Confidence: Medium**, with the one gap that was holding it there now
+closed. **347/347** Studio (vitest) tests pass (fresh run this session, 25
+files), and nearly every `app/src/lib/*.js` logic module has a paired spec
+— that coverage is still mostly **logic-only**, not UI-behavior, but the
+live-browser e2e side grew real breadth this pass: `app/e2e/wizard-smoke
+.spec.js` (merged, PR #6) drives the full garment→content→review→download
+path in a real browser and asserts real cross-step state, and the
+broadening this doc used to list as the open next step — **merged, PR #29**
+— covers all three named axes: two more garment types (Hat Front, Full
+Back, each confirmed the review recap reflects the actual pick), the
+image-content path (`ImagePanel`'s client-side canvas flatten, previously
+untested — confirms the review step's image branch and a real download),
+and two more export formats beyond DST (PES verified by its `#PES0001`
+magic header, EXP by real stitch-record byte size, plus the PDF worksheet
+as a fourth format via a distinct code path). A second live e2e spec exists
+alongside it — `app/e2e/digitize-stale-edits.spec.js` (merged, PR #21) —
+covering the stale-edit-recovery path; see area 5 below, since that's the
+gap it was built to close. The previously-documented rotation/hoop-fit bug
+is **FIXED** (`8e668d3`, merged): text auto-fit's scale/clamp now computes
+against the exact rotated-bbox footprint instead of the unrotated glyph
+bbox, with two regression tests reproducing the original overflow on a
+non-square hoop across several non-180° angles (267/267 engine, 321/321 app
+at that historical commit — not today's totals, which have since grown
+further).
 
 **Fabric-preset accuracy: pending sew-out** — kept as an explicit separate
 note, not blended into the wizard's own score. README says it outright:
 "Presets are starting points — stitch a test on your machine and tell me if
 a fabric needs tuning." No physical validation has happened yet.
 
-**Next step:** broaden `wizard-smoke.spec.js` beyond its one happy path —
-other garment types, the image-content path (not just text), multiple
-export formats — before navigability confidence moves past Medium. The
-stale-edit e2e spec (PR #21, merged, see above) is a second live spec of
-its own scope, not a broadening of `wizard-smoke.spec.js` itself — that
-broadening is still the open item here.
+**Next step:** with the three-axis e2e broadening landed, the wizard-flow
+gap this doc tracked longest is closed; whether that alone earns a bump to
+High or Medium stays right pending real UI-behavior (not just logic) specs
+is Kent's call, not this pass's to decide unilaterally — left at Medium
+here. Fabric-preset accuracy remains sew-out-gated, unchanged.
 
 ---
 
@@ -522,17 +529,26 @@ the Python digitizer service's `/export` route (pyembroidery-based).
   cross-validate against an independent decoder.
 - **SVG: Medium** — lower stakes (vector proof, not a stitch file), but thin
   coverage (1 test).
-- **PDF worksheet: Medium** — was "no dedicated test file exists at all";
-  now has one. `app/src/lib/pdfsheet.spec.js` (merged, PR #4) drives
-  `src/pdfsheet.js` directly and covers title, the placement line (and its
-  omission), the stats block, the thread sequence (incl. its no-name
-  fallback), the stitch-sim image embed, `garmentBox` forwarding,
-  multi-page pagination, and the zero-design/no-throw path (5 tests, part
-  of the Studio vitest total cited in the "Last updated" note above, no
-  flakiness observed on a plain default-parallel run). Real gap that
-  remains: assertions are
-  on the FakeJsPDF call sequence, not a rendered/pixel-level check of the
-  actual PDF output.
+- **PDF worksheet: Medium-High** — was "no dedicated test file exists at
+  all," then gained call-sequence coverage, and this pass closes the
+  remaining gap. `app/src/lib/pdfsheet.spec.js` (merged, PR #4) drives
+  `src/pdfsheet.js` against a `FakeJsPDF` recorder — title, the placement
+  line (and its omission), the stats block, the thread sequence (incl. its
+  no-name fallback), the stitch-sim image embed, `garmentBox` forwarding,
+  multi-page pagination, and the zero-design/no-throw path. **Merged, PR
+  #30** adds the second tier this doc used to flag as missing: `app/src/lib
+  /pdfsheet.realpdf.spec.js` runs the same builder against the REAL `jspdf`
+  package (no fake) and inspects the actual generated PDF bytes — page
+  count cross-checked three independent ways (jsPDF's own count, raw
+  `/Type /Page` object count, the Pages tree's declared `/Count`), byte
+  size, and extractable text (a regex pulls real `Tj` text-show operators
+  out of jsPDF's uncompressed content stream) confirming the title, stats,
+  and thread-sequence lines are genuinely present in the output, not just
+  called-for. The PR's own verification independently reproduced the
+  regression-catching claim: breaking a real line of `pdfsheet.js` failed
+  both tiers, for independently-derived reasons. Left at Medium-High, not
+  High, since this is still automated-inspection rather than a human/visual
+  check of the rendered page.
 
 **Open issues:** DST axis bug (cross-cutting, see above). PES/EXP now have
 independent, merged cross-validation findings (PR #18 — see the DST
