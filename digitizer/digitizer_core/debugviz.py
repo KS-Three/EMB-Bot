@@ -278,6 +278,22 @@ def stage6_streamline_paths(dir_: Path, runs: list, size_mm) -> None:
     _write(dir_ / "stage6_streamline_paths.png", viz)
 
 
+def stage6_detail_lines(dir_: Path, rgb: np.ndarray, lines_px: list) -> None:
+    """The detail layer's human-review record (stage6_detail.py): every
+    emitted bean line drawn in near-black ink OVER THE DIMMED SOURCE image —
+    the one artifact that answers the layer's whole reason to exist (do the
+    extracted lines sit on the photo's actual edges, whiskers and panel
+    lines?), which no assertion can. Drawn in source-pixel space, same
+    dimming as the direction-field render, because "on the edge or not" is
+    only judgeable against the pixels themselves."""
+    viz = (rgb * 0.35 + 255 * 0.65).astype(np.uint8)
+    for pts in lines_px:
+        arr = np.asarray(pts, np.float64)
+        cv2.polylines(viz, [arr.round().astype(np.int32)], False,
+                      (25, 25, 25), 1, cv2.LINE_AA)
+    _write(dir_ / "stage6_detail_lines.png", viz)
+
+
 def stage6_scanline_rows(dir_: Path, runs: list, size_mm) -> None:
     """The scan-line tonal tier's emitted geometry (stage6_scanline.py),
     drawn dark-on-light at thread weight so the halftone read — rows

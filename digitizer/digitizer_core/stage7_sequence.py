@@ -64,6 +64,7 @@ from .stage6_applique import applique_pass, nn_group_key
 from .stage6_blend import SourcePixels, blend_fill
 from .stage6_border import border_runs, run_outline
 from .stage6_contour import contour_fill
+from .stage6_detail import detail_runs
 from .stage6_fill import stitch_shape
 from .stage6_meander import meander_fill
 from .stage6_scanline import scanline_fill
@@ -716,8 +717,12 @@ def sequence(
                 # through to tatami below rather than dropping artwork.
                 runs, report = streamline_fill(p.region, source_pixels, cfg)
                 need_tatami = report["empty"]
-            elif source_pixels is not None:
-                # Stage 0 classified the whole design "gradient" — every
+            elif source_pixels is not None and source_pixels.gradient_class:
+                # Stage 0 classified the whole design "gradient" (the
+                # marker `pipeline.run_stages` stamps — presence of source
+                # pixels alone stopped meaning "gradient" once the detail
+                # layer started carrying pixels for its own, non-blend use)
+                # — every
                 # auto-tier shape routes through the blend fill instead of
                 # tatami/contour. blend_fill's own ramp detection already
                 # falls back to ordinary tatami internally when THIS shape
@@ -927,6 +932,40 @@ def sequence(
             )
         )
         cursor = ordered[-1].points[-1]
+
+    # --- The detail layer (stage6_detail, photo plan row 11) -----------------
+    # Appended AFTER every artwork block — plan row 14's craft consensus,
+    # "details last": bean lines ride ON TOP of the fills they annotate.
+    # Strictly opt-in (cfg.detail_layer, default False — this branch never
+    # runs otherwise and the byte-identity suites pin that), and honest on
+    # empty: a design the extractor finds no coherent lines for appends no
+    # block at all, no warning, rather than failing or inventing detail.
+    # The block carries its own thread identity (the chart cone nearest the
+    # lines' own sampled color — detail_runs' report) exactly as every
+    # block does; the result-level sew-order palette is regions-derived and
+    # deliberately not grown here, the same block-level-is-authoritative
+    # convention the layered streamline shades already established.
+    if cfg.detail_layer and source_pixels is not None:
+        d_runs, d_report = detail_runs(source_pixels, cfg, entry=cursor,
+                                       trim_at_mm=trim_at)
+        if d_runs:
+            jumps += d_report["jumps"]
+            # A new color block: the needle always lifts into it and the
+            # thread is always cut coming out of the previous one — the
+            # same forcing every block above gets.
+            d_runs[0].jump = True
+            d_runs[0].trim = True
+            _apply_ties(d_runs)
+            d_thread = chart_for(cfg)[d_report["thread_index"]]
+            blocks.append(
+                StitchBlock(
+                    thread_index=d_report["thread_index"],
+                    thread_number=d_thread.number,
+                    rgb=tuple(d_thread.rgb),
+                    runs=d_runs,
+                )
+            )
+            cursor = d_runs[-1].points[-1]
 
     warnings: list[dict] = list(applique_warnings)
     if thin:

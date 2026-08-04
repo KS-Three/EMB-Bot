@@ -113,6 +113,14 @@ class SourcePixels:
     # for a `gradient` design whose own whole-design fit declined (no single
     # linear direction found) — same per-region angle as always in that case.
     design_row_angle_deg: float | None = None
+    # True only when stage 0 classified the DESIGN "gradient" — set by
+    # `pipeline.run_stages`, read by stage 7 to decide whether auto-tier
+    # fill shapes route through `blend_fill`. Exists because "source pixels
+    # are present" stopped implying "gradient class" the moment tiers that
+    # read the raster WITHOUT wanting blend routing arrived (the detail
+    # layer is the first): those opt-ins carry pixels for their own use and
+    # must leave every fill shape on the exact tatami path it always took.
+    gradient_class: bool = False
 
     def to_px(self, x_mm: float, y_mm: float) -> tuple[float, float]:
         return (x_mm * self.px_per_mm + self.origin_px[0],
