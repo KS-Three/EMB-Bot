@@ -413,6 +413,15 @@ class PipelineConfig:
     #               ShapeField instead of stage6_satin's own inline
     #               rasterize+medial_axis call — same numbers, hoisted for
     #               a later stage (M2/M3, not this one) to eventually share.
+    #   photo_sequencing: bool — explicit opt-in to photo depth sequencing
+    #               (plan §2 row 14) for a design stage 0 did NOT classify
+    #               photo: depth-sorted color layers (background first, then
+    #               dark→light, explicit detail tiers last —
+    #               stage7_sequence.depth_sort_layers) plus the photo
+    #               underlay split (light-mesh fill underlay, spine-run
+    #               satin underlay). Photo-classified designs get both
+    #               automatically; absent or falsy changes nothing, so the
+    #               flat and gradient lanes stay byte-identical.
     extra: dict = field(default_factory=dict)
 
     # Step 9 — preflight scoring. Whether the service attaches a preflight

@@ -34,7 +34,7 @@ from .stage3_segment import (
 from .stage4_vectorize import tag_enclosed_background, vectorize
 from .stage5_overlap import resolve_overlaps
 from .stage6_blend import SourcePixels, detect_design_ramp_angle
-from .stage7_sequence import sequence
+from .stage7_sequence import PHOTO_CLASSES, depth_sort_layers, sequence
 from .stitches import StitchPlan
 from .threads import chart_for
 from .warnings_codes import DROPPED_SMALL_SHAPES, warn
@@ -63,6 +63,10 @@ class PipelineResult:
     # no extra raster data forward, and so a design's byte-for-byte identity
     # on the flat lane is unaffected by this field simply existing.
     source_pixels: SourcePixels | None = None
+    # Stage 0's verdict, carried so plan_stitches can hand it to stage 7
+    # (the photo underlay split keys on it). Defaults "flat" — a hand-built
+    # PipelineResult gets exactly the pre-photo behaviour.
+    design_class: str = "flat"
 
     @property
     def shape_ids(self) -> list[str]:
@@ -145,6 +149,18 @@ def run_stages(
         )
 
     thread_indices, layer_warnings = compact_layers(regions, quant_indices)
+    # Photo depth sequencing (plan §2 row 14): photo-classified designs (or
+    # an explicit cfg.extra["photo_sequencing"] opt-in) replace stage 2's
+    # largest-area-first layer order with background→foreground, dark→light,
+    # details last — layers AND the returned thread_indices move together so
+    # the palette stays the sew-order list. Flat and gradient never enter
+    # this branch: their lanes stay byte-identical by construction, which
+    # the byte-identical suites enforce. It sits here, after compaction
+    # (dense layers, one thread each) and before apply_layer_overrides, so
+    # an explicit review-screen layer override still beats the class
+    # default — see depth_sort_layers' docstring for the whole contract.
+    if classification.class_ in PHOTO_CLASSES or bool(cfg.extra.get("photo_sequencing")):
+        thread_indices = depth_sort_layers(regions, thread_indices, chart_for(cfg))
     # Explicit sew-order layers wait until the palette is settled: moving a
     # shape between layers must reorder sewing, never drop a thread from the
     # color list (see `apply_layer_overrides`).
@@ -264,6 +280,7 @@ def run_stages(
         segmenter=seg.name,
         debug_dir=dbg,
         source_pixels=source_pixels,
+        design_class=classification.class_,
     )
 
 
@@ -300,7 +317,9 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     if dbg:
         debugviz.stage5(dbg, planned, result.design_size_mm, chart_for(cfg))
 
-    blocks, seq_warnings = sequence(planned, fabric, cfg, source_pixels=result.source_pixels)
+    blocks, seq_warnings = sequence(planned, fabric, cfg,
+                                    source_pixels=result.source_pixels,
+                                    design_class=result.design_class)
 
     plan = StitchPlan(
         blocks=blocks,

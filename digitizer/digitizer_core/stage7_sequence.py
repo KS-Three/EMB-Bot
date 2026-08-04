@@ -32,6 +32,19 @@ design runs clean on a machine or produces a garment covered in loose ends:
   Those two laws ship together on purpose. Linking on distance alone, without
   the coverage test, converts trims into visible floats on bare fabric — which
   is strictly worse than the trims it removes.
+
+- **Photo depth sequencing** (photo plan §2 row 14) is also this module's
+  vocabulary, even though `depth_sort_layers` runs BEFORE stage 5: the order
+  color blocks sew in is `meta["layer"]`, and stage 5's whole underlap/
+  coverage model (`covered_by`, "extend the color that sews FIRST underneath
+  the one that sews after it") is built on that order — so a sequencing
+  override that reordered blocks here, after stage 5 had already planned
+  against the old order, would bury links under colors that no longer sew
+  later and put seams on the wrong side of every boundary. The override
+  therefore edits the layer order upstream (pipeline.run_stages calls it
+  right after `compact_layers`) and everything downstream follows one
+  consistent story. See `depth_sort_layers` for what "depth" can honestly
+  mean today.
 """
 from __future__ import annotations
 
@@ -69,6 +82,120 @@ from .warnings_codes import (BORDER_LIGHTENED, BORDER_SKIPPED_TOO_NARROW,
 # this only caps the pathological case: a colour whose covering geometry packs
 # thousands of vertices into that ellipse.
 _LINK_SEARCH_NODES = 120
+
+# The two stage-0 classes that engage photo sequencing (depth-sorted layers +
+# the underlay split, plan §2 row 14). A caller may also opt any design in
+# explicitly via cfg.extra["photo_sequencing"] — same knob, both halves.
+PHOTO_CLASSES = ("photo_subject", "photo_scene")
+
+# Row 14's underlay split, expressed in the vocabularies the two tiers
+# actually speak (fabrics.py's ids):
+#  - Fill zones get a LIGHT MESH — edge run + one lattice pass — instead of
+#    the fabric preset's own style. On stable fabrics that is roughly what
+#    the preset already says; on nap presets (fleece/terry ship
+#    double_lattice) it is the difference between a drawing and a board:
+#    full-coverage photo work already sustains 2.0-3.5 st/mm2, and stacking a
+#    heavy double lattice under it is the "stiff as a piece of wood" outcome
+#    the plan's class (d) ceiling names.
+#  - Satin details get a light spine run ("center_run" — satin's underlay
+#    vocabulary has no separate edge-run id; its center run IS the single
+#    light run under the column, and stage 6 still force-upgrades columns
+#    wider than SATIN_ZIGZAG_ABOVE_MM to zigzag, which top details never
+#    are) instead of a nap preset's zigzag.
+#  - The meander/scanline/streamline/sketch tiers sew NO underlay by
+#    construction (their emitters never call an underlay path — fabric-as-
+#    value is those tiers' whole point, stage6_meander/stage6_streamline
+#    docstrings), so row 14's "none under meander/sketch" needs no code
+#    here; the tests pin it stays true.
+_PHOTO_FILL_UNDERLAY = "edge_lattice"
+_PHOTO_SATIN_UNDERLAY = "center_run"
+
+
+def _rel_luminance(rgb: tuple[int, int, int]) -> float:
+    """Rec. 709 relative luminance of a thread's chart RGB — the 'dark' in
+    dark→light. Chart color, not source pixels, on purpose: it is the thread
+    that goes down on the fabric, it exists for every class (photo runs do
+    not carry source pixels unless a tonal tier asked for them), and it is
+    deterministic per palette."""
+    r, g, b = rgb
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def depth_sort_layers(regions, thread_indices: list[int], chart) -> list[int]:
+    """Reorder color layers depth-sorted for photo classes (plan §2 row 14):
+    background first, then dark→light, detail layers last. Mutates
+    `regions`' meta["layer"] (and re-sorts the list into the stable
+    layer/area/id order stage 4 promises) and returns `thread_indices`
+    permuted to match, so the palette stays the sew-order thread list.
+
+    Replaces the largest-area-first order stage 2 produced. That order is
+    right for flat logos (big fields down first, small details last and
+    crisp) and wrong for photo work, where the universal craft consensus is
+    that winners read as drawings executed in thread: the scene is laid in
+    back-to-front and shadow-to-highlight, so every later, lighter layer
+    sits ON the darker ground the way a painter's highlight does — and a
+    largest-area-first photo sews as a uniform scan conversion instead.
+
+    What "depth" can honestly mean today, stated plainly:
+
+    - **Background** is the one region-level background fact the pipeline
+      has: `meta["enclosed_background"]` (stage 4's tag from stage 1's
+      mask). A layer whose every stitched region carries it sews first.
+    - **Dark→light** is the thread's own chart luminance (`_rel_luminance`),
+      per layer — regions of one thread share a block, so within-object
+      shade order IS the layer order of that object's shade ramp.
+    - **Details last** keys on the review screen's explicit detail tiers: a
+      layer whose every stitched region is pinned `tier` "run" or "satin"
+      is a detail pass and sews last. The auto satin classifier is NOT a
+      depth signal — a satin-classified ribbon may be a whole object.
+
+    TRUE INSTANCE-LEVEL DEPTH — subject vs. mid-ground vs. sky, "the dog in
+    front of the fence" — is not computable from any of that. It needs the
+    photo plan's step-3 segmentation (rembg subject mask, SAM instance
+    splits) to tag regions with which INSTANCE they belong to; when that
+    lands, its tag slots in as a depth band between background and the
+    dark→light ramp here, exactly the way `face_regions` is documented as
+    the seam in stage2_photo_segment._face_local_threshold. Until then this
+    function does not fake it, and the docstring says so instead.
+
+    Ties break dark-first, then larger-first (the old order's spirit), then
+    the old layer number — fully deterministic. Call AFTER `compact_layers`
+    (layers dense 0..n-1, one thread per layer) and BEFORE
+    `apply_layer_overrides`, so an explicit review-screen `layer` override
+    still beats this default, the same way an explicit `sew_order` pin
+    still wins within its layer (stage 7's picking loop is untouched).
+    """
+    if not regions:
+        return list(thread_indices)
+    layers = sorted({r.meta["layer"] for r in regions})
+    by_layer = {L: [r for r in regions if r.meta["layer"] == L] for L in layers}
+
+    def key(L: int):
+        members = by_layer[L]
+        # Unstitched regions (enclosed background hidden by default, review
+        # deletions resolved earlier) put no thread down, so they get no
+        # vote — unless they are all the layer has, in which case they are
+        # the only evidence there is.
+        basis = [r for r in members if r.meta.get("stitched", True)] or members
+        if all(r.meta.get("enclosed_background") for r in basis):
+            depth = 0
+        elif all(str(r.meta.get("tier", "")).lower() in ("run", "satin")
+                 for r in basis):
+            depth = 2
+        else:
+            depth = 1
+        lum = _rel_luminance(chart[thread_indices[L]].rgb)
+        area = sum(r.area_mm2 for r in basis)
+        return (depth, round(lum, 6), -round(area, 6), L)
+
+    order = sorted(layers, key=key)
+    remap = {old: new for new, old in enumerate(order)}
+    for r in regions:
+        r.meta["layer"] = remap[r.meta["layer"]]
+    # Restore stage 4's stable output order under the new layer numbers —
+    # the same re-sort apply_shape_edits/apply_layer_overrides already do.
+    regions.sort(key=lambda r: (r.meta["layer"], -r.area_mm2, r.shape_id))
+    return [thread_indices[L] for L in order]
 
 
 def _link_budget_mm(direct_mm: float) -> float:
@@ -384,12 +511,31 @@ def _apply_ties(runs: list[StitchRun]) -> None:
 def sequence(
     planned: list[PlannedRegion], fabric: Fabric, cfg: PipelineConfig,
     source_pixels: SourcePixels | None = None,
+    design_class: str = "flat",
 ) -> tuple[list[StitchBlock], list[dict]]:
-    """-> (blocks in sew order, warnings)."""
+    """-> (blocks in sew order, warnings).
+
+    `design_class` is stage 0's verdict (PipelineResult.design_class, handed
+    through by plan_stitches). Only the photo classes change anything here —
+    the underlay split below; flat and gradient take byte-identical paths,
+    which is why the default is "flat" and every pre-existing caller needs
+    no edit.
+    """
     row_mm = (cfg.fill_row_mm or FILL_ROW_MM) * max(0.1, fabric.density_adjust)
     stitch_mm = cfg.fill_stitch_mm or FILL_STITCH_MM
-    underlay_style = (cfg.underlay_style or fabric.fill_underlay) if cfg.underlay else "none"
-    satin_underlay = fabric.satin_underlay if cfg.underlay else "none"
+    # Row 14's underlay split (see _PHOTO_FILL_UNDERLAY above for the craft
+    # case). Precedence is unchanged in shape, only the FALLBACK moves: an
+    # explicit cfg.underlay_style still wins over the class default exactly
+    # as it wins over the fabric preset, the design-wide `underlay` off
+    # switch still zeroes both, and the per-shape meta["underlay_style"]
+    # override still beats all of it both ways (`eff_underlay_style` in
+    # stitch_one — its documented "beats the mode both ways" contract).
+    photo = (design_class in PHOTO_CLASSES
+             or bool(cfg.extra.get("photo_sequencing")))
+    class_fill_underlay = _PHOTO_FILL_UNDERLAY if photo else fabric.fill_underlay
+    underlay_style = (cfg.underlay_style or class_fill_underlay) if cfg.underlay else "none"
+    satin_underlay = ((_PHOTO_SATIN_UNDERLAY if photo else fabric.satin_underlay)
+                      if cfg.underlay else "none")
     satin_max = cfg.satin_max_width_mm or SATIN_MAX_WIDTH_MM
     trim_at = fabric.trim_at_mm
 
