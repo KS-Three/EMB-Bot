@@ -20,7 +20,7 @@ plus the `photo_prep*` config block and `tests/test_photo_prep.py`).
 |---|---|---|---|---|
 | CLAHE (row 3) | n/a — already in cv2 | n/a | ✅ shipped this branch | none |
 | bilateral / meanshift texture kill (row 4 fallback) | n/a — already in cv2 | n/a | ✅ shipped this branch | none |
-| rollingGuidanceFilter (row 4 real tier) | ✅ `opencv-contrib-python-headless==5.0.0.93` | n/a | ✅ in probe venv | golden gate (see below) — swap not applied |
+| rollingGuidanceFilter (row 4 real tier) | ✅ `opencv-contrib-python-headless==5.0.0.93` | n/a | ✅ in probe venv | ~~golden gate (see below) — swap not applied~~ **swap APPLIED later 2026-08-04, see addendum** |
 | YuNet (row 2) | n/a — `cv2.FaceDetectorYN` already in shipped cv2 | ✅ via LFS media endpoint | ✅ loads + detects in shipped venv | none technical — just cache policy + wiring |
 | rembg (row 1) | ✅ `rembg==2.0.77`, `onnxruntime==1.28.0` | ✅ isnet-general-use (178 MB) | ❌ | **numba requires numpy<2.5; repo venv pins 2.5.1 — `import rembg` fails** |
 
@@ -52,7 +52,8 @@ plus the `photo_prep*` config block and `tests/test_photo_prep.py`).
   (`opencv-python-headless==5.0.0.93` →
   `opencv-contrib-python-headless==5.0.0.93`) plus an uninstall/install in
   the venv (the two wheels both claim the `cv2` module and must never be
-  co-installed).
+  co-installed). **→ Applied later the same day — see the addendum at the
+  bottom of this doc.**
 * Until the swap lands, `photo_prep_texture_kill="rolling_guidance"`
   falls back to `"bilateral"` at runtime and says so in the
   PHOTO_PREP_APPLIED warning — tested in both directions
@@ -146,6 +147,40 @@ on `region_blobs.png` at 80 mm (post-upscale raster, kill scale 11 px),
 tone 170 ms + bilateral 2.27 s in this container. Meanshift on a 200×300
 synthetic: 69 ms. The service accepts the new fields with zero changes —
 `_CONFIG_FIELDS` derives from the dataclass.
+
+## Addendum, later 2026-08-04 — contrib swap APPLIED and re-verified
+
+The §1 swap is no longer pending: `digitizer/requirements.txt` and
+`digitizer/pyproject.toml` now pin `opencv-contrib-python-headless==5.0.0.93`
+(the plain `opencv-python-headless` pin is gone from both; CI installs from
+requirements.txt, so CI gets the contrib wheel too). No code change was
+needed — `stage1_photo_prep._texture_kill` feature-detects `cv2.ximgproc`.
+
+Re-verified fresh, same day, in a NEW throwaway venv (python3.12.3,
+`pip install -r requirements.txt` — not the §1 probe venv):
+
+* `import cv2` → 5.0.0, `hasattr(cv2, 'ximgproc')` → True,
+  `rollingGuidanceFilter` present.
+* Full suite from this branch's worktree: **632 tests — 628 passed,
+  3 failed, 1 skipped** (10:57). The 3 failures are exactly the 3 known
+  container-environment goldens (`test_flat_lane_byte_identical
+  [logo_alpha.png]`, `test_pushcomp[logo_whitebg.png-towel]`,
+  `test_stage2_photo_segment[logo_alpha.png]`); the 1 skip is
+  `test_photo_prep.py`'s fallback-branch test, which by design cannot fire
+  with contrib installed. Its contrib-branch twin
+  (`test_rolling_guidance_with_contrib_takes_the_real_path`) now PASSES in
+  the requirements.txt environment — i.e. it runs in CI from here on.
+* Live-warning check: `photo_prep` with
+  `photo_prep_texture_kill="rolling_guidance"` emits PHOTO_PREP_APPLIED
+  with `technique='rolling_guidance', fallback=False` (no "fell back"
+  text) — the seam takes the real path.
+
+Still true from §1: the two wheels both claim `cv2` — an EXISTING venv
+(including the shared `digitizer/.venv`, which was again not touched by
+this lane) must `pip uninstall opencv-python-headless` before installing
+the contrib pin; a fresh `pip install -r requirements.txt` needs nothing
+special. Kent's local item 1 below stands, now with the repo pins already
+updated for him.
 
 ## What Kent needs to run locally (open egress, his machine)
 

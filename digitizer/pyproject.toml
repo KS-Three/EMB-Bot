@@ -7,7 +7,12 @@ license = { text = "Proprietary" }
 dependencies = [
     # cv2 behavior (kmeans, contours) feeds golden tests — exact-pin and bump
     # deliberately (regenerate goldens on purpose, never by accident).
-    "opencv-python-headless==5.0.0.93",
+    # Contrib-headless (NOT plain opencv-python-headless) since 2026-08-04:
+    # same cv2 at the same pin plus cv2.ximgproc, which stage1_photo_prep's
+    # rolling_guidance texture kill needs. Golden-verified before the swap
+    # (docs/photo-prep-deps-probe-2026-08-04.md). The two wheels both claim
+    # the cv2 module — never co-install them.
+    "opencv-contrib-python-headless==5.0.0.93",
     "numpy>=2.0",
     "scipy>=1.11",
     "shapely>=2.0",

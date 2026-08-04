@@ -14,7 +14,7 @@ iniconfig==2.3.0
 lazy-loader==0.5
 networkx==3.6.1
 numpy==2.5.1
-opencv-python-headless==5.0.0.93
+opencv-contrib-python-headless==5.0.0.93
 packaging==26.2
 pillow==12.3.0
 pluggy==1.6.0
