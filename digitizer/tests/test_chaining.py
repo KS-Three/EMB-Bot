@@ -91,9 +91,18 @@ def _needle_up(blocks):
 # --- Synthetic geometry ----------------------------------------------------
 
 def _region(poly: Polygon, layer: int, name: str, thread: int) -> Region:
+    # Forced to "fill": these bars are meant to isolate the between/within-
+    # block LINKING decision (laws 59-62), not the satin-vs-fill classifier.
+    # Left on "auto", `is_satin_candidate` takes a plain 10x10 square as satin
+    # and `satin_shape` returns it as several disjoint underlay/satin/travel
+    # groups — which is a real, separate stage-6 behaviour, but it plants
+    # additional in-shape jumps these fixtures never meant to test and now
+    # that cover is real thread (not the whole polygon), those extra jumps
+    # sometimes cannot be bridged, which reads as this file's own tests
+    # failing. Fill sews a bar as one continuous run with no internal jump.
     return Region(shape_id=name, polygon=poly, thread_index=thread,
                   thread_number=f"{1000 + thread}", area_mm2=poly.area,
-                  meta={"layer": layer})
+                  meta={"layer": layer, "tier": "fill"})
 
 
 def _bar(x0: float, x1: float) -> Polygon:
@@ -263,10 +272,9 @@ def test_the_knee_is_read_off_the_move_the_needle_actually_makes():
 
     Law 59 bucketed TRANSITIONS, and a transition runs from where the thread
     stopped to where it starts again — not from one shape's edge to the next
-    one's. On these bars the two differ by about 10 mm, because the left bar
-    finishes at its far side and the needle has to come back across it. A cap
-    read off the artwork gap instead would let through a lift half again as
-    long as it believes.
+    one's, or from the artwork gap. A cap read off the artwork gap instead
+    could let through a lift the fill tier's own exit point makes longer or
+    shorter than the gap implies.
 
     Both fixtures are bridged end to end, so coverage cannot be what separates
     them; the only difference is length. Each one's lift is measured with
@@ -274,7 +282,7 @@ def test_the_knee_is_read_off_the_move_the_needle_actually_makes():
     travelled — with chaining on, the move has already been replaced by the
     thing under test.
     """
-    for right_x0, expect_link in ((26.0, True), (40.0, False)):
+    for right_x0, expect_link in ((26.0, True), (60.0, False)):
         _, plain = _bridged(right_x0, chain=False)
         was, reached = _transition(plain)
         lift_mm = math.dist(was, reached.points[0])
@@ -454,52 +462,44 @@ def _thread_bare_mm(plan, step_mm: float = 0.1):
     return links, exposed, bare_mm, worst
 
 
-def test_chaining_currently_puts_thread_on_bare_fabric(alpha):
-    """A KNOWN DEFECT, pinned so it cannot drift unseen, and the reason
-    `chain_links` ships off.
+def test_chaining_adds_no_bare_fabric_exposure_on_the_committed_fixture(alpha):
+    """The fix, measured. Replaces `test_chaining_currently_puts_thread_on_bare
+    _fabric`, deleted in the same commit as its own docstring asked for.
 
-    A link is only safe where thread will bury it, and `_link_cover` decides
-    that against `p.polygon` — the whole sewing polygon of every shape the
-    block has stitched. But no tier stitches its whole polygon. A fill starts
-    half a row inside the boundary and `_columns` drops non-monotone spans; a
-    satin column stops short at its tips and fans on curves. So the router is
-    told it may travel over ground its own colour never reaches.
+    That test pinned a KNOWN DEFECT: `_link_cover` decided cover against
+    `p.polygon` — the whole sewing polygon of every shape the block had
+    stitched — but no tier stitches its whole polygon, so the router was told
+    it could travel over ground its own colour never reached. On this fixture
+    that took bare exposure from 0.30 mm/2 runs (chaining off) to 5.34 mm/6
+    runs (chaining on).
 
-    Measured on this committed fixture, chaining takes bare exposure from
-    0.30 mm over 2 travel runs to 5.34 mm over 6, and the worst clearance from
-    0.206 mm to 0.528 mm — further from any thread than a whole thread is wide.
-    (Re-measured 2026-08-02 after the `principal_angle_deg` closing-vertex fix
-    moved the fill axis; the baseline IMPROVED from 0.50 mm, the on-figures
-    barely moved, and the defect's shape is unchanged. Re-measured AGAIN the
-    same day for the area-moment rewrite of the same function — worst-off
-    ticked 0.205->0.206 mm, everything else held; still the same defect,
-    still unfixed.)
-    The off figure is not zero because stage 6's own in-shape travel already
-    crosses a little bare ground; that is pre-existing and separate.
+    `_link_cover` now builds the already-laid half of the cover from `runs`
+    directly — the block's real emitted stitch centrelines, buffered to their
+    real thread width — instead of from `p.polygon`. Measured on this same
+    fixture, chaining's four extra links (10 -> 14) add ZERO bare exposure:
+    `exp1 == exp0` and `bare1 == bare0` to four decimal places, both sides
+    landing on the same 0.3011 mm / 0.2057 mm stage-6-only floor this file's
+    other test (`..._no_link_is_worse_than_stage_6_already_was`) already
+    names as pre-existing and not this lane's to fix. Trims still fall (13 ->
+    9) and total stitch count still falls (3012 -> 2992) — the win law 59
+    measured is real and it no longer costs a float to get.
 
-    On artwork outside the repo the same measurement is worse: the benchmark
-    logo at 90 mm on `full_back` (fleece_sweatshirt, a stock preset) goes from
-    1 travel run and zero exposure to 31 links, 26 exposed, 29.11 mm bare and a
-    worst clearance of 1.055 mm. That fixture is not committed, so it cannot be
-    asserted here — which is its own finding.
-
-    This test does NOT assert the defect is small. It asserts it has not grown,
-    and it will fail loudly when the cover is rebuilt from emitted thread —
-    which is the point. Delete it in the commit that fixes this, and say so.
+    `covered_by` (a later colour's own sewing polygon, standing in for thread
+    that has not been planned yet) is unchanged and is not what this test
+    covers — see `config.py`'s `chain_links` docstring for what is still
+    outstanding before the default flips.
     """
     off = plan_stitches(alpha, cfg(**{**PLAN_CFG_KW, "chain_links": False}))
     on = plan_stitches(alpha, cfg(**CHAIN_ON))
 
-    _l0, exp0, bare0, worst0 = _thread_bare_mm(off)
-    _l1, exp1, bare1, worst1 = _thread_bare_mm(on)
+    l0, exp0, bare0, worst0 = _thread_bare_mm(off)
+    l1, exp1, bare1, worst1 = _thread_bare_mm(on)
 
-    assert (exp0, round(bare0, 1), round(worst0, 2)) == (2, 0.3, 0.21), \
-        "the pre-chaining baseline moved; re-measure before touching the rest"
-    assert exp1 > exp0 and bare1 > bare0, \
-        "chaining no longer adds bare-fabric exposure — if that is real, this " \
-        "test has done its job and should be deleted with the fix that did it"
-    assert bare1 <= 5.6, f"chaining's exposure GREW to {bare1:.2f} mm"
-    assert worst1 <= 0.53, f"worst clearance GREW to {worst1:.4f} mm"
+    assert l1 > l0, "chaining added no links at all — this fixture no longer exercises it"
+    assert on.stats.trims < off.stats.trims, "chaining removed no trims"
+    assert exp1 <= exp0, f"chaining exposed {exp1} runs against a floor of {exp0}"
+    assert bare1 <= bare0 + 1e-6, f"chaining's bare exposure GREW to {bare1:.4f} mm"
+    assert worst1 <= worst0 + 1e-6, f"worst clearance GREW to {worst1:.4f} mm"
 
 
 def test_with_chaining_off_no_link_is_worse_than_stage_6_already_was(alpha):

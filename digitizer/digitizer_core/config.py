@@ -356,9 +356,25 @@ class PipelineConfig:
     # link makes it a jump, and the measured trims/1k does not move. That is
     # the cheap direction to be wrong in, and a float on fleece is not.
     #
-    # What it takes to turn back on: cover built from EMITTED THREAD rather
-    # than polygons for the block's own tiers, an inset on `covered_by` for the
-    # layers whose stitches do not exist yet, and a sew-out that says at what
-    # clearance a needle-down float actually shows — LINK_COVER_TOL_MM is a
-    # thread spec today, not a measurement.
+    # UPDATE 2026-08-03: the first of the three things below is done.
+    # `_link_cover` now builds the already-laid half of its cover from `runs`
+    # — the block's real emitted stitch centrelines, buffered to their real
+    # thread width — instead of from `p.polygon`. Measured on the committed
+    # `logo_alpha` fixture (the benchmark file the numbers above were measured
+    # on lives outside the repo and could not be re-measured): chaining's
+    # extra links (10 -> 14) now add ZERO bare exposure — `exp`/`bare`/`worst`
+    # land on exactly the same figures chaining OFF does — while still
+    # cutting trims (13 -> 9) and total stitch count (3012 -> 2992). See
+    # `tests/test_chaining.py::test_chaining_adds_no_bare_fabric_exposure_on_
+    # the_committed_fixture`.
+    #
+    # Still outstanding, and still why this stays off by default:
+    #   - An inset on `covered_by`, for the layers whose stitches do not exist
+    #     yet. That half of the cover is still a future colour's sewing
+    #     POLYGON — the same approximation this whole fix just proved wrong
+    #     for the block's OWN tiers, just not yet correctable the same way
+    #     (that colour has not been planned when this block's links are
+    #     routed, so there is no real thread to measure it against).
+    #   - A sew-out that says at what clearance a needle-down float actually
+    #     shows — LINK_COVER_TOL_MM is still a thread spec, not a measurement.
     chain_links: bool = False

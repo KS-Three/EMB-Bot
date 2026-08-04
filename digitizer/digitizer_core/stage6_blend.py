@@ -22,13 +22,16 @@ things happen here, in order:
    ramp and snapping each average to the nearest thread (`threads.py`'s
    existing CIEDE2000 lookup — no new color model here beyond the
    barycentric split itself).
-3. **Emission.** N interleaved tatami layers, ONE shared fill angle (reused
-   from `stage6_fill.principal_angle_deg` — not re-derived), each layer
-   restricted to a band of the ramp centered on its own shade and sewn at
-   `stage6_fill.stitch_shape`'s ordinary row spacing of `FILL_ROW_MM * N`.
-   Adjacent bands overlap by a small margin so the shades blend at the seam
-   instead of leaving a hard edge, which is also what pushes total coverage
-   over 1.0 (see `_BAND_OVERLAP_T`).
+3. **Emission.** N interleaved tatami layers, ONE shared fill angle per
+   region — `SourcePixels.design_row_angle_deg` when the whole design fit a
+   single linear ramp (`detect_design_ramp_angle`, so every fragment of a
+   k-means-split gradient sews the same direction instead of each picking
+   its own), else `stage6_fill.principal_angle_deg` of this region alone.
+   Each layer is restricted to a band of the ramp centered on its own shade
+   and sewn at `stage6_fill.stitch_shape`'s ordinary row spacing of
+   `FILL_ROW_MM * N`. Adjacent bands overlap by a small margin so the
+   shades blend at the seam instead of leaving a hard edge, which is also
+   what pushes total coverage over 1.0 (see `_BAND_OVERLAP_T`).
 
 Coordinates are the same convention as everywhere past stage 4: millimetres,
 origin at the artwork bbox center, y-axis down.
@@ -46,6 +49,7 @@ from skimage.color import deltaE_ciede2000
 
 from . import debugviz, machine
 from .regions import Region
+from .stage1_prep import Prep
 from .stage6_fill import principal_angle_deg, stitch_shape
 from .stitches import StitchRun
 from .threads import chart_for, rgb_to_lab
@@ -97,6 +101,18 @@ class SourcePixels:
     rgb: np.ndarray
     px_per_mm: float
     origin_px: tuple[float, float]
+    # Set by `pipeline.run_stages` once per design, from
+    # `detect_design_ramp_angle` against the WHOLE foreground — not one
+    # region. `blend_fill` uses this as the shared fill-row angle instead of
+    # each region's own `stage6_fill.principal_angle_deg` when set: the fix
+    # for the 2026-08-03 angle-fragmentation defect, where `gradient`-class
+    # art still segments via plain k-means before blend treatment (23 regions
+    # on the repro fixture), each fragment picking its own, independently
+    # computed angle — a patchwork of differently-angled wedges instead of
+    # one flowing sweep. None for every class this stage never runs on, and
+    # for a `gradient` design whose own whole-design fit declined (no single
+    # linear direction found) — same per-region angle as always in that case.
+    design_row_angle_deg: float | None = None
 
     def to_px(self, x_mm: float, y_mm: float) -> tuple[float, float]:
         return (x_mm * self.px_per_mm + self.origin_px[0],
@@ -286,6 +302,87 @@ def detect_ramp(poly: Polygon, sp: SourcePixels) -> RampModel | None:
     return RampModel("radial", None, center, lo, hi, r2_radial)
 
 
+# Design-wide acceptance floor, deliberately lower than (and separate from)
+# RAMP_R2_MIN. `detect_design_ramp_angle` below picks the BEST of 6 fits
+# (L/a/b, each linear and radial) instead of one channel, and that matters:
+# measured on the confirmed repro fixture (a real diagonal purple -> pink ->
+# orange gradient, `testdata/photo/repro_gradient_white_icon.png`), L barely
+# correlates with position at all (r2 0.003) because the ramp is a hue
+# rotation, not a lightness slope — the per-region `detect_ramp` this design
+# angle exists to fix would have missed it too, on the same evidence, were
+# it not for whichever fragment happened to sample a patch small enough for
+# hue to look locally linear. The b* (blue-yellow) channel alone carries it,
+# at r2 0.45 — real signal, comfortably clear of the ~0.05 noise floor the
+# same fixture's L and a channels read at, just short of RAMP_R2_MIN's 0.5
+# (tuned for a single-channel, per-region fit, a different question). 0.4
+# leaves margin on both sides: above the noise floor, below every measured
+# true positive (0.45 here, 0.994-0.999 on the committed synthetic ramps).
+DESIGN_RAMP_R2_MIN = 0.4
+
+
+def detect_design_ramp_angle(design_prep: Prep, max_samples: int = RAMP_MAX_SAMPLES,
+                             seed: int = RAMP_SAMPLE_SEED) -> float | None:
+    """The one shared fill-row angle every blend group in a `gradient`
+    design should sew at, or None (each region falls back to its own
+    `stage6_fill.principal_angle_deg`, the pre-fix behaviour).
+
+    Deliberately NOT `detect_ramp` reused at design scope: that function
+    fits a single channel (lightness) against position, which is exactly
+    the axis a hue-driven ramp (this defect's own confirmed repro) does not
+    vary along. This fits L, a AND b independently (`_fit_linear`/
+    `_fit_radial`, same machinery, one call per channel) and takes whichever
+    of the 6 (channel, kind) results explains the most variance — the
+    channel that actually carries the gradient wins regardless of which one
+    it is. Only a LINEAR winner produces an angle: a radial ramp's bands are
+    concentric rings, and no single line direction keeps a row inside one
+    band, so per-region behaviour is left alone for those (a known,
+    documented gap — see
+    `docs/superpowers/plans/2026-08-03-gradient-tier-fragmentation-and-enclosed-white-defects.md`).
+
+    Sampled straight from `design_prep.rgb` / `~design_prep.bg_mask` (the
+    whole design's foreground), not any one region's polygon — this runs
+    once per design, before stage 2 fragments it into however many k-means
+    regions.
+    """
+    fg = ~design_prep.bg_mask
+    all_ys, all_xs = np.nonzero(fg)
+    if len(all_xs) < 12:
+        return None
+
+    mm_x_all = all_xs.astype(np.float64) / design_prep.px_per_mm
+    mm_y_all = all_ys.astype(np.float64) / design_prep.px_per_mm
+
+    if len(all_xs) > max_samples:
+        rng = np.random.default_rng(seed)
+        idx = rng.choice(len(all_xs), size=max_samples, replace=False)
+    else:
+        idx = np.arange(len(all_xs))
+    mm_x, mm_y = mm_x_all[idx], mm_y_all[idx]
+    lab = rgb_to_lab(design_prep.rgb[all_ys[idx], all_xs[idx]])
+    centroid_mm = (float(mm_x_all.mean()), float(mm_y_all.mean()))
+
+    best_r2, best_kind, best_direction = -1.0, None, None
+    for c in range(3):
+        val = lab[:, c]
+        direction, r2_linear = _fit_linear(mm_x, mm_y, val)
+        if r2_linear > best_r2:
+            best_r2, best_kind, best_direction = r2_linear, "linear", direction
+        r2_radial = _fit_radial(mm_x, mm_y, val, centroid_mm)
+        if r2_radial > best_r2:
+            best_r2, best_kind = r2_radial, "radial"
+
+    if best_r2 < DESIGN_RAMP_R2_MIN or best_kind != "linear":
+        return None
+
+    # Rows should stay inside one color band as long as possible, so they run
+    # PERPENDICULAR to the ramp's own axis (parallel to its iso-color lines)
+    # — rotate the fitted unit direction 90 degrees. `angle_deg` names a
+    # LINE, not a ray (`_fill_paths` only ever rotates a polygon by it), so
+    # the perpendicular's sign is irrelevant — +90 or -90 picks the same line.
+    ux, uy = best_direction
+    return math.degrees(math.atan2(ux, -uy))
+
+
 # --- Shade decomposition ------------------------------------------------------
 
 def _choose_shade_count(delta_e: float) -> int:
@@ -364,11 +461,23 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg
     if model is None:
         # Not a ramp (or too speckled to trust as one) — ordinary tatami,
         # the same call every other fill-classified shape gets, report and
-        # all.
+        # all. This is the branch EVERY k-means fragment of a real gradient
+        # actually takes, not an edge case: post-quantize color bands are
+        # already near-uniform internally, so a fragment's own pre-quantize
+        # sample rarely carries enough of a residual ramp to pass
+        # `detect_ramp`'s gates (confirmed on the repro fixture — all 23
+        # regions fall back here). Passing the shared design angle instead of
+        # None here is therefore the actual fix for the 2026-08-03
+        # angle-fragmentation defect: without it, every fragment falls back
+        # to `stitch_shape`'s own default (`principal_angle_deg` of that
+        # fragment's own, often small and irregular, silhouette) and the
+        # patchwork is exactly 23 independent PCA axes. None when this
+        # design has no shared angle (not gradient-classified, or the
+        # whole-design fit itself declined) preserves the untouched default.
         return stitch_shape(
-            poly, region.shape_id, angle_deg=None, row_mm=machine.FILL_ROW_MM,
-            stitch_mm=machine.FILL_STITCH_MM, underlay_style="none",
-            trim_at_mm=machine.TRIM_AT_MM,
+            poly, region.shape_id, angle_deg=source_pixels.design_row_angle_deg,
+            row_mm=machine.FILL_ROW_MM, stitch_mm=machine.FILL_STITCH_MM,
+            underlay_style="none", trim_at_mm=machine.TRIM_AT_MM,
         )
 
     mm_x, mm_y, rgb, _mask, _crop = _sample_pixels(poly, source_pixels)
@@ -386,7 +495,19 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg
     shade_thread_idx = [chart.nearest_index(c) for c in shade_labs]
     shade_rgbs = [tuple(int(v) for v in chart[t].rgb) for t in shade_thread_idx]
 
-    angle = principal_angle_deg(poly)
+    # The whole-design angle (set once per design, see
+    # `SourcePixels.design_row_angle_deg`) wins for a linear ramp: every
+    # fragment then sews its rows in the SAME direction instead of each
+    # independently re-deriving its own from its own, possibly tiny, slice of
+    # the gradient — the 2026-08-03 angle-fragmentation fix. A region whose
+    # OWN ramp is radial keeps its per-region angle regardless (no single
+    # line direction fits a set of concentric bands), and so does any design
+    # whose whole-design fit did not find one shared direction at all.
+    angle = None
+    if model.kind == "linear" and source_pixels.design_row_angle_deg is not None:
+        angle = source_pixels.design_row_angle_deg
+    if angle is None:
+        angle = principal_angle_deg(poly)
     row_mm = machine.FILL_ROW_MM * n
 
     all_runs: list[StitchRun] = []

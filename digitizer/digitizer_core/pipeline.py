@@ -33,7 +33,7 @@ from .stage3_segment import (
 )
 from .stage4_vectorize import vectorize
 from .stage5_overlap import resolve_overlaps
-from .stage6_blend import SourcePixels
+from .stage6_blend import SourcePixels, detect_design_ramp_angle
 from .stage7_sequence import sequence
 from .stitches import StitchPlan
 from .threads import chart_for
@@ -150,10 +150,17 @@ def run_stages(
     # Same mm<->px origin as bg_outline_mm below and as debugviz.stage4 —
     # SourcePixels.to_mm/to_px depend on this being the one true mapping.
     art_cx, art_cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
-    source_pixels = (
-        SourcePixels(rgb=p.rgb, px_per_mm=p.px_per_mm, origin_px=(art_cx, art_cy))
-        if classification.class_ == "gradient" else None
-    )
+    source_pixels = None
+    if classification.class_ == "gradient":
+        source_pixels = SourcePixels(rgb=p.rgb, px_per_mm=p.px_per_mm,
+                                     origin_px=(art_cx, art_cy))
+        # One shared fill-row angle for the whole design (2026-08-03 angle-
+        # fragmentation fix) — computed here, once, against `p`'s full
+        # foreground, before stage 2 fragments it into however many k-means
+        # regions. None when the whole-design fit itself declines (no single
+        # shared direction found): `blend_fill` falls back to each region's
+        # own angle exactly as it always has in that case.
+        source_pixels.design_row_angle_deg = detect_design_ramp_angle(p)
 
     bg_outline_mm = None
     if p.bg_outline_px is not None and len(p.bg_outline_px) >= 3:

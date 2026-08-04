@@ -94,18 +94,23 @@ def _densify(a: tuple[float, float], b: tuple[float, float],
 
 
 def _ring_points(geom) -> list[tuple[float, float]]:
-    """Every boundary vertex of a polygon or multipolygon, rings closed once."""
-    polys = ([geom] if geom.geom_type == "Polygon"
-             else [g for g in getattr(geom, "geoms", []) if g.geom_type == "Polygon"])
+    """Every boundary vertex of a polygon/multipolygon, or every point of a
+    line/multiline, rings closed once."""
+    parts = ([geom] if geom.geom_type in ("Polygon", "LineString")
+             else [g for g in getattr(geom, "geoms", [])
+                   if g.geom_type in ("Polygon", "LineString")])
     out: list[tuple[float, float]] = []
-    for g in polys:
+    for g in parts:
+        if g.geom_type == "LineString":
+            out.extend(g.coords)
+            continue
         out.extend(g.exterior.coords[:-1])
         for ring in g.interiors:
             out.extend(ring.coords[:-1])
     return out
 
 
-def _link_cover(regions: list[PlannedRegion]):
+def _link_cover(runs: list[StitchRun], regions: list[PlannedRegion]):
     """Where this colour's needle may travel down without showing.
 
     -> (cover geometry, candidate waypoints), or (None, []) with nothing to go on.
@@ -113,28 +118,48 @@ def _link_cover(regions: list[PlannedRegion]):
     Law 60: professionals route a link to be COVERED, not to be short, and the
     corpus shows them using two kinds of cover. Geometry that sews LATER buries
     the link under another thread — that is `covered_by`, handed over by stage 5
-    rather than recomputed here. Geometry this colour has ALREADY laid carries
-    the link on top of itself, in its own thread, where it cannot read as a
-    stray line. Every shape in the block is one or the other by the time the
-    block finishes, so the block's own sewing polygons go in whole; which side
-    of "now" a given shape falls on never changes the answer.
+    rather than recomputed here, since that colour's own stitches do not exist
+    yet. Geometry this colour has ALREADY laid carries the link on top of
+    itself, in its own thread — and by the time this runs, that thread is not a
+    prediction, it is `runs`: the whole block has already been stitched, so the
+    real sewn centrelines are sitting right here.
 
-    Only shapes that actually produced stitches are passed in. A shape that
-    came back empty covers nothing, and routing a link under one would put a
-    float on bare fabric — the exact defect this test exists to prevent.
+    A shape's sewing POLYGON is not that thread. A fill's first row sits half a
+    row inside the boundary and drops non-monotone spans; a satin column stops
+    short at its own tips and fans on curves. Routing a link under "the shape"
+    instead of under "what the shape actually sewed" buries it under fabric no
+    thread ever reached — measured on the benchmark as a 0.947 mm-deep hole in
+    one satin column alone. So the already-laid half of the cover is built from
+    `runs` directly: every non-TRAVEL run's centreline, buffered by the same
+    LINK_COVER_TOL_MM the polygon edges get below. That buffer is exactly half
+    of COVERAGE_THREAD_W_MM, so a centreline buffered by it is not a tolerance
+    on top of the thread — it IS the thread, at its real physical width.
+
+    Only shapes that actually produced stitches are passed in for `covered_by`.
+    A shape that came back empty covers nothing, and routing a link under one
+    would put a float on bare fabric — the exact defect this test exists to
+    prevent.
 
     The cover is buffered by LINK_COVER_TOL_MM (the reach of the covering
-    element's own edge thread) for the containment test, while the waypoints
-    come from the UNBUFFERED union: buffering rounds every corner into an arc
-    and multiplies the vertex count for waypoints that say nothing new, and a
-    vertex of the raw union sits a full tolerance inside the cover.
+    element's own edge thread, or half the width of the already-laid thread
+    itself) for the containment test, while the waypoints come from the
+    UNBUFFERED union: buffering rounds every corner into an arc and multiplies
+    the vertex count for waypoints that say nothing new, and a vertex of the
+    raw union sits a full tolerance inside the cover.
 
     Those waypoints are simplified by HALF the tolerance before they are taken.
     Simplification moves a vertex by at most that much, so every waypoint is
     still a half-tolerance inside the cover — and the corner detail it drops is
     detail no route needs, at a scale finer than the thread that would cover it.
+
+    `covered_by` is still a future colour's sewing POLYGON, not its thread —
+    that colour has not been planned yet, so its real path cannot be known
+    here. That is a smaller, pre-existing approximation (the same one the
+    pipeline already makes for `visible`), not the defect this rebuild fixes.
     """
-    parts = [p.polygon for p in regions]
+    laid = [LineString(r.points) for r in runs
+            if r.kind != stitches.TRAVEL and len(r.points) >= 2]
+    parts: list[object] = list(laid)
     seen: list[object] = []
     for p in regions:
         c = p.covered_by
@@ -147,7 +172,16 @@ def _link_cover(regions: list[PlannedRegion]):
     raw = unary_union(parts)
     if raw.is_empty:
         return None, []
-    cover = raw.buffer(machine.LINK_COVER_TOL_MM)
+    # Buffer each part on its own and union the results, rather than buffering
+    # the assembled union in one call — mathematically identical (a Minkowski
+    # buffer distributes over union), but not computationally identical. A
+    # block's own fill rows sit LINK_COVER_TOL_MM*2 apart, and GEOS's buffer of
+    # one large network of many near-parallel, near-touching lines has to node
+    # and union every offset curve against every other internally; buffering
+    # each row alone is cheap (it is a single simple line) and the union of the
+    # resulting simple capsules is cheap too. Same geometry, the order that
+    # does not fall off GEOS's performance cliff.
+    cover = unary_union([g.buffer(machine.LINK_COVER_TOL_MM) for g in parts])
     shapely.prepare(cover)
     lean = raw.simplify(machine.LINK_COVER_TOL_MM / 2.0)
     return cover, _ring_points(raw if lean.is_empty else lean)
@@ -269,7 +303,7 @@ def _chain(runs: list[StitchRun], regions: list[PlannedRegion]
     """
     if len(runs) < 2 or not regions:
         return runs, 0
-    cover, waypoints = _link_cover(regions)
+    cover, waypoints = _link_cover(runs, regions)
     if cover is None:
         return runs, 0
 

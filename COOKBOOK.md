@@ -233,23 +233,47 @@ Decision doc: `docs/superpowers/plans/2026-08-03-dt-first-sequencing.md`.
 Session handoff with the full context:
 `docs/superpowers/handoffs/2026-08-03-gradient-defects-handoff.md`.
 
-1. **The two gradient/enclosed-white regressions** (see Known bugs below) +
-   land `fix/bg-existence-guard`. Active now.
+1. **The two gradient/enclosed-white regressions** (see Known bugs below).
+   The angle-fragmentation half is FIXED (2026-08-03, same-day follow-up
+   session). `BACKGROUND_ENCLOSED` remains open, but has a full design pass
+   now (2026-08-04):
+   `docs/superpowers/plans/2026-08-04-enclosed-background-restore-design.md`
+   — enclosed pixels join `fg`, get tagged post-vectorization, a new
+   `stitched` shape-override restores one, exclusion happens at
+   `plan_stitches` only so Studio's existing delete/restore Layers UI has a
+   real shape to work with. Not built — still a cross-cutting feature (stage
+   1 through the service/Studio round-trip), bigger than a quick fix. Also
+   still queued: land `fix/bg-existence-guard` (this remote session's
+   checkout has no such branch/worktree — re-verify locally, per this
+   section's own warning, before assuming it's gone or merged).
 2. **M0 + M1 of the DT-first migration** — this is the sequencing call that
    is easy to miss: once the regressions close, do **not** go straight to
    photo-digitizing steps 5+. M0 instruments `digitizer/tools/shape_lens.py`
    with distance-transform stats (`max/μ/σ` at skeletal pixels) against the
    current `2·area/perimeter` satin-vs-fill call, on the fixture logo and all
-   37 `scratch_corpus/` files — zero engine change, zero golden impact. M1
-   adds `digitizer_core/shapefield.py` (`ShapeField`: mask, skeleton, exact
-   EDT, scale, origin), hoisting one `medial_axis(rng=0)` so skeleton and DT
-   are computed together, behind `cfg.extra["shapefield"]` defaulting to
-   today's path — **byte-identical output is a hard requirement**. ~3 days
-   combined, both desk-safe. Rationale: `stage7_sequence.py:97` makes the
-   satin/fill call from `2·area/perimeter` (a statistic the source patent
-   warns against — it satins a 20mm disc under a 5mm cap once the edge is
-   serrated) *before* the DT even exists in `stage6_satin.py`. Steps 5+ all
-   lean harder on that classifier than anything shipped so far. Full
+   37 `scratch_corpus/` files — zero engine change, zero golden impact.
+   **The instrument existed already (2026-08-02, `70a14e8`) but had never
+   been run to completion — done 2026-08-04, unit-fixture + real-art +
+   timing + taper legs measured and written up
+   (`docs/superpowers/plans/2026-08-04-m0-shape-lens-measurement.md`). The
+   37-file corpus leg is still blocked** — `scratch_corpus/` is gitignored
+   and local-only, empty in this remote checkout; Kent needs to run
+   `shape_lens.py corpus scratch_corpus/` locally and hand back the output
+   before M0 fully closes per the architecture doc's original spec. Key
+   finding so far: the shipped rule sews the SAME shape (`logo_alpha.png` vs
+   `logo_whitebg.png`, same design, different file encoding) as satin on one
+   file and fill on the other, purely from antialiasing noise landing
+   `2*area/perimeter` on opposite sides of the 5.0mm cap — every DT arm
+   agrees "fill" on both. M1 adds `digitizer_core/shapefield.py`
+   (`ShapeField`: mask, skeleton, exact EDT, scale, origin), hoisting one
+   `medial_axis(rng=0)` so skeleton and DT are computed together, behind
+   `cfg.extra["shapefield"]` defaulting to today's path — **byte-identical
+   output is a hard requirement**. Not started. ~3 days combined, both
+   desk-safe. Rationale: `stage7_sequence.py:97` makes the satin/fill call
+   from `2·area/perimeter` (a statistic the source patent warns against —
+   it satins a 20mm disc under a 5mm cap once the edge is serrated) *before*
+   the DT even exists in `stage6_satin.py`. Steps 5+ all lean harder on that
+   classifier than anything shipped so far. Full
    architecture: `docs/dt-first-architecture-2026-08-01.md` §2 and
    `docs/masters-teardown-2026-08-01.md`.
 3. **Photo-digitizing plan steps 5+** (`docs/photo-digitizing-plan-2026-07-31.md`)
@@ -270,19 +294,42 @@ don't push for it.
   every existing EMB-Bot DST is affected. Fixing it means a migration path
   for old files. See `dst-codec-axis-discrepancy` in Kent's memory and
   `docs/dst-axis-verdict-2026-07-31.md`.
-- **Gradient-class designs fragment before blend treatment, and enclosed
-  white design elements silently drop as holes.** Found 2026-08-03 on a
-  real gradient logo run through Studio: `gradient` class still segments
-  via plain k-means (23 regions on the repro fixture) before blend
-  treatment, so each fragment picks its own independent fill angle instead
-  of one shared gradient direction — a patchwork, not a smooth ramp.
-  Separately, `BACKGROUND_ENCLOSED` drops enclosed white icon linework as
-  a hole even when it survives stage 1's background detection intact —
-  general to the whole pipeline, not classifier-specific, just newly
-  customer-visible on exactly the art the gradient tier targets. Repro
-  fixture: `digitizer/testdata/photo/repro_gradient_white_icon.png`. Full
-  diagnosis + fix directions:
+- **Gradient-class designs fragment before blend treatment** — **FIXED
+  2026-08-03**, same-day follow-up session. `gradient` class still segments
+  via plain k-means (23 regions on the repro fixture, unchanged), but every
+  fragment now sews its fill rows at one shared angle
+  (`SourcePixels.design_row_angle_deg`, `stage6_blend.
+  detect_design_ramp_angle`) instead of each independently computing its
+  own — the "patchwork of differently angled wedges" is closed. Root cause
+  was narrower than first suspected: all 23 fragments were hitting
+  `blend_fill`'s plain-tatami FALLBACK (post-quantize color bands are
+  already near-uniform, so per-fragment ramp detection rarely fires), and
+  that fallback's hardcoded `angle_deg=None` was the actual bug. Also:
+  fitting lightness alone (as `detect_ramp` does per-region) misses the
+  repro fixture's ramp entirely (r2 0.003) because it's a hue rotation, not
+  a lightness slope — the design-wide detector fits L/a/b independently and
+  takes whichever channel carries it. Fragment count and radial-ramp angle
+  sharing are explicit non-goals, left open. Full writeup: the plan doc's
+  "Defect 1 update" section.
+- **`BACKGROUND_ENCLOSED` drops enclosed white icon linework as a hole**
+  even when it survives stage 1's background detection intact — still
+  open, root-caused this same session. Corrected location:
+  `stage1_prep.py::prep`'s no-alpha color-heuristic branch (`enclosed =
+  close & ~border_bg`, folded into `bg` before `fg`), NOT
+  `stage3_segment.py` as first suspected — enclosed pixels never reach
+  stage 3, or vectorization, or ever get a `shape_id`. That means the
+  warning's own "toggle it back on in review" claim is currently **false**:
+  there's no shape for a review edit to name. General to the whole
+  pipeline, not classifier-specific, just newly customer-visible on exactly
+  the art the gradient tier targets. A real fix is a cross-cutting,
+  multi-file feature (stage 1 through the service/Studio round-trip) on the
+  scale of a DT-first M0/M1 slice, not a small next step — a full design
+  pass exists (2026-08-04), not built. Repro fixture:
+  `digitizer/testdata/photo/repro_gradient_white_icon.png`. Original
+  diagnosis:
   `docs/superpowers/plans/2026-08-03-gradient-tier-fragmentation-and-enclosed-white-defects.md`.
+  Buildable design:
+  `docs/superpowers/plans/2026-08-04-enclosed-background-restore-design.md`.
 
 ## Running things
 
@@ -295,9 +342,22 @@ cd app && npm install && npm run dev     # Studio dev server
 cd app && npm test          # Studio tests (vitest) — 321/321
 node tools/build-embf.mjs   # rebuild the binary font library (see section above)
 
-cd digitizer && .venv/Scripts/python -m pytest -q   # Python digitizer tests -- 402/402 (~3 min)
+cd digitizer && .venv/Scripts/python -m pytest -q   # Python digitizer tests -- 404/407 (~3-4 min)
 cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0.1:8721
 ```
+
+**404/407, not 402/402** as of the gradient angle-fragmentation fix's
+follow-up session (adds 4 tests, net +2 vs. the prior 402/402 baseline).
+The 3 failures — `test_flat_lane_byte_identical.py::…[logo_alpha.png]`,
+`test_pushcomp.py::…[logo_whitebg.png-towel]`, `test_stage2_photo_segment.py
+::…[logo_alpha.png]` — are confirmed **pre-existing on `main`**, reproduced
+by stashing this session's changes and re-running: all three are
+byte-identical/golden-hash assertions off by a handful of stitches/bytes in
+THIS container, unrelated to the gradient work (not investigated further —
+likely a numpy/opencv/shapely point-version difference between this
+environment and whatever machine the golden was pinned on, but that's a
+guess, not confirmed). Worth a look before trusting "402/402" as this
+environment's steady state again.
 
 The standalone rebuild step (`node tools/bundle.mjs`) is RETIRED along with
 `EMB-Bot-standalone.html` — do not rebuild it as features land.
@@ -354,20 +414,15 @@ and controllable to the user.
   worktree, not `subagent-driven-development`) — see the spec/plan above for
   that instead.
 
-## Known limitations (all intentional, all explained to Kent, all accepted)
+## Known limitations
 
-- Photographic/gradient art can't reach pro quality via auto-digitizing —
-  see "the one rule" above.
-- Small stacked text (< ~4mm cap height at final size) drops below what
-  thread can hold — physics, not a bug. Size up or drop small lines.
-- PES output is best-effort (reverse-engineered format); verify on-machine.
-- Fabric presets are starting points, not guarantees — Kent test-stitches
-  and reports back if one needs tuning.
-- Rotation doesn't re-trigger hoop auto-fit — a design that auto-fit before
-  a non-180° rotation can visually overflow the hoop. Documented, not yet
-  fixed.
-- `±30°` adjacent-same-color contrast heuristic (roadmap item) — not built.
-- Condensed/expanded width and mixed per-letter size — deferred, see above.
+**See [`MASTER_SCOPE.md`](MASTER_SCOPE.md) for current status, confidence,
+and open issues per capability area** — that's the live dashboard now; this
+section used to duplicate it and the two drifted, so it doesn't try to be
+exhaustive here anymore. The one exception: the *design decision* that
+photographic/gradient art can't reach pro quality via auto-digitizing is
+architectural, not a status snapshot — see "the one rule" above, which stays
+here since it explains *why*, not *what's currently true*.
 
 ## Working conventions this project has settled on (don't relitigate)
 

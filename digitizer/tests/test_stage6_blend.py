@@ -26,7 +26,12 @@ from shapely.geometry import Point, Polygon
 from digitizer_core import machine, stitches
 from digitizer_core.config import PipelineConfig
 from digitizer_core.regions import Region
-from digitizer_core.stage6_blend import SourcePixels, blend_fill, detect_ramp
+from digitizer_core.stage6_blend import (
+    SourcePixels,
+    blend_fill,
+    detect_design_ramp_angle,
+    detect_ramp,
+)
 from digitizer_core.stage6_fill import principal_angle_deg, stitch_shape
 from digitizer_core.threads import CHART
 
@@ -216,6 +221,41 @@ def test_blend_geometry_matches_the_plan_contract(region_factory, source_factory
         )
 
 
+def test_blend_true_ramp_branch_honors_the_shared_design_angle():
+    """`test_blend_geometry_matches_the_plan_contract` above never sets
+    `design_row_angle_deg` on either fixture, so it never exercises
+    `blend_fill`'s OTHER branch — this region's own ramp genuinely detected
+    (`model.kind == "linear"`) AND a shared design angle set — leaving that
+    combination unguarded by any regression test (a gap an independent
+    review of the 2026-08-03 fix flagged). Forces a design angle that
+    visibly differs from `_linear_region`'s own `principal_angle_deg` and
+    checks every layer's rows actually land there instead."""
+    region = _linear_region()
+    source = _linear_source()
+    forced_angle = 10.0
+    natural_angle = principal_angle_deg(region.polygon)
+    assert _angle_diff_deg(natural_angle, forced_angle) > 5.0, (
+        "test fixture's natural angle must differ from the forced one to be a real check"
+    )
+    source.design_row_angle_deg = forced_angle
+    cfg = PipelineConfig()
+
+    assert detect_ramp(region.polygon, source) is not None, (
+        "this test exists specifically to exercise the true-ramp branch"
+    )
+    runs, report = blend_fill(region, source, cfg)
+    assert runs
+    assert report["empty"] is False
+
+    for sid, layer_runs in _layers_of(runs).items():
+        gaps = _row_spacings_mm(layer_runs, forced_angle)
+        assert gaps, f"{sid}: no distinct rows found at the forced angle"
+        measured = _dominant_angle_deg(layer_runs)
+        assert _angle_diff_deg(measured, forced_angle) <= 1.0, (
+            f"{sid}: angle {measured} did not honor the forced design angle {forced_angle}"
+        )
+
+
 def test_blend_falls_back_to_ordinary_tatami_on_speckle():
     """Random noise has no structured residual at all — ramp detection must
     refuse it and this must sew exactly like `stage6_fill.stitch_shape`
@@ -239,6 +279,135 @@ def test_blend_falls_back_to_ordinary_tatami_on_speckle():
     assert [r.points for r in runs] == [r.points for r in expected]
     assert all(r.shape_id == region.shape_id for r in runs)
     assert report == expected_report
+
+
+def test_blend_fallback_uses_the_shared_design_angle_when_set():
+    """The 2026-08-03 angle-fragmentation fix, at the unit level: a fragment
+    whose own `detect_ramp` declines (the common case — see
+    `blend_fill`'s own comment on this branch) must sew at
+    `SourcePixels.design_row_angle_deg` when the caller set one, not at its
+    own `principal_angle_deg`. Same noise fixture as the test above (still a
+    real fallback, `detect_ramp` still declines it) — only the forced angle
+    changes."""
+    rng = np.random.default_rng(3)
+    poly = Polygon([(0, 0), (30, 0), (30, 20), (0, 20)])
+    noise = rng.integers(0, 256, size=(120, 160, 3), dtype=np.uint8)
+    source = SourcePixels(rgb=noise, px_per_mm=4.0, origin_px=(80.0, 60.0),
+                          design_row_angle_deg=33.0)
+    region = Region(shape_id="Snoise", polygon=poly, thread_index=0,
+                    thread_number=CHART[0].number, area_mm2=poly.area)
+    assert detect_ramp(poly, source) is None
+
+    cfg = PipelineConfig()
+    runs, report = blend_fill(region, source, cfg)
+
+    expected, expected_report = stitch_shape(
+        poly, region.shape_id, angle_deg=33.0, row_mm=machine.FILL_ROW_MM,
+        stitch_mm=machine.FILL_STITCH_MM, underlay_style="none",
+        trim_at_mm=machine.TRIM_AT_MM)
+    assert [r.points for r in runs] == [r.points for r in expected]
+    assert report == expected_report
+    # And NOT what the untouched default (no shared angle) would have sewn —
+    # otherwise this test could pass even if the angle were silently ignored.
+    unforced, _ = stitch_shape(
+        poly, region.shape_id, angle_deg=None, row_mm=machine.FILL_ROW_MM,
+        stitch_mm=machine.FILL_STITCH_MM, underlay_style="none",
+        trim_at_mm=machine.TRIM_AT_MM)
+    assert [r.points for r in runs] != [r.points for r in unforced]
+
+
+def test_detect_design_ramp_angle_finds_the_hue_carried_diagonal():
+    """The confirmed 2026-08-03 repro (`repro_gradient_white_icon.png`): a
+    real diagonal purple -> pink -> orange gradient whose lightness (L*)
+    barely correlates with position at all (measured r2 0.003) because the
+    ramp is a hue rotation, not a lightness slope — the exact case
+    `detect_ramp`'s single-channel (L-only) fit would miss. The b* channel
+    carries it (measured r2 0.45, direction ~45 degrees off-axis); this must
+    find that and return the perpendicular row angle, not decline."""
+    from digitizer_core.stage1_prep import prep
+
+    p = prep(str(PHOTO_DIR / "repro_gradient_white_icon.png"), PipelineConfig(target_width_mm=90.0))
+    angle = detect_design_ramp_angle(p)
+    assert angle is not None
+    # Expected row angle: perpendicular to the ~45 degree diagonal, i.e. also
+    # ~45 degrees off-axis (a line's perpendicular here lands on the other
+    # 45-degree diagonal, which is the same absolute angle mod 90 for a
+    # perfect diagonal) — checked as a LINE (mod 180), with real margin.
+    assert _angle_diff_deg(angle, 135.0) <= 5.0, angle
+
+
+def test_detect_design_ramp_angle_declines_on_a_radial_design():
+    """A radial ramp has no single line direction — the whole-design fit
+    must recognize that (radial explains the color far better than any
+    linear direction does) and decline, leaving every fragment's angle to
+    fall back to its own per-region default, exactly as before this fix."""
+    from digitizer_core.stage1_prep import prep
+
+    p = prep(str(PHOTO_DIR / "gradient_ramp_radial.png"), PipelineConfig(target_width_mm=90.0))
+    assert detect_design_ramp_angle(p) is None
+
+
+def test_detect_design_ramp_angle_declines_on_pure_noise(tmp_path):
+    """Random per-pixel color has no coherent spatial ramp in any channel —
+    this must decline rather than manufacture a direction out of noise.
+
+    Not tested here: an ordinary FLAT multi-color logo (a handful of solid
+    blobs at fixed positions) can spuriously clear the R2 gate on one Lab
+    channel by the same small-N-regression coincidence a per-region
+    `detect_ramp` call is already exposed to (measured: `logo_whitebg.png`'s
+    a* channel fits position at r2 0.61). This is not a new risk this fix
+    introduces — both detectors share the one guard that actually matters in
+    production: `pipeline.run_stages` only ever calls either of them when
+    stage 0 has classified the whole design `gradient` in the first place.
+    """
+    from digitizer_core.stage1_prep import prep
+
+    rng = np.random.default_rng(7)
+    # A solid border frame so `prep`'s background flood has a clear color to
+    # key off; noise fills the interior, the part this test actually probes.
+    noise = rng.integers(0, 256, size=(200, 200, 3), dtype=np.uint8)
+    noise[:10, :] = noise[-10:, :] = noise[:, :10] = noise[:, -10:] = 255
+    path = tmp_path / "noise.png"
+    cv2.imwrite(str(path), cv2.cvtColor(noise, cv2.COLOR_RGB2BGR))
+    p = prep(str(path), PipelineConfig(target_width_mm=20.0))
+    assert detect_design_ramp_angle(p) is None
+
+
+def test_gradient_fragments_share_one_fill_angle_end_to_end():
+    """The actual reported defect, reproduced and closed end to end: on the
+    real repro fixture, stage 2's plain k-means still cuts the gradient into
+    many independent-color regions (unaffected by this fix — that is a
+    separate, still-open scope gap, see `docs/superpowers/plans/
+    2026-08-03-gradient-tier-fragmentation-and-enclosed-white-defects.md`),
+    but every one of those fragments must now sew its fill rows at the SAME
+    angle instead of each picking its own — the "patchwork of differently
+    angled wedges" Kent's real-world test surfaced. Geometry is measured
+    from emitted stitches (see module docstring), not from any parameter.
+    """
+    from digitizer_core.pipeline import plan_stitches, run_stages
+
+    cfg = PipelineConfig(target_width_mm=90.0)
+    result = run_stages(str(PHOTO_DIR / "repro_gradient_white_icon.png"), cfg)
+    assert len(result.regions) > 1, "the fragmentation this fix works around must still repro"
+    assert result.source_pixels is not None
+    assert result.source_pixels.design_row_angle_deg is not None
+
+    plan = plan_stitches(result, cfg)
+    by_shape: dict[str, list] = {}
+    for block in plan.blocks:
+        for run in block.runs:
+            if run.kind != stitches.FILL:
+                continue
+            base = run.shape_id.split("-blend")[0]
+            by_shape.setdefault(base, []).append(run)
+
+    assert len(by_shape) >= 2, "need at least two fragments to check angle agreement"
+    angles = [_dominant_angle_deg(runs) for runs in by_shape.values()]
+    base_angle = angles[0]
+    for a in angles[1:]:
+        assert _angle_diff_deg(a, base_angle) <= 2.0, (
+            f"fragment angle {a} deviates from {base_angle} — the patchwork defect is back"
+        )
 
 
 def test_blend_determinism():

@@ -3,3 +3,4 @@ node_modules/
 scratch_*
 scratch_corpus/
 .claude/worktrees/
+.playwright-mcp/
