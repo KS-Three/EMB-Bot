@@ -33,11 +33,19 @@ Pipeline, in order (the plan's 7-step contract):
   5. Face-local threshold drop: `_face_local_threshold` — documented no-op
      for this slice (step 3's face priors don't exist yet; see the plan
      doc's "Deviations").
-  6. Thread snapping: each surviving region's mean Lab color -> nearest
-     thread, via the same `chart.nearest_index` call `stage2_quantize`
-     makes.
-  7. `Quant` output, plus the info-level `PHOTO_SEGMENT_REGION_COUNT`
-     warning.
+  6. Palette selection: chart-restricted weighted k-medoids over the
+     surviving regions' mean Lab colors (`palette.select_palette` —
+     technique-menu row 13, build-order step 7), region weight = area ×
+     class multiplier via `palette.region_weight`. Region CLASSES (eyes/
+     skin/subject/background) come from step 3's face priors, which are
+     not built — `_region_classes` is this stage's documented no-op seam
+     for them, so every multiplier is 1.0 (plain area) today; see
+     `palette.py`'s THE CLASS-WEIGHT SEAM. Before step 7 this line was a
+     per-region `chart.nearest_index` snap, which scattered a multi-shade
+     ramp across near-duplicate spools from different families — the
+     measured before/after lives in `palette.py`'s docstring.
+  7. `Quant` output, plus the info-level `PHOTO_SEGMENT_REGION_COUNT` and
+     `PHOTO_PALETTE_SELECTED` warnings.
 
 **Import path note**: `skimage.future.graph` (the source research doc's
 path) does not exist in this venv's scikit-image (0.26.0) — `RAG` /
@@ -55,11 +63,12 @@ from skimage.segmentation import slic
 from skimage import graph as skgraph
 
 from .config import PipelineConfig
+from .palette import region_weight, select_palette
 from .stage1_prep import Prep
 from .stage2_quantize import Quant
 from .stage3_segment import RegionMask, resolve_small_regions
 from .threads import chart_for, rgb_to_lab
-from .warnings_codes import PHOTO_SEGMENT_REGION_COUNT, warn
+from .warnings_codes import PHOTO_PALETTE_SELECTED, PHOTO_SEGMENT_REGION_COUNT, warn
 
 # --- Step 1: SLIC oversegmentation -------------------------------------------
 #
@@ -114,6 +123,21 @@ def _face_local_threshold(face_regions) -> None:
     (always `None` today) so wiring a real value in later is additive, not a
     rewrite of this module's call sites."""
     return None
+
+
+def _region_classes(kept: list[RegionMask], face_regions) -> list[str | None]:
+    """Documented no-op seam (step 7, same deviation family as
+    `_face_local_threshold` above): mapping each surviving region to the
+    palette weight class it belongs to — "eyes" / "skin" / "subject" /
+    "background", `palette.CLASS_MULTIPLIERS`' vocabulary — needs step 3's
+    face priors (rembg subject mask + YuNet landmarks), which are not
+    built. Until they are, every region is class `None` and
+    `palette.region_weight` degrades to plain area, by that module's own
+    documented contract. When step 3 lands, this function is where its
+    masks turn into per-region class labels; nothing else in this stage
+    changes. `face_regions` is accepted (always `None` today) for the same
+    additive-wiring reason `_face_local_threshold` accepts it."""
+    return [None] * len(kept)
 
 
 def segment(p: Prep, cfg: PipelineConfig, face_regions=None) -> Quant:
@@ -194,14 +218,30 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None) -> Quant:
 
     kept, floor_warnings = resolve_small_regions(regions, cfg, p.px_per_mm)
 
-    # --- 6. Thread snapping ---------------------------------------------------
+    # --- 6. Palette selection (chart-restricted weighted k-medoids) -----------
     # (Step 5, face-local threshold, already ran as a no-op above.)
+    # Was a per-region `chart.nearest_index` snap before step 7; now the
+    # whole region set selects a bounded palette TOGETHER — a fur ramp's
+    # regions share consolidated family shades instead of each grabbing its
+    # own near-duplicate spool. Weights are area × class multiplier; classes
+    # are the `_region_classes` seam (all None until step 3's face priors),
+    # so today weight = plain area.
     chart = chart_for(cfg)
     region_labs = [
         rgb_to_lab(p.rgb[r.mask].reshape(-1, 3).mean(axis=0, keepdims=True))[0]
         for r in kept
     ]
-    region_spools = [chart.nearest_index(lab) for lab in region_labs]
+    classes = _region_classes(kept, face_regions)
+    weights = [
+        region_weight(int(r.mask.sum()), c) for r, c in zip(kept, classes)
+    ]
+    selection = select_palette(
+        np.array(region_labs, np.float64).reshape(-1, 3),
+        np.array(weights, np.float64),
+        chart,
+        max_k=cfg.max_colors,
+    )
+    region_spools = selection.region_spools
 
     # Same convention `stage2_quantize.quantize` ends on: dedupe regions
     # that snapped to the same spool into one final label, ordered by
@@ -231,6 +271,18 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None) -> Quant:
             count=len(thread_indices),
             slic_segments=slic_count,
             merged_regions=merged_count,
+        )
+    )
+    warnings.append(
+        warn(
+            PHOTO_PALETTE_SELECTED,
+            f"Palette selected {len(thread_indices)} thread"
+            f"{'s' if len(thread_indices) != 1 else ''} "
+            f"for {len(kept)} region{'s' if len(kept) != 1 else ''} "
+            "(chart-restricted weighted k-medoids).",
+            colors=len(thread_indices),
+            regions=len(kept),
+            max_excess_de00=round(selection.max_excess_de00, 3),
         )
     )
 

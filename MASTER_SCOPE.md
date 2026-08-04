@@ -217,7 +217,18 @@ and its multi-colour layered follow-up (PR #25, decomposes a region into
 3–5 chart shades via `stage6_blend`'s own shade-selection machinery and
 traces one streamline set per shade, dark-to-light). Row 10 was the last
 one this doc was still tracking as open; all of rows 6/8/9/10 are now
-built.
+built. Row 13 (chart-restricted weighted k-medoids palette selection,
+build-order step 7) landed after that pass on the `palette-kmedoids`
+branch: `digitizer_core/palette.py` replaces the photo path's per-region
+nearest-thread snap (`stage2_photo_segment` step 6) with a deterministic
+PAM selection over the config's thread chart, ΔE00 objective, region
+weight = area × class multiplier — measured on the committed `fur_ramp.png`
+fixture: 8 ramp regions that nearest-snap scattered across 7 near-duplicate
+spools now resolve to 5 one-family browns, max excess 2.34 ΔE00. The
+eyes/skin/subject/background multipliers are wired and test-proven but run
+at 1.0 (plain area) until plan step 3's face priors exist — the seam is
+documented in that module's docstring. Flat/gradient lanes untouched
+(byte-identical goldens re-verified).
 
 **Confidence: Low** beyond flat spot-color art. Flat-logo digitizing (both
 implementations) is Medium — **267/267** JS tests and **564/567** Python
