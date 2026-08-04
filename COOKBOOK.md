@@ -394,20 +394,28 @@ don't push for it.
 ## Running things
 
 All three counts below were re-run and verified 2026-08-04 (latest pass, on
-`origin/main` post PR #28 — all of #16–#28 merged) — if one comes back
-lower, something regressed; don't assume the doc drifted.
+`origin/main` at `354f075` — CI's own green run on this exact commit
+confirms these numbers outside this environment too, not just locally) —
+if one comes back lower, something regressed; don't assume the doc drifted.
+
+**CI now exists.** `.github/workflows/python-package-conda.yml` (PR #37
+rewrote Kent's initial stock conda template to run the three commands
+below for real) runs on every push and pull request — three jobs, engine /
+studio / digitizer, the digitizer job deselecting the same 3 known
+container goldens called out below. Every PR now needs its Actions run
+green in addition to a local pass before merging.
 
 ```bash
 node --test                 # engine tests (root) — 267/267
 cd app && npm install && npm run dev     # Studio dev server
-cd app && npm test          # Studio tests (vitest) — 344/344 (24 files)
+cd app && npm test          # Studio tests (vitest) — 348/348 (25 files)
 node tools/build-embf.mjs   # rebuild the binary font library (see section above)
 
-cd digitizer && .venv/Scripts/python -m pytest -q   # Python digitizer tests -- 564/567 (~5 min)
+cd digitizer && .venv/Scripts/python -m pytest -q   # Python digitizer tests -- 654/658 (~7-11 min)
 cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0.1:8721
 ```
 
-**564/567, not 404/407.** The 3 failures are all **pre-existing,
+**654/658, not 404/407.** The 3 failures are all **pre-existing,
 container-environment** byte-identical/golden-hash mismatches this note has
 flagged since 2026-08-03 (`test_flat_lane_byte_identical.py::…
 [logo_alpha.png]`, `test_pushcomp.py::…[logo_whitebg.png-towel]`,
