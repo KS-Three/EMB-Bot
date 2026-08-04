@@ -154,8 +154,13 @@ def _link_cover(runs: list[StitchRun], regions: list[PlannedRegion]):
 
     `covered_by` is still a future colour's sewing POLYGON, not its thread —
     that colour has not been planned yet, so its real path cannot be known
-    here. That is a smaller, pre-existing approximation (the same one the
-    pipeline already makes for `visible`), not the defect this rebuild fixes.
+    here. What CAN be known is how far short of its polygon that thread will
+    stop, because every tier's shortfall has been measured: so each future
+    polygon is eroded by LINK_COVER_INSET_MM (see machine.py for the
+    measurement) before it may bury anything. Geometry the erosion consumes
+    entirely — a band thinner than twice the inset, a run-tier sliver whose
+    outline run covers no interior — promises nothing, and a link it would
+    have carried becomes a jump instead: the cheap direction to be wrong in.
     """
     laid = [LineString(r.points) for r in runs
             if r.kind != stitches.TRAVEL and len(r.points) >= 2]
@@ -165,7 +170,9 @@ def _link_cover(runs: list[StitchRun], regions: list[PlannedRegion]):
         c = p.covered_by
         if c is not None and not c.is_empty and not any(c is s for s in seen):
             seen.append(c)
-    parts.extend(seen)
+            g = c.buffer(-machine.LINK_COVER_INSET_MM)
+            if not g.is_empty:
+                parts.append(g)
     parts = [g for g in parts if g is not None and not g.is_empty]
     if not parts:
         return None, []
@@ -734,9 +741,9 @@ def sequence(
         warnings.append(
             warn(
                 CONTOUR_RING_UNREACHABLE,
-                f"{starved} shape{'s' if starved != 1 else ''} had contour rings too "
-                "short to sew, leaving a visible patch unfilled — worth a look on the "
-                "review screen.",
+                f"{starved} shape{'s' if starved != 1 else ''} left a patch of bare "
+                "fabric wider than a contour ring — the offsets could not reach it — "
+                "worth a look on the review screen.",
                 count=starved,
                 rings=rings_skipped,
             )

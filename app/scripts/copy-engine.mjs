@@ -29,6 +29,18 @@ for (const f of readdirSync(join(srcDir, "fonts", "bin")))
     copyFileSync(join(srcDir, "fonts", "bin", f), join(fontsOut, "bin", f));
 console.log("copied font manifest + binaries to", fontsOut);
 
+// License texts -> public/fonts/<key>.LICENSE.txt (served at
+// /fonts/<key>.LICENSE.txt, linked from the credits dialog).
+// font-license-audit-2026-07-31.md item 6: the OFL requires the full license
+// text + copyright notice to accompany every copy as (among other options)
+// stand-alone text files — before this, zero license files shipped in the
+// built app. Stale files are deleted, same reasoning as the previews below.
+const srcLic = new Set(readdirSync(join(srcDir, "fonts")).filter((f) => f.endsWith(".LICENSE.txt")));
+for (const f of readdirSync(fontsOut))
+  if (f.endsWith(".LICENSE.txt") && !srcLic.has(f)) unlinkSync(join(fontsOut, f));
+for (const f of srcLic) copyFileSync(join(srcDir, "fonts", f), join(fontsOut, f));
+console.log("copied", srcLic.size, "font license files");
+
 // Preview PNGs -> public/fonts/previews (served at /fonts/previews/*).
 // Stale files are DELETED from the dest, not just overwritten: a demoted
 // font's preview lingering in a dirty local tree is the same trap as the

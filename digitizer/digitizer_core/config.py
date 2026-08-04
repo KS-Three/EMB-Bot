@@ -116,39 +116,53 @@ class PipelineConfig:
     #
     # Satin classification runs first either way — a ribbon is still a ribbon.
     #
-    # DO NOT TURN "contour" ON WITHOUT READING THIS. An adversarial pass on
-    # 2026-08-02 confirmed three defects, none of which any shipped test can
-    # see, and all of which survive at this commit. It stays here because
-    # "tatami" is byte-identical to the engine that has always shipped, so the
-    # tier costs nothing while it is off — not because it is ready.
+    # READ THIS BEFORE TURNING "contour" ON. An adversarial pass on 2026-08-02
+    # confirmed three defects no shipped test could see. As of 2026-08-04 the
+    # instrument that pass mandated exists and two of the three are fixed;
+    # the tier still ships off because "tatami" is byte-identical to the
+    # engine that has always shipped and contour's remaining cost (defect 1)
+    # is real, measured, and un-sew-out-gated — not because nothing changed.
     #
-    #  1. A BARE CORE INSIDE ORDINARY SHAPES. `_rings` stops when `_offset`
-    #     returns nothing, and the fabric inside the last surviving ring is
-    #     never a ring and is never charged to `skipped_area_mm2`. On this
-    #     repo's own primary fixture at its shipped width, logo_whitebg's
-    #     Sb253ebba leaves a 0.640 mm bare radius against tatami's 0.090 — 7x
-    #     — and a synthetic 10-point star leaves a 2.94 mm bare disc while
-    #     reporting `skipped_area_mm2` 0.21 and `starved` 0. Mechanism:
-    #     `buffer(-d, join_style=2)` annihilates a notched interior, so a star
-    #     of inradius 10.00 exhausts its offsets at 5.60 mm of inset.
-    #  2. `starved` IS MISCALIBRATED IN BOTH DIRECTIONS — silent on that
-    #     1.47 mm bare radius, and firing on 0.51 mm elsewhere; 0 of 122 zoo
-    #     shapes trip it. The gate is an AREA fraction and the thing that
-    #     matters is the widest bare SPOT, which is what the fix should
-    #     measure.
-    #  3. THE RING-TO-RING TRANSITION CHORD IS NEVER CONTAINMENT-TESTED.
-    #     `_entry_arc` deliberately lengthens the hop to clear MIN_STITCH_MM
-    #     (law 44) and `_link` checks only the chord length and the gap, never
-    #     `room.covers`. 23 emitted stitches leave the polygon over a 124-shape
-    #     zoo; worst measured 1.10 mm outside with both endpoints inside.
-    #     Underlay is ~3x worse exposed than fill. The shipped
-    #     `test_every_stitch_stays_inside_the_shape` FAILS VERBATIM on a 15 mm
-    #     disc with a 0.3 mm hole, and on a 0.45 mm neck. The six committed
-    #     fixtures are green only because none of them has a hole under ~1 mm.
+    # THE INSTRUMENT (built first, as mandated): `barecircle.py` measures the
+    # widest circle of bare fabric inscribable in a shape further than half a
+    # thread width from any emitted stitch — rasterized exact-EDT, trusting
+    # only the polygon and the runs, never this tier's own bookkeeping.
+    # Validated against the pass's own figures (tests/test_barecircle.py):
+    # Sb253ebba contour 0.640 cited / 0.644 measured, tatami 0.090 / 0.094;
+    # the 10-point star's mitred-offset annihilation (offsets dead at
+    # ~5.6 mm of inset against an inradius of 10.00, ledger charging ~0.2)
+    # reproduces. ONE figure did not survive re-measurement as written: the
+    # star's "2.94 mm bare disc" is a DIAMETER — every reconstruction
+    # measures 1.28-1.43 mm bare RADIUS, and defect 2's own "silent on that
+    # 1.47 mm bare radius" (= 2.94/2) only coheres under that reading.
     #
-    # The first thing to build is the widest-inscribed-bare-circle instrument
-    # as the DEFINITION of `starved`; it reproduces this module's own numbers
-    # on the fixtures the commit cites and disagrees everywhere else.
+    #  1. A BARE CORE INSIDE ORDINARY SHAPES — STILL OPEN, NOW MEASURED.
+    #     `_rings` stops when the mitred `_offset` returns nothing, and the
+    #     fabric inside the last ring is never charged to `skipped_area_mm2`.
+    #     Every healthy shape leaves a 0.86 mm structural centre dot
+    #     (machine.CONTOUR_BARE_CORE_MM — ~10x tatami's 0.090); notched
+    #     interiors can be annihilated wholesale (the star's 1.33 mm core).
+    #     The gate now CATCHES the pathological cores and the report carries
+    #     `bare_radius_mm` per shape, but shrinking the structural dot itself
+    #     (a finishing pass? tighter terminal offsets?) is unbuilt and is the
+    #     reason this tier is not default-quality yet.
+    #  2. `starved` MISCALIBRATION — FIXED 2026-08-04, both directions.
+    #     The area-fraction gate is gone; `starved` IS the instrument's
+    #     measurement, fired when the widest bare spot beats
+    #     `barecircle.starved_threshold_mm` (the measured structural dot plus
+    #     half a ring spacing — 1.07 mm at shipped density; derivation at the
+    #     function). The old gate's silence on the star's 1.47 mm class now
+    #     fires; its false alarms — whitebg's Sf5200f3f at 0.499 mm bare (the
+    #     cited "firing on 0.51") and Sb253ebba at 0.644, both under a
+    #     healthy disc's own dot — are now silent. Proven in both directions
+    #     in tests/test_barecircle.py and tests/test_contour.py.
+    #  3. TRANSITION-CHORD CONTAINMENT — FIXED 2026-08-04. `_link` now
+    #     containment-tests the ring-to-ring crossing chord and banks the
+    #     path (travel, not an escaping stitch) when it fails. The cited
+    #     15 mm disc with a 0.3 mm hole reproduced (one transition 0.255 mm
+    #     outside pre-fix) and is the regression pin; the cited 0.45 mm neck
+    #     could not be reconstructed from its description — four neck
+    #     geometries tried, none escapes even pre-fix.
     fill_technique: str = "tatami"
     # None = fill_row_mm (or the machine default). Contour rings are the same
     # 0.40 mm apart as tatami rows; this exists so the ring tier can be opened
@@ -356,7 +370,7 @@ class PipelineConfig:
     # link makes it a jump, and the measured trims/1k does not move. That is
     # the cheap direction to be wrong in, and a float on fleece is not.
     #
-    # UPDATE 2026-08-03: the first of the three things below is done.
+    # UPDATE 2026-08-03: the first of the three preconditions is done.
     # `_link_cover` now builds the already-laid half of its cover from `runs`
     # — the block's real emitted stitch centrelines, buffered to their real
     # thread width — instead of from `p.polygon`. Measured on the committed
@@ -368,13 +382,36 @@ class PipelineConfig:
     # `tests/test_chaining.py::test_chaining_adds_no_bare_fabric_exposure_on_
     # the_committed_fixture`.
     #
+    # UPDATE 2026-08-04: the second is done too. `covered_by` — the half of
+    # the cover whose stitches do not exist yet at routing time — is now
+    # eroded by LINK_COVER_INSET_MM (0.75 mm, machine.py has the full
+    # derivation table) before it may bury a link. Derived from measurement
+    # on both committed fixtures, real emitted runs vs the artwork polygon
+    # `covered_by` quotes: fill's nearest centreline stops up to 0.223 mm
+    # inside the boundary (thread edge 0.023 mm shy), satin's up to 0.501 mm
+    # (edge 0.301 mm shy — tips stop short, columns fan), and a run-tier
+    # shape covers no interior at all, honest only once eroded away at its
+    # inradius (0.527/0.539 mm measured). Worst measured 0.539 +
+    # LINK_COVER_TOL_MM the cover buffers back on = 0.739, rounded up to
+    # 0.75. Re-measured with chaining ON after the inset (chain_probe, both
+    # committed fixtures): every link the inset disqualifies becomes a jump,
+    # never an exposure, and on these fixtures none needed it — logo_alpha
+    # still links 13 -> 17 and trims 14 -> 10 (st 3312 -> 3292), logo_whitebg
+    # unchanged (chaining adds nothing there, with or without the inset),
+    # chaining's ADDED bare exposure 0.00 mm on both (exp/bare/worst land on
+    # exactly the chain-off floor: 0.7 mm/0.2057 and 0.8 mm/0.2045, stage 6's
+    # own pre-existing in-shape travel). The inset is live, not idle: it
+    # removes 20-32% of each block's future-colour cover area on logo_alpha
+    # and erodes the run-tier sliver out of the cover entirely; the fixtures'
+    # links just never rode the dishonest margin. Pinned by
+    # `tests/test_chaining.py::test_a_sliver_of_a_future_colour_no_longer_
+    # counts_as_cover` (a 1.2 mm band that linked pre-inset must now cut).
+    # What no inset can fix, measured so nobody re-derives it: hairline gaps
+    # between fanned satin crosses persist at any inset (<= 0.127 mm
+    # inscribed radius, <= 0.121 mm beyond the thread edge) — under one
+    # thread width, left to the sew-out below.
+    #
     # Still outstanding, and still why this stays off by default:
-    #   - An inset on `covered_by`, for the layers whose stitches do not exist
-    #     yet. That half of the cover is still a future colour's sewing
-    #     POLYGON — the same approximation this whole fix just proved wrong
-    #     for the block's OWN tiers, just not yet correctable the same way
-    #     (that colour has not been planned when this block's links are
-    #     routed, so there is no real thread to measure it against).
     #   - A sew-out that says at what clearance a needle-down float actually
     #     shows — LINK_COVER_TOL_MM is still a thread spec, not a measurement.
     chain_links: bool = False
