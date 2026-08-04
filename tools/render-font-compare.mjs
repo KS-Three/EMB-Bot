@@ -1,7 +1,7 @@
 // Renders "Kent" at hat scale (55mm) from (a) the original JSON font and
 // (b) the decoded .embf, exports both DSTs, and reports stitch counts.
 // PNGs via tools/render-dst.mjs. Usage:
-//   node tools/render-font-compare.mjs geneva_simple aventurina montecarlo
+//   node tools/render-font-compare.mjs medium_font amitaclo montecarlo
 //
 // Some pictogram/symbol fonts don't have glyphs for every letter of "Kent".
 // For those, pass an alternate sample string with --sample=<key>:<text>

@@ -137,6 +137,21 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
     h, w = rgb.shape[:2]
     bg_outline_px = None
 
+    # A FULLY-opaque alpha channel carries zero background information and
+    # must not be treated as ground truth that "nothing is background" —
+    # measured live 2026-08-04: Studio's DigitizePanel re-encodes every
+    # upload through a canvas, which manufactures an opaque alpha channel
+    # onto RGB art. Routed through the alpha branch, that killed background
+    # detection outright on the enclosed-region repro fixture (bg detected:
+    # False — the white canvas itself would SEW) and silently disabled
+    # BACKGROUND_ENCLOSED for every panel upload. An image whose alpha never
+    # dips below the threshold behaves exactly like its RGB twin instead.
+    # Every committed alpha fixture has real transparency (checked:
+    # logo_alpha / drone_render / enthusiast_logo all carry 300k+ pixels
+    # under 128), so this changes nothing for genuine cutouts.
+    if alpha is not None and not (alpha < 128).any():
+        alpha = None
+
     if alpha is not None:
         bg = alpha < 128
         border_bg = _border_connected(bg)

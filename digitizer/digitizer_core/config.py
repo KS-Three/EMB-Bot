@@ -106,6 +106,41 @@ class PipelineConfig:
     #
     # "tatami"  – straight rows at one angle. THE DEFAULT, and every golden in
     #             the suite is pinned to it.
+    # "scanline_tonal" – the scan-line mono tonal tier (photo plan, technique
+    #             row 8, stage6_scanline): parallel rows across one grain,
+    #             local source-image darkness driving row spacing, penetration
+    #             pitch and zigzag amplitude — the PhotoFlash halftone look.
+    #             Strictly opt-in: setting this is ALSO what makes
+    #             pipeline.run_stages carry source pixels forward for
+    #             non-gradient classes, so the flat lane grows no raster
+    #             payload while the flag is off. A shape the tier sews nothing
+    #             for (all highlight) falls back to tatami, the same
+    #             never-drop-artwork contract contour has.
+    # "meander_tonal" – the meander mono tonal tier (photo plan, technique
+    #             row 9, stage6_meander): ONE continuous non-crossing
+    #             wandering line — an adaptive Hilbert traversal, Velho &
+    #             Gomes 1991 — whose local spacing, penetration pitch and
+    #             zigzag amplitude all follow source-image darkness; the
+    #             Reef/Sfumato look, fabric left bare as the highlight
+    #             value. Same opt-in plumbing, source-pixel gate and
+    #             tatami-on-empty fallback as "scanline_tonal".
+    # "streamline" – the streamline thread-paint tier, first (mono) slice
+    #             (photo plan, technique row 10, stage6_streamline):
+    #             Jobard–Lefer evenly-spaced streamlines traced in the ETF
+    #             direction field (directionfield.py), separation modulated
+    #             by local source-image darkness (highlight sews nothing —
+    #             fabric shows), resampled to 2.5–4 mm run stitches. Regions
+    #             whose field coherence is too low fall back to parallel
+    #             lines at the house angle, per the field's own contract.
+    #             Strictly opt-in: setting this is ALSO what makes
+    #             pipeline.run_stages carry source pixels forward for
+    #             non-gradient classes, so the flat lane grows no raster
+    #             payload while the flag is off. A shape the tier sews
+    #             nothing for (all highlight) falls back to tatami — the
+    #             same never-drop-artwork contract contour has. Multi-color
+    #             dark→light layering is `streamline_mode` below, built as
+    #             the seam documented in stage6_streamline's module
+    #             docstring.
     # "contour" – uniform inward offsets of the outline, sewn inner to outer
     #             (stage6_contour). Rows follow the silhouette instead of
     #             cutting across it, which is the one thing tatami structurally
@@ -164,6 +199,23 @@ class PipelineConfig:
     #     could not be reconstructed from its description — four neck
     #     geometries tried, none escapes even pre-fix.
     fill_technique: str = "tatami"
+    # streamline's own sub-mode — irrelevant (and unread) unless
+    # fill_technique == "streamline".
+    #
+    # "mono"    – THE DEFAULT: one thread, `stage6_streamline`'s first slice,
+    #             d_sep driven by raw source darkness.
+    # "layered" – the multi-color seam: a 3-5 chart-shade decomposition of
+    #             the region's own pixels (`stage6_blend`'s shade-selection
+    #             machinery, reused rather than reinvented — see
+    #             `stage6_streamline._shade_layers`), one J-L streamline set
+    #             traced per shade against that shade's own coverage-share
+    #             map (not raw darkness), stacked dark shade first. Every
+    #             shade boundary is an unconditional colour change (forced
+    #             jump+trim, never travel-bridged) — a spool change always
+    #             cuts thread regardless of geometry. "mono" is
+    #             byte-identical to the tier as it shipped before this mode
+    #             existed.
+    streamline_mode: str = "mono"
     # None = fill_row_mm (or the machine default). Contour rings are the same
     # 0.40 mm apart as tatami rows; this exists so the ring tier can be opened
     # up independently, which is what "best used for open fills with low stitch

@@ -22,6 +22,9 @@ from digitizer_service.app import MAX_PIXELS, app  # noqa: E402
 from digitizer_service.jobs import JobRegistry, content_key  # noqa: E402
 
 ART = Path(__file__).resolve().parents[1] / "testdata" / "logo_whitebg.png"
+# The enclosed-background repro: a gradient logo with white icon linework
+# that tags a Region `enclosed_background` and defaults it to unstitched.
+REPRO = Path(__file__).resolve().parents[1] / "testdata" / "photo" / "repro_gradient_white_icon.png"
 
 
 @pytest.fixture(scope="module")
@@ -373,6 +376,32 @@ def test_sew_order_override_resequences_shapes_within_a_layer_over_http(client):
     assert after[sewn_second["shape_id"]]["sew_block"] == sewn_first["sew_block"]
 
 
+def test_stitched_default_and_override_round_trip_over_http(client):
+    """The service-layer half of the enclosed-background restore fix: an
+    `enclosed_background`-tagged region reports `stitched: False` by default
+    in `review.shapes` (the CORE resolution already worked; the gap was the
+    service rejecting the override key and never exposing the field) —
+    and a `shape_overrides[sid] = {"stitched": true}` restores it, both in
+    the review payload and in the actual stitch plan reaching the design."""
+    first = _digitize(client, {"preflight": False}, art=REPRO)
+    shapes = first["review"]["shapes"]
+    assert all("stitched" in s for s in shapes)
+    unstitched = [s for s in shapes if s["stitched"] is False]
+    assert unstitched, "the repro fixture's whole point is a region tagged unstitched by default"
+    target = unstitched[0]
+
+    second = _digitize(client, {
+        "preflight": False,
+        "shape_overrides": {target["shape_id"]: {"stitched": True}},
+    }, art=REPRO)
+
+    after = {s["shape_id"]: s for s in second["review"]["shapes"]}
+    assert after[target["shape_id"]]["stitched"] is True
+    # And it isn't just the flag: the restored shape now actually reaches
+    # the emitted design, growing the stitch count.
+    assert second["design"]["stitchCount"] > first["design"]["stitchCount"]
+
+
 def test_an_edit_is_a_different_job_not_a_stale_cache_hit(client):
     """The cache keys on the canonical config: two configs differing only in
     shape_overrides are two jobs; the same edit twice is one."""
@@ -417,6 +446,17 @@ def test_parse_config_accepts_a_sew_order_override():
     assert _parse_config(json.dumps({"shape_overrides": {"S1": {"sew_order": None}}})) == {}
 
 
+def test_parse_config_accepts_a_stitched_override():
+    """A plain boolean, either direction — and `False` survives canonicalization
+    (it is a real override value, not an absence, unlike `None`)."""
+    from digitizer_service.app import _parse_config
+
+    assert _parse_config(json.dumps({"shape_overrides": {"S1": {"stitched": True}}})) == \
+        {"shape_overrides": {"S1": {"stitched": True}}}
+    assert _parse_config(json.dumps({"shape_overrides": {"S1": {"stitched": False}}})) == \
+        {"shape_overrides": {"S1": {"stitched": False}}}
+
+
 @pytest.mark.parametrize("bad", [
     {"deleted_shape_ids": "S1"},                            # not a list
     {"shape_overrides": {"S1": {"tier": "zigzag"}}},        # unknown tier
@@ -429,6 +469,7 @@ def test_parse_config_accepts_a_sew_order_override():
     {"shape_overrides": {"S1": {"sew_order": -1}}},         # negative
     {"shape_overrides": {"S1": {"sew_order": True}}},       # bool is not a position
     {"shape_overrides": {"S1": {"sew_order": 1.5}}},        # not an integer
+    {"shape_overrides": {"S1": {"stitched": "yes"}}},       # not a boolean
 ])
 def test_bad_shape_edits_are_a_400_at_submit_not_a_failed_job(client, bad):
     with ART.open("rb") as f:

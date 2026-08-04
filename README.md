@@ -28,8 +28,10 @@ npm run dev   # then open http://localhost:5173
 The original single-page tool still works for direct/manual use:
 
 - **`EMB-Bot.html`** — loads its modules from the `src/` folder next to it,
-  so keep the folder structure intact. Still uses the older eager 21-font
-  registry (`src/fonts/satin-fonts.js`), pending its feature audit.
+  so keep the folder structure intact. Still uses the older eager font
+  registry (`src/fonts/satin-fonts.js`) — audited 2026-08-04: the 7
+  license-pulled fonts were removed, 14 entries remain (all OFL-1.1/CC0,
+  all also in the shipping library).
 - **`EMB-Bot-standalone.html`** — a single portable inlined file. **Retired:**
   kept as a frozen artifact, no longer rebuilt as features land. Use the
   Studio.

@@ -52,7 +52,10 @@ from .stage6_blend import SourcePixels, blend_fill
 from .stage6_border import border_runs, run_outline
 from .stage6_contour import contour_fill
 from .stage6_fill import stitch_shape
+from .stage6_meander import meander_fill
+from .stage6_scanline import scanline_fill
 from .stage6_satin import is_satin_candidate, satin_shape
+from .stage6_streamline import streamline_fill
 from .stitches import StitchBlock, StitchRun, tie_run
 from .threads import chart_for
 from .warnings_codes import (BORDER_LIGHTENED, BORDER_SKIPPED_TOO_NARROW,
@@ -417,8 +420,25 @@ def sequence(
     # The fill tier. Contour rings follow the silhouette; tatami rows cut across
     # it. Density is the same either way — the ring spacing IS the row spacing
     # unless the caller opens it up on its own.
-    contour = (cfg.fill_technique or "tatami").lower() == "contour"
+    technique = (cfg.fill_technique or "tatami").lower()
+    contour = technique == "contour"
     contour_spacing = cfg.contour_spacing_mm or row_mm
+    # The scan-line mono tonal tier (photo plan, technique row 8). Strictly
+    # opt-in: with any other fill_technique this flag is False and every
+    # branch below reads exactly as it did before the tier existed. It needs
+    # source pixels to read tone from — a caller who set the flag gets them
+    # via pipeline.run_stages' explicit-opt-in plumbing; if they are missing
+    # anyway (a hand-built PipelineResult), the shape falls through to
+    # tatami rather than crashing or dropping artwork.
+    scanline = technique == "scanline_tonal"
+    # The meander mono tonal tier (photo plan, technique row 9): identical
+    # opt-in and fallback contract to the scanline tier above — off unless
+    # named, tone read from the same source-pixel plumbing, tatami on empty.
+    meander = technique == "meander_tonal"
+    # The streamline thread-paint tier (photo plan, technique row 10, first
+    # slice): same opt-in and fallback contract, but reads the direction
+    # field's raster instead of raw tone for its spacing.
+    streamline = technique == "streamline"
 
     thin = empty = jumps = as_run = 0
     bordered = lightened = border_narrow = 0
@@ -509,7 +529,35 @@ def sequence(
             # pair yet; it is recorded here rather than silently combined.
             runs = []
             report = {}
-            if source_pixels is not None:
+            need_tatami = False
+            if scanline and source_pixels is not None:
+                # The explicit scanline_tonal opt-in beats the gradient
+                # class's blend routing — the caller already chose the mono
+                # look. Empty is a legitimate outcome for this tier (a shape
+                # that is entirely highlight sews nothing, honestly), and the
+                # standing never-drop-artwork ladder still applies: it falls
+                # through to tatami below, exactly as a shape contour cannot
+                # ring does. Bare-fabric-on-purpose is a review-screen
+                # decision (delete the shape), not something a fill tier may
+                # decide unilaterally.
+                runs, report = scanline_fill(p.region, source_pixels, cfg)
+                need_tatami = report["empty"]
+            elif meander and source_pixels is not None:
+                # Same contract as the scanline branch above, meander look:
+                # the explicit opt-in beats the gradient class's blend
+                # routing, empty is honest (an all-highlight shape sews
+                # nothing) and falls through to tatami below rather than
+                # dropping artwork.
+                runs, report = meander_fill(p.region, source_pixels, cfg)
+                need_tatami = report["empty"]
+            elif streamline and source_pixels is not None:
+                # Same contract again, thread-paint look: the explicit
+                # opt-in beats the gradient class's blend routing, empty is
+                # honest (an all-highlight shape sews nothing) and falls
+                # through to tatami below rather than dropping artwork.
+                runs, report = streamline_fill(p.region, source_pixels, cfg)
+                need_tatami = report["empty"]
+            elif source_pixels is not None:
                 # Stage 0 classified the whole design "gradient" — every
                 # auto-tier shape routes through the blend fill instead of
                 # tatami/contour. blend_fill's own ramp detection already
@@ -530,7 +578,14 @@ def sequence(
                     tolerance_mm=cfg.contour_tolerance_mm,
                     start_near=entry,
                 )
-            if source_pixels is None and (not contour or report["empty"]):
+                need_tatami = report["empty"]
+            else:
+                # Plain tatami — and also any tonal-tier flag (scanline,
+                # meander, streamline) with no source pixels to read tone
+                # from, which sews as tatami rather than
+                # dropping the shape.
+                need_tatami = True
+            if need_tatami:
                 # The fill angle stage 5 already committed to, when it did.
                 # Passing it back is what makes directional comp honest:
                 # compensation went on the edges THIS angle penetrates, so the

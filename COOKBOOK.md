@@ -31,12 +31,22 @@ where the bodies are buried.
 ## Binary font library (Slice 10 Stage A, 2026-07-27)
 
 The Studio's fonts live in `src/fonts/manifest.json` + `src/fonts/bin/*.embf`
-(**68 fonts** as of 2026-08-04, after the 4 license-audit pulls below —
+(**55 fonts** as of 2026-08-04, after the 4 license-audit pulls below and the
+same-day removal of all 13 ShareAlike fonts (Kent's call — see the audit
+doc's §9; removal made the paid launch independent of the CC-BY-SA legal
+question, and the lawyer brief is now the optional restore path) —
 previously drifted to 72 without this doc being updated; don't trust either
 number without recounting `manifest.json`), lazily fetched per font by
 `app/src/lib/fontLoader.js`. The
-old eager `src/fonts/satin-fonts.js` (21 fonts) is OUT of the Studio pipeline
-but still used by legacy `EMB-Bot.html` pending its audit — do not delete it.
+old eager `src/fonts/satin-fonts.js` is OUT of the Studio pipeline but still
+used by legacy `EMB-Bot.html` — do not delete it. **Its audit ran 2026-08-04**
+(`docs/font-license-audit-2026-07-31.md` §10): the 7 license-pulled fonts
+(milli_marif_bold, tt_masters + the 5 ShareAlike: aventurina, emilio_20,
+emilio_20_bold, geneva_simple, monicha) were removed, 21 → 14 entries, all
+remaining OFL-1.1/CC0 and present in the shipping manifest. Do not re-add a
+font there unless it is also in the shipping manifest. The retired
+`EMB-Bot-standalone.html` still inlines the pre-audit 21 — frozen artifact,
+not to be distributed (Kent's call whether to delete or regenerate it once).
 
 - **EMBF format** (`src/fontbin.js`): quantize coords ×4 → per-ring delta →
   Int16 stream; skeleton JSON carries everything else. Guard test
@@ -57,12 +67,13 @@ but still used by legacy `EMB-Bot.html` pending its audit — do not delete it.
   `tt_directors`, `tt_masters`, and `dejavufont` were PULLED from the build
   2026-08-04 per `docs/font-license-audit-2026-07-31.md` action items 1-3
   (ad-hoc/aggregator-only/mislabeled licenses — see `PULLED` in
-  `tools/build-embf.mjs` for the per-font reasoning). They still linger in
-  the legacy `src/fonts/satin-fonts.js` / `EMB-Bot.html` pipeline mentioned
-  above (milli_marif_bold, tt_masters) — that file is explicitly out of this
-  audit's scope and still says "do not delete", so it wasn't touched; flag
-  this to Kent as a residual exposure if `EMB-Bot.html`/`EMB-Bot-standalone.html`
-  are ever actually distributed.
+  `tools/build-embf.mjs` for the per-font reasoning). ~~They still linger in
+  the legacy `src/fonts/satin-fonts.js` / `EMB-Bot.html` pipeline~~ —
+  resolved 2026-08-04 by the legacy-registry audit (audit doc §10):
+  milli_marif_bold and tt_masters are removed from `satin-fonts.js` along
+  with the 5 ShareAlike pulls, so `EMB-Bot.html` no longer ships any pulled
+  font. Only the retired `EMB-Bot-standalone.html` still embeds them
+  (frozen inlined copy — see the paragraph above).
 - **Engine-file lists live in THREE places** for the Studio: `app/scripts/
   copy-engine.mjs` (ENGINE_FILES), `app/src/lib/emb.js` (ENGINE_KEYS), and
   the `<script>` tags in **`app/index.html`** — the third one was missed once
@@ -252,17 +263,16 @@ Session handoff with the full context:
 
 1. **The two gradient/enclosed-white regressions** (see Known bugs below).
    The angle-fragmentation half is FIXED (2026-08-03, same-day follow-up
-   session). `BACKGROUND_ENCLOSED` remains open, but has a full design pass
-   now (2026-08-04):
-   `docs/superpowers/plans/2026-08-04-enclosed-background-restore-design.md`
-   — enclosed pixels join `fg`, get tagged post-vectorization, a new
-   `stitched` shape-override restores one, exclusion happens at
-   `plan_stitches` only so Studio's existing delete/restore Layers UI has a
-   real shape to work with. Not built — still a cross-cutting feature (stage
-   1 through the service/Studio round-trip), bigger than a quick fix. Also
-   still queued: land `fix/bg-existence-guard` (this remote session's
-   checkout has no such branch/worktree — re-verify locally, per this
-   section's own warning, before assuming it's gone or merged).
+   session). **`BACKGROUND_ENCLOSED` is now FIXED too, later 2026-08-04** —
+   pipeline, service contract, and Studio Layers-panel restore UI all
+   merged to `main`, and the one caveat that kept it from being real
+   end-to-end (an opaque-alpha bug that defeated background detection on
+   real Studio uploads) is fixed too, merged PR #22; see MASTER_SCOPE.md
+   area 1 for the full breakdown, including the one thing still not
+   verified (a live browser run of the fix, vs. the HTTP-level
+   reproduction done so far). Also still queued: land `fix/bg-existence-guard` (this remote
+   session's checkout has no such branch/worktree — re-verify locally, per
+   this section's own warning, before assuming it's gone or merged).
 2. **M0 + M1 of the DT-first migration** — this is the sequencing call that
    is easy to miss: once the regressions close, do **not** go straight to
    photo-digitizing steps 5+. M0 instruments `digitizer/tools/shape_lens.py`
@@ -281,12 +291,16 @@ Session handoff with the full context:
    `logo_whitebg.png`, same design, different file encoding) as satin on one
    file and fill on the other, purely from antialiasing noise landing
    `2*area/perimeter` on opposite sides of the 5.0mm cap — every DT arm
-   agrees "fill" on both. M1 adds `digitizer_core/shapefield.py`
-   (`ShapeField`: mask, skeleton, exact EDT, scale, origin), hoisting one
-   `medial_axis(rng=0)` so skeleton and DT are computed together, behind
-   `cfg.extra["shapefield"]` defaulting to today's path — **byte-identical
-   output is a hard requirement**. Not started. ~3 days combined, both
-   desk-safe. Rationale: `stage7_sequence.py:97` makes the satin/fill call
+   agrees "fill" on both. **M1 is merged** (`bc1e59e`,
+   `digitizer_core/shapefield.py` — `ShapeField`: mask, skeleton, exact EDT,
+   scale, origin — hoisting one `medial_axis(rng=0)` so skeleton and DT are
+   computed together, behind `cfg.extra["shapefield"]` defaulting to today's
+   path). The byte-identical requirement is enforced, not just stated:
+   `tests/test_shapefield_byte_identical.py` duplicates
+   `stage6_satin._rasterize`'s rasterization number-for-number rather than
+   reimplementing it, both on `origin/main` now. What's left of this slice is
+   M0's corpus leg (above) and M2/M3 (below) — neither started. Rationale:
+   `stage7_sequence.py:97` makes the satin/fill call
    from `2·area/perimeter` (a statistic the source patent warns against —
    it satins a 20mm disc under a 5mm cap once the edge is serrated) *before*
    the DT even exists in `stage6_satin.py`. Steps 5+ all lean harder on that
@@ -329,52 +343,66 @@ don't push for it.
   sharing are explicit non-goals, left open. Full writeup: the plan doc's
   "Defect 1 update" section.
 - **`BACKGROUND_ENCLOSED` drops enclosed white icon linework as a hole**
-  even when it survives stage 1's background detection intact — still
-  open, root-caused this same session. Corrected location:
-  `stage1_prep.py::prep`'s no-alpha color-heuristic branch (`enclosed =
-  close & ~border_bg`, folded into `bg` before `fg`), NOT
-  `stage3_segment.py` as first suspected — enclosed pixels never reach
-  stage 3, or vectorization, or ever get a `shape_id`. That means the
-  warning's own "toggle it back on in review" claim is currently **false**:
-  there's no shape for a review edit to name. General to the whole
-  pipeline, not classifier-specific, just newly customer-visible on exactly
-  the art the gradient tier targets. A real fix is a cross-cutting,
-  multi-file feature (stage 1 through the service/Studio round-trip) on the
-  scale of a DT-first M0/M1 slice, not a small next step — a full design
-  pass exists (2026-08-04), not built. Repro fixture:
+  even when it survives stage 1's background detection intact — root-caused
+  2026-08-04 (same session as this bullet was first written). Corrected
+  location: `stage1_prep.py::prep`'s no-alpha color-heuristic branch
+  (`enclosed = close & ~border_bg`, folded into `bg` before `fg`), NOT
+  `stage3_segment.py` as first suspected — enclosed pixels never reached
+  stage 3, or vectorization, or ever got a `shape_id`, which made the
+  warning's own "toggle it back on in review" claim false: there was no
+  shape for a review edit to name. Repro fixture:
   `digitizer/testdata/photo/repro_gradient_white_icon.png`. Original
   diagnosis:
   `docs/superpowers/plans/2026-08-03-gradient-tier-fragmentation-and-enclosed-white-defects.md`.
-  Buildable design:
-  `docs/superpowers/plans/2026-08-04-enclosed-background-restore-design.md`.
+  Design: `docs/superpowers/plans/2026-08-04-enclosed-background-restore-design.md`.
+
+  **FIXED, later 2026-08-04 — the full cross-cutting slice landed:**
+  `stage1_prep.py` now joins enclosed pixels to `fg`, `stage4_vectorize.
+  tag_enclosed_background` tags them post-vectorization, `pipeline.py`
+  resolves a `stitched` shape-override defaulting to "not enclosed" and
+  excludes only at `plan_stitches`, the service (`digitizer_service/app.py`)
+  accepts/validates/exposes the `stitched` key, and the Studio Layers panel
+  gained a restore control for it. See MASTER_SCOPE.md area 1 for the
+  commit-level breakdown. **The one caveat that kept this from working
+  end-to-end through the actual UI is fixed too, merged PR #22:** Studio's
+  real upload path manufactured an opaque alpha channel that defeated
+  background detection entirely; a fully-opaque channel is now discarded
+  as information-free. Verified post-merge at the HTTP level (opaque-RGBA
+  twin of the repro fixture now matches its RGB original exactly); a live
+  browser run of the full flow hasn't happened yet.
 
 ## Running things
 
-All three counts below were re-run and verified 2026-08-03 — if one comes
+All three counts below were re-run and verified 2026-08-04 (latest pass, on
+`origin/main` post PR #22/#23 — the two most recent merges) — if one comes
 back lower, something regressed; don't assume the doc drifted.
 
 ```bash
-node --test                 # engine tests (root) — 265/265
+node --test                 # engine tests (root) — 266/266
 cd app && npm install && npm run dev     # Studio dev server
-cd app && npm test          # Studio tests (vitest) — 321/321
+cd app && npm test          # Studio tests (vitest) — 331/331 (24 files)
 node tools/build-embf.mjs   # rebuild the binary font library (see section above)
 
-cd digitizer && .venv/Scripts/python -m pytest -q   # Python digitizer tests -- 404/407 (~3-4 min)
+cd digitizer && .venv/Scripts/python -m pytest -q   # Python digitizer tests -- 507/510 (~4 min)
 cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0.1:8721
 ```
 
-**404/407, not 402/402** as of the gradient angle-fragmentation fix's
-follow-up session (adds 4 tests, net +2 vs. the prior 402/402 baseline).
-The 3 failures — `test_flat_lane_byte_identical.py::…[logo_alpha.png]`,
-`test_pushcomp.py::…[logo_whitebg.png-towel]`, `test_stage2_photo_segment.py
-::…[logo_alpha.png]` — are confirmed **pre-existing on `main`**, reproduced
-by stashing this session's changes and re-running: all three are
-byte-identical/golden-hash assertions off by a handful of stitches/bytes in
-THIS container, unrelated to the gradient work (not investigated further —
-likely a numpy/opencv/shapely point-version difference between this
-environment and whatever machine the golden was pinned on, but that's a
-guess, not confirmed). Worth a look before trusting "402/402" as this
-environment's steady state again.
+**507/510, not 404/407.** The 3 failures are all **pre-existing,
+container-environment** byte-identical/golden-hash mismatches this note has
+flagged since 2026-08-03 (`test_flat_lane_byte_identical.py::…
+[logo_alpha.png]`, `test_pushcomp.py::…[logo_whitebg.png-towel]`,
+`test_stage2_photo_segment.py::…[logo_alpha.png]`) — still not investigated
+further, still a guess (numpy/opencv/shapely point-version difference vs.
+whatever machine the goldens were pinned on), still worth a look before
+trusting either count as this environment's steady state. A 4th failure
+briefly existed between two merges — `test_directionfield.py::
+test_drone_render_smoke_and_debug_artifact`, because the direction-field
+branch had merged without its `debugviz.direction_field` render function
+(an agent lane's uncommitted worktree edit that never made it into the PR)
+— and is now gone: PR #22 restored the function, confirmed by re-running
+this suite against a fresh `origin/main` checkout after the merge. If this
+specific failure resurfaces, that's a real regression, not this note being
+stale.
 
 The standalone rebuild step (`node tools/bundle.mjs`) is RETIRED along with
 `EMB-Bot-standalone.html` — do not rebuild it as features land.

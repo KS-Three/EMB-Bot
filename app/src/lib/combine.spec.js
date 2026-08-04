@@ -10,7 +10,7 @@ beforeAll(() => {
 
 function letteringDesign(text, garment, overrides = {}) {
   const { EMB } = globalThis.window;
-  const fontData = EMB.SATIN_FONTS.geneva_simple;
+  const fontData = EMB.SATIN_FONTS.medium_font;
   return EMB.buildLetteringDesign(fontData, text, {
     garment, pxPerMm: 8, densityMm: 0.4, underlay: true, rgb: [20, 20, 20], ...overrides,
   });

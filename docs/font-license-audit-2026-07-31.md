@@ -179,7 +179,7 @@ All four flagged fonts were pulled from the shipping library (`src/fonts/manifes
 - **`tt_masters` — pulled.** Same reasoning and same aggregator-only sourcing as `tt_directors`. Unlike `tt_directors`, this one *did* have a static `src/fonts/tt_masters.json` + `.LICENSE.txt` sidecar shipped in the repo (that's how it was grandfathered) — both were deleted along with the manifest entry, `.embf`, and preview, for the same reason as `milli_marif_bold`.
 - **`dejavufont` — researched, then pulled.** Did the ~1 h research option first rather than jumping straight to pull: fetched the actual upstream `LICENSE` file for this exact Ink/Stitch font (`raw.githubusercontent.com/inkstitch/embroidery-fonts/main/src/dejavufont/LICENSE`, sourced from `fontsquirrel.com/license/dejavu-serif`) and read it in full. Confirmed the audit's suspicion: the underlying font is **not** CC-BY-SA at all — it's the **Bitstream Vera Fonts License v1.00** (Bitstream, 2003) plus the **Arev Fonts License** (Tavmjong Bah, 2006). The digitizer's own file-header line ("licensed CC-BY-SA…") only speaks to their own embroidery adaptation, not the Bitstream/Arev copyright underneath, and per the actual license text: (a) neither Bitstream Vera nor Arev is in `ALLOWED_LICENSES`, and (b) both explicitly forbid selling "one or more of the Font Software typefaces… by itself" — only as part of a larger package, which is a real product-policy question (see the bare-`.embf`-download hole in item 8) that's bigger than a label fix. A shallow relabel wasn't durable either: `build-embf.mjs`'s `licenseId()` auto-detector matches the CC-BY-SA regex against the adapter's own header line before it ever reaches the real license text further down the same blob, so it would keep mislabeling this font CC-BY-SA on every future rebuild unless the detector itself is fixed. Given that, pulled it rather than ship a fix that either silently reverts or requires build-script surgery beyond this item's scope. **Revisit path:** either fix `licenseId()` to prefer a recognized license block over a bare adapter claim, or have Kent decide whether Bitstream-Vera-derived fonts should join the allowed policy set (and whether EMB-Bot's distribution model — see item 8's bare `.embf` download — is compatible with the "no standalone sale" clause).
 
-**Known residual gap, out of scope for items 1–3 but flagged here:** `src/fonts/satin-fonts.js` (the legacy, eagerly-bundled font registry that `EMB-Bot.html` / `EMB-Bot-standalone.html` still use — see COOKBOOK.md's "Binary font library" section, which explicitly says "do not delete it" pending its own separate audit) still contains `milli_marif_bold` and `tt_masters` verbatim. This audit and its action-checklist items 1–3 are scoped to the `manifest.json`/`.embf` pipeline (`tools/build-embf.mjs`) only, per the checklist's own wording ("add to exclusions in `tools/build-embf.mjs`"), so `satin-fonts.js` was deliberately left untouched rather than silently edited around an explicit repo directive not to delete/modify that file outside its own audit. **If `EMB-Bot.html`/`EMB-Bot-standalone.html` are ever actually distributed to customers, `milli_marif_bold` and `tt_masters` are still shipping there** — this needs its own pass (`tt_directors` and `dejavufont` are *not* in `satin-fonts.js`, so those two are fully pulled everywhere).
+**Known residual gap, out of scope for items 1–3 but flagged here** *(update 2026-08-04: CLOSED by the legacy-registry audit, §10 — kept as written for the historical record)*: `src/fonts/satin-fonts.js` (the legacy, eagerly-bundled font registry that `EMB-Bot.html` / `EMB-Bot-standalone.html` still use — see COOKBOOK.md's "Binary font library" section, which explicitly says "do not delete it" pending its own separate audit) still contains `milli_marif_bold` and `tt_masters` verbatim. This audit and its action-checklist items 1–3 are scoped to the `manifest.json`/`.embf` pipeline (`tools/build-embf.mjs`) only, per the checklist's own wording ("add to exclusions in `tools/build-embf.mjs`"), so `satin-fonts.js` was deliberately left untouched rather than silently edited around an explicit repo directive not to delete/modify that file outside its own audit. **If `EMB-Bot.html`/`EMB-Bot-standalone.html` are ever actually distributed to customers, `milli_marif_bold` and `tt_masters` are still shipping there** — this needs its own pass (`tt_directors` and `dejavufont` are *not* in `satin-fonts.js`, so those two are fully pulled everywhere).
 
 **Verification:** `node --test` (engine suite) 265/265 → 263/263 after the pull (2 fewer — `test/embf-guard.test.js`'s per-font decoder-guard loop reads `src/fonts/*.json`, which lost `milli_marif_bold.json` and `tt_masters.json`); `cd app && npx vitest run` (Studio suite) 321/321 → 321/321 unchanged (no template or spec fixture hardcodes any of the four keys). Confirmed `src/fonts/manifest.json` keys, `src/fonts/bin/*.embf` keys, and `src/fonts/previews/*.png` keys are exactly equal sets (no orphans) both before and after.
 ---
@@ -199,3 +199,78 @@ Executed in checklist order in a session **without `scratch_ink/`** (gitignored,
 - **Item 12 — final pass. Done with one substitution:** full app build (`npm run build`) confirms `dist/` serves all 68 license files + 68 binaries; decode checks confirm embedded full license text (spot samples + the new all-68 guard test); the credits **data source** was verified end-to-end — `creditLines()` over the built manifest yields 68 rows and every row's `licenseHref`/`binHref` resolves to a real served file. A live browser click-through wasn't possible (Playwright MCP disconnected in this session) — the component itself is unchanged except two additive template lines, and its data path is what was verified.
 
 **Verification (before → after this session's items 4–12):** `node --test` 265/265 → **266/266** (+1: the new embedded-license guard); `cd app && npx vitest run` **327 passed** (326 baseline measured today + 1 new credits spec; the `e2e/wizard-smoke.spec.js` *file* failure is pre-existing/environmental — a Playwright spec vitest can't host — identical before and after, and the COOKBOOK's "321/321" count had already drifted before this session). Two test changes were deliberate content updates, not regressions: the manifest attribution cap rose 200 → 500 (complete notices are longer; longest real one ~350 chars), and new guards pin: no truncation artifacts, trimmed names, sidecar present per font, embedded license == sidecar.
+
+## 9. ShareAlike removal — 2026-08-04, Kent's explicit decision
+
+Rather than gate the paid launch on the §5 legal question, **every
+ShareAlike font was pulled from the shipping library**: all 13 then present
+(11 CC-BY-SA-4.0 + the 2 CC-BY-SA-2.5 Geneva fonts — §5's "14" counted
+dejavufont, already pulled in §7 for unrelated reasons). Library 68 → 55;
+post-pull license census: 52 OFL-1.1, 1 CC-BY-4.0, 2 CC0 — **zero
+ShareAlike**. `PULLED` in `tools/build-embf.mjs` carries the full reasoning
+and the explicit restore path; CC-BY-SA-4.0 was also removed from
+`ALLOWED_LICENSES` so no new ShareAlike font can enter while the question
+stands. Removed per font: manifest entry, `.embf` binary, preview PNG,
+LICENSE.txt sidecar, `font-categories.json` entry, and (where present) the
+static `src/fonts/<key>.json` source — key-set equality re-verified at
+55/55/55/55.
+
+Consequences:
+- **The §5 lawyer consult is no longer launch-gating.** The brief
+  (`docs/lawyer-brief-cc-by-sa-2026-08-04.md`) stays on file as the restore
+  path: a favorable opinion lets any or all 13 return (git history holds
+  every artifact).
+- The items 4–12 work in §8 (extraction, sidecars, embedding, credits)
+  fully applies to the remaining 55 — none of it was ShareAlike-specific.
+- ~~Known residuals: 5 of the 13 (`aventurina`, `emilio_20`,
+  `emilio_20_bold`, `geneva_simple`, `monicha`) remain in the legacy
+  `src/fonts/satin-fonts.js` registry used by `EMB-Bot.html` — same §7
+  caveat, same "audit that file before ever distributing the legacy HTML"
+  condition, now with ShareAlike stakes attached.~~ **CLOSED 2026-08-04 —
+  the legacy-registry audit ran (see §10 below): all 7 pulled fonts
+  (these 5 + `milli_marif_bold` + `tt_masters` from §7) were removed from
+  `satin-fonts.js`.** The Bluenesia permission-grant archive (§8 item 9)
+  stays on file for the same restore-path reason.
+
+## 10. Legacy registry (`satin-fonts.js`) audit — 2026-08-04, residual closed
+
+The long-deferred audit of `src/fonts/satin-fonts.js` (the pre-manifest
+eager registry, 21 fonts) that §7 and §9 flagged as a residual exposure.
+
+**Usage map (verified by grep across the repo):**
+
+- `EMB-Bot.html` line 334 is the only live loader (`<script
+  src="src/fonts/satin-fonts.js">`). Its font dropdown is built dynamically
+  in `src/app.js` from `Object.keys(EMB.SATIN_FONTS)` — no hardcoded keys,
+  no hardcoded count, so shrinking the registry degrades gracefully.
+- `EMB-Bot-standalone.html` inlines a pre-pull copy (all 21 fonts) — but the
+  file is RETIRED (COOKBOOK: `tools/bundle.mjs` no longer run), so it is a
+  frozen committed artifact. **It still embeds all 7 pulled fonts** — see
+  the residual note below.
+- No engine or app test loads the registry: engine tests use
+  `test/fixtures/fonts/` copies (`geneva_simple`, `emilio_20_bold`,
+  fixture-only with license texts); Studio tests decode `.embf` binaries
+  via `app/src/lib/testFonts.js`. No tool regenerates the aggregate file
+  (`tools/build-font.mjs` writes per-font JSONs only), so nothing can
+  silently resurrect a pulled entry.
+
+**What was done:** the 7 pulled fonts' entries were removed from
+`satin-fonts.js` — `milli_marif_bold`, `tt_masters` (§7, items 1–3) and
+`aventurina`, `emilio_20`, `emilio_20_bold`, `geneva_simple`, `monicha`
+(§9 ShareAlike removal). 21 → 14 entries; every remaining key is OFL-1.1 or
+CC0 per §2 and is also in the shipping 55-font manifest. The file itself is
+kept (COOKBOOK's "do not delete" directive stands — `EMB-Bot.html` still
+needs it); its header now records the audit and forbids re-adding any font
+not in the shipping manifest. Dev-tool defaults that pointed at the deleted
+`src/fonts/geneva_simple.json` (`tools/run-lettering.mjs`,
+`tools/word-satin.mjs`) were repointed to the `test/fixtures/fonts/` copy.
+Both suites unchanged vs. pre-change baselines (engine 261/261, app
+327/327) — expected, since nothing tested loads the registry.
+
+**Remaining residual (Kent's call, flagged not decided):**
+`EMB-Bot-standalone.html` is a retired frozen artifact that still inlines
+all 21 fonts including the 7 pulled ones. Options: delete it, regenerate it
+once from the pruned tree (`node tools/bundle.mjs` — currently forbidden by
+the "retired, do not rebuild" directive), or accept it as a non-distributed
+git artifact. Until one of those happens, do not distribute
+`EMB-Bot-standalone.html`. `EMB-Bot.html` itself is now clean.

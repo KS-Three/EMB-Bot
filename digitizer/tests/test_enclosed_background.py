@@ -142,3 +142,32 @@ def test_plan_stitches_excludes_unstitched_regions_but_run_stages_keeps_them():
     plan = plan_stitches(result, cfg(garment_id="left_chest"))
     stitched_ids = {r.shape_id for _b, r in plan.iter_runs()}
     assert not (tagged_ids & stitched_ids)
+
+
+def test_fully_opaque_alpha_behaves_like_its_rgb_twin():
+    """Studio's DigitizePanel re-encodes uploads through a canvas, which
+    manufactures a fully-opaque alpha channel onto RGB art. Measured live
+    2026-08-04: routed through stage 1's alpha branch, that killed
+    background detection outright (bg detected False — the white canvas
+    itself would sew) and silently disabled BACKGROUND_ENCLOSED for every
+    panel upload. A fully-opaque alpha carries no background information;
+    stage 1 now discards it and the image takes the color-heuristic branch
+    exactly like its RGB twin."""
+    import cv2
+
+    from digitizer_core.pipeline import run_stages
+
+    bgr = cv2.imread(str(REPRO), cv2.IMREAD_COLOR)
+    ok, buf = cv2.imencode(".png", cv2.cvtColor(bgr, cv2.COLOR_BGR2BGRA))
+    assert ok
+
+    opaque = run_stages(bytes(buf), cfg(target_width_mm=90.0))
+    plain = run_stages(REPRO, cfg(target_width_mm=90.0))
+
+    assert opaque.background.detected is True
+    assert BACKGROUND_ENCLOSED in codes(opaque)
+    tag = lambda r: sorted(
+        x.shape_id for x in r.regions if x.meta.get("enclosed_background")
+    )
+    assert tag(opaque) == tag(plain) and tag(plain)
+    assert sorted(opaque.shape_ids) == sorted(plain.shape_ids)
