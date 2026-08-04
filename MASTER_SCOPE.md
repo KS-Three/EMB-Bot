@@ -13,31 +13,25 @@ at the bottom for the authority model behind the confidence ratings.
 
 **Last updated:** 2026-08-04, later the same day — docs refresh after PRs
 #8–#15 finished merging into `main` (this doc's previous pass, dated below,
-was written mid-batch and undercounted what had already landed), then
-touched up minutes later when **PR #23 (meander tonal tier, row 9) merged
-mid-refresh** — re-verified directly against the new `main` tip rather than
-left stale: digitizer `pytest` on fresh `origin/main` now reads **505
-passed / 4 failed** (up from 489/493; meander's own +16 tests), same 4
-failures, unchanged root causes. Everything below not specifically about
-#23 was verified against `origin/main` at 74e6919, one merge behind the
-last paragraph but not invalidated by it — none of that batch touches area
-1's photo-plan bullets or the other areas.
+was written mid-batch and undercounted what had already landed), touched up
+once when **PR #23 (meander tonal tier, row 9) merged mid-refresh**, then
+again minutes later when **PR #22 (opaque-alpha fix + `debugviz.
+direction_field` restore) also merged**. Both touch-ups were re-verified
+directly against the new `main` tip each time, not assumed: combined suite
+on current `main` (`c0cb246`) now reads engine `node --test` **266/266**,
+Studio `npx vitest run` **331/331** (24 files), digitizer `pytest` **507
+passed / 3 failed** — back down to exactly the three long-standing
+container-environment golden mismatches cited repeatedly in this project's
+PR history (`test_flat_lane_byte_identical`, `test_pushcomp`,
+`test_stage2_photo_segment`, all `logo_alpha.png`/`logo_whitebg.png`-towel).
 
-Of the 4 digitizer failures, 3 are the long-standing container-environment
-golden mismatches cited repeatedly in this project's PR history
-(`test_flat_lane_byte_identical`, `test_pushcomp`, `test_stage2_photo_segment`,
-all `logo_alpha.png`/`logo_whitebg.png`-towel); the 4th,
-`test_directionfield::test_drone_render_smoke_and_debug_artifact`, is a real
-regression — the direction-field branch merged without its
-`debugviz.direction_field` render function (an agent lane's uncommitted
-worktree edit), so `main` currently raises `AttributeError` on that smoke
-test. The fix is written but sits unmerged in open PR #22 — merging #23
-first did not touch `debugviz.py`, so this failure is still live and will
-stay live until #22 specifically lands.
-
-Suite counts elsewhere in this doc (engine `node --test` **266/266**, Studio
-`npx vitest run` **331/331**, 24 files) were verified pre-#23 and are
-unaffected by it — #23 touches only `digitizer/`.
+The `test_directionfield::test_drone_render_smoke_and_debug_artifact`
+failure this note tracked through two earlier revisions (the direction-field
+branch had merged without its `debugviz.direction_field` render function —
+an agent lane's uncommitted worktree edit) **is gone, confirmed**: #22
+restored the function and is now on `main`. Verified by running the
+digitizer suite against a fresh `origin/main` worktree after the merge, not
+by assuming the PR description was correct.
 
 Substance changes found on `main` since the prior pass below: the full
 `BACKGROUND_ENCLOSED` stack (pipeline + service contract + Studio Layers-panel
@@ -46,10 +40,13 @@ restore UI) is now merged — area 1's bullet below was still describing it as
 is fixed (`8e668d3`); a Playwright wizard-smoke e2e exists and passes
 (1/1, re-run this session); the PDF worksheet export gained dedicated test
 coverage (area 4 was still describing zero coverage); direction field (photo
-plan row 6), scan-line mono tonal (row 8), and now meander tonal (row 9,
-**PR #23, merged**) all landed. Separately, **7 PRs (#16–#22) remain
-open/draft against `main`, pending review** — none of that work is
-described as shipped below, only flagged per-area with its PR number.
+plan row 6), scan-line mono tonal (row 8), and meander tonal (row 9, PR #23)
+all landed; the opaque-alpha bug that silently defeated background
+detection on every real Studio upload (PR #22) is fixed, so
+`BACKGROUND_ENCLOSED` is now genuinely end-to-end, not just unit/service-
+tested. Separately, **6 PRs (#16–#21) remain open/draft against `main`,
+pending review** — none of that work is described as shipped below, only
+flagged per-area with its PR number.
 
 Prior update 2026-08-04 (font-license audit items 4–10 + 12 executed —
 full license texts on disk/served/embedded, complete attributions, credits
@@ -184,15 +181,17 @@ Running in parallel with that step numbering, `docs/photo-digitizing-plan-
 2026-07-31.md`'s mono-tonal/portrait technique rows have started landing:
 direction field (row 6, structure-tensor + ETF per Kang 2007), scan-line
 mono tonal (row 8), and now meander tonal (row 9, **PR #23, merged**) are
-all on `main` and counted below. One more sits in an open, unmerged PR:
-streamline (row 10, PR #20) — not on `main`, not counted below.
+all on `main` and counted below. One more sits in open, unmerged PRs:
+streamline mono slice (row 10, PR #20), with a multi-color layered-mode
+follow-up stacked on top (PR #25) — neither on `main`, neither counted
+below.
 
 **Confidence: Low** beyond flat spot-color art. Flat-logo digitizing (both
-implementations) is Medium — **266/266** JS tests and **489/493** Python
+implementations) is Medium — **266/266** JS tests and **507/510** Python
 tests pass (verified this session on `origin/main`; see the "Last updated"
-note above for the failure breakdown — 3 pre-existing container goldens + 1
-real regression tracked to open PR #22), and the geometry is internally
-consistent. `hardening-closeout-2026-08-02.md`
+note above — exactly the 3 pre-existing container goldens now, the 4th
+regression this note tracked through two revisions is fixed), and the
+geometry is internally consistent. `hardening-closeout-2026-08-02.md`
 independently re-measured the five newest Python features and found
 defects the shipped test suites couldn't see in all five; one of those five
 is now fixed (see below), four remain open:
@@ -267,22 +266,27 @@ is now fixed (see below), four remain open:
   #10 — the Layers panel gives an unstitched shape its own dimmed row state
   ("not sewn — enclosed area", distinct from user-deleted), a restore
   action staged through the existing "Apply layer changes" flow, and an
-  undo control). All of this is inside the 489/493 Python and 331/331
+  undo control). All of this is inside the 507/510 Python and 331/331
   Studio counts verified above.
 
-  **One caveat keeps this from being real end-to-end verified yet, and it's
-  not fixed on `main`:** open PR #22 (pending review) found that Studio's
-  actual upload path re-encodes every image through a canvas, which
-  manufactures an all-255 opaque alpha channel; `stage1_prep`'s alpha branch
-  currently treats *any* alpha channel as ground truth, so a fully-opaque one
-  reads as "nothing here is background" — background detection, and
-  `BACKGROUND_ENCLOSED` with it, silently doesn't fire for **every real
-  Studio panel upload**, confirmed on a two-squares fixture that digitizes to
-  2 shapes as RGB but 3 as RGBA. The same PR restores the
-  `debugviz.direction_field` function missing from `main` (see the "Last
-  updated" note above). Until #22 merges, this feature is built and unit/
-  service-tested but has not been driven live through the actual Studio
-  upload flow with a passing result.
+  **The one caveat blocking real end-to-end verification is FIXED, merged
+  PR #22:** Studio's actual upload path re-encodes every image through a
+  canvas, which manufactures an all-255 opaque alpha channel; `stage1_prep`'s
+  alpha branch used to treat *any* alpha channel as ground truth, so a
+  fully-opaque one read as "nothing here is background" — background
+  detection, and `BACKGROUND_ENCLOSED` with it, silently didn't fire for
+  **every real Studio panel upload**, found on a two-squares fixture that
+  digitized to 2 shapes as RGB but 3 as RGBA. Fix: an alpha channel with no
+  pixel under the detection threshold now carries zero background
+  information and is discarded. Same PR restored the `debugviz.
+  direction_field` function that had gone missing from `main` (see the
+  "Last updated" note above). **Verified post-merge:** POSTed the same
+  opaque-RGBA two-squares fixture directly to the live service on current
+  `main` — background now detected, 2 shapes, matching the RGB original
+  exactly. **Not yet verified:** driving this through the actual Studio
+  browser UI end to end (upload → digitize → see the restored shape in the
+  Layers panel) — the HTTP-level reproduction above proves the fix, but
+  nobody has watched it happen in a real browser session yet.
 - **Contour fill** — still off by default, but two of the three 2026-08-02
   defects are fixed (2026-08-04): the widest-inscribed-bare-circle
   instrument (`digitizer_core/barecircle.py`) now exists and *is* the
@@ -322,11 +326,12 @@ Every claim about visual/sew quality beyond internal geometry checks is
 **pending sew-out** — see the cross-cutting item above.
 
 **Next step:** the chaining fix, the gradient angle-fragmentation fix, and
-the full `BACKGROUND_ENCLOSED` stack are all landed. Immediate priority is
-merging open PR #22 — it fixes the opaque-alpha bug that currently defeats
-background detection (and `BACKGROUND_ENCLOSED`) on every real Studio
-upload, and restores the missing `debugviz.direction_field` regression.
-M0 of the DT-first migration is measured (see the satin/fill classifier item
+the full `BACKGROUND_ENCLOSED` stack (including the opaque-alpha fix, PR
+#22, merged) are all landed. What's left to close this out: watch the
+opaque-alpha fix run through the actual Studio browser UI once (verified
+so far only at the HTTP level — see the caveat note above), then schedule
+the first sew-out session. M0 of the DT-first migration is measured (see
+the satin/fill classifier item
 above) — corpus leg pending a local run. **M1 (`ShapeField` hoist) is
 already merged** (`bc1e59e`, `digitizer_core/shapefield.py` +
 `tests/test_shapefield.py` + `tests/test_shapefield_byte_identical.py`, all
@@ -339,8 +344,7 @@ corpus-gated) have not started; a separate, zero-engine-change measurement
 pass (open PR #19, `classifier-lens`) instrumented the stage-0 router and
 concluded the current thresholds should be left alone, not yet merged.
 One more photo-plan technique row sits in an open PR, not yet merged:
-streamline (#20) — meander (#23) landed. Then schedule the first sew-out
-session.
+streamline (#20) — meander (#23) landed.
 
 ---
 
@@ -525,7 +529,13 @@ digitize → edit → id-churn → the stale-edit notice → recovery with no
 mocks, plus a Border select per Layers row wired through the same
 `setOverride`/"Apply layer changes" path the tier select uses. Not merged —
 treat as reported-not-verified until it lands, same posture as the other
-open-PR notes in this document.
+open-PR notes in this document. **Open PR #26** (pending review, stacked on
+#21) claims the fifth and last self-flagged gap on this list too: a
+`sew_order` shape-override key following the same override pattern as
+`border`/`tier`, a second ▲/▼ control per Layers row for shapes sharing one
+color, and `stage7_sequence.py`'s nearest-neighbor picker forcing pinned
+shapes into their slot while unpinned shapes keep competing exactly as
+before. Also not merged — same reported-not-verified posture.
 
 ---
 

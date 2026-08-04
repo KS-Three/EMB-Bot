@@ -254,10 +254,12 @@ Session handoff with the full context:
    The angle-fragmentation half is FIXED (2026-08-03, same-day follow-up
    session). **`BACKGROUND_ENCLOSED` is now FIXED too, later 2026-08-04** —
    pipeline, service contract, and Studio Layers-panel restore UI all
-   merged to `main`; see MASTER_SCOPE.md area 1 for the full breakdown and
-   the one open caveat (an opaque-alpha bug that currently defeats
-   background detection on real Studio uploads, fix pending in open PR
-   #22). Also still queued: land `fix/bg-existence-guard` (this remote
+   merged to `main`, and the one caveat that kept it from being real
+   end-to-end (an opaque-alpha bug that defeated background detection on
+   real Studio uploads) is fixed too, merged PR #22; see MASTER_SCOPE.md
+   area 1 for the full breakdown, including the one thing still not
+   verified (a live browser run of the fix, vs. the HTTP-level
+   reproduction done so far). Also still queued: land `fix/bg-existence-guard` (this remote
    session's checkout has no such branch/worktree — re-verify locally, per
    this section's own warning, before assuming it's gone or merged).
 2. **M0 + M1 of the DT-first migration** — this is the sequencing call that
@@ -350,16 +352,19 @@ don't push for it.
   excludes only at `plan_stitches`, the service (`digitizer_service/app.py`)
   accepts/validates/exposes the `stitched` key, and the Studio Layers panel
   gained a restore control for it. See MASTER_SCOPE.md area 1 for the
-  commit-level breakdown. One caveat is not yet fixed on `main`: Studio's
-  real upload path currently manufactures an opaque alpha channel that
-  defeats background detection entirely, so this doesn't yet work
-  end-to-end through the actual UI — fix sits in open PR #22.
+  commit-level breakdown. **The one caveat that kept this from working
+  end-to-end through the actual UI is fixed too, merged PR #22:** Studio's
+  real upload path manufactured an opaque alpha channel that defeated
+  background detection entirely; a fully-opaque channel is now discarded
+  as information-free. Verified post-merge at the HTTP level (opaque-RGBA
+  twin of the repro fixture now matches its RGB original exactly); a live
+  browser run of the full flow hasn't happened yet.
 
 ## Running things
 
-All three counts below were re-run and verified 2026-08-04 (later same
-session batch, on `origin/main` post PR #8–#15) — if one comes back lower,
-something regressed; don't assume the doc drifted.
+All three counts below were re-run and verified 2026-08-04 (latest pass, on
+`origin/main` post PR #22/#23 — the two most recent merges) — if one comes
+back lower, something regressed; don't assume the doc drifted.
 
 ```bash
 node --test                 # engine tests (root) — 266/266
@@ -367,25 +372,26 @@ cd app && npm install && npm run dev     # Studio dev server
 cd app && npm test          # Studio tests (vitest) — 331/331 (24 files)
 node tools/build-embf.mjs   # rebuild the binary font library (see section above)
 
-cd digitizer && .venv/Scripts/python -m pytest -q   # Python digitizer tests -- 489/493 (~4 min)
+cd digitizer && .venv/Scripts/python -m pytest -q   # Python digitizer tests -- 507/510 (~4 min)
 cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0.1:8721
 ```
 
-**489/493, not 404/407.** The 4 failures: 3 are the same **pre-existing,
+**507/510, not 404/407.** The 3 failures are all **pre-existing,
 container-environment** byte-identical/golden-hash mismatches this note has
 flagged since 2026-08-03 (`test_flat_lane_byte_identical.py::…
 [logo_alpha.png]`, `test_pushcomp.py::…[logo_whitebg.png-towel]`,
 `test_stage2_photo_segment.py::…[logo_alpha.png]`) — still not investigated
 further, still a guess (numpy/opencv/shapely point-version difference vs.
 whatever machine the goldens were pinned on), still worth a look before
-trusting either count as this environment's steady state. The 4th is new
-and NOT environmental: `test_directionfield.py::
-test_drone_render_smoke_and_debug_artifact` fails on plain `origin/main`
-because the direction-field branch merged without its
-`debugviz.direction_field` render function — an agent lane's uncommitted
-worktree edit that never made it into the PR. The fix exists but sits
-unmerged in open PR #22; don't be surprised by this specific failure until
-that PR lands.
+trusting either count as this environment's steady state. A 4th failure
+briefly existed between two merges — `test_directionfield.py::
+test_drone_render_smoke_and_debug_artifact`, because the direction-field
+branch had merged without its `debugviz.direction_field` render function
+(an agent lane's uncommitted worktree edit that never made it into the PR)
+— and is now gone: PR #22 restored the function, confirmed by re-running
+this suite against a fresh `origin/main` checkout after the merge. If this
+specific failure resurfaces, that's a real regression, not this note being
+stale.
 
 The standalone rebuild step (`node tools/bundle.mjs`) is RETIRED along with
 `EMB-Bot-standalone.html` — do not rebuild it as features land.
