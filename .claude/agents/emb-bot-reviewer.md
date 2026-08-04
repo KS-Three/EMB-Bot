@@ -45,8 +45,9 @@ not background color.
   functions (`src/*.js`, `digitizer_core/*.py`) must default to exactly
   today's output when absent. No migration step, no surprise behavior change
   for existing callers. Flag any new option that isn't opt-in-by-default.
-- **The standalone bundle.** `EMB-Bot-standalone.html` / `tools/bundle.mjs`
-  are RETIRED — do not rebuild them, and flag it if a diff tries to.
+- **The standalone bundle.** `EMB-Bot-standalone.html` is DELETED
+  (2026-08-04, Kent's call); `tools/bundle.mjs` is dead code. Flag it if a
+  diff tries to regenerate or reference either.
 - **Font engine-file sync (3 places).** Any change to which engine files the
   Studio loads must stay in sync across `app/scripts/copy-engine.mjs`
   (`ENGINE_FILES`), `app/src/lib/emb.js` (`ENGINE_KEYS`), and the `<script>`

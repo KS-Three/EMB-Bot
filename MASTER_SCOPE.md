@@ -221,10 +221,10 @@ longer something first dollar waits on. Stacked on it, **PR #17
 (`legacy-font-audit`), merged same day,** removes the same 7 pulled fonts
 (the original 2 + the 5 ShareAlike) from the legacy `satin-fonts.js`
 registry — diff-verified this pass at 21 → 14 entries — so `EMB-Bot.html`
-carries nothing pulled either; only the retired `EMB-Bot-standalone.html`
-still embeds a pre-audit inlined copy (frozen artifact, not to be
-distributed — Kent's call whether to delete or regenerate it once). Still
-parked for Kent: the bluenesia permission screenshots (audit §8).
+carries nothing pulled either. `EMB-Bot-standalone.html` (the only place
+that still embedded a pre-audit inlined copy) is **deleted, 2026-08-04,
+Kent's call** — no pre-audit font list ships anywhere. Still parked for
+Kent: the bluenesia permission screenshots (audit §8).
 
 ### No physical sew-out testing has occurred yet
 
@@ -554,10 +554,11 @@ launch gate — it's an optional restore path now.
   OPTIONAL — kept as the restore path for the 13
   (`docs/lawyer-brief-cc-by-sa-2026-08-04.md`), no longer launch-gating.
 
-**Open issues:** the item-11 consult is optional now, not blocking (above);
-the retired `EMB-Bot-standalone.html` still embeds a pre-audit inlined font
-registry (the live `satin-fonts.js` residual itself was closed 2026-08-04,
-audit §10 — Kent's call whether to delete or regenerate the standalone). On
+**Open issues:** the item-11 consult is optional now, not blocking (above).
+`EMB-Bot-standalone.html` (which embedded a pre-audit inlined font registry)
+is **deleted, 2026-08-04, Kent's call** — the live `satin-fonts.js` residual
+was already closed the same day (audit §10), so no pre-audit font list
+ships anywhere now. On
 the tech side: the font-editing round deferred condensed/expanded width and
 mixed per-letter size (both risk uneven satin distortion) — minor, not
 blocking.

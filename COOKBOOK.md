@@ -9,8 +9,8 @@ store, not this repo) — this file is the repo-local, self-contained version.
 Browser-based embroidery auto-digitizer + guided lettering studio, plus a
 Python digitizing engine that runs as a localhost service. Three parts:
 
-- **`EMB-Bot.html`** / **`EMB-Bot-standalone.html`** — original single-page
-  tool (image-to-stitch + text-to-stitch, manual controls).
+- **`EMB-Bot.html`** — original single-page tool (image-to-stitch +
+  text-to-stitch, manual controls).
 - **`app/`** — "EMB Bot Studio", a Svelte 5 + Vite guided wizard (garment →
   content → review → download) built on top of the same engine via
   `window.EMB` (loaded through `<script>` tags, engine untouched).
@@ -44,9 +44,9 @@ used by legacy `EMB-Bot.html` — do not delete it. **Its audit ran 2026-08-04**
 (milli_marif_bold, tt_masters + the 5 ShareAlike: aventurina, emilio_20,
 emilio_20_bold, geneva_simple, monicha) were removed, 21 → 14 entries, all
 remaining OFL-1.1/CC0 and present in the shipping manifest. Do not re-add a
-font there unless it is also in the shipping manifest. The retired
-`EMB-Bot-standalone.html` still inlines the pre-audit 21 — frozen artifact,
-not to be distributed (Kent's call whether to delete or regenerate it once).
+font there unless it is also in the shipping manifest. `EMB-Bot-standalone.html`
+(the frozen artifact that inlined the pre-audit 21 fonts) was **deleted
+2026-08-04, Kent's call** — no pre-audit font list ships anywhere anymore.
 
 - **EMBF format** (`src/fontbin.js`): quantize coords ×4 → per-ring delta →
   Int16 stream; skeleton JSON carries everything else. Guard test
@@ -72,8 +72,8 @@ not to be distributed (Kent's call whether to delete or regenerate it once).
   resolved 2026-08-04 by the legacy-registry audit (audit doc §10):
   milli_marif_bold and tt_masters are removed from `satin-fonts.js` along
   with the 5 ShareAlike pulls, so `EMB-Bot.html` no longer ships any pulled
-  font. Only the retired `EMB-Bot-standalone.html` still embeds them
-  (frozen inlined copy — see the paragraph above).
+  font — and `EMB-Bot-standalone.html`, the only place that still embedded
+  them, is deleted (see the paragraph above).
 - **Engine-file lists live in THREE places** for the Studio: `app/scripts/
   copy-engine.mjs` (ENGINE_FILES), `app/src/lib/emb.js` (ENGINE_KEYS), and
   the `<script>` tags in **`app/index.html`** — the third one was missed once
@@ -437,8 +437,9 @@ this suite against a fresh `origin/main` checkout after the merge. If this
 specific failure resurfaces, that's a real regression, not this note being
 stale.
 
-The standalone rebuild step (`node tools/bundle.mjs`) is RETIRED along with
-`EMB-Bot-standalone.html` — do not rebuild it as features land.
+`EMB-Bot-standalone.html` is **DELETED 2026-08-04, Kent's call** — do not
+regenerate it. `tools/bundle.mjs` (its rebuild step) is now dead/orphaned
+code — left in place, not wired to anything, not to be run.
 
 Opening `EMB-Bot.html` needs internet (CDN: opentype.js@1.3.4 — **pinned,
 v2 hangs** — jsPDF, ~137 Google Fonts). `file://` renders static-only; serve

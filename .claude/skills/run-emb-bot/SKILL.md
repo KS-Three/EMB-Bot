@@ -1,6 +1,6 @@
 ---
 name: run-emb-bot
-description: Launch, build, and test EMB-Bot — the Svelte Studio app, the standalone HTML bundle, the JS stitch engine's Node test harness, and the Python digitizer service. Use when asked to run, start, build, verify, or test EMB-Bot, or after changing src/, app/, tools/, or digitizer/.
+description: Launch, build, and test EMB-Bot — the Svelte Studio app, the JS stitch engine's Node test harness, and the Python digitizer service. Use when asked to run, start, build, verify, or test EMB-Bot, or after changing src/, app/, tools/, or digitizer/.
 ---
 
 # Running EMB-Bot
@@ -49,16 +49,11 @@ click through garment/font pickers, and take snapshots/screenshots to
 confirm a change actually works, not just that tests pass. Prefer this over
 claiming a frontend change works from reading the diff alone.
 
-## Standalone bundle — rebuild after any `src/` or `EMB-Bot.html` change
+## Standalone bundle — deleted, do not rebuild
 
-`EMB-Bot-standalone.html` is a committed, inlined artifact — it is **not**
-regenerated automatically. Anyone testing the standalone file (or the plain
-`EMB-Bot.html` + `src/` combo) after an engine change is looking at stale
-code until this runs:
-
-```
-node tools/bundle.mjs
-```
+`EMB-Bot-standalone.html` is **deleted, 2026-08-04 (Kent's call)**.
+`tools/bundle.mjs` is dead code — do not run it, do not regenerate the file.
+Test the plain `EMB-Bot.html` + `src/` combo, or the Studio, instead.
 
 ## JS engine tests — no browser needed
 
