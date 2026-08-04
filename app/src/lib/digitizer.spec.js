@@ -240,6 +240,54 @@ test("canonicalShapeEdits combines `stitched` with the other override fields on 
   });
 });
 
+// ---- per-shape border override (contract v1; Layers-panel control) ---------
+//
+// The wire contract (digitizer_service/app.py's _BORDER_VALUES, enforced
+// again engine-side in regions.apply_shape_edits) accepts "off" | "auto" |
+// "bean" — and unlike tier, "auto" is a REAL override value, not the
+// no-override spelling: it forces the border decision back ON for one shape
+// even when the design-wide Border param is "off". The absence of the key is
+// the only "use the design setting" spelling.
+
+test("canonicalShapeEdits round-trips every border value — off, auto AND bean (auto is a real override, unlike tier) — and drops junk", async () => {
+  stubStorage({});
+  const { canonicalShapeEdits } = await import("./digitizer.js");
+  const el = digitizedElement({
+    shapeOverrides: {
+      Soff: { border: "off" },
+      Sauto: { border: "auto" }, // must SURVIVE — not the tier "auto" clearing rule
+      Sbean: { border: "bean" },
+      Sjunk: { border: "zigzag" }, // not in the closed vocabulary -> dropped
+      Snull: { border: null }, // null = absence -> entry canonicalizes away
+    },
+  });
+  expect(canonicalShapeEdits(el)).toEqual({
+    shape_overrides: {
+      Sauto: { border: "auto" },
+      Sbean: { border: "bean" },
+      Soff: { border: "off" },
+    },
+  });
+});
+
+test("a border override rides buildDigitizeConfig and changes the cache key (editsKey), and clearing it restores the no-edits config", async () => {
+  stubStorage({});
+  const { buildDigitizeConfig, canonicalShapeEdits, editsKey } = await import("./digitizer.js");
+  const plain = digitizedElement();
+  const edited = digitizedElement({ shapeOverrides: { S1: { border: "bean" } } });
+  expect(editsKey(canonicalShapeEdits(edited))).not.toBe(editsKey(canonicalShapeEdits(plain)));
+  // Distinct border values are distinct edits (distinct jobs).
+  const off = digitizedElement({ shapeOverrides: { S1: { border: "off" } } });
+  expect(editsKey(canonicalShapeEdits(off))).not.toBe(editsKey(canonicalShapeEdits(edited)));
+  const cfg = buildDigitizeConfig(edited, PROJECT);
+  expect(cfg.shape_overrides).toEqual({ S1: { border: "bean" } });
+  for (const k of Object.keys(cfg)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
+  // The panel's clear spelling (setShapeBorder "default" -> border: null)
+  // reads as no edits at all — the pre-layers config, byte for byte.
+  const cleared = digitizedElement({ shapeOverrides: { S1: { border: null } } });
+  expect(buildDigitizeConfig(cleared, PROJECT)).toEqual(buildDigitizeConfig(plain, PROJECT));
+});
+
 test("editsKey distinguishes a `stitched` restore from no edits, and a no-op stitched round trip stays stable", async () => {
   stubStorage({});
   const { canonicalShapeEdits, editsKey } = await import("./digitizer.js");

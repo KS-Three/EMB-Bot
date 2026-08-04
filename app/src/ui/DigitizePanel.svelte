@@ -321,6 +321,23 @@
     return e.fill_angle_deg == null ? "auto" : String(e.fill_angle_deg);
   }
 
+  // Per-shape border override (shape_overrides[sid].border, contract v1 —
+  // engine-supported since the landing commit, this select is its first UI).
+  // Unlike tier, "auto" is a REAL override value here, not the no-override
+  // spelling: it forces the border decision back on for one shape even when
+  // the design-wide Border param is "off" (canonicalShapeEdits keeps it, the
+  // service applies it — _BORDER_VALUES in digitizer_service/app.py). So the
+  // no-override sentinel is its own word, "default" = sew the design-wide
+  // Border setting.
+  function overrideBorder(row, ov) {
+    const e = ov[row.id] || {};
+    return e.border == null ? "default" : e.border;
+  }
+
+  function setShapeBorder(sid, v) {
+    setOverride(sid, { border: v === "default" ? null : v });
+  }
+
   function rowName(row) {
     return row.threadNumber ? "#" + row.threadNumber : "Shape";
   }
@@ -676,6 +693,17 @@
                           {/each}
                         </select>
                       {/if}
+                      <select
+                        class="dgp-lsel"
+                        value={overrideBorder(row, overrides)}
+                        on:change={(e) => setShapeBorder(row.id, e.currentTarget.value)}
+                        aria-label="Border"
+                      >
+                        <option value="default">Design ({element.params.border})</option>
+                        <option value="off">No border</option>
+                        <option value="auto">Auto border</option>
+                        <option value="bean">Bean border</option>
+                      </select>
                     </div>
                   {/if}
                 </div>
