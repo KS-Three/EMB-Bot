@@ -117,6 +117,13 @@ const SHAPE_BORDERS = new Set(["off", "auto", "bean"]);
 // them). Canonical HERE, not just server-side, because the panel compares
 // this against `element.appliedEdits` to know whether edits are pending —
 // two spellings of the same edit must never read as "pending changes".
+//
+// `stitched` (BACKGROUND_ENCLOSED restore, contract v1.1) is a plain
+// boolean, not a closed vocabulary: `true` restores a shape the digitizer
+// excluded by default (an enclosed-background region — see reviewFromJob's
+// `stitched` mapping), `false` explicitly excludes one. Unlike the other
+// fields it has no "auto" spelling — the absence of the key IS auto,
+// exactly like every other override here.
 export function canonicalShapeEdits(element) {
   const out = {};
   const deleted = Array.from(new Set(element.deletedShapeIds || []))
@@ -135,6 +142,7 @@ export function canonicalShapeEdits(element) {
     if (SHAPE_TIERS.has(e.tier)) entry.tier = e.tier;
     if (SHAPE_BORDERS.has(e.border)) entry.border = e.border;
     if (Number.isInteger(e.layer)) entry.layer = e.layer;
+    if (typeof e.stitched === "boolean") entry.stitched = e.stitched;
     if (Object.keys(entry).length) overrides[sid] = entry;
   }
   if (Object.keys(overrides).length) out.shape_overrides = overrides;
@@ -176,6 +184,12 @@ export function thinOutline(points, max = 48) {
 //   rgb — the shape's OWN thread color, resolved by thread number against
 //   the job palette first (a shape that produced no stitches has no
 //   sew_block but still has a thread), block index as the fallback.
+//   stitched — the digitizer's own default for the shape (contract v1.1):
+//   `false` means a BACKGROUND_ENCLOSED region left out of the stitch plan
+//   by default (e.g. white icon linework enclosed by a colored logo), not a
+//   user action. Missing on a response from a service that predates this
+//   field reads as `true` (every shape stitched, today's behavior) — the
+//   same "absent key = default" reading the field has on the wire.
 export function reviewFromJob(review) {
   if (!review || !Array.isArray(review.shapes)) return null;
   const palette = review.palette || [];
@@ -196,6 +210,7 @@ export function reviewFromJob(review) {
       sewIndex: s.sew_index,
       sewBlock: s.sew_block,
       tier: s.tier,
+      stitched: s.stitched !== false,
       outline: thinOutline(s.outline_mm),
     })),
   };
@@ -377,7 +392,8 @@ const WARNING_TEXT = {
   INPUT_LOW_RESOLUTION: () =>
     "The image is low resolution for this stitch size. A larger image or a smaller size will sew sharper.",
   BACKGROUND_ENCLOSED: () =>
-    "Enclosed background-colored areas were left open, like the hole in an O.",
+    "Enclosed background-colored areas were left open, like the hole in an O. " +
+    "Find them in the Layers list, marked \"not sewn — enclosed area,\" to sew them.",
   COLOR_CAP_APPLIED: () =>
     "The art has more colors than the limit. The smallest areas now reuse the nearest kept color — raise Colors to keep more.",
   DROPPED_SMALL_SHAPES: (w) =>

@@ -129,12 +129,15 @@ def run_stages(
         regions, list(q.thread_indices), cfg.deleted_shape_ids,
         cfg.shape_overrides, chart_for(cfg))
 
-    # Default resolution of a region's effective "stitched" state: an
-    # enclosed-background-tagged region is unstitched by default, everything
-    # else stitched. Written to go through a `shape_overrides[sid]["stitched"]`
-    # entry first — that override key does not exist yet (a later, service-
-    # contract slice), so this always falls through to the default branch
-    # today, but the shape is already in place for when it lands.
+    # Resolution of a region's effective "stitched" state: a
+    # `shape_overrides[sid]["stitched"]` entry wins when present (the service
+    # validates it in `_canonicalize_shape_edits`); otherwise an enclosed-
+    # background-tagged region is unstitched by default, everything else
+    # stitched. Deliberately read straight off cfg here, NOT through
+    # `apply_shape_edits`'s meta write path: the default half depends on
+    # `enclosed_background`, a fact re-tagged THIS generation, so override
+    # and default belong in one expression after tagging — not split between
+    # an edit pass and a fallback pass.
     shape_overrides = cfg.shape_overrides or {}
     for r in regions:
         r.meta["stitched"] = (shape_overrides.get(r.shape_id) or {}).get(
