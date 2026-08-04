@@ -233,6 +233,20 @@ sees enclosed pixels at all by the time it runs — they're already folded
 into `bg`/excluded from `fg` at stage 1, before quantize, before
 segmentation, before vectorization.
 
+**2026-08-04 update: a full design pass now exists** —
+`docs/superpowers/plans/2026-08-04-enclosed-background-restore-design.md`.
+It grounds the "recommended shape" sketch below in the actual current
+Studio delete/restore UX and service contract (researched fresh, not
+assumed) and turns it into a concrete, buildable plan: enclosed pixels join
+`fg` instead of `bg`, resulting regions get tagged
+`meta["enclosed_background"]` by a post-vectorization overlap test against
+a new `Prep.enclosed_mask`, a new `stitched` shape-override key (same shape
+as the existing `border`/`tier` keys) restores one, and the exclusion from
+stitching happens at `plan_stitches` — never from `PipelineResult.regions`,
+so the review payload keeps listing it. Still not built; the design doc has
+open questions (overlap-threshold tuning, stage-5 interaction) flagged for
+whoever picks up the build.
+
 That single fact resolves direction 3's open question too: **the "review
 can toggle them back on" promise in the warning text and the
 `stage1_prep.py` module docstring is currently FALSE.** Because enclosed

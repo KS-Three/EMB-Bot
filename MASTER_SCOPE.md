@@ -156,19 +156,24 @@ is now fixed (see below), four remain open:
   angle sharing remain explicit, documented non-goals of this fix. Full
   writeup: the plan doc's "Defect 1 update" section.
 
-  **`BACKGROUND_ENCLOSED` (enclosed-white-icon drop) remains unresolved**,
-  and its root cause was corrected this same session: it lives in
-  `stage1_prep.py::prep` (the no-alpha color-heuristic branch), not
-  `stage3_segment.py` as first suspected — enclosed pixels are folded into
-  `bg`/excluded from `fg` before stage 3 or vectorization ever run, so they
-  never become a `Region` with a `shape_id`. That means the warning's own
-  "toggle it back on in review" claim is currently **false**: there is no
-  shape for a review-screen edit to reference. A real fix needs enclosed
-  pixels to flow through as tagged, restorable regions plus a new
-  service/Studio override — a cross-cutting, multi-file feature on the
-  scale of a DT-first M0/M1 slice, not a small next step; scoped but
-  deliberately not built this session (see the plan doc's "Defect 2 update"
-  for the recommended shape).
+  **`BACKGROUND_ENCLOSED` (enclosed-white-icon drop) remains unresolved.**
+  Root cause: `stage1_prep.py::prep` (the no-alpha color-heuristic branch),
+  not `stage3_segment.py` as first suspected — enclosed pixels are folded
+  into `bg`/excluded from `fg` before stage 3 or vectorization ever run, so
+  they never become a `Region` with a `shape_id`. The warning's own "toggle
+  it back on in review" claim is currently **false**: there is no shape for
+  a review-screen edit to reference. **A full design pass landed
+  2026-08-04**
+  (`docs/superpowers/plans/2026-08-04-enclosed-background-restore-design.md`):
+  enclosed pixels join `fg` instead of `bg`, get tagged
+  `meta["enclosed_background"]` post-vectorization, a new `stitched`
+  shape-override key (same shape as `border`/`tier`) restores one,
+  excluded from stitching at `plan_stitches` only — never from
+  `PipelineResult.regions`, so Studio's existing Layers-panel delete/
+  restore UI has something real to render. Still not built — bigger than a
+  DT-first M0/M1 slice, spans pipeline internals, the service contract, and
+  Studio UI. Open questions (overlap-threshold tuning, stage-5 interaction)
+  are flagged in the design doc for whoever builds it.
 - **Contour fill** — explicitly marked not-ready (commit `eac414e`): a
   0.640mm bare core in the primary fixture (7× worse than tatami's
   0.090mm), a starved-fill gate miscalibrated in both directions, and
@@ -202,12 +207,12 @@ Every claim about visual/sew quality beyond internal geometry checks is
 **Next step:** the chaining fix and the gradient angle-fragmentation fix are
 both landed. M0 of the DT-first migration is measured (see the satin/fill
 classifier item above) — corpus leg pending a local run, M1 (`ShapeField`
-hoist, byte-identical) not started. In parallel: the enclosed-white-icon
-drop (`BACKGROUND_ENCLOSED`, root-caused this session to `stage1_prep.py` —
-see cross-cutting notes above and the plan doc's "Defect 2 update") needs
-its own brainstorm/spec/plan pass before building, being a cross-cutting
-feature rather than a contained fix. Then schedule the first sew-out
-session.
+hoist, byte-identical) not started. The enclosed-white-icon drop
+(`BACKGROUND_ENCLOSED`) has a full design pass as of 2026-08-04
+(`docs/superpowers/plans/2026-08-04-enclosed-background-restore-design.md`)
+— ready to build, not started; the Python-side slice (stage 1 + tagging +
+tests, no service/Studio change yet) is buildable on its own per the design
+doc's sizing note. Then schedule the first sew-out session.
 
 ---
 

@@ -235,13 +235,17 @@ Session handoff with the full context:
 
 1. **The two gradient/enclosed-white regressions** (see Known bugs below).
    The angle-fragmentation half is FIXED (2026-08-03, same-day follow-up
-   session). `BACKGROUND_ENCLOSED` remains open, re-scoped as a
-   cross-cutting feature (stage 1 through the service/Studio round-trip),
-   not a small next step — needs its own brainstorm/spec/plan pass, see the
-   plan doc's "Defect 2 update." Also still queued: land
-   `fix/bg-existence-guard` (this remote session's checkout has no such
-   branch/worktree — re-verify locally, per this section's own warning,
-   before assuming it's gone or merged).
+   session). `BACKGROUND_ENCLOSED` remains open, but has a full design pass
+   now (2026-08-04):
+   `docs/superpowers/plans/2026-08-04-enclosed-background-restore-design.md`
+   — enclosed pixels join `fg`, get tagged post-vectorization, a new
+   `stitched` shape-override restores one, exclusion happens at
+   `plan_stitches` only so Studio's existing delete/restore Layers UI has a
+   real shape to work with. Not built — still a cross-cutting feature (stage
+   1 through the service/Studio round-trip), bigger than a quick fix. Also
+   still queued: land `fix/bg-existence-guard` (this remote session's
+   checkout has no such branch/worktree — re-verify locally, per this
+   section's own warning, before assuming it's gone or merged).
 2. **M0 + M1 of the DT-first migration** — this is the sequencing call that
    is easy to miss: once the regressions close, do **not** go straight to
    photo-digitizing steps 5+. M0 instruments `digitizer/tools/shape_lens.py`
@@ -319,11 +323,13 @@ don't push for it.
   pipeline, not classifier-specific, just newly customer-visible on exactly
   the art the gradient tier targets. A real fix is a cross-cutting,
   multi-file feature (stage 1 through the service/Studio round-trip) on the
-  scale of a DT-first M0/M1 slice, not a small next step — scoped, not
-  built. Repro fixture:
-  `digitizer/testdata/photo/repro_gradient_white_icon.png`. Full diagnosis
-  + recommended shape for the fix:
+  scale of a DT-first M0/M1 slice, not a small next step — a full design
+  pass exists (2026-08-04), not built. Repro fixture:
+  `digitizer/testdata/photo/repro_gradient_white_icon.png`. Original
+  diagnosis:
   `docs/superpowers/plans/2026-08-03-gradient-tier-fragmentation-and-enclosed-white-defects.md`.
+  Buildable design:
+  `docs/superpowers/plans/2026-08-04-enclosed-background-restore-design.md`.
 
 ## Running things
 
