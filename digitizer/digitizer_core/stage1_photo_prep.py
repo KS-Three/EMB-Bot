@@ -29,11 +29,14 @@ What it does, in order:
    * `"meanshift"` (zero-dep, "[M present]") — `cv2.pyrMeanShiftFiltering`,
      the flatter posterizing alternative.
    * `"rolling_guidance"` — THE CONTRIB SEAM. `cv2.ximgproc.
-     rollingGuidanceFilter` needs the opencv-contrib swap the plan gates on
-     golden byte-verification. When `cv2.ximgproc` is absent (the shipped
-     venv today), this FALLS BACK to `"bilateral"` and says so in the
-     PHOTO_PREP_APPLIED warning's `fallback` key — never an error, because
-     which wheel is installed is an environment fact, not a caller mistake.
+     rollingGuidanceFilter` needs the opencv-contrib wheel; the repo ships
+     it since 2026-08-04 (`opencv-contrib-python-headless==5.0.0.93` in
+     requirements.txt/pyproject.toml, golden-verified before the swap). When
+     `cv2.ximgproc` is absent (an env installed before the swap, or a
+     hand-built one on the plain wheel), this FALLS BACK to `"bilateral"`
+     and says so in the PHOTO_PREP_APPLIED warning's `fallback` key — never
+     an error, because which wheel is installed is an environment fact, not
+     a caller mistake.
    * `"none"` — tone prep only.
 
 **Contrib-swap probe record (2026-08-04, this sandbox, kept here so nobody
@@ -43,9 +46,11 @@ from PyPI through this environment's proxy, imports as cv2 5.0.0, and
 carries `ximgproc.rollingGuidanceFilter` and `ximgproc.l0Smooth`. The full
 digitizer suite run against a probe venv with the contrib wheel (everything
 else version-identical to the shipped venv) is the plan's gate — see
-docs/photo-prep-deps-probe-2026-08-04.md for the run record. The shared
-venv itself is deliberately NOT swapped by this slice; that is the
-coordinator's call after independent verification.
+docs/photo-prep-deps-probe-2026-08-04.md for the run record. **The swap is
+APPLIED as of later 2026-08-04**: requirements.txt and pyproject.toml now
+pin `opencv-contrib-python-headless==5.0.0.93`, re-verified golden-safe in
+a fresh venv (see the probe doc's addendum). This module needed no change
+— it feature-detects `cv2.ximgproc` either way.
 
 **rembg / YuNet seams** (§2 rows 1-2, the other half of build step 3) are
 `remove_background_seam` / `detect_faces_seam` at the bottom of this module
@@ -178,8 +183,9 @@ def _texture_kill(rgb: np.ndarray, kill_px: int, technique: str) -> tuple[np.nda
     if technique == "rolling_guidance":
         if hasattr(cv2, "ximgproc") and hasattr(cv2.ximgproc, "rollingGuidanceFilter"):
             return _rolling_guidance(rgb, kill_px), "rolling_guidance", False
-        # Contrib not installed (the shipped venv today) — degrade to the
-        # zero-dep default rather than failing a job over a wheel.
+        # Contrib not installed (a pre-swap env; requirements.txt ships the
+        # contrib wheel since 2026-08-04) — degrade to the zero-dep default
+        # rather than failing a job over a wheel.
         return _bilateral(rgb, kill_px), "bilateral", True
     if technique == "meanshift":
         return _meanshift(rgb, kill_px), "meanshift", False

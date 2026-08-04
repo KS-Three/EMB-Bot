@@ -15,8 +15,10 @@ Photo plan §2 rows 3-4, build step 3's zero-new-dependency first slice
    kill collapses sub-detail grain while keeping a real step edge.
 4. The rolling_guidance CONTRIB SEAM degrades honestly: without
    cv2.ximgproc it falls back to bilateral byte-for-byte and says so; with
-   contrib installed it takes the real path (this branch runs only in a
-   contrib venv — the swap-gate probe environment).
+   contrib installed it takes the real path. Since the 2026-08-04
+   opencv-contrib-headless swap in requirements.txt, the real-path branch
+   is the one that runs in CI and any freshly-installed venv; the fallback
+   branch skips there and only fires in a pre-swap env.
 5. Determinism — same input, same bytes, twice.
 """
 from __future__ import annotations

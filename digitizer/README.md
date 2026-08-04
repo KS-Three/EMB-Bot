@@ -317,7 +317,7 @@ Stitch planning is deterministic on top of it: the same regions planned twice
 produce byte-identical DST (`test_planning_the_same_regions_twice_gives_the_same_file`).
 This is why stage 2 ships its own seeded k-means instead of `cv2.kmeans`
 (whose RNG behavior across versions/thread counts is not ours to control),
-and why `opencv-python-headless` is **exact-pinned** in `pyproject.toml` — a
+and why `opencv-contrib-python-headless` is **exact-pinned** in `pyproject.toml` — a
 minor bump can change clustering and silently invalidate the goldens. Bump it
 deliberately, then re-check the fixtures.
 
@@ -352,6 +352,6 @@ upstream palette set wholesale cannot quietly reintroduce a competitor's brand.
 
 Permissive dependencies only — MIT / BSD / Apache-2.0 / zlib. **No GPL or
 AGPL, ever**; LGPL only as dynamically-linked binaries, which is why the
-build uses `opencv-python-headless` (standard `opencv-python` wheels bundle
-LGPL FFmpeg). Ink/Stitch (GPL-3.0) may be *read* to learn algorithms; no code
+build uses `opencv-contrib-python-headless` (the non-headless `opencv-python`
+/ `opencv-contrib-python` wheels bundle LGPL FFmpeg). Ink/Stitch (GPL-3.0) may be *read* to learn algorithms; no code
 or data files are copied from it.

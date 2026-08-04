@@ -57,10 +57,11 @@ class PipelineConfig:
     # byte-identical suites).
     photo_prep: bool = False
     # Texture-kill technique: "bilateral" (default, zero-dep) | "meanshift"
-    # (zero-dep) | "rolling_guidance" (needs the opencv-contrib swap; falls
-    # back to bilateral with a warning when cv2.ximgproc is absent — see
-    # stage1_photo_prep's module docstring for the 2026-08-04 probe record)
-    # | "none" (tone prep only).
+    # (zero-dep) | "rolling_guidance" (real path since the 2026-08-04
+    # opencv-contrib-headless swap in requirements.txt; falls back to
+    # bilateral with a warning when cv2.ximgproc is absent, e.g. a pre-swap
+    # env — see stage1_photo_prep's module docstring) | "none" (tone prep
+    # only).
     photo_prep_texture_kill: str = "bilateral"
     # CLAHE knobs — plan row 3's own numbers ("clip 2-3, tiles 8x8").
     photo_prep_clahe_clip: float = 2.5
