@@ -291,7 +291,16 @@ class PipelineConfig:
     # Debug artifacts: written per stage when set
     debug_dir: Path | None = None
 
-    extra: dict = field(default_factory=dict)  # forward-compat scratch
+    # Forward-compat scratch. Known keys:
+    #   shapefield: bool — DT-first migration M1
+    #               (docs/dt-first-architecture-2026-08-01.md §2). Off by
+    #               default (absent or falsy = today's path, byte-identical
+    #               by construction). On routes stage6_satin's skeleton/DT
+    #               extraction through digitizer_core/shapefield.py's
+    #               ShapeField instead of stage6_satin's own inline
+    #               rasterize+medial_axis call — same numbers, hoisted for
+    #               a later stage (M2/M3, not this one) to eventually share.
+    extra: dict = field(default_factory=dict)
 
     # Step 9 — preflight scoring. Whether the service attaches a preflight
     # report to a finished job. On by default because the report is the point
