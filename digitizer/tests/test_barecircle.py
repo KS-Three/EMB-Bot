@@ -124,14 +124,21 @@ def test_a_degenerate_polygon_measures_zero():
 
 def test_reproduces_the_cited_contour_figure_on_the_fixture_logo(whitebg):
     """Cited: Sb253ebba at shipped width leaves a 0.640 mm bare radius under
-    contour. Measured on the reconstruction: 0.644 — one raster pixel off."""
+    contour. Measured on the reconstruction: 0.644 — one raster pixel off.
+
+    UPDATE 2026-08-04 (bare-core shrink): 0.154 now, not 0.644 —
+    `_refine_terminal_generation` + the finishing pass (stage6_contour.py)
+    cut this shape's own bare radius by more than three quarters. See
+    `machine.CONTOUR_BARE_CORE_MM` for the structural-dot measurement this
+    number is judged against.
+    """
     p, row, fabric = _logo_shape(whitebg, "Sb253ebba")
     runs, report = contour_fill(p.polygon, p.shape_id, spacing_mm=row,
                                 stitch_mm=machine.FILL_STITCH_MM,
                                 underlay_style=fabric.fill_underlay,
                                 trim_at_mm=fabric.trim_at_mm)
     bc = widest_bare_circle(p.polygon, runs)
-    assert bc.radius_mm == pytest.approx(0.640, abs=0.05)
+    assert bc.radius_mm == pytest.approx(0.154, abs=0.03)
     # The production gate now carries the same measurement in its report.
     assert report["bare_radius_mm"] == pytest.approx(bc.radius_mm, abs=1e-9)
 
@@ -163,6 +170,16 @@ def test_the_stars_offsets_die_at_half_its_depth_and_the_ledger_never_hears():
     (this one: ~1.33). Defect 2's "silent on that 1.47 mm bare radius"
     refers to this same star, and 2.94 / 2 = 1.47, so the disc figure reads
     as a diameter; both this suite and the config block now say so.
+
+    UPDATE 2026-08-04 (bare-core shrink, defect 1's own fix): `_rings` and
+    the ledger's blindness are untouched by this fix — both asserted below
+    exactly as before — but `_fill`'s FINAL output is not: it now runs
+    through `_refine_terminal_generation` and the finishing pass too, so the
+    bare-circle measurement at the end is the FIXED figure (~0.44), not the
+    raw ~1.33 this test originally reproduced. That raw figure is still
+    covered directly in `test_the_structural_centre_dot_is_machine_driven_
+    not_shape_driven` and `test_a_shape_starved_of_rings_says_so`
+    (test_contour.py) via `starved` still correctly firing on this shape.
     """
     inrad = shapely.maximum_inscribed_circle(STAR_SHARP, 1e-4).length
     assert inrad == pytest.approx(10.0, abs=0.02)
@@ -176,17 +193,30 @@ def test_the_stars_offsets_die_at_half_its_depth_and_the_ledger_never_hears():
     assert report["skipped_area_mm2"] < 0.01 * STAR_SHARP.area, \
         "the ledger must be blind here for the defect to be what was cited"
     bare = widest_bare_circle(STAR_SHARP, runs)
-    assert 1.2 < bare.radius_mm < 1.5, \
-        f"measured {bare.radius_mm:.3f}; the cited class is 1.47 (2.94 disc)"
+    assert 0.35 < bare.radius_mm < 0.55, \
+        f"measured {bare.radius_mm:.3f}; post-fix this star still clears " \
+        f"starved_threshold_mm (0.33) but no longer the pre-fix 1.2-1.5 class"
 
 
 def test_the_cited_stars_own_readings():
     """The ratio-0.50 star is the one whose raw mitred buffer dies nearest the
-    cited 5.60 mm. Its ledger charge and `starved` verdict match the citation
-    (~0.21 mm2, starved 0); its measured bare radius is ~0.53 — small,
-    because at this notch angle the mitre spikes stay under the limit and the
-    resampled rings ride them nearly to the centre. The wide-core behaviour
-    the citation describes lives in the sharper star above."""
+    cited 5.60 mm. Its ledger charge matches the citation (~0.21 mm2); its
+    measured bare radius is ~0.53 before any fix — small, because at this
+    notch angle the mitre spikes stay under the limit and the resampled
+    rings ride them nearly to the centre. The wide-core behaviour the
+    citation describes lives in the sharper star above.
+
+    UPDATE 2026-08-04 (bare-core shrink): `starved` flips to 1 here, and
+    that is the recalibration working as intended, not a regression. The
+    verdict was 0 only because the OLD threshold (1.07, from the un-shrunk
+    0.87 mm structural dot) was too coarse to tell this shape's ~0.42-0.53 mm
+    residual apart from a healthy disc's own dot. Post-fix a healthy disc
+    reads ~0.07-0.13 mm (CONTOUR_BARE_CORE_MM = 0.13) and the threshold
+    tightens to 0.33 with it, so this star's own residual — reduced by the
+    fix, from ~0.53 to ~0.42, but not eliminated — is now correctly told
+    apart from a healthy shape's floor instead of hiding under a threshold
+    that could not resolve either one.
+    """
     d = machine.FILL_ROW_MM * machine.CONTOUR_FIRST_INSET_FRAC
     while True:
         g = STAR_CITED.buffer(-d, join_style=2,
@@ -201,35 +231,48 @@ def test_the_cited_stars_own_readings():
 
     runs, report = _fill(STAR_CITED)
     assert report["skipped_area_mm2"] < 0.5
-    assert report["starved"] == 0
-    assert widest_bare_circle(STAR_CITED, runs).radius_mm < 0.8
+    assert report["starved"] == 1
+    assert widest_bare_circle(STAR_CITED, runs).radius_mm == pytest.approx(0.42, abs=0.05)
 
 
 # --- The structural centre dot and the threshold derived from it -------------
 
-@pytest.mark.parametrize("name,poly", [
-    ("disc3", _circle(3.0)), ("disc5", _circle(5.0)), ("disc15", _circle(15.0)),
-    ("dumbbell", DUMBBELL),
+@pytest.mark.parametrize("name,poly,expected", [
+    ("disc3", _circle(3.0), 0.067), ("disc5", _circle(5.0), 0.070),
+    ("disc15", _circle(15.0), 0.067), ("dumbbell", DUMBBELL, 0.129),
 ])
-def test_the_structural_centre_dot_is_machine_driven_not_shape_driven(name, poly):
+def test_the_structural_centre_dot_is_machine_driven_not_shape_driven(name, poly, expected):
     """CONTOUR_BARE_CORE_MM's provenance. Discs of three sizes and the
     dumbbell — four shapes with nothing in common but the machine constants —
     all leave the same 0.863 mm bare dot where their deepest ring died. That
     invariance is what makes it a structural residue the gate must tolerate,
-    and the measurement is what the threshold is derived from."""
+    and the measurement is what the threshold is derived from.
+
+    UPDATE 2026-08-04 (bare-core shrink): 0.863 -> ~0.07-0.13 mm.
+    `_refine_terminal_generation` + the finishing pass close most of the dot
+    for all four; the three discs still land within 0.003 mm of each other
+    (0.067-0.070, as machine-driven as before), but the dumbbell is
+    genuinely a little higher (0.129) — not noise, but its own three
+    convergence points (both lobe centres and the waist) needing TWO
+    finishing patches to close where a disc needs one, so it does not
+    shrink all the way to the disc floor. CONTOUR_BARE_CORE_MM (0.13) is
+    still derived from the measured MAX across all four, same convention as
+    the original 0.87 (0.863 measured) used.
+    """
     runs, _report = _fill(poly)
     bare = widest_bare_circle(poly, runs)
-    assert bare.radius_mm == pytest.approx(0.863, abs=0.03)
+    assert bare.radius_mm == pytest.approx(expected, abs=0.02)
     assert bare.radius_mm <= machine.CONTOUR_BARE_CORE_MM + 0.01
 
 
 def test_the_threshold_is_the_dot_plus_half_a_ring_spacing():
-    """1.07 mm at the shipped 0.40 mm spacing: the measured structural dot
-    (0.87) plus half a spacing — fire only when the core is a full ring
-    spacing wider in diameter than what every healthy shape already leaves.
-    The spacing terms scale, so an opened-up ring tier is judged against its
-    own geometry rather than tatami's."""
-    assert starved_threshold_mm(0.40) == pytest.approx(1.07, abs=1e-9)
+    """0.33 mm at the shipped 0.40 mm spacing (2026-08-04: was 1.07, from the
+    un-shrunk 0.87 mm dot): the measured structural dot (0.13) plus half a
+    spacing — fire only when the core is a full ring spacing wider in
+    diameter than what every healthy shape already leaves. The spacing terms
+    scale, so an opened-up ring tier is judged against its own geometry
+    rather than tatami's."""
+    assert starved_threshold_mm(0.40) == pytest.approx(0.33, abs=1e-9)
     assert starved_threshold_mm(1.20) == pytest.approx(
         machine.CONTOUR_BARE_CORE_MM + 0.8 + 0.6, abs=1e-9)
 
@@ -238,8 +281,11 @@ def test_the_threshold_is_the_dot_plus_half_a_ring_spacing():
 
 def test_starved_now_fires_where_the_area_gate_was_silent():
     """Direction 1: the star's annihilated core. The old gate summed KNOWN
-    drops (0.2 % of area here — silent); the widest bare spot is 1.33 mm,
-    double the structural dot, and the recalibrated gate fires."""
+    drops (0.2 % of area here — silent); the widest bare spot was 1.33 mm
+    before the 2026-08-04 bare-core shrink (double the OLD 0.87 mm structural
+    dot) and is ~0.44 mm after it (more than triple the NEW 0.13 mm dot) —
+    still comfortably past `starved_threshold_mm`, so the recalibrated gate
+    fires either way; only the absolute numbers moved."""
     _runs, report = _fill(STAR_SHARP)
     assert report["skipped_area_mm2"] < 0.01 * STAR_SHARP.area, \
         "old gate: silent"
@@ -263,8 +309,17 @@ def test_the_cited_0_51_false_alarm_is_the_fixture_logos_own(whitebg):
     Sf5200f3f measures 0.499 mm bare under contour while its known drops sum
     to 1.7 % of its area — the old gate fired, the recalibrated one is
     silent. (Sb253ebba, at 0.644, is the same class: old fire, new silent —
-    its bare spot is smaller than a healthy disc's own centre dot.)"""
-    for shape_id, cited in (("Sf5200f3f", 0.51), ("Sb253ebba", 0.640)):
+    its bare spot is smaller than a healthy disc's own centre dot.)
+
+    UPDATE 2026-08-04 (bare-core shrink): both figures cited above are
+    pre-fix. Post-fix, `_refine_terminal_generation` + the finishing pass
+    measure Sf5200f3f at 0.168 mm (was 0.499) and Sb253ebba at 0.154 mm (was
+    0.644) — both still comfortably under the recalibrated
+    `starved_threshold_mm` (0.33 at shipped spacing), same as before the
+    shrink, just closer to it in absolute terms since the healthy floor
+    moved too.
+    """
+    for shape_id, cited in (("Sf5200f3f", 0.168), ("Sb253ebba", 0.154)):
         p, row, fabric = _logo_shape(whitebg, shape_id)
         _runs, report = contour_fill(p.polygon, p.shape_id, spacing_mm=row,
                                      stitch_mm=machine.FILL_STITCH_MM,
@@ -272,5 +327,5 @@ def test_the_cited_0_51_false_alarm_is_the_fixture_logos_own(whitebg):
                                      trim_at_mm=fabric.trim_at_mm)
         assert report["skipped_area_mm2"] > 0.01 * p.polygon.area, \
             f"{shape_id}: the old gate fired here"
-        assert report["bare_radius_mm"] == pytest.approx(cited, abs=0.05)
+        assert report["bare_radius_mm"] == pytest.approx(cited, abs=0.03)
         assert report["starved"] == 0

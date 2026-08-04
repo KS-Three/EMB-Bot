@@ -94,29 +94,37 @@ CONTOUR_MIN_RING_MM = 3.0
 CONTOUR_MIN_RING_AREA_MM2 = 0.1
 
 # The bare dot EVERY healthy contour shape leaves at its own centre, measured
-# (2026-08-04) with the widest-inscribed-bare-circle instrument
-# (barecircle.py) at the shipped 0.40 mm spacing: discs of r = 3, 5 and 15 mm
-# and the dumbbell fixture all read 0.863 mm bare radius, invariant across
-# shape because it is machine-driven, not shape-driven — the deepest ring dies
-# when its resample can no longer hold three straight chords over
-# MIN_STITCH_MM (empirically at an enclosing radius near 0.89 mm), and the
-# ring one spacing further out laps its thread to ~0.86 mm of the centre.
-# This is the structural residue the `starved` gate must NOT fire on (a
-# warning that fires on every disc is a warning nobody reads); the gate's
-# threshold is derived from it in `barecircle.starved_threshold_mm`. For
-# scale: tatami's own worst bare spot on the fixture logo measures 0.090 mm,
-# so contour's structural centre dot is ~10x tatami — a real cost of the
-# tier, accepted and named, not warned about per shape.
+# with the widest-inscribed-bare-circle instrument (barecircle.py) at the
+# shipped 0.40 mm spacing.
 #
-# This constant replaced CONTOUR_STARVED_FRAC (an area-fraction gate at 1 %)
-# on 2026-08-04: the area sum was miscalibrated in both directions — silent on
-# a 1.47 mm bare core whose rings were annihilated without ever being counted
-# (the mitred offset dies, so the area was never charged), and firing on
-# shapes whose many small terminal slivers summed past 1 % while no single
-# bare spot beat this structural dot (whitebg's Sf5200f3f at 0.499 mm,
+# UPDATE 2026-08-04 (defect 1, the shrink): originally 0.87, from a 0.863 mm
+# measurement common to a bare ring set alone. Two fixes since then close
+# most of it — `_refine_terminal_generation` (stage6_contour.py) bisects the
+# LAST ring's own inset distance onto the true sewability floor instead of
+# wherever the fixed 0.40 mm spacing grid happened to land, and a finishing
+# pass (`contour_fill`'s post-ring loop) patches whatever `widest_bare_circle`
+# still calls the widest bare spot with an ordinary tatami patch, iterating
+# on the instrument itself until it clears CONTOUR_FINISH_MIN_RADIUS_MM or
+# the pass budget runs out. Re-measured on the same four shapes: discs of
+# r = 3, 5, 15 now read 0.067, 0.070, 0.067 and the dumbbell 0.129 — a
+# 0.863 -> ~0.13 mm structural dot, and for scale, tatami's own worst spot on
+# the fixture logo measures 0.090 mm, so contour is now within spitting
+# distance of tatami's own floor instead of ~10x it. The dumbbell's higher
+# figure is real, not noise: its three separate convergence points (both
+# lobe centres and the waist) need two finishing patches to close, against
+# one for a plain disc, and the shape genuinely does not shrink to the exact
+# disc floor. 0.13 keeps the small margin over the measured max the
+# original 0.87 (0.863 measured) used.
+# History: this constant replaced CONTOUR_STARVED_FRAC (an area-fraction gate
+# at 1 %) on 2026-08-04: the area sum was miscalibrated in both directions —
+# silent on a 1.47 mm bare core whose rings were annihilated without ever
+# being counted (the mitred offset dies, so the area was never charged), and
+# firing on shapes whose many small terminal slivers summed past 1 % while no
+# single bare spot beat this structural dot (whitebg's Sf5200f3f at 0.499 mm,
 # Sb253ebba at 0.644 mm, the dumbbell at 0.863 mm — all old-gate fires, all
-# invisible next to a healthy disc's own centre).
-CONTOUR_BARE_CORE_MM = 0.87
+# invisible next to a healthy disc's own centre, all measured before the same
+# day's terminal-refine + finishing-pass shrink above).
+CONTOUR_BARE_CORE_MM = 0.13
 
 # Mitre limit on the inward offset. The reference implementations use 10, which
 # lets a sharp corner throw a long spike the needle has to chase out and back.
@@ -143,6 +151,68 @@ CONTOUR_UNDERLAY_SPACING_FRAC = 3.0
 # 250 generations to reach the middle; this is twice that, and exists only so a
 # degenerate offset that never empties cannot spin forever.
 CONTOUR_MAX_GENERATIONS = 512
+
+# Bisection precision for the terminal-ring refinement (`_terminal_refine`):
+# how close to the true CONTOUR_MIN_RING_MM sewability floor the last ring's
+# inset distance is pinned, in mm. 0.005 is an order of magnitude under the
+# raster error barecircle.py measures the result with (~0.03 mm/pixel), so
+# the refinement is never the limiting source of imprecision.
+CONTOUR_TERMINAL_REFINE_TOL_MM = 0.005
+
+# The finishing pass: once the ring set is done (refined terminal ring
+# included), whatever polygon barecircle.py's own instrument still calls the
+# widest bare spot gets a small ordinary tatami patch (stitch_shape) instead
+# of staying empty — driven by `widest_bare_circle` itself, iteratively,
+# not by a vector reconstruction of "what the rings missed" (see
+# `contour_fill`'s finishing-pass comment for why the vector approach was
+# tried first and measured worse).
+#
+# Below this radius a bare spot is not worth a patch of its own — sub-floor
+# ring-to-ring gaps measured on a 15 mm disc top out at 0.048 mm across, an
+# order of magnitude under this line, and every genuine core measured
+# (structural dot ~0.07-0.13 mm post-refinement, the annihilated star's
+# ~0.14-0.5 mm even after patching) clears it easily while patching is still
+# worth doing. See CONTOUR_BARE_CORE_MM for the structural-dot measurement
+# this floor is judged against.
+CONTOUR_FINISH_MIN_RADIUS_MM = 0.15
+
+# Hard cap on finishing-pass iterations per shape. Each pass patches the
+# SINGLE widest remaining bare spot (barecircle.py) and re-measures, so a
+# healthy shape's one structural dot closes in one pass and this only
+# matters for genuinely pathological geometry (a deeply annihilated notched
+# interior can need several passes as the widest spot migrates around the
+# shape). Bounded so a shape that is not converging — the patch itself too
+# thin to sew, or the widest spot oscillating — cannot loop forever; past
+# this many passes whatever is still bare is left bare and reported honestly
+# through `bare_radius_mm` / `starved`, the same as before this pass existed.
+CONTOUR_FINISH_MAX_PATCHES = 8
+
+# Below this area a finishing patch is not worth the emitter call that would
+# sew it — the same order of magnitude CONTOUR_MIN_RING_AREA_MM2 draws for a
+# ring, for the same reason (numerical debris off a polygon boundary, not
+# fabric).
+CONTOUR_FINISH_MIN_PATCH_AREA_MM2 = 0.05
+
+# Slack added to a finishing patch's own measured bare radius before
+# clipping it back to the shape. The patch is `poly` intersected with a
+# plain circle at the bare spot's own centre and radius
+# (`widest_bare_circle`), not any reconstruction of the bare region's own
+# outline. A circle at EXACTLY the measured radius is tangent to whatever it
+# was inscribed in; this margin lets the patch actually overrun the bare
+# spot instead of just touching its edge. One ring spacing — the same order
+# as the gap the rings themselves leave between passes.
+CONTOUR_FINISH_PATCH_MARGIN_MM = 0.4
+
+# Round-join erosion applied to a finishing patch after it is clipped to
+# `poly`. `poly.intersection(disc)` is exact but can still inherit a REFLEX
+# vertex straight from `poly` itself — measured on the letter-e fixture's
+# mouth notch and a 5-point star's spike root: `stitch_shape` (ordinary
+# tatami has no law-42 chord clip of its own) emitted a stitch up to
+# ~0.55 mm outside the shape at exactly that corner. 0.05 mm already closed
+# every reproduction found; this is 2x that for margin, still an order of
+# magnitude under CONTOUR_FINISH_PATCH_MARGIN_MM so it costs negligible
+# coverage.
+CONTOUR_FINISH_EROSION_MM = 0.1
 
 # --- Satin ----------------------------------------------------------------
 
