@@ -31,6 +31,13 @@ def stage1(dir_: Path, rgb: np.ndarray, bg_mask: np.ndarray) -> None:
     _write(dir_ / "stage1_bg.png", over)
 
 
+def stage1_photo_prep(dir_: Path, rgb_tone: np.ndarray, rgb_prepped: np.ndarray) -> None:
+    """Photo prep (stage1_photo_prep): the tone-rescued raster and the final
+    texture-killed one the region former will actually see."""
+    _write(dir_ / "stage1_photo_tone.png", rgb_tone)
+    _write(dir_ / "stage1_photo_prepped.png", rgb_prepped)
+
+
 def stage2(dir_: Path, labels: np.ndarray, thread_indices: list[int],
            chart: Chart | None = None) -> None:
     rng = np.random.default_rng(7)

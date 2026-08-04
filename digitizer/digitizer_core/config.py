@@ -46,6 +46,26 @@ class PipelineConfig:
     upscale_cap: float = 4.0           # max Lanczos upscale factor
     denoise: bool = True
 
+    # Stage 1.5 — photo prep (photo plan §2 rows 3-4; build step 3, first
+    # slice — stage1_photo_prep.py). CLAHE tone rescue + texture kill on the
+    # prepped raster BEFORE the photo region former sees it. DOUBLE-gated:
+    # this flag must be True AND stage 0 must classify the design
+    # photo_subject/photo_scene (forced_class counts). Default False, and
+    # with it off — or on for any non-photo class — the pipeline is
+    # byte-identical to before this module existed (pinned in
+    # tests/test_photo_prep.py; the flat lane additionally by the
+    # byte-identical suites).
+    photo_prep: bool = False
+    # Texture-kill technique: "bilateral" (default, zero-dep) | "meanshift"
+    # (zero-dep) | "rolling_guidance" (needs the opencv-contrib swap; falls
+    # back to bilateral with a warning when cv2.ximgproc is absent — see
+    # stage1_photo_prep's module docstring for the 2026-08-04 probe record)
+    # | "none" (tone prep only).
+    photo_prep_texture_kill: str = "bilateral"
+    # CLAHE knobs — plan row 3's own numbers ("clip 2-3, tiles 8x8").
+    photo_prep_clahe_clip: float = 2.5
+    photo_prep_clahe_tiles: int = 8
+
     # Stage 3
     min_detail_mm: float = 1.5         # blueprint hard constraint
     # Absorbed regions below this fraction of the min-detail area are

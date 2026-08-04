@@ -22,6 +22,7 @@ from .config import PipelineConfig
 from .fabrics import Fabric, fabric_for_garment, get_fabric
 from .regions import Region, apply_layer_overrides, apply_shape_edits
 from .stage0_classify import classify
+from .stage1_photo_prep import photo_prep
 from .stage1_prep import Prep, prep
 from .stage2_photo_segment import segment as photo_segment
 from .stage2_quantize import Quant, quantize
@@ -92,6 +93,24 @@ def run_stages(
     p: Prep = prep(image, cfg)
     if dbg:
         debugviz.stage1(dbg, p.rgb, p.bg_mask)
+
+    # Stage 1.5 — photo prep (plan §2 rows 3-4; build step 3 first slice).
+    # DOUBLE-gated: the opt-in flag AND a photo classification, so neither
+    # the default config nor a photo-classified design under default config
+    # nor a non-photo design with the flag on ever takes this branch — the
+    # flat/gradient lanes stay byte-identical by construction (and by the
+    # byte-identical suites). Overwrites `p.rgb` in place of the stage-1
+    # raster, so everything downstream that reads pixels — the photo region
+    # former AND `source_pixels` for the tonal tiers — sees the prepped
+    # image; that is the point (texture below the sewable floor should not
+    # reach any consumer).
+    prep_warnings: list[dict] = []
+    if cfg.photo_prep and classification.class_ in ("photo_subject", "photo_scene"):
+        pp = photo_prep(p.rgb, p.bg_mask, p.px_per_mm, cfg)
+        p.rgb = pp.rgb
+        prep_warnings = pp.warnings
+        if dbg:
+            debugviz.stage1_photo_prep(dbg, pp.rgb_tone, pp.rgb)
 
     # Only "photo_subject"/"photo_scene" branch here — flat and gradient
     # take the exact quantize() call this pipeline has always made. Purely
@@ -278,8 +297,8 @@ def run_stages(
         px_per_mm=p.px_per_mm,
         design_size_mm=design,
         warnings=merge_warnings(
-            [*classification.warnings, *p.warnings, *q.warnings, *small_warnings,
-             *vec_warnings, *edit_warnings, *layer_warnings]
+            [*classification.warnings, *p.warnings, *prep_warnings, *q.warnings,
+             *small_warnings, *vec_warnings, *edit_warnings, *layer_warnings]
         ),
         segmenter=seg.name,
         debug_dir=dbg,
