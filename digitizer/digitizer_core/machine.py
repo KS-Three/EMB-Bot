@@ -93,14 +93,30 @@ CONTOUR_MIN_RING_MM = 3.0
 # Offset slivers below this are numerical debris, not fabric to cover.
 CONTOUR_MIN_RING_AREA_MM2 = 0.1
 
-# When the rings a shape had to drop add up to more than this fraction of its
-# area, the operator hears about it. The doc's own C1 gate ("uncovered area >
-# 1 % of shape"), and it exists because the raw ring count is not the question:
-# EVERY shape drops its last ring, the sliver where the offsets converge on
-# themselves. Measured on the fixture logo, that is 0.14-0.30 mm2 against
-# regions of several hundred — 0.1 %, three warnings nobody should read. A comb
-# whose arms starve is the same counter at 40 %.
-CONTOUR_STARVED_FRAC = 0.01
+# The bare dot EVERY healthy contour shape leaves at its own centre, measured
+# (2026-08-04) with the widest-inscribed-bare-circle instrument
+# (barecircle.py) at the shipped 0.40 mm spacing: discs of r = 3, 5 and 15 mm
+# and the dumbbell fixture all read 0.863 mm bare radius, invariant across
+# shape because it is machine-driven, not shape-driven — the deepest ring dies
+# when its resample can no longer hold three straight chords over
+# MIN_STITCH_MM (empirically at an enclosing radius near 0.89 mm), and the
+# ring one spacing further out laps its thread to ~0.86 mm of the centre.
+# This is the structural residue the `starved` gate must NOT fire on (a
+# warning that fires on every disc is a warning nobody reads); the gate's
+# threshold is derived from it in `barecircle.starved_threshold_mm`. For
+# scale: tatami's own worst bare spot on the fixture logo measures 0.090 mm,
+# so contour's structural centre dot is ~10x tatami — a real cost of the
+# tier, accepted and named, not warned about per shape.
+#
+# This constant replaced CONTOUR_STARVED_FRAC (an area-fraction gate at 1 %)
+# on 2026-08-04: the area sum was miscalibrated in both directions — silent on
+# a 1.47 mm bare core whose rings were annihilated without ever being counted
+# (the mitred offset dies, so the area was never charged), and firing on
+# shapes whose many small terminal slivers summed past 1 % while no single
+# bare spot beat this structural dot (whitebg's Sf5200f3f at 0.499 mm,
+# Sb253ebba at 0.644 mm, the dumbbell at 0.863 mm — all old-gate fires, all
+# invisible next to a healthy disc's own centre).
+CONTOUR_BARE_CORE_MM = 0.87
 
 # Mitre limit on the inward offset. The reference implementations use 10, which
 # lets a sharp corner throw a long spike the needle has to chase out and back.
@@ -413,6 +429,45 @@ RUN_STITCH_MM = 2.0
 # inventing cover that no thread provides — measured on the benchmark, 0.3 mm
 # starts admitting links across bare inter-letter fabric.
 LINK_COVER_TOL_MM = 0.2
+
+# How far a FUTURE colour's sewing polygon is eroded before it may count as
+# cover for a needle-down link. The already-laid half of stage 7's link cover
+# is real emitted thread (rebuilt from `runs`, 2026-08-03); this half cannot
+# be — that colour has not been planned when the link is routed — so its
+# ARTWORK polygon stands in for its thread, and no tier stitches its whole
+# polygon. Measured 2026-08-04 (both committed fixtures, logo_alpha +
+# logo_whitebg @ 80 mm / left_chest), real emitted non-travel runs vs the
+# artwork polygon `covered_by` quotes, worst case per tier:
+#
+#   fill:  nearest stitch centreline up to 0.223 mm inside the boundary
+#          (thread edge 0.023 mm shy). Interior is honest: rows tile at
+#          FILL_ROW_MM, holding a 0.20 mm half-spacing ceiling everywhere.
+#   satin: up to 0.501 mm to the nearest centreline at the boundary (thread
+#          edge 0.301 mm shy) — the column stops short at tips and fans on
+#          curves, exactly the class the 2026-08-03 rebuild proved wrong for
+#          the block's own tiers.
+#   run:   an outline run covers NO interior at all, so no erosion makes its
+#          polygon honest except the one that swallows it — its inradius,
+#          measured 0.527/0.539 mm on the fixtures' rescued shapes (shapes
+#          under min_detail_mm² sew as outline runs).
+#
+# The binding number is the run tier's 0.539 mm, plus LINK_COVER_TOL_MM —
+# the cover is buffered back OUT by that much for the containment test, so
+# the inset must pre-pay it: 0.539 + 0.2 = 0.739, rounded up to 0.75. At
+# 0.75 every measured run-tier shape erodes to empty (covers nothing,
+# honestly) and every fill/satin boundary shortfall is bounded with margin.
+#
+# What an inset cannot fix, also measured so nobody re-derives it: hairline
+# gaps between fanned satin crosses persist at ANY inset (still there at
+# 1.0 mm) — <= 0.127 mm inscribed radius, <= 0.121 mm beyond the thread
+# edge, < 1 mm² per shape. Narrower than one thread width; whether that
+# clearance shows on fabric is the sew-out question that still gates
+# `chain_links`' default.
+#
+# The two errors are not symmetric: erring big turns a buriable link into a
+# jump (a needle-up move, invisible); erring small sews a float on bare
+# fabric. Round up, never down.
+LINK_COVER_INSET_MM = 0.75
 
 # The gap past which a link is refused outright, whatever the coverage. Law 59
 # [M] is flat — professionals link 56-75% of transitions at every bucket from 0

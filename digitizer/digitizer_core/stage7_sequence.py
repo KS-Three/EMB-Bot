@@ -48,6 +48,7 @@ from .stage6_blend import SourcePixels, blend_fill
 from .stage6_border import border_runs, run_outline
 from .stage6_contour import contour_fill
 from .stage6_fill import stitch_shape
+from .stage6_scanline import scanline_fill
 from .stage6_satin import is_satin_candidate, satin_shape
 from .stitches import StitchBlock, StitchRun, tie_run
 from .threads import chart_for
@@ -154,8 +155,13 @@ def _link_cover(runs: list[StitchRun], regions: list[PlannedRegion]):
 
     `covered_by` is still a future colour's sewing POLYGON, not its thread —
     that colour has not been planned yet, so its real path cannot be known
-    here. That is a smaller, pre-existing approximation (the same one the
-    pipeline already makes for `visible`), not the defect this rebuild fixes.
+    here. What CAN be known is how far short of its polygon that thread will
+    stop, because every tier's shortfall has been measured: so each future
+    polygon is eroded by LINK_COVER_INSET_MM (see machine.py for the
+    measurement) before it may bury anything. Geometry the erosion consumes
+    entirely — a band thinner than twice the inset, a run-tier sliver whose
+    outline run covers no interior — promises nothing, and a link it would
+    have carried becomes a jump instead: the cheap direction to be wrong in.
     """
     laid = [LineString(r.points) for r in runs
             if r.kind != stitches.TRAVEL and len(r.points) >= 2]
@@ -165,7 +171,9 @@ def _link_cover(runs: list[StitchRun], regions: list[PlannedRegion]):
         c = p.covered_by
         if c is not None and not c.is_empty and not any(c is s for s in seen):
             seen.append(c)
-    parts.extend(seen)
+            g = c.buffer(-machine.LINK_COVER_INSET_MM)
+            if not g.is_empty:
+                parts.append(g)
     parts = [g for g in parts if g is not None and not g.is_empty]
     if not parts:
         return None, []
@@ -406,8 +414,17 @@ def sequence(
     # The fill tier. Contour rings follow the silhouette; tatami rows cut across
     # it. Density is the same either way — the ring spacing IS the row spacing
     # unless the caller opens it up on its own.
-    contour = (cfg.fill_technique or "tatami").lower() == "contour"
+    technique = (cfg.fill_technique or "tatami").lower()
+    contour = technique == "contour"
     contour_spacing = cfg.contour_spacing_mm or row_mm
+    # The scan-line mono tonal tier (photo plan, technique row 8). Strictly
+    # opt-in: with any other fill_technique this flag is False and every
+    # branch below reads exactly as it did before the tier existed. It needs
+    # source pixels to read tone from — a caller who set the flag gets them
+    # via pipeline.run_stages' explicit-opt-in plumbing; if they are missing
+    # anyway (a hand-built PipelineResult), the shape falls through to
+    # tatami rather than crashing or dropping artwork.
+    scanline = technique == "scanline_tonal"
 
     thin = empty = jumps = as_run = 0
     bordered = lightened = border_narrow = 0
@@ -498,7 +515,20 @@ def sequence(
             # pair yet; it is recorded here rather than silently combined.
             runs = []
             report = {}
-            if source_pixels is not None:
+            need_tatami = False
+            if scanline and source_pixels is not None:
+                # The explicit scanline_tonal opt-in beats the gradient
+                # class's blend routing — the caller already chose the mono
+                # look. Empty is a legitimate outcome for this tier (a shape
+                # that is entirely highlight sews nothing, honestly), and the
+                # standing never-drop-artwork ladder still applies: it falls
+                # through to tatami below, exactly as a shape contour cannot
+                # ring does. Bare-fabric-on-purpose is a review-screen
+                # decision (delete the shape), not something a fill tier may
+                # decide unilaterally.
+                runs, report = scanline_fill(p.region, source_pixels, cfg)
+                need_tatami = report["empty"]
+            elif source_pixels is not None:
                 # Stage 0 classified the whole design "gradient" — every
                 # auto-tier shape routes through the blend fill instead of
                 # tatami/contour. blend_fill's own ramp detection already
@@ -519,7 +549,13 @@ def sequence(
                     tolerance_mm=cfg.contour_tolerance_mm,
                     start_near=entry,
                 )
-            if source_pixels is None and (not contour or report["empty"]):
+                need_tatami = report["empty"]
+            else:
+                # Plain tatami — and also the scanline flag with no source
+                # pixels to read tone from, which sews as tatami rather than
+                # dropping the shape.
+                need_tatami = True
+            if need_tatami:
                 # The fill angle stage 5 already committed to, when it did.
                 # Passing it back is what makes directional comp honest:
                 # compensation went on the edges THIS angle penetrates, so the
@@ -734,9 +770,9 @@ def sequence(
         warnings.append(
             warn(
                 CONTOUR_RING_UNREACHABLE,
-                f"{starved} shape{'s' if starved != 1 else ''} had contour rings too "
-                "short to sew, leaving a visible patch unfilled — worth a look on the "
-                "review screen.",
+                f"{starved} shape{'s' if starved != 1 else ''} left a patch of bare "
+                "fabric wider than a contour ring — the offsets could not reach it — "
+                "worth a look on the review screen.",
                 count=starved,
                 rings=rings_skipped,
             )

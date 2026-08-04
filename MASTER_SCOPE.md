@@ -11,8 +11,11 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-03 (the gradient angle-fragmentation fix landed
-this session; `BACKGROUND_ENCLOSED`'s root cause was corrected to
+**Last updated:** 2026-08-04 (font-license audit items 4–10 + 12 executed —
+full license texts on disk/served/embedded, complete attributions, credits
+links; the lawyer consult (item 11) is now the only open compliance gate.
+Prior update 2026-08-03: the gradient angle-fragmentation fix landed
+that session; `BACKGROUND_ENCLOSED`'s root cause was corrected to
 `stage1_prep.py`, still unresolved).
 
 ---
@@ -22,7 +25,7 @@ this session; `BACKGROUND_ENCLOSED`'s root cause was corrected to
 | Area | Status | Confidence |
 |---|---|---|
 | 1. Auto-digitizing quality (image → stitches) | In progress | **Low** beyond flat spot-color art |
-| 2. Font library & lettering | Implemented (library) / In progress (license compliance) | High (tech) / **Low** (compliance — blocking for paid launch) |
+| 2. Font library & lettering | Implemented (library + license remediation) | High (tech) / Medium (compliance — one lawyer consult still open, blocking first dollar) |
 | 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: pending sew-out) |
 | 4. Export formats | Implemented | Varies by format — see below |
 | 5. Stitch-out review & manual editing tools | Implemented (narrow scope) | High |
@@ -56,22 +59,27 @@ it's worth Kent confirming the intended reading rather than assuming.
 (the "third opinion" `digitizer/README.md` calls for). Fixing the codec itself
 is explicitly Kent's call — every existing EMB-Bot DST is affected by any fix.
 
-### Font license compliance gap
+### Font license compliance gap — REMEDIATED 2026-08-04 except the lawyer consult
 
-`docs/font-license-audit-2026-07-31.md`'s own verdict: **"Not launch-compliant
-today."** Confirmed still open as of this write-up (no license/copy-engine/
-credits fix commits since the audit landed). Concretely: 48 of 69 fonts have
-no LICENSE.txt on disk anywhere; zero license files ship in `app/dist`/
-`app/public/fonts`; 51 OFL fonts ship in breach of OFL's full-license-text
-condition; `milli_marif_bold` has a standing **PULL** decision not yet
-enacted; `tt_directors`/`tt_masters`/`dejavufont` remain shipped with
-unresolved license-sourcing questions; 14 CC-BY-SA fonts have an open
-ShareAlike legal question needing a lawyer consult.
+`docs/font-license-audit-2026-07-31.md` action checklist: **items 1–3 done**
+(the 4 flagged fonts pulled, 72 → 68 — see the audit's §7) and **items 4–10 +
+12 done** the same day (see its §8): every one of the 68 fonts now has its
+full upstream license text on disk (`src/fonts/<key>.LICENSE.txt`), shipped
+by `copy-engine.mjs` at `/fonts/<key>.LICENSE.txt`, linked per-font in the
+credits dialog, AND embedded verbatim in the `.embf` binary metadata (closes
+the bare-download hole); manifest attributions are complete notices
+(adapter + upstream copyright + Reserved-Font-Name declarations, emails
+stripped); guard tests pin all of it. No Reserved Font Name surfaces as a
+primary name anywhere.
 
-**This blocks a paid launch, not just a nice-to-have.** Action checklist is
-in the audit doc, items 1-3 (pull/resolve the 4 flagged fonts) are ~30-45 min
-with zero ambiguity and remove the worst exposure; the full fix is
-8-15 hours plus a lawyer consult.
+**Still open — the one remaining launch gate:** audit item 11, the one-hour
+lawyer consult on the CC-BY-SA ShareAlike question (does BY-SA attach to the
+14 CC-BY-SA-derived `.embf` binaries and customers' stitch files?). The
+ready-to-send brief is `docs/lawyer-brief-cc-by-sa-2026-08-04.md`; booking it
+is Kent's real-world action, before first dollar. Worst case per the audit:
+relabel 14 binaries + customer note, or pull 14 fonts. Also parked for Kent:
+the `satin-fonts.js` legacy-registry residual (audit §7) if `EMB-Bot.html` is
+ever distributed, and the bluenesia permission screenshots (audit §8).
 
 ### No physical sew-out testing has occurred yet
 
@@ -124,12 +132,18 @@ is now fixed (see below), four remain open:
   land exactly on the chain-off baseline — while still cutting trims (13→9)
   and stitch count (3012→2992); confirmed independently via the rebuilt
   `tools/chain_probe.py` (which had its own pre-existing bug making its
-  before/after comparison a no-op — also fixed). `chain_links` **stays off
-  by default**: the fix closes one of the three preconditions
-  `PipelineConfig.chain_links`'s docstring names for reopening it — still
-  open are an inset on `covered_by` (a later colour's sewing polygon,
-  standing in for thread that hasn't been planned yet — the same class of
-  approximation, just not yet fixable the same way) and a physical sew-out
+  before/after comparison a no-op — also fixed). The second precondition —
+  an inset on `covered_by`, the half of the cover whose thread doesn't exist
+  yet at routing time — closed 2026-08-04: future-colour polygons are eroded
+  by `LINK_COVER_INSET_MM` (0.75 mm, derived from the measured per-tier
+  shortfall between each tier's real emitted thread and its polygon on both
+  committed fixtures — fill 0.023 mm / satin 0.301 mm thread-edge boundary
+  shortfall, run-tier honest only at its 0.527/0.539 mm inradius — plus
+  `LINK_COVER_TOL_MM`; full table in `machine.py`) before they may bury a
+  link, and a link the inset disqualifies becomes a jump, never an exposure.
+  Re-measured with chaining on: logo_alpha still links 13→17 / trims 14→10
+  with 0.00 mm added bare exposure on both fixtures. `chain_links` **stays
+  off by default**: still open is the third precondition, a physical sew-out
   to validate `LINK_COVER_TOL_MM`, which is still a thread spec, not a
   measurement. The other four closeout defects below are unaffected by this
   fix and remain open.
@@ -174,11 +188,19 @@ is now fixed (see below), four remain open:
   DT-first M0/M1 slice, spans pipeline internals, the service contract, and
   Studio UI. Open questions (overlap-threshold tuning, stage-5 interaction)
   are flagged in the design doc for whoever builds it.
-- **Contour fill** — explicitly marked not-ready (commit `eac414e`): a
-  0.640mm bare core in the primary fixture (7× worse than tatami's
-  0.090mm), a starved-fill gate miscalibrated in both directions, and
-  ring-to-ring transition chords that land stitches outside the polygon.
-  Ships off by default.
+- **Contour fill** — still off by default, but two of the three 2026-08-02
+  defects are fixed (2026-08-04): the widest-inscribed-bare-circle
+  instrument (`digitizer_core/barecircle.py`) now exists and *is* the
+  `starved` gate (fires past the measured structural centre dot + half a
+  ring spacing = 1.07mm; the old area-fraction gate's false alarms and
+  blind spots both proven fixed in `tests/test_barecircle.py`), and
+  ring-to-ring transition chords are containment-tested (`_link` banks
+  instead of stitching outside; 0.3mm-hole regression pinned). Remaining
+  and why it stays off: the bare core itself — every healthy shape leaves
+  a ~0.86mm bare dot at its centre (~10× tatami's 0.090mm), measured, not
+  yet shrunk. One cited figure did not reproduce as written: the star's
+  "2.94mm bare disc" is a diameter (radius ≈1.47mm; measured 1.33mm) —
+  see `config.py`'s fill_technique block.
 - **Satin/fill classifier** — the shipped rule misclassifies compact/noisy
   shapes (a serrated 20mm disc computes as "5.03mm" and gets satin-stitched
   instead of filled). The proposed DT-based replacement (`VP90`) was
@@ -223,30 +245,33 @@ add-font QC/tier pipeline, and Text mode. Expandable — but every addition is
 gated by the license rule below (Kent: don't risk copyright infringement if
 this ever sells).
 
-**Status:** Implemented (library/UI/format itself) — **In progress and
-currently non-compliant** (license compliance). Two very different
-maturities under one name.
+**Status:** Implemented (library/UI/format itself) — license remediation
+**done 2026-08-04** (audit items 1–10 + 12; see the cross-cutting item
+above), with the lawyer consult (item 11) as the one remaining compliance
+gate.
 
 **Confidence:**
 - Library/tech: **High.** `src/fontbin.js` (EMBF codec), `manifest.json` +
-  69 `.embf` files, lazy loading, `FontBrowser.svelte`/credits UI, and the
-  QC/tier pipeline (`tools/qc-font.mjs`, `tools/build-embf.mjs`) all exist
-  and pass 48/48 tests.
-- License compliance: **Low — treat as blocking for any paid launch.**
-  `docs/font-license-audit-2026-07-31.md`'s verdict is "Not launch-compliant
-  today," and it's still open — see the cross-cutting item above for the
-  full picture. Nothing about the font-library *code* needs work here; this
-  is a legal/data-completeness gap, not a quality one.
+  68 `.embf` files (72 → 68 after the audit pulls), lazy loading,
+  `FontBrowser.svelte`/credits UI, and the QC/tier pipeline
+  (`tools/qc-font.mjs`, `tools/build-embf.mjs`, `tools/font-license.mjs`,
+  `tools/patch-embf-licenses.mjs`) all exist and pass the engine suite.
+- License compliance: **Medium — one open legal question, everything
+  mechanical is done.** Full license texts ship three ways (sidecar file,
+  served `/fonts/<key>.LICENSE.txt`, embedded in each binary), attributions
+  are complete notices, guard tests pin it. The CC-BY-SA ShareAlike
+  question (14 fonts) awaits the item-11 consult — brief ready at
+  `docs/lawyer-brief-cc-by-sa-2026-08-04.md`. Get it before first dollar.
 
-**Open issues:** see cross-cutting "Font license compliance gap." On the
-tech side: the font-editing round deferred condensed/expanded width and
-mixed per-letter size (both risk uneven satin distortion) — minor, not
-blocking.
+**Open issues:** the item-11 consult (above); the `satin-fonts.js` legacy
+residual (audit §7). On the tech side: the font-editing round deferred
+condensed/expanded width and mixed per-letter size (both risk uneven satin
+distortion) — minor, not blocking.
 
-**Next step:** execute the license audit's action-checklist items 1-3
-(pull/resolve `milli_marif_bold`, `tt_directors`, `tt_masters`, `dejavufont`)
-before any further font-library expansion — cheap, zero ambiguity, removes
-the worst legal exposure first.
+**Next step:** Kent books the lawyer consult (send
+`docs/lawyer-brief-cc-by-sa-2026-08-04.md` as-is); font-library expansion is
+unblocked otherwise, with the add-font skill's compliance note now backed by
+guard tests.
 
 ---
 

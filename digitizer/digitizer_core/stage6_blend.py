@@ -343,8 +343,24 @@ def detect_design_ramp_angle(design_prep: Prep, max_samples: int = RAMP_MAX_SAMP
     whole design's foreground), not any one region's polygon — this runs
     once per design, before stage 2 fragments it into however many k-means
     regions.
+
+    `enclosed_mask` pixels (BACKGROUND_ENCLOSED — bg-colored areas not
+    reachable from the canvas border, unstitched by default since
+    2026-08-04) are EXCLUDED from the fit. Before that change they sat
+    inside `bg_mask` and were never sampled; when they moved to foreground,
+    letting them into this fit silently broke the angle-fragmentation fix
+    on the fix's own repro fixture — the white icon linework is a large,
+    positionally-clustered population whose color has nothing to do with
+    the gradient, and it dragged every channel's best r2 below
+    DESIGN_RAMP_R2_MIN (the detector returned None, every fragment fell
+    back to its own per-region angle, the patchwork came back). Excluding
+    them restores this detector's intended population: the design's own
+    ramp-carrying, stitched-by-default foreground.
     """
     fg = ~design_prep.bg_mask
+    enclosed = getattr(design_prep, "enclosed_mask", None)
+    if enclosed is not None:
+        fg = fg & ~enclosed
     all_ys, all_xs = np.nonzero(fg)
     if len(all_xs) < 12:
         return None
