@@ -46,7 +46,9 @@ Pipeline, in order (the plan's 7-step contract):
      `chart.nearest_index` snap, which scattered a multi-shade ramp across
      near-duplicate spools from different families — the measured
      before/after lives in `palette.py`'s docstring.
-  7. `Quant` output, plus the info-level `PHOTO_SEGMENT_REGION_COUNT` and
+  7. `Quant` output, plus the info-level `PHOTO_SEGMENT_REGION_COUNT`
+     (`count` = real region count, `thread_colors` = palette size — fixed
+     2026-08-04, see that warning's own inline comment) and
      `PHOTO_PALETTE_SELECTED` warnings.
 
 **Import path note**: `skimage.future.graph` (the source research doc's
@@ -67,7 +69,7 @@ from skimage import graph as skgraph
 from .config import PipelineConfig
 from .palette import region_weight, select_palette
 from .stage1_prep import Prep
-from .stage2_quantize import Quant
+from .stage2_quantize import Quant, _quantize_population
 from .stage3_segment import RegionMask, resolve_small_regions
 from .threads import chart_for, rgb_to_lab
 from .warnings_codes import PHOTO_PALETTE_SELECTED, PHOTO_SEGMENT_REGION_COUNT, warn
@@ -93,6 +95,67 @@ SLIC_COMPACTNESS = 10.0
 
 # --- Step 3: hierarchical merge -----------------------------------------------
 #
+# CIEDE2000 edge-weight threshold for `merge_hierarchical`.
+#
+# **Retuned 2026-08-04** (`docs/superpowers/plans/2026-08-03-gradient-tier-
+# fragmentation-and-enclosed-white-defects.md`, "Direction 1" + "Direction
+# 3"): the value below was tuned only against `region_blobs.png`'s
+# synthetic within-blob shade structure (see the superseded note beneath
+# this one) and was never validated against a real ramp before this pass —
+# its own prior docstring said so. Once "gradient"-classified designs
+# started routing through this module (see `pipeline.run_stages`'s stage 2
+# dispatch), that gap became load-bearing: a quality audit ran the real
+# pipeline on `testdata/photo/drone_render.png` (a busy, photo-realistic
+# commissioned logo, not a toy fixture) and found `thresh=10.0` still
+# produced 153-196 regions — far outside the plan's own 20-80 accept band
+# (F4 criteria), just a smaller miss than plain k-means's 192-231.
+#
+# Swept 10/15/18/19/20/22/25/30 on TWO independent real busy fixtures —
+# `drone_render.png` and `testdata/photo/summit_badge.png` (a second,
+# unrelated commissioned-style multi-gradient badge built for this pass
+# specifically because no other real gradient-classified fixture in this
+# repo has drone_render's complexity — see that file's own header comment
+# in the test suite for how/why it was built) — through the FULL pipeline
+# (`pipeline.run_stages`, stages 1-4: `len(PipelineResult.regions)`, the
+# same "final shapes" metric the plan doc's own F4 acceptance criteria and
+# the quality audit both count against, not a stage-2-only proxy):
+#
+#     thresh   drone_render  summit_badge
+#     10.0     174           84
+#     15.0     119           53
+#     18.0      70           36
+#     19.0      67           33
+#     20.0      65           30
+#     22.0      62           27
+#     25.0      58           26
+#     30.0      47           19  <- summit_badge falls below the 20-region floor
+#
+# 20.0 is the smallest threshold that lands BOTH fixtures inside [20, 80]
+# with real headroom on both sides (drone_render: 65, 15 clear of the
+# ceiling; summit_badge: 30, 10 clear of the floor) — also the same value
+# the audit's own single-fixture sweep on drone_render alone had already
+# flagged as "lands inside the accept band", now confirmed on a second,
+# structurally independent fixture (and against the full pipeline, not
+# just stage 2) rather than trusted from one data point or one stage.
+# 30.0 was rejected specifically because it pushes summit_badge (19) OUT of
+# the accept band on its low side — proof the sweep is finding a real
+# two-sided elbow, not just picking the highest threshold that still "looks
+# okay" on the one fixture with the most room to spare. Simple ramps
+# (`gradient_ramp_linear.png`, `gradient_ramp_radial.png`, both genuinely
+# 2 final regions at every threshold tried — see the regression tests) and
+# the enclosed-white-icon repro (`repro_gradient_white_icon.png`, 23 final
+# regions at 20.0, its 4 enclosed-icon shapes among them — see the
+# `_quantize_population` enclosed-population split above `segment()`, added
+# this same pass, without which they silently stopped being their own
+# regions at all) do NOT over-merge into fewer regions than their real
+# content needs; see the regression tests pinning both.
+MERGE_DELTAE00_THRESH = 20.0
+
+# Superseded 2026-08-04, kept for the historical record (do not re-derive
+# from this number): the ORIGINAL measurement below only ever exercised
+# `region_blobs.png`'s synthetic within-blob shade sweep, never a real
+# gradient design.
+#
 # CIEDE2000 edge-weight threshold for `merge_hierarchical`. Measured against
 # `region_blobs.png`: each blob's own internal peak->edge shade sweep spans
 # roughly 15-20 dE00 end to end, so a threshold near the middle of that
@@ -103,7 +166,6 @@ SLIC_COMPACTNESS = 10.0
 # visibly under-merging into flat discs, losing the shade gradient
 # entirely). thresh=10 is the elbow — 12 regions pre-floor, ~4 clean bands
 # per blob, no two different-hue blobs merged into each other.
-MERGE_DELTAE00_THRESH = 10.0
 
 
 def _merge_mean_color(g, src: int, dst: int) -> None:
@@ -140,13 +202,27 @@ def _weight_mean_color(g, src: int, dst: int, n: int) -> dict:
 # How far the merge threshold drops inside a face: an edge touching a face
 # superpixel has its weight divided by this factor, which under the one
 # global `merge_hierarchical` threshold is exactly a local threshold of
-# MERGE_DELTAE00_THRESH * factor (10.0 -> 5.0). Half, because the plan's own
-# eye/mouth motivation needs shade steps the global elbow was TUNED to merge
-# (a blob's internal band sweep, ~15-20 dE00 end to end in 3-4 bands) to
-# survive inside a face — one binary octave down is the smallest move that
-# reliably splits them, and eyes/mouth vs surrounding skin measure well
-# apart even after CLAHE.
-FACE_MERGE_FACTOR = 0.5
+# MERGE_DELTAE00_THRESH * factor.
+#
+# **Retuned 2026-08-04 alongside `MERGE_DELTAE00_THRESH`'s 10.0 -> 20.0
+# move** (see that constant's docstring): this factor moved 0.5 -> 0.25 in
+# the same commit, on purpose, so the face-local ABSOLUTE tolerance stays
+# 20.0 * 0.25 = 5.0 dE00 — identical to the original 10.0 * 0.5 = 5.0 this
+# was measured against (`tests/test_face_priors.py::
+# test_face_local_threshold_splits_shades_that_merge_outside_a_face`, which
+# still passes unchanged because the absolute number it exercises did not
+# move). The eye/mouth split target is a property of face anatomy — how far
+# apart an iris and eyelid actually measure after CLAHE — not of whatever
+# elbow best collapses a design-wide gradient's color bands, so retuning the
+# region-count threshold must not silently retune face protection along
+# with it. Original reasoning for why 5.0 dE00 is the right absolute figure
+# (kept, still true): the plan's own eye/mouth motivation needs shade steps
+# the ORIGINAL global elbow was tuned to merge (a blob's internal band
+# sweep, ~15-20 dE00 end to end in 3-4 bands) to survive inside a face —
+# one binary octave down from that original 10.0 elbow is the smallest move
+# that reliably splits them, and eyes/mouth vs surrounding skin measure
+# well apart even after CLAHE.
+FACE_MERGE_FACTOR = 0.25
 
 # A superpixel "is face" when the majority of its pixels sit inside a face
 # ellipse; a surviving region is classed "eyes"/"skin" when the majority of
@@ -264,15 +340,44 @@ def _region_classes(kept: list[RegionMask], face_regions) -> list[str | None]:
 def segment(p: Prep, cfg: PipelineConfig, face_regions=None) -> Quant:
     h, w = p.rgb.shape[:2]
     valid = ~p.bg_mask
-    lab_img = rgb_to_lab(p.rgb.reshape(-1, 3)).reshape(h, w, 3)
+    flat_rgb = p.rgb.reshape(-1, 3)
 
-    # --- 1. SLIC, foreground only -------------------------------------------
+    # `Prep.enclosed_mask` pixels (BACKGROUND_ENCLOSED — bg-colored icon
+    # linework or a donut hole, not border-connected) run through their own
+    # SEPARATE population here, mirroring the exact split
+    # `stage2_quantize.quantize` already uses, for the same reason: an
+    # enclosed patch's content has no business influencing (or being
+    # influenced by) the design's own segmentation. Added 2026-08-04 when
+    # "gradient" started routing through this module — SLIC/RAG groups
+    # purely by color+space with no concept of "this component is a hole,
+    # keep it distinguishable from what encloses it", so without this split
+    # an enclosed white ring sitting inside a light band of the ramp could
+    # get RAG-merged into its enclosing region before `stage4_vectorize.
+    # tag_enclosed_background`'s post-vectorization overlap test ever runs —
+    # measured directly on `repro_gradient_white_icon.png`: an earlier,
+    # unsplit version of this function produced ZERO regions tagged
+    # `enclosed_background` (down from 3 via `stage2_quantize`), silently
+    # dropping the "toggle it back on in review" restore path
+    # `BACKGROUND_ENCLOSED`'s own warning text promises. Reuses
+    # `stage2_quantize`'s own per-population quantizer for the enclosed side
+    # rather than teaching SLIC anything about holes — an enclosed patch is
+    # exactly the small, simple-color content that function already handles
+    # well, and it is the same code `stage2_quantize.quantize` itself runs
+    # for this population, so the two segmenters treat enclosed content
+    # identically regardless of which one handles the design's main body.
+    enclosed = p.enclosed_mask
+    has_enclosed = enclosed is not None and enclosed.any()
+    base_valid = valid & ~enclosed if has_enclosed else valid
+
+    lab_img = rgb_to_lab(flat_rgb).reshape(h, w, 3)
+
+    # --- 1. SLIC, foreground only (enclosed pixels excluded) ----------------
     slic_labels = slic(
         lab_img,
         n_segments=SLIC_N_SEGMENTS,
         compactness=SLIC_COMPACTNESS,
         start_label=1,
-        mask=valid,
+        mask=base_valid,
         channel_axis=-1,
         convert2lab=False,
     )
@@ -299,9 +404,10 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None) -> Quant:
         # cousin (a two-block synthetic used while tuning this), an entire
         # ~22,000px red block silently relabeled to 0 and vanished into
         # "background" (measured — see this module's test file). Background
-        # identity is instead read from the `valid` mask everywhere below,
-        # never from the merged label array's own 0/nonzero convention, so
-        # it does not matter which numeric id background ends up wearing.
+        # identity is instead read from the `base_valid` mask everywhere
+        # below, never from the merged label array's own 0/nonzero
+        # convention, so it does not matter which numeric id background
+        # ends up wearing.
         rag = skgraph.rag_mean_color(lab_img, slic_labels, connectivity=2, mode="distance")
         if face_regions:
             # Step 5 — the face-local threshold drop. Only a run that
@@ -319,7 +425,7 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None) -> Quant:
             merge_func=_merge_mean_color,
             weight_func=_weight_mean_color,
         )
-        merged_count = int(len(set(np.unique(merged[valid]).tolist())))
+        merged_count = int(len(set(np.unique(merged[base_valid]).tolist())))
 
     # --- 4. Min-area floor ---------------------------------------------------
     # `merge_hierarchical` only ever merges graph-adjacent nodes, but a
@@ -332,12 +438,13 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None) -> Quant:
     # already uses one stage over for the classical path — not new
     # machinery, applied one step earlier.
     regions: list[RegionMask] = []
-    for lbl in sorted(set(np.unique(merged[valid]).tolist())):
-        # `& valid`: a merged label id is not on its own proof of
+    for lbl in sorted(set(np.unique(merged[base_valid]).tolist())):
+        # `& base_valid`: a merged label id is not on its own proof of
         # foreground (see the note above) — intersecting with the real
-        # background mask is what actually keeps background pixels out of
-        # every RegionMask, regardless of which id they ended up wearing.
-        comp_mask = ((merged == lbl) & valid).astype(np.uint8)
+        # per-population mask is what actually keeps background AND
+        # enclosed pixels out of every RegionMask here, regardless of which
+        # id they ended up wearing.
+        comp_mask = ((merged == lbl) & base_valid).astype(np.uint8)
         n_cc, cc = cv2.connectedComponents(comp_mask, connectivity=8)
         for c in range(1, n_cc):
             regions.append(RegionMask(mask=(cc == c), layer=0, source="photo"))
@@ -388,14 +495,45 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None) -> Quant:
         for i in idxs:
             out[kept[i].mask] = new_label
 
-    warnings: list[dict] = list(floor_warnings)
+    # --- enclosed population, quantized separately, appended as its own
+    # trailing label block -- the exact merge-back `stage2_quantize.quantize`
+    # does for the same population (see the split's own comment above `segment`
+    # opens with).
+    enc_warnings: list[dict] = []
+    if has_enclosed:
+        enc_labels, enc_spools, enc_warnings = _quantize_population(
+            flat_rgb, enclosed, h, w, cfg, p.bg_edge_rgb
+        )
+        base_k = len(thread_indices)
+        enc_valid = enc_labels >= 0
+        out[enc_valid] = enc_labels[enc_valid] + base_k
+        thread_indices = thread_indices + enc_spools
+
+    warnings: list[dict] = list(floor_warnings) + enc_warnings
     warnings.append(
         warn(
             PHOTO_SEGMENT_REGION_COUNT,
-            f"Photo segmentation produced {len(thread_indices)} region"
-            f"{'s' if len(thread_indices) != 1 else ''} "
-            f"({slic_count} superpixels, {merged_count} after merging).",
-            count=len(thread_indices),
+            # `len(kept)` is the real region count this warning's own name
+            # promises — one entry per surviving RegionMask after SLIC+RAG
+            # merge and the min-area floor, BEFORE palette selection can
+            # consolidate several regions onto one spool. Fixed 2026-08-04:
+            # this used to report `len(thread_indices)` (the number of
+            # THREAD COLORS the palette settled on, always <= the region
+            # count, frequently much smaller once several regions snap to
+            # the same spool) under a message claiming to report regions —
+            # so the number a caller actually saw here was color count
+            # wearing a region-count label, and the real region count never
+            # surfaced anywhere in this warning. `PHOTO_PALETTE_SELECTED`
+            # below already reports both correctly (`colors`/`regions`); this
+            # fix makes THIS warning's own numbers agree with its own name
+            # instead of relying on a reader cross-referencing the other one.
+            f"Photo segmentation produced {len(kept)} region"
+            f"{'s' if len(kept) != 1 else ''} "
+            f"({slic_count} superpixels, {merged_count} after merging), "
+            f"consolidated to {len(thread_indices)} thread color"
+            f"{'s' if len(thread_indices) != 1 else ''}.",
+            count=len(kept),
+            thread_colors=len(thread_indices),
             slic_segments=slic_count,
             merged_regions=merged_count,
         )
@@ -422,6 +560,13 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None) -> Quant:
             new_label: tuple(int(v) for v in chart[spool].rgb)
             for new_label, (spool, _idxs) in enumerate(ordered_spools)
         }
+        # Enclosed-population labels sit past `len(ordered_spools) - 1` (see
+        # the enclosed merge-back above) — give them a debug fill color too
+        # so the viz doesn't silently leave them un-tinted.
+        mean_rgb.update({
+            base_k + i: tuple(int(v) for v in chart[spool].rgb)
+            for i, spool in enumerate(thread_indices[base_k:])
+        } if has_enclosed else {})
         debugviz.stage2_photo_merged(dbg, p.rgb, out, mean_rgb)
         debugviz.stage2_photo_regions(
             dbg, slic_count, merged_count, len(thread_indices),
