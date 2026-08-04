@@ -237,6 +237,23 @@ class PipelineConfig:
     #             byte-identical to the tier as it shipped before this mode
     #             existed.
     streamline_mode: str = "mono"
+    # The detail layer (photo plan, technique row 11, first slice —
+    # stage6_detail): FDoG coherent line extraction (Kang 2007, the same
+    # paper and ETF machinery as directionfield.py) over the source raster,
+    # emitted as BEAN runs in one extra color block sewn LAST, on top of
+    # every fill — photo details (edges, whiskers, panel lines) as discrete
+    # top objects instead of merging into fill quantization. ORTHOGONAL to
+    # fill_technique on purpose: it composes with any fill tier (that is
+    # the row's whole point — details ride on top of whatever renders the
+    # tone). Strictly opt-in: False is byte-identical to the engine before
+    # the layer existed (the byte-identity suites pin that), and setting it
+    # is ALSO what makes pipeline.run_stages carry source pixels forward —
+    # the flat lane grows no raster payload while the flag is off. A design
+    # the extractor finds no coherent lines for (flat color, noise) emits
+    # NOTHING extra — no block, no warning — rather than failing. The
+    # row's other half (the eye recipe) is a documented seam, not built:
+    # see stage6_detail's module docstring.
+    detail_layer: bool = False
     # None = fill_row_mm (or the machine default). Contour rings are the same
     # 0.40 mm apart as tatami rows; this exists so the ring tier can be opened
     # up independently, which is what "best used for open fills with low stitch
