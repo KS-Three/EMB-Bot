@@ -1,26 +1,36 @@
-"""The DT-first migration M1 hard invariant: `digitizer_core/shapefield.py`
-existing, and `stage6_satin`/`stage7_sequence` gaining the
-`cfg.extra["shapefield"]` wiring, must not move ONE byte of output when the
-flag is absent — or explicitly set to any falsy value.
+"""The DT-first migration M1 hard invariant: `cfg.extra["shapefield"]` —
+absent, explicitly falsy, or on — must not move ONE byte of output. The
+shapefield path is a faithful hoist of stage6_satin's own inline
+rasterize + `medial_axis` call, not a reimplementation, so every flag state
+must produce identical stitches.
 
-`testdata/shapefield_golden.json` was captured by
-`tools/capture_shapefield_golden.py` BEFORE shapefield.py existed and before
-stage6_satin.py/stage7_sequence.py had any `use_shapefield` plumbing (do not
-re-run that script now — see its own docstring). This test re-runs the same
-two fixtures through today's pipeline, with the flag unset AND with the flag
-explicitly falsy, and asserts an exact match on every shape id, area,
-warning, stitch coordinate and the DST bytes themselves (via sha256 — DST
-bytes are not JSON-safe, so the golden stores a digest and length instead of
-the raw bytes).
+HISTORY — why this compares runtime-vs-runtime and not against a stored
+golden. The original version of this file froze a `shapefield_golden.json`
+captured on PR #2's branch before merge, and asserted every flag state
+matched it. That golden went stale within hours of merging, through no
+fault of M1's: PR #3 (enclosed background regions become real, restorable
+Regions — c1b9e35) legitimately changed both fixtures' region sets, because
+`logo_whitebg.png`/`logo_alpha.png` each carry an enclosed donut hole that
+now survives as a tagged, unstitched Region. All 12 golden comparisons went
+red on post-merge main while the M1 invariant itself was perfectly intact —
+the frozen snapshot was testing "nothing anywhere in the pipeline ever
+changes," which is not M1's claim and collides with every future legitimate
+behavior change (it also bakes in environment-specific float behavior, the
+same class of problem as the three long-standing golden-hash failures).
 
-If this test ever goes red, the change under review is wrong — M1 is pure
-infrastructure, not a numerics change. See
+What M1 actually promises is narrower and permanent: WHATEVER the pipeline
+produces today, the shapefield flag does not change it. That is testable at
+runtime forever, on any machine, through any future behavior change: run
+the same fixture with the flag absent and with every other flag state, and
+assert exact equality of the full snapshot (shape ids, areas, warnings,
+every stitch coordinate, the DST bytes). If THIS goes red, the change under
+review broke the hoist's faithfulness — that is always a real bug. See
 docs/dt-first-architecture-2026-08-01.md §2 (M1).
 """
 from __future__ import annotations
 
 import hashlib
-import json
+
 from pathlib import Path
 
 import pytest
@@ -30,7 +40,7 @@ from digitizer_core.export import export_dst
 from digitizer_core.pipeline import digitize
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
-GOLDEN = json.loads((TESTDATA / "shapefield_golden.json").read_text(encoding="utf-8"))
+FIXTURES = ["logo_alpha.png", "logo_whitebg.png"]
 
 
 def _snapshot(name: str, cfg: PipelineConfig) -> dict:
@@ -53,33 +63,38 @@ def _snapshot(name: str, cfg: PipelineConfig) -> dict:
     }
 
 
-@pytest.mark.parametrize("fixture", sorted(GOLDEN.keys()))
-def test_flag_absent_is_byte_identical_to_the_pre_change_golden(fixture):
-    cfg = PipelineConfig(target_width_mm=80.0)
-    assert cfg.extra == {}, "flag must be absent for this arm of the test"
-    assert _snapshot(fixture, cfg) == GOLDEN[fixture]
+@pytest.fixture(scope="module")
+def flag_absent_snapshots() -> dict[str, dict]:
+    """The reference arm, computed once: today's pipeline with the flag
+    absent — the exact code path that shipped before M1 existed."""
+    out = {}
+    for name in FIXTURES:
+        cfg = PipelineConfig(target_width_mm=80.0)
+        assert cfg.extra == {}, "flag must be absent for the reference arm"
+        out[name] = _snapshot(name, cfg)
+    return out
 
 
-@pytest.mark.parametrize("fixture", sorted(GOLDEN.keys()))
+def test_reference_arm_actually_covers_something(flag_absent_snapshots):
+    """Guard against the whole module passing vacuously on empty output."""
+    assert len(flag_absent_snapshots) == 2
+    for name, snap in flag_absent_snapshots.items():
+        assert snap["stitch_count"] > 0, f"{name}: reference has zero stitches"
+
+
+@pytest.mark.parametrize("fixture", FIXTURES)
 @pytest.mark.parametrize("falsy", [False, 0, "", None])
-def test_flag_explicitly_falsy_is_byte_identical_to_the_pre_change_golden(fixture, falsy):
+def test_flag_explicitly_falsy_is_byte_identical_to_flag_absent(
+    fixture, falsy, flag_absent_snapshots
+):
     cfg = PipelineConfig(target_width_mm=80.0, extra={"shapefield": falsy})
-    assert _snapshot(fixture, cfg) == GOLDEN[fixture]
+    assert _snapshot(fixture, cfg) == flag_absent_snapshots[fixture]
 
 
-@pytest.mark.parametrize("fixture", sorted(GOLDEN.keys()))
-def test_flag_on_also_matches_the_golden(fixture):
-    """Not the hard requirement (only flag-absent/falsy is), but proving the
-    new path computes the SAME numbers as the old one is exactly what the
-    module docstring promises — a faithful hoist, not a reimplementation.
-    """
+@pytest.mark.parametrize("fixture", FIXTURES)
+def test_flag_on_is_byte_identical_to_flag_absent(fixture, flag_absent_snapshots):
+    """The faithful-hoist promise itself: the shapefield path computes the
+    SAME numbers as the inline path it hoisted, on real fixtures, end to
+    end through DST bytes."""
     cfg = PipelineConfig(target_width_mm=80.0, extra={"shapefield": True})
-    assert _snapshot(fixture, cfg) == GOLDEN[fixture]
-
-
-def test_golden_file_actually_covers_something():
-    """A guard against the golden file silently becoming empty (e.g. a
-    capture-script bug) and this whole test module passing vacuously."""
-    assert len(GOLDEN) == 2
-    for name, snap in GOLDEN.items():
-        assert snap["stitch_count"] > 0, f"{name}: golden has zero stitches"
+    assert _snapshot(fixture, cfg) == flag_absent_snapshots[fixture]
