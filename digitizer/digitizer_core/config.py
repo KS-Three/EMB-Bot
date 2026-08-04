@@ -106,6 +106,24 @@ class PipelineConfig:
     #
     # "tatami"  – straight rows at one angle. THE DEFAULT, and every golden in
     #             the suite is pinned to it.
+    # "scanline_tonal" – the scan-line mono tonal tier (photo plan, technique
+    #             row 8, stage6_scanline): parallel rows across one grain,
+    #             local source-image darkness driving row spacing, penetration
+    #             pitch and zigzag amplitude — the PhotoFlash halftone look.
+    #             Strictly opt-in: setting this is ALSO what makes
+    #             pipeline.run_stages carry source pixels forward for
+    #             non-gradient classes, so the flat lane grows no raster
+    #             payload while the flag is off. A shape the tier sews nothing
+    #             for (all highlight) falls back to tatami, the same
+    #             never-drop-artwork contract contour has.
+    # "meander_tonal" – the meander mono tonal tier (photo plan, technique
+    #             row 9, stage6_meander): ONE continuous non-crossing
+    #             wandering line — an adaptive Hilbert traversal, Velho &
+    #             Gomes 1991 — whose local spacing, penetration pitch and
+    #             zigzag amplitude all follow source-image darkness; the
+    #             Reef/Sfumato look, fabric left bare as the highlight
+    #             value. Same opt-in plumbing, source-pixel gate and
+    #             tatami-on-empty fallback as "scanline_tonal".
     # "streamline" – the streamline thread-paint tier, first (mono) slice
     #             (photo plan, technique row 10, stage6_streamline):
     #             Jobard–Lefer evenly-spaced streamlines traced in the ETF

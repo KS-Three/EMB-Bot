@@ -8,7 +8,11 @@ export function defaultTextElement(id) {
     id,
     type: "text",
     text: "",
-    fontKey: "geneva_simple",
+    // Default font for new text elements. Was geneva_simple until the
+    // 2026-08-04 ShareAlike pull removed it from the shipping library
+    // (font-license audit §9); medium_font is the OFL-licensed Ink/Stitch
+    // workhorse with full charset coverage.
+    fontKey: "medium_font",
     colorRgb: [20, 20, 20],
     colorRanges: [],
     weightPreset: "normal",
@@ -89,8 +93,12 @@ export const DEFAULT_DIGITIZE_PARAMS = {
 //                       sewIndex, ... }] }, see digitizer.js reviewFromJob).
 //   `shapeOverrides`  — keyed by shape_id; PipelineConfig.shape_overrides
 //                       field names verbatim (thread_index, fill_angle_deg,
-//                       tier, border, layer) plus an app-only `rgb` for the
-//                       swatch, stripped before the wire.
+//                       tier, border, layer, stitched) plus an app-only
+//                       `rgb` for the swatch, stripped before the wire.
+//                       `stitched: true` restores a BACKGROUND_ENCLOSED
+//                       region the digitizer excluded by default (contract
+//                       v1.1) — distinct from `deletedShapeIds`, which is a
+//                       user hiding a shape the digitizer WOULD sew.
 //   `deletedShapeIds` — shapes the user removed in review; they stay in the
 //                       stored review so the list can strike them through.
 //   `appliedEdits`    — canonical key of the edits the CURRENT result was

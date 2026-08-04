@@ -54,20 +54,35 @@ import { licenseId, deriveLicenseFields } from "./font-license.mjs";
 //     and/or Kent decides whether Bitstream-Vera-derived fonts should join
 //     the allowed policy set.
 const PULLED = new Set(["milli_marif_bold", "tt_directors", "tt_masters", "dejavufont"]);
+// 2026-08-04 (second wave, Kent's explicit call): every ShareAlike font is
+// pulled — all 13 then in the library (11 CC-BY-SA-4.0 + the 2 CC-BY-SA-2.5
+// Geneva fonts; the audit's "14" included dejavufont, pulled above for its
+// own reasons). Not a defect in the fonts: the open legal question
+// (docs/lawyer-brief-cc-by-sa-2026-08-04.md) is whether ShareAlike attaches
+// to compiled .embf binaries and propagates onto CUSTOMER stitch files —
+// removal makes the paid launch unambiguous without waiting on counsel.
+// Deliberately reversible: restore any of these by removing them here and
+// re-adding their manifest/bin/preview/sidecar artifacts (git history has
+// them all), should a legal opinion clear ShareAlike later.
+for (const k of ["apex_lake", "aventurina", "bluenesia_satin",
+                 "cherryforinkstitch", "cherryforkaalleen", "emilio_20",
+                 "emilio_20_bold", "emilio_20_simple", "emilio_20_simple_small",
+                 "geneva_rounded", "geneva_simple", "gingo200", "monicha"]) {
+  PULLED.add(k);
+}
 
-// Fix 2: license policy — only these ids may ship for NEW (non-grandfathered) fonts.
-const ALLOWED_LICENSES = new Set(["OFL-1.1", "CC-BY-4.0", "CC-BY-SA-4.0", "CC0"]);
+// Fix 2: license policy — only these ids may ship for NEW (non-grandfathered)
+// fonts. CC-BY-SA-4.0 removed 2026-08-04 with the ShareAlike pull above: no
+// new ShareAlike font may enter the library while the propagation question
+// is unresolved.
+const ALLOWED_LICENSES = new Set(["OFL-1.1", "CC-BY-4.0", "CC0"]);
 const GRANDFATHERED = new Set(
   readdirSync(FONT_DIR)
     .filter((f) => f.endsWith(".json") && f !== "manifest.json")
     .map((f) => f.replace(/\.json$/, ""))
 );
-// geneva_rounded ships from scratch_ink (a trial import, not a static
-// src/fonts/<key>.json), so it isn't picked up by the readdir scan above.
-// It's the same grandfathered CC-BY-SA-2.5 grant as its geneva_simple
-// sibling (previously shipped mislabeled as 4.0) -- ships regardless of
-// ALLOWED_LICENSES, just correctly labeled now (Fix 6).
-GRANDFATHERED.add("geneva_rounded");
+// (A geneva_rounded grandfather entry lived here until 2026-08-04 — moot
+// now that every ShareAlike font is in PULLED, which is checked first.)
 
 // 1. Shipped fonts: every src/fonts/<key>.json is verified by definition
 //    (they are the 21 Kent already ships).

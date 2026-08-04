@@ -70,7 +70,7 @@ test("parseProjectFile accepts a bare v2 project record (hand-rescued from local
 });
 
 test("parseProjectFile accepts a bare v1 blob and migrates it", () => {
-  const v1 = { mode: "text", text: "KENT", fontKey: "geneva_simple" };
+  const v1 = { mode: "text", text: "KENT", fontKey: "medium_font" };
   const parsed = parseProjectFile(JSON.stringify(v1));
   expect(parsed).not.toBeNull();
   expect(parsed.project.version).toBe(2);

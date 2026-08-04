@@ -291,6 +291,18 @@
     return e.rgb || row.rgb || [136, 136, 136];
   }
 
+  // Whether the shape sews at all — DISTINCT from `dead` (a user hid it):
+  // this is the digitizer's own BACKGROUND_ENCLOSED default (contract v1.1,
+  // reviewFromJob's `stitched`), which an override can restore or re-skip.
+  // An override wins outright; absent one, the row's own default applies
+  // (`true` when the server predates the field, same reading reviewFromJob
+  // gives it).
+  function effStitched(row, ov) {
+    const e = ov[row.id] || {};
+    if (typeof e.stitched === "boolean") return e.stitched;
+    return row.stitched !== false;
+  }
+
   // The tier the shape will sew as: a forced tier wins; otherwise the tier
   // the engine's plan actually emitted (review.tier — read off the plan, not
   // re-derived). null = the shape produced no stitches.
@@ -392,6 +404,20 @@
 
   function restoreShape(sid) {
     patch({ deletedShapeIds: deletedIds.filter((id) => id !== sid) });
+  }
+
+  // Restore-equivalent for a `stitched: false` (BACKGROUND_ENCLOSED) row:
+  // an explicit override, not deletedShapeIds — the shape was never hidden
+  // by the user, so restoring it is never a matter of un-hiding it.
+  function restoreStitching(sid) {
+    setOverride(sid, { stitched: true });
+  }
+
+  // Send an override-restored shape back to the digitizer's own default
+  // (clearing the key, not forcing `false` — same "auto" convention as
+  // setShapeTier/setShapeAngle) — for a user who restored one by mistake.
+  function unrestoreStitching(sid) {
+    setOverride(sid, { stitched: null });
   }
 
   // "Sew earlier/later", within what the integer layer field can express:
@@ -579,9 +605,16 @@
           <ol class="dgp-layerlist">
             {#each orderedShapes as row, i (row.id)}
               {@const dead = deletedIds.includes(row.id)}
+              {@const stitched = effStitched(row, overrides)}
+              {@const unstitched = !dead && !stitched}
+              <!-- Was excluded by default (an enclosed-background region)
+                   AND is currently sewing — i.e. the user restored it. Shown
+                   as a small badge plus an undo, so restoring stays a
+                   reversible toggle rather than a one-way door. -->
+              {@const restoredEnclosed = !dead && stitched && row.stitched === false}
               {@const rgb = effRgb(row, overrides)}
               {@const tier = effTier(row, overrides)}
-              <li class="dgp-layer" class:dead>
+              <li class="dgp-layer" class:dead class:unstitched>
                 <svg class="dgp-lthumb" viewBox="0 0 24 24" aria-hidden="true">
                   <path
                     d={thumbPath(row)}
@@ -598,14 +631,27 @@
                       <span class="dgp-lname">{rowName(row)}</span>
                       <span class="dgp-larea">{fmtArea(row.areaMm2)}</span>
                       <span class="dgp-ltier">hidden</span>
+                    {:else if unstitched}
+                      <span class="dgp-lname">{rowName(row)}</span>
+                      <span class="dgp-larea">{fmtArea(row.areaMm2)}</span>
+                      <span
+                        class="dgp-ltier dgp-ltier-unstitched"
+                        title="The digitizer found this as an enclosed area the same color as the background (like the hole in an O) and left it unstitched by default."
+                      >not sewn — enclosed area</span>
                     {:else}
                       <ThreadPicker {rgb} compact on:pick={(e) => recolorShape(row.id, e.detail)} />
                       <span class="dgp-lname">{rowName(row)}</span>
                       <span class="dgp-larea">{fmtArea(row.areaMm2)}</span>
                       <span class="dgp-ltier tier-{tier || 'none'}">{tier || "not sewn"}</span>
+                      {#if restoredEnclosed}
+                        <span
+                          class="dgp-lbadge"
+                          title="This was an enclosed background area the digitizer left unstitched by default; you restored it."
+                        >restored</span>
+                      {/if}
                     {/if}
                   </div>
-                  {#if !dead}
+                  {#if !dead && !unstitched}
                     <div class="dgp-lrow">
                       <select
                         class="dgp-lsel"
@@ -638,6 +684,15 @@
                     <button type="button" class="dgp-lbtn dgp-restore" on:click={() => restoreShape(row.id)}>
                       Restore
                     </button>
+                  {:else if unstitched}
+                    <button
+                      type="button"
+                      class="dgp-lbtn dgp-restore"
+                      title="Sew this enclosed area"
+                      on:click={() => restoreStitching(row.id)}
+                    >
+                      Sew it
+                    </button>
                   {:else}
                     <button
                       type="button"
@@ -655,6 +710,15 @@
                       aria-label="Sew later"
                       on:click={() => moveShape(row, 1)}
                     >↓</button>
+                    {#if restoredEnclosed}
+                      <button
+                        type="button"
+                        class="dgp-lbtn"
+                        title="Mark as not sewn again (enclosed area)"
+                        aria-label="Mark as not sewn again"
+                        on:click={() => unrestoreStitching(row.id)}
+                      >⦸</button>
+                    {/if}
                     <button
                       type="button"
                       class="dgp-lbtn"
@@ -825,6 +889,22 @@
   .dgp-layer.dead .dgp-lname,
   .dgp-layer.dead .dgp-larea { text-decoration: line-through; }
   .dgp-layer.dead { opacity: 0.6; }
+  /* Unstitched-by-default (BACKGROUND_ENCLOSED) rows are dimmed like a
+     hidden row so the list reads "not fully active" at a glance, but
+     deliberately NOT struck through — this isn't something the user
+     removed, so it shouldn't look removed. */
+  .dgp-layer.unstitched { opacity: 0.75; }
+  .dgp-ltier-unstitched {
+    color: var(--warn-text, #8a6d1a);
+    border-color: var(--warn-text, #8a6d1a);
+  }
+  .dgp-lbadge {
+    font-size: 10px;
+    color: var(--muted, #667);
+    border: 1px solid var(--tint-border, #ccd6fb);
+    border-radius: 8px;
+    padding: 1px 5px;
+  }
   .dgp-lthumb {
     width: 24px;
     height: 24px;
