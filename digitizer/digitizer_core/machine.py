@@ -93,14 +93,30 @@ CONTOUR_MIN_RING_MM = 3.0
 # Offset slivers below this are numerical debris, not fabric to cover.
 CONTOUR_MIN_RING_AREA_MM2 = 0.1
 
-# When the rings a shape had to drop add up to more than this fraction of its
-# area, the operator hears about it. The doc's own C1 gate ("uncovered area >
-# 1 % of shape"), and it exists because the raw ring count is not the question:
-# EVERY shape drops its last ring, the sliver where the offsets converge on
-# themselves. Measured on the fixture logo, that is 0.14-0.30 mm2 against
-# regions of several hundred — 0.1 %, three warnings nobody should read. A comb
-# whose arms starve is the same counter at 40 %.
-CONTOUR_STARVED_FRAC = 0.01
+# The bare dot EVERY healthy contour shape leaves at its own centre, measured
+# (2026-08-04) with the widest-inscribed-bare-circle instrument
+# (barecircle.py) at the shipped 0.40 mm spacing: discs of r = 3, 5 and 15 mm
+# and the dumbbell fixture all read 0.863 mm bare radius, invariant across
+# shape because it is machine-driven, not shape-driven — the deepest ring dies
+# when its resample can no longer hold three straight chords over
+# MIN_STITCH_MM (empirically at an enclosing radius near 0.89 mm), and the
+# ring one spacing further out laps its thread to ~0.86 mm of the centre.
+# This is the structural residue the `starved` gate must NOT fire on (a
+# warning that fires on every disc is a warning nobody reads); the gate's
+# threshold is derived from it in `barecircle.starved_threshold_mm`. For
+# scale: tatami's own worst bare spot on the fixture logo measures 0.090 mm,
+# so contour's structural centre dot is ~10x tatami — a real cost of the
+# tier, accepted and named, not warned about per shape.
+#
+# This constant replaced CONTOUR_STARVED_FRAC (an area-fraction gate at 1 %)
+# on 2026-08-04: the area sum was miscalibrated in both directions — silent on
+# a 1.47 mm bare core whose rings were annihilated without ever being counted
+# (the mitred offset dies, so the area was never charged), and firing on
+# shapes whose many small terminal slivers summed past 1 % while no single
+# bare spot beat this structural dot (whitebg's Sf5200f3f at 0.499 mm,
+# Sb253ebba at 0.644 mm, the dumbbell at 0.863 mm — all old-gate fires, all
+# invisible next to a healthy disc's own centre).
+CONTOUR_BARE_CORE_MM = 0.87
 
 # Mitre limit on the inward offset. The reference implementations use 10, which
 # lets a sharp corner throw a long spike the needle has to chase out and back.

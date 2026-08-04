@@ -179,6 +179,28 @@ def test_every_stitch_stays_inside_the_shape(name):
     assert not outside, f"{len(outside)} stitches leave the shape"
 
 
+def test_the_transition_chord_is_containment_tested_too():
+    """Defect 3 of the 2026-08-02 pass, closed 2026-08-04. `_entry_arc`
+    solves the ring-to-ring crossing for LENGTH only (law 44), so around a
+    small hole its chord could leave the shape with both endpoints inside —
+    the shipped containment test failed verbatim on a 15 mm disc with a
+    0.3 mm hole (measured on the pre-fix engine: one underlay transition
+    0.255 mm outside the shape). `_link` now containment-tests the crossing
+    chord and BANKS the path when it escapes — a travel costs a needle-up,
+    a stitch across a hole costs the artwork.
+
+    The cited 0.45 mm neck fixture could not be reconstructed from its
+    description (four neck geometries tried, none escapes even on the
+    pre-fix engine); the hole fixture reproduces the defect exactly and is
+    the regression pin.
+    """
+    poly = _circle(15.0).difference(_circle(0.3))
+    runs, _report = _fill(poly)
+    outside = [(a, b) for _k, a, b in _stitches(runs)
+               if not poly.covers(LineString([a, b]))]
+    assert not outside, f"{len(outside)} transition stitches leave the shape"
+
+
 def test_containment_survives_a_reflex_notch():
     """The star's inner vertices are the case a per-ring curvature cap misses.
 
@@ -301,30 +323,57 @@ def test_a_dropped_ring_is_counted():
 def test_the_converging_centre_sliver_does_not_cry_wolf():
     """EVERY shape drops its innermost ring — the sliver where the offsets meet
     themselves — so a warning on the raw count would fire on every shape and
-    train the operator to ignore warnings. The gate is the doc's own: bare area
-    over 1 % of the shape. Measured on a 15 mm disc, the drop is 0.3 mm2 against
-    706 — 0.04 %."""
+    train the operator to ignore warnings. Since 2026-08-04 the gate is the
+    measured widest bare spot: a disc's centre dot reads 0.863 mm — the
+    structural residue machine.CONTOUR_BARE_CORE_MM pins — and the line sits
+    half a ring spacing above it (barecircle.starved_threshold_mm), so a
+    healthy shape clears it with margin."""
     _runs, report = _fill(_circle(15.0))
     assert report["skipped_rings"] >= 1
+    assert report["bare_radius_mm"] < machine.CONTOUR_BARE_CORE_MM + 0.01
     assert report["starved"] == 0
 
 
-def test_a_shape_starved_of_rings_says_so():
-    """The other side of the same gate. The dumbbell converges to slivers in
-    three places at once — both lobe centres and the waist — and together they
-    leave 5.01 mm2 bare on a 311 mm2 shape. That is 1.6 %, past the 1 % line,
-    so the operator is told.
-
-    This test used to use a 14 x 1.6 mm bar, on the theory that a bar too thin
-    for a second ring leaves its middle bare. Measured, it does not: the bar
-    rings cleanly at two generations and reports nothing skipped, at every
-    height from 0.7 to 3.0 mm. The premise was wrong about the engine, not
-    about the gate — a bar's rings MEET in the middle, they do not run out.
+def test_the_dumbbells_area_sum_no_longer_cries_wolf():
+    """This test used to assert the OPPOSITE — `starved == 1` — and was
+    itself the miscalibration the 2026-08-02 pass called out. The dumbbell
+    converges to slivers in three places at once, and their KNOWN drops sum
+    to 5.01 mm2 on a 311 mm2 shape — 1.6 %, past the old 1 % area line. But
+    an area SUM is not a visible defect: measured with the instrument, no
+    single one of those three spots is wider than the 0.863 mm centre dot a
+    plain healthy disc leaves (barecircle.py; the dumbbell reads exactly
+    0.863). Three invisible dots do not add up to one visible patch, so the
+    recalibrated gate — the widest bare SPOT against
+    `starved_threshold_mm` — stays silent, and the ledger keeps counting
+    honestly without deciding anything.
     """
     poly = SHAPES["dumbbell"]
     _runs, report = _fill(poly, underlay_style="none")
     assert report["skipped_rings"] > 0
-    assert report["skipped_area_mm2"] > machine.CONTOUR_STARVED_FRAC * poly.area
+    assert report["skipped_area_mm2"] > 0.01 * poly.area, \
+        "the old gate fired here; if this stops holding the fixture drifted"
+    assert report["bare_radius_mm"] == pytest.approx(0.863, abs=0.03)
+    assert report["starved"] == 0
+
+
+def test_a_shape_starved_of_rings_says_so():
+    """The direction the old gate was blind in. A sharp 10-point star's
+    notched interior is ANNIHILATED by the mitred offset at under half its
+    inradius — the bare core was never a ring, so the area ledger charges
+    0.2 % and the old gate stayed silent on a 1.33 mm bare radius (the config
+    block's cited 1.47 mm class; full reproduction in test_barecircle.py).
+    The gate is the measurement now, so the operator is told.
+    """
+    import shapely as _shapely
+    s0 = Polygon([((20.0 if i % 2 == 0 else 6.0) * math.cos(math.pi / 2 + i * math.pi / 10),
+                   (20.0 if i % 2 == 0 else 6.0) * math.sin(math.pi / 2 + i * math.pi / 10))
+                  for i in range(20)])
+    sc = 10.0 / _shapely.maximum_inscribed_circle(s0, 1e-4).length
+    star = _shapely.affinity.scale(s0, xfact=sc, yfact=sc, origin=(0, 0))
+    _runs, report = _fill(star, underlay_style="none")
+    assert report["skipped_area_mm2"] < 0.01 * star.area, \
+        "the old area gate was silent here — that blindness is the point"
+    assert report["bare_radius_mm"] > 1.2
     assert report["starved"] == 1
 
 
@@ -373,12 +422,20 @@ def test_the_flag_off_changes_nothing(whitebg):
     assert plain == named
 
 
-def test_contour_fills_the_plan_and_warns_where_it_starves(whitebg):
+def test_contour_fills_the_plan_without_crying_wolf(whitebg):
+    """This test used to assert the warning FIRED on the fixture logo. Both
+    shapes that tripped it (Sb253ebba, Sf5200f3f) were false alarms of the
+    old area-fraction gate: their widest bare spots measure 0.644 and
+    0.499 mm — both under the 0.863 mm centre dot a plain healthy disc
+    leaves — while their many small terminal slivers summed past 1 % of two
+    small shapes. The recalibrated gate (widest bare spot, barecircle.py) is
+    rightly silent on this artwork; the fire direction is proven on the
+    annihilated star in test_barecircle.py and above."""
     plan = plan_stitches(whitebg, cfg(fill_technique="contour", **PLAN_CFG_KW))
     fills = [r for _b, r in plan.iter_runs() if r.kind == "fill"]
     assert fills, "contour produced no fill runs at all"
     codes = {w["code"] for w in plan.warnings}
-    assert CONTOUR_RING_UNREACHABLE in codes
+    assert CONTOUR_RING_UNREACHABLE not in codes
 
 
 def test_every_stitch_of_a_contour_plan_stays_inside_its_shape(whitebg):

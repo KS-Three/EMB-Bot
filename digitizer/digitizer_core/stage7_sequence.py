@@ -734,9 +734,9 @@ def sequence(
         warnings.append(
             warn(
                 CONTOUR_RING_UNREACHABLE,
-                f"{starved} shape{'s' if starved != 1 else ''} had contour rings too "
-                "short to sew, leaving a visible patch unfilled — worth a look on the "
-                "review screen.",
+                f"{starved} shape{'s' if starved != 1 else ''} left a patch of bare "
+                "fabric wider than a contour ring — the offsets could not reach it — "
+                "worth a look on the review screen.",
                 count=starved,
                 rings=rings_skipped,
             )
