@@ -123,6 +123,38 @@ class SourcePixels:
                 (y_px - self.origin_px[1]) / self.px_per_mm)
 
 
+def darkness_sampler(sp: SourcePixels, blur_mm: float):
+    """-> darkness(x_mm, y_mm) in [0, 1], bilinear over a `blur_mm`-scale
+    Gaussian blur of the source luminance. Deterministic — no RNG.
+
+    Shared by the mono tonal tiers (`stage6_scanline`, `stage6_meander`): both
+    render tone by reading local darkness at grain scale, and if each carried
+    its own copy the two tiers would eventually read the same pixel as two
+    different darknesses — a drift class this module, as the home of
+    `SourcePixels`, exists to prevent. The blur radius stays each tier's own
+    knob; the sampling semantics (grain-scale blur so one dark pixel of JPEG
+    noise cannot flip a stitch decision, bilinear between pixels, clamped at
+    the raster edge) are the shared contract.
+    """
+    gray = cv2.cvtColor(sp.rgb, cv2.COLOR_RGB2GRAY).astype(np.float64) / 255.0
+    sigma = max(0.5, blur_mm * sp.px_per_mm)
+    blur = cv2.GaussianBlur(gray, (0, 0), sigma)
+    h, w = blur.shape
+
+    def darkness(x_mm: float, y_mm: float) -> float:
+        px, py = sp.to_px(x_mm, y_mm)
+        fx = min(max(px, 0.0), w - 1.0)
+        fy = min(max(py, 0.0), h - 1.0)
+        x0, y0 = int(fx), int(fy)
+        x1, y1 = min(x0 + 1, w - 1), min(y0 + 1, h - 1)
+        tx, ty = fx - x0, fy - y0
+        v = (blur[y0, x0] * (1 - tx) * (1 - ty) + blur[y0, x1] * tx * (1 - ty)
+             + blur[y1, x0] * (1 - tx) * ty + blur[y1, x1] * tx * ty)
+        return 1.0 - float(v)
+
+    return darkness
+
+
 @dataclass
 class RampModel:
     """A fitted gradient. `t(x, y)` maps an mm point to its normalized

@@ -48,6 +48,7 @@ from .stage6_blend import SourcePixels, blend_fill
 from .stage6_border import border_runs, run_outline
 from .stage6_contour import contour_fill
 from .stage6_fill import stitch_shape
+from .stage6_meander import meander_fill
 from .stage6_scanline import scanline_fill
 from .stage6_satin import is_satin_candidate, satin_shape
 from .stitches import StitchBlock, StitchRun, tie_run
@@ -425,6 +426,10 @@ def sequence(
     # anyway (a hand-built PipelineResult), the shape falls through to
     # tatami rather than crashing or dropping artwork.
     scanline = technique == "scanline_tonal"
+    # The meander mono tonal tier (photo plan, technique row 9): identical
+    # opt-in and fallback contract to the scanline tier above — off unless
+    # named, tone read from the same source-pixel plumbing, tatami on empty.
+    meander = technique == "meander_tonal"
 
     thin = empty = jumps = as_run = 0
     bordered = lightened = border_narrow = 0
@@ -527,6 +532,14 @@ def sequence(
                 # decision (delete the shape), not something a fill tier may
                 # decide unilaterally.
                 runs, report = scanline_fill(p.region, source_pixels, cfg)
+                need_tatami = report["empty"]
+            elif meander and source_pixels is not None:
+                # Same contract as the scanline branch above, meander look:
+                # the explicit opt-in beats the gradient class's blend
+                # routing, empty is honest (an all-highlight shape sews
+                # nothing) and falls through to tatami below rather than
+                # dropping artwork.
+                runs, report = meander_fill(p.region, source_pixels, cfg)
                 need_tatami = report["empty"]
             elif source_pixels is not None:
                 # Stage 0 classified the whole design "gradient" — every

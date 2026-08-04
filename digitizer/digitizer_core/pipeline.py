@@ -173,13 +173,14 @@ def run_stages(
     source_pixels = None
     # Two ways to earn a raster payload, both narrow on purpose: the
     # "gradient" classification (the blend tier reads it), or the caller
-    # EXPLICITLY opting into the scan-line mono tonal tier — a per-request
-    # config choice, never an automatic route (automatic photo routing is a
-    # later slice). Every other configuration carries no pixels forward and
-    # the flat lane's byte-for-byte identity is untouched by this field
-    # existing.
-    want_scanline = (cfg.fill_technique or "tatami").lower() == "scanline_tonal"
-    if classification.class_ == "gradient" or want_scanline:
+    # EXPLICITLY opting into a mono tonal tier (scan-line or meander) — a
+    # per-request config choice, never an automatic route (automatic photo
+    # routing is a later slice). Every other configuration carries no pixels
+    # forward and the flat lane's byte-for-byte identity is untouched by
+    # this field existing.
+    want_tonal = (cfg.fill_technique or "tatami").lower() in (
+        "scanline_tonal", "meander_tonal")
+    if classification.class_ == "gradient" or want_tonal:
         source_pixels = SourcePixels(rgb=p.rgb, px_per_mm=p.px_per_mm,
                                      origin_px=(art_cx, art_cy))
     if classification.class_ == "gradient":

@@ -59,15 +59,13 @@ from __future__ import annotations
 import math
 from pathlib import Path
 
-import cv2
-import numpy as np
 import shapely
 from shapely import affinity
 from shapely.geometry import LineString, Point
 
 from . import debugviz, machine, stitches
 from .regions import Region
-from .stage6_blend import SourcePixels
+from .stage6_blend import SourcePixels, darkness_sampler
 from .stage6_fill import _inset_ring, _row_spans, _stagger_slots, travel_path
 from .stitches import StitchRun
 
@@ -132,25 +130,10 @@ def _stride_for(darkness: float) -> int | None:
 
 
 def _darkness_sampler(sp: SourcePixels):
-    """-> darkness(x_mm, y_mm) in [0, 1], bilinear over a grain-scale blur of
-    the source luminance. Deterministic — no RNG anywhere in this tier."""
-    gray = cv2.cvtColor(sp.rgb, cv2.COLOR_RGB2GRAY).astype(np.float64) / 255.0
-    sigma = max(0.5, SCANLINE_BLUR_MM * sp.px_per_mm)
-    blur = cv2.GaussianBlur(gray, (0, 0), sigma)
-    h, w = blur.shape
-
-    def darkness(x_mm: float, y_mm: float) -> float:
-        px, py = sp.to_px(x_mm, y_mm)
-        fx = min(max(px, 0.0), w - 1.0)
-        fy = min(max(py, 0.0), h - 1.0)
-        x0, y0 = int(fx), int(fy)
-        x1, y1 = min(x0 + 1, w - 1), min(y0 + 1, h - 1)
-        tx, ty = fx - x0, fy - y0
-        v = (blur[y0, x0] * (1 - tx) * (1 - ty) + blur[y0, x1] * tx * (1 - ty)
-             + blur[y1, x0] * (1 - tx) * ty + blur[y1, x1] * tx * ty)
-        return 1.0 - float(v)
-
-    return darkness
+    """This tier's tone reader: the shared grain-scale sampler
+    (`stage6_blend.darkness_sampler` — one implementation for every mono
+    tonal tier) at this tier's own blur radius."""
+    return darkness_sampler(sp, SCANLINE_BLUR_MM)
 
 
 def _span_segments(x0: float, x1: float, row_index: int, y: float,

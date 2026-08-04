@@ -116,6 +116,14 @@ class PipelineConfig:
     #             payload while the flag is off. A shape the tier sews nothing
     #             for (all highlight) falls back to tatami, the same
     #             never-drop-artwork contract contour has.
+    # "meander_tonal" – the meander mono tonal tier (photo plan, technique
+    #             row 9, stage6_meander): ONE continuous non-crossing
+    #             wandering line — an adaptive Hilbert traversal, Velho &
+    #             Gomes 1991 — whose local spacing, penetration pitch and
+    #             zigzag amplitude all follow source-image darkness; the
+    #             Reef/Sfumato look, fabric left bare as the highlight
+    #             value. Same opt-in plumbing, source-pixel gate and
+    #             tatami-on-empty fallback as "scanline_tonal".
     # "contour" – uniform inward offsets of the outline, sewn inner to outer
     #             (stage6_contour). Rows follow the silhouette instead of
     #             cutting across it, which is the one thing tatami structurally
