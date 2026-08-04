@@ -138,8 +138,9 @@ class PipelineConfig:
     #             payload while the flag is off. A shape the tier sews
     #             nothing for (all highlight) falls back to tatami — the
     #             same never-drop-artwork contract contour has. Multi-color
-    #             dark→light layering is the next slice; the seam is
-    #             documented in stage6_streamline's module docstring.
+    #             dark→light layering is `streamline_mode` below, built as
+    #             the seam documented in stage6_streamline's module
+    #             docstring.
     # "contour" – uniform inward offsets of the outline, sewn inner to outer
     #             (stage6_contour). Rows follow the silhouette instead of
     #             cutting across it, which is the one thing tatami structurally
@@ -198,6 +199,23 @@ class PipelineConfig:
     #     could not be reconstructed from its description — four neck
     #     geometries tried, none escapes even pre-fix.
     fill_technique: str = "tatami"
+    # streamline's own sub-mode — irrelevant (and unread) unless
+    # fill_technique == "streamline".
+    #
+    # "mono"    – THE DEFAULT: one thread, `stage6_streamline`'s first slice,
+    #             d_sep driven by raw source darkness.
+    # "layered" – the multi-color seam: a 3-5 chart-shade decomposition of
+    #             the region's own pixels (`stage6_blend`'s shade-selection
+    #             machinery, reused rather than reinvented — see
+    #             `stage6_streamline._shade_layers`), one J-L streamline set
+    #             traced per shade against that shade's own coverage-share
+    #             map (not raw darkness), stacked dark shade first. Every
+    #             shade boundary is an unconditional colour change (forced
+    #             jump+trim, never travel-bridged) — a spool change always
+    #             cuts thread regardless of geometry. "mono" is
+    #             byte-identical to the tier as it shipped before this mode
+    #             existed.
+    streamline_mode: str = "mono"
     # None = fill_row_mm (or the machine default). Contour rings are the same
     # 0.40 mm apart as tatami rows; this exists so the ring tier can be opened
     # up independently, which is what "best used for open fills with low stitch

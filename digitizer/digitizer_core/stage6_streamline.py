@@ -1,5 +1,6 @@
 """Stage 6 — the streamline thread-paint tier (photo plan, technique-menu
-row 10), FIRST SLICE: single color.
+row 10). Two slices, both here: mono (single color, the first slice) and
+layered (the multi-color seam, below).
 
 The plan's "what no auto tool has" tier: run stitches that FOLLOW image
 structure — fur, hair, panel flow — instead of cutting across it at one
@@ -59,16 +60,43 @@ Strictly opt-in: nothing routes here except stage 7 on
 makes `pipeline.run_stages` carry source pixels forward for non-gradient
 classes — the flat lane grows no raster payload while the flag is off.
 
-THE MULTI-COLOR SEAM (next slice, deliberately not built): the plan's full
-row 10 is per-color-LAYER streamline sets, dark→light spool decomposition
-(3–5 chart shades, layers sewn dark first), each layer's d_sep driven by
-that shade's own coverage share rather than raw darkness. The seam is
-`streamline_fill`'s signature: a layer decomposition would call the same
-`_trace_streamlines` once per shade with a per-shade darkness map (shade
-membership weight instead of luminance) and stack the returned polylines
-into per-thread runs — everything below `streamline_fill` is already
-per-map, nothing assumes "darkness" means luminance. Sequencing dark→light
-is stage 5/7 layer ordering, not this module's concern.
+THE MULTI-COLOR SEAM (second slice, built): the plan's full row 10 is
+per-color-LAYER streamline sets, dark→light spool decomposition (3-5 chart
+shades, layers sewn dark first), each layer's d_sep driven by that shade's
+own coverage share rather than raw darkness. `cfg.streamline_mode ==
+"layered"` (mono, the first slice, stays the default) routes here:
+`_shade_layers` decomposes the region's own pixels into 3-5 chart shades —
+reusing `stage6_blend`'s shade-selection machinery (`_sample_pixels`,
+`_choose_shade_count`, `_shade_lab_colors`, `threads.chart_for`) rather than
+reinventing it, the same way `darkness_sampler` was hoisted to `stage6_blend`
+during the meander tier's build — and turns each shade's canonical position
+into a triangular COVERAGE-SHARE map over this tier's own darkness field: 1.0
+where that shade fully owns the pixel, tapering to 0 at the neighbouring
+shades' centers, summing to 1 across shades at every point. `_trace_streamlines`
+is then called once per shade with that map standing in for "darkness" —
+nothing below it (`_d_sep`, the highlight cutoff, `_SampleGrid`) assumes
+"darkness" means luminance, so the same function produces one evenly-spaced
+streamline set per shade unmodified. One exception, deliberate: the
+highlight cutoff itself is checked against RAW darkness inside each
+membership map, not against the shade's own coverage share — a pixel the
+raw image already reads as bare fabric must stay bare regardless of which
+chart shade happens to be nearest it (the "lightest" shade's own canonical
+position is, after all, near-white, so its raw-darkness-blind coverage
+share would otherwise be highest exactly where nothing should sew at all).
+
+`_trace_layer` (the mono slice's own trace/resample/order/emit sequence,
+factored out so both modes share it) runs once per shade, and the layers
+stack dark shade first: every shade boundary
+is an unconditional colour change (`jump=True, trim=True` forced on the new
+layer's first run, mirroring stage 7's own per-block forcing) and never
+travel-bridged, because a spool change cuts thread regardless of what the
+geometry would allow — sequencing WHICH shade becomes which physical thread
+stop is still stage 5/7's concern (report carries `shade_thread_idx` /
+`shade_rgb` dark-to-light for that), this module's job ends at hand-back.
+The 8 mm no-topcoat travel cap (`STREAMLINE_TRAVEL_MAX_MM`) is unchanged by
+this slice: it only ever gated bridging WITHIN one shade's own coverage-share
+map, the same class of region the mono slice already measured it against,
+and inter-layer boundaries never attempt a bridge at all.
 """
 from __future__ import annotations
 
@@ -80,13 +108,16 @@ import cv2
 import numpy as np
 import shapely
 from shapely.geometry import Point
+from skimage.color import deltaE_ciede2000
 
 from . import debugviz, machine, stitches
 from .directionfield import compute_direction_field, region_direction
 from .regions import Region
-from .stage6_blend import SourcePixels
+from .stage6_blend import (SourcePixels, _choose_shade_count, _sample_pixels,
+                           _shade_lab_colors)
 from .stage6_fill import _inset_ring, travel_path
 from .stitches import StitchRun
+from .threads import chart_for, rgb_to_lab
 
 # --- The darkness -> spacing mapping -----------------------------------------
 
@@ -446,6 +477,158 @@ def _resample(pts: list[tuple[float, float]], pitch: float
     return out
 
 
+# --- The multi-color seam: per-shade coverage-share decomposition -----------
+
+# A region's own pixel population must clear this before shade decomposition
+# is trusted at all — the same floor `stage6_blend.detect_ramp` applies to
+# its own per-region sample before fitting a model. Below it there is no
+# reliable signal to split into shades, so `_shade_layers` degrades to one
+# shade (this region's already-assigned thread, full coverage everywhere) —
+# mono in every way but name, never a crash on a sliver region.
+_SHADE_MIN_SAMPLES = 12
+
+
+def _shade_layers(poly, source_pixels: SourcePixels, base_darkness, region: Region,
+                  cfg) -> list[tuple[int, tuple[int, int, int], object]]:
+    """3-5 chart-shade decomposition of this region's own pixels, DARK SHADE
+    FIRST. Each entry is `(thread_index, rgb, membership)`, where
+    `membership(x_mm, y_mm) -> [0, 1]` is that shade's COVERAGE SHARE at a
+    point — not luminance, per the docstring's "multi-color seam": a
+    triangular split of `base_darkness` (this tier's own darkness field, the
+    same one the mono slice drives `_trace_streamlines` with directly)
+    against the shade's canonical position on the same [0, 1] scale
+    `_shade_lab_colors` already uses (0 = light end, 1 = dark end), so shade
+    i's membership is 1.0 exactly where `base_darkness` equals its own
+    center, tapers linearly to 0 at each neighbour's center, and — because
+    the centers are evenly spaced and every point falls between at most two
+    of them — the shares sum to 1 at every point: a partition, not an
+    independent per-shade re-measurement.
+
+    Shade COUNT and COLOR reuse `stage6_blend`'s own machinery verbatim
+    (`_sample_pixels`, `_choose_shade_count`, `_shade_lab_colors`,
+    `threads.chart_for`) rather than reimplementing the CIEDE2000 chart snap
+    — the house rule against near-duplicate logic that could drift, the same
+    reason `darkness_sampler` was hoisted to `stage6_blend` during the
+    meander tier's build. `base_darkness` (not the ramp position
+    `blend_fill` buckets on) is what drives BOTH the shade split here and
+    every downstream `_trace_streamlines` call — a photo region has no ramp
+    to fit, only the same source-darkness field this tier has always read.
+    """
+    mm_x, mm_y, rgb, _mask, _crop = _sample_pixels(poly, source_pixels)
+    if len(mm_x) < _SHADE_MIN_SAMPLES:
+        rgb0 = tuple(int(v) for v in chart_for(cfg)[region.thread_index].rgb)
+        return [(region.thread_index, rgb0, base_darkness)]
+
+    ts = np.array([base_darkness(x, y) for x, y in zip(mm_x, mm_y)])
+    lab = rgb_to_lab(rgb)
+    extremes_delta_e = float(
+        deltaE_ciede2000(lab[np.argmin(ts): np.argmin(ts) + 1],
+                         lab[np.argmax(ts): np.argmax(ts) + 1])[0]
+    )
+    n = _choose_shade_count(extremes_delta_e)
+    shade_labs = _shade_lab_colors(ts, lab, n)
+
+    chart = chart_for(cfg)
+    thread_idx = [chart.nearest_index(c) for c in shade_labs]
+    rgbs = [tuple(int(v) for v in chart[t].rgb) for t in thread_idx]
+
+    centers = [i / (n - 1) for i in range(n)]
+    knot = 1.0 / (n - 1)
+
+    def _membership_for(center: float):
+        def membership(x: float, y: float) -> float:
+            d = base_darkness(x, y)
+            # The highlight cutoff is a fact about the FABRIC, not about
+            # which shade a pixel is closest to: raw darkness below it means
+            # bare fabric already reads as the highlight value (module
+            # docstring, "darkness modulates d_sep"), and stitching even the
+            # lightest chart shade there would be thread spent for no visual
+            # change. That craft rule overrides every shade's own coverage
+            # share, so it is checked against `base_darkness` here, before
+            # the per-shade tent — not left to `_trace_streamlines`' own
+            # cutoff test, which only ever sees whatever map THIS closure
+            # hands it and has no notion of "raw" left to fall back on.
+            if d < STREAMLINE_CUTOFF_DARKNESS:
+                return 0.0
+            return max(0.0, 1.0 - abs(d - center) / knot)
+        return membership
+
+    shades = [(thread_idx[i], rgbs[i], _membership_for(centers[i])) for i in range(n)]
+    # `centers` ascends light -> dark (index 0 is `_shade_lab_colors`' own
+    # t=0 canonical position), so dark-shade-first is simply the reverse.
+    shades.reverse()
+    return shades
+
+
+def _trace_layer(poly, tangent_at, darkness_map, ring, slack, shape_id: str
+                 ) -> tuple[list[StitchRun], int, int]:
+    """One shade's full trace-through-emission pass: the mono slice's own
+    `_trace_streamlines` -> resample -> nearest-neighbour order -> travel-
+    bridged emission sequence, factored out unchanged so the layered mode
+    can run it once per shade (the docstring's "call the same
+    `_trace_streamlines` once per shade with a per-shade darkness map") with
+    no drift from what the mono slice already measures and tests.
+
+    -> (this shade's runs, streamlines emitted, needle lifts raised tracing
+    this ONE shade — a colour change into or out of this layer is the
+    caller's concern, not counted here).
+    """
+    lines = _trace_streamlines(poly, tangent_at, darkness_map, _sweep_seeds(poly))
+
+    paths = []
+    for pts in lines:
+        r = _resample(pts, STREAMLINE_STITCH_MM)
+        if r is not None:
+            paths.append(r)
+
+    # Sew order: nearest-neighbour over the polylines, each entered from
+    # whichever end is closer — the same economy _fill_paths applies to its
+    # columns. Deterministic: rounded distance, then index, then end.
+    ordered: list[list[tuple[float, float]]] = []
+    remaining = list(range(len(paths)))
+    cur: tuple[float, float] | None = None
+    while remaining:
+        if cur is None:
+            pick, flip = remaining[0], 0
+        else:
+            best = None
+            for i in remaining:
+                for fb in (0, 1):
+                    end = paths[i][0] if fb == 0 else paths[i][-1]
+                    key = (round(math.dist(cur, end), 6), i, fb)
+                    if best is None or key < best[0]:
+                        best = (key, i, fb)
+            pick, flip = best[1], best[2]
+        pts = paths[pick] if flip == 0 else list(reversed(paths[pick]))
+        remaining.remove(pick)
+        ordered.append(pts)
+        cur = pts[-1]
+
+    runs: list[StitchRun] = []
+    jumps = 0
+    for path in ordered:
+        pts = stitches.split_long_moves(path, machine.MAX_STITCH_MM)
+        if len(pts) < 2:
+            continue
+        if runs:
+            d = math.dist(runs[-1].points[-1], pts[0])
+            bridge = (travel_path(poly, ring, runs[-1].points[-1], pts[0], slack)
+                      if d <= STREAMLINE_TRAVEL_MAX_MM else None)
+            if bridge is None:
+                jumps += 1
+                runs.append(StitchRun(points=pts, kind=stitches.FILL, jump=True,
+                                      trim=d > machine.TRIM_AT_MM,
+                                      shape_id=shape_id))
+                continue
+            middle = bridge[:-1]
+            if middle:
+                runs.append(StitchRun(points=middle, kind=stitches.TRAVEL,
+                                      shape_id=shape_id))
+        runs.append(StitchRun(points=pts, kind=stitches.FILL,
+                              shape_id=shape_id))
+    return runs, len(paths), jumps
+
+
 def streamline_fill(region: Region, source_pixels: SourcePixels, cfg
                     ) -> tuple[list[StitchRun], dict]:
     """One shape -> its streamline runs plus the standard tier report.
@@ -455,8 +638,18 @@ def streamline_fill(region: Region, source_pixels: SourcePixels, cfg
     `empty` (produced nothing — for this tier that includes "the shape is
     entirely highlight", a correct outcome; stage 7's fallback ladder
     decides what happens next). Extras, informational: `streamlines`
-    (emitted polylines), `house_fallback` (the low-coherence parallel-line
-    path was taken), `field_coherence` (the region summary the gate read).
+    (emitted polylines, every shade's total in layered mode), `house_fallback`
+    (the low-coherence parallel-line path was taken), `field_coherence` (the
+    region summary the gate read).
+
+    `cfg.streamline_mode == "layered"` (default `"mono"`) is the multi-color
+    seam (module docstring): `layers`, `shade_thread_idx`, `shade_rgb` and
+    `streamlines_by_layer` (all dark-to-light order) are added to the report,
+    and `runs` stacks every shade's own runs in that order with an
+    unconditional colour change (`jump`/`trim` forced True, never
+    travel-bridged) at each shade boundary. Mono mode's own code path is
+    untouched — same calls, same order — so it stays byte-identical to the
+    tier as it shipped before this mode existed.
     """
     poly = region.polygon
     report = {"too_thin": False, "jumps": 0, "empty": False,
@@ -501,61 +694,49 @@ def streamline_fill(region: Region, source_pixels: SourcePixels, cfg
             t = sampler.tangent_at(x, y)
             return t if t != (0.0, 0.0) else region_dir
 
-    lines = _trace_streamlines(poly, tangent_at, darkness, _sweep_seeds(poly))
-
-    paths = []
-    for pts in lines:
-        r = _resample(pts, STREAMLINE_STITCH_MM)
-        if r is not None:
-            paths.append(r)
-    report["streamlines"] = len(paths)
-
-    # Sew order: nearest-neighbour over the polylines, each entered from
-    # whichever end is closer — the same economy _fill_paths applies to its
-    # columns. Deterministic: rounded distance, then index, then end.
-    ordered: list[list[tuple[float, float]]] = []
-    remaining = list(range(len(paths)))
-    cur: tuple[float, float] | None = None
-    while remaining:
-        if cur is None:
-            pick, flip = remaining[0], 0
-        else:
-            best = None
-            for i in remaining:
-                for fb in (0, 1):
-                    end = paths[i][0] if fb == 0 else paths[i][-1]
-                    key = (round(math.dist(cur, end), 6), i, fb)
-                    if best is None or key < best[0]:
-                        best = (key, i, fb)
-            pick, flip = best[1], best[2]
-        pts = paths[pick] if flip == 0 else list(reversed(paths[pick]))
-        remaining.remove(pick)
-        ordered.append(pts)
-        cur = pts[-1]
-
-    runs: list[StitchRun] = []
     ring = _inset_ring(poly, machine.TRAVEL_INSET_MM)
     slack = poly.buffer(0.01)
-    for path in ordered:
-        pts = stitches.split_long_moves(path, machine.MAX_STITCH_MM)
-        if len(pts) < 2:
-            continue
-        if runs:
-            d = math.dist(runs[-1].points[-1], pts[0])
-            bridge = (travel_path(poly, ring, runs[-1].points[-1], pts[0], slack)
-                      if d <= STREAMLINE_TRAVEL_MAX_MM else None)
-            if bridge is None:
-                report["jumps"] += 1
-                runs.append(StitchRun(points=pts, kind=stitches.FILL, jump=True,
-                                      trim=d > machine.TRIM_AT_MM,
-                                      shape_id=region.shape_id))
+
+    layered = str(cfg.streamline_mode or "mono").lower() == "layered"
+    if layered:
+        shades = _shade_layers(poly, source_pixels, darkness, region, cfg)
+        runs: list[StitchRun] = []
+        total_streamlines = 0
+        shade_thread_idx = []
+        shade_rgb = []
+        streamlines_by_layer = []
+        for i, (thread_idx, rgb, membership) in enumerate(shades):
+            layer_runs, n_lines, layer_jumps = _trace_layer(
+                poly, tangent_at, membership, ring, slack,
+                f"{region.shape_id}-shade{i}")
+            report["jumps"] += layer_jumps
+            total_streamlines += n_lines
+            shade_thread_idx.append(thread_idx)
+            shade_rgb.append(rgb)
+            streamlines_by_layer.append(n_lines)
+            if not layer_runs:
                 continue
-            middle = bridge[:-1]
-            if middle:
-                runs.append(StitchRun(points=middle, kind=stitches.TRAVEL,
-                                      shape_id=region.shape_id))
-        runs.append(StitchRun(points=pts, kind=stitches.FILL,
-                              shape_id=region.shape_id))
+            if runs:
+                # A shade boundary is always a genuine thread/colour change —
+                # never bridged, exactly like stage 7's own per-block forcing
+                # (`ordered[0].jump = True; ordered[0].trim = True`) for a
+                # brand-new colour stop. Not counted in report["jumps"]: that
+                # key is needle lifts THIS TIER raised inside one thread, and
+                # a colour change is not that (stage 7 does not count its own
+                # equivalent forcing either).
+                layer_runs[0].jump = True
+                layer_runs[0].trim = True
+            runs.extend(layer_runs)
+        report["streamlines"] = total_streamlines
+        report["layers"] = len(shades)
+        report["shade_thread_idx"] = shade_thread_idx
+        report["shade_rgb"] = shade_rgb
+        report["streamlines_by_layer"] = streamlines_by_layer
+    else:
+        runs, n_lines, layer_jumps = _trace_layer(
+            poly, tangent_at, darkness, ring, slack, region.shape_id)
+        report["jumps"] += layer_jumps
+        report["streamlines"] = n_lines
 
     if not runs:
         report["empty"] = True
