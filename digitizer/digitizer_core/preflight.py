@@ -362,7 +362,7 @@ COLOR_STOPS_MAX = 10
 # gate held, so this guard needs no class gate of its own: no photo lane, no
 # warning, no finding.
 FACE_MIN_HOOP_MM = (127.0, 178.0)     # 5x7" hoop, the stated face-work floor
-FACE_BLOCK_HOOP_MM = 100.0            # 4x4" hoop — faces at this scale: impossible
+FACE_BLOCK_HOOP_MM = 101.6            # 4x4" hoop (4 * 25.4mm/in) — faces at this scale: impossible
 
 # The pipeline warning the face guard re-reads — named by string, the
 # _CONTOUR_RING_UNREACHABLE / _CLASSIFIED_PHOTO pattern (that code is owned

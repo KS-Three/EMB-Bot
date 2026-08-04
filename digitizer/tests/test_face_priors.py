@@ -304,3 +304,15 @@ def test_face_guard_is_silent_past_the_4x4_scale_and_without_faces():
     none = run_preflight(None, _plan_with([], (80.0, 96.0)), _cfg())
     assert FACE_TOO_SMALL not in {f["code"] for f in none["findings"]}
     assert none["metrics"]["faces_detected"] == 0
+
+
+def test_face_block_hoop_boundary_matches_the_literal_4in_conversion():
+    # FACE_BLOCK_HOOP_MM must be 4 * 25.4 = 101.6mm (the app's own hoop-size
+    # convention, src/units.js inToMm), matching FACE_MIN_HOOP_MM's 5x7
+    # derivation (127.0, 178.0) — not the rounded-to-100 nominal figure. A
+    # design that still needs a real 4x4in hoop (e.g. 101mm) must still warn.
+    assert FACE_BLOCK_HOOP_MM == 101.6
+    still_needs_4x4 = run_preflight(
+        None, _plan_with([_faces_warning()], (101.0, 96.0)), _cfg()
+    )
+    assert FACE_TOO_SMALL in {f["code"] for f in still_needs_4x4["findings"]}
