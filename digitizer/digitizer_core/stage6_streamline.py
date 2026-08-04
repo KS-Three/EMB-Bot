@@ -111,7 +111,8 @@ from shapely.geometry import Point
 from skimage.color import deltaE_ciede2000
 
 from . import debugviz, machine, stitches
-from .directionfield import compute_direction_field, region_direction
+from .directionfield import (RegionDirection, compute_direction_field,
+                             region_direction)
 from .regions import Region
 from .stage6_blend import (SourcePixels, _choose_shade_count, _sample_pixels,
                            _shade_lab_colors)
@@ -227,7 +228,7 @@ class _FieldSampler:
         tx, ty = self.field.tangent[yi, xi]
         return float(tx), float(ty)
 
-    def region_summary(self, poly) -> "RegionDirection":
+    def region_summary(self, poly) -> RegionDirection:
         """`directionfield.region_direction` over the polygon, rasterized
         onto the (possibly downscaled) field grid with the same
         to_px-then-fillPoly convention the polygon API uses."""
