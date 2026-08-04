@@ -71,6 +71,33 @@ class PipelineConfig:
     photo_prep_clahe_clip: float = 2.5
     photo_prep_clahe_tiles: int = 8
 
+    # rembg subject cutout (photo plan §2 row 1 — build step 3's second
+    # slice, stage1_photo_prep.remove_background_seam). A SEPARATE opt-in
+    # flag ON TOP of the photo_prep double gate above (this flag AND
+    # photo_prep AND a photo classification must all hold) — the isolated
+    # venv subprocess this shells out to (digitizer/rembg_isolated/, see its
+    # README.md) is heavier than the zero-dep tone/texture/face-priors work
+    # above it, so turning photo_prep on does not, by itself, spend a
+    # subprocess and a neural net on every photo job. Default False; with it
+    # off the pipeline is exactly what it was before this slice existed,
+    # including for every design that has photo_prep=True. When on and the
+    # isolated venv is missing/broken/times out, the documented no-op
+    # fallback applies (PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE): stage 1's
+    # border-flood bg_mask is kept unchanged and the job still completes.
+    photo_prep_background_removal: bool = False
+    # Which rembg model the worker loads. "isnet-general-use" is the plan's
+    # default tier (§2 row 1); "birefnet-general-lite" (quality) and
+    # "u2net_human_seg" (portrait fast tier) are documented seams — the
+    # worker script accepts any rembg model name, but only the default has
+    # been measured end-to-end (docs/photo-prep-deps-probe-2026-08-04.md).
+    photo_prep_background_removal_model: str = "isnet-general-use"
+    # Subprocess timeout, seconds. Generous because the FIRST call in a
+    # fresh isolated venv also downloads the model (~178 MB; measured ~10s
+    # through this sandbox's proxy) — every call after that is cached and
+    # takes ~1-2s. A slow/blocked download degrades to the no-op fallback
+    # exactly like any other subprocess failure, never hangs the job.
+    photo_prep_background_removal_timeout_s: float = 60.0
+
     # Stage 3
     min_detail_mm: float = 1.5         # blueprint hard constraint
     # Absorbed regions below this fraction of the min-detail area are

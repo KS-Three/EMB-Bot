@@ -36,6 +36,21 @@ PHOTO_FACES_DETECTED = "PHOTO_FACES_DETECTED"
 # extra: {"reason": str}
 PHOTO_FACE_PRIORS_UNAVAILABLE = "PHOTO_FACE_PRIORS_UNAVAILABLE"
 
+# Stage 1.5 (rembg background removal — photo plan §2 row 1). Rides the
+# photo_prep double gate PLUS its own opt-in flag
+# (cfg.photo_prep_background_removal) — see config.py's comment for why a
+# third gate on top of photo_prep.
+# Info, not a problem: the isolated-venv rembg subprocess ran and grew
+# stage 1's border-flood bg_mask with its subject-cutout mask. extra:
+# {"background_frac_before": float, "background_frac_after": float}
+PHOTO_BACKGROUND_REMOVED = "PHOTO_BACKGROUND_REMOVED"
+# Background removal was gated ON but cannot run here (isolated rembg venv
+# not built, worker script missing, subprocess crashed or timed out, a
+# first-use model download failed, ...) — the documented no-op fallback:
+# the job proceeds with stage 1's border-flood bg_mask only, unchanged.
+# extra: {"reason": str}
+PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE = "PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE"
+
 # Stage 2
 COLOR_CAP_APPLIED = "COLOR_CAP_APPLIED"            # more threads than max_colors; smallest layers reassigned
 

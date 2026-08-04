@@ -52,10 +52,22 @@ pin `opencv-contrib-python-headless==5.0.0.93`, re-verified golden-safe in
 a fresh venv (see the probe doc's addendum). This module needed no change
 — it feature-detects `cv2.ximgproc` either way.
 
-**rembg seam** (§2 row 1, part of build step 3) is `remove_background_seam`
-at the bottom of this module — a documented no-op today, with the 2026-08-04
-probe results in its docstring so wiring it is an environment decision, not
-a research task.
+**rembg background removal** (§2 row 1, part of build step 3) is REAL as of
+this slice: `remove_background_seam` shells out to an ISOLATED venv (see
+`digitizer/rembg_isolated/README.md`) running `rembg_worker.py` as a
+subprocess, never the shared `digitizer/.venv`. Why isolated: rembg's
+`pymatting` dependency imports `numba`, and `numba` refuses numpy>=2.5 at
+import time, while this repo's shared venv pins `numpy==2.5.1` for the
+k-means goldens (probe record: `docs/photo-prep-deps-probe-2026-08-04.md`
+§2). Rides the `photo_prep` double gate PLUS its OWN opt-in flag
+(`cfg.photo_prep_background_removal`, default False) — the subprocess is
+heavier than every other photo-prep step, so it stays off unless asked for
+even with `photo_prep` on. Graceful fallback, same shape as YuNet's: the
+isolated venv missing/not built, the worker crashing, or a subprocess
+timeout all degrade to the documented no-op (stage 1's border-flood
+`bg_mask` unchanged) with a `PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE` warning,
+never a hard failure. See `remove_background_seam`'s own docstring for the
+mask contract and `pipeline.run_stages` for the wiring.
 
 **YuNet face priors** (§2 row 2) are REAL as of this slice:
 `detect_faces_seam` runs `cv2.FaceDetectorYN` against the committed model at
@@ -73,6 +85,8 @@ PHOTO_FACES_DETECTED warning).
 from __future__ import annotations
 
 import hashlib
+import subprocess
+import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -264,33 +278,161 @@ def photo_prep(rgb: np.ndarray, bg_mask: np.ndarray, px_per_mm: float,
 
 
 # --- Build-step-3 dependency seams ---------------------------------------------
-# rembg (below) is still a documented no-op; the YuNet face priors that used
-# to share this section are real — see the YuNet block further down.
+# rembg background removal (below) is real, via the isolated-venv subprocess
+# harness. The YuNet face priors share this section further down.
 
-def remove_background_seam(rgb: np.ndarray, cfg: PipelineConfig) -> np.ndarray | None:
-    """SEAM (photo plan §2 row 1): rembg subject cutout — binary subject
-    mask + morphology at stitch scale, islands under min-sew-area dropped.
-    Returns None (no mask, callers change nothing) until rembg is wired.
+# Where the isolated rembg venv + its worker script live. Module-level
+# constants (not cfg fields) so tests can monkeypatch them exactly the way
+# YUNET_MODEL_PATH is monkeypatched, without threading a path override
+# through PipelineConfig for something that is a deploy-time file location,
+# not a per-job parameter.
+REMBG_WORKER_PATH = Path(__file__).resolve().parent / "rembg_worker.py"
+_REMBG_ISOLATED_DIR = Path(__file__).resolve().parents[1] / "rembg_isolated"
 
-    Probe record, 2026-08-04, this sandbox (full detail in
-    docs/photo-prep-deps-probe-2026-08-04.md):
 
-    * `pip install rembg onnxruntime` succeeds through the proxy
-      (rembg 2.0.77, onnxruntime 1.28.0).
-    * The `isnet-general-use.onnx` model (178 MB) downloads fine from
-      rembg's GitHub release URL through the proxy — model availability is
-      NOT the blocker.
-    * THE BLOCKER: rembg 2.0.77 unconditionally imports pymatting -> numba,
-      and numba 0.66.0 requires numpy<2.5 while this repo's venv pins
-      numpy 2.5.1 — `import rembg` raises ImportError("Numba needs NumPy
-      2.4 or less") outright. Wiring rembg therefore needs one of: a numba
-      release supporting numpy 2.5, a rembg release that lazies the
-      pymatting import (matting is unused here — thread can't render
-      alpha), or an isolated-process/venv harness for the cutout call.
-      Do NOT downgrade the shared venv's numpy to force it — the k-means
-      goldens' exact pins outrank a cutout dependency.
+def _default_rembg_venv_python() -> Path:
+    """POSIX venvs put the interpreter under bin/, Windows under Scripts/.
+    Prefer whichever actually exists; POSIX is the default name used in the
+    "missing" reason message when neither does (matching this repo's other
+    tooling, which targets POSIX first — see COOKBOOK.md)."""
+    posix = _REMBG_ISOLATED_DIR / "venv" / "bin" / "python"
+    windows = _REMBG_ISOLATED_DIR / "venv" / "Scripts" / "python.exe"
+    if windows.is_file() and not posix.is_file():
+        return windows
+    return posix
+
+
+REMBG_VENV_PYTHON = _default_rembg_venv_python()
+
+# rembg's alpha channel is a soft matte; thread can't render partial alpha
+# (§2 row 1 says binary mask + morphology), so it is thresholded to a hard
+# subject/background split at its own midpoint before any stitch-scale
+# cleanup runs.
+REMBG_ALPHA_THRESHOLD = 128
+
+
+def background_removal_unavailable_reason() -> str | None:
+    """None when the isolated rembg venv + worker script look runnable
+    here; otherwise one honest sentence why not.
+
+    ENVIRONMENT-ONLY, unlike `face_detector_unavailable_reason`'s stronger
+    guarantee: a per-call runtime failure (a subprocess crash, a timeout, a
+    first-use model download failing on a machine with no route to GitHub)
+    is not knowable from files on disk alone, so it is NOT covered here —
+    `remove_background_seam` reports that half itself, in its own return
+    value. The two never disagree about the environment-level half because
+    both read the exact same two paths.
     """
+    if not REMBG_WORKER_PATH.is_file():
+        return f"rembg worker script missing at {REMBG_WORKER_PATH}"
+    if not REMBG_VENV_PYTHON.is_file():
+        return (
+            f"isolated rembg venv not found at {REMBG_VENV_PYTHON} — see "
+            "digitizer/rembg_isolated/README.md to build it"
+        )
     return None
+
+
+def _clean_background_mask(bg: np.ndarray, kill_px: int, min_island_px: float) -> np.ndarray:
+    """Morphology at stitch scale (open then close, kernel = the same
+    physical kill scale `_texture_kill` uses) then drop background islands
+    under the min-sew-area floor — filled back to foreground, since a
+    background speck too small to matter is segmentation noise, not a real
+    gap worth carving out of the subject. `min_island_px` uses
+    `stage3_segment`'s own `(cfg.min_detail_mm * px_per_mm) ** 2` formula so
+    "small" means the same thing here as it does everywhere else artwork
+    gets dropped for being too small to sew."""
+    k = max(1, kill_px)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
+    cleaned = cv2.morphologyEx(bg.astype(np.uint8) * 255, cv2.MORPH_OPEN, kernel)
+    cleaned = cv2.morphologyEx(cleaned, cv2.MORPH_CLOSE, kernel)
+    n, labels, stats, _ = cv2.connectedComponentsWithStats(cleaned, connectivity=8)
+    out = np.zeros(bg.shape, bool)
+    for i in range(1, n):
+        if stats[i, cv2.CC_STAT_AREA] >= min_island_px:
+            out |= labels == i
+    return out
+
+
+def remove_background_seam(
+    rgb: np.ndarray, px_per_mm: float, cfg: PipelineConfig
+) -> tuple[np.ndarray | None, str | None]:
+    """Photo plan §2 row 1: rembg subject cutout, run in the isolated venv
+    documented at `digitizer/rembg_isolated/README.md` — NEVER the shared
+    `digitizer/.venv` (rembg's pymatting -> numba dependency needs
+    numpy<2.5; the shared venv pins numpy==2.5.1 for the k-means goldens —
+    full probe record in `docs/photo-prep-deps-probe-2026-08-04.md` §2 and
+    this module's own docstring).
+
+    Returns `(bg_mask, reason)`:
+      * `(mask, None)` — the worker ran. `mask` is `(H, W)` bool, True =
+        background: rembg's alpha channel thresholded at
+        `REMBG_ALPHA_THRESHOLD`, then cleaned with morphology at the
+        texture-kill scale and small background islands dropped (§2 row 1's
+        own "binary mask + morphology at stitch scale, islands under
+        min-sew-area dropped").
+      * `(None, reason)` — cannot run here (isolated venv/worker missing,
+        per `background_removal_unavailable_reason`) OR the subprocess
+        failed at runtime (timeout, crash, bad output, a first-use model
+        download failing, ...). One honest sentence either way. The
+        documented no-op: the caller keeps stage 1's border-flood `bg_mask`
+        unchanged and says so via `PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE`.
+
+    Never raises: every failure mode funnels into the `(None, reason)` arm
+    so a rembg problem degrades a job, never crashes it — the same contract
+    `detect_faces_seam` gives YuNet failures.
+    """
+    reason = background_removal_unavailable_reason()
+    if reason is not None:
+        return None, reason
+
+    with tempfile.TemporaryDirectory(prefix="rembg_seam_") as tmp:
+        in_path = Path(tmp) / "in.png"
+        out_path = Path(tmp) / "mask.png"
+        if not cv2.imwrite(str(in_path), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)):
+            return None, "failed to write a temp input image for the rembg worker"
+
+        try:
+            proc = subprocess.run(
+                [
+                    str(REMBG_VENV_PYTHON),
+                    str(REMBG_WORKER_PATH),
+                    str(in_path),
+                    str(out_path),
+                    cfg.photo_prep_background_removal_model,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=cfg.photo_prep_background_removal_timeout_s,
+            )
+        except subprocess.TimeoutExpired:
+            return None, (
+                "rembg worker timed out after "
+                f"{cfg.photo_prep_background_removal_timeout_s:g}s"
+            )
+        except OSError as exc:
+            return None, f"failed to launch the isolated rembg venv: {exc}"
+
+        if proc.returncode != 0:
+            tail = (proc.stderr or "").strip().splitlines()
+            detail = tail[-1] if tail else "no stderr output"
+            return None, f"rembg worker exited {proc.returncode}: {detail}"
+
+        mask_raw = cv2.imread(str(out_path), cv2.IMREAD_GRAYSCALE)
+
+    if mask_raw is None:
+        return None, "rembg worker reported success but wrote no readable mask"
+    if mask_raw.shape[:2] != rgb.shape[:2]:
+        return None, (
+            f"rembg worker returned a {mask_raw.shape[:2]} mask for a "
+            f"{rgb.shape[:2]} image"
+        )
+
+    subject = mask_raw >= REMBG_ALPHA_THRESHOLD
+    bg = ~subject
+    kill_px = _kill_scale_px(px_per_mm, cfg)
+    min_island_px = (cfg.min_detail_mm * px_per_mm) ** 2
+    return _clean_background_mask(bg, kill_px, min_island_px), None
 
 
 # --- YuNet face priors (photo plan §2 row 2 — REAL as of this slice) ----------

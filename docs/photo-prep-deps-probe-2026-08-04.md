@@ -207,3 +207,40 @@ updated for him.
    `pip install rembg onnxruntime` + one smoke run
    (`rembg.remove(..., session=new_session("isnet-general-use"))`)
    finishes this row (first use downloads to `~/.u2net/`).
+
+## Addendum, later still 2026-08-04 — rembg WIRED via option 2 (isolated venv)
+
+Row 1 is done: `stage1_photo_prep.remove_background_seam` is real, via
+option 2 from §2 above — an isolated venv (`digitizer/rembg_isolated/`, not
+committed, see its `README.md`) running `digitizer_core/rembg_worker.py` as
+a subprocess, pointed at that venv's own python. `digitizer/.venv` was not
+touched.
+
+* Building the isolated venv fresh (`python3.12 -m venv` + `pip install -r
+  digitizer/rembg_isolated/requirements.txt`, pinning only
+  `rembg==2.0.77`/`onnxruntime==1.28.0` and letting pip resolve the rest) —
+  landed on **numpy 2.4.6, numba 0.66.0** with no conflict: `import rembg`
+  succeeds cleanly. The numba/numpy-2.5 blocker only exists inside a venv
+  that also carries this repo's `numpy==2.5.1` pin, which is exactly what
+  the isolated venv avoids by construction.
+* Model download re-confirmed: `isnet-general-use.onnx` (178 MB) downloaded
+  from `github.com/danielgatis/rembg/releases/...` through this sandbox's
+  proxy in ~10s, into rembg's own default cache dir (`~/.u2net/`) — not
+  committed, not otherwise managed by this repo (same shape rembg ships to
+  every install). Real cutout measured end-to-end on `skimage.data.
+  astronaut()` (the same rights-safe real-photo fixture `test_face_priors.py`
+  already uses): background pixel fraction 0.467 at 256x256, the subject's
+  own face patch correctly stays foreground, deterministic across repeat
+  calls, ~1-2s per call once the model is cached.
+* Wiring mirrors YuNet's shape: a THIRD gate
+  (`cfg.photo_prep_background_removal`) on top of the existing `photo_prep`
+  double gate, `PHOTO_BACKGROUND_REMOVED` / `PHOTO_BACKGROUND_REMOVAL_
+  UNAVAILABLE` warning codes, graceful degradation on venv-missing,
+  worker-crash, subprocess-timeout and bad-output, all funneled through
+  `remove_background_seam`'s `(mask, reason)` return so nothing ever raises
+  out of the pipeline. Tests: `tests/test_background_removal.py` (real
+  cutout, environment-level fallback, runtime-failure fallback, the gate in
+  both directions, flat-lane byte-identity, the mask-cleanup helper).
+* Full suite result and exact counts: see this lane's own commit / final
+  report (not re-recorded here to avoid the probe doc drifting from the
+  commit that actually ran it).
