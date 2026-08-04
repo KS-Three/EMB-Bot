@@ -278,12 +278,16 @@ Session handoff with the full context:
    `logo_whitebg.png`, same design, different file encoding) as satin on one
    file and fill on the other, purely from antialiasing noise landing
    `2*area/perimeter` on opposite sides of the 5.0mm cap — every DT arm
-   agrees "fill" on both. M1 adds `digitizer_core/shapefield.py`
-   (`ShapeField`: mask, skeleton, exact EDT, scale, origin), hoisting one
-   `medial_axis(rng=0)` so skeleton and DT are computed together, behind
-   `cfg.extra["shapefield"]` defaulting to today's path — **byte-identical
-   output is a hard requirement**. Not started. ~3 days combined, both
-   desk-safe. Rationale: `stage7_sequence.py:97` makes the satin/fill call
+   agrees "fill" on both. **M1 is merged** (`bc1e59e`,
+   `digitizer_core/shapefield.py` — `ShapeField`: mask, skeleton, exact EDT,
+   scale, origin — hoisting one `medial_axis(rng=0)` so skeleton and DT are
+   computed together, behind `cfg.extra["shapefield"]` defaulting to today's
+   path). The byte-identical requirement is enforced, not just stated:
+   `tests/test_shapefield_byte_identical.py` duplicates
+   `stage6_satin._rasterize`'s rasterization number-for-number rather than
+   reimplementing it, both on `origin/main` now. What's left of this slice is
+   M0's corpus leg (above) and M2/M3 (below) — neither started. Rationale:
+   `stage7_sequence.py:97` makes the satin/fill call
    from `2·area/perimeter` (a statistic the source patent warns against —
    it satins a 20mm disc under a 5mm cap once the edge is serrated) *before*
    the DT even exists in `stage6_satin.py`. Steps 5+ all lean harder on that

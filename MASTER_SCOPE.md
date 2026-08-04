@@ -13,19 +13,31 @@ at the bottom for the authority model behind the confidence ratings.
 
 **Last updated:** 2026-08-04, later the same day — docs refresh after PRs
 #8–#15 finished merging into `main` (this doc's previous pass, dated below,
-was written mid-batch and undercounted what had already landed). Verified
-directly, not restated from commit messages: re-ran all three suites fresh
-on `origin/main` — engine `node --test` **266/266**, Studio `npx vitest run`
-**331/331** (24 files), digitizer `pytest` **489 passed / 4 failed** (493
-total). Of the 4 digitizer failures, 3 are the long-standing
-container-environment golden mismatches cited repeatedly in this project's
-PR history (`test_flat_lane_byte_identical`, `test_pushcomp`,
-`test_stage2_photo_segment`, all `logo_alpha.png`/`logo_whitebg.png`-towel);
-the 4th, `test_directionfield::test_drone_render_smoke_and_debug_artifact`,
-is a real regression — the direction-field branch merged without its
+was written mid-batch and undercounted what had already landed), then
+touched up minutes later when **PR #23 (meander tonal tier, row 9) merged
+mid-refresh** — re-verified directly against the new `main` tip rather than
+left stale: digitizer `pytest` on fresh `origin/main` now reads **505
+passed / 4 failed** (up from 489/493; meander's own +16 tests), same 4
+failures, unchanged root causes. Everything below not specifically about
+#23 was verified against `origin/main` at 74e6919, one merge behind the
+last paragraph but not invalidated by it — none of that batch touches area
+1's photo-plan bullets or the other areas.
+
+Of the 4 digitizer failures, 3 are the long-standing container-environment
+golden mismatches cited repeatedly in this project's PR history
+(`test_flat_lane_byte_identical`, `test_pushcomp`, `test_stage2_photo_segment`,
+all `logo_alpha.png`/`logo_whitebg.png`-towel); the 4th,
+`test_directionfield::test_drone_render_smoke_and_debug_artifact`, is a real
+regression — the direction-field branch merged without its
 `debugviz.direction_field` render function (an agent lane's uncommitted
 worktree edit), so `main` currently raises `AttributeError` on that smoke
-test. The fix is written but sits unmerged in open PR #22.
+test. The fix is written but sits unmerged in open PR #22 — merging #23
+first did not touch `debugviz.py`, so this failure is still live and will
+stay live until #22 specifically lands.
+
+Suite counts elsewhere in this doc (engine `node --test` **266/266**, Studio
+`npx vitest run` **331/331**, 24 files) were verified pre-#23 and are
+unaffected by it — #23 touches only `digitizer/`.
 
 Substance changes found on `main` since the prior pass below: the full
 `BACKGROUND_ENCLOSED` stack (pipeline + service contract + Studio Layers-panel
@@ -34,9 +46,10 @@ restore UI) is now merged — area 1's bullet below was still describing it as
 is fixed (`8e668d3`); a Playwright wizard-smoke e2e exists and passes
 (1/1, re-run this session); the PDF worksheet export gained dedicated test
 coverage (area 4 was still describing zero coverage); direction field (photo
-plan row 6) and scan-line mono tonal (row 8) landed. Separately, **8 PRs
-(#16–#23) are open/draft against `main`, pending review — none of that work
-is described as shipped below**, only flagged per-area with its PR number.
+plan row 6), scan-line mono tonal (row 8), and now meander tonal (row 9,
+**PR #23, merged**) all landed. Separately, **7 PRs (#16–#22) remain
+open/draft against `main`, pending review** — none of that work is
+described as shipped below, only flagged per-area with its PR number.
 
 Prior update 2026-08-04 (font-license audit items 4–10 + 12 executed —
 full license texts on disk/served/embedded, complete attributions, credits
@@ -169,10 +182,10 @@ states "build steps 1, 3, 4 and 8 of 11" — SAM2 segmentation deferred,
 stitch processor / preflight scoring / review-UI polish still to come.
 Running in parallel with that step numbering, `docs/photo-digitizing-plan-
 2026-07-31.md`'s mono-tonal/portrait technique rows have started landing:
-direction field (row 6, structure-tensor + ETF per Kang 2007) and scan-line
-mono tonal (row 8) are merged. Two more sit in open, unmerged PRs: streamline
-(row 10, PR #20) and meander (row 9, PR #23) — not on `main`, not counted
-below.
+direction field (row 6, structure-tensor + ETF per Kang 2007), scan-line
+mono tonal (row 8), and now meander tonal (row 9, **PR #23, merged**) are
+all on `main` and counted below. One more sits in an open, unmerged PR:
+streamline (row 10, PR #20) — not on `main`, not counted below.
 
 **Confidence: Low** beyond flat spot-color art. Flat-logo digitizing (both
 implementations) is Medium — **266/266** JS tests and **489/493** Python
@@ -314,12 +327,20 @@ merging open PR #22 — it fixes the opaque-alpha bug that currently defeats
 background detection (and `BACKGROUND_ENCLOSED`) on every real Studio
 upload, and restores the missing `debugviz.direction_field` regression.
 M0 of the DT-first migration is measured (see the satin/fill classifier item
-above) — corpus leg pending a local run, M1 (`ShapeField` hoist,
-byte-identical) not started; a separate, zero-engine-change measurement
+above) — corpus leg pending a local run. **M1 (`ShapeField` hoist) is
+already merged** (`bc1e59e`, `digitizer_core/shapefield.py` +
+`tests/test_shapefield.py` + `tests/test_shapefield_byte_identical.py`, all
+present on `origin/main`) — pure infrastructure behind
+`cfg.extra["shapefield"]`, off by default, duplicating
+`stage6_satin._rasterize`'s rasterization number-for-number rather than
+reimplementing it, so the byte-identity test is load-bearing, not
+decorative. M2/M3 (the actual classifier change this hoist sets up,
+corpus-gated) have not started; a separate, zero-engine-change measurement
 pass (open PR #19, `classifier-lens`) instrumented the stage-0 router and
 concluded the current thresholds should be left alone, not yet merged.
-Two more photo-plan technique rows sit in open PRs, not yet merged:
-streamline (#20) and meander (#23). Then schedule the first sew-out session.
+One more photo-plan technique row sits in an open PR, not yet merged:
+streamline (#20) — meander (#23) landed. Then schedule the first sew-out
+session.
 
 ---
 
