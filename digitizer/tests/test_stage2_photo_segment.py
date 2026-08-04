@@ -19,8 +19,9 @@ import pytest
 
 from digitizer_core.config import PipelineConfig
 from digitizer_core.pipeline import run_stages
+from digitizer_core.stage0_classify import classify
 from digitizer_core.stage1_prep import prep
-from digitizer_core.stage2_photo_segment import segment
+from digitizer_core.stage2_photo_segment import MERGE_DELTAE00_THRESH, segment
 from digitizer_core.stage2_quantize import quantize
 from digitizer_core.stage3_segment import ClassicalSegmenter
 from digitizer_core.warnings_codes import ABSORBED_SMALL_SHAPES, PHOTO_SEGMENT_REGION_COUNT
@@ -28,7 +29,8 @@ from digitizer_core.warnings_codes import ABSORBED_SMALL_SHAPES, PHOTO_SEGMENT_R
 from .test_flat_lane_byte_identical import GOLDEN, _snapshot
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
-FIXTURE = TESTDATA / "photo" / "region_blobs.png"
+PHOTO_DIR = TESTDATA / "photo"
+FIXTURE = PHOTO_DIR / "region_blobs.png"
 
 
 def _cfg(**kw) -> PipelineConfig:
@@ -65,10 +67,29 @@ def test_region_forming_beats_naive_clustering_on_soft_edges():
     # its own area. Speckle (salt-and-pepper, no pixel more than 1 away from
     # a differently-labeled one) collapses to near-nothing under erosion; a
     # clean, solid region loses only its outer 1px rim.
+    #
+    # Below-floor labels are exempt (2026-08-04, when this fixture's own
+    # tiny `Prep.enclosed_mask` — 16px, an incidental artifact of this
+    # synthetic image, not something this test is about — started getting
+    # its own trailing label block, quantized via the same, deliberately
+    # un-floored `stage2_quantize._quantize_population` `quantize()` itself
+    # has always used for enclosed content, see `segment`'s own enclosed-
+    # population comment). Both `quantize()` and `segment()` rely on the
+    # CALLER (`pipeline.run_stages`'s own downstream `resolve_small_regions`
+    # pass over the whole `Quant`) to absorb an enclosed population's own
+    # sub-floor slivers — this test calls `segment()` directly, bypassing
+    # that pass, so a label this small was never going to represent
+    # anything a real digitize job actually keeps; skipping it here tests
+    # SLIC+RAG's OWN region quality (what this test is for) without also
+    # re-asserting an absorption guarantee `resolve_small_regions` already
+    # owns and is tested elsewhere.
+    min_area_px = (cfg.min_detail_mm * p.px_per_mm) ** 2
     for label in range(region_count):
         mask = (q.labels == label).astype(np.uint8)
         area = int(mask.sum())
         assert area > 0
+        if area < min_area_px:
+            continue
         eroded = int(cv2.erode(mask, np.ones((3, 3), np.uint8)).sum())
         assert eroded >= 0.5 * area, (
             f"region {label} reads as speckle after erosion ({eroded}/{area} px survived)"
@@ -174,3 +195,158 @@ def test_flat_and_gradient_lanes_still_match_golden_after_photo_dispatch(fixture
     here as a side effect of `pipeline.py` gaining a third routing branch.
     That file itself is untouched."""
     assert _snapshot(fixture) == GOLDEN[fixture]
+
+
+# --- 6. "gradient" now dispatches through SLIC+RAG, not plain k-means -------
+#
+# `docs/superpowers/plans/2026-08-03-gradient-tier-fragmentation-and-
+# enclosed-white-defects.md`, "Direction 1" (routing) + "Direction 3"
+# (threshold). Region counts pinned here are FULL-PIPELINE
+# `len(PipelineResult.regions)` — the F4 acceptance metric the plan doc's
+# 20-80 band is stated against — not a stage-2-only proxy. See
+# `MERGE_DELTAE00_THRESH`'s own docstring in stage2_photo_segment.py for the
+# full two-fixture sweep this threshold and these numbers were derived from.
+
+# `summit_badge.png`: a second real busy commissioned-style gradient
+# fixture, built for this pass because `drone_render.png` was the only
+# existing gradient-classified fixture in this repo complex enough to
+# exercise fragmentation at all (`gradient_ramp_*`/`repro_gradient_white_
+# icon` are all much simpler). Not derived from any customer file. See
+# `MERGE_DELTAE00_THRESH`'s docstring for its own sweep numbers.
+BUSY_GRADIENT_FIXTURES = ("drone_render.png", "summit_badge.png")
+
+
+def test_gradient_class_dispatches_to_photo_segment_not_quantize():
+    """The actual routing change: a gradient-classified design now carries
+    `PHOTO_SEGMENT_REGION_COUNT` (a stage2_photo_segment-only warning) —
+    proof it took the SLIC+RAG path, not `stage2_quantize.quantize` (which
+    never emits this code at all)."""
+    cfg = PipelineConfig(target_width_mm=90.0)
+    c = classify(str(PHOTO_DIR / "drone_render.png"), cfg)
+    assert c.class_ == "gradient", "fixture drifted off the class this test needs"
+
+    result = run_stages(str(PHOTO_DIR / "drone_render.png"), cfg)
+    assert result.design_class == "gradient"
+    assert any(w["code"] == PHOTO_SEGMENT_REGION_COUNT for w in result.warnings)
+
+
+@pytest.mark.parametrize("fixture", BUSY_GRADIENT_FIXTURES)
+def test_busy_gradient_fixtures_land_inside_the_accept_band(fixture):
+    """The actual defect this pass fixes: plain k-means fragmented
+    drone_render.png into 192+ final regions (measured pre-fix), ~10x the
+    plan doc's own 20-80 accept band (F4 criteria). SLIC+RAG at the retuned
+    threshold lands both independent real busy fixtures inside that band."""
+    cfg = PipelineConfig(target_width_mm=90.0)
+    result = run_stages(str(PHOTO_DIR / fixture), cfg)
+    assert result.design_class == "gradient"
+    assert 20 <= len(result.regions) <= 80, (
+        f"{fixture}: {len(result.regions)} regions, outside the 20-80 accept band"
+    )
+
+
+@pytest.mark.parametrize("fixture", ["gradient_ramp_linear.png", "gradient_ramp_radial.png"])
+def test_simple_gradient_ramps_are_not_over_merged(fixture):
+    """The other half of the retune's own validation: a clean 2-color
+    gradient badge must not collapse to FEWER regions than its real content
+    needs (background excluded, foreground is genuinely one ramp) — this
+    would be silent over-merging, the opposite failure from fragmentation.
+    Both ramps are genuinely one foreground ramp each, so >=1 region is the
+    real floor; asserting a small upper bound catches the ramp accidentally
+    fragmenting instead."""
+    cfg = PipelineConfig(target_width_mm=90.0)
+    result = run_stages(str(PHOTO_DIR / fixture), cfg)
+    assert result.design_class == "gradient"
+    assert 1 <= len(result.regions) <= 4, (
+        f"{fixture}: {len(result.regions)} regions — expected a simple ramp's "
+        "handful, not fragmentation or collapse"
+    )
+
+
+def test_merge_threshold_is_the_documented_retuned_value():
+    """A regression trip-wire, not a design opinion: if this constant moves
+    without its docstring's two-fixture sweep being redone, the region-count
+    band tests above are the ones that will actually catch it — this test
+    just makes an accidental edit (a merge conflict, a stray revert) fail
+    fast and close to the cause."""
+    assert MERGE_DELTAE00_THRESH == 20.0
+
+
+# --- 7. The corrected PHOTO_SEGMENT_REGION_COUNT warning --------------------
+
+def test_region_count_warning_reports_real_regions_not_thread_colors():
+    """The bug this pass fixes: the warning used to report
+    `count=len(thread_indices)` (thread COLOR count, always <= region count)
+    under a message claiming to report regions. `region_blobs.png` at the
+    shipped threshold consolidates several regions onto shared spools (5
+    threads for what SLIC+RAG keeps as more numerous pre-palette regions),
+    so `count` and `thread_colors` must genuinely differ here — a fixture
+    where they happened to be equal would not catch a regression back to
+    the old, wrong field."""
+    cfg = PipelineConfig(target_width_mm=80.0)
+    p = prep(FIXTURE, cfg)
+    q = segment(p, cfg)
+
+    hits = [w for w in q.warnings if w["code"] == PHOTO_SEGMENT_REGION_COUNT]
+    assert len(hits) == 1
+    w = hits[0]
+    assert w["count"] > 0
+    assert w["thread_colors"] > 0
+    assert "slic_segments" in w and "merged_regions" in w
+    # The two numbers this fixture's own palette step is known to
+    # consolidate (see PHOTO_PALETTE_SELECTED's own `regions`/`colors`
+    # split, which this warning's fix now agrees with).
+    assert w["count"] >= w["thread_colors"]
+    assert f"{w['count']} region" in w["message"]
+    assert f"{w['thread_colors']} thread color" in w["message"]
+
+
+def test_region_count_warning_agrees_with_palette_selected_warning():
+    """`count` here and `regions` in the neighboring `PHOTO_PALETTE_SELECTED`
+    warning describe the same real region count (the fix makes them agree,
+    where before this warning's own `count` silently meant something else)."""
+    from digitizer_core.warnings_codes import PHOTO_PALETTE_SELECTED
+
+    cfg = PipelineConfig(target_width_mm=80.0)
+    p = prep(FIXTURE, cfg)
+    q = segment(p, cfg)
+
+    region_count = [w for w in q.warnings if w["code"] == PHOTO_SEGMENT_REGION_COUNT][0]
+    palette = [w for w in q.warnings if w["code"] == PHOTO_PALETTE_SELECTED][0]
+    assert region_count["count"] == palette["regions"]
+    assert region_count["thread_colors"] == palette["colors"]
+
+
+# --- 8. Enclosed-background pixels get their own population ----------------
+#
+# A real safety gap the gradient-routing switch exposed, found and fixed in
+# the same pass: `stage2_photo_segment.segment` did not separate
+# `Prep.enclosed_mask` pixels from the main population the way
+# `stage2_quantize.quantize` always has, so routing a gradient design with
+# enclosed white icon linework through SLIC+RAG silently RAG-merged that
+# linework into its surrounding region before `tag_enclosed_background`'s
+# post-vectorization overlap test ever ran — measured directly: 0 of 3
+# enclosed regions survived as their own tagged, restorable shapes, down
+# from 3 via the old `stage2_quantize` path. Fixed by giving `segment` the
+# same population split `quantize` uses.
+
+def test_enclosed_background_survives_gradient_routing_through_slic_rag():
+    """`repro_gradient_white_icon.png` classifies gradient and has real
+    enclosed white icon linework (BACKGROUND_ENCLOSED fires). After this
+    pass's routing change, that linework must still end up as its own
+    tagged, unstitched-by-default Region(s) — the whole point of the
+    enclosed-background restore feature — not silently absorbed into the
+    surrounding gradient."""
+    cfg = PipelineConfig(target_width_mm=90.0)
+    fixture = str(PHOTO_DIR / "repro_gradient_white_icon.png")
+    c = classify(fixture, cfg)
+    assert c.class_ == "gradient", "fixture drifted off the class this test needs"
+
+    result = run_stages(fixture, cfg)
+    assert any(w["code"] == "BACKGROUND_ENCLOSED" for w in result.warnings)
+    unstitched = [r for r in result.regions
+                 if r.meta.get("enclosed_background") and not r.meta.get("stitched", True)]
+    assert unstitched, (
+        "no region survived tagged enclosed_background/unstitched after "
+        "routing this gradient design through SLIC+RAG — the enclosed-"
+        "population split regressed"
+    )

@@ -494,6 +494,19 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None) -> Quant:
         thread_indices.append(spool)
         for i in idxs:
             out[kept[i].mask] = new_label
+    # Captured BEFORE the enclosed population (below) appends its own spools
+    # onto the end of `thread_indices` — this is the thread-color count for
+    # the same population `count`/`len(kept)` below describes (the SLIC+RAG
+    # main body only), so the two numbers in the warning stay comparable
+    # (`count >= thread_colors` always holds: color-consolidation can only
+    # shrink a region count, never grow it). The enclosed population is a
+    # structurally separate, always-small population already reported by its
+    # own `BACKGROUND_ENCLOSED` warning (stage 1) — folding its spools into
+    # this count would let it exceed `len(kept)` for a reason that has
+    # nothing to do with SLIC+RAG's own consolidation, re-introducing a
+    # different flavor of the same "these two numbers don't obviously agree"
+    # confusion this fix exists to remove.
+    main_thread_colors = len(thread_indices)
 
     # --- enclosed population, quantized separately, appended as its own
     # trailing label block -- the exact merge-back `stage2_quantize.quantize`
@@ -527,13 +540,17 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None) -> Quant:
             # below already reports both correctly (`colors`/`regions`); this
             # fix makes THIS warning's own numbers agree with its own name
             # instead of relying on a reader cross-referencing the other one.
+            # Both `count` and `thread_colors` describe the SLIC+RAG main
+            # body only (see `main_thread_colors` above) — an enclosed
+            # design's separate population is reported by `BACKGROUND_
+            # ENCLOSED` (stage 1), not folded in here.
             f"Photo segmentation produced {len(kept)} region"
             f"{'s' if len(kept) != 1 else ''} "
             f"({slic_count} superpixels, {merged_count} after merging), "
-            f"consolidated to {len(thread_indices)} thread color"
-            f"{'s' if len(thread_indices) != 1 else ''}.",
+            f"consolidated to {main_thread_colors} thread color"
+            f"{'s' if main_thread_colors != 1 else ''}.",
             count=len(kept),
-            thread_colors=len(thread_indices),
+            thread_colors=main_thread_colors,
             slic_segments=slic_count,
             merged_regions=merged_count,
         )
@@ -541,11 +558,19 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None) -> Quant:
     warnings.append(
         warn(
             PHOTO_PALETTE_SELECTED,
-            f"Palette selected {len(thread_indices)} thread"
-            f"{'s' if len(thread_indices) != 1 else ''} "
+            # `main_thread_colors`, not `len(thread_indices)`: this message
+            # and its `colors` field describe what `select_palette` actually
+            # chose over — the main SLIC+RAG population, `kept` — and an
+            # enclosed design's separate population (appended to
+            # `thread_indices` above, never part of this k-medoids selection)
+            # must not silently inflate that number. Kept consistent with
+            # `PHOTO_SEGMENT_REGION_COUNT`'s own same-scope `thread_colors`
+            # field just above (added in the same pass this comment was).
+            f"Palette selected {main_thread_colors} thread"
+            f"{'s' if main_thread_colors != 1 else ''} "
             f"for {len(kept)} region{'s' if len(kept) != 1 else ''} "
             "(chart-restricted weighted k-medoids).",
-            colors=len(thread_indices),
+            colors=main_thread_colors,
             regions=len(kept),
             max_excess_de00=round(selection.max_excess_de00, 3),
         )
