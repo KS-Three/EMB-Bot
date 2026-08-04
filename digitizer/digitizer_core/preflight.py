@@ -69,6 +69,7 @@ from skimage.color import deltaE_ciede2000
 from . import machine, stitches
 from .config import PipelineConfig
 from .pipeline import PipelineResult, fabric_for
+from .stage0_classify import classify
 from .stage1_prep import prep
 from .stage6_satin import strip_splits
 from .stitches import StitchPlan
@@ -91,6 +92,7 @@ SUBJECT_CONTRAST_LOW = "SUBJECT_CONTRAST_LOW"  # extra: {delta_l, min_delta_l, b
 STABILIZER_CUTAWAY = "STABILIZER_CUTAWAY"      # extra: {stitch_count, threshold}
 COLOR_STOPS_HEAVY = "COLOR_STOPS_HEAVY"        # extra: {color_changes, max_stops}
 FACE_TOO_SMALL = "FACE_TOO_SMALL"              # extra: {count, design_mm, fits_hoop_mm, min_hoop_mm}
+CLASS_OVERRIDE_TECHNIQUE_MISMATCH = "CLASS_OVERRIDE_TECHNIQUE_MISMATCH"  # extra: {forced_class, detected_class, fill_technique}
 
 # The stage-6 warning this module re-reads. Owned by the contour-fill lane
 # (warnings_codes.CONTOUR_RING_UNREACHABLE); named by string so preflight
@@ -588,6 +590,68 @@ def _face_size_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
         design_mm=[round(float(v), 1) for v in plan.design_size_mm],
         fits_hoop_mm=FACE_BLOCK_HOOP_MM,
         min_hoop_mm=list(FACE_MIN_HOOP_MM),
+    )], metrics
+
+
+# --- Class override vs. technique mismatch -----------------------------------
+#
+# `cfg.forced_class` (photo plan's escape hatch — `stage0_classify.classify`
+# skips signal computation entirely and returns the forced verdict at
+# confidence 1.0) is a legitimate power-user move: stage 0's 4-way router is
+# a plain thresholded tree on three signals (see that module's own
+# docstring), and any real classifier has a genuine gray zone where the
+# operator's own judgment beats the heuristic. Forcing "gradient" on a
+# design the router itself would call "flat" (or vice versa) is exactly
+# that judgment call and deserves no finding on its own.
+#
+# What DOES deserve a finding: a forced class paired with a `fill_technique`
+# that only makes sense on photo-tonal content. The mono/tonal fill tiers
+# (`stage6_scanline`, `stage6_meander`, `stage6_streamline`, and the sketch
+# preset built on streamline — `stage6_sketch.py`) all read `SourcePixels`
+# raster darkness, a signal that means something on a photographic tonal
+# range and very little on flat spot-color art forced into a photo-shaped
+# lane. `CLASS_OVERRIDE_TECHNIQUE_MISMATCH` fires when BOTH hold: the design
+# would classify differently on its own (so the override is doing real
+# work, not just re-confirming what the router already thought) AND one of
+# these techniques is selected. WARN, not BLOCK: forcing a class is a
+# supported override, not a mistake by itself — the warning exists so the
+# combination is visible before sewing, not to stop it.
+_PHOTO_TONAL_TECHNIQUES = ("streamline", "scanline_tonal", "meander_tonal", "sketch")
+
+
+def _class_override_findings(image, cfg: PipelineConfig) -> tuple[list[dict], dict]:
+    """`cfg.forced_class` disagreeing with the unforced classifier's own
+    verdict, while a photo-tonal `fill_technique` is selected — see the
+    threshold block above this function for the full reasoning.
+
+    Needs the artwork (re-reads it through `stage0_classify.classify`, the
+    same "no image, skip and say so" convention `_photo_resolution_findings`
+    / `_thread_match_findings` use) and only actually runs that second
+    classification when there is something to disagree about: no
+    `forced_class` set, or a `fill_technique` outside the photo-tonal list,
+    means nothing here can mismatch and the unforced classifier — the one
+    signal-computation cost this check would otherwise add to every forced
+    job — is never invoked.
+    """
+    metrics: dict = {"class_override_detected_class": None}
+    technique = (cfg.fill_technique or "tatami").lower()
+    if image is None or not cfg.forced_class or technique not in _PHOTO_TONAL_TECHNIQUES:
+        return [], metrics
+    unforced = classify(image, cfg, forced_class=None)
+    metrics["class_override_detected_class"] = unforced.class_
+    if unforced.class_ == cfg.forced_class:
+        return [], metrics
+    return [finding(
+        CLASS_OVERRIDE_TECHNIQUE_MISMATCH,
+        "warn",
+        f'This design is forced to classify as "{cfg.forced_class}", but '
+        f'reads as "{unforced.class_}" on its own, and the selected fill '
+        f'technique ("{technique}") assumes photo-tonal content. Forcing '
+        "the class is fine if that is what you intended — just confirm the "
+        "result looks right before sewing.",
+        forced_class=cfg.forced_class,
+        detected_class=unforced.class_,
+        fill_technique=technique,
     )], metrics
 
 
@@ -1529,6 +1593,10 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     face_findings, face_metrics = _face_size_findings(plan)
     findings.extend(face_findings)
     metrics.update(face_metrics)
+
+    override_findings, override_metrics = _class_override_findings(image, cfg)
+    findings.extend(override_findings)
+    metrics.update(override_metrics)
 
     findings.extend(_stabilizer_findings(plan))
 
