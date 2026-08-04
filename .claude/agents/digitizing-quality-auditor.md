@@ -93,6 +93,7 @@ A prioritized short list (not an exhaustive audit): top defect first, why
 it's the highest-leverage pick right now, and a concrete recommended next
 action. Note explicitly if the top pick is blocked on something outside
 engineering (a sew-out, a decision that's Kent's call) rather than silently
-downgrading it to make the list look more actionable than it is. Do not
-implement fixes yourself unless explicitly asked — this is an assessment
-and prioritization role.
+downgrading it to make the list look more actionable than it is. For
+correctness bugs and obvious fixes, propose concretely (code snippet if
+appropriate). Escalate architectural questions and non-obvious rewrites to
+Kent for approval before implementing.

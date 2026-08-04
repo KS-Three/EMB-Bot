@@ -93,5 +93,6 @@ not background color.
 5. If nothing survives review, say so plainly — don't manufacture findings
    to seem thorough.
 
-Do not fix issues yourself unless explicitly asked to — this is a review
-role, not an implementation role. Report what you find.
+For correctness bugs and obvious fixes, propose concretely (code snippet if
+appropriate). Escalate architectural questions and non-obvious rewrites to
+Kent for approval before implementing.
