@@ -1,13 +1,13 @@
 {
   "geneva_simple": "Sans", "medium_font": "Sans", "barstitch_regular": "Sans",
-  "barstitch_bold": "Sans", "excalibur_KOR": "Sans", "milli_marif_bold": "Sans",
+  "barstitch_bold": "Sans", "excalibur_KOR": "Sans",
   "chicken_little": "Sans", "geneva_rounded": "Sans",
   "gingo200": "Sans",
 
   "apex_simple_AGS": "Serif", "violin_serif": "Serif", "emilio_20": "Serif",
   "emilio_20_bold": "Serif", "roman_ags": "Serif", "caesarus_SC_FI": "Serif",
   "emilio_20_simple": "Serif", "kum_tsoan_AGS": "Serif", "venezia": "Serif",
-  "dejavufont": "Serif", "ags_garamond_latin_grec": "Serif",
+  "ags_garamond_latin_grec": "Serif",
 
   "aventurina": "Script", "pacificlo": "Script", "amitaclo": "Script",
   "mam_script": "Script", "chicken_scratch": "Script", "monicha": "Script",
@@ -17,10 +17,10 @@
   "magnolia_KOR": "Script", "marifenda": "Script", "mimosa_large": "Script",
   "mimosa_medium": "Script", "magnolia_tamed": "Script",
 
-  "manga_impact": "Display", "tt_masters": "Display", "apex_lake": "Display",
+  "manga_impact": "Display", "apex_lake": "Display",
   "bathaus_FI": "Display", "caffeine_KOR": "Display", "cooper_marif": "Display",
   "cats": "Display", "cogs_KOR": "Display", "initials_medium": "Display",
-  "pixel10": "Display", "stebor_AGS": "Display", "tt_directors": "Display",
+  "pixel10": "Display", "stebor_AGS": "Display",
   "alchemy": "Display", "barstitch_textured": "Display", "initials_XL": "Display",
   "neon": "Display", "pisankris": "Display", "roaring_twenties_KOR": "Display",
   "mai_en_fleur": "Display", "sunset": "Display",

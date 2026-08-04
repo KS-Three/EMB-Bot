@@ -350,18 +350,6 @@
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
-   "key": "dejavufont",
-   "name": "Dejavu Serif",
-   "tier": "verified",
-   "group": "Serif",
-   "licenseId": "CC-BY-SA-4.0",
-   "sizeMm": 16,
-   "glyphCount": 97,
-   "bytes": 151786,
-   "attribution": "This font has been adapted for Ink/Stitch by @Augusa and is licensed CC-BY-SA (http://creativecommons.org/licenses/by-sa/4.0/).",
-   "source": "Ink/Stitch embroidery-fonts"
-  },
-  {
    "key": "digory_doodles_bean",
    "name": "Digory Doodles Bean",
    "tier": "verified",
@@ -626,18 +614,6 @@
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
-   "key": "milli_marif_bold",
-   "name": "Millimarif-bold20",
-   "tier": "verified",
-   "group": "Sans",
-   "licenseId": "SEE-LICENSE-FILE",
-   "sizeMm": 21.2,
-   "glyphCount": 102,
-   "bytes": 69147,
-   "attribution": "This font has been adapted for Ink/Stitch by @Marie-Françoise BRIS with the kind permission of the original font author:  \"Bonjour Marie-Françoise, merci beaucoup pour votre email!",
-   "source": "Ink/Stitch embroidery-fonts"
-  },
-  {
    "key": "mimosa_large",
    "name": "Mimosa Large",
    "tier": "verified",
@@ -803,30 +779,6 @@
    "glyphCount": 150,
    "bytes": 913665,
    "attribution": "This font has been adapted for Ink/Stitch,",
-   "source": "Ink/Stitch embroidery-fonts"
-  },
-  {
-   "key": "tt_directors",
-   "name": "TT Directors",
-   "tier": "verified",
-   "group": "Display",
-   "licenseId": "OFL-1.1",
-   "sizeMm": 18.5,
-   "glyphCount": 90,
-   "bytes": 65410,
-   "attribution": "This font has been adapted for Ink/Stitch,",
-   "source": "Ink/Stitch embroidery-fonts"
-  },
-  {
-   "key": "tt_masters",
-   "name": "TT Masters",
-   "tier": "verified",
-   "group": "Display",
-   "licenseId": "OFL-1.1",
-   "sizeMm": 18.5,
-   "glyphCount": 115,
-   "bytes": 92668,
-   "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1.",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {

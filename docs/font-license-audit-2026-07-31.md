@@ -16,10 +16,10 @@
 
 | Key | License | Creator | Action | Evidence |
 |---|---|---|---|---|
-| milli_marif_bold | SEE-LICENSE-FILE | Found — M.-F. BRIS (adapter); Jérémy Landes (original, Millimetre) | **PULL** (see §4) | sidecar LICENSE.txt (5,528 B) |
-| tt_directors | OFL-1.1 | Found — Jovanny Lemonad (TypeType); digitizer unknown | **Needs decision** — OFL claim traceable only to 1001fonts; TypeType sells TT Directors commercially on MyFonts | [1001fonts listing](https://www.1001fonts.com/tt-directors-demo-font.html) |
-| tt_masters | OFL-1.1 | Found — Jovanny Lemonad (TypeType); digitizer unknown | **Needs decision** — same aggregator-only OFL sourcing; residual takedown exposure | [LICENSE](https://raw.githubusercontent.com/inkstitch/embroidery-fonts/main/src/tt_masters/LICENSE) |
-| dejavufont | CC-BY-SA-4.0 | Partial — @Augusa (handle); DejaVu Serif authors | **Needs decision** — upstream DejaVu is Bitstream Vera-derived, not CC-BY-SA; label questionable | manifest + DejaVu upstream license |
+| milli_marif_bold | SEE-LICENSE-FILE | Found — M.-F. BRIS (adapter); Jérémy Landes (original, Millimetre) | **PULLED 2026-08-04** (see §4, §7) | sidecar LICENSE.txt (5,528 B) |
+| tt_directors | OFL-1.1 | Found — Jovanny Lemonad (TypeType); digitizer unknown | **PULLED 2026-08-04** (see §7) — OFL claim traceable only to 1001fonts; TypeType sells TT Directors commercially on MyFonts | [1001fonts listing](https://www.1001fonts.com/tt-directors-demo-font.html) |
+| tt_masters | OFL-1.1 | Found — Jovanny Lemonad (TypeType); digitizer unknown | **PULLED 2026-08-04** (see §7) — same aggregator-only OFL sourcing; residual takedown exposure | [LICENSE](https://raw.githubusercontent.com/inkstitch/embroidery-fonts/main/src/tt_masters/LICENSE) |
+| dejavufont | CC-BY-SA-4.0 | Partial — @Augusa (handle); DejaVu Serif authors | **PULLED 2026-08-04** (see §7) — researched; upstream is confirmed Bitstream Vera Fonts License v1.00 + Arev Fonts License, not CC-BY-SA; label was wrong | manifest + DejaVu upstream license (verbatim text fetched 2026-08-04, see §7) |
 | alchemy | OFL-1.1 | Found — Ariel Martín Pérez / Velvetyne (Ouroboros); digitizer unnamed | Fix attribution — dangling fragment; add Ouroboros copyright + Reserved Font Name notice | [LICENSE](https://github.com/inkstitch/embroidery-fonts/blob/main/src/alchemy/LICENSE) |
 | amitaclo | OFL-1.1 | Found — Claudette Venneugues-Aminot | Fix attribution — truncated mid-derivative-clause (Amita) | sidecar LICENSE.txt (4,686 B) |
 | apex_simple_AGS | OFL-1.1 | Found — Françoise Lapierre Baillet; orig. Linux Libertine, Philipp H. Poll | Fix attribution — name dropped by bare-CR line-break bug ("adapted for Ink/Stitch by ") | [LICENSE](https://raw.githubusercontent.com/inkstitch/embroidery-fonts/main/src/apex_simple_AGS/LICENSE) |
@@ -149,19 +149,34 @@ Two paths forward, owner's call:
 
 ## 6. Action checklist (in order)
 
-| # | Action | Size |
-|---|---|---|
-| 1 | Pull `milli_marif_bold` from the build (add to exclusions in `tools/build-embf.mjs`), or send the permission-confirmation email to Jérémy Landes and pull until reply | 15 min |
-| 2 | Decide `tt_directors` / `tt_masters`: pull both (recommended — 51 other OFL fonts remain), or commission foundry-grade license verification | 15 min to pull / hours to verify |
-| 3 | Decide `dejavufont`: pull, or research the actual DejaVu (Bitstream Vera) terms and relabel correctly | 15 min to pull / ~1 h to research |
-| 4 | Fix attribution extraction in `build-embf.mjs`: handle bare-CR line breaks (restores the apex_simple names), stop mid-sentence truncation, fix mojibake | 1–2 h |
-| 5 | Reconstruct the 48 missing `LICENSE.txt` files from `scratch_ink/<key>/LICENSE` and the upstream inkstitch/embroidery-fonts repo | 2–4 h |
-| 6 | Add `*.LICENSE.txt` to the copy list in `app/scripts/copy-engine.mjs` | 15 min |
-| 7 | Extend `app/src/lib/credits.js`: author/copyright line, modification note, link to local LICENSE.txt per font | 1–2 h |
-| 8 | Close the bare-binary hole: embed full license text in `.embf` metadata via `src/fontbin.js`, or remove the direct `binHref` download | 1–3 h |
-| 9 | Apply the 27 per-font attribution fixes from the table (mostly fall out of items 4–5; hand-check the six-team fonts, auberge_marif email removal, Geneva Hershey acknowledgement) | 1–2 h |
-| 10 | Verify no Reserved Font Name appears as a primary font name in UI/manifest/metadata (Sortefax, Nose Transport, Ouroboros, Grand Hotel, Kaushan Script, Reenie Beanie, Shojumaru, Instrument Serif, Linux Libertine) | 30 min |
-| 11 | Book the one-hour lawyer consult; send section 5 of this report as the brief | 30 min prep + 1 h consult |
-| 12 | Rebuild, decode a sample of `.embf` binaries to confirm notices, click through credits screen, final pass | 1 h |
+| # | Action | Size | Status |
+|---|---|---|---|
+| 1 | Pull `milli_marif_bold` from the build (add to exclusions in `tools/build-embf.mjs`), or send the permission-confirmation email to Jérémy Landes and pull until reply | 15 min | **Done 2026-08-04** — pulled |
+| 2 | Decide `tt_directors` / `tt_masters`: pull both (recommended — 51 other OFL fonts remain), or commission foundry-grade license verification | 15 min to pull / hours to verify | **Done 2026-08-04** — both pulled |
+| 3 | Decide `dejavufont`: pull, or research the actual DejaVu (Bitstream Vera) terms and relabel correctly | 15 min to pull / ~1 h to research | **Done 2026-08-04** — researched, then pulled (see §7) |
+| 4 | Fix attribution extraction in `build-embf.mjs`: handle bare-CR line breaks (restores the apex_simple names), stop mid-sentence truncation, fix mojibake | 1–2 h | — |
+| 5 | Reconstruct the 48 missing `LICENSE.txt` files from `scratch_ink/<key>/LICENSE` and the upstream inkstitch/embroidery-fonts repo | 2–4 h | — |
+| 6 | Add `*.LICENSE.txt` to the copy list in `app/scripts/copy-engine.mjs` | 15 min | — |
+| 7 | Extend `app/src/lib/credits.js`: author/copyright line, modification note, link to local LICENSE.txt per font | 1–2 h | — |
+| 8 | Close the bare-binary hole: embed full license text in `.embf` metadata via `src/fontbin.js`, or remove the direct `binHref` download | 1–3 h | — |
+| 9 | Apply the 27 per-font attribution fixes from the table (mostly fall out of items 4–5; hand-check the six-team fonts, auberge_marif email removal, Geneva Hershey acknowledgement) | 1–2 h | — |
+| 10 | Verify no Reserved Font Name appears as a primary font name in UI/manifest/metadata (Sortefax, Nose Transport, Ouroboros, Grand Hotel, Kaushan Script, Reenie Beanie, Shojumaru, Instrument Serif, Linux Libertine) | 30 min | — |
+| 11 | Book the one-hour lawyer consult; send section 5 of this report as the brief | 30 min prep + 1 h consult | — |
+| 12 | Rebuild, decode a sample of `.embf` binaries to confirm notices, click through credits screen, final pass | 1 h | — |
 
-**Total build/data work: roughly 8–15 hours.** Items 1–3 are the gate for *which* fonts ship; items 4–9 are the gate for *whether anything* ships; item 11 determines labeling of the 14 CC-BY-SA fonts and can run in parallel — but get the consult booked before first dollar.
+**Total build/data work: roughly 8–15 hours.** Items 1–3 are the gate for *which* fonts ship; items 4–9 are the gate for *whether anything* ships; item 11 determines labeling of the 14 CC-BY-SA fonts and can run in parallel — but get the consult booked before first dollar. **Items 1–3 done as of 2026-08-04 — see §7.** Items 4–12 remain open.
+
+---
+
+## 7. Items 1–3 executed — 2026-08-04
+
+All four flagged fonts were pulled from the shipping library (`src/fonts/manifest.json` + `src/fonts/bin/*.embf` + `src/fonts/previews/*.png`), 72 → 68 fonts. `tools/build-embf.mjs` gained an explicit `PULLED` exclusion set (checked before the license-policy/grandfather logic) so a future rebuild from `scratch_ink/` won't silently resurrect any of the four — see the comment block above `PULLED` in that file for the full per-font reasoning, summarized here:
+
+- **`milli_marif_bold` — pulled.** Standing decision (§4) enacted as written: no written commercial-use confirmation from Jérémy Landes is on file, so it ships nowhere. Source `src/fonts/milli_marif_bold.json` and its `.LICENSE.txt` sidecar were deleted (the standing-decision path this doc recommended is "revisit later," not "keep as dead weight in the tree" — reconstructable from `git log` or a fresh `scratch_ink/` clone if the confirmation email ever arrives).
+- **`tt_directors` — pulled.** Took the recommended path: OFL claim was traceable only to a 1001fonts aggregator listing, no foundry-grade verification was commissioned. No static source file existed for this one (it shipped only via a prior `scratch_ink`-tier build), so removal is just the manifest entry + `.embf` + preview.
+- **`tt_masters` — pulled.** Same reasoning and same aggregator-only sourcing as `tt_directors`. Unlike `tt_directors`, this one *did* have a static `src/fonts/tt_masters.json` + `.LICENSE.txt` sidecar shipped in the repo (that's how it was grandfathered) — both were deleted along with the manifest entry, `.embf`, and preview, for the same reason as `milli_marif_bold`.
+- **`dejavufont` — researched, then pulled.** Did the ~1 h research option first rather than jumping straight to pull: fetched the actual upstream `LICENSE` file for this exact Ink/Stitch font (`raw.githubusercontent.com/inkstitch/embroidery-fonts/main/src/dejavufont/LICENSE`, sourced from `fontsquirrel.com/license/dejavu-serif`) and read it in full. Confirmed the audit's suspicion: the underlying font is **not** CC-BY-SA at all — it's the **Bitstream Vera Fonts License v1.00** (Bitstream, 2003) plus the **Arev Fonts License** (Tavmjong Bah, 2006). The digitizer's own file-header line ("licensed CC-BY-SA…") only speaks to their own embroidery adaptation, not the Bitstream/Arev copyright underneath, and per the actual license text: (a) neither Bitstream Vera nor Arev is in `ALLOWED_LICENSES`, and (b) both explicitly forbid selling "one or more of the Font Software typefaces… by itself" — only as part of a larger package, which is a real product-policy question (see the bare-`.embf`-download hole in item 8) that's bigger than a label fix. A shallow relabel wasn't durable either: `build-embf.mjs`'s `licenseId()` auto-detector matches the CC-BY-SA regex against the adapter's own header line before it ever reaches the real license text further down the same blob, so it would keep mislabeling this font CC-BY-SA on every future rebuild unless the detector itself is fixed. Given that, pulled it rather than ship a fix that either silently reverts or requires build-script surgery beyond this item's scope. **Revisit path:** either fix `licenseId()` to prefer a recognized license block over a bare adapter claim, or have Kent decide whether Bitstream-Vera-derived fonts should join the allowed policy set (and whether EMB-Bot's distribution model — see item 8's bare `.embf` download — is compatible with the "no standalone sale" clause).
+
+**Known residual gap, out of scope for items 1–3 but flagged here:** `src/fonts/satin-fonts.js` (the legacy, eagerly-bundled font registry that `EMB-Bot.html` / `EMB-Bot-standalone.html` still use — see COOKBOOK.md's "Binary font library" section, which explicitly says "do not delete it" pending its own separate audit) still contains `milli_marif_bold` and `tt_masters` verbatim. This audit and its action-checklist items 1–3 are scoped to the `manifest.json`/`.embf` pipeline (`tools/build-embf.mjs`) only, per the checklist's own wording ("add to exclusions in `tools/build-embf.mjs`"), so `satin-fonts.js` was deliberately left untouched rather than silently edited around an explicit repo directive not to delete/modify that file outside its own audit. **If `EMB-Bot.html`/`EMB-Bot-standalone.html` are ever actually distributed to customers, `milli_marif_bold` and `tt_masters` are still shipping there** — this needs its own pass (`tt_directors` and `dejavufont` are *not* in `satin-fonts.js`, so those two are fully pulled everywhere).
+
+**Verification:** `node --test` (engine suite) 265/265 → 263/263 after the pull (2 fewer — `test/embf-guard.test.js`'s per-font decoder-guard loop reads `src/fonts/*.json`, which lost `milli_marif_bold.json` and `tt_masters.json`); `cd app && npx vitest run` (Studio suite) 321/321 → 321/321 unchanged (no template or spec fixture hardcodes any of the four keys). Confirmed `src/fonts/manifest.json` keys, `src/fonts/bin/*.embf` keys, and `src/fonts/previews/*.png` keys are exactly equal sets (no orphans) both before and after.
