@@ -193,8 +193,16 @@ def test_a_link_bends_into_the_cover_rather_than_giving_up():
     4 mm band, so the straight line between the bars is NOT covered and a
     planner that only knows how to go straight would cut here. Professionals
     route where the thread will be buried, which is the whole reason they can
-    link at 27 mm without showing a float."""
-    band = Polygon([(10, 3), (16, 3), (16, 7), (10, 7)])
+    link at 27 mm without showing a float.
+
+    The band sits at y 5-9, not centred in the bars' height: the transition's
+    endpoints are emergent and land near the bars' tops, and since the
+    covered_by inset (LINK_COVER_INSET_MM, 2026-08-04) erodes the band to its
+    honest middle (4.0 - 1.5 = 2.5 mm), a mid-height band's legal detour ran
+    past law 62's stitch budget — which is that law working, not this
+    mechanism failing. Within budget reach, the bend still happens and is
+    still required (the straight line stays uncovered)."""
+    band = Polygon([(10, 5), (16, 5), (16, 9), (10, 9)])
     planned, blocks = _two_bars(band)
     link = _crossing(blocks)
 
@@ -221,6 +229,56 @@ def test_a_link_bends_into_the_cover_rather_than_giving_up():
         "the link crossed bare fabric instead of bending under the band"
 
 
+def test_a_sliver_of_a_future_colour_no_longer_counts_as_cover():
+    """The covered_by inset (LINK_COVER_INSET_MM), pinned at its own edge.
+
+    `covered_by` is a future colour's ARTWORK polygon, and no tier stitches
+    its whole polygon — measured on both committed fixtures (2026-08-04), the
+    real emitted thread stops up to 0.301 mm inside a satin boundary (thread
+    edge; 0.501 mm to the nearest centreline) and a run-tier shape never
+    covers its interior at all (honest only once eroded away at its inradius,
+    0.527/0.539 mm on the fixtures). So `_link_cover` now erodes every
+    future-colour polygon by LINK_COVER_INSET_MM before it may bury a link.
+
+    Everything here is 1.2 mm tall — thinner than twice the inset — so the
+    bridging colour's eroded cover is EMPTY: geometry that thin cannot
+    promise a buried link anywhere in it, whatever its outline claims (were
+    it a run-tier sliver it would sew as a bare outline; even sewn as fill,
+    its real rows stop short of the edge a link would ride). Before the
+    inset this exact fixture sewed the transition as a needle-down link
+    routed under the sliver; verified 2026-08-04 on the pre-inset engine.
+    Now it must fall back to the distance rule: 6 mm on a 3.0 mm-trim fabric
+    is a cut — the cheap direction to be wrong in (a needle-up move, not a
+    float).
+
+    The bars are 1.2 mm tall too, and that is fixture engineering, not the
+    point under test: a transition's endpoints are emergent (they move with
+    the fill), and thin bars force the whole transition to happen within the
+    sliver's reach — so the ONLY thing deciding link-vs-cut is whether the
+    sliver still counts as cover. The 4 mm band in
+    `test_a_link_bends_into_the_cover_rather_than_giving_up` is this test's
+    control: it survives the same erosion (4.0 - 1.5 = 2.5 mm of honest
+    middle) and still links.
+    """
+    def thin_bar(x0: float, x1: float) -> Polygon:
+        return Polygon([(x0, 0), (x1, 0), (x1, 1.2), (x0, 1.2)])
+
+    sliver = thin_bar(10, 16)
+    assert sliver.buffer(-machine.LINK_COVER_INSET_MM).is_empty, \
+        "the fixture no longer measures what it claims: this band should erode away"
+    regions = [_region(thin_bar(0, 10), 0, "Sleft", 0),
+               _region(thin_bar(16, 26), 0, "Sright", 0),
+               _region(sliver, 1, "Sbridge", 1)]
+    conf = PipelineConfig(**CHAIN_ON)
+    planned, _ = resolve_overlaps(regions, FABRIC, conf)
+    blocks, _ = sequence(planned, FABRIC, conf)
+    cut = _crossing(blocks)
+    assert cut.kind != stitches.TRAVEL, \
+        "a 1.2 mm sliver of a future colour must not bury a 6 mm link"
+    assert cut.jump and cut.trim, "the thread must be cut"
+    assert not _uncovered_links(planned, blocks)
+
+
 def test_a_gap_nothing_will_cover_is_still_cut():
     """The failure this whole design exists to prevent. Same two bars, same
     6 mm, no covering colour — so the needle must lift. A link here is a
@@ -237,7 +295,7 @@ def test_a_link_is_sewn_at_the_professional_running_pitch():
     """Law 61 [M]: median 1.96 mm, p90 2.48 — so a link runs at 2.0. Stage 6's
     in-shape bridges keep their own 2.5 mm pitch and their own sew-out, which
     is why this measures a link the test built rather than travel at large."""
-    link = _crossing(_two_bars(Polygon([(10, 3), (16, 3), (16, 7), (10, 7)]))[1])
+    link = _crossing(_two_bars(Polygon([(10, 5), (16, 5), (16, 9), (10, 9)]))[1])
     assert len(link.points) >= 2
     for a, b in zip(link.points, link.points[1:]):
         assert math.dist(a, b) <= machine.RUN_STITCH_MM + 1e-6

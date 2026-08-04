@@ -414,6 +414,45 @@ RUN_STITCH_MM = 2.0
 # starts admitting links across bare inter-letter fabric.
 LINK_COVER_TOL_MM = 0.2
 
+# How far a FUTURE colour's sewing polygon is eroded before it may count as
+# cover for a needle-down link. The already-laid half of stage 7's link cover
+# is real emitted thread (rebuilt from `runs`, 2026-08-03); this half cannot
+# be — that colour has not been planned when the link is routed — so its
+# ARTWORK polygon stands in for its thread, and no tier stitches its whole
+# polygon. Measured 2026-08-04 (both committed fixtures, logo_alpha +
+# logo_whitebg @ 80 mm / left_chest), real emitted non-travel runs vs the
+# artwork polygon `covered_by` quotes, worst case per tier:
+#
+#   fill:  nearest stitch centreline up to 0.223 mm inside the boundary
+#          (thread edge 0.023 mm shy). Interior is honest: rows tile at
+#          FILL_ROW_MM, holding a 0.20 mm half-spacing ceiling everywhere.
+#   satin: up to 0.501 mm to the nearest centreline at the boundary (thread
+#          edge 0.301 mm shy) — the column stops short at tips and fans on
+#          curves, exactly the class the 2026-08-03 rebuild proved wrong for
+#          the block's own tiers.
+#   run:   an outline run covers NO interior at all, so no erosion makes its
+#          polygon honest except the one that swallows it — its inradius,
+#          measured 0.527/0.539 mm on the fixtures' rescued shapes (shapes
+#          under min_detail_mm² sew as outline runs).
+#
+# The binding number is the run tier's 0.539 mm, plus LINK_COVER_TOL_MM —
+# the cover is buffered back OUT by that much for the containment test, so
+# the inset must pre-pay it: 0.539 + 0.2 = 0.739, rounded up to 0.75. At
+# 0.75 every measured run-tier shape erodes to empty (covers nothing,
+# honestly) and every fill/satin boundary shortfall is bounded with margin.
+#
+# What an inset cannot fix, also measured so nobody re-derives it: hairline
+# gaps between fanned satin crosses persist at ANY inset (still there at
+# 1.0 mm) — <= 0.127 mm inscribed radius, <= 0.121 mm beyond the thread
+# edge, < 1 mm² per shape. Narrower than one thread width; whether that
+# clearance shows on fabric is the sew-out question that still gates
+# `chain_links`' default.
+#
+# The two errors are not symmetric: erring big turns a buriable link into a
+# jump (a needle-up move, invisible); erring small sews a float on bare
+# fabric. Round up, never down.
+LINK_COVER_INSET_MM = 0.75
+
 # The gap past which a link is refused outright, whatever the coverage. Law 59
 # [M] is flat — professionals link 56-75% of transitions at every bucket from 0
 # to 40 mm — and then it is not: past 40 mm the corpus flips to 69.7% trimmed

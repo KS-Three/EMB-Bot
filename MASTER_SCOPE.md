@@ -124,12 +124,18 @@ is now fixed (see below), four remain open:
   land exactly on the chain-off baseline — while still cutting trims (13→9)
   and stitch count (3012→2992); confirmed independently via the rebuilt
   `tools/chain_probe.py` (which had its own pre-existing bug making its
-  before/after comparison a no-op — also fixed). `chain_links` **stays off
-  by default**: the fix closes one of the three preconditions
-  `PipelineConfig.chain_links`'s docstring names for reopening it — still
-  open are an inset on `covered_by` (a later colour's sewing polygon,
-  standing in for thread that hasn't been planned yet — the same class of
-  approximation, just not yet fixable the same way) and a physical sew-out
+  before/after comparison a no-op — also fixed). The second precondition —
+  an inset on `covered_by`, the half of the cover whose thread doesn't exist
+  yet at routing time — closed 2026-08-04: future-colour polygons are eroded
+  by `LINK_COVER_INSET_MM` (0.75 mm, derived from the measured per-tier
+  shortfall between each tier's real emitted thread and its polygon on both
+  committed fixtures — fill 0.023 mm / satin 0.301 mm thread-edge boundary
+  shortfall, run-tier honest only at its 0.527/0.539 mm inradius — plus
+  `LINK_COVER_TOL_MM`; full table in `machine.py`) before they may bury a
+  link, and a link the inset disqualifies becomes a jump, never an exposure.
+  Re-measured with chaining on: logo_alpha still links 13→17 / trims 14→10
+  with 0.00 mm added bare exposure on both fixtures. `chain_links` **stays
+  off by default**: still open is the third precondition, a physical sew-out
   to validate `LINK_COVER_TOL_MM`, which is still a thread spec, not a
   measurement. The other four closeout defects below are unaffected by this
   fix and remain open.
