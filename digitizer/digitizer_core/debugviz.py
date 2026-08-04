@@ -244,6 +244,22 @@ def stage6_scanline_rows(dir_: Path, runs: list, size_mm) -> None:
     _write(dir_ / "stage6_scanline_rows.png", viz)
 
 
+def stage6_meander_path(dir_: Path, runs: list, size_mm) -> None:
+    """The meander tonal tier's emitted geometry (stage6_meander.py), drawn
+    dark-on-light at thread weight so the Reef/Sfumato read — one wandering
+    line tightening and bursting into zigzag in the shadows, opening out and
+    fading into bare fabric in the lights — is judgeable by eye. Travel
+    (the curve traveled through highlights, and any conflict-checked break
+    links) draws faint so the path's continuity is visible without reading
+    as tone."""
+    viz, to_px = _mm_canvas(size_mm)
+    for run in runs:
+        color = (205, 205, 205) if run.kind == "travel" else (25, 25, 25)
+        for a, b in zip(run.points, run.points[1:]):
+            cv2.line(viz, to_px(*a), to_px(*b), color, 1, cv2.LINE_AA)
+    _write(dir_ / "stage6_meander_path.png", viz)
+
+
 def stage6_blend_rows(dir_: Path, layer_runs: list[list], shade_rgbs: list[tuple[int, int, int]],
                       size_mm) -> None:
     """Every interleaved layer, BEFORE they merge into one fill, each drawn in
