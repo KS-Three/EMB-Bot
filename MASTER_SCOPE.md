@@ -228,7 +228,21 @@ spools now resolve to 5 one-family browns, max excess 2.34 ΔE00. The
 eyes/skin/subject/background multipliers are wired and test-proven but run
 at 1.0 (plain area) until plan step 3's face priors exist — the seam is
 documented in that module's docstring. Flat/gradient lanes untouched
-(byte-identical goldens re-verified).
+(byte-identical goldens re-verified). Row 14 (sequencing + underlay
+deltas) landed the same pass: photo-classified designs (or
+`cfg.extra["photo_sequencing"]` opt-in) sew depth-sorted —
+background-tagged layers first, then dark→light by thread luminance,
+explicit detail-tier layers last (`stage7_sequence.depth_sort_layers`,
+called from `run_stages` after `compact_layers` so stage 5's underlap
+model follows the same order, and BEFORE `apply_layer_overrides`/
+`sew_order` so both review-screen overrides still win) — plus the underlay
+split (light-mesh fill underlay, spine-run satin underlay, tonal tiers
+bare by construction; per-shape `underlay_style` still beats the class
+default both ways). Flat and gradient lanes are byte-identical by
+construction and by the committed goldens. TRUE instance-level depth
+(subject vs. mid-ground) needs step 3's segmentation and is documented as
+a seam in `depth_sort_layers`' docstring, not faked
+(`tests/test_photo_sequencing.py`).
 
 **Confidence: Low** beyond flat spot-color art. Flat-logo digitizing (both
 implementations) is Medium — **267/267** JS tests and **564/567** Python
