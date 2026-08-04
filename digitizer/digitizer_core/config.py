@@ -106,6 +106,16 @@ class PipelineConfig:
     #
     # "tatami"  – straight rows at one angle. THE DEFAULT, and every golden in
     #             the suite is pinned to it.
+    # "scanline_tonal" – the scan-line mono tonal tier (photo plan, technique
+    #             row 8, stage6_scanline): parallel rows across one grain,
+    #             local source-image darkness driving row spacing, penetration
+    #             pitch and zigzag amplitude — the PhotoFlash halftone look.
+    #             Strictly opt-in: setting this is ALSO what makes
+    #             pipeline.run_stages carry source pixels forward for
+    #             non-gradient classes, so the flat lane grows no raster
+    #             payload while the flag is off. A shape the tier sews nothing
+    #             for (all highlight) falls back to tatami, the same
+    #             never-drop-artwork contract contour has.
     # "contour" – uniform inward offsets of the outline, sewn inner to outer
     #             (stage6_contour). Rows follow the silhouette instead of
     #             cutting across it, which is the one thing tatami structurally

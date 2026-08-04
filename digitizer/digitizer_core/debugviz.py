@@ -230,6 +230,20 @@ def stage2_photo_regions(
     (dir_ / "stage2_photo_regions.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def stage6_scanline_rows(dir_: Path, runs: list, size_mm) -> None:
+    """The scan-line tonal tier's emitted geometry (stage6_scanline.py),
+    drawn dark-on-light at thread weight so the halftone read — rows
+    thinning and vanishing into the highlights, thickening into the shadows
+    — is judgeable by eye. Travel bridges draw faint so they are visible
+    without reading as tone."""
+    viz, to_px = _mm_canvas(size_mm)
+    for run in runs:
+        color = (205, 205, 205) if run.kind == "travel" else (25, 25, 25)
+        for a, b in zip(run.points, run.points[1:]):
+            cv2.line(viz, to_px(*a), to_px(*b), color, 1, cv2.LINE_AA)
+    _write(dir_ / "stage6_scanline_rows.png", viz)
+
+
 def stage6_blend_rows(dir_: Path, layer_runs: list[list], shade_rgbs: list[tuple[int, int, int]],
                       size_mm) -> None:
     """Every interleaved layer, BEFORE they merge into one fill, each drawn in
