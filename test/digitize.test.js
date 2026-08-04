@@ -588,6 +588,58 @@ test("buildLetteringDesign: rotationDeg 90 swaps the reported width/height orien
   assert.ok(d90.heightMM > d90.widthMM * 2, "rotated 90deg text must report portrait dimensions");
 });
 
+test("buildLetteringDesign: auto-fit (no targetWidthMm) stays within the hoop after a non-180 rotation, on a non-square hoop", () => {
+  // Regression test (MASTER_SCOPE area 3): a design that auto-fits BEFORE a
+  // rotation must still fit AFTER it. The fit-to-hoop scale used to be
+  // computed from the UNROTATED glyph bbox while rotation was applied only
+  // as a post-transform on the emitted stitches -- so on a non-square hoop,
+  // rotating a design that auto-fit at 0deg to something other than a
+  // multiple of 180 could blow the actual (correctly reported) rotated
+  // bbox straight through the hoop bounds with nothing left to reclamp it.
+  // hat_front-shaped hoop: wide and short (5in x 2.25in), matching the real
+  // garment in src/garments.js, so this reproduces the exact real-world case.
+  const garment = { widthIn: 5.0, heightIn: 2.25 };
+  const font = require("../src/fonts/geneva_simple.json");
+  const base = { garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false };
+  const hoopWmm = 5.0 * 25.4, hoopHmm = 2.25 * 25.4;
+
+  const d0 = DG.buildLetteringDesign(font, "SD WHEEL", base);
+  // Sanity: unrotated auto-fit actually uses (most of) the hoop -- otherwise
+  // this fixture wouldn't be exercising the fit path at all.
+  assert.ok(d0.widthMM > hoopWmm * 0.9, "fixture assumption: unrotated auto-fit is width-bound near the hoop edge");
+  assert.ok(d0.widthMM <= hoopWmm + 0.5 && d0.heightMM <= hoopHmm + 0.5, "unrotated auto-fit must already fit the hoop");
+
+  for (const rot of [90, 45, 270, -30]) {
+    const d = DG.buildLetteringDesign(font, "SD WHEEL", Object.assign({ rotationDeg: rot }, base));
+    assert.ok(
+      d.widthMM <= hoopWmm + 0.5,
+      `rotationDeg ${rot}: auto-fit width ${d.widthMM}mm must stay within the hoop's ${hoopWmm}mm width`
+    );
+    assert.ok(
+      d.heightMM <= hoopHmm + 0.5,
+      `rotationDeg ${rot}: auto-fit height ${d.heightMM}mm must stay within the hoop's ${hoopHmm}mm height`
+    );
+  }
+});
+
+test("buildLetteringDesign: an explicit targetWidthMm (manual size, post-rotation convention) stays within the hoop after a non-180 rotation", () => {
+  // Same failure mode as the auto-fit test above, but for a design the user
+  // has manually resized (sizeMm set, auto-fit off) -- targetWidthMm is
+  // documented (matching buildImportedDesign) as the desired width AFTER
+  // rotation, so a manually-sized design rotated to a new angle must also
+  // still respect that same post-rotation width/hoop contract.
+  const garment = { widthIn: 5.0, heightIn: 2.25 };
+  const font = require("../src/fonts/geneva_simple.json");
+  const base = { garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false, targetWidthMm: 100 };
+  const hoopWmm = 5.0 * 25.4, hoopHmm = 2.25 * 25.4;
+
+  for (const rot of [0, 90, 45, 270]) {
+    const d = DG.buildLetteringDesign(font, "SD WHEEL", Object.assign({ rotationDeg: rot }, base));
+    assert.ok(d.widthMM <= hoopWmm + 0.5, `rotationDeg ${rot}: width ${d.widthMM}mm must stay within the hoop`);
+    assert.ok(d.heightMM <= hoopHmm + 0.5, `rotationDeg ${rot}: height ${d.heightMM}mm must stay within the hoop`);
+  }
+});
+
 test("buildLetteringDesign: colorRanges absent/empty is byte-identical to today's single-color output", () => {
   const garment = { widthIn: 8, heightIn: 8 };
   const font = require("../src/fonts/geneva_simple.json");
