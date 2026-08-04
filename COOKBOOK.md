@@ -38,8 +38,15 @@ question, and the lawyer brief is now the optional restore path) —
 previously drifted to 72 without this doc being updated; don't trust either
 number without recounting `manifest.json`), lazily fetched per font by
 `app/src/lib/fontLoader.js`. The
-old eager `src/fonts/satin-fonts.js` (21 fonts) is OUT of the Studio pipeline
-but still used by legacy `EMB-Bot.html` pending its audit — do not delete it.
+old eager `src/fonts/satin-fonts.js` is OUT of the Studio pipeline but still
+used by legacy `EMB-Bot.html` — do not delete it. **Its audit ran 2026-08-04**
+(`docs/font-license-audit-2026-07-31.md` §10): the 7 license-pulled fonts
+(milli_marif_bold, tt_masters + the 5 ShareAlike: aventurina, emilio_20,
+emilio_20_bold, geneva_simple, monicha) were removed, 21 → 14 entries, all
+remaining OFL-1.1/CC0 and present in the shipping manifest. Do not re-add a
+font there unless it is also in the shipping manifest. The retired
+`EMB-Bot-standalone.html` still inlines the pre-audit 21 — frozen artifact,
+not to be distributed (Kent's call whether to delete or regenerate it once).
 
 - **EMBF format** (`src/fontbin.js`): quantize coords ×4 → per-ring delta →
   Int16 stream; skeleton JSON carries everything else. Guard test
@@ -60,12 +67,13 @@ but still used by legacy `EMB-Bot.html` pending its audit — do not delete it.
   `tt_directors`, `tt_masters`, and `dejavufont` were PULLED from the build
   2026-08-04 per `docs/font-license-audit-2026-07-31.md` action items 1-3
   (ad-hoc/aggregator-only/mislabeled licenses — see `PULLED` in
-  `tools/build-embf.mjs` for the per-font reasoning). They still linger in
-  the legacy `src/fonts/satin-fonts.js` / `EMB-Bot.html` pipeline mentioned
-  above (milli_marif_bold, tt_masters) — that file is explicitly out of this
-  audit's scope and still says "do not delete", so it wasn't touched; flag
-  this to Kent as a residual exposure if `EMB-Bot.html`/`EMB-Bot-standalone.html`
-  are ever actually distributed.
+  `tools/build-embf.mjs` for the per-font reasoning). ~~They still linger in
+  the legacy `src/fonts/satin-fonts.js` / `EMB-Bot.html` pipeline~~ —
+  resolved 2026-08-04 by the legacy-registry audit (audit doc §10):
+  milli_marif_bold and tt_masters are removed from `satin-fonts.js` along
+  with the 5 ShareAlike pulls, so `EMB-Bot.html` no longer ships any pulled
+  font. Only the retired `EMB-Bot-standalone.html` still embeds them
+  (frozen inlined copy — see the paragraph above).
 - **Engine-file lists live in THREE places** for the Studio: `app/scripts/
   copy-engine.mjs` (ENGINE_FILES), `app/src/lib/emb.js` (ENGINE_KEYS), and
   the `<script>` tags in **`app/index.html`** — the third one was missed once

@@ -129,9 +129,13 @@ lawyer consult on the CC-BY-SA ShareAlike question (does BY-SA attach to the
 14 CC-BY-SA-derived `.embf` binaries and customers' stitch files?). The
 ready-to-send brief is `docs/lawyer-brief-cc-by-sa-2026-08-04.md`; booking it
 is Kent's real-world action, before first dollar. Worst case per the audit:
-relabel 14 binaries + customer note, or pull 14 fonts. Also parked for Kent:
-the `satin-fonts.js` legacy-registry residual (audit §7) if `EMB-Bot.html` is
-ever distributed, and the bluenesia permission screenshots (audit §8).
+relabel 14 binaries + customer note, or pull 14 fonts. The `satin-fonts.js`
+legacy-registry residual (audit §7/§9) was CLOSED 2026-08-04 by the
+legacy-registry audit (audit §10): all 7 pulled fonts removed from the
+registry, `EMB-Bot.html` clean; only the retired `EMB-Bot-standalone.html`
+still embeds a pre-audit inlined copy (frozen artifact, not to be
+distributed — Kent's call whether to delete or regenerate it once). Still
+parked for Kent: the bluenesia permission screenshots (audit §8).
 
 **A different resolution to this same gate is drafted but not merged:** open
 PR #16 (`sharealike-pull`, pending review) executes a different, already-made
@@ -376,8 +380,11 @@ gate.
   OPTIONAL — kept as the restore path for the 13
   (`docs/lawyer-brief-cc-by-sa-2026-08-04.md`), no longer launch-gating.
 
-**Open issues:** the item-11 consult (above); the `satin-fonts.js` legacy
-residual (audit §7). On the tech side: the font-editing round deferred
+**Open issues:** the item-11 consult (above); the retired
+`EMB-Bot-standalone.html` still embeds a pre-audit inlined font registry
+(the live `satin-fonts.js` residual itself was closed 2026-08-04, audit
+§10 — Kent's call whether to delete or regenerate the standalone). On the
+tech side: the font-editing round deferred
 condensed/expanded width and mixed per-letter size (both risk uneven satin
 distortion) — minor, not blocking.
 

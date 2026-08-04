@@ -1,5 +1,5 @@
 // Render a WORD from a pre-digitized font library to validate layout+kerning.
-// Usage: TEXT="GENEVA" FONT=src/fonts/geneva_simple.json node tools/word-satin.mjs out.png
+// Usage: TEXT="GENEVA" FONT=test/fixtures/fonts/geneva_simple.json node tools/word-satin.mjs out.png
 import fs from "node:fs";
 import { createRequire } from "module";
 import { encodePNG } from "./png.mjs";
@@ -8,7 +8,7 @@ global.window = global;
 const SF = require("../src/satinfont.js");
 
 const TEXT = process.env.TEXT || "GENEVA";
-const FONT = process.env.FONT || "src/fonts/geneva_simple.json";
+const FONT = process.env.FONT || "test/fixtures/fonts/geneva_simple.json";
 const EMMM = +(process.env.EMMM || 18);
 const OUT = process.argv[2] || "scratch_word.png";
 const font = JSON.parse(fs.readFileSync(FONT, "utf8"));
