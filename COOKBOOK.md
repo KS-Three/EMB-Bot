@@ -318,12 +318,17 @@ Session handoff with the full context:
    architecture: `docs/dt-first-architecture-2026-08-01.md` §2 and
    `docs/masters-teardown-2026-08-01.md`.
 3. **Photo-digitizing plan steps 5+** (`docs/photo-digitizing-plan-2026-07-31.md`)
-   — **rows 6/8/9/10 are now built and merged**: direction field (row 6),
-   scan-line mono tonal (row 8), meander mono tonal (row 9), and streamline
-   thread-paint in both its mono and layered-multicolour slices (row 10) —
-   see MASTER_SCOPE.md area 1 for the commit-level breakdown. Whatever the
-   plan doc queues past row 10 is still open; re-check the plan doc itself
-   rather than trust this bullet's row count going forward.
+   — **rows 6/8/9/10/13 are now built**: direction field (row 6),
+   scan-line mono tonal (row 8), meander mono tonal (row 9), streamline
+   thread-paint in both its mono and layered-multicolour slices (row 10),
+   and chart-restricted weighted k-medoids palette selection (row 13 /
+   build-order step 7, `digitizer_core/palette.py` — replaces the photo
+   path's per-region nearest-thread snap; the eyes/skin/subject class
+   multipliers are wired but run at 1.0 until step 3's face priors exist,
+   see that module's THE CLASS-WEIGHT SEAM) — see MASTER_SCOPE.md area 1
+   for the commit-level breakdown. Whatever the plan doc queues past these
+   is still open; re-check the plan doc itself rather than trust this
+   bullet's row count going forward.
 4. **DT-first M2/M3 onward** — the classifier swap itself, the change a
    customer can see. Corpus-gated *and* sew-out-gated, and it needs the
    corpus disagreement table M0 produces before it can be judged.

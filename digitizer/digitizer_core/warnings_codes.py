@@ -21,6 +21,10 @@ COLOR_CAP_APPLIED = "COLOR_CAP_APPLIED"            # more threads than max_color
 
 # Stage 2 (photo path) — docs/superpowers/plans/2026-08-02-photo-digitizing-step4-region-former.md
 PHOTO_SEGMENT_REGION_COUNT = "PHOTO_SEGMENT_REGION_COUNT"  # info, not a problem: extra: {"count": int}
+# Photo plan step 7 (palette k-medoids). Info: how many chart spools the
+# weighted selection settled on, and the worst region's ΔE00 excess over its
+# own nearest-thread floor. extra: {"colors": int, "regions": int, "max_excess_de00": float}
+PHOTO_PALETTE_SELECTED = "PHOTO_PALETTE_SELECTED"
 
 # Stage 3
 DROPPED_SMALL_SHAPES = "DROPPED_SMALL_SHAPES"      # extra: {"count": int}
