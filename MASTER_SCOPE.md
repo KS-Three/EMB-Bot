@@ -626,18 +626,17 @@ PAM selection over the config's thread chart, ΔE00 objective, region
 weight = area × class multiplier — measured on the committed `fur_ramp.png`
 fixture: 8 ramp regions that nearest-snap scattered across 7 near-duplicate
 spools now resolve to 5 one-family browns, max excess 2.34 ΔE00. The
-eyes/skin/subject/background multipliers are wired and test-proven — **the
-eyes/skin half is no longer a flat 1.0 placeholder**: PR #41 (below) wired
-real face priors, so a detected face's eye/skin regions now receive their
-documented class multipliers; subject/background remain 1.0. **Row 1 (rembg
-background removal) itself is now built, PR #43 — see the "Last updated"
-note above — but that does NOT by itself close this multiplier gap:**
-re-checked directly this pass, `stage2_photo_segment._region_classes`'s own
-docstring still says "subject"/"background" remain a documented seam
-awaiting their own wiring into `palette.region_class`, separate from
-`remove_background_seam` existing. Don't conflate the two — one is closed,
-the other is a distinct follow-on not attempted by PR #43. Flat/gradient lanes untouched
-(byte-identical goldens re-verified). Row 14 (sequencing + underlay
+eyes/skin/subject/background multipliers are wired and test-proven — **all
+four classes are now real, none is a flat-1.0 placeholder**: PR #41 wired
+real face priors, so a detected face's eye/skin regions receive their
+documented class multipliers; the `palette-subject-background-wiring`
+branch (commit `7f82511`, see the "Last updated" note above) closed the
+remaining gap by threading PR #43's `remove_background_seam` mask one hop
+further downstream into `stage2_photo_segment._region_classes`, so a
+non-face region now classes "subject"/"background" from a REAL rembg mask
+too, honestly degrading to `None`/plain-area whenever rembg didn't actually
+run. Flat/gradient lanes untouched (byte-identical goldens re-verified).
+Row 14 (sequencing + underlay
 deltas) landed the same pass: photo-classified designs (or
 `cfg.extra["photo_sequencing"]` opt-in) sew depth-sorted —
 background-tagged layers first, then dark→light by thread luminance,
@@ -675,8 +674,10 @@ landed in the prior preflight pass (low px/mm, low subject/background
 contrast, heavy stabilizer estimate, many color stops). **Photo plan status
 as of this pass: rows 0–15 are all built** — row 1 (rembg background
 removal), the last one this doc was tracking as open, closed via PR #43 (see
-the "Last updated" note above for the isolated-venv mechanism and its own
-still-open follow-on, the palette subject/background class-weight seam).
+the "Last updated" note above for the isolated-venv mechanism; its own
+follow-on noted at the time, the palette subject/background class-weight
+seam, is ALSO now closed — see this file's newest "Last updated" entry at
+the top, `palette-subject-background-wiring` commit `7f82511`).
 
 **Confidence: Low** beyond flat spot-color art. Flat-logo digitizing (both
 implementations) is Medium — **267/267** JS tests and **688/694** Python
@@ -976,8 +977,9 @@ natural next step: a throwaway venv (`digitizer/rembg_isolated/`, not
 committed) pinned to a compatible numpy, invoked as a subprocess from the
 main pipeline, sidestepping the `numba`-vs-`numpy==2.5.1` conflict rather
 than touching the shared venv's pin. **All 16 photo-plan rows (0–15) are now
-built.** The palette subject/background class-weight seam this closure does
-NOT resolve is noted above, where it's discussed. CI now gates
+built.** The palette subject/background class-weight seam this closure did
+NOT itself resolve is noted above, where it's discussed — and is now ALSO
+closed, per this file's newest "Last updated" entry. CI now gates
 every merge (`.github/workflows/python-package-conda.yml`, PR #37) — three
 jobs (engine/studio/digitizer), the digitizer job deselecting the same 3
 known container goldens this doc has always excluded from its own counts.

@@ -149,6 +149,52 @@ def _eye_residual(labs: np.ndarray, sel) -> float:
     )
 
 
+def test_subject_weight_keeps_a_dedicated_color_under_a_binding_cap():
+    """The subject/background half of the same seam (wired 2026-08-05, via
+    `stage2_photo_segment._region_classes` consuming a real rembg mask): the
+    identical shape of result as the eyes test above, at the smaller
+    subject(2)/background(1) multiplier gap rather than eyes(9)/skin(4.5).
+    Two 9000px "background" patches (two different tans — a real rembg cutout
+    around a subject rarely leaves a uniform backdrop) plus one 1200px
+    "subject" patch, cap k=2 (measured geometry, chosen away from the
+    decision boundary — the flip happens between area 1500 and 1600 on this
+    exact chart/color triple):
+
+      weight = area                    -> both spools serve the backgrounds;
+                                           the subject patch sews 44.5 ΔE00
+                                           off its color (a background tan).
+      weight = area * {background(1),
+                       subject(2)}      -> the subject patch keeps a
+                                           dedicated color, landing 6.3 ΔE00
+                                           from its own.
+    """
+    rgbs = np.array([[214, 186, 148], [176, 146, 110], [28, 22, 18]], float)
+    labs = rgb_to_lab(rgbs)
+    areas = [9000.0, 9000.0, 1200.0]
+
+    w_none = np.array([region_weight(a, None) for a in areas])
+    sel_none = select_palette(labs, w_none, CHART, max_k=2)
+    subj_resid_none = _eye_residual(labs, sel_none)
+
+    w_cls = np.array([
+        region_weight(areas[0], "background"),
+        region_weight(areas[1], "background"),
+        region_weight(areas[2], "subject"),
+    ])
+    sel_cls = select_palette(labs, w_cls, CHART, max_k=2)
+    subj_resid_cls = _eye_residual(labs, sel_cls)
+
+    assert subj_resid_none > 20.0, (
+        f"area-only weighting kept the subject patch at {subj_resid_none:.1f} "
+        "ΔE00 — the cap isn't binding and this scenario no longer tests the "
+        "weight interface"
+    )
+    assert subj_resid_cls < 10.0, (
+        "subject/background multipliers still lost the subject patch: "
+        f"{subj_resid_cls:.1f} ΔE00"
+    )
+
+
 def test_region_weight_carries_the_plan_multipliers():
     assert region_weight(100.0) == 100.0
     assert region_weight(100.0, None) == 100.0
