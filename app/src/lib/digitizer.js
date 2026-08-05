@@ -496,6 +496,106 @@ export function splitLineIssues(outline, line) {
   return [];
 }
 
+// ---- text-cluster detection (Studio-side helpers) --------------------------
+//
+// `textCandidate`/`textClusterId` (reviewFromJob's mapping, straight off the
+// wire's `text_candidate`/`text_cluster_id`) mark a shape as a member of a
+// server-detected "looks like text" cluster — geometry-only, no OCR, see
+// `digitizer_core/textcluster.py`'s design doc. These are the pure-logic
+// helpers DigitizePanel's badge/convert/undo controls run off: which cluster
+// ids are visible right now (one "Convert to text" action per id, several
+// rows can share one), and a bbox-derived seed patch for the new text element
+// (project.js's `addSeededTextElement`).
+
+// Unique `textClusterId` values among `rows`, in first-seen order — the
+// "once per cluster, not per row" rule the convert action needs.
+export function textClusterIds(rows) {
+  const seen = new Set();
+  const out = [];
+  for (const r of rows || []) {
+    if (r && r.textCandidate && r.textClusterId && !seen.has(r.textClusterId)) {
+      seen.add(r.textClusterId);
+      out.push(r.textClusterId);
+    }
+  }
+  return out;
+}
+
+// All rows sharing one cluster id.
+export function textClusterMembers(rows, clusterId) {
+  return (rows || []).filter((r) => r && r.textClusterId === clusterId);
+}
+
+function bboxOfRows(rows) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const r of rows || []) {
+    for (const [x, y] of (r && (r.outlineFull || r.outline)) || []) {
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+  return { minX, minY, maxX, maxY };
+}
+
+// Bbox -> seed patch for `addSeededTextElement`. Position is computed
+// DESIGN-CENTER-RELATIVE, in the same raw `outline_mm`/`outlineFull` mm
+// space this file already reads directly elsewhere for boundary editing (no
+// rotation/offset transform through the source element's own field
+// placement) — "design center" here is the combined bbox center of
+// `allRows` (every currently-known shape in the review), the best proxy
+// available client-side for the artwork's own extent (the wire's
+// `design_size_mm` isn't threaded through `reviewFromJob` today). This is a
+// first-pass approximation, not exact registration against the source
+// element's rotation/position on the field — documented, not hidden.
+//   sizeMm — a guess from the cluster's own bbox height, not a real font-size
+//   measurement.
+//   colorRgb — the most common member row's rgb (a plain majority vote, not
+//   a weighted average) — [20, 20, 20] (defaultTextElement's own default)
+//   when no member carries a resolved color.
+//   rotationDeg — punted to 0: no baseline-angle estimate is cheaply
+//   available from a review row's shape, and a fake-precision guess is worse
+//   than an honest default the user can dial in themselves.
+//   text/fontKey — explicit empty overrides (mirrors defaultTextElement's own
+//   "" / would-otherwise-be "medium_font"): nothing about the actual word or
+//   a matching typeface can be inferred, so nothing is auto-filled that could
+//   be silently wrong.
+export function textClusterSeed(memberRows, allRows) {
+  const members = memberRows || [];
+  const cluster = bboxOfRows(members);
+  const design = bboxOfRows(allRows && allRows.length ? allRows : members);
+  const clusterCx = (cluster.minX + cluster.maxX) / 2;
+  const clusterCy = (cluster.minY + cluster.maxY) / 2;
+  const designCx = (design.minX + design.maxX) / 2;
+  const designCy = (design.minY + design.maxY) / 2;
+  const height = cluster.maxY - cluster.minY;
+
+  const counts = new Map();
+  for (const r of members) {
+    const key = JSON.stringify(r.rgb || null);
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  let bestKey = null, bestCount = -1;
+  for (const [key, count] of counts) {
+    if (count > bestCount) {
+      bestCount = count;
+      bestKey = key;
+    }
+  }
+  const votedColor = bestKey ? JSON.parse(bestKey) : null;
+
+  return {
+    text: "",
+    fontKey: null,
+    offsetXMm: Number.isFinite(clusterCx - designCx) ? clusterCx - designCx : 0,
+    offsetYMm: Number.isFinite(clusterCy - designCy) ? clusterCy - designCy : 0,
+    sizeMm: Number.isFinite(height) && height > 0 ? height : null,
+    colorRgb: votedColor || [20, 20, 20],
+    rotationDeg: 0,
+  };
+}
+
 // Slim the job's review payload down to what the Layers list renders and
 // persists with the element. Field name mapping is deliberate: the wire
 // names (shape_id, thread_index, ...) stay in digitizer.js; the element
@@ -542,6 +642,14 @@ export function reviewFromJob(review) {
       stitched: s.stitched !== false,
       outline: thinOutline(s.outline_mm),
       outlineFull: thinOutline(dedupeRing(s.outline_mm), BOUNDARY_MAX_POINTS),
+      // Text-cluster detection (server-computed, read-only, no override key —
+      // see digitizer_service/app.py's _review_payload comment): whether this
+      // shape was tagged as a member of a detected "looks like text" cluster,
+      // and which one. A pre-contract service sends neither field; that reads
+      // as "not a candidate", same "absent key = default" convention every
+      // other read-only fact here (layer, stitched) already follows.
+      textCandidate: s.text_candidate === true,
+      textClusterId: s.text_cluster_id == null ? null : s.text_cluster_id,
     })),
   };
 }
