@@ -259,18 +259,26 @@ def _merge_mean_color(g, src: int, dst: int) -> None:
 #   16.0   0.65    58            75            79.2%
 #
 # `18.0/0.6` is the chosen pair: both fixtures land well clear of both band
-# edges (summit_badge 56 — 36 clear of the floor, 24 clear of the ceiling;
-# drone_render 75 — 5 clear of the ceiling, the tightest margin in the
-# table, still real headroom) while keeping summit_badge's dark-area
-# recovery at 80.2%, in the same range every other tested pairing achieved
-# (79-81%) — recovery is not sensitive to the exact pair once protection
-# fires at all; region count against the accept band is what actually
-# discriminates. `AREA_RATIO_MERGE_FACTOR=0.6` drops the effective LOCAL
-# threshold to `20.0 * 0.6 = 12.0` for a protected edge — tighter than the
-# ordinary 20.0, looser than the old global 10.0, because this only has to
-# stop ONE specific failure mode (small-coherent-shape into much-bigger-
-# lookalike-cluster), not redo the whole fragmentation-vs-quality tradeoff
-# the base threshold already settled.
+# edges in this sweep table (summit_badge 56, drone_render 75) while keeping
+# summit_badge's dark-area recovery at 80.2%, in the same range every other
+# tested pairing achieved (79-81%) — recovery is not sensitive to the exact
+# pair once protection fires at all; region count against the accept band is
+# what actually discriminates. `AREA_RATIO_MERGE_FACTOR=0.6` drops the
+# effective LOCAL threshold to `20.0 * 0.6 = 12.0` for a protected edge —
+# tighter than the ordinary 20.0, looser than the old global 10.0, because
+# this only has to stop ONE specific failure mode (small-coherent-shape into
+# much-bigger-lookalike-cluster), not redo the whole fragmentation-vs-quality
+# tradeoff the base threshold already settled.
+#
+# **Two follow-up fixes landed after this sweep, both improving headroom
+# further** (see `_init_fg_pixel_counts` and `AREA_RATIO_MIN_SMALL_PX`'s own
+# docstrings for the bugs each one closes) — re-measured with BOTH follow-
+# ups in place, same ratio/factor, same two fixtures: summit_badge 34
+# regions (83.7% dark-area recovery, up from 80.2%), drone_render 68 (right
+# at the pre-this-fix baseline of 65) — both with substantially more margin
+# than the numbers in the sweep table above, which predate those two fixes.
+# The sweep table itself is kept as the historical record of how
+# `18.0/0.6` was chosen; it is not what ships today's actual numbers.
 AREA_RATIO_PROTECT_THRESH = 18.0
 AREA_RATIO_MERGE_FACTOR = 0.6
 
