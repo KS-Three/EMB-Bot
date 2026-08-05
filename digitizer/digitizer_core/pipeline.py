@@ -122,6 +122,15 @@ def run_stages(
     # reach any consumer).
     prep_warnings: list[dict] = []
     face_regions = None
+    # The REAL rembg-derived subject/background mask, distinct from
+    # `p.bg_mask` (which, by the time `photo_segment` runs, may just be
+    # stage 1's border-flood default — that mask was never meant to answer
+    # "where does the subject end", only "what touches the border"). Stays
+    # None unless `remove_background_seam` actually ran and succeeded THIS
+    # run; see `stage2_photo_segment._region_classes` for why passing the
+    # border-flood default here instead would be a dishonest "background"
+    # claim about interior regions.
+    subject_bg_mask: np.ndarray | None = None
     if cfg.photo_prep and classification.class_ in ("photo_subject", "photo_scene"):
         # rembg subject cutout (plan §2 row 1) — runs FIRST in this block,
         # before face detection and tone prep, because both of those read
@@ -146,6 +155,7 @@ def run_stages(
                     )
                 )
             else:
+                subject_bg_mask = bg_removed
                 frac_before = round(float(p.bg_mask.mean()), 3)
                 p.bg_mask = p.bg_mask | bg_removed
                 frac_after = round(float(p.bg_mask.mean()), 3)
@@ -222,9 +232,11 @@ def run_stages(
     # inside the `photo_subject`/`photo_scene` double-gate), which is exactly
     # the pre-face-priors, byte-identical-within-itself path `segment()`
     # already takes for any other no-face run — gradient art gets no face
-    # treatment, on purpose, faces are not this class's concern.
+    # treatment, on purpose, faces are not this class's concern. `subject_bg_
+    # mask` is `None` there for the identical reason — it too is only ever
+    # set inside that same double-gate.
     q: Quant = (
-        photo_segment(p, cfg, face_regions=face_regions)
+        photo_segment(p, cfg, face_regions=face_regions, bg_mask=subject_bg_mask)
         if classification.class_ in ("photo_subject", "photo_scene", "gradient")
         else quantize(p, cfg)
     )
