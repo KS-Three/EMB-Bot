@@ -14,6 +14,9 @@
     boundaryIssues,
     mergeGroupIssues,
     splitLineIssues,
+    textClusterIds,
+    textClusterMembers,
+    textClusterSeed,
   } from "../lib/digitizer.js";
   import { loadPalette, nearestInList } from "../lib/threads.js";
 
@@ -895,6 +898,79 @@
     else if (e.key === "ArrowUp") { e.preventDefault(); splitLine[i] = [x, round3(y - step)]; splitLine = splitLine; }
     else if (e.key === "ArrowDown") { e.preventDefault(); splitLine[i] = [x, round3(y + step)]; splitLine = splitLine; }
   }
+
+  // ---- text-cluster detection: badge, convert-to-text, undo (Step 6b) ------
+  //
+  // `textCandidate`/`textClusterId` (reviewFromJob's mapping, straight off
+  // the wire) mark a shape as a member of a server-detected "looks like
+  // text" cluster — several rows can share one cluster id, so "Convert to
+  // text" is a per-CLUSTER action, not a per-row one. It lives in its own
+  // bar above the layer list (the `.dgp-mergebar` "act on a group" template),
+  // not a per-row button: unlike a merge selection, cluster membership is
+  // implicit in the data, not something the user assembles by clicking
+  // checkboxes, and the action must stay reachable even once a member row
+  // moves into the "unstitched" branch (stitched:false, set on convert) --
+  // which renders no per-row badges/buttons at all.
+  //
+  // Rows are drawn from `reviewShapes` filtered only by `deletedIds` (a
+  // user's own hide), NOT by `orderedShapes`/`sewableShapes` — a converted
+  // cluster's members are unstitched by design and must still resolve for
+  // the undo control below.
+  $: liveReviewShapes = reviewShapes.filter((r) => !deletedIds.includes(r.id));
+  $: visibleClusterIds = textClusterIds(liveReviewShapes);
+  $: textConversions = element.textConversions || {};
+
+  function clusterMembers(clusterId) {
+    return textClusterMembers(liveReviewShapes, clusterId);
+  }
+
+  // Computes the seed patch from the cluster's own member rows (bbox/color;
+  // see textClusterSeed's own doc for exactly what it derives and what it
+  // punts on) and dispatches `converttotext` — App.svelte's
+  // `onConvertClusterToText` (already merged, Step 6a) does the rest: adds
+  // the seeded text element AND hides these member shapes
+  // (`stitched: false`) on this element in one coordinated project update.
+  function convertClusterToText(clusterId) {
+    const members = clusterMembers(clusterId);
+    if (!members.length) return;
+    const seed = textClusterSeed(members, liveReviewShapes);
+    d("converttotext", {
+      seed,
+      clusterId,
+      sourceElementId: element.id,
+      memberShapeIds: members.map((r) => r.id),
+    });
+  }
+
+  // Undo an applied conversion: mirrors undoMerge/undoSplit's button-swap,
+  // but provenance is pure Studio-side state (element.textConversions,
+  // Step 6a) rather than re-parsed from the last applied job's warnings --
+  // no server round-trip is needed to know what to undo. `removeelement`
+  // already exists (ContentStep.svelte's row-remove button / App.svelte's
+  // onRemoveElement) and takes a plain element id, so it's reused as-is.
+  // The override-clearing uses the SAME "delete the key, don't invert it"
+  // convention `unrestoreStitching`/setOverride use -- inlined across all of
+  // the cluster's members and combined with the textConversions removal into
+  // ONE patch() call, the same "whole-group, one patch" discipline
+  // moveShapeWithinLayer already established (looping setOverride calls here
+  // would have each one build its shapeOverrides object off the same stale
+  // `element` prop and clobber the others' changes).
+  function undoTextConversion(clusterId) {
+    const conversions = { ...textConversions };
+    const textElementId = conversions[clusterId];
+    if (!textElementId) return;
+    delete conversions[clusterId];
+
+    const shapeOverrides = { ...(element.shapeOverrides || {}) };
+    for (const row of clusterMembers(clusterId)) {
+      const entry = { ...(shapeOverrides[row.id] || {}) };
+      delete entry.stitched;
+      if (Object.keys(entry).length) shapeOverrides[row.id] = entry;
+      else delete shapeOverrides[row.id];
+    }
+    patch({ shapeOverrides, textConversions: conversions });
+    d("removeelement", textElementId);
+  }
 </script>
 
 <div class="digipanel">
@@ -1197,6 +1273,32 @@
               <button type="button" class="dgp-lbtn" on:click={clearMergeSelection}>Clear</button>
             </div>
           {/if}
+          {#if visibleClusterIds.length}
+            {#each visibleClusterIds as clusterId (clusterId)}
+              {@const members = clusterMembers(clusterId)}
+              {@const convertedId = textConversions[clusterId]}
+              <div class="dgp-mergebar">
+                <span>"looks like text" · {members.length} shape{members.length === 1 ? "" : "s"}</span>
+                {#if convertedId}
+                  <button
+                    type="button"
+                    class="dgp-lbtn"
+                    on:click={() => undoTextConversion(clusterId)}
+                  >
+                    Undo — remove text element
+                  </button>
+                {:else}
+                  <button
+                    type="button"
+                    class="dgp-lbtn"
+                    on:click={() => convertClusterToText(clusterId)}
+                  >
+                    Convert to text
+                  </button>
+                {/if}
+              </div>
+            {/each}
+          {/if}
           <ol class="dgp-layerlist">
             {#each orderedShapes as row, i (row.id)}
               {@const dead = deletedIds.includes(row.id)}
@@ -1211,6 +1313,7 @@
                 !!(overrides[row.id] && overrides[row.id].boundary_override)}
               {@const mergedInfo = !dead && !unstitched ? mergedFromInfo(row.id) : null}
               {@const splitInfo = !dead && !unstitched ? splitFromInfo(row.id) : null}
+              {@const textCand = !dead && !unstitched && !!row.textCandidate}
               {@const rgb = effRgb(row, overrides)}
               {@const tier = effTier(row, overrides)}
               {@const siblings = dead || unstitched ? [] : layerSiblings(row, sewableShapes, overrides)}
@@ -1275,6 +1378,12 @@
                         <span class="dgp-lbadge" title="One of two shapes cut from the same original shape.">
                           split shape
                         </span>
+                      {/if}
+                      {#if textCand}
+                        <span
+                          class="dgp-lbadge"
+                          title="A classical-CV pass flagged this shape as part of a cluster that looks like text (no character recognition — it can be wrong). Use the &quot;Convert to text&quot; action above the list to replace it with a real, typed text element."
+                        >looks like text</span>
                       {/if}
                     {/if}
                   </div>

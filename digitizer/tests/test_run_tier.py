@@ -154,6 +154,44 @@ def test_sub_detail_glyphs_survive_simplification():
         "an E is concave; a convex result means the glyph was flattened"
 
 
+def test_sub_detail_glyph_is_tagged_rescued_in_meta():
+    """The `sub_detail` decision (sub-pixel eps + run-tier floor) must be
+    visible on the resulting Region so a downstream pass (text-cluster
+    detection) can find rescued shapes without re-deriving stage 4's own
+    area math from scratch."""
+    ppm = 15.0
+    mask = np.zeros((80, 80), bool)
+    ey, ex = 30, 30
+    mask[ey:ey + 24, ex:ex + 4] = True          # spine
+    mask[ey:ey + 4, ex:ex + 18] = True          # top arm
+    mask[ey + 10:ey + 14, ex:ex + 15] = True    # middle arm
+    mask[ey + 20:ey + 24, ex:ex + 18] = True    # bottom arm
+
+    p = Prep(rgb=np.zeros((80, 80, 3), np.uint8),
+             bg_mask=np.zeros((80, 80), bool),
+             px_per_mm=ppm, art_bbox=(0, 0, 80, 80))
+    cfg = PipelineConfig()
+    regions, dropped = vectorize([RegionMask(mask=mask, layer=0)], [0], p, cfg)
+    assert not dropped and len(regions) == 1
+    assert regions[0].meta["rescued_small_shape"] is True
+
+
+def test_ordinary_shape_has_no_rescued_flag():
+    """An everyday, above-min-detail shape must not carry the key at all —
+    only `True` is ever written, the same convention as
+    `enclosed_background` (absent means false, never an explicit False)."""
+    ppm = 15.0
+    mask = np.zeros((80, 80), bool)
+    mask[10:70, 10:70] = True  # a big filled square, nowhere near sub-detail
+    p = Prep(rgb=np.zeros((80, 80, 3), np.uint8),
+             bg_mask=np.zeros((80, 80), bool),
+             px_per_mm=ppm, art_bbox=(0, 0, 80, 80))
+    cfg = PipelineConfig()
+    regions, dropped = vectorize([RegionMask(mask=mask, layer=0)], [0], p, cfg)
+    assert not dropped and len(regions) == 1
+    assert "rescued_small_shape" not in regions[0].meta
+
+
 def test_a_shape_no_tier_can_stitch_sews_its_outline():
     """The reactive rescue: a ribbon thinner than half a fill row produces no
     rows at all, and used to vanish as SHAPE_NOT_STITCHED even though it

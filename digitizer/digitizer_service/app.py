@@ -506,6 +506,12 @@ def _review_payload(result, plan=None) -> dict:
                 # False) — exposed so a client can tell which shapes are
                 # excluded by default and need a restore action.
                 "stitched": r.meta.get("stitched", True),
+                # Text-cluster detection (server-computed, read-only — no
+                # `_OVERRIDE_KEYS` entry, same category as `layer` and
+                # `enclosed_background`): whether this shape was tagged as a
+                # member of a detected text cluster, and which one.
+                "text_candidate": r.meta.get("text_candidate", False),
+                "text_cluster_id": r.meta.get("text_cluster_id"),
                 # The sew position and effective tier the layers panel orders
                 # by. None means the shape produced no stitches (the plan's
                 # SHAPE_NOT_STITCHED warning says how many did).

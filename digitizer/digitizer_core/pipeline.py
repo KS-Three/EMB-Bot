@@ -44,6 +44,7 @@ from .stage3_segment import (
     resolve_small_regions,
 )
 from .stage4_vectorize import tag_enclosed_background, vectorize
+from .textcluster import detect_text_clusters, regularize_text_clusters
 from .stage5_overlap import resolve_overlaps
 from .stage6_blend import SourcePixels, detect_design_ramp_angle
 from .stage7_sequence import PHOTO_CLASSES, depth_sort_layers, sequence
@@ -267,6 +268,18 @@ def run_stages(
     # fields `match_shape_ids` carries forward — so it belongs before shape
     # edits, not after.
     tag_enclosed_background(regions, p)
+
+    # Same ordering rationale as `tag_enclosed_background` immediately above:
+    # a computed FACT re-derived every generation, so it belongs before shape
+    # identity edits/overrides run, not after.
+    detect_text_clusters(regions, p)
+
+    # Regularization (Step 5): a genuine geometry change, not metadata, so it
+    # runs immediately after tagging and still before shape identity edits —
+    # a merge/split/boundary_override on a tagged shape should see the
+    # regularized polygon, the same way it would see any other computed-fact
+    # geometry from this generation.
+    regularize_text_clusters(regions, p)
 
     # Shape identity edits (contract v1.5): merge/split BEFORE deletions/
     # overrides, on the same "ids assigned against the full generation"

@@ -693,6 +693,31 @@ test("reviewFromJob maps `stitched` (contract v1.1): explicit false for an exclu
   ]);
 });
 
+test("reviewFromJob maps text_candidate/text_cluster_id (text-cluster detection): true+id for a tagged shape, false+null for an untagged one, and false+null when a pre-contract service sends neither field", async () => {
+  stubStorage({});
+  const { reviewFromJob } = await import("./digitizer.js");
+  const wire = {
+    palette: [{ brand_id: "isacord", number: "0020", name: "Black", rgb: [0, 0, 0] }],
+    shapes: [
+      { shape_id: "Stagged", thread_index: 0, thread_number: "0020", area_mm2: 2, source: "quant",
+        layer: 0, sew_index: 0, sew_block: 0, tier: "fill", text_candidate: true, text_cluster_id: "clu1",
+        outline_mm: [[0, 0], [1, 0], [1, 1]], holes_mm: [] },
+      { shape_id: "Suntagged", thread_index: 0, thread_number: "0020", area_mm2: 2, source: "quant",
+        layer: 0, sew_index: 1, sew_block: 0, tier: "fill", text_candidate: false, text_cluster_id: null,
+        outline_mm: [[0, 0], [1, 0], [1, 1]], holes_mm: [] },
+      { shape_id: "Sold", thread_index: 0, thread_number: "0020", area_mm2: 2, source: "quant",
+        layer: 0, sew_index: 2, sew_block: 0, tier: "fill",
+        outline_mm: [[0, 0], [1, 0], [1, 1]], holes_mm: [] },
+    ],
+  };
+  const r = reviewFromJob(wire);
+  expect(r.shapes.map((s) => [s.id, s.textCandidate, s.textClusterId])).toEqual([
+    ["Stagged", true, "clu1"],
+    ["Suntagged", false, null],
+    ["Sold", false, null],
+  ]);
+});
+
 test("reconcileReview keeps a deleted shape's last known row so the panel can strike it through and restore it", async () => {
   stubStorage({});
   const { reconcileReview } = await import("./digitizer.js");
@@ -991,6 +1016,77 @@ test("splitLineIssues is clean for a line crossing a simple square exactly twice
   // times, not 2 — the same concave-shape guardrail the core enforces.
   const comb = [[0, 0], [2, 10], [4, 0], [6, 10], [8, 0], [8, -2], [0, -2]];
   expect(splitLineIssues(comb, [[-5, 5], [15, 5]])[0]).toMatch(/exactly twice/);
+});
+
+// ---- text-cluster detection (Studio-side helpers) ---------------------------
+
+test("textClusterIds returns unique cluster ids in first-seen order, only for text_candidate rows, ignoring rows with no cluster id", async () => {
+  stubStorage({});
+  const { textClusterIds } = await import("./digitizer.js");
+  const rows = [
+    { id: "A", textCandidate: true, textClusterId: "clu1" },
+    { id: "B", textCandidate: true, textClusterId: "clu2" },
+    { id: "C", textCandidate: true, textClusterId: "clu1" }, // same cluster as A -> not repeated
+    { id: "D", textCandidate: false, textClusterId: "clu3" }, // not a candidate -> excluded
+    { id: "E", textCandidate: true, textClusterId: null }, // candidate but no id -> excluded
+  ];
+  expect(textClusterIds(rows)).toEqual(["clu1", "clu2"]);
+  expect(textClusterIds([])).toEqual([]);
+  expect(textClusterIds(null)).toEqual([]);
+});
+
+test("textClusterMembers filters rows down to one cluster id", async () => {
+  stubStorage({});
+  const { textClusterMembers } = await import("./digitizer.js");
+  const rows = [
+    { id: "A", textClusterId: "clu1" },
+    { id: "B", textClusterId: "clu2" },
+    { id: "C", textClusterId: "clu1" },
+  ];
+  expect(textClusterMembers(rows, "clu1").map((r) => r.id)).toEqual(["A", "C"]);
+  expect(textClusterMembers(rows, "nope")).toEqual([]);
+});
+
+test("textClusterSeed computes a design-center-relative offset, a height-based sizeMm guess, a majority-vote color, an empty text/fontKey, and rotationDeg 0", async () => {
+  stubStorage({});
+  const { textClusterSeed } = await import("./digitizer.js");
+  // Two member letters side by side, each a 4mm-tall box; the design's other
+  // (non-member) shape sits far to the right, pulling the overall design
+  // bbox — and so its center — away from the cluster's own center.
+  const members = [
+    { id: "L1", rgb: [10, 10, 10], outline: [[0, 0], [2, 0], [2, 4], [0, 4]] },
+    { id: "L2", rgb: [10, 10, 10], outline: [[3, 0], [5, 0], [5, 4], [3, 4]] },
+  ];
+  const allRows = [
+    ...members,
+    { id: "Other", rgb: [200, 0, 0], outline: [[0, 0], [25, 0], [25, 10], [0, 10]] },
+  ];
+  const seed = textClusterSeed(members, allRows);
+  expect(seed.text).toBe("");
+  expect(seed.fontKey).toBeNull();
+  expect(seed.rotationDeg).toBe(0);
+  expect(seed.sizeMm).toBe(4); // cluster bbox height: 4 - 0
+  expect(seed.colorRgb).toEqual([10, 10, 10]); // both members agree
+  // Cluster bbox center: (2.5, 2); design bbox (all rows) center: (12.5, 5).
+  expect(seed.offsetXMm).toBeCloseTo(2.5 - 12.5, 5);
+  expect(seed.offsetYMm).toBeCloseTo(2 - 5, 5);
+});
+
+test("textClusterSeed picks the most common member color (majority vote, not an average) and falls back to a sane default with no rows", async () => {
+  stubStorage({});
+  const { textClusterSeed } = await import("./digitizer.js");
+  const members = [
+    { id: "A", rgb: [1, 1, 1], outline: [[0, 0], [1, 0], [1, 1], [0, 1]] },
+    { id: "B", rgb: [9, 9, 9], outline: [[0, 0], [1, 0], [1, 1], [0, 1]] },
+    { id: "C", rgb: [9, 9, 9], outline: [[0, 0], [1, 0], [1, 1], [0, 1]] },
+  ];
+  expect(textClusterSeed(members, members).colorRgb).toEqual([9, 9, 9]);
+
+  const empty = textClusterSeed([], []);
+  expect(empty.colorRgb).toEqual([20, 20, 20]);
+  expect(empty.sizeMm).toBeNull();
+  expect(empty.offsetXMm).toBe(0);
+  expect(empty.offsetYMm).toBe(0);
 });
 
 test("describeWarnings speaks the two shape-identity codes (contract v1.5)", async () => {

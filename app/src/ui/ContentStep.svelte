@@ -257,6 +257,7 @@
         health={digitizerHealth}
         on:elupdate={(e) => d("elupdate", e.detail)}
         on:checkservice={() => d("checkservice")}
+        on:converttotext={(e) => d("converttotext", e.detail)}
       />
     {:else if el.type === "image"}
       <ImagePanel
