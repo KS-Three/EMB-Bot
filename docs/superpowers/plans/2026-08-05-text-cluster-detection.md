@@ -5,23 +5,21 @@ Follow this project's standing process: build in a worktree, TDD each step,
 multi-lens review before merge. Every step is additive/back-compat — no
 existing golden fixture should move unless a step's own note says so.
 
-## Step 0 — Locate the run-tier stitch-width call site (spike, no code change)
+## Step 0 — Locate the run-tier stitch-width call site (spike, no code change) — DONE
 
-The spec flags this as unresolved research, not a guess. Read
-`stage7_sequence.py`'s run/bean-tier dispatch and whichever module actually
-emits run-tier stitches (grep for `RUN_MIN_AREA_MM2`/`RUN_MIN_LOOP_MM`
-consumers already found in `machine.py`, `stage7_sequence.py`, `config.py`,
-`regions.py`, `stage6_border.py`, `stage6_detail.py`, `stage4_vectorize.py`,
-`stage6_applique.py`, `stage3_segment.py` — but the actual STITCH GENERATOR
-for the run tier wasn't pinned by the initial research pass). Output: a
-one-paragraph note (can live as a code comment at the Step 5 call site, no
-separate doc needed) citing the exact function and how it currently derives
-stitch width for a run-tier shape. This unblocks Step 5's estimate — if the
-width is already parameterizable per-shape, Step 5 is small; if it's a global
-constant, Step 5 needs its own small plumbing change and should be re-scoped
-before starting.
+**Finding (corrects the spec's first draft, see spec §3.3):** the run tier's
+generator, `run_outline` (`stage6_border.py:621-685`, dispatched from
+`stage7_sequence.py:653-659`), has **no per-shape stitch-width parameter at
+all** — it traces each shape's own polygon ring exactly, at the fixed global
+constants `machine.BEAN_STITCH_MM`/`BEAN_PASSES`. A rescued letter's apparent
+stroke weight is a pure property of its traced polygon. There is nothing to
+feed a cluster median into at the stitch-generation layer.
 
-Acceptance: a precise file:line citation, no code changed yet.
+Consequence for Step 5: regularization must operate on the **Region's
+polygon itself** (a geometry replacement, same category of operation
+`boundary_override` already legitimizes), computed in the same
+post-vectorization pass as detection, before stage 7 ever calls
+`run_outline`. Step 5 below is rewritten accordingly.
 
 ## Step 1 — Mark rescued shapes in `Region.meta`
 
@@ -83,20 +81,39 @@ Tests: extend the existing service contract test file (whichever covers
 `enthusiast_logo.png` fixture asserting the new fields appear and are
 consistent with Step 3's tagging.
 
-## Step 5 — Regularization: shared stroke width per cluster
+## Step 5 — Regularization: redraw each cluster member at a shared skeleton-buffer width
 
-Using Step 0's citation, change the run-tier width computation so that when
-a region carries `meta["text_cluster_id"]`, it uses that cluster's median
-stroke width (computed in Step 2, either recomputed here or threaded through
-`Region.meta` — prefer storing it once in Step 2's tagging pass as
-`meta["text_cluster_stroke_mm"]` to avoid a second `build_shape_field` call
-per shape).
+Per Step 0's finding, this is a geometry change, not a stitch-parameter
+change. In the same post-vectorization pass as Step 2/3 (or a function called
+immediately after `detect_text_clusters`, still in `textcluster.py`), for
+every region carrying `meta["text_cluster_id"]`:
+
+1. Take the cluster's target half-width = median of member
+   `meta["text_cluster_stroke_mm"]` (stored once during Step 2's tagging, per
+   its own note, to avoid a second `build_shape_field` call).
+2. Buffer that shape's own skeleton (`ShapeField.skel`, already computed in
+   Step 2) by the target half-width, producing a new polygon of uniform
+   stroke width along the same medial path.
+3. Replace `region.polygon` with the buffered result — guard with the same
+   sewability floor `boundary_override`/merge/split already enforce
+   (`machine.RUN_MIN_AREA_MM2`/`RUN_MIN_LOOP_MM`, `regions.py`'s
+   `_check_sewable`): if the buffered shape fails the floor, or the buffer
+   operation degenerates (empty/invalid polygon — a real risk when a
+   skeleton has short spurs), leave the original polygon untouched and mark
+   `meta["text_cluster_regularize_skipped"] = True` rather than risk
+   producing bad geometry. Fail open, same discipline as every other tagger
+   in this codebase.
 
 Tests:
 - Before/after stroke-width variance across a tagged cluster's members,
-  measured from real emitted stitch coordinates on `enthusiast_logo.png` (not
-  from the test's own assertions) — variance must drop, not just "test
-  passes."
+  measured from the REGION POLYGONS directly (half-width sampled along each
+  member's own skeleton, same measurement `build_shape_field` gives you) on
+  `enthusiast_logo.png` — variance must drop, not just "test passes."
+- A degenerate-skeleton synthetic fixture (e.g. a shape whose medial axis has
+  a short spur that would buffer into a self-intersecting or sub-floor
+  polygon): confirm the fail-open path leaves the original polygon and sets
+  `text_cluster_regularize_skipped`, does not crash, does not silently ship
+  bad geometry.
 - Every fixture with NO tagged cluster: byte-identical to pre-Step-5 output.
   `enthusiast_logo.png`'s own golden (if one exists) is expected to move —
   regenerate deliberately and note why in the commit, same convention as

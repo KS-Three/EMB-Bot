@@ -141,19 +141,30 @@ already documented there.
 
 ### 3.3 Regularization: consistent stroke width per tagged cluster
 
-For any region carrying `meta["text_cluster_id"]`, the run-tier stitch
-generator uses the **cluster's own median stroke-width** (already computed in
-3.2) instead of that one glyph's individually noisy EDT measurement, when
-choosing bean-run width/spacing. This is the actual visual-quality fix for
-the default, unconverted case: today, nine rescued letters each get their own
-slightly-different implied stroke weight; after this, a tagged cluster's
-members share one weight, the way a real typeface does.
+**Corrected during Step 0's spike (superseding the first draft of this
+section) — the run tier has no stitch-width parameter to feed a median
+into.** `run_outline` (`stage6_border.py:621-685`) traces each shape's own
+polygon ring exactly, at a fixed global stitch spacing
+(`machine.BEAN_STITCH_MM`/`BEAN_PASSES`) — by its own docstring, "the outline
+IS the artwork." A rescued letter's apparent stroke weight is entirely a
+property of its traced polygon, set back at vectorization; there is no
+per-shape width input to `run_outline` to adjust.
 
-**Open item, flagged not guessed:** the research pass for this spec did not
-pin the exact call site where a run-tier shape's stitch width is chosen
-(candidates: `stage7_sequence.py`, or a fill/run module not yet grep'd for
-this). The build plan's first step is locating that call site before writing
-the regularization change — see plan doc.
+The actual lever, therefore, is geometric, not a stitch parameter: for every
+region carrying `meta["text_cluster_id"]`, **redraw its polygon** as a
+fixed-radius buffer around its own skeleton — both already computed by
+`build_shape_field` in 3.2 — sized to the cluster's target half-width (the
+median of the cluster's per-member `text_cluster_stroke_mm`, also computed in
+3.2). This replaces `region.polygon` for tagged members with a
+visually-regularized version before stage 7 ever calls `run_outline` on it —
+the same "replace this shape's geometry" shape `boundary_override` already
+establishes as a legitimate operation on a `Region`, just computed by the
+pipeline instead of hand-edited by a user.
+
+This is applied in the same post-vectorization pass as tagging (3.2), not as
+a separate stage7 change — geometry is settled before sequencing runs, same
+ordering rationale `tag_enclosed_background`/`detect_text_clusters` already
+follow.
 
 ### 3.4 Wire contract: one new read-only review field, no new override key
 
@@ -255,10 +266,12 @@ focus, same convention `enclosed-background-restore-design.md` used)
   `enthusiast_logo.png` first and may not generalize — flag this explicitly
   in the PR rather than claim broad coverage, same discipline the gradient-
   fragmentation fixes already modeled.
-- **Regularization interacting with existing run-tier geometry.** The exact
-  call site is unknown as of this spec (see 3.3) — until it's located, the
-  regularization step's blast radius can't be fully scoped. The plan's first
-  step resolves this before any code changes land.
+- **Regularization changes real geometry, not just metadata.** Unlike
+  detection (informational tagging only), redrawing a tagged shape's polygon
+  to a shared skeleton-buffer width is a genuine geometry change — it will
+  move `enthusiast_logo.png`'s golden (expected and to be regenerated
+  deliberately, per plan Step 5), and needs its own careful review pass
+  distinct from the additive detection steps.
 - **Scope creep toward general shape recognition.** Explicitly fenced off in
   §5 — worth restating in review, since "shape/outline recognition" as a
   phrase invites conflating this with the DT-first classifier thread.
