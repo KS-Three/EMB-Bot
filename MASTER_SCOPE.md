@@ -122,6 +122,52 @@ leaves large fill interiors up to 13mm from the nearest underlay stitch (vs
 for that one preset specifically. Not investigated this pass — a candidate
 for a focused follow-up, not a blocker on what shipped here.
 
+**Second same-day follow-up: the audit fix above (whole-stroke skip) was
+itself over-corrected, caught by a second independent audit.** It silenced
+a genuine, PRE-EXISTING `DENSITY_STACKED` block on `testdata/photo/
+drone_render.png` at `target_width_mm=80`, `garment_id="left_chest"`
+(confirmed present on unmodified `cc3b9de`, `coverage_max` 17.12,
+`over_block_mm2` 275.0 -> 0.0 after the whole-stroke fix) — `is_satin_
+candidate` misclassifies large organic/branchy photo-tier regions as
+satin, and one such shape (`S0ab48174`, 39 skeleton strokes) has only 1190
+of 2695 stations (44%) genuinely oversize; disabling an entire stroke's
+zigzag over one oversize station lost far more real coverage than the
+ceiling was meant to withhold. Fix narrowed from per-STROKE to per-
+STATION: `_stroke_underlay` now skips the zigzag cross only at the
+individual stations whose own local width exceeds `SATIN_MAX_WIDTH_MM`
+(read from each cross's own rail midpoint, since `_rail_points`
+interpolates extra stations on bends that don't line up 1:1 with the
+resampled spine), leaving ordinary-width stations on the same stroke
+untouched. Both fixtures now correct simultaneously: `logo_alpha` stays
+out of `block` (severity `warn`, matching the pre-law-23 baseline exactly,
+not silence as the first fix produced) and `drone_render` keeps its
+pre-existing `block` (`coverage_max` 17.12, matching the unmodified
+engine's own peak to two decimals; `over_block_mm2` 86.0 vs. baseline's
+275.0 — narrower because law 23's own corpus-accurate density genuinely
+changed the number, not because the finding vanished). Wider sweep run
+(not all pinned) across `logo_alpha`/`logo_whitebg`/`ribbon_curve` at
+several widths/garments plus `photo/summit_badge.png`,
+`photo/region_blobs.png`, `photo/repro_gradient_white_icon.png`: no new
+false `block`s except `summit_badge.png` at 60mm, which was ALREADY block
+at the first corpus-law commit (`edbd4d4`, before any underlay-cap fix
+existed) — a second instance of the same `is_satin_candidate`
+misclassification-on-organic-geometry issue, not something this round's
+narrowing introduced (this round's fix actually reduces its `over_block_
+mm2` from 136 to 29). Regression-pinned both directions: `test_a_wide_
+oversize_satin_stroke_does_not_block_on_underlay_glue` (logo_alpha stays
+out of block) and `test_drone_render_oversize_photo_satin_still_blocks`
+(drone_render's pre-existing block survives), both in `test_preflight.py`.
+Full suite re-run to completion in the foreground: **773 passed, 3
+skipped, 0 failed** (795s).
+
+The deeper issue neither fix touches — `is_satin_candidate` misclassifying
+large organic/branchy photo-tier geometry as satin at all (confirmed on at
+least two fixtures, `drone_render.png` and `summit_badge.png`) — is a
+classification-level question, not an underlay-stage one, and is
+explicitly NOT addressed here; it would need Kent's call on scope before
+any fix, per the same "satin/fill classifier" gap area 1 already tracks
+above (M0-M3 DT-first migration, corpus-gated, not started).
+
 Prior update below, 2026-08-05, still earlier the same day — the
 boundary-editor slice landed: area 5's
 last self-flagged gap ("no reshaping/redrawing outlines... no manual point
