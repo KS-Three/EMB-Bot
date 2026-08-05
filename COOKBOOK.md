@@ -214,12 +214,17 @@ hand-rolling it in JS.
 
 - **Measure on Kent's real art, not the fixtures.** `testdata/logo_whitebg.png`
   routes 1 of 5 regions to satin and reproduces almost nothing he complains
-  about. The benchmark is `Downloads/enthusiast enterprises logo.png` (flat
-  two-colour: hex shield + star, ENTHUSIAST wordmark, ENTERPRISES INC.
-  subline). At 90 mm it makes 13 regions — 10 letters, 2 shield halves, 1 star
-  — and **the whole subline is dropped as unsewable**. That drop is warned
-  (`DROPPED_SMALL_SHAPES`) but from the user's side a line of the logo simply
-  vanishes; still unfixed, and the most customer-visible defect in the pipeline.
+  about. The benchmark is `digitizer/testdata/photo/enthusiast_logo.png`
+  (flat two-colour: hex shield + star, ENTHUSIAST wordmark, ENTERPRISES INC.
+  subline — now committed to the repo, not just `Downloads/`). At 90 mm it
+  makes 14 regions — the subline's letters included. **The subline no longer
+  drops**: the run tier (`229efc6`, 2026-07-31, `digitizer_core/stage3_segment.py`'s
+  `small_shape_rescue` path) rescues small shapes as run stitches instead of
+  dropping them, and this is now verified against the real fixture, not just
+  the synthetic one `tests/test_run_tier.py` already covered. The `warnings`
+  list still carries `SMALL_SHAPES_AS_RUN` (count=14 on this fixture) — that's
+  informational (rescued, not dropped), not the same defect this note used to
+  describe.
 - **Validate a quality metric on known-good geometry before you trust it.** A
   fan metric that assumed satin crosses sat at a fixed parity in the point list
   scored a CLEAN curved ribbon at 30.7% — identical to the logo that visibly
