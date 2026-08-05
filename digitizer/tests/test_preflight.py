@@ -93,7 +93,11 @@ def test_a_clean_real_plan_earns_a_clean_report(whitebg, plan):
     assert m["satin_advance_mm"] == pytest.approx(0.40, abs=0.05)
     assert m["satin_short_fraction"] < 0.25
     # Law 27's region sum measured, and comfortably inside its budget.
-    assert m["coverage_p50"] == pytest.approx(1.2, abs=0.15)
+    # Re-measured 2026-08-05 after corpus laws 23/26 landed: pique_knit's
+    # fill_underlay dropped its crosshatch-lattice pass (edge_lattice ->
+    # edge_run), so a clean single-layer fill now reads the geometric ideal
+    # of 1.00 rather than the old lattice-inflated 1.20.
+    assert m["coverage_p50"] == pytest.approx(1.0, abs=0.1)
     assert m["coverage_over_warn_mm2"] == 0.0
     assert m["same_hole_fraction"] is not None
     # Chaining law 60 and the contour tier, both measured rather than skipped.
@@ -105,7 +109,13 @@ def test_a_clean_real_plan_earns_a_clean_report(whitebg, plan):
     # 0.40 mm of bare link exposure is now fully covered (0.0). Same fix
     # already re-pinned GOLDEN_FLAG_OFF and the flat-lane golden elsewhere in
     # this suite; this is that same blast radius, not a new defect.
-    assert m["link_thread_mm"] == pytest.approx(109.0, abs=1.0)
+    # Re-measured again 2026-08-05 after corpus laws 23/26: removing
+    # pique_knit's crosshatch-lattice underlay pass (law 26) and widening
+    # satin's own zigzag underlay legs (law 23) both move geometry the
+    # travel graph routes around, dropping needle-down link distance
+    # 109.0 -> 87.8 mm. Link coverage itself is unaffected (still 0.0 mm
+    # bare).
+    assert m["link_thread_mm"] == pytest.approx(87.8, abs=1.0)
     assert m["link_uncovered_max_mm"] == pytest.approx(0.0, abs=0.05)
     assert m["fill_axis_concentration"] == pytest.approx(0.974, abs=0.02)
     assert m["contour_starved_shapes"] == 0
@@ -424,8 +434,12 @@ def test_coverage_reads_stitch_geometry_through_ties_and_splits(plan):
     stitch_plan, _planned, _warnings = plan
     m = run_preflight(None, stitch_plan, cfg(**PLAN_CFG_KW))["metrics"]
 
-    # Fill at 0.40 + underlay at law 28's 0.1-0.2: the classic stack's floor.
-    assert m["coverage_p50"] == pytest.approx(1.2, abs=0.15)
+    # Fill at 0.40 is the classic stack's floor. Re-measured 2026-08-05 after
+    # corpus laws 23/26: pique_knit's edge_run underlay (was edge_lattice)
+    # contributes almost nothing outside the boundary walk, so the region
+    # reads the geometric ideal 1.00 rather than the old lattice-inflated
+    # 1.20 (see COVERAGE_WARN_UNITS's derivation comment in machine.py).
+    assert m["coverage_p50"] == pytest.approx(1.0, abs=0.1)
     assert m["coverage_p95"] < machine.COVERAGE_WARN_UNITS
 
 
@@ -822,14 +836,25 @@ def test_an_alpha_cutout_background_declines_the_contrast_instrument(alpha):
 # --- guard 3: the cutaway-stabilizer prescription ----------------------------
 
 def test_a_heavy_design_prescribes_cutaway_stabilizer():
-    """The constructed 25k+ negative: a solid 160 mm square fills to 26.7k
+    """The constructed 25k+ negative: a solid 180 mm square fills to 28.4k
     stitches through the real pipeline. INFO severity — nothing is wrong
     with the file, the operator just hoops cutaway under it [P — OESD, via
     the photo plan §2 row 15] — so it must not cost score, same contract as
-    SAME_HOLE_HEAVY."""
+    SAME_HOLE_HEAVY.
+
+    Grown from 160 mm (26.7k) to 180 mm 2026-08-05: corpus laws 23/26
+    landing (fabrics.py fill_underlay edge_lattice -> edge_run for
+    pique_knit/jersey_tee) removes the fill's crosshatch-lattice underlay
+    pass, dropping this fill-only fixture's count to 22.5k at the old
+    size — legitimately UNDER STITCHES_CUTAWAY_MIN, since law 26 only
+    removes stitches and law 23 only adds them to satin, which this
+    all-fill fixture has none of. STITCHES_CUTAWAY_MIN itself is untouched
+    (externally sourced, independent of engine output); the fixture grew so
+    it still tests the real 25k boundary rather than a boundary the corrected
+    engine no longer reaches."""
     square = np.full((820, 820, 3), 255, np.uint8)
     square[10:810, 10:810] = (40, 40, 120)
-    report = _digitize_report(square, target_width_mm=160.0)
+    report = _digitize_report(square, target_width_mm=180.0)
 
     hit = [f for f in report["findings"] if f["code"] == STABILIZER_CUTAWAY]
     assert len(hit) == 1

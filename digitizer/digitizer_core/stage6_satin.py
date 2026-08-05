@@ -1246,15 +1246,19 @@ def _stroke_underlay(poly: Polygon, st: Stroke, style: str, shape_id: str,
     runs.append(StitchRun(points=_resample(spine, n), kind=stitches.UNDERLAY,
                           shape_id=shape_id))
     if style == "zigzag":
-        steps = max(2, int(math.ceil(length / machine.UNDERLAY_ZIGZAG_MM)))
+        steps = max(2, int(math.ceil(length / machine.SATIN_ZIGZAG_PITCH_MM)))
         sp = _resample(spine, steps)
         ra, rb = _rail_points(poly, sp, st.closed, ribbon_width_mm(poly) / 2, field)
         pts: list[tuple[float, float]] = []
         for i, (pa0, pb0) in enumerate(zip(ra, rb)):
             # Narrow both ends from the ORIGINALS — pulling pb toward an
             # already-moved pa drifts the zigzag off the column's center.
-            pa = (pa0[0] + (pb0[0] - pa0[0]) * 0.3, pa0[1] + (pb0[1] - pa0[1]) * 0.3)
-            pb = (pb0[0] + (pa0[0] - pb0[0]) * 0.3, pb0[1] + (pa0[1] - pb0[1]) * 0.3)
+            # 0.09 (corpus law 23): each leg spans 0.82x the column width
+            # (1 - 2*0.09), not the old 0.4x (1 - 2*0.3) -- the prior
+            # narrowing left satin's zigzag underlay too under-specified to
+            # actually anchor the rails it sits beneath.
+            pa = (pa0[0] + (pb0[0] - pa0[0]) * 0.09, pa0[1] + (pb0[1] - pa0[1]) * 0.09)
+            pb = (pb0[0] + (pa0[0] - pb0[0]) * 0.09, pb0[1] + (pa0[1] - pb0[1]) * 0.09)
             if math.dist(pa, pb) < machine.SATIN_MIN_CROSS_MM:
                 continue
             pts.extend((pa, pb) if i % 2 == 0 else (pb, pa))

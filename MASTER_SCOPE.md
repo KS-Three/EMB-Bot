@@ -11,7 +11,77 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-05 — the boundary-editor slice landed: area 5's
+**Last updated:** 2026-08-05 — corpus laws 23 and 26 landed for real this
+pass, closing out the reverted attempt this doc has carried since the last
+entry (see that entry's UPDATE note, area 1, for the historical account of
+why the first attempt was backed out). Law 26: `fabrics.py`'s `pique_knit`/
+`jersey_tee` `fill_underlay` moves `edge_lattice` -> `edge_run`, dropping
+the crosshatch pass a fill doesn't need (corpus: 7/507 fills carry a
+lattice underlay). Law 23: satin's own zigzag underlay pitch is no longer
+implicitly shared with fill's — a new `machine.SATIN_ZIGZAG_PITCH_MM = 1.45`
+constant (fill's lattice underlay keeps reading the old `UNDERLAY_ZIGZAG_MM
+= 2.0`), wired into `stage6_satin.py`'s `_stroke_underlay()`, plus that
+function's rail-narrowing factor `0.3 -> 0.09` (each zigzag leg now spans
+0.82x the column width, corpus-measured, not the old 0.4x). The blocker the
+first attempt hit — landing either law moves `machine.py`'s coverage-budget
+thresholds' own self-fit ground truth — is resolved by recalibrating
+`COVERAGE_WARN_UNITS`'s *methodology*, not its value: the old derivation
+comment said "checked against what our own output actually produces" (self-
+fit, circular); the new one re-derives 2.5 two ways that don't depend on
+prior engine output — law 27's own prose figure for a safe classic stack,
+cross-checked against law 28's underlay-cost figure (~0.1-0.2 units) computed
+from the corrected engine's real underlay geometry (fill's generic zigzag
+underlay prices at 0.4mm-thread/2.0mm-pitch = 0.208 units; satin's new
+pitch at 0.4/1.45 = 0.283) — a classic stack lands at 2.21-2.28 units either
+way, comfortably under 2.5 with headroom, not against it. The number did not
+move; only its provenance did. `COVERAGE_BLOCK_UNITS` (3.5) is untouched on
+purpose — the playbook tags it sew-out-gated, not desk-safe, still pending
+Kent's physical stacked-fill-ladder test (`EMBBOT_SEWOUT_CARD.dst` block 2).
+`STITCHES_CUTAWAY_MIN` (25,000) is also untouched — externally sourced
+(OESD), independent of engine output, correct as-is — but the fixture that
+exercises it (`test_a_heavy_design_prescribes_cutaway_stabilizer`, a solid
+square) had to grow from 160 mm (26.7k stitches) to 180 mm (28.4k) because
+law 26 alone drops the old fixture to 22.5k, legitimately under the
+threshold now that the fill underlay is lighter; the STOP CONDITION for
+leaving the threshold itself alone was never hit — 180 mm is still an
+ordinary garment-sized design, not a contrived one. Sample measurements
+(`whitebg` @ `left_chest`, pique_knit): `coverage_p50` 1.19 -> 1.00,
+`stitch_count` 2469 -> 2165. Landing both laws moved geometry in more places
+than the two explicitly-scoped preflight assertions — regenerated
+deliberately, not defensively, and each is commented with why: `test_
+preflight.py`'s `coverage_p50` and `link_thread_mm` goldens (travel-graph
+routing shifted, 109.0 -> 87.8 mm on the fixture logo);
+`test_flat_lane_byte_identical.py`'s `flat_lane_golden.json` (regenerated via
+its own `tools/capture_flat_lane_golden.py`, all 4 fixtures move, all use
+the default pique_knit fabric); `test_pushcomp.py`'s `GOLDEN_FLAG_OFF` table
+(all 4 entries move — two via law 26's fabric change, two via law 23's
+fabric-independent width gate, spelled out entry-by-entry in that table's
+own comment); `test_stage2_photo_segment.py` needed no changes of its own,
+it reuses `test_flat_lane_byte_identical.py`'s golden. One more collision
+neither this doc's prior entry nor the task brief anticipated: `test_
+chaining.py`'s two "bend into cover" tests pinned a specific band polygon
+that landed on a knife-edge of the (inherently discrete, budget-gated) link-
+routing search once law 26 thinned `pique_knit`'s underlay — non-monotonic
+under small perturbations either direction, confirmed by sweeping dozens of
+band placements post-landing rather than hand-fitting one value; the chosen
+replacement band was checked robust to +-0.4 mm on both edges (47/49
+perturbations still route as a bend). Full suite `cd digitizer && .venv/
+bin/python -m pytest tests/ -q`, run to completion in the foreground:
+**771 passed, 3 skipped, 0 failed** (794s) — every one of the 3 known
+container-environment goldens this doc has cited every pass since
+2026-08-03 (`test_flat_lane_byte_identical[logo_alpha.png]`, `test_pushcomp
+[logo_whitebg.png-towel]`, `test_stage2_photo_segment[logo_alpha.png]`)
+happened to pass clean in this environment on this run too — allowed to
+fail per this pass's own task brief, not required to, and their passing
+here isn't claimed as a fix, just an honest report of what the run showed;
+engine `node --test` **272/272** and Studio `npx vitest run` **381/381** (26 files)
+both re-run this pass as a sanity check even though neither `src/` nor
+`app/` changed a byte — confirmed by `git status` before running. This work
+was done in an isolated worktree per its own task brief and is committed
+locally only — not pushed, no PR opened, merge is the coordinator's call.
+
+Prior update below, 2026-08-05, still earlier the same day — the
+boundary-editor slice landed: area 5's
 last self-flagged gap ("no reshaping/redrawing outlines... no manual point
 editing") is now half-closed. A new `boundary_override` shape_overrides key
 (contract v1.4) lets a review-screen edit replace a shape's exterior ring
@@ -130,6 +200,11 @@ change survived this pass — see below). Studio (`vitest`) was **not**
 re-run this pass, since nothing in `app/` changed across PRs #43–45; carrying
 forward the prior entry's **348/348** (25 files) rather than re-asserting an
 unverified number.
+
+**UPDATE 2026-08-05: both laws below landed for real — see the top-of-doc
+entry for the corrected coverage-budget recalibration that made it possible.
+The account below of the reverted attempt is kept as the historical record
+of why it needed care, not as current status.**
 
 **Two corpus-law fixes evaluated this pass and reverted, not landed —
 recorded here because they touched code before being backed out, not just

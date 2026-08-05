@@ -29,9 +29,16 @@ class Fabric:
 FABRICS: list[Fabric] = [
     Fabric("structured_cap", "Structured cap", 0.4, "edge_zigzag", "center_run",
            1.0, 3.0, "Foam/structured cap front; firm, sew center-out."),
-    Fabric("pique_knit", "Pique knit (polo)", 0.3, "edge_lattice", "center_run",
+    # fill_underlay was "edge_lattice" until corpus law 26 (docs/corpus-laws-
+    # round3-2026-08-01.md): the professional corpus never puts a full
+    # crosshatch-lattice pass under a knit fill, only a single edge-walk
+    # ("edge_run") — lattice is what heavier/looser goods (fleece, terry)
+    # get. Landed 2026-08-05 alongside law 23 and a matching recalibration
+    # of COVERAGE_WARN_UNITS (machine.py); see that constant's derivation
+    # comment for why the two moved together.
+    Fabric("pique_knit", "Pique knit (polo)", 0.3, "edge_run", "center_run",
            1.0, 3.0, "Polo pique; moderate stretch."),
-    Fabric("jersey_tee", "Jersey / t-shirt", 0.35, "edge_lattice", "center_run",
+    Fabric("jersey_tee", "Jersey / t-shirt", 0.35, "edge_run", "center_run",
            1.0, 3.0, "Stretchy knit; needs solid underlay."),
     # Pile fabrics run BELOW 1.0: the multiplier scales row SPACING, and pile
     # needs tighter rows, not looser — stitches sink into the nap (physics law
