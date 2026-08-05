@@ -21,9 +21,16 @@ from digitizer_core.config import PipelineConfig
 from digitizer_core.pipeline import run_stages
 from digitizer_core.stage0_classify import classify
 from digitizer_core.stage1_prep import prep
-from digitizer_core.stage2_photo_segment import MERGE_DELTAE00_THRESH, segment
+from digitizer_core.stage2_photo_segment import (
+    AREA_RATIO_MERGE_FACTOR,
+    AREA_RATIO_MIN_SMALL_PX,
+    AREA_RATIO_PROTECT_THRESH,
+    MERGE_DELTAE00_THRESH,
+    segment,
+)
 from digitizer_core.stage2_quantize import quantize
 from digitizer_core.stage3_segment import ClassicalSegmenter
+from digitizer_core.threads import chart_for
 from digitizer_core.warnings_codes import ABSORBED_SMALL_SHAPES, PHOTO_SEGMENT_REGION_COUNT
 
 from .test_flat_lane_byte_identical import GOLDEN, _snapshot
@@ -349,4 +356,174 @@ def test_enclosed_background_survives_gradient_routing_through_slic_rag():
         "no region survived tagged enclosed_background/unstitched after "
         "routing this gradient design through SLIC+RAG — the enclosed-"
         "population split regressed"
+    )
+
+
+# --- 9. Small-vs-large area-ratio merge protection (2026-08-05 regression) --
+#
+# `MERGE_DELTAE00_THRESH` 10.0 -> 20.0 (section 6 above) fixed fragmentation
+# but opened a second, opposite bug the region-count band alone could not
+# see: on `summit_badge.png`, the badge's black ring/inner-circle/crosshair
+# complex — real design content, sharply distinct to a human — got RAG-
+# merged wholesale into the huge background-colored superpixel cluster that
+# fills the space around/behind the badge. Region count still landed inside
+# [20, 80] (down for the RIGHT reason — less fragmentation — AND the WRONG
+# one — real content vanishing — at once). Root-caused to a genuine ~13 dE00
+# gap between the black complex and that background-lookalike cluster: real,
+# but under the new 20.0 threshold (was over the old 10.0 one). Fixed with
+# `AREA_RATIO_PROTECT_THRESH`/`AREA_RATIO_MERGE_FACTOR` in
+# `stage2_photo_segment.py` — see those constants' own docstring for the
+# full mechanism and calibration evidence. These tests pin the fix itself,
+# not just the region-count band (which cannot distinguish "less
+# fragmentation" from "content disappeared" — that blind spot is exactly how
+# the bug shipped undetected in the first place).
+
+def _lookalike_bg_with_thin_dark_ring() -> np.ndarray:
+    """Small synthetic reproduction of `summit_badge.png`'s own failure
+    shape: a big 'background-colored' foreground disc (same structural role
+    as the gray canvas area inside summit_badge's ring — large, foreground,
+    reads as background-ish) surrounding a much smaller but genuinely,
+    humanly distinct dark ring + filled disc. The ring/disc's color is
+    chosen so its raw (pre-merge) CIEDE2000 gap from the big disc is a real
+    but MODERATE one (same magnitude class as summit_badge's own measured
+    ~13-16 dE00 critical merge) — large enough that a human calls it a
+    different color, small enough that the retuned global 20.0 threshold
+    merges it once RAG's own internal consolidation dilutes the small
+    cluster's mean color (measured: this fixture reproduces the bug
+    byte-for-byte when area-ratio protection is disabled, see the test
+    below — and stops reproducing it if the color gap is pushed much wider,
+    since then even the UNPROTECTED 20.0 threshold already refuses to merge
+    it; this exact color/geometry pairing is the one that actually
+    discriminates the two code paths, not just an arbitrary "looks dark"
+    choice). Area ratio between the two (big disc minus the dark shape, vs.
+    the dark shape) is ~22:1 — past `AREA_RATIO_PROTECT_THRESH`, the same
+    order of magnitude as summit_badge's own measured ~13.6:1 critical-merge
+    ratio."""
+    h = w = 500
+    img = np.full((h, w, 3), 250, np.uint8)
+    cv2.circle(img, (w // 2, h // 2), 240, (85, 80, 76), -1)
+    cv2.circle(img, (w // 2, h // 2), 50, (15, 15, 20), 5)
+    cv2.circle(img, (w // 2, h // 2), 28, (15, 15, 20), -1)
+    return img
+
+
+def test_small_high_contrast_element_survives_area_ratio_protection():
+    """The regression itself, pinned on a synthetic fixture built for this
+    fix: the dark ring/disc complex must survive as its OWN region, not get
+    absorbed into the big lookalike-background region — a different, and
+    stronger, assertion than 'some region count is in range' (the check that
+    let the real bug through)."""
+    cfg = PipelineConfig(target_width_mm=60.0, forced_class="gradient")
+    p = prep(_lookalike_bg_with_thin_dark_ring(), cfg)
+    q = segment(p, cfg)
+
+    uniq, counts = np.unique(q.labels[q.labels >= 0], return_counts=True)
+    assert len(uniq) >= 2, (
+        "the dark ring/disc complex was absorbed into the background-"
+        "lookalike region — area-ratio protection failed to fire"
+    )
+    chart = chart_for(cfg)
+    mean_rgbs = [chart[q.thread_indices[int(lbl)]].rgb for lbl in uniq]
+    darkest = min(mean_rgbs, key=lambda rgb: max(rgb))
+    assert max(darkest) < 70, (
+        f"no surviving region reads as the dark ring/disc complex "
+        f"(darkest final region's rgb={tuple(int(v) for v in darkest)})"
+    )
+
+
+def test_area_ratio_protection_is_load_bearing_for_that_fixture():
+    """Sanity check on the fixture itself: without area-ratio protection
+    (the pre-fix code path), the same fixture DOES collapse to one region —
+    proof the test above is actually exercising the fix, not a fixture that
+    would have survived regardless."""
+    import digitizer_core.stage2_photo_segment as seg_mod
+
+    cfg = PipelineConfig(target_width_mm=60.0, forced_class="gradient")
+    p = prep(_lookalike_bg_with_thin_dark_ring(), cfg)
+
+    old_thresh = seg_mod.AREA_RATIO_PROTECT_THRESH
+    seg_mod.AREA_RATIO_PROTECT_THRESH = 10.0 ** 9  # never triggers
+    try:
+        q = seg_mod.segment(p, cfg)
+    finally:
+        seg_mod.AREA_RATIO_PROTECT_THRESH = old_thresh
+
+    uniq = np.unique(q.labels[q.labels >= 0])
+    assert len(uniq) == 1, (
+        "fixture drifted: it must reproduce the bug (single merged region) "
+        "with area-ratio protection disabled, or the test above isn't "
+        "actually pinning anything"
+    )
+
+
+def test_summit_badge_black_complex_survives_full_pipeline():
+    """Re-verify the real regression fixture directly, full pipeline
+    (`run_stages`, the coordinator's own exact repro config): the badge's
+    black ring/inner-circle/crosshair area must come out close to the source
+    image's own near-black pixel area, not near zero. Measures TOTAL dark-
+    thread stitched area against the source's own near-black pixel count —
+    the same 'is the content still there' question region count cannot
+    answer on its own."""
+    cfg = PipelineConfig(target_width_mm=120.0, garment_id="left_chest")
+    fixture = PHOTO_DIR / "summit_badge.png"
+    result = run_stages(str(fixture), cfg)
+    assert result.design_class == "gradient"
+
+    chart = chart_for(cfg)
+    dark_area_mm2 = sum(
+        r.area_mm2 for r in result.regions
+        if r.meta.get("stitched", True) and max(chart[r.thread_index].rgb) < 60
+    )
+
+    img = cv2.cvtColor(cv2.imread(str(fixture)), cv2.COLOR_BGR2RGB)
+    blackish = (img[:, :, 0] < 45) & (img[:, :, 1] < 45) & (img[:, :, 2] < 45)
+    source_black_area_mm2 = blackish.sum() / (result.px_per_mm ** 2)
+
+    # Not a tight bound (palette snapping and the min-area floor both trim a
+    # bit off the top) -- the bug's own signature was near-total loss (under
+    # 1% recovered, measured while root-causing this), so a generous floor
+    # is exactly the right bar: comfortably clears "the black complex is
+    # basically gone" while not overfitting to one run's exact fraction.
+    recovery = dark_area_mm2 / source_black_area_mm2
+    assert recovery > 0.5, (
+        f"black-complex area recovered only {recovery * 100:.1f}% of the "
+        f"source's near-black pixel area ({dark_area_mm2:.1f} / "
+        f"{source_black_area_mm2:.1f} mm2) -- the ring/circle/crosshair "
+        "complex is being swallowed by the background region again"
+    )
+
+
+def test_area_ratio_protection_constants_are_the_documented_tuned_values():
+    """Trip-wire, same spirit as `test_merge_threshold_is_the_documented_
+    retuned_value` above: an accidental edit to either constant should fail
+    fast here rather than surface only as a mysterious region-count drift on
+    the busy fixtures."""
+    assert AREA_RATIO_PROTECT_THRESH == 18.0
+    assert AREA_RATIO_MERGE_FACTOR == 0.6
+    assert AREA_RATIO_MIN_SMALL_PX == 1000
+
+
+def test_face_local_threshold_still_avoids_fragmenting_a_solid_block():
+    """Companion to `test_face_priors.py::test_face_local_threshold_splits_
+    shades_that_merge_outside_a_face` (that test's own fixture is what
+    exposed the need for `AREA_RATIO_MIN_SMALL_PX` — a first pass at area-
+    ratio protection blocked the small upscale-interpolation-seam slivers
+    that fixture's two solid blocks produce from doing their ordinary small-
+    into-large absorb, fragmenting `with_face` from 2 regions to 7). Pinned
+    here too, since it is really an area-ratio property, not just a face-
+    priors one."""
+    from digitizer_core.stage1_prep import prep as _prep
+    from digitizer_core.warnings_codes import PHOTO_SEGMENT_REGION_COUNT as _CODE
+
+    img = np.full((200, 200, 3), 255, np.uint8)
+    img[50:150, 50:100] = 118
+    img[50:150, 100:150] = 138
+    cfg = PipelineConfig(target_width_mm=80.0, min_px_per_mm=4.0)
+    p = _prep(img, cfg)
+    q = segment(p, cfg, face_regions=None)
+    w = [x for x in q.warnings if x["code"] == _CODE][0]
+    assert w["merged_regions"] == 1, (
+        f"a solid two-shade block fragmented into {w['merged_regions']} raw "
+        "merged regions instead of consolidating to 1 -- area-ratio "
+        "protection is firing on interpolation-seam noise again"
     )
