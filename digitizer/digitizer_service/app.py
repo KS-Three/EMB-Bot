@@ -31,7 +31,8 @@ from starlette.concurrency import run_in_threadpool
 from digitizer_core import PipelineConfig, __doc__ as core_doc  # noqa: F401
 from digitizer_core import machine
 from digitizer_core.adapter import design_size_mm, design_to_pattern, plan_to_design
-from digitizer_core.pipeline import digitize
+from digitizer_core.manual import build_manual_result
+from digitizer_core.pipeline import digitize, plan_stitches
 from digitizer_core.preflight import run_preflight
 from digitizer_core.threads import DEFAULT_BRAND, brand_index, load_chart
 
@@ -265,16 +266,17 @@ def _canonicalize_shape_edits(data: dict, chart_len: int) -> None:
         data.pop("shape_overrides")
 
 
-def _parse_config(raw: str | None) -> dict:
-    if not raw:
-        return {}
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=400, detail=f"config is not valid JSON: {exc}") from exc
+def _validate_config_dict(data: dict, allowed_fields: set[str]) -> dict:
+    """The field-allowlist + shape-edit canonicalization shared by every
+    config-carrying route. `allowed_fields` differs by route: manual
+    digitizing has no prior generation for `deleted_shape_ids`/
+    `shape_overrides` to reference, so it excludes both (see
+    `_MANUAL_CONFIG_FIELDS`) rather than silently accepting a field that
+    would then do nothing.
+    """
     if not isinstance(data, dict):
         raise HTTPException(status_code=400, detail="config must be a JSON object.")
-    unknown = sorted(set(data) - _CONFIG_FIELDS)
+    unknown = sorted(set(data) - allowed_fields)
     if unknown:
         raise HTTPException(
             status_code=400,
@@ -289,8 +291,31 @@ def _parse_config(raw: str | None) -> dict:
                 status_code=400,
                 detail=f"unknown thread brand {brand!r}. See /health for the list.",
             ) from exc
-    _canonicalize_shape_edits(data, len(load_chart(brand or DEFAULT_BRAND)))
+    if "deleted_shape_ids" in allowed_fields or "shape_overrides" in allowed_fields:
+        _canonicalize_shape_edits(data, len(load_chart(brand or DEFAULT_BRAND)))
     return data
+
+
+def _parse_config(raw: str | None) -> dict:
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail=f"config is not valid JSON: {exc}") from exc
+    return _validate_config_dict(data, _CONFIG_FIELDS)
+
+
+# Manual digitizing skips stages 1-4 entirely (no auto-digitize generation to
+# have assigned shape_ids in the first place), so the review-edit fields that
+# reference a PRIOR generation's ids are meaningless here — excluded rather
+# than silently accepted-and-ignored, the same reasoning `debug_dir` is
+# already excluded from `_CONFIG_FIELDS` for.
+_MANUAL_CONFIG_FIELDS = _CONFIG_FIELDS - {"deleted_shape_ids", "shape_overrides"}
+
+
+def _parse_manual_config(data: dict | None) -> dict:
+    return _validate_config_dict(data if data is not None else {}, _MANUAL_CONFIG_FIELDS)
 
 
 def _decode(data: bytes) -> np.ndarray:
@@ -476,6 +501,94 @@ async def start_digitize(
             # None (not a passing report) when the caller turned it off, so
             # Studio can tell "clean" apart from "never checked".
             "preflight": run_preflight(result, plan, cfg, image=pixels)
+                         if cfg.preflight else None,
+        }
+
+    job, cached = registry.submit(key, work)
+    return {"job_id": job.id, "state": job.state, "cached": cached}
+
+
+# The upper bound on how many shapes one manual request may carry. Not a
+# machine limit (a design this dense would already be a bad idea to sew) —
+# it exists so a pathological body cannot make polygon validation itself the
+# expensive part of the request.
+MAX_MANUAL_SHAPES = 2000
+
+
+@app.post("/digitize-manual", status_code=202)
+async def start_digitize_manual(
+    payload: dict = Body(...),
+    x_embbot_token: str | None = Header(None),
+) -> dict:
+    """Hand-authored shapes in — no image, stages 1-4 skipped entirely — a
+    job id out. Poll `/jobs/{id}` exactly as `/digitize`'s caller does: the
+    finished job carries the identical `{design, review, stats, warnings,
+    preflight}` shape, because it is built from the same `PipelineResult` /
+    `StitchPlan` contract and handed to the same response helpers.
+
+    Body: `{"shapes": [...], "config": {...}}`. Each shape:
+        polygon: [[x, y], ...]        required, mm, y-axis down, >= 3 points
+        holes: [[[x, y], ...], ...]   optional interior rings, mm
+        technique: "satin"|"fill"|"run"   required — no "auto": a manual
+                                       shape is a deliberate choice
+        thread_index: int             exactly one of thread_index /
+        thread_rgb: [r, g, b]         thread_rgb (nearest CIEDE2000 snap)
+        fill_angle_deg: number        optional per-shape fill angle
+
+    `config` is the same `PipelineConfig` field set `/digitize` accepts,
+    minus `deleted_shape_ids`/`shape_overrides` (nothing here for those to
+    reference — see `_MANUAL_CONFIG_FIELDS`). `target_width_mm` is accepted
+    but unused: a shape's polygon is already literal millimetres, not pixels
+    to be scaled against a target width.
+
+    A malformed shape (empty list, self-intersecting/degenerate polygon, bad
+    thread selection, unsupported technique) is a 400 at submit, same as a
+    bad shape_overrides entry on `/digitize` — never a failed job.
+    """
+    _require_token(x_embbot_token)
+
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="payload must be a JSON object.")
+    shapes = payload.get("shapes")
+    if not isinstance(shapes, list) or not shapes:
+        raise HTTPException(
+            status_code=400, detail="payload.shapes must be a non-empty list of shapes."
+        )
+    if len(shapes) > MAX_MANUAL_SHAPES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"{len(shapes)} shapes were submitted; the limit is {MAX_MANUAL_SHAPES}.",
+        )
+
+    cfg_dict = _parse_manual_config(payload.get("config"))
+    key = content_key(
+        json.dumps(shapes, sort_keys=True, separators=(",", ":"), default=str).encode(),
+        cfg_dict,
+    )
+    cfg = PipelineConfig(**cfg_dict)
+
+    # Validation/construction runs before the job queue, same split
+    # `/digitize` makes with `_decode`: a bad request fails at submit, and a
+    # job slot is never spent on it. Off the event loop thread since it is
+    # real (if cheap) geometry work, not because it is typically slow.
+    try:
+        result = await run_in_threadpool(build_manual_result, shapes, cfg)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    def work() -> dict:
+        plan = plan_stitches(result, cfg)
+        design = plan_to_design(plan, name=cfg_dict.get("name") or "Manual design")
+        return {
+            "design": design,
+            "review": _review_payload(result, plan),
+            "stats": _stats_payload(plan, design),
+            "warnings": plan.warnings,
+            # No artwork ever backed this generation, so the thread-match and
+            # photo-guardrail checks are skipped exactly as they are for a
+            # caller re-scoring a stored plan (`run_preflight`'s own
+            # documented image=None contract) — everything else still runs.
+            "preflight": run_preflight(result, plan, cfg, image=None)
                          if cfg.preflight else None,
         }
 
