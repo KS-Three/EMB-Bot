@@ -318,6 +318,72 @@ def test_degenerate_polygon_is_rejected():
         build_manual_result(shape, cfg())
 
 
+# --- validation: the optional 'holes' ring ----------------------------------
+
+def test_shape_with_a_hole_fully_inside_produces_a_real_plan():
+    """A donut / letter-counter shape (e.g. the inside of an 'O'): one
+    exterior ring, one interior hole ring fully inside it. The hole must
+    actually reduce the sewn area (not just pass through as decoration) and
+    the design must still round-trip into a real, sewable plan."""
+    exterior = [[0.0, 0.0], [20.0, 0.0], [20.0, 20.0], [0.0, 20.0]]
+    hole = [[5.0, 5.0], [15.0, 5.0], [15.0, 15.0], [5.0, 15.0]]
+    shape = [{"polygon": exterior, "holes": [hole], "technique": "fill",
+              "thread_index": 0}]
+
+    result = build_manual_result(shape, cfg())
+    assert len(result.regions) == 1
+    assert len(result.regions[0].polygon.interiors) == 1
+    assert result.regions[0].area_mm2 == pytest.approx(20 * 20 - 10 * 10)
+
+    plan = plan_stitches(result, cfg())
+    assert plan.stats.stitch_count > 0
+    assert FILL in _kinds(plan), "the ringed shape must still sew as a fill"
+
+
+def test_hole_that_pokes_outside_the_exterior_is_rejected():
+    """A hole ring must lie within its exterior ring — the same OGC-validity
+    rule `poly.is_valid` already enforces for a self-intersecting exterior
+    (`test_self_intersecting_polygon_is_rejected`), reused unchanged here:
+    `Polygon(exterior, holes)` builds a geometry whose hole crosses the shell
+    boundary, and shapely correctly flags that as invalid before `manual.py`
+    ever gets to a bespoke hole-specific check."""
+    exterior = [[0.0, 0.0], [20.0, 0.0], [20.0, 20.0], [0.0, 20.0]]
+    hole_poking_out = [[15.0, 15.0], [30.0, 15.0], [30.0, 30.0], [15.0, 30.0]]
+    shape = [{"polygon": exterior, "holes": [hole_poking_out],
+              "technique": "fill", "thread_index": 0}]
+    with pytest.raises(ValueError, match="invalid|self-intersect"):
+        build_manual_result(shape, cfg())
+
+
+def test_hole_entirely_outside_the_exterior_is_rejected():
+    """A hole with no overlap with its exterior at all — shapely's own
+    'Hole lies outside shell' diagnosis, same rejection path as a hole that
+    only partially pokes out."""
+    exterior = [[0.0, 0.0], [20.0, 0.0], [20.0, 20.0], [0.0, 20.0]]
+    hole_far_away = [[100.0, 100.0], [110.0, 100.0], [110.0, 110.0], [100.0, 110.0]]
+    shape = [{"polygon": exterior, "holes": [hole_far_away],
+              "technique": "fill", "thread_index": 0}]
+    with pytest.raises(ValueError, match="invalid|self-intersect"):
+        build_manual_result(shape, cfg())
+
+
+def test_hole_with_too_few_points_is_rejected():
+    exterior = [[0.0, 0.0], [20.0, 0.0], [20.0, 20.0], [0.0, 20.0]]
+    shape = [{"polygon": exterior, "holes": [[[5.0, 5.0], [10.0, 10.0]]],
+              "technique": "fill", "thread_index": 0}]
+    with pytest.raises(ValueError, match="3"):
+        build_manual_result(shape, cfg())
+
+
+def test_self_intersecting_hole_is_rejected():
+    exterior = [[0.0, 0.0], [20.0, 0.0], [20.0, 20.0], [0.0, 20.0]]
+    bowtie_hole = [[5.0, 5.0], [15.0, 15.0], [15.0, 5.0], [5.0, 15.0]]
+    shape = [{"polygon": exterior, "holes": [bowtie_hole],
+              "technique": "fill", "thread_index": 0}]
+    with pytest.raises(ValueError, match="invalid|self-intersect"):
+        build_manual_result(shape, cfg())
+
+
 def test_too_few_points_is_rejected():
     shape = [{"polygon": [[0.0, 0.0], [10.0, 0.0]], "technique": "fill",
               "thread_index": 0}]
