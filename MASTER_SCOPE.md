@@ -11,7 +11,47 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-04, latest — a large batch landed since the prior
+**Last updated:** 2026-08-05 — the boundary-editor slice landed: area 5's
+last self-flagged gap ("no reshaping/redrawing outlines... no manual point
+editing") is now half-closed. A new `boundary_override` shape_overrides key
+(contract v1.4) lets a review-screen edit replace a shape's exterior ring
+with a hand-drawn polygon, following the exact override pattern the rest of
+this area already uses: service-side validation (`digitizer_service/
+app.py`, point count 3..500, finite numbers, shell validity, and the
+sewability floor — a fast 400 on the common mistakes), core-side defense in
+depth plus hole-containment checking (`digitizer_core/regions.py::
+apply_shape_edits` — the one check that can only run here, since it alone
+sees the shape's own existing holes; a rejected edit is always a clean
+`ValueError`, never a crash or silently repaired geometry), `match_shape_
+ids` carry-forward alongside the other five override keys, and a Studio
+Layers-panel "Edit shape boundary" (✎) control (`DigitizePanel.svelte`) — a
+small SVG editor with draggable vertex handles, click-a-midpoint-to-add,
+right-click/Delete-to-remove, full keyboard equivalents (arrow-key nudge,
+Enter/Space to add), and live client-side validation (`digitizer.js`'s
+`boundaryIssues`, mirroring the server's own checks) that disables Save
+before an invalid edit ever reaches the wire. On save the new polygon rides
+through the SAME `setOverride` -> `shapeOverrides` -> "Apply layer changes"
+flow every other override in this area already uses — no new save/apply
+path invented. Verified live against the real service via Playwright MCP
+(a full click-through including the invalid self-intersecting-shape
+rejection path, screenshotted) and a new Playwright e2e spec
+(`app/e2e/digitize-boundary-edit.spec.js`: drag a vertex, save, apply,
+confirm the design actually reshapes and resews, Reset to auto undoes it).
+Splitting/merging shapes — the other half of the original shape-
+recognition gap — is explicitly untouched this pass; see area 5 below for
+the honest scope line. Full suite re-run this pass: digitizer **708 passed
+/ 3 failed / 3 skipped** (`digitizer/` commit `298eae0`) — the 3 failures
+are the same long-standing container-environment golden mismatches this
+doc has cited every pass since 2026-08-03
+(`test_flat_lane_byte_identical[logo_alpha.png]`,
+`test_pushcomp[logo_whitebg.png-towel]`,
+`test_stage2_photo_segment[logo_alpha.png]`), not new regressions; Studio
+`npx vitest run` **354/354** (25 files, up from 348 — 8 new unit tests for
+the boundary-edit contract plus `outlineFull`/`boundaryIssues` coverage),
+`app/` commit `ac11163`. Engine `node --test` untouched by this slice, not
+re-run.
+
+Prior update below, 2026-08-04, latest — a large batch landed since the prior
 entry below: **CI now exists** (Kent added a stock GitHub Actions conda
 workflow, first run failed on wrong Python/no environment.yml; rewritten in
 **PR #37** to run this repo's real suites — engine `node --test`, Studio
@@ -753,19 +793,77 @@ underlay_style}`):
   harness exists in this repo yet, matching tier/border/fill-angle's own
   testing gap).
 
-**Only one self-flagged gap remains open:**
-- No true shape-recognition re-editing — no reshaping/redrawing outlines,
-  no splitting/merging shapes, no manual point editing. Not addressed by
-  any of PRs #21/#26/#28; a materially bigger lift than an override-pattern
-  slice.
+**Boundary reshaping — CLOSED 2026-08-05** (worktree `agent-
+a28de220d2af7ede5`, commits `298eae0` digitizer / `ac11163` studio): the
+"no reshaping/redrawing outlines... no manual point editing" half of the
+one gap above is closed, following the override-pattern playbook exactly —
+new contract key, service validation, core application + carry-forward,
+Layers-panel control, tests at every layer.
 
-**Next step:** the underlay-style dropdown (PR #28, above) is the one
-control in this area's whole override family without a live-browser check
-— worth folding into the next Playwright pass. Beyond that, this area's
-remaining open work is squarely the true shape-recognition re-editing item
-above, which is a different scale of project (outline reshaping, splitting/
-merging shapes, point editing) from the override-pattern slices that closed
-everything else.
+- **Contract key: `boundary_override`** (shape_overrides, v1.4) — a list of
+  `[x, y]` mm points (design-center origin, y-down, the same space
+  `outline_mm` already reports) replacing a shape's EXTERIOR ring only;
+  holes ride forward unchanged from the shape's current geometry.
+  `digitizer_service/app.py`'s `_canonicalize_shape_edits` validates point
+  count (3..500, mirrored in `digitizer_core.regions`'s own copy),
+  finiteness, and — the shell alone, since a request never carries the
+  shape's holes — polygon validity plus the same sewability floor stage 4's
+  own run-tier rescue already holds auto-digitized regions to
+  (`machine.RUN_MIN_AREA_MM2` / `RUN_MIN_LOOP_MM`): a fast 400 on a
+  self-intersecting drag or a pinched-shut shape. `digitizer_core/
+  regions.py::apply_shape_edits` re-validates independently (defense in
+  depth, same posture as every other key here) and ALSO checks hole
+  containment against the shape's real polygon — the one check that can
+  only run there. A rejected edit is always a clean `ValueError` (a 400 at
+  submit, or a job-level error for the hole-containment case specifically,
+  since that one needs the shape's real geometry to catch) — never a crash,
+  never silently repaired geometry. `area_mm2` is recomputed on a
+  successful edit; the key was added to `match_shape_ids`' carry-forward
+  list alongside `border`/`tier`/`fill_angle_deg`/`sew_order`/
+  `underlay_style`.
+- **Studio UI:** `DigitizePanel.svelte` gained an "Edit shape boundary" (✎)
+  control per Layers row (shown wherever the other per-shape controls
+  already are — not for hidden or not-sewn rows). It opens a small SVG
+  editor in place of the layer list: draggable vertex handles, small
+  midpoint dots that add a vertex on click/Enter, right-click or Delete to
+  remove one (floor of 3, matching the server), arrow keys to nudge a
+  focused point. `digitizer.js` gained the client-side mirror of the
+  server's geometry checks (`boundaryIssues`/`ringArea`/`dedupeRing`) so an
+  invalid shape shows its problem and disables Save immediately, before a
+  wire round trip — the server stays the actual authority. `reviewFromJob`
+  gained `outlineFull` (deduped, capped at the server's own 500-point
+  ceiling) distinct from the thumbnail's hard-decimated `outline`, so
+  opening the editor never silently reshapes a shape before a single drag
+  happens. Save merges the result into `shapeOverrides` via the existing
+  `setOverride` call — the identical "Apply layer changes" flow every
+  other override here already uses; no new save/apply path.
+- **Verification:** `digitizer/tests/test_shape_overrides.py` (core-level:
+  valid reshape + recomputed area, hole preservation, an awkward-but-valid
+  hand edit run through real stage5/stage7 with no degenerate stitches,
+  rejection of a bowtie/sliver/too-few-points with a clear error, dedup of
+  a closed ring, carry-forward via `match_shape_ids`, a stateless
+  re-digitize round trip proving the override survives on the SAME stable
+  id) and `digitizer/tests/test_service.py` (HTTP-level: the round trip,
+  cache-key participation, bad-geometry 400s, and the one check that can
+  only fail at job-run time — a shrunk shell that pokes a real hole
+  outside it). Studio: `digitizer.spec.js` unit coverage for the new pure
+  helpers and wire contract, plus a new Playwright e2e spec
+  (`app/e2e/digitize-boundary-edit.spec.js`) driving the real digitizer
+  service end to end. Also manually verified live via Playwright MCP
+  against the real service — drag-to-move, click-to-add, right-click-to-
+  remove, and the invalid-shape (self-intersecting) rejection path all
+  confirmed working, screenshotted.
+
+**Still open — the other half of the original gap:** splitting or merging
+shapes. A materially different, bigger lift than an outline edit (shape
+identity, ids, and the whole override contract all assume one shape stays
+one shape across a re-digitize) — explicitly out of scope for this slice,
+not addressed.
+
+**Next step:** splitting/merging shapes is the one piece of the original
+shape-recognition gap this pass didn't touch — the next candidate if this
+area gets picked up again. The underlay-style dropdown (PR #28) still has
+no live-browser check of its own either.
 
 ---
 
