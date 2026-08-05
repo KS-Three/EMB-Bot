@@ -179,6 +179,121 @@ def _merge_mean_color(g, src: int, dst: int) -> None:
         g.nodes[dst]["face"] = True
 
 
+# --- Small-vs-large area-ratio merge protection (2026-08-05 regression fix) --
+#
+# **THE BUG this protects against** (found by a real before/after audit on
+# `testdata/photo/summit_badge.png` at `PipelineConfig(target_width_mm=120.0,
+# garment_id="left_chest")`, right after `MERGE_DELTAE00_THRESH` moved
+# 10.0 -> 20.0 above): that retune fixed the fragmentation defect it was
+# aimed at, but it ALSO opened a second, opposite failure the region-count
+# band alone could not see — region count landed inside [20, 80] for two
+# different reasons at once, one good (less fragmentation) and one bad (real
+# design elements disappearing). On `summit_badge.png`, the badge's black
+# ring/inner-circle/crosshair complex — a real, humanly-obvious, sharply
+# distinct design element — got RAG-merged wholesale into the huge
+# background-colored superpixel cluster that fills the space around and
+# behind the badge (itself foreground, not `bg_mask`: the flood-fill
+# background detector can't reach it through the black ring from the image
+# border, so it segments like any other foreground content). Measured
+# directly (see the regression test + this module's own instrumentation
+# notes in the fix's PR): the black complex's own coherent cluster (43,934
+# px, 63.5% black, mean Lab ~[14, 4, -9] — genuinely dark, not a SLIC-
+# diluted sliver) merges into the 595,475 px background-lookalike cluster
+# (mean Lab ~[24, 1, 3]) at a measured edge weight of dE00=16.19 — UNDER the
+# new 20.0 threshold, but safely OVER the old 10.0 one. So this is not a
+# "SLIC lost the thin stroke" bug primarily (the thin ring OUTLINE does get
+# diluted by SLIC's ~23px superpixel footprint vs. its own ~6-8px stroke
+# width, mean Lab pulled from ~14 to ~31 — a real, secondary effect on the
+# thinnest parts) — it is dominantly a threshold bug: a real ~13 dE00 gap
+# between two GENUINELY different colors, that the old 10.0 threshold
+# correctly treated as distinct and the new 20.0 threshold does not, exactly
+# because the new threshold had to widen past 13 to close the fragmentation
+# gap on other fixtures.
+#
+# **Why area ratio, not reverting the threshold**: reverting
+# `MERGE_DELTAE00_THRESH` to 10.0 undoes PR #45 wholesale (the very
+# fragmentation this module exists to fix). What actually distinguishes this
+# failure from a legitimate redundant-band merge is the SIZE mismatch, not
+# the color gap alone — a smooth gradient's oversegmentation noise merges
+# adjacent bands of comparable size (`region_blobs.png`'s own concentric
+# shade sweep, the drone/summit gradient rings), while this bug merges a
+# modest, coherent, already-consolidated shape into something an order of
+# magnitude bigger. Mirrors the precedent `FACE_MERGE_FACTOR` already sets
+# for `_face_local_threshold`: rather than one global threshold, protected
+# edges get a locally tighter one, implemented as the same "divide the
+# weight, so it takes a smaller true dE00 to still clear the inflated
+# number" trick.
+#
+# **Calibration**: the measured critical merge above sits at ratio 13.6
+# (595475 / 43934) and weight 16.19 (`_area_ratio_factor`'s ratio =
+# max(px)/min(px) of the two candidate nodes at merge time). A first pass at
+# `12.0/0.5` (the tightest pairing that still catches that specific event)
+# fixed summit_badge.png (recovered from ~1% to ~80% of the source's own
+# near-black pixel area — see the regression test) but pushed
+# `drone_render.png` from its documented 65 regions to 83 — OUT of the [20,
+# 80] band, i.e. it protected some merges in that fixture that were actually
+# legitimate band-to-band consolidation, not this bug. Swept ratio in
+# {12, 15, 16, 18, 20} x factor in {0.5, 0.6, 0.65, 0.7} through the FULL
+# pipeline (`run_stages`, both busy fixtures, `len(PipelineResult.regions)` —
+# the same F4 metric `MERGE_DELTAE00_THRESH`'s own sweep above used):
+#
+#   ratio  factor  summit_badge  drone_render  summit dark-recovery
+#   12.0   0.50    70            83 OUT        80.3%
+#   15.0   0.50    68            83 OUT        79.2%
+#   20.0   0.50    62            79            79.2%
+#   12.0   0.60    63            79            81.0%
+#   15.0   0.60    60            78            80.2%
+#   15.0   0.70    58            78            80.2%
+#   18.0   0.60    56            75            80.2%
+#   16.0   0.65    58            75            79.2%
+#
+# `18.0/0.6` is the chosen pair: both fixtures land well clear of both band
+# edges (summit_badge 56 — 36 clear of the floor, 24 clear of the ceiling;
+# drone_render 75 — 5 clear of the ceiling, the tightest margin in the
+# table, still real headroom) while keeping summit_badge's dark-area
+# recovery at 80.2%, in the same range every other tested pairing achieved
+# (79-81%) — recovery is not sensitive to the exact pair once protection
+# fires at all; region count against the accept band is what actually
+# discriminates. `AREA_RATIO_MERGE_FACTOR=0.6` drops the effective LOCAL
+# threshold to `20.0 * 0.6 = 12.0` for a protected edge — tighter than the
+# ordinary 20.0, looser than the old global 10.0, because this only has to
+# stop ONE specific failure mode (small-coherent-shape into much-bigger-
+# lookalike-cluster), not redo the whole fragmentation-vs-quality tradeoff
+# the base threshold already settled.
+AREA_RATIO_PROTECT_THRESH = 18.0
+AREA_RATIO_MERGE_FACTOR = 0.6
+
+
+def _area_ratio_factor(px_a, px_b) -> float:
+    """1.0 (no protection) unless one side is >= `AREA_RATIO_PROTECT_THRESH`
+    times bigger than the other, in which case `AREA_RATIO_MERGE_FACTOR` —
+    see the constants' own docstring above."""
+    if px_a <= 0 or px_b <= 0:
+        return 1.0
+    big = max(px_a, px_b)
+    small = min(px_a, px_b)
+    if big / small >= AREA_RATIO_PROTECT_THRESH:
+        return AREA_RATIO_MERGE_FACTOR
+    return 1.0
+
+
+def _area_ratio_initial_adjust(rag) -> None:
+    """Apply the same small-vs-large protection to the INITIAL edge weights
+    `rag_mean_color` computed (plain Euclidean Lab distance, not dE00 —
+    `merge_hierarchical` never rewrites an edge's weight until one of its
+    endpoints is actually merged). Covers the edge case where two very
+    differently sized SLIC superpixels are already adjacent before any merge
+    has touched their shared edge; every later recompute goes through
+    `_weight_mean_color` below, which reapplies this same rule on live
+    (post-merge) pixel counts. Runs unconditionally (unlike the face drop,
+    which only runs when detections exist) — area imbalance is a property of
+    the segmentation itself, not an optional detector output."""
+    for u, v, d in rag.edges(data=True):
+        factor = _area_ratio_factor(rag.nodes[u]["pixel count"], rag.nodes[v]["pixel count"])
+        if factor != 1.0:
+            d["weight"] = float(d["weight"]) / factor
+
+
 def _weight_mean_color(g, src: int, dst: int, n: int) -> dict:
     da = g.nodes[dst]["mean color"].reshape(1, 3)
     na = g.nodes[n]["mean color"].reshape(1, 3)
@@ -188,6 +303,11 @@ def _weight_mean_color(g, src: int, dst: int, n: int) -> dict:
     # is untouched there (the pre-face-priors float, bit for bit).
     if g.nodes[dst].get("face") or g.nodes[n].get("face"):
         w /= FACE_MERGE_FACTOR
+    # Small-vs-large area-ratio protection — see its own docstring above.
+    # Composes with the face drop above (both are independent local
+    # tightenings of the same global threshold): a small region touching a
+    # face AND facing an extreme size mismatch gets both factors applied.
+    w /= _area_ratio_factor(g.nodes[dst]["pixel count"], g.nodes[n]["pixel count"])
     return {"weight": w}
 
 
@@ -409,6 +529,11 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None) -> Quant:
         # convention, so it does not matter which numeric id background
         # ends up wearing.
         rag = skgraph.rag_mean_color(lab_img, slic_labels, connectivity=2, mode="distance")
+        # Small-vs-large area-ratio merge protection (regression fix, see
+        # `AREA_RATIO_PROTECT_THRESH`'s own docstring) — runs unconditionally,
+        # unlike the face drop just below, and BEFORE it so a face-adjacent
+        # edge that also happens to be extreme-ratio gets both factors.
+        _area_ratio_initial_adjust(rag)
         if face_regions:
             # Step 5 — the face-local threshold drop. Only a run that
             # actually has detections builds the mask or touches a weight;
