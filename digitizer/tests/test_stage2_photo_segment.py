@@ -23,6 +23,7 @@ from digitizer_core.stage0_classify import classify
 from digitizer_core.stage1_prep import prep
 from digitizer_core.stage2_photo_segment import (
     AREA_RATIO_MERGE_FACTOR,
+    AREA_RATIO_MIN_SMALL_PX,
     AREA_RATIO_PROTECT_THRESH,
     MERGE_DELTAE00_THRESH,
     segment,
@@ -499,3 +500,30 @@ def test_area_ratio_protection_constants_are_the_documented_tuned_values():
     the busy fixtures."""
     assert AREA_RATIO_PROTECT_THRESH == 18.0
     assert AREA_RATIO_MERGE_FACTOR == 0.6
+    assert AREA_RATIO_MIN_SMALL_PX == 1000
+
+
+def test_face_local_threshold_still_avoids_fragmenting_a_solid_block():
+    """Companion to `test_face_priors.py::test_face_local_threshold_splits_
+    shades_that_merge_outside_a_face` (that test's own fixture is what
+    exposed the need for `AREA_RATIO_MIN_SMALL_PX` — a first pass at area-
+    ratio protection blocked the small upscale-interpolation-seam slivers
+    that fixture's two solid blocks produce from doing their ordinary small-
+    into-large absorb, fragmenting `with_face` from 2 regions to 7). Pinned
+    here too, since it is really an area-ratio property, not just a face-
+    priors one."""
+    from digitizer_core.stage1_prep import prep as _prep
+    from digitizer_core.warnings_codes import PHOTO_SEGMENT_REGION_COUNT as _CODE
+
+    img = np.full((200, 200, 3), 255, np.uint8)
+    img[50:150, 50:100] = 118
+    img[50:150, 100:150] = 138
+    cfg = PipelineConfig(target_width_mm=80.0, min_px_per_mm=4.0)
+    p = _prep(img, cfg)
+    q = segment(p, cfg, face_regions=None)
+    w = [x for x in q.warnings if x["code"] == _CODE][0]
+    assert w["merged_regions"] == 1, (
+        f"a solid two-shade block fragmented into {w['merged_regions']} raw "
+        "merged regions instead of consolidating to 1 -- area-ratio "
+        "protection is firing on interpolation-seam noise again"
+    )

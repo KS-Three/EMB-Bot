@@ -172,6 +172,17 @@ def _merge_mean_color(g, src: int, dst: int) -> None:
     g.nodes[dst]["total color"] += g.nodes[src]["total color"]
     g.nodes[dst]["pixel count"] += g.nodes[src]["pixel count"]
     g.nodes[dst]["mean color"] = g.nodes[dst]["total color"] / g.nodes[dst]["pixel count"]
+    # "fg pixel count" tracks REAL foreground area only, deliberately
+    # excluding whatever mass node 0 (the excluded/background aggregate —
+    # see the "SLIC's mask convention" comment in `segment` below) ever
+    # contributes, however many merges removed. `.get(..., "pixel count")`
+    # is a defensive fallback only; `segment()` always initializes this
+    # attribute on every node before any merge runs, so the fallback never
+    # actually fires in this module's own call path.
+    g.nodes[dst]["fg pixel count"] = (
+        g.nodes[dst].get("fg pixel count", g.nodes[dst]["pixel count"])
+        + g.nodes[src].get("fg pixel count", g.nodes[src]["pixel count"])
+    )
     # Face membership is sticky: a merged region touching a face keeps its
     # protection (`.get` so the attribute's absence — every no-face run —
     # stays a byte-for-byte no-op).
@@ -263,18 +274,67 @@ def _merge_mean_color(g, src: int, dst: int) -> None:
 AREA_RATIO_PROTECT_THRESH = 18.0
 AREA_RATIO_MERGE_FACTOR = 0.6
 
+# Absolute floor on the SMALLER side's own "fg pixel count" for area-ratio
+# protection to apply at all — found necessary by
+# `test_face_local_threshold_splits_shades_that_merge_outside_a_face`
+# (pre-existing, this fix's own first pass broke it): that fixture's two
+# solid color blocks meet along a hard edge, and this module's own upscale
+# step (`stage1_prep`, Lanczos) smears a handful of small (97-274 px)
+# blended-color superpixels along that seam — genuine interpolation noise,
+# not a design feature, but tiny-vs-the-50,000+-px blocks it sits beside is
+# EXACTLY the shape (moderate color gap + extreme size ratio) area-ratio
+# protection is built to catch, so it blocked those slivers from doing the
+# ordinary small-into-large absorb they always used to (with_face went
+# 2 -> 7, a small but real fragmentation regression of the same kind PR #45
+# fixed, just contained to this one edge case instead of systemic). Raw
+# pixel count, not mm² — this module's own resolution floor
+# (`min_px_per_mm`) can already put mm² well above what "clearly noise"
+# means (this fixture's own slivers measure 6-17 mm² at its 4.0 px/mm floor,
+# which would have wrongly exempted them too), where a fixed pixel count set
+# well between the noise slivers (97-274 px here) and every real protected
+# case actually measured (summit_badge's critical small side: 9,980 px; this
+# module's own synthetic regression fixture: ~5,900+ px pre-floor) does not.
+# Below this floor, an edge is judged purely by color (the ordinary/face
+# threshold, whichever applies) exactly as it was before this fix existed.
+AREA_RATIO_MIN_SMALL_PX = 1000
+
 
 def _area_ratio_factor(px_a, px_b) -> float:
     """1.0 (no protection) unless one side is >= `AREA_RATIO_PROTECT_THRESH`
-    times bigger than the other, in which case `AREA_RATIO_MERGE_FACTOR` —
-    see the constants' own docstring above."""
+    times bigger than the other AND the smaller side clears
+    `AREA_RATIO_MIN_SMALL_PX` — see both constants' own docstrings above.
+    Callers must pass "fg pixel count" (real foreground area), never raw
+    "pixel count" — see `_init_fg_pixel_counts`'s own docstring for why node
+    0's mass must never reach this function."""
     if px_a <= 0 or px_b <= 0:
         return 1.0
     big = max(px_a, px_b)
     small = min(px_a, px_b)
-    if big / small >= AREA_RATIO_PROTECT_THRESH:
+    if small >= AREA_RATIO_MIN_SMALL_PX and big / small >= AREA_RATIO_PROTECT_THRESH:
         return AREA_RATIO_MERGE_FACTOR
     return 1.0
+
+
+def _init_fg_pixel_counts(rag) -> None:
+    """Seed every node's "fg pixel count" before any merge runs: node 0's
+    real-foreground area is 0 (it is the aggregate of every EXCLUDED pixel —
+    background and, when present, the enclosed population — deliberately
+    left in the graph per the "SLIC's mask convention" comment in `segment`
+    below, but semantically it is not a design region and must never be
+    treated as one); every other node starts equal to its own real "pixel
+    count". Found the hard way (`test_face_local_threshold_splits_shades_
+    that_merge_outside_a_face`, a synthetic fixture that is mostly excluded
+    canvas around two small foreground blocks): without this split, node 0's
+    huge raw pixel count contaminates whatever real node it eventually
+    merges into, making area-ratio protection fire on legitimate same-color
+    consolidation transitively routed through node 0 and fragmenting a
+    single real region into several — background mass silently posing as
+    foreground mass. `_merge_mean_color` carries "fg pixel count" forward on
+    every merge the same way it already carries "pixel count"; every
+    `_area_ratio_factor` call site below reads "fg pixel count", never the
+    raw one."""
+    for n, d in rag.nodes(data=True):
+        d["fg pixel count"] = 0 if n == 0 else d["pixel count"]
 
 
 def _area_ratio_initial_adjust(rag) -> None:
@@ -287,9 +347,10 @@ def _area_ratio_initial_adjust(rag) -> None:
     `_weight_mean_color` below, which reapplies this same rule on live
     (post-merge) pixel counts. Runs unconditionally (unlike the face drop,
     which only runs when detections exist) — area imbalance is a property of
-    the segmentation itself, not an optional detector output."""
+    the segmentation itself, not an optional detector output. Requires
+    `_init_fg_pixel_counts` to have already run on `rag`."""
     for u, v, d in rag.edges(data=True):
-        factor = _area_ratio_factor(rag.nodes[u]["pixel count"], rag.nodes[v]["pixel count"])
+        factor = _area_ratio_factor(rag.nodes[u]["fg pixel count"], rag.nodes[v]["fg pixel count"])
         if factor != 1.0:
             d["weight"] = float(d["weight"]) / factor
 
@@ -307,7 +368,8 @@ def _weight_mean_color(g, src: int, dst: int, n: int) -> dict:
     # Composes with the face drop above (both are independent local
     # tightenings of the same global threshold): a small region touching a
     # face AND facing an extreme size mismatch gets both factors applied.
-    w /= _area_ratio_factor(g.nodes[dst]["pixel count"], g.nodes[n]["pixel count"])
+    # "fg pixel count", not "pixel count" — see `_init_fg_pixel_counts`.
+    w /= _area_ratio_factor(g.nodes[dst]["fg pixel count"], g.nodes[n]["fg pixel count"])
     return {"weight": w}
 
 
@@ -533,6 +595,11 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None) -> Quant:
         # `AREA_RATIO_PROTECT_THRESH`'s own docstring) — runs unconditionally,
         # unlike the face drop just below, and BEFORE it so a face-adjacent
         # edge that also happens to be extreme-ratio gets both factors.
+        # `_init_fg_pixel_counts` MUST run before `_area_ratio_initial_adjust`
+        # — it seeds the "fg pixel count" attribute that keeps node 0's
+        # (background/excluded) mass from ever counting as protected
+        # foreground area, on this initial pass and every later recompute.
+        _init_fg_pixel_counts(rag)
         _area_ratio_initial_adjust(rag)
         if face_regions:
             # Step 5 — the face-local threshold drop. Only a run that
