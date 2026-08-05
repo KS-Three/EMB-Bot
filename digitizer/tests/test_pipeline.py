@@ -1,6 +1,8 @@
 """End-to-end contract invariants: determinism, palette integrity, ID carry-forward."""
 import copy
 
+import numpy as np
+
 from digitizer_core import PipelineConfig, run_stages
 from digitizer_core.regions import match_shape_ids
 
@@ -159,3 +161,68 @@ def test_full_pipeline_tags_a_text_cluster_on_the_benchmark_subline():
             assert r.meta.get("rescued_small_shape") is True
             assert r.meta.get("text_candidate") is True
             assert isinstance(r.meta.get("text_cluster_stroke_mm"), float)
+
+
+# --- regularization wiring (Step 5) -----------------------------------------
+
+
+def _biggest_cluster_strokes(result):
+    """shape_id -> own-skeleton stroke half-width (mm) for every member of
+    the biggest tagged cluster in a `run_stages` result."""
+    from digitizer_core.textcluster import _stroke_stats_mm
+
+    tagged = [r for r in result.regions if r.meta.get("text_cluster_id")]
+    by_cluster: dict[str, list] = {}
+    for r in tagged:
+        by_cluster.setdefault(r.meta["text_cluster_id"], []).append(r)
+    biggest = max(by_cluster.values(), key=len)
+    return {r.shape_id: _stroke_stats_mm(r) for r in biggest}
+
+
+def test_full_pipeline_regularization_reduces_stroke_width_variance_on_benchmark_subline():
+    """`regularize_text_clusters` is wired into `run_stages` right after
+    `detect_text_clusters` (`pipeline.py`). This is Step 5's acceptance bar,
+    at the full-pipeline level rather than the module in isolation: on the
+    real benchmark fixture, the biggest tagged cluster's members' individual
+    stroke-width variance must be LOWER with regularization wired in than
+    without it — measured from the actual emitted `Region` polygons of two
+    real pipeline runs, not from the unit-level synthetic fixture.
+
+    The "before" run patches `regularize_text_clusters` to a no-op at its
+    `pipeline` call site (rather than reverting the wiring by hand) so it
+    exercises the exact same code path up to that point, including
+    `detect_text_clusters`'s tagging — the only difference between the two
+    runs is whether Step 5's geometry replacement happened. shape_ids are
+    unaffected by that patch (assigned earlier, in `vectorize`), so the two
+    runs' cluster members line up 1:1 by shape_id.
+    """
+    from unittest.mock import patch
+
+    with patch("digitizer_core.pipeline.regularize_text_clusters",
+               lambda regions, p: None):
+        before_result = run_stages(TESTDATA / "photo" / "enthusiast_logo.png",
+                                    cfg(target_width_mm=90.0))
+    after_result = run_stages(TESTDATA / "photo" / "enthusiast_logo.png",
+                               cfg(target_width_mm=90.0))
+
+    before = _biggest_cluster_strokes(before_result)
+    after = _biggest_cluster_strokes(after_result)
+
+    shared_ids = set(before) & set(after)
+    assert len(shared_ids) >= 10, (
+        "the two runs' biggest clusters must line up on (most of) the same "
+        f"shape_ids: before={sorted(before)}, after={sorted(after)}"
+    )
+
+    before_vals = [before[sid] for sid in shared_ids]
+    after_vals = [after[sid] for sid in shared_ids]
+    assert all(v is not None for v in before_vals)
+    assert all(v is not None for v in after_vals)
+
+    before_var = float(np.var(before_vals))
+    after_var = float(np.var(after_vals))
+    assert after_var < before_var, (
+        f"regularization must reduce stroke-width variance on the real "
+        f"fixture: before={before_vals} (var={before_var:.6g}), "
+        f"after={after_vals} (var={after_var:.6g})"
+    )
