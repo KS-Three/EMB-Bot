@@ -51,8 +51,125 @@ the boundary-edit contract plus `outlineFull`/`boundaryIssues` coverage),
 `app/` commit `ac11163`. Engine `node --test` untouched by this slice, not
 re-run.
 
-Prior update below, 2026-08-04, latest — a large batch landed since the prior
-entry below: **CI now exists** (Kent added a stock GitHub Actions conda
+Prior update below, 2026-08-04, latest still — three more PRs landed on top of
+the prior entry's CI + photo-plan-closeout wave, closing the last open
+photo-plan row and fixing a real region-fragmentation defect on busy gradient
+art. **PR #43** (`background-removal-rembg`, merged `7d07aea`) wires
+`remove_background_seam` for real: it shells out to an isolated venv
+(`digitizer/rembg_isolated/`, not committed — see its own README) running
+`digitizer_core/rembg_worker.py` as a standalone subprocess, sidestepping the
+`numba`-vs-`numpy==2.5.1` conflict the prior pass's probe doc flagged rather
+than touching the shared venv's pin. Gated behind a new
+`cfg.photo_prep_background_removal` flag layered on top of the existing
+`photo_prep` gate; missing venv, worker crash, timeout, or bad output all
+degrade to the documented no-op (`PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE`),
+mirroring the YuNet face-priors fallback pattern. Verified end-to-end in that
+PR's own worktree: a real isolated venv built from
+`digitizer/rembg_isolated/requirements.txt`, a real cutout on
+`skimage.data.astronaut()` through the actual subprocess, and the graceful
+fallback in both its environment and runtime failure forms (`tests/
+test_background_removal.py`, 350 lines). **This closes photo plan row 1, the
+last row this doc was still tracking as open — rows 0–15 are now all built.**
+**PR #44** (`delete-standalone-html`, merged `ad4bf52`) deleted
+`EMB-Bot-standalone.html` (6,339 lines) and updated every live doc that
+pointed at it (COOKBOOK.md, README.md, this file, `.claude/skills/
+run-emb-bot/SKILL.md`, `.claude/agents/emb-bot-reviewer.md`); `tools/
+bundle.mjs` is fully dead code now, left in place but not wired to anything.
+Re-checked this pass: no live doc still references the file — the only
+remaining mentions are in dated planning/spec/audit docs
+(`docs/superpowers/plans/2026-07-22-emb-bot.md`,
+`docs/superpowers/plans/2026-07-27-font-editing-abilities.md`,
+`docs/superpowers/specs/2026-07-27-font-library-expansion-design.md`,
+`docs/font-license-audit-2026-07-31.md`) describing the state at the time
+they were written, which is the same "kept as written for the historical
+record" convention `docs/font-license-audit-2026-07-31.md` itself already
+uses elsewhere — not a gap. **PR #45** (`gradient-fragmentation-fix`, merged
+`fc40d53`, 4 commits) fixes a real region-COUNT fragmentation defect distinct
+from the angle-fragmentation one closed 2026-08-03 (below): busy gradient art
+was fragmenting into ~10x the photo plan's own 20–80-region accept band under
+plain k-means (`drone_render.png` measured ~208 final regions). Fix:
+`gradient`-classified designs now dispatch through `stage2_photo_segment`
+(SLIC+RAG) instead of `stage2_quantize`, same as the photo classes, plus
+`MERGE_DELTAE00_THRESH` retuned `10.0` → `20.0` (with `FACE_MERGE_FACTOR`
+`0.5` → `0.25` in the same commit so the face-local absolute merge tolerance
+stays decoupled from the retune). Landing this exposed two more real bugs,
+both fixed same-PR: `stage2_photo_segment` didn't separate
+`BACKGROUND_ENCLOSED` pixels from the main population the way
+`stage2_quantize` always has (measured: 0 of 3 enclosed regions survived
+their own tag on `repro_gradient_white_icon.png` before the fix), and the
+`PHOTO_SEGMENT_REGION_COUNT` warning was reporting thread-colour count under
+a message claiming region count. A new `CLASS_OVERRIDE_TECHNIQUE_MISMATCH`
+preflight guard and a `stage6_blend` follow-up (widening `blend_fill`'s
+shared-angle preference to fragments whose own fit reads "radial" by chance,
+an interaction the routing switch exposed) round out the 4-commit PR.
+**Region-count honesty note, checked directly against the regression tests'
+own docstrings rather than taken from the commit message alone
+(`tests/test_stage2_photo_segment.py`):** the 20–80 accept-band claim is
+validated on exactly **two** real busy fixtures, `drone_render.png` (→65
+regions) and a newly-built `summit_badge.png` (→30) — not a broader corpus
+sweep. That is real, independently-checked evidence, not nothing, but it is
+narrower than "fixed, full stop" would imply; re-verified this pass that a
+third fixture, `repro_gradient_white_icon.png` (the *angle*-fragmentation
+fix's own repro case), still produces exactly 23 regions after PR #45's
+routing switch — same count as before, now via SLIC+RAG instead of k-means,
+which is expected (that fixture's own fragmentation was never the
+region-count defect PR #45 targets) but is worth stating plainly rather than
+implying the routing change uniformly shrinks region counts everywhere.
+Fragment count and radial-ramp angle sharing remain non-goals of the
+*angle*-fragmentation fix specifically, unchanged from the entry below.
+
+Fresh full suite run this pass (this worktree, HEAD `fc40d53`): digitizer
+`cd digitizer && .venv/bin/python -m pytest tests/ -q` — **688 passed / 3
+failed / 3 skipped** — the same three long-standing container-environment
+goldens this doc has cited every pass since 2026-08-03
+(`test_flat_lane_byte_identical[logo_alpha.png]`,
+`test_pushcomp[logo_whitebg.png-towel]`,
+`test_stage2_photo_segment[logo_alpha.png]`), not new regressions; engine
+`node --test` re-run this pass too — **267/267**, unaffected (no `src/`
+change survived this pass — see below). Studio (`vitest`) was **not**
+re-run this pass, since nothing in `app/` changed across PRs #43–45; carrying
+forward the prior entry's **348/348** (25 files) rather than re-asserting an
+unverified number.
+
+**Two corpus-law fixes evaluated this pass and reverted, not landed —
+recorded here because they touched code before being backed out, not just
+considered.** `docs/corpus-laws-round3-2026-08-01.md` law 26 (fabric preset
+`fill_underlay` `edge_lattice` → `edge_run` for `pique_knit`/`jersey_tee`)
+and law 23 (satin structural zigzag underlay pitch/width correction) are
+both tagged "desk-safe" in that doc, and the corpus evidence behind each
+looks solid on its own terms. But actually applying either one and running
+the suite (not just reading the doc) showed a materially bigger blast radius
+than "desk-safe" implies here: `pique_knit` is the default fabric for
+untagged designs and for `left_chest`, so changing its fill underlay moved
+**8 of the digitizer's hard byte-identical golden assertions across three
+test files** (`test_flat_lane_byte_identical.py`, `test_stage2_photo_
+segment.py`, `test_pushcomp.py`) that explicitly instruct "if this test ever
+goes red, the change under review is wrong — not this test," and — more
+consequentially — dropped `test_preflight.py`'s measured `coverage_p50` from
+1.2 to 1.0 on the benchmark logo and silenced the `STABILIZER_CUTAWAY`
+finding entirely on the constructed 26.7k-stitch heavy-design case: a real
+behaviour change in a customer-facing warning, not a cosmetic hash diff. Law
+23's zigzag correction, even scoped to a brand-new satin-only constant to
+avoid also perturbing fill's unrelated crosshatch-lattice underlay style,
+still auto-applies to every satin column over `SATIN_ZIGZAG_ABOVE_MM` via
+`stage6_satin`'s existing width-based zigzag-promotion rule regardless of
+fabric — so it moved the same preflight coverage/stabilizer numbers again,
+independently confirmed by reverting law 26 alone and re-running. Both
+changes were fully reverted (verified back to the exact 3-known-failure
+baseline via a clean pytest run) rather than landed with a "fix the
+preflight calibration too" scope-creep, since that calibration is itself
+descriptively tuned to today's shipped geometry (`machine.py`'s coverage-
+budget comments: "checked against what our own output actually produces")
+and re-deriving it is its own project, not a desk-safe follow-on to a fabric
+tweak. Two smaller items from the same review pass — law 19's stale
+interleave-hedge comment on `machine.FILL_ROW_MM` and law 40's stale
+"UNMEASURED" comment on `machine.BORDER_SEAM_OFFSET_MM` — WERE comment-only
+and are landed (`digitizer_core/machine.py`, `digitizer_core/
+stage6_border.py`); no constant moved, verified by the same clean pytest run
+before and after.
+
+Prior update below, 2026-08-04, still earlier the same day — a large batch
+landed: **CI now exists** (Kent added a stock GitHub Actions conda
 workflow, first run failed on wrong Python/no environment.yml; rewritten in
 **PR #37** to run this repo's real suites — engine `node --test`, Studio
 `vitest`, digitizer `pytest` with the 3 known container goldens deselected —
@@ -319,9 +436,14 @@ spools now resolve to 5 one-family browns, max excess 2.34 ΔE00. The
 eyes/skin/subject/background multipliers are wired and test-proven — **the
 eyes/skin half is no longer a flat 1.0 placeholder**: PR #41 (below) wired
 real face priors, so a detected face's eye/skin regions now receive their
-documented class multipliers; subject/background remain 1.0 pending the
-rembg background-removal seam (row 1, still open — see the "Last updated"
-note above). Flat/gradient lanes untouched
+documented class multipliers; subject/background remain 1.0. **Row 1 (rembg
+background removal) itself is now built, PR #43 — see the "Last updated"
+note above — but that does NOT by itself close this multiplier gap:**
+re-checked directly this pass, `stage2_photo_segment._region_classes`'s own
+docstring still says "subject"/"background" remain a documented seam
+awaiting their own wiring into `palette.region_class`, separate from
+`remove_background_seam` existing. Don't conflate the two — one is closed,
+the other is a distinct follow-on not attempted by PR #43. Flat/gradient lanes untouched
 (byte-identical goldens re-verified). Row 14 (sequencing + underlay
 deltas) landed the same pass: photo-classified designs (or
 `cfg.extra["photo_sequencing"]` opt-in) sew depth-sorted —
@@ -357,18 +479,18 @@ row 11's detail block. Row 15 (preflight guardrails) grew a `FACE_TOO_SMALL`
 guard this pass (a detected face in a design that only fits a 4×4in hoop
 blocks with a size-up-to-5×7 suggestion) alongside the guards already
 landed in the prior preflight pass (low px/mm, low subject/background
-contrast, heavy stabilizer estimate, many color stops). Photo plan status
-as of this pass: **rows 0, 2–15 are all built**; row 1 (rembg background
-removal) is the one row still open — see the "Last updated" note above for
-why.
+contrast, heavy stabilizer estimate, many color stops). **Photo plan status
+as of this pass: rows 0–15 are all built** — row 1 (rembg background
+removal), the last one this doc was tracking as open, closed via PR #43 (see
+the "Last updated" note above for the isolated-venv mechanism and its own
+still-open follow-on, the palette subject/background class-weight seam).
 
 **Confidence: Low** beyond flat spot-color art. Flat-logo digitizing (both
-implementations) is Medium — **267/267** JS tests and **654/658** Python
-tests pass (fresh run this session against `origin/main` at `354f075`; see
-the "Last updated" note above — the 3 failures are the same long-standing
-container-environment goldens this doc has cited every pass since
-2026-08-03, not new regressions; the 4th non-pass count is the fixture
-harness's own intentional skip), and the geometry is internally
+implementations) is Medium — **267/267** JS tests and **688/694** Python
+tests pass (fresh run this pass at HEAD `fc40d53`; see the "Last updated"
+note above — the 3 failures are the same long-standing container-environment
+goldens this doc has cited every pass since 2026-08-03, not new regressions;
+the 3 skips are pre-existing, not new), and the geometry is internally
 consistent — independent geometry/behavior audits (fresh measurement from
 raw pipeline output, not the shipped tests' own assertions) have now run
 against the sketch tier and the face-priors wiring specifically, on top of
@@ -423,9 +545,35 @@ is now fixed (see below), four remain open:
   lightness slope; b* carries it at r2 0.45), threaded into both the
   fallback and the true-ramp branch. Verified against the repro fixture end
   to end: every fragment's fill rows now land within 0.55° of each other,
-  vs. up to 64° apart before. Fragment COUNT (still 23) and radial-ramp
-  angle sharing remain explicit, documented non-goals of this fix. Full
+  vs. up to 64° apart before. Fragment COUNT (still 23 on this specific
+  repro fixture, `repro_gradient_white_icon.png`) and radial-ramp angle
+  sharing were explicit, documented non-goals of THIS fix specifically. Full
   writeup: the plan doc's "Defect 1 update" section.
+
+  **A separate, more severe region-COUNT fragmentation defect on busy
+  gradient art — FIXED, PR #45 (`gradient-fragmentation-fix`, merged
+  `fc40d53`).** Distinct from the angle defect above: plain k-means was
+  fragmenting busy multi-region gradient art (`drone_render.png`) into
+  ~208 final regions, ~10x the photo plan's own 20–80-region accept band.
+  Fix: `gradient`-classified designs now dispatch through
+  `stage2_photo_segment` (SLIC+RAG) instead of `stage2_quantize`, same as
+  the photo classes, plus `MERGE_DELTAE00_THRESH` retuned `10.0` → `20.0`.
+  Landing it exposed and fixed two more bugs same-PR: `stage2_photo_segment`
+  wasn't separating `BACKGROUND_ENCLOSED` pixels from the main population
+  the way `stage2_quantize` always has (0 of 3 enclosed regions survived
+  their own tag on `repro_gradient_white_icon.png` before the fix — now
+  fixed by giving `segment` the same population split `quantize` uses), and
+  the `PHOTO_SEGMENT_REGION_COUNT` warning was reporting thread-colour count
+  under a message claiming region count. **Validation caveat, worth stating
+  plainly rather than calling this unconditionally clean:** the 20–80
+  accept-band claim rests on exactly two real busy fixtures,
+  `drone_render.png` (→65 regions) and a newly-built `summit_badge.png`
+  (→30) — real, independently-checked evidence, but not a corpus sweep.
+  Confirmed this pass that `repro_gradient_white_icon.png` (the angle-fix's
+  own repro case, noted above) still lands at 23 regions after this
+  routing change — an unaffected case, not a counterexample, but a reminder
+  the fix's real-world coverage is two fixtures deep, not universal. See
+  the "Last updated" note above for the full commit breakdown.
 
   **`BACKGROUND_ENCLOSED` (enclosed-white-icon drop) — the full stack is now
   BUILT and merged to `main`**, closing out the design pass this section
@@ -523,11 +671,13 @@ Every claim about visual/sew quality beyond internal geometry checks is
 **pending sew-out** — see the cross-cutting item above.
 
 **Next step:** the chaining fix, the gradient angle-fragmentation fix, the
-full `BACKGROUND_ENCLOSED` stack (including the opaque-alpha fix, PR #22),
-and the contour bare-core shrink (PR #27) are all landed. What's left to
-close this out: watch the opaque-alpha fix run through the actual Studio
-browser UI once (verified so far only at the HTTP level — see the caveat
-note above), then schedule the first sew-out session. M0 of the DT-first
+gradient region-count fragmentation fix (PR #45, above — two-fixture
+validation caveat noted there), the full `BACKGROUND_ENCLOSED` stack
+(including the opaque-alpha fix, PR #22), and the contour bare-core shrink
+(PR #27) are all landed. What's left to close this out: watch the
+opaque-alpha fix run through the actual Studio browser UI once (verified so
+far only at the HTTP level — see the caveat note above), then schedule the
+first sew-out session. M0 of the DT-first
 migration is measured (see the satin/fill classifier item above) — corpus
 leg still pending a local run (`scratch_corpus/` is gitignored and
 confirmed empty in this checkout). **M1 (`ShapeField` hoist) is already
@@ -550,15 +700,15 @@ field row 6, scan-line row 8, meander row 9, streamline row 10 in both its
 mono and layered slices) are now merged — none remain open. Since then,
 rows 11 (FDoG detail), 12 (sketch tier), 13 (palette), 14 (depth sequencing),
 a 15 subset (preflight guards), and the face-priors half of row 2 (YuNet)
-have all landed too — **row 1 (rembg background removal) is now the only
-open photo-plan row**, blocked on a real dependency conflict (`numba`
-requires `numpy<2.5`, this repo pins `numpy==2.5.1` for reasons unrelated to
-photo work) rather than a licensing or install-path problem; the probe doc
-(`docs/photo-prep-deps-probe-2026-08-04.md`) confirms rembg itself installs
-and its `isnet-general-use` model downloads cleanly through the proxy. The
-natural next step there is an isolated-subprocess harness (a throwaway venv
-pinned to a compatible numpy, invoked as a subprocess from the main
-pipeline) rather than touching the shared venv's numpy pin. CI now gates
+have all landed too, and **row 1 (rembg background removal), the row this
+doc tracked longest as open, closed via PR #43** — exactly the
+isolated-subprocess-harness path this paragraph used to propose as the
+natural next step: a throwaway venv (`digitizer/rembg_isolated/`, not
+committed) pinned to a compatible numpy, invoked as a subprocess from the
+main pipeline, sidestepping the `numba`-vs-`numpy==2.5.1` conflict rather
+than touching the shared venv's pin. **All 16 photo-plan rows (0–15) are now
+built.** The palette subject/background class-weight seam this closure does
+NOT resolve is noted above, where it's discussed. CI now gates
 every merge (`.github/workflows/python-package-conda.yml`, PR #37) — three
 jobs (engine/studio/digitizer), the digitizer job deselecting the same 3
 known container goldens this doc has always excluded from its own counts.
