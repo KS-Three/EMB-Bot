@@ -258,6 +258,7 @@
         on:elupdate={(e) => d("elupdate", e.detail)}
         on:checkservice={() => d("checkservice")}
         on:converttotext={(e) => d("converttotext", e.detail)}
+        on:removeelement={(e) => d("removeelement", e.detail)}
       />
     {:else if el.type === "image"}
       <ImagePanel
