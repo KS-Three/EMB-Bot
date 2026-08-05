@@ -11,10 +11,47 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-05 — corpus laws 23 and 26 landed for real this
-pass, closing out the reverted attempt this doc has carried since the last
-entry (see that entry's UPDATE note, area 1, for the historical account of
-why the first attempt was backed out). Law 26: `fabrics.py`'s `pique_knit`/
+**Last updated:** 2026-08-05 — text-cluster detection + a regularized
+lettering fallback landed across two PRs, #63 (merged: `textcluster.py`'s
+geometry-only detection of text-like clusters among rescued small shapes,
+pipeline wiring, the service's read-only `text_candidate`/`text_cluster_id`
+review fields, geometric regularization via a skeleton-buffer redraw at each
+cluster's shared median stroke width, and the Studio side — a "looks like
+text" badge, a per-cluster "Convert to text" action, and undo) and #64
+(open at time of writing: a real Playwright e2e run against the live
+service, which caught and fixed a genuine bug, not a test mistake —
+`ContentStep.svelte` forwarded `DigitizePanel`'s `converttotext` event up to
+`App.svelte` but never wired the same forwarding for `removeelement`, so
+undo silently never removed the created text element; fixed with the
+missing one-line forward). No OCR anywhere in this slice — detection is
+pure geometry (proximity, bbox-height and stroke-width similarity via the
+same `ShapeField`/EDT machinery `stage6_satin` already uses), and nothing is
+ever auto-substituted: converting a detected cluster creates a real,
+**empty** text element with no font pre-picked, so a user always supplies
+the actual word and typeface themselves. Full detail in areas 1 and 5 below,
+and spec/plan at `docs/superpowers/specs/2026-08-05-text-cluster-detection-
+design.md` / `docs/superpowers/plans/2026-08-05-text-cluster-detection.md`.
+Verified per-step (not just at the end): digitizer full suite **851 passed,
+3 skipped, 0 failed** (unaffected by the e2e-only PR #64 step, which touches
+no Python source), Studio `vitest` **426/426**, and the new
+`app/e2e/text-cluster-convert.spec.js` passing for real against the live
+service and browser after the `removeelement` fix above. Also verified live
+in a running Studio dev session against the real benchmark fixture
+(`enthusiast_logo.png` at 90mm): the badge/action bar appears over the
+14-shape subline cluster exactly as the Python-side pipeline tests predict.
+
+**Also this pass: the cross-cutting "Evaluation corpus & harness" gap below
+is newly tracked** (not a new capability area — this doc considered and
+explicitly rejected splitting area 1 into separate "image analysis"/"stitch
+planning" areas this same session, since they're pipeline stages of one
+system, not separately shippable products) — see that section for why, and
+for a correction to an external review's claims that this pass's own
+research found inaccurate.
+
+Prior update below, still 2026-08-05: corpus laws 23 and 26 landed for real
+this pass, closing out the reverted attempt this doc has carried since the
+last entry (see that entry's UPDATE note, area 1, for the historical account
+of why the first attempt was backed out). Law 26: `fabrics.py`'s `pique_knit`/
 `jersey_tee` `fill_underlay` moves `edge_lattice` -> `edge_run`, dropping
 the crosshatch pass a fill doesn't need (corpus: 7/507 fills carry a
 lattice underlay). Law 23: satin's own zigzag underlay pitch is no longer
@@ -549,6 +586,64 @@ geometric questions at once — the highest-leverage next action across the
 whole project, whenever Kent's ready to schedule it (his explicit call, not
 something to push for).
 
+### Evaluation corpus & harness — real gap, newly tracked here
+
+**Newly named as its own cross-cutting item this pass, not a newly-discovered
+problem** — every piece of it was already visible, scattered across area 1's
+history as a recurring blocker with no single name: the DT-first satin/fill
+classifier's M2/M3 has been blocked since 2026-08-01 on a 37-file
+`scratch_corpus/` run that no session has ever had local access to
+(gitignored, confirmed empty in every checkout); several corpus-law
+recalibrations (`docs/corpus-laws-round3-2026-08-01.md`) needed careful,
+one-off validation against golden fixtures specifically because there is no
+standing, automated way to score "did this change make the output better or
+worse" outside of manually re-running the digitizer suite and eyeballing a
+handful of fixtures; and the fundamental confidence ceiling this doc has
+always cited — zero physical sew-out testing — is the same root cause
+wearing a different hat: no repeatable, automated quality signal, so every
+serious quality question queues behind either a corpus nobody has, or a
+sew-out that hasn't been scheduled. This is a real, distinct capability gap
+— a labeled corpus plus a scoring harness — not merely a rhetorical
+reframing of the sew-out gap above; landing it would let future classifier/
+quality changes be judged against *something* before either the corpus or a
+sew-out session is available, not instead of them.
+
+**Not promoted to a sixth top-level capability area.** This session
+evaluated and explicitly rejected splitting area 1 ("auto-digitizing
+quality") into separate "image analysis" (raster → regions/colors) and
+"stitch planning" (regions → technique/stitches) areas, which an external
+review of this doc proposed alongside naming this gap. Reasoning: those are
+tightly-coupled pipeline STAGES of one system (`stage0_classify` →
+`stage1_prep`/`stage1_photo_prep` → `stage2_quantize`/`stage2_photo_segment`
+→ `stage3_segment` → `stage4_vectorize` → stages 5–7), not two separately
+shippable products — nearly every feature this doc tracks under area 1
+(this pass's own text-cluster detection included) touches both halves, so
+splitting the tracking would recreate, at the doc level, the exact
+"handoff nobody owns" problem that review raised as a reason to name this
+gap in the first place. A future session should feel free to promote this
+from a cross-cutting note to its own capability area once real work
+actually lands against it (a labeled fixture set, a scoring script/metric),
+per this doc's own convention of tracking status, not aspiration.
+
+**Correcting the record on that same external review, so a future session
+isn't misled by it:** it also claimed color quantization/palette reduction,
+segmentation & vectorization, background removal, and small-detail/minimum-
+feature culling had "no owner" in this project. Checked directly against
+source this pass — all four already exist and are already documented above:
+quantization is `stage2_quantize.py` (k-means + CIEDE2000 thread snapping)
+and `palette.py` (weighted k-medoids chart selection); segmentation/
+vectorization is `stage2_photo_segment.py` (SLIC+RAG)/`stage3_segment.py`/
+`stage4_vectorize.py` — the literal subject of the `BACKGROUND_ENCLOSED` and
+gradient-fragmentation sagas already detailed at length above; background
+removal is `stage1_photo_prep.py`'s `remove_background_seam` (rembg,
+isolated venv, PR #43); small-detail culling is `stage3_segment.py`'s
+`small_shape_rescue` path (rescues a shape as a run stitch instead of
+dropping it — the exact mechanism this pass's own text-cluster detection
+builds on top of). The review's two accurate points — text detection in
+logos being a real gap, and this evaluation-corpus/harness gap — are exactly
+the two reflected in this update: the first is now closed by this pass's own
+feature, the second is captured here.
+
 ---
 
 ## Capability areas
@@ -942,6 +1037,77 @@ closed, per this file's newest "Last updated" entry. CI now gates
 every merge (`.github/workflows/python-package-conda.yml`, PR #37) — three
 jobs (engine/studio/digitizer), the digitizer job deselecting the same 3
 known container goldens this doc has always excluded from its own counts.
+
+**Text-cluster detection + regularized lettering fallback — merged 2026-08-05
+(PR #63, Steps 0–6; PR #64, Step 7).** A real, cited gap the small-shape
+rescue path (above) always had: `stage3_segment.py`'s `small_shape_rescue`
+stops a logo's small lettering (the benchmark subline) from being dropped,
+but treats every glyph as an independent noisy blob — nothing distinguished
+"this is a word" from "this is nine unrelated small shapes," and nothing
+made a detected word's letters share one visual weight. Three new pieces,
+all geometry-only, no OCR:
+
+- **Detection** (`digitizer_core/textcluster.py`, new module):
+  `detect_text_clusters`, a post-vectorization pass (wired into
+  `pipeline.py` right after `tag_enclosed_background`, same "computed fact,
+  before shape edits" ordering) that groups `rescued_small_shape`-flagged
+  Regions (a new `Region.meta` marker this feature added) by proximity,
+  bbox-height similarity, and stroke-width similarity — the last measured
+  via `shapefield.build_shape_field`, a third independent consumer of that
+  module alongside `stage6_satin` and the `shape_lens.py` instrument. A
+  qualifying group (>=3 members; letters come in groups, and this doc's own
+  research found 1–2 similarly-sized nearby shapes far too common a
+  coincidence — e.g. a belt buckle's two rivets — to read as text alone)
+  gets tagged `text_candidate`/`text_cluster_id`/`text_cluster_stroke_mm` in
+  `Region.meta`; an ambiguous group is left untagged entirely (fails open,
+  same "uncertainty resolves to no behavior change" discipline
+  `tag_enclosed_background` already established). Exposed read-only over
+  HTTP (`digitizer_service/app.py`'s `_review_payload`, no `_OVERRIDE_KEYS`
+  entry — same category as `layer`/`enclosed_background`, never
+  client-submitted). Verified against the real benchmark fixture, not just
+  synthetic ones: `enthusiast_logo.png`'s subline at 90mm tags >=10 of its
+  own rescued shape_ids into one cluster.
+- **Regularization** (`textcluster.regularize_text_clusters`, same module,
+  wired immediately after detection): the default, always-on treatment for
+  a tagged cluster — redraws every member's polygon as a fixed-radius
+  buffer around its own skeleton, sized to the cluster's shared median
+  stroke half-width, so a detected-but-unconverted word reads as one
+  consistent line weight instead of nine independently-noisy glyphs. A
+  genuine geometry change (unlike detection's pure tagging), so it fails
+  open onto the ORIGINAL untouched polygon (`text_cluster_regularize_skipped`)
+  whenever the buffered result can't be trusted — too small to sew, an
+  invalid buffer, a degenerate skeleton. **Correction made mid-build, worth
+  recording:** the first design draft assumed a per-shape stitch-width
+  parameter existed to feed a cluster median into; a spike found the run
+  tier's actual generator (`stage6_border.run_outline`) has no such
+  parameter at all — it traces each shape's own polygon ring exactly at
+  fixed global stitch spacing — so the real lever had to be geometric
+  (the skeleton-buffer redraw actually shipped), not a stitch-generation
+  tweak. Branching glyph skeletons (a letter like "E"/"T"/"R" does not
+  reduce to one path) are handled by reusing `stage6_satin`'s own tested
+  skeleton-decomposition machinery (`_skeleton_edges`/
+  `_merge_through_junctions`/`_prune_spurs`, the same tool `extract_strokes`
+  already uses) rather than a narrower non-branching-only scope — verified
+  on the real fixture: 10 of the subline's 14 members have branching
+  skeletons, and all 14 buffer into single valid, sewable polygons.
+  `flat_lane_golden.json` moves for exactly that one fixture, confirmed by
+  structural diff that the other 3 entries are byte-identical.
+- **Studio side (area 5 has the full detail):** a "looks like text" badge
+  and a per-cluster "Convert to text" action that creates a real, empty
+  text element — the user types the actual word and picks a font, nothing
+  is ever auto-filled that could be silently wrong.
+
+Photo/gradient design classes are untouched by construction (this feature
+only acts on `rescued_small_shape`-flagged Regions, a flat-lane-only
+concept); every existing byte-identical golden not involving
+`enthusiast_logo.png` is unaffected. Out of scope, on purpose: general
+shape-primitive recognition (classifying arbitrary shapes as circle/
+rounded-rect/star, for a manual-edit "snap to clean shape" assist or to
+strengthen the satin/fill classifier) — that's the separate, already-
+tracked DT-first classifier thread above (M0/M1 landed, M2/M3 blocked on
+the corpus), not duplicated here. Full detail, including the corrected
+design history: `docs/superpowers/specs/2026-08-05-text-cluster-detection-
+design.md` and `docs/superpowers/plans/2026-08-05-text-cluster-detection.md`.
 
 ---
 
@@ -1405,6 +1571,70 @@ image engineered to survive stage 3's connected-component fusion as two
 separate same-thread regions, or a bridging/convex-hull merge strategy for
 non-adjacent shapes — neither attempted this pass; both are candidates if
 this area's merge feature gets picked up again.
+
+**Convert-to-text (text-cluster detection) — merged 2026-08-05** (PR #63
+Steps 6a/6b, PR #64 Step 7 e2e): a new kind of manual-editing action,
+distinct from every prior one in this area — instead of editing a shape's
+own geometry/style, it REPLACES a whole detected cluster of shapes with a
+different kind of project element entirely (area 1 above has the detection/
+regularization side).
+
+- **`DigitizePanel.svelte`:** a "looks like text" badge per candidate row
+  (honest tooltip: "no character recognition — it can be wrong"), and a
+  per-CLUSTER action bar (one per unique `text_cluster_id` visible, reusing
+  the merge-selection bar's `.dgp-mergebar` markup) rather than a per-row
+  control — deliberately, since a converted cluster's member rows move into
+  this file's existing `unstitched` row branch, which renders no per-row
+  badges or buttons at all; a per-row button would vanish exactly when Undo
+  needs to be reachable.
+- **New coordination logic with no prior precedent in this codebase:**
+  every other override here (`tier`/`border`/`underlay_style`/
+  `boundary_override`/merge/split) edits or replaces state on ONE existing
+  element. "Convert to text" instead creates a brand-new `type: "text"`
+  project element (via a new `addSeededTextElement`, sibling to `addElement`
+  in `project.js`, seeded from the cluster's bbox/color — deliberately with
+  an EMPTY `text` and `fontKey: null`, so nothing is ever auto-filled that
+  could be silently wrong) AND, in the same user action, patches the
+  ORIGINATING digitized element (`stitched: false` per member shape via the
+  existing override plumbing, plus a new `textConversions` map recording
+  which cluster produced which text element — pure Studio-side provenance,
+  never sent to the server, unlike the wire-bound `mergeGroups`/
+  `splitLines`). `App.svelte`'s new `onConvertClusterToText` is the
+  coordination point; a new `converttotext` event carries the seed up from
+  `DigitizePanel` through `ContentStep`, mirroring the existing `addelement`
+  event's bubbling exactly.
+- **Undo** mirrors `undoMerge`/`undoSplit`'s button-swap, with one real
+  difference: merge/split provenance is re-derived from the last APPLIED
+  job's own warnings (because the SERVER executed those edits); a text
+  conversion's provenance lives entirely in `element.textConversions`
+  already, since nothing about it was ever server-executed — no round trip
+  needed to know what to undo.
+- **A real bug the e2e test caught, not a test-authoring mistake:**
+  `ContentStep.svelte` forwarded `DigitizePanel`'s `converttotext` event up
+  to `App.svelte` but never wired the same forwarding for `removeelement`
+  — Svelte component events don't bubble automatically, each parent must
+  forward explicitly. `undoTextConversion` dispatches `removeelement` from
+  inside `DigitizePanel`; with no forward, that event had nowhere to go, so
+  undo silently never removed the created text element (no crash, no
+  error — just a dropped event). Fixed with the missing one-line forward;
+  the real e2e run (against the live service and browser, not a mock)
+  failed before the fix and passed after.
+- **Verification:** `project.spec.js` (3 new tests for the seed-element
+  function), `digitizer.spec.js` (5 new tests for the wire-field mapping and
+  the cluster/seed pure helpers), full Studio suite 426/426 (421 pre-existing
+  + 5 new, baseline re-verified via `git stash` before trusting the delta).
+  `app/e2e/text-cluster-convert.spec.js` (new, sibling to
+  `digitize-boundary-edit.spec.js`) drives the real service end to end:
+  upload the real benchmark fixture → badge appears on >=10 shapes →
+  Convert to text → lands in an empty `TextStep` with no font picked → type
+  real text, pick a font → navigate back → Undo → original shapes resume
+  stitching, text element gone — **run for real, 1 passed**, after the
+  `removeelement` fix above. Also manually verified live via Playwright MCP
+  against a running dev session on the real benchmark fixture, screenshotted.
+- **Out of scope, on purpose:** real character recognition (no OCR anywhere
+  in this feature — the user always supplies the actual word), auto font
+  selection/matching to the source typeface, and any change to the satin/
+  fill classifier.
 
 ---
 
