@@ -106,8 +106,11 @@ export function buildDigitizeConfig(element, project) {
 
 // Closed vocabularies, mirrored from the service's _canonicalize_shape_edits
 // (digitizer_service/app.py). "auto" tier is the absence of an override on
-// both ends.
-const SHAPE_TIERS = new Set(["satin", "fill", "run"]);
+// both ends. "sketch" (contract v1.3) added alongside the tier dropdown's
+// Sketch option in DigitizePanel.svelte — keep both in lockstep with
+// app.py's _TIER_VALUES, or a selected value silently canonicalizes to
+// nothing here and never reaches the wire.
+const SHAPE_TIERS = new Set(["satin", "fill", "run", "sketch"]);
 const SHAPE_BORDERS = new Set(["off", "auto", "bean"]);
 // fabrics.py's own vocabulary, verbatim. Unlike `tier`/`border`, this set has
 // no "auto" member of its own — the absence of the key IS auto (inherit the
