@@ -193,16 +193,38 @@ def test_sew_order_pin_still_wins_within_its_depth_sorted_layer():
 
 
 def test_flat_and_gradient_classes_are_inert_in_sequence():
-    """The design_class switch changes nothing for flat or gradient — those
-    lanes' byte-identity is enforced against committed goldens elsewhere;
-    this pins that the new parameter itself cannot perturb them."""
+    """The design_class switch changes nothing for flat or gradient in the
+    SEQUENCING machinery this file otherwise exists to pin (block order, run
+    order, the underlay split) — those lanes' byte-identity is enforced
+    against committed goldens elsewhere; this pins that the parameter itself
+    cannot perturb that machinery.
+
+    One thing `design_class` now DOES deliberately change, on purpose, is the
+    satin-vs-fill call itself — `stage6_satin.is_satin_candidate`'s DT check
+    (`tests/test_satin.py`) only runs for non-"flat" classes, specifically so
+    a compact, noisy-boundary shape can read differently for "gradient" than
+    for "flat". `_dark_light_regions()` is not used here for exactly that
+    reason: its `DRK` region is a 10x10 square sitting right on
+    `SATIN_MAX_WIDTH_MM`'s cap, which the DT check does correctly reclassify
+    for "gradient" (same reason `test_satin.py`'s `SQUARE 8x8` archetype does)
+    — a real behaviour change, not a bug, and this test's job is to isolate
+    the OTHER machinery from it, not paper over it. The two shapes below are
+    unambiguous either way: `LGT` is an oversized square no rule ever satins,
+    `DRK` is a plain long bar every rule always does.
+    """
     def points(plan):
         return [(b.thread_number, r.kind, r.jump, r.trim, r.points)
                 for b in plan.blocks for r in b.runs]
 
-    flat, _ = plan_for(_dark_light_regions())
-    default, _ = plan_for(_dark_light_regions(), design_class="flat")
-    gradient, _ = plan_for(_dark_light_regions(), design_class="gradient")
+    def regions():
+        return [
+            region(bar(30, 30, cx=-25), "LGT", LIGHT, 0),
+            region(bar(10, 3, cx=25), "DRK", DARK, 1),
+        ]
+
+    flat, _ = plan_for(regions())
+    default, _ = plan_for(regions(), design_class="flat")
+    gradient, _ = plan_for(regions(), design_class="gradient")
     assert points(flat) == points(default) == points(gradient)
 
 

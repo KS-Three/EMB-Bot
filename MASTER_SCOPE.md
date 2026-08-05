@@ -694,16 +694,92 @@ is now fixed (see below), four remain open:
   (`main`'s cap at the time) — it scored worse than the shipped rule there,
   and its "pure tightening, cannot get worse" safety claim was proven
   logically inverted (it can only convert true positives into false
-  negatives, never the reverse, and FN is the expensive error). **Verdict
-  status: STALE, not confirmed or reversed.** An unrelated, later,
-  corpus-driven change moved the shipped cap to 5.0 (already on `main`);
-  re-running the SAME instrument at the new cap flips the result (`VP90`
-  0/21 wrong vs. the shipped rule's 6/21) — but that's the same class of
-  small-synthetic-set evidence 2026-08-02's audit already showed can't be
-  trusted alone. Needs the 37-file `scratch_corpus/` run at today's cap
-  before this verdict can be re-decided either way — see
-  `docs/superpowers/plans/2026-08-04-m0-shape-lens-measurement.md`
-  ("M0" of the DT-first migration).
+  negatives, never the reverse, and FN is the expensive error). A later,
+  unrelated, corpus-driven change moved the shipped cap to 5.0 (already on
+  `main`); re-running the SAME instrument at the new cap flips the result
+  (`VP90` 0/21 wrong vs. the shipped rule's 6/21) — but that alone stayed
+  the same class of small-synthetic-set evidence 2026-08-02's audit already
+  showed can't be trusted alone, so a wholesale swap remained blocked on the
+  37-file `scratch_corpus/` run (gitignored, empty in every checkout) that
+  no session has had access to (`docs/superpowers/plans/
+  2026-08-04-m0-shape-lens-measurement.md`, "M0" of the DT-first migration).
+
+  **A narrower, evidence-scoped slice of this landed instead
+  (`satin-classifier-organic-shapes` branch), not a wholesale swap:**
+  `is_satin_candidate` (`digitizer_core/stage6_satin.py`) gained a
+  `design_class` keyword. For `"flat"` (the default, and every pre-existing
+  caller that doesn't pass one) it is byte-for-byte the original rule —
+  zero behaviour change, so every byte-identical golden
+  (`test_flat_lane_byte_identical.py`'s 4 fixtures, all flat-classified) is
+  untouched by construction, not just by re-verification. For the other
+  three classes (`gradient`, `photo_subject`, `photo_scene` — where
+  segmentation-derived boundary noise, not clean vector art, is what
+  actually produces the misclassification) a second, independent opinion
+  now runs: `_dt_regular_and_within_cap` reads the exact distance transform
+  at the shape's own medial axis (`build_shape_field`, already-merged M1
+  infrastructure) and ANDs two terms — `2*sigma < mu` (uniform thickness)
+  and the 90th-percentile radius under the cap — exactly the spike's own
+  recommended `VP90` arm, a pure tightening (only ever turns a satin call
+  into a fill call, never the reverse). Both call sites that decide the
+  tier (`stage7_sequence.py`'s `sequence`, `stage5_overlap.py`'s
+  `_comp_axis` for the directional-pull-comp path) now thread `design_class`
+  through so the two agree, preserving the existing "compensation must not
+  flip a shape's tier" invariant.
+
+  **Measured, not assumed:** this repo's own two named organic-photo
+  fixtures, run through the real pipeline
+  (`PipelineConfig(target_width_mm=60.0, garment_id="left_chest")`, the
+  preflight `DENSITY_STACKED` repro) — before the fix, `region_blobs.png`
+  **blocked** (`peak_units` 10.02, `over_block_mm2` 76.0) and
+  `summit_badge.png` **warned** (`over_warn_mm2` 247.0); after, **neither
+  raises the finding at all**, not just a severity step down. Confirmed
+  stable across `target_width_mm` 60/80 and `garment_id` left_chest/hat_front
+  (6 combinations, all clear). The specific shapes that flip: `region_blobs.
+  png`'s `Sd12bfc9e`/`S94f29987` (bbox aspect ~1.08/1.09 — near-square, not a
+  ribbon by any honest reading) and `summit_badge.png`'s `Sed818ef7`/
+  `S00d736bf`/`S6096e7a9`, all correctly satin before the fix under
+  `ribbon_width_mm` alone and correctly fill after. As a bonus check (not a
+  target fixture named in this PR, but the same root cause, cross-referenced
+  from the unmerged `digitizer-satin-underlay-cap-fix` branch's own
+  commit messages): `drone_render.png @ 80mm/left_chest`, independently
+  confirmed blocking on this exact unmodified checkout (`peak_units` 17.12,
+  `over_block_mm2` 275.0 — matching that branch's own cited numbers exactly),
+  also clears to no finding at all under this fix — a full resolution where
+  that branch's narrower underlay-pitch mitigation only got it down to a
+  reduced block.
+
+  Full digitizer suite before/after (this exact worktree, not a cited
+  number from elsewhere): **773 passed / 3 failed / 3 skipped** both before
+  and after — the 3 failures are the same long-standing container-
+  environment goldens this doc has cited every pass since 2026-08-03
+  (`test_flat_lane_byte_identical.py[logo_alpha.png]`, `test_pushcomp.py
+  [logo_whitebg.png-towel]`, `test_stage2_photo_segment.py[logo_alpha.png]`),
+  present identically before this change and unrelated to it (a 1-stitch-
+  count drift, not a classification difference). One REAL regression turned
+  up mid-verification and was fixed in the same PR, not silently patched
+  around: `test_photo_sequencing.py::test_flat_and_gradient_classes_are_
+  inert_in_sequence` used a 10x10 square sitting exactly on
+  `SATIN_MAX_WIDTH_MM`'s cap as its "gradient lane is inert" fixture — the
+  DT check correctly reclassifies that shape for `"gradient"` now (the same
+  archetype as `test_satin.py`'s `SQUARE 8x8`), so the test's OWN fixture
+  was silently exercising the exact bug this PR fixes. Rewritten to use
+  shapes unambiguous under both rules, isolating the sequencing-machinery
+  invariant it actually exists to pin from the satin/fill call it no longer
+  should assume is class-independent. New regression coverage:
+  `test_satin.py` (a serrated-disc fixture matching this bullet's own
+  20mm-disc example, swept at three tooth depths, `design_class="flat"`
+  pinned unchanged, four letterform archetypes pinned unaffected) and
+  `test_preflight.py` (`region_blobs.png`/`summit_badge.png` no longer
+  raise `DENSITY_STACKED`, read from the real pipeline, not a mock).
+
+  **What this does NOT resolve:** the DT-first migration's M2/M3 (a full
+  classifier swap, corpus-gated) is untouched and still blocked on the same
+  37-file `scratch_corpus/` run — this PR is deliberately narrower, scoped
+  to the one slice (non-flat design classes only) where the evidence is
+  strong enough to land without that corpus: zero flat-lane byte-identical
+  risk by construction, a pure-tightening DT term identical to the spike's
+  own vetted recommendation, and direct measurement against this repo's own
+  committed fixtures rather than a synthetic population alone.
 - **Fill row spacing (law 19)** — unresolved two-population finding: the
   0.20mm figure is a satin-rail artifact for one file population (refuted)
   but looks like a genuine denser pitch on 43 commissioned cap logos (still
