@@ -384,7 +384,16 @@
       if (!sameThread) colors.push({ r: r.rgb[0], g: r.rgb[1], b: r.rgb[2], name: "Color " + (colors.length + 1) });
       // shapes: [{outer, holes}] (hole-aware) — or bare polygons for back-compat
       const shapesRaw = r.shapes || r.polygons.map((p) => ({ outer: p, holes: [] }));
-      const shapes0 = shapesRaw.filter((s) => s && s.outer && s.outer.length >= 4);
+      // Minimum vertex count for a real closed polygon is 3 (a triangle), not
+      // 4 — every other module downstream (geometry.js, satin.js) already
+      // uses `< 3` as ITS reject threshold. This floor only ever mattered as
+      // a defensive "not obviously garbage" check: raster-traced regions and
+      // font-glyph outlines never produce exactly-3-point rings in practice,
+      // so relaxing 4->3 changes nothing for Image/Text mode (whose real
+      // shapes are unaffected either way) while fixing a real gap for manual
+      // digitizing mode, where a plain user-drawn triangle IS exactly 3
+      // points and was previously silently dropped to zero stitches here.
+      const shapes0 = shapesRaw.filter((s) => s && s.outer && s.outer.length >= 3);
       // Resolve a fixed per-color angle override (degrees) if the caller set one.
       // region.angleOverride wins; else opts.angleOverrides[originalIndex]. A
       // finite number forces every shape in this color; null/absent → per-shape.
@@ -395,7 +404,7 @@
       const shapes = orderShapes(shapes0, lastPx);
       for (const shape of shapes) {
         const poly = shape.outer;
-        if (!poly || poly.length < 4) continue;
+        if (!poly || poly.length < 3) continue; // see the shapes0 filter's comment above
         const holes = (shape.holes || []).filter((hh) => hh && hh.length >= 4);
         const outerArea = polyArea(poly), holeArea = holes.reduce((a, hh) => a + polyArea(hh), 0);
         const area = Math.max(0, outerArea - holeArea), perim = polyPerim(poly) + holes.reduce((a, hh) => a + polyPerim(hh), 0);

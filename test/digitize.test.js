@@ -95,6 +95,20 @@ test("buildQualityDesign: shape.tierOverride='satin' still falls back to fill wh
   assert.strictEqual(d._debug.nFill, 1);
 });
 
+test("buildQualityDesign: a bare 3-point triangle (manual digitizing mode's simplest shape) sews real stitches, not zero", () => {
+  // Regression: buildQualityDesign used to require outer.length >= 4, which
+  // real Image/Text-mode geometry always satisfies (raster traces and font
+  // glyphs never emit an exactly-3-point ring) but silently zeroed out any
+  // manually-drawn triangle — a perfectly valid, minimal closed polygon.
+  const tri = [{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 100, y: 200 }];
+  const d = DG.buildQualityDesign(
+    [{ rgb: [0, 0, 0], shapes: [{ outer: tri, holes: [], tierOverride: "fill" }] }],
+    { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 6, densityMm: 0.4, underlay: false }
+  );
+  assert.ok(d.stitchCount > 20, "a 3-point polygon must still generate real fill stitches: " + d.stitchCount);
+  assert.strictEqual(d._debug.nFill, 1);
+});
+
 test("buildQualityDesign: an unrecognized/absent tierOverride is a no-op (auto classification unchanged)", () => {
   const bar = [{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 200, y: 8 }, { x: 0, y: 8 }];
   const base = { garment: { widthIn: 1, heightIn: 1 }, pxPerMm: 8, densityMm: 0.4, underlay: false, satinMaxWidthMm: 3 };
