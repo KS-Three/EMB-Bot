@@ -32,6 +32,25 @@
   let capHint = false;
   let capHintTimer = null;
 
+  // ---- Vertex editing for a finished shape ------------------------------
+  // A selected finished shape can be dropped into "edit points" mode: drag
+  // an existing vertex to a new spot, and the released position is
+  // re-validated through the same shapeIssues() the draft-drawing flow
+  // already uses before it's ever written back — same "drag, then patch on
+  // release" shape DigitizePanel.svelte's boundary editor established
+  // (see its startEditDrag/onEditPointerMove/editingId/editPoints/dragIndex),
+  // reimplemented fresh here against this component's single <canvas>
+  // (hit-testing a click by distance to each point) rather than
+  // DigitizePanel's per-vertex SVG elements. A drag that leaves the shape
+  // self-intersecting/degenerate is never patched through — editPoints stays
+  // local-only and editIssues (below) surfaces the same rejection text
+  // draftIssues does, so the user sees why and can keep adjusting instead of
+  // having the edit silently dropped.
+  const VERTEX_HIT_R = 8; // canvas-px radius for "this click/drag is on that vertex"
+  let editingId = null;
+  let editPoints = [];
+  let dragIndex = null;
+
   $: shapes = element.shapes || [];
   $: selectedShape = shapes.find((s) => s.id === selectedShapeId) || null;
   // Only surface issues once there are enough points for them to be
@@ -41,6 +60,10 @@
   // problem to report.
   $: draftIssues = draft.length >= 3 ? shapeIssues(draft) : [];
   $: canFinish = draft.length >= 3 && draftIssues.length === 0;
+  // Same "only surface once meaningful" reasoning as draftIssues — computed
+  // continuously (not just after a drag ends) so a mid-drag self-intersect
+  // shows up live, the same way the draft-drawing flow already behaves.
+  $: editIssues = editingId ? shapeIssues(editPoints) : [];
 
   function nextShapeId(list) {
     let max = 0;
@@ -73,6 +96,10 @@
   }
 
   function onCanvasClick(e) {
+    // Vertex-edit mode owns the canvas's pointer gestures (drag-to-move via
+    // onCanvasPointerDown/Move/Up below) — a plain click while editing
+    // shouldn't also drop a new draft point.
+    if (editingId) return;
     const pt = canvasPointFromEvent(e);
     if (draft.length >= 2 && isNearStart(draft, pt.x, pt.y)) {
       finishShape();
@@ -95,6 +122,7 @@
   // drops it before this handler ever runs — nothing extra to undo here,
   // just finish with whatever's in the draft.
   function onCanvasDblClick() {
+    if (editingId) return;
     finishShape();
   }
 
@@ -106,16 +134,95 @@
   }
 
   function selectShape(id) {
+    // Switching (or clearing) the selection always drops any in-progress
+    // vertex edit — editPoints is local-only UI state tied to one shape, and
+    // there's no "still editing shape A while shape B is selected" state
+    // this component means to support.
+    stopShapeEdit();
     selectedShapeId = selectedShapeId === id ? null : id;
   }
 
   function deleteShape(id) {
+    if (editingId === id) stopShapeEdit();
     patch({ shapes: shapes.filter((s) => s.id !== id) });
     if (selectedShapeId === id) selectedShapeId = null;
   }
 
   function updateShape(id, p) {
     patch({ shapes: shapes.map((s) => (s.id === id ? { ...s, ...p } : s)) });
+  }
+
+  // ---- Vertex editing ----------------------------------------------------
+  function startShapeEdit(id) {
+    const shape = shapes.find((s) => s.id === id);
+    if (!shape) return;
+    editingId = id;
+    editPoints = shape.points.map((p) => ({ ...p }));
+    dragIndex = null;
+  }
+
+  function stopShapeEdit() {
+    editingId = null;
+    editPoints = [];
+    dragIndex = null;
+  }
+
+  // Nearest vertex within VERTEX_HIT_R of (x, y), or -1 — this component's
+  // canvas-hit-testing stand-in for DigitizePanel's per-vertex SVG elements
+  // (each of which gets its own pointerdown handler there; here there's one
+  // canvas, so the hit test does the same job by distance).
+  function hitTestVertex(points, x, y) {
+    let best = -1;
+    let bestD = VERTEX_HIT_R;
+    for (let i = 0; i < points.length; i++) {
+      const d = Math.hypot(points[i].x - x, points[i].y - y);
+      if (d <= bestD) {
+        bestD = d;
+        best = i;
+      }
+    }
+    return best;
+  }
+
+  function onCanvasPointerDown(e) {
+    if (!editingId) return;
+    const pt = canvasPointFromEvent(e);
+    const idx = hitTestVertex(editPoints, pt.x, pt.y);
+    if (idx === -1) return;
+    e.preventDefault();
+    dragIndex = idx;
+    try {
+      canvasEl.setPointerCapture(e.pointerId);
+    } catch (err) {
+      // Pointer capture is unavailable in some test/embedded environments
+      // (DigitizePanel's startEditDrag notes the same) — dragging still
+      // works off plain pointermove, just less robustly past the canvas
+      // edge.
+    }
+  }
+
+  function onCanvasPointerMove(e) {
+    if (dragIndex == null) return;
+    editPoints[dragIndex] = canvasPointFromEvent(e);
+    editPoints = editPoints;
+  }
+
+  // "Drag, then patch on release": the moved vertex only reaches
+  // element.shapes (via updateShape) if the resulting polygon is still
+  // valid — an invalid drag leaves editPoints (and its live editIssues
+  // message) as the only trace, exactly like a draft that hasn't been
+  // finished yet.
+  function endVertexDrag(e) {
+    if (dragIndex == null) return;
+    dragIndex = null;
+    if (editingId && shapeIssues(editPoints).length === 0) {
+      updateShape(editingId, { points: editPoints.map((p) => ({ ...p })) });
+    }
+    try {
+      canvasEl.releasePointerCapture(e.pointerId);
+    } catch (err) {
+      // See onCanvasPointerDown.
+    }
   }
 
   function onAngleInput(e) {
@@ -127,6 +234,49 @@
 
   function summary(shape) {
     return `Shape ${shape.id.replace(/^s/, "")} · ${shape.stitchType === "satin" ? "Satin" : "Fill"}`;
+  }
+
+  // ---- Keyboard shortcuts ------------------------------------------------
+  // Scoped to specific interactive elements — the canvas (tabindex +
+  // on:keydown below) AND the shape-row/delete buttons (selecting a shape
+  // by clicking its row moves DOM focus there, not to the canvas, so Delete
+  // needs somewhere to fire from right after that click too) — same
+  // "attach to a specific interactive element, not window" convention
+  // DigitizePanel's onEditVertexKeydown uses for its per-vertex handles,
+  // rather than a global window listener that would fire regardless of
+  // which panel/element is on screen.
+  //   Escape  — exit vertex-edit mode if active, else cancel the draft.
+  //   Enter   — finish the draft (only once canFinish agrees it's sewable).
+  //   Delete/
+  //   Backspace — delete the selected finished shape, but ONLY when no
+  //     draft is in progress and no vertex edit is in progress: a draft or
+  //     an in-progress edit is unrelated state the user is actively
+  //     building, and Delete's job here is never to reach past that and
+  //     nuke a different, already-finished shape by surprise.
+  function onCanvasKeydown(e) {
+    if (e.key === "Escape") {
+      if (editingId) {
+        stopShapeEdit();
+        e.preventDefault();
+      } else if (draft.length) {
+        clearDraft();
+        e.preventDefault();
+      }
+      return;
+    }
+    if (e.key === "Enter") {
+      if (canFinish) {
+        finishShape();
+        e.preventDefault();
+      }
+      return;
+    }
+    if (e.key === "Delete" || e.key === "Backspace") {
+      if (selectedShapeId && draft.length === 0 && !editingId) {
+        deleteShape(selectedShapeId);
+        e.preventDefault();
+      }
+    }
   }
 
   // ---- Drawing ---------------------------------------------------------
@@ -145,7 +295,7 @@
     ctx.stroke();
   }
 
-  function render(canvas, shapeList, draftPts, selectedId) {
+  function render(canvas, shapeList, draftPts, selectedId, editId, editPts, editValid) {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -153,23 +303,43 @@
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     for (const s of shapeList) {
-      if (!isValidShape(s.points)) continue;
+      const editing = s.id === editId;
+      // The shape being edited draws from the LIVE (possibly momentarily
+      // invalid, mid-drag) editPts instead of its last-persisted points —
+      // everything else still only draws once it's a real polygon.
+      const pts = editing ? editPts : s.points;
+      if (!editing && !isValidShape(pts)) continue;
       const [r, g, b] = s.colorRgb || [20, 20, 20];
       const isSel = s.id === selectedId;
+      const invalid = editing && !editValid;
       drawPolygon(
-        ctx, s.points,
-        `rgba(${r},${g},${b},0.55)`,
-        isSel ? "#4f46e5" : `rgb(${r},${g},${b})`,
-        isSel ? 3 : 1.5
+        ctx, pts,
+        invalid ? "rgba(192,57,43,0.25)" : `rgba(${r},${g},${b},0.55)`,
+        invalid ? "#c0392b" : (isSel ? "#4f46e5" : `rgb(${r},${g},${b})`),
+        isSel || editing ? 3 : 1.5
       );
-      // Stitch-type label at the shape's centroid.
-      let cx = 0, cy = 0;
-      for (const p of s.points) { cx += p.x; cy += p.y; }
-      cx /= s.points.length; cy /= s.points.length;
-      ctx.fillStyle = "#111";
-      ctx.font = "11px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(s.stitchType === "satin" ? "SATIN" : "FILL", cx, cy);
+      if (editing) {
+        // Draggable vertex handles instead of the centroid label — this IS
+        // the "edit points" affordance.
+        for (const p of pts) {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+          ctx.fillStyle = "#fff";
+          ctx.fill();
+          ctx.strokeStyle = invalid ? "#c0392b" : "#4f46e5";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+      } else {
+        // Stitch-type label at the shape's centroid.
+        let cx = 0, cy = 0;
+        for (const p of pts) { cx += p.x; cy += p.y; }
+        cx /= pts.length; cy /= pts.length;
+        ctx.fillStyle = "#111";
+        ctx.font = "11px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(s.stitchType === "satin" ? "SATIN" : "FILL", cx, cy);
+      }
     }
 
     if (draftPts.length) {
@@ -187,13 +357,14 @@
     }
   }
 
-  $: render(canvasEl, shapes, draft, selectedShapeId);
+  $: render(canvasEl, shapes, draft, selectedShapeId, editingId, editPoints, editIssues.length === 0);
 </script>
 
 <div class="manualpanel">
   <p class="hint">
     Click to place points. Click near the first point (or double-click) to close the shape.
     Draw as many shapes as you like, then pick each one's stitch type, color, and angle below.
+    Escape cancels a draft, Enter finishes it, Delete removes the selected shape.
   </p>
 
   <div class="mp-canvas-wrap">
@@ -202,8 +373,15 @@
       class="mp-canvas"
       width={CANVAS_W}
       height={CANVAS_H}
+      tabindex="0"
       on:click={onCanvasClick}
       on:dblclick={onCanvasDblClick}
+      on:pointerdown={onCanvasPointerDown}
+      on:pointermove={onCanvasPointerMove}
+      on:pointerup={endVertexDrag}
+      on:pointercancel={endVertexDrag}
+      on:pointerleave={endVertexDrag}
+      on:keydown={onCanvasKeydown}
       role="img"
       aria-label="Shape drawing canvas"
     ></canvas>
@@ -214,6 +392,9 @@
 
   {#if draftIssues.length}
     <p class="mp-draftissue" role="alert">{draftIssues.join(" ")}</p>
+  {/if}
+  {#if editingId && editIssues.length}
+    <p class="mp-draftissue" role="alert">{editIssues.join(" ")}</p>
   {/if}
 
   <div class="mp-tools">
@@ -231,6 +412,7 @@
             class="mp-shaperow"
             class:sel={s.id === selectedShapeId}
             on:click={() => selectShape(s.id)}
+            on:keydown={onCanvasKeydown}
           >
             <span class="mp-swatch" style="background: rgb({s.colorRgb[0]},{s.colorRgb[1]},{s.colorRgb[2]})"></span>
             <span class="mp-shapename">{summary(s)}</span>
@@ -241,6 +423,7 @@
             title="Delete shape"
             aria-label="Delete shape"
             on:click={() => deleteShape(s.id)}
+            on:keydown={onCanvasKeydown}
           >✕</button>
         </li>
       {/each}
@@ -264,6 +447,19 @@
             >{label}</button>
           {/each}
         </div>
+      </div>
+      <div class="mp-row">
+        <span class="mp-label">Points</span>
+        {#if editingId === selectedShape.id}
+          <button type="button" class="mp-btn active" on:click={stopShapeEdit}>Done editing</button>
+        {:else}
+          <button
+            type="button"
+            class="mp-btn"
+            disabled={draft.length > 0}
+            on:click={() => startShapeEdit(selectedShape.id)}
+          >Edit points</button>
+        {/if}
       </div>
       <div class="mp-row">
         <span class="mp-label">Color</span>
