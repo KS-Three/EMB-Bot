@@ -35,9 +35,17 @@ TINY_STITCH_MM = 0.5
 # (2026-07-30 corpus study, tools/study_pro.py): pro fills run 2.0-3.4 mm with
 # a median near 2.6; the old 4.0 sat outside the observed range entirely.
 FILL_STITCH_MM = 3.0
-# Row spacing = density. Dense pro fills measure ~0.20 mm EFFECTIVE spacing in
-# the corpus — but that may be two interleaved 0.40 passes, and doubling
-# density doubles stitch count, so 0.40 stands until a sew-out decides.
+# Row spacing = density. The two-pass-interleave hedge this comment used to
+# carry is REFUTED (docs/law19-fill-spacing-2026-08-02.md): our own fill and
+# the corpus both sew rows in strict geometric order (427 patches, 2 show an
+# interleave signature). But the corpus's dense ~0.20 mm reading turns out to
+# be TWO POPULATIONS, not one: for 29 freebie script/lettering files it is a
+# satin crossing's half-step artifact of a 0.40-0.51 mm same-rail column, not
+# a tatami row at all (coverage 1.8-2.3 matches a satin reading, not a fill
+# one) — but 43 commissioned cap-logo files sew a genuine ~0.19 mm area-fill
+# row pitch (traverse spans 6-54 mm with 3-17 penetrations each rule out
+# satin or a fan column). Which population our own fills should match is
+# still unresolved, so 0.40 stands pending sew-out card block 2.
 FILL_ROW_MM = 0.40
 
 # Penetrations realign every Nth row. Without a stagger, every row starts its
@@ -327,13 +335,16 @@ BORDER_WIDTH_MM = 1.40
 # spacing between consecutive penetrations on the same side of the column.
 BORDER_DENSITY_MM = 0.45
 
-# UNMEASURED, and deliberately not invented. How far a professional's border
-# centreline sits from the fill edge it covers: the over-a-fill detector fired
-# ZERO times across 39 files while Hotel Fremont visibly has one, so the corpus
-# has not answered it. 0.0 is the boundary condition rather than a guess — the
-# column's outer rail lies exactly on the region's visible edge and the whole
-# column lies inside it. When the number arrives this constant is the entire
-# change; see stage6_border._centre_inset.
+# MEASURED, not a boundary condition (docs/corpus-laws-round3-2026-08-01.md,
+# law 40). Round two's over-a-fill detector fired ZERO times across 39 files
+# because it required a classify()-labelled fill run in the same colour
+# block; a region-level re-instrument with no such requirement finds 70
+# tracking columns of 633, 41 of which actually cover a fill edge. Centreline
+# offset vs. the fill edge (inward positive), covering subset n=41: median
+# +0.05 mm (p10 -0.45, p90 +0.20); restricted to the trustworthy >=20 mm-long
+# columns, n=25: median +0.00 mm (p10 -0.47, p90 +0.20). Confidence high on
+# the number; also unanimous on ordering — 41/41 sewn AFTER the fill they
+# cover, 0/41 before. See stage6_border._centre_inset.
 BORDER_SEAM_OFFSET_MM = 0.0
 
 # Minimum turn radius forced on a ring before it is offset, so neither rail

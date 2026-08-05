@@ -20,13 +20,15 @@ What the corpus measured (39 DSTs, `tools/border_pro.py`):
 - The light tier is a bean / triple run: 14 found, 2.75 passes median at
   0.73 mm stitch length.
 
-What the corpus did NOT measure is the **seam offset** — how far a border's
-centreline sits from the fill edge it covers. The over-a-fill detector fired
-zero times across 39 files, so the number does not exist and is not invented
-here. `machine.BORDER_SEAM_OFFSET_MM` is pinned to 0.0, which is the boundary
-condition rather than a guess: the column's OUTER rail lies exactly on the
-region's visible edge and the whole column lies inside it. When the number is
-measured, it is the only thing that changes — see `_centre_inset`.
+The **seam offset** — how far a border's centreline sits from the fill edge it
+covers — was unmeasured by that 39-file pass: the over-a-fill detector fired
+zero times because it required a `classify()`-labelled fill run in the same
+colour block. Round 3's region-level re-instrument dropped that requirement
+(40 files, `docs/corpus-laws-round3-2026-08-01.md` law 40) and found 41
+genuinely covering columns: centreline offset vs. the fill edge (inward
+positive) medians +0.05 mm (n=41) / +0.00 mm on the trustworthy >=20 mm-long
+subset (n=25), both confirming `machine.BORDER_SEAM_OFFSET_MM = 0.0` rather
+than moving it — see `_centre_inset`.
 
 Why the geometry is built with `buffer` and never `offset_curve`: the sign of
 `offset_curve` depends on ring winding, silently. `stage4_vectorize` builds its
@@ -274,11 +276,12 @@ def _parts(geom) -> list[Polygon]:
 def _centre_inset(half_mm: float) -> float:
     """Distance from the visible edge to the border's centreline.
 
-    `BORDER_SEAM_OFFSET_MM` is 0.0 and UNMEASURED — see the module docstring.
-    At 0.0 the column's outer rail lies exactly on the visible edge. When the
-    corpus finally measures how far a professional's border sits off the fill
-    edge it covers, this expression is the whole change: nothing else in the
-    module reads the edge.
+    `BORDER_SEAM_OFFSET_MM` is 0.0 — MEASURED, not a boundary condition, per
+    corpus law 40 (median +0.00 mm on the trustworthy >=20 mm-long covering
+    columns; see the module docstring). At 0.0 the column's outer rail lies
+    exactly on the visible edge. If a future re-measurement ever moves the
+    number, this expression is the whole change: nothing else in the module
+    reads the edge.
     """
     return half_mm + machine.BORDER_SEAM_OFFSET_MM
 
