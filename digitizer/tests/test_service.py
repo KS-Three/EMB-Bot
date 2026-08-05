@@ -26,6 +26,12 @@ ART = Path(__file__).resolve().parents[1] / "testdata" / "logo_whitebg.png"
 # that tags a Region `enclosed_background` and defaults it to unstitched.
 REPRO = Path(__file__).resolve().parents[1] / "testdata" / "photo" / "repro_gradient_white_icon.png"
 
+# /digitize-manual fixtures: a plain rectangle (fill) and the same 24x2 mm
+# satin bar `tests/test_satin.py::BAR` uses — known-good geometry rather than
+# an untested shape.
+MANUAL_RECT = [[0.0, 0.0], [20.0, 0.0], [20.0, 15.0], [0.0, 15.0]]
+MANUAL_BAR = [[0.0, 0.0], [24.0, 0.0], [24.0, 2.0], [0.0, 2.0]]
+
 
 @pytest.fixture(scope="module")
 def client():
@@ -40,6 +46,29 @@ def _digitize(client, config: dict | None = None, art: Path = ART) -> dict:
             files={"image": (art.name, f, "image/png")},
             data={"config": json.dumps(config or {})},
         )
+    assert r.status_code == 202, r.text
+    job_id = r.json()["job_id"]
+    for _ in range(600):
+        state = client.get(f"/jobs/{job_id}").json()
+        if state["state"] in ("done", "error"):
+            break
+        time.sleep(0.1)
+    assert state["state"] == "done", state.get("detail") or state.get("error")
+    return state
+
+
+def _manual_shapes() -> list[dict]:
+    return [
+        {"polygon": MANUAL_RECT, "technique": "fill", "thread_index": 0},
+        {"polygon": [[p[0] + 30.0, p[1]] for p in MANUAL_BAR],
+         "technique": "satin", "thread_index": 1},
+    ]
+
+
+def _digitize_manual(client, shapes=None, config: dict | None = None) -> dict:
+    body = {"shapes": shapes if shapes is not None else _manual_shapes(),
+            "config": config or {}}
+    r = client.post("/digitize-manual", json=body)
     assert r.status_code == 202, r.text
     job_id = r.json()["job_id"]
     for _ in range(600):
@@ -630,6 +659,216 @@ def test_boundary_override_with_a_hole_poking_outside_fails_the_job_cleanly_not_
         time.sleep(0.1)
     assert state["state"] == "error", "the job, not submission, must catch this"
     assert "boundary_override" in state["error"] and "hole" in state["error"].lower()
+
+
+# --- /digitize-manual (manual digitizing, no image) -------------------------
+
+def test_digitize_manual_returns_a_design_a_review_and_stats(client):
+    state = _digitize_manual(client, config={"garment_id": "left_chest"})
+
+    design = state["design"]
+    assert design["stitchCount"] > 100
+    assert design["colorCount"] == 2
+    assert design["stitches"][-1]["type"] == "end"
+    assert {s["type"] for s in design["stitches"]} <= {"stitch", "jump", "trim", "color", "end"}
+
+    review = state["review"]
+    assert len(review["shapes"]) == 2
+    assert review["palette"][0]["brand_id"] == "isacord"
+    assert state["stats"]["stitch_count"] == design["stitchCount"]
+    assert state["preflight"]["grade"] in "ABCDF"
+
+    # Same keys /digitize's job carries, so a client that only knows that
+    # response shape needs no special-casing for this route.
+    assert set(state) >= {"job_id", "state", "design", "review", "stats",
+                          "warnings", "preflight"}
+
+
+def test_manual_review_payload_reports_the_tier_each_shape_actually_sewed_as(client):
+    state = _digitize_manual(client)
+    shapes = {s["thread_index"]: s for s in state["review"]["shapes"]}
+    assert shapes[0]["tier"] == "fill"
+    assert shapes[1]["tier"] == "satin"
+    assert all({"layer", "sew_index", "sew_block", "shape_id"} <= set(s)
+               for s in state["review"]["shapes"])
+
+
+def test_manual_stats_describe_the_delivered_design(client):
+    state = _digitize_manual(client)
+    design, stats = state["design"], state["stats"]
+    kinds = [s["type"] for s in design["stitches"]]
+    assert stats["trims"] == kinds.count("trim")
+    assert stats["jumps"] == kinds.count("jump")
+    assert stats["color_changes"] == kinds.count("color")
+
+
+def test_manual_preflight_off_is_none_not_a_passing_report(client):
+    state = _digitize_manual(client, config={"preflight": False})
+    assert state["preflight"] is None
+
+
+def test_manual_preflight_runs_without_an_image_and_says_so(client):
+    """No artwork ever backed a manual generation, so the thread-match check
+    is honestly reported skipped — every other check still runs."""
+    state = _digitize_manual(client)
+    metrics = state["preflight"]["metrics"]
+    assert metrics["thread_match_checked"] is False
+    assert isinstance(state["preflight"]["findings"], list)
+
+
+def test_manual_design_exports_to_a_real_machine_file(client):
+    """No new export code: reuses the exact same /export route every other
+    design (lettering, imported, auto-digitized) already goes through."""
+    design = _digitize_manual(client)["design"]
+    for fmt in ("dst", "pes", "exp"):
+        r = client.post("/export", json={"design": design, "format": fmt})
+        assert r.status_code == 200, r.text
+        assert len(r.content) > 200
+        assert r.headers["x-stitch-convention"] == "tajima-standard"
+
+
+def test_manual_pes_survives_an_independent_reader(client):
+    design = _digitize_manual(client)["design"]
+    r = client.post("/export", json={"design": design, "format": "pes"})
+    pattern = pyembroidery.read_pes(io.BytesIO(r.content))
+    sewn = [s for s in pattern.stitches if s[2] == pyembroidery.STITCH]
+    assert len(sewn) == design["stitchCount"]
+
+
+def test_manual_garment_id_changes_the_fabric_and_therefore_the_stitch_count(client):
+    knit = _digitize_manual(client, config={"garment_id": "left_chest"})
+    towel = _digitize_manual(client, config={"garment_id": "towel"})
+    assert knit["design"]["stitchCount"] != towel["design"]["stitchCount"]
+
+
+def test_manual_thread_brand_changes_the_catalog_numbers(client):
+    iso = _digitize_manual(client, config={"thread_brand": "isacord"})
+    mad = _digitize_manual(client, config={"thread_brand": "madeira-rayon"})
+    assert iso["review"]["palette"][0]["brand_id"] == "isacord"
+    assert mad["review"]["palette"][0]["brand_id"] == "madeira-rayon"
+
+
+def test_manual_unknown_thread_brand_is_rejected(client):
+    r = client.post("/digitize-manual", json={
+        "shapes": _manual_shapes(), "config": {"thread_brand": "nope"},
+    })
+    assert r.status_code == 400
+    assert "nope" in r.json()["detail"]
+
+
+@pytest.mark.parametrize("field", ["deleted_shape_ids", "shape_overrides"])
+def test_manual_shape_edit_fields_are_rejected_as_config_fields(client, field):
+    """Nothing in manual mode has assigned ids from a PRIOR generation for
+    these to reference — see `_MANUAL_CONFIG_FIELDS`."""
+    r = client.post("/digitize-manual", json={
+        "shapes": _manual_shapes(), "config": {field: []},
+    })
+    assert r.status_code == 400, r.text
+    assert field in r.json()["detail"]
+
+
+def test_manual_debug_dir_is_still_rejected(client):
+    r = client.post("/digitize-manual", json={
+        "shapes": _manual_shapes(), "config": {"debug_dir": "C:/anywhere"},
+    })
+    assert r.status_code == 400
+
+
+def test_manual_target_width_mm_is_accepted_but_does_not_rescale_literal_mm_shapes(client):
+    """The polygon is already physical millimetres; target_width_mm is a
+    no-op here (documented on the route), not silently reinterpreted."""
+    plain = _digitize_manual(client, config={"garment_id": "left_chest"})
+    scaled = _digitize_manual(
+        client, config={"garment_id": "left_chest", "target_width_mm": 500.0}
+    )
+    assert scaled["design"]["widthMM"] == pytest.approx(plain["design"]["widthMM"], abs=0.5)
+
+
+def test_manual_identical_request_is_served_from_cache(client):
+    shapes = _manual_shapes()
+    first = client.post("/digitize-manual",
+                        json={"shapes": shapes, "config": {}}).json()
+    for _ in range(600):
+        if client.get(f"/jobs/{first['job_id']}").json()["state"] == "done":
+            break
+        time.sleep(0.1)
+
+    second = client.post("/digitize-manual",
+                         json={"shapes": shapes, "config": {}}).json()
+    assert second["job_id"] == first["job_id"]
+    assert second["cached"] is True
+
+
+def test_manual_a_different_shape_is_a_different_job(client):
+    a = client.post("/digitize-manual",
+                    json={"shapes": _manual_shapes(), "config": {}}).json()
+    other = _manual_shapes()
+    other[0]["thread_index"] = 7
+    b = client.post("/digitize-manual",
+                    json={"shapes": other, "config": {}}).json()
+    assert a["job_id"] != b["job_id"]
+
+
+def test_manual_empty_shape_list_is_a_400(client):
+    r = client.post("/digitize-manual", json={"shapes": [], "config": {}})
+    assert r.status_code == 400
+
+
+def test_manual_too_many_shapes_is_a_413(client):
+    from digitizer_service.app import MAX_MANUAL_SHAPES
+    r = client.post("/digitize-manual", json={
+        "shapes": [{}] * (MAX_MANUAL_SHAPES + 1), "config": {},
+    })
+    assert r.status_code == 413
+
+
+def test_manual_missing_shapes_field_is_a_400(client):
+    r = client.post("/digitize-manual", json={"config": {}})
+    assert r.status_code == 400
+
+
+def test_manual_self_intersecting_polygon_is_a_400_not_a_failed_job(client):
+    bowtie = [[0.0, 0.0], [10.0, 10.0], [10.0, 0.0], [0.0, 10.0]]
+    r = client.post("/digitize-manual", json={
+        "shapes": [{"polygon": bowtie, "technique": "fill", "thread_index": 0}],
+        "config": {},
+    })
+    assert r.status_code == 400
+    detail = r.json()["detail"].lower()
+    assert "invalid" in detail or "self-intersect" in detail
+
+
+@pytest.mark.parametrize("bad_shape", [
+    {"polygon": MANUAL_RECT, "technique": "fill", "thread_index": 99999},  # off the chart
+    {"polygon": MANUAL_RECT, "technique": "auto", "thread_index": 0},      # unsupported tier
+    {"polygon": MANUAL_RECT, "thread_index": 0},                          # missing technique
+    {"polygon": MANUAL_RECT, "technique": "fill"},                        # missing thread
+    {"technique": "fill", "thread_index": 0},                            # missing polygon
+    {"polygon": [[0.0, 0.0], [1.0, 0.0]], "technique": "fill", "thread_index": 0},  # too few points
+])
+def test_manual_bad_shapes_are_a_400_at_submit_not_a_failed_job(client, bad_shape):
+    r = client.post("/digitize-manual", json={"shapes": [bad_shape], "config": {}})
+    assert r.status_code == 400, r.text
+    assert "job_id" not in r.json()
+
+
+def test_manual_failed_validation_never_reaches_the_job_registry(client):
+    """A 400 must not leave a queued/running job behind to poll."""
+    before = client.get("/health").json()["jobs"]["jobs"]
+    client.post("/digitize-manual", json={
+        "shapes": [{"polygon": MANUAL_RECT, "technique": "fill", "thread_index": -1}],
+        "config": {},
+    })
+    after = client.get("/health").json()["jobs"]["jobs"]
+    assert after == before
+
+
+def test_the_image_route_is_unaffected_by_the_manual_route_existing(client):
+    """Flat-lane and /digitize must be completely unaffected: submit a manual
+    job first, then confirm /digitize still works exactly as it always did."""
+    _digitize_manual(client)
+    state = _digitize(client, {"target_width_mm": 80.0})
+    assert state["design"]["stitchCount"] > 500
 
 
 # --- job registry ---------------------------------------------------------

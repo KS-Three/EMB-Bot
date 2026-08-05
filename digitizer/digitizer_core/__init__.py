@@ -7,6 +7,7 @@ and underlay, sequencing and ties) plus DST export. Satin is build step 4.
 from .config import PipelineConfig
 from .export import export_dst, write_dst
 from .fabrics import FABRICS, Fabric, fabric_for_garment, get_fabric
+from .manual import build_manual_result
 from .pipeline import (
     BackgroundInfo,
     PipelineResult,
@@ -42,6 +43,7 @@ __all__ = [
     "run_stages",
     "plan_stitches",
     "digitize",
+    "build_manual_result",
     "export_dst",
     "write_dst",
 ]
