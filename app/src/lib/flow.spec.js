@@ -37,6 +37,24 @@ test("nav", () => {
   expect(nextStep("download")).toBe(null);
 });
 
+test("create step gates a manual element on having at least one valid completed shape", () => {
+  let p = defaultProject();
+  p = updateElement(p, "e1", { text: "" });
+  p = addElement(p, "manual", 100); // e2
+  expect(canAdvance("create", p)).toBe(false);
+
+  // A degenerate/collinear "shape" (a mis-click) doesn't count as ready.
+  const degenerate = updateElement(p, "e2", {
+    shapes: [{ id: "s1", points: [{ x: 0, y: 0 }, { x: 5, y: 0 }, { x: 10, y: 0 }], stitchType: "fill", colorRgb: [1, 1, 1], angleDeg: null }],
+  });
+  expect(canAdvance("create", degenerate)).toBe(false);
+
+  const ready = updateElement(p, "e2", {
+    shapes: [{ id: "s1", points: [{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 10, y: 20 }], stitchType: "fill", colorRgb: [1, 1, 1], angleDeg: null }],
+  });
+  expect(canAdvance("create", ready)).toBe(true);
+});
+
 test("create step gates design and digitized elements on their baked content, not _hasImage", () => {
   let p = defaultProject();
   p = updateElement(p, "e1", { text: "" });

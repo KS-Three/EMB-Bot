@@ -477,3 +477,65 @@ test("migrateProject leaves non-digitized elements byte-identical (old projects 
   expect(m.elements[0]).toBe(text); // same object, untouched by the map
   expect(m.elements[1]).toBe(image);
 });
+
+// --- manual digitizing mode (element factory) ------------------------------
+
+import { defaultManualElement, defaultManualShape } from "./project.js";
+
+test("defaultManualElement has sane beginner defaults (no shapes yet)", () => {
+  const el = defaultManualElement("e9");
+  expect(el).toEqual({
+    id: "e9",
+    type: "manual",
+    shapes: [],
+    underlay: true,
+    sizeMm: null,
+    offsetXMm: 0,
+    offsetYMm: 0,
+  });
+});
+
+test("defaultManualShape defaults to fill, a beginner-safe base color, and auto angle", () => {
+  const s = defaultManualShape("s1");
+  expect(s).toEqual({
+    id: "s1",
+    points: [],
+    stitchType: "fill",
+    colorRgb: [20, 20, 20],
+    angleDeg: null,
+  });
+});
+
+test("addElement 'manual' produces a fresh defaultManualElement shape, seeded like image/text", () => {
+  let p = defaultProject();
+  p = addElement(p, "manual", 100);
+  const el = p.elements[1];
+  expect(el.type).toBe("manual");
+  expect(el.shapes).toEqual([]);
+  // Non-first elements get a hoop-relative size seed, same rule image/text
+  // elements follow (only design/digitized keep sizeMm null for native size).
+  expect(el.sizeMm).toBe(40); // 0.4 * 100
+  expect(el.offsetYMm).toBe(-10);
+  expect(p.selectedId).toBe(el.id);
+});
+
+test("migrateProject fills a manual element's missing fields (additive migration, same as digitized)", () => {
+  const sparse = { id: "e2", type: "manual" }; // saved before `underlay`/offsets existed
+  const m = migrateProject({ version: 2, garmentId: "left_chest", selectedId: "e2", elements: [sparse] });
+  const el = m.elements[0];
+  expect(el.shapes).toEqual([]);
+  expect(el.underlay).toBe(true);
+  expect(el.sizeMm).toBeNull();
+  expect(el.offsetXMm).toBe(0);
+  expect(el.offsetYMm).toBe(0);
+});
+
+test("migrateProject preserves a manual element's real shapes, and tolerates a corrupt shapes field", () => {
+  const withShapes = { id: "e2", type: "manual", shapes: [defaultManualShape("s1")] };
+  const kept = migrateProject({ version: 2, garmentId: "left_chest", selectedId: "e2", elements: [withShapes] }).elements[0];
+  expect(kept.shapes).toEqual([defaultManualShape("s1")]);
+
+  const corrupt = { id: "e2", type: "manual", shapes: "not-an-array" };
+  const fixed = migrateProject({ version: 2, garmentId: "left_chest", selectedId: "e2", elements: [corrupt] }).elements[0];
+  expect(fixed.shapes).toEqual([]);
+});

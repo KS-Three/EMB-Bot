@@ -1,5 +1,6 @@
 import { EMB } from "./emb.js";
 import { flatToRegions } from "./imageRegions.js";
+import { shapesToRegions } from "./manualShapes.js";
 import { combineDesigns, bboxMmFromStitches } from "./combine.js";
 import { decodedFromDesignCached, digitizedBlockColors } from "./digitizer.js";
 
@@ -85,6 +86,26 @@ export function generateElement(element, garment, runtime) {
     const fabric = EMB.getFabric(EMB.fabricForGarment(garment.id));
     return EMB.buildQualityDesign(regions, {
       garment, fabric, pxPerMm, densityMm: 0.4, satinMaxWidthMm: 3.0,
+      underlay: element.underlay,
+      targetWidthMm: element.sizeMm || undefined,
+      offsetXMm: element.offsetXMm || 0,
+      offsetYMm: element.offsetYMm || 0,
+    });
+  }
+
+  if (element.type === "manual") {
+    // Manual digitizing mode: the user drew every shape and picked its
+    // stitch type/color/angle by hand — zero auto-analysis. shapesToRegions
+    // turns element.shapes into the SAME colorRegions shape Image mode
+    // feeds buildQualityDesign, riding the identical pull-comp/underlay/
+    // trims/sequencing pipeline (digitize.js's shape.tierOverride is what
+    // makes the manual satin/fill CHOICE stick instead of being
+    // re-classified by width/branch-guard heuristics).
+    const { regions, pxPerMm } = shapesToRegions(element.shapes);
+    if (!regions.length) return null;
+    const fabric = EMB.getFabric(EMB.fabricForGarment(garment.id));
+    return EMB.buildQualityDesign(regions, {
+      garment, fabric, pxPerMm, densityMm: 0.4,
       underlay: element.underlay,
       targetWidthMm: element.sizeMm || undefined,
       offsetXMm: element.offsetXMm || 0,

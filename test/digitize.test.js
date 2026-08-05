@@ -56,6 +56,69 @@ test("buildQualityDesign: thin solid bar goes satin, branched shape goes fill", 
   assert.strictEqual(d2._debug.nFill, 1);
 });
 
+// ---- Manual stitch-type override (manual digitizing mode) -----------------
+// shape.tierOverride is an ADDITIVE, opt-in field: absent (every Image/Text
+// caller) leaves the auto classification above byte-identical (already
+// proven by every other test in this file passing unchanged). These tests
+// pin the override's own behavior using the exact bar/tee fixtures above.
+test("buildQualityDesign: shape.tierOverride='fill' forces an otherwise-thin bar to fill", () => {
+  const bar = [{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 200, y: 8 }, { x: 0, y: 8 }];
+  const d = DG.buildQualityDesign(
+    [{ rgb: [0, 0, 0], shapes: [{ outer: bar, holes: [], tierOverride: "fill" }] }],
+    { garment: { widthIn: 1, heightIn: 1 }, pxPerMm: 8, densityMm: 0.4, underlay: false, satinMaxWidthMm: 3 }
+  );
+  assert.strictEqual(d._debug.nSatin, 0, "override should route the thin bar to fill");
+  assert.strictEqual(d._debug.nFill, 1);
+});
+
+test("buildQualityDesign: shape.tierOverride='satin' forces a branched shape to satin, bypassing the branch guard", () => {
+  const tee = [
+    { x: 0, y: 0 }, { x: 90, y: 0 }, { x: 90, y: 12 }, { x: 51, y: 12 },
+    { x: 51, y: 90 }, { x: 39, y: 90 }, { x: 39, y: 12 }, { x: 0, y: 12 },
+  ];
+  const d = DG.buildQualityDesign(
+    [{ rgb: [0, 0, 0], shapes: [{ outer: tee, holes: [], tierOverride: "satin" }] }],
+    { garment: { widthIn: 1, heightIn: 1 }, pxPerMm: 8, densityMm: 0.4, underlay: false, satinMaxWidthMm: 3 }
+  );
+  assert.strictEqual(d._debug.nSatin, 1, "manual override should force satin despite the branch guard");
+  assert.strictEqual(d._debug.nFill, 0);
+});
+
+test("buildQualityDesign: shape.tierOverride='satin' still falls back to fill when the shape has holes", () => {
+  const outer = sq(0, 0, 100);
+  const hole = sq(20, 20, 20);
+  const d = DG.buildQualityDesign(
+    [{ rgb: [0, 0, 0], shapes: [{ outer, holes: [hole], tierOverride: "satin" }] }],
+    { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 1, densityMm: 0.5, underlay: false, satinMaxWidthMm: 3 }
+  );
+  assert.strictEqual(d._debug.nSatin, 0, "satinColumn can't represent a hole — override must not bypass this");
+  assert.strictEqual(d._debug.nFill, 1);
+});
+
+test("buildQualityDesign: a bare 3-point triangle (manual digitizing mode's simplest shape) sews real stitches, not zero", () => {
+  // Regression: buildQualityDesign used to require outer.length >= 4, which
+  // real Image/Text-mode geometry always satisfies (raster traces and font
+  // glyphs never emit an exactly-3-point ring) but silently zeroed out any
+  // manually-drawn triangle — a perfectly valid, minimal closed polygon.
+  const tri = [{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 100, y: 200 }];
+  const d = DG.buildQualityDesign(
+    [{ rgb: [0, 0, 0], shapes: [{ outer: tri, holes: [], tierOverride: "fill" }] }],
+    { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 6, densityMm: 0.4, underlay: false }
+  );
+  assert.ok(d.stitchCount > 20, "a 3-point polygon must still generate real fill stitches: " + d.stitchCount);
+  assert.strictEqual(d._debug.nFill, 1);
+});
+
+test("buildQualityDesign: an unrecognized/absent tierOverride is a no-op (auto classification unchanged)", () => {
+  const bar = [{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 200, y: 8 }, { x: 0, y: 8 }];
+  const base = { garment: { widthIn: 1, heightIn: 1 }, pxPerMm: 8, densityMm: 0.4, underlay: false, satinMaxWidthMm: 3 };
+  const withoutField = DG.buildQualityDesign([{ rgb: [0, 0, 0], shapes: [{ outer: bar, holes: [] }] }], base);
+  const withGarbage = DG.buildQualityDesign([{ rgb: [0, 0, 0], shapes: [{ outer: bar, holes: [], tierOverride: "auto" }] }], base);
+  assert.strictEqual(withoutField._debug.nSatin, 1);
+  assert.strictEqual(withGarbage._debug.nSatin, 1);
+  assert.deepStrictEqual(withGarbage.stitches, withoutField.stitches);
+});
+
 test("buildQualityDesign: outline option adds finishing edge run", () => {
   const outer = sq(0, 0, 100);
   const base = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 1, densityMm: 0.5, underlay: false, satinMaxWidthMm: 3 };
