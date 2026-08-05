@@ -7,6 +7,7 @@ import {
   DEFAULT_DIGITIZE_PARAMS,
   update,
   addElement,
+  addSeededTextElement,
   removeElement,
   selectElement,
   updateElement,
@@ -112,6 +113,63 @@ test("addElement of type image produces a fresh defaultImageElement shape (seede
   expect(el.type).toBe("image");
   expect(el.nColors).toBe(4);
   expect(el.removeBg).toBe(true);
+});
+
+// --- addSeededTextElement (text-cluster "convert to text") ----------------
+
+test("addSeededTextElement appends one text element seeded over defaultTextElement, and selects it", () => {
+  const p = defaultProject(); // e1, one element
+  const seed = {
+    colorRgb: [10, 20, 30],
+    rotationDeg: 12,
+    offsetXMm: 5,
+    offsetYMm: -7,
+    sizeMm: 22,
+    text: "",
+    fontKey: null,
+  };
+  const { project: q, id } = addSeededTextElement(p, seed, 100);
+
+  expect(q.elements).toHaveLength(2);
+  expect(p.elements).toHaveLength(1); // original untouched
+
+  const el = q.elements.find((e) => e.id === id);
+  expect(el).toBeTruthy();
+  expect(el.type).toBe("text");
+  expect(el.text).toBe("");
+  expect(el.fontKey).toBeNull(); // deliberate override of defaultTextElement's "medium_font"
+  expect(el.colorRgb).toEqual([10, 20, 30]);
+  expect(el.rotationDeg).toBe(12);
+  expect(el.offsetXMm).toBe(5);
+  expect(el.offsetYMm).toBe(-7);
+  expect(el.sizeMm).toBe(22);
+
+  // Fields the seed did NOT touch still come from defaultTextElement.
+  expect(el.align).toBe("center");
+  expect(el.underlay).toBe(true);
+
+  // Selection moves to the new element, same as addElement.
+  expect(q.selectedId).toBe(id);
+  expect(q.selectedIds).toEqual([id]);
+});
+
+test("addSeededTextElement returns the new element's id explicitly, usable immediately by the caller", () => {
+  const p = defaultProject();
+  const { project: q, id } = addSeededTextElement(p, { text: "", fontKey: null }, 100);
+  // The id is real and resolvable in the returned project without relying on
+  // selectedId (the convention addElement's existing callers use) --
+  // exercising the alternative convention this function documents choosing.
+  expect(id).toBe("e2");
+  expect(q.elements.map((e) => e.id)).toContain(id);
+});
+
+test("addSeededTextElement seed wins over the hoop-relative size/offset stagger addElement would otherwise apply", () => {
+  const p = defaultProject();
+  const { project: q, id } = addSeededTextElement(p, { sizeMm: 5, offsetXMm: 1, offsetYMm: 2 }, 100);
+  const el = q.elements.find((e) => e.id === id);
+  expect(el.sizeMm).toBe(5); // not Math.round(0.4 * 100)
+  expect(el.offsetXMm).toBe(1);
+  expect(el.offsetYMm).toBe(2); // not -10 * 1
 });
 
 // --- removeElement --------------------------------------------------------

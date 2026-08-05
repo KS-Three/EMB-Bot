@@ -230,6 +230,52 @@ export function addElement(project, type, hoopWmm) {
   return { ...project, elements: [...project.elements, el], selectedId: id, selectedIds: [id] };
 }
 
+// Adds a new "text" element SEEDED from a partial patch (`seed`) — a sibling
+// to addElement, not a replacement: addElement's signature/behavior are left
+// untouched because other callers depend on them. Used by the "convert text
+// cluster to text element" action (DigitizePanel, Studio-side text-cluster
+// detection feature): the seed carries the cluster's bbox-derived position/
+// size, dominant color, and a baseline-derived rotation, PLUS explicit
+// `text: ""` / `fontKey: null` overrides of defaultTextElement's own
+// `fontKey: "medium_font"` default — deliberately empty/unset so the user
+// picks a font and types the word themselves (FontSelect already renders a
+// falsy/null fontKey as its "Choose a font" empty state; TextStep already
+// renders an empty `text` as a normal empty textarea) — nothing is ever
+// auto-filled that could be silently wrong.
+//
+// Same append-and-select-new-element behavior addElement already has,
+// including the hoop-relative size/offset seeding for non-first elements —
+// `seed` is merged AFTER that seeding, so any field the seed actually
+// specifies (sizeMm, offsetXMm/offsetYMm, etc.) wins over the generic
+// stagger; anything the seed omits keeps addElement's usual placement.
+//
+// Returns { project, id } rather than relying on the caller re-deriving the
+// new element's id from project.selectedId (the convention addElement's
+// existing callers use): the one caller of this function (App.svelte's
+// text-conversion handler) needs the new id in the SAME synchronous step to
+// patch a DIFFERENT element's shapeOverrides/textConversions, before that
+// coordinated project value is ever assigned/rendered — reading it back off
+// selectedId would work too (selection does move to the new element, same as
+// addElement), but returning it explicitly avoids a second implicit
+// assumption ("selectedId still means what I think it means") in a function
+// that's already doing two things at once.
+export function addSeededTextElement(project, seed, hoopWmm) {
+  const id = nextElementId(project.elements);
+  let el = defaultTextElement(id);
+  const n = project.elements.length;
+  if (n > 0) {
+    el = { ...el, sizeMm: Math.round(0.4 * hoopWmm), offsetYMm: -10 * n };
+  }
+  el = { ...el, ...seed, id };
+  const newProject = {
+    ...project,
+    elements: [...project.elements, el],
+    selectedId: id,
+    selectedIds: [id],
+  };
+  return { project: newProject, id };
+}
+
 // Removes an element by id. A project must always keep at least one
 // element, so removing the last remaining element is a no-op. If the
 // removed element was selected, selection falls back to the first

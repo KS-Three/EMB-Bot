@@ -1,5 +1,5 @@
 <script>
-  import { update, updateElement, updateElements, selectElement, toggleSelectElement, addElement, removeElement } from "./lib/project.js";
+  import { update, updateElement, updateElements, selectElement, toggleSelectElement, addElement, addSeededTextElement, removeElement } from "./lib/project.js";
   import { createHistory } from "./lib/history.js";
   import { applyTemplate } from "./lib/templates.js";
   import { canAdvance, nextStep, prevStep } from "./lib/flow.js";
@@ -347,6 +347,58 @@
     persist();
   }
 
+  // "Convert cluster to text" (text-cluster-detection feature; the badge/
+  // action UI itself is Step 6b, built on top of this — DigitizePanel
+  // doesn't dispatch "converttotext" yet, only ContentStep's bubbling is
+  // wired below). detail: { seed, clusterId, sourceElementId,
+  // memberShapeIds }. This is genuinely new coordination, not a reuse of
+  // elUpdateMany: elUpdateMany patches multiple EXISTING elements, each with
+  // its own caller-supplied patch; this instead creates a brand-new element
+  // (via addSeededTextElement) AND, in the same step, patches a DIFFERENT,
+  // already-existing element (the digitized source) with data the new
+  // element doesn't carry -- so it can't be expressed as a single
+  // patchById map the way elUpdateMany's callers already build one.
+  //
+  // The source element's shapeOverrides get `stitched: false` for every
+  // member shape id (hides the original traced shapes -- same override key
+  // the enclosed-background restore feature already uses, just the opposite
+  // direction), merged the same way DigitizePanel's own setOverride merges
+  // a single shape's overrides (that helper lives on DigitizePanel's
+  // `element` prop, not on `project`, so it isn't reachable from here --
+  // this inlines the same merge shape rather than duplicating a helper this
+  // file has no other use for). `textConversions` (Record<clusterId,
+  // textElementId>) records the provenance Step 6b's undo action will read
+  // back; per the design doc it is pure Studio-side state, never sent to
+  // the server.
+  function onConvertClusterToText(detail) {
+    const { seed, clusterId, sourceElementId, memberShapeIds } = detail || {};
+    const { project: withText, id: newElementId } = addSeededTextElement(
+      project,
+      seed,
+      hoopWidthMm(project)
+    );
+
+    const source = withText.elements.find((el) => el.id === sourceElementId);
+    if (!source) {
+      // Source element vanished from under us (shouldn't happen -- this
+      // action only exists while its owning DigitizePanel row is on
+      // screen). Still land the new text element; just skip the
+      // now-meaningless source-side patch.
+      project = withText;
+      persist();
+      return;
+    }
+
+    const shapeOverrides = { ...(source.shapeOverrides || {}) };
+    for (const sid of memberShapeIds || []) {
+      shapeOverrides[sid] = { ...(shapeOverrides[sid] || {}), stitched: false };
+    }
+    const textConversions = { ...(source.textConversions || {}), [clusterId]: newElementId };
+
+    project = updateElement(withText, sourceElementId, { shapeOverrides, textConversions });
+    persist();
+  }
+
   function onRemoveElement(id) {
     project = removeElement(project, id);
     // Element ids can be reused (nextElementId in project.js picks the next
@@ -646,6 +698,7 @@
           on:select={(e) => onSelect(e.detail)}
           on:toggleselect={(e) => onToggleSelect(e.detail)}
           on:addelement={(e) => onAddElement(e.detail)}
+          on:converttotext={(e) => onConvertClusterToText(e.detail)}
           on:removeelement={(e) => onRemoveElement(e.detail)}
           on:image={(e) => onImage(project.selectedId, e.detail)}
           on:flat={(e) => onFlat(project.selectedId, e.detail)}
