@@ -148,25 +148,55 @@ changed the number, not because the finding vanished). Wider sweep run
 (not all pinned) across `logo_alpha`/`logo_whitebg`/`ribbon_curve` at
 several widths/garments plus `photo/summit_badge.png`,
 `photo/region_blobs.png`, `photo/repro_gradient_white_icon.png`: no new
-false `block`s except `summit_badge.png` at 60mm, which was ALREADY block
-at the first corpus-law commit (`edbd4d4`, before any underlay-cap fix
-existed) — a second instance of the same `is_satin_candidate`
-misclassification-on-organic-geometry issue, not something this round's
-narrowing introduced (this round's fix actually reduces its `over_block_
-mm2` from 136 to 29). Regression-pinned both directions: `test_a_wide_
-oversize_satin_stroke_does_not_block_on_underlay_glue` (logo_alpha stays
-out of block) and `test_drone_render_oversize_photo_satin_still_blocks`
-(drone_render's pre-existing block survives), both in `test_preflight.py`.
-Full suite re-run to completion in the foreground: **773 passed, 3
-skipped, 0 failed** (795s).
+false `block`s. Two PRE-EXISTING blocks turned out NOT to be fully
+restored by the per-station narrowing, both confirmed by a third,
+independent re-measurement pass (not just the implementing round's own
+sweep): `summit_badge.png` at 60mm was ALREADY block at the first
+corpus-law commit (`edbd4d4`, before any underlay-cap fix existed) and
+stays block here too, `over_block_mm2` reduced 136 -> 29 (not silenced,
+just smaller — law 23's own density change, same as `drone_render`'s
+275 -> 86). `region_blobs.png` at 60mm is a second case the per-station
+fix does NOT fully solve, unlike `drone_render.png`: unmodified `cc3b9de`
+reads `block` (`over_block_mm2` 76.0, worse post-law-23 at `edbd4d4`,
+133.0), but stays `warn`/`over_block_mm2=0.0` on this fix — silenced, not
+restored. Root cause confirmed via connected-component patch isolation:
+`region_blobs.png`'s offending shape (`S94f29987`) has its blocking area
+concentrated inside a dominant stroke that is 80% oversize BY STATION
+COUNT locally (vs. `drone_render`'s 44% oversize spread across a whole
+39-stroke skeleton) — restoring the minority of ordinary-width stations
+next to a locally-dominant oversize span isn't enough to push the
+connected patch back over `_COVERAGE_MIN_PATCH_MM2`'s 25mm2 gate the way
+it was for `drone_render`. Per-station skipping is a real mechanism
+improvement (no longer disables an entire multi-stroke skeleton over one
+bad station) but does not universally guarantee "restore a pre-existing
+block the whole-stroke fix silenced" — accepted as a second known
+instance of the underlying classifier gap below, not chased with a 4th
+underlay-stage patching round: two of three attempts at a fixture-
+specific underlay fix (whole-stroke, then per-station) each needed
+further correction, which is itself a signal the fix belongs at the
+classification stage, not here. Regression-pinned both directions:
+`test_a_wide_oversize_satin_stroke_does_not_block_on_underlay_glue`
+(logo_alpha stays out of block) and
+`test_drone_render_oversize_photo_satin_still_blocks` (drone_render's
+pre-existing block survives), both in `test_preflight.py`.
+`region_blobs.png`/`summit_badge.png`'s still-silenced/still-block state
+at 60mm is NOT yet pinned by a test — flagged here as a gap for whoever
+picks up the classifier fix below, so it's not lost. Full suite re-run to
+completion in the foreground: **773 passed, 3 skipped, 0 failed** (795s
+locally verified independently, 830s on the third audit's separate run).
 
 The deeper issue neither fix touches — `is_satin_candidate` misclassifying
-large organic/branchy photo-tier geometry as satin at all (confirmed on at
-least two fixtures, `drone_render.png` and `summit_badge.png`) — is a
-classification-level question, not an underlay-stage one, and is
-explicitly NOT addressed here; it would need Kent's call on scope before
-any fix, per the same "satin/fill classifier" gap area 1 already tracks
-above (M0-M3 DT-first migration, corpus-gated, not started).
+large organic/branchy photo-tier geometry as satin at all (confirmed on
+THREE fixtures now: `drone_render.png` [restored by the per-station fix],
+`summit_badge.png` and `region_blobs.png` [both still silenced/reduced,
+not restored]) — is a classification-level question, not an underlay-stage
+one, and is explicitly NOT addressed here; it would need Kent's call on
+scope before any fix, per the same "satin/fill classifier" gap area 1
+already tracks above (M0-M3 DT-first migration, corpus-gated, not
+started). Recommend that follow-up scope explicitly include
+`region_blobs.png@60mm/{left_chest,hat_front}` and
+`summit_badge.png@60mm` as its acceptance fixtures, so the classifier fix
+is checked against real cases rather than designed in the abstract.
 
 Prior update below, 2026-08-05, still earlier the same day — the
 boundary-editor slice landed: area 5's
