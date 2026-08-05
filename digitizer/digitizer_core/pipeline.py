@@ -20,7 +20,13 @@ from shapely.geometry import Polygon
 from . import debugviz
 from .config import PipelineConfig
 from .fabrics import Fabric, fabric_for_garment, get_fabric
-from .regions import Region, apply_layer_overrides, apply_shape_edits
+from .regions import (
+    Region,
+    apply_layer_overrides,
+    apply_shape_edits,
+    apply_shape_merges,
+    apply_shape_splits,
+)
 from .stage0_classify import classify
 from .stage1_photo_prep import (
     detect_faces_seam,
@@ -262,6 +268,17 @@ def run_stages(
     # edits, not after.
     tag_enclosed_background(regions, p)
 
+    # Shape identity edits (contract v1.5): merge/split BEFORE deletions/
+    # overrides, on the same "ids assigned against the full generation"
+    # reasoning `apply_shape_edits` already documents for itself — merge and
+    # split consume some of THIS generation's ids and mint brand new ones, so
+    # they must run first for a `shape_overrides`/`deleted_shape_ids` entry
+    # (keyed on whatever ids exist after this point) to have a consistent set
+    # to reference. See `regions.py`'s own module comment for why these two
+    # mint new ids instead of riding `assign_shape_ids`/`match_shape_ids`.
+    regions, merge_edit_warnings = apply_shape_merges(regions, cfg.merge_shape_ids)
+    regions, split_edit_warnings = apply_shape_splits(regions, cfg.split_shapes)
+
     # Review-screen edits (shape-layers contract v1). Here — after stage 4 has
     # assigned ids against the full generation, before the palette compacts —
     # so a deletion that empties a thread drops its cone from the color list,
@@ -427,7 +444,8 @@ def run_stages(
         design_size_mm=design,
         warnings=merge_warnings(
             [*classification.warnings, *p.warnings, *prep_warnings, *q.warnings,
-             *small_warnings, *vec_warnings, *edit_warnings, *layer_warnings]
+             *small_warnings, *vec_warnings, *merge_edit_warnings, *split_edit_warnings,
+             *edit_warnings, *layer_warnings]
         ),
         segmenter=seg.name,
         debug_dir=dbg,
@@ -465,7 +483,8 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     # enclosing shape's own mask never included those pixels before this
     # slice either — only whether THEY got a Region of their own changed).
     stitched_regions = [r for r in result.regions if r.meta.get("stitched", True)]
-    planned, overlap_warnings = resolve_overlaps(stitched_regions, fabric, cfg)
+    planned, overlap_warnings = resolve_overlaps(stitched_regions, fabric, cfg,
+                                                 design_class=result.design_class)
     if dbg:
         debugviz.stage5(dbg, planned, result.design_size_mm, chart_for(cfg))
 

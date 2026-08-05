@@ -698,16 +698,92 @@ is now fixed (see below), four remain open:
   (`main`'s cap at the time) — it scored worse than the shipped rule there,
   and its "pure tightening, cannot get worse" safety claim was proven
   logically inverted (it can only convert true positives into false
-  negatives, never the reverse, and FN is the expensive error). **Verdict
-  status: STALE, not confirmed or reversed.** An unrelated, later,
-  corpus-driven change moved the shipped cap to 5.0 (already on `main`);
-  re-running the SAME instrument at the new cap flips the result (`VP90`
-  0/21 wrong vs. the shipped rule's 6/21) — but that's the same class of
-  small-synthetic-set evidence 2026-08-02's audit already showed can't be
-  trusted alone. Needs the 37-file `scratch_corpus/` run at today's cap
-  before this verdict can be re-decided either way — see
-  `docs/superpowers/plans/2026-08-04-m0-shape-lens-measurement.md`
-  ("M0" of the DT-first migration).
+  negatives, never the reverse, and FN is the expensive error). A later,
+  unrelated, corpus-driven change moved the shipped cap to 5.0 (already on
+  `main`); re-running the SAME instrument at the new cap flips the result
+  (`VP90` 0/21 wrong vs. the shipped rule's 6/21) — but that alone stayed
+  the same class of small-synthetic-set evidence 2026-08-02's audit already
+  showed can't be trusted alone, so a wholesale swap remained blocked on the
+  37-file `scratch_corpus/` run (gitignored, empty in every checkout) that
+  no session has had access to (`docs/superpowers/plans/
+  2026-08-04-m0-shape-lens-measurement.md`, "M0" of the DT-first migration).
+
+  **A narrower, evidence-scoped slice of this landed instead
+  (`satin-classifier-organic-shapes` branch), not a wholesale swap:**
+  `is_satin_candidate` (`digitizer_core/stage6_satin.py`) gained a
+  `design_class` keyword. For `"flat"` (the default, and every pre-existing
+  caller that doesn't pass one) it is byte-for-byte the original rule —
+  zero behaviour change, so every byte-identical golden
+  (`test_flat_lane_byte_identical.py`'s 4 fixtures, all flat-classified) is
+  untouched by construction, not just by re-verification. For the other
+  three classes (`gradient`, `photo_subject`, `photo_scene` — where
+  segmentation-derived boundary noise, not clean vector art, is what
+  actually produces the misclassification) a second, independent opinion
+  now runs: `_dt_regular_and_within_cap` reads the exact distance transform
+  at the shape's own medial axis (`build_shape_field`, already-merged M1
+  infrastructure) and ANDs two terms — `2*sigma < mu` (uniform thickness)
+  and the 90th-percentile radius under the cap — exactly the spike's own
+  recommended `VP90` arm, a pure tightening (only ever turns a satin call
+  into a fill call, never the reverse). Both call sites that decide the
+  tier (`stage7_sequence.py`'s `sequence`, `stage5_overlap.py`'s
+  `_comp_axis` for the directional-pull-comp path) now thread `design_class`
+  through so the two agree, preserving the existing "compensation must not
+  flip a shape's tier" invariant.
+
+  **Measured, not assumed:** this repo's own two named organic-photo
+  fixtures, run through the real pipeline
+  (`PipelineConfig(target_width_mm=60.0, garment_id="left_chest")`, the
+  preflight `DENSITY_STACKED` repro) — before the fix, `region_blobs.png`
+  **blocked** (`peak_units` 10.02, `over_block_mm2` 76.0) and
+  `summit_badge.png` **warned** (`over_warn_mm2` 247.0); after, **neither
+  raises the finding at all**, not just a severity step down. Confirmed
+  stable across `target_width_mm` 60/80 and `garment_id` left_chest/hat_front
+  (6 combinations, all clear). The specific shapes that flip: `region_blobs.
+  png`'s `Sd12bfc9e`/`S94f29987` (bbox aspect ~1.08/1.09 — near-square, not a
+  ribbon by any honest reading) and `summit_badge.png`'s `Sed818ef7`/
+  `S00d736bf`/`S6096e7a9`, all correctly satin before the fix under
+  `ribbon_width_mm` alone and correctly fill after. As a bonus check (not a
+  target fixture named in this PR, but the same root cause, cross-referenced
+  from the unmerged `digitizer-satin-underlay-cap-fix` branch's own
+  commit messages): `drone_render.png @ 80mm/left_chest`, independently
+  confirmed blocking on this exact unmodified checkout (`peak_units` 17.12,
+  `over_block_mm2` 275.0 — matching that branch's own cited numbers exactly),
+  also clears to no finding at all under this fix — a full resolution where
+  that branch's narrower underlay-pitch mitigation only got it down to a
+  reduced block.
+
+  Full digitizer suite before/after (this exact worktree, not a cited
+  number from elsewhere): **773 passed / 3 failed / 3 skipped** both before
+  and after — the 3 failures are the same long-standing container-
+  environment goldens this doc has cited every pass since 2026-08-03
+  (`test_flat_lane_byte_identical.py[logo_alpha.png]`, `test_pushcomp.py
+  [logo_whitebg.png-towel]`, `test_stage2_photo_segment.py[logo_alpha.png]`),
+  present identically before this change and unrelated to it (a 1-stitch-
+  count drift, not a classification difference). One REAL regression turned
+  up mid-verification and was fixed in the same PR, not silently patched
+  around: `test_photo_sequencing.py::test_flat_and_gradient_classes_are_
+  inert_in_sequence` used a 10x10 square sitting exactly on
+  `SATIN_MAX_WIDTH_MM`'s cap as its "gradient lane is inert" fixture — the
+  DT check correctly reclassifies that shape for `"gradient"` now (the same
+  archetype as `test_satin.py`'s `SQUARE 8x8`), so the test's OWN fixture
+  was silently exercising the exact bug this PR fixes. Rewritten to use
+  shapes unambiguous under both rules, isolating the sequencing-machinery
+  invariant it actually exists to pin from the satin/fill call it no longer
+  should assume is class-independent. New regression coverage:
+  `test_satin.py` (a serrated-disc fixture matching this bullet's own
+  20mm-disc example, swept at three tooth depths, `design_class="flat"`
+  pinned unchanged, four letterform archetypes pinned unaffected) and
+  `test_preflight.py` (`region_blobs.png`/`summit_badge.png` no longer
+  raise `DENSITY_STACKED`, read from the real pipeline, not a mock).
+
+  **What this does NOT resolve:** the DT-first migration's M2/M3 (a full
+  classifier swap, corpus-gated) is untouched and still blocked on the same
+  37-file `scratch_corpus/` run — this PR is deliberately narrower, scoped
+  to the one slice (non-flat design classes only) where the evidence is
+  strong enough to land without that corpus: zero flat-lane byte-identical
+  risk by construction, a pure-tightening DT term identical to the spike's
+  own vetted recommendation, and direct measurement against this repo's own
+  committed fixtures rather than a synthetic population alone.
 - **Fill row spacing (law 19)** — unresolved two-population finding: the
   0.20mm figure is a satin-rail artifact for one file population (refuted)
   but looks like a genuine denser pitch on 43 commissioned cap logos (still
@@ -1051,16 +1127,156 @@ Layers-panel control, tests at every layer.
   remove, and the invalid-shape (self-intersecting) rejection path all
   confirmed working, screenshotted.
 
-**Still open — the other half of the original gap:** splitting or merging
-shapes. A materially different, bigger lift than an outline edit (shape
-identity, ids, and the whole override contract all assume one shape stays
-one shape across a re-digitize) — explicitly out of scope for this slice,
-not addressed.
+**Shape splitting and merging — CLOSED 2026-08-05** (worktree
+`agent-a095c5eea8b6320fb`, branch `shape-split-merge`): the "other half of
+the original shape-recognition gap" this doc tracked as fully open is now
+built, following the same override-pattern playbook `boundary_override`
+established — new contract keys, service validation, core application, a
+Layers-panel control, tests at every layer — with one structural difference
+called out up front because it drives every design choice below: merge and
+split change the SET of shapes, not one shape's geometry, so neither rides
+`shape_overrides` (which is keyed to ONE existing shape_id that survives the
+edit) — both are new top-level config keys, siblings of `deleted_shape_ids`.
 
-**Next step:** splitting/merging shapes is the one piece of the original
-shape-recognition gap this pass didn't touch — the next candidate if this
-area gets picked up again. The underlay-style dropdown (PR #28) still has
-no live-browser check of its own either.
+- **Contract keys (v1.5): `merge_shape_ids` / `split_shapes`.**
+  `merge_shape_ids: [[shape_id, shape_id, ...], ...]` — each inner list at
+  least 2 distinct ids to union into one new shape. `split_shapes:
+  {shape_id: [[x0,y0],[x1,y1]]}` — a straight cut line (extended internally
+  past the shape's own bounding box, so the caller sends only the two
+  dragged endpoints) dividing one shape into exactly two. Both are validated
+  service-side for shape/type (`digitizer_service/app.py`'s
+  `_canonicalize_shape_edits`, mirrored bounds in
+  `digitizer_core.regions`'s own copy) and re-validated independently at the
+  core layer (`regions.apply_shape_merges` / `apply_shape_splits`, called
+  from `pipeline.run_stages` BEFORE `apply_shape_edits` — ids are minted
+  against the full stage-4 generation before deletions/overrides consume
+  any of them, the same ordering reasoning `apply_shape_edits` already
+  documents for itself). A stale/unknown id is a warning and that one
+  merge/split is skipped (`SHAPE_EDIT_UNKNOWN_ID`, same posture
+  `deleted_shape_ids` already has); a geometrically bad request (mixed
+  threads, a present hole, a non-adjacent merge, a line that doesn't cross
+  cleanly or crosses a hole, a piece under the sewability floor) is a clean
+  `ValueError` — a 400 at submit for what the service can shallow-check, a
+  failed job for what only the core's real Region geometry can (mirroring
+  `boundary_override`'s own hole-containment asymmetry exactly).
+- **`shape_id` allocation: brand new, deterministic ids hashed from the
+  OPERATION's own inputs, never geometry.** Confirmed before relying on it:
+  `match_shape_ids` is not wired into `pipeline.run_stages` at all today —
+  it exists for a future segmenter (SAM2) that would move centroids/areas
+  slightly on a re-digitize of the SAME image, a different problem from a
+  user *deliberately* replacing a shape's identity. So merge/split mint new
+  ids instead of trying to carry one forward: `_merge_shape_id` hashes the
+  sorted source ids ("SM" + blake2s), `_split_shape_id` hashes the source id
+  + the cut line's own (canonicalized-order) endpoints + which of the two
+  pieces ("SP" + blake2s, piece order fixed by centroid, never shapely's
+  internal `split()` ordering). Both prefixes can never collide with an
+  `assign_shape_ids` output (always `"S" + hex`). Being pure functions of
+  the request rather than geometry means an identical resubmit is one
+  stable cache key/one stable pair of new ids, and — as a documented but
+  not yet UI-wired bonus — a caller that computes the same hash could layer
+  a `shape_overrides` entry onto a shape a merge/split mints in the SAME
+  request; the shipped Studio UI does not do this, it always waits for the
+  fresh review payload before adding further overrides (two-step, not
+  one-shot).
+- **v1 scope, deliberately narrow — the honest trade-offs, not silently
+  missing:**
+  - **Merge requires the union to reduce to ONE polygon** (source shapes
+    must already touch or overlap) — a hard architectural fact, not a
+    style choice: `Region.polygon` is a single `shapely.Polygon` everywhere
+    in stages 5-7, so a merge that can't produce one polygon has no legal
+    result. **Worth stating plainly:** stage 3's connected-component
+    labeling (`connectivity=8`) already fuses any two genuinely-touching
+    same-color regions into one shape_id before assign_shape_ids ever
+    runs, so in practice this restricts merge's usefulness on the flat/
+    gradient lanes to shapes a SLIC/RAG photo-segment pass left adjacent
+    but unmerged, or a future hand-authored/manual-digitizing workflow —
+    not "any two same-color shapes a user points at," which would need a
+    bridging/convex-hull strategy this pass does not build. Documented as
+    a real, known narrowing, not glossed over.
+  - **Merge requires every source shape to share one thread_number** (no
+    cross-color merge — which color would the result take? a real product
+    question, deferred) **and none of them may have a hole** (shapely's own
+    union handles holes correctly; the deferral is which shape's hole
+    semantics should win when two different shapes' holes overlap or one
+    sits over the other's fill — genuinely ambiguous, sidestepped for v1
+    rather than guessed at).
+  - **Split is a single straight cut line, not an arbitrary polyline** —
+    extended internally so the caller need only send the two dragged
+    endpoints, producing exactly two pieces. A cut crossing one of the
+    shape's own holes is rejected rather than silently turning the hole
+    into a notch on both halves (shapely itself handles this case without
+    erroring, so the rejection is a deliberate product choice, verified
+    against real shapely behavior before writing the guard, not a
+    limitation of the library).
+  - Per-shape styling (`border`/`tier`/`fill_angle_deg`/`sew_order`/
+    `underlay_style`) is seeded onto the result from the largest source
+    shape (merge) or onto BOTH new pieces (split); `boundary_override` is
+    never carried forward either way — it describes a hand-edited shell for
+    a polygon that no longer exists once the identity changes.
+- **Studio UI (`DigitizePanel.svelte`):** a merge-selection checkbox per
+  Layers row (stitched, non-hidden shapes only) plus a "Merge N shapes" bar
+  that live-validates the selection (`digitizer.js`'s `mergeGroupIssues` —
+  at least 2 shapes, one thread) and disables the button until it passes; a
+  "Split shape" (✂) control opening a small SVG editor sharing the boundary
+  editor's scaffolding — a draggable 2-point cut line (defaulting to a
+  horizontal line through the shape's own centroid, already valid for a
+  convex shape) with live validation (`splitLineIssues`, counting crossings
+  against the shape's own outline) disabling Save until the line crosses
+  cleanly. Both save through the SAME `setOverride`-adjacent →
+  `mergeGroups`/`splitLines` element fields → "Apply layer changes" flow
+  every other override here uses; `canonicalShapeEdits`/`editsKey` fold both
+  new fields into the existing pending-edit diff, so no new Apply-button
+  wiring was needed. A merged/split result row's provenance (and its
+  Undo-merge/Undo-split action) is read off the LAST APPLIED job's own
+  `SHAPES_MERGED_BY_USER`/`SHAPE_SPLIT_BY_USER` warnings — the server
+  already computed which source ids produced which result id, so the
+  client never re-derives the hash.
+- **Verification:** core-level (`digitizer/tests/test_shape_identity.py`,
+  24 tests — the merge/split happy paths on synthetic adjacent Regions, every
+  v1 guardrail as a real `ValueError`, the warn-vs-skip stale-id path, id
+  determinism/stability regardless of argument or endpoint order, and two
+  tests proving `cfg.merge_shape_ids`/`cfg.split_shapes` reach
+  `apply_shape_merges`/`apply_shape_splits` from a REAL `digitize()` call
+  against the same `logo_whitebg.png` fixture `test_shape_overrides.py`
+  uses — the merge case using that fixture's own two real, non-adjacent
+  "1305" regions to prove the adjacency guardrail fires on real geometry,
+  not just synthetic squares) and service-level
+  (`digitizer/tests/test_service.py` — parse/canonicalization including
+  point/endpoint-order normalization for a stable cache key, 13 new bad-
+  request 400 cases, the manual-digitizing field exclusion extended to both
+  new keys, an HTTP round trip that actually cuts the fixture's real purple
+  rectangle into two new shapes with the design's stitch count changing,
+  and the merge-rejection round trip against the real orange pair). Studio:
+  `digitizer.spec.js` gained unit coverage for the new canonicalization and
+  the two pure validation helpers (7 tests); a new Playwright e2e spec
+  (`app/e2e/digitize-shape-identity.spec.js`) drives the REAL digitizer
+  service end to end for split (open the editor, save the default cut,
+  Apply, confirm the one original row became two rows sharing its thread
+  with a "split shape" badge and the design's stats changed, then Undo
+  split restores the single shape) — **run live against the real service
+  this pass, both tests green.**
+  **One thing this pass deliberately did NOT verify live:** a full
+  browser round trip of a SUCCESSFUL merge (select → Merge → Apply →
+  one combined row). The reason is the same architectural fact above, not
+  an oversight: `two-squares.png` (this repo's existing digitize-e2e
+  fixture) has exactly two shapes, differently colored, so a live merge
+  attempt on it can only ever demonstrate the SAME-COLOR validation
+  rejecting a mixed selection (which the e2e spec does verify live,
+  including the merge bar disabling itself) — not a genuine successful
+  union, which needs two REAL same-thread, already-touching regions that,
+  per the connected-component fact above, essentially never reach the
+  review screen as two separate shapes in the first place. The successful-
+  union code path itself is proven, just at the core level on synthetic
+  Regions and the service level via the real-but-rejected orange pair, not
+  through this particular browser harness.
+
+**Next step:** the underlay-style dropdown (PR #28) still has no live-
+browser check of its own. A live-browser proof of a genuinely SUCCESSFUL
+merge (not just the rejection path) needs either a purpose-built fixture
+image engineered to survive stage 3's connected-component fusion as two
+separate same-thread regions, or a bridging/convex-hull merge strategy for
+non-adjacent shapes — neither attempted this pass; both are candidates if
+this area's merge feature gets picked up again.
 
 ---
 

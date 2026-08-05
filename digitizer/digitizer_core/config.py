@@ -524,6 +524,55 @@ class PipelineConfig:
     # warn (SHAPE_EDIT_UNKNOWN_ID).
     shape_overrides: dict = field(default_factory=dict)
 
+    # Shape identity edits (contract v1.5, `regions.apply_shape_merges` /
+    # `apply_shape_splits`) — the other half of the shape-recognition gap
+    # `boundary_override` above did not touch: those two change ONE shape's
+    # geometry/attributes, these change the SET of shapes. Applied BEFORE
+    # `shape_overrides`/`deleted_shape_ids` (right after stage 4 assigns ids
+    # against the full generation, same ordering reasoning `apply_shape_edits`
+    # already documents) so a request MAY layer a `shape_overrides` entry onto
+    # a shape these mint this same call, if the caller independently computes
+    # the same deterministic id `_merge_shape_id`/`_split_shape_id` would — not
+    # required; the reference Studio UI does not do this in v1, it always
+    # waits for the resulting review payload before adding further overrides.
+    #
+    #   merge_shape_ids: [[shape_id, shape_id, ...], ...] — each inner list at
+    #     least 2 distinct ids to union into ONE new shape. v1 restrictions
+    #     (see `regions.py`'s own comment above `apply_shape_merges` for the
+    #     full reasoning): every source shape must share one thread_number
+    #     (no cross-color merge) and have no holes; the union must reduce to
+    #     one Polygon (the sources must already touch or overlap — two
+    #     disjoint shapes are rejected, not bridged). The new shape's id is a
+    #     hash of the (sorted) source ids, never geometry-derived, so it is
+    #     stable across an identical resubmit. Per-shape styling
+    #     (border/tier/fill_angle_deg/sew_order/underlay_style) is seeded from
+    #     the LARGEST source shape; `boundary_override` is never carried
+    #     forward (it describes a hand-edited shell for a specific OLD
+    #     polygon that no longer exists after the merge).
+    #   split_shapes: {shape_id: [[x0, y0], [x1, y1]]} — a straight cut line
+    #     (mm, the same design-center/y-down space `outline_mm` reports) that
+    #     divides ONE shape into exactly two new shapes. Not an arbitrary
+    #     polyline — a single straight line, extended internally past the
+    #     shape's own bounding box so the caller need only send the two
+    #     dragged endpoints. A line crossing one of the shape's own holes is
+    #     rejected rather than silently turning the hole into a notch on both
+    #     halves. Each new piece's id hashes the source id, the line's
+    #     endpoints, and which piece (0/1, assigned by centroid order — never
+    #     shapely's internal split() ordering, so it cannot flip between
+    #     otherwise-identical runs); styling is seeded from the source shape
+    #     onto BOTH new pieces, `boundary_override` dropped for the same
+    #     reason as merge.
+    #
+    # A group/line naming an id the artwork no longer has is a warning
+    # (SHAPE_EDIT_UNKNOWN_ID) and that one merge/split is skipped — the same
+    # "the art may have changed under the edit" posture every other key here
+    # already takes. A GEOMETRICALLY bad request (mixed threads, a present
+    # hole, a non-adjacent merge, a line that does not cross cleanly, a piece
+    # under the sewability floor) is a `ValueError` — a real, checkable
+    # mistake in the request, not staleness.
+    merge_shape_ids: list = field(default_factory=list)
+    split_shapes: dict = field(default_factory=dict)
+
     # Debug artifacts: written per stage when set
     debug_dir: Path | None = None
 
