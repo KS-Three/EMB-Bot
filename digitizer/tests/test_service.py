@@ -26,6 +26,13 @@ ART = Path(__file__).resolve().parents[1] / "testdata" / "logo_whitebg.png"
 # that tags a Region `enclosed_background` and defaults it to unstitched.
 REPRO = Path(__file__).resolve().parents[1] / "testdata" / "photo" / "repro_gradient_white_icon.png"
 
+# The text-cluster-detection benchmark: the "ENTERPRISES INC." subline in this
+# fixture is a real logo's independently-rescued sub-detail glyphs (see
+# `test_pipeline.py::test_full_pipeline_tags_a_text_cluster_on_the_benchmark_subline`).
+# 90 mm is the documented benchmark width at which the subline's glyphs are
+# rescued and clustered.
+ENTHUSIAST_LOGO = Path(__file__).resolve().parents[1] / "testdata" / "photo" / "enthusiast_logo.png"
+
 # /digitize-manual fixtures: a plain rectangle (fill) and the same 24x2 mm
 # satin bar `tests/test_satin.py::BAR` uses — known-good geometry rather than
 # an untested shape.
@@ -446,6 +453,35 @@ def test_stitched_default_and_override_round_trip_over_http(client):
     # And it isn't just the flag: the restored shape now actually reaches
     # the emitted design, growing the stitch count.
     assert second["design"]["stitchCount"] > first["design"]["stitchCount"]
+
+
+def test_review_payload_carries_text_cluster_fields_over_http(client):
+    """The service-layer half of text-cluster detection (Step 4 of the
+    text-cluster-detection plan): `_review_payload` echoes `text_candidate`
+    and `text_cluster_id` straight off `Region.meta`, purely additive and
+    read-only — no `_OVERRIDE_KEYS` entry, no client-submitted path.
+
+    Uses the real benchmark fixture at its documented 90 mm size (the same
+    fixture/size `test_pipeline.py`'s full-pipeline wiring test confirms
+    tags a text cluster on the "ENTERPRISES INC." subline) so this exercises
+    the real HTTP seam, not a synthetic Region.meta.
+    """
+    review = _digitize(client, {"target_width_mm": 90.0, "preflight": False},
+                        art=ENTHUSIAST_LOGO)["review"]
+    shapes = review["shapes"]
+
+    assert all({"text_candidate", "text_cluster_id"} <= set(s) for s in shapes)
+
+    tagged = [s for s in shapes if s["text_cluster_id"] is not None]
+    assert tagged, "the benchmark fixture must produce at least one tagged text cluster"
+    for s in tagged:
+        assert s["text_candidate"] is True
+        assert isinstance(s["text_cluster_id"], str)
+
+    untagged = [s for s in shapes if s["text_cluster_id"] is None]
+    assert untagged, "ordinary, never-tagged shapes must also be present in this fixture"
+    for s in untagged:
+        assert s["text_candidate"] is False
 
 
 def test_an_edit_is_a_different_job_not_a_stale_cache_hit(client):
