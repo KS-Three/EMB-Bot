@@ -116,3 +116,46 @@ def test_pipeline_reports_its_segmenter_and_scale(whitebg):
     assert whitebg.segmenter == "classical"
     assert whitebg.px_per_mm > 0
     assert whitebg.background.stitched is False
+
+
+# --- text-cluster detection wiring (Step 3) --------------------------------
+
+
+def test_full_pipeline_tags_a_text_cluster_on_the_benchmark_subline():
+    """`detect_text_clusters` is wired into `run_stages` right after
+    `tag_enclosed_background` (`pipeline.py`). This is the plan's acceptance
+    bar for that wiring step: the FULL pipeline, not the module in isolation,
+    must tag a shared `text_cluster_id` across several rescued shapes on the
+    real benchmark fixture — `testdata/photo/enthusiast_logo.png`'s
+    "ENTERPRISES INC." subline (`test_run_tier.py`'s docstring; the subline
+    is a real logo's independently-rescued sub-detail glyphs, exactly the
+    shape this detector exists for), at its documented benchmark size, 90 mm.
+    """
+    result = run_stages(TESTDATA / "photo" / "enthusiast_logo.png",
+                         cfg(target_width_mm=90.0))
+
+    rescued = [r for r in result.regions if r.meta.get("rescued_small_shape")]
+    assert rescued, "the benchmark fixture must still rescue its subline glyphs"
+
+    tagged = [r for r in result.regions if r.meta.get("text_cluster_id")]
+    assert tagged, "the wired pipeline must tag at least one text cluster"
+
+    cluster_ids = {r.meta["text_cluster_id"] for r in tagged}
+    # One dominant cluster is the documented real-world shape of this fixture
+    # (the subline reads as one word) — assert the actual shape_id evidence,
+    # not just that tagging happened somewhere.
+    biggest_id = max(cluster_ids, key=lambda cid: sum(
+        1 for r in tagged if r.meta["text_cluster_id"] == cid))
+    members = {r.shape_id for r in tagged if r.meta["text_cluster_id"] == biggest_id}
+    assert len(members) >= 10, (
+        f"expected most of the subline's rescued glyphs in one cluster, got "
+        f"{len(members)} member shape_ids: {sorted(members)}"
+    )
+    # Every member of that cluster must actually be a rescued shape and carry
+    # a real stroke-width value (not just the id) — the detector's own
+    # contract per `textcluster.py`.
+    for r in tagged:
+        if r.meta["text_cluster_id"] == biggest_id:
+            assert r.meta.get("rescued_small_shape") is True
+            assert r.meta.get("text_candidate") is True
+            assert isinstance(r.meta.get("text_cluster_stroke_mm"), float)
