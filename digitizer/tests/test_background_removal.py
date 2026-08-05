@@ -306,7 +306,88 @@ def test_flat_lane_is_byte_identical_with_the_flag_on(fixture):
     assert snap == _golden_snapshot(fixture)
 
 
-# --- 5. _clean_background_mask's own contract -------------------------------------
+# --- 6. The class-weight wiring: bg_mask reaches _region_classes ------------------
+# The literal downstream gap this module used to leave open: `remove_
+# background_seam`'s own mask reaching `stage2_photo_segment._region_classes`
+# one hop further than `p.bg_mask` did (previously only OR'd into it for
+# stage-1-style consumers). See `stage2_photo_segment._region_classes` and
+# `palette.py`'s module docstring for the class-weight math; this section
+# proves the WIRING — that `pipeline.run_stages` passes a real mask through
+# to `photo_segment`, and ONLY a real one.
+
+
+def test_bg_mask_reaches_photo_segment_when_rembg_succeeds(monkeypatch):
+    captured = {}
+    real_segment = pipeline_module.photo_segment
+
+    def _spy(p, cfg, face_regions=None, bg_mask=None):
+        captured["bg_mask"] = bg_mask
+        return real_segment(p, cfg, face_regions=face_regions, bg_mask=bg_mask)
+
+    monkeypatch.setattr(pipeline_module, "photo_segment", _spy)
+    monkeypatch.setattr(
+        pipeline_module,
+        "remove_background_seam",
+        lambda rgb, px_per_mm, cfg: (np.zeros(rgb.shape[:2], bool), None),
+    )
+    result = run_stages(
+        TESTDATA / "photo" / "region_blobs.png",
+        _cfg(forced_class="photo_scene", photo_prep=True,
+             photo_prep_background_removal=True),
+    )
+    assert "bg_mask" in captured, "photo_segment was never called"
+    assert captured["bg_mask"] is not None
+    assert captured["bg_mask"].dtype == bool
+    assert result.regions, "the job itself must still complete"
+
+
+def test_bg_mask_stays_none_when_rembg_is_unavailable(monkeypatch):
+    """The honesty guard this seam depends on: a failed/unavailable rembg
+    pass must NOT let `p.bg_mask`'s border-flood default masquerade as a
+    real subject/background mask downstream — see `_region_classes`'
+    docstring for why that would misrepresent what the mask actually
+    knows."""
+    captured = {}
+    real_segment = pipeline_module.photo_segment
+
+    def _spy(p, cfg, face_regions=None, bg_mask=None):
+        captured["bg_mask"] = bg_mask
+        return real_segment(p, cfg, face_regions=face_regions, bg_mask=bg_mask)
+
+    monkeypatch.setattr(pipeline_module, "photo_segment", _spy)
+    monkeypatch.setattr(
+        pipeline_module,
+        "remove_background_seam",
+        lambda rgb, px_per_mm, cfg: (None, "unavailable (test)"),
+    )
+    run_stages(
+        TESTDATA / "photo" / "region_blobs.png",
+        _cfg(forced_class="photo_scene", photo_prep=True,
+             photo_prep_background_removal=True),
+    )
+    assert "bg_mask" in captured, "photo_segment was never called"
+    assert captured["bg_mask"] is None
+
+
+def test_bg_mask_stays_none_when_the_flag_is_off(monkeypatch):
+    captured = {}
+    real_segment = pipeline_module.photo_segment
+
+    def _spy(p, cfg, face_regions=None, bg_mask=None):
+        captured["bg_mask"] = bg_mask
+        return real_segment(p, cfg, face_regions=face_regions, bg_mask=bg_mask)
+
+    monkeypatch.setattr(pipeline_module, "photo_segment", _spy)
+    run_stages(
+        TESTDATA / "photo" / "region_blobs.png",
+        _cfg(forced_class="photo_scene", photo_prep=True,
+             photo_prep_background_removal=False),
+    )
+    assert "bg_mask" in captured, "photo_segment was never called"
+    assert captured["bg_mask"] is None
+
+
+# --- 7. _clean_background_mask's own contract -------------------------------------
 
 
 def test_clean_background_mask_drops_small_islands_and_smooths_speckle():

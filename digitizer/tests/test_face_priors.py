@@ -267,6 +267,48 @@ def test_region_classes_maps_eyes_then_skin_then_none():
     assert _region_classes([eye, skin, elsewhere], []) == [None, None, None]
 
 
+def test_region_classes_maps_subject_and_background_from_a_bg_mask():
+    """The subject/background half of `_region_classes` (wired 2026-08-05,
+    consuming `stage1_photo_prep.remove_background_seam`'s output one hop
+    downstream, via `pipeline.run_stages`'s `subject_bg_mask`). Same
+    majority-of-pixels pattern as eyes/skin, and eyes/skin still win when
+    both a face and a bg_mask are present — a region cannot be BOTH an eye
+    and background."""
+    shape = (200, 200)
+
+    def region(y0, y1, x0, x1):
+        m = np.zeros(shape, bool)
+        m[y0:y1, x0:x1] = True
+        return RegionMask(mask=m, layer=0, source="photo")
+
+    bg_mask = np.zeros(shape, bool)
+    bg_mask[:, 100:] = True  # right half of the frame is background
+
+    bg_region = region(20, 180, 120, 180)     # entirely inside bg_mask
+    subj_region = region(20, 180, 10, 80)     # entirely outside bg_mask
+
+    assert _region_classes([bg_region, subj_region], None, bg_mask) == [
+        "background", "subject",
+    ]
+    # No bg_mask at all -> the documented pre-rembg degradation, unchanged:
+    # every non-face region stays None, exactly like the no-face case above.
+    assert _region_classes([bg_region, subj_region], None, None) == [None, None]
+
+    # eyes/skin still take priority over bg_mask when a face is ALSO present.
+    face = FaceRegion(
+        box_px=(40.0, 40.0, 80.0, 100.0),
+        landmarks_px=(
+            (60.0, 75.0), (100.0, 75.0), (80.0, 95.0),
+            (65.0, 115.0), (95.0, 115.0),
+        ),
+        score=0.9,
+    )
+    eye = region(70, 80, 55, 65)  # x 55-65: outside bg_mask (x >= 100)
+    # Without face priors this patch would class "subject" (it sits outside
+    # bg_mask); with a face present it must still class "eyes" first.
+    assert _region_classes([eye], [face], bg_mask) == ["eyes"]
+
+
 # --- 6. The preflight face-size guard ------------------------------------------
 
 

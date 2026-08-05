@@ -407,8 +407,21 @@ TRAVEL_INSET_MM = 0.6   # travel hugs the edge but never reaches it
 
 UNDERLAY_INSET_MM = 1.0      # edge walk sits inside the finished edge
 UNDERLAY_STITCH_MM = 2.5     # structural, not decorative
-UNDERLAY_ZIGZAG_MM = 2.0     # row spacing, zigzag underlay
+UNDERLAY_ZIGZAG_MM = 2.0     # row spacing, zigzag underlay (fill's lattice
+                              # underlay only, via stage6_fill.py's
+                              # _underlay_paths() -- NOT satin; see
+                              # SATIN_ZIGZAG_PITCH_MM below)
 UNDERLAY_LATTICE_MM = 2.5    # row spacing, lattice underlay
+
+# Satin's own zigzag-underlay pitch (corpus law 23, docs/corpus-laws-round3-
+# 2026-08-01.md). Deliberately a separate constant from UNDERLAY_ZIGZAG_MM:
+# that one is shared with fill's lattice underlay (stage6_fill.py), and the
+# corpus finding is specific to satin columns, whose zigzag underlay runs
+# denser than the generic 2.0 mm pitch -- 1.45 mm crossings, not 2.0. Landed
+# 2026-08-05 alongside law 26 and stage6_satin.py's _stroke_underlay() leg-
+# width widening; see COVERAGE_WARN_UNITS below for the recalibration this
+# and law 26 together required.
+SATIN_ZIGZAG_PITCH_MM = 1.45
 
 # --- Ties and trims --------------------------------------------------------
 
@@ -475,17 +488,51 @@ COVERAGE_SUBSAMPLE_MM = 0.1
 # layer red line) — they are NOT primary-sourced, and are carried here with
 # that provenance intact.
 #
-# Checked against what our own output actually produces, 2026-08-01, rather
-# than adopted on the playbook's word. The stacking ladder lands exactly on
-# law 27's prose: one full-density fill measures 1.00 units, two 2.00 ("never
-# more than two full-density fills stacked" — permitted, silent), three 3.00
-# ("a third layer means cutting a hole in the base" — warn), four 4.00
-# (block). Real plans: the fixture logo p50 1.20 / p95 1.82 / max 2.55 and
-# the benchmark at 90 mm p50 1.19 / p95 3.15 / max 4.58 — both clean, both
-# silent, because the check gates on connected patch area and neither has a
-# patch over 2.5 bigger than 11 mm2. An auto border over a 0.20 mm fill
-# reaches 4.85 across 408 mm2 and warns; 0.13 mm rows block.
+# COVERAGE_WARN_UNITS = 2.5 — recalibrated 2026-08-05 after corpus laws 23 and
+# 26 landed (fabrics.py's pique_knit/jersey_tee fill_underlay edge_lattice ->
+# edge_run, and SATIN_ZIGZAG_PITCH_MM 2.0 -> 1.45 with the wider 0.82x-column
+# zigzag leg below). The line used to be "checked against what our own output
+# actually produces" — self-fit to the PRE-law-23/26 engine, which is
+# circular: it verifies the counting mechanism, not the threshold. Re-derived
+# here two ways that do NOT depend on our own prior output:
+#   1. Law 27's own prose is the primary number: "safe classic stack ~= 2.5
+#      units". That IS the derivation, not a coincidence to be reproduced.
+#   2. Cross-checked against law 28 ("underlay costs 15-20% of an element's
+#      stitches but only ~0.1-0.2 coverage units") using the CORRECTED
+#      engine's own underlay geometry, computed from stitch geometry alone
+#      (0.4mm thread / pitch, same arithmetic _coverage_map uses): fill's
+#      generic zigzag underlay (UNDERLAY_ZIGZAG_MM = 2.0mm, now used only by
+#      stage6_fill.py's lattice underlay since law 26) prices at 0.4/2.0 =
+#      0.208 units, the top of law 28's band almost exactly. Satin's own
+#      zigzag underlay (SATIN_ZIGZAG_PITCH_MM = 1.45mm, corpus law 23 —
+#      denser than the generic pitch, independently sourced, not fit to
+#      match law 28's band) prices at 0.4/1.45 = 0.283, a bit over that band
+#      but still cheap. A classic stack — underlay + one full-density fill
+#      (1.00) + one satin detail layer (1.00) — lands at 2.21-2.28 units
+#      either way: comfortably under 2.5, matching law 27's "safe"
+#      classification with headroom, not against it.
+# Real fixtures after both laws confirm the same story: the fixture logo
+# (whitebg @ left_chest, pique_knit) now measures p50 1.00 / p95 1.49 /
+# max 2.57 (was p50 1.20 / p95 1.82 / max 2.55 before law 26 removed the
+# lattice pass) and the 160mm heavy-square fixture p50 1.00 / p95 1.00 /
+# max 1.59. Typical output sits well under 2.5 either side of the change;
+# nothing that was clean before now grazes the line, and nothing that should
+# warn is newly silenced by it.
 COVERAGE_WARN_UNITS = 2.5
+
+# COVERAGE_BLOCK_UNITS = 3.5 — left EXACTLY as-is, 2026-08-05. Per
+# docs/machine-physics-playbook-2026-07-31.md line ~84 this line (unlike
+# COVERAGE_WARN_UNITS above) is explicitly tagged sew-out-gated, not
+# desk-safe: it is Embrilliance's 6-thread-layer red line translated to our
+# units, medium confidence, and part 4 item 2 of the playbook already
+# prescribes the test that settles it — a stacked-fill ladder 2.0 -> 4.0
+# units in 0.5 steps on twill/tearaway (EMBBOT_SEWOUT_CARD.dst block 2),
+# noting the first break and hand-feel. That sew-out has not happened.
+# Landing laws 23/26 changes typical coverage readings (see WARN's note
+# above) but does not touch this line's own justification, so it stays
+# untouched pending Kent's physical test — moving it on desk math alone
+# would be exactly the self-fit mistake WARN's recalibration was trying to
+# get away from.
 COVERAGE_BLOCK_UNITS = 3.5
 
 
