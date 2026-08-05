@@ -757,6 +757,7 @@
                         <option value="satin">Satin</option>
                         <option value="fill">Fill</option>
                         <option value="run">Run</option>
+                        <option value="sketch">Sketch</option>
                       </select>
                       {#if tier === "fill"}
                         <select

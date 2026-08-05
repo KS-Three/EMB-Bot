@@ -195,6 +195,24 @@ test("canonicalShapeEdits: sorts+dedupes deletions, strips rgb/null/auto, drops 
   expect(canonicalShapeEdits(digitizedElement())).toEqual({});
 });
 
+// "sketch" (contract v1.3, photo plan row 12) joined satin/fill/run as a
+// forceable per-shape tier — digitizer_service/app.py's _TIER_VALUES and
+// digitizer_core/regions.py's own copy both list it. Pinned here the same
+// way the other three tiers are: a value this module doesn't recognize
+// canonicalizes to nothing and never reaches the wire, exactly what almost
+// shipped when the Layers-panel dropdown gained a Sketch option before this
+// module's SHAPE_TIERS set did.
+test("canonicalShapeEdits accepts the sketch tier alongside satin/fill/run", async () => {
+  stubStorage({});
+  const { canonicalShapeEdits } = await import("./digitizer.js");
+  const el = digitizedElement({
+    shapeOverrides: { Ssk: { tier: "sketch" } },
+  });
+  expect(canonicalShapeEdits(el)).toEqual({
+    shape_overrides: { Ssk: { tier: "sketch" } },
+  });
+});
+
 // ---- BACKGROUND_ENCLOSED restore (contract v1.1: shapes[].stitched, ------
 // shape_overrides[sid].stitched) --------------------------------------------
 //
