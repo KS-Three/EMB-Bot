@@ -2,7 +2,10 @@
   import { createEventDispatcher } from "svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
   import { defaultManualShape } from "../lib/project.js";
-  import { CANVAS_W, CANVAS_H, isValidShape, isNearStart } from "../lib/manualShapes.js";
+  import {
+    CANVAS_W, CANVAS_H, MAX_SHAPE_POINTS,
+    isValidShape, isNearStart, isDuplicateOfLast, shapeIssues,
+  } from "../lib/manualShapes.js";
 
   // Manual digitizing mode (MVP slice): draw straight-line polygon outlines
   // directly on a canvas, then assign each one a stitch type/color/angle by
@@ -23,10 +26,21 @@
   let draft = [];
   let selectedShapeId = null;
   let canvasEl;
+  // Brief on-canvas hint shown when a click is dropped because the draft
+  // already hit MAX_SHAPE_POINTS — cleared on a timer so it reads as a
+  // transient nudge, not a persistent error banner.
+  let capHint = false;
+  let capHintTimer = null;
 
   $: shapes = element.shapes || [];
   $: selectedShape = shapes.find((s) => s.id === selectedShapeId) || null;
-  $: canFinish = isValidShape(draft);
+  // Only surface issues once there are enough points for them to be
+  // meaningful (self-intersection/area problems don't exist below a
+  // triangle) — otherwise every fresh draft would open with "Needs at
+  // least 3 points," which is just the obvious starting state, not a
+  // problem to report.
+  $: draftIssues = draft.length >= 3 ? shapeIssues(draft) : [];
+  $: canFinish = draft.length >= 3 && draftIssues.length === 0;
 
   function nextShapeId(list) {
     let max = 0;
@@ -52,21 +66,35 @@
     selectedShapeId = shape.id;
   }
 
+  function flashCapHint() {
+    capHint = true;
+    if (capHintTimer) clearTimeout(capHintTimer);
+    capHintTimer = setTimeout(() => { capHint = false; }, 2000);
+  }
+
   function onCanvasClick(e) {
     const pt = canvasPointFromEvent(e);
     if (draft.length >= 2 && isNearStart(draft, pt.x, pt.y)) {
       finishShape();
       return;
     }
+    // Same "ignore the click" precedent as the closing-radius check above:
+    // a duplicate-consecutive click (double-tap jitter, not a deliberate
+    // second point) or a click past the point cap just doesn't add a point.
+    if (isDuplicateOfLast(draft, pt.x, pt.y)) return;
+    if (draft.length >= MAX_SHAPE_POINTS) {
+      flashCapHint();
+      return;
+    }
     draft = [...draft, pt];
   }
 
-  // A double-click is two `click` events (each already added a point) THEN
-  // one `dblclick` — the second click's point is the accidental duplicate
-  // this gesture creates (the user meant "done here", not "one more point
-  // on top of the last one"), so drop it before finishing.
+  // A double-click is two `click` events THEN one `dblclick`. The second
+  // click lands on (or within DUP_POINT_EPS_PX of) the same point as the
+  // first, so onCanvasClick's duplicate-consecutive-point dedupe already
+  // drops it before this handler ever runs — nothing extra to undo here,
+  // just finish with whatever's in the draft.
   function onCanvasDblClick() {
-    if (draft.length > 0) draft = draft.slice(0, -1);
     finishShape();
   }
 
@@ -168,16 +196,25 @@
     Draw as many shapes as you like, then pick each one's stitch type, color, and angle below.
   </p>
 
-  <canvas
-    bind:this={canvasEl}
-    class="mp-canvas"
-    width={CANVAS_W}
-    height={CANVAS_H}
-    on:click={onCanvasClick}
-    on:dblclick={onCanvasDblClick}
-    role="img"
-    aria-label="Shape drawing canvas"
-  ></canvas>
+  <div class="mp-canvas-wrap">
+    <canvas
+      bind:this={canvasEl}
+      class="mp-canvas"
+      width={CANVAS_W}
+      height={CANVAS_H}
+      on:click={onCanvasClick}
+      on:dblclick={onCanvasDblClick}
+      role="img"
+      aria-label="Shape drawing canvas"
+    ></canvas>
+    {#if capHint}
+      <p class="mp-caphint" role="status">Point limit reached ({MAX_SHAPE_POINTS} max) — finish or clear this shape.</p>
+    {/if}
+  </div>
+
+  {#if draftIssues.length}
+    <p class="mp-draftissue" role="alert">{draftIssues.join(" ")}</p>
+  {/if}
 
   <div class="mp-tools">
     <button type="button" on:click={undoPoint} disabled={!draft.length}>Undo point</button>
@@ -250,6 +287,7 @@
 <style>
   .manualpanel { display: flex; flex-direction: column; gap: 10px; }
   .hint { font-size: var(--fs-xs, 12px); color: var(--muted, #6b7280); margin: 0; }
+  .mp-canvas-wrap { position: relative; }
   .mp-canvas {
     width: 100%;
     max-width: 100%;
@@ -260,6 +298,26 @@
     background: #f4f2ec;
     cursor: crosshair;
     touch-action: none;
+    display: block;
+  }
+  .mp-caphint {
+    position: absolute;
+    left: 50%;
+    bottom: 10px;
+    transform: translateX(-50%);
+    margin: 0;
+    padding: 4px 10px;
+    border-radius: var(--radius-s, 8px);
+    background: rgba(17, 17, 17, 0.82);
+    color: #fff;
+    font-size: var(--fs-xs, 12px);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .mp-draftissue {
+    font-size: var(--fs-xs, 12px);
+    color: var(--danger, #c0392b);
+    margin: 0;
   }
   .mp-tools { display: flex; gap: 6px; flex-wrap: wrap; }
   .mp-tools button {
