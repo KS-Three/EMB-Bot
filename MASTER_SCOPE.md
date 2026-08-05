@@ -11,7 +11,49 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-05 — the boundary-editor slice landed: area 5's
+**Last updated:** 2026-08-05 — shape splitting and merging landed
+(`shape-split-merge` branch/worktree `agent-a095c5eea8b6320fb`): area 5's
+last self-flagged gap ("splitting/merging shapes... a materially different,
+bigger lift") is now closed, following the `boundary_override` override
+pattern exactly. New top-level config keys (contract v1.5, NOT
+`shape_overrides` entries, since merge/split change the SET of shapes, not
+one shape's attributes) — `merge_shape_ids` (union 2+ same-thread, already-
+adjacent shapes into one) and `split_shapes` (a straight cut line dividing
+one shape into two) — validated service-side
+(`digitizer_service/app.py`'s `_canonicalize_shape_edits`) and re-validated
+core-side (`digitizer_core/regions.py`'s new `apply_shape_merges`/
+`apply_shape_splits`, called from `pipeline.run_stages` before
+`apply_shape_edits`). Both mint brand-new deterministic ids hashed from the
+OPERATION's own inputs (source ids, or source id + cut line), never from
+geometry — confirmed first that `match_shape_ids` isn't even wired into the
+real pipeline today (it exists for a future segmenter, a different
+identity-stability problem from a deliberate user edit), so there was no
+existing carry-forward mechanism to misuse. `DigitizePanel.svelte` gained a
+merge-selection checkbox + validated "Merge N shapes" bar and a "Split
+shape" (✂) control sharing the boundary editor's SVG scaffolding, both
+saving through the existing `setOverride`-adjacent → "Apply layer changes"
+flow. See area 5 below for the full contract, the v1 scope trade-offs
+(merge requires the union to reduce to one polygon — a hard fact of
+`Region.polygon` being a single `shapely.Polygon` everywhere downstream, not
+a style choice — and the connected-component-labeling reason this narrows
+merge's real-world applicability, stated plainly rather than glossed over),
+and what was and wasn't verified live (split's full apply round trip WAS
+driven through the real service in a real browser via a new Playwright e2e
+spec; merge's live proof stops at the selection/validation UI, not a full
+successful-union apply, for a specific documented reason). Full suite
+re-run this pass: digitizer `cd digitizer && .venv/bin/python -m pytest
+tests/ -q` — **816 passed / 3 failed / 3 skipped** (`digitizer/` commit
+`26fa415`) — the same 3 long-standing container-environment golden
+mismatches this doc has cited every pass since 2026-08-03
+(`test_flat_lane_byte_identical[logo_alpha.png]`,
+`test_pushcomp[logo_whitebg.png-towel]`,
+`test_stage2_photo_segment[logo_alpha.png]`), not new regressions; Studio
+`npx vitest run` **418/418** (27 files, up from 411 — 7 new unit tests for
+the merge/split contract plus the two new pure validation helpers), `app/`
+commit `3fc2dfc`; engine `node --test` **272/272** (up from 267, untouched
+by this slice — the rise is other lanes' merges landing in this same
+checkout, not this slice's own change). Prior update below, still the
+boundary-editor slice: area 5's
 last self-flagged gap ("no reshaping/redrawing outlines... no manual point
 editing") is now half-closed. A new `boundary_override` shape_overrides key
 (contract v1.4) lets a review-screen edit replace a shape's exterior ring
@@ -1004,16 +1046,156 @@ Layers-panel control, tests at every layer.
   remove, and the invalid-shape (self-intersecting) rejection path all
   confirmed working, screenshotted.
 
-**Still open — the other half of the original gap:** splitting or merging
-shapes. A materially different, bigger lift than an outline edit (shape
-identity, ids, and the whole override contract all assume one shape stays
-one shape across a re-digitize) — explicitly out of scope for this slice,
-not addressed.
+**Shape splitting and merging — CLOSED 2026-08-05** (worktree
+`agent-a095c5eea8b6320fb`, branch `shape-split-merge`): the "other half of
+the original shape-recognition gap" this doc tracked as fully open is now
+built, following the same override-pattern playbook `boundary_override`
+established — new contract keys, service validation, core application, a
+Layers-panel control, tests at every layer — with one structural difference
+called out up front because it drives every design choice below: merge and
+split change the SET of shapes, not one shape's geometry, so neither rides
+`shape_overrides` (which is keyed to ONE existing shape_id that survives the
+edit) — both are new top-level config keys, siblings of `deleted_shape_ids`.
 
-**Next step:** splitting/merging shapes is the one piece of the original
-shape-recognition gap this pass didn't touch — the next candidate if this
-area gets picked up again. The underlay-style dropdown (PR #28) still has
-no live-browser check of its own either.
+- **Contract keys (v1.5): `merge_shape_ids` / `split_shapes`.**
+  `merge_shape_ids: [[shape_id, shape_id, ...], ...]` — each inner list at
+  least 2 distinct ids to union into one new shape. `split_shapes:
+  {shape_id: [[x0,y0],[x1,y1]]}` — a straight cut line (extended internally
+  past the shape's own bounding box, so the caller sends only the two
+  dragged endpoints) dividing one shape into exactly two. Both are validated
+  service-side for shape/type (`digitizer_service/app.py`'s
+  `_canonicalize_shape_edits`, mirrored bounds in
+  `digitizer_core.regions`'s own copy) and re-validated independently at the
+  core layer (`regions.apply_shape_merges` / `apply_shape_splits`, called
+  from `pipeline.run_stages` BEFORE `apply_shape_edits` — ids are minted
+  against the full stage-4 generation before deletions/overrides consume
+  any of them, the same ordering reasoning `apply_shape_edits` already
+  documents for itself). A stale/unknown id is a warning and that one
+  merge/split is skipped (`SHAPE_EDIT_UNKNOWN_ID`, same posture
+  `deleted_shape_ids` already has); a geometrically bad request (mixed
+  threads, a present hole, a non-adjacent merge, a line that doesn't cross
+  cleanly or crosses a hole, a piece under the sewability floor) is a clean
+  `ValueError` — a 400 at submit for what the service can shallow-check, a
+  failed job for what only the core's real Region geometry can (mirroring
+  `boundary_override`'s own hole-containment asymmetry exactly).
+- **`shape_id` allocation: brand new, deterministic ids hashed from the
+  OPERATION's own inputs, never geometry.** Confirmed before relying on it:
+  `match_shape_ids` is not wired into `pipeline.run_stages` at all today —
+  it exists for a future segmenter (SAM2) that would move centroids/areas
+  slightly on a re-digitize of the SAME image, a different problem from a
+  user *deliberately* replacing a shape's identity. So merge/split mint new
+  ids instead of trying to carry one forward: `_merge_shape_id` hashes the
+  sorted source ids ("SM" + blake2s), `_split_shape_id` hashes the source id
+  + the cut line's own (canonicalized-order) endpoints + which of the two
+  pieces ("SP" + blake2s, piece order fixed by centroid, never shapely's
+  internal `split()` ordering). Both prefixes can never collide with an
+  `assign_shape_ids` output (always `"S" + hex`). Being pure functions of
+  the request rather than geometry means an identical resubmit is one
+  stable cache key/one stable pair of new ids, and — as a documented but
+  not yet UI-wired bonus — a caller that computes the same hash could layer
+  a `shape_overrides` entry onto a shape a merge/split mints in the SAME
+  request; the shipped Studio UI does not do this, it always waits for the
+  fresh review payload before adding further overrides (two-step, not
+  one-shot).
+- **v1 scope, deliberately narrow — the honest trade-offs, not silently
+  missing:**
+  - **Merge requires the union to reduce to ONE polygon** (source shapes
+    must already touch or overlap) — a hard architectural fact, not a
+    style choice: `Region.polygon` is a single `shapely.Polygon` everywhere
+    in stages 5-7, so a merge that can't produce one polygon has no legal
+    result. **Worth stating plainly:** stage 3's connected-component
+    labeling (`connectivity=8`) already fuses any two genuinely-touching
+    same-color regions into one shape_id before assign_shape_ids ever
+    runs, so in practice this restricts merge's usefulness on the flat/
+    gradient lanes to shapes a SLIC/RAG photo-segment pass left adjacent
+    but unmerged, or a future hand-authored/manual-digitizing workflow —
+    not "any two same-color shapes a user points at," which would need a
+    bridging/convex-hull strategy this pass does not build. Documented as
+    a real, known narrowing, not glossed over.
+  - **Merge requires every source shape to share one thread_number** (no
+    cross-color merge — which color would the result take? a real product
+    question, deferred) **and none of them may have a hole** (shapely's own
+    union handles holes correctly; the deferral is which shape's hole
+    semantics should win when two different shapes' holes overlap or one
+    sits over the other's fill — genuinely ambiguous, sidestepped for v1
+    rather than guessed at).
+  - **Split is a single straight cut line, not an arbitrary polyline** —
+    extended internally so the caller need only send the two dragged
+    endpoints, producing exactly two pieces. A cut crossing one of the
+    shape's own holes is rejected rather than silently turning the hole
+    into a notch on both halves (shapely itself handles this case without
+    erroring, so the rejection is a deliberate product choice, verified
+    against real shapely behavior before writing the guard, not a
+    limitation of the library).
+  - Per-shape styling (`border`/`tier`/`fill_angle_deg`/`sew_order`/
+    `underlay_style`) is seeded onto the result from the largest source
+    shape (merge) or onto BOTH new pieces (split); `boundary_override` is
+    never carried forward either way — it describes a hand-edited shell for
+    a polygon that no longer exists once the identity changes.
+- **Studio UI (`DigitizePanel.svelte`):** a merge-selection checkbox per
+  Layers row (stitched, non-hidden shapes only) plus a "Merge N shapes" bar
+  that live-validates the selection (`digitizer.js`'s `mergeGroupIssues` —
+  at least 2 shapes, one thread) and disables the button until it passes; a
+  "Split shape" (✂) control opening a small SVG editor sharing the boundary
+  editor's scaffolding — a draggable 2-point cut line (defaulting to a
+  horizontal line through the shape's own centroid, already valid for a
+  convex shape) with live validation (`splitLineIssues`, counting crossings
+  against the shape's own outline) disabling Save until the line crosses
+  cleanly. Both save through the SAME `setOverride`-adjacent →
+  `mergeGroups`/`splitLines` element fields → "Apply layer changes" flow
+  every other override here uses; `canonicalShapeEdits`/`editsKey` fold both
+  new fields into the existing pending-edit diff, so no new Apply-button
+  wiring was needed. A merged/split result row's provenance (and its
+  Undo-merge/Undo-split action) is read off the LAST APPLIED job's own
+  `SHAPES_MERGED_BY_USER`/`SHAPE_SPLIT_BY_USER` warnings — the server
+  already computed which source ids produced which result id, so the
+  client never re-derives the hash.
+- **Verification:** core-level (`digitizer/tests/test_shape_identity.py`,
+  24 tests — the merge/split happy paths on synthetic adjacent Regions, every
+  v1 guardrail as a real `ValueError`, the warn-vs-skip stale-id path, id
+  determinism/stability regardless of argument or endpoint order, and two
+  tests proving `cfg.merge_shape_ids`/`cfg.split_shapes` reach
+  `apply_shape_merges`/`apply_shape_splits` from a REAL `digitize()` call
+  against the same `logo_whitebg.png` fixture `test_shape_overrides.py`
+  uses — the merge case using that fixture's own two real, non-adjacent
+  "1305" regions to prove the adjacency guardrail fires on real geometry,
+  not just synthetic squares) and service-level
+  (`digitizer/tests/test_service.py` — parse/canonicalization including
+  point/endpoint-order normalization for a stable cache key, 13 new bad-
+  request 400 cases, the manual-digitizing field exclusion extended to both
+  new keys, an HTTP round trip that actually cuts the fixture's real purple
+  rectangle into two new shapes with the design's stitch count changing,
+  and the merge-rejection round trip against the real orange pair). Studio:
+  `digitizer.spec.js` gained unit coverage for the new canonicalization and
+  the two pure validation helpers (7 tests); a new Playwright e2e spec
+  (`app/e2e/digitize-shape-identity.spec.js`) drives the REAL digitizer
+  service end to end for split (open the editor, save the default cut,
+  Apply, confirm the one original row became two rows sharing its thread
+  with a "split shape" badge and the design's stats changed, then Undo
+  split restores the single shape) — **run live against the real service
+  this pass, both tests green.**
+  **One thing this pass deliberately did NOT verify live:** a full
+  browser round trip of a SUCCESSFUL merge (select → Merge → Apply →
+  one combined row). The reason is the same architectural fact above, not
+  an oversight: `two-squares.png` (this repo's existing digitize-e2e
+  fixture) has exactly two shapes, differently colored, so a live merge
+  attempt on it can only ever demonstrate the SAME-COLOR validation
+  rejecting a mixed selection (which the e2e spec does verify live,
+  including the merge bar disabling itself) — not a genuine successful
+  union, which needs two REAL same-thread, already-touching regions that,
+  per the connected-component fact above, essentially never reach the
+  review screen as two separate shapes in the first place. The successful-
+  union code path itself is proven, just at the core level on synthetic
+  Regions and the service level via the real-but-rejected orange pair, not
+  through this particular browser harness.
+
+**Next step:** the underlay-style dropdown (PR #28) still has no live-
+browser check of its own. A live-browser proof of a genuinely SUCCESSFUL
+merge (not just the rejection path) needs either a purpose-built fixture
+image engineered to survive stage 3's connected-component fusion as two
+separate same-thread regions, or a bridging/convex-hull merge strategy for
+non-adjacent shapes — neither attempted this pass; both are candidates if
+this area's merge feature gets picked up again.
 
 ---
 
