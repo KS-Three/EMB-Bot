@@ -11,49 +11,52 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-05 — shape splitting and merging landed
-(`shape-split-merge` branch/worktree `agent-a095c5eea8b6320fb`): area 5's
-last self-flagged gap ("splitting/merging shapes... a materially different,
-bigger lift") is now closed, following the `boundary_override` override
-pattern exactly. New top-level config keys (contract v1.5, NOT
-`shape_overrides` entries, since merge/split change the SET of shapes, not
-one shape's attributes) — `merge_shape_ids` (union 2+ same-thread, already-
-adjacent shapes into one) and `split_shapes` (a straight cut line dividing
-one shape into two) — validated service-side
-(`digitizer_service/app.py`'s `_canonicalize_shape_edits`) and re-validated
-core-side (`digitizer_core/regions.py`'s new `apply_shape_merges`/
-`apply_shape_splits`, called from `pipeline.run_stages` before
-`apply_shape_edits`). Both mint brand-new deterministic ids hashed from the
-OPERATION's own inputs (source ids, or source id + cut line), never from
-geometry — confirmed first that `match_shape_ids` isn't even wired into the
-real pipeline today (it exists for a future segmenter, a different
-identity-stability problem from a deliberate user edit), so there was no
-existing carry-forward mechanism to misuse. `DigitizePanel.svelte` gained a
-merge-selection checkbox + validated "Merge N shapes" bar and a "Split
-shape" (✂) control sharing the boundary editor's SVG scaffolding, both
-saving through the existing `setOverride`-adjacent → "Apply layer changes"
-flow. See area 5 below for the full contract, the v1 scope trade-offs
-(merge requires the union to reduce to one polygon — a hard fact of
-`Region.polygon` being a single `shapely.Polygon` everywhere downstream, not
-a style choice — and the connected-component-labeling reason this narrows
-merge's real-world applicability, stated plainly rather than glossed over),
-and what was and wasn't verified live (split's full apply round trip WAS
-driven through the real service in a real browser via a new Playwright e2e
-spec; merge's live proof stops at the selection/validation UI, not a full
-successful-union apply, for a specific documented reason). Full suite
-re-run this pass: digitizer `cd digitizer && .venv/bin/python -m pytest
-tests/ -q` — **816 passed / 3 failed / 3 skipped** (`digitizer/` commit
-`26fa415`) — the same 3 long-standing container-environment golden
-mismatches this doc has cited every pass since 2026-08-03
-(`test_flat_lane_byte_identical[logo_alpha.png]`,
+**Last updated:** 2026-08-05 — the palette subject/background class-weight
+seam closed (`palette-subject-background-wiring` branch, commit `7f82511`):
+the exact gap this section and area 1's row-13 discussion have both called
+out since PR #43 wired `remove_background_seam` itself without wiring its
+mask any further downstream. `pipeline.run_stages` now keeps rembg's real
+`(H, W)` bool mask as a distinct `subject_bg_mask` — deliberately never
+`p.bg_mask`, which by that point may just be stage 1's border-flood default
+merged in and was never meant to answer "where does the subject end" — and
+threads it through a new `bg_mask` parameter on `stage2_photo_segment.
+segment()` into `_region_classes`. Any region not already classed "eyes"/
+"skin" now classes "background" when the majority of its pixels sit inside
+that REAL mask, else "subject" (new `BG_MAJORITY_FRAC` constant, the same
+majority-vote pattern `FACE_MAJORITY_FRAC` already uses for the face
+classes) — and stays `None` (plain area, the pre-existing degradation)
+whenever rembg didn't actually succeed this run (flag off, or its
+documented no-op fallback), so a border-flood-only `bg_mask` never gets to
+make a dishonest "background" claim about interior regions it never
+assessed. Measured proof the seam is live, same shape of evidence as the
+eyes/skin seam's own precedent test
+(`tests/test_palette.py::test_subject_weight_keeps_a_dedicated_color_under_
+a_binding_cap`): a 1200px "subject" patch against two 9000px "background"
+patches under a binding k=2 color cap loses its own color entirely at
+plain-area weight (44.5 ΔE00 off, assigned a background tan) and keeps a
+dedicated color under the subject(2)/background(1) multipliers (6.3 ΔE00).
+The wiring itself — not just the weight math — is proven directly at two
+more levels: `_region_classes` unit-level
+(`tests/test_face_priors.py::test_region_classes_maps_subject_and_
+background_from_a_bg_mask`, which also confirms eyes/skin still win over
+`bg_mask` when both are present on one region) and pipeline-level mask
+propagation (`tests/test_background_removal.py`'s new section 6: a real
+mask reaches `photo_segment` exactly when `remove_background_seam`
+succeeds, and stays `None` both when it degrades to its no-op fallback and
+when the flag is off). Full suite re-run this pass: digitizer **773
+passed / 3 failed / 3 skipped** (`digitizer/` commit `7f82511`) — the same
+3 long-standing container-environment golden mismatches this doc has cited
+every pass since 2026-08-03 (`test_flat_lane_byte_identical[logo_alpha.png]`,
 `test_pushcomp[logo_whitebg.png-towel]`,
-`test_stage2_photo_segment[logo_alpha.png]`), not new regressions; Studio
-`npx vitest run` **418/418** (27 files, up from 411 — 7 new unit tests for
-the merge/split contract plus the two new pure validation helpers), `app/`
-commit `3fc2dfc`; engine `node --test` **272/272** (up from 267, untouched
-by this slice — the rise is other lanes' merges landing in this same
-checkout, not this slice's own change). Prior update below, still the
-boundary-editor slice: area 5's
+`test_stage2_photo_segment[logo_alpha.png]`), not new regressions — up from
+the prior entry's 708/3/3 (65 new tests: this slice's own plus everything
+else that landed on `main` between the two passes). Studio/engine not
+re-run this pass, since nothing in `app/`/`src/` changed. Scope note: only
+`stage2_photo_segment`/`pipeline`/`palette` touched; YuNet face detection
+and `remove_background_seam` itself were explicitly out of scope and are
+untouched.
+
+Prior update below, 2026-08-05, latest still — the boundary-editor slice landed: area 5's
 last self-flagged gap ("no reshaping/redrawing outlines... no manual point
 editing") is now half-closed. A new `boundary_override` shape_overrides key
 (contract v1.4) lets a review-screen edit replace a shape's exterior ring
@@ -475,18 +478,17 @@ PAM selection over the config's thread chart, ΔE00 objective, region
 weight = area × class multiplier — measured on the committed `fur_ramp.png`
 fixture: 8 ramp regions that nearest-snap scattered across 7 near-duplicate
 spools now resolve to 5 one-family browns, max excess 2.34 ΔE00. The
-eyes/skin/subject/background multipliers are wired and test-proven — **the
-eyes/skin half is no longer a flat 1.0 placeholder**: PR #41 (below) wired
-real face priors, so a detected face's eye/skin regions now receive their
-documented class multipliers; subject/background remain 1.0. **Row 1 (rembg
-background removal) itself is now built, PR #43 — see the "Last updated"
-note above — but that does NOT by itself close this multiplier gap:**
-re-checked directly this pass, `stage2_photo_segment._region_classes`'s own
-docstring still says "subject"/"background" remain a documented seam
-awaiting their own wiring into `palette.region_class`, separate from
-`remove_background_seam` existing. Don't conflate the two — one is closed,
-the other is a distinct follow-on not attempted by PR #43. Flat/gradient lanes untouched
-(byte-identical goldens re-verified). Row 14 (sequencing + underlay
+eyes/skin/subject/background multipliers are wired and test-proven — **all
+four classes are now real, none is a flat-1.0 placeholder**: PR #41 wired
+real face priors, so a detected face's eye/skin regions receive their
+documented class multipliers; the `palette-subject-background-wiring`
+branch (commit `7f82511`, see the "Last updated" note above) closed the
+remaining gap by threading PR #43's `remove_background_seam` mask one hop
+further downstream into `stage2_photo_segment._region_classes`, so a
+non-face region now classes "subject"/"background" from a REAL rembg mask
+too, honestly degrading to `None`/plain-area whenever rembg didn't actually
+run. Flat/gradient lanes untouched (byte-identical goldens re-verified).
+Row 14 (sequencing + underlay
 deltas) landed the same pass: photo-classified designs (or
 `cfg.extra["photo_sequencing"]` opt-in) sew depth-sorted —
 background-tagged layers first, then dark→light by thread luminance,
@@ -524,8 +526,10 @@ landed in the prior preflight pass (low px/mm, low subject/background
 contrast, heavy stabilizer estimate, many color stops). **Photo plan status
 as of this pass: rows 0–15 are all built** — row 1 (rembg background
 removal), the last one this doc was tracking as open, closed via PR #43 (see
-the "Last updated" note above for the isolated-venv mechanism and its own
-still-open follow-on, the palette subject/background class-weight seam).
+the "Last updated" note above for the isolated-venv mechanism; its own
+follow-on noted at the time, the palette subject/background class-weight
+seam, is ALSO now closed — see this file's newest "Last updated" entry at
+the top, `palette-subject-background-wiring` commit `7f82511`).
 
 **Confidence: Low** beyond flat spot-color art. Flat-logo digitizing (both
 implementations) is Medium — **267/267** JS tests and **688/694** Python
@@ -825,8 +829,9 @@ natural next step: a throwaway venv (`digitizer/rembg_isolated/`, not
 committed) pinned to a compatible numpy, invoked as a subprocess from the
 main pipeline, sidestepping the `numba`-vs-`numpy==2.5.1` conflict rather
 than touching the shared venv's pin. **All 16 photo-plan rows (0–15) are now
-built.** The palette subject/background class-weight seam this closure does
-NOT resolve is noted above, where it's discussed. CI now gates
+built.** The palette subject/background class-weight seam this closure did
+NOT itself resolve is noted above, where it's discussed — and is now ALSO
+closed, per this file's newest "Last updated" entry. CI now gates
 every merge (`.github/workflows/python-package-conda.yml`, PR #37) — three
 jobs (engine/studio/digitizer), the digitizer job deselecting the same 3
 known container goldens this doc has always excluded from its own counts.

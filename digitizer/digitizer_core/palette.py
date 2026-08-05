@@ -53,19 +53,28 @@ THE CLASS-WEIGHT SEAM (this slice's honest scope, same pattern as
 region area × a class multiplier — eyes 8-10, skin 4-5, subject 2,
 background 1 — so that under a binding color cap the palette spends its
 spools where a portrait's fidelity actually lives. `CLASS_MULTIPLIERS`
-carries those values and `region_weight` applies them. STATUS 2026-08-04:
-the seam is HALF-WIRED for real — "eyes" and "skin" now flow from the
-YuNet face priors (`stage1_photo_prep.detect_faces_seam` ->
-`stage2_photo_segment._region_classes`, behind the photo_prep gate), while
-"subject"/"background" still await rembg (`remove_background_seam`, the
-numba/numpy conflict recorded there) — nothing in a face box can honestly
-say where a torso ends. Regions no prior covers (and every run without
-detections) still pass `region_class=None` and weigh plain area, exactly
-the area-honest degradation this paragraph always promised. Measured proof the
-seam is live, not decorative (pinned in tests): a 300 px near-black eye
-region against two 9000 px tan patches under a k=2 cap loses its dark
-entirely at multiplier 1 (assigned to Pecan, 44.5 ΔE00 off) and keeps a
-dedicated dark at the eyes multiplier (Black, 6.3 ΔE00).
+carries those values and `region_weight` applies them. STATUS 2026-08-05:
+the seam is FULLY WIRED for real. "eyes" and "skin" flow from the YuNet
+face priors (`stage1_photo_prep.detect_faces_seam` ->
+`stage2_photo_segment._region_classes`, behind the photo_prep gate),
+wired 2026-08-04. "subject"/"background" flow from the rembg subject
+cutout (`stage1_photo_prep.remove_background_seam` -> `pipeline.
+run_stages`'s `subject_bg_mask` -> `stage2_photo_segment._region_classes`,
+behind the photo_prep_background_removal gate on top of that), wired
+2026-08-05: a non-face region majority-inside the real rembg mask classes
+"background", otherwise "subject" — nothing runs this off stage 1's
+border-flood `bg_mask` default, which was never meant to distinguish a
+subject's interior from its background and would misrepresent what that
+mask actually knows. Regions no prior covers (and every run with neither
+face priors nor a real rembg mask) still pass `region_class=None` and
+weigh plain area, exactly the area-honest degradation this paragraph
+always promised. Measured proof the seam is live, not decorative (pinned
+in tests): a 300 px near-black eye region against two 9000 px tan patches
+under a k=2 cap loses its dark entirely at multiplier 1 (assigned to
+Pecan, 44.5 ΔE00 off) and keeps a dedicated dark at the eyes multiplier
+(Black, 6.3 ΔE00); the analogous subject/background test in
+`tests/test_palette.py` measures the same shape of result for a small
+subject patch against a large background field under a binding cap.
 """
 from __future__ import annotations
 

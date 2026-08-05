@@ -40,12 +40,17 @@ Pipeline, in order (the plan's 7-step contract):
      technique-menu row 13, build-order step 7), region weight = area ×
      class multiplier via `palette.region_weight`. Region CLASSES: "eyes"
      and "skin" come from the YuNet face priors via `_region_classes`
-     (real as of 2026-08-04); "subject"/"background" still await rembg
-     (see `_region_classes`' docstring), so non-face regions stay class
-     None and weigh plain area. Before step 7 this line was a per-region
-     `chart.nearest_index` snap, which scattered a multi-shade ramp across
-     near-duplicate spools from different families — the measured
-     before/after lives in `palette.py`'s docstring.
+     (real as of 2026-08-04); "subject"/"background" are ALSO real now
+     (wired 2026-08-05, see `_region_classes`' docstring) whenever
+     `remove_background_seam` actually ran and produced a real mask this
+     run — a non-face region majority-inside that mask classes
+     "background", otherwise "subject". No real rembg mask (flag off, or
+     it degraded to its no-op fallback) means every non-face region still
+     stays class None and weighs plain area, exactly the prior behaviour.
+     Before step 7 this line was a per-region `chart.nearest_index` snap,
+     which scattered a multi-shade ramp across near-duplicate spools from
+     different families — the measured before/after lives in `palette.py`'s
+     docstring.
   7. `Quant` output, plus the info-level `PHOTO_SEGMENT_REGION_COUNT`
      (`count` = real region count, `thread_colors` = palette size — fixed
      2026-08-04, see that warning's own inline comment) and
@@ -420,6 +425,16 @@ FACE_MERGE_FACTOR = 0.25
 # a background region grazing a face boundary must not inherit protection.
 FACE_MAJORITY_FRAC = 0.5
 
+# Same majority-vote pattern as FACE_MAJORITY_FRAC, applied to the rembg
+# subject/background mask (plan step 3, wired 2026-08-05): a region classes
+# "background" when the majority of its pixels sit inside the mask, else
+# "subject". Kept as its own named constant rather than reusing
+# FACE_MAJORITY_FRAC directly — it happens to share the same 0.5 value today,
+# but the two answer different questions (face anatomy vs. a whole-image
+# cutout) and there is no reason a future retune of one should silently move
+# the other.
+BG_MAJORITY_FRAC = 0.5
+
 # Eye-disk radius as a fraction of the face box WIDTH. YuNet's interpupil
 # distance runs ~0.4x its box width (measured on the astronaut detection:
 # eyes 47 px apart in a 90 px box), so 0.12 gives each eye a disk about
@@ -488,10 +503,13 @@ def _face_local_threshold(rag, slic_labels: np.ndarray, face_mask: np.ndarray) -
             d["weight"] = float(d["weight"]) / FACE_MERGE_FACTOR
 
 
-def _region_classes(kept: list[RegionMask], face_regions) -> list[str | None]:
-    """Step 7's class labels (palette.CLASS_MULTIPLIERS vocabulary), from
-    the YuNet face priors — REAL as of 2026-08-04 for the two classes a
-    face detection can honestly assert:
+def _region_classes(
+    kept: list[RegionMask], face_regions, bg_mask: np.ndarray | None = None
+) -> list[str | None]:
+    """Step 7's class labels (palette.CLASS_MULTIPLIERS vocabulary).
+
+    "eyes"/"skin" come from the YuNet face priors — REAL as of 2026-08-04,
+    the two classes a face detection can honestly assert:
 
     * "eyes" — the majority of the region's pixels sit inside an eye disk
       (landmarks 0-1, `_eye_disk_mask`); checked first, so a small dark
@@ -499,35 +517,49 @@ def _region_classes(kept: list[RegionMask], face_regions) -> list[str | None]:
     * "skin" — the majority of the region's pixels sit inside a face
       ellipse (`_face_ellipse_mask`).
 
-    "subject"/"background" REMAIN a documented seam: they need plan step
-    3's rembg subject mask (`stage1_photo_prep.remove_background_seam`,
-    still a no-op — the numba/numpy conflict recorded there), and nothing
-    in a face box can honestly say where the subject's torso ends. Until
-    rembg lands, every non-face region stays class None and
-    `palette.region_weight` degrades to plain area for it, by that module's
-    own documented contract. No faces (None or empty) means every region is
-    None — the pre-face-priors behaviour, bit for bit."""
-    if not face_regions or not kept:
-        return [None] * len(kept)
+    "subject"/"background" are ALSO real now — wired 2026-08-05 — for any
+    region that didn't already class "eyes"/"skin": "background" when the
+    majority of the region's pixels sit inside `bg_mask`, else "subject"
+    (`BG_MAJORITY_FRAC`, same majority-vote pattern as the face classes).
+
+    `bg_mask` MUST be the real rembg-derived subject/background mask
+    (`stage1_photo_prep.remove_background_seam`'s own return value, True =
+    background) from a run where it actually succeeded this pass — NOT
+    `Prep.bg_mask`, which by the time this runs may be nothing more than
+    stage 1's border-flood default merged in. Border-flood only knows
+    "touches the border", not "is background", so passing it here would
+    make a dishonest "background" claim about interior regions it never
+    actually assessed. The caller (`pipeline.run_stages`) enforces this:
+    `bg_mask=None` unless `remove_background_seam` returned a real mask,
+    exactly the same no-op-on-failure discipline `face_regions` already
+    gets. `bg_mask=None` means every non-face region stays class None and
+    `palette.region_weight` degrades to plain area for it — the pre-rembg
+    behaviour, bit for bit. No faces (None or empty) and no `bg_mask` means
+    every region is None — the original pre-face-priors behaviour."""
+    if not kept:
+        return []
     shape = kept[0].mask.shape
-    face_mask = _face_ellipse_mask(shape, face_regions)
-    eyes_mask = _eye_disk_mask(shape, face_regions)
+    face_mask = _face_ellipse_mask(shape, face_regions) if face_regions else None
+    eyes_mask = _eye_disk_mask(shape, face_regions) if face_regions else None
     classes: list[str | None] = []
     for r in kept:
         area = int(r.mask.sum())
         if area == 0:
             classes.append(None)
             continue
-        if int((r.mask & eyes_mask).sum()) / area >= FACE_MAJORITY_FRAC:
+        if eyes_mask is not None and int((r.mask & eyes_mask).sum()) / area >= FACE_MAJORITY_FRAC:
             classes.append("eyes")
-        elif int((r.mask & face_mask).sum()) / area >= FACE_MAJORITY_FRAC:
+        elif face_mask is not None and int((r.mask & face_mask).sum()) / area >= FACE_MAJORITY_FRAC:
             classes.append("skin")
+        elif bg_mask is not None:
+            bg_frac = int((r.mask & bg_mask).sum()) / area
+            classes.append("background" if bg_frac >= BG_MAJORITY_FRAC else "subject")
         else:
             classes.append(None)
     return classes
 
 
-def segment(p: Prep, cfg: PipelineConfig, face_regions=None) -> Quant:
+def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None) -> Quant:
     h, w = p.rgb.shape[:2]
     valid = ~p.bg_mask
     flat_rgb = p.rgb.reshape(-1, 3)
@@ -658,14 +690,15 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None) -> Quant:
     # whole region set selects a bounded palette TOGETHER — a fur ramp's
     # regions share consolidated family shades instead of each grabbing its
     # own near-duplicate spool. Weights are area × class multiplier;
-    # `_region_classes` maps eye/skin regions from the YuNet detections
-    # (everything else — and every no-face run — stays None = plain area).
+    # `_region_classes` maps eye/skin regions from the YuNet detections and
+    # subject/background regions from a real rembg mask (everything else —
+    # and every run with neither — stays None = plain area).
     chart = chart_for(cfg)
     region_labs = [
         rgb_to_lab(p.rgb[r.mask].reshape(-1, 3).mean(axis=0, keepdims=True))[0]
         for r in kept
     ]
-    classes = _region_classes(kept, face_regions)
+    classes = _region_classes(kept, face_regions, bg_mask)
     weights = [
         region_weight(int(r.mask.sum()), c) for r, c in zip(kept, classes)
     ]
