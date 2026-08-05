@@ -12,6 +12,8 @@
     reconcileReview,
     reorderWithinLayer,
     boundaryIssues,
+    mergeGroupIssues,
+    splitLineIssues,
   } from "../lib/digitizer.js";
   import { loadPalette, nearestInList } from "../lib/threads.js";
 
@@ -101,6 +103,7 @@
       patch({
         sourcePng: b64, name: file.name, result: null, warnings: [], blockColors: {}, sizeMm: null,
         review: null, shapeOverrides: {}, deletedShapeIds: [], appliedEdits: null,
+        mergeGroups: [], splitLines: {},
       });
     } catch (err) {
       error = String((err && err.message) || err);
@@ -144,6 +147,8 @@
         appliedEdits: editsKey({
           deleted_shape_ids: cfg.deleted_shape_ids,
           shape_overrides: cfg.shape_overrides,
+          merge_shape_ids: cfg.merge_shape_ids,
+          split_shapes: cfg.split_shapes,
         }),
       });
     } catch (err) {
@@ -598,6 +603,7 @@
   // pending value the same way) — else the shape's current outline, which
   // already reflects the last APPLIED boundary_override if there was one.
   function startBoundaryEdit(row) {
+    cancelSplitEdit(); // the two editors replace the same list view; only one at a time
     const ov = overrides[row.id] || {};
     const pending = Array.isArray(ov.boundary_override) && ov.boundary_override.length >= 3
       ? ov.boundary_override
@@ -632,15 +638,19 @@
     dragIndex = null;
   }
 
-  function svgPoint(evt) {
-    if (!svgEl) return [0, 0];
-    const pt = svgEl.createSVGPoint();
+  function svgPointIn(el, evt) {
+    if (!el) return [0, 0];
+    const pt = el.createSVGPoint();
     pt.x = evt.clientX;
     pt.y = evt.clientY;
-    const ctm = svgEl.getScreenCTM();
+    const ctm = el.getScreenCTM();
     if (!ctm) return [0, 0];
     const p = pt.matrixTransform(ctm.inverse());
     return [p.x, p.y];
+  }
+
+  function svgPoint(evt) {
+    return svgPointIn(svgEl, evt);
   }
 
   function startEditDrag(e, i) {
@@ -686,8 +696,11 @@
   // Keyboard equivalents for the two drag/click-only interactions above —
   // every handle here is a real tabbable element (role="button", tabindex
   // 0), not just a pointer target.
+  function nudgeStep(vb) {
+    return Math.max(vb.w, vb.h) / 200;
+  }
   function nudgeStepMm() {
-    return Math.max(editViewBox.w, editViewBox.h) / 200;
+    return nudgeStep(editViewBox);
   }
 
   function onEditVertexKeydown(e, i) {
@@ -705,6 +718,182 @@
       e.preventDefault();
       addEditVertex(i);
     }
+  }
+
+  // ---- shape identity edits (contract v1.5): merge and split ----------------
+  //
+  // The other half of the shape-recognition gap `boundary_override` (above)
+  // did not touch: that reshapes ONE shape's outline, this changes the SET of
+  // shapes. Both ride the exact same setOverride-adjacent pattern the rest of
+  // this panel uses — local UI state until a save action merges the result
+  // into an ELEMENT field (`mergeGroups` / `splitLines`, siblings of
+  // `shapeOverrides`), which only restitches through the existing "Apply
+  // layer changes" flow. `canonicalShapeEdits`/`editsKey` (digitizer.js)
+  // already fold both fields into the same pending-edit diff every other
+  // override here drives off, so no new Apply-button wiring is needed.
+
+  // -- merge: select 2+ same-thread rows, then commit as one group ----------
+  let mergeSelection = [];
+
+  function toggleMergeSelect(id) {
+    mergeSelection = mergeSelection.includes(id)
+      ? mergeSelection.filter((s) => s !== id)
+      : [...mergeSelection, id];
+  }
+
+  $: mergeSelectedRows = orderedShapes.filter((r) => mergeSelection.includes(r.id));
+  $: mergeIssues = mergeSelection.length ? mergeGroupIssues(mergeSelectedRows) : [];
+
+  function commitMerge() {
+    if (mergeIssues.length || mergeSelection.length < 2) return;
+    const ids = [...mergeSelection].sort();
+    const key = JSON.stringify(ids);
+    const existing = element.mergeGroups || [];
+    if (existing.some((g) => JSON.stringify([...g].sort()) === key)) {
+      mergeSelection = [];
+      return;
+    }
+    patch({ mergeGroups: [...existing, ids] });
+    mergeSelection = [];
+  }
+
+  function clearMergeSelection() {
+    mergeSelection = [];
+  }
+
+  // A merged/split row's provenance comes from the LAST APPLIED job's own
+  // warnings (`SHAPES_MERGED_BY_USER`/`SHAPE_SPLIT_BY_USER`, `groups` extra),
+  // not from re-deriving the deterministic id here — the server already did
+  // the work and said exactly which sources produced which result id.
+  function mergedFromInfo(rowId) {
+    const w = (element.warnings || []).find((x) => x.code === "SHAPES_MERGED_BY_USER");
+    const groups = (w && w.groups) || [];
+    return groups.find((g) => g.into === rowId) || null;
+  }
+
+  function splitFromInfo(rowId) {
+    const w = (element.warnings || []).find((x) => x.code === "SHAPE_SPLIT_BY_USER");
+    const groups = (w && w.groups) || [];
+    return groups.find((g) => (g.into || []).includes(rowId)) || null;
+  }
+
+  // Undo an APPLIED merge: remove the stored source-id group so the next
+  // Apply regenerates the original shapes instead of re-merging them — the
+  // same "auto" convention (clear the override, don't invert it) every other
+  // control here uses.
+  function undoMerge(rowId) {
+    const info = mergedFromInfo(rowId);
+    if (!info) return;
+    const key = JSON.stringify([...info.from].sort());
+    patch({
+      mergeGroups: (element.mergeGroups || []).filter(
+        (g) => JSON.stringify([...g].sort()) !== key
+      ),
+    });
+  }
+
+  function undoSplit(rowId) {
+    const info = splitFromInfo(rowId);
+    if (!info) return;
+    const lines = { ...(element.splitLines || {}) };
+    delete lines[info.from];
+    patch({ splitLines: lines });
+  }
+
+  // -- split: drag a two-point cut line across one shape's outline ----------
+  let splitId = null;
+  let splitLine = [[0, 0], [0, 0]];
+  let splitDragIndex = null;
+  let splitSvgEl;
+
+  $: splitRow = splitId ? orderedShapes.find((r) => r.id === splitId) : null;
+  $: splitOutline = splitRow ? splitRow.outlineFull || splitRow.outline || [] : [];
+  $: splitIssues = splitId ? splitLineIssues(splitOutline, splitLine) : [];
+  $: splitViewBox = fitViewBox(splitOutline);
+
+  function startSplitEdit(row) {
+    cancelBoundaryEdit(); // the two editors replace the same list view; only one at a time
+    mergeSelection = [];
+    const existing = (element.splitLines || {})[row.id];
+    if (existing && existing.length === 2) {
+      splitLine = existing.map((p) => [p[0], p[1]]);
+    } else {
+      const outline = row.outlineFull || row.outline || [];
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const [x, y] of outline) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+      const cy = (minY + maxY) / 2;
+      const pad = Math.max(maxX - minX, 0.001) * 0.2;
+      // A horizontal line through the centroid, spanning past both edges —
+      // a sane starting cut for a roughly-convex shape (already valid, so
+      // Save works immediately); a concave shape may need a drag to fix it,
+      // same as the boundary editor's own "start from what's there" reading.
+      splitLine = [[minX - pad, cy], [maxX + pad, cy]];
+    }
+    splitId = row.id;
+    splitDragIndex = null;
+  }
+
+  function cancelSplitEdit() {
+    splitId = null;
+    splitLine = [[0, 0], [0, 0]];
+    splitDragIndex = null;
+  }
+
+  function saveSplitEdit() {
+    if (!splitId || splitIssues.length) return;
+    patch({
+      splitLines: { ...(element.splitLines || {}), [splitId]: splitLine.map((p) => [p[0], p[1]]) },
+    });
+    splitId = null;
+    splitLine = [[0, 0], [0, 0]];
+    splitDragIndex = null;
+  }
+
+  // Undo a PENDING (not yet applied) cut, same "auto" convention as
+  // `resetBoundaryEdit` — clears the override rather than inverting it.
+  function resetSplitEdit() {
+    if (!splitId) return;
+    const lines = { ...(element.splitLines || {}) };
+    delete lines[splitId];
+    patch({ splitLines: lines });
+    splitId = null;
+    splitLine = [[0, 0], [0, 0]];
+    splitDragIndex = null;
+  }
+
+  function startSplitDrag(e, i) {
+    e.preventDefault();
+    splitDragIndex = i;
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (err) {
+      // Same graceful fallback as the boundary editor's own drag handler.
+    }
+  }
+
+  function onSplitPointerMove(e) {
+    if (splitDragIndex == null) return;
+    const [x, y] = svgPointIn(splitSvgEl, e);
+    splitLine[splitDragIndex] = [round3(x), round3(y)];
+    splitLine = splitLine;
+  }
+
+  function endSplitDrag() {
+    splitDragIndex = null;
+  }
+
+  function onSplitKeydown(e, i) {
+    const step = nudgeStep(splitViewBox);
+    const [x, y] = splitLine[i];
+    if (e.key === "ArrowLeft") { e.preventDefault(); splitLine[i] = [round3(x - step), y]; splitLine = splitLine; }
+    else if (e.key === "ArrowRight") { e.preventDefault(); splitLine[i] = [round3(x + step), y]; splitLine = splitLine; }
+    else if (e.key === "ArrowUp") { e.preventDefault(); splitLine[i] = [x, round3(y - step)]; splitLine = splitLine; }
+    else if (e.key === "ArrowDown") { e.preventDefault(); splitLine[i] = [x, round3(y + step)]; splitLine = splitLine; }
   }
 </script>
 
@@ -926,7 +1115,88 @@
                 </button>
               </div>
             </div>
+          {:else if splitId}
+            <div class="dgp-editor">
+              <p class="dgp-editor-title">
+                Splitting shape — {splitRow ? rowName(splitRow) : "shape"}
+              </p>
+              <p class="dgp-note">
+                Drag either end of the line (arrow keys nudge a focused end) so it crosses the
+                shape once, edge to edge — everything on each side becomes its own new shape.
+              </p>
+              <svg
+                bind:this={splitSvgEl}
+                class="dgp-editor-svg"
+                role="application"
+                aria-label="Split editor — drag the line's ends to choose where this shape is cut"
+                viewBox="{splitViewBox.minX} {splitViewBox.minY} {splitViewBox.w} {splitViewBox.h}"
+                on:pointermove={onSplitPointerMove}
+                on:pointerup={endSplitDrag}
+                on:pointercancel={endSplitDrag}
+                on:pointerleave={endSplitDrag}
+              >
+                <polygon
+                  points={splitOutline.map((p) => p.join(",")).join(" ")}
+                  class="dgp-editor-poly"
+                />
+                <line
+                  x1={splitLine[0][0]} y1={splitLine[0][1]}
+                  x2={splitLine[1][0]} y2={splitLine[1][1]}
+                  class="dgp-split-line"
+                  class:invalid={splitIssues.length > 0}
+                />
+                {#each splitLine as p, i (i)}
+                  <circle
+                    cx={p[0]}
+                    cy={p[1]}
+                    r={Math.max(splitViewBox.w, splitViewBox.h) / 45}
+                    class="dgp-editor-vertex"
+                    role="button"
+                    tabindex="0"
+                    aria-label={i === 0 ? "Drag this end of the cut line" : "Drag the other end of the cut line"}
+                    on:pointerdown={(e) => startSplitDrag(e, i)}
+                    on:keydown={(e) => onSplitKeydown(e, i)}
+                  />
+                {/each}
+              </svg>
+              {#if splitIssues.length}
+                <ul class="dgp-editor-issues" role="alert">
+                  {#each splitIssues as issue}<li>{issue}</li>{/each}
+                </ul>
+              {/if}
+              <div class="dgp-editor-btns">
+                <button type="button" class="dgp-lbtn" on:click={cancelSplitEdit}>Cancel</button>
+                {#if (element.splitLines || {})[splitId]}
+                  <button type="button" class="dgp-lbtn" on:click={resetSplitEdit}>Remove cut</button>
+                {/if}
+                <button
+                  type="button"
+                  class="dgp-apply"
+                  disabled={splitIssues.length > 0}
+                  on:click={saveSplitEdit}
+                >
+                  Save cut
+                </button>
+              </div>
+            </div>
           {:else}
+          {#if mergeSelection.length}
+            <div class="dgp-mergebar">
+              <span>{mergeSelection.length} selected for merge</span>
+              {#if mergeIssues.length}
+                <span class="dgp-mergeissue">{mergeIssues[0]}</span>
+              {/if}
+              <button
+                type="button"
+                class="dgp-lbtn"
+                disabled={mergeIssues.length > 0}
+                on:click={commitMerge}
+              >
+                Merge {mergeSelection.length} shapes
+              </button>
+              <button type="button" class="dgp-lbtn" on:click={clearMergeSelection}>Clear</button>
+            </div>
+          {/if}
           <ol class="dgp-layerlist">
             {#each orderedShapes as row, i (row.id)}
               {@const dead = deletedIds.includes(row.id)}
@@ -939,11 +1209,23 @@
               {@const restoredEnclosed = !dead && stitched && row.stitched === false}
               {@const boundaryEdited = !dead && !unstitched &&
                 !!(overrides[row.id] && overrides[row.id].boundary_override)}
+              {@const mergedInfo = !dead && !unstitched ? mergedFromInfo(row.id) : null}
+              {@const splitInfo = !dead && !unstitched ? splitFromInfo(row.id) : null}
               {@const rgb = effRgb(row, overrides)}
               {@const tier = effTier(row, overrides)}
               {@const siblings = dead || unstitched ? [] : layerSiblings(row, sewableShapes, overrides)}
               {@const siblingIdx = siblings.findIndex((r) => r.id === row.id)}
               <li class="dgp-layer" class:dead class:unstitched>
+                {#if !dead && !unstitched}
+                  <label class="dgp-mergecheck" title="Select for merge">
+                    <input
+                      type="checkbox"
+                      checked={mergeSelection.includes(row.id)}
+                      on:change={() => toggleMergeSelect(row.id)}
+                      aria-label={"Select " + rowName(row) + " for merge"}
+                    />
+                  </label>
+                {/if}
                 <svg class="dgp-lthumb" viewBox="0 0 24 24" aria-hidden="true">
                   <path
                     d={thumbPath(row)}
@@ -981,6 +1263,17 @@
                       {#if boundaryEdited}
                         <span class="dgp-lbadge" title="This shape's outline was hand-edited.">
                           edited outline
+                        </span>
+                      {/if}
+                      {#if mergedInfo}
+                        <span
+                          class="dgp-lbadge"
+                          title={"Merged from " + mergedInfo.from.length + " shapes on the review screen."}
+                        >merged from {mergedInfo.from.length}</span>
+                      {/if}
+                      {#if splitInfo}
+                        <span class="dgp-lbadge" title="One of two shapes cut from the same original shape.">
+                          split shape
                         </span>
                       {/if}
                     {/if}
@@ -1092,6 +1385,31 @@
                         aria-label="Mark as not sewn again"
                         on:click={() => unrestoreStitching(row.id)}
                       >⦸</button>
+                    {/if}
+                    {#if mergedInfo}
+                      <button
+                        type="button"
+                        class="dgp-lbtn"
+                        title="Undo this merge (the original shapes come back)"
+                        aria-label="Undo merge"
+                        on:click={() => undoMerge(row.id)}
+                      >⎌</button>
+                    {:else if splitInfo}
+                      <button
+                        type="button"
+                        class="dgp-lbtn"
+                        title="Undo this split (the original shape comes back)"
+                        aria-label="Undo split"
+                        on:click={() => undoSplit(row.id)}
+                      >⎌</button>
+                    {:else}
+                      <button
+                        type="button"
+                        class="dgp-lbtn"
+                        title="Cut this shape into two"
+                        aria-label="Split shape"
+                        on:click={() => startSplitEdit(row)}
+                      >✂</button>
                     {/if}
                     <button
                       type="button"
@@ -1388,4 +1706,23 @@
     color: var(--danger, #b3261e);
   }
   .dgp-editor-btns { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+  .dgp-split-line {
+    stroke: var(--danger, #b3261e);
+    stroke-width: 0.5;
+    vector-effect: non-scaling-stroke;
+  }
+  .dgp-split-line.invalid { stroke-dasharray: 1.2 0.8; }
+  .dgp-mergecheck { display: flex; align-items: center; margin-top: 4px; flex: none; }
+  .dgp-mergebar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 6px 0;
+    padding: 6px 8px;
+    border: 1px solid var(--tint-border, #ccd6fb);
+    border-radius: var(--radius-s, 6px);
+    font-size: var(--fs-xs, 12px);
+  }
+  .dgp-mergeissue { color: var(--warn-text, #8a6d1a); }
 </style>

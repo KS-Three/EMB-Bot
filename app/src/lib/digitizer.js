@@ -87,6 +87,16 @@ export function buildDigitizeConfig(element, project) {
   const edits = canonicalShapeEdits(element || {});
   if (edits.deleted_shape_ids) cfg.deleted_shape_ids = edits.deleted_shape_ids;
   if (edits.shape_overrides) cfg.shape_overrides = edits.shape_overrides;
+  // Shape identity edits (contract v1.5) — same "sticky, ride every future
+  // re-digitize" posture as deleted_shape_ids: a merge/split is not a
+  // one-shot mutation, it is a standing decision that re-applies to whatever
+  // shape ids the SAME artwork/config keeps producing (stage 1-4 is
+  // deterministic, so an unchanged source image regenerates the same source
+  // ids every time, and the merge/split keeps consuming them into the same
+  // deterministic result id — see regions.py's module docstring for why this
+  // is safe/expected).
+  if (edits.merge_shape_ids) cfg.merge_shape_ids = edits.merge_shape_ids;
+  if (edits.split_shapes) cfg.split_shapes = edits.split_shapes;
   // A recolor's thread_index indexes the CHART OF THE JOB IT WAS PICKED
   // AGAINST (element.review.brandId). If the user's brand preference moved
   // on since, sending the new brand would silently re-aim every picked
@@ -129,6 +139,9 @@ const SHAPE_UNDERLAYS = new Set([
 // enough of it for live UI feedback, but the server has the final word.
 const BOUNDARY_MIN_POINTS = 3;
 const BOUNDARY_MAX_POINTS = 500;
+// `merge_shape_ids` (contract v1.5) — mirrored, verbatim, from
+// `digitizer_service.app`'s `_MIN_MERGE_SHAPES`.
+const MERGE_MIN_SHAPES = 2;
 
 // The element's shape edits in the service's own canonical wire form:
 // deleted ids sorted + deduped, override keys sorted, null/"auto"/app-only
@@ -177,7 +190,42 @@ export function canonicalShapeEdits(element) {
     if (Object.keys(entry).length) overrides[sid] = entry;
   }
   if (Object.keys(overrides).length) out.shape_overrides = overrides;
+
+  // `merge_shape_ids` (contract v1.5) — canonicalized exactly the way the
+  // service does (`_canonicalize_shape_edits`): each group de-duplicated and
+  // sorted, then the whole list of groups sorted, so two spellings of one
+  // merge request are one cache key/one "pending edits" reading here too.
+  const groups = (element.mergeGroups || [])
+    .map((g) => Array.from(new Set((g || []).filter((s) => typeof s === "string" && s))).sort())
+    .filter((g) => g.length >= MERGE_MIN_SHAPES);
+  groups.sort((a, b) => (a.join("") < b.join("") ? -1 : 1));
+  if (groups.length) out.merge_shape_ids = groups;
+
+  // `split_shapes` (contract v1.5) — same shallow shape check as the
+  // service's own parse: exactly two finite [x, y] points, non-zero length.
+  // The two endpoints are also sorted into the same canonical order the
+  // service/core both use, so submitting the same drag with its two points
+  // swapped is one cache key/one "pending edit" reading, not two.
+  const splitSrc = element.splitLines || {};
+  const splits = {};
+  for (const sid of Object.keys(splitSrc).sort()) {
+    const line = splitSrc[sid];
+    if (isValidSplitLine(line)) {
+      splits[sid] = [...line].map(([x, y]) => [x, y]).sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]));
+    }
+  }
+  if (Object.keys(splits).length) out.split_shapes = splits;
+
   return out;
+}
+
+function isValidSplitLine(line) {
+  if (!Array.isArray(line) || line.length !== 2) return false;
+  if (!line.every((p) => Array.isArray(p) && p.length === 2 && p.every((c) => typeof c === "number" && Number.isFinite(c)))) {
+    return false;
+  }
+  const [a, b] = line;
+  return Math.hypot(b[0] - a[0], b[1] - a[1]) > 1e-6;
 }
 
 // Stable string identity for a canonical edit set (canonicalShapeEdits
@@ -188,6 +236,8 @@ export function editsKey(edits) {
   return JSON.stringify([
     (edits && edits.deleted_shape_ids) || [],
     (edits && edits.shape_overrides) || {},
+    (edits && edits.merge_shape_ids) || [],
+    (edits && edits.split_shapes) || {},
   ]);
 }
 
@@ -376,6 +426,74 @@ export function boundaryIssues(points) {
     issues.push("This shape is too small to sew.");
   }
   return issues;
+}
+
+// ---- shape identity edits (contract v1.5): merge and split -----------------
+//
+// Live feedback for the two select-and-combine / draw-a-cut-line controls,
+// mirroring `boundaryIssues`' own posture: cheap, pure checks for immediate
+// UI feedback, never the authority — the server (`digitizer_service.app`'s
+// shallow request check) and the core (`regions.apply_shape_merges`/
+// `apply_shape_splits`'s real geometry check) both still run independently.
+// Neither of these can check what only the server's Region objects can (a
+// merge's adjacency/union-is-one-polygon test, a split's hole-crossing
+// test) — see the module comment in `regions.py` for the full reasoning.
+
+// Rows a merge selection may combine: same non-empty thread number, at least
+// MERGE_MIN_SHAPES of them. `rows` is [{ id, threadNumber }, ...] — the
+// selected Layers-panel rows.
+export function mergeGroupIssues(rows) {
+  const issues = [];
+  const list = rows || [];
+  if (list.length < MERGE_MIN_SHAPES) {
+    issues.push(`Select at least ${MERGE_MIN_SHAPES} shapes to merge.`);
+    return issues;
+  }
+  const threads = new Set(list.map((r) => r.threadNumber));
+  if (threads.size > 1) {
+    issues.push("Merging only works within one color — select shapes of the same thread.");
+  }
+  return issues;
+}
+
+// Does a straight line (extended well past the shape's own bounding box, the
+// same trick `regions.apply_shape_splits` uses so the caller need only send
+// the two dragged endpoints) cross `outline`'s edges exactly twice — the
+// only way a single cut divides a simple polygon into exactly two pieces.
+// Deliberately does not check hole-crossing (the one thing only the server
+// can do, since it alone sees the shape's own holes) — same asymmetry
+// `boundaryIssues` already has for hole containment.
+export function splitLineIssues(outline, line) {
+  const pts = outline || [];
+  if (pts.length < 3) return ["This shape has no outline to cut."];
+  const [a, b] = line || [];
+  if (!a || !b) return ["Needs two points."];
+  const dx = b[0] - a[0], dy = b[1] - a[1];
+  const len = Math.hypot(dx, dy);
+  if (len < 1e-6) return ["The two points must be different."];
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const [x, y] of pts) {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+  const diag = Math.hypot(maxX - minX, maxY - minY) || 1;
+  const ux = dx / len, uy = dy / len;
+  const ext = diag * 10;
+  const p1 = [a[0] - ux * ext, a[1] - uy * ext];
+  const p2 = [b[0] + ux * ext, b[1] + uy * ext];
+
+  let crossings = 0;
+  const n = pts.length;
+  for (let i = 0; i < n; i++) {
+    if (segmentsIntersect(p1, p2, pts[i], pts[(i + 1) % n])) crossings++;
+  }
+  if (crossings !== 2) {
+    return ["This line must cross the shape's outline exactly twice to split it in two."];
+  }
+  return [];
 }
 
 // Slim the job's review payload down to what the Layers list renders and
@@ -652,6 +770,14 @@ const WARNING_TEXT = {
     plural(w.count || 0,
       "One layer edit no longer matches any shape in the art, so it wasn't applied.",
       "{n} layer edits no longer match any shape in the art, so they weren't applied."),
+  SHAPES_MERGED_BY_USER: (w) =>
+    plural(w.count || 0,
+      "Two shapes were combined into one on the review screen.",
+      "{n} groups of shapes were combined into one on the review screen."),
+  SHAPE_SPLIT_BY_USER: (w) =>
+    plural(w.count || 0,
+      "One shape was cut into two on the review screen.",
+      "{n} shapes were cut into two on the review screen."),
 };
 
 // [{ code, message, ...extra }] -> [{ code, text }] for the panel.
