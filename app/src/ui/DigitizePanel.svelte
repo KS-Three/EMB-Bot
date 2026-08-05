@@ -11,6 +11,7 @@
     reviewFromJob,
     reconcileReview,
     reorderWithinLayer,
+    boundaryIssues,
   } from "../lib/digitizer.js";
   import { loadPalette, nearestInList } from "../lib/threads.js";
 
@@ -549,6 +550,162 @@
       deletedShapeIds: deletedIds.filter((sid) => knownIds.has(sid)),
     });
   }
+
+  // ---- boundary edit mode (shape-layers contract v1.4) ----------------------
+  //
+  // Reshape one shape's outline on a small SVG canvas of its own: drag a
+  // vertex, click an edge midpoint to add one, right-click a vertex to
+  // remove it. Purely local UI state — never part of `element` — until
+  // "Save boundary" merges the result into shapeOverrides through the exact
+  // same setOverride/Apply-layer-changes flow every other edit here uses.
+  // The mm/y-down coordinate space is the review payload's own (outline_mm),
+  // so the SVG viewBox needs no flip — same reasoning as thumbPath above.
+  let editingId = null;
+  let editPoints = [];
+  let dragIndex = null;
+  let svgEl;
+
+  $: editIssues = editingId ? boundaryIssues(editPoints) : [];
+  $: editViewBox = fitViewBox(editPoints);
+  $: editHandleR = Math.max(editViewBox.w, editViewBox.h) / 45;
+  $: editMidpoints = editPoints.map((p, i) => {
+    const q = editPoints[(i + 1) % editPoints.length];
+    return [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+  });
+
+  function fitViewBox(pts) {
+    if (!pts || !pts.length) return { minX: -5, minY: -5, w: 10, h: 10 };
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const [x, y] of pts) {
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    const w = Math.max(maxX - minX, 0.001);
+    const h = Math.max(maxY - minY, 0.001);
+    const pad = Math.max(w, h) * 0.18 + 0.5;
+    return { minX: minX - pad, minY: minY - pad, w: w + pad * 2, h: h + pad * 2 };
+  }
+
+  function round3(v) {
+    return Math.round(v * 1000) / 1000;
+  }
+
+  // Continue from a PENDING (not yet applied) hand edit if one is already
+  // sitting in shapeOverrides — same "resume where you left off" reading
+  // every other control here has (overrideAngle/overrideTier read the
+  // pending value the same way) — else the shape's current outline, which
+  // already reflects the last APPLIED boundary_override if there was one.
+  function startBoundaryEdit(row) {
+    const ov = overrides[row.id] || {};
+    const pending = Array.isArray(ov.boundary_override) && ov.boundary_override.length >= 3
+      ? ov.boundary_override
+      : null;
+    const src = pending || row.outlineFull || row.outline || [];
+    editingId = row.id;
+    editPoints = src.map((p) => [p[0], p[1]]);
+    dragIndex = null;
+  }
+
+  function cancelBoundaryEdit() {
+    editingId = null;
+    editPoints = [];
+    dragIndex = null;
+  }
+
+  function saveBoundaryEdit() {
+    if (!editingId || editIssues.length) return;
+    setOverride(editingId, { boundary_override: editPoints.map(([x, y]) => [x, y]) });
+    editingId = null;
+    editPoints = [];
+    dragIndex = null;
+  }
+
+  // Undo a previous hand edit back to the digitizer's own outline for this
+  // shape (the "auto" convention every other override control uses).
+  function resetBoundaryEdit() {
+    if (!editingId) return;
+    setOverride(editingId, { boundary_override: null });
+    editingId = null;
+    editPoints = [];
+    dragIndex = null;
+  }
+
+  function svgPoint(evt) {
+    if (!svgEl) return [0, 0];
+    const pt = svgEl.createSVGPoint();
+    pt.x = evt.clientX;
+    pt.y = evt.clientY;
+    const ctm = svgEl.getScreenCTM();
+    if (!ctm) return [0, 0];
+    const p = pt.matrixTransform(ctm.inverse());
+    return [p.x, p.y];
+  }
+
+  function startEditDrag(e, i) {
+    e.preventDefault();
+    dragIndex = i;
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (err) {
+      // Pointer capture is unavailable in some test/embedded environments;
+      // dragging still works off plain pointermove, just less robustly at
+      // the edge of the SVG.
+    }
+  }
+
+  function onEditPointerMove(e) {
+    if (dragIndex == null) return;
+    const [x, y] = svgPoint(e);
+    editPoints[dragIndex] = [round3(x), round3(y)];
+    editPoints = editPoints;
+  }
+
+  function endEditDrag() {
+    dragIndex = null;
+  }
+
+  function addEditVertex(i) {
+    const n = editPoints.length;
+    const a = editPoints[i];
+    const b = editPoints[(i + 1) % n];
+    const mid = [round3((a[0] + b[0]) / 2), round3((a[1] + b[1]) / 2)];
+    editPoints = [...editPoints.slice(0, i + 1), mid, ...editPoints.slice(i + 1)];
+  }
+
+  // Floor matches the server's MIN_BOUNDARY_POINTS (regions.py) — a click
+  // that would cross it is simply ignored, not an error state.
+  function removeEditVertex(e, i) {
+    e.preventDefault();
+    if (editPoints.length <= 3) return;
+    editPoints = editPoints.filter((_, idx) => idx !== i);
+    if (dragIndex === i) dragIndex = null;
+  }
+
+  // Keyboard equivalents for the two drag/click-only interactions above —
+  // every handle here is a real tabbable element (role="button", tabindex
+  // 0), not just a pointer target.
+  function nudgeStepMm() {
+    return Math.max(editViewBox.w, editViewBox.h) / 200;
+  }
+
+  function onEditVertexKeydown(e, i) {
+    const step = nudgeStepMm();
+    const [x, y] = editPoints[i];
+    if (e.key === "ArrowLeft") { e.preventDefault(); editPoints[i] = [round3(x - step), y]; editPoints = editPoints; }
+    else if (e.key === "ArrowRight") { e.preventDefault(); editPoints[i] = [round3(x + step), y]; editPoints = editPoints; }
+    else if (e.key === "ArrowUp") { e.preventDefault(); editPoints[i] = [x, round3(y - step)]; editPoints = editPoints; }
+    else if (e.key === "ArrowDown") { e.preventDefault(); editPoints[i] = [x, round3(y + step)]; editPoints = editPoints; }
+    else if (e.key === "Delete" || e.key === "Backspace") { removeEditVertex(e, i); }
+  }
+
+  function onEditMidKeydown(e, i) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      addEditVertex(i);
+    }
+  }
 </script>
 
 <div class="digipanel">
@@ -694,6 +851,82 @@
                  BOTTOM of a list that is entirely about sewing sequence. -->
             <span class="dgp-layers-order">top sews first</span>
           </div>
+          {#if editingId}
+            {@const editingRow = orderedShapes.find((r) => r.id === editingId)}
+            <div class="dgp-editor">
+              <p class="dgp-editor-title">
+                Editing boundary — {editingRow ? rowName(editingRow) : "shape"}
+              </p>
+              <p class="dgp-note">
+                Drag a point to move it (arrow keys nudge a focused point). Click — or press Enter
+                on — a small dot on an edge to add a point there. Right-click, or press Delete, on
+                a point to remove it.
+              </p>
+              <svg
+                bind:this={svgEl}
+                class="dgp-editor-svg"
+                role="application"
+                aria-label="Boundary editor — drag, add or remove points to reshape this shape"
+                viewBox="{editViewBox.minX} {editViewBox.minY} {editViewBox.w} {editViewBox.h}"
+                on:pointermove={onEditPointerMove}
+                on:pointerup={endEditDrag}
+                on:pointercancel={endEditDrag}
+                on:pointerleave={endEditDrag}
+              >
+                <polygon
+                  points={editPoints.map((p) => p.join(",")).join(" ")}
+                  class="dgp-editor-poly"
+                  class:invalid={editIssues.length > 0}
+                />
+                {#each editMidpoints as m, i (i + "-mid-" + editPoints.length)}
+                  <circle
+                    cx={m[0]}
+                    cy={m[1]}
+                    r={editHandleR * 0.55}
+                    class="dgp-editor-mid"
+                    role="button"
+                    tabindex="0"
+                    aria-label="Add a point on this edge"
+                    on:click={() => addEditVertex(i)}
+                    on:keydown={(e) => onEditMidKeydown(e, i)}
+                  />
+                {/each}
+                {#each editPoints as p, i (i + "-pt-" + editPoints.length)}
+                  <circle
+                    cx={p[0]}
+                    cy={p[1]}
+                    r={editHandleR}
+                    class="dgp-editor-vertex"
+                    role="button"
+                    tabindex="0"
+                    aria-label="Drag to move this point; right-click or Delete to remove it"
+                    on:pointerdown={(e) => startEditDrag(e, i)}
+                    on:contextmenu={(e) => removeEditVertex(e, i)}
+                    on:keydown={(e) => onEditVertexKeydown(e, i)}
+                  />
+                {/each}
+              </svg>
+              {#if editIssues.length}
+                <ul class="dgp-editor-issues" role="alert">
+                  {#each editIssues as issue}<li>{issue}</li>{/each}
+                </ul>
+              {/if}
+              <div class="dgp-editor-btns">
+                <button type="button" class="dgp-lbtn" on:click={cancelBoundaryEdit}>Cancel</button>
+                {#if overrides[editingId] && overrides[editingId].boundary_override}
+                  <button type="button" class="dgp-lbtn" on:click={resetBoundaryEdit}>Reset to auto</button>
+                {/if}
+                <button
+                  type="button"
+                  class="dgp-apply"
+                  disabled={editIssues.length > 0}
+                  on:click={saveBoundaryEdit}
+                >
+                  Save boundary
+                </button>
+              </div>
+            </div>
+          {:else}
           <ol class="dgp-layerlist">
             {#each orderedShapes as row, i (row.id)}
               {@const dead = deletedIds.includes(row.id)}
@@ -704,6 +937,8 @@
                    as a small badge plus an undo, so restoring stays a
                    reversible toggle rather than a one-way door. -->
               {@const restoredEnclosed = !dead && stitched && row.stitched === false}
+              {@const boundaryEdited = !dead && !unstitched &&
+                !!(overrides[row.id] && overrides[row.id].boundary_override)}
               {@const rgb = effRgb(row, overrides)}
               {@const tier = effTier(row, overrides)}
               {@const siblings = dead || unstitched ? [] : layerSiblings(row, sewableShapes, overrides)}
@@ -742,6 +977,11 @@
                           class="dgp-lbadge"
                           title="This was an enclosed background area the digitizer left unstitched by default; you restored it."
                         >restored</span>
+                      {/if}
+                      {#if boundaryEdited}
+                        <span class="dgp-lbadge" title="This shape's outline was hand-edited.">
+                          edited outline
+                        </span>
                       {/if}
                     {/if}
                   </div>
@@ -856,6 +1096,13 @@
                     <button
                       type="button"
                       class="dgp-lbtn"
+                      title="Edit this shape's boundary"
+                      aria-label="Edit shape boundary"
+                      on:click={() => startBoundaryEdit(row)}
+                    >✎</button>
+                    <button
+                      type="button"
+                      class="dgp-lbtn"
                       title="Hide this shape (restorable)"
                       aria-label="Hide this shape"
                       on:click={() => deleteShape(row.id)}
@@ -865,6 +1112,7 @@
               </li>
             {/each}
           </ol>
+          {/if}
 
           {#if unmatchedCount}
             <p class="dgp-unmatched">
@@ -1094,4 +1342,50 @@
     color: var(--warn-text, #8a6d1a);
     margin: 8px 0 0;
   }
+  .dgp-editor { margin-top: 6px; }
+  .dgp-editor-title { font-size: var(--fs-xs, 12px); font-weight: 600; margin: 0 0 4px; }
+  .dgp-editor-svg {
+    width: 100%;
+    height: 220px;
+    margin-top: 6px;
+    border: 1px solid var(--tint-border, #ccd6fb);
+    border-radius: var(--radius-s, 6px);
+    background: var(--surface, #fff);
+    touch-action: none;
+  }
+  .dgp-editor-poly {
+    fill: var(--accent, #4f46e5);
+    fill-opacity: 0.18;
+    stroke: var(--accent, #4f46e5);
+    stroke-width: 0.6;
+    vector-effect: non-scaling-stroke;
+  }
+  .dgp-editor-poly.invalid {
+    fill: var(--danger, #b3261e);
+    fill-opacity: 0.14;
+    stroke: var(--danger, #b3261e);
+  }
+  .dgp-editor-vertex {
+    fill: var(--accent, #4f46e5);
+    stroke: #fff;
+    stroke-width: 0.4;
+    vector-effect: non-scaling-stroke;
+    cursor: grab;
+  }
+  .dgp-editor-mid {
+    fill: var(--surface, #fff);
+    stroke: var(--muted, #667);
+    stroke-width: 0.3;
+    vector-effect: non-scaling-stroke;
+    opacity: 0.6;
+    cursor: copy;
+  }
+  .dgp-editor-mid:hover { opacity: 1; }
+  .dgp-editor-issues {
+    margin: 6px 0 0;
+    padding-left: 18px;
+    font-size: var(--fs-xs, 12px);
+    color: var(--danger, #b3261e);
+  }
+  .dgp-editor-btns { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
 </style>
