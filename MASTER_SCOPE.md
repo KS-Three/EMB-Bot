@@ -14,9 +14,8 @@ at the bottom for the authority model behind the confidence ratings.
 **Last updated:** 2026-08-05 — the browser PES/EXP encoders' cross-validation
 defects (PR #18, `docs/pes-crossval-verdict-2026-08-04.md`) are now FIXED,
 not just documented, per the memo's own section 5 recommended fix list
-(branch/PR `pes-exp-byte-framing-fix`; PR number to be filled in once opened
-— see the cross-cutting DST section and area 4 below for the full
-before/after). `src/pes.js`: deleted the header off-by-one pad byte (PEC
+(**PR #58**, `pes-exp-byte-framing-fix` — see the cross-cutting DST section
+and area 4 below for the full before/after). `src/pes.js`: deleted the header off-by-one pad byte (PEC
 header now exactly 512 bytes) and the two non-standard `0x9000` "start x/y"
 fields (4 bytes) that don't exist in the standard PEC block, together the
 5-byte stitch-stream mis-framing the memo root-caused; re-derived the 3-byte
@@ -378,7 +377,7 @@ independently (anti-transpose, rms 0.0) — the PR frames this as validating
 the harness method itself, not as new information about the DST bug. The
 harness's real news was about the other two encoders, previously unchecked
 against an independent implementation, and is now **FIXED, not just
-documented — merged 2026-08-05 (`pes-exp-byte-framing-fix`):** the browser
+documented — merged 2026-08-05 (**PR #58**, `pes-exp-byte-framing-fix`):** the browser
 **PES** encoder's 5-byte stitch-stream mis-framing (one extra header pad
 byte plus two non-standard `0x9000` fields) is deleted and the
 graphics-offset field re-derived against the standard's PEC-relative-512
@@ -875,7 +874,7 @@ the Python digitizer service's `/export` route (pyembroidery-based).
   browser encoder's geometry/color/jump encoding genuinely
   standard-conformant but its 2-byte trim record fatal to pyembroidery-
   convention readers at the first trim — **fixed 2026-08-05**
-  (`pes-exp-byte-framing-fix`): `trimRecord()` now writes the 4-byte Melco
+  (PR #58, `pes-exp-byte-framing-fix`): `trimRecord()` now writes the 4-byte Melco
   form. Harness re-run: a trimmed design now decodes whole (identity
   transform, rms 0, colour change and second colour block both present),
   where it used to truncate at 11 of 15 stitches. Not raised all the way to
@@ -887,7 +886,7 @@ the Python digitizer service's `/export` route (pyembroidery-based).
   "best-effort — reverse-engineered" framing still applies to the format's
   general maturity, but the specific defects PR #18 found — the 5-byte
   stitch-stream mis-framing, jump records flagged as trims, palette indices
-  never set — are **fixed 2026-08-05** (`pes-exp-byte-framing-fix`): the
+  never set — are **fixed 2026-08-05** (PR #58, `pes-exp-byte-framing-fix`): the
   extra header pad byte and the two non-standard `0x9000` fields are
   deleted, the graphics-offset field is re-derived against the standard's
   PEC-relative-512 baseline, jump records use PEC flag `0x1000` (was
@@ -932,7 +931,7 @@ the Python digitizer service's `/export` route (pyembroidery-based).
 **Open issues:** DST axis bug (cross-cutting, see above) — unchanged, still
 Kent's call, `src/dst.js` deliberately untouched by the PES/EXP fix below.
 PES/EXP's own cross-validation findings (PR #18) are **fixed as of
-2026-08-05** (`pes-exp-byte-framing-fix` — see the cross-cutting section
+2026-08-05** (PR #58, `pes-exp-byte-framing-fix` — see the cross-cutting section
 above and this file's "Last updated" entry for the full before/after): PES
 no longer decodes as garbage in standard readers, and EXP no longer aborts
 at the first trim. Remaining, explicitly-accepted gaps: nearest-chart
