@@ -183,6 +183,12 @@
   // When an override is present, ALL that region's shapes (fill + derived
   // underlay) use it; otherwise per-shape auto. `perRegionAngle:false` disables
   // auto entirely (fixed 45°).
+  //
+  // Manual stitch-type override (manual digitizing mode, additive): set
+  // `shape.tierOverride` to "satin" or "fill" to force that shape's stitch
+  // type outright, bypassing both the satinMaxWidthMm threshold and the
+  // branch-guard geometry check below (see the `tierOv` block near
+  // `thin`). Absent (every existing caller) is a no-op.
   function buildQualityDesign(colorRegions, opts) {
     const o = opts || {};
     const pxPerMm = o.pxPerMm || 8;
@@ -398,10 +404,24 @@
         // satin only for genuinely thin SOLID strokes; ring-with-hole goes to
         // even-odd fill (satinColumn can't represent holes)
         let thin = widthMmFinal <= satinMaxWidthMm && holes.length === 0;
+        // Manual stitch-type override (manual digitizing mode): a caller-set
+        // shape.tierOverride ("satin"|"fill") is a human's explicit choice,
+        // not a hint — it replaces BOTH the width threshold above and the
+        // branch-guard geometry check below outright, so a manually-drawn
+        // branched shape the user insists on satin-ing isn't silently routed
+        // to fill. Holes still force fill either way (satinColumn can't
+        // represent a hole — same rule the auto path already enforces).
+        // Absent/unrecognized value is a no-op: falls through to today's
+        // auto classification unchanged, so every existing caller (Image/
+        // Text mode, which never set this field) is byte-identical.
+        const tierOv = shape.tierOverride;
+        if (tierOv === "satin" || tierOv === "fill") {
+          thin = tierOv === "satin" && holes.length === 0;
+        }
         // branch guard: a clean column splits into two side chains of similar
         // length; branched shapes (most letters, Y/T/E forms) don't — satin
         // would zigzag chaotically across them, so route those to fill.
-        if (thin && satinmod.farthestBoundaryPair) {
+        else if (thin && satinmod.farthestBoundaryPair) {
           try {
             const [bi, bj] = satinmod.farthestBoundaryPair(poly);
             const [ca, cb] = satinmod.splitBoundary(poly, bi, bj);

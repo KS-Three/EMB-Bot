@@ -126,6 +126,45 @@ export function defaultDigitizedElement(id) {
   };
 }
 
+// A hand-drawn ("manual digitizing") element (MVP slice, no auto-analysis of
+// any input image): the user draws straight-line polygon outlines directly
+// on a canvas and assigns stitch properties by hand. `shapes` holds only
+// COMPLETED shapes — the in-progress point list being drawn right now is
+// ephemeral UI state owned by ManualPanel (same pattern ImagePanel's
+// merge-selection uses: not part of the persisted element), so a page
+// reload can lose an unfinished shape but never a finished one.
+//
+// Each shape: { id, points: [{x,y}, ...], stitchType: "satin"|"fill",
+// colorRgb: [r,g,b], angleDeg: number|null }. `points` live in a fixed
+// authoring-canvas pixel space (see lib/manualShapes.js's CANVAS_W/H) —
+// only the shapes' RELATIVE geometry matters, since generation fits the
+// combined bbox to the garment/hoop same as every other content type.
+// stitchType is a required manual choice (never auto-classified — that's
+// the whole point of this mode); angleDeg null = per-shape auto (PCA),
+// matching the fill-angle-override convention Image mode's swatch bar and
+// digitize.js's shape.angleOverride already use elsewhere.
+export function defaultManualShape(id) {
+  return {
+    id,
+    points: [],
+    stitchType: "fill",
+    colorRgb: [20, 20, 20],
+    angleDeg: null,
+  };
+}
+
+export function defaultManualElement(id) {
+  return {
+    id,
+    type: "manual",
+    shapes: [],
+    underlay: true,
+    sizeMm: null,
+    offsetXMm: 0,
+    offsetYMm: 0,
+  };
+}
+
 export function defaultProject() {
   return {
     version: 2,
@@ -174,6 +213,7 @@ export function addElement(project, type, hoopWmm) {
     type === "image" ? defaultImageElement :
     type === "design" ? defaultDesignElement :
     type === "digitized" ? defaultDigitizedElement :
+    type === "manual" ? defaultManualElement :
     defaultTextElement;
   let el = factory(id);
   const n = project.elements.length;
@@ -296,6 +336,15 @@ export function migrateProject(input) {
       if (!el || el.type !== "digitized") return el;
       const d = defaultDigitizedElement(el.id);
       return { ...d, ...el, params: { ...d.params, ...(el.params || {}) } };
+    });
+    // Manual elements get the same additive treatment: spread over the
+    // factory defaults so a project saved before a manual field existed
+    // loads with today's defaults filled in, and `shapes` always ends up a
+    // real array even if storage returned something corrupt.
+    merged.elements = merged.elements.map((el) => {
+      if (!el || el.type !== "manual") return el;
+      const d = defaultManualElement(el.id);
+      return { ...d, ...el, shapes: Array.isArray(el.shapes) ? el.shapes : d.shapes };
     });
     // selectedIds invariants for pre-multi-select saves (and corrupt input):
     // members must be real element ids, the array must be non-empty, and

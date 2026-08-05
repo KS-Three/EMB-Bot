@@ -660,6 +660,9 @@
             {#if selectedElement.type === "image"}
               <div><dt>Content</dt><dd>Logo / image</dd></div>
               <div><dt>Colors</dt><dd>{selectedElement.nColors}{selectedElement.removeBg ? " · background removed" : ""}</dd></div>
+            {:else if selectedElement.type === "manual"}
+              <div><dt>Content</dt><dd>Hand-drawn shapes</dd></div>
+              <div><dt>Shapes</dt><dd>{(selectedElement.shapes || []).length}</dd></div>
             {:else}
               <div><dt>Content</dt><dd>Text — "{selectedElement.text}"</dd></div>
               <div><dt>Font</dt><dd>{readable(selectedElement.fontKey)}</dd></div>

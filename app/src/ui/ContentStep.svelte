@@ -4,6 +4,7 @@
   import ImagePanel from "./ImagePanel.svelte";
   import DesignPanel from "./DesignPanel.svelte";
   import DigitizePanel from "./DigitizePanel.svelte";
+  import ManualPanel from "./ManualPanel.svelte";
   import SizePanel from "./SizePanel.svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
   import FontSelect from "./FontSelect.svelte";
@@ -93,6 +94,10 @@
     if (element.type === "digitized") {
       return element.result ? `Digitized · ${truncate(element.name || "artwork", 18)}` : "Digitized · empty";
     }
+    if (element.type === "manual") {
+      const n = (element.shapes || []).length;
+      return n ? `Shapes · ${n}` : "Shapes · empty";
+    }
     const n = element.nColors || 0;
     return element._hasImage ? `Image · ${n} color${n === 1 ? "" : "s"}` : "Image · empty";
   }
@@ -140,6 +145,14 @@
             <circle cx="20" cy="4" r="1.6" fill="currentColor" />
             <path d="M5 5l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="currentColor" />
           </svg>
+        {:else if row.type === "manual"}
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+            <path d="M4 18 L9 6 L18 10 L14 20 Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+            <circle cx="4" cy="18" r="1.6" fill="currentColor" />
+            <circle cx="9" cy="6" r="1.6" fill="currentColor" />
+            <circle cx="18" cy="10" r="1.6" fill="currentColor" />
+            <circle cx="14" cy="20" r="1.6" fill="currentColor" />
+          </svg>
         {:else}
           <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
             <rect x="2" y="4" width="20" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2" />
@@ -177,6 +190,7 @@
   <button type="button" class="eladd" on:click={() => d("addelement", "text")}>+ Text</button>
   <button type="button" class="eladd" on:click={() => d("addelement", "image")}>+ Image</button>
   <button type="button" class="eladd" on:click={() => d("addelement", "design")}>+ Design file</button>
+  <button type="button" class="eladd" on:click={() => d("addelement", "manual")}>+ Draw shapes</button>
   {#if digitizerHealth}
     <button type="button" class="eladd" on:click={() => d("addelement", "digitized")}>+ Auto-digitize</button>
   {/if}
@@ -253,6 +267,8 @@
         on:image={(e) => d("image", e.detail)}
         on:flat={(e) => d("flat", e.detail)}
       />
+    {:else if el.type === "manual"}
+      <ManualPanel element={el} on:elupdate={(e) => d("elupdate", e.detail)} />
     {:else}
       <TextStep element={el} on:elupdate={(e) => d("elupdate", e.detail)} />
     {/if}
