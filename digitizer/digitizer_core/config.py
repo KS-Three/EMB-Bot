@@ -487,8 +487,41 @@ class PipelineConfig:
     #                           seven styles, so it was a materially different,
     #                           lower-value knob to expose and is deferred, not
     #                           forgotten.
+    #   boundary_override: list – (contract v1.4) hand-edited exterior ring
+    #                           replacing this shape's outline: a list of
+    #                           [x, y] mm points in the same design-center,
+    #                           y-down coordinate system as the review
+    #                           payload's `outline_mm` (which is exactly
+    #                           where a client reads the starting points
+    #                           from). Holes are NOT touched by this key —
+    #                           they ride forward unchanged from the shape's
+    #                           own current geometry; boundary editing is
+    #                           exterior-only in this slice. Applied directly
+    #                           to `Region.polygon` (not read again later the
+    #                           way tier/fill_angle/underlay_style are), so
+    #                           every downstream stage sees an ordinary
+    #                           polygon and needs no boundary-override-
+    #                           specific handling. Defensively validated in
+    #                           both `digitizer_service.app` (point count,
+    #                           finite numbers — a fast 400) and
+    #                           `regions.apply_shape_edits` (the same, plus
+    #                           the geometry checks that need the shape's
+    #                           actual polygon: must build a valid, simple
+    #                           polygon — no self-intersection, no hole
+    #                           poking outside the new outline — with area
+    #                           and perimeter at least `machine.
+    #                           RUN_MIN_AREA_MM2` / `RUN_MIN_LOOP_MM`, the
+    #                           same sewability floor stage 4's own run-tier
+    #                           rescue already holds auto-digitized regions
+    #                           to). A rejected edit is a ValueError at the
+    #                           core layer (a 400 at the service layer,
+    #                           before the job ever runs) — never a silent
+    #                           repair and never a crash downstream.
     # Values ride Region.meta so stages 5 and 7 pick them up where each
-    # decision is made. Unknown shape_ids warn (SHAPE_EDIT_UNKNOWN_ID).
+    # decision is made (boundary_override is the one exception: it rides
+    # Region.polygon itself, plus a Region.meta record of the edit for
+    # match_shape_ids' carry-forward — see that function). Unknown shape_ids
+    # warn (SHAPE_EDIT_UNKNOWN_ID).
     shape_overrides: dict = field(default_factory=dict)
 
     # Debug artifacts: written per stage when set

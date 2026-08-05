@@ -490,6 +490,25 @@ def test_parse_config_accepts_a_stitched_override():
         {"shape_overrides": {"S1": {"stitched": False}}}
 
 
+def test_parse_config_accepts_and_normalizes_a_boundary_override():
+    """A valid ring survives as a list of [x, y] float pairs; a closed ring
+    (first point repeated as last — how `outline_mm` in the review payload
+    sends it, and so the natural shape for a client to hand straight back)
+    canonicalizes the same as the open form, so the two are ONE cache key."""
+    from digitizer_service.app import _parse_config
+
+    open_ring = [[0, 0], [10, 0], [10, 10], [0, 10]]
+    closed_ring = open_ring + [[0, 0]]
+
+    got_open = _parse_config(json.dumps({"shape_overrides": {"S1": {"boundary_override": open_ring}}}))
+    got_closed = _parse_config(json.dumps({"shape_overrides": {"S1": {"boundary_override": closed_ring}}}))
+    want = {"shape_overrides": {"S1": {"boundary_override": [[0.0, 0.0], [10.0, 0.0],
+                                                              [10.0, 10.0], [0.0, 10.0]]}}}
+    assert got_open == want
+    assert got_closed == want
+    assert _parse_config(json.dumps({"shape_overrides": {"S1": {"boundary_override": None}}})) == {}
+
+
 @pytest.mark.parametrize("bad", [
     {"deleted_shape_ids": "S1"},                            # not a list
     {"shape_overrides": {"S1": {"tier": "zigzag"}}},        # unknown tier
@@ -505,12 +524,112 @@ def test_parse_config_accepts_a_stitched_override():
     {"shape_overrides": {"S1": {"sew_order": True}}},       # bool is not a position
     {"shape_overrides": {"S1": {"sew_order": 1.5}}},        # not an integer
     {"shape_overrides": {"S1": {"stitched": "yes"}}},       # not a boolean
+    {"shape_overrides": {"S1": {"boundary_override": "nope"}}},           # not a list
+    {"shape_overrides": {"S1": {"boundary_override": [[0, 0], [1, 1]]}}},  # < 3 points
+    {"shape_overrides": {"S1": {"boundary_override":                       # self-intersecting
+                                [[0, 0], [10, 10], [10, 0], [0, 10]]}}},
+    {"shape_overrides": {"S1": {"boundary_override":                       # near-zero area
+                                [[0, 0], [0.01, 0], [0.01, 0.01]]}}},
+    {"shape_overrides": {"S1": {"boundary_override": [["a", 0], [1, 0], [1, 1]]}}},  # not numbers
+    {"shape_overrides": {"S1": {"boundary_override": [[0, 0], [1, 0], [1, True]]}}},  # bool coord
 ])
 def test_bad_shape_edits_are_a_400_at_submit_not_a_failed_job(client, bad):
     with ART.open("rb") as f:
         r = client.post("/digitize", files={"image": (ART.name, f, "image/png")},
                         data={"config": json.dumps(bad)})
     assert r.status_code == 400, r.text
+
+
+# --- boundary override (contract v1.4) --------------------------------------
+
+def test_boundary_override_round_trips_over_http_and_changes_the_design(client):
+    """digitize -> read a shape's outline_mm -> re-digitize with a
+    boundary_override enlarging it -> the same round-trip shape every other
+    override key already has: the shape keeps its id, the new outline
+    reaches the review payload's area, and the design's stitch geometry
+    actually changes. Every other shape is untouched by the one edit."""
+    first = _digitize(client, {"target_width_mm": 80.0, "preflight": False})
+    shapes = {s["thread_number"]: s for s in first["review"]["shapes"]}
+    purple = shapes["2905"]          # rectangle
+    pts = purple["outline_mm"]
+    cx = sum(p[0] for p in pts) / len(pts)
+    cy = sum(p[1] for p in pts) / len(pts)
+    grown = [[cx + (x - cx) * 1.4, cy + (y - cy) * 1.4] for x, y in pts]
+
+    second = _digitize(client, {
+        "target_width_mm": 80.0, "preflight": False,
+        "shape_overrides": {purple["shape_id"]: {"boundary_override": grown}},
+    })
+
+    ids_before = {s["shape_id"] for s in first["review"]["shapes"]}
+    after = {s["shape_id"]: s for s in second["review"]["shapes"]}
+    assert set(after) == ids_before, "boundary edit alone changes no shape's id"
+    edited = after[purple["shape_id"]]
+    assert edited["area_mm2"] > purple["area_mm2"] * 1.3
+    assert second["design"]["stitchCount"] != first["design"]["stitchCount"]
+    # Every other shape's outline is untouched by the one edit.
+    for sid, before in {s["shape_id"]: s for s in first["review"]["shapes"]}.items():
+        if sid == purple["shape_id"]:
+            continue
+        assert after[sid]["outline_mm"] == before["outline_mm"]
+
+
+def test_boundary_override_survives_an_identical_resubmit_as_one_cached_job(client):
+    """Same shape, same edit, submitted twice: one job — the edit
+    participates in the cache key exactly as every other override does, and
+    is stable enough not to thrash it on a no-op resubmit."""
+    first = _digitize(client, {"target_width_mm": 80.0, "preflight": False})
+    purple = next(s for s in first["review"]["shapes"] if s["thread_number"] == "2905")
+    edit = {"target_width_mm": 80.0, "preflight": False,
+            "shape_overrides": {purple["shape_id"]: {"boundary_override": purple["outline_mm"]}}}
+
+    with ART.open("rb") as f:
+        a = client.post("/digitize", files={"image": (ART.name, f, "image/png")},
+                        data={"config": json.dumps(edit)}).json()
+    with ART.open("rb") as f:
+        b = client.post("/digitize", files={"image": (ART.name, f, "image/png")},
+                        data={"config": json.dumps(edit)}).json()
+    assert a["job_id"] == b["job_id"]
+
+
+def test_boundary_override_with_a_hole_poking_outside_fails_the_job_cleanly_not_a_400(client):
+    """The one boundary_override check this service genuinely cannot do at
+    submit time — hole containment needs the shape's own existing holes,
+    which parsing a request never sees — so it surfaces as a failed JOB, not
+    a 400: the submit-time shell check passes (this shrink is still a valid,
+    plenty-large-enough polygon on its own), and `apply_shape_edits` is what
+    actually catches the hole poking outside it once the job runs. Still a
+    clean, readable error, never a crash or a corrupted design — the same
+    contract `test_a_failed_job_reports_the_error_not_a_blank_result` pins
+    for the registry in general, proven here for this specific edit."""
+    first = _digitize(client, {"target_width_mm": 80.0, "preflight": False})
+    ring = next(s for s in first["review"]["shapes"] if s["holes_mm"])
+    hole = ring["holes_mm"][0]
+    hx0, hx1 = min(p[0] for p in hole), max(p[0] for p in hole)
+    hy0, hy1 = min(p[1] for p in hole), max(p[1] for p in hole)
+    hcx, hcy = (hx0 + hx1) / 2, (hy0 + hy1) / 2
+    # Shrink the shell toward the HOLE's own center: still a large, valid,
+    # easily-sewable polygon by itself, but now too small to still contain
+    # the hole it used to enclose.
+    shrunk = [[hcx + (x - hcx) * 0.1, hcy + (y - hcy) * 0.1] for x, y in ring["outline_mm"]]
+
+    with ART.open("rb") as f:
+        r = client.post(
+            "/digitize", files={"image": (ART.name, f, "image/png")},
+            data={"config": json.dumps({
+                "target_width_mm": 80.0, "preflight": False,
+                "shape_overrides": {ring["shape_id"]: {"boundary_override": shrunk}},
+            })},
+        )
+    assert r.status_code == 202, "the shell alone is valid, so submit succeeds"
+    job_id = r.json()["job_id"]
+    for _ in range(600):
+        state = client.get(f"/jobs/{job_id}").json()
+        if state["state"] in ("done", "error"):
+            break
+        time.sleep(0.1)
+    assert state["state"] == "error", "the job, not submission, must catch this"
+    assert "boundary_override" in state["error"] and "hole" in state["error"].lower()
 
 
 # --- job registry ---------------------------------------------------------

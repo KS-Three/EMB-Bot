@@ -315,6 +315,102 @@ test("canonicalShapeEdits accepts a valid underlay_style, rejects an unknown one
   });
 });
 
+// ---- boundary_override (contract v1.4; the boundary editor) ----------------
+//
+// The shallow half of the contract this file can check without a live
+// service: canonicalShapeEdits' point-count/shape gate (mirrors
+// digitizer_service/app.py's own), the pure geometry helpers the editor uses
+// for live feedback (boundaryIssues, dedupeRing, ringArea), and that
+// reviewFromJob keeps a full-resolution working copy (`outlineFull`)
+// DISTINCT from the thumbnail's hard-decimated `outline` — starting the
+// editor from the thumbnail copy would silently reshape the polygon the
+// moment it opened, with no drag at all.
+
+test("canonicalShapeEdits accepts a valid boundary_override, rejects too few points, and combines it with other override fields", async () => {
+  stubStorage({});
+  const { canonicalShapeEdits } = await import("./digitizer.js");
+  const tri = [[0, 0], [10, 0], [5, 8]];
+  const el = digitizedElement({
+    shapeOverrides: {
+      Sgood: { boundary_override: tri },
+      Stooshort: { boundary_override: [[0, 0], [1, 1]] }, // < 3 points -> dropped
+      Snotarray: { boundary_override: "nope" }, // wrong type -> dropped
+      Sboth: { boundary_override: tri, tier: "fill" },
+      Snull: { boundary_override: null }, // absence -> canonicalizes away
+    },
+  });
+  expect(canonicalShapeEdits(el)).toEqual({
+    shape_overrides: {
+      Sgood: { boundary_override: tri },
+      Sboth: { boundary_override: tri, tier: "fill" },
+    },
+  });
+});
+
+test("a boundary_override rides buildDigitizeConfig and changes the cache key (editsKey), and clearing it restores the no-edits config", async () => {
+  stubStorage({});
+  const { buildDigitizeConfig, canonicalShapeEdits, editsKey } = await import("./digitizer.js");
+  const tri = [[0, 0], [10, 0], [5, 8]];
+  const plain = digitizedElement();
+  const edited = digitizedElement({ shapeOverrides: { S1: { boundary_override: tri } } });
+  expect(editsKey(canonicalShapeEdits(edited))).not.toBe(editsKey(canonicalShapeEdits(plain)));
+  // A different shape is a different edit (distinct job).
+  const other = digitizedElement({ shapeOverrides: { S1: { boundary_override: [[0, 0], [5, 0], [5, 5]] } } });
+  expect(editsKey(canonicalShapeEdits(other))).not.toBe(editsKey(canonicalShapeEdits(edited)));
+  const cfg = buildDigitizeConfig(edited, PROJECT);
+  expect(cfg.shape_overrides).toEqual({ S1: { boundary_override: tri } });
+  for (const k of Object.keys(cfg)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
+  const cleared = digitizedElement({ shapeOverrides: { S1: { boundary_override: null } } });
+  expect(buildDigitizeConfig(cleared, PROJECT)).toEqual(buildDigitizeConfig(plain, PROJECT));
+});
+
+test("dedupeRing drops a closing point that repeats the first, and consecutive duplicates, without disturbing an already-open ring", async () => {
+  stubStorage({});
+  const { dedupeRing } = await import("./digitizer.js");
+  expect(dedupeRing([[0, 0], [10, 0], [10, 10], [0, 0]])).toEqual([[0, 0], [10, 0], [10, 10]]);
+  expect(dedupeRing([[0, 0], [0, 0], [10, 0], [10, 10]])).toEqual([[0, 0], [10, 0], [10, 10]]);
+  expect(dedupeRing([[0, 0], [10, 0], [10, 10]])).toEqual([[0, 0], [10, 0], [10, 10]]);
+  expect(dedupeRing([])).toEqual([]);
+});
+
+test("ringArea computes the shoelace area of a simple polygon", async () => {
+  stubStorage({});
+  const { ringArea } = await import("./digitizer.js");
+  expect(ringArea([[0, 0], [10, 0], [10, 10], [0, 10]])).toBeCloseTo(100, 6);
+  expect(ringArea([[0, 0], [10, 0], [5, 8]])).toBeCloseTo(40, 6);
+});
+
+test("boundaryIssues is clean for a simple polygon and flags a self-crossing bowtie, a near-zero-area sliver, and too few points", async () => {
+  stubStorage({});
+  const { boundaryIssues } = await import("./digitizer.js");
+  expect(boundaryIssues([[0, 0], [10, 0], [10, 10], [0, 10]])).toEqual([]);
+  const bowtie = boundaryIssues([[0, 0], [10, 10], [10, 0], [0, 10]]);
+  expect(bowtie).toContain("This boundary crosses itself.");
+  const sliver = boundaryIssues([[0, 0], [0.01, 0], [0.01, 0.01]]);
+  expect(sliver).toContain("This shape is too small to sew.");
+  expect(boundaryIssues([[0, 0], [1, 1]])[0]).toMatch(/at least 3 points/);
+});
+
+test("reviewFromJob keeps a full-resolution outlineFull distinct from the hard-decimated thumbnail outline, deduping a closed ring", async () => {
+  stubStorage({});
+  const { reviewFromJob } = await import("./digitizer.js");
+  // 120 points, closed (first repeated as last) — the exact shape the wire's
+  // outline_mm arrives in (shapely's exterior.coords convention).
+  const ring = Array.from({ length: 120 }, (_, i) => [i, i * 2]);
+  const closed = [...ring, ring[0]];
+  const wire = {
+    palette: [{ brand_id: "isacord", number: "0020", name: "Black", rgb: [0, 0, 0] }],
+    shapes: [
+      { shape_id: "Sa", thread_index: 0, thread_number: "0020", area_mm2: 1, source: "quant",
+        layer: 0, sew_index: 0, sew_block: 0, tier: "fill", outline_mm: closed, holes_mm: [] },
+    ],
+  };
+  const r = reviewFromJob(wire);
+  expect(r.shapes[0].outline.length).toBeLessThanOrEqual(48);
+  expect(r.shapes[0].outlineFull).toEqual(ring); // all 120 points, no closing duplicate
+  expect(r.shapes[0].outlineFull.length).not.toBe(r.shapes[0].outline.length);
+});
+
 test("a border override rides buildDigitizeConfig and changes the cache key (editsKey), and clearing it restores the no-edits config", async () => {
   stubStorage({});
   const { buildDigitizeConfig, canonicalShapeEdits, editsKey } = await import("./digitizer.js");

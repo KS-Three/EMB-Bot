@@ -121,6 +121,14 @@ const SHAPE_UNDERLAYS = new Set([
   "none", "edge_run", "center_run", "edge_zigzag", "edge_lattice",
   "double_lattice", "zigzag",
 ]);
+// `boundary_override` (contract v1.4) point-count bounds — mirrored, verbatim,
+// from `digitizer_service.app`'s `_MIN_BOUNDARY_POINTS`/`_MAX_BOUNDARY_POINTS`.
+// This is the shallow, cheap-to-check half; the real geometry validation
+// (self-intersection, the sewability floor) is server-side, in
+// `digitizer_core.regions.apply_shape_edits` — `boundaryIssues` below mirrors
+// enough of it for live UI feedback, but the server has the final word.
+const BOUNDARY_MIN_POINTS = 3;
+const BOUNDARY_MAX_POINTS = 500;
 
 // The element's shape edits in the service's own canonical wire form:
 // deleted ids sorted + deduped, override keys sorted, null/"auto"/app-only
@@ -163,6 +171,9 @@ export function canonicalShapeEdits(element) {
     if (Number.isInteger(e.layer)) entry.layer = e.layer;
     if (typeof e.stitched === "boolean") entry.stitched = e.stitched;
     if (Number.isInteger(e.sew_order) && e.sew_order >= 0) entry.sew_order = e.sew_order;
+    if (isValidBoundaryShape(e.boundary_override)) {
+      entry.boundary_override = e.boundary_override.map(([x, y]) => [x, y]);
+    }
     if (Object.keys(entry).length) overrides[sid] = entry;
   }
   if (Object.keys(overrides).length) out.shape_overrides = overrides;
@@ -226,6 +237,147 @@ export function thinOutline(points, max = 48) {
   return out;
 }
 
+// ---- boundary override editing (contract v1.4) -----------------------------
+//
+// A shallow shape check — array length + [x, y] finite-number pairs — the
+// same cheap half `digitizer_service.app`'s wire validation does before ever
+// looking at the shape's own geometry. Used to decide whether a stored
+// boundary_override edit is even worth sending; the real geometry checks
+// (self-intersection, the sewability floor) are `boundaryIssues` below, for
+// live editor feedback, and — authoritatively — the server.
+function isValidBoundaryShape(pts) {
+  return (
+    Array.isArray(pts) &&
+    pts.length >= BOUNDARY_MIN_POINTS &&
+    pts.length <= BOUNDARY_MAX_POINTS &&
+    pts.every(
+      (p) =>
+        Array.isArray(p) &&
+        p.length === 2 &&
+        p.every((c) => typeof c === "number" && Number.isFinite(c))
+    )
+  );
+}
+
+// Drop consecutive duplicate points, including a closing point that repeats
+// the first — mirrors `digitizer_core.regions._dedupe_ring` /
+// `digitizer_service.app._dedupe_ring` (the same function, twice-mirrored
+// server-side; this is the client's own copy). `outline_mm` on the wire is
+// shapely's own `exterior.coords`, which always repeats the first point as
+// the last; the boundary editor wants one open ring, not a handle sitting
+// exactly on top of another.
+export function dedupeRing(points) {
+  const out = [];
+  for (const p of points || []) {
+    const last = out[out.length - 1];
+    if (last && last[0] === p[0] && last[1] === p[1]) continue;
+    out.push(p);
+  }
+  if (out.length > 1) {
+    const first = out[0];
+    const last = out[out.length - 1];
+    if (first[0] === last[0] && first[1] === last[1]) out.pop();
+  }
+  return out;
+}
+
+// Shoelace formula, absolute value — mm².
+export function ringArea(points) {
+  const pts = points || [];
+  const n = pts.length;
+  let a = 0;
+  for (let i = 0; i < n; i++) {
+    const [x1, y1] = pts[i];
+    const [x2, y2] = pts[(i + 1) % n];
+    a += x1 * y2 - x2 * y1;
+  }
+  return Math.abs(a) / 2;
+}
+
+function ringPerimeter(points) {
+  const pts = points || [];
+  const n = pts.length;
+  let p = 0;
+  for (let i = 0; i < n; i++) {
+    const [x1, y1] = pts[i];
+    const [x2, y2] = pts[(i + 1) % n];
+    p += Math.hypot(x2 - x1, y2 - y1);
+  }
+  return p;
+}
+
+// Standard orientation/on-segment test (CLRS) — used only to answer "do these
+// two segments cross", not to classify HOW.
+function orientation(p, q, r) {
+  const val = (q[1] - p[1]) * (r[0] - q[0]) - (q[0] - p[0]) * (r[1] - q[1]);
+  if (Math.abs(val) < 1e-9) return 0;
+  return val > 0 ? 1 : 2;
+}
+function onSegment(p, q, r) {
+  return (
+    Math.min(p[0], r[0]) - 1e-9 <= q[0] && q[0] <= Math.max(p[0], r[0]) + 1e-9 &&
+    Math.min(p[1], r[1]) - 1e-9 <= q[1] && q[1] <= Math.max(p[1], r[1]) + 1e-9
+  );
+}
+function segmentsIntersect(p1, p2, p3, p4) {
+  const o1 = orientation(p1, p2, p3);
+  const o2 = orientation(p1, p2, p4);
+  const o3 = orientation(p3, p4, p1);
+  const o4 = orientation(p3, p4, p2);
+  if (o1 !== o2 && o3 !== o4) return true;
+  if (o1 === 0 && onSegment(p1, p3, p2)) return true;
+  if (o2 === 0 && onSegment(p1, p4, p2)) return true;
+  if (o3 === 0 && onSegment(p3, p1, p4)) return true;
+  if (o4 === 0 && onSegment(p3, p2, p4)) return true;
+  return false;
+}
+
+// The sewability floor a hand-edited boundary must clear — mirrors
+// `machine.RUN_MIN_AREA_MM2` / `RUN_MIN_LOOP_MM`, the same floor
+// `digitizer_core.regions.apply_shape_edits` holds every boundary_override
+// to (a loop the bean run can close, on a shape at least the thread's own
+// visual weight).
+export const BOUNDARY_MIN_AREA_MM2 = 0.16;
+export const BOUNDARY_MIN_PERIMETER_MM = 2.2;
+
+// Live feedback for the boundary editor: human-readable problems with the
+// CURRENT working ring, or [] when it would pass the server's checks. Not a
+// replacement for server-side validation (defense in depth stays server-
+// side, in `apply_shape_edits`) — this exists so a self-crossing drag or a
+// pinched-shut shape reads as invalid WHILE editing, not only after "Apply
+// layer changes" comes back with an error. Deliberately does not check hole
+// containment: the editor never touches holes (exterior-ring-only edits),
+// so that check — the one thing only the server can do, since it alone
+// knows the shape's existing holes — never applies here.
+export function boundaryIssues(points) {
+  const pts = points || [];
+  const issues = [];
+  if (pts.length < BOUNDARY_MIN_POINTS) {
+    issues.push(`Needs at least ${BOUNDARY_MIN_POINTS} points.`);
+    return issues;
+  }
+  if (pts.length > BOUNDARY_MAX_POINTS) {
+    issues.push(`Too many points (max ${BOUNDARY_MAX_POINTS}).`);
+  }
+  const n = pts.length;
+  outer: for (let i = 0; i < n; i++) {
+    const a1 = pts[i], a2 = pts[(i + 1) % n];
+    for (let j = i + 1; j < n; j++) {
+      const adjacent = j === i + 1 || (i === 0 && j === n - 1);
+      if (adjacent) continue;
+      const b1 = pts[j], b2 = pts[(j + 1) % n];
+      if (segmentsIntersect(a1, a2, b1, b2)) {
+        issues.push("This boundary crosses itself.");
+        break outer;
+      }
+    }
+  }
+  if (ringArea(pts) < BOUNDARY_MIN_AREA_MM2 || ringPerimeter(pts) < BOUNDARY_MIN_PERIMETER_MM) {
+    issues.push("This shape is too small to sew.");
+  }
+  return issues;
+}
+
 // Slim the job's review payload down to what the Layers list renders and
 // persists with the element. Field name mapping is deliberate: the wire
 // names (shape_id, thread_index, ...) stay in digitizer.js; the element
@@ -239,6 +391,11 @@ export function thinOutline(points, max = 48) {
 //   user action. Missing on a response from a service that predates this
 //   field reads as `true` (every shape stitched, today's behavior) — the
 //   same "absent key = default" reading the field has on the wire.
+//   outlineFull — the boundary editor's working geometry (contract v1.4):
+//   the FULL polygon (deduped, capped at BOUNDARY_MAX_POINTS — the same cap
+//   the server enforces, so a shape under it is untouched), distinct from
+//   `outline` which is decimated hard for the 24px thumbnail and would
+//   silently reshape the polygon if the editor started from it instead.
 export function reviewFromJob(review) {
   if (!review || !Array.isArray(review.shapes)) return null;
   const palette = review.palette || [];
@@ -266,6 +423,7 @@ export function reviewFromJob(review) {
       tier: s.tier,
       stitched: s.stitched !== false,
       outline: thinOutline(s.outline_mm),
+      outlineFull: thinOutline(dedupeRing(s.outline_mm), BOUNDARY_MAX_POINTS),
     })),
   };
 }
