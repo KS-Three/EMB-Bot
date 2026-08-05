@@ -122,81 +122,32 @@ leaves large fill interiors up to 13mm from the nearest underlay stitch (vs
 for that one preset specifically. Not investigated this pass — a candidate
 for a focused follow-up, not a blocker on what shipped here.
 
-**Second same-day follow-up: the audit fix above (whole-stroke skip) was
-itself over-corrected, caught by a second independent audit.** It silenced
-a genuine, PRE-EXISTING `DENSITY_STACKED` block on `testdata/photo/
-drone_render.png` at `target_width_mm=80`, `garment_id="left_chest"`
-(confirmed present on unmodified `cc3b9de`, `coverage_max` 17.12,
-`over_block_mm2` 275.0 -> 0.0 after the whole-stroke fix) — `is_satin_
-candidate` misclassifies large organic/branchy photo-tier regions as
-satin, and one such shape (`S0ab48174`, 39 skeleton strokes) has only 1190
-of 2695 stations (44%) genuinely oversize; disabling an entire stroke's
-zigzag over one oversize station lost far more real coverage than the
-ceiling was meant to withhold. Fix narrowed from per-STROKE to per-
-STATION: `_stroke_underlay` now skips the zigzag cross only at the
-individual stations whose own local width exceeds `SATIN_MAX_WIDTH_MM`
-(read from each cross's own rail midpoint, since `_rail_points`
-interpolates extra stations on bends that don't line up 1:1 with the
-resampled spine), leaving ordinary-width stations on the same stroke
-untouched. Both fixtures now correct simultaneously: `logo_alpha` stays
-out of `block` (severity `warn`, matching the pre-law-23 baseline exactly,
-not silence as the first fix produced) and `drone_render` keeps its
-pre-existing `block` (`coverage_max` 17.12, matching the unmodified
-engine's own peak to two decimals; `over_block_mm2` 86.0 vs. baseline's
-275.0 — narrower because law 23's own corpus-accurate density genuinely
-changed the number, not because the finding vanished). Wider sweep run
-(not all pinned) across `logo_alpha`/`logo_whitebg`/`ribbon_curve` at
-several widths/garments plus `photo/summit_badge.png`,
-`photo/region_blobs.png`, `photo/repro_gradient_white_icon.png`: no new
-false `block`s. Two PRE-EXISTING blocks turned out NOT to be fully
-restored by the per-station narrowing, both confirmed by a third,
-independent re-measurement pass (not just the implementing round's own
-sweep): `summit_badge.png` at 60mm was ALREADY block at the first
-corpus-law commit (`edbd4d4`, before any underlay-cap fix existed) and
-stays block here too, `over_block_mm2` reduced 136 -> 29 (not silenced,
-just smaller — law 23's own density change, same as `drone_render`'s
-275 -> 86). `region_blobs.png` at 60mm is a second case the per-station
-fix does NOT fully solve, unlike `drone_render.png`: unmodified `cc3b9de`
-reads `block` (`over_block_mm2` 76.0, worse post-law-23 at `edbd4d4`,
-133.0), but stays `warn`/`over_block_mm2=0.0` on this fix — silenced, not
-restored. Root cause confirmed via connected-component patch isolation:
-`region_blobs.png`'s offending shape (`S94f29987`) has its blocking area
-concentrated inside a dominant stroke that is 80% oversize BY STATION
-COUNT locally (vs. `drone_render`'s 44% oversize spread across a whole
-39-stroke skeleton) — restoring the minority of ordinary-width stations
-next to a locally-dominant oversize span isn't enough to push the
-connected patch back over `_COVERAGE_MIN_PATCH_MM2`'s 25mm2 gate the way
-it was for `drone_render`. Per-station skipping is a real mechanism
-improvement (no longer disables an entire multi-stroke skeleton over one
-bad station) but does not universally guarantee "restore a pre-existing
-block the whole-stroke fix silenced" — accepted as a second known
-instance of the underlying classifier gap below, not chased with a 4th
-underlay-stage patching round: two of three attempts at a fixture-
-specific underlay fix (whole-stroke, then per-station) each needed
-further correction, which is itself a signal the fix belongs at the
-classification stage, not here. Regression-pinned both directions:
-`test_a_wide_oversize_satin_stroke_does_not_block_on_underlay_glue`
-(logo_alpha stays out of block) and
-`test_drone_render_oversize_photo_satin_still_blocks` (drone_render's
-pre-existing block survives), both in `test_preflight.py`.
-`region_blobs.png`/`summit_badge.png`'s still-silenced/still-block state
-at 60mm is NOT yet pinned by a test — flagged here as a gap for whoever
-picks up the classifier fix below, so it's not lost. Full suite re-run to
-completion in the foreground: **773 passed, 3 skipped, 0 failed** (795s
-locally verified independently, 830s on the third audit's separate run).
-
-The deeper issue neither fix touches — `is_satin_candidate` misclassifying
-large organic/branchy photo-tier geometry as satin at all (confirmed on
-THREE fixtures now: `drone_render.png` [restored by the per-station fix],
-`summit_badge.png` and `region_blobs.png` [both still silenced/reduced,
-not restored]) — is a classification-level question, not an underlay-stage
-one, and is explicitly NOT addressed here; it would need Kent's call on
-scope before any fix, per the same "satin/fill classifier" gap area 1
-already tracks above (M0-M3 DT-first migration, corpus-gated, not
-started). Recommend that follow-up scope explicitly include
-`region_blobs.png@60mm/{left_chest,hat_front}` and
-`summit_badge.png@60mm` as its acceptance fixtures, so the classifier fix
-is checked against real cases rather than designed in the abstract.
+**Follow-up correction, 2026-08-05 (same day): the whole-stroke skip above
+is the final state — a same-day per-station narrowing attempt was tried and
+then dropped, not shipped.** An independent audit briefly proposed
+narrowing the skip from per-stroke to per-station, reasoning that a
+whole-stroke skip could over-silence a large organic photo-tier shape
+(`testdata/photo/drone_render.png`) that was mostly ordinary-width with
+only a small oversize fraction. That narrowing was implemented, then
+reverted before landing: a separate, independent verification (real
+`run_preflight` calls, not either side's own claims) found PR #60
+(`satin-classifier-organic-shapes`, `digitizer_core.stage6_satin.
+is_satin_candidate`'s `design_class`-scoped DT check) already resolves
+`drone_render.png` completely at the classification stage — with laws
+23/26 and PR #60 both applied, `drone_render.png @ 80mm/left_chest` reads
+byte-identical preflight numbers (`coverage_max` 5.26, `over_warn_mm2`
+68.0, severity `warn`) whether the per-station narrowing is applied on top
+or not. The narrowing's entire reason for existing was moot before it ever
+needed to ship, so it was dropped in favor of the simpler, already-verified
+whole-stroke skip. `logo_alpha.png`'s own fix is unaffected either way —
+`Sf5200f3f` is `design_class="flat"`, on which PR #60's fix is a
+byte-for-byte no-op, so laws 23/26 plus the whole-stroke skip remain fully
+necessary and are not superseded by anything on `main`. `drone_render.png`,
+`region_blobs.png` and `summit_badge.png` are consequently out of scope
+for this entry entirely — not fixed here and not flagged here as gaps,
+since PR #60 already owns them at the classifier level (see that entry
+below for its own numbers). Full suite re-run to completion in the
+foreground: **828 passed, 3 skipped, 0 failed** (708s).
 
 Prior update below, 2026-08-05, still earlier the same day — the
 boundary-editor slice landed: area 5's
