@@ -165,13 +165,45 @@ def ribbon_width_mm(poly: Polygon) -> float:
     return 2.0 * poly.area / perim
 
 
-def is_satin_candidate(poly: Polygon, max_width_mm: float) -> bool:
+def is_satin_candidate(poly: Polygon, max_width_mm: float, *,
+                        design_class: str = "flat") -> bool:
     """Should this shape be satin rather than fill?
 
     Two conditions, both about how the result reads on fabric: the ribbon must
     be narrow enough that crosses do not float (`max_width_mm`), and it must
     actually BE a ribbon — long relative to its width — rather than a small
     compact blob, which sews better as a few rows of fill.
+
+    Both conditions are read off `2*area/perimeter` and the raw perimeter,
+    and both share one blind spot: boundary NOISE inflates the perimeter,
+    which shrinks the measured width and inflates the length estimate at the
+    same time — so a compact, organic blob with a jittery outline can read as
+    a narrow, long ribbon on both tests at once. Measured on
+    `docs/dt-classifier-spike-2026-08-02.md`'s synthetic case: a 20mm
+    serrated disc (tooth 0.6mm) reads `ribbon_width_mm` 2.12mm against a 5mm
+    cap and passes the aspect gate too, purely from the noise, not from
+    being a stroke. Confirmed on this repo's own committed fixtures too —
+    `testdata/photo/region_blobs.png`'s `Sd12bfc9e`/`S94f29987` and
+    `testdata/photo/summit_badge.png`'s `Sed818ef7`/`S00d736bf`/`S6096e7a9`
+    are near-square, organic, segmentation-noisy regions (bounding-box
+    aspect 1.05-1.13) that this test alone waves through as satin.
+
+    `design_class` scopes the fix: a second, independent width read off the
+    exact distance transform at the shape's own medial axis (`docs/
+    dt-classifier-spike-2026-08-02.md`'s `VP90` arm — a pure TIGHTENING, it
+    can only turn a satin call into a fill call, never the reverse) runs
+    for every class except `"flat"`. Flat-classified art — clean,
+    spot-colour, vector-like boundaries, the shipped byte-identical goldens'
+    entire population — keeps exactly today's behaviour, unchanged, because
+    that population is not where the noise this fix targets comes from and
+    `tests/test_flat_lane_byte_identical.py` pins its output byte for byte.
+    Non-flat classes (`gradient`, `photo_subject`, `photo_scene`) are where
+    the noisy, segmentation-derived boundaries this fix exists for actually
+    occur, and the spike's own measurement (0/21 misses on the synthetic
+    archetype population, 26/28 agreement with the shipped rule on real
+    artwork, both disagreements being shapes the shipped rule already sews
+    wrong) is the evidence for extending it there. See
+    `_dt_regular_and_within_cap` for the check itself.
     """
     w = ribbon_width_mm(poly)
     if w <= 0 or w > max_width_mm:
@@ -180,7 +212,58 @@ def is_satin_candidate(poly: Polygon, max_width_mm: float) -> bool:
     # (circle: w = r) this comes out ~2.1 w and fails the aspect test.
     perim = poly.exterior.length + sum(r.length for r in poly.interiors)
     length_est = perim / 2.0 - w
-    return length_est >= 3.0 * w
+    if length_est < 3.0 * w:
+        return False
+    if design_class == "flat":
+        return True
+    return _dt_regular_and_within_cap(poly, max_width_mm)
+
+
+# The percentile Melco's own patent (US9702070) is documented to use is 70;
+# the spike measured 90 sits above every letterform junction spike (a serif
+# crossbar's inscribed circle running sqrt(2) times its stroke) while still
+# rejecting a wide compact blob. Not swept against 70/80/95 here -- flagged
+# in the spike doc as the one open tuning question before this ships wider.
+_DT_TIGHTEN_PERCENTILE = 90.0
+
+
+def _dt_regular_and_within_cap(poly: Polygon, max_width_mm: float) -> bool:
+    """A second opinion on `is_satin_candidate`'s call, read off the exact
+    distance transform at the medial axis instead of `2*area/perimeter`.
+
+    Local, per-point measurements are immune to the perimeter-based test's
+    failure mode: boundary noise moves individual medial-axis radii by the
+    noise amplitude, not by a global perimeter sum, so a compact blob's
+    radii stay large (its true half-size) no matter how jittery its outline
+    is. Two AND terms, exactly `docs/dt-classifier-spike-2026-08-02.md`'s
+    recommended `VP90` arm:
+
+    - **Regularity** (`2*sigma < mu` at skeletal pixels): a uniform-thickness
+      stroke has a tight radius distribution; a blob's medial axis collapses
+      toward its centre, spreading the radii out. This is what actually
+      separates a ribbon from a blob here -- not `max_width_mm`, which both
+      can satisfy.
+    - **The 90th-percentile width stays under the cap**: `max` is a junction
+      artefact (a serif crossbar's inscribed circle runs sqrt(2) times its
+      stroke) and rejects real letterforms; `p90` strips that spike while
+      still catching a genuinely wide blob.
+
+    Returns True (defers to the caller's already-True verdict) on a
+    degenerate raster -- a shape too small or thin to skeletonize is not
+    this check's problem to solve, and failing closed here would convert a
+    raster edge case into a fill verdict for a shape that may be a perfectly
+    good ribbon.
+    """
+    field = build_shape_field(poly)
+    if field is None or not field.skel.any():
+        return True
+    r = field.dist[field.skel]
+    if r.size == 0 or r.mean() <= 0:
+        return True
+    if 2.0 * r.std() >= r.mean():
+        return False
+    p90_mm = 2.0 * np.percentile(r, _DT_TIGHTEN_PERCENTILE) / field.scale
+    return p90_mm <= max_width_mm
 
 
 # --- Skeleton extraction ---------------------------------------------------

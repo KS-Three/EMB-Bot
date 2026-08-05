@@ -238,7 +238,8 @@ def _shrink(poly, pull: float, axis_deg: float | None):
     return _axial_offset(poly, pull, axis_deg, -1.0)
 
 
-def _comp_axis(region: Region, cfg: PipelineConfig, satin_max: float) -> tuple[float | None, bool]:
+def _comp_axis(region: Region, cfg: PipelineConfig, satin_max: float,
+               design_class: str = "flat") -> tuple[float | None, bool]:
     """-> (stitch axis to compensate along or None for isotropic, satin tier?).
 
     Classified on the ARTWORK polygon with the same call stage 7 makes, for the
@@ -247,11 +248,14 @@ def _comp_axis(region: Region, cfg: PipelineConfig, satin_max: float) -> tuple[f
     a polo. The review screen's per-shape tier and fill angle (shape-layers
     contract v1) are honoured here in stage 7's own precedence — per-shape
     beats global — so the axis a shape is compensated along stays the axis it
-    sews along.
+    sews along. `design_class` has to travel with it for the same reason: a
+    shape that stage 7 now reads as fill under the DT tightening (see
+    `stage6_satin.is_satin_candidate`) must not get compensated as satin here.
     """
     tier = str(region.meta.get("tier", "auto")).lower()
     if tier == "satin" or (tier == "auto"
-                           and is_satin_candidate(region.polygon, satin_max)):
+                           and is_satin_candidate(region.polygon, satin_max,
+                                                   design_class=design_class)):
         return None, True
     angle = region.meta.get("fill_angle_deg")
     if angle is not None:
@@ -274,9 +278,17 @@ def _largest_polygon(geom) -> Polygon | None:
 
 
 def resolve_overlaps(
-    regions: list[Region], fabric: Fabric, cfg: PipelineConfig
+    regions: list[Region], fabric: Fabric, cfg: PipelineConfig,
+    design_class: str = "flat",
 ) -> tuple[list[PlannedRegion], list[dict]]:
-    """-> (planned regions in sew order, warnings)."""
+    """-> (planned regions in sew order, warnings).
+
+    `design_class` is stage 0's verdict, forwarded only to keep the satin
+    call `_comp_axis` makes (directional-comp path only) agreeing with the
+    one stage 7 makes for the same shape — see `_comp_axis`'s docstring.
+    Defaults to "flat" so every pre-existing caller needs no edit and keeps
+    exactly today's classification.
+    """
     warnings: list[dict] = []
     if not regions:
         return [], warnings
@@ -292,7 +304,8 @@ def resolve_overlaps(
     axis_by_id: dict[str, float | None] = {}
     satin_by_id: dict[str, bool] = {}
     for r in regions:
-        axis, is_satin = _comp_axis(r, cfg, satin_max) if directional else (None, False)
+        axis, is_satin = (_comp_axis(r, cfg, satin_max, design_class)
+                          if directional else (None, False))
         axis_by_id[r.shape_id] = axis
         satin_by_id[r.shape_id] = is_satin
 

@@ -197,6 +197,75 @@ def test_ribbon_width_on_a_rectangle():
     assert ribbon_width_mm(BAR) < 2.0
 
 
+def _serrated_disc(r: float, tooth: float, n: int = 120) -> Polygon:
+    """A disc whose boundary alternates +/-tooth around the mean radius r —
+    `docs/dt-classifier-spike-2026-08-02.md`'s stress fixture, and the shape
+    MASTER_SCOPE.md's satin/fill classifier bullet cites directly ("a
+    serrated 20mm disc computes as '5.03mm' and gets satin-stitched instead
+    of filled")."""
+    pts = []
+    for i in range(n * 2):
+        a = math.pi * i / n
+        rr = r + (tooth if i % 2 else -tooth)
+        pts.append((rr * math.cos(a), rr * math.sin(a)))
+    return Polygon(pts)
+
+
+def test_a_noisy_compact_disc_reads_narrow_on_ribbon_width_alone():
+    """Documents the bug this module's fix exists for, not just the fix.
+
+    A 20mm disc serrated by 0.6mm is still, unambiguously, a disc — but
+    boundary noise roughly doubles its perimeter, and `2*area/perimeter`
+    (plus the aspect gate built on the SAME perimeter) reads that as a
+    narrow, long ribbon instead. `ribbon_width_mm` alone has no way to tell
+    the difference; that is exactly why `is_satin_candidate` no longer stops
+    there for non-flat design classes (below)."""
+    disc = _serrated_disc(10.0, 0.6)
+    assert ribbon_width_mm(disc) < machine.SATIN_MAX_WIDTH_MM
+    assert is_satin_candidate(disc, machine.SATIN_MAX_WIDTH_MM), \
+        "the perimeter-only rule is expected to still get this one wrong"
+
+
+def test_the_dt_check_catches_the_serrated_disc_a_noisy_design_class_gets():
+    """The regression pin for the fix: for a non-"flat" `design_class` (the
+    photo/gradient tiers, where segmentation noise like this actually shows
+    up — see `testdata/photo/region_blobs.png`'s `Sd12bfc9e`/`S94f29987` and
+    `testdata/photo/summit_badge.png`'s `Sed818ef7`/`S00d736bf`/`S6096e7a9`,
+    all real, near-square, organic regions this exact rule used to satin),
+    the second, DT-based opinion (`_dt_regular_and_within_cap`) overrides the
+    perimeter-only verdict above and correctly calls this a blob.
+
+    Swept across a few tooth depths because the fix must not be a fluke of
+    one specific noise amplitude."""
+    for tooth in (0.3, 0.6, 1.2):
+        disc = _serrated_disc(10.0, tooth)
+        assert not is_satin_candidate(disc, machine.SATIN_MAX_WIDTH_MM,
+                                      design_class="gradient"), \
+            f"tooth={tooth}: still satins a compact disc under a noisy class"
+
+
+def test_flat_design_class_keeps_the_old_verdict_on_purpose():
+    """The scoping is deliberate, not an oversight: `design_class="flat"`
+    (the default, and every existing caller that does not pass one) must
+    keep TODAY'S exact verdict, noisy-disc bug included, because that is the
+    population `tests/test_flat_lane_byte_identical.py` pins byte for byte.
+    If this test ever goes red because the disc now reads False for "flat"
+    too, the fix has widened past its intended scope."""
+    disc = _serrated_disc(10.0, 0.6)
+    assert is_satin_candidate(disc, machine.SATIN_MAX_WIDTH_MM)
+    assert is_satin_candidate(disc, machine.SATIN_MAX_WIDTH_MM, design_class="flat")
+
+
+@pytest.mark.parametrize("name,poly", [("BAR", BAR), ("O_RING", O_RING),
+                                       ("C_STROKE", C_STROKE), ("T_SHAPE", T_SHAPE)])
+def test_the_dt_check_does_not_cost_real_ribbons_their_satin_call(name, poly):
+    """Pure tightening only works if it stays quiet on shapes that ARE
+    ribbons. All four letterform archetypes keep satin under the DT check
+    too — the failure mode this fix targets is boundary noise on a COMPACT
+    shape, not stroke geometry in general."""
+    assert is_satin_candidate(poly, machine.SATIN_MAX_WIDTH_MM, design_class="gradient")
+
+
 # --- Column geometry -------------------------------------------------------
 
 def test_crosses_run_perpendicular_to_the_bar():

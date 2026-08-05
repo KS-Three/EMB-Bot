@@ -75,6 +75,12 @@ EMPTY_THREAD_LAYER = "EMPTY_THREAD_LAYER"          # a thread's every region abs
 # Stage 4.5 (review-screen shape edits — the shape-layers contract v1)
 SHAPES_DELETED_BY_USER = "SHAPES_DELETED_BY_USER"  # shapes the user removed in review; dropped after IDs were assigned. extra: {"count": int, "ids": list[str]}
 SHAPE_EDIT_UNKNOWN_ID = "SHAPE_EDIT_UNKNOWN_ID"    # a deleted/overridden shape_id matched nothing (the art may have changed under the edit). extra: {"count": int, "ids": list[str]}
+# Shape identity edits (contract v1.5, `merge_shape_ids`/`split_shapes`) — the
+# other half of the boundary-reshape gap: these change the SET of shapes, not
+# one shape's attributes, so they get their own codes distinct from the two
+# above. extra: {"count": int, "groups"/"ids": list, "new_ids": list[str]}
+SHAPES_MERGED_BY_USER = "SHAPES_MERGED_BY_USER"    # 2+ same-layer shapes unioned into one new shape.
+SHAPE_SPLIT_BY_USER = "SHAPE_SPLIT_BY_USER"        # one shape cut by a line into two new shapes.
 
 # Stage 5 (overlap resolution / pull compensation)
 HOLE_NEARLY_CLOSED = "HOLE_NEARLY_CLOSED"          # pull comp would swallow a hole; held open. extra: {"count": int}

@@ -55,6 +55,7 @@ const PIPELINE_CONFIG_FIELDS = [
   "fabric_id", "overlap_mm", "fill_row_mm", "fill_stitch_mm", "fill_angle_deg",
   "underlay_style", "underlay", "satin", "satin_max_width_mm", "border",
   "border_width_mm", "deleted_shape_ids", "shape_overrides",
+  "merge_shape_ids", "split_shapes",
 ];
 
 test("buildDigitizeConfig sends the stored thread-brand preference and the project garment, in service field names", async () => {
@@ -893,4 +894,112 @@ test("the fixture's own warnings translate cleanly (no raw codes leak to the pan
   const anyRaw = out.some((w) => /_/.test(w.text));
   expect(anyRaw).toBe(false);
   expect(out.length).toBe(fixture.warnings.length);
+});
+
+// ---- shape identity edits (contract v1.5: merge and split) ------------------
+//
+// The other half of the shape-recognition gap `boundary_override` (above)
+// didn't touch: `canonicalShapeEdits`'s mirror of the service's own
+// canonicalization for `merge_shape_ids`/`split_shapes`, and the pure
+// geometry helpers the two new controls use for live feedback
+// (`mergeGroupIssues`, `splitLineIssues`) — the same shallow-check,
+// server-has-the-final-word posture `boundaryIssues` already has.
+
+test("canonicalShapeEdits dedupes and sorts merge groups, and sorts the outer list of groups, so two spellings of one merge are one edit", async () => {
+  stubStorage({});
+  const { canonicalShapeEdits, editsKey } = await import("./digitizer.js");
+  const a = digitizedElement({ mergeGroups: [["B", "A", "A"], ["D", "C"]] });
+  const b = digitizedElement({ mergeGroups: [["C", "D"], ["A", "B"]] });
+  expect(canonicalShapeEdits(a)).toEqual({ merge_shape_ids: [["A", "B"], ["C", "D"]] });
+  expect(editsKey(canonicalShapeEdits(a))).toBe(editsKey(canonicalShapeEdits(b)));
+});
+
+test("canonicalShapeEdits drops a merge group under the 2-shape minimum and an empty mergeGroups list entirely", async () => {
+  stubStorage({});
+  const { canonicalShapeEdits } = await import("./digitizer.js");
+  const el = digitizedElement({ mergeGroups: [["A"], ["B", "C"]] });
+  expect(canonicalShapeEdits(el)).toEqual({ merge_shape_ids: [["B", "C"]] });
+  expect(canonicalShapeEdits(digitizedElement({ mergeGroups: [] }))).toEqual({});
+  expect(canonicalShapeEdits(digitizedElement({ mergeGroups: [["A"]] }))).toEqual({});
+});
+
+test("canonicalShapeEdits accepts a valid split_shapes line, canonicalizes point order, coerces coordinates, and drops a zero-length or malformed one", async () => {
+  stubStorage({});
+  const { canonicalShapeEdits, editsKey } = await import("./digitizer.js");
+  const forward = digitizedElement({ splitLines: { Q: [[0, -5], [0, 5]] } });
+  const backward = digitizedElement({ splitLines: { Q: [[0, 5], [0, -5]] } });
+  expect(canonicalShapeEdits(forward)).toEqual({ split_shapes: { Q: [[0, -5], [0, 5]] } });
+  expect(editsKey(canonicalShapeEdits(forward))).toBe(editsKey(canonicalShapeEdits(backward)));
+
+  const bad = digitizedElement({
+    splitLines: {
+      Zero: [[1, 1], [1, 1]],       // zero length -> dropped
+      OnePoint: [[0, 0]],           // wrong shape -> dropped
+      NotNum: [["a", 0], [1, 1]],   // not numbers -> dropped
+    },
+  });
+  expect(canonicalShapeEdits(bad)).toEqual({});
+});
+
+test("merge_shape_ids/split_shapes ride buildDigitizeConfig and change the cache key (editsKey)", async () => {
+  stubStorage({});
+  const { buildDigitizeConfig, canonicalShapeEdits, editsKey } = await import("./digitizer.js");
+  const plain = digitizedElement();
+  const merged = digitizedElement({ mergeGroups: [["A", "B"]] });
+  const split = digitizedElement({ splitLines: { Q: [[0, -5], [0, 5]] } });
+
+  expect(editsKey(canonicalShapeEdits(merged))).not.toBe(editsKey(canonicalShapeEdits(plain)));
+  expect(editsKey(canonicalShapeEdits(split))).not.toBe(editsKey(canonicalShapeEdits(plain)));
+
+  const cfg = buildDigitizeConfig(merged, PROJECT);
+  expect(cfg.merge_shape_ids).toEqual([["A", "B"]]);
+  for (const k of Object.keys(cfg)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
+  expect(buildDigitizeConfig(digitizedElement({ mergeGroups: [] }), PROJECT)).toEqual(
+    buildDigitizeConfig(plain, PROJECT)
+  );
+});
+
+test("mergeGroupIssues requires at least 2 shapes and rejects a selection spanning more than one thread", async () => {
+  stubStorage({});
+  const { mergeGroupIssues } = await import("./digitizer.js");
+  expect(mergeGroupIssues([{ id: "A", threadNumber: "0020" }])[0]).toMatch(/at least 2/);
+  expect(mergeGroupIssues([])[0]).toMatch(/at least 2/);
+  expect(mergeGroupIssues([
+    { id: "A", threadNumber: "0020" },
+    { id: "B", threadNumber: "0020" },
+  ])).toEqual([]);
+  expect(mergeGroupIssues([
+    { id: "A", threadNumber: "0020" },
+    { id: "B", threadNumber: "1305" },
+  ])[0]).toMatch(/one color/);
+});
+
+test("splitLineIssues is clean for a line crossing a simple square exactly twice, and flags too few points, a zero-length line, and a line crossing more than twice", async () => {
+  stubStorage({});
+  const { splitLineIssues } = await import("./digitizer.js");
+  const square = [[0, 0], [10, 0], [10, 10], [0, 10]];
+  expect(splitLineIssues(square, [[5, -6], [5, 6]])).toEqual([]);
+  // Extended internally — a short line fully inside the square still crosses
+  // its exterior exactly twice once extended along its own direction.
+  expect(splitLineIssues(square, [[3, 3], [5, 4]])).toEqual([]);
+
+  expect(splitLineIssues([[0, 0], [1, 1]], [[0, -6], [0, 6]])[0]).toMatch(/no outline/);
+  expect(splitLineIssues(square, [[1, 1], [1, 1]])[0]).toMatch(/different/);
+  expect(splitLineIssues(square, [])[0]).toMatch(/two points/);
+
+  // A "comb" with two teeth: a horizontal cut through both teeth crosses 4
+  // times, not 2 — the same concave-shape guardrail the core enforces.
+  const comb = [[0, 0], [2, 10], [4, 0], [6, 10], [8, 0], [8, -2], [0, -2]];
+  expect(splitLineIssues(comb, [[-5, 5], [15, 5]])[0]).toMatch(/exactly twice/);
+});
+
+test("describeWarnings speaks the two shape-identity codes (contract v1.5)", async () => {
+  stubStorage({});
+  const { describeWarnings } = await import("./digitizer.js");
+  const out = describeWarnings([
+    { code: "SHAPES_MERGED_BY_USER", message: "engine prose", count: 1, groups: [] },
+    { code: "SHAPE_SPLIT_BY_USER", message: "engine prose", count: 2, groups: [] },
+  ]);
+  expect(out[0].text).toBe("Two shapes were combined into one on the review screen.");
+  expect(out[1].text).toBe("{n} shapes were cut into two on the review screen.".replace("{n}", "2"));
 });
