@@ -561,6 +561,18 @@ def test_parse_config_accepts_and_normalizes_a_boundary_override():
                                 [[0, 0], [0.01, 0], [0.01, 0.01]]}}},
     {"shape_overrides": {"S1": {"boundary_override": [["a", 0], [1, 0], [1, 1]]}}},  # not numbers
     {"shape_overrides": {"S1": {"boundary_override": [[0, 0], [1, 0], [1, True]]}}},  # bool coord
+    {"merge_shape_ids": "nope"},                            # not a list
+    {"merge_shape_ids": ["S1"]},                            # group not a list
+    {"merge_shape_ids": [["S1"]]},                          # < 2 distinct shapes
+    {"merge_shape_ids": [["S1", "S1"]]},                    # dedupes to 1 distinct shape
+    {"merge_shape_ids": [["S1", 2]]},                       # not a string id
+    {"merge_shape_ids": [["S1", ""]]},                      # empty string id
+    {"split_shapes": "nope"},                               # not an object
+    {"split_shapes": {"S1": [[0, 0]]}},                     # only one point
+    {"split_shapes": {"S1": [[0, 0], [1, 0], [2, 0]]}},     # three points
+    {"split_shapes": {"S1": [[0, 0], [0, 0]]}},             # zero-length line
+    {"split_shapes": {"S1": [["a", 0], [1, 1]]}},           # not numbers
+    {"split_shapes": {"S1": [[0, 0], [1, True]]}},          # bool coord
 ])
 def test_bad_shape_edits_are_a_400_at_submit_not_a_failed_job(client, bad):
     with ART.open("rb") as f:
@@ -661,6 +673,124 @@ def test_boundary_override_with_a_hole_poking_outside_fails_the_job_cleanly_not_
     assert "boundary_override" in state["error"] and "hole" in state["error"].lower()
 
 
+# --- shape identity edits (merge/split, contract v1.5) ----------------------
+#
+# The other half of the shape-recognition gap `boundary_override` (above)
+# didn't touch: these change the SET of shapes, not one shape's geometry.
+# Full core-level coverage (the happy paths, every v1 guardrail, the
+# warn-vs-raise split) lives in `test_shape_identity.py`; what belongs here
+# is the SERVICE's own contract — request canonicalization, 400s at submit,
+# and the one real end-to-end proof that the config keys reach the running
+# service and come back out the other side as a changed design.
+
+def test_parse_config_canonicalizes_merge_shape_ids_groups_and_dedupes_them():
+    """Mirrors `deleted_shape_ids`'s own canonicalization: each group
+    de-duplicated and sorted, then the list of groups itself sorted, so two
+    spellings of one merge request are ONE cache key."""
+    from digitizer_service.app import _parse_config
+
+    assert _parse_config(json.dumps({"merge_shape_ids": [["B", "A", "A"]]})) == \
+        {"merge_shape_ids": [["A", "B"]]}
+    # Group order in the outer list must not matter either.
+    a = _parse_config(json.dumps({"merge_shape_ids": [["B", "C"], ["A", "D"]]}))
+    b = _parse_config(json.dumps({"merge_shape_ids": [["D", "A"], ["C", "B"]]}))
+    assert a == b
+    assert _parse_config(json.dumps({"merge_shape_ids": None})) == {}
+    assert _parse_config(json.dumps({"merge_shape_ids": []})) == {}
+
+
+def test_parse_config_canonicalizes_split_shapes_line_order_and_coerces_floats():
+    """A line's two endpoints canonicalize to one order regardless of which
+    one the client calls "first" — see `regions.apply_shape_splits`'s own
+    copy of this normalization for why (an id-stability concern, not just a
+    cache one)."""
+    from digitizer_service.app import _parse_config
+
+    forward = _parse_config(json.dumps({"split_shapes": {"S1": [[0, -5], [0, 5]]}}))
+    backward = _parse_config(json.dumps({"split_shapes": {"S1": [[0, 5], [0, -5]]}}))
+    assert forward == backward == {"split_shapes": {"S1": [[0.0, -5.0], [0.0, 5.0]]}}
+    assert _parse_config(json.dumps({"split_shapes": None})) == {}
+    assert _parse_config(json.dumps({"split_shapes": {}})) == {}
+
+
+def test_merge_shape_ids_reaches_the_real_pipeline_as_a_400_free_submit_and_a_clean_job_error(client):
+    """The fixture's two real "1305" (orange) regions are 13.8mm apart (see
+    `test_shape_identity.py`'s own note on this) — not adjacent, so the
+    request itself is well-formed (a 202, not a 400) and the geometry
+    guardrail fires as a clean JOB error, exactly the same posture
+    `boundary_override`'s hole-containment case already has 3 tests up."""
+    first = _digitize(client, {"target_width_mm": 80.0, "preflight": False})
+    orange = sorted(
+        s["shape_id"] for s in first["review"]["shapes"] if s["thread_number"] == "1305"
+    )
+    assert len(orange) == 2
+
+    with ART.open("rb") as f:
+        r = client.post(
+            "/digitize", files={"image": (ART.name, f, "image/png")},
+            data={"config": json.dumps({
+                "target_width_mm": 80.0, "preflight": False,
+                "merge_shape_ids": [orange],
+            })},
+        )
+    assert r.status_code == 202, "well-formed request: two real, distinct, same-thread ids"
+    job_id = r.json()["job_id"]
+    for _ in range(600):
+        state = client.get(f"/jobs/{job_id}").json()
+        if state["state"] in ("done", "error"):
+            break
+        time.sleep(0.1)
+    assert state["state"] == "error"
+    assert "does not touch or overlap" in state["error"]
+
+
+def test_split_shapes_round_trips_over_http_and_produces_two_new_shapes(client):
+    """digitize -> read the purple rectangle's outline -> re-digitize with a
+    split_shapes cut through its own middle -> two new shapes with new ids,
+    the old id gone, combined area preserved, and the design's stitch
+    geometry actually changed. Every other shape is untouched."""
+    first = _digitize(client, {"target_width_mm": 80.0, "preflight": False})
+    purple = next(s for s in first["review"]["shapes"] if s["thread_number"] == "2905")
+    xs = [p[0] for p in purple["outline_mm"]]
+    midx = (min(xs) + max(xs)) / 2
+    ys = [p[1] for p in purple["outline_mm"]]
+    line = [[midx, min(ys) - 1.0], [midx, max(ys) + 1.0]]
+
+    second = _digitize(client, {
+        "target_width_mm": 80.0, "preflight": False,
+        "split_shapes": {purple["shape_id"]: line},
+    })
+
+    ids_before = {s["shape_id"] for s in first["review"]["shapes"]}
+    after = {s["shape_id"]: s for s in second["review"]["shapes"]}
+    assert purple["shape_id"] not in after
+    new_purple = [s for s in after.values() if s["thread_number"] == "2905"]
+    assert len(new_purple) == 2
+    assert set(after) - ids_before == {s["shape_id"] for s in new_purple}
+    assert sum(s["area_mm2"] for s in new_purple) == pytest.approx(purple["area_mm2"], rel=0.02)
+    assert second["design"]["stitchCount"] != first["design"]["stitchCount"]
+    # Every other shape's outline is untouched by the one split.
+    before_by_id = {s["shape_id"]: s for s in first["review"]["shapes"]}
+    for sid, b in before_by_id.items():
+        if sid == purple["shape_id"]:
+            continue
+        assert after[sid]["outline_mm"] == b["outline_mm"]
+
+
+def test_merge_and_split_are_a_400_free_no_op_when_the_named_shape_no_longer_exists(client):
+    """An id the current artwork/config no longer produces (stale, or simply
+    made up) is a clean, informative WARNING, never an error — the same
+    posture `deleted_shape_ids`/`shape_overrides` already have for exactly
+    this case."""
+    state = _digitize(client, {
+        "target_width_mm": 80.0, "preflight": False,
+        "merge_shape_ids": [["nope1", "nope2"]],
+        "split_shapes": {"nope3": [[0, -1], [0, 1]]},
+    })
+    codes = {w["code"] for w in state["warnings"]}
+    assert "SHAPE_EDIT_UNKNOWN_ID" in codes
+
+
 # --- /digitize-manual (manual digitizing, no image) -------------------------
 
 def test_digitize_manual_returns_a_design_a_review_and_stats(client):
@@ -756,10 +886,14 @@ def test_manual_unknown_thread_brand_is_rejected(client):
     assert "nope" in r.json()["detail"]
 
 
-@pytest.mark.parametrize("field", ["deleted_shape_ids", "shape_overrides"])
+@pytest.mark.parametrize("field", [
+    "deleted_shape_ids", "shape_overrides", "merge_shape_ids", "split_shapes",
+])
 def test_manual_shape_edit_fields_are_rejected_as_config_fields(client, field):
     """Nothing in manual mode has assigned ids from a PRIOR generation for
-    these to reference — see `_MANUAL_CONFIG_FIELDS`."""
+    these to reference — see `_MANUAL_CONFIG_FIELDS`. `merge_shape_ids`/
+    `split_shapes` (contract v1.5) reference prior-generation ids exactly as
+    much as the other two do, so they are excluded the same way."""
     r = client.post("/digitize-manual", json={
         "shapes": _manual_shapes(), "config": {field: []},
     })
