@@ -22,6 +22,7 @@ from digitizer_core import (PipelineConfig, StitchBlock, StitchPlan,
 from digitizer_core import stitches as st
 from digitizer_core.pipeline import digitize, plan_stitches
 from digitizer_core.preflight import (
+    CLASS_OVERRIDE_TECHNIQUE_MISMATCH,
     COLOR_STOPS_HEAVY,
     COLOR_STOPS_MAX,
     CONTOUR_STARVED,
@@ -904,6 +905,102 @@ def test_the_score_prices_severity_not_finding_count():
     blocked = run_preflight(
         None, _plan(_satin_column(8, width_mm=0.8, spacing_mm=0.4)), cfg())
     assert blocked["score"] == 88   # one warn: lettering
+
+
+# --- CLASS_OVERRIDE_TECHNIQUE_MISMATCH (photo plan §2 row 15) ---------------
+#
+# `enthusiast_logo.png` classifies "flat" on its own (confirmed directly via
+# stage0_classify.classify, and pinned again below) — a real commissioned
+# flat two-color logo, not a constructed negative, giving this guard a real
+# fixture where forcing a photo-tonal class is a genuine mismatch rather
+# than a coin flip near a threshold.
+
+_FLAT_FIXTURE = str(PHOTO / "enthusiast_logo.png")
+
+
+def test_enthusiast_logo_still_classifies_flat_on_its_own():
+    """Precondition the mismatch tests below depend on — if this fixture's
+    own classification ever drifts, those tests would stop meaning what they
+    claim to."""
+    from digitizer_core.stage0_classify import classify
+
+    result = classify(_FLAT_FIXTURE, cfg())
+    assert result.class_ == "flat"
+
+
+def test_forcing_a_photo_class_with_a_tonal_technique_warns():
+    """The actual defect this guard exists for: a flat-classifying design
+    forced to "photo_subject" with the streamline tonal tier selected —
+    exactly the combination that reads SourcePixels darkness on content that
+    was never a photographic tonal range."""
+    report = _digitize_report(
+        _FLAT_FIXTURE, forced_class="photo_subject", fill_technique="streamline")
+
+    hits = [f for f in report["findings"] if f["code"] == CLASS_OVERRIDE_TECHNIQUE_MISMATCH]
+    assert len(hits) == 1
+    hit = hits[0]
+    assert hit["severity"] == "warn"
+    assert hit["extra"] == {
+        "forced_class": "photo_subject",
+        "detected_class": "flat",
+        "fill_technique": "streamline",
+    }
+    assert report["metrics"]["class_override_detected_class"] == "flat"
+    json.dumps(report)
+
+
+@pytest.mark.parametrize("technique", ["scanline_tonal", "meander_tonal", "sketch"])
+def test_every_photo_tonal_technique_trips_the_guard(technique):
+    """Not just streamline — every technique this guard's own docstring
+    names reads the same raster-darkness signal and must trip the same way."""
+    report = _digitize_report(
+        _FLAT_FIXTURE, forced_class="photo_scene", fill_technique=technique)
+    hits = {f["code"] for f in report["findings"]}
+    assert CLASS_OVERRIDE_TECHNIQUE_MISMATCH in hits
+
+
+def test_forcing_the_class_it_would_pick_anyway_stays_silent():
+    """Forcing "flat" on a design that already classifies flat is not an
+    override doing any real work — nothing to warn about even with a tonal
+    technique selected."""
+    report = _digitize_report(
+        _FLAT_FIXTURE, forced_class="flat", fill_technique="streamline")
+    assert CLASS_OVERRIDE_TECHNIQUE_MISMATCH not in _codes(report)
+
+
+def test_a_forced_class_with_an_ordinary_technique_stays_silent():
+    """The override alone, without a photo-tonal technique, is a legitimate
+    power-user move this guard has nothing to say about (tatami is the
+    default fill_technique)."""
+    report = _digitize_report(_FLAT_FIXTURE, forced_class="photo_subject")
+    assert CLASS_OVERRIDE_TECHNIQUE_MISMATCH not in _codes(report)
+
+
+def test_no_override_stays_silent_even_with_a_tonal_technique():
+    """No forced_class at all: whatever stage 0 decides on its own, there is
+    no override to disagree with the router about."""
+    report = _digitize_report(_FLAT_FIXTURE, fill_technique="streamline")
+    assert CLASS_OVERRIDE_TECHNIQUE_MISMATCH not in _codes(report)
+
+
+def test_the_guard_declines_without_the_artwork():
+    """`image=None` mirrors the thread-match / photo-resolution checks:
+    without the artwork this guard cannot re-run the unforced classifier, so
+    it says nothing rather than guessing."""
+    c = cfg(forced_class="photo_subject", fill_technique="streamline")
+    result, plan = digitize(_FLAT_FIXTURE, c)
+    report = run_preflight(result, plan, c, image=None)
+    assert CLASS_OVERRIDE_TECHNIQUE_MISMATCH not in _codes(report)
+    assert report["metrics"]["class_override_detected_class"] is None
+
+
+def test_the_real_fixture_clean_report_never_trips_the_new_guard(whitebg, plan):
+    """The default-config clean-report fixture (no forced_class at all) —
+    already asserted empty findings above, re-asserted narrowly here so a
+    future change to this guard's gating cannot silently regress it."""
+    stitch_plan, _planned, _warnings = plan
+    report = run_preflight(whitebg, stitch_plan, cfg(**PLAN_CFG_KW), image=ART)
+    assert CLASS_OVERRIDE_TECHNIQUE_MISMATCH not in _codes(report)
 
 
 def test_the_report_is_json_safe():

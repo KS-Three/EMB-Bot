@@ -98,8 +98,12 @@ def run_stages(
     # Stage 0. Owns its own image decode (see its module docstring) — cheap,
     # and it means this call sits independently of everything stage 1 does.
     # Every class except "gradient" takes the exact code path this pipeline
-    # already ran before stage 0 existed; only "gradient" branches, via
-    # source_pixels below and the blend tier stage 7 reads it for.
+    # already ran before stage 0 existed; "gradient" branches twice now: at
+    # stage 2 (SLIC+RAG instead of k-means, see the dispatch below — 2026-08-04,
+    # closing the fragment-count half of `docs/superpowers/plans/
+    # 2026-08-03-gradient-tier-fragmentation-and-enclosed-white-defects.md`'s
+    # "Direction 1") and via source_pixels below, which the blend tier stage 7
+    # reads regardless of which stage 2 path ran.
     classification = classify(image, cfg, forced_class=cfg.forced_class)
 
     p: Prep = prep(image, cfg)
@@ -202,13 +206,26 @@ def run_stages(
         if dbg:
             debugviz.stage1_photo_prep(dbg, pp.rgb_tone, pp.rgb)
 
-    # Only "photo_subject"/"photo_scene" branch here — flat and gradient
-    # take the exact quantize() call this pipeline has always made. Purely
-    # additive: neither of those two classes had any dedicated stage 2
-    # handling before this dispatch existed.
+    # "photo_subject"/"photo_scene"/"gradient" all branch here now — only
+    # "flat" still takes the plain quantize() call this pipeline has always
+    # made. "gradient" joined 2026-08-04 (`docs/superpowers/plans/
+    # 2026-08-03-gradient-tier-fragmentation-and-enclosed-white-defects.md`,
+    # "Direction 1"): global k-means clusters color independent of position,
+    # so a smooth gradient dithers into per-pixel-adjacent ordered bands —
+    # measured at 192-208 final regions on `testdata/photo/drone_render.png`,
+    # a real busy commissioned gradient logo, ten times the plan's own 20-80
+    # accept band. SLIC+RAG groups by color AND space first, so it does not
+    # re-litigate the same dither — measured at 45-56 regions on the same
+    # fixture with `MERGE_DELTAE00_THRESH` retuned for this (see that
+    # constant's own docstring for the two-fixture derivation). `face_regions`
+    # is always `None` for "gradient" (the block above only populates it
+    # inside the `photo_subject`/`photo_scene` double-gate), which is exactly
+    # the pre-face-priors, byte-identical-within-itself path `segment()`
+    # already takes for any other no-face run — gradient art gets no face
+    # treatment, on purpose, faces are not this class's concern.
     q: Quant = (
         photo_segment(p, cfg, face_regions=face_regions)
-        if classification.class_ in ("photo_subject", "photo_scene")
+        if classification.class_ in ("photo_subject", "photo_scene", "gradient")
         else quantize(p, cfg)
     )
     if dbg:

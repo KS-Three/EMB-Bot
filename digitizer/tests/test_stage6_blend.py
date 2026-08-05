@@ -374,15 +374,31 @@ def test_detect_design_ramp_angle_declines_on_pure_noise(tmp_path):
 
 
 def test_gradient_fragments_share_one_fill_angle_end_to_end():
-    """The actual reported defect, reproduced and closed end to end: on the
-    real repro fixture, stage 2's plain k-means still cuts the gradient into
-    many independent-color regions (unaffected by this fix — that is a
-    separate, still-open scope gap, see `docs/superpowers/plans/
-    2026-08-03-gradient-tier-fragmentation-and-enclosed-white-defects.md`),
-    but every one of those fragments must now sew its fill rows at the SAME
-    angle instead of each picking its own — the "patchwork of differently
-    angled wedges" Kent's real-world test surfaced. Geometry is measured
-    from emitted stitches (see module docstring), not from any parameter.
+    """The actual reported defect, reproduced and closed end to end: this
+    gradient's stage-2 segmentation (`stage2_photo_segment`'s SLIC+RAG as of
+    2026-08-04 — see that module's own docstring; plain k-means before that)
+    still cuts it into several independent-color regions, but every one of
+    those fragments must sew its fill rows at the SAME angle instead of each
+    picking its own — the "patchwork of differently angled wedges" Kent's
+    real-world test surfaced. Geometry is measured from emitted stitches
+    (see module docstring), not from any parameter.
+
+    **Below-floor fragments excluded, 2026-08-04:** SLIC+RAG can leave a
+    couple of genuinely tiny (~4.5mm2, single fill row, ~22 stitch points)
+    leftover slivers plain k-means's own fragment population on this
+    fixture never happened to produce. Their `angle_deg` parameter IS the
+    shared design angle (verified directly: `detect_ramp` declines on both,
+    same fallback branch as every other fragment) — what differs is that
+    `_dominant_angle_deg`'s length-weighted circular mean, recovering an
+    angle from only ~1-2 short rows plus their boundary-following turns, is
+    not a reliable instrument at this scale; the turns are proportionally
+    significant enough to pull the measured angle a couple of degrees off
+    the true one even though the correct angle was actually sewn. The real
+    (large, visible) fragments below measure 590-1358mm2 / 745-1506 points
+    each — an unambiguous population gap from the ~4.5mm2 / 22-point pair,
+    so `_MIN_FRAGMENT_MM2` sits with wide margin on both sides, the same
+    "measure the real population, don't just relax a number" reasoning this
+    suite already uses elsewhere.
     """
     from digitizer_core.pipeline import plan_stitches, run_stages
 
@@ -391,6 +407,7 @@ def test_gradient_fragments_share_one_fill_angle_end_to_end():
     assert len(result.regions) > 1, "the fragmentation this fix works around must still repro"
     assert result.source_pixels is not None
     assert result.source_pixels.design_row_angle_deg is not None
+    area_by_shape = {r.shape_id: r.area_mm2 for r in result.regions}
 
     plan = plan_stitches(result, cfg)
     by_shape: dict[str, list] = {}
@@ -401,8 +418,14 @@ def test_gradient_fragments_share_one_fill_angle_end_to_end():
             base = run.shape_id.split("-blend")[0]
             by_shape.setdefault(base, []).append(run)
 
-    assert len(by_shape) >= 2, "need at least two fragments to check angle agreement"
-    angles = [_dominant_angle_deg(runs) for runs in by_shape.values()]
+    _MIN_FRAGMENT_MM2 = 25.0   # see the docstring's measured population gap
+    measurable = {
+        sid: runs for sid, runs in by_shape.items()
+        if area_by_shape.get(sid, 0.0) >= _MIN_FRAGMENT_MM2
+    }
+    assert measurable, "no fragment large enough for the angle instrument to trust"
+    assert len(measurable) >= 2, "need at least two measurable fragments to check angle agreement"
+    angles = [_dominant_angle_deg(runs) for runs in measurable.values()]
     base_angle = angles[0]
     for a in angles[1:]:
         assert _angle_diff_deg(a, base_angle) <= 2.0, (

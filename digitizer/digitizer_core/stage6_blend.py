@@ -25,9 +25,11 @@ things happen here, in order:
 3. **Emission.** N interleaved tatami layers, ONE shared fill angle per
    region — `SourcePixels.design_row_angle_deg` when the whole design fit a
    single linear ramp (`detect_design_ramp_angle`, so every fragment of a
-   k-means-split gradient sews the same direction instead of each picking
-   its own), else `stage6_fill.principal_angle_deg` of this region alone.
-   Each layer is restricted to a band of the ramp centered on its own shade
+   fragmented gradient sews the same direction instead of each picking its
+   own — this wins over a region's OWN ramp model regardless of that
+   model's kind, widened 2026-08-04, see `blend_fill`'s own comment), else
+   `stage6_fill.principal_angle_deg` of this region alone. Each layer is
+   restricted to a band of the ramp centered on its own shade
    and sewn at `stage6_fill.stitch_shape`'s ordinary row spacing of
    `FILL_ROW_MM * N`. Adjacent bands overlap by a small margin so the
    shades blend at the seam instead of leaving a hard edge, which is also
@@ -552,16 +554,38 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg
     shade_rgbs = [tuple(int(v) for v in chart[t].rgb) for t in shade_thread_idx]
 
     # The whole-design angle (set once per design, see
-    # `SourcePixels.design_row_angle_deg`) wins for a linear ramp: every
+    # `SourcePixels.design_row_angle_deg`) wins whenever it exists: every
     # fragment then sews its rows in the SAME direction instead of each
     # independently re-deriving its own from its own, possibly tiny, slice of
-    # the gradient — the 2026-08-03 angle-fragmentation fix. A region whose
-    # OWN ramp is radial keeps its per-region angle regardless (no single
-    # line direction fits a set of concentric bands), and so does any design
-    # whose whole-design fit did not find one shared direction at all.
-    angle = None
-    if model.kind == "linear" and source_pixels.design_row_angle_deg is not None:
-        angle = source_pixels.design_row_angle_deg
+    # the gradient — the 2026-08-03 angle-fragmentation fix.
+    #
+    # **Widened 2026-08-04** (routing "gradient" through `stage2_photo_
+    # segment`'s SLIC+RAG instead of plain k-means): this used to gate on
+    # `model.kind == "linear"` too — a region whose OWN fit came back radial
+    # kept its own `principal_angle_deg` regardless, on the reasoning that no
+    # single line direction fits a set of concentric bands. That reasoning
+    # is right for a genuinely radial DESIGN (`design_row_angle_deg` stays
+    # None there — `detect_design_ramp_angle` only ever produces an angle
+    # from a LINEAR whole-design fit, so this branch never even applies to
+    # one), but SLIC+RAG's fewer, larger, more organically-shaped fragments
+    # exposed a case that gate did not distinguish: a genuinely LINEAR whole
+    # design (`design_row_angle_deg` IS set) where a single small, irregular
+    # leftover fragment's OWN `detect_ramp` spuriously reads "radial" —
+    # `RAMP_R2_MIN`'s r2 gate has no minimum fragment SIZE, so a centroid-
+    # based radial fit can explain a small sample's variance well by chance.
+    # Measured on `repro_gradient_white_icon.png`: two ~4.5mm2 fragments
+    # (single fill row each) read radial and fell to their own noisy
+    # `principal_angle_deg`, landing 2.7deg off the other fragments' shared
+    # ~-45.4deg — small in absolute terms, but exactly the "some fragments
+    # picked their own angle" defect this whole mechanism exists to close,
+    # now that the fragment population can include shapes small enough to
+    # overfit. Once the design-wide fit has already established ONE linear
+    # direction for the whole gradient, a region-local "radial" reading on a
+    # sliver of it is far more likely overfitting than real local structure,
+    # so it no longer overrides the shared angle. `model.kind` still governs
+    # everything else about a radial fragment (its own band-clipping still
+    # follows `model.center`, only the FILL ROW ANGLE changed here).
+    angle = source_pixels.design_row_angle_deg
     if angle is None:
         angle = principal_angle_deg(poly)
     row_mm = machine.FILL_ROW_MM * n

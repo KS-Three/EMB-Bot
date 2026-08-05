@@ -55,7 +55,13 @@ PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE = "PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE"
 COLOR_CAP_APPLIED = "COLOR_CAP_APPLIED"            # more threads than max_colors; smallest layers reassigned
 
 # Stage 2 (photo path) — docs/superpowers/plans/2026-08-02-photo-digitizing-step4-region-former.md
-PHOTO_SEGMENT_REGION_COUNT = "PHOTO_SEGMENT_REGION_COUNT"  # info, not a problem: extra: {"count": int}
+# info, not a problem. "count" is the real post-merge region count
+# (len(kept)); "thread_colors" is the separate, usually-smaller number of
+# chart spools the palette settled on (fixed 2026-08-04 — "count" used to
+# report thread_colors under a message that claimed to report regions, see
+# stage2_photo_segment.segment's inline comment at the warn() call site).
+# extra: {"count": int, "thread_colors": int, "slic_segments": int, "merged_regions": int}
+PHOTO_SEGMENT_REGION_COUNT = "PHOTO_SEGMENT_REGION_COUNT"
 # Photo plan step 7 (palette k-medoids). Info: how many chart spools the
 # weighted selection settled on, and the worst region's ΔE00 excess over its
 # own nearest-thread floor. extra: {"colors": int, "regions": int, "max_excess_de00": float}
