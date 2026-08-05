@@ -147,6 +147,9 @@ def vectorize(
                 continue
 
         thread = chart[thread_indices[rm.layer]]
+        meta = {"layer": rm.layer}
+        if sub_detail:
+            meta["rescued_small_shape"] = True
         regions.append(
             Region(
                 shape_id="",
@@ -155,7 +158,7 @@ def vectorize(
                 thread_number=thread.number,
                 area_mm2=float(poly.area),
                 source=rm.source,
-                meta={"layer": rm.layer},
+                meta=meta,
             )
         )
 
