@@ -110,6 +110,21 @@ _UNDERLAY_VALUES = {"none", "edge_run", "center_run", "edge_zigzag", "edge_latti
 # crash, just not a submit-time 400.
 _MIN_BOUNDARY_POINTS = 3
 _MAX_BOUNDARY_POINTS = 500
+# `merge_shape_ids` / `split_shapes` (contract v1.5) — top-level config keys,
+# not `shape_overrides` entries: they change the SET of shapes, not one
+# shape's attributes, so they cannot be keyed by a single shape_id the way
+# every `_OVERRIDE_KEYS` field is. Mirrored, verbatim bounds, in
+# `digitizer_core.regions`'s own copy (`_MERGE_MIN_SHAPES`) — the defense in
+# depth for any caller that isn't this service. What this layer CANNOT
+# pre-check, same reasoning as `boundary_override`'s hole-containment gap:
+# whether the merge group's shapes actually share one thread/have no holes/
+# touch each other, and whether a split line actually crosses its shape
+# cleanly without crossing a hole — all of that needs the shapes' real
+# geometry, which parsing a request never sees. Those checks run only in
+# `regions.apply_shape_merges`/`apply_shape_splits`, at job-run time — a
+# clean `ValueError` there (a failed job, never a crash), not a submit-time
+# 400, exactly like the boundary_override hole case.
+_MIN_MERGE_SHAPES = 2
 
 
 def _dedupe_ring(points: list) -> list:
@@ -136,8 +151,8 @@ def _canonicalize_shape_edits(data: dict, chart_len: int) -> None:
     re-digitize returns a stale cached job (and a no-op edit re-runs a job the
     cache already holds).
     """
-    # A JSON null is the same statement as absence, for both fields.
-    for key in ("deleted_shape_ids", "shape_overrides"):
+    # A JSON null is the same statement as absence, for every field here.
+    for key in ("deleted_shape_ids", "shape_overrides", "merge_shape_ids", "split_shapes"):
         if key in data and data[key] is None:
             data.pop(key)
 
@@ -153,6 +168,87 @@ def _canonicalize_shape_edits(data: dict, chart_len: int) -> None:
             data["deleted_shape_ids"] = deleted
         else:
             data.pop("deleted_shape_ids")
+
+    # `merge_shape_ids` (contract v1.5): [[shape_id, shape_id, ...], ...].
+    # Canonicalized the same way `deleted_shape_ids` is — each group
+    # de-duplicated and sorted, then the whole list of groups sorted — so two
+    # spellings of one merge request (different group/id order) are ONE cache
+    # key, same load-bearing reasoning this function's own docstring gives.
+    # What this layer cannot check (shared thread, no holes, adjacency) is
+    # validated in `regions.apply_shape_merges` — see `_MIN_MERGE_SHAPES`'s
+    # comment above.
+    merges = data.get("merge_shape_ids")
+    if merges is not None:
+        if not isinstance(merges, list):
+            raise HTTPException(
+                status_code=400,
+                detail="merge_shape_ids must be a list of shape id groups.",
+            )
+        clean_groups = []
+        for group in merges:
+            if not isinstance(group, list) or not all(isinstance(s, str) and s for s in group):
+                raise HTTPException(
+                    status_code=400,
+                    detail="merge_shape_ids groups must be lists of non-empty shape id strings.",
+                )
+            g = sorted(set(group))
+            if len(g) < _MIN_MERGE_SHAPES:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"merge_shape_ids group {group!r} needs at least "
+                           f"{_MIN_MERGE_SHAPES} distinct shape ids.",
+                )
+            clean_groups.append(g)
+        if clean_groups:
+            data["merge_shape_ids"] = sorted(clean_groups)
+        else:
+            data.pop("merge_shape_ids")
+
+    # `split_shapes` (contract v1.5): {shape_id: [[x0, y0], [x1, y1]]}. Same
+    # shallow-cheap-check-here, real-geometry-check-in-`regions.
+    # apply_shape_splits posture `boundary_override` already uses — this
+    # layer confirms the SHAPE of the request (a 2-point finite line), not
+    # whether that line actually crosses the named shape's geometry cleanly.
+    splits = data.get("split_shapes")
+    if splits is not None:
+        if not isinstance(splits, dict):
+            raise HTTPException(
+                status_code=400,
+                detail="split_shapes must be an object keyed by shape_id.",
+            )
+        clean_splits = {}
+        for sid, line in splits.items():
+            bad_line = (
+                not isinstance(line, list) or len(line) != 2
+                or not all(
+                    isinstance(pt, list) and len(pt) == 2
+                    and all(isinstance(c, (int, float)) and not isinstance(c, bool) for c in pt)
+                    for pt in line
+                )
+                or not all(math.isfinite(c) for pt in line for c in pt)
+            )
+            if bad_line:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"split_shapes[{sid!r}] must be a line of exactly two "
+                           "[x, y] points of finite numbers.",
+                )
+            (x0, y0), (x1, y1) = line
+            if math.hypot(x1 - x0, y1 - y0) < 1e-6:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"split_shapes[{sid!r}] line has zero length.",
+                )
+            # Canonicalize the two endpoints' order (mirrors `regions.
+            # apply_shape_splits`'s own copy of this normalization) so
+            # submitting the same drag with its two points swapped is the
+            # SAME cache key, not a different one for an identical cut.
+            (nx0, ny0), (nx1, ny1) = sorted([(float(x0), float(y0)), (float(x1), float(y1))])
+            clean_splits[sid] = [[nx0, ny0], [nx1, ny1]]
+        if clean_splits:
+            data["split_shapes"] = clean_splits
+        else:
+            data.pop("split_shapes")
 
     overrides = data.get("shape_overrides")
     if overrides is None:
@@ -310,8 +406,12 @@ def _parse_config(raw: str | None) -> dict:
 # have assigned shape_ids in the first place), so the review-edit fields that
 # reference a PRIOR generation's ids are meaningless here — excluded rather
 # than silently accepted-and-ignored, the same reasoning `debug_dir` is
-# already excluded from `_CONFIG_FIELDS` for.
-_MANUAL_CONFIG_FIELDS = _CONFIG_FIELDS - {"deleted_shape_ids", "shape_overrides"}
+# already excluded from `_CONFIG_FIELDS` for. `merge_shape_ids`/`split_shapes`
+# (contract v1.5) reference prior-generation ids exactly as much as
+# `deleted_shape_ids`/`shape_overrides` do, so they are excluded here too.
+_MANUAL_CONFIG_FIELDS = _CONFIG_FIELDS - {
+    "deleted_shape_ids", "shape_overrides", "merge_shape_ids", "split_shapes",
+}
 
 
 def _parse_manual_config(data: dict | None) -> dict:
