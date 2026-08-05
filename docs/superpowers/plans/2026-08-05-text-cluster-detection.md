@@ -121,34 +121,103 @@ Tests:
 
 ## Step 6 — Studio UI: badge, convert action, undo
 
-`DigitizePanel.svelte`, following the `underlay_style`/merge-split patterns
-exactly (per spec §3.5 and §5's Studio pattern citations):
-- Badge on rows where `text_candidate` is true.
-- "Convert to text" action, once per unique `text_cluster_id` present among
-  visible rows: seeds a new `type: "text"` element (bbox, dominant color,
-  baseline rotation from the cluster) with an EMPTY text field and no
-  pre-selected font; on save, sets `stitched: false` on every member shape via
-  the existing override plumbing; records provenance in a new
-  `textConversions` map (sibling to `mergeGroups`/`splitLines` in the element
-  shape, keyed by `text_cluster_id` → the new text element's id).
-- Undo: mirrors `undoMerge`/`undoSplit` — remove the text element, clear the
-  `stitched: false` overrides for that cluster's shape ids, delete the
-  `textConversions` entry.
+**Revised after a full read of `DigitizePanel.svelte`/`project.js` (research
+pass, not guessed) — this step is bigger than the first draft implied.**
+Badge and undo genuinely follow the merge/split template closely; "convert to
+text" does not — there is currently **no mechanism anywhere in this codebase
+to add a whole new project element and patch a different element in one user
+action**. Every existing cross-element write (e.g. `elUpdateMany`) patches
+multiple elements *uniformly*; nothing today does "create element A, patch
+element B" as a single coordinated step. That coordination is new code, not
+a reuse of an existing pattern, and should be reviewed as its own piece.
+
+**Badge** (straightforward, real precedent): `DigitizePanel.svelte`'s
+per-row badges (`restoredEnclosed`, `boundaryEdited`, `mergedInfo`,
+`splitInfo`, lines ~1252-1279) are `{@const}`-computed booleans rendered as
+`<span class="dgp-lbadge" title="...">`. A `textInfo` badge follows the exact
+same recipe — no new CSS needed (`.dgp-lbadge` is already generic).
+
+**"Convert to text" action — corrected design:** rather than inventing a
+bespoke inline text-editing mini-UI inside `DigitizePanel`, **reuse the
+existing `TextStep.svelte` authoring UI wholesale** — confirmed by direct
+read that it renders correctly with zero code changes for an empty/seeded
+element (empty `text` renders as a normal empty textarea; `fontKey: null`
+renders `FontSelect`'s existing "Choose a font" empty state; a seeded
+`colorRgb`/`rotationDeg` pre-fills the thread swatch/rotation slider). The
+action therefore:
+1. Computes a seed patch (bbox → `offsetXMm`/`offsetYMm`/`sizeMm`, dominant
+   thread color → `colorRgb`, baseline → `rotationDeg`; `text: ""`,
+   `fontKey: null` explicit overrides of `defaultTextElement`'s own
+   defaults) — this bbox-to-seed math is new, `project.js` has no existing
+   helper for it.
+2. Extends `project.js` — either widen `addElement(project, type, hoopWmm)`
+   to accept an optional seed patch, or add a sibling
+   `addSeededTextElement(project, seed, hoopWmm)` — merged over
+   `defaultTextElement`'s output, same append-and-select-new-element
+   behavior `addElement` already has.
+3. Adds a new event, `converttotext`, dispatched from `DigitizePanel.svelte`
+   with `{ seed, clusterId, sourceElementId, memberShapeIds }`, bubbled
+   through `ContentStep.svelte` exactly like the existing `addelement` event
+   (`ContentStep.svelte:195` → `App.svelte:648`'s
+   `on:addelement={(e) => onAddElement(e.detail)}`). `App.svelte` gets a new
+   handler, paralleling `onAddElement`, that in one `project` update: adds
+   the seeded text element (via step 2's function) AND patches the
+   *source* digitized element's `shapeOverrides` (`stitched: false` per
+   member shape id) and `textConversions` map.
+4. On success, selection moves to the new text element (the user lands
+   directly in `TextStep.svelte`, already showing the seeded color/rotation,
+   ready to type the word and pick a font) — no new inline editor UI is
+   built in `DigitizePanel` at all.
+
+**`textConversions`: pure Studio-side state, NOT a wire-bound edit.** Unlike
+`mergeGroups`/`splitLines` (which feed `merge_shape_ids`/`split_shapes` into
+the server config via `canonicalShapeEdits`/`editsKey`, because the *server*
+executes those geometry ops), "convert to text" only ever produces
+client-side effects (a new element, `stitched:false` overrides). So
+`textConversions` — `Record<text_cluster_id, textElementId>` — must NOT be
+added to `canonicalShapeEdits`/`editsKey`; it's read locally only, closer in
+kind to `deletedShapeIds`-style pure Studio state than to `mergeGroups`.
+
+**Undo** (`undoTextConversion(clusterId)`): unlike `undoMerge`/`undoSplit`
+(which re-derive provenance from the last APPLIED job's `element.warnings`,
+because the server executed those edits), text-conversion provenance lives
+entirely in `element.textConversions` already — no server round-trip needed
+to know what to undo. Look up the text element id, dispatch a "remove this
+element" event (new — no existing precedent for `DigitizePanel` removing a
+*different* element; check whether one already exists elsewhere in
+`App.svelte`'s element-management code before assuming it needs to be
+written from scratch), clear the cluster's `stitched: false` overrides
+(`setOverride(sid, { stitched: null })` per member, same "auto" convention
+`unrestoreStitching` already uses), delete the `textConversions` entry,
+single `patch()`.
 
 Tests: `app/src/lib/*.spec.js` unit coverage for the new pure-logic helpers
-(cluster grouping for the "one action per cluster" UI rule, provenance
+(bbox→seed computation, the "one action per cluster" UI rule, provenance
 lookup/undo), mirroring how `mergeGroupIssues`/`splitLineIssues` are already
-tested.
+tested, PLUS a test for the new `project.js` seeded-element function
+(mirroring however `addElement` is already tested) and the new
+add-plus-patch coordination in `App.svelte`, since that coordination has no
+existing test to extend from.
 
 ## Step 7 — End-to-end verification
 
 Playwright e2e (new spec file, sibling to
-`app/e2e/digitize-boundary-edit.spec.js`): digitize a fixture with a known
-text cluster (the subline case) → confirm the badge appears → convert →
-type real text, pick a font → confirm the design updates (source shapes
-stop stitching, new lettering appears) → undo → confirm the original
-digitized shapes return. Screenshot the flow, same verification discipline
-the boundary-editor slice used.
+`app/e2e/digitize-boundary-edit.spec.js` — copy its service-bootstrap
+boilerplate, lines ~24-90, verbatim per the file's own header comment
+convention): digitize a fixture with a known text cluster (the subline case
+— confirm whether `enthusiast_logo.png` needs copying into
+`app/e2e/fixtures/` or can be referenced from `digitizer/testdata/photo/`
+directly, not resolved by this plan) → confirm the badge appears → convert
+→ selection moves to the new text element's `TextStep` panel → type real
+text, pick a font → confirm the design updates (source shapes stop
+stitching, new lettering appears) → undo → confirm the original digitized
+shapes return.
+
+**Correction:** `digitize-boundary-edit.spec.js` itself does NOT take
+screenshots — its verification discipline is locator/text/state assertions
+only. "Screenshot the flow" in this step is a genuine addition beyond that
+template, not something to copy from precedent — worth doing, just not
+because the boundary-editor spec already does it.
 
 ## Step 8 — Docs
 
