@@ -667,7 +667,8 @@ def sequence(
             # "satin" skips the classifier (and the global satin switch): the
             # user has already answered the question it asks.
             if tier == "satin" or (tier == "auto" and cfg.satin
-                                   and is_satin_candidate(p.region.polygon, satin_max)):
+                                   and is_satin_candidate(p.region.polygon, satin_max,
+                                                           design_class=design_class)):
                 runs, report = satin_shape(
                     p.polygon,
                     p.shape_id,

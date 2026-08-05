@@ -453,7 +453,8 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     # enclosing shape's own mask never included those pixels before this
     # slice either — only whether THEY got a Region of their own changed).
     stitched_regions = [r for r in result.regions if r.meta.get("stitched", True)]
-    planned, overlap_warnings = resolve_overlaps(stitched_regions, fabric, cfg)
+    planned, overlap_warnings = resolve_overlaps(stitched_regions, fabric, cfg,
+                                                 design_class=result.design_class)
     if dbg:
         debugviz.stage5(dbg, planned, result.design_size_mm, chart_for(cfg))
 

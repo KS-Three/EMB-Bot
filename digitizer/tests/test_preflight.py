@@ -413,6 +413,27 @@ def test_a_stacked_speckle_too_small_to_act_on_is_not_a_finding():
     assert DENSITY_STACKED not in _codes(report)
 
 
+def test_organic_compact_regions_no_longer_stack_into_a_density_block():
+    """Regression pin for the satin/fill classifier fix (`digitizer_core.
+    stage6_satin.is_satin_candidate`'s `design_class`-scoped DT check).
+
+    Both committed photo fixtures carry real, near-square, segmentation-noisy
+    regions (`region_blobs.png`'s `Sd12bfc9e`/`S94f29987`, `summit_badge.png`'s
+    `Sed818ef7`/`S00d736bf`/`S6096e7a9`) that `ribbon_width_mm`'s perimeter-only
+    read used to satin — zigzag underlay on a compact blob stacks enough
+    thread on the same patch to trip this exact finding. Measured directly
+    against this repo's own `PipelineConfig(target_width_mm=60.0,
+    garment_id="left_chest")` repro before the fix: `region_blobs.png` blocked
+    (`over_block_mm2` 76.0, `peak_units` 10.02) and `summit_badge.png` warned
+    (`over_warn_mm2` 247.0); after the fix, neither fixture raises
+    `DENSITY_STACKED` at all -- not just a severity step down."""
+    for name in ("region_blobs.png", "summit_badge.png"):
+        report = _digitize_report(str(PHOTO / name), target_width_mm=60.0,
+                                  garment_id="left_chest")
+        hit = [f for f in report["findings"] if f["code"] == DENSITY_STACKED]
+        assert not hit, f"{name}: still stacks -- {hit}"
+
+
 def test_coverage_reads_stitch_geometry_through_ties_and_splits(plan):
     """The playbook's two parity traps, which would double every satin
     number. Stage 7 splices tie bounces INTO the runs they protect and a
