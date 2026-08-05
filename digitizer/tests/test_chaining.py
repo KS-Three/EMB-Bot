@@ -109,6 +109,25 @@ def _bar(x0: float, x1: float) -> Polygon:
     return Polygon([(x0, 0), (x1, 0), (x1, 10), (x0, 10)])
 
 
+# A partial-height covering band for the two "bend into cover" tests below.
+# RE-TUNED 2026-08-05 for corpus laws 23/26 landing: the "already laid" half
+# of a link's cover comes from the EARLIER shape's own emitted thread
+# (`_link_cover`'s stitch-centreline half, not `covered_by`'s polygon half —
+# `Sbridge` here is the LATER colour and unaffected), and law 26 (pique_knit
+# `fill_underlay` `edge_lattice` -> `edge_run`) removes the crosshatch pass
+# that used to widen how far `Sleft`'s own thread reached toward this gap.
+# The old band (y 5-9, near the bars' tops) landed exactly on the resulting
+# knife-edge — this budget/coverage search is discrete enough (candidate
+# waypoints, a hard stitch-length budget) that band placement doesn't move
+# the pass/fail line monotonically with height or position, confirmed by a
+# sweep across dozens of placements post-landing. y 0-6 (near the bars'
+# BOTTOMS instead of their tops — still off-centre, same "not the middle"
+# point the original geometry made) was checked robust to +-0.4 mm on both
+# edges (47/49 perturbations still route as a bend, not a cut) rather than
+# picked to a single passing value.
+_BEND_BAND = Polygon([(10, 0), (16, 0), (16, 6), (10, 6)])
+
+
 def _two_bars(bridge: Polygon | None):
     """Two same-colour bars 6 mm apart, optionally with a later colour between.
 
@@ -190,20 +209,16 @@ def test_a_gap_a_later_colour_covers_is_sewn_not_cut():
 
 def test_a_link_bends_into_the_cover_rather_than_giving_up():
     """Law 60's actual mechanism: the covering colour reaches across only a
-    4 mm band, so the straight line between the bars is NOT covered and a
+    6 mm band, so the straight line between the bars is NOT covered and a
     planner that only knows how to go straight would cut here. Professionals
     route where the thread will be buried, which is the whole reason they can
     link at 27 mm without showing a float.
 
-    The band sits at y 5-9, not centred in the bars' height: the transition's
-    endpoints are emergent and land near the bars' tops, and since the
-    covered_by inset (LINK_COVER_INSET_MM, 2026-08-04) erodes the band to its
-    honest middle (4.0 - 1.5 = 2.5 mm), a mid-height band's legal detour ran
-    past law 62's stitch budget — which is that law working, not this
-    mechanism failing. Within budget reach, the bend still happens and is
-    still required (the straight line stays uncovered)."""
-    band = Polygon([(10, 5), (16, 5), (16, 9), (10, 9)])
-    planned, blocks = _two_bars(band)
+    The band is `_BEND_BAND` (y 0-6, not centred in the bars' height) — see
+    its own comment for the 2026-08-05 re-tuning after corpus laws 23/26.
+    Within budget reach, the bend still happens and is still required (the
+    straight line stays uncovered)."""
+    planned, blocks = _two_bars(_BEND_BAND)
     link = _crossing(blocks)
 
     assert link.kind == stitches.TRAVEL, "a route through the band exists"
@@ -225,7 +240,7 @@ def test_a_link_bends_into_the_cover_rather_than_giving_up():
     exposed = LineString(link.points).difference(own)
     assert not exposed.is_empty, \
         "the link never left its own colour's work — it crossed no gap at all"
-    assert band.buffer(machine.LINK_COVER_TOL_MM).covers(exposed), \
+    assert _BEND_BAND.buffer(machine.LINK_COVER_TOL_MM).covers(exposed), \
         "the link crossed bare fabric instead of bending under the band"
 
 
@@ -295,7 +310,8 @@ def test_a_link_is_sewn_at_the_professional_running_pitch():
     """Law 61 [M]: median 1.96 mm, p90 2.48 — so a link runs at 2.0. Stage 6's
     in-shape bridges keep their own 2.5 mm pitch and their own sew-out, which
     is why this measures a link the test built rather than travel at large."""
-    link = _crossing(_two_bars(Polygon([(10, 5), (16, 5), (16, 9), (10, 9)]))[1])
+    link = _crossing(_two_bars(_BEND_BAND)[1])
+    assert link.kind == stitches.TRAVEL, "must measure a real link, not a cut"
     assert len(link.points) >= 2
     for a, b in zip(link.points, link.points[1:]):
         assert math.dist(a, b) <= machine.RUN_STITCH_MM + 1e-6

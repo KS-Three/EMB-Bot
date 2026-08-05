@@ -1328,16 +1328,88 @@ def _stroke_underlay(poly: Polygon, st: Stroke, style: str, shape_id: str,
     n = max(2, int(math.ceil(length / machine.UNDERLAY_STITCH_MM)))
     runs.append(StitchRun(points=_resample(spine, n), kind=stitches.UNDERLAY,
                           shape_id=shape_id))
+    # Law 23's 1.45mm pitch / 0.82x-width figures are corpus-measured over
+    # columns up to the corpus's own 4.5-7.0mm width bucket (docs/corpus-
+    # laws-round3-2026-08-01.md law 22/23) -- and satin classification
+    # (`is_satin_candidate`) gates on a shape's MEAN width (`ribbon_width_
+    # mm`), so a multi-stroke glyph can stay classified satin overall while
+    # part of one skeleton stroke's own LOCAL corridor runs well past
+    # SATIN_MAX_WIDTH_MM (measured on `logo_alpha.png`'s `Sf5200f3f`: shape
+    # mean ~5.0mm, one stroke's local width 0.33-10.33mm). The corpus's own
+    # >7.0mm bucket is flagged "junk" (82% non-ribbon fragments) in that
+    # same doc, so neither law 23's new figures nor the pre-law-23 defaults
+    # were ever validated for a corridor that wide -- extrapolating either
+    # one is a guess, not a corpus finding. Skip the zigzag CROSS at each
+    # individual station whose local width exceeds SATIN_MAX_WIDTH_MM (the
+    # same corpus-validated ceiling `SPLIT_SATIN_ABOVE_MM` already reuses,
+    # not a new number), station by station -- not the whole stroke's pass.
+    # The center-run walk above still covers every station regardless, so
+    # an oversize station keeps SOME structural underlay; it just skips the
+    # guess law 23 was never validated to make there.
+    #
+    # Found and fixed 2026-08-05, then narrowed same-day: an independent
+    # audit of the initial law 23 landing caught `logo_alpha.png`'s
+    # DENSITY_STACKED finding flipping warn -> block on `Sf5200f3f`
+    # (coverage_max 13.11 -> 16.69, peak driven by the satin crosses' own
+    # pre-existing self-overlap on this wide/blob stroke -- unrelated to
+    # law 23 and unchanged by this fix -- with the widened, denser zigzag
+    # underlay supplying just enough extra "glue" thread to bridge that
+    # pre-existing near-miss over `_COVERAGE_MIN_PATCH_MM2`'s 25mm2
+    # connected-patch gate). The first fix (skip the WHOLE stroke once ANY
+    # station tripped the ceiling) over-corrected: a second audit found it
+    # silenced a genuine, PRE-EXISTING `DENSITY_STACKED` BLOCK on
+    # `testdata/photo/drone_render.png` (present on unmodified `cc3b9de`,
+    # coverage_max 17.12, over_block_mm2 275.0 -> 0.0 after the whole-stroke
+    # version) -- `is_satin_candidate` misclassifies large organic/branchy
+    # photo-tier regions as satin, and one such shape's 39-stroke skeleton
+    # has only 1190 of 2695 stations (44%) actually oversize; disabling
+    # zigzag on the other 56% of perfectly ordinary-width stations lost far
+    # more real support than the ceiling was ever meant to withhold. Per-
+    # station skip fixes both: `logo_alpha`'s dominant oversize span stays
+    # skipped (that shape's fix holds), while `drone_render`'s mostly-
+    # ordinary stations keep their law-23-accurate zigzag (the pre-existing
+    # block stays a block). See test_preflight.py's regression tests for
+    # both fixtures.
     if style == "zigzag":
-        steps = max(2, int(math.ceil(length / machine.UNDERLAY_ZIGZAG_MM)))
+        steps = max(2, int(math.ceil(length / machine.SATIN_ZIGZAG_PITCH_MM)))
         sp = _resample(spine, steps)
         ra, rb = _rail_points(poly, sp, st.closed, ribbon_width_mm(poly) / 2, field)
         pts: list[tuple[float, float]] = []
         for i, (pa0, pb0) in enumerate(zip(ra, rb)):
+            # `ra`/`rb` can carry MORE stations than `sp`: `_rail_points`
+            # interpolates extra crosses wherever the outer rail's advance
+            # outruns SATIN_SPACING on a bend, so indexing `sp[i]` here would
+            # be wrong (and out of range past the interpolated tail). Read
+            # each cross's own local width at ITS OWN position instead --
+            # the midpoint of pa0/pb0, on the spine by construction -- which
+            # is exact for both original and interpolated stations alike.
+            mid = ((pa0[0] + pb0[0]) / 2.0, (pa0[1] + pb0[1]) / 2.0)
+            if field is not None and field.half_at(mid) * 2.0 > machine.SATIN_MAX_WIDTH_MM:
+                continue
             # Narrow both ends from the ORIGINALS — pulling pb toward an
             # already-moved pa drifts the zigzag off the column's center.
-            pa = (pa0[0] + (pb0[0] - pa0[0]) * 0.3, pa0[1] + (pb0[1] - pa0[1]) * 0.3)
-            pb = (pb0[0] + (pa0[0] - pb0[0]) * 0.3, pb0[1] + (pa0[1] - pb0[1]) * 0.3)
+            # 0.09 (corpus law 23): each leg spans 0.82x the RAIL SPAN
+            # (1 - 2*0.09), not the old 0.4x (1 - 2*0.3) -- the prior
+            # narrowing left satin's zigzag underlay too under-specified to
+            # actually anchor the rails it sits beneath.
+            #
+            # Defense in depth alongside the oversize skip above: `sp` is a
+            # coarser resample than the `spine` the skip check walks, and
+            # `_rail_points`'s own smoothing can measure a rail span the
+            # per-station field check didn't quite catch. Cap the leg the
+            # same way, at what a column pinned to SATIN_MAX_WIDTH_MM would
+            # produce (SATIN_MAX_WIDTH_MM * 0.82 =~ 4.1mm) -- below that
+            # width nothing changes (frac is exactly the corpus's 0.09);
+            # above it, frac rises smoothly so leg length asymptotes toward
+            # the cap instead of continuing to grow with a corridor width
+            # the corpus never measured.
+            rail_span = math.dist(pa0, pb0)
+            frac = 0.09
+            if rail_span > machine.SATIN_MAX_WIDTH_MM:
+                capped_leg = machine.SATIN_MAX_WIDTH_MM * 0.82
+                frac = max(frac, 0.5 * (1.0 - capped_leg / rail_span))
+            pa = (pa0[0] + (pb0[0] - pa0[0]) * frac, pa0[1] + (pb0[1] - pa0[1]) * frac)
+            pb = (pb0[0] + (pa0[0] - pb0[0]) * frac, pb0[1] + (pa0[1] - pb0[1]) * frac)
             if math.dist(pa, pb) < machine.SATIN_MIN_CROSS_MM:
                 continue
             pts.extend((pa, pb) if i % 2 == 0 else (pb, pa))

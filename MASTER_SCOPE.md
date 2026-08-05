@@ -11,52 +11,195 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-05 — the palette subject/background class-weight
-seam closed (`palette-subject-background-wiring` branch, commit `7f82511`):
-the exact gap this section and area 1's row-13 discussion have both called
-out since PR #43 wired `remove_background_seam` itself without wiring its
-mask any further downstream. `pipeline.run_stages` now keeps rembg's real
-`(H, W)` bool mask as a distinct `subject_bg_mask` — deliberately never
-`p.bg_mask`, which by that point may just be stage 1's border-flood default
-merged in and was never meant to answer "where does the subject end" — and
-threads it through a new `bg_mask` parameter on `stage2_photo_segment.
-segment()` into `_region_classes`. Any region not already classed "eyes"/
-"skin" now classes "background" when the majority of its pixels sit inside
-that REAL mask, else "subject" (new `BG_MAJORITY_FRAC` constant, the same
-majority-vote pattern `FACE_MAJORITY_FRAC` already uses for the face
-classes) — and stays `None` (plain area, the pre-existing degradation)
-whenever rembg didn't actually succeed this run (flag off, or its
-documented no-op fallback), so a border-flood-only `bg_mask` never gets to
-make a dishonest "background" claim about interior regions it never
-assessed. Measured proof the seam is live, same shape of evidence as the
-eyes/skin seam's own precedent test
-(`tests/test_palette.py::test_subject_weight_keeps_a_dedicated_color_under_
-a_binding_cap`): a 1200px "subject" patch against two 9000px "background"
-patches under a binding k=2 color cap loses its own color entirely at
-plain-area weight (44.5 ΔE00 off, assigned a background tan) and keeps a
-dedicated color under the subject(2)/background(1) multipliers (6.3 ΔE00).
-The wiring itself — not just the weight math — is proven directly at two
-more levels: `_region_classes` unit-level
-(`tests/test_face_priors.py::test_region_classes_maps_subject_and_
-background_from_a_bg_mask`, which also confirms eyes/skin still win over
-`bg_mask` when both are present on one region) and pipeline-level mask
-propagation (`tests/test_background_removal.py`'s new section 6: a real
-mask reaches `photo_segment` exactly when `remove_background_seam`
-succeeds, and stays `None` both when it degrades to its no-op fallback and
-when the flag is off). Full suite re-run this pass: digitizer **773
-passed / 3 failed / 3 skipped** (`digitizer/` commit `7f82511`) — the same
-3 long-standing container-environment golden mismatches this doc has cited
-every pass since 2026-08-03 (`test_flat_lane_byte_identical[logo_alpha.png]`,
-`test_pushcomp[logo_whitebg.png-towel]`,
-`test_stage2_photo_segment[logo_alpha.png]`), not new regressions — up from
-the prior entry's 708/3/3 (65 new tests: this slice's own plus everything
-else that landed on `main` between the two passes). Studio/engine not
-re-run this pass, since nothing in `app/`/`src/` changed. Scope note: only
-`stage2_photo_segment`/`pipeline`/`palette` touched; YuNet face detection
-and `remove_background_seam` itself were explicitly out of scope and are
-untouched.
+**Last updated:** 2026-08-05 — corpus laws 23 and 26 landed for real this
+pass, closing out the reverted attempt this doc has carried since the last
+entry (see that entry's UPDATE note, area 1, for the historical account of
+why the first attempt was backed out). Law 26: `fabrics.py`'s `pique_knit`/
+`jersey_tee` `fill_underlay` moves `edge_lattice` -> `edge_run`, dropping
+the crosshatch pass a fill doesn't need (corpus: 7/507 fills carry a
+lattice underlay). Law 23: satin's own zigzag underlay pitch is no longer
+implicitly shared with fill's — a new `machine.SATIN_ZIGZAG_PITCH_MM = 1.45`
+constant (fill's lattice underlay keeps reading the old `UNDERLAY_ZIGZAG_MM
+= 2.0`), wired into `stage6_satin.py`'s `_stroke_underlay()`, plus that
+function's rail-narrowing factor `0.3 -> 0.09` (each zigzag leg now spans
+0.82x the column width, corpus-measured, not the old 0.4x). The blocker the
+first attempt hit — landing either law moves `machine.py`'s coverage-budget
+thresholds' own self-fit ground truth — is resolved by recalibrating
+`COVERAGE_WARN_UNITS`'s *methodology*, not its value: the old derivation
+comment said "checked against what our own output actually produces" (self-
+fit, circular); the new one re-derives 2.5 two ways that don't depend on
+prior engine output — law 27's own prose figure for a safe classic stack,
+cross-checked against law 28's underlay-cost figure (~0.1-0.2 units) computed
+from the corrected engine's real underlay geometry (fill's generic zigzag
+underlay prices at 0.4mm-thread/2.0mm-pitch = 0.208 units; satin's new
+pitch at 0.4/1.45 = 0.283) — a classic stack lands at 2.21-2.28 units either
+way, comfortably under 2.5 with headroom, not against it. The number did not
+move; only its provenance did. `COVERAGE_BLOCK_UNITS` (3.5) is untouched on
+purpose — the playbook tags it sew-out-gated, not desk-safe, still pending
+Kent's physical stacked-fill-ladder test (`EMBBOT_SEWOUT_CARD.dst` block 2).
+`STITCHES_CUTAWAY_MIN` (25,000) is also untouched — externally sourced
+(OESD), independent of engine output, correct as-is — but the fixture that
+exercises it (`test_a_heavy_design_prescribes_cutaway_stabilizer`, a solid
+square) had to grow from 160 mm (26.7k stitches) to 180 mm (28.4k) because
+law 26 alone drops the old fixture to 22.5k, legitimately under the
+threshold now that the fill underlay is lighter; the STOP CONDITION for
+leaving the threshold itself alone was never hit — 180 mm is still an
+ordinary garment-sized design, not a contrived one. Sample measurements
+(`whitebg` @ `left_chest`, pique_knit): `coverage_p50` 1.19 -> 1.00,
+`stitch_count` 2469 -> 2165. Landing both laws moved geometry in more places
+than the two explicitly-scoped preflight assertions — regenerated
+deliberately, not defensively, and each is commented with why: `test_
+preflight.py`'s `coverage_p50` and `link_thread_mm` goldens (travel-graph
+routing shifted, 109.0 -> 87.8 mm on the fixture logo);
+`test_flat_lane_byte_identical.py`'s `flat_lane_golden.json` (regenerated via
+its own `tools/capture_flat_lane_golden.py`, all 4 fixtures move, all use
+the default pique_knit fabric); `test_pushcomp.py`'s `GOLDEN_FLAG_OFF` table
+(all 4 entries move — two via law 26's fabric change, two via law 23's
+fabric-independent width gate, spelled out entry-by-entry in that table's
+own comment); `test_stage2_photo_segment.py` needed no changes of its own,
+it reuses `test_flat_lane_byte_identical.py`'s golden. One more collision
+neither this doc's prior entry nor the task brief anticipated: `test_
+chaining.py`'s two "bend into cover" tests pinned a specific band polygon
+that landed on a knife-edge of the (inherently discrete, budget-gated) link-
+routing search once law 26 thinned `pique_knit`'s underlay — non-monotonic
+under small perturbations either direction, confirmed by sweeping dozens of
+band placements post-landing rather than hand-fitting one value; the chosen
+replacement band was checked robust to +-0.4 mm on both edges (47/49
+perturbations still route as a bend). Full suite `cd digitizer && .venv/
+bin/python -m pytest tests/ -q`, run to completion in the foreground:
+**771 passed, 3 skipped, 0 failed** (794s) — every one of the 3 known
+container-environment goldens this doc has cited every pass since
+2026-08-03 (`test_flat_lane_byte_identical[logo_alpha.png]`, `test_pushcomp
+[logo_whitebg.png-towel]`, `test_stage2_photo_segment[logo_alpha.png]`)
+happened to pass clean in this environment on this run too — allowed to
+fail per this pass's own task brief, not required to, and their passing
+here isn't claimed as a fix, just an honest report of what the run showed;
+engine `node --test` **272/272** and Studio `npx vitest run` **381/381** (26 files)
+both re-run this pass as a sanity check even though neither `src/` nor
+`app/` changed a byte — confirmed by `git status` before running. This work
+was done in an isolated worktree per its own task brief and is committed
+locally only — not pushed, no PR opened, merge is the coordinator's call.
 
-Prior update below, 2026-08-05, latest still — the boundary-editor slice landed: area 5's
+**Same-day follow-up, still 2026-08-05: an independent stitch-geometry audit
+caught a real peak/hotspot regression the above validation missed.** The
+landing above validated `whitebg`/synthetic-square fixtures at p50/typical
+behaviour only, never `logo_alpha.png`'s peak/hotspot behaviour — and
+`logo_alpha` carries `Sf5200f3f`, a multi-stroke glyph classified satin on
+its per-shape MEAN width (~5.0mm, right at `SATIN_MAX_WIDTH_MM`) while one
+skeleton stroke's own LOCAL corridor runs 0.33-10.33mm, well past where the
+corpus ever validated a satin zigzag underlay at all. `DENSITY_STACKED`
+flipped `warn` -> `block` there (`coverage_max` 13.11 -> 16.69). Root cause
+confirmed by isolation: the satin crosses themselves already self-overlap
+on this shape in the UNMODIFIED engine (`coverage_max` 13.11 pre-law-23
+too, a real, separate, pre-existing defect this fix does not touch), sitting
+just under `_COVERAGE_MIN_PATCH_MM2`'s 25mm2 connected-patch gate; law 23's
+denser/wider zigzag underlay supplied just enough extra thread to bridge
+that pre-existing near-miss over the gate. Fix: `stage6_satin.py::
+_stroke_underlay` now skips the zigzag pass entirely for a stroke whose
+local width anywhere exceeds `SATIN_MAX_WIDTH_MM` (falling back to the
+center-run walk only) — the corpus gives no guidance for that regime under
+either the old or the new numbers, so omitting the guess beats
+extrapolating either one. Reuses `SATIN_MAX_WIDTH_MM`, the same ceiling
+`SPLIT_SATIN_ABOVE_MM` already gates on, not a new constant. Regression-
+pinned (`test_a_wide_oversize_satin_stroke_does_not_block_on_underlay_
+glue`, `test_preflight.py`); `flat_lane_golden.json` regenerated a second
+time (`logo_alpha.png`/`photo/enthusiast_logo.png` entries move — both
+carry oversize local strokes). Full suite re-run to completion in the
+foreground: **772 passed, 3 skipped, 0 failed** (811s), 0 failures this
+time (the 3 known-flaky goldens passed clean again). The pre-existing satin
+self-overlap defect on `Sf5200f3f` itself (peak 13.11, unrelated to either
+law) is NOT fixed by this pass and remains open — currently invisible to
+`DENSITY_STACKED` because it never reaches the connected-patch gate alone,
+which is arguably its own gap in the coverage instrument's peak-detection
+sensitivity, flagged here rather than chased further.
+
+**Also flagged by the same audit, lower priority, not yet acted on:**
+`pique_knit`/`jersey_tee`'s new `edge_run` fill underlay (this pass, above)
+leaves large fill interiors up to 13mm from the nearest underlay stitch (vs
+1.6-1.8mm under the old `edge_lattice`), and `jersey_tee`'s own preset note
+("needs solid underlay") arguably now reads in tension with `edge_run`;
+`center_run` might be more defensible per the corpus data than `edge_run`
+for that one preset specifically. Not investigated this pass — a candidate
+for a focused follow-up, not a blocker on what shipped here.
+
+**Second same-day follow-up: the audit fix above (whole-stroke skip) was
+itself over-corrected, caught by a second independent audit.** It silenced
+a genuine, PRE-EXISTING `DENSITY_STACKED` block on `testdata/photo/
+drone_render.png` at `target_width_mm=80`, `garment_id="left_chest"`
+(confirmed present on unmodified `cc3b9de`, `coverage_max` 17.12,
+`over_block_mm2` 275.0 -> 0.0 after the whole-stroke fix) — `is_satin_
+candidate` misclassifies large organic/branchy photo-tier regions as
+satin, and one such shape (`S0ab48174`, 39 skeleton strokes) has only 1190
+of 2695 stations (44%) genuinely oversize; disabling an entire stroke's
+zigzag over one oversize station lost far more real coverage than the
+ceiling was meant to withhold. Fix narrowed from per-STROKE to per-
+STATION: `_stroke_underlay` now skips the zigzag cross only at the
+individual stations whose own local width exceeds `SATIN_MAX_WIDTH_MM`
+(read from each cross's own rail midpoint, since `_rail_points`
+interpolates extra stations on bends that don't line up 1:1 with the
+resampled spine), leaving ordinary-width stations on the same stroke
+untouched. Both fixtures now correct simultaneously: `logo_alpha` stays
+out of `block` (severity `warn`, matching the pre-law-23 baseline exactly,
+not silence as the first fix produced) and `drone_render` keeps its
+pre-existing `block` (`coverage_max` 17.12, matching the unmodified
+engine's own peak to two decimals; `over_block_mm2` 86.0 vs. baseline's
+275.0 — narrower because law 23's own corpus-accurate density genuinely
+changed the number, not because the finding vanished). Wider sweep run
+(not all pinned) across `logo_alpha`/`logo_whitebg`/`ribbon_curve` at
+several widths/garments plus `photo/summit_badge.png`,
+`photo/region_blobs.png`, `photo/repro_gradient_white_icon.png`: no new
+false `block`s. Two PRE-EXISTING blocks turned out NOT to be fully
+restored by the per-station narrowing, both confirmed by a third,
+independent re-measurement pass (not just the implementing round's own
+sweep): `summit_badge.png` at 60mm was ALREADY block at the first
+corpus-law commit (`edbd4d4`, before any underlay-cap fix existed) and
+stays block here too, `over_block_mm2` reduced 136 -> 29 (not silenced,
+just smaller — law 23's own density change, same as `drone_render`'s
+275 -> 86). `region_blobs.png` at 60mm is a second case the per-station
+fix does NOT fully solve, unlike `drone_render.png`: unmodified `cc3b9de`
+reads `block` (`over_block_mm2` 76.0, worse post-law-23 at `edbd4d4`,
+133.0), but stays `warn`/`over_block_mm2=0.0` on this fix — silenced, not
+restored. Root cause confirmed via connected-component patch isolation:
+`region_blobs.png`'s offending shape (`S94f29987`) has its blocking area
+concentrated inside a dominant stroke that is 80% oversize BY STATION
+COUNT locally (vs. `drone_render`'s 44% oversize spread across a whole
+39-stroke skeleton) — restoring the minority of ordinary-width stations
+next to a locally-dominant oversize span isn't enough to push the
+connected patch back over `_COVERAGE_MIN_PATCH_MM2`'s 25mm2 gate the way
+it was for `drone_render`. Per-station skipping is a real mechanism
+improvement (no longer disables an entire multi-stroke skeleton over one
+bad station) but does not universally guarantee "restore a pre-existing
+block the whole-stroke fix silenced" — accepted as a second known
+instance of the underlying classifier gap below, not chased with a 4th
+underlay-stage patching round: two of three attempts at a fixture-
+specific underlay fix (whole-stroke, then per-station) each needed
+further correction, which is itself a signal the fix belongs at the
+classification stage, not here. Regression-pinned both directions:
+`test_a_wide_oversize_satin_stroke_does_not_block_on_underlay_glue`
+(logo_alpha stays out of block) and
+`test_drone_render_oversize_photo_satin_still_blocks` (drone_render's
+pre-existing block survives), both in `test_preflight.py`.
+`region_blobs.png`/`summit_badge.png`'s still-silenced/still-block state
+at 60mm is NOT yet pinned by a test — flagged here as a gap for whoever
+picks up the classifier fix below, so it's not lost. Full suite re-run to
+completion in the foreground: **773 passed, 3 skipped, 0 failed** (795s
+locally verified independently, 830s on the third audit's separate run).
+
+The deeper issue neither fix touches — `is_satin_candidate` misclassifying
+large organic/branchy photo-tier geometry as satin at all (confirmed on
+THREE fixtures now: `drone_render.png` [restored by the per-station fix],
+`summit_badge.png` and `region_blobs.png` [both still silenced/reduced,
+not restored]) — is a classification-level question, not an underlay-stage
+one, and is explicitly NOT addressed here; it would need Kent's call on
+scope before any fix, per the same "satin/fill classifier" gap area 1
+already tracks above (M0-M3 DT-first migration, corpus-gated, not
+started). Recommend that follow-up scope explicitly include
+`region_blobs.png@60mm/{left_chest,hat_front}` and
+`summit_badge.png@60mm` as its acceptance fixtures, so the classifier fix
+is checked against real cases rather than designed in the abstract.
+
+Prior update below, 2026-08-05, still earlier the same day — the
+boundary-editor slice landed: area 5's
 last self-flagged gap ("no reshaping/redrawing outlines... no manual point
 editing") is now half-closed. A new `boundary_override` shape_overrides key
 (contract v1.4) lets a review-screen edit replace a shape's exterior ring
@@ -175,6 +318,11 @@ change survived this pass — see below). Studio (`vitest`) was **not**
 re-run this pass, since nothing in `app/` changed across PRs #43–45; carrying
 forward the prior entry's **348/348** (25 files) rather than re-asserting an
 unverified number.
+
+**UPDATE 2026-08-05: both laws below landed for real — see the top-of-doc
+entry for the corrected coverage-budget recalibration that made it possible.
+The account below of the reverted attempt is kept as the historical record
+of why it needed care, not as current status.**
 
 **Two corpus-law fixes evaluated this pass and reverted, not landed —
 recorded here because they touched code before being backed out, not just

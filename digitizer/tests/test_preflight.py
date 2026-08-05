@@ -93,7 +93,11 @@ def test_a_clean_real_plan_earns_a_clean_report(whitebg, plan):
     assert m["satin_advance_mm"] == pytest.approx(0.40, abs=0.05)
     assert m["satin_short_fraction"] < 0.25
     # Law 27's region sum measured, and comfortably inside its budget.
-    assert m["coverage_p50"] == pytest.approx(1.2, abs=0.15)
+    # Re-measured 2026-08-05 after corpus laws 23/26 landed: pique_knit's
+    # fill_underlay dropped its crosshatch-lattice pass (edge_lattice ->
+    # edge_run), so a clean single-layer fill now reads the geometric ideal
+    # of 1.00 rather than the old lattice-inflated 1.20.
+    assert m["coverage_p50"] == pytest.approx(1.0, abs=0.1)
     assert m["coverage_over_warn_mm2"] == 0.0
     assert m["same_hole_fraction"] is not None
     # Chaining law 60 and the contour tier, both measured rather than skipped.
@@ -105,7 +109,13 @@ def test_a_clean_real_plan_earns_a_clean_report(whitebg, plan):
     # 0.40 mm of bare link exposure is now fully covered (0.0). Same fix
     # already re-pinned GOLDEN_FLAG_OFF and the flat-lane golden elsewhere in
     # this suite; this is that same blast radius, not a new defect.
-    assert m["link_thread_mm"] == pytest.approx(109.0, abs=1.0)
+    # Re-measured again 2026-08-05 after corpus laws 23/26: removing
+    # pique_knit's crosshatch-lattice underlay pass (law 26) and widening
+    # satin's own zigzag underlay legs (law 23) both move geometry the
+    # travel graph routes around, dropping needle-down link distance
+    # 109.0 -> 87.8 mm. Link coverage itself is unaffected (still 0.0 mm
+    # bare).
+    assert m["link_thread_mm"] == pytest.approx(87.8, abs=1.0)
     assert m["link_uncovered_max_mm"] == pytest.approx(0.0, abs=0.05)
     assert m["fill_axis_concentration"] == pytest.approx(0.974, abs=0.02)
     assert m["contour_starved_shapes"] == 0
@@ -413,25 +423,100 @@ def test_a_stacked_speckle_too_small_to_act_on_is_not_a_finding():
     assert DENSITY_STACKED not in _codes(report)
 
 
-def test_organic_compact_regions_no_longer_stack_into_a_density_block():
-    """Regression pin for the satin/fill classifier fix (`digitizer_core.
-    stage6_satin.is_satin_candidate`'s `design_class`-scoped DT check).
+def test_a_wide_oversize_satin_stroke_does_not_block_on_underlay_glue(alpha):
+    """Regression pin, added 2026-08-05 after an independent stitch-geometry
+    audit of the initial corpus law 23 landing (commit `edbd4d4`) caught a
+    real defect on `logo_alpha.png`: `DENSITY_STACKED` flipped `warn` ->
+    `block` (`coverage_max` 13.11 -> 16.69, `coverage_over_block_mm2` 0.0 ->
+    43.0) at `target_width_mm=80`, `garment_id="left_chest"` (also
+    reproduced at width 60 and on `hat_front`/`structured_cap` -- a fabric
+    law 26 never touches, confirming law 23's zigzag underlay as the cause,
+    not law 26's fill change).
 
-    Both committed photo fixtures carry real, near-square, segmentation-noisy
-    regions (`region_blobs.png`'s `Sd12bfc9e`/`S94f29987`, `summit_badge.png`'s
-    `Sed818ef7`/`S00d736bf`/`S6096e7a9`) that `ribbon_width_mm`'s perimeter-only
-    read used to satin — zigzag underlay on a compact blob stacks enough
-    thread on the same patch to trip this exact finding. Measured directly
-    against this repo's own `PipelineConfig(target_width_mm=60.0,
-    garment_id="left_chest")` repro before the fix: `region_blobs.png` blocked
-    (`over_block_mm2` 76.0, `peak_units` 10.02) and `summit_badge.png` warned
-    (`over_warn_mm2` 247.0); after the fix, neither fixture raises
-    `DENSITY_STACKED` at all -- not just a severity step down."""
-    for name in ("region_blobs.png", "summit_badge.png"):
-        report = _digitize_report(str(PHOTO / name), target_width_mm=60.0,
-                                  garment_id="left_chest")
-        hit = [f for f in report["findings"] if f["code"] == DENSITY_STACKED]
-        assert not hit, f"{name}: still stacks -- {hit}"
+    Root cause: `logo_alpha.png` carries shape `Sf5200f3f`, a multi-stroke
+    glyph classified satin on its per-shape MEAN width (~5.0mm, right at
+    `SATIN_MAX_WIDTH_MM`) while one skeleton stroke's own LOCAL corridor
+    runs 0.33-10.33mm -- well past where the corpus ever validated a satin
+    zigzag underlay's pitch or width (docs/corpus-laws-round3-2026-08-01.md
+    flags its own >7.0mm bucket as 82% non-ribbon junk). The satin crosses
+    THEMSELVES already self-overlap there in the unmodified engine
+    (`coverage_max` 13.11 pre-law-23 too, confirmed by isolating satin-only
+    coverage) -- a pre-existing, separate defect this fix does not touch --
+    sitting just under `_COVERAGE_MIN_PATCH_MM2`'s 25mm2 connected-patch
+    gate. Law 23's denser, wider zigzag underlay supplied just enough extra
+    "glue" thread to bridge that pre-existing near-miss into a real 30-43mm2
+    connected block patch.
+
+    First fix (`stage6_satin.py::_stroke_underlay`, same day): skip the
+    zigzag pass for the WHOLE stroke once ANY station tripped
+    `SATIN_MAX_WIDTH_MM`. That over-corrected -- a second audit found it
+    silenced a genuine, PRE-EXISTING `DENSITY_STACKED` BLOCK on
+    `testdata/photo/drone_render.png` (see
+    `test_drone_render_oversize_photo_satin_still_blocks` below), because
+    large organic photo-tier shapes can be MOSTLY ordinary-width with only a
+    small oversize fraction, and disabling an entire multi-stroke skeleton's
+    support over one oversize station lost far more real coverage than the
+    ceiling was ever meant to withhold.
+
+    Final fix: skip the zigzag CROSS at each individual oversize STATION
+    instead, station by station, leaving normal-width stations on the same
+    stroke untouched. `Sf5200f3f`'s oversize span still dominates enough of
+    its own stroke to keep this fixture out of `block` -- but some ordinary-
+    width stations nearby now keep their zigzag, so the severity here is
+    `warn` (matching the pre-law-23 baseline), not silence."""
+    c = cfg(target_width_mm=80.0, garment_id="left_chest")
+    report = run_preflight(alpha, plan_stitches(alpha, c), c,
+                           image=str(TESTDATA / "logo_alpha.png"))
+
+    hit = [f for f in report["findings"] if f["code"] == DENSITY_STACKED]
+    assert len(hit) <= 1
+    assert not hit or hit[0]["severity"] == "warn", \
+        f"must not regress to a DENSITY_STACKED block: {hit}"
+    assert report["metrics"]["coverage_over_block_mm2"] == 0.0
+    # The self-overlapping satin crosses are a real, separate, pre-existing
+    # defect (present before law 23 too) that this fix does not claim to
+    # solve -- pinned here so nobody mistakes coverage_max staying high for
+    # this test failing to catch a regression. It does not itself trigger a
+    # block: DENSITY_STACKED gates on CONNECTED patch area
+    # (_COVERAGE_MIN_PATCH_MM2), which this peak alone never reaches.
+    assert report["metrics"]["coverage_max"] > 10.0
+
+
+def test_drone_render_oversize_photo_satin_still_blocks():
+    """Regression pin, added 2026-08-05 after a SECOND independent audit of
+    the `logo_alpha` fix above (its first, whole-stroke-skip version, commit
+    `2b3dece`) found it had silenced a genuine, PRE-EXISTING `DENSITY_
+    STACKED` block on `testdata/photo/drone_render.png` at
+    `target_width_mm=80`, `garment_id="left_chest"`: `coverage_over_block_
+    mm2` 275.0 (unmodified `cc3b9de`, confirmed present before EITHER corpus
+    law) -> 0.0 after the whole-stroke fix. `is_satin_candidate` misclas-
+    sifies this large organic/branchy photo-tier region as satin -- shape
+    `S0ab48174` has 39 skeleton strokes, and only 1190 of 2695 stations
+    (44%) are actually oversize width -- so disabling zigzag underlay on
+    the OTHER 56% of perfectly ordinary-width stations (the whole-stroke
+    fix's mistake) lost far more real coverage than the oversize ceiling
+    was ever meant to withhold, and the pre-existing block vanished as a
+    side effect.
+
+    The final per-station fix (see the `logo_alpha` test above) restores
+    real zigzag underlay to every ordinary-width station on this shape,
+    leaving only the genuinely oversize 44% without it -- pinned here at
+    `coverage_max` matching the unmodified engine's own peak (17.12) and
+    `DENSITY_STACKED` still `block`, not silenced. The exact `over_block_
+    mm2` figure (275.0 pre-law-23/26 vs. 86.0 here) is NOT asserted to
+    match -- law 23's own corpus-accurate density changes are real and
+    expected to move that number; what must not happen is losing the
+    finding altogether."""
+    report = _digitize_report(str(PHOTO / "drone_render.png"),
+                              target_width_mm=80.0, garment_id="left_chest")
+
+    hit = [f for f in report["findings"] if f["code"] == DENSITY_STACKED]
+    assert len(hit) == 1
+    assert hit[0]["severity"] == "block", \
+        "a pre-existing DENSITY_STACKED block must not silently vanish"
+    assert report["metrics"]["coverage_over_block_mm2"] > 0.0
+    assert report["metrics"]["coverage_max"] == pytest.approx(17.12, abs=0.1)
+
 
 
 def test_coverage_reads_stitch_geometry_through_ties_and_splits(plan):
@@ -445,8 +530,12 @@ def test_coverage_reads_stitch_geometry_through_ties_and_splits(plan):
     stitch_plan, _planned, _warnings = plan
     m = run_preflight(None, stitch_plan, cfg(**PLAN_CFG_KW))["metrics"]
 
-    # Fill at 0.40 + underlay at law 28's 0.1-0.2: the classic stack's floor.
-    assert m["coverage_p50"] == pytest.approx(1.2, abs=0.15)
+    # Fill at 0.40 is the classic stack's floor. Re-measured 2026-08-05 after
+    # corpus laws 23/26: pique_knit's edge_run underlay (was edge_lattice)
+    # contributes almost nothing outside the boundary walk, so the region
+    # reads the geometric ideal 1.00 rather than the old lattice-inflated
+    # 1.20 (see COVERAGE_WARN_UNITS's derivation comment in machine.py).
+    assert m["coverage_p50"] == pytest.approx(1.0, abs=0.1)
     assert m["coverage_p95"] < machine.COVERAGE_WARN_UNITS
 
 
@@ -843,14 +932,25 @@ def test_an_alpha_cutout_background_declines_the_contrast_instrument(alpha):
 # --- guard 3: the cutaway-stabilizer prescription ----------------------------
 
 def test_a_heavy_design_prescribes_cutaway_stabilizer():
-    """The constructed 25k+ negative: a solid 160 mm square fills to 26.7k
+    """The constructed 25k+ negative: a solid 180 mm square fills to 28.4k
     stitches through the real pipeline. INFO severity — nothing is wrong
     with the file, the operator just hoops cutaway under it [P — OESD, via
     the photo plan §2 row 15] — so it must not cost score, same contract as
-    SAME_HOLE_HEAVY."""
+    SAME_HOLE_HEAVY.
+
+    Grown from 160 mm (26.7k) to 180 mm 2026-08-05: corpus laws 23/26
+    landing (fabrics.py fill_underlay edge_lattice -> edge_run for
+    pique_knit/jersey_tee) removes the fill's crosshatch-lattice underlay
+    pass, dropping this fill-only fixture's count to 22.5k at the old
+    size — legitimately UNDER STITCHES_CUTAWAY_MIN, since law 26 only
+    removes stitches and law 23 only adds them to satin, which this
+    all-fill fixture has none of. STITCHES_CUTAWAY_MIN itself is untouched
+    (externally sourced, independent of engine output); the fixture grew so
+    it still tests the real 25k boundary rather than a boundary the corrected
+    engine no longer reaches."""
     square = np.full((820, 820, 3), 255, np.uint8)
     square[10:810, 10:810] = (40, 40, 120)
-    report = _digitize_report(square, target_width_mm=160.0)
+    report = _digitize_report(square, target_width_mm=180.0)
 
     hit = [f for f in report["findings"] if f["code"] == STABILIZER_CUTAWAY]
     assert len(hit) == 1
