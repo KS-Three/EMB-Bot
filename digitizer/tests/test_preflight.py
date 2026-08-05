@@ -423,6 +423,56 @@ def test_a_stacked_speckle_too_small_to_act_on_is_not_a_finding():
     assert DENSITY_STACKED not in _codes(report)
 
 
+def test_a_wide_oversize_satin_stroke_does_not_block_on_underlay_glue(alpha):
+    """Regression pin, added 2026-08-05 after an independent stitch-geometry
+    audit of the initial corpus law 23 landing (commit `edbd4d4`) caught a
+    real defect on `logo_alpha.png`: `DENSITY_STACKED` flipped `warn` ->
+    `block` (`coverage_max` 13.11 -> 16.69, `coverage_over_block_mm2` 0.0 ->
+    43.0) at `target_width_mm=80`, `garment_id="left_chest"` (also
+    reproduced at width 60 and on `hat_front`/`structured_cap` -- a fabric
+    law 26 never touches, confirming law 23's zigzag underlay as the cause,
+    not law 26's fill change).
+
+    Root cause: `logo_alpha.png` carries shape `Sf5200f3f`, a multi-stroke
+    glyph classified satin on its per-shape MEAN width (~5.0mm, right at
+    `SATIN_MAX_WIDTH_MM`) while one skeleton stroke's own LOCAL corridor
+    runs 0.33-10.33mm -- well past where the corpus ever validated a satin
+    zigzag underlay's pitch or width (docs/corpus-laws-round3-2026-08-01.md
+    flags its own >7.0mm bucket as 82% non-ribbon junk). The satin crosses
+    THEMSELVES already self-overlap there in the unmodified engine
+    (`coverage_max` 13.11 pre-law-23 too, confirmed by isolating satin-only
+    coverage) -- a pre-existing, separate defect this fix does not touch --
+    sitting just under `_COVERAGE_MIN_PATCH_MM2`'s 25mm2 connected-patch
+    gate. Law 23's denser, wider zigzag underlay supplied just enough extra
+    "glue" thread to bridge that pre-existing near-miss into a real 30-43mm2
+    connected block patch.
+
+    Fix (`stage6_satin.py::_stroke_underlay`): skip the zigzag pass
+    entirely for a stroke whose local width anywhere exceeds
+    `SATIN_MAX_WIDTH_MM`, falling back to the center-run walk only --
+    the corpus gives no guidance for that regime under EITHER the old or
+    the new numbers, so omitting the guess is more honest than extrapolating
+    either one. The fixed-up severity is no finding at all (better than the
+    pre-law-23 `warn`, not merely restored to it) because the pre-existing
+    satin self-overlap alone doesn't reach the connected-patch gate either
+    -- asserted directly here rather than assumed."""
+    c = cfg(target_width_mm=80.0, garment_id="left_chest")
+    report = run_preflight(alpha, plan_stitches(alpha, c), c,
+                           image=str(TESTDATA / "logo_alpha.png"))
+
+    hit = [f for f in report["findings"] if f["code"] == DENSITY_STACKED]
+    assert not hit, f"must not regress to a DENSITY_STACKED finding: {hit}"
+    assert report["metrics"]["coverage_over_block_mm2"] == 0.0
+    assert report["metrics"]["coverage_over_warn_mm2"] == 0.0
+    # The self-overlapping satin crosses are a real, separate, pre-existing
+    # defect (present before law 23 too) that this fix does not claim to
+    # solve -- pinned here so nobody mistakes coverage_max staying high for
+    # this test failing to catch a regression. It does not regress: DENSITY_
+    # STACKED gates on CONNECTED patch area (_COVERAGE_MIN_PATCH_MM2), which
+    # this peak alone never reaches.
+    assert report["metrics"]["coverage_max"] > 10.0
+
+
 def test_coverage_reads_stitch_geometry_through_ties_and_splits(plan):
     """The playbook's two parity traps, which would double every satin
     number. Stage 7 splices tie bounces INTO the runs they protect and a

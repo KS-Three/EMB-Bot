@@ -80,6 +80,48 @@ both re-run this pass as a sanity check even though neither `src/` nor
 was done in an isolated worktree per its own task brief and is committed
 locally only — not pushed, no PR opened, merge is the coordinator's call.
 
+**Same-day follow-up, still 2026-08-05: an independent stitch-geometry audit
+caught a real peak/hotspot regression the above validation missed.** The
+landing above validated `whitebg`/synthetic-square fixtures at p50/typical
+behaviour only, never `logo_alpha.png`'s peak/hotspot behaviour — and
+`logo_alpha` carries `Sf5200f3f`, a multi-stroke glyph classified satin on
+its per-shape MEAN width (~5.0mm, right at `SATIN_MAX_WIDTH_MM`) while one
+skeleton stroke's own LOCAL corridor runs 0.33-10.33mm, well past where the
+corpus ever validated a satin zigzag underlay at all. `DENSITY_STACKED`
+flipped `warn` -> `block` there (`coverage_max` 13.11 -> 16.69). Root cause
+confirmed by isolation: the satin crosses themselves already self-overlap
+on this shape in the UNMODIFIED engine (`coverage_max` 13.11 pre-law-23
+too, a real, separate, pre-existing defect this fix does not touch), sitting
+just under `_COVERAGE_MIN_PATCH_MM2`'s 25mm2 connected-patch gate; law 23's
+denser/wider zigzag underlay supplied just enough extra thread to bridge
+that pre-existing near-miss over the gate. Fix: `stage6_satin.py::
+_stroke_underlay` now skips the zigzag pass entirely for a stroke whose
+local width anywhere exceeds `SATIN_MAX_WIDTH_MM` (falling back to the
+center-run walk only) — the corpus gives no guidance for that regime under
+either the old or the new numbers, so omitting the guess beats
+extrapolating either one. Reuses `SATIN_MAX_WIDTH_MM`, the same ceiling
+`SPLIT_SATIN_ABOVE_MM` already gates on, not a new constant. Regression-
+pinned (`test_a_wide_oversize_satin_stroke_does_not_block_on_underlay_
+glue`, `test_preflight.py`); `flat_lane_golden.json` regenerated a second
+time (`logo_alpha.png`/`photo/enthusiast_logo.png` entries move — both
+carry oversize local strokes). Full suite re-run to completion in the
+foreground: **772 passed, 3 skipped, 0 failed** (811s), 0 failures this
+time (the 3 known-flaky goldens passed clean again). The pre-existing satin
+self-overlap defect on `Sf5200f3f` itself (peak 13.11, unrelated to either
+law) is NOT fixed by this pass and remains open — currently invisible to
+`DENSITY_STACKED` because it never reaches the connected-patch gate alone,
+which is arguably its own gap in the coverage instrument's peak-detection
+sensitivity, flagged here rather than chased further.
+
+**Also flagged by the same audit, lower priority, not yet acted on:**
+`pique_knit`/`jersey_tee`'s new `edge_run` fill underlay (this pass, above)
+leaves large fill interiors up to 13mm from the nearest underlay stitch (vs
+1.6-1.8mm under the old `edge_lattice`), and `jersey_tee`'s own preset note
+("needs solid underlay") arguably now reads in tension with `edge_run`;
+`center_run` might be more defensible per the corpus data than `edge_run`
+for that one preset specifically. Not investigated this pass — a candidate
+for a focused follow-up, not a blocker on what shipped here.
+
 Prior update below, 2026-08-05, still earlier the same day — the
 boundary-editor slice landed: area 5's
 last self-flagged gap ("no reshaping/redrawing outlines... no manual point

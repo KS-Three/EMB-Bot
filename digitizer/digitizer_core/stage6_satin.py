@@ -1245,7 +1245,36 @@ def _stroke_underlay(poly: Polygon, st: Stroke, style: str, shape_id: str,
     n = max(2, int(math.ceil(length / machine.UNDERLAY_STITCH_MM)))
     runs.append(StitchRun(points=_resample(spine, n), kind=stitches.UNDERLAY,
                           shape_id=shape_id))
-    if style == "zigzag":
+    # Law 23's 1.45mm pitch / 0.82x-width figures are corpus-measured over
+    # columns up to the corpus's own 4.5-7.0mm width bucket (docs/corpus-
+    # laws-round3-2026-08-01.md law 22/23) -- and satin classification
+    # (`is_satin_candidate`) gates on a shape's MEAN width (`ribbon_width_
+    # mm`), so a multi-stroke glyph can stay classified satin overall while
+    # one skeleton stroke's own LOCAL corridor runs well past SATIN_MAX_
+    # WIDTH_MM (measured on `logo_alpha.png`'s `Sf5200f3f`: shape mean
+    # ~5.0mm, one stroke's local width 0.33-10.33mm). The corpus's own
+    # >7.0mm bucket is flagged "junk" (82% non-ribbon fragments) in that
+    # same doc, so neither law 23's new figures nor the pre-law-23 defaults
+    # were ever validated for a corridor that wide -- extrapolating either
+    # one is a guess, not a corpus finding. Skip the zigzag pass entirely
+    # for a stroke whose local width anywhere exceeds SATIN_MAX_WIDTH_MM
+    # (the same corpus-validated ceiling `SPLIT_SATIN_ABOVE_MM` already
+    # reuses, not a new number): the center-run walk above still covers it,
+    # which is the honest, corpus-supported fallback rather than a chosen
+    # pitch/width for a regime nobody measured.
+    #
+    # Found and fixed 2026-08-05: an independent stitch-geometry audit of
+    # the initial law 23 landing caught `logo_alpha.png`'s DENSITY_STACKED
+    # finding flipping warn -> block on exactly this shape (coverage_max
+    # 13.11 -> 16.69, peak driven by the satin crosses' own pre-existing
+    # self-overlap on this wide/blob stroke -- unrelated to law 23 and
+    # unchanged by this fix -- with the widened, denser zigzag underlay
+    # supplying just enough extra "glue" thread to bridge that pre-existing
+    # near-miss over `_COVERAGE_MIN_PATCH_MM2`'s 25mm2 connected-patch
+    # gate). See test_preflight.py's logo_alpha regression test.
+    oversize = field is not None and any(
+        field.half_at(p) * 2.0 > machine.SATIN_MAX_WIDTH_MM for p in spine)
+    if style == "zigzag" and not oversize:
         steps = max(2, int(math.ceil(length / machine.SATIN_ZIGZAG_PITCH_MM)))
         sp = _resample(spine, steps)
         ra, rb = _rail_points(poly, sp, st.closed, ribbon_width_mm(poly) / 2, field)
@@ -1253,12 +1282,28 @@ def _stroke_underlay(poly: Polygon, st: Stroke, style: str, shape_id: str,
         for i, (pa0, pb0) in enumerate(zip(ra, rb)):
             # Narrow both ends from the ORIGINALS — pulling pb toward an
             # already-moved pa drifts the zigzag off the column's center.
-            # 0.09 (corpus law 23): each leg spans 0.82x the column width
+            # 0.09 (corpus law 23): each leg spans 0.82x the RAIL SPAN
             # (1 - 2*0.09), not the old 0.4x (1 - 2*0.3) -- the prior
             # narrowing left satin's zigzag underlay too under-specified to
             # actually anchor the rails it sits beneath.
-            pa = (pa0[0] + (pb0[0] - pa0[0]) * 0.09, pa0[1] + (pb0[1] - pa0[1]) * 0.09)
-            pb = (pb0[0] + (pa0[0] - pb0[0]) * 0.09, pb0[1] + (pa0[1] - pb0[1]) * 0.09)
+            #
+            # Defense in depth alongside the oversize skip above: `sp` is a
+            # coarser resample than the `spine` the skip check walks, and
+            # `_rail_points`'s own smoothing can measure a rail span the
+            # per-point field check didn't quite catch. Cap the leg the same
+            # way, at what a column pinned to SATIN_MAX_WIDTH_MM would
+            # produce (SATIN_MAX_WIDTH_MM * 0.82 =~ 4.1mm) -- below that
+            # width nothing changes (frac is exactly the corpus's 0.09);
+            # above it, frac rises smoothly so leg length asymptotes toward
+            # the cap instead of continuing to grow with a corridor width
+            # the corpus never measured.
+            rail_span = math.dist(pa0, pb0)
+            frac = 0.09
+            if rail_span > machine.SATIN_MAX_WIDTH_MM:
+                capped_leg = machine.SATIN_MAX_WIDTH_MM * 0.82
+                frac = max(frac, 0.5 * (1.0 - capped_leg / rail_span))
+            pa = (pa0[0] + (pb0[0] - pa0[0]) * frac, pa0[1] + (pb0[1] - pa0[1]) * frac)
+            pb = (pb0[0] + (pa0[0] - pb0[0]) * frac, pb0[1] + (pa0[1] - pb0[1]) * frac)
             if math.dist(pa, pb) < machine.SATIN_MIN_CROSS_MM:
                 continue
             pts.extend((pa, pb) if i % 2 == 0 else (pb, pa))
