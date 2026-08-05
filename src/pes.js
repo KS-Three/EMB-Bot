@@ -73,18 +73,26 @@
     return delta;
   }
 
-  function pecWriteRecord(w, dx, dy, isJump) {
-    if (!isJump && dx < 64 && dx > -64 && dy < 64 && dy > -64) {
+  // Long-form flag: 0 = plain stitch, PEC_FLAG_JUMP = jump, PEC_FLAG_TRIM =
+  // trim. Matches pyembroidery's PecWriter/PecReader (JUMP_CODE=0x10,
+  // TRIM_CODE=0x20, shifted into the high byte of the 16-bit long-form
+  // record, i.e. 0x1000/0x2000). Jumps and trims previously shared the
+  // 0x2000 (TRIM) code, so every jump decoded as a trim in standard readers.
+  const PEC_FLAG_JUMP = 0x1000;
+  const PEC_FLAG_TRIM = 0x2000;
+
+  function pecWriteRecord(w, dx, dy, flag) {
+    if (!flag && dx < 64 && dx > -64 && dy < 64 && dy > -64) {
       w.u8(dx & 0x7f);
       w.u8(dy & 0x7f);
     } else {
       let vx = dx & 0x0fff;
       vx |= 0x8000;
-      if (isJump) vx |= 0x2000;
+      if (flag) vx |= flag;
       w.u8((vx >> 8) & 0xff).u8(vx & 0xff);
       let vy = dy & 0x0fff;
       vy |= 0x8000;
-      if (isJump) vy |= 0x2000;
+      if (flag) vy |= flag;
       w.u8((vy >> 8) & 0xff).u8(vy & 0xff);
     }
   }
@@ -103,23 +111,25 @@
       }
       const sx = st.x | 0;
       const sy = -(st.y | 0); // flip Y to PEC screen convention
-      const isJump = type === "jump" || type === "trim";
+      const flag = type === "trim" ? PEC_FLAG_TRIM : type === "jump" ? PEC_FLAG_JUMP : 0;
 
       let dx = sx - px;
       let dy = sy - py;
 
-      // Emit intermediate jump hops for deltas outside the 12-bit long-form range.
+      // Emit intermediate jump hops for deltas outside the 12-bit long-form
+      // range. These are pure travel moves, so they always carry the jump
+      // flag regardless of what the final record's flag will be.
       while (Math.abs(dx) > PEC_MAX_DELTA || Math.abs(dy) > PEC_MAX_DELTA) {
         const stepX = pecClampStep(dx);
         const stepY = pecClampStep(dy);
-        pecWriteRecord(w, stepX, stepY, true);
+        pecWriteRecord(w, stepX, stepY, PEC_FLAG_JUMP);
         px += stepX;
         py += stepY;
         dx = sx - px;
         dy = sy - py;
       }
 
-      pecWriteRecord(w, dx, dy, isJump);
+      pecWriteRecord(w, dx, dy, flag);
       px = sx;
       py = sy;
       emitted = true;
@@ -128,8 +138,49 @@
     w.u8(0xff); // end of stitch data
   }
 
+  // ---- Brother PEC thread chart (indices 1-64) -------------------------
+  // RGB values per the standard Brother PEC palette, sourced from
+  // pyembroidery's EmbThreadPec.get_thread_set() (installed at
+  // digitizer/.venv/lib/python*/site-packages/pyembroidery/EmbThreadPec.py)
+  // -- the same reference chart the Python digitizer's pyembroidery-backed
+  // /export route and this repo's cross-validation harness
+  // (tools/crossval-stitch-formats.mjs) already treat as ground truth.
+  // Index 0 is unused (PEC has no "index 0" thread).
+  const BROTHER_PEC_CHART = [
+    null,
+    [14, 31, 124], [10, 85, 163], [0, 135, 119], [75, 107, 175],
+    [237, 23, 31], [209, 92, 0], [145, 54, 151], [228, 154, 203],
+    [145, 95, 172], [158, 214, 125], [232, 169, 0], [254, 186, 53],
+    [255, 255, 0], [112, 188, 31], [186, 152, 0], [168, 168, 168],
+    [125, 111, 0], [255, 255, 179], [79, 85, 86], [0, 0, 0],
+    [11, 61, 145], [119, 1, 118], [41, 49, 51], [42, 19, 1],
+    [246, 74, 138], [178, 118, 36], [252, 187, 197], [254, 55, 15],
+    [240, 240, 240], [106, 28, 138], [168, 221, 196], [37, 132, 187],
+    [254, 179, 67], [255, 243, 107], [208, 166, 96], [209, 84, 0],
+    [102, 186, 73], [19, 74, 70], [135, 135, 135], [216, 204, 198],
+    [67, 86, 7], [253, 217, 222], [249, 147, 188], [0, 56, 34],
+    [178, 175, 212], [104, 106, 176], [239, 227, 185], [247, 56, 102],
+    [181, 75, 100], [19, 43, 26], [199, 1, 86], [254, 158, 50],
+    [168, 222, 235], [0, 103, 62], [78, 41, 144], [47, 126, 32],
+    [255, 204, 204], [255, 217, 17], [9, 91, 166], [240, 249, 112],
+    [227, 243, 91], [255, 153, 0], [255, 240, 141], [255, 200, 200],
+  ];
+
+  function nearestPecIndex(r, g, b) {
+    let bestIdx = 1;
+    let bestDist = Infinity;
+    for (let i = 1; i < BROTHER_PEC_CHART.length; i++) {
+      const entry = BROTHER_PEC_CHART[i];
+      const dr = r - entry[0], dg = g - entry[1], db = b - entry[2];
+      const dist = dr * dr + dg * dg + db * db;
+      if (dist < bestDist) { bestDist = dist; bestIdx = i; }
+    }
+    return bestIdx;
+  }
+
   // ---- PEC section ----------------------------------------------------
   function writePEC(w, design) {
+    const pecStart = w.tell(); // PEC-relative 0 for this section
     const stitches = (design && design.stitches) || [];
     const colors = (design && design.colors) || [];
     const colorCount = Math.max(1, colors.length);
@@ -151,12 +202,25 @@
     w.u8((colorCount - 1) & 0xff);
     for (let i = 0; i < colorCount; i++) {
       const c = colors[i] || {};
-      // Best-effort Brother palette index; fall back to a mid value.
-      const idx = typeof c.paletteIndex === "number" ? c.paletteIndex : (i % 64) + 1;
+      // Explicit paletteIndex wins; otherwise map the design RGB to the
+      // nearest Brother chart entry; otherwise fall back to a sequential
+      // index (matches prior behaviour when no colour info exists at all).
+      let idx;
+      if (typeof c.paletteIndex === "number") {
+        idx = c.paletteIndex;
+      } else if (
+        typeof c.r === "number" &&
+        typeof c.g === "number" &&
+        typeof c.b === "number"
+      ) {
+        idx = nearestPecIndex(c.r, c.g, c.b);
+      } else {
+        idx = (i % 64) + 1;
+      }
       w.u8(idx & 0xff);
     }
     // pad colour table region out to the fixed 0x1CF span
-    for (let i = 0; i <= 0x1cf - colorCount; i++) w.u8(0x20);
+    for (let i = 0; i < 0x1cf - colorCount; i++) w.u8(0x20);
 
     w.u16le(0x0000);
 
@@ -169,17 +233,21 @@
     w.i16le(width);
     w.i16le(height);
     w.i16le(0x01e0); // 480 - nominal design area width
-    w.i16le(0x0140); // 320 - nominal design area height
-    // start x/y as big-endian, high nibble flag 0x9000 (best-effort)
-    w.u16be(0x9000 | 0x0000);
-    w.u16be(0x9000 | 0x0000);
+    w.i16le(0x01b0); // 432 - nominal design area height (standard value; was 0x0140/320)
 
     // stitch data
     pecEncodeStitches(w, stitches);
 
-    // patch graphics offset (relative to the offset field location)
+    // Patch the graphics offset: standard semantics are the stitch-block
+    // LENGTH measured from PEC-relative 512 (the byte right after the
+    // fixed-size PEC header), not "relative to the field's own position".
+    // Matches pyembroidery's PecWriter.write_pec_block (stitch_block_length
+    // = f.tell() - stitch_block_start_position, where
+    // stitch_block_start_position == PEC-relative 512) and PecReader.read_pec
+    // (stitch_block_end = read_int_24le(f) - 5 + f.tell()).
     const graphicsStart = w.tell();
-    w.patch3le(graphicsOffsetPos, graphicsStart - graphicsOffsetPos + 2);
+    const pecBaseline = pecStart + 512;
+    w.patch3le(graphicsOffsetPos, graphicsStart - pecBaseline);
 
     // blank thumbnails: 48x38, 1bpp => 6 bytes/row * 38 = 228 bytes each.
     // One master image plus one per colour. Blank (all zero) is acceptable.

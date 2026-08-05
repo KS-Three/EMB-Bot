@@ -23,7 +23,13 @@
   }
 
   function trimRecord() {
-    return Uint8Array.from([0x80, 0x03]);
+    // Melco-convention 4-byte control record (0x80-prefixed controls are
+    // fixed 4 bytes: 0x80, code, then 2 payload bytes). The previous 2-byte
+    // form (0x80, 0x03) isn't a control code pyembroidery-convention readers
+    // know; they consume 2 bytes of the following record as this one's
+    // payload and abort the rest of the file. See
+    // docs/pes-crossval-verdict-2026-08-04.md section 4.
+    return Uint8Array.from([0x80, 0x80, 0x07, 0x00]);
   }
 
   function stitchRecord(dx, dy) {
