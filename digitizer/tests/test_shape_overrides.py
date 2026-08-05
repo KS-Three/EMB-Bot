@@ -432,17 +432,133 @@ def test_underlay_style_override_rejects_an_unknown_style():
         apply_shape_edits(regs, [0], [], {"Q": {"underlay_style": "sparkly"}}, chart=[0] * 20)
 
 
+# --- boundary override (contract v1.4) ---------------------------------------
+#
+# Higher risk than every other key in this file: a hand-edited outline can be
+# self-intersecting, degenerate, or poke a hole outside the new shell, any of
+# which would corrupt stage 5 onward if it reached there. What this section
+# pins: a valid reshape replaces the polygon (and its cached area) exactly,
+# holes ride along unchanged, downstream stitch planning stays sane on an
+# awkward-but-valid hand edit, and every one of the invalid shapes above is
+# rejected with a clear ValueError — never a crash, never silently repaired.
+
+def _no_degenerate_stitches(plan) -> None:
+    """Every run: finite coordinates, no zero-length segment (a stitch that
+    goes nowhere), which is what a self-intersecting or near-degenerate fill
+    would produce if the boundary validation let one through."""
+    for b in plan.blocks:
+        for r in b.runs:
+            assert r.points, f"{r.kind} run with no points"
+            for x, y in r.points:
+                assert math.isfinite(x) and math.isfinite(y)
+            for a, c in zip(r.points, r.points[1:]):
+                assert a != c, f"zero-length stitch in a {r.kind} run"
+
+
+def test_boundary_override_replaces_the_polygon_and_recomputes_area():
+    """The reshaped geometry — not just a bigger bounding box — reaches the
+    Region, and `area_mm2` (which sort order and the review payload both
+    depend on) is recomputed from it, not left stale."""
+    sq = bar(10, 10)
+    # An L-shape: a real reshape, not just a scale.
+    l_shape = [[-5, -5], [5, -5], [5, 0], [0, 0], [0, 5], [-5, 5]]
+    regs, _, warns = apply_shape_edits(
+        [region(sq, "Q")], [0], [], {"Q": {"boundary_override": l_shape}}, chart=[0] * 20,
+    )
+    assert warns == []
+    got = regs[0]
+    assert got.polygon.equals(Polygon(l_shape))
+    assert got.area_mm2 == pytest.approx(75.0)   # 100 - the missing 5x5 corner
+    assert got.area_mm2 != sq.area                # actually changed, not stale
+
+
+def test_boundary_override_preserves_existing_holes():
+    """Boundary editing is exterior-ring only (v1.4 scope) — a shape's holes
+    (e.g. a letter's counter) ride forward unchanged onto the new shell."""
+    shell = [(0, 0), (10, 0), (10, 10), (0, 10)]
+    hole = [(4, 4), (6, 4), (6, 6), (4, 6)]
+    ring = region(Polygon(shell, [hole]), "O")
+    bigger_shell = [[0, 0], [12, 0], [12, 12], [0, 12]]
+    regs, _, _ = apply_shape_edits(
+        [ring], [0], [], {"O": {"boundary_override": bigger_shell}}, chart=[0] * 20,
+    )
+    poly = regs[0].polygon
+    assert len(poly.interiors) == 1
+    assert poly.area == pytest.approx(144.0 - 4.0)   # bigger shell, same 2x2 hole
+
+
+def test_boundary_override_survives_through_stage5_and_stage7_on_an_awkward_shape():
+    """The downstream-safety check: a valid but deliberately awkward hand
+    edit (a deep, near-touching notch — the kind a real drag-vertex UI would
+    produce) must still resolve overlaps and sequence into sane stitches,
+    alongside an ordinary neighbour shape of a different colour."""
+    sq = bar(20, 20)
+    awkward = [
+        [-10, -10], [10, -10], [10, 10], [0.2, 10], [0.2, -9.5], [-0.2, -9.5],
+        [-0.2, 10], [-10, 10],
+    ]
+    assert Polygon(awkward).is_valid, "fixture must itself be a valid polygon"
+    regs, _, warns = apply_shape_edits(
+        [region(sq, "Q")], [0], [], {"Q": {"boundary_override": awkward}}, chart=[0] * 20,
+    )
+    assert warns == []
+    neighbour = region(bar(10, 10, cx=25), "N", {})
+    plan, seq_warnings = plan_for(regs + [neighbour])
+    _no_degenerate_stitches(plan)
+    assert kinds_by_shape(plan)["Q"], "the reshaped region still produced stitches"
+    assert kinds_by_shape(plan)["N"], "and its neighbour is unaffected"
+
+
+@pytest.mark.parametrize("bad_boundary,reason", [
+    ([[0, 0], [10, 10], [10, 0], [0, 10]], "self-intersecting bowtie"),
+    ([[0, 0], [0.1, 0], [0.1, 0.1], [0, 0.1]], "area under the sewability floor"),
+    ([[0, 0], [1, 1]], "fewer than 3 points"),
+])
+def test_boundary_override_rejects_bad_geometry_with_a_clear_error_not_a_crash(bad_boundary, reason):
+    regs = [region(bar(12, 12), "Q")]
+    with pytest.raises(ValueError, match=r"boundary_override"):
+        apply_shape_edits(regs, [0], [], {"Q": {"boundary_override": bad_boundary}}, chart=[0] * 20)
+    # And the input regions were never mutated by the failed attempt.
+    assert regs[0].polygon.equals(bar(12, 12))
+
+
+def test_boundary_override_rejects_too_many_points():
+    from digitizer_core.regions import _MAX_BOUNDARY_POINTS
+
+    huge = [[math.cos(t) * 10, math.sin(t) * 10]
+            for t in [i * 2 * math.pi / (_MAX_BOUNDARY_POINTS + 1)
+                      for i in range(_MAX_BOUNDARY_POINTS + 1)]]
+    regs = [region(bar(12, 12), "Q")]
+    with pytest.raises(ValueError, match="boundary_override"):
+        apply_shape_edits(regs, [0], [], {"Q": {"boundary_override": huge}}, chart=[0] * 20)
+
+
+def test_boundary_override_dedupes_a_closed_ring_the_same_as_outline_mm_sends_it():
+    """`outline_mm` (the review payload) always repeats the first point as the
+    last — shapely's own `exterior.coords` convention, and the natural shape
+    for a client to read handles from and send straight back. That must not
+    be mistaken for an extra, distinct point."""
+    sq = [[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]   # closed, 5 entries
+    regs, _, warns = apply_shape_edits(
+        [region(bar(10, 10), "Q")], [0], [], {"Q": {"boundary_override": sq}}, chart=[0] * 20,
+    )
+    assert warns == []
+    assert regs[0].polygon.equals(Polygon(sq))
+    assert regs[0].meta["boundary_override"] == [(0.0, 0.0), (10.0, 0.0), (10.0, 10.0), (0.0, 10.0)]
+
+
 # --- carry-forward -----------------------------------------------------------
 
 def test_review_intent_rides_the_id_carry_forward():
     """`match_shape_ids` carries the operator's per-shape decisions onto the
     next generation, exactly as the config docstring promises for border and
-    appliqué — and now for tier, fill angle, within-layer sew order and
-    underlay style too."""
+    appliqué — and now for tier, fill angle, within-layer sew order,
+    underlay style and a hand-edited boundary too."""
     prev = [region(bar(10, 4), "OLD",
                    {"tier": "satin", "fill_angle_deg": 45.0, "border": "bean",
                     "applique": True, "layer": 3, "sew_order": 1,
-                    "underlay_style": "zigzag"})]
+                    "underlay_style": "zigzag",
+                    "boundary_override": [(-5.0, -2.0), (5.0, -2.0), (5.0, 2.0), (-5.0, 2.0)]})]
     cur = [region(bar(10.2, 4.1), "NEW")]
     match_shape_ids(prev, cur)
     assert cur[0].shape_id == "OLD"
@@ -452,7 +568,36 @@ def test_review_intent_rides_the_id_carry_forward():
     assert cur[0].meta.get("applique") is True
     assert cur[0].meta.get("sew_order") == 1
     assert cur[0].meta.get("underlay_style") == "zigzag"
+    assert cur[0].meta.get("boundary_override") == \
+        [(-5.0, -2.0), (5.0, -2.0), (5.0, 2.0), (-5.0, 2.0)]
     assert cur[0].meta["layer"] == 0, "pipeline facts stay the new generation's"
+
+
+def test_boundary_override_survives_a_stateless_redigitize_keyed_by_the_stable_shape_id(base):
+    """The same guarantee the other override keys have, proven the same way:
+    `apply_shape_edits` runs on FRESH stage 1-4 output every generation, so
+    the id a `boundary_override` is keyed on is the deterministic pre-edit
+    hash (`assign_shape_ids`) — stable across re-digitizes of the same
+    artwork/config regardless of how drastically the edit reshapes the
+    survivor. This is the mechanism `match_shape_ids`' carry-forward (above)
+    exists to backstop if that hash ever churns; this test proves the common
+    path that doesn't need it."""
+    result, _ = base
+    purple = only(result, "2905")     # rectangle
+    grown = [[x * 1.5, y * 1.5] for x, y in purple.polygon.exterior.coords]
+
+    c = cfg(shape_overrides={purple.shape_id: {"boundary_override": grown}})
+    result2, plan2 = digitize(ART, c)
+
+    survivor = next(r for r in result2.regions if r.shape_id == purple.shape_id)
+    assert survivor.shape_id == purple.shape_id, "same stable id, no churn"
+    assert survivor.area_mm2 > purple.area_mm2 * 1.5
+    assert survivor.polygon.equals(Polygon(grown))
+    _no_degenerate_stitches(plan2)
+    # Every OTHER shape's id and geometry are untouched by one shape's edit.
+    other_ids_before = {r.shape_id for r in result.regions} - {purple.shape_id}
+    other_ids_after = {r.shape_id for r in result2.regions} - {purple.shape_id}
+    assert other_ids_after == other_ids_before
 
 
 # --- the cache seam ----------------------------------------------------------
@@ -470,3 +615,16 @@ def test_cache_key_sees_the_edit_fields():
     assert content_key(img, with_ov) != content_key(img, with_ov2)
     assert content_key(img, plain) != content_key(img, with_del)
     assert content_key(img, with_ov) == content_key(img, dict(with_ov))
+
+
+def test_cache_key_sees_a_boundary_override():
+    from digitizer_service.jobs import content_key
+
+    img = b"pretend png"
+    plain = {"target_width_mm": 80.0}
+    a = {**plain, "shape_overrides": {"S1": {"boundary_override": [[0, 0], [1, 0], [1, 1]]}}}
+    b = {**plain, "shape_overrides": {"S1": {"boundary_override": [[0, 0], [2, 0], [2, 2]]}}}
+
+    assert content_key(img, plain) != content_key(img, a)
+    assert content_key(img, a) != content_key(img, b)
+    assert content_key(img, a) == content_key(img, dict(a))

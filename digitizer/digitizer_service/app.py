@@ -15,6 +15,7 @@ Run it:  .venv/Scripts/python -m digitizer_service
 from __future__ import annotations
 
 import json
+import math
 import os
 from contextlib import asynccontextmanager
 from dataclasses import fields as dataclass_fields
@@ -24,9 +25,11 @@ import numpy as np
 from fastapi import Body, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from shapely.geometry import Polygon
 from starlette.concurrency import run_in_threadpool
 
 from digitizer_core import PipelineConfig, __doc__ as core_doc  # noqa: F401
+from digitizer_core import machine
 from digitizer_core.adapter import design_size_mm, design_to_pattern, plan_to_design
 from digitizer_core.pipeline import digitize
 from digitizer_core.preflight import run_preflight
@@ -82,7 +85,7 @@ def _require_token(supplied: str | None) -> None:
 # resolution) — but it is still validated here, in this same closed set, so a
 # bad value is still a 400 at submit.
 _OVERRIDE_KEYS = {"thread_index", "fill_angle_deg", "tier", "border", "layer",
-                  "sew_order", "stitched", "underlay_style"}
+                  "sew_order", "stitched", "underlay_style", "boundary_override"}
 _TIER_VALUES = {"auto", "satin", "fill", "run", "sketch"}
 _BORDER_VALUES = {"off", "auto", "bean"}
 # fabrics.py's own vocabulary, verbatim — the one place that spells out the
@@ -94,6 +97,32 @@ _BORDER_VALUES = {"off", "auto", "bean"}
 # wrong underlay.
 _UNDERLAY_VALUES = {"none", "edge_run", "center_run", "edge_zigzag", "edge_lattice",
                     "double_lattice", "zigzag"}
+# `boundary_override` (contract v1.4) point-count bounds — mirrored,
+# verbatim, in `digitizer_core.regions`'s own copy (the defense-in-depth
+# check for any caller that isn't this service). This layer also pre-checks
+# the shell alone for validity and the same sewability floor
+# `apply_shape_edits` holds it to (self-intersection, degenerate/zero area) —
+# a fast 400 on the common mistakes. What it cannot pre-check is hole
+# containment: this is validating a request, not a Region, so it has never
+# seen the shape's existing holes. That one check still only runs in
+# `apply_shape_edits`, at job-run time — still a clean error there, never a
+# crash, just not a submit-time 400.
+_MIN_BOUNDARY_POINTS = 3
+_MAX_BOUNDARY_POINTS = 500
+
+
+def _dedupe_ring(points: list) -> list:
+    """Drop consecutive duplicate points, including a closing point that
+    repeats the first — see `digitizer_core.regions._dedupe_ring` (the same
+    function, mirrored) for why a client may send either convention."""
+    out: list = []
+    for pt in points:
+        if out and out[-1] == pt:
+            continue
+        out.append(pt)
+    if len(out) > 1 and out[0] == out[-1]:
+        out.pop()
+    return out
 
 
 def _canonicalize_shape_edits(data: dict, chart_len: int) -> None:
@@ -184,6 +213,46 @@ def _canonicalize_shape_edits(data: dict, chart_len: int) -> None:
         st = entry.get("stitched")
         if st is not None and not isinstance(st, bool):
             bad = "stitched must be a boolean"
+        bo = entry.get("boundary_override")
+        if bo is not None:
+            if not isinstance(bo, list):
+                bad = "boundary_override must be a list of [x, y] points"
+            else:
+                pts = _dedupe_ring(bo)
+                if not _MIN_BOUNDARY_POINTS <= len(pts) <= _MAX_BOUNDARY_POINTS:
+                    bad = (f"boundary_override must have {_MIN_BOUNDARY_POINTS}.."
+                           f"{_MAX_BOUNDARY_POINTS} distinct points (got {len(pts)})")
+                elif not all(
+                    isinstance(pt, list) and len(pt) == 2
+                    and all(isinstance(c, (int, float)) and not isinstance(c, bool)
+                            for c in pt)
+                    for pt in pts
+                ):
+                    bad = "boundary_override points must be [x, y] pairs of numbers"
+                elif not all(math.isfinite(c) for pt in pts for c in pt):
+                    bad = "boundary_override points must be finite numbers"
+                else:
+                    # The shell-only half of `apply_shape_edits`'s geometry
+                    # check, pre-run here for a fast 400 on the common
+                    # mistake (a drag that crosses itself, or collapses the
+                    # shape to a sliver) — the same `is_valid` + sewability-
+                    # floor test, minus hole containment: this layer never
+                    # sees the shape's existing holes (it is validating a
+                    # request, not a Region), so a hole poking outside the
+                    # new shell surfaces at job-run time instead, still as a
+                    # clean error (`apply_shape_edits` raises, the job
+                    # registry reports it), never a crash.
+                    poly = Polygon(pts)
+                    if not poly.is_valid or poly.is_empty:
+                        bad = ("boundary_override is not a valid simple polygon "
+                               "— check for self-intersections")
+                    elif (poly.area < machine.RUN_MIN_AREA_MM2
+                          or poly.exterior.length < machine.RUN_MIN_LOOP_MM):
+                        bad = (f"boundary_override is too small to sew "
+                               f"({poly.area:.4f} mm², floor "
+                               f"{machine.RUN_MIN_AREA_MM2} mm²)")
+                    else:
+                        entry["boundary_override"] = [[float(x), float(y)] for x, y in pts]
         if bad:
             raise HTTPException(
                 status_code=400, detail=f"shape_overrides[{sid!r}]: {bad}.",
