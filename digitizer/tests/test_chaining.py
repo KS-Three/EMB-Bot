@@ -456,13 +456,21 @@ def test_chaining_off_restores_the_pure_distance_rule(alpha):
             prev = run.points[-1]
 
 
-def test_chaining_cuts_the_benchmark_fixtures_trim_rate(alpha):
+def test_chaining_cuts_the_benchmark_fixtures_trim_rate(enthusiast_logo_82mm):
     """The measured reason this exists: 8.4 trims per 1,000 stitches against a
     professional corpus that runs 0.1-4.1. Pinned on a committed fixture so the
-    gain cannot silently regress."""
-    conf = cfg(**CHAIN_ON)
-    off = plan_stitches(alpha, cfg(**PLAN_CFG_KW, chain_links=False))
-    on = plan_stitches(alpha, conf)
+    gain cannot silently regress.
+
+    Moved from `logo_alpha.png` to `enthusiast_logo.png` @ 82mm (2026-08-06)
+    -- see `enthusiast_logo_82mm`'s own fixture docstring in conftest.py for
+    why: the satin/fill classifier's flat-lane fix correctly reclassified two
+    of logo_alpha's shapes from satin to fill, which eliminated the specific
+    gap chaining used to bridge on that fixture. This is a stronger
+    demonstration than logo_alpha ever gave: on the new fixture chaining cuts
+    trims 21 -> 9 (vs. the old 13 -> 9) at a comfortable 3.4/1k, not hugging
+    the 4.1 ceiling."""
+    off = plan_stitches(enthusiast_logo_82mm, cfg(target_width_mm=82.0, garment_id="left_chest", chain_links=False))
+    on = plan_stitches(enthusiast_logo_82mm, cfg(target_width_mm=82.0, garment_id="left_chest", chain_links=True))
     assert on.stats.trims < off.stats.trims, "chaining removed no trims at all"
     rate = 1000.0 * (on.stats.trims - 1) / on.stats.stitch_count
     assert rate <= 4.1, f"{rate:.1f} trims/1k is still outside the corpus band"
@@ -536,35 +544,43 @@ def _thread_bare_mm(plan, step_mm: float = 0.1):
     return links, exposed, bare_mm, worst
 
 
-def test_chaining_adds_no_bare_fabric_exposure_on_the_committed_fixture(alpha):
+def test_chaining_adds_no_bare_fabric_exposure_on_the_committed_fixture(enthusiast_logo_82mm):
     """The fix, measured. Replaces `test_chaining_currently_puts_thread_on_bare
     _fabric`, deleted in the same commit as its own docstring asked for.
 
     That test pinned a KNOWN DEFECT: `_link_cover` decided cover against
     `p.polygon` — the whole sewing polygon of every shape the block had
     stitched — but no tier stitches its whole polygon, so the router was told
-    it could travel over ground its own colour never reached. On this fixture
-    that took bare exposure from 0.30 mm/2 runs (chaining off) to 5.34 mm/6
-    runs (chaining on).
+    it could travel over ground its own colour never reached.
 
     `_link_cover` now builds the already-laid half of the cover from `runs`
     directly — the block's real emitted stitch centrelines, buffered to their
-    real thread width — instead of from `p.polygon`. Measured on this same
-    fixture, chaining's four extra links (10 -> 14) add ZERO bare exposure:
-    `exp1 == exp0` and `bare1 == bare0` to four decimal places, both sides
-    landing on the same 0.3011 mm / 0.2057 mm stage-6-only floor this file's
-    other test (`..._no_link_is_worse_than_stage_6_already_was`) already
-    names as pre-existing and not this lane's to fix. Trims still fall (13 ->
-    9) and total stitch count still falls (3012 -> 2992) — the win law 59
-    measured is real and it no longer costs a float to get.
+    real thread width — instead of from `p.polygon`.
+
+    **Fixture moved from `logo_alpha.png` to `enthusiast_logo.png` @ 82mm
+    (2026-08-06)** — see `enthusiast_logo_82mm`'s own fixture docstring in
+    conftest.py. The satin/fill classifier's flat-lane fix correctly
+    reclassified two of logo_alpha's shapes from satin to fill, which
+    eliminated the specific gap chaining used to bridge on that fixture
+    (measured directly: chain_links on vs. off became byte-identical output
+    there — 6 links either way, 0 exposure either way). Every
+    synthetic-geometry chaining test elsewhere in this file is unaffected;
+    this is that one fixture's geometry changing, not a chaining regression.
+
+    On the new fixture, chaining's 15 extra links (2 -> 17) add ZERO bare
+    exposure: `exp1 == exp0 == 0` and `bare1 == bare0 == 0.0` exactly — a
+    cleaner result than logo_alpha's old 0.3011mm/0.2057mm floor, not a
+    weaker one. Trims fall 21 -> 9 and total stitch count falls
+    correspondingly — the win law 59 measured is real and it still doesn't
+    cost a float to get.
 
     `covered_by` (a later colour's own sewing polygon, standing in for thread
     that has not been planned yet) is unchanged and is not what this test
     covers — see `config.py`'s `chain_links` docstring for what is still
     outstanding before the default flips.
     """
-    off = plan_stitches(alpha, cfg(**{**PLAN_CFG_KW, "chain_links": False}))
-    on = plan_stitches(alpha, cfg(**CHAIN_ON))
+    off = plan_stitches(enthusiast_logo_82mm, cfg(target_width_mm=82.0, garment_id="left_chest", chain_links=False))
+    on = plan_stitches(enthusiast_logo_82mm, cfg(target_width_mm=82.0, garment_id="left_chest", chain_links=True))
 
     l0, exp0, bare0, worst0 = _thread_bare_mm(off)
     l1, exp1, bare1, worst1 = _thread_bare_mm(on)
