@@ -1245,18 +1245,115 @@ is now fixed (see below), four remain open:
   abandoned then picked up again" fragmentation that doc described for its
   own commit.
 
-  **Confirmed but NOT fixed — documented gaps, left alone because a
-  correct fix isn't well-specified enough to commit to without guessing:**
+  **Follow-up, 2026-08-06: two of the three "confirmed but not fixed" gaps
+  below are now fixed, the third stays open by design.** Same standing
+  discipline as the first pass — real geometry measured before/after on
+  `SHIELD` (a concave shield polygon), `BIG_SQUARE`, and a plain circle,
+  not trust that tests pass. New regression tests, 49 → 54 in
+  `test_applique.py`.
+
+  **Fixed — `APPLIQUE_COVER_PULL_COMP_MM` (0.20mm, §2.8) now compensates
+  the cover satin; it was defined and applied by no code path.** The same
+  effect `Fabric.pull_comp_mm` compensates for on an ordinary satin column
+  (Law 24: thread tension pulls each cross's two penetrations together, so
+  a column sews narrower than digitized) was uncompensated on the one
+  column type that deliberately does NOT go through stage 5's fabric pull
+  comp — `applique_pass` passes the raw artwork polygon on purpose, because
+  B has to stay the exact tolerance-stack reference point, not something a
+  fabric preset already grew. Fix: `_cover_layer` now widens the column it
+  actually stitches — `c_in -= pull`, `c_out += pull` — the same direction
+  stage 5's `poly.buffer(pull)` widens an ordinary satin ribbon (confirmed
+  against `Fabric` "pique_knit", pull_comp_mm 0.3: a 4.5mm bar sews at
+  5.1mm, `tests/test_pushcomp.py`). Measured on `SHIELD` at the trim-in-place
+  default: cover rails moved from (-1.50, +1.50) to (-1.70, +1.70) — exactly
+  `g.c_in - 0.20` / `g.c_out + 0.20` — a 3.00mm design now sewing a 3.40mm
+  column. `AppliqueGeometry.c_in`/`c_out`/`width_mm` are deliberately left
+  at the solved, uncompensated values, because every gate
+  (`edge_headroom_mm`, `bury_mm`, §2.12's checks) and every other test in
+  the file measures against the DESIGNED width, not the sewn one — and it
+  is cover-only: pre-cut's zigzag tackdown shares `_rail_column` with the
+  cover but §2.8's row is specific to layer 4, so the tackdown's own width
+  (`min(APPLIQUE_TACK_WIDTH_MM, W_cover - 2*m_bury)`, still 2.00mm at the
+  default) is unchanged and pinned by a new regression. New tests:
+  `test_cover_pull_comp_leaves_the_solved_geometry_and_the_tackdown_alone`,
+  and `test_cover_straddles_the_edge_and_buries_the_tackdown` updated (its
+  old assertion, `min(cover) == g.c_in`, is exactly the uncompensated
+  number pull comp now moves past).
+
+  **Fixed — `_cover_layer`'s closure overlap now reads
+  `APPLIQUE_CLOSURE_OVERLAP_STITCHES` (6) instead of inheriting
+  `BORDER_CLOSURE_OVERLAP_MM` (1.40mm) from the border module.**
+  Investigated first, because at the 0.40mm cover spacing the two numbers
+  were already close — 1.40mm / 0.20mm-per-station rounds to 7 stitches,
+  one more than the appliqué constant, and both sit inside Stahls'
+  published 4–8 stitch window, so the substitution was never a visible
+  defect. Fixed anyway: it was a coincidence resting on
+  `APPLIQUE_COVER_SPACING_MM` staying 0.40mm (nothing enforced that), not a
+  read of the appliqué tier's own §2.8 number, and the fix sidesteps a
+  second, independent imprecision — `_loop_stations` divided the mm
+  distance by a per-ring arc-length step that varies with ring geometry,
+  so the exact stitch count could drift shape to shape even at a fixed
+  spacing. `stage6_border._loop_stations`/`_satin_loop` gained an
+  `overlap_stitches` param (an exact station count, bypassing the
+  mm-divided-by-step path) that `_cover_layer` now passes; every other
+  caller (border's own outline, the pre-cut zigzag tackdown) leaves it
+  `None` and is provably unchanged (`tests/test_border.py`,
+  `test_run_and_double_run_tackdowns_stay_a_single_line`,
+  `test_pre_cut_tackdown_is_a_real_column_not_a_zero_width_run` all still
+  pass byte-for-byte). Measured on a plain 20mm-radius circle: the
+  appliqué-specific overlap emits exactly one fewer cross than the
+  border-inherited one it replaced (688 vs. 689). New test:
+  `test_cover_closure_overlap_reads_the_appliqué_specific_stitch_count`
+  (monkeypatches the constant and confirms the emitted cross count moves
+  with it exactly — a proof the old code, which read nothing, could not
+  have passed).
+  `APPLIQUE_OVERLAP_ALLOWANCE_FRAC` (0.5) is a **different, unrelated**
+  constant despite the similar name and was investigated separately: it is
+  §2.11's Wilcom number ("cutting overlap = half the cover width") for
+  Mode B multi-piece batching — how one piece's cutting boundary dilates
+  into a neighbour it overlaps — not how a single piece's own cover
+  circuit overlaps its own start. Mode B is explicitly not built
+  (`applique_pass`'s own docstring: "Mode B batching... is NOT built");
+  `APPLIQUE_OVERLAP_ALLOWANCE_FRAC` correctly stays unread until it is, and
+  wiring it into `_cover_layer` would have been the wrong fix for the wrong
+  gap. Left alone, now documented in `machine.py` next to the constant.
+
+  **Fixed — `max_cover_width`'s 5.0mm clamp (and the 2.5mm floor) no longer
+  silent.** `solve_cover_width`'s own `"clamped"` field has always recorded
+  whether the width it returned is the tolerance stack's own request or one
+  of the two hard bounds; no caller read it. New code
+  `APPLIQUE_COVER_WIDTH_CLAMPED` (`warnings_codes.py`), fired by
+  `check_gates` and aggregated by `applique_pass` exactly like the other
+  four appliqué gates, reporting which bound (`"floor"` or `"ceiling"`)
+  fired. Also fixed in the same pass: `solve_geometry`'s override branch
+  (`width_mm=...`, `PipelineConfig.applique_cover_width_mm`) was carrying
+  the PRE-override `"clamped"` verdict forward unchanged, so a caller
+  override that itself blew past the ceiling — config.py's own documented
+  "escape hatch... still clamped to [2.5, 5.0]" — was invisible to the new
+  code too; `"clamped"` is now recomputed against the actual requested
+  override. This override path is the practically reachable one: the
+  solver's own W_req never reaches either bound at any published trim
+  discipline (§2.3's table tops out at 4.0mm, loose), confirmed directly —
+  `solve_cover_width(m_edge=3.0)` is the one way found to make the solver
+  itself clamp (W_req 7.7mm → 5.0mm). New tests:
+  `test_solve_cover_width_can_clamp_from_the_tolerance_stack_itself`,
+  `test_a_clamped_cover_width_is_warned_not_silent`,
+  `test_a_forced_cover_width_override_warns_end_to_end` (through
+  `applique_pass` on the benchmark logo at `applique_cover_width_mm=8.0`).
+
+  **Still confirmed but NOT fixed — genuinely out of scope, unchanged from
+  the first pass:**
   - `applique_cover="zigzag"` and `"e_stitch"` are accepted config values
-    but produce **byte-identical stitch geometry** to `"satin"` — same point
-    count, same coordinates, verified directly. `cover` only changes the
-    printed worksheet label. §2.8 calls zigzag cover "a genuinely different
-    aesthetic, not a cheap satin" at a different spacing, and E-stitch a
-    different stitch ORDER (a comb pattern) — neither is built. Not fixed
-    here because the spec itself gives two different candidate zigzag
-    spacings (1.69mm SPI vs. Melco's 3.0mm preset) as alternatives with no
-    stated tie-break, and E-stitch's comb order is a real algorithm this
-    audit didn't have grounds to invent.
+    but produce **byte-identical stitch geometry** to `"satin"` — re-verified
+    directly this pass (same point-for-point equality on `SHIELD`, unaffected
+    by the pull-comp/closure-overlap fixes above, which apply uniformly
+    regardless of `cover`). `cover` still only changes the printed worksheet
+    label. §2.8 calls zigzag cover "a genuinely different aesthetic, not a
+    cheap satin" at a different spacing, and E-stitch a different stitch
+    ORDER (a comb pattern) — neither is built. Still not fixed because the
+    spec itself gives two different candidate zigzag spacings (1.69mm SPI
+    vs. Melco's 3.0mm preset) as alternatives with no stated tie-break, and
+    E-stitch's comb order is a real algorithm with no spec to follow here.
   - §2.12's pre-cut `min_inscribed_diameter >= 8mm` gate (scissors/placement
     floor) is never checked — only the 12mm trim-in-place floor is. The
     constant (`APPLIQUE_MIN_INSCRIBED_PRECUT_MM`) exists and is unread; the
@@ -1265,25 +1362,16 @@ is now fixed (see below), four remain open:
     warning. Not fixed because the physical rationale for the specific
     8mm number isn't stated anywhere this audit found, unlike the
     tackdown-width fix above where every number traced to a stated vendor
-    constraint.
-  - `APPLIQUE_COVER_PULL_COMP_MM` (0.20mm, up to 0.30 on knits per §2.8) is
-    defined and never applied — the cover satin gets no pull compensation.
-    `APPLIQUE_CLOSURE_OVERLAP_STITCHES` (6) and `APPLIQUE_OVERLAP_ALLOWANCE_
-    FRAC` (0.5) are likewise defined and never read (`_cover_layer` inherits
-    `BORDER_CLOSURE_OVERLAP_MM` from the border module instead, which lands
-    in the published 4–8 stitch window anyway, so this one is lower-stakes
-    than the pull-comp gap). `max_cover_width`'s 5.0mm clamp is silent —
-    `solve_cover_width`'s own `"clamped"` field is computed and never read
-    by any caller, so a design that hits the snag-risk ceiling gets no
-    warning despite §2.12 flagging that ceiling by name.
+    constraint; not touched this pass either — out of its scope.
 
   **Caveat, stated plainly:** this is 3 real fixtures and a handful of
   targeted synthetic constructions (dog-bone, off-centre ring, two-piece
-  overlap harness), not a corpus sweep, and it covers the geometry/gate
-  layer only — no sew-out, same standing caveat as every other tier in this
-  doc. `trim_discipline`/`material`/`placement` combinations were exercised
-  through the existing shipped tests' parametrization, not independently
-  re-swept by this pass.
+  overlap harness, a plain circle for the closure-overlap count), not a
+  corpus sweep, and it covers the geometry/gate layer only — no sew-out,
+  same standing caveat as every other tier in this doc. `trim_discipline`/
+  `material`/`placement` combinations were exercised through the existing
+  shipped tests' parametrization, not independently re-swept by either
+  pass.
 
 Every claim about visual/sew quality beyond internal geometry checks is
 **pending sew-out** — see the cross-cutting item above.

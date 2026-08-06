@@ -329,7 +329,8 @@ def _clamped_cross(px: float, py: float, nx: float, ny: float, width: float,
 
 
 def _loop_stations(pts: list[tuple[float, float]], total: float, step: float,
-                   start: int, overlap_mm: float) -> list[int | float]:
+                   start: int, overlap_mm: float,
+                   overlap_stitches: int | None = None) -> list[int | float]:
     """Station indices for one circuit, plus the phase-shifted closing overlap.
 
     The loop runs the full ring and then continues PAST its own start by
@@ -349,11 +350,24 @@ def _loop_stations(pts: list[tuple[float, float]], total: float, step: float,
     of an OPPOSITE-rail opening (own-rail holes a full station away on both
     sides); for odd n the wrap itself flips parity and a zero shift does the
     same thing.
+
+    `overlap_stitches`, when given, states the overlap directly as a station
+    (stitch) count instead of a distance divided by `step` — what
+    `stage6_applique._cover_layer` wants, because its own spec constant
+    (`APPLIQUE_CLOSURE_OVERLAP_STITCHES`) is already a stitch count, and
+    round-tripping it through an mm distance would leave the exact number
+    hostage to how evenly `step` divides this particular ring's arc length.
+    Every other caller passes `overlap_mm` alone and is untouched.
     """
     n = len(pts)
     out: list[int | float] = [(start + i) % n for i in range(n)]
-    if overlap_mm > 0 and total > 0:
-        extra = int(overlap_mm / step)
+    extra = 0
+    if total > 0:
+        if overlap_stitches is not None:
+            extra = max(0, overlap_stitches)
+        elif overlap_mm > 0:
+            extra = int(overlap_mm / step)
+    if extra > 0:
         shift = 1 if n % 2 == 0 else 0
         for j in range(extra):
             out.append((start + j + shift) % n)
@@ -397,8 +411,14 @@ def _pick_start(pts: list[tuple[float, float]], radii: np.ndarray,
 
 def _satin_loop(ring_pts: list[tuple[float, float]], total: float, step: float,
                 width: float, inside, entry: tuple[float, float] | None,
-                k_tan: int) -> tuple[list[tuple[float, float]], int, int]:
-    """One closed circuit as a satin column. -> (points, crosses, clamped)."""
+                k_tan: int, overlap_stitches: int | None = None
+                ) -> tuple[list[tuple[float, float]], int, int]:
+    """One closed circuit as a satin column. -> (points, crosses, clamped).
+
+    Closure overlap is `machine.BORDER_CLOSURE_OVERLAP_MM` (a distance) unless
+    `overlap_stitches` gives an exact station count instead — see
+    `_loop_stations` for why appliqué's cover wants that path.
+    """
     n = len(ring_pts)
     tans = _tangents(ring_pts, k_tan)
     sign = _inward_sign(ring_pts, tans, inside)
@@ -418,7 +438,8 @@ def _satin_loop(ring_pts: list[tuple[float, float]], total: float, step: float,
         widths.append(w)
 
     stations = _loop_stations(ring_pts, total, step, start,
-                              machine.BORDER_CLOSURE_OVERLAP_MM)
+                              machine.BORDER_CLOSURE_OVERLAP_MM,
+                              overlap_stitches)
 
     pts: list[tuple[float, float]] = []
     rails: list[int] = []          # which rail each emitted point sits on
