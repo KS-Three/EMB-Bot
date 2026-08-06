@@ -1061,11 +1061,22 @@ the Python digitizer service's `/export` route (pyembroidery-based).
   (PR #58, `pes-exp-byte-framing-fix`): `trimRecord()` now writes the 4-byte Melco
   form. Harness re-run: a trimmed design now decodes whole (identity
   transform, rms 0, colour change and second colour block both present),
-  where it used to truncate at 11 of 15 stitches. Not raised all the way to
-  High since (a) this is cross-validated against pyembroidery, not a real
-  machine/software sew or open, and (b) the shared "end"-record extra-stitch
-  quirk (also present in DST) is still there, just out of this fix's scope.
-  The Python `/export` path was never affected (different writer).
+  where it used to truncate at 11 of 15 stitches. **Also fixed, 2026-08-06:**
+  the "end"-record extra-stitch quirk this entry used to flag as out of
+  scope — `encodeEXP` fell through to the generic stitch path for the
+  terminal `{type:"end"}` sentinel `stitchModel.js` always appends, writing
+  it as one real zero-delta stitch that standard readers decoded as an extra
+  phantom stitch beyond the design's true count (16 of 15). `pes.js`'s own
+  encoder already stopped at `"end"` the same way; `encodeEXP` now does too
+  (`if (st.type === "end") break;`, matching `pes.js`'s exact pattern).
+  Harness re-run: `exp.notrim`/`exp.full` both now read `expected 15, decoded
+  15` (was `decoded 16`). DST carries the identical underlying gap and is
+  deliberately left alone (Kent's call, migration risk — see the cross-
+  cutting section) — EXP has no importer anywhere in this codebase, so
+  fixing it here carries none of that risk, same low-risk read the original
+  PES/EXP fix got. Not raised all the way to High since this is
+  cross-validated against pyembroidery, not a real machine/software sew or
+  open. The Python `/export` path was never affected (different writer).
 - **PES: Medium-High**, upgraded from Low this pass. README's own
   "best-effort — reverse-engineered" framing still applies to the format's
   general maturity, but the specific defects PR #18 found — the 5-byte
@@ -1118,11 +1129,13 @@ PES/EXP's own cross-validation findings (PR #18) are **fixed as of
 2026-08-05** (PR #58, `pes-exp-byte-framing-fix` — see the cross-cutting section
 above and this file's "Last updated" entry for the full before/after): PES
 no longer decodes as garbage in standard readers, and EXP no longer aborts
-at the first trim. Remaining, explicitly-accepted gaps: nearest-chart
-colour mapping isn't a lossless round-trip (64 fixed PEC chart colors); the
-shared "end"-record extra-stitch quirk (present in EXP and DST, not PES)
-is unaffected; and no real Brother-machine load or PE-Design open has
-happened yet — only pyembroidery cross-validation.
+at the first trim. The "end"-record extra-stitch quirk EXP used to share
+with DST is **also fixed as of 2026-08-06** — see the EXP bullet above;
+DST keeps its own copy of the same gap, deliberately, Kent's call.
+Remaining, explicitly-accepted gaps: nearest-chart colour mapping isn't a
+lossless round-trip (64 fixed PEC chart colors); and no real Brother-machine
+load or PE-Design open has happened yet — only pyembroidery
+cross-validation.
 
 **Next step:** for DST, same as the cross-cutting item — a third-party
 sew-out/read settles the axis question. For PES/EXP, the verdict memo's own
