@@ -836,8 +836,43 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
         prev = list(width)
         for i in range(1, n - 1):
             width[i] = (prev[i - 1] + prev[i] + prev[i + 1]) / 3.0
+    # Found and fixed 2026-08-05 (satin self-overlap). First read as a
+    # junction measurement artifact (`field.half_at()` reporting a MERGED
+    # footprint where several strokes meet) and a local-neighbourhood
+    # outlier cap was tried -- reverted, disproven by direct inspection:
+    # `logo_alpha.png`'s `Sf5200f3f` stroke 0 (a glyph's apex, both ends
+    # FREE, no junction node on this stroke at all) profiles as a smooth,
+    # continuous, single-peaked taper across all 36 of its own stations --
+    # half-width ramping 0.17 -> 4.67mm -> 0.17mm, no isolated spike a local
+    # window could tell apart from its neighbours, because EVERY neighbour
+    # near the peak agrees. This is the shape's real medial-axis width, not
+    # noise: an "A"-like apex genuinely is that wide where its two legs
+    # converge. It is real width, but width the corpus never validates satin
+    # crosses for at all -- `SATIN_MAX_WIDTH_MM` is exactly the ceiling this
+    # module's own classifier gates satin-vs-fill on ("ribbons wider than
+    # this sew better as fill", machine.py), the same one `_stroke_
+    # underlay`'s oversize check and `SPLIT_SATIN_ABOVE_MM` already reuse for
+    # the identical reason -- so a flat per-station cap at that ceiling,
+    # not a new number, is the same "don't extrapolate into an unvalidated
+    # regime" call this module already made twice. Measured on `Sf5200f3f`:
+    # eliminates all 2580 non-adjacent self-crossing segment pairs the
+    # uncapped peak produced and drops the shape's own isolated coverage
+    # peak from 9.57 to 3.41 layers (`tests/test_satin.py::
+    # test_satin_crosses_do_not_self_overlap_across_a_wide_junction`,
+    # `tests/test_preflight.py::
+    # test_a_wide_oversize_satin_stroke_does_not_block_on_underlay_glue`).
+    #
+    # This cap is a hard ceiling, not a proportional one, so it also (lightly)
+    # touches a column whose GROWN width crosses the ceiling only because
+    # directional pull comp (Law 22, axial) legitimately widened it a few
+    # tenths of a millimetre past 5.0mm -- `tests/test_pushcomp.py`'s 4.5mm
+    # bar grows to 5.1mm and loses ~0.02mm of that growth to this cap. That
+    # is not a separate bug to route around: a satin cross this module will
+    # not classify past 5.0mm in the first place should not be asked to sew
+    # one past 5.0mm because comp grew it there either -- see that test's own
+    # updated fixture comment.
     for i in range(n):
-        width[i] = min(width[i], floors[i] * 1.6 + 0.2)
+        width[i] = min(width[i], floors[i] * 1.6 + 0.2, machine.SATIN_MAX_WIDTH_MM / 2)
 
     # --- taper zones at free ends ------------------------------------------
     #
@@ -1351,10 +1386,19 @@ def _stroke_underlay(poly: Polygon, st: Stroke, style: str, shape_id: str,
     # finding flipping warn -> block on exactly this shape (coverage_max
     # 13.11 -> 16.69, peak driven by the satin crosses' own pre-existing
     # self-overlap on this wide/blob stroke -- unrelated to law 23 and
-    # unchanged by this fix -- with the widened, denser zigzag underlay
+    # unchanged by THIS fix -- with the widened, denser zigzag underlay
     # supplying just enough extra "glue" thread to bridge that pre-existing
     # near-miss over `_COVERAGE_MIN_PATCH_MM2`'s 25mm2 connected-patch
     # gate). See test_preflight.py's logo_alpha regression test.
+    #
+    # The self-overlap itself is FIXED, same day, separate pass: see
+    # `_rail_points`'s own `SATIN_MAX_WIDTH_MM / 2` per-station cap comment
+    # above (root cause: this same OVERSIZE stroke -- its own apex genuinely,
+    # smoothly widens to ~9.3mm, no junction or measurement artifact
+    # involved -- was still casting full-width crosses there; capped now the
+    # same way the zigzag skip above already treats this regime, at the same
+    # ceiling). This shape's `coverage_max` before any of these fixes was
+    # 13.11 -- now 3.24, see the updated regression pin below.
     oversize = field is not None and any(
         field.half_at(p) * 2.0 > machine.SATIN_MAX_WIDTH_MM for p in spine)
     if style == "zigzag" and not oversize:

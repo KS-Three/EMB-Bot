@@ -462,11 +462,11 @@ def test_a_wide_oversize_satin_stroke_does_not_block_on_underlay_glue(alpha):
     flags its own >7.0mm bucket as 82% non-ribbon junk). The satin crosses
     THEMSELVES already self-overlap there in the unmodified engine
     (`coverage_max` 13.11 pre-law-23 too, confirmed by isolating satin-only
-    coverage) -- a pre-existing, separate defect this fix does not touch --
-    sitting just under `_COVERAGE_MIN_PATCH_MM2`'s 25mm2 connected-patch
-    gate. Law 23's denser, wider zigzag underlay supplied just enough extra
-    "glue" thread to bridge that pre-existing near-miss into a real 30-43mm2
-    connected block patch.
+    coverage) -- at the time this test was written, a pre-existing, separate
+    defect the underlay fix below did not touch -- sitting just under
+    `_COVERAGE_MIN_PATCH_MM2`'s 25mm2 connected-patch gate. Law 23's denser,
+    wider zigzag underlay supplied just enough extra "glue" thread to bridge
+    that pre-existing near-miss into a real 30-43mm2 connected block patch.
 
     Fix (`stage6_satin.py::_stroke_underlay`): skip the zigzag pass
     entirely for a stroke whose local width anywhere exceeds
@@ -476,7 +476,16 @@ def test_a_wide_oversize_satin_stroke_does_not_block_on_underlay_glue(alpha):
     either one. The fixed-up severity is no finding at all (better than the
     pre-law-23 `warn`, not merely restored to it) because the pre-existing
     satin self-overlap alone doesn't reach the connected-patch gate either
-    -- asserted directly here rather than assumed."""
+    -- asserted directly here rather than assumed.
+
+    UPDATE, same day, separate pass: the satin self-overlap itself is now
+    ALSO fixed (`_rail_points`' `SATIN_MAX_WIDTH_MM / 2` per-station cap --
+    see its comment and `test_satin.py::
+    test_satin_crosses_do_not_self_overlap_across_a_wide_junction` for the
+    geometry-level pin). `coverage_max` on this exact fixture/config dropped
+    13.11 -> 3.24; the `> 10.0` floor this test used to assert is gone on
+    purpose, not a regression -- re-asserted below as a ceiling instead so a
+    future junction-cap regression still trips this test."""
     c = cfg(target_width_mm=80.0, garment_id="left_chest")
     report = run_preflight(alpha, plan_stitches(alpha, c), c,
                            image=str(TESTDATA / "logo_alpha.png"))
@@ -485,13 +494,10 @@ def test_a_wide_oversize_satin_stroke_does_not_block_on_underlay_glue(alpha):
     assert not hit, f"must not regress to a DENSITY_STACKED finding: {hit}"
     assert report["metrics"]["coverage_over_block_mm2"] == 0.0
     assert report["metrics"]["coverage_over_warn_mm2"] == 0.0
-    # The self-overlapping satin crosses are a real, separate, pre-existing
-    # defect (present before law 23 too) that this fix does not claim to
-    # solve -- pinned here so nobody mistakes coverage_max staying high for
-    # this test failing to catch a regression. It does not regress: DENSITY_
-    # STACKED gates on CONNECTED patch area (_COVERAGE_MIN_PATCH_MM2), which
-    # this peak alone never reaches.
-    assert report["metrics"]["coverage_max"] > 10.0
+    # The satin self-overlap that used to hold this peak above 10.0 is fixed
+    # (see the docstring UPDATE above) -- pin it low now, not just "not a
+    # finding", so a regression in the junction cap shows up here too.
+    assert report["metrics"]["coverage_max"] < 5.0
 
 
 def test_coverage_reads_stitch_geometry_through_ties_and_splits(plan):

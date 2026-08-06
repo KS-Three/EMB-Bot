@@ -11,7 +11,51 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-05 — text-cluster detection + a regularized
+**Last updated:** 2026-08-05 — the satin self-overlap defect this doc has
+carried as an open callout since the corpus-laws-23/26 pass (area 1 below)
+is **FIXED**: `stage6_satin.py::_rail_points` now caps every satin cross's
+per-station width to `machine.SATIN_MAX_WIDTH_MM / 2`, on top of the
+existing local-corridor cap. Root cause, confirmed by direct spine
+inspection (not assumed): `logo_alpha.png`'s `Sf5200f3f` carries a stroke
+with BOTH ends free — no skeleton junction node on it at all — whose
+half-width profiles as a smooth, single-peaked taper across all 36 of its
+own stations (0.17mm at each tip, ramping continuously to 4.67mm at the
+apex and back down). That is the shape's real medial-axis width, not a
+measurement artifact; an initial "junction merged-footprint DT" hypothesis,
+and a local-neighbourhood-outlier cap built on it, were both tried and
+disproven (the outlier cap made zero difference, since a genuine continuous
+taper has no isolated station to detect against). The fix instead reuses
+`SATIN_MAX_WIDTH_MM` as a flat per-station ceiling — the same
+corpus-validated cap the satin/fill classifier and `_stroke_underlay`'s
+oversize skip (prior update below) already gate on, not a new number, so no
+classifier-eligible column should need a wider cross regardless of why one
+station reads wide. Measured on `Sf5200f3f`: eliminates all 2580
+non-adjacent self-crossing rail-to-rail segment pairs and drops the shape's
+own isolated coverage peak from 9.57 to 3.41 layers (design `coverage_max`
+13.11 -> 3.24 at `target_width_mm=80`/`left_chest`). One real, minor
+collision found and resolved: a synthetic `tests/test_pushcomp.py` fixture
+(a 45x4.5mm bar) legitimately grows to 5.1mm under directional pull comp
+(Law 22) and lost ~0.02mm of `rail_overhang` to the new cap — not a bug the
+push-comp test exists to catch, so its fixture height moved 4.5 -> 4.0mm
+with an inline comment explaining why, rather than loosening the cap to
+route around an incidental collision. `flat_lane_golden.json` regenerated;
+confirmed by structural diff that only the `logo_alpha.png` entry moved
+(`logo_whitebg.png`/`ribbon_curve.png`/`photo/enthusiast_logo.png`
+byte-identical). New regression coverage: `tests/test_satin.py::
+test_satin_crosses_do_not_self_overlap_across_a_wide_junction` (direct
+geometry, not just the aggregate coverage number) and `tests/
+test_preflight.py::test_a_wide_oversize_satin_stroke_does_not_block_on_
+underlay_glue`'s old `coverage_max > 10.0` floor — which existed
+specifically to pin this defect as NOT yet fixed — is now inverted to a
+`< 5.0` ceiling. Full digitizer suite re-run to completion in the
+foreground: **852 passed, 3 skipped, 0 failed** (1136s) — 0 failures this
+run, including the 3 container-environment goldens this doc usually
+caveats as known-flaky, which passed clean here too. Engine/Studio
+untouched by this pass (`git status` confirmed no `src/`/`app/` changes) and
+not re-run, carrying forward their last-verified counts below rather than
+re-asserting unverified numbers.
+
+Prior update below, still 2026-08-05 — text-cluster detection + a regularized
 lettering fallback landed across two PRs, #63 (merged: `textcluster.py`'s
 geometry-only detection of text-like clusters among rescued small shapes,
 pipeline wiring, the service's read-only `text_candidate`/`text_cluster_id`
@@ -145,10 +189,12 @@ carry oversize local strokes). Full suite re-run to completion in the
 foreground: **772 passed, 3 skipped, 0 failed** (811s), 0 failures this
 time (the 3 known-flaky goldens passed clean again). The pre-existing satin
 self-overlap defect on `Sf5200f3f` itself (peak 13.11, unrelated to either
-law) is NOT fixed by this pass and remains open — currently invisible to
+law) was NOT fixed by this pass and was left open — currently invisible to
 `DENSITY_STACKED` because it never reaches the connected-patch gate alone,
 which is arguably its own gap in the coverage instrument's peak-detection
-sensitivity, flagged here rather than chased further.
+sensitivity, flagged here rather than chased further. **FIXED, separate
+same-day pass — see the top-of-doc "Last updated" entry; this paragraph is
+kept as the historical record of the defect, not current status.**
 
 **Also flagged by the same audit, lower priority, not yet acted on:**
 `pique_knit`/`jersey_tee`'s new `edge_run` fill underlay (this pass, above)
