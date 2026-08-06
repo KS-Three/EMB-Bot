@@ -11,9 +11,21 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-05 — the satin self-overlap defect this doc has
-carried as an open callout since the corpus-laws-23/26 pass (area 1 below)
-is **FIXED**: `stage6_satin.py::_rail_points` now caps every satin cross's
+**Last updated:** 2026-08-06 — the "Evaluation corpus & harness" cross-cutting
+gap (below) gets its harness half built: `digitizer/tools/
+corpus_scorecard.py`, a `capture`/`diff` CLI that runs the digitizer's 14
+committed `testdata/` fixtures through the already-existing
+`preflight.run_preflight` scorer at two garment configs and remembers/diffs
+the result — a standing, automated answer to "did this change make the
+output better or worse" that this doc has flagged as missing since the
+corpus-laws-23/26 pass. Shipped as a reporting tool, not a CI gate, on
+purpose; the corpus half (`scratch_corpus/`) remains inaccessible and
+untouched. Full detail in the cross-cutting section itself, not duplicated
+here.
+
+Prior update below, still 2026-08-05: the satin self-overlap defect this doc
+has carried as an open callout since the corpus-laws-23/26 pass (area 1
+below) is **FIXED**: `stage6_satin.py::_rail_points` now caps every satin cross's
 per-station width to `machine.SATIN_MAX_WIDTH_MM / 2`, on top of the
 existing local-corridor cap. Root cause, confirmed by direct spine
 inspection (not assumed): `logo_alpha.png`'s `Sf5200f3f` carries a stroke
@@ -653,6 +665,43 @@ sew-out that hasn't been scheduled. This is a real, distinct capability gap
 reframing of the sew-out gap above; landing it would let future classifier/
 quality changes be judged against *something* before either the corpus or a
 sew-out session is available, not instead of them.
+
+**The harness half is now BUILT, same-day follow-up: `digitizer/tools/
+corpus_scorecard.py`.** The corpus half is untouched — the 37-file
+`scratch_corpus/` M2/M3 needs is still inaccessible, gitignored and empty in
+every checkout, same as above. What this pass adds is the "remember and
+diff" machinery that was missing: `capture` runs every one of the
+digitizer's 14 committed `testdata/` fixtures (top-level and `photo/`)
+through `digitize()` + the already-existing `digitizer_core.preflight.
+run_preflight` — which already computed a 0-100 score, letter grade, typed
+findings and ~20 metrics per design; this pass aggregates that existing
+signal across the corpus rather than inventing a new metric — at two
+configs (80mm width x `left_chest`/`hat_front`, two distinct fabric
+presets) and writes `testdata/corpus_scorecard_baseline.json`. `diff`
+re-runs the same matrix and reports score deltas, findings that appeared/
+resolved by code, and metric drift past a 5% noise threshold against that
+baseline. Shipped deliberately as a REPORTING tool, not a CI gate — the
+script's own docstring cites this doc's corpus-laws-23/26 history (a
+"desk-safe" threshold picked without real validation, later reverted) as
+the reason not to invent pass/fail numbers yet; the one exception treated
+as a hard signal is a brand-new "block"-severity finding, which does flip
+the `diff` command's exit code, since that's the one low-noise, high-
+confidence case. Verified working, not just written: a real captured
+baseline (all 14 fixtures x 2 configs, grades spanning A to F — the F/0
+scores on `drone_render.png`, `repro_gradient_white_icon.png` and
+`summit_badge.png` are real, already-documented rough edges in those
+photo-tier stress fixtures, not a harness bug, exactly the kind of honest
+signal this tool exists to surface rather than hide), then an immediate
+re-`diff` with zero code changes reporting "no drift against the baseline"
+at exit 0 — proving the underlying pipeline is deterministic and the
+harness doesn't false-positive on its own output. No dedicated test file:
+matches this repo's own convention that no `tools/*.py` script (including
+the same-pattern `capture_flat_lane_golden.py`) has one, and a full capture
+run touches several photo/SLIC fixtures, too slow for the regular suite.
+**Next step for this gap:** use the tool by hand against a few real future
+corpus-law/classifier changes to learn what a genuine regression looks like
+here before deciding on hard CI thresholds; the labeled-corpus half stays
+blocked on `scratch_corpus/` access, unchanged by this pass.
 
 **Not promoted to a sixth top-level capability area.** This session
 evaluated and explicitly rejected splitting area 1 ("auto-digitizing
