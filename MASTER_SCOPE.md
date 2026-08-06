@@ -1100,8 +1100,27 @@ the Python digitizer service's `/export` route (pyembroidery-based).
   targeted tests (updated for the new byte layout) plus the crossval
   harness's PES-specific pins, which do now cross-validate against an
   independent decoder.
-- **SVG: Medium** — lower stakes (vector proof, not a stitch file), but thin
-  coverage (1 test).
+- **SVG: Medium-High**, upgraded from Medium (2026-08-06) — still lower
+  stakes than a real stitch format (vector proof only), but the "thin
+  coverage (1 test)" gap this doc used to flag is closed: `test/svgexport
+  .test.js` grew to 10 tests, reading a close pass of `src/svgexport.js`
+  rather than guessing at edge cases -- real extents recomputed from stitch
+  coordinates (not trusted from the design's own possibly-stale
+  `widthMM`/`heightMM` fields), the DST-up-to-SVG-down Y flip, one
+  `<polyline>` per color run, both jumps and trims correctly breaking a path
+  without drawing a travel line across the gap, a missing color falling
+  back to black rather than throwing, and a null/undefined/empty design
+  producing a minimal valid SVG rather than crashing. One documented-not-
+  fixed behavior worth knowing about, not treated as a bug: a lone stitch
+  sitting between two jumps renders nothing (`designToSVG`'s `run.length >=
+  2` gate can't turn a single point into a `<polyline>`) — real designs
+  essentially never produce an isolated single-stitch run (satin/fill always
+  emit many), so this was left as a pinned, conscious simplification rather
+  than a speculative fix. No production code changed; the pass through
+  `src/svgexport.js` while writing these tests found the existing logic
+  correct on every dimension checked. Full engine suite: `node --test` —
+  **283/283 passed, 0 failed** (274 baseline, this pass's own EXP fix
+  included, + 9 new SVG tests replacing the old 1).
 - **PDF worksheet: Medium-High** — was "no dedicated test file exists at
   all," then gained call-sequence coverage, and this pass closes the
   remaining gap. `app/src/lib/pdfsheet.spec.js` (merged, PR #4) drives
