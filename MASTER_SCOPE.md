@@ -1659,13 +1659,55 @@ edit) — both are new top-level config keys, siblings of `deleted_shape_ids`.
   Regions and the service level via the real-but-rejected orange pair, not
   through this particular browser harness.
 
-**Next step:** the underlay-style dropdown (PR #28) still has no live-
-browser check of its own. A live-browser proof of a genuinely SUCCESSFUL
-merge (not just the rejection path) needs either a purpose-built fixture
-image engineered to survive stage 3's connected-component fusion as two
-separate same-thread regions, or a bridging/convex-hull merge strategy for
-non-adjacent shapes — neither attempted this pass; both are candidates if
-this area's merge feature gets picked up again.
+**The underlay-style dropdown's live-browser check — CLOSED 2026-08-06.**
+Verified live via Playwright MCP against a real running Studio + digitizer
+service: an already-digitized `enthusiast_logo.png` project had two
+fill-tier shapes carrying the "Underlay style" control this section used to
+flag as unchecked. Set one (33.7 mm², `#0134`) from "Auto underlay" to
+"None" and clicked "Apply layer changes" — the design's total stitch count
+dropped 2,650 -> 2,016 (a real, substantial re-stitch through the actual
+service, not a stale UI value), confirming the control's whole round trip:
+dropdown -> `shape_overrides.underlay_style` -> real `/digitize` call ->
+updated stitch plan -> updated Studio state. Screenshot on file
+(`.playwright-mcp/underlay-style-applied.png` in that session's worktree).
+This was the last of area 5's four `_OVERRIDE_KEYS` controls without its
+own live-browser proof; border/tier/fill-angle/boundary/merge-selection/
+split were already covered by e2e specs or prior live sessions.
+
+**A genuinely SUCCESSFUL merge's live-browser proof remains open, and is
+harder than this doc previously scoped it** — re-investigated 2026-08-06,
+source-level, not by assumption. Two candidate fixes this doc floated
+("a purpose-built fixture image" or "a bridging/convex-hull merge
+strategy") were checked against the real code before attempting either:
+
+- **The "just recolor one shape to match, then merge" shortcut does NOT
+  work**, and is worth ruling out explicitly so a future pass doesn't
+  re-try it: `pipeline.run_stages` calls `apply_shape_merges` BEFORE
+  `apply_shape_edits` on every single pass, so a merge always validates
+  against each shape's ORIGINAL `thread_number` from stage 4, never a
+  `shape_overrides` recolor — recoloring first and merging second (even as
+  two separate Apply steps) never changes what the merge check sees, since
+  each fresh `digitize()` call re-derives colors from scratch before any
+  override is applied within that same call.
+- **The deeper reason a "purpose-built fixture" is hard, confirmed by
+  reading `stage3_segment.py` directly:** its connected-component pass runs
+  PER FINAL THREAD LAYER (`for layer in range(len(quant.thread_indices))`),
+  after any SLIC/RAG merging in `stage2_photo_segment.py` has already
+  happened — so two regions reaching that stage with the SAME final thread
+  assignment are fused if they're pixel-adjacent, regardless of whether the
+  photo segmenter's own ΔE00 merge threshold (`MERGE_DELTAE00_THRESH`)
+  considered them "different clusters" upstream. This is not lane-specific
+  (the doc's prior phrasing implied only the flat lane was affected) — it's
+  the same connected-component step either way. The only geometrically
+  possible opening left is a pair of regions that are NOT pixel-adjacent at
+  stage 3 (so they survive as separate shapes) whose VECTORIZED polygons
+  (stage 4) happen to end up touching or overlapping anyway — a subtle,
+  not-yet-attempted fixture-engineering target, not a quick win.
+- **Not attempted this pass:** actually building that fixture (real risk of
+  failure even with a time-boxed attempt) or the bridging/convex-hull
+  engine feature (a real product feature, not a test-fixture trick).
+  Recorded here so the next attempt starts from what's now known rather
+  than re-deriving it.
 
 **Convert-to-text (text-cluster detection) — merged 2026-08-05** (PR #63
 Steps 6a/6b, PR #64 Step 7 e2e): a new kind of manual-editing action,
