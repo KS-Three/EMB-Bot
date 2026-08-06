@@ -1556,10 +1556,35 @@ def _graph_travel(cur, target, sewn: set[int], allow: set[int],
     return out
 
 
+def _choose_stroke_entry(cur: tuple[float, float],
+                         a: tuple[float, float], free_a: bool,
+                         b: tuple[float, float], free_b: bool) -> bool:
+    """True if a stroke between ends `a` and `b` should be entered at `b`
+    (needle currently at `cur`), false if it should be entered at `a`.
+
+    Laws 27/29 (`machine.STRUCTURAL_ENTRY_BUDGET_MM`): pros enter at a
+    stroke's free end (its open cap) far more often than at whichever end is
+    merely nearest, and will pay up to that budget of extra travel to reach
+    it. `free_a == free_b` means neither end is structurally preferred over
+    the other (both free, or both welded into a junction) — nothing to lean
+    on, so proximity is the whole rule there, same as before this law.
+    """
+    d_a = math.dist(cur, a)
+    d_b = math.dist(cur, b)
+    if free_a == free_b:
+        return d_b < d_a
+    cap_is_b = free_b
+    cap_d, other_d = (d_b, d_a) if cap_is_b else (d_a, d_b)
+    if cap_d - other_d <= machine.STRUCTURAL_ENTRY_BUDGET_MM:
+        return cap_is_b
+    return d_b < d_a
+
+
 def _order_strokes(strokes: list[Stroke],
                    start_near: tuple[float, float] | None) -> list[Stroke]:
-    """Sew order within one shape: whichever stroke's nearer end is closest to
-    where the needle already is, then on by the same rule.
+    """Sew order within one shape: whichever stroke's preferred entry (Laws
+    27-29, `_choose_stroke_entry`) is closest to where the needle already is,
+    then on by the same rule.
 
     `extract_strokes` sorts longest-first, which keeps a letter's main stem
     ahead of its serifs but says nothing about the hops between them. Sewing
@@ -1583,7 +1608,10 @@ def _order_strokes(strokes: list[Stroke],
         out.append(st)
         # It comes out of the end it did not go in at.
         a, b = st.spine[0], st.spine[-1]
-        cur = a if (cur is not None and math.dist(cur, b) < math.dist(cur, a)) else b
+        if cur is None:
+            cur = b
+        else:
+            cur = a if _choose_stroke_entry(cur, a, st.free_start, b, st.free_end) else b
     return out
 
 
@@ -1661,9 +1689,20 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
         first_of_stroke = True
         for run in stroke_runs:
             cursor = runs[-1].points[-1] if runs else start_near
-            if cursor is not None and \
-                    math.dist(cursor, run.points[-1]) < math.dist(cursor, run.points[0]):
-                run.points.reverse()
+            if cursor is not None:
+                # Laws 27-29 (STRUCTURAL_ENTRY_BUDGET_MM): the visible satin
+                # column is what the corpus measured entering at a free cap
+                # over the nearer end, so it alone gets that preference.
+                # Underlay stays pure-nearest — hidden support stitching, not
+                # what the law's professional decisions were read off of, and
+                # its orientation is already tuned to avoid extra hops
+                # between strokes (see the loop's own note below).
+                if run.kind == stitches.SATIN:
+                    if _choose_stroke_entry(cursor, run.points[0], st.free_start,
+                                            run.points[-1], st.free_end):
+                        run.points.reverse()
+                elif math.dist(cursor, run.points[-1]) < math.dist(cursor, run.points[0]):
+                    run.points.reverse()
             if first_of_stroke and cursor is not None:
                 # Between strokes, walk the unsewn web instead of lifting.
                 direct = math.dist(cursor, run.points[0])

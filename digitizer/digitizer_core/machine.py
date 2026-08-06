@@ -245,6 +245,28 @@ SATIN_ZIGZAG_ABOVE_MM = 2.5
 # point. Dropped during emission, exactly as the browser engine does.
 SATIN_MIN_CROSS_MM = 0.5
 
+# --- Satin entry/exit point (Laws 27-29) ------------------------------------
+# Scored on 291 real professional decisions: entering at a stroke's FREE end
+# (its open cap, not wherever the skeleton welded it to a junction) matches
+# 85.2% of what pros actually sewed; "enter at whichever end sits nearer the
+# previous exit" — the rule this replaces — matches only 42.3%. When a stroke
+# has no free/junction distinction to lean on (both ends free, or both tucked
+# into a junction) there is no structural signal, so proximity alone decides,
+# same as before this law.
+#
+# Law 29 puts a ceiling on it: extra travel paid to reach the structural cap
+# instead of the nearer end runs median 5.7 mm, 71.8% within 10 mm, 87.7%
+# within 20 mm — past ~20 mm pros mostly stop paying. 10 mm is the corpus
+# law doc's own chosen cutoff (docs/corpus-laws-round3-2026-08-01.md, engine-
+# mapping table, laws 27-29: "desk-safe, highest value").
+#
+# NOT implemented: law 28's finer end-CLASS ordering (cap > tee > corner ~=
+# butt) among junction ends. That needs classifying each junction end's own
+# arm count/angle, which `Stroke` does not currently carry — only the binary
+# free/not-free distinction extract_strokes already computes. Left as a
+# follow-up, not guessed at here.
+STRUCTURAL_ENTRY_BUDGET_MM = 10.0
+
 # --- Push compensation (Law 24) --------------------------------------------
 # Pull and push are two different effects in two different directions. Thread
 # tension pulls each stitch's two penetrations together, so a column loses

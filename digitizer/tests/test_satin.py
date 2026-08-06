@@ -398,6 +398,81 @@ def test_the_stem_tucks_under_the_bar_not_across_it():
     assert min(ys) > 1.0, "stem crosses reach across the bar - junction X defect"
 
 
+# --- Entry/exit point selection (Laws 27-29) --------------------------------
+# A short-stemmed T so the detour from the junction end to the free cap (the
+# stem's top) is a few mm — comfortably inside STRUCTURAL_ENTRY_BUDGET_MM —
+# unlike T_SHAPE's 17 mm stem, which stays useful for pinning the FALLBACK.
+T_SHORT_STEM = Polygon(
+    [(0, 0), (20, 0), (20, 3), (11.5, 3), (11.5, 9), (8.5, 9), (8.5, 3), (0, 3)])
+
+
+def test_choose_stroke_entry_prefers_the_structural_cap_within_budget():
+    """Law 27: pros enter at the free end 85% of the time, not the nearer
+    one. Law 29: they pay up to STRUCTURAL_ENTRY_BUDGET_MM of extra travel to
+    reach it — here the cap is 4 mm farther than the junction end, which is
+    inside the 10 mm budget, so the cap wins despite being farther."""
+    from digitizer_core.stage6_satin import _choose_stroke_entry
+
+    junction, cap = (1.0, 0.0), (5.0, 0.0)
+    assert _choose_stroke_entry((0.0, 0.0), junction, False, cap, True) is True
+    # Symmetric: same geometry, ends swapped, same verdict either way.
+    assert _choose_stroke_entry((0.0, 0.0), cap, True, junction, False) is False
+
+
+def test_choose_stroke_entry_is_exactly_at_the_budget_boundary():
+    """10 mm extra is still paid ('up to ~10 mm'); past it, not."""
+    from digitizer_core.stage6_satin import _choose_stroke_entry
+
+    junction, cap = (0.0, 0.0), (10.0, 0.0)
+    assert _choose_stroke_entry((0.0, 0.0), junction, False, cap, True) is True
+    cap_too_far = (10.01, 0.0)
+    assert _choose_stroke_entry((0.0, 0.0), junction, False, cap_too_far, True) is False
+
+
+def test_choose_stroke_entry_falls_back_to_proximity_past_the_budget():
+    """Law 29's own limit: past ~10-20 mm of detour, pros mostly stop paying
+    for the structural entry, so the near end wins like it always did."""
+    from digitizer_core.stage6_satin import _choose_stroke_entry
+
+    junction, cap = (1.0, 0.0), (15.0, 0.0)
+    assert _choose_stroke_entry((0.0, 0.0), junction, False, cap, True) is False
+
+
+def test_choose_stroke_entry_uses_proximity_when_neither_end_is_structural():
+    """Both ends free (an isolated stroke) or both welded into a junction:
+    no structural signal to prefer, proximity is the whole rule, exactly as
+    before this law existed."""
+    from digitizer_core.stage6_satin import _choose_stroke_entry
+
+    near, far = (2.0, 0.0), (9.0, 0.0)
+    assert _choose_stroke_entry((0.0, 0.0), far, True, near, True) is True   # both free
+    assert _choose_stroke_entry((0.0, 0.0), far, False, near, False) is True  # both junction
+
+
+def test_a_short_stem_enters_at_its_free_cap_not_the_near_junction():
+    """End-to-end: needle starts right at the stem's junction, but the stem's
+    satin column still enters from its free cap at the top — the same
+    structural preference the unit tests pin, wired through satin_shape."""
+    runs, report = satin_shape(T_SHORT_STEM, "S1", underlay_style="none",
+                               trim_at_mm=3.0, start_near=(10.0, 3.2))
+    satin = [r for r in runs if r.kind == "satin"]
+    stem = min(satin, key=lambda r: len(r.points))
+    assert stem.points[0][1] > stem.points[-1][1] + 2.0, \
+        "the stem should enter near its free cap (higher y), not the junction"
+
+
+def test_a_long_stem_still_enters_near_when_the_cap_is_too_far():
+    """T_SHAPE's stem is ~17 mm — past STRUCTURAL_ENTRY_BUDGET_MM, so this
+    pins the fallback: nearest-end entry is unchanged when the structural
+    cap would cost too much extra travel."""
+    runs, report = satin_shape(T_SHAPE, "S1", underlay_style="none",
+                               trim_at_mm=3.0, start_near=(10.0, 3.2))
+    satin = [r for r in runs if r.kind == "satin"]
+    stem = min(satin, key=lambda r: len(r.points))
+    assert stem.points[0][1] < stem.points[-1][1], \
+        "far past budget, the stem should still enter near the junction (lower y)"
+
+
 def test_curve_inside_rail_does_not_chew_one_hole():
     """The short-stitch guard: on the inside of a curve penetrations bunch;
     alternate crosses must be pulled off the rail."""

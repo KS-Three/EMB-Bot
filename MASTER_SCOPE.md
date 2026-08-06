@@ -11,6 +11,82 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
+**Last updated:** 2026-08-06 — satin entry/exit point selection now follows
+corpus laws 27-29 instead of pure nearest-point, closing the highest-value
+item a `digitizing-quality-auditor` health check surfaced this session (Kent
+picked it explicitly over two alternatives it also proposed: border
+seam-sharing, which needs a design sign-off on which shape wins a shared
+edge before it can be built, and appliqué cover pull-comp, both still open).
+Scored on 291 real professional decisions, `docs/corpus-laws-round3-
+2026-08-01.md` found pros enter a satin stroke at its FREE end (the open
+cap) 85.2% of the time, not whichever end is merely nearest the needle
+(42.3% for that rule) — and will pay up to ~10mm of extra travel to reach
+it (law 29), not more. `digitizer_core/stage6_satin.py` gains one new
+helper, `_choose_stroke_entry(cur, a, free_a, b, free_b)`: when a stroke has
+exactly one free end (the other welded into a junction by the existing
+skeleton-weld machinery), entry prefers the free end unless the extra
+travel over the nearer end exceeds the new `machine.
+STRUCTURAL_ENTRY_BUDGET_MM = 10.0` (law 29's own measured cutoff), in which
+case it falls back to nearest — unchanged from before. When both ends are
+free (an isolated stroke) or both are junction-welded, there is no
+structural signal to prefer and proximity alone decides, byte-identical to
+the old rule — this is why the change's reach is narrower than "every
+satin stroke": only strokes with exactly one free end are affected. Wired
+into two call sites — `_order_strokes` (the sequencing simulation) and
+`satin_shape`'s per-run reversal loop — but the reversal loop applies the
+new rule ONLY to the visible satin column (`StitchRun` kind `SATIN`);
+underlay runs keep pure-nearest orientation, since the corpus law was read
+off real stitch files' visible satin entries, not hidden underlay, and
+underlay orientation is already separately tuned to minimize inter-stroke
+hops. **Not implemented:** law 28's finer end-CLASS ordering (cap > tee >
+corner ~= butt) among junction ends specifically — that needs classifying
+each junction end's own arm count/angle, which `Stroke` does not currently
+carry (only the binary free/not-free distinction `extract_strokes` already
+computes). Left as an explicit follow-up rather than guessed at.
+
+Six new tests in `tests/test_satin.py`: four direct unit tests of
+`_choose_stroke_entry` (prefers the cap within budget, exact-10mm boundary,
+falls back past the budget, and both tie cases — both-free and
+both-junction — fall back to pure proximity), plus two end-to-end tests via
+`satin_shape` on synthetic T-junction polygons (a new short-stem
+`T_SHORT_STEM` fixture proving the cap wins within budget; the existing
+`T_SHAPE` fixture's 17mm stem proving the budget fallback still holds for a
+real over-budget case). Golden impact, checked by diff rather than assumed:
+`flat_lane_golden.json`'s `logo_alpha.png` and `photo/enthusiast_logo.png`
+entries moved (both carry real lettering with free/junction-asymmetric
+strokes) and were regenerated — deliberately, only those two keys, via the
+same `snapshot()` function `tools/capture_flat_lane_golden.py` uses, not a
+full re-run of that script — while `logo_whitebg.png` and `ribbon_curve.png`
+came back byte-identical and were left untouched, matching the fact that
+neither fixture has a qualifying stroke. `shape_ids`/`areas_mm2`/`warnings`
+are identical before/after on both regenerated fixtures; only
+`stitch_coords` moved (plus `stitch_count` on `enthusiast_logo.png`, 2431 ->
+2454 — expected, since a different entry point reshapes travel-graph
+routing between strokes). Full digitizer suite re-run to completion in the
+foreground after the golden update: **867 passed, 3 skipped, 0 failed**
+(1228s) — the 3 skips are the same standing container-environment goldens
+this doc has tracked since 2026-08-03, deselected the same way CI does, not
+new failures. Engine `node --test` re-run too: **283/283** (this doc's
+267/267 figure was stale going in — more engine tests landed since it was
+last written; not a regression, just catching the count up). `app/`
+untouched by this change (confirmed via `git status`) and not re-run in
+this environment (Studio's `node_modules` isn't installed here); carrying
+forward the doc's last-verified Studio count rather than asserting an
+unverified new one. Done directly on the session's own working branch, not
+an isolated worktree — a solo, contained fix.
+
+Prior update below, still 2026-08-06: the "jersey_tee fill underlay" follow-up this
+doc flagged as a low-priority candidate (area 1, below) is investigated and
+**closed as declined, not a code change**: a direct measurement (synthetic
+fill polygons at realistic sizes — 60x40mm, 100x70mm, 20x15mm — run through
+`digitizer_core.stage6_fill._underlay_paths`, computing the real max distance
+from any interior point to the nearest underlay stitch) shows `center_run`
+does NOT close the 13mm interior gap the prior audit measured — it's
+statistically identical to `edge_run` (60x40mm: 19.04mm vs 19.02mm; 100x70mm:
+34.02mm vs 34.01mm; 20x15mm: 6.58mm vs 6.11mm, `center_run` actually
+*slightly worse* on the small shape). A single line through the shape's
+principal axis is exactly as far from off-axis interior points as a
+perimeter walk is; only a full grid/lattice pass (`edge_lattice`/
 **Last updated:** 2026-08-06 — the satin/fill classifier's DT-tightening fix
 (`satin-classifier-organic-shapes`, area 1 below), previously scoped to
 `gradient`/`photo_subject`/`photo_scene` only on the premise that flat art's
