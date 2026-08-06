@@ -1161,6 +1161,129 @@ is now fixed (see below), four remain open:
   border-off both correctly stay silent). This is a warning, not a geometry
   change — the double-thick bar itself still sews until the seam-aware fix
   lands.
+- **Appliqué tier (`stage6_applique.py`, 4-layer placement/cutting/tackdown/
+  cover, wired into `stage7_sequence` and reachable through the service with
+  no gating) — audited for the first time this pass; had never appeared in
+  this doc despite being fully shipped and reachable.** Followed this file's
+  standing hardening methodology (`docs/hardening-closeout-2026-08-02.md`):
+  re-derive the module's own geometric claims from real fixtures and
+  synthetic constructions, adversarially, rather than trust the shipped
+  suite's own 44 assertions. Two real, confirmed defects found; both fixed,
+  with new regression tests (44 → 49 in `test_applique.py`, all measured off
+  emitted stitch points, house convention).
+
+  **Fixed — the scissors-fit / hole-trim gates were blind to bottlenecked
+  shapes.** `min_inscribed_diameter` (`polylabel`'s single largest inscribed
+  circle) fed both `APPLIQUE_CUTTING_LINE_SUPPRESSED` ("scissors don't fit
+  under 12mm") and `APPLIQUE_FORCED_PRE_CUT` (a hole's own trim floor). That
+  measure answers "how big is the best spot in this shape", not "can
+  scissors get all the way around it" — the two coincide only on the
+  convex/star-shaped fixtures the shipped tests use (a plain disc, a
+  centred-hole donut). Constructed a synthetic "dog bone" — two 20mm circles
+  joined by a 3mm neck, a realistic silhouette for a real logo (barbell,
+  bone, wrench, any letterform with a narrow waist) — and measured
+  `min_inscribed_diameter` reporting **19.94mm** (one lobe's own circle),
+  with the scissors gate never firing, even though nothing wider than 3mm
+  can actually pass through the neck. Same failure independently confirmed
+  on an off-centre ring (hole not centred in its outer boundary): the ring's
+  thin side is 5mm, `min_inscribed_diameter` reports **24.99mm** because
+  `polylabel`'s one point lands on the ring's fat side. Fix: a new
+  `narrowest_passage_diameter` bisects the erosion radius at which the shape
+  first changes topology (a new exterior piece appears, or an interior ring
+  merges into the exterior) — the standard morphological bottleneck
+  definition — and now feeds both gates. Verified it is a strict refinement,
+  not a behavior change on ordinary shapes: matches `min_inscribed_diameter`
+  exactly (± 0.01mm) on a plain square and the existing `SMALL_DISC`/donut
+  fixtures the shipped tests already pin, so both pre-existing tests pass
+  unchanged. New tests: the dog-bone and off-centre-ring reproductions
+  above, plus an explicit "must not move the number on ordinary shapes"
+  regression.
+
+  **Fixed — pre-cut's default tackdown silently sewed as a zero-width run,
+  not the documented zigzag/E column.** §2.7 gives zigzag/E tackdowns a real
+  WIDTH ("positioned by column width, centered on the line") — a straddling
+  column that compresses the fabric, distinct from run/double-run's single
+  line, and the spec singles out knit/jersey as needing it because "a run
+  lets the knit roll." `tackdown="zigzag"` is the pre-cut MODE'S OWN DEFAULT
+  (`applique_steps` resolves `tackdown=None` to `"zigzag"` whenever
+  `mode=="pre_cut"`), so this was hit on every pre-cut design nobody
+  overrode the tackdown type on — not an edge case. Measured directly:
+  before the fix, every tackdown point for a pre-cut piece landed within
+  1.5e-15mm of `s_tack` (a hairline, i.e. a plain running stitch); after,
+  the points spread over 2.01mm, matching `min(APPLIQUE_TACK_WIDTH_MM,
+  W_cover - 2*m_bury)` — §2.7's own hard vendor constraint — exactly.
+  `machine.APPLIQUE_TACK_WIDTH_MM` existed as a constant and was read by no
+  code path before this. Root cause: `applique_steps` called `_run_layer`
+  unconditionally for every tackdown type, and the only branch inside it was
+  the pass count (2 for `"double_run"`, else 1) — so `"zigzag"` fell through
+  identically to `"run"`. Fix: a new `_zigzag_tack_layer` (built on the same
+  `_rail_column` column emitter `_cover_layer` was refactored onto, so the
+  cover's own proven geometry — rail alternation, corner filleting, closure
+  overlap — is reused rather than duplicated) is dispatched for
+  `tackdown in ("zigzag", "e_stitch")`; run/double-run are unchanged and
+  pinned by a new regression to stay a single line. New tests:
+  `test_pre_cut_tackdown_is_a_real_column_not_a_zero_width_run`,
+  `test_run_and_double_run_tackdowns_stay_a_single_line`.
+
+  **Confirmed correct, independently re-derived (not just re-read from the
+  shipped tests):** the tolerance-stack algebra in `solve_cover_width`/
+  `cover_rails` (hand-recomputed for tight/normal/loose against §2.3's
+  published validation table, matches to the number); overlap detection
+  still fires `APPLIQUE_PIECES_OVERLAP` even when one of the two pieces
+  falls through `APPLIQUE_NO_FABRIC_VISIBLE` (built a standalone two-
+  `PlannedRegion` harness — a 40mm square overlapping a 2.5mm ribbon — since
+  this exact "goes silent on the case that matters" defect is what a prior,
+  differently-numbered commit of this same tier was found to have in
+  `hardening-closeout-2026-08-02.md`; it does **not** reproduce on this
+  repo's actual `stage6_applique.py`/`stage7_sequence.py` history, a
+  different lineage than that doc audited); thread-contiguity and the "does
+  applique ever no-op on real art" claims from that same prior doc, spot-
+  checked on this repo's 3 real appliqué-eligible fixtures
+  (`logo_whitebg.png`, `logo_alpha.png`, `ribbon_curve.png`) × 3 garments —
+  all 9 combinations produce output that differs from `applique=False`
+  (i.e. the tier is never a silent no-op here) and none show the "thread
+  abandoned then picked up again" fragmentation that doc described for its
+  own commit.
+
+  **Confirmed but NOT fixed — documented gaps, left alone because a
+  correct fix isn't well-specified enough to commit to without guessing:**
+  - `applique_cover="zigzag"` and `"e_stitch"` are accepted config values
+    but produce **byte-identical stitch geometry** to `"satin"` — same point
+    count, same coordinates, verified directly. `cover` only changes the
+    printed worksheet label. §2.8 calls zigzag cover "a genuinely different
+    aesthetic, not a cheap satin" at a different spacing, and E-stitch a
+    different stitch ORDER (a comb pattern) — neither is built. Not fixed
+    here because the spec itself gives two different candidate zigzag
+    spacings (1.69mm SPI vs. Melco's 3.0mm preset) as alternatives with no
+    stated tie-break, and E-stitch's comb order is a real algorithm this
+    audit didn't have grounds to invent.
+  - §2.12's pre-cut `min_inscribed_diameter >= 8mm` gate (scissors/placement
+    floor) is never checked — only the 12mm trim-in-place floor is. The
+    constant (`APPLIQUE_MIN_INSCRIBED_PRECUT_MM`) exists and is unread; the
+    module's own comment block over it says "Gates (§2.12) — all [D], all
+    must be enforced." A pre-cut piece of any size, however small, gets no
+    warning. Not fixed because the physical rationale for the specific
+    8mm number isn't stated anywhere this audit found, unlike the
+    tackdown-width fix above where every number traced to a stated vendor
+    constraint.
+  - `APPLIQUE_COVER_PULL_COMP_MM` (0.20mm, up to 0.30 on knits per §2.8) is
+    defined and never applied — the cover satin gets no pull compensation.
+    `APPLIQUE_CLOSURE_OVERLAP_STITCHES` (6) and `APPLIQUE_OVERLAP_ALLOWANCE_
+    FRAC` (0.5) are likewise defined and never read (`_cover_layer` inherits
+    `BORDER_CLOSURE_OVERLAP_MM` from the border module instead, which lands
+    in the published 4–8 stitch window anyway, so this one is lower-stakes
+    than the pull-comp gap). `max_cover_width`'s 5.0mm clamp is silent —
+    `solve_cover_width`'s own `"clamped"` field is computed and never read
+    by any caller, so a design that hits the snag-risk ceiling gets no
+    warning despite §2.12 flagging that ceiling by name.
+
+  **Caveat, stated plainly:** this is 3 real fixtures and a handful of
+  targeted synthetic constructions (dog-bone, off-centre ring, two-piece
+  overlap harness), not a corpus sweep, and it covers the geometry/gate
+  layer only — no sew-out, same standing caveat as every other tier in this
+  doc. `trim_discipline`/`material`/`placement` combinations were exercised
+  through the existing shipped tests' parametrization, not independently
+  re-swept by this pass.
 
 Every claim about visual/sew quality beyond internal geometry checks is
 **pending sew-out** — see the cross-cutting item above.

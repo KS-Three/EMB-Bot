@@ -361,6 +361,59 @@ def min_inscribed_diameter(poly: Polygon) -> float:
     return 2.0 * pole.distance(poly.boundary)
 
 
+def _topology(geom) -> tuple[int, int]:
+    parts = _parts(geom)
+    return len(parts), sum(len(p.interiors) for p in parts)
+
+
+def narrowest_passage_diameter(poly: Polygon) -> float:
+    """Twice the erosion radius at which `poly` first changes topology. -> mm.
+
+    `min_inscribed_diameter` answers "how big is the single best spot in this
+    shape" — the ONE largest inscribed circle, found once by `polylabel`. That
+    is the wrong question for "can scissors get all the way around this
+    piece": a shape can have one huge lobe (a big single circle) and still be
+    strangled by a narrow neck the polylabel search never has to visit,
+    because the neck's own inscribed circle is nowhere near the global
+    maximum. Measured on a synthetic two-lobe "dog bone" (two 20 mm circles
+    joined by a 3 mm neck): `min_inscribed_diameter` reports **19.94 mm** —
+    one lobe — even though nothing wider than 3 mm can pass through the neck,
+    and the gate this feeds (`APPLIQUE_CUTTING_LINE_SUPPRESSED`, "below 12 mm
+    scissors don't fit") never fires. Same failure mode on a ring whose hole
+    is not centred: the thin side measures 5 mm, `min_inscribed_diameter`
+    reports **24.99 mm**, because polylabel's single point lands on the
+    ring's fat side instead.
+
+    Found by bisecting the erosion radius at which `poly.buffer(-r)` first
+    changes topology relative to `poly` — a new exterior piece appears (the
+    dog-bone's neck severing into two lobes), or an interior ring disappears
+    by merging into the exterior (the off-centre ring's thin side pinching
+    shut) — the standard morphological definition of a bottleneck. On a shape
+    with no such neck (a plain square, a plain disc, a centred ring) this
+    converges to exactly `min_inscribed_diameter`, so it is a strict
+    refinement and not a different number on the ordinary shapes the shipped
+    tests already covered.
+    """
+    if poly.is_empty:
+        return 0.0
+    lo, hi = 0.0, min_inscribed_diameter(poly) / 2.0
+    if hi <= 0.0:
+        return 0.0
+    base = _topology(poly)
+    for _ in range(24):
+        mid = (lo + hi) / 2.0
+        eroded = poly.buffer(-mid)
+        if eroded.is_empty:
+            hi = mid
+            continue
+        t = _topology(eroded)
+        if t[0] != base[0] or t[1] < base[1]:
+            hi = mid
+        else:
+            lo = mid
+    return 2.0 * lo
+
+
 def visible_fabric_width(poly: Polygon, c_in: float) -> float:
     """How wide the appliqué fabric still reads between the two inner rails.
 
@@ -397,7 +450,6 @@ def check_gates(poly: Polygon, geom: AppliqueGeometry) -> list[dict]:
     silently emitting an appliqué with no visible fabric".
     """
     out: list[dict] = []
-    inscribed = min_inscribed_diameter(poly)
 
     # No fabric shows: the two inner rails meet. Threshold `2*|c_in| + 1.0`,
     # which is 4.0 mm at the rails we sew — see `visible_fabric_width` for why
@@ -411,15 +463,19 @@ def check_gates(poly: Polygon, geom: AppliqueGeometry) -> list[dict]:
                         2.0 * abs(geom.c_in)
                         + machine.APPLIQUE_MIN_FEATURE_MARGIN_MM, 3)})
 
-    # Scissors must fit to trim in the hoop.
+    # Scissors must fit to trim in the hoop — and must fit all the way
+    # THROUGH, not just somewhere: `narrowest_passage_diameter`, not
+    # `min_inscribed_diameter` (see that function's docstring for the
+    # dog-bone/off-centre-ring case this distinction exists for).
     if geom.mode == TRIM_IN_PLACE:
-        if inscribed < machine.APPLIQUE_MIN_INSCRIBED_TRIM_MM:
+        passage = narrowest_passage_diameter(poly)
+        if passage < machine.APPLIQUE_MIN_INSCRIBED_TRIM_MM:
             out.append({"code": APPLIQUE_CUTTING_LINE_SUPPRESSED,
-                        "measured_mm": round(inscribed, 3),
+                        "measured_mm": round(passage, 3),
                         "floor_mm": machine.APPLIQUE_MIN_INSCRIBED_TRIM_MM})
         # A hole too small to get scissors into forces the whole piece pre-cut.
         for ring in poly.interiors:
-            d = min_inscribed_diameter(Polygon(ring))
+            d = narrowest_passage_diameter(Polygon(ring))
             if d < machine.APPLIQUE_MIN_HOLE_DIAMETER_MM:
                 out.append({"code": APPLIQUE_FORCED_PRE_CUT,
                             "measured_mm": round(d, 3),
@@ -495,9 +551,10 @@ def _run_layer(poly: Polygon, s: float, stitch_mm: float, passes: int,
     return runs
 
 
-def _cover_layer(poly: Polygon, geom: AppliqueGeometry, shape_id: str,
+def _rail_column(poly: Polygon, c_in: float, c_out: float, spacing_mm: float,
+                 kind: str, shape_id: str,
                  entry: tuple[float, float] | None) -> tuple[list[StitchRun], int]:
-    """The cover column, straddling B from `c_in` to `c_out`. -> (runs, crosses).
+    """A satin-style column straddling B from `c_in` to `c_out`. -> (runs, crosses).
 
     Built on the border module's proven column emitter rather than a second
     copy of one: it already alternates rails on the count of KEPT crosses,
@@ -506,24 +563,25 @@ def _cover_layer(poly: Polygon, geom: AppliqueGeometry, shape_id: str,
     go — the outer rail rides the boundary grown by `c_out`, and the column
     reaches `width` inward from there, landing the inner rail on `c_in`.
 
-    Closure overlap: `BORDER_CLOSURE_OVERLAP_MM` (1.40 mm) at the 0.40 mm cover
-    spacing is 7 stations, i.e. 7 penetrations past the start — inside Stahls'
-    published 4-8 stitch window [S] (§2.8).
+    Shared by the cover (§2.8, `_cover_layer`) and the zigzag/E-stitch
+    tackdown (§2.7, `_zigzag_tack_layer`) — same rail-alternating column, only
+    the rails and spacing differ.
     """
     runs: list[StitchRun] = []
     crosses = 0
     cursor = entry
+    width = c_out - c_in
     # Same relationship the zigzag has everywhere else in the engine: `spacing`
     # is the gap between consecutive penetrations on the SAME rail, and every
     # stitch crosses the column, so stations sit at half the spacing.
-    step = geom.spacing_mm / 2.0
+    step = spacing_mm / 2.0
 
-    outer_geom = poly.buffer(geom.c_out) if abs(geom.c_out) > 1e-9 else poly
+    outer_geom = poly.buffer(c_out) if abs(c_out) > 1e-9 else poly
     for host in _parts(outer_geom):
         # The column needs a turn radius or its inner rail folds back on itself
         # — §2.15's "satin breaks on tight concave corner", whose stated fix is
         # to fillet to r >= |c_in| + 0.3 BEFORE rail generation.
-        r_corner = abs(geom.c_in) + machine.APPLIQUE_MIN_CONCAVE_MARGIN_MM
+        r_corner = abs(c_in) + machine.APPLIQUE_MIN_CONCAVE_MARGIN_MM
         rounded = round_inward(host, r_corner, step)
         for part in _parts(rounded):
             slack = part.buffer(_SLACK_MM)
@@ -536,17 +594,64 @@ def _cover_layer(poly: Polygon, geom: AppliqueGeometry, shape_id: str,
                 ring_pts, total = _ring_arc_samples(coords, n)
                 if not ring_pts:
                     continue
-                k_tan = max(1, int(round((geom.width_mm / 2.0) / step)))
+                k_tan = max(1, int(round((width / 2.0) / step)))
                 pts, kept, _clamped = _satin_loop(
-                    ring_pts, total, total / n, geom.width_mm, slack, cursor,
+                    ring_pts, total, total / n, width, slack, cursor,
                     k_tan)
                 if len(pts) < 2:
                     continue
                 runs.append(StitchRun(points=stitches.split_long_moves(pts),
-                                      kind=COVER, shape_id=shape_id))
+                                      kind=kind, shape_id=shape_id))
                 cursor = pts[-1]
                 crosses += kept
     return runs, crosses
+
+
+def _cover_layer(poly: Polygon, geom: AppliqueGeometry, shape_id: str,
+                 entry: tuple[float, float] | None) -> tuple[list[StitchRun], int]:
+    """The cover column, straddling B from `c_in` to `c_out`. -> (runs, crosses).
+
+    Closure overlap: `BORDER_CLOSURE_OVERLAP_MM` (1.40 mm) at the 0.40 mm cover
+    spacing is 7 stations, i.e. 7 penetrations past the start — inside Stahls'
+    published 4-8 stitch window [S] (§2.8).
+    """
+    return _rail_column(poly, geom.c_in, geom.c_out, geom.spacing_mm, COVER,
+                        shape_id, entry)
+
+
+def _zigzag_tack_layer(poly: Polygon, geom: AppliqueGeometry, shape_id: str,
+                       entry: tuple[float, float] | None
+                       ) -> tuple[list[StitchRun], int]:
+    """The zigzag/E tackdown column for pre-cut (§2.7). -> (runs, crosses).
+
+    §2.7's table gives the tackdown a real WIDTH for zigzag/E ("positioned by
+    column width, centered on the line", §2.2) — a straddling column that
+    compresses the fabric, unlike the run/double-run tackdown which is a
+    single line. Before this function existed, `tackdown="zigzag"` (the
+    pre-cut default — see `applique_steps`) fell into `_run_layer` exactly
+    like `"run"`, and the pass-count branch there only distinguishes
+    `"double_run"` from everything else — so it silently sewed a zero-width,
+    single-pass running stitch on B. `APPLIQUE_TACK_WIDTH_MM` existed as a
+    constant and was never read by any code path.
+
+    Width is the hard vendor constraint verbatim: `W_tack <= W_cover -
+    2*m_bury` (Hatch: "Width is constrained by width of cover stitch, if
+    used"). Centered on `geom.s_tack`, not split — for pre-cut `o_tack` is
+    already 0 (`solve_geometry`'s own choice, "centered on B" per §2.7's row
+    for this stitch type), so centering on the tackdown line and centering on
+    B are the same statement here. §2.7's worked example prints an 80/20
+    in/out split landing off-center; that number is not reproducible from
+    the row it sits next to (which states the offset IS centered) and this
+    module already treats an inconsistency between a spec's worked example
+    and its own stated rule as decided in the rule's favour once (`cover_
+    rails` over §2.4's worked default) — same call here.
+    """
+    width = min(machine.APPLIQUE_TACK_WIDTH_MM,
+               max(0.0, geom.width_mm - 2.0 * machine.APPLIQUE_MARGIN_BURY_MM))
+    c_in = q(geom.s_tack - width / 2.0)
+    c_out = q(c_in + width)
+    return _rail_column(poly, c_in, c_out, machine.APPLIQUE_TACK_STITCH_MM,
+                        TACKDOWN, shape_id, entry)
 
 
 # --- Steps -----------------------------------------------------------------
@@ -763,9 +868,13 @@ def applique_steps(poly: Polygon, shape_id: str, geom: AppliqueGeometry, *,
             report["cutting_line"] = True
 
     if tackdown != "none":
-        passes = (machine.APPLIQUE_TACK_PASSES if tackdown == "double_run" else 1)
-        tack = _run_layer(poly, geom.s_tack, machine.APPLIQUE_TACK_STITCH_MM,
-                          passes, TACKDOWN, shape_id, cursor)
+        if tackdown in ("zigzag", "e_stitch"):
+            # A straddling column, not a run — see `_zigzag_tack_layer`.
+            tack, _tack_crosses = _zigzag_tack_layer(poly, geom, shape_id, cursor)
+        else:
+            passes = (machine.APPLIQUE_TACK_PASSES if tackdown == "double_run" else 1)
+            tack = _run_layer(poly, geom.s_tack, machine.APPLIQUE_TACK_STITCH_MM,
+                              passes, TACKDOWN, shape_id, cursor)
         if tack:
             middle.extend(tack)
             layers_here.append(TACKDOWN)
