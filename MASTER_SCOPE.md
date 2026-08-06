@@ -1703,11 +1703,42 @@ strategy") were checked against the real code before attempting either:
   stage 3 (so they survive as separate shapes) whose VECTORIZED polygons
   (stage 4) happen to end up touching or overlapping anyway — a subtle,
   not-yet-attempted fixture-engineering target, not a quick win.
-- **Not attempted this pass:** actually building that fixture (real risk of
-  failure even with a time-boxed attempt) or the bridging/convex-hull
-  engine feature (a real product feature, not a test-fixture trick).
-  Recorded here so the next attempt starts from what's now known rather
-  than re-deriving it.
+- **The fixture WAS attempted, same day, follow-up — and empirically
+  falsified with real numbers, not just theory.** A gradient-classified
+  probe image (two identical bright-green squares on a smooth ramp, forcing
+  the SLIC+RAG lane) swept the gap between the squares from 0 to 40px
+  (0-2.4mm at the probe's 16.67 px/mm) and measured the resulting regions
+  directly via `digitizer_core.run_stages` + shapely, not through the
+  browser. Result: **there is no gap value that produces two separate
+  same-thread shapes close enough to plausibly vectorize-touch.** Below
+  ~10px (~0.5mm) the two squares fuse into ONE region every time (SLIC's
+  own superpixel averaging blends them before RAG ever runs — the
+  superpixel diameter at `SLIC_N_SEGMENTS=1200` over a 1000x650px image is
+  ~23px, comparable to or larger than the probe's own square size at small
+  gaps). At >=12px (~0.7mm) they separate into two same-thread regions —
+  but the measured shapely distance between them is **already 0.71-0.73mm
+  at the very first gap where separation happens at all**, roughly
+  constant across a wide range of further gap increases (SLIC's boundary
+  quantizes to its own superpixel grid, so several different raw pixel
+  gaps alias to byte-identical vectorized output) before finally growing
+  with gap size at 40px (1.37mm). There is no intermediate regime: it's
+  "one fused shape" or "two shapes >=0.7mm apart," never "two shapes
+  touching." That floor is roughly three orders of magnitude past
+  `simplify_tol_mm`'s ~0.03-0.12mm-scale vectorization tolerance (the
+  mechanism a 2026-08-06 pass earlier speculated MIGHT close a small gap),
+  so no fixture built from ordinary artwork through the normal SLIC/RAG
+  pipeline can reach the "touching" state `apply_shape_merges` requires.
+  This is now a settled, evidence-backed conclusion for this codebase's
+  CURRENT segmentation parameters (`SLIC_N_SEGMENTS`, `MERGE_DELTAE00_
+  THRESH`, `simplify_tol_mm`) — not "not yet tried."
+- **What's left is genuinely a product decision, not more fixture-hunting:**
+  a bridging/convex-hull merge strategy for non-adjacent shapes (changing
+  `apply_shape_merges`'s own semantics to connect two shapes that don't
+  touch, not just union ones that already do) is the only path left to a
+  live successful-merge proof, and it changes what "merge" means for every
+  user, not just this test case — Kent's call on whether it's wanted at
+  all, not something to build unilaterally to satisfy a test-coverage gap.
+  Not attempted this pass.
 
 **Convert-to-text (text-cluster detection) — merged 2026-08-05** (PR #63
 Steps 6a/6b, PR #64 Step 7 e2e): a new kind of manual-editing action,
