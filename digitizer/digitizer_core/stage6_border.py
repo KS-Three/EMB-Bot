@@ -39,16 +39,24 @@ that bug, returns every ring of a shape with holes in one call, and returns
 empty — rather than a curve in the wrong place — when the shape is too thin to
 hold a column.
 
-KNOWN LIMITATION (adversarial review, unfixed by choice): under `border="auto"`
-two different-color shapes that ABUT get coincident border rails on the shared
-seam — stage 5 makes both visible edges the same line, so each circuit's outer
-rail rides it at full density: a double-thick bar in two threads, penetrating
-each other's holes for the seam's whole length. The real fix is seam-aware
-suppression (one shape yields its border along frontage another bordered shape
-already covers), which needs cross-shape coordination stage 7 does not yet
-have. It is livable today because the default is `off` and per-shape intent
-(`Region.meta["border"] = False` on one side of the seam) is the manual
-escape; it must be fixed before `auto` becomes a default anywhere.
+FIXED LIMITATION, one module up (adversarial review; mitigation-only in PR #67,
+real fix in the seam-suppression PR that added this paragraph): under
+`border="auto"` two different-color shapes that ABUT get coincident border
+rails on the shared seam — stage 5 makes both visible edges the same line, so
+each circuit's outer rail would ride it at full density: a double-thick bar in
+two threads, penetrating each other's holes for the seam's whole length. This
+module has no notion of "the other shape" — a border is built from one shape's
+own `visible` geometry and nothing else — so the fix could not live here; it
+lives in `stage7_sequence._yield_frontage`, which has both shapes and the sew
+order and pulls the LATER-sewn shape's input geometry back off any seam it
+shares with an ALREADY-bordered earlier shape before handing it to
+`border_runs`. From this module's side that is invisible: it is handed
+whatever polygon its caller wants outlined and traces it exactly as it always
+has, seam or no seam. The one case stage 7 cannot resolve — a shape's frontage
+so thoroughly hemmed in by earlier neighbors that the retreat would erase its
+border outright — falls back to the plain, unsuppressed geometry this module
+was always given, and stage 7 names it under `BORDER_SEAM_SHARED` for the
+operator instead.
 """
 from __future__ import annotations
 
