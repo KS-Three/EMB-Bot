@@ -60,6 +60,53 @@ protects against the cases that do NOT hold in general (a degenerate
 skeleton with too little material to clear the sewability floor once
 buffered, a buffer that returns more than one disconnected piece, or an
 invalid result) rather than a scope restriction decided in advance.
+
+## Selective regularization (2026-08-06 fix — Kent's real-render review)
+
+Rendering the benchmark fixture's actual stitched output (`debugviz.stage6`,
+not just checking that `regularize_text_clusters` runs without raising)
+surfaced a real defect the plan above did not anticipate: buffering EVERY
+tagged member unconditionally, even one whose own geometry was already
+fine, actively made the subline WORSE, not better. Measured directly on
+`enthusiast_logo.png`'s 14-member subline cluster at 90 mm (the same
+fixture the docstring above already cites):
+
+- **Most members did not need correction.** Each member's own
+  `_stroke_stats_mm` value, measured BEFORE regularization, sits within
+  9.5% coefficient-of-variation of the cluster median — 13 of 14 members
+  within +-11%, one real outlier (a narrow "I"-like glyph) at +30%. This is
+  nowhere near the design doc's motivating scenario (independently noisy
+  glyphs genuinely differing in weight); it is a cluster of glyphs that
+  `stage4_vectorize`'s sub-detail 0.5px-floor treatment already left
+  reasonably consistent. Buffering all 14 anyway replaced 13 already-good
+  polygons with cruder skeleton-buffer approximations for no corrective
+  benefit, and a side-by-side render comparison (regularization forced off
+  via the same monkeypatch `tests/test_pipeline.py` already uses, vs. the
+  wired default) shows the un-regularized subline reads MORE cleanly as
+  "ENTERPRISES INC" than the regularized one.
+- **A skeleton-LINE buffer cannot represent a real interior hole.**
+  Buffering a `MultiLineString` (the skeleton chains) can only enclose a
+  hole by coincidence — the loop has to be wide enough, relative to the
+  buffer radius, at every point along it, which a small letterform's
+  counter (an "R" or "P" bowl at 1.9 mm cap height) is not. Three of this
+  cluster's 14 members have a real interior ring in their PRE-regularization
+  polygon (their own rescued/vectorized shape, from `stage4_vectorize`,
+  already correctly traced the counter); post-regularization every one of
+  those holes was gone, buffered solid.
+
+The fix narrows `regularize_text_clusters` to only replace a member's
+geometry when doing so is both SAFE and NEEDED, per the design doc's own
+listed option ("skip regularization when the original shape is already
+clean/valid"): a member already close to the cluster's target half-width is
+left untouched (`_REGULARIZE_SKIP_TOLERANCE`, below), and a member whose
+original polygon already has a real interior ring is always left untouched
+regardless of width — a uniform-radius line buffer is never the right
+primitive for reproducing a hole it did not measure, so the geometrically
+honest move is to not attempt it, not to bolt on hole-reconstruction after
+the fact. This is additive selectivity, not a rewrite of the buffer itself:
+a member that genuinely IS inconsistent (the fixture's own 30%-outlier "I",
+and the design doc's synthetic noisy-cluster test) still regularizes exactly
+as before.
 """
 from __future__ import annotations
 
@@ -105,6 +152,19 @@ PROXIMITY_HEIGHT_MULT = 3.0
 # different-scale neighbour without also splitting a real word over
 # ordinary letter-to-letter geometry noise.
 SIMILARITY_RATIO = 0.5
+
+# A member's OWN pre-regularization stroke half-width, measured within this
+# fraction of the cluster's shared target (`text_cluster_stroke_mm`), is left
+# untouched by `regularize_text_clusters` rather than replaced by a skeleton
+# buffer -- see the module docstring's "Selective regularization" section.
+# 0.15 sits cleanly between the two real populations measured there: 13 of
+# the benchmark subline's 14 real members fall within +-11% of their
+# cluster's median (typographically indistinguishable noise from
+# vectorization, not a real weight difference to correct), while the
+# fixture's one genuine outlier (+30%) and the design doc's synthetic
+# noisy-cluster test fixture (deliberately spread +-22%) both clear this
+# tolerance and still regularize exactly as before.
+_REGULARIZE_SKIP_TOLERANCE = 0.15
 
 
 @dataclass(frozen=True)
@@ -325,6 +385,25 @@ def regularize_text_clusters(regions: list[Region], p: Prep) -> None:
     completely untouched and `meta["text_cluster_regularize_skipped"] =
     True` is set instead. Never raises, never crashes the pipeline.
 
+    Two more cases leave the polygon untouched ON PURPOSE rather than by
+    failure — see "Selective regularization" in the module docstring for the
+    evidence behind both:
+
+    - The member's own polygon already has a real interior ring (a true
+      letterform hole/counter, already correctly traced by
+      `stage4_vectorize`). A skeleton-LINE buffer has no way to reproduce
+      that hole faithfully, so the honest move is not to attempt it.
+    - The member's own pre-regularization stroke half-width is already
+      within `_REGULARIZE_SKIP_TOLERANCE` of the cluster's shared target —
+      nothing to correct, and replacing an already-good polygon with a
+      cruder buffered approximation is a pure loss of fidelity for no
+      consistency gain.
+
+    Both set `meta["text_cluster_regularize_skipped"] = True` (the
+    downstream contract is "was this polygon replaced," not "did replacement
+    fail") plus `meta["text_cluster_regularize_skip_reason"]` naming which
+    case, for diagnostics.
+
     `p` is accepted, not read — same reason `detect_text_clusters` accepts
     it: signature parity with this module's other post-vectorization pass,
     not because today's algorithm needs it.
@@ -332,11 +411,25 @@ def regularize_text_clusters(regions: list[Region], p: Prep) -> None:
     for r in regions:
         if not r.meta.get("text_cluster_id"):
             continue
+
+        if r.polygon.interiors:
+            r.meta["text_cluster_regularize_skipped"] = True
+            r.meta["text_cluster_regularize_skip_reason"] = "has_interior_hole"
+            continue
+
         radius_mm = r.meta.get("text_cluster_stroke_mm")
         field = build_shape_field(r.polygon)
+        if field is not None and radius_mm and field.skel.any():
+            own_stroke_mm = float(np.mean(field.dist[field.skel])) / field.scale
+            if abs(own_stroke_mm - radius_mm) <= _REGULARIZE_SKIP_TOLERANCE * radius_mm:
+                r.meta["text_cluster_regularize_skipped"] = True
+                r.meta["text_cluster_regularize_skip_reason"] = "already_consistent"
+                continue
+
         new_poly = _skeleton_buffer_polygon(field, radius_mm) if field is not None else None
         if new_poly is None:
             r.meta["text_cluster_regularize_skipped"] = True
+            r.meta["text_cluster_regularize_skip_reason"] = "buffer_failed"
             continue
         r.polygon = new_poly
         r.area_mm2 = new_poly.area

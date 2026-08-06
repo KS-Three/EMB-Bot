@@ -273,28 +273,52 @@ def test_flat_lane_starburst_shapes_correctly_flip_to_fill():
     `testdata/photo/enthusiast_logo.png` (this repo's real-art benchmark,
     picked because it "reproduces almost nothing [Kent] complains about" —
     see COOKBOOK.md's "Hard-won lessons") through the actual pipeline at
-    `target_width_mm=90` and two shapes the old flat-exempted rule
-    satin-stitched — `Scd89ad66` (the "A" of the ENTHUSIAST wordmark) and
-    `Sff37b029` (the emblem's 4-point star) — read as compact/irregular
-    under the DT check, not ribbons. Rendering their actual pre-fix stitch
-    coordinates showed why this matters: both sewed as a literal starburst
-    (crosses fanning from a single point), not the clean parallel rows
-    `stage6_fill.stitch_shape` now produces for them — exactly the defect
+    `target_width_mm=90` and a shape the old flat-exempted rule satin-
+    stitched — `Sff37b029` (the emblem's 4-point star) — reads as compact/
+    irregular under the DT check, not a ribbon. Rendering its actual pre-fix
+    stitch coordinates showed why this matters: it sewed as a literal
+    starburst (crosses fanning from a single point), not the clean parallel
+    rows `stage6_fill.stitch_shape` now produces for it — exactly the defect
     COOKBOOK.md's "Hard-won lessons" section names by name ("Green tests are
-    not evidence of quality... the engine produced starbursts")."""
+    not evidence of quality... the engine produced starbursts").
+
+    `Scd89ad66` (the "A" of the ENTHUSIAST wordmark) is deliberately no
+    longer part of this test's claim, updated same-day alongside a SEPARATE
+    fix (`resolve_small_regions`'s enclosed-hole-absorption bug,
+    `tests/test_stages.py::
+    test_small_enclosed_hole_is_not_absorbed_into_its_enclosing_letter`):
+    the "A" only read as a compact/irregular blob here because its real
+    triangular counter was, at the time this test was written, being
+    silently absorbed into its own ink — a solid letterform with no hole is
+    exactly the kind of organic blob the DT check exists to catch. Now that
+    the hole survives as a real interior ring, the "A" measures as the
+    legitimate ribbon it actually is and correctly reads satin again — this
+    is the two fixes' shapes interacting correctly, not a regression: a
+    letterform's medial axis with its counter intact does not fan from a
+    single point (confirmed by rendering `Scd89ad66`'s post-fix stitches,
+    see this PR's own investigation), so satin is the right call for it, not
+    a starburst risk to defend against with a fill fallback.
+    """
     from digitizer_core import PipelineConfig, digitize
 
     result, _plan = digitize(TESTDATA / "photo/enthusiast_logo.png",
                              PipelineConfig(target_width_mm=90.0))
     assert result.design_class == "flat"
-    flipped = {"Scd89ad66", "Sff37b029"}
     by_id = {r.shape_id: r for r in result.regions}
-    assert flipped <= by_id.keys(), \
-        f"benchmark fixture regions moved: expected {flipped} in {sorted(by_id)}"
-    for shape_id in flipped:
-        assert not is_satin_candidate(by_id[shape_id].polygon, machine.SATIN_MAX_WIDTH_MM,
-                                      design_class="flat"), \
-            f"{shape_id} should read as fill (DT-irregular), not satin, now"
+    assert "Sff37b029" in by_id, \
+        f"benchmark fixture regions moved: expected Sff37b029 in {sorted(by_id)}"
+    assert not is_satin_candidate(by_id["Sff37b029"].polygon, machine.SATIN_MAX_WIDTH_MM,
+                                  design_class="flat"), \
+        "the emblem's star should read as fill (DT-irregular), not satin"
+
+    # The "A" is the mirror case: it now HAS a real interior ring (the
+    # enclosed-hole fix) and correctly reads as satin, not fill.
+    a_region = by_id.get("Scd89ad66")
+    assert a_region is not None, f"benchmark fixture regions moved: Scd89ad66 not in {sorted(by_id)}"
+    assert len(a_region.polygon.interiors) == 1
+    assert is_satin_candidate(a_region.polygon, machine.SATIN_MAX_WIDTH_MM,
+                              design_class="flat"), \
+        "the 'A', with its counter restored, is a regular ribbon and should read satin"
 
 
 @pytest.mark.parametrize("name,poly", [("BAR", BAR), ("O_RING", O_RING),

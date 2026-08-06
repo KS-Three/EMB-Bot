@@ -86,8 +86,22 @@ def _bbox(mask: np.ndarray) -> tuple[int, int, int, int] | None:
     return (y0, x0, y1, x1)
 
 
+# A small region is protected from absorption when at least this fraction of
+# its own pixels overlap `Prep.enclosed_mask` — see `resolve_small_regions`'s
+# docstring. Deliberately the same value as `stage4_vectorize.
+# ENCLOSED_TAG_OVERLAP_THRESHOLD` (duplicated, not imported: importing
+# `stage4_vectorize` here would be circular, since it already imports
+# `RegionMask` from this module) and chosen on the same reasoning — a real
+# match scores far above this on both fixtures that motivated it, so 0.6
+# leaves headroom before a genuine enclosed hole would ever miss protection,
+# while still refusing a small region that only grazes an enclosed patch
+# along one edge.
+ENCLOSED_PROTECT_OVERLAP = 0.6
+
+
 def resolve_small_regions(
-    regions: list[RegionMask], cfg: PipelineConfig, px_per_mm: float
+    regions: list[RegionMask], cfg: PipelineConfig, px_per_mm: float,
+    enclosed_mask: np.ndarray | None = None,
 ) -> tuple[list[RegionMask], list[dict]]:
     """Absorb or drop sub-sewable regions. Returns (kept, warnings).
 
@@ -97,6 +111,31 @@ def resolve_small_regions(
     real logo that was thousands of whole-image scans and about two thirds of
     the time stages 1-4 took. The arithmetic is unchanged: a halo is zero
     outside its own box, so cropping to that box cannot change a single count.
+
+    `enclosed_mask` (`Prep.enclosed_mask`, optional — `None` reduces to the
+    pre-existing behaviour byte-for-byte) is stage 1's raw, pre-quantization
+    signal that a pixel is background-colored but NOT canvas-border-connected
+    — a donut hole, a letter's counter. A small region built almost entirely
+    from those pixels is not segmentation noise; it is exactly the real
+    content `tag_enclosed_background` (stage 4, post-vectorization) exists to
+    find and tag `enclosed_background` / unstitched-by-default, per `Prep.
+    enclosed_mask`'s own docstring ("the pixels themselves become a real
+    Region downstream"). Absorbing it into its enclosing neighbour here —
+    which this function's ordinary small-region policy will otherwise always
+    do, since an enclosed hole's only possible neighbour IS the shape that
+    encloses it — erases that Region before stage 4 ever gets the chance,
+    silently filling the hole in. Measured on the real benchmark fixture: the
+    "A" in `testdata/photo/enthusiast_logo.png`'s wordmark has a genuine
+    2.08 mm² triangular counter (`Prep.enclosed_mask` finds it correctly,
+    comfortably above `cfg.min_detail_mm`'s sewable floor) that this exact
+    path was silently absorbing into the "A" glyph's own ink region before
+    this guard existed — confirmed by the final region's polygon carrying
+    ZERO interior rings despite `stage4_vectorize.tag_enclosed_background`'s
+    machinery being fully wired and working correctly for every OTHER
+    enclosed feature in the corpus. A protected region skips absorption and
+    drop entirely (added straight to the kept set); it still has to clear
+    stage 4's own real-geometry floor to survive as a Region, same as any
+    other mask this function keeps.
     """
     min_area_px = (cfg.min_detail_mm * px_per_mm) ** 2
     areas = [int(r.mask.sum()) for r in regions]
@@ -111,6 +150,7 @@ def resolve_small_regions(
     absorbed = dropped = 0
     absorbed_reportable = dropped_reportable = 0
     rescued: list[int] = []
+    protected: list[int] = []
 
     # The run-tier floors, in mask units. The loop test uses 2*max(w, h) as a
     # perimeter proxy — a lower bound (the boundary must traverse the longer
@@ -130,6 +170,13 @@ def resolve_small_regions(
         if box is None:
             dropped += 1
             continue
+        if enclosed_mask is not None and areas[i] > 0:
+            by0, bx0, by1, bx1 = box
+            sub_mask = regions[i].mask[by0:by1, bx0:bx1]
+            sub_enclosed = enclosed_mask[by0:by1, bx0:bx1]
+            if int((sub_mask & sub_enclosed).sum()) / areas[i] >= ENCLOSED_PROTECT_OVERLAP:
+                protected.append(i)
+                continue
         # The halo can only reach one pixel past the region, so this window
         # holds all of it; dilating the cropped mask inside the window gives
         # the same ring the full-image dilation would.
@@ -174,10 +221,12 @@ def resolve_small_regions(
         absorbed += 1
         absorbed_reportable += int(reportable)
 
-    # Rescued masks ride along after the full-size ones; stage 4 re-sorts its
-    # output, so their position here only has to be deterministic (it is:
-    # `rescued` fills in the same smallest-first order the loop walks).
-    kept = [regions[i] for i in keep] + [regions[i] for i in rescued]
+    # Rescued and enclosed-protected masks ride along after the full-size
+    # ones; stage 4 re-sorts its output, so their position here only has to
+    # be deterministic (it is: both lists fill in the same smallest-first
+    # order the loop walks).
+    kept = ([regions[i] for i in keep] + [regions[i] for i in rescued]
+            + [regions[i] for i in protected])
     warnings: list[dict] = []
     # Only regions big enough to have been intentional artwork are reported;
     # anti-alias slivers are cleaned up silently (see cfg.report_absorb_frac).
