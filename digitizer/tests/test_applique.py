@@ -377,6 +377,62 @@ def check_gates_of(geom):
     return check_gates(BIG_SQUARE, geom)
 
 
+def test_solve_cover_width_can_clamp_from_the_tolerance_stack_itself():
+    """`solve_cover_width`'s own `"clamped"` field is not just a hypothetical
+    that only an out-of-range override can trip — the solver's own W_req can
+    exceed the 5.0 mm ceiling on its own, e.g. an aggressive `m_edge` margin
+    (still a public keyword, just not one any published trim discipline uses
+    at the default). This pins the field itself is correct before the next
+    test pins that a caller finally reads it.
+    """
+    normal = solve_cover_width()
+    assert not normal["clamped"]
+
+    wide_margin = solve_cover_width(m_edge=3.0)
+    assert wide_margin["w_req_mm"] > machine.APPLIQUE_COVER_WIDTH_MAX_MM
+    assert wide_margin["clamped"]
+    assert wide_margin["width_mm"] == machine.APPLIQUE_COVER_WIDTH_MAX_MM
+
+
+def test_a_clamped_cover_width_is_warned_not_silent():
+    """`max_cover_width`'s 5.0 mm clamp used to be silent: `solve_cover_
+    width`'s own `"clamped"` field was computed and read by no caller, so a
+    design that hit §2.12's named snag-risk ceiling — or §2.13's own 2.5 mm
+    "absolute minimum (risky)" floor — sewed with no record the requirement
+    and the stitched width disagreed. `check_gates` now reads it and reports
+    which bound fired.
+
+    The override escape hatch (`solve_geometry`'s `width_mm`, `PipelineConfig.
+    applique_cover_width_mm`) is the practically reachable path — config.py's
+    own comment calls it "still clamped to [2.5, 5.0]" — since the solver's
+    own W_req never reaches either bound at a published trim discipline.
+    Landing exactly ON a bound (not past it) is a legitimate width, not a
+    clamp, and must not fire.
+    """
+    from digitizer_core.warnings_codes import APPLIQUE_COVER_WIDTH_CLAMPED
+
+    # The solver's own in-range output is never clamped.
+    assert not [x for x in check_gates_of(solve_geometry())
+                if x["code"] == APPLIQUE_COVER_WIDTH_CLAMPED]
+
+    over = solve_geometry(width_mm=8.0)
+    assert over.width_mm == machine.APPLIQUE_COVER_WIDTH_MAX_MM
+    hits = [x for x in check_gates_of(over)
+            if x["code"] == APPLIQUE_COVER_WIDTH_CLAMPED]
+    assert hits and hits[0]["bound"] == "ceiling" and hits[0]["width_mm"] == 5.0
+
+    under = solve_geometry(width_mm=1.0)
+    assert under.width_mm == machine.APPLIQUE_COVER_WIDTH_FLOOR_MM
+    hits = [x for x in check_gates_of(under)
+            if x["code"] == APPLIQUE_COVER_WIDTH_CLAMPED]
+    assert hits and hits[0]["bound"] == "floor" and hits[0]["width_mm"] == 2.5
+
+    # Exactly on a bound is not past it.
+    at_floor = solve_geometry(width_mm=machine.APPLIQUE_COVER_WIDTH_FLOOR_MM)
+    assert not [x for x in check_gates_of(at_floor)
+                if x["code"] == APPLIQUE_COVER_WIDTH_CLAMPED]
+
+
 def test_pre_cut_is_fifty_fifty_and_centred_on_b():
     """§2.9's side-by-side: pre-cut cover is "50/50, offset 0", and its tackdown
     is a column straddling B rather than a run inside it. Those are the same
@@ -511,19 +567,25 @@ def test_cover_straddles_the_edge_and_buries_the_tackdown():
     this at 400-600% zoom [P], §2.15's renderable assertion), and its inner
     rail reaches past the tackdown line so the tack thread does not show.
 
-    Measured on the shield at the trim-in-place default: rails land at -1.50
-    and +1.50 against a tackdown at -1.00, i.e. the cover reaches **0.50 mm**
-    inboard of the tackdown — exactly the bury margin §2.3 asks for.
+    Measured on the shield at the trim-in-place default: the SOLVED rails land
+    at -1.50 and +1.50 against a tackdown at -1.00, i.e. the cover reaches
+    **0.50 mm** inboard of the tackdown — exactly the bury margin §2.3 asks
+    for. The STITCHED rails sit `APPLIQUE_COVER_PULL_COMP_MM` (0.20 mm)
+    further out on each side — -1.70 / +1.70 — because `_cover_layer` pull-
+    compensates the column it actually sews; `g.c_in`/`g.c_out` stay the
+    solved, uncompensated values (see `_cover_layer`'s docstring for why).
     """
     g = solve_geometry()
     steps, _ = applique_steps(SHIELD, "S1", g)
     cover = _layer_offsets(steps, SHIELD, COVER)
     assert cover
 
-    # The column spans the solved rails, with a hair of tolerance for the
-    # corner fillet the inner rail needs on the shield's point.
-    assert min(cover) == pytest.approx(g.c_in, abs=0.05)
-    assert max(cover) == pytest.approx(g.c_out, abs=0.05)
+    # The column spans the solved rails WIDENED by pull comp, with a hair of
+    # tolerance for the corner fillet the inner rail needs on the shield's
+    # point.
+    pull = machine.APPLIQUE_COVER_PULL_COMP_MM
+    assert min(cover) == pytest.approx(g.c_in - pull, abs=0.05)
+    assert max(cover) == pytest.approx(g.c_out + pull, abs=0.05)
 
     # It actually CROSSES B rather than running beside it.
     assert min(cover) < 0.0 < max(cover)
@@ -532,6 +594,56 @@ def test_cover_straddles_the_edge_and_buries_the_tackdown():
     assert g.c_in < g.s_tack
     assert g.bury_mm >= machine.APPLIQUE_MARGIN_BURY_MM
     assert [d for d in cover if d < g.s_tack], "no cover inboard of the tackdown"
+
+
+def test_cover_pull_comp_leaves_the_solved_geometry_and_the_tackdown_alone():
+    """`APPLIQUE_COVER_PULL_COMP_MM` (0.20 mm, §2.8) is applied only to the
+    column `_cover_layer` actually stitches, not to `AppliqueGeometry` itself
+    — `g.c_in`/`g.c_out`/`g.width_mm` stay exactly the tolerance-stack's own
+    solved numbers (3.00 mm at the default, matching §2.3's validation table),
+    because every gate (`edge_headroom_mm`, `bury_mm`, §2.12's checks) and
+    every other test in this file measures against those. And it is COVER-
+    only, §2.8's own row — pre-cut's zigzag tackdown shares `_rail_column`
+    with the cover but must not pick up a width it was never given: measured
+    directly, its spread stays `min(APPLIQUE_TACK_WIDTH_MM, W_cover -
+    2*m_bury)` with no pull-comp term added.
+    """
+    g = solve_geometry()
+    assert (g.c_in, g.c_out, g.width_mm) == (-1.5, 1.5, 3.0)
+
+    gp = solve_geometry(mode=PRE_CUT)
+    steps, _ = applique_steps(BIG_SQUARE, "S1", gp)
+    tack = _layer_offsets(steps, BIG_SQUARE, TACKDOWN)
+    expected_width = min(machine.APPLIQUE_TACK_WIDTH_MM,
+                         gp.width_mm - 2 * machine.APPLIQUE_MARGIN_BURY_MM)
+    assert max(tack) - min(tack) == pytest.approx(expected_width, abs=0.05)
+
+
+def test_cover_closure_overlap_reads_the_appliqué_specific_stitch_count(monkeypatch):
+    """`APPLIQUE_CLOSURE_OVERLAP_STITCHES` (6, §2.8's own row) existed and was
+    read by no code path — `_cover_layer` inherited `BORDER_CLOSURE_OVERLAP_MM`
+    (1.40 mm, the border module's generic distance) through `_satin_loop`'s
+    hardcoded default instead. At the 0.40 mm cover spacing the two land close
+    (1.40 mm / 0.20 mm-per-station rounds to 7 stitches, one more than the
+    appliqué constant) and both sit inside Stahls' published 4-8 stitch
+    window, so the substitution was never a visible defect — but it was a
+    coincidence resting on `APPLIQUE_COVER_SPACING_MM` staying 0.40 mm, not a
+    read of the appliqué tier's own number.
+
+    Proven by moving the constant and watching the emitted cover move with
+    it: before this fix, changing `APPLIQUE_CLOSURE_OVERLAP_STITCHES` could
+    not change a single stitch, because nothing read it. Now the closing
+    circuit continues past its own start for exactly the constant's station
+    count, so raising it by N raises the measured cross count by exactly N.
+    """
+    g = solve_geometry()
+    _steps, before = applique_steps(BIG_SQUARE, "S1", g)
+
+    monkeypatch.setattr(machine, "APPLIQUE_CLOSURE_OVERLAP_STITCHES",
+                        machine.APPLIQUE_CLOSURE_OVERLAP_STITCHES + 4)
+    _steps, after = applique_steps(BIG_SQUARE, "S1", g)
+
+    assert after["crosses"] - before["crosses"] == 4
 
 
 def test_tackdown_is_a_double_run_for_trim_in_place():
@@ -879,6 +991,28 @@ def test_applique_pieces_sew_as_consecutive_same_thread_blocks():
     # And the stops survive into the file.
     from digitizer_core.stage6_applique import plan_steps as read_steps
     assert len(read_steps(plan)) == len(plan.blocks)
+
+
+def test_a_forced_cover_width_override_warns_end_to_end():
+    """The gate-level clamp warning (`test_a_clamped_cover_width_is_warned_
+    not_silent`) reaches a real plan through `applique_pass`'s own warning
+    aggregation, the same path every other appliqué gate warning takes.
+    `applique_cover_width_mm` is config.py's documented "escape hatch for a
+    sew-out comparison, still clamped to [2.5, 5.0]" — the practically
+    reachable way to hit §2.12's snag-risk ceiling on the benchmark logo.
+    """
+    from digitizer_core.warnings_codes import APPLIQUE_COVER_WIDTH_CLAMPED
+
+    plan, _c = _applique_plan(applique_cover_width_mm=8.0)
+    hits = [w for w in plan.warnings if w["code"] == APPLIQUE_COVER_WIDTH_CLAMPED]
+    assert hits, "no clamp warning on a width override 3.2 mm past the ceiling"
+    assert hits[0]["bounds"] == ["ceiling"]
+    assert hits[0]["count"] > 0
+
+    # A normal, unforced design never hits either bound.
+    plan_normal, _c = _applique_plan()
+    assert not [w for w in plan_normal.warnings
+               if w["code"] == APPLIQUE_COVER_WIDTH_CLAMPED]
 
 
 def test_pre_cut_costs_one_fewer_stop_per_piece():

@@ -87,6 +87,35 @@ statistically identical to `edge_run` (60x40mm: 19.04mm vs 19.02mm; 100x70mm:
 *slightly worse* on the small shape). A single line through the shape's
 principal axis is exactly as far from off-axis interior points as a
 perimeter walk is; only a full grid/lattice pass (`edge_lattice`/
+**Last updated:** 2026-08-06 — the satin/fill classifier's DT-tightening fix
+(`satin-classifier-organic-shapes`, area 1 below), previously scoped to
+`gradient`/`photo_subject`/`photo_scene` only on the premise that flat art's
+boundaries are clean, is **extended to `design_class="flat"` too**: that
+premise was empirically false, proven on this repo's own committed
+`testdata/photo/enthusiast_logo.png` benchmark, where the flat-exempted rule
+satin-stitched two real shapes into a literal starburst (confirmed by
+rendering their actual pre-fix stitch coordinates). `is_satin_candidate`'s
+`design_class == "flat": return True` early return is deleted; the DT check
+(`_dt_regular_and_within_cap`, itself untouched) now runs unconditionally.
+`flat_lane_golden.json` regenerated and structurally diffed — exactly the 2
+predicted entries move (`logo_alpha.png`, `photo/enthusiast_logo.png`),
+`logo_whitebg.png`/`ribbon_curve.png` stay byte-identical. Full detail,
+exact measurements, and the pure-tightening safety re-proof (four
+letterform archetypes still satin under `"flat"`) in area 1's "Satin/fill
+classifier" bullet below.
+
+Prior update below, still 2026-08-06: the "jersey_tee fill underlay"
+follow-up this doc flagged as a low-priority candidate (area 1, below) is
+investigated and **closed as declined, not a code change**: a direct
+measurement (synthetic fill polygons at realistic sizes — 60x40mm, 100x70mm,
+20x15mm — run through `digitizer_core.stage6_fill._underlay_paths`,
+computing the real max distance from any interior point to the nearest
+underlay stitch) shows `center_run` does NOT close the 13mm interior gap the
+prior audit measured — it's statistically identical to `edge_run` (60x40mm:
+19.04mm vs 19.02mm; 100x70mm: 34.02mm vs 34.01mm; 20x15mm: 6.58mm vs 6.11mm,
+`center_run` actually *slightly worse* on the small shape). A single line
+through the shape's principal axis is exactly as far from off-axis interior
+points as a perimeter walk is; only a full grid/lattice pass (`edge_lattice`/
 `edge_zigzag`) actually closes it, to 1.6-1.8mm regardless of shape size.
 Even combining `edge_run`+`center_run` (a real corpus recipe, "Rg.Re") only
 halves the gap on large shapes (9-17mm) — nowhere near lattice coverage. So
@@ -1199,32 +1228,205 @@ is now fixed (see below), four remain open:
   risk by construction, a pure-tightening DT term identical to the spike's
   own vetted recommendation, and direct measurement against this repo's own
   committed fixtures rather than a synthetic population alone.
+
+  **2026-08-06 update: the flat-lane exemption is gone — it was an unproven
+  premise, not a proven-safe default, and it was wrong.** The scoping above
+  reasoned that `"flat"` art's clean, spot-colour, vector-like boundaries
+  don't carry the segmentation-derived noise the DT check exists to catch,
+  so `is_satin_candidate` special-cased `design_class == "flat": return
+  True` and skipped `_dt_regular_and_within_cap` entirely for it. A fresh
+  audit against this repo's own committed, flat-classified benchmark
+  fixture — `testdata/photo/enthusiast_logo.png`, picked in the first place
+  because it "reproduces almost nothing [Kent] complains about" (COOKBOOK.md
+  "Hard-won lessons") — disproved that premise directly: at
+  `target_width_mm=90`, the DT check correctly rejects `Scd89ad66` (the
+  wordmark's "A", `ribbon_width_mm` 2.386mm, area 33.837mm2) and `Sff37b029`
+  (the emblem's 4-point star, `ribbon_width_mm` 1.287mm, area 17.624mm2) —
+  both of which the flat-exempted rule satin-stitched into a literal
+  **starburst** (crosses fanning from a single point), confirmed by
+  rendering the actual pre-fix emitted stitch coordinates, not inferred from
+  the classifier's numbers alone. That is exactly the defect COOKBOOK.md's
+  "Hard-won lessons" section names by name ("Green tests are not evidence of
+  quality... the engine produced starbursts") — invisible to the shipped
+  test suite and to `preflight`/`corpus_scorecard.py` because neither
+  measures cross-fan coherence, only mechanical properties (determinism, no
+  phantom loops, nothing outside the artwork).
+
+  Fix: the `design_class == "flat": return True` early return in
+  `is_satin_candidate` (`digitizer_core/stage6_satin.py`) is deleted. The DT
+  check now runs unconditionally — `design_class` is kept as a parameter
+  (every existing caller still passes one) but no longer changes the
+  verdict. This is a pure widening of an already-proven-correct check, not a
+  new rule: `_dt_regular_and_within_cap` itself is untouched, byte for byte.
+
+  **Measured, not assumed, on both configs that matter:** at the golden
+  capture width (`target_width_mm=80`, `tools/capture_flat_lane_golden.py`'s
+  own config), `enthusiast_logo.png`'s `Scd87e08f` (`ribbon_width_mm`
+  2.121mm, area 26.735mm2) and `S919bee11` (1.144mm, area 13.925mm2) flip;
+  at `target_width_mm=90` (the audit's cited config) it's `Scd89ad66`/
+  `Sff37b029` above — different shape-id hashes because the raster scale
+  differs, same underlying defect. `logo_alpha.png` also moves at 80mm:
+  `Sb253ebba` and `Sf5200f3f` (both `ribbon_width_mm` 4.997mm — sitting
+  right at the 5.0mm cap — and identical area, 100.241mm2, being mirrored
+  halves of one glyph). `Sf5200f3f` is not a new finding — it's the
+  "multi-stroke glyph" the 2026-08-05 self-overlap fix (`_rail_points`'
+  `SATIN_MAX_WIDTH_MM / 2` per-station cap, prior update above) already
+  named and partially mitigated without being able to fix outright, because
+  that fix ran before this one and `design_class="flat"` still exempted the
+  shape from ever being told it wasn't a ribbon. Rendering `Sf5200f3f`'s and
+  `Sb253ebba`'s pre-fix stitches confirms the same starburst defect on this
+  fixture too (a converging fan and an X-cross pattern respectively) — this
+  fix is the fuller resolution the self-overlap cap could only patch around.
+  Post-fix, all six flipped shapes sew as `stage6_fill.stitch_shape`'s
+  ordinary parallel fill rows.
+
+  `flat_lane_golden.json` regenerated via the repo's own
+  `tools/capture_flat_lane_golden.py`, then structurally diffed key by key
+  against the pre-change file (not blind-accepted): exactly the 2 predicted
+  entries move — `logo_alpha.png` (`stitch_count` 2089 -> 2072) and
+  `photo/enthusiast_logo.png` (`stitch_count` 2431 -> 2331), both only in
+  `stitch_count`/`stitch_coords`; `shape_ids`/`areas_mm2`/`warnings` are
+  identical on every one of the 4 fixtures, confirming no shape appeared,
+  disappeared, or moved — only how the same shapes sew. `logo_whitebg.png`
+  and `ribbon_curve.png` are byte-identical, exactly as predicted (neither
+  fixture contains a shape the DT check disagrees with the old rule on).
+
+  **Safety invariant re-proven for the flat lane specifically, the same way
+  it was already proven for the other 3 classes:** this is satin->fill only,
+  never the reverse. All four letterform archetypes (`BAR`, `O_RING`,
+  `C_STROKE`, `T_SHAPE`) keep their satin call under `design_class="flat"`
+  (`tests/test_satin.py::
+  test_the_dt_check_does_not_cost_real_ribbons_their_satin_call_when_flat`).
+  `tests/test_satin.py::test_satin_crosses_do_not_self_overlap_across_a_wide_
+  junction` (the 2026-08-05 regression pin for `Sf5200f3f`'s rail-geometry
+  cap) now calls `satin_shape` directly on the shape's real geometry,
+  decoupled from `is_satin_candidate`, so the cap's own regression coverage
+  survives the shape no longer reaching satin through the classifier; a
+  companion test pins the classifier side directly
+  (`test_sf5200f3f_no_longer_reaches_satin_in_the_real_pipeline`).
+  `tests/test_preflight.py::test_a_wide_oversize_satin_stroke_does_not_
+  block_on_underlay_glue` still passes unchanged (`coverage_max` stays well
+  under its `< 5.0` ceiling now that the shape fills instead of satins).
+  Superseded: `test_flat_design_class_keeps_the_old_verdict_on_purpose`,
+  whose own premise (flat keeps the old verdict on purpose) this fix
+  disproves — replaced by `test_flat_design_class_now_gets_the_dt_check_too`
+  and `test_flat_lane_starburst_shapes_correctly_flip_to_fill`.
+
+  Verified targeted, not a local full-suite run this pass (CI —
+  `.github/workflows/python-package-conda.yml` — is the full-suite gate on
+  the PR itself): `tests/test_satin.py` **43/43**, `tests/test_preflight.py`
+  **56/56**, `tests/test_flat_lane_byte_identical.py` + `tests/
+  test_photo_sequencing.py` + `tests/test_pushcomp.py` together **46/46** —
+  every file this change touches or that reads `is_satin_candidate`/
+  `Sf5200f3f`/the flat-lane goldens directly, all green, 0 failures. Engine
+  `node --test` re-verified unaffected: **283/283**, confirming this pass is
+  Python-only (`git status` shows no `src/`/`app/` changes).
 - **Fill row spacing (law 19)** — unresolved two-population finding: the
   0.20mm figure is a satin-rail artifact for one file population (refuted)
   but looks like a genuine denser pitch on 43 commissioned cap logos (still
   alive). Shipped `FILL_ROW_MM=0.40` unchanged pending sew-out.
-- **Border tier seam-sharing (KNOWN LIMITATION, mitigated not fixed)** —
-  `stage6_border.py`'s own module docstring documents an unresolved defect:
-  under `border="auto"` (or any per-shape border override), two
-  different-colour shapes that abut get coincident outline rails, because
-  stage 5's overlap resolution makes both shapes' visible edges the same
-  line — each shape's own circuit then rides that line at full density,
-  sewing a double-thick bar in two threads. The real fix (seam-aware
-  suppression, one shape yielding frontage to the other) needs cross-shape
-  coordination `stage7_sequence.py` does not have and was explicitly out of
-  scope for this pass. What landed instead is detection: `sequence()`
-  tracks the visible geometry of every shape whose border tier actually put
-  a circuit down, and after all colours are sequenced, checks every pair for
-  a shared boundary run longer than `2 * BORDER_WIDTH_MM` (2.8mm at the
-  shipped column width) via a boundary-buffer/intersect/area-recovers-length
-  check patterned on `stage5_overlap`'s own adjacency idiom. A hit emits
-  `BORDER_SEAM_SHARED` (`warnings_codes.py`, `stage7_sequence.py`), naming
-  both shape ids so an operator can turn border off on one side of the seam
-  from the review screen. Regression coverage in `tests/test_border.py`
-  (two abutting bordered rectangles fire and name both shapes; a 6mm gap and
-  border-off both correctly stay silent). This is a warning, not a geometry
-  change — the double-thick bar itself still sews until the seam-aware fix
-  lands.
+- **Border tier seam-sharing — REAL FIX landed (was KNOWN LIMITATION,
+  mitigated-not-fixed as of PR #67).** `stage6_border.py`'s module docstring
+  used to document an unresolved defect: under `border="auto"` (or any
+  per-shape border override), two different-colour shapes that abut get
+  coincident outline rails, because stage 5's overlap resolution makes both
+  shapes' visible edges the same line — each shape's own circuit then rides
+  that line at full density, sewing a double-thick bar in two threads. PR #67
+  shipped detection only (`BORDER_SEAM_SHARED`, unconditional on every
+  qualifying pair); this pass adds the seam-aware suppression that PR
+  explicitly scoped out, in `stage7_sequence._yield_frontage`.
+
+  **The fix and its tie-break.** `sequence()` already commits shapes to the
+  fabric in a fixed, deterministic order (nearest-neighbour within each
+  colour/step group, groups in `sew_index` order) and already tracks, as it
+  goes, the true visible geometry of every shape whose border tier put a
+  real circuit down (`border_geom_by_id`, pre-existing from PR #67). The tie-
+  break is SEW ORDER: whichever shape's border commits first keeps the seam
+  at full density; before a later shape traces its own circuit,
+  `_yield_frontage` checks it against every already-committed border, and for
+  any shared run past the same `2 * BORDER_WIDTH_MM` threshold PR #67's
+  warning used, differences a buffered band (`BORDER_WIDTH_MM +
+  BORDER_HOST_MARGIN_MM`, 1.6mm at the shipped column) around the coincident
+  curve out of that shape's border INPUT geometry before handing it to
+  `border_runs` — "inset its border circuit locally", one of the two options
+  the old docstring named. This needed no lookahead or second pass: by
+  causal construction, every shape a given shape could contend a seam with
+  has, by the time it sews, either already committed a real border (and sits
+  in `border_geom_by_id` to yield to) or has not (nothing to yield to,
+  nothing changes) — so no pair can end up with both circuits riding the
+  line, or with neither covering it. `border_geom_by_id` always stores the
+  TRUE unmodified visible geometry regardless of whether a shape yielded, so
+  a third shape sharing a seam with an already-yielded shape still yields
+  against that shape's real edge, not its already-inset one.
+
+  **Measured before/after** (`tests/test_border.py`'s existing two abutting
+  10x10mm bordered rectangles, sharing the edge x=10 the full 10mm — the PR
+  #67 fixture): pre-fix, both shapes' own outer rails independently produce
+  13 penetrations apiece sitting on the x=10 line — the double bar, real on
+  actual stitch output, not just geometry. Post-fix, run through the real
+  `sequence()`: the earlier-sewn shape (layer 0) still has all 13 on the
+  line, untouched; the later-sewn shape (layer 1) has ZERO — its whole
+  border retreated to x >= 11.6mm, comfortably clear of the seam — and
+  `BORDER_SEAM_SHARED` no longer fires for this pair, because the pair is no
+  longer wrong.
+
+  **What is not resolved, and why the warning still exists for it.** A
+  shape whose entire frontage IS a shared seam — hemmed in by an
+  already-bordered neighbour on more than one side, e.g. a shape sitting in
+  a hole/slot fully cut out of an earlier-sewn shape — has nowhere to
+  retreat to; `_yield_frontage` falls back to the untouched geometry rather
+  than deleting the shape's border outright (same "a real border beats none"
+  call `stage6_border.round_inward` already makes when its own corner
+  relaxation eats a shape whole), and `BORDER_SEAM_SHARED` now fires only
+  for these residual, genuinely-unresolved pairs — reworded from "turn
+  border off on one side" staying literally true (still the only escape for
+  this case) rather than reporting a defect that no longer exists on every
+  other pair. Verified end-to-end on a constructed fixture (a 2x15mm slot
+  cut clean through a much larger, earlier-sewn bordered shape, sharing all
+  four of its sides): the slot's raw geometry does hold a real bean-tier
+  border on its own, but a 2mm-wide shape cannot survive retreating ~1.6mm
+  off both long edges at once, so the fallback engages, the slot still sews
+  its (un-suppressed) bean border, and `BORDER_SEAM_SHARED` correctly names
+  the pair. This case was deliberately chosen to be reachable in practice —
+  a simple two-rectangle abutment, checked exhaustively, turns out to be
+  impossible to fully erase given how `BORDER_WIDTH_MM`/`BORDER_HOST_MARGIN_MM`
+  and the "would this shape have lightened to bean anyway" threshold happen
+  to be calibrated (both come out to the same 1.6mm number), so the residual
+  case is real but structurally rare — a shape has to be hemmed in from more
+  than one direction to hit it, not merely adjacent to one neighbour.
+
+  Tie-break reasoning: sew order (not shape_id or area) was chosen because
+  it is the only option requiring no lookahead or duplicated fill/border
+  computation to implement correctly — `border_geom_by_id`'s existing,
+  already-causal accumulation makes "yield to whatever is already on the
+  fabric" fall out of the pipeline's own structure rather than being a
+  policy bolted on top, and it composes correctly with N-way seams (a middle
+  shape in a row of three yields only to whichever of its neighbours sewed
+  first, never both, and never zero).
+
+  Regression coverage, `tests/test_border.py` (17 → 22 tests): the PR #67
+  fixture rewritten to measure real stitch penetrations before/after instead
+  of only checking the warning
+  (`test_seam_sharing_is_resolved_automatically_not_just_warned`); the
+  hemmed-in-slot fallback, end-to-end
+  (`test_border_seam_shared_still_fires_when_a_shape_is_hemmed_in_on_every_side`);
+  `_yield_frontage` unit-tested directly for the resolved, no-shared-edge,
+  and fallback cases; `_border_seam_warning` unit-tested for its
+  pairs/count/message construction. The negative case from PR #67 (a 6mm gap,
+  and border off) is unchanged and still passes.
+
+  Targeted verification: `tests/test_border.py` (22/22) plus every other
+  test file that imports `stage7_sequence`
+  (`test_chaining.py`, `test_planning.py`, `test_pushcomp.py`,
+  `test_run_tier.py`, `test_shape_overrides.py`, `test_stage6_detail.py`,
+  `test_stage6_sketch.py`, `test_stage6_streamline.py`,
+  `test_photo_sequencing.py`, `test_stages.py`) plus both byte-identical
+  golden suites (`test_flat_lane_byte_identical.py`,
+  `test_shapefield_byte_identical.py`) — 233 tests, 0 failed, run directly
+  rather than assumed from a full-suite pass. A design with no seam-sharing
+  bordered pair takes the identical `_yield_frontage(geom, {}, ...) ->
+  (geom, [])` no-op path every existing border call already took, so this
+  change carries no byte-identity risk for the common case by construction.
 - **Appliqué tier (`stage6_applique.py`, 4-layer placement/cutting/tackdown/
   cover, wired into `stage7_sequence` and reachable through the service with
   no gating) — audited for the first time this pass; had never appeared in
@@ -1309,18 +1511,115 @@ is now fixed (see below), four remain open:
   abandoned then picked up again" fragmentation that doc described for its
   own commit.
 
-  **Confirmed but NOT fixed — documented gaps, left alone because a
-  correct fix isn't well-specified enough to commit to without guessing:**
+  **Follow-up, 2026-08-06: two of the three "confirmed but not fixed" gaps
+  below are now fixed, the third stays open by design.** Same standing
+  discipline as the first pass — real geometry measured before/after on
+  `SHIELD` (a concave shield polygon), `BIG_SQUARE`, and a plain circle,
+  not trust that tests pass. New regression tests, 49 → 54 in
+  `test_applique.py`.
+
+  **Fixed — `APPLIQUE_COVER_PULL_COMP_MM` (0.20mm, §2.8) now compensates
+  the cover satin; it was defined and applied by no code path.** The same
+  effect `Fabric.pull_comp_mm` compensates for on an ordinary satin column
+  (Law 24: thread tension pulls each cross's two penetrations together, so
+  a column sews narrower than digitized) was uncompensated on the one
+  column type that deliberately does NOT go through stage 5's fabric pull
+  comp — `applique_pass` passes the raw artwork polygon on purpose, because
+  B has to stay the exact tolerance-stack reference point, not something a
+  fabric preset already grew. Fix: `_cover_layer` now widens the column it
+  actually stitches — `c_in -= pull`, `c_out += pull` — the same direction
+  stage 5's `poly.buffer(pull)` widens an ordinary satin ribbon (confirmed
+  against `Fabric` "pique_knit", pull_comp_mm 0.3: a 4.5mm bar sews at
+  5.1mm, `tests/test_pushcomp.py`). Measured on `SHIELD` at the trim-in-place
+  default: cover rails moved from (-1.50, +1.50) to (-1.70, +1.70) — exactly
+  `g.c_in - 0.20` / `g.c_out + 0.20` — a 3.00mm design now sewing a 3.40mm
+  column. `AppliqueGeometry.c_in`/`c_out`/`width_mm` are deliberately left
+  at the solved, uncompensated values, because every gate
+  (`edge_headroom_mm`, `bury_mm`, §2.12's checks) and every other test in
+  the file measures against the DESIGNED width, not the sewn one — and it
+  is cover-only: pre-cut's zigzag tackdown shares `_rail_column` with the
+  cover but §2.8's row is specific to layer 4, so the tackdown's own width
+  (`min(APPLIQUE_TACK_WIDTH_MM, W_cover - 2*m_bury)`, still 2.00mm at the
+  default) is unchanged and pinned by a new regression. New tests:
+  `test_cover_pull_comp_leaves_the_solved_geometry_and_the_tackdown_alone`,
+  and `test_cover_straddles_the_edge_and_buries_the_tackdown` updated (its
+  old assertion, `min(cover) == g.c_in`, is exactly the uncompensated
+  number pull comp now moves past).
+
+  **Fixed — `_cover_layer`'s closure overlap now reads
+  `APPLIQUE_CLOSURE_OVERLAP_STITCHES` (6) instead of inheriting
+  `BORDER_CLOSURE_OVERLAP_MM` (1.40mm) from the border module.**
+  Investigated first, because at the 0.40mm cover spacing the two numbers
+  were already close — 1.40mm / 0.20mm-per-station rounds to 7 stitches,
+  one more than the appliqué constant, and both sit inside Stahls'
+  published 4–8 stitch window, so the substitution was never a visible
+  defect. Fixed anyway: it was a coincidence resting on
+  `APPLIQUE_COVER_SPACING_MM` staying 0.40mm (nothing enforced that), not a
+  read of the appliqué tier's own §2.8 number, and the fix sidesteps a
+  second, independent imprecision — `_loop_stations` divided the mm
+  distance by a per-ring arc-length step that varies with ring geometry,
+  so the exact stitch count could drift shape to shape even at a fixed
+  spacing. `stage6_border._loop_stations`/`_satin_loop` gained an
+  `overlap_stitches` param (an exact station count, bypassing the
+  mm-divided-by-step path) that `_cover_layer` now passes; every other
+  caller (border's own outline, the pre-cut zigzag tackdown) leaves it
+  `None` and is provably unchanged (`tests/test_border.py`,
+  `test_run_and_double_run_tackdowns_stay_a_single_line`,
+  `test_pre_cut_tackdown_is_a_real_column_not_a_zero_width_run` all still
+  pass byte-for-byte). Measured on a plain 20mm-radius circle: the
+  appliqué-specific overlap emits exactly one fewer cross than the
+  border-inherited one it replaced (688 vs. 689). New test:
+  `test_cover_closure_overlap_reads_the_appliqué_specific_stitch_count`
+  (monkeypatches the constant and confirms the emitted cross count moves
+  with it exactly — a proof the old code, which read nothing, could not
+  have passed).
+  `APPLIQUE_OVERLAP_ALLOWANCE_FRAC` (0.5) is a **different, unrelated**
+  constant despite the similar name and was investigated separately: it is
+  §2.11's Wilcom number ("cutting overlap = half the cover width") for
+  Mode B multi-piece batching — how one piece's cutting boundary dilates
+  into a neighbour it overlaps — not how a single piece's own cover
+  circuit overlaps its own start. Mode B is explicitly not built
+  (`applique_pass`'s own docstring: "Mode B batching... is NOT built");
+  `APPLIQUE_OVERLAP_ALLOWANCE_FRAC` correctly stays unread until it is, and
+  wiring it into `_cover_layer` would have been the wrong fix for the wrong
+  gap. Left alone, now documented in `machine.py` next to the constant.
+
+  **Fixed — `max_cover_width`'s 5.0mm clamp (and the 2.5mm floor) no longer
+  silent.** `solve_cover_width`'s own `"clamped"` field has always recorded
+  whether the width it returned is the tolerance stack's own request or one
+  of the two hard bounds; no caller read it. New code
+  `APPLIQUE_COVER_WIDTH_CLAMPED` (`warnings_codes.py`), fired by
+  `check_gates` and aggregated by `applique_pass` exactly like the other
+  four appliqué gates, reporting which bound (`"floor"` or `"ceiling"`)
+  fired. Also fixed in the same pass: `solve_geometry`'s override branch
+  (`width_mm=...`, `PipelineConfig.applique_cover_width_mm`) was carrying
+  the PRE-override `"clamped"` verdict forward unchanged, so a caller
+  override that itself blew past the ceiling — config.py's own documented
+  "escape hatch... still clamped to [2.5, 5.0]" — was invisible to the new
+  code too; `"clamped"` is now recomputed against the actual requested
+  override. This override path is the practically reachable one: the
+  solver's own W_req never reaches either bound at any published trim
+  discipline (§2.3's table tops out at 4.0mm, loose), confirmed directly —
+  `solve_cover_width(m_edge=3.0)` is the one way found to make the solver
+  itself clamp (W_req 7.7mm → 5.0mm). New tests:
+  `test_solve_cover_width_can_clamp_from_the_tolerance_stack_itself`,
+  `test_a_clamped_cover_width_is_warned_not_silent`,
+  `test_a_forced_cover_width_override_warns_end_to_end` (through
+  `applique_pass` on the benchmark logo at `applique_cover_width_mm=8.0`).
+
+  **Still confirmed but NOT fixed — genuinely out of scope, unchanged from
+  the first pass:**
   - `applique_cover="zigzag"` and `"e_stitch"` are accepted config values
-    but produce **byte-identical stitch geometry** to `"satin"` — same point
-    count, same coordinates, verified directly. `cover` only changes the
-    printed worksheet label. §2.8 calls zigzag cover "a genuinely different
-    aesthetic, not a cheap satin" at a different spacing, and E-stitch a
-    different stitch ORDER (a comb pattern) — neither is built. Not fixed
-    here because the spec itself gives two different candidate zigzag
-    spacings (1.69mm SPI vs. Melco's 3.0mm preset) as alternatives with no
-    stated tie-break, and E-stitch's comb order is a real algorithm this
-    audit didn't have grounds to invent.
+    but produce **byte-identical stitch geometry** to `"satin"` — re-verified
+    directly this pass (same point-for-point equality on `SHIELD`, unaffected
+    by the pull-comp/closure-overlap fixes above, which apply uniformly
+    regardless of `cover`). `cover` still only changes the printed worksheet
+    label. §2.8 calls zigzag cover "a genuinely different aesthetic, not a
+    cheap satin" at a different spacing, and E-stitch a different stitch
+    ORDER (a comb pattern) — neither is built. Still not fixed because the
+    spec itself gives two different candidate zigzag spacings (1.69mm SPI
+    vs. Melco's 3.0mm preset) as alternatives with no stated tie-break, and
+    E-stitch's comb order is a real algorithm with no spec to follow here.
   - §2.12's pre-cut `min_inscribed_diameter >= 8mm` gate (scissors/placement
     floor) is never checked — only the 12mm trim-in-place floor is. The
     constant (`APPLIQUE_MIN_INSCRIBED_PRECUT_MM`) exists and is unread; the
@@ -1329,25 +1628,16 @@ is now fixed (see below), four remain open:
     warning. Not fixed because the physical rationale for the specific
     8mm number isn't stated anywhere this audit found, unlike the
     tackdown-width fix above where every number traced to a stated vendor
-    constraint.
-  - `APPLIQUE_COVER_PULL_COMP_MM` (0.20mm, up to 0.30 on knits per §2.8) is
-    defined and never applied — the cover satin gets no pull compensation.
-    `APPLIQUE_CLOSURE_OVERLAP_STITCHES` (6) and `APPLIQUE_OVERLAP_ALLOWANCE_
-    FRAC` (0.5) are likewise defined and never read (`_cover_layer` inherits
-    `BORDER_CLOSURE_OVERLAP_MM` from the border module instead, which lands
-    in the published 4–8 stitch window anyway, so this one is lower-stakes
-    than the pull-comp gap). `max_cover_width`'s 5.0mm clamp is silent —
-    `solve_cover_width`'s own `"clamped"` field is computed and never read
-    by any caller, so a design that hits the snag-risk ceiling gets no
-    warning despite §2.12 flagging that ceiling by name.
+    constraint; not touched this pass either — out of its scope.
 
   **Caveat, stated plainly:** this is 3 real fixtures and a handful of
   targeted synthetic constructions (dog-bone, off-centre ring, two-piece
-  overlap harness), not a corpus sweep, and it covers the geometry/gate
-  layer only — no sew-out, same standing caveat as every other tier in this
-  doc. `trim_discipline`/`material`/`placement` combinations were exercised
-  through the existing shipped tests' parametrization, not independently
-  re-swept by this pass.
+  overlap harness, a plain circle for the closure-overlap count), not a
+  corpus sweep, and it covers the geometry/gate layer only — no sew-out,
+  same standing caveat as every other tier in this doc. `trim_discipline`/
+  `material`/`placement` combinations were exercised through the existing
+  shipped tests' parametrization, not independently re-swept by either
+  pass.
 
 Every claim about visual/sew quality beyond internal geometry checks is
 **pending sew-out** — see the cross-cutting item above.

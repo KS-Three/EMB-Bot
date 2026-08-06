@@ -88,6 +88,7 @@ from .machine import APPLIQUE_QUANTIZE_MM
 from .stage6_border import _parts, _ring_arc_samples, _satin_loop, round_inward
 from .stitches import StitchRun
 from .warnings_codes import (APPLIQUE_COVER_MARGINAL,
+                             APPLIQUE_COVER_WIDTH_CLAMPED,
                              APPLIQUE_CUTTING_LINE_SUPPRESSED,
                              APPLIQUE_FORCED_PRE_CUT,
                              APPLIQUE_NO_FABRIC_VISIBLE,
@@ -302,9 +303,19 @@ def solve_geometry(
                                trim_discipline=trim_discipline,
                                placement=placement, material=material)
     if width_mm is not None:
+        # An explicit override replaces the solver's own request, so
+        # "clamped" has to be recomputed against THIS number, not left over
+        # from the pre-override solve — config.py calls `applique_cover_width_
+        # mm` "an escape hatch for a sew-out comparison, still clamped to
+        # [2.5, 5.0]", and that clamp is the more likely real-world way to
+        # actually hit the 5.0 mm ceiling, since the solver's own W_req rarely
+        # gets there (§2.3's validation table tops out at 4.0 mm, loose).
+        requested = float(width_mm)
         solved = dict(solved, width_mm=q(min(
             machine.APPLIQUE_COVER_WIDTH_MAX_MM,
-            max(machine.APPLIQUE_COVER_WIDTH_FLOOR_MM, float(width_mm)))))
+            max(machine.APPLIQUE_COVER_WIDTH_FLOOR_MM, requested))),
+            clamped=(requested < machine.APPLIQUE_COVER_WIDTH_FLOOR_MM
+                     or requested > machine.APPLIQUE_COVER_WIDTH_MAX_MM))
 
     inside_share = (machine.APPLIQUE_INSIDE_SHARE_PRECUT if mode == PRE_CUT
                     else machine.APPLIQUE_INSIDE_SHARE_TRIM)
@@ -489,6 +500,18 @@ def check_gates(poly: Polygon, geom: AppliqueGeometry) -> list[dict]:
         out.append({"code": APPLIQUE_COVER_MARGINAL,
                     "headroom_mm": geom.edge_headroom_mm,
                     "floor_mm": machine.APPLIQUE_MARGIN_EDGE_MM})
+
+    # `solve_cover_width` has always computed whether the width it returned is
+    # the tolerance stack's own number or one of the two hard bounds — no
+    # caller read it. Silent at the floor is "risky" (§2.13's own word);
+    # silent at the ceiling is §2.12's named snag-risk limit. Both are worth
+    # saying out loud, so both fire this one code with which bound it was.
+    if geom.solved.get("clamped"):
+        bound = ("ceiling" if geom.width_mm >= machine.APPLIQUE_COVER_WIDTH_MAX_MM - 1e-6
+                 else "floor")
+        out.append({"code": APPLIQUE_COVER_WIDTH_CLAMPED,
+                    "width_mm": geom.width_mm,
+                    "bound": bound})
     return out
 
 
@@ -553,7 +576,9 @@ def _run_layer(poly: Polygon, s: float, stitch_mm: float, passes: int,
 
 def _rail_column(poly: Polygon, c_in: float, c_out: float, spacing_mm: float,
                  kind: str, shape_id: str,
-                 entry: tuple[float, float] | None) -> tuple[list[StitchRun], int]:
+                 entry: tuple[float, float] | None,
+                 overlap_stitches: int | None = None
+                 ) -> tuple[list[StitchRun], int]:
     """A satin-style column straddling B from `c_in` to `c_out`. -> (runs, crosses).
 
     Built on the border module's proven column emitter rather than a second
@@ -566,6 +591,11 @@ def _rail_column(poly: Polygon, c_in: float, c_out: float, spacing_mm: float,
     Shared by the cover (§2.8, `_cover_layer`) and the zigzag/E-stitch
     tackdown (§2.7, `_zigzag_tack_layer`) — same rail-alternating column, only
     the rails and spacing differ.
+
+    `overlap_stitches` is the closure overlap stated as an exact station
+    count (`_cover_layer` passes `APPLIQUE_CLOSURE_OVERLAP_STITCHES`); `None`
+    (the tackdown's call) falls through to `_satin_loop`'s own
+    `BORDER_CLOSURE_OVERLAP_MM` default, unchanged.
     """
     runs: list[StitchRun] = []
     crosses = 0
@@ -597,7 +627,7 @@ def _rail_column(poly: Polygon, c_in: float, c_out: float, spacing_mm: float,
                 k_tan = max(1, int(round((width / 2.0) / step)))
                 pts, kept, _clamped = _satin_loop(
                     ring_pts, total, total / n, width, slack, cursor,
-                    k_tan)
+                    k_tan, overlap_stitches=overlap_stitches)
                 if len(pts) < 2:
                     continue
                 runs.append(StitchRun(points=stitches.split_long_moves(pts),
@@ -611,12 +641,51 @@ def _cover_layer(poly: Polygon, geom: AppliqueGeometry, shape_id: str,
                  entry: tuple[float, float] | None) -> tuple[list[StitchRun], int]:
     """The cover column, straddling B from `c_in` to `c_out`. -> (runs, crosses).
 
-    Closure overlap: `BORDER_CLOSURE_OVERLAP_MM` (1.40 mm) at the 0.40 mm cover
-    spacing is 7 stations, i.e. 7 penetrations past the start — inside Stahls'
-    published 4-8 stitch window [S] (§2.8).
+    Pull compensation (§2.8, `APPLIQUE_COVER_PULL_COMP_MM`, 0.20 mm): thread
+    tension pulls each cross's two penetrations together, so a column digitized
+    at exactly the solved width sews narrower than that — the same effect
+    `Fabric.pull_comp_mm` compensates for on an ordinary satin column (see
+    `machine.py`'s Law 24 note: "a column loses width ALONG its stitch
+    direction"). Stage 5's own pull comp is deliberately NOT in this path —
+    `applique_pass` passes the raw artwork polygon, because B has to stay the
+    exact tolerance-stack offset chain's reference point, not something a
+    fabric preset already grew. So the cover gets its OWN, appliqué-specific
+    compensation, applied the same way stage 5 applies its: `poly.buffer(pull)`
+    grows every edge of a shape outward by `pull`, and for a ribbon that means
+    BOTH long edges move away from the ribbon by `pull`, widening it by
+    `2 * pull` total (confirmed on `Fabric` "pique_knit", pull_comp_mm 0.3: a
+    4.5 mm bar sews at 5.1 mm, `tests/test_pushcomp.py`). Here the two "edges"
+    are the two rails, so `c_in` moves `pull` further inward and `c_out`
+    moves `pull` further outward — the STITCHED column only; `geom.c_in`/
+    `geom.c_out`/`width_mm` are left alone, because those are what the
+    tolerance-stack gates (`edge_headroom_mm`, `bury_mm`, §2.12's checks) and
+    every existing test measure against, and they describe the DESIGNED
+    width, not the sewn one. Measured on `SHIELD` at the trim-in-place
+    default: the cover's rails moved from (-1.50, +1.50) to (-1.70, +1.70),
+    i.e. exactly `geom.c_in - 0.20` / `geom.c_out + 0.20`, a 3.00 mm design
+    now sewing a 3.40 mm column.
+
+    Closure overlap (§2.8, `APPLIQUE_CLOSURE_OVERLAP_STITCHES`, 6): the
+    appliqué-specific stitch count, not `BORDER_CLOSURE_OVERLAP_MM` (1.40 mm,
+    the border module's own generic number) which `_cover_layer` used to
+    inherit unconditionally through `_satin_loop`'s hardcoded default. At the
+    0.40 mm cover spacing the two land close — 1.40 mm / 0.20 mm-per-station
+    rounds to 7 stitches, 1 more than the appliqué constant's 6 — and BOTH
+    numbers sit inside Stahls' published 4-8 stitch window [S], so this was
+    never a visible defect. It is fixed anyway: `APPLIQUE_CLOSURE_OVERLAP_
+    STITCHES` exists specifically for this call site (§2.8's own row, not
+    §2.6/§2.7's), the border number is a coincidence that only holds while
+    `APPLIQUE_COVER_SPACING_MM` stays 0.40 mm (nothing enforces that), and an
+    exact station count sidesteps the `int(overlap_mm / step)` rounding
+    `_loop_stations` does for the mm path, so what's requested is exactly
+    what's sewn regardless of how a given ring's arc length divides. See
+    `_rail_column`'s `overlap_stitches` param.
     """
-    return _rail_column(poly, geom.c_in, geom.c_out, geom.spacing_mm, COVER,
-                        shape_id, entry)
+    pull = machine.APPLIQUE_COVER_PULL_COMP_MM
+    c_in = q(geom.c_in - pull)
+    c_out = q(geom.c_out + pull)
+    return _rail_column(poly, c_in, c_out, geom.spacing_mm, COVER, shape_id,
+                        entry, overlap_stitches=machine.APPLIQUE_CLOSURE_OVERLAP_STITCHES)
 
 
 def _zigzag_tack_layer(poly: Polygon, geom: AppliqueGeometry, shape_id: str,
@@ -1011,8 +1080,9 @@ def applique_pass(planned, cfg: PipelineConfig, chart
 
     counts = {APPLIQUE_NO_FABRIC_VISIBLE: 0, APPLIQUE_CUTTING_LINE_SUPPRESSED: 0,
               APPLIQUE_FORCED_PRE_CUT: 0, APPLIQUE_COVER_MARGINAL: 0,
-              APPLIQUE_STEP_EMPTY: 0}
+              APPLIQUE_STEP_EMPTY: 0, APPLIQUE_COVER_WIDTH_CLAMPED: 0}
     headroom: float | None = None
+    clamp_bounds: set[str] = set()
 
     overlaps = 0
     for i in range(len(picked)):
@@ -1043,6 +1113,8 @@ def applique_pass(planned, cfg: PipelineConfig, chart
             if g["code"] == APPLIQUE_COVER_MARGINAL:
                 headroom = g["headroom_mm"] if headroom is None else min(
                     headroom, g["headroom_mm"])
+            elif g["code"] == APPLIQUE_COVER_WIDTH_CLAMPED:
+                clamp_bounds.add(g["bound"])
 
         # §0.2's hazard, caught where it actually lives. Stage 7 drops a block
         # with no runs (`if not ordered: continue`), which would take the stop
@@ -1110,6 +1182,16 @@ def applique_pass(planned, cfg: PipelineConfig, chart
             f"{n} appliqué step{'s' if n != 1 else ''} produced no stitches "
             "and were dropped along with the machine stop they carried.",
             count=n))
+    n = counts[APPLIQUE_COVER_WIDTH_CLAMPED]
+    if n:
+        which = " and ".join(sorted(clamp_bounds))
+        warnings.append(warn(
+            APPLIQUE_COVER_WIDTH_CLAMPED,
+            f"{n} piece{'s hit' if n != 1 else ' hit'} the cover width "
+            f"{which} bound (2.5-5.0 mm) rather than sewing the tolerance "
+            "stack's own solved width — at the ceiling this is §2.12's "
+            "snag-risk limit, at the floor §2.13's own \"risky\" minimum.",
+            count=n, bounds=sorted(clamp_bounds)))
     if overlaps:
         warnings.append(warn(
             APPLIQUE_PIECES_OVERLAP,

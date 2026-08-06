@@ -212,18 +212,20 @@ def _serrated_disc(r: float, tooth: float, n: int = 120) -> Polygon:
 
 
 def test_a_noisy_compact_disc_reads_narrow_on_ribbon_width_alone():
-    """Documents the bug this module's fix exists for, not just the fix.
+    """Documents the blind spot the DT check exists to close, not a live bug
+    in `is_satin_candidate` — that bug is fixed now, for every design class
+    including `"flat"` (see the tests below); this pins the raw statistic's
+    own failure so the fix always has something concrete to fix.
 
     A 20mm disc serrated by 0.6mm is still, unambiguously, a disc — but
     boundary noise roughly doubles its perimeter, and `2*area/perimeter`
     (plus the aspect gate built on the SAME perimeter) reads that as a
     narrow, long ribbon instead. `ribbon_width_mm` alone has no way to tell
-    the difference; that is exactly why `is_satin_candidate` no longer stops
-    there for non-flat design classes (below)."""
+    the difference; that is exactly why `is_satin_candidate` never stops
+    there."""
     disc = _serrated_disc(10.0, 0.6)
-    assert ribbon_width_mm(disc) < machine.SATIN_MAX_WIDTH_MM
-    assert is_satin_candidate(disc, machine.SATIN_MAX_WIDTH_MM), \
-        "the perimeter-only rule is expected to still get this one wrong"
+    assert ribbon_width_mm(disc) < machine.SATIN_MAX_WIDTH_MM, \
+        "the raw perimeter-only statistic is expected to read this narrow"
 
 
 def test_the_dt_check_catches_the_serrated_disc_a_noisy_design_class_gets():
@@ -244,16 +246,55 @@ def test_the_dt_check_catches_the_serrated_disc_a_noisy_design_class_gets():
             f"tooth={tooth}: still satins a compact disc under a noisy class"
 
 
-def test_flat_design_class_keeps_the_old_verdict_on_purpose():
-    """The scoping is deliberate, not an oversight: `design_class="flat"`
-    (the default, and every existing caller that does not pass one) must
-    keep TODAY'S exact verdict, noisy-disc bug included, because that is the
-    population `tests/test_flat_lane_byte_identical.py` pins byte for byte.
-    If this test ever goes red because the disc now reads False for "flat"
-    too, the fix has widened past its intended scope."""
+def test_flat_design_class_now_gets_the_dt_check_too():
+    """2026-08-06: supersedes the old `test_flat_design_class_keeps_the_old_
+    verdict_on_purpose`, whose own premise this fix disproves. That test
+    pinned `design_class="flat"` skipping the DT check on purpose, reasoning
+    that flat art's clean, vector-like boundaries don't carry the
+    segmentation-derived noise the check exists to catch. A fresh audit
+    against this repo's own real-art benchmark found that premise false —
+    see `test_flat_lane_starburst_shapes_correctly_flip_to_fill` below for
+    the real-fixture evidence — so the exemption is gone: `design_class`
+    no longer changes `is_satin_candidate`'s verdict at all, and the
+    synthetic serrated disc (a design-class-agnostic noise source) now
+    correctly reads False under `"flat"` too, matching every other class."""
     disc = _serrated_disc(10.0, 0.6)
-    assert is_satin_candidate(disc, machine.SATIN_MAX_WIDTH_MM)
-    assert is_satin_candidate(disc, machine.SATIN_MAX_WIDTH_MM, design_class="flat")
+    assert not is_satin_candidate(disc, machine.SATIN_MAX_WIDTH_MM,
+                                  design_class="flat"), \
+        "the flat lane should get the same DT tightening as the other 3 classes now"
+    # design_class is now a no-op on the verdict — every class agrees.
+    for dc in ("flat", "gradient", "photo_subject", "photo_scene"):
+        assert is_satin_candidate(disc, machine.SATIN_MAX_WIDTH_MM, design_class=dc) == \
+               is_satin_candidate(disc, machine.SATIN_MAX_WIDTH_MM, design_class="flat")
+
+
+def test_flat_lane_starburst_shapes_correctly_flip_to_fill():
+    """The real-pipeline evidence behind the 2026-08-06 widening: run
+    `testdata/photo/enthusiast_logo.png` (this repo's real-art benchmark,
+    picked because it "reproduces almost nothing [Kent] complains about" —
+    see COOKBOOK.md's "Hard-won lessons") through the actual pipeline at
+    `target_width_mm=90` and two shapes the old flat-exempted rule
+    satin-stitched — `Scd89ad66` (the "A" of the ENTHUSIAST wordmark) and
+    `Sff37b029` (the emblem's 4-point star) — read as compact/irregular
+    under the DT check, not ribbons. Rendering their actual pre-fix stitch
+    coordinates showed why this matters: both sewed as a literal starburst
+    (crosses fanning from a single point), not the clean parallel rows
+    `stage6_fill.stitch_shape` now produces for them — exactly the defect
+    COOKBOOK.md's "Hard-won lessons" section names by name ("Green tests are
+    not evidence of quality... the engine produced starbursts")."""
+    from digitizer_core import PipelineConfig, digitize
+
+    result, _plan = digitize(TESTDATA / "photo/enthusiast_logo.png",
+                             PipelineConfig(target_width_mm=90.0))
+    assert result.design_class == "flat"
+    flipped = {"Scd89ad66", "Sff37b029"}
+    by_id = {r.shape_id: r for r in result.regions}
+    assert flipped <= by_id.keys(), \
+        f"benchmark fixture regions moved: expected {flipped} in {sorted(by_id)}"
+    for shape_id in flipped:
+        assert not is_satin_candidate(by_id[shape_id].polygon, machine.SATIN_MAX_WIDTH_MM,
+                                      design_class="flat"), \
+            f"{shape_id} should read as fill (DT-irregular), not satin, now"
 
 
 @pytest.mark.parametrize("name,poly", [("BAR", BAR), ("O_RING", O_RING),
@@ -264,6 +305,18 @@ def test_the_dt_check_does_not_cost_real_ribbons_their_satin_call(name, poly):
     too — the failure mode this fix targets is boundary noise on a COMPACT
     shape, not stroke geometry in general."""
     assert is_satin_candidate(poly, machine.SATIN_MAX_WIDTH_MM, design_class="gradient")
+
+
+@pytest.mark.parametrize("name,poly", [("BAR", BAR), ("O_RING", O_RING),
+                                       ("C_STROKE", C_STROKE), ("T_SHAPE", T_SHAPE)])
+def test_the_dt_check_does_not_cost_real_ribbons_their_satin_call_when_flat(name, poly):
+    """The 2026-08-06 widening's own safety invariant, checked directly:
+    this must be a PURE tightening on the flat lane too, same as it was
+    already proven for the other 3 classes above. Ordinary letterform
+    archetypes — the population most flat-classified art actually is —
+    must not lose their satin call just because `design_class="flat"` no
+    longer buys a shape a free pass around the DT check."""
+    assert is_satin_candidate(poly, machine.SATIN_MAX_WIDTH_MM, design_class="flat")
 
 
 # --- Column geometry -------------------------------------------------------
@@ -528,23 +581,43 @@ def test_satin_crosses_do_not_self_overlap_across_a_wide_junction():
     wider than this sew better as fill", machine.py) and `_stroke_underlay`'s
     oversize check already reuses, not a new number: no classifier-eligible
     column should ever need a wider cross in the first place.
+
+    2026-08-06 update: `Sf5200f3f` itself no longer reaches this code path
+    in the real, sequenced pipeline at all -- the flat-lane DT-tightening
+    widening (`test_flat_lane_starburst_shapes_correctly_flip_to_fill` et
+    al., and `test_sf5200f3f_no_longer_reaches_satin_in_the_real_pipeline`
+    directly below) correctly reclassifies it as fill now: a fuller fix than
+    the cap here, which only stopped the crosses from overlapping, not from
+    being the wrong technique for this shape in the first place.
+    `_rail_points`'s cap is still live, general code, though -- it protects
+    any satin column that DOES reach it, from a design class the DT check
+    has not tightened, a forced "satin" override, or any other caller. So
+    this test now calls `satin_shape` DIRECTLY on `Sf5200f3f`'s real,
+    unmodified geometry (bypassing `is_satin_candidate` on purpose), keeping
+    the exact rail-geometry regression coverage the 2026-08-05 fix earned,
+    decoupled from whatever the classifier decides for this shape.
     """
-    from digitizer_core import PipelineConfig, plan_stitches, run_stages
-    from digitizer_core.stage6_satin import strip_splits
+    from digitizer_core import PipelineConfig, run_stages
+    from digitizer_core.stage6_satin import satin_shape, strip_splits
     from digitizer_core.stitches import strip_ties
 
     c = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
     result = run_stages(TESTDATA / "logo_alpha.png", c)
-    plan = plan_stitches(result, c)
+    region = next(r for r in result.regions if r.shape_id == "Sf5200f3f")
+
+    runs, report = satin_shape(region.polygon, region.shape_id,
+                               underlay_style="center_run", trim_at_mm=3.0)
+    assert not report["empty"], "fixture regressed: the shape no longer skeletonizes"
 
     segs = []
-    for _b, run in plan.iter_runs():
-        if run.shape_id != "Sf5200f3f" or run.kind != "satin":
+    for run in runs:
+        if run.kind != "satin":
             continue
         pts = strip_splits(strip_ties(run.points))
         segs.extend(LineString((a, b)) for a, b in zip(pts, pts[1:]))
 
-    assert segs, "fixture regressed: Sf5200f3f no longer sews as satin"
+    assert segs, ("fixture regressed: Sf5200f3f no longer sews as satin even "
+                  "when forced through satin_shape directly")
 
     # Adjacent segments legitimately share an endpoint (the zigzag's own
     # rail-to-rail step); only NON-adjacent crossings are the defect.
@@ -559,6 +632,24 @@ def test_satin_crosses_do_not_self_overlap_across_a_wide_junction():
                 crossings += 1
 
     assert crossings == 0, f"{crossings} non-adjacent satin crosses overlap each other"
+
+
+def test_sf5200f3f_no_longer_reaches_satin_in_the_real_pipeline():
+    """Companion to the direct-geometry test above: confirms the CLASSIFIER
+    side of the 2026-08-06 fix for this exact shape, in the real sequenced
+    pipeline (not `is_satin_candidate` called in isolation on an extracted
+    polygon) -- `Sf5200f3f` now sews as fill, not satin, at the same config
+    the 2026-08-05 self-overlap fix was originally measured against."""
+    from digitizer_core import PipelineConfig, plan_stitches, run_stages
+
+    c = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    result = run_stages(TESTDATA / "logo_alpha.png", c)
+    plan = plan_stitches(result, c)
+
+    kinds = {run.kind for _b, run in plan.iter_runs() if run.shape_id == "Sf5200f3f"}
+    assert kinds, "fixture regressed: Sf5200f3f produced no runs at all"
+    assert "satin" not in kinds, \
+        f"Sf5200f3f should sew as fill now, not satin -- got kinds {kinds}"
 
 
 # --- Underlay --------------------------------------------------------------

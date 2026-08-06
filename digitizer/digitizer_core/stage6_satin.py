@@ -188,22 +188,30 @@ def is_satin_candidate(poly: Polygon, max_width_mm: float, *,
     are near-square, organic, segmentation-noisy regions (bounding-box
     aspect 1.05-1.13) that this test alone waves through as satin.
 
-    `design_class` scopes the fix: a second, independent width read off the
-    exact distance transform at the shape's own medial axis (`docs/
-    dt-classifier-spike-2026-08-02.md`'s `VP90` arm — a pure TIGHTENING, it
-    can only turn a satin call into a fill call, never the reverse) runs
-    for every class except `"flat"`. Flat-classified art — clean,
-    spot-colour, vector-like boundaries, the shipped byte-identical goldens'
-    entire population — keeps exactly today's behaviour, unchanged, because
-    that population is not where the noise this fix targets comes from and
-    `tests/test_flat_lane_byte_identical.py` pins its output byte for byte.
-    Non-flat classes (`gradient`, `photo_subject`, `photo_scene`) are where
-    the noisy, segmentation-derived boundaries this fix exists for actually
-    occur, and the spike's own measurement (0/21 misses on the synthetic
-    archetype population, 26/28 agreement with the shipped rule on real
-    artwork, both disagreements being shapes the shipped rule already sews
-    wrong) is the evidence for extending it there. See
-    `_dt_regular_and_within_cap` for the check itself.
+    A second, independent width read off the exact distance transform at the
+    shape's own medial axis (`docs/dt-classifier-spike-2026-08-02.md`'s
+    `VP90` arm — a pure TIGHTENING, it can only turn a satin call into a
+    fill call, never the reverse) runs for every `design_class`, `"flat"`
+    included. It did not always: the DT check first landed
+    (`satin-classifier-organic-shapes`) scoped to `"gradient"`/
+    `"photo_subject"`/`"photo_scene"` only, on the premise that flat art's
+    clean, spot-colour, vector-like boundaries do not carry the
+    segmentation-derived noise this check exists to catch. That premise
+    does not hold: this repo's own `testdata/photo/enthusiast_logo.png`
+    benchmark — flat-classified, hand-picked as the fixture that reproduces
+    what Kent complains about (see `COOKBOOK.md`'s "Hard-won lessons") —
+    contains compact, jittery-boundary shapes the perimeter-only rule
+    satin-stitches into a literal starburst (crosses fanning from a single
+    point instead of a parallel column): `Scd89ad66` and `Sff37b029` at
+    90mm both flip satin->fill under the DT check, and rendering their
+    pre-fix stitch output confirms the fan by eye, not just by the numeric
+    disagreement. `design_class` is kept as a parameter (every existing
+    caller passes one) but no longer changes this function's verdict; the
+    four letterform archetypes (`BAR`/`O_RING`/`C_STROKE`/`T_SHAPE` in
+    `tests/test_satin.py`) keep their satin call under the DT check exactly
+    as already proven for the non-flat classes — this is a widening of
+    scope, not a new rule. See `_dt_regular_and_within_cap` for the check
+    itself.
     """
     w = ribbon_width_mm(poly)
     if w <= 0 or w > max_width_mm:
@@ -214,8 +222,6 @@ def is_satin_candidate(poly: Polygon, max_width_mm: float, *,
     length_est = perim / 2.0 - w
     if length_est < 3.0 * w:
         return False
-    if design_class == "flat":
-        return True
     return _dt_regular_and_within_cap(poly, max_width_mm)
 
 

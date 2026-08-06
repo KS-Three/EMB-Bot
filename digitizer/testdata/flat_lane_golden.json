@@ -15207,7 +15207,7 @@
    "BACKGROUND_ENCLOSED:1",
    "EMPTY_THREAD_LAYER:2"
   ],
-  "stitch_count": 2089,
+  "stitch_count": 2072,
   "stitch_coords": [
    [
     -39.3,
@@ -25570,78 +25570,78 @@
     false
    ],
    [
-    28.7597,
-    6.9201,
+    28.5097,
+    6.7657,
     "underlay",
     true,
     true
    ],
    [
-    29.3254,
-    7.4858,
+    28.5097,
+    7.5657,
     "underlay",
     true,
     true
    ],
    [
-    28.7597,
-    6.9201,
+    28.5097,
+    6.7657,
     "underlay",
     true,
     true
    ],
    [
-    29.3254,
-    7.4858,
+    28.5097,
+    7.5657,
     "underlay",
     true,
     true
    ],
    [
-    28.7597,
-    6.9201,
+    28.5097,
+    6.7657,
     "underlay",
     true,
     true
    ],
    [
-    30.6764,
-    8.8368,
+    28.5097,
+    9.1003,
     "underlay",
     true,
     true
    ],
    [
-    32.593,
-    10.7535,
+    28.5097,
+    11.4349,
     "underlay",
     true,
     true
    ],
    [
-    32.0273,
-    10.1878,
+    28.5097,
+    13.7696,
     "underlay",
     true,
     true
    ],
    [
-    32.593,
-    10.7535,
+    29.9109,
+    14.703,
     "underlay",
     true,
     true
    ],
    [
-    32.0273,
-    10.1878,
+    32.2455,
+    14.703,
     "underlay",
     true,
     true
    ],
    [
-    32.593,
-    10.7535,
+    34.5801,
+    14.703,
     "underlay",
     true,
     true
@@ -25650,6 +25650,9 @@
     27.5275,
     6.4519,
     "satin",
+    36.9148,
+    14.703,
+    "underlay",
     true,
     true
    ],
@@ -25657,6 +25660,9 @@
     28.0932,
     5.8863,
     "satin",
+    37.9866,
+    13.4401,
+    "underlay",
     true,
     true
    ],
@@ -25664,6 +25670,9 @@
     27.5275,
     6.4519,
     "satin",
+    37.9866,
+    11.1055,
+    "underlay",
     true,
     true
    ],
@@ -25671,6 +25680,9 @@
     28.0932,
     5.8863,
     "satin",
+    37.9866,
+    8.7709,
+    "underlay",
     true,
     true
    ],
@@ -25678,6 +25690,9 @@
     27.5275,
     6.4519,
     "satin",
+    37.7527,
+    6.6701,
+    "underlay",
     true,
     true
    ],
@@ -25685,6 +25700,9 @@
     28.2915,
     5.688,
     "satin",
+    35.4181,
+    6.6701,
+    "underlay",
     true,
     true
    ],
@@ -25692,6 +25710,9 @@
     27.5097,
     6.7615,
     "satin",
+    33.0834,
+    6.6701,
+    "underlay",
     true,
     true
    ],
@@ -25699,6 +25720,9 @@
     28.6011,
     5.6701,
     "satin",
+    30.7488,
+    6.6701,
+    "underlay",
     true,
     true
    ],
@@ -25706,6 +25730,9 @@
     27.5097,
     7.3451,
     "satin",
+    28.5097,
+    6.7657,
+    "underlay",
     true,
     true
    ],
@@ -25785,956 +25812,1080 @@
     "satin",
     true,
     true
-   ],
-   [
-    33.9264,
-    10.7535,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    34.4921,
-    11.3192,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    33.9264,
-    10.7535,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    34.4921,
-    11.3192,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    33.9264,
-    10.7535,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    36.0097,
-    12.8368,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    38.093,
-    14.9201,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    38.9776,
-    15.2133,
-    "satin",
+    27.7772,
+    5.8701,
+    "fill",
     false,
     false
    ],
    [
-    38.508,
-    15.6829,
-    "satin",
+    30.0,
+    5.8701,
+    "fill",
     false,
     false
    ],
    [
-    38.8759,
-    15.0073,
-    "satin",
+    33.0,
+    5.8701,
+    "fill",
     false,
     false
    ],
    [
-    38.4576,
-    15.4256,
-    "satin",
+    36.0,
+    5.8701,
+    "fill",
     false,
     false
    ],
    [
-    38.8759,
-    14.6995,
-    "satin",
-    false,
-    false
-   ],
-   [
-    37.9476,
-    15.6277,
-    "satin",
-    false,
-    false
-   ],
-   [
-    38.8759,
-    14.3917,
-    "satin",
-    false,
-    false
-   ],
-   [
-    37.5646,
-    15.703,
-    "satin",
-    false,
-    false
-   ],
-   [
-    38.8569,
-    13.7952,
-    "satin",
-    false,
-    false
-   ],
-   [
-    36.968,
-    15.684,
-    "satin",
-    false,
-    false
-   ],
-   [
-    38.7201,
-    13.3164,
-    "satin",
-    false,
-    false
-   ],
-   [
-    36.4893,
-    15.5472,
-    "satin",
-    false,
-    false
-   ],
-   [
-    38.5681,
-    12.8528,
-    "satin",
-    false,
-    false
-   ],
-   [
-    36.0257,
-    15.3952,
-    "satin",
-    false,
-    false
-   ],
-   [
-    36.5914,
-    14.8295,
-    "satin",
-    false,
-    false
-   ],
-   [
-    36.0257,
-    15.3952,
-    "satin",
-    false,
-    false
-   ],
-   [
-    36.5914,
-    14.8295,
-    "satin",
-    false,
-    false
-   ],
-   [
-    36.0257,
-    15.3952,
-    "satin",
-    false,
-    false
-   ],
-   [
-    28.2597,
-    15.0868,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    28.8254,
-    14.5211,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    28.2597,
-    15.0868,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    28.8254,
-    14.5211,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    28.2597,
-    15.0868,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    30.3017,
-    13.0448,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    32.3534,
-    11.0132,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    34.8424,
-    9.8374,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    36.8844,
-    7.7955,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    38.9264,
-    5.7535,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    38.5833,
-    5.7317,
-    "satin",
-    false,
-    false
-   ],
-   [
-    38.9481,
-    6.0966,
-    "satin",
-    false,
-    false
-   ],
-   [
-    38.2569,
-    5.6933,
-    "satin",
+    38.969,
+    5.8701,
+    "fill",
     false,
     false
    ],
    [
     38.9866,
-    6.423,
-    "satin",
+    6.2701,
+    "fill",
     false,
     false
    ],
    [
-    37.6809,
-    5.6933,
-    "satin",
+    37.5,
+    6.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    34.5,
+    6.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    33.0,
+    6.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    31.5,
+    6.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    29.5049,
+    6.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    27.5097,
+    6.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    27.5097,
+    6.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    29.1299,
+    6.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    30.75,
+    6.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    33.75,
+    6.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    36.75,
+    6.6701,
+    "fill",
     false,
     false
    ],
    [
     38.9866,
-    6.9989,
-    "satin",
-    false,
-    false
-   ],
-   [
-    37.105,
-    5.6933,
-    "satin",
+    6.6701,
+    "fill",
     false,
     false
    ],
    [
     38.9866,
-    7.5749,
-    "satin",
+    7.0701,
+    "fill",
     false,
     false
    ],
    [
-    36.529,
-    5.693,
-    "satin",
+    37.1183,
+    7.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    35.25,
+    7.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    32.25,
+    7.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    29.25,
+    7.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    27.5097,
+    7.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    27.5097,
+    7.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    30.0,
+    7.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    33.0,
+    7.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    36.0,
+    7.4701,
+    "fill",
     false,
     false
    ],
    [
     38.9866,
-    8.1512,
-    "satin",
-    false,
-    false
-   ],
-   [
-    35.953,
-    5.6912,
-    "satin",
+    7.4701,
+    "fill",
     false,
     false
    ],
    [
     38.9866,
-    8.7289,
-    "satin",
+    7.8701,
+    "fill",
     false,
     false
    ],
    [
-    35.4185,
-    5.7258,
-    "satin",
+    37.5,
+    7.8701,
+    "fill",
     false,
     false
    ],
    [
-    38.9452,
-    9.2702,
-    "satin",
+    34.5,
+    7.8701,
+    "fill",
     false,
     false
    ],
    [
-    36.8961,
-    7.5128,
-    "satin",
+    33.0,
+    7.8701,
+    "fill",
     false,
     false
    ],
    [
-    35.1388,
-    6.0056,
-    "satin",
+    31.5,
+    7.8701,
+    "fill",
     false,
     false
    ],
    [
-    36.7593,
-    7.6495,
-    "satin",
+    29.5049,
+    7.8701,
+    "fill",
     false,
     false
    ],
    [
-    38.6489,
-    9.5664,
-    "satin",
+    27.5097,
+    7.8701,
+    "fill",
     false,
     false
    ],
    [
-    36.9033,
-    8.0478,
-    "satin",
+    27.5097,
+    8.2701,
+    "fill",
     false,
     false
    ],
    [
-    34.8678,
-    6.277,
-    "satin",
+    29.1299,
+    8.2701,
+    "fill",
     false,
     false
    ],
    [
-    37.0056,
-    8.4873,
-    "satin",
+    30.75,
+    8.2701,
+    "fill",
     false,
     false
    ],
    [
-    38.3439,
-    9.871,
-    "satin",
+    33.75,
+    8.2701,
+    "fill",
     false,
     false
    ],
    [
-    36.0465,
-    7.8211,
-    "satin",
+    36.75,
+    8.2701,
+    "fill",
     false,
     false
    ],
    [
-    34.6083,
-    6.5379,
-    "satin",
+    38.9866,
+    8.2701,
+    "fill",
     false,
     false
    ],
    [
-    35.9247,
-    7.9424,
-    "satin",
+    38.9866,
+    8.6701,
+    "fill",
     false,
     false
    ],
    [
-    38.0275,
-    10.1861,
-    "satin",
+    37.1183,
+    8.6701,
+    "fill",
     false,
     false
    ],
    [
-    34.3603,
-    6.7892,
-    "satin",
+    35.25,
+    8.6701,
+    "fill",
     false,
     false
    ],
    [
-    37.6995,
-    10.5107,
-    "satin",
+    32.25,
+    8.6701,
+    "fill",
     false,
     false
    ],
    [
-    34.1196,
-    7.0358,
-    "satin",
+    29.25,
+    8.6701,
+    "fill",
     false,
     false
    ],
    [
-    35.6176,
-    8.7921,
-    "satin",
+    27.5097,
+    8.6701,
+    "fill",
     false,
     false
    ],
    [
-    37.3643,
-    10.84,
-    "satin",
+    27.5097,
+    9.0701,
+    "fill",
     false,
     false
    ],
    [
-    33.8786,
-    7.2847,
-    "satin",
+    30.0,
+    9.0701,
+    "fill",
     false,
     false
    ],
    [
-    37.0293,
-    11.1671,
-    "satin",
+    33.0,
+    9.0701,
+    "fill",
     false,
     false
    ],
    [
-    33.6298,
-    7.5415,
-    "satin",
+    36.0,
+    9.0701,
+    "fill",
     false,
     false
    ],
    [
-    36.7021,
-    11.4862,
-    "satin",
+    38.9866,
+    9.0701,
+    "fill",
     false,
     false
    ],
    [
-    33.3691,
-    7.8086,
-    "satin",
+    38.9866,
+    9.4701,
+    "fill",
     false,
     false
    ],
    [
-    36.3869,
-    11.7951,
-    "satin",
+    37.5,
+    9.4701,
+    "fill",
     false,
     false
    ],
    [
-    33.0967,
-    8.0849,
-    "satin",
+    34.5,
+    9.4701,
+    "fill",
     false,
     false
    ],
    [
-    34.4755,
-    9.9361,
-    "satin",
+    33.0,
+    9.4701,
+    "fill",
     false,
     false
    ],
    [
-    36.0834,
-    12.0948,
-    "satin",
+    31.5,
+    9.4701,
+    "fill",
     false,
     false
    ],
    [
-    32.8135,
-    8.3652,
-    "satin",
+    29.5049,
+    9.4701,
+    "fill",
     false,
     false
    ],
    [
-    34.6416,
-    10.8378,
-    "satin",
+    27.5097,
+    9.4701,
+    "fill",
     false,
     false
    ],
    [
-    35.7859,
-    12.3857,
-    "satin",
+    27.5097,
+    9.8701,
+    "fill",
     false,
     false
    ],
    [
-    33.7633,
-    10.0664,
-    "satin",
+    29.1299,
+    9.8701,
+    "fill",
     false,
     false
    ],
    [
-    32.497,
-    8.6145,
-    "satin",
+    30.75,
+    9.8701,
+    "fill",
     false,
     false
    ],
    [
-    33.6395,
-    10.1639,
-    "satin",
+    33.75,
+    9.8701,
+    "fill",
     false,
     false
    ],
    [
-    35.4643,
-    12.6388,
-    "satin",
+    36.75,
+    9.8701,
+    "fill",
     false,
     false
    ],
    [
-    34.1741,
-    11.1356,
-    "satin",
+    38.9866,
+    9.8701,
+    "fill",
     false,
     false
    ],
    [
-    32.1132,
-    8.7342,
-    "satin",
+    38.9866,
+    10.2701,
+    "fill",
     false,
     false
    ],
    [
-    33.7098,
-    10.9012,
-    "satin",
+    37.1183,
+    10.2701,
+    "fill",
     false,
     false
    ],
    [
-    35.0791,
-    12.7595,
-    "satin",
+    35.25,
+    10.2701,
+    "fill",
     false,
     false
    ],
    [
-    33.2633,
-    10.5961,
-    "satin",
+    32.25,
+    10.2701,
+    "fill",
     false,
     false
    ],
    [
-    31.7061,
-    8.7408,
-    "satin",
+    29.25,
+    10.2701,
+    "fill",
     false,
     false
    ],
    [
-    34.6719,
-    12.7662,
-    "satin",
+    27.5097,
+    10.2701,
+    "fill",
     false,
     false
    ],
    [
-    33.1154,
-    10.9205,
-    "satin",
+    27.5097,
+    10.6701,
+    "fill",
     false,
     false
    ],
    [
-    31.3003,
-    8.7683,
-    "satin",
+    30.0,
+    10.6701,
+    "fill",
     false,
     false
    ],
    [
-    34.2666,
-    12.7934,
-    "satin",
+    33.0,
+    10.6701,
+    "fill",
     false,
     false
    ],
    [
-    32.218,
-    10.4265,
-    "satin",
+    36.0,
+    10.6701,
+    "fill",
     false,
     false
    ],
    [
-    30.9356,
-    8.9449,
-    "satin",
+    38.9866,
+    10.6701,
+    "fill",
     false,
     false
    ],
    [
-    33.9041,
-    12.9683,
-    "satin",
+    38.9866,
+    11.0701,
+    "fill",
     false,
     false
    ],
    [
-    30.6298,
-    9.2207,
-    "satin",
+    37.5,
+    11.0701,
+    "fill",
     false,
     false
    ],
    [
-    33.606,
-    13.2384,
-    "satin",
+    34.5,
+    11.0701,
+    "fill",
     false,
     false
    ],
    [
-    30.3317,
-    9.5154,
-    "satin",
+    33.0,
+    11.0701,
+    "fill",
     false,
     false
    ],
    [
-    33.3272,
-    13.5188,
-    "satin",
+    31.5,
+    11.0701,
+    "fill",
     false,
     false
    ],
    [
-    30.0243,
-    9.818,
-    "satin",
+    29.5049,
+    11.0701,
+    "fill",
     false,
     false
    ],
    [
-    31.8904,
-    12.2621,
-    "satin",
+    27.5097,
+    11.0701,
+    "fill",
     false,
     false
    ],
    [
-    33.0586,
-    13.7921,
-    "satin",
+    27.5097,
+    11.4701,
+    "fill",
     false,
     false
    ],
    [
-    29.7047,
-    10.1305,
-    "satin",
+    29.1299,
+    11.4701,
+    "fill",
     false,
     false
    ],
    [
-    32.8022,
-    14.0555,
-    "satin",
+    30.75,
+    11.4701,
+    "fill",
     false,
     false
    ],
    [
-    29.3741,
-    10.4529,
-    "satin",
+    32.25,
+    11.4701,
+    "fill",
     false,
     false
    ],
    [
-    32.5569,
-    14.3091,
-    "satin",
+    33.75,
+    11.4701,
+    "fill",
     false,
     false
    ],
    [
-    29.0381,
-    10.7816,
-    "satin",
+    36.75,
+    11.4701,
+    "fill",
     false,
     false
    ],
    [
-    32.3169,
-    14.5564,
-    "satin",
+    38.9866,
+    11.4701,
+    "fill",
     false,
     false
    ],
    [
-    28.7047,
-    11.11,
-    "satin",
+    38.9866,
+    11.8701,
+    "fill",
     false,
     false
    ],
    [
-    32.0744,
-    14.804,
-    "satin",
+    37.1183,
+    11.8701,
+    "fill",
     false,
     false
    ],
    [
-    29.8027,
-    12.73,
-    "satin",
+    35.25,
+    11.8701,
+    "fill",
     false,
     false
    ],
    [
-    28.3805,
-    11.4317,
-    "satin",
+    32.25,
+    11.8701,
+    "fill",
     false,
     false
    ],
    [
-    29.7057,
-    12.8279,
-    "satin",
+    29.25,
+    11.8701,
+    "fill",
     false,
     false
    ],
    [
-    31.8226,
-    15.0582,
-    "satin",
+    27.5097,
+    11.8701,
+    "fill",
     false,
     false
    ],
    [
-    30.3772,
-    13.7819,
-    "satin",
+    27.5097,
+    12.2701,
+    "fill",
     false,
     false
    ],
    [
-    28.0683,
-    11.743,
-    "satin",
+    30.0,
+    12.2701,
+    "fill",
     false,
     false
    ],
    [
-    31.5589,
-    15.3229,
-    "satin",
+    33.0,
+    12.2701,
+    "fill",
     false,
     false
    ],
    [
-    29.5175,
-    13.5579,
-    "satin",
+    36.0,
+    12.2701,
+    "fill",
     false,
     false
    ],
    [
-    27.7668,
-    12.0442,
-    "satin",
+    38.9866,
+    12.2701,
+    "fill",
     false,
     false
    ],
    [
-    31.2844,
-    15.5976,
-    "satin",
+    38.9866,
+    12.6701,
+    "fill",
     false,
     false
    ],
    [
-    27.6529,
-    12.5191,
-    "satin",
+    37.5,
+    12.6701,
+    "fill",
     false,
     false
    ],
    [
-    30.8223,
-    15.6987,
-    "satin",
+    34.5,
+    12.6701,
+    "fill",
     false,
     false
    ],
    [
-    27.6445,
-    13.0907,
-    "satin",
+    31.5,
+    12.6701,
+    "fill",
     false,
     false
    ],
    [
-    30.2548,
-    15.703,
-    "satin",
+    29.5049,
+    12.6701,
+    "fill",
     false,
     false
    ],
    [
-    27.6437,
-    13.6667,
-    "satin",
+    27.5097,
+    12.6701,
+    "fill",
     false,
     false
    ],
    [
-    29.6797,
-    15.703,
-    "satin",
+    27.5097,
+    13.0701,
+    "fill",
     false,
     false
    ],
    [
-    27.6435,
-    14.2426,
-    "satin",
+    29.1299,
+    13.0701,
+    "fill",
     false,
     false
    ],
    [
-    29.1039,
-    15.703,
-    "satin",
+    30.75,
+    13.0701,
+    "fill",
     false,
     false
    ],
    [
-    27.6435,
-    14.8186,
-    "satin",
+    32.25,
+    13.0701,
+    "fill",
     false,
     false
    ],
    [
-    28.5279,
-    15.703,
-    "satin",
+    33.75,
+    13.0701,
+    "fill",
     false,
     false
    ],
    [
-    27.7748,
-    15.2379,
-    "satin",
+    36.75,
+    13.0701,
+    "fill",
     false,
     false
    ],
    [
-    28.1628,
-    15.6259,
-    "satin",
+    38.9866,
+    13.0701,
+    "fill",
     false,
     false
    ],
    [
-    27.7748,
-    15.2379,
-    "satin",
+    38.9866,
+    13.4701,
+    "fill",
     false,
     false
    ],
    [
-    28.1628,
-    15.6259,
-    "satin",
+    37.1183,
+    13.4701,
+    "fill",
     false,
     false
    ],
    [
-    27.7748,
-    15.2379,
-    "satin",
+    35.25,
+    13.4701,
+    "fill",
     false,
     false
    ],
    [
-    28.1628,
-    15.6259,
-    "satin",
+    32.25,
+    13.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    29.25,
+    13.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    27.5097,
+    13.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    27.5097,
+    13.8701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    30.0,
+    13.8701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    33.0,
+    13.8701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    36.0,
+    13.8701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    38.9866,
+    13.8701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    38.9866,
+    14.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    37.5,
+    14.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    34.5,
+    14.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    31.5,
+    14.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    29.5049,
+    14.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    27.5097,
+    14.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    27.5097,
+    14.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    29.1299,
+    14.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    30.75,
+    14.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    32.25,
+    14.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    33.75,
+    14.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    36.75,
+    14.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    38.9866,
+    14.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    38.9866,
+    15.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    37.1183,
+    15.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    35.25,
+    15.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    32.25,
+    15.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    29.25,
+    15.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    27.5097,
+    15.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    27.7676,
+    15.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    30.0,
+    15.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    33.0,
+    15.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    36.0,
+    15.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    38.9786,
+    15.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    38.1786,
+    15.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    38.9786,
+    15.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    38.1786,
+    15.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    38.9786,
+    15.4701,
+    "fill",
     false,
     false
    ],
@@ -26907,1367 +27058,1199 @@
     true
    ],
    [
-    28.2634,
-    5.7535,
+    27.0597,
+    6.6701,
     "underlay",
     true,
     true
    ],
    [
-    27.6719,
-    6.2921,
+    26.2597,
+    6.6701,
     "underlay",
     true,
     true
    ],
    [
-    28.2634,
-    5.7535,
+    27.0597,
+    6.6701,
     "underlay",
     true,
     true
    ],
    [
-    27.6719,
-    6.2921,
+    26.2597,
+    6.6701,
     "underlay",
     true,
     true
    ],
    [
-    28.2634,
-    5.7535,
+    27.0597,
+    6.6701,
     "underlay",
     true,
     true
    ],
    [
-    26.398,
-    7.4522,
+    24.6198,
+    6.6701,
     "underlay",
     true,
     true
    ],
    [
-    24.6096,
-    9.2407,
+    22.18,
+    6.6701,
     "underlay",
     true,
     true
    ],
    [
-    22.6601,
-    10.7511,
+    19.7401,
+    6.6701,
     "underlay",
     true,
     true
    ],
    [
-    20.6736,
-    9.3303,
+    18.0134,
+    7.3834,
     "underlay",
     true,
     true
    ],
    [
-    18.8852,
-    7.5419,
+    18.0134,
+    9.8232,
     "underlay",
     true,
     true
    ],
    [
-    17.0968,
-    5.7535,
+    18.0134,
+    12.2631,
     "underlay",
     true,
     true
    ],
    [
-    17.0574,
-    6.0866,
-    "satin",
+    18.0134,
+    14.703,
+    "underlay",
+    true,
+    true
+   ],
+   [
+    20.4533,
+    14.703,
+    "underlay",
+    true,
+    true
+   ],
+   [
+    22.8932,
+    14.703,
+    "underlay",
+    true,
+    true
+   ],
+   [
+    25.333,
+    14.703,
+    "underlay",
+    true,
+    true
+   ],
+   [
+    27.0597,
+    13.9898,
+    "underlay",
+    true,
+    true
+   ],
+   [
+    27.0597,
+    11.5499,
+    "underlay",
+    true,
+    true
+   ],
+   [
+    27.0597,
+    9.11,
+    "underlay",
+    true,
+    true
+   ],
+   [
+    27.0597,
+    6.6701,
+    "underlay",
+    true,
+    true
+   ],
+   [
+    25.054,
+    6.5101,
+    "travel",
     false,
     false
    ],
    [
-    17.4299,
-    5.7141,
-    "satin",
+    23.0482,
+    6.3501,
+    "travel",
+    false,
+    false
+   ],
+   [
+    21.0425,
+    6.1901,
+    "travel",
+    false,
+    false
+   ],
+   [
+    19.0367,
+    6.0301,
+    "travel",
+    false,
+    false
+   ],
+   [
+    17.031,
+    5.8701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    19.0155,
+    5.8701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    21.0,
+    5.8701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    24.0,
+    5.8701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    27.0,
+    5.8701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    28.2228,
+    5.8701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    28.0597,
+    6.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    25.5,
+    6.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    22.5,
+    6.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    19.5,
+    6.2701,
+    "fill",
     false,
     false
    ],
    [
     17.0134,
-    6.4151,
-    "satin",
-    false,
-    false
-   ],
-   [
-    17.7584,
-    5.6701,
-    "satin",
+    6.2701,
+    "fill",
     false,
     false
    ],
    [
     17.0134,
-    6.9844,
-    "satin",
+    6.6701,
+    "fill",
     false,
     false
    ],
    [
-    18.2291,
-    5.7687,
-    "satin",
+    18.75,
+    6.6701,
+    "fill",
     false,
     false
    ],
    [
-    17.0135,
-    7.269,
-    "satin",
+    21.75,
+    6.6701,
+    "fill",
     false,
     false
    ],
    [
-    18.6122,
-    5.6702,
-    "satin",
+    24.75,
+    6.6701,
+    "fill",
     false,
     false
    ],
    [
-    17.4377,
-    7.1293,
-    "satin",
-    false,
-    false
-   ],
-   [
-    18.4726,
-    6.0944,
-    "satin",
-    false,
-    false
-   ],
-   [
-    17.0139,
-    8.1229,
-    "satin",
-    false,
-    false
-   ],
-   [
-    19.4657,
-    5.6701,
-    "satin",
-    false,
-    false
-   ],
-   [
-    17.0163,
-    8.6914,
-    "satin",
-    false,
-    false
-   ],
-   [
-    20.0325,
-    5.6709,
-    "satin",
-    false,
-    false
-   ],
-   [
-    17.0454,
-    9.2376,
-    "satin",
-    false,
-    false
-   ],
-   [
-    18.6738,
-    7.6016,
-    "satin",
-    false,
-    false
-   ],
-   [
-    20.5727,
-    5.6939,
-    "satin",
-    false,
-    false
-   ],
-   [
-    18.5828,
-    8.0526,
-    "satin",
-    false,
-    false
-   ],
-   [
-    17.3371,
-    9.5292,
-    "satin",
-    false,
-    false
-   ],
-   [
-    20.8503,
-    5.9715,
-    "satin",
-    false,
-    false
-   ],
-   [
-    19.613,
-    7.4564,
-    "satin",
-    false,
-    false
-   ],
-   [
-    17.6366,
-    9.8285,
-    "satin",
-    false,
-    false
-   ],
-   [
-    21.12,
-    6.2415,
-    "satin",
-    false,
-    false
-   ],
-   [
-    19.413,
-    8.3401,
-    "satin",
-    false,
-    false
-   ],
-   [
-    17.9491,
-    10.1398,
-    "satin",
-    false,
-    false
-   ],
-   [
-    21.3767,
-    6.4995,
-    "satin",
-    false,
-    false
-   ],
-   [
-    19.9474,
-    8.3314,
-    "satin",
-    false,
-    false
-   ],
-   [
-    18.2809,
-    10.4677,
-    "satin",
-    false,
-    false
-   ],
-   [
-    19.8197,
-    8.7471,
-    "satin",
-    false,
-    false
-   ],
-   [
-    21.6142,
-    6.7408,
-    "satin",
-    false,
-    false
-   ],
-   [
-    19.7841,
-    9.2464,
-    "satin",
-    false,
-    false
-   ],
-   [
-    18.6384,
-    10.815,
-    "satin",
-    false,
-    false
-   ],
-   [
-    21.8259,
-    6.9627,
-    "satin",
-    false,
-    false
-   ],
-   [
-    20.6734,
-    8.5167,
-    "satin",
-    false,
-    false
-   ],
-   [
-    18.8325,
-    10.999,
-    "satin",
-    false,
-    false
-   ],
-   [
-    21.9164,
-    7.0633,
-    "satin",
-    false,
-    false
-   ],
-   [
-    19.3851,
-    10.6997,
-    "satin",
-    false,
-    false
-   ],
-   [
-    21.6485,
-    7.6473,
-    "satin",
-    false,
-    false
-   ],
-   [
-    19.2395,
-    11.3736,
-    "satin",
-    false,
-    false
-   ],
-   [
-    20.5503,
-    9.4735,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.0787,
-    7.2579,
-    "satin",
-    false,
-    false
-   ],
-   [
-    19.7767,
-    11.058,
-    "satin",
-    false,
-    false
-   ],
-   [
-    21.8263,
-    7.8581,
-    "satin",
-    false,
-    false
-   ],
-   [
-    19.684,
-    11.7592,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.2043,
-    7.4408,
-    "satin",
-    false,
-    false
-   ],
-   [
-    20.973,
-    9.869,
-    "satin",
-    false,
-    false
-   ],
-   [
-    19.917,
-    11.9514,
-    "satin",
-    false,
-    false
-   ],
-   [
-    21.9758,
-    8.0628,
-    "satin",
-    false,
-    false
-   ],
-   [
-    20.1682,
-    12.1448,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.2942,
-    7.6193,
-    "satin",
-    false,
-    false
-   ],
-   [
-    21.1427,
-    10.5183,
-    "satin",
-    false,
-    false
-   ],
-   [
-    20.4218,
-    12.3331,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.1006,
-    8.2659,
-    "satin",
-    false,
-    false
-   ],
-   [
-    20.7044,
-    12.5031,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.3651,
-    7.787,
-    "satin",
-    false,
-    false
-   ],
-   [
-    21.6245,
-    10.4138,
-    "satin",
-    false,
-    false
-   ],
-   [
-    20.9893,
-    12.6666,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.2293,
-    8.4449,
-    "satin",
-    false,
-    false
-   ],
-   [
-    21.2982,
-    12.8072,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.4329,
-    7.9376,
-    "satin",
-    false,
-    false
-   ],
-   [
-    21.9261,
-    11.0141,
-    "satin",
-    false,
-    false
-   ],
-   [
-    21.6089,
-    12.94,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.3628,
-    8.605,
-    "satin",
-    false,
-    false
-   ],
-   [
-    21.9447,
-    13.0261,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.1619,
-    11.1134,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.5089,
-    8.058,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.3865,
-    10.7742,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.2815,
-    13.1035,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.5189,
-    8.71,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.631,
-    13.1035,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.6174,
-    10.7952,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.6016,
-    8.1036,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.8346,
-    11.1731,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.9804,
-    13.0946,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.6915,
-    8.7041,
-    "satin",
-    false,
-    false
-   ],
-   [
-    23.3155,
-    13.0124,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.6938,
-    8.0512,
-    "satin",
-    false,
-    false
-   ],
-   [
-    23.6495,
-    12.9216,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.8462,
-    8.5956,
-    "satin",
-    false,
-    false
-   ],
-   [
-    23.9565,
-    12.7835,
-    "satin",
-    false,
-    false
-   ],
-   [
-    23.4078,
-    10.5413,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.7678,
-    7.9268,
-    "satin",
-    false,
-    false
-   ],
-   [
-    24.2617,
-    12.6376,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.9762,
-    8.4296,
-    "satin",
-    false,
-    false
-   ],
-   [
-    24.5404,
-    12.4671,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.831,
-    7.7684,
-    "satin",
-    false,
-    false
-   ],
-   [
-    24.8167,
-    12.2901,
-    "satin",
-    false,
-    false
-   ],
-   [
-    23.0978,
-    8.2398,
-    "satin",
-    false,
-    false
-   ],
-   [
-    25.0706,
-    12.1036,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.9026,
-    7.5981,
-    "satin",
-    false,
-    false
-   ],
-   [
-    25.322,
-    11.9121,
-    "satin",
-    false,
-    false
-   ],
-   [
-    23.2295,
-    8.0415,
-    "satin",
-    false,
-    false
-   ],
-   [
-    25.5538,
-    11.7205,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.9989,
-    7.4225,
-    "satin",
-    false,
-    false
-   ],
-   [
-    25.7834,
-    11.5254,
-    "satin",
-    false,
-    false
-   ],
-   [
-    23.3831,
-    7.8378,
-    "satin",
-    false,
-    false
-   ],
-   [
-    25.9952,
-    11.3364,
-    "satin",
-    false,
-    false
-   ],
-   [
-    23.1289,
-    7.2395,
-    "satin",
-    false,
-    false
-   ],
-   [
-    25.8451,
-    10.6653,
-    "satin",
-    false,
-    false
-   ],
-   [
-    23.5638,
-    7.6262,
-    "satin",
-    false,
-    false
-   ],
-   [
-    26.3988,
-    10.9634,
-    "satin",
-    false,
-    false
-   ],
-   [
-    23.2948,
-    7.0435,
-    "satin",
-    false,
-    false
-   ],
-   [
-    26.2067,
-    10.3197,
-    "satin",
-    false,
-    false
-   ],
-   [
-    23.7715,
-    7.4026,
-    "satin",
-    false,
-    false
-   ],
-   [
-    26.9458,
-    10.435,
-    "satin",
-    false,
-    false
-   ],
-   [
-    25.4019,
-    8.719,
-    "satin",
-    false,
-    false
-   ],
-   [
-    23.6016,
-    6.718,
-    "satin",
-    false,
-    false
-   ],
-   [
-    27.2752,
-    10.1091,
-    "satin",
-    false,
-    false
-   ],
-   [
-    23.8414,
-    6.4747,
-    "satin",
-    false,
-    false
-   ],
-   [
-    25.2831,
-    7.7547,
-    "satin",
-    false,
-    false
-   ],
-   [
-    27.5861,
-    9.7994,
-    "satin",
-    false,
-    false
-   ],
-   [
-    24.0998,
-    6.2152,
-    "satin",
-    false,
-    false
-   ],
-   [
-    26.1373,
-    7.9841,
-    "satin",
-    false,
-    false
-   ],
-   [
-    27.8846,
-    9.5011,
-    "satin",
-    false,
-    false
-   ],
-   [
-    25.9929,
-    7.5863,
-    "satin",
-    false,
-    false
-   ],
-   [
-    24.3706,
-    5.9442,
-    "satin",
-    false,
-    false
-   ],
-   [
-    27.9751,
-    9.3,
-    "satin",
-    false,
-    false
-   ],
-   [
-    24.5647,
-    5.8608,
-    "satin",
-    false,
-    false
-   ],
-   [
-    27.8174,
-    8.8498,
-    "satin",
-    false,
-    false
-   ],
-   [
-    25.1823,
-    6.2024,
-    "satin",
+    26.4049,
+    6.6701,
+    "fill",
     false,
     false
    ],
    [
     28.0597,
-    8.5185,
-    "satin",
-    false,
-    false
-   ],
-   [
-    25.3339,
-    5.7884,
-    "satin",
+    6.6701,
+    "fill",
     false,
     false
    ],
    [
     28.0597,
-    7.9476,
-    "satin",
+    7.0701,
+    "fill",
     false,
     false
    ],
    [
-    25.9032,
-    5.79,
-    "satin",
+    26.25,
+    7.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    23.25,
+    7.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    20.25,
+    7.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    18.6317,
+    7.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    17.0134,
+    7.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    17.0134,
+    7.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    19.0067,
+    7.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    21.0,
+    7.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    24.0,
+    7.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    27.0,
+    7.4701,
+    "fill",
     false,
     false
    ],
    [
     28.0597,
-    7.3779,
-    "satin",
-    false,
-    false
-   ],
-   [
-    26.4724,
-    5.7905,
-    "satin",
+    7.4701,
+    "fill",
     false,
     false
    ],
    [
     28.0597,
-    6.8086,
-    "satin",
+    7.8701,
+    "fill",
     false,
     false
    ],
    [
-    27.0417,
-    5.7905,
-    "satin",
+    25.5,
+    7.8701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    22.5,
+    7.8701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    19.5,
+    7.8701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    17.0134,
+    7.8701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    17.0134,
+    8.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    18.75,
+    8.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    21.75,
+    8.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    24.75,
+    8.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    26.4049,
+    8.2701,
+    "fill",
     false,
     false
    ],
    [
     28.0597,
-    6.2393,
-    "satin",
-    false,
-    false
-   ],
-   [
-    27.6109,
-    5.7905,
-    "satin",
+    8.2701,
+    "fill",
     false,
     false
    ],
    [
     28.0597,
-    6.2393,
-    "satin",
+    8.6701,
+    "fill",
     false,
     false
    ],
    [
-    27.6109,
-    5.7905,
-    "satin",
+    26.25,
+    8.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    23.25,
+    8.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    20.25,
+    8.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    18.6317,
+    8.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    17.0134,
+    8.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    17.0134,
+    9.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    19.0067,
+    9.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    21.0,
+    9.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    24.0,
+    9.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    27.0,
+    9.0701,
+    "fill",
     false,
     false
    ],
    [
     28.0597,
-    6.2393,
-    "satin",
+    9.0701,
+    "fill",
     false,
     false
    ],
    [
-    27.6109,
-    5.7905,
-    "satin",
+    28.0597,
+    9.4701,
+    "fill",
     false,
     false
    ],
    [
-    22.0968,
-    10.7535,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    21.5311,
-    11.3192,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    22.0968,
-    10.7535,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    21.5311,
-    11.3192,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    22.0968,
-    10.7535,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    20.0968,
-    12.7535,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    18.0968,
-    14.7535,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    17.5047,
-    15.687,
-    "satin",
+    25.5,
+    9.4701,
+    "fill",
     false,
     false
    ],
    [
-    17.0438,
-    15.2261,
-    "satin",
+    22.5,
+    9.4701,
+    "fill",
     false,
     false
    ],
    [
-    17.83,
-    15.703,
-    "satin",
+    19.5,
+    9.4701,
+    "fill",
     false,
     false
    ],
    [
-    17.1473,
-    15.0202,
-    "satin",
+    17.0134,
+    9.4701,
+    "fill",
     false,
     false
    ],
    [
-    18.1394,
-    15.703,
-    "satin",
+    17.0134,
+    9.8701,
+    "fill",
     false,
     false
    ],
    [
-    17.1473,
-    14.7108,
-    "satin",
+    18.75,
+    9.8701,
+    "fill",
     false,
     false
    ],
    [
-    18.4488,
-    15.703,
-    "satin",
+    21.75,
+    9.8701,
+    "fill",
     false,
     false
    ],
    [
-    17.1473,
-    14.4014,
-    "satin",
+    24.75,
+    9.8701,
+    "fill",
     false,
     false
    ],
    [
-    19.0485,
-    15.6839,
-    "satin",
+    26.4049,
+    9.8701,
+    "fill",
     false,
     false
    ],
    [
-    17.1664,
-    13.8017,
-    "satin",
+    28.0597,
+    9.8701,
+    "fill",
     false,
     false
    ],
    [
-    19.5298,
-    15.5464,
-    "satin",
+    28.0597,
+    10.2701,
+    "fill",
     false,
     false
    ],
    [
-    17.3039,
-    13.3205,
-    "satin",
+    26.25,
+    10.2701,
+    "fill",
     false,
     false
    ],
    [
-    19.9958,
-    15.3936,
-    "satin",
+    23.25,
+    10.2701,
+    "fill",
     false,
     false
    ],
    [
-    17.4567,
-    12.8545,
-    "satin",
+    20.25,
+    10.2701,
+    "fill",
     false,
     false
    ],
    [
-    18.0223,
-    13.4201,
-    "satin",
+    18.6317,
+    10.2701,
+    "fill",
     false,
     false
    ],
    [
-    17.4567,
-    12.8545,
-    "satin",
+    17.0134,
+    10.2701,
+    "fill",
     false,
     false
    ],
    [
-    18.0223,
-    13.4201,
-    "satin",
+    17.0134,
+    10.6701,
+    "fill",
     false,
     false
    ],
    [
-    17.4567,
-    12.8545,
-    "satin",
+    19.0067,
+    10.6701,
+    "fill",
     false,
     false
    ],
    [
-    23.0968,
-    10.7535,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    23.6625,
-    11.3192,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    23.0968,
-    10.7535,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    23.6625,
-    11.3192,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    23.0968,
-    10.7535,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    25.3468,
-    13.0035,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    27.5968,
-    15.2535,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    28.0463,
-    15.0482,
-    "satin",
+    21.0,
+    10.6701,
+    "fill",
     false,
     false
    ],
    [
-    27.3915,
-    15.703,
-    "satin",
+    24.0,
+    10.6701,
+    "fill",
     false,
     false
    ],
    [
-    28.0463,
-    14.7353,
-    "satin",
+    27.0,
+    10.6701,
+    "fill",
     false,
     false
    ],
    [
-    27.1512,
-    15.6304,
-    "satin",
+    28.0597,
+    10.6701,
+    "fill",
     false,
     false
    ],
    [
-    28.0463,
-    14.4224,
-    "satin",
+    28.0597,
+    11.0701,
+    "fill",
     false,
     false
    ],
    [
-    26.7657,
-    15.703,
-    "satin",
+    25.5,
+    11.0701,
+    "fill",
     false,
     false
    ],
    [
-    28.0366,
-    14.1192,
-    "satin",
+    22.5,
+    11.0701,
+    "fill",
     false,
     false
    ],
    [
-    26.4625,
-    15.6933,
-    "satin",
+    19.5,
+    11.0701,
+    "fill",
     false,
     false
    ],
    [
-    28.027,
-    13.816,
-    "satin",
+    17.0134,
+    11.0701,
+    "fill",
     false,
     false
    ],
    [
-    26.1592,
-    15.6837,
-    "satin",
+    17.0134,
+    11.4701,
+    "fill",
     false,
     false
    ],
    [
-    27.8879,
-    13.3292,
-    "satin",
+    18.75,
+    11.4701,
+    "fill",
     false,
     false
    ],
    [
-    25.6725,
-    15.5446,
-    "satin",
+    21.75,
+    11.4701,
+    "fill",
     false,
     false
    ],
    [
-    27.7334,
-    12.858,
-    "satin",
+    24.75,
+    11.4701,
+    "fill",
     false,
     false
    ],
    [
-    25.2012,
-    15.3901,
-    "satin",
+    26.4049,
+    11.4701,
+    "fill",
     false,
     false
    ],
    [
-    25.7669,
-    14.8244,
-    "satin",
+    28.0597,
+    11.4701,
+    "fill",
     false,
     false
    ],
    [
-    25.2012,
-    15.3901,
-    "satin",
+    28.0597,
+    11.8701,
+    "fill",
     false,
     false
    ],
    [
-    25.7669,
-    14.8244,
-    "satin",
+    26.25,
+    11.8701,
+    "fill",
     false,
     false
    ],
    [
-    25.2012,
-    15.3901,
-    "satin",
+    23.25,
+    11.8701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    20.25,
+    11.8701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    18.6317,
+    11.8701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    17.0134,
+    11.8701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    17.0134,
+    12.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    19.0067,
+    12.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    21.0,
+    12.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    24.0,
+    12.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    27.0,
+    12.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    28.0597,
+    12.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    28.0597,
+    12.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    25.5,
+    12.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    22.5,
+    12.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    19.5,
+    12.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    17.0134,
+    12.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    17.0134,
+    13.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    18.75,
+    13.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    21.75,
+    13.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    24.75,
+    13.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    26.4049,
+    13.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    28.0597,
+    13.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    28.0597,
+    13.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    26.25,
+    13.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    23.25,
+    13.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    20.25,
+    13.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    18.6317,
+    13.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    17.0134,
+    13.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    17.0134,
+    13.8701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    19.0067,
+    13.8701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    21.0,
+    13.8701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    24.0,
+    13.8701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    27.0,
+    13.8701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    28.0597,
+    13.8701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    28.0597,
+    14.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    25.5,
+    14.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    22.5,
+    14.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    19.5,
+    14.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    17.0134,
+    14.2701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    17.0134,
+    14.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    18.75,
+    14.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    21.75,
+    14.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    24.75,
+    14.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    26.4049,
+    14.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    28.0597,
+    14.6701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    28.0597,
+    15.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    26.25,
+    15.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    23.25,
+    15.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    20.25,
+    15.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    18.6317,
+    15.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    17.0134,
+    15.0701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    17.0214,
+    15.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    19.0107,
+    15.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    21.0,
+    15.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    24.0,
+    15.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    27.0,
+    15.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    28.2324,
+    15.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    27.4324,
+    15.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    28.2324,
+    15.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    27.4324,
+    15.4701,
+    "fill",
+    false,
+    false
+   ],
+   [
+    28.2324,
+    15.4701,
+    "fill",
     false,
     false
    ],
@@ -36922,6 +36905,7 @@
    "EMPTY_THREAD_LAYER:2"
   ],
   "stitch_count": 2454,
+  "stitch_count": 2331,
   "stitch_coords": [
    [
     34.2144,
@@ -38705,6 +38689,9 @@
     31.0496,
     -1.0805,
     "satin",
+    25.5057,
+    1.91,
+    "underlay",
     true,
     true
    ],
@@ -38712,6 +38699,9 @@
     30.6684,
     -0.2301,
     "satin",
+    24.8207,
+    -0.249,
+    "underlay",
     true,
     true
    ],
@@ -38719,6 +38709,9 @@
     30.9937,
     -1.6095,
     "satin",
+    23.9111,
+    -2.378,
+    "underlay",
     true,
     true
    ],
@@ -38951,628 +38944,401 @@
     -0.6929,
     "underlay",
     false,
-    false
-   ],
-   [
-    22.2165,
-    0.0751,
+    22.3844,
+    -2.7679,
     "underlay",
-    false,
+    true,
     false
    ],
    [
-    23.4922,
-    1.3157,
+    21.4655,
+    -0.6428,
     "underlay",
-    false,
+    true,
     false
    ],
    [
-    25.7117,
-    0.1724,
+    20.5465,
+    1.4822,
     "underlay",
-    false,
+    true,
     false
    ],
    [
-    26.259,
-    1.3927,
+    21.5592,
+    0.7389,
     "underlay",
-    false,
+    true,
     false
    ],
    [
-    24.7545,
-    2.5049,
+    23.8673,
+    0.6783,
     "underlay",
+    true,
+    false
+   ],
+   [
+    25.5057,
+    1.91,
+    "underlay",
+    true,
+    false
+   ],
+   [
+    26.8144,
+    2.1682,
+    "fill",
     false,
     false
    ],
    [
-    26.7075,
-    2.4428,
-    "satin",
+    26.9585,
+    2.8664,
+    "fill",
     false,
     false
    ],
    [
-    26.2271,
-    2.8484,
-    "satin",
-    false,
-    false
-   ],
-   [
-    26.5766,
-    2.2892,
-    "satin",
-    false,
-    false
-   ],
-   [
-    25.8349,
+    26.5591,
     2.91,
-    "satin",
+    "fill",
     false,
     false
    ],
    [
-    26.4202,
-    1.8945,
-    "satin",
+    26.2326,
+    1.328,
+    "fill",
     false,
     false
    ],
    [
-    25.378,
-    2.7534,
-    "satin",
+    25.9061,
+    -0.2539,
+    "fill",
     false,
     false
    ],
    [
-    26.4318,
-    1.363,
-    "satin",
+    25.116,
+    -2.1031,
+    "fill",
     false,
     false
    ],
    [
-    24.9221,
-    2.5945,
-    "satin",
+    25.4933,
+    -0.2752,
+    "fill",
     false,
     false
    ],
    [
-    26.2671,
-    0.9716,
-    "satin",
+    25.8705,
+    1.5527,
+    "fill",
     false,
     false
    ],
    [
-    24.5623,
-    2.3615,
-    "satin",
+    26.1507,
+    2.91,
+    "fill",
     false,
     false
    ],
    [
-    26.1122,
-    0.5634,
-    "satin",
+    25.7423,
+    2.91,
+    "fill",
     false,
     false
    ],
    [
-    24.3793,
-    1.9936,
-    "satin",
+    25.1756,
+    0.1645,
+    "fill",
     false,
     false
    ],
    [
-    25.9629,
-    0.142,
-    "satin",
+    24.5692,
+    -2.7736,
+    "fill",
     false,
     false
    ],
    [
-    24.2376,
-    1.5974,
-    "satin",
+    24.3259,
+    -3.9522,
+    "fill",
     false,
     false
    ],
    [
-    25.4254,
-    0.3241,
-    "satin",
+    23.8773,
+    -4.1469,
+    "fill",
     false,
     false
    ],
    [
-    23.9249,
-    1.6025,
-    "satin",
+    24.329,
+    -1.9582,
+    "fill",
     false,
     false
    ],
    [
-    25.8008,
-    -0.2725,
-    "satin",
+    24.6322,
+    -0.4892,
+    "fill",
     false,
     false
    ],
    [
-    23.5997,
-    1.6217,
-    "satin",
+    24.9354,
+    0.9798,
+    "fill",
     false,
     false
    ],
    [
-    25.6252,
-    -0.6575,
-    "satin",
+    25.3338,
+    2.91,
+    "fill",
     false,
     false
    ],
    [
-    23.2191,
-    1.4104,
-    "satin",
+    24.9254,
+    2.91,
+    "fill",
     false,
     false
    ],
    [
-    25.4707,
-    -1.0094,
-    "satin",
+    24.5829,
+    1.2508,
+    "fill",
     false,
     false
    ],
    [
-    22.7922,
-    1.1906,
-    "satin",
+    24.2405,
+    -0.4083,
+    "fill",
     false,
     false
    ],
    [
-    24.9284,
-    -0.7818,
-    "satin",
+    23.8534,
+    -2.2839,
+    "fill",
     false,
     false
    ],
    [
-    23.0235,
-    0.7,
-    "satin",
+    23.4663,
+    -4.1594,
+    "fill",
     false,
     false
    ],
    [
-    25.3346,
-    -1.2872,
-    "satin",
+    23.0553,
+    -4.1718,
+    "fill",
     false,
     false
    ],
    [
-    22.3063,
-    0.9424,
-    "satin",
+    23.3762,
+    -2.6169,
+    "fill",
     false,
     false
    ],
    [
-    24.7776,
-    -1.048,
-    "satin",
+    23.6972,
+    -1.062,
+    "fill",
     false,
     false
    ],
    [
-    22.0441,
-    0.7861,
-    "satin",
+    24.0564,
+    0.6786,
+    "fill",
     false,
     false
    ],
    [
-    25.2172,
-    -1.4705,
-    "satin",
+    24.4156,
+    2.4191,
+    "fill",
     false,
     false
    ],
    [
-    21.7818,
-    0.623,
-    "satin",
+    23.8543,
+    1.6783,
+    "fill",
     false,
     false
    ],
    [
-    24.6563,
-    -1.2624,
-    "satin",
+    23.6086,
+    0.4879,
+    "fill",
     false,
     false
    ],
    [
-    21.5542,
-    0.3838,
-    "satin",
+    23.0022,
+    -2.4502,
+    "fill",
     false,
     false
    ],
    [
-    25.1513,
-    -1.6088,
-    "satin",
+    22.6443,
+    -4.1843,
+    "fill",
     false,
     false
    ],
    [
-    21.3306,
-    0.1366,
-    "satin",
+    22.2333,
+    -4.1967,
+    "fill",
     false,
     false
    ],
    [
-    24.5945,
-    -1.4586,
-    "satin",
+    22.7621,
+    -1.6348,
+    "fill",
     false,
     false
    ],
    [
-    21.1914,
-    -0.1863,
-    "satin",
+    23.104,
+    0.0217,
+    "fill",
     false,
     false
    ],
    [
-    25.1527,
-    -1.7228,
-    "satin",
+    23.4459,
+    1.6783,
+    "fill",
     false,
     false
    ],
    [
-    21.0612,
-    -0.5151,
-    "satin",
+    23.0375,
+    1.6783,
+    "fill",
     false,
     false
    ],
    [
-    24.5752,
-    -1.6401,
-    "satin",
+    22.6735,
+    -0.0849,
+    "fill",
     false,
     false
    ],
    [
-    21.0174,
-    -0.8779,
-    "satin",
+    22.0671,
+    -3.023,
+    "fill",
     false,
     false
    ],
    [
-    25.1588,
-    -1.8082,
-    "satin",
+    21.8543,
+    -4.0542,
+    "fill",
     false,
     false
    ],
    [
-    20.9859,
-    -1.2413,
-    "satin",
+    21.5768,
+    -3.4198,
+    "fill",
     false,
     false
    ],
    [
-    24.539,
-    -1.8169,
-    "satin",
+    22.1302,
+    -0.7386,
+    "fill",
     false,
     false
    ],
    [
-    21.0133,
-    -1.6041,
-    "satin",
+    22.629,
+    1.6783,
+    "fill",
     false,
     false
    ],
    [
-    25.1052,
-    -1.903,
-    "satin",
+    22.2206,
+    1.6783,
+    "fill",
     false,
     false
    ],
    [
-    21.0526,
-    -1.9618,
-    "satin",
+    21.7605,
+    -0.5511,
+    "fill",
     false,
     false
    ],
    [
-    24.4538,
-    -2.0229,
-    "satin",
+    21.3003,
+    -2.7804,
+    "fill",
     false,
     false
    ],
    [
-    21.1329,
-    -2.2981,
-    "satin",
+    21.0238,
+    -2.1411,
+    "fill",
     false,
     false
    ],
    [
-    24.9898,
-    -2.0526,
-    "satin",
+    21.4321,
+    -0.1632,
+    "fill",
     false,
     false
    ],
    [
-    21.5043,
-    -2.5825,
-    "satin",
+    21.8403,
+    1.8146,
+    "fill",
     false,
     false
    ],
    [
-    24.3566,
-    -2.2814,
-    "satin",
+    21.5646,
+    2.4578,
+    "fill",
     false,
     false
    ],
    [
-    21.3661,
-    -2.9158,
-    "satin",
-    false,
-    false
-   ],
-   [
-    24.893,
-    -2.2712,
-    "satin",
-    false,
-    false
-   ],
-   [
-    21.5147,
-    -3.196,
-    "satin",
-    false,
-    false
-   ],
-   [
-    24.304,
-    -2.5871,
-    "satin",
-    false,
-    false
-   ],
-   [
-    21.7195,
-    -3.4273,
-    "satin",
-    false,
-    false
-   ],
-   [
-    24.8554,
-    -2.5415,
-    "satin",
-    false,
-    false
-   ],
-   [
-    21.9251,
-    -3.6491,
-    "satin",
-    false,
-    false
-   ],
-   [
-    24.837,
-    -2.7054,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.7072,
-    -3.6015,
-    "satin",
-    false,
-    false
-   ],
-   [
-    24.6371,
-    -2.9627,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.382,
-    -4.011,
-    "satin",
-    false,
-    false
-   ],
-   [
-    24.663,
-    -3.1399,
-    "satin",
-    false,
-    false
-   ],
-   [
-    22.7497,
-    -4.0979,
-    "satin",
-    false,
-    false
-   ],
-   [
-    24.5123,
-    -3.4167,
-    "satin",
-    false,
-    false
-   ],
-   [
-    23.2162,
-    -4.1136,
-    "satin",
-    false,
-    false
-   ],
-   [
-    24.4008,
-    -3.6922,
-    "satin",
-    false,
-    false
-   ],
-   [
-    23.7098,
-    -4.0862,
-    "satin",
-    false,
-    false
-   ],
-   [
-    24.4008,
-    -3.6922,
-    "satin",
-    false,
-    false
-   ],
-   [
-    23.7098,
-    -4.0862,
-    "satin",
-    false,
-    false
-   ],
-   [
-    24.4008,
-    -3.6922,
-    "satin",
-    false,
-    false
-   ],
-   [
-    23.7098,
-    -4.0862,
-    "satin",
-    false,
-    false
-   ],
-   [
-    23.0955,
-    -0.6168,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    22.5119,
-    -0.0697,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    23.0955,
-    -0.6168,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    22.5119,
-    -0.0697,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    23.0955,
-    -0.6168,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    20.4288,
-    1.8832,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    21.1999,
-    2.4791,
-    "underlay",
-    false,
-    false
-   ],
-   [
-    19.9183,
-    1.4886,
-    "underlay",
-    false,
-    false
-   ],
-   [
-    20.6404,
-    -0.5697,
-    "underlay",
-    false,
-    false
-   ],
-   [
-    22.4862,
-    1.4004,
-    "underlay",
-    false,
-    false
-   ],
-   [
-    23.8497,
-    0.5027,
-    "underlay",
-    false,
-    false
-   ],
-   [
-    22.3413,
-    -1.7363,
-    "underlay",
+    21.1066,
+    0.2385,
+    "fill",
     false,
     false
    ],
@@ -39580,6 +39346,16 @@
     22.7883,
     -1.0728,
     "underlay",
+    20.7474,
+    -1.5017,
+    "fill",
+    false,
+    false
+   ],
+   [
+    20.4709,
+    -0.8624,
+    "fill",
     false,
     false
    ],
@@ -39587,6 +39363,9 @@
     22.3413,
     -1.7363,
     "underlay",
+    20.8592,
+    1.0189,
+    "fill",
     false,
     false
    ],
@@ -39594,6 +39373,9 @@
     22.7883,
     -1.0728,
     "underlay",
+    21.2475,
+    2.9002,
+    "fill",
     false,
     false
    ],
@@ -39601,6 +39383,9 @@
     22.3413,
     -1.7363,
     "underlay",
+    20.8411,
+    2.91,
+    "fill",
     false,
     false
    ],
@@ -39694,6 +39479,95 @@
     "satin",
     true,
     true
+    20.4747,
+    1.1347,
+    "fill",
+    false,
+    false
+   ],
+   [
+    20.1944,
+    -0.223,
+    "fill",
+    false,
+    false
+   ],
+   [
+    19.918,
+    0.4163,
+    "fill",
+    false,
+    false
+   ],
+   [
+    20.4326,
+    2.91,
+    "fill",
+    false,
+    false
+   ],
+   [
+    20.0242,
+    2.91,
+    "fill",
+    false,
+    false
+   ],
+   [
+    19.6415,
+    1.0556,
+    "fill",
+    false,
+    false
+   ],
+   [
+    19.365,
+    1.695,
+    "fill",
+    false,
+    false
+   ],
+   [
+    19.6158,
+    2.91,
+    "fill",
+    false,
+    false
+   ],
+   [
+    19.2023,
+    2.8856,
+    "fill",
+    false,
+    false
+   ],
+   [
+    19.1934,
+    2.883,
+    "underlay",
+    false,
+    false
+   ],
+   [
+    18.1934,
+    0.7238,
+    "underlay",
+    false,
+    false
+   ],
+   [
+    18.1934,
+    -1.9148,
+    "underlay",
+    false,
+    false
+   ],
+   [
+    17.0267,
+    -4.117,
+    "underlay",
+    false,
+    false
    ],
    [
     19.924,
@@ -53234,870 +53108,485 @@
     false
    ],
    [
-    -35.8178,
-    2.3615,
+    -34.0082,
+    0.5201,
     "underlay",
     true,
     true
    ],
    [
-    -35.2521,
-    1.7958,
+    -33.2086,
+    0.4963,
     "underlay",
     true,
     true
    ],
    [
-    -35.8178,
-    2.3615,
+    -34.0082,
+    0.5201,
     "underlay",
     true,
     true
    ],
    [
-    -35.2521,
-    1.7958,
+    -33.2086,
+    0.4963,
     "underlay",
     true,
     true
    ],
    [
-    -35.8178,
-    2.3615,
+    -34.0082,
+    0.5201,
     "underlay",
     true,
     true
    ],
    [
-    -33.9254,
-    0.4691,
+    -31.9175,
+    0.4579,
     "underlay",
     true,
     true
    ],
    [
-    -31.8769,
-    0.4691,
+    -31.89,
+    -1.5395,
     "underlay",
     true,
     true
    ],
    [
-    -29.9845,
-    2.3615,
+    -33.8861,
+    -1.5727,
     "underlay",
     true,
     true
    ],
    [
-    -30.0356,
-    1.8177,
-    "satin",
+    -34.0082,
+    0.5201,
+    "underlay",
+    true,
+    true
+   ],
+   [
+    -34.366,
+    0.3412,
+    "travel",
     false,
     false
    ],
    [
-    -30.491,
-    2.2738,
-    "satin",
+    -34.1023,
+    -1.1337,
+    "travel",
     false,
     false
    ],
    [
-    -30.2347,
-    1.4377,
-    "satin",
+    -34.8729,
+    -2.5464,
+    "travel",
     false,
     false
    ],
    [
-    -30.8558,
-    2.0628,
-    "satin",
+    -35.873,
+    -3.129,
+    "fill",
     false,
     false
    ],
    [
-    -30.4371,
-    1.056,
-    "satin",
+    -35.4689,
+    -3.5242,
+    "fill",
     false,
     false
    ],
    [
-    -31.2177,
-    1.8533,
-    "satin",
+    -35.0929,
+    -3.3324,
+    "fill",
     false,
     false
    ],
    [
-    -30.6589,
+    -35.6747,
+    -2.7635,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -35.4757,
+    -2.3986,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -34.717,
+    -3.1405,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -34.3412,
+    -2.9486,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -35.2767,
+    -2.0338,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -35.0777,
+    -1.6689,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -33.9653,
+    -2.7566,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -33.5895,
+    -2.5647,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -34.8787,
+    -1.3041,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -34.6797,
+    -0.9392,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -33.2136,
+    -2.3728,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -32.8146,
+    -2.2035,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -34.6731,
+    -0.3862,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -35.2204,
+    0.7084,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -34.021,
+    -0.4644,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -32.7885,
+    -1.6696,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -31.556,
+    -2.8748,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -30.3064,
+    -3.5372,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -31.4876,
+    -2.3822,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -32.6688,
+    -1.2271,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -34.8138,
+    0.8703,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -35.7677,
+    1.803,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -35.7839,
+    2.3783,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -34.3547,
+    0.9808,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -32.9254,
+    -0.4168,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -30.7804,
+    -2.5142,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -29.9222,
+    -3.3534,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -30.3005,
+    -2.424,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -31.5733,
+    -1.1795,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -32.6458,
+    -0.1308,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -33.7183,
+    0.9179,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -34.9874,
+    2.1589,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -33.7608,
+    1.5189,
+    "fill",
+    false,
+    false
+   ],
+   [
+    -32.9024,
     0.6795,
-    "satin",
+    "fill",
     false,
     false
    ],
    [
-    -31.6365,
-    1.7171,
-    "satin",
+    -30.8964,
+    -1.2819,
+    "fill",
     false,
     false
    ],
    [
-    -30.9074,
-    0.2991,
-    "satin",
+    -31.2039,
+    -0.4218,
+    "fill",
     false,
     false
    ],
    [
-    -31.9652,
-    1.5203,
-    "satin",
+    -32.791,
+    1.1301,
+    "fill",
     false,
     false
    ],
    [
-    -31.1914,
-    -0.1023,
-    "satin",
+    -32.4179,
+    1.3247,
+    "fill",
     false,
     false
    ],
    [
-    -32.2605,
-    1.3464,
-    "satin",
+    -31.0106,
+    -0.0513,
+    "fill",
     false,
     false
    ],
    [
-    -31.607,
-    0.0674,
-    "satin",
+    -30.8173,
+    0.3191,
+    "fill",
     false,
     false
    ],
    [
-    -32.0608,
-    0.771,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -31.5406,
-    -0.5203,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -32.5048,
-    1.2038,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -31.7629,
-    -0.7201,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -32.3557,
-    0.6018,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -31.9943,
-    -0.9154,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -32.6884,
-    1.0902,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -32.2844,
-    -1.0527,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -32.6336,
-    0.4745,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -32.582,
-    -1.1786,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -32.8387,
-    1.0174,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -32.9128,
-    -1.1913,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -32.9127,
-    0.4214,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -33.2438,
-    -1.189,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -32.9865,
-    1.0104,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -33.5413,
-    -1.0694,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -33.1894,
-    0.4632,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -33.8315,
-    -0.9383,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -33.131,
-    1.074,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -34.0575,
-    -0.7339,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -33.4574,
-    0.5938,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -34.274,
-    -0.5247,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -33.299,
-    1.2023,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -34.2025,
-    0.0672,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -33.7433,
-    0.7718,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -34.6187,
-    -0.0996,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -33.5392,
-    1.3466,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -34.8999,
-    0.3041,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -33.8361,
+    -32.0448,
     1.5194,
-    "satin",
+    "fill",
     false,
     false
    ],
    [
-    -35.1463,
-    0.6846,
-    "satin",
+    -31.6718,
+    1.714,
+    "fill",
     false,
     false
    ],
    [
-    -34.167,
-    1.7161,
-    "satin",
+    -30.6241,
+    0.6896,
+    "fill",
     false,
     false
    ],
    [
-    -35.3664,
-    1.0608,
-    "satin",
+    -30.4308,
+    1.06,
+    "fill",
     false,
     false
    ],
    [
-    -34.5242,
-    1.9172,
-    "satin",
+    -31.2987,
+    1.9087,
+    "fill",
     false,
     false
    ],
    [
-    -35.5681,
-    1.4421,
-    "satin",
+    -30.9256,
+    2.1033,
+    "fill",
     false,
     false
    ],
    [
-    -34.9499,
-    2.0629,
-    "satin",
+    -30.2375,
+    1.4305,
+    "fill",
     false,
     false
    ],
    [
-    -35.7668,
-    1.8219,
-    "satin",
+    -30.0442,
+    1.8009,
+    "fill",
     false,
     false
    ],
    [
-    -35.2784,
-    2.3107,
-    "satin",
+    -30.5525,
+    2.298,
+    "fill",
     false,
     false
    ],
    [
-    -35.7668,
-    1.8219,
-    "satin",
+    -30.0169,
+    2.3336,
+    "fill",
     false,
     false
    ],
    [
-    -35.2784,
-    2.3107,
-    "satin",
+    -30.5525,
+    2.298,
+    "fill",
     false,
     false
    ],
    [
-    -35.7668,
-    1.8219,
-    "satin",
+    -30.0169,
+    2.3336,
+    "fill",
     false,
     false
    ],
    [
-    -35.2784,
-    2.3107,
-    "satin",
+    -30.5525,
+    2.298,
+    "fill",
     false,
     false
    ],
    [
-    -35.8178,
-    -3.4718,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    -35.2521,
-    -2.9061,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    -35.8178,
-    -3.4718,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    -35.2521,
-    -2.9061,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    -35.8178,
-    -3.4718,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    -33.9254,
-    -1.5793,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    -31.8769,
-    -1.5793,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    -29.9845,
-    -3.4718,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    -30.5244,
-    -3.4209,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -30.0724,
-    -2.9682,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -30.8526,
-    -3.1728,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -30.2352,
-    -2.5516,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -31.2124,
-    -2.9607,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -30.4406,
-    -2.1724,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -31.6298,
-    -2.8225,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -30.6634,
-    -1.7968,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -31.9582,
-    -2.6242,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -30.9127,
-    -1.4174,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -32.2536,
-    -2.4488,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -31.1969,
-    -1.0172,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -32.1393,
-    -2.0044,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -31.6931,
-    -1.3128,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -32.4988,
-    -2.3047,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -31.5455,
-    -0.6003,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -32.3508,
-    -1.7026,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -31.7668,
-    -0.4003,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -32.6847,
-    -2.1909,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -31.9974,
-    -0.2049,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -32.6313,
-    -1.5761,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -32.2862,
-    -0.0665,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -32.8377,
-    -2.12,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -32.5828,
-    0.0607,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -32.9127,
-    -1.5262,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -32.9128,
-    0.0755,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -32.9871,
-    -2.1174,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -33.2436,
-    0.0754,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -33.1899,
-    -1.5724,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -33.5413,
-    -0.0423,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -33.1311,
-    -2.1852,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -33.8322,
-    -0.1716,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -33.4571,
-    -1.706,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -34.0587,
-    -0.3752,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -33.2981,
-    -2.3154,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -34.276,
-    -0.5837,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -33.6632,
-    -2.0064,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -34.1239,
-    -1.2997,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -33.5391,
-    -2.4586,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -34.6203,
-    -1.0104,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -33.8386,
-    -2.6288,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -34.8993,
-    -1.417,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -34.1725,
-    -2.8229,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -35.1431,
-    -1.8006,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -34.5355,
-    -3.0187,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -35.3578,
-    -2.1825,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -34.9073,
-    -3.2191,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -35.5637,
-    -2.5599,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -35.2807,
-    -3.4222,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -35.7314,
-    -2.971,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -35.2807,
-    -3.4222,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -35.7314,
-    -2.971,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -35.2807,
-    -3.4222,
-    "satin",
-    false,
-    false
-   ],
-   [
-    -35.7314,
-    -2.971,
-    "satin",
+    -30.0169,
+    2.3336,
+    "fill",
     false,
     false
    ]

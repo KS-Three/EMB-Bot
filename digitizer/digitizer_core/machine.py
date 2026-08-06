@@ -709,7 +709,15 @@ APPLIQUE_COVER_SPACING_MM = 0.40      # [P]; Melco 4.2 pt [V]
 APPLIQUE_COVER_SPACING_MIN_MM = 0.30  # [P] below this the needle cuts the fabric
 APPLIQUE_COVER_SPACING_MAX_MM = 0.60  # [P] above this the raw edge shows through
 APPLIQUE_COVER_PULL_COMP_MM = 0.20    # [P] up to 0.30 on knits
+# Applied in stage6_applique._cover_layer, the same direction as
+# Fabric.pull_comp_mm on an ordinary satin column: each rail moves `this`
+# further from the other, so the stitched column is `2*this` wider than the
+# solved width (see that function's docstring for the measured before/after).
+# The "up to 0.30 on knits" note above is context, not a by-material table —
+# there is no knit-specific override wired in, only the single 0.20 mm value.
 # Stahls' publishes 4-8 stitches of closure overlap past the start point [S].
+# Applied in stage6_applique._cover_layer, replacing the border module's
+# generic BORDER_CLOSURE_OVERLAP_MM (a distance) for this call site only.
 APPLIQUE_CLOSURE_OVERLAP_STITCHES = 6
 
 # The tolerance stack (§2.3). No source states it as an equation; it is [D],
@@ -739,6 +747,8 @@ APPLIQUE_INSIDE_SHARE_PRECUT = 0.50   # [V]
 # 2.5 mm (risky)" [P]); note it sits ABOVE the twill material floor below and
 # above Stahls' published 2 mm, so the clamp is what binds on pre-cut twill —
 # a deliberate conservatism, not an oversight. 5.0 is the snag ceiling [D].
+# Whichever bound binds, `solve_cover_width`'s own "clamped" field says so and
+# stage6_applique.check_gates turns it into APPLIQUE_COVER_WIDTH_CLAMPED.
 APPLIQUE_COVER_WIDTH_FLOOR_MM = 2.50
 APPLIQUE_COVER_WIDTH_MAX_MM = 5.00
 # W_floor_material, §2.13. Only binds where it exceeds the 2.5 clamp floor.
@@ -765,6 +775,12 @@ APPLIQUE_MIN_HOLE_DIAMETER_MM = 15.0
 # Multi-piece (§2.11). The one hard vendor number: Wilcom states it directly —
 # "Set the cutting overlap to half the width of the cover stitching" [V], and
 # Hatch's Partial Appliqué tool is documented accurate to +-1/2 the cover width.
+# NOT the same thing as `APPLIQUE_CLOSURE_OVERLAP_STITCHES` above despite the
+# similar name: this is how far one piece's CUTTING BOUNDARY dilates into a
+# neighbour it overlaps (Mode B multi-piece batching, §2.11), not how far a
+# single piece's own cover circuit overlaps its own start. Mode B is not
+# built — `applique_pass` only detects and warns overlapping pieces
+# (`APPLIQUE_PIECES_OVERLAP`) — so this constant stays unread until it is.
 APPLIQUE_OVERLAP_ALLOWANCE_FRAC = 0.5
 
 # Machine speed for the worksheet — the Tajima will not infer it [P] (§2.10).
