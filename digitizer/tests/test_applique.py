@@ -549,6 +549,52 @@ def test_tackdown_is_a_double_run_for_trim_in_place():
     assert ratio > 1.6, ratio
 
 
+def test_pre_cut_tackdown_is_a_real_column_not_a_zero_width_run():
+    """§2.7: pre-cut's default tackdown is zigzag, and a zigzag/E tackdown is
+    a COLUMN with real width, straddling B and centered on the tack line
+    ("positioned by column width, centered on the line", §2.2) — not a run
+    stitch.
+
+    Before `_zigzag_tack_layer` existed, `applique_steps` called `_run_layer`
+    unconditionally for every tackdown type; the only branch was the pass
+    count (`2` for `"double_run"`, `1` otherwise). So a zigzag tack — the
+    pre-cut DEFAULT — sewed as a zero-width, single-pass running stitch
+    exactly on `s_tack`, geometrically identical to `tackdown="run"`.
+    `machine.APPLIQUE_TACK_WIDTH_MM` was defined and read by no code path.
+    Measured here off the emitted points, not off the config that produced
+    them, same convention as `test_measured_layer_offsets`.
+
+    Width is §2.7's hard vendor constraint verbatim: `W_tack <= W_cover -
+    2*m_bury`, which at the default 3.0 mm cover clamps to the published
+    2.00 mm exactly.
+    """
+    g = solve_geometry(mode=PRE_CUT)
+    steps, _ = applique_steps(BIG_SQUARE, "S1", g)
+    offsets = _layer_offsets(steps, BIG_SQUARE, TACKDOWN)
+    assert offsets
+
+    expected_width = min(machine.APPLIQUE_TACK_WIDTH_MM,
+                         g.width_mm - 2 * machine.APPLIQUE_MARGIN_BURY_MM)
+    assert expected_width == pytest.approx(2.0)
+
+    spread = max(offsets) - min(offsets)
+    assert spread == pytest.approx(expected_width, abs=0.05), spread
+    # Centered on the tackdown line, which is B itself for pre-cut (o_tack=0).
+    assert (max(offsets) + min(offsets)) / 2 == pytest.approx(g.s_tack, abs=0.05)
+
+
+def test_run_and_double_run_tackdowns_stay_a_single_line():
+    """Regression guard on the dispatch `_zigzag_tack_layer` was added
+    beside: `"run"` and `"double_run"` are explicitly run-stitch-only (§2.2)
+    and must keep sewing on the line with zero column width, not gain one.
+    """
+    g = solve_geometry()  # trim-in-place default -> double_run
+    steps, _ = applique_steps(BIG_SQUARE, "S1", g)
+    offsets = _layer_offsets(steps, BIG_SQUARE, TACKDOWN)
+    assert offsets
+    assert max(offsets) - min(offsets) == pytest.approx(0.0, abs=1e-6)
+
+
 # =========================================================================
 # 5. Gates  (§2.12)
 # =========================================================================
@@ -619,6 +665,72 @@ def test_a_hole_too_small_to_trim_forces_pre_cut():
     _steps, report = applique_steps(donut, "S1", solve_geometry())
     assert APPLIQUE_FORCED_PRE_CUT in {x["code"] for x in report["gates"]}
     assert report["mode"] == PRE_CUT
+
+
+def test_a_neck_too_narrow_for_scissors_is_caught_even_with_big_lobes():
+    """`min_inscribed_diameter` finds the ONE best spot in a shape — the
+    largest circle that fits ANYWHERE. That is the wrong measure for "can
+    scissors get all the way around this piece": a two-lobe "dog bone" (two
+    20 mm circles joined by a 3 mm neck) has an enormous best spot in either
+    lobe, so `min_inscribed_diameter` reports ~19.9 mm and the scissors gate
+    never fires — even though nothing wider than 3 mm can pass through the
+    neck. `narrowest_passage_diameter` is a strict refinement built for
+    exactly this: it finds the erosion radius at which the shape first
+    splits, which for a dog bone is the neck itself.
+    """
+    from shapely.ops import unary_union
+
+    from digitizer_core.stage6_applique import narrowest_passage_diameter
+    from digitizer_core.warnings_codes import APPLIQUE_CUTTING_LINE_SUPPRESSED
+
+    lobe_a = Point(-20, 0).buffer(10, quad_segs=64)
+    lobe_b = Point(20, 0).buffer(10, quad_segs=64)
+    neck = Polygon([(-20, -1.5), (20, -1.5), (20, 1.5), (-20, 1.5)])
+    bone = unary_union([lobe_a, lobe_b, neck])
+
+    # The defect, pinned directly: the old measure is blind to the neck.
+    assert min_inscribed_diameter(bone) == pytest.approx(19.9, abs=0.2)
+    # The fix: the narrowest passage IS the neck, not either lobe.
+    assert narrowest_passage_diameter(bone) == pytest.approx(3.0, abs=0.1)
+
+    _steps, report = applique_steps(bone, "S1", solve_geometry())
+    codes = {x["code"] for x in report["gates"]}
+    assert APPLIQUE_CUTTING_LINE_SUPPRESSED in codes, (
+        "a 3 mm neck between two 20 mm lobes must suppress the cutting line "
+        "-- scissors cannot navigate a 3 mm passage")
+    assert not report["cutting_line"]
+
+
+def test_an_off_centre_hole_is_measured_by_its_thin_side_not_its_fat_side():
+    """Same failure mode as the dog bone, on a ring: `min_inscribed_diameter`
+    of a ring whose hole is NOT centred lands on the ring's fat side (the
+    single largest inscribed circle), overstating how much clearance the
+    ring's own thin side actually has. `narrowest_passage_diameter` finds the
+    thin side instead, because that is where the ring first pinches shut
+    under erosion.
+    """
+    from digitizer_core.stage6_applique import narrowest_passage_diameter
+
+    outer = Point(0, 0).buffer(20, quad_segs=48)
+    hole = Point(10, 0).buffer(5, quad_segs=48)  # off-centre: thin side ~5 mm
+    ring = outer.difference(hole)
+
+    assert min_inscribed_diameter(ring) == pytest.approx(25.0, abs=0.3)
+    assert narrowest_passage_diameter(ring) == pytest.approx(5.0, abs=0.1)
+
+
+def test_narrowest_passage_matches_min_inscribed_diameter_on_ordinary_shapes():
+    """The refinement must not move a number that was already right: on a
+    shape with no neck (nothing to sever, nothing to pinch), the two measures
+    have to agree exactly, or `narrowest_passage_diameter` would be widening
+    its own bisection bracket incorrectly rather than converging to the same
+    answer by a different route.
+    """
+    from digitizer_core.stage6_applique import narrowest_passage_diameter
+
+    for shape in (BIG_SQUARE, SMALL_DISC):
+        assert narrowest_passage_diameter(shape) == pytest.approx(
+            min_inscribed_diameter(shape), abs=0.01)
 
 
 # =========================================================================
