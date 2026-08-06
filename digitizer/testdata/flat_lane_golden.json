@@ -25647,9 +25647,6 @@
     true
    ],
    [
-    27.5275,
-    6.4519,
-    "satin",
     36.9148,
     14.703,
     "underlay",
@@ -25657,9 +25654,6 @@
     true
    ],
    [
-    28.0932,
-    5.8863,
-    "satin",
     37.9866,
     13.4401,
     "underlay",
@@ -25667,9 +25661,6 @@
     true
    ],
    [
-    27.5275,
-    6.4519,
-    "satin",
     37.9866,
     11.1055,
     "underlay",
@@ -25677,9 +25668,6 @@
     true
    ],
    [
-    28.0932,
-    5.8863,
-    "satin",
     37.9866,
     8.7709,
     "underlay",
@@ -25687,9 +25675,6 @@
     true
    ],
    [
-    27.5275,
-    6.4519,
-    "satin",
     37.7527,
     6.6701,
     "underlay",
@@ -25697,9 +25682,6 @@
     true
    ],
    [
-    28.2915,
-    5.688,
-    "satin",
     35.4181,
     6.6701,
     "underlay",
@@ -25707,9 +25689,6 @@
     true
    ],
    [
-    27.5097,
-    6.7615,
-    "satin",
     33.0834,
     6.6701,
     "underlay",
@@ -25717,9 +25696,6 @@
     true
    ],
    [
-    28.6011,
-    5.6701,
-    "satin",
     30.7488,
     6.6701,
     "underlay",
@@ -25727,9 +25703,6 @@
     true
    ],
    [
-    27.5097,
-    7.3451,
-    "satin",
     28.5097,
     6.7657,
     "underlay",
@@ -25737,81 +25710,6 @@
     true
    ],
    [
-    29.1846,
-    5.6701,
-    "satin",
-    true,
-    true
-   ],
-   [
-    27.5277,
-    7.9106,
-    "satin",
-    true,
-    true
-   ],
-   [
-    29.7502,
-    5.6882,
-    "satin",
-    true,
-    true
-   ],
-   [
-    27.6574,
-    8.3645,
-    "satin",
-    true,
-    true
-   ],
-   [
-    30.204,
-    5.8178,
-    "satin",
-    true,
-    true
-   ],
-   [
-    27.8015,
-    8.804,
-    "satin",
-    true,
-    true
-   ],
-   [
-    30.6435,
-    5.9619,
-    "satin",
-    true,
-    true
-   ],
-   [
-    30.0778,
-    6.5276,
-    "satin",
-    true,
-    true
-   ],
-   [
-    30.6435,
-    5.9619,
-    "satin",
-    true,
-    true
-   ],
-   [
-    30.0778,
-    6.5276,
-    "satin",
-    true,
-    true
-   ],
-   [
-    30.6435,
-    5.9619,
-    "satin",
-    true,
-    true
     27.7772,
     5.8701,
     "fill",
@@ -36904,8 +36802,7 @@
    "DROPPED_SMALL_SHAPES:1",
    "EMPTY_THREAD_LAYER:2"
   ],
-  "stitch_count": 2454,
-  "stitch_count": 2331,
+  "stitch_count": 2340,
   "stitch_coords": [
    [
     34.2144,
@@ -38689,9 +38586,6 @@
     31.0496,
     -1.0805,
     "satin",
-    25.5057,
-    1.91,
-    "underlay",
     true,
     true
    ],
@@ -38699,9 +38593,6 @@
     30.6684,
     -0.2301,
     "satin",
-    24.8207,
-    -0.249,
-    "underlay",
     true,
     true
    ],
@@ -38709,9 +38600,6 @@
     30.9937,
     -1.6095,
     "satin",
-    23.9111,
-    -2.378,
-    "underlay",
     true,
     true
    ],
@@ -38807,182 +38695,108 @@
     true
    ],
    [
-    25.5955,
-    1.8832,
+    25.523,
+    1.3947,
     "underlay",
     true,
     true
    ],
    [
-    25.0559,
-    1.2926,
+    25.2087,
+    0.659,
     "underlay",
     true,
     true
    ],
    [
-    25.5955,
-    1.8832,
+    25.523,
+    1.3947,
     "underlay",
     true,
     true
    ],
    [
-    25.0559,
-    1.2926,
+    25.2087,
+    0.659,
     "underlay",
     true,
     true
    ],
    [
-    25.5955,
-    1.8832,
+    25.523,
+    1.3947,
     "underlay",
     true,
     true
    ],
    [
-    23.1192,
-    -0.827,
+    24.6134,
+    -0.7344,
     "underlay",
     true,
     true
    ],
    [
-    24.2622,
-    -4.1168,
+    23.7037,
+    -2.8634,
     "underlay",
     true,
     true
    ],
    [
-    24.6901,
-    -2.4913,
-    "underlay",
-    false,
-    false
-   ],
-   [
-    22.1315,
-    -3.4155,
-    "underlay",
-    false,
-    false
-   ],
-   [
-    21.5698,
-    -1.5793,
-    "underlay",
-    false,
-    false
-   ],
-   [
-    24.5434,
-    -1.5539,
-    "underlay",
-    false,
-    false
-   ],
-   [
-    24.6458,
-    -1.3843,
-    "underlay",
-    false,
-    false
-   ],
-   [
-    21.6904,
-    -1.2458,
-    "underlay",
-    false,
-    false
-   ],
-   [
-    21.8154,
-    -0.9134,
-    "underlay",
-    false,
-    false
-   ],
-   [
-    24.7437,
-    -1.2136,
-    "underlay",
-    false,
-    false
-   ],
-   [
-    24.8372,
-    -1.0417,
-    "underlay",
-    false,
-    false
-   ],
-   [
-    21.9448,
-    -0.5823,
-    "underlay",
-    false,
-    false
-   ],
-   [
-    22.0786,
-    -0.2528,
-    "underlay",
-    false,
-    false
-   ],
-   [
-    24.9264,
-    -0.8682,
-    "underlay",
-    false,
-    false
-   ],
-   [
-    25.0114,
-    -0.6929,
-    "underlay",
-    false,
-    22.3844,
-    -2.7679,
+    22.1749,
+    -2.2834,
     "underlay",
     true,
-    false
+    true
    ],
    [
-    21.4655,
-    -0.6428,
+    21.256,
+    -0.1584,
     "underlay",
     true,
-    false
+    true
    ],
    [
-    20.5465,
-    1.4822,
-    "underlay",
-    true,
-    false
-   ],
-   [
-    21.5592,
-    0.7389,
-    "underlay",
-    true,
-    false
-   ],
-   [
-    23.8673,
-    0.6783,
-    "underlay",
-    true,
-    false
-   ],
-   [
-    25.5057,
+    20.4234,
     1.91,
     "underlay",
     true,
+    true
+   ],
+   [
+    22.0798,
+    0.6783,
+    "underlay",
+    true,
+    true
+   ],
+   [
+    24.3919,
+    0.7135,
+    "underlay",
+    true,
+    true
+   ],
+   [
+    25.523,
+    1.3947,
+    "underlay",
+    true,
+    true
+   ],
+   [
+    25.8909,
+    1.2375,
+    "travel",
+    false,
+    false
+   ],
+   [
+    26.032,
+    2.31,
+    "travel",
+    false,
     false
    ],
    [
@@ -39343,9 +39157,6 @@
     false
    ],
    [
-    22.7883,
-    -1.0728,
-    "underlay",
     20.7474,
     -1.5017,
     "fill",
@@ -39360,9 +39171,6 @@
     false
    ],
    [
-    22.3413,
-    -1.7363,
-    "underlay",
     20.8592,
     1.0189,
     "fill",
@@ -39370,9 +39178,6 @@
     false
    ],
    [
-    22.7883,
-    -1.0728,
-    "underlay",
     21.2475,
     2.9002,
     "fill",
@@ -39380,9 +39185,6 @@
     false
    ],
    [
-    22.3413,
-    -1.7363,
-    "underlay",
     20.8411,
     2.91,
     "fill",
@@ -39390,95 +39192,6 @@
     false
    ],
    [
-    20.2245,
-    2.91,
-    "satin",
-    true,
-    true
-   ],
-   [
-    19.6089,
-    2.3991,
-    "satin",
-    true,
-    true
-   ],
-   [
-    20.2245,
-    2.91,
-    "satin",
-    true,
-    true
-   ],
-   [
-    19.6089,
-    2.3991,
-    "satin",
-    true,
-    true
-   ],
-   [
-    20.2245,
-    2.91,
-    "satin",
-    true,
-    true
-   ],
-   [
-    19.439,
-    2.2582,
-    "satin",
-    true,
-    true
-   ],
-   [
-    20.8104,
-    2.8257,
-    "satin",
-    true,
-    true
-   ],
-   [
-    19.4084,
-    1.6907,
-    "satin",
-    true,
-    true
-   ],
-   [
-    21.197,
-    2.5738,
-    "satin",
-    true,
-    true
-   ],
-   [
-    19.577,
-    1.2909,
-    "satin",
-    true,
-    true
-   ],
-   [
-    21.5479,
-    2.292,
-    "satin",
-    true,
-    true
-   ],
-   [
-    19.7656,
-    0.9083,
-    "satin",
-    true,
-    true
-   ],
-   [
-    21.6951,
-    1.856,
-    "satin",
-    true,
-    true
     20.4747,
     1.1347,
     "fill",
@@ -39568,125 +39281,6 @@
     "underlay",
     false,
     false
-   ],
-   [
-    19.924,
-    0.5069,
-    "satin",
-    true,
-    true
-   ],
-   [
-    22.1382,
-    1.6413,
-    "satin",
-    true,
-    true
-   ],
-   [
-    20.1065,
-    0.1243,
-    "satin",
-    true,
-    true
-   ],
-   [
-    22.4825,
-    1.3505,
-    "satin",
-    true,
-    true
-   ],
-   [
-    20.341,
-    -0.2154,
-    "satin",
-    true,
-    true
-   ],
-   [
-    20.9868,
-    0.2568,
-    "satin",
-    true,
-    true
-   ],
-   [
-    20.341,
-    -0.2154,
-    "satin",
-    true,
-    true
-   ],
-   [
-    20.9868,
-    0.2568,
-    "satin",
-    true,
-    true
-   ],
-   [
-    20.341,
-    -0.2154,
-    "satin",
-    true,
-    true
-   ],
-   [
-    19.1934,
-    2.883,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    18.8572,
-    2.1571,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    19.1934,
-    2.883,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    18.8572,
-    2.1571,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    19.1934,
-    2.883,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    18.1934,
-    0.7238,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    18.1934,
-    -1.9148,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    17.0267,
-    -4.117,
-    "underlay",
-    true,
-    true
    ],
    [
     17.0193,
