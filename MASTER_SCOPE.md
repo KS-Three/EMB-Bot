@@ -769,6 +769,25 @@ is now fixed (see below), four remain open:
   browser UI end to end (upload → digitize → see the restored shape in the
   Layers panel) — the HTTP-level reproduction above proves the fix, but
   nobody has watched it happen in a real browser session yet.
+
+  **Band/part transition jump flags — FIXED, 2026-08-06.** `blend_fill`
+  stitches each shade band (and, when `_band_clip` returns more than one
+  disconnected polygon for a band, each part within it) as its own
+  independent `stitch_shape` call, and every one of those calls' first run
+  starts with `jump=False` in isolation — correct on its own, wrong once
+  spliced back-to-back with whatever came before it, which used to leave a
+  bare straight stitch across the real physical gap between two shade bands
+  or two disjoint parts of one band. Both transitions now get an explicit
+  `jump=True` with `trim` set from the actual measured gap, mirroring
+  `stage6_fill.stitch_shape`'s own `emit()` convention for a travel move —
+  deliberately without attempting `emit()`'s `travel_path` bridge first,
+  since a bridge here would route the wrong shade's thread across the seam
+  (see the code comments at both sites in `stage6_blend.py` for the full
+  reasoning). Regression-tested in `test_stage6_blend.py`: one test drives
+  the real linear-ramp fixture end to end and checks every band boundary,
+  the other monkeypatches `_band_clip` to force a same-band, two-part split
+  (no committed fixture has that topology naturally) and checks the seam
+  between parts. `digitizer/tests` run clean with the fix in.
 - **Contour fill** — **all three of the 2026-08-02 audit's defects are now
   fixed, confirmed 2026-08-04 (PR #27, `contour-bare-core-shrink`, merged);
   it still ships off by default, but no longer because of any open defect
