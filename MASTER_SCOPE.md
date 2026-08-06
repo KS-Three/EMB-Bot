@@ -1088,6 +1088,28 @@ is now fixed (see below), four remain open:
   to validate `LINK_COVER_TOL_MM`, which is still a thread spec, not a
   measurement. The other four closeout defects below are unaffected by this
   fix and remain open.
+
+  **Demonstration fixture moved off `logo_alpha.png`, 2026-08-06 — the
+  chaining mechanism itself is unaffected, only which committed image proves
+  it.** The satin/fill classifier's flat-lane DT-tightening fix (below)
+  correctly reclassified two of `logo_alpha.png`'s shapes from satin to
+  fill, which — as an incidental side effect, not a chaining defect —
+  eliminated the specific narrow gap chaining used to bridge on that one
+  fixture: measured directly, `chain_links` on vs. off became byte-identical
+  output there (6 links either way, 0 exposure either way, 0 trims removed).
+  Every synthetic-geometry chaining test in `test_chaining.py` (the ones
+  that construct their own controlled gaps rather than reading a real image)
+  stayed green throughout, confirming the mechanism itself never broke.
+  `tests/test_chaining.py::test_chaining_cuts_the_benchmark_fixtures_trim_rate`
+  and `..._adds_no_bare_fabric_exposure_on_the_committed_fixture` now run
+  against `photo/enthusiast_logo.png` @ 82mm instead (this repo's own
+  primary real-art benchmark, not a new synthetic construction) — swept
+  across widths first to confirm 82mm isn't cherry-picked to the edge of the
+  4.1 trims/1k corpus ceiling (it lands at 3.41/1k with real margin). The
+  new numbers are a stronger demonstration than the old ones: links 2→17,
+  trims 21→9, and bare-fabric exposure is exactly 0.0 mm both with and
+  without chaining (cleaner than `logo_alpha`'s old 0.3011 mm/0.2057 mm
+  floor, not a regression from it).
 - **Gradient blend tier** — shipped (`stage6_blend.py`), then within one day
   found to fragment into 23 independent-angle regions instead of one shared
   ramp, plus a separate `BACKGROUND_ENCLOSED` defect that silently drops
