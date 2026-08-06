@@ -427,6 +427,65 @@ def test_a_satin_free_end_does_not_fan_into_a_starburst():
     assert head == [], f"the start cap is fanning: {head}"
 
 
+def test_satin_crosses_do_not_self_overlap_across_a_wide_junction():
+    """Regression, found and fixed 2026-08-05: `logo_alpha.png`'s `Sf5200f3f`
+    is a multi-stroke glyph carrying a genuine wide apex (both ends of the
+    affected stroke are FREE -- no junction node on this stroke at all,
+    confirmed by direct inspection of `field.half_at()` along its spine: a
+    smooth, single-peaked taper, 0.17mm at each tip ramping continuously up
+    to 4.67mm at the apex and back down, no isolated spike -- this is the
+    shape's real medial-axis width, not a measurement artifact). At
+    `SATIN_MAX_WIDTH_MM=5.0`, that peak (locally ~9.3mm across) is well past
+    where the corpus ever validated a satin cross at all
+    (docs/corpus-laws-round3-2026-08-01.md flags its own >7.0mm bucket as
+    82% non-ribbon junk) -- ungated, the crosses near the peak fanned out
+    7-9mm and physically overlapped each other. Measured directly before the
+    fix: 2580 non-adjacent rail-to-rail segment pairs crossed each other, and
+    the shape's own isolated coverage peak read 9.57 layers of the design's
+    overall 13.11 (see test_preflight.py::
+    test_a_wide_oversize_satin_stroke_does_not_block_on_underlay_glue,
+    which pins the aggregate number this test complements with the actual
+    geometry).
+
+    Fix (`stage6_satin.py::_rail_points`): cap every station's width to
+    `SATIN_MAX_WIDTH_MM / 2` too, alongside the existing local-corridor cap
+    -- the same ceiling the satin/fill classifier already gates on ("ribbons
+    wider than this sew better as fill", machine.py) and `_stroke_underlay`'s
+    oversize check already reuses, not a new number: no classifier-eligible
+    column should ever need a wider cross in the first place.
+    """
+    from digitizer_core import PipelineConfig, plan_stitches, run_stages
+    from digitizer_core.stage6_satin import strip_splits
+    from digitizer_core.stitches import strip_ties
+
+    c = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    result = run_stages(TESTDATA / "logo_alpha.png", c)
+    plan = plan_stitches(result, c)
+
+    segs = []
+    for _b, run in plan.iter_runs():
+        if run.shape_id != "Sf5200f3f" or run.kind != "satin":
+            continue
+        pts = strip_splits(strip_ties(run.points))
+        segs.extend(LineString((a, b)) for a, b in zip(pts, pts[1:]))
+
+    assert segs, "fixture regressed: Sf5200f3f no longer sews as satin"
+
+    # Adjacent segments legitimately share an endpoint (the zigzag's own
+    # rail-to-rail step); only NON-adjacent crossings are the defect.
+    crossings = 0
+    for i, si in enumerate(segs):
+        if si.length < 1e-6:
+            continue
+        for sj in segs[i + 2:]:
+            if sj.length < 1e-6:
+                continue
+            if si.intersects(sj):
+                crossings += 1
+
+    assert crossings == 0, f"{crossings} non-adjacent satin crosses overlap each other"
+
+
 # --- Underlay --------------------------------------------------------------
 
 def test_underlay_stays_inside_the_column():
