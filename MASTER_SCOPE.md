@@ -1139,6 +1139,28 @@ is now fixed (see below), four remain open:
   0.20mm figure is a satin-rail artifact for one file population (refuted)
   but looks like a genuine denser pitch on 43 commissioned cap logos (still
   alive). Shipped `FILL_ROW_MM=0.40` unchanged pending sew-out.
+- **Border tier seam-sharing (KNOWN LIMITATION, mitigated not fixed)** —
+  `stage6_border.py`'s own module docstring documents an unresolved defect:
+  under `border="auto"` (or any per-shape border override), two
+  different-colour shapes that abut get coincident outline rails, because
+  stage 5's overlap resolution makes both shapes' visible edges the same
+  line — each shape's own circuit then rides that line at full density,
+  sewing a double-thick bar in two threads. The real fix (seam-aware
+  suppression, one shape yielding frontage to the other) needs cross-shape
+  coordination `stage7_sequence.py` does not have and was explicitly out of
+  scope for this pass. What landed instead is detection: `sequence()`
+  tracks the visible geometry of every shape whose border tier actually put
+  a circuit down, and after all colours are sequenced, checks every pair for
+  a shared boundary run longer than `2 * BORDER_WIDTH_MM` (2.8mm at the
+  shipped column width) via a boundary-buffer/intersect/area-recovers-length
+  check patterned on `stage5_overlap`'s own adjacency idiom. A hit emits
+  `BORDER_SEAM_SHARED` (`warnings_codes.py`, `stage7_sequence.py`), naming
+  both shape ids so an operator can turn border off on one side of the seam
+  from the review screen. Regression coverage in `tests/test_border.py`
+  (two abutting bordered rectangles fire and name both shapes; a 6mm gap and
+  border-off both correctly stay silent). This is a warning, not a geometry
+  change — the double-thick bar itself still sews until the seam-aware fix
+  lands.
 
 Every claim about visual/sew quality beyond internal geometry checks is
 **pending sew-out** — see the cross-cutting item above.
