@@ -11,8 +11,35 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-06 — the "Evaluation corpus & harness" cross-cutting
-gap (below) gets its harness half built: `digitizer/tools/
+**Last updated:** 2026-08-06 — the "jersey_tee fill underlay" follow-up this
+doc flagged as a low-priority candidate (area 1, below) is investigated and
+**closed as declined, not a code change**: a direct measurement (synthetic
+fill polygons at realistic sizes — 60x40mm, 100x70mm, 20x15mm — run through
+`digitizer_core.stage6_fill._underlay_paths`, computing the real max distance
+from any interior point to the nearest underlay stitch) shows `center_run`
+does NOT close the 13mm interior gap the prior audit measured — it's
+statistically identical to `edge_run` (60x40mm: 19.04mm vs 19.02mm; 100x70mm:
+34.02mm vs 34.01mm; 20x15mm: 6.58mm vs 6.11mm, `center_run` actually
+*slightly worse* on the small shape). A single line through the shape's
+principal axis is exactly as far from off-axis interior points as a
+perimeter walk is; only a full grid/lattice pass (`edge_lattice`/
+`edge_zigzag`) actually closes it, to 1.6-1.8mm regardless of shape size.
+Even combining `edge_run`+`center_run` (a real corpus recipe, "Rg.Re") only
+halves the gap on large shapes (9-17mm) — nowhere near lattice coverage. So
+the flagged fix candidate would have been a no-op dressed up as a fix:
+`jersey_tee` stays on `edge_run`, unchanged. The real closer (a lattice
+pass) is exactly what corpus law 26 already found professional digitizers
+rarely use under fills (7/507) and was the explicit reason `edge_lattice`
+was removed as this fabric's default in the first place
+(`docs/corpus-laws-round3-2026-08-01.md`) — so the 13mm gap reads as a
+structural property of sparse running-line underlay on a large fill shape,
+not a `jersey_tee`-specific misconfiguration, and law 26's own choice is
+reaffirmed rather than second-guessed. Measurement script was a throwaway
+scratchpad check, not committed — a one-off geometric verification, not
+ongoing test coverage. No source file changed this pass.
+
+Prior update below, still 2026-08-06: the "Evaluation corpus & harness"
+cross-cutting gap (below) gets its harness half built: `digitizer/tools/
 corpus_scorecard.py`, a `capture`/`diff` CLI that runs the digitizer's 14
 committed `testdata/` fixtures through the already-existing
 `preflight.run_preflight` scorer at two garment configs and remembers/diffs
@@ -208,14 +235,22 @@ sensitivity, flagged here rather than chased further. **FIXED, separate
 same-day pass — see the top-of-doc "Last updated" entry; this paragraph is
 kept as the historical record of the defect, not current status.**
 
-**Also flagged by the same audit, lower priority, not yet acted on:**
-`pique_knit`/`jersey_tee`'s new `edge_run` fill underlay (this pass, above)
-leaves large fill interiors up to 13mm from the nearest underlay stitch (vs
-1.6-1.8mm under the old `edge_lattice`), and `jersey_tee`'s own preset note
-("needs solid underlay") arguably now reads in tension with `edge_run`;
-`center_run` might be more defensible per the corpus data than `edge_run`
-for that one preset specifically. Not investigated this pass — a candidate
-for a focused follow-up, not a blocker on what shipped here.
+**Also flagged by the same audit: `pique_knit`/`jersey_tee`'s new `edge_run`
+fill underlay leaves large fill interiors up to 13mm from the nearest
+underlay stitch (vs 1.6-1.8mm under the old `edge_lattice`) — investigated
+and CLOSED as declined, 2026-08-06, see the top-of-doc "Last updated"
+entry.** The candidate fix floated here (`center_run` in place of
+`edge_run` for `jersey_tee`) was measured directly and does not work: a
+single center line sits exactly as far from off-axis interior points as a
+perimeter walk does (measured statistically identical max-gap across three
+realistic fill sizes), so it would not have addressed the tension with
+`jersey_tee`'s "needs solid underlay" note it was floated to fix. The only
+style that actually closes the gap is a lattice pass, which corpus law 26
+already found rare in real fills (7/507) and was the reason `edge_lattice`
+was removed as this fabric's default to begin with — so `edge_run` stays,
+and the 13mm figure is read as inherent to sparse running-line underlay on
+a large shape, not a preset defect. This paragraph is kept as the
+historical record of the flagged concern, not current status.
 
 **Follow-up correction, 2026-08-05 (same day): the whole-stroke skip above
 is the final state — a same-day per-station narrowing attempt was tried and
