@@ -11,18 +11,35 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-06 — the "jersey_tee fill underlay" follow-up this
-doc flagged as a low-priority candidate (area 1, below) is investigated and
-**closed as declined, not a code change**: a direct measurement (synthetic
-fill polygons at realistic sizes — 60x40mm, 100x70mm, 20x15mm — run through
-`digitizer_core.stage6_fill._underlay_paths`, computing the real max distance
-from any interior point to the nearest underlay stitch) shows `center_run`
-does NOT close the 13mm interior gap the prior audit measured — it's
-statistically identical to `edge_run` (60x40mm: 19.04mm vs 19.02mm; 100x70mm:
-34.02mm vs 34.01mm; 20x15mm: 6.58mm vs 6.11mm, `center_run` actually
-*slightly worse* on the small shape). A single line through the shape's
-principal axis is exactly as far from off-axis interior points as a
-perimeter walk is; only a full grid/lattice pass (`edge_lattice`/
+**Last updated:** 2026-08-06 — the satin/fill classifier's DT-tightening fix
+(`satin-classifier-organic-shapes`, area 1 below), previously scoped to
+`gradient`/`photo_subject`/`photo_scene` only on the premise that flat art's
+boundaries are clean, is **extended to `design_class="flat"` too**: that
+premise was empirically false, proven on this repo's own committed
+`testdata/photo/enthusiast_logo.png` benchmark, where the flat-exempted rule
+satin-stitched two real shapes into a literal starburst (confirmed by
+rendering their actual pre-fix stitch coordinates). `is_satin_candidate`'s
+`design_class == "flat": return True` early return is deleted; the DT check
+(`_dt_regular_and_within_cap`, itself untouched) now runs unconditionally.
+`flat_lane_golden.json` regenerated and structurally diffed — exactly the 2
+predicted entries move (`logo_alpha.png`, `photo/enthusiast_logo.png`),
+`logo_whitebg.png`/`ribbon_curve.png` stay byte-identical. Full detail,
+exact measurements, and the pure-tightening safety re-proof (four
+letterform archetypes still satin under `"flat"`) in area 1's "Satin/fill
+classifier" bullet below.
+
+Prior update below, still 2026-08-06: the "jersey_tee fill underlay"
+follow-up this doc flagged as a low-priority candidate (area 1, below) is
+investigated and **closed as declined, not a code change**: a direct
+measurement (synthetic fill polygons at realistic sizes — 60x40mm, 100x70mm,
+20x15mm — run through `digitizer_core.stage6_fill._underlay_paths`,
+computing the real max distance from any interior point to the nearest
+underlay stitch) shows `center_run` does NOT close the 13mm interior gap the
+prior audit measured — it's statistically identical to `edge_run` (60x40mm:
+19.04mm vs 19.02mm; 100x70mm: 34.02mm vs 34.01mm; 20x15mm: 6.58mm vs 6.11mm,
+`center_run` actually *slightly worse* on the small shape). A single line
+through the shape's principal axis is exactly as far from off-axis interior
+points as a perimeter walk is; only a full grid/lattice pass (`edge_lattice`/
 `edge_zigzag`) actually closes it, to 1.6-1.8mm regardless of shape size.
 Even combining `edge_run`+`center_run` (a real corpus recipe, "Rg.Re") only
 halves the gap on large shapes (9-17mm) — nowhere near lattice coverage. So
@@ -1135,6 +1152,99 @@ is now fixed (see below), four remain open:
   risk by construction, a pure-tightening DT term identical to the spike's
   own vetted recommendation, and direct measurement against this repo's own
   committed fixtures rather than a synthetic population alone.
+
+  **2026-08-06 update: the flat-lane exemption is gone — it was an unproven
+  premise, not a proven-safe default, and it was wrong.** The scoping above
+  reasoned that `"flat"` art's clean, spot-colour, vector-like boundaries
+  don't carry the segmentation-derived noise the DT check exists to catch,
+  so `is_satin_candidate` special-cased `design_class == "flat": return
+  True` and skipped `_dt_regular_and_within_cap` entirely for it. A fresh
+  audit against this repo's own committed, flat-classified benchmark
+  fixture — `testdata/photo/enthusiast_logo.png`, picked in the first place
+  because it "reproduces almost nothing [Kent] complains about" (COOKBOOK.md
+  "Hard-won lessons") — disproved that premise directly: at
+  `target_width_mm=90`, the DT check correctly rejects `Scd89ad66` (the
+  wordmark's "A", `ribbon_width_mm` 2.386mm, area 33.837mm2) and `Sff37b029`
+  (the emblem's 4-point star, `ribbon_width_mm` 1.287mm, area 17.624mm2) —
+  both of which the flat-exempted rule satin-stitched into a literal
+  **starburst** (crosses fanning from a single point), confirmed by
+  rendering the actual pre-fix emitted stitch coordinates, not inferred from
+  the classifier's numbers alone. That is exactly the defect COOKBOOK.md's
+  "Hard-won lessons" section names by name ("Green tests are not evidence of
+  quality... the engine produced starbursts") — invisible to the shipped
+  test suite and to `preflight`/`corpus_scorecard.py` because neither
+  measures cross-fan coherence, only mechanical properties (determinism, no
+  phantom loops, nothing outside the artwork).
+
+  Fix: the `design_class == "flat": return True` early return in
+  `is_satin_candidate` (`digitizer_core/stage6_satin.py`) is deleted. The DT
+  check now runs unconditionally — `design_class` is kept as a parameter
+  (every existing caller still passes one) but no longer changes the
+  verdict. This is a pure widening of an already-proven-correct check, not a
+  new rule: `_dt_regular_and_within_cap` itself is untouched, byte for byte.
+
+  **Measured, not assumed, on both configs that matter:** at the golden
+  capture width (`target_width_mm=80`, `tools/capture_flat_lane_golden.py`'s
+  own config), `enthusiast_logo.png`'s `Scd87e08f` (`ribbon_width_mm`
+  2.121mm, area 26.735mm2) and `S919bee11` (1.144mm, area 13.925mm2) flip;
+  at `target_width_mm=90` (the audit's cited config) it's `Scd89ad66`/
+  `Sff37b029` above — different shape-id hashes because the raster scale
+  differs, same underlying defect. `logo_alpha.png` also moves at 80mm:
+  `Sb253ebba` and `Sf5200f3f` (both `ribbon_width_mm` 4.997mm — sitting
+  right at the 5.0mm cap — and identical area, 100.241mm2, being mirrored
+  halves of one glyph). `Sf5200f3f` is not a new finding — it's the
+  "multi-stroke glyph" the 2026-08-05 self-overlap fix (`_rail_points`'
+  `SATIN_MAX_WIDTH_MM / 2` per-station cap, prior update above) already
+  named and partially mitigated without being able to fix outright, because
+  that fix ran before this one and `design_class="flat"` still exempted the
+  shape from ever being told it wasn't a ribbon. Rendering `Sf5200f3f`'s and
+  `Sb253ebba`'s pre-fix stitches confirms the same starburst defect on this
+  fixture too (a converging fan and an X-cross pattern respectively) — this
+  fix is the fuller resolution the self-overlap cap could only patch around.
+  Post-fix, all six flipped shapes sew as `stage6_fill.stitch_shape`'s
+  ordinary parallel fill rows.
+
+  `flat_lane_golden.json` regenerated via the repo's own
+  `tools/capture_flat_lane_golden.py`, then structurally diffed key by key
+  against the pre-change file (not blind-accepted): exactly the 2 predicted
+  entries move — `logo_alpha.png` (`stitch_count` 2089 -> 2072) and
+  `photo/enthusiast_logo.png` (`stitch_count` 2431 -> 2331), both only in
+  `stitch_count`/`stitch_coords`; `shape_ids`/`areas_mm2`/`warnings` are
+  identical on every one of the 4 fixtures, confirming no shape appeared,
+  disappeared, or moved — only how the same shapes sew. `logo_whitebg.png`
+  and `ribbon_curve.png` are byte-identical, exactly as predicted (neither
+  fixture contains a shape the DT check disagrees with the old rule on).
+
+  **Safety invariant re-proven for the flat lane specifically, the same way
+  it was already proven for the other 3 classes:** this is satin->fill only,
+  never the reverse. All four letterform archetypes (`BAR`, `O_RING`,
+  `C_STROKE`, `T_SHAPE`) keep their satin call under `design_class="flat"`
+  (`tests/test_satin.py::
+  test_the_dt_check_does_not_cost_real_ribbons_their_satin_call_when_flat`).
+  `tests/test_satin.py::test_satin_crosses_do_not_self_overlap_across_a_wide_
+  junction` (the 2026-08-05 regression pin for `Sf5200f3f`'s rail-geometry
+  cap) now calls `satin_shape` directly on the shape's real geometry,
+  decoupled from `is_satin_candidate`, so the cap's own regression coverage
+  survives the shape no longer reaching satin through the classifier; a
+  companion test pins the classifier side directly
+  (`test_sf5200f3f_no_longer_reaches_satin_in_the_real_pipeline`).
+  `tests/test_preflight.py::test_a_wide_oversize_satin_stroke_does_not_
+  block_on_underlay_glue` still passes unchanged (`coverage_max` stays well
+  under its `< 5.0` ceiling now that the shape fills instead of satins).
+  Superseded: `test_flat_design_class_keeps_the_old_verdict_on_purpose`,
+  whose own premise (flat keeps the old verdict on purpose) this fix
+  disproves — replaced by `test_flat_design_class_now_gets_the_dt_check_too`
+  and `test_flat_lane_starburst_shapes_correctly_flip_to_fill`.
+
+  Verified targeted, not a local full-suite run this pass (CI —
+  `.github/workflows/python-package-conda.yml` — is the full-suite gate on
+  the PR itself): `tests/test_satin.py` **43/43**, `tests/test_preflight.py`
+  **56/56**, `tests/test_flat_lane_byte_identical.py` + `tests/
+  test_photo_sequencing.py` + `tests/test_pushcomp.py` together **46/46** —
+  every file this change touches or that reads `is_satin_candidate`/
+  `Sf5200f3f`/the flat-lane goldens directly, all green, 0 failures. Engine
+  `node --test` re-verified unaffected: **283/283**, confirming this pass is
+  Python-only (`git status` shows no `src/`/`app/` changes).
 - **Fill row spacing (law 19)** — unresolved two-population finding: the
   0.20mm figure is a satin-rail artifact for one file population (refuted)
   but looks like a genuine denser pitch on 43 commissioned cap logos (still

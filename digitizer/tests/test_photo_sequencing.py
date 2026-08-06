@@ -199,18 +199,20 @@ def test_flat_and_gradient_classes_are_inert_in_sequence():
     against committed goldens elsewhere; this pins that the parameter itself
     cannot perturb that machinery.
 
-    One thing `design_class` now DOES deliberately change, on purpose, is the
-    satin-vs-fill call itself — `stage6_satin.is_satin_candidate`'s DT check
-    (`tests/test_satin.py`) only runs for non-"flat" classes, specifically so
-    a compact, noisy-boundary shape can read differently for "gradient" than
-    for "flat". `_dark_light_regions()` is not used here for exactly that
-    reason: its `DRK` region is a 10x10 square sitting right on
-    `SATIN_MAX_WIDTH_MM`'s cap, which the DT check does correctly reclassify
-    for "gradient" (same reason `test_satin.py`'s `SQUARE 8x8` archetype does)
-    — a real behaviour change, not a bug, and this test's job is to isolate
-    the OTHER machinery from it, not paper over it. The two shapes below are
-    unambiguous either way: `LGT` is an oversized square no rule ever satins,
-    `DRK` is a plain long bar every rule always does.
+    `design_class` used to also change the satin-vs-fill call itself —
+    `stage6_satin.is_satin_candidate`'s DT check (`tests/test_satin.py`)
+    ran for non-"flat" classes only, so a compact, noisy-boundary shape
+    could read differently for "gradient" than for "flat". 2026-08-06: that
+    exemption is gone — the DT check now runs for every `design_class`,
+    `"flat"` included, so the satin-vs-fill call is class-independent too.
+    `_dark_light_regions()` is still not used here, for a related but
+    narrower reason: its `DRK` region is a 10x10 square sitting right on
+    `SATIN_MAX_WIDTH_MM`'s cap, which the DT check reclassifies (same reason
+    `test_satin.py`'s `SQUARE 8x8` archetype does) — a real behaviour
+    change from the ORIGINAL perimeter-only rule, not a bug, but orthogonal
+    to what this test isolates. The two shapes below are unambiguous under
+    every rule this module has ever shipped: `LGT` is an oversized square
+    no rule ever satins, `DRK` is a plain long bar every rule always does.
     """
     def points(plan):
         return [(b.thread_number, r.kind, r.jump, r.trim, r.points)
