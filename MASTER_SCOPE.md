@@ -1249,28 +1249,108 @@ is now fixed (see below), four remain open:
   0.20mm figure is a satin-rail artifact for one file population (refuted)
   but looks like a genuine denser pitch on 43 commissioned cap logos (still
   alive). Shipped `FILL_ROW_MM=0.40` unchanged pending sew-out.
-- **Border tier seam-sharing (KNOWN LIMITATION, mitigated not fixed)** —
-  `stage6_border.py`'s own module docstring documents an unresolved defect:
-  under `border="auto"` (or any per-shape border override), two
-  different-colour shapes that abut get coincident outline rails, because
-  stage 5's overlap resolution makes both shapes' visible edges the same
-  line — each shape's own circuit then rides that line at full density,
-  sewing a double-thick bar in two threads. The real fix (seam-aware
-  suppression, one shape yielding frontage to the other) needs cross-shape
-  coordination `stage7_sequence.py` does not have and was explicitly out of
-  scope for this pass. What landed instead is detection: `sequence()`
-  tracks the visible geometry of every shape whose border tier actually put
-  a circuit down, and after all colours are sequenced, checks every pair for
-  a shared boundary run longer than `2 * BORDER_WIDTH_MM` (2.8mm at the
-  shipped column width) via a boundary-buffer/intersect/area-recovers-length
-  check patterned on `stage5_overlap`'s own adjacency idiom. A hit emits
-  `BORDER_SEAM_SHARED` (`warnings_codes.py`, `stage7_sequence.py`), naming
-  both shape ids so an operator can turn border off on one side of the seam
-  from the review screen. Regression coverage in `tests/test_border.py`
-  (two abutting bordered rectangles fire and name both shapes; a 6mm gap and
-  border-off both correctly stay silent). This is a warning, not a geometry
-  change — the double-thick bar itself still sews until the seam-aware fix
-  lands.
+- **Border tier seam-sharing — REAL FIX landed (was KNOWN LIMITATION,
+  mitigated-not-fixed as of PR #67).** `stage6_border.py`'s module docstring
+  used to document an unresolved defect: under `border="auto"` (or any
+  per-shape border override), two different-colour shapes that abut get
+  coincident outline rails, because stage 5's overlap resolution makes both
+  shapes' visible edges the same line — each shape's own circuit then rides
+  that line at full density, sewing a double-thick bar in two threads. PR #67
+  shipped detection only (`BORDER_SEAM_SHARED`, unconditional on every
+  qualifying pair); this pass adds the seam-aware suppression that PR
+  explicitly scoped out, in `stage7_sequence._yield_frontage`.
+
+  **The fix and its tie-break.** `sequence()` already commits shapes to the
+  fabric in a fixed, deterministic order (nearest-neighbour within each
+  colour/step group, groups in `sew_index` order) and already tracks, as it
+  goes, the true visible geometry of every shape whose border tier put a
+  real circuit down (`border_geom_by_id`, pre-existing from PR #67). The tie-
+  break is SEW ORDER: whichever shape's border commits first keeps the seam
+  at full density; before a later shape traces its own circuit,
+  `_yield_frontage` checks it against every already-committed border, and for
+  any shared run past the same `2 * BORDER_WIDTH_MM` threshold PR #67's
+  warning used, differences a buffered band (`BORDER_WIDTH_MM +
+  BORDER_HOST_MARGIN_MM`, 1.6mm at the shipped column) around the coincident
+  curve out of that shape's border INPUT geometry before handing it to
+  `border_runs` — "inset its border circuit locally", one of the two options
+  the old docstring named. This needed no lookahead or second pass: by
+  causal construction, every shape a given shape could contend a seam with
+  has, by the time it sews, either already committed a real border (and sits
+  in `border_geom_by_id` to yield to) or has not (nothing to yield to,
+  nothing changes) — so no pair can end up with both circuits riding the
+  line, or with neither covering it. `border_geom_by_id` always stores the
+  TRUE unmodified visible geometry regardless of whether a shape yielded, so
+  a third shape sharing a seam with an already-yielded shape still yields
+  against that shape's real edge, not its already-inset one.
+
+  **Measured before/after** (`tests/test_border.py`'s existing two abutting
+  10x10mm bordered rectangles, sharing the edge x=10 the full 10mm — the PR
+  #67 fixture): pre-fix, both shapes' own outer rails independently produce
+  13 penetrations apiece sitting on the x=10 line — the double bar, real on
+  actual stitch output, not just geometry. Post-fix, run through the real
+  `sequence()`: the earlier-sewn shape (layer 0) still has all 13 on the
+  line, untouched; the later-sewn shape (layer 1) has ZERO — its whole
+  border retreated to x >= 11.6mm, comfortably clear of the seam — and
+  `BORDER_SEAM_SHARED` no longer fires for this pair, because the pair is no
+  longer wrong.
+
+  **What is not resolved, and why the warning still exists for it.** A
+  shape whose entire frontage IS a shared seam — hemmed in by an
+  already-bordered neighbour on more than one side, e.g. a shape sitting in
+  a hole/slot fully cut out of an earlier-sewn shape — has nowhere to
+  retreat to; `_yield_frontage` falls back to the untouched geometry rather
+  than deleting the shape's border outright (same "a real border beats none"
+  call `stage6_border.round_inward` already makes when its own corner
+  relaxation eats a shape whole), and `BORDER_SEAM_SHARED` now fires only
+  for these residual, genuinely-unresolved pairs — reworded from "turn
+  border off on one side" staying literally true (still the only escape for
+  this case) rather than reporting a defect that no longer exists on every
+  other pair. Verified end-to-end on a constructed fixture (a 2x15mm slot
+  cut clean through a much larger, earlier-sewn bordered shape, sharing all
+  four of its sides): the slot's raw geometry does hold a real bean-tier
+  border on its own, but a 2mm-wide shape cannot survive retreating ~1.6mm
+  off both long edges at once, so the fallback engages, the slot still sews
+  its (un-suppressed) bean border, and `BORDER_SEAM_SHARED` correctly names
+  the pair. This case was deliberately chosen to be reachable in practice —
+  a simple two-rectangle abutment, checked exhaustively, turns out to be
+  impossible to fully erase given how `BORDER_WIDTH_MM`/`BORDER_HOST_MARGIN_MM`
+  and the "would this shape have lightened to bean anyway" threshold happen
+  to be calibrated (both come out to the same 1.6mm number), so the residual
+  case is real but structurally rare — a shape has to be hemmed in from more
+  than one direction to hit it, not merely adjacent to one neighbour.
+
+  Tie-break reasoning: sew order (not shape_id or area) was chosen because
+  it is the only option requiring no lookahead or duplicated fill/border
+  computation to implement correctly — `border_geom_by_id`'s existing,
+  already-causal accumulation makes "yield to whatever is already on the
+  fabric" fall out of the pipeline's own structure rather than being a
+  policy bolted on top, and it composes correctly with N-way seams (a middle
+  shape in a row of three yields only to whichever of its neighbours sewed
+  first, never both, and never zero).
+
+  Regression coverage, `tests/test_border.py` (17 → 22 tests): the PR #67
+  fixture rewritten to measure real stitch penetrations before/after instead
+  of only checking the warning
+  (`test_seam_sharing_is_resolved_automatically_not_just_warned`); the
+  hemmed-in-slot fallback, end-to-end
+  (`test_border_seam_shared_still_fires_when_a_shape_is_hemmed_in_on_every_side`);
+  `_yield_frontage` unit-tested directly for the resolved, no-shared-edge,
+  and fallback cases; `_border_seam_warning` unit-tested for its
+  pairs/count/message construction. The negative case from PR #67 (a 6mm gap,
+  and border off) is unchanged and still passes.
+
+  Targeted verification: `tests/test_border.py` (22/22) plus every other
+  test file that imports `stage7_sequence`
+  (`test_chaining.py`, `test_planning.py`, `test_pushcomp.py`,
+  `test_run_tier.py`, `test_shape_overrides.py`, `test_stage6_detail.py`,
+  `test_stage6_sketch.py`, `test_stage6_streamline.py`,
+  `test_photo_sequencing.py`, `test_stages.py`) plus both byte-identical
+  golden suites (`test_flat_lane_byte_identical.py`,
+  `test_shapefield_byte_identical.py`) — 233 tests, 0 failed, run directly
+  rather than assumed from a full-suite pass. A design with no seam-sharing
+  bordered pair takes the identical `_yield_frontage(geom, {}, ...) ->
+  (geom, [])` no-op path every existing border call already took, so this
+  change carries no byte-identity risk for the common case by construction.
 - **Appliqué tier (`stage6_applique.py`, 4-layer placement/cutting/tackdown/
   cover, wired into `stage7_sequence` and reachable through the service with
   no gating) — audited for the first time this pass; had never appeared in
