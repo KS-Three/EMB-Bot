@@ -5,14 +5,16 @@
 // trim-truncation defect the 2026-08-04 verdict memo documented are FIXED
 // (see docs/pes-crossval-verdict-2026-08-04.md section 5's recommended fix
 // list, and MASTER_SCOPE.md's Export formats section for the harness re-run
-// numbers). The DST control assertions still document a real, deliberately
-// NOT-fixed defect (fixing DST is Kent's call, out of scope here — see
-// docs/dst-axis-verdict-2026-07-31.md) and a couple of PES/EXP assertions
-// still pin small remaining, explicitly-accepted gaps (the shared
-// "end"-record extra-stitch quirk; nearest-chart palette snapping isn't
-// lossless). If any assertion here starts failing, the encoder's
-// third-party-visible behavior CHANGED — read the docs above before
-// "fixing" anything.
+// numbers). As of 2026-08-06, EXP's own share of the "end"-record
+// extra-stitch quirk is FIXED too (encodeEXP now stops at the terminal
+// {type:"end"} sentinel the same way pes.js's encoder already did). The DST
+// control assertions still document real, deliberately NOT-fixed defects
+// (fixing DST is Kent's call, out of scope here — see
+// docs/dst-axis-verdict-2026-07-31.md, including DST's own copy of the same
+// end-record quirk) and a PES assertion still pins one remaining,
+// explicitly-accepted gap (nearest-chart palette snapping isn't lossless).
+// If any assertion here starts failing, the encoder's third-party-visible
+// behavior CHANGED — read the docs above before "fixing" anything.
 //
 // Needs a Python interpreter with pyembroidery (the digitizer venv, or
 // $EMB_CROSSVAL_PYTHON). Skips cleanly when none is available.
@@ -79,9 +81,11 @@ test("crossval: EXP geometry and color changes are standard-conformant (no trims
   assert.ok(r.fit.rms < 0.5, "exact geometry, rms=" + r.fit.rms);
   assert.deepStrictEqual(r.fit.offset, [0, 0]);
   assert.strictEqual(r.decodedColorChanges, 1);
-  // Encoder quirk (shared with DST): the terminal {type:"end"} design record
-  // is emitted as one extra zero-delta plain stitch.
-  assert.strictEqual(r.decodedStitches, r.expectedStitches + 1);
+  // FIXED 2026-08-06 (was: +1, the shared end-record quirk below) --
+  // encodeEXP now stops at the terminal {type:"end"} sentinel the same way
+  // pes.js's encoder already did, instead of falling through and writing it
+  // as one extra zero-delta plain stitch.
+  assert.strictEqual(r.decodedStitches, r.expectedStitches);
 });
 
 test("crossval: EXP trim record survives for standard readers (FIXED 2026-08-05)", async (t) => {
@@ -91,18 +95,14 @@ test("crossval: EXP trim record survives for standard readers (FIXED 2026-08-05)
   // FIXED (was DOCUMENTS KNOWN DEFECT): trimRecord() now writes the
   // Melco-convention 4-byte control (0x80 0x80 0x07 0x00) instead of the
   // 2-byte 0x80 0x03 that made pyembroidery-convention readers abort the
-  // rest of the file at the first trim. All 15 design stitches (+1 for the
-  // shared "end"-record quirk below) now survive, along with the trim and
-  // the second color block's color change.
-  assert.strictEqual(r.decodedStitches, r.expectedStitches + 1);
+  // rest of the file at the first trim. All 15 design stitches now survive
+  // exactly (see the no-trim test above for the end-record fix), along with
+  // the trim and the second color block's color change.
+  assert.strictEqual(r.decodedStitches, r.expectedStitches);
   assert.strictEqual(r.fit.transform, "identity");
   assert.ok(r.fit.rms < 0.5, "exact geometry, rms=" + r.fit.rms);
   assert.strictEqual(r.decodedColorChanges, 1, "color change after the trim now survives");
   assert.strictEqual(r.decodedTrims, 1);
-  // Remaining, NOT-in-scope quirk shared with DST (unaffected by this fix):
-  // the terminal {type:"end"} design record is encoded as one extra
-  // zero-delta plain stitch (pes.js is the only encoder that special-cases
-  // "end").
 });
 
 test("crossval: PES stitch stream decodes cleanly for standard readers (FIXED 2026-08-05)", async (t) => {

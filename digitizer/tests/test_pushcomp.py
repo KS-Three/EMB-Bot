@@ -357,11 +357,21 @@ def test_push_comp_on_the_best_resolved_bar_lands_on_law_24s_number():
     assert b_dir == pytest.approx(PUSH, abs=0.03)
 
 
-@pytest.mark.parametrize("w,h,rot", [(45, 4.5, 0.0), (30, 3.0, 0.0), (30, 3.0, 11.0)])
+@pytest.mark.parametrize("w,h,rot", [(45, 4.0, 0.0), (30, 3.0, 0.0), (30, 3.0, 11.0)])
 def test_push_comp_does_not_touch_the_column_width(w, h, rot):
     """Push is a LENGTH. The rails must sit exactly where pull comp put them,
     or this trades one distortion for another — a column that sews narrow is
-    the defect pull comp exists to prevent."""
+    the defect pull comp exists to prevent.
+
+    The first case reads 4.0mm, not the 4.5mm its sibling parametrizations
+    above use: found 2026-08-05, a 4.5mm bar grows to 5.1mm under PULL
+    (0.3mm/side) and lands just past `SATIN_MAX_WIDTH_MM`'s new per-station
+    cross cap (the satin self-overlap fix, `stage6_satin.py::_rail_points`),
+    losing ~0.017mm of rail_overhang to it -- a real, intentional interaction
+    (this module will not classify a >5mm column satin in the first place,
+    so it should not sew one because comp grew it there either), not a bug
+    THIS test exists to catch. 4.0mm grows to 4.6mm, comfortably clear of the
+    cap, and still exercises exactly what this test is about."""
     art = bar(w, h, rot)
     iso = rail_overhang(art, column_of(art, directional=False))
     dr = rail_overhang(art, column_of(art, directional=True))

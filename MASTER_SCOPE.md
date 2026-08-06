@@ -11,10 +11,130 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-05 — corpus laws 23 and 26 landed for real this
-pass, closing out the reverted attempt this doc has carried since the last
-entry (see that entry's UPDATE note, area 1, for the historical account of
-why the first attempt was backed out). Law 26: `fabrics.py`'s `pique_knit`/
+**Last updated:** 2026-08-06 — the "jersey_tee fill underlay" follow-up this
+doc flagged as a low-priority candidate (area 1, below) is investigated and
+**closed as declined, not a code change**: a direct measurement (synthetic
+fill polygons at realistic sizes — 60x40mm, 100x70mm, 20x15mm — run through
+`digitizer_core.stage6_fill._underlay_paths`, computing the real max distance
+from any interior point to the nearest underlay stitch) shows `center_run`
+does NOT close the 13mm interior gap the prior audit measured — it's
+statistically identical to `edge_run` (60x40mm: 19.04mm vs 19.02mm; 100x70mm:
+34.02mm vs 34.01mm; 20x15mm: 6.58mm vs 6.11mm, `center_run` actually
+*slightly worse* on the small shape). A single line through the shape's
+principal axis is exactly as far from off-axis interior points as a
+perimeter walk is; only a full grid/lattice pass (`edge_lattice`/
+`edge_zigzag`) actually closes it, to 1.6-1.8mm regardless of shape size.
+Even combining `edge_run`+`center_run` (a real corpus recipe, "Rg.Re") only
+halves the gap on large shapes (9-17mm) — nowhere near lattice coverage. So
+the flagged fix candidate would have been a no-op dressed up as a fix:
+`jersey_tee` stays on `edge_run`, unchanged. The real closer (a lattice
+pass) is exactly what corpus law 26 already found professional digitizers
+rarely use under fills (7/507) and was the explicit reason `edge_lattice`
+was removed as this fabric's default in the first place
+(`docs/corpus-laws-round3-2026-08-01.md`) — so the 13mm gap reads as a
+structural property of sparse running-line underlay on a large fill shape,
+not a `jersey_tee`-specific misconfiguration, and law 26's own choice is
+reaffirmed rather than second-guessed. Measurement script was a throwaway
+scratchpad check, not committed — a one-off geometric verification, not
+ongoing test coverage. No source file changed this pass.
+
+Prior update below, still 2026-08-06: the "Evaluation corpus & harness"
+cross-cutting gap (below) gets its harness half built: `digitizer/tools/
+corpus_scorecard.py`, a `capture`/`diff` CLI that runs the digitizer's 14
+committed `testdata/` fixtures through the already-existing
+`preflight.run_preflight` scorer at two garment configs and remembers/diffs
+the result — a standing, automated answer to "did this change make the
+output better or worse" that this doc has flagged as missing since the
+corpus-laws-23/26 pass. Shipped as a reporting tool, not a CI gate, on
+purpose; the corpus half (`scratch_corpus/`) remains inaccessible and
+untouched. Full detail in the cross-cutting section itself, not duplicated
+here.
+
+Prior update below, still 2026-08-05: the satin self-overlap defect this doc
+has carried as an open callout since the corpus-laws-23/26 pass (area 1
+below) is **FIXED**: `stage6_satin.py::_rail_points` now caps every satin cross's
+per-station width to `machine.SATIN_MAX_WIDTH_MM / 2`, on top of the
+existing local-corridor cap. Root cause, confirmed by direct spine
+inspection (not assumed): `logo_alpha.png`'s `Sf5200f3f` carries a stroke
+with BOTH ends free — no skeleton junction node on it at all — whose
+half-width profiles as a smooth, single-peaked taper across all 36 of its
+own stations (0.17mm at each tip, ramping continuously to 4.67mm at the
+apex and back down). That is the shape's real medial-axis width, not a
+measurement artifact; an initial "junction merged-footprint DT" hypothesis,
+and a local-neighbourhood-outlier cap built on it, were both tried and
+disproven (the outlier cap made zero difference, since a genuine continuous
+taper has no isolated station to detect against). The fix instead reuses
+`SATIN_MAX_WIDTH_MM` as a flat per-station ceiling — the same
+corpus-validated cap the satin/fill classifier and `_stroke_underlay`'s
+oversize skip (prior update below) already gate on, not a new number, so no
+classifier-eligible column should need a wider cross regardless of why one
+station reads wide. Measured on `Sf5200f3f`: eliminates all 2580
+non-adjacent self-crossing rail-to-rail segment pairs and drops the shape's
+own isolated coverage peak from 9.57 to 3.41 layers (design `coverage_max`
+13.11 -> 3.24 at `target_width_mm=80`/`left_chest`). One real, minor
+collision found and resolved: a synthetic `tests/test_pushcomp.py` fixture
+(a 45x4.5mm bar) legitimately grows to 5.1mm under directional pull comp
+(Law 22) and lost ~0.02mm of `rail_overhang` to the new cap — not a bug the
+push-comp test exists to catch, so its fixture height moved 4.5 -> 4.0mm
+with an inline comment explaining why, rather than loosening the cap to
+route around an incidental collision. `flat_lane_golden.json` regenerated;
+confirmed by structural diff that only the `logo_alpha.png` entry moved
+(`logo_whitebg.png`/`ribbon_curve.png`/`photo/enthusiast_logo.png`
+byte-identical). New regression coverage: `tests/test_satin.py::
+test_satin_crosses_do_not_self_overlap_across_a_wide_junction` (direct
+geometry, not just the aggregate coverage number) and `tests/
+test_preflight.py::test_a_wide_oversize_satin_stroke_does_not_block_on_
+underlay_glue`'s old `coverage_max > 10.0` floor — which existed
+specifically to pin this defect as NOT yet fixed — is now inverted to a
+`< 5.0` ceiling. Full digitizer suite re-run to completion in the
+foreground: **852 passed, 3 skipped, 0 failed** (1136s) — 0 failures this
+run, including the 3 container-environment goldens this doc usually
+caveats as known-flaky, which passed clean here too. Engine/Studio
+untouched by this pass (`git status` confirmed no `src/`/`app/` changes) and
+not re-run, carrying forward their last-verified counts below rather than
+re-asserting unverified numbers.
+
+Prior update below, still 2026-08-05 — text-cluster detection + a regularized
+lettering fallback landed across two PRs, #63 (merged: `textcluster.py`'s
+geometry-only detection of text-like clusters among rescued small shapes,
+pipeline wiring, the service's read-only `text_candidate`/`text_cluster_id`
+review fields, geometric regularization via a skeleton-buffer redraw at each
+cluster's shared median stroke width, and the Studio side — a "looks like
+text" badge, a per-cluster "Convert to text" action, and undo) and #64
+(open at time of writing: a real Playwright e2e run against the live
+service, which caught and fixed a genuine bug, not a test mistake —
+`ContentStep.svelte` forwarded `DigitizePanel`'s `converttotext` event up to
+`App.svelte` but never wired the same forwarding for `removeelement`, so
+undo silently never removed the created text element; fixed with the
+missing one-line forward). No OCR anywhere in this slice — detection is
+pure geometry (proximity, bbox-height and stroke-width similarity via the
+same `ShapeField`/EDT machinery `stage6_satin` already uses), and nothing is
+ever auto-substituted: converting a detected cluster creates a real,
+**empty** text element with no font pre-picked, so a user always supplies
+the actual word and typeface themselves. Full detail in areas 1 and 5 below,
+and spec/plan at `docs/superpowers/specs/2026-08-05-text-cluster-detection-
+design.md` / `docs/superpowers/plans/2026-08-05-text-cluster-detection.md`.
+Verified per-step (not just at the end): digitizer full suite **851 passed,
+3 skipped, 0 failed** (unaffected by the e2e-only PR #64 step, which touches
+no Python source), Studio `vitest` **426/426**, and the new
+`app/e2e/text-cluster-convert.spec.js` passing for real against the live
+service and browser after the `removeelement` fix above. Also verified live
+in a running Studio dev session against the real benchmark fixture
+(`enthusiast_logo.png` at 90mm): the badge/action bar appears over the
+14-shape subline cluster exactly as the Python-side pipeline tests predict.
+
+**Also this pass: the cross-cutting "Evaluation corpus & harness" gap below
+is newly tracked** (not a new capability area — this doc considered and
+explicitly rejected splitting area 1 into separate "image analysis"/"stitch
+planning" areas this same session, since they're pipeline stages of one
+system, not separately shippable products) — see that section for why, and
+for a correction to an external review's claims that this pass's own
+research found inaccurate.
+
+Prior update below, still 2026-08-05: corpus laws 23 and 26 landed for real
+this pass, closing out the reverted attempt this doc has carried since the
+last entry (see that entry's UPDATE note, area 1, for the historical account
+of why the first attempt was backed out). Law 26: `fabrics.py`'s `pique_knit`/
 `jersey_tee` `fill_underlay` moves `edge_lattice` -> `edge_run`, dropping
 the crosshatch pass a fill doesn't need (corpus: 7/507 fills carry a
 lattice underlay). Law 23: satin's own zigzag underlay pitch is no longer
@@ -108,19 +228,29 @@ carry oversize local strokes). Full suite re-run to completion in the
 foreground: **772 passed, 3 skipped, 0 failed** (811s), 0 failures this
 time (the 3 known-flaky goldens passed clean again). The pre-existing satin
 self-overlap defect on `Sf5200f3f` itself (peak 13.11, unrelated to either
-law) is NOT fixed by this pass and remains open — currently invisible to
+law) was NOT fixed by this pass and was left open — currently invisible to
 `DENSITY_STACKED` because it never reaches the connected-patch gate alone,
 which is arguably its own gap in the coverage instrument's peak-detection
-sensitivity, flagged here rather than chased further.
+sensitivity, flagged here rather than chased further. **FIXED, separate
+same-day pass — see the top-of-doc "Last updated" entry; this paragraph is
+kept as the historical record of the defect, not current status.**
 
-**Also flagged by the same audit, lower priority, not yet acted on:**
-`pique_knit`/`jersey_tee`'s new `edge_run` fill underlay (this pass, above)
-leaves large fill interiors up to 13mm from the nearest underlay stitch (vs
-1.6-1.8mm under the old `edge_lattice`), and `jersey_tee`'s own preset note
-("needs solid underlay") arguably now reads in tension with `edge_run`;
-`center_run` might be more defensible per the corpus data than `edge_run`
-for that one preset specifically. Not investigated this pass — a candidate
-for a focused follow-up, not a blocker on what shipped here.
+**Also flagged by the same audit: `pique_knit`/`jersey_tee`'s new `edge_run`
+fill underlay leaves large fill interiors up to 13mm from the nearest
+underlay stitch (vs 1.6-1.8mm under the old `edge_lattice`) — investigated
+and CLOSED as declined, 2026-08-06, see the top-of-doc "Last updated"
+entry.** The candidate fix floated here (`center_run` in place of
+`edge_run` for `jersey_tee`) was measured directly and does not work: a
+single center line sits exactly as far from off-axis interior points as a
+perimeter walk does (measured statistically identical max-gap across three
+realistic fill sizes), so it would not have addressed the tension with
+`jersey_tee`'s "needs solid underlay" note it was floated to fix. The only
+style that actually closes the gap is a lattice pass, which corpus law 26
+already found rare in real fills (7/507) and was the reason `edge_lattice`
+was removed as this fabric's default to begin with — so `edge_run` stays,
+and the 13mm figure is read as inherent to sparse running-line underlay on
+a large shape, not a preset defect. This paragraph is kept as the
+historical record of the flagged concern, not current status.
 
 **Follow-up correction, 2026-08-05 (same day): the whole-stroke skip above
 is the final state — a same-day per-station narrowing attempt was tried and
@@ -549,6 +679,101 @@ geometric questions at once — the highest-leverage next action across the
 whole project, whenever Kent's ready to schedule it (his explicit call, not
 something to push for).
 
+### Evaluation corpus & harness — real gap, newly tracked here
+
+**Newly named as its own cross-cutting item this pass, not a newly-discovered
+problem** — every piece of it was already visible, scattered across area 1's
+history as a recurring blocker with no single name: the DT-first satin/fill
+classifier's M2/M3 has been blocked since 2026-08-01 on a 37-file
+`scratch_corpus/` run that no session has ever had local access to
+(gitignored, confirmed empty in every checkout); several corpus-law
+recalibrations (`docs/corpus-laws-round3-2026-08-01.md`) needed careful,
+one-off validation against golden fixtures specifically because there is no
+standing, automated way to score "did this change make the output better or
+worse" outside of manually re-running the digitizer suite and eyeballing a
+handful of fixtures; and the fundamental confidence ceiling this doc has
+always cited — zero physical sew-out testing — is the same root cause
+wearing a different hat: no repeatable, automated quality signal, so every
+serious quality question queues behind either a corpus nobody has, or a
+sew-out that hasn't been scheduled. This is a real, distinct capability gap
+— a labeled corpus plus a scoring harness — not merely a rhetorical
+reframing of the sew-out gap above; landing it would let future classifier/
+quality changes be judged against *something* before either the corpus or a
+sew-out session is available, not instead of them.
+
+**The harness half is now BUILT, same-day follow-up: `digitizer/tools/
+corpus_scorecard.py`.** The corpus half is untouched — the 37-file
+`scratch_corpus/` M2/M3 needs is still inaccessible, gitignored and empty in
+every checkout, same as above. What this pass adds is the "remember and
+diff" machinery that was missing: `capture` runs every one of the
+digitizer's 14 committed `testdata/` fixtures (top-level and `photo/`)
+through `digitize()` + the already-existing `digitizer_core.preflight.
+run_preflight` — which already computed a 0-100 score, letter grade, typed
+findings and ~20 metrics per design; this pass aggregates that existing
+signal across the corpus rather than inventing a new metric — at two
+configs (80mm width x `left_chest`/`hat_front`, two distinct fabric
+presets) and writes `testdata/corpus_scorecard_baseline.json`. `diff`
+re-runs the same matrix and reports score deltas, findings that appeared/
+resolved by code, and metric drift past a 5% noise threshold against that
+baseline. Shipped deliberately as a REPORTING tool, not a CI gate — the
+script's own docstring cites this doc's corpus-laws-23/26 history (a
+"desk-safe" threshold picked without real validation, later reverted) as
+the reason not to invent pass/fail numbers yet; the one exception treated
+as a hard signal is a brand-new "block"-severity finding, which does flip
+the `diff` command's exit code, since that's the one low-noise, high-
+confidence case. Verified working, not just written: a real captured
+baseline (all 14 fixtures x 2 configs, grades spanning A to F — the F/0
+scores on `drone_render.png`, `repro_gradient_white_icon.png` and
+`summit_badge.png` are real, already-documented rough edges in those
+photo-tier stress fixtures, not a harness bug, exactly the kind of honest
+signal this tool exists to surface rather than hide), then an immediate
+re-`diff` with zero code changes reporting "no drift against the baseline"
+at exit 0 — proving the underlying pipeline is deterministic and the
+harness doesn't false-positive on its own output. No dedicated test file:
+matches this repo's own convention that no `tools/*.py` script (including
+the same-pattern `capture_flat_lane_golden.py`) has one, and a full capture
+run touches several photo/SLIC fixtures, too slow for the regular suite.
+**Next step for this gap:** use the tool by hand against a few real future
+corpus-law/classifier changes to learn what a genuine regression looks like
+here before deciding on hard CI thresholds; the labeled-corpus half stays
+blocked on `scratch_corpus/` access, unchanged by this pass.
+
+**Not promoted to a sixth top-level capability area.** This session
+evaluated and explicitly rejected splitting area 1 ("auto-digitizing
+quality") into separate "image analysis" (raster → regions/colors) and
+"stitch planning" (regions → technique/stitches) areas, which an external
+review of this doc proposed alongside naming this gap. Reasoning: those are
+tightly-coupled pipeline STAGES of one system (`stage0_classify` →
+`stage1_prep`/`stage1_photo_prep` → `stage2_quantize`/`stage2_photo_segment`
+→ `stage3_segment` → `stage4_vectorize` → stages 5–7), not two separately
+shippable products — nearly every feature this doc tracks under area 1
+(this pass's own text-cluster detection included) touches both halves, so
+splitting the tracking would recreate, at the doc level, the exact
+"handoff nobody owns" problem that review raised as a reason to name this
+gap in the first place. A future session should feel free to promote this
+from a cross-cutting note to its own capability area once real work
+actually lands against it (a labeled fixture set, a scoring script/metric),
+per this doc's own convention of tracking status, not aspiration.
+
+**Correcting the record on that same external review, so a future session
+isn't misled by it:** it also claimed color quantization/palette reduction,
+segmentation & vectorization, background removal, and small-detail/minimum-
+feature culling had "no owner" in this project. Checked directly against
+source this pass — all four already exist and are already documented above:
+quantization is `stage2_quantize.py` (k-means + CIEDE2000 thread snapping)
+and `palette.py` (weighted k-medoids chart selection); segmentation/
+vectorization is `stage2_photo_segment.py` (SLIC+RAG)/`stage3_segment.py`/
+`stage4_vectorize.py` — the literal subject of the `BACKGROUND_ENCLOSED` and
+gradient-fragmentation sagas already detailed at length above; background
+removal is `stage1_photo_prep.py`'s `remove_background_seam` (rembg,
+isolated venv, PR #43); small-detail culling is `stage3_segment.py`'s
+`small_shape_rescue` path (rescues a shape as a run stitch instead of
+dropping it — the exact mechanism this pass's own text-cluster detection
+builds on top of). The review's two accurate points — text detection in
+logos being a real gap, and this evaluation-corpus/harness gap — are exactly
+the two reflected in this update: the first is now closed by this pass's own
+feature, the second is captured here.
+
 ---
 
 ## Capability areas
@@ -769,6 +994,25 @@ is now fixed (see below), four remain open:
   browser UI end to end (upload → digitize → see the restored shape in the
   Layers panel) — the HTTP-level reproduction above proves the fix, but
   nobody has watched it happen in a real browser session yet.
+
+  **Band/part transition jump flags — FIXED, 2026-08-06.** `blend_fill`
+  stitches each shade band (and, when `_band_clip` returns more than one
+  disconnected polygon for a band, each part within it) as its own
+  independent `stitch_shape` call, and every one of those calls' first run
+  starts with `jump=False` in isolation — correct on its own, wrong once
+  spliced back-to-back with whatever came before it, which used to leave a
+  bare straight stitch across the real physical gap between two shade bands
+  or two disjoint parts of one band. Both transitions now get an explicit
+  `jump=True` with `trim` set from the actual measured gap, mirroring
+  `stage6_fill.stitch_shape`'s own `emit()` convention for a travel move —
+  deliberately without attempting `emit()`'s `travel_path` bridge first,
+  since a bridge here would route the wrong shade's thread across the seam
+  (see the code comments at both sites in `stage6_blend.py` for the full
+  reasoning). Regression-tested in `test_stage6_blend.py`: one test drives
+  the real linear-ramp fixture end to end and checks every band boundary,
+  the other monkeypatches `_band_clip` to force a same-band, two-part split
+  (no committed fixture has that topology naturally) and checks the seam
+  between parts. `digitizer/tests` run clean with the fix in.
 - **Contour fill** — **all three of the 2026-08-02 audit's defects are now
   fixed, confirmed 2026-08-04 (PR #27, `contour-bare-core-shrink`, merged);
   it still ships off by default, but no longer because of any open defect
@@ -895,6 +1139,28 @@ is now fixed (see below), four remain open:
   0.20mm figure is a satin-rail artifact for one file population (refuted)
   but looks like a genuine denser pitch on 43 commissioned cap logos (still
   alive). Shipped `FILL_ROW_MM=0.40` unchanged pending sew-out.
+- **Border tier seam-sharing (KNOWN LIMITATION, mitigated not fixed)** —
+  `stage6_border.py`'s own module docstring documents an unresolved defect:
+  under `border="auto"` (or any per-shape border override), two
+  different-colour shapes that abut get coincident outline rails, because
+  stage 5's overlap resolution makes both shapes' visible edges the same
+  line — each shape's own circuit then rides that line at full density,
+  sewing a double-thick bar in two threads. The real fix (seam-aware
+  suppression, one shape yielding frontage to the other) needs cross-shape
+  coordination `stage7_sequence.py` does not have and was explicitly out of
+  scope for this pass. What landed instead is detection: `sequence()`
+  tracks the visible geometry of every shape whose border tier actually put
+  a circuit down, and after all colours are sequenced, checks every pair for
+  a shared boundary run longer than `2 * BORDER_WIDTH_MM` (2.8mm at the
+  shipped column width) via a boundary-buffer/intersect/area-recovers-length
+  check patterned on `stage5_overlap`'s own adjacency idiom. A hit emits
+  `BORDER_SEAM_SHARED` (`warnings_codes.py`, `stage7_sequence.py`), naming
+  both shape ids so an operator can turn border off on one side of the seam
+  from the review screen. Regression coverage in `tests/test_border.py`
+  (two abutting bordered rectangles fire and name both shapes; a 6mm gap and
+  border-off both correctly stay silent). This is a warning, not a geometry
+  change — the double-thick bar itself still sews until the seam-aware fix
+  lands.
 - **Appliqué tier (`stage6_applique.py`, 4-layer placement/cutting/tackdown/
   cover, wired into `stage7_sequence` and reachable through the service with
   no gating) — audited for the first time this pass; had never appeared in
@@ -1066,6 +1332,77 @@ every merge (`.github/workflows/python-package-conda.yml`, PR #37) — three
 jobs (engine/studio/digitizer), the digitizer job deselecting the same 3
 known container goldens this doc has always excluded from its own counts.
 
+**Text-cluster detection + regularized lettering fallback — merged 2026-08-05
+(PR #63, Steps 0–6; PR #64, Step 7).** A real, cited gap the small-shape
+rescue path (above) always had: `stage3_segment.py`'s `small_shape_rescue`
+stops a logo's small lettering (the benchmark subline) from being dropped,
+but treats every glyph as an independent noisy blob — nothing distinguished
+"this is a word" from "this is nine unrelated small shapes," and nothing
+made a detected word's letters share one visual weight. Three new pieces,
+all geometry-only, no OCR:
+
+- **Detection** (`digitizer_core/textcluster.py`, new module):
+  `detect_text_clusters`, a post-vectorization pass (wired into
+  `pipeline.py` right after `tag_enclosed_background`, same "computed fact,
+  before shape edits" ordering) that groups `rescued_small_shape`-flagged
+  Regions (a new `Region.meta` marker this feature added) by proximity,
+  bbox-height similarity, and stroke-width similarity — the last measured
+  via `shapefield.build_shape_field`, a third independent consumer of that
+  module alongside `stage6_satin` and the `shape_lens.py` instrument. A
+  qualifying group (>=3 members; letters come in groups, and this doc's own
+  research found 1–2 similarly-sized nearby shapes far too common a
+  coincidence — e.g. a belt buckle's two rivets — to read as text alone)
+  gets tagged `text_candidate`/`text_cluster_id`/`text_cluster_stroke_mm` in
+  `Region.meta`; an ambiguous group is left untagged entirely (fails open,
+  same "uncertainty resolves to no behavior change" discipline
+  `tag_enclosed_background` already established). Exposed read-only over
+  HTTP (`digitizer_service/app.py`'s `_review_payload`, no `_OVERRIDE_KEYS`
+  entry — same category as `layer`/`enclosed_background`, never
+  client-submitted). Verified against the real benchmark fixture, not just
+  synthetic ones: `enthusiast_logo.png`'s subline at 90mm tags >=10 of its
+  own rescued shape_ids into one cluster.
+- **Regularization** (`textcluster.regularize_text_clusters`, same module,
+  wired immediately after detection): the default, always-on treatment for
+  a tagged cluster — redraws every member's polygon as a fixed-radius
+  buffer around its own skeleton, sized to the cluster's shared median
+  stroke half-width, so a detected-but-unconverted word reads as one
+  consistent line weight instead of nine independently-noisy glyphs. A
+  genuine geometry change (unlike detection's pure tagging), so it fails
+  open onto the ORIGINAL untouched polygon (`text_cluster_regularize_skipped`)
+  whenever the buffered result can't be trusted — too small to sew, an
+  invalid buffer, a degenerate skeleton. **Correction made mid-build, worth
+  recording:** the first design draft assumed a per-shape stitch-width
+  parameter existed to feed a cluster median into; a spike found the run
+  tier's actual generator (`stage6_border.run_outline`) has no such
+  parameter at all — it traces each shape's own polygon ring exactly at
+  fixed global stitch spacing — so the real lever had to be geometric
+  (the skeleton-buffer redraw actually shipped), not a stitch-generation
+  tweak. Branching glyph skeletons (a letter like "E"/"T"/"R" does not
+  reduce to one path) are handled by reusing `stage6_satin`'s own tested
+  skeleton-decomposition machinery (`_skeleton_edges`/
+  `_merge_through_junctions`/`_prune_spurs`, the same tool `extract_strokes`
+  already uses) rather than a narrower non-branching-only scope — verified
+  on the real fixture: 10 of the subline's 14 members have branching
+  skeletons, and all 14 buffer into single valid, sewable polygons.
+  `flat_lane_golden.json` moves for exactly that one fixture, confirmed by
+  structural diff that the other 3 entries are byte-identical.
+- **Studio side (area 5 has the full detail):** a "looks like text" badge
+  and a per-cluster "Convert to text" action that creates a real, empty
+  text element — the user types the actual word and picks a font, nothing
+  is ever auto-filled that could be silently wrong.
+
+Photo/gradient design classes are untouched by construction (this feature
+only acts on `rescued_small_shape`-flagged Regions, a flat-lane-only
+concept); every existing byte-identical golden not involving
+`enthusiast_logo.png` is unaffected. Out of scope, on purpose: general
+shape-primitive recognition (classifying arbitrary shapes as circle/
+rounded-rect/star, for a manual-edit "snap to clean shape" assist or to
+strengthen the satin/fill classifier) — that's the separate, already-
+tracked DT-first classifier thread above (M0/M1 landed, M2/M3 blocked on
+the corpus), not duplicated here. Full detail, including the corrected
+design history: `docs/superpowers/specs/2026-08-05-text-cluster-detection-
+design.md` and `docs/superpowers/plans/2026-08-05-text-cluster-detection.md`.
+
 ---
 
 ### 2. Font library & lettering
@@ -1184,11 +1521,22 @@ the Python digitizer service's `/export` route (pyembroidery-based).
   (PR #58, `pes-exp-byte-framing-fix`): `trimRecord()` now writes the 4-byte Melco
   form. Harness re-run: a trimmed design now decodes whole (identity
   transform, rms 0, colour change and second colour block both present),
-  where it used to truncate at 11 of 15 stitches. Not raised all the way to
-  High since (a) this is cross-validated against pyembroidery, not a real
-  machine/software sew or open, and (b) the shared "end"-record extra-stitch
-  quirk (also present in DST) is still there, just out of this fix's scope.
-  The Python `/export` path was never affected (different writer).
+  where it used to truncate at 11 of 15 stitches. **Also fixed, 2026-08-06:**
+  the "end"-record extra-stitch quirk this entry used to flag as out of
+  scope — `encodeEXP` fell through to the generic stitch path for the
+  terminal `{type:"end"}` sentinel `stitchModel.js` always appends, writing
+  it as one real zero-delta stitch that standard readers decoded as an extra
+  phantom stitch beyond the design's true count (16 of 15). `pes.js`'s own
+  encoder already stopped at `"end"` the same way; `encodeEXP` now does too
+  (`if (st.type === "end") break;`, matching `pes.js`'s exact pattern).
+  Harness re-run: `exp.notrim`/`exp.full` both now read `expected 15, decoded
+  15` (was `decoded 16`). DST carries the identical underlying gap and is
+  deliberately left alone (Kent's call, migration risk — see the cross-
+  cutting section) — EXP has no importer anywhere in this codebase, so
+  fixing it here carries none of that risk, same low-risk read the original
+  PES/EXP fix got. Not raised all the way to High since this is
+  cross-validated against pyembroidery, not a real machine/software sew or
+  open. The Python `/export` path was never affected (different writer).
 - **PES: Medium-High**, upgraded from Low this pass. README's own
   "best-effort — reverse-engineered" framing still applies to the format's
   general maturity, but the specific defects PR #18 found — the 5-byte
@@ -1212,8 +1560,27 @@ the Python digitizer service's `/export` route (pyembroidery-based).
   targeted tests (updated for the new byte layout) plus the crossval
   harness's PES-specific pins, which do now cross-validate against an
   independent decoder.
-- **SVG: Medium** — lower stakes (vector proof, not a stitch file), but thin
-  coverage (1 test).
+- **SVG: Medium-High**, upgraded from Medium (2026-08-06) — still lower
+  stakes than a real stitch format (vector proof only), but the "thin
+  coverage (1 test)" gap this doc used to flag is closed: `test/svgexport
+  .test.js` grew to 10 tests, reading a close pass of `src/svgexport.js`
+  rather than guessing at edge cases -- real extents recomputed from stitch
+  coordinates (not trusted from the design's own possibly-stale
+  `widthMM`/`heightMM` fields), the DST-up-to-SVG-down Y flip, one
+  `<polyline>` per color run, both jumps and trims correctly breaking a path
+  without drawing a travel line across the gap, a missing color falling
+  back to black rather than throwing, and a null/undefined/empty design
+  producing a minimal valid SVG rather than crashing. One documented-not-
+  fixed behavior worth knowing about, not treated as a bug: a lone stitch
+  sitting between two jumps renders nothing (`designToSVG`'s `run.length >=
+  2` gate can't turn a single point into a `<polyline>`) — real designs
+  essentially never produce an isolated single-stitch run (satin/fill always
+  emit many), so this was left as a pinned, conscious simplification rather
+  than a speculative fix. No production code changed; the pass through
+  `src/svgexport.js` while writing these tests found the existing logic
+  correct on every dimension checked. Full engine suite: `node --test` —
+  **283/283 passed, 0 failed** (274 baseline, this pass's own EXP fix
+  included, + 9 new SVG tests replacing the old 1).
 - **PDF worksheet: Medium-High** — was "no dedicated test file exists at
   all," then gained call-sequence coverage, and this pass closes the
   remaining gap. `app/src/lib/pdfsheet.spec.js` (merged, PR #4) drives
@@ -1241,11 +1608,13 @@ PES/EXP's own cross-validation findings (PR #18) are **fixed as of
 2026-08-05** (PR #58, `pes-exp-byte-framing-fix` — see the cross-cutting section
 above and this file's "Last updated" entry for the full before/after): PES
 no longer decodes as garbage in standard readers, and EXP no longer aborts
-at the first trim. Remaining, explicitly-accepted gaps: nearest-chart
-colour mapping isn't a lossless round-trip (64 fixed PEC chart colors); the
-shared "end"-record extra-stitch quirk (present in EXP and DST, not PES)
-is unaffected; and no real Brother-machine load or PE-Design open has
-happened yet — only pyembroidery cross-validation.
+at the first trim. The "end"-record extra-stitch quirk EXP used to share
+with DST is **also fixed as of 2026-08-06** — see the EXP bullet above;
+DST keeps its own copy of the same gap, deliberately, Kent's call.
+Remaining, explicitly-accepted gaps: nearest-chart colour mapping isn't a
+lossless round-trip (64 fixed PEC chart colors); and no real Brother-machine
+load or PE-Design open has happened yet — only pyembroidery
+cross-validation.
 
 **Next step:** for DST, same as the cross-cutting item — a third-party
 sew-out/read settles the axis question. For PES/EXP, the verdict memo's own
@@ -1521,13 +1890,150 @@ edit) — both are new top-level config keys, siblings of `deleted_shape_ids`.
   Regions and the service level via the real-but-rejected orange pair, not
   through this particular browser harness.
 
-**Next step:** the underlay-style dropdown (PR #28) still has no live-
-browser check of its own. A live-browser proof of a genuinely SUCCESSFUL
-merge (not just the rejection path) needs either a purpose-built fixture
-image engineered to survive stage 3's connected-component fusion as two
-separate same-thread regions, or a bridging/convex-hull merge strategy for
-non-adjacent shapes — neither attempted this pass; both are candidates if
-this area's merge feature gets picked up again.
+**The underlay-style dropdown's live-browser check — CLOSED 2026-08-06.**
+Verified live via Playwright MCP against a real running Studio + digitizer
+service: an already-digitized `enthusiast_logo.png` project had two
+fill-tier shapes carrying the "Underlay style" control this section used to
+flag as unchecked. Set one (33.7 mm², `#0134`) from "Auto underlay" to
+"None" and clicked "Apply layer changes" — the design's total stitch count
+dropped 2,650 -> 2,016 (a real, substantial re-stitch through the actual
+service, not a stale UI value), confirming the control's whole round trip:
+dropdown -> `shape_overrides.underlay_style` -> real `/digitize` call ->
+updated stitch plan -> updated Studio state. Screenshot on file
+(`.playwright-mcp/underlay-style-applied.png` in that session's worktree).
+This was the last of area 5's four `_OVERRIDE_KEYS` controls without its
+own live-browser proof; border/tier/fill-angle/boundary/merge-selection/
+split were already covered by e2e specs or prior live sessions.
+
+**A genuinely SUCCESSFUL merge's live-browser proof remains open, and is
+harder than this doc previously scoped it** — re-investigated 2026-08-06,
+source-level, not by assumption. Two candidate fixes this doc floated
+("a purpose-built fixture image" or "a bridging/convex-hull merge
+strategy") were checked against the real code before attempting either:
+
+- **The "just recolor one shape to match, then merge" shortcut does NOT
+  work**, and is worth ruling out explicitly so a future pass doesn't
+  re-try it: `pipeline.run_stages` calls `apply_shape_merges` BEFORE
+  `apply_shape_edits` on every single pass, so a merge always validates
+  against each shape's ORIGINAL `thread_number` from stage 4, never a
+  `shape_overrides` recolor — recoloring first and merging second (even as
+  two separate Apply steps) never changes what the merge check sees, since
+  each fresh `digitize()` call re-derives colors from scratch before any
+  override is applied within that same call.
+- **The deeper reason a "purpose-built fixture" is hard, confirmed by
+  reading `stage3_segment.py` directly:** its connected-component pass runs
+  PER FINAL THREAD LAYER (`for layer in range(len(quant.thread_indices))`),
+  after any SLIC/RAG merging in `stage2_photo_segment.py` has already
+  happened — so two regions reaching that stage with the SAME final thread
+  assignment are fused if they're pixel-adjacent, regardless of whether the
+  photo segmenter's own ΔE00 merge threshold (`MERGE_DELTAE00_THRESH`)
+  considered them "different clusters" upstream. This is not lane-specific
+  (the doc's prior phrasing implied only the flat lane was affected) — it's
+  the same connected-component step either way. The only geometrically
+  possible opening left is a pair of regions that are NOT pixel-adjacent at
+  stage 3 (so they survive as separate shapes) whose VECTORIZED polygons
+  (stage 4) happen to end up touching or overlapping anyway — a subtle,
+  not-yet-attempted fixture-engineering target, not a quick win.
+- **The fixture WAS attempted, same day, follow-up — and empirically
+  falsified with real numbers, not just theory.** A gradient-classified
+  probe image (two identical bright-green squares on a smooth ramp, forcing
+  the SLIC+RAG lane) swept the gap between the squares from 0 to 40px
+  (0-2.4mm at the probe's 16.67 px/mm) and measured the resulting regions
+  directly via `digitizer_core.run_stages` + shapely, not through the
+  browser. Result: **there is no gap value that produces two separate
+  same-thread shapes close enough to plausibly vectorize-touch.** Below
+  ~10px (~0.5mm) the two squares fuse into ONE region every time (SLIC's
+  own superpixel averaging blends them before RAG ever runs — the
+  superpixel diameter at `SLIC_N_SEGMENTS=1200` over a 1000x650px image is
+  ~23px, comparable to or larger than the probe's own square size at small
+  gaps). At >=12px (~0.7mm) they separate into two same-thread regions —
+  but the measured shapely distance between them is **already 0.71-0.73mm
+  at the very first gap where separation happens at all**, roughly
+  constant across a wide range of further gap increases (SLIC's boundary
+  quantizes to its own superpixel grid, so several different raw pixel
+  gaps alias to byte-identical vectorized output) before finally growing
+  with gap size at 40px (1.37mm). There is no intermediate regime: it's
+  "one fused shape" or "two shapes >=0.7mm apart," never "two shapes
+  touching." That floor is roughly three orders of magnitude past
+  `simplify_tol_mm`'s ~0.03-0.12mm-scale vectorization tolerance (the
+  mechanism a 2026-08-06 pass earlier speculated MIGHT close a small gap),
+  so no fixture built from ordinary artwork through the normal SLIC/RAG
+  pipeline can reach the "touching" state `apply_shape_merges` requires.
+  This is now a settled, evidence-backed conclusion for this codebase's
+  CURRENT segmentation parameters (`SLIC_N_SEGMENTS`, `MERGE_DELTAE00_
+  THRESH`, `simplify_tol_mm`) — not "not yet tried."
+- **What's left is genuinely a product decision, not more fixture-hunting:**
+  a bridging/convex-hull merge strategy for non-adjacent shapes (changing
+  `apply_shape_merges`'s own semantics to connect two shapes that don't
+  touch, not just union ones that already do) is the only path left to a
+  live successful-merge proof, and it changes what "merge" means for every
+  user, not just this test case — Kent's call on whether it's wanted at
+  all, not something to build unilaterally to satisfy a test-coverage gap.
+  Not attempted this pass.
+
+**Convert-to-text (text-cluster detection) — merged 2026-08-05** (PR #63
+Steps 6a/6b, PR #64 Step 7 e2e): a new kind of manual-editing action,
+distinct from every prior one in this area — instead of editing a shape's
+own geometry/style, it REPLACES a whole detected cluster of shapes with a
+different kind of project element entirely (area 1 above has the detection/
+regularization side).
+
+- **`DigitizePanel.svelte`:** a "looks like text" badge per candidate row
+  (honest tooltip: "no character recognition — it can be wrong"), and a
+  per-CLUSTER action bar (one per unique `text_cluster_id` visible, reusing
+  the merge-selection bar's `.dgp-mergebar` markup) rather than a per-row
+  control — deliberately, since a converted cluster's member rows move into
+  this file's existing `unstitched` row branch, which renders no per-row
+  badges or buttons at all; a per-row button would vanish exactly when Undo
+  needs to be reachable.
+- **New coordination logic with no prior precedent in this codebase:**
+  every other override here (`tier`/`border`/`underlay_style`/
+  `boundary_override`/merge/split) edits or replaces state on ONE existing
+  element. "Convert to text" instead creates a brand-new `type: "text"`
+  project element (via a new `addSeededTextElement`, sibling to `addElement`
+  in `project.js`, seeded from the cluster's bbox/color — deliberately with
+  an EMPTY `text` and `fontKey: null`, so nothing is ever auto-filled that
+  could be silently wrong) AND, in the same user action, patches the
+  ORIGINATING digitized element (`stitched: false` per member shape via the
+  existing override plumbing, plus a new `textConversions` map recording
+  which cluster produced which text element — pure Studio-side provenance,
+  never sent to the server, unlike the wire-bound `mergeGroups`/
+  `splitLines`). `App.svelte`'s new `onConvertClusterToText` is the
+  coordination point; a new `converttotext` event carries the seed up from
+  `DigitizePanel` through `ContentStep`, mirroring the existing `addelement`
+  event's bubbling exactly.
+- **Undo** mirrors `undoMerge`/`undoSplit`'s button-swap, with one real
+  difference: merge/split provenance is re-derived from the last APPLIED
+  job's own warnings (because the SERVER executed those edits); a text
+  conversion's provenance lives entirely in `element.textConversions`
+  already, since nothing about it was ever server-executed — no round trip
+  needed to know what to undo.
+- **A real bug the e2e test caught, not a test-authoring mistake:**
+  `ContentStep.svelte` forwarded `DigitizePanel`'s `converttotext` event up
+  to `App.svelte` but never wired the same forwarding for `removeelement`
+  — Svelte component events don't bubble automatically, each parent must
+  forward explicitly. `undoTextConversion` dispatches `removeelement` from
+  inside `DigitizePanel`; with no forward, that event had nowhere to go, so
+  undo silently never removed the created text element (no crash, no
+  error — just a dropped event). Fixed with the missing one-line forward;
+  the real e2e run (against the live service and browser, not a mock)
+  failed before the fix and passed after.
+- **Verification:** `project.spec.js` (3 new tests for the seed-element
+  function), `digitizer.spec.js` (5 new tests for the wire-field mapping and
+  the cluster/seed pure helpers), full Studio suite 426/426 (421 pre-existing
+  + 5 new, baseline re-verified via `git stash` before trusting the delta).
+  `app/e2e/text-cluster-convert.spec.js` (new, sibling to
+  `digitize-boundary-edit.spec.js`) drives the real service end to end:
+  upload the real benchmark fixture → badge appears on >=10 shapes →
+  Convert to text → lands in an empty `TextStep` with no font picked → type
+  real text, pick a font → navigate back → Undo → original shapes resume
+  stitching, text element gone — **run for real, 1 passed**, after the
+  `removeelement` fix above. Also manually verified live via Playwright MCP
+  against a running dev session on the real benchmark fixture, screenshotted.
+- **Out of scope, on purpose:** real character recognition (no OCR anywhere
+  in this feature — the user always supplies the actual word), auto font
+  selection/matching to the source typeface, and any change to the satin/
+  fill classifier.
 
 ---
 

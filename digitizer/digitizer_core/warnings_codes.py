@@ -98,6 +98,14 @@ CONTOUR_RING_UNREACHABLE = "CONTOUR_RING_UNREACHABLE"  # contour left a bare pat
 # Stage 6 (border tier)
 BORDER_SKIPPED_TOO_NARROW = "BORDER_SKIPPED_TOO_NARROW"  # no room for an outline. extra: {"count": int}
 BORDER_LIGHTENED = "BORDER_LIGHTENED"                    # column would not fit; bean run instead. extra: {"count": int}
+# Mitigation for stage6_border's documented KNOWN LIMITATION: two bordered
+# shapes of different colors abut, stage 5 makes their visible edges the same
+# line, and each shape's own outline circuit rides it at full density — a
+# double-thick bar sewn in two threads. The real fix (seam-aware suppression)
+# needs cross-shape coordination stage 7 does not have; this only detects and
+# names the pair so the operator can turn border off on one side of the seam.
+# extra: {"count": int, "pairs": list[[str, str]]}
+BORDER_SEAM_SHARED = "BORDER_SEAM_SHARED"
 
 # Stage 6 (appliqué tier) — docs/specialty-techniques-2026-08-01.md §2.12 gates.
 # Every one of these is a gate the spec says "must be enforced", and every one

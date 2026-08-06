@@ -52,3 +52,7 @@ Deleting exactly 5 bytes from a browser-encoded PES — one `0x20` pad byte from
 - Verification before closing: after any fix, one real Brother-machine load (or PE-Design open) of a harness-clean PES; the harness proves standard-reader agreement, not machine behavior.
 
 Artifacts: harness + decoder in `tools/`, pins in `test/crossval-stitch-formats.test.js`. Encoded fixture files regenerable any time via `node tools/crossval-stitch-formats.mjs --keep` → `scratch_crossval/` (gitignored). Code under scrutiny: `src/pes.js` (lines 155-159, 174-175, PEC flag in `pecWriteRecord`), `src/exp.js` (`trimRecord`), `src/dst.js` (control, unchanged posture).
+
+## Addendum, 2026-08-06: the section 4 "shared quirk" is now fixed for EXP
+
+Section 4's last bullet (`16 decoded where 15 exist`) is closed for EXP: `encodeEXP` (`src/exp.js`) now stops at the terminal `{type:"end"}` design-list sentinel the same way `pes.js`'s own encoder already did (`if (st.type === "end") break;`), instead of falling through to the generic stitch path and writing it as a real zero-delta record. Harness re-run: `exp.notrim`/`exp.full` both read `expected 15, decoded 15`. DST's copy of this same gap is untouched — deliberately, per this memo's own section 5 posture (`src/dst.js` unchanged) and CLAUDE.md's standing Kent's-call on the DST codec. EXP carried none of DST's migration risk to begin with (no importer, same reasoning section 5 already gives for the framing/trim fixes), so this closes cleanly on its own.
