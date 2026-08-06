@@ -140,6 +140,14 @@ APPLIQUE_STEP_EMPTY = "APPLIQUE_STEP_EMPTY"
 # A step generated no stitches. Its color change would vanish with it and the
 # operator would lose an instruction — the §0.2 failure, caught upstream of the
 # writer. extra: {"count": int}
+APPLIQUE_COVER_WIDTH_CLAMPED = "APPLIQUE_COVER_WIDTH_CLAMPED"
+# `solve_cover_width`'s [2.5, 5.0] mm clamp bound, not the tolerance-stack
+# requirement — either §2.13's own 2.5 mm "absolute minimum (risky)" floor, or
+# §2.12's named 5.0 mm snag-risk ceiling. `solve_cover_width` has always
+# computed this in its own "clamped" field; no caller read it, so a design
+# that hit either bound sewed with no record that the requirement and the
+# stitched width disagree. extra: {"count": int, "width_mm": float,
+# "bound": "floor" | "ceiling"}
 
 
 def warn(code: str, message: str, **extra) -> dict:
