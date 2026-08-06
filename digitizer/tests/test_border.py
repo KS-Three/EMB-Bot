@@ -14,8 +14,11 @@ import numpy as np
 import pytest
 from shapely.geometry import Point, Polygon
 
-from digitizer_core import PipelineConfig, digitize, machine
+from digitizer_core import PipelineConfig, Region, digitize, fabric_for_garment, machine
+from digitizer_core.stage5_overlap import resolve_overlaps
 from digitizer_core.stage6_border import border_runs
+from digitizer_core.stage7_sequence import sequence
+from digitizer_core.warnings_codes import BORDER_SEAM_SHARED
 from tests.conftest import TESTDATA, cfg
 
 SQUARE = Polygon([(0, 0), (20, 0), (20, 20), (0, 20)])
@@ -233,3 +236,61 @@ def test_corner_rounding_never_bites_deeper_than_half_a_column():
             bite = Point(t).distance(rounded)
             assert bite <= machine.BORDER_WIDTH_MM / 2 + 0.15, \
                 f"{size} mm star tip bitten {bite:.2f} mm"
+
+
+# --- The seam-sharing mitigation (KNOWN LIMITATION, detect-and-warn only) --
+
+_SEAM_FABRIC = fabric_for_garment("left_chest")  # pique knit, 0.3 mm pull comp
+
+
+def _seam_bar(x0: float, x1: float, layer: int, thread: int, name: str,
+             border) -> Region:
+    # Forced to "fill", same reasoning as test_chaining's fixtures: "auto"
+    # would let the classifier decide satin vs fill per rectangle aspect
+    # ratio, which has nothing to do with what this test measures.
+    poly = Polygon([(x0, 0), (x1, 0), (x1, 10), (x0, 10)])
+    return Region(shape_id=name, polygon=poly, thread_index=thread,
+                  thread_number=f"{1000 + thread}", area_mm2=poly.area,
+                  meta={"layer": layer, "tier": "fill", "border": border})
+
+
+def _seam_plan(regions):
+    conf = PipelineConfig()
+    planned, _ = resolve_overlaps(regions, _SEAM_FABRIC, conf)
+    return sequence(planned, _SEAM_FABRIC, conf)
+
+
+def test_border_seam_shared_names_both_shapes_when_two_bordered_shapes_abut():
+    """Two different-colour rectangles sharing the edge x=10, both bordered.
+
+    Stage 5 gives the earlier colour's underlap tongue back to the later one
+    (`grown.difference(earlier)` / `visible.difference(later)`), so both
+    shapes' VISIBLE edges land on the identical x=10 line — the exact
+    coincidence `stage6_border`'s KNOWN LIMITATION describes. The 10 mm shared
+    run is well past the 2 x BORDER_WIDTH_MM (2.8 mm) threshold.
+    """
+    regions = [_seam_bar(0, 10, 0, 0, "Sleft", True),
+              _seam_bar(10, 20, 1, 1, "Sright", True)]
+    _blocks, warnings = _seam_plan(regions)
+
+    hits = [w for w in warnings if w["code"] == BORDER_SEAM_SHARED]
+    assert len(hits) == 1, f"expected one BORDER_SEAM_SHARED finding, got {warnings}"
+    assert hits[0]["count"] == 1
+    pair = {tuple(sorted(p)) for p in hits[0]["pairs"]}
+    assert pair == {("Sleft", "Sright")}, \
+        "the finding must name both shapes on the shared seam"
+
+
+def test_border_seam_shared_does_not_fire_without_abutment_or_border():
+    """Negative case, two ways: a real gap between the shapes, and the seam
+    intact but border turned off. Neither is the defect the warning exists
+    for, so neither may fire it."""
+    gap = [_seam_bar(0, 10, 0, 0, "Sleft", True),
+          _seam_bar(16, 26, 1, 1, "Sright", True)]   # 6 mm gap, not abutting
+    _blocks, gap_warnings = _seam_plan(gap)
+    assert not [w for w in gap_warnings if w["code"] == BORDER_SEAM_SHARED]
+
+    off = [_seam_bar(0, 10, 0, 0, "Sleft", False),
+          _seam_bar(10, 20, 1, 1, "Sright", False)]  # abutting, border off
+    _blocks, off_warnings = _seam_plan(off)
+    assert not [w for w in off_warnings if w["code"] == BORDER_SEAM_SHARED]

@@ -73,7 +73,8 @@ from .stage6_satin import is_satin_candidate, satin_shape
 from .stage6_streamline import streamline_fill
 from .stitches import StitchBlock, StitchRun, tie_run
 from .threads import chart_for
-from .warnings_codes import (BORDER_LIGHTENED, BORDER_SKIPPED_TOO_NARROW,
+from .warnings_codes import (BORDER_LIGHTENED, BORDER_SEAM_SHARED,
+                             BORDER_SKIPPED_TOO_NARROW,
                              CONTOUR_RING_UNREACHABLE, LONG_JUMPS_TRIMMED,
                              SHAPE_NOT_STITCHED, SHAPE_TOO_THIN_TO_FILL,
                              SMALL_SHAPES_AS_RUN, warn)
@@ -510,6 +511,39 @@ def _apply_ties(runs: list[StitchRun]) -> None:
     tie_off(runs[-1])
 
 
+# Hair-width: stage 5 makes two abutting shapes' visible edges the identical
+# curve (float noise aside), so this only has to bridge floating-point slop,
+# never a real gap. Same order as stage6_border's own `_SLACK_MM`.
+_BORDER_SEAM_EPS_MM = 0.02
+
+
+def _border_seam_pairs(geoms: dict[str, object], threshold_mm: float
+                       ) -> list[tuple[str, str, float]]:
+    """Shape-id pairs whose OWN edges run coincident for over `threshold_mm`.
+
+    `stage6_border`'s KNOWN LIMITATION: two border-enabled shapes that abut
+    get the identical line for a visible edge (stage 5's overlap resolution),
+    so their outline circuits ride it at full density each — a double-thick
+    bar in two threads. Buffering each shape's boundary by a hair-width
+    epsilon and intersecting turns "same curve" into an ordinary polygon
+    overlap; the strip is `2 * eps` wide everywhere but the end caps, so its
+    AREA divided by that width recovers the coincident length without
+    walking the curve.
+    """
+    ids = sorted(geoms)
+    strips = {sid: geoms[sid].boundary.buffer(_BORDER_SEAM_EPS_MM) for sid in ids}
+    out: list[tuple[str, str, float]] = []
+    for i, a in enumerate(ids):
+        for b in ids[i + 1:]:
+            shared = strips[a].intersection(strips[b])
+            if shared.is_empty:
+                continue
+            length = shared.area / (2.0 * _BORDER_SEAM_EPS_MM)
+            if length > threshold_mm:
+                out.append((a, b, length))
+    return out
+
+
 def sequence(
     planned: list[PlannedRegion], fabric: Fabric, cfg: PipelineConfig,
     source_pixels: SourcePixels | None = None,
@@ -599,6 +633,10 @@ def sequence(
     rings_skipped = starved = 0
     blocks: list[StitchBlock] = []
     cursor: tuple[float, float] | None = None
+    # Every shape whose border tier actually put a circuit down, keyed by id —
+    # the seam-sharing check below only cares about circuits that will really
+    # sew, not shapes that merely asked for one and went `too_narrow`.
+    border_geom_by_id: dict[str, object] = {}
 
     # --- The appliqué tier (stage6_applique, docs §2). Off unless asked for,
     # and when off this returns ([], [], planned, None) and changes nothing.
@@ -846,6 +884,8 @@ def sequence(
                 report["bordered"] = b_report["loops"]
                 report["lightened"] = b_report["bean_loops"]
                 report["border_narrow"] = b_report["too_narrow"]
+                if b_runs:
+                    report["border_geom"] = p.visible_geom
                 runs.extend(b_runs)
             return runs, report, True
 
@@ -912,6 +952,9 @@ def sequence(
             bordered += report.get("bordered", 0)
             lightened += report.get("lightened", 0)
             border_narrow += report.get("border_narrow", 0)
+            bgeom = report.get("border_geom")
+            if bgeom is not None:
+                border_geom_by_id[p.shape_id] = bgeom
             if report.get("starved"):
                 starved += 1
                 rings_skipped += report.get("skipped_rings", 0)
@@ -1060,4 +1103,25 @@ def sequence(
                 count=border_narrow,
             )
         )
+    # Mitigation for stage6_border's documented KNOWN LIMITATION, not a fix:
+    # two different-colour shapes both bordered and abutting get the same
+    # visible edge from stage 5, so each one's circuit rides it at full
+    # density — a double-thick bar in two threads. The threshold scales with
+    # the width these shapes actually bordered at, same as `border_runs` did.
+    if len(border_geom_by_id) > 1:
+        seam_threshold_mm = 2.0 * (cfg.border_width_mm or machine.BORDER_WIDTH_MM)
+        seam_pairs = _border_seam_pairs(border_geom_by_id, seam_threshold_mm)
+        if seam_pairs:
+            n = len(seam_pairs)
+            warnings.append(
+                warn(
+                    BORDER_SEAM_SHARED,
+                    f"{n} pair{'s' if n != 1 else ''} of bordered shapes share an "
+                    "outline seam — both circuits will ride the same line and "
+                    "sew as one doubled bar. Turn border off on one side of the "
+                    "seam.",
+                    count=n,
+                    pairs=[[a, b] for a, b, _length in seam_pairs],
+                )
+            )
     return blocks, warnings
