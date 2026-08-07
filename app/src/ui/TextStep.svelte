@@ -26,6 +26,16 @@
   // "Justify lines" block below.
   $: multiline = (element.text || "").includes("\n");
 
+  // OCR-suggested-text provenance (digitizer.js's textClusterSeed, gated by
+  // OCR_SUGGESTION_MIN_CONFIDENCE): "ocr-suggested" means the textarea below
+  // is currently showing a machine guess the user has not yet looked at or
+  // touched, not text they typed. See the advisory badge below the
+  // textarea — reuses DigitizePanel.svelte's "looks like text" badge visual
+  // convention (`.dgp-lbadge`'s pill/border shape) plus its `--warn-text`
+  // color already used elsewhere for "needs a look" states, rather than
+  // inventing new styling.
+  $: unconfirmedOcr = element.textSource === "ocr-suggested";
+
   // Per-letter color (Font editing abilities Round 1): tracks the textarea's
   // OWN native selection (selectionStart/selectionEnd) so ColorRangesEditor
   // can offer "color the highlighted text" without any custom range-picker
@@ -39,12 +49,18 @@
   }
 </script>
 
+{#if unconfirmedOcr}
+  <span
+    class="ocrbadge"
+    title="A classical-CV + OCR pass on the source image guessed this text from the artwork — it can be wrong. Read it and edit as needed before saving."
+  >Suggested from image — verify before saving</span>
+{/if}
 <textarea
   bind:this={textareaEl}
   class="textin"
   rows="2"
   value={element.text}
-  on:input={(e) => patch({ text: e.target.value })}
+  on:input={(e) => patch({ text: e.target.value, textSource: null })}
   on:select={updateSelection}
   on:mouseup={updateSelection}
   on:keyup={updateSelection}
@@ -160,6 +176,24 @@
 </label>
 
 <style>
+  /* Reuses DigitizePanel.svelte's ".dgp-lbadge" pill shape (font-size,
+     border-radius, padding) plus the "--warn-text" color this codebase
+     already uses for other "needs a look before you trust it" states
+     (DigitizePanel's unstitched-tier label, its resize warning) — a
+     visually-distinct, non-blocking advisory, not new styling invented for
+     this one badge. Block-level (not inline like dgp-lbadge, which sits
+     next to other row badges) since this is the only badge here and reads
+     better as its own line directly above the field it's warning about. */
+  .ocrbadge {
+    display: block;
+    width: fit-content;
+    margin-bottom: 6px;
+    font-size: 10px;
+    color: var(--warn-text, #8a6d1a);
+    border: 1px solid var(--warn-text, #8a6d1a);
+    border-radius: 8px;
+    padding: 1px 6px;
+  }
   .upsidedown {
     margin-top: 8px;
     padding: 6px 12px;
