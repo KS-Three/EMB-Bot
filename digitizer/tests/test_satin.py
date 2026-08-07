@@ -422,6 +422,64 @@ def test_the_stem_tucks_under_the_bar_not_across_it():
     assert min(ys) > 1.0, "stem crosses reach across the bar - junction X defect"
 
 
+# --- Multi-junction stroke corner coverage -----------------------------------
+# A block "E": one vertical stem crossing THREE T-junctions along its own
+# length (a top bar, a middle bar, a bottom bar), with the top and bottom
+# bars flush against the stem's own left edge — proportions taken directly
+# from `testdata/photo/enthusiast_logo.png`'s own vectorized "E" (translated
+# to the origin), the real fixture PR #77 root-caused and deliberately left
+# open: the stem's own bottom-left corner sewed as bare fabric. `_merge_
+# through_junctions` welds the stem's up/down arms through all three nodes
+# into ONE both-ends-free stroke (proven below), so BOTH of its caps —
+# `_extend_to_cap` lands each within 0.15mm of the glyph's real corner — sit
+# right where the stem is flush with a bar, not at an isolated square cap.
+E_LETTERFORM = Polygon([
+    (0.0, 0.0), (0.0, 7.324), (6.796, 7.324), (6.796, 5.675),
+    (2.112, 5.609), (2.178, 4.421), (6.137, 4.355), (6.071, 2.837),
+    (2.178, 2.837), (2.112, 1.716), (6.796, 1.650), (6.796, 0.0),
+])
+
+
+def test_a_stem_crossing_three_junctions_welds_into_one_stroke():
+    """Confirms the fixture actually exercises the multi-junction case
+    before trusting the coverage assertion below: the through-weld at each
+    of the three T-junctions must chain into a single stroke with both ends
+    free (its own two caps), not stay fragmented into per-segment pieces."""
+    strokes, _, _ = extract_strokes(E_LETTERFORM)
+    stem = max(strokes, key=lambda s: sum(
+        math.dist(a, b) for a, b in zip(s.spine, s.spine[1:])))
+    assert stem.free_start and stem.free_end, \
+        "the stem should weld through all three junctions into one open stroke"
+    # Three bars, each yielding to the stem with one free end of its own.
+    bars = [s for s in strokes if s is not stem]
+    assert len(bars) == 3
+    assert all(b.free_start != b.free_end for b in bars), \
+        "each bar should tuck into the stem at one end and stay free at the other"
+
+
+def test_stem_free_end_reaches_its_own_flush_corner():
+    """Regression, root-caused by PR #77 and fixed here: a stroke crossing
+    MULTIPLE T-junctions along its own length still needs each of its own
+    caps to reach the real corner it is flush with, not just get close.
+
+    Root cause was not the junction machinery (`_merge_through_junctions`,
+    `_extend_to_cap`, `_retract_cap_corner` all already land the spine
+    within 0.15mm of the true corner) — it was `_short_stitch_guard`'s
+    pull-toward-middle: the cross one station in from the cap starts out a
+    real, keepable stitch (just over `SATIN_MIN_CROSS_MM`), but the guard's
+    stock 35%-capped-at-0.6mm pull (sized for a wide curve, where a cross is
+    several mm) took it under the floor, and the degenerate-cross filter a
+    few lines later dropped a stitch that was never actually degenerate.
+    Not letterform-specific: any cap zone or curve whose next-station cross
+    starts only a little above the floor can hit the same interaction.
+    """
+    satin, _, _ = _satin_runs(E_LETTERFORM)
+    pts = [p for r in satin for p in r.points]
+    corner = (0.0, 0.0)  # the stem's own flush corner with the bottom bar
+    d = min(math.dist(p, corner) for p in pts)
+    assert d < 0.45, f"the flush corner is still {d:.2f}mm from the nearest stitch"
+
+
 # --- Entry/exit point selection (Laws 27-29) --------------------------------
 # A short-stemmed T so the detour from the junction end to the free cap (the
 # stem's top) is a few mm — comfortably inside STRUCTURAL_ENTRY_BUDGET_MM —
