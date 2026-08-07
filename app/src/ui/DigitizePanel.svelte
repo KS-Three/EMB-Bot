@@ -193,6 +193,11 @@
 
   $: decoded = element.result ? decodedFromDesignCached(element.result) : null;
   $: warningLines = describeWarnings(element.warnings);
+  // BACKGROUND_ENCLOSED gets its own live, actionable banner (below, next to
+  // unstitchedRows) instead of this generic list -- showing both would just
+  // repeat the same fact once as a static server message and once as a count
+  // that tracks the user's own restores.
+  $: otherWarningLines = warningLines.filter((w) => w.code !== "BACKGROUND_ENCLOSED");
 
   // Resize honesty (Kent's rule, same as DesignPanel): the field's resize
   // handles SCALE baked stitches, they don't re-digitize — density changes
@@ -971,6 +976,34 @@
     patch({ shapeOverrides, textConversions: conversions });
     d("removeelement", textElementId);
   }
+
+  // ---- bulk enclosed-area restore (warnings banner CTA) ---------------------
+  //
+  // Every row currently held unstitched by the BACKGROUND_ENCLOSED default,
+  // EXCLUDING a text-cluster member a user has deliberately converted to text
+  // (its stitched:false is a permanent hide, not a default this banner should
+  // ever offer to undo -- restoring it would silently duplicate the shape
+  // under the new text element). Same one-patch discipline as
+  // undoTextConversion above: looping setOverride here would have each call
+  // build off the same stale `element` prop and clobber the others.
+  $: unstitchedRows = orderedShapes.filter(
+    (r) =>
+      !deletedIds.includes(r.id) &&
+      !effStitched(r, overrides) &&
+      !(r.textClusterId != null && textConversions[r.textClusterId] != null)
+  );
+
+  function pluralize(n, one, many) {
+    return n === 1 ? one : many.replace("{n}", String(n));
+  }
+
+  function restoreAllUnstitched() {
+    const shapeOverrides = { ...(element.shapeOverrides || {}) };
+    for (const row of unstitchedRows) {
+      shapeOverrides[row.id] = { ...(shapeOverrides[row.id] || {}), stitched: true };
+    }
+    patch({ shapeOverrides });
+  }
 </script>
 
 <div class="digipanel">
@@ -1081,9 +1114,23 @@
         {element.result.colorCount} color{element.result.colorCount === 1 ? "" : "s"}
       </p>
 
-      {#if warningLines.length}
+      {#if unstitchedRows.length}
+        <div class="dgp-enclosed-banner" role="alert">
+          <p class="dgp-enclosed-banner-text">
+            {pluralize(
+              unstitchedRows.length,
+              "1 enclosed area was left unstitched by default, like the hole in an O. If it's meant to be part of the design and not a real gap, sew it.",
+              "{n} enclosed areas were left unstitched by default, like the hole in an O. If they're meant to be part of the design and not real gaps, sew them."
+            )}
+          </p>
+          <button type="button" class="dgp-enclosed-banner-btn" on:click={restoreAllUnstitched}>
+            Sew all {unstitchedRows.length}
+          </button>
+        </div>
+      {/if}
+      {#if otherWarningLines.length}
         <ul class="dgp-warnings">
-          {#each warningLines as w (w.code + w.text)}
+          {#each otherWarningLines as w (w.code + w.text)}
             <li>{w.text}</li>
           {/each}
         </ul>
@@ -1677,6 +1724,38 @@
     color: var(--warn-text, #8a6d1a);
   }
   .dgp-warnings li { margin-top: 2px; }
+  /* Louder than .dgp-warnings on purpose (Kent's own diagnosis of the
+     Instagram-icon complaint: the per-shape "Sew it" restore already existed
+     but was easy to miss as a dim list line) -- a bordered, actionable box
+     instead of another <li>, same --warn-text vocabulary as everything else
+     in this file rather than a new color invented for one banner. */
+  .dgp-enclosed-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 8px 0 0;
+    padding: 8px 10px;
+    border: 1px solid var(--warn-text, #8a6d1a);
+    border-radius: var(--radius-s, 6px);
+    background: #fdf6e3;
+  }
+  .dgp-enclosed-banner-text {
+    flex: 1;
+    margin: 0;
+    font-size: var(--fs-xs, 12px);
+    color: var(--warn-text, #8a6d1a);
+  }
+  .dgp-enclosed-banner-btn {
+    flex-shrink: 0;
+    padding: 5px 10px;
+    border: 1px solid var(--warn-text, #8a6d1a);
+    border-radius: var(--radius-s, 6px);
+    background: var(--warn-text, #8a6d1a);
+    color: #fff;
+    cursor: pointer;
+    font-size: var(--fs-xs, 12px);
+    white-space: nowrap;
+  }
   .dgp-resize { font-size: var(--fs-xs, 12px); color: var(--warn-text, #8a6d1a); margin: 8px 0 6px; }
   .dgp-blocks { margin-top: 10px; }
   .dgp-blocks-label { display: block; font-size: var(--fs-xs, 12px); margin-bottom: 4px; }

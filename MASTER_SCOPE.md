@@ -11,6 +11,54 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
+**Last updated:** 2026-08-07 — Kent's own real-world upload of the
+Instagram icon (gradient rounded-square background, white camera-glyph
+linework) still showed "white space, not clean crisp edges" even after the
+`BACKGROUND_ENCLOSED` restore mechanism verified directly below. Not a new
+geometry defect: investigated first via `digitizing-quality-auditor` to
+check Kent's own diagnosis (adjust overlap/pull-comp/density/underlay,
+standard commercial-digitizing knobs) against the codebase's own history —
+all four are already tuned for this art class (Laws 22/23/26/27-29,
+appliqué cover pull-comp #72, border seam-sharing #73) and untouched by
+this complaint. Root cause confirmed by direct reproduction against HEAD
+(`stage1_prep.py::prep` on `testdata/photo/repro_gradient_white_icon.png`,
+essentially this fixture): the white camera-glyph lines are the same white
+as the page background, so `tag_enclosed_background` correctly flags them
+`enclosed_background` (the same logic that correctly leaves an "O"'s
+counter unstitched) and `pipeline.py` holds them unstitched by default —
+real, deliberate behavior (see the `BACKGROUND_ENCLOSED` bullet in area 1
+below), but the only way to fix it was clicking "Sew it" once per shape on
+a dimmed list row, easy to miss entirely.
+
+Asked Kent directly (a real product tradeoff, not a mechanical call):
+auto-restore large enclosed areas by default (zero clicks here, but risks
+silently filling a genuinely-intended hole on some future design) vs. keep
+today's safe per-shape default and make restoring fast/obvious instead. He
+picked the latter. `DigitizePanel.svelte` gains a loud `.dgp-enclosed-banner`
+(replacing the old plain-text warning bullet) showing a live count plus a
+"Sew all N" bulk action (`restoreAllUnstitched`) — one merged
+`shapeOverrides` patch, not a loop (looping would clobber itself against
+the same stale `element` prop across iterations, the pitfall
+`undoTextConversion` already documents and works around). Deliberately
+excludes any row belonging to a cluster already converted to text via
+`textConversions` — that row's `stitched:false` is a permanent hide from
+the text-cluster feature, not a default this banner should ever offer to
+undo. Per-shape default behavior is otherwise byte-for-byte unchanged: a
+genuine small enclosed hole still holds out by default exactly as before.
+
+Verified against the real digitizer service + browser, not just unit-level:
+`app/e2e/digitize-background-enclosed.spec.js` gained a second test driving
+the bulk path end to end (banner shows the live count, "Sew all N" restores
+every enclosed region on the repro fixture in one click, Apply re-stitches
+all of them through the real service) and the existing single-row test's
+assertions were updated for the new banner; both pass
+(`npx playwright test e2e/digitize-background-enclosed.spec.js`, 2/2, plus
+the sibling `digitize-boundary-edit`/`digitize-shape-identity`/
+`digitize-stale-edits`/`text-cluster-convert` specs re-run clean to confirm
+no shared-component regression). Studio unit suite: `npx vitest run`
+435/435 (28 files). `npx vite build` clean. Engine and digitizer suites
+untouched by this pass (pure Studio UI change, no `src/` or
+`digitizer_core/` edits) and not re-run.
 **Last updated:** 2026-08-07 — `stage6_satin.py`'s "E missing its
 bottom-left corner" defect (root-caused, deliberately left open by PR #77 —
 see this doc's own 2026-08-06 entry below) is now root-caused for real and
@@ -1466,6 +1514,20 @@ is now fixed (see below), four remain open:
   this section — the HTTP-level check above proved the fix; this proves it
   survives the real upload path, the real Layers-panel UI, and a real
   restore-and-resew round trip, watched directly in the browser.
+
+  **UX follow-up, 2026-08-07 — the restore mechanism was real but too easy
+  to miss.** Kent's own real-world upload of this exact problem class (the
+  Instagram icon) reported "still white gaps" even after live-browser
+  verification of the mechanism above — not a geometry regression, a
+  discoverability one: the per-shape "Sew it" control lived as a dimmed
+  list line, and restoring N enclosed regions took N separate clicks. Full
+  investigation and fix in this file's newest "Last updated" entry at the
+  top; summary: the per-shape default is unchanged (a small enclosed hole
+  still holds out by default), but `DigitizePanel.svelte` now surfaces a
+  loud `.dgp-enclosed-banner` with a live count and a one-click "Sew all N"
+  bulk restore, deliberately excluding text-cluster-converted rows. Verified
+  end to end against the real service + browser
+  (`app/e2e/digitize-background-enclosed.spec.js`, 2/2).
 
   **Band/part transition jump flags — FIXED, 2026-08-06.** `blend_fill`
   stitches each shade band (and, when `_band_clip` returns more than one
