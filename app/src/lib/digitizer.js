@@ -500,11 +500,16 @@ export function splitLineIssues(outline, line) {
 //
 // `textCandidate`/`textClusterId` (reviewFromJob's mapping, straight off the
 // wire's `text_candidate`/`text_cluster_id`) mark a shape as a member of a
-// server-detected "looks like text" cluster — geometry-only, no OCR, see
-// `digitizer_core/textcluster.py`'s design doc. These are the pure-logic
-// helpers DigitizePanel's badge/convert/undo controls run off: which cluster
-// ids are visible right now (one "Convert to text" action per id, several
-// rows can share one), and a bbox-derived seed patch for the new text element
+// server-detected "looks like text" cluster — DETECTION is geometry-only, no
+// OCR, see `digitizer_core/textcluster.py`'s design doc. Once a cluster is
+// detected, `ocrChar`/`ocrConfidence` (also reviewFromJob's mapping, off the
+// wire's `ocr_char`/`ocr_confidence` — `textcluster.py`'s separate
+// `ocr_suggest_text` pass) carry a per-member OCR read Studio may use to
+// PREFILL the new text element, gated by `OCR_SUGGESTION_MIN_CONFIDENCE`
+// below. These are the pure-logic helpers DigitizePanel's badge/convert/undo
+// controls run off: which cluster ids are visible right now (one "Convert to
+// text" action per id, several rows can share one), and a bbox-derived seed
+// patch (now including the gated OCR guess) for the new text element
 // (project.js's `addSeededTextElement`).
 
 // Unique `textClusterId` values among `rows`, in first-seen order — the
@@ -539,6 +544,66 @@ function bboxOfRows(rows) {
   return { minX, minY, maxX, maxY };
 }
 
+// OCR-suggested-text confidence gate (Studio's call, not the service's — see
+// digitizer_core/textcluster.py's `ocr_suggest_text`, which reports a raw
+// per-member `(ocrChar, ocrConfidence)` read and takes no position on
+// "good enough"). This exists because a prefilled-but-editable field is NOT
+// automatically as safe as an empty one: automation-bias research on this
+// exact pattern found people catch errors in a confident-looking WRONG
+// suggestion only ~30% of the time, vs. ~75% when the system visibly hedges
+// — so an unconfirmed OCR guess must never look indistinguishable from text
+// the user actually typed, and must never be offered at all unless the
+// signal backing it is strong. Below this floor, `textClusterSeed` falls
+// back to `text: ""` / `textSource: null` — EXACTLY today's pre-OCR
+// behavior, not a softer guess.
+//
+// Aggregation is the MINIMUM confidence across the cluster's members, not a
+// mean/median: a word is only as trustworthy as its worst-read letter, and
+// using a mean would let one badly-misread character hide inside an
+// otherwise-confident average (measured directly, not assumed — see below).
+//
+// Threshold calibration (measured, not assumed, same discipline
+// `_OCR_CONFIDENCE_DROP_THRESHOLD` in `text-cluster-ocr-confidence-gate`
+// uses): per-member confidence is Tesseract's own mean `data["conf"]`
+// (0..100, `--psm 10`, one rescued glyph per crop). Two real populations
+// were measured with the real Tesseract binary:
+//   - GENUINELY WRONG reads. The real benchmark fixture's own "ENTERPRISES
+//     INC." subline cluster (14 members, 2 real misreads — a "P" read as
+//     ">", an "I" read as nothing) has a cluster MIN of 0.0 (Tesseract found
+//     no text at all in one crop). A synthetic control word with one
+//     genuinely misread glyph ("TEXT", its "X" read as "»") has a cluster
+//     MIN of 7.0. The worst MIN observed across every wrong-guess case: 7.0.
+//   - GENUINELY CORRECT reads. Synthetic control words rendered in a real
+//     font (DejaVu Sans Bold) and read back correctly in full ("SALE",
+//     "GOLD", "MEDAL", "TEAM") have cluster MINs of 70.0, 87.0, 70.0, 70.0.
+//     The weakest MIN observed across every fully-correct case: 70.0.
+// That leaves a wide (7.0, 70.0) gap with no observed counterexample either
+// side. 55 sits centered in it — comfortably above the worst wrong-guess MIN
+// seen (7.0, and the real fixture's 0.0), comfortably below the weakest
+// correct-guess MIN seen (70.0), leaving margin for real-world glyphs noisier
+// than either synthetic control.
+export const OCR_SUGGESTION_MIN_CONFIDENCE = 55;
+
+// -> best-guess word (left-to-right by each member's own bbox minX) plus its
+// cluster-MIN confidence, or `null` if any member is missing OCR data
+// entirely (an older service, or a member whose own measurement failed) —
+// treated as "no signal", the same conservative default as a real
+// below-threshold read.
+function ocrClusterGuess(members) {
+  if (!members.length) return null;
+  const ordered = [...members].sort((a, b) => bboxOfRows([a]).minX - bboxOfRows([b]).minX);
+  let text = "";
+  let minConfidence = Infinity;
+  for (const r of ordered) {
+    if (typeof r.ocrChar !== "string" || !r.ocrChar || typeof r.ocrConfidence !== "number") {
+      return null;
+    }
+    text += r.ocrChar;
+    minConfidence = Math.min(minConfidence, r.ocrConfidence);
+  }
+  return { text, confidence: minConfidence };
+}
+
 // Bbox -> seed patch for `addSeededTextElement`. Position is computed
 // DESIGN-CENTER-RELATIVE, in the same raw `outline_mm`/`outlineFull` mm
 // space this file already reads directly elsewhere for boundary editing (no
@@ -557,10 +622,23 @@ function bboxOfRows(rows) {
 //   rotationDeg — punted to 0: no baseline-angle estimate is cheaply
 //   available from a review row's shape, and a fake-precision guess is worse
 //   than an honest default the user can dial in themselves.
-//   text/fontKey — explicit empty overrides (mirrors defaultTextElement's own
-//   "" / would-otherwise-be "medium_font"): nothing about the actual word or
-//   a matching typeface can be inferred, so nothing is auto-filled that could
-//   be silently wrong.
+//   fontKey — always an explicit null override (mirrors defaultTextElement's
+//   would-otherwise-be "medium_font"): OCR gives characters, never a
+//   matching typeface, so this is NEVER auto-picked, regardless of how
+//   confident the text guess below is.
+//   text/textSource — OCR-GATED (see OCR_SUGGESTION_MIN_CONFIDENCE below):
+//   above the confidence floor, a best-guess word assembled from each
+//   member's own `ocrChar` (left-to-right by bbox, one member = one
+//   character) and `textSource: "ocr-suggested"` so TextStep can render an
+//   "unconfirmed suggestion" advisory instead of treating it like the user
+//   typed it. Below the floor (including every field simply being absent —
+//   a pre-OCR service, or Tesseract unavailable server-side) this is
+//   UNCHANGED from before OCR existed: explicit empty "" / textSource null,
+//   nothing auto-filled that could be silently wrong. This distinction is
+//   safety-load-bearing, not cosmetic — see OCR_SUGGESTION_MIN_CONFIDENCE's
+//   own comment for why a prefilled-but-wrong guess is measurably MORE
+//   dangerous than an empty field (automation bias), which is exactly why
+//   the gate defaults to the pre-OCR empty behavior on any uncertainty.
 export function textClusterSeed(memberRows, allRows) {
   const members = memberRows || [];
   const cluster = bboxOfRows(members);
@@ -585,14 +663,23 @@ export function textClusterSeed(memberRows, allRows) {
   }
   const votedColor = bestKey ? JSON.parse(bestKey) : null;
 
+  const guess = ocrClusterGuess(members);
+  const gated = guess && guess.confidence >= OCR_SUGGESTION_MIN_CONFIDENCE;
+
   return {
-    text: "",
+    text: gated ? guess.text : "",
     fontKey: null,
     offsetXMm: Number.isFinite(clusterCx - designCx) ? clusterCx - designCx : 0,
     offsetYMm: Number.isFinite(clusterCy - designCy) ? clusterCy - designCy : 0,
     sizeMm: Number.isFinite(height) && height > 0 ? height : null,
     colorRgb: votedColor || [20, 20, 20],
     rotationDeg: 0,
+    // Provenance flag (see TextStep.svelte): set only when the gate above
+    // actually accepted an OCR guess. Cleared the instant the user edits the
+    // textarea — an unconfirmed suggestion stops being "unconfirmed" the
+    // moment a human has looked at and touched it, whatever they changed it
+    // to.
+    textSource: gated ? "ocr-suggested" : null,
   };
 }
 
@@ -650,6 +737,17 @@ export function reviewFromJob(review) {
       // other read-only fact here (layer, stitched) already follows.
       textCandidate: s.text_candidate === true,
       textClusterId: s.text_cluster_id == null ? null : s.text_cluster_id,
+      // OCR-suggested text (server-computed, read-only — see app.py's
+      // _review_payload comment, same category as textCandidate above):
+      // this member's own single best-guess character plus Tesseract's own
+      // confidence (0..100). Both null when this shape was never a text
+      // candidate, or when the measurement itself failed — the GATE that
+      // decides whether to trust any of this lives in textClusterSeed
+      // below, never here. A pre-contract service sends neither field;
+      // that reads as "no suggestion", the same "absent key = default"
+      // convention textCandidate/textClusterId already follow.
+      ocrChar: s.ocr_char == null ? null : String(s.ocr_char),
+      ocrConfidence: typeof s.ocr_confidence === "number" ? s.ocr_confidence : null,
     })),
   };
 }

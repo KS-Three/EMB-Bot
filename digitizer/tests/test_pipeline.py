@@ -238,3 +238,52 @@ def test_full_pipeline_regularization_reduces_stroke_width_variance_on_benchmark
         f"fixture: before={before_vals} (var={before_var:.6g}), "
         f"after={after_vals} (var={after_var:.6g})"
     )
+
+
+# --- OCR-suggested text wiring -----------------------------------------------
+
+
+def test_full_pipeline_stamps_ocr_fields_on_the_benchmark_subline():
+    """`ocr_suggest_text` is wired into `run_stages` right after
+    `regularize_text_clusters` (`pipeline.py`). This is that wiring step's
+    acceptance bar: on the real benchmark fixture, every member of the
+    biggest tagged cluster ("ENTERPRISES INC.") must come back from the
+    FULL pipeline with both OCR fields present (not just the module in
+    isolation) -- `ocr_char` is `None` or a single character, `ocr_confidence`
+    is `None` or a float in Tesseract's own 0..100 range. This is a wiring
+    check (the fields exist and are well-formed), not a legibility
+    assertion -- individual real-world OCR reads are allowed to be wrong or
+    low-confidence; the client-side gate (`digitizer.js`) is what decides
+    whether to trust any of it.
+    """
+    result = run_stages(TESTDATA / "photo" / "enthusiast_logo.png",
+                         cfg(target_width_mm=90.0))
+
+    tagged = [r for r in result.regions if r.meta.get("text_cluster_id")]
+    cluster_ids = {r.meta["text_cluster_id"] for r in tagged}
+    biggest_id = max(cluster_ids, key=lambda cid: sum(
+        1 for r in tagged if r.meta["text_cluster_id"] == cid))
+    members = [r for r in tagged if r.meta["text_cluster_id"] == biggest_id]
+    assert len(members) >= 10
+
+    saw_a_real_character = False
+    for r in members:
+        assert "ocr_char" in r.meta
+        assert "ocr_confidence" in r.meta
+        char, confidence = r.meta["ocr_char"], r.meta["ocr_confidence"]
+        assert char is None or (isinstance(char, str) and len(char) == 1)
+        assert confidence is None or (isinstance(confidence, float) and 0.0 <= confidence <= 100.0)
+        if char is not None:
+            saw_a_real_character = True
+    assert saw_a_real_character, (
+        "the real benchmark fixture's subline is clean/legible enough that "
+        "at least one member must produce a real OCR character read"
+    )
+
+    # An ordinary, never-tagged shape gets no OCR fields at all (absent
+    # means "no suggestion" -- same convention `text_candidate` follows).
+    untagged = [r for r in result.regions if not r.meta.get("text_cluster_id")]
+    assert untagged, "the fixture must also produce ordinary, untagged shapes"
+    for r in untagged:
+        assert "ocr_char" not in r.meta
+        assert "ocr_confidence" not in r.meta

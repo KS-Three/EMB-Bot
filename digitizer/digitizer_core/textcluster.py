@@ -167,6 +167,58 @@ regularization proceeds exactly as it did before this layer existed. This
 gate can only ever make `regularize_text_clusters` MORE conservative, never
 less: it has no path to replace a polygon the existing checks would have
 left alone.
+## OCR-suggested text (2026-08-07 — Studio "Convert to text" entry point)
+
+Everything above this section is deliberately OCR-free — see the opening
+paragraph's "No OCR, no character recognition." This section does not
+relax that: cluster DETECTION still never looks at pixel content, only
+position/size/stroke-width geometry. What it adds is a later, optional,
+read-only pass that runs ONLY on shapes a cluster has ALREADY claimed
+geometrically: once `detect_text_clusters` (and `regularize_text_clusters`,
+if it ran) has decided "these members are probably a word," OCR is used to
+guess WHAT word, so Studio's "Convert to text" flow can prefill an editable
+textarea instead of handing the user a blank one.
+
+This is a UX safety-critical feature, not a convenience shortcut — see
+`docs/superpowers/specs/` and the design notes this shipped against:
+automation-bias research on prefilled-vs-empty form fields found people
+catch errors in a confident-looking wrong suggestion only ~30% of the time,
+vs. ~75% when the system visibly hedges. Concretely, that means:
+
+- This module NEVER decides whether to trust its own OCR read — it reports
+  a raw per-member `(character, confidence)` pair and nothing more. The
+  GATE (a confidence threshold, and what happens above/below it) is the
+  Studio side's call (`app/src/lib/digitizer.js`'s `textClusterSeed`,
+  `OCR_SUGGESTION_MIN_CONFIDENCE`) — this module has no opinion on "good
+  enough," only a measurement.
+- A member this pass can't read at all reports `(None, None)`
+  ("measurement failed," this function's one "I don't know" case) rather
+  than a fabricated low-confidence guess — the caller must treat that
+  exactly like a below-threshold read, never differently.
+- `fontKey` is never touched by anything downstream of this: OCR gives
+  characters, never a typeface match.
+
+Each member is scored independently (single-character `--psm 10`, the same
+Tesseract page-segmentation choice `text-cluster-ocr-confidence-gate`'s
+regularization-safety gate uses and for the same reason: a cluster member
+is one rescued glyph, not a word Tesseract's own dictionary/layout model
+should second-guess) — this module does not attempt word-level OCR across
+a whole cluster's combined raster, both because a rescued cluster's members
+are independently-vectorized shapes with no guaranteed shared baseline/
+raster to hand Tesseract as one image, and because per-member scores are
+what the gate above needs anyway (one weak glyph should not be masked by an
+otherwise-confident cluster average — see `digitizer.js` for the aggregate
+this feeds).
+
+**This is an independent, separately-scoped consumer of the same
+"rasterize a member's own polygon, run Tesseract, read `data['conf']`"
+technique `text-cluster-ocr-confidence-gate`'s quality gate uses** (parallel
+work, not yet merged as of this writing) — not a shared call path. That
+gate's job is "would replacing this polygon read worse" (a boolean,
+`data["text"]` never read, per its own module note); this pass's job is
+"what does this polygon probably say" (the text and confidence both
+surfaced, read-only, to the client). Reusing the technique, not the
+decision.
 """
 from __future__ import annotations
 
@@ -612,3 +664,110 @@ def regularize_text_clusters(regions: list[Region], p: Prep) -> None:
 
         r.polygon = new_poly
         r.area_mm2 = new_poly.area
+
+
+# --- OCR-suggested text (see module docstring's "OCR-suggested text" section) --
+
+# Tesseract page-segmentation mode: "treat the image as a single character."
+# A cluster member is exactly that — one rescued glyph, never a word or
+# line — so this scores raw character-shape confidence without a
+# dictionary/language model second-guessing an isolated letter. Same choice,
+# same reasoning, as `text-cluster-ocr-confidence-gate`'s regularization
+# safety gate (a parallel, independently-scoped consumer of the same
+# rasterize-and-score technique — see the module docstring).
+_OCR_PSM = 10
+
+# A cluster member's own rasterized crop (`shapefield.rasterize_polygon`,
+# ~6 px/mm) is far too small for Tesseract on its own — a 1.8 mm cap height
+# is ~11 px there. Upscaled (nearest-neighbor, so no new edge information is
+# invented) so its longer side lands near this many pixels, then padded with
+# a white quiet zone Tesseract's own layout analysis expects.
+_OCR_RASTER_TARGET_PX = 200
+_OCR_RASTER_PAD_PX = 24
+
+
+def _ocr_raster(poly: Polygon) -> Image.Image | None:
+    """`poly` rasterized, upscaled and padded into an OCR-ready crop: black
+    ink on a white field, matching what Tesseract is tuned against. `None`
+    for a degenerate polygon that rasterizes to nothing (mirrors
+    `build_shape_field`'s own guard).
+
+    Uses `shapefield.rasterize_polygon` — the SAME rasterizer
+    `build_shape_field` uses internally — so the crop this scores is
+    geometrically the same raster the rest of this module already reasons
+    about, not a second, independently-tuned rendering path.
+    """
+    mask, _scale, _ox, _oy = rasterize_polygon(poly)
+    if not mask.any():
+        return None
+    h, w = mask.shape
+    up = max(1, _OCR_RASTER_TARGET_PX // max(h, w))
+    big = cv2.resize(mask, (w * up, h * up), interpolation=cv2.INTER_NEAREST)
+    pad = _OCR_RASTER_PAD_PX
+    canvas = np.zeros((big.shape[0] + 2 * pad, big.shape[1] + 2 * pad), np.uint8)
+    canvas[pad:pad + big.shape[0], pad:pad + big.shape[1]] = big
+    return Image.fromarray(255 - canvas)  # mask: 255=ink -> invert to black-on-white
+
+
+def _ocr_glyph_guess(poly: Polygon) -> tuple[str | None, float | None]:
+    """-> `(character, confidence)` for `poly`'s own rasterized crop.
+
+    `character` is Tesseract's own single best-guess character (its first
+    non-blank detected token, truncated to one character — a `--psm 10` crop
+    should already yield at most one token, but this never trusts that
+    unconditionally); `None` when nothing was detected — an empty read is a
+    real, low-information result, not unlike `confidence`'s 0.0 floor, but
+    there is no meaningful "empty character" to report, so `None` is both
+    "not detected" and "no character" here (unlike `confidence`, only one
+    empty case exists for `character`).
+
+    `confidence` is the mean of Tesseract's own non-negative `data["conf"]`
+    values (0..100); a crop with no detected text at all reads as 0.0 — the
+    metric's floor, a real (if low) measurement, NOT the same as "couldn't
+    measure." `None` for `confidence` (and `character`) together is this
+    function's ONLY "I don't know" case: a degenerate crop, or Tesseract
+    itself missing/erroring. The caller (`ocr_suggest_text`, and ultimately
+    the Studio-side gate) must treat that exactly like a below-threshold
+    read, never as a signal of its own.
+    """
+    img = _ocr_raster(poly)
+    if img is None:
+        return None, None
+    try:
+        data = pytesseract.image_to_data(
+            img, config=f"--psm {_OCR_PSM}", output_type=pytesseract.Output.DICT)
+    except Exception:
+        return None, None
+    confs = [float(c) for c in data["conf"] if float(c) >= 0]
+    confidence = sum(confs) / len(confs) if confs else 0.0
+    texts = [t for t in data["text"] if t and t.strip()]
+    character = texts[0].strip()[:1] if texts else None
+    return character, confidence
+
+
+def ocr_suggest_text(regions: list[Region], p: Prep) -> None:
+    """Post-regularization pass (call after `regularize_text_clusters`, so
+    this reads whichever polygon the design will actually sew/export — see
+    the module docstring's "OCR-suggested text" section for the full
+    rationale): for every `text_cluster_id`-tagged member, stamp
+    `Region.meta["ocr_char"]`/`Region.meta["ocr_confidence"]` with a
+    per-glyph OCR read of the member's own final polygon.
+
+    Read-only metadata, exactly like `text_candidate`/`text_cluster_id`
+    before it — never fed back into detection, regularization, or any other
+    geometry decision. An untagged region gets no new meta keys at all
+    (absent means "no suggestion," the same "absent key = default"
+    convention `text_candidate` already follows); a tagged region whose
+    measurement fails gets both keys explicitly set to `None`, matching
+    `_ocr_glyph_guess`'s own "I don't know" contract — never raises, never
+    crashes the pipeline.
+
+    `p` is accepted, not read — same reason every other pass in this module
+    does: signature parity with a future revision that needs `Prep`.
+    """
+    for r in regions:
+        if not r.meta.get("text_cluster_id"):
+            continue
+        character, confidence = _ocr_glyph_guess(r.polygon)
+        r.meta["ocr_char"] = character
+        r.meta["ocr_confidence"] = confidence

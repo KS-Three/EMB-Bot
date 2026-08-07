@@ -718,6 +718,33 @@ test("reviewFromJob maps text_candidate/text_cluster_id (text-cluster detection)
   ]);
 });
 
+test("reviewFromJob maps ocr_char/ocr_confidence (OCR-suggested text): a real read, a measurement-failed null pair, and false-shaped defaults when a pre-contract service sends neither field", async () => {
+  stubStorage({});
+  const { reviewFromJob } = await import("./digitizer.js");
+  const wire = {
+    palette: [{ brand_id: "isacord", number: "0020", name: "Black", rgb: [0, 0, 0] }],
+    shapes: [
+      { shape_id: "Sread", thread_index: 0, thread_number: "0020", area_mm2: 2, source: "quant",
+        layer: 0, sew_index: 0, sew_block: 0, tier: "fill", text_candidate: true, text_cluster_id: "clu1",
+        ocr_char: "K", ocr_confidence: 91.0,
+        outline_mm: [[0, 0], [1, 0], [1, 1]], holes_mm: [] },
+      { shape_id: "Sfailed", thread_index: 0, thread_number: "0020", area_mm2: 2, source: "quant",
+        layer: 0, sew_index: 1, sew_block: 0, tier: "fill", text_candidate: true, text_cluster_id: "clu1",
+        ocr_char: null, ocr_confidence: null,
+        outline_mm: [[0, 0], [1, 0], [1, 1]], holes_mm: [] },
+      { shape_id: "Sold", thread_index: 0, thread_number: "0020", area_mm2: 2, source: "quant",
+        layer: 0, sew_index: 2, sew_block: 0, tier: "fill",
+        outline_mm: [[0, 0], [1, 0], [1, 1]], holes_mm: [] },
+    ],
+  };
+  const r = reviewFromJob(wire);
+  expect(r.shapes.map((s) => [s.id, s.ocrChar, s.ocrConfidence])).toEqual([
+    ["Sread", "K", 91.0],
+    ["Sfailed", null, null],
+    ["Sold", null, null],
+  ]);
+});
+
 test("reconcileReview keeps a deleted shape's last known row so the panel can strike it through and restore it", async () => {
   stubStorage({});
   const { reconcileReview } = await import("./digitizer.js");
@@ -1064,6 +1091,7 @@ test("textClusterSeed computes a design-center-relative offset, a height-based s
   const seed = textClusterSeed(members, allRows);
   expect(seed.text).toBe("");
   expect(seed.fontKey).toBeNull();
+  expect(seed.textSource).toBeNull(); // no ocrChar/ocrConfidence on these rows -> ungated
   expect(seed.rotationDeg).toBe(0);
   expect(seed.sizeMm).toBe(4); // cluster bbox height: 4 - 0
   expect(seed.colorRgb).toEqual([10, 10, 10]); // both members agree
@@ -1087,6 +1115,77 @@ test("textClusterSeed picks the most common member color (majority vote, not an 
   expect(empty.sizeMm).toBeNull();
   expect(empty.offsetXMm).toBe(0);
   expect(empty.offsetYMm).toBe(0);
+});
+
+// ---- textClusterSeed's OCR-suggested-text gate ------------------------------
+//
+// The UX-safety-critical half of this feature: a prefilled-but-wrong guess
+// must be measurably rarer than an empty field, never a bare swap of one for
+// the other. Every case below is asserted against the exact threshold
+// (OCR_SUGGESTION_MIN_CONFIDENCE) so a constant change is a deliberate,
+// visible diff here, not a silent behavior shift.
+
+function ocrMember(id, x0, ocrChar, ocrConfidence) {
+  return { id, rgb: [10, 10, 10], outline: [[x0, 0], [x0 + 1, 0], [x0 + 1, 2], [x0, 2]], ocrChar, ocrConfidence };
+}
+
+test("textClusterSeed fills text from ocrChar (left-to-right by bbox) and sets textSource when every member clears the confidence floor", async () => {
+  stubStorage({});
+  const { textClusterSeed, OCR_SUGGESTION_MIN_CONFIDENCE } = await import("./digitizer.js");
+  // Deliberately supplied out of reading order — the seed must sort by each
+  // member's own bbox minX, not array order.
+  const members = [
+    ocrMember("mid", 5, "G", OCR_SUGGESTION_MIN_CONFIDENCE + 10),
+    ocrMember("first", 0, "O", OCR_SUGGESTION_MIN_CONFIDENCE + 30),
+    ocrMember("last", 10, "K", OCR_SUGGESTION_MIN_CONFIDENCE),
+  ];
+  const seed = textClusterSeed(members, members);
+  expect(seed.text).toBe("OGK");
+  expect(seed.textSource).toBe("ocr-suggested");
+  expect(seed.fontKey).toBeNull(); // OCR gives characters, never a typeface, regardless of confidence
+});
+
+test("textClusterSeed falls back to empty text/null textSource when the cluster's weakest member is below the confidence floor", async () => {
+  stubStorage({});
+  const { textClusterSeed, OCR_SUGGESTION_MIN_CONFIDENCE } = await import("./digitizer.js");
+  const members = [
+    ocrMember("A", 0, "O", 99),
+    ocrMember("B", 1, "K", OCR_SUGGESTION_MIN_CONFIDENCE - 0.1), // the one weak link
+  ];
+  const seed = textClusterSeed(members, members);
+  expect(seed.text).toBe("");
+  expect(seed.textSource).toBeNull();
+});
+
+test("textClusterSeed gates on the CLUSTER MINIMUM, not a mean — one confident member cannot hide a weak one", async () => {
+  stubStorage({});
+  const { textClusterSeed, OCR_SUGGESTION_MIN_CONFIDENCE } = await import("./digitizer.js");
+  // Mean of [100, 10] is 55, comfortably above a naive mean-based floor —
+  // but the true minimum (10) must still fail the gate.
+  const members = [ocrMember("A", 0, "X", 100), ocrMember("B", 1, "Y", 10)];
+  expect(textClusterSeed(members, members).textSource).toBeNull();
+});
+
+test("textClusterSeed treats the gate boundary as inclusive (>=)", async () => {
+  stubStorage({});
+  const { textClusterSeed, OCR_SUGGESTION_MIN_CONFIDENCE } = await import("./digitizer.js");
+  const atFloor = [ocrMember("A", 0, "K", OCR_SUGGESTION_MIN_CONFIDENCE)];
+  expect(textClusterSeed(atFloor, atFloor).textSource).toBe("ocr-suggested");
+
+  const justBelow = [ocrMember("A", 0, "K", OCR_SUGGESTION_MIN_CONFIDENCE - 0.01)];
+  expect(textClusterSeed(justBelow, justBelow).textSource).toBeNull();
+});
+
+test("textClusterSeed treats a member with no OCR data (older service, or a failed per-member measurement) as no signal, not as confidence 0", async () => {
+  stubStorage({});
+  const { textClusterSeed } = await import("./digitizer.js");
+  const members = [
+    ocrMember("A", 0, "O", 99),
+    ocrMember("B", 1, undefined, undefined), // Python's (None, None) case
+  ];
+  const seed = textClusterSeed(members, members);
+  expect(seed.text).toBe("");
+  expect(seed.textSource).toBeNull();
 });
 
 test("describeWarnings speaks the two shape-identity codes (contract v1.5)", async () => {
