@@ -11,7 +11,99 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-07 — `regularize_text_clusters` gains a third,
+**Last updated:** 2026-08-07 — `stage2_photo_segment`'s superpixel
+oversegmentation step (photo plan step 1, every photo/gradient-classified
+design's segmentation entry point) swaps `skimage.segmentation.slic` for
+`cv2.ximgproc.createSuperpixelSEEDS` (branch `seeds-superpixel-swap`, draft
+PR against `main`, **not merged — do not treat this as shipped**). Motivated
+by a standalone benchmark (superpixel algorithm isolated as the only
+variable, every downstream step — RAG construction, area-ratio protection,
+merge, CC split, min-area floor — held byte-identical) that measured SEEDS
+producing 2-4x tighter boundaries than SLIC at matched region counts on the
+two real busy fixtures this module's own test suite already tracks.
+
+Real before/after, full pipeline (`run_stages`, `len(PipelineResult.
+regions)`, the same F4 metric this module's threshold retunes have always
+been measured against):
+
+| fixture | SLIC (old, thresh=20.0) | SEEDS (new, thresh=26.0) |
+|---|---|---|
+| `drone_render.png` | 65 | 74 |
+| `summit_badge.png` | 30 | 39 |
+| `gradient_ramp_linear.png` | 2 | 2 |
+| `gradient_ramp_radial.png` | 2 | 2 |
+
+Both busy fixtures land inside the 20-80 accept band with real headroom;
+visually inspected via `debugviz.stage2_photo_merged` on both, boundaries
+read clean (drone_render's lettering/foliage/fuselage edges are crisp, no
+speckle). The flagged risk going into this pass — SEEDS' extra boundary
+sensitivity over-segmenting a smooth gradient ramp — was checked directly,
+not assumed, and did NOT materialize: both ramps hold at their SLIC-era
+counts across the whole threshold sweep tried (18.0-35.0), never exceeding
+2 regions. `MERGE_DELTAE00_THRESH` moved 20.0 -> 26.0 (SEEDS' raw output
+fragments WORSE than SLIC's at the OLD threshold — 106 vs 65 regions on
+drone_render at 20.0 — the opposite of the benchmark's own framing that
+SEEDS would need a less-aggressive merge; measured directly via a real
+two-fixture sweep that the threshold had to move UP, not down).
+`FACE_MERGE_FACTOR` re-derived as `5.0 / MERGE_DELTAE00_THRESH` (was a
+hand-typed `0.25`) so the face-local absolute merge tolerance stays pinned
+at 5.0 dE00 regardless of the base threshold, the same decoupling
+`AREA_RATIO_PROTECT_THRESH` already established as precedent one retune
+ago; `test_face_local_threshold_splits_shades_that_merge_outside_a_face`
+confirms the absolute number held.
+
+**KNOWN, MEASURED, UNRESOLVED REGRESSION — why this ships as a draft PR
+and should NOT be merged as-is.** `summit_badge.png`'s black ring/inner-
+circle/crosshair complex — real design content a prior PR (`AREA_RATIO_
+PROTECT_THRESH`) fixed from ~1% to 83.7% area recovery — regresses hard
+under SEEDS, to ~9-11% recovery, confirmed both numerically (`dark_area_mm2`
+vs. source blackish-pixel area) and visually (`debugviz.stage2_photo_
+merged`: the ring's own black stroke is almost entirely absent, only a
+short arc and the crosshair needle survive dark). Root cause, measured not
+guessed: under SLIC the complex consolidated into ONE large coherent RAG
+node before ever facing the background — a clean big-vs-big size mismatch,
+exactly what `AREA_RATIO_PROTECT_THRESH` guards. Under SEEDS the same
+complex starts fragmented into ~150-260 much smaller (~750-800px)
+superpixels, and the hierarchical merge walks a graduated CHAIN of small,
+comparable-size, progressively-diluted edges from black to background —
+never presenting the one large-ratio edge area-ratio protection is built to
+catch. Every re-derivation attempted this pass — lowering `AREA_RATIO_MIN_
+SMALL_PX` alone (200-1000, recovery stayed flat at ~9-10%); lowering it
+together with `AREA_RATIO_PROTECT_THRESH` and a much more aggressive
+`AREA_RATIO_MERGE_FACTOR` (recovery DID recover, to ~99-107%, but at the
+cost of pushing `drone_render.png` to 122 regions — through the 80-region
+ceiling `MERGE_DELTAE00_THRESH` was tuned against — and `gradient_ramp_
+radial.png` to 8, toward the over-segmentation risk this same pass ruled
+out elsewhere) — either failed to move recovery or fixed it by breaking
+other already-validated behavior. No combination found cleanly decoupled
+"protect this one real complex" from "keep allowing legitimate small-into-
+large absorption broadly" the way the original SLIC-era tuning did.
+`AREA_RATIO_PROTECT_THRESH`/`AREA_RATIO_MERGE_FACTOR`/`AREA_RATIO_MIN_
+SMALL_PX` therefore ship UNCHANGED (18.0/0.6/1000) — the full investigation
+trail lives in that constant's own docstring in `stage2_photo_segment.py`.
+`test_summit_badge_black_complex_survives_full_pipeline` is marked
+`xfail(strict=True)` (not deleted, not weakened, not silently lowered) so
+this stays a live, visible regression marker — a future fix that resolves
+it will flip the test to an unexpected pass, which pytest reports loudly.
+
+**Confidence: LOW for this specific change, unresolved.** The core
+algorithm swap measurably helps general busy-photo fragmentation
+(`drone_render.png`) and does not regress gradient-ramp behavior — real,
+validated wins. It is NOT safe to treat as a drop-in SLIC replacement across
+all photo/gradient content: specifically, thin/high-contrast detail sitting
+on a large similar-toned background (`summit_badge.png`'s own failure
+shape) loses real design content that a previous fix restored. Full
+targeted suite green otherwise: `test_stage2_photo_segment.py` (35 passed,
+1 xfailed — the known regression above), `test_face_priors.py` (folded into
+the same run), `test_flat_lane_byte_identical.py` + `test_palette.py` +
+`test_pipeline.py` (30/30, confirming the flat/gradient golden lane and
+unrelated pipeline stages are untouched), `test_background_removal.py` +
+`test_stage6_blend.py` (both touch this module, both green). Do not raise
+this rating, and do not merge the branch, until the `summit_badge.png`
+regression above is actually resolved with real numbers behind the fix —
+not just re-flagged as acceptable.
+
+Prior update below, still 2026-08-07 — `regularize_text_clusters` gains a third,
 independent safety layer on top of the selective-regularization fix directly
 below (PR #77, `fix-lettering-defects-hole-and-regularization`, still open/
 draft, not yet merged to `main` — this work stacks on that branch; see "Not
