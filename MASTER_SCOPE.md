@@ -174,6 +174,35 @@ suite NOT re-run locally per this task's own instruction (proven unreliable
 in this environment); CI runs it on the PR.
 
 Prior update below, still 2026-08-06: satin entry/exit point selection now follows
+**Last updated:** 2026-08-07 — `digitizer_core/textcluster.py`'s text-cluster
+detector gains three classical-CV strengthening passes, all measured against
+the real `enthusiast_logo.png` benchmark rather than assumed (area 1's
+"Text-cluster detection" entry below has the full writeup): (1) three new
+candidate filters — stroke-width coefficient of variation, aspect-ratio
+bounds, and bbox-nesting exclusion — tightening `_candidates()`, which
+previously compared only each shape's MEAN stroke half-width; (2) a Shape
+Context descriptor (Belongie/Malik/Puzicha 2002, new module
+`digitizer_core/shapecontext.py`, ~150 lines, no new dependency) wired into
+`regularize_text_clusters` as a before/after glyph-plausibility gate — a
+cluster member whose regularized redraw structurally diverges too far from
+its own original shape (a corner blown out, a hole filled) is now skipped
+instead of silently applied, same fail-open discipline as every other guard
+in that function; (3) MSER (`cv2.MSER_create()`) was investigated as a
+companion signal and deliberately NOT built — measured directly against both
+the raw and prepped benchmark image, it returns zero regions everywhere,
+because this module's whole domain (flat-lane, few-solid-color vector art)
+structurally lacks the multi-level intensity gradient MSER's threshold-sweep
+stability check requires; full reasoning in `textcluster.py`'s own "MSER"
+docstring section. All three additions land on the SAME real benchmark
+fixture's golden output byte-identical (`test_flat_lane_byte_identical.py`
+still green) — none of the fixture's 14 real letters or its regularization
+were false-positived by the new filters; the filters instead removed a class
+of failure the fixture doesn't happen to trigger today (confirmed via direct
+measurement on the fixture's own non-member fragments, not inferred). 30 new
+tests (`tests/test_shapecontext.py`, new; `tests/test_textcluster.py`
+additions), 222 total across the touched suites passing.
+
+Prior update below, still 2026-08-06 — satin entry/exit point selection now follows
 corpus laws 27-29 instead of pure nearest-point, closing the highest-value
 item a `digitizing-quality-auditor` health check surfaced this session (Kent
 picked it explicitly over two alternatives it also proposed: border
@@ -1969,6 +1998,94 @@ the corpus), not duplicated here. Full detail, including the corrected
 design history: `docs/superpowers/specs/2026-08-05-text-cluster-detection-
 design.md` and `docs/superpowers/plans/2026-08-05-text-cluster-detection.md`.
 
+**Classical-CV strengthening pass, 2026-08-07 (three tracks scoped, two
+built, one investigated and declined — all measured, not assumed):**
+
+- **Candidate filters** (`_candidates`, in `textcluster.py`): previously
+  compared only each shape's MEAN stroke half-width for cross-shape
+  similarity, discarding the per-pixel distribution `shapefield.
+  build_shape_field` already computes. Three more filters now tighten the
+  same function, each calibrated against `enthusiast_logo.png` @ 90mm
+  PRE-regularization (the actual geometry `_candidates` sees — read fresh
+  via `run_stages` with `regularize_text_clusters` patched to a no-op, not
+  the pipeline's final, already-regularized output, which would have hidden
+  the real per-glyph variance): **stroke-width coefficient of variation**
+  (`STROKE_CV_MAX = 0.32`) — the fixture's 14 real letters measure CV
+  0.027-0.235, three sibling rescued-but-not-word fragments measure
+  0.401-0.461, a clean gap; **aspect-ratio bounds** (`ASPECT_RATIO_MIN/MAX
+  = 0.05/1.4`) — the same 14 letters are portrait 0.107-0.964, the same 3
+  fragments landscape 1.778-2.125; **bbox-nesting exclusion**
+  (`_drop_nested`) — the same 3 fragments each sit bbox-nested inside one of
+  the 14 real letters, a third, independent confirmation they're
+  segmentation artifacts. On this fixture the three fragments were already
+  excluded from the tagged cluster by the pre-existing height-similarity
+  gate (so this pass doesn't move `enthusiast_logo.png`'s own golden output
+  — confirmed, `test_flat_lane_byte_identical.py` stayed green) — the new
+  filters are defense-in-depth against a case that DOES independently
+  confirm on real evidence rather than a fix for an observed false positive
+  on this one fixture. One real finding worth flagging: this repo's own
+  existing synthetic test fixtures (plain axis-aligned rectangles) measure
+  WORSE on stroke-width CV than genuine font glyphs of similar proportions —
+  a solid rectangle's medial axis is one straight segment, so end-taper
+  (universal to any stroke's free tip) is a much larger fraction of its
+  total skeleton length than a real letter's more complex one. The original
+  0.9mm-wide test rectangles (CV 0.458) were thinned to ~0.15-0.35mm (CV
+  0.21-0.29) so they clear the new, real-measured threshold — full reasoning
+  in `textcluster.py`'s own module docstring and `test_textcluster.py`'s.
+- **Shape Context glyph-plausibility gate** (new module
+  `digitizer_core/shapecontext.py`, ~150 lines, zero new dependency —
+  `scipy.optimize.linear_sum_assignment` is already in the tree): a
+  from-scratch implementation of Belongie/Malik/Puzicha 2002's Shape Context
+  descriptor (sample boundary points incl. holes, log-polar relative-
+  position histograms, Hungarian-algorithm point correspondence, chi-squared
+  cost). Wired into `regularize_text_clusters` as a SECOND guard after the
+  existing sewability/validity check: a buffered replacement can be
+  perfectly valid and sewable while still being structurally wrong (a target
+  radius mismatched from a member's own true stroke — already possible
+  within the pre-existing `SIMILARITY_RATIO=0.5` floor's own looseness —
+  inflates or blows out real structure). `SHAPE_CONTEXT_MAX_DIST = 0.25`,
+  calibrated against the real fixture's 14 members (which all regularize
+  cleanly today, distance 0.033-0.106) plus synthetic matched-vs-mismatched
+  sweeps on a branching ("L") letterform (a correctly-matched radius scores
+  0.173; a 2x-mismatched one — realistic given `SIMILARITY_RATIO`'s own
+  floor — scores 0.285 with 2.4x area bloat). A gated skip sets a new,
+  distinct `text_cluster_regularize_shape_changed` flag (alongside the
+  pre-existing `text_cluster_regularize_skipped`) and the measured distance
+  is recorded either way (`text_cluster_shape_context_dist`) for
+  diagnostics. On `enthusiast_logo.png` itself none of the 14 real members
+  trip the gate — golden output unchanged, confirmed.
+- **MSER — investigated, deliberately NOT built.** Considered both upstream
+  (`stage3_segment.resolve_small_regions`, to catch lettering absorbed into
+  a bigger neighbor before ever becoming its own `rescued_small_shape`) and
+  as a direct per-shape signal in `textcluster.py` (`detect_text_clusters`
+  already receives `p: Prep`, whose `p.rgb` is the real prepped raster —
+  unused plumbing that would have made this cheap to wire). Measured
+  directly, not assumed: `cv2.MSER_create().detectRegions()` returns ZERO
+  regions on `enthusiast_logo.png`, both the raw source file and the
+  pipeline-prepped raster, at default params and swept down to 1px
+  `min_area`/`delta`. Root cause is structural, not a fixture accident: the
+  raw source has exactly 3 unique grayscale values total (2 in the subline
+  text region specifically — pure foreground/background, no antialiasing).
+  MSER's mechanism needs a multi-level intensity landscape to sweep
+  thresholds across; a 2-3-value hard-edged image gives its own internal
+  stability check nothing to measure. This isn't one unlucky fixture: this
+  module's own scope is flat-lane art by construction ("this feature only
+  acts on `rescued_small_shape`-flagged Regions, a flat-lane-only concept,"
+  per this entry's own text above) — hard vector-style edges are the norm
+  here, not the exception, and MSER's real strength (photographs, lighting
+  gradients, JPEG blur) is the opposite domain. Full reasoning in
+  `textcluster.py`'s own "MSER" docstring section.
+
+Tests: `tests/test_shapecontext.py` (new, 8 tests — translation/scale
+invariance, deliberate non-rotation-invariance, minor-vs-major structural
+change discrimination, hole-appearing sensitivity, degenerate-input
+handling); `tests/test_textcluster.py` gains 6 (3 candidate-filter isolation
+tests, a nesting-tie test, the shape-context gate's matched/mismatched
+integration test) plus its existing 13 re-validated against the thinned
+fixture geometry. 222 tests total passing across
+`test_textcluster.py`/`test_shapecontext.py`/`test_pipeline.py`/
+`test_flat_lane_byte_identical.py`/`test_shapefield_byte_identical.py`/
+`test_satin.py`/`test_service.py`.
 **OCR-suggested text (2026-08-07, not yet merged — branch TBD, opened as a
 draft PR against `main`).** Kent's explicit call: "do not set OCR aside...
 this should become a focus." Everything above this paragraph is geometry-
