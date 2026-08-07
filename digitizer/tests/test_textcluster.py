@@ -248,19 +248,25 @@ def test_regularize_reduces_stroke_width_variance_across_cluster():
     The variance-reduction this test exists to prove still holds — removing
     just the one real outlier is enough."""
     widths = [0.7, 0.8, 0.9, 1.0, 1.1]
-    after every member is redrawn at the cluster's shared target width —
-    measured from real geometry (each member's own new skeleton), not just
-    "the function ran without raising"."""
-    widths = [0.18, 0.21, 0.24, 0.27, 0.30]
     regions = _row_varied_width("V", widths)
     before_polys = [r.polygon for r in regions]
 
-    detect_text_clusters(regions, _P)
-    assert all(r.meta.get("text_cluster_id") for r in regions), \
-        "fixture must actually form one cluster for this test to mean anything"
-
     before_stroke = [_stroke_mm_of(p) for p in before_polys]
     assert all(v is not None for v in before_stroke)
+
+    # Tag the cluster directly rather than going through detect_text_clusters:
+    # this test is about regularize_text_clusters's own behavior given an
+    # already-formed cluster, not about _candidates's separate stroke-CV/
+    # aspect-ratio/nesting filters -- these solid, wide rectangles (built to
+    # hit exact, documented stroke-width percentages) are exactly the shape
+    # class those filters correctly reject for DETECTION (see the module's
+    # "Candidate filters" docstring), an unrelated concern this test isolates
+    # from, the same way it already isolates from the OCR-confidence gate
+    # below.
+    cluster_stroke_mm = float(np.median(before_stroke))
+    for r in regions:
+        r.meta["text_cluster_id"] = "TCtest"
+        r.meta["text_cluster_stroke_mm"] = cluster_stroke_mm
 
     # Isolate the skeleton-buffer/variance layer from the OCR-confidence
     # gate: these bare rectangles carry no real letterform content for
@@ -371,6 +377,11 @@ def _holed_letter(shape_id: str, cx: float, cy: float, w: float = 0.9,
     outer = _rect(cx, cy, w, h)
     inner = _rect(cx, cy, hole_w, hole_h)
     poly = Polygon(outer.exterior.coords, [inner.exterior.coords])
+    return Region(shape_id=shape_id, polygon=poly, thread_index=0,
+                  thread_number="1", area_mm2=poly.area,
+                  meta={"rescued_small_shape": True})
+
+
 # --- new candidate filters: stroke-width CV, aspect ratio, bbox nesting ----
 #
 # All three tested directly against `_candidates` (not the full
@@ -407,10 +418,24 @@ def test_regularize_skips_a_member_already_close_to_the_cluster_target():
     an identical width (the exact median, zero deviation) plus one genuine
     outlier far enough off to still need correction."""
     regions = _row_varied_width("W", [0.9, 0.9, 0.9, 0.9, 1.6])
-    detect_text_clusters(regions, _P)
-    assert all(r.meta.get("text_cluster_id") for r in regions)
 
-    regularize_text_clusters(regions, _P)
+    # Tag the cluster directly rather than going through detect_text_clusters
+    # -- see the sibling variance test above for why: this is a
+    # regularize_text_clusters-only test, isolated from _candidates's
+    # separate stroke-CV/aspect-ratio/nesting detection filters.
+    cluster_stroke_mm = float(np.median([_stroke_stats_mm(r) for r in regions]))
+    for r in regions:
+        r.meta["text_cluster_id"] = "TCtest"
+        r.meta["text_cluster_stroke_mm"] = cluster_stroke_mm
+
+    # Isolate the tolerance-skip layer from the (separately tested) Shape
+    # Context gate too: the outlier's own 1.6mm width buffered all the way
+    # to the 0.9mm cluster target is a genuinely large redraw, exactly the
+    # kind of change SHAPE_CONTEXT_MAX_DIST exists to catch on its own --
+    # not what THIS test isolates (see test_regularize_gates_on_shape_
+    # context_distance for that gate's own dedicated test).
+    with patch("digitizer_core.textcluster.SHAPE_CONTEXT_MAX_DIST", 999.0):
+        regularize_text_clusters(regions, _P)
 
     at_median = regions[:4]
     outlier = regions[4]
@@ -438,14 +463,28 @@ def test_regularize_never_replaces_a_member_with_a_real_interior_hole():
     holed = _holed_letter("Hole", 0.0, 0.0, w=1.6, hole_w=0.5, hole_h=1.1)
     plain_outlier = _letter("Plain", 2.3, 0.0, w=1.6)
     regions = _row("P", 3, x0=4.6) + [holed, plain_outlier]
-    detect_text_clusters(regions, _P)
-    assert all(r.meta.get("text_cluster_id") for r in regions), \
-        "fixture must form one cluster for this test to mean anything"
+
+    # Tag the cluster directly rather than going through detect_text_clusters
+    # -- see the variance test above for why: this is a regularize_text_
+    # clusters-only test, isolated from _candidates's separate stroke-CV/
+    # aspect-ratio/nesting detection filters (the wide, solid `plain_outlier`
+    # rectangle built to prove a comparably-off member WITHOUT a hole still
+    # regularizes is exactly the shape class those filters correctly reject
+    # for DETECTION, an unrelated concern).
+    cluster_stroke_mm = float(np.median([_stroke_stats_mm(r) for r in regions]))
+    for r in regions:
+        r.meta["text_cluster_id"] = "TCtest"
+        r.meta["text_cluster_stroke_mm"] = cluster_stroke_mm
 
     original_coords = (list(holed.polygon.exterior.coords),
                         [list(r.coords) for r in holed.polygon.interiors])
 
-    regularize_text_clusters(regions, _P)
+    # Isolate from the (separately tested) Shape Context gate too: buffering
+    # plain_outlier's 1.6mm width all the way to the cluster's much narrower
+    # target is a genuinely large redraw on its own terms -- not what THIS
+    # test isolates (see test_regularize_gates_on_shape_context_distance).
+    with patch("digitizer_core.textcluster.SHAPE_CONTEXT_MAX_DIST", 999.0):
+        regularize_text_clusters(regions, _P)
 
     assert holed.meta.get("text_cluster_regularize_skipped") is True
     assert holed.meta.get("text_cluster_regularize_skip_reason") == "has_interior_hole"
@@ -457,6 +496,8 @@ def test_regularize_never_replaces_a_member_with_a_real_interior_hole():
         "a comparably-off member WITHOUT a hole must still regularize -- " \
         "proves the holed member above was protected by the hole, not " \
         "coincidentally by the tolerance check"
+
+
 def _wide_fragment(shape_id: str, cx: float = 0.0, cy: float = 0.0) -> Region:
     """A landscape (wide/short) shape -- aspect 6.67, well outside
     `ASPECT_RATIO_MAX` -- the same orientation the real benchmark fixture's
@@ -550,7 +591,18 @@ def test_regularize_gates_on_shape_context_distance():
     matched_before_coords = list(matched.polygon.exterior.coords)
     mismatched_before_coords = list(mismatched.polygon.exterior.coords)
 
-    regularize_text_clusters([matched, mismatched], _P)
+    # Isolate the Shape Context gate from the two OTHER, separately tested
+    # gates in this same function: the tolerance-skip layer (`matched`'s own
+    # true stroke is, by construction, close to its 0.175mm target -- exactly
+    # what "already_consistent" correctly skips on its own terms, see
+    # test_regularize_skips_a_member_already_close_to_the_cluster_target) and
+    # the OCR-confidence gate (this fixture is a real polygon, not a blank
+    # rectangle, so Tesseract genuinely reads something on it). This test
+    # isolates what happens once a member actually reaches the buffer and
+    # clears both those checks.
+    with patch("digitizer_core.textcluster._REGULARIZE_SKIP_TOLERANCE", 0.0), \
+         patch(_OCR_GATE_PATH, return_value=False):
+        regularize_text_clusters([matched, mismatched], _P)
 
     # Matched: regularizes cleanly, a low distance recorded, within the gate.
     assert not matched.meta.get("text_cluster_regularize_skipped")
