@@ -9,14 +9,18 @@ from __future__ import annotations
 import math
 
 import pytest
+from shapely import affinity
 from shapely.geometry import LineString, Point, Polygon
+from shapely.ops import unary_union
 
 from digitizer_core import machine
 from digitizer_core.stage6_fill import (
+    _columns,
     _fill_paths,
     _row_points,
     _row_spans,
     _stagger_slots,
+    best_fill_angle_deg,
     principal_angle_deg,
     stitch_shape,
     travel_path,
@@ -162,6 +166,86 @@ def test_principal_angle_follows_the_long_axis():
     assert abs(principal_angle_deg(tall)) == pytest.approx(90.0, abs=1.0)
     wide = Polygon([(0, 0), (60, 0), (60, 5), (0, 5)])
     assert abs(principal_angle_deg(wide)) == pytest.approx(0.0, abs=1.0)
+
+
+def _cols_at(poly: Polygon, angle_deg: float, row_mm: float = 0.4) -> int:
+    rotated = affinity.rotate(poly, -angle_deg, origin=(0, 0), use_radians=False)
+    return len(_columns(_row_spans(rotated, row_mm)))
+
+
+def _diagonal_staircase() -> Polygon:
+    """Six overlapping squares stepping diagonally — a shape whose long axis
+    BY AREA is genuinely diagonal (so `principal_angle_deg` measuring 45deg
+    there is correct, not a bug), but whose STAIR STRUCTURE means sewing
+    rows along that diagonal forks/merges constantly (13 columns measured),
+    while rows nearly perpendicular to the stairs cross the whole shape in
+    one unbroken sweep (1 column measured). Exactly the gap
+    `best_fill_angle_deg` closes: a real long axis that is nonetheless a bad
+    row direction for THIS shape's structure.
+    """
+    step, size = 4.0, 5.0
+    squares = [Polygon([(i * step, i * step), (i * step + size, i * step),
+                        (i * step + size, i * step + size), (i * step, i * step + size)])
+              for i in range(6)]
+    return unary_union(squares)
+
+
+def test_best_fill_angle_deg_finds_a_row_direction_pca_misses():
+    stairs = _diagonal_staircase()
+    pca = principal_angle_deg(stairs)
+    assert pca == pytest.approx(45.0, abs=0.5), "sanity: the long axis by area really is diagonal"
+    pca_cols = _cols_at(stairs, pca)
+    assert pca_cols > 10, "sanity: sewing straight along the diagonal really does fork/merge a lot"
+
+    chosen = best_fill_angle_deg(stairs, 0.4)
+    chosen_cols = _cols_at(stairs, chosen)
+    assert chosen != pytest.approx(pca, abs=0.1), "the sweep must pick something other than plain PCA here"
+    assert chosen_cols == 1, "a near-perpendicular row direction crosses this stair shape in one column"
+    assert chosen_cols < pca_cols
+
+
+def test_best_fill_angle_deg_never_does_worse_than_plain_pca():
+    """Including PCA's own angle as one of the swept candidates means the
+    result can only tie or beat it, never lose to it — checked on every
+    fixture shape already in this file, not just the diagonal staircase
+    built to demonstrate an improvement."""
+    for poly in (RECT, RING, _diagonal_staircase()):
+        pca_cols = _cols_at(poly, principal_angle_deg(poly))
+        chosen_cols = _cols_at(poly, best_fill_angle_deg(poly, 0.4))
+        assert chosen_cols <= pca_cols
+
+
+def test_best_fill_angle_deg_matches_pca_exactly_when_pca_is_already_optimal():
+    """RECT's PCA angle (0deg, the long axis of a plain rectangle) already
+    gives the minimum possible column count (1) — the sweep must return
+    that EXACT angle, not a same-column-count-but-different candidate, so a
+    shape that was already fine keeps generating byte-identical output."""
+    assert best_fill_angle_deg(RECT, 0.4) == pytest.approx(principal_angle_deg(RECT), abs=1e-9)
+
+
+def test_stitch_shape_uses_the_swept_angle_when_none_is_given():
+    """End-to-end: an explicit angle still wins (unchanged precedence), but
+    angle_deg=None now resolves through best_fill_angle_deg instead of
+    plain principal_angle_deg — checked by comparing the actual row
+    direction each produces on the diagonal staircase, where the two
+    genuinely disagree."""
+    stairs = _diagonal_staircase()
+    pca = principal_angle_deg(stairs)
+    swept = best_fill_angle_deg(stairs, machine.FILL_ROW_MM)
+    assert swept != pytest.approx(pca, abs=0.1)
+
+    explicit_runs, _ = stitch_shape(stairs, "S1", angle_deg=pca, row_mm=machine.FILL_ROW_MM,
+                                    stitch_mm=4.0, underlay_style="none", trim_at_mm=3.0)
+    assert explicit_runs, "an explicit angle must still be honoured, not overridden by the sweep"
+
+    auto_runs, auto_report = stitch_shape(stairs, "S1", angle_deg=None, row_mm=machine.FILL_ROW_MM,
+                                          stitch_mm=4.0, underlay_style="none", trim_at_mm=3.0)
+    assert auto_runs and not auto_report["empty"]
+    # Fewer forced jumps at the swept angle: 13 columns' worth of forced
+    # travel decisions collapses to 1 column's worth.
+    explicit_jumps = sum(1 for r in explicit_runs if r.jump)
+    auto_jumps = sum(1 for r in auto_runs if r.jump)
+    assert auto_jumps <= explicit_jumps
 
 
 def test_a_shape_too_narrow_to_fill_is_reported_not_silently_sewn():
