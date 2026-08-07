@@ -92,7 +92,9 @@ from .warnings_codes import (APPLIQUE_COVER_MARGINAL,
                              APPLIQUE_CUTTING_LINE_SUPPRESSED,
                              APPLIQUE_FORCED_PRE_CUT,
                              APPLIQUE_NO_FABRIC_VISIBLE,
-                             APPLIQUE_PIECES_OVERLAP, APPLIQUE_STEP_EMPTY, warn)
+                             APPLIQUE_PIECES_OVERLAP,
+                             APPLIQUE_PRECUT_TOO_NARROW,
+                             APPLIQUE_STEP_EMPTY, warn)
 
 TRIM_IN_PLACE = "trim_in_place"
 PRE_CUT = "pre_cut"
@@ -492,6 +494,21 @@ def check_gates(poly: Polygon, geom: AppliqueGeometry) -> list[dict]:
                             "measured_mm": round(d, 3),
                             "floor_mm": machine.APPLIQUE_MIN_HOLE_DIAMETER_MM})
                 break
+
+    # Pre-cut's own, lower scissors floor (§2.12): the piece has to be hand-cut
+    # from sheet stock BEFORE placement, with no in-hoop trim step to fall back
+    # to. Trim-in-place has its own separate, higher floor above — the two are
+    # mutually exclusive by `geom.mode`, so a piece is never measured against
+    # both. `narrowest_passage_diameter`, not `min_inscribed_diameter`, for the
+    # same reason the trim-in-place gate uses it: a dog-bone-shaped piece can
+    # have a huge single inscribed circle in either lobe while its neck is
+    # nowhere near cuttable.
+    if geom.mode == PRE_CUT:
+        passage = narrowest_passage_diameter(poly)
+        if passage < machine.APPLIQUE_MIN_INSCRIBED_PRECUT_MM:
+            out.append({"code": APPLIQUE_PRECUT_TOO_NARROW,
+                        "measured_mm": round(passage, 3),
+                        "floor_mm": machine.APPLIQUE_MIN_INSCRIBED_PRECUT_MM})
 
     # §2.4 ships the "normal" default at 0.05 mm of headroom against a 0.50 mm
     # margin and says so. Below m_edge the §2.15 top failure mode is one
@@ -1080,7 +1097,8 @@ def applique_pass(planned, cfg: PipelineConfig, chart
 
     counts = {APPLIQUE_NO_FABRIC_VISIBLE: 0, APPLIQUE_CUTTING_LINE_SUPPRESSED: 0,
               APPLIQUE_FORCED_PRE_CUT: 0, APPLIQUE_COVER_MARGINAL: 0,
-              APPLIQUE_STEP_EMPTY: 0, APPLIQUE_COVER_WIDTH_CLAMPED: 0}
+              APPLIQUE_STEP_EMPTY: 0, APPLIQUE_COVER_WIDTH_CLAMPED: 0,
+              APPLIQUE_PRECUT_TOO_NARROW: 0}
     headroom: float | None = None
     clamp_bounds: set[str] = set()
 
@@ -1166,6 +1184,14 @@ def applique_pass(planned, cfg: PipelineConfig, chart
             APPLIQUE_FORCED_PRE_CUT,
             f"{n} piece{'s have' if n != 1 else ' has'} a hole too small to "
             "trim in the hoop, so it was switched to pre-cut.",
+            count=n))
+    n = counts[APPLIQUE_PRECUT_TOO_NARROW]
+    if n:
+        warnings.append(warn(
+            APPLIQUE_PRECUT_TOO_NARROW,
+            f"{n} pre-cut piece{'s have' if n != 1 else ' has'} a bottleneck "
+            "under 8 mm somewhere in the shape, too narrow to cut cleanly "
+            "with scissors before placing it.",
             count=n))
     n = counts[APPLIQUE_COVER_MARGINAL]
     if n:
