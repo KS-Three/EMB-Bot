@@ -114,6 +114,41 @@ def test_minimum_detail_is_physical_so_size_changes_what_survives():
     assert any(r.thread_number == "4531" for r in big.regions)
 
 
+def test_simplify_tol_mm_stays_fine_across_the_real_target_width_range():
+    """config.py's `simplify_tol_mm` docstring has the full measurement
+    writeup (2026-08-07): a fixed 0.2 mm tolerance is already scale-invariant
+    in the metric that matters (Hausdorff mm deviation — see
+    `test_run_tier.py`'s isolated sweep for that direct measurement). This is
+    the end-to-end companion, run through the REAL pipeline on a real
+    fixture rather than a synthetic contour: across this app's realistic
+    40-180 mm `target_width_mm` range, vertex count must grow smoothly with
+    size (more physical mm of a fixed-resolution source photo -> genuinely
+    more raw detail to preserve, not more simplification error) and never
+    collapse to a degenerate near-triangle at the small end. Measured on
+    `logo_whitebg.png`: 62 vertices at 40 mm, 101 at 90 mm, 125 at 150 mm —
+    sub-linear growth, the fixed source raster's own pixel budget naturally
+    caps it, no separate size-based tolerance formula needed to do that job.
+    180 mm is deliberately excluded here: at this fixture's native
+    resolution it crosses stage 1's resolution floor and triggers a Lanczos
+    upscale, a separate, pre-existing mechanism this measurement pass
+    confirmed is unrelated to `simplify_tol_mm` (see the config.py
+    docstring) — not what this test exists to pin.
+    """
+    def vtx_total(result):
+        return sum(len(r.polygon.exterior.coords) - 1 for r in result.regions
+                    if r.polygon and not r.polygon.is_empty)
+
+    small = run_stages(TESTDATA / "logo_whitebg.png", cfg(target_width_mm=40.0))
+    mid = run_stages(TESTDATA / "logo_whitebg.png", cfg(target_width_mm=90.0))
+    big = run_stages(TESTDATA / "logo_whitebg.png", cfg(target_width_mm=150.0))
+
+    v_small, v_mid, v_big = vtx_total(small), vtx_total(mid), vtx_total(big)
+    assert 45 <= v_small <= 80, v_small
+    assert 85 <= v_mid <= 120, v_mid
+    assert 105 <= v_big <= 145, v_big
+    assert v_small < v_mid < v_big, "vertex detail must grow with design size"
+
+
 def test_pipeline_reports_its_segmenter_and_scale(whitebg):
     assert whitebg.segmenter == "classical"
     assert whitebg.px_per_mm > 0

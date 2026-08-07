@@ -1264,6 +1264,18 @@ than kept as standing callouts). One thing this pass did NOT find any new
 evidence for: physical sew-out testing — still zero, see the cross-cutting
 item below, unchanged.
 
+Also landed 2026-08-07, same day: one Ember Design competitive-research
+backlog item closed out — measured whether `digitizer_core/config.py`'s
+fixed `simplify_tol_mm` (0.2 mm) needs to scale with `target_width_mm` the
+way Ember's equivalent tolerance scales with design size. Measured, not
+assumed: it does not — the fixed constant is already scale-invariant in
+real millimetres by construction (`px_per_mm` cancels out of the round
+trip), confirmed by a direct Hausdorff-deviation sweep (0.185-0.200 mm
+across `px_per_mm` 3.0-40.0) and full end-to-end runs on every testdata
+fixture at 40-180 mm. No pipeline behavior changed; two regression tests
+pin the finding. Full writeup: this file's "`simplify_tol_mm` design-size
+scaling" cross-cutting entry below. Branch `simplify-tol-mm-scaling-audit`.
+
 Prior update 2026-08-04, earlier the same day: docs refresh once PRs #8–#15
 had finished merging (written mid-batch, so it undercounted at first),
 touched up twice more that pass as #23 (meander tonal tier) then #22
@@ -1489,6 +1501,73 @@ builds on top of). The review's two accurate points — text detection in
 logos being a real gap, and this evaluation-corpus/harness gap — are exactly
 the two reflected in this update: the first is now closed by this pass's own
 feature, the second is captured here.
+
+---
+
+### `simplify_tol_mm` design-size scaling — measured 2026-08-07, no change justified
+
+One concrete backlog item this session's Ember Design competitive research
+pass adopted (that research itself is `docs/emberdesign-competitive-
+research-2026-08-07.md`, open as PR #89 at the time of this entry, not yet
+merged — see that PR/doc for the full competitive writeup; this entry is
+the follow-up that closes out its one `digitizer_core`-side action item):
+Ember's equivalent vectorization tolerance scales linearly with design size,
+clamped `[0.32, 2.5]`, while `digitizer_core/config.py`'s `simplify_tol_mm`
+is a fixed 0.2 mm constant regardless of `target_width_mm` — flagged as
+"could plausibly benefit from size-proportional scaling the way Ember's
+does."
+
+**Checked directly, not assumed, and the fixed constant is correct as-is —
+no change made.** Two things, measured independently:
+
+1. **The two are not a like-for-like comparison.** Ember's `/api/vectorize`
+   traces a raw uploaded image with no physical-size input at that layer at
+   all (their editor sets physical size later); their "size" is the traced
+   raster shape's own pixel dimensions — a proxy for "how much raw contour
+   noise this image probably has," not a physical output measurement.
+   EMB-Bot already has an explicit mm scale at this point (`px_per_mm`,
+   derived from `target_width_mm` in stage 1) and applies `simplify_tol_mm`
+   AFTER that conversion specifically so it measures real millimetres
+   independent of source resolution — a more direct solve to the problem
+   Ember's heuristic approximates without one. Their own floor (0.32 mm) is
+   already coarser than EMB-Bot's entire current default (0.2 mm), so
+   copying their formula/clamp would be a strictly coarser, unjustified
+   behavior change, not a calibration match.
+2. **Direct measurement confirms the fixed constant already behaves as a
+   genuine, scale-invariant physical-mm tolerance.** Held one synthetic
+   wavy contour's pixel geometry fixed and swept `px_per_mm` 3.0-40.0 (the
+   range this app's real 40-180 mm `target_width_mm` bound produces —
+   measured 4.0-34.1 px/mm running the full pipeline on every flat- and
+   photo-lane testdata fixture at 40/60/80/90/120/150/180 mm): the Hausdorff
+   deviation between the simplified and unsimplified contour stayed
+   0.185-0.200 mm across the ENTIRE swept range, while vertex count varied
+   26-226 exactly as it should (a design built from the same source pixels
+   genuinely has less raw detail to preserve at a smaller physical size, not
+   more error at a bigger one). Full end-to-end runs on the flat-lane
+   fixtures (`logo_whitebg.png`, `logo_alpha.png`, `ribbon_curve.png` —
+   immune to the photo lane's own segmenter-resolution confounds) showed the
+   same thing: smooth, sub-linear vertex growth with `target_width_mm` (62
+   vertices at 40 mm -> 101 at 90 mm -> 125 at 150 mm on `logo_whitebg.png`),
+   no blocky under-detail at the small end, no runaway blowup at the large
+   end. The one fixture that DID show a dramatic vertex swing at small sizes
+   (`photo/summit_badge.png`: 1654 vertices at 40 mm collapsing to 627 at
+   80 mm) traced entirely to a DIFFERENT, already-documented mechanism — the
+   sub-detail rescue path's own fixed 0.5 px floor (`stage4_vectorize.py`,
+   a few lines from `simplify_tol_mm`'s own use), confirmed via a
+   per-region breakdown: 1263 of those 1654 vertices came from `rescued_
+   small_shape=True` regions, which bypass `simplify_tol_mm` entirely — not
+   this constant, and out of this pass's scope to touch.
+
+Regression tests pinning both measurements: `tests/test_run_tier.py::
+test_simplify_tol_mm_realized_deviation_is_px_per_mm_invariant` (the
+isolated Hausdorff sweep) and `tests/test_pipeline.py::
+test_simplify_tol_mm_stays_fine_across_the_real_target_width_range` (the
+end-to-end vertex-count bounds on a real fixture). `simplify_tol_mm`'s own
+docstring in `config.py` carries the full writeup so a future pass doesn't
+re-litigate this from scratch without evidence. The flat-lane byte-identical
+golden (`testdata/flat_lane_golden.json`, pinned by `tests/
+test_flat_lane_byte_identical.py`) is untouched, as expected — this was a
+measurement-only pass, no pipeline behavior changed.
 
 ---
 
