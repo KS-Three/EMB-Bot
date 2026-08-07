@@ -11,7 +11,116 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-07 — `regularize_text_clusters` gains a third,
+**Last updated:** 2026-08-07 — `stage6_satin.py`'s "E missing its
+bottom-left corner" defect (root-caused, deliberately left open by PR #77 —
+see this doc's own 2026-08-06 entry below) is now root-caused for real and
+FIXED. Re-verified fresh before touching anything: rendered `photo/
+enthusiast_logo.png` at 90mm via `debugviz.stage6`, confirmed by direct
+render inspection that the defect is still present on current `main`
+(PRs #77-#80 all merged, none touched this) — a visible gray gap between
+the satin and the underlay's own boundary trace at the glyph's flush
+corner. Also re-checked the "N" PR #77 flagged as possibly-short: its satin
+coverage bounds now match its polygon bounds to within 0.008mm on every
+side — **not present**, confirming the earlier independent re-measurement
+this doc already noted.
+
+**Real root cause, and it is NOT what PR #77's own investigation
+suspected.** The junction machinery it named (`_extend_to_cap`,
+`_retract_cap_corner`, `_merge_through_junctions`) is innocent: traced
+directly, the stem's own medial axis welds through all three of the E's
+T-junctions into one both-ends-free stroke exactly as designed, and
+`_extend_to_cap` lands each of its two caps within 0.15mm of the glyph's
+real corner. The actual bug is one step later, in `_short_stitch_guard`
+(same file): the cross one station in from a cap is a real, keepable
+stitch on its own (measured 0.57-0.60mm, comfortably over
+`SATIN_MIN_CROSS_MM`'s 0.5mm floor) — but that station's same-rail step off
+the cap is short enough to trip the guard, whose pull-toward-middle is
+sized for a WIDE curve (35%, capped at an absolute 0.6mm — fine when a
+cross is several mm) and, applied to an already-narrow cross, pulls it
+under the floor. `satin_stroke`'s degenerate-cross filter then drops it a
+few lines later for a reason that has nothing to do with why that filter
+exists (an actual same-point pinch) — and the corner sews as bare fabric
+even though the cap machinery it was blamed for did its job correctly.
+Confirmed by direct instrumentation of the real code path (not a
+reimplementation) on both the real fixture and an isolated synthetic
+"E"-shaped polygon carrying the identical multi-junction topology, before
+and after.
+
+**Fix:** `_pull_short` (called from `_short_stitch_guard`) now bounds its
+pull so it can never take a cross under `SATIN_MIN_CROSS_MM` itself — a
+pull that would have landed the result below the floor lands AT the floor
+(with a 1% margin so float rounding in the two `dist()` calls along the
+way can't undershoot it) instead of past it. This is a general fix, not a
+per-letter patch: it changes one shared helper every satin column's
+short-stitch guard already goes through, for the specific case (a
+near-floor cross whose same-rail step is short) that is possible at ANY
+cap zone, corner, or tight curve — not gated on being near a junction or a
+specific shape. Blast radius acknowledged honestly: this touches the
+short-stitch guard's behavior for every satin shape in the app, satin
+being `stage6_satin.py`'s whole reason for existing. What kept the change
+narrow in practice: the new bound only ever binds when a pull would
+otherwise cross the floor — a curve with real room to spare (the guard's
+normal case, crosses several mm wide) never reaches it, so it is a no-op
+there by construction, not by luck.
+
+Visual re-verification, same method as the reproduction: the fixture's
+"E" now shows a stitch landing 0.32mm from its flush corner (was 0.59mm) —
+closer to the true vertex, not a residual gap eliminated to zero (a
+mathematical corner is a zero-width point; no satin cross can land exactly
+on it without becoming the same kind of degenerate stitch the guard
+exists to prevent). Before/after crops of the corner, rendered directly
+from the real polygon and the real `satin_shape` output (not the
+composite debug render, for a distraction-free comparison), confirm the
+gray gap visibly closes. The glyph's OTHER flush corner (bottom bar) was
+already inside the floor before this fix (0.36mm both before and after —
+a different station's parity happened not to trigger the guard there) and
+is unchanged, not a follow-up gap: a pre-existing non-issue this pass
+confirmed rather than assumed. One labeling caveat, stated plainly rather
+than glossed over: "top"/"bottom" here is this pass's own render
+convention (y-down, verified against a labeled direct render of the
+glyph, not assumed) — which of the E's two flush corners Kent's own eyes
+called "bottom-left" when he first reported this cannot be cross-verified
+without his original screenshot. What IS verified: a genuine,
+reproducible flush-corner coverage gap, with the exact symptom described
+(bare fabric against the underlay's own boundary trace) and the exact
+geometry described (a stem crossing multiple T-junctions), was found and
+fixed on this glyph.
+
+New regression tests, `tests/test_satin.py`: a synthetic `E_LETTERFORM`
+polygon (proportions taken directly from the real fixture's own vectorized
+"E", translated to the origin) plus `test_a_stem_crossing_three_junctions_
+welds_into_one_stroke` (confirms the fixture actually exercises the
+multi-junction topology before trusting the second test) and
+`test_stem_free_end_reaches_its_own_flush_corner` (the coverage
+regression; fails on pre-fix code at 0.59mm, passes post-fix at 0.32mm —
+verified failing on the reverted code, not just passing on the fixed one).
+Targeted suites green: `test_satin.py` **51/51** (49 existing + 2 new),
+`test_flat_lane_byte_identical.py` **6/6**, `test_preflight.py`/
+`test_stages.py`/`test_pushcomp.py`/`test_chaining.py` **169/169**
+combined. Golden impact, checked by diff rather than assumed: only
+`photo/enthusiast_logo.png`'s entry in `flat_lane_golden.json` moved
+(regenerated the same way the doc's own prior precedent did — one key,
+not a full re-run); `logo_whitebg.png`/`logo_alpha.png`/`ribbon_curve.png`
+came back byte-identical. On the moved entry, `shape_ids`/`areas_mm2`/
+`warnings`/`stitch_count` are all unchanged (2363 both before and after)
+— only `stitch_coords` moved, and by a wide margin (1983 of 2363 entries),
+which measured out as a benign downstream cascade rather than a new
+defect: re-ran `preflight.run_preflight` on the same fixture before/after
+and got the same score (88/B), the same single finding
+(`TRIM_HEAVY`, essentially unchanged), and near-identical coverage metrics
+(`coverage_max` 4.45 both, `coverage_area_mm2` 630→631) — consistent with
+a few points' worth of real change early in one shape's sew order
+cascading through Laws 27-29's structural entry-point selection for every
+shape sewn after it, not with anything escaping its shape or overlapping
+wrong. Three other fixtures (`logo_alpha.png`, `logo_whitebg.png`,
+`ribbon_curve.png`) re-rendered and visually inspected: clean, no
+starburst, no new gaps — `ribbon_curve.png` in particular is the fixture
+`test_a_satin_free_end_does_not_fan_into_a_starburst` pins in detail for
+exactly this guard's earlier, unrelated fix, and it still passes. Full
+digitizer suite **not** re-run locally per this environment's own standing
+caution (COOKBOOK.md); CI runs it on the PR.
+
+Prior update below, still 2026-08-07 — `regularize_text_clusters` gains a third,
 independent safety layer on top of the selective-regularization fix directly
 below (PR #77, `fix-lettering-defects-hole-and-regularization`, still open/
 draft, not yet merged to `main` — this work stacks on that branch; see "Not
@@ -135,7 +244,14 @@ the third open and documented rather than rushing a wide-blast-radius patch.
   (`tests/test_satin.py` updated with the real evidence for both directions;
   visual re-render confirms clean parallel satin, not a starburst).
 - **"E" missing its bottom-left corner / "N" reading short — ROOT-CAUSED,
-  left OPEN.** Confirmed real via direct render crops (bare unstitched
+  left OPEN. CLOSED 2026-08-07** — see this doc's newest entry at the top:
+  the actual mechanism was not the junction/cap-extension machinery this
+  entry's own investigation suspected (that traced out innocent), but
+  `_short_stitch_guard`'s pull-toward-middle taking an already-adequate
+  near-corner cross under `SATIN_MIN_CROSS_MM`. The "N" symptom is
+  confirmed NOT present (coverage bounds match its polygon to 0.008mm).
+  Original write-up kept below for the investigation trail. Confirmed real
+  via direct render crops (bare unstitched
   fabric exactly where the underlay's own boundary trace shows the true
   polygon corner). Confirmed NOT a text-cluster or enclosed-hole defect —
   the wordmark's satin letters go through the ordinary `stage6_satin.py`
