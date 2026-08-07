@@ -61,6 +61,106 @@ skeleton with too little material to clear the sewability floor once
 buffered, a buffer that returns more than one disconnected piece, or an
 invalid result) rather than a scope restriction decided in advance.
 
+## Candidate filters (classical connected-component / Stroke Width
+Transform literature, added after the above shipped)
+
+`_candidates` originally compared only each shape's MEAN stroke half-width
+for cross-shape similarity, discarding the per-pixel distribution
+`shapefield.build_shape_field` already computes. Three more, cheap,
+classical-CV filters tighten the same function, all measured against the
+real benchmark fixture (`enthusiast_logo.png` @ 90 mm, PRE-regularization —
+`_candidates` runs inside `detect_text_clusters`, which is called before
+`regularize_text_clusters` ever redraws a member's polygon, so that is the
+geometry these thresholds had to be calibrated against, not the
+already-regularized, artificially-uniform-width result):
+
+- **Stroke-width coefficient of variation** (`STROKE_CV_MAX`): a shape whose
+  per-pixel stroke half-width varies a lot relative to its own mean is more
+  likely a part-letter/part-blob fragment than a real, evenly-stroked glyph
+  — the Stroke Width Transform literature's own signal (Epshtein/Ofek/Wexler
+  2010), applied here to a shape's internal consistency rather than as a
+  transform in its own right. The fixture's 14 real letters measure CV
+  0.027-0.235; three sibling rescued shapes that are NOT part of that word
+  (segmentation fragments riding inside real letters' bounding boxes — see
+  the nesting filter below) measure 0.401-0.461, a clean gap.
+- **Aspect-ratio bounds** (`ASPECT_RATIO_MIN`/`MAX`): the same 14 real
+  letters are all portrait, width/height 0.107-0.964 (every glyph in this
+  word is taller than wide, as expected of Latin uppercase); the same three
+  non-member fragments are landscape, 1.778-2.125. The bounds leave real
+  margin on both sides of the measured letter range (room for a thinner
+  "I"/"l" stroke or a wider "M"/"W" than this fixture happens to contain)
+  while staying well clear of the measured non-letter fragments.
+- **Bbox-nesting exclusion** (`_drop_nested`): a candidate whose bbox is
+  fully contained inside another candidate's (larger) bbox is dropped. Real
+  letters in a row sit side by side, never nested inside a sibling's
+  footprint; on the real fixture, the same three non-member fragments above
+  each nest inside one of the 14 real letters' bboxes — a THIRD, independent
+  confirmation that they are segmentation artifacts, not glyphs of their own
+  (they are also already excluded by height/CV/aspect on this fixture, but
+  nesting catches the shape of the failure directly rather than relying on
+  those other signals happening to agree).
+
+Synthetic axis-aligned rectangles (this module's own test fixtures, and any
+future one) score noticeably WORSE on stroke-width CV than a real font
+glyph of similar proportions: a solid rectangle's medial axis is one
+straight segment, so the taper at its two ends (universal to any stroke's
+free tip) is a much larger fraction of its total skeleton length than a
+real letter's — a real letter typically has more total skeleton material
+(corners, serifs, multiple joined strokes) diluting the same taper effect.
+Measured directly: a 0.9x1.8mm synthetic rectangle scores CV 0.458, well
+above even the real fixture's non-letter fragments. This module's test
+fixtures use thinner rectangles (~0.15-0.35mm wide at 1.8mm tall, CV
+0.21-0.29) specifically so they clear `STROKE_CV_MAX` — not because letters
+are always that thin, but because a plain rectangle is not a faithful
+stand-in for a real glyph's stroke-consistency signal at the width this
+module previously used, and the alternative (loosening `STROKE_CV_MAX`
+enough for a 0.9mm-wide rectangle to pass) would raise the real threshold
+above the real fixture's own measured non-letter fragments, making the
+filter unable to catch the one concrete case it exists for.
+
+## MSER — investigated, deliberately NOT built (measured, not assumed)
+
+`cv2.MSER_create()` was investigated as a possible companion signal, per
+scene-text-detection literature's use of Maximally Stable Extremal Regions:
+does a candidate remain a stable blob across a SWEEP of intensity
+thresholds, a property real letterform strokes exhibit under uniform thread
+color. Two possible fits were considered — upstream, in
+`stage3_segment.resolve_small_regions`, to catch lettering that merged into
+a bigger neighbor's mask before ever becoming its own `rescued_small_shape`
+region; and as a direct per-shape confidence signal here (`detect_text_
+clusters` already receives `p: Prep`, whose `p.rgb` is the real prepped
+raster — the plumbing to read source pixels already exists, unused until
+now).
+
+Measured directly against `enthusiast_logo.png` — both `p.rgb` (the prepped
+raster `detect_text_clusters` actually receives) and the raw source PNG
+before any pipeline processing, at the default `MSER_create()` parameters
+and at `delta`/`min_area` swept down to 1px — `cv2.MSER_create().
+detectRegions()` returns **zero** regions everywhere. The reason is
+structural, not a fixture accident: the raw source file itself has exactly
+3 unique grayscale values (`np.unique`), and the subline text region
+specifically has exactly 2 (pure foreground/background, no antialiasing
+gradient at all). MSER's whole mechanism is tracking how a thresholded
+blob's area changes as the threshold sweeps across a RANGE of levels; with
+only 1-2 meaningful threshold crossings in the entire image, there is no
+multi-level intensity landscape for that sweep to measure stability across,
+and the algorithm's own internal stability check (`_max_variation`) has
+nothing to pass or fail — MSER isn't weakly effective here, it structurally
+cannot fire.
+
+This is not specific to one fixture: this module's OWN scope is flat-lane
+art (`MASTER_SCOPE.md`'s own text-cluster entry: "this feature only acts on
+`rescued_small_shape`-flagged Regions, a flat-lane-only concept") — hard
+vector-style edges, few solid colors, by construction of the "flat"
+classification this pipeline already gates on (`stage0_classify.py`). MSER
+earns its keep on photographs (camera noise, lighting gradients, JPEG
+blur — smooth multi-level intensity landscapes with real thresholds to
+sweep). A domain that is, by design, the opposite of that is not a
+promising target for it, and the real measurement above confirms it, at
+both the pre- and post-quantization stage, not just in theory. Per this
+feature's own scoping conversation: "if any of the three turns out not to
+be worth building once you're deep in it... it's fine to build the other
+two well and document honestly why you left one out" — this is that case.
 ## OCR-suggested text (2026-08-07 — Studio "Convert to text" entry point)
 
 Everything above this section is deliberately OCR-free — see the opening
@@ -128,6 +228,8 @@ from shapely.geometry import LineString, MultiLineString, Polygon
 
 from . import machine
 from .regions import Region
+from .shapecontext import shape_context_distance
+from .shapefield import ShapeField, build_shape_field
 from .shapefield import ShapeField, build_shape_field, rasterize_polygon
 from .stage1_prep import Prep
 from .stage6_satin import _merge_through_junctions, _prune_spurs, _skeleton_edges
@@ -162,38 +264,149 @@ PROXIMITY_HEIGHT_MULT = 3.0
 # ordinary letter-to-letter geometry noise.
 SIMILARITY_RATIO = 0.5
 
+# A candidate's per-pixel stroke half-width, measured at every skeletal
+# pixel `shapefield.build_shape_field` already gives us, must not vary by
+# more than this fraction of its own mean (coefficient of variation =
+# std/mean) to be considered an evenly-stroked glyph rather than a
+# part-letter/part-blob fragment. See the module docstring's "Candidate
+# filters" section for the real measurements this threshold sits between:
+# the benchmark fixture's 14 real letters (0.027-0.235) and its 3 non-member
+# fragments (0.401-0.461).
+STROKE_CV_MAX = 0.32
+
+# A candidate's bbox width/height ratio must fall in this range. See the
+# module docstring: the benchmark fixture's 14 real letters measure
+# 0.107-0.964 (portrait), its 3 non-member fragments 1.778-2.125
+# (landscape) -- these bounds leave real margin either side of the letters'
+# measured range while staying well clear of the fragments'.
+ASPECT_RATIO_MIN = 0.05
+ASPECT_RATIO_MAX = 1.4
+
+# `regularize_text_clusters`'s before/after Shape Context distance
+# (`shapecontext.shape_context_distance`) gate: a cluster member whose
+# post-regularization polygon scores ABOVE this against its own
+# pre-regularization polygon is judged to have been structurally changed
+# (a corner dropped, a hole filled), not just visually smoothed to a
+# consistent stroke weight, and the geometry replacement is skipped -- same
+# fail-open discipline as every other guard in this function. Calibrated
+# against real+synthetic measurements (not the fixture alone, since none of
+# its 14 members happen to regularize badly): the benchmark fixture's 14
+# members, which the existing test suite already asserts regularize
+# cleanly, measure 0.033-0.106; a synthetic branching ("L") letterform
+# regularized at its own correctly-matched target radius (a realistic
+# healthy case, not a straight bar) measures 0.173; the same shape
+# regularized at a radius mismatched by 2x from its true stroke half-width
+# -- itself within what `SIMILARITY_RATIO`'s 0.5 floor already permits two
+# clustered members to differ by -- measures 0.285 with its buffered area
+# already 2.4x the original. 0.25 sits above every measured healthy case
+# (with margin) and below every measured damaging one.
+SHAPE_CONTEXT_MAX_DIST = 0.25
+
 
 @dataclass(frozen=True)
 class _Candidate:
     region: Region
     height_mm: float
+    width_mm: float
     stroke_mean_mm: float
+    stroke_cv: float
     cx: float
     cy: float
+
+
+@dataclass(frozen=True)
+class _StrokeStats:
+    """Per-pixel stroke half-width statistics at a shape's own skeleton:
+    MEAN (the original similarity/median signal) and CV = std/mean
+    (coefficient of variation, the internal-consistency signal `_candidates`
+    filters on -- see `STROKE_CV_MAX`)."""
+    mean_mm: float
+    cv: float
+
+
+def _skeleton_stroke_stats(region: Region) -> _StrokeStats | None:
+    """Mean and coefficient-of-variation of stroke half-width (mm) at the
+    shape's own skeleton, from ONE `build_shape_field` call, or None if the
+    polygon is too degenerate to field (`build_shape_field`'s own guard) or
+    somehow skeletonless (a mask with no medial axis at all)."""
+    field = build_shape_field(region.polygon)
+    if field is None or not field.skel.any():
+        return None
+    widths = field.dist[field.skel] / field.scale
+    mean = float(np.mean(widths))
+    cv = float(np.std(widths) / mean) if mean > 0 else 0.0
+    return _StrokeStats(mean_mm=mean, cv=cv)
 
 
 def _stroke_stats_mm(region: Region) -> float | None:
     """Mean stroke half-width (mm) at the shape's own skeleton, or None if
     the polygon is too degenerate to field (`build_shape_field`'s own guard)
-    or somehow skeletonless (a mask with no medial axis at all)."""
-    field = build_shape_field(region.polygon)
-    if field is None or not field.skel.any():
-        return None
-    return float(np.mean(field.dist[field.skel])) / field.scale
+    or somehow skeletonless (a mask with no medial axis at all). Thin
+    wrapper over `_skeleton_stroke_stats` kept as its own function: existing
+    callers outside this module (`tests/test_pipeline.py`) import it
+    directly for the mean alone."""
+    stats = _skeleton_stroke_stats(region)
+    return stats.mean_mm if stats is not None else None
+
+
+def _drop_nested(cands: list[_Candidate]) -> list[_Candidate]:
+    """Exclude a candidate whose bbox is fully contained within another,
+    larger candidate's bbox. Real letters in a row sit side by side, never
+    nested inside a sibling's footprint; a rescued small shape whose bbox
+    nests inside another candidate's is far more likely a segmentation
+    fragment riding inside a real glyph's footprint than an independent
+    letter of its own -- see the module docstring's "Candidate filters"
+    section for the real fixture evidence. Ties (identical bbox, so neither
+    is strictly larger) exclude neither side -- there is no basis to prefer
+    one over the other, and dropping both would silently lose real
+    candidates over a coincidence.
+    """
+    def bounds(c: _Candidate) -> tuple[float, float, float, float]:
+        return c.region.polygon.bounds
+
+    def area(b: tuple[float, float, float, float]) -> float:
+        x0, y0, x1, y1 = b
+        return (x1 - x0) * (y1 - y0)
+
+    boxes = [bounds(c) for c in cands]
+    out: list[_Candidate] = []
+    for i, c in enumerate(cands):
+        bx0, by0, bx1, by1 = boxes[i]
+        nested = False
+        for j, other in enumerate(boxes):
+            if i == j:
+                continue
+            ox0, oy0, ox1, oy1 = other
+            if (ox0 <= bx0 and oy0 <= by0 and ox1 >= bx1 and oy1 >= by1
+                    and area(other) > area(boxes[i])):
+                nested = True
+                break
+        if not nested:
+            out.append(c)
+    return out
 
 
 def _candidates(regions: list[Region]) -> list[_Candidate]:
-    out: list[_Candidate] = []
+    raw: list[_Candidate] = []
     for r in regions:
         if not r.meta.get("rescued_small_shape"):
             continue
-        stroke_mm = _stroke_stats_mm(r)
-        if stroke_mm is None:
+        stats = _skeleton_stroke_stats(r)
+        if stats is None:
+            continue
+        if stats.cv > STROKE_CV_MAX:
             continue
         x0, y0, x1, y1 = r.polygon.bounds
-        out.append(_Candidate(region=r, height_mm=y1 - y0, stroke_mean_mm=stroke_mm,
+        width_mm, height_mm = x1 - x0, y1 - y0
+        if height_mm <= 0 or width_mm <= 0:
+            continue
+        aspect = width_mm / height_mm
+        if not (ASPECT_RATIO_MIN <= aspect <= ASPECT_RATIO_MAX):
+            continue
+        raw.append(_Candidate(region=r, height_mm=height_mm, width_mm=width_mm,
+                               stroke_mean_mm=stats.mean_mm, stroke_cv=stats.cv,
                                cx=(x0 + x1) / 2.0, cy=(y0 + y1) / 2.0))
-    return out
+    return _drop_nested(raw)
 
 
 def _similar(a: float, b: float, ratio: float) -> bool:
@@ -381,6 +594,22 @@ def regularize_text_clusters(regions: list[Region], p: Prep) -> None:
     completely untouched and `meta["text_cluster_regularize_skipped"] =
     True` is set instead. Never raises, never crashes the pipeline.
 
+    A SECOND, purely-geometric guard runs after the buffer already passed
+    every check above: `shapecontext.shape_context_distance` between the
+    ORIGINAL polygon and the candidate buffered replacement (a glyph-
+    plausibility gate, Belongie/Malik/Puzicha 2002's Shape Context
+    descriptor — see that module's own docstring). A valid, sewable buffer
+    can still be a bad regularization: a target radius mismatched enough
+    from a member's own true stroke width (already possible within
+    `SIMILARITY_RATIO`'s 0.5 floor, see `SHAPE_CONTEXT_MAX_DIST`'s
+    docstring) inflates or blows out real structure — a corner, a hole —
+    while the buffer stays perfectly valid and comfortably sewable. This is
+    NOT character recognition — a pure structural-similarity check between
+    two versions of the SAME shape, the same "no OCR anywhere in this
+    slice" discipline the module docstring states elsewhere. The measured
+    distance is recorded either way (`meta["text_cluster_shape_context_dist"]`)
+    for diagnostics, whether or not it crosses the gate.
+
     `p` is accepted, not read — same reason `detect_text_clusters` accepts
     it: signature parity with this module's other post-vectorization pass,
     not because today's algorithm needs it.
@@ -393,6 +622,13 @@ def regularize_text_clusters(regions: list[Region], p: Prep) -> None:
         new_poly = _skeleton_buffer_polygon(field, radius_mm) if field is not None else None
         if new_poly is None:
             r.meta["text_cluster_regularize_skipped"] = True
+            continue
+        sc_dist = shape_context_distance(r.polygon, new_poly)
+        if sc_dist is not None:
+            r.meta["text_cluster_shape_context_dist"] = sc_dist
+        if sc_dist is not None and sc_dist > SHAPE_CONTEXT_MAX_DIST:
+            r.meta["text_cluster_regularize_skipped"] = True
+            r.meta["text_cluster_regularize_shape_changed"] = True
             continue
         r.polygon = new_poly
         r.area_mm2 = new_poly.area
