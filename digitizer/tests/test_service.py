@@ -484,6 +484,41 @@ def test_review_payload_carries_text_cluster_fields_over_http(client):
         assert s["text_candidate"] is False
 
 
+def test_review_payload_carries_ocr_suggested_text_fields_over_http(client):
+    """The service-layer half of OCR-suggested text (Studio "Convert to
+    text" entry point): `_review_payload` echoes `ocr_char`/`ocr_confidence`
+    straight off `Region.meta`, purely additive, read-only, no
+    `_OVERRIDE_KEYS` entry -- same contract shape as `text_candidate`/
+    `text_cluster_id` just above.
+
+    Uses the real benchmark fixture at its documented 90 mm size, same as
+    the text-cluster test above, so this exercises the real HTTP seam.
+    """
+    review = _digitize(client, {"target_width_mm": 90.0, "preflight": False},
+                        art=ENTHUSIAST_LOGO)["review"]
+    shapes = review["shapes"]
+
+    assert all({"ocr_char", "ocr_confidence"} <= set(s) for s in shapes)
+
+    untagged = [s for s in shapes if s["text_cluster_id"] is None]
+    assert untagged
+    for s in untagged:
+        assert s["ocr_char"] is None
+        assert s["ocr_confidence"] is None
+
+    tagged = [s for s in shapes if s["text_cluster_id"] is not None]
+    assert tagged
+    saw_a_real_character = False
+    for s in tagged:
+        assert s["ocr_char"] is None or (isinstance(s["ocr_char"], str) and len(s["ocr_char"]) == 1)
+        conf = s["ocr_confidence"]
+        assert conf is None or (isinstance(conf, float) and 0.0 <= conf <= 100.0)
+        if s["ocr_char"] is not None:
+            saw_a_real_character = True
+    assert saw_a_real_character, \
+        "the real benchmark fixture must produce at least one real OCR character over HTTP"
+
+
 def test_an_edit_is_a_different_job_not_a_stale_cache_hit(client):
     """The cache keys on the canonical config: two configs differing only in
     shape_overrides are two jobs; the same edit twice is one."""

@@ -30,6 +30,16 @@ python -m venv .venv
 .venv/Scripts/python -m pip install -e ".[dev]"     # Windows
 ```
 
+`textcluster.py`'s OCR-suggested-text pass (Studio "Convert to text") needs
+the system `tesseract-ocr` binary — a separate, non-pip install
+(`pytesseract` is just a thin wrapper). `apt-get install tesseract-ocr` /
+`brew install tesseract` / the Windows installer at
+https://github.com/UB-Mannheim/tesseract/wiki. Missing it does not break the
+pipeline — every OCR call fails open (see `textcluster.py`'s
+`_ocr_glyph_guess`) — it just means every tagged member's OCR fields read
+`None`, same as a below-threshold read, and Studio's "Convert to text" seed
+always falls back to an empty textarea.
+
 ## Run
 
 ```
