@@ -11,7 +11,15 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-07 — the `summit_badge.png` black-complex
+**Last updated:** 2026-08-07 — documentation-only pass, no code changed:
+recorded this session's competitive research against Ember Design
+(`emberdesign.net`) as a new cross-cutting backlog item (see "Ember Design
+competitive research" below) rather than folding it into any capability
+area's status, since none of it changes what's built or how much it's
+trusted today. Full evidence trail: `docs/emberdesign-competitive-research-
+2026-08-07.md`.
+
+Prior update below, still 2026-08-07 — the `summit_badge.png` black-complex
 regression the SLIC -> SEEDS superpixel swap shipped as a documented,
 `xfail(strict=True)`-marked defect (see that entry further down, kept
 verbatim) is **RESOLVED**, by a new mechanism rather than by any retuning of
@@ -1489,6 +1497,88 @@ builds on top of). The review's two accurate points — text detection in
 logos being a real gap, and this evaluation-corpus/harness gap — are exactly
 the two reflected in this update: the first is now closed by this pass's own
 feature, the second is captured here.
+
+### Ember Design competitive research — new backlog items, not a status change
+
+Three research passes against `emberdesign.net` (a browser-based embroidery
+digitizing competitor), run 2026-08-07: a screenshot UI/UX walkthrough, an
+end-to-end Chrome-extension-driven exploration of the live editor, and a
+build-artifact fingerprinting pass identifying their actual client-side tech
+stack and reverse-engineering their auto-digitize call path. None of it
+required bypassing authentication — passes 2 and 3 read client-side
+JavaScript Ember's own servers already send to any visitor's browser during
+ordinary use, the same thing devtools/View Source does. Full evidence
+trail, with exact formulas/library names/bug descriptions:
+`docs/emberdesign-competitive-research-2026-08-07.md`.
+
+**The prioritization decision matters more than the findings themselves.**
+Resolved via a pressure-tested discussion, not assumed: feature-parity work
+is real and belongs on the roadmap, but under a **standing priority rule,
+not a one-time gate** — it only gets picked up when nothing trust/quality-
+related is currently open and actionable. A one-time gate was explicitly
+rejected because two of the three originally-proposed gating conditions
+(the sew-out session above; open-ended "continued core-quality work") are
+externally-scheduled or inherently ongoing and would never crisply resolve
+— parity work would never start under a literal gate. The practical
+consequence: an idea only earns priority *within* the backlog if it maps to
+something already independently flagged as a gap, not merely because a
+competitor has it.
+
+Under that filter, from the three passes:
+- **Promoted, real independent justification:**
+  - Evenly-spaced streamline fill — Ember ships this as a paid "Streamlines"
+    fill pattern (`ess`, evenly-spaced streamlines of a 2D vector field).
+    EMB-Bot already has the same algorithm built
+    (`digitizer_core/stage6_streamline.py`, a clean-room Jobard & Lefer
+    implementation, deliberately not adapted from the license-unverified
+    `embroidery-streamlines` reference repo), but scoped today to the
+    photo-classification auto-pipeline only ("technique row 10"). The open
+    item is exposing existing capability as a general, manually-selectable
+    fill type — not building the algorithm, which already exists and is
+    tested.
+  - Boustrophedon polygon decomposition at an arbitrary sweep angle
+    (Ember's `bcd`) — relevant to this doc's own long-standing fill-angle-
+    selection research (the Goldman-patent "test 16 candidate angles"
+    finding).
+  - A color-block sequencer UI view (Ember's "Sequencer: Colors" panel —
+    collapses shapes into color blocks with thread name/brand/shape count/
+    stitch-index range per block) — addresses a gap already found
+    independently this session: cross-color sequencing today has zero
+    geometric-adjacency signal (see area 1's sequencing-research notes).
+- **One concrete, low-risk, testable idea, not yet a backlog promotion
+  pending a real test:** Ember's raster-input simplification tolerance
+  scales with design size (`tolerance = min(2.5, max(0.32, 0.0028 *
+  size))`); EMB-Bot's `simplify_tol_mm` (`digitizer_core/config.py`) is a
+  fixed 0.2mm regardless of design size. Pairs with the already-backlogged
+  Visvalingam-Whyatt simplification-algorithm research as a second,
+  independent angle on the same vectorization step.
+- **Recorded as existing, explicitly not queued — much larger scope than
+  the above:** `ember-bridge`, a separate Tauri desktop app that terminates
+  Brother machines' own TLS protocol locally for direct-to-machine design
+  transfer, bypassing manual file export. A real, distinct product
+  capability EMB-Bot has no equivalent of; not comparable in scope or risk
+  to the items above.
+- **Two of EMB-Bot's own architecture choices validated, not changed, by
+  what was found:** server-side auto-digitizing (Ember's client bundles
+  were probed for every common ML-inference surface — ONNX, TensorFlow.js,
+  transformers.js, WebGPU/WebNN — and any LLM API reference — OpenAI,
+  Anthropic, Replicate, Bedrock, SageMaker — and none were found anywhere;
+  their `/api/vectorize` is architecturally server-side and, from the
+  client's own vantage point, indistinguishable from a classical
+  raster-to-SVG tracer, the same shape as EMB-Bot's own `digitizer_service`
+  split); and depending on a mature format library (`pyembroidery`) rather
+  than hand-rolling PES/DST/EXP/etc. readers/writers from scratch the way
+  Ember's own `/convert` module apparently does (no WASM, no third-party
+  format library found in that module at all).
+
+**One direct process lesson, not a feature idea:** Ember's own user manual
+documents keyboard shortcuts (`3 = circle, 4 = rectangle, 5 = pen, 6 =
+satin blocks`) that no longer match the shipped toolbar (`3 = satin
+blocks, 4 = pen`, circle/rectangle moved into a shapes flyout, and Text —
+not documented at all — added as a real toolbar entry). Real evidence that
+doc drift actively misleads users, not just a hygiene nitpick — consistent
+with, not a new argument for, this project's own existing discipline around
+keeping `MASTER_SCOPE.md`/`COOKBOOK.md` matched to shipped reality.
 
 ---
 
