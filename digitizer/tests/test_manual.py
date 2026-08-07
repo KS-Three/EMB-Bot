@@ -417,8 +417,20 @@ def test_missing_technique_is_rejected():
         build_manual_result(shape, cfg())
 
 
-@pytest.mark.parametrize("bad_tier", ["auto", "sketch", "zigzag", ""])
+@pytest.mark.parametrize("bad_tier", ["auto", "sketch", "streamline", "zigzag", ""])
 def test_unsupported_technique_is_rejected(bad_tier):
+    """"streamline" stays out of `VALID_TECHNIQUES` deliberately, same
+    reasoning the module docstring already gives for "sketch": both are
+    raster-reading tiers, and a manually-authored shape here has no raster
+    at all (no image was ever decoded — `PipelineResult.source_pixels` and
+    `px_per_mm` are both `None` by construction). Exposing "streamline" as
+    if it were selectable would either crash (`streamline_fill` dereferences
+    `source_pixels.rgb`) or, if silently no-opped, be a fill type that always
+    quietly sews tatami — worse than not offering it. This is the direct
+    opposite case from the review-screen `shape_overrides[...].tier`
+    override (`test_stage6_streamline.py`'s per-shape tests), which DOES
+    grow a "streamline" value precisely because that path already has real
+    source pixels to plumb through."""
     shape = [{"polygon": RECT, "technique": bad_tier, "thread_index": 0}]
     with pytest.raises(ValueError, match="technique"):
         build_manual_result(shape, cfg())

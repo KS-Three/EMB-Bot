@@ -843,6 +843,45 @@ def sequence(
                 # contract of every tonal tier in this chain.
                 runs, report = sketch_fill(p.region, source_pixels, cfg)
                 need_tatami = report["empty"]
+            elif (streamline or tier == "streamline") and source_pixels is not None:
+                # The streamline thread-paint tier (row 10): the design-wide
+                # preset OR this one shape's review-screen tier override —
+                # checked here, ahead of scanline/meander, for the identical
+                # reason the sketch branch above is checked first: a forced
+                # per-shape tier beats whatever technique the rest of the
+                # design sews with (the "shape-layers contract" precedence
+                # every other forced tier value already gets). This is also
+                # how a manually-classified (flat-lane) shape reaches
+                # streamline fill outside the photo auto-pipeline — the
+                # design can stay `fill_technique="tatami"` throughout and
+                # still carry one `tier: "streamline"` shape, exactly the
+                # way one shape can already carry `tier: "sketch"`.
+                #
+                # Direction-field source, decided once and not revisited
+                # per shape: `streamline_fill` always reads
+                # `directionfield.py`'s structure-tensor/ETF field over
+                # THIS design's own prepped raster (`source_pixels.rgb` —
+                # whatever art the job was given, photo or flat logo
+                # alike), never a shape-geometry-derived field (no medial-
+                # axis/skeleton tangent construction exists in this
+                # codebase for that, and building one would be a new
+                # clean-room algorithm, not a wiring change). That module's
+                # own coherence gate already makes this the right default
+                # for a flat-lane shape with no real texture: a genuinely
+                # flat, textureless region reads near-zero coherence and
+                # falls back to `RegionDirection.use_house_angle`'s constant
+                # field, which itself reads this shape's `fill_angle_deg`
+                # override first — the very same per-shape angle knob
+                # ordinary tatami fill already exposes — before the design-
+                # wide default. So a manually-selected streamline shape gets
+                # real image-structure-following lines where the art
+                # actually has texture, and clean user-controlled parallel
+                # lines (not a crash, not spaghetti) where it does not.
+                # Empty is honest (an all-highlight shape sews nothing) and
+                # falls through to tatami below rather than dropping
+                # artwork — the standing contract of every tonal tier here.
+                runs, report = streamline_fill(p.region, source_pixels, cfg)
+                need_tatami = report["empty"]
             elif scanline and source_pixels is not None:
                 # The explicit scanline_tonal opt-in beats the gradient
                 # class's blend routing — the caller already chose the mono
@@ -862,13 +901,6 @@ def sequence(
                 # nothing) and falls through to tatami below rather than
                 # dropping artwork.
                 runs, report = meander_fill(p.region, source_pixels, cfg)
-                need_tatami = report["empty"]
-            elif streamline and source_pixels is not None:
-                # Same contract again, thread-paint look: the explicit
-                # opt-in beats the gradient class's blend routing, empty is
-                # honest (an all-highlight shape sews nothing) and falls
-                # through to tatami below rather than dropping artwork.
-                runs, report = streamline_fill(p.region, source_pixels, cfg)
                 need_tatami = report["empty"]
             elif source_pixels is not None and source_pixels.gradient_class:
                 # Stage 0 classified the whole design "gradient" (the

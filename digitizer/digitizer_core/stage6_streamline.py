@@ -56,9 +56,29 @@ Travel between streamlines reuses `stage6_fill.travel_path` — straight
 inside the shape, along the edge, or an honest counted jump.
 
 Strictly opt-in: nothing routes here except stage 7 on
-`cfg.fill_technique == "streamline"`, and setting that flag is also what
-makes `pipeline.run_stages` carry source pixels forward for non-gradient
-classes — the flat lane grows no raster payload while the flag is off.
+`cfg.fill_technique == "streamline"` (design-wide) or one shape's
+review-screen `tier: "streamline"` override (shape-layers contract v1.6,
+added alongside `tier: "sketch"`'s per-shape form) — and setting either is
+also what makes `pipeline.run_stages` carry source pixels forward for
+non-gradient classes: the flat lane grows no raster payload while neither
+is set. Despite the module's row-10 framing (born in, and still primarily
+exercised by, the photo-digitizing plan), NEITHER opt-in path is gated on
+`design_class` anywhere in `stage7_sequence.py` — a manually-classified
+("flat") design can select streamline fill on one shape, or on the whole
+design, exactly like `tatami`/`contour`/`sketch` can. The direction field
+it reads is always `directionfield.py`'s structure-tensor/ETF field over
+this design's OWN prepped raster (`SourcePixels.rgb` — whatever art the
+job was given, not necessarily a photograph), never a shape-geometry-
+derived field (no medial-axis/skeleton tangent construction exists in this
+codebase for that): a flat-lane shape with real raster texture (an
+embossed logo, a scanned sketch, antialiased shading) gets genuine
+structure-following lines the same way a photo does, and a shape whose
+raster is genuinely flat/textureless gets the coherence gate's own
+documented fallback — evenly-spaced PARALLEL lines at the shape's
+`fill_angle_deg` override (or the house angle), never a crash or a
+degenerate spiral. See `stage7_sequence.stitch_one`'s streamline branch
+for the full per-shape precedence and the reasoning for not building a
+shape-geometry-derived field instead.
 
 THE MULTI-COLOR SEAM (second slice, built): the plan's full row 10 is
 per-color-LAYER streamline sets, dark→light spool decomposition (3-5 chart

@@ -11,6 +11,26 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
+**Last updated:** 2026-08-07 — streamline fill (`stage6_streamline.py`,
+photo plan technique row 10) gained a per-shape review-screen override
+(`shape_overrides[sid].tier == "streamline"`, contract v1.6), the same
+mechanism `tier == "sketch"` already uses — closing an item raised by
+Ember Design competitor research (their equivalent "Streamlines" fill ships
+as a generic, per-shape pattern choice, not photo-only). Branch
+`streamline-fill-flat-lane-override`. Full before/after, the direction-field
+design decision (reuse the existing raster/structure-tensor field
+unchanged, rather than build a new shape-geometry/medial-axis field — and
+why `manual.py`'s genuinely raster-less shapes deliberately do NOT get this
+technique), and the full test list live in area 1 below, in the paragraph
+starting "**Streamline fill grew a per-shape form, 2026-08-07**".
+Backend-and-Studio-UI-complete for this specific ask (a one-line
+`DigitizePanel.svelte` dropdown addition, matching Sketch's already-shipped
+pattern) — nothing stubbed. Area 1's Status/Confidence verdict is unchanged
+by this pass (additive wiring on an already-shipped, already-tested tier;
+not a quality or trust finding).
+
+Prior update below, still 2026-08-07:
+
 **Last updated:** 2026-08-07 — documentation-only pass, no code changed:
 recorded this session's competitive research against Ember Design
 (`emberdesign.net`) as a new cross-cutting backlog item (see "Ember Design
@@ -1687,7 +1707,104 @@ and its multi-colour layered follow-up (PR #25, decomposes a region into
 3–5 chart shades via `stage6_blend`'s own shade-selection machinery and
 traces one streamline set per shade, dark-to-light). Row 10 was the last
 one this doc was still tracking as open; all of rows 6/8/9/10 are now
-built. Row 13 (chart-restricted weighted k-medoids palette selection,
+built.
+
+**Streamline fill grew a per-shape form, 2026-08-07** (branch
+`streamline-fill-flat-lane-override`) — a competitor-research prompt (Ember
+Design ships an equivalent "Streamlines" fill as a generic, per-shape
+pattern choice, not photo-only; see `docs/emberdesign-competitive-research-
+2026-08-07.md` §"Pass 3" if that doc has landed on `main` by the time you
+read this — as of THIS pass it still lives on an unmerged
+`docs-emberdesign-competitive-research` branch/worktree, so this entry is
+self-contained rather than assuming a cross-cutting backlog row already
+exists to close out). **Before:** `stage6_streamline.streamline_fill` was
+reachable only design-wide (`cfg.fill_technique == "streamline"` — which,
+worth stating precisely, was already NOT gated to photo-classified designs
+anywhere in `stage7_sequence.py`; `test_stage6_sketch.py::
+test_sketch_technique_implies_the_detail_block` already ran it against
+`forced_class="flat"`). There was no way to force streamline fill on ONE
+shape inside an otherwise-tatami design the way `tier == "sketch"` (and
+`"satin"`/`"fill"`/`"run"`) already could. **After:** `shape_overrides[sid].
+tier == "streamline"` works exactly like `tier == "sketch"` does — the
+identical shape-layers per-shape-override mechanism (contract v1.6, not a
+parallel one): `regions._TIER_VALUES` grew the value, `pipeline.run_stages`'
+per-shape source-pixel opt-in scan now also matches `tier == "streamline"`,
+and `stage7_sequence.stitch_one`'s streamline branch
+(`(streamline or tier == "streamline") and source_pixels is not None`)
+moved ahead of scanline/meander in the elif chain — mirroring where the
+sketch check already sits — so a per-shape override correctly beats a
+different design-wide tonal technique. The three other closed-set mirrors
+of the tier vocabulary (`digitizer_service/app.py`'s own `_TIER_VALUES`,
+the Studio's `app/src/lib/digitizer.js` `SHAPE_TIERS`, and the Layers-panel
+tier `<select>` in `DigitizePanel.svelte`) all grew the value too — this is
+backend-**and**-Studio-UI-complete for the specific ask, a one-line
+`<option>` addition matching the exact, already-shipped Sketch pattern, not
+a guessed UI.
+
+**The direction-field question — the actual design decision, not a wiring
+detail.** Investigated three options for what a streamline fill's tangent
+field should be for a manually-selected shape with no source-photo texture:
+(1) a field derived from the shape's own geometry (medial-axis/skeleton,
+the way `stage6_satin`'s rails work), (2) a plain user-specified angle, (3)
+a hybrid. Chose (3) — but by **reusing the existing raster/structure-tensor
+direction field (`directionfield.py`) completely unchanged, zero new
+algorithm**, rather than building anything new: it already reads this
+design's own prepped raster (`SourcePixels.rgb` — whatever art the job was
+given, a photo or a flat logo alike) and follows real local structure where
+the raster has any (antialiasing, subtle shading, texture inside a
+"flat"-classified logo), and where a region's raster is genuinely
+flat/textureless, the field's own already-shipped, already-tested coherence
+gate (`RegionDirection.use_house_angle`) falls back automatically to
+parallel lines at the shape's `fill_angle_deg` override — the same per-shape
+angle knob ordinary tatami fill already exposes — or the house angle.
+Rejected building a shape-geometry/medial-axis-derived tangent field:
+that's a materially different, unbuilt algorithm (not a wiring change), and
+this codebase has no medial-axis-to-smooth-vector-field machinery to reuse
+for it (`shapefield.py`'s `medial_axis` is a skeleton graph for satin rails,
+not a per-pixel tangent field) — flagged as a distinct, larger, un-started
+feature if wanted later, not attempted here. Also explicitly decided
+**against** extending `digitizer_core/manual.py` (the separate,
+genuinely raster-less "no image at all" manual-shape-authoring path —
+`PipelineResult.source_pixels`/`px_per_mm` are unconditionally `None`
+there) to allow `"streamline"` as a technique: `streamline_fill` has no
+raster-free mode — darkness/d_sep/the highlight cutoff/the field itself are
+all read off `SourcePixels.rgb`, not optional inputs — so exposing it there
+would either crash or always silently no-op to tatami, worse than not
+offering it. `manual.py`'s own `VALID_TECHNIQUES` stays
+`{"satin", "fill", "run"}`, now pinned by an added regression test.
+
+Regression tests added (`tests/test_stage6_streamline.py`): a forced-tier
+test proving genuine direction-following on a manually-classified
+(`forced_class="flat"`, non-photo) shape measured against a known
+stripe-angle fixture (the file's existing analytic-truth discipline, not a
+"didn't crash" smoke test), a forced-tier spacing test proving genuine
+evenly-spaced J–L placement (median line gap matches the analytic d_sep
+formula, not tatami rows), a pipeline source-pixel-plumbing test for the
+per-shape override, a no-source-pixels-falls-back-to-tatami-exactly test,
+and core-layer + service-layer tier-vocabulary validation tests — 8 new
+tests total, mirroring `test_stage6_sketch.py`'s equivalent "sketch" tests
+one-for-one. Plus one added case in `test_manual.py`'s existing
+bad-technique parametrize list, and one added Studio-side vitest case in
+`app/src/lib/digitizer.spec.js` mirroring its existing "sketch" `SHAPE_TIERS`
+regression test (that file's own comment records a near-miss where the
+dropdown once shipped a tier option before `SHAPE_TIERS` recognized it —
+the exact failure this new test, like the sketch one beside it, exists to
+catch).
+
+**Verified unaffected, full targeted runs, all green:**
+`test_stage6_streamline.py` (28/28, 8 new), `test_stage6_sketch.py`,
+`test_manual.py`, `test_pipeline.py`, `test_service.py`,
+`test_flat_lane_byte_identical.py`, `test_directionfield.py`,
+`test_stage6_scanline.py`, `test_stage6_meander.py`, `test_stage6_blend.py`,
+`test_border.py`, `test_fill.py`, `test_satin.py`, `test_preflight.py` —
+228 tests across the first seven files alone, no new failures — confirming
+the photo-pipeline's existing streamline behavior and every other tier are
+untouched byte-for-byte. Studio `app` vitest suite: 413/413 real tests
+green (2 suite-load failures traced to this session's own ad-hoc
+node_modules symlink, not a code issue — independently confirmed passing
+23/23 against a real, non-symlinked `node_modules`).
+
+Row 13 (chart-restricted weighted k-medoids palette selection,
 build-order step 7) landed after that pass on the `palette-kmedoids`
 branch: `digitizer_core/palette.py` replaces the photo path's per-region
 nearest-thread snap (`stage2_photo_segment` step 6) with a deterministic

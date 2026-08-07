@@ -214,6 +214,24 @@ test("canonicalShapeEdits accepts the sketch tier alongside satin/fill/run", asy
   });
 });
 
+// "streamline" (contract v1.6) joined the same closed set the same way
+// "sketch" did, alongside the tier dropdown's Streamline option — this is
+// what lets a manually-classified (flat-lane) shape opt into the evenly-
+// spaced thread-paint tier without the whole design setting
+// fill_technique="streamline". Same regression this file already guards
+// against for "sketch": a value SHAPE_TIERS doesn't recognize
+// canonicalizes to nothing and silently never reaches the wire.
+test("canonicalShapeEdits accepts the streamline tier alongside satin/fill/run/sketch", async () => {
+  stubStorage({});
+  const { canonicalShapeEdits } = await import("./digitizer.js");
+  const el = digitizedElement({
+    shapeOverrides: { Ssl: { tier: "streamline" } },
+  });
+  expect(canonicalShapeEdits(el)).toEqual({
+    shape_overrides: { Ssl: { tier: "streamline" } },
+  });
+});
+
 // ---- BACKGROUND_ENCLOSED restore (contract v1.1: shapes[].stitched, ------
 // shape_overrides[sid].stitched) --------------------------------------------
 //

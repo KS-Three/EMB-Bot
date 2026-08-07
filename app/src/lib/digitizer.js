@@ -119,8 +119,11 @@ export function buildDigitizeConfig(element, project) {
 // both ends. "sketch" (contract v1.3) added alongside the tier dropdown's
 // Sketch option in DigitizePanel.svelte — keep both in lockstep with
 // app.py's _TIER_VALUES, or a selected value silently canonicalizes to
-// nothing here and never reaches the wire.
-const SHAPE_TIERS = new Set(["satin", "fill", "run", "sketch"]);
+// nothing here and never reaches the wire. "streamline" (contract v1.6,
+// the evenly-spaced thread-paint tier, previously reachable only via the
+// design-wide fill_technique="streamline" preset) joined the same way,
+// alongside the dropdown's Streamline option.
+const SHAPE_TIERS = new Set(["satin", "fill", "run", "sketch", "streamline"]);
 const SHAPE_BORDERS = new Set(["off", "auto", "bean"]);
 // fabrics.py's own vocabulary, verbatim. Unlike `tier`/`border`, this set has
 // no "auto" member of its own — the absence of the key IS auto (inherit the
