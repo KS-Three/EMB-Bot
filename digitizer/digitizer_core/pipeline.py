@@ -44,7 +44,7 @@ from .stage3_segment import (
     resolve_small_regions,
 )
 from .stage4_vectorize import tag_enclosed_background, vectorize
-from .textcluster import detect_text_clusters, regularize_text_clusters
+from .textcluster import detect_text_clusters, ocr_suggest_text, regularize_text_clusters
 from .stage5_overlap import resolve_overlaps
 from .stage6_blend import SourcePixels, detect_design_ramp_angle
 from .stage7_sequence import PHOTO_CLASSES, depth_sort_layers, sequence
@@ -280,6 +280,14 @@ def run_stages(
     # regularized polygon, the same way it would see any other computed-fact
     # geometry from this generation.
     regularize_text_clusters(regions, p)
+
+    # OCR-suggested text (Studio "Convert to text" entry point): a read-only,
+    # additive per-member OCR read of each tagged member's FINAL polygon —
+    # runs after regularization for the same "computed fact reflects this
+    # generation's actual geometry" reasoning as the two passes above, never
+    # feeds back into detection/regularization/geometry itself. See
+    # `textcluster.py`'s module docstring, "OCR-suggested text" section.
+    ocr_suggest_text(regions, p)
 
     # Shape identity edits (contract v1.5): merge/split BEFORE deletions/
     # overrides, on the same "ids assigned against the full generation"

@@ -20,6 +20,12 @@ dependencies = [
     # Machine-file writer (MIT, pure Python). Build step 8 grows this into the
     # universal export adapter for every EMB-Bot design.
     "pyembroidery>=1.5.1",
+    # `textcluster.py`'s OCR-suggested-text pass (2026-08-07, Studio "Convert
+    # to text"): a thin (Apache-2.0) wrapper around the system `tesseract-ocr`
+    # binary — a SEPARATE, non-pip install, see README.md "Setup" (also
+    # Apache-2.0). Only `pytesseract`'s own `packaging`/`Pillow` deps come
+    # along, both already in this list transitively.
+    "pytesseract>=0.3.10",
 ]
 
 [project.optional-dependencies]

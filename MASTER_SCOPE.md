@@ -1895,6 +1895,58 @@ fixture geometry. 222 tests total passing across
 `test_textcluster.py`/`test_shapecontext.py`/`test_pipeline.py`/
 `test_flat_lane_byte_identical.py`/`test_shapefield_byte_identical.py`/
 `test_satin.py`/`test_service.py`.
+**OCR-suggested text (2026-08-07, not yet merged — branch TBD, opened as a
+draft PR against `main`).** Kent's explicit call: "do not set OCR aside...
+this should become a focus." Everything above this paragraph is geometry-
+only detection, deliberately OCR-free — that is unchanged; this adds a
+strictly LATER, read-only, additive pass, not a relaxation of it.
+`textcluster.ocr_suggest_text` (new function, same module, wired into
+`pipeline.py` immediately after `regularize_text_clusters` so it reads
+whichever polygon the design will actually sew/export) runs Tesseract
+(`--psm 10`, single-character mode — same tool, same PSM choice, as the
+independent, not-yet-merged `text-cluster-ocr-confidence-gate` branch's
+regularization-safety gate, which this reuses the RASTERIZE-AND-SCORE
+TECHNIQUE from but not any call path — that gate's job is a boolean "would
+this redraw read worse," `data["text"]` never read; this pass's job is
+"what does this glyph probably say," both text and confidence surfaced) on
+each ALREADY-tagged member's own rasterized crop, and stamps
+`Region.meta["ocr_char"]`/`["ocr_confidence"]` — a single best-guess
+character plus Tesseract's own 0-100 confidence, or `None`/`None` when the
+measurement itself fails (missing binary, degenerate crop). Exposed
+read-only over HTTP (`_review_payload`'s `ocr_char`/`ocr_confidence`, same
+`_OVERRIDE_KEYS`-free category as `text_candidate`). The service takes NO
+position on "good enough" — it reports a raw per-member measurement; the
+confidence GATE is entirely Studio's call (area 5 below has the full UX
+detail: `OCR_SUGGESTION_MIN_CONFIDENCE`, the badge, the `textSource`
+provenance flag). New system dependency: `tesseract-ocr` (Apache-2.0,
+`pytesseract` wrapper), added to `requirements.txt`/`pyproject.toml`/CI's
+digitizer job/`README.md` "Setup" — missing it fails open (every OCR field
+reads `None`, Studio's gate then behaves exactly like a below-threshold
+read, i.e. exactly like before this feature existed). New tests:
+`tests/test_ocr_suggest.py` (8, hand-built dot-matrix block letters — no
+system-font dependency, same technique `test_ocr_gate.py` on the sibling
+branch uses), plus wiring tests in `test_pipeline.py` (real benchmark
+fixture, full pipeline) and `test_service.py` (real HTTP seam). Full
+digitizer suite run locally against this change: **893 passed, 3 skipped**
+(the same 3 pre-existing container-environment goldens COOKBOOK.md's
+"Running things" already flags — the pass count grew organically past that
+doc's last-recorded 654/658 snapshot from other, already-merged work
+between then and now, not from this PR alone; re-verify rather than diffing
+against that stale number directly). **A real, measured cost worth flagging
+plainly, not burying:** this same local run took ~20 minutes, roughly double
+COOKBOOK.md's documented 7-11 minute baseline — `ocr_suggest_text` runs
+unconditionally on every tagged cluster member across every pipeline
+invocation the suite makes (Tesseract's Python binding shells out per crop),
+and several existing tests reuse the same text-cluster-tagging real-image
+fixtures many times over. No test failed; this is a suite-runtime cost, not
+a correctness one, but a follow-up should watch whether it's worth gating
+behind a `cfg.extra[...]` opt-in flag (the pattern `shapefield`/`photo_prep`
+already established for costly additive work) if a future single-`/digitize`
+request's added latency — not measured here, only the test suite's
+cumulative cost was — turns out to matter in practice. Out of scope,
+unchanged from the text-cluster-detection entry above: `fontKey` is NEVER
+auto-picked by anything downstream of this — OCR gives characters, never a
+typeface match, regardless of confidence.
 
 ---
 
@@ -2523,10 +2575,65 @@ regularization side).
   stitching, text element gone — **run for real, 1 passed**, after the
   `removeelement` fix above. Also manually verified live via Playwright MCP
   against a running dev session on the real benchmark fixture, screenshotted.
-- **Out of scope, on purpose:** real character recognition (no OCR anywhere
-  in this feature — the user always supplies the actual word), auto font
-  selection/matching to the source typeface, and any change to the satin/
-  fill classifier.
+- **Out of scope, on purpose, AS OF THE 2026-08-05 MERGE:** real character
+  recognition. **Superseded 2026-08-07 by the OCR-suggested-text entry
+  immediately below** — this bullet is kept, not deleted, as an honest
+  record of what shipped at the time; it no longer describes current
+  behavior. Auto font selection/matching to the source typeface and any
+  change to the satin/fill classifier remain out of scope, unchanged.
+
+**OCR-suggested text (2026-08-07, not yet merged — draft PR against
+`main`).** UX-safety-critical, not a convenience shortcut: automation-bias
+research on prefilled-vs-empty form fields found people catch errors in a
+confident-looking WRONG suggestion only ~30% of the time, vs. ~75% when the
+system visibly hedges — so "Convert to text" prefilling an OCR guess is only
+safe if it (a) is gated on real confidence and (b) never looks like
+user-authored text until a human has actually looked at it. Both are now
+true:
+
+- **The gate** (`digitizer.js`'s new `textClusterSeed` logic,
+  `OCR_SUGGESTION_MIN_CONFIDENCE = 55`, Studio-side — the service reports a
+  raw per-member confidence and takes no position on "good enough," see area
+  1 above): the cluster's suggested text is the MINIMUM confidence across
+  its own members, not a mean (a word is only as trustworthy as its worst-
+  read letter; a mean would let one badly-misread character hide inside an
+  otherwise-confident average — verified by a dedicated test using real
+  numbers where mean and min disagree). Threshold calibrated on real
+  Tesseract measurements, not assumed: every genuinely-wrong real/synthetic
+  cluster measured had a MIN confidence <=7.0 (the real benchmark fixture's
+  own "ENTERPRISES INC." subline, which has two real misreads, measures
+  0.0); every genuinely-correct synthetic control word measured had a MIN
+  >=70.0. 55 sits centered in that gap. Below the floor — including a
+  pre-OCR service sending neither field at all — behavior is byte-identical
+  to before this feature existed: `text: ""`, `fontKey: null`.
+  `fontKey` is NEVER auto-picked regardless of confidence — OCR gives
+  characters, never a typeface match, exactly as the superseded bullet
+  above already established, just no longer contingent on OCR being absent
+  entirely.
+- **Provenance + the "unconfirmed suggestion" treatment:** a gated seed also
+  carries `textSource: "ocr-suggested"` through to the new text element.
+  `TextStep.svelte` renders one small, non-blocking advisory badge ("Suggested
+  from image — verify before saving") above the textarea while that flag is
+  set, reusing `DigitizePanel.svelte`'s existing "looks like text" badge's
+  visual convention (`.dgp-lbadge`'s pill shape) plus the `--warn-text` color
+  this codebase already uses elsewhere for "needs a look" states — not new
+  styling invented for this one badge. The flag (and badge) clear the
+  instant the user edits the textarea, in the SAME patch as the edit itself
+  (`text`/`textSource` set together, one dispatch) — an unconfirmed guess
+  stops being unconfirmed the moment a human has touched it, whatever they
+  changed it to.
+- **Verification:** `digitizer.spec.js` (new tests for the wire-field
+  mapping and the gate — fills/clears at the exact threshold boundary,
+  min-not-mean aggregation, missing-data-is-no-signal, left-to-right
+  ordering by bbox), `test_ocr_suggest.py`/pipeline/service tests on the
+  Python side (area 1). First Svelte component spec for a NON-canvas panel
+  (`ManualPanel.spec.js` was the only precedent, canvas-only): a new
+  `TextStep.spec.js` + `TextStep.testHarness.svelte` (same "wrap in a real
+  parent to observe Svelte 5's un-exposed component-event dispatch" pattern
+  ManualPanel's own harness established) covers the badge appearing,
+  disappearing on edit, and never appearing for ordinary user-typed text.
+  Full Studio suite green (see "Running things" for the count this pass
+  observed).
 
 ---
 
