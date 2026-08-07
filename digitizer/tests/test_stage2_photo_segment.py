@@ -25,6 +25,10 @@ from digitizer_core.stage2_photo_segment import (
     AREA_RATIO_MERGE_FACTOR,
     AREA_RATIO_MIN_SMALL_PX,
     AREA_RATIO_PROTECT_THRESH,
+    BOUNDARY_CONTRAST_HARD_LAB,
+    BOUNDARY_CONTRAST_MERGE_FACTOR,
+    BOUNDARY_CONTRAST_MIN_SMALL_FRAC,
+    BOUNDARY_CONTRAST_MIN_SMALL_PX,
     MERGE_DELTAE00_THRESH,
     segment,
 )
@@ -470,31 +474,6 @@ def test_area_ratio_protection_is_load_bearing_for_that_fixture():
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "KNOWN, MEASURED, UNRESOLVED regression from the 2026-08-07 SLIC -> "
-        "SEEDS superpixel swap: summit_badge.png's black ring/inner-circle/"
-        "crosshair complex recovers only ~9-11% of the source's near-black "
-        "pixel area at ship-quality constants (MERGE_DELTAE00_THRESH=26.0, "
-        "AREA_RATIO_PROTECT_THRESH=18.0/AREA_RATIO_MERGE_FACTOR=0.6/"
-        "AREA_RATIO_MIN_SMALL_PX=1000, all inherited unchanged from the "
-        "SLIC era), down from the 83.7% this test's >50% floor was built "
-        "to guarantee. Root cause and every re-derivation attempted (lower "
-        "AREA_RATIO_MIN_SMALL_PX alone; lower AREA_RATIO_PROTECT_THRESH + "
-        "AREA_RATIO_MIN_SMALL_PX together; a much more aggressive "
-        "AREA_RATIO_MERGE_FACTOR) are documented in AREA_RATIO_PROTECT_"
-        "THRESH's own module docstring in stage2_photo_segment.py -- every "
-        "combination that restored recovery broke the drone_render.png "
-        "region-count band and/or the gradient-ramp over-segmentation "
-        "guarantee this same pass validated elsewhere, so none were "
-        "shipped. Left `xfail(strict=True)` rather than deleted, skipped, "
-        "or having its bound silently lowered: this keeps the regression "
-        "visible (a future fix flips this to an unexpected pass, which "
-        "pytest reports loudly) instead of hiding it. Do not remove this "
-        "marker without a real re-measurement showing recovery > 0.5 again."
-    ),
-)
 def test_summit_badge_black_complex_survives_full_pipeline():
     """Re-verify the real regression fixture directly, full pipeline
     (`run_stages`, the coordinator's own exact repro config): the badge's
@@ -502,7 +481,24 @@ def test_summit_badge_black_complex_survives_full_pipeline():
     image's own near-black pixel area, not near zero. Measures TOTAL dark-
     thread stitched area against the source's own near-black pixel count —
     the same 'is the content still there' question region count cannot
-    answer on its own."""
+    answer on its own.
+
+    **History — this test was `xfail(strict=True)` between 2026-08-07's
+    SLIC -> SEEDS superpixel swap and the boundary-contrast fix later the
+    same day, and is a real passing assertion again.** The swap regressed
+    recovery from the SLIC era's 83.7% to 9.1%, and no re-derivation of the
+    `AREA_RATIO_*` constant family recovered it without pushing
+    `drone_render.png` out of the 20-80 accept band; rather than delete,
+    skip, or silently lower this test's bound, that pass left it xfail-strict
+    so a future fix would flip it to an unexpected pass that pytest reports
+    loudly. `BOUNDARY_CONTRAST_HARD_LAB` and friends in
+    `stage2_photo_segment.py` are that fix (recovery 9.1% -> 106.9%, with
+    `drone_render.png` unchanged at 74 regions and both gradient ramps
+    unchanged at 2) — see that constant's own docstring for why the
+    area-ratio family could never have been the right tool here, and for the
+    full sweep behind each new constant. The marker is removed rather than
+    inverted because the bar it guards is met by real measurement again, not
+    because the regression was reinterpreted as acceptable."""
     cfg = PipelineConfig(target_width_mm=120.0, garment_id="left_chest")
     fixture = PHOTO_DIR / "summit_badge.png"
     result = run_stages(str(fixture), cfg)
@@ -540,6 +536,131 @@ def test_area_ratio_protection_constants_are_the_documented_tuned_values():
     assert AREA_RATIO_PROTECT_THRESH == 18.0
     assert AREA_RATIO_MERGE_FACTOR == 0.6
     assert AREA_RATIO_MIN_SMALL_PX == 1000
+
+
+# --- 10. Boundary-contrast merge protection (2026-08-07 SEEDS regression) ---
+#
+# The fix that un-xfailed `test_summit_badge_black_complex_survives_full_
+# pipeline` above. Where area-ratio protection guards against an extreme
+# SIZE mismatch, this one guards two COMPARABLE-size regions that meet
+# across a genuinely hard image edge — the shape summit_badge.png's fatal
+# merge actually had (65,467 px into 348,309 px, ratio only 5.3, at dE00
+# 16.06 under the 26.0 threshold). See `BOUNDARY_CONTRAST_HARD_LAB`'s own
+# docstring in `stage2_photo_segment.py` for the full measurement trail.
+
+
+def test_boundary_contrast_protection_constants_are_the_documented_tuned_values():
+    """Same trip-wire discipline the two constant families above already get.
+    Each bound has a real measured window behind it (see the constants' own
+    docstring): contrast 6.0 sits in (0.64, 31.31], the smaller-side fraction
+    0.09 in (0.074, 0.113].
+
+    The merge factor is asserted as the ABSOLUTE local threshold it derives,
+    not as a ratio — same reasoning (and same test shape) as
+    `test_face_priors.py`'s check on `FACE_MERGE_FACTOR`: 13.0 dE00 is the
+    number that actually has to stay below summit_badge's fatal 16.06 dE00
+    merge, and it must keep deriving that figure if `MERGE_DELTAE00_THRESH`
+    is ever retuned again."""
+    assert BOUNDARY_CONTRAST_HARD_LAB == 6.0
+    assert MERGE_DELTAE00_THRESH * BOUNDARY_CONTRAST_MERGE_FACTOR == pytest.approx(13.0)
+    assert BOUNDARY_CONTRAST_MIN_SMALL_FRAC == 0.09
+    assert BOUNDARY_CONTRAST_MIN_SMALL_PX == 1000
+
+
+def test_boundary_contrast_separates_a_drawn_edge_from_a_gradient_interior():
+    """The load-bearing NEW signal, pinned directly on the statistic rather
+    than only through a fixture's region count: `_boundary_contrast_stats`
+    must read a hard drawn edge and a smooth gradient's interior as
+    categorically different, not merely different by a few percent.
+
+    This is what the whole mechanism rests on — `merge_hierarchical` compares
+    region MEAN colors, which cannot tell "two halves of one ramp, cut at an
+    arbitrary interior position" from "two design elements meeting at a drawn
+    edge" when both pairs of means happen to sit ~16 dE00 apart. Asserting a
+    wide multiplicative gap (not just `>`) is deliberate: the shipped
+    `BOUNDARY_CONTRAST_HARD_LAB = 6.0` is only defensible if the two
+    populations are orders of magnitude apart, which is what the real
+    fixtures measure (ramp interiors 0.54-0.64, drawn edges 18-40)."""
+    from digitizer_core.stage2_photo_segment import _boundary_contrast_stats
+    from digitizer_core.threads import rgb_to_lab
+
+    h = w = 120
+    # Left half: a smooth horizontal ramp. Right half: a flat block meeting
+    # the ramp's end at a hard step.
+    img = np.zeros((h, w, 3), np.uint8)
+    for x in range(w // 2):
+        v = int(round(40 + (x / (w // 2 - 1)) * 120))
+        img[:, x] = (v, v, v)
+    img[:, w // 2:] = (10, 10, 10)
+
+    # Superpixels: cut the ramp in half (an arbitrary interior boundary at
+    # x=30), and give the flat block its own label. Label 0 is reserved for
+    # background by this module's convention, so labels start at 1.
+    labels = np.zeros((h, w), np.int64)
+    labels[:, :30] = 1
+    labels[:, 30:w // 2] = 2
+    labels[:, w // 2:] = 3
+
+    lab_img = rgb_to_lab(img.reshape(-1, 3)).reshape(h, w, 3)
+    acc = _boundary_contrast_stats(lab_img, labels)
+    K = int(labels.max()) + 1
+
+    def contrast(a, b):
+        s, c = acc[min(a, b) * K + max(a, b)]
+        assert c > 0
+        return s / c
+
+    ramp_interior = contrast(1, 2)
+    drawn_edge = contrast(2, 3)
+    assert ramp_interior < BOUNDARY_CONTRAST_HARD_LAB < drawn_edge, (
+        f"ramp interior {ramp_interior:.2f} / drawn edge {drawn_edge:.2f} no "
+        f"longer straddle BOUNDARY_CONTRAST_HARD_LAB={BOUNDARY_CONTRAST_HARD_LAB}"
+    )
+    assert drawn_edge > 10 * ramp_interior, (
+        f"the two populations are only {drawn_edge / max(ramp_interior, 1e-9):.1f}x "
+        "apart — the constant's whole safety margin is that this gap is large"
+    )
+
+
+def test_boundary_contrast_survives_merging_as_a_length_weighted_mean():
+    """`_weight_mean_color` recombines `bsum`/`blen` from both sides of a
+    merge; this pins that the recombination is the length-weighted mean (the
+    only combination that stays honest through an arbitrarily deep merge
+    tree), not an unweighted average of the two means.
+
+    Exercised through the real `RAG.merge_nodes` call path rather than by
+    calling the helper directly, because the property that actually matters
+    is that BOTH constituent edges are still readable at recompute time —
+    skimage removes `src` only after every neighbour's weight has been
+    recomputed, and the whole mechanism silently degrades to "whatever one
+    side happened to have" if that ordering ever changes."""
+    import digitizer_core.stage2_photo_segment as seg_mod
+    from skimage.graph import RAG
+
+    g = RAG()
+    for n in (1, 2, 3):
+        g.add_node(n)
+        # `labels` is skimage's own required per-node attribute (RAG.merge_
+        # nodes concatenates them); the rest are what `rag_mean_color` +
+        # `_init_fg_pixel_counts` would have seeded on a real graph.
+        g.nodes[n]["labels"] = [n]
+        g.nodes[n]["mean color"] = np.array([50.0, 0.0, 0.0])
+        g.nodes[n]["total color"] = np.array([50.0, 0.0, 0.0])
+        g.nodes[n]["pixel count"] = 1
+        g.nodes[n]["fg pixel count"] = 1
+    # 1 and 2 both border 3, with very different boundary lengths.
+    g.add_edge(1, 3, weight=1.0, bsum=100.0, blen=10)
+    g.add_edge(2, 3, weight=1.0, bsum=30.0, blen=90)
+    g.add_edge(1, 2, weight=1.0, bsum=0.0, blen=0)
+
+    seg_mod._merge_mean_color(g, 1, 2)
+    g.merge_nodes(1, 2, seg_mod._weight_mean_color)
+
+    e = g[2][3]
+    assert e["blen"] == 100
+    assert e["bsum"] == pytest.approx(130.0)
+    # Length-weighted mean 1.30, NOT the unweighted mean of 10.0 and 0.333.
+    assert e["bsum"] / e["blen"] == pytest.approx(1.30)
 
 
 def test_face_local_threshold_still_avoids_fragmenting_a_solid_block():

@@ -11,7 +11,122 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-07 — fast follow-up to the `BACKGROUND_ENCLOSED`
+**Last updated:** 2026-08-07 — the `summit_badge.png` black-complex
+regression the SLIC -> SEEDS superpixel swap shipped as a documented,
+`xfail(strict=True)`-marked defect (see that entry further down, kept
+verbatim) is **RESOLVED**, by a new mechanism rather than by any retuning of
+the `AREA_RATIO_*` constants that pass had exhausted. Branch
+`seeds-boundary-contrast-fix`.
+
+**The prior pass's stated root cause was wrong, and that is why the fix was
+findable.** It concluded the black complex is destroyed by "a CHAIN of small,
+comparable-size, progressively-diluted edges ... never presenting ONE large-
+ratio edge for this constant family to catch". Re-instrumenting every merge
+`merge_hierarchical` performs on the fixture (1,052 of them, logging live
+foreground pixel counts, raw dE00, and how much source-black pixel mass each
+side carries) shows the opposite: the 129 majority-black SEEDS superpixels DO
+consolidate with each other first, and the complex is destroyed by ONE
+identifiable merge, the 1043rd — **65,467 px (49,369 source-black, mean Lab
+L\*=11.4) into 348,309 px (214 source-black, L\*=31.1), at dE00 16.06** under
+the 26.0 threshold. Area-ratio protection missed it not because no single
+large edge existed, but because that edge's size ratio is **5.3** — nowhere
+near the 18.0 an extreme-mismatch guard looks for. It is a big-into-big
+merge, which `_area_ratio_factor` is blind to by construction, and lowering
+its ratio far enough to see a 5.3 necessarily catches ordinary comparable-
+size band consolidation everywhere else. That is exactly the drone_render /
+gradient-ramp breakage the prior pass measured. The constant family was
+never the right tool; no value of it is.
+
+**The new mechanism: boundary contrast.** `merge_hierarchical` compares
+region MEAN colors, which cannot distinguish "two halves of one continuous
+gradient, cut at an arbitrary interior position" from "two different design
+elements meeting at a drawn edge" when both pairs of means sit ~16 dE00
+apart. `stage2_photo_segment` now measures, once per superpixel pair, the
+mean per-pixel-pair Lab distance across the pair's actual shared boundary,
+and carries it through merges as a length-weighted sum (exact, not an
+approximation — skimage's `RAG.merge_nodes` leaves both constituent edges
+readable at recompute time). Measured on the final large merge each tuning
+fixture performs:
+
+| fixture / merge | raw dE00 | boundary contrast |
+|---|---|---|
+| `gradient_ramp_linear` (final merge) | 16.09 | 0.54 |
+| `gradient_ramp_radial` (final merge) | 15.88 | 0.64 |
+| `summit_badge` (merges 1035/1037) | 11.1 / 12.7 | 0.46 |
+| `summit_badge` (merge 1043 — destroys the complex) | 16.06 | **31.31** |
+| `drone_render` (merges 854-943) | 14.8-23.8 | 18.5-39.7 |
+
+A ~50x separation, not a marginal one. An edge whose boundary is genuinely
+hard AND whose smaller side is a substantial share of the design's own
+foreground gets a locally tighter threshold — the same "divide the weight"
+dual `FACE_MERGE_FACTOR` and `AREA_RATIO_MERGE_FACTOR` already use.
+
+Real before/after, full pipeline (`run_stages`, the same F4 metric every
+retune in this module has been measured against):
+
+| fixture | before (shipped main) | after |
+|---|---|---|
+| `summit_badge.png` dark-area recovery | **9.1%** | **106.9%** |
+| `drone_render.png` regions | 74 | **74** (unchanged) |
+| `gradient_ramp_linear.png` regions | 2 | **2** (unchanged) |
+| `gradient_ramp_radial.png` regions | 2 | **2** (unchanged) |
+
+Every other photo-path fixture in the repo is **bit-identical** with the
+mechanism on vs. off, checked directly rather than assumed:
+`enthusiast_logo.png` 31, `fur_ramp.png` 8, `region_blobs.png` 3,
+`repro_gradient_white_icon.png` 19, `photo_scene_stub.png` 24,
+`photo_subject_stub.png` 1. The fix is surgical by design, not incidentally.
+
+**Honest accounting of the margins**, because they are not uniform. The
+boundary-contrast gate itself is robust: swept 1.0-32.0, every value from
+1.0 to 25.0 gives identical results, and the real window is bounded by the
+fixtures at (0.64, 31.31] — the shipped 6.0 sits ~10x clear of one edge and
+~5x of the other. The merge factor is expressed as `13.0 /
+MERGE_DELTAE00_THRESH` (the `FACE_MERGE_FACTOR` precedent — the absolute
+13.0 dE00 is what must stay under the fixture's 16.06, so it must not drift
+if the base threshold moves again); swept 0.2-0.7 as a raw ratio, flat from
+0.2 through 0.6 and collapsing at 0.62, and 0.5 is chosen mid-window with
+~19% margin below the 0.6177 cliff. **The size gate is the weak one**: the
+smaller side must be >= 9% of the design's foreground, and the measured
+window is (0.074, 0.113] — a ~1.5x gap defined by two fixtures. What makes
+it safe despite that is structural rather than numerical: a region must be
+>= 9% of the foreground to be protected at all, so at most ~11 regions in
+any design can ever be, and the mechanism therefore **cannot add more than
+~10 regions to any design's final count**. It structurally cannot reproduce
+the 122-region blowout the prior pass's area-ratio re-derivations caused,
+because those fired on unboundedly many small regions. A fixture landing the
+wrong side of 0.09 loses the protection and degrades to exactly today's
+shipped behavior — the safe direction.
+
+A third discriminator (each region's internal Lab colour spread: flat design
+content 6.7-8.9 vs. drone_render's textured 13.7-26.1) was measured, works
+equally well at a gate of 10.0-12.0, and was **rejected and recorded** in the
+constant's docstring so it is not re-derived: it needs a new per-node
+sum-of-squares attribute maintained through every merge, its window is no
+wider, and it has no equivalent of the bound above.
+
+`test_summit_badge_black_complex_survives_full_pipeline` is a real passing
+assertion again — the marker removed because the bar it guards is met by
+measurement, not because the regression was reinterpreted as acceptable.
+Three new tests pin the mechanism itself (the constants, the ~50x contrast
+separation on a synthetic ramp-meets-block fixture, and that the
+length-weighted recombination survives a real `RAG.merge_nodes` call).
+Targeted suites green: `test_stage2_photo_segment.py` + `test_face_priors.py`
++ `test_flat_lane_byte_identical.py` + `test_palette.py` + `test_pipeline.py`
+(69 passed, **0 xfailed** — down from 1), `test_background_removal.py` +
+`test_stage6_blend.py` + `test_preflight.py` (88 passed, 2 pre-existing
+skips). Cost: ~31 ms on a 900x900 / 1,072-superpixel fixture.
+
+**Confidence for the photo-path segmentation swap: raised from LOW to
+MEDIUM.** The blocker named in the entry below ("do not raise this rating,
+and do not merge the branch, until the `summit_badge.png` regression above is
+actually resolved with real numbers behind the fix") is met on its own terms.
+Not raised past MEDIUM, and deliberately: the size gate's ~1.5x margin is
+calibrated against two fixtures, and the mechanism has only ever been
+observed to fire on one of them, so its behavior on unseen content is
+bounded and argued-for rather than broadly demonstrated.
+
+Prior update below, still 2026-08-07 — fast follow-up to the `BACKGROUND_ENCLOSED`
 bulk-restore banner (area 1, "Auto-digitizing quality" — see that section's
 own entry below for the original fix): an adversarial review (`emb-bot-
 reviewer`) of the merged diff found the new banner's exclusion of already-
@@ -87,6 +202,13 @@ at 5.0 dE00 regardless of the base threshold, the same decoupling
 `AREA_RATIO_PROTECT_THRESH` already established as precedent one retune
 ago; `test_face_local_threshold_splits_shades_that_merge_outside_a_face`
 confirms the absolute number held.
+
+**[RESOLVED 2026-08-07 later the same day — see this document's own latest
+entry at the top for the fix, its mechanism, and its real numbers. The
+paragraph below is the original pass's record of the defect and is kept
+verbatim; two of its claims (the "chain of small edges" root cause, and the
+implication that this constant family needed re-deriving) are now known to be
+wrong — the top entry says exactly how.]**
 
 **KNOWN, MEASURED, UNRESOLVED REGRESSION — why this ships as a draft PR
 and should NOT be merged as-is.** `summit_badge.png`'s black ring/inner-

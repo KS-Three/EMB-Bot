@@ -47,7 +47,18 @@ Pipeline, in order (the plan's 7-step contract):
   3. Hierarchical merge (`skimage.graph.merge_hierarchical`) on a CIEDE2000
      edge-weight threshold (reusing `skimage.color.deltaE_ciede2000` — the
      same ΔE machinery `threads.py` and `stage6_blend.py` already import,
-     not a new color-distance implementation).
+     not a new color-distance implementation), with two local threshold
+     tightenings applied on top of the one global threshold: the small-vs-
+     large area-ratio guard (`AREA_RATIO_PROTECT_THRESH`) and, added
+     2026-08-07, the boundary-contrast guard (`BOUNDARY_CONTRAST_HARD_LAB`)
+     that resolved this module's own SEEDS-era `summit_badge.png`
+     regression. Both are independent and compose; see each constant's own
+     docstring. The merge compares region MEAN colors, which is blind to
+     whether two regions physically meet across a step edge or a smooth
+     ramp — the boundary-contrast guard is what supplies that missing
+     information, measured once per superpixel pair up front (~31 ms on a
+     900x900 / 1,072-superpixel fixture) and carried through merges as a
+     length-weighted sum.
   4. Min-area floor: sub-detail regions force-merge into whichever neighbor
      shares the longest boundary — literally `stage3_segment
      .resolve_small_regions`, reused rather than reinvented.
@@ -507,6 +518,25 @@ def _merge_mean_color(g, src: int, dst: int) -> None:
 AREA_RATIO_PROTECT_THRESH = 18.0
 AREA_RATIO_MERGE_FACTOR = 0.6
 
+# **SUPERSEDED 2026-08-07, later the same day — read this first.** Everything
+# below is the SLIC -> SEEDS pass's own record of the summit_badge.png
+# regression it shipped as `xfail(strict=True)`. That regression is FIXED,
+# and not by this constant family (whose values are still correct and still
+# unchanged at 18.0/0.6/1000): see `BOUNDARY_CONTRAST_HARD_LAB`'s docstring
+# further down for the fix. Two claims below are now known to be wrong, and
+# are left in place only because the rest of the trail is still accurate and
+# still useful — do not re-derive from either of them:
+#
+#   * "the merge walks a CHAIN ... rather than ever presenting ONE large-
+#     ratio edge" — re-instrumenting every merge on the fixture shows the
+#     complex is destroyed by one identifiable big-into-big merge (65,467 px
+#     into 348,309 px at dE00 16.06). The edge exists; its size RATIO is
+#     just 5.3, far under the 18.0 this family looks for.
+#   * "may require a fundamentally different mechanism, not simple constant
+#     retuning" — correct in its conclusion, and that mechanism is boundary
+#     contrast, measured on the pixels that actually touch across the shared
+#     boundary rather than on region mean colors.
+#
 # **2026-08-07, SLIC -> SEEDS swap: re-measured, NOT re-derived — values kept,
 # a real regression on summit_badge.png's black complex documented instead
 # of silently papered over.** The task this pass was built against explicitly
@@ -644,6 +674,296 @@ def _area_ratio_initial_adjust(rag) -> None:
             d["weight"] = float(d["weight"]) / factor
 
 
+# --- Boundary-contrast merge protection (2026-08-07, SEEDS regression fix) ---
+#
+# **What this fixes**: the `summit_badge.png` black-complex regression the
+# SLIC -> SEEDS swap shipped as `xfail(strict=True)` (see `AREA_RATIO_PROTECT_
+# THRESH`'s docstring above for that pass's own investigation trail, kept
+# verbatim as the historical record). Recovery of the badge's black ring/
+# inner-circle/crosshair area went from the SLIC era's 83.7% to 9.1% under
+# SEEDS, and no re-derivation of the area-ratio constant family recovered it
+# without pushing `drone_render.png` out of the 20-80 region accept band.
+#
+# **The prior pass's stated root cause is not what the merge log actually
+# shows** — re-measured directly this pass by instrumenting every merge
+# `merge_hierarchical` performs on this fixture (superpixel ids, live
+# foreground pixel counts, raw dE00, and how much source-black pixel mass
+# each side carries). That trail concluded the black complex "starts
+# fragmented into ~150-260 much smaller superpixels" and that the merge
+# "walks a CHAIN of small, comparable-size, progressively-diluted edges ...
+# rather than ever presenting ONE large-ratio edge for this constant family
+# to catch". The first half is true (129 majority-black SEEDS superpixels,
+# median ~416 px). The second half is not: those fragments DO consolidate
+# with each other first, and the complex is destroyed by ONE identifiable
+# merge, the 1043rd of 1052 —
+#
+#     65,467 px (49,369 of them source-black, mean Lab L*=11.4)
+#       into 348,309 px (214 source-black, mean Lab L*=31.1)  at dE00 16.06
+#
+# — under the 26.0 global threshold. So area-ratio protection did not fail
+# because there was no single large edge to catch; it failed because that
+# edge's SIZE RATIO is 5.3, nowhere near the 18.0 an extreme-mismatch guard
+# is looking for. This is a big-region-into-big-region merge, which
+# `_area_ratio_factor` is by construction blind to, and lowering its ratio
+# far enough to see a 5.3 (the prior pass tried 3.0) necessarily also
+# catches ordinary comparable-size band consolidation everywhere else —
+# exactly the drone_render/gradient-ramp breakage that pass measured. The
+# constant family was never the right tool for this failure; no value of it
+# is.
+#
+# **The mechanism that does separate them**: how hard the actual image edge
+# along the two regions' SHARED BOUNDARY is. `merge_hierarchical` compares
+# region MEAN colors, which says nothing about whether the pixels physically
+# meet across a step edge or a smooth ramp. Two regions whose means sit 16
+# dE00 apart can be either (a) two halves of one continuous gradient, cut at
+# an arbitrary interior position where neighbouring pixels differ by
+# essentially nothing, or (b) two different design elements meeting at a
+# drawn edge where neighbouring pixels differ enormously. Only (b) is
+# content destruction. Measured across all four tuning fixtures, on the
+# final large merge each one performs (mean per-pixel-pair Lab distance
+# across the shared boundary, `_boundary_contrast_stats` below):
+#
+#     fixture / merge                       raw dE00   boundary contrast
+#     gradient_ramp_linear  (final merge)     16.09      0.54
+#     gradient_ramp_radial  (final merge)     15.88      0.64
+#     summit_badge          (merge 1043)      16.06     31.31   <- destroys
+#     summit_badge          (merges 1035/37)  11-13      0.46
+#     drone_render          (merges 854-943)  15-24     18.5-39.7
+#
+# A ~50x gap, not a marginal one: a gradient's interior cut reads ~0.5, a
+# real drawn edge reads 18-40. Swept 1.0/2.0/3.0/6.0/10.0/14.0/18.0/25.0/32.0
+# through the full pipeline: every value from 1.0 to 25.0 gives the same
+# result (summit_badge recovery 106.9%, drone_render 74 regions), and 32.0
+# fails only because it has risen past summit_badge's own 31.31 boundary so
+# the protection stops firing at all. The real window is therefore bounded
+# by the fixtures themselves — above the ramps' 0.64, at or below the
+# complex's 31.31 — and `BOUNDARY_CONTRAST_HARD_LAB = 6.0` sits ~10x clear
+# of the lower edge and ~5x clear of the upper one. This is the load-bearing
+# new idea, and it is measured, not assumed.
+#
+# **Why a second, size gate is still needed**: boundary contrast alone
+# correctly protects summit_badge (recovery 9.1% -> 106.9%) and correctly
+# leaves both gradient ramps untouched (2 regions each, unchanged) — but
+# `drone_render.png` is a photo-realistic render whose every subject/
+# foliage/lettering boundary is also a genuine hard edge, so protecting all
+# of them fragments it from 74 to 99 regions. The gate that separates them
+# is the size of the SMALLER side as a fraction of the design's own
+# foreground: summit_badge's black complex is 11.3% of its foreground, while
+# drone_render's largest hard-edge merge candidate is 7.4%.
+#
+# `BOUNDARY_CONTRAST_MIN_SMALL_FRAC = 0.09` sits between them. Be honest
+# about what that margin is: measured window (0.074, 0.113], a ~1.5x gap
+# defined by two fixtures, not the ~50x the contrast gate itself enjoys.
+# Swept 0.02/0.04/0.06/0.075/0.08/0.09/0.10/0.11/0.115/0.13 through the full
+# pipeline; drone_render reads 93/90/89/74/74/74/74/74/74/74 (so the gate has
+# to reach ~0.075 before drone_render is back to its shipped count) and
+# summit_badge's recovery holds at 106.9% through 0.11, then falls back to
+# 9.1% at 0.115 and 0.13 — the gate having risen past the complex's own
+# 11.3%, where it simply stops firing.
+#
+# What makes 0.09 safe DESPITE that thin margin is a structural property,
+# not the number itself: a region must be >= 9% of the foreground for this
+# protection to fire at all, so at most ~11 regions in any design can ever
+# be protected. The mechanism therefore cannot add more than ~10 regions to
+# ANY design's final count, whatever its content — it structurally cannot
+# reproduce the "122 regions" blowout the prior pass's area-ratio
+# re-derivations caused, because those fired on unboundedly many small
+# regions. A fixture that lands just the wrong side of 0.09 loses the
+# protection (degrading to exactly today's shipped behavior, the safe
+# direction) rather than over-fragmenting.
+#
+# A fraction, not the absolute pixel count `AREA_RATIO_MIN_SMALL_PX` uses,
+# specifically because this one has to hold across target widths:
+# `stage1_prep`'s upscale makes raw pixel counts scale with
+# `cfg.target_width_mm`, and the equivalent absolute-px gate (measured
+# window 25,000-65,000 px, swept 1,000-80,000) is only that wide because
+# summit_badge happens to be measured at 120mm and drone_render at 90mm —
+# re-running drone_render at 120mm moves it into that window and breaks it.
+# The fraction is invariant to that. `BOUNDARY_CONTRAST_MIN_SMALL_PX` is
+# kept alongside as a plain absolute floor for the same reason
+# `AREA_RATIO_MIN_SMALL_PX` exists (a tiny design's 9% is still noise), and
+# is deliberately the same 1,000 px that constant already established as
+# "clearly above interpolation-sliver scale" — see its docstring.
+#
+# **A third gate was measured and rejected, recorded so it is not re-derived
+# from scratch**: gating on each region's INTERNAL Lab colour spread (rms
+# about its own mean) separates the same two fixtures just as well — summit
+# badge's complex reads 8.85/6.66 (flat design content) against
+# drone_render's 13.7-26.1 (textured photographic content), and a gate at
+# 10.0-12.0 holds drone_render at exactly 74 with summit_badge at 106.9%.
+# It was not chosen because it needs a new per-node sum-of-squares attribute
+# maintained through every merge, its measured window (10.0-12.0, a 1.2x
+# gap) is no wider than the fraction gate's, and — the deciding reason — it
+# has no equivalent of the bound above: nothing stops an arbitrary number of
+# small flat regions from being protected at once.
+#
+# Threshold DROP, not a hard block: the same "divide the weight so it takes
+# a smaller true dE00 to still clear the inflated number" dual that
+# `FACE_MERGE_FACTOR` and `AREA_RATIO_MERGE_FACTOR` already use under
+# `merge_hierarchical`'s single global threshold.
+#
+# Expressed as `13.0 / MERGE_DELTAE00_THRESH` rather than a typed-in ratio,
+# following the precedent `FACE_MERGE_FACTOR` set for exactly this situation
+# (see its own docstring): the number that has to hold is the ABSOLUTE local
+# threshold of 13.0 dE00, because what it must sit below — summit_badge's
+# fatal 16.06 dE00 merge — is a property of image content, not of whatever
+# elbow the base threshold happens to be tuned to for fragmentation's sake.
+# A hand-typed ratio would silently drift off that 13.0 the next time
+# `MERGE_DELTAE00_THRESH` moves; this does not.
+#
+# Swept 0.2/0.3/0.4/0.45/0.5/0.55/0.6/0.62/0.65/0.7 (as a raw ratio, at the
+# shipped 26.0 base): every value from 0.2 through 0.6 gives identical
+# results on all four fixtures (summit_badge 106.9%, drone_render 74, both
+# ramps 2), and 0.62 collapses summit_badge to 0.0% — the local threshold
+# having just crossed 16.06 (26.0 x 0.62 = 16.12), letting the fatal merge
+# back through. That cliff is razor-sharp and is the same one the prior
+# pass independently measured from the other side (recovery 99.0% at raw
+# dE00 16.05 vs 9.6% at 16.10). 0.5 is chosen rather than the 0.6 nearest
+# the cliff: it sits mid-window with ~19% margin below the 0.6177 (=
+# 16.06 / 26.0) where protection provably stops working, and costs nothing
+# measurable anywhere — the whole 0.2-0.6 range is flat.
+BOUNDARY_CONTRAST_HARD_LAB = 6.0
+BOUNDARY_CONTRAST_MERGE_FACTOR = 13.0 / MERGE_DELTAE00_THRESH
+BOUNDARY_CONTRAST_MIN_SMALL_FRAC = 0.09
+BOUNDARY_CONTRAST_MIN_SMALL_PX = 1000
+
+
+def _boundary_contrast_stats(lab_img: np.ndarray, labels: np.ndarray) -> dict:
+    """Per-superpixel-pair boundary contrast: `{packed_pair: [sum, count]}`
+    over every 4-neighbour pixel pair that straddles a boundary between two
+    DIFFERENT foreground superpixels.
+
+    "Contrast" is plain Euclidean Lab distance between the two touching
+    pixels, deliberately not CIEDE2000: this is a bulk per-pixel statistic
+    over hundreds of thousands of pairs (dE00 on that many pairs costs more
+    than the rest of this stage), and the signal it has to resolve is a ~50x
+    separation between "gradient interior" (~0.5) and "drawn edge" (18-40),
+    which no reasonable perceptual-vs-Euclidean discrepancy can close. The
+    dE00 machinery stays where it decides actual merges (`_weight_mean_
+    color`); this only decides whether an edge is eligible for a tighter
+    threshold. Reads the same full-precision `lab_img` the RAG itself is
+    built from, so the two never disagree about what colour a pixel is.
+
+    Pairs are keyed `min(a, b) * K + max(a, b)` (K = `labels.max() + 1`) so
+    the accumulation is one `np.unique`/`reduceat` over an integer array
+    rather than a Python loop over boundary pixels. Background/excluded
+    pixels (label 0, this module's own mask convention) are skipped on both
+    sides — node 0 is not a design region and its boundary is the design's
+    silhouette, not an edge between two design elements.
+
+    **4-neighbour, while the RAG itself is built with `connectivity=2`**
+    (8-neighbour) — deliberate, and it is why `_boundary_contrast_factor`
+    treats a missing statistic as "no protection". Two superpixels touching
+    only diagonally are RAG-adjacent but have no 4-neighbour boundary, so
+    they get `blen == 0` and are judged by the ordinary threshold exactly as
+    before. That is the right answer rather than a gap: a purely diagonal
+    contact is a corner, not a shared edge, and a mean "contrast across the
+    boundary" computed from one or two corner-touching pixel pairs would be
+    noise, not evidence. Anything with a real shared border — every case this
+    protection is meant to judge — has 4-neighbour pairs by construction."""
+    K = int(labels.max()) + 1
+    h, w = labels.shape
+    keys: list[np.ndarray] = []
+    dists: list[np.ndarray] = []
+    for dy, dx in ((0, 1), (1, 0)):
+        a = labels[: h - dy, : w - dx]
+        b = labels[dy:, dx:]
+        m = (a != b) & (a > 0) & (b > 0)
+        if not m.any():
+            continue
+        aa = a[m].astype(np.int64)
+        bb = b[m].astype(np.int64)
+        keys.append(np.minimum(aa, bb) * K + np.maximum(aa, bb))
+        dists.append(
+            np.linalg.norm(
+                lab_img[: h - dy, : w - dx][m] - lab_img[dy:, dx:][m], axis=1
+            )
+        )
+    if not keys:
+        return {}
+    key = np.concatenate(keys)
+    dist = np.concatenate(dists)
+    order = np.argsort(key, kind="stable")
+    key = key[order]
+    dist = dist[order]
+    uniq, start = np.unique(key, return_index=True)
+    sums = np.add.reduceat(dist, start)
+    counts = np.diff(np.append(start, len(dist)))
+    return {int(k): (float(s), int(c)) for k, s, c in zip(uniq, sums, counts)}
+
+
+def _attach_boundary_contrast(rag, lab_img: np.ndarray, labels: np.ndarray) -> None:
+    """Seed every edge's `bsum`/`blen` (summed boundary contrast and boundary
+    length in pixel pairs) and stash the design's total foreground pixel
+    count on the graph, before any merge runs.
+
+    Carried as a SUM and a COUNT rather than a mean because that is what
+    survives merging: when regions A1 and A2 both border B and then merge,
+    the new A-B boundary's mean contrast is the length-weighted mean of the
+    two, which is exactly `(bsum1 + bsum2) / (blen1 + blen2)`.
+    `_weight_mean_color` does that addition on every recompute — see its own
+    comment — so a merged super-region's boundary statistic stays honest no
+    matter how deep the merge tree gets. An edge with no recorded boundary
+    (`blen == 0`, e.g. an edge incident on node 0, which
+    `_boundary_contrast_stats` skips by design) reads as unprotected."""
+    acc = _boundary_contrast_stats(lab_img, labels)
+    K = int(labels.max()) + 1
+    for u, v, d in rag.edges(data=True):
+        s, c = acc.get(min(u, v) * K + max(u, v), (0.0, 0))
+        d["bsum"] = s
+        d["blen"] = c
+    rag.graph["fg total"] = int((labels > 0).sum())
+
+
+def _boundary_contrast_factor(bsum, blen, px_a, px_b, fg_total) -> float:
+    """1.0 (no protection) unless the shared boundary is a genuinely hard
+    image edge AND both sides are substantial regions — see the constants'
+    own docstring above. Callers must pass "fg pixel count" (real foreground
+    area) for `px_a`/`px_b`, the same discipline `_area_ratio_factor`
+    requires and for the same reason (`_init_fg_pixel_counts`).
+
+    Every degenerate input returns 1.0 — no boundary recorded (`blen == 0`,
+    which also covers the RAG-connectivity note in `_boundary_contrast_
+    stats`) and no known foreground total both fall back to "judge this edge
+    exactly the way the pre-2026-08-07 engine did". That direction is
+    deliberate: this function can only ever make the merge threshold
+    TIGHTER, so failing open means failing to shipped behavior, while
+    failing closed would mean fragmenting a design on the strength of a
+    statistic that was never actually measured."""
+    if blen <= 0 or fg_total <= 0:
+        return 1.0
+    if bsum / blen < BOUNDARY_CONTRAST_HARD_LAB:
+        return 1.0
+    small = min(px_a, px_b)
+    if small < BOUNDARY_CONTRAST_MIN_SMALL_PX:
+        return 1.0
+    if small < BOUNDARY_CONTRAST_MIN_SMALL_FRAC * fg_total:
+        return 1.0
+    return BOUNDARY_CONTRAST_MERGE_FACTOR
+
+
+def _boundary_contrast_initial_adjust(rag) -> None:
+    """Apply boundary-contrast protection to the INITIAL edge weights
+    `rag_mean_color` computed, exactly as `_area_ratio_initial_adjust` does
+    for its own rule and for the same reason (`merge_hierarchical` never
+    rewrites an edge's weight until one of its endpoints actually merges, so
+    an edge that is never touched would otherwise never be judged). Requires
+    `_init_fg_pixel_counts` and `_attach_boundary_contrast` to have already
+    run on `rag`. In practice this pass is a formality on real fixtures — a
+    single raw SEEDS superpixel is never 9% of the foreground — but it keeps
+    the initial and recomputed weights judged by the same rule instead of
+    two subtly different ones."""
+    fg_total = rag.graph.get("fg total", 0)
+    for u, v, d in rag.edges(data=True):
+        factor = _boundary_contrast_factor(
+            d.get("bsum", 0.0), d.get("blen", 0),
+            rag.nodes[u]["fg pixel count"], rag.nodes[v]["fg pixel count"],
+            fg_total,
+        )
+        if factor != 1.0:
+            d["weight"] = float(d["weight"]) / factor
+
+
 def _weight_mean_color(g, src: int, dst: int, n: int) -> dict:
     da = g.nodes[dst]["mean color"].reshape(1, 3)
     na = g.nodes[n]["mean color"].reshape(1, 3)
@@ -659,7 +979,31 @@ def _weight_mean_color(g, src: int, dst: int, n: int) -> dict:
     # face AND facing an extreme size mismatch gets both factors applied.
     # "fg pixel count", not "pixel count" — see `_init_fg_pixel_counts`.
     w /= _area_ratio_factor(g.nodes[dst]["fg pixel count"], g.nodes[n]["fg pixel count"])
-    return {"weight": w}
+    # Boundary-contrast protection — see its own docstring above. This runs
+    # DURING `RAG.merge_nodes`, which calls this function once per neighbour
+    # `n` of the pair being merged and only removes `src` from the graph
+    # afterwards — so both `g[src][n]` and `g[dst][n]` are still readable
+    # here, and the merged region's boundary against `n` is precisely the
+    # union of those two boundaries. Summing both sides' `bsum`/`blen` is
+    # therefore the exact length-weighted combination, not an approximation;
+    # whichever of the two edges does not exist simply contributes nothing.
+    bsum = 0.0
+    blen = 0
+    for x in (src, dst):
+        if g.has_edge(x, n):
+            e = g[x][n]
+            bsum += e.get("bsum", 0.0)
+            blen += e.get("blen", 0)
+    w /= _boundary_contrast_factor(
+        bsum, blen,
+        g.nodes[dst]["fg pixel count"], g.nodes[n]["fg pixel count"],
+        g.graph.get("fg total", 0),
+    )
+    # `bsum`/`blen` ride along on the returned attribute dict so the new edge
+    # carries them forward — `RAG.add_edge` unpacks whatever this returns as
+    # the edge's attributes, so this is how the statistic survives an
+    # arbitrarily deep merge tree.
+    return {"weight": w, "bsum": bsum, "blen": blen}
 
 
 # --- Face priors (photo plan §2 row 2, wired 2026-08-04) ----------------------
@@ -924,6 +1268,17 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None) -> Qu
         # foreground area, on this initial pass and every later recompute.
         _init_fg_pixel_counts(rag)
         _area_ratio_initial_adjust(rag)
+        # Boundary-contrast merge protection (regression fix, see
+        # `BOUNDARY_CONTRAST_HARD_LAB`'s own docstring) — like the area-ratio
+        # rule just above it runs unconditionally, and it composes with it
+        # rather than replacing it: the two catch different failures (extreme
+        # size MISMATCH vs. two comparable-size regions meeting at a real
+        # drawn edge), and `_weight_mean_color` applies both factors
+        # independently. `_attach_boundary_contrast` must run before
+        # `_boundary_contrast_initial_adjust` — it seeds the per-edge
+        # `bsum`/`blen` and the graph-level foreground total that rule reads.
+        _attach_boundary_contrast(rag, lab_img, slic_labels)
+        _boundary_contrast_initial_adjust(rag)
         if face_regions:
             # Step 5 — the face-local threshold drop. Only a run that
             # actually has detections builds the mask or touches a weight;
