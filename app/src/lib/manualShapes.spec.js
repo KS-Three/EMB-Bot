@@ -2,6 +2,8 @@ import { test, expect } from "vitest";
 import {
   isValidShape, isNearStart, shapesToRegions, CLOSE_RADIUS_PX, PX_PER_MM,
   shapeIssues, isDuplicateOfLast, MAX_SHAPE_POINTS,
+  quadraticControlForPointOnCurve, curveHandlePoint, curveControlOrNull,
+  flattenQuadraticSegment, flattenShape, hitTestSegmentMidpoint, CURVE_HANDLE_HIT_R,
 } from "./manualShapes.js";
 
 // ---- isValidShape -----------------------------------------------------
@@ -170,4 +172,145 @@ test("shapeIssues: exactly MAX_SHAPE_POINTS is not flagged as too many", () => {
 test("shapeIssues: MAX_SHAPE_POINTS + 1 is flagged as too many", () => {
   const issues = shapeIssues(convexRing(MAX_SHAPE_POINTS + 1));
   expect(issues.some((m) => m.includes("Too many points"))).toBe(true);
+});
+
+// ---- Curved segments -------------------------------------------------
+
+const A = { x: 0, y: 0 };
+const C = { x: 100, y: 0 };
+
+test("quadraticControlForPointOnCurve + curveHandlePoint round-trip exactly: the curve passes through the original point", () => {
+  const through = { x: 50, y: 30 };
+  const control = quadraticControlForPointOnCurve(A, through, C);
+  const onCurveMid = curveHandlePoint(A, C, control);
+  expect(onCurveMid.x).toBeCloseTo(through.x, 9);
+  expect(onCurveMid.y).toBeCloseTo(through.y, 9);
+});
+
+test("curveHandlePoint: falls back to the plain chord midpoint when there's no control point (straight segment)", () => {
+  expect(curveHandlePoint(A, C, null)).toEqual({ x: 50, y: 0 });
+  expect(curveHandlePoint(A, C, undefined)).toEqual({ x: 50, y: 0 });
+});
+
+test("curveControlOrNull: null when dragged back near the straight-line midpoint", () => {
+  expect(curveControlOrNull(A, C, { x: 50, y: 0.5 })).toBeNull();
+  expect(curveControlOrNull(A, C, { x: 50, y: 0 })).toBeNull();
+});
+
+test("curveControlOrNull: a real control point once far enough from the midpoint", () => {
+  const control = curveControlOrNull(A, C, { x: 50, y: 30 });
+  expect(control).not.toBeNull();
+  // Round-trips back through the same point (see the exact round-trip test above).
+  expect(curveHandlePoint(A, C, control).y).toBeCloseTo(30, 9);
+});
+
+test("flattenQuadraticSegment: excludes both endpoints and actually passes near the intended through-point at its middle sample", () => {
+  const through = { x: 50, y: 40 };
+  const control = quadraticControlForPointOnCurve(A, through, C);
+  const pts = flattenQuadraticSegment(A, control, C);
+  expect(pts.length).toBeGreaterThan(0);
+  // Never re-emits either endpoint.
+  for (const p of pts) {
+    expect(p).not.toEqual(A);
+    expect(p).not.toEqual(C);
+  }
+  // The middle sample (even count of points -> two straddle t=0.5; odd -> a
+  // real midpoint sample) should land close to the through-point.
+  const mid = pts[Math.floor(pts.length / 2)];
+  expect(Math.hypot(mid.x - through.x, mid.y - through.y)).toBeLessThan(5);
+});
+
+test("flattenQuadraticSegment: longer chords get more sub-points than short ones", () => {
+  const shortChord = flattenQuadraticSegment({ x: 0, y: 0 }, { x: 10, y: 5 }, { x: 20, y: 0 });
+  const longChord = flattenQuadraticSegment({ x: 0, y: 0 }, { x: 200, y: 50 }, { x: 400, y: 0 });
+  expect(longChord.length).toBeGreaterThan(shortChord.length);
+});
+
+test("flattenShape: with no curves, an open list flattens to itself unchanged", () => {
+  const pts = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }];
+  expect(flattenShape(pts, {}, false)).toEqual(pts);
+  expect(flattenShape(pts, undefined, false)).toEqual(pts);
+});
+
+test("flattenShape: with no curves, a closed ring flattens to itself unchanged (no duplicated start point)", () => {
+  const pts = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }];
+  expect(flattenShape(pts, {}, true)).toEqual(pts);
+});
+
+test("flattenShape: a curved segment inserts extra points between its two anchors, endpoints untouched", () => {
+  const pts = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }];
+  const control = quadraticControlForPointOnCurve(pts[0], { x: 50, y: -30 }, pts[1]);
+  const flat = flattenShape(pts, { 0: control }, true);
+  expect(flat.length).toBeGreaterThan(pts.length);
+  expect(flat[0]).toEqual(pts[0]);
+  expect(flat[flat.length - 1]).toEqual(pts[3]); // last real anchor, not a re-added pts[0]
+  // The inserted points sit strictly between anchor 0 and anchor 1 in the list.
+  const anchor1Index = flat.findIndex((p) => p.x === 100 && p.y === 0);
+  expect(anchor1Index).toBeGreaterThan(1);
+});
+
+test("flattenShape: the closing (wraparound) segment can be curved too, only when closed=true", () => {
+  const pts = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }];
+  const control = quadraticControlForPointOnCurve(pts[3], { x: -20, y: 50 }, pts[0]);
+  const closedFlat = flattenShape(pts, { 3: control }, true);
+  expect(closedFlat.length).toBeGreaterThan(pts.length);
+  // Segment index 3 doesn't exist on the open (draft) polyline (only 3
+  // segments: 0-1, 1-2, 2-3) — the same curves map is simply inert there.
+  const openFlat = flattenShape(pts, { 3: control }, false);
+  expect(openFlat).toEqual(pts);
+});
+
+test("flattenShape: empty/absent points returns an empty list, not a throw", () => {
+  expect(flattenShape([], {}, true)).toEqual([]);
+  expect(flattenShape(null, {}, true)).toEqual([]);
+  expect(flattenShape(undefined, {}, false)).toEqual([]);
+});
+
+test("hitTestSegmentMidpoint: finds a straight segment's chord midpoint within CURVE_HANDLE_HIT_R", () => {
+  const pts = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }];
+  expect(hitTestSegmentMidpoint(pts, {}, 50, 0, false)).toBe(0);
+  expect(hitTestSegmentMidpoint(pts, {}, 100, 50, false)).toBe(1);
+  expect(hitTestSegmentMidpoint(pts, {}, 50, 0 + CURVE_HANDLE_HIT_R + 5, false)).toBe(-1);
+});
+
+test("hitTestSegmentMidpoint: finds a CURVED segment's on-curve handle position, not its straight chord midpoint", () => {
+  const pts = [{ x: 0, y: 0 }, { x: 100, y: 0 }];
+  const control = quadraticControlForPointOnCurve(pts[0], { x: 50, y: 40 }, pts[1]);
+  // The chord midpoint (50, 0) is no longer the handle once curved.
+  expect(hitTestSegmentMidpoint(pts, { 0: control }, 50, 0, false)).toBe(-1);
+  expect(hitTestSegmentMidpoint(pts, { 0: control }, 50, 40, false)).toBe(0);
+});
+
+test("hitTestSegmentMidpoint: closed=false doesn't offer the last-to-first wraparound segment (a draft isn't closed yet)", () => {
+  const pts = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }];
+  // Wraparound chord midpoint would be (50, 50).
+  expect(hitTestSegmentMidpoint(pts, {}, 50, 50, false)).toBe(-1);
+  expect(hitTestSegmentMidpoint(pts, {}, 50, 50, true)).toBe(2);
+});
+
+test("shapesToRegions: a curved shape's outer ring is the FLATTENED geometry, not the raw anchors", () => {
+  const pts = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }];
+  const control = quadraticControlForPointOnCurve(pts[0], { x: 50, y: -30 }, pts[1]);
+  const shapes = [{ id: "s1", points: pts, curves: { 0: control }, stitchType: "satin", colorRgb: [1, 1, 1] }];
+  const { regions } = shapesToRegions(shapes);
+  expect(regions).toHaveLength(1);
+  expect(regions[0].shapes[0].outer.length).toBeGreaterThan(pts.length);
+});
+
+test("shapesToRegions: a curve that makes the flattened shape self-intersect is skipped, even though the raw anchors alone would be valid", () => {
+  // A long, thin rectangle; bow the top edge so far down that the curve
+  // itself crosses the bottom edge — the anchors form a perfectly fine
+  // rectangle, but the real (flattened) geometry self-intersects.
+  const pts = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 10 }, { x: 0, y: 10 }];
+  const control = quadraticControlForPointOnCurve(pts[0], { x: 50, y: 200 }, pts[1]);
+  const shapes = [{ id: "s1", points: pts, curves: { 0: control }, stitchType: "fill", colorRgb: [1, 1, 1] }];
+  const { regions } = shapesToRegions(shapes);
+  expect(regions).toHaveLength(0);
+});
+
+test("shapesToRegions: a shape with no curves field at all behaves exactly as before this feature existed", () => {
+  const pts = [{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 10, y: 20 }];
+  const shapes = [{ id: "s1", points: pts, stitchType: "fill", colorRgb: [1, 1, 1] }];
+  const { regions } = shapesToRegions(shapes);
+  expect(regions[0].shapes[0].outer).toEqual(pts);
 });
