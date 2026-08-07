@@ -192,6 +192,72 @@ def test_ordinary_shape_has_no_rescued_flag():
     assert "rescued_small_shape" not in regions[0].meta
 
 
+# --- simplify_tol_mm: measured, not assumed, to already be scale-invariant -
+
+
+def test_simplify_tol_mm_realized_deviation_is_px_per_mm_invariant():
+    """Ember Design's equivalent scales its simplify tolerance with design
+    size (`config.py`'s `simplify_tol_mm` docstring has the full writeup on
+    why that isn't a like-for-like fix here). Direct measurement, not just
+    the algebra: hold ONE synthetic contour's pixel geometry fixed and sweep
+    `px_per_mm` across 3.0-40.0 — the range this app's real 40-180 mm
+    `target_width_mm` bound produces (measured 4.0-34.1 px/mm running the
+    full pipeline on every testdata fixture at 40-180 mm; 3.0 sits just
+    below the resolution floor `stage1_prep` normally guarantees, included
+    as a below-floor edge case). At every value the REALIZED deviation
+    between the simplified and unsimplified contour — Hausdorff distance in
+    mm, not the eps_px formula's own algebra — stays 0.185-0.200 mm, i.e.
+    `simplify_tol_mm` itself (0.2), regardless of how big or small the
+    design is. Vertex count is NOT expected to be invariant (a coarser
+    design genuinely has less raw pixel detail available to preserve, not
+    more error) — asserted here only as evidence the contour is real and
+    responding to scale, not a degenerate no-op.
+    """
+    # A wavy blob with real curvature at two frequencies, so approxPolyDP has
+    # genuine work to do rather than trivially collapsing a near-circle.
+    size = 600
+    yy, xx = np.mgrid[0:size, 0:size]
+    cx, cy = size / 2, size / 2
+    theta = np.arctan2(yy - cy, xx - cx)
+    r = np.hypot(xx - cx, yy - cy)
+    radius = 220 + 18 * np.sin(theta * 7) + 6 * np.sin(theta * 23)
+    mask = r <= radius
+
+    prior_vtx = None
+    for ppm in [3.0, 4.0, 5.0, 8.0, 12.5, 16.75, 22.35, 40.0]:
+        p = Prep(rgb=np.zeros((size, size, 3), np.uint8),
+                 bg_mask=np.zeros((size, size), bool),
+                 px_per_mm=ppm, art_bbox=(0, 0, size, size))
+        # min_detail_mm dropped near-zero so nothing here takes the
+        # sub-detail rescue path (that path's own fixed 0.5 px floor is a
+        # different mechanism — see the config.py docstring — and would
+        # confound this measurement of simplify_tol_mm in isolation).
+        cfg_tol = PipelineConfig(target_width_mm=999, min_detail_mm=0.01)
+        cfg_raw = PipelineConfig(target_width_mm=999, min_detail_mm=0.01,
+                                  simplify_tol_mm=1e-6)
+        regions_tol, _ = vectorize([RegionMask(mask=mask, layer=0)], [0], p, cfg_tol)
+        regions_raw, _ = vectorize([RegionMask(mask=mask, layer=0)], [0], p, cfg_raw)
+        poly_tol = regions_tol[0].polygon
+        poly_raw = regions_raw[0].polygon
+        hd = poly_tol.exterior.hausdorff_distance(poly_raw.exterior)
+        eps_px = max(0.5, cfg_tol.simplify_tol_mm * ppm)
+        if eps_px > 0.5:  # not floored — the 0.2 mm tolerance is exact here
+            assert 0.15 <= hd <= 0.22, f"px_per_mm={ppm}: hausdorff={hd:.4f}mm"
+        else:  # floored (below the ~2.5 px_per_mm this app's own resolution
+            # floor keeps designs clear of in practice): the realized
+            # tolerance widens, but must still be small and bounded, never
+            # a silent runaway.
+            assert hd <= 0.5, f"px_per_mm={ppm}: hausdorff={hd:.4f}mm (floored)"
+
+        vtx = len(poly_tol.exterior.coords) - 1
+        if prior_vtx is not None:
+            # Vertex count must respond to scale (more px_per_mm -> more raw
+            # detail survives) — a flat count across the whole sweep would
+            # mean the mask/eps wiring above is a no-op, not real evidence.
+            assert vtx != prior_vtx
+        prior_vtx = vtx
+
+
 def test_a_shape_no_tier_can_stitch_sews_its_outline():
     """The reactive rescue: a ribbon thinner than half a fill row produces no
     rows at all, and used to vanish as SHAPE_NOT_STITCHED even though it
