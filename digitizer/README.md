@@ -30,6 +30,27 @@ python -m venv .venv
 .venv/Scripts/python -m pip install -e ".[dev]"     # Windows
 ```
 
+`textcluster.py`'s OCR-confidence quality gate needs the `tesseract-ocr`
+system binary — a separate, non-pip install, the same reason `rembg_isolated/`
+needs a model download step. Unlike `rembg`, this one wheel (`pytesseract`,
+already in `dependencies` above) has no numpy/numba conflict with the shared
+venv (its own deps are just `packaging` and `Pillow`, both already pulled in
+transitively — confirmed via `pip show pytesseract` before it was added), so
+it stays in the shared `digitizer/.venv` unisolated:
+
+```
+sudo apt-get install -y tesseract-ocr    # Debian/Ubuntu, incl. CI
+brew install tesseract                   # macOS
+```
+
+Without it, `regularize_text_clusters`'s OCR gate degrades to a documented
+no-op (`_ocr_confidence` returns `None`, the gate fails open) — the rest of
+the pipeline, including the rest of text-cluster regularization, is
+unaffected. Both `tesseract-ocr` and `pytesseract` are Apache-2.0. See
+`textcluster.py`'s module docstring ("OCR-confidence quality gate") for what
+this gate does and why the decoded text it reads is never touched, only a
+confidence number.
+
 ## Run
 
 ```

@@ -195,6 +195,16 @@ def test_full_pipeline_regularization_reduces_stroke_width_variance_on_benchmark
     runs is whether Step 5's geometry replacement happened. shape_ids are
     unaffected by that patch (assigned earlier, in `vectorize`), so the two
     runs' cluster members line up 1:1 by shape_id.
+
+    The "after" run also patches the OCR-confidence gate
+    (`textcluster._ocr_regularization_hurts_legibility`) to a permissive
+    no-op, to isolate what THIS test is about — the skeleton-buffer layer's
+    wiring — from that separate, later safety layer. On this real fixture
+    the gate legitimately blocks the ONE member the un-gated buffer would
+    otherwise replace (measured OCR confidence 77.0 -> 0.0, see
+    `textcluster.py`'s module docstring), which is that layer doing its job
+    correctly, not a regression in this one; `test_ocr_gate.py` covers that
+    real block directly, on this same fixture and member.
     """
     from unittest.mock import patch
 
@@ -202,8 +212,10 @@ def test_full_pipeline_regularization_reduces_stroke_width_variance_on_benchmark
                lambda regions, p: None):
         before_result = run_stages(TESTDATA / "photo" / "enthusiast_logo.png",
                                     cfg(target_width_mm=90.0))
-    after_result = run_stages(TESTDATA / "photo" / "enthusiast_logo.png",
-                               cfg(target_width_mm=90.0))
+    with patch("digitizer_core.textcluster._ocr_regularization_hurts_legibility",
+               return_value=False):
+        after_result = run_stages(TESTDATA / "photo" / "enthusiast_logo.png",
+                                   cfg(target_width_mm=90.0))
 
     before = _biggest_cluster_strokes(before_result)
     after = _biggest_cluster_strokes(after_result)

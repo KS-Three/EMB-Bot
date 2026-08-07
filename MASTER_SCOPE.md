@@ -11,8 +11,79 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-06 — Kent looked at a real rendered stitch-out of
-the benchmark fixture (`enthusiast_logo.png` at 90mm) and reported 5 concrete
+**Last updated:** 2026-08-07 — `regularize_text_clusters` gains a third,
+independent safety layer on top of the selective-regularization fix directly
+below (PR #77, `fix-lettering-defects-hole-and-regularization`, still open/
+draft, not yet merged to `main` — this work stacks on that branch; see "Not
+yet merged" at the end of this entry): an OCR-confidence quality gate. The
+two existing checks (`_REGULARIZE_SKIP_TOLERANCE`, hole-preservation) are
+geometric PROXIES for "would this redraw read worse" — this measures it
+directly. For every cluster member that clears both existing checks and is
+about to be buffered, Tesseract (Apache-2.0; new `tesseract-ocr` system
+package + `pytesseract` wrapper) scores the member's own rasterized crop
+before and after the proposed skeleton-buffer redraw (`--psm 10`,
+single-character mode); if confidence drops by >=20.0 points
+(`_OCR_CONFIDENCE_DROP_THRESHOLD`), the buffer is discarded and the member
+falls back to its original polygon — the same fail-open contract
+`buffer_failed` already uses. Only a confidence NUMBER is ever read:
+`pytesseract`'s decoded-text field (`data["text"]`) is never accessed
+anywhere in this module — verified both by code inspection and by a
+regression test that makes the decoded-text field raise `AssertionError` if
+anything ever touches it (`tests/test_ocr_gate.py::
+test_ocr_confidence_never_reads_the_decoded_text_field`).
+
+Threshold calibrated on real measurements, not assumed. On the real
+benchmark fixture (`enthusiast_logo.png`'s 14-member subline, 90mm), the ONE
+member PR #77's existing checks let through to the buffer (the +30%-off
+"I") drops from 77.0 to 0.0 confidence — Tesseract finds no text at all in
+the buffered crop, a 77-point loss this gate now catches and blocks. A
+broader real calibration set (font-rendered glyphs E/F/H/I/L/N/S/T/Z, DejaVu
+Sans Bold, individually perturbed in stroke width so each clears
+`_REGULARIZE_SKIP_TOLERANCE` on its own) measured six more real buffered
+examples: three clearly damaging (-49, -27, -26 points), one borderline
+(-20), one mild/still-fine (-5), one genuine improvement (+11, correctly NOT
+blocked). 20.0 sits between the largest real "still fine" delta (-5) and the
+smallest real "genuinely damaged" one (-20). Full evidence trail, both
+calibration sets, and every constant's reasoning: `digitizer_core/
+textcluster.py`'s "OCR-confidence quality gate" module-docstring section.
+
+New tests, real Tesseract, no system-font dependency (letters are hand-built
+5x7 dot-matrix block glyphs — deterministic across machines/CI runners, not
+a font file that may or may not be installed): `tests/test_ocr_gate.py` (6
+new — a real "fine" case, 93.0->92.0, gate does not fire; a real "damaging"
+case, 92.0->0.0, gate fires and falls back to the original polygon; OCR
+unavailable fails open; exact threshold boundary pinned with mocked values;
+two tests proving the decoded text is never touched). Two of PR #77's own
+tests now correctly isolate this new layer via the same no-op-patch pattern
+`test_pipeline.py` already used to isolate `regularize_text_clusters`
+itself: `test_textcluster.py`'s two bare-rectangle variance/area tests
+(rectangles carry no real letterform content for Tesseract to read, before
+or after) and `test_pipeline.py`'s full-pipeline variance test (whose real-
+fixture "after" run now patches past the gate for the same real member the
+gate legitimately blocks — that block is `test_ocr_gate.py`'s job to cover
+directly, not this test's). Targeted suites green: `test_ocr_gate.py`
+(6/6), `test_textcluster.py` (15/15), `test_pipeline.py` (12/12),
+`test_stages.py` (15/15), `test_satin.py` (49/49), `test_service.py -k
+text_cluster` (1/1). Full digitizer suite not re-run locally (this
+environment's own standing caution, see COOKBOOK.md); CI runs it on the PR.
+
+No isolation needed (unlike `rembg_isolated/`): `pytesseract`'s only deps
+are `packaging`/`Pillow`, both already present in `requirements.txt` — no
+numpy/numba conflict, confirmed via `pip show pytesseract` before adding it
+to the shared venv. System `tesseract-ocr` install step added to CI's
+`digitizer` job; documented in `digitizer/README.md`'s "Setup" alongside
+`rembg_isolated/`'s own system-dependency note.
+
+**Not yet merged:** this lands on branch `text-cluster-ocr-confidence-gate`,
+stacked on PR #77's own branch (`fix-lettering-defects-hole-and-
+regularization`) since the `_REGULARIZE_SKIP_TOLERANCE`/hole-preservation
+mechanism this extends is not on `main` yet. Opened as a draft PR against
+`main`; its diff will show both PRs' changes combined until #77 merges
+first, at which point it collapses down to just this one.
+
+Prior update below, still 2026-08-06: Kent looked at a real rendered
+stitch-out of the benchmark fixture (`enthusiast_logo.png` at 90mm) and
+reported 5 concrete
 letterform-fidelity defects. All 5 were reproduced first (`debugviz.stage6`
 render, visually inspected, not inferred from stats) before touching any
 code — the working hypothesis going in (all 5 traced to `textcluster.py`'s
@@ -1806,7 +1877,13 @@ stops a logo's small lettering (the benchmark subline) from being dropped,
 but treats every glyph as an independent noisy blob — nothing distinguished
 "this is a word" from "this is nine unrelated small shapes," and nothing
 made a detected word's letters share one visual weight. Three new pieces,
-all geometry-only, no OCR:
+all geometry-only, no OCR — **still true of detection and of what
+regularization decides to redraw**; a later, additive safety layer (below,
+2026-08-07) reads an OCR CONFIDENCE NUMBER to sanity-check regularization's
+own output, never a decoded character, so the "no OCR" design principle this
+feature was built on (`textcluster.py`'s own top-of-file docstring) still
+holds in the sense that mattered when it was written — no text is ever
+recognized, read, or auto-filled:
 
 - **Detection** (`digitizer_core/textcluster.py`, new module):
   `detect_text_clusters`, a post-vectorization pass (wired into
@@ -1863,6 +1940,18 @@ all geometry-only, no OCR:
   other 3 entries are byte-identical," still holds; the 2026-08-06 fix could
   not be verified against that golden locally (see this doc's top entry: the
   file is separately, pre-existingly corrupted in this checkout).
+  **Additional safety layer, 2026-08-07** (this doc's top entry has the full
+  evidence): an OCR-confidence quality gate now sits on top of the
+  selective checks above. Both are geometric proxies for "would this redraw
+  read worse" — this measures it directly, scoring the member's own
+  rasterized crop with Tesseract before and after the proposed buffer and
+  discarding the buffer if confidence drops >=20 points. Only a confidence
+  NUMBER is read, never decoded text (`data["text"]` is never accessed,
+  code-inspected and regression-tested). On the real benchmark fixture this
+  catches the one case the checks above still let through: the +30%-off "I"
+  the prior fix's own docstring cites drops from 77.0 to 0.0 OCR confidence
+  when buffered — Tesseract finds no text at all in the result — and this
+  gate now blocks it, falling back to the original polygon.
 - **Studio side (area 5 has the full detail):** a "looks like text" badge
   and a per-cluster "Convert to text" action that creates a real, empty
   text element — the user types the actual word and picks a font, nothing

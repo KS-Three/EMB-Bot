@@ -107,6 +107,66 @@ the fact. This is additive selectivity, not a rewrite of the buffer itself:
 a member that genuinely IS inconsistent (the fixture's own 30%-outlier "I",
 and the design doc's synthetic noisy-cluster test) still regularizes exactly
 as before.
+
+## OCR-confidence quality gate (2026-08-07 addition — additional safety layer)
+
+The two checks above are geometric heuristics (own-width-vs-target, has a
+ring). Both are proxies for "would replacing this polygon read worse," not
+direct measurements of it. This adds a third, independent check that
+measures the thing the other two only infer: for a member that clears BOTH
+existing checks (genuinely off-target, no hole to protect) and is about to
+be buffered, Tesseract is run on the member's own rasterized crop TWICE —
+once on the original polygon, once on the proposed buffered replacement —
+and if confidence drops by more than `_OCR_CONFIDENCE_DROP_THRESHOLD`
+points, the buffer is discarded and the member falls back to its original
+polygon, exactly like `buffer_failed`. This is no OCR added to the design
+principle every other part of this module (and `textcluster.py`'s own
+top-of-file docstring) holds to — see that section for why. **The decoded
+text is never read**: only `data["conf"]` is touched, `data["text"]` is
+never accessed, logged, or stored, and no OCR output of any kind persists
+past the local comparison inside `_ocr_regularization_hurts_legibility`. The
+prior-art pattern (score, transform, re-score, use the delta as a legibility
+signal, discarding the decoded text entirely — PreP-OCR, arXiv:2505.20429;
+OCRGenScore, arXiv:2507.15085) is what this reuses.
+
+**Threshold calibration (measured, not assumed).** Two real sources, both
+using the same rasterize -> upscale 200px longest side -> pad 24px -> invert
+-> `pytesseract.image_to_data(..., config="--psm 10")` -> mean of
+non-negative `conf` values (an empty/undetected result reads as confidence
+0.0, the metric's floor, not as "no signal" — that would be
+indistinguishable from "nothing changed"; a genuine measurement failure,
+e.g. Tesseract missing, returns `None` and the gate fails open instead,
+below):
+
+- **The real benchmark fixture.** Of `enthusiast_logo.png`'s 14-member
+  subline cluster at 90 mm, only the one true outlier (the same +30%-off "I"
+  the module docstring above already cites) clears both existing checks and
+  reaches the buffer. Measured directly: confidence 77.0 before, 0.0 after
+  (Tesseract found no text at all in the buffered crop) — a 77-point drop.
+- **A synthetic cluster of real font-rendered glyphs** (DejaVu Sans Bold,
+  `E F H I L N S T Z` — holeless letters only, so the interior-ring check
+  can't mask this signal — individually perturbed in stroke width so several
+  genuinely clear `_REGULARIZE_SKIP_TOLERANCE` against their own median).
+  Six members actually reached the buffer; measured deltas (before -> after,
+  own-width deviation from target in parens): F +30.9% dev, 49.0 -> 0.0
+  (-49); T +39.0% dev, 85.0 -> 58.0 (-27); I +49.5% dev, 26.0 -> 0.0 (-26);
+  Z -27.1% dev, 76.0 -> 56.0 (-20); H -15.1% dev, 73.0 -> 68.0 (-5); N
+  -27.2% dev, 80.0 -> 91.0 (+11, buffering genuinely IMPROVED this one, and
+  the gate correctly does not block an improvement).
+
+`_OCR_CONFIDENCE_DROP_THRESHOLD = 20.0` sits between the smallest real
+"still fine" case (H, -5: a mild dip, 68% is still a confident read, the
+letterform survived) and the smallest real "actually damaged" case (Z, -20:
+comparable in size to I's -26 and clearly past the noise floor H
+established). N's +11 (an improvement) and the real fixture's -77 and
+synthetic F's -49 / T's -27 / I's -26 all land unambiguously on the correct
+side of that line. Every OCR call is wrapped to fail open: if Tesseract
+isn't installed, errors, or the crop is degenerate, `_ocr_confidence`
+returns `None` and the gate treats that exactly like "no signal" —
+regularization proceeds exactly as it did before this layer existed. This
+gate can only ever make `regularize_text_clusters` MORE conservative, never
+less: it has no path to replace a polygon the existing checks would have
+left alone.
 """
 from __future__ import annotations
 
@@ -114,12 +174,15 @@ import hashlib
 import math
 from dataclasses import dataclass
 
+import cv2
 import numpy as np
+import pytesseract
+from PIL import Image
 from shapely.geometry import LineString, MultiLineString, Polygon
 
 from . import machine
 from .regions import Region
-from .shapefield import ShapeField, build_shape_field
+from .shapefield import ShapeField, build_shape_field, rasterize_polygon
 from .stage1_prep import Prep
 from .stage6_satin import _merge_through_junctions, _prune_spurs, _skeleton_edges
 
@@ -165,6 +228,37 @@ SIMILARITY_RATIO = 0.5
 # noisy-cluster test fixture (deliberately spread +-22%) both clear this
 # tolerance and still regularize exactly as before.
 _REGULARIZE_SKIP_TOLERANCE = 0.15
+
+# --- OCR-confidence quality gate (additional safety layer, see the module
+# docstring's "OCR-confidence quality gate" section for the full evidence
+# trail behind every constant below) ------------------------------------
+
+# Tesseract page-segmentation mode: "treat the image as a single character."
+# Each cluster member is exactly that -- one rescued glyph, not a word or
+# line -- so the classifier is scored on raw character-shape confidence,
+# without a dictionary/language model second-guessing an isolated letter.
+_OCR_PSM = 10
+
+# The member's own rasterized crop (`shapefield.rasterize_polygon`, ~6
+# px/mm) is far too small for Tesseract on its own -- a 1.8 mm cap height is
+# ~11 px there. Upscaled (nearest-neighbor, so no new edge information is
+# invented) so its longer side lands near this many pixels, then padded with
+# a white quiet zone Tesseract's own layout analysis expects.
+_OCR_RASTER_TARGET_PX = 200
+_OCR_RASTER_PAD_PX = 24
+
+# A crop's OCR confidence is the mean of Tesseract's own non-negative `conf`
+# values (0..100); a crop with no detected text at all reads as 0.0 -- the
+# metric's floor, not "no signal" (see module docstring). If the BEFORE and
+# AFTER crops' confidence differs by at least this many points, the proposed
+# buffer is treated as damaging and discarded (falls back to
+# `buffer_failed`'s path). 20.0 sits between the smallest real "still fine"
+# delta measured (-5, a mild dip that stayed clearly legible) and the
+# smallest real "actually damaged" delta measured (-20) -- see the module
+# docstring for the full real before/after numbers this was calibrated
+# against, both from the real benchmark fixture and a constructed synthetic
+# cluster of real font-rendered glyphs.
+_OCR_CONFIDENCE_DROP_THRESHOLD = 20.0
 
 
 @dataclass(frozen=True)
@@ -360,6 +454,78 @@ def _skeleton_buffer_polygon(field: ShapeField, radius_mm: float) -> Polygon | N
     return buffered
 
 
+# --- OCR-confidence quality gate --------------------------------------------
+
+
+def _ocr_raster(poly: Polygon) -> Image.Image | None:
+    """`poly` rasterized, upscaled and padded into an OCR-ready crop: black
+    ink on a white field, matching what Tesseract is tuned against (its own
+    native rasterization is dark text on a light page). None for a
+    degenerate polygon that rasterizes to nothing (mirrors
+    `build_shape_field`'s own guard; same fixture class, same reason).
+
+    Uses `shapefield.rasterize_polygon` — the SAME rasterizer
+    `build_shape_field` uses internally — so the crop this gate scores is
+    geometrically the same raster the rest of this module already reasons
+    about, not a second, independently-tuned rendering path.
+    """
+    mask, _scale, _ox, _oy = rasterize_polygon(poly)
+    if not mask.any():
+        return None
+    h, w = mask.shape
+    up = max(1, _OCR_RASTER_TARGET_PX // max(h, w))
+    big = cv2.resize(mask, (w * up, h * up), interpolation=cv2.INTER_NEAREST)
+    pad = _OCR_RASTER_PAD_PX
+    canvas = np.zeros((big.shape[0] + 2 * pad, big.shape[1] + 2 * pad), np.uint8)
+    canvas[pad:pad + big.shape[0], pad:pad + big.shape[1]] = big
+    return Image.fromarray(255 - canvas)  # mask: 255=ink -> invert to black-on-white
+
+
+def _ocr_confidence(poly: Polygon) -> float | None:
+    """Mean Tesseract confidence (0..100) on `poly`'s own rasterized crop, or
+    `None` if that can't be measured (degenerate crop, Tesseract missing or
+    erroring) — `None` is this function's ONLY "I don't know" value; an
+    empty read (Tesseract found no text at all) is a real, low measurement
+    (0.0), not a `None` — see the module docstring for why that distinction
+    is load-bearing for the gate below.
+
+    Reads ONLY `data["conf"]`. `data["text"]` — the decoded characters — is
+    never accessed here or anywhere else in this module: this function's
+    return value is the sole channel by which anything Tesseract produces
+    leaves this call, and it is a float, never a string.
+    """
+    img = _ocr_raster(poly)
+    if img is None:
+        return None
+    try:
+        data = pytesseract.image_to_data(
+            img, config=f"--psm {_OCR_PSM}", output_type=pytesseract.Output.DICT)
+    except Exception:
+        return None
+    confs = [float(c) for c in data["conf"] if float(c) >= 0]
+    return sum(confs) / len(confs) if confs else 0.0
+
+
+def _ocr_regularization_hurts_legibility(original_poly: Polygon, candidate_poly: Polygon) -> bool:
+    """True only if OCR confidence measurably DROPS from `original_poly` to
+    `candidate_poly` — the additional safety layer on top of
+    `_REGULARIZE_SKIP_TOLERANCE`/hole-preservation above (module docstring,
+    "OCR-confidence quality gate").
+
+    Fails open by construction: either measurement returning `None` (OCR
+    unavailable or inconclusive) makes the drop-check itself unreachable, so
+    a missing Tesseract install degrades this gate to a no-op rather than
+    blocking every regularization in the codebase. Both confidence values
+    are local to this call and never escape it — nothing from either OCR
+    pass is stored, logged, or returned beyond this one boolean.
+    """
+    before = _ocr_confidence(original_poly)
+    after = _ocr_confidence(candidate_poly)
+    if before is None or after is None:
+        return False
+    return (before - after) >= _OCR_CONFIDENCE_DROP_THRESHOLD
+
+
 def regularize_text_clusters(regions: list[Region], p: Prep) -> None:
     """Post-tagging pass (call immediately after `detect_text_clusters`):
     redraw every `text_cluster_id`-tagged region's polygon as a fixed-radius
@@ -399,6 +565,13 @@ def regularize_text_clusters(regions: list[Region], p: Prep) -> None:
       cruder buffered approximation is a pure loss of fidelity for no
       consistency gain.
 
+    A third case — `ocr_confidence_drop` — leaves the polygon untouched for
+    the same "safe and needed" reason, but measured rather than inferred:
+    see the module docstring's "OCR-confidence quality gate" section. It
+    only ever fires on a member that ALREADY cleared both cases above (a
+    genuine outlier, no hole to protect), so it can only make this pass more
+    conservative, never less.
+
     Both set `meta["text_cluster_regularize_skipped"] = True` (the
     downstream contract is "was this polygon replaced," not "did replacement
     fail") plus `meta["text_cluster_regularize_skip_reason"]` naming which
@@ -431,5 +604,11 @@ def regularize_text_clusters(regions: list[Region], p: Prep) -> None:
             r.meta["text_cluster_regularize_skipped"] = True
             r.meta["text_cluster_regularize_skip_reason"] = "buffer_failed"
             continue
+
+        if _ocr_regularization_hurts_legibility(r.polygon, new_poly):
+            r.meta["text_cluster_regularize_skipped"] = True
+            r.meta["text_cluster_regularize_skip_reason"] = "ocr_confidence_drop"
+            continue
+
         r.polygon = new_poly
         r.area_mm2 = new_poly.area

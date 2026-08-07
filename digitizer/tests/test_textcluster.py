@@ -10,6 +10,7 @@ it does not re-derive it (Step 1 already owns that decision).
 from __future__ import annotations
 
 import random
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -22,6 +23,18 @@ from digitizer_core.textcluster import (
     detect_text_clusters,
     regularize_text_clusters,
 )
+
+# Fixtures in this file are bare rectangles standing in for letters (see
+# module docstring) -- geometrically fine for the SKELETON-BUFFER layer this
+# file mostly tests, but they carry no real letterform content, so the
+# OCR-confidence gate (`textcluster.py`'s "OCR-confidence quality gate"
+# section; `tests/test_ocr_gate.py` covers IT in isolation, on real
+# font-rendered glyphs) reads them as noise -- Tesseract has no reliable
+# opinion about a plain rectangle, before OR after. Two tests below are
+# testing the buffer/variance-reduction behavior specifically and patch the
+# OCR gate to a permissive no-op for that reason, the same isolation
+# `tests/test_pipeline.py` already uses to test one pass at a time.
+_OCR_GATE_PATH = "digitizer_core.textcluster._ocr_regularization_hurts_legibility"
 
 # A throwaway Prep: nothing in the current algorithm reads it (regions already
 # carry mm-space polygons), but the public signature matches
@@ -228,7 +241,11 @@ def test_regularize_reduces_stroke_width_variance_across_cluster():
     before_stroke = [_stroke_mm_of(p) for p in before_polys]
     assert all(v is not None for v in before_stroke)
 
-    regularize_text_clusters(regions, _P)
+    # Isolate the skeleton-buffer/variance layer from the OCR-confidence
+    # gate: these bare rectangles carry no real letterform content for
+    # Tesseract to read, before or after (see module comment above).
+    with patch(_OCR_GATE_PATH, return_value=False):
+        regularize_text_clusters(regions, _P)
 
     # `text_cluster_regularize_skipped` is absent (not `False`) on a member
     # that DID regularize — same "absent means false" convention every
@@ -256,7 +273,11 @@ def test_regularize_updates_area_mm2_to_match_new_polygon():
     widths = [0.7, 0.8, 0.9, 1.0, 1.1]
     regions = _row_varied_width("A", widths)
     detect_text_clusters(regions, _P)
-    regularize_text_clusters(regions, _P)
+    # Isolate from the OCR-confidence gate -- see the comment on the
+    # variance-reduction test above; same bare-rectangle fixture, same
+    # reason.
+    with patch(_OCR_GATE_PATH, return_value=False):
+        regularize_text_clusters(regions, _P)
 
     regularized = [r for r in regions if not r.meta.get("text_cluster_regularize_skipped")]
     assert regularized, "fixture is expected to regularize cleanly"
