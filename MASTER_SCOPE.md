@@ -44,6 +44,32 @@ finding).
 
 Prior update below, still 2026-08-07:
 
+**Last updated:** 2026-08-07 — fill angle selection (`stage6_fill.py`)
+gained a 16-candidate-angle sweep for the auto case (no explicit
+per-shape/global/comp-axis override): `best_fill_angle_deg` tries 16 evenly
+spaced row directions PLUS `principal_angle_deg`'s own answer and keeps
+whichever cuts the shape into the fewest monotone columns (`_columns`),
+the same "enumerate candidate angles, minimise fragment count" method the
+expired Goldman/SoftSight patents disclose (docs/masters-teardown-2026-08
+-01.md's gap **G3**, closed by this pass). `principal_angle_deg` alone
+already gets this right for anything with a real long axis — the gap was
+specifically shapes where the plain PCA angle is technically correct (a
+real long axis by area) but a bad row direction for the shape's actual
+structure: measured on a synthetic diagonal staircase of overlapping
+squares, PCA's 45deg axis sews as 13 columns while the sweep's chosen
+near-perpendicular angle sews the same shape as 1. Including PCA's own
+angle as a candidate means the sweep can only tie or beat it, never do
+worse — confirmed by a dedicated regression test, and by the fact the
+**entire 937-test Python suite passes unchanged** except one fixture
+(`test_run_tier.py`'s empty-fill rescue test) that had to pin its angle
+explicitly rather than rely on a specific angle failing to fill, since the
+whole point of this change is that fewer angles fail to fill now. Branch
+`fill-angle-candidate-sweep`. Doesn't move area 1's Status/Confidence
+verdict (a fill-quality improvement within already-shipped, already-tested
+technique, not a new capability or a trust finding).
+
+Prior update below, still 2026-08-07:
+
 **Last updated:** 2026-08-07 — manual (hand-drawn) shape authoring
 (`ManualPanel.svelte`) gained curved as well as straight-line edges: drag
 the small handle at any edge's midpoint to bow it into a quadratic curve,

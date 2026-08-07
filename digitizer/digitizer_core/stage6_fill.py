@@ -193,6 +193,65 @@ def _columns(rows: list[tuple[int, float, list[tuple[float, float]]]]) -> list[l
     return [c for c in columns if c]
 
 
+# Candidate row directions swept by best_fill_angle_deg, evenly spaced across
+# the meaningful [0, 180) range (row direction is a LINE, not a vector — a
+# 30deg row and a 210deg row are the same rows).
+_FILL_ANGLE_CANDIDATES = 16
+
+
+def best_fill_angle_deg(poly: Polygon, row_mm: float) -> float:
+    """The auto (no explicit override) fill angle: whichever of 16 evenly
+    spaced candidate row directions, PLUS `principal_angle_deg`'s own
+    answer, cuts the shape into the fewest monotone columns (`_columns`) at
+    the row spacing this fill will actually run at.
+
+    Fewer columns means fewer forced end-of-column travel decisions —
+    `_fill_paths` already reasons about this at the travel-planning level
+    ("Travel between columns... the classic auto-digitizer tell"); this
+    picks the row direction that gives travel-planning the least to do in
+    the first place. Same "enumerate candidate angles, minimise fragment
+    count" method the expired Goldman/SoftSight auto-digitizing patents
+    disclose (docs/masters-teardown-2026-08-01.md, gap G3).
+
+    `principal_angle_deg` alone already gets this right for anything with a
+    real long axis. It's *right where it says it's arbitrary* — a shape
+    with no dominant axis by area, which its own docstring notes falls
+    back to a flat 0deg — that column count can still swing hard with
+    angle: a diagonal staircase of overlapping squares measures a 45deg
+    principal axis (correctly, that IS the long axis by area) but sews that
+    axis as 13 columns, while a candidate near-perpendicular to the stair
+    direction sews it as 1. Including `principal_angle_deg`'s own answer as
+    one of the candidates means this function can never do WORSE than
+    today's behaviour, only tie or improve on it — a shape where the plain
+    PCA angle was already optimal keeps generating byte-identical output.
+
+    Ties (equal column count) prefer whichever candidate sits closest to
+    the plain PCA angle, then the smallest angle — deterministic, and keeps
+    a shape with one clear right answer from wobbling between
+    equally-good-on-paper candidates for arbitrary float-noise reasons.
+    """
+    pca = principal_angle_deg(poly)
+    candidates = [i * (180.0 / _FILL_ANGLE_CANDIDATES) for i in range(_FILL_ANGLE_CANDIDATES)]
+    candidates.append(pca)
+
+    def angular_dist(a: float, b: float) -> float:
+        d = abs(a - b) % 180.0
+        return min(d, 180.0 - d)
+
+    best_angle = pca
+    best_key = None
+    for angle in candidates:
+        rotated = affinity.rotate(poly, -angle, origin=(0, 0), use_radians=False)
+        cols = len(_columns(_row_spans(rotated, row_mm)))
+        if cols == 0:
+            continue
+        key = (cols, angular_dist(angle, pca), angle)
+        if best_key is None or key < best_key:
+            best_key = key
+            best_angle = angle
+    return best_angle
+
+
 @lru_cache(maxsize=16)
 def _stagger_slots(n: int) -> tuple[int, ...]:
     """Which offset slot each row in a stagger cycle uses.
@@ -488,7 +547,7 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     that had to lift the needle), `empty` (produced nothing).
     """
     report = {"too_thin": False, "jumps": 0, "empty": False}
-    angle = principal_angle_deg(poly) if angle_deg is None else angle_deg
+    angle = best_fill_angle_deg(poly, row_mm) if angle_deg is None else angle_deg
     if poly.buffer(-machine.MIN_FILL_WIDTH_MM / 2.0).is_empty:
         report["too_thin"] = True
 
