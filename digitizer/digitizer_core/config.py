@@ -115,6 +115,63 @@ class PipelineConfig:
     small_shape_rescue: bool = True
 
     # Stage 4
+    # Polygon simplification tolerance. Both call sites (`stage4_vectorize.
+    # vectorize`'s `eps_px = simplify_tol_mm * px_per_mm`, then divided back
+    # by `px_per_mm` on the way to mm-space output; `pipeline.py`'s
+    # background-outline simplify, which runs on already-mm coordinates
+    # directly) apply it so the REALIZED deviation is a genuine, constant
+    # `simplify_tol_mm` millimetres regardless of `target_width_mm` — by
+    # construction, not by accident, because `px_per_mm` is exactly what
+    # converts one to the other and cancels out of the round trip.
+    #
+    # Ember Design's competitor tool scales an equivalent tolerance linearly
+    # with design size, clamped [0.32, 2.5] (`docs/emberdesign-competitive-
+    # research-2026-08-07.md`), which reads at first glance like something
+    # EMB-Bot should copy. Checked directly, not assumed, 2026-08-07: their
+    # `/api/vectorize` traces a raw uploaded image with NO physical-size
+    # input at that layer at all (sizing happens later, in their editor) —
+    # their "size" is the traced raster SHAPE's pixel dimensions, a proxy
+    # for "how much raw contour noise is probably in this image," not a
+    # physical output measurement. EMB-Bot already has an explicit mm scale
+    # at this point (`px_per_mm`, derived from `target_width_mm` in stage 1)
+    # and applies this tolerance AFTER that conversion specifically so it
+    # measures real millimetres independent of source resolution — a more
+    # direct solve to the problem their size-proportional heuristic
+    # approximates without one. Copying their formula/clamp would be
+    # applying pixel-domain calibration to a constant that is already
+    # mm-domain, not a calibration match, and their own floor (0.32 mm) is
+    # already coarser than today's whole 0.2 mm default.
+    #
+    # Measured this directly on real fixtures rather than reasoning it
+    # through: held one synthetic wavy contour fixed and swept `px_per_mm`
+    # 3.0-40.0 (the range this app's real 40-180 mm `target_width_mm` bound
+    # produces across the fixture corpus — measured 4.0-34.1 px/mm running
+    # `run_stages` on every flat- and photo-lane testdata fixture at 40, 60,
+    # 80, 90, 120, 150, 180 mm). The Hausdorff deviation between the
+    # simplified and unsimplified contour stayed 0.185-0.200 mm across the
+    # ENTIRE swept range — i.e. already scale-invariant in the metric that
+    # matters — while vertex count varied 26-226 exactly as it should (a
+    # design built from the same source pixels genuinely has less raw detail
+    # to preserve at a smaller physical size, not more error at a bigger
+    # one). Full pipeline runs on the flat-lane fixtures (`logo_whitebg.png`,
+    # `logo_alpha.png`, `ribbon_curve.png`, immune to the photo lane's own
+    # segmenter-resolution confounds) showed the same thing end to end:
+    # smooth, sub-linear vertex growth with `target_width_mm`, no blocky
+    # under-detail at 40 mm and no runaway vertex blowup at 150 mm. The one
+    # fixture that DID show a dramatic vertex swing at small sizes
+    # (`photo/summit_badge.png`, 1654 vertices at 40 mm collapsing to 627 at
+    # 80 mm) traced entirely to a DIFFERENT mechanism — the sub-detail
+    # rescue path's own fixed 0.5 px floor a few lines below this one in
+    # `stage4_vectorize.py`, not this constant — confirmed by a per-region
+    # breakdown: 1263 of 1654 vertices at 40 mm came from `rescued_
+    # small_shape=True` regions, which bypass this tolerance entirely.
+    # See `tests/test_run_tier.py::
+    # test_simplify_tol_mm_realized_deviation_is_px_per_mm_invariant` and
+    # `tests/test_pipeline.py::
+    # test_simplify_tol_mm_stays_fine_across_the_real_target_width_range`
+    # for the pinned regressions, and MASTER_SCOPE.md's Ember research entry
+    # for the full writeup. Conclusion: no change justified by evidence —
+    # left at 0.2 deliberately, not by default.
     simplify_tol_mm: float = 0.2
 
     # Stage 5 — sew order, underlap, pull compensation

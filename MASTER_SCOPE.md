@@ -31,7 +31,15 @@ not a quality or trust finding).
 
 Prior update below, still 2026-08-07:
 
-**Last updated:** 2026-08-07 — the `summit_badge.png` black-complex
+**Last updated:** 2026-08-07 — documentation-only pass, no code changed:
+recorded this session's competitive research against Ember Design
+(`emberdesign.net`) as a new cross-cutting backlog item (see "Ember Design
+competitive research" below) rather than folding it into any capability
+area's status, since none of it changes what's built or how much it's
+trusted today. Full evidence trail: `docs/emberdesign-competitive-research-
+2026-08-07.md`.
+
+Prior update below, still 2026-08-07 — the `summit_badge.png` black-complex
 regression the SLIC -> SEEDS superpixel swap shipped as a documented,
 `xfail(strict=True)`-marked defect (see that entry further down, kept
 verbatim) is **RESOLVED**, by a new mechanism rather than by any retuning of
@@ -1284,6 +1292,18 @@ than kept as standing callouts). One thing this pass did NOT find any new
 evidence for: physical sew-out testing — still zero, see the cross-cutting
 item below, unchanged.
 
+Also landed 2026-08-07, same day: one Ember Design competitive-research
+backlog item closed out — measured whether `digitizer_core/config.py`'s
+fixed `simplify_tol_mm` (0.2 mm) needs to scale with `target_width_mm` the
+way Ember's equivalent tolerance scales with design size. Measured, not
+assumed: it does not — the fixed constant is already scale-invariant in
+real millimetres by construction (`px_per_mm` cancels out of the round
+trip), confirmed by a direct Hausdorff-deviation sweep (0.185-0.200 mm
+across `px_per_mm` 3.0-40.0) and full end-to-end runs on every testdata
+fixture at 40-180 mm. No pipeline behavior changed; two regression tests
+pin the finding. Full writeup: this file's "`simplify_tol_mm` design-size
+scaling" cross-cutting entry below. Branch `simplify-tol-mm-scaling-audit`.
+
 Prior update 2026-08-04, earlier the same day: docs refresh once PRs #8–#15
 had finished merging (written mid-batch, so it undercounted at first),
 touched up twice more that pass as #23 (meander tonal tier) then #22
@@ -1509,6 +1529,155 @@ builds on top of). The review's two accurate points — text detection in
 logos being a real gap, and this evaluation-corpus/harness gap — are exactly
 the two reflected in this update: the first is now closed by this pass's own
 feature, the second is captured here.
+
+### Ember Design competitive research — new backlog items, not a status change
+
+Three research passes against `emberdesign.net` (a browser-based embroidery
+digitizing competitor), run 2026-08-07: a screenshot UI/UX walkthrough, an
+end-to-end Chrome-extension-driven exploration of the live editor, and a
+build-artifact fingerprinting pass identifying their actual client-side tech
+stack and reverse-engineering their auto-digitize call path. None of it
+required bypassing authentication — passes 2 and 3 read client-side
+JavaScript Ember's own servers already send to any visitor's browser during
+ordinary use, the same thing devtools/View Source does. Full evidence
+trail, with exact formulas/library names/bug descriptions:
+`docs/emberdesign-competitive-research-2026-08-07.md`.
+
+**The prioritization decision matters more than the findings themselves.**
+Resolved via a pressure-tested discussion, not assumed: feature-parity work
+is real and belongs on the roadmap, but under a **standing priority rule,
+not a one-time gate** — it only gets picked up when nothing trust/quality-
+related is currently open and actionable. A one-time gate was explicitly
+rejected because two of the three originally-proposed gating conditions
+(the sew-out session above; open-ended "continued core-quality work") are
+externally-scheduled or inherently ongoing and would never crisply resolve
+— parity work would never start under a literal gate. The practical
+consequence: an idea only earns priority *within* the backlog if it maps to
+something already independently flagged as a gap, not merely because a
+competitor has it.
+
+Under that filter, from the three passes:
+- **Promoted, real independent justification:**
+  - Evenly-spaced streamline fill — Ember ships this as a paid "Streamlines"
+    fill pattern (`ess`, evenly-spaced streamlines of a 2D vector field).
+    EMB-Bot already has the same algorithm built
+    (`digitizer_core/stage6_streamline.py`, a clean-room Jobard & Lefer
+    implementation, deliberately not adapted from the license-unverified
+    `embroidery-streamlines` reference repo), but scoped today to the
+    photo-classification auto-pipeline only ("technique row 10"). The open
+    item is exposing existing capability as a general, manually-selectable
+    fill type — not building the algorithm, which already exists and is
+    tested.
+  - Boustrophedon polygon decomposition at an arbitrary sweep angle
+    (Ember's `bcd`) — relevant to this doc's own long-standing fill-angle-
+    selection research (the Goldman-patent "test 16 candidate angles"
+    finding).
+  - A color-block sequencer UI view (Ember's "Sequencer: Colors" panel —
+    collapses shapes into color blocks with thread name/brand/shape count/
+    stitch-index range per block) — addresses a gap already found
+    independently this session: cross-color sequencing today has zero
+    geometric-adjacency signal (see area 1's sequencing-research notes).
+- **One concrete, low-risk, testable idea, not yet a backlog promotion
+  pending a real test:** Ember's raster-input simplification tolerance
+  scales with design size (`tolerance = min(2.5, max(0.32, 0.0028 *
+  size))`); EMB-Bot's `simplify_tol_mm` (`digitizer_core/config.py`) is a
+  fixed 0.2mm regardless of design size. Pairs with the already-backlogged
+  Visvalingam-Whyatt simplification-algorithm research as a second,
+  independent angle on the same vectorization step.
+- **Recorded as existing, explicitly not queued — much larger scope than
+  the above:** `ember-bridge`, a separate Tauri desktop app that terminates
+  Brother machines' own TLS protocol locally for direct-to-machine design
+  transfer, bypassing manual file export. A real, distinct product
+  capability EMB-Bot has no equivalent of; not comparable in scope or risk
+  to the items above.
+- **Two of EMB-Bot's own architecture choices validated, not changed, by
+  what was found:** server-side auto-digitizing (Ember's client bundles
+  were probed for every common ML-inference surface — ONNX, TensorFlow.js,
+  transformers.js, WebGPU/WebNN — and any LLM API reference — OpenAI,
+  Anthropic, Replicate, Bedrock, SageMaker — and none were found anywhere;
+  their `/api/vectorize` is architecturally server-side and, from the
+  client's own vantage point, indistinguishable from a classical
+  raster-to-SVG tracer, the same shape as EMB-Bot's own `digitizer_service`
+  split); and depending on a mature format library (`pyembroidery`) rather
+  than hand-rolling PES/DST/EXP/etc. readers/writers from scratch the way
+  Ember's own `/convert` module apparently does (no WASM, no third-party
+  format library found in that module at all).
+
+**One direct process lesson, not a feature idea:** Ember's own user manual
+documents keyboard shortcuts (`3 = circle, 4 = rectangle, 5 = pen, 6 =
+satin blocks`) that no longer match the shipped toolbar (`3 = satin
+blocks, 4 = pen`, circle/rectangle moved into a shapes flyout, and Text —
+not documented at all — added as a real toolbar entry). Real evidence that
+doc drift actively misleads users, not just a hygiene nitpick — consistent
+with, not a new argument for, this project's own existing discipline around
+keeping `MASTER_SCOPE.md`/`COOKBOOK.md` matched to shipped reality.
+
+---
+
+### `simplify_tol_mm` design-size scaling — measured 2026-08-07, no change justified
+
+One concrete backlog item this session's Ember Design competitive research
+pass adopted (that research itself is `docs/emberdesign-competitive-
+research-2026-08-07.md`, open as PR #89 at the time of this entry, not yet
+merged — see that PR/doc for the full competitive writeup; this entry is
+the follow-up that closes out its one `digitizer_core`-side action item):
+Ember's equivalent vectorization tolerance scales linearly with design size,
+clamped `[0.32, 2.5]`, while `digitizer_core/config.py`'s `simplify_tol_mm`
+is a fixed 0.2 mm constant regardless of `target_width_mm` — flagged as
+"could plausibly benefit from size-proportional scaling the way Ember's
+does."
+
+**Checked directly, not assumed, and the fixed constant is correct as-is —
+no change made.** Two things, measured independently:
+
+1. **The two are not a like-for-like comparison.** Ember's `/api/vectorize`
+   traces a raw uploaded image with no physical-size input at that layer at
+   all (their editor sets physical size later); their "size" is the traced
+   raster shape's own pixel dimensions — a proxy for "how much raw contour
+   noise this image probably has," not a physical output measurement.
+   EMB-Bot already has an explicit mm scale at this point (`px_per_mm`,
+   derived from `target_width_mm` in stage 1) and applies `simplify_tol_mm`
+   AFTER that conversion specifically so it measures real millimetres
+   independent of source resolution — a more direct solve to the problem
+   Ember's heuristic approximates without one. Their own floor (0.32 mm) is
+   already coarser than EMB-Bot's entire current default (0.2 mm), so
+   copying their formula/clamp would be a strictly coarser, unjustified
+   behavior change, not a calibration match.
+2. **Direct measurement confirms the fixed constant already behaves as a
+   genuine, scale-invariant physical-mm tolerance.** Held one synthetic
+   wavy contour's pixel geometry fixed and swept `px_per_mm` 3.0-40.0 (the
+   range this app's real 40-180 mm `target_width_mm` bound produces —
+   measured 4.0-34.1 px/mm running the full pipeline on every flat- and
+   photo-lane testdata fixture at 40/60/80/90/120/150/180 mm): the Hausdorff
+   deviation between the simplified and unsimplified contour stayed
+   0.185-0.200 mm across the ENTIRE swept range, while vertex count varied
+   26-226 exactly as it should (a design built from the same source pixels
+   genuinely has less raw detail to preserve at a smaller physical size, not
+   more error at a bigger one). Full end-to-end runs on the flat-lane
+   fixtures (`logo_whitebg.png`, `logo_alpha.png`, `ribbon_curve.png` —
+   immune to the photo lane's own segmenter-resolution confounds) showed the
+   same thing: smooth, sub-linear vertex growth with `target_width_mm` (62
+   vertices at 40 mm -> 101 at 90 mm -> 125 at 150 mm on `logo_whitebg.png`),
+   no blocky under-detail at the small end, no runaway blowup at the large
+   end. The one fixture that DID show a dramatic vertex swing at small sizes
+   (`photo/summit_badge.png`: 1654 vertices at 40 mm collapsing to 627 at
+   80 mm) traced entirely to a DIFFERENT, already-documented mechanism — the
+   sub-detail rescue path's own fixed 0.5 px floor (`stage4_vectorize.py`,
+   a few lines from `simplify_tol_mm`'s own use), confirmed via a
+   per-region breakdown: 1263 of those 1654 vertices came from `rescued_
+   small_shape=True` regions, which bypass `simplify_tol_mm` entirely — not
+   this constant, and out of this pass's scope to touch.
+
+Regression tests pinning both measurements: `tests/test_run_tier.py::
+test_simplify_tol_mm_realized_deviation_is_px_per_mm_invariant` (the
+isolated Hausdorff sweep) and `tests/test_pipeline.py::
+test_simplify_tol_mm_stays_fine_across_the_real_target_width_range` (the
+end-to-end vertex-count bounds on a real fixture). `simplify_tol_mm`'s own
+docstring in `config.py` carries the full writeup so a future pass doesn't
+re-litigate this from scratch without evidence. The flat-lane byte-identical
+golden (`testdata/flat_lane_golden.json`, pinned by `tests/
+test_flat_lane_byte_identical.py`) is untouched, as expected — this was a
+measurement-only pass, no pipeline behavior changed.
 
 ---
 
