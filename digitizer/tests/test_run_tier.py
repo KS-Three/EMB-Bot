@@ -259,13 +259,25 @@ def test_simplify_tol_mm_realized_deviation_is_px_per_mm_invariant():
 
 
 def test_a_shape_no_tier_can_stitch_sews_its_outline():
-    """The reactive rescue: a ribbon thinner than half a fill row produces no
-    rows at all, and used to vanish as SHAPE_NOT_STITCHED even though it
-    passed every size floor. Its outline still exists; sew that."""
+    """The reactive rescue: a ribbon thinner than half a fill row at the
+    angle it's asked to sew at produces no rows at all, and used to vanish
+    as SHAPE_NOT_STITCHED even though it passed every size floor. Its
+    outline still exists; sew that.
+
+    Angle pinned explicitly (`meta["fill_angle_deg"]`) rather than left to
+    auto-selection: `stage6_fill.best_fill_angle_deg` now sweeps 16
+    candidate row directions plus the plain PCA angle specifically to find
+    a working angle when one exists, so a ribbon this size auto-selected
+    would just find one (measured: this same 20x0.15mm ribbon finds 49 rows
+    at the sweep's chosen 78.75deg) — which would make this test exercise
+    the sweep, not the rescue. Pinning the angle keeps this test's actual
+    subject (sequence()'s handling of a genuinely empty fill report)
+    independent of how good angle auto-selection happens to be.
+    """
     hair = Polygon([(0, 0), (20, 0), (20, 0.15), (0, 0.15)])
     reg = Region(shape_id="Shair", polygon=hair, thread_index=0,
                  thread_number="0134", area_mm2=hair.area, source="test",
-                 meta={"layer": 0})
+                 meta={"layer": 0, "fill_angle_deg": 0.0})
     planned = [PlannedRegion(region=reg, polygon=hair, sew_index=0)]
     fabric = fabric_for_garment("left_chest")
 
