@@ -558,6 +558,108 @@ test("reorderWithinLayer on a two-shape layer is a full reversal either directio
   expect(reorderWithinLayer(["A", "B"], "B", -1)).toEqual({ B: 0, A: 1 });
 });
 
+// ---- effLayer / sortShapes / effSewOrder / layerSiblings / effRgb ---------
+// (pure Layers-list logic shared by the plain per-shape list and the
+// color-block Sequencer view)
+
+function seqRow(id, extra = {}) {
+  return { id, rgb: [10, 20, 30], threadNumber: "0134", layer: 0, sewOrder: null, sewIndex: 0, ...extra };
+}
+
+test("effLayer: an explicit override beats the row's own layer, which beats sewIndex, which beats nothing", async () => {
+  stubStorage({});
+  const { effLayer } = await import("./digitizer.js");
+  expect(effLayer(seqRow("a", { layer: 2 }), { a: { layer: 5 } })).toBe(5);
+  expect(effLayer(seqRow("a", { layer: 2 }), {})).toBe(2);
+  expect(effLayer(seqRow("a", { layer: null, sewIndex: 7 }), {})).toBe(7);
+  expect(effLayer(seqRow("a", { layer: null, sewIndex: null }), {})).toBe(1e9);
+});
+
+test("sortShapes: orders by effLayer, then sewIndex, then id — the list IS the sew order", async () => {
+  stubStorage({});
+  const { sortShapes } = await import("./digitizer.js");
+  const rows = [
+    seqRow("c", { layer: 1, sewIndex: 0 }),
+    seqRow("a", { layer: 0, sewIndex: 1 }),
+    seqRow("b", { layer: 0, sewIndex: 0 }),
+  ];
+  expect(sortShapes(rows, {}).map((r) => r.id)).toEqual(["b", "a", "c"]);
+});
+
+test("effSewOrder: an explicit override beats the last-applied sewOrder, which beats sewIndex", async () => {
+  stubStorage({});
+  const { effSewOrder } = await import("./digitizer.js");
+  expect(effSewOrder(seqRow("a", { sewOrder: 2, sewIndex: 9 }), { a: { sew_order: 5 } })).toBe(5);
+  expect(effSewOrder(seqRow("a", { sewOrder: 2, sewIndex: 9 }), {})).toBe(2);
+  expect(effSewOrder(seqRow("a", { sewOrder: null, sewIndex: 9 }), {})).toBe(9);
+});
+
+test("layerSiblings: only rows sharing the effective layer, sorted by effSewOrder", async () => {
+  stubStorage({});
+  const { layerSiblings } = await import("./digitizer.js");
+  const rows = [
+    seqRow("a", { layer: 0, sewOrder: 1 }),
+    seqRow("b", { layer: 1, sewOrder: 0 }),
+    seqRow("c", { layer: 0, sewOrder: 0 }),
+  ];
+  expect(layerSiblings(rows[0], rows, {}).map((r) => r.id)).toEqual(["c", "a"]);
+});
+
+test("effRgb: an explicit override beats the row's own thread color, which beats the placeholder grey", async () => {
+  stubStorage({});
+  const { effRgb } = await import("./digitizer.js");
+  expect(effRgb(seqRow("a", { rgb: [1, 2, 3] }), { a: { rgb: [9, 9, 9] } })).toEqual([9, 9, 9]);
+  expect(effRgb(seqRow("a", { rgb: [1, 2, 3] }), {})).toEqual([1, 2, 3]);
+  expect(effRgb(seqRow("a", { rgb: null }), {})).toEqual([136, 136, 136]);
+});
+
+// ---- groupIntoBlocks (the Sequencer view's color-block grouping) ----------
+
+test("groupIntoBlocks: one block per distinct effLayer, in sew order, each carrying its own swatch/thread/count/span", async () => {
+  stubStorage({});
+  const { groupIntoBlocks } = await import("./digitizer.js");
+  const rows = [
+    seqRow("a", { layer: 0, sewIndex: 0, rgb: [200, 0, 0], threadNumber: "0111" }),
+    seqRow("b", { layer: 0, sewIndex: 1, rgb: [200, 0, 0], threadNumber: "0111" }),
+    seqRow("c", { layer: 1, sewIndex: 2, rgb: [0, 200, 0], threadNumber: "0222" }),
+  ];
+  const blocks = groupIntoBlocks(rows, {});
+  expect(blocks).toHaveLength(2);
+  expect(blocks[0]).toMatchObject({
+    layer: 0, rgb: [200, 0, 0], threadNumber: "0111", sewIndexMin: 0, sewIndexMax: 1,
+  });
+  expect(blocks[0].rows.map((r) => r.id)).toEqual(["a", "b"]);
+  expect(blocks[1]).toMatchObject({
+    layer: 1, rgb: [0, 200, 0], threadNumber: "0222", sewIndexMin: 2, sewIndexMax: 2,
+  });
+});
+
+test("groupIntoBlocks: an override moving one shape into another's layer merges it into that block", async () => {
+  stubStorage({});
+  const { groupIntoBlocks } = await import("./digitizer.js");
+  const rows = [
+    seqRow("a", { layer: 0, sewIndex: 0 }),
+    seqRow("b", { layer: 1, sewIndex: 1 }),
+  ];
+  const blocks = groupIntoBlocks(rows, { b: { layer: 0 } });
+  expect(blocks).toHaveLength(1);
+  expect(blocks[0].rows.map((r) => r.id)).toEqual(["a", "b"]);
+});
+
+test("groupIntoBlocks: a shape with no sewIndex at all doesn't poison its block's span", async () => {
+  stubStorage({});
+  const { groupIntoBlocks } = await import("./digitizer.js");
+  const blocks = groupIntoBlocks([seqRow("a", { layer: 0, sewIndex: null })], {});
+  expect(blocks[0].sewIndexMin).toBeNull();
+  expect(blocks[0].sewIndexMax).toBeNull();
+});
+
+test("groupIntoBlocks: empty input is an empty list, not a throw", async () => {
+  stubStorage({});
+  const { groupIntoBlocks } = await import("./digitizer.js");
+  expect(groupIntoBlocks([], {})).toEqual([]);
+});
+
 test("editsKey distinguishes an underlay_style override from no edits, and a no-op round trip stays stable", async () => {
   stubStorage({});
   const { canonicalShapeEdits, editsKey } = await import("./digitizer.js");

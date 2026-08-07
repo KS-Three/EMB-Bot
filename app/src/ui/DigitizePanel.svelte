@@ -11,6 +11,12 @@
     reviewFromJob,
     reconcileReview,
     reorderWithinLayer,
+    effLayer,
+    sortShapes,
+    effSewOrder,
+    layerSiblings,
+    effRgb,
+    groupIntoBlocks,
     boundaryIssues,
     mergeGroupIssues,
     splitLineIssues,
@@ -147,6 +153,7 @@
         result: job.design,
         warnings: job.warnings || [],
         review: reconcileReview(el.review, reviewFromJob(job.review), el.deletedShapeIds),
+        preflight: job.preflight || null,
         appliedEdits: editsKey({
           deleted_shape_ids: cfg.deleted_shape_ids,
           shape_overrides: cfg.shape_overrides,
@@ -265,6 +272,12 @@
   // the review payload the rows render from is the LAST job's, so live-
   // editing it would show stitches that don't exist yet.
 
+  // Collapsed by default: the Sequencer is a secondary view over the same
+  // data the Layers list already shows (one row per color block instead of
+  // one row per shape) — opt-in so it doesn't push the primary list down
+  // for anyone who never opens it.
+  let sequencerOpen = false;
+
   const SHAPE_ANGLES = [{ value: null, label: "Auto angle" }, ...FILL_ANGLES.slice(1)];
 
   // Underlay style (shape-layers contract v1): fabrics.py's own vocabulary,
@@ -305,52 +318,26 @@
     (r) => !deletedIds.includes(r.id) && effStitched(r, overrides)
   );
 
-  // Effective layer: the user's explicit sew-order override, else the layer
-  // the engine assigned (one per thread), else last. Rows sort by it, then
-  // by the emitted sew position — the list IS the sew order.
-  function effLayer(row, ov) {
-    const e = ov[row.id] || {};
-    if (Number.isInteger(e.layer)) return e.layer;
-    if (row.layer != null) return row.layer;
-    return row.sewIndex == null ? 1e9 : row.sewIndex;
-  }
+  // The Sequencer view's color blocks: `sewableShapes` grouped by effLayer,
+  // in sew order (the same list moveShape's up/down buttons walk, just
+  // collapsed one row per color instead of one row per shape) — a block IS
+  // one color's whole run before the machine changes thread. Dead/hidden/
+  // unstitched shapes don't have a real place in the sew sequence, so they
+  // never appear here even though they're still in the plain Layers list.
+  $: sequencerBlocks = groupIntoBlocks(sewableShapes, overrides);
 
-  function sortShapes(shapes, ov) {
-    return [...shapes].sort(
-      (a, b) =>
-        effLayer(a, ov) - effLayer(b, ov) ||
-        (a.sewIndex == null ? 1e9 : a.sewIndex) - (b.sewIndex == null ? 1e9 : b.sewIndex) ||
-        (a.id < b.id ? -1 : 1)
-    );
-  }
-
-  // Effective within-layer sew order (contract v1.2): the user's explicit
-  // override, else what the LAST applied result actually sewed (row.sewOrder
-  // — set only when a previous override took effect), else the emitted sew
-  // position, which is nearest-neighbour's own answer. Distinct from
-  // effLayer: that picks WHICH color block a shape sews in, this picks WHERE
-  // within it — the two overrides are independent and can both be set.
-  function effSewOrder(row, ov) {
-    const e = ov[row.id] || {};
-    if (Number.isInteger(e.sew_order)) return e.sew_order;
-    if (Number.isInteger(row.sewOrder)) return row.sewOrder;
-    return row.sewIndex == null ? 1e9 : row.sewIndex;
-  }
-
-  // The shapes sharing `row`'s effective layer, in their current within-
-  // layer order — the pool `moveShapeWithinLayer` reorders and the up/down
-  // buttons enable/disable against.
-  function layerSiblings(row, shapes, ov) {
-    const layer = effLayer(row, ov);
-    return shapes
-      .filter((r) => effLayer(r, ov) === layer)
-      .sort((a, b) => effSewOrder(a, ov) - effSewOrder(b, ov) || (a.id < b.id ? -1 : 1));
-  }
-
-  function effRgb(row, ov) {
-    const e = ov[row.id] || {};
-    return e.rgb || row.rgb || [136, 136, 136];
-  }
+  // Server-computed, read-only (preflight.py's own report) — surfaced here
+  // rather than left buried in `element.preflight`, since block-boundary
+  // trims are exactly what the Sequencer view lets a user reason about and
+  // Ember's equivalent panel has no counterpart for at all. null (not 0)
+  // when no job has run preflight yet, so the header can tell "clean" apart
+  // from "never checked" the same way the rest of this field does.
+  $: trimsPer1000 = (element.preflight && element.preflight.metrics
+    ? element.preflight.metrics.trims_per_1000
+    : null);
+  $: trimHeavy = !!(element.preflight && element.preflight.findings || []).some(
+    (f) => f.code === "TRIM_HEAVY"
+  );
 
   // Whether the shape sews at all — DISTINCT from `dead` (a user hid it):
   // this is the digitizer's own BACKGROUND_ENCLOSED default (contract v1.1,
@@ -548,6 +535,28 @@
     const cur = { ...(element.shapeOverrides || {}) };
     for (const sid of Object.keys(next)) {
       cur[sid] = { ...(cur[sid] || {}), sew_order: next[sid] };
+    }
+    patch({ shapeOverrides: cur });
+  }
+
+  // Sequencer view: "sew this whole color earlier/later" — moves every
+  // shape in one block past every shape in the adjacent block in one step.
+  // Unlike moveShape (one row, which has to decide whether it's JOINING an
+  // existing group or stepping past it), swapping two whole blocks' layer
+  // numbers is unambiguous: each block keeps its own internal sew_order
+  // untouched, only which layer integer it carries changes. One patch = one
+  // undo step, the same convention every other edit in this panel follows.
+  function moveBlock(layer, dir) {
+    const layers = sequencerBlocks.map((b) => b.layer);
+    const i = layers.indexOf(layer);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= layers.length) return;
+    const other = layers[j];
+    const cur = { ...(element.shapeOverrides || {}) };
+    for (const row of sewableShapes) {
+      const rl = effLayer(row, overrides);
+      if (rl === layer) cur[row.id] = { ...(cur[row.id] || {}), layer: other };
+      else if (rl === other) cur[row.id] = { ...(cur[row.id] || {}), layer };
     }
     patch({ shapeOverrides: cur });
   }
@@ -1174,6 +1183,64 @@
                  BOTTOM of a list that is entirely about sewing sequence. -->
             <span class="dgp-layers-order">top sews first</span>
           </div>
+
+          {#if sequencerBlocks.length > 1}
+            <div class="dgp-sequencer">
+              <button
+                type="button"
+                class="dgp-seq-toggle"
+                aria-expanded={sequencerOpen}
+                on:click={() => (sequencerOpen = !sequencerOpen)}
+              >
+                <span class="dgp-seq-caret">{sequencerOpen ? "▾" : "▸"}</span>
+                <span class="dgp-seq-title">
+                  Color sequence ({sequencerBlocks.length} block{sequencerBlocks.length === 1 ? "" : "s"})
+                </span>
+                {#if trimsPer1000 != null}
+                  <span class="dgp-seq-trims" class:heavy={trimHeavy}>
+                    {trimsPer1000}/1000 trims{trimHeavy ? " — heavy" : ""}
+                  </span>
+                {/if}
+              </button>
+              {#if sequencerOpen}
+                <ol class="dgp-seq-list">
+                  {#each sequencerBlocks as block, i (block.layer)}
+                    <li class="dgp-seq-block">
+                      <span
+                        class="dgp-seq-swatch"
+                        style="background: rgb({block.rgb[0]},{block.rgb[1]},{block.rgb[2]})"
+                      ></span>
+                      <span class="dgp-seq-thread">{block.threadNumber || "—"}</span>
+                      <span class="dgp-seq-count">{block.rows.length} shape{block.rows.length === 1 ? "" : "s"}</span>
+                      <span class="dgp-seq-span">
+                        {#if block.sewIndexMin != null}
+                          #{block.sewIndexMin}{block.sewIndexMax > block.sewIndexMin ? `–${block.sewIndexMax}` : ""}
+                        {/if}
+                      </span>
+                      <span class="dgp-seq-btns">
+                        <button
+                          type="button"
+                          class="dgp-lbtn"
+                          title="Sew this color earlier"
+                          aria-label="Sew this color earlier"
+                          disabled={i === 0}
+                          on:click={() => moveBlock(block.layer, -1)}
+                        >↑</button>
+                        <button
+                          type="button"
+                          class="dgp-lbtn"
+                          title="Sew this color later"
+                          aria-label="Sew this color later"
+                          disabled={i === sequencerBlocks.length - 1}
+                          on:click={() => moveBlock(block.layer, 1)}
+                        >↓</button>
+                      </span>
+                    </li>
+                  {/each}
+                </ol>
+              {/if}
+            </div>
+          {/if}
           {#if editingId}
             {@const editingRow = orderedShapes.find((r) => r.id === editingId)}
             <div class="dgp-editor">
@@ -1785,6 +1852,44 @@
   .dgp-layers-head { display: flex; align-items: baseline; gap: 8px; }
   .dgp-layers-title { font-size: var(--fs-xs, 12px); font-weight: 600; }
   .dgp-layers-order { font-size: 11px; color: var(--muted, #667); }
+  .dgp-sequencer { margin-top: 6px; }
+  .dgp-seq-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 4px 6px;
+    border: 1px solid var(--tint-border, #ccd6fb);
+    border-radius: var(--radius-s, 6px);
+    background: var(--surface, #fff);
+    cursor: pointer;
+    font-size: 11px;
+    text-align: left;
+  }
+  .dgp-seq-caret { flex: none; color: var(--muted, #667); }
+  .dgp-seq-title { flex: 1; font-weight: 600; }
+  .dgp-seq-trims { color: var(--muted, #667); white-space: nowrap; }
+  .dgp-seq-trims.heavy { color: var(--warn-text, #8a6d1a); font-weight: 600; }
+  .dgp-seq-list { list-style: none; margin: 4px 0 0; padding: 0; }
+  .dgp-seq-block {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    border-top: 1px solid var(--tint-border, #ccd6fb);
+    font-size: 11px;
+  }
+  .dgp-seq-swatch {
+    width: 12px;
+    height: 12px;
+    flex: none;
+    border-radius: 3px;
+    border: 1px solid var(--tint-border, #ccd6fb);
+  }
+  .dgp-seq-thread { flex: none; min-width: 40px; color: var(--muted, #667); }
+  .dgp-seq-count { flex: 1; }
+  .dgp-seq-span { flex: none; color: var(--muted, #667); }
+  .dgp-seq-btns { display: flex; gap: 2px; flex: none; }
   .dgp-layerlist { list-style: none; margin: 6px 0 0; padding: 0; }
   .dgp-layer {
     display: flex;

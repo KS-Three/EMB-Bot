@@ -11,6 +11,39 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
+**Last updated:** 2026-08-07 — the Layers panel (`DigitizePanel.svelte`)
+gained a Sequencer view: a collapsible, color-block-grouped alternative to
+the plain per-shape list — one row per color/thread carrying its swatch,
+member count, and sew-index span, with block-level "sew this color
+earlier/later" buttons. Prompted by Ember Design's own "Sequencer: Colors"
+panel, but the promoted backlog item was specifically that cross-color
+sequencing had zero geometric-adjacency signal — checked directly, not
+assumed: `layer`/`sew_order` were ALREADY fully wired `shape_overrides`
+with working per-shape UI controls (`moveShape`/`moveShapeWithinLayer`),
+so this landed as presentation-only, no new backend plumbing. The
+block-level reorder (`moveBlock`) swaps two whole blocks' layer numbers in
+one batched override patch — one undo step, same convention every other
+edit in this panel follows. Better-than-Ember, not just parity: the
+header surfaces `trims_per_1000`/`TRIM_HEAVY` from `preflight.py`'s own
+report, computed server-side every job but never previously shown
+anywhere in the Studio (confirmed via grep before writing a line of UI) —
+exactly the number a user reordering color blocks needs and Ember's
+equivalent panel has no counterpart for. The Layers-list sort/grouping
+logic (`effLayer`, `sortShapes`, `effSewOrder`, `layerSiblings`, `effRgb`,
+plus the new `groupIntoBlocks`) moved from component-local functions into
+`digitizer.js` as named exports, the same place `reorderWithinLayer`
+already lived — one implementation to test and keep in sync with the
+override contract, not two. 12 new pure-logic tests plus live-browser
+verification: ran a real image through the real local digitizer service,
+expanded the Sequencer, reordered two color blocks, confirmed the visual
+order and swatch/count/span data updated correctly, and confirmed one
+Undo fully reverted the block swap. Branch `color-block-sequencer-ui`.
+Doesn't move area 3's Status/Confidence verdict (additive UI over an
+already-shipped, already-tested override contract, not a quality or trust
+finding).
+
+Prior update below, still 2026-08-07:
+
 **Last updated:** 2026-08-07 — manual (hand-drawn) shape authoring
 (`ManualPanel.svelte`) gained curved as well as straight-line edges: drag
 the small handle at any edge's midpoint to bow it into a quadratic curve,

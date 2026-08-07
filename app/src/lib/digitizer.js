@@ -273,6 +273,84 @@ export function reorderWithinLayer(rowIds, targetId, dir) {
   return out;
 }
 
+// ---- Layers-list sort/grouping (shape-layers contract v1) -----------------
+// Pure, ID/override-shaped logic shared by DigitizePanel's plain per-shape
+// Layers list and its color-block Sequencer view — moved here (rather than
+// kept component-local) the same way reorderWithinLayer already was, so
+// there is exactly one implementation of "what layer/order does this row
+// effectively have" to test and keep in sync with the override contract.
+
+// Effective layer: the user's explicit override, else the layer the engine
+// assigned (one per thread), else last. Rows sort by it, then by the
+// emitted sew position — the list IS the sew order.
+export function effLayer(row, ov) {
+  const e = ov[row.id] || {};
+  if (Number.isInteger(e.layer)) return e.layer;
+  if (row.layer != null) return row.layer;
+  return row.sewIndex == null ? 1e9 : row.sewIndex;
+}
+
+export function sortShapes(shapes, ov) {
+  return [...shapes].sort(
+    (a, b) =>
+      effLayer(a, ov) - effLayer(b, ov) ||
+      (a.sewIndex == null ? 1e9 : a.sewIndex) - (b.sewIndex == null ? 1e9 : b.sewIndex) ||
+      (a.id < b.id ? -1 : 1)
+  );
+}
+
+// Effective within-layer sew order (contract v1.2): the user's explicit
+// override, else what the LAST applied result actually sewed (row.sewOrder
+// — set only when a previous override took effect), else the emitted sew
+// position, which is nearest-neighbour's own answer. Distinct from
+// effLayer: that picks WHICH color block a shape sews in, this picks WHERE
+// within it — the two overrides are independent and can both be set.
+export function effSewOrder(row, ov) {
+  const e = ov[row.id] || {};
+  if (Number.isInteger(e.sew_order)) return e.sew_order;
+  if (Number.isInteger(row.sewOrder)) return row.sewOrder;
+  return row.sewIndex == null ? 1e9 : row.sewIndex;
+}
+
+// The shapes sharing `row`'s effective layer, in their current within-layer
+// order — the pool moveShapeWithinLayer reorders and its up/down buttons
+// enable/disable against.
+export function layerSiblings(row, shapes, ov) {
+  const layer = effLayer(row, ov);
+  return shapes
+    .filter((r) => effLayer(r, ov) === layer)
+    .sort((a, b) => effSewOrder(a, ov) - effSewOrder(b, ov) || (a.id < b.id ? -1 : 1));
+}
+
+export function effRgb(row, ov) {
+  const e = ov[row.id] || {};
+  return e.rgb || row.rgb || [136, 136, 136];
+}
+
+// The Sequencer view's color blocks: `rows` (already the sewable subset, in
+// sew order) grouped by effLayer — a block IS one color's whole run before
+// the machine changes thread. One row per block instead of one row per
+// shape, in the same sequence the plain Layers list's up/down buttons walk.
+export function groupIntoBlocks(rows, ov) {
+  const byLayer = new Map();
+  for (const row of rows) {
+    const layer = effLayer(row, ov);
+    if (!byLayer.has(layer)) byLayer.set(layer, []);
+    byLayer.get(layer).push(row);
+  }
+  return [...byLayer.entries()].map(([layer, blockRows]) => {
+    const indices = blockRows.map((r) => r.sewIndex).filter((v) => v != null);
+    return {
+      layer,
+      rows: blockRows,
+      rgb: effRgb(blockRows[0], ov),
+      threadNumber: blockRows[0].threadNumber,
+      sewIndexMin: indices.length ? Math.min(...indices) : null,
+      sewIndexMax: indices.length ? Math.max(...indices) : null,
+    };
+  });
+}
+
 // Outline decimation for the row thumbnails: keep at most `max` points,
 // evenly strided, endpoints preserved. The review outlines are already
 // simplified polygons, but a complex logo shape can still carry hundreds of

@@ -105,6 +105,13 @@ export const DEFAULT_DIGITIZE_PARAMS = {
 //   `appliedEdits`    — canonical key of the edits the CURRENT result was
 //                       digitized with (digitizer.js editsKey), so the panel
 //                       knows honestly whether edits are still pending.
+//   `preflight`       — the last job's `{ score, grade, findings, metrics }`
+//                       report verbatim (server-computed, read-only, no
+//                       override key — same "echoed back, not edited"
+//                       treatment as the text-cluster fields above), or null
+//                       when the job predates this field or the caller
+//                       turned preflight off. Used by the Sequencer view's
+//                       trims-per-1000 header; nothing else reads it today.
 export function defaultDigitizedElement(id) {
   return {
     id,
@@ -119,6 +126,7 @@ export function defaultDigitizedElement(id) {
     shapeOverrides: {},
     deletedShapeIds: [],
     appliedEdits: null,
+    preflight: null,
     sizeMm: null,
     offsetXMm: 0,
     offsetYMm: 0,
