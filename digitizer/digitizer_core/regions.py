@@ -167,7 +167,14 @@ def match_shape_ids(
 # sketch rendering (stage6_sketch) on one shape; like every tonal tier it
 # needs source pixels, which pipeline.run_stages carries whenever an
 # override requests it, and it sews tatami when they are absent anyway.
-_TIER_VALUES = {"auto", "satin", "fill", "run", "sketch"}
+# "streamline" (contract v1.6, Ember-research backlog item) forces the
+# evenly-spaced streamline thread-paint tier (stage6_streamline) on one
+# shape, same source-pixels-or-tatami-fallback contract as "sketch" — the
+# per-shape form of a technique that used to be design-wide (or photo-
+# pipeline) only. See stage7_sequence.stitch_one's streamline branch for
+# the direction-field reasoning (raster structure tensor with a house-angle
+# fallback, not a shape-geometry-derived field).
+_TIER_VALUES = {"auto", "satin", "fill", "run", "sketch", "streamline"}
 _BORDER_VALUES = {"off", "auto", "bean"}
 # fabrics.py's own vocabulary, verbatim (mirrored in digitizer_service.app's
 # copy, which 400s the wire before this ever raises).

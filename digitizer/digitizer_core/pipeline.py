@@ -377,15 +377,18 @@ def run_stages(
     # existing.
     want_tonal = (cfg.fill_technique or "tatami").lower() in (
         "scanline_tonal", "meander_tonal", "streamline", "sketch") or cfg.detail_layer
-    # The per-shape form of the sketch opt-in (shape-layers contract v1.3,
-    # `tier: "sketch"`): a review-screen edit forcing ONE shape to sketch
-    # rendering needs the same raster the design-wide preset does, so
-    # requesting it counts as the explicit opt-in too. Scanned here, not
-    # resolved — a stale id still warns downstream as every stale edit
-    # does, and carrying pixels for it changes no stitch (nothing else
-    # reads them unless a tier consumes them).
+    # The per-shape form of the sketch/streamline opt-in (shape-layers
+    # contract v1.3's `tier: "sketch"`, v1.6's `tier: "streamline"`): a
+    # review-screen edit forcing ONE shape onto a raster-reading tier needs
+    # the same source pixels the design-wide preset does, so requesting it
+    # counts as the explicit opt-in too — this is precisely what makes a
+    # manually-classified (flat-lane) shape able to reach streamline fill
+    # without the whole design opting into `fill_technique="streamline"`.
+    # Scanned here, not resolved — a stale id still warns downstream as
+    # every stale edit does, and carrying pixels for it changes no stitch
+    # (nothing else reads them unless a tier consumes them).
     want_tonal = want_tonal or any(
-        str((ov or {}).get("tier", "")).lower() == "sketch"
+        str((ov or {}).get("tier", "")).lower() in ("sketch", "streamline")
         for ov in cfg.shape_overrides.values())
     if classification.class_ == "gradient" or want_tonal:
         source_pixels = SourcePixels(rgb=p.rgb, px_per_mm=p.px_per_mm,

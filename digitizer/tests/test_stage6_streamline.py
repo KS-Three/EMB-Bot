@@ -20,7 +20,9 @@ from shapely.geometry import Point, Polygon
 
 from digitizer_core import machine
 from digitizer_core.config import PipelineConfig
-from digitizer_core.regions import Region
+from digitizer_core.fabrics import get_fabric
+from digitizer_core.regions import Region, apply_shape_edits
+from digitizer_core.stage5_overlap import resolve_overlaps
 from digitizer_core.stage6_blend import SHADE_COUNT_MAX, SHADE_COUNT_MIN, SourcePixels
 from digitizer_core.stage6_streamline import (
     STREAMLINE_CUTOFF_DARKNESS,
@@ -32,6 +34,7 @@ from digitizer_core.stage6_streamline import (
     _shade_layers,
     streamline_fill,
 )
+from digitizer_core.stage7_sequence import sequence
 from digitizer_core.threads import CHART
 
 HERE = Path(__file__).resolve().parent
@@ -49,9 +52,30 @@ def _source(gray_img: np.ndarray) -> SourcePixels:
                         origin_px=(w / 2.0, h / 2.0))
 
 
-def _region(poly: Polygon) -> Region:
+def _region(poly: Polygon, meta: dict | None = None) -> Region:
+    m = {"layer": 0}
+    m.update(meta or {})
     return Region(shape_id="Stest", polygon=poly, thread_index=0,
-                  thread_number=CHART[0].number, area_mm2=poly.area)
+                  thread_number=CHART[0].number, area_mm2=poly.area, meta=m)
+
+
+FAB = get_fabric("pique_knit")
+
+
+def _plan_for(regions: list[Region], source_pixels=None, **cfg_kw):
+    """Stage 5 + stage 7 only — the same minimal-plan helper
+    `test_stage6_sketch.py` uses for its per-shape-override tests, reused
+    here for the streamline tier's own per-shape form."""
+    c = PipelineConfig(**cfg_kw)
+    planned, _ = resolve_overlaps(regions, FAB, c)
+    blocks, warnings = sequence(planned, FAB, c, source_pixels=source_pixels)
+
+    class _P:  # just enough plan for the assertions below
+        pass
+
+    p = _P()
+    p.blocks = blocks
+    return p, warnings
 
 
 def _stripes(angle_deg: float, size: int = 240, period: float = 12.0) -> np.ndarray:
@@ -669,3 +693,146 @@ def test_layered_drone_render_end_to_end(tmp_path, capsys):
     img = cv2.imread(str(out))
     assert img is not None
     assert img.min() < 100, "the render drew nothing"
+
+
+# --- The per-shape override (shape-layers contract v1.6): streamline fill  --
+# outside the photo auto-pipeline, on one manually-classified (flat-lane)
+# shape at a time — the same `tier: "sketch"` mechanism `test_stage6_sketch.py`
+# already exercises, extended by one value. Every accuracy claim below is
+# measured from EMITTED geometry with the exact same analytic-truth
+# discipline the design-wide tests above hold themselves to: this is not a
+# "does it crash" smoke test, it is proof the forced tier sews REAL
+# Jobard-Lefer evenly-spaced streamline output.
+
+def test_forced_streamline_tier_follows_the_field_on_a_manually_classified_shape():
+    """One shape forced `tier: "streamline"` inside an otherwise-default
+    (`fill_technique="tatami"`) plan — nothing about this design is
+    photo-classified or opted into the design-wide streamline preset — must
+    sew stitches that follow the direction field, measured exactly like
+    `test_emitted_runs_follow_the_field_on_stripes` above: the stripe
+    fixture's truth angle recovered from the EMITTED segments themselves."""
+    angle = 40.0
+    poly = Polygon([(-25, -25), (25, -25), (25, 25), (-25, 25)])
+    source = _source(_stripes(angle))
+
+    auto_plan, _ = _plan_for([_region(poly)], source_pixels=source)
+    forced_plan, _ = _plan_for([_region(poly, {"tier": "streamline"})],
+                               source_pixels=source)
+
+    auto_runs = [r for b in auto_plan.blocks for r in b.runs]
+    forced_runs = [r for b in forced_plan.blocks for r in b.runs]
+    assert [(r.kind, r.points) for r in forced_runs] != \
+           [(r.kind, r.points) for r in auto_runs], (
+        "the forced tier must not just re-sew plain tatami"
+    )
+
+    devs, wts = _segment_angle_devs(forced_runs, angle)
+    assert len(devs) > 30
+    assert _weighted_percentile(devs, wts, 0.5) <= 2.0, (
+        "the forced-tier stitches must actually follow the direction field, "
+        "not merely differ from tatami by coincidence"
+    )
+    assert _weighted_percentile(devs, wts, 0.9) <= 6.0
+
+
+def test_forced_streamline_tier_spacing_matches_the_analytic_d_sep():
+    """Same forced `tier: "streamline"` override, uniform-darkness fixture
+    this time (the flat-color / house-angle path a genuinely vector-drawn,
+    textureless shape would take): line-to-line spacing must land on the
+    analytic d_sep for this darkness, the same measurement
+    `test_uniform_disc_spacing_is_tight_around_d_sep` makes of the
+    design-wide tier — proof this is real evenly-spaced J-L placement, not
+    an arbitrary sparse fill that merely looks different from tatami."""
+    gray = 100
+    disc = Point(0, 0).buffer(15.0, quad_segs=64)
+    source = _source(np.full((200, 200), gray, np.uint8))
+
+    forced_plan, _ = _plan_for([_region(disc, {"tier": "streamline"})],
+                               source_pixels=source)
+    fill = [r for b in forced_plan.blocks for r in b.runs if r.kind == "fill"]
+    assert len(fill) >= 10, "must produce genuine multi-line streamline output"
+
+    ys = sorted(float(np.mean([p[1] for p in r.points])) for r in fill)
+    spacing = np.diff(ys)
+    expected = _d_sep(1.0 - gray / 255.0)
+    assert len(spacing) >= 9
+    assert abs(float(np.median(spacing)) - expected) <= 0.10 * expected, (
+        f"median spacing {np.median(spacing):.3f} vs analytic d_sep {expected:.3f} — "
+        "this must be real J-L placement, not tatami rows or a random scatter"
+    )
+
+
+def test_pipeline_plumbs_source_pixels_for_per_shape_streamline_override():
+    """The opt-in wiring, per-shape form: a review-screen edit forcing ONE
+    shape onto streamline fill must carry source pixels through even though
+    the design stays `fill_technique="tatami"` throughout and classifies
+    "flat" — a manually-classified shape, not a photo — mirroring
+    `test_stage6_sketch.py`'s identical proof for `tier: "sketch"`."""
+    from digitizer_core.pipeline import run_stages
+
+    ov = run_stages(str(LOGO), PipelineConfig(
+        target_width_mm=90.0, forced_class="flat",
+        shape_overrides={"Swhatever": {"tier": "streamline"}}))
+    assert ov.source_pixels is not None, (
+        "a per-shape tier:'streamline' override is an explicit opt-in too"
+    )
+    assert ov.source_pixels.gradient_class is False, (
+        "the per-shape override must not re-route fills through the blend tier"
+    )
+
+    off = run_stages(str(LOGO), PipelineConfig(
+        target_width_mm=90.0, forced_class="flat"))
+    assert off.source_pixels is None, (
+        "the flat lane must not grow a raster payload when nothing asked"
+    )
+
+
+def test_streamline_override_without_source_pixels_sews_tatami_exactly():
+    """The standing tonal-tier contract, per-shape form: a forced streamline
+    tier with no raster to read (a hand-built PipelineResult that never
+    plumbed source pixels) sews EXACTLY what the unforced shape would have —
+    never a dropped shape, never a crash."""
+    poly = Polygon([(-15, -10), (15, -10), (15, 10), (-15, 10)])
+    plain, _ = _plan_for([_region(poly)])
+    forced, _ = _plan_for([_region(poly, {"tier": "streamline"})])
+
+    def all_points(plan):
+        return [(r.kind, r.points) for b in plan.blocks for r in b.runs]
+
+    assert all_points(forced) == all_points(plain)
+
+
+def test_apply_shape_edits_accepts_streamline_and_still_rejects_junk():
+    """Core-layer validation (`regions._TIER_VALUES`): "streamline" is
+    stored on the region's meta like every forced tier; an unknown value
+    still raises — the same defense-in-depth the sketch tier's own test
+    pins for its value."""
+    regs = [_region(Polygon([(0, 0), (12, 0), (12, 12), (0, 12)]))]
+    _regions, _threads, warnings = apply_shape_edits(
+        regs, [0], [], {"Stest": {"tier": "streamline"}}, chart=[0] * 20)
+    assert regs[0].meta.get("tier") == "streamline"
+    assert warnings == []
+
+    with pytest.raises(ValueError):
+        apply_shape_edits(
+            [_region(Polygon([(0, 0), (12, 0), (12, 12), (0, 12)]))],
+            [0], [], {"Stest": {"tier": "scribble"}}, chart=[0] * 20)
+
+
+def test_service_validates_and_canonicalizes_the_streamline_tier():
+    """Service-layer validation (`app._TIER_VALUES`, the first of the three
+    contract layers): "Streamline" lowercases and survives `_parse_config`,
+    and an unknown tier is still a 400 at submit — the closed set grew by
+    exactly one value, the same proof `test_stage6_sketch.py` runs for
+    "sketch"."""
+    import json
+
+    from fastapi import HTTPException
+
+    from digitizer_service.app import _parse_config
+
+    assert _parse_config(json.dumps(
+        {"shape_overrides": {"S1": {"tier": "Streamline"}}})) == \
+        {"shape_overrides": {"S1": {"tier": "streamline"}}}
+    with pytest.raises(HTTPException):
+        _parse_config(json.dumps({"shape_overrides": {"S1": {"tier": "scribble"}}}))

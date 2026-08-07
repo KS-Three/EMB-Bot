@@ -200,7 +200,15 @@ class PipelineConfig:
     #             same never-drop-artwork contract contour has. Multi-color
     #             dark→light layering is `streamline_mode` below, built as
     #             the seam documented in stage6_streamline's module
-    #             docstring.
+    #             docstring. Also available per-shape, on ANY design
+    #             (including a design that never sets this field —
+    #             `fill_technique` can stay "tatami" for the rest of the
+    #             shapes), as the review screen's `tier: "streamline"`
+    #             override (contract v1.6, mirrors `tier: "sketch"`'s
+    #             per-shape form immediately below — see the
+    #             shape_overrides block). This is how a manually-classified
+    #             ("flat") design reaches streamline fill without opting
+    #             the whole design into the photo-plan preset.
     # "sketch" – the sketch tier (photo plan, technique row 12,
     #             stage6_sketch): the row-12 PRESET over rows 10+11, not a
     #             new engine — sparse mono streamline line work (row 10's
@@ -447,7 +455,20 @@ class PipelineConfig:
     #                           one shape — requesting it is also an
     #                           explicit source-pixel opt-in, and it does
     #                           NOT imply the design-wide detail block the
-    #                           fill_technique="sketch" preset appends).
+    #                           fill_technique="sketch" preset appends)
+    #                           | "streamline" (contract v1.6, photo plan row
+    #                           10's evenly-spaced thread-paint tier for this
+    #                           one shape — same explicit source-pixel opt-in
+    #                           as "sketch"; this is what lets a manually-
+    #                           classified/flat-lane shape reach streamline
+    #                           fill without the whole design setting
+    #                           fill_technique="streamline"; direction field
+    #                           is always this design's own prepped raster
+    #                           read through directionfield.py, never a
+    #                           shape-geometry-derived field, so a genuinely
+    #                           textureless shape falls back to parallel
+    #                           lines at fill_angle_deg/the house angle
+    #                           rather than following anything invented).
     #                           Forces the stitch tier. Geometry the forced
     #                           tier cannot sew falls through the same rescue
     #                           ladder the auto path uses, so artwork never
