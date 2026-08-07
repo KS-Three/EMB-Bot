@@ -39,7 +39,7 @@ beforeAll(() => {
   const noop = () => {};
   HTMLCanvasElement.prototype.getContext = () => ({
     clearRect: noop, fillRect: noop, beginPath: noop, moveTo: noop, lineTo: noop,
-    closePath: noop, fill: noop, stroke: noop, arc: noop, fillText: noop,
+    quadraticCurveTo: noop, closePath: noop, fill: noop, stroke: noop, arc: noop, fillText: noop,
     save: noop, restore: noop,
     fillStyle: "", strokeStyle: "", lineWidth: 1, font: "", textAlign: "",
   });
@@ -243,6 +243,159 @@ describe("editing a finished shape's points by dragging a vertex", () => {
     await selectAndEnterEdit(utils);
     await fireEvent.click(utils.getByRole("button", { name: "Done editing" }));
     expect(utils.getByRole("button", { name: "Edit points" })).toBeTruthy();
+  });
+});
+
+// ---- curve-handle drag (drawing curved, not just straight, edges) --------
+
+describe("bowing a draft segment into a curve by dragging its handle", () => {
+  test("dragging a segment's handle stores a curve on the finished shape, without adding a stray anchor", async () => {
+    const { canvas, patches } = renderPanel();
+    const [p0, p1, p2] = tri();
+    await clickAt(canvas, p0.x, p0.y);
+    await clickAt(canvas, p1.x, p1.y);
+
+    // Segment 0's straight-line midpoint, between p0 and p1.
+    const midX = (p0.x + p1.x) / 2, midY = (p0.y + p1.y) / 2;
+    await fireEvent.pointerDown(canvas, { clientX: midX, clientY: midY, pointerId: 1 });
+    await fireEvent.pointerMove(canvas, { clientX: midX, clientY: midY - 30, pointerId: 1 });
+    await fireEvent.pointerUp(canvas, { clientX: midX, clientY: midY - 30, pointerId: 1 });
+    // The click that (in a real browser) immediately follows this drag
+    // shouldn't ALSO place a stray point at the handle's location.
+    await clickAt(canvas, midX, midY - 30);
+
+    await clickAt(canvas, p2.x, p2.y);
+    await clickAt(canvas, p0.x + 2, p0.y); // close
+
+    expect(patches).toHaveLength(1);
+    const shape = patches[0].patch.shapes[0];
+    expect(shape.points).toHaveLength(3); // still just 3 anchors — bowing never adds one
+    expect(shape.curves[0]).toBeTruthy();
+  });
+
+  test("dragging a curve handle back near the straight line straightens it (removes the curve entry)", async () => {
+    const { canvas, patches } = renderPanel();
+    const [p0, p1, p2] = tri();
+    await clickAt(canvas, p0.x, p0.y);
+    await clickAt(canvas, p1.x, p1.y);
+    const midX = (p0.x + p1.x) / 2, midY = (p0.y + p1.y) / 2;
+    // Bow it out first...
+    await fireEvent.pointerDown(canvas, { clientX: midX, clientY: midY, pointerId: 1 });
+    await fireEvent.pointerMove(canvas, { clientX: midX, clientY: midY - 30, pointerId: 1 });
+    await fireEvent.pointerUp(canvas, { clientX: midX, clientY: midY - 30, pointerId: 1 });
+    await clickAt(canvas, midX, midY - 30);
+    // ...then drag it back onto the line.
+    await fireEvent.pointerDown(canvas, { clientX: midX, clientY: midY - 30, pointerId: 2 });
+    await fireEvent.pointerMove(canvas, { clientX: midX, clientY: midY, pointerId: 2 });
+    await fireEvent.pointerUp(canvas, { clientX: midX, clientY: midY, pointerId: 2 });
+    await clickAt(canvas, midX, midY);
+
+    await clickAt(canvas, p2.x, p2.y);
+    await clickAt(canvas, p0.x + 2, p0.y);
+
+    const shape = patches[0].patch.shapes[0];
+    expect(shape.curves[0]).toBeUndefined();
+  });
+
+  test("a curve that would make the draft self-intersect disables Finish, same as a crossing straight edge would", async () => {
+    const { canvas, container } = renderPanel();
+    const square = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }];
+    for (const p of square) await clickAt(canvas, p.x, p.y);
+    // Bow the first edge (0,0)-(100,0) far enough down to cross the opposite
+    // (2,3) edge — the anchors alone are a fine square, but the curved
+    // geometry genuinely crosses itself.
+    await fireEvent.pointerDown(canvas, { clientX: 50, clientY: 0, pointerId: 1 });
+    await fireEvent.pointerMove(canvas, { clientX: 50, clientY: 200, pointerId: 1 });
+    await fireEvent.pointerUp(canvas, { clientX: 50, clientY: 200, pointerId: 1 });
+
+    expect(container.querySelector(".mp-draftissue").textContent).toContain("This shape crosses itself.");
+  });
+
+  test("Undo point drops the curve bound to the segment that no longer exists", async () => {
+    const { canvas, getByRole, patches } = renderPanel();
+    const [p0, p1, p2] = tri();
+    await clickAt(canvas, p0.x, p0.y);
+    await clickAt(canvas, p1.x, p1.y);
+    await clickAt(canvas, p2.x, p2.y); // 3 points now; segment 1 is p1-p2
+
+    const midX = (p1.x + p2.x) / 2, midY = (p1.y + p2.y) / 2;
+    await fireEvent.pointerDown(canvas, { clientX: midX, clientY: midY, pointerId: 1 });
+    await fireEvent.pointerMove(canvas, { clientX: midX + 20, clientY: midY, pointerId: 1 });
+    await fireEvent.pointerUp(canvas, { clientX: midX + 20, clientY: midY, pointerId: 1 });
+    await clickAt(canvas, midX + 20, midY);
+
+    await fireEvent.click(getByRole("button", { name: "Undo point" })); // removes p2 AND segment 1's curve
+    // Re-add a fresh third point (a different one) and finish.
+    await clickAt(canvas, p2.x + 5, p2.y + 5);
+    await clickAt(canvas, p0.x + 2, p0.y);
+
+    expect(patches).toHaveLength(1);
+    // Segment 1 in the NEW shape (p1 -> the fresh third point) must be
+    // straight — the old curve bound to the old (now-gone) segment 1 must
+    // not leak forward onto whatever segment 1 means next.
+    expect(patches[0].patch.shapes[0].curves[1]).toBeUndefined();
+  });
+});
+
+describe("bowing a finished shape's edge while editing points", () => {
+  function withSelectedShape(points) {
+    const shape = { id: "s1", points, stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    return renderPanel([shape]);
+  }
+
+  async function selectAndEnterEdit(utils) {
+    await fireEvent.click(utils.getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
+    await fireEvent.click(utils.getByRole("button", { name: "Edit points" }));
+  }
+
+  test("dragging an edge's curve handle patches shape.curves on release, leaving the anchor count unchanged", async () => {
+    const utils = withSelectedShape(tri());
+    await selectAndEnterEdit(utils);
+    const { canvas, patches } = utils;
+    const [p0, p1] = tri();
+    const midX = (p0.x + p1.x) / 2, midY = (p0.y + p1.y) / 2;
+
+    await fireEvent.pointerDown(canvas, { clientX: midX, clientY: midY, pointerId: 1 });
+    await fireEvent.pointerMove(canvas, { clientX: midX, clientY: midY - 30, pointerId: 1 });
+    await fireEvent.pointerUp(canvas, { clientX: midX, clientY: midY - 30, pointerId: 1 });
+
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.shapes[0].curves[0]).toBeTruthy();
+    expect(patches[0].patch.shapes[0].points).toHaveLength(3);
+  });
+
+  test("a curve-handle drag that would self-intersect the shape is never patched through, and the reason is shown", async () => {
+    const square = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }];
+    const utils = withSelectedShape(square);
+    await selectAndEnterEdit(utils);
+    const { canvas, patches, container } = utils;
+
+    // Bow the top edge (0,0)-(100,0) far down through the shape and past
+    // the opposite edge — same "genuinely crosses" fixture as the draft
+    // version above.
+    await fireEvent.pointerDown(canvas, { clientX: 50, clientY: 0, pointerId: 1 });
+    await fireEvent.pointerMove(canvas, { clientX: 50, clientY: 200, pointerId: 1 });
+    await fireEvent.pointerUp(canvas, { clientX: 50, clientY: 200, pointerId: 1 });
+
+    expect(patches).toHaveLength(0);
+    expect(container.querySelector(".mp-draftissue").textContent).toContain("This shape crosses itself.");
+  });
+
+  test("grabbing a vertex still wins over a nearby curve handle (vertex hit-test runs first)", async () => {
+    const utils = withSelectedShape(tri());
+    await selectAndEnterEdit(utils);
+    const { canvas, patches } = utils;
+    const [p0] = tri();
+
+    // A drag starting exactly on vertex 0 must move the vertex, not bow an
+    // adjacent segment.
+    await fireEvent.pointerDown(canvas, { clientX: p0.x, clientY: p0.y, pointerId: 1 });
+    await fireEvent.pointerMove(canvas, { clientX: p0.x + 15, clientY: p0.y - 15, pointerId: 1 });
+    await fireEvent.pointerUp(canvas, { clientX: p0.x + 15, clientY: p0.y - 15, pointerId: 1 });
+
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.shapes[0].points[0]).toEqual({ x: p0.x + 15, y: p0.y - 15 });
+    expect(patches[0].patch.shapes[0].curves).toBeUndefined();
   });
 });
 

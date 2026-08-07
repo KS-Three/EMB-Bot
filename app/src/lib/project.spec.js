@@ -558,6 +558,7 @@ test("defaultManualShape defaults to fill, a beginner-safe base color, and auto 
   expect(s).toEqual({
     id: "s1",
     points: [],
+    curves: {},
     stitchType: "fill",
     colorRgb: [20, 20, 20],
     angleDeg: null,

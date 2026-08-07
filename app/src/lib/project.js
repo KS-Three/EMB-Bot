@@ -134,11 +134,16 @@ export function defaultDigitizedElement(id) {
 // merge-selection uses: not part of the persisted element), so a page
 // reload can lose an unfinished shape but never a finished one.
 //
-// Each shape: { id, points: [{x,y}, ...], stitchType: "satin"|"fill",
-// colorRgb: [r,g,b], angleDeg: number|null }. `points` live in a fixed
-// authoring-canvas pixel space (see lib/manualShapes.js's CANVAS_W/H) —
-// only the shapes' RELATIVE geometry matters, since generation fits the
-// combined bbox to the garment/hoop same as every other content type.
+// Each shape: { id, points: [{x,y}, ...], curves: {[segmentIndex]: {x,y}},
+// stitchType: "satin"|"fill", colorRgb: [r,g,b], angleDeg: number|null }.
+// `points` live in a fixed authoring-canvas pixel space (see
+// lib/manualShapes.js's CANVAS_W/H) — only the shapes' RELATIVE geometry
+// matters, since generation fits the combined bbox to the garment/hoop same
+// as every other content type. `curves` is a sparse map from segment index
+// (the edge from points[i] to points[i+1]) to that segment's quadratic
+// control point — see manualShapes.js's flattenShape for how a curved
+// segment becomes real geometry; an empty/absent `curves` means every edge
+// is a plain straight line, unchanged from before this field existed.
 // stitchType is a required manual choice (never auto-classified — that's
 // the whole point of this mode); angleDeg null = per-shape auto (PCA),
 // matching the fill-angle-override convention Image mode's swatch bar and
@@ -147,6 +152,7 @@ export function defaultManualShape(id) {
   return {
     id,
     points: [],
+    curves: {},
     stitchType: "fill",
     colorRgb: [20, 20, 20],
     angleDeg: null,

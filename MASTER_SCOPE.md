@@ -11,6 +11,35 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
+**Last updated:** 2026-08-07 — manual (hand-drawn) shape authoring
+(`ManualPanel.svelte`) gained curved as well as straight-line edges: drag
+the small handle at any edge's midpoint to bow it into a quadratic curve,
+drag it back to straighten it — live during drafting and retroactively via
+"Edit points" on a finished shape. Prompted by directly observing Ember
+Design's own manual digitizing tool (draw curved/straight lines, satin-fill
+the closed shape) — and confirms something already suspected: EMB-Bot's
+satin/fill machinery already derives rails/caps from ANY closed polygon via
+medial-axis skeletonization, so the missing piece really was just the
+curve-drawing UI, not new stitch-generation capability. Curves are stored
+as their own sparse per-shape field (`shape.curves`, a segment-index →
+quadratic-control-point map) and only ever flattened to plain points at the
+`shapesToRegions` hand-off boundary — `manual.py`, the Python pipeline, and
+the stitch engines never need to know a curve exists; a shape with no
+curved segments flattens to byte-identical output, so this is a no-op for
+every design that predates the feature. Branch `manual-shape-curve-tool`.
+30 new tests (22 pure-geometry cases in `manualShapes.spec.js`, 8
+component-level drag-gesture cases in `ManualPanel.spec.js`), covering the
+live-preview-follows-cursor curve math, straighten-by-dragging-back-to-
+center, edit-mode re-curving, the self-intersection gate running against
+the FLATTENED (not raw-anchor) geometry, and Undo point correctly dropping
+a curve bound to a now-removed segment. Verified live in a real browser,
+not just tests: drew a curved shape, fill-stitched it, satin-stitched it,
+and re-curved a different edge after finishing — all client-side, no
+backend needed. Full detail in area 3 below, in the paragraph starting
+"**Manual shape drawing gained curved edges, 2026-08-07**".
+
+Prior update below, still 2026-08-07:
+
 **Last updated:** 2026-08-07 — streamline fill (`stage6_streamline.py`,
 photo plan technique row 10) gained a per-shape review-screen override
 (`shape_overrides[sid].tier == "streamline"`, contract v1.6), the same
@@ -3025,6 +3054,27 @@ bbox, with two regression tests reproducing the original overflow on a
 non-square hoop across several non-180° angles (267/267 engine, 321/321 app
 at that historical commit — not today's totals, which have since grown
 further).
+
+**Manual shape drawing gained curved edges, 2026-08-07** (`ManualPanel
+.svelte`, the "Shapes" content type's hand-drawn-outline tool): dragging the
+small handle at any edge's midpoint bows it into a quadratic curve — live
+while drafting, and retroactively on a finished shape via "Edit points."
+Prompted by directly observing Ember Design's own manual digitizing tool
+(draw curved/straight lines, satin-fill the closed shape); confirmed via
+code reading, not assumed, that EMB-Bot's satin/fill machinery already
+derives rails/caps from any closed polygon via medial-axis skeletonization
+— the missing piece was purely the curve-drawing UI, not new stitch-
+generation capability. Curves live in their own sparse per-shape field
+(`shape.curves`, segment-index → quadratic-control-point) and are only ever
+flattened to plain points at the `shapesToRegions` hand-off boundary — the
+Python pipeline and both stitch engines never need to know a curve exists,
+and a shape with no curved segments flattens byte-identical to before this
+feature. 30 new tests (22 pure-geometry, 8 component drag-gesture), plus
+live-browser verification: drew a curved shape, generated real fill
+stitches from it, satin-stitched it, and re-curved a different edge after
+finishing — all client-side, no backend needed. Branch
+`manual-shape-curve-tool`. Doesn't move this area's Status/Confidence
+verdict (additive UI on an already-shipped content type).
 
 **Fabric-preset accuracy: pending sew-out** — kept as an explicit separate
 note, not blended into the wizard's own score. README says it outright:

@@ -4,14 +4,16 @@
   import { defaultManualShape } from "../lib/project.js";
   import {
     CANVAS_W, CANVAS_H, MAX_SHAPE_POINTS,
-    isValidShape, isNearStart, isDuplicateOfLast, shapeIssues,
+    isValidShape, isNearStart, isDuplicateOfLast, shapeIssues, flattenShape,
+    curveControlOrNull, hitTestSegmentMidpoint, curveHandlePoint,
   } from "../lib/manualShapes.js";
 
-  // Manual digitizing mode (MVP slice): draw straight-line polygon outlines
-  // directly on a canvas, then assign each one a stitch type/color/angle by
-  // hand. Zero image analysis anywhere in this component. Patch convention
-  // (see TextStep.svelte's comment for the same one): every edit dispatches
-  // an "elupdate" event shaped { id: element.id, patch } directly.
+  // Manual digitizing mode (MVP slice): draw straight- or curved-line
+  // polygon outlines directly on a canvas, then assign each one a stitch
+  // type/color/angle by hand. Zero image analysis anywhere in this
+  // component. Patch convention (see TextStep.svelte's comment for the same
+  // one): every edit dispatches an "elupdate" event shaped
+  // { id: element.id, patch } directly.
   export let element;
   const d = createEventDispatcher();
 
@@ -24,6 +26,10 @@
   // persisted element, so it resets if this panel remounts (switching
   // elements, reloading). Only COMPLETED shapes (element.shapes) persist.
   let draft = [];
+  // Sparse { [segmentIndex]: {x,y} } control-point map for `draft`'s curved
+  // segments — see manualShapes.js's flattenShape doc comment. Reset in
+  // lockstep with `draft` everywhere it resets (finishShape/clearDraft).
+  let draftCurves = {};
   let selectedShapeId = null;
   let canvasEl;
   // Brief on-canvas hint shown when a click is dropped because the draft
@@ -49,21 +55,51 @@
   const VERTEX_HIT_R = 8; // canvas-px radius for "this click/drag is on that vertex"
   let editingId = null;
   let editPoints = [];
+  // editCurves mirrors draftCurves, but for the shape currently in "Edit
+  // points" mode — copied from shape.curves on entry (startShapeEdit),
+  // discarded on exit (stopShapeEdit), same lifecycle as editPoints.
+  let editCurves = {};
   let dragIndex = null;
+
+  // ---- Curve-handle dragging ---------------------------------------------
+  // Dragging the handle at a segment's midpoint bows that segment into a
+  // quadratic curve (see manualShapes.js's curveControlOrNull/
+  // quadraticControlForPointOnCurve) — works identically against the
+  // in-progress draft (open polyline) or a shape in vertex-edit mode
+  // (closed ring); curveTarget says which point/curve-map pair
+  // curveDragSeg indexes into. Only one of {dragIndex, curveDragSeg} is
+  // ever non-null at a time — a pointerdown either grabs a vertex or a
+  // curve handle, never both.
+  let curveDragSeg = null;
+  let curveDragPoint = null;
+  let curveTarget = null; // "draft" | "edit"
+  // Set for the one `click` event that immediately follows a curve-handle
+  // drag (pointerdown -> pointerup -> click, in that order) so that click
+  // doesn't ALSO get treated as "place a new draft point" at the handle's
+  // location — see onCanvasClick.
+  let suppressNextClick = false;
 
   $: shapes = element.shapes || [];
   $: selectedShape = shapes.find((s) => s.id === selectedShapeId) || null;
+  // Validity is always checked against the FLATTENED geometry (curves baked
+  // to points, closed=true — shapeIssues has always treated its input as a
+  // closed ring for self-intersection purposes, draft or not) so a curve
+  // that swings through another edge is caught exactly like a straight one
+  // would be. A shape with no curved segments flattens to its own points
+  // array unchanged, so this is a no-op for plain polygons.
+  $: draftFlat = flattenShape(draft, draftCurves, true);
   // Only surface issues once there are enough points for them to be
   // meaningful (self-intersection/area problems don't exist below a
   // triangle) — otherwise every fresh draft would open with "Needs at
   // least 3 points," which is just the obvious starting state, not a
   // problem to report.
-  $: draftIssues = draft.length >= 3 ? shapeIssues(draft) : [];
+  $: draftIssues = draft.length >= 3 ? shapeIssues(draftFlat) : [];
   $: canFinish = draft.length >= 3 && draftIssues.length === 0;
+  $: editFlat = editingId ? flattenShape(editPoints, editCurves, true) : [];
   // Same "only surface once meaningful" reasoning as draftIssues — computed
   // continuously (not just after a drag ends) so a mid-drag self-intersect
   // shows up live, the same way the draft-drawing flow already behaves.
-  $: editIssues = editingId ? shapeIssues(editPoints) : [];
+  $: editIssues = editingId ? shapeIssues(editFlat) : [];
 
   function nextShapeId(list) {
     let max = 0;
@@ -82,10 +118,14 @@
   }
 
   function finishShape() {
-    if (!isValidShape(draft)) return;
-    const shape = { ...defaultManualShape(nextShapeId(shapes)), points: draft };
+    // Computed fresh here (not read off the reactive draftFlat) so this
+    // never depends on Svelte's reactive-statement flush having already run
+    // by the time a caller in the same tick invokes finishShape.
+    if (!isValidShape(flattenShape(draft, draftCurves, true))) return;
+    const shape = { ...defaultManualShape(nextShapeId(shapes)), points: draft, curves: draftCurves };
     patch({ shapes: [...shapes, shape] });
     draft = [];
+    draftCurves = {};
     selectedShapeId = shape.id;
   }
 
@@ -100,6 +140,13 @@
     // onCanvasPointerDown/Move/Up below) — a plain click while editing
     // shouldn't also drop a new draft point.
     if (editingId) return;
+    // The click that immediately follows a curve-handle drag (pointerdown
+    // -> pointerup -> click) shouldn't ALSO place a new point at the
+    // handle's location — see suppressNextClick's declaration.
+    if (suppressNextClick) {
+      suppressNextClick = false;
+      return;
+    }
     const pt = canvasPointFromEvent(e);
     if (draft.length >= 2 && isNearStart(draft, pt.x, pt.y)) {
       finishShape();
@@ -127,10 +174,20 @@
   }
 
   function undoPoint() {
+    // The segment between the last two anchors is going away with the
+    // removed point — drop its curve entry too, or it'd silently apply to
+    // whatever segment index happens to land there next.
+    const removedSegIdx = draft.length - 2;
     draft = draft.slice(0, -1);
+    if (removedSegIdx >= 0 && removedSegIdx in draftCurves) {
+      const next = { ...draftCurves };
+      delete next[removedSegIdx];
+      draftCurves = next;
+    }
   }
   function clearDraft() {
     draft = [];
+    draftCurves = {};
   }
 
   function selectShape(id) {
@@ -158,12 +215,14 @@
     if (!shape) return;
     editingId = id;
     editPoints = shape.points.map((p) => ({ ...p }));
+    editCurves = { ...(shape.curves || {}) };
     dragIndex = null;
   }
 
   function stopShapeEdit() {
     editingId = null;
     editPoints = [];
+    editCurves = {};
     dragIndex = null;
   }
 
@@ -184,13 +243,7 @@
     return best;
   }
 
-  function onCanvasPointerDown(e) {
-    if (!editingId) return;
-    const pt = canvasPointFromEvent(e);
-    const idx = hitTestVertex(editPoints, pt.x, pt.y);
-    if (idx === -1) return;
-    e.preventDefault();
-    dragIndex = idx;
+  function capturePointer(e) {
     try {
       canvasEl.setPointerCapture(e.pointerId);
     } catch (err) {
@@ -201,27 +254,119 @@
     }
   }
 
-  function onCanvasPointerMove(e) {
-    if (dragIndex == null) return;
-    editPoints[dragIndex] = canvasPointFromEvent(e);
-    editPoints = editPoints;
-  }
-
-  // "Drag, then patch on release": the moved vertex only reaches
-  // element.shapes (via updateShape) if the resulting polygon is still
-  // valid — an invalid drag leaves editPoints (and its live editIssues
-  // message) as the only trace, exactly like a draft that hasn't been
-  // finished yet.
-  function endVertexDrag(e) {
-    if (dragIndex == null) return;
-    dragIndex = null;
-    if (editingId && shapeIssues(editPoints).length === 0) {
-      updateShape(editingId, { points: editPoints.map((p) => ({ ...p })) });
-    }
+  function releasePointer(e) {
     try {
       canvasEl.releasePointerCapture(e.pointerId);
     } catch (err) {
-      // See onCanvasPointerDown.
+      // See capturePointer.
+    }
+  }
+
+  // The control point to store for segment `segIndex` of `points`/`curves`
+  // if the user releases a curve-handle drag at `through` — null means
+  // "close enough to straight, un-curve it" (see curveControlOrNull).
+  function commitCurve(points, curves, segIndex, through) {
+    const n = points.length;
+    const a = points[segIndex];
+    const c = points[(segIndex + 1) % n];
+    const control = curveControlOrNull(a, c, through);
+    const next = { ...curves };
+    if (control) next[segIndex] = control;
+    else delete next[segIndex];
+    return next;
+  }
+
+  function onCanvasPointerDown(e) {
+    // Reset unconditionally at the start of every gesture: a browser that
+    // honors preventDefault's compatibility-event suppression (see below)
+    // never fires the `click` that would otherwise clear this, so a stale
+    // `true` left over from a PREVIOUS curve-handle grab could wrongly
+    // swallow an unrelated future point-placement click if it weren't reset
+    // here first.
+    suppressNextClick = false;
+    const pt = canvasPointFromEvent(e);
+    if (editingId) {
+      const idx = hitTestVertex(editPoints, pt.x, pt.y);
+      if (idx !== -1) {
+        e.preventDefault();
+        dragIndex = idx;
+        capturePointer(e);
+        return;
+      }
+      const segIdx = hitTestSegmentMidpoint(editPoints, editCurves, pt.x, pt.y, true);
+      if (segIdx !== -1) {
+        e.preventDefault();
+        curveDragSeg = segIdx;
+        curveDragPoint = pt;
+        curveTarget = "edit";
+        capturePointer(e);
+      }
+      return;
+    }
+    // Drafting: placing a new point stays on the plain `click` handler
+    // below — pointer events here only ever grab an existing segment's
+    // curve handle. A pointerdown that misses every handle does nothing
+    // (no preventDefault, no state change), so the click that follows
+    // places a point exactly as it did before curves existed.
+    if (draft.length >= 2) {
+      const segIdx = hitTestSegmentMidpoint(draft, draftCurves, pt.x, pt.y, false);
+      if (segIdx !== -1) {
+        e.preventDefault();
+        curveDragSeg = segIdx;
+        curveDragPoint = pt;
+        curveTarget = "draft";
+        suppressNextClick = true;
+        capturePointer(e);
+      }
+    }
+  }
+
+  function onCanvasPointerMove(e) {
+    if (dragIndex != null) {
+      editPoints[dragIndex] = canvasPointFromEvent(e);
+      editPoints = editPoints;
+      return;
+    }
+    if (curveDragSeg != null) {
+      curveDragPoint = canvasPointFromEvent(e);
+    }
+  }
+
+  // "Drag, then patch on release": a moved vertex or a bowed segment only
+  // reaches element.shapes (via updateShape) if the resulting polygon is
+  // still valid — an invalid drag leaves editPoints/editCurves (and the
+  // live editIssues message) as the only trace, exactly like a draft that
+  // hasn't been finished yet. Drafting has no such gate: draft/draftCurves
+  // always take the drag result, same as a plain draft point always gets
+  // added regardless of whether the shape-so-far is valid yet.
+  function endVertexDrag(e) {
+    if (dragIndex != null) {
+      dragIndex = null;
+      if (editingId && shapeIssues(flattenShape(editPoints, editCurves, true)).length === 0) {
+        updateShape(editingId, { points: editPoints.map((p) => ({ ...p })) });
+      }
+      releasePointer(e);
+      return;
+    }
+    if (curveDragSeg != null) {
+      const seg = curveDragSeg;
+      const through = curveDragPoint;
+      const target = curveTarget;
+      curveDragSeg = null;
+      curveDragPoint = null;
+      curveTarget = null;
+      if (target === "draft") {
+        draftCurves = commitCurve(draft, draftCurves, seg, through);
+      } else if (target === "edit") {
+        editCurves = commitCurve(editPoints, editCurves, seg, through);
+        if (editingId && shapeIssues(flattenShape(editPoints, editCurves, true)).length === 0) {
+          updateShape(editingId, {
+            points: editPoints.map((p) => ({ ...p })),
+            curves: { ...editCurves },
+          });
+        }
+      }
+      releasePointer(e);
     }
   }
 
@@ -280,11 +425,21 @@
   }
 
   // ---- Drawing ---------------------------------------------------------
-  function drawPolygon(ctx, points, fillStyle, strokeStyle, lineWidth) {
+  // Curved segments draw natively via quadraticCurveTo — flattening to
+  // points (manualShapes.js's flattenShape) only ever happens for
+  // validation and at the final shapesToRegions hand-off, never here.
+  function drawShape(ctx, points, curves, closed, fillStyle, strokeStyle, lineWidth) {
     if (points.length < 2) return;
+    const n = points.length;
+    const segCount = closed ? n : n - 1;
     ctx.beginPath();
     ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+    for (let i = 0; i < segCount; i++) {
+      const c = points[(i + 1) % n];
+      const control = curves && curves[i];
+      if (control) ctx.quadraticCurveTo(control.x, control.y, c.x, c.y);
+      else ctx.lineTo(c.x, c.y);
+    }
     if (fillStyle) {
       ctx.closePath();
       ctx.fillStyle = fillStyle;
@@ -295,7 +450,51 @@
     ctx.stroke();
   }
 
-  function render(canvas, shapeList, draftPts, selectedId, editId, editPts, editValid) {
+  // The curves map to actually draw with: the committed map, with the
+  // in-progress drag (if any, and if it's dragging THIS point list) applied
+  // on top — so the curve visibly follows the cursor before release, same
+  // "live preview" precedent onCanvasPointerMove's vertex-drag already sets.
+  function liveCurvesFor(baseCurves, points, isDragTarget, dragSeg, dragPoint) {
+    if (!isDragTarget || dragSeg == null) return baseCurves;
+    const n = points.length;
+    const a = points[dragSeg];
+    const c = points[(dragSeg + 1) % n];
+    const control = curveControlOrNull(a, c, dragPoint);
+    const next = { ...baseCurves };
+    if (control) next[dragSeg] = control;
+    else delete next[dragSeg];
+    return next;
+  }
+
+  // Small draggable dots at each segment's curve handle — hollow/faint when
+  // the segment is still straight (a discoverable "drag me" affordance),
+  // solid once curved, enlarged while actively being dragged.
+  function drawCurveHandles(ctx, points, curves, closed, dragSeg) {
+    const n = points.length;
+    const segCount = closed ? n : n - 1;
+    for (let i = 0; i < segCount; i++) {
+      const a = points[i];
+      const c = points[(i + 1) % n];
+      const control = curves && curves[i];
+      const hp = curveHandlePoint(a, c, control);
+      const dragging = i === dragSeg;
+      ctx.beginPath();
+      ctx.arc(hp.x, hp.y, dragging ? 5 : 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = control ? "#4f46e5" : "rgba(79,70,229,0.35)";
+      ctx.fill();
+      if (dragging) {
+        ctx.strokeStyle = "#4f46e5";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+    }
+  }
+
+  function render(
+    canvas, shapeList, draftPts, draftCrv, selectedId,
+    editId, editPts, editCrv, editValid,
+    dragSeg, dragPoint, dragTarget
+  ) {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -305,20 +504,25 @@
     for (const s of shapeList) {
       const editing = s.id === editId;
       // The shape being edited draws from the LIVE (possibly momentarily
-      // invalid, mid-drag) editPts instead of its last-persisted points —
-      // everything else still only draws once it's a real polygon.
+      // invalid, mid-drag) editPts/editCrv instead of its last-persisted
+      // points — everything else still only draws once it's a real
+      // polygon.
       const pts = editing ? editPts : s.points;
-      if (!editing && !isValidShape(pts)) continue;
+      const liveCrv = editing
+        ? liveCurvesFor(editCrv, editPts, dragTarget === "edit", dragSeg, dragPoint)
+        : s.curves;
+      if (!editing && !isValidShape(flattenShape(pts, liveCrv, true))) continue;
       const [r, g, b] = s.colorRgb || [20, 20, 20];
       const isSel = s.id === selectedId;
       const invalid = editing && !editValid;
-      drawPolygon(
-        ctx, pts,
+      drawShape(
+        ctx, pts, liveCrv, true,
         invalid ? "rgba(192,57,43,0.25)" : `rgba(${r},${g},${b},0.55)`,
         invalid ? "#c0392b" : (isSel ? "#4f46e5" : `rgb(${r},${g},${b})`),
         isSel || editing ? 3 : 1.5
       );
       if (editing) {
+        drawCurveHandles(ctx, pts, liveCrv, true, dragTarget === "edit" ? dragSeg : null);
         // Draggable vertex handles instead of the centroid label — this IS
         // the "edit points" affordance.
         for (const p of pts) {
@@ -343,7 +547,9 @@
     }
 
     if (draftPts.length) {
-      drawPolygon(ctx, draftPts, null, "#4f46e5", 2);
+      const liveCrv = liveCurvesFor(draftCrv, draftPts, dragTarget === "draft", dragSeg, dragPoint);
+      drawShape(ctx, draftPts, liveCrv, false, null, "#4f46e5", 2);
+      if (draftPts.length >= 2) drawCurveHandles(ctx, draftPts, liveCrv, false, dragTarget === "draft" ? dragSeg : null);
       for (let i = 0; i < draftPts.length; i++) {
         const p = draftPts[i];
         ctx.beginPath();
@@ -357,14 +563,20 @@
     }
   }
 
-  $: render(canvasEl, shapes, draft, selectedShapeId, editingId, editPoints, editIssues.length === 0);
+  $: render(
+    canvasEl, shapes, draft, draftCurves, selectedShapeId,
+    editingId, editPoints, editCurves, editIssues.length === 0,
+    curveDragSeg, curveDragPoint, curveTarget
+  );
 </script>
 
 <div class="manualpanel">
   <p class="hint">
     Click to place points. Click near the first point (or double-click) to close the shape.
-    Draw as many shapes as you like, then pick each one's stitch type, color, and angle below.
-    Escape cancels a draft, Enter finishes it, Delete removes the selected shape.
+    Drag the small dot at the middle of any line to bow it into a curve — drag it back to
+    the line to straighten it again. Draw as many shapes as you like, then pick each one's
+    stitch type, color, and angle below. Escape cancels a draft, Enter finishes it, Delete
+    removes the selected shape.
   </p>
 
   <div class="mp-canvas-wrap">
