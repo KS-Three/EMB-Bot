@@ -11,7 +11,43 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-07 — `stage2_photo_segment`'s superpixel
+**Last updated:** 2026-08-07 — fast follow-up to the `BACKGROUND_ENCLOSED`
+bulk-restore banner (area 1, "Auto-digitizing quality" — see that section's
+own entry below for the original fix): an adversarial review (`emb-bot-
+reviewer`) of the merged diff found the new banner's exclusion of already-
+converted text-cluster members (`textConversions`) was correct, but the
+pre-existing PER-ROW "Sew it" button sitting right next to it in the same
+unstitched-row branch had no such guard — clicking it on a converted
+cluster member silently restores stitching for a shape a *different*
+feature already replaced with a real text element, with no visual warning
+(the "restored" badge only fires off the server's own `stitched` field,
+which a cluster conversion's client-only override never touches). Proven
+live against the real service, not just reasoned about: converting a
+14-member cluster on the `enthusiast_logo.png` benchmark left all 14 with a
+fully clickable "Sew it" button and the same misleading "enclosed area"
+tooltip. This diff pre-dates the fix, so it never shipped to `main` in the
+broken state — caught before merge, not a live regression. Fix:
+`DigitizePanel.svelte` gains a shared `isClusterHidden(row, conversions)`
+helper, used by both the banner's `unstitchedRows` filter (already correct)
+and a new `clusterHidden` per-row const that now gates the per-row "Sew it"
+button and label — a cluster-hidden row shows "hidden — converted to text"
+pointing at the cluster bar's own Undo control instead. New regression
+coverage in `text-cluster-convert.spec.js`: after converting a cluster, the
+`Sew it` button count must equal only the pre-conversion baseline (real
+enclosed-background rows, if any) and the bulk banner's live count must
+exclude the converted members too — verified against the real service,
+2/2 relevant e2e specs pass in isolation (the same environmental
+worker-contention flake noted in the original entry reproduces when run
+back-to-back with other heavy specs and is unrelated to this change).
+Studio unit suite 435/435, `vite build` clean. Two smaller review findings
+also closed same pass: a stale "not yet verified" sentence directly
+contradicting the original fix's own new paragraph (self-resolved once
+this branch was restarted from `main`, which already carried that doc fix
+separately) and `.dgp-enclosed-banner`'s background swapped from a bare hex
+literal to `var(--warn-bg, #fdf6e3)` for consistency with the rest of the
+file's color-token convention.
+
+Prior update below, still 2026-08-07: `stage2_photo_segment`'s superpixel
 oversegmentation step (photo plan step 1, every photo/gradient-classified
 design's segmentation entry point) swaps `skimage.segmentation.slic` for
 `cv2.ximgproc.createSuperpixelSEEDS` (branch `seeds-superpixel-swap`, draft
@@ -1621,6 +1657,17 @@ is now fixed (see below), four remain open:
   bulk restore, deliberately excluding text-cluster-converted rows. Verified
   end to end against the real service + browser
   (`app/e2e/digitize-background-enclosed.spec.js`, 2/2).
+
+  **Follow-up caught pre-merge by adversarial review, same day: the
+  per-row "Sew it" button needed the same text-cluster guard the banner
+  already had.** Full detail in this file's newest "Last updated" entry at
+  the top; summary: a converted cluster member could still be individually
+  "restored" via the row-level button next to the banner, silently
+  un-hiding a shape a different feature had already replaced with a text
+  element. Fixed with a shared `isClusterHidden` check gating both the
+  label and the button; new coverage in `text-cluster-convert.spec.js`
+  proves a converted member never shows "Sew it" and is excluded from the
+  banner's live count.
 
   **Band/part transition jump flags — FIXED, 2026-08-06.** `blend_fill`
   stitches each shade band (and, when `_band_clip` returns more than one

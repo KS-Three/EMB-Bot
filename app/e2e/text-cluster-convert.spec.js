@@ -225,6 +225,27 @@ test("text cluster: badge appears, convert to text, undo -- through the real ser
   await expect(page.locator(".dgp-lbadge", { hasText: "looks like text" })).toHaveCount(0);
   await expect(page.locator(".dgp-layer.unstitched")).toHaveCount(unstitchedBefore + badgeCountBefore);
 
+  // ---- a converted cluster member must never look restorable ---------------
+  // Regression coverage for the interaction between this feature and the
+  // BACKGROUND_ENCLOSED bulk-restore banner: a converted member's
+  // stitched:false is a permanent hide belonging to THIS feature, not the
+  // digitizer's own enclosed-background default, so it must never render a
+  // "Sew it" button (which would silently un-hide it underneath the new
+  // text element) and must never be counted by the banner's bulk action.
+  // Only the pre-conversion baseline (genuine enclosed-background rows, if
+  // any -- `unstitchedBefore`) is allowed to still offer "Sew it".
+  await expect(
+    page.locator(".dgp-layer.unstitched").getByRole("button", { name: "Sew it" })
+  ).toHaveCount(unstitchedBefore);
+  await expect(
+    page.locator(".dgp-layer.unstitched").getByText("hidden — converted to text")
+  ).toHaveCount(badgeCountBefore);
+  if (unstitchedBefore > 0) {
+    await expect(page.locator(".dgp-enclosed-banner")).toContainText(`Sew all ${unstitchedBefore}`);
+  } else {
+    await expect(page.locator(".dgp-enclosed-banner")).toBeHidden();
+  }
+
   // ---- Undo -----------------------------------------------------------------
   await clusterBarAgain.getByRole("button", { name: "Undo — remove text element" }).click();
 
