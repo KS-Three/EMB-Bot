@@ -1004,6 +1004,29 @@ def _short_stitch_guard(rail_a: list, rail_b: list) -> list[tuple]:
     as two ~1.0 mm same-rail gaps. Capped, the same stitch retracts 0.6 mm —
     two same-hole radii: a full radius clear of the old hole, still supporting
     the inner edge it was pulled from.
+
+    Found and fixed 2026-08-07 (satin free-end corner coverage). The pull is
+    ALSO bounded so it can never take a cross under `SATIN_MIN_CROSS_MM`
+    itself — without that, a cross that was a legitimate, keepable stitch
+    (comfortably above the floor) came out of the pull thinner than the
+    floor and `satin_stroke`'s own degenerate-cross filter dropped it a few
+    lines later, for a reason that has nothing to do with why the filter
+    exists (a real pinch, both rails meeting at a point). Measured on
+    `photo/enthusiast_logo.png`'s "E": the free end at the glyph's stem
+    caps 0.15mm from its own flush corner (`_extend_to_cap` already lands it
+    there), and the very next station's cross is a real 0.57-0.60mm stitch —
+    comfortably keepable on its own — until this guard fires (that station's
+    same-rail step off the cap station is 0.27mm, under
+    `SATIN_SHORT_STITCH_AT_MM`) and its stock 35%-capped-at-0.6mm pull takes
+    it to 0.37-0.39mm, under the 0.5mm floor: the filter drops it, and the
+    corner sews as bare fabric even though `_extend_to_cap` did its job.
+    This is not a letterform-specific fix — any cap zone, corner, or tight
+    curve whose next-station cross starts out only a little above
+    `SATIN_MIN_CROSS_MM` can hit the identical interaction, independent of
+    what put the crosses there. A curve with real room to spare (the guard's
+    normal case, columns several mm wide) never reaches this new bound —
+    only a pull that would have landed the result below the floor is
+    reined in, to land AT the floor instead of past it.
     """
     out = []
     for i, (pa, pb) in enumerate(zip(rail_a, rail_b)):
@@ -1017,11 +1040,21 @@ def _short_stitch_guard(rail_a: list, rail_b: list) -> list[tuple]:
 
 
 def _pull_short(p: tuple, toward: tuple) -> tuple:
-    """Retract one penetration toward the far rail, by fraction-with-a-cap."""
+    """Retract one penetration toward the far rail, by fraction-with-a-cap.
+
+    Never past the point where the cross itself would drop under
+    `SATIN_MIN_CROSS_MM` — see `_short_stitch_guard`'s own note on why a
+    pull that starts from an already-narrow cross needs that floor too. The
+    target is nudged a hair above the exact floor (1.01x, not 1.0x) so a
+    cross landing there clears `satin_stroke`'s strict `<` drop check
+    despite float rounding in the two `dist()` calls along the way — the
+    floor is a keepability guarantee, not a value that needs to be exact.
+    """
     cross = math.dist(p, toward)
     f = machine.SATIN_SHORT_STITCH_PULL
     if cross > 1e-9:
         f = min(f, machine.SATIN_SHORT_STITCH_PULL_MAX_MM / cross)
+        f = min(f, max(0.0, 1.0 - 1.01 * machine.SATIN_MIN_CROSS_MM / cross))
     return (p[0] + (toward[0] - p[0]) * f, p[1] + (toward[1] - p[1]) * f)
 
 

@@ -148,6 +148,17 @@ APPLIQUE_COVER_WIDTH_CLAMPED = "APPLIQUE_COVER_WIDTH_CLAMPED"
 # that hit either bound sewed with no record that the requirement and the
 # stitched width disagree. extra: {"count": int, "width_mm": float,
 # "bound": "floor" | "ceiling"}
+APPLIQUE_PRECUT_TOO_NARROW = "APPLIQUE_PRECUT_TOO_NARROW"
+# Pre-cut mode's own scissors/placement floor (§2.12: `min_inscribed_diameter
+# >= 8mm`) — a DIFFERENT gate from `APPLIQUE_CUTTING_LINE_SUPPRESSED`'s 12mm
+# trim-in-place floor above; the two are scoped to their own modes and never
+# both fire on the same piece. Below 8mm, the piece the operator must hand-cut
+# BEFORE placing it (there is no in-hoop trim step to fall back to) has a
+# bottleneck too narrow for scissors to cut around cleanly. Measured by
+# `narrowest_passage_diameter`, the same bottleneck-aware measure the
+# trim-in-place gate uses, so a dog-bone-shaped pre-cut piece is caught the
+# same way `APPLIQUE_CUTTING_LINE_SUPPRESSED` catches one. extra: {"count":
+# int, "measured_mm": float, "floor_mm": float}
 
 
 def warn(code: str, message: str, **extra) -> dict:

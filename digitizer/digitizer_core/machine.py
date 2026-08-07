@@ -764,7 +764,13 @@ APPLIQUE_COVER_FLOOR_BY_MATERIAL = {
 # 3.5 mm and clears at 4.0 mm exactly. It falls through to plain satin and the
 # engine must SAY it did.
 APPLIQUE_MIN_FEATURE_MARGIN_MM = 1.0
-# Scissors must physically fit inside the shape to trim in place.
+# Scissors must physically fit to cut the piece. Two separate floors, one per
+# mode: pre-cut is hand-cut from sheet stock BEFORE placement (no in-hoop trim
+# step to fall back to, so the floor is lower), trim-in-place is cut IN THE
+# HOOP after tackdown (tighter access, so the floor is higher). Fed by
+# `narrowest_passage_diameter`, not `min_inscribed_diameter` — see that
+# function's docstring for why the single-largest-inscribed-circle measure is
+# blind to a dog-bone-shaped piece's own neck.
 APPLIQUE_MIN_INSCRIBED_PRECUT_MM = 8.0
 APPLIQUE_MIN_INSCRIBED_TRIM_MM = 12.0
 # Below |c_in| + this, the cover's inner rail self-intersects on a concave turn.

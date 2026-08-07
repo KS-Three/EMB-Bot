@@ -59,6 +59,131 @@ no shared-component regression). Studio unit suite: `npx vitest run`
 435/435 (28 files). `npx vite build` clean. Engine and digitizer suites
 untouched by this pass (pure Studio UI change, no `src/` or
 `digitizer_core/` edits) and not re-run.
+**Last updated:** 2026-08-07 — `stage6_satin.py`'s "E missing its
+bottom-left corner" defect (root-caused, deliberately left open by PR #77 —
+see this doc's own 2026-08-06 entry below) is now root-caused for real and
+FIXED. Re-verified fresh before touching anything: rendered `photo/
+enthusiast_logo.png` at 90mm via `debugviz.stage6`, confirmed by direct
+render inspection that the defect is still present on current `main`
+(PRs #77-#80 all merged, none touched this) — a visible gray gap between
+the satin and the underlay's own boundary trace at the glyph's flush
+corner. Also re-checked the "N" PR #77 flagged as possibly-short: its satin
+coverage bounds now match its polygon bounds to within 0.008mm on every
+side — **not present**, confirming the earlier independent re-measurement
+this doc already noted.
+
+**Real root cause, and it is NOT what PR #77's own investigation
+suspected.** The junction machinery it named (`_extend_to_cap`,
+`_retract_cap_corner`, `_merge_through_junctions`) is innocent: traced
+directly, the stem's own medial axis welds through all three of the E's
+T-junctions into one both-ends-free stroke exactly as designed, and
+`_extend_to_cap` lands each of its two caps within 0.15mm of the glyph's
+real corner. The actual bug is one step later, in `_short_stitch_guard`
+(same file): the cross one station in from a cap is a real, keepable
+stitch on its own (measured 0.57-0.60mm, comfortably over
+`SATIN_MIN_CROSS_MM`'s 0.5mm floor) — but that station's same-rail step off
+the cap is short enough to trip the guard, whose pull-toward-middle is
+sized for a WIDE curve (35%, capped at an absolute 0.6mm — fine when a
+cross is several mm) and, applied to an already-narrow cross, pulls it
+under the floor. `satin_stroke`'s degenerate-cross filter then drops it a
+few lines later for a reason that has nothing to do with why that filter
+exists (an actual same-point pinch) — and the corner sews as bare fabric
+even though the cap machinery it was blamed for did its job correctly.
+Confirmed by direct instrumentation of the real code path (not a
+reimplementation) on both the real fixture and an isolated synthetic
+"E"-shaped polygon carrying the identical multi-junction topology, before
+and after.
+
+**Fix:** `_pull_short` (called from `_short_stitch_guard`) now bounds its
+pull so it can never take a cross under `SATIN_MIN_CROSS_MM` itself — a
+pull that would have landed the result below the floor lands AT the floor
+(with a 1% margin so float rounding in the two `dist()` calls along the
+way can't undershoot it) instead of past it. This is a general fix, not a
+per-letter patch: it changes one shared helper every satin column's
+short-stitch guard already goes through, for the specific case (a
+near-floor cross whose same-rail step is short) that is possible at ANY
+cap zone, corner, or tight curve — not gated on being near a junction or a
+specific shape. Blast radius acknowledged honestly: this touches the
+short-stitch guard's behavior for every satin shape in the app, satin
+being `stage6_satin.py`'s whole reason for existing. What kept the change
+narrow in practice: the new bound only ever binds when a pull would
+otherwise cross the floor — a curve with real room to spare (the guard's
+normal case, crosses several mm wide) never reaches it, so it is a no-op
+there by construction, not by luck.
+
+Visual re-verification, same method as the reproduction: the fixture's
+"E" now shows a stitch landing 0.32mm from its flush corner (was 0.59mm) —
+closer to the true vertex, not a residual gap eliminated to zero (a
+mathematical corner is a zero-width point; no satin cross can land exactly
+on it without becoming the same kind of degenerate stitch the guard
+exists to prevent). Before/after crops of the corner, rendered directly
+from the real polygon and the real `satin_shape` output (not the
+composite debug render, for a distraction-free comparison), confirm the
+gray gap visibly closes. The glyph's OTHER flush corner (bottom bar) was
+already inside the floor before this fix (0.36mm both before and after —
+a different station's parity happened not to trigger the guard there) and
+is unchanged, not a follow-up gap: a pre-existing non-issue this pass
+confirmed rather than assumed. One labeling caveat, stated plainly rather
+than glossed over: "top"/"bottom" here is this pass's own render
+convention (y-down, verified against a labeled direct render of the
+glyph, not assumed) — which of the E's two flush corners Kent's own eyes
+called "bottom-left" when he first reported this cannot be cross-verified
+without his original screenshot. What IS verified: a genuine,
+reproducible flush-corner coverage gap, with the exact symptom described
+(bare fabric against the underlay's own boundary trace) and the exact
+geometry described (a stem crossing multiple T-junctions), was found and
+fixed on this glyph.
+
+New regression tests, `tests/test_satin.py`: a synthetic `E_LETTERFORM`
+polygon (proportions taken directly from the real fixture's own vectorized
+"E", translated to the origin) plus `test_a_stem_crossing_three_junctions_
+welds_into_one_stroke` (confirms the fixture actually exercises the
+multi-junction topology before trusting the second test) and
+`test_stem_free_end_reaches_its_own_flush_corner` (the coverage
+regression; fails on pre-fix code at 0.59mm, passes post-fix at 0.32mm —
+verified failing on the reverted code, not just passing on the fixed one).
+Targeted suites green: `test_satin.py` **51/51** (49 existing + 2 new),
+`test_flat_lane_byte_identical.py` **6/6**, `test_preflight.py`/
+`test_stages.py`/`test_pushcomp.py`/`test_chaining.py` **169/169**
+combined. Golden impact, checked by diff rather than assumed: only
+`photo/enthusiast_logo.png`'s entry in `flat_lane_golden.json` moved
+(regenerated the same way the doc's own prior precedent did — one key,
+not a full re-run); `logo_whitebg.png`/`logo_alpha.png`/`ribbon_curve.png`
+came back byte-identical. On the moved entry, `shape_ids`/`areas_mm2`/
+`warnings`/`stitch_count` are all unchanged (2363 both before and after)
+— only `stitch_coords` moved, and by a wide margin (1983 of 2363 entries),
+which measured out as a benign downstream cascade rather than a new
+defect: re-ran `preflight.run_preflight` on the same fixture before/after
+and got the same score (88/B), the same single finding
+(`TRIM_HEAVY`, essentially unchanged), and near-identical coverage metrics
+(`coverage_max` 4.45 both, `coverage_area_mm2` 630→631) — consistent with
+a few points' worth of real change early in one shape's sew order
+cascading through Laws 27-29's structural entry-point selection for every
+shape sewn after it, not with anything escaping its shape or overlapping
+wrong. Three other fixtures (`logo_alpha.png`, `logo_whitebg.png`,
+`ribbon_curve.png`) re-rendered and visually inspected: clean, no
+starburst, no new gaps — `ribbon_curve.png` in particular is the fixture
+`test_a_satin_free_end_does_not_fan_into_a_starburst` pins in detail for
+exactly this guard's earlier, unrelated fix, and it still passes. Full
+digitizer suite **not** re-run locally per this environment's own standing
+caution (COOKBOOK.md); CI runs it on the PR.
+
+**Last updated:** 2026-08-07 — closed the one remaining verification gap on
+the `BACKGROUND_ENCLOSED` / opaque-alpha fix (area 1, "Auto-digitizing
+quality"): watched it run through the real Studio browser UI via Playwright
+MCP, not just the HTTP-level check PR #22 already had. Uploaded
+`repro_gradient_white_icon.png` through the actual `+ Auto-digitize` file
+input (the same canvas-re-encode path the opaque-alpha bug lived in),
+digitized it against the real service, and confirmed visually: 4 enclosed
+icon-linework regions held out by default as dimmed "not sewn — enclosed
+area" rows (not dropped, not merged into neighbors), the canvas preview
+showing them as literal unfilled gaps; clicked "Sew it" on one, applied, and
+watched the real service re-stitch it (10,916 → 11,114 stitches, gap now
+solid fill) while the other three stayed correctly held out. Screenshots
+under `.playwright-mcp/background-enclosed-*.png`. No code change needed —
+the fix already worked; see area 1's `BACKGROUND_ENCLOSED` write-up below
+for the full account. Doc-only change, committed directly (see that
+section's "CLOSED 2026-08-07" note for detail).
 
 Prior update below, still 2026-08-07: `regularize_text_clusters` gains a third,
 independent safety layer on top of the selective-regularization fix directly
@@ -184,7 +309,14 @@ the third open and documented rather than rushing a wide-blast-radius patch.
   (`tests/test_satin.py` updated with the real evidence for both directions;
   visual re-render confirms clean parallel satin, not a starburst).
 - **"E" missing its bottom-left corner / "N" reading short — ROOT-CAUSED,
-  left OPEN.** Confirmed real via direct render crops (bare unstitched
+  left OPEN. CLOSED 2026-08-07** — see this doc's newest entry at the top:
+  the actual mechanism was not the junction/cap-extension machinery this
+  entry's own investigation suspected (that traced out innocent), but
+  `_short_stitch_guard`'s pull-toward-middle taking an already-adequate
+  near-corner cross under `SATIN_MIN_CROSS_MM`. The "N" symptom is
+  confirmed NOT present (coverage bounds match its polygon to 0.008mm).
+  Original write-up kept below for the investigation trail. Confirmed real
+  via direct render crops (bare unstitched
   fabric exactly where the underlay's own boundary trace shows the true
   polygon corner). Confirmed NOT a text-cluster or enclosed-hole defect —
   the wordmark's satin letters go through the ordinary `stage6_satin.py`
@@ -1345,10 +1477,43 @@ is now fixed (see below), four remain open:
   "Last updated" note above). **Verified post-merge:** POSTed the same
   opaque-RGBA two-squares fixture directly to the live service on current
   `main` — background now detected, 2 shapes, matching the RGB original
-  exactly. **Not yet verified:** driving this through the actual Studio
-  browser UI end to end (upload → digitize → see the restored shape in the
-  Layers panel) — the HTTP-level reproduction above proves the fix, but
-  nobody has watched it happen in a real browser session yet.
+  exactly.
+
+  **CLOSED 2026-08-07 — verified live via Playwright MCP through the actual
+  Studio browser UI.** Drove the real `+ Auto-digitize` flow end to end
+  against `repro_gradient_white_icon.png` (the camera-glyph gradient badge
+  used by `test_enclosed_background.py`'s `REPRO` fixture): chose Tote →
+  Content → Auto-digitize, uploaded the fixture through the real file input
+  (the same canvas-re-encode upload path the opaque-alpha bug lived in),
+  clicked Digitize, and let the real service (127.0.0.1:8721) run it.
+  Confirmed everything the design promises, visually, not just via network
+  inspection: the warnings list showed "Enclosed background-colored areas
+  were left open, like the hole in an O. Find them in the Layers list,
+  marked 'not sewn — enclosed area,' to sew them"; the Layers panel listed
+  4 separate `#2521`-colored rows (860/125/132/132 mm² — the icon's square
+  frame, ring, and dot linework) each tagged "not sewn — enclosed area"
+  with its own "Sew it" control — not silently absent, not merged into a
+  neighboring shape; and the live canvas preview showed those exact
+  shapes rendered as unfilled gaps against the stitched gradient fill,
+  matching "left open" literally. Clicked "Sew it" on the 860 mm² row: it
+  moved into the normal editable Layers list with a "restored" badge and a
+  live "NOT SEWN" pill, the other three stayed exactly as they were.
+  Clicked "Apply layer changes" and waited on the real service round trip
+  (`Digitizing…` → button hidden): stitch count moved 10,916 → 11,114, a
+  new "2521 Fuchsia" thread-per-color entry appeared, and the canvas
+  preview's square-frame gap was now solid stitched fill instead of a hole
+  — the enclosed region became a real, sewable element on command, exactly
+  as the fix's own description promises, while the three still-unreviewed
+  regions kept their dimmed "not sewn — enclosed area" rows the whole time.
+  Screenshots: `.playwright-mcp/background-enclosed-unstitched-rows.png`
+  (post-digitize, all 4 held out), `.playwright-mcp/background-enclosed-
+  sew-it-clicked.png` (one restored locally, badge + pill visible),
+  `.playwright-mcp/background-enclosed-applied-final.png` (post-Apply:
+  11,114 stitches, restored shape now solid-filled in the preview, the
+  other three still correctly held out). This was the one remaining gap in
+  this section — the HTTP-level check above proved the fix; this proves it
+  survives the real upload path, the real Layers-panel UI, and a real
+  restore-and-resew round trip, watched directly in the browser.
 
   **UX follow-up, 2026-08-07 — the restore mechanism was real but too easy
   to miss.** Kent's own real-world upload of this exact problem class (the
@@ -1883,6 +2048,42 @@ is now fixed (see below), four remain open:
   `test_a_forced_cover_width_override_warns_end_to_end` (through
   `applique_pass` on the benchmark logo at `applique_cover_width_mm=8.0`).
 
+  **Fixed, 2026-08-07: §2.12's pre-cut `min_inscribed_diameter >= 8mm` gate
+  (scissors/placement floor) is now checked — it was never checked before,
+  only the 12mm trim-in-place floor was.** Same shape of change as the
+  `max_cover_width` clamp fix directly above: a geometric measurement, the
+  pre-existing threshold constant (`APPLIQUE_MIN_INSCRIBED_PRECUT_MM`, 8.0,
+  `machine.py` — already there, read by no code path), a new warning code
+  (`APPLIQUE_PRECUT_TOO_NARROW`, `warnings_codes.py`), wired into
+  `check_gates` and aggregated by `applique_pass` exactly like the other five
+  appliqué gates. Fed by `narrowest_passage_diameter`, not
+  `min_inscribed_diameter` — the same choice the trim-in-place gate already
+  made and for the same reason (a dog-bone-shaped piece has one lobe's own
+  huge inscribed circle and a neck `min_inscribed_diameter` never has to
+  visit). Scoped strictly to `geom.mode == PRE_CUT`, mirroring the existing
+  `geom.mode == TRIM_IN_PLACE` gate immediately above it in `check_gates` —
+  confirmed mutually exclusive, not merely both-correct-in-isolation: a
+  synthetic dog-bone with a 6mm neck (under pre-cut's 8mm floor AND
+  trim-in-place's 12mm floor) fires `APPLIQUE_PRECUT_TOO_NARROW` and NOT
+  `APPLIQUE_CUTTING_LINE_SUPPRESSED` under `mode=PRE_CUT`, and the reverse
+  under `mode=TRIM_IN_PLACE` (`test_precut_and_trim_in_place_scissors_
+  floors_never_both_fire`). No real fixture needed for the end-to-end proof
+  either: the benchmark logo already has the 1.0mm² / 1.07mm-inscribed
+  region `test_pre_cut_costs_one_fewer_stop_per_piece` documents, so
+  `applique_mode="pre_cut"` on real artwork fires the new code with no
+  construction (`test_a_precut_design_warns_when_a_piece_is_too_narrow_to_
+  hand_cut`), and the same artwork under `trim_in_place` never fires it.
+  New tests: `test_a_precut_piece_clears_the_scissors_floor_by_default`,
+  `test_a_narrow_precut_piece_is_warned_not_silent`,
+  `test_precut_and_trim_in_place_scissors_floors_never_both_fire`,
+  `test_a_precut_design_warns_when_a_piece_is_too_narrow_to_hand_cut` (54 →
+  58 in `test_applique.py`, all passing, targeted run not assumed from a
+  full-suite pass). The physical rationale for the specific 8mm number is
+  still not traced to a stated vendor constraint anywhere this audit found
+  (unlike the tackdown-width fix's `W_tack <= W_cover - 2*m_bury`) — that
+  gap is in the *number*, not in whether the gate fires; the constant itself
+  was untouched, only its being read.
+
   **Still confirmed but NOT fixed — genuinely out of scope, unchanged from
   the first pass:**
   - `applique_cover="zigzag"` and `"e_stitch"` are accepted config values
@@ -1896,15 +2097,6 @@ is now fixed (see below), four remain open:
     spec itself gives two different candidate zigzag spacings (1.69mm SPI
     vs. Melco's 3.0mm preset) as alternatives with no stated tie-break, and
     E-stitch's comb order is a real algorithm with no spec to follow here.
-  - §2.12's pre-cut `min_inscribed_diameter >= 8mm` gate (scissors/placement
-    floor) is never checked — only the 12mm trim-in-place floor is. The
-    constant (`APPLIQUE_MIN_INSCRIBED_PRECUT_MM`) exists and is unread; the
-    module's own comment block over it says "Gates (§2.12) — all [D], all
-    must be enforced." A pre-cut piece of any size, however small, gets no
-    warning. Not fixed because the physical rationale for the specific
-    8mm number isn't stated anywhere this audit found, unlike the
-    tackdown-width fix above where every number traced to a stated vendor
-    constraint; not touched this pass either — out of its scope.
 
   **Caveat, stated plainly:** this is 3 real fixtures and a handful of
   targeted synthetic constructions (dog-bone, off-centre ring, two-piece
@@ -1922,10 +2114,10 @@ Every claim about visual/sew quality beyond internal geometry checks is
 gradient region-count fragmentation fix (PR #45, above — two-fixture
 validation caveat noted there), the full `BACKGROUND_ENCLOSED` stack
 (including the opaque-alpha fix, PR #22), and the contour bare-core shrink
-(PR #27) are all landed. What's left to close this out: watch the
-opaque-alpha fix run through the actual Studio browser UI once (verified so
-far only at the HTTP level — see the caveat note above), then schedule the
-first sew-out session. M0 of the DT-first
+(PR #27) are all landed. The opaque-alpha fix has now been watched running
+through the actual Studio browser UI (2026-08-07, live via Playwright MCP —
+see the caveat note above, now closed); what's left to close this out is
+scheduling the first sew-out session. M0 of the DT-first
 migration is measured (see the satin/fill classifier item above) — corpus
 leg still pending a local run (`scratch_corpus/` is gitignored and
 confirmed empty in this checkout). **M1 (`ShapeField` hoist) is already

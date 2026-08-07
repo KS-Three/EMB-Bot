@@ -845,6 +845,87 @@ def test_narrowest_passage_matches_min_inscribed_diameter_on_ordinary_shapes():
             min_inscribed_diameter(shape), abs=0.01)
 
 
+def test_a_precut_piece_clears_the_scissors_floor_by_default():
+    """§2.12's pre-cut scissors/placement floor, `APPLIQUE_MIN_INSCRIBED_
+    PRECUT_MM` (8 mm) — lower than trim-in-place's 12 mm because pre-cut has
+    no in-hoop trim step to fall back to; the piece just has to be cuttable
+    by hand before it is placed. Real artwork and `SMALL_DISC` (9 mm across —
+    see its own comment: "clears the 8 mm pre-cut floor, fails the 12 mm
+    scissors floor") both clear it, and clearing must not depend on mode:
+    the same disc that trips the trim-in-place gate must NOT trip this one.
+    """
+    from digitizer_core.warnings_codes import APPLIQUE_PRECUT_TOO_NARROW
+
+    g = solve_geometry(mode=PRE_CUT)
+    for shape in (BIG_SQUARE, SMALL_DISC):
+        _steps, report = applique_steps(shape, "S1", g)
+        assert not [x for x in report["gates"]
+                    if x["code"] == APPLIQUE_PRECUT_TOO_NARROW], shape
+
+
+def test_a_narrow_precut_piece_is_warned_not_silent():
+    """A pre-cut piece with a bottleneck under 8 mm is physically impractical
+    to cut cleanly with scissors before placing it, and §2.12 is explicit
+    every gate here "must be enforced" — silently emitting the piece anyway
+    is the exact failure mode the other four gates already refuse to allow.
+
+    Same dog-bone construction as `test_a_neck_too_narrow_for_scissors_is_
+    caught_even_with_big_lobes`, widened to a 6 mm neck (under the 8 mm
+    pre-cut floor, clear of the 12 mm trim-in-place one) so this pins the
+    pre-cut gate specifically rather than reusing the trim-in-place fixture.
+    `narrowest_passage_diameter`, not `min_inscribed_diameter`, has to be
+    what feeds it: the two 20 mm lobes give `min_inscribed_diameter` ~19.9 mm
+    and the naive measure would never fire.
+    """
+    from shapely.ops import unary_union
+
+    from digitizer_core.stage6_applique import narrowest_passage_diameter
+    from digitizer_core.warnings_codes import APPLIQUE_PRECUT_TOO_NARROW
+
+    lobe_a = Point(-20, 0).buffer(10, quad_segs=64)
+    lobe_b = Point(20, 0).buffer(10, quad_segs=64)
+    neck = Polygon([(-20, -3.0), (20, -3.0), (20, 3.0), (-20, 3.0)])
+    bone = unary_union([lobe_a, lobe_b, neck])
+
+    assert min_inscribed_diameter(bone) == pytest.approx(19.9, abs=0.2)
+    assert narrowest_passage_diameter(bone) == pytest.approx(6.0, abs=0.1)
+
+    _steps, report = applique_steps(bone, "S1", solve_geometry(mode=PRE_CUT))
+    hits = [x for x in report["gates"] if x["code"] == APPLIQUE_PRECUT_TOO_NARROW]
+    assert hits, "a 6 mm neck on a pre-cut piece must warn -- scissors cannot cut it cleanly"
+    assert hits[0]["measured_mm"] == pytest.approx(6.0, abs=0.1)
+    assert hits[0]["floor_mm"] == machine.APPLIQUE_MIN_INSCRIBED_PRECUT_MM
+
+
+def test_precut_and_trim_in_place_scissors_floors_never_both_fire():
+    """The two floors are scoped to their own mode and must stay mutually
+    exclusive, not merely both-correct-in-isolation: the same 6 mm-neck piece
+    fails pre-cut's 8 mm floor and trim-in-place's 12 mm floor at once, so a
+    caller that gated on `geom.mode` incorrectly (or not at all) would fire
+    both codes on one piece and the operator would get a contradictory
+    instruction (a cutting line AND a "cannot be pre-cut" warning).
+    """
+    from shapely.ops import unary_union
+
+    from digitizer_core.warnings_codes import (APPLIQUE_CUTTING_LINE_SUPPRESSED,
+                                                APPLIQUE_PRECUT_TOO_NARROW)
+
+    lobe_a = Point(-20, 0).buffer(10, quad_segs=64)
+    lobe_b = Point(20, 0).buffer(10, quad_segs=64)
+    neck = Polygon([(-20, -3.0), (20, -3.0), (20, 3.0), (-20, 3.0)])
+    bone = unary_union([lobe_a, lobe_b, neck])
+
+    _steps, pre_report = applique_steps(bone, "S1", solve_geometry(mode=PRE_CUT))
+    pre_codes = {x["code"] for x in pre_report["gates"]}
+    assert APPLIQUE_PRECUT_TOO_NARROW in pre_codes
+    assert APPLIQUE_CUTTING_LINE_SUPPRESSED not in pre_codes
+
+    _steps, trim_report = applique_steps(bone, "S1", solve_geometry())
+    trim_codes = {x["code"] for x in trim_report["gates"]}
+    assert APPLIQUE_CUTTING_LINE_SUPPRESSED in trim_codes
+    assert APPLIQUE_PRECUT_TOO_NARROW not in trim_codes
+
+
 # =========================================================================
 # 6. The resequencer guard  (§0.3, §6.5)
 # =========================================================================
@@ -1070,6 +1151,31 @@ def test_pre_cut_costs_one_fewer_stop_per_piece():
     assert len(pre_steps) < len(trim_steps)
     # The economics, exactly: one extra stop per piece that really trims.
     assert len(trim_steps) - len(pre_steps) == len(full)
+
+
+def test_a_precut_design_warns_when_a_piece_is_too_narrow_to_hand_cut():
+    """The gate-level warning (`test_a_narrow_precut_piece_is_warned_not_
+    silent`) reaches a real plan through `applique_pass`'s own warning
+    aggregation, the same path every other appliqué gate warning takes — same
+    shape as `test_a_forced_cover_width_override_warns_end_to_end` for
+    `APPLIQUE_COVER_WIDTH_CLAMPED`.
+
+    No synthetic fixture needed: the benchmark logo already has a piece under
+    the 8 mm pre-cut floor (`test_pre_cut_costs_one_fewer_stop_per_piece`'s
+    own 1.0 mm² / 1.07 mm-inscribed region), so `applique_mode="pre_cut"` on
+    real artwork fires this without construction.
+    """
+    from digitizer_core.warnings_codes import APPLIQUE_PRECUT_TOO_NARROW
+
+    pre, _c = _applique_plan(applique_mode="pre_cut")
+    hits = [w for w in pre.warnings if w["code"] == APPLIQUE_PRECUT_TOO_NARROW]
+    assert hits, "no warning for a pre-cut piece under the 8 mm scissors floor"
+    assert hits[0]["count"] > 0
+
+    # Mode-scoped end to end too: trim-in-place on the same artwork never
+    # fires the pre-cut-only code, even though it has its own gates tripping.
+    trim, _c = _applique_plan(applique_mode="trim_in_place")
+    assert not [w for w in trim.warnings if w["code"] == APPLIQUE_PRECUT_TOO_NARROW]
 
 
 @pytest.mark.parametrize("mode", [TRIM_IN_PLACE, PRE_CUT])

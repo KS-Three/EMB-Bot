@@ -38043,8 +38043,8 @@
     false
    ],
    [
-    27.7517,
-    0.4857,
+    27.7486,
+    0.4838,
     "satin",
     false,
     false
@@ -38099,31 +38099,17 @@
     false
    ],
    [
-    28.9395,
-    -1.3745,
-    "underlay",
-    false,
+    26.9898,
+    0.6667,
+    "satin",
+    true,
     false
    ],
    [
-    28.2249,
-    -1.7343,
-    "underlay",
-    false,
-    false
-   ],
-   [
-    28.9395,
-    -1.3745,
-    "underlay",
-    false,
-    false
-   ],
-   [
-    28.2249,
-    -1.7343,
-    "underlay",
-    false,
+    27.3088,
+    0.2752,
+    "satin",
+    true,
     false
    ],
    [
@@ -38131,574 +38117,546 @@
     1.3975,
     "satin",
     true,
-    true
-   ],
-   [
-    27.1751,
-    0.7641,
-    "satin",
-    true,
-    true
-   ],
-   [
-    26.6865,
-    1.3975,
-    "satin",
-    true,
-    true
-   ],
-   [
-    27.1751,
-    0.7641,
-    "satin",
-    true,
-    true
-   ],
-   [
-    26.6865,
-    1.3975,
-    "satin",
-    true,
-    true
+    false
    ],
    [
     27.5435,
     0.2866,
     "satin",
     true,
-    true
+    false
    ],
    [
     26.8626,
     1.54,
     "satin",
     true,
-    true
+    false
    ],
    [
     27.7567,
     0.3147,
     "satin",
     true,
-    true
+    false
    ],
    [
     27.1477,
     1.9431,
     "satin",
     true,
-    true
+    false
    ],
    [
     28.0391,
     0.5462,
     "satin",
     true,
-    true
+    false
    ],
    [
     27.5087,
     2.2735,
     "satin",
     true,
-    true
+    false
    ],
    [
     28.3993,
     0.6113,
     "satin",
     true,
-    true
+    false
    ],
    [
     27.9403,
     2.5194,
     "satin",
     true,
-    true
+    false
    ],
    [
     28.7018,
     0.7352,
     "satin",
     true,
-    true
+    false
    ],
    [
     28.4196,
     2.6778,
     "satin",
     true,
-    true
+    false
    ],
    [
     29.0137,
     0.8089,
     "satin",
     true,
-    true
+    false
    ],
    [
     28.9133,
     2.8014,
     "satin",
     true,
-    true
+    false
    ],
    [
     29.2904,
     1.0278,
     "satin",
     true,
-    true
+    false
    ],
    [
     29.4159,
     2.8909,
     "satin",
     true,
-    true
+    false
    ],
    [
     29.6116,
     1.0945,
     "satin",
     true,
-    true
+    false
    ],
    [
     29.9351,
     2.9072,
     "satin",
     true,
-    true
+    false
    ],
    [
     29.9329,
     1.1038,
     "satin",
     true,
-    true
+    false
    ],
    [
     30.1765,
     2.4845,
     "satin",
     true,
-    true
+    false
    ],
    [
     30.1252,
     1.703,
     "satin",
     true,
-    true
+    false
    ],
    [
     30.4728,
     2.8994,
     "satin",
     true,
-    true
+    false
    ],
    [
     30.2202,
     0.963,
     "satin",
     true,
-    true
+    false
    ],
    [
     30.6673,
     2.461,
     "satin",
     true,
-    true
+    false
    ],
    [
     30.5042,
     1.6911,
     "satin",
     true,
-    true
+    false
    ],
    [
     31.0365,
     2.8456,
     "satin",
     true,
-    true
+    false
    ],
    [
     30.4796,
     0.9641,
     "satin",
     true,
-    true
+    false
    ],
    [
     31.3295,
     2.7732,
     "satin",
     true,
-    true
+    false
    ],
    [
     30.8696,
     1.6407,
     "satin",
     true,
-    true
+    false
    ],
    [
     31.6196,
     2.6917,
     "satin",
     true,
-    true
+    false
    ],
    [
     30.7688,
     1.072,
     "satin",
     true,
-    true
+    false
    ],
    [
     31.9041,
     2.5386,
     "satin",
     true,
-    true
+    false
    ],
    [
     31.2014,
     1.5167,
     "satin",
     true,
-    true
+    false
    ],
    [
     32.1818,
     2.3732,
     "satin",
     true,
-    true
+    false
    ],
    [
     30.8606,
     0.8703,
     "satin",
     true,
-    true
+    false
    ],
    [
     32.4316,
     2.1359,
     "satin",
     true,
-    true
+    false
    ],
    [
     31.4722,
     1.3093,
     "satin",
     true,
-    true
+    false
    ],
    [
     32.6683,
     1.8842,
     "satin",
     true,
-    true
+    false
    ],
    [
     31.0867,
     0.8644,
     "satin",
     true,
-    true
+    false
    ],
    [
     32.8544,
     1.5726,
     "satin",
     true,
-    true
+    false
    ],
    [
     31.6654,
     1.0434,
     "satin",
     true,
-    true
+    false
    ],
    [
     33.0196,
     1.2482,
     "satin",
     true,
-    true
+    false
    ],
    [
     31.1656,
     0.7452,
     "satin",
     true,
-    true
+    false
    ],
    [
     33.1096,
     0.8855,
     "satin",
     true,
-    true
+    false
    ],
    [
     31.618,
     0.7309,
     "satin",
     true,
-    true
+    false
    ],
    [
     33.1727,
     0.5163,
     "satin",
     true,
-    true
+    false
    ],
    [
     31.054,
     0.6401,
     "satin",
     true,
-    true
+    false
    ],
    [
     33.0959,
     0.1539,
     "satin",
     true,
-    true
+    false
    ],
    [
     31.591,
     0.4864,
     "satin",
     true,
-    true
+    false
    ],
    [
     32.9922,
     -0.2056,
     "satin",
     true,
-    true
+    false
    ],
    [
     30.9832,
     0.5886,
     "satin",
     true,
-    true
+    false
    ],
    [
     32.8013,
     -0.5102,
     "satin",
     true,
-    true
+    false
    ],
    [
     31.5791,
     0.1919,
     "satin",
     true,
-    true
+    false
    ],
    [
     32.5897,
     -0.805,
     "satin",
     true,
-    true
+    false
    ],
    [
     31.0014,
     0.4443,
     "satin",
     true,
-    true
+    false
    ],
    [
     32.3383,
     -1.0248,
     "satin",
     true,
-    true
+    false
    ],
    [
     31.3323,
     -0.0146,
     "satin",
     true,
-    true
+    false
    ],
    [
     32.0751,
     -1.2338,
     "satin",
     true,
-    true
+    false
    ],
    [
     30.7253,
     0.4975,
     "satin",
     true,
-    true
+    false
    ],
    [
     31.7973,
     -1.3525,
     "satin",
     true,
-    true
+    false
    ],
    [
     30.9337,
     -0.0094,
     "satin",
     true,
-    true
+    false
    ],
    [
     31.5144,
     -1.4637,
     "satin",
     true,
-    true
+    false
    ],
    [
     30.5744,
     0.3394,
     "satin",
     true,
-    true
+    false
    ],
    [
     31.0496,
     -1.0805,
     "satin",
     true,
-    true
+    false
    ],
    [
     30.6684,
     -0.2301,
     "satin",
     true,
-    true
+    false
    ],
    [
     30.9937,
     -1.6095,
     "satin",
     true,
-    true
+    false
    ],
    [
     30.273,
     0.2925,
     "satin",
     true,
-    true
+    false
    ],
    [
     30.5286,
     -1.7274,
     "satin",
     true,
-    true
+    false
    ],
    [
     29.8769,
     0.3734,
     "satin",
     true,
-    true
+    false
    ],
    [
     30.0569,
     -1.6327,
     "satin",
     true,
-    true
+    false
    ],
    [
     29.4863,
     0.321,
     "satin",
     true,
-    true
+    false
    ],
    [
     29.6627,
     -1.6983,
     "satin",
     true,
-    true
+    false
    ],
    [
     29.067,
     0.248,
     "satin",
     true,
-    true
+    false
    ],
    [
     29.3746,
     -2.0367,
     "satin",
     true,
-    true
+    false
    ],
    [
     28.6737,
     0.0485,
     "satin",
     true,
-    true
+    false
    ],
    [
     28.9286,
     -0.7098,
     "satin",
     true,
-    true
+    false
    ],
    [
     28.6737,
     0.0485,
     "satin",
     true,
-    true
+    false
    ],
    [
     28.9286,
     -0.7098,
     "satin",
     true,
-    true
+    false
    ],
    [
     28.6737,
     0.0485,
     "satin",
     true,
-    true
+    false
    ],
    [
     27.0955,
@@ -39061,6 +39019,20 @@
     20.4288,
     1.8832,
     "underlay",
+    false,
+    false
+   ],
+   [
+    19.7537,
+    2.8092,
+    "satin",
+    false,
+    false
+   ],
+   [
+    19.3664,
+    2.4851,
+    "satin",
     false,
     false
    ],
@@ -41142,6 +41114,20 @@
     "underlay",
     true,
     true
+   ],
+   [
+    3.4951,
+    -3.8765,
+    "satin",
+    false,
+    false
+   ],
+   [
+    3.9156,
+    -4.1562,
+    "satin",
+    false,
+    false
    ],
    [
     3.4672,
@@ -52841,29 +52827,43 @@
     false
    ],
    [
-    -33.7015,
-    7.6071,
+    -33.6493,
+    7.8532,
     "satin",
     false,
     false
    ],
    [
-    -33.1897,
-    6.9922,
+    -33.3241,
+    7.467,
     "satin",
     false,
     false
    ],
    [
-    -33.7015,
-    7.6071,
+    -33.6493,
+    7.8532,
     "satin",
     false,
     false
    ],
    [
-    -33.1897,
-    6.9922,
+    -33.3241,
+    7.467,
+    "satin",
+    false,
+    false
+   ],
+   [
+    -33.6493,
+    7.8532,
+    "satin",
+    false,
+    false
+   ],
+   [
+    -33.3241,
+    7.467,
     "satin",
     false,
     false
