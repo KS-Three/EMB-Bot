@@ -925,6 +925,18 @@
   $: visibleClusterIds = textClusterIds(liveReviewShapes);
   $: textConversions = element.textConversions || {};
 
+  // A row whose cluster has already been converted to text: its
+  // `stitched:false` (set by onConvertClusterToText, App.svelte) is a
+  // permanent hide belonging to THIS feature, not the BACKGROUND_ENCLOSED
+  // default -- restoring it through the enclosed-area machinery below would
+  // silently un-hide a shape a different feature already replaced with a
+  // real text element, producing a visible duplicate on Apply. Shared by
+  // both the bulk banner (unstitchedRows) and the per-row "unstitched"
+  // branch in the layer list.
+  function isClusterHidden(row, conversions) {
+    return row.textClusterId != null && conversions[row.textClusterId] != null;
+  }
+
   function clusterMembers(clusterId) {
     return textClusterMembers(liveReviewShapes, clusterId);
   }
@@ -981,16 +993,15 @@
   //
   // Every row currently held unstitched by the BACKGROUND_ENCLOSED default,
   // EXCLUDING a text-cluster member a user has deliberately converted to text
-  // (its stitched:false is a permanent hide, not a default this banner should
-  // ever offer to undo -- restoring it would silently duplicate the shape
-  // under the new text element). Same one-patch discipline as
+  // (isClusterHidden above -- restoring one would silently duplicate the
+  // shape under the new text element). Same one-patch discipline as
   // undoTextConversion above: looping setOverride here would have each call
   // build off the same stale `element` prop and clobber the others.
   $: unstitchedRows = orderedShapes.filter(
     (r) =>
       !deletedIds.includes(r.id) &&
       !effStitched(r, overrides) &&
-      !(r.textClusterId != null && textConversions[r.textClusterId] != null)
+      !isClusterHidden(r, textConversions)
   );
 
   function pluralize(n, one, many) {
@@ -1351,6 +1362,7 @@
               {@const dead = deletedIds.includes(row.id)}
               {@const stitched = effStitched(row, overrides)}
               {@const unstitched = !dead && !stitched}
+              {@const clusterHidden = unstitched && isClusterHidden(row, textConversions)}
               <!-- Was excluded by default (an enclosed-background region)
                    AND is currently sewing — i.e. the user restored it. Shown
                    as a small badge plus an undo, so restoring stays a
@@ -1395,10 +1407,17 @@
                     {:else if unstitched}
                       <span class="dgp-lname">{rowName(row)}</span>
                       <span class="dgp-larea">{fmtArea(row.areaMm2)}</span>
-                      <span
-                        class="dgp-ltier dgp-ltier-unstitched"
-                        title="The digitizer found this as an enclosed area the same color as the background (like the hole in an O) and left it unstitched by default."
-                      >not sewn — enclosed area</span>
+                      {#if clusterHidden}
+                        <span
+                          class="dgp-ltier dgp-ltier-unstitched"
+                          title="This shape was replaced by a converted text element. Use “Undo — remove text element” on the text-cluster bar above to bring it back, not a restore here."
+                        >hidden — converted to text</span>
+                      {:else}
+                        <span
+                          class="dgp-ltier dgp-ltier-unstitched"
+                          title="The digitizer found this as an enclosed area the same color as the background (like the hole in an O) and left it unstitched by default."
+                        >not sewn — enclosed area</span>
+                      {/if}
                     {:else}
                       <ThreadPicker {rgb} compact on:pick={(e) => recolorShape(row.id, e.detail)} />
                       <span class="dgp-lname">{rowName(row)}</span>
@@ -1489,7 +1508,7 @@
                     <button type="button" class="dgp-lbtn dgp-restore" on:click={() => restoreShape(row.id)}>
                       Restore
                     </button>
-                  {:else if unstitched}
+                  {:else if unstitched && !clusterHidden}
                     <button
                       type="button"
                       class="dgp-lbtn dgp-restore"
@@ -1498,7 +1517,7 @@
                     >
                       Sew it
                     </button>
-                  {:else}
+                  {:else if !unstitched}
                     <button
                       type="button"
                       class="dgp-lbtn"
@@ -1737,7 +1756,7 @@
     padding: 8px 10px;
     border: 1px solid var(--warn-text, #8a6d1a);
     border-radius: var(--radius-s, 6px);
-    background: #fdf6e3;
+    background: var(--warn-bg, #fdf6e3);
   }
   .dgp-enclosed-banner-text {
     flex: 1;
