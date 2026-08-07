@@ -16,6 +16,13 @@
 //   "restored" badge + Apply layer changes -> Apply -> the real service
 //   re-sews it (stitch count grows) and the row now carries a normal tier.
 //
+// Kent's own real-world repro of this exact fixture's problem class (the
+// Instagram icon) reported "still white gaps" even after the restore
+// mechanism above shipped -- the per-row "Sew it" control was too easy to
+// miss buried in a dimmed list line. The fix adds a loud, actionable
+// ".dgp-enclosed-banner" (replacing the old plain-text warning bullet) with
+// a "Sew all N" bulk action; the second test below exercises that path.
+//
 // Same service-bootstrap and fixture-sourcing conventions as
 // digitize-boundary-edit.spec.js / digitize-stale-edits.spec.js. The art
 // fixture itself is NOT copied into app/e2e/fixtures like two-squares.png --
@@ -127,10 +134,10 @@ test("BACKGROUND_ENCLOSED: enclosed icon linework is held out by default and res
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
 
   // ---- the pipeline actually classified this art as carrying enclosed
-  // background-colored regions, and says so in the warnings list ----------
-  await expect(
-    page.getByText(/Enclosed background-colored areas were left open/)
-  ).toBeVisible();
+  // background-colored regions, surfaced as the loud, actionable banner ----
+  const banner = page.locator(".dgp-enclosed-banner");
+  await expect(banner).toBeVisible();
+  await expect(banner).toContainText("enclosed area");
 
   // ---- the Layers panel reflects it: dimmed rows, "not sewn -- enclosed
   // area", each with its own "Sew it" restore control -- not silently
@@ -142,6 +149,10 @@ test("BACKGROUND_ENCLOSED: enclosed icon linework is held out by default and res
   const restoreBtn = unstitchedRows.first().getByRole("button", { name: "Sew it" });
   await expect(restoreBtn).toBeVisible();
 
+  // Banner's own count tracks the live unstitched rows, not a stale
+  // server-reported number.
+  await expect(banner.getByRole("button")).toHaveText(`Sew all ${countBefore}`);
+
   const statsBefore = await page.locator(".dgp-stats").innerText();
 
   // ---- restore one enclosed region: local toggle first (nothing sent yet) -
@@ -150,6 +161,7 @@ test("BACKGROUND_ENCLOSED: enclosed icon linework is held out by default and res
   const restoredRow = page.locator(".dgp-layer").filter({ has: page.locator(".dgp-lbadge", { hasText: "restored" }) });
   await expect(restoredRow).toBeVisible();
   await expect(restoredRow.getByRole("button", { name: "Mark as not sewn again" })).toBeVisible();
+  await expect(banner.getByRole("button")).toHaveText(`Sew all ${countBefore - 1}`);
 
   const apply = page.locator(".dgp-apply");
   await expect(apply).toHaveText("Apply layer changes");
@@ -162,4 +174,43 @@ test("BACKGROUND_ENCLOSED: enclosed icon linework is held out by default and res
   // see test_stitched_default_and_override_round_trip_over_http), so the
   // row reports a normal stitch tier and drops out of the unstitched count.
   await expect(page.locator(".dgp-layer.unstitched")).toHaveCount(countBefore - 1);
+});
+
+test("BACKGROUND_ENCLOSED: the banner's 'Sew all' bulk-restores every enclosed region in one click", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Tote", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
+  await page.getByRole("button", { name: "+ Auto-digitize" }).click();
+
+  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
+  await page.getByRole("button", { name: "Digitize", exact: true }).click();
+  await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
+
+  const banner = page.locator(".dgp-enclosed-banner");
+  await expect(banner).toBeVisible();
+  const unstitchedRows = page.locator(".dgp-layer.unstitched");
+  const countBefore = await unstitchedRows.count();
+  expect(countBefore).toBeGreaterThan(1); // this fixture carries several -- a real bulk case
+
+  const statsBefore = await page.locator(".dgp-stats").innerText();
+
+  // ---- one click restores every enclosed region, not just one -----------
+  await banner.getByRole("button", { name: `Sew all ${countBefore}` }).click();
+  await expect(unstitchedRows).toHaveCount(0);
+  await expect(banner).toBeHidden();
+  await expect(page.locator(".dgp-lbadge", { hasText: "restored" })).toHaveCount(countBefore);
+
+  const apply = page.locator(".dgp-apply");
+  await expect(apply).toHaveText("Apply layer changes");
+  await apply.click();
+  await expect(apply).toBeHidden({ timeout: 120_000 });
+
+  // ---- the real service actually re-sewed every one of them --------------
+  await expect(page.locator(".dgp-stats")).not.toHaveText(statsBefore);
+  await expect(page.locator(".dgp-layer.unstitched")).toHaveCount(0);
 });
