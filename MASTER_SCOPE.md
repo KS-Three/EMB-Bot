@@ -11,7 +11,24 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-07 — `regularize_text_clusters` gains a third,
+**Last updated:** 2026-08-07 — closed the one remaining verification gap on
+the `BACKGROUND_ENCLOSED` / opaque-alpha fix (area 1, "Auto-digitizing
+quality"): watched it run through the real Studio browser UI via Playwright
+MCP, not just the HTTP-level check PR #22 already had. Uploaded
+`repro_gradient_white_icon.png` through the actual `+ Auto-digitize` file
+input (the same canvas-re-encode path the opaque-alpha bug lived in),
+digitized it against the real service, and confirmed visually: 4 enclosed
+icon-linework regions held out by default as dimmed "not sewn — enclosed
+area" rows (not dropped, not merged into neighbors), the canvas preview
+showing them as literal unfilled gaps; clicked "Sew it" on one, applied, and
+watched the real service re-stitch it (10,916 → 11,114 stitches, gap now
+solid fill) while the other three stayed correctly held out. Screenshots
+under `.playwright-mcp/background-enclosed-*.png`. No code change needed —
+the fix already worked; see area 1's `BACKGROUND_ENCLOSED` write-up below
+for the full account. Doc-only change, committed directly (see that
+section's "CLOSED 2026-08-07" note for detail).
+
+Prior update below, still 2026-08-07: `regularize_text_clusters` gains a third,
 independent safety layer on top of the selective-regularization fix directly
 below (PR #77, `fix-lettering-defects-hole-and-regularization`, still open/
 draft, not yet merged to `main` — this work stacks on that branch; see "Not
@@ -1296,10 +1313,43 @@ is now fixed (see below), four remain open:
   "Last updated" note above). **Verified post-merge:** POSTed the same
   opaque-RGBA two-squares fixture directly to the live service on current
   `main` — background now detected, 2 shapes, matching the RGB original
-  exactly. **Not yet verified:** driving this through the actual Studio
-  browser UI end to end (upload → digitize → see the restored shape in the
-  Layers panel) — the HTTP-level reproduction above proves the fix, but
-  nobody has watched it happen in a real browser session yet.
+  exactly.
+
+  **CLOSED 2026-08-07 — verified live via Playwright MCP through the actual
+  Studio browser UI.** Drove the real `+ Auto-digitize` flow end to end
+  against `repro_gradient_white_icon.png` (the camera-glyph gradient badge
+  used by `test_enclosed_background.py`'s `REPRO` fixture): chose Tote →
+  Content → Auto-digitize, uploaded the fixture through the real file input
+  (the same canvas-re-encode upload path the opaque-alpha bug lived in),
+  clicked Digitize, and let the real service (127.0.0.1:8721) run it.
+  Confirmed everything the design promises, visually, not just via network
+  inspection: the warnings list showed "Enclosed background-colored areas
+  were left open, like the hole in an O. Find them in the Layers list,
+  marked 'not sewn — enclosed area,' to sew them"; the Layers panel listed
+  4 separate `#2521`-colored rows (860/125/132/132 mm² — the icon's square
+  frame, ring, and dot linework) each tagged "not sewn — enclosed area"
+  with its own "Sew it" control — not silently absent, not merged into a
+  neighboring shape; and the live canvas preview showed those exact
+  shapes rendered as unfilled gaps against the stitched gradient fill,
+  matching "left open" literally. Clicked "Sew it" on the 860 mm² row: it
+  moved into the normal editable Layers list with a "restored" badge and a
+  live "NOT SEWN" pill, the other three stayed exactly as they were.
+  Clicked "Apply layer changes" and waited on the real service round trip
+  (`Digitizing…` → button hidden): stitch count moved 10,916 → 11,114, a
+  new "2521 Fuchsia" thread-per-color entry appeared, and the canvas
+  preview's square-frame gap was now solid stitched fill instead of a hole
+  — the enclosed region became a real, sewable element on command, exactly
+  as the fix's own description promises, while the three still-unreviewed
+  regions kept their dimmed "not sewn — enclosed area" rows the whole time.
+  Screenshots: `.playwright-mcp/background-enclosed-unstitched-rows.png`
+  (post-digitize, all 4 held out), `.playwright-mcp/background-enclosed-
+  sew-it-clicked.png` (one restored locally, badge + pill visible),
+  `.playwright-mcp/background-enclosed-applied-final.png` (post-Apply:
+  11,114 stitches, restored shape now solid-filled in the preview, the
+  other three still correctly held out). This was the one remaining gap in
+  this section — the HTTP-level check above proved the fix; this proves it
+  survives the real upload path, the real Layers-panel UI, and a real
+  restore-and-resew round trip, watched directly in the browser.
 
   **Band/part transition jump flags — FIXED, 2026-08-06.** `blend_fill`
   stitches each shade band (and, when `_band_clip` returns more than one
@@ -1859,10 +1909,10 @@ Every claim about visual/sew quality beyond internal geometry checks is
 gradient region-count fragmentation fix (PR #45, above — two-fixture
 validation caveat noted there), the full `BACKGROUND_ENCLOSED` stack
 (including the opaque-alpha fix, PR #22), and the contour bare-core shrink
-(PR #27) are all landed. What's left to close this out: watch the
-opaque-alpha fix run through the actual Studio browser UI once (verified so
-far only at the HTTP level — see the caveat note above), then schedule the
-first sew-out session. M0 of the DT-first
+(PR #27) are all landed. The opaque-alpha fix has now been watched running
+through the actual Studio browser UI (2026-08-07, live via Playwright MCP —
+see the caveat note above, now closed); what's left to close this out is
+scheduling the first sew-out session. M0 of the DT-first
 migration is measured (see the satin/fill classifier item above) — corpus
 leg still pending a local run (`scratch_corpus/` is gitignored and
 confirmed empty in this checkout). **M1 (`ShapeField` hoist) is already
