@@ -68,6 +68,8 @@ jobs:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: digitizer/requirements.txt
+      # Tesseract OCR for textcluster.py's OCR-confidence quality gate --
+      # see digitizer/README.md "Setup".
       # Tesseract OCR for textcluster.py's OCR-suggested-text pass (Studio
       # "Convert to text") -- see digitizer/README.md "Setup".
       - name: Install system dependencies (Tesseract OCR)

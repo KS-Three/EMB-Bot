@@ -23,6 +23,7 @@ picked to dodge the filter under test.
 from __future__ import annotations
 
 import random
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -37,6 +38,18 @@ from digitizer_core.textcluster import (
     detect_text_clusters,
     regularize_text_clusters,
 )
+
+# Fixtures in this file are bare rectangles standing in for letters (see
+# module docstring) -- geometrically fine for the SKELETON-BUFFER layer this
+# file mostly tests, but they carry no real letterform content, so the
+# OCR-confidence gate (`textcluster.py`'s "OCR-confidence quality gate"
+# section; `tests/test_ocr_gate.py` covers IT in isolation, on real
+# font-rendered glyphs) reads them as noise -- Tesseract has no reliable
+# opinion about a plain rectangle, before OR after. Two tests below are
+# testing the buffer/variance-reduction behavior specifically and patch the
+# OCR gate to a permissive no-op for that reason, the same isolation
+# `tests/test_pipeline.py` already uses to test one pass at a time.
+_OCR_GATE_PATH = "digitizer_core.textcluster._ocr_regularization_hurts_legibility"
 
 # A throwaway Prep: nothing in the current algorithm reads it (regions already
 # carry mm-space polygons), but the public signature matches
@@ -218,6 +231,23 @@ def test_degenerate_polygon_is_skipped_not_crashed():
 def test_regularize_reduces_stroke_width_variance_across_cluster():
     """The point of regularization: a cluster whose members have genuinely
     different individually-measured stroke widths ends up with LESS spread
+    after regularization — measured from real geometry (each member's own
+    new skeleton), not just "the function ran without raising".
+
+    Updated 2026-08-06 alongside the selective-regularization fix (see
+    `textcluster.py`'s "Selective regularization" docstring section). The
+    member widths here are BBOX widths, not stroke half-widths — a free-
+    standing rectangle's own measured `_stroke_stats_mm` is a nonlinear,
+    slightly asymmetric function of that (skeleton taper at the two free
+    caps), measured directly for this exact fixture: own-stroke deviation
+    from the cluster median comes out -18.3% (w=0.7), -11.7% (w=0.8), 0%
+    (w=0.9, the median itself), +5.6% (w=1.0), +10.5% (w=1.1). Only the
+    first clears `_REGULARIZE_SKIP_TOLERANCE` (15%) and regularizes; the
+    other four are already close enough that replacing their polygons would
+    buy no consistency at a real fidelity cost, so they now correctly skip.
+    The variance-reduction this test exists to prove still holds — removing
+    just the one real outlier is enough."""
+    widths = [0.7, 0.8, 0.9, 1.0, 1.1]
     after every member is redrawn at the cluster's shared target width —
     measured from real geometry (each member's own new skeleton), not just
     "the function ran without raising"."""
@@ -232,10 +262,20 @@ def test_regularize_reduces_stroke_width_variance_across_cluster():
     before_stroke = [_stroke_mm_of(p) for p in before_polys]
     assert all(v is not None for v in before_stroke)
 
-    regularize_text_clusters(regions, _P)
+    # Isolate the skeleton-buffer/variance layer from the OCR-confidence
+    # gate: these bare rectangles carry no real letterform content for
+    # Tesseract to read, before or after (see module comment above).
+    with patch(_OCR_GATE_PATH, return_value=False):
+        regularize_text_clusters(regions, _P)
 
-    assert not any(r.meta.get("text_cluster_regularize_skipped") for r in regions), \
-        "this fixture is deliberately simple -- every member should regularize cleanly"
+    # `text_cluster_regularize_skipped` is absent (not `False`) on a member
+    # that DID regularize — same "absent means false" convention every
+    # tagger in this module uses (see `detect_text_clusters`'s docstring).
+    skipped = [r.meta.get("text_cluster_regularize_skipped") for r in regions]
+    assert skipped == [None, True, True, True, True], (
+        "only the one genuine outlier (w=0.7, -18.3% from the cluster "
+        f"median) should regularize; got skipped={skipped}"
+    )
 
     after_stroke = [_stroke_mm_of(r.polygon) for r in regions]
     assert all(v is not None for v in after_stroke)
@@ -254,7 +294,11 @@ def test_regularize_updates_area_mm2_to_match_new_polygon():
     widths = [0.18, 0.21, 0.24, 0.27, 0.30]
     regions = _row_varied_width("A", widths)
     detect_text_clusters(regions, _P)
-    regularize_text_clusters(regions, _P)
+    # Isolate from the OCR-confidence gate -- see the comment on the
+    # variance-reduction test above; same bare-rectangle fixture, same
+    # reason.
+    with patch(_OCR_GATE_PATH, return_value=False):
+        regularize_text_clusters(regions, _P)
 
     regularized = [r for r in regions if not r.meta.get("text_cluster_regularize_skipped")]
     assert regularized, "fixture is expected to regularize cleanly"
@@ -307,6 +351,26 @@ def test_regularize_leaves_non_text_regions_completely_untouched():
     assert list(r.polygon.exterior.coords) == original_coords
 
 
+# --- Selective regularization (2026-08-06 fix) ------------------------------
+#
+# Regression coverage for the real defect Kent reported on
+# `testdata/photo/enthusiast_logo.png`: unconditional regularization
+# replaced every tagged member's polygon, including members whose own
+# geometry was already fine, which measurably damaged letterform fidelity
+# (lost corners/holes, distorted proportions) for no consistency gain. See
+# `textcluster.py`'s "Selective regularization" module-docstring section for
+# the full evidence trail.
+
+
+def _holed_letter(shape_id: str, cx: float, cy: float, w: float = 0.9,
+                   h: float = 1.8, hole_w: float = 0.3,
+                   hole_h: float = 0.9) -> Region:
+    """A rescued "letter" with a real interior ring — an R/P-style counter,
+    the shape class a skeleton-LINE buffer cannot faithfully reproduce (see
+    the module docstring)."""
+    outer = _rect(cx, cy, w, h)
+    inner = _rect(cx, cy, hole_w, hole_h)
+    poly = Polygon(outer.exterior.coords, [inner.exterior.coords])
 # --- new candidate filters: stroke-width CV, aspect ratio, bbox nesting ----
 #
 # All three tested directly against `_candidates` (not the full
@@ -335,6 +399,64 @@ def _dumbbell(shape_id: str, cx: float = 0.0, cy: float = 0.0) -> Region:
                   meta={"rescued_small_shape": True})
 
 
+def test_regularize_skips_a_member_already_close_to_the_cluster_target():
+    """A member within `_REGULARIZE_SKIP_TOLERANCE` of the cluster's target
+    half-width is left completely untouched — the real-fixture case (13 of
+    the benchmark subline's 14 members measured within +-11%, see the module
+    docstring), reproduced as a minimal synthetic cluster: four letters at
+    an identical width (the exact median, zero deviation) plus one genuine
+    outlier far enough off to still need correction."""
+    regions = _row_varied_width("W", [0.9, 0.9, 0.9, 0.9, 1.6])
+    detect_text_clusters(regions, _P)
+    assert all(r.meta.get("text_cluster_id") for r in regions)
+
+    regularize_text_clusters(regions, _P)
+
+    at_median = regions[:4]
+    outlier = regions[4]
+    for r in at_median:
+        assert r.meta.get("text_cluster_regularize_skipped") is True
+        assert r.meta.get("text_cluster_regularize_skip_reason") == "already_consistent"
+    assert not outlier.meta.get("text_cluster_regularize_skipped"), \
+        "the genuine outlier must still regularize"
+
+
+def test_regularize_never_replaces_a_member_with_a_real_interior_hole():
+    """Unconditional, regardless of how far the member's own width is from
+    the cluster target: a skeleton-line buffer cannot safely reproduce a
+    real hole, so a holed member's polygon is never replaced — this is what
+    kept the "A" in ENTHUSIAST's triangular counter from disappearing on the
+    real fixture (that specific regression is covered end-to-end in
+    `tests/test_stages.py`; this is the module-level unit case).
+
+    Both `holed` and `plain_outlier` are measured (not assumed) to deviate
+    from the cluster's target by well over `_REGULARIZE_SKIP_TOLERANCE`
+    (-33.6% and +42.4% respectively) — wide enough that the tolerance check
+    alone would send both to the buffer. The contrast is the point: only
+    the member WITHOUT a hole actually gets replaced.
+    """
+    holed = _holed_letter("Hole", 0.0, 0.0, w=1.6, hole_w=0.5, hole_h=1.1)
+    plain_outlier = _letter("Plain", 2.3, 0.0, w=1.6)
+    regions = _row("P", 3, x0=4.6) + [holed, plain_outlier]
+    detect_text_clusters(regions, _P)
+    assert all(r.meta.get("text_cluster_id") for r in regions), \
+        "fixture must form one cluster for this test to mean anything"
+
+    original_coords = (list(holed.polygon.exterior.coords),
+                        [list(r.coords) for r in holed.polygon.interiors])
+
+    regularize_text_clusters(regions, _P)
+
+    assert holed.meta.get("text_cluster_regularize_skipped") is True
+    assert holed.meta.get("text_cluster_regularize_skip_reason") == "has_interior_hole"
+    assert list(holed.polygon.exterior.coords) == original_coords[0]
+    assert len(holed.polygon.interiors) == 1
+    assert [list(r.coords) for r in holed.polygon.interiors] == original_coords[1]
+
+    assert not plain_outlier.meta.get("text_cluster_regularize_skipped"), \
+        "a comparably-off member WITHOUT a hole must still regularize -- " \
+        "proves the holed member above was protected by the hole, not " \
+        "coincidentally by the tolerance check"
 def _wide_fragment(shape_id: str, cx: float = 0.0, cy: float = 0.0) -> Region:
     """A landscape (wide/short) shape -- aspect 6.67, well outside
     `ASPECT_RATIO_MAX` -- the same orientation the real benchmark fixture's

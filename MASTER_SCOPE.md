@@ -11,6 +11,169 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
+**Last updated:** 2026-08-07 — `regularize_text_clusters` gains a third,
+independent safety layer on top of the selective-regularization fix directly
+below (PR #77, `fix-lettering-defects-hole-and-regularization`, still open/
+draft, not yet merged to `main` — this work stacks on that branch; see "Not
+yet merged" at the end of this entry): an OCR-confidence quality gate. The
+two existing checks (`_REGULARIZE_SKIP_TOLERANCE`, hole-preservation) are
+geometric PROXIES for "would this redraw read worse" — this measures it
+directly. For every cluster member that clears both existing checks and is
+about to be buffered, Tesseract (Apache-2.0; new `tesseract-ocr` system
+package + `pytesseract` wrapper) scores the member's own rasterized crop
+before and after the proposed skeleton-buffer redraw (`--psm 10`,
+single-character mode); if confidence drops by >=20.0 points
+(`_OCR_CONFIDENCE_DROP_THRESHOLD`), the buffer is discarded and the member
+falls back to its original polygon — the same fail-open contract
+`buffer_failed` already uses. Only a confidence NUMBER is ever read:
+`pytesseract`'s decoded-text field (`data["text"]`) is never accessed
+anywhere in this module — verified both by code inspection and by a
+regression test that makes the decoded-text field raise `AssertionError` if
+anything ever touches it (`tests/test_ocr_gate.py::
+test_ocr_confidence_never_reads_the_decoded_text_field`).
+
+Threshold calibrated on real measurements, not assumed. On the real
+benchmark fixture (`enthusiast_logo.png`'s 14-member subline, 90mm), the ONE
+member PR #77's existing checks let through to the buffer (the +30%-off
+"I") drops from 77.0 to 0.0 confidence — Tesseract finds no text at all in
+the buffered crop, a 77-point loss this gate now catches and blocks. A
+broader real calibration set (font-rendered glyphs E/F/H/I/L/N/S/T/Z, DejaVu
+Sans Bold, individually perturbed in stroke width so each clears
+`_REGULARIZE_SKIP_TOLERANCE` on its own) measured six more real buffered
+examples: three clearly damaging (-49, -27, -26 points), one borderline
+(-20), one mild/still-fine (-5), one genuine improvement (+11, correctly NOT
+blocked). 20.0 sits between the largest real "still fine" delta (-5) and the
+smallest real "genuinely damaged" one (-20). Full evidence trail, both
+calibration sets, and every constant's reasoning: `digitizer_core/
+textcluster.py`'s "OCR-confidence quality gate" module-docstring section.
+
+New tests, real Tesseract, no system-font dependency (letters are hand-built
+5x7 dot-matrix block glyphs — deterministic across machines/CI runners, not
+a font file that may or may not be installed): `tests/test_ocr_gate.py` (6
+new — a real "fine" case, 93.0->92.0, gate does not fire; a real "damaging"
+case, 92.0->0.0, gate fires and falls back to the original polygon; OCR
+unavailable fails open; exact threshold boundary pinned with mocked values;
+two tests proving the decoded text is never touched). Two of PR #77's own
+tests now correctly isolate this new layer via the same no-op-patch pattern
+`test_pipeline.py` already used to isolate `regularize_text_clusters`
+itself: `test_textcluster.py`'s two bare-rectangle variance/area tests
+(rectangles carry no real letterform content for Tesseract to read, before
+or after) and `test_pipeline.py`'s full-pipeline variance test (whose real-
+fixture "after" run now patches past the gate for the same real member the
+gate legitimately blocks — that block is `test_ocr_gate.py`'s job to cover
+directly, not this test's). Targeted suites green: `test_ocr_gate.py`
+(6/6), `test_textcluster.py` (15/15), `test_pipeline.py` (12/12),
+`test_stages.py` (15/15), `test_satin.py` (49/49), `test_service.py -k
+text_cluster` (1/1). Full digitizer suite not re-run locally (this
+environment's own standing caution, see COOKBOOK.md); CI runs it on the PR.
+
+No isolation needed (unlike `rembg_isolated/`): `pytesseract`'s only deps
+are `packaging`/`Pillow`, both already present in `requirements.txt` — no
+numpy/numba conflict, confirmed via `pip show pytesseract` before adding it
+to the shared venv. System `tesseract-ocr` install step added to CI's
+`digitizer` job; documented in `digitizer/README.md`'s "Setup" alongside
+`rembg_isolated/`'s own system-dependency note.
+
+**Not yet merged:** this lands on branch `text-cluster-ocr-confidence-gate`,
+stacked on PR #77's own branch (`fix-lettering-defects-hole-and-
+regularization`) since the `_REGULARIZE_SKIP_TOLERANCE`/hole-preservation
+mechanism this extends is not on `main` yet. Opened as a draft PR against
+`main`; its diff will show both PRs' changes combined until #77 merges
+first, at which point it collapses down to just this one.
+
+Prior update below, still 2026-08-06: Kent looked at a real rendered
+stitch-out of the benchmark fixture (`enthusiast_logo.png` at 90mm) and
+reported 5 concrete
+letterform-fidelity defects. All 5 were reproduced first (`debugviz.stage6`
+render, visually inspected, not inferred from stats) before touching any
+code — the working hypothesis going in (all 5 traced to `textcluster.py`'s
+regularization) turned out to be **half right**: the investigation found
+THREE separate root causes, not one, and this pass fixes two of them, leaving
+the third open and documented rather than rushing a wide-blast-radius patch.
+
+- **Subline "ENTERPRISES INC" garbled/illegible — FIXED.** Root cause really
+  was `textcluster.regularize_text_clusters`, but not the mechanism assumed:
+  it redrew EVERY tagged cluster member's polygon as a skeleton-buffer,
+  unconditionally, even members whose own geometry was already fine.
+  Measured on the real 14-member subline cluster: 13 of 14 members' own
+  pre-regularization stroke half-width already sat within +-11% of the
+  cluster's shared target (only one real outlier, at +30%) — the
+  unconditional buffer was replacing already-good vectorized letterforms
+  with a cruder approximation for zero consistency gain, and a skeleton-LINE
+  buffer structurally cannot reproduce a real interior hole (3 of the 14
+  members — R/P-style counters — lost theirs). Fix: `regularize_text_
+  clusters` now skips a member (leaves its polygon untouched) when its own
+  measured stroke half-width is within 15% of the cluster's target
+  (`_REGULARIZE_SKIP_TOLERANCE`), or unconditionally when its original
+  polygon already carries a real interior ring — a line buffer is never the
+  right primitive for a hole it never measured. A genuine outlier still
+  regularizes exactly as before (proven both on the real fixture and a new
+  synthetic unit test). Full evidence and the module's new "Selective
+  regularization" section: `digitizer_core/textcluster.py`.
+- **"A" missing its triangular counter — FIXED, and NOT a text-cluster bug.**
+  Direct measurement showed the main wordmark's letters (including the "A")
+  carry neither `rescued_small_shape` nor `text_candidate` — they never go
+  through `textcluster.py` at all, which falsified half of the working
+  hypothesis immediately. Real root cause: `stage3_segment.
+  resolve_small_regions` treated a small but completely real enclosed hole
+  — already correctly found by `Prep.enclosed_mask` at stage 1
+  (2.08mm², comfortably above the sewable floor) — as ordinary segmentation
+  noise and absorbed it into the "A" glyph's own ink (its only possible
+  neighbor, since an enclosed hole's neighbor is always the shape enclosing
+  it), erasing it before `stage4_vectorize.tag_enclosed_background`'s
+  already-correct machinery ever got the chance to tag it as its own Region.
+  Fix: `resolve_small_regions` takes an optional `enclosed_mask` (wired from
+  `Prep.enclosed_mask` in `pipeline.py`) and protects any small region
+  >=60% covered by it from absorption/drop — it still has to clear stage 4's
+  own real-geometry floor to survive, same as any other kept mask. Confirmed
+  interacting CORRECTLY, not colliding, with the separate same-day
+  `satin-classifier-organic-shapes` DT-tightening fix (area 1 below): the
+  "A" used to flip satin->fill specifically because it read as a solid,
+  holeless, organic blob (exactly what that fix's DT check exists to catch)
+  — restoring the hole makes it measure as the well-proportioned ribbon
+  letterform it always was, and it correctly flips back to satin
+  (`tests/test_satin.py` updated with the real evidence for both directions;
+  visual re-render confirms clean parallel satin, not a starburst).
+- **"E" missing its bottom-left corner / "N" reading short — ROOT-CAUSED,
+  left OPEN.** Confirmed real via direct render crops (bare unstitched
+  fabric exactly where the underlay's own boundary trace shows the true
+  polygon corner). Confirmed NOT a text-cluster or enclosed-hole defect —
+  the wordmark's satin letters go through the ordinary `stage6_satin.py`
+  column-generation path (`extract_strokes`/`satin_stroke`/`_rail_points`),
+  which is used by every satin shape in the app, not this feature. This is a
+  real, pre-existing gap in how a letterform stroke that passes through
+  MULTIPLE T-junctions along its own length (the E's vertical stem meets 3
+  horizontal bars) gets its rail/cap geometry built — evidence points at the
+  interaction between free-end cap extension (`_extend_to_cap`/
+  `_retract_cap_corner`) and the per-station width cap in `_rail_points`,
+  but was not narrowed further. Deliberately NOT fixed in this pass:
+  `stage6_satin.py` is the single largest, most heavily-tuned, most
+  fixture-sensitive file in the codebase (1750 lines, referenced by every
+  satin golden in the suite, several hard-won fixes already on record in
+  this doc's own history), and a change there needs its own dedicated
+  investigation and review pass, not a patch bundled into an unrelated
+  feature's bugfix. Flagged here as a real, separate, still-open defect.
+
+New regression tests: `tests/test_textcluster.py` (2 new + 1 rewritten to
+match the corrected selective behavior — the old one asserted "every member
+regularizes," which was the bug), `tests/test_stages.py` (1 new, the
+enclosed-hole-survives-absorption case), `tests/test_satin.py` (1 rewritten
+— the "A"'s satin/fill call flips as a correct consequence of the hole fix,
+not a break). Targeted suites green: `test_textcluster.py` (15/15),
+`test_stages.py` (15/15), `test_pipeline.py` (12/12, including both existing
+text-cluster wiring tests), `test_satin.py` (49/49). **Not verified locally:**
+`test_flat_lane_byte_identical.py` — `testdata/flat_lane_golden.json` is
+pre-existing corrupted JSON at HEAD (confirmed via `git status`/`git log`
+showing zero local diff on that file; unrelated to this pass, already
+tracked by a separate in-progress fix per `git worktree list`), so it cannot
+even be collected here, let alone regenerated. This pass's geometry changes
+(the "A"'s hole, several subline members' polygons) almost certainly move
+`photo/enthusiast_logo.png`'s golden entry once that file is fixed — flagged
+explicitly rather than silently left for CI to discover. Full digitizer
+suite NOT re-run locally per this task's own instruction (proven unreliable
+in this environment); CI runs it on the PR.
+
+Prior update below, still 2026-08-06: satin entry/exit point selection now follows
 **Last updated:** 2026-08-07 — `digitizer_core/textcluster.py`'s text-cluster
 detector gains three classical-CV strengthening passes, all measured against
 the real `enthusiast_logo.png` benchmark rather than assumed (area 1's
@@ -1743,7 +1906,13 @@ stops a logo's small lettering (the benchmark subline) from being dropped,
 but treats every glyph as an independent noisy blob — nothing distinguished
 "this is a word" from "this is nine unrelated small shapes," and nothing
 made a detected word's letters share one visual weight. Three new pieces,
-all geometry-only, no OCR:
+all geometry-only, no OCR — **still true of detection and of what
+regularization decides to redraw**; a later, additive safety layer (below,
+2026-08-07) reads an OCR CONFIDENCE NUMBER to sanity-check regularization's
+own output, never a decoded character, so the "no OCR" design principle this
+feature was built on (`textcluster.py`'s own top-of-file docstring) still
+holds in the sense that mattered when it was written — no text is ever
+recognized, read, or auto-filled:
 
 - **Detection** (`digitizer_core/textcluster.py`, new module):
   `detect_text_clusters`, a post-vectorization pass (wired into
@@ -1766,13 +1935,12 @@ all geometry-only, no OCR:
   synthetic ones: `enthusiast_logo.png`'s subline at 90mm tags >=10 of its
   own rescued shape_ids into one cluster.
 - **Regularization** (`textcluster.regularize_text_clusters`, same module,
-  wired immediately after detection): the default, always-on treatment for
-  a tagged cluster — redraws every member's polygon as a fixed-radius
-  buffer around its own skeleton, sized to the cluster's shared median
-  stroke half-width, so a detected-but-unconverted word reads as one
-  consistent line weight instead of nine independently-noisy glyphs. A
-  genuine geometry change (unlike detection's pure tagging), so it fails
-  open onto the ORIGINAL untouched polygon (`text_cluster_regularize_skipped`)
+  wired immediately after detection): redraws a tagged member's polygon as a
+  fixed-radius buffer around its own skeleton, sized to the cluster's shared
+  median stroke half-width, so a detected-but-unconverted word reads as one
+  consistent line weight instead of independently-noisy glyphs. A genuine
+  geometry change (unlike detection's pure tagging), so it fails open onto
+  the ORIGINAL untouched polygon (`text_cluster_regularize_skipped`)
   whenever the buffered result can't be trusted — too small to sew, an
   invalid buffer, a degenerate skeleton. **Correction made mid-build, worth
   recording:** the first design draft assumed a per-shape stitch-width
@@ -1788,8 +1956,31 @@ all geometry-only, no OCR:
   already uses) rather than a narrower non-branching-only scope — verified
   on the real fixture: 10 of the subline's 14 members have branching
   skeletons, and all 14 buffer into single valid, sewable polygons.
-  `flat_lane_golden.json` moves for exactly that one fixture, confirmed by
-  structural diff that the other 3 entries are byte-identical.
+  **No longer unconditional, fixed 2026-08-06** (this doc's top entry has the
+  full evidence): the buffer is now selective, not the default-always-on
+  treatment for every member. A member already within 15% of the cluster's
+  target stroke half-width, or one whose own polygon already has a real
+  interior ring, is left completely untouched instead of being replaced by
+  a cruder buffered approximation — a real render (`debugviz.stage6`) showed
+  the old unconditional version was making an already-clean subline read
+  LESS legibly, not more consistently, and could never represent a real
+  letter counter (an "R"/"P" bowl) at all. `flat_lane_golden.json` moves for
+  exactly that one fixture — this specific slice's original claim, "the
+  other 3 entries are byte-identical," still holds; the 2026-08-06 fix could
+  not be verified against that golden locally (see this doc's top entry: the
+  file is separately, pre-existingly corrupted in this checkout).
+  **Additional safety layer, 2026-08-07** (this doc's top entry has the full
+  evidence): an OCR-confidence quality gate now sits on top of the
+  selective checks above. Both are geometric proxies for "would this redraw
+  read worse" — this measures it directly, scoring the member's own
+  rasterized crop with Tesseract before and after the proposed buffer and
+  discarding the buffer if confidence drops >=20 points. Only a confidence
+  NUMBER is read, never decoded text (`data["text"]` is never accessed,
+  code-inspected and regression-tested). On the real benchmark fixture this
+  catches the one case the checks above still let through: the +30%-off "I"
+  the prior fix's own docstring cites drops from 77.0 to 0.0 OCR confidence
+  when buffered — Tesseract finds no text at all in the result — and this
+  gate now blocks it, falling back to the original polygon.
 - **Studio side (area 5 has the full detail):** a "looks like text" badge
   and a per-cluster "Convert to text" action that creates a real, empty
   text element — the user types the actual word and picks a font, nothing

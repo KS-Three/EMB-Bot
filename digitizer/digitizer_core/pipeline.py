@@ -251,7 +251,7 @@ def run_stages(
         debugviz.stage2(dbg, q.labels, q.thread_indices, chart_for(cfg))
 
     masks = seg.segment(q, p, cfg)
-    masks, small_warnings = resolve_small_regions(masks, cfg, p.px_per_mm)
+    masks, small_warnings = resolve_small_regions(masks, cfg, p.px_per_mm, p.enclosed_mask)
     if dbg:
         debugviz.stage3(dbg, p.rgb, masks)
 
