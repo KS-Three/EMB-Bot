@@ -27,15 +27,32 @@
 //     zero. Stubbed to CANVAS_W x CANVAS_H at (0,0) so a click's clientX/Y
 //     maps 1:1 onto canvas coordinates — every coordinate used below can be
 //     read directly as a canvas-space point.
+//
+// ManualPanel.svelte now mounts TraceImportPanel.svelte (the trace-an-image
+// feature, PR 2), which imports manualTrace.js — same real-EMB-engine
+// dependency manualTrace.spec.js's own fixtures need (see its beforeAll) —
+// so importing ManualPanel.testHarness.svelte transitively needs the engine
+// loaded onto globalThis first too. The Harness is imported dynamically,
+// inside beforeAll, AFTER the engine require() calls below, rather than
+// statically at the top of this file (a static import would evaluate — and
+// throw inside emb.js's "engine not loaded" guard — before beforeAll ever
+// runs), same pattern TraceImportPanel.spec.js uses for its own Harness.
 import { beforeAll, describe, expect, test } from "vitest";
 import { render, fireEvent } from "@testing-library/svelte";
 // toBeDisabled()/etc. — scoped to this file (not a global vitest setupFile)
 // since it's the only spec that currently needs DOM matchers.
 import "@testing-library/jest-dom/vitest";
-import Harness from "./ManualPanel.testHarness.svelte";
+import { createRequire } from "node:module";
+import { preloadAllFontsSync } from "../lib/testFonts.js";
 import { CANVAS_W, CANVAS_H } from "../lib/manualShapes.js";
 
-beforeAll(() => {
+let Harness;
+
+beforeAll(async () => {
+  const require = createRequire(import.meta.url);
+  for (const f of ["units", "garments", "fabrics", "fill", "geometry", "quantize", "flatten", "satin", "satinplay", "satinfont", "fontbin", "dst", "exp", "fonts", "digitize"]) require("../../../src/" + f + ".js");
+  preloadAllFontsSync();
+
   const noop = () => {};
   HTMLCanvasElement.prototype.getContext = () => ({
     clearRect: noop, fillRect: noop, beginPath: noop, moveTo: noop, lineTo: noop,
@@ -47,6 +64,8 @@ beforeAll(() => {
     left: 0, top: 0, right: CANVAS_W, bottom: CANVAS_H,
     width: CANVAS_W, height: CANVAS_H, x: 0, y: 0, toJSON() {},
   });
+
+  ({ default: Harness } = await import("./ManualPanel.testHarness.svelte"));
 });
 
 function baseElement(shapes = []) {
@@ -61,10 +80,10 @@ function tri(dx = 0, dy = 0) {
   ];
 }
 
-function renderPanel(shapes = []) {
+function renderPanel(shapes = [], traceWorkImage = null) {
   const patches = [];
   const utils = render(Harness, {
-    props: { element: baseElement(shapes), onPatch: (d) => patches.push(d) },
+    props: { element: baseElement(shapes), traceWorkImage, onPatch: (d) => patches.push(d) },
   });
   const canvas = utils.container.querySelector("canvas");
   return { ...utils, canvas, patches };
@@ -473,5 +492,122 @@ describe("keyboard shortcuts", () => {
     await fireEvent.click(getByRole("button", { name: "Edit points" }));
     await fireEvent.keyDown(canvas, { key: "Escape" });
     expect(getByRole("button", { name: "Edit points" })).toBeTruthy();
+  });
+});
+
+// ---- importing shapes from a traced image (PR 2 of the trace-an-uploaded-
+// image feature) ------------------------------------------------------------
+//
+// These tests exercise the REAL nested TraceImportPanel (not a stub) so the
+// "traced" event that reaches ManualPanel's onTraced is the genuine one a
+// user would produce — seeded via ManualPanel's own `traceWorkImage` test
+// seam (see its comment) so the trace runs against small synthetic pixels
+// instead of a real file upload (out of scope here — see
+// TraceImportPanel.spec.js's own file banner and DigitizePanel.spec.js's
+// precedent). What's under test is the WIRING: opening/closing the panel,
+// and onTraced's patch — never the trace algorithm itself (already covered
+// by manualTrace.spec.js and TraceImportPanel.spec.js).
+describe("importing shapes from a traced image", () => {
+  function makeCanvas(w, h) {
+    return new Uint8ClampedArray(w * h * 4);
+  }
+  function fillRect(rgba, w, x0, y0, x1, y1, rgb) {
+    for (let y = y0; y < y1; y++) {
+      for (let x = x0; x < x1; x++) {
+        const o = (y * w + x) * 4;
+        rgba[o] = rgb[0]; rgba[o + 1] = rgb[1]; rgba[o + 2] = rgb[2]; rgba[o + 3] = 255;
+      }
+    }
+  }
+  // A white background with a single red square — traces to exactly ONE
+  // shape at TraceImportPanel's defaults (nColors=6, removeBg=true). Same
+  // fixture TraceImportPanel.spec.js verified independently.
+  function oneShapeImage() {
+    const w = 30, h = 30;
+    const rgba = makeCanvas(w, h);
+    fillRect(rgba, w, 0, 0, 30, 30, [255, 255, 255]);
+    fillRect(rgba, w, 8, 8, 20, 20, [200, 30, 30]);
+    return { rgba, w, h };
+  }
+
+  async function openTracePanel(utils) {
+    await fireEvent.click(utils.getByRole("button", { name: "Trace image…" }));
+  }
+  async function clickAdd(utils) {
+    await fireEvent.click(utils.getByRole("button", { name: /^Add \d+ shapes?$/ }));
+  }
+
+  test('"Trace image…" opens the trace panel; a second click closes it, and so does the panel\'s own Cancel', async () => {
+    const utils = renderPanel();
+    expect(utils.container.querySelector(".tip-upload")).toBeNull();
+
+    await openTracePanel(utils);
+    expect(utils.container.querySelector(".tip-upload")).not.toBeNull();
+
+    await fireEvent.click(utils.getByRole("button", { name: "Trace image…" })); // second click
+    expect(utils.container.querySelector(".tip-upload")).toBeNull();
+
+    await openTracePanel(utils);
+    await fireEvent.click(utils.getByRole("button", { name: "Cancel" }));
+    expect(utils.container.querySelector(".tip-upload")).toBeNull();
+  });
+
+  test("a traced event results in exactly one patch call whose shapes array is the original shapes plus all the new ones, and closes the panel", async () => {
+    const existing = { id: "s1", points: tri(), curves: {}, stitchType: "fill", colorRgb: [9, 9, 9], angleDeg: null };
+    const utils = renderPanel([existing], oneShapeImage());
+    await openTracePanel(utils);
+    await clickAdd(utils);
+
+    expect(utils.patches).toHaveLength(1);
+    const merged = utils.patches[0].patch.shapes;
+    expect(merged).toHaveLength(2); // 1 existing + 1 traced
+    expect(merged[0]).toBe(existing);
+    // The trace panel closes itself after a successful add.
+    expect(utils.container.querySelector(".tip-upload")).toBeNull();
+  });
+
+  test("an existing hand-drawn/hand-edited shape already in element.shapes is completely untouched (same reference/values) after a trace-add", async () => {
+    const existing = {
+      id: "s4",
+      points: [{ x: 12, y: 34 }, { x: 56, y: 34 }, { x: 34, y: 78 }],
+      curves: { 0: { x: 34, y: 10 } },
+      stitchType: "satin",
+      colorRgb: [77, 88, 99],
+      angleDeg: 42,
+    };
+    const utils = renderPanel([existing], oneShapeImage());
+    await openTracePanel(utils);
+    await clickAdd(utils);
+
+    expect(utils.patches).toHaveLength(1);
+    const merged = utils.patches[0].patch.shapes;
+    // Same object reference — proof nothing rebuilt/cloned/mutated it.
+    expect(merged[0]).toBe(existing);
+    expect(merged[0]).toEqual(existing);
+  });
+
+  test("ids assigned to traced shapes never collide with ids already present in element.shapes", async () => {
+    // "s1" and "s5" are deliberately non-contiguous — a naive implementation
+    // that just counts existing shapes (length + 1 = "s3") rather than
+    // scanning for the real max id would produce a colliding "s2".
+    const existing = [
+      { id: "s1", points: tri(), curves: {}, stitchType: "fill", colorRgb: [1, 1, 1], angleDeg: null },
+      { id: "s5", points: tri(50, 50), curves: {}, stitchType: "fill", colorRgb: [2, 2, 2], angleDeg: null },
+    ];
+    const utils = renderPanel(existing, oneShapeImage());
+    await openTracePanel(utils);
+    await clickAdd(utils);
+
+    expect(utils.patches).toHaveLength(1);
+    const merged = utils.patches[0].patch.shapes;
+    expect(merged).toHaveLength(3);
+    const newIds = merged.slice(2).map((s) => s.id);
+    expect(newIds).toEqual(["s6"]);
+    // No id collides with anything already in the (now-merged) list.
+    const seen = new Set();
+    for (const s of merged) {
+      expect(seen.has(s.id)).toBe(false);
+      seen.add(s.id);
+    }
   });
 });
