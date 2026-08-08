@@ -277,6 +277,28 @@ export function flattenShape(points, curves, closed) {
   return out;
 }
 
+// Batch-safe id allocation for callers (e.g. the trace-to-shapes feature)
+// that build several new shapes at once and patch them in with a SINGLE
+// `patch()` call. ManualPanel.svelte's own nextShapeId(list) recomputes the
+// max "s"+N id from `shapes` on every call — fine for one-shape-at-a-time
+// drawing, where a patch() happens between clicks, but wrong for a batch: if
+// a caller looped nextShapeId N times before ever patching, every call would
+// return the SAME id, because `shapes` doesn't change until that one patch
+// lands. nextShapeIds scans the list ONCE and hands back `count` sequential
+// new ids in a single array, so a batch caller gets ["s7","s8","s9"] instead
+// of ["s7","s7","s7"]. Same "s"+N id-format convention/regex as
+// ManualPanel's nextShapeId, so ids from either path never collide.
+export function nextShapeIds(list, count) {
+  let max = 0;
+  for (const s of list || []) {
+    const m = /^s(\d+)$/.exec(s.id);
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  }
+  const ids = [];
+  for (let i = 1; i <= count; i++) ids.push("s" + (max + i));
+  return ids;
+}
+
 // Convert an element's COMPLETED shapes into buildQualityDesign's
 // colorRegions input. Each shape becomes its OWN region (a manual choice,
 // not an auto-merge-by-color step: two shapes the user happens to color the
