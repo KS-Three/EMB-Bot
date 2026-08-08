@@ -11,6 +11,65 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
+**Last updated:** 2026-08-07 — two backlog cleanup items closed in one pass.
+
+**(1) `DigitizePanel.svelte` gained a component-test harness — a real,
+previously-self-flagged gap, not a newly-invented one.** Every per-shape
+Layers-panel control (stitch type, fill angle, underlay style, border,
+recolor, delete/restore, `moveShape`/`moveShapeWithinLayer` reorder) and
+the just-shipped Sequencer view had ONLY ever been checked via live-browser
+passes — no Svelte component test harness for this file existed anywhere
+in the repo, this doc's own area 5 said so explicitly for the
+underlay-style control specifically. `DigitizePanel.testHarness.svelte`
+follows the exact precedent `ManualPanel.testHarness.svelte` set (a real
+`*.svelte` wrapper listening with `on:elupdate`, since Svelte 5 dropped
+`$on` on a mounted instance) — 21 new tests in `DigitizePanel.spec.js`,
+scoped deliberately to the Layers panel's edit controls, NOT the upload
+-> Digitize -> poll flow (already covered by the real Playwright e2e spec,
+`app/e2e/digitize-stale-edits.spec.js`; no element in these tests ever
+touches `element.params`, so the "auto re-digitize on param change"
+reactive statement never fires and no network call happens). Two real,
+previously-unverified behaviors came out of writing these: the "Fill
+angle"/"Border" labels are ambiguous with the design-wide params section's
+own same-named controls (fixed in the tests via an `aria-label` attribute
+selector, not a component change — the app's own accessibility labeling
+was already fine, just not literally testable via `getByLabelText`
+without disambiguation); and `moveShape`'s "join vs. step past" branch
+(commented in the component, never exercised by a test) is real and
+correctly reachable — confirmed both branches with two dedicated fixtures
+rather than assuming the comment's own claim. Branch
+`digitize-panel-test-harness`. Full 490/490 app suite passes, `vite
+build` succeeds. Doesn't move area 5's Status/Confidence verdict (closing
+a testing gap on already-shipped, already-correct behavior, not new
+capability or a found defect).
+
+**(2) `feat/svg-import-shapes` formally evaluated and NOT resumed** —
+standing item from before this session, re-examined rather than left to
+keep sitting untouched indefinitely. Checked directly, not assumed: the
+branch is 277 commits behind `main`; of its own 10-task plan
+(`docs/superpowers/plans/2026-07-27-svg-import-and-shapes.md`) only Task 1
+(a path-data tokenizer) is actually complete, and Task 2 (bezier
+flattening) — the branch's own last commit message calls it "interrupted
+mid-implementation, UNREVIEWED, tests not confirmed" — genuinely does not
+work: running its own test suite (`node --test test/svgpath.test.js`)
+fails one real assertion, a cubic-bezier flattening deviating 8.75 units
+against its own 0.5-unit tolerance, not just an unreviewed-but-working
+stub. Tasks 3–10 (arcs, transforms, primitives, document parsing, the
+Studio upload path, and the shape-element/shape-pack UI) were never
+started. The core end-user motivation — getting curved vector shapes into
+the Studio without hand-tracing — is now partially covered by this
+session's manual curve-drawing tool (see the entry below), though a true
+SVG-file-import feature (preserving an EXISTING vector file's exact paths,
+distinct from hand-drawing) remains a real, uncovered use case if wanted
+later. Decision: not worth resuming as-is — reconciling 277 commits of
+drift against code that's already known-broken in the one part that was
+attempted is closer to a fresh build than a resume. The branch is left in
+place, untouched (deleting it is Kent's call, not this pass's to make
+unilaterally); if the underlying need resurfaces, treat it as a fresh
+plan against current `main` rather than a rebase of this branch.
+
+Prior update below, still 2026-08-07:
+
 **Last updated:** 2026-08-07 — the Layers panel (`DigitizePanel.svelte`)
 gained a Sequencer view: a collapsible, color-block-grouped alternative to
 the plain per-shape list — one row per color/thread carrying its swatch,
@@ -3327,12 +3386,13 @@ underlay_style}`):
   `machine.SATIN_ZIGZAG_ABOVE_MM`) versus fill's seven styles, so it stays
   engine-internal on purpose. Backed by Python tests asserting the override
   actually changes emitted underlay stitch geometry (not just a config
-  round-trip) and Studio vitest coverage of the wire contract, but — unlike
-  the border control it was modeled on, which PR #21's e2e spec now drives
-  live — this one has no live-browser coverage yet: the Layers-panel
-  dropdown itself has no automated coverage (no svelte-component test
-  harness exists in this repo yet, matching tier/border/fill-angle's own
-  testing gap).
+  round-trip) and Studio vitest coverage of the wire contract. **The
+  Layers-panel dropdown itself now has automated coverage too — CLOSED
+  2026-08-07**, alongside tier/border/fill-angle and every other per-shape
+  control: `DigitizePanel.testHarness.svelte` + `DigitizePanel.spec.js`
+  (this doc's own top "Last updated" entry has the full writeup). No
+  svelte-component test harness for this file existed anywhere in the
+  repo before that pass.
 
 **Boundary reshaping — CLOSED 2026-08-05** (worktree `agent-
 a28de220d2af7ede5`, commits `298eae0` digitizer / `ac11163` studio): the
