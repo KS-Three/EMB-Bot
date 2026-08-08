@@ -1262,3 +1262,155 @@ def test_a_jump_does_not_eat_the_penetration_it_lands_on():
     # worksheet and the machine tell the operator different numbers.
     assert lifted.stats.stitch_count == 10
     assert stayed.stats.stitch_count == 9
+
+
+# =========================================================================
+# 9. Cover style (§2.8) — satin vs zigzag vs e_stitch
+# =========================================================================
+#
+# `applique_steps(..., cover=...)` threaded `cover` all the way down to
+# `_cover_layer`'s call site and no further — `_cover_layer` itself never
+# took a `cover` argument, so every appliqué cover sewed byte-identical
+# satin rail geometry regardless of the config value. `cover` only ever
+# reached a worksheet label string. Confirmed here the same way the rest of
+# this file confirms an offset: measured off the emitted stitch points, not
+# read back out of the config that generated them.
+
+def test_cover_satin_is_untouched_by_the_cover_parameter():
+    """The load-bearing regression: `cover="satin"` (and the unspecified
+    default, which is the same string) must keep sewing exactly what it sewed
+    before `_cover_layer` learned about `cover` at all. Pinned against the
+    shield fixture other tests in this file already measure the cover layer
+    on (`test_cover_straddles_the_edge_and_buries_the_tackdown`).
+
+    Two kinds of proof: point-for-point equality between the implicit default
+    and an explicit `cover="satin"` call (so the two code paths that reach
+    `_cover_layer` cannot silently diverge), and a pinned count/checksum of
+    the actual emitted column, so a change to `_rail_column`'s satin branch
+    that happened to keep the point COUNT the same could not slip past this
+    test unnoticed.
+    """
+    g = solve_geometry()
+    steps_default, _ = applique_steps(SHIELD, "S1", g)
+    steps_satin, _ = applique_steps(SHIELD, "S1", g, cover="satin")
+
+    cover_default = [p for s in steps_default for r in s.runs
+                     if r.kind == COVER for p in r.points]
+    cover_satin = [p for s in steps_satin for r in s.runs
+                   if r.kind == COVER for p in r.points]
+    assert cover_default == cover_satin
+    assert len(cover_default) == 783
+
+    # A checksum over every emitted point, not just the count — two different
+    # 783-point columns could tie on length alone.
+    sum_x = sum(p[0] for p in cover_default)
+    sum_y = sum(p[1] for p in cover_default)
+    assert sum_x == pytest.approx(-121.651153, abs=1e-3)
+    assert sum_y == pytest.approx(-2271.726091, abs=1e-3)
+
+    # The satin spacing constant, unchanged — `APPLIQUE_COVER_SPACING_MM`,
+    # not the new zigzag one.
+    label = [s.label for s in steps_default if s.code == "COVER"][0]
+    assert f"{machine.APPLIQUE_COVER_SPACING_MM:.2f} mm spacing" in label
+    assert "satin cover" in label
+
+
+def test_cover_zigzag_produces_genuinely_different_geometry():
+    """`cover="zigzag"` must sew a real, differently-spaced column — not the
+    satin rail geometry with a different label. `_rail_column` (the same
+    column emitter `_zigzag_tack_layer` already reuses for the pre-cut
+    tackdown at ITS own spacing) is driven by `APPLIQUE_ZIGZAG_COVER_SPACING_MM`
+    (3.0 mm) instead of `geom.spacing_mm` (0.40 mm) — roughly 7.5x fewer
+    crosses for the same boundary.
+
+    Measured on the shield: satin sews 783 crosses at 0.40 mm, zigzag sews
+    109 at 3.00 mm. What must NOT change is where the rails themselves sit —
+    only the pitch — so the min/max cover offsets against B are checked to
+    stay the same pull-compensated rails (`geom.c_in - pull`, `geom.c_out +
+    pull`) either way.
+    """
+    g = solve_geometry()
+    steps_satin, report_satin = applique_steps(SHIELD, "S1", g, cover="satin")
+    steps_zigzag, report_zigzag = applique_steps(SHIELD, "S1", g, cover="zigzag")
+
+    assert report_satin["crosses"] == 783
+    assert report_zigzag["crosses"] == 109
+    assert report_zigzag["crosses"] < report_satin["crosses"] / 5
+
+    cover_satin = _layer_offsets(steps_satin, SHIELD, COVER)
+    cover_zigzag = _layer_offsets(steps_zigzag, SHIELD, COVER)
+    pull = machine.APPLIQUE_COVER_PULL_COMP_MM
+    for offsets in (cover_satin, cover_zigzag):
+        assert min(offsets) == pytest.approx(g.c_in - pull, abs=0.05)
+        assert max(offsets) == pytest.approx(g.c_out + pull, abs=0.05)
+
+    label = [s.label for s in steps_zigzag if s.code == "COVER"][0]
+    assert f"{machine.APPLIQUE_ZIGZAG_COVER_SPACING_MM:.2f} mm spacing" in label
+    assert "zigzag cover" in label
+
+
+def test_cover_zigzag_reads_its_own_spacing_constant(monkeypatch):
+    """`APPLIQUE_ZIGZAG_COVER_SPACING_MM` must be an actual read, not a second
+    unread constant like `APPLIQUE_TACK_WIDTH_MM` was before `_zigzag_tack_
+    layer` existed. Proven the same way `test_cover_closure_overlap_reads_
+    the_appliqué_specific_stitch_count` proves `APPLIQUE_CLOSURE_OVERLAP_
+    STITCHES` is read: move the constant and watch the emitted column move
+    with it. `cover="satin"` is re-checked in the same breath to confirm the
+    move does not leak into the unrelated branch.
+    """
+    g = solve_geometry()
+    _steps, satin_before = applique_steps(SHIELD, "S1", g, cover="satin")
+    _steps, zigzag_before = applique_steps(SHIELD, "S1", g, cover="zigzag")
+
+    monkeypatch.setattr(machine, "APPLIQUE_ZIGZAG_COVER_SPACING_MM", 6.0)
+
+    _steps, satin_after = applique_steps(SHIELD, "S1", g, cover="satin")
+    _steps, zigzag_after = applique_steps(SHIELD, "S1", g, cover="zigzag")
+
+    assert satin_after["crosses"] == satin_before["crosses"]
+    assert zigzag_after["crosses"] < zigzag_before["crosses"]
+
+
+def test_e_stitch_cover_falls_through_to_satin_geometry():
+    """`e_stitch` has no cover algorithm anywhere in this codebase and no
+    spec to implement it against (§2.8 describes a comb stitch ORDER, not
+    just a spacing) — it is explicitly out of scope here and must keep
+    falling through to plain satin rail geometry, not raise and not silently
+    grow a spacing branch of its own. Documented as a real, deliberate
+    non-implementation rather than an untested gap.
+    """
+    g = solve_geometry()
+    steps_satin, report_satin = applique_steps(SHIELD, "S1", g, cover="satin")
+    steps_e, report_e = applique_steps(SHIELD, "S1", g, cover="e_stitch")
+
+    cover_satin = [p for s in steps_satin for r in s.runs
+                  if r.kind == COVER for p in r.points]
+    cover_e = [p for s in steps_e for r in s.runs
+              if r.kind == COVER for p in r.points]
+    assert cover_e == cover_satin
+    assert report_e["crosses"] == report_satin["crosses"] == 783
+
+
+def test_applique_cover_config_reaches_the_cover_layer_end_to_end():
+    """The config value (`cfg.applique_cover`) has to actually reach
+    `_cover_layer` through `applique_pass` -> `applique_steps`, not just be
+    accepted and ignored — the exact defect this section exists to close.
+    Run through the real stage-7 entry point, not `applique_steps` directly,
+    so the whole wire is exercised end to end.
+    """
+    plan_satin, _ = _applique_plan(applique_cover="satin")
+    plan_zigzag, _ = _applique_plan(applique_cover="zigzag")
+
+    cover_steps_satin = [b.step for b in plan_satin.blocks
+                         if b.step and COVER in b.step.get("layers", [])]
+    cover_steps_zigzag = [b.step for b in plan_zigzag.blocks
+                          if b.step and COVER in b.step.get("layers", [])]
+    assert cover_steps_satin and cover_steps_zigzag
+
+    satin_stitches = sum(s["stitches"] for s in cover_steps_satin)
+    zigzag_stitches = sum(s["stitches"] for s in cover_steps_zigzag)
+    # Same real-world claim as the shield-level test above, just reached
+    # through config instead of a direct `applique_steps` call: a 3.0 mm
+    # zigzag pitch crosses far fewer times than a 0.40 mm satin pitch over
+    # the same boundaries.
+    assert zigzag_stitches < satin_stitches / 3

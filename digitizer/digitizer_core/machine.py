@@ -709,6 +709,20 @@ APPLIQUE_COVER_SPACING_MM = 0.40      # [P]; Melco 4.2 pt [V]
 APPLIQUE_COVER_SPACING_MIN_MM = 0.30  # [P] below this the needle cuts the fabric
 APPLIQUE_COVER_SPACING_MAX_MM = 0.60  # [P] above this the raw edge shows through
 APPLIQUE_COVER_PULL_COMP_MM = 0.20    # [P] up to 0.30 on knits
+# Zigzag cover's own spacing, read by stage6_applique._cover_layer only when
+# `cover == "zigzag"` — it replaces `geom.spacing_mm` (the satin figure above)
+# for that call, rather than stretching one constant to mean two different
+# pitches. §2.8 states TWO candidate zigzag spacings with no tie-break between
+# them: 1.69 mm (= 15 SPI) `[S]` Stahls', or 3.0 mm, Melco's ZigZag-appliqué
+# preset default of 30 pt `[V]`. This module already leans Melco/`[V]` where
+# the spec offers a choice (`APPLIQUE_COVER_SPACING_MM` above cites Melco's
+# 4.2 pt; `APPLIQUE_TACK_STITCH_MM`, `APPLIQUE_TACK_PASSES` do too), so 3.0 mm
+# is picked for consistency with the rest of this file's defaults, NOT because
+# it was sewn out and measured — it wasn't. Flagged as an open question a real
+# sew-out could revise; see `docs/specialty-techniques-2026-08-01.md` §2.8 and
+# §2.10's material matrix (which prints the 1.69 mm figure against tackle
+# twill specifically) before changing it.
+APPLIQUE_ZIGZAG_COVER_SPACING_MM = 3.0  # [V] Melco 30pt preset; unvalidated by sew-out
 # Applied in stage6_applique._cover_layer, the same direction as
 # Fabric.pull_comp_mm on an ordinary satin column: each rail moves `this`
 # further from the other, so the stitched column is `2*this` wider than the
