@@ -251,6 +251,10 @@
   {:else if fileName}<span class="filename">{fileName}</span>{/if}
 </div>
 <p class="hint">Best results: logos and flat-color art. Photos with gradients won't stitch cleanly.</p>
+<p class="hint">
+  PNG with sharp, non-anti-aliased edges and a bigger image hold detail best. Art already has a
+  transparent background? Leave "Remove background" unchecked below.
+</p>
 
 {#if error}<p class="err">{error}</p>{/if}
 

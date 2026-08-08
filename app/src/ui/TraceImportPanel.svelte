@@ -218,6 +218,8 @@
   <p class="tip-hint">
     Upload flat-color art (a logo works best) to get a rough shape-per-color starting point —
     tune colors/background below, then add the shapes and hand-refine them like any other.
+    PNG with sharp, non-anti-aliased edges traces best. Art already has a transparent background?
+    Uncheck "Remove background" below.
   </p>
 
   <div class="tip-upload">
