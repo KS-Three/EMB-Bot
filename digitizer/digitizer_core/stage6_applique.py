@@ -655,8 +655,19 @@ def _rail_column(poly: Polygon, c_in: float, c_out: float, spacing_mm: float,
 
 
 def _cover_layer(poly: Polygon, geom: AppliqueGeometry, shape_id: str,
-                 entry: tuple[float, float] | None) -> tuple[list[StitchRun], int]:
+                 entry: tuple[float, float] | None,
+                 cover: str = "satin") -> tuple[list[StitchRun], int]:
     """The cover column, straddling B from `c_in` to `c_out`. -> (runs, crosses).
+
+    `cover` selects the stitch pitch, nothing else about the rails: `"zigzag"`
+    swaps in `APPLIQUE_ZIGZAG_COVER_SPACING_MM` (3.0 mm, see that constant's
+    comment for the two candidate spacings §2.8 leaves untied) in place of
+    `geom.spacing_mm`; anything else — `"satin"` (the default) or `"e_stitch"`,
+    which has no algorithm here and falls through on purpose — keeps
+    `geom.spacing_mm` and is byte-identical to before this parameter existed.
+    Same `_rail_column` column emitter either way, same pattern
+    `_zigzag_tack_layer` already uses for the pre-cut tackdown's own different
+    spacing — only the pitch changes, not the rail positions or the closure.
 
     Pull compensation (§2.8, `APPLIQUE_COVER_PULL_COMP_MM`, 0.20 mm): thread
     tension pulls each cross's two penetrations together, so a column digitized
@@ -701,7 +712,9 @@ def _cover_layer(poly: Polygon, geom: AppliqueGeometry, shape_id: str,
     pull = machine.APPLIQUE_COVER_PULL_COMP_MM
     c_in = q(geom.c_in - pull)
     c_out = q(geom.c_out + pull)
-    return _rail_column(poly, c_in, c_out, geom.spacing_mm, COVER, shape_id,
+    spacing = (machine.APPLIQUE_ZIGZAG_COVER_SPACING_MM if cover == "zigzag"
+              else geom.spacing_mm)
+    return _rail_column(poly, c_in, c_out, spacing, COVER, shape_id,
                         entry, overlap_stitches=machine.APPLIQUE_CLOSURE_OVERLAP_STITCHES)
 
 
@@ -967,6 +980,13 @@ def applique_steps(poly: Polygon, shape_id: str, geom: AppliqueGeometry, *,
             cursor = tack[-1].points[-1]
             report["layers"] += 1
 
+    # What `_cover_layer` will actually sew the column at — `geom.spacing_mm`
+    # (the satin figure) unless `cover` picks the zigzag pitch instead. Read
+    # once so the worksheet label prints the SEWN spacing, not always the
+    # satin one, the same number `_cover_layer` itself derives.
+    cover_spacing_mm = (machine.APPLIQUE_ZIGZAG_COVER_SPACING_MM
+                        if cover == "zigzag" else geom.spacing_mm)
+
     if mode == TRIM_IN_PLACE:
         steps.append(Step(
             code="CUT+TACK" if report["cutting_line"] else "TACK",
@@ -981,14 +1001,14 @@ def applique_steps(poly: Polygon, shape_id: str, geom: AppliqueGeometry, *,
             layers=tuple(layers_here),
             spm=machine.APPLIQUE_TRIM_HEAVY_SPM,
         ))
-        cover_runs, crosses = _cover_layer(poly, geom, shape_id, cursor)
+        cover_runs, crosses = _cover_layer(poly, geom, shape_id, cursor, cover=cover)
         report["crosses"] = crosses
         if cover_runs:
             report["layers"] += 1
         steps.append(Step(
             code="COVER",
             label=f"{geom.width_mm:.2f} mm {cover} cover, "
-                  f"{geom.spacing_mm:.2f} mm spacing",
+                  f"{cover_spacing_mm:.2f} mm spacing",
             runs=cover_runs,
             # Every appliqué step ends in a color change; `plan_steps` rewrites
             # the plan's FINAL block to `end`, because only the plan knows
@@ -1002,14 +1022,14 @@ def applique_steps(poly: Polygon, shape_id: str, geom: AppliqueGeometry, *,
     else:
         # Pre-cut: the tackdown runs straight into the cover with NO stop —
         # Melco's "Enable Color Change After Tackdown" checkbox, left off [V].
-        cover_runs, crosses = _cover_layer(poly, geom, shape_id, cursor)
+        cover_runs, crosses = _cover_layer(poly, geom, shape_id, cursor, cover=cover)
         report["crosses"] = crosses
         if cover_runs:
             report["layers"] += 1
         steps.append(Step(
             code="TACK+COVER",
             label=f"Tackdown, then {geom.width_mm:.2f} mm {cover} cover at "
-                  f"{geom.spacing_mm:.2f} mm spacing",
+                  f"{cover_spacing_mm:.2f} mm spacing",
             runs=middle + cover_runs,
             action="Appliqué piece complete",
             function=COLOR_CHANGE,
