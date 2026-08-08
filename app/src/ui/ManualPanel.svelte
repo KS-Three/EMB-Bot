@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher } from "svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
+  import TraceImportPanel from "./TraceImportPanel.svelte";
   import { defaultManualShape } from "../lib/project.js";
   import {
     CANVAS_W, CANVAS_H, MAX_SHAPE_POINTS,
@@ -15,6 +16,15 @@
   // one): every edit dispatches an "elupdate" event shaped
   // { id: element.id, patch } directly.
   export let element;
+  // Test-only seam: forwarded straight through as TraceImportPanel's own
+  // `workImage` prop (see that component's comment on it) so a component
+  // spec can seed "already decoded an image" state for the nested trace
+  // panel without faking a real file upload — jsdom has no
+  // createImageBitmap/canvas decode path (see DigitizePanel.spec.js's own
+  // precedent for leaving that to Playwright). The live app never passes
+  // this in; TraceImportPanel manages its own working image internally once
+  // mounted.
+  export let traceWorkImage = null;
   const d = createEventDispatcher();
 
   function patch(p) {
@@ -37,6 +47,11 @@
   // transient nudge, not a persistent error banner.
   let capHint = false;
   let capHintTimer = null;
+  // Whether the trace-import panel (TraceImportPanel.svelte, PR 2 of the
+  // trace-an-uploaded-image feature) is mounted below the tools row —
+  // ephemeral UI state, same "not part of the persisted element" category as
+  // `draft`/`selectedShapeId` above.
+  let traceOpen = false;
 
   // ---- Vertex editing for a finished shape ------------------------------
   // A selected finished shape can be dropped into "edit points" mode: drag
@@ -127,6 +142,19 @@
     draft = [];
     draftCurves = {};
     selectedShapeId = shape.id;
+  }
+
+  // TraceImportPanel hands back a finished, id-assigned shape array (see its
+  // own file banner for why id assignment happens there, against THIS
+  // component's live `shapes`, rather than here) — this is the one place
+  // that batch ever lands in element.shapes, via exactly ONE patch (one undo
+  // step for the whole batch), riding the same patch()/elupdate mechanism
+  // every other edit in this file already uses. Existing shapes are never
+  // touched: `shapes` is spread first, unchanged, with the new ones appended
+  // after.
+  function onTraced(e) {
+    patch({ shapes: [...shapes, ...e.detail.shapes] });
+    traceOpen = false;
   }
 
   function flashCapHint() {
@@ -613,7 +641,17 @@
     <button type="button" on:click={undoPoint} disabled={!draft.length}>Undo point</button>
     <button type="button" on:click={clearDraft} disabled={!draft.length}>Clear shape</button>
     <button type="button" class="primary" on:click={finishShape} disabled={!canFinish}>Finish shape</button>
+    <button type="button" on:click={() => (traceOpen = !traceOpen)}>Trace image…</button>
   </div>
+
+  {#if traceOpen}
+    <TraceImportPanel
+      existingShapes={shapes}
+      workImage={traceWorkImage}
+      on:traced={onTraced}
+      on:cancel={() => (traceOpen = false)}
+    />
+  {/if}
 
   {#if shapes.length}
     <ul class="mp-shapelist">
