@@ -4,6 +4,7 @@ import {
   shapeIssues, isDuplicateOfLast, MAX_SHAPE_POINTS,
   quadraticControlForPointOnCurve, curveHandlePoint, curveControlOrNull,
   flattenQuadraticSegment, flattenShape, hitTestSegmentMidpoint, CURVE_HANDLE_HIT_R,
+  nextShapeIds,
 } from "./manualShapes.js";
 
 // ---- isValidShape -----------------------------------------------------
@@ -313,4 +314,44 @@ test("shapesToRegions: a shape with no curves field at all behaves exactly as be
   const shapes = [{ id: "s1", points: pts, stitchType: "fill", colorRgb: [1, 1, 1] }];
   const { regions } = shapesToRegions(shapes);
   expect(regions[0].shapes[0].outer).toEqual(pts);
+});
+
+// ---- nextShapeIds ----------------------------------------------------
+
+test("nextShapeIds: allocates N unique sequential ids from one call", () => {
+  const list = [{ id: "s3" }, { id: "s1" }];
+  expect(nextShapeIds(list, 3)).toEqual(["s4", "s5", "s6"]);
+});
+
+test("nextShapeIds: starts at s1 on an empty list", () => {
+  expect(nextShapeIds([], 2)).toEqual(["s1", "s2"]);
+  expect(nextShapeIds(undefined, 1)).toEqual(["s1"]);
+});
+
+test("nextShapeIds: correctly continues past gaps and non-sequential-format ids", () => {
+  // s2 is missing (deleted shape) and "custom-id" doesn't match the "s"+N
+  // format at all — neither should confuse the max-id scan.
+  const list = [{ id: "s1" }, { id: "s5" }, { id: "custom-id" }, { id: "s3" }];
+  expect(nextShapeIds(list, 2)).toEqual(["s6", "s7"]);
+});
+
+// Regression test for the actual bug scenario nextShapeIds exists to
+// prevent: ManualPanel's own nextShapeId(list) recomputes the max id from
+// `shapes` every call, so looping IT across a batch (with no patch() in
+// between) returns the same id every time. nextShapeIds must not inherit
+// that: within one call it hands back non-colliding sequential ids. Two
+// back-to-back calls against the SAME unchanged list, on the other hand, are
+// only well-defined to each independently start right after the list's
+// current max — a caller is expected to call this once per batch, right
+// before building the final patch, not call it again before that patch
+// lands (which would allocate the same ids twice, same as nextShapeId would
+// — this test documents that behavior rather than treating it as a bug).
+test("nextShapeIds: within one call, ids never collide; two back-to-back calls against an unchanged list are well-defined (both start after the same max, expected caller usage is once per batch)", () => {
+  const list = [{ id: "s1" }];
+  const firstBatch = nextShapeIds(list, 2);
+  expect(firstBatch).toEqual(["s2", "s3"]);
+  expect(new Set(firstBatch).size).toBe(firstBatch.length); // no internal collision
+
+  const secondBatch = nextShapeIds(list, 2); // same unchanged `list`, no patch() in between
+  expect(secondBatch).toEqual(["s2", "s3"]); // identical to firstBatch — well-defined, not a crash
 });
