@@ -16,9 +16,10 @@ the shop actually stocks, with machine files in nine formats (step 8).
 compact slivers worth review-screen eyes.
 
 SAM 2 segmentation (step 2) was deferred by Kent in favour of steps 3–4 — the
-`Segmenter` seam means it drops in later without touching stitch code. Still
-to come: the stitch processor, preflight scoring (step 9) and the EMB-Bot
-review UI (step 10) — whose adapter is already built here. See
+`Segmenter` seam means it drops in later without touching stitch code.
+Preflight scoring (step 9, `digitizer_core/preflight.py`) and the EMB-Bot
+review UI (step 10, `app/src/ui/DigitizePanel.svelte`) are both built too —
+this paragraph used to list them as "still to come," which was stale. See
 `docs/superpowers/plans/2026-07-30-digitizer-step4-satin.md` for the satin
 design and `2026-07-30-digitizer-step8-service.md` for the service.
 
