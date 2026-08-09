@@ -5,6 +5,7 @@ import {
   quadraticControlForPointOnCurve, curveHandlePoint, curveControlOrNull,
   flattenQuadraticSegment, flattenShape, hitTestSegmentMidpoint, CURVE_HANDLE_HIT_R,
   nextShapeIds, pointInShape,
+  distToSegment, nearestSegmentIndex, insertVertexAtSegment,
 } from "./manualShapes.js";
 
 // ---- isValidShape -----------------------------------------------------
@@ -408,4 +409,158 @@ test("nextShapeIds: within one call, ids never collide; two back-to-back calls a
 
   const secondBatch = nextShapeIds(list, 2); // same unchanged `list`, no patch() in between
   expect(secondBatch).toEqual(["s2", "s3"]); // identical to firstBatch — well-defined, not a crash
+});
+
+// ---- Edge-click-to-insert-vertex ------------------------------------------
+
+const EDGE_SQUARE = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }];
+
+test("distToSegment: zero at either endpoint and the true perpendicular distance off a mid-point", () => {
+  const a = { x: 0, y: 0 }, b = { x: 100, y: 0 };
+  expect(distToSegment(a, a, b)).toBe(0);
+  expect(distToSegment(b, a, b)).toBe(0);
+  expect(distToSegment({ x: 50, y: 8 }, a, b)).toBeCloseTo(8, 9);
+});
+
+test("distToSegment: clamps to the nearest endpoint once the projection falls off either end", () => {
+  const a = { x: 0, y: 0 }, b = { x: 100, y: 0 };
+  // Off the b-end: closest point on the segment is b itself, not an
+  // extension of the infinite line through a-b.
+  expect(distToSegment({ x: 150, y: 0 }, a, b)).toBeCloseTo(50, 9);
+});
+
+test("distToSegment: a zero-length segment (a === b) falls back to plain point distance", () => {
+  const a = { x: 10, y: 10 };
+  expect(distToSegment({ x: 13, y: 14 }, a, a)).toBeCloseTo(5, 9);
+});
+
+test("nearestSegmentIndex: a point near a shared vertex resolves to whichever adjacent segment it's actually closer to", () => {
+  // (2, 1) sits just off the corner (0,0) shared by segment 0 (top,
+  // (0,0)-(100,0)) and segment 3 (left, (0,100)-(0,0)) — closer to the top
+  // edge's own line (perpendicular distance 1) than the left edge's (2).
+  const { index, dist } = nearestSegmentIndex(EDGE_SQUARE, {}, 2, 1, true);
+  expect(index).toBe(0);
+  expect(dist).toBeCloseTo(1, 9);
+});
+
+test("nearestSegmentIndex: a point centered on a straight edge finds that segment and its perpendicular distance", () => {
+  const { index, dist } = nearestSegmentIndex(EDGE_SQUARE, {}, 50, 5, true);
+  expect(index).toBe(0);
+  expect(dist).toBeCloseTo(5, 9);
+});
+
+test("nearestSegmentIndex: a point far from the whole shape still resolves to its nearest segment, with a large distance", () => {
+  const { index, dist } = nearestSegmentIndex(EDGE_SQUARE, {}, 500, 30, true);
+  expect(index).toBe(1); // right edge (100,0)-(100,100)
+  expect(dist).toBeCloseTo(400, 9);
+});
+
+test("nearestSegmentIndex: closed=false excludes the last-to-first wraparound segment, same as hitTestSegmentMidpoint", () => {
+  const pts = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }];
+  // Nearest to the (would-be) wraparound edge (100,100)-(0,0) at its midpoint.
+  const open = nearestSegmentIndex(pts, {}, 50, 50, false);
+  expect(open.index).not.toBe(2); // segment 2 doesn't exist on the open polyline
+  const closed = nearestSegmentIndex(pts, {}, 50, 50, true);
+  expect(closed.index).toBe(2);
+  expect(closed.dist).toBeCloseTo(0, 9);
+});
+
+test("nearestSegmentIndex: hit-tests a curved segment against its actual bowed line, not the straight chord", () => {
+  const a = { x: 0, y: 0 }, c = { x: 100, y: 0 };
+  const control = quadraticControlForPointOnCurve(a, { x: 50, y: 40 }, c);
+  const pts = [a, c, { x: 50, y: 100 }];
+  const curves = { 0: control };
+  // Right on the curve's own on-curve point — very close.
+  const onCurve = nearestSegmentIndex(pts, curves, 50, 41, false);
+  expect(onCurve.index).toBe(0);
+  expect(onCurve.dist).toBeLessThan(2);
+  // The segment's plain straight-line chord midpoint (50, 0) is now far from
+  // the actual (curved) line — proof this isn't just testing the chord.
+  const atChordMid = nearestSegmentIndex(pts, curves, 50, 0, false);
+  expect(atChordMid.dist).toBeGreaterThan(30);
+});
+
+test("nearestSegmentIndex: fewer than 2 points has no segment to find", () => {
+  expect(nearestSegmentIndex([{ x: 0, y: 0 }], {}, 5, 5, false)).toEqual({ index: -1, dist: Infinity });
+  expect(nearestSegmentIndex([], {}, 5, 5, true)).toEqual({ index: -1, dist: Infinity });
+});
+
+// insertVertexAtSegment: a 6-point ring, curved on segments 2 and 4 — chosen
+// so an insert well away from both (segment 1) exercises the "shift every
+// later index up by one, leave earlier ones alone" reindexing rule without
+// also hitting the "drop the split segment's own curve" rule at the same time.
+function hexRing() {
+  const pts = [];
+  for (let i = 0; i < 6; i++) pts.push({ x: i * 10, y: 0 });
+  return pts;
+}
+
+test("insertVertexAtSegment: splices the new point at segIndex + 1, leaving every other anchor untouched", () => {
+  const shape = { id: "s1", points: hexRing(), curves: {}, stitchType: "fill", colorRgb: [1, 2, 3] };
+  const next = insertVertexAtSegment(shape, 1, { x: 15, y: 5 });
+  expect(next.points).toHaveLength(7);
+  expect(next.points[2]).toEqual({ x: 15, y: 5 });
+  // Everything before and after the split is untouched, just shifted.
+  expect(next.points[0]).toEqual({ x: 0, y: 0 });
+  expect(next.points[1]).toEqual({ x: 10, y: 0 });
+  expect(next.points[3]).toEqual({ x: 20, y: 0 });
+  expect(next.points[6]).toEqual({ x: 50, y: 0 });
+  // The original shape is never mutated.
+  expect(shape.points).toHaveLength(6);
+});
+
+test("insertVertexAtSegment: reindexes curves after the split segment up by one, leaves earlier ones alone (the key regression case)", () => {
+  const shape = {
+    id: "s1",
+    points: hexRing(),
+    curves: { 2: { x: 99, y: 1 }, 4: { x: 99, y: 2 } },
+    stitchType: "fill",
+    colorRgb: [1, 2, 3],
+  };
+  const next = insertVertexAtSegment(shape, 1, { x: 15, y: 5 });
+  expect(next.curves).toEqual({ 3: { x: 99, y: 1 }, 5: { x: 99, y: 2 } });
+  expect(next.curves[2]).toBeUndefined();
+  expect(next.curves[4]).toBeUndefined();
+  // The original shape's curves map is never mutated.
+  expect(shape.curves).toEqual({ 2: { x: 99, y: 1 }, 4: { x: 99, y: 2 } });
+});
+
+test("insertVertexAtSegment: a curve on the split segment itself is dropped, not carried onto either new half", () => {
+  const shape = { id: "s1", points: hexRing(), curves: { 1: { x: 12, y: 8 } } };
+  const next = insertVertexAtSegment(shape, 1, { x: 15, y: 5 });
+  expect(next.curves[1]).toBeUndefined();
+  expect(next.curves[2]).toBeUndefined();
+});
+
+test("insertVertexAtSegment: a curve before the split segment keeps its original index", () => {
+  const shape = { id: "s1", points: hexRing(), curves: { 0: { x: 5, y: 5 } } };
+  const next = insertVertexAtSegment(shape, 3, { x: 35, y: 5 });
+  expect(next.curves).toEqual({ 0: { x: 5, y: 5 } });
+});
+
+test("insertVertexAtSegment: preserves every other shape field (id, stitchType, colorRgb, angleDeg) unchanged", () => {
+  const shape = {
+    id: "s7", points: hexRing(), curves: {}, stitchType: "satin", colorRgb: [9, 8, 7], angleDeg: 45,
+  };
+  const next = insertVertexAtSegment(shape, 0, { x: 5, y: 5 });
+  expect(next.id).toBe("s7");
+  expect(next.stitchType).toBe("satin");
+  expect(next.colorRgb).toEqual([9, 8, 7]);
+  expect(next.angleDeg).toBe(45);
+});
+
+test("insertVertexAtSegment: at MAX_SHAPE_POINTS, returns the exact same shape reference unchanged (no-op)", () => {
+  const bigPoints = [];
+  for (let i = 0; i < MAX_SHAPE_POINTS; i++) bigPoints.push({ x: i, y: 0 });
+  const shape = { id: "s1", points: bigPoints, curves: {} };
+  const next = insertVertexAtSegment(shape, 0, { x: 0.5, y: 1 });
+  expect(next).toBe(shape);
+  expect(next.points).toHaveLength(MAX_SHAPE_POINTS);
+});
+
+test("insertVertexAtSegment: a shape with no curves field at all still inserts cleanly (empty curves map, no throw)", () => {
+  const shape = { id: "s1", points: hexRing() };
+  const next = insertVertexAtSegment(shape, 2, { x: 25, y: 5 });
+  expect(next.points).toHaveLength(7);
+  expect(next.curves).toEqual({});
 });
