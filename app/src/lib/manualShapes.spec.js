@@ -4,7 +4,7 @@ import {
   shapeIssues, isDuplicateOfLast, MAX_SHAPE_POINTS,
   quadraticControlForPointOnCurve, curveHandlePoint, curveControlOrNull,
   flattenQuadraticSegment, flattenShape, hitTestSegmentMidpoint, CURVE_HANDLE_HIT_R,
-  nextShapeIds,
+  nextShapeIds, pointInShape,
 } from "./manualShapes.js";
 
 // ---- isValidShape -----------------------------------------------------
@@ -314,6 +314,60 @@ test("shapesToRegions: a shape with no curves field at all behaves exactly as be
   const shapes = [{ id: "s1", points: pts, stitchType: "fill", colorRgb: [1, 1, 1] }];
   const { regions } = shapesToRegions(shapes);
   expect(regions[0].shapes[0].outer).toEqual(pts);
+});
+
+// ---- pointInShape ---------------------------------------------------------
+
+const SQUARE = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }];
+
+test("pointInShape: true for a point well inside a simple polygon", () => {
+  expect(pointInShape(SQUARE, 5, 5)).toBe(true);
+});
+
+test("pointInShape: false for a point well outside a simple polygon", () => {
+  expect(pointInShape(SQUARE, -5, -5)).toBe(false);
+  expect(pointInShape(SQUARE, 15, 5)).toBe(false);
+});
+
+// Even-odd ray casting is directional about its own boundary: a horizontal
+// ray to the right from (x, y) crossing an edge counts that edge only under
+// specific tie-breaking rules, so opposite edges of the same square don't
+// necessarily agree on "on the boundary" — this pins the ACTUAL behavior
+// (deterministic, not flaky) rather than asserting every edge reads as
+// inside just because it sounds symmetric.
+test("pointInShape: edge case — a point exactly on a vertex", () => {
+  expect(pointInShape(SQUARE, 0, 0)).toBe(true);
+  expect(pointInShape(SQUARE, 10, 10)).toBe(false);
+});
+
+test("pointInShape: edge case — a point exactly on an edge (not at a vertex)", () => {
+  expect(pointInShape(SQUARE, 5, 0)).toBe(true); // bottom edge
+  expect(pointInShape(SQUARE, 10, 5)).toBe(false); // right edge
+});
+
+// An "L" shape (a square with its top-right quadrant notched out) — the
+// notch itself must read as outside even though it sits within the shape's
+// bounding box, and the reflex (concave) vertex must not falsely read as
+// inside.
+const CONCAVE_L = [
+  { x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 5 },
+  { x: 5, y: 5 }, { x: 5, y: 10 }, { x: 0, y: 10 },
+];
+
+test("pointInShape: concave polygon — inside the solid body, in either arm", () => {
+  expect(pointInShape(CONCAVE_L, 2, 2)).toBe(true); // lower-left, shared body
+  expect(pointInShape(CONCAVE_L, 8, 2)).toBe(true); // lower-right arm
+  expect(pointInShape(CONCAVE_L, 2, 8)).toBe(true); // upper-left arm
+});
+
+test("pointInShape: concave polygon — the notched-out region reads as outside", () => {
+  expect(pointInShape(CONCAVE_L, 7, 7)).toBe(false);
+  expect(pointInShape(CONCAVE_L, 6, 6)).toBe(false);
+});
+
+test("pointInShape: empty/absent points is always false, not a throw", () => {
+  expect(pointInShape([], 0, 0)).toBe(false);
+  expect(pointInShape(undefined, 0, 0)).toBe(false);
 });
 
 // ---- nextShapeIds ----------------------------------------------------
