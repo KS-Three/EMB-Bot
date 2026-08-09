@@ -1037,7 +1037,8 @@
     <p class="dgp-note">
       Upload flat art — a logo, a mark, lettering as an image — and it comes back as stitches you
       can place like any other element. Clean, solid colors digitize best; photos and gradients
-      won't sew cleanly.
+      won't sew cleanly. PNG with a transparent background and sharp, non-anti-aliased edges
+      digitizes best — a bigger image sews sharper than a small one.
     </p>
   {:else}
     <div class="dgp-src">
