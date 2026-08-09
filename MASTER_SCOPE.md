@@ -11,7 +11,11 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-07 — two backlog cleanup items closed in one pass.
+**Last updated:** 2026-08-09 — manual-digitizing Trace feature shipped, real
+user UX feedback fixed (shape editor + step nav), appliqué zigzag cover
+bugfix, legacy standalone tool removed. See areas 1 and 3 below.
+
+**Previously (2026-08-07):** two backlog cleanup items closed in one pass.
 
 **(1) `DigitizePanel.svelte` gained a component-test harness — a real,
 previously-self-flagged gap, not a newly-invented one.** Every per-shape
@@ -3089,6 +3093,24 @@ unchanged from the text-cluster-detection entry above: `fontKey` is NEVER
 auto-picked by anything downstream of this — OCR gives characters, never a
 typeface match, regardless of confidence.
 
+**Fixed, 2026-08-08 (PR #97) — appliqué's configured cover style
+(`cfg.applique_cover`) was silently ignored; every cover sewed byte-
+identical satin geometry regardless.** `applique_steps` threaded the
+setting down to `_cover_layer`'s call site, but `_cover_layer` never
+accepted or read it. `_cover_layer` now takes a `cover` param: `"zigzag"`
+drives the same `_rail_column` emitter with a new
+`APPLIQUE_ZIGZAG_COVER_SPACING_MM` (3.0mm, Melco's preset pitch — picked
+for consistency with this file's other Melco-sourced defaults, **not**
+validated by sew-out) instead of `geom.spacing_mm`; `"satin"` (default)
+and `"e_stitch"` (no algorithm/spec exists to build one against, left as a
+documented fallthrough) keep `geom.spacing_mm` and stay byte-identical to
+before. New regression tests pin satin's unchanged geometry and confirm
+zigzag produces genuinely sparser stitch geometry that moves with the
+constant (`test_applique.py`: 58 → 63). Full digitizer suite unaffected
+(942 passed, 3 skipped). Doesn't move this area's Status/Confidence verdict
+— a real config-wiring bugfix on an already-built feature, not new
+capability, and still sew-out-unvalidated like the rest of appliqué.
+
 ---
 
 ### 2. Font library & lettering
@@ -3193,6 +3215,58 @@ stitches from it, satin-stitched it, and re-curved a different edge after
 finishing — all client-side, no backend needed. Branch
 `manual-shape-curve-tool`. Doesn't move this area's Status/Confidence
 verdict (additive UI on an already-shipped content type).
+
+**Manual shape tool gained an image-trace starting point, then real UX
+fixes, 2026-08-09** (`ManualPanel.svelte`, `app/src/lib/manualTrace.js`,
+`app/src/lib/manualShapes.js`) — three real, user-reported problems fixed
+in sequence, not a single planned feature:
+
+1. **Trace image → shapes** (PRs #98–100): a "Trace image…" button runs
+   the engine's existing marching-squares contour tracer
+   (`EMB.traceRegions`) + RDP simplification on an uploaded raster, then
+   fits ONE quadratic-Bezier control point per segment
+   (`fitCurvesForRing`) to produce editable shapes directly instead of
+   requiring hand-tracing from scratch. Holes are detected and warned,
+   never silently emitted as a shape. `app/e2e/manual-trace-import.spec.js`
+   drives it against a real browser.
+2. **Editor was cluttered, selection/cursor gave no feedback** (direct
+   user feedback) — fixed in PR #104: non-selected shapes de-emphasize
+   (fill-opacity 0.18, label dropped — reuses `DigitizePanel.svelte`'s own
+   established dimming value rather than a new number), clicking a
+   shape's body selects it (`pointInShape`, even-odd ray-cast), and the
+   canvas cursor now changes contextually (`grab`/`copy`/`pointer`/
+   `grabbing`/`crosshair`) instead of one static cursor throughout.
+3. **Step-nav tabs read as messy, hover looked identical to active,
+   content forced scrolling** (direct user feedback) — fixed in PR #105:
+   active vs. hover are now visually distinct (mirrors the `.elrow.sel`
+   tint pattern used elsewhere in the app), disabled steps read as
+   "grayed out" not "gone," numbered/checkmark progress badges added, and
+   the element list is capped at a scrollable 220px so a selected editor
+   no longer gets pushed below the fold. **Found but explicitly NOT
+   fixed** during this PR's own visual QA pass: at ≤375px width the top
+   bar has no narrow-width handling and overlaps ("Bot Studio" collides
+   with "My designs"), causing horizontal page overflow — pre-existing,
+   out of scope, flagged here since nothing before this pass had driven
+   the app narrow enough to notice it.
+
+Also removed the old frozen standalone `EMB-Bot.html`/`src/app.js` tool
+(PR #101) — confirmed via `app/scripts/copy-engine.mjs`'s `ENGINE_FILES`
+list that nothing it used is still shared with the Studio build before
+deleting it; it had been reading as a second, competing app to Kent.
+
+**Curve-smoothing approach reconsidered against a comparable tool, not
+changed.** A hands-on evaluation of `kent746/shape-tracer`
+(`docs/shape-tracer-evaluation.md`, PR #103) found its tracer core solid,
+but it smooths via a Catmull-Rom spline through points, not
+`fitCurvesForRing`'s per-segment independent quadratic fit. Tested
+numerically against the real `smoothPathD` source (not a guess) on a
+square, an L-shape, and a 5-point star: wholesale Catmull-Rom reintroduces
+real corner overshoot (12.5px on the square, 10px on the L-shape) that
+`fitCurvesForRing` avoids entirely (0px on all three) — the exact defect
+`fitCurvesForRing` was built to avoid. A narrow tangent-continuity upside
+exists on rounded sections but rarely triggers at production's default
+tolerances and doesn't clear the bar for a hybrid given the schema
+constraints. Verdict: no change made.
 
 **Fabric-preset accuracy: pending sew-out** — kept as an explicit separate
 note, not blended into the wizard's own score. README says it outright:
