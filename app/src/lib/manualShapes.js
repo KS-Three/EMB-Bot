@@ -298,6 +298,90 @@ export function flattenShape(points, curves, closed) {
   return out;
 }
 
+// ---- Edge-click-to-insert-vertex ------------------------------------------
+// Clicking an already-selected shape's edge (rather than its vertex or curve
+// handle) inserts a brand-new anchor right there, splitting one segment into
+// two independently-editable ones — the one gap the curve-handle-per-segment
+// model (above) doesn't cover: bowing lets you curve a whole segment, but
+// there was previously no way to add a hard new corner or a second
+// independent curve control point partway along a long edge.
+
+// Point-to-segment distance: how far `p` is from the closest point on the
+// line segment a-b (clamped to the segment, not the infinite line through
+// it) — same standard closest-point-on-segment projection every hit-test in
+// this file that isn't a plain point-to-point distance eventually needs,
+// just not one any existing helper here already exposed.
+export function distToSegment(p, a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const len2 = dx * dx + dy * dy;
+  if (len2 === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+  let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+}
+
+// Which ANCHOR segment (x, y) is closest to, and how far — walks each
+// segment's real, on-screen geometry (its flattened curve chain when it has
+// a control point, same sub-points flattenQuadraticSegment already produces
+// for drawing/flattenShape, or just its two endpoints when straight) so a
+// curved segment hit-tests against the visible bowed line, not the straight
+// anchor-to-anchor chord a naive check would use. `closed` mirrors every
+// other hit-test in this file (hitTestSegmentMidpoint, flattenShape): false
+// for an open in-progress draft, true for a finished shape's closed ring.
+// Returns { index: -1, dist: Infinity } for a degenerate (<2-point) input.
+export function nearestSegmentIndex(points, curves, x, y, closed) {
+  const pt = { x, y };
+  const n = points.length;
+  const segCount = closed ? n : n - 1;
+  let index = -1;
+  let dist = Infinity;
+  for (let i = 0; i < segCount; i++) {
+    const a = points[i];
+    const c = points[(i + 1) % n];
+    const control = curves && curves[i];
+    const chain = control ? [a, ...flattenQuadraticSegment(a, control, c), c] : [a, c];
+    for (let k = 0; k < chain.length - 1; k++) {
+      const d = distToSegment(pt, chain[k], chain[k + 1]);
+      if (d < dist) {
+        dist = d;
+        index = i;
+      }
+    }
+  }
+  return { index, dist };
+}
+
+// Splits segment `segIndex` (points[segIndex] -> points[segIndex + 1]) by
+// inserting `point` as a brand-new anchor between them, and returns a NEW
+// shape object — `shape` itself is never mutated. Both halves of the split
+// start straight: any curve that segment used to carry is simply dropped
+// rather than preserved/interpolated onto either half (deliberately — the
+// user can re-curve either new half afterward if they want it). Every
+// OTHER curve, on a segment index greater than segIndex, shifts up by one to
+// stay bound to the same visual edge, since splicing a point renumbers every
+// later segment; curves at or before segIndex are untouched. Respects the
+// same MAX_SHAPE_POINTS ceiling the draft-drawing flow enforces — a shape
+// already at the cap is returned completely unchanged (same reference) so a
+// caller can detect the no-op with `=== `, mirroring how a click past the
+// cap during drafting is just silently dropped rather than erroring.
+export function insertVertexAtSegment(shape, segIndex, point) {
+  const points = shape.points || [];
+  if (points.length >= MAX_SHAPE_POINTS) return shape;
+  const newPoints = [
+    ...points.slice(0, segIndex + 1),
+    { x: point.x, y: point.y },
+    ...points.slice(segIndex + 1),
+  ];
+  const oldCurves = shape.curves || {};
+  const newCurves = {};
+  for (const key in oldCurves) {
+    const idx = Number(key);
+    if (idx === segIndex) continue; // the split segment's curve doesn't carry forward onto either new half
+    newCurves[idx > segIndex ? idx + 1 : idx] = oldCurves[key];
+  }
+  return { ...shape, points: newPoints, curves: newCurves };
+}
+
 // Batch-safe id allocation for callers (e.g. the trace-to-shapes feature)
 // that build several new shapes at once and patch them in with a SINGLE
 // `patch()` call. ManualPanel.svelte's own nextShapeId(list) recomputes the

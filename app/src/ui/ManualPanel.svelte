@@ -7,6 +7,7 @@
     CANVAS_W, CANVAS_H, MAX_SHAPE_POINTS,
     isValidShape, isNearStart, isDuplicateOfLast, shapeIssues, flattenShape,
     curveControlOrNull, hitTestSegmentMidpoint, curveHandlePoint, pointInShape,
+    nearestSegmentIndex, insertVertexAtSegment,
   } from "../lib/manualShapes.js";
 
   // Manual digitizing mode (MVP slice): draw straight- or curved-line
@@ -189,6 +190,12 @@
     if (draft.length === 0) {
       const hitId = hitTestShapeAt(pt.x, pt.y);
       if (hitId) {
+        // A click on a shape that's ALREADY selected, landing close enough
+        // to its edge/line (not its interior), inserts a new vertex there
+        // instead of re-selecting — see tryInsertVertexAt. Any other click
+        // on a shape's body (a different shape, or the selected shape's
+        // interior) keeps PR #104's plain select-click behavior unchanged.
+        if (hitId === selectedShapeId && tryInsertVertexAt(hitId, pt)) return;
         selectShape(hitId);
         return;
       }
@@ -302,6 +309,34 @@
     return null;
   }
 
+  // The anchor-segment index of shape `id`'s edge closest to (x, y), and how
+  // far — or null if (x, y) isn't within VERTEX_HIT_R of any of its edges
+  // (a click/hover on the shape's plain interior, away from any line).
+  // Shared by the click handler and the hover-cursor check below so they can
+  // never disagree about what a click there would do.
+  function edgeHitOn(id, x, y) {
+    const shape = shapes.find((s) => s.id === id);
+    if (!shape) return null;
+    const { index, dist } = nearestSegmentIndex(shape.points, shape.curves, x, y, true);
+    if (index === -1 || dist > VERTEX_HIT_R) return null;
+    return { shape, index };
+  }
+
+  // Attempts the edge-click-to-insert-vertex gesture for the already-selected
+  // shape `id` at canvas point `pt`: true (and a patch dispatched) once a new
+  // anchor actually landed on its edge; false when the click missed every
+  // edge (by more than VERTEX_HIT_R) or the shape is already at
+  // MAX_SHAPE_POINTS (insertVertexAtSegment's own no-op), so the caller falls
+  // back to its ordinary already-selected-shape click behavior instead.
+  function tryInsertVertexAt(id, pt) {
+    const hit = edgeHitOn(id, pt.x, pt.y);
+    if (!hit) return false;
+    const next = insertVertexAtSegment(hit.shape, hit.index, pt);
+    if (next === hit.shape) return false; // at MAX_SHAPE_POINTS — no-op
+    updateShape(id, { points: next.points, curves: next.curves });
+    return true;
+  }
+
   function capturePointer(e) {
     try {
       canvasEl.setPointerCapture(e.pointerId);
@@ -402,6 +437,11 @@
   // vocabulary, checked in priority order (only one can apply at a time):
   //   grab      — hovering a draggable vertex (vertex-edit mode).
   //   copy      — hovering a segment's curve handle (draft or vertex-edit).
+  //   cell      — hovering the ALREADY-SELECTED shape's edge/line (not its
+  //               interior) — the exact spot a click would insert a new
+  //               vertex at (see tryInsertVertexAt). "copy" is already
+  //               spoken for by the curve handle above, so this gets its own
+  //               distinct value.
   //   pointer   — hovering a finished shape's body, selectable by a click
   //               (see onCanvasClick's own draft.length === 0 gate — the
   //               cursor only offers "pointer" when a click would actually
@@ -428,9 +468,16 @@
       canvasEl.style.cursor = "copy";
       return;
     }
-    if (draft.length === 0 && hitTestShapeAt(pt.x, pt.y)) {
-      canvasEl.style.cursor = "pointer";
-      return;
+    if (draft.length === 0) {
+      const hitId = hitTestShapeAt(pt.x, pt.y);
+      if (hitId) {
+        if (hitId === selectedShapeId && edgeHitOn(hitId, pt.x, pt.y)) {
+          canvasEl.style.cursor = "cell";
+          return;
+        }
+        canvasEl.style.cursor = "pointer";
+        return;
+      }
     }
     canvasEl.style.cursor = "crosshair";
   }
@@ -688,9 +735,10 @@
   <p class="hint">
     Click to place points. Click near the first point (or double-click) to close the shape.
     Drag the small dot at the middle of any line to bow it into a curve — drag it back to
-    the line to straighten it again. Draw as many shapes as you like, then pick each one's
-    stitch type, color, and angle below. Escape cancels a draft, Enter finishes it, Delete
-    removes the selected shape.
+    the line to straighten it again. Once a shape is selected, click its edge to add a new
+    point there. Draw as many shapes as you like, then pick each one's stitch type, color,
+    and angle below. Escape cancels a draft, Enter finishes it, Delete removes the selected
+    shape.
   </p>
 
   <div class="mp-canvas-wrap">

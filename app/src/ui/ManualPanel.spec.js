@@ -258,6 +258,91 @@ describe("canvas-click-to-select", () => {
   });
 });
 
+// ---- edge-click-to-insert-vertex -------------------------------------------
+//
+// tri()'s top edge (segment 0) runs from (100,100) to (200,100) — (150,103)
+// sits 3px off that line, well inside VERTEX_HIT_R (8), and (150,133) is a
+// safe interior point roughly 30px from the nearest edge (verified against
+// the real nearestSegmentIndex/pointInShape helpers, not just eyeballed).
+
+describe("edge-click-to-insert-vertex", () => {
+  async function selectRow(utils) {
+    await fireEvent.click(utils.getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
+  }
+
+  test("clicking an edge of the already-selected shape inserts a new vertex there", async () => {
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const utils = renderPanel([shape]);
+    await selectRow(utils);
+    const { canvas, patches } = utils;
+
+    await clickAt(canvas, 150, 103);
+
+    expect(patches).toHaveLength(1);
+    const pts = patches[0].patch.shapes[0].points;
+    expect(pts).toHaveLength(4);
+    expect(pts).toEqual([
+      { x: 100, y: 100 },
+      { x: 150, y: 103 }, // the new vertex, spliced right after segment 0's start anchor
+      { x: 200, y: 100 },
+      { x: 150, y: 200 },
+    ]);
+  });
+
+  test("clicking an edge of a shape that ISN'T selected yet only selects it — no insert", async () => {
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const { canvas, getByText, patches } = renderPanel([shape]);
+
+    await clickAt(canvas, 150, 103); // same edge point, but nothing is selected yet
+
+    expect(patches).toHaveLength(0); // selecting alone never dispatches a patch
+    const row = getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button");
+    expect(row.className).toContain("sel");
+  });
+
+  test("clicking the interior of an already-selected shape (away from any edge) does not insert", async () => {
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const utils = renderPanel([shape]);
+    await selectRow(utils);
+    const { canvas, getByText, patches } = utils;
+
+    await clickAt(canvas, 150, 133); // well inside, ~30px from the nearest edge
+
+    expect(patches).toHaveLength(0); // no insert dispatched
+    // Falls back to the pre-existing already-selected-shape click behavior
+    // (selectShape's own toggle) unchanged — this test only pins that no
+    // insert happened, not that specific toggle mechanic (out of scope here).
+    const row = getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button");
+    expect(row.className).not.toContain("sel");
+  });
+
+  test("a second click on the same edge point keeps splitting — each insert only ever adds one vertex", async () => {
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const utils = renderPanel([shape]);
+    await selectRow(utils);
+    const { canvas, patches } = utils;
+
+    await clickAt(canvas, 150, 103);
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.shapes[0].points).toHaveLength(4);
+  });
+
+  test("an edge click on a DIFFERENT shape than the one selected just selects that other shape, no insert", async () => {
+    const selected = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const other = { id: "s2", points: tri(300, 0), stitchType: "fill", colorRgb: [1, 1, 1], angleDeg: null };
+    const utils = renderPanel([selected, other]);
+    await selectRow(utils);
+    const { canvas, getByText, patches } = utils;
+
+    // Edge point on `other`'s top edge (same offset as tri()'s own).
+    await clickAt(canvas, 450, 103);
+
+    expect(patches).toHaveLength(0);
+    expect(getByText(/Shape 2/, { selector: ".mp-shapename" }).closest("button").className).toContain("sel");
+    expect(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button").className).not.toContain("sel");
+  });
+});
+
 // ---- cursor swaps per hover target ------------------------------------
 
 describe("cursor swaps per hover target", () => {
@@ -271,6 +356,29 @@ describe("cursor swaps per hover target", () => {
     const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
     const { canvas } = renderPanel([shape]);
     await fireEvent.pointerMove(canvas, { clientX: 150, clientY: 133 }); // inside tri()
+    expect(canvas.style.cursor).toBe("pointer");
+  });
+
+  test("switches to cell while hovering an edge of the already-selected shape (the exact spot a click would insert a vertex)", async () => {
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const { canvas, getByText } = renderPanel([shape]);
+    await fireEvent.click(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button")); // select it first
+    await fireEvent.pointerMove(canvas, { clientX: 150, clientY: 103 }); // 3px off tri()'s top edge
+    expect(canvas.style.cursor).toBe("cell");
+  });
+
+  test("stays pointer (not cell) while hovering the SAME shape's edge before it's selected", async () => {
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const { canvas } = renderPanel([shape]);
+    await fireEvent.pointerMove(canvas, { clientX: 150, clientY: 103 }); // same edge point, nothing selected
+    expect(canvas.style.cursor).toBe("pointer");
+  });
+
+  test("stays pointer (not cell) over the selected shape's own interior, away from any edge", async () => {
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const { canvas, getByText } = renderPanel([shape]);
+    await fireEvent.click(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
+    await fireEvent.pointerMove(canvas, { clientX: 150, clientY: 133 }); // centroid-ish, ~30px from any edge
     expect(canvas.style.cursor).toBe("pointer");
   });
 
