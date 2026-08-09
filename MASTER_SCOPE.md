@@ -11,7 +11,12 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-09 — manual-digitizing Trace feature shipped, real
+**Last updated:** 2026-08-09 — UI icon system foundation landed (raw
+Unicode/emoji icon replacement, `Icon.svelte` + a conservative theme.css
+elevation pass; two files wired, 11 more queued for follow-up PRs). See
+area 3 below.
+
+**Previously (2026-08-09):** manual-digitizing Trace feature shipped, real
 user UX feedback fixed (shape editor + step nav), appliqué zigzag cover
 bugfix, legacy standalone tool removed. See areas 1 and 3 below.
 
@@ -3267,6 +3272,27 @@ real corner overshoot (12.5px on the square, 10px on the L-shape) that
 exists on rounded sections but rarely triggers at production's default
 tolerances and doesn't clear the bar for a hybrid given the schema
 constraints. Verdict: no change made.
+
+**UI icon system foundation landed, 2026-08-09** (`app/src/ui/Icon.svelte`,
+branch `ui-icon-system-foundation`) — a live Playwright audit of the running
+app found 13 component files rendering UI affordances (undo/redo, hint
+lightbulb/dismiss, canvas-toolbar zoom/fit/snap/jumps/trims/play, dropdown
+chevrons, etc.) as raw Unicode/emoji characters instead of real icons —
+inconsistent across OS/browser font stacks, and auto-snap literally showed
+as the 🧲 emoji. This PR is the narrow foundation only: one reusable
+`Icon.svelte` (24x24 inline SVG, 1.75px stroke, `currentColor`, no new
+npm dependency) hand-drawn for 15 icons covering the full inventory found,
+wired into the two highest-leverage shared spots (`App.svelte`'s topbar
+undo/redo, `Hint.svelte`'s lightbulb + dismiss — the latter fixes every
+hint banner app-wide at once since every hint routes through it). Also a
+conservative elevation/shadow pass in `theme.css` (topbar, `.tile`,
+`.tcard`, `.elrow`, `.drawer-row` gained `--shadow-1`, reusing existing
+tokens — no new palette). The other 11 files the audit found are
+deliberately untouched, left for follow-up PRs that depend on this one
+merging first (ThreadPicker, ContentStep, DesignPanel, DigitizePanel,
+EmbroideryField, FontBrowser, FontCredits, ImagePanel, ManualPanel,
+ProjectsDrawer, StepNav). Doesn't move this area's Status/Confidence
+verdict — visual/consistency polish, not a capability change.
 
 **Fabric-preset accuracy: pending sew-out** — kept as an explicit separate
 note, not blended into the wizard's own score. README says it outright:
