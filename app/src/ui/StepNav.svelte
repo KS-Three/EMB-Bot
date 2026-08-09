@@ -46,7 +46,16 @@
           disabled={!clickable[i]}
           aria-current={s === step ? "step" : undefined}
           on:click={() => goto(s, i)}
-        >{LABELS[s] ?? s}</button>
+        >
+          <span class="stepnav-badge" class:done={i < currentIndex}>
+            {#if i < currentIndex}
+              <span aria-hidden="true">✓</span>
+            {:else}
+              {i + 1}
+            {/if}
+          </span>
+          <span class="stepnav-label">{LABELS[s] ?? s}</span>
+        </button>
       </li>
     {/each}
   </ol>

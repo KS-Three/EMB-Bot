@@ -518,7 +518,17 @@ body {
 @media (max-width: 820px) {
   .studio { grid-template-columns: 1fr; height: auto; }
   .field { order: -1; min-height: 46vh; }
-  .panel { border-right: none; border-top: 1px solid var(--border); }
+  /* .panel used to fall back to its implicit auto height here (inherited
+     from .studio's own height:auto above), which silently broke two things
+     that depend on .panel having a BOUNDED height: .panel-body's internal
+     scroll (flex:1; min-height:0; overflow-y:auto) had nothing to clip
+     against and just grew to fit all content, and StepNav (a flex child
+     pinned to the bottom of .panel) stopped being pinned since the column
+     was no longer taller than its content. Giving .panel its own explicit
+     height restores both. 54vh is chosen to roughly complement .field's own
+     46vh min-height above (same unit, same media query) rather than
+     inventing an unrelated budget. */
+  .panel { border-right: none; border-top: 1px solid var(--border); height: 54vh; }
 }
 
 /* Garment / font tiles */
@@ -655,6 +665,12 @@ input.fabriccustom[type="color"] {
   flex-direction: column;
   gap: var(--space-2);
   margin-bottom: var(--space-4);
+  /* Cap how much vertical space the element list can claim before the
+     selected element's own editor -- without this the list grows
+     unbounded and pushes large editors below the fold. */
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: var(--space-1);
 }
 
 .elrow {
@@ -1402,30 +1418,91 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .stepnav-step {
   width: 100%;
-  padding: var(--space-1) var(--space-1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-1);
   min-height: 0;
-  border: none;
+  border: 2px solid transparent;
   border-radius: var(--radius-s);
   background: transparent;
   color: var(--muted);
   font-size: var(--fs-xs);
   font-weight: 600;
   text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   cursor: pointer;
 }
 
-.stepnav-step:hover:not(:disabled) { color: var(--accent); }
-.stepnav-step:disabled { color: var(--border); cursor: not-allowed; opacity: 1; }
-.stepnav-step.active { color: var(--accent); }
+.stepnav-label {
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
+/* Progress badge -- small numbered circle per step, checkmark once passed.
+   Chosen over a connecting progress-line: a 4-item flex row in this
+   ~320-400px sidebar footer makes cross-element line alignment fragile,
+   while a self-contained per-step badge has no shared geometry to keep in
+   sync. The checkmark glyph itself is aria-hidden (see StepNav.svelte) so
+   screen readers don't read it as literal text -- the button's own label
+   stays the accessible name. */
+.stepnav-badge {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.stepnav-badge.done,
+.stepnav-step.active .stepnav-badge {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* Active vs. hover, made genuinely distinct (previously both states just set
+   `color: var(--accent)`, so a hovered step and the actual current step were
+   visually identical). Active mirrors `.elrow.sel`'s established
+   selected-row pattern (tint background + tint-border border); hover gets
+   its own distinct neutral (the app's base-ground token) so resting, hover,
+   and active are three clearly different states. `:not(.active)` keeps
+   hovering the current step from being repainted by the (higher-specificity)
+   hover rule. */
+.stepnav-step:hover:not(:disabled):not(.active) { background: var(--bg); color: var(--ink); }
+
+/* Disabled text swapped from --border (near-invisible against the panel
+   background) to --muted at reduced opacity -- the same combination
+   `.undo-btn:disabled` already uses elsewhere in this file -- so a disabled
+   step still reads as "present but grayed out" instead of vanishing. */
+.stepnav-step:disabled { color: var(--muted); opacity: 0.45; cursor: not-allowed; }
+
+.stepnav-step.active {
+  background: var(--tint);
+  border-color: var(--tint-border);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Visual break between the step tabs and Back/Next -- previously nothing
+   separated the two rows. Button sizing below is untouched. */
 .stepnav-controls {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
 }
 
 .stepnav-controls button {

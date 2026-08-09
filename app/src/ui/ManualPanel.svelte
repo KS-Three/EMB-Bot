@@ -6,7 +6,7 @@
   import {
     CANVAS_W, CANVAS_H, MAX_SHAPE_POINTS,
     isValidShape, isNearStart, isDuplicateOfLast, shapeIssues, flattenShape,
-    curveControlOrNull, hitTestSegmentMidpoint, curveHandlePoint,
+    curveControlOrNull, hitTestSegmentMidpoint, curveHandlePoint, pointInShape,
   } from "../lib/manualShapes.js";
 
   // Manual digitizing mode (MVP slice): draw straight- or curved-line
@@ -153,8 +153,14 @@
   // touched: `shapes` is spread first, unchanged, with the new ones appended
   // after.
   function onTraced(e) {
-    patch({ shapes: [...shapes, ...e.detail.shapes] });
+    const newShapes = e.detail.shapes;
+    patch({ shapes: [...shapes, ...newShapes] });
     traceOpen = false;
+    // Anchor the batch add with an immediate selection (same mechanism the
+    // sidebar list uses) — combined with de-emphasis, this gives a
+    // multi-shape trace-add a visual focal point instead of N new shapes all
+    // rendering at equal, unselected weight.
+    if (newShapes.length) selectShape(newShapes[0].id);
   }
 
   function flashCapHint() {
@@ -176,6 +182,17 @@
       return;
     }
     const pt = canvasPointFromEvent(e);
+    // A click on empty canvas while nothing's mid-draft selects whatever
+    // finished shape is under it, instead of starting a new draft on top of
+    // it — gated on draft.length === 0 so an in-progress hand-drawn shape is
+    // never preempted by a select-click partway through being drawn.
+    if (draft.length === 0) {
+      const hitId = hitTestShapeAt(pt.x, pt.y);
+      if (hitId) {
+        selectShape(hitId);
+        return;
+      }
+    }
     if (draft.length >= 2 && isNearStart(draft, pt.x, pt.y)) {
       finishShape();
       return;
@@ -271,6 +288,20 @@
     return best;
   }
 
+  // Which finished shape (if any) sits under (x, y) — hit-tested back-to-
+  // front (last-drawn/topmost shape checked first) so an overlap resolves
+  // the same way the canvas visually stacks shapes. Feeds both
+  // canvas-click-to-select (onCanvasClick) and the hover cursor
+  // (onCanvasPointerMove) off the exact same test, so the cursor never
+  // promises a click will select something it actually won't.
+  function hitTestShapeAt(x, y) {
+    for (let i = shapes.length - 1; i >= 0; i--) {
+      const s = shapes[i];
+      if (pointInShape(flattenShape(s.points, s.curves, true), x, y)) return s.id;
+    }
+    return null;
+  }
+
   function capturePointer(e) {
     try {
       canvasEl.setPointerCapture(e.pointerId);
@@ -353,11 +384,55 @@
     if (dragIndex != null) {
       editPoints[dragIndex] = canvasPointFromEvent(e);
       editPoints = editPoints;
+      canvasEl.style.cursor = "grabbing";
       return;
     }
     if (curveDragSeg != null) {
       curveDragPoint = canvasPointFromEvent(e);
+      canvasEl.style.cursor = "copy";
+      return;
     }
+    updateHoverCursor(canvasPointFromEvent(e));
+  }
+
+  // Canvas has no per-element CSS :hover the way DigitizePanel's SVG editor
+  // does (.dgp-editor-vertex{cursor:grab}, .dgp-editor-mid{cursor:copy}) — a
+  // single <canvas> here stands in for every one of those elements, so the
+  // cursor has to be set from JS on every pointer move instead. Same cursor
+  // vocabulary, checked in priority order (only one can apply at a time):
+  //   grab      — hovering a draggable vertex (vertex-edit mode).
+  //   copy      — hovering a segment's curve handle (draft or vertex-edit).
+  //   pointer   — hovering a finished shape's body, selectable by a click
+  //               (see onCanvasClick's own draft.length === 0 gate — the
+  //               cursor only offers "pointer" when a click would actually
+  //               select something).
+  //   crosshair — the fallback (today's implicit default, made explicit so
+  //               every case funnels through this one function — otherwise
+  //               a cursor set to one of the above by a previous pointermove
+  //               would stick after moving off that target, since an inline
+  //               style always wins over the CSS default).
+  function updateHoverCursor(pt) {
+    if (editingId) {
+      if (hitTestVertex(editPoints, pt.x, pt.y) !== -1) {
+        canvasEl.style.cursor = "grab";
+        return;
+      }
+      if (hitTestSegmentMidpoint(editPoints, editCurves, pt.x, pt.y, true) !== -1) {
+        canvasEl.style.cursor = "copy";
+        return;
+      }
+      canvasEl.style.cursor = "crosshair";
+      return;
+    }
+    if (draft.length >= 2 && hitTestSegmentMidpoint(draft, draftCurves, pt.x, pt.y, false) !== -1) {
+      canvasEl.style.cursor = "copy";
+      return;
+    }
+    if (draft.length === 0 && hitTestShapeAt(pt.x, pt.y)) {
+      canvasEl.style.cursor = "pointer";
+      return;
+    }
+    canvasEl.style.cursor = "crosshair";
   }
 
   // "Drag, then patch on release": a moved vertex or a bowed segment only
@@ -542,12 +617,20 @@
       if (!editing && !isValidShape(flattenShape(pts, liveCrv, true))) continue;
       const [r, g, b] = s.colorRgb || [20, 20, 20];
       const isSel = s.id === selectedId;
+      // Once something is selected, every OTHER shape de-emphasizes to the
+      // same fill-opacity/stroke-width vocabulary DigitizePanel's boundary
+      // editor uses (.dgp-editor-poly's fill-opacity: 0.18) so the selected
+      // shape reads as the obvious focal point instead of every shape
+      // competing at equal visual weight. selectedId is falsy with nothing
+      // selected, so dimmed is always false then — that path stays exactly
+      // what it was before de-emphasis existed.
+      const dimmed = !!selectedId && !isSel;
       const invalid = editing && !editValid;
       drawShape(
         ctx, pts, liveCrv, true,
-        invalid ? "rgba(192,57,43,0.25)" : `rgba(${r},${g},${b},0.55)`,
+        invalid ? "rgba(192,57,43,0.25)" : `rgba(${r},${g},${b},${dimmed ? 0.18 : 0.55})`,
         invalid ? "#c0392b" : (isSel ? "#4f46e5" : `rgb(${r},${g},${b})`),
-        isSel || editing ? 3 : 1.5
+        isSel || editing ? 3 : (dimmed ? 1 : 1.5)
       );
       if (editing) {
         drawCurveHandles(ctx, pts, liveCrv, true, dragTarget === "edit" ? dragSeg : null);
@@ -562,8 +645,11 @@
           ctx.lineWidth = 2;
           ctx.stroke();
         }
-      } else {
-        // Stitch-type label at the shape's centroid.
+      } else if (!dimmed) {
+        // Stitch-type label at the shape's centroid — dropped entirely (not
+        // just faded) on a dimmed shape, since the sidebar's per-shape list
+        // already shows stitch type per row; keeping it here would just be
+        // redundant clutter on a shape that's already de-emphasized.
         let cx = 0, cy = 0;
         for (const p of pts) { cx += p.x; cy += p.y; }
         cx /= pts.length; cy /= pts.length;
