@@ -122,8 +122,12 @@ export function buildDigitizeConfig(element, project) {
 // nothing here and never reaches the wire. "streamline" (contract v1.6,
 // the evenly-spaced thread-paint tier, previously reachable only via the
 // design-wide fill_technique="streamline" preset) joined the same way,
-// alongside the dropdown's Streamline option.
-const SHAPE_TIERS = new Set(["satin", "fill", "run", "sketch", "streamline"]);
+// alongside the dropdown's Streamline option. "crosshatch" (the two-pass
+// angled tatami fill, digitizer_core/stage6_fill.py's
+// _crosshatch_fill_paths) joined the same way again, alongside the
+// dropdown's Cross-hatch option — same dual reach as streamline (design-wide
+// fill_technique or per-shape tier), but geometric, not tonal.
+const SHAPE_TIERS = new Set(["satin", "fill", "run", "sketch", "streamline", "crosshatch"]);
 const SHAPE_BORDERS = new Set(["off", "auto", "bean"]);
 // fabrics.py's own vocabulary, verbatim. Unlike `tier`/`border`, this set has
 // no "auto" member of its own — the absence of the key IS auto (inherit the

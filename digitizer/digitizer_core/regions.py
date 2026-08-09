@@ -174,7 +174,14 @@ def match_shape_ids(
 # pipeline) only. See stage7_sequence.stitch_one's streamline branch for
 # the direction-field reasoning (raster structure tensor with a house-angle
 # fallback, not a shape-geometry-derived field).
-_TIER_VALUES = {"auto", "satin", "fill", "run", "sketch", "streamline"}
+# "crosshatch" forces the two-pass angled tatami fill (stage6_fill.
+# _crosshatch_fill_paths) on one shape — the per-shape form of a technique
+# also reachable design-wide via fill_technique, mirroring "streamline"'s
+# same dual reach. Unlike "streamline"/"sketch" it needs no source pixels
+# (purely geometric), so it carries no raster-plumbing opt-in cost and
+# falls back to plain tatami only when the shape itself is too thin, never
+# for lack of pixels. See stage7_sequence.stitch_one's crosshatch branch.
+_TIER_VALUES = {"auto", "satin", "fill", "run", "sketch", "streamline", "crosshatch"}
 _BORDER_VALUES = {"off", "auto", "bean"}
 # fabrics.py's own vocabulary, verbatim (mirrored in digitizer_service.app's
 # copy, which 400s the wire before this ever raises).

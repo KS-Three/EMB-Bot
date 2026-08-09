@@ -1535,6 +1535,7 @@
                         <option value="run">Run</option>
                         <option value="sketch">Sketch</option>
                         <option value="streamline">Streamline</option>
+                        <option value="crosshatch">Cross-hatch</option>
                       </select>
                       {#if tier === "fill"}
                         <select

@@ -59,6 +59,24 @@ FILL_STAGGERS = 4
 # such shapes there, and only what satin also cannot take gets warned.
 MIN_FILL_WIDTH_MM = 1.2
 
+# --- Cross-hatch fill (two angled tatami passes) ----------------------------
+# The whole technique is two ordinary `_fill_paths` calls at angle and
+# angle+90, concatenated — the exact trick `_underlay_paths`'s
+# "double_lattice" style already relies on for its own +-45deg underlay
+# passes, just aimed at the visible fill instead of underlay. Nothing new to
+# tune except this one knob.
+
+# Multiplier on `row_mm` applied to EACH individual pass, so two overlapping
+# passes land at a combined stitch density in the same ballpark as one normal
+# single-pass fill instead of roughly doubling it. 2.0 (each pass spaced
+# twice as far apart as ordinary tatami) is a starting, reasoned value, not
+# sew-out-validated — same caveat as every other tuning constant in this
+# file. Lower-stakes than the density constants above already flagged
+# pending sew-out, though: cross-hatch ships OPT-IN per-shape or per-design
+# only, never a default, so nobody's existing output moves if this number
+# turns out to need adjusting later.
+CROSSHATCH_ROW_SCALE_FACTOR = 2.0
+
 # --- Contour fill (rings instead of rows) -----------------------------------
 # The offset-ring tier: uniform inward offsets of the outline, sewn inner to
 # outer. Numbers are the pins from docs/fill-techniques-2026-08-01.md §1.3;

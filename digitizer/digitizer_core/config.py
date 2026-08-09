@@ -351,6 +351,31 @@ class PipelineConfig:
     #     outside pre-fix) and is the regression pin; the cited 0.45 mm neck
     #     could not be reconstructed from its description — four neck
     #     geometries tried, none escapes even pre-fix.
+    #
+    # "crosshatch" – two overlapping tatami passes on the same shape, one at
+    #             the shape's own fill angle and one at angle+90
+    #             (stage6_fill._crosshatch_fill_paths), each pass
+    #             individually spaced `machine.CROSSHATCH_ROW_SCALE_FACTOR`
+    #             times wider than a normal single-pass row so the two passes
+    #             TOGETHER land at a combined density near a single-pass
+    #             fill's, not roughly double it. Reuses the exact mechanism
+    #             `_underlay_paths`'s "double_lattice" style already relies
+    #             on for its own +-45deg underlay passes — travel between the
+    #             two passes is stitch_shape's ordinary emit() bridging,
+    #             nothing new. Falls back to plain tatami on any shape it
+    #             produces nothing for, the same never-drop-artwork contract
+    #             contour has. Also available per-shape, on ANY design
+    #             (`fill_technique` can stay "tatami" for the rest of the
+    #             shapes), as the review screen's `tier: "crosshatch"`
+    #             override — mirrors `tier: "streamline"`'s per-shape form
+    #             above (see the shape_overrides block). Unlike every tonal
+    #             tier above, crosshatch needs no source pixels: it is a
+    #             purely geometric variant of the plain tatami fill, so its
+    #             per-shape override works on any design, photo-classified or
+    #             not, with no raster-plumbing opt-in cost. Lower-stakes than
+    #             "contour" too: it ships OPT-IN per-shape or per-design
+    #             only, never a default, so turning it on cannot move any
+    #             existing golden.
     fill_technique: str = "tatami"
     # streamline's own sub-mode — irrelevant (and unread) unless
     # fill_technique == "streamline".

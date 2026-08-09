@@ -11,6 +11,12 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
+**Last updated:** 2026-08-09 — cross-hatch fill added as a new opt-in fill
+technique (Python digitizer pipeline), the first of a planned small family
+of new named fill patterns. See area 1 below.
+
+Prior update below, still 2026-08-09:
+
 **Last updated:** 2026-08-09 — manual-digitizing Trace feature shipped, real
 user UX feedback fixed (shape editor + step nav), appliqué zigzag cover
 bugfix, legacy standalone tool removed. See areas 1 and 3 below.
@@ -1954,6 +1960,63 @@ untouched byte-for-byte. Studio `app` vitest suite: 413/413 real tests
 green (2 suite-load failures traced to this session's own ad-hoc
 node_modules symlink, not a code issue — independently confirmed passing
 23/23 against a real, non-symlinked `node_modules`).
+
+**Cross-hatch fill added, 2026-08-09** (branch `crosshatch-fill-pattern`) —
+the first of a planned small family of new named fill patterns for flat/
+spot-color art, picked as the lowest-risk starting point because the
+codebase already does the core trick: `stage6_fill.py`'s `double_lattice`
+underlay style has always called `_fill_paths` twice at +-45deg and
+concatenated the results for its own 3-pass underlay. The new
+`_crosshatch_fill_paths` does the same thing to the VISIBLE fill instead —
+one tatami pass at the shape's fill angle, one at angle+90, each pass
+individually spaced `machine.CROSSHATCH_ROW_SCALE_FACTOR` (2.0, a starting
+reasoned value, un-sew-out-gated but lower-stakes than the pending-sew-out
+density constants since this ships opt-in only) times wider than a normal
+single pass, so the two passes together land near a single pass's stitch
+density instead of roughly doubling it. No new travel-planning logic:
+`stitch_shape`'s existing `emit()` closure bridges between the two passes
+the same generic way it already bridges between any list of paths (proven
+by a dedicated test asserting exactly one travel run appears between pass 1
+and pass 2, the same mechanism `double_lattice` has always relied on for
+its own multi-pass underlay).
+
+Wired in exactly like `tier: "streamline"`'s per-shape precedent (verified
+against the current code, not assumed): both a design-wide
+`fill_technique == "crosshatch"` value and a per-shape
+`shape_overrides[sid].tier == "crosshatch"` override, reaching the same
+`stitch_shape` call stage 7's plain-tatami fallback already makes, just
+with `technique="crosshatch"`. Positioned in `stitch_one`'s elif chain
+alongside sketch/streamline (ahead of scanline/meander/gradient/contour) so
+a forced per-shape tier wins the same precedence fight those two already
+do — but unlike them, crosshatch needs no source pixels (it's geometric,
+not tonal), so it carries none of their raster-plumbing opt-in cost, proven
+by a dedicated test. All three closed-set mirrors of the tier vocabulary
+(`digitizer_core/regions.py`'s `_TIER_VALUES`, `digitizer_service/app.py`'s
+own copy, and the Studio's `app/src/lib/digitizer.js` `SHAPE_TIERS`) grew
+the value, plus the Layers-panel tier `<select>` in `DigitizePanel.svelte`
+gained a Cross-hatch option — the same 5-file pattern the streamline entry
+above documents.
+
+Strictly additive: every existing `fill_technique` value's output is
+pinned byte-identical (`test_crosshatch.py::
+test_the_crosshatch_flag_off_changes_nothing`, plus the untouched golden
+suites — `test_flat_lane_byte_identical.py`, `test_pushcomp.py`,
+`test_contour.py`, `test_stage6_streamline.py`, `test_stage6_sketch.py`,
+`test_shape_overrides.py`, `test_service.py` — all re-run green, 182+119
+tests, no changes needed to any of them). 13 new tests added (4 in
+`tests/test_fill.py` covering `_crosshatch_fill_paths` directly — two
+angularly-distinct passes measured from emitted geometry, per-pass spacing
+matching `row_mm * CROSSHATCH_ROW_SCALE_FACTOR`, the pass-2-chains-off-
+pass-1 handoff, and degrading sensibly on a too-thin shape; 9 in the new
+`tests/test_crosshatch.py` covering both wiring paths end-to-end on the
+real `logo_whitebg.png` fixture and the per-shape override's isolation from
+its neighbour, plus the two closed-set validation layers). Full digitizer
+suite: 942 -> 955 passed, 3 skipped, 0 failed (was 654/658 as of this
+doc's last full-suite count on 2026-08-04; the gap is five days of
+unrelated growth, re-measured fresh this pass, not this change's doing).
+Studio `app` vitest suite: 593 -> 594 passed, 0 failed (the one new
+`digitizer.spec.js` case mirroring its existing streamline/sketch
+`SHAPE_TIERS` regression test).
 
 Row 13 (chart-restricted weighted k-medoids palette selection,
 build-order step 7) landed after that pass on the `palette-kmedoids`
