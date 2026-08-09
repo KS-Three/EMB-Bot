@@ -138,6 +138,27 @@ export function isNearStart(points, x, y) {
   return Math.hypot(x - p0.x, y - p0.y) <= CLOSE_RADIUS_PX;
 }
 
+// ---- Canvas hit-testing (shape selection) ---------------------------------
+
+// Even-odd ray-casting point-in-polygon test — same algorithm as
+// digitize.js's own pointInPoly (there used to group glyph contours into
+// shapes with holes), adapted from [x, y] tuples to this module's {x, y}
+// point objects. Operates on a shape's FLATTENED geometry (flattenShape's
+// output, curves already baked to points) — a caller hit-testing a curved
+// shape's body must flatten first, same as shapeIssues/isValidShape already
+// require. ManualPanel uses this back-to-front over element.shapes (last
+// element checked first) for canvas-click-to-select and hover-cursor
+// feedback, so the topmost/last-drawn shape wins on overlap.
+export function pointInShape(points, x, y) {
+  const pts = points || [];
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const xi = pts[i].x, yi = pts[i].y, xj = pts[j].x, yj = pts[j].y;
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
 // ---- Curved segments ------------------------------------------------------
 // A shape's `points` stay a plain straight-line anchor ring, exactly as
 // before — nothing downstream (shapeIssues/isValidShape, the Python
