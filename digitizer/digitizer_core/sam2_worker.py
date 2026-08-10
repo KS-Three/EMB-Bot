@@ -29,9 +29,15 @@ Usage:
     natural-scene accuracy).
   * <points_per_side> is SAM2's own prompt-grid density.
   * <min_mask_region_area> is a PIXEL area floor handed straight to SAM2's
-    `min_mask_region_area`; the caller derives it from the same
-    `(cfg.min_detail_mm * px_per_mm) ** 2` formula every other
-    "too small to sew" floor in this codebase uses.
+    `min_mask_region_area` — pixels in <input_image> AS GIVEN to this
+    script, which the caller may have already downscaled
+    (`photo_segment_sam2_max_side_px`). There is no full-resolution image
+    anywhere in this process, so this script applies the floor exactly as
+    handed to it with no further scaling. The caller derives it from the
+    same `(cfg.min_detail_mm * px_per_mm) ** 2` formula every other "too
+    small to sew" floor in this codebase uses, corrected by the downscale
+    ratio when one was applied — see `stage2_sam2_segment.sam2_segment_seam`
+    for that correction.
 
 Output: a compressed .npz at <output_npz> with
   * labels           (H, W) int32 — per-pixel label id, -1 where no SAM2

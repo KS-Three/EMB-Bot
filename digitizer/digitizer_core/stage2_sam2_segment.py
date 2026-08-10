@@ -193,8 +193,23 @@ def sam2_segment_seam(
     # stage1_photo_prep._clean_background_mask) — handed to SAM2 so it drops
     # sub-sewable masks itself instead of shipping thousands of them back
     # over the pipe. Whatever survives still faces the real floor below.
-    min_mask_region_area = int((cfg.min_detail_mm * p.px_per_mm) ** 2)
+    #
+    # MUST be expressed in `small`'s own pixels, not the full-resolution
+    # image's: `small` (built first, just below) is the only image the
+    # worker ever sees, and `SAM2AutomaticMaskGenerator.min_mask_region_area`
+    # is applied against whatever image it was actually given (see
+    # `sam2_worker.py`'s own docstring). `p.px_per_mm` describes the
+    # full-resolution raster, so the raw `(cfg.min_detail_mm * p.px_per_mm)
+    # ** 2` figure is too large by `1 / scale ** 2` whenever downscaling
+    # actually happens — at the default 1024px cap, a 2048px source over-
+    # filters by 4x, a 4000px source by ~15x, silently deleting sewable
+    # detail on essentially every real (non-tiny) input. `scale == 1.0`
+    # when `small` is untouched (`_downscale_for_sam2`'s no-op branch), so
+    # this reduces to the original formula exactly whenever there is
+    # nothing to correct for.
     small = _downscale_for_sam2(p.rgb, cfg.photo_segment_sam2_max_side_px)
+    scale = max(small.shape[:2]) / float(max(h, w))
+    min_mask_region_area = int((cfg.min_detail_mm * p.px_per_mm * scale) ** 2)
 
     with tempfile.TemporaryDirectory(prefix="sam2_seam_") as tmp:
         in_path = Path(tmp) / "in.png"
@@ -237,10 +252,18 @@ def sam2_segment_seam(
         except Exception as exc:  # noqa: BLE001 -- any unreadable output degrades
             return None, f"SAM2 worker reported success but wrote no readable output: {exc}"
 
-    if raw_labels.shape[:2] != small.shape[:2]:
+    # `ndim != 2` catches a malformed (e.g. (H, W, 3)) array that a
+    # `shape[:2]`-only comparison would let through — such an array still
+    # has the right leading two dims, so it would otherwise survive this
+    # guard and `_upsample_labels` (which also only reads `shape[:2]`) and
+    # only fail deep inside `_regions_from_label_map`'s `labels == lbl`
+    # broadcast against the 2-D `base_valid`, OUTSIDE every try block here —
+    # a real hole in the never-raises contract for a worker that writes
+    # syntactically-valid-but-wrong-shaped output.
+    if raw_labels.ndim != 2 or raw_labels.shape != small.shape[:2]:
         return None, (
-            f"SAM2 worker returned a {raw_labels.shape[:2]} label map for a "
-            f"{small.shape[:2]} image"
+            f"SAM2 worker returned a {raw_labels.shape} label map "
+            f"(expected a single 2-D {small.shape[:2]} array)"
         )
 
     labels = _upsample_labels(raw_labels, (h, w))
@@ -248,6 +271,17 @@ def sam2_segment_seam(
     merged_count = len(set(np.unique(labels[base_valid]).tolist()))
     kept, floor_warnings = resolve_small_regions(regions, cfg, p.px_per_mm)
     if not kept:
+        if not regions:
+            # `regions` was already empty BEFORE `resolve_small_regions` ever
+            # ran — every SAM2-labeled pixel (including -1) fell outside
+            # `base_valid` (background/enclosed). The min-detail floor had
+            # nothing to do with this outcome, so the reason must not blame
+            # it — see the sibling branch below for the case it actually did.
+            return None, (
+                f"SAM2 produced no usable regions ({raw_mask_count} raw "
+                "masks, none of whose pixels intersected the design's "
+                "foreground)"
+            )
         return None, (
             f"SAM2 produced no usable regions ({raw_mask_count} raw masks, "
             f"{len(regions)} components, all below the "
