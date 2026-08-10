@@ -38,6 +38,12 @@ describe("known icon names", () => {
       "undo", "redo", "lightbulb", "close", "minus", "plus", "expand",
       "magnet", "jump", "scissors", "play", "pause", "chevron", "check",
       "warning",
+      // Added by the follow-up icon-replacement fan-out (PRs #112/#114),
+      // after this list's original 15 -- each PR added its own new icons
+      // to Icon.svelte's registry without touching this shared spec file,
+      // to avoid guaranteed merge conflicts between parallel PRs. This is
+      // the reconciliation pass.
+      "arrowUp", "arrowDown", "exclude", "revert", "edit", "reset",
     ];
     for (const name of names) {
       const svg = svgOf(render(Icon, { props: { name } }));
