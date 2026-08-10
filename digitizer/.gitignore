@@ -1,5 +1,6 @@
 .venv/
 rembg_isolated/venv/
+sam2_isolated/venv/
 __pycache__/
 *.pyc
 *.egg-info/
