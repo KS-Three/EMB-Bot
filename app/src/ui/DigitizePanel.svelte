@@ -1536,6 +1536,9 @@
                         <option value="sketch">Sketch</option>
                         <option value="streamline">Streamline</option>
                         <option value="crosshatch">Cross-hatch</option>
+                        <option value="wave">Wave</option>
+                        <option value="chevron">Chevron</option>
+                        <option value="brick">Brick</option>
                       </select>
                       {#if tier === "fill"}
                         <select

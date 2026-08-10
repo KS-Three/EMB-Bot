@@ -87,7 +87,11 @@ def _require_token(supplied: str | None) -> None:
 # bad value is still a 400 at submit.
 _OVERRIDE_KEYS = {"thread_index", "fill_angle_deg", "tier", "border", "layer",
                   "sew_order", "stitched", "underlay_style", "boundary_override"}
-_TIER_VALUES = {"auto", "satin", "fill", "run", "sketch", "streamline", "crosshatch"}
+# Kept in lockstep with digitizer_core.regions._TIER_VALUES — see that
+# copy's own comment for what "wave"/"chevron"/"brick" (alongside
+# "crosshatch") each do.
+_TIER_VALUES = {"auto", "satin", "fill", "run", "sketch", "streamline", "crosshatch",
+                "wave", "chevron", "brick"}
 _BORDER_VALUES = {"off", "auto", "bean"}
 # fabrics.py's own vocabulary, verbatim — the one place that spells out the
 # closed set stage6_fill._underlay_paths actually interprets. Anything

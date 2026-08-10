@@ -726,6 +726,19 @@ def sequence(
     # here; the per-shape tier == "crosshatch" override is handled inside
     # stitch_one.
     crosshatch = technique == "crosshatch"
+    # Wave, chevron and brick: three more purely-geometric fill variants,
+    # same no-source-pixels-needed / design-wide-or-per-shape / never-drop-
+    # artwork contract as crosshatch immediately above. Unlike crosshatch —
+    # a whole second angled tatami pass — each of these three only changes
+    # how ONE row's own interior points get placed
+    # (stage6_fill._wave_row_points / _chevron_row_points /
+    # _brick_row_points, dispatched inside _fill_paths itself), so they need
+    # no new travel-planning logic of their own either. Design-wide only
+    # here; the per-shape tier == "wave"/"chevron"/"brick" override is
+    # handled inside stitch_one, same slot as tier == "crosshatch".
+    wave = technique == "wave"
+    chevron = technique == "chevron"
+    brick = technique == "brick"
 
     thin = empty = jumps = as_run = 0
     bordered = lightened = border_narrow = 0
@@ -933,6 +946,92 @@ def sequence(
                     trim_at_mm=trim_at,
                     start_near=entry,
                     technique="crosshatch",
+                )
+                need_tatami = report["empty"]
+            elif wave or tier == "wave":
+                # The wave fill tier: every interior row point rides a
+                # subtle perpendicular sine wave, machine.WAVE_AMPLITUDE_MM
+                # * sin(2*pi*x/machine.WAVE_LENGTH_MM + phase), phase
+                # alternating by row parity so neighbouring rows' waves move
+                # opposite ways instead of stacking into a corrugated-
+                # cardboard look (stage6_fill._wave_row_points). Both row
+                # ends still land exactly on the boundary — the wobble never
+                # touches the shape's own edge or silhouette. Same slot,
+                # same no-source-pixels-needed reasoning (purely geometric,
+                # not tonal) and same never-drop-artwork fallback contract
+                # as the crosshatch branch immediately above; angle
+                # precedence is identical too, though unlike crosshatch this
+                # technique does not need its angle any earlier than the
+                # plain-tatami call below would — it is duplicated here only
+                # to keep all four purely-geometric branches (crosshatch,
+                # wave, chevron, brick) reading the same way.
+                shape_angle = p.region.meta.get("fill_angle_deg")
+                runs, report = stitch_shape(
+                    p.polygon,
+                    p.shape_id,
+                    angle_deg=(float(shape_angle)
+                               if shape_angle is not None
+                               else cfg.fill_angle_deg
+                               if cfg.fill_angle_deg is not None
+                               else p.stitch_angle_deg),
+                    row_mm=row_mm,
+                    stitch_mm=stitch_mm,
+                    underlay_style=eff_underlay_style,
+                    trim_at_mm=trim_at,
+                    start_near=entry,
+                    technique="wave",
+                )
+                need_tatami = report["empty"]
+            elif chevron or tier == "chevron":
+                # The chevron fill tier: a deliberately simplified, TEXTURAL
+                # herringbone impression at one fill angle, not a full
+                # multi-angle banded herringbone (that would need new
+                # column/travel logic, out of scope for this family of
+                # techniques) — interior row points alternate
+                # +-machine.CHEVRON_AMPLITUDE_MM every stitch
+                # (stage6_fill._chevron_row_points), on the same staggered
+                # grid plain tatami already builds. Same slot/contract as
+                # the wave branch immediately above.
+                shape_angle = p.region.meta.get("fill_angle_deg")
+                runs, report = stitch_shape(
+                    p.polygon,
+                    p.shape_id,
+                    angle_deg=(float(shape_angle)
+                               if shape_angle is not None
+                               else cfg.fill_angle_deg
+                               if cfg.fill_angle_deg is not None
+                               else p.stitch_angle_deg),
+                    row_mm=row_mm,
+                    stitch_mm=stitch_mm,
+                    underlay_style=eff_underlay_style,
+                    trim_at_mm=trim_at,
+                    start_near=entry,
+                    technique="chevron",
+                )
+                need_tatami = report["empty"]
+            elif brick or tier == "brick":
+                # The brick fill tier: a strict, visually obvious 2-phase
+                # "running bond" stagger — even rows' interior grid starts
+                # at phase 0, odd rows at stitch_mm/2
+                # (stage6_fill._brick_row_points) — replacing the ordinary
+                # van-der-Corput anti-moire stagger (_stagger_phase) for
+                # this technique only; every other technique's stagger is
+                # untouched. Same slot/contract as wave and chevron above.
+                shape_angle = p.region.meta.get("fill_angle_deg")
+                runs, report = stitch_shape(
+                    p.polygon,
+                    p.shape_id,
+                    angle_deg=(float(shape_angle)
+                               if shape_angle is not None
+                               else cfg.fill_angle_deg
+                               if cfg.fill_angle_deg is not None
+                               else p.stitch_angle_deg),
+                    row_mm=row_mm,
+                    stitch_mm=stitch_mm,
+                    underlay_style=eff_underlay_style,
+                    trim_at_mm=trim_at,
+                    start_near=entry,
+                    technique="brick",
                 )
                 need_tatami = report["empty"]
             elif scanline and source_pixels is not None:

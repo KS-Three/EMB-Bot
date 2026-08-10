@@ -250,6 +250,33 @@ test("canonicalShapeEdits accepts the crosshatch tier alongside satin/fill/run/s
   });
 });
 
+// "wave"/"chevron"/"brick" (digitizer_core/stage6_fill.py's
+// _wave_row_points / _chevron_row_points / _brick_row_points) joined the
+// same closed set the same way "crosshatch" did, alongside the tier
+// dropdown's Wave/Chevron/Brick options — three more purely-geometric
+// per-shape opt-ins, each changing only how one row's own interior points
+// land rather than adding a new pass. Same regression this file already
+// guards against for every tier above: a value SHAPE_TIERS doesn't
+// recognize canonicalizes to nothing and silently never reaches the wire.
+test("canonicalShapeEdits accepts the wave/chevron/brick tiers alongside crosshatch", async () => {
+  stubStorage({});
+  const { canonicalShapeEdits } = await import("./digitizer.js");
+  const el = digitizedElement({
+    shapeOverrides: {
+      Swv: { tier: "wave" },
+      Sch2: { tier: "chevron" },
+      Sbr: { tier: "brick" },
+    },
+  });
+  expect(canonicalShapeEdits(el)).toEqual({
+    shape_overrides: {
+      Swv: { tier: "wave" },
+      Sch2: { tier: "chevron" },
+      Sbr: { tier: "brick" },
+    },
+  });
+});
+
 // ---- BACKGROUND_ENCLOSED restore (contract v1.1: shapes[].stitched, ------
 // shape_overrides[sid].stitched) --------------------------------------------
 //

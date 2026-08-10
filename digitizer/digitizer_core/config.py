@@ -376,6 +376,35 @@ class PipelineConfig:
     #             "contour" too: it ships OPT-IN per-shape or per-design
     #             only, never a default, so turning it on cannot move any
     #             existing golden.
+    # "wave" – tatami rows with a subtle perpendicular sine wobble on every
+    #             INTERIOR row point (stage6_fill._wave_row_points):
+    #             y + machine.WAVE_AMPLITUDE_MM * sin(2*pi*x /
+    #             machine.WAVE_LENGTH_MM + phase), phase alternating by row
+    #             parity (0 / pi) so neighbouring rows' waves move opposite
+    #             ways instead of stacking into a corrugated-cardboard look.
+    #             Both row ends still land exactly on the boundary — the
+    #             same edge-crispness contract `_row_points` itself
+    #             documents — and the interior grid's own stagger
+    #             (`_stagger_phase`) is untouched, so the wave rides on top
+    #             of it rather than replacing it. Same opt-in / per-shape /
+    #             no-source-pixels / never-drop-artwork contract as
+    #             "crosshatch" immediately above, including the
+    #             `tier: "wave"` per-shape override.
+    # "chevron" – a simplified, TEXTURAL herringbone impression, not a full
+    #             multi-angle banded herringbone (that needs new column/
+    #             travel logic, deliberately out of scope for this family):
+    #             interior row points alternate
+    #             +-machine.CHEVRON_AMPLITUDE_MM every stitch
+    #             (stage6_fill._chevron_row_points), on the same staggered
+    #             grid tatami already builds. Same contract as "wave" above,
+    #             including the `tier: "chevron"` override.
+    # "brick" – swaps `_row_points`' van-der-Corput anti-moire stagger for a
+    #             strict 2-phase "running bond": even rows' interior grid
+    #             starts at phase 0, odd rows at phase `stitch_mm / 2`
+    #             (stage6_fill._brick_row_points). No new machine.py
+    #             constant — the phase IS `stitch_mm / 2`, already a known
+    #             quantity. Same contract as "wave"/"chevron" above,
+    #             including the `tier: "brick"` override.
     fill_technique: str = "tatami"
     # streamline's own sub-mode — irrelevant (and unread) unless
     # fill_technique == "streamline".

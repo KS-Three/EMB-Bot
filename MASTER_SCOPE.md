@@ -2018,6 +2018,86 @@ Studio `app` vitest suite: 593 -> 594 passed, 0 failed (the one new
 `digitizer.spec.js` case mirroring its existing streamline/sketch
 `SHAPE_TIERS` regression test).
 
+**Wave, chevron and brick fills added, 2026-08-10** (branch
+`wave-chevron-brick-fill-patterns`) — three more purely-geometric fill
+variants, the next slice of the family crosshatch opened, batched together
+because all three share one architectural change: `stage6_fill.py` gained
+`_wave_row_points`, `_chevron_row_points` and `_brick_row_points`, each
+built ON `_row_points` (a shared `_row_points_at_phase` helper now carries
+the boundary/`MIN_STITCH_MM`/`TINY_STITCH_MM` handling both `_row_points`
+and `_brick_row_points` need) rather than three parallel reimplementations.
+Unlike crosshatch — a whole second angled tatami pass — none of the three
+needs new travel-planning logic: each only changes how ONE row's own
+interior points are placed, so `_fill_paths` picks the row-point function
+via a new `technique` parameter (`_ROW_POINT_FNS`, unlisted names including
+"tatami" keep `_row_points`, byte-identical) and its column-walking,
+ordering and travel logic is untouched.
+
+- **wave** perturbs every interior point's y by `machine.WAVE_AMPLITUDE_MM`
+  (0.35 mm) `* sin(2*pi*x/machine.WAVE_LENGTH_MM + phase)` (`WAVE_LENGTH_MM`
+  4.0 mm), phase alternating 0/pi by row parity — the simplest rule that
+  puts adjacent rows' waves in opposite motion at any given x, which is what
+  stops the wobble from stacking into a corrugated-cardboard ridge instead
+  of reading as texture.
+- **chevron** alternates every interior point +-`machine.
+  CHEVRON_AMPLITUDE_MM` (0.45 mm), sign flipping every single interior
+  stitch (period two stitches, ~6 mm at the default 3.0 mm stitch length) —
+  a deliberately simplified TEXTURAL herringbone impression at one fill
+  angle, not a full multi-angle banded herringbone (that would need new
+  column/travel logic, out of scope for this family).
+- **brick** swaps the van der Corput anti-moire stagger (`_stagger_phase`)
+  for a strict period-2 "running bond": even rows' interior grid at phase 0,
+  odd rows at `stitch_mm / 2`. No new constant — the phase IS `stitch_mm /
+  2`, already a known quantity.
+
+Both new `machine.py` constants are starting, reasoned values — not
+sew-out-validated, same caveat every tuning constant in that file carries —
+and lower-stakes than the pending-sew-out density constants for the
+identical reason `CROSSHATCH_ROW_SCALE_FACTOR`'s own comment gives: every
+one of these three ships OPT-IN only (per-shape `tier` or per-design
+`fill_technique`), so nobody's existing output moves.
+
+Wired through the identical five-file pattern the crosshatch entry above
+documents (`config.py`'s `fill_technique` docstring, `regions.py`'s
+`_TIER_VALUES`, `digitizer_service/app.py`'s own copy, `app/src/lib/
+digitizer.js`'s `SHAPE_TIERS`, and three new options — Wave/Chevron/Brick —
+in `DigitizePanel.svelte`'s Layers-panel tier dropdown), each positioned in
+`stitch_one`'s elif chain immediately after crosshatch's own branch, same
+precedence slot (ahead of scanline/meander/gradient/contour), same
+no-source-pixels-needed reasoning (purely geometric, not tonal).
+
+Strictly additive: every existing `fill_technique` value's output, crosshatch
+included, is unchanged. Proved three ways — a parametrized `test_the_flag_
+off_changes_nothing` in the new `tests/test_wave_chevron_brick.py`; a clean
+pre-change baseline captured by stashing this branch's diff and re-running
+the suite (955 passed, 3 skipped, 0 failed) against the post-change run
+below; and every golden-bearing file re-run explicitly green with this
+branch's changes applied (`test_fill.py`, `test_crosshatch.py`,
+`test_contour.py`, `test_stage6_streamline.py`, `test_stage6_sketch.py`,
+`test_stage6_scanline.py`, `test_stage6_meander.py`, `test_pushcomp.py`,
+`test_shape_overrides.py`, `test_service.py` — 309 passed together, 0
+failed). 16 new tests in `test_fill.py` (wave's amplitude/phase measured
+both by exact formula match on every emitted interior point and by
+independent peak-spacing measurement over a densely-sampled row, plus the
+opposite-motion adjacent-row claim isolated with `staggers=1`; chevron's
+exact +-amplitude alternation and its every-stitch period; brick's exact
+period-2 phase measured against `_row_points_at_phase` directly, and shown
+to diverge from the van der Corput pattern at row 2 where the two rules
+provably disagree; a `_fill_paths`-level wiring check per technique proving
+row ends stay on the boundary while interior points move) and 22
+parametrized cases in the new `tests/test_wave_chevron_brick.py` (design-
+wide flag reachability and off-changes-nothing, per-shape tier isolation
+compared as coordinate SETS — robust to a sibling shape's own entry point
+shifting for unrelated reasons — no-source-pixels, and both closed-set
+validation layers; mirrors `test_crosshatch.py`'s own structure).
+
+Full digitizer suite: 955 -> 993 passed, 3 skipped, 0 failed (clean
+pre-change baseline captured via `git stash`, not the doc's last recorded
+count, which predates several days of unrelated growth). Studio `app`
+vitest suite: 594 -> 595 passed, 0 failed (one new parametrized
+`digitizer.spec.js` case covering all three tiers at once, mirroring
+crosshatch's own single-case regression test).
+
 Row 13 (chart-restricted weighted k-medoids palette selection,
 build-order step 7) landed after that pass on the `palette-kmedoids`
 branch: `digitizer_core/palette.py` replaces the photo path's per-region
