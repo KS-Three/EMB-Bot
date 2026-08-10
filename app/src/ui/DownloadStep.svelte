@@ -1,7 +1,7 @@
 <script>
   import { onMount, createEventDispatcher } from "svelte";
   import { generateAll } from "../lib/generate.js";
-  import { exportDesign, exportWorksheetPDF, exportPNG } from "../lib/exporters.js";
+  import { exportDesignPreferService, exportWorksheetPDF, exportPNG } from "../lib/exporters.js";
   import { triggerDownload } from "../lib/download.js";
   import { EMB } from "../lib/emb.js";
   import { PALETTE_INDEX, STUDIO_PALETTE, getCachedPalette, loadPalette, nearestInList, loadPreferredPaletteId, savePreferredPaletteId } from "../lib/threads.js";
@@ -127,7 +127,8 @@
   async function dl(fmt) {
     try {
       await ensureFonts(fontKeysOf(project));
-      triggerDownload(exportDesign(buildDesign(), fmt));
+      const out = await exportDesignPreferService(buildDesign(), fmt, { label: project.name });
+      triggerDownload(out);
       msg = "Downloaded " + fmt.toUpperCase();
     } catch (e) {
       msg = e.message;
