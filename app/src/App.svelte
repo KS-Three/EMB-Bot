@@ -29,6 +29,7 @@
   import SizePanel from "./ui/SizePanel.svelte";
   import ProjectsDrawer from "./ui/ProjectsDrawer.svelte";
   import FontCredits from "./ui/FontCredits.svelte";
+  import Icon from "./ui/Icon.svelte";
   import "./ui/theme.css";
 
   // The image itself never survives a reload (see `runtime` below), so a
@@ -625,8 +626,8 @@
     <span class="logomark" aria-hidden="true">EMB</span>
     <span class="logo">Bot Studio</span>
     <span class="undoredo">
-      <button type="button" class="undo-btn" disabled={!canUndo} on:click={undoEdit} title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
-      <button type="button" class="undo-btn" disabled={!canRedo} on:click={redoEdit} title="Redo (Ctrl+Y)" aria-label="Redo">↷</button>
+      <button type="button" class="undo-btn" disabled={!canUndo} on:click={undoEdit} title="Undo (Ctrl+Z)" aria-label="Undo"><Icon name="undo" size={16} /></button>
+      <button type="button" class="undo-btn" disabled={!canRedo} on:click={redoEdit} title="Redo (Ctrl+Y)" aria-label="Redo"><Icon name="redo" size={16} /></button>
     </span>
   </div>
   <input

@@ -93,6 +93,14 @@ body {
   padding: 0 var(--space-5);
   background: var(--surface);
   border-bottom: 1px solid var(--border);
+  /* Elevation pass: the topbar was a flat bar with only a 1px border --
+     no depth cue separating the app's chrome from the canvas/panel below
+     it. --shadow-1 already points downward (0 2px 4px), which is exactly
+     the direction a bar sitting above the content should cast, so this is
+     a straight reuse of the existing token, not a new value. */
+  box-shadow: var(--shadow-1);
+  position: relative;
+  z-index: 1;
 }
 
 .topbar-logo {
@@ -302,6 +310,10 @@ body {
   border: 2px solid var(--border);
   border-radius: var(--radius-m);
   background: var(--surface);
+  /* Elevation pass -- same reasoning as .tile above; the drawer's own
+     directional shadow (below) separates it from the app, this separates
+     each saved-project row from the drawer's background in turn. */
+  box-shadow: var(--shadow-1);
 }
 
 .drawer-row.current { border-color: var(--accent); background: var(--tint); }
@@ -551,6 +563,12 @@ body {
   background: var(--surface);
   font-size: var(--fs-md);
   cursor: pointer;
+  /* Elevation pass: a bordered card with no shadow reads as flat outline
+     art, not a raised, clickable surface -- same border+shadow-1 pairing
+     `.tp-panel` already uses further down this file. This also finally
+     gives the existing `:hover { transform: translateY(-1px) }` below
+     something to sell -- a lift with no shadow change is imperceptible. */
+  box-shadow: var(--shadow-1);
 }
 
 .tile:hover { border-color: var(--accent); }
@@ -624,6 +642,9 @@ input.fabriccustom[type="color"] {
   background: var(--surface);
   text-align: left;
   cursor: pointer;
+  /* Elevation pass -- same reasoning as .tile above (this card also gets
+     the translateY hover lift further down the file). */
+  box-shadow: var(--shadow-1);
 }
 
 .tcard:hover { border-color: var(--accent); }
@@ -682,6 +703,8 @@ input.fabriccustom[type="color"] {
   border-radius: var(--radius-m);
   background: var(--surface);
   cursor: pointer;
+  /* Elevation pass -- same reasoning as .tile above. */
+  box-shadow: var(--shadow-1);
 }
 
 .elrow:hover { border-color: var(--accent); }
@@ -768,7 +791,7 @@ input.fabriccustom[type="color"] {
   font-size: var(--fs-sm);
 }
 
-.hintbubble-icon { flex: 0 0 auto; line-height: 1.3; }
+.hintbubble-icon { display: flex; flex: 0 0 auto; align-items: center; padding-top: 1px; }
 
 .hintbubble-text { flex: 1; min-width: 0; margin: 0; line-height: 1.35; }
 
