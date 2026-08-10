@@ -460,6 +460,34 @@ def _fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_mm: float
     return back
 
 
+def _crosshatch_fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_mm: float,
+                           staggers: int, start_near: tuple[float, float] | None = None
+                           ) -> list[list[tuple[float, float]]]:
+    """Two overlapping tatami passes on the same shape -> concatenated paths
+    in original (unrotated) mm space, one pass at `angle_deg`, one at
+    `angle_deg + 90`.
+
+    Exactly the trick `_underlay_paths`'s `double_lattice` style already uses
+    for its own +-45deg underlay passes (`lattice()` below, called twice),
+    aimed at the visible fill instead of underlay. Each pass runs at
+    `row_mm * machine.CROSSHATCH_ROW_SCALE_FACTOR` — wider than a normal
+    single-pass fill, so the two passes TOGETHER land near a single pass's
+    stitch density instead of roughly doubling it.
+
+    The second pass starts from the first pass's own last point (the same
+    handoff `stitch_shape` uses between its underlay and fill), so the two
+    passes chain through whatever caller feeds this concatenated list to —
+    ordinarily `stitch_shape`'s `emit()` — the same generic multi-path travel
+    bridging every other list of paths already gets. No travel-planning logic
+    of its own.
+    """
+    wide_row_mm = row_mm * machine.CROSSHATCH_ROW_SCALE_FACTOR
+    first_pass = _fill_paths(poly, angle_deg, wide_row_mm, stitch_mm, staggers, start_near)
+    entry = first_pass[-1][-1] if first_pass else start_near
+    second_pass = _fill_paths(poly, angle_deg + 90.0, wide_row_mm, stitch_mm, staggers, entry)
+    return first_pass + second_pass
+
+
 def _underlay_paths(poly: Polygon, style: str, angle_deg: float,
                     start_near: tuple[float, float] | None = None
                     ) -> list[list[tuple[float, float]]]:
@@ -535,13 +563,20 @@ def _underlay_paths(poly: Polygon, style: str, angle_deg: float,
 def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                  row_mm: float, stitch_mm: float, underlay_style: str,
                  trim_at_mm: float,
-                 start_near: tuple[float, float] | None = None
+                 start_near: tuple[float, float] | None = None,
+                 technique: str = "tatami",
                  ) -> tuple[list[StitchRun], dict]:
     """One shape -> its runs, in sew order (underlay first), plus a small report.
 
     `start_near` is where the needle is when this shape's turn comes; the
     underlay and the fill both begin at whichever of their own valid starting
     points is nearest it.
+
+    `technique` picks the visible FILL pass only — underlay is unaffected
+    either way. "tatami" (the default, and every existing caller) keeps
+    today's single `_fill_paths` call, byte-identical. "crosshatch" swaps it
+    for `_crosshatch_fill_paths`: two angled tatami passes at a wider spacing
+    each, concatenated — see that function's docstring.
 
     Report keys: `too_thin` (nowhere wide enough for a fill), `jumps` (travel
     that had to lift the needle), `empty` (produced nothing).
@@ -592,7 +627,8 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     # starts at the shape's top-left corner and the first travel of the fill is
     # a haul back across everything the underlay just laid.
     entry = runs[-1].points[-1] if runs else start_near
-    emit(_fill_paths(poly, angle, row_mm, stitch_mm, machine.FILL_STAGGERS, entry),
+    fill_fn = _crosshatch_fill_paths if technique == "crosshatch" else _fill_paths
+    emit(fill_fn(poly, angle, row_mm, stitch_mm, machine.FILL_STAGGERS, entry),
          stitches.FILL, stitch_mm)
 
     if not runs:

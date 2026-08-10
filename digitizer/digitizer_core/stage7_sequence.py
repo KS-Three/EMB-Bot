@@ -717,6 +717,15 @@ def sequence(
     # every tonal tier above. Design-wide only here; the per-shape
     # tier == "sketch" override is handled inside stitch_one.
     sketch = technique == "sketch"
+    # The cross-hatch fill tier (stage6_fill._crosshatch_fill_paths): two
+    # angled tatami passes on the same shape, sewn through the ordinary
+    # stitch_shape call with technique="crosshatch". Unlike every tonal tier
+    # above, this needs no source pixels — it is a purely geometric variant
+    # of the plain tatami fill — so it plugs into stitch_one below closer to
+    # how "contour" does than how "sketch"/"streamline" do. Design-wide only
+    # here; the per-shape tier == "crosshatch" override is handled inside
+    # stitch_one.
+    crosshatch = technique == "crosshatch"
 
     thin = empty = jumps = as_run = 0
     bordered = lightened = border_narrow = 0
@@ -881,6 +890,50 @@ def sequence(
                 # falls through to tatami below rather than dropping
                 # artwork — the standing contract of every tonal tier here.
                 runs, report = streamline_fill(p.region, source_pixels, cfg)
+                need_tatami = report["empty"]
+            elif crosshatch or tier == "crosshatch":
+                # The cross-hatch fill tier: two tatami passes on the same
+                # shape, one at the fill angle and one at +90
+                # (stage6_fill._crosshatch_fill_paths), each individually
+                # spaced machine.CROSSHATCH_ROW_SCALE_FACTOR times wider so
+                # the combined density of both passes lands near a
+                # single-pass fill's, not roughly double it. Positioned in
+                # the same slot sketch/streamline occupy above (ahead of
+                # scanline/meander/gradient/contour) for the identical
+                # reason: a forced per-shape tier has to beat whatever
+                # technique the rest of the design sews with. Unlike those
+                # two this needs no source pixels — it's a purely geometric
+                # variant of plain tatami, not a tonal tier — so it is not
+                # gated on `source_pixels is not None`, and it calls the
+                # ordinary stitch_shape directly (technique="crosshatch")
+                # rather than a dedicated emitter module, the same call the
+                # plain-tatami fallback below makes, one technique over.
+                # Falls back to plain tatami on empty (a shape too thin to
+                # hold even the wider spacing), the same never-drop-artwork
+                # contract every other fill tier here has.
+                #
+                # Angle precedence mirrors the trailing stitch_shape call
+                # below exactly (shape override > design-wide > stage 5's
+                # compensation axis) — duplicated rather than deferred to it
+                # because crosshatch needs its angle now, to plan the +90
+                # pass; that call's own "decided here and nowhere else"
+                # comment still holds for the plain-tatami case it covers.
+                shape_angle = p.region.meta.get("fill_angle_deg")
+                runs, report = stitch_shape(
+                    p.polygon,
+                    p.shape_id,
+                    angle_deg=(float(shape_angle)
+                               if shape_angle is not None
+                               else cfg.fill_angle_deg
+                               if cfg.fill_angle_deg is not None
+                               else p.stitch_angle_deg),
+                    row_mm=row_mm,
+                    stitch_mm=stitch_mm,
+                    underlay_style=eff_underlay_style,
+                    trim_at_mm=trim_at,
+                    start_near=entry,
+                    technique="crosshatch",
+                )
                 need_tatami = report["empty"]
             elif scanline and source_pixels is not None:
                 # The explicit scanline_tonal opt-in beats the gradient
