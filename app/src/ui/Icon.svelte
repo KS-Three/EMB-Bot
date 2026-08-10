@@ -95,6 +95,31 @@
     // Resize-warning banner -- DesignPanel's ⚠.
     warning: `<path d="M12 4L21 20H3Z" stroke-linejoin="round"/><line x1="12" y1="10" x2="12" y2="14.5"/><circle cx="12" cy="17.3" r="0.9" fill="currentColor" stroke="none"/>`,
 
+    // "Sew earlier"/"Sew later" -- DigitizePanel's Layers-list and Sequencer
+    // reorder buttons' ↑/↓ (moveShape/moveBlock, cross-layer moves). A plain
+    // vertical stem with an arrowhead cap -- deliberately a DIFFERENT shape
+    // family from `chevron` (reused, rotated, for the within-layer nudge
+    // buttons below) so the two reorder mechanisms stay visually distinct at
+    // a glance, same as the ↑/↓ vs ▲/▼ glyphs they replace.
+    arrowUp: `<line x1="12" y1="18" x2="12" y2="7"/><path d="M7 12L12 7L17 12"/>`,
+    arrowDown: `<line x1="12" y1="6" x2="12" y2="17"/><path d="M7 12L12 17L17 12"/>`,
+
+    // Mark-as-not-sewn-again -- DigitizePanel's restored-enclosed-area ⦸
+    // (unrestoreStitching). Standard circle-slash "exclude/forbid" mark.
+    exclude: `<circle cx="12" cy="12" r="7.5"/><line x1="6.8" y1="17.2" x2="17.2" y2="6.8"/>`,
+
+    // Undo a single applied merge/split -- DigitizePanel's ⎌ (undoMerge,
+    // undoSplit; same glyph, same meaning: "revert this one action back to
+    // its source shapes"). Deliberately its own shape, not a reuse of
+    // `undo`/`redo` above -- those read as "step back in a linear sequence"
+    // (the topbar's edit history), this is "revert one specific thing back
+    // to how it started", so it gets a closed loop instead of an open arc.
+    revert: `<path d="M5 12A7 7 0 1 0 7.5 6.5L5 9"/><path d="M5 5V9H9"/>`,
+
+    // Edit this shape's boundary -- DigitizePanel's ✎. A simple closed-outline
+    // pencil silhouette (tip lower-left, body upper-right), stroke-only like
+    // everything else in this set.
+    edit: `<path d="M15 5L19 9L8.5 19.5L4 20.5L5 16Z"/>`,
     // "Reset to original" -- ImagePanel's per-swatch thread-override reset
     // button (↺). A near-full circle arc with a corner arrowhead at its open
     // end -- reads unambiguously as "revert" without borrowing the topbar
