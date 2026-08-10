@@ -634,6 +634,11 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg
             report["too_thin"] = report["too_thin"] or band_report["too_thin"]
             report["jumps"] += band_report["jumps"]
         if this_layer and all_runs:
+            # Same fix as the parts-within-a-band stitch above, one level up:
+            # the seam between one shade band's runs and the next band's runs
+            # was left at StitchRun's jump=False default, so machine export
+            # drew a bare straight stitch across the gap between bands
+            # instead of a jump/trim. Mark it explicitly, same as above.
             # Same gap, one level up: the first run of a new shade band
             # starts with `jump=False` by the same `stitch_shape`-in-
             # isolation default, but the point it starts from is wherever
