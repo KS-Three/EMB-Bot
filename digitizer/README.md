@@ -204,9 +204,10 @@ digitized design cannot arrive transposed. Studio bakes its own DST with its
 own encoder if it wants one, which round-trips with its own decoder. Machine
 files from `/export` are written by pyembroidery in the standard convention and
 every response says so in `X-Stitch-Convention`; for DST specifically, Studio's
-own encoder stays the default because it is the one with sewn evidence behind
-it. PES and JEF, the formats the service exists to unlock, have no competing
-implementation and no conflict.
+own encoder stays the default for lettering/manual designs, the one with sewn
+evidence behind it, while projects made entirely of auto-digitized elements now
+route through this service's `/export` instead. PES and JEF, the formats the
+service exists to unlock, have no competing implementation and no conflict.
 
 DST verification on this side still goes through pyembroidery, never through
 the browser codec.
