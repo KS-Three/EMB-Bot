@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher, onDestroy } from "svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
+  import Icon from "./Icon.svelte";
   import {
     buildDigitizeConfig,
     digitize,
@@ -1193,7 +1194,11 @@
                 aria-expanded={sequencerOpen}
                 on:click={() => (sequencerOpen = !sequencerOpen)}
               >
-                <span class="dgp-seq-caret">{sequencerOpen ? "▾" : "▸"}</span>
+                <Icon
+                  name="chevron"
+                  size={12}
+                  class={"dgp-seq-caret" + (sequencerOpen ? "" : " dgp-seq-caret-closed")}
+                />
                 <span class="dgp-seq-title">
                   Color sequence ({sequencerBlocks.length} block{sequencerBlocks.length === 1 ? "" : "s"})
                 </span>
@@ -1226,7 +1231,7 @@
                           aria-label="Sew this color earlier"
                           disabled={i === 0}
                           on:click={() => moveBlock(block.layer, -1)}
-                        >↑</button>
+                        ><Icon name="arrowUp" size={12} /></button>
                         <button
                           type="button"
                           class="dgp-lbtn"
@@ -1234,7 +1239,7 @@
                           aria-label="Sew this color later"
                           disabled={i === sequencerBlocks.length - 1}
                           on:click={() => moveBlock(block.layer, 1)}
-                        >↓</button>
+                        ><Icon name="arrowDown" size={12} /></button>
                       </span>
                     </li>
                   {/each}
@@ -1595,7 +1600,7 @@
                       title="Sew earlier"
                       aria-label="Sew earlier"
                       on:click={() => moveShape(row, -1)}
-                    >↑</button>
+                    ><Icon name="arrowUp" size={12} /></button>
                     <button
                       type="button"
                       class="dgp-lbtn"
@@ -1603,7 +1608,7 @@
                       title="Sew later"
                       aria-label="Sew later"
                       on:click={() => moveShape(row, 1)}
-                    >↓</button>
+                    ><Icon name="arrowDown" size={12} /></button>
                     {#if siblings.length > 1}
                       <button
                         type="button"
@@ -1612,7 +1617,7 @@
                         title="Sew earlier within this color"
                         aria-label="Sew earlier within this color"
                         on:click={() => moveShapeWithinLayer(row, -1)}
-                      >▲</button>
+                      ><Icon name="chevron" size={12} class="dgp-caret-up" /></button>
                       <button
                         type="button"
                         class="dgp-lbtn"
@@ -1620,7 +1625,7 @@
                         title="Sew later within this color"
                         aria-label="Sew later within this color"
                         on:click={() => moveShapeWithinLayer(row, 1)}
-                      >▼</button>
+                      ><Icon name="chevron" size={12} /></button>
                     {/if}
                     {#if restoredEnclosed}
                       <button
@@ -1629,7 +1634,7 @@
                         title="Mark as not sewn again (enclosed area)"
                         aria-label="Mark as not sewn again"
                         on:click={() => unrestoreStitching(row.id)}
-                      >⦸</button>
+                      ><Icon name="exclude" size={12} /></button>
                     {/if}
                     {#if mergedInfo}
                       <button
@@ -1638,7 +1643,7 @@
                         title="Undo this merge (the original shapes come back)"
                         aria-label="Undo merge"
                         on:click={() => undoMerge(row.id)}
-                      >⎌</button>
+                      ><Icon name="revert" size={12} /></button>
                     {:else if splitInfo}
                       <button
                         type="button"
@@ -1646,7 +1651,7 @@
                         title="Undo this split (the original shape comes back)"
                         aria-label="Undo split"
                         on:click={() => undoSplit(row.id)}
-                      >⎌</button>
+                      ><Icon name="revert" size={12} /></button>
                     {:else}
                       <button
                         type="button"
@@ -1654,7 +1659,7 @@
                         title="Cut this shape into two"
                         aria-label="Split shape"
                         on:click={() => startSplitEdit(row)}
-                      >✂</button>
+                      ><Icon name="scissors" size={12} /></button>
                     {/if}
                     <button
                       type="button"
@@ -1662,14 +1667,14 @@
                       title="Edit this shape's boundary"
                       aria-label="Edit shape boundary"
                       on:click={() => startBoundaryEdit(row)}
-                    >✎</button>
+                    ><Icon name="edit" size={12} /></button>
                     <button
                       type="button"
                       class="dgp-lbtn"
                       title="Hide this shape (restorable)"
                       aria-label="Hide this shape"
                       on:click={() => deleteShape(row.id)}
-                    >✕</button>
+                    ><Icon name="close" size={12} /></button>
                   {/if}
                 </div>
               </li>
@@ -1868,7 +1873,11 @@
     font-size: 11px;
     text-align: left;
   }
-  .dgp-seq-caret { flex: none; color: var(--muted, #667); }
+  /* `chevron` points down at rest -- that's the "open" reading, so the
+     closed (▸) state is the one that needs a rotate; same reuse-one-icon,
+     rotate-in-CSS convention Icon.svelte's own comment documents. */
+  .dgp-seq-caret { flex: none; color: var(--muted, #667); transition: transform 0.15s ease; }
+  .dgp-seq-caret-closed { transform: rotate(-90deg); }
   .dgp-seq-title { flex: 1; font-weight: 600; }
   .dgp-seq-trims { color: var(--muted, #667); white-space: nowrap; }
   .dgp-seq-trims.heavy { color: var(--warn-text, #8a6d1a); font-weight: 600; }
@@ -1943,6 +1952,9 @@
   .dgp-lsel { font-size: 11px; max-width: 110px; }
   .dgp-lbtns { display: flex; flex-direction: column; gap: 2px; flex: none; }
   .dgp-lbtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     padding: 2px 6px;
     border: 1px solid var(--tint-border, #ccd6fb);
     border-radius: var(--radius-s, 6px);
@@ -1952,6 +1964,11 @@
     line-height: 1.3;
   }
   .dgp-lbtn:disabled { opacity: 0.4; cursor: default; }
+  /* `chevron` points down at rest -- the within-layer "later" nudge button
+     reuses it as-is, "earlier" rotates it to point up. Same rotate-in-CSS
+     reuse as the sequencer caret above, kept as its own rule since it
+     rotates unconditionally rather than toggling with component state. */
+  .dgp-caret-up { transform: rotate(180deg); }
   .dgp-restore { white-space: nowrap; }
   .dgp-unmatched {
     font-size: var(--fs-xs, 12px);
