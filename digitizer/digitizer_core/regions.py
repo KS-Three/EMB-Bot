@@ -167,7 +167,29 @@ def match_shape_ids(
 # sketch rendering (stage6_sketch) on one shape; like every tonal tier it
 # needs source pixels, which pipeline.run_stages carries whenever an
 # override requests it, and it sews tatami when they are absent anyway.
-_TIER_VALUES = {"auto", "satin", "fill", "run", "sketch"}
+# "streamline" (contract v1.6, Ember-research backlog item) forces the
+# evenly-spaced streamline thread-paint tier (stage6_streamline) on one
+# shape, same source-pixels-or-tatami-fallback contract as "sketch" — the
+# per-shape form of a technique that used to be design-wide (or photo-
+# pipeline) only. See stage7_sequence.stitch_one's streamline branch for
+# the direction-field reasoning (raster structure tensor with a house-angle
+# fallback, not a shape-geometry-derived field).
+# "crosshatch" forces the two-pass angled tatami fill (stage6_fill.
+# _crosshatch_fill_paths) on one shape — the per-shape form of a technique
+# also reachable design-wide via fill_technique, mirroring "streamline"'s
+# same dual reach. Unlike "streamline"/"sketch" it needs no source pixels
+# (purely geometric), so it carries no raster-plumbing opt-in cost and
+# falls back to plain tatami only when the shape itself is too thin, never
+# for lack of pixels. See stage7_sequence.stitch_one's crosshatch branch.
+# "wave"/"chevron"/"brick" force one of three more purely-geometric fill
+# variants (stage6_fill._wave_row_points / _chevron_row_points /
+# _brick_row_points) on one shape — the same per-shape reach "crosshatch"
+# has above, each swapping only how ONE row's interior points get placed
+# rather than adding a new pass, so none of them need source pixels either.
+# See stage7_sequence.stitch_one's wave/chevron/brick branches, positioned
+# the same way as its crosshatch branch.
+_TIER_VALUES = {"auto", "satin", "fill", "run", "sketch", "streamline", "crosshatch",
+                "wave", "chevron", "brick"}
 _BORDER_VALUES = {"off", "auto", "bean"}
 # fabrics.py's own vocabulary, verbatim (mirrored in digitizer_service.app's
 # copy, which 400s the wire before this ever raises).

@@ -16,6 +16,10 @@
   // to `onPatch` for tests that want to assert on it directly.
   export let element;
   export let onPatch = () => {};
+  // Forwarded straight through to ManualPanel's own `traceWorkImage` test
+  // seam (see its comment) — lets a spec seed the nested TraceImportPanel's
+  // "already decoded an image" state without a real file upload.
+  export let traceWorkImage = null;
 
   function handle(e) {
     element = { ...element, ...e.detail.patch };
@@ -23,4 +27,4 @@
   }
 </script>
 
-<ManualPanel {element} on:elupdate={handle} />
+<ManualPanel {element} {traceWorkImage} on:elupdate={handle} />

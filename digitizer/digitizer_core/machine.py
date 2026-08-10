@@ -59,6 +59,71 @@ FILL_STAGGERS = 4
 # such shapes there, and only what satin also cannot take gets warned.
 MIN_FILL_WIDTH_MM = 1.2
 
+# --- Cross-hatch fill (two angled tatami passes) ----------------------------
+# The whole technique is two ordinary `_fill_paths` calls at angle and
+# angle+90, concatenated — the exact trick `_underlay_paths`'s
+# "double_lattice" style already relies on for its own +-45deg underlay
+# passes, just aimed at the visible fill instead of underlay. Nothing new to
+# tune except this one knob.
+
+# Multiplier on `row_mm` applied to EACH individual pass, so two overlapping
+# passes land at a combined stitch density in the same ballpark as one normal
+# single-pass fill instead of roughly doubling it. 2.0 (each pass spaced
+# twice as far apart as ordinary tatami) is a starting, reasoned value, not
+# sew-out-validated — same caveat as every other tuning constant in this
+# file. Lower-stakes than the density constants above already flagged
+# pending sew-out, though: cross-hatch ships OPT-IN per-shape or per-design
+# only, never a default, so nobody's existing output moves if this number
+# turns out to need adjusting later.
+CROSSHATCH_ROW_SCALE_FACTOR = 2.0
+
+# --- Wave fill (sinusoidal row wobble) --------------------------------------
+# Every interior row point (never the two row-end penetrations, which stay
+# exactly on the boundary — the same edge-crispness contract `_row_points`'s
+# own docstring states) rides a sine wave perpendicular to the row:
+# y + WAVE_AMPLITUDE_MM * sin(2*pi*x/WAVE_LENGTH_MM + phase), phase
+# alternating 0/pi by row parity so neighbouring rows move opposite ways at
+# any given x instead of stacking into a corrugated-cardboard look. Both
+# constants are starting, REASONED values — not sew-out-validated, same
+# caveat every tuning constant in this file carries — and lower-stakes than
+# the pending-sew-out density constants above for the identical reason
+# CROSSHATCH_ROW_SCALE_FACTOR's own comment gives: this ships opt-in only
+# (per-shape or per-design), so nobody's existing output moves if either
+# number turns out to need adjusting later.
+
+# Wobble height. Small enough to read as texture, not to distort the fill's
+# own silhouette — a ninth of FILL_ROW_MM's own row spacing multiplied out
+# to a legible scale, and comfortably under half a stitch length, so no row
+# turn is thrown far enough off-axis to blur the edge it lands on.
+WAVE_AMPLITUDE_MM = 0.35
+
+# Wobble period along the row. Roughly FILL_STITCH_MM's default 3.0 mm times
+# a small integer, so one sine cycle spans a handful of stitches: fine
+# enough to actually read as a wave at the row's own scale, coarse enough
+# not to collapse into per-stitch jitter (indistinguishable from noise) or
+# stretch so long it never completes a visible cycle across an ordinary
+# shape.
+WAVE_LENGTH_MM = 4.0
+
+# --- Chevron fill (zigzag row texture) --------------------------------------
+# A deliberately simplified, TEXTURAL herringbone impression at one fill
+# angle — not a full multi-angle banded herringbone, which would need new
+# column/travel logic (out of scope for this family of purely-geometric row
+# variants; see stage6_fill.py's module docstring for the column/travel
+# machinery every fill technique here shares untouched). Every interior row
+# point alternates +-CHEVRON_AMPLITUDE_MM, same edge-crispness contract as
+# wave above: only interior points move, both row ends stay on the boundary.
+# Same starting/reasoned, opt-in-only, lower-stakes caveat as
+# WAVE_AMPLITUDE_MM.
+
+# Zigzag height, alternating every single interior stitch — a period of two
+# stitches, ~6 mm at FILL_STITCH_MM's default 3.0 mm: fine enough to read as
+# a zigzag at the row's own stitch scale, coarse enough not to blur into
+# noise. A period of one stitch (no alternation at all) would not read as a
+# chevron; a period of many stitches would read as occasional bumps, not a
+# herringbone texture.
+CHEVRON_AMPLITUDE_MM = 0.45
+
 # --- Contour fill (rings instead of rows) -----------------------------------
 # The offset-ring tier: uniform inward offsets of the outline, sewn inner to
 # outer. Numbers are the pins from docs/fill-techniques-2026-08-01.md §1.3;
@@ -244,6 +309,28 @@ SATIN_ZIGZAG_ABOVE_MM = 2.5
 # together (shared tips, stroke ends) and sewing it would pile thread on a
 # point. Dropped during emission, exactly as the browser engine does.
 SATIN_MIN_CROSS_MM = 0.5
+
+# --- Satin entry/exit point (Laws 27-29) ------------------------------------
+# Scored on 291 real professional decisions: entering at a stroke's FREE end
+# (its open cap, not wherever the skeleton welded it to a junction) matches
+# 85.2% of what pros actually sewed; "enter at whichever end sits nearer the
+# previous exit" — the rule this replaces — matches only 42.3%. When a stroke
+# has no free/junction distinction to lean on (both ends free, or both tucked
+# into a junction) there is no structural signal, so proximity alone decides,
+# same as before this law.
+#
+# Law 29 puts a ceiling on it: extra travel paid to reach the structural cap
+# instead of the nearer end runs median 5.7 mm, 71.8% within 10 mm, 87.7%
+# within 20 mm — past ~20 mm pros mostly stop paying. 10 mm is the corpus
+# law doc's own chosen cutoff (docs/corpus-laws-round3-2026-08-01.md, engine-
+# mapping table, laws 27-29: "desk-safe, highest value").
+#
+# NOT implemented: law 28's finer end-CLASS ordering (cap > tee > corner ~=
+# butt) among junction ends. That needs classifying each junction end's own
+# arm count/angle, which `Stroke` does not currently carry — only the binary
+# free/not-free distinction extract_strokes already computes. Left as a
+# follow-up, not guessed at here.
+STRUCTURAL_ENTRY_BUDGET_MM = 10.0
 
 # --- Push compensation (Law 24) --------------------------------------------
 # Pull and push are two different effects in two different directions. Thread
@@ -687,7 +774,29 @@ APPLIQUE_COVER_SPACING_MM = 0.40      # [P]; Melco 4.2 pt [V]
 APPLIQUE_COVER_SPACING_MIN_MM = 0.30  # [P] below this the needle cuts the fabric
 APPLIQUE_COVER_SPACING_MAX_MM = 0.60  # [P] above this the raw edge shows through
 APPLIQUE_COVER_PULL_COMP_MM = 0.20    # [P] up to 0.30 on knits
+# Zigzag cover's own spacing, read by stage6_applique._cover_layer only when
+# `cover == "zigzag"` — it replaces `geom.spacing_mm` (the satin figure above)
+# for that call, rather than stretching one constant to mean two different
+# pitches. §2.8 states TWO candidate zigzag spacings with no tie-break between
+# them: 1.69 mm (= 15 SPI) `[S]` Stahls', or 3.0 mm, Melco's ZigZag-appliqué
+# preset default of 30 pt `[V]`. This module already leans Melco/`[V]` where
+# the spec offers a choice (`APPLIQUE_COVER_SPACING_MM` above cites Melco's
+# 4.2 pt; `APPLIQUE_TACK_STITCH_MM`, `APPLIQUE_TACK_PASSES` do too), so 3.0 mm
+# is picked for consistency with the rest of this file's defaults, NOT because
+# it was sewn out and measured — it wasn't. Flagged as an open question a real
+# sew-out could revise; see `docs/specialty-techniques-2026-08-01.md` §2.8 and
+# §2.10's material matrix (which prints the 1.69 mm figure against tackle
+# twill specifically) before changing it.
+APPLIQUE_ZIGZAG_COVER_SPACING_MM = 3.0  # [V] Melco 30pt preset; unvalidated by sew-out
+# Applied in stage6_applique._cover_layer, the same direction as
+# Fabric.pull_comp_mm on an ordinary satin column: each rail moves `this`
+# further from the other, so the stitched column is `2*this` wider than the
+# solved width (see that function's docstring for the measured before/after).
+# The "up to 0.30 on knits" note above is context, not a by-material table —
+# there is no knit-specific override wired in, only the single 0.20 mm value.
 # Stahls' publishes 4-8 stitches of closure overlap past the start point [S].
+# Applied in stage6_applique._cover_layer, replacing the border module's
+# generic BORDER_CLOSURE_OVERLAP_MM (a distance) for this call site only.
 APPLIQUE_CLOSURE_OVERLAP_STITCHES = 6
 
 # The tolerance stack (§2.3). No source states it as an equation; it is [D],
@@ -717,6 +826,8 @@ APPLIQUE_INSIDE_SHARE_PRECUT = 0.50   # [V]
 # 2.5 mm (risky)" [P]); note it sits ABOVE the twill material floor below and
 # above Stahls' published 2 mm, so the clamp is what binds on pre-cut twill —
 # a deliberate conservatism, not an oversight. 5.0 is the snag ceiling [D].
+# Whichever bound binds, `solve_cover_width`'s own "clamped" field says so and
+# stage6_applique.check_gates turns it into APPLIQUE_COVER_WIDTH_CLAMPED.
 APPLIQUE_COVER_WIDTH_FLOOR_MM = 2.50
 APPLIQUE_COVER_WIDTH_MAX_MM = 5.00
 # W_floor_material, §2.13. Only binds where it exceeds the 2.5 clamp floor.
@@ -732,7 +843,13 @@ APPLIQUE_COVER_FLOOR_BY_MATERIAL = {
 # 3.5 mm and clears at 4.0 mm exactly. It falls through to plain satin and the
 # engine must SAY it did.
 APPLIQUE_MIN_FEATURE_MARGIN_MM = 1.0
-# Scissors must physically fit inside the shape to trim in place.
+# Scissors must physically fit to cut the piece. Two separate floors, one per
+# mode: pre-cut is hand-cut from sheet stock BEFORE placement (no in-hoop trim
+# step to fall back to, so the floor is lower), trim-in-place is cut IN THE
+# HOOP after tackdown (tighter access, so the floor is higher). Fed by
+# `narrowest_passage_diameter`, not `min_inscribed_diameter` — see that
+# function's docstring for why the single-largest-inscribed-circle measure is
+# blind to a dog-bone-shaped piece's own neck.
 APPLIQUE_MIN_INSCRIBED_PRECUT_MM = 8.0
 APPLIQUE_MIN_INSCRIBED_TRIM_MM = 12.0
 # Below |c_in| + this, the cover's inner rail self-intersects on a concave turn.
@@ -743,6 +860,12 @@ APPLIQUE_MIN_HOLE_DIAMETER_MM = 15.0
 # Multi-piece (§2.11). The one hard vendor number: Wilcom states it directly —
 # "Set the cutting overlap to half the width of the cover stitching" [V], and
 # Hatch's Partial Appliqué tool is documented accurate to +-1/2 the cover width.
+# NOT the same thing as `APPLIQUE_CLOSURE_OVERLAP_STITCHES` above despite the
+# similar name: this is how far one piece's CUTTING BOUNDARY dilates into a
+# neighbour it overlaps (Mode B multi-piece batching, §2.11), not how far a
+# single piece's own cover circuit overlaps its own start. Mode B is not
+# built — `applique_pass` only detects and warns overlapping pieces
+# (`APPLIQUE_PIECES_OVERLAP`) — so this constant stays unread until it is.
 APPLIQUE_OVERLAP_ALLOWANCE_FRAC = 0.5
 
 # Machine speed for the worksheet — the Tajima will not infer it [P] (§2.10).

@@ -51,10 +51,18 @@ from .regions import Region, assign_shape_ids
 from .threads import Chart, chart_for, rgb_to_lab
 
 # The tiers a manual shape may request. Deliberately narrower than
-# `regions._TIER_VALUES` ({"auto", "satin", "fill", "run", "sketch"}): "auto"
-# has nothing to classify from but the polygon (fine for artwork, an odd
-# default for a shape someone drew on purpose), and "sketch" needs source
-# pixels manual digitizing never has.
+# `regions._TIER_VALUES` ({"auto", "satin", "fill", "run", "sketch",
+# "streamline"}): "auto" has nothing to classify from but the polygon (fine
+# for artwork, an odd default for a shape someone drew on purpose), and
+# "sketch"/"streamline" both need source pixels manual digitizing never has
+# — `PipelineResult.source_pixels` is unconditionally `None` here (no image
+# was ever decoded), and `stage6_streamline.streamline_fill` is not just
+# "less accurate" without a raster, it has nothing to call: darkness/d_sep,
+# the highlight cutoff and the direction field are all read off
+# `SourcePixels.rgb`, not optional inputs a caller can skip. A caller
+# wanting evenly-spaced parallel run stitches at a chosen angle on a manual
+# shape already has that — `technique: "fill"` plus `fill_angle_deg` — it
+# just is not J-L streamline placement.
 VALID_TECHNIQUES = frozenset({"satin", "fill", "run"})
 
 

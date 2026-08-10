@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher, onDestroy } from "svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
+  import Icon from "./Icon.svelte";
   import {
     buildDigitizeConfig,
     digitize,
@@ -11,6 +12,12 @@
     reviewFromJob,
     reconcileReview,
     reorderWithinLayer,
+    effLayer,
+    sortShapes,
+    effSewOrder,
+    layerSiblings,
+    effRgb,
+    groupIntoBlocks,
     boundaryIssues,
     mergeGroupIssues,
     splitLineIssues,
@@ -147,6 +154,7 @@
         result: job.design,
         warnings: job.warnings || [],
         review: reconcileReview(el.review, reviewFromJob(job.review), el.deletedShapeIds),
+        preflight: job.preflight || null,
         appliedEdits: editsKey({
           deleted_shape_ids: cfg.deleted_shape_ids,
           shape_overrides: cfg.shape_overrides,
@@ -193,6 +201,11 @@
 
   $: decoded = element.result ? decodedFromDesignCached(element.result) : null;
   $: warningLines = describeWarnings(element.warnings);
+  // BACKGROUND_ENCLOSED gets its own live, actionable banner (below, next to
+  // unstitchedRows) instead of this generic list -- showing both would just
+  // repeat the same fact once as a static server message and once as a count
+  // that tracks the user's own restores.
+  $: otherWarningLines = warningLines.filter((w) => w.code !== "BACKGROUND_ENCLOSED");
 
   // Resize honesty (Kent's rule, same as DesignPanel): the field's resize
   // handles SCALE baked stitches, they don't re-digitize — density changes
@@ -260,6 +273,12 @@
   // the review payload the rows render from is the LAST job's, so live-
   // editing it would show stitches that don't exist yet.
 
+  // Collapsed by default: the Sequencer is a secondary view over the same
+  // data the Layers list already shows (one row per color block instead of
+  // one row per shape) — opt-in so it doesn't push the primary list down
+  // for anyone who never opens it.
+  let sequencerOpen = false;
+
   const SHAPE_ANGLES = [{ value: null, label: "Auto angle" }, ...FILL_ANGLES.slice(1)];
 
   // Underlay style (shape-layers contract v1): fabrics.py's own vocabulary,
@@ -300,52 +319,26 @@
     (r) => !deletedIds.includes(r.id) && effStitched(r, overrides)
   );
 
-  // Effective layer: the user's explicit sew-order override, else the layer
-  // the engine assigned (one per thread), else last. Rows sort by it, then
-  // by the emitted sew position — the list IS the sew order.
-  function effLayer(row, ov) {
-    const e = ov[row.id] || {};
-    if (Number.isInteger(e.layer)) return e.layer;
-    if (row.layer != null) return row.layer;
-    return row.sewIndex == null ? 1e9 : row.sewIndex;
-  }
+  // The Sequencer view's color blocks: `sewableShapes` grouped by effLayer,
+  // in sew order (the same list moveShape's up/down buttons walk, just
+  // collapsed one row per color instead of one row per shape) — a block IS
+  // one color's whole run before the machine changes thread. Dead/hidden/
+  // unstitched shapes don't have a real place in the sew sequence, so they
+  // never appear here even though they're still in the plain Layers list.
+  $: sequencerBlocks = groupIntoBlocks(sewableShapes, overrides);
 
-  function sortShapes(shapes, ov) {
-    return [...shapes].sort(
-      (a, b) =>
-        effLayer(a, ov) - effLayer(b, ov) ||
-        (a.sewIndex == null ? 1e9 : a.sewIndex) - (b.sewIndex == null ? 1e9 : b.sewIndex) ||
-        (a.id < b.id ? -1 : 1)
-    );
-  }
-
-  // Effective within-layer sew order (contract v1.2): the user's explicit
-  // override, else what the LAST applied result actually sewed (row.sewOrder
-  // — set only when a previous override took effect), else the emitted sew
-  // position, which is nearest-neighbour's own answer. Distinct from
-  // effLayer: that picks WHICH color block a shape sews in, this picks WHERE
-  // within it — the two overrides are independent and can both be set.
-  function effSewOrder(row, ov) {
-    const e = ov[row.id] || {};
-    if (Number.isInteger(e.sew_order)) return e.sew_order;
-    if (Number.isInteger(row.sewOrder)) return row.sewOrder;
-    return row.sewIndex == null ? 1e9 : row.sewIndex;
-  }
-
-  // The shapes sharing `row`'s effective layer, in their current within-
-  // layer order — the pool `moveShapeWithinLayer` reorders and the up/down
-  // buttons enable/disable against.
-  function layerSiblings(row, shapes, ov) {
-    const layer = effLayer(row, ov);
-    return shapes
-      .filter((r) => effLayer(r, ov) === layer)
-      .sort((a, b) => effSewOrder(a, ov) - effSewOrder(b, ov) || (a.id < b.id ? -1 : 1));
-  }
-
-  function effRgb(row, ov) {
-    const e = ov[row.id] || {};
-    return e.rgb || row.rgb || [136, 136, 136];
-  }
+  // Server-computed, read-only (preflight.py's own report) — surfaced here
+  // rather than left buried in `element.preflight`, since block-boundary
+  // trims are exactly what the Sequencer view lets a user reason about and
+  // Ember's equivalent panel has no counterpart for at all. null (not 0)
+  // when no job has run preflight yet, so the header can tell "clean" apart
+  // from "never checked" the same way the rest of this field does.
+  $: trimsPer1000 = (element.preflight && element.preflight.metrics
+    ? element.preflight.metrics.trims_per_1000
+    : null);
+  $: trimHeavy = !!(element.preflight && element.preflight.findings || []).some(
+    (f) => f.code === "TRIM_HEAVY"
+  );
 
   // Whether the shape sews at all — DISTINCT from `dead` (a user hid it):
   // this is the digitizer's own BACKGROUND_ENCLOSED default (contract v1.1,
@@ -543,6 +536,28 @@
     const cur = { ...(element.shapeOverrides || {}) };
     for (const sid of Object.keys(next)) {
       cur[sid] = { ...(cur[sid] || {}), sew_order: next[sid] };
+    }
+    patch({ shapeOverrides: cur });
+  }
+
+  // Sequencer view: "sew this whole color earlier/later" — moves every
+  // shape in one block past every shape in the adjacent block in one step.
+  // Unlike moveShape (one row, which has to decide whether it's JOINING an
+  // existing group or stepping past it), swapping two whole blocks' layer
+  // numbers is unambiguous: each block keeps its own internal sew_order
+  // untouched, only which layer integer it carries changes. One patch = one
+  // undo step, the same convention every other edit in this panel follows.
+  function moveBlock(layer, dir) {
+    const layers = sequencerBlocks.map((b) => b.layer);
+    const i = layers.indexOf(layer);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= layers.length) return;
+    const other = layers[j];
+    const cur = { ...(element.shapeOverrides || {}) };
+    for (const row of sewableShapes) {
+      const rl = effLayer(row, overrides);
+      if (rl === layer) cur[row.id] = { ...(cur[row.id] || {}), layer: other };
+      else if (rl === other) cur[row.id] = { ...(cur[row.id] || {}), layer };
     }
     patch({ shapeOverrides: cur });
   }
@@ -920,6 +935,18 @@
   $: visibleClusterIds = textClusterIds(liveReviewShapes);
   $: textConversions = element.textConversions || {};
 
+  // A row whose cluster has already been converted to text: its
+  // `stitched:false` (set by onConvertClusterToText, App.svelte) is a
+  // permanent hide belonging to THIS feature, not the BACKGROUND_ENCLOSED
+  // default -- restoring it through the enclosed-area machinery below would
+  // silently un-hide a shape a different feature already replaced with a
+  // real text element, producing a visible duplicate on Apply. Shared by
+  // both the bulk banner (unstitchedRows) and the per-row "unstitched"
+  // branch in the layer list.
+  function isClusterHidden(row, conversions) {
+    return row.textClusterId != null && conversions[row.textClusterId] != null;
+  }
+
   function clusterMembers(clusterId) {
     return textClusterMembers(liveReviewShapes, clusterId);
   }
@@ -971,6 +998,33 @@
     patch({ shapeOverrides, textConversions: conversions });
     d("removeelement", textElementId);
   }
+
+  // ---- bulk enclosed-area restore (warnings banner CTA) ---------------------
+  //
+  // Every row currently held unstitched by the BACKGROUND_ENCLOSED default,
+  // EXCLUDING a text-cluster member a user has deliberately converted to text
+  // (isClusterHidden above -- restoring one would silently duplicate the
+  // shape under the new text element). Same one-patch discipline as
+  // undoTextConversion above: looping setOverride here would have each call
+  // build off the same stale `element` prop and clobber the others.
+  $: unstitchedRows = orderedShapes.filter(
+    (r) =>
+      !deletedIds.includes(r.id) &&
+      !effStitched(r, overrides) &&
+      !isClusterHidden(r, textConversions)
+  );
+
+  function pluralize(n, one, many) {
+    return n === 1 ? one : many.replace("{n}", String(n));
+  }
+
+  function restoreAllUnstitched() {
+    const shapeOverrides = { ...(element.shapeOverrides || {}) };
+    for (const row of unstitchedRows) {
+      shapeOverrides[row.id] = { ...(shapeOverrides[row.id] || {}), stitched: true };
+    }
+    patch({ shapeOverrides });
+  }
 </script>
 
 <div class="digipanel">
@@ -984,7 +1038,8 @@
     <p class="dgp-note">
       Upload flat art — a logo, a mark, lettering as an image — and it comes back as stitches you
       can place like any other element. Clean, solid colors digitize best; photos and gradients
-      won't sew cleanly.
+      won't sew cleanly. PNG with a transparent background and sharp, non-anti-aliased edges
+      digitizes best — a bigger image sews sharper than a small one.
     </p>
   {:else}
     <div class="dgp-src">
@@ -1081,9 +1136,23 @@
         {element.result.colorCount} color{element.result.colorCount === 1 ? "" : "s"}
       </p>
 
-      {#if warningLines.length}
+      {#if unstitchedRows.length}
+        <div class="dgp-enclosed-banner" role="alert">
+          <p class="dgp-enclosed-banner-text">
+            {pluralize(
+              unstitchedRows.length,
+              "1 enclosed area was left unstitched by default, like the hole in an O. If it's meant to be part of the design and not a real gap, sew it.",
+              "{n} enclosed areas were left unstitched by default, like the hole in an O. If they're meant to be part of the design and not real gaps, sew them."
+            )}
+          </p>
+          <button type="button" class="dgp-enclosed-banner-btn" on:click={restoreAllUnstitched}>
+            Sew all {unstitchedRows.length}
+          </button>
+        </div>
+      {/if}
+      {#if otherWarningLines.length}
         <ul class="dgp-warnings">
-          {#each warningLines as w (w.code + w.text)}
+          {#each otherWarningLines as w (w.code + w.text)}
             <li>{w.text}</li>
           {/each}
         </ul>
@@ -1116,6 +1185,68 @@
                  BOTTOM of a list that is entirely about sewing sequence. -->
             <span class="dgp-layers-order">top sews first</span>
           </div>
+
+          {#if sequencerBlocks.length > 1}
+            <div class="dgp-sequencer">
+              <button
+                type="button"
+                class="dgp-seq-toggle"
+                aria-expanded={sequencerOpen}
+                on:click={() => (sequencerOpen = !sequencerOpen)}
+              >
+                <Icon
+                  name="chevron"
+                  size={12}
+                  class={"dgp-seq-caret" + (sequencerOpen ? "" : " dgp-seq-caret-closed")}
+                />
+                <span class="dgp-seq-title">
+                  Color sequence ({sequencerBlocks.length} block{sequencerBlocks.length === 1 ? "" : "s"})
+                </span>
+                {#if trimsPer1000 != null}
+                  <span class="dgp-seq-trims" class:heavy={trimHeavy}>
+                    {trimsPer1000}/1000 trims{trimHeavy ? " — heavy" : ""}
+                  </span>
+                {/if}
+              </button>
+              {#if sequencerOpen}
+                <ol class="dgp-seq-list">
+                  {#each sequencerBlocks as block, i (block.layer)}
+                    <li class="dgp-seq-block">
+                      <span
+                        class="dgp-seq-swatch"
+                        style="background: rgb({block.rgb[0]},{block.rgb[1]},{block.rgb[2]})"
+                      ></span>
+                      <span class="dgp-seq-thread">{block.threadNumber || "—"}</span>
+                      <span class="dgp-seq-count">{block.rows.length} shape{block.rows.length === 1 ? "" : "s"}</span>
+                      <span class="dgp-seq-span">
+                        {#if block.sewIndexMin != null}
+                          #{block.sewIndexMin}{block.sewIndexMax > block.sewIndexMin ? `–${block.sewIndexMax}` : ""}
+                        {/if}
+                      </span>
+                      <span class="dgp-seq-btns">
+                        <button
+                          type="button"
+                          class="dgp-lbtn"
+                          title="Sew this color earlier"
+                          aria-label="Sew this color earlier"
+                          disabled={i === 0}
+                          on:click={() => moveBlock(block.layer, -1)}
+                        ><Icon name="arrowUp" size={12} /></button>
+                        <button
+                          type="button"
+                          class="dgp-lbtn"
+                          title="Sew this color later"
+                          aria-label="Sew this color later"
+                          disabled={i === sequencerBlocks.length - 1}
+                          on:click={() => moveBlock(block.layer, 1)}
+                        ><Icon name="arrowDown" size={12} /></button>
+                      </span>
+                    </li>
+                  {/each}
+                </ol>
+              {/if}
+            </div>
+          {/if}
           {#if editingId}
             {@const editingRow = orderedShapes.find((r) => r.id === editingId)}
             <div class="dgp-editor">
@@ -1304,6 +1435,7 @@
               {@const dead = deletedIds.includes(row.id)}
               {@const stitched = effStitched(row, overrides)}
               {@const unstitched = !dead && !stitched}
+              {@const clusterHidden = unstitched && isClusterHidden(row, textConversions)}
               <!-- Was excluded by default (an enclosed-background region)
                    AND is currently sewing — i.e. the user restored it. Shown
                    as a small badge plus an undo, so restoring stays a
@@ -1348,10 +1480,17 @@
                     {:else if unstitched}
                       <span class="dgp-lname">{rowName(row)}</span>
                       <span class="dgp-larea">{fmtArea(row.areaMm2)}</span>
-                      <span
-                        class="dgp-ltier dgp-ltier-unstitched"
-                        title="The digitizer found this as an enclosed area the same color as the background (like the hole in an O) and left it unstitched by default."
-                      >not sewn — enclosed area</span>
+                      {#if clusterHidden}
+                        <span
+                          class="dgp-ltier dgp-ltier-unstitched"
+                          title="This shape was replaced by a converted text element. Use “Undo — remove text element” on the text-cluster bar above to bring it back, not a restore here."
+                        >hidden — converted to text</span>
+                      {:else}
+                        <span
+                          class="dgp-ltier dgp-ltier-unstitched"
+                          title="The digitizer found this as an enclosed area the same color as the background (like the hole in an O) and left it unstitched by default."
+                        >not sewn — enclosed area</span>
+                      {/if}
                     {:else}
                       <ThreadPicker {rgb} compact on:pick={(e) => recolorShape(row.id, e.detail)} />
                       <span class="dgp-lname">{rowName(row)}</span>
@@ -1400,6 +1539,11 @@
                         <option value="fill">Fill</option>
                         <option value="run">Run</option>
                         <option value="sketch">Sketch</option>
+                        <option value="streamline">Streamline</option>
+                        <option value="crosshatch">Cross-hatch</option>
+                        <option value="wave">Wave</option>
+                        <option value="chevron">Chevron</option>
+                        <option value="brick">Brick</option>
                       </select>
                       {#if tier === "fill"}
                         <select
@@ -1442,7 +1586,7 @@
                     <button type="button" class="dgp-lbtn dgp-restore" on:click={() => restoreShape(row.id)}>
                       Restore
                     </button>
-                  {:else if unstitched}
+                  {:else if unstitched && !clusterHidden}
                     <button
                       type="button"
                       class="dgp-lbtn dgp-restore"
@@ -1451,7 +1595,7 @@
                     >
                       Sew it
                     </button>
-                  {:else}
+                  {:else if !unstitched}
                     <button
                       type="button"
                       class="dgp-lbtn"
@@ -1459,7 +1603,7 @@
                       title="Sew earlier"
                       aria-label="Sew earlier"
                       on:click={() => moveShape(row, -1)}
-                    >↑</button>
+                    ><Icon name="arrowUp" size={12} /></button>
                     <button
                       type="button"
                       class="dgp-lbtn"
@@ -1467,7 +1611,7 @@
                       title="Sew later"
                       aria-label="Sew later"
                       on:click={() => moveShape(row, 1)}
-                    >↓</button>
+                    ><Icon name="arrowDown" size={12} /></button>
                     {#if siblings.length > 1}
                       <button
                         type="button"
@@ -1476,7 +1620,7 @@
                         title="Sew earlier within this color"
                         aria-label="Sew earlier within this color"
                         on:click={() => moveShapeWithinLayer(row, -1)}
-                      >▲</button>
+                      ><Icon name="chevron" size={12} class="dgp-caret-up" /></button>
                       <button
                         type="button"
                         class="dgp-lbtn"
@@ -1484,7 +1628,7 @@
                         title="Sew later within this color"
                         aria-label="Sew later within this color"
                         on:click={() => moveShapeWithinLayer(row, 1)}
-                      >▼</button>
+                      ><Icon name="chevron" size={12} /></button>
                     {/if}
                     {#if restoredEnclosed}
                       <button
@@ -1493,7 +1637,7 @@
                         title="Mark as not sewn again (enclosed area)"
                         aria-label="Mark as not sewn again"
                         on:click={() => unrestoreStitching(row.id)}
-                      >⦸</button>
+                      ><Icon name="exclude" size={12} /></button>
                     {/if}
                     {#if mergedInfo}
                       <button
@@ -1502,7 +1646,7 @@
                         title="Undo this merge (the original shapes come back)"
                         aria-label="Undo merge"
                         on:click={() => undoMerge(row.id)}
-                      >⎌</button>
+                      ><Icon name="revert" size={12} /></button>
                     {:else if splitInfo}
                       <button
                         type="button"
@@ -1510,7 +1654,7 @@
                         title="Undo this split (the original shape comes back)"
                         aria-label="Undo split"
                         on:click={() => undoSplit(row.id)}
-                      >⎌</button>
+                      ><Icon name="revert" size={12} /></button>
                     {:else}
                       <button
                         type="button"
@@ -1518,7 +1662,7 @@
                         title="Cut this shape into two"
                         aria-label="Split shape"
                         on:click={() => startSplitEdit(row)}
-                      >✂</button>
+                      ><Icon name="scissors" size={12} /></button>
                     {/if}
                     <button
                       type="button"
@@ -1526,14 +1670,14 @@
                       title="Edit this shape's boundary"
                       aria-label="Edit shape boundary"
                       on:click={() => startBoundaryEdit(row)}
-                    >✎</button>
+                    ><Icon name="edit" size={12} /></button>
                     <button
                       type="button"
                       class="dgp-lbtn"
                       title="Hide this shape (restorable)"
                       aria-label="Hide this shape"
                       on:click={() => deleteShape(row.id)}
-                    >✕</button>
+                    ><Icon name="close" size={12} /></button>
                   {/if}
                 </div>
               </li>
@@ -1677,6 +1821,38 @@
     color: var(--warn-text, #8a6d1a);
   }
   .dgp-warnings li { margin-top: 2px; }
+  /* Louder than .dgp-warnings on purpose (Kent's own diagnosis of the
+     Instagram-icon complaint: the per-shape "Sew it" restore already existed
+     but was easy to miss as a dim list line) -- a bordered, actionable box
+     instead of another <li>, same --warn-text vocabulary as everything else
+     in this file rather than a new color invented for one banner. */
+  .dgp-enclosed-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 8px 0 0;
+    padding: 8px 10px;
+    border: 1px solid var(--warn-text, #8a6d1a);
+    border-radius: var(--radius-s, 6px);
+    background: var(--warn-bg, #fdf6e3);
+  }
+  .dgp-enclosed-banner-text {
+    flex: 1;
+    margin: 0;
+    font-size: var(--fs-xs, 12px);
+    color: var(--warn-text, #8a6d1a);
+  }
+  .dgp-enclosed-banner-btn {
+    flex-shrink: 0;
+    padding: 5px 10px;
+    border: 1px solid var(--warn-text, #8a6d1a);
+    border-radius: var(--radius-s, 6px);
+    background: var(--warn-text, #8a6d1a);
+    color: #fff;
+    cursor: pointer;
+    font-size: var(--fs-xs, 12px);
+    white-space: nowrap;
+  }
   .dgp-resize { font-size: var(--fs-xs, 12px); color: var(--warn-text, #8a6d1a); margin: 8px 0 6px; }
   .dgp-blocks { margin-top: 10px; }
   .dgp-blocks-label { display: block; font-size: var(--fs-xs, 12px); margin-bottom: 4px; }
@@ -1686,6 +1862,48 @@
   .dgp-layers-head { display: flex; align-items: baseline; gap: 8px; }
   .dgp-layers-title { font-size: var(--fs-xs, 12px); font-weight: 600; }
   .dgp-layers-order { font-size: 11px; color: var(--muted, #667); }
+  .dgp-sequencer { margin-top: 6px; }
+  .dgp-seq-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 4px 6px;
+    border: 1px solid var(--tint-border, #ccd6fb);
+    border-radius: var(--radius-s, 6px);
+    background: var(--surface, #fff);
+    cursor: pointer;
+    font-size: 11px;
+    text-align: left;
+  }
+  /* `chevron` points down at rest -- that's the "open" reading, so the
+     closed (▸) state is the one that needs a rotate; same reuse-one-icon,
+     rotate-in-CSS convention Icon.svelte's own comment documents. */
+  .dgp-seq-caret { flex: none; color: var(--muted, #667); transition: transform 0.15s ease; }
+  .dgp-seq-caret-closed { transform: rotate(-90deg); }
+  .dgp-seq-title { flex: 1; font-weight: 600; }
+  .dgp-seq-trims { color: var(--muted, #667); white-space: nowrap; }
+  .dgp-seq-trims.heavy { color: var(--warn-text, #8a6d1a); font-weight: 600; }
+  .dgp-seq-list { list-style: none; margin: 4px 0 0; padding: 0; }
+  .dgp-seq-block {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    border-top: 1px solid var(--tint-border, #ccd6fb);
+    font-size: 11px;
+  }
+  .dgp-seq-swatch {
+    width: 12px;
+    height: 12px;
+    flex: none;
+    border-radius: 3px;
+    border: 1px solid var(--tint-border, #ccd6fb);
+  }
+  .dgp-seq-thread { flex: none; min-width: 40px; color: var(--muted, #667); }
+  .dgp-seq-count { flex: 1; }
+  .dgp-seq-span { flex: none; color: var(--muted, #667); }
+  .dgp-seq-btns { display: flex; gap: 2px; flex: none; }
   .dgp-layerlist { list-style: none; margin: 6px 0 0; padding: 0; }
   .dgp-layer {
     display: flex;
@@ -1737,6 +1955,9 @@
   .dgp-lsel { font-size: 11px; max-width: 110px; }
   .dgp-lbtns { display: flex; flex-direction: column; gap: 2px; flex: none; }
   .dgp-lbtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     padding: 2px 6px;
     border: 1px solid var(--tint-border, #ccd6fb);
     border-radius: var(--radius-s, 6px);
@@ -1746,6 +1967,11 @@
     line-height: 1.3;
   }
   .dgp-lbtn:disabled { opacity: 0.4; cursor: default; }
+  /* `chevron` points down at rest -- the within-layer "later" nudge button
+     reuses it as-is, "earlier" rotates it to point up. Same rotate-in-CSS
+     reuse as the sequencer caret above, kept as its own rule since it
+     rotates unconditionally rather than toggling with component state. */
+  .dgp-caret-up { transform: rotate(180deg); }
   .dgp-restore { white-space: nowrap; }
   .dgp-unmatched {
     font-size: var(--fs-xs, 12px);

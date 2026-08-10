@@ -44,7 +44,7 @@ from .stage3_segment import (
     resolve_small_regions,
 )
 from .stage4_vectorize import tag_enclosed_background, vectorize
-from .textcluster import detect_text_clusters, regularize_text_clusters
+from .textcluster import detect_text_clusters, ocr_suggest_text, regularize_text_clusters
 from .stage5_overlap import resolve_overlaps
 from .stage6_blend import SourcePixels, detect_design_ramp_angle
 from .stage7_sequence import PHOTO_CLASSES, depth_sort_layers, sequence
@@ -251,7 +251,7 @@ def run_stages(
         debugviz.stage2(dbg, q.labels, q.thread_indices, chart_for(cfg))
 
     masks = seg.segment(q, p, cfg)
-    masks, small_warnings = resolve_small_regions(masks, cfg, p.px_per_mm)
+    masks, small_warnings = resolve_small_regions(masks, cfg, p.px_per_mm, p.enclosed_mask)
     if dbg:
         debugviz.stage3(dbg, p.rgb, masks)
 
@@ -280,6 +280,14 @@ def run_stages(
     # regularized polygon, the same way it would see any other computed-fact
     # geometry from this generation.
     regularize_text_clusters(regions, p)
+
+    # OCR-suggested text (Studio "Convert to text" entry point): a read-only,
+    # additive per-member OCR read of each tagged member's FINAL polygon —
+    # runs after regularization for the same "computed fact reflects this
+    # generation's actual geometry" reasoning as the two passes above, never
+    # feeds back into detection/regularization/geometry itself. See
+    # `textcluster.py`'s module docstring, "OCR-suggested text" section.
+    ocr_suggest_text(regions, p)
 
     # Shape identity edits (contract v1.5): merge/split BEFORE deletions/
     # overrides, on the same "ids assigned against the full generation"
@@ -369,15 +377,18 @@ def run_stages(
     # existing.
     want_tonal = (cfg.fill_technique or "tatami").lower() in (
         "scanline_tonal", "meander_tonal", "streamline", "sketch") or cfg.detail_layer
-    # The per-shape form of the sketch opt-in (shape-layers contract v1.3,
-    # `tier: "sketch"`): a review-screen edit forcing ONE shape to sketch
-    # rendering needs the same raster the design-wide preset does, so
-    # requesting it counts as the explicit opt-in too. Scanned here, not
-    # resolved — a stale id still warns downstream as every stale edit
-    # does, and carrying pixels for it changes no stitch (nothing else
-    # reads them unless a tier consumes them).
+    # The per-shape form of the sketch/streamline opt-in (shape-layers
+    # contract v1.3's `tier: "sketch"`, v1.6's `tier: "streamline"`): a
+    # review-screen edit forcing ONE shape onto a raster-reading tier needs
+    # the same source pixels the design-wide preset does, so requesting it
+    # counts as the explicit opt-in too — this is precisely what makes a
+    # manually-classified (flat-lane) shape able to reach streamline fill
+    # without the whole design opting into `fill_technique="streamline"`.
+    # Scanned here, not resolved — a stale id still warns downstream as
+    # every stale edit does, and carrying pixels for it changes no stitch
+    # (nothing else reads them unless a tier consumes them).
     want_tonal = want_tonal or any(
-        str((ov or {}).get("tier", "")).lower() == "sketch"
+        str((ov or {}).get("tier", "")).lower() in ("sketch", "streamline")
         for ov in cfg.shape_overrides.values())
     if classification.class_ == "gradient" or want_tonal:
         source_pixels = SourcePixels(rgb=p.rgb, px_per_mm=p.px_per_mm,

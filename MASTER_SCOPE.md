@@ -11,7 +11,884 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-06 — the "jersey_tee fill underlay" follow-up this
+**Last updated:** 2026-08-10 — UI icon system fully rolled out (all 13
+files, not just the foundation two), three more fill techniques added
+(wave, chevron, brick, alongside crosshatch). See areas 1 and 3 below.
+
+**Previously (2026-08-09):** manual-digitizing Trace feature shipped, real
+**Last updated:** 2026-08-09 — cross-hatch fill added as a new opt-in fill
+technique (Python digitizer pipeline), the first of a planned small family
+of new named fill patterns. See area 1 below.
+
+Prior update below, still 2026-08-09:
+
+**Last updated:** 2026-08-09 — manual-digitizing Trace feature shipped, real
+user UX feedback fixed (shape editor + step nav), appliqué zigzag cover
+bugfix, legacy standalone tool removed. See areas 1 and 3 below.
+
+**Previously (2026-08-07):** two backlog cleanup items closed in one pass.
+
+**(1) `DigitizePanel.svelte` gained a component-test harness — a real,
+previously-self-flagged gap, not a newly-invented one.** Every per-shape
+Layers-panel control (stitch type, fill angle, underlay style, border,
+recolor, delete/restore, `moveShape`/`moveShapeWithinLayer` reorder) and
+the just-shipped Sequencer view had ONLY ever been checked via live-browser
+passes — no Svelte component test harness for this file existed anywhere
+in the repo, this doc's own area 5 said so explicitly for the
+underlay-style control specifically. `DigitizePanel.testHarness.svelte`
+follows the exact precedent `ManualPanel.testHarness.svelte` set (a real
+`*.svelte` wrapper listening with `on:elupdate`, since Svelte 5 dropped
+`$on` on a mounted instance) — 21 new tests in `DigitizePanel.spec.js`,
+scoped deliberately to the Layers panel's edit controls, NOT the upload
+-> Digitize -> poll flow (already covered by the real Playwright e2e spec,
+`app/e2e/digitize-stale-edits.spec.js`; no element in these tests ever
+touches `element.params`, so the "auto re-digitize on param change"
+reactive statement never fires and no network call happens). Two real,
+previously-unverified behaviors came out of writing these: the "Fill
+angle"/"Border" labels are ambiguous with the design-wide params section's
+own same-named controls (fixed in the tests via an `aria-label` attribute
+selector, not a component change — the app's own accessibility labeling
+was already fine, just not literally testable via `getByLabelText`
+without disambiguation); and `moveShape`'s "join vs. step past" branch
+(commented in the component, never exercised by a test) is real and
+correctly reachable — confirmed both branches with two dedicated fixtures
+rather than assuming the comment's own claim. Branch
+`digitize-panel-test-harness`. Full 490/490 app suite passes, `vite
+build` succeeds. Doesn't move area 5's Status/Confidence verdict (closing
+a testing gap on already-shipped, already-correct behavior, not new
+capability or a found defect).
+
+**(2) `feat/svg-import-shapes` formally evaluated and NOT resumed** —
+standing item from before this session, re-examined rather than left to
+keep sitting untouched indefinitely. Checked directly, not assumed: the
+branch is 277 commits behind `main`; of its own 10-task plan
+(`docs/superpowers/plans/2026-07-27-svg-import-and-shapes.md`) only Task 1
+(a path-data tokenizer) is actually complete, and Task 2 (bezier
+flattening) — the branch's own last commit message calls it "interrupted
+mid-implementation, UNREVIEWED, tests not confirmed" — genuinely does not
+work: running its own test suite (`node --test test/svgpath.test.js`)
+fails one real assertion, a cubic-bezier flattening deviating 8.75 units
+against its own 0.5-unit tolerance, not just an unreviewed-but-working
+stub. Tasks 3–10 (arcs, transforms, primitives, document parsing, the
+Studio upload path, and the shape-element/shape-pack UI) were never
+started. The core end-user motivation — getting curved vector shapes into
+the Studio without hand-tracing — is now partially covered by this
+session's manual curve-drawing tool (see the entry below), though a true
+SVG-file-import feature (preserving an EXISTING vector file's exact paths,
+distinct from hand-drawing) remains a real, uncovered use case if wanted
+later. Decision: not worth resuming as-is — reconciling 277 commits of
+drift against code that's already known-broken in the one part that was
+attempted is closer to a fresh build than a resume. The branch is left in
+place, untouched (deleting it is Kent's call, not this pass's to make
+unilaterally); if the underlying need resurfaces, treat it as a fresh
+plan against current `main` rather than a rebase of this branch.
+
+Prior update below, still 2026-08-07:
+
+**Last updated:** 2026-08-07 — the Layers panel (`DigitizePanel.svelte`)
+gained a Sequencer view: a collapsible, color-block-grouped alternative to
+the plain per-shape list — one row per color/thread carrying its swatch,
+member count, and sew-index span, with block-level "sew this color
+earlier/later" buttons. Prompted by Ember Design's own "Sequencer: Colors"
+panel, but the promoted backlog item was specifically that cross-color
+sequencing had zero geometric-adjacency signal — checked directly, not
+assumed: `layer`/`sew_order` were ALREADY fully wired `shape_overrides`
+with working per-shape UI controls (`moveShape`/`moveShapeWithinLayer`),
+so this landed as presentation-only, no new backend plumbing. The
+block-level reorder (`moveBlock`) swaps two whole blocks' layer numbers in
+one batched override patch — one undo step, same convention every other
+edit in this panel follows. Better-than-Ember, not just parity: the
+header surfaces `trims_per_1000`/`TRIM_HEAVY` from `preflight.py`'s own
+report, computed server-side every job but never previously shown
+anywhere in the Studio (confirmed via grep before writing a line of UI) —
+exactly the number a user reordering color blocks needs and Ember's
+equivalent panel has no counterpart for. The Layers-list sort/grouping
+logic (`effLayer`, `sortShapes`, `effSewOrder`, `layerSiblings`, `effRgb`,
+plus the new `groupIntoBlocks`) moved from component-local functions into
+`digitizer.js` as named exports, the same place `reorderWithinLayer`
+already lived — one implementation to test and keep in sync with the
+override contract, not two. 12 new pure-logic tests plus live-browser
+verification: ran a real image through the real local digitizer service,
+expanded the Sequencer, reordered two color blocks, confirmed the visual
+order and swatch/count/span data updated correctly, and confirmed one
+Undo fully reverted the block swap. Branch `color-block-sequencer-ui`.
+Doesn't move area 3's Status/Confidence verdict (additive UI over an
+already-shipped, already-tested override contract, not a quality or trust
+finding).
+
+Prior update below, still 2026-08-07:
+
+**Last updated:** 2026-08-07 — fill angle selection (`stage6_fill.py`)
+gained a 16-candidate-angle sweep for the auto case (no explicit
+per-shape/global/comp-axis override): `best_fill_angle_deg` tries 16 evenly
+spaced row directions PLUS `principal_angle_deg`'s own answer and keeps
+whichever cuts the shape into the fewest monotone columns (`_columns`),
+the same "enumerate candidate angles, minimise fragment count" method the
+expired Goldman/SoftSight patents disclose (docs/masters-teardown-2026-08
+-01.md's gap **G3**, closed by this pass). `principal_angle_deg` alone
+already gets this right for anything with a real long axis — the gap was
+specifically shapes where the plain PCA angle is technically correct (a
+real long axis by area) but a bad row direction for the shape's actual
+structure: measured on a synthetic diagonal staircase of overlapping
+squares, PCA's 45deg axis sews as 13 columns while the sweep's chosen
+near-perpendicular angle sews the same shape as 1. Including PCA's own
+angle as a candidate means the sweep can only tie or beat it, never do
+worse — confirmed by a dedicated regression test, and by the fact the
+**entire 937-test Python suite passes unchanged** except one fixture
+(`test_run_tier.py`'s empty-fill rescue test) that had to pin its angle
+explicitly rather than rely on a specific angle failing to fill, since the
+whole point of this change is that fewer angles fail to fill now. Branch
+`fill-angle-candidate-sweep`. Doesn't move area 1's Status/Confidence
+verdict (a fill-quality improvement within already-shipped, already-tested
+technique, not a new capability or a trust finding).
+
+Prior update below, still 2026-08-07:
+
+**Last updated:** 2026-08-07 — manual (hand-drawn) shape authoring
+(`ManualPanel.svelte`) gained curved as well as straight-line edges: drag
+the small handle at any edge's midpoint to bow it into a quadratic curve,
+drag it back to straighten it — live during drafting and retroactively via
+"Edit points" on a finished shape. Prompted by directly observing Ember
+Design's own manual digitizing tool (draw curved/straight lines, satin-fill
+the closed shape) — and confirms something already suspected: EMB-Bot's
+satin/fill machinery already derives rails/caps from ANY closed polygon via
+medial-axis skeletonization, so the missing piece really was just the
+curve-drawing UI, not new stitch-generation capability. Curves are stored
+as their own sparse per-shape field (`shape.curves`, a segment-index →
+quadratic-control-point map) and only ever flattened to plain points at the
+`shapesToRegions` hand-off boundary — `manual.py`, the Python pipeline, and
+the stitch engines never need to know a curve exists; a shape with no
+curved segments flattens to byte-identical output, so this is a no-op for
+every design that predates the feature. Branch `manual-shape-curve-tool`.
+30 new tests (22 pure-geometry cases in `manualShapes.spec.js`, 8
+component-level drag-gesture cases in `ManualPanel.spec.js`), covering the
+live-preview-follows-cursor curve math, straighten-by-dragging-back-to-
+center, edit-mode re-curving, the self-intersection gate running against
+the FLATTENED (not raw-anchor) geometry, and Undo point correctly dropping
+a curve bound to a now-removed segment. Verified live in a real browser,
+not just tests: drew a curved shape, fill-stitched it, satin-stitched it,
+and re-curved a different edge after finishing — all client-side, no
+backend needed. Full detail in area 3 below, in the paragraph starting
+"**Manual shape drawing gained curved edges, 2026-08-07**".
+
+Prior update below, still 2026-08-07:
+
+**Last updated:** 2026-08-07 — streamline fill (`stage6_streamline.py`,
+photo plan technique row 10) gained a per-shape review-screen override
+(`shape_overrides[sid].tier == "streamline"`, contract v1.6), the same
+mechanism `tier == "sketch"` already uses — closing an item raised by
+Ember Design competitor research (their equivalent "Streamlines" fill ships
+as a generic, per-shape pattern choice, not photo-only). Branch
+`streamline-fill-flat-lane-override`. Full before/after, the direction-field
+design decision (reuse the existing raster/structure-tensor field
+unchanged, rather than build a new shape-geometry/medial-axis field — and
+why `manual.py`'s genuinely raster-less shapes deliberately do NOT get this
+technique), and the full test list live in area 1 below, in the paragraph
+starting "**Streamline fill grew a per-shape form, 2026-08-07**".
+Backend-and-Studio-UI-complete for this specific ask (a one-line
+`DigitizePanel.svelte` dropdown addition, matching Sketch's already-shipped
+pattern) — nothing stubbed. Area 1's Status/Confidence verdict is unchanged
+by this pass (additive wiring on an already-shipped, already-tested tier;
+not a quality or trust finding).
+
+Prior update below, still 2026-08-07:
+
+**Last updated:** 2026-08-07 — documentation-only pass, no code changed:
+recorded this session's competitive research against Ember Design
+(`emberdesign.net`) as a new cross-cutting backlog item (see "Ember Design
+competitive research" below) rather than folding it into any capability
+area's status, since none of it changes what's built or how much it's
+trusted today. Full evidence trail: `docs/emberdesign-competitive-research-
+2026-08-07.md`.
+
+Prior update below, still 2026-08-07 — the `summit_badge.png` black-complex
+regression the SLIC -> SEEDS superpixel swap shipped as a documented,
+`xfail(strict=True)`-marked defect (see that entry further down, kept
+verbatim) is **RESOLVED**, by a new mechanism rather than by any retuning of
+the `AREA_RATIO_*` constants that pass had exhausted. Branch
+`seeds-boundary-contrast-fix`.
+
+**The prior pass's stated root cause was wrong, and that is why the fix was
+findable.** It concluded the black complex is destroyed by "a CHAIN of small,
+comparable-size, progressively-diluted edges ... never presenting ONE large-
+ratio edge for this constant family to catch". Re-instrumenting every merge
+`merge_hierarchical` performs on the fixture (1,052 of them, logging live
+foreground pixel counts, raw dE00, and how much source-black pixel mass each
+side carries) shows the opposite: the 129 majority-black SEEDS superpixels DO
+consolidate with each other first, and the complex is destroyed by ONE
+identifiable merge, the 1043rd — **65,467 px (49,369 source-black, mean Lab
+L\*=11.4) into 348,309 px (214 source-black, L\*=31.1), at dE00 16.06** under
+the 26.0 threshold. Area-ratio protection missed it not because no single
+large edge existed, but because that edge's size ratio is **5.3** — nowhere
+near the 18.0 an extreme-mismatch guard looks for. It is a big-into-big
+merge, which `_area_ratio_factor` is blind to by construction, and lowering
+its ratio far enough to see a 5.3 necessarily catches ordinary comparable-
+size band consolidation everywhere else. That is exactly the drone_render /
+gradient-ramp breakage the prior pass measured. The constant family was
+never the right tool; no value of it is.
+
+**The new mechanism: boundary contrast.** `merge_hierarchical` compares
+region MEAN colors, which cannot distinguish "two halves of one continuous
+gradient, cut at an arbitrary interior position" from "two different design
+elements meeting at a drawn edge" when both pairs of means sit ~16 dE00
+apart. `stage2_photo_segment` now measures, once per superpixel pair, the
+mean per-pixel-pair Lab distance across the pair's actual shared boundary,
+and carries it through merges as a length-weighted sum (exact, not an
+approximation — skimage's `RAG.merge_nodes` leaves both constituent edges
+readable at recompute time). Measured on the final large merge each tuning
+fixture performs:
+
+| fixture / merge | raw dE00 | boundary contrast |
+|---|---|---|
+| `gradient_ramp_linear` (final merge) | 16.09 | 0.54 |
+| `gradient_ramp_radial` (final merge) | 15.88 | 0.64 |
+| `summit_badge` (merges 1035/1037) | 11.1 / 12.7 | 0.46 |
+| `summit_badge` (merge 1043 — destroys the complex) | 16.06 | **31.31** |
+| `drone_render` (merges 854-943) | 14.8-23.8 | 18.5-39.7 |
+
+A ~50x separation, not a marginal one. An edge whose boundary is genuinely
+hard AND whose smaller side is a substantial share of the design's own
+foreground gets a locally tighter threshold — the same "divide the weight"
+dual `FACE_MERGE_FACTOR` and `AREA_RATIO_MERGE_FACTOR` already use.
+
+Real before/after, full pipeline (`run_stages`, the same F4 metric every
+retune in this module has been measured against):
+
+| fixture | before (shipped main) | after |
+|---|---|---|
+| `summit_badge.png` dark-area recovery | **9.1%** | **106.9%** |
+| `drone_render.png` regions | 74 | **74** (unchanged) |
+| `gradient_ramp_linear.png` regions | 2 | **2** (unchanged) |
+| `gradient_ramp_radial.png` regions | 2 | **2** (unchanged) |
+
+Every other photo-path fixture in the repo is **bit-identical** with the
+mechanism on vs. off, checked directly rather than assumed:
+`enthusiast_logo.png` 31, `fur_ramp.png` 8, `region_blobs.png` 3,
+`repro_gradient_white_icon.png` 19, `photo_scene_stub.png` 24,
+`photo_subject_stub.png` 1. The fix is surgical by design, not incidentally.
+
+**Honest accounting of the margins**, because they are not uniform. The
+boundary-contrast gate itself is robust: swept 1.0-32.0, every value from
+1.0 to 25.0 gives identical results, and the real window is bounded by the
+fixtures at (0.64, 31.31] — the shipped 6.0 sits ~10x clear of one edge and
+~5x of the other. The merge factor is expressed as `13.0 /
+MERGE_DELTAE00_THRESH` (the `FACE_MERGE_FACTOR` precedent — the absolute
+13.0 dE00 is what must stay under the fixture's 16.06, so it must not drift
+if the base threshold moves again); swept 0.2-0.7 as a raw ratio, flat from
+0.2 through 0.6 and collapsing at 0.62, and 0.5 is chosen mid-window with
+~19% margin below the 0.6177 cliff. **The size gate is the weak one**: the
+smaller side must be >= 9% of the design's foreground, and the measured
+window is (0.074, 0.113] — a ~1.5x gap defined by two fixtures. What makes
+it safe despite that is structural rather than numerical: a region must be
+>= 9% of the foreground to be protected at all, so at most ~11 regions in
+any design can ever be, and the mechanism therefore **cannot add more than
+~10 regions to any design's final count**. It structurally cannot reproduce
+the 122-region blowout the prior pass's area-ratio re-derivations caused,
+because those fired on unboundedly many small regions. A fixture landing the
+wrong side of 0.09 loses the protection and degrades to exactly today's
+shipped behavior — the safe direction.
+
+A third discriminator (each region's internal Lab colour spread: flat design
+content 6.7-8.9 vs. drone_render's textured 13.7-26.1) was measured, works
+equally well at a gate of 10.0-12.0, and was **rejected and recorded** in the
+constant's docstring so it is not re-derived: it needs a new per-node
+sum-of-squares attribute maintained through every merge, its window is no
+wider, and it has no equivalent of the bound above.
+
+`test_summit_badge_black_complex_survives_full_pipeline` is a real passing
+assertion again — the marker removed because the bar it guards is met by
+measurement, not because the regression was reinterpreted as acceptable.
+Three new tests pin the mechanism itself (the constants, the ~50x contrast
+separation on a synthetic ramp-meets-block fixture, and that the
+length-weighted recombination survives a real `RAG.merge_nodes` call).
+Targeted suites green: `test_stage2_photo_segment.py` + `test_face_priors.py`
++ `test_flat_lane_byte_identical.py` + `test_palette.py` + `test_pipeline.py`
+(69 passed, **0 xfailed** — down from 1), `test_background_removal.py` +
+`test_stage6_blend.py` + `test_preflight.py` (88 passed, 2 pre-existing
+skips). Cost: ~31 ms on a 900x900 / 1,072-superpixel fixture.
+
+**Confidence for the photo-path segmentation swap: raised from LOW to
+MEDIUM.** The blocker named in the entry below ("do not raise this rating,
+and do not merge the branch, until the `summit_badge.png` regression above is
+actually resolved with real numbers behind the fix") is met on its own terms.
+Not raised past MEDIUM, and deliberately: the size gate's ~1.5x margin is
+calibrated against two fixtures, and the mechanism has only ever been
+observed to fire on one of them, so its behavior on unseen content is
+bounded and argued-for rather than broadly demonstrated.
+
+Prior update below, still 2026-08-07 — fast follow-up to the `BACKGROUND_ENCLOSED`
+bulk-restore banner (area 1, "Auto-digitizing quality" — see that section's
+own entry below for the original fix): an adversarial review (`emb-bot-
+reviewer`) of the merged diff found the new banner's exclusion of already-
+converted text-cluster members (`textConversions`) was correct, but the
+pre-existing PER-ROW "Sew it" button sitting right next to it in the same
+unstitched-row branch had no such guard — clicking it on a converted
+cluster member silently restores stitching for a shape a *different*
+feature already replaced with a real text element, with no visual warning
+(the "restored" badge only fires off the server's own `stitched` field,
+which a cluster conversion's client-only override never touches). Proven
+live against the real service, not just reasoned about: converting a
+14-member cluster on the `enthusiast_logo.png` benchmark left all 14 with a
+fully clickable "Sew it" button and the same misleading "enclosed area"
+tooltip. This diff pre-dates the fix, so it never shipped to `main` in the
+broken state — caught before merge, not a live regression. Fix:
+`DigitizePanel.svelte` gains a shared `isClusterHidden(row, conversions)`
+helper, used by both the banner's `unstitchedRows` filter (already correct)
+and a new `clusterHidden` per-row const that now gates the per-row "Sew it"
+button and label — a cluster-hidden row shows "hidden — converted to text"
+pointing at the cluster bar's own Undo control instead. New regression
+coverage in `text-cluster-convert.spec.js`: after converting a cluster, the
+`Sew it` button count must equal only the pre-conversion baseline (real
+enclosed-background rows, if any) and the bulk banner's live count must
+exclude the converted members too — verified against the real service,
+2/2 relevant e2e specs pass in isolation (the same environmental
+worker-contention flake noted in the original entry reproduces when run
+back-to-back with other heavy specs and is unrelated to this change).
+Studio unit suite 435/435, `vite build` clean. Two smaller review findings
+also closed same pass: a stale "not yet verified" sentence directly
+contradicting the original fix's own new paragraph (self-resolved once
+this branch was restarted from `main`, which already carried that doc fix
+separately) and `.dgp-enclosed-banner`'s background swapped from a bare hex
+literal to `var(--warn-bg, #fdf6e3)` for consistency with the rest of the
+file's color-token convention.
+
+Prior update below, still 2026-08-07: `stage2_photo_segment`'s superpixel
+oversegmentation step (photo plan step 1, every photo/gradient-classified
+design's segmentation entry point) swaps `skimage.segmentation.slic` for
+`cv2.ximgproc.createSuperpixelSEEDS` (branch `seeds-superpixel-swap`, draft
+PR against `main`, **not merged — do not treat this as shipped**). Motivated
+by a standalone benchmark (superpixel algorithm isolated as the only
+variable, every downstream step — RAG construction, area-ratio protection,
+merge, CC split, min-area floor — held byte-identical) that measured SEEDS
+producing 2-4x tighter boundaries than SLIC at matched region counts on the
+two real busy fixtures this module's own test suite already tracks.
+
+Real before/after, full pipeline (`run_stages`, `len(PipelineResult.
+regions)`, the same F4 metric this module's threshold retunes have always
+been measured against):
+
+| fixture | SLIC (old, thresh=20.0) | SEEDS (new, thresh=26.0) |
+|---|---|---|
+| `drone_render.png` | 65 | 74 |
+| `summit_badge.png` | 30 | 39 |
+| `gradient_ramp_linear.png` | 2 | 2 |
+| `gradient_ramp_radial.png` | 2 | 2 |
+
+Both busy fixtures land inside the 20-80 accept band with real headroom;
+visually inspected via `debugviz.stage2_photo_merged` on both, boundaries
+read clean (drone_render's lettering/foliage/fuselage edges are crisp, no
+speckle). The flagged risk going into this pass — SEEDS' extra boundary
+sensitivity over-segmenting a smooth gradient ramp — was checked directly,
+not assumed, and did NOT materialize: both ramps hold at their SLIC-era
+counts across the whole threshold sweep tried (18.0-35.0), never exceeding
+2 regions. `MERGE_DELTAE00_THRESH` moved 20.0 -> 26.0 (SEEDS' raw output
+fragments WORSE than SLIC's at the OLD threshold — 106 vs 65 regions on
+drone_render at 20.0 — the opposite of the benchmark's own framing that
+SEEDS would need a less-aggressive merge; measured directly via a real
+two-fixture sweep that the threshold had to move UP, not down).
+`FACE_MERGE_FACTOR` re-derived as `5.0 / MERGE_DELTAE00_THRESH` (was a
+hand-typed `0.25`) so the face-local absolute merge tolerance stays pinned
+at 5.0 dE00 regardless of the base threshold, the same decoupling
+`AREA_RATIO_PROTECT_THRESH` already established as precedent one retune
+ago; `test_face_local_threshold_splits_shades_that_merge_outside_a_face`
+confirms the absolute number held.
+
+**[RESOLVED 2026-08-07 later the same day — see this document's own latest
+entry at the top for the fix, its mechanism, and its real numbers. The
+paragraph below is the original pass's record of the defect and is kept
+verbatim; two of its claims (the "chain of small edges" root cause, and the
+implication that this constant family needed re-deriving) are now known to be
+wrong — the top entry says exactly how.]**
+
+**KNOWN, MEASURED, UNRESOLVED REGRESSION — why this ships as a draft PR
+and should NOT be merged as-is.** `summit_badge.png`'s black ring/inner-
+circle/crosshair complex — real design content a prior PR (`AREA_RATIO_
+PROTECT_THRESH`) fixed from ~1% to 83.7% area recovery — regresses hard
+under SEEDS, to ~9-11% recovery, confirmed both numerically (`dark_area_mm2`
+vs. source blackish-pixel area) and visually (`debugviz.stage2_photo_
+merged`: the ring's own black stroke is almost entirely absent, only a
+short arc and the crosshair needle survive dark). Root cause, measured not
+guessed: under SLIC the complex consolidated into ONE large coherent RAG
+node before ever facing the background — a clean big-vs-big size mismatch,
+exactly what `AREA_RATIO_PROTECT_THRESH` guards. Under SEEDS the same
+complex starts fragmented into ~150-260 much smaller (~750-800px)
+superpixels, and the hierarchical merge walks a graduated CHAIN of small,
+comparable-size, progressively-diluted edges from black to background —
+never presenting the one large-ratio edge area-ratio protection is built to
+catch. Every re-derivation attempted this pass — lowering `AREA_RATIO_MIN_
+SMALL_PX` alone (200-1000, recovery stayed flat at ~9-10%); lowering it
+together with `AREA_RATIO_PROTECT_THRESH` and a much more aggressive
+`AREA_RATIO_MERGE_FACTOR` (recovery DID recover, to ~99-107%, but at the
+cost of pushing `drone_render.png` to 122 regions — through the 80-region
+ceiling `MERGE_DELTAE00_THRESH` was tuned against — and `gradient_ramp_
+radial.png` to 8, toward the over-segmentation risk this same pass ruled
+out elsewhere) — either failed to move recovery or fixed it by breaking
+other already-validated behavior. No combination found cleanly decoupled
+"protect this one real complex" from "keep allowing legitimate small-into-
+large absorption broadly" the way the original SLIC-era tuning did.
+`AREA_RATIO_PROTECT_THRESH`/`AREA_RATIO_MERGE_FACTOR`/`AREA_RATIO_MIN_
+SMALL_PX` therefore ship UNCHANGED (18.0/0.6/1000) — the full investigation
+trail lives in that constant's own docstring in `stage2_photo_segment.py`.
+`test_summit_badge_black_complex_survives_full_pipeline` is marked
+`xfail(strict=True)` (not deleted, not weakened, not silently lowered) so
+this stays a live, visible regression marker — a future fix that resolves
+it will flip the test to an unexpected pass, which pytest reports loudly.
+
+**Confidence: LOW for this specific change, unresolved.** The core
+algorithm swap measurably helps general busy-photo fragmentation
+(`drone_render.png`) and does not regress gradient-ramp behavior — real,
+validated wins. It is NOT safe to treat as a drop-in SLIC replacement across
+all photo/gradient content: specifically, thin/high-contrast detail sitting
+on a large similar-toned background (`summit_badge.png`'s own failure
+shape) loses real design content that a previous fix restored. Full
+targeted suite green otherwise: `test_stage2_photo_segment.py` (35 passed,
+1 xfailed — the known regression above), `test_face_priors.py` (folded into
+the same run), `test_flat_lane_byte_identical.py` + `test_palette.py` +
+`test_pipeline.py` (30/30, confirming the flat/gradient golden lane and
+unrelated pipeline stages are untouched), `test_background_removal.py` +
+`test_stage6_blend.py` (both touch this module, both green). Do not raise
+this rating, and do not merge the branch, until the `summit_badge.png`
+regression above is actually resolved with real numbers behind the fix —
+not just re-flagged as acceptable.
+
+Prior update below, still 2026-08-07 — `regularize_text_clusters` gains a third,
+**Last updated:** 2026-08-07 — Kent's own real-world upload of the
+Instagram icon (gradient rounded-square background, white camera-glyph
+linework) still showed "white space, not clean crisp edges" even after the
+`BACKGROUND_ENCLOSED` restore mechanism verified directly below. Not a new
+geometry defect: investigated first via `digitizing-quality-auditor` to
+check Kent's own diagnosis (adjust overlap/pull-comp/density/underlay,
+standard commercial-digitizing knobs) against the codebase's own history —
+all four are already tuned for this art class (Laws 22/23/26/27-29,
+appliqué cover pull-comp #72, border seam-sharing #73) and untouched by
+this complaint. Root cause confirmed by direct reproduction against HEAD
+(`stage1_prep.py::prep` on `testdata/photo/repro_gradient_white_icon.png`,
+essentially this fixture): the white camera-glyph lines are the same white
+as the page background, so `tag_enclosed_background` correctly flags them
+`enclosed_background` (the same logic that correctly leaves an "O"'s
+counter unstitched) and `pipeline.py` holds them unstitched by default —
+real, deliberate behavior (see the `BACKGROUND_ENCLOSED` bullet in area 1
+below), but the only way to fix it was clicking "Sew it" once per shape on
+a dimmed list row, easy to miss entirely.
+
+Asked Kent directly (a real product tradeoff, not a mechanical call):
+auto-restore large enclosed areas by default (zero clicks here, but risks
+silently filling a genuinely-intended hole on some future design) vs. keep
+today's safe per-shape default and make restoring fast/obvious instead. He
+picked the latter. `DigitizePanel.svelte` gains a loud `.dgp-enclosed-banner`
+(replacing the old plain-text warning bullet) showing a live count plus a
+"Sew all N" bulk action (`restoreAllUnstitched`) — one merged
+`shapeOverrides` patch, not a loop (looping would clobber itself against
+the same stale `element` prop across iterations, the pitfall
+`undoTextConversion` already documents and works around). Deliberately
+excludes any row belonging to a cluster already converted to text via
+`textConversions` — that row's `stitched:false` is a permanent hide from
+the text-cluster feature, not a default this banner should ever offer to
+undo. Per-shape default behavior is otherwise byte-for-byte unchanged: a
+genuine small enclosed hole still holds out by default exactly as before.
+
+Verified against the real digitizer service + browser, not just unit-level:
+`app/e2e/digitize-background-enclosed.spec.js` gained a second test driving
+the bulk path end to end (banner shows the live count, "Sew all N" restores
+every enclosed region on the repro fixture in one click, Apply re-stitches
+all of them through the real service) and the existing single-row test's
+assertions were updated for the new banner; both pass
+(`npx playwright test e2e/digitize-background-enclosed.spec.js`, 2/2, plus
+the sibling `digitize-boundary-edit`/`digitize-shape-identity`/
+`digitize-stale-edits`/`text-cluster-convert` specs re-run clean to confirm
+no shared-component regression). Studio unit suite: `npx vitest run`
+435/435 (28 files). `npx vite build` clean. Engine and digitizer suites
+untouched by this pass (pure Studio UI change, no `src/` or
+`digitizer_core/` edits) and not re-run.
+**Last updated:** 2026-08-07 — `stage6_satin.py`'s "E missing its
+bottom-left corner" defect (root-caused, deliberately left open by PR #77 —
+see this doc's own 2026-08-06 entry below) is now root-caused for real and
+FIXED. Re-verified fresh before touching anything: rendered `photo/
+enthusiast_logo.png` at 90mm via `debugviz.stage6`, confirmed by direct
+render inspection that the defect is still present on current `main`
+(PRs #77-#80 all merged, none touched this) — a visible gray gap between
+the satin and the underlay's own boundary trace at the glyph's flush
+corner. Also re-checked the "N" PR #77 flagged as possibly-short: its satin
+coverage bounds now match its polygon bounds to within 0.008mm on every
+side — **not present**, confirming the earlier independent re-measurement
+this doc already noted.
+
+**Real root cause, and it is NOT what PR #77's own investigation
+suspected.** The junction machinery it named (`_extend_to_cap`,
+`_retract_cap_corner`, `_merge_through_junctions`) is innocent: traced
+directly, the stem's own medial axis welds through all three of the E's
+T-junctions into one both-ends-free stroke exactly as designed, and
+`_extend_to_cap` lands each of its two caps within 0.15mm of the glyph's
+real corner. The actual bug is one step later, in `_short_stitch_guard`
+(same file): the cross one station in from a cap is a real, keepable
+stitch on its own (measured 0.57-0.60mm, comfortably over
+`SATIN_MIN_CROSS_MM`'s 0.5mm floor) — but that station's same-rail step off
+the cap is short enough to trip the guard, whose pull-toward-middle is
+sized for a WIDE curve (35%, capped at an absolute 0.6mm — fine when a
+cross is several mm) and, applied to an already-narrow cross, pulls it
+under the floor. `satin_stroke`'s degenerate-cross filter then drops it a
+few lines later for a reason that has nothing to do with why that filter
+exists (an actual same-point pinch) — and the corner sews as bare fabric
+even though the cap machinery it was blamed for did its job correctly.
+Confirmed by direct instrumentation of the real code path (not a
+reimplementation) on both the real fixture and an isolated synthetic
+"E"-shaped polygon carrying the identical multi-junction topology, before
+and after.
+
+**Fix:** `_pull_short` (called from `_short_stitch_guard`) now bounds its
+pull so it can never take a cross under `SATIN_MIN_CROSS_MM` itself — a
+pull that would have landed the result below the floor lands AT the floor
+(with a 1% margin so float rounding in the two `dist()` calls along the
+way can't undershoot it) instead of past it. This is a general fix, not a
+per-letter patch: it changes one shared helper every satin column's
+short-stitch guard already goes through, for the specific case (a
+near-floor cross whose same-rail step is short) that is possible at ANY
+cap zone, corner, or tight curve — not gated on being near a junction or a
+specific shape. Blast radius acknowledged honestly: this touches the
+short-stitch guard's behavior for every satin shape in the app, satin
+being `stage6_satin.py`'s whole reason for existing. What kept the change
+narrow in practice: the new bound only ever binds when a pull would
+otherwise cross the floor — a curve with real room to spare (the guard's
+normal case, crosses several mm wide) never reaches it, so it is a no-op
+there by construction, not by luck.
+
+Visual re-verification, same method as the reproduction: the fixture's
+"E" now shows a stitch landing 0.32mm from its flush corner (was 0.59mm) —
+closer to the true vertex, not a residual gap eliminated to zero (a
+mathematical corner is a zero-width point; no satin cross can land exactly
+on it without becoming the same kind of degenerate stitch the guard
+exists to prevent). Before/after crops of the corner, rendered directly
+from the real polygon and the real `satin_shape` output (not the
+composite debug render, for a distraction-free comparison), confirm the
+gray gap visibly closes. The glyph's OTHER flush corner (bottom bar) was
+already inside the floor before this fix (0.36mm both before and after —
+a different station's parity happened not to trigger the guard there) and
+is unchanged, not a follow-up gap: a pre-existing non-issue this pass
+confirmed rather than assumed. One labeling caveat, stated plainly rather
+than glossed over: "top"/"bottom" here is this pass's own render
+convention (y-down, verified against a labeled direct render of the
+glyph, not assumed) — which of the E's two flush corners Kent's own eyes
+called "bottom-left" when he first reported this cannot be cross-verified
+without his original screenshot. What IS verified: a genuine,
+reproducible flush-corner coverage gap, with the exact symptom described
+(bare fabric against the underlay's own boundary trace) and the exact
+geometry described (a stem crossing multiple T-junctions), was found and
+fixed on this glyph.
+
+New regression tests, `tests/test_satin.py`: a synthetic `E_LETTERFORM`
+polygon (proportions taken directly from the real fixture's own vectorized
+"E", translated to the origin) plus `test_a_stem_crossing_three_junctions_
+welds_into_one_stroke` (confirms the fixture actually exercises the
+multi-junction topology before trusting the second test) and
+`test_stem_free_end_reaches_its_own_flush_corner` (the coverage
+regression; fails on pre-fix code at 0.59mm, passes post-fix at 0.32mm —
+verified failing on the reverted code, not just passing on the fixed one).
+Targeted suites green: `test_satin.py` **51/51** (49 existing + 2 new),
+`test_flat_lane_byte_identical.py` **6/6**, `test_preflight.py`/
+`test_stages.py`/`test_pushcomp.py`/`test_chaining.py` **169/169**
+combined. Golden impact, checked by diff rather than assumed: only
+`photo/enthusiast_logo.png`'s entry in `flat_lane_golden.json` moved
+(regenerated the same way the doc's own prior precedent did — one key,
+not a full re-run); `logo_whitebg.png`/`logo_alpha.png`/`ribbon_curve.png`
+came back byte-identical. On the moved entry, `shape_ids`/`areas_mm2`/
+`warnings`/`stitch_count` are all unchanged (2363 both before and after)
+— only `stitch_coords` moved, and by a wide margin (1983 of 2363 entries),
+which measured out as a benign downstream cascade rather than a new
+defect: re-ran `preflight.run_preflight` on the same fixture before/after
+and got the same score (88/B), the same single finding
+(`TRIM_HEAVY`, essentially unchanged), and near-identical coverage metrics
+(`coverage_max` 4.45 both, `coverage_area_mm2` 630→631) — consistent with
+a few points' worth of real change early in one shape's sew order
+cascading through Laws 27-29's structural entry-point selection for every
+shape sewn after it, not with anything escaping its shape or overlapping
+wrong. Three other fixtures (`logo_alpha.png`, `logo_whitebg.png`,
+`ribbon_curve.png`) re-rendered and visually inspected: clean, no
+starburst, no new gaps — `ribbon_curve.png` in particular is the fixture
+`test_a_satin_free_end_does_not_fan_into_a_starburst` pins in detail for
+exactly this guard's earlier, unrelated fix, and it still passes. Full
+digitizer suite **not** re-run locally per this environment's own standing
+caution (COOKBOOK.md); CI runs it on the PR.
+
+**Last updated:** 2026-08-07 — closed the one remaining verification gap on
+the `BACKGROUND_ENCLOSED` / opaque-alpha fix (area 1, "Auto-digitizing
+quality"): watched it run through the real Studio browser UI via Playwright
+MCP, not just the HTTP-level check PR #22 already had. Uploaded
+`repro_gradient_white_icon.png` through the actual `+ Auto-digitize` file
+input (the same canvas-re-encode path the opaque-alpha bug lived in),
+digitized it against the real service, and confirmed visually: 4 enclosed
+icon-linework regions held out by default as dimmed "not sewn — enclosed
+area" rows (not dropped, not merged into neighbors), the canvas preview
+showing them as literal unfilled gaps; clicked "Sew it" on one, applied, and
+watched the real service re-stitch it (10,916 → 11,114 stitches, gap now
+solid fill) while the other three stayed correctly held out. Screenshots
+under `.playwright-mcp/background-enclosed-*.png`. No code change needed —
+the fix already worked; see area 1's `BACKGROUND_ENCLOSED` write-up below
+for the full account. Doc-only change, committed directly (see that
+section's "CLOSED 2026-08-07" note for detail).
+
+Prior update below, still 2026-08-07: `regularize_text_clusters` gains a third,
+independent safety layer on top of the selective-regularization fix directly
+below (PR #77, `fix-lettering-defects-hole-and-regularization`, still open/
+draft, not yet merged to `main` — this work stacks on that branch; see "Not
+yet merged" at the end of this entry): an OCR-confidence quality gate. The
+two existing checks (`_REGULARIZE_SKIP_TOLERANCE`, hole-preservation) are
+geometric PROXIES for "would this redraw read worse" — this measures it
+directly. For every cluster member that clears both existing checks and is
+about to be buffered, Tesseract (Apache-2.0; new `tesseract-ocr` system
+package + `pytesseract` wrapper) scores the member's own rasterized crop
+before and after the proposed skeleton-buffer redraw (`--psm 10`,
+single-character mode); if confidence drops by >=20.0 points
+(`_OCR_CONFIDENCE_DROP_THRESHOLD`), the buffer is discarded and the member
+falls back to its original polygon — the same fail-open contract
+`buffer_failed` already uses. Only a confidence NUMBER is ever read:
+`pytesseract`'s decoded-text field (`data["text"]`) is never accessed
+anywhere in this module — verified both by code inspection and by a
+regression test that makes the decoded-text field raise `AssertionError` if
+anything ever touches it (`tests/test_ocr_gate.py::
+test_ocr_confidence_never_reads_the_decoded_text_field`).
+
+Threshold calibrated on real measurements, not assumed. On the real
+benchmark fixture (`enthusiast_logo.png`'s 14-member subline, 90mm), the ONE
+member PR #77's existing checks let through to the buffer (the +30%-off
+"I") drops from 77.0 to 0.0 confidence — Tesseract finds no text at all in
+the buffered crop, a 77-point loss this gate now catches and blocks. A
+broader real calibration set (font-rendered glyphs E/F/H/I/L/N/S/T/Z, DejaVu
+Sans Bold, individually perturbed in stroke width so each clears
+`_REGULARIZE_SKIP_TOLERANCE` on its own) measured six more real buffered
+examples: three clearly damaging (-49, -27, -26 points), one borderline
+(-20), one mild/still-fine (-5), one genuine improvement (+11, correctly NOT
+blocked). 20.0 sits between the largest real "still fine" delta (-5) and the
+smallest real "genuinely damaged" one (-20). Full evidence trail, both
+calibration sets, and every constant's reasoning: `digitizer_core/
+textcluster.py`'s "OCR-confidence quality gate" module-docstring section.
+
+New tests, real Tesseract, no system-font dependency (letters are hand-built
+5x7 dot-matrix block glyphs — deterministic across machines/CI runners, not
+a font file that may or may not be installed): `tests/test_ocr_gate.py` (6
+new — a real "fine" case, 93.0->92.0, gate does not fire; a real "damaging"
+case, 92.0->0.0, gate fires and falls back to the original polygon; OCR
+unavailable fails open; exact threshold boundary pinned with mocked values;
+two tests proving the decoded text is never touched). Two of PR #77's own
+tests now correctly isolate this new layer via the same no-op-patch pattern
+`test_pipeline.py` already used to isolate `regularize_text_clusters`
+itself: `test_textcluster.py`'s two bare-rectangle variance/area tests
+(rectangles carry no real letterform content for Tesseract to read, before
+or after) and `test_pipeline.py`'s full-pipeline variance test (whose real-
+fixture "after" run now patches past the gate for the same real member the
+gate legitimately blocks — that block is `test_ocr_gate.py`'s job to cover
+directly, not this test's). Targeted suites green: `test_ocr_gate.py`
+(6/6), `test_textcluster.py` (15/15), `test_pipeline.py` (12/12),
+`test_stages.py` (15/15), `test_satin.py` (49/49), `test_service.py -k
+text_cluster` (1/1). Full digitizer suite not re-run locally (this
+environment's own standing caution, see COOKBOOK.md); CI runs it on the PR.
+
+No isolation needed (unlike `rembg_isolated/`): `pytesseract`'s only deps
+are `packaging`/`Pillow`, both already present in `requirements.txt` — no
+numpy/numba conflict, confirmed via `pip show pytesseract` before adding it
+to the shared venv. System `tesseract-ocr` install step added to CI's
+`digitizer` job; documented in `digitizer/README.md`'s "Setup" alongside
+`rembg_isolated/`'s own system-dependency note.
+
+**Not yet merged:** this lands on branch `text-cluster-ocr-confidence-gate`,
+stacked on PR #77's own branch (`fix-lettering-defects-hole-and-
+regularization`) since the `_REGULARIZE_SKIP_TOLERANCE`/hole-preservation
+mechanism this extends is not on `main` yet. Opened as a draft PR against
+`main`; its diff will show both PRs' changes combined until #77 merges
+first, at which point it collapses down to just this one.
+
+Prior update below, still 2026-08-06: Kent looked at a real rendered
+stitch-out of the benchmark fixture (`enthusiast_logo.png` at 90mm) and
+reported 5 concrete
+letterform-fidelity defects. All 5 were reproduced first (`debugviz.stage6`
+render, visually inspected, not inferred from stats) before touching any
+code — the working hypothesis going in (all 5 traced to `textcluster.py`'s
+regularization) turned out to be **half right**: the investigation found
+THREE separate root causes, not one, and this pass fixes two of them, leaving
+the third open and documented rather than rushing a wide-blast-radius patch.
+
+- **Subline "ENTERPRISES INC" garbled/illegible — FIXED.** Root cause really
+  was `textcluster.regularize_text_clusters`, but not the mechanism assumed:
+  it redrew EVERY tagged cluster member's polygon as a skeleton-buffer,
+  unconditionally, even members whose own geometry was already fine.
+  Measured on the real 14-member subline cluster: 13 of 14 members' own
+  pre-regularization stroke half-width already sat within +-11% of the
+  cluster's shared target (only one real outlier, at +30%) — the
+  unconditional buffer was replacing already-good vectorized letterforms
+  with a cruder approximation for zero consistency gain, and a skeleton-LINE
+  buffer structurally cannot reproduce a real interior hole (3 of the 14
+  members — R/P-style counters — lost theirs). Fix: `regularize_text_
+  clusters` now skips a member (leaves its polygon untouched) when its own
+  measured stroke half-width is within 15% of the cluster's target
+  (`_REGULARIZE_SKIP_TOLERANCE`), or unconditionally when its original
+  polygon already carries a real interior ring — a line buffer is never the
+  right primitive for a hole it never measured. A genuine outlier still
+  regularizes exactly as before (proven both on the real fixture and a new
+  synthetic unit test). Full evidence and the module's new "Selective
+  regularization" section: `digitizer_core/textcluster.py`.
+- **"A" missing its triangular counter — FIXED, and NOT a text-cluster bug.**
+  Direct measurement showed the main wordmark's letters (including the "A")
+  carry neither `rescued_small_shape` nor `text_candidate` — they never go
+  through `textcluster.py` at all, which falsified half of the working
+  hypothesis immediately. Real root cause: `stage3_segment.
+  resolve_small_regions` treated a small but completely real enclosed hole
+  — already correctly found by `Prep.enclosed_mask` at stage 1
+  (2.08mm², comfortably above the sewable floor) — as ordinary segmentation
+  noise and absorbed it into the "A" glyph's own ink (its only possible
+  neighbor, since an enclosed hole's neighbor is always the shape enclosing
+  it), erasing it before `stage4_vectorize.tag_enclosed_background`'s
+  already-correct machinery ever got the chance to tag it as its own Region.
+  Fix: `resolve_small_regions` takes an optional `enclosed_mask` (wired from
+  `Prep.enclosed_mask` in `pipeline.py`) and protects any small region
+  >=60% covered by it from absorption/drop — it still has to clear stage 4's
+  own real-geometry floor to survive, same as any other kept mask. Confirmed
+  interacting CORRECTLY, not colliding, with the separate same-day
+  `satin-classifier-organic-shapes` DT-tightening fix (area 1 below): the
+  "A" used to flip satin->fill specifically because it read as a solid,
+  holeless, organic blob (exactly what that fix's DT check exists to catch)
+  — restoring the hole makes it measure as the well-proportioned ribbon
+  letterform it always was, and it correctly flips back to satin
+  (`tests/test_satin.py` updated with the real evidence for both directions;
+  visual re-render confirms clean parallel satin, not a starburst).
+- **"E" missing its bottom-left corner / "N" reading short — ROOT-CAUSED,
+  left OPEN. CLOSED 2026-08-07** — see this doc's newest entry at the top:
+  the actual mechanism was not the junction/cap-extension machinery this
+  entry's own investigation suspected (that traced out innocent), but
+  `_short_stitch_guard`'s pull-toward-middle taking an already-adequate
+  near-corner cross under `SATIN_MIN_CROSS_MM`. The "N" symptom is
+  confirmed NOT present (coverage bounds match its polygon to 0.008mm).
+  Original write-up kept below for the investigation trail. Confirmed real
+  via direct render crops (bare unstitched
+  fabric exactly where the underlay's own boundary trace shows the true
+  polygon corner). Confirmed NOT a text-cluster or enclosed-hole defect —
+  the wordmark's satin letters go through the ordinary `stage6_satin.py`
+  column-generation path (`extract_strokes`/`satin_stroke`/`_rail_points`),
+  which is used by every satin shape in the app, not this feature. This is a
+  real, pre-existing gap in how a letterform stroke that passes through
+  MULTIPLE T-junctions along its own length (the E's vertical stem meets 3
+  horizontal bars) gets its rail/cap geometry built — evidence points at the
+  interaction between free-end cap extension (`_extend_to_cap`/
+  `_retract_cap_corner`) and the per-station width cap in `_rail_points`,
+  but was not narrowed further. Deliberately NOT fixed in this pass:
+  `stage6_satin.py` is the single largest, most heavily-tuned, most
+  fixture-sensitive file in the codebase (1750 lines, referenced by every
+  satin golden in the suite, several hard-won fixes already on record in
+  this doc's own history), and a change there needs its own dedicated
+  investigation and review pass, not a patch bundled into an unrelated
+  feature's bugfix. Flagged here as a real, separate, still-open defect.
+
+New regression tests: `tests/test_textcluster.py` (2 new + 1 rewritten to
+match the corrected selective behavior — the old one asserted "every member
+regularizes," which was the bug), `tests/test_stages.py` (1 new, the
+enclosed-hole-survives-absorption case), `tests/test_satin.py` (1 rewritten
+— the "A"'s satin/fill call flips as a correct consequence of the hole fix,
+not a break). Targeted suites green: `test_textcluster.py` (15/15),
+`test_stages.py` (15/15), `test_pipeline.py` (12/12, including both existing
+text-cluster wiring tests), `test_satin.py` (49/49). **Not verified locally:**
+`test_flat_lane_byte_identical.py` — `testdata/flat_lane_golden.json` is
+pre-existing corrupted JSON at HEAD (confirmed via `git status`/`git log`
+showing zero local diff on that file; unrelated to this pass, already
+tracked by a separate in-progress fix per `git worktree list`), so it cannot
+even be collected here, let alone regenerated. This pass's geometry changes
+(the "A"'s hole, several subline members' polygons) almost certainly move
+`photo/enthusiast_logo.png`'s golden entry once that file is fixed — flagged
+explicitly rather than silently left for CI to discover. Full digitizer
+suite NOT re-run locally per this task's own instruction (proven unreliable
+in this environment); CI runs it on the PR.
+
+Prior update below, still 2026-08-06: satin entry/exit point selection now follows
+**Last updated:** 2026-08-07 — `digitizer_core/textcluster.py`'s text-cluster
+detector gains three classical-CV strengthening passes, all measured against
+the real `enthusiast_logo.png` benchmark rather than assumed (area 1's
+"Text-cluster detection" entry below has the full writeup): (1) three new
+candidate filters — stroke-width coefficient of variation, aspect-ratio
+bounds, and bbox-nesting exclusion — tightening `_candidates()`, which
+previously compared only each shape's MEAN stroke half-width; (2) a Shape
+Context descriptor (Belongie/Malik/Puzicha 2002, new module
+`digitizer_core/shapecontext.py`, ~150 lines, no new dependency) wired into
+`regularize_text_clusters` as a before/after glyph-plausibility gate — a
+cluster member whose regularized redraw structurally diverges too far from
+its own original shape (a corner blown out, a hole filled) is now skipped
+instead of silently applied, same fail-open discipline as every other guard
+in that function; (3) MSER (`cv2.MSER_create()`) was investigated as a
+companion signal and deliberately NOT built — measured directly against both
+the raw and prepped benchmark image, it returns zero regions everywhere,
+because this module's whole domain (flat-lane, few-solid-color vector art)
+structurally lacks the multi-level intensity gradient MSER's threshold-sweep
+stability check requires; full reasoning in `textcluster.py`'s own "MSER"
+docstring section. All three additions land on the SAME real benchmark
+fixture's golden output byte-identical (`test_flat_lane_byte_identical.py`
+still green) — none of the fixture's 14 real letters or its regularization
+were false-positived by the new filters; the filters instead removed a class
+of failure the fixture doesn't happen to trigger today (confirmed via direct
+measurement on the fixture's own non-member fragments, not inferred). 30 new
+tests (`tests/test_shapecontext.py`, new; `tests/test_textcluster.py`
+additions), 222 total across the touched suites passing.
+
+Prior update below, still 2026-08-06 — satin entry/exit point selection now follows
+corpus laws 27-29 instead of pure nearest-point, closing the highest-value
+item a `digitizing-quality-auditor` health check surfaced this session (Kent
+picked it explicitly over two alternatives it also proposed: border
+seam-sharing, which needs a design sign-off on which shape wins a shared
+edge before it can be built, and appliqué cover pull-comp, both still open).
+Scored on 291 real professional decisions, `docs/corpus-laws-round3-
+2026-08-01.md` found pros enter a satin stroke at its FREE end (the open
+cap) 85.2% of the time, not whichever end is merely nearest the needle
+(42.3% for that rule) — and will pay up to ~10mm of extra travel to reach
+it (law 29), not more. `digitizer_core/stage6_satin.py` gains one new
+helper, `_choose_stroke_entry(cur, a, free_a, b, free_b)`: when a stroke has
+exactly one free end (the other welded into a junction by the existing
+skeleton-weld machinery), entry prefers the free end unless the extra
+travel over the nearer end exceeds the new `machine.
+STRUCTURAL_ENTRY_BUDGET_MM = 10.0` (law 29's own measured cutoff), in which
+case it falls back to nearest — unchanged from before. When both ends are
+free (an isolated stroke) or both are junction-welded, there is no
+structural signal to prefer and proximity alone decides, byte-identical to
+the old rule — this is why the change's reach is narrower than "every
+satin stroke": only strokes with exactly one free end are affected. Wired
+into two call sites — `_order_strokes` (the sequencing simulation) and
+`satin_shape`'s per-run reversal loop — but the reversal loop applies the
+new rule ONLY to the visible satin column (`StitchRun` kind `SATIN`);
+underlay runs keep pure-nearest orientation, since the corpus law was read
+off real stitch files' visible satin entries, not hidden underlay, and
+underlay orientation is already separately tuned to minimize inter-stroke
+hops. **Not implemented:** law 28's finer end-CLASS ordering (cap > tee >
+corner ~= butt) among junction ends specifically — that needs classifying
+each junction end's own arm count/angle, which `Stroke` does not currently
+carry (only the binary free/not-free distinction `extract_strokes` already
+computes). Left as an explicit follow-up rather than guessed at.
+
+Six new tests in `tests/test_satin.py`: four direct unit tests of
+`_choose_stroke_entry` (prefers the cap within budget, exact-10mm boundary,
+falls back past the budget, and both tie cases — both-free and
+both-junction — fall back to pure proximity), plus two end-to-end tests via
+`satin_shape` on synthetic T-junction polygons (a new short-stem
+`T_SHORT_STEM` fixture proving the cap wins within budget; the existing
+`T_SHAPE` fixture's 17mm stem proving the budget fallback still holds for a
+real over-budget case). Golden impact, checked by diff rather than assumed:
+`flat_lane_golden.json`'s `logo_alpha.png` and `photo/enthusiast_logo.png`
+entries moved (both carry real lettering with free/junction-asymmetric
+strokes) and were regenerated — deliberately, only those two keys, via the
+same `snapshot()` function `tools/capture_flat_lane_golden.py` uses, not a
+full re-run of that script — while `logo_whitebg.png` and `ribbon_curve.png`
+came back byte-identical and were left untouched, matching the fact that
+neither fixture has a qualifying stroke. `shape_ids`/`areas_mm2`/`warnings`
+are identical before/after on both regenerated fixtures; only
+`stitch_coords` moved (plus `stitch_count` on `enthusiast_logo.png`, 2431 ->
+2454 — expected, since a different entry point reshapes travel-graph
+routing between strokes). Full digitizer suite re-run to completion in the
+foreground after the golden update: **867 passed, 3 skipped, 0 failed**
+(1228s) — the 3 skips are the same standing container-environment goldens
+this doc has tracked since 2026-08-03, deselected the same way CI does, not
+new failures. Engine `node --test` re-run too: **283/283** (this doc's
+267/267 figure was stale going in — more engine tests landed since it was
+last written; not a regression, just catching the count up). `app/`
+untouched by this change (confirmed via `git status`) and not re-run in
+this environment (Studio's `node_modules` isn't installed here); carrying
+forward the doc's last-verified Studio count rather than asserting an
+unverified new one. Done directly on the session's own working branch, not
+an isolated worktree — a solo, contained fix.
+
+Prior update below, still 2026-08-06: the "jersey_tee fill underlay" follow-up this
 doc flagged as a low-priority candidate (area 1, below) is investigated and
 **closed as declined, not a code change**: a direct measurement (synthetic
 fill polygons at realistic sizes — 60x40mm, 100x70mm, 20x15mm — run through
@@ -23,6 +900,35 @@ statistically identical to `edge_run` (60x40mm: 19.04mm vs 19.02mm; 100x70mm:
 *slightly worse* on the small shape). A single line through the shape's
 principal axis is exactly as far from off-axis interior points as a
 perimeter walk is; only a full grid/lattice pass (`edge_lattice`/
+**Last updated:** 2026-08-06 — the satin/fill classifier's DT-tightening fix
+(`satin-classifier-organic-shapes`, area 1 below), previously scoped to
+`gradient`/`photo_subject`/`photo_scene` only on the premise that flat art's
+boundaries are clean, is **extended to `design_class="flat"` too**: that
+premise was empirically false, proven on this repo's own committed
+`testdata/photo/enthusiast_logo.png` benchmark, where the flat-exempted rule
+satin-stitched two real shapes into a literal starburst (confirmed by
+rendering their actual pre-fix stitch coordinates). `is_satin_candidate`'s
+`design_class == "flat": return True` early return is deleted; the DT check
+(`_dt_regular_and_within_cap`, itself untouched) now runs unconditionally.
+`flat_lane_golden.json` regenerated and structurally diffed — exactly the 2
+predicted entries move (`logo_alpha.png`, `photo/enthusiast_logo.png`),
+`logo_whitebg.png`/`ribbon_curve.png` stay byte-identical. Full detail,
+exact measurements, and the pure-tightening safety re-proof (four
+letterform archetypes still satin under `"flat"`) in area 1's "Satin/fill
+classifier" bullet below.
+
+Prior update below, still 2026-08-06: the "jersey_tee fill underlay"
+follow-up this doc flagged as a low-priority candidate (area 1, below) is
+investigated and **closed as declined, not a code change**: a direct
+measurement (synthetic fill polygons at realistic sizes — 60x40mm, 100x70mm,
+20x15mm — run through `digitizer_core.stage6_fill._underlay_paths`,
+computing the real max distance from any interior point to the nearest
+underlay stitch) shows `center_run` does NOT close the 13mm interior gap the
+prior audit measured — it's statistically identical to `edge_run` (60x40mm:
+19.04mm vs 19.02mm; 100x70mm: 34.02mm vs 34.01mm; 20x15mm: 6.58mm vs 6.11mm,
+`center_run` actually *slightly worse* on the small shape). A single line
+through the shape's principal axis is exactly as far from off-axis interior
+points as a perimeter walk is; only a full grid/lattice pass (`edge_lattice`/
 `edge_zigzag`) actually closes it, to 1.6-1.8mm regardless of shape size.
 Even combining `edge_run`+`center_run` (a real corpus recipe, "Rg.Re") only
 halves the gap on large shapes (9-17mm) — nowhere near lattice coverage. So
@@ -548,6 +1454,18 @@ than kept as standing callouts). One thing this pass did NOT find any new
 evidence for: physical sew-out testing — still zero, see the cross-cutting
 item below, unchanged.
 
+Also landed 2026-08-07, same day: one Ember Design competitive-research
+backlog item closed out — measured whether `digitizer_core/config.py`'s
+fixed `simplify_tol_mm` (0.2 mm) needs to scale with `target_width_mm` the
+way Ember's equivalent tolerance scales with design size. Measured, not
+assumed: it does not — the fixed constant is already scale-invariant in
+real millimetres by construction (`px_per_mm` cancels out of the round
+trip), confirmed by a direct Hausdorff-deviation sweep (0.185-0.200 mm
+across `px_per_mm` 3.0-40.0) and full end-to-end runs on every testdata
+fixture at 40-180 mm. No pipeline behavior changed; two regression tests
+pin the finding. Full writeup: this file's "`simplify_tol_mm` design-size
+scaling" cross-cutting entry below. Branch `simplify-tol-mm-scaling-audit`.
+
 Prior update 2026-08-04, earlier the same day: docs refresh once PRs #8–#15
 had finished merging (written mid-batch, so it undercounted at first),
 touched up twice more that pass as #23 (meander tonal tier) then #22
@@ -599,6 +1517,27 @@ first is about trusting browser DST as correct-orientation for arbitrary
 third-party software; the second is about which of EMB-Bot's own two encoders
 Studio picks internally — but they read differently enough side-by-side that
 it's worth Kent confirming the intended reading rather than assuming.
+
+**A concrete, code-verified gap in that same area, found 2026-08-09 by a
+`digitizing-quality-auditor` pass, not yet acted on:** Studio's actual
+Download button has no path-selection logic at all — `app/src/lib/
+exporters.js` unconditionally calls the browser engine's own `EMB.encodeDST`/
+`encodeEXP`/`encodePES` for every download, regardless of whether the
+design came from the Python auto-digitizer. Grepping `app/src` for any call
+to the Python service's `/export` route turns up none — `app/src/lib/
+digitizer.js` only ever calls `/digitize` and `/jobs/{id}`. So the
+pyembroidery-convention path this doc and CLAUDE.md both call "the
+trustworthy path for anything leaving this app" is currently unreachable
+from the real product for every design type, not just manual/lettering
+ones. A proposed fix exists (route Python-digitized designs through
+`/export` instead, leaving the manual/lettering path on the existing
+browser codec since that's the specific combination with sew evidence) —
+small and code-only, not sew-out-gated itself, but deliberately not done
+yet: it changes what a downloaded file looks like for existing users, and
+needs Kent's explicit sign-off first, same caution the "don't rotate
+everyone's existing files" line above already establishes. Worth raising
+with him as a concrete proposal in a future session rather than left to be
+rediscovered.
 
 **Resolution path:** a sew-out or third-party read of a browser-encoded DST
 (the "third opinion" `digitizer/README.md` calls for). Fixing the codec itself
@@ -774,6 +1713,155 @@ logos being a real gap, and this evaluation-corpus/harness gap — are exactly
 the two reflected in this update: the first is now closed by this pass's own
 feature, the second is captured here.
 
+### Ember Design competitive research — new backlog items, not a status change
+
+Three research passes against `emberdesign.net` (a browser-based embroidery
+digitizing competitor), run 2026-08-07: a screenshot UI/UX walkthrough, an
+end-to-end Chrome-extension-driven exploration of the live editor, and a
+build-artifact fingerprinting pass identifying their actual client-side tech
+stack and reverse-engineering their auto-digitize call path. None of it
+required bypassing authentication — passes 2 and 3 read client-side
+JavaScript Ember's own servers already send to any visitor's browser during
+ordinary use, the same thing devtools/View Source does. Full evidence
+trail, with exact formulas/library names/bug descriptions:
+`docs/emberdesign-competitive-research-2026-08-07.md`.
+
+**The prioritization decision matters more than the findings themselves.**
+Resolved via a pressure-tested discussion, not assumed: feature-parity work
+is real and belongs on the roadmap, but under a **standing priority rule,
+not a one-time gate** — it only gets picked up when nothing trust/quality-
+related is currently open and actionable. A one-time gate was explicitly
+rejected because two of the three originally-proposed gating conditions
+(the sew-out session above; open-ended "continued core-quality work") are
+externally-scheduled or inherently ongoing and would never crisply resolve
+— parity work would never start under a literal gate. The practical
+consequence: an idea only earns priority *within* the backlog if it maps to
+something already independently flagged as a gap, not merely because a
+competitor has it.
+
+Under that filter, from the three passes:
+- **Promoted, real independent justification:**
+  - Evenly-spaced streamline fill — Ember ships this as a paid "Streamlines"
+    fill pattern (`ess`, evenly-spaced streamlines of a 2D vector field).
+    EMB-Bot already has the same algorithm built
+    (`digitizer_core/stage6_streamline.py`, a clean-room Jobard & Lefer
+    implementation, deliberately not adapted from the license-unverified
+    `embroidery-streamlines` reference repo), but scoped today to the
+    photo-classification auto-pipeline only ("technique row 10"). The open
+    item is exposing existing capability as a general, manually-selectable
+    fill type — not building the algorithm, which already exists and is
+    tested.
+  - Boustrophedon polygon decomposition at an arbitrary sweep angle
+    (Ember's `bcd`) — relevant to this doc's own long-standing fill-angle-
+    selection research (the Goldman-patent "test 16 candidate angles"
+    finding).
+  - A color-block sequencer UI view (Ember's "Sequencer: Colors" panel —
+    collapses shapes into color blocks with thread name/brand/shape count/
+    stitch-index range per block) — addresses a gap already found
+    independently this session: cross-color sequencing today has zero
+    geometric-adjacency signal (see area 1's sequencing-research notes).
+- **One concrete, low-risk, testable idea, not yet a backlog promotion
+  pending a real test:** Ember's raster-input simplification tolerance
+  scales with design size (`tolerance = min(2.5, max(0.32, 0.0028 *
+  size))`); EMB-Bot's `simplify_tol_mm` (`digitizer_core/config.py`) is a
+  fixed 0.2mm regardless of design size. Pairs with the already-backlogged
+  Visvalingam-Whyatt simplification-algorithm research as a second,
+  independent angle on the same vectorization step.
+- **Recorded as existing, explicitly not queued — much larger scope than
+  the above:** `ember-bridge`, a separate Tauri desktop app that terminates
+  Brother machines' own TLS protocol locally for direct-to-machine design
+  transfer, bypassing manual file export. A real, distinct product
+  capability EMB-Bot has no equivalent of; not comparable in scope or risk
+  to the items above.
+- **Two of EMB-Bot's own architecture choices validated, not changed, by
+  what was found:** server-side auto-digitizing (Ember's client bundles
+  were probed for every common ML-inference surface — ONNX, TensorFlow.js,
+  transformers.js, WebGPU/WebNN — and any LLM API reference — OpenAI,
+  Anthropic, Replicate, Bedrock, SageMaker — and none were found anywhere;
+  their `/api/vectorize` is architecturally server-side and, from the
+  client's own vantage point, indistinguishable from a classical
+  raster-to-SVG tracer, the same shape as EMB-Bot's own `digitizer_service`
+  split); and depending on a mature format library (`pyembroidery`) rather
+  than hand-rolling PES/DST/EXP/etc. readers/writers from scratch the way
+  Ember's own `/convert` module apparently does (no WASM, no third-party
+  format library found in that module at all).
+
+**One direct process lesson, not a feature idea:** Ember's own user manual
+documents keyboard shortcuts (`3 = circle, 4 = rectangle, 5 = pen, 6 =
+satin blocks`) that no longer match the shipped toolbar (`3 = satin
+blocks, 4 = pen`, circle/rectangle moved into a shapes flyout, and Text —
+not documented at all — added as a real toolbar entry). Real evidence that
+doc drift actively misleads users, not just a hygiene nitpick — consistent
+with, not a new argument for, this project's own existing discipline around
+keeping `MASTER_SCOPE.md`/`COOKBOOK.md` matched to shipped reality.
+
+---
+
+### `simplify_tol_mm` design-size scaling — measured 2026-08-07, no change justified
+
+One concrete backlog item this session's Ember Design competitive research
+pass adopted (that research itself is `docs/emberdesign-competitive-
+research-2026-08-07.md`, open as PR #89 at the time of this entry, not yet
+merged — see that PR/doc for the full competitive writeup; this entry is
+the follow-up that closes out its one `digitizer_core`-side action item):
+Ember's equivalent vectorization tolerance scales linearly with design size,
+clamped `[0.32, 2.5]`, while `digitizer_core/config.py`'s `simplify_tol_mm`
+is a fixed 0.2 mm constant regardless of `target_width_mm` — flagged as
+"could plausibly benefit from size-proportional scaling the way Ember's
+does."
+
+**Checked directly, not assumed, and the fixed constant is correct as-is —
+no change made.** Two things, measured independently:
+
+1. **The two are not a like-for-like comparison.** Ember's `/api/vectorize`
+   traces a raw uploaded image with no physical-size input at that layer at
+   all (their editor sets physical size later); their "size" is the traced
+   raster shape's own pixel dimensions — a proxy for "how much raw contour
+   noise this image probably has," not a physical output measurement.
+   EMB-Bot already has an explicit mm scale at this point (`px_per_mm`,
+   derived from `target_width_mm` in stage 1) and applies `simplify_tol_mm`
+   AFTER that conversion specifically so it measures real millimetres
+   independent of source resolution — a more direct solve to the problem
+   Ember's heuristic approximates without one. Their own floor (0.32 mm) is
+   already coarser than EMB-Bot's entire current default (0.2 mm), so
+   copying their formula/clamp would be a strictly coarser, unjustified
+   behavior change, not a calibration match.
+2. **Direct measurement confirms the fixed constant already behaves as a
+   genuine, scale-invariant physical-mm tolerance.** Held one synthetic
+   wavy contour's pixel geometry fixed and swept `px_per_mm` 3.0-40.0 (the
+   range this app's real 40-180 mm `target_width_mm` bound produces —
+   measured 4.0-34.1 px/mm running the full pipeline on every flat- and
+   photo-lane testdata fixture at 40/60/80/90/120/150/180 mm): the Hausdorff
+   deviation between the simplified and unsimplified contour stayed
+   0.185-0.200 mm across the ENTIRE swept range, while vertex count varied
+   26-226 exactly as it should (a design built from the same source pixels
+   genuinely has less raw detail to preserve at a smaller physical size, not
+   more error at a bigger one). Full end-to-end runs on the flat-lane
+   fixtures (`logo_whitebg.png`, `logo_alpha.png`, `ribbon_curve.png` —
+   immune to the photo lane's own segmenter-resolution confounds) showed the
+   same thing: smooth, sub-linear vertex growth with `target_width_mm` (62
+   vertices at 40 mm -> 101 at 90 mm -> 125 at 150 mm on `logo_whitebg.png`),
+   no blocky under-detail at the small end, no runaway blowup at the large
+   end. The one fixture that DID show a dramatic vertex swing at small sizes
+   (`photo/summit_badge.png`: 1654 vertices at 40 mm collapsing to 627 at
+   80 mm) traced entirely to a DIFFERENT, already-documented mechanism — the
+   sub-detail rescue path's own fixed 0.5 px floor (`stage4_vectorize.py`,
+   a few lines from `simplify_tol_mm`'s own use), confirmed via a
+   per-region breakdown: 1263 of those 1654 vertices came from `rescued_
+   small_shape=True` regions, which bypass `simplify_tol_mm` entirely — not
+   this constant, and out of this pass's scope to touch.
+
+Regression tests pinning both measurements: `tests/test_run_tier.py::
+test_simplify_tol_mm_realized_deviation_is_px_per_mm_invariant` (the
+isolated Hausdorff sweep) and `tests/test_pipeline.py::
+test_simplify_tol_mm_stays_fine_across_the_real_target_width_range` (the
+end-to-end vertex-count bounds on a real fixture). `simplify_tol_mm`'s own
+docstring in `config.py` carries the full writeup so a future pass doesn't
+re-litigate this from scratch without evidence. The flat-lane byte-identical
+golden (`testdata/flat_lane_golden.json`, pinned by `tests/
+test_flat_lane_byte_identical.py`) is untouched, as expected — this was a
+measurement-only pass, no pipeline behavior changed.
+
 ---
 
 ## Capability areas
@@ -802,7 +1890,241 @@ and its multi-colour layered follow-up (PR #25, decomposes a region into
 3–5 chart shades via `stage6_blend`'s own shade-selection machinery and
 traces one streamline set per shade, dark-to-light). Row 10 was the last
 one this doc was still tracking as open; all of rows 6/8/9/10 are now
-built. Row 13 (chart-restricted weighted k-medoids palette selection,
+built.
+
+**Streamline fill grew a per-shape form, 2026-08-07** (branch
+`streamline-fill-flat-lane-override`) — a competitor-research prompt (Ember
+Design ships an equivalent "Streamlines" fill as a generic, per-shape
+pattern choice, not photo-only; see `docs/emberdesign-competitive-research-
+2026-08-07.md` §"Pass 3" if that doc has landed on `main` by the time you
+read this — as of THIS pass it still lives on an unmerged
+`docs-emberdesign-competitive-research` branch/worktree, so this entry is
+self-contained rather than assuming a cross-cutting backlog row already
+exists to close out). **Before:** `stage6_streamline.streamline_fill` was
+reachable only design-wide (`cfg.fill_technique == "streamline"` — which,
+worth stating precisely, was already NOT gated to photo-classified designs
+anywhere in `stage7_sequence.py`; `test_stage6_sketch.py::
+test_sketch_technique_implies_the_detail_block` already ran it against
+`forced_class="flat"`). There was no way to force streamline fill on ONE
+shape inside an otherwise-tatami design the way `tier == "sketch"` (and
+`"satin"`/`"fill"`/`"run"`) already could. **After:** `shape_overrides[sid].
+tier == "streamline"` works exactly like `tier == "sketch"` does — the
+identical shape-layers per-shape-override mechanism (contract v1.6, not a
+parallel one): `regions._TIER_VALUES` grew the value, `pipeline.run_stages`'
+per-shape source-pixel opt-in scan now also matches `tier == "streamline"`,
+and `stage7_sequence.stitch_one`'s streamline branch
+(`(streamline or tier == "streamline") and source_pixels is not None`)
+moved ahead of scanline/meander in the elif chain — mirroring where the
+sketch check already sits — so a per-shape override correctly beats a
+different design-wide tonal technique. The three other closed-set mirrors
+of the tier vocabulary (`digitizer_service/app.py`'s own `_TIER_VALUES`,
+the Studio's `app/src/lib/digitizer.js` `SHAPE_TIERS`, and the Layers-panel
+tier `<select>` in `DigitizePanel.svelte`) all grew the value too — this is
+backend-**and**-Studio-UI-complete for the specific ask, a one-line
+`<option>` addition matching the exact, already-shipped Sketch pattern, not
+a guessed UI.
+
+**The direction-field question — the actual design decision, not a wiring
+detail.** Investigated three options for what a streamline fill's tangent
+field should be for a manually-selected shape with no source-photo texture:
+(1) a field derived from the shape's own geometry (medial-axis/skeleton,
+the way `stage6_satin`'s rails work), (2) a plain user-specified angle, (3)
+a hybrid. Chose (3) — but by **reusing the existing raster/structure-tensor
+direction field (`directionfield.py`) completely unchanged, zero new
+algorithm**, rather than building anything new: it already reads this
+design's own prepped raster (`SourcePixels.rgb` — whatever art the job was
+given, a photo or a flat logo alike) and follows real local structure where
+the raster has any (antialiasing, subtle shading, texture inside a
+"flat"-classified logo), and where a region's raster is genuinely
+flat/textureless, the field's own already-shipped, already-tested coherence
+gate (`RegionDirection.use_house_angle`) falls back automatically to
+parallel lines at the shape's `fill_angle_deg` override — the same per-shape
+angle knob ordinary tatami fill already exposes — or the house angle.
+Rejected building a shape-geometry/medial-axis-derived tangent field:
+that's a materially different, unbuilt algorithm (not a wiring change), and
+this codebase has no medial-axis-to-smooth-vector-field machinery to reuse
+for it (`shapefield.py`'s `medial_axis` is a skeleton graph for satin rails,
+not a per-pixel tangent field) — flagged as a distinct, larger, un-started
+feature if wanted later, not attempted here. Also explicitly decided
+**against** extending `digitizer_core/manual.py` (the separate,
+genuinely raster-less "no image at all" manual-shape-authoring path —
+`PipelineResult.source_pixels`/`px_per_mm` are unconditionally `None`
+there) to allow `"streamline"` as a technique: `streamline_fill` has no
+raster-free mode — darkness/d_sep/the highlight cutoff/the field itself are
+all read off `SourcePixels.rgb`, not optional inputs — so exposing it there
+would either crash or always silently no-op to tatami, worse than not
+offering it. `manual.py`'s own `VALID_TECHNIQUES` stays
+`{"satin", "fill", "run"}`, now pinned by an added regression test.
+
+Regression tests added (`tests/test_stage6_streamline.py`): a forced-tier
+test proving genuine direction-following on a manually-classified
+(`forced_class="flat"`, non-photo) shape measured against a known
+stripe-angle fixture (the file's existing analytic-truth discipline, not a
+"didn't crash" smoke test), a forced-tier spacing test proving genuine
+evenly-spaced J–L placement (median line gap matches the analytic d_sep
+formula, not tatami rows), a pipeline source-pixel-plumbing test for the
+per-shape override, a no-source-pixels-falls-back-to-tatami-exactly test,
+and core-layer + service-layer tier-vocabulary validation tests — 8 new
+tests total, mirroring `test_stage6_sketch.py`'s equivalent "sketch" tests
+one-for-one. Plus one added case in `test_manual.py`'s existing
+bad-technique parametrize list, and one added Studio-side vitest case in
+`app/src/lib/digitizer.spec.js` mirroring its existing "sketch" `SHAPE_TIERS`
+regression test (that file's own comment records a near-miss where the
+dropdown once shipped a tier option before `SHAPE_TIERS` recognized it —
+the exact failure this new test, like the sketch one beside it, exists to
+catch).
+
+**Verified unaffected, full targeted runs, all green:**
+`test_stage6_streamline.py` (28/28, 8 new), `test_stage6_sketch.py`,
+`test_manual.py`, `test_pipeline.py`, `test_service.py`,
+`test_flat_lane_byte_identical.py`, `test_directionfield.py`,
+`test_stage6_scanline.py`, `test_stage6_meander.py`, `test_stage6_blend.py`,
+`test_border.py`, `test_fill.py`, `test_satin.py`, `test_preflight.py` —
+228 tests across the first seven files alone, no new failures — confirming
+the photo-pipeline's existing streamline behavior and every other tier are
+untouched byte-for-byte. Studio `app` vitest suite: 413/413 real tests
+green (2 suite-load failures traced to this session's own ad-hoc
+node_modules symlink, not a code issue — independently confirmed passing
+23/23 against a real, non-symlinked `node_modules`).
+
+**Cross-hatch fill added, 2026-08-09** (branch `crosshatch-fill-pattern`) —
+the first of a planned small family of new named fill patterns for flat/
+spot-color art, picked as the lowest-risk starting point because the
+codebase already does the core trick: `stage6_fill.py`'s `double_lattice`
+underlay style has always called `_fill_paths` twice at +-45deg and
+concatenated the results for its own 3-pass underlay. The new
+`_crosshatch_fill_paths` does the same thing to the VISIBLE fill instead —
+one tatami pass at the shape's fill angle, one at angle+90, each pass
+individually spaced `machine.CROSSHATCH_ROW_SCALE_FACTOR` (2.0, a starting
+reasoned value, un-sew-out-gated but lower-stakes than the pending-sew-out
+density constants since this ships opt-in only) times wider than a normal
+single pass, so the two passes together land near a single pass's stitch
+density instead of roughly doubling it. No new travel-planning logic:
+`stitch_shape`'s existing `emit()` closure bridges between the two passes
+the same generic way it already bridges between any list of paths (proven
+by a dedicated test asserting exactly one travel run appears between pass 1
+and pass 2, the same mechanism `double_lattice` has always relied on for
+its own multi-pass underlay).
+
+Wired in exactly like `tier: "streamline"`'s per-shape precedent (verified
+against the current code, not assumed): both a design-wide
+`fill_technique == "crosshatch"` value and a per-shape
+`shape_overrides[sid].tier == "crosshatch"` override, reaching the same
+`stitch_shape` call stage 7's plain-tatami fallback already makes, just
+with `technique="crosshatch"`. Positioned in `stitch_one`'s elif chain
+alongside sketch/streamline (ahead of scanline/meander/gradient/contour) so
+a forced per-shape tier wins the same precedence fight those two already
+do — but unlike them, crosshatch needs no source pixels (it's geometric,
+not tonal), so it carries none of their raster-plumbing opt-in cost, proven
+by a dedicated test. All three closed-set mirrors of the tier vocabulary
+(`digitizer_core/regions.py`'s `_TIER_VALUES`, `digitizer_service/app.py`'s
+own copy, and the Studio's `app/src/lib/digitizer.js` `SHAPE_TIERS`) grew
+the value, plus the Layers-panel tier `<select>` in `DigitizePanel.svelte`
+gained a Cross-hatch option — the same 5-file pattern the streamline entry
+above documents.
+
+Strictly additive: every existing `fill_technique` value's output is
+pinned byte-identical (`test_crosshatch.py::
+test_the_crosshatch_flag_off_changes_nothing`, plus the untouched golden
+suites — `test_flat_lane_byte_identical.py`, `test_pushcomp.py`,
+`test_contour.py`, `test_stage6_streamline.py`, `test_stage6_sketch.py`,
+`test_shape_overrides.py`, `test_service.py` — all re-run green, 182+119
+tests, no changes needed to any of them). 13 new tests added (4 in
+`tests/test_fill.py` covering `_crosshatch_fill_paths` directly — two
+angularly-distinct passes measured from emitted geometry, per-pass spacing
+matching `row_mm * CROSSHATCH_ROW_SCALE_FACTOR`, the pass-2-chains-off-
+pass-1 handoff, and degrading sensibly on a too-thin shape; 9 in the new
+`tests/test_crosshatch.py` covering both wiring paths end-to-end on the
+real `logo_whitebg.png` fixture and the per-shape override's isolation from
+its neighbour, plus the two closed-set validation layers). Full digitizer
+suite: 942 -> 955 passed, 3 skipped, 0 failed (was 654/658 as of this
+doc's last full-suite count on 2026-08-04; the gap is five days of
+unrelated growth, re-measured fresh this pass, not this change's doing).
+Studio `app` vitest suite: 593 -> 594 passed, 0 failed (the one new
+`digitizer.spec.js` case mirroring its existing streamline/sketch
+`SHAPE_TIERS` regression test).
+
+**Wave, chevron and brick fills added, 2026-08-10** (branch
+`wave-chevron-brick-fill-patterns`) — three more purely-geometric fill
+variants, the next slice of the family crosshatch opened, batched together
+because all three share one architectural change: `stage6_fill.py` gained
+`_wave_row_points`, `_chevron_row_points` and `_brick_row_points`, each
+built ON `_row_points` (a shared `_row_points_at_phase` helper now carries
+the boundary/`MIN_STITCH_MM`/`TINY_STITCH_MM` handling both `_row_points`
+and `_brick_row_points` need) rather than three parallel reimplementations.
+Unlike crosshatch — a whole second angled tatami pass — none of the three
+needs new travel-planning logic: each only changes how ONE row's own
+interior points are placed, so `_fill_paths` picks the row-point function
+via a new `technique` parameter (`_ROW_POINT_FNS`, unlisted names including
+"tatami" keep `_row_points`, byte-identical) and its column-walking,
+ordering and travel logic is untouched.
+
+- **wave** perturbs every interior point's y by `machine.WAVE_AMPLITUDE_MM`
+  (0.35 mm) `* sin(2*pi*x/machine.WAVE_LENGTH_MM + phase)` (`WAVE_LENGTH_MM`
+  4.0 mm), phase alternating 0/pi by row parity — the simplest rule that
+  puts adjacent rows' waves in opposite motion at any given x, which is what
+  stops the wobble from stacking into a corrugated-cardboard ridge instead
+  of reading as texture.
+- **chevron** alternates every interior point +-`machine.
+  CHEVRON_AMPLITUDE_MM` (0.45 mm), sign flipping every single interior
+  stitch (period two stitches, ~6 mm at the default 3.0 mm stitch length) —
+  a deliberately simplified TEXTURAL herringbone impression at one fill
+  angle, not a full multi-angle banded herringbone (that would need new
+  column/travel logic, out of scope for this family).
+- **brick** swaps the van der Corput anti-moire stagger (`_stagger_phase`)
+  for a strict period-2 "running bond": even rows' interior grid at phase 0,
+  odd rows at `stitch_mm / 2`. No new constant — the phase IS `stitch_mm /
+  2`, already a known quantity.
+
+Both new `machine.py` constants are starting, reasoned values — not
+sew-out-validated, same caveat every tuning constant in that file carries —
+and lower-stakes than the pending-sew-out density constants for the
+identical reason `CROSSHATCH_ROW_SCALE_FACTOR`'s own comment gives: every
+one of these three ships OPT-IN only (per-shape `tier` or per-design
+`fill_technique`), so nobody's existing output moves.
+
+Wired through the identical five-file pattern the crosshatch entry above
+documents (`config.py`'s `fill_technique` docstring, `regions.py`'s
+`_TIER_VALUES`, `digitizer_service/app.py`'s own copy, `app/src/lib/
+digitizer.js`'s `SHAPE_TIERS`, and three new options — Wave/Chevron/Brick —
+in `DigitizePanel.svelte`'s Layers-panel tier dropdown), each positioned in
+`stitch_one`'s elif chain immediately after crosshatch's own branch, same
+precedence slot (ahead of scanline/meander/gradient/contour), same
+no-source-pixels-needed reasoning (purely geometric, not tonal).
+
+Strictly additive: every existing `fill_technique` value's output, crosshatch
+included, is unchanged. Proved three ways — a parametrized `test_the_flag_
+off_changes_nothing` in the new `tests/test_wave_chevron_brick.py`; a clean
+pre-change baseline captured by stashing this branch's diff and re-running
+the suite (955 passed, 3 skipped, 0 failed) against the post-change run
+below; and every golden-bearing file re-run explicitly green with this
+branch's changes applied (`test_fill.py`, `test_crosshatch.py`,
+`test_contour.py`, `test_stage6_streamline.py`, `test_stage6_sketch.py`,
+`test_stage6_scanline.py`, `test_stage6_meander.py`, `test_pushcomp.py`,
+`test_shape_overrides.py`, `test_service.py` — 309 passed together, 0
+failed). 16 new tests in `test_fill.py` (wave's amplitude/phase measured
+both by exact formula match on every emitted interior point and by
+independent peak-spacing measurement over a densely-sampled row, plus the
+opposite-motion adjacent-row claim isolated with `staggers=1`; chevron's
+exact +-amplitude alternation and its every-stitch period; brick's exact
+period-2 phase measured against `_row_points_at_phase` directly, and shown
+to diverge from the van der Corput pattern at row 2 where the two rules
+provably disagree; a `_fill_paths`-level wiring check per technique proving
+row ends stay on the boundary while interior points move) and 22
+parametrized cases in the new `tests/test_wave_chevron_brick.py` (design-
+wide flag reachability and off-changes-nothing, per-shape tier isolation
+compared as coordinate SETS — robust to a sibling shape's own entry point
+shifting for unrelated reasons — no-source-pixels, and both closed-set
+validation layers; mirrors `test_crosshatch.py`'s own structure).
+
+Full digitizer suite: 955 -> 993 passed, 3 skipped, 0 failed (clean
+pre-change baseline captured via `git stash`, not the doc's last recorded
+count, which predates several days of unrelated growth). Studio `app`
+vitest suite: 594 -> 595 passed, 0 failed (one new parametrized
+`digitizer.spec.js` case covering all three tiers at once, mirroring
+crosshatch's own single-case regression test).
+
+Row 13 (chart-restricted weighted k-medoids palette selection,
 build-order step 7) landed after that pass on the `palette-kmedoids`
 branch: `digitizer_core/palette.py` replaces the photo path's per-region
 nearest-thread snap (`stage2_photo_segment` step 6) with a deterministic
@@ -904,6 +2226,28 @@ is now fixed (see below), four remain open:
   to validate `LINK_COVER_TOL_MM`, which is still a thread spec, not a
   measurement. The other four closeout defects below are unaffected by this
   fix and remain open.
+
+  **Demonstration fixture moved off `logo_alpha.png`, 2026-08-06 — the
+  chaining mechanism itself is unaffected, only which committed image proves
+  it.** The satin/fill classifier's flat-lane DT-tightening fix (below)
+  correctly reclassified two of `logo_alpha.png`'s shapes from satin to
+  fill, which — as an incidental side effect, not a chaining defect —
+  eliminated the specific narrow gap chaining used to bridge on that one
+  fixture: measured directly, `chain_links` on vs. off became byte-identical
+  output there (6 links either way, 0 exposure either way, 0 trims removed).
+  Every synthetic-geometry chaining test in `test_chaining.py` (the ones
+  that construct their own controlled gaps rather than reading a real image)
+  stayed green throughout, confirming the mechanism itself never broke.
+  `tests/test_chaining.py::test_chaining_cuts_the_benchmark_fixtures_trim_rate`
+  and `..._adds_no_bare_fabric_exposure_on_the_committed_fixture` now run
+  against `photo/enthusiast_logo.png` @ 82mm instead (this repo's own
+  primary real-art benchmark, not a new synthetic construction) — swept
+  across widths first to confirm 82mm isn't cherry-picked to the edge of the
+  4.1 trims/1k corpus ceiling (it lands at 3.41/1k with real margin). The
+  new numbers are a stronger demonstration than the old ones: links 2→17,
+  trims 21→9, and bare-fabric exposure is exactly 0.0 mm both with and
+  without chaining (cleaner than `logo_alpha`'s old 0.3011 mm/0.2057 mm
+  floor, not a regression from it).
 - **Gradient blend tier** — shipped (`stage6_blend.py`), then within one day
   found to fragment into 23 independent-angle regions instead of one shared
   ramp, plus a separate `BACKGROUND_ENCLOSED` defect that silently drops
@@ -990,10 +2334,87 @@ is now fixed (see below), four remain open:
   "Last updated" note above). **Verified post-merge:** POSTed the same
   opaque-RGBA two-squares fixture directly to the live service on current
   `main` — background now detected, 2 shapes, matching the RGB original
-  exactly. **Not yet verified:** driving this through the actual Studio
-  browser UI end to end (upload → digitize → see the restored shape in the
-  Layers panel) — the HTTP-level reproduction above proves the fix, but
-  nobody has watched it happen in a real browser session yet.
+  exactly.
+
+  **CLOSED 2026-08-07 — verified live via Playwright MCP through the actual
+  Studio browser UI.** Drove the real `+ Auto-digitize` flow end to end
+  against `repro_gradient_white_icon.png` (the camera-glyph gradient badge
+  used by `test_enclosed_background.py`'s `REPRO` fixture): chose Tote →
+  Content → Auto-digitize, uploaded the fixture through the real file input
+  (the same canvas-re-encode upload path the opaque-alpha bug lived in),
+  clicked Digitize, and let the real service (127.0.0.1:8721) run it.
+  Confirmed everything the design promises, visually, not just via network
+  inspection: the warnings list showed "Enclosed background-colored areas
+  were left open, like the hole in an O. Find them in the Layers list,
+  marked 'not sewn — enclosed area,' to sew them"; the Layers panel listed
+  4 separate `#2521`-colored rows (860/125/132/132 mm² — the icon's square
+  frame, ring, and dot linework) each tagged "not sewn — enclosed area"
+  with its own "Sew it" control — not silently absent, not merged into a
+  neighboring shape; and the live canvas preview showed those exact
+  shapes rendered as unfilled gaps against the stitched gradient fill,
+  matching "left open" literally. Clicked "Sew it" on the 860 mm² row: it
+  moved into the normal editable Layers list with a "restored" badge and a
+  live "NOT SEWN" pill, the other three stayed exactly as they were.
+  Clicked "Apply layer changes" and waited on the real service round trip
+  (`Digitizing…` → button hidden): stitch count moved 10,916 → 11,114, a
+  new "2521 Fuchsia" thread-per-color entry appeared, and the canvas
+  preview's square-frame gap was now solid stitched fill instead of a hole
+  — the enclosed region became a real, sewable element on command, exactly
+  as the fix's own description promises, while the three still-unreviewed
+  regions kept their dimmed "not sewn — enclosed area" rows the whole time.
+  Screenshots: `.playwright-mcp/background-enclosed-unstitched-rows.png`
+  (post-digitize, all 4 held out), `.playwright-mcp/background-enclosed-
+  sew-it-clicked.png` (one restored locally, badge + pill visible),
+  `.playwright-mcp/background-enclosed-applied-final.png` (post-Apply:
+  11,114 stitches, restored shape now solid-filled in the preview, the
+  other three still correctly held out). This was the one remaining gap in
+  this section — the HTTP-level check above proved the fix; this proves it
+  survives the real upload path, the real Layers-panel UI, and a real
+  restore-and-resew round trip, watched directly in the browser.
+
+  **UX follow-up, 2026-08-07 — the restore mechanism was real but too easy
+  to miss.** Kent's own real-world upload of this exact problem class (the
+  Instagram icon) reported "still white gaps" even after live-browser
+  verification of the mechanism above — not a geometry regression, a
+  discoverability one: the per-shape "Sew it" control lived as a dimmed
+  list line, and restoring N enclosed regions took N separate clicks. Full
+  investigation and fix in this file's newest "Last updated" entry at the
+  top; summary: the per-shape default is unchanged (a small enclosed hole
+  still holds out by default), but `DigitizePanel.svelte` now surfaces a
+  loud `.dgp-enclosed-banner` with a live count and a one-click "Sew all N"
+  bulk restore, deliberately excluding text-cluster-converted rows. Verified
+  end to end against the real service + browser
+  (`app/e2e/digitize-background-enclosed.spec.js`, 2/2).
+
+  **Follow-up caught pre-merge by adversarial review, same day: the
+  per-row "Sew it" button needed the same text-cluster guard the banner
+  already had.** Full detail in this file's newest "Last updated" entry at
+  the top; summary: a converted cluster member could still be individually
+  "restored" via the row-level button next to the banner, silently
+  un-hiding a shape a different feature had already replaced with a text
+  element. Fixed with a shared `isClusterHidden` check gating both the
+  label and the button; new coverage in `text-cluster-convert.spec.js`
+  proves a converted member never shows "Sew it" and is excluded from the
+  banner's live count.
+
+  **Band/part transition jump flags — FIXED, 2026-08-06.** `blend_fill`
+  stitches each shade band (and, when `_band_clip` returns more than one
+  disconnected polygon for a band, each part within it) as its own
+  independent `stitch_shape` call, and every one of those calls' first run
+  starts with `jump=False` in isolation — correct on its own, wrong once
+  spliced back-to-back with whatever came before it, which used to leave a
+  bare straight stitch across the real physical gap between two shade bands
+  or two disjoint parts of one band. Both transitions now get an explicit
+  `jump=True` with `trim` set from the actual measured gap, mirroring
+  `stage6_fill.stitch_shape`'s own `emit()` convention for a travel move —
+  deliberately without attempting `emit()`'s `travel_path` bridge first,
+  since a bridge here would route the wrong shade's thread across the seam
+  (see the code comments at both sites in `stage6_blend.py` for the full
+  reasoning). Regression-tested in `test_stage6_blend.py`: one test drives
+  the real linear-ramp fixture end to end and checks every band boundary,
+  the other monkeypatches `_band_clip` to force a same-band, two-part split
+  (no committed fixture has that topology naturally) and checks the seam
+  between parts. `digitizer/tests` run clean with the fix in.
 - **Contour fill** — **all three of the 2026-08-02 audit's defects are now
   fixed, confirmed 2026-08-04 (PR #27, `contour-bare-core-shrink`, merged);
   it still ships off by default, but no longer because of any open defect
@@ -1116,10 +2537,443 @@ is now fixed (see below), four remain open:
   risk by construction, a pure-tightening DT term identical to the spike's
   own vetted recommendation, and direct measurement against this repo's own
   committed fixtures rather than a synthetic population alone.
+
+  **2026-08-06 update: the flat-lane exemption is gone — it was an unproven
+  premise, not a proven-safe default, and it was wrong.** The scoping above
+  reasoned that `"flat"` art's clean, spot-colour, vector-like boundaries
+  don't carry the segmentation-derived noise the DT check exists to catch,
+  so `is_satin_candidate` special-cased `design_class == "flat": return
+  True` and skipped `_dt_regular_and_within_cap` entirely for it. A fresh
+  audit against this repo's own committed, flat-classified benchmark
+  fixture — `testdata/photo/enthusiast_logo.png`, picked in the first place
+  because it "reproduces almost nothing [Kent] complains about" (COOKBOOK.md
+  "Hard-won lessons") — disproved that premise directly: at
+  `target_width_mm=90`, the DT check correctly rejects `Scd89ad66` (the
+  wordmark's "A", `ribbon_width_mm` 2.386mm, area 33.837mm2) and `Sff37b029`
+  (the emblem's 4-point star, `ribbon_width_mm` 1.287mm, area 17.624mm2) —
+  both of which the flat-exempted rule satin-stitched into a literal
+  **starburst** (crosses fanning from a single point), confirmed by
+  rendering the actual pre-fix emitted stitch coordinates, not inferred from
+  the classifier's numbers alone. That is exactly the defect COOKBOOK.md's
+  "Hard-won lessons" section names by name ("Green tests are not evidence of
+  quality... the engine produced starbursts") — invisible to the shipped
+  test suite and to `preflight`/`corpus_scorecard.py` because neither
+  measures cross-fan coherence, only mechanical properties (determinism, no
+  phantom loops, nothing outside the artwork).
+
+  Fix: the `design_class == "flat": return True` early return in
+  `is_satin_candidate` (`digitizer_core/stage6_satin.py`) is deleted. The DT
+  check now runs unconditionally — `design_class` is kept as a parameter
+  (every existing caller still passes one) but no longer changes the
+  verdict. This is a pure widening of an already-proven-correct check, not a
+  new rule: `_dt_regular_and_within_cap` itself is untouched, byte for byte.
+
+  **Measured, not assumed, on both configs that matter:** at the golden
+  capture width (`target_width_mm=80`, `tools/capture_flat_lane_golden.py`'s
+  own config), `enthusiast_logo.png`'s `Scd87e08f` (`ribbon_width_mm`
+  2.121mm, area 26.735mm2) and `S919bee11` (1.144mm, area 13.925mm2) flip;
+  at `target_width_mm=90` (the audit's cited config) it's `Scd89ad66`/
+  `Sff37b029` above — different shape-id hashes because the raster scale
+  differs, same underlying defect. `logo_alpha.png` also moves at 80mm:
+  `Sb253ebba` and `Sf5200f3f` (both `ribbon_width_mm` 4.997mm — sitting
+  right at the 5.0mm cap — and identical area, 100.241mm2, being mirrored
+  halves of one glyph). `Sf5200f3f` is not a new finding — it's the
+  "multi-stroke glyph" the 2026-08-05 self-overlap fix (`_rail_points`'
+  `SATIN_MAX_WIDTH_MM / 2` per-station cap, prior update above) already
+  named and partially mitigated without being able to fix outright, because
+  that fix ran before this one and `design_class="flat"` still exempted the
+  shape from ever being told it wasn't a ribbon. Rendering `Sf5200f3f`'s and
+  `Sb253ebba`'s pre-fix stitches confirms the same starburst defect on this
+  fixture too (a converging fan and an X-cross pattern respectively) — this
+  fix is the fuller resolution the self-overlap cap could only patch around.
+  Post-fix, all six flipped shapes sew as `stage6_fill.stitch_shape`'s
+  ordinary parallel fill rows.
+
+  `flat_lane_golden.json` regenerated via the repo's own
+  `tools/capture_flat_lane_golden.py`, then structurally diffed key by key
+  against the pre-change file (not blind-accepted): exactly the 2 predicted
+  entries move — `logo_alpha.png` (`stitch_count` 2089 -> 2072) and
+  `photo/enthusiast_logo.png` (`stitch_count` 2431 -> 2331), both only in
+  `stitch_count`/`stitch_coords`; `shape_ids`/`areas_mm2`/`warnings` are
+  identical on every one of the 4 fixtures, confirming no shape appeared,
+  disappeared, or moved — only how the same shapes sew. `logo_whitebg.png`
+  and `ribbon_curve.png` are byte-identical, exactly as predicted (neither
+  fixture contains a shape the DT check disagrees with the old rule on).
+
+  **Safety invariant re-proven for the flat lane specifically, the same way
+  it was already proven for the other 3 classes:** this is satin->fill only,
+  never the reverse. All four letterform archetypes (`BAR`, `O_RING`,
+  `C_STROKE`, `T_SHAPE`) keep their satin call under `design_class="flat"`
+  (`tests/test_satin.py::
+  test_the_dt_check_does_not_cost_real_ribbons_their_satin_call_when_flat`).
+  `tests/test_satin.py::test_satin_crosses_do_not_self_overlap_across_a_wide_
+  junction` (the 2026-08-05 regression pin for `Sf5200f3f`'s rail-geometry
+  cap) now calls `satin_shape` directly on the shape's real geometry,
+  decoupled from `is_satin_candidate`, so the cap's own regression coverage
+  survives the shape no longer reaching satin through the classifier; a
+  companion test pins the classifier side directly
+  (`test_sf5200f3f_no_longer_reaches_satin_in_the_real_pipeline`).
+  `tests/test_preflight.py::test_a_wide_oversize_satin_stroke_does_not_
+  block_on_underlay_glue` still passes unchanged (`coverage_max` stays well
+  under its `< 5.0` ceiling now that the shape fills instead of satins).
+  Superseded: `test_flat_design_class_keeps_the_old_verdict_on_purpose`,
+  whose own premise (flat keeps the old verdict on purpose) this fix
+  disproves — replaced by `test_flat_design_class_now_gets_the_dt_check_too`
+  and `test_flat_lane_starburst_shapes_correctly_flip_to_fill`.
+
+  Verified targeted, not a local full-suite run this pass (CI —
+  `.github/workflows/python-package-conda.yml` — is the full-suite gate on
+  the PR itself): `tests/test_satin.py` **43/43**, `tests/test_preflight.py`
+  **56/56**, `tests/test_flat_lane_byte_identical.py` + `tests/
+  test_photo_sequencing.py` + `tests/test_pushcomp.py` together **46/46** —
+  every file this change touches or that reads `is_satin_candidate`/
+  `Sf5200f3f`/the flat-lane goldens directly, all green, 0 failures. Engine
+  `node --test` re-verified unaffected: **283/283**, confirming this pass is
+  Python-only (`git status` shows no `src/`/`app/` changes).
 - **Fill row spacing (law 19)** — unresolved two-population finding: the
   0.20mm figure is a satin-rail artifact for one file population (refuted)
   but looks like a genuine denser pitch on 43 commissioned cap logos (still
   alive). Shipped `FILL_ROW_MM=0.40` unchanged pending sew-out.
+- **Border tier seam-sharing — REAL FIX landed (was KNOWN LIMITATION,
+  mitigated-not-fixed as of PR #67).** `stage6_border.py`'s module docstring
+  used to document an unresolved defect: under `border="auto"` (or any
+  per-shape border override), two different-colour shapes that abut get
+  coincident outline rails, because stage 5's overlap resolution makes both
+  shapes' visible edges the same line — each shape's own circuit then rides
+  that line at full density, sewing a double-thick bar in two threads. PR #67
+  shipped detection only (`BORDER_SEAM_SHARED`, unconditional on every
+  qualifying pair); this pass adds the seam-aware suppression that PR
+  explicitly scoped out, in `stage7_sequence._yield_frontage`.
+
+  **The fix and its tie-break.** `sequence()` already commits shapes to the
+  fabric in a fixed, deterministic order (nearest-neighbour within each
+  colour/step group, groups in `sew_index` order) and already tracks, as it
+  goes, the true visible geometry of every shape whose border tier put a
+  real circuit down (`border_geom_by_id`, pre-existing from PR #67). The tie-
+  break is SEW ORDER: whichever shape's border commits first keeps the seam
+  at full density; before a later shape traces its own circuit,
+  `_yield_frontage` checks it against every already-committed border, and for
+  any shared run past the same `2 * BORDER_WIDTH_MM` threshold PR #67's
+  warning used, differences a buffered band (`BORDER_WIDTH_MM +
+  BORDER_HOST_MARGIN_MM`, 1.6mm at the shipped column) around the coincident
+  curve out of that shape's border INPUT geometry before handing it to
+  `border_runs` — "inset its border circuit locally", one of the two options
+  the old docstring named. This needed no lookahead or second pass: by
+  causal construction, every shape a given shape could contend a seam with
+  has, by the time it sews, either already committed a real border (and sits
+  in `border_geom_by_id` to yield to) or has not (nothing to yield to,
+  nothing changes) — so no pair can end up with both circuits riding the
+  line, or with neither covering it. `border_geom_by_id` always stores the
+  TRUE unmodified visible geometry regardless of whether a shape yielded, so
+  a third shape sharing a seam with an already-yielded shape still yields
+  against that shape's real edge, not its already-inset one.
+
+  **Measured before/after** (`tests/test_border.py`'s existing two abutting
+  10x10mm bordered rectangles, sharing the edge x=10 the full 10mm — the PR
+  #67 fixture): pre-fix, both shapes' own outer rails independently produce
+  13 penetrations apiece sitting on the x=10 line — the double bar, real on
+  actual stitch output, not just geometry. Post-fix, run through the real
+  `sequence()`: the earlier-sewn shape (layer 0) still has all 13 on the
+  line, untouched; the later-sewn shape (layer 1) has ZERO — its whole
+  border retreated to x >= 11.6mm, comfortably clear of the seam — and
+  `BORDER_SEAM_SHARED` no longer fires for this pair, because the pair is no
+  longer wrong.
+
+  **What is not resolved, and why the warning still exists for it.** A
+  shape whose entire frontage IS a shared seam — hemmed in by an
+  already-bordered neighbour on more than one side, e.g. a shape sitting in
+  a hole/slot fully cut out of an earlier-sewn shape — has nowhere to
+  retreat to; `_yield_frontage` falls back to the untouched geometry rather
+  than deleting the shape's border outright (same "a real border beats none"
+  call `stage6_border.round_inward` already makes when its own corner
+  relaxation eats a shape whole), and `BORDER_SEAM_SHARED` now fires only
+  for these residual, genuinely-unresolved pairs — reworded from "turn
+  border off on one side" staying literally true (still the only escape for
+  this case) rather than reporting a defect that no longer exists on every
+  other pair. Verified end-to-end on a constructed fixture (a 2x15mm slot
+  cut clean through a much larger, earlier-sewn bordered shape, sharing all
+  four of its sides): the slot's raw geometry does hold a real bean-tier
+  border on its own, but a 2mm-wide shape cannot survive retreating ~1.6mm
+  off both long edges at once, so the fallback engages, the slot still sews
+  its (un-suppressed) bean border, and `BORDER_SEAM_SHARED` correctly names
+  the pair. This case was deliberately chosen to be reachable in practice —
+  a simple two-rectangle abutment, checked exhaustively, turns out to be
+  impossible to fully erase given how `BORDER_WIDTH_MM`/`BORDER_HOST_MARGIN_MM`
+  and the "would this shape have lightened to bean anyway" threshold happen
+  to be calibrated (both come out to the same 1.6mm number), so the residual
+  case is real but structurally rare — a shape has to be hemmed in from more
+  than one direction to hit it, not merely adjacent to one neighbour.
+
+  Tie-break reasoning: sew order (not shape_id or area) was chosen because
+  it is the only option requiring no lookahead or duplicated fill/border
+  computation to implement correctly — `border_geom_by_id`'s existing,
+  already-causal accumulation makes "yield to whatever is already on the
+  fabric" fall out of the pipeline's own structure rather than being a
+  policy bolted on top, and it composes correctly with N-way seams (a middle
+  shape in a row of three yields only to whichever of its neighbours sewed
+  first, never both, and never zero).
+
+  Regression coverage, `tests/test_border.py` (17 → 22 tests): the PR #67
+  fixture rewritten to measure real stitch penetrations before/after instead
+  of only checking the warning
+  (`test_seam_sharing_is_resolved_automatically_not_just_warned`); the
+  hemmed-in-slot fallback, end-to-end
+  (`test_border_seam_shared_still_fires_when_a_shape_is_hemmed_in_on_every_side`);
+  `_yield_frontage` unit-tested directly for the resolved, no-shared-edge,
+  and fallback cases; `_border_seam_warning` unit-tested for its
+  pairs/count/message construction. The negative case from PR #67 (a 6mm gap,
+  and border off) is unchanged and still passes.
+
+  Targeted verification: `tests/test_border.py` (22/22) plus every other
+  test file that imports `stage7_sequence`
+  (`test_chaining.py`, `test_planning.py`, `test_pushcomp.py`,
+  `test_run_tier.py`, `test_shape_overrides.py`, `test_stage6_detail.py`,
+  `test_stage6_sketch.py`, `test_stage6_streamline.py`,
+  `test_photo_sequencing.py`, `test_stages.py`) plus both byte-identical
+  golden suites (`test_flat_lane_byte_identical.py`,
+  `test_shapefield_byte_identical.py`) — 233 tests, 0 failed, run directly
+  rather than assumed from a full-suite pass. A design with no seam-sharing
+  bordered pair takes the identical `_yield_frontage(geom, {}, ...) ->
+  (geom, [])` no-op path every existing border call already took, so this
+  change carries no byte-identity risk for the common case by construction.
+- **Appliqué tier (`stage6_applique.py`, 4-layer placement/cutting/tackdown/
+  cover, wired into `stage7_sequence` and reachable through the service with
+  no gating) — audited for the first time this pass; had never appeared in
+  this doc despite being fully shipped and reachable.** Followed this file's
+  standing hardening methodology (`docs/hardening-closeout-2026-08-02.md`):
+  re-derive the module's own geometric claims from real fixtures and
+  synthetic constructions, adversarially, rather than trust the shipped
+  suite's own 44 assertions. Two real, confirmed defects found; both fixed,
+  with new regression tests (44 → 49 in `test_applique.py`, all measured off
+  emitted stitch points, house convention).
+
+  **Fixed — the scissors-fit / hole-trim gates were blind to bottlenecked
+  shapes.** `min_inscribed_diameter` (`polylabel`'s single largest inscribed
+  circle) fed both `APPLIQUE_CUTTING_LINE_SUPPRESSED` ("scissors don't fit
+  under 12mm") and `APPLIQUE_FORCED_PRE_CUT` (a hole's own trim floor). That
+  measure answers "how big is the best spot in this shape", not "can
+  scissors get all the way around it" — the two coincide only on the
+  convex/star-shaped fixtures the shipped tests use (a plain disc, a
+  centred-hole donut). Constructed a synthetic "dog bone" — two 20mm circles
+  joined by a 3mm neck, a realistic silhouette for a real logo (barbell,
+  bone, wrench, any letterform with a narrow waist) — and measured
+  `min_inscribed_diameter` reporting **19.94mm** (one lobe's own circle),
+  with the scissors gate never firing, even though nothing wider than 3mm
+  can actually pass through the neck. Same failure independently confirmed
+  on an off-centre ring (hole not centred in its outer boundary): the ring's
+  thin side is 5mm, `min_inscribed_diameter` reports **24.99mm** because
+  `polylabel`'s one point lands on the ring's fat side. Fix: a new
+  `narrowest_passage_diameter` bisects the erosion radius at which the shape
+  first changes topology (a new exterior piece appears, or an interior ring
+  merges into the exterior) — the standard morphological bottleneck
+  definition — and now feeds both gates. Verified it is a strict refinement,
+  not a behavior change on ordinary shapes: matches `min_inscribed_diameter`
+  exactly (± 0.01mm) on a plain square and the existing `SMALL_DISC`/donut
+  fixtures the shipped tests already pin, so both pre-existing tests pass
+  unchanged. New tests: the dog-bone and off-centre-ring reproductions
+  above, plus an explicit "must not move the number on ordinary shapes"
+  regression.
+
+  **Fixed — pre-cut's default tackdown silently sewed as a zero-width run,
+  not the documented zigzag/E column.** §2.7 gives zigzag/E tackdowns a real
+  WIDTH ("positioned by column width, centered on the line") — a straddling
+  column that compresses the fabric, distinct from run/double-run's single
+  line, and the spec singles out knit/jersey as needing it because "a run
+  lets the knit roll." `tackdown="zigzag"` is the pre-cut MODE'S OWN DEFAULT
+  (`applique_steps` resolves `tackdown=None` to `"zigzag"` whenever
+  `mode=="pre_cut"`), so this was hit on every pre-cut design nobody
+  overrode the tackdown type on — not an edge case. Measured directly:
+  before the fix, every tackdown point for a pre-cut piece landed within
+  1.5e-15mm of `s_tack` (a hairline, i.e. a plain running stitch); after,
+  the points spread over 2.01mm, matching `min(APPLIQUE_TACK_WIDTH_MM,
+  W_cover - 2*m_bury)` — §2.7's own hard vendor constraint — exactly.
+  `machine.APPLIQUE_TACK_WIDTH_MM` existed as a constant and was read by no
+  code path before this. Root cause: `applique_steps` called `_run_layer`
+  unconditionally for every tackdown type, and the only branch inside it was
+  the pass count (2 for `"double_run"`, else 1) — so `"zigzag"` fell through
+  identically to `"run"`. Fix: a new `_zigzag_tack_layer` (built on the same
+  `_rail_column` column emitter `_cover_layer` was refactored onto, so the
+  cover's own proven geometry — rail alternation, corner filleting, closure
+  overlap — is reused rather than duplicated) is dispatched for
+  `tackdown in ("zigzag", "e_stitch")`; run/double-run are unchanged and
+  pinned by a new regression to stay a single line. New tests:
+  `test_pre_cut_tackdown_is_a_real_column_not_a_zero_width_run`,
+  `test_run_and_double_run_tackdowns_stay_a_single_line`.
+
+  **Confirmed correct, independently re-derived (not just re-read from the
+  shipped tests):** the tolerance-stack algebra in `solve_cover_width`/
+  `cover_rails` (hand-recomputed for tight/normal/loose against §2.3's
+  published validation table, matches to the number); overlap detection
+  still fires `APPLIQUE_PIECES_OVERLAP` even when one of the two pieces
+  falls through `APPLIQUE_NO_FABRIC_VISIBLE` (built a standalone two-
+  `PlannedRegion` harness — a 40mm square overlapping a 2.5mm ribbon — since
+  this exact "goes silent on the case that matters" defect is what a prior,
+  differently-numbered commit of this same tier was found to have in
+  `hardening-closeout-2026-08-02.md`; it does **not** reproduce on this
+  repo's actual `stage6_applique.py`/`stage7_sequence.py` history, a
+  different lineage than that doc audited); thread-contiguity and the "does
+  applique ever no-op on real art" claims from that same prior doc, spot-
+  checked on this repo's 3 real appliqué-eligible fixtures
+  (`logo_whitebg.png`, `logo_alpha.png`, `ribbon_curve.png`) × 3 garments —
+  all 9 combinations produce output that differs from `applique=False`
+  (i.e. the tier is never a silent no-op here) and none show the "thread
+  abandoned then picked up again" fragmentation that doc described for its
+  own commit.
+
+  **Follow-up, 2026-08-06: two of the three "confirmed but not fixed" gaps
+  below are now fixed, the third stays open by design.** Same standing
+  discipline as the first pass — real geometry measured before/after on
+  `SHIELD` (a concave shield polygon), `BIG_SQUARE`, and a plain circle,
+  not trust that tests pass. New regression tests, 49 → 54 in
+  `test_applique.py`.
+
+  **Fixed — `APPLIQUE_COVER_PULL_COMP_MM` (0.20mm, §2.8) now compensates
+  the cover satin; it was defined and applied by no code path.** The same
+  effect `Fabric.pull_comp_mm` compensates for on an ordinary satin column
+  (Law 24: thread tension pulls each cross's two penetrations together, so
+  a column sews narrower than digitized) was uncompensated on the one
+  column type that deliberately does NOT go through stage 5's fabric pull
+  comp — `applique_pass` passes the raw artwork polygon on purpose, because
+  B has to stay the exact tolerance-stack reference point, not something a
+  fabric preset already grew. Fix: `_cover_layer` now widens the column it
+  actually stitches — `c_in -= pull`, `c_out += pull` — the same direction
+  stage 5's `poly.buffer(pull)` widens an ordinary satin ribbon (confirmed
+  against `Fabric` "pique_knit", pull_comp_mm 0.3: a 4.5mm bar sews at
+  5.1mm, `tests/test_pushcomp.py`). Measured on `SHIELD` at the trim-in-place
+  default: cover rails moved from (-1.50, +1.50) to (-1.70, +1.70) — exactly
+  `g.c_in - 0.20` / `g.c_out + 0.20` — a 3.00mm design now sewing a 3.40mm
+  column. `AppliqueGeometry.c_in`/`c_out`/`width_mm` are deliberately left
+  at the solved, uncompensated values, because every gate
+  (`edge_headroom_mm`, `bury_mm`, §2.12's checks) and every other test in
+  the file measures against the DESIGNED width, not the sewn one — and it
+  is cover-only: pre-cut's zigzag tackdown shares `_rail_column` with the
+  cover but §2.8's row is specific to layer 4, so the tackdown's own width
+  (`min(APPLIQUE_TACK_WIDTH_MM, W_cover - 2*m_bury)`, still 2.00mm at the
+  default) is unchanged and pinned by a new regression. New tests:
+  `test_cover_pull_comp_leaves_the_solved_geometry_and_the_tackdown_alone`,
+  and `test_cover_straddles_the_edge_and_buries_the_tackdown` updated (its
+  old assertion, `min(cover) == g.c_in`, is exactly the uncompensated
+  number pull comp now moves past).
+
+  **Fixed — `_cover_layer`'s closure overlap now reads
+  `APPLIQUE_CLOSURE_OVERLAP_STITCHES` (6) instead of inheriting
+  `BORDER_CLOSURE_OVERLAP_MM` (1.40mm) from the border module.**
+  Investigated first, because at the 0.40mm cover spacing the two numbers
+  were already close — 1.40mm / 0.20mm-per-station rounds to 7 stitches,
+  one more than the appliqué constant, and both sit inside Stahls'
+  published 4–8 stitch window, so the substitution was never a visible
+  defect. Fixed anyway: it was a coincidence resting on
+  `APPLIQUE_COVER_SPACING_MM` staying 0.40mm (nothing enforced that), not a
+  read of the appliqué tier's own §2.8 number, and the fix sidesteps a
+  second, independent imprecision — `_loop_stations` divided the mm
+  distance by a per-ring arc-length step that varies with ring geometry,
+  so the exact stitch count could drift shape to shape even at a fixed
+  spacing. `stage6_border._loop_stations`/`_satin_loop` gained an
+  `overlap_stitches` param (an exact station count, bypassing the
+  mm-divided-by-step path) that `_cover_layer` now passes; every other
+  caller (border's own outline, the pre-cut zigzag tackdown) leaves it
+  `None` and is provably unchanged (`tests/test_border.py`,
+  `test_run_and_double_run_tackdowns_stay_a_single_line`,
+  `test_pre_cut_tackdown_is_a_real_column_not_a_zero_width_run` all still
+  pass byte-for-byte). Measured on a plain 20mm-radius circle: the
+  appliqué-specific overlap emits exactly one fewer cross than the
+  border-inherited one it replaced (688 vs. 689). New test:
+  `test_cover_closure_overlap_reads_the_appliqué_specific_stitch_count`
+  (monkeypatches the constant and confirms the emitted cross count moves
+  with it exactly — a proof the old code, which read nothing, could not
+  have passed).
+  `APPLIQUE_OVERLAP_ALLOWANCE_FRAC` (0.5) is a **different, unrelated**
+  constant despite the similar name and was investigated separately: it is
+  §2.11's Wilcom number ("cutting overlap = half the cover width") for
+  Mode B multi-piece batching — how one piece's cutting boundary dilates
+  into a neighbour it overlaps — not how a single piece's own cover
+  circuit overlaps its own start. Mode B is explicitly not built
+  (`applique_pass`'s own docstring: "Mode B batching... is NOT built");
+  `APPLIQUE_OVERLAP_ALLOWANCE_FRAC` correctly stays unread until it is, and
+  wiring it into `_cover_layer` would have been the wrong fix for the wrong
+  gap. Left alone, now documented in `machine.py` next to the constant.
+
+  **Fixed — `max_cover_width`'s 5.0mm clamp (and the 2.5mm floor) no longer
+  silent.** `solve_cover_width`'s own `"clamped"` field has always recorded
+  whether the width it returned is the tolerance stack's own request or one
+  of the two hard bounds; no caller read it. New code
+  `APPLIQUE_COVER_WIDTH_CLAMPED` (`warnings_codes.py`), fired by
+  `check_gates` and aggregated by `applique_pass` exactly like the other
+  four appliqué gates, reporting which bound (`"floor"` or `"ceiling"`)
+  fired. Also fixed in the same pass: `solve_geometry`'s override branch
+  (`width_mm=...`, `PipelineConfig.applique_cover_width_mm`) was carrying
+  the PRE-override `"clamped"` verdict forward unchanged, so a caller
+  override that itself blew past the ceiling — config.py's own documented
+  "escape hatch... still clamped to [2.5, 5.0]" — was invisible to the new
+  code too; `"clamped"` is now recomputed against the actual requested
+  override. This override path is the practically reachable one: the
+  solver's own W_req never reaches either bound at any published trim
+  discipline (§2.3's table tops out at 4.0mm, loose), confirmed directly —
+  `solve_cover_width(m_edge=3.0)` is the one way found to make the solver
+  itself clamp (W_req 7.7mm → 5.0mm). New tests:
+  `test_solve_cover_width_can_clamp_from_the_tolerance_stack_itself`,
+  `test_a_clamped_cover_width_is_warned_not_silent`,
+  `test_a_forced_cover_width_override_warns_end_to_end` (through
+  `applique_pass` on the benchmark logo at `applique_cover_width_mm=8.0`).
+
+  **Fixed, 2026-08-07: §2.12's pre-cut `min_inscribed_diameter >= 8mm` gate
+  (scissors/placement floor) is now checked — it was never checked before,
+  only the 12mm trim-in-place floor was.** Same shape of change as the
+  `max_cover_width` clamp fix directly above: a geometric measurement, the
+  pre-existing threshold constant (`APPLIQUE_MIN_INSCRIBED_PRECUT_MM`, 8.0,
+  `machine.py` — already there, read by no code path), a new warning code
+  (`APPLIQUE_PRECUT_TOO_NARROW`, `warnings_codes.py`), wired into
+  `check_gates` and aggregated by `applique_pass` exactly like the other five
+  appliqué gates. Fed by `narrowest_passage_diameter`, not
+  `min_inscribed_diameter` — the same choice the trim-in-place gate already
+  made and for the same reason (a dog-bone-shaped piece has one lobe's own
+  huge inscribed circle and a neck `min_inscribed_diameter` never has to
+  visit). Scoped strictly to `geom.mode == PRE_CUT`, mirroring the existing
+  `geom.mode == TRIM_IN_PLACE` gate immediately above it in `check_gates` —
+  confirmed mutually exclusive, not merely both-correct-in-isolation: a
+  synthetic dog-bone with a 6mm neck (under pre-cut's 8mm floor AND
+  trim-in-place's 12mm floor) fires `APPLIQUE_PRECUT_TOO_NARROW` and NOT
+  `APPLIQUE_CUTTING_LINE_SUPPRESSED` under `mode=PRE_CUT`, and the reverse
+  under `mode=TRIM_IN_PLACE` (`test_precut_and_trim_in_place_scissors_
+  floors_never_both_fire`). No real fixture needed for the end-to-end proof
+  either: the benchmark logo already has the 1.0mm² / 1.07mm-inscribed
+  region `test_pre_cut_costs_one_fewer_stop_per_piece` documents, so
+  `applique_mode="pre_cut"` on real artwork fires the new code with no
+  construction (`test_a_precut_design_warns_when_a_piece_is_too_narrow_to_
+  hand_cut`), and the same artwork under `trim_in_place` never fires it.
+  New tests: `test_a_precut_piece_clears_the_scissors_floor_by_default`,
+  `test_a_narrow_precut_piece_is_warned_not_silent`,
+  `test_precut_and_trim_in_place_scissors_floors_never_both_fire`,
+  `test_a_precut_design_warns_when_a_piece_is_too_narrow_to_hand_cut` (54 →
+  58 in `test_applique.py`, all passing, targeted run not assumed from a
+  full-suite pass). The physical rationale for the specific 8mm number is
+  still not traced to a stated vendor constraint anywhere this audit found
+  (unlike the tackdown-width fix's `W_tack <= W_cover - 2*m_bury`) — that
+  gap is in the *number*, not in whether the gate fires; the constant itself
+  was untouched, only its being read.
+
+  **Still confirmed but NOT fixed — genuinely out of scope, unchanged from
+  the first pass:**
+  - `applique_cover="zigzag"` and `"e_stitch"` are accepted config values
+    but produce **byte-identical stitch geometry** to `"satin"` — re-verified
+    directly this pass (same point-for-point equality on `SHIELD`, unaffected
+    by the pull-comp/closure-overlap fixes above, which apply uniformly
+    regardless of `cover`). `cover` still only changes the printed worksheet
+    label. §2.8 calls zigzag cover "a genuinely different aesthetic, not a
+    cheap satin" at a different spacing, and E-stitch a different stitch
+    ORDER (a comb pattern) — neither is built. Still not fixed because the
+    spec itself gives two different candidate zigzag spacings (1.69mm SPI
+    vs. Melco's 3.0mm preset) as alternatives with no stated tie-break, and
+    E-stitch's comb order is a real algorithm with no spec to follow here.
+
+  **Caveat, stated plainly:** this is 3 real fixtures and a handful of
+  targeted synthetic constructions (dog-bone, off-centre ring, two-piece
+  overlap harness, a plain circle for the closure-overlap count), not a
+  corpus sweep, and it covers the geometry/gate layer only — no sew-out,
+  same standing caveat as every other tier in this doc. `trim_discipline`/
+  `material`/`placement` combinations were exercised through the existing
+  shipped tests' parametrization, not independently re-swept by either
+  pass.
 
 Every claim about visual/sew quality beyond internal geometry checks is
 **pending sew-out** — see the cross-cutting item above.
@@ -1128,10 +2982,10 @@ Every claim about visual/sew quality beyond internal geometry checks is
 gradient region-count fragmentation fix (PR #45, above — two-fixture
 validation caveat noted there), the full `BACKGROUND_ENCLOSED` stack
 (including the opaque-alpha fix, PR #22), and the contour bare-core shrink
-(PR #27) are all landed. What's left to close this out: watch the
-opaque-alpha fix run through the actual Studio browser UI once (verified so
-far only at the HTTP level — see the caveat note above), then schedule the
-first sew-out session. M0 of the DT-first
+(PR #27) are all landed. The opaque-alpha fix has now been watched running
+through the actual Studio browser UI (2026-08-07, live via Playwright MCP —
+see the caveat note above, now closed); what's left to close this out is
+scheduling the first sew-out session. M0 of the DT-first
 migration is measured (see the satin/fill classifier item above) — corpus
 leg still pending a local run (`scratch_corpus/` is gitignored and
 confirmed empty in this checkout). **M1 (`ShapeField` hoist) is already
@@ -1175,7 +3029,13 @@ stops a logo's small lettering (the benchmark subline) from being dropped,
 but treats every glyph as an independent noisy blob — nothing distinguished
 "this is a word" from "this is nine unrelated small shapes," and nothing
 made a detected word's letters share one visual weight. Three new pieces,
-all geometry-only, no OCR:
+all geometry-only, no OCR — **still true of detection and of what
+regularization decides to redraw**; a later, additive safety layer (below,
+2026-08-07) reads an OCR CONFIDENCE NUMBER to sanity-check regularization's
+own output, never a decoded character, so the "no OCR" design principle this
+feature was built on (`textcluster.py`'s own top-of-file docstring) still
+holds in the sense that mattered when it was written — no text is ever
+recognized, read, or auto-filled:
 
 - **Detection** (`digitizer_core/textcluster.py`, new module):
   `detect_text_clusters`, a post-vectorization pass (wired into
@@ -1198,13 +3058,12 @@ all geometry-only, no OCR:
   synthetic ones: `enthusiast_logo.png`'s subline at 90mm tags >=10 of its
   own rescued shape_ids into one cluster.
 - **Regularization** (`textcluster.regularize_text_clusters`, same module,
-  wired immediately after detection): the default, always-on treatment for
-  a tagged cluster — redraws every member's polygon as a fixed-radius
-  buffer around its own skeleton, sized to the cluster's shared median
-  stroke half-width, so a detected-but-unconverted word reads as one
-  consistent line weight instead of nine independently-noisy glyphs. A
-  genuine geometry change (unlike detection's pure tagging), so it fails
-  open onto the ORIGINAL untouched polygon (`text_cluster_regularize_skipped`)
+  wired immediately after detection): redraws a tagged member's polygon as a
+  fixed-radius buffer around its own skeleton, sized to the cluster's shared
+  median stroke half-width, so a detected-but-unconverted word reads as one
+  consistent line weight instead of independently-noisy glyphs. A genuine
+  geometry change (unlike detection's pure tagging), so it fails open onto
+  the ORIGINAL untouched polygon (`text_cluster_regularize_skipped`)
   whenever the buffered result can't be trusted — too small to sew, an
   invalid buffer, a degenerate skeleton. **Correction made mid-build, worth
   recording:** the first design draft assumed a per-shape stitch-width
@@ -1220,8 +3079,31 @@ all geometry-only, no OCR:
   already uses) rather than a narrower non-branching-only scope — verified
   on the real fixture: 10 of the subline's 14 members have branching
   skeletons, and all 14 buffer into single valid, sewable polygons.
-  `flat_lane_golden.json` moves for exactly that one fixture, confirmed by
-  structural diff that the other 3 entries are byte-identical.
+  **No longer unconditional, fixed 2026-08-06** (this doc's top entry has the
+  full evidence): the buffer is now selective, not the default-always-on
+  treatment for every member. A member already within 15% of the cluster's
+  target stroke half-width, or one whose own polygon already has a real
+  interior ring, is left completely untouched instead of being replaced by
+  a cruder buffered approximation — a real render (`debugviz.stage6`) showed
+  the old unconditional version was making an already-clean subline read
+  LESS legibly, not more consistently, and could never represent a real
+  letter counter (an "R"/"P" bowl) at all. `flat_lane_golden.json` moves for
+  exactly that one fixture — this specific slice's original claim, "the
+  other 3 entries are byte-identical," still holds; the 2026-08-06 fix could
+  not be verified against that golden locally (see this doc's top entry: the
+  file is separately, pre-existingly corrupted in this checkout).
+  **Additional safety layer, 2026-08-07** (this doc's top entry has the full
+  evidence): an OCR-confidence quality gate now sits on top of the
+  selective checks above. Both are geometric proxies for "would this redraw
+  read worse" — this measures it directly, scoring the member's own
+  rasterized crop with Tesseract before and after the proposed buffer and
+  discarding the buffer if confidence drops >=20 points. Only a confidence
+  NUMBER is read, never decoded text (`data["text"]` is never accessed,
+  code-inspected and regression-tested). On the real benchmark fixture this
+  catches the one case the checks above still let through: the +30%-off "I"
+  the prior fix's own docstring cites drops from 77.0 to 0.0 OCR confidence
+  when buffered — Tesseract finds no text at all in the result — and this
+  gate now blocks it, falling back to the original polygon.
 - **Studio side (area 5 has the full detail):** a "looks like text" badge
   and a per-cluster "Convert to text" action that creates a real, empty
   text element — the user types the actual word and picks a font, nothing
@@ -1238,6 +3120,165 @@ tracked DT-first classifier thread above (M0/M1 landed, M2/M3 blocked on
 the corpus), not duplicated here. Full detail, including the corrected
 design history: `docs/superpowers/specs/2026-08-05-text-cluster-detection-
 design.md` and `docs/superpowers/plans/2026-08-05-text-cluster-detection.md`.
+
+**Classical-CV strengthening pass, 2026-08-07 (three tracks scoped, two
+built, one investigated and declined — all measured, not assumed):**
+
+- **Candidate filters** (`_candidates`, in `textcluster.py`): previously
+  compared only each shape's MEAN stroke half-width for cross-shape
+  similarity, discarding the per-pixel distribution `shapefield.
+  build_shape_field` already computes. Three more filters now tighten the
+  same function, each calibrated against `enthusiast_logo.png` @ 90mm
+  PRE-regularization (the actual geometry `_candidates` sees — read fresh
+  via `run_stages` with `regularize_text_clusters` patched to a no-op, not
+  the pipeline's final, already-regularized output, which would have hidden
+  the real per-glyph variance): **stroke-width coefficient of variation**
+  (`STROKE_CV_MAX = 0.32`) — the fixture's 14 real letters measure CV
+  0.027-0.235, three sibling rescued-but-not-word fragments measure
+  0.401-0.461, a clean gap; **aspect-ratio bounds** (`ASPECT_RATIO_MIN/MAX
+  = 0.05/1.4`) — the same 14 letters are portrait 0.107-0.964, the same 3
+  fragments landscape 1.778-2.125; **bbox-nesting exclusion**
+  (`_drop_nested`) — the same 3 fragments each sit bbox-nested inside one of
+  the 14 real letters, a third, independent confirmation they're
+  segmentation artifacts. On this fixture the three fragments were already
+  excluded from the tagged cluster by the pre-existing height-similarity
+  gate (so this pass doesn't move `enthusiast_logo.png`'s own golden output
+  — confirmed, `test_flat_lane_byte_identical.py` stayed green) — the new
+  filters are defense-in-depth against a case that DOES independently
+  confirm on real evidence rather than a fix for an observed false positive
+  on this one fixture. One real finding worth flagging: this repo's own
+  existing synthetic test fixtures (plain axis-aligned rectangles) measure
+  WORSE on stroke-width CV than genuine font glyphs of similar proportions —
+  a solid rectangle's medial axis is one straight segment, so end-taper
+  (universal to any stroke's free tip) is a much larger fraction of its
+  total skeleton length than a real letter's more complex one. The original
+  0.9mm-wide test rectangles (CV 0.458) were thinned to ~0.15-0.35mm (CV
+  0.21-0.29) so they clear the new, real-measured threshold — full reasoning
+  in `textcluster.py`'s own module docstring and `test_textcluster.py`'s.
+- **Shape Context glyph-plausibility gate** (new module
+  `digitizer_core/shapecontext.py`, ~150 lines, zero new dependency —
+  `scipy.optimize.linear_sum_assignment` is already in the tree): a
+  from-scratch implementation of Belongie/Malik/Puzicha 2002's Shape Context
+  descriptor (sample boundary points incl. holes, log-polar relative-
+  position histograms, Hungarian-algorithm point correspondence, chi-squared
+  cost). Wired into `regularize_text_clusters` as a SECOND guard after the
+  existing sewability/validity check: a buffered replacement can be
+  perfectly valid and sewable while still being structurally wrong (a target
+  radius mismatched from a member's own true stroke — already possible
+  within the pre-existing `SIMILARITY_RATIO=0.5` floor's own looseness —
+  inflates or blows out real structure). `SHAPE_CONTEXT_MAX_DIST = 0.25`,
+  calibrated against the real fixture's 14 members (which all regularize
+  cleanly today, distance 0.033-0.106) plus synthetic matched-vs-mismatched
+  sweeps on a branching ("L") letterform (a correctly-matched radius scores
+  0.173; a 2x-mismatched one — realistic given `SIMILARITY_RATIO`'s own
+  floor — scores 0.285 with 2.4x area bloat). A gated skip sets a new,
+  distinct `text_cluster_regularize_shape_changed` flag (alongside the
+  pre-existing `text_cluster_regularize_skipped`) and the measured distance
+  is recorded either way (`text_cluster_shape_context_dist`) for
+  diagnostics. On `enthusiast_logo.png` itself none of the 14 real members
+  trip the gate — golden output unchanged, confirmed.
+- **MSER — investigated, deliberately NOT built.** Considered both upstream
+  (`stage3_segment.resolve_small_regions`, to catch lettering absorbed into
+  a bigger neighbor before ever becoming its own `rescued_small_shape`) and
+  as a direct per-shape signal in `textcluster.py` (`detect_text_clusters`
+  already receives `p: Prep`, whose `p.rgb` is the real prepped raster —
+  unused plumbing that would have made this cheap to wire). Measured
+  directly, not assumed: `cv2.MSER_create().detectRegions()` returns ZERO
+  regions on `enthusiast_logo.png`, both the raw source file and the
+  pipeline-prepped raster, at default params and swept down to 1px
+  `min_area`/`delta`. Root cause is structural, not a fixture accident: the
+  raw source has exactly 3 unique grayscale values total (2 in the subline
+  text region specifically — pure foreground/background, no antialiasing).
+  MSER's mechanism needs a multi-level intensity landscape to sweep
+  thresholds across; a 2-3-value hard-edged image gives its own internal
+  stability check nothing to measure. This isn't one unlucky fixture: this
+  module's own scope is flat-lane art by construction ("this feature only
+  acts on `rescued_small_shape`-flagged Regions, a flat-lane-only concept,"
+  per this entry's own text above) — hard vector-style edges are the norm
+  here, not the exception, and MSER's real strength (photographs, lighting
+  gradients, JPEG blur) is the opposite domain. Full reasoning in
+  `textcluster.py`'s own "MSER" docstring section.
+
+Tests: `tests/test_shapecontext.py` (new, 8 tests — translation/scale
+invariance, deliberate non-rotation-invariance, minor-vs-major structural
+change discrimination, hole-appearing sensitivity, degenerate-input
+handling); `tests/test_textcluster.py` gains 6 (3 candidate-filter isolation
+tests, a nesting-tie test, the shape-context gate's matched/mismatched
+integration test) plus its existing 13 re-validated against the thinned
+fixture geometry. 222 tests total passing across
+`test_textcluster.py`/`test_shapecontext.py`/`test_pipeline.py`/
+`test_flat_lane_byte_identical.py`/`test_shapefield_byte_identical.py`/
+`test_satin.py`/`test_service.py`.
+**OCR-suggested text (2026-08-07, not yet merged — branch TBD, opened as a
+draft PR against `main`).** Kent's explicit call: "do not set OCR aside...
+this should become a focus." Everything above this paragraph is geometry-
+only detection, deliberately OCR-free — that is unchanged; this adds a
+strictly LATER, read-only, additive pass, not a relaxation of it.
+`textcluster.ocr_suggest_text` (new function, same module, wired into
+`pipeline.py` immediately after `regularize_text_clusters` so it reads
+whichever polygon the design will actually sew/export) runs Tesseract
+(`--psm 10`, single-character mode — same tool, same PSM choice, as the
+independent, not-yet-merged `text-cluster-ocr-confidence-gate` branch's
+regularization-safety gate, which this reuses the RASTERIZE-AND-SCORE
+TECHNIQUE from but not any call path — that gate's job is a boolean "would
+this redraw read worse," `data["text"]` never read; this pass's job is
+"what does this glyph probably say," both text and confidence surfaced) on
+each ALREADY-tagged member's own rasterized crop, and stamps
+`Region.meta["ocr_char"]`/`["ocr_confidence"]` — a single best-guess
+character plus Tesseract's own 0-100 confidence, or `None`/`None` when the
+measurement itself fails (missing binary, degenerate crop). Exposed
+read-only over HTTP (`_review_payload`'s `ocr_char`/`ocr_confidence`, same
+`_OVERRIDE_KEYS`-free category as `text_candidate`). The service takes NO
+position on "good enough" — it reports a raw per-member measurement; the
+confidence GATE is entirely Studio's call (area 5 below has the full UX
+detail: `OCR_SUGGESTION_MIN_CONFIDENCE`, the badge, the `textSource`
+provenance flag). New system dependency: `tesseract-ocr` (Apache-2.0,
+`pytesseract` wrapper), added to `requirements.txt`/`pyproject.toml`/CI's
+digitizer job/`README.md` "Setup" — missing it fails open (every OCR field
+reads `None`, Studio's gate then behaves exactly like a below-threshold
+read, i.e. exactly like before this feature existed). New tests:
+`tests/test_ocr_suggest.py` (8, hand-built dot-matrix block letters — no
+system-font dependency, same technique `test_ocr_gate.py` on the sibling
+branch uses), plus wiring tests in `test_pipeline.py` (real benchmark
+fixture, full pipeline) and `test_service.py` (real HTTP seam). Full
+digitizer suite run locally against this change: **893 passed, 3 skipped**
+(the same 3 pre-existing container-environment goldens COOKBOOK.md's
+"Running things" already flags — the pass count grew organically past that
+doc's last-recorded 654/658 snapshot from other, already-merged work
+between then and now, not from this PR alone; re-verify rather than diffing
+against that stale number directly). **A real, measured cost worth flagging
+plainly, not burying:** this same local run took ~20 minutes, roughly double
+COOKBOOK.md's documented 7-11 minute baseline — `ocr_suggest_text` runs
+unconditionally on every tagged cluster member across every pipeline
+invocation the suite makes (Tesseract's Python binding shells out per crop),
+and several existing tests reuse the same text-cluster-tagging real-image
+fixtures many times over. No test failed; this is a suite-runtime cost, not
+a correctness one, but a follow-up should watch whether it's worth gating
+behind a `cfg.extra[...]` opt-in flag (the pattern `shapefield`/`photo_prep`
+already established for costly additive work) if a future single-`/digitize`
+request's added latency — not measured here, only the test suite's
+cumulative cost was — turns out to matter in practice. Out of scope,
+unchanged from the text-cluster-detection entry above: `fontKey` is NEVER
+auto-picked by anything downstream of this — OCR gives characters, never a
+typeface match, regardless of confidence.
+
+**Fixed, 2026-08-08 (PR #97) — appliqué's configured cover style
+(`cfg.applique_cover`) was silently ignored; every cover sewed byte-
+identical satin geometry regardless.** `applique_steps` threaded the
+setting down to `_cover_layer`'s call site, but `_cover_layer` never
+accepted or read it. `_cover_layer` now takes a `cover` param: `"zigzag"`
+drives the same `_rail_column` emitter with a new
+`APPLIQUE_ZIGZAG_COVER_SPACING_MM` (3.0mm, Melco's preset pitch — picked
+for consistency with this file's other Melco-sourced defaults, **not**
+validated by sew-out) instead of `geom.spacing_mm`; `"satin"` (default)
+and `"e_stitch"` (no algorithm/spec exists to build one against, left as a
+documented fallthrough) keep `geom.spacing_mm` and stay byte-identical to
+before. New regression tests pin satin's unchanged geometry and confirm
+zigzag produces genuinely sparser stitch geometry that moves with the
+constant (`test_applique.py`: 58 → 63). Full digitizer suite unaffected
+(942 passed, 3 skipped). Doesn't move this area's Status/Confidence verdict
+— a real config-wiring bugfix on an already-built feature, not new
+capability, and still sew-out-unvalidated like the rest of appliqué.
 
 ---
 
@@ -1323,6 +3364,122 @@ non-square hoop across several non-180° angles (267/267 engine, 321/321 app
 at that historical commit — not today's totals, which have since grown
 further).
 
+**Manual shape drawing gained curved edges, 2026-08-07** (`ManualPanel
+.svelte`, the "Shapes" content type's hand-drawn-outline tool): dragging the
+small handle at any edge's midpoint bows it into a quadratic curve — live
+while drafting, and retroactively on a finished shape via "Edit points."
+Prompted by directly observing Ember Design's own manual digitizing tool
+(draw curved/straight lines, satin-fill the closed shape); confirmed via
+code reading, not assumed, that EMB-Bot's satin/fill machinery already
+derives rails/caps from any closed polygon via medial-axis skeletonization
+— the missing piece was purely the curve-drawing UI, not new stitch-
+generation capability. Curves live in their own sparse per-shape field
+(`shape.curves`, segment-index → quadratic-control-point) and are only ever
+flattened to plain points at the `shapesToRegions` hand-off boundary — the
+Python pipeline and both stitch engines never need to know a curve exists,
+and a shape with no curved segments flattens byte-identical to before this
+feature. 30 new tests (22 pure-geometry, 8 component drag-gesture), plus
+live-browser verification: drew a curved shape, generated real fill
+stitches from it, satin-stitched it, and re-curved a different edge after
+finishing — all client-side, no backend needed. Branch
+`manual-shape-curve-tool`. Doesn't move this area's Status/Confidence
+verdict (additive UI on an already-shipped content type).
+
+**Manual shape tool gained an image-trace starting point, then real UX
+fixes, 2026-08-09** (`ManualPanel.svelte`, `app/src/lib/manualTrace.js`,
+`app/src/lib/manualShapes.js`) — three real, user-reported problems fixed
+in sequence, not a single planned feature:
+
+1. **Trace image → shapes** (PRs #98–100): a "Trace image…" button runs
+   the engine's existing marching-squares contour tracer
+   (`EMB.traceRegions`) + RDP simplification on an uploaded raster, then
+   fits ONE quadratic-Bezier control point per segment
+   (`fitCurvesForRing`) to produce editable shapes directly instead of
+   requiring hand-tracing from scratch. Holes are detected and warned,
+   never silently emitted as a shape. `app/e2e/manual-trace-import.spec.js`
+   drives it against a real browser.
+2. **Editor was cluttered, selection/cursor gave no feedback** (direct
+   user feedback) — fixed in PR #104: non-selected shapes de-emphasize
+   (fill-opacity 0.18, label dropped — reuses `DigitizePanel.svelte`'s own
+   established dimming value rather than a new number), clicking a
+   shape's body selects it (`pointInShape`, even-odd ray-cast), and the
+   canvas cursor now changes contextually (`grab`/`copy`/`pointer`/
+   `grabbing`/`crosshair`) instead of one static cursor throughout.
+3. **Step-nav tabs read as messy, hover looked identical to active,
+   content forced scrolling** (direct user feedback) — fixed in PR #105:
+   active vs. hover are now visually distinct (mirrors the `.elrow.sel`
+   tint pattern used elsewhere in the app), disabled steps read as
+   "grayed out" not "gone," numbered/checkmark progress badges added, and
+   the element list is capped at a scrollable 220px so a selected editor
+   no longer gets pushed below the fold. **Found but explicitly NOT
+   fixed** during this PR's own visual QA pass: at ≤375px width the top
+   bar has no narrow-width handling and overlaps ("Bot Studio" collides
+   with "My designs"), causing horizontal page overflow — pre-existing,
+   out of scope, flagged here since nothing before this pass had driven
+   the app narrow enough to notice it.
+
+Also removed the old frozen standalone `EMB-Bot.html`/`src/app.js` tool
+(PR #101) — confirmed via `app/scripts/copy-engine.mjs`'s `ENGINE_FILES`
+list that nothing it used is still shared with the Studio build before
+deleting it; it had been reading as a second, competing app to Kent.
+
+**Curve-smoothing approach reconsidered against a comparable tool, not
+changed.** A hands-on evaluation of `kent746/shape-tracer`
+(`docs/shape-tracer-evaluation.md`, PR #103) found its tracer core solid,
+but it smooths via a Catmull-Rom spline through points, not
+`fitCurvesForRing`'s per-segment independent quadratic fit. Tested
+numerically against the real `smoothPathD` source (not a guess) on a
+square, an L-shape, and a 5-point star: wholesale Catmull-Rom reintroduces
+real corner overshoot (12.5px on the square, 10px on the L-shape) that
+`fitCurvesForRing` avoids entirely (0px on all three) — the exact defect
+`fitCurvesForRing` was built to avoid. A narrow tangent-continuity upside
+exists on rounded sections but rarely triggers at production's default
+tolerances and doesn't clear the bar for a hybrid given the schema
+constraints. Verdict: no change made.
+
+**UI icon system foundation landed, 2026-08-09** (`app/src/ui/Icon.svelte`,
+branch `ui-icon-system-foundation`) — a live Playwright audit of the running
+app found 13 component files rendering UI affordances (undo/redo, hint
+lightbulb/dismiss, canvas-toolbar zoom/fit/snap/jumps/trims/play, dropdown
+chevrons, etc.) as raw Unicode/emoji characters instead of real icons —
+inconsistent across OS/browser font stacks, and auto-snap literally showed
+as the 🧲 emoji. This PR is the narrow foundation only: one reusable
+`Icon.svelte` (24x24 inline SVG, 1.75px stroke, `currentColor`, no new
+npm dependency) hand-drawn for 15 icons covering the full inventory found,
+wired into the two highest-leverage shared spots (`App.svelte`'s topbar
+undo/redo, `Hint.svelte`'s lightbulb + dismiss — the latter fixes every
+hint banner app-wide at once since every hint routes through it). Also a
+conservative elevation/shadow pass in `theme.css` (topbar, `.tile`,
+`.tcard`, `.elrow`, `.drawer-row` gained `--shadow-1`, reusing existing
+tokens — no new palette). The other 11 files the audit found are
+deliberately untouched, left for follow-up PRs that depend on this one
+merging first (ThreadPicker, ContentStep, DesignPanel, DigitizePanel,
+EmbroideryField, FontBrowser, FontCredits, ImagePanel, ManualPanel,
+ProjectsDrawer, StepNav). Doesn't move this area's Status/Confidence
+verdict — visual/consistency polish, not a capability change.
+
+**All 11 follow-up files done, 2026-08-10** (PRs #111-115, a parallel
+4-way fan-out plus a small `Icon.spec.js` coverage reconciliation) — every
+file the original audit found is now wired to `Icon.svelte`, zero raw
+Unicode/emoji affordances left anywhere in the app. `EmbroideryField.svelte`'s
+canvas toolbar (the most visible cluster — zoom/fit/magnet/jumps/trims/
+play), `DigitizePanel.svelte`'s Layers panel (5 new icons added to the
+shared registry: `arrowUp`, `arrowDown`, `exclude`, `revert`, `edit`),
+`ManualPanel.svelte`/`ContentStep.svelte` (including the "+ Text/Image/..."
+add-tiles, which used a literal `+` character prefix, not just a missing
+icon), and the 7 remaining smaller panels (`ThreadPicker`, `DesignPanel`,
+`ImagePanel`, `FontBrowser`, `FontCredits`, `ProjectsDrawer`, `StepNav` —
+`StepNav`'s own `✓` and `DesignPanel`'s `⚠` now route through `Icon.svelte`
+too). One real gap the parallel structure created and then closed: each of
+the 4 PRs deliberately left `Icon.spec.js`'s inventory test untouched to
+avoid guaranteed conflicts with sibling PRs editing the same file — PR #115
+reconciled that afterward, adding the 6 icon names (`arrowUp`, `arrowDown`,
+`exclude`, `revert`, `edit`, `reset`) the fan-out added but hadn't covered.
+Visually verified end-to-end via live Playwright against the real merged
+app (not just unit tests) — confirmed clean SVG rendering, no fallback
+placeholders, no accessible-name regressions. Doesn't move this area's
+Status/Confidence verdict, same reasoning as the foundation entry above.
+
 **Fabric-preset accuracy: pending sew-out** — kept as an explicit separate
 note, not blended into the wizard's own score. README says it outright:
 "Presets are starting points — stitch a test on your machine and tell me if
@@ -1357,11 +3514,22 @@ the Python digitizer service's `/export` route (pyembroidery-based).
   (PR #58, `pes-exp-byte-framing-fix`): `trimRecord()` now writes the 4-byte Melco
   form. Harness re-run: a trimmed design now decodes whole (identity
   transform, rms 0, colour change and second colour block both present),
-  where it used to truncate at 11 of 15 stitches. Not raised all the way to
-  High since (a) this is cross-validated against pyembroidery, not a real
-  machine/software sew or open, and (b) the shared "end"-record extra-stitch
-  quirk (also present in DST) is still there, just out of this fix's scope.
-  The Python `/export` path was never affected (different writer).
+  where it used to truncate at 11 of 15 stitches. **Also fixed, 2026-08-06:**
+  the "end"-record extra-stitch quirk this entry used to flag as out of
+  scope — `encodeEXP` fell through to the generic stitch path for the
+  terminal `{type:"end"}` sentinel `stitchModel.js` always appends, writing
+  it as one real zero-delta stitch that standard readers decoded as an extra
+  phantom stitch beyond the design's true count (16 of 15). `pes.js`'s own
+  encoder already stopped at `"end"` the same way; `encodeEXP` now does too
+  (`if (st.type === "end") break;`, matching `pes.js`'s exact pattern).
+  Harness re-run: `exp.notrim`/`exp.full` both now read `expected 15, decoded
+  15` (was `decoded 16`). DST carries the identical underlying gap and is
+  deliberately left alone (Kent's call, migration risk — see the cross-
+  cutting section) — EXP has no importer anywhere in this codebase, so
+  fixing it here carries none of that risk, same low-risk read the original
+  PES/EXP fix got. Not raised all the way to High since this is
+  cross-validated against pyembroidery, not a real machine/software sew or
+  open. The Python `/export` path was never affected (different writer).
 - **PES: Medium-High**, upgraded from Low this pass. README's own
   "best-effort — reverse-engineered" framing still applies to the format's
   general maturity, but the specific defects PR #18 found — the 5-byte
@@ -1385,8 +3553,27 @@ the Python digitizer service's `/export` route (pyembroidery-based).
   targeted tests (updated for the new byte layout) plus the crossval
   harness's PES-specific pins, which do now cross-validate against an
   independent decoder.
-- **SVG: Medium** — lower stakes (vector proof, not a stitch file), but thin
-  coverage (1 test).
+- **SVG: Medium-High**, upgraded from Medium (2026-08-06) — still lower
+  stakes than a real stitch format (vector proof only), but the "thin
+  coverage (1 test)" gap this doc used to flag is closed: `test/svgexport
+  .test.js` grew to 10 tests, reading a close pass of `src/svgexport.js`
+  rather than guessing at edge cases -- real extents recomputed from stitch
+  coordinates (not trusted from the design's own possibly-stale
+  `widthMM`/`heightMM` fields), the DST-up-to-SVG-down Y flip, one
+  `<polyline>` per color run, both jumps and trims correctly breaking a path
+  without drawing a travel line across the gap, a missing color falling
+  back to black rather than throwing, and a null/undefined/empty design
+  producing a minimal valid SVG rather than crashing. One documented-not-
+  fixed behavior worth knowing about, not treated as a bug: a lone stitch
+  sitting between two jumps renders nothing (`designToSVG`'s `run.length >=
+  2` gate can't turn a single point into a `<polyline>`) — real designs
+  essentially never produce an isolated single-stitch run (satin/fill always
+  emit many), so this was left as a pinned, conscious simplification rather
+  than a speculative fix. No production code changed; the pass through
+  `src/svgexport.js` while writing these tests found the existing logic
+  correct on every dimension checked. Full engine suite: `node --test` —
+  **283/283 passed, 0 failed** (274 baseline, this pass's own EXP fix
+  included, + 9 new SVG tests replacing the old 1).
 - **PDF worksheet: Medium-High** — was "no dedicated test file exists at
   all," then gained call-sequence coverage, and this pass closes the
   remaining gap. `app/src/lib/pdfsheet.spec.js` (merged, PR #4) drives
@@ -1414,11 +3601,13 @@ PES/EXP's own cross-validation findings (PR #18) are **fixed as of
 2026-08-05** (PR #58, `pes-exp-byte-framing-fix` — see the cross-cutting section
 above and this file's "Last updated" entry for the full before/after): PES
 no longer decodes as garbage in standard readers, and EXP no longer aborts
-at the first trim. Remaining, explicitly-accepted gaps: nearest-chart
-colour mapping isn't a lossless round-trip (64 fixed PEC chart colors); the
-shared "end"-record extra-stitch quirk (present in EXP and DST, not PES)
-is unaffected; and no real Brother-machine load or PE-Design open has
-happened yet — only pyembroidery cross-validation.
+at the first trim. The "end"-record extra-stitch quirk EXP used to share
+with DST is **also fixed as of 2026-08-06** — see the EXP bullet above;
+DST keeps its own copy of the same gap, deliberately, Kent's call.
+Remaining, explicitly-accepted gaps: nearest-chart colour mapping isn't a
+lossless round-trip (64 fixed PEC chart colors); and no real Brother-machine
+load or PE-Design open has happened yet — only pyembroidery
+cross-validation.
 
 **Next step:** for DST, same as the cross-cutting item — a third-party
 sew-out/read settles the axis question. For PES/EXP, the verdict memo's own
@@ -1483,12 +3672,13 @@ underlay_style}`):
   `machine.SATIN_ZIGZAG_ABOVE_MM`) versus fill's seven styles, so it stays
   engine-internal on purpose. Backed by Python tests asserting the override
   actually changes emitted underlay stitch geometry (not just a config
-  round-trip) and Studio vitest coverage of the wire contract, but — unlike
-  the border control it was modeled on, which PR #21's e2e spec now drives
-  live — this one has no live-browser coverage yet: the Layers-panel
-  dropdown itself has no automated coverage (no svelte-component test
-  harness exists in this repo yet, matching tier/border/fill-angle's own
-  testing gap).
+  round-trip) and Studio vitest coverage of the wire contract. **The
+  Layers-panel dropdown itself now has automated coverage too — CLOSED
+  2026-08-07**, alongside tier/border/fill-angle and every other per-shape
+  control: `DigitizePanel.testHarness.svelte` + `DigitizePanel.spec.js`
+  (this doc's own top "Last updated" entry has the full writeup). No
+  svelte-component test harness for this file existed anywhere in the
+  repo before that pass.
 
 **Boundary reshaping — CLOSED 2026-08-05** (worktree `agent-
 a28de220d2af7ede5`, commits `298eae0` digitizer / `ac11163` studio): the
@@ -1834,10 +4024,65 @@ regularization side).
   stitching, text element gone — **run for real, 1 passed**, after the
   `removeelement` fix above. Also manually verified live via Playwright MCP
   against a running dev session on the real benchmark fixture, screenshotted.
-- **Out of scope, on purpose:** real character recognition (no OCR anywhere
-  in this feature — the user always supplies the actual word), auto font
-  selection/matching to the source typeface, and any change to the satin/
-  fill classifier.
+- **Out of scope, on purpose, AS OF THE 2026-08-05 MERGE:** real character
+  recognition. **Superseded 2026-08-07 by the OCR-suggested-text entry
+  immediately below** — this bullet is kept, not deleted, as an honest
+  record of what shipped at the time; it no longer describes current
+  behavior. Auto font selection/matching to the source typeface and any
+  change to the satin/fill classifier remain out of scope, unchanged.
+
+**OCR-suggested text (2026-08-07, not yet merged — draft PR against
+`main`).** UX-safety-critical, not a convenience shortcut: automation-bias
+research on prefilled-vs-empty form fields found people catch errors in a
+confident-looking WRONG suggestion only ~30% of the time, vs. ~75% when the
+system visibly hedges — so "Convert to text" prefilling an OCR guess is only
+safe if it (a) is gated on real confidence and (b) never looks like
+user-authored text until a human has actually looked at it. Both are now
+true:
+
+- **The gate** (`digitizer.js`'s new `textClusterSeed` logic,
+  `OCR_SUGGESTION_MIN_CONFIDENCE = 55`, Studio-side — the service reports a
+  raw per-member confidence and takes no position on "good enough," see area
+  1 above): the cluster's suggested text is the MINIMUM confidence across
+  its own members, not a mean (a word is only as trustworthy as its worst-
+  read letter; a mean would let one badly-misread character hide inside an
+  otherwise-confident average — verified by a dedicated test using real
+  numbers where mean and min disagree). Threshold calibrated on real
+  Tesseract measurements, not assumed: every genuinely-wrong real/synthetic
+  cluster measured had a MIN confidence <=7.0 (the real benchmark fixture's
+  own "ENTERPRISES INC." subline, which has two real misreads, measures
+  0.0); every genuinely-correct synthetic control word measured had a MIN
+  >=70.0. 55 sits centered in that gap. Below the floor — including a
+  pre-OCR service sending neither field at all — behavior is byte-identical
+  to before this feature existed: `text: ""`, `fontKey: null`.
+  `fontKey` is NEVER auto-picked regardless of confidence — OCR gives
+  characters, never a typeface match, exactly as the superseded bullet
+  above already established, just no longer contingent on OCR being absent
+  entirely.
+- **Provenance + the "unconfirmed suggestion" treatment:** a gated seed also
+  carries `textSource: "ocr-suggested"` through to the new text element.
+  `TextStep.svelte` renders one small, non-blocking advisory badge ("Suggested
+  from image — verify before saving") above the textarea while that flag is
+  set, reusing `DigitizePanel.svelte`'s existing "looks like text" badge's
+  visual convention (`.dgp-lbadge`'s pill shape) plus the `--warn-text` color
+  this codebase already uses elsewhere for "needs a look" states — not new
+  styling invented for this one badge. The flag (and badge) clear the
+  instant the user edits the textarea, in the SAME patch as the edit itself
+  (`text`/`textSource` set together, one dispatch) — an unconfirmed guess
+  stops being unconfirmed the moment a human has touched it, whatever they
+  changed it to.
+- **Verification:** `digitizer.spec.js` (new tests for the wire-field
+  mapping and the gate — fills/clears at the exact threshold boundary,
+  min-not-mean aggregation, missing-data-is-no-signal, left-to-right
+  ordering by bbox), `test_ocr_suggest.py`/pipeline/service tests on the
+  Python side (area 1). First Svelte component spec for a NON-canvas panel
+  (`ManualPanel.spec.js` was the only precedent, canvas-only): a new
+  `TextStep.spec.js` + `TextStep.testHarness.svelte` (same "wrap in a real
+  parent to observe Svelte 5's un-exposed component-event dispatch" pattern
+  ManualPanel's own harness established) covers the badge appearing,
+  disappearing on edit, and never appearing for ordinary user-typed text.
+  Full Studio suite green (see "Running things" for the count this pass
+  observed).
 
 ---
 

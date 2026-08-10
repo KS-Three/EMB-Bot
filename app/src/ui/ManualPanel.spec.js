@@ -27,19 +27,36 @@
 //     zero. Stubbed to CANVAS_W x CANVAS_H at (0,0) so a click's clientX/Y
 //     maps 1:1 onto canvas coordinates — every coordinate used below can be
 //     read directly as a canvas-space point.
+//
+// ManualPanel.svelte now mounts TraceImportPanel.svelte (the trace-an-image
+// feature, PR 2), which imports manualTrace.js — same real-EMB-engine
+// dependency manualTrace.spec.js's own fixtures need (see its beforeAll) —
+// so importing ManualPanel.testHarness.svelte transitively needs the engine
+// loaded onto globalThis first too. The Harness is imported dynamically,
+// inside beforeAll, AFTER the engine require() calls below, rather than
+// statically at the top of this file (a static import would evaluate — and
+// throw inside emb.js's "engine not loaded" guard — before beforeAll ever
+// runs), same pattern TraceImportPanel.spec.js uses for its own Harness.
 import { beforeAll, describe, expect, test } from "vitest";
 import { render, fireEvent } from "@testing-library/svelte";
 // toBeDisabled()/etc. — scoped to this file (not a global vitest setupFile)
 // since it's the only spec that currently needs DOM matchers.
 import "@testing-library/jest-dom/vitest";
-import Harness from "./ManualPanel.testHarness.svelte";
+import { createRequire } from "node:module";
+import { preloadAllFontsSync } from "../lib/testFonts.js";
 import { CANVAS_W, CANVAS_H } from "../lib/manualShapes.js";
 
-beforeAll(() => {
+let Harness;
+
+beforeAll(async () => {
+  const require = createRequire(import.meta.url);
+  for (const f of ["units", "garments", "fabrics", "fill", "geometry", "quantize", "flatten", "satin", "satinplay", "satinfont", "fontbin", "dst", "exp", "fonts", "digitize"]) require("../../../src/" + f + ".js");
+  preloadAllFontsSync();
+
   const noop = () => {};
   HTMLCanvasElement.prototype.getContext = () => ({
     clearRect: noop, fillRect: noop, beginPath: noop, moveTo: noop, lineTo: noop,
-    closePath: noop, fill: noop, stroke: noop, arc: noop, fillText: noop,
+    quadraticCurveTo: noop, closePath: noop, fill: noop, stroke: noop, arc: noop, fillText: noop,
     save: noop, restore: noop,
     fillStyle: "", strokeStyle: "", lineWidth: 1, font: "", textAlign: "",
   });
@@ -47,6 +64,8 @@ beforeAll(() => {
     left: 0, top: 0, right: CANVAS_W, bottom: CANVAS_H,
     width: CANVAS_W, height: CANVAS_H, x: 0, y: 0, toJSON() {},
   });
+
+  ({ default: Harness } = await import("./ManualPanel.testHarness.svelte"));
 });
 
 function baseElement(shapes = []) {
@@ -61,10 +80,10 @@ function tri(dx = 0, dy = 0) {
   ];
 }
 
-function renderPanel(shapes = []) {
+function renderPanel(shapes = [], traceWorkImage = null) {
   const patches = [];
   const utils = render(Harness, {
-    props: { element: baseElement(shapes), onPatch: (d) => patches.push(d) },
+    props: { element: baseElement(shapes), traceWorkImage, onPatch: (d) => patches.push(d) },
   });
   const canvas = utils.container.querySelector("canvas");
   return { ...utils, canvas, patches };
@@ -183,6 +202,247 @@ describe("selecting and deleting a finished shape", () => {
   });
 });
 
+// ---- canvas-click-to-select ------------------------------------------------
+
+describe("canvas-click-to-select", () => {
+  test("clicking inside a finished (unselected) shape's body selects it", async () => {
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const { canvas, getByText } = renderPanel([shape]);
+    // Roughly tri()'s centroid — well inside the triangle regardless of
+    // exact rounding.
+    await clickAt(canvas, 150, 133);
+    const row = getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button");
+    expect(row.className).toContain("sel");
+  });
+
+  test("clicking empty canvas (no shape underneath) starts a new draft instead of selecting anything", async () => {
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const { canvas, getByRole, getByText } = renderPanel([shape]);
+    await clickAt(canvas, 400, 350); // well outside tri()
+    expect(getByRole("button", { name: "Undo point" })).not.toBeDisabled();
+    const row = getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button");
+    expect(row.className).not.toContain("sel");
+  });
+
+  test("on overlapping shapes, the topmost (last-drawn) shape wins the hit test", async () => {
+    const back = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [1, 1, 1], angleDeg: null };
+    // Drawn after s1 (topmost) and fully covers its centroid.
+    const front = {
+      id: "s2",
+      points: [{ x: 50, y: 50 }, { x: 300, y: 50 }, { x: 300, y: 300 }, { x: 50, y: 300 }],
+      stitchType: "satin",
+      colorRgb: [2, 2, 2],
+      angleDeg: null,
+    };
+    const { canvas, getByText } = renderPanel([back, front]);
+    await clickAt(canvas, 150, 133); // inside both shapes' bodies
+    expect(getByText(/Shape 2/, { selector: ".mp-shapename" }).closest("button").className).toContain("sel");
+    expect(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button").className).not.toContain("sel");
+  });
+
+  test("a select-click never fires mid-draft — clicking inside another shape's body while drawing adds a draft point instead", async () => {
+    // Positioned well away from the draft's own start/points below so none
+    // of these clicks accidentally lands within CLOSE_RADIUS_PX of anything
+    // unintended.
+    const other = { id: "s1", points: tri(300, 0), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const { canvas, patches } = renderPanel([other]);
+    await clickAt(canvas, 20, 20); // draft point 1 — draft.length is now 1
+    // Inside s1's body — the select-click gate (draft.length === 0) is
+    // closed now, so this must extend the draft, not select s1.
+    await clickAt(canvas, 450, 133);
+    await clickAt(canvas, 20, 80); // draft point 3
+    await clickAt(canvas, 22, 20); // close near the start
+    expect(patches).toHaveLength(1);
+    const newShape = patches[0].patch.shapes[1]; // index 0 is the untouched s1
+    expect(newShape.points).toHaveLength(3);
+  });
+});
+
+// ---- edge-click-to-insert-vertex -------------------------------------------
+//
+// tri()'s top edge (segment 0) runs from (100,100) to (200,100) — (150,103)
+// sits 3px off that line, well inside VERTEX_HIT_R (8), and (150,133) is a
+// safe interior point roughly 30px from the nearest edge (verified against
+// the real nearestSegmentIndex/pointInShape helpers, not just eyeballed).
+
+describe("edge-click-to-insert-vertex", () => {
+  async function selectRow(utils) {
+    await fireEvent.click(utils.getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
+  }
+
+  test("clicking an edge of the already-selected shape inserts a new vertex there", async () => {
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const utils = renderPanel([shape]);
+    await selectRow(utils);
+    const { canvas, patches } = utils;
+
+    await clickAt(canvas, 150, 103);
+
+    expect(patches).toHaveLength(1);
+    const pts = patches[0].patch.shapes[0].points;
+    expect(pts).toHaveLength(4);
+    expect(pts).toEqual([
+      { x: 100, y: 100 },
+      { x: 150, y: 103 }, // the new vertex, spliced right after segment 0's start anchor
+      { x: 200, y: 100 },
+      { x: 150, y: 200 },
+    ]);
+  });
+
+  test("clicking an edge of a shape that ISN'T selected yet only selects it — no insert", async () => {
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const { canvas, getByText, patches } = renderPanel([shape]);
+
+    await clickAt(canvas, 150, 103); // same edge point, but nothing is selected yet
+
+    expect(patches).toHaveLength(0); // selecting alone never dispatches a patch
+    const row = getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button");
+    expect(row.className).toContain("sel");
+  });
+
+  test("clicking the interior of an already-selected shape (away from any edge) does not insert", async () => {
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const utils = renderPanel([shape]);
+    await selectRow(utils);
+    const { canvas, getByText, patches } = utils;
+
+    await clickAt(canvas, 150, 133); // well inside, ~30px from the nearest edge
+
+    expect(patches).toHaveLength(0); // no insert dispatched
+    // Falls back to the pre-existing already-selected-shape click behavior
+    // (selectShape's own toggle) unchanged — this test only pins that no
+    // insert happened, not that specific toggle mechanic (out of scope here).
+    const row = getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button");
+    expect(row.className).not.toContain("sel");
+  });
+
+  test("a second click on the same edge point keeps splitting — each insert only ever adds one vertex", async () => {
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const utils = renderPanel([shape]);
+    await selectRow(utils);
+    const { canvas, patches } = utils;
+
+    await clickAt(canvas, 150, 103);
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.shapes[0].points).toHaveLength(4);
+  });
+
+  test("an edge click on a DIFFERENT shape than the one selected just selects that other shape, no insert", async () => {
+    const selected = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const other = { id: "s2", points: tri(300, 0), stitchType: "fill", colorRgb: [1, 1, 1], angleDeg: null };
+    const utils = renderPanel([selected, other]);
+    await selectRow(utils);
+    const { canvas, getByText, patches } = utils;
+
+    // Edge point on `other`'s top edge (same offset as tri()'s own).
+    await clickAt(canvas, 450, 103);
+
+    expect(patches).toHaveLength(0);
+    expect(getByText(/Shape 2/, { selector: ".mp-shapename" }).closest("button").className).toContain("sel");
+    expect(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button").className).not.toContain("sel");
+  });
+});
+
+// ---- cursor swaps per hover target ------------------------------------
+
+describe("cursor swaps per hover target", () => {
+  test("defaults to crosshair over empty canvas", async () => {
+    const { canvas } = renderPanel();
+    await fireEvent.pointerMove(canvas, { clientX: 300, clientY: 200 });
+    expect(canvas.style.cursor).toBe("crosshair");
+  });
+
+  test("switches to pointer while hovering a selectable shape's body", async () => {
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const { canvas } = renderPanel([shape]);
+    await fireEvent.pointerMove(canvas, { clientX: 150, clientY: 133 }); // inside tri()
+    expect(canvas.style.cursor).toBe("pointer");
+  });
+
+  test("switches to cell while hovering an edge of the already-selected shape (the exact spot a click would insert a vertex)", async () => {
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const { canvas, getByText } = renderPanel([shape]);
+    await fireEvent.click(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button")); // select it first
+    await fireEvent.pointerMove(canvas, { clientX: 150, clientY: 103 }); // 3px off tri()'s top edge
+    expect(canvas.style.cursor).toBe("cell");
+  });
+
+  test("stays pointer (not cell) while hovering the SAME shape's edge before it's selected", async () => {
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const { canvas } = renderPanel([shape]);
+    await fireEvent.pointerMove(canvas, { clientX: 150, clientY: 103 }); // same edge point, nothing selected
+    expect(canvas.style.cursor).toBe("pointer");
+  });
+
+  test("stays pointer (not cell) over the selected shape's own interior, away from any edge", async () => {
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const { canvas, getByText } = renderPanel([shape]);
+    await fireEvent.click(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
+    await fireEvent.pointerMove(canvas, { clientX: 150, clientY: 133 }); // centroid-ish, ~30px from any edge
+    expect(canvas.style.cursor).toBe("pointer");
+  });
+
+  test("stays crosshair over a shape's body while a draft is in progress (select-click is gated off then too)", async () => {
+    const shape = { id: "s1", points: tri(300, 0), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const { canvas } = renderPanel([shape]);
+    await clickAt(canvas, 20, 20); // start a draft
+    await fireEvent.pointerMove(canvas, { clientX: 450, clientY: 133 }); // inside s1's body
+    expect(canvas.style.cursor).toBe("crosshair");
+  });
+
+  test("switches to copy while hovering a draft segment's curve handle", async () => {
+    const { canvas } = renderPanel();
+    const [p0, p1] = tri();
+    await clickAt(canvas, p0.x, p0.y);
+    await clickAt(canvas, p1.x, p1.y);
+    const midX = (p0.x + p1.x) / 2, midY = (p0.y + p1.y) / 2;
+    await fireEvent.pointerMove(canvas, { clientX: midX, clientY: midY });
+    expect(canvas.style.cursor).toBe("copy");
+  });
+
+  test("switches to grab while hovering a draggable vertex in edit-points mode", async () => {
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const { canvas, getByText, getByRole } = renderPanel([shape]);
+    await fireEvent.click(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
+    await fireEvent.click(getByRole("button", { name: "Edit points" }));
+    const [p0] = tri();
+    await fireEvent.pointerMove(canvas, { clientX: p0.x, clientY: p0.y });
+    expect(canvas.style.cursor).toBe("grab");
+  });
+
+  test("switches to copy while hovering an edit-mode segment's curve handle", async () => {
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const { canvas, getByText, getByRole } = renderPanel([shape]);
+    await fireEvent.click(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
+    await fireEvent.click(getByRole("button", { name: "Edit points" }));
+    const [p0, p1] = tri();
+    const midX = (p0.x + p1.x) / 2, midY = (p0.y + p1.y) / 2;
+    await fireEvent.pointerMove(canvas, { clientX: midX, clientY: midY });
+    expect(canvas.style.cursor).toBe("copy");
+  });
+
+  test("stays crosshair in edit-points mode away from any vertex or curve handle", async () => {
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const { canvas, getByText, getByRole } = renderPanel([shape]);
+    await fireEvent.click(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
+    await fireEvent.click(getByRole("button", { name: "Edit points" }));
+    await fireEvent.pointerMove(canvas, { clientX: 500, clientY: 350 });
+    expect(canvas.style.cursor).toBe("crosshair");
+  });
+
+  test("switches to grabbing while actively dragging a vertex (takes priority over the plain grab hover cursor)", async () => {
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const { canvas, getByText, getByRole } = renderPanel([shape]);
+    await fireEvent.click(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
+    await fireEvent.click(getByRole("button", { name: "Edit points" }));
+    const [p0] = tri();
+    await fireEvent.pointerDown(canvas, { clientX: p0.x, clientY: p0.y, pointerId: 1 });
+    await fireEvent.pointerMove(canvas, { clientX: p0.x + 10, clientY: p0.y - 10, pointerId: 1 });
+    expect(canvas.style.cursor).toBe("grabbing");
+    await fireEvent.pointerUp(canvas, { clientX: p0.x + 10, clientY: p0.y - 10, pointerId: 1 });
+  });
+});
+
 // ---- vertex-drag edit (task 1) -------------------------------------------
 
 describe("editing a finished shape's points by dragging a vertex", () => {
@@ -243,6 +503,159 @@ describe("editing a finished shape's points by dragging a vertex", () => {
     await selectAndEnterEdit(utils);
     await fireEvent.click(utils.getByRole("button", { name: "Done editing" }));
     expect(utils.getByRole("button", { name: "Edit points" })).toBeTruthy();
+  });
+});
+
+// ---- curve-handle drag (drawing curved, not just straight, edges) --------
+
+describe("bowing a draft segment into a curve by dragging its handle", () => {
+  test("dragging a segment's handle stores a curve on the finished shape, without adding a stray anchor", async () => {
+    const { canvas, patches } = renderPanel();
+    const [p0, p1, p2] = tri();
+    await clickAt(canvas, p0.x, p0.y);
+    await clickAt(canvas, p1.x, p1.y);
+
+    // Segment 0's straight-line midpoint, between p0 and p1.
+    const midX = (p0.x + p1.x) / 2, midY = (p0.y + p1.y) / 2;
+    await fireEvent.pointerDown(canvas, { clientX: midX, clientY: midY, pointerId: 1 });
+    await fireEvent.pointerMove(canvas, { clientX: midX, clientY: midY - 30, pointerId: 1 });
+    await fireEvent.pointerUp(canvas, { clientX: midX, clientY: midY - 30, pointerId: 1 });
+    // The click that (in a real browser) immediately follows this drag
+    // shouldn't ALSO place a stray point at the handle's location.
+    await clickAt(canvas, midX, midY - 30);
+
+    await clickAt(canvas, p2.x, p2.y);
+    await clickAt(canvas, p0.x + 2, p0.y); // close
+
+    expect(patches).toHaveLength(1);
+    const shape = patches[0].patch.shapes[0];
+    expect(shape.points).toHaveLength(3); // still just 3 anchors — bowing never adds one
+    expect(shape.curves[0]).toBeTruthy();
+  });
+
+  test("dragging a curve handle back near the straight line straightens it (removes the curve entry)", async () => {
+    const { canvas, patches } = renderPanel();
+    const [p0, p1, p2] = tri();
+    await clickAt(canvas, p0.x, p0.y);
+    await clickAt(canvas, p1.x, p1.y);
+    const midX = (p0.x + p1.x) / 2, midY = (p0.y + p1.y) / 2;
+    // Bow it out first...
+    await fireEvent.pointerDown(canvas, { clientX: midX, clientY: midY, pointerId: 1 });
+    await fireEvent.pointerMove(canvas, { clientX: midX, clientY: midY - 30, pointerId: 1 });
+    await fireEvent.pointerUp(canvas, { clientX: midX, clientY: midY - 30, pointerId: 1 });
+    await clickAt(canvas, midX, midY - 30);
+    // ...then drag it back onto the line.
+    await fireEvent.pointerDown(canvas, { clientX: midX, clientY: midY - 30, pointerId: 2 });
+    await fireEvent.pointerMove(canvas, { clientX: midX, clientY: midY, pointerId: 2 });
+    await fireEvent.pointerUp(canvas, { clientX: midX, clientY: midY, pointerId: 2 });
+    await clickAt(canvas, midX, midY);
+
+    await clickAt(canvas, p2.x, p2.y);
+    await clickAt(canvas, p0.x + 2, p0.y);
+
+    const shape = patches[0].patch.shapes[0];
+    expect(shape.curves[0]).toBeUndefined();
+  });
+
+  test("a curve that would make the draft self-intersect disables Finish, same as a crossing straight edge would", async () => {
+    const { canvas, container } = renderPanel();
+    const square = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }];
+    for (const p of square) await clickAt(canvas, p.x, p.y);
+    // Bow the first edge (0,0)-(100,0) far enough down to cross the opposite
+    // (2,3) edge — the anchors alone are a fine square, but the curved
+    // geometry genuinely crosses itself.
+    await fireEvent.pointerDown(canvas, { clientX: 50, clientY: 0, pointerId: 1 });
+    await fireEvent.pointerMove(canvas, { clientX: 50, clientY: 200, pointerId: 1 });
+    await fireEvent.pointerUp(canvas, { clientX: 50, clientY: 200, pointerId: 1 });
+
+    expect(container.querySelector(".mp-draftissue").textContent).toContain("This shape crosses itself.");
+  });
+
+  test("Undo point drops the curve bound to the segment that no longer exists", async () => {
+    const { canvas, getByRole, patches } = renderPanel();
+    const [p0, p1, p2] = tri();
+    await clickAt(canvas, p0.x, p0.y);
+    await clickAt(canvas, p1.x, p1.y);
+    await clickAt(canvas, p2.x, p2.y); // 3 points now; segment 1 is p1-p2
+
+    const midX = (p1.x + p2.x) / 2, midY = (p1.y + p2.y) / 2;
+    await fireEvent.pointerDown(canvas, { clientX: midX, clientY: midY, pointerId: 1 });
+    await fireEvent.pointerMove(canvas, { clientX: midX + 20, clientY: midY, pointerId: 1 });
+    await fireEvent.pointerUp(canvas, { clientX: midX + 20, clientY: midY, pointerId: 1 });
+    await clickAt(canvas, midX + 20, midY);
+
+    await fireEvent.click(getByRole("button", { name: "Undo point" })); // removes p2 AND segment 1's curve
+    // Re-add a fresh third point (a different one) and finish.
+    await clickAt(canvas, p2.x + 5, p2.y + 5);
+    await clickAt(canvas, p0.x + 2, p0.y);
+
+    expect(patches).toHaveLength(1);
+    // Segment 1 in the NEW shape (p1 -> the fresh third point) must be
+    // straight — the old curve bound to the old (now-gone) segment 1 must
+    // not leak forward onto whatever segment 1 means next.
+    expect(patches[0].patch.shapes[0].curves[1]).toBeUndefined();
+  });
+});
+
+describe("bowing a finished shape's edge while editing points", () => {
+  function withSelectedShape(points) {
+    const shape = { id: "s1", points, stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    return renderPanel([shape]);
+  }
+
+  async function selectAndEnterEdit(utils) {
+    await fireEvent.click(utils.getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
+    await fireEvent.click(utils.getByRole("button", { name: "Edit points" }));
+  }
+
+  test("dragging an edge's curve handle patches shape.curves on release, leaving the anchor count unchanged", async () => {
+    const utils = withSelectedShape(tri());
+    await selectAndEnterEdit(utils);
+    const { canvas, patches } = utils;
+    const [p0, p1] = tri();
+    const midX = (p0.x + p1.x) / 2, midY = (p0.y + p1.y) / 2;
+
+    await fireEvent.pointerDown(canvas, { clientX: midX, clientY: midY, pointerId: 1 });
+    await fireEvent.pointerMove(canvas, { clientX: midX, clientY: midY - 30, pointerId: 1 });
+    await fireEvent.pointerUp(canvas, { clientX: midX, clientY: midY - 30, pointerId: 1 });
+
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.shapes[0].curves[0]).toBeTruthy();
+    expect(patches[0].patch.shapes[0].points).toHaveLength(3);
+  });
+
+  test("a curve-handle drag that would self-intersect the shape is never patched through, and the reason is shown", async () => {
+    const square = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }];
+    const utils = withSelectedShape(square);
+    await selectAndEnterEdit(utils);
+    const { canvas, patches, container } = utils;
+
+    // Bow the top edge (0,0)-(100,0) far down through the shape and past
+    // the opposite edge — same "genuinely crosses" fixture as the draft
+    // version above.
+    await fireEvent.pointerDown(canvas, { clientX: 50, clientY: 0, pointerId: 1 });
+    await fireEvent.pointerMove(canvas, { clientX: 50, clientY: 200, pointerId: 1 });
+    await fireEvent.pointerUp(canvas, { clientX: 50, clientY: 200, pointerId: 1 });
+
+    expect(patches).toHaveLength(0);
+    expect(container.querySelector(".mp-draftissue").textContent).toContain("This shape crosses itself.");
+  });
+
+  test("grabbing a vertex still wins over a nearby curve handle (vertex hit-test runs first)", async () => {
+    const utils = withSelectedShape(tri());
+    await selectAndEnterEdit(utils);
+    const { canvas, patches } = utils;
+    const [p0] = tri();
+
+    // A drag starting exactly on vertex 0 must move the vertex, not bow an
+    // adjacent segment.
+    await fireEvent.pointerDown(canvas, { clientX: p0.x, clientY: p0.y, pointerId: 1 });
+    await fireEvent.pointerMove(canvas, { clientX: p0.x + 15, clientY: p0.y - 15, pointerId: 1 });
+    await fireEvent.pointerUp(canvas, { clientX: p0.x + 15, clientY: p0.y - 15, pointerId: 1 });
+
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.shapes[0].points[0]).toEqual({ x: p0.x + 15, y: p0.y - 15 });
+    expect(patches[0].patch.shapes[0].curves).toBeUndefined();
   });
 });
 
@@ -320,5 +733,180 @@ describe("keyboard shortcuts", () => {
     await fireEvent.click(getByRole("button", { name: "Edit points" }));
     await fireEvent.keyDown(canvas, { key: "Escape" });
     expect(getByRole("button", { name: "Edit points" })).toBeTruthy();
+  });
+});
+
+// ---- importing shapes from a traced image (PR 2 of the trace-an-uploaded-
+// image feature) ------------------------------------------------------------
+//
+// These tests exercise the REAL nested TraceImportPanel (not a stub) so the
+// "traced" event that reaches ManualPanel's onTraced is the genuine one a
+// user would produce — seeded via ManualPanel's own `traceWorkImage` test
+// seam (see its comment) so the trace runs against small synthetic pixels
+// instead of a real file upload (out of scope here — see
+// TraceImportPanel.spec.js's own file banner and DigitizePanel.spec.js's
+// precedent). What's under test is the WIRING: opening/closing the panel,
+// and onTraced's patch — never the trace algorithm itself (already covered
+// by manualTrace.spec.js and TraceImportPanel.spec.js).
+describe("importing shapes from a traced image", () => {
+  function makeCanvas(w, h) {
+    return new Uint8ClampedArray(w * h * 4);
+  }
+  function fillRect(rgba, w, x0, y0, x1, y1, rgb) {
+    for (let y = y0; y < y1; y++) {
+      for (let x = x0; x < x1; x++) {
+        const o = (y * w + x) * 4;
+        rgba[o] = rgb[0]; rgba[o + 1] = rgb[1]; rgba[o + 2] = rgb[2]; rgba[o + 3] = 255;
+      }
+    }
+  }
+  // A white background with a single red square — traces to exactly ONE
+  // shape at TraceImportPanel's defaults (nColors=6, removeBg=true). Same
+  // fixture TraceImportPanel.spec.js verified independently.
+  function oneShapeImage() {
+    const w = 30, h = 30;
+    const rgba = makeCanvas(w, h);
+    fillRect(rgba, w, 0, 0, 30, 30, [255, 255, 255]);
+    fillRect(rgba, w, 8, 8, 20, 20, [200, 30, 30]);
+    return { rgba, w, h };
+  }
+
+  // Two distinct-colored squares — traces to exactly two shapes at the trace
+  // panel's own defaults (nColors=6, removeBg=true). Same fixture
+  // TraceImportPanel.spec.js verified independently for its own legend/
+  // swatch coverage; used here to prove auto-select picks the FIRST of
+  // several newly-traced shapes, not just "the only one."
+  function twoShapeImage() {
+    const w = 20, h = 20;
+    const rgba = makeCanvas(w, h);
+    fillRect(rgba, w, 0, 0, 20, 20, [255, 255, 255]);
+    fillRect(rgba, w, 2, 2, 10, 18, [200, 30, 30]);
+    fillRect(rgba, w, 10, 2, 18, 18, [30, 30, 200]);
+    return { rgba, w, h };
+  }
+
+  async function openTracePanel(utils) {
+    await fireEvent.click(utils.getByRole("button", { name: "Trace image…" }));
+  }
+  async function clickAdd(utils) {
+    await fireEvent.click(utils.getByRole("button", { name: /^Add \d+ shapes?$/ }));
+  }
+
+  test('"Trace image…" opens the trace panel; a second click closes it, and so does the panel\'s own Cancel', async () => {
+    const utils = renderPanel();
+    expect(utils.container.querySelector(".tip-upload")).toBeNull();
+
+    await openTracePanel(utils);
+    expect(utils.container.querySelector(".tip-upload")).not.toBeNull();
+
+    await fireEvent.click(utils.getByRole("button", { name: "Trace image…" })); // second click
+    expect(utils.container.querySelector(".tip-upload")).toBeNull();
+
+    await openTracePanel(utils);
+    await fireEvent.click(utils.getByRole("button", { name: "Cancel" }));
+    expect(utils.container.querySelector(".tip-upload")).toBeNull();
+  });
+
+  test("a traced event results in exactly one patch call whose shapes array is the original shapes plus all the new ones, and closes the panel", async () => {
+    const existing = { id: "s1", points: tri(), curves: {}, stitchType: "fill", colorRgb: [9, 9, 9], angleDeg: null };
+    const utils = renderPanel([existing], oneShapeImage());
+    await openTracePanel(utils);
+    await clickAdd(utils);
+
+    expect(utils.patches).toHaveLength(1);
+    const merged = utils.patches[0].patch.shapes;
+    expect(merged).toHaveLength(2); // 1 existing + 1 traced
+    expect(merged[0]).toBe(existing);
+    // The trace panel closes itself after a successful add.
+    expect(utils.container.querySelector(".tip-upload")).toBeNull();
+  });
+
+  test("an existing hand-drawn/hand-edited shape already in element.shapes is completely untouched (same reference/values) after a trace-add", async () => {
+    const existing = {
+      id: "s4",
+      points: [{ x: 12, y: 34 }, { x: 56, y: 34 }, { x: 34, y: 78 }],
+      curves: { 0: { x: 34, y: 10 } },
+      stitchType: "satin",
+      colorRgb: [77, 88, 99],
+      angleDeg: 42,
+    };
+    const utils = renderPanel([existing], oneShapeImage());
+    await openTracePanel(utils);
+    await clickAdd(utils);
+
+    expect(utils.patches).toHaveLength(1);
+    const merged = utils.patches[0].patch.shapes;
+    // Same object reference — proof nothing rebuilt/cloned/mutated it.
+    expect(merged[0]).toBe(existing);
+    expect(merged[0]).toEqual(existing);
+  });
+
+  test("ids assigned to traced shapes never collide with ids already present in element.shapes", async () => {
+    // "s1" and "s5" are deliberately non-contiguous — a naive implementation
+    // that just counts existing shapes (length + 1 = "s3") rather than
+    // scanning for the real max id would produce a colliding "s2".
+    const existing = [
+      { id: "s1", points: tri(), curves: {}, stitchType: "fill", colorRgb: [1, 1, 1], angleDeg: null },
+      { id: "s5", points: tri(50, 50), curves: {}, stitchType: "fill", colorRgb: [2, 2, 2], angleDeg: null },
+    ];
+    const utils = renderPanel(existing, oneShapeImage());
+    await openTracePanel(utils);
+    await clickAdd(utils);
+
+    expect(utils.patches).toHaveLength(1);
+    const merged = utils.patches[0].patch.shapes;
+    expect(merged).toHaveLength(3);
+    const newIds = merged.slice(2).map((s) => s.id);
+    expect(newIds).toEqual(["s6"]);
+    // No id collides with anything already in the (now-merged) list.
+    const seen = new Set();
+    for (const s of merged) {
+      expect(seen.has(s.id)).toBe(false);
+      seen.add(s.id);
+    }
+  });
+
+  // ---- post-trace auto-select ---------------------------------------------
+
+  test("after a successful trace-add, the newly-traced shape is selected", async () => {
+    const utils = renderPanel([], oneShapeImage());
+    await openTracePanel(utils);
+    await clickAdd(utils);
+
+    const merged = utils.patches[0].patch.shapes;
+    expect(merged).toHaveLength(1);
+    const row = utils.getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button");
+    expect(row.className).toContain("sel");
+    expect(utils.getByText("Fill angle")).toBeTruthy(); // mp-assign panel is now showing
+  });
+
+  test("when a batch trace-add creates several shapes, only the FIRST newly-added one is selected", async () => {
+    const utils = renderPanel([], twoShapeImage());
+    await openTracePanel(utils);
+    await clickAdd(utils);
+
+    const merged = utils.patches[0].patch.shapes;
+    expect(merged).toHaveLength(2);
+    const firstRow = utils.getByText(new RegExp(`Shape ${merged[0].id.replace(/^s/, "")}\\b`), { selector: ".mp-shapename" }).closest("button");
+    const secondRow = utils.getByText(new RegExp(`Shape ${merged[1].id.replace(/^s/, "")}\\b`), { selector: ".mp-shapename" }).closest("button");
+    expect(firstRow.className).toContain("sel");
+    expect(secondRow.className).not.toContain("sel");
+  });
+
+  test("a trace-add's auto-select replaces whatever was previously selected", async () => {
+    const existing = { id: "s1", points: tri(), curves: {}, stitchType: "fill", colorRgb: [9, 9, 9], angleDeg: null };
+    const utils = renderPanel([existing], oneShapeImage());
+    await fireEvent.click(utils.getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
+    expect(utils.getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button").className).toContain("sel");
+
+    await openTracePanel(utils);
+    await clickAdd(utils);
+
+    const merged = utils.patches[0].patch.shapes;
+    const newShape = merged[1];
+    const newRow = utils.getByText(new RegExp(`Shape ${newShape.id.replace(/^s/, "")}\\b`), { selector: ".mp-shapename" }).closest("button");
+    const oldRow = utils.getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button");
+    expect(newRow.className).toContain("sel");
+    expect(oldRow.className).not.toContain("sel");
   });
 });

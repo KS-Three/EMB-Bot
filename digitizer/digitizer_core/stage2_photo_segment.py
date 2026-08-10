@@ -1,17 +1,35 @@
-"""Stage 2 (photo path) — SLIC superpixels + perceptual region-merging.
+"""Stage 2 (photo path) — SEEDS superpixels + perceptual region-merging.
 
 Drop-in alternative to `stage2_quantize.quantize()` for photo-classified
 designs (`docs/superpowers/plans/2026-08-02-photo-digitizing-step4-region-
 former.md`). Same output contract (`Quant`: labels HxW int with -1
 background, thread_indices, cluster_rgb, warnings) so everything downstream
 — stage 3's small-region absorb, stage 4 vectorize — runs unchanged. This
-stage owns segmentation quality only; nothing downstream needs to know SLIC
-exists.
+stage owns segmentation quality only; nothing downstream needs to know
+which superpixel algorithm exists behind it.
+
+**SLIC -> SEEDS, retuned 2026-08-07** (this pass): the oversegmentation
+step was `skimage.segmentation.slic` from this module's original build
+through 2026-08-06. A standalone benchmark isolating the superpixel
+algorithm as the only variable (SLIC vs. `cv2.ximgproc.
+createSuperpixelSEEDS`, every downstream step — RAG construction, area-
+ratio protection, merge, CC split, min-area floor — held byte-identical)
+found SEEDS produces measurably tighter boundaries on real busy fixtures
+(`drone_render.png`, `summit_badge.png`) at matched region counts. Swapped
+in, with `MERGE_DELTAE00_THRESH` retuned to match (see that constant's own
+docstring for the full sweep) — the old SLIC-era sweep table lower in this
+file is kept only as the historical record of how the PRIOR threshold was
+chosen, not something to re-derive from. Internal identifiers
+(`slic_labels`, `slic_count`, the `slic_segments` warning field) keep their
+original names deliberately — `slic_segments` is a warning-schema field
+other code may already read by name, and the local variables are just
+"whatever the oversegmentation step produced", true regardless of which
+algorithm is behind them.
 
 Why global k-means (stage2_quantize) is wrong for photos: it clusters color
 independent of spatial adjacency, so a smooth photographic gradient gets
 partitioned into ordered bands, and any per-pixel noise near a band boundary
-flips assignment unpredictably — "dithers gradients into speckle". SLIC
+flips assignment unpredictably — "dithers gradients into speckle". SEEDS
 first groups pixels that are BOTH close in color AND close in space (so a
 superpixel never straddles a real photographic edge), then a Region
 Adjacency Graph merges superpixels that are perceptually close (CIEDE2000)
@@ -19,14 +37,28 @@ regardless of where they sit in the image — consolidating a soft gradient
 into a handful of clean regions instead of a per-pixel patchwork.
 
 Pipeline, in order (the plan's 7-step contract):
-  1. SLIC oversegmentation, Lab space, foreground only (`prep.bg_mask`
+  1. SEEDS oversegmentation, Lab space, foreground only (`prep.bg_mask`
      excluded — same convention `stage2_quantize` uses for its own
-     clustering).
+     clustering; SEEDS itself has no native mask parameter, so the module
+     runs it over the whole canvas and zeroes non-foreground pixels
+     afterward — see `_seeds_superpixels`'s own docstring for the
+     foreground-density compensation this requires).
   2. RAG construction (`skimage.graph.rag_mean_color`), mean color in Lab.
   3. Hierarchical merge (`skimage.graph.merge_hierarchical`) on a CIEDE2000
      edge-weight threshold (reusing `skimage.color.deltaE_ciede2000` — the
      same ΔE machinery `threads.py` and `stage6_blend.py` already import,
-     not a new color-distance implementation).
+     not a new color-distance implementation), with two local threshold
+     tightenings applied on top of the one global threshold: the small-vs-
+     large area-ratio guard (`AREA_RATIO_PROTECT_THRESH`) and, added
+     2026-08-07, the boundary-contrast guard (`BOUNDARY_CONTRAST_HARD_LAB`)
+     that resolved this module's own SEEDS-era `summit_badge.png`
+     regression. Both are independent and compose; see each constant's own
+     docstring. The merge compares region MEAN colors, which is blind to
+     whether two regions physically meet across a step edge or a smooth
+     ramp — the boundary-contrast guard is what supplies that missing
+     information, measured once per superpixel pair up front (~31 ms on a
+     900x900 / 1,072-superpixel fixture) and carried through merges as a
+     length-weighted sum.
   4. Min-area floor: sub-detail regions force-merge into whichever neighbor
      shares the longest boundary — literally `stage3_segment
      .resolve_small_regions`, reused rather than reinvented.
@@ -68,7 +100,6 @@ from pathlib import Path
 import cv2
 import numpy as np
 from skimage.color import deltaE_ciede2000
-from skimage.segmentation import slic
 from skimage import graph as skgraph
 
 from .config import PipelineConfig
@@ -79,24 +110,49 @@ from .stage3_segment import RegionMask, resolve_small_regions
 from .threads import chart_for, rgb_to_lab
 from .warnings_codes import PHOTO_PALETTE_SELECTED, PHOTO_SEGMENT_REGION_COUNT, warn
 
-# --- Step 1: SLIC oversegmentation -------------------------------------------
+# --- Step 1: SEEDS oversegmentation -------------------------------------------
 #
-# Target superpixel count. The plan's own range is 800-2000; 1200 sits in the
-# middle and was what got measured against `testdata/photo/region_blobs.png`
-# below — high enough that no single superpixel straddles two of the
-# fixture's blobs (each ~150px radius; a superpixel at this density is a
-# handful of px across), low enough that the RAG stays cheap to merge
-# (measured: ~1150 foreground superpixels on the fixture, merges in well
-# under a second).
-SLIC_N_SEGMENTS = 1200
-# Low compactness: the plan calls for irregular (not grid-like) boundaries,
-# because a photographic region's true edge is whatever shape the color
-# actually takes, not a hexagon. 10 is SLIC's own conservative default and
-# was not worth moving — raising it visibly squared off the fixture's
-# circular blobs into a honeycomb (measured, not shipped), and the final
-# regions after RAG merging looked the same either way once the boundary was
-# no longer a raw superpixel edge.
-SLIC_COMPACTNESS = 10.0
+# Target FOREGROUND superpixel count. The plan's own range is 800-2000 (the
+# figure SLIC's own `n_segments` used to be handed directly); 1200 sits in
+# the middle, same figure the SLIC era shipped. `cv2.ximgproc.
+# createSuperpixelSEEDS` has no mask parameter — see `_seeds_superpixels`'s
+# docstring for why this constant is a target for the FOREGROUND superpixel
+# count, not the raw `num_superpixels` argument SEEDS itself is constructed
+# with (that argument is scaled up by `_seeds_superpixels` to compensate for
+# whatever fraction of the canvas is background).
+SEEDS_TARGET_FG_SUPERPIXELS = 1200
+
+# Floor on the foreground-area fraction used to scale the SEEDS request —
+# bounds the requested count (and so runtime/memory) when the foreground is
+# a tiny sliver of the canvas. Below this floor, the scaling stops keeping
+# pace with a shrinking foreground and `SEEDS_MAX_REQUESTED_SUPERPIXELS`
+# becomes the effective limiter instead.
+SEEDS_MIN_FG_FRAC = 0.05
+
+# Hard cap on the raw `num_superpixels` SEEDS is constructed with, regardless
+# of how small the foreground fraction is — a second, independent bound
+# alongside `SEEDS_MIN_FG_FRAC` (belt and suspenders: the frac floor bounds
+# the scale factor, this bounds the product). Measured: `drone_render.png`
+# (18.5% foreground, the smallest fraction of any fixture this module is
+# tested against) needs a request of ~6,500 to land ~1,600 real foreground
+# superpixels and completes in ~2s; 20,000 gives comfortable headroom for a
+# busier real photo with a smaller subject before either bound engages.
+SEEDS_MAX_REQUESTED_SUPERPIXELS = 20000
+
+# `num_levels`: SEEDS' own block-hierarchy depth (see `createSuperpixelSEEDS`
+# docs) — more levels refine the grid-to-boundary fit further at more CPU/
+# memory cost. `prior`: 3x3 shape-smoothing strength, range [0, 5]. Both left
+# at OpenCV's own commonly-used sample defaults — the benchmark that
+# motivated this swap isolated the ALGORITHM (SEEDS vs. SLIC) as its one
+# variable and measured a boundary-precision win at these defaults; this
+# module's own retuning effort (below, `MERGE_DELTAE00_THRESH` and the
+# area-ratio family) targets the RAG-merge stage that consumes SEEDS' output,
+# not SEEDS' own internal knobs, which were not swept separately.
+SEEDS_NUM_LEVELS = 4
+SEEDS_PRIOR = 2
+SEEDS_HISTOGRAM_BINS = 5
+SEEDS_DOUBLE_STEP = True
+SEEDS_NUM_ITERATIONS = 10
 
 # --- Step 3: hierarchical merge -----------------------------------------------
 #
@@ -154,7 +210,64 @@ SLIC_COMPACTNESS = 10.0
 # this same pass, without which they silently stopped being their own
 # regions at all) do NOT over-merge into fewer regions than their real
 # content needs; see the regression tests pinning both.
-MERGE_DELTAE00_THRESH = 20.0
+#
+# **Superseded 2026-08-07 by the SLIC -> SEEDS swap below — kept for the
+# historical record of how 20.0 was chosen under SLIC; do not re-derive from
+# this table, the numbers no longer apply to the shipped code.**
+#
+# **Retuned 2026-08-07 for SEEDS** (this module's superpixel step swapped
+# `skimage.segmentation.slic` for `cv2.ximgproc.createSuperpixelSEEDS` — see
+# the module docstring and `_seeds_superpixels`'s own docstring for the full
+# story). SEEDS' raw output at the SAME 20.0 threshold FRAGMENTS worse than
+# SLIC did on both real busy fixtures — drone_render.png 65 -> 106 regions,
+# summit_badge.png 30 -> 42 — the opposite of the standalone benchmark's own
+# "SEEDS needs LESS aggressive merging" framing; measured directly, the
+# threshold had to move UP, not down, to reach the same accept band. Swept
+# 18/20/22/24/26/28/30/32/35 on the same two fixtures, same methodology
+# (`pipeline.run_stages`, `len(PipelineResult.regions)`, full pipeline not
+# stage-2-only):
+#
+#     thresh   drone_render  summit_badge
+#     18.0     117           43
+#     20.0     106           42
+#     22.0      78           39
+#     24.0      78           39
+#     26.0      74           39
+#     28.0      72           38
+#     30.0      72           38
+#     32.0      68           38
+#     35.0      64           36
+#
+# Two real differences from the SLIC-era sweep, both consistent with SEEDS
+# genuinely producing cleaner boundaries on this content, not just a shifted
+# elbow: (1) summit_badge stays comfortably clear of the 20-region floor
+# across the ENTIRE swept range (36-43), never approaching it the way it did
+# under SLIC (19 at thresh=30, the reason 30.0 was rejected there) — a
+# higher threshold no longer trades fragmentation-fixing for content loss on
+# this fixture's OWN region-count signal (see AREA_RATIO_PROTECT_THRESH's
+# docstring below for a real content-loss failure this signal does NOT
+# catch); (2) drone_render's curve is flatter and takes longer to clear the
+# 80-ceiling with real margin (78 at 22.0-24.0, only 2 clear) than SLIC's
+# equivalent curve did. 26.0 is chosen: the smallest threshold in the swept
+# set past the 22.0/24.0 plateau with real headroom on the tighter fixture
+# (drone_render: 74, 6 clear of the 80 ceiling) while summit_badge (39) sits
+# nowhere near either band edge — mirroring the original selection's own
+# "smallest threshold with headroom on both sides" rule, adapted to SEEDS'
+# flatter curve (22.0/24.0 were rejected for having almost no margin on
+# drone_render's side; going past 26.0 bought steadily less additional
+# margin on drone_render for no measurable benefit elsewhere).
+#
+# Gradient-ramp over-segmentation risk (flagged going into this pass as
+# SEEDS' extra boundary sensitivity could fragment a smooth 2-color ramp
+# that should stay one region) — measured directly, NOT assumed: swept the
+# same threshold range against `gradient_ramp_linear.png` and `gradient_
+# ramp_radial.png` through the full pipeline. Both stayed at or under their
+# SLIC-era counts at every threshold tried (linear: 2 regions at 20-35;
+# radial: 2 at 20-26, dropping to 1 at 30-35, still inside the tests' own
+# >=1 floor) — the flagged risk did NOT materialize; if anything, the higher
+# threshold this retune needed for drone_render's sake makes ramp
+# over-segmentation LESS likely, not more.
+MERGE_DELTAE00_THRESH = 26.0
 
 # Superseded 2026-08-04, kept for the historical record (do not re-derive
 # from this number): the ORIGINAL measurement below only ever exercised
@@ -171,6 +284,124 @@ MERGE_DELTAE00_THRESH = 20.0
 # visibly under-merging into flat discs, losing the shade gradient
 # entirely). thresh=10 is the elbow — 12 regions pre-floor, ~4 clean bands
 # per blob, no two different-hue blobs merged into each other.
+
+
+def _seeds_superpixels(rgb: np.ndarray, base_valid: np.ndarray) -> np.ndarray:
+    """Step 1: `cv2.ximgproc.createSuperpixelSEEDS`, foreground only —
+    SEEDS' replacement for `skimage.segmentation.slic(..., mask=base_valid)`.
+
+    Produces a label array in the SAME convention the rest of this module
+    (and `debugviz`) already expects from the SLIC era: 0 = excluded
+    (background or enclosed), 1..N = superpixel id, every excluded pixel
+    reading exactly 0. Not necessarily CONTIGUOUS 1..N (some ids may only
+    ever have covered excluded pixels and so never appear post-mask) —
+    the same non-guarantee SLIC's own masked output already had, and
+    nothing downstream (`np.unique(...[...>0])`, `bincount` sized off
+    `.max()+1`) assumes contiguity.
+
+    **No native mask, unlike `slic`**: `createSuperpixelSEEDS` has no mask
+    parameter — it always segments whatever canvas it is handed. Masking
+    happens AFTER `iterate()`: excluded pixels are zeroed in the output
+    regardless of what raw id SEEDS gave them.
+
+    **Cropped to the foreground bounding box first — found necessary, not
+    just an optimization** (2026-08-07): an earlier version of this function
+    ran SEEDS over the FULL h x w canvas (background included) and masked
+    afterward. That reproduced `test_min_area_floor_absorbs_a_tiny_sliver`
+    as a real failure, not a fixture-tuning issue: on that fixture (a small
+    18x18px foreground sliver sitting mostly on open background, ~64%
+    foreground globally), most of the sliver's own pixels got absorbed into
+    a neighboring background-dominated SEEDS block before the mask was ever
+    applied — SEEDS' grid-based block growth doesn't stay inside foreground
+    territory the way SLIC's masked clustering does, so a thin, small,
+    background-adjacent feature can lose most of its extent to a
+    background-majority superpixel that never becomes its own RAG node.
+    What survived post-mask was a scattered ~45px remnant instead of the
+    fixture's drawn 324px — proof this was a real boundary-fidelity
+    regression on isolated small foreground content, not a threshold or
+    constant that needed retuning. Cropping to the foreground's own bounding
+    box before calling SEEDS fixes it directly: within the crop, foreground
+    density is always >= the whole-canvas density (measured: `drone_render.
+    png` 18.5% globally -> 47.6% within its own bbox; the sliver fixture
+    96%+ within its bbox, since the bbox is dominated by the two big flat
+    blocks the sliver sits between) — background gets far less of SEEDS'
+    grid to claim, so a small foreground feature is far less likely to be
+    swallowed by a background-majority block before the mask ever runs (the
+    fixture's own regression is fixed by this crop alone, confirmed by the
+    regression test in this module's test file). A crop can still contain
+    SOME background (an irregular/concave foreground shape's bbox is not
+    100% foreground) — the post-`iterate()` masking step above is what
+    still handles that residue, exactly as it did pre-crop.
+
+    **`cv2`'s own uint8 Lab, not `threads.rgb_to_lab`'s skimage float64
+    Lab — found necessary, not a style choice** (2026-08-07): the first
+    working version of this function fed SEEDS this module's existing
+    skimage Lab (`rgb_to_lab`, full `float64` precision, the same array the
+    RAG/merge machinery downstream needs). That SEGFAULTS `seeds.iterate()`
+    — reproduced deterministically, isolated to content, not shape or
+    superpixel count (a same-size random-noise array never crashed; the
+    real `gradient_ramp_linear.png` crop crashed at every `num_superpixels`
+    and `num_levels` tried, including the smallest) — on any image whose
+    a*/b* channels span an unusually NARROW range, exactly what a clean
+    2-color gradient's Lab representation looks like (measured range on the
+    crashing crop: a* only -7.2..-2.1, b* only -23.0..-13.2, both under 10
+    units wide against skimage Lab's full a*/b* domain). Root cause not
+    fully bisected past that point (this is `cv2.ximgproc`'s own C++
+    histogram-binning code, not this repo's), but the practical fix is
+    clean: convert to `cv2.cvtColor(..., COLOR_RGB2Lab)` — OpenCV's own
+    uint8 Lab convention (L/a*/b* all rescaled into 0-255), the color space
+    its own docs recommend and presumably what its own test suite actually
+    exercises — SOLELY for this function's own SEEDS call. Confirmed this
+    does not reproduce the crash on the same crop, at the same request
+    count, with the same `num_levels`. `lab_img` (skimage, full-precision)
+    stays exactly what `rag_mean_color`/`merge_hierarchical`/
+    `deltaE_ciede2000` use for everything downstream — this function reads
+    `rgb` instead and computes its own SEEDS-only Lab locally, so this
+    workaround cannot leak imprecision into the perceptual merge math.
+
+    **Foreground-density compensation**: SEEDS' `num_superpixels` argument
+    requests a count over the WHOLE crop, not the foreground alone — see
+    above for why a photo's foreground can still be well under 100% of its
+    own bbox. This function requests
+    `SEEDS_TARGET_FG_SUPERPIXELS / max(bbox_fg_frac, SEEDS_MIN_FG_FRAC)`,
+    capped at `SEEDS_MAX_REQUESTED_SUPERPIXELS`, so the count that actually
+    lands on foreground pixels tracks the same ~1200 density SLIC's masked
+    computation always targeted. Measured on the real fixtures (bbox
+    fg_frac, requested -> actual foreground superpixel count):
+    `drone_render.png` (0.476, 2519 -> 982), `summit_badge.png` (0.795,
+    1510 -> 1072), `gradient_ramp_linear.png` (1.0, 1200 -> 735),
+    `gradient_ramp_radial.png` (0.786, 1527 -> 832), `region_blobs.png`
+    (0.661, 1815 -> 774) — all landing in the same several-hundred-to-
+    low-thousands band the SLIC era's own ~1150-on-region_blobs measurement
+    was in (SEEDS' own block-hierarchy quantizes the achievable count more
+    coarsely than SLIC's k-means-style target, so `actual` consistently
+    lands somewhat under `requested` here — expected, not a bug; `_seeds_
+    superpixels` never depends on hitting the request exactly, only on
+    landing in the right order of magnitude).
+    """
+    h, w = base_valid.shape
+    out = np.zeros((h, w), np.int64)
+    if not base_valid.any():
+        return out
+    ys, xs = np.where(base_valid)
+    y0, y1 = int(ys.min()), int(ys.max()) + 1
+    x0, x1 = int(xs.min()), int(xs.max()) + 1
+    crop_valid = base_valid[y0:y1, x0:x1]
+    crop_lab = cv2.cvtColor(np.ascontiguousarray(rgb[y0:y1, x0:x1], dtype=np.uint8), cv2.COLOR_RGB2Lab)
+    bbox_fg_frac = float(crop_valid.mean())
+    requested = int(round(SEEDS_TARGET_FG_SUPERPIXELS / max(bbox_fg_frac, SEEDS_MIN_FG_FRAC)))
+    requested = max(1, min(requested, SEEDS_MAX_REQUESTED_SUPERPIXELS))
+    ch, cw = crop_valid.shape
+    seeds = cv2.ximgproc.createSuperpixelSEEDS(
+        cw, ch, 3, requested, SEEDS_NUM_LEVELS, SEEDS_PRIOR,
+        SEEDS_HISTOGRAM_BINS, SEEDS_DOUBLE_STEP,
+    )
+    seeds.iterate(crop_lab, SEEDS_NUM_ITERATIONS)
+    raw = seeds.getLabels().astype(np.int64)
+    crop_out = np.zeros((ch, cw), np.int64)
+    crop_out[crop_valid] = raw[crop_valid] + 1
+    out[y0:y1, x0:x1] = crop_out
+    return out
 
 
 def _merge_mean_color(g, src: int, dst: int) -> None:
@@ -287,6 +518,81 @@ def _merge_mean_color(g, src: int, dst: int) -> None:
 AREA_RATIO_PROTECT_THRESH = 18.0
 AREA_RATIO_MERGE_FACTOR = 0.6
 
+# **SUPERSEDED 2026-08-07, later the same day — read this first.** Everything
+# below is the SLIC -> SEEDS pass's own record of the summit_badge.png
+# regression it shipped as `xfail(strict=True)`. That regression is FIXED,
+# and not by this constant family (whose values are still correct and still
+# unchanged at 18.0/0.6/1000): see `BOUNDARY_CONTRAST_HARD_LAB`'s docstring
+# further down for the fix. Two claims below are now known to be wrong, and
+# are left in place only because the rest of the trail is still accurate and
+# still useful — do not re-derive from either of them:
+#
+#   * "the merge walks a CHAIN ... rather than ever presenting ONE large-
+#     ratio edge" — re-instrumenting every merge on the fixture shows the
+#     complex is destroyed by one identifiable big-into-big merge (65,467 px
+#     into 348,309 px at dE00 16.06). The edge exists; its size RATIO is
+#     just 5.3, far under the 18.0 this family looks for.
+#   * "may require a fundamentally different mechanism, not simple constant
+#     retuning" — correct in its conclusion, and that mechanism is boundary
+#     contrast, measured on the pixels that actually touch across the shared
+#     boundary rather than on region mean colors.
+#
+# **2026-08-07, SLIC -> SEEDS swap: re-measured, NOT re-derived — values kept,
+# a real regression on summit_badge.png's black complex documented instead
+# of silently papered over.** The task this pass was built against explicitly
+# called for re-measuring whether this constant family is still needed and
+# still correctly calibrated once the superpixel algorithm underneath it
+# changed. It is NOT: `test_summit_badge_black_complex_survives_full_
+# pipeline` (full pipeline, `MERGE_DELTAE00_THRESH=26.0`, these exact ratio/
+# factor/floor values) recovers only ~9-11% of the source's near-black pixel
+# area, down from the SLIC-era 83.7% this constant family was built to
+# guarantee — a real, measured, UNRESOLVED regression, not a rounding
+# difference. Root-caused (see the diagnostic trail this docstring
+# summarizes; full scripts are not part of this repo, the findings are):
+# under SLIC, the badge's black ring/circle/crosshair complex consolidated
+# into ONE large (~43,934 px) coherent RAG node well before ever touching
+# the background, so a single big-vs-big edge weight (measured 16.19 dE00)
+# was the whole story, and area-ratio protection (a SIZE-mismatch guard) was
+# exactly the right tool. Under SEEDS, the same complex starts life
+# fragmented into ~150-260 much smaller (~750-800 px) individual superpixels
+# — SEEDS' own block-based growth does not consolidate disconnected same-
+# colored content the way SLIC's spatially-local clustering did — and the
+# RAG's hierarchical merge walks a CHAIN of small, comparable-size,
+# progressively-diluted edges from pure black through intermediate boundary
+# tones out to the background, rather than ever presenting ONE large-
+# ratio edge for this constant family to catch. Confirmed empirically, not
+# assumed: at the OLD SLIC-tuned values, recovery is threshold-sensitive with
+# a razor-sharp cliff between raw dE00 16.05 (99.0% recovery) and 16.1 (9.6%)
+# — the same ~16 dE00 critical gap SLIC found, meaning this IS structurally
+# the same underlying color gap, just no longer reachable through a single
+# protectable edge. Every re-derivation attempted this pass either failed to
+# move recovery (lowering `AREA_RATIO_MIN_SMALL_PX` alone, tried down to 200,
+# left recovery flat at ~9-10% because the *ratio* condition never fired
+# early in the chain) or fixed recovery at the cost of breaking OTHER
+# already-validated behavior (ratio=3.0/factor=0.3/floor=50 restored ~99-107%
+# recovery but pushed drone_render.png from 74 to 122 regions — blowing
+# through the 80-region accept band `MERGE_DELTAE00_THRESH` above was tuned
+# against — and pushed `gradient_ramp_radial.png` from 1-2 regions to 8,
+# edging toward the over-segmentation risk this same pass explicitly ruled
+# out at the chosen threshold). No combination tried decoupled "protect this
+# one real complex" from "stop legitimate small-into-large absorption
+# broadly" the way the original SLIC-era tuning cleanly did. Per this task's
+# own instructions ("if real measurement contradicts ... report that
+# honestly ... do not force the full swap through if the evidence doesn't
+# support it end to end"): reported here, in `MASTER_SCOPE.md`, and in the
+# PR description, with `test_summit_badge_black_complex_survives_full_
+# pipeline` marked `xfail(strict=True)` (not deleted, not weakened) so this
+# stays a live, visible regression marker rather than a silently-lowered
+# bar. `test_area_ratio_protection_is_load_bearing_for_that_fixture`'s own
+# synthetic proxy fixture no longer reproduces the failure at all under
+# SEEDS (it separates into 2 regions with protection DISABLED, same as
+# with it) — a real, different, and much less concerning finding: SEEDS
+# handles that CLEAN idealized geometry (one thin ring, no dilution chain)
+# fine on its own; the real regression only shows up on `summit_badge.png`'s
+# actual pixel content, which the synthetic fixture (built for the SLIC-era
+# failure mode) does not reproduce. That test's own assertion is updated to
+# match, with the same reasoning inline.
+#
 # Absolute floor on the SMALLER side's own "fg pixel count" for area-ratio
 # protection to apply at all — found necessary by
 # `test_face_local_threshold_splits_shades_that_merge_outside_a_face`
@@ -332,9 +638,9 @@ def _init_fg_pixel_counts(rag) -> None:
     """Seed every node's "fg pixel count" before any merge runs: node 0's
     real-foreground area is 0 (it is the aggregate of every EXCLUDED pixel —
     background and, when present, the enclosed population — deliberately
-    left in the graph per the "SLIC's mask convention" comment in `segment`
-    below, but semantically it is not a design region and must never be
-    treated as one); every other node starts equal to its own real "pixel
+    left in the graph per this module's own mask convention comment in
+    `segment` below, but semantically it is not a design region and must
+    never be treated as one); every other node starts equal to its own real "pixel
     count". Found the hard way (`test_face_local_threshold_splits_shades_
     that_merge_outside_a_face`, a synthetic fixture that is mostly excluded
     canvas around two small foreground blocks): without this split, node 0's
@@ -368,6 +674,296 @@ def _area_ratio_initial_adjust(rag) -> None:
             d["weight"] = float(d["weight"]) / factor
 
 
+# --- Boundary-contrast merge protection (2026-08-07, SEEDS regression fix) ---
+#
+# **What this fixes**: the `summit_badge.png` black-complex regression the
+# SLIC -> SEEDS swap shipped as `xfail(strict=True)` (see `AREA_RATIO_PROTECT_
+# THRESH`'s docstring above for that pass's own investigation trail, kept
+# verbatim as the historical record). Recovery of the badge's black ring/
+# inner-circle/crosshair area went from the SLIC era's 83.7% to 9.1% under
+# SEEDS, and no re-derivation of the area-ratio constant family recovered it
+# without pushing `drone_render.png` out of the 20-80 region accept band.
+#
+# **The prior pass's stated root cause is not what the merge log actually
+# shows** — re-measured directly this pass by instrumenting every merge
+# `merge_hierarchical` performs on this fixture (superpixel ids, live
+# foreground pixel counts, raw dE00, and how much source-black pixel mass
+# each side carries). That trail concluded the black complex "starts
+# fragmented into ~150-260 much smaller superpixels" and that the merge
+# "walks a CHAIN of small, comparable-size, progressively-diluted edges ...
+# rather than ever presenting ONE large-ratio edge for this constant family
+# to catch". The first half is true (129 majority-black SEEDS superpixels,
+# median ~416 px). The second half is not: those fragments DO consolidate
+# with each other first, and the complex is destroyed by ONE identifiable
+# merge, the 1043rd of 1052 —
+#
+#     65,467 px (49,369 of them source-black, mean Lab L*=11.4)
+#       into 348,309 px (214 source-black, mean Lab L*=31.1)  at dE00 16.06
+#
+# — under the 26.0 global threshold. So area-ratio protection did not fail
+# because there was no single large edge to catch; it failed because that
+# edge's SIZE RATIO is 5.3, nowhere near the 18.0 an extreme-mismatch guard
+# is looking for. This is a big-region-into-big-region merge, which
+# `_area_ratio_factor` is by construction blind to, and lowering its ratio
+# far enough to see a 5.3 (the prior pass tried 3.0) necessarily also
+# catches ordinary comparable-size band consolidation everywhere else —
+# exactly the drone_render/gradient-ramp breakage that pass measured. The
+# constant family was never the right tool for this failure; no value of it
+# is.
+#
+# **The mechanism that does separate them**: how hard the actual image edge
+# along the two regions' SHARED BOUNDARY is. `merge_hierarchical` compares
+# region MEAN colors, which says nothing about whether the pixels physically
+# meet across a step edge or a smooth ramp. Two regions whose means sit 16
+# dE00 apart can be either (a) two halves of one continuous gradient, cut at
+# an arbitrary interior position where neighbouring pixels differ by
+# essentially nothing, or (b) two different design elements meeting at a
+# drawn edge where neighbouring pixels differ enormously. Only (b) is
+# content destruction. Measured across all four tuning fixtures, on the
+# final large merge each one performs (mean per-pixel-pair Lab distance
+# across the shared boundary, `_boundary_contrast_stats` below):
+#
+#     fixture / merge                       raw dE00   boundary contrast
+#     gradient_ramp_linear  (final merge)     16.09      0.54
+#     gradient_ramp_radial  (final merge)     15.88      0.64
+#     summit_badge          (merge 1043)      16.06     31.31   <- destroys
+#     summit_badge          (merges 1035/37)  11-13      0.46
+#     drone_render          (merges 854-943)  15-24     18.5-39.7
+#
+# A ~50x gap, not a marginal one: a gradient's interior cut reads ~0.5, a
+# real drawn edge reads 18-40. Swept 1.0/2.0/3.0/6.0/10.0/14.0/18.0/25.0/32.0
+# through the full pipeline: every value from 1.0 to 25.0 gives the same
+# result (summit_badge recovery 106.9%, drone_render 74 regions), and 32.0
+# fails only because it has risen past summit_badge's own 31.31 boundary so
+# the protection stops firing at all. The real window is therefore bounded
+# by the fixtures themselves — above the ramps' 0.64, at or below the
+# complex's 31.31 — and `BOUNDARY_CONTRAST_HARD_LAB = 6.0` sits ~10x clear
+# of the lower edge and ~5x clear of the upper one. This is the load-bearing
+# new idea, and it is measured, not assumed.
+#
+# **Why a second, size gate is still needed**: boundary contrast alone
+# correctly protects summit_badge (recovery 9.1% -> 106.9%) and correctly
+# leaves both gradient ramps untouched (2 regions each, unchanged) — but
+# `drone_render.png` is a photo-realistic render whose every subject/
+# foliage/lettering boundary is also a genuine hard edge, so protecting all
+# of them fragments it from 74 to 99 regions. The gate that separates them
+# is the size of the SMALLER side as a fraction of the design's own
+# foreground: summit_badge's black complex is 11.3% of its foreground, while
+# drone_render's largest hard-edge merge candidate is 7.4%.
+#
+# `BOUNDARY_CONTRAST_MIN_SMALL_FRAC = 0.09` sits between them. Be honest
+# about what that margin is: measured window (0.074, 0.113], a ~1.5x gap
+# defined by two fixtures, not the ~50x the contrast gate itself enjoys.
+# Swept 0.02/0.04/0.06/0.075/0.08/0.09/0.10/0.11/0.115/0.13 through the full
+# pipeline; drone_render reads 93/90/89/74/74/74/74/74/74/74 (so the gate has
+# to reach ~0.075 before drone_render is back to its shipped count) and
+# summit_badge's recovery holds at 106.9% through 0.11, then falls back to
+# 9.1% at 0.115 and 0.13 — the gate having risen past the complex's own
+# 11.3%, where it simply stops firing.
+#
+# What makes 0.09 safe DESPITE that thin margin is a structural property,
+# not the number itself: a region must be >= 9% of the foreground for this
+# protection to fire at all, so at most ~11 regions in any design can ever
+# be protected. The mechanism therefore cannot add more than ~10 regions to
+# ANY design's final count, whatever its content — it structurally cannot
+# reproduce the "122 regions" blowout the prior pass's area-ratio
+# re-derivations caused, because those fired on unboundedly many small
+# regions. A fixture that lands just the wrong side of 0.09 loses the
+# protection (degrading to exactly today's shipped behavior, the safe
+# direction) rather than over-fragmenting.
+#
+# A fraction, not the absolute pixel count `AREA_RATIO_MIN_SMALL_PX` uses,
+# specifically because this one has to hold across target widths:
+# `stage1_prep`'s upscale makes raw pixel counts scale with
+# `cfg.target_width_mm`, and the equivalent absolute-px gate (measured
+# window 25,000-65,000 px, swept 1,000-80,000) is only that wide because
+# summit_badge happens to be measured at 120mm and drone_render at 90mm —
+# re-running drone_render at 120mm moves it into that window and breaks it.
+# The fraction is invariant to that. `BOUNDARY_CONTRAST_MIN_SMALL_PX` is
+# kept alongside as a plain absolute floor for the same reason
+# `AREA_RATIO_MIN_SMALL_PX` exists (a tiny design's 9% is still noise), and
+# is deliberately the same 1,000 px that constant already established as
+# "clearly above interpolation-sliver scale" — see its docstring.
+#
+# **A third gate was measured and rejected, recorded so it is not re-derived
+# from scratch**: gating on each region's INTERNAL Lab colour spread (rms
+# about its own mean) separates the same two fixtures just as well — summit
+# badge's complex reads 8.85/6.66 (flat design content) against
+# drone_render's 13.7-26.1 (textured photographic content), and a gate at
+# 10.0-12.0 holds drone_render at exactly 74 with summit_badge at 106.9%.
+# It was not chosen because it needs a new per-node sum-of-squares attribute
+# maintained through every merge, its measured window (10.0-12.0, a 1.2x
+# gap) is no wider than the fraction gate's, and — the deciding reason — it
+# has no equivalent of the bound above: nothing stops an arbitrary number of
+# small flat regions from being protected at once.
+#
+# Threshold DROP, not a hard block: the same "divide the weight so it takes
+# a smaller true dE00 to still clear the inflated number" dual that
+# `FACE_MERGE_FACTOR` and `AREA_RATIO_MERGE_FACTOR` already use under
+# `merge_hierarchical`'s single global threshold.
+#
+# Expressed as `13.0 / MERGE_DELTAE00_THRESH` rather than a typed-in ratio,
+# following the precedent `FACE_MERGE_FACTOR` set for exactly this situation
+# (see its own docstring): the number that has to hold is the ABSOLUTE local
+# threshold of 13.0 dE00, because what it must sit below — summit_badge's
+# fatal 16.06 dE00 merge — is a property of image content, not of whatever
+# elbow the base threshold happens to be tuned to for fragmentation's sake.
+# A hand-typed ratio would silently drift off that 13.0 the next time
+# `MERGE_DELTAE00_THRESH` moves; this does not.
+#
+# Swept 0.2/0.3/0.4/0.45/0.5/0.55/0.6/0.62/0.65/0.7 (as a raw ratio, at the
+# shipped 26.0 base): every value from 0.2 through 0.6 gives identical
+# results on all four fixtures (summit_badge 106.9%, drone_render 74, both
+# ramps 2), and 0.62 collapses summit_badge to 0.0% — the local threshold
+# having just crossed 16.06 (26.0 x 0.62 = 16.12), letting the fatal merge
+# back through. That cliff is razor-sharp and is the same one the prior
+# pass independently measured from the other side (recovery 99.0% at raw
+# dE00 16.05 vs 9.6% at 16.10). 0.5 is chosen rather than the 0.6 nearest
+# the cliff: it sits mid-window with ~19% margin below the 0.6177 (=
+# 16.06 / 26.0) where protection provably stops working, and costs nothing
+# measurable anywhere — the whole 0.2-0.6 range is flat.
+BOUNDARY_CONTRAST_HARD_LAB = 6.0
+BOUNDARY_CONTRAST_MERGE_FACTOR = 13.0 / MERGE_DELTAE00_THRESH
+BOUNDARY_CONTRAST_MIN_SMALL_FRAC = 0.09
+BOUNDARY_CONTRAST_MIN_SMALL_PX = 1000
+
+
+def _boundary_contrast_stats(lab_img: np.ndarray, labels: np.ndarray) -> dict:
+    """Per-superpixel-pair boundary contrast: `{packed_pair: [sum, count]}`
+    over every 4-neighbour pixel pair that straddles a boundary between two
+    DIFFERENT foreground superpixels.
+
+    "Contrast" is plain Euclidean Lab distance between the two touching
+    pixels, deliberately not CIEDE2000: this is a bulk per-pixel statistic
+    over hundreds of thousands of pairs (dE00 on that many pairs costs more
+    than the rest of this stage), and the signal it has to resolve is a ~50x
+    separation between "gradient interior" (~0.5) and "drawn edge" (18-40),
+    which no reasonable perceptual-vs-Euclidean discrepancy can close. The
+    dE00 machinery stays where it decides actual merges (`_weight_mean_
+    color`); this only decides whether an edge is eligible for a tighter
+    threshold. Reads the same full-precision `lab_img` the RAG itself is
+    built from, so the two never disagree about what colour a pixel is.
+
+    Pairs are keyed `min(a, b) * K + max(a, b)` (K = `labels.max() + 1`) so
+    the accumulation is one `np.unique`/`reduceat` over an integer array
+    rather than a Python loop over boundary pixels. Background/excluded
+    pixels (label 0, this module's own mask convention) are skipped on both
+    sides — node 0 is not a design region and its boundary is the design's
+    silhouette, not an edge between two design elements.
+
+    **4-neighbour, while the RAG itself is built with `connectivity=2`**
+    (8-neighbour) — deliberate, and it is why `_boundary_contrast_factor`
+    treats a missing statistic as "no protection". Two superpixels touching
+    only diagonally are RAG-adjacent but have no 4-neighbour boundary, so
+    they get `blen == 0` and are judged by the ordinary threshold exactly as
+    before. That is the right answer rather than a gap: a purely diagonal
+    contact is a corner, not a shared edge, and a mean "contrast across the
+    boundary" computed from one or two corner-touching pixel pairs would be
+    noise, not evidence. Anything with a real shared border — every case this
+    protection is meant to judge — has 4-neighbour pairs by construction."""
+    K = int(labels.max()) + 1
+    h, w = labels.shape
+    keys: list[np.ndarray] = []
+    dists: list[np.ndarray] = []
+    for dy, dx in ((0, 1), (1, 0)):
+        a = labels[: h - dy, : w - dx]
+        b = labels[dy:, dx:]
+        m = (a != b) & (a > 0) & (b > 0)
+        if not m.any():
+            continue
+        aa = a[m].astype(np.int64)
+        bb = b[m].astype(np.int64)
+        keys.append(np.minimum(aa, bb) * K + np.maximum(aa, bb))
+        dists.append(
+            np.linalg.norm(
+                lab_img[: h - dy, : w - dx][m] - lab_img[dy:, dx:][m], axis=1
+            )
+        )
+    if not keys:
+        return {}
+    key = np.concatenate(keys)
+    dist = np.concatenate(dists)
+    order = np.argsort(key, kind="stable")
+    key = key[order]
+    dist = dist[order]
+    uniq, start = np.unique(key, return_index=True)
+    sums = np.add.reduceat(dist, start)
+    counts = np.diff(np.append(start, len(dist)))
+    return {int(k): (float(s), int(c)) for k, s, c in zip(uniq, sums, counts)}
+
+
+def _attach_boundary_contrast(rag, lab_img: np.ndarray, labels: np.ndarray) -> None:
+    """Seed every edge's `bsum`/`blen` (summed boundary contrast and boundary
+    length in pixel pairs) and stash the design's total foreground pixel
+    count on the graph, before any merge runs.
+
+    Carried as a SUM and a COUNT rather than a mean because that is what
+    survives merging: when regions A1 and A2 both border B and then merge,
+    the new A-B boundary's mean contrast is the length-weighted mean of the
+    two, which is exactly `(bsum1 + bsum2) / (blen1 + blen2)`.
+    `_weight_mean_color` does that addition on every recompute — see its own
+    comment — so a merged super-region's boundary statistic stays honest no
+    matter how deep the merge tree gets. An edge with no recorded boundary
+    (`blen == 0`, e.g. an edge incident on node 0, which
+    `_boundary_contrast_stats` skips by design) reads as unprotected."""
+    acc = _boundary_contrast_stats(lab_img, labels)
+    K = int(labels.max()) + 1
+    for u, v, d in rag.edges(data=True):
+        s, c = acc.get(min(u, v) * K + max(u, v), (0.0, 0))
+        d["bsum"] = s
+        d["blen"] = c
+    rag.graph["fg total"] = int((labels > 0).sum())
+
+
+def _boundary_contrast_factor(bsum, blen, px_a, px_b, fg_total) -> float:
+    """1.0 (no protection) unless the shared boundary is a genuinely hard
+    image edge AND both sides are substantial regions — see the constants'
+    own docstring above. Callers must pass "fg pixel count" (real foreground
+    area) for `px_a`/`px_b`, the same discipline `_area_ratio_factor`
+    requires and for the same reason (`_init_fg_pixel_counts`).
+
+    Every degenerate input returns 1.0 — no boundary recorded (`blen == 0`,
+    which also covers the RAG-connectivity note in `_boundary_contrast_
+    stats`) and no known foreground total both fall back to "judge this edge
+    exactly the way the pre-2026-08-07 engine did". That direction is
+    deliberate: this function can only ever make the merge threshold
+    TIGHTER, so failing open means failing to shipped behavior, while
+    failing closed would mean fragmenting a design on the strength of a
+    statistic that was never actually measured."""
+    if blen <= 0 or fg_total <= 0:
+        return 1.0
+    if bsum / blen < BOUNDARY_CONTRAST_HARD_LAB:
+        return 1.0
+    small = min(px_a, px_b)
+    if small < BOUNDARY_CONTRAST_MIN_SMALL_PX:
+        return 1.0
+    if small < BOUNDARY_CONTRAST_MIN_SMALL_FRAC * fg_total:
+        return 1.0
+    return BOUNDARY_CONTRAST_MERGE_FACTOR
+
+
+def _boundary_contrast_initial_adjust(rag) -> None:
+    """Apply boundary-contrast protection to the INITIAL edge weights
+    `rag_mean_color` computed, exactly as `_area_ratio_initial_adjust` does
+    for its own rule and for the same reason (`merge_hierarchical` never
+    rewrites an edge's weight until one of its endpoints actually merges, so
+    an edge that is never touched would otherwise never be judged). Requires
+    `_init_fg_pixel_counts` and `_attach_boundary_contrast` to have already
+    run on `rag`. In practice this pass is a formality on real fixtures — a
+    single raw SEEDS superpixel is never 9% of the foreground — but it keeps
+    the initial and recomputed weights judged by the same rule instead of
+    two subtly different ones."""
+    fg_total = rag.graph.get("fg total", 0)
+    for u, v, d in rag.edges(data=True):
+        factor = _boundary_contrast_factor(
+            d.get("bsum", 0.0), d.get("blen", 0),
+            rag.nodes[u]["fg pixel count"], rag.nodes[v]["fg pixel count"],
+            fg_total,
+        )
+        if factor != 1.0:
+            d["weight"] = float(d["weight"]) / factor
+
+
 def _weight_mean_color(g, src: int, dst: int, n: int) -> dict:
     da = g.nodes[dst]["mean color"].reshape(1, 3)
     na = g.nodes[n]["mean color"].reshape(1, 3)
@@ -383,7 +979,31 @@ def _weight_mean_color(g, src: int, dst: int, n: int) -> dict:
     # face AND facing an extreme size mismatch gets both factors applied.
     # "fg pixel count", not "pixel count" — see `_init_fg_pixel_counts`.
     w /= _area_ratio_factor(g.nodes[dst]["fg pixel count"], g.nodes[n]["fg pixel count"])
-    return {"weight": w}
+    # Boundary-contrast protection — see its own docstring above. This runs
+    # DURING `RAG.merge_nodes`, which calls this function once per neighbour
+    # `n` of the pair being merged and only removes `src` from the graph
+    # afterwards — so both `g[src][n]` and `g[dst][n]` are still readable
+    # here, and the merged region's boundary against `n` is precisely the
+    # union of those two boundaries. Summing both sides' `bsum`/`blen` is
+    # therefore the exact length-weighted combination, not an approximation;
+    # whichever of the two edges does not exist simply contributes nothing.
+    bsum = 0.0
+    blen = 0
+    for x in (src, dst):
+        if g.has_edge(x, n):
+            e = g[x][n]
+            bsum += e.get("bsum", 0.0)
+            blen += e.get("blen", 0)
+    w /= _boundary_contrast_factor(
+        bsum, blen,
+        g.nodes[dst]["fg pixel count"], g.nodes[n]["fg pixel count"],
+        g.graph.get("fg total", 0),
+    )
+    # `bsum`/`blen` ride along on the returned attribute dict so the new edge
+    # carries them forward — `RAG.add_edge` unpacks whatever this returns as
+    # the edge's attributes, so this is how the statistic survives an
+    # arbitrarily deep merge tree.
+    return {"weight": w, "bsum": bsum, "blen": blen}
 
 
 # --- Face priors (photo plan §2 row 2, wired 2026-08-04) ----------------------
@@ -417,7 +1037,21 @@ def _weight_mean_color(g, src: int, dst: int, n: int) -> dict:
 # one binary octave down from that original 10.0 elbow is the smallest move
 # that reliably splits them, and eyes/mouth vs surrounding skin measure
 # well apart even after CLAHE.
-FACE_MERGE_FACTOR = 0.25
+#
+# **Retuned again 2026-08-07 alongside `MERGE_DELTAE00_THRESH`'s 20.0 -> 26.0
+# SEEDS-era move** (see that constant's own docstring for why the base
+# threshold moved): same precedent this constant itself set for
+# `AREA_RATIO_PROTECT_THRESH`'s docstring — decouple the face-local ABSOLUTE
+# tolerance from whatever the base threshold happens to be. Expressed as
+# `5.0 / MERGE_DELTAE00_THRESH` rather than a re-typed literal specifically
+# so it keeps deriving the same 5.0 dE00 absolute figure automatically the
+# next time the base threshold moves, instead of silently drifting the way a
+# hand-copied literal would if someone edited one constant without noticing
+# the other. Confirmed unchanged behavior: `test_face_local_threshold_
+# splits_shades_that_merge_outside_a_face` still passes at this new value
+# (0.1923...), same as it did at 0.25 under the old 20.0 base — the absolute
+# number the test exercises never moved.
+FACE_MERGE_FACTOR = 5.0 / MERGE_DELTAE00_THRESH
 
 # A superpixel "is face" when the majority of its pixels sit inside a face
 # ellipse; a surviving region is classed "eyes"/"skin" when the majority of
@@ -593,16 +1227,8 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None) -> Qu
 
     lab_img = rgb_to_lab(flat_rgb).reshape(h, w, 3)
 
-    # --- 1. SLIC, foreground only (enclosed pixels excluded) ----------------
-    slic_labels = slic(
-        lab_img,
-        n_segments=SLIC_N_SEGMENTS,
-        compactness=SLIC_COMPACTNESS,
-        start_label=1,
-        mask=base_valid,
-        channel_axis=-1,
-        convert2lab=False,
-    )
+    # --- 1. SEEDS, foreground only (enclosed pixels excluded) ---------------
+    slic_labels = _seeds_superpixels(p.rgb, base_valid)
     slic_count = int(len(np.unique(slic_labels[slic_labels > 0])))
 
     # --- 2. RAG (Lab mean color) + 3. hierarchical merge --------------------
@@ -613,8 +1239,9 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None) -> Qu
         merged = np.zeros((h, w), np.int64)
         merged_count = 0
     else:
-        # SLIC's mask convention: label 0 is every excluded (background)
-        # pixel; rag_mean_color builds a node for it anyway (a "mean color"
+        # This module's own mask convention (`_seeds_superpixels`, née
+        # SLIC's): label 0 is every excluded (background) pixel;
+        # rag_mean_color builds a node for it anyway (a "mean color"
         # of pixels that were never meant to cluster). Node 0 is
         # deliberately LEFT IN the graph here — `rag.remove_node(0)` looks
         # like the obvious guard, and was tried first, but
@@ -641,6 +1268,17 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None) -> Qu
         # foreground area, on this initial pass and every later recompute.
         _init_fg_pixel_counts(rag)
         _area_ratio_initial_adjust(rag)
+        # Boundary-contrast merge protection (regression fix, see
+        # `BOUNDARY_CONTRAST_HARD_LAB`'s own docstring) — like the area-ratio
+        # rule just above it runs unconditionally, and it composes with it
+        # rather than replacing it: the two catch different failures (extreme
+        # size MISMATCH vs. two comparable-size regions meeting at a real
+        # drawn edge), and `_weight_mean_color` applies both factors
+        # independently. `_attach_boundary_contrast` must run before
+        # `_boundary_contrast_initial_adjust` — it seeds the per-edge
+        # `bsum`/`blen` and the graph-level foreground total that rule reads.
+        _attach_boundary_contrast(rag, lab_img, slic_labels)
+        _boundary_contrast_initial_adjust(rag)
         if face_regions:
             # Step 5 — the face-local threshold drop. Only a run that
             # actually has detections builds the mask or touches a weight;

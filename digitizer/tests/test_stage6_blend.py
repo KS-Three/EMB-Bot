@@ -433,6 +433,80 @@ def test_gradient_fragments_share_one_fill_angle_end_to_end():
         )
 
 
+def test_blend_marks_jump_at_band_transitions():
+    """2026-08-06 fix: adjacent shade bands are independent `stitch_shape`
+    calls over different (overlapping) clips of the polygon, so a band's
+    first run almost never starts where the previous band's last run
+    ended — before this fix that boundary defaulted to `jump=False`, a bare
+    straight stitch sewn across a real shade seam. Every band after the
+    first must carry an explicit jump on its first run, with `trim` set
+    correctly for the actual measured gap."""
+    region = _linear_region()
+    source = _linear_source()
+    cfg = PipelineConfig()
+
+    runs, report = blend_fill(region, source, cfg)
+    layers = _layers_of(runs)
+    assert len(layers) >= 3, "need at least two band transitions to be a real check"
+
+    ordered = sorted(layers.items(), key=lambda kv: int(kv[0].rsplit("blend", 1)[1]))
+    prev_end = None
+    for sid, layer_runs in ordered:
+        first = layer_runs[0]
+        if prev_end is not None:
+            d = math.dist(prev_end, first.points[0])
+            assert first.jump is True, f"{sid}: first run must jump from the previous band"
+            assert first.trim == (d > machine.TRIM_AT_MM), (
+                f"{sid}: trim {first.trim} doesn't match measured gap {d}"
+            )
+        prev_end = layer_runs[-1].points[-1]
+
+
+def test_blend_marks_jump_between_multiple_parts_of_one_band(monkeypatch):
+    """2026-08-06 fix, the other half: `_band_clip` can hand back more than
+    one disconnected polygon for a single band (a ring-shaped region
+    straddling the ramp's hole, for instance) -- forced here via monkeypatch
+    since neither committed fixture has that topology. Only the FIRST
+    band's clip is overridden with two rectangles 10mm apart; every later
+    band still gets the real (single-part) clip from the actual ramp model,
+    so this only probes the specific branch under test."""
+    import digitizer_core.stage6_blend as blend_mod
+
+    region = _linear_region()
+    source = _linear_source()
+    cfg = PipelineConfig()
+
+    real_band_clip = blend_mod._band_clip
+    part_a = Polygon([(-40, -40), (-30, -40), (-30, -30), (-40, -30)])
+    part_b = Polygon([(-20, -40), (-10, -40), (-10, -30), (-20, -30)])
+    calls = {"n": 0}
+
+    def fake_band_clip(poly, model, t_lo, t_hi):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return [part_a, part_b]
+        return real_band_clip(poly, model, t_lo, t_hi)
+
+    monkeypatch.setattr(blend_mod, "_band_clip", fake_band_clip)
+
+    runs, report = blend_fill(region, source, cfg)
+    first_layer = _layers_of(runs)[f"{region.shape_id}-blend0"]
+    assert len(first_layer) >= 2, "two disjoint parts must produce at least two runs"
+
+    # The two rectangles' nearest edges are 10mm apart -- far past
+    # TRIM_AT_MM and far past any ordinary row-to-row turn inside either
+    # 10x10mm square -- so exactly one run-to-run gap in this layer should
+    # be that large: the part seam.
+    seams = [
+        i for i in range(1, len(first_layer))
+        if math.dist(first_layer[i - 1].points[-1], first_layer[i].points[0]) >= 8.0
+    ]
+    assert len(seams) == 1, f"expected exactly one part seam, found {seams}"
+    seam_run = first_layer[seams[0]]
+    assert seam_run.jump is True, "the part transition must be an explicit jump"
+    assert seam_run.trim is True, "a >TRIM_AT_MM gap between parts must trim"
+
+
 def test_blend_determinism():
     """No RNG surprises: the same region and pixels blend the same way twice."""
     region = _linear_region()

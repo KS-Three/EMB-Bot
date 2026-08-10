@@ -193,6 +193,65 @@ def _columns(rows: list[tuple[int, float, list[tuple[float, float]]]]) -> list[l
     return [c for c in columns if c]
 
 
+# Candidate row directions swept by best_fill_angle_deg, evenly spaced across
+# the meaningful [0, 180) range (row direction is a LINE, not a vector — a
+# 30deg row and a 210deg row are the same rows).
+_FILL_ANGLE_CANDIDATES = 16
+
+
+def best_fill_angle_deg(poly: Polygon, row_mm: float) -> float:
+    """The auto (no explicit override) fill angle: whichever of 16 evenly
+    spaced candidate row directions, PLUS `principal_angle_deg`'s own
+    answer, cuts the shape into the fewest monotone columns (`_columns`) at
+    the row spacing this fill will actually run at.
+
+    Fewer columns means fewer forced end-of-column travel decisions —
+    `_fill_paths` already reasons about this at the travel-planning level
+    ("Travel between columns... the classic auto-digitizer tell"); this
+    picks the row direction that gives travel-planning the least to do in
+    the first place. Same "enumerate candidate angles, minimise fragment
+    count" method the expired Goldman/SoftSight auto-digitizing patents
+    disclose (docs/masters-teardown-2026-08-01.md, gap G3).
+
+    `principal_angle_deg` alone already gets this right for anything with a
+    real long axis. It's *right where it says it's arbitrary* — a shape
+    with no dominant axis by area, which its own docstring notes falls
+    back to a flat 0deg — that column count can still swing hard with
+    angle: a diagonal staircase of overlapping squares measures a 45deg
+    principal axis (correctly, that IS the long axis by area) but sews that
+    axis as 13 columns, while a candidate near-perpendicular to the stair
+    direction sews it as 1. Including `principal_angle_deg`'s own answer as
+    one of the candidates means this function can never do WORSE than
+    today's behaviour, only tie or improve on it — a shape where the plain
+    PCA angle was already optimal keeps generating byte-identical output.
+
+    Ties (equal column count) prefer whichever candidate sits closest to
+    the plain PCA angle, then the smallest angle — deterministic, and keeps
+    a shape with one clear right answer from wobbling between
+    equally-good-on-paper candidates for arbitrary float-noise reasons.
+    """
+    pca = principal_angle_deg(poly)
+    candidates = [i * (180.0 / _FILL_ANGLE_CANDIDATES) for i in range(_FILL_ANGLE_CANDIDATES)]
+    candidates.append(pca)
+
+    def angular_dist(a: float, b: float) -> float:
+        d = abs(a - b) % 180.0
+        return min(d, 180.0 - d)
+
+    best_angle = pca
+    best_key = None
+    for angle in candidates:
+        rotated = affinity.rotate(poly, -angle, origin=(0, 0), use_radians=False)
+        cols = len(_columns(_row_spans(rotated, row_mm)))
+        if cols == 0:
+            continue
+        key = (cols, angular_dist(angle, pca), angle)
+        if best_key is None or key < best_key:
+            best_key = key
+            best_angle = angle
+    return best_angle
+
+
 @lru_cache(maxsize=16)
 def _stagger_slots(n: int) -> tuple[int, ...]:
     """Which offset slot each row in a stagger cycle uses.
@@ -224,13 +283,17 @@ def _stagger_phase(row_index: int, staggers: int, stitch_mm: float) -> float:
     return _stagger_slots(n)[row_index % n] / n * stitch_mm
 
 
-def _row_points(x0: float, x1: float, y: float, row_index: int, stitch_mm: float,
-                staggers: int, reverse: bool) -> list[tuple[float, float]]:
-    """Penetrations across one row, staggered against its neighbours.
+def _row_points_at_phase(x0: float, x1: float, y: float, phase: float,
+                         stitch_mm: float, reverse: bool) -> list[tuple[float, float]]:
+    """Penetrations across one row at an EXPLICIT stagger phase — the interior-
+    grid geometry `_row_points` (phase from `_stagger_phase`'s van der Corput
+    ordering) and `_brick_row_points` (phase a plain period-2 running-bond
+    alternation) both build on, factored out once so every technique's row
+    shares the same boundary handling instead of two near-identical copies of
+    it drifting apart.
 
-    Interior stitches sit on a global grid shifted by the row's stagger phase,
-    so rows only realign every `staggers` rows. Both row ends land exactly on
-    the boundary: that is what makes the edge crisp.
+    Both row ends land exactly on the boundary: that is what makes the edge
+    crisp.
 
     An interior penetration is only kept when BOTH of its neighbours are a real
     stitch — `MIN_STITCH_MM` away, not merely longer than the tiny-stitch
@@ -250,7 +313,6 @@ def _row_points(x0: float, x1: float, y: float, row_index: int, stitch_mm: float
     # clears both edges; the row is the single stitch between them, which is
     # what keeps a tapering tip's edge on the boundary.
     if span >= 2 * machine.MIN_STITCH_MM:
-        phase = _stagger_phase(row_index, staggers, stitch_mm)
         x = math.ceil((x0 - phase) / stitch_mm) * stitch_mm + phase
         while x < x1:
             if x - xs[-1] >= machine.MIN_STITCH_MM and x1 - x >= machine.MIN_STITCH_MM:
@@ -259,6 +321,110 @@ def _row_points(x0: float, x1: float, y: float, row_index: int, stitch_mm: float
     xs.append(x1)
     pts = [(vx, y) for vx in xs]
     return list(reversed(pts)) if reverse else pts
+
+
+def _row_points(x0: float, x1: float, y: float, row_index: int, stitch_mm: float,
+                staggers: int, reverse: bool) -> list[tuple[float, float]]:
+    """Penetrations across one row, staggered against its neighbours.
+
+    Interior stitches sit on a global grid shifted by the row's stagger phase
+    (`_stagger_phase`'s van der Corput ordering), so rows only realign every
+    `staggers` rows. See `_row_points_at_phase` for the shared interior-grid
+    geometry every row-point function in this module — tatami's own included
+    — builds on.
+    """
+    return _row_points_at_phase(x0, x1, y, _stagger_phase(row_index, staggers, stitch_mm),
+                                stitch_mm, reverse)
+
+
+def _wave_row_points(x0: float, x1: float, y: float, row_index: int, stitch_mm: float,
+                     staggers: int, reverse: bool) -> list[tuple[float, float]]:
+    """`_row_points`, with every INTERIOR point's y perturbed by a subtle sine
+    wave perpendicular to the row — the "wave" fill technique
+    (`machine.WAVE_AMPLITUDE_MM`, `machine.WAVE_LENGTH_MM`).
+
+    Built ON `_row_points`, not a parallel reimplementation: the interior x
+    positions (and their own stagger phase) are exactly what plain tatami
+    would place; only y moves, and only for interior points. The two row
+    ends are left completely alone — same edge-crispness contract
+    `_row_points_at_phase`'s own docstring states, and what keeps a wavy
+    fill's silhouette identical to a straight one's.
+
+    Phase rule: 0 on even rows, pi on odd rows — the simplest deterministic
+    rule that puts adjacent rows' waves in OPPOSITE motion at any given x
+    (sin(theta) and sin(theta+pi) are negatives of each other everywhere),
+    which is what stops the wave from stacking into a corrugated-cardboard
+    ridge the way an in-phase wave repeated down every row would. It does
+    not need to be cleverer than that: unlike the anti-moire stagger
+    (`_stagger_phase`), which has to avoid a periodic pattern across many
+    rows, a 2-row alternation is already enough to break a *continuous* wave's
+    only failure mode (two neighbours moving the same way at the same x).
+    """
+    pts = _row_points(x0, x1, y, row_index, stitch_mm, staggers, reverse)
+    if len(pts) < 3:
+        # A single-point tip, or a row with no interior penetration at all —
+        # nothing to perturb, and pts[0]/pts[-1] would otherwise be the same
+        # point counted twice.
+        return pts
+    phase = 0.0 if row_index % 2 == 0 else math.pi
+    out = [pts[0]]
+    for x, py in pts[1:-1]:
+        out.append((x, py + machine.WAVE_AMPLITUDE_MM *
+                    math.sin(2.0 * math.pi * x / machine.WAVE_LENGTH_MM + phase)))
+    out.append(pts[-1])
+    return out
+
+
+def _chevron_row_points(x0: float, x1: float, y: float, row_index: int, stitch_mm: float,
+                        staggers: int, reverse: bool) -> list[tuple[float, float]]:
+    """`_row_points`, with every INTERIOR point's y alternating
+    +-`machine.CHEVRON_AMPLITUDE_MM` — the "chevron" fill technique's
+    simplified, textural herringbone impression at one fill angle (a full
+    multi-angle banded herringbone would need new column/travel logic; see
+    `machine.py`'s chevron section).
+
+    Same "built on `_row_points`, only interior y moves" contract as
+    `_wave_row_points` — reuses tatami's own interior x grid (stagger
+    included) unchanged, and leaves both row ends on the boundary.
+
+    Period: the sign flips every single interior stitch (period two
+    stitches), starting +amplitude on the first interior point. No row-to-
+    row phase rule is needed the way wave's is: the interior grid a row's
+    alternation walks is already `_row_points`' own staggered one, so which
+    x each row's peaks and valleys land on already varies row to row — the
+    same anti-channelling effect the stagger exists for in the first place,
+    inherited for free rather than re-derived.
+    """
+    pts = _row_points(x0, x1, y, row_index, stitch_mm, staggers, reverse)
+    if len(pts) < 3:
+        return pts
+    out = [pts[0]]
+    for i, (x, py) in enumerate(pts[1:-1]):
+        sign = 1.0 if i % 2 == 0 else -1.0
+        out.append((x, py + sign * machine.CHEVRON_AMPLITUDE_MM))
+    out.append(pts[-1])
+    return out
+
+
+def _brick_row_points(x0: float, x1: float, y: float, row_index: int, stitch_mm: float,
+                      staggers: int, reverse: bool) -> list[tuple[float, float]]:
+    """`_row_points`, with its van der Corput anti-moire stagger
+    (`_stagger_phase`) replaced by a strict, visually obvious 2-phase
+    "running bond" stagger — the "brick" fill technique: even rows' interior
+    grid starts at phase 0, odd rows at phase `stitch_mm / 2`.
+
+    `staggers` is accepted, unused, purely to keep every row-point function
+    in this module to the identical call signature `_fill_paths` dispatches
+    on. No new `machine.py` constant: the phase IS `stitch_mm / 2`, already
+    a known quantity, so there is nothing to tune.
+
+    Shares `_row_points_at_phase` — the boundary handling, MIN_STITCH_MM
+    clearance floor and TINY_STITCH_MM tip case — with `_row_points` itself,
+    so tatami's own (van der Corput) stagger behaviour is completely
+    untouched by this technique existing.
+    """
+    phase = 0.0 if row_index % 2 == 0 else stitch_mm / 2.0
+    return _row_points_at_phase(x0, x1, y, phase, stitch_mm, reverse)
 
 
 def _densify(a: tuple[float, float], b: tuple[float, float], step_mm: float) -> list[tuple[float, float]]:
@@ -330,8 +496,24 @@ def travel_path(poly: Polygon, ring: LineString | None, a: tuple[float, float],
     return out
 
 
+# Which row-point function each fill `technique` dispatches to inside
+# `_fill_paths` — every entry shares `_row_points`' exact call signature
+# `(x0, x1, y, row_index, stitch_mm, staggers, reverse)`, so `_fill_paths`
+# itself needs no per-technique branching beyond this one lookup, and its
+# column-walking, ordering and travel-adjacent logic (everything below this
+# point) is identical for every technique in the table. Anything not listed
+# — "tatami" included — gets plain `_row_points`, so this table is what makes
+# adding a technique here additive: a name nobody asks for changes nothing.
+_ROW_POINT_FNS = {
+    "wave": _wave_row_points,
+    "chevron": _chevron_row_points,
+    "brick": _brick_row_points,
+}
+
+
 def _fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_mm: float,
-                staggers: int, start_near: tuple[float, float] | None = None
+                staggers: int, start_near: tuple[float, float] | None = None,
+                technique: str = "tatami",
                 ) -> list[list[tuple[float, float]]]:
     """Fill one polygon; -> continuous stitch paths in original (unrotated) mm space.
 
@@ -343,7 +525,19 @@ def _fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_mm: float
     picked by geometry alone — topmost, then leftmost — so every shape began at
     its own top-left corner however far that was from the last stitch of the
     shape before it.
+
+    `technique` picks which function places each row's own penetrations —
+    see `_ROW_POINT_FNS`. "tatami" (the default, and every caller before
+    "wave"/"chevron"/"brick" existed) keeps `_row_points`, byte-identical.
+    Everything else about this function — the column walk, both-ends-of-
+    every-column traversal, nearest-neighbour ordering, the rotate out at
+    the end — is exactly the same regardless of `technique`: unlike
+    "crosshatch" (`_crosshatch_fill_paths`, a second whole pass at a wider
+    spacing), these three techniques only change how ONE row's own interior
+    points are placed, so they need no travel-planning logic of their own
+    and share this function outright instead of wrapping it.
     """
+    row_point_fn = _ROW_POINT_FNS.get(technique, _row_points)
     rotated = affinity.rotate(poly, -angle_deg, origin=(0, 0), use_radians=False)
     rows = _row_spans(rotated, row_mm)
     if not rows:
@@ -358,7 +552,7 @@ def _fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_mm: float
         for k, (ri, y, x0, x1) in enumerate(seq):
             # Scan direction alternates per emitted row so consecutive rows meet
             # end to end; the absolute row index still drives the stagger phase.
-            pts.extend(_row_points(x0, x1, y, ri, stitch_mm, staggers, reverse=k % 2 == 1))
+            pts.extend(row_point_fn(x0, x1, y, ri, stitch_mm, staggers, reverse=k % 2 == 1))
         return pts
 
     # Both traversals of every column, generated once: the ordering loop below
@@ -399,6 +593,34 @@ def _fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_mm: float
                              angle_deg, origin=(0, 0), use_radians=False)
         back.append([(x, y) for x, y in (rp.coords if len(path) > 1 else [(rp.x, rp.y)])])
     return back
+
+
+def _crosshatch_fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_mm: float,
+                           staggers: int, start_near: tuple[float, float] | None = None
+                           ) -> list[list[tuple[float, float]]]:
+    """Two overlapping tatami passes on the same shape -> concatenated paths
+    in original (unrotated) mm space, one pass at `angle_deg`, one at
+    `angle_deg + 90`.
+
+    Exactly the trick `_underlay_paths`'s `double_lattice` style already uses
+    for its own +-45deg underlay passes (`lattice()` below, called twice),
+    aimed at the visible fill instead of underlay. Each pass runs at
+    `row_mm * machine.CROSSHATCH_ROW_SCALE_FACTOR` — wider than a normal
+    single-pass fill, so the two passes TOGETHER land near a single pass's
+    stitch density instead of roughly doubling it.
+
+    The second pass starts from the first pass's own last point (the same
+    handoff `stitch_shape` uses between its underlay and fill), so the two
+    passes chain through whatever caller feeds this concatenated list to —
+    ordinarily `stitch_shape`'s `emit()` — the same generic multi-path travel
+    bridging every other list of paths already gets. No travel-planning logic
+    of its own.
+    """
+    wide_row_mm = row_mm * machine.CROSSHATCH_ROW_SCALE_FACTOR
+    first_pass = _fill_paths(poly, angle_deg, wide_row_mm, stitch_mm, staggers, start_near)
+    entry = first_pass[-1][-1] if first_pass else start_near
+    second_pass = _fill_paths(poly, angle_deg + 90.0, wide_row_mm, stitch_mm, staggers, entry)
+    return first_pass + second_pass
 
 
 def _underlay_paths(poly: Polygon, style: str, angle_deg: float,
@@ -476,7 +698,8 @@ def _underlay_paths(poly: Polygon, style: str, angle_deg: float,
 def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                  row_mm: float, stitch_mm: float, underlay_style: str,
                  trim_at_mm: float,
-                 start_near: tuple[float, float] | None = None
+                 start_near: tuple[float, float] | None = None,
+                 technique: str = "tatami",
                  ) -> tuple[list[StitchRun], dict]:
     """One shape -> its runs, in sew order (underlay first), plus a small report.
 
@@ -484,11 +707,22 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     underlay and the fill both begin at whichever of their own valid starting
     points is nearest it.
 
+    `technique` picks the visible FILL pass only — underlay is unaffected
+    either way. "tatami" (the default, and every existing caller) keeps
+    today's single `_fill_paths` call, byte-identical. "crosshatch" swaps it
+    for `_crosshatch_fill_paths`: two angled tatami passes at a wider spacing
+    each, concatenated — see that function's docstring. "wave", "chevron"
+    and "brick" stay on the ordinary single `_fill_paths` call — they only
+    change how one row's own interior points are placed
+    (`_wave_row_points`/`_chevron_row_points`/`_brick_row_points`, dispatched
+    inside `_fill_paths` itself via `_ROW_POINT_FNS`), so unlike crosshatch
+    they need no second pass or dedicated wrapper function.
+
     Report keys: `too_thin` (nowhere wide enough for a fill), `jumps` (travel
     that had to lift the needle), `empty` (produced nothing).
     """
     report = {"too_thin": False, "jumps": 0, "empty": False}
-    angle = principal_angle_deg(poly) if angle_deg is None else angle_deg
+    angle = best_fill_angle_deg(poly, row_mm) if angle_deg is None else angle_deg
     if poly.buffer(-machine.MIN_FILL_WIDTH_MM / 2.0).is_empty:
         report["too_thin"] = True
 
@@ -533,8 +767,13 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     # starts at the shape's top-left corner and the first travel of the fill is
     # a haul back across everything the underlay just laid.
     entry = runs[-1].points[-1] if runs else start_near
-    emit(_fill_paths(poly, angle, row_mm, stitch_mm, machine.FILL_STAGGERS, entry),
-         stitches.FILL, stitch_mm)
+    if technique == "crosshatch":
+        fill_paths = _crosshatch_fill_paths(poly, angle, row_mm, stitch_mm,
+                                            machine.FILL_STAGGERS, entry)
+    else:
+        fill_paths = _fill_paths(poly, angle, row_mm, stitch_mm,
+                                 machine.FILL_STAGGERS, entry, technique=technique)
+    emit(fill_paths, stitches.FILL, stitch_mm)
 
     if not runs:
         report["empty"] = True

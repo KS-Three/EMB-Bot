@@ -165,6 +165,74 @@ test("fetchHealth returns the payload when the service is up and null for down/n
   expect(await fetchHealth(async () => { throw new TypeError("fetch failed"); })).toBeNull();
 });
 
+test("exportViaService POSTs the design as JSON to /export and returns bytes+filename+mime from the response", async () => {
+  const { exportViaService } = await import("./digitizer.js");
+  let seenUrl, seenOpts;
+  const fakeBlob = new Blob([new Uint8Array([1, 2, 3])]);
+  const fetchFn = async (url, opts) => {
+    seenUrl = url;
+    seenOpts = opts;
+    return {
+      ok: true,
+      status: 200,
+      blob: async () => fakeBlob,
+      headers: {
+        get: (k) => {
+          if (k === "Content-Disposition") return 'attachment; filename="left_chest.dst"';
+          if (k === "Content-Type") return "application/octet-stream";
+          return null;
+        },
+      },
+    };
+  };
+  const design = { stitches: [{ x: 0, y: 0, type: "stitch" }], colors: [], widthMM: 10, heightMM: 10 };
+  const out = await exportViaService(design, "dst", "left_chest", fetchFn);
+
+  expect(seenUrl).toBe("http://127.0.0.1:8721/export");
+  expect(seenOpts.method).toBe("POST");
+  expect(seenOpts.headers["Content-Type"]).toBe("application/json");
+  const sentBody = JSON.parse(seenOpts.body);
+  expect(sentBody).toEqual({ design, format: "dst", label: "left_chest" });
+
+  expect(out.bytes).toBe(fakeBlob);
+  expect(out.filename).toBe("left_chest.dst");
+  expect(out.mime).toBe("application/octet-stream");
+});
+
+test("exportViaService falls back to a design.<format> filename when Content-Disposition is missing", async () => {
+  const { exportViaService } = await import("./digitizer.js");
+  const fetchFn = async () => ({
+    ok: true,
+    status: 200,
+    blob: async () => new Blob([]),
+    headers: { get: () => null },
+  });
+  const out = await exportViaService({ stitches: [] }, "exp", "x", fetchFn);
+  expect(out.filename).toBe("design.exp");
+  expect(out.mime).toBe("application/octet-stream");
+});
+
+test("exportViaService surfaces the service's own detail sentence on a non-ok response", async () => {
+  const { exportViaService } = await import("./digitizer.js");
+  const fetchFn = async () => ({
+    ok: false, status: 400,
+    json: async () => ({ detail: "payload.design must be a design with stitches." }),
+  });
+  await expect(exportViaService({ stitches: [] }, "dst", "x", fetchFn))
+    .rejects.toThrow(/payload\.design must be a design with stitches/);
+});
+
+test("exportViaService includes a request timeout so a hung service can't block Download forever", async () => {
+  const { exportViaService } = await import("./digitizer.js");
+  let seenOpts;
+  const fetchFn = async (url, opts) => {
+    seenOpts = opts;
+    return { ok: true, status: 200, blob: async () => new Blob([]), headers: { get: () => null } };
+  };
+  await exportViaService({ stitches: [] }, "dst", "x", fetchFn);
+  expect(seenOpts.signal).toBeInstanceOf(AbortSignal);
+});
+
 // ---- shape-layers edits (review-screen contract v1) ------------------------
 //
 // The other end of this seam is digitizer_service/app.py's
@@ -211,6 +279,69 @@ test("canonicalShapeEdits accepts the sketch tier alongside satin/fill/run", asy
   });
   expect(canonicalShapeEdits(el)).toEqual({
     shape_overrides: { Ssk: { tier: "sketch" } },
+  });
+});
+
+// "streamline" (contract v1.6) joined the same closed set the same way
+// "sketch" did, alongside the tier dropdown's Streamline option — this is
+// what lets a manually-classified (flat-lane) shape opt into the evenly-
+// spaced thread-paint tier without the whole design setting
+// fill_technique="streamline". Same regression this file already guards
+// against for "sketch": a value SHAPE_TIERS doesn't recognize
+// canonicalizes to nothing and silently never reaches the wire.
+test("canonicalShapeEdits accepts the streamline tier alongside satin/fill/run/sketch", async () => {
+  stubStorage({});
+  const { canonicalShapeEdits } = await import("./digitizer.js");
+  const el = digitizedElement({
+    shapeOverrides: { Ssl: { tier: "streamline" } },
+  });
+  expect(canonicalShapeEdits(el)).toEqual({
+    shape_overrides: { Ssl: { tier: "streamline" } },
+  });
+});
+
+// "crosshatch" (the two-pass angled tatami fill, digitizer_core/
+// stage6_fill.py's _crosshatch_fill_paths) joined the same closed set the
+// same way "streamline" did, alongside the tier dropdown's Cross-hatch
+// option — a per-shape opt-in reachable on any design, no fill_technique
+// change required. Same regression this file already guards against for
+// "sketch"/"streamline": a value SHAPE_TIERS doesn't recognize canonicalizes
+// to nothing and silently never reaches the wire.
+test("canonicalShapeEdits accepts the crosshatch tier alongside satin/fill/run/sketch/streamline", async () => {
+  stubStorage({});
+  const { canonicalShapeEdits } = await import("./digitizer.js");
+  const el = digitizedElement({
+    shapeOverrides: { Sch: { tier: "crosshatch" } },
+  });
+  expect(canonicalShapeEdits(el)).toEqual({
+    shape_overrides: { Sch: { tier: "crosshatch" } },
+  });
+});
+
+// "wave"/"chevron"/"brick" (digitizer_core/stage6_fill.py's
+// _wave_row_points / _chevron_row_points / _brick_row_points) joined the
+// same closed set the same way "crosshatch" did, alongside the tier
+// dropdown's Wave/Chevron/Brick options — three more purely-geometric
+// per-shape opt-ins, each changing only how one row's own interior points
+// land rather than adding a new pass. Same regression this file already
+// guards against for every tier above: a value SHAPE_TIERS doesn't
+// recognize canonicalizes to nothing and silently never reaches the wire.
+test("canonicalShapeEdits accepts the wave/chevron/brick tiers alongside crosshatch", async () => {
+  stubStorage({});
+  const { canonicalShapeEdits } = await import("./digitizer.js");
+  const el = digitizedElement({
+    shapeOverrides: {
+      Swv: { tier: "wave" },
+      Sch2: { tier: "chevron" },
+      Sbr: { tier: "brick" },
+    },
+  });
+  expect(canonicalShapeEdits(el)).toEqual({
+    shape_overrides: {
+      Swv: { tier: "wave" },
+      Sch2: { tier: "chevron" },
+      Sbr: { tier: "brick" },
+    },
   });
 });
 
@@ -540,6 +671,108 @@ test("reorderWithinLayer on a two-shape layer is a full reversal either directio
   expect(reorderWithinLayer(["A", "B"], "B", -1)).toEqual({ B: 0, A: 1 });
 });
 
+// ---- effLayer / sortShapes / effSewOrder / layerSiblings / effRgb ---------
+// (pure Layers-list logic shared by the plain per-shape list and the
+// color-block Sequencer view)
+
+function seqRow(id, extra = {}) {
+  return { id, rgb: [10, 20, 30], threadNumber: "0134", layer: 0, sewOrder: null, sewIndex: 0, ...extra };
+}
+
+test("effLayer: an explicit override beats the row's own layer, which beats sewIndex, which beats nothing", async () => {
+  stubStorage({});
+  const { effLayer } = await import("./digitizer.js");
+  expect(effLayer(seqRow("a", { layer: 2 }), { a: { layer: 5 } })).toBe(5);
+  expect(effLayer(seqRow("a", { layer: 2 }), {})).toBe(2);
+  expect(effLayer(seqRow("a", { layer: null, sewIndex: 7 }), {})).toBe(7);
+  expect(effLayer(seqRow("a", { layer: null, sewIndex: null }), {})).toBe(1e9);
+});
+
+test("sortShapes: orders by effLayer, then sewIndex, then id — the list IS the sew order", async () => {
+  stubStorage({});
+  const { sortShapes } = await import("./digitizer.js");
+  const rows = [
+    seqRow("c", { layer: 1, sewIndex: 0 }),
+    seqRow("a", { layer: 0, sewIndex: 1 }),
+    seqRow("b", { layer: 0, sewIndex: 0 }),
+  ];
+  expect(sortShapes(rows, {}).map((r) => r.id)).toEqual(["b", "a", "c"]);
+});
+
+test("effSewOrder: an explicit override beats the last-applied sewOrder, which beats sewIndex", async () => {
+  stubStorage({});
+  const { effSewOrder } = await import("./digitizer.js");
+  expect(effSewOrder(seqRow("a", { sewOrder: 2, sewIndex: 9 }), { a: { sew_order: 5 } })).toBe(5);
+  expect(effSewOrder(seqRow("a", { sewOrder: 2, sewIndex: 9 }), {})).toBe(2);
+  expect(effSewOrder(seqRow("a", { sewOrder: null, sewIndex: 9 }), {})).toBe(9);
+});
+
+test("layerSiblings: only rows sharing the effective layer, sorted by effSewOrder", async () => {
+  stubStorage({});
+  const { layerSiblings } = await import("./digitizer.js");
+  const rows = [
+    seqRow("a", { layer: 0, sewOrder: 1 }),
+    seqRow("b", { layer: 1, sewOrder: 0 }),
+    seqRow("c", { layer: 0, sewOrder: 0 }),
+  ];
+  expect(layerSiblings(rows[0], rows, {}).map((r) => r.id)).toEqual(["c", "a"]);
+});
+
+test("effRgb: an explicit override beats the row's own thread color, which beats the placeholder grey", async () => {
+  stubStorage({});
+  const { effRgb } = await import("./digitizer.js");
+  expect(effRgb(seqRow("a", { rgb: [1, 2, 3] }), { a: { rgb: [9, 9, 9] } })).toEqual([9, 9, 9]);
+  expect(effRgb(seqRow("a", { rgb: [1, 2, 3] }), {})).toEqual([1, 2, 3]);
+  expect(effRgb(seqRow("a", { rgb: null }), {})).toEqual([136, 136, 136]);
+});
+
+// ---- groupIntoBlocks (the Sequencer view's color-block grouping) ----------
+
+test("groupIntoBlocks: one block per distinct effLayer, in sew order, each carrying its own swatch/thread/count/span", async () => {
+  stubStorage({});
+  const { groupIntoBlocks } = await import("./digitizer.js");
+  const rows = [
+    seqRow("a", { layer: 0, sewIndex: 0, rgb: [200, 0, 0], threadNumber: "0111" }),
+    seqRow("b", { layer: 0, sewIndex: 1, rgb: [200, 0, 0], threadNumber: "0111" }),
+    seqRow("c", { layer: 1, sewIndex: 2, rgb: [0, 200, 0], threadNumber: "0222" }),
+  ];
+  const blocks = groupIntoBlocks(rows, {});
+  expect(blocks).toHaveLength(2);
+  expect(blocks[0]).toMatchObject({
+    layer: 0, rgb: [200, 0, 0], threadNumber: "0111", sewIndexMin: 0, sewIndexMax: 1,
+  });
+  expect(blocks[0].rows.map((r) => r.id)).toEqual(["a", "b"]);
+  expect(blocks[1]).toMatchObject({
+    layer: 1, rgb: [0, 200, 0], threadNumber: "0222", sewIndexMin: 2, sewIndexMax: 2,
+  });
+});
+
+test("groupIntoBlocks: an override moving one shape into another's layer merges it into that block", async () => {
+  stubStorage({});
+  const { groupIntoBlocks } = await import("./digitizer.js");
+  const rows = [
+    seqRow("a", { layer: 0, sewIndex: 0 }),
+    seqRow("b", { layer: 1, sewIndex: 1 }),
+  ];
+  const blocks = groupIntoBlocks(rows, { b: { layer: 0 } });
+  expect(blocks).toHaveLength(1);
+  expect(blocks[0].rows.map((r) => r.id)).toEqual(["a", "b"]);
+});
+
+test("groupIntoBlocks: a shape with no sewIndex at all doesn't poison its block's span", async () => {
+  stubStorage({});
+  const { groupIntoBlocks } = await import("./digitizer.js");
+  const blocks = groupIntoBlocks([seqRow("a", { layer: 0, sewIndex: null })], {});
+  expect(blocks[0].sewIndexMin).toBeNull();
+  expect(blocks[0].sewIndexMax).toBeNull();
+});
+
+test("groupIntoBlocks: empty input is an empty list, not a throw", async () => {
+  stubStorage({});
+  const { groupIntoBlocks } = await import("./digitizer.js");
+  expect(groupIntoBlocks([], {})).toEqual([]);
+});
+
 test("editsKey distinguishes an underlay_style override from no edits, and a no-op round trip stays stable", async () => {
   stubStorage({});
   const { canonicalShapeEdits, editsKey } = await import("./digitizer.js");
@@ -715,6 +948,33 @@ test("reviewFromJob maps text_candidate/text_cluster_id (text-cluster detection)
     ["Stagged", true, "clu1"],
     ["Suntagged", false, null],
     ["Sold", false, null],
+  ]);
+});
+
+test("reviewFromJob maps ocr_char/ocr_confidence (OCR-suggested text): a real read, a measurement-failed null pair, and false-shaped defaults when a pre-contract service sends neither field", async () => {
+  stubStorage({});
+  const { reviewFromJob } = await import("./digitizer.js");
+  const wire = {
+    palette: [{ brand_id: "isacord", number: "0020", name: "Black", rgb: [0, 0, 0] }],
+    shapes: [
+      { shape_id: "Sread", thread_index: 0, thread_number: "0020", area_mm2: 2, source: "quant",
+        layer: 0, sew_index: 0, sew_block: 0, tier: "fill", text_candidate: true, text_cluster_id: "clu1",
+        ocr_char: "K", ocr_confidence: 91.0,
+        outline_mm: [[0, 0], [1, 0], [1, 1]], holes_mm: [] },
+      { shape_id: "Sfailed", thread_index: 0, thread_number: "0020", area_mm2: 2, source: "quant",
+        layer: 0, sew_index: 1, sew_block: 0, tier: "fill", text_candidate: true, text_cluster_id: "clu1",
+        ocr_char: null, ocr_confidence: null,
+        outline_mm: [[0, 0], [1, 0], [1, 1]], holes_mm: [] },
+      { shape_id: "Sold", thread_index: 0, thread_number: "0020", area_mm2: 2, source: "quant",
+        layer: 0, sew_index: 2, sew_block: 0, tier: "fill",
+        outline_mm: [[0, 0], [1, 0], [1, 1]], holes_mm: [] },
+    ],
+  };
+  const r = reviewFromJob(wire);
+  expect(r.shapes.map((s) => [s.id, s.ocrChar, s.ocrConfidence])).toEqual([
+    ["Sread", "K", 91.0],
+    ["Sfailed", null, null],
+    ["Sold", null, null],
   ]);
 });
 
@@ -1064,6 +1324,7 @@ test("textClusterSeed computes a design-center-relative offset, a height-based s
   const seed = textClusterSeed(members, allRows);
   expect(seed.text).toBe("");
   expect(seed.fontKey).toBeNull();
+  expect(seed.textSource).toBeNull(); // no ocrChar/ocrConfidence on these rows -> ungated
   expect(seed.rotationDeg).toBe(0);
   expect(seed.sizeMm).toBe(4); // cluster bbox height: 4 - 0
   expect(seed.colorRgb).toEqual([10, 10, 10]); // both members agree
@@ -1087,6 +1348,77 @@ test("textClusterSeed picks the most common member color (majority vote, not an 
   expect(empty.sizeMm).toBeNull();
   expect(empty.offsetXMm).toBe(0);
   expect(empty.offsetYMm).toBe(0);
+});
+
+// ---- textClusterSeed's OCR-suggested-text gate ------------------------------
+//
+// The UX-safety-critical half of this feature: a prefilled-but-wrong guess
+// must be measurably rarer than an empty field, never a bare swap of one for
+// the other. Every case below is asserted against the exact threshold
+// (OCR_SUGGESTION_MIN_CONFIDENCE) so a constant change is a deliberate,
+// visible diff here, not a silent behavior shift.
+
+function ocrMember(id, x0, ocrChar, ocrConfidence) {
+  return { id, rgb: [10, 10, 10], outline: [[x0, 0], [x0 + 1, 0], [x0 + 1, 2], [x0, 2]], ocrChar, ocrConfidence };
+}
+
+test("textClusterSeed fills text from ocrChar (left-to-right by bbox) and sets textSource when every member clears the confidence floor", async () => {
+  stubStorage({});
+  const { textClusterSeed, OCR_SUGGESTION_MIN_CONFIDENCE } = await import("./digitizer.js");
+  // Deliberately supplied out of reading order — the seed must sort by each
+  // member's own bbox minX, not array order.
+  const members = [
+    ocrMember("mid", 5, "G", OCR_SUGGESTION_MIN_CONFIDENCE + 10),
+    ocrMember("first", 0, "O", OCR_SUGGESTION_MIN_CONFIDENCE + 30),
+    ocrMember("last", 10, "K", OCR_SUGGESTION_MIN_CONFIDENCE),
+  ];
+  const seed = textClusterSeed(members, members);
+  expect(seed.text).toBe("OGK");
+  expect(seed.textSource).toBe("ocr-suggested");
+  expect(seed.fontKey).toBeNull(); // OCR gives characters, never a typeface, regardless of confidence
+});
+
+test("textClusterSeed falls back to empty text/null textSource when the cluster's weakest member is below the confidence floor", async () => {
+  stubStorage({});
+  const { textClusterSeed, OCR_SUGGESTION_MIN_CONFIDENCE } = await import("./digitizer.js");
+  const members = [
+    ocrMember("A", 0, "O", 99),
+    ocrMember("B", 1, "K", OCR_SUGGESTION_MIN_CONFIDENCE - 0.1), // the one weak link
+  ];
+  const seed = textClusterSeed(members, members);
+  expect(seed.text).toBe("");
+  expect(seed.textSource).toBeNull();
+});
+
+test("textClusterSeed gates on the CLUSTER MINIMUM, not a mean — one confident member cannot hide a weak one", async () => {
+  stubStorage({});
+  const { textClusterSeed, OCR_SUGGESTION_MIN_CONFIDENCE } = await import("./digitizer.js");
+  // Mean of [100, 10] is 55, comfortably above a naive mean-based floor —
+  // but the true minimum (10) must still fail the gate.
+  const members = [ocrMember("A", 0, "X", 100), ocrMember("B", 1, "Y", 10)];
+  expect(textClusterSeed(members, members).textSource).toBeNull();
+});
+
+test("textClusterSeed treats the gate boundary as inclusive (>=)", async () => {
+  stubStorage({});
+  const { textClusterSeed, OCR_SUGGESTION_MIN_CONFIDENCE } = await import("./digitizer.js");
+  const atFloor = [ocrMember("A", 0, "K", OCR_SUGGESTION_MIN_CONFIDENCE)];
+  expect(textClusterSeed(atFloor, atFloor).textSource).toBe("ocr-suggested");
+
+  const justBelow = [ocrMember("A", 0, "K", OCR_SUGGESTION_MIN_CONFIDENCE - 0.01)];
+  expect(textClusterSeed(justBelow, justBelow).textSource).toBeNull();
+});
+
+test("textClusterSeed treats a member with no OCR data (older service, or a failed per-member measurement) as no signal, not as confidence 0", async () => {
+  stubStorage({});
+  const { textClusterSeed } = await import("./digitizer.js");
+  const members = [
+    ocrMember("A", 0, "O", 99),
+    ocrMember("B", 1, undefined, undefined), // Python's (None, None) case
+  ];
+  const seed = textClusterSeed(members, members);
+  expect(seed.text).toBe("");
+  expect(seed.textSource).toBeNull();
 });
 
 test("describeWarnings speaks the two shape-identity codes (contract v1.5)", async () => {

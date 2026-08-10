@@ -188,22 +188,30 @@ def is_satin_candidate(poly: Polygon, max_width_mm: float, *,
     are near-square, organic, segmentation-noisy regions (bounding-box
     aspect 1.05-1.13) that this test alone waves through as satin.
 
-    `design_class` scopes the fix: a second, independent width read off the
-    exact distance transform at the shape's own medial axis (`docs/
-    dt-classifier-spike-2026-08-02.md`'s `VP90` arm — a pure TIGHTENING, it
-    can only turn a satin call into a fill call, never the reverse) runs
-    for every class except `"flat"`. Flat-classified art — clean,
-    spot-colour, vector-like boundaries, the shipped byte-identical goldens'
-    entire population — keeps exactly today's behaviour, unchanged, because
-    that population is not where the noise this fix targets comes from and
-    `tests/test_flat_lane_byte_identical.py` pins its output byte for byte.
-    Non-flat classes (`gradient`, `photo_subject`, `photo_scene`) are where
-    the noisy, segmentation-derived boundaries this fix exists for actually
-    occur, and the spike's own measurement (0/21 misses on the synthetic
-    archetype population, 26/28 agreement with the shipped rule on real
-    artwork, both disagreements being shapes the shipped rule already sews
-    wrong) is the evidence for extending it there. See
-    `_dt_regular_and_within_cap` for the check itself.
+    A second, independent width read off the exact distance transform at the
+    shape's own medial axis (`docs/dt-classifier-spike-2026-08-02.md`'s
+    `VP90` arm — a pure TIGHTENING, it can only turn a satin call into a
+    fill call, never the reverse) runs for every `design_class`, `"flat"`
+    included. It did not always: the DT check first landed
+    (`satin-classifier-organic-shapes`) scoped to `"gradient"`/
+    `"photo_subject"`/`"photo_scene"` only, on the premise that flat art's
+    clean, spot-colour, vector-like boundaries do not carry the
+    segmentation-derived noise this check exists to catch. That premise
+    does not hold: this repo's own `testdata/photo/enthusiast_logo.png`
+    benchmark — flat-classified, hand-picked as the fixture that reproduces
+    what Kent complains about (see `COOKBOOK.md`'s "Hard-won lessons") —
+    contains compact, jittery-boundary shapes the perimeter-only rule
+    satin-stitches into a literal starburst (crosses fanning from a single
+    point instead of a parallel column): `Scd89ad66` and `Sff37b029` at
+    90mm both flip satin->fill under the DT check, and rendering their
+    pre-fix stitch output confirms the fan by eye, not just by the numeric
+    disagreement. `design_class` is kept as a parameter (every existing
+    caller passes one) but no longer changes this function's verdict; the
+    four letterform archetypes (`BAR`/`O_RING`/`C_STROKE`/`T_SHAPE` in
+    `tests/test_satin.py`) keep their satin call under the DT check exactly
+    as already proven for the non-flat classes — this is a widening of
+    scope, not a new rule. See `_dt_regular_and_within_cap` for the check
+    itself.
     """
     w = ribbon_width_mm(poly)
     if w <= 0 or w > max_width_mm:
@@ -214,8 +222,6 @@ def is_satin_candidate(poly: Polygon, max_width_mm: float, *,
     length_est = perim / 2.0 - w
     if length_est < 3.0 * w:
         return False
-    if design_class == "flat":
-        return True
     return _dt_regular_and_within_cap(poly, max_width_mm)
 
 
@@ -998,6 +1004,29 @@ def _short_stitch_guard(rail_a: list, rail_b: list) -> list[tuple]:
     as two ~1.0 mm same-rail gaps. Capped, the same stitch retracts 0.6 mm —
     two same-hole radii: a full radius clear of the old hole, still supporting
     the inner edge it was pulled from.
+
+    Found and fixed 2026-08-07 (satin free-end corner coverage). The pull is
+    ALSO bounded so it can never take a cross under `SATIN_MIN_CROSS_MM`
+    itself — without that, a cross that was a legitimate, keepable stitch
+    (comfortably above the floor) came out of the pull thinner than the
+    floor and `satin_stroke`'s own degenerate-cross filter dropped it a few
+    lines later, for a reason that has nothing to do with why the filter
+    exists (a real pinch, both rails meeting at a point). Measured on
+    `photo/enthusiast_logo.png`'s "E": the free end at the glyph's stem
+    caps 0.15mm from its own flush corner (`_extend_to_cap` already lands it
+    there), and the very next station's cross is a real 0.57-0.60mm stitch —
+    comfortably keepable on its own — until this guard fires (that station's
+    same-rail step off the cap station is 0.27mm, under
+    `SATIN_SHORT_STITCH_AT_MM`) and its stock 35%-capped-at-0.6mm pull takes
+    it to 0.37-0.39mm, under the 0.5mm floor: the filter drops it, and the
+    corner sews as bare fabric even though `_extend_to_cap` did its job.
+    This is not a letterform-specific fix — any cap zone, corner, or tight
+    curve whose next-station cross starts out only a little above
+    `SATIN_MIN_CROSS_MM` can hit the identical interaction, independent of
+    what put the crosses there. A curve with real room to spare (the guard's
+    normal case, columns several mm wide) never reaches this new bound —
+    only a pull that would have landed the result below the floor is
+    reined in, to land AT the floor instead of past it.
     """
     out = []
     for i, (pa, pb) in enumerate(zip(rail_a, rail_b)):
@@ -1011,11 +1040,21 @@ def _short_stitch_guard(rail_a: list, rail_b: list) -> list[tuple]:
 
 
 def _pull_short(p: tuple, toward: tuple) -> tuple:
-    """Retract one penetration toward the far rail, by fraction-with-a-cap."""
+    """Retract one penetration toward the far rail, by fraction-with-a-cap.
+
+    Never past the point where the cross itself would drop under
+    `SATIN_MIN_CROSS_MM` — see `_short_stitch_guard`'s own note on why a
+    pull that starts from an already-narrow cross needs that floor too. The
+    target is nudged a hair above the exact floor (1.01x, not 1.0x) so a
+    cross landing there clears `satin_stroke`'s strict `<` drop check
+    despite float rounding in the two `dist()` calls along the way — the
+    floor is a keepability guarantee, not a value that needs to be exact.
+    """
     cross = math.dist(p, toward)
     f = machine.SATIN_SHORT_STITCH_PULL
     if cross > 1e-9:
         f = min(f, machine.SATIN_SHORT_STITCH_PULL_MAX_MM / cross)
+        f = min(f, max(0.0, 1.0 - 1.01 * machine.SATIN_MIN_CROSS_MM / cross))
     return (p[0] + (toward[0] - p[0]) * f, p[1] + (toward[1] - p[1]) * f)
 
 
@@ -1550,10 +1589,35 @@ def _graph_travel(cur, target, sewn: set[int], allow: set[int],
     return out
 
 
+def _choose_stroke_entry(cur: tuple[float, float],
+                         a: tuple[float, float], free_a: bool,
+                         b: tuple[float, float], free_b: bool) -> bool:
+    """True if a stroke between ends `a` and `b` should be entered at `b`
+    (needle currently at `cur`), false if it should be entered at `a`.
+
+    Laws 27/29 (`machine.STRUCTURAL_ENTRY_BUDGET_MM`): pros enter at a
+    stroke's free end (its open cap) far more often than at whichever end is
+    merely nearest, and will pay up to that budget of extra travel to reach
+    it. `free_a == free_b` means neither end is structurally preferred over
+    the other (both free, or both welded into a junction) — nothing to lean
+    on, so proximity is the whole rule there, same as before this law.
+    """
+    d_a = math.dist(cur, a)
+    d_b = math.dist(cur, b)
+    if free_a == free_b:
+        return d_b < d_a
+    cap_is_b = free_b
+    cap_d, other_d = (d_b, d_a) if cap_is_b else (d_a, d_b)
+    if cap_d - other_d <= machine.STRUCTURAL_ENTRY_BUDGET_MM:
+        return cap_is_b
+    return d_b < d_a
+
+
 def _order_strokes(strokes: list[Stroke],
                    start_near: tuple[float, float] | None) -> list[Stroke]:
-    """Sew order within one shape: whichever stroke's nearer end is closest to
-    where the needle already is, then on by the same rule.
+    """Sew order within one shape: whichever stroke's preferred entry (Laws
+    27-29, `_choose_stroke_entry`) is closest to where the needle already is,
+    then on by the same rule.
 
     `extract_strokes` sorts longest-first, which keeps a letter's main stem
     ahead of its serifs but says nothing about the hops between them. Sewing
@@ -1577,7 +1641,10 @@ def _order_strokes(strokes: list[Stroke],
         out.append(st)
         # It comes out of the end it did not go in at.
         a, b = st.spine[0], st.spine[-1]
-        cur = a if (cur is not None and math.dist(cur, b) < math.dist(cur, a)) else b
+        if cur is None:
+            cur = b
+        else:
+            cur = a if _choose_stroke_entry(cur, a, st.free_start, b, st.free_end) else b
     return out
 
 
@@ -1655,9 +1722,20 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
         first_of_stroke = True
         for run in stroke_runs:
             cursor = runs[-1].points[-1] if runs else start_near
-            if cursor is not None and \
-                    math.dist(cursor, run.points[-1]) < math.dist(cursor, run.points[0]):
-                run.points.reverse()
+            if cursor is not None:
+                # Laws 27-29 (STRUCTURAL_ENTRY_BUDGET_MM): the visible satin
+                # column is what the corpus measured entering at a free cap
+                # over the nearer end, so it alone gets that preference.
+                # Underlay stays pure-nearest — hidden support stitching, not
+                # what the law's professional decisions were read off of, and
+                # its orientation is already tuned to avoid extra hops
+                # between strokes (see the loop's own note below).
+                if run.kind == stitches.SATIN:
+                    if _choose_stroke_entry(cursor, run.points[0], st.free_start,
+                                            run.points[-1], st.free_end):
+                        run.points.reverse()
+                elif math.dist(cursor, run.points[-1]) < math.dist(cursor, run.points[0]):
+                    run.points.reverse()
             if first_of_stroke and cursor is not None:
                 # Between strokes, walk the unsewn web instead of lifting.
                 direct = math.dist(cursor, run.points[0])

@@ -105,6 +105,13 @@ export const DEFAULT_DIGITIZE_PARAMS = {
 //   `appliedEdits`    — canonical key of the edits the CURRENT result was
 //                       digitized with (digitizer.js editsKey), so the panel
 //                       knows honestly whether edits are still pending.
+//   `preflight`       — the last job's `{ score, grade, findings, metrics }`
+//                       report verbatim (server-computed, read-only, no
+//                       override key — same "echoed back, not edited"
+//                       treatment as the text-cluster fields above), or null
+//                       when the job predates this field or the caller
+//                       turned preflight off. Used by the Sequencer view's
+//                       trims-per-1000 header; nothing else reads it today.
 export function defaultDigitizedElement(id) {
   return {
     id,
@@ -119,6 +126,7 @@ export function defaultDigitizedElement(id) {
     shapeOverrides: {},
     deletedShapeIds: [],
     appliedEdits: null,
+    preflight: null,
     sizeMm: null,
     offsetXMm: 0,
     offsetYMm: 0,
@@ -134,11 +142,16 @@ export function defaultDigitizedElement(id) {
 // merge-selection uses: not part of the persisted element), so a page
 // reload can lose an unfinished shape but never a finished one.
 //
-// Each shape: { id, points: [{x,y}, ...], stitchType: "satin"|"fill",
-// colorRgb: [r,g,b], angleDeg: number|null }. `points` live in a fixed
-// authoring-canvas pixel space (see lib/manualShapes.js's CANVAS_W/H) —
-// only the shapes' RELATIVE geometry matters, since generation fits the
-// combined bbox to the garment/hoop same as every other content type.
+// Each shape: { id, points: [{x,y}, ...], curves: {[segmentIndex]: {x,y}},
+// stitchType: "satin"|"fill", colorRgb: [r,g,b], angleDeg: number|null }.
+// `points` live in a fixed authoring-canvas pixel space (see
+// lib/manualShapes.js's CANVAS_W/H) — only the shapes' RELATIVE geometry
+// matters, since generation fits the combined bbox to the garment/hoop same
+// as every other content type. `curves` is a sparse map from segment index
+// (the edge from points[i] to points[i+1]) to that segment's quadratic
+// control point — see manualShapes.js's flattenShape for how a curved
+// segment becomes real geometry; an empty/absent `curves` means every edge
+// is a plain straight line, unchanged from before this field existed.
 // stitchType is a required manual choice (never auto-classified — that's
 // the whole point of this mode); angleDeg null = per-shape auto (PCA),
 // matching the fill-angle-override convention Image mode's swatch bar and
@@ -147,6 +160,7 @@ export function defaultManualShape(id) {
   return {
     id,
     points: [],
+    curves: {},
     stitchType: "fill",
     colorRgb: [20, 20, 20],
     angleDeg: null,

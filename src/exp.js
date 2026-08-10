@@ -45,6 +45,20 @@
 
     for (let i = 0; i < stitches.length; i++) {
       const st = stitches[i];
+
+      // The terminal `{type:"end"}` sentinel `stitchModel.js` always appends
+      // is a design-list marker, not a real stitch -- pes.js's own encoder
+      // already stops here the same way (src/pes.js, both its CSewSeg and
+      // decoder loops). Without this, it fell through to the generic path
+      // below and got written as a real zero-delta stitch record, which
+      // standard EXP readers then decode as one extra phantom stitch beyond
+      // the design's real count. See docs/pes-crossval-verdict-2026-08-04.md
+      // section 4's "shared quirk with DST" note -- DST has the same gap but
+      // is deliberately left alone (Kent's call, every existing EMB-Bot DST
+      // is affected); EXP has no importer in this codebase, so fixing it
+      // here carries none of that migration risk.
+      if (st.type === "end") break;
+
       const targetX = st.x | 0;
       const targetY = st.y | 0;
 

@@ -87,7 +87,11 @@ def _require_token(supplied: str | None) -> None:
 # bad value is still a 400 at submit.
 _OVERRIDE_KEYS = {"thread_index", "fill_angle_deg", "tier", "border", "layer",
                   "sew_order", "stitched", "underlay_style", "boundary_override"}
-_TIER_VALUES = {"auto", "satin", "fill", "run", "sketch"}
+# Kept in lockstep with digitizer_core.regions._TIER_VALUES — see that
+# copy's own comment for what "wave"/"chevron"/"brick" (alongside
+# "crosshatch") each do.
+_TIER_VALUES = {"auto", "satin", "fill", "run", "sketch", "streamline", "crosshatch",
+                "wave", "chevron", "brick"}
 _BORDER_VALUES = {"off", "auto", "bean"}
 # fabrics.py's own vocabulary, verbatim — the one place that spells out the
 # closed set stage6_fill._underlay_paths actually interprets. Anything
@@ -512,6 +516,18 @@ def _review_payload(result, plan=None) -> dict:
                 # member of a detected text cluster, and which one.
                 "text_candidate": r.meta.get("text_candidate", False),
                 "text_cluster_id": r.meta.get("text_cluster_id"),
+                # Per-member OCR read of a tagged member (server-computed,
+                # read-only — same category as `text_candidate` above, no
+                # `_OVERRIDE_KEYS` entry, never client-submitted): a single
+                # best-guess character plus Tesseract's own confidence
+                # (0..100), or both `None` when nothing was tagged, or when
+                # the measurement itself failed. Studio decides whether/how
+                # to use this (the confidence GATE is Studio's call, not the
+                # service's) — see `digitizer_core/textcluster.py`'s
+                # `ocr_suggest_text` and `app/src/lib/digitizer.js`'s
+                # `textClusterSeed`.
+                "ocr_char": r.meta.get("ocr_char"),
+                "ocr_confidence": r.meta.get("ocr_confidence"),
                 # The sew position and effective tier the layers panel orders
                 # by. None means the shape produced no stitches (the plan's
                 # SHAPE_NOT_STITCHED warning says how many did).

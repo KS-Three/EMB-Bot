@@ -138,6 +138,272 @@ export function isNearStart(points, x, y) {
   return Math.hypot(x - p0.x, y - p0.y) <= CLOSE_RADIUS_PX;
 }
 
+// ---- Canvas hit-testing (shape selection) ---------------------------------
+
+// Even-odd ray-casting point-in-polygon test — same algorithm as
+// digitize.js's own pointInPoly (there used to group glyph contours into
+// shapes with holes), adapted from [x, y] tuples to this module's {x, y}
+// point objects. Operates on a shape's FLATTENED geometry (flattenShape's
+// output, curves already baked to points) — a caller hit-testing a curved
+// shape's body must flatten first, same as shapeIssues/isValidShape already
+// require. ManualPanel uses this back-to-front over element.shapes (last
+// element checked first) for canvas-click-to-select and hover-cursor
+// feedback, so the topmost/last-drawn shape wins on overlap.
+export function pointInShape(points, x, y) {
+  const pts = points || [];
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const xi = pts[i].x, yi = pts[i].y, xj = pts[j].x, yj = pts[j].y;
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+// ---- Curved segments ------------------------------------------------------
+// A shape's `points` stay a plain straight-line anchor ring, exactly as
+// before — nothing downstream (shapeIssues/isValidShape, the Python
+// pipeline, satin/fill) ever needs to know a curve exists. A shape can
+// additionally carry `curves`, a sparse { [segmentIndex]: {x,y} } map: key i
+// is the segment from anchor i to anchor (i+1) % points.length, value is
+// that segment's quadratic-bezier CONTROL point. Only flattenShape (below)
+// and shapesToRegions ever expand a curved segment into real geometry —
+// everywhere else (vertex hit-testing, Undo point, MAX_SHAPE_POINTS) keeps
+// operating on the anchor count alone, unaffected by how many segments are
+// curved.
+
+// Sub-pixel snap: dragging a curve handle back within this distance of the
+// segment's own straight-line midpoint counts as "put it back" rather than
+// "a very subtle curve" — see curveControlOrNull.
+const CURVE_STRAIGHTEN_EPS_PX = 2;
+
+// Longest and shortest a curved segment gets flattened to, plus the target
+// spacing driving the count in between (chord-length / this, clamped) — a
+// short segment doesn't need 24 points to look smooth, a long one needs more
+// than 4 to avoid visible faceting.
+const CURVE_MIN_SUBPOINTS = 4;
+const CURVE_MAX_SUBPOINTS = 24;
+const CURVE_PX_PER_SUBPOINT = 10;
+
+// The quadratic-bezier control point that makes the curve from `a` to `c`
+// pass through `through` at its own midpoint (t=0.5). Standard "curve
+// through a point" inversion of B(0.5) = 0.25*a + 0.5*control + 0.25*c —
+// this is what makes dragging a handle feel WYSIWYG: the curve follows the
+// cursor instead of bowing away from it.
+export function quadraticControlForPointOnCurve(a, through, c) {
+  return {
+    x: 2 * through.x - 0.5 * (a.x + c.x),
+    y: 2 * through.y - 0.5 * (a.y + c.y),
+  };
+}
+
+// Inverse of the above: where a curve segment's own on-curve midpoint sits,
+// given its stored control point — the exact point a curve handle should be
+// drawn/hit-tested at (round-trips exactly with quadraticControlForPointOnCurve,
+// no drift). Falls back to the plain chord midpoint for a straight (no
+// control point) segment, so one function serves both cases.
+export function curveHandlePoint(a, c, control) {
+  if (!control) return { x: (a.x + c.x) / 2, y: (a.y + c.y) / 2 };
+  return {
+    x: 0.25 * a.x + 0.5 * control.x + 0.25 * c.x,
+    y: 0.25 * a.y + 0.5 * control.y + 0.25 * c.y,
+  };
+}
+
+// The control point for dragging this segment's handle to `through`, or
+// null if `through` landed close enough to the straight-line midpoint that
+// the segment should just go back to being straight (see
+// CURVE_STRAIGHTEN_EPS_PX) — the one place both the live drag preview and
+// the on-release commit decide "is this actually curved," so they can never
+// disagree.
+export function curveControlOrNull(a, c, through) {
+  const mx = (a.x + c.x) / 2, my = (a.y + c.y) / 2;
+  if (Math.hypot(through.x - mx, through.y - my) < CURVE_STRAIGHTEN_EPS_PX) return null;
+  return quadraticControlForPointOnCurve(a, through, c);
+}
+
+// Canvas-px hit radius for grabbing a segment's curve handle — same value as
+// ManualPanel's own VERTEX_HIT_R, kept here (rather than local to the
+// component) so hitTestSegmentMidpoint is unit-testable like every other
+// hit-test helper in this file.
+export const CURVE_HANDLE_HIT_R = 8;
+
+// Index of the segment whose curve handle is within CURVE_HANDLE_HIT_R of
+// (x, y), or -1. `closed` mirrors flattenShape's: false while a draft is
+// still an open polyline (no anchor-n-1-to-anchor-0 segment exists yet),
+// true for a finished/editing shape's closed ring.
+export function hitTestSegmentMidpoint(points, curves, x, y, closed) {
+  const n = points.length;
+  const segCount = closed ? n : n - 1;
+  let best = -1;
+  let bestD = CURVE_HANDLE_HIT_R;
+  for (let i = 0; i < segCount; i++) {
+    const a = points[i];
+    const c = points[(i + 1) % n];
+    const hp = curveHandlePoint(a, c, curves && curves[i]);
+    const d = Math.hypot(hp.x - x, hp.y - y);
+    if (d <= bestD) {
+      bestD = d;
+      best = i;
+    }
+  }
+  return best;
+}
+
+// De Casteljau sampling of one quadratic segment, EXCLUDING both endpoints
+// (callers already have those as real anchors) — the number of sub-points
+// scales with chord length so long curved edges stay smooth without
+// spending the same budget on short ones.
+export function flattenQuadraticSegment(a, control, c) {
+  const chord = Math.hypot(c.x - a.x, c.y - a.y);
+  const n = Math.max(CURVE_MIN_SUBPOINTS, Math.min(CURVE_MAX_SUBPOINTS, Math.round(chord / CURVE_PX_PER_SUBPOINT)));
+  const pts = [];
+  for (let i = 1; i < n; i++) {
+    const t = i / n;
+    const mt = 1 - t;
+    pts.push({
+      x: mt * mt * a.x + 2 * mt * t * control.x + t * t * c.x,
+      y: mt * mt * a.y + 2 * mt * t * control.y + t * t * c.y,
+    });
+  }
+  return pts;
+}
+
+// The real, walkable geometry for an anchor+curves shape: every anchor, with
+// each curved segment's flattened sub-points spliced in between its two
+// endpoints. This is the ONLY place curves become points — feed the result
+// to shapeIssues/isValidShape for validation, or to shapesToRegions' `outer`
+// for generation, and neither needs to know curves exist at all. A shape
+// with no curved segments flattens to EXACTLY its own `points` array
+// (same length, same order), so this is a no-op for every pre-existing
+// shape that predates this feature. `closed` = false renders/validates the
+// in-progress draft as an open polyline (no synthetic last-to-first edge
+// yet); true walks the full ring, including the closing segment.
+export function flattenShape(points, curves, closed) {
+  if (!Array.isArray(points) || points.length === 0) return [];
+  const n = points.length;
+  const segCount = closed ? n : n - 1;
+  const out = [points[0]];
+  for (let i = 0; i < segCount; i++) {
+    const a = points[i];
+    const c = points[(i + 1) % n];
+    const control = curves && curves[i];
+    if (control) {
+      for (const p of flattenQuadraticSegment(a, control, c)) out.push(p);
+    }
+    // The final wraparound segment's endpoint is points[0], already the
+    // first element of `out` — skip re-appending it so the ring doesn't
+    // carry a duplicate point back at the start.
+    if (!(closed && i === segCount - 1)) out.push(c);
+  }
+  return out;
+}
+
+// ---- Edge-click-to-insert-vertex ------------------------------------------
+// Clicking an already-selected shape's edge (rather than its vertex or curve
+// handle) inserts a brand-new anchor right there, splitting one segment into
+// two independently-editable ones — the one gap the curve-handle-per-segment
+// model (above) doesn't cover: bowing lets you curve a whole segment, but
+// there was previously no way to add a hard new corner or a second
+// independent curve control point partway along a long edge.
+
+// Point-to-segment distance: how far `p` is from the closest point on the
+// line segment a-b (clamped to the segment, not the infinite line through
+// it) — same standard closest-point-on-segment projection every hit-test in
+// this file that isn't a plain point-to-point distance eventually needs,
+// just not one any existing helper here already exposed.
+export function distToSegment(p, a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const len2 = dx * dx + dy * dy;
+  if (len2 === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+  let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+}
+
+// Which ANCHOR segment (x, y) is closest to, and how far — walks each
+// segment's real, on-screen geometry (its flattened curve chain when it has
+// a control point, same sub-points flattenQuadraticSegment already produces
+// for drawing/flattenShape, or just its two endpoints when straight) so a
+// curved segment hit-tests against the visible bowed line, not the straight
+// anchor-to-anchor chord a naive check would use. `closed` mirrors every
+// other hit-test in this file (hitTestSegmentMidpoint, flattenShape): false
+// for an open in-progress draft, true for a finished shape's closed ring.
+// Returns { index: -1, dist: Infinity } for a degenerate (<2-point) input.
+export function nearestSegmentIndex(points, curves, x, y, closed) {
+  const pt = { x, y };
+  const n = points.length;
+  const segCount = closed ? n : n - 1;
+  let index = -1;
+  let dist = Infinity;
+  for (let i = 0; i < segCount; i++) {
+    const a = points[i];
+    const c = points[(i + 1) % n];
+    const control = curves && curves[i];
+    const chain = control ? [a, ...flattenQuadraticSegment(a, control, c), c] : [a, c];
+    for (let k = 0; k < chain.length - 1; k++) {
+      const d = distToSegment(pt, chain[k], chain[k + 1]);
+      if (d < dist) {
+        dist = d;
+        index = i;
+      }
+    }
+  }
+  return { index, dist };
+}
+
+// Splits segment `segIndex` (points[segIndex] -> points[segIndex + 1]) by
+// inserting `point` as a brand-new anchor between them, and returns a NEW
+// shape object — `shape` itself is never mutated. Both halves of the split
+// start straight: any curve that segment used to carry is simply dropped
+// rather than preserved/interpolated onto either half (deliberately — the
+// user can re-curve either new half afterward if they want it). Every
+// OTHER curve, on a segment index greater than segIndex, shifts up by one to
+// stay bound to the same visual edge, since splicing a point renumbers every
+// later segment; curves at or before segIndex are untouched. Respects the
+// same MAX_SHAPE_POINTS ceiling the draft-drawing flow enforces — a shape
+// already at the cap is returned completely unchanged (same reference) so a
+// caller can detect the no-op with `=== `, mirroring how a click past the
+// cap during drafting is just silently dropped rather than erroring.
+export function insertVertexAtSegment(shape, segIndex, point) {
+  const points = shape.points || [];
+  if (points.length >= MAX_SHAPE_POINTS) return shape;
+  const newPoints = [
+    ...points.slice(0, segIndex + 1),
+    { x: point.x, y: point.y },
+    ...points.slice(segIndex + 1),
+  ];
+  const oldCurves = shape.curves || {};
+  const newCurves = {};
+  for (const key in oldCurves) {
+    const idx = Number(key);
+    if (idx === segIndex) continue; // the split segment's curve doesn't carry forward onto either new half
+    newCurves[idx > segIndex ? idx + 1 : idx] = oldCurves[key];
+  }
+  return { ...shape, points: newPoints, curves: newCurves };
+}
+
+// Batch-safe id allocation for callers (e.g. the trace-to-shapes feature)
+// that build several new shapes at once and patch them in with a SINGLE
+// `patch()` call. ManualPanel.svelte's own nextShapeId(list) recomputes the
+// max "s"+N id from `shapes` on every call — fine for one-shape-at-a-time
+// drawing, where a patch() happens between clicks, but wrong for a batch: if
+// a caller looped nextShapeId N times before ever patching, every call would
+// return the SAME id, because `shapes` doesn't change until that one patch
+// lands. nextShapeIds scans the list ONCE and hands back `count` sequential
+// new ids in a single array, so a batch caller gets ["s7","s8","s9"] instead
+// of ["s7","s7","s7"]. Same "s"+N id-format convention/regex as
+// ManualPanel's nextShapeId, so ids from either path never collide.
+export function nextShapeIds(list, count) {
+  let max = 0;
+  for (const s of list || []) {
+    const m = /^s(\d+)$/.exec(s.id);
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  }
+  const ids = [];
+  for (let i = 1; i <= count; i++) ids.push("s" + (max + i));
+  return ids;
+}
+
 // Convert an element's COMPLETED shapes into buildQualityDesign's
 // colorRegions input. Each shape becomes its OWN region (a manual choice,
 // not an auto-merge-by-color step: two shapes the user happens to color the
@@ -145,15 +411,20 @@ export function isNearStart(points, x, y) {
 // canvas draws them one at a time). Invalid/degenerate shapes are silently
 // skipped, mirroring flatToRegions dropping empty-geometry palette entries,
 // rather than throwing — one bad shape shouldn't block generating the rest.
+// Curved segments (shape.curves) are flattened to plain points here, at
+// this exact hand-off boundary — everything past this function (the stitch
+// engine, the Python pipeline) only ever sees straight-line rings.
 export function shapesToRegions(shapes) {
   const regions = [];
   for (const shape of shapes || []) {
-    if (!shape || !isValidShape(shape.points)) continue;
+    if (!shape) continue;
+    const outer = flattenShape(shape.points, shape.curves, true);
+    if (!isValidShape(outer)) continue;
     const angleOverride = (typeof shape.angleDeg === "number" && isFinite(shape.angleDeg)) ? shape.angleDeg : null;
     regions.push({
       rgb: Array.isArray(shape.colorRgb) ? shape.colorRgb : [20, 20, 20],
       shapes: [{
-        outer: shape.points.map((p) => ({ x: p.x, y: p.y })),
+        outer: outer.map((p) => ({ x: p.x, y: p.y })),
         holes: [],
         tierOverride: shape.stitchType === "satin" ? "satin" : "fill",
         angleOverride,

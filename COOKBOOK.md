@@ -415,6 +415,23 @@ studio / digitizer, the digitizer job deselecting the same 3 known
 container goldens called out below. Every PR now needs its Actions run
 green in addition to a local pass before merging.
 
+**Known ongoing issue, since 2026-08-09, unresolved as of this writing:**
+CI checks across many PRs (#106 onward) fail in ~2-4 seconds with
+`runner_id: 0` — no GitHub Actions runner is ever assigned, the job dies
+before any step (not even checkout) runs. This is NOT a code problem —
+confirmed repeatedly by diffing against the same workflow succeeding
+normally (18s-15min per job) on a parent commit moments earlier, and by
+every affected PR passing its full local test suite. Best diagnosis (not
+confirmed, since this session can't see GitHub's billing UI): a GitHub
+Actions minutes/spending-limit or concurrency-quota issue on the account —
+check **Settings → Billing and plans → Plans and usage → Actions** on
+whichever account/org owns this repo. This repo has no required-status-
+check branch protection, so Kent has been merging past the red checks when
+the failure matches this exact signature (verify via the GitHub API/UI:
+near-instant failure + `runner_id: 0` on the job) — that's a reasonable
+workaround given the pattern, not a reason to stop checking whether it's
+actually cleared before assuming so.
+
 ```bash
 node --test                 # engine tests (root) — 267/267
 cd app && npm install && npm run dev     # Studio dev server

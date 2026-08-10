@@ -610,6 +610,22 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg
                 underlay_style="none", trim_at_mm=machine.TRIM_AT_MM,
             )
             if runs and this_layer:
+                # `_band_clip` can hand back more than one disconnected part
+                # for a single band (a ring-shaped region straddling the
+                # ramp's hole, for instance). Each part is its own
+                # `stitch_shape` call, so its first run always starts with
+                # `jump=False` — correct in isolation, wrong once stitched
+                # back to back with the part before it, which leaves a bare
+                # straight stitch across whatever real gap separates the two
+                # parts. Mark it explicitly rather than let that default
+                # stand. Unlike `stitch_shape`'s own `emit()`, this never
+                # tries a `travel_path` bridge first: a bridge would route
+                # along an inset ring using the CURRENT part's thread, but
+                # the gap here is between two pieces of the same shade, so
+                # there is nothing wrong-colored about a plain jump — and no
+                # ring to bridge along in the first place (the two parts
+                # aren't nested, `_band_clip` split them because they are not
+                # even touching).
                 d = math.dist(this_layer[-1].points[-1], runs[0].points[0])
                 runs[0].jump = True
                 runs[0].trim = d > machine.TRIM_AT_MM
@@ -623,6 +639,19 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg
             # was left at StitchRun's jump=False default, so machine export
             # drew a bare straight stitch across the gap between bands
             # instead of a jump/trim. Mark it explicitly, same as above.
+            # Same gap, one level up: the first run of a new shade band
+            # starts with `jump=False` by the same `stitch_shape`-in-
+            # isolation default, but the point it starts from is wherever
+            # the PREVIOUS band's stitching ended — a different shade, sewn
+            # over a different (overlapping) clip of the polygon, so the two
+            # points are almost never coincident. Bridging along an inset
+            # ring here would be actively wrong, not just unavailable: it
+            # would carry the previous band's shade across the seam into
+            # this band's territory, visibly smearing the wrong color at
+            # every band boundary. A plain jump (mirroring `emit()`'s
+            # fallback, without attempting its bridge) is the correct
+            # behavior for a boundary that is a shade change, not a same-
+            # color topology gap.
             d = math.dist(all_runs[-1].points[-1], this_layer[0].points[0])
             this_layer[0].jump = True
             this_layer[0].trim = d > machine.TRIM_AT_MM

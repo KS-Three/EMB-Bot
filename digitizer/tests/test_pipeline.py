@@ -114,6 +114,41 @@ def test_minimum_detail_is_physical_so_size_changes_what_survives():
     assert any(r.thread_number == "4531" for r in big.regions)
 
 
+def test_simplify_tol_mm_stays_fine_across_the_real_target_width_range():
+    """config.py's `simplify_tol_mm` docstring has the full measurement
+    writeup (2026-08-07): a fixed 0.2 mm tolerance is already scale-invariant
+    in the metric that matters (Hausdorff mm deviation — see
+    `test_run_tier.py`'s isolated sweep for that direct measurement). This is
+    the end-to-end companion, run through the REAL pipeline on a real
+    fixture rather than a synthetic contour: across this app's realistic
+    40-180 mm `target_width_mm` range, vertex count must grow smoothly with
+    size (more physical mm of a fixed-resolution source photo -> genuinely
+    more raw detail to preserve, not more simplification error) and never
+    collapse to a degenerate near-triangle at the small end. Measured on
+    `logo_whitebg.png`: 62 vertices at 40 mm, 101 at 90 mm, 125 at 150 mm —
+    sub-linear growth, the fixed source raster's own pixel budget naturally
+    caps it, no separate size-based tolerance formula needed to do that job.
+    180 mm is deliberately excluded here: at this fixture's native
+    resolution it crosses stage 1's resolution floor and triggers a Lanczos
+    upscale, a separate, pre-existing mechanism this measurement pass
+    confirmed is unrelated to `simplify_tol_mm` (see the config.py
+    docstring) — not what this test exists to pin.
+    """
+    def vtx_total(result):
+        return sum(len(r.polygon.exterior.coords) - 1 for r in result.regions
+                    if r.polygon and not r.polygon.is_empty)
+
+    small = run_stages(TESTDATA / "logo_whitebg.png", cfg(target_width_mm=40.0))
+    mid = run_stages(TESTDATA / "logo_whitebg.png", cfg(target_width_mm=90.0))
+    big = run_stages(TESTDATA / "logo_whitebg.png", cfg(target_width_mm=150.0))
+
+    v_small, v_mid, v_big = vtx_total(small), vtx_total(mid), vtx_total(big)
+    assert 45 <= v_small <= 80, v_small
+    assert 85 <= v_mid <= 120, v_mid
+    assert 105 <= v_big <= 145, v_big
+    assert v_small < v_mid < v_big, "vertex detail must grow with design size"
+
+
 def test_pipeline_reports_its_segmenter_and_scale(whitebg):
     assert whitebg.segmenter == "classical"
     assert whitebg.px_per_mm > 0
@@ -195,6 +230,16 @@ def test_full_pipeline_regularization_reduces_stroke_width_variance_on_benchmark
     runs is whether Step 5's geometry replacement happened. shape_ids are
     unaffected by that patch (assigned earlier, in `vectorize`), so the two
     runs' cluster members line up 1:1 by shape_id.
+
+    The "after" run also patches the OCR-confidence gate
+    (`textcluster._ocr_regularization_hurts_legibility`) to a permissive
+    no-op, to isolate what THIS test is about — the skeleton-buffer layer's
+    wiring — from that separate, later safety layer. On this real fixture
+    the gate legitimately blocks the ONE member the un-gated buffer would
+    otherwise replace (measured OCR confidence 77.0 -> 0.0, see
+    `textcluster.py`'s module docstring), which is that layer doing its job
+    correctly, not a regression in this one; `test_ocr_gate.py` covers that
+    real block directly, on this same fixture and member.
     """
     from unittest.mock import patch
 
@@ -202,8 +247,10 @@ def test_full_pipeline_regularization_reduces_stroke_width_variance_on_benchmark
                lambda regions, p: None):
         before_result = run_stages(TESTDATA / "photo" / "enthusiast_logo.png",
                                     cfg(target_width_mm=90.0))
-    after_result = run_stages(TESTDATA / "photo" / "enthusiast_logo.png",
-                               cfg(target_width_mm=90.0))
+    with patch("digitizer_core.textcluster._ocr_regularization_hurts_legibility",
+               return_value=False):
+        after_result = run_stages(TESTDATA / "photo" / "enthusiast_logo.png",
+                                   cfg(target_width_mm=90.0))
 
     before = _biggest_cluster_strokes(before_result)
     after = _biggest_cluster_strokes(after_result)
@@ -226,3 +273,52 @@ def test_full_pipeline_regularization_reduces_stroke_width_variance_on_benchmark
         f"fixture: before={before_vals} (var={before_var:.6g}), "
         f"after={after_vals} (var={after_var:.6g})"
     )
+
+
+# --- OCR-suggested text wiring -----------------------------------------------
+
+
+def test_full_pipeline_stamps_ocr_fields_on_the_benchmark_subline():
+    """`ocr_suggest_text` is wired into `run_stages` right after
+    `regularize_text_clusters` (`pipeline.py`). This is that wiring step's
+    acceptance bar: on the real benchmark fixture, every member of the
+    biggest tagged cluster ("ENTERPRISES INC.") must come back from the
+    FULL pipeline with both OCR fields present (not just the module in
+    isolation) -- `ocr_char` is `None` or a single character, `ocr_confidence`
+    is `None` or a float in Tesseract's own 0..100 range. This is a wiring
+    check (the fields exist and are well-formed), not a legibility
+    assertion -- individual real-world OCR reads are allowed to be wrong or
+    low-confidence; the client-side gate (`digitizer.js`) is what decides
+    whether to trust any of it.
+    """
+    result = run_stages(TESTDATA / "photo" / "enthusiast_logo.png",
+                         cfg(target_width_mm=90.0))
+
+    tagged = [r for r in result.regions if r.meta.get("text_cluster_id")]
+    cluster_ids = {r.meta["text_cluster_id"] for r in tagged}
+    biggest_id = max(cluster_ids, key=lambda cid: sum(
+        1 for r in tagged if r.meta["text_cluster_id"] == cid))
+    members = [r for r in tagged if r.meta["text_cluster_id"] == biggest_id]
+    assert len(members) >= 10
+
+    saw_a_real_character = False
+    for r in members:
+        assert "ocr_char" in r.meta
+        assert "ocr_confidence" in r.meta
+        char, confidence = r.meta["ocr_char"], r.meta["ocr_confidence"]
+        assert char is None or (isinstance(char, str) and len(char) == 1)
+        assert confidence is None or (isinstance(confidence, float) and 0.0 <= confidence <= 100.0)
+        if char is not None:
+            saw_a_real_character = True
+    assert saw_a_real_character, (
+        "the real benchmark fixture's subline is clean/legible enough that "
+        "at least one member must produce a real OCR character read"
+    )
+
+    # An ordinary, never-tagged shape gets no OCR fields at all (absent
+    # means "no suggestion" -- same convention `text_candidate` follows).
+    untagged = [r for r in result.regions if not r.meta.get("text_cluster_id")]
+    assert untagged, "the fixture must also produce ordinary, untagged shapes"
+    for r in untagged:
+        assert "ocr_char" not in r.meta
+        assert "ocr_confidence" not in r.meta

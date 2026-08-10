@@ -9,9 +9,13 @@ which uses the published Tajima bit-weight table (y in the low nibble). EMB-Bot'
 own `src/dst.js` uses the transposed table, so for **DST specifically** the two
 implementations disagree and produce geometry a quarter turn apart. The
 disagreement is unresolved by design — it needs a sew-out on the shop's Tajima
-to settle — and until it is, the browser's DST is the one with sewn evidence
-behind it and stays Studio's default. Every response says which convention
-wrote the file so nobody has to guess.
+to settle. Until it is, the browser's DST stays the default for lettering/
+manual designs, the one combination with actual sewn evidence behind it.
+Studio also now sends purely-digitized designs (auto-digitize output) through
+THIS service's pyembroidery-convention path instead — the browser encoder
+never had sew evidence for that combination to begin with, so there is no
+existing trust to protect by keeping it there. Every response says which
+convention wrote the file so nobody has to guess.
 
 PES and JEF, the two formats this service exists to unlock, have no competing
 implementation and therefore no conflict.
@@ -30,7 +34,7 @@ FORMATS: dict[str, dict] = {
         "label": "Tajima DST",
         "mime": "application/octet-stream",
         "convention": TAJIMA_STANDARD,
-        "note": "Studio's own encoder is the default for DST; see the axis note.",
+        "note": "Studio's own encoder is the default for DST on lettering/manual designs; purely-digitized designs use this service instead — see the module docstring.",
     },
     "pes": {
         "label": "Brother PES",

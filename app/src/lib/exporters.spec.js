@@ -71,6 +71,59 @@ test("unknown format throws", async () => {
   const { exportDesign } = await import("./exporters.js");
   expect(() => exportDesign(design, "zzz")).toThrow();
 });
+
+test("exportDesignPreferService uses the service for dst/exp/pes when it succeeds", async () => {
+  const { exportDesignPreferService } = await import("./exporters.js");
+  const serviceOut = { bytes: new Blob(["x"]), filename: "svc.dst", mime: "application/octet-stream" };
+  const exportViaServiceFn = async (d, fmt, label) => {
+    expect(d).toBe(design);
+    expect(fmt).toBe("dst");
+    expect(label).toBe("My Design");
+    return serviceOut;
+  };
+  const out = await exportDesignPreferService(design, "dst", { label: "My Design", preferService: true, exportViaServiceFn });
+  expect(out.bytes).toBe(serviceOut.bytes);
+  expect(out.via).toBe("service");
+});
+
+test("exportDesignPreferService falls back to the browser encoder when the service throws", async () => {
+  const { exportDesignPreferService } = await import("./exporters.js");
+  const exportViaServiceFn = async () => { throw new Error("fetch failed"); };
+  const out = await exportDesignPreferService(design, "dst", { preferService: true, exportViaServiceFn });
+  expect(out.filename.endsWith(".dst")).toBe(true);
+  expect(out.bytes.length).toBeGreaterThan(100); // the real browser-encoded bytes, same as exportDesign()'s own test
+  expect(out.via).toBe("browser");
+});
+
+test("exportDesignPreferService never calls the service for svg", async () => {
+  const { exportDesignPreferService } = await import("./exporters.js");
+  let called = false;
+  const exportViaServiceFn = async () => { called = true; throw new Error("should not be called"); };
+  const out = await exportDesignPreferService(design, "svg", { exportViaServiceFn });
+  expect(called).toBe(false);
+  expect(String(out.bytes)).toContain("<svg");
+  expect(out.via).toBe("browser");
+});
+
+test("exportDesignPreferService never calls the service when preferService is false, even for dst/exp/pes", async () => {
+  const { exportDesignPreferService } = await import("./exporters.js");
+  let called = false;
+  const exportViaServiceFn = async () => { called = true; throw new Error("should not be called"); };
+  const out = await exportDesignPreferService(design, "dst", { exportViaServiceFn }); // preferService omitted -> false
+  expect(called).toBe(false);
+  expect(out.via).toBe("browser");
+  expect(out.filename.endsWith(".dst")).toBe(true);
+});
+
+test("exportDesignPreferService tags via:\"service\" only when the service call actually succeeds", async () => {
+  const { exportDesignPreferService } = await import("./exporters.js");
+  const serviceOut = { bytes: new Blob(["x"]), filename: "svc.dst", mime: "application/octet-stream" };
+  const exportViaServiceFn = async () => serviceOut;
+  const out = await exportDesignPreferService(design, "dst", { preferService: true, exportViaServiceFn });
+  expect(out.via).toBe("service");
+  expect(out.bytes).toBe(serviceOut.bytes);
+});
+
 test("exportWorksheetPDF wires window.jspdf and forwards garment box (mm) to EMB.buildWorksheetPDF", async () => {
   const { exportWorksheetPDF } = await import("./exporters.js");
   const { EMB } = await import("./emb.js");

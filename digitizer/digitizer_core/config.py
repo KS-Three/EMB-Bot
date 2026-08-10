@@ -115,6 +115,63 @@ class PipelineConfig:
     small_shape_rescue: bool = True
 
     # Stage 4
+    # Polygon simplification tolerance. Both call sites (`stage4_vectorize.
+    # vectorize`'s `eps_px = simplify_tol_mm * px_per_mm`, then divided back
+    # by `px_per_mm` on the way to mm-space output; `pipeline.py`'s
+    # background-outline simplify, which runs on already-mm coordinates
+    # directly) apply it so the REALIZED deviation is a genuine, constant
+    # `simplify_tol_mm` millimetres regardless of `target_width_mm` — by
+    # construction, not by accident, because `px_per_mm` is exactly what
+    # converts one to the other and cancels out of the round trip.
+    #
+    # Ember Design's competitor tool scales an equivalent tolerance linearly
+    # with design size, clamped [0.32, 2.5] (`docs/emberdesign-competitive-
+    # research-2026-08-07.md`), which reads at first glance like something
+    # EMB-Bot should copy. Checked directly, not assumed, 2026-08-07: their
+    # `/api/vectorize` traces a raw uploaded image with NO physical-size
+    # input at that layer at all (sizing happens later, in their editor) —
+    # their "size" is the traced raster SHAPE's pixel dimensions, a proxy
+    # for "how much raw contour noise is probably in this image," not a
+    # physical output measurement. EMB-Bot already has an explicit mm scale
+    # at this point (`px_per_mm`, derived from `target_width_mm` in stage 1)
+    # and applies this tolerance AFTER that conversion specifically so it
+    # measures real millimetres independent of source resolution — a more
+    # direct solve to the problem their size-proportional heuristic
+    # approximates without one. Copying their formula/clamp would be
+    # applying pixel-domain calibration to a constant that is already
+    # mm-domain, not a calibration match, and their own floor (0.32 mm) is
+    # already coarser than today's whole 0.2 mm default.
+    #
+    # Measured this directly on real fixtures rather than reasoning it
+    # through: held one synthetic wavy contour fixed and swept `px_per_mm`
+    # 3.0-40.0 (the range this app's real 40-180 mm `target_width_mm` bound
+    # produces across the fixture corpus — measured 4.0-34.1 px/mm running
+    # `run_stages` on every flat- and photo-lane testdata fixture at 40, 60,
+    # 80, 90, 120, 150, 180 mm). The Hausdorff deviation between the
+    # simplified and unsimplified contour stayed 0.185-0.200 mm across the
+    # ENTIRE swept range — i.e. already scale-invariant in the metric that
+    # matters — while vertex count varied 26-226 exactly as it should (a
+    # design built from the same source pixels genuinely has less raw detail
+    # to preserve at a smaller physical size, not more error at a bigger
+    # one). Full pipeline runs on the flat-lane fixtures (`logo_whitebg.png`,
+    # `logo_alpha.png`, `ribbon_curve.png`, immune to the photo lane's own
+    # segmenter-resolution confounds) showed the same thing end to end:
+    # smooth, sub-linear vertex growth with `target_width_mm`, no blocky
+    # under-detail at 40 mm and no runaway vertex blowup at 150 mm. The one
+    # fixture that DID show a dramatic vertex swing at small sizes
+    # (`photo/summit_badge.png`, 1654 vertices at 40 mm collapsing to 627 at
+    # 80 mm) traced entirely to a DIFFERENT mechanism — the sub-detail
+    # rescue path's own fixed 0.5 px floor a few lines below this one in
+    # `stage4_vectorize.py`, not this constant — confirmed by a per-region
+    # breakdown: 1263 of 1654 vertices at 40 mm came from `rescued_
+    # small_shape=True` regions, which bypass this tolerance entirely.
+    # See `tests/test_run_tier.py::
+    # test_simplify_tol_mm_realized_deviation_is_px_per_mm_invariant` and
+    # `tests/test_pipeline.py::
+    # test_simplify_tol_mm_stays_fine_across_the_real_target_width_range`
+    # for the pinned regressions, and MASTER_SCOPE.md's Ember research entry
+    # for the full writeup. Conclusion: no change justified by evidence —
+    # left at 0.2 deliberately, not by default.
     simplify_tol_mm: float = 0.2
 
     # Stage 5 — sew order, underlap, pull compensation
@@ -200,7 +257,15 @@ class PipelineConfig:
     #             same never-drop-artwork contract contour has. Multi-color
     #             dark→light layering is `streamline_mode` below, built as
     #             the seam documented in stage6_streamline's module
-    #             docstring.
+    #             docstring. Also available per-shape, on ANY design
+    #             (including a design that never sets this field —
+    #             `fill_technique` can stay "tatami" for the rest of the
+    #             shapes), as the review screen's `tier: "streamline"`
+    #             override (contract v1.6, mirrors `tier: "sketch"`'s
+    #             per-shape form immediately below — see the
+    #             shape_overrides block). This is how a manually-classified
+    #             ("flat") design reaches streamline fill without opting
+    #             the whole design into the photo-plan preset.
     # "sketch" – the sketch tier (photo plan, technique row 12,
     #             stage6_sketch): the row-12 PRESET over rows 10+11, not a
     #             new engine — sparse mono streamline line work (row 10's
@@ -286,6 +351,60 @@ class PipelineConfig:
     #     outside pre-fix) and is the regression pin; the cited 0.45 mm neck
     #     could not be reconstructed from its description — four neck
     #     geometries tried, none escapes even pre-fix.
+    #
+    # "crosshatch" – two overlapping tatami passes on the same shape, one at
+    #             the shape's own fill angle and one at angle+90
+    #             (stage6_fill._crosshatch_fill_paths), each pass
+    #             individually spaced `machine.CROSSHATCH_ROW_SCALE_FACTOR`
+    #             times wider than a normal single-pass row so the two passes
+    #             TOGETHER land at a combined density near a single-pass
+    #             fill's, not roughly double it. Reuses the exact mechanism
+    #             `_underlay_paths`'s "double_lattice" style already relies
+    #             on for its own +-45deg underlay passes — travel between the
+    #             two passes is stitch_shape's ordinary emit() bridging,
+    #             nothing new. Falls back to plain tatami on any shape it
+    #             produces nothing for, the same never-drop-artwork contract
+    #             contour has. Also available per-shape, on ANY design
+    #             (`fill_technique` can stay "tatami" for the rest of the
+    #             shapes), as the review screen's `tier: "crosshatch"`
+    #             override — mirrors `tier: "streamline"`'s per-shape form
+    #             above (see the shape_overrides block). Unlike every tonal
+    #             tier above, crosshatch needs no source pixels: it is a
+    #             purely geometric variant of the plain tatami fill, so its
+    #             per-shape override works on any design, photo-classified or
+    #             not, with no raster-plumbing opt-in cost. Lower-stakes than
+    #             "contour" too: it ships OPT-IN per-shape or per-design
+    #             only, never a default, so turning it on cannot move any
+    #             existing golden.
+    # "wave" – tatami rows with a subtle perpendicular sine wobble on every
+    #             INTERIOR row point (stage6_fill._wave_row_points):
+    #             y + machine.WAVE_AMPLITUDE_MM * sin(2*pi*x /
+    #             machine.WAVE_LENGTH_MM + phase), phase alternating by row
+    #             parity (0 / pi) so neighbouring rows' waves move opposite
+    #             ways instead of stacking into a corrugated-cardboard look.
+    #             Both row ends still land exactly on the boundary — the
+    #             same edge-crispness contract `_row_points` itself
+    #             documents — and the interior grid's own stagger
+    #             (`_stagger_phase`) is untouched, so the wave rides on top
+    #             of it rather than replacing it. Same opt-in / per-shape /
+    #             no-source-pixels / never-drop-artwork contract as
+    #             "crosshatch" immediately above, including the
+    #             `tier: "wave"` per-shape override.
+    # "chevron" – a simplified, TEXTURAL herringbone impression, not a full
+    #             multi-angle banded herringbone (that needs new column/
+    #             travel logic, deliberately out of scope for this family):
+    #             interior row points alternate
+    #             +-machine.CHEVRON_AMPLITUDE_MM every stitch
+    #             (stage6_fill._chevron_row_points), on the same staggered
+    #             grid tatami already builds. Same contract as "wave" above,
+    #             including the `tier: "chevron"` override.
+    # "brick" – swaps `_row_points`' van-der-Corput anti-moire stagger for a
+    #             strict 2-phase "running bond": even rows' interior grid
+    #             starts at phase 0, odd rows at phase `stitch_mm / 2`
+    #             (stage6_fill._brick_row_points). No new machine.py
+    #             constant — the phase IS `stitch_mm / 2`, already a known
+    #             quantity. Same contract as "wave"/"chevron" above,
+    #             including the `tier: "brick"` override.
     fill_technique: str = "tatami"
     # streamline's own sub-mode — irrelevant (and unread) unless
     # fill_technique == "streamline".
@@ -447,7 +566,20 @@ class PipelineConfig:
     #                           one shape — requesting it is also an
     #                           explicit source-pixel opt-in, and it does
     #                           NOT imply the design-wide detail block the
-    #                           fill_technique="sketch" preset appends).
+    #                           fill_technique="sketch" preset appends)
+    #                           | "streamline" (contract v1.6, photo plan row
+    #                           10's evenly-spaced thread-paint tier for this
+    #                           one shape — same explicit source-pixel opt-in
+    #                           as "sketch"; this is what lets a manually-
+    #                           classified/flat-lane shape reach streamline
+    #                           fill without the whole design setting
+    #                           fill_technique="streamline"; direction field
+    #                           is always this design's own prepped raster
+    #                           read through directionfield.py, never a
+    #                           shape-geometry-derived field, so a genuinely
+    #                           textureless shape falls back to parallel
+    #                           lines at fill_angle_deg/the house angle
+    #                           rather than following anything invented).
     #                           Forces the stitch tier. Geometry the forced
     #                           tier cannot sew falls through the same rescue
     #                           ladder the auto path uses, so artwork never

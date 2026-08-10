@@ -3,6 +3,7 @@ import numpy as np
 import pytest
 from shapely.geometry import Point, Polygon
 
+from digitizer_core import run_stages
 from digitizer_core.config import PipelineConfig
 from digitizer_core.stage1_prep import prep
 from digitizer_core.stage2_quantize import quantize
@@ -130,6 +131,60 @@ def test_subsewable_details_are_absorbed_or_dropped_but_always_reported(whitebg)
     assert DROPPED_SMALL_SHAPES in codes(whitebg)
     teal = [r for r in whitebg.regions if r.thread_number == "4531"]
     assert teal == [], "the sub-sewable teal patch should not survive as a region"
+
+
+def test_small_enclosed_hole_is_not_absorbed_into_its_enclosing_letter():
+    """Regression, 2026-08-06: `resolve_small_regions` used to treat ANY
+    small region as ordinary segmentation noise and absorb it into whichever
+    neighbor shared the most boundary — including a small but completely
+    real enclosed hole (`Prep.enclosed_mask`), whose only possible neighbor
+    IS the shape that encloses it. On the real benchmark fixture this
+    silently filled in the "A" in ENTHUSIAST's triangular counter before
+    stage 4 (`vectorize`/`tag_enclosed_background`) ever got a chance to see
+    it as a real, separately-tagged Region — `tag_enclosed_background`'s
+    overlap machinery was fully wired and working for every OTHER enclosed
+    feature in this corpus (the donut-ring fixture above), but had nothing
+    left to find for this one.
+
+    Confirmed by direct measurement before this fix: `Prep.enclosed_mask`
+    correctly finds a 2.08 mm² component at the "A"'s location (comfortably
+    real, not noise — well above `cfg.min_detail_mm`'s sewable floor), yet
+    the final "A" Region carried ZERO interior rings.
+    """
+    result = run_stages(TESTDATA / "photo" / "enthusiast_logo.png", cfg(target_width_mm=90.0))
+
+    # The "A" in ENTHUSIAST is the only wordmark letter with a real enclosed
+    # counter. Found by its own polygon carrying an interior ring, not by
+    # shape_id: restoring the hole legitimately changes the polygon's
+    # content hash, so a hardcoded id would be re-deriving this fix's own
+    # effect instead of testing for it. `rescued_small_shape`/
+    # `enclosed_background` regions are excluded so this can't accidentally
+    # match a subline glyph (several already carry their own direct holes,
+    # unaffected by this bug — see `test_textcluster.py`) or the hole
+    # Region itself.
+    holed = [r for r in result.regions
+             if not r.meta.get("rescued_small_shape")
+             and not r.meta.get("enclosed_background")
+             and r.polygon.interiors]
+    assert len(holed) == 1, (
+        f"expected exactly one non-subline letter with a real interior ring "
+        f"(the 'A'); got {len(holed)}"
+    )
+    a_region = holed[0]
+    assert a_region.area_mm2 == pytest.approx(a_region.polygon.area)
+
+    # And the hole pixels must have survived as their own tagged, unstitched
+    # Region — not merely absent from the count above — per
+    # `tag_enclosed_background`'s contract (same assertion shape as
+    # `test_ring_hole_is_reported_as_enclosed_background`).
+    a_shell = Polygon(a_region.polygon.exterior).buffer(0.5)
+    enclosed_in_a = [r for r in result.regions
+                     if r.meta.get("enclosed_background")
+                     and a_shell.contains(r.polygon.centroid)]
+    assert len(enclosed_in_a) == 1
+    hole_region = enclosed_in_a[0]
+    assert hole_region.meta["stitched"] is False
+    assert hole_region.area_mm2 > 1.0, "the real counter, not a noise scrap"
 
 
 def test_antialias_cleanup_is_not_reported_as_lost_artwork(whitebg):
