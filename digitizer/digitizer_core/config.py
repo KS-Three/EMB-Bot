@@ -97,6 +97,61 @@ class PipelineConfig:
     # takes ~1-2s. A slow/blocked download degrades to the no-op fallback
     # exactly like any other subprocess failure, never hangs the job.
     photo_prep_background_removal_timeout_s: float = 60.0
+    # Stage 2 (photo path) — SAM2 region former (digitizer/sam2_isolated/,
+    # see its README.md). A SEPARATE opt-in flag, gated on the PHOTO classes
+    # only: this flag must be True AND stage 0 must classify the design
+    # photo_subject/photo_scene (forced_class counts). "gradient" designs
+    # route through stage2_photo_segment for an unrelated reason (avoiding
+    # k-means dithering on a smooth ramp) and deliberately do NOT get SAM2 —
+    # a gradient has no "distinct objects" for an instance segmenter to find,
+    # and SLIC+RAG is already tuned against two real gradient fixtures. "flat"
+    # never reaches this code path at all. Default False; with it off the
+    # pipeline is exactly what it was before this lane existed. When on and
+    # the isolated venv is missing/broken/times out, the documented fallback
+    # applies (PHOTO_SAM2_SEGMENTATION_UNAVAILABLE): the classical SLIC+RAG
+    # region former runs instead and the job still completes.
+    photo_segment_sam2: bool = False
+    # Which SAM 2.1 checkpoint tier the worker loads — a key of
+    # sam2_worker.CHECKPOINTS ("tiny" | "small" | "base_plus" | "large").
+    # "tiny" is the default and the only tier this lane was built around:
+    # inference here is CPU-only, so the larger tiers get slow enough to be
+    # self-defeating against the timeout below, and embroidery-scale regions
+    # (floored at min_detail_mm) do not need fine-grained natural-scene
+    # accuracy. An unknown name is rejected by the worker (exit 2) and
+    # degrades to the classical fallback like any other worker failure.
+    photo_segment_sam2_checkpoint: str = "tiny"
+    # SAM2's own automatic-mask-generator prompt-grid density. SAM2's library
+    # default is 32 (1024 prompts); 16 (256 prompts) quarters the mask-decoder
+    # work, which is the dominant CPU cost here. PRINCIPLED STARTING POINT,
+    # NOT A MEASURED ONE: the reasoning is that a prompt grid finer than the
+    # min-detail floor only produces masks that resolve_small_regions will
+    # absorb anyway. Needs a real-image sweep (Task 6) before anyone treats
+    # it as tuned — see docs/pro-digitizing-playbook.md's own "measured, not
+    # guessed" framing.
+    photo_segment_sam2_points_per_side: int = 16
+    # Longest side, in px, of the raster handed to the worker. SAM2's image
+    # encoder resizes its input to 1024x1024 internally, so sending more than
+    # this costs I/O and post-processing without giving the encoder more to
+    # work with; the returned label map is nearest-neighbour upsampled back
+    # to full resolution, which preserves region identity exactly and costs
+    # at most a pixel of boundary precision — well inside the tolerance
+    # stage 4 already applies via simplify_tol_mm. 0 or negative disables the
+    # downscale entirely. ALSO A STARTING POINT: the boundary-precision half
+    # of that claim is reasoned, not measured.
+    photo_segment_sam2_max_side_px: int = 1024
+    # Subprocess timeout, seconds. This is the ONLY bound this architecture
+    # has on a hung SAM2 call: digitizer_service/jobs.py's JobRegistry is a
+    # single-worker ThreadPoolExecutor with no per-job timeout and no
+    # cancellation of a running job, so a call that never returns starves
+    # every queued job behind it. Read this number as a starvation bound, not
+    # a performance target. 180s (3x rembg's 60s) because SAM2 on CPU is a
+    # heavier call than a background-removal net: one Hiera-tiny image-encoder
+    # pass at 1024x1024 plus points_per_side^2 prompts through the mask
+    # decoder in batches of 64, plus NMS — and the FIRST call also pays a
+    # one-time ~150 MB checkpoint download and torch import. UNMEASURED on
+    # this hardware; Task 6 times a real run and this number should come down
+    # to roughly 2x the observed warm-cache p95 once it has.
+    photo_segment_sam2_timeout_s: float = 180.0
 
     # Stage 3
     min_detail_mm: float = 1.5         # blueprint hard constraint

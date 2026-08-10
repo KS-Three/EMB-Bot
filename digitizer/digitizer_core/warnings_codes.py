@@ -67,6 +67,20 @@ PHOTO_SEGMENT_REGION_COUNT = "PHOTO_SEGMENT_REGION_COUNT"
 # own nearest-thread floor. extra: {"colors": int, "regions": int, "max_excess_de00": float}
 PHOTO_PALETTE_SELECTED = "PHOTO_PALETTE_SELECTED"
 
+# Stage 2 (photo path) — SAM2 region former. Rides its own opt-in flag
+# (cfg.photo_segment_sam2) PLUS a photo_subject/photo_scene classification;
+# "gradient" deliberately does not qualify (see config.py's comment).
+# Info, not a problem: the isolated-venv SAM2 subprocess ran and its instance
+# masks became this design's regions instead of SLIC+RAG's superpixel merge.
+# extra: {"raw_masks": int, "regions": int, "checkpoint": str}
+PHOTO_SAM2_SEGMENTED = "PHOTO_SAM2_SEGMENTED"
+# SAM2 segmentation was gated ON but cannot run here (isolated SAM2 venv not
+# built, worker script missing, checkpoint download failed, subprocess crashed
+# or timed out, output unusable, ...) — the documented fallback: the classical
+# SLIC+RAG region former runs instead and the job still completes.
+# extra: {"reason": str}
+PHOTO_SAM2_SEGMENTATION_UNAVAILABLE = "PHOTO_SAM2_SEGMENTATION_UNAVAILABLE"
+
 # Stage 3
 DROPPED_SMALL_SHAPES = "DROPPED_SMALL_SHAPES"      # extra: {"count": int}
 ABSORBED_SMALL_SHAPES = "ABSORBED_SMALL_SHAPES"    # extra: {"count": int}
