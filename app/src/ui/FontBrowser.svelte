@@ -21,6 +21,7 @@
   import { renderRealistic } from "../lib/preview.js";
   import { loadManifest, ensureFont } from "../lib/fontLoader.js";
   import { filterFonts, sizeBand } from "../lib/fontFilter.js";
+  import Icon from "./Icon.svelte";
 
   export let selected = null;
   export let currentText = "";
@@ -152,7 +153,7 @@
   >
     <div class="fb-head">
       <h2>Choose a font</h2>
-      <button type="button" class="fb-close" on:click={() => d("close")} aria-label="Close">✕</button>
+      <button type="button" class="fb-close" on:click={() => d("close")} aria-label="Close"><Icon name="close" size={16} /></button>
     </div>
 
     {#if selectedName}

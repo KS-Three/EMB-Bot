@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher } from "svelte";
   import { PALETTE_INDEX, STUDIO_PALETTE, getCachedPalette, loadPalette, nearestInList, filterThreads, loadPreferredPaletteId, savePreferredPaletteId } from "../lib/threads.js";
+  import Icon from "./Icon.svelte";
 
   // Named-thread color picker (Slice 8 Task 4), used everywhere a thread
   // color is chosen (TextStep's element color, ImagePanel's per-swatch
@@ -124,7 +125,9 @@
   >
     <span class="tp-swatch" style="background: rgb({rgb[0]},{rgb[1]},{rgb[2]})"></span>
     {#if !compact}<span class="tp-name">{pending ? "…" : threadLabel(nearest)}</span>{/if}
-    <span class="tp-chevron" class:open aria-hidden="true">▾</span>
+    <span class="tp-chevron" class:open aria-hidden="true">
+      <Icon name="chevron" size={compact ? 12 : 14} />
+    </span>
   </button>
 
   {#if open}

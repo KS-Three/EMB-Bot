@@ -6,6 +6,7 @@
   // openProject/newDesign/renameFromDrawer/duplicateFromDrawer/
   // deleteFromDrawer).
   import { createEventDispatcher, onMount } from "svelte";
+  import Icon from "./Icon.svelte";
   export let projects = [];
   export let currentId = null;
   // One-line status/error from App's .embproj import handling ("" hides it).
@@ -179,7 +180,7 @@
   >
     <div class="drawer-head">
       <h2>My designs</h2>
-      <button type="button" class="drawer-close" on:click={() => d("close")} aria-label="Close">✕</button>
+      <button type="button" class="drawer-close" on:click={() => d("close")} aria-label="Close"><Icon name="close" size={16} /></button>
     </div>
 
     <button type="button" class="drawer-new" on:click={() => d("new")}>+ New design</button>

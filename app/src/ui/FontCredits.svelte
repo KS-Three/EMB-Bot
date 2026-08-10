@@ -13,6 +13,7 @@
   import { createEventDispatcher, onMount } from "svelte";
   import { loadManifest } from "../lib/fontLoader.js";
   import { creditLines } from "../lib/credits.js";
+  import Icon from "./Icon.svelte";
 
   const d = createEventDispatcher();
 
@@ -78,7 +79,7 @@
   >
     <div class="fc-head">
       <h2>Font licenses &amp; credits</h2>
-      <button type="button" class="fc-close" on:click={() => d("close")} aria-label="Close">✕</button>
+      <button type="button" class="fc-close" on:click={() => d("close")} aria-label="Close"><Icon name="close" size={16} /></button>
     </div>
 
     <p class="fc-note">

@@ -45,6 +45,16 @@ function stepButtons(utils) {
   return utils.container.querySelectorAll(".stepnav-step");
 }
 
+// The passed-step badge now renders an Icon (svg, no text node) instead of a
+// literal "✓" character -- resolve a badge to either the sentinel "check"
+// (an Icon name="check" is present) or its plain 1-based-number text, so
+// tests can assert on badge identity the same way regardless of which one a
+// given step shows.
+function badgeContent(button) {
+  const badge = button.querySelector(".stepnav-badge");
+  return badge.querySelector('[data-icon="check"]') ? "check" : badge.textContent.trim();
+}
+
 describe("step tabs", () => {
   test("renders one button per STEPS entry, in order, with the expected labels", () => {
     const utils = renderNav();
@@ -95,20 +105,20 @@ describe("step tabs", () => {
 });
 
 describe("progress badges", () => {
-  test("a step behind the current one shows a checkmark (aria-hidden) instead of its number", () => {
+  test("a step behind the current one shows a checkmark icon (aria-hidden) instead of its number", () => {
     const utils = renderNav({ step: "create", project: readyProject() });
     const buttons = [...stepButtons(utils)];
     const garmentBadge = buttons[0].querySelector(".stepnav-badge");
-    expect(garmentBadge.textContent.trim()).toBe("✓");
-    expect(garmentBadge.querySelector("[aria-hidden=\"true\"]")).not.toBeNull();
+    const checkIcon = garmentBadge.querySelector('[data-icon="check"]');
+    expect(checkIcon).not.toBeNull();
+    expect(checkIcon.getAttribute("aria-hidden")).toBe("true");
     expect(garmentBadge).toHaveClass("done");
   });
 
   test("the current step and every step ahead of it show their 1-based number, not a checkmark", () => {
     const utils = renderNav({ step: "content", project: readyProject() });
     const buttons = [...stepButtons(utils)];
-    const badgeText = buttons.map((b) => b.querySelector(".stepnav-badge").textContent.trim());
-    expect(badgeText).toEqual(["✓", "2", "3", "4"]);
+    expect(buttons.map(badgeContent)).toEqual(["check", "2", "3", "4"]);
     // Only the truly-passed step (index 0, behind "content") gets the
     // "done" badge styling hook; the current step and steps ahead don't.
     expect(buttons[1].querySelector(".stepnav-badge")).not.toHaveClass("done");
@@ -119,8 +129,7 @@ describe("progress badges", () => {
   test("on the very first step, no badge is a checkmark yet", () => {
     const utils = renderNav({ step: "garment", project: defaultProject() });
     const buttons = [...stepButtons(utils)];
-    const badgeText = buttons.map((b) => b.querySelector(".stepnav-badge").textContent.trim());
-    expect(badgeText).toEqual(["1", "2", "3", "4"]);
+    expect(buttons.map(badgeContent)).toEqual(["1", "2", "3", "4"]);
   });
 });
 
