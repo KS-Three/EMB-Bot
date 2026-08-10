@@ -232,6 +232,24 @@ test("canonicalShapeEdits accepts the streamline tier alongside satin/fill/run/s
   });
 });
 
+// "crosshatch" (the two-pass angled tatami fill, digitizer_core/
+// stage6_fill.py's _crosshatch_fill_paths) joined the same closed set the
+// same way "streamline" did, alongside the tier dropdown's Cross-hatch
+// option — a per-shape opt-in reachable on any design, no fill_technique
+// change required. Same regression this file already guards against for
+// "sketch"/"streamline": a value SHAPE_TIERS doesn't recognize canonicalizes
+// to nothing and silently never reaches the wire.
+test("canonicalShapeEdits accepts the crosshatch tier alongside satin/fill/run/sketch/streamline", async () => {
+  stubStorage({});
+  const { canonicalShapeEdits } = await import("./digitizer.js");
+  const el = digitizedElement({
+    shapeOverrides: { Sch: { tier: "crosshatch" } },
+  });
+  expect(canonicalShapeEdits(el)).toEqual({
+    shape_overrides: { Sch: { tier: "crosshatch" } },
+  });
+});
+
 // ---- BACKGROUND_ENCLOSED restore (contract v1.1: shapes[].stitched, ------
 // shape_overrides[sid].stitched) --------------------------------------------
 //

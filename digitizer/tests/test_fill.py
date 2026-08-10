@@ -16,6 +16,7 @@ from shapely.ops import unary_union
 from digitizer_core import machine
 from digitizer_core.stage6_fill import (
     _columns,
+    _crosshatch_fill_paths,
     _fill_paths,
     _row_points,
     _row_spans,
@@ -254,6 +255,107 @@ def test_a_shape_too_narrow_to_fill_is_reported_not_silently_sewn():
                                 underlay_style="none", trim_at_mm=3.0)
     assert report["too_thin"] is True
     assert runs, "flagged is not the same as skipped — it still has to be sewn"
+
+
+# --- Cross-hatch fill (two angled tatami passes) ---------------------------
+
+def _dominant_row_angle_deg(paths) -> float:
+    """Length-weighted majority direction (mod 180) of every stitch segment
+    across a list of paths — the row direction a pass actually swept,
+    MEASURED from the emitted geometry rather than trusted from whatever
+    angle argument was passed in. Row spans dwarf the short row-to-row turns
+    in total length, so the bucket with the most length wins even though
+    every row also contributes one turn segment near-perpendicular to it."""
+    lengths: dict[int, float] = {}
+    for path in paths:
+        for a, b in zip(path, path[1:]):
+            dx, dy = b[0] - a[0], b[1] - a[1]
+            length = math.hypot(dx, dy)
+            if length < 1e-9:
+                continue
+            bucket = round(math.degrees(math.atan2(dy, dx)) % 180.0)
+            lengths[bucket] = lengths.get(bucket, 0.0) + length
+    return float(max(lengths, key=lengths.get))
+
+
+def test_crosshatch_fill_paths_are_two_angularly_distinct_passes():
+    """The core claim: cross-hatch is two REAL passes at 90 degrees apart,
+    not the same rows emitted twice. A plain rectangle sews as exactly one
+    column per pass, so the two elements of the returned list are pass 1 and
+    pass 2 outright — no need to guess where one ends and the other begins."""
+    paths = _crosshatch_fill_paths(RECT, 0.0, machine.FILL_ROW_MM, 4.0, 4)
+    assert len(paths) == 2, "a plain rectangle sews one column per pass"
+    angle0 = _dominant_row_angle_deg([paths[0]])
+    angle1 = _dominant_row_angle_deg([paths[1]])
+    assert angle0 == pytest.approx(0.0, abs=1.0), \
+        f"pass 1 should sew rows along the 0deg fill angle, measured {angle0}"
+    assert angle1 == pytest.approx(90.0, abs=1.0), \
+        f"pass 2 should sew rows along angle+90, measured {angle1}"
+
+
+def test_crosshatch_row_spacing_uses_the_widened_spacing_per_pass():
+    """Each pass must individually run at row_mm * CROSSHATCH_ROW_SCALE_
+    FACTOR, not the raw row_mm a plain single-pass tatami fill would use —
+    measured the same way test_row_count_and_spacing_match_the_requested_
+    density measures plain tatami's spacing, on each pass separately."""
+    row_mm = 0.4
+    expected = round(row_mm * machine.CROSSHATCH_ROW_SCALE_FACTOR, 3)
+    assert expected != row_mm, "sanity: the scale factor must actually widen the spacing"
+
+    paths = _crosshatch_fill_paths(RECT, 0.0, row_mm, 4.0, 4)
+    assert len(paths) == 2
+
+    # Pass 1's rows are horizontal (angle 0), so their spacing shows up as
+    # gaps between distinct y values across the whole path.
+    pass1_ys = sorted({round(p[1], 3) for p in paths[0]})
+    pass1_gaps = {round(b - a, 3) for a, b in zip(pass1_ys, pass1_ys[1:])}
+    assert pass1_gaps == {expected}, \
+        f"pass 1 spacing should be {expected}, measured gaps {pass1_gaps}"
+
+    # Pass 2's rows are vertical (angle 90), so their spacing shows up as
+    # gaps between distinct x values instead.
+    pass2_xs = sorted({round(p[0], 3) for p in paths[1]})
+    pass2_gaps = {round(b - a, 3) for a, b in zip(pass2_xs, pass2_xs[1:])}
+    assert pass2_gaps == {expected}, \
+        f"pass 2 spacing should be {expected} too, measured gaps {pass2_gaps}"
+
+
+def test_crosshatch_chains_pass_two_off_pass_ones_last_point():
+    """`start_near` for the second pass is pass 1's own last point — the same
+    handoff `stitch_shape` uses between its underlay and fill — so pass 2's
+    column-entry ordering follows on from wherever pass 1 left the needle,
+    not from a fresh top-left-corner start."""
+    start = (5.0, 5.0)
+    paths = _crosshatch_fill_paths(RECT, 0.0, machine.FILL_ROW_MM, 4.0, 4, start)
+    assert len(paths) == 2
+    entry = paths[0][-1]
+    # A single-column shape only has one path to enter, from whichever of its
+    # two ends is nearer `entry` — the observable proof that pass 2 was
+    # planned FROM pass 1's exit rather than from `start` or from a bare
+    # top-left default.
+    assert math.dist(paths[1][0], entry) <= math.dist(paths[1][-1], entry)
+
+
+def test_crosshatch_degrades_sensibly_on_a_too_thin_shape():
+    """Same too_thin sliver `test_a_shape_too_narrow_to_fill_is_reported_not_
+    silently_sewn` uses, run through `stitch_shape` at the crosshatch
+    technique: the wider per-pass spacing must not crash or silently drop
+    the shape — it still has to sew, and still has to say it's thin."""
+    sliver = Polygon([(0, 0), (60, 0), (60, machine.MIN_FILL_WIDTH_MM * 0.6),
+                      (0, machine.MIN_FILL_WIDTH_MM * 0.6)])
+    runs, report = stitch_shape(sliver, "S1", angle_deg=0.0, row_mm=0.4, stitch_mm=4.0,
+                                underlay_style="none", trim_at_mm=3.0,
+                                technique="crosshatch")
+    assert report["too_thin"] is True
+    assert runs, "flagged is not the same as skipped — it still has to be sewn"
+
+    # And on a shape thin enough that the WIDENED per-pass spacing genuinely
+    # finds no row in one direction — pass 1 comes back empty while pass 2
+    # (rows running the shape's long way) still sews — the direct function
+    # must not raise, and must still fall back to whatever pass 2 finds.
+    thinner = Polygon([(0, 0), (60, 0), (60, 0.3), (0, 0.3)])
+    paths = _crosshatch_fill_paths(thinner, 0.0, 0.4, 4.0, 4)
+    assert paths, "pass 2 alone should still sew something on this fixture"
 
 
 def test_scanlines_start_inside_the_shape_not_on_its_edge():
