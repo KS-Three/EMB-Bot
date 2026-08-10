@@ -77,6 +77,53 @@ MIN_FILL_WIDTH_MM = 1.2
 # turns out to need adjusting later.
 CROSSHATCH_ROW_SCALE_FACTOR = 2.0
 
+# --- Wave fill (sinusoidal row wobble) --------------------------------------
+# Every interior row point (never the two row-end penetrations, which stay
+# exactly on the boundary — the same edge-crispness contract `_row_points`'s
+# own docstring states) rides a sine wave perpendicular to the row:
+# y + WAVE_AMPLITUDE_MM * sin(2*pi*x/WAVE_LENGTH_MM + phase), phase
+# alternating 0/pi by row parity so neighbouring rows move opposite ways at
+# any given x instead of stacking into a corrugated-cardboard look. Both
+# constants are starting, REASONED values — not sew-out-validated, same
+# caveat every tuning constant in this file carries — and lower-stakes than
+# the pending-sew-out density constants above for the identical reason
+# CROSSHATCH_ROW_SCALE_FACTOR's own comment gives: this ships opt-in only
+# (per-shape or per-design), so nobody's existing output moves if either
+# number turns out to need adjusting later.
+
+# Wobble height. Small enough to read as texture, not to distort the fill's
+# own silhouette — a ninth of FILL_ROW_MM's own row spacing multiplied out
+# to a legible scale, and comfortably under half a stitch length, so no row
+# turn is thrown far enough off-axis to blur the edge it lands on.
+WAVE_AMPLITUDE_MM = 0.35
+
+# Wobble period along the row. Roughly FILL_STITCH_MM's default 3.0 mm times
+# a small integer, so one sine cycle spans a handful of stitches: fine
+# enough to actually read as a wave at the row's own scale, coarse enough
+# not to collapse into per-stitch jitter (indistinguishable from noise) or
+# stretch so long it never completes a visible cycle across an ordinary
+# shape.
+WAVE_LENGTH_MM = 4.0
+
+# --- Chevron fill (zigzag row texture) --------------------------------------
+# A deliberately simplified, TEXTURAL herringbone impression at one fill
+# angle — not a full multi-angle banded herringbone, which would need new
+# column/travel logic (out of scope for this family of purely-geometric row
+# variants; see stage6_fill.py's module docstring for the column/travel
+# machinery every fill technique here shares untouched). Every interior row
+# point alternates +-CHEVRON_AMPLITUDE_MM, same edge-crispness contract as
+# wave above: only interior points move, both row ends stay on the boundary.
+# Same starting/reasoned, opt-in-only, lower-stakes caveat as
+# WAVE_AMPLITUDE_MM.
+
+# Zigzag height, alternating every single interior stitch — a period of two
+# stitches, ~6 mm at FILL_STITCH_MM's default 3.0 mm: fine enough to read as
+# a zigzag at the row's own stitch scale, coarse enough not to blur into
+# noise. A period of one stitch (no alternation at all) would not read as a
+# chevron; a period of many stitches would read as occasional bumps, not a
+# herringbone texture.
+CHEVRON_AMPLITUDE_MM = 0.45
+
 # --- Contour fill (rings instead of rows) -----------------------------------
 # The offset-ring tier: uniform inward offsets of the outline, sewn inner to
 # outer. Numbers are the pins from docs/fill-techniques-2026-08-01.md §1.3;

@@ -126,8 +126,16 @@ export function buildDigitizeConfig(element, project) {
 // angled tatami fill, digitizer_core/stage6_fill.py's
 // _crosshatch_fill_paths) joined the same way again, alongside the
 // dropdown's Cross-hatch option — same dual reach as streamline (design-wide
-// fill_technique or per-shape tier), but geometric, not tonal.
-const SHAPE_TIERS = new Set(["satin", "fill", "run", "sketch", "streamline", "crosshatch"]);
+// fill_technique or per-shape tier), but geometric, not tonal. "wave",
+// "chevron" and "brick" (stage6_fill._wave_row_points / _chevron_row_points
+// / _brick_row_points) joined the same way once more, alongside the
+// dropdown's Wave/Chevron/Brick options — three more geometric row-shape
+// variants, same dual reach and no-source-pixels-needed contract as
+// crosshatch, each changing only how one row's own interior points land.
+const SHAPE_TIERS = new Set([
+  "satin", "fill", "run", "sketch", "streamline", "crosshatch",
+  "wave", "chevron", "brick",
+]);
 const SHAPE_BORDERS = new Set(["off", "auto", "bean"]);
 // fabrics.py's own vocabulary, verbatim. Unlike `tier`/`border`, this set has
 // no "auto" member of its own — the absence of the key IS auto (inherit the

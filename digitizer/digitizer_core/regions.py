@@ -181,7 +181,15 @@ def match_shape_ids(
 # (purely geometric), so it carries no raster-plumbing opt-in cost and
 # falls back to plain tatami only when the shape itself is too thin, never
 # for lack of pixels. See stage7_sequence.stitch_one's crosshatch branch.
-_TIER_VALUES = {"auto", "satin", "fill", "run", "sketch", "streamline", "crosshatch"}
+# "wave"/"chevron"/"brick" force one of three more purely-geometric fill
+# variants (stage6_fill._wave_row_points / _chevron_row_points /
+# _brick_row_points) on one shape — the same per-shape reach "crosshatch"
+# has above, each swapping only how ONE row's interior points get placed
+# rather than adding a new pass, so none of them need source pixels either.
+# See stage7_sequence.stitch_one's wave/chevron/brick branches, positioned
+# the same way as its crosshatch branch.
+_TIER_VALUES = {"auto", "satin", "fill", "run", "sketch", "streamline", "crosshatch",
+                "wave", "chevron", "brick"}
 _BORDER_VALUES = {"off", "auto", "bean"}
 # fabrics.py's own vocabulary, verbatim (mirrored in digitizer_service.app's
 # copy, which 400s the wire before this ever raises).
