@@ -9,6 +9,7 @@
   import ThreadPicker from "./ThreadPicker.svelte";
   import FontSelect from "./FontSelect.svelte";
   import Hint from "./Hint.svelte";
+  import Icon from "./Icon.svelte";
   import { selectedIdsOf } from "../lib/project.js";
   export let project;
   // Whether the "add-elements" onboarding hint should render right now --
@@ -33,8 +34,9 @@
   // ---- Task 5 (Slice 5): the real element manager --------------------------
   // Replaces the Task 4 compile-compat adapter (mode tiles + a flattened
   // v1-shaped "view project") with the real thing: a compact list of every
-  // element in the project (click a row to select it, ✕ to remove it),
-  // "+ Text" / "+ Image" to add more, and below that the SELECTED element's
+  // element in the project (click a row to select it, the close icon to
+  // remove it), "+ Text" / "+ Image" tiles to add more, and below that the
+  // SELECTED element's
   // own editor (TextStep or ImagePanel, both element-scoped now) plus the
   // size panel.
   //
@@ -177,7 +179,7 @@
         aria-label="Remove element"
         on:click|stopPropagation={() => d("removeelement", row.id)}
       >
-        ✕
+        <Icon name="close" size={14} />
       </button>
     </div>
   {/each}
@@ -187,12 +189,12 @@
   <Hint on:dismiss={() => d("dismisshint")}>Combine text and a logo in one design.</Hint>
 {/if}
 <div class="eladd-row">
-  <button type="button" class="eladd" on:click={() => d("addelement", "text")}>+ Text</button>
-  <button type="button" class="eladd" on:click={() => d("addelement", "image")}>+ Image</button>
-  <button type="button" class="eladd" on:click={() => d("addelement", "design")}>+ Design file</button>
-  <button type="button" class="eladd" on:click={() => d("addelement", "manual")}>+ Draw shapes</button>
+  <button type="button" class="eladd" on:click={() => d("addelement", "text")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Text</button>
+  <button type="button" class="eladd" on:click={() => d("addelement", "image")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Image</button>
+  <button type="button" class="eladd" on:click={() => d("addelement", "design")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Design file</button>
+  <button type="button" class="eladd" on:click={() => d("addelement", "manual")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Draw shapes</button>
   {#if digitizerHealth}
-    <button type="button" class="eladd" on:click={() => d("addelement", "digitized")}>+ Auto-digitize</button>
+    <button type="button" class="eladd" on:click={() => d("addelement", "digitized")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Auto-digitize</button>
   {/if}
 </div>
 {#if !digitizerHealth}
@@ -280,6 +282,16 @@
 {/if}
 
 <style>
+  /* Wraps the plus Icon inside each .eladd tile (theme.css) -- .eladd itself
+     isn't a flex container, so this gives the icon its own inline-flex box
+     to vertically center against the adjacent label text and keeps a
+     consistent gap, without touching theme.css's shared .eladd rule. */
+  .eladd-icon {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: -3px;
+    margin-right: 4px;
+  }
   .digitize-offline {
     font-size: var(--fs-xs, 12px);
     color: var(--muted, #667);

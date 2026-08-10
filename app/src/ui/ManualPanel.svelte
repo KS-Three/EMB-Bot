@@ -2,6 +2,7 @@
   import { createEventDispatcher } from "svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
   import TraceImportPanel from "./TraceImportPanel.svelte";
+  import Icon from "./Icon.svelte";
   import { defaultManualShape } from "../lib/project.js";
   import {
     CANVAS_W, CANVAS_H, MAX_SHAPE_POINTS,
@@ -808,7 +809,7 @@
             aria-label="Delete shape"
             on:click={() => deleteShape(s.id)}
             on:keydown={onCanvasKeydown}
-          >✕</button>
+          ><Icon name="close" size={14} /></button>
         </li>
       {/each}
     </ul>
