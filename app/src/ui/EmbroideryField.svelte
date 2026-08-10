@@ -9,6 +9,7 @@
   import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizePatches } from "../lib/interact.js";
   import { selectedIdsOf } from "../lib/project.js";
   import Hint from "./Hint.svelte";
+  import Icon from "./Icon.svelte";
 
   // Task 4 (Slice 5): the field now renders every element in the project
   // (generateAll's combined design) instead of a single design, and drag/
@@ -1137,10 +1138,10 @@
       </Hint>
     {/if}
     <div class="zoomctl">
-      <button type="button" class="zoombtn" on:click={zoomOut} disabled={view.zoom <= MIN_ZOOM} aria-label="Zoom out">−</button>
+      <button type="button" class="zoombtn" on:click={zoomOut} disabled={view.zoom <= MIN_ZOOM} aria-label="Zoom out"><Icon name="minus" /></button>
       <span class="zoompct">{Math.round(view.zoom * 100)}%</span>
-      <button type="button" class="zoombtn" on:click={zoomIn} disabled={view.zoom >= MAX_ZOOM} aria-label="Zoom in">+</button>
-      <button type="button" class="zoombtn zoomfit" on:click={resetView} aria-label="Fit to hoop" title="Fit to hoop">⤢</button>
+      <button type="button" class="zoombtn" on:click={zoomIn} disabled={view.zoom >= MAX_ZOOM} aria-label="Zoom in"><Icon name="plus" /></button>
+      <button type="button" class="zoombtn zoomfit" on:click={resetView} aria-label="Fit to hoop" title="Fit to hoop"><Icon name="expand" /></button>
       <button
         type="button"
         class="zoombtn viewtoggle"
@@ -1149,7 +1150,7 @@
         aria-pressed={snapEnabled}
         aria-label="Auto-snap"
         title="Auto-snap to other elements and hoop center (hold Alt to suspend)"
-      >🧲</button>
+      ><Icon name="magnet" /></button>
       <button
         type="button"
         class="zoombtn viewtoggle"
@@ -1159,7 +1160,7 @@
         aria-pressed={showJumps}
         aria-label="Show jumps"
         title="Show needle-up travel (jumps)"
-      >⤳</button>
+      ><Icon name="jump" /></button>
       <button
         type="button"
         class="zoombtn viewtoggle"
@@ -1169,7 +1170,7 @@
         aria-pressed={showTrims}
         aria-label="Show trims"
         title="Show thread trims"
-      >✂</button>
+      ><Icon name="scissors" /></button>
       <button
         type="button"
         class="zoombtn"
@@ -1179,12 +1180,12 @@
         aria-label="Stitch simulator"
         aria-pressed={simActive}
         title="Stitch simulator — watch the sew order"
-      >▶</button>
+      ><Icon name="play" /></button>
     </div>
     {#if simActive}
       <div class="simbar" role="group" aria-label="Stitch simulator controls">
         <button type="button" class="zoombtn" on:click={simTogglePlay} aria-label={simPlaying ? "Pause" : "Play"}>
-          {simPlaying ? "⏸" : "▶"}
+          <Icon name={simPlaying ? "pause" : "play"} />
         </button>
         <input
           type="range"
@@ -1200,7 +1201,7 @@
         <button type="button" class="zoombtn simspeed" on:click={simCycleSpeed} aria-label="Playback speed">
           {simSpeed}x
         </button>
-        <button type="button" class="zoombtn" on:click={stopSim} aria-label="Close simulator">✕</button>
+        <button type="button" class="zoombtn" on:click={stopSim} aria-label="Close simulator"><Icon name="close" /></button>
       </div>
     {/if}
   </div>

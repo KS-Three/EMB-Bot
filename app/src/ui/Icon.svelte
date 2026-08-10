@@ -120,6 +120,12 @@
     // pencil silhouette (tip lower-left, body upper-right), stroke-only like
     // everything else in this set.
     edit: `<path d="M15 5L19 9L8.5 19.5L4 20.5L5 16Z"/>`,
+    // "Reset to original" -- ImagePanel's per-swatch thread-override reset
+    // button (↺). A near-full circle arc with a corner arrowhead at its open
+    // end -- reads unambiguously as "revert" without borrowing the topbar
+    // undo/redo pair's straight-arrow language, which is a different action
+    // (step back through history) from "discard this one override".
+    reset: `<path d="M1 4L1 10L7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>`,
 
     // Fallback for an unrecognized `name` -- see the file-level note above
     // for why a dashed placeholder (not nothing, not a crash) is the sane
