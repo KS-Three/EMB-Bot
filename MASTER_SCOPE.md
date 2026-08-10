@@ -11,7 +11,20 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-10 — UI icon system fully rolled out (all 13
+**Last updated:** 2026-08-10 — Ink/Stitch open-source teardown
+(`docs/inkstitch-research-2026-08-10.md`) integrated as a new cross-cutting
+research item: `pystitch` (Ink/Stitch's own MIT-licensed pyembroidery fork)
+flagged as a concrete, not-yet-evaluated `pyembroidery` replacement
+candidate; a fifth independent source corroborates the DST axis bug (no
+verdict change); a genuine satin-underlay gap (no `contour` style, only
+`center_run`/`zigzag`) confirmed by direct code read, not just doc research;
+and Ink/Stitch's own real capability gaps (meander fill, tartan fill, ripple
+stitch, satin e/s-stitch, bean stitch variable-repeat) catalogued alongside
+areas where EMB-Bot's own prior research is already ahead of Ink/Stitch
+(chaining laws, gradient fill scheduler, guided fill). Documentation only —
+no area's Status/Confidence moves. See Cross-cutting issues below.
+
+**Previously (2026-08-10):** UI icon system fully rolled out (all 13
 files, not just the foundation two), three more fill techniques added
 (wave, chevron, brick, alongside crosshatch). See areas 1 and 3 below.
 
@@ -1573,6 +1586,20 @@ the memo's section 5 — this fix carried none of the DST codec's migration
 risk and didn't need to wait on Kent's sign-off the way that fix would;
 Export-formats confidence below is upgraded accordingly.
 
+**Fifth independent corroboration, 2026-08-10 (Ink/Stitch's `pystitch`):**
+Ink/Stitch's own DST reader/writer (`src/pystitch/DstReader.py` /
+`DstWriter.py` — the format library backing a mature, actively-maintained
+open-source tool with 20,000+ users) uses the identical low-nibble=X/
+high-nibble=Y convention the four sources above already established,
+verified directly against both files' source
+(`docs/inkstitch-research-2026-08-10.md` §6). A fifth independent
+confirmation EMB-Bot's own `src/dst.js`/`dstimport.js` table is the
+transposed outlier, not a new source of doubt. **This does not change the
+verdict or the recommended fix** — swap the movement bits to the consensus
+table, still Kent's call, still gated on a sew-out per the section above —
+it's a stronger citation to put in front of him if he wants more evidence
+before authorizing it.
+
 ### Font license compliance gap — RESOLVED 2026-08-04 by removal
 
 `docs/font-license-audit-2026-07-31.md` action checklist: **items 1–3 done**
@@ -1861,6 +1888,100 @@ re-litigate this from scratch without evidence. The flat-lane byte-identical
 golden (`testdata/flat_lane_golden.json`, pinned by `tests/
 test_flat_lane_byte_identical.py`) is untouched, as expected — this was a
 measurement-only pass, no pipeline behavior changed.
+
+---
+
+### Ink/Stitch research — new backlog items, not a status change
+
+A full capability sweep of Ink/Stitch (the open-source Inkscape embroidery
+extension) against EMB-Bot's current state, run 2026-08-10: fill algorithms,
+satin column variants, DST/machine-format read-write, chaining/routing,
+lettering, and more, checked against live GitHub source and docs (not
+training-data memory) — `docs/inkstitch-research-2026-08-10.md` (948 lines,
+full citation trail per finding). **Licensing posture sets the terms for
+everything below (the doc's own §0):** Ink/Stitch's code is GPL-3.0 — no
+literal copying, no near-verbatim translation, concept-level clean-room
+reimplementation only, the same posture EMB-Bot's `fill-techniques-2026-08
+-01.md` and `lettering-mastery-2026-08-01.md` already established for
+`cross_stitch.py`/`contour_fill.py`. The one exception: Ink/Stitch's DST/
+format library, `pystitch`, is MIT-licensed and usable as a real runtime
+dependency, not just a concept source (see below and the cross-cutting DST
+section above).
+
+**Concrete, low-risk open action item: evaluate `pystitch` as a
+`pyembroidery` replacement.** Ink/Stitch depends on `pystitch`
+(github.com/inkstitch/pystitch), not upstream pyembroidery — its own
+MIT-licensed fork, hosted under the `inkstitch` org, claiming broader format
+read coverage (46 formats vs. pyembroidery's smaller list) and active
+maintenance. `digitizer/`'s current format read/write
+(`digitizer_service/formats.py` and equivalent call sites) depends on
+upstream `pyembroidery` today. **Not yet evaluated for API
+compatibility — that's the concrete next step, not done:** diff
+`pystitch`'s public API against EMB-Bot's actual `pyembroidery` call sites
+for a compatibility/effort estimate (research doc §6, §10 Tier 1 item 1).
+
+**A gap this session confirmed directly against EMB-Bot's own code, going
+beyond what the research doc itself could verify.** The research doc could
+only flag satin underlay as an open verification item (§2: Ink/Stitch ships
+three variants — center-walk, contour, zigzag — but could not confirm from
+docs alone whether EMB-Bot's own satin underlay implements a matching
+three-way split). Checked directly this pass: `digitizer_core/fabrics.py`'s
+`Fabric.satin_underlay` field only ever takes `"center_run"` or `"zigzag"`
+across every fabric preset, and `digitizer_core/stage6_satin.py`'s
+`_stroke_underlay()` (the function that actually builds it) only ever emits
+a center-spine run plus an optional zigzag pass — grepped for `"contour"` as
+a satin underlay value anywhere in `digitizer_core/`, zero hits. Ink/Stitch's
+third style (`do_contour_underlay()`: runs up one rail, crosses, returns
+down the opposite rail) is structurally distinct from a straight center-spine
+walk, not a naming gap. Confirmed absent, not merely unverified — a real,
+scoped gap, cheap to add once satin's medial-axis rail extraction exists
+(the same rails the center-walk/zigzag passes already use).
+
+**Real capability gaps confirmed absent from EMB-Bot, concept-level porting
+only (GPL-3.0 blocks literal code):** meander/stipple fill, tartan/plaid
+fill, ripple stitch, circular fill + Fermat spiral, satin e-stitch/s-stitch
+point-selection variants, and bean stitch's per-position variable-repeat
+pattern (Ink/Stitch's `bean_stitch(repeats=[0,1,3])` — worth checking
+whether EMB-Bot's own bean stitch, if it has one, is flatter than this).
+Full tiered priority ranking (concrete/low-risk vs. real-gap vs.
+lower-priority vs. already-matched vs. legally-off-limits): research doc
+§10, not re-derived here.
+
+**EMB-Bot confirmed already ahead of Ink/Stitch in some areas — recorded so
+this doesn't get re-litigated later against Ink/Stitch as if it were an
+authority to defer to.** EMB-Bot's corpus-derived chaining laws (Laws
+59–62, coverage-routed link decisions — a link is legal where something
+will sew over it later) are more sophisticated than either of Ink/Stitch's
+own routing modules, both flat distance-threshold trim logic (`auto_run.py`'s
+0.75mm jump-trim threshold; `auto_satin.py`'s source-overlap-only
+`should_trim()`), neither coverage-aware (research doc §3, §5). EMB-Bot's
+planned linear-gradient fill scheduler (largest-remainder/highest-averages,
+proven `|count_c(n) − Σα_c| < 1` error bound) is more rigorous than
+Ink/Stitch's shipped square-root mirrored row subdivision, which states no
+error bound (§1.7). EMB-Bot's planned guided/flow-following fill
+(`stage6_curved.py`'s parametric-map/Wilcom-UT-transform approach) is
+architecturally more sound than Ink/Stitch's shipped guided-fill strategies
+(Copy/Offset/Buffer — all normal-offset), on EMB-Bot's own already-documented
+reasoning that normal-offset "destroys" the penetration lattice and "fails
+at cusps/swallowtails" (§1.6). None of these are new findings that change
+anything — they're confirmations that EMB-Bot's own prior research already
+out-designed the shipped reference in these three areas.
+
+**Contour fill provenance flag — open question, not a resolved finding.**
+The research doc confirms EMB-Bot's own `fill-techniques-2026-08-01.md`
+`stage6_contour.py` plan correctly cites Ink/Stitch's contour-fill approach
+and its documented limitation (contour underlay doesn't follow the contour,
+only the fill angle — EMB-Bot's plan to beat that is a real, verified
+differentiator, not an assumed one). But the research doc also noticed
+EMB-Bot's own `CONTOUR_ENTRY_SOFT = 1.5` / `CONTOUR_ENTRY_HARD = 2.05`
+constants (`digitizer_core/machine.py`, confirmed at lines 144–145 this
+pass) exactly match Ink/Stitch's own entry-point buffer thresholds
+(1.5x/2.05x offset spacing, `contour_fill.py`), and the plan doc doesn't
+cite a source for those two specific numbers. Flagged as an open provenance
+question — were they independently corpus-measured, or did they end up
+matching because Ink/Stitch's docs were open while picking them — worth a
+quick check by whoever builds `stage6_contour.py`, not resolved either way
+here.
 
 ---
 
@@ -3613,7 +3734,13 @@ cross-validation.
 sew-out/read settles the axis question. For PES/EXP, the verdict memo's own
 closing line: a real Brother-machine load (or PE-Design open) of a
 harness-clean PES file, to confirm machine behavior matches the
-cross-validation, not just pyembroidery agreement.
+cross-validation, not just pyembroidery agreement. Separately, not
+sew-out-gated: whether `pystitch` (Ink/Stitch's MIT-licensed pyembroidery
+fork — see the cross-cutting "Ink/Stitch research" section above) is a
+viable replacement for this area's `pyembroidery` dependency is an open,
+not-yet-evaluated action item — the concrete next step is diffing its
+public API against `digitizer_service/formats.py` and equivalent call
+sites, not done this pass.
 
 ---
 
