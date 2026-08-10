@@ -11,10 +11,9 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-09 — UI icon system foundation landed (raw
-Unicode/emoji icon replacement, `Icon.svelte` + a conservative theme.css
-elevation pass; two files wired, 11 more queued for follow-up PRs). See
-area 3 below.
+**Last updated:** 2026-08-10 — UI icon system fully rolled out (all 13
+files, not just the foundation two), three more fill techniques added
+(wave, chevron, brick, alongside crosshatch). See areas 1 and 3 below.
 
 **Previously (2026-08-09):** manual-digitizing Trace feature shipped, real
 **Last updated:** 2026-08-09 — cross-hatch fill added as a new opt-in fill
@@ -1518,6 +1517,27 @@ first is about trusting browser DST as correct-orientation for arbitrary
 third-party software; the second is about which of EMB-Bot's own two encoders
 Studio picks internally — but they read differently enough side-by-side that
 it's worth Kent confirming the intended reading rather than assuming.
+
+**A concrete, code-verified gap in that same area, found 2026-08-09 by a
+`digitizing-quality-auditor` pass, not yet acted on:** Studio's actual
+Download button has no path-selection logic at all — `app/src/lib/
+exporters.js` unconditionally calls the browser engine's own `EMB.encodeDST`/
+`encodeEXP`/`encodePES` for every download, regardless of whether the
+design came from the Python auto-digitizer. Grepping `app/src` for any call
+to the Python service's `/export` route turns up none — `app/src/lib/
+digitizer.js` only ever calls `/digitize` and `/jobs/{id}`. So the
+pyembroidery-convention path this doc and CLAUDE.md both call "the
+trustworthy path for anything leaving this app" is currently unreachable
+from the real product for every design type, not just manual/lettering
+ones. A proposed fix exists (route Python-digitized designs through
+`/export` instead, leaving the manual/lettering path on the existing
+browser codec since that's the specific combination with sew evidence) —
+small and code-only, not sew-out-gated itself, but deliberately not done
+yet: it changes what a downloaded file looks like for existing users, and
+needs Kent's explicit sign-off first, same caution the "don't rotate
+everyone's existing files" line above already establishes. Worth raising
+with him as a concrete proposal in a future session rather than left to be
+rediscovered.
 
 **Resolution path:** a sew-out or third-party read of a browser-encoded DST
 (the "third opinion" `digitizer/README.md` calls for). Fixing the codec itself
@@ -3437,6 +3457,28 @@ merging first (ThreadPicker, ContentStep, DesignPanel, DigitizePanel,
 EmbroideryField, FontBrowser, FontCredits, ImagePanel, ManualPanel,
 ProjectsDrawer, StepNav). Doesn't move this area's Status/Confidence
 verdict — visual/consistency polish, not a capability change.
+
+**All 11 follow-up files done, 2026-08-10** (PRs #111-115, a parallel
+4-way fan-out plus a small `Icon.spec.js` coverage reconciliation) — every
+file the original audit found is now wired to `Icon.svelte`, zero raw
+Unicode/emoji affordances left anywhere in the app. `EmbroideryField.svelte`'s
+canvas toolbar (the most visible cluster — zoom/fit/magnet/jumps/trims/
+play), `DigitizePanel.svelte`'s Layers panel (5 new icons added to the
+shared registry: `arrowUp`, `arrowDown`, `exclude`, `revert`, `edit`),
+`ManualPanel.svelte`/`ContentStep.svelte` (including the "+ Text/Image/..."
+add-tiles, which used a literal `+` character prefix, not just a missing
+icon), and the 7 remaining smaller panels (`ThreadPicker`, `DesignPanel`,
+`ImagePanel`, `FontBrowser`, `FontCredits`, `ProjectsDrawer`, `StepNav` —
+`StepNav`'s own `✓` and `DesignPanel`'s `⚠` now route through `Icon.svelte`
+too). One real gap the parallel structure created and then closed: each of
+the 4 PRs deliberately left `Icon.spec.js`'s inventory test untouched to
+avoid guaranteed conflicts with sibling PRs editing the same file — PR #115
+reconciled that afterward, adding the 6 icon names (`arrowUp`, `arrowDown`,
+`exclude`, `revert`, `edit`, `reset`) the fan-out added but hadn't covered.
+Visually verified end-to-end via live Playwright against the real merged
+app (not just unit tests) — confirmed clean SVG rendering, no fallback
+placeholders, no accessible-name regressions. Doesn't move this area's
+Status/Confidence verdict, same reasoning as the foundation entry above.
 
 **Fabric-preset accuracy: pending sew-out** — kept as an explicit separate
 note, not blended into the wizard's own score. README says it outright:
