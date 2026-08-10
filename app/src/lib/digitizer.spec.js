@@ -222,6 +222,17 @@ test("exportViaService surfaces the service's own detail sentence on a non-ok re
     .rejects.toThrow(/payload\.design must be a design with stitches/);
 });
 
+test("exportViaService includes a request timeout so a hung service can't block Download forever", async () => {
+  const { exportViaService } = await import("./digitizer.js");
+  let seenOpts;
+  const fetchFn = async (url, opts) => {
+    seenOpts = opts;
+    return { ok: true, status: 200, blob: async () => new Blob([]), headers: { get: () => null } };
+  };
+  await exportViaService({ stitches: [] }, "dst", "x", fetchFn);
+  expect(seenOpts.signal).toBeInstanceOf(AbortSignal);
+});
+
 // ---- shape-layers edits (review-screen contract v1) ------------------------
 //
 // The other end of this seam is digitizer_service/app.py's

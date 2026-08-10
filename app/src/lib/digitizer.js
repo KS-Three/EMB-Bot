@@ -18,9 +18,15 @@
 //      (digitizer_core/warnings_codes.py: UI switches on codes, never prose)
 //      into customer language.
 //
-// No DST ever crosses this boundary (the JS/pyembroidery DST axis dispute is
-// deliberately routed around it): Studio bakes its own machine files from the
-// Design with its own encoder, same as lettering.
+// DST/EXP/PES crossing this boundary is conditional, not universal (the JS/
+// pyembroidery DST axis dispute is why): lettering/manual designs never send
+// their Design here for export at all — Studio bakes those into machine
+// files with its own encoder, the one with actual sew evidence behind it. A
+// purely-digitized project is different: exportViaService below sends its
+// Design through the service's pyembroidery-convention /export route
+// instead, when DownloadStep.svelte's isPurelyDigitized() opts into it —
+// see that function's own comment for why the split exists and stays this
+// way pending a sew-out.
 
 import { loadPreferredPaletteId } from "./threads.js";
 import { DEFAULT_DIGITIZE_PARAMS } from "./project.js";
@@ -894,6 +900,7 @@ export async function exportViaService(design, format, label, fetchFn = globalTh
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ design, format, label }),
+    signal: AbortSignal.timeout(10000),
   });
   if (!r.ok) throw new Error(await httpDetail(r));
   const bytes = await r.blob();

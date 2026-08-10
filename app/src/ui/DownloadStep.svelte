@@ -36,6 +36,19 @@
       .map((el) => el.fontKey);
   }
 
+  // Studio only prefers the digitizer service's export path for a project made
+  // ENTIRELY of auto-digitized content — MASTER_SCOPE.md scopes this
+  // deliberately: lettering/manual designs stay on the browser's own encoder,
+  // which is the one with actual sew evidence behind it; the service's DST has
+  // spec-correctness but has never been sewn. A project mixing element types
+  // (e.g. a digitized logo plus a text element) is NOT purely digitized and
+  // stays on the browser path too -- there's no way to export "part" of a
+  // combined design through two different encoders.
+  function isPurelyDigitized(project) {
+    const els = project.elements || [];
+    return els.length > 0 && els.every((el) => el.type === "digitized");
+  }
+
   // fontsReady gates the (necessarily synchronous, template-bound)
   // combinedColors() derivation below -- it starts false so the very first
   // render never runs generateAll against a possibly-missing font, then
@@ -127,9 +140,12 @@
   async function dl(fmt) {
     try {
       await ensureFonts(fontKeysOf(project));
-      const out = await exportDesignPreferService(buildDesign(), fmt, { label: project.name });
+      const out = await exportDesignPreferService(buildDesign(), fmt, {
+        label: project.name,
+        preferService: isPurelyDigitized(project),
+      });
       triggerDownload(out);
-      msg = "Downloaded " + fmt.toUpperCase();
+      msg = "Downloaded " + fmt.toUpperCase() + (out.via === "service" ? " (via digitizer)" : "");
     } catch (e) {
       msg = e.message;
     }
