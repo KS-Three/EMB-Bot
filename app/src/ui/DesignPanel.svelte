@@ -2,6 +2,7 @@
   import { createEventDispatcher } from "svelte";
   import { EMB } from "../lib/emb.js";
   import ThreadPicker from "./ThreadPicker.svelte";
+  import Icon from "./Icon.svelte";
 
   // Editor panel for an imported pre-digitized design element (.dst file).
   // The file's raw bytes live on the element as base64 (see project.js's
@@ -152,7 +153,7 @@
 
     <p class="dp-note" class:warn={resized}>
       {#if resized}
-        ⚠ Resized to {(scaleFactor * 100).toFixed(0)}% — a stitch file is NOT re-digitized when
+        <span class="dp-warn-icon"><Icon name="warning" size={14} /></span> Resized to {(scaleFactor * 100).toFixed(0)}% — a stitch file is NOT re-digitized when
         you resize it: the existing stitches just scale, so thread density and detail change
         with the size.{#if scaleWarnHard}&nbsp;This is well outside the safe 75–150% range —
         expect gaps or bunching when it sews.{:else}&nbsp;Small changes are usually fine; stay
@@ -172,6 +173,16 @@
 </div>
 
 <style>
+  /* The warning icon sits inline in running text (.dp-note), not its own
+     flex row, so it needs its own baseline nudge -- text-bottom instead of
+     the default alphabetic baseline keeps it centered against the line
+     instead of hanging low. */
+  .dp-warn-icon {
+    display: inline-flex;
+    vertical-align: text-bottom;
+    color: var(--warn);
+  }
+
   /* Same look as TextStep's flip button (that one is component-scoped, so
      the rule can't be shared). */
   .upsidedown {

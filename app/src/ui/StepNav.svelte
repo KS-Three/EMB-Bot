@@ -1,6 +1,7 @@
 <script>
   import { STEPS, canAdvance } from "../lib/flow.js";
   import { createEventDispatcher } from "svelte";
+  import Icon from "./Icon.svelte";
   export let step;
   export let project;
   export let canNext;
@@ -49,7 +50,7 @@
         >
           <span class="stepnav-badge" class:done={i < currentIndex}>
             {#if i < currentIndex}
-              <span aria-hidden="true">✓</span>
+              <Icon name="check" size={12} />
             {:else}
               {i + 1}
             {/if}

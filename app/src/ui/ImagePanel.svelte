@@ -2,6 +2,7 @@
   import { createEventDispatcher } from "svelte";
   import { flattenRGBA, flatToRGBA, flatShares, mergeFlat, WORK_MAX_PX, ALPHA_CUTOFF } from "../lib/flatten.js";
   import ThreadPicker from "./ThreadPicker.svelte";
+  import Icon from "./Icon.svelte";
 
   // Element-scoped image editor (Task 5, Slice 5). Pattern (see
   // TextStep.svelte for the same convention): settings patches dispatch an
@@ -305,7 +306,7 @@
                 title="Reset to the original color"
                 aria-label="Reset thread color to original"
               >
-                ↺
+                <Icon name="reset" size={12} />
               </button>
             {/if}
           </div>

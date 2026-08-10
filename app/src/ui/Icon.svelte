@@ -95,6 +95,13 @@
     // Resize-warning banner -- DesignPanel's ⚠.
     warning: `<path d="M12 4L21 20H3Z" stroke-linejoin="round"/><line x1="12" y1="10" x2="12" y2="14.5"/><circle cx="12" cy="17.3" r="0.9" fill="currentColor" stroke="none"/>`,
 
+    // "Reset to original" -- ImagePanel's per-swatch thread-override reset
+    // button (↺). A near-full circle arc with a corner arrowhead at its open
+    // end -- reads unambiguously as "revert" without borrowing the topbar
+    // undo/redo pair's straight-arrow language, which is a different action
+    // (step back through history) from "discard this one override".
+    reset: `<path d="M1 4L1 10L7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>`,
+
     // Fallback for an unrecognized `name` -- see the file-level note above
     // for why a dashed placeholder (not nothing, not a crash) is the sane
     // choice here.
