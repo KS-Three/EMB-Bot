@@ -1,5 +1,6 @@
 import { EMB } from "./emb.js";
 import { renderRealistic } from "./preview.js";
+import { exportViaService } from "./digitizer.js";
 
 export function exportDesign(design, format) {
   switch (format) {
@@ -14,6 +15,30 @@ export function exportDesign(design, format) {
     default:
       throw new Error("Unknown format: " + format);
   }
+}
+
+// dst/exp/pes prefer the Python digitizer service's pyembroidery-convention
+// encoder (the trustworthy path for third-party software — see
+// MASTER_SCOPE.md's DST codec axis bug section: the browser's own DST
+// encoder is confirmed transposed a quarter-turn against the Tajima
+// standard). Falls back to the browser encoder on ANY service failure
+// (offline, network error, 4xx/5xx) so Download keeps working exactly as
+// it always has when the service isn't running — no visible error, same
+// bytes as before this function existed. svg (and any future non-stitch
+// format) never touches the service; exportDesign() alone is authoritative
+// for those.
+const SERVICE_EXPORT_FORMATS = new Set(["dst", "exp", "pes"]);
+
+export async function exportDesignPreferService(design, format, opts = {}) {
+  const { label = "EMBBOT", exportViaServiceFn = exportViaService, fetchFn } = opts;
+  if (SERVICE_EXPORT_FORMATS.has(format)) {
+    try {
+      return await exportViaServiceFn(design, format, label, fetchFn);
+    } catch (e) {
+      // service down or erroring -- fall through to the browser encoder.
+    }
+  }
+  return exportDesign(design, format);
 }
 
 // Builds and saves a PDF worksheet (title, stitch-simulation render, stats,
