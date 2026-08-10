@@ -881,6 +881,29 @@ async function httpDetail(r) {
   return "The digitizer service answered " + r.status + ".";
 }
 
+// POST /export (any EMB-Bot design -> a machine file, the pyembroidery-
+// convention path — digitizer_service/app.py's one export route for every
+// design type). Returns the same {bytes, filename, mime} shape
+// exporters.js's exportDesign() returns, so callers don't care which one
+// produced it. filename is read off Content-Disposition when present
+// (the service always sends one); falls back to design.<format> so a
+// service that omits the header (or a test double) never yields an
+// extensionless download.
+export async function exportViaService(design, format, label, fetchFn = globalThis.fetch) {
+  const r = await fetchFn(digitizerUrl() + "/export", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ design, format, label }),
+  });
+  if (!r.ok) throw new Error(await httpDetail(r));
+  const bytes = await r.blob();
+  const cd = (r.headers && r.headers.get("Content-Disposition")) || "";
+  const m = /filename="([^"]+)"/.exec(cd);
+  const filename = m ? m[1] : `design.${format}`;
+  const mime = (r.headers && r.headers.get("Content-Type")) || "application/octet-stream";
+  return { bytes, filename, mime };
+}
+
 // POST /digitize (multipart image + config JSON) -> { job_id, state, cached }.
 // 202 is the service's accept status; anything non-ok throws with the
 // service's own detail sentence.
