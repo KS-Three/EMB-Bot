@@ -1,5 +1,6 @@
 import { EMB } from "./emb.js";
 import { renderRealistic } from "./preview.js";
+import { exportViaService } from "./digitizer.js";
 
 export function exportDesign(design, format) {
   switch (format) {
@@ -14,6 +15,41 @@ export function exportDesign(design, format) {
     default:
       throw new Error("Unknown format: " + format);
   }
+}
+
+// dst/exp/pes CAN prefer the Python digitizer service's pyembroidery-
+// convention encoder (the trustworthy path for third-party software — see
+// MASTER_SCOPE.md's DST codec axis bug section: the browser's own DST
+// encoder is confirmed transposed a quarter-turn against the Tajima
+// standard) — but only when the caller opts in via `preferService`. That
+// gate exists because MASTER_SCOPE.md scopes the service-preference to
+// purely-digitized designs only: lettering/manual designs stay on the
+// browser's own encoder, the one with actual sew evidence behind it (the
+// service's DST has never been sewn by anyone). This function has no
+// knowledge of `project`/elements, so it can't tell a digitized design from
+// a lettering one itself — that decision is the caller's job; see
+// app/src/ui/DownloadStep.svelte's `isPurelyDigitized`, which is what sets
+// `preferService`. Falls back to the browser encoder on ANY service failure
+// (offline, network error, 4xx/5xx) so Download keeps working exactly as
+// it always has when the service isn't running — no visible error, same
+// bytes as before this function existed. svg (and any future non-stitch
+// format) never touches the service; exportDesign() alone is authoritative
+// for those. The returned object is tagged with `via: "service"` or
+// `via: "browser"` so callers can tell which encoder actually produced the
+// bytes (DownloadStep uses this to label the download).
+const SERVICE_EXPORT_FORMATS = new Set(["dst", "exp", "pes"]);
+
+export async function exportDesignPreferService(design, format, opts = {}) {
+  const { label = "EMBBOT", exportViaServiceFn = exportViaService, fetchFn, preferService = false } = opts;
+  if (preferService && SERVICE_EXPORT_FORMATS.has(format)) {
+    try {
+      const out = await exportViaServiceFn(design, format, label, fetchFn);
+      return { ...out, via: "service" };
+    } catch (e) {
+      // service down or erroring -- fall through to the browser encoder.
+    }
+  }
+  return { ...exportDesign(design, format), via: "browser" };
 }
 
 // Builds and saves a PDF worksheet (title, stitch-simulation render, stats,

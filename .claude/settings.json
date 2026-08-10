@@ -1,4 +1,26 @@
 {
+  "enabledPlugins": {
+    "superpowers@superpowers-marketplace": true,
+    "caveman@caveman": true,
+    "mattpocock-skills@claude-plugins-official": true,
+    "hookify@claude-plugins-official": true,
+    "claude-code-setup@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true
+  },
+  "extraKnownMarketplaces": {
+    "superpowers-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "obra/superpowers-marketplace"
+      }
+    },
+    "caveman": {
+      "source": {
+        "source": "github",
+        "repo": "JuliusBrussee/caveman"
+      }
+    }
+  },
   "permissions": {
     "allow": [
       "mcp__Claude_Browser__read_page",
@@ -27,6 +49,10 @@
           {
             "type": "command",
             "command": "node \"C:\\Users\\EE-LT-11030\\EMB-Bot\\.claude\\hooks\\warn-git-add-a.js\""
+          },
+          {
+            "type": "command",
+            "command": "node \"C:\\Users\\EE-LT-11030\\EMB-Bot\\.claude\\hooks\\nudge-cookbook-stale.js\""
           }
         ]
       }

@@ -18,9 +18,15 @@
 //      (digitizer_core/warnings_codes.py: UI switches on codes, never prose)
 //      into customer language.
 //
-// No DST ever crosses this boundary (the JS/pyembroidery DST axis dispute is
-// deliberately routed around it): Studio bakes its own machine files from the
-// Design with its own encoder, same as lettering.
+// DST/EXP/PES crossing this boundary is conditional, not universal (the JS/
+// pyembroidery DST axis dispute is why): lettering/manual designs never send
+// their Design here for export at all — Studio bakes those into machine
+// files with its own encoder, the one with actual sew evidence behind it. A
+// purely-digitized project is different: exportViaService below sends its
+// Design through the service's pyembroidery-convention /export route
+// instead, when DownloadStep.svelte's isPurelyDigitized() opts into it —
+// see that function's own comment for why the split exists and stays this
+// way pending a sew-out.
 
 import { loadPreferredPaletteId } from "./threads.js";
 import { DEFAULT_DIGITIZE_PARAMS } from "./project.js";
@@ -879,6 +885,30 @@ async function httpDetail(r) {
     // fall through
   }
   return "The digitizer service answered " + r.status + ".";
+}
+
+// POST /export (any EMB-Bot design -> a machine file, the pyembroidery-
+// convention path — digitizer_service/app.py's one export route for every
+// design type). Returns the same {bytes, filename, mime} shape
+// exporters.js's exportDesign() returns, so callers don't care which one
+// produced it. filename is read off Content-Disposition when present
+// (the service always sends one); falls back to design.<format> so a
+// service that omits the header (or a test double) never yields an
+// extensionless download.
+export async function exportViaService(design, format, label, fetchFn = globalThis.fetch) {
+  const r = await fetchFn(digitizerUrl() + "/export", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ design, format, label }),
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!r.ok) throw new Error(await httpDetail(r));
+  const bytes = await r.blob();
+  const cd = (r.headers && r.headers.get("Content-Disposition")) || "";
+  const m = /filename="([^"]+)"/.exec(cd);
+  const filename = m ? m[1] : `design.${format}`;
+  const mime = (r.headers && r.headers.get("Content-Type")) || "application/octet-stream";
+  return { bytes, filename, mime };
 }
 
 // POST /digitize (multipart image + config JSON) -> { job_id, state, cached }.

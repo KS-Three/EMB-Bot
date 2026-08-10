@@ -165,6 +165,74 @@ test("fetchHealth returns the payload when the service is up and null for down/n
   expect(await fetchHealth(async () => { throw new TypeError("fetch failed"); })).toBeNull();
 });
 
+test("exportViaService POSTs the design as JSON to /export and returns bytes+filename+mime from the response", async () => {
+  const { exportViaService } = await import("./digitizer.js");
+  let seenUrl, seenOpts;
+  const fakeBlob = new Blob([new Uint8Array([1, 2, 3])]);
+  const fetchFn = async (url, opts) => {
+    seenUrl = url;
+    seenOpts = opts;
+    return {
+      ok: true,
+      status: 200,
+      blob: async () => fakeBlob,
+      headers: {
+        get: (k) => {
+          if (k === "Content-Disposition") return 'attachment; filename="left_chest.dst"';
+          if (k === "Content-Type") return "application/octet-stream";
+          return null;
+        },
+      },
+    };
+  };
+  const design = { stitches: [{ x: 0, y: 0, type: "stitch" }], colors: [], widthMM: 10, heightMM: 10 };
+  const out = await exportViaService(design, "dst", "left_chest", fetchFn);
+
+  expect(seenUrl).toBe("http://127.0.0.1:8721/export");
+  expect(seenOpts.method).toBe("POST");
+  expect(seenOpts.headers["Content-Type"]).toBe("application/json");
+  const sentBody = JSON.parse(seenOpts.body);
+  expect(sentBody).toEqual({ design, format: "dst", label: "left_chest" });
+
+  expect(out.bytes).toBe(fakeBlob);
+  expect(out.filename).toBe("left_chest.dst");
+  expect(out.mime).toBe("application/octet-stream");
+});
+
+test("exportViaService falls back to a design.<format> filename when Content-Disposition is missing", async () => {
+  const { exportViaService } = await import("./digitizer.js");
+  const fetchFn = async () => ({
+    ok: true,
+    status: 200,
+    blob: async () => new Blob([]),
+    headers: { get: () => null },
+  });
+  const out = await exportViaService({ stitches: [] }, "exp", "x", fetchFn);
+  expect(out.filename).toBe("design.exp");
+  expect(out.mime).toBe("application/octet-stream");
+});
+
+test("exportViaService surfaces the service's own detail sentence on a non-ok response", async () => {
+  const { exportViaService } = await import("./digitizer.js");
+  const fetchFn = async () => ({
+    ok: false, status: 400,
+    json: async () => ({ detail: "payload.design must be a design with stitches." }),
+  });
+  await expect(exportViaService({ stitches: [] }, "dst", "x", fetchFn))
+    .rejects.toThrow(/payload\.design must be a design with stitches/);
+});
+
+test("exportViaService includes a request timeout so a hung service can't block Download forever", async () => {
+  const { exportViaService } = await import("./digitizer.js");
+  let seenOpts;
+  const fetchFn = async (url, opts) => {
+    seenOpts = opts;
+    return { ok: true, status: 200, blob: async () => new Blob([]), headers: { get: () => null } };
+  };
+  await exportViaService({ stitches: [] }, "dst", "x", fetchFn);
+  expect(seenOpts.signal).toBeInstanceOf(AbortSignal);
+});
+
 // ---- shape-layers edits (review-screen contract v1) ------------------------
 //
 // The other end of this seam is digitizer_service/app.py's
