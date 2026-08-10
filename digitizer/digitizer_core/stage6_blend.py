@@ -609,9 +609,24 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg
                 row_mm=row_mm, stitch_mm=machine.FILL_STITCH_MM,
                 underlay_style="none", trim_at_mm=machine.TRIM_AT_MM,
             )
+            if runs and this_layer:
+                d = math.dist(this_layer[-1].points[-1], runs[0].points[0])
+                runs[0].jump = True
+                runs[0].trim = d > machine.TRIM_AT_MM
+                report["jumps"] += 1
             this_layer.extend(runs)
             report["too_thin"] = report["too_thin"] or band_report["too_thin"]
             report["jumps"] += band_report["jumps"]
+        if this_layer and all_runs:
+            # Same fix as the parts-within-a-band stitch above, one level up:
+            # the seam between one shade band's runs and the next band's runs
+            # was left at StitchRun's jump=False default, so machine export
+            # drew a bare straight stitch across the gap between bands
+            # instead of a jump/trim. Mark it explicitly, same as above.
+            d = math.dist(all_runs[-1].points[-1], this_layer[0].points[0])
+            this_layer[0].jump = True
+            this_layer[0].trim = d > machine.TRIM_AT_MM
+            report["jumps"] += 1
         all_runs.extend(this_layer)
         layer_runs.append(this_layer)
 
