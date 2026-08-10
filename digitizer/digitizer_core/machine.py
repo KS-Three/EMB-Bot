@@ -35,9 +35,17 @@ TINY_STITCH_MM = 0.5
 # (2026-07-30 corpus study, tools/study_pro.py): pro fills run 2.0-3.4 mm with
 # a median near 2.6; the old 4.0 sat outside the observed range entirely.
 FILL_STITCH_MM = 3.0
-# Row spacing = density. Dense pro fills measure ~0.20 mm EFFECTIVE spacing in
-# the corpus — but that may be two interleaved 0.40 passes, and doubling
-# density doubles stitch count, so 0.40 stands until a sew-out decides.
+# Row spacing = density. The two-pass-interleave hedge this comment used to
+# carry is REFUTED (docs/law19-fill-spacing-2026-08-02.md): our own fill and
+# the corpus both sew rows in strict geometric order (427 patches, 2 show an
+# interleave signature). But the corpus's dense ~0.20 mm reading turns out to
+# be TWO POPULATIONS, not one: for 29 freebie script/lettering files it is a
+# satin crossing's half-step artifact of a 0.40-0.51 mm same-rail column, not
+# a tatami row at all (coverage 1.8-2.3 matches a satin reading, not a fill
+# one) — but 43 commissioned cap-logo files sew a genuine ~0.19 mm area-fill
+# row pitch (traverse spans 6-54 mm with 3-17 penetrations each rule out
+# satin or a fan column). Which population our own fills should match is
+# still unresolved, so 0.40 stands pending sew-out card block 2.
 FILL_ROW_MM = 0.40
 
 # Penetrations realign every Nth row. Without a stagger, every row starts its
@@ -50,6 +58,71 @@ FILL_STAGGERS = 4
 # the result is a lumpy running stitch. Satin's job — the classifier sends
 # such shapes there, and only what satin also cannot take gets warned.
 MIN_FILL_WIDTH_MM = 1.2
+
+# --- Cross-hatch fill (two angled tatami passes) ----------------------------
+# The whole technique is two ordinary `_fill_paths` calls at angle and
+# angle+90, concatenated — the exact trick `_underlay_paths`'s
+# "double_lattice" style already relies on for its own +-45deg underlay
+# passes, just aimed at the visible fill instead of underlay. Nothing new to
+# tune except this one knob.
+
+# Multiplier on `row_mm` applied to EACH individual pass, so two overlapping
+# passes land at a combined stitch density in the same ballpark as one normal
+# single-pass fill instead of roughly doubling it. 2.0 (each pass spaced
+# twice as far apart as ordinary tatami) is a starting, reasoned value, not
+# sew-out-validated — same caveat as every other tuning constant in this
+# file. Lower-stakes than the density constants above already flagged
+# pending sew-out, though: cross-hatch ships OPT-IN per-shape or per-design
+# only, never a default, so nobody's existing output moves if this number
+# turns out to need adjusting later.
+CROSSHATCH_ROW_SCALE_FACTOR = 2.0
+
+# --- Wave fill (sinusoidal row wobble) --------------------------------------
+# Every interior row point (never the two row-end penetrations, which stay
+# exactly on the boundary — the same edge-crispness contract `_row_points`'s
+# own docstring states) rides a sine wave perpendicular to the row:
+# y + WAVE_AMPLITUDE_MM * sin(2*pi*x/WAVE_LENGTH_MM + phase), phase
+# alternating 0/pi by row parity so neighbouring rows move opposite ways at
+# any given x instead of stacking into a corrugated-cardboard look. Both
+# constants are starting, REASONED values — not sew-out-validated, same
+# caveat every tuning constant in this file carries — and lower-stakes than
+# the pending-sew-out density constants above for the identical reason
+# CROSSHATCH_ROW_SCALE_FACTOR's own comment gives: this ships opt-in only
+# (per-shape or per-design), so nobody's existing output moves if either
+# number turns out to need adjusting later.
+
+# Wobble height. Small enough to read as texture, not to distort the fill's
+# own silhouette — a ninth of FILL_ROW_MM's own row spacing multiplied out
+# to a legible scale, and comfortably under half a stitch length, so no row
+# turn is thrown far enough off-axis to blur the edge it lands on.
+WAVE_AMPLITUDE_MM = 0.35
+
+# Wobble period along the row. Roughly FILL_STITCH_MM's default 3.0 mm times
+# a small integer, so one sine cycle spans a handful of stitches: fine
+# enough to actually read as a wave at the row's own scale, coarse enough
+# not to collapse into per-stitch jitter (indistinguishable from noise) or
+# stretch so long it never completes a visible cycle across an ordinary
+# shape.
+WAVE_LENGTH_MM = 4.0
+
+# --- Chevron fill (zigzag row texture) --------------------------------------
+# A deliberately simplified, TEXTURAL herringbone impression at one fill
+# angle — not a full multi-angle banded herringbone, which would need new
+# column/travel logic (out of scope for this family of purely-geometric row
+# variants; see stage6_fill.py's module docstring for the column/travel
+# machinery every fill technique here shares untouched). Every interior row
+# point alternates +-CHEVRON_AMPLITUDE_MM, same edge-crispness contract as
+# wave above: only interior points move, both row ends stay on the boundary.
+# Same starting/reasoned, opt-in-only, lower-stakes caveat as
+# WAVE_AMPLITUDE_MM.
+
+# Zigzag height, alternating every single interior stitch — a period of two
+# stitches, ~6 mm at FILL_STITCH_MM's default 3.0 mm: fine enough to read as
+# a zigzag at the row's own stitch scale, coarse enough not to blur into
+# noise. A period of one stitch (no alternation at all) would not read as a
+# chevron; a period of many stitches would read as occasional bumps, not a
+# herringbone texture.
+CHEVRON_AMPLITUDE_MM = 0.45
 
 # --- Contour fill (rings instead of rows) -----------------------------------
 # The offset-ring tier: uniform inward offsets of the outline, sewn inner to
@@ -93,14 +166,38 @@ CONTOUR_MIN_RING_MM = 3.0
 # Offset slivers below this are numerical debris, not fabric to cover.
 CONTOUR_MIN_RING_AREA_MM2 = 0.1
 
-# When the rings a shape had to drop add up to more than this fraction of its
-# area, the operator hears about it. The doc's own C1 gate ("uncovered area >
-# 1 % of shape"), and it exists because the raw ring count is not the question:
-# EVERY shape drops its last ring, the sliver where the offsets converge on
-# themselves. Measured on the fixture logo, that is 0.14-0.30 mm2 against
-# regions of several hundred — 0.1 %, three warnings nobody should read. A comb
-# whose arms starve is the same counter at 40 %.
-CONTOUR_STARVED_FRAC = 0.01
+# The bare dot EVERY healthy contour shape leaves at its own centre, measured
+# with the widest-inscribed-bare-circle instrument (barecircle.py) at the
+# shipped 0.40 mm spacing.
+#
+# UPDATE 2026-08-04 (defect 1, the shrink): originally 0.87, from a 0.863 mm
+# measurement common to a bare ring set alone. Two fixes since then close
+# most of it — `_refine_terminal_generation` (stage6_contour.py) bisects the
+# LAST ring's own inset distance onto the true sewability floor instead of
+# wherever the fixed 0.40 mm spacing grid happened to land, and a finishing
+# pass (`contour_fill`'s post-ring loop) patches whatever `widest_bare_circle`
+# still calls the widest bare spot with an ordinary tatami patch, iterating
+# on the instrument itself until it clears CONTOUR_FINISH_MIN_RADIUS_MM or
+# the pass budget runs out. Re-measured on the same four shapes: discs of
+# r = 3, 5, 15 now read 0.067, 0.070, 0.067 and the dumbbell 0.129 — a
+# 0.863 -> ~0.13 mm structural dot, and for scale, tatami's own worst spot on
+# the fixture logo measures 0.090 mm, so contour is now within spitting
+# distance of tatami's own floor instead of ~10x it. The dumbbell's higher
+# figure is real, not noise: its three separate convergence points (both
+# lobe centres and the waist) need two finishing patches to close, against
+# one for a plain disc, and the shape genuinely does not shrink to the exact
+# disc floor. 0.13 keeps the small margin over the measured max the
+# original 0.87 (0.863 measured) used.
+# History: this constant replaced CONTOUR_STARVED_FRAC (an area-fraction gate
+# at 1 %) on 2026-08-04: the area sum was miscalibrated in both directions —
+# silent on a 1.47 mm bare core whose rings were annihilated without ever
+# being counted (the mitred offset dies, so the area was never charged), and
+# firing on shapes whose many small terminal slivers summed past 1 % while no
+# single bare spot beat this structural dot (whitebg's Sf5200f3f at 0.499 mm,
+# Sb253ebba at 0.644 mm, the dumbbell at 0.863 mm — all old-gate fires, all
+# invisible next to a healthy disc's own centre, all measured before the same
+# day's terminal-refine + finishing-pass shrink above).
+CONTOUR_BARE_CORE_MM = 0.13
 
 # Mitre limit on the inward offset. The reference implementations use 10, which
 # lets a sharp corner throw a long spike the needle has to chase out and back.
@@ -128,6 +225,68 @@ CONTOUR_UNDERLAY_SPACING_FRAC = 3.0
 # degenerate offset that never empties cannot spin forever.
 CONTOUR_MAX_GENERATIONS = 512
 
+# Bisection precision for the terminal-ring refinement (`_terminal_refine`):
+# how close to the true CONTOUR_MIN_RING_MM sewability floor the last ring's
+# inset distance is pinned, in mm. 0.005 is an order of magnitude under the
+# raster error barecircle.py measures the result with (~0.03 mm/pixel), so
+# the refinement is never the limiting source of imprecision.
+CONTOUR_TERMINAL_REFINE_TOL_MM = 0.005
+
+# The finishing pass: once the ring set is done (refined terminal ring
+# included), whatever polygon barecircle.py's own instrument still calls the
+# widest bare spot gets a small ordinary tatami patch (stitch_shape) instead
+# of staying empty — driven by `widest_bare_circle` itself, iteratively,
+# not by a vector reconstruction of "what the rings missed" (see
+# `contour_fill`'s finishing-pass comment for why the vector approach was
+# tried first and measured worse).
+#
+# Below this radius a bare spot is not worth a patch of its own — sub-floor
+# ring-to-ring gaps measured on a 15 mm disc top out at 0.048 mm across, an
+# order of magnitude under this line, and every genuine core measured
+# (structural dot ~0.07-0.13 mm post-refinement, the annihilated star's
+# ~0.14-0.5 mm even after patching) clears it easily while patching is still
+# worth doing. See CONTOUR_BARE_CORE_MM for the structural-dot measurement
+# this floor is judged against.
+CONTOUR_FINISH_MIN_RADIUS_MM = 0.15
+
+# Hard cap on finishing-pass iterations per shape. Each pass patches the
+# SINGLE widest remaining bare spot (barecircle.py) and re-measures, so a
+# healthy shape's one structural dot closes in one pass and this only
+# matters for genuinely pathological geometry (a deeply annihilated notched
+# interior can need several passes as the widest spot migrates around the
+# shape). Bounded so a shape that is not converging — the patch itself too
+# thin to sew, or the widest spot oscillating — cannot loop forever; past
+# this many passes whatever is still bare is left bare and reported honestly
+# through `bare_radius_mm` / `starved`, the same as before this pass existed.
+CONTOUR_FINISH_MAX_PATCHES = 8
+
+# Below this area a finishing patch is not worth the emitter call that would
+# sew it — the same order of magnitude CONTOUR_MIN_RING_AREA_MM2 draws for a
+# ring, for the same reason (numerical debris off a polygon boundary, not
+# fabric).
+CONTOUR_FINISH_MIN_PATCH_AREA_MM2 = 0.05
+
+# Slack added to a finishing patch's own measured bare radius before
+# clipping it back to the shape. The patch is `poly` intersected with a
+# plain circle at the bare spot's own centre and radius
+# (`widest_bare_circle`), not any reconstruction of the bare region's own
+# outline. A circle at EXACTLY the measured radius is tangent to whatever it
+# was inscribed in; this margin lets the patch actually overrun the bare
+# spot instead of just touching its edge. One ring spacing — the same order
+# as the gap the rings themselves leave between passes.
+CONTOUR_FINISH_PATCH_MARGIN_MM = 0.4
+
+# Round-join erosion applied to a finishing patch after it is clipped to
+# `poly`. `poly.intersection(disc)` is exact but can still inherit a REFLEX
+# vertex straight from `poly` itself — measured on the letter-e fixture's
+# mouth notch and a 5-point star's spike root: `stitch_shape` (ordinary
+# tatami has no law-42 chord clip of its own) emitted a stitch up to
+# ~0.55 mm outside the shape at exactly that corner. 0.05 mm already closed
+# every reproduction found; this is 2x that for margin, still an order of
+# magnitude under CONTOUR_FINISH_PATCH_MARGIN_MM so it costs negligible
+# coverage.
+CONTOUR_FINISH_EROSION_MM = 0.1
+
 # --- Satin ----------------------------------------------------------------
 
 # Spacing of zigzag crosses along the stroke. Satin reads as a solid band of
@@ -150,6 +309,28 @@ SATIN_ZIGZAG_ABOVE_MM = 2.5
 # together (shared tips, stroke ends) and sewing it would pile thread on a
 # point. Dropped during emission, exactly as the browser engine does.
 SATIN_MIN_CROSS_MM = 0.5
+
+# --- Satin entry/exit point (Laws 27-29) ------------------------------------
+# Scored on 291 real professional decisions: entering at a stroke's FREE end
+# (its open cap, not wherever the skeleton welded it to a junction) matches
+# 85.2% of what pros actually sewed; "enter at whichever end sits nearer the
+# previous exit" — the rule this replaces — matches only 42.3%. When a stroke
+# has no free/junction distinction to lean on (both ends free, or both tucked
+# into a junction) there is no structural signal, so proximity alone decides,
+# same as before this law.
+#
+# Law 29 puts a ceiling on it: extra travel paid to reach the structural cap
+# instead of the nearer end runs median 5.7 mm, 71.8% within 10 mm, 87.7%
+# within 20 mm — past ~20 mm pros mostly stop paying. 10 mm is the corpus
+# law doc's own chosen cutoff (docs/corpus-laws-round3-2026-08-01.md, engine-
+# mapping table, laws 27-29: "desk-safe, highest value").
+#
+# NOT implemented: law 28's finer end-CLASS ordering (cap > tee > corner ~=
+# butt) among junction ends. That needs classifying each junction end's own
+# arm count/angle, which `Stroke` does not currently carry — only the binary
+# free/not-free distinction extract_strokes already computes. Left as a
+# follow-up, not guessed at here.
+STRUCTURAL_ENTRY_BUDGET_MM = 10.0
 
 # --- Push compensation (Law 24) --------------------------------------------
 # Pull and push are two different effects in two different directions. Thread
@@ -241,13 +422,16 @@ BORDER_WIDTH_MM = 1.40
 # spacing between consecutive penetrations on the same side of the column.
 BORDER_DENSITY_MM = 0.45
 
-# UNMEASURED, and deliberately not invented. How far a professional's border
-# centreline sits from the fill edge it covers: the over-a-fill detector fired
-# ZERO times across 39 files while Hotel Fremont visibly has one, so the corpus
-# has not answered it. 0.0 is the boundary condition rather than a guess — the
-# column's outer rail lies exactly on the region's visible edge and the whole
-# column lies inside it. When the number arrives this constant is the entire
-# change; see stage6_border._centre_inset.
+# MEASURED, not a boundary condition (docs/corpus-laws-round3-2026-08-01.md,
+# law 40). Round two's over-a-fill detector fired ZERO times across 39 files
+# because it required a classify()-labelled fill run in the same colour
+# block; a region-level re-instrument with no such requirement finds 70
+# tracking columns of 633, 41 of which actually cover a fill edge. Centreline
+# offset vs. the fill edge (inward positive), covering subset n=41: median
+# +0.05 mm (p10 -0.45, p90 +0.20); restricted to the trustworthy >=20 mm-long
+# columns, n=25: median +0.00 mm (p10 -0.47, p90 +0.20). Confidence high on
+# the number; also unanimous on ordering — 41/41 sewn AFTER the fill they
+# cover, 0/41 before. See stage6_border._centre_inset.
 BORDER_SEAM_OFFSET_MM = 0.0
 
 # Minimum turn radius forced on a ring before it is offset, so neither rail
@@ -310,8 +494,21 @@ TRAVEL_INSET_MM = 0.6   # travel hugs the edge but never reaches it
 
 UNDERLAY_INSET_MM = 1.0      # edge walk sits inside the finished edge
 UNDERLAY_STITCH_MM = 2.5     # structural, not decorative
-UNDERLAY_ZIGZAG_MM = 2.0     # row spacing, zigzag underlay
+UNDERLAY_ZIGZAG_MM = 2.0     # row spacing, zigzag underlay (fill's lattice
+                              # underlay only, via stage6_fill.py's
+                              # _underlay_paths() -- NOT satin; see
+                              # SATIN_ZIGZAG_PITCH_MM below)
 UNDERLAY_LATTICE_MM = 2.5    # row spacing, lattice underlay
+
+# Satin's own zigzag-underlay pitch (corpus law 23, docs/corpus-laws-round3-
+# 2026-08-01.md). Deliberately a separate constant from UNDERLAY_ZIGZAG_MM:
+# that one is shared with fill's lattice underlay (stage6_fill.py), and the
+# corpus finding is specific to satin columns, whose zigzag underlay runs
+# denser than the generic 2.0 mm pitch -- 1.45 mm crossings, not 2.0. Landed
+# 2026-08-05 alongside law 26 and stage6_satin.py's _stroke_underlay() leg-
+# width widening; see COVERAGE_WARN_UNITS below for the recalibration this
+# and law 26 together required.
+SATIN_ZIGZAG_PITCH_MM = 1.45
 
 # --- Ties and trims --------------------------------------------------------
 
@@ -378,17 +575,51 @@ COVERAGE_SUBSAMPLE_MM = 0.1
 # layer red line) — they are NOT primary-sourced, and are carried here with
 # that provenance intact.
 #
-# Checked against what our own output actually produces, 2026-08-01, rather
-# than adopted on the playbook's word. The stacking ladder lands exactly on
-# law 27's prose: one full-density fill measures 1.00 units, two 2.00 ("never
-# more than two full-density fills stacked" — permitted, silent), three 3.00
-# ("a third layer means cutting a hole in the base" — warn), four 4.00
-# (block). Real plans: the fixture logo p50 1.20 / p95 1.82 / max 2.55 and
-# the benchmark at 90 mm p50 1.19 / p95 3.15 / max 4.58 — both clean, both
-# silent, because the check gates on connected patch area and neither has a
-# patch over 2.5 bigger than 11 mm2. An auto border over a 0.20 mm fill
-# reaches 4.85 across 408 mm2 and warns; 0.13 mm rows block.
+# COVERAGE_WARN_UNITS = 2.5 — recalibrated 2026-08-05 after corpus laws 23 and
+# 26 landed (fabrics.py's pique_knit/jersey_tee fill_underlay edge_lattice ->
+# edge_run, and SATIN_ZIGZAG_PITCH_MM 2.0 -> 1.45 with the wider 0.82x-column
+# zigzag leg below). The line used to be "checked against what our own output
+# actually produces" — self-fit to the PRE-law-23/26 engine, which is
+# circular: it verifies the counting mechanism, not the threshold. Re-derived
+# here two ways that do NOT depend on our own prior output:
+#   1. Law 27's own prose is the primary number: "safe classic stack ~= 2.5
+#      units". That IS the derivation, not a coincidence to be reproduced.
+#   2. Cross-checked against law 28 ("underlay costs 15-20% of an element's
+#      stitches but only ~0.1-0.2 coverage units") using the CORRECTED
+#      engine's own underlay geometry, computed from stitch geometry alone
+#      (0.4mm thread / pitch, same arithmetic _coverage_map uses): fill's
+#      generic zigzag underlay (UNDERLAY_ZIGZAG_MM = 2.0mm, now used only by
+#      stage6_fill.py's lattice underlay since law 26) prices at 0.4/2.0 =
+#      0.208 units, the top of law 28's band almost exactly. Satin's own
+#      zigzag underlay (SATIN_ZIGZAG_PITCH_MM = 1.45mm, corpus law 23 —
+#      denser than the generic pitch, independently sourced, not fit to
+#      match law 28's band) prices at 0.4/1.45 = 0.283, a bit over that band
+#      but still cheap. A classic stack — underlay + one full-density fill
+#      (1.00) + one satin detail layer (1.00) — lands at 2.21-2.28 units
+#      either way: comfortably under 2.5, matching law 27's "safe"
+#      classification with headroom, not against it.
+# Real fixtures after both laws confirm the same story: the fixture logo
+# (whitebg @ left_chest, pique_knit) now measures p50 1.00 / p95 1.49 /
+# max 2.57 (was p50 1.20 / p95 1.82 / max 2.55 before law 26 removed the
+# lattice pass) and the 160mm heavy-square fixture p50 1.00 / p95 1.00 /
+# max 1.59. Typical output sits well under 2.5 either side of the change;
+# nothing that was clean before now grazes the line, and nothing that should
+# warn is newly silenced by it.
 COVERAGE_WARN_UNITS = 2.5
+
+# COVERAGE_BLOCK_UNITS = 3.5 — left EXACTLY as-is, 2026-08-05. Per
+# docs/machine-physics-playbook-2026-07-31.md line ~84 this line (unlike
+# COVERAGE_WARN_UNITS above) is explicitly tagged sew-out-gated, not
+# desk-safe: it is Embrilliance's 6-thread-layer red line translated to our
+# units, medium confidence, and part 4 item 2 of the playbook already
+# prescribes the test that settles it — a stacked-fill ladder 2.0 -> 4.0
+# units in 0.5 steps on twill/tearaway (EMBBOT_SEWOUT_CARD.dst block 2),
+# noting the first break and hand-feel. That sew-out has not happened.
+# Landing laws 23/26 changes typical coverage readings (see WARN's note
+# above) but does not touch this line's own justification, so it stays
+# untouched pending Kent's physical test — moving it on desk math alone
+# would be exactly the self-fit mistake WARN's recalibration was trying to
+# get away from.
 COVERAGE_BLOCK_UNITS = 3.5
 
 
@@ -413,6 +644,45 @@ RUN_STITCH_MM = 2.0
 # inventing cover that no thread provides — measured on the benchmark, 0.3 mm
 # starts admitting links across bare inter-letter fabric.
 LINK_COVER_TOL_MM = 0.2
+
+# How far a FUTURE colour's sewing polygon is eroded before it may count as
+# cover for a needle-down link. The already-laid half of stage 7's link cover
+# is real emitted thread (rebuilt from `runs`, 2026-08-03); this half cannot
+# be — that colour has not been planned when the link is routed — so its
+# ARTWORK polygon stands in for its thread, and no tier stitches its whole
+# polygon. Measured 2026-08-04 (both committed fixtures, logo_alpha +
+# logo_whitebg @ 80 mm / left_chest), real emitted non-travel runs vs the
+# artwork polygon `covered_by` quotes, worst case per tier:
+#
+#   fill:  nearest stitch centreline up to 0.223 mm inside the boundary
+#          (thread edge 0.023 mm shy). Interior is honest: rows tile at
+#          FILL_ROW_MM, holding a 0.20 mm half-spacing ceiling everywhere.
+#   satin: up to 0.501 mm to the nearest centreline at the boundary (thread
+#          edge 0.301 mm shy) — the column stops short at tips and fans on
+#          curves, exactly the class the 2026-08-03 rebuild proved wrong for
+#          the block's own tiers.
+#   run:   an outline run covers NO interior at all, so no erosion makes its
+#          polygon honest except the one that swallows it — its inradius,
+#          measured 0.527/0.539 mm on the fixtures' rescued shapes (shapes
+#          under min_detail_mm² sew as outline runs).
+#
+# The binding number is the run tier's 0.539 mm, plus LINK_COVER_TOL_MM —
+# the cover is buffered back OUT by that much for the containment test, so
+# the inset must pre-pay it: 0.539 + 0.2 = 0.739, rounded up to 0.75. At
+# 0.75 every measured run-tier shape erodes to empty (covers nothing,
+# honestly) and every fill/satin boundary shortfall is bounded with margin.
+#
+# What an inset cannot fix, also measured so nobody re-derives it: hairline
+# gaps between fanned satin crosses persist at ANY inset (still there at
+# 1.0 mm) — <= 0.127 mm inscribed radius, <= 0.121 mm beyond the thread
+# edge, < 1 mm² per shape. Narrower than one thread width; whether that
+# clearance shows on fabric is the sew-out question that still gates
+# `chain_links`' default.
+#
+# The two errors are not symmetric: erring big turns a buriable link into a
+# jump (a needle-up move, invisible); erring small sews a float on bare
+# fabric. Round up, never down.
+LINK_COVER_INSET_MM = 0.75
 
 # The gap past which a link is refused outright, whatever the coverage. Law 59
 # [M] is flat — professionals link 56-75% of transitions at every bucket from 0
@@ -504,7 +774,29 @@ APPLIQUE_COVER_SPACING_MM = 0.40      # [P]; Melco 4.2 pt [V]
 APPLIQUE_COVER_SPACING_MIN_MM = 0.30  # [P] below this the needle cuts the fabric
 APPLIQUE_COVER_SPACING_MAX_MM = 0.60  # [P] above this the raw edge shows through
 APPLIQUE_COVER_PULL_COMP_MM = 0.20    # [P] up to 0.30 on knits
+# Zigzag cover's own spacing, read by stage6_applique._cover_layer only when
+# `cover == "zigzag"` — it replaces `geom.spacing_mm` (the satin figure above)
+# for that call, rather than stretching one constant to mean two different
+# pitches. §2.8 states TWO candidate zigzag spacings with no tie-break between
+# them: 1.69 mm (= 15 SPI) `[S]` Stahls', or 3.0 mm, Melco's ZigZag-appliqué
+# preset default of 30 pt `[V]`. This module already leans Melco/`[V]` where
+# the spec offers a choice (`APPLIQUE_COVER_SPACING_MM` above cites Melco's
+# 4.2 pt; `APPLIQUE_TACK_STITCH_MM`, `APPLIQUE_TACK_PASSES` do too), so 3.0 mm
+# is picked for consistency with the rest of this file's defaults, NOT because
+# it was sewn out and measured — it wasn't. Flagged as an open question a real
+# sew-out could revise; see `docs/specialty-techniques-2026-08-01.md` §2.8 and
+# §2.10's material matrix (which prints the 1.69 mm figure against tackle
+# twill specifically) before changing it.
+APPLIQUE_ZIGZAG_COVER_SPACING_MM = 3.0  # [V] Melco 30pt preset; unvalidated by sew-out
+# Applied in stage6_applique._cover_layer, the same direction as
+# Fabric.pull_comp_mm on an ordinary satin column: each rail moves `this`
+# further from the other, so the stitched column is `2*this` wider than the
+# solved width (see that function's docstring for the measured before/after).
+# The "up to 0.30 on knits" note above is context, not a by-material table —
+# there is no knit-specific override wired in, only the single 0.20 mm value.
 # Stahls' publishes 4-8 stitches of closure overlap past the start point [S].
+# Applied in stage6_applique._cover_layer, replacing the border module's
+# generic BORDER_CLOSURE_OVERLAP_MM (a distance) for this call site only.
 APPLIQUE_CLOSURE_OVERLAP_STITCHES = 6
 
 # The tolerance stack (§2.3). No source states it as an equation; it is [D],
@@ -534,6 +826,8 @@ APPLIQUE_INSIDE_SHARE_PRECUT = 0.50   # [V]
 # 2.5 mm (risky)" [P]); note it sits ABOVE the twill material floor below and
 # above Stahls' published 2 mm, so the clamp is what binds on pre-cut twill —
 # a deliberate conservatism, not an oversight. 5.0 is the snag ceiling [D].
+# Whichever bound binds, `solve_cover_width`'s own "clamped" field says so and
+# stage6_applique.check_gates turns it into APPLIQUE_COVER_WIDTH_CLAMPED.
 APPLIQUE_COVER_WIDTH_FLOOR_MM = 2.50
 APPLIQUE_COVER_WIDTH_MAX_MM = 5.00
 # W_floor_material, §2.13. Only binds where it exceeds the 2.5 clamp floor.
@@ -549,7 +843,13 @@ APPLIQUE_COVER_FLOOR_BY_MATERIAL = {
 # 3.5 mm and clears at 4.0 mm exactly. It falls through to plain satin and the
 # engine must SAY it did.
 APPLIQUE_MIN_FEATURE_MARGIN_MM = 1.0
-# Scissors must physically fit inside the shape to trim in place.
+# Scissors must physically fit to cut the piece. Two separate floors, one per
+# mode: pre-cut is hand-cut from sheet stock BEFORE placement (no in-hoop trim
+# step to fall back to, so the floor is lower), trim-in-place is cut IN THE
+# HOOP after tackdown (tighter access, so the floor is higher). Fed by
+# `narrowest_passage_diameter`, not `min_inscribed_diameter` — see that
+# function's docstring for why the single-largest-inscribed-circle measure is
+# blind to a dog-bone-shaped piece's own neck.
 APPLIQUE_MIN_INSCRIBED_PRECUT_MM = 8.0
 APPLIQUE_MIN_INSCRIBED_TRIM_MM = 12.0
 # Below |c_in| + this, the cover's inner rail self-intersects on a concave turn.
@@ -560,6 +860,12 @@ APPLIQUE_MIN_HOLE_DIAMETER_MM = 15.0
 # Multi-piece (§2.11). The one hard vendor number: Wilcom states it directly —
 # "Set the cutting overlap to half the width of the cover stitching" [V], and
 # Hatch's Partial Appliqué tool is documented accurate to +-1/2 the cover width.
+# NOT the same thing as `APPLIQUE_CLOSURE_OVERLAP_STITCHES` above despite the
+# similar name: this is how far one piece's CUTTING BOUNDARY dilates into a
+# neighbour it overlaps (Mode B multi-piece batching, §2.11), not how far a
+# single piece's own cover circuit overlaps its own start. Mode B is not
+# built — `applique_pass` only detects and warns overlapping pieces
+# (`APPLIQUE_PIECES_OVERLAP`) — so this constant stays unread until it is.
 APPLIQUE_OVERLAP_ALLOWANCE_FRAC = 0.5
 
 # Machine speed for the worksheet — the Tajima will not infer it [P] (§2.10).

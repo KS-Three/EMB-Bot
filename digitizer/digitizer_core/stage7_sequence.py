@@ -12,6 +12,10 @@ design runs clean on a machine or produces a garment covered in loose ends:
   takes `start_near` and enters the shape there. Generating first and ordering
   on the result meant every shape began at its own top-left corner and the
   needle was sent back across the design to get there.
+  The review screen may pin a shape to an explicit slot in this order
+  (`Region.meta["sew_order"]`, shape-layers contract v1.2) — nearest-neighbour
+  still fills every slot no one pinned, so an unedited design, and every shape
+  in an edited one that carries no override, sews exactly as before.
 - **Ties.** A lock stitch goes in wherever the thread starts and wherever it is
   about to be cut. Without them the first stitches pull out the moment the
   garment is worn, which is the kind of defect that surfaces after delivery.
@@ -28,6 +32,19 @@ design runs clean on a machine or produces a garment covered in loose ends:
   Those two laws ship together on purpose. Linking on distance alone, without
   the coverage test, converts trims into visible floats on bare fabric — which
   is strictly worse than the trims it removes.
+
+- **Photo depth sequencing** (photo plan §2 row 14) is also this module's
+  vocabulary, even though `depth_sort_layers` runs BEFORE stage 5: the order
+  color blocks sew in is `meta["layer"]`, and stage 5's whole underlap/
+  coverage model (`covered_by`, "extend the color that sews FIRST underneath
+  the one that sews after it") is built on that order — so a sequencing
+  override that reordered blocks here, after stage 5 had already planned
+  against the old order, would bury links under colors that no longer sew
+  later and put seams on the wrong side of every boundary. The override
+  therefore edits the layer order upstream (pipeline.run_stages calls it
+  right after `compact_layers`) and everything downstream follows one
+  consistent story. See `depth_sort_layers` for what "depth" can honestly
+  mean today.
 """
 from __future__ import annotations
 
@@ -47,11 +64,17 @@ from .stage6_applique import applique_pass, nn_group_key
 from .stage6_blend import SourcePixels, blend_fill
 from .stage6_border import border_runs, run_outline
 from .stage6_contour import contour_fill
+from .stage6_detail import detail_runs
 from .stage6_fill import stitch_shape
+from .stage6_meander import meander_fill
+from .stage6_scanline import scanline_fill
+from .stage6_sketch import sketch_fill
 from .stage6_satin import is_satin_candidate, satin_shape
+from .stage6_streamline import streamline_fill
 from .stitches import StitchBlock, StitchRun, tie_run
 from .threads import chart_for
-from .warnings_codes import (BORDER_LIGHTENED, BORDER_SKIPPED_TOO_NARROW,
+from .warnings_codes import (BORDER_LIGHTENED, BORDER_SEAM_SHARED,
+                             BORDER_SKIPPED_TOO_NARROW,
                              CONTOUR_RING_UNREACHABLE, LONG_JUMPS_TRIMMED,
                              SHAPE_NOT_STITCHED, SHAPE_TOO_THIN_TO_FILL,
                              SMALL_SHAPES_AS_RUN, warn)
@@ -62,6 +85,120 @@ from .warnings_codes import (BORDER_LIGHTENED, BORDER_SKIPPED_TOO_NARROW,
 # this only caps the pathological case: a colour whose covering geometry packs
 # thousands of vertices into that ellipse.
 _LINK_SEARCH_NODES = 120
+
+# The two stage-0 classes that engage photo sequencing (depth-sorted layers +
+# the underlay split, plan §2 row 14). A caller may also opt any design in
+# explicitly via cfg.extra["photo_sequencing"] — same knob, both halves.
+PHOTO_CLASSES = ("photo_subject", "photo_scene")
+
+# Row 14's underlay split, expressed in the vocabularies the two tiers
+# actually speak (fabrics.py's ids):
+#  - Fill zones get a LIGHT MESH — edge run + one lattice pass — instead of
+#    the fabric preset's own style. On stable fabrics that is roughly what
+#    the preset already says; on nap presets (fleece/terry ship
+#    double_lattice) it is the difference between a drawing and a board:
+#    full-coverage photo work already sustains 2.0-3.5 st/mm2, and stacking a
+#    heavy double lattice under it is the "stiff as a piece of wood" outcome
+#    the plan's class (d) ceiling names.
+#  - Satin details get a light spine run ("center_run" — satin's underlay
+#    vocabulary has no separate edge-run id; its center run IS the single
+#    light run under the column, and stage 6 still force-upgrades columns
+#    wider than SATIN_ZIGZAG_ABOVE_MM to zigzag, which top details never
+#    are) instead of a nap preset's zigzag.
+#  - The meander/scanline/streamline/sketch tiers sew NO underlay by
+#    construction (their emitters never call an underlay path — fabric-as-
+#    value is those tiers' whole point, stage6_meander/stage6_streamline
+#    docstrings), so row 14's "none under meander/sketch" needs no code
+#    here; the tests pin it stays true.
+_PHOTO_FILL_UNDERLAY = "edge_lattice"
+_PHOTO_SATIN_UNDERLAY = "center_run"
+
+
+def _rel_luminance(rgb: tuple[int, int, int]) -> float:
+    """Rec. 709 relative luminance of a thread's chart RGB — the 'dark' in
+    dark→light. Chart color, not source pixels, on purpose: it is the thread
+    that goes down on the fabric, it exists for every class (photo runs do
+    not carry source pixels unless a tonal tier asked for them), and it is
+    deterministic per palette."""
+    r, g, b = rgb
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def depth_sort_layers(regions, thread_indices: list[int], chart) -> list[int]:
+    """Reorder color layers depth-sorted for photo classes (plan §2 row 14):
+    background first, then dark→light, detail layers last. Mutates
+    `regions`' meta["layer"] (and re-sorts the list into the stable
+    layer/area/id order stage 4 promises) and returns `thread_indices`
+    permuted to match, so the palette stays the sew-order thread list.
+
+    Replaces the largest-area-first order stage 2 produced. That order is
+    right for flat logos (big fields down first, small details last and
+    crisp) and wrong for photo work, where the universal craft consensus is
+    that winners read as drawings executed in thread: the scene is laid in
+    back-to-front and shadow-to-highlight, so every later, lighter layer
+    sits ON the darker ground the way a painter's highlight does — and a
+    largest-area-first photo sews as a uniform scan conversion instead.
+
+    What "depth" can honestly mean today, stated plainly:
+
+    - **Background** is the one region-level background fact the pipeline
+      has: `meta["enclosed_background"]` (stage 4's tag from stage 1's
+      mask). A layer whose every stitched region carries it sews first.
+    - **Dark→light** is the thread's own chart luminance (`_rel_luminance`),
+      per layer — regions of one thread share a block, so within-object
+      shade order IS the layer order of that object's shade ramp.
+    - **Details last** keys on the review screen's explicit detail tiers: a
+      layer whose every stitched region is pinned `tier` "run" or "satin"
+      is a detail pass and sews last. The auto satin classifier is NOT a
+      depth signal — a satin-classified ribbon may be a whole object.
+
+    TRUE INSTANCE-LEVEL DEPTH — subject vs. mid-ground vs. sky, "the dog in
+    front of the fence" — is not computable from any of that. It needs the
+    photo plan's step-3 segmentation (rembg subject mask, SAM instance
+    splits) to tag regions with which INSTANCE they belong to; when that
+    lands, its tag slots in as a depth band between background and the
+    dark→light ramp here, exactly the way `face_regions` is documented as
+    the seam in stage2_photo_segment._face_local_threshold. Until then this
+    function does not fake it, and the docstring says so instead.
+
+    Ties break dark-first, then larger-first (the old order's spirit), then
+    the old layer number — fully deterministic. Call AFTER `compact_layers`
+    (layers dense 0..n-1, one thread per layer) and BEFORE
+    `apply_layer_overrides`, so an explicit review-screen `layer` override
+    still beats this default, the same way an explicit `sew_order` pin
+    still wins within its layer (stage 7's picking loop is untouched).
+    """
+    if not regions:
+        return list(thread_indices)
+    layers = sorted({r.meta["layer"] for r in regions})
+    by_layer = {L: [r for r in regions if r.meta["layer"] == L] for L in layers}
+
+    def key(L: int):
+        members = by_layer[L]
+        # Unstitched regions (enclosed background hidden by default, review
+        # deletions resolved earlier) put no thread down, so they get no
+        # vote — unless they are all the layer has, in which case they are
+        # the only evidence there is.
+        basis = [r for r in members if r.meta.get("stitched", True)] or members
+        if all(r.meta.get("enclosed_background") for r in basis):
+            depth = 0
+        elif all(str(r.meta.get("tier", "")).lower() in ("run", "satin")
+                 for r in basis):
+            depth = 2
+        else:
+            depth = 1
+        lum = _rel_luminance(chart[thread_indices[L]].rgb)
+        area = sum(r.area_mm2 for r in basis)
+        return (depth, round(lum, 6), -round(area, 6), L)
+
+    order = sorted(layers, key=key)
+    remap = {old: new for new, old in enumerate(order)}
+    for r in regions:
+        r.meta["layer"] = remap[r.meta["layer"]]
+    # Restore stage 4's stable output order under the new layer numbers —
+    # the same re-sort apply_shape_edits/apply_layer_overrides already do.
+    regions.sort(key=lambda r: (r.meta["layer"], -r.area_mm2, r.shape_id))
+    return [thread_indices[L] for L in order]
 
 
 def _link_budget_mm(direct_mm: float) -> float:
@@ -94,18 +231,23 @@ def _densify(a: tuple[float, float], b: tuple[float, float],
 
 
 def _ring_points(geom) -> list[tuple[float, float]]:
-    """Every boundary vertex of a polygon or multipolygon, rings closed once."""
-    polys = ([geom] if geom.geom_type == "Polygon"
-             else [g for g in getattr(geom, "geoms", []) if g.geom_type == "Polygon"])
+    """Every boundary vertex of a polygon/multipolygon, or every point of a
+    line/multiline, rings closed once."""
+    parts = ([geom] if geom.geom_type in ("Polygon", "LineString")
+             else [g for g in getattr(geom, "geoms", [])
+                   if g.geom_type in ("Polygon", "LineString")])
     out: list[tuple[float, float]] = []
-    for g in polys:
+    for g in parts:
+        if g.geom_type == "LineString":
+            out.extend(g.coords)
+            continue
         out.extend(g.exterior.coords[:-1])
         for ring in g.interiors:
             out.extend(ring.coords[:-1])
     return out
 
 
-def _link_cover(regions: list[PlannedRegion]):
+def _link_cover(runs: list[StitchRun], regions: list[PlannedRegion]):
     """Where this colour's needle may travel down without showing.
 
     -> (cover geometry, candidate waypoints), or (None, []) with nothing to go on.
@@ -113,41 +255,77 @@ def _link_cover(regions: list[PlannedRegion]):
     Law 60: professionals route a link to be COVERED, not to be short, and the
     corpus shows them using two kinds of cover. Geometry that sews LATER buries
     the link under another thread — that is `covered_by`, handed over by stage 5
-    rather than recomputed here. Geometry this colour has ALREADY laid carries
-    the link on top of itself, in its own thread, where it cannot read as a
-    stray line. Every shape in the block is one or the other by the time the
-    block finishes, so the block's own sewing polygons go in whole; which side
-    of "now" a given shape falls on never changes the answer.
+    rather than recomputed here, since that colour's own stitches do not exist
+    yet. Geometry this colour has ALREADY laid carries the link on top of
+    itself, in its own thread — and by the time this runs, that thread is not a
+    prediction, it is `runs`: the whole block has already been stitched, so the
+    real sewn centrelines are sitting right here.
 
-    Only shapes that actually produced stitches are passed in. A shape that
-    came back empty covers nothing, and routing a link under one would put a
-    float on bare fabric — the exact defect this test exists to prevent.
+    A shape's sewing POLYGON is not that thread. A fill's first row sits half a
+    row inside the boundary and drops non-monotone spans; a satin column stops
+    short at its own tips and fans on curves. Routing a link under "the shape"
+    instead of under "what the shape actually sewed" buries it under fabric no
+    thread ever reached — measured on the benchmark as a 0.947 mm-deep hole in
+    one satin column alone. So the already-laid half of the cover is built from
+    `runs` directly: every non-TRAVEL run's centreline, buffered by the same
+    LINK_COVER_TOL_MM the polygon edges get below. That buffer is exactly half
+    of COVERAGE_THREAD_W_MM, so a centreline buffered by it is not a tolerance
+    on top of the thread — it IS the thread, at its real physical width.
+
+    Only shapes that actually produced stitches are passed in for `covered_by`.
+    A shape that came back empty covers nothing, and routing a link under one
+    would put a float on bare fabric — the exact defect this test exists to
+    prevent.
 
     The cover is buffered by LINK_COVER_TOL_MM (the reach of the covering
-    element's own edge thread) for the containment test, while the waypoints
-    come from the UNBUFFERED union: buffering rounds every corner into an arc
-    and multiplies the vertex count for waypoints that say nothing new, and a
-    vertex of the raw union sits a full tolerance inside the cover.
+    element's own edge thread, or half the width of the already-laid thread
+    itself) for the containment test, while the waypoints come from the
+    UNBUFFERED union: buffering rounds every corner into an arc and multiplies
+    the vertex count for waypoints that say nothing new, and a vertex of the
+    raw union sits a full tolerance inside the cover.
 
     Those waypoints are simplified by HALF the tolerance before they are taken.
     Simplification moves a vertex by at most that much, so every waypoint is
     still a half-tolerance inside the cover — and the corner detail it drops is
     detail no route needs, at a scale finer than the thread that would cover it.
+
+    `covered_by` is still a future colour's sewing POLYGON, not its thread —
+    that colour has not been planned yet, so its real path cannot be known
+    here. What CAN be known is how far short of its polygon that thread will
+    stop, because every tier's shortfall has been measured: so each future
+    polygon is eroded by LINK_COVER_INSET_MM (see machine.py for the
+    measurement) before it may bury anything. Geometry the erosion consumes
+    entirely — a band thinner than twice the inset, a run-tier sliver whose
+    outline run covers no interior — promises nothing, and a link it would
+    have carried becomes a jump instead: the cheap direction to be wrong in.
     """
-    parts = [p.polygon for p in regions]
+    laid = [LineString(r.points) for r in runs
+            if r.kind != stitches.TRAVEL and len(r.points) >= 2]
+    parts: list[object] = list(laid)
     seen: list[object] = []
     for p in regions:
         c = p.covered_by
         if c is not None and not c.is_empty and not any(c is s for s in seen):
             seen.append(c)
-    parts.extend(seen)
+            g = c.buffer(-machine.LINK_COVER_INSET_MM)
+            if not g.is_empty:
+                parts.append(g)
     parts = [g for g in parts if g is not None and not g.is_empty]
     if not parts:
         return None, []
     raw = unary_union(parts)
     if raw.is_empty:
         return None, []
-    cover = raw.buffer(machine.LINK_COVER_TOL_MM)
+    # Buffer each part on its own and union the results, rather than buffering
+    # the assembled union in one call — mathematically identical (a Minkowski
+    # buffer distributes over union), but not computationally identical. A
+    # block's own fill rows sit LINK_COVER_TOL_MM*2 apart, and GEOS's buffer of
+    # one large network of many near-parallel, near-touching lines has to node
+    # and union every offset curve against every other internally; buffering
+    # each row alone is cheap (it is a single simple line) and the union of the
+    # resulting simple capsules is cheap too. Same geometry, the order that
+    # does not fall off GEOS's performance cliff.
+    cover = unary_union([g.buffer(machine.LINK_COVER_TOL_MM) for g in parts])
     shapely.prepare(cover)
     lean = raw.simplify(machine.LINK_COVER_TOL_MM / 2.0)
     return cover, _ring_points(raw if lean.is_empty else lean)
@@ -269,7 +447,7 @@ def _chain(runs: list[StitchRun], regions: list[PlannedRegion]
     """
     if len(runs) < 2 or not regions:
         return runs, 0
-    cover, waypoints = _link_cover(regions)
+    cover, waypoints = _link_cover(runs, regions)
     if cover is None:
         return runs, 0
 
@@ -333,15 +511,157 @@ def _apply_ties(runs: list[StitchRun]) -> None:
     tie_off(runs[-1])
 
 
+# Hair-width: stage 5 makes two abutting shapes' visible edges the identical
+# curve (float noise aside), so this only has to bridge floating-point slop,
+# never a real gap. Same order as stage6_border's own `_SLACK_MM`.
+_BORDER_SEAM_EPS_MM = 0.02
+
+
+def _seam_band(a_geom, b_geom) -> tuple[object | None, float]:
+    """-> (the coincident strip between two shapes' own edges, its length).
+
+    `stage6_border`'s KNOWN LIMITATION: two border-enabled shapes that abut
+    get the identical line for a visible edge (stage 5's overlap resolution),
+    so their outline circuits would ride it at full density each — a
+    double-thick bar in two threads. Buffering each shape's boundary by a
+    hair-width epsilon and intersecting turns "same curve" into an ordinary
+    polygon overlap; the strip is `2 * eps` wide everywhere but the end caps,
+    so its AREA divided by that width recovers the coincident length without
+    walking the curve. `(None, 0.0)` when the edges do not coincide at all.
+    """
+    shared = (a_geom.boundary.buffer(_BORDER_SEAM_EPS_MM)
+             .intersection(b_geom.boundary.buffer(_BORDER_SEAM_EPS_MM)))
+    if shared.is_empty:
+        return None, 0.0
+    return shared, shared.area / (2.0 * _BORDER_SEAM_EPS_MM)
+
+
+def _border_seam_pairs(geoms: dict[str, object], threshold_mm: float
+                       ) -> list[tuple[str, str, float]]:
+    """Shape-id pairs whose OWN edges run coincident for over `threshold_mm`.
+
+    Pure geometry, order-independent — used by tests and diagnostics to find
+    every seam a design has, regardless of whether `_yield_frontage` (below)
+    already resolved it. Production code no longer calls this for the
+    `BORDER_SEAM_SHARED` warning: that is now driven by which seams the
+    sew-order fix actually could not resolve, tracked incrementally as shapes
+    sew (see `sequence`'s `border_seam_unresolved`), not recomputed here after
+    the fact.
+    """
+    ids = sorted(geoms)
+    out: list[tuple[str, str, float]] = []
+    for i, a in enumerate(ids):
+        for b in ids[i + 1:]:
+            _band, length = _seam_band(geoms[a], geoms[b])
+            if length > threshold_mm:
+                out.append((a, b, length))
+    return out
+
+
+def _yield_frontage(
+    visible_geom, committed: dict[str, object], width_mm: float,
+    threshold_mm: float,
+) -> tuple[object, list[tuple[str, float]]]:
+    """`visible_geom` pulled back off any seam it shares with an
+    ALREADY-COMMITTED border. -> (geometry to hand `border_runs`, unresolved
+    seams as `[(other_shape_id, shared_length_mm), ...]`).
+
+    THE REAL FIX for `stage6_border`'s KNOWN LIMITATION. `committed` holds
+    only shapes whose border has already been traced — every shape that will
+    ever compete with this one for the same seam has, by the time this runs,
+    either already committed a real border (and is in here) or has not (and
+    there is nothing to yield to). That is what makes the tie-break SEW
+    ORDER: whichever shape's thread is already on the fabric keeps the seam;
+    whatever sews after it steps back. No lookahead, no second pass, and no
+    pair can end up with neither shape covering the seam or both riding it —
+    see the call site in `sequence` for why the causal ordering guarantees
+    that.
+
+    The retreat is `width_mm` (the full column) plus `BORDER_HOST_MARGIN_MM`
+    of slack for the corner relaxation's own inward bite — the same margin
+    `stage6_border`'s own `core` check adds around the column before it will
+    call a host "wide enough" — applied by DIFFERENCING a buffered band
+    around the coincident curve: "inset its border circuit locally", so a
+    ring stays a ring and `stage6_border` never has to know a seam was
+    involved. A shape whose entire frontage IS the seam — hemmed in by more
+    than one already-bordered neighbor, nothing left to retreat to — falls
+    back to the untouched geometry rather than erasing its border outright
+    (the same "better a sharp border than no border" call `round_inward`
+    already makes when its own relaxation eats a shape whole), and every
+    seam that produced it is reported back unresolved.
+    """
+    if not committed:
+        return visible_geom, []
+    bands: list[tuple[str, object, float]] = []
+    for other_id, other_geom in committed.items():
+        band, length = _seam_band(visible_geom, other_geom)
+        if band is not None and length > threshold_mm:
+            bands.append((other_id, band, length))
+    if not bands:
+        return visible_geom, []
+    try:
+        zone = unary_union([b for _id, b, _len in bands]).buffer(
+            width_mm + machine.BORDER_HOST_MARGIN_MM)
+        trimmed = visible_geom.difference(zone)
+    except Exception:
+        return visible_geom, []
+    if trimmed.is_empty or trimmed.area < 1e-6:
+        return visible_geom, [(oid, length) for oid, _b, length in bands]
+    return trimmed, []
+
+
+def _border_seam_warning(unresolved: list[tuple[str, str, float]]) -> dict | None:
+    """`BORDER_SEAM_SHARED`, built from the seams `_yield_frontage` could not
+    resolve — or `None` when every shared seam this design had was.
+
+    Split out from `sequence` so the wiring from "a shape's retreat erased
+    its own border" to "the operator hears about it" is one small function a
+    test can call directly with a synthetic list, without reconstructing a
+    whole design that hits the exact geometry `_yield_frontage`'s fallback
+    needs.
+    """
+    if not unresolved:
+        return None
+    n = len(unresolved)
+    return warn(
+        BORDER_SEAM_SHARED,
+        f"{n} pair{'s' if n != 1 else ''} of bordered shapes share an outline "
+        "seam too fully to separate automatically — both circuits still ride "
+        "the same line and will sew as one doubled bar. Turn border off on "
+        "one side of the seam.",
+        count=n,
+        pairs=[[a, b] for a, b, _length in unresolved],
+    )
+
+
 def sequence(
     planned: list[PlannedRegion], fabric: Fabric, cfg: PipelineConfig,
     source_pixels: SourcePixels | None = None,
+    design_class: str = "flat",
 ) -> tuple[list[StitchBlock], list[dict]]:
-    """-> (blocks in sew order, warnings)."""
+    """-> (blocks in sew order, warnings).
+
+    `design_class` is stage 0's verdict (PipelineResult.design_class, handed
+    through by plan_stitches). Only the photo classes change anything here —
+    the underlay split below; flat and gradient take byte-identical paths,
+    which is why the default is "flat" and every pre-existing caller needs
+    no edit.
+    """
     row_mm = (cfg.fill_row_mm or FILL_ROW_MM) * max(0.1, fabric.density_adjust)
     stitch_mm = cfg.fill_stitch_mm or FILL_STITCH_MM
-    underlay_style = (cfg.underlay_style or fabric.fill_underlay) if cfg.underlay else "none"
-    satin_underlay = fabric.satin_underlay if cfg.underlay else "none"
+    # Row 14's underlay split (see _PHOTO_FILL_UNDERLAY above for the craft
+    # case). Precedence is unchanged in shape, only the FALLBACK moves: an
+    # explicit cfg.underlay_style still wins over the class default exactly
+    # as it wins over the fabric preset, the design-wide `underlay` off
+    # switch still zeroes both, and the per-shape meta["underlay_style"]
+    # override still beats all of it both ways (`eff_underlay_style` in
+    # stitch_one — its documented "beats the mode both ways" contract).
+    photo = (design_class in PHOTO_CLASSES
+             or bool(cfg.extra.get("photo_sequencing")))
+    class_fill_underlay = _PHOTO_FILL_UNDERLAY if photo else fabric.fill_underlay
+    underlay_style = (cfg.underlay_style or class_fill_underlay) if cfg.underlay else "none"
+    satin_underlay = ((_PHOTO_SATIN_UNDERLAY if photo else fabric.satin_underlay)
+                      if cfg.underlay else "none")
     satin_max = cfg.satin_max_width_mm or SATIN_MAX_WIDTH_MM
     trim_at = fabric.trim_at_mm
 
@@ -361,18 +681,79 @@ def sequence(
     # The sewable-detail floor, as an area: stage 3 keeps shapes under it only
     # for the run tier, and this is where they are routed to it.
     detail_mm2 = cfg.min_detail_mm ** 2
+    # DT-first migration M1 (docs/dt-first-architecture-2026-08-01.md §2):
+    # off by default, so `bool(cfg.extra.get(...))` reads False on both an
+    # absent key and every falsy value a caller might pass. On, satin_shape
+    # sources its skeleton/DT through digitizer_core/shapefield.py instead
+    # of stage6_satin's own inline call — see that module's docstring. This
+    # is infrastructure only: it must not change one stitch coordinate.
+    use_shapefield = bool(cfg.extra.get("shapefield"))
 
     # The fill tier. Contour rings follow the silhouette; tatami rows cut across
     # it. Density is the same either way — the ring spacing IS the row spacing
     # unless the caller opens it up on its own.
-    contour = (cfg.fill_technique or "tatami").lower() == "contour"
+    technique = (cfg.fill_technique or "tatami").lower()
+    contour = technique == "contour"
     contour_spacing = cfg.contour_spacing_mm or row_mm
+    # The scan-line mono tonal tier (photo plan, technique row 8). Strictly
+    # opt-in: with any other fill_technique this flag is False and every
+    # branch below reads exactly as it did before the tier existed. It needs
+    # source pixels to read tone from — a caller who set the flag gets them
+    # via pipeline.run_stages' explicit-opt-in plumbing; if they are missing
+    # anyway (a hand-built PipelineResult), the shape falls through to
+    # tatami rather than crashing or dropping artwork.
+    scanline = technique == "scanline_tonal"
+    # The meander mono tonal tier (photo plan, technique row 9): identical
+    # opt-in and fallback contract to the scanline tier above — off unless
+    # named, tone read from the same source-pixel plumbing, tatami on empty.
+    meander = technique == "meander_tonal"
+    # The streamline thread-paint tier (photo plan, technique row 10, first
+    # slice): same opt-in and fallback contract, but reads the direction
+    # field's raster instead of raw tone for its spacing.
+    streamline = technique == "streamline"
+    # The sketch tier (photo plan, technique row 12 — stage6_sketch): the
+    # row-12 preset over rows 10+11, sparse mono streamlines plus the FDoG
+    # detail block appended below. Same opt-in and fallback contract as
+    # every tonal tier above. Design-wide only here; the per-shape
+    # tier == "sketch" override is handled inside stitch_one.
+    sketch = technique == "sketch"
+    # The cross-hatch fill tier (stage6_fill._crosshatch_fill_paths): two
+    # angled tatami passes on the same shape, sewn through the ordinary
+    # stitch_shape call with technique="crosshatch". Unlike every tonal tier
+    # above, this needs no source pixels — it is a purely geometric variant
+    # of the plain tatami fill — so it plugs into stitch_one below closer to
+    # how "contour" does than how "sketch"/"streamline" do. Design-wide only
+    # here; the per-shape tier == "crosshatch" override is handled inside
+    # stitch_one.
+    crosshatch = technique == "crosshatch"
+    # Wave, chevron and brick: three more purely-geometric fill variants,
+    # same no-source-pixels-needed / design-wide-or-per-shape / never-drop-
+    # artwork contract as crosshatch immediately above. Unlike crosshatch —
+    # a whole second angled tatami pass — each of these three only changes
+    # how ONE row's own interior points get placed
+    # (stage6_fill._wave_row_points / _chevron_row_points /
+    # _brick_row_points, dispatched inside _fill_paths itself), so they need
+    # no new travel-planning logic of their own either. Design-wide only
+    # here; the per-shape tier == "wave"/"chevron"/"brick" override is
+    # handled inside stitch_one, same slot as tier == "crosshatch".
+    wave = technique == "wave"
+    chevron = technique == "chevron"
+    brick = technique == "brick"
 
     thin = empty = jumps = as_run = 0
     bordered = lightened = border_narrow = 0
     rings_skipped = starved = 0
     blocks: list[StitchBlock] = []
     cursor: tuple[float, float] | None = None
+    # Every shape whose border tier actually put a circuit down, keyed by id,
+    # in the order they actually sewed — `_yield_frontage` reads this as "what
+    # is already on the fabric", and it only ever holds circuits that really
+    # sew, not shapes that merely asked for one and went `too_narrow`, so a
+    # later shape never yields to a seam nothing is going to cover.
+    border_geom_by_id: dict[str, object] = {}
+    # Seams `_yield_frontage` could not resolve without deleting the later
+    # shape's border outright — see `_border_seam_warning`.
+    border_seam_unresolved: list[tuple[str, str, float]] = []
 
     # --- The appliqué tier (stage6_applique, docs §2). Off unless asked for,
     # and when off this returns ([], [], planned, None) and changes nothing.
@@ -397,12 +778,26 @@ def sequence(
         group = [p for p in planned if nn_group_key(p) == _group_key]
 
         def stitch_one(p: PlannedRegion, entry: tuple[float, float] | None):
-            # The review screen's per-shape tier (shape-layers contract v1):
-            # "auto" is the ladder below exactly as it always ran; "satin",
-            # "fill" and "run" force one rung. A forced rung that produces
-            # nothing falls back to "auto" rather than dropping artwork — the
-            # same contract the auto ladder already has between its own rungs.
+            # The review screen's per-shape tier (shape-layers contract v1;
+            # "sketch" added in v1.3): "auto" is the ladder below exactly as
+            # it always ran; "satin", "fill", "run" and "sketch" force one
+            # rung. A forced rung that produces nothing falls back to "auto"
+            # rather than dropping artwork — the same contract the auto
+            # ladder already has between its own rungs.
             tier = str(p.region.meta.get("tier", "auto")).lower()
+            # UNDERLAY-STYLE PRECEDENCE (shape-layers contract v1): the
+            # shape's own review-screen style beats the design-wide one — in
+            # BOTH directions, exactly like `border` beats `border_style`.
+            # `underlay_style` here already folds in `cfg.underlay` (line
+            # ~390: forced to "none" when the design-wide switch is off), so
+            # an explicit per-shape style overrides that switch too — a shape
+            # marked "zigzag" gets underlay with underlay=False design-wide,
+            # and one marked "none" gets none with it on. Reaches the fill
+            # and contour tiers only (both consult it below); satin keeps its
+            # own separate, narrower underlay knob untouched.
+            shape_underlay = p.region.meta.get("underlay_style")
+            eff_underlay_style = (shape_underlay if shape_underlay is not None
+                                  else underlay_style)
             # The run tier comes first: a shape below the sewable-detail floor
             # has nowhere to put fill rows (MIN_FILL_WIDTH_MM) and pinches
             # every satin cross under SATIN_MIN_CROSS_MM, so both real tiers
@@ -427,7 +822,8 @@ def sequence(
             # "satin" skips the classifier (and the global satin switch): the
             # user has already answered the question it asks.
             if tier == "satin" or (tier == "auto" and cfg.satin
-                                   and is_satin_candidate(p.region.polygon, satin_max)):
+                                   and is_satin_candidate(p.region.polygon, satin_max,
+                                                           design_class=design_class)):
                 runs, report = satin_shape(
                     p.polygon,
                     p.shape_id,
@@ -436,6 +832,7 @@ def sequence(
                     start_near=entry,
                     split_above_mm=split_above,
                     end_cutback_mm=end_cutback,
+                    use_shapefield=use_shapefield,
                 )
                 # A ribbon the skeleton could not resolve still has to sew:
                 # fall through to fill rather than silently dropping artwork.
@@ -456,8 +853,213 @@ def sequence(
             # pair yet; it is recorded here rather than silently combined.
             runs = []
             report = {}
-            if source_pixels is not None:
-                # Stage 0 classified the whole design "gradient" — every
+            need_tatami = False
+            if (sketch or tier == "sketch") and source_pixels is not None:
+                # The sketch tier (row 12): the design-wide preset OR this
+                # one shape's review-screen tier override — the per-shape
+                # form is checked here so it beats whatever technique the
+                # rest of the design sews with, the same precedence every
+                # other forced tier value gets. Empty is honest (an
+                # all-highlight shape sews nothing) and falls through to
+                # tatami below rather than dropping artwork — the standing
+                # contract of every tonal tier in this chain.
+                runs, report = sketch_fill(p.region, source_pixels, cfg)
+                need_tatami = report["empty"]
+            elif (streamline or tier == "streamline") and source_pixels is not None:
+                # The streamline thread-paint tier (row 10): the design-wide
+                # preset OR this one shape's review-screen tier override —
+                # checked here, ahead of scanline/meander, for the identical
+                # reason the sketch branch above is checked first: a forced
+                # per-shape tier beats whatever technique the rest of the
+                # design sews with (the "shape-layers contract" precedence
+                # every other forced tier value already gets). This is also
+                # how a manually-classified (flat-lane) shape reaches
+                # streamline fill outside the photo auto-pipeline — the
+                # design can stay `fill_technique="tatami"` throughout and
+                # still carry one `tier: "streamline"` shape, exactly the
+                # way one shape can already carry `tier: "sketch"`.
+                #
+                # Direction-field source, decided once and not revisited
+                # per shape: `streamline_fill` always reads
+                # `directionfield.py`'s structure-tensor/ETF field over
+                # THIS design's own prepped raster (`source_pixels.rgb` —
+                # whatever art the job was given, photo or flat logo
+                # alike), never a shape-geometry-derived field (no medial-
+                # axis/skeleton tangent construction exists in this
+                # codebase for that, and building one would be a new
+                # clean-room algorithm, not a wiring change). That module's
+                # own coherence gate already makes this the right default
+                # for a flat-lane shape with no real texture: a genuinely
+                # flat, textureless region reads near-zero coherence and
+                # falls back to `RegionDirection.use_house_angle`'s constant
+                # field, which itself reads this shape's `fill_angle_deg`
+                # override first — the very same per-shape angle knob
+                # ordinary tatami fill already exposes — before the design-
+                # wide default. So a manually-selected streamline shape gets
+                # real image-structure-following lines where the art
+                # actually has texture, and clean user-controlled parallel
+                # lines (not a crash, not spaghetti) where it does not.
+                # Empty is honest (an all-highlight shape sews nothing) and
+                # falls through to tatami below rather than dropping
+                # artwork — the standing contract of every tonal tier here.
+                runs, report = streamline_fill(p.region, source_pixels, cfg)
+                need_tatami = report["empty"]
+            elif crosshatch or tier == "crosshatch":
+                # The cross-hatch fill tier: two tatami passes on the same
+                # shape, one at the fill angle and one at +90
+                # (stage6_fill._crosshatch_fill_paths), each individually
+                # spaced machine.CROSSHATCH_ROW_SCALE_FACTOR times wider so
+                # the combined density of both passes lands near a
+                # single-pass fill's, not roughly double it. Positioned in
+                # the same slot sketch/streamline occupy above (ahead of
+                # scanline/meander/gradient/contour) for the identical
+                # reason: a forced per-shape tier has to beat whatever
+                # technique the rest of the design sews with. Unlike those
+                # two this needs no source pixels — it's a purely geometric
+                # variant of plain tatami, not a tonal tier — so it is not
+                # gated on `source_pixels is not None`, and it calls the
+                # ordinary stitch_shape directly (technique="crosshatch")
+                # rather than a dedicated emitter module, the same call the
+                # plain-tatami fallback below makes, one technique over.
+                # Falls back to plain tatami on empty (a shape too thin to
+                # hold even the wider spacing), the same never-drop-artwork
+                # contract every other fill tier here has.
+                #
+                # Angle precedence mirrors the trailing stitch_shape call
+                # below exactly (shape override > design-wide > stage 5's
+                # compensation axis) — duplicated rather than deferred to it
+                # because crosshatch needs its angle now, to plan the +90
+                # pass; that call's own "decided here and nowhere else"
+                # comment still holds for the plain-tatami case it covers.
+                shape_angle = p.region.meta.get("fill_angle_deg")
+                runs, report = stitch_shape(
+                    p.polygon,
+                    p.shape_id,
+                    angle_deg=(float(shape_angle)
+                               if shape_angle is not None
+                               else cfg.fill_angle_deg
+                               if cfg.fill_angle_deg is not None
+                               else p.stitch_angle_deg),
+                    row_mm=row_mm,
+                    stitch_mm=stitch_mm,
+                    underlay_style=eff_underlay_style,
+                    trim_at_mm=trim_at,
+                    start_near=entry,
+                    technique="crosshatch",
+                )
+                need_tatami = report["empty"]
+            elif wave or tier == "wave":
+                # The wave fill tier: every interior row point rides a
+                # subtle perpendicular sine wave, machine.WAVE_AMPLITUDE_MM
+                # * sin(2*pi*x/machine.WAVE_LENGTH_MM + phase), phase
+                # alternating by row parity so neighbouring rows' waves move
+                # opposite ways instead of stacking into a corrugated-
+                # cardboard look (stage6_fill._wave_row_points). Both row
+                # ends still land exactly on the boundary — the wobble never
+                # touches the shape's own edge or silhouette. Same slot,
+                # same no-source-pixels-needed reasoning (purely geometric,
+                # not tonal) and same never-drop-artwork fallback contract
+                # as the crosshatch branch immediately above; angle
+                # precedence is identical too, though unlike crosshatch this
+                # technique does not need its angle any earlier than the
+                # plain-tatami call below would — it is duplicated here only
+                # to keep all four purely-geometric branches (crosshatch,
+                # wave, chevron, brick) reading the same way.
+                shape_angle = p.region.meta.get("fill_angle_deg")
+                runs, report = stitch_shape(
+                    p.polygon,
+                    p.shape_id,
+                    angle_deg=(float(shape_angle)
+                               if shape_angle is not None
+                               else cfg.fill_angle_deg
+                               if cfg.fill_angle_deg is not None
+                               else p.stitch_angle_deg),
+                    row_mm=row_mm,
+                    stitch_mm=stitch_mm,
+                    underlay_style=eff_underlay_style,
+                    trim_at_mm=trim_at,
+                    start_near=entry,
+                    technique="wave",
+                )
+                need_tatami = report["empty"]
+            elif chevron or tier == "chevron":
+                # The chevron fill tier: a deliberately simplified, TEXTURAL
+                # herringbone impression at one fill angle, not a full
+                # multi-angle banded herringbone (that would need new
+                # column/travel logic, out of scope for this family of
+                # techniques) — interior row points alternate
+                # +-machine.CHEVRON_AMPLITUDE_MM every stitch
+                # (stage6_fill._chevron_row_points), on the same staggered
+                # grid plain tatami already builds. Same slot/contract as
+                # the wave branch immediately above.
+                shape_angle = p.region.meta.get("fill_angle_deg")
+                runs, report = stitch_shape(
+                    p.polygon,
+                    p.shape_id,
+                    angle_deg=(float(shape_angle)
+                               if shape_angle is not None
+                               else cfg.fill_angle_deg
+                               if cfg.fill_angle_deg is not None
+                               else p.stitch_angle_deg),
+                    row_mm=row_mm,
+                    stitch_mm=stitch_mm,
+                    underlay_style=eff_underlay_style,
+                    trim_at_mm=trim_at,
+                    start_near=entry,
+                    technique="chevron",
+                )
+                need_tatami = report["empty"]
+            elif brick or tier == "brick":
+                # The brick fill tier: a strict, visually obvious 2-phase
+                # "running bond" stagger — even rows' interior grid starts
+                # at phase 0, odd rows at stitch_mm/2
+                # (stage6_fill._brick_row_points) — replacing the ordinary
+                # van-der-Corput anti-moire stagger (_stagger_phase) for
+                # this technique only; every other technique's stagger is
+                # untouched. Same slot/contract as wave and chevron above.
+                shape_angle = p.region.meta.get("fill_angle_deg")
+                runs, report = stitch_shape(
+                    p.polygon,
+                    p.shape_id,
+                    angle_deg=(float(shape_angle)
+                               if shape_angle is not None
+                               else cfg.fill_angle_deg
+                               if cfg.fill_angle_deg is not None
+                               else p.stitch_angle_deg),
+                    row_mm=row_mm,
+                    stitch_mm=stitch_mm,
+                    underlay_style=eff_underlay_style,
+                    trim_at_mm=trim_at,
+                    start_near=entry,
+                    technique="brick",
+                )
+                need_tatami = report["empty"]
+            elif scanline and source_pixels is not None:
+                # The explicit scanline_tonal opt-in beats the gradient
+                # class's blend routing — the caller already chose the mono
+                # look. Empty is a legitimate outcome for this tier (a shape
+                # that is entirely highlight sews nothing, honestly), and the
+                # standing never-drop-artwork ladder still applies: it falls
+                # through to tatami below, exactly as a shape contour cannot
+                # ring does. Bare-fabric-on-purpose is a review-screen
+                # decision (delete the shape), not something a fill tier may
+                # decide unilaterally.
+                runs, report = scanline_fill(p.region, source_pixels, cfg)
+                need_tatami = report["empty"]
+            elif meander and source_pixels is not None:
+                # Same contract as the scanline branch above, meander look:
+                # the explicit opt-in beats the gradient class's blend
+                # routing, empty is honest (an all-highlight shape sews
+                # nothing) and falls through to tatami below rather than
+                # dropping artwork.
+                runs, report = meander_fill(p.region, source_pixels, cfg)
+                need_tatami = report["empty"]
+            elif source_pixels is not None and source_pixels.gradient_class:
+                # Stage 0 classified the whole design "gradient" (the
+                # marker `pipeline.run_stages` stamps — presence of source
+                # pixels alone stopped meaning "gradient" once the detail
+                # layer started carrying pixels for its own, non-blend use)
+                # — every
                 # auto-tier shape routes through the blend fill instead of
                 # tatami/contour. blend_fill's own ramp detection already
                 # falls back to ordinary tatami internally when THIS shape
@@ -472,12 +1074,19 @@ def sequence(
                     p.shape_id,
                     spacing_mm=contour_spacing,
                     stitch_mm=stitch_mm,
-                    underlay_style=underlay_style,
+                    underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     tolerance_mm=cfg.contour_tolerance_mm,
                     start_near=entry,
                 )
-            if source_pixels is None and (not contour or report["empty"]):
+                need_tatami = report["empty"]
+            else:
+                # Plain tatami — and also any tonal-tier flag (scanline,
+                # meander, streamline) with no source pixels to read tone
+                # from, which sews as tatami rather than
+                # dropping the shape.
+                need_tatami = True
+            if need_tatami:
                 # The fill angle stage 5 already committed to, when it did.
                 # Passing it back is what makes directional comp honest:
                 # compensation went on the edges THIS angle penetrates, so the
@@ -507,7 +1116,7 @@ def sequence(
                                else p.stitch_angle_deg),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
-                    underlay_style=underlay_style,
+                    underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     start_near=entry,
                 )
@@ -542,8 +1151,23 @@ def sequence(
             if want is None:
                 want = border_style != "off"
             if want and runs:
+                # THE REAL FIX for stage6_border's KNOWN LIMITATION (was
+                # detect-only, PR #67): pull this shape's border input back
+                # off any seam it shares with a border ALREADY sewn, so the
+                # two circuits stop riding the identical line. `border_width`
+                # is also the seam-sharing threshold's unit — same 2x column
+                # width `_border_seam_pairs` always used, so suppression
+                # engages under exactly the condition that used to just warn.
+                border_width = cfg.border_width_mm or machine.BORDER_WIDTH_MM
+                border_geom, unresolved = _yield_frontage(
+                    p.visible_geom, border_geom_by_id, border_width,
+                    2.0 * border_width)
+                border_seam_unresolved.extend(
+                    (p.shape_id, other_id, length)
+                    for other_id, length in unresolved
+                )
                 b_runs, b_report = border_runs(
-                    p.visible_geom,
+                    border_geom,
                     p.shape_id,
                     entry=runs[-1].points[-1],
                     trim_at_mm=trim_at,
@@ -554,6 +1178,13 @@ def sequence(
                 report["bordered"] = b_report["loops"]
                 report["lightened"] = b_report["bean_loops"]
                 report["border_narrow"] = b_report["too_narrow"]
+                if b_runs:
+                    # The TRUE visible geometry, not the (possibly locally
+                    # inset) `border_geom` this shape sewed from — a later
+                    # shape must be able to detect the real seam it shares
+                    # with THIS one even where this one yielded to someone
+                    # else, so `_yield_frontage` always compares true edges.
+                    report["border_geom"] = p.visible_geom
                 runs.extend(b_runs)
             return runs, report, True
 
@@ -577,6 +1208,21 @@ def sequence(
         far = {i: round(group[i].polygon.centroid.distance(centre), 6)
                for i in range(len(group))}
 
+        # The review screen's within-layer sew order (shape-layers contract
+        # v1.2, `Region.meta["sew_order"]`): a shape carrying one is "due" at
+        # that 0-based slot in THIS group's pick sequence and is forced next
+        # once the slot count reaches it, pre-empting nearest-neighbour.
+        # Shapes with no override are untouched — they keep competing for
+        # every slot nearest-neighbour would have given them, which is the
+        # fallback the contract promises. Ties among several shapes due at
+        # once break on `rank`, the same deterministic tiebreak the geometry
+        # picks already use. A sparse or colliding set of values still
+        # terminates cleanly: a pinned shape not yet due when every unpinned
+        # shape is gone is simply forced early rather than stalling the loop.
+        sew_order = {i: group[i].region.meta.get("sew_order")
+                     for i in range(len(group))
+                     if group[i].region.meta.get("sew_order") is not None}
+
         remaining = list(range(len(group)))
         ordered: list[StitchRun] = []
         # Which shapes actually put thread down. A link may only be routed
@@ -584,11 +1230,17 @@ def sequence(
         # nothing must not be allowed to "cover" anything.
         sewn: list[PlannedRegion] = []
         while remaining:
-            if cursor is None:
-                pick = min(remaining, key=lambda i: (-far[i], rank[i]))
+            next_slot = len(group) - len(remaining)
+            pinned = [i for i in remaining if i in sew_order]
+            due = min(pinned, key=lambda i: (sew_order[i], rank[i])) if pinned else None
+            unpinned = [i for i in remaining if i not in sew_order]
+            if due is not None and (sew_order[due] <= next_slot or not unpinned):
+                pick = due
+            elif cursor is None:
+                pick = min(unpinned, key=lambda i: (-far[i], rank[i]))
             else:
                 here = Point(cursor)
-                pick = min(remaining, key=lambda i: (
+                pick = min(unpinned, key=lambda i: (
                     round(group[i].polygon.distance(here), 6), rank[i]))
             p = group[pick]
             remaining.remove(pick)
@@ -599,6 +1251,9 @@ def sequence(
             bordered += report.get("bordered", 0)
             lightened += report.get("lightened", 0)
             border_narrow += report.get("border_narrow", 0)
+            bgeom = report.get("border_geom")
+            if bgeom is not None:
+                border_geom_by_id[p.shape_id] = bgeom
             if report.get("starved"):
                 starved += 1
                 rings_skipped += report.get("skipped_rings", 0)
@@ -639,6 +1294,45 @@ def sequence(
             )
         )
         cursor = ordered[-1].points[-1]
+
+    # --- The detail layer (stage6_detail, photo plan row 11) -----------------
+    # Appended AFTER every artwork block — plan row 14's craft consensus,
+    # "details last": bean lines ride ON TOP of the fills they annotate.
+    # Strictly opt-in (cfg.detail_layer, default False — this branch never
+    # runs otherwise and the byte-identity suites pin that), and honest on
+    # empty: a design the extractor finds no coherent lines for appends no
+    # block at all, no warning, rather than failing or inventing detail.
+    # The block carries its own thread identity (the chart cone nearest the
+    # lines' own sampled color — detail_runs' report) exactly as every
+    # block does; the result-level sew-order palette is regions-derived and
+    # deliberately not grown here, the same block-level-is-authoritative
+    # convention the layered streamline shades already established.
+    # The sketch technique IMPLIES this layer (row 12's recipe is "layered
+    # run passes + FDoG detail lines" — one preset, not two knobs; see
+    # stage6_sketch's module docstring). Design-wide sketch only: a single
+    # shape's tier == "sketch" override changes that shape's fill, never
+    # the design's detail pass.
+    if (cfg.detail_layer or sketch) and source_pixels is not None:
+        d_runs, d_report = detail_runs(source_pixels, cfg, entry=cursor,
+                                       trim_at_mm=trim_at)
+        if d_runs:
+            jumps += d_report["jumps"]
+            # A new color block: the needle always lifts into it and the
+            # thread is always cut coming out of the previous one — the
+            # same forcing every block above gets.
+            d_runs[0].jump = True
+            d_runs[0].trim = True
+            _apply_ties(d_runs)
+            d_thread = chart_for(cfg)[d_report["thread_index"]]
+            blocks.append(
+                StitchBlock(
+                    thread_index=d_report["thread_index"],
+                    thread_number=d_thread.number,
+                    rgb=tuple(d_thread.rgb),
+                    runs=d_runs,
+                )
+            )
+            cursor = d_runs[-1].points[-1]
 
     warnings: list[dict] = list(applique_warnings)
     if thin:
@@ -692,9 +1386,9 @@ def sequence(
         warnings.append(
             warn(
                 CONTOUR_RING_UNREACHABLE,
-                f"{starved} shape{'s' if starved != 1 else ''} had contour rings too "
-                "short to sew, leaving a visible patch unfilled — worth a look on the "
-                "review screen.",
+                f"{starved} shape{'s' if starved != 1 else ''} left a patch of bare "
+                "fabric wider than a contour ring — the offsets could not reach it — "
+                "worth a look on the review screen.",
                 count=starved,
                 rings=rings_skipped,
             )
@@ -708,4 +1402,13 @@ def sequence(
                 count=border_narrow,
             )
         )
+    # `_yield_frontage` (above, called from `stitch_one`) is the real fix for
+    # stage6_border's KNOWN LIMITATION now, not a mitigation: two abutting
+    # bordered shapes no longer both ride the shared seam at full density —
+    # the one that sews later insets its circuit off it first. This warning
+    # is what is left: the seams that fix genuinely could not resolve without
+    # deleting a shape's border outright, collected as `stitch_one` ran.
+    seam_warning = _border_seam_warning(border_seam_unresolved)
+    if seam_warning is not None:
+        warnings.append(seam_warning)
     return blocks, warnings

@@ -649,12 +649,12 @@ mechanism exists.
 | 21 | satin advance above 4.5 mm | ~15% tighter past 4.5 mm; `SATIN_MAX_WIDTH_MM` is 5.0, so the effect is ~0 inside our range | no change |
 | 22 | `SATIN_ZIGZAG_ABOVE_MM` 2.5 → **2.0** | half a bucket; law 2's own crossover was "between 2.0 and 2.5" | desk-safe |
 | 22 | new: length gate in `stage6_satin` | columns shorter than ~6 mm take an edge walk, never a zigzag, at any width | desk-safe |
-| 23 | `UNDERLAY_ZIGZAG_MM` 2.0 → **1.45** | pitch is width-independent in the corpus | desk-safe |
-| 23 | `_stroke_underlay` narrowing 0.3 → **0.09** | gives 0.82 × column width (inset 0.25–0.40/side) instead of today's 0.40 × | desk-safe |
+| 23 | `machine.SATIN_ZIGZAG_PITCH_MM` (new constant, 1.45) wired into `stage6_satin._stroke_underlay` in place of `UNDERLAY_ZIGZAG_MM` (left at 2.0 for fill's own lattice underlay, which still reads it) | pitch is width-independent in the corpus | **shipped 2026-08-05** |
+| 23 | `_stroke_underlay` narrowing 0.3 → **0.09** | gives 0.82 × column width (inset 0.25–0.40/side) instead of today's 0.40 × | **shipped 2026-08-05** |
 | 24 | walk-under-zigzag pairing | **already correct** — `_stroke_underlay` always emits the spine walk and adds the zigzag on top | built, confirmed |
 | 25 | small lettering | falls out of law 22's gates: at 1.40 mm median width nothing reaches the zigzag threshold | desk-safe, via 22 |
-| 26 | `fabrics.fill_underlay` `edge_lattice` → **`edge_run`** | affects pique_knit, jersey_tee; leave the pile presets' heavier styles for their own sew-out | desk-safe |
-| 27–29 | `stage7_sequence` entry choice + `stage6` `start_near` | replace nearest-point with: score each candidate end **cap 3, tee 2, corner 1, butt 1**; proximity is the TIEBREAKER, never the driver; let the higher class win while extra travel ≤ **10 mm**, fall back to proximity past **20 mm** | desk-safe, highest value |
+| 26 | `fabrics.fill_underlay` `edge_lattice` → **`edge_run`** | affects pique_knit, jersey_tee; leave the pile presets' heavier styles for their own sew-out | **shipped 2026-08-05** |
+| 27–29 | `stage7_sequence` entry choice + `stage6` `start_near` | replace nearest-point with: score each candidate end **cap 3, tee 2, corner 1, butt 1**; proximity is the TIEBREAKER, never the driver; let the higher class win while extra travel ≤ **10 mm**, fall back to proximity past **20 mm** | **shipped 2026-08-06, PARTIAL** — `stage6_satin._choose_stroke_entry` implements the free-end(cap)-vs-junction-end preference and the 10mm budget (single cutoff, not the 10/20mm two-tier fade); law 28's finer cap>tee>corner~=butt scoring among junction ends is NOT built — `Stroke` only carries a binary free/not-free flag, not per-end class. See `MASTER_SCOPE.md`'s 2026-08-06 entry. |
 | 27 | exits | finish INTO the junction — prefer butt/corner as the exit | desk-safe |
 | 30 | split at crossings | `SPLIT_SATIN_ABOVE_MM` splits by cross WIDTH; the corpus also splits by TOPOLOGY, at crossings, at ~0.30 of stroke length | not built |
 | 31 | underlay hand-off | **do not implement.** 45.5/42.5 | null |

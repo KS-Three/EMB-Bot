@@ -20,13 +20,15 @@ What the corpus measured (39 DSTs, `tools/border_pro.py`):
 - The light tier is a bean / triple run: 14 found, 2.75 passes median at
   0.73 mm stitch length.
 
-What the corpus did NOT measure is the **seam offset** — how far a border's
-centreline sits from the fill edge it covers. The over-a-fill detector fired
-zero times across 39 files, so the number does not exist and is not invented
-here. `machine.BORDER_SEAM_OFFSET_MM` is pinned to 0.0, which is the boundary
-condition rather than a guess: the column's OUTER rail lies exactly on the
-region's visible edge and the whole column lies inside it. When the number is
-measured, it is the only thing that changes — see `_centre_inset`.
+The **seam offset** — how far a border's centreline sits from the fill edge it
+covers — was unmeasured by that 39-file pass: the over-a-fill detector fired
+zero times because it required a `classify()`-labelled fill run in the same
+colour block. Round 3's region-level re-instrument dropped that requirement
+(40 files, `docs/corpus-laws-round3-2026-08-01.md` law 40) and found 41
+genuinely covering columns: centreline offset vs. the fill edge (inward
+positive) medians +0.05 mm (n=41) / +0.00 mm on the trustworthy >=20 mm-long
+subset (n=25), both confirming `machine.BORDER_SEAM_OFFSET_MM = 0.0` rather
+than moving it — see `_centre_inset`.
 
 Why the geometry is built with `buffer` and never `offset_curve`: the sign of
 `offset_curve` depends on ring winding, silently. `stage4_vectorize` builds its
@@ -37,16 +39,24 @@ that bug, returns every ring of a shape with holes in one call, and returns
 empty — rather than a curve in the wrong place — when the shape is too thin to
 hold a column.
 
-KNOWN LIMITATION (adversarial review, unfixed by choice): under `border="auto"`
-two different-color shapes that ABUT get coincident border rails on the shared
-seam — stage 5 makes both visible edges the same line, so each circuit's outer
-rail rides it at full density: a double-thick bar in two threads, penetrating
-each other's holes for the seam's whole length. The real fix is seam-aware
-suppression (one shape yields its border along frontage another bordered shape
-already covers), which needs cross-shape coordination stage 7 does not yet
-have. It is livable today because the default is `off` and per-shape intent
-(`Region.meta["border"] = False` on one side of the seam) is the manual
-escape; it must be fixed before `auto` becomes a default anywhere.
+FIXED LIMITATION, one module up (adversarial review; mitigation-only in PR #67,
+real fix in the seam-suppression PR that added this paragraph): under
+`border="auto"` two different-color shapes that ABUT get coincident border
+rails on the shared seam — stage 5 makes both visible edges the same line, so
+each circuit's outer rail would ride it at full density: a double-thick bar in
+two threads, penetrating each other's holes for the seam's whole length. This
+module has no notion of "the other shape" — a border is built from one shape's
+own `visible` geometry and nothing else — so the fix could not live here; it
+lives in `stage7_sequence._yield_frontage`, which has both shapes and the sew
+order and pulls the LATER-sewn shape's input geometry back off any seam it
+shares with an ALREADY-bordered earlier shape before handing it to
+`border_runs`. From this module's side that is invisible: it is handed
+whatever polygon its caller wants outlined and traces it exactly as it always
+has, seam or no seam. The one case stage 7 cannot resolve — a shape's frontage
+so thoroughly hemmed in by earlier neighbors that the retreat would erase its
+border outright — falls back to the plain, unsuppressed geometry this module
+was always given, and stage 7 names it under `BORDER_SEAM_SHARED` for the
+operator instead.
 """
 from __future__ import annotations
 
@@ -274,11 +284,12 @@ def _parts(geom) -> list[Polygon]:
 def _centre_inset(half_mm: float) -> float:
     """Distance from the visible edge to the border's centreline.
 
-    `BORDER_SEAM_OFFSET_MM` is 0.0 and UNMEASURED — see the module docstring.
-    At 0.0 the column's outer rail lies exactly on the visible edge. When the
-    corpus finally measures how far a professional's border sits off the fill
-    edge it covers, this expression is the whole change: nothing else in the
-    module reads the edge.
+    `BORDER_SEAM_OFFSET_MM` is 0.0 — MEASURED, not a boundary condition, per
+    corpus law 40 (median +0.00 mm on the trustworthy >=20 mm-long covering
+    columns; see the module docstring). At 0.0 the column's outer rail lies
+    exactly on the visible edge. If a future re-measurement ever moves the
+    number, this expression is the whole change: nothing else in the module
+    reads the edge.
     """
     return half_mm + machine.BORDER_SEAM_OFFSET_MM
 
@@ -326,7 +337,8 @@ def _clamped_cross(px: float, py: float, nx: float, ny: float, width: float,
 
 
 def _loop_stations(pts: list[tuple[float, float]], total: float, step: float,
-                   start: int, overlap_mm: float) -> list[int | float]:
+                   start: int, overlap_mm: float,
+                   overlap_stitches: int | None = None) -> list[int | float]:
     """Station indices for one circuit, plus the phase-shifted closing overlap.
 
     The loop runs the full ring and then continues PAST its own start by
@@ -346,11 +358,24 @@ def _loop_stations(pts: list[tuple[float, float]], total: float, step: float,
     of an OPPOSITE-rail opening (own-rail holes a full station away on both
     sides); for odd n the wrap itself flips parity and a zero shift does the
     same thing.
+
+    `overlap_stitches`, when given, states the overlap directly as a station
+    (stitch) count instead of a distance divided by `step` — what
+    `stage6_applique._cover_layer` wants, because its own spec constant
+    (`APPLIQUE_CLOSURE_OVERLAP_STITCHES`) is already a stitch count, and
+    round-tripping it through an mm distance would leave the exact number
+    hostage to how evenly `step` divides this particular ring's arc length.
+    Every other caller passes `overlap_mm` alone and is untouched.
     """
     n = len(pts)
     out: list[int | float] = [(start + i) % n for i in range(n)]
-    if overlap_mm > 0 and total > 0:
-        extra = int(overlap_mm / step)
+    extra = 0
+    if total > 0:
+        if overlap_stitches is not None:
+            extra = max(0, overlap_stitches)
+        elif overlap_mm > 0:
+            extra = int(overlap_mm / step)
+    if extra > 0:
         shift = 1 if n % 2 == 0 else 0
         for j in range(extra):
             out.append((start + j + shift) % n)
@@ -394,8 +419,14 @@ def _pick_start(pts: list[tuple[float, float]], radii: np.ndarray,
 
 def _satin_loop(ring_pts: list[tuple[float, float]], total: float, step: float,
                 width: float, inside, entry: tuple[float, float] | None,
-                k_tan: int) -> tuple[list[tuple[float, float]], int, int]:
-    """One closed circuit as a satin column. -> (points, crosses, clamped)."""
+                k_tan: int, overlap_stitches: int | None = None
+                ) -> tuple[list[tuple[float, float]], int, int]:
+    """One closed circuit as a satin column. -> (points, crosses, clamped).
+
+    Closure overlap is `machine.BORDER_CLOSURE_OVERLAP_MM` (a distance) unless
+    `overlap_stitches` gives an exact station count instead — see
+    `_loop_stations` for why appliqué's cover wants that path.
+    """
     n = len(ring_pts)
     tans = _tangents(ring_pts, k_tan)
     sign = _inward_sign(ring_pts, tans, inside)
@@ -415,7 +446,8 @@ def _satin_loop(ring_pts: list[tuple[float, float]], total: float, step: float,
         widths.append(w)
 
     stations = _loop_stations(ring_pts, total, step, start,
-                              machine.BORDER_CLOSURE_OVERLAP_MM)
+                              machine.BORDER_CLOSURE_OVERLAP_MM,
+                              overlap_stitches)
 
     pts: list[tuple[float, float]] = []
     rails: list[int] = []          # which rail each emitted point sits on

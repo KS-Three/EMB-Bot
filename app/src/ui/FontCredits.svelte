@@ -13,6 +13,7 @@
   import { createEventDispatcher, onMount } from "svelte";
   import { loadManifest } from "../lib/fontLoader.js";
   import { creditLines } from "../lib/credits.js";
+  import Icon from "./Icon.svelte";
 
   const d = createEventDispatcher();
 
@@ -78,13 +79,15 @@
   >
     <div class="fc-head">
       <h2>Font licenses &amp; credits</h2>
-      <button type="button" class="fc-close" on:click={() => d("close")} aria-label="Close">✕</button>
+      <button type="button" class="fc-close" on:click={() => d("close")} aria-label="Close"><Icon name="close" size={16} /></button>
     </div>
 
     <p class="fc-note">
       Fonts adapted from the Ink/Stitch open embroidery font collection
-      (<a href="https://github.com/inkstitch/embroidery-fonts" target="_blank" rel="noopener">github.com/inkstitch/embroidery-fonts</a>).
-      Each font's binary embeds its attribution summary; full license texts are available from the collection.
+      (<a href="https://github.com/inkstitch/embroidery-fonts" target="_blank" rel="noopener">github.com/inkstitch/embroidery-fonts</a>),
+      modified for EMB-Bot: adapted for machine embroidery and compiled to the .embf binary format.
+      Each font's full license text and copyright notice ship with this app ("license" link per font)
+      and are embedded in the font binary itself.
     </p>
 
     <div class="fc-body">
@@ -109,6 +112,10 @@
               {#if line.source}
                 <small class="fc-source">{line.source}</small>
               {/if}
+              <!-- Full license text is REQUIRED reading distance from the
+                   credit (OFL condition 2 / CC notice duties) — link the
+                   local stand-alone copy, not the upstream repo. -->
+              <a href={line.licenseHref} target="_blank" rel="noopener" class="fc-link">license</a>
               <a href={line.binHref} download class="fc-link">font data</a>
             </li>
           {/each}

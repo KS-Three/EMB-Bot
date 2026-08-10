@@ -9,14 +9,24 @@ from __future__ import annotations
 import math
 
 import pytest
+from shapely import affinity
 from shapely.geometry import LineString, Point, Polygon
+from shapely.ops import unary_union
 
 from digitizer_core import machine
 from digitizer_core.stage6_fill import (
+    _brick_row_points,
+    _chevron_row_points,
+    _columns,
+    _crosshatch_fill_paths,
     _fill_paths,
     _row_points,
+    _row_points_at_phase,
     _row_spans,
+    _stagger_phase,
     _stagger_slots,
+    _wave_row_points,
+    best_fill_angle_deg,
     principal_angle_deg,
     stitch_shape,
     travel_path,
@@ -164,12 +174,410 @@ def test_principal_angle_follows_the_long_axis():
     assert abs(principal_angle_deg(wide)) == pytest.approx(0.0, abs=1.0)
 
 
+def _cols_at(poly: Polygon, angle_deg: float, row_mm: float = 0.4) -> int:
+    rotated = affinity.rotate(poly, -angle_deg, origin=(0, 0), use_radians=False)
+    return len(_columns(_row_spans(rotated, row_mm)))
+
+
+def _diagonal_staircase() -> Polygon:
+    """Six overlapping squares stepping diagonally — a shape whose long axis
+    BY AREA is genuinely diagonal (so `principal_angle_deg` measuring 45deg
+    there is correct, not a bug), but whose STAIR STRUCTURE means sewing
+    rows along that diagonal forks/merges constantly (13 columns measured),
+    while rows nearly perpendicular to the stairs cross the whole shape in
+    one unbroken sweep (1 column measured). Exactly the gap
+    `best_fill_angle_deg` closes: a real long axis that is nonetheless a bad
+    row direction for THIS shape's structure.
+    """
+    step, size = 4.0, 5.0
+    squares = [Polygon([(i * step, i * step), (i * step + size, i * step),
+                        (i * step + size, i * step + size), (i * step, i * step + size)])
+              for i in range(6)]
+    return unary_union(squares)
+
+
+def test_best_fill_angle_deg_finds_a_row_direction_pca_misses():
+    stairs = _diagonal_staircase()
+    pca = principal_angle_deg(stairs)
+    assert pca == pytest.approx(45.0, abs=0.5), "sanity: the long axis by area really is diagonal"
+    pca_cols = _cols_at(stairs, pca)
+    assert pca_cols > 10, "sanity: sewing straight along the diagonal really does fork/merge a lot"
+
+    chosen = best_fill_angle_deg(stairs, 0.4)
+    chosen_cols = _cols_at(stairs, chosen)
+    assert chosen != pytest.approx(pca, abs=0.1), "the sweep must pick something other than plain PCA here"
+    assert chosen_cols == 1, "a near-perpendicular row direction crosses this stair shape in one column"
+    assert chosen_cols < pca_cols
+
+
+def test_best_fill_angle_deg_never_does_worse_than_plain_pca():
+    """Including PCA's own angle as one of the swept candidates means the
+    result can only tie or beat it, never lose to it — checked on every
+    fixture shape already in this file, not just the diagonal staircase
+    built to demonstrate an improvement."""
+    for poly in (RECT, RING, _diagonal_staircase()):
+        pca_cols = _cols_at(poly, principal_angle_deg(poly))
+        chosen_cols = _cols_at(poly, best_fill_angle_deg(poly, 0.4))
+        assert chosen_cols <= pca_cols
+
+
+def test_best_fill_angle_deg_matches_pca_exactly_when_pca_is_already_optimal():
+    """RECT's PCA angle (0deg, the long axis of a plain rectangle) already
+    gives the minimum possible column count (1) — the sweep must return
+    that EXACT angle, not a same-column-count-but-different candidate, so a
+    shape that was already fine keeps generating byte-identical output."""
+    assert best_fill_angle_deg(RECT, 0.4) == pytest.approx(principal_angle_deg(RECT), abs=1e-9)
+
+
+def test_stitch_shape_uses_the_swept_angle_when_none_is_given():
+    """End-to-end: an explicit angle still wins (unchanged precedence), but
+    angle_deg=None now resolves through best_fill_angle_deg instead of
+    plain principal_angle_deg — checked by comparing the actual row
+    direction each produces on the diagonal staircase, where the two
+    genuinely disagree."""
+    stairs = _diagonal_staircase()
+    pca = principal_angle_deg(stairs)
+    swept = best_fill_angle_deg(stairs, machine.FILL_ROW_MM)
+    assert swept != pytest.approx(pca, abs=0.1)
+
+    explicit_runs, _ = stitch_shape(stairs, "S1", angle_deg=pca, row_mm=machine.FILL_ROW_MM,
+                                    stitch_mm=4.0, underlay_style="none", trim_at_mm=3.0)
+    assert explicit_runs, "an explicit angle must still be honoured, not overridden by the sweep"
+
+    auto_runs, auto_report = stitch_shape(stairs, "S1", angle_deg=None, row_mm=machine.FILL_ROW_MM,
+                                          stitch_mm=4.0, underlay_style="none", trim_at_mm=3.0)
+    assert auto_runs and not auto_report["empty"]
+    # Fewer forced jumps at the swept angle: 13 columns' worth of forced
+    # travel decisions collapses to 1 column's worth.
+    explicit_jumps = sum(1 for r in explicit_runs if r.jump)
+    auto_jumps = sum(1 for r in auto_runs if r.jump)
+    assert auto_jumps <= explicit_jumps
+
+
 def test_a_shape_too_narrow_to_fill_is_reported_not_silently_sewn():
     sliver = Polygon([(0, 0), (60, 0), (60, machine.MIN_FILL_WIDTH_MM * 0.6), (0, machine.MIN_FILL_WIDTH_MM * 0.6)])
     runs, report = stitch_shape(sliver, "S1", angle_deg=0.0, row_mm=0.4, stitch_mm=4.0,
                                 underlay_style="none", trim_at_mm=3.0)
     assert report["too_thin"] is True
     assert runs, "flagged is not the same as skipped — it still has to be sewn"
+
+
+# --- Cross-hatch fill (two angled tatami passes) ---------------------------
+
+def _dominant_row_angle_deg(paths) -> float:
+    """Length-weighted majority direction (mod 180) of every stitch segment
+    across a list of paths — the row direction a pass actually swept,
+    MEASURED from the emitted geometry rather than trusted from whatever
+    angle argument was passed in. Row spans dwarf the short row-to-row turns
+    in total length, so the bucket with the most length wins even though
+    every row also contributes one turn segment near-perpendicular to it."""
+    lengths: dict[int, float] = {}
+    for path in paths:
+        for a, b in zip(path, path[1:]):
+            dx, dy = b[0] - a[0], b[1] - a[1]
+            length = math.hypot(dx, dy)
+            if length < 1e-9:
+                continue
+            bucket = round(math.degrees(math.atan2(dy, dx)) % 180.0)
+            lengths[bucket] = lengths.get(bucket, 0.0) + length
+    return float(max(lengths, key=lengths.get))
+
+
+def test_crosshatch_fill_paths_are_two_angularly_distinct_passes():
+    """The core claim: cross-hatch is two REAL passes at 90 degrees apart,
+    not the same rows emitted twice. A plain rectangle sews as exactly one
+    column per pass, so the two elements of the returned list are pass 1 and
+    pass 2 outright — no need to guess where one ends and the other begins."""
+    paths = _crosshatch_fill_paths(RECT, 0.0, machine.FILL_ROW_MM, 4.0, 4)
+    assert len(paths) == 2, "a plain rectangle sews one column per pass"
+    angle0 = _dominant_row_angle_deg([paths[0]])
+    angle1 = _dominant_row_angle_deg([paths[1]])
+    assert angle0 == pytest.approx(0.0, abs=1.0), \
+        f"pass 1 should sew rows along the 0deg fill angle, measured {angle0}"
+    assert angle1 == pytest.approx(90.0, abs=1.0), \
+        f"pass 2 should sew rows along angle+90, measured {angle1}"
+
+
+def test_crosshatch_row_spacing_uses_the_widened_spacing_per_pass():
+    """Each pass must individually run at row_mm * CROSSHATCH_ROW_SCALE_
+    FACTOR, not the raw row_mm a plain single-pass tatami fill would use —
+    measured the same way test_row_count_and_spacing_match_the_requested_
+    density measures plain tatami's spacing, on each pass separately."""
+    row_mm = 0.4
+    expected = round(row_mm * machine.CROSSHATCH_ROW_SCALE_FACTOR, 3)
+    assert expected != row_mm, "sanity: the scale factor must actually widen the spacing"
+
+    paths = _crosshatch_fill_paths(RECT, 0.0, row_mm, 4.0, 4)
+    assert len(paths) == 2
+
+    # Pass 1's rows are horizontal (angle 0), so their spacing shows up as
+    # gaps between distinct y values across the whole path.
+    pass1_ys = sorted({round(p[1], 3) for p in paths[0]})
+    pass1_gaps = {round(b - a, 3) for a, b in zip(pass1_ys, pass1_ys[1:])}
+    assert pass1_gaps == {expected}, \
+        f"pass 1 spacing should be {expected}, measured gaps {pass1_gaps}"
+
+    # Pass 2's rows are vertical (angle 90), so their spacing shows up as
+    # gaps between distinct x values instead.
+    pass2_xs = sorted({round(p[0], 3) for p in paths[1]})
+    pass2_gaps = {round(b - a, 3) for a, b in zip(pass2_xs, pass2_xs[1:])}
+    assert pass2_gaps == {expected}, \
+        f"pass 2 spacing should be {expected} too, measured gaps {pass2_gaps}"
+
+
+def test_crosshatch_chains_pass_two_off_pass_ones_last_point():
+    """`start_near` for the second pass is pass 1's own last point — the same
+    handoff `stitch_shape` uses between its underlay and fill — so pass 2's
+    column-entry ordering follows on from wherever pass 1 left the needle,
+    not from a fresh top-left-corner start."""
+    start = (5.0, 5.0)
+    paths = _crosshatch_fill_paths(RECT, 0.0, machine.FILL_ROW_MM, 4.0, 4, start)
+    assert len(paths) == 2
+    entry = paths[0][-1]
+    # A single-column shape only has one path to enter, from whichever of its
+    # two ends is nearer `entry` — the observable proof that pass 2 was
+    # planned FROM pass 1's exit rather than from `start` or from a bare
+    # top-left default.
+    assert math.dist(paths[1][0], entry) <= math.dist(paths[1][-1], entry)
+
+
+def test_crosshatch_degrades_sensibly_on_a_too_thin_shape():
+    """Same too_thin sliver `test_a_shape_too_narrow_to_fill_is_reported_not_
+    silently_sewn` uses, run through `stitch_shape` at the crosshatch
+    technique: the wider per-pass spacing must not crash or silently drop
+    the shape — it still has to sew, and still has to say it's thin."""
+    sliver = Polygon([(0, 0), (60, 0), (60, machine.MIN_FILL_WIDTH_MM * 0.6),
+                      (0, machine.MIN_FILL_WIDTH_MM * 0.6)])
+    runs, report = stitch_shape(sliver, "S1", angle_deg=0.0, row_mm=0.4, stitch_mm=4.0,
+                                underlay_style="none", trim_at_mm=3.0,
+                                technique="crosshatch")
+    assert report["too_thin"] is True
+    assert runs, "flagged is not the same as skipped — it still has to be sewn"
+
+    # And on a shape thin enough that the WIDENED per-pass spacing genuinely
+    # finds no row in one direction — pass 1 comes back empty while pass 2
+    # (rows running the shape's long way) still sews — the direct function
+    # must not raise, and must still fall back to whatever pass 2 finds.
+    thinner = Polygon([(0, 0), (60, 0), (60, 0.3), (0, 0.3)])
+    paths = _crosshatch_fill_paths(thinner, 0.0, 0.4, 4.0, 4)
+    assert paths, "pass 2 alone should still sew something on this fixture"
+
+
+# --- Wave fill (sinusoidal row wobble) --------------------------------------
+
+def test_wave_row_points_leaves_the_two_row_ends_exactly_on_the_boundary():
+    """Same edge-crispness invariant `test_row_ends_land_on_the_shape_edge`
+    pins for plain tatami: whatever the wave does to the interior, x0/x1
+    must come back untouched, at the row's own unperturbed y."""
+    x0, x1, y, stitch_mm, staggers = 0.0, 60.0, 5.0, 3.0, 4
+    for row_index in range(4):
+        pts = _wave_row_points(x0, x1, y, row_index, stitch_mm, staggers, reverse=False)
+        assert pts[0] == (x0, y)
+        assert pts[-1] == (x1, y)
+
+
+def test_wave_row_points_interior_y_matches_the_documented_sine_formula():
+    """The exact claim `machine.WAVE_AMPLITUDE_MM`/`WAVE_LENGTH_MM`'s own
+    comments make: interior y is y + WAVE_AMPLITUDE_MM * sin(2*pi*x/
+    WAVE_LENGTH_MM + phase), phase 0 on even rows and pi on odd rows —
+    checked against every interior point actually emitted, not trusted from
+    the implementation."""
+    x0, x1, y, stitch_mm, staggers = 0.0, 60.0, 5.0, 3.0, 4
+    for row_index in range(4):
+        pts = _wave_row_points(x0, x1, y, row_index, stitch_mm, staggers, reverse=False)
+        phase = 0.0 if row_index % 2 == 0 else math.pi
+        interior = pts[1:-1]
+        assert interior, "sanity: a 60mm row at 3mm stitches must have interior points"
+        for x, py in interior:
+            expected = y + machine.WAVE_AMPLITUDE_MM * math.sin(
+                2.0 * math.pi * x / machine.WAVE_LENGTH_MM + phase)
+            assert py == pytest.approx(expected, abs=1e-9)
+
+
+def test_wave_row_points_amplitude_is_bounded_and_actually_reached():
+    """The wobble must never exceed WAVE_AMPLITUDE_MM (it would eat into the
+    density budget the row spacing already committed to), and over a span
+    several wavelengths long it must actually get close to that amplitude
+    somewhere, not just theoretically allow it."""
+    x0, x1, y, stitch_mm = 0.0, 60.0, 5.0, 0.5
+    pts = _wave_row_points(x0, x1, y, 0, stitch_mm, 1, reverse=False)
+    deltas = [py - y for _, py in pts[1:-1]]
+    assert max(abs(d) for d in deltas) <= machine.WAVE_AMPLITUDE_MM + 1e-9
+    assert max(deltas) > machine.WAVE_AMPLITUDE_MM * 0.9, \
+        "60mm at a 4mm wavelength should sample near a peak somewhere"
+
+
+def test_wave_row_points_measured_period_matches_wave_length_mm():
+    """Independent of the formula-matching test above: find successive
+    local maxima in the emitted y-offsets and confirm their x-spacing is
+    WAVE_LENGTH_MM — measured from the data, the same 'don't trust the code
+    path' discipline `test_crosshatch.py`'s `_dominant_row_angle_deg` holds
+    itself to for crosshatch's own angle claim. stitch_mm=0.25 divides
+    MIN_STITCH_MM's 1.0 mm floor exactly, so the interior grid samples at a
+    clean, uniform 1.0 mm (the floor, not stitch_mm — `_row_points_at_
+    phase` never accepts two penetrations closer than MIN_STITCH_MM) rather
+    than a spacing that beats unevenly against the sine period."""
+    x0, x1, y, stitch_mm = 0.0, 60.0, 5.0, 0.25
+    pts = _wave_row_points(x0, x1, y, 0, stitch_mm, 1, reverse=False)
+    xs = [x for x, _ in pts[1:-1]]
+    ys = [py - y for _, py in pts[1:-1]]
+    peaks = [xs[i] for i in range(1, len(xs) - 1) if ys[i] > ys[i - 1] and ys[i] > ys[i + 1]]
+    assert len(peaks) >= 3, f"need several peaks over 60mm at a 4mm period, got {peaks}"
+    gaps = [round(b - a, 2) for a, b in zip(peaks, peaks[1:])]
+    for g in gaps:
+        assert g == pytest.approx(machine.WAVE_LENGTH_MM, abs=0.05)
+
+
+def test_wave_row_points_adjacent_rows_move_opposite_ways_at_the_same_x():
+    """staggers=1 gives every row the identical interior x grid (no van der
+    Corput offset), isolating the wave's own row-to-row phase flip: at any
+    given x, row 0 and row 1 must move opposite ways — the mechanism that
+    keeps the wave from stacking into a corrugated-cardboard look instead of
+    reading as texture."""
+    x0, x1, y, stitch_mm = 0.0, 60.0, 5.0, 3.0
+    row0 = _wave_row_points(x0, x1, y, 0, stitch_mm, 1, reverse=False)
+    row1 = _wave_row_points(x0, x1, y, 1, stitch_mm, 1, reverse=False)
+    xs0 = [x for x, _ in row0[1:-1]]
+    xs1 = [x for x, _ in row1[1:-1]]
+    assert xs0 == xs1, "sanity: staggers=1 must align both rows' x grids"
+    for (x, y0), (_, y1) in zip(row0[1:-1], row1[1:-1]):
+        assert (y0 - y) == pytest.approx(-(y1 - y), abs=1e-9)
+
+
+def test_wave_row_points_degenerate_rows_pass_through_unperturbed():
+    """A row too short to hold an interior penetration (`_row_points`
+    returns one point, or two) has nothing for the wave to perturb — must
+    come back exactly as `_row_points` produced it, not crash on an
+    interior slice that doesn't exist."""
+    tiny = _wave_row_points(0.0, 0.2, 5.0, 0, 3.0, 4, reverse=False)
+    assert tiny == _row_points(0.0, 0.2, 5.0, 0, 3.0, 4, reverse=False)
+    two_point = _wave_row_points(0.0, 1.5, 5.0, 0, 3.0, 4, reverse=False)
+    assert two_point == _row_points(0.0, 1.5, 5.0, 0, 3.0, 4, reverse=False)
+
+
+def test_fill_paths_wave_technique_keeps_row_ends_on_the_edge_but_perturbs_interior():
+    """Wired through `_fill_paths` (not called on `_wave_row_points`
+    directly): row ends in the emitted column must still sit at exactly
+    their row's own unperturbed y, while interior points must actually
+    differ from it — the wiring-level version of the two unit tests above."""
+    row_mm, stitch_mm, staggers = 2.0, 1.0, 4
+    expected_ys = {round(y, 6) for _, y, _ in _row_spans(RECT, row_mm)}
+    tatami_paths = _fill_paths(RECT, 0.0, row_mm, stitch_mm, staggers)
+    wave_paths = _fill_paths(RECT, 0.0, row_mm, stitch_mm, staggers, technique="wave")
+    assert wave_paths != tatami_paths, "wave technique must actually change the emitted path"
+
+    edge_ys = {round(y, 6) for x, y in wave_paths[0] if abs(x - 0.0) < 1e-6 or abs(x - 40.0) < 1e-6}
+    assert edge_ys, "must still land on the shape's own left/right edges"
+    assert edge_ys <= expected_ys, "row ends must be unperturbed, not wave-shifted"
+
+    interior_ys = {round(y, 6) for x, y in wave_paths[0] if 1e-6 < x < 40.0 - 1e-6}
+    assert not (interior_ys <= expected_ys), "interior points must actually be perturbed"
+
+
+# --- Chevron fill (zigzag row texture) --------------------------------------
+
+def test_chevron_row_points_leaves_the_two_row_ends_exactly_on_the_boundary():
+    x0, x1, y, stitch_mm, staggers = 0.0, 40.0, 5.0, 3.0, 4
+    for row_index in range(3):
+        pts = _chevron_row_points(x0, x1, y, row_index, stitch_mm, staggers, reverse=False)
+        assert pts[0] == (x0, y)
+        assert pts[-1] == (x1, y)
+
+
+def test_chevron_row_points_alternates_amplitude_every_interior_stitch():
+    """The exact claim `machine.CHEVRON_AMPLITUDE_MM`'s comment makes: every
+    interior point sits at exactly +-CHEVRON_AMPLITUDE_MM off the row, and
+    the sign flips every single interior stitch (period two stitches) —
+    both measured directly off the emitted points."""
+    x0, x1, y, stitch_mm, staggers = 0.0, 40.0, 5.0, 3.0, 4
+    for row_index in range(3):
+        pts = _chevron_row_points(x0, x1, y, row_index, stitch_mm, staggers, reverse=False)
+        interior = pts[1:-1]
+        assert len(interior) >= 4, "need several interior points to prove the alternation"
+        offsets = [round(py - y, 6) for _, py in interior]
+        assert all(abs(abs(o) - machine.CHEVRON_AMPLITUDE_MM) < 1e-9 for o in offsets), offsets
+        signs = [1 if o > 0 else -1 for o in offsets]
+        assert all(a != b for a, b in zip(signs, signs[1:])), \
+            f"row {row_index}: sign must flip every interior stitch, got {signs}"
+        assert signs[0] == 1, "first interior point starts +amplitude, by convention"
+
+
+def test_chevron_row_points_degenerate_rows_pass_through_unperturbed():
+    tiny = _chevron_row_points(0.0, 0.2, 5.0, 0, 3.0, 4, reverse=False)
+    assert tiny == _row_points(0.0, 0.2, 5.0, 0, 3.0, 4, reverse=False)
+
+
+def test_fill_paths_chevron_technique_keeps_row_ends_on_the_edge_but_perturbs_interior():
+    row_mm, stitch_mm, staggers = 2.0, 1.0, 4
+    expected_ys = {round(y, 6) for _, y, _ in _row_spans(RECT, row_mm)}
+    tatami_paths = _fill_paths(RECT, 0.0, row_mm, stitch_mm, staggers)
+    chevron_paths = _fill_paths(RECT, 0.0, row_mm, stitch_mm, staggers, technique="chevron")
+    assert chevron_paths != tatami_paths
+
+    edge_ys = {round(y, 6) for x, y in chevron_paths[0] if abs(x - 0.0) < 1e-6 or abs(x - 40.0) < 1e-6}
+    assert edge_ys
+    assert edge_ys <= expected_ys
+
+    interior_ys = {round(y, 6) for x, y in chevron_paths[0] if 1e-6 < x < 40.0 - 1e-6}
+    assert not (interior_ys <= expected_ys)
+
+
+# --- Brick fill (2-phase running-bond stagger) ------------------------------
+
+def test_brick_row_points_leaves_the_two_row_ends_exactly_on_the_boundary():
+    x0, x1, y, stitch_mm, staggers = 0.0, 40.0, 5.0, 3.0, 4
+    for row_index in range(4):
+        pts = _brick_row_points(x0, x1, y, row_index, stitch_mm, staggers, reverse=False)
+        assert pts[0] == (x0, y)
+        assert pts[-1] == (x1, y)
+
+
+def test_brick_row_points_use_exactly_the_documented_period_two_phase():
+    """The exact claim: even rows' interior grid at phase 0, odd rows at
+    phase stitch_mm/2. Checked by delegating to `_row_points_at_phase`
+    directly at each expected phase, rather than hand-deriving the resulting
+    x positions -- so this pins the PHASE RULE, not incidental grid
+    arithmetic."""
+    x0, x1, y, stitch_mm, staggers = 0.0, 40.0, 5.0, 3.0, 4
+    for row_index, expected_phase in ((0, 0.0), (1, 1.5), (2, 0.0), (3, 1.5)):
+        assert _brick_row_points(x0, x1, y, row_index, stitch_mm, staggers, reverse=False) == \
+               _row_points_at_phase(x0, x1, y, expected_phase, stitch_mm, reverse=False)
+
+
+def test_brick_row_points_diverges_from_the_van_der_corput_stagger():
+    """Consecutive rows' interior grids must be offset by exactly
+    stitch_mm/2 -- NOT the old van-der-Corput pattern `_row_points` uses.
+    Row 2 is where the two rules provably diverge at the default
+    FILL_STAGGERS=4: `_stagger_slots(4) == (0, 2, 1, 3)` puts row 2 at phase
+    stitch_mm/4, while brick's own period-2 rule keeps it at phase 0."""
+    x0, x1, y, stitch_mm, staggers = 0.0, 40.0, 5.0, 3.0, 4
+    assert _stagger_phase(2, staggers, stitch_mm) == pytest.approx(stitch_mm / 4.0)
+    old_row2 = _row_points(x0, x1, y, 2, stitch_mm, staggers, reverse=False)
+    new_row2 = _brick_row_points(x0, x1, y, 2, stitch_mm, staggers, reverse=False)
+    assert old_row2 != new_row2
+
+
+def test_brick_row_points_ignores_the_staggers_argument():
+    """Brick's phase rule is a plain function of row parity and stitch_mm
+    only -- `staggers` is accepted purely to match every other row-point
+    function's call signature (`_fill_paths` dispatches on one shared
+    signature), and changing it must not change brick's own output."""
+    x0, x1, y, stitch_mm = 0.0, 40.0, 5.0, 3.0
+    a = _brick_row_points(x0, x1, y, 1, stitch_mm, 4, reverse=False)
+    b = _brick_row_points(x0, x1, y, 1, stitch_mm, 8, reverse=False)
+    assert a == b
+
+
+def test_fill_paths_brick_technique_keeps_row_ends_on_the_edge_and_differs_from_tatami():
+    row_mm, stitch_mm, staggers = 2.0, 1.0, 4
+    expected_ys = {round(y, 6) for _, y, _ in _row_spans(RECT, row_mm)}
+    tatami_paths = _fill_paths(RECT, 0.0, row_mm, stitch_mm, staggers)
+    brick_paths = _fill_paths(RECT, 0.0, row_mm, stitch_mm, staggers, technique="brick")
+    assert brick_paths != tatami_paths, "brick technique must actually change the emitted path"
+
+    edge_ys = {round(y, 6) for x, y in brick_paths[0] if abs(x - 0.0) < 1e-6 or abs(x - 40.0) < 1e-6}
+    assert edge_ys
+    assert edge_ys <= expected_ys, "row ends must still land exactly on the shape edge"
 
 
 def test_scanlines_start_inside_the_shape_not_on_its_edge():

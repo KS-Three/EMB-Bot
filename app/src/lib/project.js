@@ -8,7 +8,11 @@ export function defaultTextElement(id) {
     id,
     type: "text",
     text: "",
-    fontKey: "geneva_simple",
+    // Default font for new text elements. Was geneva_simple until the
+    // 2026-08-04 ShareAlike pull removed it from the shipping library
+    // (font-license audit §9); medium_font is the OFL-licensed Ink/Stitch
+    // workhorse with full charset coverage.
+    fontKey: "medium_font",
     colorRgb: [20, 20, 20],
     colorRanges: [],
     weightPreset: "normal",
@@ -89,13 +93,25 @@ export const DEFAULT_DIGITIZE_PARAMS = {
 //                       sewIndex, ... }] }, see digitizer.js reviewFromJob).
 //   `shapeOverrides`  — keyed by shape_id; PipelineConfig.shape_overrides
 //                       field names verbatim (thread_index, fill_angle_deg,
-//                       tier, border, layer) plus an app-only `rgb` for the
-//                       swatch, stripped before the wire.
+//                       tier, border, layer, stitched, underlay_style) plus
+//                       an app-only `rgb` for the swatch, stripped before
+//                       the wire.
+//                       `stitched: true` restores a BACKGROUND_ENCLOSED
+//                       region the digitizer excluded by default (contract
+//                       v1.1) — distinct from `deletedShapeIds`, which is a
+//                       user hiding a shape the digitizer WOULD sew.
 //   `deletedShapeIds` — shapes the user removed in review; they stay in the
 //                       stored review so the list can strike them through.
 //   `appliedEdits`    — canonical key of the edits the CURRENT result was
 //                       digitized with (digitizer.js editsKey), so the panel
 //                       knows honestly whether edits are still pending.
+//   `preflight`       — the last job's `{ score, grade, findings, metrics }`
+//                       report verbatim (server-computed, read-only, no
+//                       override key — same "echoed back, not edited"
+//                       treatment as the text-cluster fields above), or null
+//                       when the job predates this field or the caller
+//                       turned preflight off. Used by the Sequencer view's
+//                       trims-per-1000 header; nothing else reads it today.
 export function defaultDigitizedElement(id) {
   return {
     id,
@@ -110,10 +126,56 @@ export function defaultDigitizedElement(id) {
     shapeOverrides: {},
     deletedShapeIds: [],
     appliedEdits: null,
+    preflight: null,
     sizeMm: null,
     offsetXMm: 0,
     offsetYMm: 0,
     rotationDeg: 0,
+  };
+}
+
+// A hand-drawn ("manual digitizing") element (MVP slice, no auto-analysis of
+// any input image): the user draws straight-line polygon outlines directly
+// on a canvas and assigns stitch properties by hand. `shapes` holds only
+// COMPLETED shapes — the in-progress point list being drawn right now is
+// ephemeral UI state owned by ManualPanel (same pattern ImagePanel's
+// merge-selection uses: not part of the persisted element), so a page
+// reload can lose an unfinished shape but never a finished one.
+//
+// Each shape: { id, points: [{x,y}, ...], curves: {[segmentIndex]: {x,y}},
+// stitchType: "satin"|"fill", colorRgb: [r,g,b], angleDeg: number|null }.
+// `points` live in a fixed authoring-canvas pixel space (see
+// lib/manualShapes.js's CANVAS_W/H) — only the shapes' RELATIVE geometry
+// matters, since generation fits the combined bbox to the garment/hoop same
+// as every other content type. `curves` is a sparse map from segment index
+// (the edge from points[i] to points[i+1]) to that segment's quadratic
+// control point — see manualShapes.js's flattenShape for how a curved
+// segment becomes real geometry; an empty/absent `curves` means every edge
+// is a plain straight line, unchanged from before this field existed.
+// stitchType is a required manual choice (never auto-classified — that's
+// the whole point of this mode); angleDeg null = per-shape auto (PCA),
+// matching the fill-angle-override convention Image mode's swatch bar and
+// digitize.js's shape.angleOverride already use elsewhere.
+export function defaultManualShape(id) {
+  return {
+    id,
+    points: [],
+    curves: {},
+    stitchType: "fill",
+    colorRgb: [20, 20, 20],
+    angleDeg: null,
+  };
+}
+
+export function defaultManualElement(id) {
+  return {
+    id,
+    type: "manual",
+    shapes: [],
+    underlay: true,
+    sizeMm: null,
+    offsetXMm: 0,
+    offsetYMm: 0,
   };
 }
 
@@ -165,6 +227,7 @@ export function addElement(project, type, hoopWmm) {
     type === "image" ? defaultImageElement :
     type === "design" ? defaultDesignElement :
     type === "digitized" ? defaultDigitizedElement :
+    type === "manual" ? defaultManualElement :
     defaultTextElement;
   let el = factory(id);
   const n = project.elements.length;
@@ -179,6 +242,52 @@ export function addElement(project, type, hoopWmm) {
       : { ...el, sizeMm: Math.round(0.4 * hoopWmm), offsetYMm: -10 * n };
   }
   return { ...project, elements: [...project.elements, el], selectedId: id, selectedIds: [id] };
+}
+
+// Adds a new "text" element SEEDED from a partial patch (`seed`) — a sibling
+// to addElement, not a replacement: addElement's signature/behavior are left
+// untouched because other callers depend on them. Used by the "convert text
+// cluster to text element" action (DigitizePanel, Studio-side text-cluster
+// detection feature): the seed carries the cluster's bbox-derived position/
+// size, dominant color, and a baseline-derived rotation, PLUS explicit
+// `text: ""` / `fontKey: null` overrides of defaultTextElement's own
+// `fontKey: "medium_font"` default — deliberately empty/unset so the user
+// picks a font and types the word themselves (FontSelect already renders a
+// falsy/null fontKey as its "Choose a font" empty state; TextStep already
+// renders an empty `text` as a normal empty textarea) — nothing is ever
+// auto-filled that could be silently wrong.
+//
+// Same append-and-select-new-element behavior addElement already has,
+// including the hoop-relative size/offset seeding for non-first elements —
+// `seed` is merged AFTER that seeding, so any field the seed actually
+// specifies (sizeMm, offsetXMm/offsetYMm, etc.) wins over the generic
+// stagger; anything the seed omits keeps addElement's usual placement.
+//
+// Returns { project, id } rather than relying on the caller re-deriving the
+// new element's id from project.selectedId (the convention addElement's
+// existing callers use): the one caller of this function (App.svelte's
+// text-conversion handler) needs the new id in the SAME synchronous step to
+// patch a DIFFERENT element's shapeOverrides/textConversions, before that
+// coordinated project value is ever assigned/rendered — reading it back off
+// selectedId would work too (selection does move to the new element, same as
+// addElement), but returning it explicitly avoids a second implicit
+// assumption ("selectedId still means what I think it means") in a function
+// that's already doing two things at once.
+export function addSeededTextElement(project, seed, hoopWmm) {
+  const id = nextElementId(project.elements);
+  let el = defaultTextElement(id);
+  const n = project.elements.length;
+  if (n > 0) {
+    el = { ...el, sizeMm: Math.round(0.4 * hoopWmm), offsetYMm: -10 * n };
+  }
+  el = { ...el, ...seed, id };
+  const newProject = {
+    ...project,
+    elements: [...project.elements, el],
+    selectedId: id,
+    selectedIds: [id],
+  };
+  return { project: newProject, id };
 }
 
 // Removes an element by id. A project must always keep at least one
@@ -287,6 +396,15 @@ export function migrateProject(input) {
       if (!el || el.type !== "digitized") return el;
       const d = defaultDigitizedElement(el.id);
       return { ...d, ...el, params: { ...d.params, ...(el.params || {}) } };
+    });
+    // Manual elements get the same additive treatment: spread over the
+    // factory defaults so a project saved before a manual field existed
+    // loads with today's defaults filled in, and `shapes` always ends up a
+    // real array even if storage returned something corrupt.
+    merged.elements = merged.elements.map((el) => {
+      if (!el || el.type !== "manual") return el;
+      const d = defaultManualElement(el.id);
+      return { ...d, ...el, shapes: Array.isArray(el.shapes) ? el.shapes : d.shapes };
     });
     // selectedIds invariants for pre-multi-select saves (and corrupt input):
     // members must be real element ids, the array must be non-empty, and

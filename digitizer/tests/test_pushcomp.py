@@ -149,11 +149,35 @@ def rail_overhang(art: Polygon, pts) -> float:
 # only whitebg's FILL shapes move; ribbon stays satin-only and untouched.
 # Stitch counts fell (2621->2469, 3440->3226): rows now run the shape's true
 # long axis instead of a spurious diagonal, so they run longer and turn less.
+#
+# RE-BASELINED 2026-08-05 for corpus laws 23/26 landing, deliberately — this
+# time all four entries move, not a subset, so it is worth spelling out why
+# each one does:
+#   * left_chest (pique_knit): law 26 (fill_underlay edge_lattice ->
+#     edge_run) drops its fill's crosshatch-lattice underlay pass, so
+#     stitch count falls further (2469 -> 2165).
+#   * towel (terry_towel): NOT touched by law 26 (only pique_knit/jersey_tee
+#     changed), but the fixture carries a small satin element, and law 23
+#     (SATIN_ZIGZAG_PITCH_MM 2.0 -> 1.45, the new satin-only constant, plus
+#     the 0.3 -> 0.09 rail-narrowing widening) is fabric-independent — it is
+#     gated on column width via SATIN_ZIGZAG_ABOVE_MM, not on the fabric
+#     preset — so it moves too (3226 -> 3234, +8 stitches, matching the
+#     satin-only delta measured on left_chest between the law-26-only and
+#     law-26+23 states).
+#   * ribbon_curve (both garments): satin-only, so untouched by law 26 same
+#     as before, but law 23 applies to every satin column over the width
+#     gate regardless of fabric preset -- left_chest 1019 -> 1001, hat_front
+#     1033 -> 1005.
+# This is the exact blast radius the corpus-laws-round3 doc's own law 23
+# entry predicted ("auto-applies to every satin column... regardless of
+# fabric") and the reason the first attempt at these two laws was reverted
+# rather than landed piecemeal -- see MASTER_SCOPE.md's cross-cutting/area-1
+# history for that reverted attempt and this landing.
 GOLDEN_FLAG_OFF = {
-    ("logo_whitebg.png", "left_chest"): ("04515f611818f7fbe102", 2469, 7988),
-    ("logo_whitebg.png", "towel"): ("e689ce24ca58412bff89", 3226, 10253),
-    ("ribbon_curve.png", "left_chest"): ("9686247280255d9e5899", 1019, 3581),
-    ("ribbon_curve.png", "hat_front"): ("3162101dd0c42ff6054e", 1033, 3623),
+    ("logo_whitebg.png", "left_chest"): ("e0b3e7ec366c14ca4685", 2165, 7070),
+    ("logo_whitebg.png", "towel"): ("edf1f92bf38dbeee1905", 3234, 10277),
+    ("ribbon_curve.png", "left_chest"): ("1c3f5ad1d0de847c149a", 1001, 3527),
+    ("ribbon_curve.png", "hat_front"): ("d982b1c0fe21b0ed1b5f", 1005, 3539),
 }
 
 
@@ -333,11 +357,21 @@ def test_push_comp_on_the_best_resolved_bar_lands_on_law_24s_number():
     assert b_dir == pytest.approx(PUSH, abs=0.03)
 
 
-@pytest.mark.parametrize("w,h,rot", [(45, 4.5, 0.0), (30, 3.0, 0.0), (30, 3.0, 11.0)])
+@pytest.mark.parametrize("w,h,rot", [(45, 4.0, 0.0), (30, 3.0, 0.0), (30, 3.0, 11.0)])
 def test_push_comp_does_not_touch_the_column_width(w, h, rot):
     """Push is a LENGTH. The rails must sit exactly where pull comp put them,
     or this trades one distortion for another — a column that sews narrow is
-    the defect pull comp exists to prevent."""
+    the defect pull comp exists to prevent.
+
+    The first case reads 4.0mm, not the 4.5mm its sibling parametrizations
+    above use: found 2026-08-05, a 4.5mm bar grows to 5.1mm under PULL
+    (0.3mm/side) and lands just past `SATIN_MAX_WIDTH_MM`'s new per-station
+    cross cap (the satin self-overlap fix, `stage6_satin.py::_rail_points`),
+    losing ~0.017mm of rail_overhang to it -- a real, intentional interaction
+    (this module will not classify a >5mm column satin in the first place,
+    so it should not sew one because comp grew it there either), not a bug
+    THIS test exists to catch. 4.0mm grows to 4.6mm, comfortably clear of the
+    cap, and still exercises exactly what this test is about."""
     art = bar(w, h, rot)
     iso = rail_overhang(art, column_of(art, directional=False))
     dr = rail_overhang(art, column_of(art, directional=True))

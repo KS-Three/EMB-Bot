@@ -71,6 +71,7 @@ from shapely.geometry import Point as SPoint
 from skimage.morphology import medial_axis
 
 from . import machine, stitches
+from .shapefield import build_shape_field
 from .stitches import StitchRun
 
 # Raster resolution for the medial axis. Enough that a 0.8 mm stroke is ~5 px
@@ -125,6 +126,12 @@ class _WidthField:
     its own stroke: at a junction (the top of a T) a perpendicular ray from the
     stem hits the BAR's far boundary, and without a local cap those crosses
     span the whole junction as an X of thread.
+
+    A thin view over the same numbers `digitizer_core.shapefield.ShapeField`
+    carries (`dist`/`scale`/`ox`/`oy`, and `half_at` reads them identically) —
+    this class predates that module and stays the type `extract_strokes`
+    returns either way; `ShapeField` additionally carries `mask`/`skel` for
+    whatever downstream stage the DT-first migration eventually gives them to.
     """
 
     dist: np.ndarray
@@ -158,13 +165,53 @@ def ribbon_width_mm(poly: Polygon) -> float:
     return 2.0 * poly.area / perim
 
 
-def is_satin_candidate(poly: Polygon, max_width_mm: float) -> bool:
+def is_satin_candidate(poly: Polygon, max_width_mm: float, *,
+                        design_class: str = "flat") -> bool:
     """Should this shape be satin rather than fill?
 
     Two conditions, both about how the result reads on fabric: the ribbon must
     be narrow enough that crosses do not float (`max_width_mm`), and it must
     actually BE a ribbon — long relative to its width — rather than a small
     compact blob, which sews better as a few rows of fill.
+
+    Both conditions are read off `2*area/perimeter` and the raw perimeter,
+    and both share one blind spot: boundary NOISE inflates the perimeter,
+    which shrinks the measured width and inflates the length estimate at the
+    same time — so a compact, organic blob with a jittery outline can read as
+    a narrow, long ribbon on both tests at once. Measured on
+    `docs/dt-classifier-spike-2026-08-02.md`'s synthetic case: a 20mm
+    serrated disc (tooth 0.6mm) reads `ribbon_width_mm` 2.12mm against a 5mm
+    cap and passes the aspect gate too, purely from the noise, not from
+    being a stroke. Confirmed on this repo's own committed fixtures too —
+    `testdata/photo/region_blobs.png`'s `Sd12bfc9e`/`S94f29987` and
+    `testdata/photo/summit_badge.png`'s `Sed818ef7`/`S00d736bf`/`S6096e7a9`
+    are near-square, organic, segmentation-noisy regions (bounding-box
+    aspect 1.05-1.13) that this test alone waves through as satin.
+
+    A second, independent width read off the exact distance transform at the
+    shape's own medial axis (`docs/dt-classifier-spike-2026-08-02.md`'s
+    `VP90` arm — a pure TIGHTENING, it can only turn a satin call into a
+    fill call, never the reverse) runs for every `design_class`, `"flat"`
+    included. It did not always: the DT check first landed
+    (`satin-classifier-organic-shapes`) scoped to `"gradient"`/
+    `"photo_subject"`/`"photo_scene"` only, on the premise that flat art's
+    clean, spot-colour, vector-like boundaries do not carry the
+    segmentation-derived noise this check exists to catch. That premise
+    does not hold: this repo's own `testdata/photo/enthusiast_logo.png`
+    benchmark — flat-classified, hand-picked as the fixture that reproduces
+    what Kent complains about (see `COOKBOOK.md`'s "Hard-won lessons") —
+    contains compact, jittery-boundary shapes the perimeter-only rule
+    satin-stitches into a literal starburst (crosses fanning from a single
+    point instead of a parallel column): `Scd89ad66` and `Sff37b029` at
+    90mm both flip satin->fill under the DT check, and rendering their
+    pre-fix stitch output confirms the fan by eye, not just by the numeric
+    disagreement. `design_class` is kept as a parameter (every existing
+    caller passes one) but no longer changes this function's verdict; the
+    four letterform archetypes (`BAR`/`O_RING`/`C_STROKE`/`T_SHAPE` in
+    `tests/test_satin.py`) keep their satin call under the DT check exactly
+    as already proven for the non-flat classes — this is a widening of
+    scope, not a new rule. See `_dt_regular_and_within_cap` for the check
+    itself.
     """
     w = ribbon_width_mm(poly)
     if w <= 0 or w > max_width_mm:
@@ -173,7 +220,56 @@ def is_satin_candidate(poly: Polygon, max_width_mm: float) -> bool:
     # (circle: w = r) this comes out ~2.1 w and fails the aspect test.
     perim = poly.exterior.length + sum(r.length for r in poly.interiors)
     length_est = perim / 2.0 - w
-    return length_est >= 3.0 * w
+    if length_est < 3.0 * w:
+        return False
+    return _dt_regular_and_within_cap(poly, max_width_mm)
+
+
+# The percentile Melco's own patent (US9702070) is documented to use is 70;
+# the spike measured 90 sits above every letterform junction spike (a serif
+# crossbar's inscribed circle running sqrt(2) times its stroke) while still
+# rejecting a wide compact blob. Not swept against 70/80/95 here -- flagged
+# in the spike doc as the one open tuning question before this ships wider.
+_DT_TIGHTEN_PERCENTILE = 90.0
+
+
+def _dt_regular_and_within_cap(poly: Polygon, max_width_mm: float) -> bool:
+    """A second opinion on `is_satin_candidate`'s call, read off the exact
+    distance transform at the medial axis instead of `2*area/perimeter`.
+
+    Local, per-point measurements are immune to the perimeter-based test's
+    failure mode: boundary noise moves individual medial-axis radii by the
+    noise amplitude, not by a global perimeter sum, so a compact blob's
+    radii stay large (its true half-size) no matter how jittery its outline
+    is. Two AND terms, exactly `docs/dt-classifier-spike-2026-08-02.md`'s
+    recommended `VP90` arm:
+
+    - **Regularity** (`2*sigma < mu` at skeletal pixels): a uniform-thickness
+      stroke has a tight radius distribution; a blob's medial axis collapses
+      toward its centre, spreading the radii out. This is what actually
+      separates a ribbon from a blob here -- not `max_width_mm`, which both
+      can satisfy.
+    - **The 90th-percentile width stays under the cap**: `max` is a junction
+      artefact (a serif crossbar's inscribed circle runs sqrt(2) times its
+      stroke) and rejects real letterforms; `p90` strips that spike while
+      still catching a genuinely wide blob.
+
+    Returns True (defers to the caller's already-True verdict) on a
+    degenerate raster -- a shape too small or thin to skeletonize is not
+    this check's problem to solve, and failing closed here would convert a
+    raster edge case into a fill verdict for a shape that may be a perfectly
+    good ribbon.
+    """
+    field = build_shape_field(poly)
+    if field is None or not field.skel.any():
+        return True
+    r = field.dist[field.skel]
+    if r.size == 0 or r.mean() <= 0:
+        return True
+    if 2.0 * r.std() >= r.mean():
+        return False
+    p90_mm = 2.0 * np.percentile(r, _DT_TIGHTEN_PERCENTILE) / field.scale
+    return p90_mm <= max_width_mm
 
 
 # --- Skeleton extraction ---------------------------------------------------
@@ -529,20 +625,39 @@ def _split_sharp_corners(strokes: list[Stroke], half_mm: float) -> list[Stroke]:
     return out
 
 
-def extract_strokes(poly: Polygon) -> tuple[list[Stroke], float, _WidthField | None]:
+def extract_strokes(poly: Polygon, *,
+                     use_shapefield: bool = False,
+                     ) -> tuple[list[Stroke], float, _WidthField | None]:
     """-> (strokes in mm, mean half-width in mm, local width field).
 
     Strokes are sorted longest first, so a letter's main stem sews before its
     serifs and the between-stroke hops stay short.
+
+    `use_shapefield` (DT-first migration M1, off by default) routes the
+    rasterize + `medial_axis(rng=0)` pair below through
+    `digitizer_core.shapefield.build_shape_field` instead of the inline call
+    that follows. Both paths compute the identical raster and the identical
+    `medial_axis` result — the flag exists purely to prove the new, shared
+    module byte-identical before anything downstream depends on it; see
+    `shapefield.py`'s module docstring and
+    `tests/test_shapefield_byte_identical.py`. Off (the default) never
+    imports or executes any of `shapefield.py`'s work.
     """
-    mask, scale, ox, oy = _rasterize(poly)
-    if not mask.any():
-        return [], 0.0, None
-    # rng is REQUIRED for determinism: medial_axis breaks ties between equally
-    # valid skeleton pixels in a randomly permuted order, and unseeded it
-    # returns a different skeleton on every call — which came out as the same
-    # artwork digitizing to different stitches run to run.
-    skel, dist = medial_axis(mask > 0, return_distance=True, rng=0)
+    if use_shapefield:
+        sf = build_shape_field(poly)
+        if sf is None:
+            return [], 0.0, None
+        scale, ox, oy, skel, dist = sf.scale, sf.ox, sf.oy, sf.skel, sf.dist
+    else:
+        mask, scale, ox, oy = _rasterize(poly)
+        if not mask.any():
+            return [], 0.0, None
+        # rng is REQUIRED for determinism: medial_axis breaks ties between
+        # equally valid skeleton pixels in a randomly permuted order, and
+        # unseeded it returns a different skeleton on every call — which
+        # came out as the same artwork digitizing to different stitches run
+        # to run.
+        skel, dist = medial_axis(mask > 0, return_distance=True, rng=0)
     skel_mask = skel.astype(np.uint8)
     half_px = float(dist[skel].mean()) if skel.any() else 0.0
     field = _WidthField(dist=dist, scale=scale, ox=ox, oy=oy)
@@ -727,8 +842,43 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
         prev = list(width)
         for i in range(1, n - 1):
             width[i] = (prev[i - 1] + prev[i] + prev[i + 1]) / 3.0
+    # Found and fixed 2026-08-05 (satin self-overlap). First read as a
+    # junction measurement artifact (`field.half_at()` reporting a MERGED
+    # footprint where several strokes meet) and a local-neighbourhood
+    # outlier cap was tried -- reverted, disproven by direct inspection:
+    # `logo_alpha.png`'s `Sf5200f3f` stroke 0 (a glyph's apex, both ends
+    # FREE, no junction node on this stroke at all) profiles as a smooth,
+    # continuous, single-peaked taper across all 36 of its own stations --
+    # half-width ramping 0.17 -> 4.67mm -> 0.17mm, no isolated spike a local
+    # window could tell apart from its neighbours, because EVERY neighbour
+    # near the peak agrees. This is the shape's real medial-axis width, not
+    # noise: an "A"-like apex genuinely is that wide where its two legs
+    # converge. It is real width, but width the corpus never validates satin
+    # crosses for at all -- `SATIN_MAX_WIDTH_MM` is exactly the ceiling this
+    # module's own classifier gates satin-vs-fill on ("ribbons wider than
+    # this sew better as fill", machine.py), the same one `_stroke_
+    # underlay`'s oversize check and `SPLIT_SATIN_ABOVE_MM` already reuse for
+    # the identical reason -- so a flat per-station cap at that ceiling,
+    # not a new number, is the same "don't extrapolate into an unvalidated
+    # regime" call this module already made twice. Measured on `Sf5200f3f`:
+    # eliminates all 2580 non-adjacent self-crossing segment pairs the
+    # uncapped peak produced and drops the shape's own isolated coverage
+    # peak from 9.57 to 3.41 layers (`tests/test_satin.py::
+    # test_satin_crosses_do_not_self_overlap_across_a_wide_junction`,
+    # `tests/test_preflight.py::
+    # test_a_wide_oversize_satin_stroke_does_not_block_on_underlay_glue`).
+    #
+    # This cap is a hard ceiling, not a proportional one, so it also (lightly)
+    # touches a column whose GROWN width crosses the ceiling only because
+    # directional pull comp (Law 22, axial) legitimately widened it a few
+    # tenths of a millimetre past 5.0mm -- `tests/test_pushcomp.py`'s 4.5mm
+    # bar grows to 5.1mm and loses ~0.02mm of that growth to this cap. That
+    # is not a separate bug to route around: a satin cross this module will
+    # not classify past 5.0mm in the first place should not be asked to sew
+    # one past 5.0mm because comp grew it there either -- see that test's own
+    # updated fixture comment.
     for i in range(n):
-        width[i] = min(width[i], floors[i] * 1.6 + 0.2)
+        width[i] = min(width[i], floors[i] * 1.6 + 0.2, machine.SATIN_MAX_WIDTH_MM / 2)
 
     # --- taper zones at free ends ------------------------------------------
     #
@@ -854,6 +1004,29 @@ def _short_stitch_guard(rail_a: list, rail_b: list) -> list[tuple]:
     as two ~1.0 mm same-rail gaps. Capped, the same stitch retracts 0.6 mm —
     two same-hole radii: a full radius clear of the old hole, still supporting
     the inner edge it was pulled from.
+
+    Found and fixed 2026-08-07 (satin free-end corner coverage). The pull is
+    ALSO bounded so it can never take a cross under `SATIN_MIN_CROSS_MM`
+    itself — without that, a cross that was a legitimate, keepable stitch
+    (comfortably above the floor) came out of the pull thinner than the
+    floor and `satin_stroke`'s own degenerate-cross filter dropped it a few
+    lines later, for a reason that has nothing to do with why the filter
+    exists (a real pinch, both rails meeting at a point). Measured on
+    `photo/enthusiast_logo.png`'s "E": the free end at the glyph's stem
+    caps 0.15mm from its own flush corner (`_extend_to_cap` already lands it
+    there), and the very next station's cross is a real 0.57-0.60mm stitch —
+    comfortably keepable on its own — until this guard fires (that station's
+    same-rail step off the cap station is 0.27mm, under
+    `SATIN_SHORT_STITCH_AT_MM`) and its stock 35%-capped-at-0.6mm pull takes
+    it to 0.37-0.39mm, under the 0.5mm floor: the filter drops it, and the
+    corner sews as bare fabric even though `_extend_to_cap` did its job.
+    This is not a letterform-specific fix — any cap zone, corner, or tight
+    curve whose next-station cross starts out only a little above
+    `SATIN_MIN_CROSS_MM` can hit the identical interaction, independent of
+    what put the crosses there. A curve with real room to spare (the guard's
+    normal case, columns several mm wide) never reaches this new bound —
+    only a pull that would have landed the result below the floor is
+    reined in, to land AT the floor instead of past it.
     """
     out = []
     for i, (pa, pb) in enumerate(zip(rail_a, rail_b)):
@@ -867,11 +1040,21 @@ def _short_stitch_guard(rail_a: list, rail_b: list) -> list[tuple]:
 
 
 def _pull_short(p: tuple, toward: tuple) -> tuple:
-    """Retract one penetration toward the far rail, by fraction-with-a-cap."""
+    """Retract one penetration toward the far rail, by fraction-with-a-cap.
+
+    Never past the point where the cross itself would drop under
+    `SATIN_MIN_CROSS_MM` — see `_short_stitch_guard`'s own note on why a
+    pull that starts from an already-narrow cross needs that floor too. The
+    target is nudged a hair above the exact floor (1.01x, not 1.0x) so a
+    cross landing there clears `satin_stroke`'s strict `<` drop check
+    despite float rounding in the two `dist()` calls along the way — the
+    floor is a keepability guarantee, not a value that needs to be exact.
+    """
     cross = math.dist(p, toward)
     f = machine.SATIN_SHORT_STITCH_PULL
     if cross > 1e-9:
         f = min(f, machine.SATIN_SHORT_STITCH_PULL_MAX_MM / cross)
+        f = min(f, max(0.0, 1.0 - 1.01 * machine.SATIN_MIN_CROSS_MM / cross))
     return (p[0] + (toward[0] - p[0]) * f, p[1] + (toward[1] - p[1]) * f)
 
 
@@ -1219,16 +1402,74 @@ def _stroke_underlay(poly: Polygon, st: Stroke, style: str, shape_id: str,
     n = max(2, int(math.ceil(length / machine.UNDERLAY_STITCH_MM)))
     runs.append(StitchRun(points=_resample(spine, n), kind=stitches.UNDERLAY,
                           shape_id=shape_id))
-    if style == "zigzag":
-        steps = max(2, int(math.ceil(length / machine.UNDERLAY_ZIGZAG_MM)))
+    # Law 23's 1.45mm pitch / 0.82x-width figures are corpus-measured over
+    # columns up to the corpus's own 4.5-7.0mm width bucket (docs/corpus-
+    # laws-round3-2026-08-01.md law 22/23) -- and satin classification
+    # (`is_satin_candidate`) gates on a shape's MEAN width (`ribbon_width_
+    # mm`), so a multi-stroke glyph can stay classified satin overall while
+    # one skeleton stroke's own LOCAL corridor runs well past SATIN_MAX_
+    # WIDTH_MM (measured on `logo_alpha.png`'s `Sf5200f3f`: shape mean
+    # ~5.0mm, one stroke's local width 0.33-10.33mm). The corpus's own
+    # >7.0mm bucket is flagged "junk" (82% non-ribbon fragments) in that
+    # same doc, so neither law 23's new figures nor the pre-law-23 defaults
+    # were ever validated for a corridor that wide -- extrapolating either
+    # one is a guess, not a corpus finding. Skip the zigzag pass entirely
+    # for a stroke whose local width anywhere exceeds SATIN_MAX_WIDTH_MM
+    # (the same corpus-validated ceiling `SPLIT_SATIN_ABOVE_MM` already
+    # reuses, not a new number): the center-run walk above still covers it,
+    # which is the honest, corpus-supported fallback rather than a chosen
+    # pitch/width for a regime nobody measured.
+    #
+    # Found and fixed 2026-08-05: an independent stitch-geometry audit of
+    # the initial law 23 landing caught `logo_alpha.png`'s DENSITY_STACKED
+    # finding flipping warn -> block on exactly this shape (coverage_max
+    # 13.11 -> 16.69, peak driven by the satin crosses' own pre-existing
+    # self-overlap on this wide/blob stroke -- unrelated to law 23 and
+    # unchanged by THIS fix -- with the widened, denser zigzag underlay
+    # supplying just enough extra "glue" thread to bridge that pre-existing
+    # near-miss over `_COVERAGE_MIN_PATCH_MM2`'s 25mm2 connected-patch
+    # gate). See test_preflight.py's logo_alpha regression test.
+    #
+    # The self-overlap itself is FIXED, same day, separate pass: see
+    # `_rail_points`'s own `SATIN_MAX_WIDTH_MM / 2` per-station cap comment
+    # above (root cause: this same OVERSIZE stroke -- its own apex genuinely,
+    # smoothly widens to ~9.3mm, no junction or measurement artifact
+    # involved -- was still casting full-width crosses there; capped now the
+    # same way the zigzag skip above already treats this regime, at the same
+    # ceiling). This shape's `coverage_max` before any of these fixes was
+    # 13.11 -- now 3.24, see the updated regression pin below.
+    oversize = field is not None and any(
+        field.half_at(p) * 2.0 > machine.SATIN_MAX_WIDTH_MM for p in spine)
+    if style == "zigzag" and not oversize:
+        steps = max(2, int(math.ceil(length / machine.SATIN_ZIGZAG_PITCH_MM)))
         sp = _resample(spine, steps)
         ra, rb = _rail_points(poly, sp, st.closed, ribbon_width_mm(poly) / 2, field)
         pts: list[tuple[float, float]] = []
         for i, (pa0, pb0) in enumerate(zip(ra, rb)):
             # Narrow both ends from the ORIGINALS — pulling pb toward an
             # already-moved pa drifts the zigzag off the column's center.
-            pa = (pa0[0] + (pb0[0] - pa0[0]) * 0.3, pa0[1] + (pb0[1] - pa0[1]) * 0.3)
-            pb = (pb0[0] + (pa0[0] - pb0[0]) * 0.3, pb0[1] + (pa0[1] - pb0[1]) * 0.3)
+            # 0.09 (corpus law 23): each leg spans 0.82x the RAIL SPAN
+            # (1 - 2*0.09), not the old 0.4x (1 - 2*0.3) -- the prior
+            # narrowing left satin's zigzag underlay too under-specified to
+            # actually anchor the rails it sits beneath.
+            #
+            # Defense in depth alongside the oversize skip above: `sp` is a
+            # coarser resample than the `spine` the skip check walks, and
+            # `_rail_points`'s own smoothing can measure a rail span the
+            # per-point field check didn't quite catch. Cap the leg the same
+            # way, at what a column pinned to SATIN_MAX_WIDTH_MM would
+            # produce (SATIN_MAX_WIDTH_MM * 0.82 =~ 4.1mm) -- below that
+            # width nothing changes (frac is exactly the corpus's 0.09);
+            # above it, frac rises smoothly so leg length asymptotes toward
+            # the cap instead of continuing to grow with a corridor width
+            # the corpus never measured.
+            rail_span = math.dist(pa0, pb0)
+            frac = 0.09
+            if rail_span > machine.SATIN_MAX_WIDTH_MM:
+                capped_leg = machine.SATIN_MAX_WIDTH_MM * 0.82
+                frac = max(frac, 0.5 * (1.0 - capped_leg / rail_span))
+            pa = (pa0[0] + (pb0[0] - pa0[0]) * frac, pa0[1] + (pb0[1] - pa0[1]) * frac)
+            pb = (pb0[0] + (pa0[0] - pb0[0]) * frac, pb0[1] + (pa0[1] - pb0[1]) * frac)
             if math.dist(pa, pb) < machine.SATIN_MIN_CROSS_MM:
                 continue
             pts.extend((pa, pb) if i % 2 == 0 else (pb, pa))
@@ -1348,10 +1589,35 @@ def _graph_travel(cur, target, sewn: set[int], allow: set[int],
     return out
 
 
+def _choose_stroke_entry(cur: tuple[float, float],
+                         a: tuple[float, float], free_a: bool,
+                         b: tuple[float, float], free_b: bool) -> bool:
+    """True if a stroke between ends `a` and `b` should be entered at `b`
+    (needle currently at `cur`), false if it should be entered at `a`.
+
+    Laws 27/29 (`machine.STRUCTURAL_ENTRY_BUDGET_MM`): pros enter at a
+    stroke's free end (its open cap) far more often than at whichever end is
+    merely nearest, and will pay up to that budget of extra travel to reach
+    it. `free_a == free_b` means neither end is structurally preferred over
+    the other (both free, or both welded into a junction) — nothing to lean
+    on, so proximity is the whole rule there, same as before this law.
+    """
+    d_a = math.dist(cur, a)
+    d_b = math.dist(cur, b)
+    if free_a == free_b:
+        return d_b < d_a
+    cap_is_b = free_b
+    cap_d, other_d = (d_b, d_a) if cap_is_b else (d_a, d_b)
+    if cap_d - other_d <= machine.STRUCTURAL_ENTRY_BUDGET_MM:
+        return cap_is_b
+    return d_b < d_a
+
+
 def _order_strokes(strokes: list[Stroke],
                    start_near: tuple[float, float] | None) -> list[Stroke]:
-    """Sew order within one shape: whichever stroke's nearer end is closest to
-    where the needle already is, then on by the same rule.
+    """Sew order within one shape: whichever stroke's preferred entry (Laws
+    27-29, `_choose_stroke_entry`) is closest to where the needle already is,
+    then on by the same rule.
 
     `extract_strokes` sorts longest-first, which keeps a letter's main stem
     ahead of its serifs but says nothing about the hops between them. Sewing
@@ -1375,7 +1641,10 @@ def _order_strokes(strokes: list[Stroke],
         out.append(st)
         # It comes out of the end it did not go in at.
         a, b = st.spine[0], st.spine[-1]
-        cur = a if (cur is not None and math.dist(cur, b) < math.dist(cur, a)) else b
+        if cur is None:
+            cur = b
+        else:
+            cur = a if _choose_stroke_entry(cur, a, st.free_start, b, st.free_end) else b
     return out
 
 
@@ -1383,7 +1652,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 trim_at_mm: float,
                 start_near: tuple[float, float] | None = None,
                 split_above_mm: float | None = None,
-                end_cutback_mm: float = 0.0
+                end_cutback_mm: float = 0.0,
+                use_shapefield: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
     contract `stitch_shape` uses, so stage 7 can treat the two identically.
@@ -1396,9 +1666,12 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     `end_cutback_mm` is push compensation at open column ends (Law 24); 0.0 is
     the shipped behaviour. It is a length taken off the spine, NOT a shrink of
     `poly`, which is why it cannot live in stage 5 — see `satin_stroke`.
+
+    `use_shapefield` forwards to `extract_strokes` — see its docstring. Off
+    by default; stage 7 sets it from `cfg.extra["shapefield"]`.
     """
     report = {"too_thin": False, "jumps": 0, "empty": False}
-    strokes, half_mm, field = extract_strokes(poly)
+    strokes, half_mm, field = extract_strokes(poly, use_shapefield=use_shapefield)
     if not strokes:
         report["empty"] = True
         return [], report
@@ -1449,9 +1722,20 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
         first_of_stroke = True
         for run in stroke_runs:
             cursor = runs[-1].points[-1] if runs else start_near
-            if cursor is not None and \
-                    math.dist(cursor, run.points[-1]) < math.dist(cursor, run.points[0]):
-                run.points.reverse()
+            if cursor is not None:
+                # Laws 27-29 (STRUCTURAL_ENTRY_BUDGET_MM): the visible satin
+                # column is what the corpus measured entering at a free cap
+                # over the nearer end, so it alone gets that preference.
+                # Underlay stays pure-nearest — hidden support stitching, not
+                # what the law's professional decisions were read off of, and
+                # its orientation is already tuned to avoid extra hops
+                # between strokes (see the loop's own note below).
+                if run.kind == stitches.SATIN:
+                    if _choose_stroke_entry(cursor, run.points[0], st.free_start,
+                                            run.points[-1], st.free_end):
+                        run.points.reverse()
+                elif math.dist(cursor, run.points[-1]) < math.dist(cursor, run.points[0]):
+                    run.points.reverse()
             if first_of_stroke and cursor is not None:
                 # Between strokes, walk the unsewn web instead of lifting.
                 direct = math.dist(cursor, run.points[0])

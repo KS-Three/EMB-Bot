@@ -16,7 +16,7 @@ test("deserialize migrates a v1 JSON string into a v2 project", () => {
   const v1 = {
     garmentId: "hat_front",
     text: "Crew",
-    fontKey: "geneva_simple",
+    fontKey: "medium_font",
     sizeMm: null,
     offsetXMm: 0,
     offsetYMm: 0,

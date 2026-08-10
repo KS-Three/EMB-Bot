@@ -31,6 +31,13 @@ def stage1(dir_: Path, rgb: np.ndarray, bg_mask: np.ndarray) -> None:
     _write(dir_ / "stage1_bg.png", over)
 
 
+def stage1_photo_prep(dir_: Path, rgb_tone: np.ndarray, rgb_prepped: np.ndarray) -> None:
+    """Photo prep (stage1_photo_prep): the tone-rescued raster and the final
+    texture-killed one the region former will actually see."""
+    _write(dir_ / "stage1_photo_tone.png", rgb_tone)
+    _write(dir_ / "stage1_photo_prepped.png", rgb_prepped)
+
+
 def stage2(dir_: Path, labels: np.ndarray, thread_indices: list[int],
            chart: Chart | None = None) -> None:
     rng = np.random.default_rng(7)
@@ -228,6 +235,100 @@ def stage2_photo_regions(
         *(f"  {a}" for a in sorted(areas_px)),
     ]
     (dir_ / "stage2_photo_regions.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+# --- Direction field (directionfield.py) ------------------------------------
+#
+# One artifact: the field rendered as short oriented strokes over the dimmed
+# source image, so a human can judge the one thing no assertion can — whether
+# the field actually follows the image's structure (hair flow, fur growth,
+# panel edges) rather than jittering with noise. Stroke darkness carries the
+# per-pixel confidence: near-black where coherence is high, faded where the
+# summary API would be falling back to the house angle anyway.
+
+_DF_STEP_PX = 8          # grid spacing between strokes
+_DF_LEN_FRAC = 0.85      # stroke length as a fraction of the grid step
+
+
+def direction_field(dir_: Path, rgb: np.ndarray, field) -> None:
+    """`field` is a `directionfield.DirectionField` on `rgb`'s raster."""
+    viz = (rgb * 0.35 + 255 * 0.65).astype(np.uint8)
+    h, w = field.coherence.shape
+    half = _DF_STEP_PX * _DF_LEN_FRAC / 2.0
+    for y in range(_DF_STEP_PX // 2, h, _DF_STEP_PX):
+        for x in range(_DF_STEP_PX // 2, w, _DF_STEP_PX):
+            tx, ty = field.tangent[y, x]
+            if tx == 0.0 and ty == 0.0:
+                continue  # flat pixel: no direction to draw
+            conf = float(field.coherence[y, x] * field.magnitude[y, x])
+            shade = int(round(235 - 215 * min(1.0, conf * 3.0)))
+            a = (int(round(x - tx * half)), int(round(y - ty * half)))
+            b = (int(round(x + tx * half)), int(round(y + ty * half)))
+            cv2.line(viz, a, b, (shade, shade, shade), 1, cv2.LINE_AA)
+    _write(dir_ / "direction_field.png", viz)
+
+
+def stage6_streamline_paths(dir_: Path, runs: list, size_mm) -> None:
+    """The streamline tier's human-review record: every emitted run stroke in
+    ink, travel faint — the one artifact that answers the tier's whole
+    reason to exist (do the strokes follow the image's structure?), which no
+    assertion can. Stitch penetrations dotted so spacing is judgeable too."""
+    viz, to_px = _mm_canvas(size_mm)
+    for run in runs:
+        travel = run.kind == "travel"
+        color = (200, 200, 200) if travel else (30, 30, 30)
+        for a, b in zip(run.points, run.points[1:]):
+            cv2.line(viz, to_px(*a), to_px(*b), color, 1, cv2.LINE_AA)
+        if not travel:
+            for x, y in run.points:
+                cv2.circle(viz, to_px(x, y), 1, (90, 90, 200), -1)
+    _write(dir_ / "stage6_streamline_paths.png", viz)
+
+
+def stage6_detail_lines(dir_: Path, rgb: np.ndarray, lines_px: list) -> None:
+    """The detail layer's human-review record (stage6_detail.py): every
+    emitted bean line drawn in near-black ink OVER THE DIMMED SOURCE image —
+    the one artifact that answers the layer's whole reason to exist (do the
+    extracted lines sit on the photo's actual edges, whiskers and panel
+    lines?), which no assertion can. Drawn in source-pixel space, same
+    dimming as the direction-field render, because "on the edge or not" is
+    only judgeable against the pixels themselves."""
+    viz = (rgb * 0.35 + 255 * 0.65).astype(np.uint8)
+    for pts in lines_px:
+        arr = np.asarray(pts, np.float64)
+        cv2.polylines(viz, [arr.round().astype(np.int32)], False,
+                      (25, 25, 25), 1, cv2.LINE_AA)
+    _write(dir_ / "stage6_detail_lines.png", viz)
+
+
+def stage6_scanline_rows(dir_: Path, runs: list, size_mm) -> None:
+    """The scan-line tonal tier's emitted geometry (stage6_scanline.py),
+    drawn dark-on-light at thread weight so the halftone read — rows
+    thinning and vanishing into the highlights, thickening into the shadows
+    — is judgeable by eye. Travel bridges draw faint so they are visible
+    without reading as tone."""
+    viz, to_px = _mm_canvas(size_mm)
+    for run in runs:
+        color = (205, 205, 205) if run.kind == "travel" else (25, 25, 25)
+        for a, b in zip(run.points, run.points[1:]):
+            cv2.line(viz, to_px(*a), to_px(*b), color, 1, cv2.LINE_AA)
+    _write(dir_ / "stage6_scanline_rows.png", viz)
+
+
+def stage6_meander_path(dir_: Path, runs: list, size_mm) -> None:
+    """The meander tonal tier's emitted geometry (stage6_meander.py), drawn
+    dark-on-light at thread weight so the Reef/Sfumato read — one wandering
+    line tightening and bursting into zigzag in the shadows, opening out and
+    fading into bare fabric in the lights — is judgeable by eye. Travel
+    (the curve traveled through highlights, and any conflict-checked break
+    links) draws faint so the path's continuity is visible without reading
+    as tone."""
+    viz, to_px = _mm_canvas(size_mm)
+    for run in runs:
+        color = (205, 205, 205) if run.kind == "travel" else (25, 25, 25)
+        for a, b in zip(run.points, run.points[1:]):
+            cv2.line(viz, to_px(*a), to_px(*b), color, 1, cv2.LINE_AA)
+    _write(dir_ / "stage6_meander_path.png", viz)
 
 
 def stage6_blend_rows(dir_: Path, layer_runs: list[list], shade_rgbs: list[tuple[int, int, int]],

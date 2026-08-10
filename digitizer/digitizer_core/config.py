@@ -46,6 +46,58 @@ class PipelineConfig:
     upscale_cap: float = 4.0           # max Lanczos upscale factor
     denoise: bool = True
 
+    # Stage 1.5 — photo prep (photo plan §2 rows 3-4; build step 3, first
+    # slice — stage1_photo_prep.py). CLAHE tone rescue + texture kill on the
+    # prepped raster BEFORE the photo region former sees it. DOUBLE-gated:
+    # this flag must be True AND stage 0 must classify the design
+    # photo_subject/photo_scene (forced_class counts). Default False, and
+    # with it off — or on for any non-photo class — the pipeline is
+    # byte-identical to before this module existed (pinned in
+    # tests/test_photo_prep.py; the flat lane additionally by the
+    # byte-identical suites). The YuNet face priors (plan §2 row 2, wired
+    # 2026-08-04 — detection, face-local merge threshold, eyes/skin palette
+    # weights, the preflight face-size guard) ride this SAME double gate:
+    # no separate flag, no face machinery on any lane this flag doesn't
+    # open. See stage1_photo_prep.detect_faces_seam.
+    photo_prep: bool = False
+    # Texture-kill technique: "bilateral" (default, zero-dep) | "meanshift"
+    # (zero-dep) | "rolling_guidance" (real path since the 2026-08-04
+    # opencv-contrib-headless swap in requirements.txt; falls back to
+    # bilateral with a warning when cv2.ximgproc is absent, e.g. a pre-swap
+    # env — see stage1_photo_prep's module docstring) | "none" (tone prep
+    # only).
+    photo_prep_texture_kill: str = "bilateral"
+    # CLAHE knobs — plan row 3's own numbers ("clip 2-3, tiles 8x8").
+    photo_prep_clahe_clip: float = 2.5
+    photo_prep_clahe_tiles: int = 8
+
+    # rembg subject cutout (photo plan §2 row 1 — build step 3's second
+    # slice, stage1_photo_prep.remove_background_seam). A SEPARATE opt-in
+    # flag ON TOP of the photo_prep double gate above (this flag AND
+    # photo_prep AND a photo classification must all hold) — the isolated
+    # venv subprocess this shells out to (digitizer/rembg_isolated/, see its
+    # README.md) is heavier than the zero-dep tone/texture/face-priors work
+    # above it, so turning photo_prep on does not, by itself, spend a
+    # subprocess and a neural net on every photo job. Default False; with it
+    # off the pipeline is exactly what it was before this slice existed,
+    # including for every design that has photo_prep=True. When on and the
+    # isolated venv is missing/broken/times out, the documented no-op
+    # fallback applies (PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE): stage 1's
+    # border-flood bg_mask is kept unchanged and the job still completes.
+    photo_prep_background_removal: bool = False
+    # Which rembg model the worker loads. "isnet-general-use" is the plan's
+    # default tier (§2 row 1); "birefnet-general-lite" (quality) and
+    # "u2net_human_seg" (portrait fast tier) are documented seams — the
+    # worker script accepts any rembg model name, but only the default has
+    # been measured end-to-end (docs/photo-prep-deps-probe-2026-08-04.md).
+    photo_prep_background_removal_model: str = "isnet-general-use"
+    # Subprocess timeout, seconds. Generous because the FIRST call in a
+    # fresh isolated venv also downloads the model (~178 MB; measured ~10s
+    # through this sandbox's proxy) — every call after that is cached and
+    # takes ~1-2s. A slow/blocked download degrades to the no-op fallback
+    # exactly like any other subprocess failure, never hangs the job.
+    photo_prep_background_removal_timeout_s: float = 60.0
+
     # Stage 3
     min_detail_mm: float = 1.5         # blueprint hard constraint
     # Absorbed regions below this fraction of the min-detail area are
@@ -63,6 +115,63 @@ class PipelineConfig:
     small_shape_rescue: bool = True
 
     # Stage 4
+    # Polygon simplification tolerance. Both call sites (`stage4_vectorize.
+    # vectorize`'s `eps_px = simplify_tol_mm * px_per_mm`, then divided back
+    # by `px_per_mm` on the way to mm-space output; `pipeline.py`'s
+    # background-outline simplify, which runs on already-mm coordinates
+    # directly) apply it so the REALIZED deviation is a genuine, constant
+    # `simplify_tol_mm` millimetres regardless of `target_width_mm` — by
+    # construction, not by accident, because `px_per_mm` is exactly what
+    # converts one to the other and cancels out of the round trip.
+    #
+    # Ember Design's competitor tool scales an equivalent tolerance linearly
+    # with design size, clamped [0.32, 2.5] (`docs/emberdesign-competitive-
+    # research-2026-08-07.md`), which reads at first glance like something
+    # EMB-Bot should copy. Checked directly, not assumed, 2026-08-07: their
+    # `/api/vectorize` traces a raw uploaded image with NO physical-size
+    # input at that layer at all (sizing happens later, in their editor) —
+    # their "size" is the traced raster SHAPE's pixel dimensions, a proxy
+    # for "how much raw contour noise is probably in this image," not a
+    # physical output measurement. EMB-Bot already has an explicit mm scale
+    # at this point (`px_per_mm`, derived from `target_width_mm` in stage 1)
+    # and applies this tolerance AFTER that conversion specifically so it
+    # measures real millimetres independent of source resolution — a more
+    # direct solve to the problem their size-proportional heuristic
+    # approximates without one. Copying their formula/clamp would be
+    # applying pixel-domain calibration to a constant that is already
+    # mm-domain, not a calibration match, and their own floor (0.32 mm) is
+    # already coarser than today's whole 0.2 mm default.
+    #
+    # Measured this directly on real fixtures rather than reasoning it
+    # through: held one synthetic wavy contour fixed and swept `px_per_mm`
+    # 3.0-40.0 (the range this app's real 40-180 mm `target_width_mm` bound
+    # produces across the fixture corpus — measured 4.0-34.1 px/mm running
+    # `run_stages` on every flat- and photo-lane testdata fixture at 40, 60,
+    # 80, 90, 120, 150, 180 mm). The Hausdorff deviation between the
+    # simplified and unsimplified contour stayed 0.185-0.200 mm across the
+    # ENTIRE swept range — i.e. already scale-invariant in the metric that
+    # matters — while vertex count varied 26-226 exactly as it should (a
+    # design built from the same source pixels genuinely has less raw detail
+    # to preserve at a smaller physical size, not more error at a bigger
+    # one). Full pipeline runs on the flat-lane fixtures (`logo_whitebg.png`,
+    # `logo_alpha.png`, `ribbon_curve.png`, immune to the photo lane's own
+    # segmenter-resolution confounds) showed the same thing end to end:
+    # smooth, sub-linear vertex growth with `target_width_mm`, no blocky
+    # under-detail at 40 mm and no runaway vertex blowup at 150 mm. The one
+    # fixture that DID show a dramatic vertex swing at small sizes
+    # (`photo/summit_badge.png`, 1654 vertices at 40 mm collapsing to 627 at
+    # 80 mm) traced entirely to a DIFFERENT mechanism — the sub-detail
+    # rescue path's own fixed 0.5 px floor a few lines below this one in
+    # `stage4_vectorize.py`, not this constant — confirmed by a per-region
+    # breakdown: 1263 of 1654 vertices at 40 mm came from `rescued_
+    # small_shape=True` regions, which bypass this tolerance entirely.
+    # See `tests/test_run_tier.py::
+    # test_simplify_tol_mm_realized_deviation_is_px_per_mm_invariant` and
+    # `tests/test_pipeline.py::
+    # test_simplify_tol_mm_stays_fine_across_the_real_target_width_range`
+    # for the pinned regressions, and MASTER_SCOPE.md's Ember research entry
+    # for the full writeup. Conclusion: no change justified by evidence —
+    # left at 0.2 deliberately, not by default.
     simplify_tol_mm: float = 0.2
 
     # Stage 5 — sew order, underlap, pull compensation
@@ -98,7 +207,15 @@ class PipelineConfig:
     # None = per-region principal axis (what the browser engine does, and what
     # beat a fixed angle in practice). A number forces every region to it.
     fill_angle_deg: float | None = None
-    # None = the fabric preset's fill underlay style.
+    # None = the fabric preset's fill underlay style. One of "none" |
+    # "edge_run" | "center_run" | "edge_zigzag" | "edge_lattice" |
+    # "double_lattice" | "zigzag" (fabrics.py's own vocabulary). Feeds the
+    # fill and contour tiers only — satin underlay is a separate, narrower
+    # knob (fabric.satin_underlay, gated by `underlay` below, not this field);
+    # see the shape_overrides block for why that stays engine-internal for
+    # now. Per-shape intent overrides this the same way border's mode is
+    # overridden: `Region.meta["underlay_style"]` beats it in both
+    # directions, rides `match_shape_ids` the same as border/tier/fill_angle.
     underlay_style: str | None = None
     underlay: bool = True
 
@@ -106,6 +223,64 @@ class PipelineConfig:
     #
     # "tatami"  – straight rows at one angle. THE DEFAULT, and every golden in
     #             the suite is pinned to it.
+    # "scanline_tonal" – the scan-line mono tonal tier (photo plan, technique
+    #             row 8, stage6_scanline): parallel rows across one grain,
+    #             local source-image darkness driving row spacing, penetration
+    #             pitch and zigzag amplitude — the PhotoFlash halftone look.
+    #             Strictly opt-in: setting this is ALSO what makes
+    #             pipeline.run_stages carry source pixels forward for
+    #             non-gradient classes, so the flat lane grows no raster
+    #             payload while the flag is off. A shape the tier sews nothing
+    #             for (all highlight) falls back to tatami, the same
+    #             never-drop-artwork contract contour has.
+    # "meander_tonal" – the meander mono tonal tier (photo plan, technique
+    #             row 9, stage6_meander): ONE continuous non-crossing
+    #             wandering line — an adaptive Hilbert traversal, Velho &
+    #             Gomes 1991 — whose local spacing, penetration pitch and
+    #             zigzag amplitude all follow source-image darkness; the
+    #             Reef/Sfumato look, fabric left bare as the highlight
+    #             value. Same opt-in plumbing, source-pixel gate and
+    #             tatami-on-empty fallback as "scanline_tonal".
+    # "streamline" – the streamline thread-paint tier, first (mono) slice
+    #             (photo plan, technique row 10, stage6_streamline):
+    #             Jobard–Lefer evenly-spaced streamlines traced in the ETF
+    #             direction field (directionfield.py), separation modulated
+    #             by local source-image darkness (highlight sews nothing —
+    #             fabric shows), resampled to 2.5–4 mm run stitches. Regions
+    #             whose field coherence is too low fall back to parallel
+    #             lines at the house angle, per the field's own contract.
+    #             Strictly opt-in: setting this is ALSO what makes
+    #             pipeline.run_stages carry source pixels forward for
+    #             non-gradient classes, so the flat lane grows no raster
+    #             payload while the flag is off. A shape the tier sews
+    #             nothing for (all highlight) falls back to tatami — the
+    #             same never-drop-artwork contract contour has. Multi-color
+    #             dark→light layering is `streamline_mode` below, built as
+    #             the seam documented in stage6_streamline's module
+    #             docstring. Also available per-shape, on ANY design
+    #             (including a design that never sets this field —
+    #             `fill_technique` can stay "tatami" for the rest of the
+    #             shapes), as the review screen's `tier: "streamline"`
+    #             override (contract v1.6, mirrors `tier: "sketch"`'s
+    #             per-shape form immediately below — see the
+    #             shape_overrides block). This is how a manually-classified
+    #             ("flat") design reaches streamline fill without opting
+    #             the whole design into the photo-plan preset.
+    # "sketch" – the sketch tier (photo plan, technique row 12,
+    #             stage6_sketch): the row-12 PRESET over rows 10+11, not a
+    #             new engine — sparse mono streamline line work (row 10's
+    #             tracer with the darkness field read at half strength, so
+    #             strokes seed ~2.6x sparser at full black and give up to
+    #             bare fabric at twice the highlight cutoff) PLUS the FDoG
+    #             detail block (row 11) appended last, implied by this
+    #             technique whether or not `detail_layer` is set — law 10's
+    #             corpus fingerprint (layered run passes + detail lines,
+    #             fabric as the tone value). Same opt-in plumbing,
+    #             source-pixel gate and tatami-on-empty fallback as the
+    #             three tonal tiers above; `streamline_mode` is ignored
+    #             (a sketch is mono by definition). Also available
+    #             per-shape as the review screen's `tier: "sketch"`
+    #             override (contract v1.3, see the shape_overrides block).
     # "contour" – uniform inward offsets of the outline, sewn inner to outer
     #             (stage6_contour). Rows follow the silhouette instead of
     #             cutting across it, which is the one thing tatami structurally
@@ -116,40 +291,155 @@ class PipelineConfig:
     #
     # Satin classification runs first either way — a ribbon is still a ribbon.
     #
-    # DO NOT TURN "contour" ON WITHOUT READING THIS. An adversarial pass on
-    # 2026-08-02 confirmed three defects, none of which any shipped test can
-    # see, and all of which survive at this commit. It stays here because
-    # "tatami" is byte-identical to the engine that has always shipped, so the
-    # tier costs nothing while it is off — not because it is ready.
+    # READ THIS BEFORE TURNING "contour" ON. An adversarial pass on 2026-08-02
+    # confirmed three defects no shipped test could see. As of 2026-08-04,
+    # later the same day, the instrument that pass mandated exists and all
+    # three are fixed; the tier still ships off because "tatami" is
+    # byte-identical to the engine that has always shipped and this whole
+    # class of claim is un-sew-out-gated regardless of how good the geometry
+    # measures — flipping the default is Kent's call, not a geometry
+    # question this file can settle on its own.
     #
-    #  1. A BARE CORE INSIDE ORDINARY SHAPES. `_rings` stops when `_offset`
-    #     returns nothing, and the fabric inside the last surviving ring is
-    #     never a ring and is never charged to `skipped_area_mm2`. On this
-    #     repo's own primary fixture at its shipped width, logo_whitebg's
-    #     Sb253ebba leaves a 0.640 mm bare radius against tatami's 0.090 — 7x
-    #     — and a synthetic 10-point star leaves a 2.94 mm bare disc while
-    #     reporting `skipped_area_mm2` 0.21 and `starved` 0. Mechanism:
-    #     `buffer(-d, join_style=2)` annihilates a notched interior, so a star
-    #     of inradius 10.00 exhausts its offsets at 5.60 mm of inset.
-    #  2. `starved` IS MISCALIBRATED IN BOTH DIRECTIONS — silent on that
-    #     1.47 mm bare radius, and firing on 0.51 mm elsewhere; 0 of 122 zoo
-    #     shapes trip it. The gate is an AREA fraction and the thing that
-    #     matters is the widest bare SPOT, which is what the fix should
-    #     measure.
-    #  3. THE RING-TO-RING TRANSITION CHORD IS NEVER CONTAINMENT-TESTED.
-    #     `_entry_arc` deliberately lengthens the hop to clear MIN_STITCH_MM
-    #     (law 44) and `_link` checks only the chord length and the gap, never
-    #     `room.covers`. 23 emitted stitches leave the polygon over a 124-shape
-    #     zoo; worst measured 1.10 mm outside with both endpoints inside.
-    #     Underlay is ~3x worse exposed than fill. The shipped
-    #     `test_every_stitch_stays_inside_the_shape` FAILS VERBATIM on a 15 mm
-    #     disc with a 0.3 mm hole, and on a 0.45 mm neck. The six committed
-    #     fixtures are green only because none of them has a hole under ~1 mm.
+    # THE INSTRUMENT (built first, as mandated): `barecircle.py` measures the
+    # widest circle of bare fabric inscribable in a shape further than half a
+    # thread width from any emitted stitch — rasterized exact-EDT, trusting
+    # only the polygon and the runs, never this tier's own bookkeeping.
+    # Validated against the pass's own figures (tests/test_barecircle.py):
+    # Sb253ebba contour 0.640 cited / 0.644 measured, tatami 0.090 / 0.094;
+    # the 10-point star's mitred-offset annihilation (offsets dead at
+    # ~5.6 mm of inset against an inradius of 10.00, ledger charging ~0.2)
+    # reproduces. ONE figure did not survive re-measurement as written: the
+    # star's "2.94 mm bare disc" is a DIAMETER — every reconstruction
+    # measures 1.28-1.43 mm bare RADIUS, and defect 2's own "silent on that
+    # 1.47 mm bare radius" (= 2.94/2) only coheres under that reading.
     #
-    # The first thing to build is the widest-inscribed-bare-circle instrument
-    # as the DEFINITION of `starved`; it reproduces this module's own numbers
-    # on the fixtures the commit cites and disagrees everywhere else.
+    #  1. A BARE CORE INSIDE ORDINARY SHAPES — FIXED 2026-08-04 (the shrink,
+    #     later than the measurement above). `_rings` used to stop the
+    #     moment the mitred `_offset` returned nothing, leaving every healthy
+    #     shape a 0.86 mm structural centre dot (~10x tatami's 0.090); a
+    #     notched interior could be annihilated wholesale (the star's
+    #     1.33 mm core). Two fixes close most of it: `_refine_terminal_
+    #     generation` (stage6_contour.py) bisects the LAST ring's own inset
+    #     onto the true sewability floor instead of wherever the fixed
+    #     spacing grid happened to land, and a finishing pass patches
+    #     whatever `barecircle.widest_bare_circle` still calls the widest
+    #     bare spot with an ordinary tatami patch, iterating on the
+    #     instrument itself rather than a vector reconstruction (tried
+    #     first, measured worse — see the finishing-pass comment in
+    #     stage6_contour.py). Re-measured: discs and the dumbbell now read
+    #     0.067-0.13 mm (was 0.86 mm uniformly); `machine.CONTOUR_BARE_CORE_MM`
+    #     recalibrated 0.87 -> 0.13 to match, with `starved_threshold_mm`
+    #     re-derived off it (see item 2 below — the formula didn't change,
+    #     what it evaluates to did). The star's annihilated core — a
+    #     different failure mode than a healthy shape's structural dot —
+    #     shrinks too (1.33 -> 0.441 mm) but stays correctly `starved`.
+    #  2. `starved` MISCALIBRATION — FIXED 2026-08-04, both directions.
+    #     The area-fraction gate is gone; `starved` IS the instrument's
+    #     measurement, fired when the widest bare spot beats
+    #     `barecircle.starved_threshold_mm` (the measured structural dot plus
+    #     half a ring spacing — 0.33 mm at shipped density post-shrink, was
+    #     1.07 mm pre-shrink; derivation at the function). The old gate's
+    #     silence on the star's 1.47 mm class now fires; its false alarms —
+    #     whitebg's Sf5200f3f at 0.499 mm bare (the cited "firing on 0.51")
+    #     and Sb253ebba at 0.644, both under a healthy disc's OLD, pre-shrink
+    #     dot — are now silent against either threshold. Proven in both
+    #     directions in tests/test_barecircle.py and tests/test_contour.py.
+    #  3. TRANSITION-CHORD CONTAINMENT — FIXED 2026-08-04. `_link` now
+    #     containment-tests the ring-to-ring crossing chord and banks the
+    #     path (travel, not an escaping stitch) when it fails. The cited
+    #     15 mm disc with a 0.3 mm hole reproduced (one transition 0.255 mm
+    #     outside pre-fix) and is the regression pin; the cited 0.45 mm neck
+    #     could not be reconstructed from its description — four neck
+    #     geometries tried, none escapes even pre-fix.
+    #
+    # "crosshatch" – two overlapping tatami passes on the same shape, one at
+    #             the shape's own fill angle and one at angle+90
+    #             (stage6_fill._crosshatch_fill_paths), each pass
+    #             individually spaced `machine.CROSSHATCH_ROW_SCALE_FACTOR`
+    #             times wider than a normal single-pass row so the two passes
+    #             TOGETHER land at a combined density near a single-pass
+    #             fill's, not roughly double it. Reuses the exact mechanism
+    #             `_underlay_paths`'s "double_lattice" style already relies
+    #             on for its own +-45deg underlay passes — travel between the
+    #             two passes is stitch_shape's ordinary emit() bridging,
+    #             nothing new. Falls back to plain tatami on any shape it
+    #             produces nothing for, the same never-drop-artwork contract
+    #             contour has. Also available per-shape, on ANY design
+    #             (`fill_technique` can stay "tatami" for the rest of the
+    #             shapes), as the review screen's `tier: "crosshatch"`
+    #             override — mirrors `tier: "streamline"`'s per-shape form
+    #             above (see the shape_overrides block). Unlike every tonal
+    #             tier above, crosshatch needs no source pixels: it is a
+    #             purely geometric variant of the plain tatami fill, so its
+    #             per-shape override works on any design, photo-classified or
+    #             not, with no raster-plumbing opt-in cost. Lower-stakes than
+    #             "contour" too: it ships OPT-IN per-shape or per-design
+    #             only, never a default, so turning it on cannot move any
+    #             existing golden.
+    # "wave" – tatami rows with a subtle perpendicular sine wobble on every
+    #             INTERIOR row point (stage6_fill._wave_row_points):
+    #             y + machine.WAVE_AMPLITUDE_MM * sin(2*pi*x /
+    #             machine.WAVE_LENGTH_MM + phase), phase alternating by row
+    #             parity (0 / pi) so neighbouring rows' waves move opposite
+    #             ways instead of stacking into a corrugated-cardboard look.
+    #             Both row ends still land exactly on the boundary — the
+    #             same edge-crispness contract `_row_points` itself
+    #             documents — and the interior grid's own stagger
+    #             (`_stagger_phase`) is untouched, so the wave rides on top
+    #             of it rather than replacing it. Same opt-in / per-shape /
+    #             no-source-pixels / never-drop-artwork contract as
+    #             "crosshatch" immediately above, including the
+    #             `tier: "wave"` per-shape override.
+    # "chevron" – a simplified, TEXTURAL herringbone impression, not a full
+    #             multi-angle banded herringbone (that needs new column/
+    #             travel logic, deliberately out of scope for this family):
+    #             interior row points alternate
+    #             +-machine.CHEVRON_AMPLITUDE_MM every stitch
+    #             (stage6_fill._chevron_row_points), on the same staggered
+    #             grid tatami already builds. Same contract as "wave" above,
+    #             including the `tier: "chevron"` override.
+    # "brick" – swaps `_row_points`' van-der-Corput anti-moire stagger for a
+    #             strict 2-phase "running bond": even rows' interior grid
+    #             starts at phase 0, odd rows at phase `stitch_mm / 2`
+    #             (stage6_fill._brick_row_points). No new machine.py
+    #             constant — the phase IS `stitch_mm / 2`, already a known
+    #             quantity. Same contract as "wave"/"chevron" above,
+    #             including the `tier: "brick"` override.
     fill_technique: str = "tatami"
+    # streamline's own sub-mode — irrelevant (and unread) unless
+    # fill_technique == "streamline".
+    #
+    # "mono"    – THE DEFAULT: one thread, `stage6_streamline`'s first slice,
+    #             d_sep driven by raw source darkness.
+    # "layered" – the multi-color seam: a 3-5 chart-shade decomposition of
+    #             the region's own pixels (`stage6_blend`'s shade-selection
+    #             machinery, reused rather than reinvented — see
+    #             `stage6_streamline._shade_layers`), one J-L streamline set
+    #             traced per shade against that shade's own coverage-share
+    #             map (not raw darkness), stacked dark shade first. Every
+    #             shade boundary is an unconditional colour change (forced
+    #             jump+trim, never travel-bridged) — a spool change always
+    #             cuts thread regardless of geometry. "mono" is
+    #             byte-identical to the tier as it shipped before this mode
+    #             existed.
+    streamline_mode: str = "mono"
+    # The detail layer (photo plan, technique row 11, first slice —
+    # stage6_detail): FDoG coherent line extraction (Kang 2007, the same
+    # paper and ETF machinery as directionfield.py) over the source raster,
+    # emitted as BEAN runs in one extra color block sewn LAST, on top of
+    # every fill — photo details (edges, whiskers, panel lines) as discrete
+    # top objects instead of merging into fill quantization. ORTHOGONAL to
+    # fill_technique on purpose: it composes with any fill tier (that is
+    # the row's whole point — details ride on top of whatever renders the
+    # tone). Strictly opt-in: False is byte-identical to the engine before
+    # the layer existed (the byte-identity suites pin that), and setting it
+    # is ALSO what makes pipeline.run_stages carry source pixels forward —
+    # the flat lane grows no raster payload while the flag is off. A design
+    # the extractor finds no coherent lines for (flat color, noise) emits
+    # NOTHING extra — no block, no warning — rather than failing. The
+    # row's other half (the eye recipe) is a documented seam, not built:
+    # see stage6_detail's module docstring.
+    detail_layer: bool = False
     # None = fill_row_mm (or the machine default). Contour rings are the same
     # 0.40 mm apart as tatami rows; this exists so the ring tier can be opened
     # up independently, which is what "best used for open fills with low stitch
@@ -270,7 +560,26 @@ class PipelineConfig:
     #                           fill_angle_deg and the per-region PCA; the
     #                           full precedence is stated where stage 7
     #                           decides it.
-    #   tier: str             – "auto" (default) | "satin" | "fill" | "run".
+    #   tier: str             – "auto" (default) | "satin" | "fill" | "run"
+    #                           | "sketch" (contract v1.3, photo plan row
+    #                           12: sparse mono sketch rendering for this
+    #                           one shape — requesting it is also an
+    #                           explicit source-pixel opt-in, and it does
+    #                           NOT imply the design-wide detail block the
+    #                           fill_technique="sketch" preset appends)
+    #                           | "streamline" (contract v1.6, photo plan row
+    #                           10's evenly-spaced thread-paint tier for this
+    #                           one shape — same explicit source-pixel opt-in
+    #                           as "sketch"; this is what lets a manually-
+    #                           classified/flat-lane shape reach streamline
+    #                           fill without the whole design setting
+    #                           fill_technique="streamline"; direction field
+    #                           is always this design's own prepped raster
+    #                           read through directionfield.py, never a
+    #                           shape-geometry-derived field, so a genuinely
+    #                           textureless shape falls back to parallel
+    #                           lines at fill_angle_deg/the house angle
+    #                           rather than following anything invented).
     #                           Forces the stitch tier. Geometry the forced
     #                           tier cannot sew falls through the same rescue
     #                           ladder the auto path uses, so artwork never
@@ -284,14 +593,140 @@ class PipelineConfig:
     #                           AFTER the palette is compacted, so moving a
     #                           shape never drops its thread from the color
     #                           list.
+    #   sew_order: int         – explicit position (0-based) in this shape's
+    #                           color layer's OWN sew sequence (contract
+    #                           v1.2) — distinct from `layer`, which picks
+    #                           which layer a shape sews in; this picks where
+    #                           within it. Stage 7 forces a pinned shape into
+    #                           its slot once the running pick count reaches
+    #                           it, and fills every unpinned slot with
+    #                           nearest-neighbour exactly as before, so a
+    #                           layer with no override sews byte-identical.
+    #   underlay_style: str    – this shape's fill/contour underlay style
+    #                           (the `underlay_style` field's own vocabulary,
+    #                           "none" included). Beats the global
+    #                           `underlay_style` AND `underlay` in both
+    #                           directions — an explicit per-shape style wins
+    #                           even with underlay off design-wide, and an
+    #                           explicit "none" wins even with it on — the
+    #                           same "beats the mode both ways" contract
+    #                           `border` already has. Does not reach satin:
+    #                           satin's own underlay is `fabric.satin_underlay`,
+    #                           gated only by `underlay`, and stays engine-
+    #                           internal — its vocabulary is effectively binary
+    #                           (a spine run, plus zigzag above
+    #                           machine.SATIN_ZIGZAG_ABOVE_MM) where fill's is
+    #                           seven styles, so it was a materially different,
+    #                           lower-value knob to expose and is deferred, not
+    #                           forgotten.
+    #   boundary_override: list – (contract v1.4) hand-edited exterior ring
+    #                           replacing this shape's outline: a list of
+    #                           [x, y] mm points in the same design-center,
+    #                           y-down coordinate system as the review
+    #                           payload's `outline_mm` (which is exactly
+    #                           where a client reads the starting points
+    #                           from). Holes are NOT touched by this key —
+    #                           they ride forward unchanged from the shape's
+    #                           own current geometry; boundary editing is
+    #                           exterior-only in this slice. Applied directly
+    #                           to `Region.polygon` (not read again later the
+    #                           way tier/fill_angle/underlay_style are), so
+    #                           every downstream stage sees an ordinary
+    #                           polygon and needs no boundary-override-
+    #                           specific handling. Defensively validated in
+    #                           both `digitizer_service.app` (point count,
+    #                           finite numbers — a fast 400) and
+    #                           `regions.apply_shape_edits` (the same, plus
+    #                           the geometry checks that need the shape's
+    #                           actual polygon: must build a valid, simple
+    #                           polygon — no self-intersection, no hole
+    #                           poking outside the new outline — with area
+    #                           and perimeter at least `machine.
+    #                           RUN_MIN_AREA_MM2` / `RUN_MIN_LOOP_MM`, the
+    #                           same sewability floor stage 4's own run-tier
+    #                           rescue already holds auto-digitized regions
+    #                           to). A rejected edit is a ValueError at the
+    #                           core layer (a 400 at the service layer,
+    #                           before the job ever runs) — never a silent
+    #                           repair and never a crash downstream.
     # Values ride Region.meta so stages 5 and 7 pick them up where each
-    # decision is made. Unknown shape_ids warn (SHAPE_EDIT_UNKNOWN_ID).
+    # decision is made (boundary_override is the one exception: it rides
+    # Region.polygon itself, plus a Region.meta record of the edit for
+    # match_shape_ids' carry-forward — see that function). Unknown shape_ids
+    # warn (SHAPE_EDIT_UNKNOWN_ID).
     shape_overrides: dict = field(default_factory=dict)
+
+    # Shape identity edits (contract v1.5, `regions.apply_shape_merges` /
+    # `apply_shape_splits`) — the other half of the shape-recognition gap
+    # `boundary_override` above did not touch: those two change ONE shape's
+    # geometry/attributes, these change the SET of shapes. Applied BEFORE
+    # `shape_overrides`/`deleted_shape_ids` (right after stage 4 assigns ids
+    # against the full generation, same ordering reasoning `apply_shape_edits`
+    # already documents) so a request MAY layer a `shape_overrides` entry onto
+    # a shape these mint this same call, if the caller independently computes
+    # the same deterministic id `_merge_shape_id`/`_split_shape_id` would — not
+    # required; the reference Studio UI does not do this in v1, it always
+    # waits for the resulting review payload before adding further overrides.
+    #
+    #   merge_shape_ids: [[shape_id, shape_id, ...], ...] — each inner list at
+    #     least 2 distinct ids to union into ONE new shape. v1 restrictions
+    #     (see `regions.py`'s own comment above `apply_shape_merges` for the
+    #     full reasoning): every source shape must share one thread_number
+    #     (no cross-color merge) and have no holes; the union must reduce to
+    #     one Polygon (the sources must already touch or overlap — two
+    #     disjoint shapes are rejected, not bridged). The new shape's id is a
+    #     hash of the (sorted) source ids, never geometry-derived, so it is
+    #     stable across an identical resubmit. Per-shape styling
+    #     (border/tier/fill_angle_deg/sew_order/underlay_style) is seeded from
+    #     the LARGEST source shape; `boundary_override` is never carried
+    #     forward (it describes a hand-edited shell for a specific OLD
+    #     polygon that no longer exists after the merge).
+    #   split_shapes: {shape_id: [[x0, y0], [x1, y1]]} — a straight cut line
+    #     (mm, the same design-center/y-down space `outline_mm` reports) that
+    #     divides ONE shape into exactly two new shapes. Not an arbitrary
+    #     polyline — a single straight line, extended internally past the
+    #     shape's own bounding box so the caller need only send the two
+    #     dragged endpoints. A line crossing one of the shape's own holes is
+    #     rejected rather than silently turning the hole into a notch on both
+    #     halves. Each new piece's id hashes the source id, the line's
+    #     endpoints, and which piece (0/1, assigned by centroid order — never
+    #     shapely's internal split() ordering, so it cannot flip between
+    #     otherwise-identical runs); styling is seeded from the source shape
+    #     onto BOTH new pieces, `boundary_override` dropped for the same
+    #     reason as merge.
+    #
+    # A group/line naming an id the artwork no longer has is a warning
+    # (SHAPE_EDIT_UNKNOWN_ID) and that one merge/split is skipped — the same
+    # "the art may have changed under the edit" posture every other key here
+    # already takes. A GEOMETRICALLY bad request (mixed threads, a present
+    # hole, a non-adjacent merge, a line that does not cross cleanly, a piece
+    # under the sewability floor) is a `ValueError` — a real, checkable
+    # mistake in the request, not staleness.
+    merge_shape_ids: list = field(default_factory=list)
+    split_shapes: dict = field(default_factory=dict)
 
     # Debug artifacts: written per stage when set
     debug_dir: Path | None = None
 
-    extra: dict = field(default_factory=dict)  # forward-compat scratch
+    # Forward-compat scratch. Known keys:
+    #   shapefield: bool — DT-first migration M1
+    #               (docs/dt-first-architecture-2026-08-01.md §2). Off by
+    #               default (absent or falsy = today's path, byte-identical
+    #               by construction). On routes stage6_satin's skeleton/DT
+    #               extraction through digitizer_core/shapefield.py's
+    #               ShapeField instead of stage6_satin's own inline
+    #               rasterize+medial_axis call — same numbers, hoisted for
+    #               a later stage (M2/M3, not this one) to eventually share.
+    #   photo_sequencing: bool — explicit opt-in to photo depth sequencing
+    #               (plan §2 row 14) for a design stage 0 did NOT classify
+    #               photo: depth-sorted color layers (background first, then
+    #               dark→light, explicit detail tiers last —
+    #               stage7_sequence.depth_sort_layers) plus the photo
+    #               underlay split (light-mesh fill underlay, spine-run
+    #               satin underlay). Photo-classified designs get both
+    #               automatically; absent or falsy changes nothing, so the
+    #               flat and gradient lanes stay byte-identical.
+    extra: dict = field(default_factory=dict)
 
     # Step 9 — preflight scoring. Whether the service attaches a preflight
     # report to a finished job. On by default because the report is the point
@@ -347,9 +782,48 @@ class PipelineConfig:
     # link makes it a jump, and the measured trims/1k does not move. That is
     # the cheap direction to be wrong in, and a float on fleece is not.
     #
-    # What it takes to turn back on: cover built from EMITTED THREAD rather
-    # than polygons for the block's own tiers, an inset on `covered_by` for the
-    # layers whose stitches do not exist yet, and a sew-out that says at what
-    # clearance a needle-down float actually shows — LINK_COVER_TOL_MM is a
-    # thread spec today, not a measurement.
+    # UPDATE 2026-08-03: the first of the three preconditions is done.
+    # `_link_cover` now builds the already-laid half of its cover from `runs`
+    # — the block's real emitted stitch centrelines, buffered to their real
+    # thread width — instead of from `p.polygon`. Measured on the committed
+    # `logo_alpha` fixture (the benchmark file the numbers above were measured
+    # on lives outside the repo and could not be re-measured): chaining's
+    # extra links (10 -> 14) now add ZERO bare exposure — `exp`/`bare`/`worst`
+    # land on exactly the same figures chaining OFF does — while still
+    # cutting trims (13 -> 9) and total stitch count (3012 -> 2992). See
+    # `tests/test_chaining.py::test_chaining_adds_no_bare_fabric_exposure_on_
+    # the_committed_fixture`.
+    #
+    # UPDATE 2026-08-04: the second is done too. `covered_by` — the half of
+    # the cover whose stitches do not exist yet at routing time — is now
+    # eroded by LINK_COVER_INSET_MM (0.75 mm, machine.py has the full
+    # derivation table) before it may bury a link. Derived from measurement
+    # on both committed fixtures, real emitted runs vs the artwork polygon
+    # `covered_by` quotes: fill's nearest centreline stops up to 0.223 mm
+    # inside the boundary (thread edge 0.023 mm shy), satin's up to 0.501 mm
+    # (edge 0.301 mm shy — tips stop short, columns fan), and a run-tier
+    # shape covers no interior at all, honest only once eroded away at its
+    # inradius (0.527/0.539 mm measured). Worst measured 0.539 +
+    # LINK_COVER_TOL_MM the cover buffers back on = 0.739, rounded up to
+    # 0.75. Re-measured with chaining ON after the inset (chain_probe, both
+    # committed fixtures): every link the inset disqualifies becomes a jump,
+    # never an exposure, and on these fixtures none needed it — logo_alpha
+    # still links 13 -> 17 and trims 14 -> 10 (st 3312 -> 3292), logo_whitebg
+    # unchanged (chaining adds nothing there, with or without the inset),
+    # chaining's ADDED bare exposure 0.00 mm on both (exp/bare/worst land on
+    # exactly the chain-off floor: 0.7 mm/0.2057 and 0.8 mm/0.2045, stage 6's
+    # own pre-existing in-shape travel). The inset is live, not idle: it
+    # removes 20-32% of each block's future-colour cover area on logo_alpha
+    # and erodes the run-tier sliver out of the cover entirely; the fixtures'
+    # links just never rode the dishonest margin. Pinned by
+    # `tests/test_chaining.py::test_a_sliver_of_a_future_colour_no_longer_
+    # counts_as_cover` (a 1.2 mm band that linked pre-inset must now cut).
+    # What no inset can fix, measured so nobody re-derives it: hairline gaps
+    # between fanned satin crosses persist at any inset (<= 0.127 mm
+    # inscribed radius, <= 0.121 mm beyond the thread edge) — under one
+    # thread width, left to the sew-out below.
+    #
+    # Still outstanding, and still why this stays off by default:
+    #   - A sew-out that says at what clearance a needle-down float actually
+    #     shows — LINK_COVER_TOL_MM is still a thread spec, not a measurement.
     chain_links: bool = False

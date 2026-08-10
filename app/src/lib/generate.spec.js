@@ -14,7 +14,7 @@ beforeAll(() => {
 // No more flat "compat" project object standing in for a real element.
 function textElement(overrides = {}) {
   return {
-    id: "e1", type: "text", text: "", fontKey: "geneva_simple",
+    id: "e1", type: "text", text: "", fontKey: "medium_font",
     colorRgb: [20, 20, 20], colorRanges: [], weightPreset: "normal", slantDeg: 0, letterSpacingMm: 0, arcDeg: 0, rotationDeg: 0, underlay: true,
     sizeMm: null, offsetXMm: 0, offsetYMm: 0, ...overrides,
   };
@@ -359,6 +359,130 @@ test("generateAll on a cap sews the LOWER element first and returns perElement i
   // its y sits below hoop center (DST +y up -> negative-ish y).
   const first = combined.stitches.find((s) => s.type === "stitch");
   expect(first.y).toBeLessThan(0);
+});
+
+// ---- Manual digitizing mode (hand-drawn shapes) ---------------------------
+// generateElement("manual") is the one place the manual-shape data structure
+// meets the REAL engine — no mocking of buildQualityDesign anywhere here, so
+// a passing test is proof the full pull-comp/underlay/sequencing pipeline
+// accepts manually-authored shapes and produces real, valid stitches.
+
+test("generateElement returns null for a manual element with no shapes yet", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { defaultManualElement } = await import("./project.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  expect(generateElement(defaultManualElement("e1"), garment, {})).toBeNull();
+});
+
+test("generateElement: a manually-drawn fill shape produces real stitches through the full pipeline", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { defaultManualElement, defaultManualShape } = await import("./project.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const shape = {
+    ...defaultManualShape("s1"),
+    points: [{ x: 0, y: 0 }, { x: 300, y: 0 }, { x: 300, y: 300 }, { x: 0, y: 300 }],
+    stitchType: "fill",
+    colorRgb: [12, 140, 60],
+  };
+  const el = { ...defaultManualElement("e1"), shapes: [shape] };
+  const d = generateElement(el, garment, {});
+  expect(d.stitchCount).toBeGreaterThan(20);
+  expect(d.colorCount).toBe(1);
+  expect(d.colors[0]).toMatchObject({ r: 12, g: 140, b: 60 });
+  expect(d._debug.nFill).toBe(1);
+  expect(d._debug.nSatin).toBe(0);
+  expect(d.stitches[d.stitches.length - 1].type).toBe("end");
+});
+
+test("generateElement: a manually-chosen 'satin' stitch type actually satins, even for a shape width auto-classification would fill", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { defaultManualElement, defaultManualShape } = await import("./project.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  // A wide square (not remotely "thin") — auto classification would always
+  // fill this; the manual tierOverride hook must force satin anyway.
+  const shape = {
+    ...defaultManualShape("s1"),
+    points: [{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 200, y: 200 }, { x: 0, y: 200 }],
+    stitchType: "satin",
+  };
+  const el = { ...defaultManualElement("e1"), shapes: [shape] };
+  const d = generateElement(el, garment, {});
+  expect(d._debug.nSatin).toBe(1);
+  expect(d._debug.nFill).toBe(0);
+  expect(d.stitchCount).toBeGreaterThan(0);
+});
+
+test("generateElement: manual mode skips invalid/degenerate shapes and still generates the valid ones", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { defaultManualElement, defaultManualShape } = await import("./project.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const degenerate = { ...defaultManualShape("s1"), points: [{ x: 0, y: 0 }, { x: 5, y: 0 }] }; // 2 points
+  const real = {
+    ...defaultManualShape("s2"),
+    points: [{ x: 0, y: 0 }, { x: 300, y: 0 }, { x: 300, y: 300 }, { x: 0, y: 300 }],
+  };
+  const el = { ...defaultManualElement("e1"), shapes: [degenerate, real] };
+  const d = generateElement(el, garment, {});
+  expect(d).not.toBeNull();
+  expect(d.colorCount).toBe(1);
+});
+
+test("generateElement: two manually-drawn shapes each become their own color/region", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { defaultManualElement, defaultManualShape } = await import("./project.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const shapeA = {
+    ...defaultManualShape("s1"),
+    points: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }],
+    colorRgb: [200, 20, 20],
+  };
+  const shapeB = {
+    ...defaultManualShape("s2"),
+    points: [{ x: 200, y: 0 }, { x: 300, y: 0 }, { x: 300, y: 100 }, { x: 200, y: 100 }],
+    colorRgb: [20, 20, 200],
+  };
+  const el = { ...defaultManualElement("e1"), shapes: [shapeA, shapeB] };
+  const d = generateElement(el, garment, {});
+  expect(d.colorCount).toBe(2);
+});
+
+test("generateElement: manual sizeMm target scales the design width, same rule text/image follow", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { defaultManualElement, defaultManualShape } = await import("./project.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const shape = {
+    ...defaultManualShape("s1"),
+    points: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }],
+  };
+  const el = { ...defaultManualElement("e1"), shapes: [shape], sizeMm: 40 };
+  const d = generateElement(el, garment, {});
+  expect(d.widthMM).toBeGreaterThanOrEqual(40 - 1.5);
+  expect(d.widthMM).toBeLessThanOrEqual(40 + 1.5);
+});
+
+test("generateAll combines a manual shape element with a text element into one multi-color design", async () => {
+  const { generateAll } = await import("./generate.js");
+  const { defaultManualElement, defaultManualShape } = await import("./project.js");
+  const shape = {
+    ...defaultManualShape("s1"),
+    points: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }],
+  };
+  const project = {
+    version: 2, garmentId: "left_chest", selectedId: "e1", fabricRgb: [235, 232, 223],
+    elements: [
+      textElement({ id: "e1", text: "AB" }),
+      { ...defaultManualElement("e2"), shapes: [shape], offsetYMm: -20 },
+    ],
+  };
+  const { combined, perElement } = generateAll(project, {});
+  expect(perElement).toHaveLength(2);
+  expect(combined.colors.length).toBeGreaterThanOrEqual(2); // text 1 + manual shape's own color
 });
 
 test("generateAll on a non-cap garment keeps element-list order", async () => {

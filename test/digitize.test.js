@@ -56,6 +56,69 @@ test("buildQualityDesign: thin solid bar goes satin, branched shape goes fill", 
   assert.strictEqual(d2._debug.nFill, 1);
 });
 
+// ---- Manual stitch-type override (manual digitizing mode) -----------------
+// shape.tierOverride is an ADDITIVE, opt-in field: absent (every Image/Text
+// caller) leaves the auto classification above byte-identical (already
+// proven by every other test in this file passing unchanged). These tests
+// pin the override's own behavior using the exact bar/tee fixtures above.
+test("buildQualityDesign: shape.tierOverride='fill' forces an otherwise-thin bar to fill", () => {
+  const bar = [{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 200, y: 8 }, { x: 0, y: 8 }];
+  const d = DG.buildQualityDesign(
+    [{ rgb: [0, 0, 0], shapes: [{ outer: bar, holes: [], tierOverride: "fill" }] }],
+    { garment: { widthIn: 1, heightIn: 1 }, pxPerMm: 8, densityMm: 0.4, underlay: false, satinMaxWidthMm: 3 }
+  );
+  assert.strictEqual(d._debug.nSatin, 0, "override should route the thin bar to fill");
+  assert.strictEqual(d._debug.nFill, 1);
+});
+
+test("buildQualityDesign: shape.tierOverride='satin' forces a branched shape to satin, bypassing the branch guard", () => {
+  const tee = [
+    { x: 0, y: 0 }, { x: 90, y: 0 }, { x: 90, y: 12 }, { x: 51, y: 12 },
+    { x: 51, y: 90 }, { x: 39, y: 90 }, { x: 39, y: 12 }, { x: 0, y: 12 },
+  ];
+  const d = DG.buildQualityDesign(
+    [{ rgb: [0, 0, 0], shapes: [{ outer: tee, holes: [], tierOverride: "satin" }] }],
+    { garment: { widthIn: 1, heightIn: 1 }, pxPerMm: 8, densityMm: 0.4, underlay: false, satinMaxWidthMm: 3 }
+  );
+  assert.strictEqual(d._debug.nSatin, 1, "manual override should force satin despite the branch guard");
+  assert.strictEqual(d._debug.nFill, 0);
+});
+
+test("buildQualityDesign: shape.tierOverride='satin' still falls back to fill when the shape has holes", () => {
+  const outer = sq(0, 0, 100);
+  const hole = sq(20, 20, 20);
+  const d = DG.buildQualityDesign(
+    [{ rgb: [0, 0, 0], shapes: [{ outer, holes: [hole], tierOverride: "satin" }] }],
+    { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 1, densityMm: 0.5, underlay: false, satinMaxWidthMm: 3 }
+  );
+  assert.strictEqual(d._debug.nSatin, 0, "satinColumn can't represent a hole — override must not bypass this");
+  assert.strictEqual(d._debug.nFill, 1);
+});
+
+test("buildQualityDesign: a bare 3-point triangle (manual digitizing mode's simplest shape) sews real stitches, not zero", () => {
+  // Regression: buildQualityDesign used to require outer.length >= 4, which
+  // real Image/Text-mode geometry always satisfies (raster traces and font
+  // glyphs never emit an exactly-3-point ring) but silently zeroed out any
+  // manually-drawn triangle — a perfectly valid, minimal closed polygon.
+  const tri = [{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 100, y: 200 }];
+  const d = DG.buildQualityDesign(
+    [{ rgb: [0, 0, 0], shapes: [{ outer: tri, holes: [], tierOverride: "fill" }] }],
+    { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 6, densityMm: 0.4, underlay: false }
+  );
+  assert.ok(d.stitchCount > 20, "a 3-point polygon must still generate real fill stitches: " + d.stitchCount);
+  assert.strictEqual(d._debug.nFill, 1);
+});
+
+test("buildQualityDesign: an unrecognized/absent tierOverride is a no-op (auto classification unchanged)", () => {
+  const bar = [{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 200, y: 8 }, { x: 0, y: 8 }];
+  const base = { garment: { widthIn: 1, heightIn: 1 }, pxPerMm: 8, densityMm: 0.4, underlay: false, satinMaxWidthMm: 3 };
+  const withoutField = DG.buildQualityDesign([{ rgb: [0, 0, 0], shapes: [{ outer: bar, holes: [] }] }], base);
+  const withGarbage = DG.buildQualityDesign([{ rgb: [0, 0, 0], shapes: [{ outer: bar, holes: [], tierOverride: "auto" }] }], base);
+  assert.strictEqual(withoutField._debug.nSatin, 1);
+  assert.strictEqual(withGarbage._debug.nSatin, 1);
+  assert.deepStrictEqual(withGarbage.stitches, withoutField.stitches);
+});
+
 test("buildQualityDesign: outline option adds finishing edge run", () => {
   const outer = sq(0, 0, 100);
   const base = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 1, densityMm: 0.5, underlay: false, satinMaxWidthMm: 3 };
@@ -529,7 +592,7 @@ test("buildQualityDesign: minimizeColorChanges groups identical-rgb regions into
 const expect_close = (a, b, tol) => assert.ok(Math.abs(a - b) <= tol, `expected ${a} close to ${b} (tol ${tol})`);
 
 test("buildLetteringDesign: targetWidthMm sets the final width (clamped to hoop)", () => {
-  const font = JSON.parse(fs.readFileSync(__dirname + "/../src/fonts/geneva_simple.json", "utf8"));
+  const font = JSON.parse(fs.readFileSync(__dirname + "/../test/fixtures/fonts/geneva_simple.json", "utf8"));
   const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8 };
   const d40 = DG.buildLetteringDesign(font, "AB", { ...base, targetWidthMm: 40 });
   expect_close(d40.widthMM, 40, 1.5);
@@ -538,7 +601,7 @@ test("buildLetteringDesign: targetWidthMm sets the final width (clamped to hoop)
 });
 
 test("buildLetteringDesign: offsets translate all stitches", () => {
-  const font = JSON.parse(fs.readFileSync(__dirname + "/../src/fonts/geneva_simple.json", "utf8"));
+  const font = JSON.parse(fs.readFileSync(__dirname + "/../test/fixtures/fonts/geneva_simple.json", "utf8"));
   const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40 };
   const d0 = DG.buildLetteringDesign(font, "AB", base);
   const d10 = DG.buildLetteringDesign(font, "AB", { ...base, offsetXMm: 10, offsetYMm: -5 });
@@ -549,7 +612,7 @@ test("buildLetteringDesign: offsets translate all stitches", () => {
 });
 
 test("buildLetteringDesign: opts absent (no targetWidthMm/offsets) stays back-compat", () => {
-  const font = JSON.parse(fs.readFileSync(__dirname + "/../src/fonts/geneva_simple.json", "utf8"));
+  const font = JSON.parse(fs.readFileSync(__dirname + "/../test/fixtures/fonts/geneva_simple.json", "utf8"));
   const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8 };
   const a = DG.buildLetteringDesign(font, "AB", base);
   const b = DG.buildLetteringDesign(font, "AB", { ...base });
@@ -558,7 +621,7 @@ test("buildLetteringDesign: opts absent (no targetWidthMm/offsets) stays back-co
 
 test("buildLetteringDesign: rotationDeg 180 negates every stitch point relative to unrotated (upside-down = point negation about center)", () => {
   const garment = { widthIn: 8, heightIn: 8 };
-  const font = require("../src/fonts/geneva_simple.json");
+  const font = require("../test/fixtures/fonts/geneva_simple.json");
   const base = { garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false };
   const d0 = DG.buildLetteringDesign(font, "AB", base);
   const d180 = DG.buildLetteringDesign(font, "AB", Object.assign({ rotationDeg: 180 }, base));
@@ -576,7 +639,7 @@ test("buildLetteringDesign: rotationDeg 180 negates every stitch point relative 
 
 test("buildLetteringDesign: rotationDeg 90 swaps the reported width/height orientation and rotationDeg 0/absent is byte-identical to today", () => {
   const garment = { widthIn: 8, heightIn: 8 };
-  const font = require("../src/fonts/geneva_simple.json");
+  const font = require("../test/fixtures/fonts/geneva_simple.json");
   const base = { garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false };
   const d0 = DG.buildLetteringDesign(font, "SD WHEEL", base);
   const dExplicit0 = DG.buildLetteringDesign(font, "SD WHEEL", Object.assign({ rotationDeg: 0 }, base));
@@ -588,9 +651,61 @@ test("buildLetteringDesign: rotationDeg 90 swaps the reported width/height orien
   assert.ok(d90.heightMM > d90.widthMM * 2, "rotated 90deg text must report portrait dimensions");
 });
 
+test("buildLetteringDesign: auto-fit (no targetWidthMm) stays within the hoop after a non-180 rotation, on a non-square hoop", () => {
+  // Regression test (MASTER_SCOPE area 3): a design that auto-fits BEFORE a
+  // rotation must still fit AFTER it. The fit-to-hoop scale used to be
+  // computed from the UNROTATED glyph bbox while rotation was applied only
+  // as a post-transform on the emitted stitches -- so on a non-square hoop,
+  // rotating a design that auto-fit at 0deg to something other than a
+  // multiple of 180 could blow the actual (correctly reported) rotated
+  // bbox straight through the hoop bounds with nothing left to reclamp it.
+  // hat_front-shaped hoop: wide and short (5in x 2.25in), matching the real
+  // garment in src/garments.js, so this reproduces the exact real-world case.
+  const garment = { widthIn: 5.0, heightIn: 2.25 };
+  const font = require("../test/fixtures/fonts/geneva_simple.json");
+  const base = { garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false };
+  const hoopWmm = 5.0 * 25.4, hoopHmm = 2.25 * 25.4;
+
+  const d0 = DG.buildLetteringDesign(font, "SD WHEEL", base);
+  // Sanity: unrotated auto-fit actually uses (most of) the hoop -- otherwise
+  // this fixture wouldn't be exercising the fit path at all.
+  assert.ok(d0.widthMM > hoopWmm * 0.9, "fixture assumption: unrotated auto-fit is width-bound near the hoop edge");
+  assert.ok(d0.widthMM <= hoopWmm + 0.5 && d0.heightMM <= hoopHmm + 0.5, "unrotated auto-fit must already fit the hoop");
+
+  for (const rot of [90, 45, 270, -30]) {
+    const d = DG.buildLetteringDesign(font, "SD WHEEL", Object.assign({ rotationDeg: rot }, base));
+    assert.ok(
+      d.widthMM <= hoopWmm + 0.5,
+      `rotationDeg ${rot}: auto-fit width ${d.widthMM}mm must stay within the hoop's ${hoopWmm}mm width`
+    );
+    assert.ok(
+      d.heightMM <= hoopHmm + 0.5,
+      `rotationDeg ${rot}: auto-fit height ${d.heightMM}mm must stay within the hoop's ${hoopHmm}mm height`
+    );
+  }
+});
+
+test("buildLetteringDesign: an explicit targetWidthMm (manual size, post-rotation convention) stays within the hoop after a non-180 rotation", () => {
+  // Same failure mode as the auto-fit test above, but for a design the user
+  // has manually resized (sizeMm set, auto-fit off) -- targetWidthMm is
+  // documented (matching buildImportedDesign) as the desired width AFTER
+  // rotation, so a manually-sized design rotated to a new angle must also
+  // still respect that same post-rotation width/hoop contract.
+  const garment = { widthIn: 5.0, heightIn: 2.25 };
+  const font = require("../test/fixtures/fonts/geneva_simple.json");
+  const base = { garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false, targetWidthMm: 100 };
+  const hoopWmm = 5.0 * 25.4, hoopHmm = 2.25 * 25.4;
+
+  for (const rot of [0, 90, 45, 270]) {
+    const d = DG.buildLetteringDesign(font, "SD WHEEL", Object.assign({ rotationDeg: rot }, base));
+    assert.ok(d.widthMM <= hoopWmm + 0.5, `rotationDeg ${rot}: width ${d.widthMM}mm must stay within the hoop`);
+    assert.ok(d.heightMM <= hoopHmm + 0.5, `rotationDeg ${rot}: height ${d.heightMM}mm must stay within the hoop`);
+  }
+});
+
 test("buildLetteringDesign: colorRanges absent/empty is byte-identical to today's single-color output", () => {
   const garment = { widthIn: 8, heightIn: 8 };
-  const font = require("../src/fonts/geneva_simple.json");
+  const font = require("../test/fixtures/fonts/geneva_simple.json");
   const base = { garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false, rgb: [10, 20, 30] };
   const dNoField = DG.buildLetteringDesign(font, "AB", base);
   const dEmpty = DG.buildLetteringDesign(font, "AB", Object.assign({ colorRanges: [] }, base));
@@ -601,7 +716,7 @@ test("buildLetteringDesign: colorRanges absent/empty is byte-identical to today'
 
 test("buildLetteringDesign: a colorRange covering only the first character inserts exactly one trim+color pair at the glyph boundary", () => {
   const garment = { widthIn: 8, heightIn: 8 };
-  const font = require("../src/fonts/geneva_simple.json");
+  const font = require("../test/fixtures/fonts/geneva_simple.json");
   const d = DG.buildLetteringDesign(font, "AB", {
     garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false,
     rgb: [10, 20, 30], colorRanges: [{ startIdx: 0, endIdx: 1, colorRgb: [200, 30, 30] }],
@@ -621,7 +736,7 @@ test("buildLetteringDesign: a colorRange covering only the first character inser
 
 test("buildLetteringDesign: a colorRange spanning the WHOLE string produces only one color and no color-change records", () => {
   const garment = { widthIn: 8, heightIn: 8 };
-  const font = require("../src/fonts/geneva_simple.json");
+  const font = require("../test/fixtures/fonts/geneva_simple.json");
   const d = DG.buildLetteringDesign(font, "AB", {
     garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false,
     rgb: [10, 20, 30], colorRanges: [{ startIdx: 0, endIdx: 2, colorRgb: [200, 30, 30] }],
@@ -632,7 +747,7 @@ test("buildLetteringDesign: a colorRange spanning the WHOLE string produces only
 
 test("buildLetteringDesign: weightPreset 'normal' (or absent) is byte-identical to today's output", () => {
   const garment = { widthIn: 8, heightIn: 8 };
-  const font = require("../src/fonts/geneva_simple.json");
+  const font = require("../test/fixtures/fonts/geneva_simple.json");
   const base = { garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false };
   const dNoField = DG.buildLetteringDesign(font, "Kent", base);
   const dNormal = DG.buildLetteringDesign(font, "Kent", Object.assign({ weightPreset: "normal" }, base));
@@ -641,7 +756,7 @@ test("buildLetteringDesign: weightPreset 'normal' (or absent) is byte-identical 
 
 test("buildLetteringDesign: weightPreset 'bold' widens satin cross-stitches vs 'thin', measured on the same glyph", () => {
   const garment = { widthIn: 8, heightIn: 8 };
-  const font = require("../src/fonts/geneva_simple.json");
+  const font = require("../test/fixtures/fonts/geneva_simple.json");
   const base = { garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false };
   function avgCrossWidth(design) {
     // Consecutive "stitch" records alternate rail-A/rail-B in a satin run;
@@ -664,7 +779,7 @@ test("buildLetteringDesign: weightPreset 'bold' widens satin cross-stitches vs '
 
 test("buildLetteringDesign: slantDeg absent/0 is byte-identical to today's output; a nonzero value changes the generated geometry", () => {
   const garment = { widthIn: 8, heightIn: 8 };
-  const font = require("../src/fonts/geneva_simple.json");
+  const font = require("../test/fixtures/fonts/geneva_simple.json");
   const base = { garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false };
   const d0 = DG.buildLetteringDesign(font, "H", base);
   const dExplicit0 = DG.buildLetteringDesign(font, "H", Object.assign({ slantDeg: 0 }, base));
@@ -725,7 +840,7 @@ test("buildQualityDesign: opts absent (no targetWidthMm/offsets) stays back-comp
 // like all the fixtures above) the order is untouched.
 
 test("buildLetteringDesign: cap garment sews the middle glyph first (center-out)", () => {
-  const font = require("../src/fonts/geneva_simple.json");
+  const font = require("../test/fixtures/fonts/geneva_simple.json");
   const base = { pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false };
   const flat = DG.buildLetteringDesign(font, "AVA", Object.assign({ garment: { widthIn: 5, heightIn: 2.25 } }, base));
   const cap = DG.buildLetteringDesign(font, "AVA", Object.assign({ garment: { id: "hat_front", widthIn: 5, heightIn: 2.25 } }, base));
@@ -741,7 +856,7 @@ test("buildLetteringDesign: cap garment sews the middle glyph first (center-out)
 });
 
 test("buildLetteringDesign: cap garment sews the bottom line before the top line", () => {
-  const font = require("../src/fonts/geneva_simple.json");
+  const font = require("../test/fixtures/fonts/geneva_simple.json");
   const base = { pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false };
   const flat = DG.buildLetteringDesign(font, "AAA\nVVV", Object.assign({ garment: { widthIn: 5, heightIn: 2.25 } }, base));
   const cap = DG.buildLetteringDesign(font, "AAA\nVVV", Object.assign({ garment: { id: "hat_front", widthIn: 5, heightIn: 2.25 } }, base));
@@ -752,7 +867,7 @@ test("buildLetteringDesign: cap garment sews the bottom line before the top line
 });
 
 test("buildLetteringDesign: cap reorder is deterministic and never drops glyph stitches", () => {
-  const font = require("../src/fonts/geneva_simple.json");
+  const font = require("../test/fixtures/fonts/geneva_simple.json");
   const base = { garment: { id: "hat_front", widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false };
   const a = DG.buildLetteringDesign(font, "SD WHEEL\nJR", base);
   const b = DG.buildLetteringDesign(font, "SD WHEEL\nJR", base);
@@ -761,7 +876,7 @@ test("buildLetteringDesign: cap reorder is deterministic and never drops glyph s
 });
 
 test("buildLetteringDesign: garment without an id (all pre-cap fixtures) is untouched by capMode", () => {
-  const font = require("../src/fonts/geneva_simple.json");
+  const font = require("../test/fixtures/fonts/geneva_simple.json");
   const base = { garment: { widthIn: 8, heightIn: 8 }, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false };
   const d = DG.buildLetteringDesign(font, "AB", base);
   const firstStitch = d.stitches.find((s) => s.type === "stitch");
@@ -776,7 +891,7 @@ test("buildLetteringDesign: garment without an id (all pre-cap fixtures) is unto
 // reflect.
 
 test("buildLetteringDesign: mirrorX/mirrorY absent or false is byte-identical to today's output", () => {
-  const font = require("../src/fonts/geneva_simple.json");
+  const font = require("../test/fixtures/fonts/geneva_simple.json");
   const base = { garment: { widthIn: 8, heightIn: 8 }, pxPerMm: 8, emMm: 18, densityMm: 0.4 };
   const d0 = DG.buildLetteringDesign(font, "Kent", base);
   const dFalse = DG.buildLetteringDesign(font, "Kent", { ...base, mirrorX: false, mirrorY: false });
@@ -784,7 +899,7 @@ test("buildLetteringDesign: mirrorX/mirrorY absent or false is byte-identical to
 });
 
 test("buildLetteringDesign: mirrorX on 'Kent' is an exact reflection — x negated about center, y untouched, every record's type preserved index-for-index", () => {
-  const font = require("../src/fonts/geneva_simple.json");
+  const font = require("../test/fixtures/fonts/geneva_simple.json");
   // underlay ON and a colorRange so the stream really contains trims, jumps
   // AND a color-change record — the per-record loop below then pins that a
   // mirror moves none of them and mirrors all their positions exactly.
@@ -815,7 +930,7 @@ test("buildLetteringDesign: mirrorX on 'Kent' is an exact reflection — x negat
 });
 
 test("buildLetteringDesign: mirrorY negates y about center and leaves x untouched", () => {
-  const font = require("../src/fonts/geneva_simple.json");
+  const font = require("../test/fixtures/fonts/geneva_simple.json");
   const base = { garment: { widthIn: 8, heightIn: 8 }, pxPerMm: 8, emMm: 18, densityMm: 0.4 };
   const d0 = DG.buildLetteringDesign(font, "Kent", base);
   const dY = DG.buildLetteringDesign(font, "Kent", { ...base, mirrorY: true });
@@ -830,7 +945,7 @@ test("buildLetteringDesign: mirrorY negates y about center and leaves x untouche
 });
 
 test("buildLetteringDesign: mirror composes with rotation in the documented order — mirror about the bbox center FIRST, then rotationDeg", () => {
-  const font = require("../src/fonts/geneva_simple.json");
+  const font = require("../test/fixtures/fonts/geneva_simple.json");
   const base = { garment: { widthIn: 8, heightIn: 8 }, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false };
   const d0 = DG.buildLetteringDesign(font, "Kent", base);
   const dMR = DG.buildLetteringDesign(font, "Kent", { ...base, mirrorX: true, rotationDeg: 90 });
@@ -851,7 +966,7 @@ test("buildLetteringDesign: mirror composes with rotation in the documented orde
 });
 
 test("buildLetteringDesign: cap garment's bottom-up sew order follows where lines ACTUALLY land after mirrorY", () => {
-  const font = require("../src/fonts/geneva_simple.json");
+  const font = require("../test/fixtures/fonts/geneva_simple.json");
   // Line 1 "AAA" tagged red via colorRanges; base color for "VVV". On a cap,
   // the FIRST-SEWN line's color is colors[0]: without mirror the bottom line
   // is VVV (base), with mirrorY the AAA line lands at the bottom and must

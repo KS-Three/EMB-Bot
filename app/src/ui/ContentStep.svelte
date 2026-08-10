@@ -4,10 +4,12 @@
   import ImagePanel from "./ImagePanel.svelte";
   import DesignPanel from "./DesignPanel.svelte";
   import DigitizePanel from "./DigitizePanel.svelte";
+  import ManualPanel from "./ManualPanel.svelte";
   import SizePanel from "./SizePanel.svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
   import FontSelect from "./FontSelect.svelte";
   import Hint from "./Hint.svelte";
+  import Icon from "./Icon.svelte";
   import { selectedIdsOf } from "../lib/project.js";
   export let project;
   // Whether the "add-elements" onboarding hint should render right now --
@@ -32,8 +34,9 @@
   // ---- Task 5 (Slice 5): the real element manager --------------------------
   // Replaces the Task 4 compile-compat adapter (mode tiles + a flattened
   // v1-shaped "view project") with the real thing: a compact list of every
-  // element in the project (click a row to select it, ✕ to remove it),
-  // "+ Text" / "+ Image" to add more, and below that the SELECTED element's
+  // element in the project (click a row to select it, the close icon to
+  // remove it), "+ Text" / "+ Image" tiles to add more, and below that the
+  // SELECTED element's
   // own editor (TextStep or ImagePanel, both element-scoped now) plus the
   // size panel.
   //
@@ -93,6 +96,10 @@
     if (element.type === "digitized") {
       return element.result ? `Digitized · ${truncate(element.name || "artwork", 18)}` : "Digitized · empty";
     }
+    if (element.type === "manual") {
+      const n = (element.shapes || []).length;
+      return n ? `Shapes · ${n}` : "Shapes · empty";
+    }
     const n = element.nColors || 0;
     return element._hasImage ? `Image · ${n} color${n === 1 ? "" : "s"}` : "Image · empty";
   }
@@ -140,6 +147,14 @@
             <circle cx="20" cy="4" r="1.6" fill="currentColor" />
             <path d="M5 5l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="currentColor" />
           </svg>
+        {:else if row.type === "manual"}
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+            <path d="M4 18 L9 6 L18 10 L14 20 Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+            <circle cx="4" cy="18" r="1.6" fill="currentColor" />
+            <circle cx="9" cy="6" r="1.6" fill="currentColor" />
+            <circle cx="18" cy="10" r="1.6" fill="currentColor" />
+            <circle cx="14" cy="20" r="1.6" fill="currentColor" />
+          </svg>
         {:else}
           <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
             <rect x="2" y="4" width="20" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2" />
@@ -164,7 +179,7 @@
         aria-label="Remove element"
         on:click|stopPropagation={() => d("removeelement", row.id)}
       >
-        ✕
+        <Icon name="close" size={14} />
       </button>
     </div>
   {/each}
@@ -174,11 +189,12 @@
   <Hint on:dismiss={() => d("dismisshint")}>Combine text and a logo in one design.</Hint>
 {/if}
 <div class="eladd-row">
-  <button type="button" class="eladd" on:click={() => d("addelement", "text")}>+ Text</button>
-  <button type="button" class="eladd" on:click={() => d("addelement", "image")}>+ Image</button>
-  <button type="button" class="eladd" on:click={() => d("addelement", "design")}>+ Design file</button>
+  <button type="button" class="eladd" on:click={() => d("addelement", "text")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Text</button>
+  <button type="button" class="eladd" on:click={() => d("addelement", "image")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Image</button>
+  <button type="button" class="eladd" on:click={() => d("addelement", "design")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Design file</button>
+  <button type="button" class="eladd" on:click={() => d("addelement", "manual")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Draw shapes</button>
   {#if digitizerHealth}
-    <button type="button" class="eladd" on:click={() => d("addelement", "digitized")}>+ Auto-digitize</button>
+    <button type="button" class="eladd" on:click={() => d("addelement", "digitized")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Auto-digitize</button>
   {/if}
 </div>
 {#if !digitizerHealth}
@@ -243,6 +259,8 @@
         health={digitizerHealth}
         on:elupdate={(e) => d("elupdate", e.detail)}
         on:checkservice={() => d("checkservice")}
+        on:converttotext={(e) => d("converttotext", e.detail)}
+        on:removeelement={(e) => d("removeelement", e.detail)}
       />
     {:else if el.type === "image"}
       <ImagePanel
@@ -253,6 +271,8 @@
         on:image={(e) => d("image", e.detail)}
         on:flat={(e) => d("flat", e.detail)}
       />
+    {:else if el.type === "manual"}
+      <ManualPanel element={el} on:elupdate={(e) => d("elupdate", e.detail)} />
     {:else}
       <TextStep element={el} on:elupdate={(e) => d("elupdate", e.detail)} />
     {/if}
@@ -262,6 +282,16 @@
 {/if}
 
 <style>
+  /* Wraps the plus Icon inside each .eladd tile (theme.css) -- .eladd itself
+     isn't a flex container, so this gives the icon its own inline-flex box
+     to vertically center against the adjacent label text and keeps a
+     consistent gap, without touching theme.css's shared .eladd rule. */
+  .eladd-icon {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: -3px;
+    margin-right: 4px;
+  }
   .digitize-offline {
     font-size: var(--fs-xs, 12px);
     color: var(--muted, #667);

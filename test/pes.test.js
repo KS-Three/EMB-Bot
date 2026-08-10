@@ -16,10 +16,12 @@ test("PES contains PEC block marker", () => {
 // ---- PEC stitch-data decoder (mirrors the real PEC delta format) --------
 // Locates the stitch-data region using the same offsets encodePES/writePEC
 // use (the 4-byte PEC-section offset at byte 8, then the fixed "0x31 0xff
-// 0xf0" pattern marker followed by width/height/nominal-area/start fields),
-// then walks the delta-encoded stitch bytes and reconstructs signed dx/dy
-// for each record (short form: 7-bit two's complement; long form: 12-bit
-// two's complement carried in the low 12 bits of the two flag bytes).
+// 0xf0" pattern marker followed by width/height/nominal-area fields -- the
+// standard PEC block has exactly these four u16 fields after the marker,
+// no extra "start x/y" fields), then walks the delta-encoded stitch bytes
+// and reconstructs signed dx/dy for each record (short form: 7-bit two's
+// complement; long form: 12-bit two's complement carried in the low 12 bits
+// of the two flag bytes).
 function decodePecStitchDeltas(out) {
   const dv = new DataView(out.buffer, out.byteOffset, out.byteLength);
   const pecStart = dv.getUint32(8, true);
@@ -34,8 +36,8 @@ function decodePecStitchDeltas(out) {
   assert.ok(markerIndex >= 0, "expected 0x31 0xff 0xf0 PEC marker after pecStart");
 
   // marker(3) + width(2) + height(2) + nominal width(2) + nominal height(2)
-  // + start-x(2) + start-y(2) = 15 bytes to the first stitch-data byte.
-  let i = markerIndex + 15;
+  // = 11 bytes to the first stitch-data byte.
+  let i = markerIndex + 11;
 
   const records = [];
   while (i < out.length) {

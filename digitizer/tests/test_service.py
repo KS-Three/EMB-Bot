@@ -22,6 +22,22 @@ from digitizer_service.app import MAX_PIXELS, app  # noqa: E402
 from digitizer_service.jobs import JobRegistry, content_key  # noqa: E402
 
 ART = Path(__file__).resolve().parents[1] / "testdata" / "logo_whitebg.png"
+# The enclosed-background repro: a gradient logo with white icon linework
+# that tags a Region `enclosed_background` and defaults it to unstitched.
+REPRO = Path(__file__).resolve().parents[1] / "testdata" / "photo" / "repro_gradient_white_icon.png"
+
+# The text-cluster-detection benchmark: the "ENTERPRISES INC." subline in this
+# fixture is a real logo's independently-rescued sub-detail glyphs (see
+# `test_pipeline.py::test_full_pipeline_tags_a_text_cluster_on_the_benchmark_subline`).
+# 90 mm is the documented benchmark width at which the subline's glyphs are
+# rescued and clustered.
+ENTHUSIAST_LOGO = Path(__file__).resolve().parents[1] / "testdata" / "photo" / "enthusiast_logo.png"
+
+# /digitize-manual fixtures: a plain rectangle (fill) and the same 24x2 mm
+# satin bar `tests/test_satin.py::BAR` uses — known-good geometry rather than
+# an untested shape.
+MANUAL_RECT = [[0.0, 0.0], [20.0, 0.0], [20.0, 15.0], [0.0, 15.0]]
+MANUAL_BAR = [[0.0, 0.0], [24.0, 0.0], [24.0, 2.0], [0.0, 2.0]]
 
 
 @pytest.fixture(scope="module")
@@ -37,6 +53,29 @@ def _digitize(client, config: dict | None = None, art: Path = ART) -> dict:
             files={"image": (art.name, f, "image/png")},
             data={"config": json.dumps(config or {})},
         )
+    assert r.status_code == 202, r.text
+    job_id = r.json()["job_id"]
+    for _ in range(600):
+        state = client.get(f"/jobs/{job_id}").json()
+        if state["state"] in ("done", "error"):
+            break
+        time.sleep(0.1)
+    assert state["state"] == "done", state.get("detail") or state.get("error")
+    return state
+
+
+def _manual_shapes() -> list[dict]:
+    return [
+        {"polygon": MANUAL_RECT, "technique": "fill", "thread_index": 0},
+        {"polygon": [[p[0] + 30.0, p[1]] for p in MANUAL_BAR],
+         "technique": "satin", "thread_index": 1},
+    ]
+
+
+def _digitize_manual(client, shapes=None, config: dict | None = None) -> dict:
+    body = {"shapes": shapes if shapes is not None else _manual_shapes(),
+            "config": config or {}}
+    r = client.post("/digitize-manual", json=body)
     assert r.status_code == 202, r.text
     job_id = r.json()["job_id"]
     for _ in range(600):
@@ -346,6 +385,140 @@ def test_the_whole_edit_round_trip_over_http(client):
     assert second["design"]["stitchCount"] != first["design"]["stitchCount"]
 
 
+def test_sew_order_override_resequences_shapes_within_a_layer_over_http(client):
+    """1305 carries two shapes (a rectangle and a run-tier satellite) that
+    share one sew block by default. Pinning whichever sews second to slot 0
+    must flip which one sews first — read off the emitted `sew_index`, not
+    just the override round-tripping through the review payload."""
+    first = _digitize(client, {"target_width_mm": 80.0, "preflight": False})
+    orange = [s for s in first["review"]["shapes"] if s["thread_number"] == "1305"]
+    assert len(orange) >= 2, "fixture must carry >1 shape on this thread"
+    ordered = sorted((s for s in orange if s["sew_index"] is not None),
+                      key=lambda s: s["sew_index"])
+    sewn_first, sewn_second = ordered[0], ordered[1]
+    assert sewn_first["layer"] == sewn_second["layer"], "must be one within-layer test"
+
+    second = _digitize(client, {
+        "target_width_mm": 80.0, "preflight": False,
+        "shape_overrides": {sewn_second["shape_id"]: {"sew_order": 0}},
+    })
+    after = {s["shape_id"]: s for s in second["review"]["shapes"]}
+    assert after[sewn_second["shape_id"]]["sew_order"] == 0, "echoed back, contract v1.2"
+    assert after[sewn_second["shape_id"]]["sew_index"] < after[sewn_first["shape_id"]]["sew_index"], \
+        "the pinned shape must now sew before the one that used to sew first"
+    # Only the WITHIN-layer order moved — the block itself sews in the same
+    # position, and every other layer's shapes are untouched.
+    assert after[sewn_second["shape_id"]]["sew_block"] == after[sewn_first["shape_id"]]["sew_block"]
+    assert after[sewn_second["shape_id"]]["sew_block"] == sewn_first["sew_block"]
+
+
+def test_underlay_style_override_round_trips_over_http_and_changes_stitch_count(client):
+    """A per-shape underlay_style override reaches the emitted design over the
+    real HTTP seam, not just the pipeline's internal Region.meta — the fill-
+    classified shape's stitch count actually changes when its underlay is
+    turned off."""
+    first = _digitize(client, {"target_width_mm": 80.0, "preflight": False})
+    shapes = {s["thread_number"]: s for s in first["review"]["shapes"]}
+    red = shapes["1704"]     # big filled circle, fill tier
+    assert red["tier"] == "fill"
+
+    second = _digitize(client, {
+        "target_width_mm": 80.0, "preflight": False,
+        "shape_overrides": {red["shape_id"]: {"underlay_style": "none"}},
+    })
+    assert second["design"]["stitchCount"] < first["design"]["stitchCount"]
+
+
+def test_stitched_default_and_override_round_trip_over_http(client):
+    """The service-layer half of the enclosed-background restore fix: an
+    `enclosed_background`-tagged region reports `stitched: False` by default
+    in `review.shapes` (the CORE resolution already worked; the gap was the
+    service rejecting the override key and never exposing the field) —
+    and a `shape_overrides[sid] = {"stitched": true}` restores it, both in
+    the review payload and in the actual stitch plan reaching the design."""
+    first = _digitize(client, {"preflight": False}, art=REPRO)
+    shapes = first["review"]["shapes"]
+    assert all("stitched" in s for s in shapes)
+    unstitched = [s for s in shapes if s["stitched"] is False]
+    assert unstitched, "the repro fixture's whole point is a region tagged unstitched by default"
+    target = unstitched[0]
+
+    second = _digitize(client, {
+        "preflight": False,
+        "shape_overrides": {target["shape_id"]: {"stitched": True}},
+    }, art=REPRO)
+
+    after = {s["shape_id"]: s for s in second["review"]["shapes"]}
+    assert after[target["shape_id"]]["stitched"] is True
+    # And it isn't just the flag: the restored shape now actually reaches
+    # the emitted design, growing the stitch count.
+    assert second["design"]["stitchCount"] > first["design"]["stitchCount"]
+
+
+def test_review_payload_carries_text_cluster_fields_over_http(client):
+    """The service-layer half of text-cluster detection (Step 4 of the
+    text-cluster-detection plan): `_review_payload` echoes `text_candidate`
+    and `text_cluster_id` straight off `Region.meta`, purely additive and
+    read-only — no `_OVERRIDE_KEYS` entry, no client-submitted path.
+
+    Uses the real benchmark fixture at its documented 90 mm size (the same
+    fixture/size `test_pipeline.py`'s full-pipeline wiring test confirms
+    tags a text cluster on the "ENTERPRISES INC." subline) so this exercises
+    the real HTTP seam, not a synthetic Region.meta.
+    """
+    review = _digitize(client, {"target_width_mm": 90.0, "preflight": False},
+                        art=ENTHUSIAST_LOGO)["review"]
+    shapes = review["shapes"]
+
+    assert all({"text_candidate", "text_cluster_id"} <= set(s) for s in shapes)
+
+    tagged = [s for s in shapes if s["text_cluster_id"] is not None]
+    assert tagged, "the benchmark fixture must produce at least one tagged text cluster"
+    for s in tagged:
+        assert s["text_candidate"] is True
+        assert isinstance(s["text_cluster_id"], str)
+
+    untagged = [s for s in shapes if s["text_cluster_id"] is None]
+    assert untagged, "ordinary, never-tagged shapes must also be present in this fixture"
+    for s in untagged:
+        assert s["text_candidate"] is False
+
+
+def test_review_payload_carries_ocr_suggested_text_fields_over_http(client):
+    """The service-layer half of OCR-suggested text (Studio "Convert to
+    text" entry point): `_review_payload` echoes `ocr_char`/`ocr_confidence`
+    straight off `Region.meta`, purely additive, read-only, no
+    `_OVERRIDE_KEYS` entry -- same contract shape as `text_candidate`/
+    `text_cluster_id` just above.
+
+    Uses the real benchmark fixture at its documented 90 mm size, same as
+    the text-cluster test above, so this exercises the real HTTP seam.
+    """
+    review = _digitize(client, {"target_width_mm": 90.0, "preflight": False},
+                        art=ENTHUSIAST_LOGO)["review"]
+    shapes = review["shapes"]
+
+    assert all({"ocr_char", "ocr_confidence"} <= set(s) for s in shapes)
+
+    untagged = [s for s in shapes if s["text_cluster_id"] is None]
+    assert untagged
+    for s in untagged:
+        assert s["ocr_char"] is None
+        assert s["ocr_confidence"] is None
+
+    tagged = [s for s in shapes if s["text_cluster_id"] is not None]
+    assert tagged
+    saw_a_real_character = False
+    for s in tagged:
+        assert s["ocr_char"] is None or (isinstance(s["ocr_char"], str) and len(s["ocr_char"]) == 1)
+        conf = s["ocr_confidence"]
+        assert conf is None or (isinstance(conf, float) and 0.0 <= conf <= 100.0)
+        if s["ocr_char"] is not None:
+            saw_a_real_character = True
+    assert saw_a_real_character, \
+        "the real benchmark fixture must produce at least one real OCR character over HTTP"
+
+
 def test_an_edit_is_a_different_job_not_a_stale_cache_hit(client):
     """The cache keys on the canonical config: two configs differing only in
     shape_overrides are two jobs; the same edit twice is one."""
@@ -380,21 +553,527 @@ def test_parse_config_canonicalizes_the_edit_fields():
         {"shape_overrides": {"S3": {"tier": "satin"}}}
 
 
+def test_parse_config_accepts_a_sew_order_override():
+    """A plain non-negative integer, passed through unchanged — sew_order has
+    no closed vocabulary or lowercasing to normalize, unlike tier/border."""
+    from digitizer_service.app import _parse_config
+
+    assert _parse_config(json.dumps({"shape_overrides": {"S1": {"sew_order": 0}}})) == \
+        {"shape_overrides": {"S1": {"sew_order": 0}}}
+    assert _parse_config(json.dumps({"shape_overrides": {"S1": {"sew_order": None}}})) == {}
+
+
+def test_parse_config_accepts_and_lowercases_an_underlay_style_override():
+    """Same closed-vocabulary canonicalization as `border`/`tier`: a valid
+    style lowercases and survives; `null` is absence, same as every other
+    field here."""
+    from digitizer_service.app import _parse_config
+
+    assert _parse_config(json.dumps(
+        {"shape_overrides": {"S1": {"underlay_style": "Edge_Zigzag"}}})) == \
+        {"shape_overrides": {"S1": {"underlay_style": "edge_zigzag"}}}
+    assert _parse_config(json.dumps(
+        {"shape_overrides": {"S1": {"underlay_style": "none"}}})) == \
+        {"shape_overrides": {"S1": {"underlay_style": "none"}}}
+    assert _parse_config(json.dumps(
+        {"shape_overrides": {"S1": {"underlay_style": None}}})) == {}
+
+
+def test_parse_config_accepts_a_stitched_override():
+    """A plain boolean, either direction — and `False` survives canonicalization
+    (it is a real override value, not an absence, unlike `None`)."""
+    from digitizer_service.app import _parse_config
+
+    assert _parse_config(json.dumps({"shape_overrides": {"S1": {"stitched": True}}})) == \
+        {"shape_overrides": {"S1": {"stitched": True}}}
+    assert _parse_config(json.dumps({"shape_overrides": {"S1": {"stitched": False}}})) == \
+        {"shape_overrides": {"S1": {"stitched": False}}}
+
+
+def test_parse_config_accepts_and_normalizes_a_boundary_override():
+    """A valid ring survives as a list of [x, y] float pairs; a closed ring
+    (first point repeated as last — how `outline_mm` in the review payload
+    sends it, and so the natural shape for a client to hand straight back)
+    canonicalizes the same as the open form, so the two are ONE cache key."""
+    from digitizer_service.app import _parse_config
+
+    open_ring = [[0, 0], [10, 0], [10, 10], [0, 10]]
+    closed_ring = open_ring + [[0, 0]]
+
+    got_open = _parse_config(json.dumps({"shape_overrides": {"S1": {"boundary_override": open_ring}}}))
+    got_closed = _parse_config(json.dumps({"shape_overrides": {"S1": {"boundary_override": closed_ring}}}))
+    want = {"shape_overrides": {"S1": {"boundary_override": [[0.0, 0.0], [10.0, 0.0],
+                                                              [10.0, 10.0], [0.0, 10.0]]}}}
+    assert got_open == want
+    assert got_closed == want
+    assert _parse_config(json.dumps({"shape_overrides": {"S1": {"boundary_override": None}}})) == {}
+
+
 @pytest.mark.parametrize("bad", [
     {"deleted_shape_ids": "S1"},                            # not a list
     {"shape_overrides": {"S1": {"tier": "zigzag"}}},        # unknown tier
     {"shape_overrides": {"S1": {"border": "dotted"}}},      # unknown border
+    {"shape_overrides": {"S1": {"underlay_style": "sparkly"}}},  # unknown underlay style
+    {"shape_overrides": {"S1": {"underlay_style": 3}}},     # not a string
     {"shape_overrides": {"S1": {"speed": 9}}},              # unknown key
     {"shape_overrides": {"S1": {"thread_index": 99999}}},   # off the chart
     {"shape_overrides": {"S1": {"thread_index": True}}},    # bool is not an index
     {"shape_overrides": {"S1": {"fill_angle_deg": "flat"}}},
     {"shape_overrides": {"S1": "fill"}},                    # entry not an object
+    {"shape_overrides": {"S1": {"sew_order": -1}}},         # negative
+    {"shape_overrides": {"S1": {"sew_order": True}}},       # bool is not a position
+    {"shape_overrides": {"S1": {"sew_order": 1.5}}},        # not an integer
+    {"shape_overrides": {"S1": {"stitched": "yes"}}},       # not a boolean
+    {"shape_overrides": {"S1": {"boundary_override": "nope"}}},           # not a list
+    {"shape_overrides": {"S1": {"boundary_override": [[0, 0], [1, 1]]}}},  # < 3 points
+    {"shape_overrides": {"S1": {"boundary_override":                       # self-intersecting
+                                [[0, 0], [10, 10], [10, 0], [0, 10]]}}},
+    {"shape_overrides": {"S1": {"boundary_override":                       # near-zero area
+                                [[0, 0], [0.01, 0], [0.01, 0.01]]}}},
+    {"shape_overrides": {"S1": {"boundary_override": [["a", 0], [1, 0], [1, 1]]}}},  # not numbers
+    {"shape_overrides": {"S1": {"boundary_override": [[0, 0], [1, 0], [1, True]]}}},  # bool coord
+    {"merge_shape_ids": "nope"},                            # not a list
+    {"merge_shape_ids": ["S1"]},                            # group not a list
+    {"merge_shape_ids": [["S1"]]},                          # < 2 distinct shapes
+    {"merge_shape_ids": [["S1", "S1"]]},                    # dedupes to 1 distinct shape
+    {"merge_shape_ids": [["S1", 2]]},                       # not a string id
+    {"merge_shape_ids": [["S1", ""]]},                      # empty string id
+    {"split_shapes": "nope"},                               # not an object
+    {"split_shapes": {"S1": [[0, 0]]}},                     # only one point
+    {"split_shapes": {"S1": [[0, 0], [1, 0], [2, 0]]}},     # three points
+    {"split_shapes": {"S1": [[0, 0], [0, 0]]}},             # zero-length line
+    {"split_shapes": {"S1": [["a", 0], [1, 1]]}},           # not numbers
+    {"split_shapes": {"S1": [[0, 0], [1, True]]}},          # bool coord
 ])
 def test_bad_shape_edits_are_a_400_at_submit_not_a_failed_job(client, bad):
     with ART.open("rb") as f:
         r = client.post("/digitize", files={"image": (ART.name, f, "image/png")},
                         data={"config": json.dumps(bad)})
     assert r.status_code == 400, r.text
+
+
+# --- boundary override (contract v1.4) --------------------------------------
+
+def test_boundary_override_round_trips_over_http_and_changes_the_design(client):
+    """digitize -> read a shape's outline_mm -> re-digitize with a
+    boundary_override enlarging it -> the same round-trip shape every other
+    override key already has: the shape keeps its id, the new outline
+    reaches the review payload's area, and the design's stitch geometry
+    actually changes. Every other shape is untouched by the one edit."""
+    first = _digitize(client, {"target_width_mm": 80.0, "preflight": False})
+    shapes = {s["thread_number"]: s for s in first["review"]["shapes"]}
+    purple = shapes["2905"]          # rectangle
+    pts = purple["outline_mm"]
+    cx = sum(p[0] for p in pts) / len(pts)
+    cy = sum(p[1] for p in pts) / len(pts)
+    grown = [[cx + (x - cx) * 1.4, cy + (y - cy) * 1.4] for x, y in pts]
+
+    second = _digitize(client, {
+        "target_width_mm": 80.0, "preflight": False,
+        "shape_overrides": {purple["shape_id"]: {"boundary_override": grown}},
+    })
+
+    ids_before = {s["shape_id"] for s in first["review"]["shapes"]}
+    after = {s["shape_id"]: s for s in second["review"]["shapes"]}
+    assert set(after) == ids_before, "boundary edit alone changes no shape's id"
+    edited = after[purple["shape_id"]]
+    assert edited["area_mm2"] > purple["area_mm2"] * 1.3
+    assert second["design"]["stitchCount"] != first["design"]["stitchCount"]
+    # Every other shape's outline is untouched by the one edit.
+    for sid, before in {s["shape_id"]: s for s in first["review"]["shapes"]}.items():
+        if sid == purple["shape_id"]:
+            continue
+        assert after[sid]["outline_mm"] == before["outline_mm"]
+
+
+def test_boundary_override_survives_an_identical_resubmit_as_one_cached_job(client):
+    """Same shape, same edit, submitted twice: one job — the edit
+    participates in the cache key exactly as every other override does, and
+    is stable enough not to thrash it on a no-op resubmit."""
+    first = _digitize(client, {"target_width_mm": 80.0, "preflight": False})
+    purple = next(s for s in first["review"]["shapes"] if s["thread_number"] == "2905")
+    edit = {"target_width_mm": 80.0, "preflight": False,
+            "shape_overrides": {purple["shape_id"]: {"boundary_override": purple["outline_mm"]}}}
+
+    with ART.open("rb") as f:
+        a = client.post("/digitize", files={"image": (ART.name, f, "image/png")},
+                        data={"config": json.dumps(edit)}).json()
+    with ART.open("rb") as f:
+        b = client.post("/digitize", files={"image": (ART.name, f, "image/png")},
+                        data={"config": json.dumps(edit)}).json()
+    assert a["job_id"] == b["job_id"]
+
+
+def test_boundary_override_with_a_hole_poking_outside_fails_the_job_cleanly_not_a_400(client):
+    """The one boundary_override check this service genuinely cannot do at
+    submit time — hole containment needs the shape's own existing holes,
+    which parsing a request never sees — so it surfaces as a failed JOB, not
+    a 400: the submit-time shell check passes (this shrink is still a valid,
+    plenty-large-enough polygon on its own), and `apply_shape_edits` is what
+    actually catches the hole poking outside it once the job runs. Still a
+    clean, readable error, never a crash or a corrupted design — the same
+    contract `test_a_failed_job_reports_the_error_not_a_blank_result` pins
+    for the registry in general, proven here for this specific edit."""
+    first = _digitize(client, {"target_width_mm": 80.0, "preflight": False})
+    ring = next(s for s in first["review"]["shapes"] if s["holes_mm"])
+    hole = ring["holes_mm"][0]
+    hx0, hx1 = min(p[0] for p in hole), max(p[0] for p in hole)
+    hy0, hy1 = min(p[1] for p in hole), max(p[1] for p in hole)
+    hcx, hcy = (hx0 + hx1) / 2, (hy0 + hy1) / 2
+    # Shrink the shell toward the HOLE's own center: still a large, valid,
+    # easily-sewable polygon by itself, but now too small to still contain
+    # the hole it used to enclose.
+    shrunk = [[hcx + (x - hcx) * 0.1, hcy + (y - hcy) * 0.1] for x, y in ring["outline_mm"]]
+
+    with ART.open("rb") as f:
+        r = client.post(
+            "/digitize", files={"image": (ART.name, f, "image/png")},
+            data={"config": json.dumps({
+                "target_width_mm": 80.0, "preflight": False,
+                "shape_overrides": {ring["shape_id"]: {"boundary_override": shrunk}},
+            })},
+        )
+    assert r.status_code == 202, "the shell alone is valid, so submit succeeds"
+    job_id = r.json()["job_id"]
+    for _ in range(600):
+        state = client.get(f"/jobs/{job_id}").json()
+        if state["state"] in ("done", "error"):
+            break
+        time.sleep(0.1)
+    assert state["state"] == "error", "the job, not submission, must catch this"
+    assert "boundary_override" in state["error"] and "hole" in state["error"].lower()
+
+
+# --- shape identity edits (merge/split, contract v1.5) ----------------------
+#
+# The other half of the shape-recognition gap `boundary_override` (above)
+# didn't touch: these change the SET of shapes, not one shape's geometry.
+# Full core-level coverage (the happy paths, every v1 guardrail, the
+# warn-vs-raise split) lives in `test_shape_identity.py`; what belongs here
+# is the SERVICE's own contract — request canonicalization, 400s at submit,
+# and the one real end-to-end proof that the config keys reach the running
+# service and come back out the other side as a changed design.
+
+def test_parse_config_canonicalizes_merge_shape_ids_groups_and_dedupes_them():
+    """Mirrors `deleted_shape_ids`'s own canonicalization: each group
+    de-duplicated and sorted, then the list of groups itself sorted, so two
+    spellings of one merge request are ONE cache key."""
+    from digitizer_service.app import _parse_config
+
+    assert _parse_config(json.dumps({"merge_shape_ids": [["B", "A", "A"]]})) == \
+        {"merge_shape_ids": [["A", "B"]]}
+    # Group order in the outer list must not matter either.
+    a = _parse_config(json.dumps({"merge_shape_ids": [["B", "C"], ["A", "D"]]}))
+    b = _parse_config(json.dumps({"merge_shape_ids": [["D", "A"], ["C", "B"]]}))
+    assert a == b
+    assert _parse_config(json.dumps({"merge_shape_ids": None})) == {}
+    assert _parse_config(json.dumps({"merge_shape_ids": []})) == {}
+
+
+def test_parse_config_canonicalizes_split_shapes_line_order_and_coerces_floats():
+    """A line's two endpoints canonicalize to one order regardless of which
+    one the client calls "first" — see `regions.apply_shape_splits`'s own
+    copy of this normalization for why (an id-stability concern, not just a
+    cache one)."""
+    from digitizer_service.app import _parse_config
+
+    forward = _parse_config(json.dumps({"split_shapes": {"S1": [[0, -5], [0, 5]]}}))
+    backward = _parse_config(json.dumps({"split_shapes": {"S1": [[0, 5], [0, -5]]}}))
+    assert forward == backward == {"split_shapes": {"S1": [[0.0, -5.0], [0.0, 5.0]]}}
+    assert _parse_config(json.dumps({"split_shapes": None})) == {}
+    assert _parse_config(json.dumps({"split_shapes": {}})) == {}
+
+
+def test_merge_shape_ids_reaches_the_real_pipeline_as_a_400_free_submit_and_a_clean_job_error(client):
+    """The fixture's two real "1305" (orange) regions are 13.8mm apart (see
+    `test_shape_identity.py`'s own note on this) — not adjacent, so the
+    request itself is well-formed (a 202, not a 400) and the geometry
+    guardrail fires as a clean JOB error, exactly the same posture
+    `boundary_override`'s hole-containment case already has 3 tests up."""
+    first = _digitize(client, {"target_width_mm": 80.0, "preflight": False})
+    orange = sorted(
+        s["shape_id"] for s in first["review"]["shapes"] if s["thread_number"] == "1305"
+    )
+    assert len(orange) == 2
+
+    with ART.open("rb") as f:
+        r = client.post(
+            "/digitize", files={"image": (ART.name, f, "image/png")},
+            data={"config": json.dumps({
+                "target_width_mm": 80.0, "preflight": False,
+                "merge_shape_ids": [orange],
+            })},
+        )
+    assert r.status_code == 202, "well-formed request: two real, distinct, same-thread ids"
+    job_id = r.json()["job_id"]
+    for _ in range(600):
+        state = client.get(f"/jobs/{job_id}").json()
+        if state["state"] in ("done", "error"):
+            break
+        time.sleep(0.1)
+    assert state["state"] == "error"
+    assert "does not touch or overlap" in state["error"]
+
+
+def test_split_shapes_round_trips_over_http_and_produces_two_new_shapes(client):
+    """digitize -> read the purple rectangle's outline -> re-digitize with a
+    split_shapes cut through its own middle -> two new shapes with new ids,
+    the old id gone, combined area preserved, and the design's stitch
+    geometry actually changed. Every other shape is untouched."""
+    first = _digitize(client, {"target_width_mm": 80.0, "preflight": False})
+    purple = next(s for s in first["review"]["shapes"] if s["thread_number"] == "2905")
+    xs = [p[0] for p in purple["outline_mm"]]
+    midx = (min(xs) + max(xs)) / 2
+    ys = [p[1] for p in purple["outline_mm"]]
+    line = [[midx, min(ys) - 1.0], [midx, max(ys) + 1.0]]
+
+    second = _digitize(client, {
+        "target_width_mm": 80.0, "preflight": False,
+        "split_shapes": {purple["shape_id"]: line},
+    })
+
+    ids_before = {s["shape_id"] for s in first["review"]["shapes"]}
+    after = {s["shape_id"]: s for s in second["review"]["shapes"]}
+    assert purple["shape_id"] not in after
+    new_purple = [s for s in after.values() if s["thread_number"] == "2905"]
+    assert len(new_purple) == 2
+    assert set(after) - ids_before == {s["shape_id"] for s in new_purple}
+    assert sum(s["area_mm2"] for s in new_purple) == pytest.approx(purple["area_mm2"], rel=0.02)
+    assert second["design"]["stitchCount"] != first["design"]["stitchCount"]
+    # Every other shape's outline is untouched by the one split.
+    before_by_id = {s["shape_id"]: s for s in first["review"]["shapes"]}
+    for sid, b in before_by_id.items():
+        if sid == purple["shape_id"]:
+            continue
+        assert after[sid]["outline_mm"] == b["outline_mm"]
+
+
+def test_merge_and_split_are_a_400_free_no_op_when_the_named_shape_no_longer_exists(client):
+    """An id the current artwork/config no longer produces (stale, or simply
+    made up) is a clean, informative WARNING, never an error — the same
+    posture `deleted_shape_ids`/`shape_overrides` already have for exactly
+    this case."""
+    state = _digitize(client, {
+        "target_width_mm": 80.0, "preflight": False,
+        "merge_shape_ids": [["nope1", "nope2"]],
+        "split_shapes": {"nope3": [[0, -1], [0, 1]]},
+    })
+    codes = {w["code"] for w in state["warnings"]}
+    assert "SHAPE_EDIT_UNKNOWN_ID" in codes
+
+
+# --- /digitize-manual (manual digitizing, no image) -------------------------
+
+def test_digitize_manual_returns_a_design_a_review_and_stats(client):
+    state = _digitize_manual(client, config={"garment_id": "left_chest"})
+
+    design = state["design"]
+    assert design["stitchCount"] > 100
+    assert design["colorCount"] == 2
+    assert design["stitches"][-1]["type"] == "end"
+    assert {s["type"] for s in design["stitches"]} <= {"stitch", "jump", "trim", "color", "end"}
+
+    review = state["review"]
+    assert len(review["shapes"]) == 2
+    assert review["palette"][0]["brand_id"] == "isacord"
+    assert state["stats"]["stitch_count"] == design["stitchCount"]
+    assert state["preflight"]["grade"] in "ABCDF"
+
+    # Same keys /digitize's job carries, so a client that only knows that
+    # response shape needs no special-casing for this route.
+    assert set(state) >= {"job_id", "state", "design", "review", "stats",
+                          "warnings", "preflight"}
+
+
+def test_manual_review_payload_reports_the_tier_each_shape_actually_sewed_as(client):
+    state = _digitize_manual(client)
+    shapes = {s["thread_index"]: s for s in state["review"]["shapes"]}
+    assert shapes[0]["tier"] == "fill"
+    assert shapes[1]["tier"] == "satin"
+    assert all({"layer", "sew_index", "sew_block", "shape_id"} <= set(s)
+               for s in state["review"]["shapes"])
+
+
+def test_manual_stats_describe_the_delivered_design(client):
+    state = _digitize_manual(client)
+    design, stats = state["design"], state["stats"]
+    kinds = [s["type"] for s in design["stitches"]]
+    assert stats["trims"] == kinds.count("trim")
+    assert stats["jumps"] == kinds.count("jump")
+    assert stats["color_changes"] == kinds.count("color")
+
+
+def test_manual_preflight_off_is_none_not_a_passing_report(client):
+    state = _digitize_manual(client, config={"preflight": False})
+    assert state["preflight"] is None
+
+
+def test_manual_preflight_runs_without_an_image_and_says_so(client):
+    """No artwork ever backed a manual generation, so the thread-match check
+    is honestly reported skipped — every other check still runs."""
+    state = _digitize_manual(client)
+    metrics = state["preflight"]["metrics"]
+    assert metrics["thread_match_checked"] is False
+    assert isinstance(state["preflight"]["findings"], list)
+
+
+def test_manual_design_exports_to_a_real_machine_file(client):
+    """No new export code: reuses the exact same /export route every other
+    design (lettering, imported, auto-digitized) already goes through."""
+    design = _digitize_manual(client)["design"]
+    for fmt in ("dst", "pes", "exp"):
+        r = client.post("/export", json={"design": design, "format": fmt})
+        assert r.status_code == 200, r.text
+        assert len(r.content) > 200
+        assert r.headers["x-stitch-convention"] == "tajima-standard"
+
+
+def test_manual_pes_survives_an_independent_reader(client):
+    design = _digitize_manual(client)["design"]
+    r = client.post("/export", json={"design": design, "format": "pes"})
+    pattern = pyembroidery.read_pes(io.BytesIO(r.content))
+    sewn = [s for s in pattern.stitches if s[2] == pyembroidery.STITCH]
+    assert len(sewn) == design["stitchCount"]
+
+
+def test_manual_garment_id_changes_the_fabric_and_therefore_the_stitch_count(client):
+    knit = _digitize_manual(client, config={"garment_id": "left_chest"})
+    towel = _digitize_manual(client, config={"garment_id": "towel"})
+    assert knit["design"]["stitchCount"] != towel["design"]["stitchCount"]
+
+
+def test_manual_thread_brand_changes_the_catalog_numbers(client):
+    iso = _digitize_manual(client, config={"thread_brand": "isacord"})
+    mad = _digitize_manual(client, config={"thread_brand": "madeira-rayon"})
+    assert iso["review"]["palette"][0]["brand_id"] == "isacord"
+    assert mad["review"]["palette"][0]["brand_id"] == "madeira-rayon"
+
+
+def test_manual_unknown_thread_brand_is_rejected(client):
+    r = client.post("/digitize-manual", json={
+        "shapes": _manual_shapes(), "config": {"thread_brand": "nope"},
+    })
+    assert r.status_code == 400
+    assert "nope" in r.json()["detail"]
+
+
+@pytest.mark.parametrize("field", [
+    "deleted_shape_ids", "shape_overrides", "merge_shape_ids", "split_shapes",
+])
+def test_manual_shape_edit_fields_are_rejected_as_config_fields(client, field):
+    """Nothing in manual mode has assigned ids from a PRIOR generation for
+    these to reference — see `_MANUAL_CONFIG_FIELDS`. `merge_shape_ids`/
+    `split_shapes` (contract v1.5) reference prior-generation ids exactly as
+    much as the other two do, so they are excluded the same way."""
+    r = client.post("/digitize-manual", json={
+        "shapes": _manual_shapes(), "config": {field: []},
+    })
+    assert r.status_code == 400, r.text
+    assert field in r.json()["detail"]
+
+
+def test_manual_debug_dir_is_still_rejected(client):
+    r = client.post("/digitize-manual", json={
+        "shapes": _manual_shapes(), "config": {"debug_dir": "C:/anywhere"},
+    })
+    assert r.status_code == 400
+
+
+def test_manual_target_width_mm_is_accepted_but_does_not_rescale_literal_mm_shapes(client):
+    """The polygon is already physical millimetres; target_width_mm is a
+    no-op here (documented on the route), not silently reinterpreted."""
+    plain = _digitize_manual(client, config={"garment_id": "left_chest"})
+    scaled = _digitize_manual(
+        client, config={"garment_id": "left_chest", "target_width_mm": 500.0}
+    )
+    assert scaled["design"]["widthMM"] == pytest.approx(plain["design"]["widthMM"], abs=0.5)
+
+
+def test_manual_identical_request_is_served_from_cache(client):
+    shapes = _manual_shapes()
+    first = client.post("/digitize-manual",
+                        json={"shapes": shapes, "config": {}}).json()
+    for _ in range(600):
+        if client.get(f"/jobs/{first['job_id']}").json()["state"] == "done":
+            break
+        time.sleep(0.1)
+
+    second = client.post("/digitize-manual",
+                         json={"shapes": shapes, "config": {}}).json()
+    assert second["job_id"] == first["job_id"]
+    assert second["cached"] is True
+
+
+def test_manual_a_different_shape_is_a_different_job(client):
+    a = client.post("/digitize-manual",
+                    json={"shapes": _manual_shapes(), "config": {}}).json()
+    other = _manual_shapes()
+    other[0]["thread_index"] = 7
+    b = client.post("/digitize-manual",
+                    json={"shapes": other, "config": {}}).json()
+    assert a["job_id"] != b["job_id"]
+
+
+def test_manual_empty_shape_list_is_a_400(client):
+    r = client.post("/digitize-manual", json={"shapes": [], "config": {}})
+    assert r.status_code == 400
+
+
+def test_manual_too_many_shapes_is_a_413(client):
+    from digitizer_service.app import MAX_MANUAL_SHAPES
+    r = client.post("/digitize-manual", json={
+        "shapes": [{}] * (MAX_MANUAL_SHAPES + 1), "config": {},
+    })
+    assert r.status_code == 413
+
+
+def test_manual_missing_shapes_field_is_a_400(client):
+    r = client.post("/digitize-manual", json={"config": {}})
+    assert r.status_code == 400
+
+
+def test_manual_self_intersecting_polygon_is_a_400_not_a_failed_job(client):
+    bowtie = [[0.0, 0.0], [10.0, 10.0], [10.0, 0.0], [0.0, 10.0]]
+    r = client.post("/digitize-manual", json={
+        "shapes": [{"polygon": bowtie, "technique": "fill", "thread_index": 0}],
+        "config": {},
+    })
+    assert r.status_code == 400
+    detail = r.json()["detail"].lower()
+    assert "invalid" in detail or "self-intersect" in detail
+
+
+@pytest.mark.parametrize("bad_shape", [
+    {"polygon": MANUAL_RECT, "technique": "fill", "thread_index": 99999},  # off the chart
+    {"polygon": MANUAL_RECT, "technique": "auto", "thread_index": 0},      # unsupported tier
+    {"polygon": MANUAL_RECT, "thread_index": 0},                          # missing technique
+    {"polygon": MANUAL_RECT, "technique": "fill"},                        # missing thread
+    {"technique": "fill", "thread_index": 0},                            # missing polygon
+    {"polygon": [[0.0, 0.0], [1.0, 0.0]], "technique": "fill", "thread_index": 0},  # too few points
+])
+def test_manual_bad_shapes_are_a_400_at_submit_not_a_failed_job(client, bad_shape):
+    r = client.post("/digitize-manual", json={"shapes": [bad_shape], "config": {}})
+    assert r.status_code == 400, r.text
+    assert "job_id" not in r.json()
+
+
+def test_manual_failed_validation_never_reaches_the_job_registry(client):
+    """A 400 must not leave a queued/running job behind to poll."""
+    before = client.get("/health").json()["jobs"]["jobs"]
+    client.post("/digitize-manual", json={
+        "shapes": [{"polygon": MANUAL_RECT, "technique": "fill", "thread_index": -1}],
+        "config": {},
+    })
+    after = client.get("/health").json()["jobs"]["jobs"]
+    assert after == before
+
+
+def test_the_image_route_is_unaffected_by_the_manual_route_existing(client):
+    """Flat-lane and /digitize must be completely unaffected: submit a manual
+    job first, then confirm /digitize still works exactly as it always did."""
+    _digitize_manual(client)
+    state = _digitize(client, {"target_width_mm": 80.0})
+    assert state["design"]["stitchCount"] > 500
 
 
 # --- job registry ---------------------------------------------------------

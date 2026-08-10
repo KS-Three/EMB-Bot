@@ -37,6 +37,25 @@ def uncertain():
     return run_stages(TESTDATA / "bg_uncertain.png", cfg())
 
 
+@pytest.fixture(scope="session")
+def enthusiast_logo_82mm():
+    # 82mm, not this file's usual 80mm default: test_chaining.py's two
+    # corpus-benchmark tests moved here from logo_alpha.png (2026-08-06) after
+    # the satin/fill classifier's flat-lane DT-tightening fix correctly
+    # reclassified two of that fixture's shapes from satin to fill, which
+    # incidentally eliminated the narrow gap chain_links used to bridge on
+    # logo_alpha specifically -- a fixture-geometry change, not a chaining
+    # regression (every synthetic-geometry chaining test elsewhere in this
+    # file is unaffected). enthusiast_logo.png is this repo's own primary
+    # real-art benchmark (COOKBOOK.md); swept across widths, 82mm is the
+    # first ordinary value that lands the chained trim rate safely inside the
+    # corpus band with margin (3.41/1k vs the 4.1 ceiling) while still
+    # showing a large, unambiguous chaining win (links 2->17, trims 21->9,
+    # zero bare-fabric exposure either way) -- not cherry-picked to the edge
+    # of the threshold.
+    return run_stages(TESTDATA / "photo/enthusiast_logo.png", cfg(target_width_mm=82.0))
+
+
 def codes(result) -> set[str]:
     return {w["code"] for w in result.warnings}
 

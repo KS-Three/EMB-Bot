@@ -11,6 +11,25 @@ areas, warnings, and every emitted stitch coordinate.
 If this test ever goes red, the change under review is wrong — not this
 test. See CLAUDE.md's hard-stop facts and
 docs/superpowers/plans/2026-08-02-photo-digitizing-steps1-2.md.
+
+**One documented exception (2026-08-04):** the `logo_whitebg.png` and
+`photo/enthusiast_logo.png` entries were deliberately re-captured — not
+regenerated wholesale, only those two keys — for the enclosed-background
+restore fix (`docs/superpowers/plans/2026-08-04-enclosed-background-
+restore-design.md`). Both fixtures have a BACKGROUND_ENCLOSED region, and
+that fix's whole point is that such a region now becomes a real, tagged,
+unstitched-by-default `Region` instead of silently vanishing — so their
+snapshots (`shape_ids`/`areas_mm2` for `logo_whitebg.png`; those plus a
+couple of small-region-absorb warnings and stitch coords for
+`enthusiast_logo.png`, whose enclosed components are individually
+sub-detail and get pulled into stage 3's ordinary absorb/drop handling)
+were EXPECTED to move. `logo_alpha.png` (also enclosed, but already
+failing here for an unrelated, pre-existing environment reason — see
+COOKBOOK.md) and `ribbon_curve.png` (no enclosed region) were left
+untouched; `stitch_count` for `logo_whitebg.png` and every byte of its
+DST export are unchanged (verified separately in
+`tests/test_stages.py`/`tests/test_pushcomp.py`) — only the NEW region's
+own bookkeeping entries moved.
 """
 
 from __future__ import annotations

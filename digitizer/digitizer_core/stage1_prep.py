@@ -12,9 +12,12 @@ Background rules (blueprint v2.1):
   * Otherwise a border flood: pixels close to the dominant border color AND
     connected to the border. Restricting to border-connected components is
     what stops an interior white shape from being eaten...
-  * ...but an ENCLOSED bg-colored area (a donut hole) must still not be
-    stitched, so those are detected separately and reported as
-    BACKGROUND_ENCLOSED (review can toggle them back on).
+  * ...but an ENCLOSED bg-colored area (a donut hole) is not automatically
+    background either — it joins `fg` like any other pixel and is reported
+    as BACKGROUND_ENCLOSED, but the pixels themselves become a real `Region`
+    downstream (see `Prep.enclosed_mask` and `stage4_vectorize.
+    tag_enclosed_background`), tagged `enclosed_background` and unstitched
+    by DEFAULT rather than deleted outright — review can toggle it back on.
   * Uncertainty guard: if border-connected background intrudes deeper than
     cfg.bg_margin_mm inside the artwork's convex hull, the flood probably ate
     real art (white text touching a white border) -> BACKGROUND_UNCERTAIN.
@@ -43,12 +46,34 @@ class Prep:
     bg_mask: np.ndarray      # (H, W) bool, True = background
     px_per_mm: float
     art_bbox: tuple[int, int, int, int]  # x0, y0, x1, y1 (px, x1/y1 exclusive)
+    # px_per_mm as the INPUT delivered it, before the resolution-floor
+    # Lanczos upscale below. The upscale changes `px_per_mm` because every
+    # downstream px<->mm mapping must use the raster as it now is, but it
+    # manufactures pixels, not information — so any question about whether
+    # the SOURCE resolves detail at the target size (preflight's photo
+    # resolution guard) must read this, never `px_per_mm`.
+    input_px_per_mm: float = 0.0
+    # True when the background came from the alpha channel rather than a
+    # border color flood. An alpha cutout's background is the GARMENT, whose
+    # color this pipeline cannot know (the RGB under transparency is whatever
+    # the exporter left there — see bg_edge_rgb's caveat below), so any check
+    # comparing artwork against "the background color" must decline when this
+    # is set.
+    bg_from_alpha: bool = False
     bg_outline_px: np.ndarray | None = None  # (N, 2) largest border-bg contour
     # Mean color of the background pixels hugging the artwork edge. Stage 2
     # needs it as a virtual endpoint when testing whether a cluster is an
     # anti-alias blend: the outermost halo blends art toward THIS color, and
     # without it those halos survive as phantom thread layers.
     bg_edge_rgb: np.ndarray | None = None
+    # (H, W) bool, True where a pixel matched the background color/alpha test
+    # but is NOT connected to the true canvas border (a donut hole, or white
+    # icon linework enclosed by a colored logo). These pixels are part of
+    # `fg` — not excluded — so later stages can find them without re-deriving
+    # the border-flood: `stage4_vectorize.tag_enclosed_background` uses this
+    # to tag the Region(s) they end up in. None when no such pixels exist,
+    # mirroring `bg_outline_px`/`bg_edge_rgb` above.
+    enclosed_mask: np.ndarray | None = None
     warnings: list[dict] = field(default_factory=list)
 
 
@@ -126,18 +151,48 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
     h, w = rgb.shape[:2]
     bg_outline_px = None
 
+    # A FULLY-opaque alpha channel carries zero background information and
+    # must not be treated as ground truth that "nothing is background" —
+    # measured live 2026-08-04: Studio's DigitizePanel re-encodes every
+    # upload through a canvas, which manufactures an opaque alpha channel
+    # onto RGB art. Routed through the alpha branch, that killed background
+    # detection outright on the enclosed-region repro fixture (bg detected:
+    # False — the white canvas itself would SEW) and silently disabled
+    # BACKGROUND_ENCLOSED for every panel upload. An image whose alpha never
+    # dips below the threshold behaves exactly like its RGB twin instead.
+    # Every committed alpha fixture has real transparency (checked:
+    # logo_alpha / drone_render / enthusiast_logo all carry 300k+ pixels
+    # under 128), so this changes nothing for genuine cutouts.
+    if alpha is not None and not (alpha < 128).any():
+        alpha = None
+
+    bg_from_alpha = alpha is not None
     if alpha is not None:
         bg = alpha < 128
         border_bg = _border_connected(bg)
+        # Was `bg & ~border_bg`, then folded back into `bg` below — an
+        # enclosed transparent hole was therefore indistinguishable from
+        # ordinary background and never became stitchable. Now `enclosed`
+        # stays OUT of `bg`, so it joins `fg` a few lines down.
         enclosed = bg & ~border_bg
+        bg = border_bg
     else:
         bg_color = _dominant_border_color(rgb)
         close = _color_close_mask(rgb, bg_color, cfg.bg_tolerance_lab)
         border_bg = _border_connected(close)
         enclosed = close & ~border_bg
-        bg = border_bg | enclosed
+        # Was `border_bg | enclosed` — the same fold described above, for the
+        # far more common no-alpha path (BACKGROUND_ENCLOSED's usual trigger:
+        # bg-colored icon linework enclosed by the surrounding artwork).
+        bg = border_bg
 
-    if not bg.any():
+    # Same guard as before the fold-in existed (`not (border_bg.any() or
+    # enclosed.any())`, which is what `not bg.any()` used to mean when `bg`
+    # still included `enclosed`): only a total detection miss resets
+    # everything to empty. A design whose ONLY background match is fully
+    # enclosed (no border-connected background at all) is real and must
+    # survive this guard now that `enclosed` carries real, taggable pixels.
+    if not (border_bg.any() or enclosed.any()):
         bg = np.zeros((h, w), bool)
         border_bg = bg
         enclosed = bg
@@ -150,6 +205,7 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
     art_bbox = (int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1)
     art_w_px = max(1, art_bbox[2] - art_bbox[0])
     px_per_mm = art_w_px / float(cfg.target_width_mm)
+    input_px_per_mm = px_per_mm   # recorded before the upscale below
 
     # --- uncertainty guard --------------------------------------------------
     # PER-COMPONENT hulls, not one hull over all the artwork: a logo is
@@ -220,6 +276,11 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
         bg = (
             cv2.resize(bg.astype(np.uint8), new_size, interpolation=cv2.INTER_NEAREST) > 0
         )
+        if enclosed.any():
+            enclosed = (
+                cv2.resize(enclosed.astype(np.uint8), new_size,
+                           interpolation=cv2.INTER_NEAREST) > 0
+            )
         px_per_mm *= want
         art_bbox = tuple(int(round(v * want)) for v in art_bbox)  # type: ignore[assignment]
         if bg_outline_px is not None:
@@ -251,7 +312,10 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
         bg_mask=bg,
         px_per_mm=px_per_mm,
         art_bbox=art_bbox,  # type: ignore[arg-type]
+        input_px_per_mm=input_px_per_mm,
+        bg_from_alpha=bg_from_alpha,
         bg_outline_px=bg_outline_px,
         bg_edge_rgb=bg_edge_rgb,
+        enclosed_mask=enclosed if enclosed.any() else None,
         warnings=warnings,
     )

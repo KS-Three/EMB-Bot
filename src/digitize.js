@@ -183,6 +183,12 @@
   // When an override is present, ALL that region's shapes (fill + derived
   // underlay) use it; otherwise per-shape auto. `perRegionAngle:false` disables
   // auto entirely (fixed 45°).
+  //
+  // Manual stitch-type override (manual digitizing mode, additive): set
+  // `shape.tierOverride` to "satin" or "fill" to force that shape's stitch
+  // type outright, bypassing both the satinMaxWidthMm threshold and the
+  // branch-guard geometry check below (see the `tierOv` block near
+  // `thin`). Absent (every existing caller) is a no-op.
   function buildQualityDesign(colorRegions, opts) {
     const o = opts || {};
     const pxPerMm = o.pxPerMm || 8;
@@ -378,7 +384,16 @@
       if (!sameThread) colors.push({ r: r.rgb[0], g: r.rgb[1], b: r.rgb[2], name: "Color " + (colors.length + 1) });
       // shapes: [{outer, holes}] (hole-aware) — or bare polygons for back-compat
       const shapesRaw = r.shapes || r.polygons.map((p) => ({ outer: p, holes: [] }));
-      const shapes0 = shapesRaw.filter((s) => s && s.outer && s.outer.length >= 4);
+      // Minimum vertex count for a real closed polygon is 3 (a triangle), not
+      // 4 — every other module downstream (geometry.js, satin.js) already
+      // uses `< 3` as ITS reject threshold. This floor only ever mattered as
+      // a defensive "not obviously garbage" check: raster-traced regions and
+      // font-glyph outlines never produce exactly-3-point rings in practice,
+      // so relaxing 4->3 changes nothing for Image/Text mode (whose real
+      // shapes are unaffected either way) while fixing a real gap for manual
+      // digitizing mode, where a plain user-drawn triangle IS exactly 3
+      // points and was previously silently dropped to zero stitches here.
+      const shapes0 = shapesRaw.filter((s) => s && s.outer && s.outer.length >= 3);
       // Resolve a fixed per-color angle override (degrees) if the caller set one.
       // region.angleOverride wins; else opts.angleOverrides[originalIndex]. A
       // finite number forces every shape in this color; null/absent → per-shape.
@@ -389,7 +404,7 @@
       const shapes = orderShapes(shapes0, lastPx);
       for (const shape of shapes) {
         const poly = shape.outer;
-        if (!poly || poly.length < 4) continue;
+        if (!poly || poly.length < 3) continue; // see the shapes0 filter's comment above
         const holes = (shape.holes || []).filter((hh) => hh && hh.length >= 4);
         const outerArea = polyArea(poly), holeArea = holes.reduce((a, hh) => a + polyArea(hh), 0);
         const area = Math.max(0, outerArea - holeArea), perim = polyPerim(poly) + holes.reduce((a, hh) => a + polyPerim(hh), 0);
@@ -398,10 +413,24 @@
         // satin only for genuinely thin SOLID strokes; ring-with-hole goes to
         // even-odd fill (satinColumn can't represent holes)
         let thin = widthMmFinal <= satinMaxWidthMm && holes.length === 0;
+        // Manual stitch-type override (manual digitizing mode): a caller-set
+        // shape.tierOverride ("satin"|"fill") is a human's explicit choice,
+        // not a hint — it replaces BOTH the width threshold above and the
+        // branch-guard geometry check below outright, so a manually-drawn
+        // branched shape the user insists on satin-ing isn't silently routed
+        // to fill. Holes still force fill either way (satinColumn can't
+        // represent a hole — same rule the auto path already enforces).
+        // Absent/unrecognized value is a no-op: falls through to today's
+        // auto classification unchanged, so every existing caller (Image/
+        // Text mode, which never set this field) is byte-identical.
+        const tierOv = shape.tierOverride;
+        if (tierOv === "satin" || tierOv === "fill") {
+          thin = tierOv === "satin" && holes.length === 0;
+        }
         // branch guard: a clean column splits into two side chains of similar
         // length; branched shapes (most letters, Y/T/E forms) don't — satin
         // would zigzag chaotically across them, so route those to fill.
-        if (thin && satinmod.farthestBoundaryPair) {
+        else if (thin && satinmod.farthestBoundaryPair) {
           try {
             const [bi, bj] = satinmod.farthestBoundaryPair(poly);
             const [ca, cb] = satinmod.splitBoundary(poly, bi, bj);
@@ -566,16 +595,45 @@
     if (!probe.runs.length) return empty;
     const bb = probe.bbox;
     const bboxWmm = (bb.x1 - bb.x0) / pxPerMm, bboxHmm = (bb.y1 - bb.y0) / pxPerMm;
-    const fit = garments.fitScale(bboxWmm || 1, bboxHmm || 1, garment);
+    // rotDeg is needed here (ahead of its other use below, near T()) because
+    // the fit-to-hoop scale/clamp must be computed against the ROTATED
+    // footprint, not the unrotated glyph bbox. Rotation is applied only as a
+    // pure post-transform on the emitted stitches (T(), further down) — if
+    // the scale were chosen from the unrotated bbox, a non-180 rotation could
+    // (and did — Kent's report) push the actual, correctly-reported rotated
+    // bbox outside the hoop with nothing left to reclamp it. 180 alone never
+    // exposed this: a rectangle rotated 180 about its own center keeps the
+    // same axis-aligned bbox, so the stale unrotated scale still happened to
+    // fit. Mirrors buildImportedDesign's rotate-before-scale/clamp pattern
+    // (dstimport.js, 2026-07-29) in spirit, but computed as the exact AABB of
+    // the UNROTATED glyph bbox RECTANGLE rotated by rotDeg (the standard
+    // |cos|+|sin| rotated-bounding-box formula), not by rotating the probe's
+    // actual (coarsely-sampled) outline points. The glyph ink is always a
+    // subset of its own bbox rectangle, so this bound can only be >= the
+    // true rotated glyph bbox — guaranteed never to under-clamp (no overflow
+    // risk), at the cost of being mildly conservative off quadrant angles
+    // (e.g. 45deg) versus the glyph's exact rotated silhouette. Text's satin
+    // routing itself stays entirely in the unrotated glyph frame — rotating
+    // column geometry would change stitch quality, which this must not touch.
+    const rotDeg = o.rotationDeg || 0;
+    let fitBboxWmm = bboxWmm, fitBboxHmm = bboxHmm;
+    if (rotDeg) {
+      const fitRad = (rotDeg * Math.PI) / 180;
+      const absCos = Math.abs(Math.cos(fitRad)), absSin = Math.abs(Math.sin(fitRad));
+      fitBboxWmm = bboxWmm * absCos + bboxHmm * absSin;
+      fitBboxHmm = bboxWmm * absSin + bboxHmm * absCos;
+    }
+    const fit = garments.fitScale(fitBboxWmm || 1, fitBboxHmm || 1, garment);
     let sc = (fit.scale > 0 && isFinite(fit.scale)) ? fit.scale : 1;
     let designWmm = fit.targetWmm, designHmm = fit.targetHmm;
     // Explicit width override (Slice 3): replaces the auto garment fit. Clamp the
     // requested width into [1, hoopWmm], then ALSO clamp so height still fits the
     // hoop — same two-constraint min() fitScale itself uses, just seeded from the
-    // requested width instead of the natural bbox. Reported widthMM/heightMM
+    // requested (POST-rotation, same convention as buildImportedDesign's
+    // targetWidthMm) width instead of the natural bbox. Reported widthMM/heightMM
     // become the actual design dims (bbox*sc), not the (unused) fit target.
     if (typeof o.targetWidthMm === "number" && isFinite(o.targetWidthMm) && o.targetWidthMm > 0) {
-      const bw = bboxWmm || 1, bh = bboxHmm || 1;
+      const bw = fitBboxWmm || 1, bh = fitBboxHmm || 1;
       const hoopWmm = units.inToMm(garment.widthIn), hoopHmm = units.inToMm(garment.heightIn);
       const clampedTargetWmm = Math.min(Math.max(o.targetWidthMm, 1), hoopWmm);
       sc = Math.min(clampedTargetWmm / bw, hoopHmm / bh);
@@ -610,8 +668,8 @@
     // reasoning as arcDeg/offsetXMm being pure placement, not generation,
     // concerns. rotationDeg=0 (absent) must be byte-identical to no rotation
     // at all: cosR=1/sinR=0 makes the rotated branch collapse to the original
-    // px/py unchanged.
-    const rotDeg = o.rotationDeg || 0;
+    // px/py unchanged. (rotDeg itself is declared earlier, above the fit/
+    // scale computation — it's needed there now too; see that comment.)
     const rotRad = (rotDeg * Math.PI) / 180;
     const cosR = Math.cos(rotRad), sinR = Math.sin(rotRad);
     // Mirror X / Mirror Y (Lettering parity round): reflect the ALREADY-

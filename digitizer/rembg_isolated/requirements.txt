@@ -1,0 +1,11 @@
+# Isolated rembg venv — see README.md in this directory for what this is
+# and why it is separate from digitizer/.venv.
+#
+# Pinned exactly as the probe recorded (docs/photo-prep-deps-probe-2026-08-04.md
+# §2). numpy/numba/pymatting are deliberately left for pip to resolve rather
+# than pinned here: resolving rembg's own dependency graph in a venv that
+# does NOT also carry the digitizer/.venv numpy==2.5.1 pin lands on a
+# numpy<2.5-compatible numba on its own (measured 2026-08-04: numpy 2.4.6,
+# numba 0.66.0) — which is the entire point of building this venv separately.
+rembg==2.0.77
+onnxruntime==1.28.0

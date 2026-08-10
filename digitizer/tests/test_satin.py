@@ -197,6 +197,152 @@ def test_ribbon_width_on_a_rectangle():
     assert ribbon_width_mm(BAR) < 2.0
 
 
+def _serrated_disc(r: float, tooth: float, n: int = 120) -> Polygon:
+    """A disc whose boundary alternates +/-tooth around the mean radius r —
+    `docs/dt-classifier-spike-2026-08-02.md`'s stress fixture, and the shape
+    MASTER_SCOPE.md's satin/fill classifier bullet cites directly ("a
+    serrated 20mm disc computes as '5.03mm' and gets satin-stitched instead
+    of filled")."""
+    pts = []
+    for i in range(n * 2):
+        a = math.pi * i / n
+        rr = r + (tooth if i % 2 else -tooth)
+        pts.append((rr * math.cos(a), rr * math.sin(a)))
+    return Polygon(pts)
+
+
+def test_a_noisy_compact_disc_reads_narrow_on_ribbon_width_alone():
+    """Documents the blind spot the DT check exists to close, not a live bug
+    in `is_satin_candidate` — that bug is fixed now, for every design class
+    including `"flat"` (see the tests below); this pins the raw statistic's
+    own failure so the fix always has something concrete to fix.
+
+    A 20mm disc serrated by 0.6mm is still, unambiguously, a disc — but
+    boundary noise roughly doubles its perimeter, and `2*area/perimeter`
+    (plus the aspect gate built on the SAME perimeter) reads that as a
+    narrow, long ribbon instead. `ribbon_width_mm` alone has no way to tell
+    the difference; that is exactly why `is_satin_candidate` never stops
+    there."""
+    disc = _serrated_disc(10.0, 0.6)
+    assert ribbon_width_mm(disc) < machine.SATIN_MAX_WIDTH_MM, \
+        "the raw perimeter-only statistic is expected to read this narrow"
+
+
+def test_the_dt_check_catches_the_serrated_disc_a_noisy_design_class_gets():
+    """The regression pin for the fix: for a non-"flat" `design_class` (the
+    photo/gradient tiers, where segmentation noise like this actually shows
+    up — see `testdata/photo/region_blobs.png`'s `Sd12bfc9e`/`S94f29987` and
+    `testdata/photo/summit_badge.png`'s `Sed818ef7`/`S00d736bf`/`S6096e7a9`,
+    all real, near-square, organic regions this exact rule used to satin),
+    the second, DT-based opinion (`_dt_regular_and_within_cap`) overrides the
+    perimeter-only verdict above and correctly calls this a blob.
+
+    Swept across a few tooth depths because the fix must not be a fluke of
+    one specific noise amplitude."""
+    for tooth in (0.3, 0.6, 1.2):
+        disc = _serrated_disc(10.0, tooth)
+        assert not is_satin_candidate(disc, machine.SATIN_MAX_WIDTH_MM,
+                                      design_class="gradient"), \
+            f"tooth={tooth}: still satins a compact disc under a noisy class"
+
+
+def test_flat_design_class_now_gets_the_dt_check_too():
+    """2026-08-06: supersedes the old `test_flat_design_class_keeps_the_old_
+    verdict_on_purpose`, whose own premise this fix disproves. That test
+    pinned `design_class="flat"` skipping the DT check on purpose, reasoning
+    that flat art's clean, vector-like boundaries don't carry the
+    segmentation-derived noise the check exists to catch. A fresh audit
+    against this repo's own real-art benchmark found that premise false —
+    see `test_flat_lane_starburst_shapes_correctly_flip_to_fill` below for
+    the real-fixture evidence — so the exemption is gone: `design_class`
+    no longer changes `is_satin_candidate`'s verdict at all, and the
+    synthetic serrated disc (a design-class-agnostic noise source) now
+    correctly reads False under `"flat"` too, matching every other class."""
+    disc = _serrated_disc(10.0, 0.6)
+    assert not is_satin_candidate(disc, machine.SATIN_MAX_WIDTH_MM,
+                                  design_class="flat"), \
+        "the flat lane should get the same DT tightening as the other 3 classes now"
+    # design_class is now a no-op on the verdict — every class agrees.
+    for dc in ("flat", "gradient", "photo_subject", "photo_scene"):
+        assert is_satin_candidate(disc, machine.SATIN_MAX_WIDTH_MM, design_class=dc) == \
+               is_satin_candidate(disc, machine.SATIN_MAX_WIDTH_MM, design_class="flat")
+
+
+def test_flat_lane_starburst_shapes_correctly_flip_to_fill():
+    """The real-pipeline evidence behind the 2026-08-06 widening: run
+    `testdata/photo/enthusiast_logo.png` (this repo's real-art benchmark,
+    picked because it "reproduces almost nothing [Kent] complains about" —
+    see COOKBOOK.md's "Hard-won lessons") through the actual pipeline at
+    `target_width_mm=90` and a shape the old flat-exempted rule satin-
+    stitched — `Sff37b029` (the emblem's 4-point star) — reads as compact/
+    irregular under the DT check, not a ribbon. Rendering its actual pre-fix
+    stitch coordinates showed why this matters: it sewed as a literal
+    starburst (crosses fanning from a single point), not the clean parallel
+    rows `stage6_fill.stitch_shape` now produces for it — exactly the defect
+    COOKBOOK.md's "Hard-won lessons" section names by name ("Green tests are
+    not evidence of quality... the engine produced starbursts").
+
+    `Scd89ad66` (the "A" of the ENTHUSIAST wordmark) is deliberately no
+    longer part of this test's claim, updated same-day alongside a SEPARATE
+    fix (`resolve_small_regions`'s enclosed-hole-absorption bug,
+    `tests/test_stages.py::
+    test_small_enclosed_hole_is_not_absorbed_into_its_enclosing_letter`):
+    the "A" only read as a compact/irregular blob here because its real
+    triangular counter was, at the time this test was written, being
+    silently absorbed into its own ink — a solid letterform with no hole is
+    exactly the kind of organic blob the DT check exists to catch. Now that
+    the hole survives as a real interior ring, the "A" measures as the
+    legitimate ribbon it actually is and correctly reads satin again — this
+    is the two fixes' shapes interacting correctly, not a regression: a
+    letterform's medial axis with its counter intact does not fan from a
+    single point (confirmed by rendering `Scd89ad66`'s post-fix stitches,
+    see this PR's own investigation), so satin is the right call for it, not
+    a starburst risk to defend against with a fill fallback.
+    """
+    from digitizer_core import PipelineConfig, digitize
+
+    result, _plan = digitize(TESTDATA / "photo/enthusiast_logo.png",
+                             PipelineConfig(target_width_mm=90.0))
+    assert result.design_class == "flat"
+    by_id = {r.shape_id: r for r in result.regions}
+    assert "Sff37b029" in by_id, \
+        f"benchmark fixture regions moved: expected Sff37b029 in {sorted(by_id)}"
+    assert not is_satin_candidate(by_id["Sff37b029"].polygon, machine.SATIN_MAX_WIDTH_MM,
+                                  design_class="flat"), \
+        "the emblem's star should read as fill (DT-irregular), not satin"
+
+    # The "A" is the mirror case: it now HAS a real interior ring (the
+    # enclosed-hole fix) and correctly reads as satin, not fill.
+    a_region = by_id.get("Scd89ad66")
+    assert a_region is not None, f"benchmark fixture regions moved: Scd89ad66 not in {sorted(by_id)}"
+    assert len(a_region.polygon.interiors) == 1
+    assert is_satin_candidate(a_region.polygon, machine.SATIN_MAX_WIDTH_MM,
+                              design_class="flat"), \
+        "the 'A', with its counter restored, is a regular ribbon and should read satin"
+
+
+@pytest.mark.parametrize("name,poly", [("BAR", BAR), ("O_RING", O_RING),
+                                       ("C_STROKE", C_STROKE), ("T_SHAPE", T_SHAPE)])
+def test_the_dt_check_does_not_cost_real_ribbons_their_satin_call(name, poly):
+    """Pure tightening only works if it stays quiet on shapes that ARE
+    ribbons. All four letterform archetypes keep satin under the DT check
+    too — the failure mode this fix targets is boundary noise on a COMPACT
+    shape, not stroke geometry in general."""
+    assert is_satin_candidate(poly, machine.SATIN_MAX_WIDTH_MM, design_class="gradient")
+
+
+@pytest.mark.parametrize("name,poly", [("BAR", BAR), ("O_RING", O_RING),
+                                       ("C_STROKE", C_STROKE), ("T_SHAPE", T_SHAPE)])
+def test_the_dt_check_does_not_cost_real_ribbons_their_satin_call_when_flat(name, poly):
+    """The 2026-08-06 widening's own safety invariant, checked directly:
+    this must be a PURE tightening on the flat lane too, same as it was
+    already proven for the other 3 classes above. Ordinary letterform
+    archetypes — the population most flat-classified art actually is —
+    must not lose their satin call just because `design_class="flat"` no
+    longer buys a shape a free pass around the DT check."""
+    assert is_satin_candidate(poly, machine.SATIN_MAX_WIDTH_MM, design_class="flat")
+
+
 # --- Column geometry -------------------------------------------------------
 
 def test_crosses_run_perpendicular_to_the_bar():
@@ -274,6 +420,139 @@ def test_the_stem_tucks_under_the_bar_not_across_it():
     ys = [p[1] for p in stem.points]
     # The stem may tuck into the bar's zone (y<3) but never near its far edge.
     assert min(ys) > 1.0, "stem crosses reach across the bar - junction X defect"
+
+
+# --- Multi-junction stroke corner coverage -----------------------------------
+# A block "E": one vertical stem crossing THREE T-junctions along its own
+# length (a top bar, a middle bar, a bottom bar), with the top and bottom
+# bars flush against the stem's own left edge — proportions taken directly
+# from `testdata/photo/enthusiast_logo.png`'s own vectorized "E" (translated
+# to the origin), the real fixture PR #77 root-caused and deliberately left
+# open: the stem's own bottom-left corner sewed as bare fabric. `_merge_
+# through_junctions` welds the stem's up/down arms through all three nodes
+# into ONE both-ends-free stroke (proven below), so BOTH of its caps —
+# `_extend_to_cap` lands each within 0.15mm of the glyph's real corner — sit
+# right where the stem is flush with a bar, not at an isolated square cap.
+E_LETTERFORM = Polygon([
+    (0.0, 0.0), (0.0, 7.324), (6.796, 7.324), (6.796, 5.675),
+    (2.112, 5.609), (2.178, 4.421), (6.137, 4.355), (6.071, 2.837),
+    (2.178, 2.837), (2.112, 1.716), (6.796, 1.650), (6.796, 0.0),
+])
+
+
+def test_a_stem_crossing_three_junctions_welds_into_one_stroke():
+    """Confirms the fixture actually exercises the multi-junction case
+    before trusting the coverage assertion below: the through-weld at each
+    of the three T-junctions must chain into a single stroke with both ends
+    free (its own two caps), not stay fragmented into per-segment pieces."""
+    strokes, _, _ = extract_strokes(E_LETTERFORM)
+    stem = max(strokes, key=lambda s: sum(
+        math.dist(a, b) for a, b in zip(s.spine, s.spine[1:])))
+    assert stem.free_start and stem.free_end, \
+        "the stem should weld through all three junctions into one open stroke"
+    # Three bars, each yielding to the stem with one free end of its own.
+    bars = [s for s in strokes if s is not stem]
+    assert len(bars) == 3
+    assert all(b.free_start != b.free_end for b in bars), \
+        "each bar should tuck into the stem at one end and stay free at the other"
+
+
+def test_stem_free_end_reaches_its_own_flush_corner():
+    """Regression, root-caused by PR #77 and fixed here: a stroke crossing
+    MULTIPLE T-junctions along its own length still needs each of its own
+    caps to reach the real corner it is flush with, not just get close.
+
+    Root cause was not the junction machinery (`_merge_through_junctions`,
+    `_extend_to_cap`, `_retract_cap_corner` all already land the spine
+    within 0.15mm of the true corner) — it was `_short_stitch_guard`'s
+    pull-toward-middle: the cross one station in from the cap starts out a
+    real, keepable stitch (just over `SATIN_MIN_CROSS_MM`), but the guard's
+    stock 35%-capped-at-0.6mm pull (sized for a wide curve, where a cross is
+    several mm) took it under the floor, and the degenerate-cross filter a
+    few lines later dropped a stitch that was never actually degenerate.
+    Not letterform-specific: any cap zone or curve whose next-station cross
+    starts only a little above the floor can hit the same interaction.
+    """
+    satin, _, _ = _satin_runs(E_LETTERFORM)
+    pts = [p for r in satin for p in r.points]
+    corner = (0.0, 0.0)  # the stem's own flush corner with the bottom bar
+    d = min(math.dist(p, corner) for p in pts)
+    assert d < 0.45, f"the flush corner is still {d:.2f}mm from the nearest stitch"
+
+
+# --- Entry/exit point selection (Laws 27-29) --------------------------------
+# A short-stemmed T so the detour from the junction end to the free cap (the
+# stem's top) is a few mm — comfortably inside STRUCTURAL_ENTRY_BUDGET_MM —
+# unlike T_SHAPE's 17 mm stem, which stays useful for pinning the FALLBACK.
+T_SHORT_STEM = Polygon(
+    [(0, 0), (20, 0), (20, 3), (11.5, 3), (11.5, 9), (8.5, 9), (8.5, 3), (0, 3)])
+
+
+def test_choose_stroke_entry_prefers_the_structural_cap_within_budget():
+    """Law 27: pros enter at the free end 85% of the time, not the nearer
+    one. Law 29: they pay up to STRUCTURAL_ENTRY_BUDGET_MM of extra travel to
+    reach it — here the cap is 4 mm farther than the junction end, which is
+    inside the 10 mm budget, so the cap wins despite being farther."""
+    from digitizer_core.stage6_satin import _choose_stroke_entry
+
+    junction, cap = (1.0, 0.0), (5.0, 0.0)
+    assert _choose_stroke_entry((0.0, 0.0), junction, False, cap, True) is True
+    # Symmetric: same geometry, ends swapped, same verdict either way.
+    assert _choose_stroke_entry((0.0, 0.0), cap, True, junction, False) is False
+
+
+def test_choose_stroke_entry_is_exactly_at_the_budget_boundary():
+    """10 mm extra is still paid ('up to ~10 mm'); past it, not."""
+    from digitizer_core.stage6_satin import _choose_stroke_entry
+
+    junction, cap = (0.0, 0.0), (10.0, 0.0)
+    assert _choose_stroke_entry((0.0, 0.0), junction, False, cap, True) is True
+    cap_too_far = (10.01, 0.0)
+    assert _choose_stroke_entry((0.0, 0.0), junction, False, cap_too_far, True) is False
+
+
+def test_choose_stroke_entry_falls_back_to_proximity_past_the_budget():
+    """Law 29's own limit: past ~10-20 mm of detour, pros mostly stop paying
+    for the structural entry, so the near end wins like it always did."""
+    from digitizer_core.stage6_satin import _choose_stroke_entry
+
+    junction, cap = (1.0, 0.0), (15.0, 0.0)
+    assert _choose_stroke_entry((0.0, 0.0), junction, False, cap, True) is False
+
+
+def test_choose_stroke_entry_uses_proximity_when_neither_end_is_structural():
+    """Both ends free (an isolated stroke) or both welded into a junction:
+    no structural signal to prefer, proximity is the whole rule, exactly as
+    before this law existed."""
+    from digitizer_core.stage6_satin import _choose_stroke_entry
+
+    near, far = (2.0, 0.0), (9.0, 0.0)
+    assert _choose_stroke_entry((0.0, 0.0), far, True, near, True) is True   # both free
+    assert _choose_stroke_entry((0.0, 0.0), far, False, near, False) is True  # both junction
+
+
+def test_a_short_stem_enters_at_its_free_cap_not_the_near_junction():
+    """End-to-end: needle starts right at the stem's junction, but the stem's
+    satin column still enters from its free cap at the top — the same
+    structural preference the unit tests pin, wired through satin_shape."""
+    runs, report = satin_shape(T_SHORT_STEM, "S1", underlay_style="none",
+                               trim_at_mm=3.0, start_near=(10.0, 3.2))
+    satin = [r for r in runs if r.kind == "satin"]
+    stem = min(satin, key=lambda r: len(r.points))
+    assert stem.points[0][1] > stem.points[-1][1] + 2.0, \
+        "the stem should enter near its free cap (higher y), not the junction"
+
+
+def test_a_long_stem_still_enters_near_when_the_cap_is_too_far():
+    """T_SHAPE's stem is ~17 mm — past STRUCTURAL_ENTRY_BUDGET_MM, so this
+    pins the fallback: nearest-end entry is unchanged when the structural
+    cap would cost too much extra travel."""
+    runs, report = satin_shape(T_SHAPE, "S1", underlay_style="none",
+                               trim_at_mm=3.0, start_near=(10.0, 3.2))
+    satin = [r for r in runs if r.kind == "satin"]
+    stem = min(satin, key=lambda r: len(r.points))
+    assert stem.points[0][1] < stem.points[-1][1], \
+        "far past budget, the stem should still enter near the junction (lower y)"
 
 
 def test_curve_inside_rail_does_not_chew_one_hole():
@@ -356,6 +635,103 @@ def test_a_satin_free_end_does_not_fan_into_a_starburst():
     # 0.30-0.56 mm. A tapered tip has no terminal fan to excuse, so the head
     # gets no allowance at all.
     assert head == [], f"the start cap is fanning: {head}"
+
+
+def test_satin_crosses_do_not_self_overlap_across_a_wide_junction():
+    """Regression, found and fixed 2026-08-05: `logo_alpha.png`'s `Sf5200f3f`
+    is a multi-stroke glyph carrying a genuine wide apex (both ends of the
+    affected stroke are FREE -- no junction node on this stroke at all,
+    confirmed by direct inspection of `field.half_at()` along its spine: a
+    smooth, single-peaked taper, 0.17mm at each tip ramping continuously up
+    to 4.67mm at the apex and back down, no isolated spike -- this is the
+    shape's real medial-axis width, not a measurement artifact). At
+    `SATIN_MAX_WIDTH_MM=5.0`, that peak (locally ~9.3mm across) is well past
+    where the corpus ever validated a satin cross at all
+    (docs/corpus-laws-round3-2026-08-01.md flags its own >7.0mm bucket as
+    82% non-ribbon junk) -- ungated, the crosses near the peak fanned out
+    7-9mm and physically overlapped each other. Measured directly before the
+    fix: 2580 non-adjacent rail-to-rail segment pairs crossed each other, and
+    the shape's own isolated coverage peak read 9.57 layers of the design's
+    overall 13.11 (see test_preflight.py::
+    test_a_wide_oversize_satin_stroke_does_not_block_on_underlay_glue,
+    which pins the aggregate number this test complements with the actual
+    geometry).
+
+    Fix (`stage6_satin.py::_rail_points`): cap every station's width to
+    `SATIN_MAX_WIDTH_MM / 2` too, alongside the existing local-corridor cap
+    -- the same ceiling the satin/fill classifier already gates on ("ribbons
+    wider than this sew better as fill", machine.py) and `_stroke_underlay`'s
+    oversize check already reuses, not a new number: no classifier-eligible
+    column should ever need a wider cross in the first place.
+
+    2026-08-06 update: `Sf5200f3f` itself no longer reaches this code path
+    in the real, sequenced pipeline at all -- the flat-lane DT-tightening
+    widening (`test_flat_lane_starburst_shapes_correctly_flip_to_fill` et
+    al., and `test_sf5200f3f_no_longer_reaches_satin_in_the_real_pipeline`
+    directly below) correctly reclassifies it as fill now: a fuller fix than
+    the cap here, which only stopped the crosses from overlapping, not from
+    being the wrong technique for this shape in the first place.
+    `_rail_points`'s cap is still live, general code, though -- it protects
+    any satin column that DOES reach it, from a design class the DT check
+    has not tightened, a forced "satin" override, or any other caller. So
+    this test now calls `satin_shape` DIRECTLY on `Sf5200f3f`'s real,
+    unmodified geometry (bypassing `is_satin_candidate` on purpose), keeping
+    the exact rail-geometry regression coverage the 2026-08-05 fix earned,
+    decoupled from whatever the classifier decides for this shape.
+    """
+    from digitizer_core import PipelineConfig, run_stages
+    from digitizer_core.stage6_satin import satin_shape, strip_splits
+    from digitizer_core.stitches import strip_ties
+
+    c = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    result = run_stages(TESTDATA / "logo_alpha.png", c)
+    region = next(r for r in result.regions if r.shape_id == "Sf5200f3f")
+
+    runs, report = satin_shape(region.polygon, region.shape_id,
+                               underlay_style="center_run", trim_at_mm=3.0)
+    assert not report["empty"], "fixture regressed: the shape no longer skeletonizes"
+
+    segs = []
+    for run in runs:
+        if run.kind != "satin":
+            continue
+        pts = strip_splits(strip_ties(run.points))
+        segs.extend(LineString((a, b)) for a, b in zip(pts, pts[1:]))
+
+    assert segs, ("fixture regressed: Sf5200f3f no longer sews as satin even "
+                  "when forced through satin_shape directly")
+
+    # Adjacent segments legitimately share an endpoint (the zigzag's own
+    # rail-to-rail step); only NON-adjacent crossings are the defect.
+    crossings = 0
+    for i, si in enumerate(segs):
+        if si.length < 1e-6:
+            continue
+        for sj in segs[i + 2:]:
+            if sj.length < 1e-6:
+                continue
+            if si.intersects(sj):
+                crossings += 1
+
+    assert crossings == 0, f"{crossings} non-adjacent satin crosses overlap each other"
+
+
+def test_sf5200f3f_no_longer_reaches_satin_in_the_real_pipeline():
+    """Companion to the direct-geometry test above: confirms the CLASSIFIER
+    side of the 2026-08-06 fix for this exact shape, in the real sequenced
+    pipeline (not `is_satin_candidate` called in isolation on an extracted
+    polygon) -- `Sf5200f3f` now sews as fill, not satin, at the same config
+    the 2026-08-05 self-overlap fix was originally measured against."""
+    from digitizer_core import PipelineConfig, plan_stitches, run_stages
+
+    c = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    result = run_stages(TESTDATA / "logo_alpha.png", c)
+    plan = plan_stitches(result, c)
+
+    kinds = {run.kind for _b, run in plan.iter_runs() if run.shape_id == "Sf5200f3f"}
+    assert kinds, "fixture regressed: Sf5200f3f produced no runs at all"
+    assert "satin" not in kinds, \
+        f"Sf5200f3f should sew as fill now, not satin -- got kinds {kinds}"
 
 
 # --- Underlay --------------------------------------------------------------

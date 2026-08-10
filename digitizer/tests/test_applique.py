@@ -377,6 +377,62 @@ def check_gates_of(geom):
     return check_gates(BIG_SQUARE, geom)
 
 
+def test_solve_cover_width_can_clamp_from_the_tolerance_stack_itself():
+    """`solve_cover_width`'s own `"clamped"` field is not just a hypothetical
+    that only an out-of-range override can trip — the solver's own W_req can
+    exceed the 5.0 mm ceiling on its own, e.g. an aggressive `m_edge` margin
+    (still a public keyword, just not one any published trim discipline uses
+    at the default). This pins the field itself is correct before the next
+    test pins that a caller finally reads it.
+    """
+    normal = solve_cover_width()
+    assert not normal["clamped"]
+
+    wide_margin = solve_cover_width(m_edge=3.0)
+    assert wide_margin["w_req_mm"] > machine.APPLIQUE_COVER_WIDTH_MAX_MM
+    assert wide_margin["clamped"]
+    assert wide_margin["width_mm"] == machine.APPLIQUE_COVER_WIDTH_MAX_MM
+
+
+def test_a_clamped_cover_width_is_warned_not_silent():
+    """`max_cover_width`'s 5.0 mm clamp used to be silent: `solve_cover_
+    width`'s own `"clamped"` field was computed and read by no caller, so a
+    design that hit §2.12's named snag-risk ceiling — or §2.13's own 2.5 mm
+    "absolute minimum (risky)" floor — sewed with no record the requirement
+    and the stitched width disagreed. `check_gates` now reads it and reports
+    which bound fired.
+
+    The override escape hatch (`solve_geometry`'s `width_mm`, `PipelineConfig.
+    applique_cover_width_mm`) is the practically reachable path — config.py's
+    own comment calls it "still clamped to [2.5, 5.0]" — since the solver's
+    own W_req never reaches either bound at a published trim discipline.
+    Landing exactly ON a bound (not past it) is a legitimate width, not a
+    clamp, and must not fire.
+    """
+    from digitizer_core.warnings_codes import APPLIQUE_COVER_WIDTH_CLAMPED
+
+    # The solver's own in-range output is never clamped.
+    assert not [x for x in check_gates_of(solve_geometry())
+                if x["code"] == APPLIQUE_COVER_WIDTH_CLAMPED]
+
+    over = solve_geometry(width_mm=8.0)
+    assert over.width_mm == machine.APPLIQUE_COVER_WIDTH_MAX_MM
+    hits = [x for x in check_gates_of(over)
+            if x["code"] == APPLIQUE_COVER_WIDTH_CLAMPED]
+    assert hits and hits[0]["bound"] == "ceiling" and hits[0]["width_mm"] == 5.0
+
+    under = solve_geometry(width_mm=1.0)
+    assert under.width_mm == machine.APPLIQUE_COVER_WIDTH_FLOOR_MM
+    hits = [x for x in check_gates_of(under)
+            if x["code"] == APPLIQUE_COVER_WIDTH_CLAMPED]
+    assert hits and hits[0]["bound"] == "floor" and hits[0]["width_mm"] == 2.5
+
+    # Exactly on a bound is not past it.
+    at_floor = solve_geometry(width_mm=machine.APPLIQUE_COVER_WIDTH_FLOOR_MM)
+    assert not [x for x in check_gates_of(at_floor)
+                if x["code"] == APPLIQUE_COVER_WIDTH_CLAMPED]
+
+
 def test_pre_cut_is_fifty_fifty_and_centred_on_b():
     """§2.9's side-by-side: pre-cut cover is "50/50, offset 0", and its tackdown
     is a column straddling B rather than a run inside it. Those are the same
@@ -511,19 +567,25 @@ def test_cover_straddles_the_edge_and_buries_the_tackdown():
     this at 400-600% zoom [P], §2.15's renderable assertion), and its inner
     rail reaches past the tackdown line so the tack thread does not show.
 
-    Measured on the shield at the trim-in-place default: rails land at -1.50
-    and +1.50 against a tackdown at -1.00, i.e. the cover reaches **0.50 mm**
-    inboard of the tackdown — exactly the bury margin §2.3 asks for.
+    Measured on the shield at the trim-in-place default: the SOLVED rails land
+    at -1.50 and +1.50 against a tackdown at -1.00, i.e. the cover reaches
+    **0.50 mm** inboard of the tackdown — exactly the bury margin §2.3 asks
+    for. The STITCHED rails sit `APPLIQUE_COVER_PULL_COMP_MM` (0.20 mm)
+    further out on each side — -1.70 / +1.70 — because `_cover_layer` pull-
+    compensates the column it actually sews; `g.c_in`/`g.c_out` stay the
+    solved, uncompensated values (see `_cover_layer`'s docstring for why).
     """
     g = solve_geometry()
     steps, _ = applique_steps(SHIELD, "S1", g)
     cover = _layer_offsets(steps, SHIELD, COVER)
     assert cover
 
-    # The column spans the solved rails, with a hair of tolerance for the
-    # corner fillet the inner rail needs on the shield's point.
-    assert min(cover) == pytest.approx(g.c_in, abs=0.05)
-    assert max(cover) == pytest.approx(g.c_out, abs=0.05)
+    # The column spans the solved rails WIDENED by pull comp, with a hair of
+    # tolerance for the corner fillet the inner rail needs on the shield's
+    # point.
+    pull = machine.APPLIQUE_COVER_PULL_COMP_MM
+    assert min(cover) == pytest.approx(g.c_in - pull, abs=0.05)
+    assert max(cover) == pytest.approx(g.c_out + pull, abs=0.05)
 
     # It actually CROSSES B rather than running beside it.
     assert min(cover) < 0.0 < max(cover)
@@ -532,6 +594,56 @@ def test_cover_straddles_the_edge_and_buries_the_tackdown():
     assert g.c_in < g.s_tack
     assert g.bury_mm >= machine.APPLIQUE_MARGIN_BURY_MM
     assert [d for d in cover if d < g.s_tack], "no cover inboard of the tackdown"
+
+
+def test_cover_pull_comp_leaves_the_solved_geometry_and_the_tackdown_alone():
+    """`APPLIQUE_COVER_PULL_COMP_MM` (0.20 mm, §2.8) is applied only to the
+    column `_cover_layer` actually stitches, not to `AppliqueGeometry` itself
+    — `g.c_in`/`g.c_out`/`g.width_mm` stay exactly the tolerance-stack's own
+    solved numbers (3.00 mm at the default, matching §2.3's validation table),
+    because every gate (`edge_headroom_mm`, `bury_mm`, §2.12's checks) and
+    every other test in this file measures against those. And it is COVER-
+    only, §2.8's own row — pre-cut's zigzag tackdown shares `_rail_column`
+    with the cover but must not pick up a width it was never given: measured
+    directly, its spread stays `min(APPLIQUE_TACK_WIDTH_MM, W_cover -
+    2*m_bury)` with no pull-comp term added.
+    """
+    g = solve_geometry()
+    assert (g.c_in, g.c_out, g.width_mm) == (-1.5, 1.5, 3.0)
+
+    gp = solve_geometry(mode=PRE_CUT)
+    steps, _ = applique_steps(BIG_SQUARE, "S1", gp)
+    tack = _layer_offsets(steps, BIG_SQUARE, TACKDOWN)
+    expected_width = min(machine.APPLIQUE_TACK_WIDTH_MM,
+                         gp.width_mm - 2 * machine.APPLIQUE_MARGIN_BURY_MM)
+    assert max(tack) - min(tack) == pytest.approx(expected_width, abs=0.05)
+
+
+def test_cover_closure_overlap_reads_the_appliqué_specific_stitch_count(monkeypatch):
+    """`APPLIQUE_CLOSURE_OVERLAP_STITCHES` (6, §2.8's own row) existed and was
+    read by no code path — `_cover_layer` inherited `BORDER_CLOSURE_OVERLAP_MM`
+    (1.40 mm, the border module's generic distance) through `_satin_loop`'s
+    hardcoded default instead. At the 0.40 mm cover spacing the two land close
+    (1.40 mm / 0.20 mm-per-station rounds to 7 stitches, one more than the
+    appliqué constant) and both sit inside Stahls' published 4-8 stitch
+    window, so the substitution was never a visible defect — but it was a
+    coincidence resting on `APPLIQUE_COVER_SPACING_MM` staying 0.40 mm, not a
+    read of the appliqué tier's own number.
+
+    Proven by moving the constant and watching the emitted cover move with
+    it: before this fix, changing `APPLIQUE_CLOSURE_OVERLAP_STITCHES` could
+    not change a single stitch, because nothing read it. Now the closing
+    circuit continues past its own start for exactly the constant's station
+    count, so raising it by N raises the measured cross count by exactly N.
+    """
+    g = solve_geometry()
+    _steps, before = applique_steps(BIG_SQUARE, "S1", g)
+
+    monkeypatch.setattr(machine, "APPLIQUE_CLOSURE_OVERLAP_STITCHES",
+                        machine.APPLIQUE_CLOSURE_OVERLAP_STITCHES + 4)
+    _steps, after = applique_steps(BIG_SQUARE, "S1", g)
+
+    assert after["crosses"] - before["crosses"] == 4
 
 
 def test_tackdown_is_a_double_run_for_trim_in_place():
@@ -547,6 +659,52 @@ def test_tackdown_is_a_double_run_for_trim_in_place():
     # Same ring, twice the path: the double run is ~2x the single placement.
     ratio = sum(len(r.points) for r in tack) / sum(len(r.points) for r in place)
     assert ratio > 1.6, ratio
+
+
+def test_pre_cut_tackdown_is_a_real_column_not_a_zero_width_run():
+    """§2.7: pre-cut's default tackdown is zigzag, and a zigzag/E tackdown is
+    a COLUMN with real width, straddling B and centered on the tack line
+    ("positioned by column width, centered on the line", §2.2) — not a run
+    stitch.
+
+    Before `_zigzag_tack_layer` existed, `applique_steps` called `_run_layer`
+    unconditionally for every tackdown type; the only branch was the pass
+    count (`2` for `"double_run"`, `1` otherwise). So a zigzag tack — the
+    pre-cut DEFAULT — sewed as a zero-width, single-pass running stitch
+    exactly on `s_tack`, geometrically identical to `tackdown="run"`.
+    `machine.APPLIQUE_TACK_WIDTH_MM` was defined and read by no code path.
+    Measured here off the emitted points, not off the config that produced
+    them, same convention as `test_measured_layer_offsets`.
+
+    Width is §2.7's hard vendor constraint verbatim: `W_tack <= W_cover -
+    2*m_bury`, which at the default 3.0 mm cover clamps to the published
+    2.00 mm exactly.
+    """
+    g = solve_geometry(mode=PRE_CUT)
+    steps, _ = applique_steps(BIG_SQUARE, "S1", g)
+    offsets = _layer_offsets(steps, BIG_SQUARE, TACKDOWN)
+    assert offsets
+
+    expected_width = min(machine.APPLIQUE_TACK_WIDTH_MM,
+                         g.width_mm - 2 * machine.APPLIQUE_MARGIN_BURY_MM)
+    assert expected_width == pytest.approx(2.0)
+
+    spread = max(offsets) - min(offsets)
+    assert spread == pytest.approx(expected_width, abs=0.05), spread
+    # Centered on the tackdown line, which is B itself for pre-cut (o_tack=0).
+    assert (max(offsets) + min(offsets)) / 2 == pytest.approx(g.s_tack, abs=0.05)
+
+
+def test_run_and_double_run_tackdowns_stay_a_single_line():
+    """Regression guard on the dispatch `_zigzag_tack_layer` was added
+    beside: `"run"` and `"double_run"` are explicitly run-stitch-only (§2.2)
+    and must keep sewing on the line with zero column width, not gain one.
+    """
+    g = solve_geometry()  # trim-in-place default -> double_run
+    steps, _ = applique_steps(BIG_SQUARE, "S1", g)
+    offsets = _layer_offsets(steps, BIG_SQUARE, TACKDOWN)
+    assert offsets
+    assert max(offsets) - min(offsets) == pytest.approx(0.0, abs=1e-6)
 
 
 # =========================================================================
@@ -619,6 +777,153 @@ def test_a_hole_too_small_to_trim_forces_pre_cut():
     _steps, report = applique_steps(donut, "S1", solve_geometry())
     assert APPLIQUE_FORCED_PRE_CUT in {x["code"] for x in report["gates"]}
     assert report["mode"] == PRE_CUT
+
+
+def test_a_neck_too_narrow_for_scissors_is_caught_even_with_big_lobes():
+    """`min_inscribed_diameter` finds the ONE best spot in a shape — the
+    largest circle that fits ANYWHERE. That is the wrong measure for "can
+    scissors get all the way around this piece": a two-lobe "dog bone" (two
+    20 mm circles joined by a 3 mm neck) has an enormous best spot in either
+    lobe, so `min_inscribed_diameter` reports ~19.9 mm and the scissors gate
+    never fires — even though nothing wider than 3 mm can pass through the
+    neck. `narrowest_passage_diameter` is a strict refinement built for
+    exactly this: it finds the erosion radius at which the shape first
+    splits, which for a dog bone is the neck itself.
+    """
+    from shapely.ops import unary_union
+
+    from digitizer_core.stage6_applique import narrowest_passage_diameter
+    from digitizer_core.warnings_codes import APPLIQUE_CUTTING_LINE_SUPPRESSED
+
+    lobe_a = Point(-20, 0).buffer(10, quad_segs=64)
+    lobe_b = Point(20, 0).buffer(10, quad_segs=64)
+    neck = Polygon([(-20, -1.5), (20, -1.5), (20, 1.5), (-20, 1.5)])
+    bone = unary_union([lobe_a, lobe_b, neck])
+
+    # The defect, pinned directly: the old measure is blind to the neck.
+    assert min_inscribed_diameter(bone) == pytest.approx(19.9, abs=0.2)
+    # The fix: the narrowest passage IS the neck, not either lobe.
+    assert narrowest_passage_diameter(bone) == pytest.approx(3.0, abs=0.1)
+
+    _steps, report = applique_steps(bone, "S1", solve_geometry())
+    codes = {x["code"] for x in report["gates"]}
+    assert APPLIQUE_CUTTING_LINE_SUPPRESSED in codes, (
+        "a 3 mm neck between two 20 mm lobes must suppress the cutting line "
+        "-- scissors cannot navigate a 3 mm passage")
+    assert not report["cutting_line"]
+
+
+def test_an_off_centre_hole_is_measured_by_its_thin_side_not_its_fat_side():
+    """Same failure mode as the dog bone, on a ring: `min_inscribed_diameter`
+    of a ring whose hole is NOT centred lands on the ring's fat side (the
+    single largest inscribed circle), overstating how much clearance the
+    ring's own thin side actually has. `narrowest_passage_diameter` finds the
+    thin side instead, because that is where the ring first pinches shut
+    under erosion.
+    """
+    from digitizer_core.stage6_applique import narrowest_passage_diameter
+
+    outer = Point(0, 0).buffer(20, quad_segs=48)
+    hole = Point(10, 0).buffer(5, quad_segs=48)  # off-centre: thin side ~5 mm
+    ring = outer.difference(hole)
+
+    assert min_inscribed_diameter(ring) == pytest.approx(25.0, abs=0.3)
+    assert narrowest_passage_diameter(ring) == pytest.approx(5.0, abs=0.1)
+
+
+def test_narrowest_passage_matches_min_inscribed_diameter_on_ordinary_shapes():
+    """The refinement must not move a number that was already right: on a
+    shape with no neck (nothing to sever, nothing to pinch), the two measures
+    have to agree exactly, or `narrowest_passage_diameter` would be widening
+    its own bisection bracket incorrectly rather than converging to the same
+    answer by a different route.
+    """
+    from digitizer_core.stage6_applique import narrowest_passage_diameter
+
+    for shape in (BIG_SQUARE, SMALL_DISC):
+        assert narrowest_passage_diameter(shape) == pytest.approx(
+            min_inscribed_diameter(shape), abs=0.01)
+
+
+def test_a_precut_piece_clears_the_scissors_floor_by_default():
+    """§2.12's pre-cut scissors/placement floor, `APPLIQUE_MIN_INSCRIBED_
+    PRECUT_MM` (8 mm) — lower than trim-in-place's 12 mm because pre-cut has
+    no in-hoop trim step to fall back to; the piece just has to be cuttable
+    by hand before it is placed. Real artwork and `SMALL_DISC` (9 mm across —
+    see its own comment: "clears the 8 mm pre-cut floor, fails the 12 mm
+    scissors floor") both clear it, and clearing must not depend on mode:
+    the same disc that trips the trim-in-place gate must NOT trip this one.
+    """
+    from digitizer_core.warnings_codes import APPLIQUE_PRECUT_TOO_NARROW
+
+    g = solve_geometry(mode=PRE_CUT)
+    for shape in (BIG_SQUARE, SMALL_DISC):
+        _steps, report = applique_steps(shape, "S1", g)
+        assert not [x for x in report["gates"]
+                    if x["code"] == APPLIQUE_PRECUT_TOO_NARROW], shape
+
+
+def test_a_narrow_precut_piece_is_warned_not_silent():
+    """A pre-cut piece with a bottleneck under 8 mm is physically impractical
+    to cut cleanly with scissors before placing it, and §2.12 is explicit
+    every gate here "must be enforced" — silently emitting the piece anyway
+    is the exact failure mode the other four gates already refuse to allow.
+
+    Same dog-bone construction as `test_a_neck_too_narrow_for_scissors_is_
+    caught_even_with_big_lobes`, widened to a 6 mm neck (under the 8 mm
+    pre-cut floor, clear of the 12 mm trim-in-place one) so this pins the
+    pre-cut gate specifically rather than reusing the trim-in-place fixture.
+    `narrowest_passage_diameter`, not `min_inscribed_diameter`, has to be
+    what feeds it: the two 20 mm lobes give `min_inscribed_diameter` ~19.9 mm
+    and the naive measure would never fire.
+    """
+    from shapely.ops import unary_union
+
+    from digitizer_core.stage6_applique import narrowest_passage_diameter
+    from digitizer_core.warnings_codes import APPLIQUE_PRECUT_TOO_NARROW
+
+    lobe_a = Point(-20, 0).buffer(10, quad_segs=64)
+    lobe_b = Point(20, 0).buffer(10, quad_segs=64)
+    neck = Polygon([(-20, -3.0), (20, -3.0), (20, 3.0), (-20, 3.0)])
+    bone = unary_union([lobe_a, lobe_b, neck])
+
+    assert min_inscribed_diameter(bone) == pytest.approx(19.9, abs=0.2)
+    assert narrowest_passage_diameter(bone) == pytest.approx(6.0, abs=0.1)
+
+    _steps, report = applique_steps(bone, "S1", solve_geometry(mode=PRE_CUT))
+    hits = [x for x in report["gates"] if x["code"] == APPLIQUE_PRECUT_TOO_NARROW]
+    assert hits, "a 6 mm neck on a pre-cut piece must warn -- scissors cannot cut it cleanly"
+    assert hits[0]["measured_mm"] == pytest.approx(6.0, abs=0.1)
+    assert hits[0]["floor_mm"] == machine.APPLIQUE_MIN_INSCRIBED_PRECUT_MM
+
+
+def test_precut_and_trim_in_place_scissors_floors_never_both_fire():
+    """The two floors are scoped to their own mode and must stay mutually
+    exclusive, not merely both-correct-in-isolation: the same 6 mm-neck piece
+    fails pre-cut's 8 mm floor and trim-in-place's 12 mm floor at once, so a
+    caller that gated on `geom.mode` incorrectly (or not at all) would fire
+    both codes on one piece and the operator would get a contradictory
+    instruction (a cutting line AND a "cannot be pre-cut" warning).
+    """
+    from shapely.ops import unary_union
+
+    from digitizer_core.warnings_codes import (APPLIQUE_CUTTING_LINE_SUPPRESSED,
+                                                APPLIQUE_PRECUT_TOO_NARROW)
+
+    lobe_a = Point(-20, 0).buffer(10, quad_segs=64)
+    lobe_b = Point(20, 0).buffer(10, quad_segs=64)
+    neck = Polygon([(-20, -3.0), (20, -3.0), (20, 3.0), (-20, 3.0)])
+    bone = unary_union([lobe_a, lobe_b, neck])
+
+    _steps, pre_report = applique_steps(bone, "S1", solve_geometry(mode=PRE_CUT))
+    pre_codes = {x["code"] for x in pre_report["gates"]}
+    assert APPLIQUE_PRECUT_TOO_NARROW in pre_codes
+    assert APPLIQUE_CUTTING_LINE_SUPPRESSED not in pre_codes
+
+    _steps, trim_report = applique_steps(bone, "S1", solve_geometry())
+    trim_codes = {x["code"] for x in trim_report["gates"]}
+    assert APPLIQUE_CUTTING_LINE_SUPPRESSED in trim_codes
+    assert APPLIQUE_PRECUT_TOO_NARROW not in trim_codes
 
 
 # =========================================================================
@@ -769,6 +1074,28 @@ def test_applique_pieces_sew_as_consecutive_same_thread_blocks():
     assert len(read_steps(plan)) == len(plan.blocks)
 
 
+def test_a_forced_cover_width_override_warns_end_to_end():
+    """The gate-level clamp warning (`test_a_clamped_cover_width_is_warned_
+    not_silent`) reaches a real plan through `applique_pass`'s own warning
+    aggregation, the same path every other appliqué gate warning takes.
+    `applique_cover_width_mm` is config.py's documented "escape hatch for a
+    sew-out comparison, still clamped to [2.5, 5.0]" — the practically
+    reachable way to hit §2.12's snag-risk ceiling on the benchmark logo.
+    """
+    from digitizer_core.warnings_codes import APPLIQUE_COVER_WIDTH_CLAMPED
+
+    plan, _c = _applique_plan(applique_cover_width_mm=8.0)
+    hits = [w for w in plan.warnings if w["code"] == APPLIQUE_COVER_WIDTH_CLAMPED]
+    assert hits, "no clamp warning on a width override 3.2 mm past the ceiling"
+    assert hits[0]["bounds"] == ["ceiling"]
+    assert hits[0]["count"] > 0
+
+    # A normal, unforced design never hits either bound.
+    plan_normal, _c = _applique_plan()
+    assert not [w for w in plan_normal.warnings
+               if w["code"] == APPLIQUE_COVER_WIDTH_CLAMPED]
+
+
 def test_pre_cut_costs_one_fewer_stop_per_piece():
     """§2.9's table: pre-cut is 3 layers and **1** machine stop per piece,
     trim-in-place is 4 layers and **2**. On a single head that is the whole
@@ -824,6 +1151,31 @@ def test_pre_cut_costs_one_fewer_stop_per_piece():
     assert len(pre_steps) < len(trim_steps)
     # The economics, exactly: one extra stop per piece that really trims.
     assert len(trim_steps) - len(pre_steps) == len(full)
+
+
+def test_a_precut_design_warns_when_a_piece_is_too_narrow_to_hand_cut():
+    """The gate-level warning (`test_a_narrow_precut_piece_is_warned_not_
+    silent`) reaches a real plan through `applique_pass`'s own warning
+    aggregation, the same path every other appliqué gate warning takes — same
+    shape as `test_a_forced_cover_width_override_warns_end_to_end` for
+    `APPLIQUE_COVER_WIDTH_CLAMPED`.
+
+    No synthetic fixture needed: the benchmark logo already has a piece under
+    the 8 mm pre-cut floor (`test_pre_cut_costs_one_fewer_stop_per_piece`'s
+    own 1.0 mm² / 1.07 mm-inscribed region), so `applique_mode="pre_cut"` on
+    real artwork fires this without construction.
+    """
+    from digitizer_core.warnings_codes import APPLIQUE_PRECUT_TOO_NARROW
+
+    pre, _c = _applique_plan(applique_mode="pre_cut")
+    hits = [w for w in pre.warnings if w["code"] == APPLIQUE_PRECUT_TOO_NARROW]
+    assert hits, "no warning for a pre-cut piece under the 8 mm scissors floor"
+    assert hits[0]["count"] > 0
+
+    # Mode-scoped end to end too: trim-in-place on the same artwork never
+    # fires the pre-cut-only code, even though it has its own gates tripping.
+    trim, _c = _applique_plan(applique_mode="trim_in_place")
+    assert not [w for w in trim.warnings if w["code"] == APPLIQUE_PRECUT_TOO_NARROW]
 
 
 @pytest.mark.parametrize("mode", [TRIM_IN_PLACE, PRE_CUT])
@@ -910,3 +1262,155 @@ def test_a_jump_does_not_eat_the_penetration_it_lands_on():
     # worksheet and the machine tell the operator different numbers.
     assert lifted.stats.stitch_count == 10
     assert stayed.stats.stitch_count == 9
+
+
+# =========================================================================
+# 9. Cover style (§2.8) — satin vs zigzag vs e_stitch
+# =========================================================================
+#
+# `applique_steps(..., cover=...)` threaded `cover` all the way down to
+# `_cover_layer`'s call site and no further — `_cover_layer` itself never
+# took a `cover` argument, so every appliqué cover sewed byte-identical
+# satin rail geometry regardless of the config value. `cover` only ever
+# reached a worksheet label string. Confirmed here the same way the rest of
+# this file confirms an offset: measured off the emitted stitch points, not
+# read back out of the config that generated them.
+
+def test_cover_satin_is_untouched_by_the_cover_parameter():
+    """The load-bearing regression: `cover="satin"` (and the unspecified
+    default, which is the same string) must keep sewing exactly what it sewed
+    before `_cover_layer` learned about `cover` at all. Pinned against the
+    shield fixture other tests in this file already measure the cover layer
+    on (`test_cover_straddles_the_edge_and_buries_the_tackdown`).
+
+    Two kinds of proof: point-for-point equality between the implicit default
+    and an explicit `cover="satin"` call (so the two code paths that reach
+    `_cover_layer` cannot silently diverge), and a pinned count/checksum of
+    the actual emitted column, so a change to `_rail_column`'s satin branch
+    that happened to keep the point COUNT the same could not slip past this
+    test unnoticed.
+    """
+    g = solve_geometry()
+    steps_default, _ = applique_steps(SHIELD, "S1", g)
+    steps_satin, _ = applique_steps(SHIELD, "S1", g, cover="satin")
+
+    cover_default = [p for s in steps_default for r in s.runs
+                     if r.kind == COVER for p in r.points]
+    cover_satin = [p for s in steps_satin for r in s.runs
+                   if r.kind == COVER for p in r.points]
+    assert cover_default == cover_satin
+    assert len(cover_default) == 783
+
+    # A checksum over every emitted point, not just the count — two different
+    # 783-point columns could tie on length alone.
+    sum_x = sum(p[0] for p in cover_default)
+    sum_y = sum(p[1] for p in cover_default)
+    assert sum_x == pytest.approx(-121.651153, abs=1e-3)
+    assert sum_y == pytest.approx(-2271.726091, abs=1e-3)
+
+    # The satin spacing constant, unchanged — `APPLIQUE_COVER_SPACING_MM`,
+    # not the new zigzag one.
+    label = [s.label for s in steps_default if s.code == "COVER"][0]
+    assert f"{machine.APPLIQUE_COVER_SPACING_MM:.2f} mm spacing" in label
+    assert "satin cover" in label
+
+
+def test_cover_zigzag_produces_genuinely_different_geometry():
+    """`cover="zigzag"` must sew a real, differently-spaced column — not the
+    satin rail geometry with a different label. `_rail_column` (the same
+    column emitter `_zigzag_tack_layer` already reuses for the pre-cut
+    tackdown at ITS own spacing) is driven by `APPLIQUE_ZIGZAG_COVER_SPACING_MM`
+    (3.0 mm) instead of `geom.spacing_mm` (0.40 mm) — roughly 7.5x fewer
+    crosses for the same boundary.
+
+    Measured on the shield: satin sews 783 crosses at 0.40 mm, zigzag sews
+    109 at 3.00 mm. What must NOT change is where the rails themselves sit —
+    only the pitch — so the min/max cover offsets against B are checked to
+    stay the same pull-compensated rails (`geom.c_in - pull`, `geom.c_out +
+    pull`) either way.
+    """
+    g = solve_geometry()
+    steps_satin, report_satin = applique_steps(SHIELD, "S1", g, cover="satin")
+    steps_zigzag, report_zigzag = applique_steps(SHIELD, "S1", g, cover="zigzag")
+
+    assert report_satin["crosses"] == 783
+    assert report_zigzag["crosses"] == 109
+    assert report_zigzag["crosses"] < report_satin["crosses"] / 5
+
+    cover_satin = _layer_offsets(steps_satin, SHIELD, COVER)
+    cover_zigzag = _layer_offsets(steps_zigzag, SHIELD, COVER)
+    pull = machine.APPLIQUE_COVER_PULL_COMP_MM
+    for offsets in (cover_satin, cover_zigzag):
+        assert min(offsets) == pytest.approx(g.c_in - pull, abs=0.05)
+        assert max(offsets) == pytest.approx(g.c_out + pull, abs=0.05)
+
+    label = [s.label for s in steps_zigzag if s.code == "COVER"][0]
+    assert f"{machine.APPLIQUE_ZIGZAG_COVER_SPACING_MM:.2f} mm spacing" in label
+    assert "zigzag cover" in label
+
+
+def test_cover_zigzag_reads_its_own_spacing_constant(monkeypatch):
+    """`APPLIQUE_ZIGZAG_COVER_SPACING_MM` must be an actual read, not a second
+    unread constant like `APPLIQUE_TACK_WIDTH_MM` was before `_zigzag_tack_
+    layer` existed. Proven the same way `test_cover_closure_overlap_reads_
+    the_appliqué_specific_stitch_count` proves `APPLIQUE_CLOSURE_OVERLAP_
+    STITCHES` is read: move the constant and watch the emitted column move
+    with it. `cover="satin"` is re-checked in the same breath to confirm the
+    move does not leak into the unrelated branch.
+    """
+    g = solve_geometry()
+    _steps, satin_before = applique_steps(SHIELD, "S1", g, cover="satin")
+    _steps, zigzag_before = applique_steps(SHIELD, "S1", g, cover="zigzag")
+
+    monkeypatch.setattr(machine, "APPLIQUE_ZIGZAG_COVER_SPACING_MM", 6.0)
+
+    _steps, satin_after = applique_steps(SHIELD, "S1", g, cover="satin")
+    _steps, zigzag_after = applique_steps(SHIELD, "S1", g, cover="zigzag")
+
+    assert satin_after["crosses"] == satin_before["crosses"]
+    assert zigzag_after["crosses"] < zigzag_before["crosses"]
+
+
+def test_e_stitch_cover_falls_through_to_satin_geometry():
+    """`e_stitch` has no cover algorithm anywhere in this codebase and no
+    spec to implement it against (§2.8 describes a comb stitch ORDER, not
+    just a spacing) — it is explicitly out of scope here and must keep
+    falling through to plain satin rail geometry, not raise and not silently
+    grow a spacing branch of its own. Documented as a real, deliberate
+    non-implementation rather than an untested gap.
+    """
+    g = solve_geometry()
+    steps_satin, report_satin = applique_steps(SHIELD, "S1", g, cover="satin")
+    steps_e, report_e = applique_steps(SHIELD, "S1", g, cover="e_stitch")
+
+    cover_satin = [p for s in steps_satin for r in s.runs
+                  if r.kind == COVER for p in r.points]
+    cover_e = [p for s in steps_e for r in s.runs
+              if r.kind == COVER for p in r.points]
+    assert cover_e == cover_satin
+    assert report_e["crosses"] == report_satin["crosses"] == 783
+
+
+def test_applique_cover_config_reaches_the_cover_layer_end_to_end():
+    """The config value (`cfg.applique_cover`) has to actually reach
+    `_cover_layer` through `applique_pass` -> `applique_steps`, not just be
+    accepted and ignored — the exact defect this section exists to close.
+    Run through the real stage-7 entry point, not `applique_steps` directly,
+    so the whole wire is exercised end to end.
+    """
+    plan_satin, _ = _applique_plan(applique_cover="satin")
+    plan_zigzag, _ = _applique_plan(applique_cover="zigzag")
+
+    cover_steps_satin = [b.step for b in plan_satin.blocks
+                         if b.step and COVER in b.step.get("layers", [])]
+    cover_steps_zigzag = [b.step for b in plan_zigzag.blocks
+                          if b.step and COVER in b.step.get("layers", [])]
+    assert cover_steps_satin and cover_steps_zigzag
+
+    satin_stitches = sum(s["stitches"] for s in cover_steps_satin)
+    zigzag_stitches = sum(s["stitches"] for s in cover_steps_zigzag)
+    # Same real-world claim as the shield-level test above, just reached
+    # through config instead of a direct `applique_steps` call: a 3.0 mm
+    # zigzag pitch crosses far fewer times than a 0.40 mm satin pitch over
+    # the same boundaries.
+    assert zigzag_stitches < satin_stitches / 3

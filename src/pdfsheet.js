@@ -18,6 +18,18 @@ const deps =
   const PAGE_H_IN = 11;
   const MARGIN_IN = 0.5;
 
+  // Stitch count past which the worksheet prescribes cutaway stabilizer: a
+  // design this heavy needs permanent support or it distorts when the hoop
+  // comes off. Craft rule [P — OESD, via docs/photo-digitizing-plan-
+  // 2026-07-31.md §2 row 15: "est. > 25k st -> cutaway prescription on the
+  // worksheet"]. Twin of the digitizer preflight's STABILIZER_CUTAWAY
+  // constant (digitizer/digitizer_core/preflight.py, STITCHES_CUTAWAY_MIN)
+  // — duplicated deliberately, not carelessly: the worksheet also serves
+  // designs that never pass through the digitizer service (lettering,
+  // imports, combined multi-element designs), and the combined design's
+  // stitch count is only known here. Change one and change both.
+  const CUTAWAY_STITCHES = 25000;
+
   function rgbCss(color) {
     if (!color) return [0, 0, 0];
     const c = (v) => Math.max(0, Math.min(255, v | 0));
@@ -82,6 +94,15 @@ const deps =
       "Stitch count: " + stitchCount,
       "Color count: " + colorCount,
     ];
+    if (stitchCount > CUTAWAY_STITCHES) {
+      // The cutaway prescription (see CUTAWAY_STITCHES above). A line in
+      // the stats block, not a warning banner: nothing is wrong with the
+      // design — the operator just hoops the right stabilizer under it.
+      statsLines.push(
+        "Stabilizer: cutaway (over " + CUTAWAY_STITCHES.toLocaleString("en-US") +
+          " stitches - tear-away releases under this much thread)"
+      );
+    }
     for (const line of statsLines) {
       doc.text(line, MARGIN_IN, cursorY);
       cursorY += 0.18;

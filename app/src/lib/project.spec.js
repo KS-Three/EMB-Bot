@@ -7,6 +7,7 @@ import {
   DEFAULT_DIGITIZE_PARAMS,
   update,
   addElement,
+  addSeededTextElement,
   removeElement,
   selectElement,
   updateElement,
@@ -35,7 +36,7 @@ test("defaultTextElement has sane beginner defaults", () => {
     id: "e1",
     type: "text",
     text: "",
-    fontKey: "geneva_simple",
+    fontKey: "medium_font",
     colorRgb: [20, 20, 20],
     colorRanges: [],
     weightPreset: "normal",
@@ -112,6 +113,63 @@ test("addElement of type image produces a fresh defaultImageElement shape (seede
   expect(el.type).toBe("image");
   expect(el.nColors).toBe(4);
   expect(el.removeBg).toBe(true);
+});
+
+// --- addSeededTextElement (text-cluster "convert to text") ----------------
+
+test("addSeededTextElement appends one text element seeded over defaultTextElement, and selects it", () => {
+  const p = defaultProject(); // e1, one element
+  const seed = {
+    colorRgb: [10, 20, 30],
+    rotationDeg: 12,
+    offsetXMm: 5,
+    offsetYMm: -7,
+    sizeMm: 22,
+    text: "",
+    fontKey: null,
+  };
+  const { project: q, id } = addSeededTextElement(p, seed, 100);
+
+  expect(q.elements).toHaveLength(2);
+  expect(p.elements).toHaveLength(1); // original untouched
+
+  const el = q.elements.find((e) => e.id === id);
+  expect(el).toBeTruthy();
+  expect(el.type).toBe("text");
+  expect(el.text).toBe("");
+  expect(el.fontKey).toBeNull(); // deliberate override of defaultTextElement's "medium_font"
+  expect(el.colorRgb).toEqual([10, 20, 30]);
+  expect(el.rotationDeg).toBe(12);
+  expect(el.offsetXMm).toBe(5);
+  expect(el.offsetYMm).toBe(-7);
+  expect(el.sizeMm).toBe(22);
+
+  // Fields the seed did NOT touch still come from defaultTextElement.
+  expect(el.align).toBe("center");
+  expect(el.underlay).toBe(true);
+
+  // Selection moves to the new element, same as addElement.
+  expect(q.selectedId).toBe(id);
+  expect(q.selectedIds).toEqual([id]);
+});
+
+test("addSeededTextElement returns the new element's id explicitly, usable immediately by the caller", () => {
+  const p = defaultProject();
+  const { project: q, id } = addSeededTextElement(p, { text: "", fontKey: null }, 100);
+  // The id is real and resolvable in the returned project without relying on
+  // selectedId (the convention addElement's existing callers use) --
+  // exercising the alternative convention this function documents choosing.
+  expect(id).toBe("e2");
+  expect(q.elements.map((e) => e.id)).toContain(id);
+});
+
+test("addSeededTextElement seed wins over the hoop-relative size/offset stagger addElement would otherwise apply", () => {
+  const p = defaultProject();
+  const { project: q, id } = addSeededTextElement(p, { sizeMm: 5, offsetXMm: 1, offsetYMm: 2 }, 100);
+  const el = q.elements.find((e) => e.id === id);
+  expect(el.sizeMm).toBe(5); // not Math.round(0.4 * 100)
+  expect(el.offsetXMm).toBe(1);
+  expect(el.offsetYMm).toBe(2); // not -10 * 1
 });
 
 // --- removeElement --------------------------------------------------------
@@ -224,7 +282,7 @@ test("migrateProject converts a real v1 image-mode fixture into one image elemen
   const v1 = {
     garmentId: "patch",
     text: "",
-    fontKey: "geneva_simple",
+    fontKey: "medium_font",
     sizeMm: null,
     offsetXMm: 0,
     offsetYMm: 0,
@@ -476,4 +534,67 @@ test("migrateProject leaves non-digitized elements byte-identical (old projects 
   const m = migrateProject({ version: 2, garmentId: "left_chest", selectedId: "e1", elements: [text, image] });
   expect(m.elements[0]).toBe(text); // same object, untouched by the map
   expect(m.elements[1]).toBe(image);
+});
+
+// --- manual digitizing mode (element factory) ------------------------------
+
+import { defaultManualElement, defaultManualShape } from "./project.js";
+
+test("defaultManualElement has sane beginner defaults (no shapes yet)", () => {
+  const el = defaultManualElement("e9");
+  expect(el).toEqual({
+    id: "e9",
+    type: "manual",
+    shapes: [],
+    underlay: true,
+    sizeMm: null,
+    offsetXMm: 0,
+    offsetYMm: 0,
+  });
+});
+
+test("defaultManualShape defaults to fill, a beginner-safe base color, and auto angle", () => {
+  const s = defaultManualShape("s1");
+  expect(s).toEqual({
+    id: "s1",
+    points: [],
+    curves: {},
+    stitchType: "fill",
+    colorRgb: [20, 20, 20],
+    angleDeg: null,
+  });
+});
+
+test("addElement 'manual' produces a fresh defaultManualElement shape, seeded like image/text", () => {
+  let p = defaultProject();
+  p = addElement(p, "manual", 100);
+  const el = p.elements[1];
+  expect(el.type).toBe("manual");
+  expect(el.shapes).toEqual([]);
+  // Non-first elements get a hoop-relative size seed, same rule image/text
+  // elements follow (only design/digitized keep sizeMm null for native size).
+  expect(el.sizeMm).toBe(40); // 0.4 * 100
+  expect(el.offsetYMm).toBe(-10);
+  expect(p.selectedId).toBe(el.id);
+});
+
+test("migrateProject fills a manual element's missing fields (additive migration, same as digitized)", () => {
+  const sparse = { id: "e2", type: "manual" }; // saved before `underlay`/offsets existed
+  const m = migrateProject({ version: 2, garmentId: "left_chest", selectedId: "e2", elements: [sparse] });
+  const el = m.elements[0];
+  expect(el.shapes).toEqual([]);
+  expect(el.underlay).toBe(true);
+  expect(el.sizeMm).toBeNull();
+  expect(el.offsetXMm).toBe(0);
+  expect(el.offsetYMm).toBe(0);
+});
+
+test("migrateProject preserves a manual element's real shapes, and tolerates a corrupt shapes field", () => {
+  const withShapes = { id: "e2", type: "manual", shapes: [defaultManualShape("s1")] };
+  const kept = migrateProject({ version: 2, garmentId: "left_chest", selectedId: "e2", elements: [withShapes] }).elements[0];
+  expect(kept.shapes).toEqual([defaultManualShape("s1")]);
+
+  const corrupt = { id: "e2", type: "manual", shapes: "not-an-array" };
+  const fixed = migrateProject({ version: 2, garmentId: "left_chest", selectedId: "e2", elements: [corrupt] }).elements[0];
+  expect(fixed.shapes).toEqual([]);
 });

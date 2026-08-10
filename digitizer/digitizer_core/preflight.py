@@ -39,6 +39,13 @@ per-object check ever written and still puckers the garment. Its instrument
 is `_coverage_map`, which rasterizes the whole plan's stitch geometry into
 coverage units where 1.0 is one full covering layer of 40wt thread.
 
+The photo guardrails (photo plan §2 row 15) are the buildable-today subset
+of that plan's preflight row: input resolution vs the photo floor, subject/
+background lightness contrast, the cutaway-stabilizer prescription, and the
+single-needle color-stop wall. The two guards that need signals which do
+not exist yet (face detection, fabric nap) are documented as a seam at the
+"FACE-GATED REMAINDER" comment in the threshold block, not half-built.
+
 Every threshold is a measurement, cited next to its constant. The
 instruments were validated on known-clean fixtures first (probe run
 2026-07-31, extended 2026-08-01 for the coverage map): the fixture logo and
@@ -62,6 +69,7 @@ from skimage.color import deltaE_ciede2000
 from . import machine, stitches
 from .config import PipelineConfig
 from .pipeline import PipelineResult, fabric_for
+from .stage0_classify import classify
 from .stage1_prep import prep
 from .stage6_satin import strip_splits
 from .stitches import StitchPlan
@@ -79,11 +87,25 @@ DENSITY_STACKED = "DENSITY_STACKED"            # extra: {peak_units, p95_units, 
 SAME_HOLE_HEAVY = "SAME_HOLE_HEAVY"            # extra: {fraction, repeat_points, penetrations, baseline}
 LINK_UNCOVERED = "LINK_UNCOVERED"              # extra: {max_mm, limit_mm, total_mm, at_mm, thread_mm}
 CONTOUR_STARVED = "CONTOUR_STARVED"            # extra: {count, rings, shapes}
+PHOTO_RESOLUTION_LOW = "PHOTO_RESOLUTION_LOW"  # extra: {px_per_mm, min_px_per_mm}
+SUBJECT_CONTRAST_LOW = "SUBJECT_CONTRAST_LOW"  # extra: {delta_l, min_delta_l, bg_lightness}
+STABILIZER_CUTAWAY = "STABILIZER_CUTAWAY"      # extra: {stitch_count, threshold}
+COLOR_STOPS_HEAVY = "COLOR_STOPS_HEAVY"        # extra: {color_changes, max_stops}
+FACE_TOO_SMALL = "FACE_TOO_SMALL"              # extra: {count, design_mm, fits_hoop_mm, min_hoop_mm}
+CLASS_OVERRIDE_TECHNIQUE_MISMATCH = "CLASS_OVERRIDE_TECHNIQUE_MISMATCH"  # extra: {forced_class, detected_class, fill_technique}
 
 # The stage-6 warning this module re-reads. Owned by the contour-fill lane
 # (warnings_codes.CONTOUR_RING_UNREACHABLE); named by string so preflight
 # neither imports it nor breaks in a tree where that lane has not landed.
 _CONTOUR_RING_UNREACHABLE = "CONTOUR_RING_UNREACHABLE"
+
+# Stage 0's photo classifications, re-read from plan.warnings the same way
+# and for the same reason as _CONTOUR_RING_UNREACHABLE above: the classifier
+# says what it decided in its own warning codes, preflight carries that
+# rather than re-deriving it. A FORCED class writes no warning (stage 0 skips
+# signal computation entirely), so `_is_photo_class` checks cfg.forced_class
+# first.
+_CLASSIFIED_PHOTO = ("CLASSIFIED_PHOTO_SUBJECT", "CLASSIFIED_PHOTO_SCENE")
 
 # --- Thresholds, each with its measurement ---------------------------------
 
@@ -235,6 +257,120 @@ _MIN_SAMPLES = 30
 # smaller than this is mostly anti-alias boundary and the median is noise.
 _MIN_COLOR_PIXELS = 50
 
+# --- Photo guardrails (photo plan §2 row 15) ---------------------------------
+#
+# THE FACE-GATED REMAINDER — half CLOSED 2026-08-04:
+#   * Face-size guard: BUILT (`_face_size_findings` below), exactly the way
+#     this comment specified — the YuNet detection rides the pipeline the
+#     way the classifier's verdict does (the PHOTO_FACES_DETECTED warning
+#     from `pipeline.run_stages`, behind the photo_prep gate), and the check
+#     re-reads it here rather than re-running a net. Thresholds at
+#     FACE_MIN_HOOP_MM / FACE_BLOCK_HOOP_MM with their derivations.
+#   * Nap-fabric water-soluble-topping line: STILL A SEAM — needs a fabric
+#     nap signal that `fabrics.py` presets do not carry today (no `nap`
+#     field exists). When a preset grows one, the check is one comparison
+#     against `fabric_for(cfg)` plus a worksheet line, same shape as
+#     STABILIZER_CUTAWAY below.
+#
+# Photo-class gate, measured 2026-08-04. Preflight has no class gate anywhere
+# else and these two checks (resolution, subject contrast) still need one —
+# that is a measurement, not a style choice. Raw input px/mm of every
+# committed fixture at the suite's own sizes:
+#
+#   logo_whitebg @80        8.39      bg_uncertain @80       7.51
+#   logo_alpha @80          8.38      ribbon_curve @80       8.78
+#   drone_render @90        8.54      gradient_ramp_radial   6.40 @80
+#   photo_*_stub @80       12.50      enthusiast_logo @80   17.05
+#
+# The flat and gradient lanes' own clean, sew-out-validated fixtures live
+# UNDER the photo floor — a blanket 10 px/mm guard would flag the fixture
+# logo whose zero-findings report every threshold in this module was
+# validated against, and the drone render at its own acceptance size. The
+# floor is a photo-class fact (Embird states it for photo input; the flat
+# lane's floor is stage 1's own cfg.min_px_per_mm = 4 with its Lanczos
+# rescue), so the guard reads the class the classifier already published
+# rather than inventing a threshold that condemns clean flat work.
+
+# Input resolution floor for photo-class stitching, in source pixels per
+# output millimetre: below it the tonal tiers sample noise-scale detail.
+# [P — Embird, via docs/photo-digitizing-plan-2026-07-31.md §1(c) hard
+# floors: "input >= 10 px per output mm"]. Measured against the raster the
+# INPUT delivered (`Prep.input_px_per_mm`), never the post-upscale value —
+# stage 1's Lanczos rescue manufactures pixels, not information.
+PHOTO_MIN_PX_PER_MM = 10.0
+
+# How far the subject's lightness must sit from the background's before the
+# subject reads in thread at all — photo-class only: a photo tier renders
+# TONE, so a subject iso-luminant with its background is invisible to it
+# (plan §1(d) lists "separating an iso-luminant subject from its background
+# without a user click" as impossible), while a flat logo sews its actual
+# hue and vanishes nowhere. The instrument is the p90 of per-foreground-
+# pixel |L* - median L*(background)| (house Lab convention, threads.py) —
+# p90, not the median, because a subject reads by its most-contrasting
+# parts: the white icon on the mid-gray gradient fixture
+# (repro_gradient_white_icon) measures p50 = 3.99 but p90 = 50.1, and the
+# icon reads fine. Measured 2026-08-04 over every committed fixture with an
+# opaque detected background vs a constructed iso-luminant negative (a
+# (200,60,60) red subject on the (0,130,0) green whose L* matches to 0.16):
+#
+#   happy fixtures, p90       27.58 - 82.52   (floor: photo_scene_stub)
+#   iso-luminant negative     p90 0.16, p99 2.95
+#
+# Two populations with nothing between 2.95 and 27.58; 10 sits in the gap
+# with 3.4x room on the negative side and 2.8x on the clean side. Alpha
+# cutouts decline (`Prep.bg_from_alpha`): their background is the garment,
+# whose color this pipeline cannot know.
+SUBJECT_DELTA_L_MIN = 10.0
+
+# Stitch count past which the worksheet prescribes cutaway stabilizer: a
+# design this heavy needs permanent support or it distorts when the hoop
+# comes off. [P — OESD, via docs/photo-digitizing-plan-2026-07-31.md §2 row
+# 15: "est. > 25k st -> cutaway prescription on the worksheet"]. INFO, not a
+# defect: the design sews fine — on the right stabilizer. The worksheet
+# renderer (src/pdfsheet.js) carries the same 25k rule for designs that
+# never pass through this service (lettering, imports, combined designs);
+# change one and change both.
+STITCHES_CUTAWAY_MIN = 25_000
+
+# Color stops past which a single-needle machine's operator lives at the
+# machine: every color change is a stop and a manual re-thread. Vendor
+# single-needle defaults cap at ~10 stops, with multi-needle modes unlocking
+# 15+ [docs/photo-digitizing-plan-2026-07-31.md §1 stitch budgets; vendor
+# defaults corroborate, forum evidence unverifiable [CNV]]. Measured on the
+# committed fixtures 2026-08-04: every flat/photo fixture plans 0-6 changes;
+# the drone render at 90 mm plans 12 and DOES fire this — deliberately, not
+# noise: that plan really is past the single-needle wall today, and the
+# photo plan's own palette step (build step 7, chart-restricted k-medoids)
+# is what brings photo-class palettes back inside it.
+COLOR_STOPS_MAX = 10
+
+# The face-size guard's two hoop constants (photo plan §1(c) hard floors +
+# §2 row 15). The plan states both halves of the rule separately and this
+# guard uses both:
+#   * "face work needs a 5x7\" hoop minimum" [S — Brother's own guidance via
+#     the plan] — FACE_MIN_HOOP_MM names that floor in the finding's message
+#     and extra, so the operator is told what to size UP to.
+#   * "Impossible: ... Faces at 4x4\"" [plan §1(c)] — FACE_BLOCK_HOOP_MM is
+#     the trigger: the finding fires (block — the plan's row 15 says block,
+#     with a size-up suggestion) when the whole design FITS a 4x4" hoop,
+#     because a design that small cannot be using anything approaching the
+#     5x7 minimum, and the plan calls faces at that scale impossible
+#     outright. A design between the two hoops (say 120x80 mm) already
+#     NEEDS a hoop bigger than 4x4 — the 5x7 — so the stated minimum is
+#     met and the guard stays silent; blocking there would flag work the
+#     plan itself calls viable.
+# Faces are read from the PHOTO_FACES_DETECTED warning (pipeline.run_stages,
+# YuNet — plan step 3's face priors), which only exists when the photo_prep
+# gate held, so this guard needs no class gate of its own: no photo lane, no
+# warning, no finding.
+FACE_MIN_HOOP_MM = (127.0, 178.0)     # 5x7" hoop, the stated face-work floor
+FACE_BLOCK_HOOP_MM = 101.6            # 4x4" hoop (4 * 25.4mm/in) — faces at this scale: impossible
+
+# The pipeline warning the face guard re-reads — named by string, the
+# _CONTOUR_RING_UNREACHABLE / _CLASSIFIED_PHOTO pattern (that code is owned
+# by warnings_codes.py, emitted by pipeline.run_stages).
+_PHOTO_FACES_DETECTED = "PHOTO_FACES_DETECTED"
+
 # Score deductions. A block is most of a letter grade on its own; two warns
 # cost one. Grades: A >= 90, B >= 75, C >= 60, D >= 40, F below.
 _DEDUCT = {"info": 0, "warn": 12, "block": 30}
@@ -250,20 +386,21 @@ def finding(code: str, severity: str, message: str, **extra) -> dict:
 
 # --- Thread color fidelity --------------------------------------------------
 
-def _artwork_colors_by_thread(image, result: PipelineResult,
+def _artwork_colors_by_thread(p, result: PipelineResult,
                               cfg: PipelineConfig) -> dict[int, np.ndarray]:
     """-> {thread_index: median artwork RGB under that thread's regions}.
 
     The pipeline does not carry the pre-snap cluster colors into its result,
     so the artwork is re-read through stage 1 (same config, deterministic,
-    same alignment) and each region polygon is rasterized back over it.
-    Region coordinates are mm with origin at the artwork bbox CENTER, y-down
-    — the exact inverse of the transform stage 4 applied — so px = mm *
-    px_per_mm + center. The mask is eroded one pixel and the color taken as
-    the per-channel MEDIAN: both choices exist to keep anti-alias halo pixels
-    from dragging a flat color toward the background.
+    same alignment — `p` is that one shared re-read, made once in
+    run_preflight for every check that needs the artwork) and each region
+    polygon is rasterized back over it. Region coordinates are mm with
+    origin at the artwork bbox CENTER, y-down — the exact inverse of the
+    transform stage 4 applied — so px = mm * px_per_mm + center. The mask is
+    eroded one pixel and the color taken as the per-channel MEDIAN: both
+    choices exist to keep anti-alias halo pixels from dragging a flat color
+    toward the background.
     """
-    p = prep(image, cfg)
     x0, y0, x1, y1 = p.art_bbox
     cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
     h, w = p.rgb.shape[:2]
@@ -296,7 +433,7 @@ def _artwork_colors_by_thread(image, result: PipelineResult,
     return out
 
 
-def _thread_match_findings(image, result: PipelineResult,
+def _thread_match_findings(p, result: PipelineResult,
                            cfg: PipelineConfig) -> tuple[list[dict], float | None]:
     """One finding per thread whose spool is visibly off its artwork color.
 
@@ -306,7 +443,7 @@ def _thread_match_findings(image, result: PipelineResult,
     chart = chart_for(cfg)
     findings: list[dict] = []
     worst: float | None = None
-    for t, art_rgb in sorted(_artwork_colors_by_thread(image, result, cfg).items()):
+    for t, art_rgb in sorted(_artwork_colors_by_thread(p, result, cfg).items()):
         lab_art = rgb_to_lab(art_rgb.reshape(1, 3))
         lab_thr = rgb_to_lab(np.asarray(chart[t].rgb, np.float64).reshape(1, 3))
         de = float(deltaE_ciede2000(lab_art, lab_thr)[0])
@@ -330,6 +467,232 @@ def _thread_match_findings(image, result: PipelineResult,
             thread_rgb=list(thread.rgb),
         ))
     return findings, worst
+
+
+# --- Photo guardrails (photo plan §2 row 15) ---------------------------------
+# The buildable-today subset. The two face/fabric-gated guards this family
+# still owes are documented at the threshold block above ("THE FACE-GATED
+# REMAINDER") with the seam each plugs into.
+
+def _is_photo_class(plan: StitchPlan, cfg: PipelineConfig) -> bool:
+    """Did stage 0 route this design down the photo path?
+
+    A forced class writes no classifier warning, so cfg wins; otherwise the
+    classifier's own published verdict is re-read from plan.warnings, the
+    `_contour_findings` pattern. CLASSIFICATION_UNCERTAIN designs fell back
+    to flat and correctly read False here.
+    """
+    if cfg.forced_class in ("photo_subject", "photo_scene"):
+        return True
+    return any(w.get("code") in _CLASSIFIED_PHOTO for w in plan.warnings)
+
+
+def _photo_resolution_findings(p, plan: StitchPlan,
+                               cfg: PipelineConfig) -> tuple[list[dict], dict]:
+    """Photo-class input below Embird's 10 px per output mm floor.
+
+    Reads `Prep.input_px_per_mm` — the resolution the INPUT delivered, before
+    stage 1's Lanczos rescue inflates `px_per_mm` — because upscaling
+    manufactures pixels, not detail, and the question here is whether the
+    source resolves what the tonal tiers will try to sample. The metric rides
+    out for every class; the finding is photo-gated (see the threshold
+    block's measured table: the flat lane's own clean fixtures live under
+    this floor and sew fine — their floor is stage 1's cfg.min_px_per_mm).
+    """
+    px = float(p.input_px_per_mm)
+    metrics = {"input_px_per_mm": round(px, 2)}
+    if not _is_photo_class(plan, cfg) or px >= PHOTO_MIN_PX_PER_MM:
+        return [], metrics
+    return [finding(
+        PHOTO_RESOLUTION_LOW,
+        "warn",
+        f"The photo has {px:.1f} pixels per output millimetre — photo-style "
+        f"stitching needs at least {PHOTO_MIN_PX_PER_MM:g}. Use a larger "
+        "source image or make the design smaller.",
+        px_per_mm=round(px, 2),
+        min_px_per_mm=PHOTO_MIN_PX_PER_MM,
+    )], metrics
+
+
+def _subject_contrast_findings(p, plan: StitchPlan,
+                               cfg: PipelineConfig) -> tuple[list[dict], dict]:
+    """A photo subject whose lightness sits on its background's: it will not
+    read in thread, because the photo tiers render tone and an iso-luminant
+    subject has none to render.
+
+    The instrument is the p90 of per-foreground-pixel |L* - median
+    L*(background)| — derivation and the measured fixture-vs-negative table
+    at SUBJECT_DELTA_L_MIN. It declines honestly, with the metric None, in
+    the three cases where "the background's lightness" is not a fact it
+    holds: no background detected, an alpha-cutout background (the garment's
+    color, unknowable here — `Prep.bg_from_alpha`), or too few pixels on
+    either side to call a median. The metric rides out for every class the
+    instrument can measure; the finding is photo-gated, because a flat logo
+    sews its actual hue and vanishes nowhere.
+    """
+    metrics: dict = {"subject_bg_delta_l": None}
+    if p.bg_from_alpha or not p.bg_mask.any():
+        return [], metrics
+    fg = ~p.bg_mask
+    if int(p.bg_mask.sum()) < _MIN_COLOR_PIXELS or int(fg.sum()) < _MIN_COLOR_PIXELS:
+        return [], metrics
+    l_bg = float(np.median(
+        rgb_to_lab(p.rgb[p.bg_mask].reshape(-1, 3).astype(np.float64))[:, 0]))
+    dl = np.abs(
+        rgb_to_lab(p.rgb[fg].reshape(-1, 3).astype(np.float64))[:, 0] - l_bg)
+    p90 = float(np.percentile(dl, 90))
+    metrics["subject_bg_delta_l"] = round(p90, 2)
+    if not _is_photo_class(plan, cfg) or p90 >= SUBJECT_DELTA_L_MIN:
+        return [], metrics
+    return [finding(
+        SUBJECT_CONTRAST_LOW,
+        "warn",
+        "The subject is nearly the same lightness as its background, so it "
+        "will vanish in thread — photo stitching renders light and dark, "
+        "not hue. Increase the photo's contrast, or remove the background "
+        "before digitizing.",
+        delta_l=round(p90, 2),
+        min_delta_l=SUBJECT_DELTA_L_MIN,
+        bg_lightness=round(l_bg, 1),
+    )], metrics
+
+
+def _face_size_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
+    """A detected face in a design small enough to fit a 4x4" hoop — the
+    scale the photo plan calls impossible for face work (§1(c); constants
+    and both hoop derivations at FACE_MIN_HOOP_MM above).
+
+    Faces ride in on the PHOTO_FACES_DETECTED warning the pipeline emitted
+    (the `_contour_findings` re-read pattern: the stage that ran the
+    detector says what it found in its own warning, preflight carries that
+    to the operator rather than re-running a net on a plan that may no
+    longer have its artwork). `faces_detected` rides out in the metrics
+    either way, so a photo job's report says whether detection saw anything
+    even when nothing fires."""
+    hits = [w for w in plan.warnings if w.get("code") == _PHOTO_FACES_DETECTED]
+    count = sum(int(w.get("count", 1) or 1) for w in hits)
+    metrics = {"faces_detected": count}
+    if not count:
+        return [], metrics
+    d1, d2 = sorted(float(v) for v in plan.design_size_mm)
+    if d2 > FACE_BLOCK_HOOP_MM:
+        return [], metrics
+    noun = "A face is" if count == 1 else f"{count} faces are"
+    return [finding(
+        FACE_TOO_SMALL,
+        "block",
+        f"{noun} in this design, but at {plan.design_size_mm[0]:.0f} x "
+        f"{plan.design_size_mm[1]:.0f} mm it fits a 4x4\" hoop — face "
+        f"embroidery needs at least a 5x7\" hoop "
+        f"({FACE_MIN_HOOP_MM[0]:g} x {FACE_MIN_HOOP_MM[1]:g} mm) of design "
+        "to hold facial detail. Size the design up before sewing.",
+        count=count,
+        design_mm=[round(float(v), 1) for v in plan.design_size_mm],
+        fits_hoop_mm=FACE_BLOCK_HOOP_MM,
+        min_hoop_mm=list(FACE_MIN_HOOP_MM),
+    )], metrics
+
+
+# --- Class override vs. technique mismatch -----------------------------------
+#
+# `cfg.forced_class` (photo plan's escape hatch — `stage0_classify.classify`
+# skips signal computation entirely and returns the forced verdict at
+# confidence 1.0) is a legitimate power-user move: stage 0's 4-way router is
+# a plain thresholded tree on three signals (see that module's own
+# docstring), and any real classifier has a genuine gray zone where the
+# operator's own judgment beats the heuristic. Forcing "gradient" on a
+# design the router itself would call "flat" (or vice versa) is exactly
+# that judgment call and deserves no finding on its own.
+#
+# What DOES deserve a finding: a forced class paired with a `fill_technique`
+# that only makes sense on photo-tonal content. The mono/tonal fill tiers
+# (`stage6_scanline`, `stage6_meander`, `stage6_streamline`, and the sketch
+# preset built on streamline — `stage6_sketch.py`) all read `SourcePixels`
+# raster darkness, a signal that means something on a photographic tonal
+# range and very little on flat spot-color art forced into a photo-shaped
+# lane. `CLASS_OVERRIDE_TECHNIQUE_MISMATCH` fires when BOTH hold: the design
+# would classify differently on its own (so the override is doing real
+# work, not just re-confirming what the router already thought) AND one of
+# these techniques is selected. WARN, not BLOCK: forcing a class is a
+# supported override, not a mistake by itself — the warning exists so the
+# combination is visible before sewing, not to stop it.
+_PHOTO_TONAL_TECHNIQUES = ("streamline", "scanline_tonal", "meander_tonal", "sketch")
+
+
+def _class_override_findings(image, cfg: PipelineConfig) -> tuple[list[dict], dict]:
+    """`cfg.forced_class` disagreeing with the unforced classifier's own
+    verdict, while a photo-tonal `fill_technique` is selected — see the
+    threshold block above this function for the full reasoning.
+
+    Needs the artwork (re-reads it through `stage0_classify.classify`, the
+    same "no image, skip and say so" convention `_photo_resolution_findings`
+    / `_thread_match_findings` use) and only actually runs that second
+    classification when there is something to disagree about: no
+    `forced_class` set, or a `fill_technique` outside the photo-tonal list,
+    means nothing here can mismatch and the unforced classifier — the one
+    signal-computation cost this check would otherwise add to every forced
+    job — is never invoked.
+    """
+    metrics: dict = {"class_override_detected_class": None}
+    technique = (cfg.fill_technique or "tatami").lower()
+    if image is None or not cfg.forced_class or technique not in _PHOTO_TONAL_TECHNIQUES:
+        return [], metrics
+    unforced = classify(image, cfg, forced_class=None)
+    metrics["class_override_detected_class"] = unforced.class_
+    if unforced.class_ == cfg.forced_class:
+        return [], metrics
+    return [finding(
+        CLASS_OVERRIDE_TECHNIQUE_MISMATCH,
+        "warn",
+        f'This design is forced to classify as "{cfg.forced_class}", but '
+        f'reads as "{unforced.class_}" on its own, and the selected fill '
+        f'technique ("{technique}") assumes photo-tonal content. Forcing '
+        "the class is fine if that is what you intended — just confirm the "
+        "result looks right before sewing.",
+        forced_class=cfg.forced_class,
+        detected_class=unforced.class_,
+        fill_technique=technique,
+    )], metrics
+
+
+def _stabilizer_findings(plan: StitchPlan) -> list[dict]:
+    """The cutaway prescription for a heavy design [P — OESD, via the photo
+    plan §2 row 15]. INFO: nothing is wrong with the file — the operator
+    just has to hoop the right stabilizer under it, and the worksheet is
+    where that instruction lives (src/pdfsheet.js carries the twin rule for
+    designs that never pass through this service)."""
+    count = plan.stats.stitch_count
+    if count <= STITCHES_CUTAWAY_MIN:
+        return []
+    return [finding(
+        STABILIZER_CUTAWAY,
+        "info",
+        f"{count:,} stitches — over {STITCHES_CUTAWAY_MIN:,}, use cutaway "
+        "stabilizer: tear-away releases under this much thread and the "
+        "design distorts when the hoop comes off.",
+        stitch_count=count,
+        threshold=STITCHES_CUTAWAY_MIN,
+    )]
+
+
+def _color_stop_findings(plan: StitchPlan) -> tuple[list[dict], int]:
+    """Color stops past the single-needle wall (COLOR_STOPS_MAX has the
+    derivation and the measured fixture counts). Counted from plan.stats —
+    every block boundary is a machine stop and, on a single needle, a manual
+    re-thread."""
+    changes = plan.stats.color_changes
+    if changes <= COLOR_STOPS_MAX:
+        return [], changes
+    return [finding(
+        COLOR_STOPS_HEAVY,
+        "warn",
+        f"{changes} thread changes — a single-needle machine stops for a "
+        f"manual re-thread at every one, and past {COLOR_STOPS_MAX} that is "
+        "an afternoon at the machine. Merge similar colors, or sew this on "
+        "a multi-needle machine.",
+        color_changes=changes,
+        max_stops=COLOR_STOPS_MAX,
+    )], changes
 
 
 # --- Lettering size ---------------------------------------------------------
@@ -1045,9 +1408,11 @@ def _link_findings(plan: StitchPlan,
 def _contour_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
     """The contour tier's own starvation report, put in front of the operator.
 
-    Stage 6 counts a contour-filled shape `starved` when the rings it had to
-    drop — too short to sew — leave more than
-    `machine.CONTOUR_STARVED_FRAC` of the shape bare, and stage 7 raises
+    Stage 6 counts a contour-filled shape `starved` when the widest circle of
+    bare fabric between its emitted stitches (measured per shape by
+    `barecircle.widest_bare_circle` — since 2026-08-04 the gate is that
+    measurement, not the dropped-ring area sum) beats
+    `barecircle.starved_threshold_mm`, and stage 7 raises
     CONTOUR_RING_UNREACHABLE. That warning goes to `plan.warnings`, which the
     review screen reads and the preflight report did not, so the one number
     that says a fill has a hole in it reached nobody scoring a file.
@@ -1169,12 +1534,29 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     findings: list[dict] = []
     metrics: dict = {}
 
+    # One stage-1 re-read serves every check that needs the artwork: the
+    # thread-match rasterization and the two photo guardrails (resolution,
+    # subject contrast). Without the artwork all three are skipped and the
+    # metrics say so, each with its own None.
+    p = prep(image, cfg) if image is not None else None
+
     worst_de: float | None = None
-    if image is not None:
-        thread_findings, worst_de = _thread_match_findings(image, result, cfg)
+    if p is not None and result is not None:
+        thread_findings, worst_de = _thread_match_findings(p, result, cfg)
         findings.extend(thread_findings)
-    metrics["thread_match_checked"] = image is not None
+    metrics["thread_match_checked"] = p is not None and result is not None
     metrics["thread_worst_delta_e"] = None if worst_de is None else round(worst_de, 1)
+
+    if p is not None:
+        res_findings, res_metrics = _photo_resolution_findings(p, plan, cfg)
+        findings.extend(res_findings)
+        metrics.update(res_metrics)
+        contrast_findings, contrast_metrics = _subject_contrast_findings(p, plan, cfg)
+        findings.extend(contrast_findings)
+        metrics.update(contrast_metrics)
+    else:
+        metrics["input_px_per_mm"] = None
+        metrics["subject_bg_delta_l"] = None
 
     lettering, satin_shape_count = _lettering_findings(plan)
     findings.extend(lettering)
@@ -1207,6 +1589,20 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     hole_findings, hole_rate = _same_hole_findings(plan)
     findings.extend(hole_findings)
     metrics["same_hole_fraction"] = None if hole_rate is None else round(hole_rate, 3)
+
+    face_findings, face_metrics = _face_size_findings(plan)
+    findings.extend(face_findings)
+    metrics.update(face_metrics)
+
+    override_findings, override_metrics = _class_override_findings(image, cfg)
+    findings.extend(override_findings)
+    metrics.update(override_metrics)
+
+    findings.extend(_stabilizer_findings(plan))
+
+    stop_findings, color_changes = _color_stop_findings(plan)
+    findings.extend(stop_findings)
+    metrics["color_changes"] = color_changes
 
     metrics["stitch_count"] = plan.stats.stitch_count
 

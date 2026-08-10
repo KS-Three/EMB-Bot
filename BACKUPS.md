@@ -25,8 +25,11 @@ Folder: `G:\My Drive\EMB-Bot\` (also visible at drive.google.com under
 
 ## GitHub (stays current — best reference copy)
 
-https://github.com/kent746/EMB-Bot — pushed 2026-07-27. Every future push
-updates it; the Drive files above are point-in-time snapshots.
+https://github.com/KS-Three/EMB-Bot — pushed 2026-07-27, transferred to the
+KS-Three account 2026-08-06. Every future push updates it; the Drive files
+above are point-in-time snapshots. (The old `kent746/EMB-Bot` URL still
+redirects here for a while, per GitHub's own transfer behavior, but treat
+this one as current.)
 
 ## Font source material (not in the repo)
 

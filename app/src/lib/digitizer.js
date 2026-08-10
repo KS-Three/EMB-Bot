@@ -87,6 +87,16 @@ export function buildDigitizeConfig(element, project) {
   const edits = canonicalShapeEdits(element || {});
   if (edits.deleted_shape_ids) cfg.deleted_shape_ids = edits.deleted_shape_ids;
   if (edits.shape_overrides) cfg.shape_overrides = edits.shape_overrides;
+  // Shape identity edits (contract v1.5) — same "sticky, ride every future
+  // re-digitize" posture as deleted_shape_ids: a merge/split is not a
+  // one-shot mutation, it is a standing decision that re-applies to whatever
+  // shape ids the SAME artwork/config keeps producing (stage 1-4 is
+  // deterministic, so an unchanged source image regenerates the same source
+  // ids every time, and the merge/split keeps consuming them into the same
+  // deterministic result id — see regions.py's module docstring for why this
+  // is safe/expected).
+  if (edits.merge_shape_ids) cfg.merge_shape_ids = edits.merge_shape_ids;
+  if (edits.split_shapes) cfg.split_shapes = edits.split_shapes;
   // A recolor's thread_index indexes the CHART OF THE JOB IT WAS PICKED
   // AGAINST (element.review.brandId). If the user's brand preference moved
   // on since, sending the new brand would silently re-aim every picked
@@ -106,9 +116,47 @@ export function buildDigitizeConfig(element, project) {
 
 // Closed vocabularies, mirrored from the service's _canonicalize_shape_edits
 // (digitizer_service/app.py). "auto" tier is the absence of an override on
-// both ends.
-const SHAPE_TIERS = new Set(["satin", "fill", "run"]);
+// both ends. "sketch" (contract v1.3) added alongside the tier dropdown's
+// Sketch option in DigitizePanel.svelte — keep both in lockstep with
+// app.py's _TIER_VALUES, or a selected value silently canonicalizes to
+// nothing here and never reaches the wire. "streamline" (contract v1.6,
+// the evenly-spaced thread-paint tier, previously reachable only via the
+// design-wide fill_technique="streamline" preset) joined the same way,
+// alongside the dropdown's Streamline option. "crosshatch" (the two-pass
+// angled tatami fill, digitizer_core/stage6_fill.py's
+// _crosshatch_fill_paths) joined the same way again, alongside the
+// dropdown's Cross-hatch option — same dual reach as streamline (design-wide
+// fill_technique or per-shape tier), but geometric, not tonal. "wave",
+// "chevron" and "brick" (stage6_fill._wave_row_points / _chevron_row_points
+// / _brick_row_points) joined the same way once more, alongside the
+// dropdown's Wave/Chevron/Brick options — three more geometric row-shape
+// variants, same dual reach and no-source-pixels-needed contract as
+// crosshatch, each changing only how one row's own interior points land.
+const SHAPE_TIERS = new Set([
+  "satin", "fill", "run", "sketch", "streamline", "crosshatch",
+  "wave", "chevron", "brick",
+]);
 const SHAPE_BORDERS = new Set(["off", "auto", "bean"]);
+// fabrics.py's own vocabulary, verbatim. Unlike `tier`/`border`, this set has
+// no "auto" member of its own — the absence of the key IS auto (inherit the
+// design-wide underlay_style/fabric default), same convention `fill_angle_deg`
+// uses. Reaches fill/contour-classified shapes only; a satin-classified shape
+// ignores it (see digitizer_core/config.py's shape_overrides docstring).
+const SHAPE_UNDERLAYS = new Set([
+  "none", "edge_run", "center_run", "edge_zigzag", "edge_lattice",
+  "double_lattice", "zigzag",
+]);
+// `boundary_override` (contract v1.4) point-count bounds — mirrored, verbatim,
+// from `digitizer_service.app`'s `_MIN_BOUNDARY_POINTS`/`_MAX_BOUNDARY_POINTS`.
+// This is the shallow, cheap-to-check half; the real geometry validation
+// (self-intersection, the sewability floor) is server-side, in
+// `digitizer_core.regions.apply_shape_edits` — `boundaryIssues` below mirrors
+// enough of it for live UI feedback, but the server has the final word.
+const BOUNDARY_MIN_POINTS = 3;
+const BOUNDARY_MAX_POINTS = 500;
+// `merge_shape_ids` (contract v1.5) — mirrored, verbatim, from
+// `digitizer_service.app`'s `_MIN_MERGE_SHAPES`.
+const MERGE_MIN_SHAPES = 2;
 
 // The element's shape edits in the service's own canonical wire form:
 // deleted ids sorted + deduped, override keys sorted, null/"auto"/app-only
@@ -117,6 +165,19 @@ const SHAPE_BORDERS = new Set(["off", "auto", "bean"]);
 // them). Canonical HERE, not just server-side, because the panel compares
 // this against `element.appliedEdits` to know whether edits are pending —
 // two spellings of the same edit must never read as "pending changes".
+//
+// `stitched` (BACKGROUND_ENCLOSED restore, contract v1.1) is a plain
+// boolean, not a closed vocabulary: `true` restores a shape the digitizer
+// excluded by default (an enclosed-background region — see reviewFromJob's
+// `stitched` mapping), `false` explicitly excludes one. Unlike the other
+// fields it has no "auto" spelling — the absence of the key IS auto,
+// exactly like every other override here.
+//
+// `sew_order` (contract v1.2) is a shape's explicit position within its OWN
+// color layer's sew sequence — distinct from `layer`, which picks WHICH
+// layer a shape sews in. Like `layer`, absence is the whole "no override"
+// spelling (there is no "auto" word for it): the service falls back to
+// nearest-neighbour for any shape in the layer that carries no override.
 export function canonicalShapeEdits(element) {
   const out = {};
   const deleted = Array.from(new Set(element.deletedShapeIds || []))
@@ -134,11 +195,52 @@ export function canonicalShapeEdits(element) {
     if (typeof e.fill_angle_deg === "number" && isFinite(e.fill_angle_deg)) entry.fill_angle_deg = e.fill_angle_deg;
     if (SHAPE_TIERS.has(e.tier)) entry.tier = e.tier;
     if (SHAPE_BORDERS.has(e.border)) entry.border = e.border;
+    if (SHAPE_UNDERLAYS.has(e.underlay_style)) entry.underlay_style = e.underlay_style;
     if (Number.isInteger(e.layer)) entry.layer = e.layer;
+    if (typeof e.stitched === "boolean") entry.stitched = e.stitched;
+    if (Number.isInteger(e.sew_order) && e.sew_order >= 0) entry.sew_order = e.sew_order;
+    if (isValidBoundaryShape(e.boundary_override)) {
+      entry.boundary_override = e.boundary_override.map(([x, y]) => [x, y]);
+    }
     if (Object.keys(entry).length) overrides[sid] = entry;
   }
   if (Object.keys(overrides).length) out.shape_overrides = overrides;
+
+  // `merge_shape_ids` (contract v1.5) — canonicalized exactly the way the
+  // service does (`_canonicalize_shape_edits`): each group de-duplicated and
+  // sorted, then the whole list of groups sorted, so two spellings of one
+  // merge request are one cache key/one "pending edits" reading here too.
+  const groups = (element.mergeGroups || [])
+    .map((g) => Array.from(new Set((g || []).filter((s) => typeof s === "string" && s))).sort())
+    .filter((g) => g.length >= MERGE_MIN_SHAPES);
+  groups.sort((a, b) => (a.join("") < b.join("") ? -1 : 1));
+  if (groups.length) out.merge_shape_ids = groups;
+
+  // `split_shapes` (contract v1.5) — same shallow shape check as the
+  // service's own parse: exactly two finite [x, y] points, non-zero length.
+  // The two endpoints are also sorted into the same canonical order the
+  // service/core both use, so submitting the same drag with its two points
+  // swapped is one cache key/one "pending edit" reading, not two.
+  const splitSrc = element.splitLines || {};
+  const splits = {};
+  for (const sid of Object.keys(splitSrc).sort()) {
+    const line = splitSrc[sid];
+    if (isValidSplitLine(line)) {
+      splits[sid] = [...line].map(([x, y]) => [x, y]).sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]));
+    }
+  }
+  if (Object.keys(splits).length) out.split_shapes = splits;
+
   return out;
+}
+
+function isValidSplitLine(line) {
+  if (!Array.isArray(line) || line.length !== 2) return false;
+  if (!line.every((p) => Array.isArray(p) && p.length === 2 && p.every((c) => typeof c === "number" && Number.isFinite(c)))) {
+    return false;
+  }
+  const [a, b] = line;
+  return Math.hypot(b[0] - a[0], b[1] - a[1]) > 1e-6;
 }
 
 // Stable string identity for a canonical edit set (canonicalShapeEdits
@@ -149,7 +251,116 @@ export function editsKey(edits) {
   return JSON.stringify([
     (edits && edits.deleted_shape_ids) || [],
     (edits && edits.shape_overrides) || {},
+    (edits && edits.merge_shape_ids) || [],
+    (edits && edits.split_shapes) || {},
   ]);
+}
+
+// Within-layer sew-order reorder (contract v1.2, the Layers panel's up/down
+// control for shapes sharing one color). `rowIds` is the layer's OWN shapes
+// in their currently displayed order — already accounting for any sew_order
+// override in effect and, absent one, the natural nearest-neighbour order —
+// `targetId` the shape being moved, `dir` -1 (earlier) or 1 (later).
+//
+// Returns { shape_id: newSewOrder, ... } for EVERY shape in the layer, or
+// null when the move is out of bounds (already first/last). Every member is
+// assigned an explicit slot, not just the two that swapped: a partial pin —
+// "move these two, leave the rest to nearest-neighbour" — cannot express
+// "swap adjacent items" unambiguously once nearest-neighbour is free to
+// reshuffle the untouched slots around them (the service falls back to it
+// per shape, not per layer). Committing the whole layer's order the first
+// time the user touches it is the predictable reading: from then on, this
+// layer sews exactly the order the list shows.
+export function reorderWithinLayer(rowIds, targetId, dir) {
+  const i = rowIds.indexOf(targetId);
+  if (i < 0) return null;
+  const j = i + dir;
+  if (j < 0 || j >= rowIds.length) return null;
+  const next = rowIds.slice();
+  [next[i], next[j]] = [next[j], next[i]];
+  const out = {};
+  next.forEach((id, idx) => {
+    out[id] = idx;
+  });
+  return out;
+}
+
+// ---- Layers-list sort/grouping (shape-layers contract v1) -----------------
+// Pure, ID/override-shaped logic shared by DigitizePanel's plain per-shape
+// Layers list and its color-block Sequencer view — moved here (rather than
+// kept component-local) the same way reorderWithinLayer already was, so
+// there is exactly one implementation of "what layer/order does this row
+// effectively have" to test and keep in sync with the override contract.
+
+// Effective layer: the user's explicit override, else the layer the engine
+// assigned (one per thread), else last. Rows sort by it, then by the
+// emitted sew position — the list IS the sew order.
+export function effLayer(row, ov) {
+  const e = ov[row.id] || {};
+  if (Number.isInteger(e.layer)) return e.layer;
+  if (row.layer != null) return row.layer;
+  return row.sewIndex == null ? 1e9 : row.sewIndex;
+}
+
+export function sortShapes(shapes, ov) {
+  return [...shapes].sort(
+    (a, b) =>
+      effLayer(a, ov) - effLayer(b, ov) ||
+      (a.sewIndex == null ? 1e9 : a.sewIndex) - (b.sewIndex == null ? 1e9 : b.sewIndex) ||
+      (a.id < b.id ? -1 : 1)
+  );
+}
+
+// Effective within-layer sew order (contract v1.2): the user's explicit
+// override, else what the LAST applied result actually sewed (row.sewOrder
+// — set only when a previous override took effect), else the emitted sew
+// position, which is nearest-neighbour's own answer. Distinct from
+// effLayer: that picks WHICH color block a shape sews in, this picks WHERE
+// within it — the two overrides are independent and can both be set.
+export function effSewOrder(row, ov) {
+  const e = ov[row.id] || {};
+  if (Number.isInteger(e.sew_order)) return e.sew_order;
+  if (Number.isInteger(row.sewOrder)) return row.sewOrder;
+  return row.sewIndex == null ? 1e9 : row.sewIndex;
+}
+
+// The shapes sharing `row`'s effective layer, in their current within-layer
+// order — the pool moveShapeWithinLayer reorders and its up/down buttons
+// enable/disable against.
+export function layerSiblings(row, shapes, ov) {
+  const layer = effLayer(row, ov);
+  return shapes
+    .filter((r) => effLayer(r, ov) === layer)
+    .sort((a, b) => effSewOrder(a, ov) - effSewOrder(b, ov) || (a.id < b.id ? -1 : 1));
+}
+
+export function effRgb(row, ov) {
+  const e = ov[row.id] || {};
+  return e.rgb || row.rgb || [136, 136, 136];
+}
+
+// The Sequencer view's color blocks: `rows` (already the sewable subset, in
+// sew order) grouped by effLayer — a block IS one color's whole run before
+// the machine changes thread. One row per block instead of one row per
+// shape, in the same sequence the plain Layers list's up/down buttons walk.
+export function groupIntoBlocks(rows, ov) {
+  const byLayer = new Map();
+  for (const row of rows) {
+    const layer = effLayer(row, ov);
+    if (!byLayer.has(layer)) byLayer.set(layer, []);
+    byLayer.get(layer).push(row);
+  }
+  return [...byLayer.entries()].map(([layer, blockRows]) => {
+    const indices = blockRows.map((r) => r.sewIndex).filter((v) => v != null);
+    return {
+      layer,
+      rows: blockRows,
+      rgb: effRgb(blockRows[0], ov),
+      threadNumber: blockRows[0].threadNumber,
+      sewIndexMin: indices.length ? Math.min(...indices) : null,
+      sewIndexMax: indices.length ? Math.max(...indices) : null,
+    };
+  });
 }
 
 // Outline decimation for the row thumbnails: keep at most `max` points,
@@ -169,6 +380,402 @@ export function thinOutline(points, max = 48) {
   return out;
 }
 
+// ---- boundary override editing (contract v1.4) -----------------------------
+//
+// A shallow shape check — array length + [x, y] finite-number pairs — the
+// same cheap half `digitizer_service.app`'s wire validation does before ever
+// looking at the shape's own geometry. Used to decide whether a stored
+// boundary_override edit is even worth sending; the real geometry checks
+// (self-intersection, the sewability floor) are `boundaryIssues` below, for
+// live editor feedback, and — authoritatively — the server.
+function isValidBoundaryShape(pts) {
+  return (
+    Array.isArray(pts) &&
+    pts.length >= BOUNDARY_MIN_POINTS &&
+    pts.length <= BOUNDARY_MAX_POINTS &&
+    pts.every(
+      (p) =>
+        Array.isArray(p) &&
+        p.length === 2 &&
+        p.every((c) => typeof c === "number" && Number.isFinite(c))
+    )
+  );
+}
+
+// Drop consecutive duplicate points, including a closing point that repeats
+// the first — mirrors `digitizer_core.regions._dedupe_ring` /
+// `digitizer_service.app._dedupe_ring` (the same function, twice-mirrored
+// server-side; this is the client's own copy). `outline_mm` on the wire is
+// shapely's own `exterior.coords`, which always repeats the first point as
+// the last; the boundary editor wants one open ring, not a handle sitting
+// exactly on top of another.
+export function dedupeRing(points) {
+  const out = [];
+  for (const p of points || []) {
+    const last = out[out.length - 1];
+    if (last && last[0] === p[0] && last[1] === p[1]) continue;
+    out.push(p);
+  }
+  if (out.length > 1) {
+    const first = out[0];
+    const last = out[out.length - 1];
+    if (first[0] === last[0] && first[1] === last[1]) out.pop();
+  }
+  return out;
+}
+
+// Shoelace formula, absolute value — mm².
+export function ringArea(points) {
+  const pts = points || [];
+  const n = pts.length;
+  let a = 0;
+  for (let i = 0; i < n; i++) {
+    const [x1, y1] = pts[i];
+    const [x2, y2] = pts[(i + 1) % n];
+    a += x1 * y2 - x2 * y1;
+  }
+  return Math.abs(a) / 2;
+}
+
+function ringPerimeter(points) {
+  const pts = points || [];
+  const n = pts.length;
+  let p = 0;
+  for (let i = 0; i < n; i++) {
+    const [x1, y1] = pts[i];
+    const [x2, y2] = pts[(i + 1) % n];
+    p += Math.hypot(x2 - x1, y2 - y1);
+  }
+  return p;
+}
+
+// Standard orientation/on-segment test (CLRS) — used only to answer "do these
+// two segments cross", not to classify HOW.
+function orientation(p, q, r) {
+  const val = (q[1] - p[1]) * (r[0] - q[0]) - (q[0] - p[0]) * (r[1] - q[1]);
+  if (Math.abs(val) < 1e-9) return 0;
+  return val > 0 ? 1 : 2;
+}
+function onSegment(p, q, r) {
+  return (
+    Math.min(p[0], r[0]) - 1e-9 <= q[0] && q[0] <= Math.max(p[0], r[0]) + 1e-9 &&
+    Math.min(p[1], r[1]) - 1e-9 <= q[1] && q[1] <= Math.max(p[1], r[1]) + 1e-9
+  );
+}
+function segmentsIntersect(p1, p2, p3, p4) {
+  const o1 = orientation(p1, p2, p3);
+  const o2 = orientation(p1, p2, p4);
+  const o3 = orientation(p3, p4, p1);
+  const o4 = orientation(p3, p4, p2);
+  if (o1 !== o2 && o3 !== o4) return true;
+  if (o1 === 0 && onSegment(p1, p3, p2)) return true;
+  if (o2 === 0 && onSegment(p1, p4, p2)) return true;
+  if (o3 === 0 && onSegment(p3, p1, p4)) return true;
+  if (o4 === 0 && onSegment(p3, p2, p4)) return true;
+  return false;
+}
+
+// The sewability floor a hand-edited boundary must clear — mirrors
+// `machine.RUN_MIN_AREA_MM2` / `RUN_MIN_LOOP_MM`, the same floor
+// `digitizer_core.regions.apply_shape_edits` holds every boundary_override
+// to (a loop the bean run can close, on a shape at least the thread's own
+// visual weight).
+export const BOUNDARY_MIN_AREA_MM2 = 0.16;
+export const BOUNDARY_MIN_PERIMETER_MM = 2.2;
+
+// Live feedback for the boundary editor: human-readable problems with the
+// CURRENT working ring, or [] when it would pass the server's checks. Not a
+// replacement for server-side validation (defense in depth stays server-
+// side, in `apply_shape_edits`) — this exists so a self-crossing drag or a
+// pinched-shut shape reads as invalid WHILE editing, not only after "Apply
+// layer changes" comes back with an error. Deliberately does not check hole
+// containment: the editor never touches holes (exterior-ring-only edits),
+// so that check — the one thing only the server can do, since it alone
+// knows the shape's existing holes — never applies here.
+export function boundaryIssues(points) {
+  const pts = points || [];
+  const issues = [];
+  if (pts.length < BOUNDARY_MIN_POINTS) {
+    issues.push(`Needs at least ${BOUNDARY_MIN_POINTS} points.`);
+    return issues;
+  }
+  if (pts.length > BOUNDARY_MAX_POINTS) {
+    issues.push(`Too many points (max ${BOUNDARY_MAX_POINTS}).`);
+  }
+  const n = pts.length;
+  outer: for (let i = 0; i < n; i++) {
+    const a1 = pts[i], a2 = pts[(i + 1) % n];
+    for (let j = i + 1; j < n; j++) {
+      const adjacent = j === i + 1 || (i === 0 && j === n - 1);
+      if (adjacent) continue;
+      const b1 = pts[j], b2 = pts[(j + 1) % n];
+      if (segmentsIntersect(a1, a2, b1, b2)) {
+        issues.push("This boundary crosses itself.");
+        break outer;
+      }
+    }
+  }
+  if (ringArea(pts) < BOUNDARY_MIN_AREA_MM2 || ringPerimeter(pts) < BOUNDARY_MIN_PERIMETER_MM) {
+    issues.push("This shape is too small to sew.");
+  }
+  return issues;
+}
+
+// ---- shape identity edits (contract v1.5): merge and split -----------------
+//
+// Live feedback for the two select-and-combine / draw-a-cut-line controls,
+// mirroring `boundaryIssues`' own posture: cheap, pure checks for immediate
+// UI feedback, never the authority — the server (`digitizer_service.app`'s
+// shallow request check) and the core (`regions.apply_shape_merges`/
+// `apply_shape_splits`'s real geometry check) both still run independently.
+// Neither of these can check what only the server's Region objects can (a
+// merge's adjacency/union-is-one-polygon test, a split's hole-crossing
+// test) — see the module comment in `regions.py` for the full reasoning.
+
+// Rows a merge selection may combine: same non-empty thread number, at least
+// MERGE_MIN_SHAPES of them. `rows` is [{ id, threadNumber }, ...] — the
+// selected Layers-panel rows.
+export function mergeGroupIssues(rows) {
+  const issues = [];
+  const list = rows || [];
+  if (list.length < MERGE_MIN_SHAPES) {
+    issues.push(`Select at least ${MERGE_MIN_SHAPES} shapes to merge.`);
+    return issues;
+  }
+  const threads = new Set(list.map((r) => r.threadNumber));
+  if (threads.size > 1) {
+    issues.push("Merging only works within one color — select shapes of the same thread.");
+  }
+  return issues;
+}
+
+// Does a straight line (extended well past the shape's own bounding box, the
+// same trick `regions.apply_shape_splits` uses so the caller need only send
+// the two dragged endpoints) cross `outline`'s edges exactly twice — the
+// only way a single cut divides a simple polygon into exactly two pieces.
+// Deliberately does not check hole-crossing (the one thing only the server
+// can do, since it alone sees the shape's own holes) — same asymmetry
+// `boundaryIssues` already has for hole containment.
+export function splitLineIssues(outline, line) {
+  const pts = outline || [];
+  if (pts.length < 3) return ["This shape has no outline to cut."];
+  const [a, b] = line || [];
+  if (!a || !b) return ["Needs two points."];
+  const dx = b[0] - a[0], dy = b[1] - a[1];
+  const len = Math.hypot(dx, dy);
+  if (len < 1e-6) return ["The two points must be different."];
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const [x, y] of pts) {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+  const diag = Math.hypot(maxX - minX, maxY - minY) || 1;
+  const ux = dx / len, uy = dy / len;
+  const ext = diag * 10;
+  const p1 = [a[0] - ux * ext, a[1] - uy * ext];
+  const p2 = [b[0] + ux * ext, b[1] + uy * ext];
+
+  let crossings = 0;
+  const n = pts.length;
+  for (let i = 0; i < n; i++) {
+    if (segmentsIntersect(p1, p2, pts[i], pts[(i + 1) % n])) crossings++;
+  }
+  if (crossings !== 2) {
+    return ["This line must cross the shape's outline exactly twice to split it in two."];
+  }
+  return [];
+}
+
+// ---- text-cluster detection (Studio-side helpers) --------------------------
+//
+// `textCandidate`/`textClusterId` (reviewFromJob's mapping, straight off the
+// wire's `text_candidate`/`text_cluster_id`) mark a shape as a member of a
+// server-detected "looks like text" cluster — DETECTION is geometry-only, no
+// OCR, see `digitizer_core/textcluster.py`'s design doc. Once a cluster is
+// detected, `ocrChar`/`ocrConfidence` (also reviewFromJob's mapping, off the
+// wire's `ocr_char`/`ocr_confidence` — `textcluster.py`'s separate
+// `ocr_suggest_text` pass) carry a per-member OCR read Studio may use to
+// PREFILL the new text element, gated by `OCR_SUGGESTION_MIN_CONFIDENCE`
+// below. These are the pure-logic helpers DigitizePanel's badge/convert/undo
+// controls run off: which cluster ids are visible right now (one "Convert to
+// text" action per id, several rows can share one), and a bbox-derived seed
+// patch (now including the gated OCR guess) for the new text element
+// (project.js's `addSeededTextElement`).
+
+// Unique `textClusterId` values among `rows`, in first-seen order — the
+// "once per cluster, not per row" rule the convert action needs.
+export function textClusterIds(rows) {
+  const seen = new Set();
+  const out = [];
+  for (const r of rows || []) {
+    if (r && r.textCandidate && r.textClusterId && !seen.has(r.textClusterId)) {
+      seen.add(r.textClusterId);
+      out.push(r.textClusterId);
+    }
+  }
+  return out;
+}
+
+// All rows sharing one cluster id.
+export function textClusterMembers(rows, clusterId) {
+  return (rows || []).filter((r) => r && r.textClusterId === clusterId);
+}
+
+function bboxOfRows(rows) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const r of rows || []) {
+    for (const [x, y] of (r && (r.outlineFull || r.outline)) || []) {
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+  return { minX, minY, maxX, maxY };
+}
+
+// OCR-suggested-text confidence gate (Studio's call, not the service's — see
+// digitizer_core/textcluster.py's `ocr_suggest_text`, which reports a raw
+// per-member `(ocrChar, ocrConfidence)` read and takes no position on
+// "good enough"). This exists because a prefilled-but-editable field is NOT
+// automatically as safe as an empty one: automation-bias research on this
+// exact pattern found people catch errors in a confident-looking WRONG
+// suggestion only ~30% of the time, vs. ~75% when the system visibly hedges
+// — so an unconfirmed OCR guess must never look indistinguishable from text
+// the user actually typed, and must never be offered at all unless the
+// signal backing it is strong. Below this floor, `textClusterSeed` falls
+// back to `text: ""` / `textSource: null` — EXACTLY today's pre-OCR
+// behavior, not a softer guess.
+//
+// Aggregation is the MINIMUM confidence across the cluster's members, not a
+// mean/median: a word is only as trustworthy as its worst-read letter, and
+// using a mean would let one badly-misread character hide inside an
+// otherwise-confident average (measured directly, not assumed — see below).
+//
+// Threshold calibration (measured, not assumed, same discipline
+// `_OCR_CONFIDENCE_DROP_THRESHOLD` in `text-cluster-ocr-confidence-gate`
+// uses): per-member confidence is Tesseract's own mean `data["conf"]`
+// (0..100, `--psm 10`, one rescued glyph per crop). Two real populations
+// were measured with the real Tesseract binary:
+//   - GENUINELY WRONG reads. The real benchmark fixture's own "ENTERPRISES
+//     INC." subline cluster (14 members, 2 real misreads — a "P" read as
+//     ">", an "I" read as nothing) has a cluster MIN of 0.0 (Tesseract found
+//     no text at all in one crop). A synthetic control word with one
+//     genuinely misread glyph ("TEXT", its "X" read as "»") has a cluster
+//     MIN of 7.0. The worst MIN observed across every wrong-guess case: 7.0.
+//   - GENUINELY CORRECT reads. Synthetic control words rendered in a real
+//     font (DejaVu Sans Bold) and read back correctly in full ("SALE",
+//     "GOLD", "MEDAL", "TEAM") have cluster MINs of 70.0, 87.0, 70.0, 70.0.
+//     The weakest MIN observed across every fully-correct case: 70.0.
+// That leaves a wide (7.0, 70.0) gap with no observed counterexample either
+// side. 55 sits centered in it — comfortably above the worst wrong-guess MIN
+// seen (7.0, and the real fixture's 0.0), comfortably below the weakest
+// correct-guess MIN seen (70.0), leaving margin for real-world glyphs noisier
+// than either synthetic control.
+export const OCR_SUGGESTION_MIN_CONFIDENCE = 55;
+
+// -> best-guess word (left-to-right by each member's own bbox minX) plus its
+// cluster-MIN confidence, or `null` if any member is missing OCR data
+// entirely (an older service, or a member whose own measurement failed) —
+// treated as "no signal", the same conservative default as a real
+// below-threshold read.
+function ocrClusterGuess(members) {
+  if (!members.length) return null;
+  const ordered = [...members].sort((a, b) => bboxOfRows([a]).minX - bboxOfRows([b]).minX);
+  let text = "";
+  let minConfidence = Infinity;
+  for (const r of ordered) {
+    if (typeof r.ocrChar !== "string" || !r.ocrChar || typeof r.ocrConfidence !== "number") {
+      return null;
+    }
+    text += r.ocrChar;
+    minConfidence = Math.min(minConfidence, r.ocrConfidence);
+  }
+  return { text, confidence: minConfidence };
+}
+
+// Bbox -> seed patch for `addSeededTextElement`. Position is computed
+// DESIGN-CENTER-RELATIVE, in the same raw `outline_mm`/`outlineFull` mm
+// space this file already reads directly elsewhere for boundary editing (no
+// rotation/offset transform through the source element's own field
+// placement) — "design center" here is the combined bbox center of
+// `allRows` (every currently-known shape in the review), the best proxy
+// available client-side for the artwork's own extent (the wire's
+// `design_size_mm` isn't threaded through `reviewFromJob` today). This is a
+// first-pass approximation, not exact registration against the source
+// element's rotation/position on the field — documented, not hidden.
+//   sizeMm — a guess from the cluster's own bbox height, not a real font-size
+//   measurement.
+//   colorRgb — the most common member row's rgb (a plain majority vote, not
+//   a weighted average) — [20, 20, 20] (defaultTextElement's own default)
+//   when no member carries a resolved color.
+//   rotationDeg — punted to 0: no baseline-angle estimate is cheaply
+//   available from a review row's shape, and a fake-precision guess is worse
+//   than an honest default the user can dial in themselves.
+//   fontKey — always an explicit null override (mirrors defaultTextElement's
+//   would-otherwise-be "medium_font"): OCR gives characters, never a
+//   matching typeface, so this is NEVER auto-picked, regardless of how
+//   confident the text guess below is.
+//   text/textSource — OCR-GATED (see OCR_SUGGESTION_MIN_CONFIDENCE below):
+//   above the confidence floor, a best-guess word assembled from each
+//   member's own `ocrChar` (left-to-right by bbox, one member = one
+//   character) and `textSource: "ocr-suggested"` so TextStep can render an
+//   "unconfirmed suggestion" advisory instead of treating it like the user
+//   typed it. Below the floor (including every field simply being absent —
+//   a pre-OCR service, or Tesseract unavailable server-side) this is
+//   UNCHANGED from before OCR existed: explicit empty "" / textSource null,
+//   nothing auto-filled that could be silently wrong. This distinction is
+//   safety-load-bearing, not cosmetic — see OCR_SUGGESTION_MIN_CONFIDENCE's
+//   own comment for why a prefilled-but-wrong guess is measurably MORE
+//   dangerous than an empty field (automation bias), which is exactly why
+//   the gate defaults to the pre-OCR empty behavior on any uncertainty.
+export function textClusterSeed(memberRows, allRows) {
+  const members = memberRows || [];
+  const cluster = bboxOfRows(members);
+  const design = bboxOfRows(allRows && allRows.length ? allRows : members);
+  const clusterCx = (cluster.minX + cluster.maxX) / 2;
+  const clusterCy = (cluster.minY + cluster.maxY) / 2;
+  const designCx = (design.minX + design.maxX) / 2;
+  const designCy = (design.minY + design.maxY) / 2;
+  const height = cluster.maxY - cluster.minY;
+
+  const counts = new Map();
+  for (const r of members) {
+    const key = JSON.stringify(r.rgb || null);
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  let bestKey = null, bestCount = -1;
+  for (const [key, count] of counts) {
+    if (count > bestCount) {
+      bestCount = count;
+      bestKey = key;
+    }
+  }
+  const votedColor = bestKey ? JSON.parse(bestKey) : null;
+
+  const guess = ocrClusterGuess(members);
+  const gated = guess && guess.confidence >= OCR_SUGGESTION_MIN_CONFIDENCE;
+
+  return {
+    text: gated ? guess.text : "",
+    fontKey: null,
+    offsetXMm: Number.isFinite(clusterCx - designCx) ? clusterCx - designCx : 0,
+    offsetYMm: Number.isFinite(clusterCy - designCy) ? clusterCy - designCy : 0,
+    sizeMm: Number.isFinite(height) && height > 0 ? height : null,
+    colorRgb: votedColor || [20, 20, 20],
+    rotationDeg: 0,
+    // Provenance flag (see TextStep.svelte): set only when the gate above
+    // actually accepted an OCR guess. Cleared the instant the user edits the
+    // textarea — an unconfirmed suggestion stops being "unconfirmed" the
+    // moment a human has looked at and touched it, whatever they changed it
+    // to.
+    textSource: gated ? "ocr-suggested" : null,
+  };
+}
+
 // Slim the job's review payload down to what the Layers list renders and
 // persists with the element. Field name mapping is deliberate: the wire
 // names (shape_id, thread_index, ...) stay in digitizer.js; the element
@@ -176,6 +783,17 @@ export function thinOutline(points, max = 48) {
 //   rgb — the shape's OWN thread color, resolved by thread number against
 //   the job palette first (a shape that produced no stitches has no
 //   sew_block but still has a thread), block index as the fallback.
+//   stitched — the digitizer's own default for the shape (contract v1.1):
+//   `false` means a BACKGROUND_ENCLOSED region left out of the stitch plan
+//   by default (e.g. white icon linework enclosed by a colored logo), not a
+//   user action. Missing on a response from a service that predates this
+//   field reads as `true` (every shape stitched, today's behavior) — the
+//   same "absent key = default" reading the field has on the wire.
+//   outlineFull — the boundary editor's working geometry (contract v1.4):
+//   the FULL polygon (deduped, capped at BOUNDARY_MAX_POINTS — the same cap
+//   the server enforces, so a shape under it is untouched), distinct from
+//   `outline` which is decimated hard for the 24px thumbnail and would
+//   silently reshape the polygon if the editor started from it instead.
 export function reviewFromJob(review) {
   if (!review || !Array.isArray(review.shapes)) return null;
   const palette = review.palette || [];
@@ -193,10 +811,36 @@ export function reviewFromJob(review) {
         null,
       areaMm2: s.area_mm2,
       layer: s.layer,
+      // The within-layer sew-order override in effect (contract v1.2), or
+      // null when this shape falls back to nearest-neighbour — echoed back
+      // the same way `layer` is, so the panel can tell an applied override
+      // from the computed default.
+      sewOrder: s.sew_order == null ? null : s.sew_order,
       sewIndex: s.sew_index,
       sewBlock: s.sew_block,
       tier: s.tier,
+      stitched: s.stitched !== false,
       outline: thinOutline(s.outline_mm),
+      outlineFull: thinOutline(dedupeRing(s.outline_mm), BOUNDARY_MAX_POINTS),
+      // Text-cluster detection (server-computed, read-only, no override key —
+      // see digitizer_service/app.py's _review_payload comment): whether this
+      // shape was tagged as a member of a detected "looks like text" cluster,
+      // and which one. A pre-contract service sends neither field; that reads
+      // as "not a candidate", same "absent key = default" convention every
+      // other read-only fact here (layer, stitched) already follows.
+      textCandidate: s.text_candidate === true,
+      textClusterId: s.text_cluster_id == null ? null : s.text_cluster_id,
+      // OCR-suggested text (server-computed, read-only — see app.py's
+      // _review_payload comment, same category as textCandidate above):
+      // this member's own single best-guess character plus Tesseract's own
+      // confidence (0..100). Both null when this shape was never a text
+      // candidate, or when the measurement itself failed — the GATE that
+      // decides whether to trust any of this lives in textClusterSeed
+      // below, never here. A pre-contract service sends neither field;
+      // that reads as "no suggestion", the same "absent key = default"
+      // convention textCandidate/textClusterId already follow.
+      ocrChar: s.ocr_char == null ? null : String(s.ocr_char),
+      ocrConfidence: typeof s.ocr_confidence === "number" ? s.ocr_confidence : null,
     })),
   };
 }
@@ -377,7 +1021,8 @@ const WARNING_TEXT = {
   INPUT_LOW_RESOLUTION: () =>
     "The image is low resolution for this stitch size. A larger image or a smaller size will sew sharper.",
   BACKGROUND_ENCLOSED: () =>
-    "Enclosed background-colored areas were left open, like the hole in an O.",
+    "Enclosed background-colored areas were left open, like the hole in an O. " +
+    "Find them in the Layers list, marked \"not sewn — enclosed area,\" to sew them.",
   COLOR_CAP_APPLIED: () =>
     "The art has more colors than the limit. The smallest areas now reuse the nearest kept color — raise Colors to keep more.",
   DROPPED_SMALL_SHAPES: (w) =>
@@ -424,6 +1069,14 @@ const WARNING_TEXT = {
     plural(w.count || 0,
       "One layer edit no longer matches any shape in the art, so it wasn't applied.",
       "{n} layer edits no longer match any shape in the art, so they weren't applied."),
+  SHAPES_MERGED_BY_USER: (w) =>
+    plural(w.count || 0,
+      "Two shapes were combined into one on the review screen.",
+      "{n} groups of shapes were combined into one on the review screen."),
+  SHAPE_SPLIT_BY_USER: (w) =>
+    plural(w.count || 0,
+      "One shape was cut into two on the review screen.",
+      "{n} shapes were cut into two on the review screen."),
 };
 
 // [{ code, message, ...extra }] -> [{ code, text }] for the panel.

@@ -14,8 +14,15 @@ const keys = fs.readdirSync(FONT_DIR)
   .filter((f) => f.endsWith(".json") && f !== "manifest.json")
   .map((f) => f.replace(/\.json$/, ""));
 
-test("all 21 shipped fonts have a committed .embf", () => {
-  assert.ok(keys.length >= 21, "expected >=21 font JSONs, found " + keys.length);
+test("every static shipped font has a committed .embf", () => {
+  // Was ">= 21" (the original static library). License-audit pulls shrank
+  // the static set: items 1-3 removed milli_marif_bold + tt_masters
+  // (2026-08-04), and the same-day ShareAlike removal (audit §9) pulled
+  // aventurina, emilio_20, emilio_20_bold, geneva_simple, monicha —
+  // geneva_simple and emilio_20_bold live on as test fixtures under
+  // test/fixtures/fonts/, deliberately OUTSIDE this directory so the
+  // "static JSON here ⇒ shipped" invariant this file pins stays true.
+  assert.ok(keys.length >= 14, "expected >=14 font JSONs, found " + keys.length);
   for (const k of keys)
     assert.ok(fs.existsSync(path.join(BIN_DIR, k + ".embf")), "missing bin for " + k);
 });
@@ -36,11 +43,40 @@ test("manifest lists every shipped font exactly once, verified tier only", () =>
   for (const f of man.fonts) {
     assert.strictEqual(f.tier, "verified");
     assert.ok(f.name && f.licenseId && f.sizeMm > 0 && f.glyphCount > 0, "bad entry " + f.key);
-    assert.ok(typeof f.attribution === "string" && f.attribution.length > 0 && f.attribution.length <= 200,
+    // <= 500: attributions are COMPLETE notices now (first paragraph +
+    // upstream copyright line — font-license-audit-2026-07-31.md item 4;
+    // longest real one is caesarus_SC_FI at ~350). The cap still catches a
+    // whole-license-blob regression, which starts at ~4 KB.
+    assert.ok(typeof f.attribution === "string" && f.attribution.length > 0 && f.attribution.length <= 500,
       "missing/oversized attribution: " + f.key);
+    // no truncation artifacts: a credit must not end mid-clause (ellipsis,
+    // dangling "by"/colon) — the exact defect class the audit's §2 table lists
+    assert.ok(!/…$|\bby\s*$|:$/.test(f.attribution.trim()), "truncated attribution: " + f.key);
+    assert.strictEqual(f.name, f.name.trim(), "name has stray whitespace: " + f.key);
     assert.ok(typeof f.source === "string" && f.source.length > 0, "missing source: " + f.key);
     assert.ok(fs.existsSync(path.join(BIN_DIR, f.key + ".embf")), "manifest entry without bin: " + f.key);
+    // audit item 5: the full license text of record must exist on disk for
+    // EVERY shipped font (OFL condition 2 — full text with every copy)
+    assert.ok(fs.existsSync(path.join(FONT_DIR, f.key + ".LICENSE.txt")),
+      "missing LICENSE.txt sidecar: " + f.key);
   }
+});
+
+test("every shipped binary embeds the full license text (bare-binary hole)", () => {
+  // font-license-audit-2026-07-31.md item 8: the credits screen offers a
+  // direct .embf download, so each binary must carry the complete license +
+  // copyright notice in its metadata (OFL condition 2 explicitly blesses
+  // machine-readable metadata fields). The embedded text must BE the sidecar
+  // text — not a summary of it. Aggregated failures, same reasoning as the
+  // qc-gate test below.
+  const man = JSON.parse(fs.readFileSync(path.join(FONT_DIR, "manifest.json"), "utf8"));
+  const failures = [];
+  for (const f of man.fonts) {
+    const sidecar = fs.readFileSync(path.join(FONT_DIR, f.key + ".LICENSE.txt"), "utf8").trim();
+    const bin = fb.decodeFontBin(fs.readFileSync(path.join(BIN_DIR, f.key + ".embf")));
+    if (String(bin.license || "").trim() !== sidecar) failures.push(f.key);
+  }
+  assert.deepStrictEqual(failures, [], "binaries whose embedded license != sidecar");
 });
 
 test("category coverage: known groups only, More is a small remainder", () => {

@@ -49,7 +49,11 @@ caught:
 - **A dropped ring is unfilled fabric.** When a ring is too short to sew, the
   honest move is to count it and warn. Silently dropping it — which is what the
   reference implementations do — leaves bare fabric that nothing downstream can
-  see.
+  see. And counting alone is not enough (2026-08-04): the mitred offset can
+  ANNIHILATE a notched interior wholesale — a core that was never a ring and
+  never reached the ledger — so the `starved` warning is decided by measuring
+  the emitted stitches against the polygon (barecircle.py), not by trusting
+  this module's own accounting of what it knows it dropped.
 """
 from __future__ import annotations
 
@@ -61,7 +65,8 @@ from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import substring
 
 from . import machine, stitches
-from .stage6_fill import _inset_ring, travel_path
+from .barecircle import starved_threshold_mm, widest_bare_circle
+from .stage6_fill import _inset_ring, stitch_shape, travel_path
 from .stitches import StitchRun
 
 
@@ -127,6 +132,105 @@ def _rings(poly: Polygon, spacing: float) -> list[list[Polygon]]:
         gens.append(parts)
         d += spacing
     return gens
+
+
+# --- Terminal ring refinement (the structural bare-core shrink) ------------
+
+def _ring_survives(ring: LineString, room, stitch_mm: float, tol: float) -> bool:
+    """Whether `ring` actually comes out sewable — run through the same
+    resample + law-42 repair + sub-floor merge `_link` applies to every ring
+    it emits — rather than just the raw-length heuristic
+    `CONTOUR_MIN_RING_MM` approximates.
+
+    A ring can clear that length floor and still collapse under
+    `_repair`/`_floor_pass`: a ring resampled to exactly 3 chords has zero
+    slack, so the first containment clip or sub-floor merge those passes
+    apply can drop it below 4 points. Measured 2026-08-04: bisecting the
+    terminal ring straight onto `CONTOUR_MIN_RING_MM` produced a ring that
+    always failed here, so the emitted ring count never changed — this is
+    why the refinement has to test the real pipeline, not the length
+    heuristic alone.
+    """
+    pts, arcs = _ring_points(ring, 0.0, stitch_mm, tol)
+    if len(pts) < 4:
+        return False
+    scratch = {"clipped": 0, "short_stitches": 0}
+    pts = _repair(ring, pts, arcs, room, tol, scratch)
+    pts = _floor_pass(pts, room, scratch)
+    return len(pts) >= 4
+
+
+def _any_ring_survives(parts: list[Polygon], room, stitch_mm: float, tol: float
+                       ) -> bool:
+    for p in parts:
+        for ring in (p.exterior, *p.interiors):
+            if ring is not None and len(ring.coords) >= 4:
+                if _ring_survives(LineString(ring.coords), room, stitch_mm, tol):
+                    return True
+    return False
+
+
+def _terminal_refine(poly: Polygon, d_good: float, d_bad: float, room,
+                     stitch_mm: float, tol: float) -> float | None:
+    """The deepest inset between a sewable `d_good` and an unsewable `d_bad`,
+    to within `CONTOUR_TERMINAL_REFINE_TOL_MM`.
+
+    The fixed `spacing` grid `_rings` walks can cross the true sewability
+    floor anywhere inside one spacing step — the ring the grid happens to
+    land on can survive at 5 mm of circumference while the shape could still
+    sew one nearer 3.5-4 mm, leaving avoidable radius on the table. Bisection
+    finds the floor the geometry (and the resample pipeline) actually allow,
+    independent of where the grid happened to sample it. Returns None when
+    there is nothing to gain.
+    """
+    if not _any_ring_survives(_offset(poly, d_good), room, stitch_mm, tol):
+        return None
+    lo, hi = d_good, d_bad
+    while hi - lo > machine.CONTOUR_TERMINAL_REFINE_TOL_MM:
+        mid = (lo + hi) / 2.0
+        if _any_ring_survives(_offset(poly, mid), room, stitch_mm, tol):
+            lo = mid
+        else:
+            hi = mid
+    return lo if lo > d_good + machine.CONTOUR_TERMINAL_REFINE_TOL_MM else None
+
+
+def _refine_terminal_generation(poly: Polygon, gens: list[list[Polygon]],
+                                spacing: float, room, stitch_mm: float,
+                                tol: float) -> list[list[Polygon]]:
+    """Insert one bisected extra generation past the coarse grid's last
+    sewable ring, pinned as close to the true sewability floor as the
+    resample pipeline itself will tolerate (`_ring_survives`), instead of
+    wherever the fixed `spacing` grid happened to land.
+
+    `_rings` itself is untouched — this runs on its output, once, in
+    `contour_fill`, where `room`/`stitch_mm`/`tol` already exist — so the
+    geometry-only offset sequence `_rings` returns (and the tests pinned to
+    it) stays exactly what it was. The trailing sub-floor generations
+    `_rings` still produces past the refined ring are left in place; they
+    were already unsewable and `_ring_set` accounts for them same as before,
+    so dropping them here would only make the ledger less honest for no
+    gain. See `CONTOUR_BARE_CORE_MM` in machine.py for the measured effect.
+    """
+    if not gens:
+        return gens
+    first = spacing * machine.CONTOUR_FIRST_INSET_FRAC
+    last_good = None
+    for i, parts in enumerate(gens):
+        if _any_ring_survives(parts, room, stitch_mm, tol):
+            last_good = i
+    if last_good is None:
+        return gens
+    d_good = first + last_good * spacing
+    d_bad = first + (last_good + 1) * spacing
+    refined_d = _terminal_refine(poly, d_good, d_bad, room, stitch_mm, tol)
+    if refined_d is None:
+        return gens
+    refined_parts = _offset(poly, refined_d)
+    if not refined_parts or not _any_ring_survives(refined_parts, room,
+                                                    stitch_mm, tol):
+        return gens
+    return gens[:last_good + 1] + [refined_parts] + gens[last_good + 1:]
 
 
 def _ring_set(gens: list[list[Polygon]], report: dict) -> list[_Ring]:
@@ -420,6 +524,18 @@ def _link(rings: list[_Ring], spacing: float, stitch_mm: float, tol: float,
                     # needle. Bank.
                     paths.append(current)
                     current = []
+                elif not room.covers(LineString(
+                        [anchor, rings[pick].line.interpolate(entry)])):
+                    # Law 42 applies to the crossing stitch too. `_entry_arc`
+                    # solves only for LENGTH, so around a hole or across a neck
+                    # its chord can leave the shape with both endpoints inside
+                    # — measured before this test existed: 23 stitches outside
+                    # over a 124-shape zoo, worst 1.10 mm out, and the shipped
+                    # containment test failed verbatim on a 15 mm disc with a
+                    # 0.3 mm hole. Banking turns the illegal stitch into a
+                    # travel that `emit` routes inside the shape.
+                    paths.append(current)
+                    current = []
                 elif gap > soft:
                     report["reach_stretched"] += 1
         if not current:
@@ -461,6 +577,35 @@ def _link(rings: list[_Ring], spacing: float, stitch_mm: float, tol: float,
     return paths
 
 
+# --- The finishing pass -----------------------------------------------------
+
+def _finish_patch(poly: Polygon, center: tuple[float, float], radius: float
+                  ) -> Polygon | None:
+    """A well-formed patch polygon for the bare spot at `center`/`radius` —
+    `poly` intersected with a plain circle there, not any reconstruction of
+    the bare region's own (possibly jagged, possibly boundary-hugging)
+    outline. `radius` gets `CONTOUR_FINISH_PATCH_MARGIN_MM` of slack so the
+    patch overruns the bare spot instead of just touching it (a circle at
+    EXACTLY the measured radius is tangent to whatever it was inscribed in).
+
+    Rounded off before it is handed back, not sewn as clipped: even this
+    plain a patch can still inherit a REFLEX vertex straight from `poly`
+    where the round disc edge meets a sharp concave corner of the shape
+    itself (measured on the letter-e fixture's mouth notch and a 5-point
+    star's spike root) — the same law-42 failure mode ring stitching has its
+    own `_repair` for, but `stitch_shape` (ordinary tatami) has no such
+    clip. A small round-join erosion removes the reflex corner rather than
+    trying to out-clever it, at the cost of a little coverage right at the
+    tip nobody was going to reach anyway.
+    """
+    disc = Point(*center).buffer(radius + machine.CONTOUR_FINISH_PATCH_MARGIN_MM,
+                                 quad_segs=32)
+    patch = poly.intersection(disc).buffer(-machine.CONTOUR_FINISH_EROSION_MM,
+                                           join_style=1)
+    parts = _polygons(patch)
+    return parts[0] if parts else None
+
+
 # --- The emitter -----------------------------------------------------------
 
 def contour_fill(poly: Polygon, shape_id: str, *, spacing_mm: float,
@@ -475,20 +620,33 @@ def contour_fill(poly: Polygon, shape_id: str, *, spacing_mm: float,
     no ties (stage 7 owns those), entry nearest `start_near`.
 
     Report keys: `too_thin`, `jumps`, `empty` (the shared contract), plus
-    `rings` (emitted), `skipped_rings` (too short to sew — unfilled fabric, and
-    a warning), `reach_stretched` (linked past the soft radius), `clipped`
+    `rings` (emitted), `skipped_rings` (too short to sew — unfilled fabric),
+    `skipped_area_mm2` (the KNOWN-drop ledger — honest but structurally blind
+    to the annihilated core, which is why it no longer decides anything),
+    `bare_radius_mm` / `starved` (the widest circle of bare fabric between the
+    emitted stitches, measured by barecircle.py, and whether it beats
+    `starved_threshold_mm` — the warning gate since 2026-08-04),
+    `reach_stretched` (linked past the soft radius), `clipped`
     (chords law 42 pulled back inside), `short_stitches` (penetrations that
     stayed under the floor because moving them would have left the shape — the
     one place laws 18 and 42 genuinely conflict, counted rather than hidden),
     `transitions` / `min_transition_mm` (law 44's instrument; `inf` when the
-    shape held one ring or none) and `paths` (continuous ring runs; the travel
-    between them is the only travel a contour fill has).
+    shape held one ring or none), `paths` (continuous ring runs; the travel
+    between them is the only travel a contour fill has), `finish_patches` /
+    `finish_area_mm2` (the finishing pass: small tatami patches stitched over
+    whatever polygon was still bare once the rings were done, and the area
+    they cover — see `_finish_patch`), and `ring_run_count` (how many of the
+    returned runs are ring geometry — `runs[:ring_run_count]` is everything
+    subject to law 44's transition floor; anything after it is a finishing
+    patch's own ordinary tatami rows, which carries tatami's row-turn
+    convention instead).
     """
     report = {"too_thin": False, "jumps": 0, "empty": False,
               "rings": 0, "skipped_rings": 0, "reach_stretched": 0,
               "clipped": 0, "short_stitches": 0, "paths": 0,
               "transitions": 0, "min_transition_mm": math.inf,
-              "skipped_area_mm2": 0.0, "starved": 0}
+              "skipped_area_mm2": 0.0, "starved": 0, "bare_radius_mm": 0.0,
+              "finish_patches": 0, "finish_area_mm2": 0.0, "ring_run_count": 0}
     tol = machine.CONTOUR_TOLERANCE_MM if tolerance_mm is None else tolerance_mm
     spacing = max(0.05, spacing_mm)
 
@@ -554,8 +712,11 @@ def contour_fill(poly: Polygon, shape_id: str, *, spacing_mm: float,
             if runs:
                 entry = runs[-1].points[-1]
 
-    rings = _ring_set(_rings(poly, spacing), report)
+    gens = _refine_terminal_generation(poly, _rings(poly, spacing), spacing,
+                                       room, stitch_mm, tol)
+    rings = _ring_set(gens, report)
     if not rings:
+        report["ring_run_count"] = len(runs)
         report["empty"] = not runs
         return runs, report
 
@@ -563,11 +724,71 @@ def contour_fill(poly: Polygon, shape_id: str, *, spacing_mm: float,
     report["paths"] = len(body)
     emit(body, stitches.FILL)
 
-    # The raw ring count is not the question. EVERY shape drops its innermost
-    # ring — the sliver where the offsets converge on themselves — so warning on
-    # the count would warn on every shape, and a warning that always fires is a
-    # warning nobody reads. What matters is how much fabric is left bare.
-    report["starved"] = int(
-        report["skipped_area_mm2"] > machine.CONTOUR_STARVED_FRAC * poly.area)
+    # Everything above this line is ring geometry: `_link`'s own law-44
+    # transition floor (MIN_STITCH_MM) applies to every stitch in
+    # `runs[:ring_run_count]` without exception. The finishing pass below
+    # sews ordinary tatami rows instead, which carries its OWN accepted
+    # convention — a row turn is exactly one row spacing long by design
+    # (`stage6_fill.stitch_shape`'s own emit(), and pinned by
+    # `tests/test_fill.py`) and can legally be shorter than MIN_STITCH_MM.
+    # The boundary is reported so a caller checking contour's own ring-floor
+    # invariants can tell the two conventions apart instead of holding
+    # tatami's rows to a floor they were never meant to clear.
+    report["ring_run_count"] = len(runs)
+
+    # The finishing pass (defect 1's fix, 2026-08-04): whatever polygon is
+    # STILL bare once the rings are done — the structural centre dot every
+    # healthy shape leaves, or a notched interior the mitred offset
+    # annihilated outright — gets an ordinary fine tatami patch instead of
+    # staying empty.
+    #
+    # Driven by the INSTRUMENT ITSELF, iteratively, not by a vector
+    # reconstruction of "what the rings missed": each pass asks
+    # `widest_bare_circle` (barecircle.py — the same rasterized measurement
+    # `bare_radius_mm` below reports) where the single worst remaining spot
+    # is, patches exactly that, and asks again. A vector reconstruction (via
+    # `poly.difference` of the emitted stitches' buffer) was tried first and
+    # measured worse on every axis: it found hundreds of sub-floor slivers
+    # along ordinary ring-to-ring gaps (a 15 mm disc alone produced 291,
+    # widest 0.048 mm) that the instrument would never call the widest spot,
+    # so patching them cost real stitch count for zero change in
+    # `bare_radius_mm`. Asking the instrument directly finds only the spot
+    # that actually moves the number, so a handful of iterations — bounded
+    # by CONTOUR_FINISH_MAX_PATCHES — closes it, or gets close enough that a
+    # further pass buys nothing and the loop gives up rather than chase
+    # numerical noise forever.
+    for _ in range(machine.CONTOUR_FINISH_MAX_PATCHES):
+        bare = widest_bare_circle(poly, runs)
+        if bare.radius_mm < machine.CONTOUR_FINISH_MIN_RADIUS_MM:
+            break
+        patch = _finish_patch(poly, bare.center, bare.radius_mm)
+        if patch is None or patch.area < machine.CONTOUR_FINISH_MIN_PATCH_AREA_MM2:
+            break
+        patch_entry = runs[-1].points[-1] if runs else start_near
+        patch_runs, _pr = stitch_shape(
+            patch, shape_id, angle_deg=None, row_mm=spacing, stitch_mm=stitch_mm,
+            underlay_style="none", trim_at_mm=trim_at_mm, start_near=patch_entry)
+        fill_paths = [list(r.points) for r in patch_runs if r.kind == stitches.FILL]
+        if not fill_paths:
+            break
+        report["finish_patches"] += 1
+        report["finish_area_mm2"] += patch.area
+        emit(fill_paths, stitches.FILL)
+
+    # The raw ring count is not the question, and neither — as of 2026-08-04 —
+    # is the skipped-area ledger: `skipped_area_mm2` charges only the rings
+    # this module KNOWS it dropped, and the bare core the mitred offset
+    # annihilates was never a ring, so the ledger is structurally blind to the
+    # worst case (a 10-point star of inradius 10.00 loses everything past
+    # 5.60 mm of inset and charges 0.21 mm2 for it). `starved` is therefore
+    # DEFINED by measurement, not bookkeeping: the widest circle of bare
+    # fabric between the emitted stitches (barecircle.py — the instrument
+    # trusts only the polygon and the runs), fired when it is wider than the
+    # structural centre dot every healthy shape leaves plus half a ring
+    # spacing (see `starved_threshold_mm` for the derivation and calibration).
+    # The ledger stays in the report as the honest count of KNOWN drops.
+    bare = widest_bare_circle(poly, runs)
+    report["bare_radius_mm"] = bare.radius_mm
+    report["starved"] = int(bare.radius_mm > starved_threshold_mm(spacing))
     report["empty"] = not runs
     return runs, report

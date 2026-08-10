@@ -28,10 +28,11 @@ npm run dev   # then open http://localhost:5173
 The original single-page tool still works for direct/manual use:
 
 - **`EMB-Bot.html`** — loads its modules from the `src/` folder next to it,
-  so keep the folder structure intact. Still uses the older eager 21-font
-  registry (`src/fonts/satin-fonts.js`), pending its feature audit.
-- **`EMB-Bot-standalone.html`** — a single portable inlined file. **Retired:**
-  kept as a frozen artifact, no longer rebuilt as features land. Use the
+  so keep the folder structure intact. Still uses the older eager font
+  registry (`src/fonts/satin-fonts.js`) — audited 2026-08-04: the 7
+  license-pulled fonts were removed, 14 entries remain (all OFL-1.1/CC0,
+  all also in the shipping library).
+- **`EMB-Bot-standalone.html`** — deleted 2026-08-04 (Kent's call). Use the
   Studio.
 
 Either way **you need an internet connection**, even though everything runs
@@ -146,12 +147,8 @@ replacement for a professional digitizer's judgment on complex or critical work.
   classification, per-shape angle, underlay, pull comp, trims, sequencing),
   DST/EXP/PES encoders, SVG export, stitch-model, font catalog, canvas renderer,
   PDF worksheet, and `app.js`.
-- **`EMB-Bot-standalone.html`** — single-file portable build (inline `src/*.js`,
-  CDN tags left remote). Regenerate after any `src/` or `EMB-Bot.html` change:
-
-  ```
-  node tools/bundle.mjs
-  ```
+- **`EMB-Bot-standalone.html`** — deleted 2026-08-04 (Kent's call). Do not
+  regenerate it; `tools/bundle.mjs` is dead code, left in place but unused.
 
 - **`src/fonts/`** — the satin font library. `manifest.json` (per-font
   metadata: tier, group, license id, glyph count) + `bin/*.embf`, a compact

@@ -1,8 +1,9 @@
 """Stage-level invariants on the committed golden fixtures."""
 import numpy as np
 import pytest
-from shapely.geometry import Point
+from shapely.geometry import Point, Polygon
 
+from digitizer_core import run_stages
 from digitizer_core.config import PipelineConfig
 from digitizer_core.stage1_prep import prep
 from digitizer_core.stage2_quantize import quantize
@@ -28,7 +29,35 @@ def test_white_background_is_detected_without_crying_uncertain(whitebg):
 
 
 def test_ring_hole_is_reported_as_enclosed_background(whitebg):
+    """Outcome preserved (still unstitched by default, warning still fires),
+    mechanism changed (2026-08-04): the ring's donut hole is no longer
+    quietly folded into `bg` and excluded before it can become a Region —
+    it is now a REAL, tagged Region that a review screen could restore.
+    See docs/superpowers/plans/2026-08-04-enclosed-background-restore-
+    design.md.
+    """
     assert BACKGROUND_ENCLOSED in codes(whitebg)
+
+    enclosed = [r for r in whitebg.regions if r.meta.get("enclosed_background")]
+    assert len(enclosed) == 1, "the ring's hole should be exactly one tagged region"
+    ring_hole = enclosed[0]
+    assert ring_hole.meta["stitched"] is False, "unstitched by default"
+
+    ring = next(r for r in whitebg.regions if r.thread_number == "3902")
+    # The hole sits inside the ring's own OUTER shell (ignore the ring's own
+    # hole when testing this — the point under test is exactly that hole's
+    # centroid), same relationship the old "it's a literal polygon hole"
+    # mechanism guaranteed geometrically.
+    ring_shell = Polygon(ring.polygon.exterior)
+    assert ring_shell.buffer(0.5).contains(ring_hole.polygon.centroid)
+
+    # And it must actually be excluded from what gets stitched by default.
+    from digitizer_core import plan_stitches
+    from .conftest import cfg as _cfg
+
+    plan = plan_stitches(whitebg, _cfg(garment_id="left_chest"))
+    stitched_shape_ids = {r.shape_id for _b, r in plan.iter_runs()}
+    assert ring_hole.shape_id not in stitched_shape_ids
 
 
 def test_border_flood_reaching_inside_a_shape_warns(uncertain):
@@ -61,10 +90,25 @@ def test_quantize_finds_the_real_colors_and_no_antialias_phantoms():
 
     numbers = {CHART[t].number for t in q.thread_indices}
     assert set(EXPECTED_THREADS).issubset(numbers)
+
+    # The ring's donut hole (BACKGROUND_ENCLOSED) is quantized separately
+    # from the design's own foreground (2026-08-04) and is legitimately
+    # near-white — it IS the enclosed white icon area, not an anti-alias
+    # halo. Exclude whichever label(s) it landed on before checking the
+    # design's OWN colors below.
+    enclosed_labels = (
+        set(np.unique(q.labels[p.enclosed_mask]))
+        if p.enclosed_mask is not None
+        else set()
+    )
+
     # Anti-alias halos against the white background used to survive as pale
-    # phantom threads ("Lavender", "Luster"). Nothing near-white may appear:
-    # the artwork contains no white.
-    for t in q.thread_indices:
+    # phantom threads ("Lavender", "Luster"). Nothing near-white may appear
+    # among the design's OWN colors: the artwork's own foreground contains
+    # no white.
+    for label, t in enumerate(q.thread_indices):
+        if label in enclosed_labels:
+            continue
         r, g, b = CHART[t].rgb
         assert min(r, g, b) < 200, f"phantom pale thread {CHART[t].number} {CHART[t].name}"
 
@@ -87,6 +131,60 @@ def test_subsewable_details_are_absorbed_or_dropped_but_always_reported(whitebg)
     assert DROPPED_SMALL_SHAPES in codes(whitebg)
     teal = [r for r in whitebg.regions if r.thread_number == "4531"]
     assert teal == [], "the sub-sewable teal patch should not survive as a region"
+
+
+def test_small_enclosed_hole_is_not_absorbed_into_its_enclosing_letter():
+    """Regression, 2026-08-06: `resolve_small_regions` used to treat ANY
+    small region as ordinary segmentation noise and absorb it into whichever
+    neighbor shared the most boundary — including a small but completely
+    real enclosed hole (`Prep.enclosed_mask`), whose only possible neighbor
+    IS the shape that encloses it. On the real benchmark fixture this
+    silently filled in the "A" in ENTHUSIAST's triangular counter before
+    stage 4 (`vectorize`/`tag_enclosed_background`) ever got a chance to see
+    it as a real, separately-tagged Region — `tag_enclosed_background`'s
+    overlap machinery was fully wired and working for every OTHER enclosed
+    feature in this corpus (the donut-ring fixture above), but had nothing
+    left to find for this one.
+
+    Confirmed by direct measurement before this fix: `Prep.enclosed_mask`
+    correctly finds a 2.08 mm² component at the "A"'s location (comfortably
+    real, not noise — well above `cfg.min_detail_mm`'s sewable floor), yet
+    the final "A" Region carried ZERO interior rings.
+    """
+    result = run_stages(TESTDATA / "photo" / "enthusiast_logo.png", cfg(target_width_mm=90.0))
+
+    # The "A" in ENTHUSIAST is the only wordmark letter with a real enclosed
+    # counter. Found by its own polygon carrying an interior ring, not by
+    # shape_id: restoring the hole legitimately changes the polygon's
+    # content hash, so a hardcoded id would be re-deriving this fix's own
+    # effect instead of testing for it. `rescued_small_shape`/
+    # `enclosed_background` regions are excluded so this can't accidentally
+    # match a subline glyph (several already carry their own direct holes,
+    # unaffected by this bug — see `test_textcluster.py`) or the hole
+    # Region itself.
+    holed = [r for r in result.regions
+             if not r.meta.get("rescued_small_shape")
+             and not r.meta.get("enclosed_background")
+             and r.polygon.interiors]
+    assert len(holed) == 1, (
+        f"expected exactly one non-subline letter with a real interior ring "
+        f"(the 'A'); got {len(holed)}"
+    )
+    a_region = holed[0]
+    assert a_region.area_mm2 == pytest.approx(a_region.polygon.area)
+
+    # And the hole pixels must have survived as their own tagged, unstitched
+    # Region — not merely absent from the count above — per
+    # `tag_enclosed_background`'s contract (same assertion shape as
+    # `test_ring_hole_is_reported_as_enclosed_background`).
+    a_shell = Polygon(a_region.polygon.exterior).buffer(0.5)
+    enclosed_in_a = [r for r in result.regions
+                     if r.meta.get("enclosed_background")
+                     and a_shell.contains(r.polygon.centroid)]
+    assert len(enclosed_in_a) == 1
+    hole_region = enclosed_in_a[0]
+    assert hole_region.meta["stitched"] is False
+    assert hole_region.area_mm2 > 1.0, "the real counter, not a noise scrap"
 
 
 def test_antialias_cleanup_is_not_reported_as_lost_artwork(whitebg):

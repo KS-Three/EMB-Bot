@@ -11,12 +11,13 @@
   // background, inserted next to its anchor in the host's own markup. No
   // animation either way (A9).
   import { createEventDispatcher } from "svelte";
+  import Icon from "./Icon.svelte";
   export let floating = false;
   const d = createEventDispatcher();
 </script>
 
 <div class="hintbubble" class:hintbubble-floating={floating} class:hintbubble-inflow={!floating} role="status">
-  <span class="hintbubble-icon" aria-hidden="true">💡</span>
+  <span class="hintbubble-icon" aria-hidden="true"><Icon name="lightbulb" size={20} /></span>
   <p class="hintbubble-text"><slot /></p>
-  <button type="button" class="hintbubble-x" on:click={() => d("dismiss")} aria-label="Dismiss hint">✕</button>
+  <button type="button" class="hintbubble-x" on:click={() => d("dismiss")} aria-label="Dismiss hint"><Icon name="close" size={14} /></button>
 </div>
