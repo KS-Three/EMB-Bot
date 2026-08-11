@@ -92,6 +92,13 @@ from .threads import Chart
 # broken cross-pin should fail a test, not an import.
 PALETTE_EXCESS_DELTAE = 4.5
 
+# How many medoids BUILD may add past max_k when a region past the cap has
+# an excellent chart match sitting unused (docs/photo-quality-root-cause-
+# 2026-08-11.md's drone_render.png finding) -- bounded so a pathological
+# gradient-heavy design can't balloon the color count with no ceiling. See
+# tests/test_palette.py's "Fix #6.1" section for the measured before/after.
+PALETTE_OVERFLOW_K = 3
+
 # Plan row 13's class multipliers, midpoints of its stated ranges. Applied
 # by `region_weight`; keys are the vocabulary plan step 3's face priors will
 # speak when they exist (see THE CLASS-WEIGHT SEAM above).
@@ -174,10 +181,20 @@ def select_palette(
     # --- BUILD ---------------------------------------------------------------
     selected: list[int] = []
     res = np.full(n, np.inf)
-    cap = max(1, min(int(max_k), len(chart)))
-    while len(selected) < cap:
+    soft_cap = max(1, min(int(max_k), len(chart)))
+    hard_cap = max(1, min(int(max_k) + PALETTE_OVERFLOW_K, len(chart)))
+    while len(selected) < hard_cap:
         if selected and ((res - floor) <= excess_deltae).all():
             break
+        if len(selected) >= soft_cap:
+            # Past max_colors: only keep growing to rescue a region whose
+            # own floor is low enough that a genuinely good chart match
+            # exists (docs/photo-quality-root-cause-2026-08-11.md's
+            # drone_render.png finding) -- never to pad the palette for a
+            # region no thread is actually close to.
+            worst = int(np.argmax(res - floor))
+            if not (floor[worst] <= excess_deltae * 0.5):
+                break
         costs = (w[:, None] * np.minimum(res[:, None], dist)).sum(axis=0)
         costs[selected] = np.inf
         cand = int(np.argmin(costs))  # ties -> lowest chart index
