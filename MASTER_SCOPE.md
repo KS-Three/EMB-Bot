@@ -11,7 +11,75 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-11 — fix #6.1 landed:
+**Last updated:** 2026-08-11 (later the same day) — **the SAM2 photo
+segmentation lane became reachable from the product, and is staying.**
+Three things landed together:
+
+1. **SAM2 merged to `main`** (from `sam2-segmentation`, which had been
+   complete but unmerged): config gate, isolated-venv subprocess worker,
+   never-raises seam with silent SLIC+RAG fallback. Still `photo_segment_
+   sam2=False` by default.
+2. **A Studio dev seam to switch it on** — `localStorage` key
+   `embstudio:sam2` = `"1"`, read by `sam2Enabled()` in
+   `app/src/lib/digitizer.js`, which sets `photo_segment_sam2` in
+   `buildDigitizeConfig`. Deliberately **no UI**: SAM2 needs a hand-built
+   ~1 GB isolated venv and real per-image latency, so this is an internal
+   seam in the same shape as the existing `embstudio:digitizerUrl` one.
+   Design: `docs/superpowers/specs/2026-08-11-sam2-studio-seam-design.md`.
+   **No service change was needed** — `digitizer_service/app.py` derives
+   its config allowlist from `PipelineConfig`'s dataclass fields, so all
+   five `photo_segment_sam2*` fields already validated (verified by
+   parsing a real config through `_parse_config`, not assumed).
+3. **`photo_segment_sam2_points_per_side` lowered 16 → 12** on measurement:
+   ~59.7s → ~42.3s (-29%) end-to-end through the real service on
+   `photo_scene_stub.png`, finding *more* regions (25 → 26), not fewer.
+
+**Kent verified SAM2 on a real photo and reported it "drastically better
+at the photo recognition portion."** That is why it is staying. Note the
+committed corpus proves nothing about this either way — SAM2 only engages
+for `photo_subject`/`photo_scene` classes, and the only two such fixtures
+are synthetic stubs that produce near-identical output with it on or off.
+Measured cost on this machine (CPU-only): ~1.03 GB footprint (875 MB venv
++ 156 MB tiny checkpoint) and roughly +15 to +30s per photo at
+`points_per_side=12`.
+
+`docs/sam-alternatives-research-2026-08-11.md` asked whether a smaller or
+photos-only SAM could cut that cost. **Answer: don't swap the model** — in
+automatic-mask-generation mode SAM2's image *encoder* is only ~8% of
+per-image cost and the `points_per_side**2` prompt-decode loop is ~92%,
+while every lightweight SAM variant optimizes the encoder (they target
+interactive click-to-segment). Also settled there: SAM2's video machinery
+is 30.1 MB of 156.0 MB and costs zero runtime, and SAM 1 — the actual
+image-only predecessor — is *heavier* (375.0 MB smallest checkpoint).
+**License findings worth keeping:** FastSAM is AGPL-3.0 despite a README
+claiming Apache (the claim hyperlinks to the AGPL file itself) and vendors
+that code in-tree; EdgeSAM is non-commercial (NTU S-Lab 1.0) — same
+category as the `bria-rmbg` rejection. Both disqualified for a commercial
+product. Those two license claims came from a research subagent and were
+**not** independently re-verified — treat as strong leads, not settled
+fact, if either is ever reconsidered.
+
+**A recommendation from that same research was tried and REJECTED on
+measurement:** `photo_segment_sam2_max_side_px` 1024 → 512, pitched as
+"~-21% wall-clock, same masks". Measured end-to-end it is not the same
+masks — regions drop 25 → 20, reproducibly, at both `points_per_side` 16
+and 12. The ~11% saved sits inside this box's timing noise (the same
+config measured 51.3s and 59.7s across runs), so it buys a deterministic
+quality loss with a saving indistinguishable from noise. Stays 1024; the
+rejection and its evidence are recorded at the field in `config.py`.
+
+**Two open risks on this lane, both tracked, neither resolved:**
+`digitizer/sam2_isolated/venv` is currently a Windows **junction** into
+`.claude/worktrees/sam2-segmentation` (created to avoid copying 875 MB
+back when the expectation was that SAM2 would be switched off) — that
+worktree is merged and looks deletable, and if it goes SAM2 silently
+falls back with no error, so it should become a real install now that
+SAM2 is staying. And `points_per_side=12` was measured **only** against
+the synthetic `photo_scene_stub.png`; the real photo that justified
+keeping SAM2 has never been re-measured at 12, so the new default is not
+yet validated against the content that actually matters.
+
+**Previously (2026-08-11):** fix #6.1 landed:
 `digitizer_core/palette.py`'s `select_palette` gets a bounded, floor-aware
 overflow past `max_colors` (`docs/photo-quality-root-cause-2026-08-11.md`).
 Verified correct at the algorithm level — unit test plus a direct trace
@@ -2037,14 +2105,27 @@ notes it was retired in favor of "feed it clean flat art," not because it's
 broken. The Python pipeline is the active target: `digitizer/README.md`
 states "build steps 1, 3, 4 and 8 of 11" — stitch processor / preflight
 scoring / review-UI polish still to come. SAM2 segmentation (an optional
-alternative region former for photo-classified designs) is built and gated
-behind `cfg.photo_segment_sam2` (default `False`): measured as a tie with
-the classical SLIC+RAG segmenter on the corpus available to test it, not a
-win, at a real ~40s/job CPU cost — that corpus lacks real complex-photo
-fixtures (faces, jackets, smoothly-varying subjects) to properly exercise
-what SAM2 is actually for, so the tie is a statement about corpus coverage,
-not SAM2's ceiling. See `digitizer/docs/sam2-segmentation-live-acceptance-
-2026-08-10.md` for the full measurement.
+alternative region former for photo-classified designs) is built, merged,
+and now reachable from Studio via the `embstudio:sam2` dev seam, still
+gated behind `cfg.photo_segment_sam2` (default `False`).
+
+**Its "tie, not a win" verdict is SUPERSEDED as of 2026-08-11 — and the
+hedge attached to that verdict turned out to be the right one.** The
+2026-08-10 measurement (`digitizer/docs/sam2-segmentation-live-acceptance-
+2026-08-10.md`) found SAM2 a tie with the classical SLIC+RAG segmenter at
+a real ~40s/job CPU cost, but said in the same breath that the corpus
+"lacks real complex-photo fixtures (faces, jackets, smoothly-varying
+subjects) to properly exercise what SAM2 is actually for, so the tie is a
+statement about corpus coverage, not SAM2's ceiling." That is exactly what
+it was: Kent ran a real photo through it on 2026-08-11 and reported SAM2
+"drastically better at the photo recognition portion," and decided to keep
+it. The committed corpus still cannot show this — the only two
+`photo_subject`/`photo_scene` fixtures are synthetic stubs — so **the
+corpus remains unable to defend or refute SAM2's quality, and a real-photo
+fixture is the missing piece.** Cost after tuning: ~1.03 GB footprint and
+roughly +15 to +30s per photo (see the "Last updated" entry at the top for
+the `points_per_side` 16→12 change, the rejected `max_side_px` change, and
+the two open risks on this lane).
 Running in parallel with that step numbering, `docs/photo-digitizing-plan-
 2026-07-31.md`'s mono-tonal/portrait technique rows have started landing:
 direction field (row 6, structure-tensor + ETF per Kang 2007), scan-line
