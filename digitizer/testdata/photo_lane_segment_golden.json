@@ -5,7 +5,7 @@
    1536
   ],
   "labels_dtype": "int32",
-  "labels_sha256": "168580ecd07f6a00915e10ad124e591db5fc3fb5e8576d60752df415be1b59cd",
+  "labels_sha256": "7f1de82e5471be6eebc8b9291dcc515a87148d4a229bd8bf88ea53fdd9640bfb",
   "thread_indices": [
    225,
    16,
@@ -17,8 +17,10 @@
    76,
    8,
    101,
+   209,
    7,
    271,
+   2,
    308,
    144,
    88,
@@ -79,6 +81,11 @@
     51.0
    ],
    [
+    90.0,
+    94.0,
+    97.0
+   ],
+   [
     153.0,
     153.0,
     153.0
@@ -87,6 +94,11 @@
     32.0,
     39.0,
     48.0
+   ],
+   [
+    255.0,
+    255.0,
+    255.0
    ],
    [
     204.0,
@@ -133,18 +145,18 @@
    },
    {
     "code": "PHOTO_SEGMENT_REGION_COUNT",
-    "message": "Photo segmentation produced 58 regions (982 superpixels, 32 after merging), consolidated to 12 thread colors.",
+    "message": "Photo segmentation produced 58 regions (982 superpixels, 32 after merging), consolidated to 14 thread colors.",
     "count": 58,
-    "thread_colors": 12,
+    "thread_colors": 14,
     "slic_segments": 982,
     "merged_regions": 32
    },
    {
     "code": "PHOTO_PALETTE_SELECTED",
-    "message": "Palette selected 12 threads for 58 regions (chart-restricted weighted k-medoids).",
-    "colors": 12,
+    "message": "Palette selected 14 threads for 58 regions (chart-restricted weighted k-medoids).",
+    "colors": 14,
     "regions": 58,
-    "max_excess_de00": 7.599
+    "max_excess_de00": 1.969
    }
   ]
  },

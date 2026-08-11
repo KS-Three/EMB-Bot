@@ -27,6 +27,7 @@ from digitizer_core.config import PipelineConfig
 from digitizer_core.palette import (
     CLASS_MULTIPLIERS,
     PALETTE_EXCESS_DELTAE,
+    PALETTE_OVERFLOW_K,
     region_weight,
     select_palette,
 )
@@ -240,8 +241,13 @@ def test_empty_and_invalid_inputs():
 
 def test_max_colors_cap_binds_across_families():
     # Three distinct families (red / green / blue) x three shades each, all
-    # equal weight, capped at 3: the palette must respect the cap, and every
-    # region still gets its nearest of the selected medoids.
+    # equal weight, capped at 3: every region's own floor is well above the
+    # excess_deltae/2 rescue threshold (measured: 2.79-6.62, nothing close to
+    # the 2.25 cutoff), so the floor-gated overflow never fires and BUILD
+    # stops at the soft cap -- same 3-medoid result the cap always gave, now
+    # because nothing here actually qualifies for rescue rather than growth
+    # being disallowed outright. Every region still gets its nearest of the
+    # selected medoids.
     fams = [
         [(180, 30, 30), (210, 90, 90), (240, 150, 150)],
         [(30, 140, 30), (90, 180, 90), (150, 220, 150)],
@@ -306,3 +312,118 @@ def test_fur_ramp_fixture_segmentation_is_deterministic():
     b = segment(p, cfg)
     assert np.array_equal(a.labels, b.labels)
     assert a.thread_indices == b.thread_indices
+
+
+# --- 6. Fix #6.1: floor-aware overflow past max_colors -----------------------
+# docs/photo-quality-root-cause-2026-08-11.md's drone_render.png finding:
+# select_palette's max_colors cap can bind before every region satisfies
+# PALETTE_EXCESS_DELTAE, even when the region being force-merged has an
+# excellent chart match sitting unused (that fixture's real case: two
+# regions with floor 1.98/1.51 force-merged onto "Armour" at ΔE 9.10-9.18).
+# These three pin the fix: select_palette may grow past max_k, bounded by
+# PALETTE_OVERFLOW_K, but only to rescue a region whose own floor is
+# <= excess_deltae/2 -- never to pad the palette for a region no thread is
+# actually close to. All floor/ΔE numbers below were measured against the
+# real Isacord chart (load_chart()) on 2026-08-11.
+
+_FILLERS_RGB = [(200, 30, 30), (30, 160, 40), (30, 60, 200)]  # 3 mutually
+# distant families, each with a decent (not exact) chart match: measured
+# floors 4.057 (-> #163 Poinsettia), 1.788 (-> #364 Emerald), 3.362
+# (-> #275 Imperial Blue) -- all individually under PALETTE_EXCESS_DELTAE
+# (4.5), so once each has its own medoid its own residual satisfies the
+# excess bound on its own.
+
+
+def _overflow_scenario(outlier_rgbs, outlier_area, max_k):
+    """3 big, distant, decently-served filler regions (area 9000, so BUILD's
+    weighted-cost greedy always picks them before any small-area outlier)
+    plus N small (area=outlier_area) outlier regions. Returns (selection,
+    labs) so callers can measure a specific outlier's residual."""
+    rgbs = np.array(_FILLERS_RGB + list(outlier_rgbs), float)
+    labs = rgb_to_lab(rgbs)
+    weights = np.array(
+        [9000.0] * len(_FILLERS_RGB) + [float(outlier_area)] * len(outlier_rgbs)
+    )
+    return select_palette(labs, weights, CHART, max_k=max_k), labs
+
+
+def test_overflow_does_not_fire_for_a_genuinely_hard_to_match_region():
+    """A cyan outlier with NO good chart match nearby (measured floor=7.611
+    -> #317 Turquoise, well over the excess_deltae/2=2.25 rescue threshold)
+    must NOT trigger overflow -- more medoids wouldn't help it, so the
+    palette stays at max_k and the outlier keeps riding an existing filler
+    medoid. Measured against this scenario: 3 medoids, max_excess_de00
+    =29.960 -- the fix must not move either number here, since nothing
+    about this region is actually rescuable."""
+    sel, labs = _overflow_scenario([(0, 255, 255)], 300.0, max_k=3)
+    assert len(sel.medoids) == 3, (
+        f"got {len(sel.medoids)} medoids -- overflow fired for a high-floor "
+        "region it shouldn't have rescued"
+    )
+    assert sel.max_excess_de00 == pytest.approx(29.960, abs=0.01)
+
+
+def test_overflow_rescues_a_genuinely_low_floor_region():
+    """A grey outlier that IS an exact chart match (measured floor=0.0 ->
+    #308 Silver) -- the same shape as drone_render.png's real defect
+    (root-cause doc: 'e.g. Isacord Silver (204,204,204)'). Without the fix
+    this force-merges onto a filler medoid at ΔE 33.067 (measured). With
+    the fix it must get its own medoid: every region's own floor (fillers
+    4.057/1.788/3.362, outlier 0.0) is individually under
+    PALETTE_EXCESS_DELTAE, so once the outlier has a medoid the excess
+    condition is fully satisfiable -- BUILD stays inside the hard cap and
+    the outlier ends up fully rescued, not force-merged (see the inline
+    comment below for the actual medoid count and why it isn't the 4 this
+    might suggest)."""
+    sel, labs = _overflow_scenario([(204, 204, 204)], 300.0, max_k=3)
+    # NOT asserting an exact medoid count: pure-greedy BUILD's very first
+    # pick (before any medoid exists, res=inf for every region) minimizes
+    # total weighted cost across ALL regions at once, not "closest to the
+    # biggest region" -- for this scenario that first pick is #209
+    # (Titanium), a compromise thread that later becomes redundant once
+    # each filler gets its own dedicated match. SWAP only refines at FIXED
+    # k (module docstring) and can never prune a now-stranded early pick,
+    # so the real, correct-per-design result here is 5 medoids, not a
+    # hypothetical minimum of 4 -- still comfortably inside the hard cap.
+    # What the design actually promises, and what matters here: bounded
+    # growth and a fully rescued outlier.
+    assert len(sel.medoids) <= 3 + PALETTE_OVERFLOW_K, (
+        f"got {len(sel.medoids)} medoids -- exceeds the hard overflow cap"
+    )
+    assert sel.max_excess_de00 <= PALETTE_EXCESS_DELTAE, (
+        f"max_excess_de00={sel.max_excess_de00:.3f} still over the bound "
+        "after the rescue medoid was added"
+    )
+    from skimage.color import deltaE_ciede2000
+
+    outlier_lab = labs[len(_FILLERS_RGB)]
+    outlier_resid = float(
+        deltaE_ciede2000(
+            outlier_lab.reshape(1, 3),
+            CHART.lab[sel.region_spools[len(_FILLERS_RGB)]].reshape(1, 3),
+        )[0]
+    )
+    assert outlier_resid <= PALETTE_EXCESS_DELTAE, (
+        f"outlier still {outlier_resid:.3f} ΔE00 from its assigned spool"
+    )
+
+
+def test_overflow_is_bounded_by_palette_overflow_k():
+    """Four low-floor outliers (Silver/Black/White/Citrus-yellow -- measured
+    floors all 0.0, mutually far apart in Lab, all far from the filler
+    hues) but only PALETTE_OVERFLOW_K=3 overflow slots: one must stay
+    unresolved. Pins the hard ceiling itself -- len(medoids) never exceeds
+    max_k + PALETTE_OVERFLOW_K even when a 4th region would also benefit
+    from further growth. Measured against today's code (no overflow at
+    all): 3 medoids, max_excess_de00=40.243."""
+    outliers = [(204, 204, 204), (0, 0, 0), (255, 255, 255), (255, 255, 0)]
+    sel, labs = _overflow_scenario(outliers, 300.0, max_k=3)
+    assert len(sel.medoids) == 3 + PALETTE_OVERFLOW_K, (
+        "expected the cap to actually bind (4 low-floor outliers competing "
+        f"for 3 overflow slots) -- got {len(sel.medoids)}, cap wasn't reached"
+    )
+    assert sel.max_excess_de00 > PALETTE_EXCESS_DELTAE, (
+        "expected at least one region to remain unresolved past the hard "
+        f"cap, but max_excess_de00={sel.max_excess_de00:.3f} is within "
+        "bound -- the cap didn't actually bind anything in this scenario"
+    )
