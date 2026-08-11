@@ -25,7 +25,31 @@ from .config import PipelineConfig
 from .regions import Region, assign_shape_ids
 from .stage1_prep import Prep
 from .stage3_segment import RegionMask
-from .threads import chart_for
+from .threads import chart_for, rgb_to_lab
+from .warnings_codes import THREAD_RESNAPPED_AFTER_DRIFT, warn
+
+try:  # skimage's own spelling moved between versions; match the rest of the pkg
+    from skimage.color import deltaE_ciede2000
+except ImportError:  # pragma: no cover - defensive, matches stage2's own import
+    from skimage.color.delta_e import deltaE_ciede2000
+
+# A shape smaller than this cannot support a colour estimate worth re-snapping
+# on, and at this size it is the run tier's problem, not the fill's. Measured
+# against the fixture this fix was traced on: the drifted sliver there covers
+# 1,990 px, comfortably clear.
+THREAD_REVALIDATE_MIN_PX = 200
+
+# Re-snap only when the newly-measured colour is at least this much closer to a
+# different spool than to the one already assigned. Guards against churning
+# thread assignments (and every golden) by fractions of a dE00 — this rule
+# exists for the 20-plus dE00 desync the root-cause doc traced, not for the
+# ordinary sub-unit wobble simplification puts on every shape in every design.
+THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00 = 3.0
+
+# Cap on how many of a region's pixels are scored against the chart. The score
+# is a median over pixels, which converges long before a real region runs out
+# of them, and the work is (samples x ~400 spools) per region.
+THREAD_REVALIDATE_SAMPLE_PX = 256
 
 
 def _to_mm(pts: np.ndarray, cx: float, cy: float, px_per_mm: float) -> np.ndarray:
@@ -173,6 +197,150 @@ def vectorize(
 # Picked, not derived — see `tag_enclosed_background`'s docstring for why
 # 0.6 and not something stricter or looser.
 ENCLOSED_TAG_OVERLAP_THRESHOLD = 0.6
+
+
+def _region_footprint(r: Region, shape: tuple[int, int], cx: float, cy: float,
+                      px_per_mm: float) -> np.ndarray:
+    """The pixel mask a Region's FINAL polygon actually covers — exterior
+    filled, interiors punched back out. The mm->px transform is the exact
+    inverse of `_to_mm`'s, and the same one `tag_enclosed_background` uses."""
+    h, w = shape
+
+    def to_px(coords) -> np.ndarray:
+        arr = np.asarray(coords, dtype=np.float64)
+        px = np.empty_like(arr)
+        px[:, 0] = arr[:, 0] * px_per_mm + cx
+        px[:, 1] = arr[:, 1] * px_per_mm + cy
+        return np.round(px).astype(np.int32)
+
+    out = np.zeros((h, w), np.uint8)
+    cv2.fillPoly(out, [to_px(r.polygon.exterior.coords)], 1)
+    for interior in r.polygon.interiors:
+        cv2.fillPoly(out, [to_px(interior.coords)], 0)
+    return out.astype(bool)
+
+
+def _sample_lab(lab: np.ndarray) -> np.ndarray:
+    """At most `THREAD_REVALIDATE_SAMPLE_PX` of a region's Lab pixels, chosen
+    deterministically. Evenly spaced over the pixel index, the same idiom
+    `stage2_quantize._kmeans` uses for its own fit sample and for the same
+    reason: a seeded RNG is one more thing that can silently move a golden,
+    and an even stride over a region's raster order is already spatially
+    spread. The cap is what keeps this rule's cost flat — the scoring below
+    is (samples x chart), and the chart is ~400 spools."""
+    if len(lab) <= THREAD_REVALIDATE_SAMPLE_PX:
+        return lab
+    idx = np.linspace(0, len(lab) - 1, THREAD_REVALIDATE_SAMPLE_PX).astype(np.int64)
+    return lab[idx]
+
+
+def revalidate_threads(regions: list[Region], p: Prep,
+                       cfg: PipelineConfig) -> list[dict]:
+    """Re-check every shape's thread against the pixels its FINAL polygon
+    covers, and re-snap the ones that drifted. -> warnings.
+
+    **The defect** (`docs/photo-quality-root-cause-2026-08-11.md`, fix #6.3,
+    traced on `testdata/photo/repro_gradient_white_icon.png`): a thread is
+    chosen at stage 2, from the pixels a region occupied THEN. Simplification
+    here moves the boundary — `cfg.simplify_tol_mm` is 0.2mm, which is a
+    rounding error on a 20mm shape and a large fraction of a 1.3mm-wide one.
+    On that fixture a ~1.95 x 11.7mm sliver was measured at segmentation time
+    as a genuine pinkish-white anti-alias blend, Lab (80.2, 25.1, 4.1), and
+    `select_palette` matched it well (Azalea Pink, near-zero excess). By the
+    time it was a simplified polygon it sat mostly over the solid white icon
+    interior instead: re-sampling its final 1,990 pixels gives median
+    (255, 255, 255), and the design ships a hot pink sliver through white
+    linework at dE00 23.9 — the worst thread match in the whole corpus.
+    Nothing between stage 2 and the machine ever re-asked the question.
+
+    This is the missing re-ask. It is deliberately a RE-MATCH, not a geometry
+    change: the polygon that came out of simplification is the one that sews
+    well, so the honest correction is to give it the thread it now needs,
+    not to push the outline back onto colour it no longer covers.
+
+    Two gates, both to keep this from firing as noise:
+
+    * `THREAD_REVALIDATE_MIN_PX` — a handful of pixels cannot support a
+      colour estimate, and a shape that small is the run tier's problem.
+    * `THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00` — re-snap only when the new
+      spool is meaningfully better than the one already assigned. Without
+      it this would churn thread assignments by fractions of a dE00 across
+      the whole corpus for no visible gain, and every golden with it.
+
+    **The error is measured PER PIXEL, and that choice is the whole fix.**
+    A drifted sliver is bimodal by construction — part of it still sits on the
+    colour its thread was chosen from, part has moved onto something else — and
+    every summary statistic that collapses it to one colour first will hide
+    that. Measured on the traced shape (2,333 px, thread `2560 Azalea Pink`):
+
+        per-pixel dE00 to its thread   p10 23.9  p50 23.9  p90 25.2
+        59.5% of its pixels are near-white (all channels >= 235)
+        mean RGB (247, 183, 193)   -> dE00  5.54   <- almost no pixel is this
+        median RGB (255, 255, 255) -> dE00 23.87
+
+    The mean says this shape is fine. The pixels say a hot pink thread is
+    sewing over white linework for most of its length. Taking the MEDIAN OF
+    THE PER-PIXEL dE00 keeps the answer on real pixels and is what this
+    function scores with — the same trap, in the same direction, that the
+    root-cause doc already documents for `preflight._artwork_colors_by_thread`
+    (independent per-channel medians over a pooled population, producing a
+    colour no actual pixel carries). An earlier build of this function used
+    the mean and scored the traced shape at 5.54, i.e. reported the defect it
+    exists to find as absent.
+    """
+    if not regions:
+        return []
+    chart = chart_for(cfg)
+    x0, y0, x1, y1 = p.art_bbox
+    cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+    shape = p.rgb.shape[:2]
+    flat_lab = rgb_to_lab(p.rgb.reshape(-1, 3)).reshape(*shape, 3)
+
+    resnapped: list[str] = []
+    worst_before = worst_after = 0.0
+    for r in regions:
+        # An enclosed-background shape is unstitched by default and its
+        # colour is the BACKGROUND's by definition — re-matching it to the
+        # bg-coloured pixels it covers is both a no-op and a category error.
+        if r.meta.get("enclosed_background"):
+            continue
+        fp = _region_footprint(r, shape, cx, cy, p.px_per_mm)
+        n = int(fp.sum())
+        if n < THREAD_REVALIDATE_MIN_PX:
+            continue
+        samples = _sample_lab(flat_lab[fp])
+        # (S, K) — every sampled pixel against every spool in the chart, then
+        # the median down the pixel axis: one honest error per spool.
+        per_spool = np.median(
+            deltaE_ciede2000(samples[:, None, :], chart.lab[None, :, :]), axis=0
+        )
+        before = float(per_spool[r.thread_index])
+        best = int(np.argmin(per_spool))
+        if best == r.thread_index:
+            continue
+        after = float(per_spool[best])
+        if before - after < THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00:
+            continue
+        r.thread_index = best
+        r.thread_number = chart[best].number
+        r.meta["thread_resnapped_de00"] = round(before, 2)
+        resnapped.append(r.shape_id)
+        worst_before = max(worst_before, before)
+        worst_after = max(worst_after, after)
+
+    if not resnapped:
+        return []
+    return [warn(
+        THREAD_RESNAPPED_AFTER_DRIFT,
+        f"{len(resnapped)} shape(s) had moved off the colour their thread was "
+        f"chosen from during outline simplification (worst dE00 "
+        f"{worst_before:.1f}); each was re-matched to the colour it now covers "
+        f"(worst dE00 now {worst_after:.1f}).",
+        count=len(resnapped),
+        ids=sorted(resnapped),
+        worst_before_de00=round(worst_before, 2),
+        worst_after_de00=round(worst_after, 2),
+    )]
 
 
 def tag_enclosed_background(regions: list[Region], p: Prep) -> None:

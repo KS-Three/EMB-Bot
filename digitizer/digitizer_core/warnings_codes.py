@@ -96,6 +96,9 @@ SHAPE_EDIT_UNKNOWN_ID = "SHAPE_EDIT_UNKNOWN_ID"    # a deleted/overridden shape_
 SHAPES_MERGED_BY_USER = "SHAPES_MERGED_BY_USER"    # 2+ same-layer shapes unioned into one new shape.
 SHAPE_SPLIT_BY_USER = "SHAPE_SPLIT_BY_USER"        # one shape cut by a line into two new shapes.
 
+# Stage 4 (post-vectorization thread re-validation)
+THREAD_RESNAPPED_AFTER_DRIFT = "THREAD_RESNAPPED_AFTER_DRIFT"  # a shape's simplified polygon moved off the pixels its thread was chosen from; thread re-matched to what it now covers. extra: {"count": int, "ids": list[str], "worst_before_de00": float, "worst_after_de00": float}
+
 # Stage 5 (overlap resolution / pull compensation)
 HOLE_NEARLY_CLOSED = "HOLE_NEARLY_CLOSED"          # pull comp would swallow a hole; held open. extra: {"count": int}
 SAME_THREAD_SHAPES_MERGED = "SAME_THREAD_SHAPES_MERGED"  # pull comp would fuse two shapes of one thread; gap held open. extra: {"count": int}

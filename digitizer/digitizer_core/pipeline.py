@@ -44,7 +44,7 @@ from .stage3_segment import (
     compact_layers,
     resolve_small_regions,
 )
-from .stage4_vectorize import tag_enclosed_background, vectorize
+from .stage4_vectorize import revalidate_threads, tag_enclosed_background, vectorize
 from .textcluster import detect_text_clusters, ocr_suggest_text, regularize_text_clusters
 from .stage5_overlap import resolve_overlaps
 from .stage6_blend import SourcePixels, detect_design_ramp_angle
@@ -302,6 +302,14 @@ def run_stages(
     # edits, not after.
     tag_enclosed_background(regions, p)
 
+    # Fix #6.3 — re-ask the thread question against the pixels each shape's
+    # FINAL polygon covers, now that simplification has moved the outline.
+    # Runs AFTER `tag_enclosed_background` because that tag is one of its own
+    # gates (an enclosed-background shape's colour is the background's by
+    # definition), and before `detect_text_clusters` for the same reason both
+    # of those run here: a computed fact re-derived every generation.
+    resnap_warnings = revalidate_threads(regions, p, cfg)
+
     # Same ordering rationale as `tag_enclosed_background` immediately above:
     # a computed FACT re-derived every generation, so it belongs before shape
     # identity edits/overrides run, not after.
@@ -501,7 +509,8 @@ def run_stages(
         design_size_mm=design,
         warnings=merge_warnings(
             [*classification.warnings, *p.warnings, *prep_warnings, *q.warnings,
-             *small_warnings, *vec_warnings, *merge_edit_warnings, *split_edit_warnings,
+             *small_warnings, *vec_warnings, *resnap_warnings,
+             *merge_edit_warnings, *split_edit_warnings,
              *edit_warnings, *layer_warnings]
         ),
         segmenter=seg.name,
