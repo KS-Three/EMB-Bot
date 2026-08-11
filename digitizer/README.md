@@ -61,6 +61,17 @@ pipeline — every OCR call fails open (see `textcluster.py`'s
 `None`, same as a below-threshold read, and Studio's "Convert to text" seed
 always falls back to an empty textarea.
 
+The optional SAM2 region former for photo-classified designs
+(`cfg.photo_segment_sam2`) needs its own isolated venv plus a downloaded
+checkpoint — `digitizer/sam2_isolated/README.md` has the build steps, the
+disk budget and the required checkpoint pre-warm step. It is off by default
+and, without it built, degrades to the classical SLIC+RAG region former with
+a `PHOTO_SAM2_SEGMENTATION_UNAVAILABLE` warning — the job still completes and
+nothing else in the pipeline changes. For the actual measured result behind
+that default — a tie with the classical segmenter on the available corpus,
+not a win, at a real ~40s/job CPU cost — see
+`digitizer/docs/sam2-segmentation-live-acceptance-2026-08-10.md`.
+
 ## Run
 
 ```
