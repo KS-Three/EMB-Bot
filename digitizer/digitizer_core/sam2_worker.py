@@ -18,7 +18,14 @@ standard library plus the isolated venv's own installed packages (numpy,
 torch, PIL, sam2), so it runs standalone with no digitizer_core install
 there.
 
-Usage:
+Usage — two invocation modes, never confused with each other:
+
+  Job mode (run by `stage2_sam2_segment.sam2_segment_seam`, timed by the
+  caller's own subprocess timeout). The checkpoint MUST already be cached;
+  this mode never downloads — see pre-warm mode below to populate the
+  cache. A cache miss here is refused fast and honestly (exit 4) rather
+  than raced against a timeout that a from-scratch download cannot win:
+
     <isolated venv python> sam2_worker.py \\
         <input_image> <output_npz> <checkpoint_tier> \\
         <points_per_side> <min_mask_region_area>
@@ -39,7 +46,17 @@ Usage:
     ratio when one was applied — see `stage2_sam2_segment.sam2_segment_seam`
     for that correction.
 
-Output: a compressed .npz at <output_npz> with
+  Pre-warm mode (the one-time setup step required by
+  `sam2_isolated/README.md`'s "Build it" §4, run BY HAND, with no
+  subprocess timeout racing it). Downloads the checkpoint if it is not
+  already cached — this is the ONLY invocation of this script that is
+  allowed to attempt a download, since job mode's cache-check-and-refuse
+  gate exists specifically to keep a doomed, timeout-killed download out
+  of a real job:
+
+    <isolated venv python> sam2_worker.py --prewarm <checkpoint_tier>
+
+Output (job mode only): a compressed .npz at <output_npz> with
   * labels           (H, W) int32 — per-pixel label id, -1 where no SAM2
                      mask covered the pixel. SAM2's automatic generator
                      returns OVERLAPPING instance masks and does not tile
@@ -51,13 +68,19 @@ Output: a compressed .npz at <output_npz> with
   * raw_mask_count   int64 scalar — how many masks the generator returned
                      before overlap resolution
 
-Exit code 0 = success, npz written. Any other exit code means failure and
-the reason is on stderr: 2 = bad arguments, 3 = import failed, 4 = the
-checkpoint could not be cached, 5 = mask generation failed, 6 = writing the
-output failed. The caller treats ANY nonzero exit code, and any timeout, as
-"unavailable" and degrades silently to the classical SLIC+RAG segmenter —
-never a hard pipeline error, since the isolated venv's presence, network
-status and checkpoint cache are environment facts, not caller mistakes.
+Exit code 0 = success (job mode: npz written; pre-warm mode: checkpoint now
+cached — no npz). Any other exit code means failure and the reason is on
+stderr: 2 = bad arguments (either mode), 3 = import failed (job mode only —
+pre-warm mode never imports torch/sam2, only urllib), 4 = checkpoint
+problem (job mode: not cached, refused before any download attempt;
+pre-warm mode: the download itself failed), 5 = mask generation failed (job
+mode only), 6 = writing the output failed (job mode only). In job mode the
+caller treats ANY nonzero exit code, and any timeout, as "unavailable" and
+degrades silently to the classical SLIC+RAG segmenter — never a hard
+pipeline error, since the isolated venv's presence, network status and
+checkpoint cache are environment facts, not caller mistakes. Pre-warm mode
+is run by hand, not by that caller, so its exit code is for a human (or a
+deploy script) to read directly.
 """
 from __future__ import annotations
 
@@ -133,10 +156,11 @@ def _ensure_checkpoint(tier: str) -> Path:
     with an unloadable cache entry.
 
     This function is the ONE place that actually downloads — deliberately
-    used only from the pre-warm step (`sam2_isolated/README.md`'s "Build
-    it" section) and from tests, never reached on the timed, real-job path
-    in `main` below, which checks `_checkpoint_is_cached` first and refuses
-    to start a download the caller's subprocess timeout would just kill.
+    called only from `main`'s `--prewarm` mode (driving the pre-warm step
+    documented in `sam2_isolated/README.md`'s "Build it" §4) and from
+    tests, never reached from the job-mode argv path in `main` below,
+    which checks `_checkpoint_is_cached` first and refuses to start a
+    download the caller's subprocess timeout would just kill.
     """
     dest_dir = _cache_dir()
     dest = _checkpoint_path(tier)
@@ -205,10 +229,42 @@ def _paint_labels(records, shape, np):
 
 
 def main(argv: list[str]) -> int:
+    # Pre-warm mode: `sam2_worker.py --prewarm <checkpoint_tier>`. Checked
+    # FIRST, before the job-mode argument count below, and deliberately
+    # calls `_ensure_checkpoint` directly — this is the one invocation that
+    # must NOT go through the cache-check-and-refuse gate further down,
+    # since its entire purpose is to populate the cache when it is empty.
+    # Run by hand (or a deploy script), with no subprocess timeout racing
+    # it — see `sam2_isolated/README.md`'s "Build it" §4.
+    if len(argv) >= 2 and argv[1] == "--prewarm":
+        if len(argv) != 3:
+            print(
+                "usage: sam2_worker.py --prewarm <checkpoint_tier>",
+                file=sys.stderr,
+            )
+            return 2
+        tier = argv[2]
+        if tier not in CHECKPOINTS:
+            print(
+                f"sam2_worker: unknown checkpoint tier {tier!r} "
+                f"(known: {sorted(CHECKPOINTS)})",
+                file=sys.stderr,
+            )
+            return 2
+        try:
+            checkpoint = _ensure_checkpoint(tier)
+        except Exception as exc:
+            print(f"sam2_worker: checkpoint unavailable: {exc}", file=sys.stderr)
+            return 4
+        print(f"sam2_worker: checkpoint cached at {checkpoint}")
+        return 0
+
     if len(argv) != 6:
         print(
             "usage: sam2_worker.py <input_image> <output_npz> <checkpoint_tier> "
-            "<points_per_side> <min_mask_region_area>",
+            "<points_per_side> <min_mask_region_area>   (job mode — the "
+            "checkpoint must already be cached; run "
+            "'sam2_worker.py --prewarm <checkpoint_tier>' first if not)",
             file=sys.stderr,
         )
         return 2
@@ -245,7 +301,8 @@ def main(argv: list[str]) -> int:
         print(
             f"sam2_worker: checkpoint not cached for tier {tier!r} "
             f"(looked for {_checkpoint_path(tier)}) — run the pre-warm step "
-            "in sam2_isolated/README.md before first real use",
+            f"(`sam2_worker.py --prewarm {tier}`) documented in "
+            "sam2_isolated/README.md before first real use",
             file=sys.stderr,
         )
         return 4

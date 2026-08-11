@@ -76,7 +76,42 @@ standalone by design). `stage2_sam2_segment.py` looks for the interpreter at
 python.exe` (Windows) by default; nothing else to configure.
 
 4. **Required — populate the checkpoint cache**, before this lane is used
-   for any real job:
+   for any real job. Use `sam2_worker.py`'s dedicated `--prewarm` mode, NOT
+   the 5-argument job-mode invocation shown in step 5 below: job mode
+   deliberately REFUSES to download (see the note below), so on a machine
+   that does not already have the checkpoint cached — e.g. a fresh checkout,
+   with no `~/.cache/sam2/sam2.1_hiera_tiny.pt` yet — job mode cannot be
+   used to populate the cache in the first place. `--prewarm` is the one
+   invocation that bypasses that refusal and actually downloads:
+
+```
+sam2_isolated/venv/bin/python digitizer_core/sam2_worker.py --prewarm tiny        # POSIX
+sam2_isolated\venv\Scripts\python.exe digitizer_core\sam2_worker.py --prewarm tiny   # Windows
+```
+
+   Exit code 0 and `sam2_worker: checkpoint cached at ...` on stdout means
+   the checkpoint downloaded (or was already present) and the venv can
+   import `sam2`/`torch` enough to run this far. A nonzero exit here means
+   either an unknown tier (exit 2) or the download itself failed (exit 4,
+   with the underlying error on stderr — e.g. no route to
+   `dl.fbaipublicfiles.com`).
+
+   This is NOT optional advice: `photo_segment_sam2_timeout_s` (90s
+   default) is shorter than a from-scratch checkpoint download plus torch's
+   own cold import (measured 155.98s, Task 6 — see
+   `docs/sam2-segmentation-live-acceptance-2026-08-10.md`). `sam2_worker.py`
+   deliberately refuses to attempt a download on the timed, real-job path
+   when the checkpoint isn't already cached (exit code 4, an honest reason)
+   rather than race a timeout it cannot win — so skipping this step means
+   every real job falls back to the classical segmenter until someone runs
+   `--prewarm` by hand. This first run here also pays for that same
+   download and torch's cold import, so time it separately from a second
+   run — see step 5 below for the actual job-mode smoke test, whose
+   (warm-cache) duration is the one that should inform
+   `photo_segment_sam2_timeout_s`.
+
+5. **Optional — smoke-test job mode itself** (the same invocation the real
+   seam uses), now that the cache from step 4 is warm:
 
 ```
 sam2_isolated/venv/bin/python digitizer_core/sam2_worker.py \
@@ -94,19 +129,6 @@ sam2_isolated/venv/bin/python digitizer_core/sam2_worker.py \
    `int32`, a raw mask count in the tens-to-low-hundreds, and `-1` present
    (SAM2 does not tile the image; uncovered pixels are normal and the seam
    handles them).
-
-   This is NOT optional advice: `photo_segment_sam2_timeout_s` (90s
-   default) is shorter than a from-scratch checkpoint download plus torch's
-   own cold import (measured 155.98s, Task 6 — see
-   `docs/sam2-segmentation-live-acceptance-2026-08-10.md`). `sam2_worker.py`
-   deliberately refuses to attempt a download on the timed, real-job path
-   when the checkpoint isn't already cached (exit code 4, an honest reason)
-   rather than race a timeout it cannot win — so skipping this step means
-   every real job falls back to the classical segmenter until someone runs
-   it by hand. This first run here also pays for that same download and
-   cold import, so time it separately from a second run — the second
-   (warm) run is the one whose duration should inform
-   `photo_segment_sam2_timeout_s`.
 
 **This venv is NOT committed** (see `digitizer/.gitignore`) and is a
 workstation/deploy-time setup step, the same shape as building

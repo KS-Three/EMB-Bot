@@ -61,17 +61,30 @@ def test_zero_points_per_side_exits_2():
     importlib.util.find_spec("sam2") is not None,
     reason="sam2 is importable in this interpreter, so the import cannot fail",
 )
-def test_missing_sam2_dependency_exits_3():
+def test_missing_sam2_dependency_exits_3(tmp_path):
     """Run under the SHARED venv, where sam2/torch are deliberately absent:
     the worker must report an honest import failure with exit code 3, not
     a traceback, so the seam can turn it into one plain-English reason.
 
-    Relies on the "tiny" checkpoint already being cached on this machine
-    (Task 6's manual acceptance run populated it) so the new fail-fast
-    checkpoint-cache check below does not short-circuit this case at exit 4
-    instead — see test_missing_checkpoint_cache_exits_4_before_import for
-    that case, forced deterministically via SAM2_CHECKPOINT_DIR."""
-    proc = _run("in.png", "out.npz", "tiny", "16", "9")
+    Points SAM2_CHECKPOINT_DIR at a temp dir seeded with a real nonempty
+    dummy file at the expected checkpoint filename, so the fail-fast
+    checkpoint-cache check below (exit 4, see
+    test_missing_checkpoint_cache_exits_4_before_import) passes and this
+    test actually reaches — and exercises — the import failure it is named
+    for, independent of whether this machine happens to have a real
+    "tiny" checkpoint cached."""
+    import os
+
+    dest = tmp_path / sam2_worker.CHECKPOINTS["tiny"][0]
+    dest.write_bytes(b"not a real checkpoint, just needs to be nonempty")
+    env = {**os.environ, "SAM2_CHECKPOINT_DIR": str(tmp_path)}
+    proc = subprocess.run(
+        [sys.executable, str(WORKER), "in.png", "out.npz", "tiny", "16", "9"],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        env=env,
+    )
     assert proc.returncode == 3
     assert "sam2_worker: import failed" in proc.stderr
 
@@ -101,6 +114,59 @@ def test_missing_checkpoint_cache_exits_4_before_import(tmp_path):
     # Never got as far as trying to read the (nonexistent) input image or
     # importing torch — the honest, fast-failure guarantee this test pins.
     assert "import failed" not in proc.stderr
+
+
+def test_prewarm_mode_bypasses_the_cache_check_and_populates_it(
+    tmp_path, monkeypatch, capsys
+):
+    """`--prewarm`'s whole reason to exist is populating an EMPTY cache, so
+    it must NEVER be blocked by the same cache-check-and-refuse gate that
+    job mode hits in test_missing_checkpoint_cache_exits_4_before_import —
+    that gate exists precisely because the cache is empty at that point.
+
+    Runs in-process (not via subprocess, unlike most tests in this file)
+    so `_cache_dir` and the actual network call inside `_ensure_checkpoint`
+    can be stubbed the same way `test_checkpoint_is_cached_reads_the_real_
+    cache_state` above stubs `_cache_dir` — a real multi-minute download
+    from Meta's release host is not something a unit test should require,
+    and `urllib.request.urlopen` is the one call that would make it real."""
+    monkeypatch.setattr(sam2_worker, "_cache_dir", lambda: tmp_path)
+    assert sam2_worker._checkpoint_is_cached("tiny") is False, (
+        "sanity check: this test must start from a genuinely empty cache, "
+        "the exact condition the cache-check gate refuses on"
+    )
+
+    requested_urls: list[str] = []
+
+    class _FakeResponse:
+        def __init__(self, payload: bytes):
+            self._chunks = [payload, b""]
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc_info):
+            return False
+
+        def read(self, _n):
+            return self._chunks.pop(0) if self._chunks else b""
+
+    def _fake_urlopen(url, timeout=None):
+        requested_urls.append(url)
+        return _FakeResponse(b"fake checkpoint bytes, never a real download")
+
+    monkeypatch.setattr(sam2_worker.urllib.request, "urlopen", _fake_urlopen)
+
+    returncode = sam2_worker.main(["sam2_worker.py", "--prewarm", "tiny"])
+
+    assert returncode == 0
+    # Proves the download path (_ensure_checkpoint) actually ran, not that
+    # the gate happened to pass some other way.
+    assert requested_urls == [
+        sam2_worker.CHECKPOINT_BASE_URL + sam2_worker.CHECKPOINTS["tiny"][0]
+    ]
+    assert sam2_worker._checkpoint_is_cached("tiny") is True
+    assert "checkpoint cached at" in capsys.readouterr().out
 
 
 def test_checkpoint_is_cached_reads_the_real_cache_state(tmp_path, monkeypatch):

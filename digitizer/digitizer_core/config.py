@@ -160,11 +160,12 @@ class PipelineConfig:
     #
     # MEASURED, Task 6, 2026-08-10 (this machine: Windows, CPU-only, no GPU,
     # Python 3.14.6, torch 2.13.0+cpu, sam2_isolated venv built fresh —
-    # digitizer/sam2_isolated/README.md's own "python3.12" in the build
-    # command is stale on a machine with no 3.12 interpreter installed;
-    # Python 3.14 has a real cp314 CPU wheel on PyTorch's own index as of
-    # this date and was used instead, see the measurement note for the
-    # detail). `sam2_worker.py testdata/photo/drone_render.png ... tiny 16
+    # this measurement's own venv had no 3.12 interpreter installed, so it
+    # used Python 3.14, which has a real cp314 CPU wheel on PyTorch's own
+    # index as of this date; digitizer/sam2_isolated/README.md's build
+    # command already documents `python3.14` for this reason, see the
+    # measurement note for the detail). `sam2_worker.py
+    # testdata/photo/drone_render.png ... tiny 16
     # 36`, run twice: COLD (pays the one-time ~150 MB checkpoint download
     # from dl.fbaipublicfiles.com plus torch's own cold import) = 155.98s;
     # WARM (cache hit, the number that matters) = 39.96s. A second warm
