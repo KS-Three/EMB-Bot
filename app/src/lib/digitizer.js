@@ -45,6 +45,30 @@ export function digitizerUrl() {
   }
 }
 
+// SAM2 photo segmentation (digitizer_core/stage2_sam2_segment.py) — the same
+// dev/ops-seam shape as DIGITIZER_URL_KEY above, and deliberately NOT a
+// product control: SAM2 needs a hand-built isolated venv
+// (digitizer/sam2_isolated/README.md) plus a ~156 MB checkpoint, and costs
+// real per-image latency on a CPU-only box. Set localStorage
+// "embstudio:sam2" to "1" to route photo-classified designs through it.
+//
+// The service accepts the field already — digitizer_service/app.py derives
+// its allowlist from PipelineConfig's own dataclass fields, so nothing there
+// needed changing. Whether SAM2 actually RAN is visible in the existing
+// warnings list either way: PHOTO_SAM2_SEGMENTED on success,
+// PHOTO_SAM2_SEGMENTATION_UNAVAILABLE when it silently fell back to SLIC+RAG
+// (that fallback is the seam's whole contract, so the warning is the only
+// way to tell the two segmenters' output apart).
+export const SAM2_KEY = "embstudio:sam2";
+
+export function sam2Enabled() {
+  try {
+    return localStorage.getItem(SAM2_KEY) === "1";
+  } catch (e) {
+    return false;
+  }
+}
+
 // ---- client ----------------------------------------------------------------
 
 // GET /health, null on ANY failure (down, refused, non-ok, bad JSON). Studio
@@ -83,6 +107,12 @@ export function buildDigitizeConfig(element, project) {
     border: p.border,
   };
   if (p.fill_angle_deg != null) cfg.fill_angle_deg = p.fill_angle_deg;
+  // Dev/ops seam, not a design property (see sam2Enabled above): sent as
+  // per-request context alongside thread_brand rather than stored in
+  // element.params, so it never persists into a saved project. Sent for every
+  // design regardless of class — pipeline.py gates SAM2 on photo_subject/
+  // photo_scene itself, and Studio can't know the class before digitizing.
+  if (sam2Enabled()) cfg.photo_segment_sam2 = true;
   const brand = loadPreferredPaletteId();
   if (brand && brand !== "studio") cfg.thread_brand = brand;
   if (project && project.garmentId) cfg.garment_id = project.garmentId;

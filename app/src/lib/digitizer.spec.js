@@ -55,7 +55,7 @@ const PIPELINE_CONFIG_FIELDS = [
   "fabric_id", "overlap_mm", "fill_row_mm", "fill_stitch_mm", "fill_angle_deg",
   "underlay_style", "underlay", "satin", "satin_max_width_mm", "border",
   "border_width_mm", "deleted_shape_ids", "shape_overrides",
-  "merge_shape_ids", "split_shapes",
+  "merge_shape_ids", "split_shapes", "photo_segment_sam2",
 ];
 
 test("buildDigitizeConfig sends the stored thread-brand preference and the project garment, in service field names", async () => {
@@ -90,6 +90,39 @@ test("buildDigitizeConfig omits thread_brand for the generic Studio palette (ser
   expect(angled.satin).toBe(false);
   expect(angled.border).toBe("bean");
   expect(angled.target_width_mm).toBe(60);
+});
+
+test("buildDigitizeConfig sends photo_segment_sam2 only when the embstudio:sam2 dev seam is on", async () => {
+  // SAM2 is an internal/advanced seam, not a product control (see sam2Enabled
+  // in digitizer.js): absent by default so the service's own False default
+  // applies, and never stored in element.params so it can't persist into a
+  // saved project.
+  stubStorage({});
+  let mod = await import("./digitizer.js");
+  expect("photo_segment_sam2" in mod.buildDigitizeConfig(digitizedElement(), PROJECT)).toBe(false);
+
+  stubStorage({ "embstudio:sam2": "1" });
+  vi.resetModules();
+  mod = await import("./digitizer.js");
+  expect(mod.buildDigitizeConfig(digitizedElement(), PROJECT).photo_segment_sam2).toBe(true);
+
+  // Only the exact string "1" arms it -- a stale/garbage value must not
+  // silently route every photo design through a 156 MB model.
+  stubStorage({ "embstudio:sam2": "true" });
+  vi.resetModules();
+  mod = await import("./digitizer.js");
+  expect("photo_segment_sam2" in mod.buildDigitizeConfig(digitizedElement(), PROJECT)).toBe(false);
+});
+
+test("sam2Enabled is false when localStorage throws, like digitizerUrl's own fallback", async () => {
+  globalThis.localStorage = {
+    getItem: () => { throw new Error("storage disabled"); },
+    setItem: () => {},
+    removeItem: () => {},
+  };
+  vi.resetModules();
+  const { sam2Enabled } = await import("./digitizer.js");
+  expect(sam2Enabled()).toBe(false);
 });
 
 test("startDigitize POSTs multipart image+config to /digitize exactly as test_service.py's client does", async () => {

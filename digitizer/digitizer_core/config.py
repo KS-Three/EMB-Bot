@@ -137,10 +137,23 @@ class PipelineConfig:
     # grid-starved), not a grid-density problem, so raising this constant
     # buys a worse cost/mask ratio here and real timeout risk against the
     # new (also Task-6-measured) 90s timeout below, with no corresponding
-    # region-count benefit. Left at 16. See docs/sam2-segmentation-live-
+    # region-count benefit. See docs/sam2-segmentation-live-
     # acceptance-2026-08-10.md for the full sweep and the other two corpus
     # fixtures' raw mask counts at 16 (1 and 14).
-    photo_segment_sam2_points_per_side: int = 16
+    #
+    # LOWERED 16 -> 12, 2026-08-11, measured on the same machine (see
+    # docs/sam-alternatives-research-2026-08-11.md). That research set out to
+    # find a smaller/faster SAM and found instead that the model is the wrong
+    # thing to change: in automatic-mask-generation mode SAM2's image ENCODER
+    # is only ~8% of per-image cost, and the other ~92% is this constant's own
+    # points_per_side**2 prompt-decode loop (~148 ms per prompt, 256 prompts
+    # at 16). Every lightweight SAM variant on the market optimizes the
+    # encoder — they target interactive click-to-segment — so none of them can
+    # touch the 92%. This knob can. Measured, same image, all else equal:
+    # 16 -> 53.96s / 16 masks; 12 -> 32.10s / 16 masks (IDENTICAL output for
+    # 41% less time); 8 -> 16.91s / 11 masks (loses 5 — too far). 12 is the
+    # last step down that costs nothing in output.
+    photo_segment_sam2_points_per_side: int = 12
     # Longest side, in px, of the raster handed to the worker. SAM2's image
     # encoder resizes its input to 1024x1024 internally, so sending more than
     # this costs I/O and post-processing without giving the encoder more to
@@ -148,8 +161,31 @@ class PipelineConfig:
     # to full resolution, which preserves region identity exactly and costs
     # at most a pixel of boundary precision — well inside the tolerance
     # stage 4 already applies via simplify_tol_mm. 0 or negative disables the
-    # downscale entirely. ALSO A STARTING POINT: the boundary-precision half
-    # of that claim is reasoned, not measured.
+    # downscale entirely.
+    #
+    # STAYS 1024 — a 512 default was tried and REJECTED on measurement,
+    # 2026-08-11. `docs/sam-alternatives-research-2026-08-11.md` proposed
+    # 1024 -> 512 as "~-21% wall-clock, same masks"; measured end-to-end
+    # through the real service on photo_scene_stub.png it is NOT the same
+    # masks — region count drops 25 -> 20 (a fifth of the segmentation),
+    # reproducibly, at BOTH points_per_side 16 and 12. Time saved was ~11%,
+    # and this box's run-to-run timing noise is wider than that (the SAME
+    # config measured 51.3s and 59.7s in two runs), so the trade is a real,
+    # deterministic quality loss bought with a saving smaller than the
+    # noise. Region counts are the trustworthy signal here, not seconds.
+    #
+    # That research DID correct the mechanism this comment asserts above, and
+    # the correction stands even though its recommendation didn't: the claim
+    # that sending more than the encoder's own 1024 costs "I/O and
+    # post-processing" has the encoder half backwards. `SAM2Transforms`
+    # hard-resizes every input to 1024x1024 regardless, so this knob never
+    # feeds the encoder more OR less work; what it really changes is the
+    # per-prompt mask upscale and how much real detail survives to be
+    # segmented at all — which is why lowering it loses regions. The
+    # boundary-precision half of the original claim remains reasoned, not
+    # measured — and would matter more below 1024, so it is the thing to
+    # revisit first if this is ever lowered again and thin features start
+    # coming back soft on real photos.
     photo_segment_sam2_max_side_px: int = 1024
     # Subprocess timeout, seconds. This is the ONLY bound this architecture
     # has on a hung SAM2 call: digitizer_service/jobs.py's JobRegistry is a

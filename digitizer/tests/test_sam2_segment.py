@@ -90,7 +90,13 @@ def test_sam2_is_off_by_default_with_the_documented_defaults():
     cfg = PipelineConfig()
     assert cfg.photo_segment_sam2 is False
     assert cfg.photo_segment_sam2_checkpoint == "tiny"
-    assert cfg.photo_segment_sam2_points_per_side == 16
+    # points_per_side lowered 16 -> 12 on 2026-08-11 measurement (~-29%
+    # wall-clock and MORE regions found, 25 -> 26; see config.py's own
+    # comment). max_side_px deliberately stayed 1024: the same pass tried
+    # 512 and rejected it — reproducibly 25 -> 20 regions, a real quality
+    # loss for a saving inside this box's timing noise. Both are deliberate
+    # measured values; changing either should come with its own measurement.
+    assert cfg.photo_segment_sam2_points_per_side == 12
     assert cfg.photo_segment_sam2_max_side_px == 1024
     assert cfg.photo_segment_sam2_timeout_s == 90.0
 
@@ -251,7 +257,7 @@ def test_seam_passes_the_documented_argv_to_the_worker(monkeypatch):
     assert Path(cmd[0]).name == "python"
     assert cmd[1].endswith("worker.py")
     assert cmd[4] == "tiny"
-    assert cmd[5] == "16"
+    assert cmd[5] == "12"
     # The area floor must be expressed in pixels of the image the worker
     # actually receives — `small`, computed via the same
     # `_downscale_for_sam2` the seam itself calls — not the full-resolution
