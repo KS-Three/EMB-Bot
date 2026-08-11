@@ -201,7 +201,7 @@ def select_palette(
             # drone_render.png finding) -- never to pad the palette for a
             # region no thread is actually close to.
             worst = int(np.argmax(res - floor))
-            if not (floor[worst] <= excess_deltae * 0.5):
+            if floor[worst] > excess_deltae * 0.5:
                 break
         costs = (w[:, None] * np.minimum(res[:, None], dist)).sum(axis=0)
         costs[selected] = np.inf

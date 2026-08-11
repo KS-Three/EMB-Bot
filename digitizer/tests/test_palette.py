@@ -241,8 +241,13 @@ def test_empty_and_invalid_inputs():
 
 def test_max_colors_cap_binds_across_families():
     # Three distinct families (red / green / blue) x three shades each, all
-    # equal weight, capped at 3: the palette must respect the cap, and every
-    # region still gets its nearest of the selected medoids.
+    # equal weight, capped at 3: every region's own floor is well above the
+    # excess_deltae/2 rescue threshold (measured: 2.79-6.62, nothing close to
+    # the 2.25 cutoff), so the floor-gated overflow never fires and BUILD
+    # stops at the soft cap -- same 3-medoid result the cap always gave, now
+    # because nothing here actually qualifies for rescue rather than growth
+    # being disallowed outright. Every region still gets its nearest of the
+    # selected medoids.
     fams = [
         [(180, 30, 30), (210, 90, 90), (240, 150, 150)],
         [(30, 140, 30), (90, 180, 90), (150, 220, 150)],
@@ -366,7 +371,10 @@ def test_overflow_rescues_a_genuinely_low_floor_region():
     the fix it must get its own medoid: every region's own floor (fillers
     4.057/1.788/3.362, outlier 0.0) is individually under
     PALETTE_EXCESS_DELTAE, so once the outlier has a medoid the excess
-    condition is fully satisfiable and BUILD stops at 4, not the hard cap."""
+    condition is fully satisfiable -- BUILD stays inside the hard cap and
+    the outlier ends up fully rescued, not force-merged (see the inline
+    comment below for the actual medoid count and why it isn't the 4 this
+    might suggest)."""
     sel, labs = _overflow_scenario([(204, 204, 204)], 300.0, max_k=3)
     # NOT asserting an exact medoid count: pure-greedy BUILD's very first
     # pick (before any medoid exists, res=inf for every region) minimizes
@@ -410,9 +418,6 @@ def test_overflow_is_bounded_by_palette_overflow_k():
     all): 3 medoids, max_excess_de00=40.243."""
     outliers = [(204, 204, 204), (0, 0, 0), (255, 255, 255), (255, 255, 0)]
     sel, labs = _overflow_scenario(outliers, 300.0, max_k=3)
-    assert len(sel.medoids) <= 3 + PALETTE_OVERFLOW_K, (
-        f"got {len(sel.medoids)} medoids -- hard cap did not bind"
-    )
     assert len(sel.medoids) == 3 + PALETTE_OVERFLOW_K, (
         "expected the cap to actually bind (4 low-floor outliers competing "
         f"for 3 overflow slots) -- got {len(sel.medoids)}, cap wasn't reached"
