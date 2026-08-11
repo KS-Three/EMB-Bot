@@ -96,6 +96,34 @@ def _cache_dir() -> Path:
     return Path.home() / ".cache" / "sam2"
 
 
+def _checkpoint_path(tier: str) -> Path:
+    return _cache_dir() / CHECKPOINTS[tier][0]
+
+
+def _checkpoint_is_cached(tier: str) -> bool:
+    """True if `tier`'s checkpoint is already fully downloaded — read-only,
+    never touches the network, never mutates the cache.
+
+    Callers that are racing a `subprocess.run(timeout=)` (see
+    `stage2_sam2_segment.sam2_segment_seam`) MUST check this before doing
+    anything else, not just before calling `_ensure_checkpoint`: the
+    caller's timeout (measured 90s default) is shorter than a from-scratch
+    checkpoint download plus torch's own cold import (measured 155.98s, see
+    docs/sam2-segmentation-live-acceptance-2026-08-10.md), so a first-use
+    download started under that timeout is guaranteed to be killed
+    mid-transfer. Worse: `subprocess.run(timeout=)` kills the child via
+    SIGTERM/TerminateProcess, which does NOT run `_ensure_checkpoint`'s own
+    `finally: tmp.unlink()` — the download is orphaned as a `.part` file,
+    and EVERY subsequent job repeats the same doomed download-and-timeout
+    cycle forever, never actually finishing the cache. Checking this FIRST
+    and refusing to start a download the timeout cannot let finish turns
+    that permanent, silent degradation into one fast, honest failure that
+    names the real fix (pre-warm the cache; see `main`'s exit-4 message).
+    """
+    dest = _checkpoint_path(tier)
+    return dest.is_file() and dest.stat().st_size > 0
+
+
 def _ensure_checkpoint(tier: str) -> Path:
     """Return the cached checkpoint path, downloading it on first use.
 
@@ -103,13 +131,19 @@ def _ensure_checkpoint(tier: str) -> Path:
     interrupted or truncated download is never left behind wearing the real
     filename — the failure mode that would otherwise poison every later run
     with an unloadable cache entry.
+
+    This function is the ONE place that actually downloads — deliberately
+    used only from the pre-warm step (`sam2_isolated/README.md`'s "Build
+    it" section) and from tests, never reached on the timed, real-job path
+    in `main` below, which checks `_checkpoint_is_cached` first and refuses
+    to start a download the caller's subprocess timeout would just kill.
     """
-    filename = CHECKPOINTS[tier][0]
     dest_dir = _cache_dir()
-    dest = dest_dir / filename
+    dest = _checkpoint_path(tier)
     if dest.is_file() and dest.stat().st_size > 0:
         return dest
 
+    filename = CHECKPOINTS[tier][0]
     dest_dir.mkdir(parents=True, exist_ok=True)
     url = CHECKPOINT_BASE_URL + filename
     handle, tmp_name = tempfile.mkstemp(dir=str(dest_dir), suffix=".part")
@@ -196,6 +230,25 @@ def main(argv: list[str]) -> int:
     if points_per_side < 1:
         print("sam2_worker: points_per_side must be >= 1", file=sys.stderr)
         return 2
+
+    # Fail fast, BEFORE the slow imports below (torch's own cold import is
+    # itself a meaningful chunk of the measured 155.98s cold-start cost) and
+    # before touching the network at all, when the checkpoint has never been
+    # cached. The caller's subprocess timeout (90s default, always shorter
+    # than a from-scratch download) would kill an in-flight download anyway
+    # — externally, so `_ensure_checkpoint`'s own cleanup never runs, and the
+    # orphaned `.part` file would make every later job repeat the same
+    # doomed cycle. Refusing here instead makes the failure fast and the
+    # reason honest: this checkpoint tier needs the one-time pre-warm step
+    # documented in sam2_isolated/README.md, not a longer timeout.
+    if not _checkpoint_is_cached(tier):
+        print(
+            f"sam2_worker: checkpoint not cached for tier {tier!r} "
+            f"(looked for {_checkpoint_path(tier)}) — run the pre-warm step "
+            "in sam2_isolated/README.md before first real use",
+            file=sys.stderr,
+        )
+        return 4
 
     try:
         import numpy as np

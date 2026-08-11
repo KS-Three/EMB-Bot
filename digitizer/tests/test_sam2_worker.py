@@ -64,10 +64,57 @@ def test_zero_points_per_side_exits_2():
 def test_missing_sam2_dependency_exits_3():
     """Run under the SHARED venv, where sam2/torch are deliberately absent:
     the worker must report an honest import failure with exit code 3, not
-    a traceback, so the seam can turn it into one plain-English reason."""
+    a traceback, so the seam can turn it into one plain-English reason.
+
+    Relies on the "tiny" checkpoint already being cached on this machine
+    (Task 6's manual acceptance run populated it) so the new fail-fast
+    checkpoint-cache check below does not short-circuit this case at exit 4
+    instead — see test_missing_checkpoint_cache_exits_4_before_import for
+    that case, forced deterministically via SAM2_CHECKPOINT_DIR."""
     proc = _run("in.png", "out.npz", "tiny", "16", "9")
     assert proc.returncode == 3
     assert "sam2_worker: import failed" in proc.stderr
+
+
+def test_missing_checkpoint_cache_exits_4_before_import(tmp_path):
+    """The Task-6 timeout fix (I3): when the checkpoint has never been
+    cached, the worker must refuse fast with the honest, actionable exit 4
+    reason — NOT attempt a download that the caller's subprocess timeout
+    would kill mid-transfer (orphaning a `.part` file and repeating the
+    same doomed cycle on every later job forever). Forces "not cached"
+    deterministically via SAM2_CHECKPOINT_DIR pointed at an empty
+    directory, independent of this machine's real cache state."""
+    import os
+
+    env = {**os.environ, "SAM2_CHECKPOINT_DIR": str(tmp_path)}
+    proc = subprocess.run(
+        [sys.executable, str(WORKER), "in.png", "out.npz", "tiny", "16", "9"],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        env=env,
+    )
+    assert proc.returncode == 4
+    assert "checkpoint not cached" in proc.stderr
+    assert "pre-warm" in proc.stderr
+    assert "sam2_isolated/README.md" in proc.stderr
+    # Never got as far as trying to read the (nonexistent) input image or
+    # importing torch — the honest, fast-failure guarantee this test pins.
+    assert "import failed" not in proc.stderr
+
+
+def test_checkpoint_is_cached_reads_the_real_cache_state(tmp_path, monkeypatch):
+    monkeypatch.setattr(sam2_worker, "_cache_dir", lambda: tmp_path)
+    assert sam2_worker._checkpoint_is_cached("tiny") is False
+
+    dest = tmp_path / sam2_worker.CHECKPOINTS["tiny"][0]
+    dest.write_bytes(b"")
+    assert sam2_worker._checkpoint_is_cached("tiny") is False, (
+        "a zero-byte file must not count as cached"
+    )
+
+    dest.write_bytes(b"not empty")
+    assert sam2_worker._checkpoint_is_cached("tiny") is True
 
 
 def test_worker_imports_nothing_from_digitizer_core():

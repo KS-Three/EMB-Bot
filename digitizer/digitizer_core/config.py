@@ -177,18 +177,26 @@ class PipelineConfig:
     # number step moved it further than the multiplier alone would have,
     # still floor-60-compliant). This is a REAL trade-off, not a free win, and
     # is recorded here rather than left implicit: 90s comfortably covers a
-    # warm call with margin, but is now SHORTER than the measured cold
-    # (first-use, cache-miss) path (155.98s) — a fresh deployment's very
-    # first real job will time out and silently fall back to the classical
-    # segmenter even though the checkpoint download would have succeeded
-    # given more time. `sam2_isolated/README.md`'s existing advice to
-    # pre-warm the checkpoint cache by hand before going live is the
-    # mitigation this shipped with; it was optional before this number was
-    # measured and is now load-bearing. The alternative — sizing the timeout
-    # off the cold path instead — was rejected: it would let one hung call
-    # block the single-worker queue for 2.5+ minutes on every occurrence,
-    # which is the failure this bound exists to prevent, to buy safety for a
-    # one-time event a deploy step can just avoid. Corroborated by a real
+    # warm call with margin, but is SHORTER than the measured cold
+    # (first-use, cache-miss) path (155.98s). Left unmitigated this is worse
+    # than "the first job is slow": `subprocess.run(timeout=)` kills the
+    # worker externally, which skips `sam2_worker._ensure_checkpoint`'s own
+    # `finally: tmp.unlink()` cleanup, so a timed-out download is orphaned as
+    # a `.part` file and EVERY later job would repeat the identical doomed
+    # download-and-timeout cycle — a permanent, silent degrade to "SAM2
+    # always falls back", not a one-time cost a deploy step can shrug off.
+    # The actual mitigation: `sam2_worker.main` checks whether the checkpoint
+    # is already cached BEFORE attempting anything and refuses fast (exit 4,
+    # an honest reason) instead of racing this timeout when it isn't.
+    # `sam2_isolated/README.md`'s pre-warm step (run the worker once by hand
+    # to populate the cache) is therefore a REQUIRED part of standing this
+    # lane up, not optional advice — skipping it means every real job
+    # degrades to the classical segmenter, fast and loud, until someone runs
+    # it. The alternative — sizing the timeout off the cold path instead —
+    # was rejected: it would let one hung call block the single-worker queue
+    # for 2.5+ minutes on every occurrence, which is the failure this bound
+    # exists to prevent, to buy safety for a cost the pre-warm step already
+    # avoids. Corroborated by a real
     # timeout firing correctly in this same session: a `points_per_side`
     # sweep (see that field's own comment) drove one call's SAM2 subprocess
     # past the THEN-180s default (the bound that fired), and the FULL

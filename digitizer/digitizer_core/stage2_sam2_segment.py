@@ -63,6 +63,22 @@ def _default_sam2_venv_python() -> Path:
 
 SAM2_VENV_PYTHON = _default_sam2_venv_python()
 
+# Hard upper clamp on `cfg.photo_segment_sam2_timeout_s`, applied here in the
+# seam regardless of what a caller asked for. `PipelineConfig` round-trips
+# over HTTP (see digitizer_service's job-submission API) with no server-side
+# bound on this field, so a request could otherwise set an arbitrarily large
+# timeout and tie up the single-worker job queue (see this function's own
+# docstring on why `timeout=` is load-bearing) for as long as it likes. 300s
+# = ~2x the measured 155.98s cold-start baseline (checkpoint download +
+# torch's own cold import, Task 6, docs/sam2-segmentation-live-acceptance-
+# 2026-08-10.md) plus margin: generous enough that a legitimate cold-cache
+# run set close to that baseline is never clipped, small enough that no
+# single request can starve the queue for more than a few minutes. Defense
+# in depth only — this same exposure exists, unclamped, for the older
+# `photo_prep_background_removal_timeout_s` field; fixing that is out of
+# scope here.
+SAM2_TIMEOUT_HARD_CAP_S = 300.0
+
 
 def sam2_segmentation_unavailable_reason() -> str | None:
     """None when the isolated SAM2 venv + worker script look runnable here;
@@ -217,6 +233,7 @@ def sam2_segment_seam(
         if not cv2.imwrite(str(in_path), cv2.cvtColor(small, cv2.COLOR_RGB2BGR)):
             return None, "failed to write a temp input image for the SAM2 worker"
 
+        timeout_s = min(cfg.photo_segment_sam2_timeout_s, SAM2_TIMEOUT_HARD_CAP_S)
         try:
             proc = subprocess.run(
                 [
@@ -230,13 +247,10 @@ def sam2_segment_seam(
                 ],
                 capture_output=True,
                 text=True,
-                timeout=cfg.photo_segment_sam2_timeout_s,
+                timeout=timeout_s,
             )
         except subprocess.TimeoutExpired:
-            return None, (
-                "SAM2 worker timed out after "
-                f"{cfg.photo_segment_sam2_timeout_s:g}s"
-            )
+            return None, f"SAM2 worker timed out after {timeout_s:g}s"
         except OSError as exc:
             return None, f"failed to launch the isolated SAM2 venv: {exc}"
 

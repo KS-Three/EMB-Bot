@@ -29,6 +29,7 @@ import pytest
 from digitizer_core.config import PipelineConfig
 
 from .test_flat_lane_byte_identical import GOLDEN
+from .test_flat_lane_byte_identical import _snapshot as _golden_snapshot
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
 FIXTURE = TESTDATA / "photo" / "region_blobs.png"
@@ -263,6 +264,57 @@ def test_seam_passes_the_documented_argv_to_the_worker(monkeypatch):
     small = s2._downscale_for_sam2(p.rgb, cfg.photo_segment_sam2_max_side_px)
     scale = max(small.shape[:2]) / float(max(p.rgb.shape[:2]))
     assert int(cmd[6]) == int((cfg.min_detail_mm * p.px_per_mm * scale) ** 2)
+
+
+def test_a_request_supplied_timeout_above_the_hard_cap_is_clamped_not_honored(
+    monkeypatch,
+):
+    """`photo_segment_sam2_timeout_s` round-trips over HTTP with no
+    server-side bound, so a request could ask for an absurdly large timeout
+    and tie up the single-worker job queue. `SAM2_TIMEOUT_HARD_CAP_S` is the
+    defense-in-depth clamp applied in the seam itself, regardless of what the
+    config says — this proves the clamp actually reaches `subprocess.run`,
+    not just that the constant exists."""
+    s2 = _available(monkeypatch)
+    seen_timeouts: list[float] = []
+
+    def _spy(cmd, **kwargs):
+        seen_timeouts.append(kwargs["timeout"])
+        return _fake_worker(_quadrant_labels)(cmd, **kwargs)
+
+    monkeypatch.setattr(s2.subprocess, "run", _spy)
+    huge = s2.SAM2_TIMEOUT_HARD_CAP_S + 10_000.0
+    p, cfg = _prepped(photo_segment_sam2_timeout_s=huge)
+    s2.sam2_segment_seam(p, cfg)
+
+    assert cfg.photo_segment_sam2_timeout_s == huge, (
+        "the config value itself must be untouched — only what reaches "
+        "subprocess.run is clamped"
+    )
+    assert seen_timeouts == [s2.SAM2_TIMEOUT_HARD_CAP_S], (
+        "a request-supplied timeout above the hard cap must be clamped to "
+        "the cap, not honored as-is"
+    )
+
+
+def test_a_request_supplied_timeout_under_the_hard_cap_passes_through_unclamped(
+    monkeypatch,
+):
+    s2 = _available(monkeypatch)
+    seen_timeouts: list[float] = []
+
+    def _spy(cmd, **kwargs):
+        seen_timeouts.append(kwargs["timeout"])
+        return _fake_worker(_quadrant_labels)(cmd, **kwargs)
+
+    monkeypatch.setattr(s2.subprocess, "run", _spy)
+    p, cfg = _prepped(photo_segment_sam2_timeout_s=45.0)
+    s2.sam2_segment_seam(p, cfg)
+
+    assert seen_timeouts == [45.0], (
+        "a timeout already under the hard cap must reach subprocess.run "
+        "unchanged"
+    )
 
 
 def test_seam_scales_the_area_floor_to_the_downscaled_image(monkeypatch):
@@ -722,9 +774,11 @@ def test_flat_lane_is_byte_identical_with_the_sam2_flag_on(fixture):
     """The classification half of the gate: turning photo_segment_sam2 on
     must not move one byte for a flat-classified design — mirrors
     test_background_removal.py::test_flat_lane_is_byte_identical_with_the_flag_on.
-    `GOLDEN` is imported at the top of this module from
-    tests/test_flat_lane_byte_identical.py — that file is the record of truth
-    for the flat lane and is not touched by this change."""
+    Compares against a LIVE flag-off re-run (`_golden_snapshot`, imported from
+    tests/test_flat_lane_byte_identical.py's `_snapshot`), not the frozen
+    `GOLDEN` dict — both sides are computed fresh on this machine in this run,
+    so the comparison is immune to golden/environment drift (e.g. the
+    documented photo/enthusiast_logo.png drift `GOLDEN` itself carries)."""
     from digitizer_core.pipeline import digitize
 
     result, plan = digitize(
@@ -744,4 +798,4 @@ def test_flat_lane_is_byte_identical_with_the_sam2_flag_on(fixture):
             for x, y in r.points
         ],
     }
-    assert snap == GOLDEN[fixture]
+    assert snap == _golden_snapshot(fixture)

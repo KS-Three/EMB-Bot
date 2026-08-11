@@ -1877,8 +1877,16 @@ that's how feedback on digitizing quality actually needs to land.
 **Status:** In progress. The JS engine is complete but frozen — COOKBOOK.md
 notes it was retired in favor of "feed it clean flat art," not because it's
 broken. The Python pipeline is the active target: `digitizer/README.md`
-states "build steps 1, 3, 4 and 8 of 11" — SAM2 segmentation deferred,
-stitch processor / preflight scoring / review-UI polish still to come.
+states "build steps 1, 3, 4 and 8 of 11" — stitch processor / preflight
+scoring / review-UI polish still to come. SAM2 segmentation (an optional
+alternative region former for photo-classified designs) is built and gated
+behind `cfg.photo_segment_sam2` (default `False`): measured as a tie with
+the classical SLIC+RAG segmenter on the corpus available to test it, not a
+win, at a real ~40s/job CPU cost — that corpus lacks real complex-photo
+fixtures (faces, jackets, smoothly-varying subjects) to properly exercise
+what SAM2 is actually for, so the tie is a statement about corpus coverage,
+not SAM2's ceiling. See `digitizer/docs/sam2-segmentation-live-acceptance-
+2026-08-10.md` for the full measurement.
 Running in parallel with that step numbering, `docs/photo-digitizing-plan-
 2026-07-31.md`'s mono-tonal/portrait technique rows have started landing:
 direction field (row 6, structure-tensor + ETF per Kang 2007), scan-line
@@ -3776,7 +3784,9 @@ edit) — both are new top-level config keys, siblings of `deleted_shape_ids`.
 - **`shape_id` allocation: brand new, deterministic ids hashed from the
   OPERATION's own inputs, never geometry.** Confirmed before relying on it:
   `match_shape_ids` is not wired into `pipeline.run_stages` at all today —
-  it exists for a future segmenter (SAM2) that would move centroids/areas
+  it exists for a segmenter (SAM2, built and gated behind
+  `cfg.photo_segment_sam2`, default `False` — see the auto-digitizing
+  capability entry above) that would move centroids/areas
   slightly on a re-digitize of the SAME image, a different problem from a
   user *deliberately* replacing a shape's identity. So merge/split mint new
   ids instead of trying to carry one forward: `_merge_shape_id` hashes the
