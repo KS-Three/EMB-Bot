@@ -173,7 +173,9 @@ class PipelineConfig:
     # so treated as a stable p50, not a fluke.
     #
     # Set to roughly 2x the observed warm run (2 * 39.96 = 79.9s), rounded up
-    # to a round number: 90s. This is a REAL trade-off, not a free win, and
+    # to a round number: 90s (≈2.25x the sample, not a clean 2x — the round-
+    # number step moved it further than the multiplier alone would have,
+    # still floor-60-compliant). This is a REAL trade-off, not a free win, and
     # is recorded here rather than left implicit: 90s comfortably covers a
     # warm call with margin, but is now SHORTER than the measured cold
     # (first-use, cache-miss) path (155.98s) — a fresh deployment's very
@@ -188,9 +190,12 @@ class PipelineConfig:
     # which is the failure this bound exists to prevent, to buy safety for a
     # one-time event a deploy step can just avoid. Corroborated by a real
     # timeout firing correctly in this same session: a `points_per_side`
-    # sweep (see that field's own comment) drove one warm call to 190s
-    # against the THEN-180s default, and it degraded to the classical
-    # segmenter exactly as designed, not a hang.
+    # sweep (see that field's own comment) drove one call's SAM2 subprocess
+    # past the THEN-180s default (the bound that fired), and the FULL
+    # digitize() call (SAM2's own 180s wait, plus the classical fallback
+    # that then ran, plus normal pipeline overhead) wall-clocked at 190s
+    # end to end — two numbers for one event, not a contradiction — and it
+    # degraded to the classical segmenter exactly as designed, not a hang.
     photo_segment_sam2_timeout_s: float = 90.0
 
     # Stage 3

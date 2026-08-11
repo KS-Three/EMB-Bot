@@ -146,8 +146,10 @@ regardless of what its raw mask count is).
 ## 5. Setting the timeout
 
 `photo_segment_sam2_timeout_s` moves from the plan's reasoned-but-unmeasured
-**180s** to **90s** — roughly 2x the observed warm run (2 x 39.96 = 79.9s),
-rounded up to a round number. Full reasoning, including the real trade-off
+**180s** to **90s** — the plan's own "roughly 2x the warm run, rounded up to
+a round number, floor 60" rule applied to 39.96s (2x = 79.9s, rounded up to
+90s ≈2.25x the sample, not a clean 2x — still the number the rule produces,
+and comfortably inside the floor). Full reasoning, including the real trade-off
 this creates (90s is now shorter than the measured 156s cold/first-use path,
 so a fresh deployment's very first real job will time out and fall back
 rather than wait out the download — mitigated by pre-warming the checkpoint
@@ -172,11 +174,22 @@ Swept `points_per_side` 16 -> 32 -> 48 against `photo_scene_stub.png` (the
 corpus fixture that came back sparsest at the shipped default) to check
 whether 16 is grid-starved:
 
-| `points_per_side` | prompts | raw masks | wall-clock |
+| `points_per_side` | prompts | raw masks | total `digitize()` wall-clock |
 | --- | --- | --- | --- |
 | 16 (shipped) | 256 | 1 | 40.8 s |
 | 32 (SAM2's own library default) | 1024 | 2 | 125.1 s |
-| 48 | 2304 | — | **timed out at 180s** (the then-current default), fell back to the classical segmenter cleanly |
+| 48 | 2304 | — | 190.0 s total — the SAM2 *subprocess* timeout (the then-current 180s default) fired inside that window, then the classical fallback ran and the rest of the pipeline finished around it, cleanly |
+
+Two different numbers describing one event, disambiguated: the SAM2
+subprocess itself was bounded at 180s (the then-current
+`photo_segment_sam2_timeout_s`, the value `sam2_segment_seam` actually
+passed to `subprocess.run(timeout=...)`) and that bound is what fired;
+190.0s is the FULL `digitize()` call's own wall-clock, timed end-to-end
+around the whole pipeline — it includes the ~180s spent waiting on the
+subprocess plus the classical SLIC+RAG segmenter's own run afterward (the
+documented fallback) plus the rest of stage 0-7's normal overhead. Not two
+conflicting measurements of the same interval; one is the bound that fired,
+the other is everything the caller waited through because of it.
 
 Quadrupling the prompt grid bought exactly one more mask for triple the
 wall-clock, and doubling it again exceeded the (at-the-time) timeout outright.
@@ -202,8 +215,22 @@ plan's own "measurement tool, not a config change" instruction.
 entries and `tools/corpus_scorecard.py diff` re-run against the same 28
 digitize+preflight calls (SAM2 only actually fires on the 3 fixtures that
 classify `photo_subject`/`photo_scene` — the flag is a harmless no-op on the
-other 11, gated by `pipeline.py`'s own class check, not this script). Full
-printed output:
+other 11, gated by `pipeline.py`'s own class check, not this script).
+
+**What this diff actually compares, stated plainly**: `diff` reads
+`testdata/corpus_scorecard_baseline.json` — the COMMITTED baseline — as its
+"before" side, not the fresh classical capture taken moments earlier (that
+capture was stashed, per the plan's own instruction, rather than left as the
+on-disk baseline). So the comparison below is fresh-SAM2 vs.
+committed-baseline-classical, not fresh-vs-fresh. That gap turns out to be
+harmless rather than a hole in the method: 11 of the 14 fixtures never touch
+SAM2 (the flag is a no-op on them) and all 22 of those diff lines (11
+fixtures x 2 garment configs) show zero drift — which is exactly the
+evidence that this machine's classical output matches the committed
+baseline within the script's noise band, i.e. there is no meaningful
+environment drift between "committed baseline" and "fresh classical on this
+machine" that could otherwise be contaminating the `photo_scene_stub.png`
+deltas below. Full printed output:
 
 ```
 photo/photo_scene_stub.png @ 80mm/left_chest:
