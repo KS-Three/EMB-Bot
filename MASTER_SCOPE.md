@@ -11,7 +11,52 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-11 (later the same day) — **the SAM2 photo
+**Last updated:** 2026-08-11 (evening) — **one of the two SAM2 open risks
+below is closed, fix #6.3 landed, and fix #6.2 was REFUTED on measurement.**
+
+1. **The SAM2 venv is a real install now, not a junction.** The 875 MB venv
+   was moved out of `.claude/worktrees/sam2-segmentation` into
+   `digitizer/sam2_isolated/venv` and re-verified end to end on its new
+   path: `torch 2.13.0+cpu` / `torchvision 0.28.0+cpu` / `sam2` / `cv2 5.0.0`
+   all import, `sam2_worker.py --prewarm tiny` exits 0, and README step 5's
+   real job-mode run produced a correct `(1024, 1536) int32` label array with
+   `-1` present in 50.5s. The venv's console-script `.exe` shims DID break on
+   the move (they embed an absolute interpreter path — `pip.exe` exited 1
+   silently) and were regenerated offline via pip's own vendored
+   `distlib.ScriptMaker`; all 9 verified working. `tests/test_sam2_segment.py`
+   + `test_sam2_worker.py` 42 passed. The now-empty, fully-merged
+   `sam2-segmentation` worktree was removed at Kent's go-ahead.
+   **SAM2 no longer silently falls back if a worktree disappears.**
+2. **Fix #6.3 landed** — `stage4_vectorize.revalidate_threads`. See area 1.
+3. **Fix #6.2 refuted and NOT built.** See the follow-up section appended to
+   `docs/photo-quality-root-cause-2026-08-11.md` for the full measurement.
+
+**STILL OPEN — the second SAM2 risk, now with real user evidence.**
+`points_per_side=12` is still validated only against the synthetic
+`photo_scene_stub.png`. The A/B harness for the real measurement now exists
+(`digitizer/tools/sam2_points_per_side_ab.py`, verified against the stub:
+26 regions at 12, matching the number recorded below, with SAM2 genuinely
+engaged rather than silently fallen back — the tool refuses to report a
+comparison that fell back). It is waiting on the image file only.
+
+**NEW, from Kent on the real photo (a snowy owl, white bird on a beige
+wall):** SAM2 is better "but still needs improvements — it recognized the
+white space in the owl as the background." **Working hypothesis, mechanism
+identified but NOT yet confirmed against the file:** this is very likely
+stage 1, not SAM2. `stage1_prep` picks `_dominant_border_color` — the modal
+colour of a 2 px border ring — and floods every border-connected pixel close
+to it. In a tight portrait crop the subject IS most of the border ring, so on
+a white owl the flood's own seed colour is the owl, and the whole white body
+floods out as background before any segmenter runs. `stage1_prep` already has
+the guard that should catch this (`BACKGROUND_UNCERTAIN`, fired when
+border-connected background intrudes deeper than `cfg.bg_margin_mm` into the
+artwork hull, written for "white text touching a white border" — the same
+shape of failure); whether it fires here is the first thing to check. The
+real fix for a photo is `photo_prep_background_removal` (rembg subject
+cutout), which is built and behind a double gate, default OFF. **Nothing here
+is confirmed until the owl file is on disk and measured.**
+
+**Previously (2026-08-11, later the same day):** **the SAM2 photo
 segmentation lane became reachable from the product, and is staying.**
 Three things landed together:
 
@@ -68,7 +113,9 @@ config measured 51.3s and 59.7s across runs), so it buys a deterministic
 quality loss with a saving indistinguishable from noise. Stays 1024; the
 rejection and its evidence are recorded at the field in `config.py`.
 
-**Two open risks on this lane, both tracked, neither resolved:**
+**Two open risks on this lane — the first is CLOSED as of the evening
+update at the top of this document (the venv is a real install now); the
+second is still open, and now has real user evidence attached to it:**
 `digitizer/sam2_isolated/venv` is currently a Windows **junction** into
 `.claude/worktrees/sam2-segmentation` (created to avoid copying 875 MB
 back when the expectation was that SAM2 would be switched off) — that
@@ -2138,6 +2185,59 @@ and its multi-colour layered follow-up (PR #25, decomposes a region into
 traces one streamline set per shade, dark-to-light). Row 10 was the last
 one this doc was still tracking as open; all of rows 6/8/9/10 are now
 built.
+
+**Fix #6.3 landed, 2026-08-11 (evening) — post-vectorization thread
+re-validation (`stage4_vectorize.revalidate_threads`, called from
+`pipeline.run_stages` right after `tag_enclosed_background`).** A thread is
+chosen at stage 2 from the pixels a region occupied THEN; stage 4's
+`simplify_tol_mm=0.2mm` then moves the outline, which is a rounding error on a
+20mm shape and a large fraction of a 1.3mm-wide one. Nothing downstream ever
+re-asked. It now does: each shape is re-scored against the pixels its FINAL
+polygon covers and re-snapped when a meaningfully better spool exists, with a
+new `THREAD_RESNAPPED_AFTER_DRIFT` warning. **Threads only — never geometry**
+(the simplified outline is the one that sews well). Gated on
+`THREAD_REVALIDATE_MIN_PX=200` and `THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00=3.0`
+so ordinary sub-unit wobble cannot churn assignments or goldens.
+
+**The estimator is the fix, and the first build got it wrong** — worth
+knowing because the same trap has now caught this codebase twice. Scoring a
+region by MEAN Lab put the traced sliver at dE00 **5.54**, i.e. reported the
+defect as absent. That shape is bimodal: 59.5% of its 2,333 px are near-white,
+per-pixel dE00 to its assigned `2560 Azalea Pink` runs 23.9 at p10/p50 and
+25.2 at p90, and the mean lands on a colour almost no pixel carries — exactly
+the criticism `docs/photo-quality-root-cause-2026-08-11.md` already makes of
+`preflight._artwork_colors_by_thread`'s pooled per-channel medians. Scoring
+the MEDIAN OF THE PER-PIXEL dE00 reproduces the doc's original 23.87 and
+re-snaps it to 0.00. Per-region worst dE00: `repro_gradient_white_icon`
+23.87 → 0.00, `drone_render` 20.99 → 10.64, `summit_badge` mean 3.76 → 3.52.
+`digitizer/tests/test_thread_revalidate.py` (7 tests) pins the mean-vs-
+per-pixel gap so a refactor cannot quietly reintroduce the blind estimator.
+**Does NOT move the corpus scorecard grade** — same structural reason #6.1
+didn't, and on `drone_render` preflight's pooled `thread_worst_delta_e` reads
+9.2 before and 33.6 after while the per-region worst genuinely halves. That is
+the instrument disagreeing with itself; **do not tune against it.** Making
+`_artwork_colors_by_thread` per-region is now the highest-value follow-up in
+this area — it is the prerequisite for any of #6.x being measurable at all.
+
+**Fix #6.2 REFUTED, 2026-08-11 (evening) — built, swept, and reverted; do not
+rebuild it from the root-cause doc's recommendation.** Capping the RAG
+hierarchical merge on region-internal Lab spread cannot work: (a) a tightening
+factor only defers a merge in `merge_hierarchical`'s global heap and the
+substituted merges were worse (`drone_render` worst region RMS 35.88 → 62.97);
+(b) with a hard refusal instead, the ceiling turns out to be SEEDS granularity,
+not the merge — `drone_render`'s worst RAW superpixel is already RMS 70.00 and
+its worst final region is 70.00 at every cap, and tripling
+`SEEDS_TARGET_FG_SUPERPIXELS` moves it to 35.61 from 35.88 because the merge
+threshold re-merges the finer pieces; (c) the usable window is empty — below
+cap ~14 `drone_render` goes 21 → 170 regions at 90mm (through the 20-80 accept
+band, undoing PR #45), above ~18 the rule does nothing, and the one survivor
+(16.0) leaves both target fixtures' grades unchanged while costing
+`repro_gradient_white_icon` 12 points (58 → 46). Full measurement in the
+follow-up section of `docs/photo-quality-root-cause-2026-08-11.md`.
+**What #6.2 actually needs** is either splitting regions by colour AFTER the
+merge (downstream of the accept band) or accepting wide-spread regions and
+letting the tonal tiers sew them — which is what `source_pixels` and the
+blend/streamline tiers already exist for.
 
 **Fix #6.1 landed, 2026-08-11 — `drone_render.png`'s `max_colors` floor-aware
 overflow (`digitizer_core/palette.py::select_palette`).** Traced in

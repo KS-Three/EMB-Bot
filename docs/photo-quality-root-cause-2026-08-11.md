@@ -136,3 +136,130 @@ None of these three fixes require SAM2 or any segmentation-quality
 improvement. Segmentation was already tried here (PR #45) and didn't move the
 grade — the real cost is thread-chart color matching (2 of 3 fixtures) and a
 geometry-registration bug nobody had found before (1 of 3).
+
+---
+
+# Follow-up, 2026-08-11 (later) — #6.2 refuted on measurement, #6.3 fixed
+
+Both remaining fixes from this doc were taken to measurement. One of the two
+recommendations above did not survive it. Everything below is measured on this
+repo's own fixtures, at the configs named. The probes that produced them were
+throwaway and are not committed; every number they produced is reproduced
+inline below, and the two findings worth re-running live on as tests
+(`digitizer/tests/test_thread_revalidate.py`).
+
+## #6.2 (`summit_badge.png`) — REFUTED as specified. Do not build it.
+
+The recommendation was: cap the RAG hierarchical merge on region-internal Lab
+spread so a chained gradient splits before `select_palette` runs. It was built
+(per-node foreground Lab moments — count/sum/sum-of-squares, exact and O(1)
+under merge — plus a refusal on the predicted merged spread) and swept. Three
+findings, in the order they killed it:
+
+**1. A tightening factor cannot enforce a bound.** Built first in the shape of
+the three merge protections already in `stage2_photo_segment.py`
+(`_area_ratio_factor`, `_boundary_contrast_factor`, `_face_local_threshold`),
+which divide an edge weight by a factor. That only DEFERS a merge in
+`merge_hierarchical`'s global heap, so a different merge fires in its place —
+and the substitutes were worse than what was prevented. `drone_render.png`
+worst region-internal RMS went **35.88 (rule off) → 62.97 at a cap of 16.0**,
+and region count moved non-monotonically with the cap (`summit_badge` 13 → 15 →
+13 across caps 12/10/8). Refusal (infinite edge weight) is the only mechanism
+that bounds anything here.
+
+**2. The ceiling is SEEDS granularity, not the merge.** A merge rule can never
+make a region tighter than the coarsest superpixel already inside it, and on
+the fixture with the worst score that is the entire story:
+
+| fixture | worst RAW SEEDS superpixel | worst final region |
+|---|---|---|
+| `drone_render.png` | 70.00 RMS (240 px) | 70.00 at **every** cap |
+| `summit_badge.png` | 39.58 RMS (188 px) | 39.58 at cap 10 |
+| `repro_gradient_white_icon.png` | 43.60 RMS (259 px) | 43.60 rule off |
+
+The rule fires 8,359 times on `drone_render.png` and cannot touch its worst
+region. Tripling SEEDS density does not rescue it either — `SEEDS_TARGET_FG_
+SUPERPIXELS` 1200 → 3600 moves worst final spread **35.88 → 35.61** on
+`drone_render` and **16.10 → 16.10** on `summit_badge`, because the merge
+threshold simply re-merges the finer pieces. The controlling knob is
+`MERGE_DELTAE00_THRESH` (26.0), which is pinned to the 20-80 region-count
+accept band; within-region spread and that band are in direct tension.
+
+**3. The usable window is empty.** Below cap ~14 the rule blows the accept
+band (`drone_render` 21 → **170** regions at 90mm, straight through the ceiling
+`test_busy_gradient_fixtures_land_inside_the_accept_band` pins — undoing PR #45
+wholesale). Adding a chaining discriminator (refuse only when BOTH sides are
+themselves under the cap, which is what "chained along a gradient" actually
+means) recovers a lot — 170 → 84 — but still misses. At caps ≥18 the rule does
+nothing measurable. The one surviving candidate, cap 16.0, buys
+`summit_badge` worst RMS 16.10 → 14.60 and mean 9.30 → 9.06 — and then:
+
+| fixture / config | grade, score (cap off) | grade, score (cap 16.0) |
+|---|---|---|
+| `summit_badge` left_chest | F, 0 | F, 0 |
+| `summit_badge` hat_front | F, 10 | F, 10 |
+| `drone_render` both | F, 0 | F, 0 |
+| `repro_gradient_white_icon` both | D, **58** | D, **46** |
+
+It buys nothing on either fixture it targets and costs a third fixture 12
+points. **Reverted; nothing of it is on the branch.**
+
+**What #6.2 actually needs.** Not a merge rule. Either split regions by colour
+AFTER merging (a different mechanism, downstream of the accept band), or accept
+that a wide-spread region is legitimate and let a tonal tier sew it — which is
+already what `source_pixels` and the blend/streamline tiers exist for. Note
+also that this doc's own caveat about `preflight._artwork_colors_by_thread`
+(pooled per-thread medians) applies with full force: **the current scorecard
+cannot see a segmentation fix at all**, so making that metric per-region is a
+prerequisite for #6.2 being measurable, not a side quest.
+
+## #6.3 (`repro_gradient_white_icon.png`) — FIXED, and the estimator was the fix
+
+`stage4_vectorize.revalidate_threads`, called from `pipeline.run_stages` right
+after `tag_enclosed_background`. It re-scores every shape against the pixels
+its FINAL polygon covers and re-snaps the ones that drifted, emitting
+`THREAD_RESNAPPED_AFTER_DRIFT`. It changes threads only, never geometry — the
+simplified outline is the one that sews well, so the honest correction is to
+give it the thread it now needs.
+
+**The estimator is the whole fix, and the first build got it wrong.** Scoring
+the region by MEAN Lab reported the traced sliver at dE00 **5.54** — i.e.
+reported the defect as absent. The sliver is bimodal, and every statistic that
+collapses it to one colour first will hide that:
+
+```
+shape S648e28fc  thread 2560 Azalea Pink rgb(255,185,204)  2333 px
+  mean   RGB (247.1, 182.6, 192.8)  -> dE00  5.54   <- almost no pixel is this
+  median RGB (255, 255, 255)        -> dE00 23.87
+  per-pixel dE00:  p10 23.9   p50 23.9   p90 25.2
+  near-white pixels (all channels >= 235): 1389 / 2333 = 59.5%
+```
+
+This is the SAME trap this doc already documents for `preflight._artwork_
+colors_by_thread`, walked into from the other direction. Scoring the MEDIAN OF
+THE PER-PIXEL dE00 keeps the answer on real pixels: the traced shape scores
+**23.87**, matching this doc's original measurement to two decimals, and
+re-snaps to **0.00**.
+
+Measured effect on the honest per-region metric (each shape's own final-polygon
+pixels vs its own thread, 80mm/left_chest):
+
+| fixture | worst per-region dE00 before | after | shapes re-snapped |
+|---|---|---|---|
+| `repro_gradient_white_icon.png` | 23.87 | 0.00 | 1 |
+| `drone_render.png` | 20.99 | 10.64 | 2 |
+| `summit_badge.png` | 9.47 | 9.47 | 2 (mean 3.76 → 3.52) |
+
+**Caveat, stated plainly: this does NOT move the corpus scorecard grade**, for
+the same structural reason #6.1 didn't — `preflight`'s `THREAD_MATCH_POOR`
+measures a pooled per-thread median across every region sharing a spool, so
+re-snapping one region changes which pool it lands in and the pooled statistic
+can move either way. On `drone_render` the pooled `thread_worst_delta_e` reads
+9.2 before and 33.6 after, while the per-region worst genuinely halves. **Do
+not read that as a regression, and do not tune against it** — it is the
+measurement instrument disagreeing with itself, and it is the strongest
+argument yet for making `_artwork_colors_by_thread` per-region.
+
+Tests: `digitizer/tests/test_thread_revalidate.py` (7), including one that
+pins the mean-vs-per-pixel gap so a future refactor cannot quietly reintroduce
+the estimator that hid the bug.
