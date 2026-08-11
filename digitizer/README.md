@@ -61,6 +61,14 @@ pipeline — every OCR call fails open (see `textcluster.py`'s
 `None`, same as a below-threshold read, and Studio's "Convert to text" seed
 always falls back to an empty textarea.
 
+The optional SAM2 region former for photo-classified designs
+(`cfg.photo_segment_sam2`) needs its own isolated venv plus a downloaded
+checkpoint — `digitizer/sam2_isolated/README.md` has the build steps, the
+disk budget and the by-hand sanity check. It is off by default and, without
+it built, degrades to the classical SLIC+RAG region former with a
+`PHOTO_SAM2_SEGMENTATION_UNAVAILABLE` warning — the job still completes and
+nothing else in the pipeline changes.
+
 ## Run
 
 ```

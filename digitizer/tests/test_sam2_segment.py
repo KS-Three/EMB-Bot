@@ -588,3 +588,160 @@ def test_seam_never_raises_on_a_worker_that_writes_garbage(monkeypatch):
     quant, reason = s2.sam2_segment_seam(p, cfg)
     assert quant is None
     assert reason is not None
+
+
+# --- 4. The pipeline gate and the fallback ----------------------------------
+
+
+def _spy_seam(monkeypatch, result):
+    """Replace pipeline's SAM2 seam with a recorder. Returns the call log."""
+    import digitizer_core.pipeline as pipeline_module
+
+    calls: list[dict] = []
+
+    def _seam(p, cfg, face_regions=None, bg_mask=None):
+        calls.append({"face_regions": face_regions, "bg_mask": bg_mask})
+        return result
+
+    monkeypatch.setattr(pipeline_module, "sam2_segment_seam", _seam)
+    return calls
+
+
+def _spy_photo_segment(monkeypatch):
+    import digitizer_core.pipeline as pipeline_module
+
+    real = pipeline_module.photo_segment
+    calls: list[int] = []
+
+    def _spy(p, cfg, face_regions=None, bg_mask=None):
+        calls.append(1)
+        return real(p, cfg, face_regions=face_regions, bg_mask=bg_mask)
+
+    monkeypatch.setattr(pipeline_module, "photo_segment", _spy)
+    return calls
+
+
+def test_photo_class_with_the_flag_on_uses_sam2_and_skips_slic(monkeypatch):
+    from digitizer_core.pipeline import run_stages
+    from digitizer_core.stage1_prep import prep
+    from digitizer_core.stage2_sam2_segment import sam2_segment_seam
+
+    cfg = _cfg(forced_class="photo_subject", photo_segment_sam2=True)
+    p = prep(FIXTURE, cfg)
+
+    import digitizer_core.stage2_sam2_segment as s2
+
+    monkeypatch.setattr(s2, "sam2_segmentation_unavailable_reason", lambda: None)
+    monkeypatch.setattr(s2, "SAM2_VENV_PYTHON", Path("/fake/python"))
+    monkeypatch.setattr(s2, "SAM2_WORKER_PATH", Path("/fake/worker.py"))
+    monkeypatch.setattr(s2.subprocess, "run", _fake_worker(_quadrant_labels))
+
+    quant, reason = sam2_segment_seam(p, cfg)
+    assert reason is None
+
+    seam_calls = _spy_seam(monkeypatch, (quant, None))
+    slic_calls = _spy_photo_segment(monkeypatch)
+    result = run_stages(FIXTURE, cfg)
+
+    assert len(seam_calls) == 1
+    assert slic_calls == [], "the classical segmenter ran even though SAM2 succeeded"
+    assert result.regions, "the job itself must still complete"
+
+    from digitizer_core.warnings_codes import (
+        PHOTO_SAM2_SEGMENTATION_UNAVAILABLE,
+        PHOTO_SAM2_SEGMENTED,
+    )
+
+    codes = {w["code"] for w in result.warnings}
+    assert PHOTO_SAM2_SEGMENTED in codes
+    assert PHOTO_SAM2_SEGMENTATION_UNAVAILABLE not in codes
+
+
+def test_unavailable_sam2_falls_back_to_slic_and_says_so(monkeypatch):
+    from digitizer_core.pipeline import run_stages
+    from digitizer_core.warnings_codes import PHOTO_SAM2_SEGMENTATION_UNAVAILABLE
+
+    seam_calls = _spy_seam(monkeypatch, (None, "isolated SAM2 venv not found (test)"))
+    slic_calls = _spy_photo_segment(monkeypatch)
+    result = run_stages(
+        FIXTURE, _cfg(forced_class="photo_scene", photo_segment_sam2=True)
+    )
+
+    assert len(seam_calls) == 1
+    assert slic_calls == [1], "the classical fallback did not run"
+    hits = [
+        w for w in result.warnings
+        if w["code"] == PHOTO_SAM2_SEGMENTATION_UNAVAILABLE
+    ]
+    assert len(hits) == 1
+    assert hits[0]["reason"] == "isolated SAM2 venv not found (test)"
+    assert result.regions, "the job itself must still complete"
+
+
+def test_gradient_class_never_triggers_sam2(monkeypatch):
+    """The locked routing rule: 'gradient' routes to stage2_photo_segment for
+    an unrelated reason (avoiding k-means dithering) and must NOT pick up
+    SAM2 along the way."""
+    from digitizer_core.pipeline import run_stages
+    from digitizer_core.warnings_codes import (
+        PHOTO_SAM2_SEGMENTATION_UNAVAILABLE,
+        PHOTO_SAM2_SEGMENTED,
+    )
+
+    seam_calls = _spy_seam(monkeypatch, (None, "should not be called"))
+    slic_calls = _spy_photo_segment(monkeypatch)
+    result = run_stages(
+        FIXTURE, _cfg(forced_class="gradient", photo_segment_sam2=True)
+    )
+
+    assert seam_calls == []
+    assert slic_calls == [1]
+    codes = {w["code"] for w in result.warnings}
+    assert PHOTO_SAM2_SEGMENTED not in codes
+    assert PHOTO_SAM2_SEGMENTATION_UNAVAILABLE not in codes
+
+
+def test_flag_off_never_calls_the_seam(monkeypatch):
+    from digitizer_core.pipeline import run_stages
+
+    seam_calls = _spy_seam(monkeypatch, (None, "should not be called"))
+    run_stages(FIXTURE, _cfg(forced_class="photo_subject", photo_segment_sam2=False))
+    assert seam_calls == []
+
+
+def test_flat_class_never_calls_the_seam(monkeypatch):
+    from digitizer_core.pipeline import run_stages
+
+    seam_calls = _spy_seam(monkeypatch, (None, "should not be called"))
+    run_stages(FIXTURE, _cfg(forced_class="flat", photo_segment_sam2=True))
+    assert seam_calls == []
+
+
+@pytest.mark.parametrize("fixture", sorted(GOLDEN.keys()))
+def test_flat_lane_is_byte_identical_with_the_sam2_flag_on(fixture):
+    """The classification half of the gate: turning photo_segment_sam2 on
+    must not move one byte for a flat-classified design — mirrors
+    test_background_removal.py::test_flat_lane_is_byte_identical_with_the_flag_on.
+    `GOLDEN` is imported at the top of this module from
+    tests/test_flat_lane_byte_identical.py — that file is the record of truth
+    for the flat lane and is not touched by this change."""
+    from digitizer_core.pipeline import digitize
+
+    result, plan = digitize(
+        TESTDATA / fixture,
+        PipelineConfig(target_width_mm=80.0, photo_segment_sam2=True),
+    )
+    snap = {
+        "shape_ids": sorted(r.shape_id for r in result.regions),
+        "areas_mm2": sorted(round(r.area_mm2, 4) for r in result.regions),
+        "warnings": sorted(
+            f"{w['code']}:{w.get('count', '')}" for w in result.warnings
+        ),
+        "stitch_count": sum(len(r.points) for _, r in plan.iter_runs()),
+        "stitch_coords": [
+            [round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
+            for _, r in plan.iter_runs()
+            for x, y in r.points
+        ],
+    }
+    assert snap == GOLDEN[fixture]
