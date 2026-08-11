@@ -21,6 +21,9 @@
       }
     }
   },
+  "worktree": {
+    "baseRef": "head"
+  },
   "permissions": {
     "allow": [
       "mcp__Claude_Browser__read_page",
