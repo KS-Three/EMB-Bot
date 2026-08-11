@@ -11,7 +11,28 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-10 — Ink/Stitch open-source teardown
+**Last updated:** 2026-08-11 — fix #6.1 landed:
+`digitizer_core/palette.py`'s `select_palette` gets a bounded, floor-aware
+overflow past `max_colors` (`docs/photo-quality-root-cause-2026-08-11.md`).
+Verified correct at the algorithm level — unit test plus a direct trace
+against the real `photo/drone_render.png` fixture, not just Task 1's
+synthetic scenario: both target regions (floor 1.506/1.978 ΔE00) get
+rescued to Titanium/White chart spools, and `select_palette`'s own
+`max_excess_de00` improves 7.599 → 1.969 exactly as designed. **Does not
+move `drone_render.png`'s `corpus_scorecard.py` grade**, though — still
+F/0 at both `80mm/left_chest` and `80mm/hat_front` after recapturing the
+baseline (`color_changes` 14→16, `THREAD_MATCH_POOR` findings 5→6,
+`thread_worst_delta_e` unchanged at 9.2) — because `preflight.py`'s
+`THREAD_MATCH_POOR` finding measures a pooled per-thread median color
+across every region sharing a spool, a structurally different signal than
+this fix's per-region excess-over-floor target; the same pooled-vs-
+per-region gap the root-cause doc already flags for `summit_badge.png`
+(fix #6.2, still open, along with #6.3 `repro_gradient_white_icon.png`).
+Nothing else in the 14-fixture × 2-config corpus moved beyond noise. See
+area 1 below and "Evaluation corpus & harness" in Cross-cutting issues for
+the full before/after and root-cause trace.
+
+**Previously (2026-08-10):** Ink/Stitch open-source teardown
 (`docs/inkstitch-research-2026-08-10.md`) integrated as a new cross-cutting
 research item: `pystitch` (Ink/Stitch's own MIT-licensed pyembroidery fork)
 flagged as a concrete, not-yet-evaluated `pyembroidery` replacement
@@ -1689,16 +1710,26 @@ as a hard signal is a brand-new "block"-severity finding, which does flip
 the `diff` command's exit code, since that's the one low-noise, high-
 confidence case. Verified working, not just written: a real captured
 baseline (all 14 fixtures x 2 configs, grades spanning A to F — the F/0
-scores on `drone_render.png`, `repro_gradient_white_icon.png` and
-`summit_badge.png` are real, already-documented rough edges in those
-photo-tier stress fixtures, not a harness bug, exactly the kind of honest
-signal this tool exists to surface rather than hide), then an immediate
-re-`diff` with zero code changes reporting "no drift against the baseline"
-at exit 0 — proving the underlying pipeline is deterministic and the
-harness doesn't false-positive on its own output. No dedicated test file:
-matches this repo's own convention that no `tools/*.py` script (including
-the same-pattern `capture_flat_lane_golden.py`) has one, and a full capture
-run touches several photo/SLIC fixtures, too slow for the regular suite.
+scores on `drone_render.png` and `summit_badge.png` are real,
+already-documented rough edges in those photo-tier stress fixtures, not a
+harness bug, exactly the kind of honest signal this tool exists to surface
+rather than hide), then an immediate re-`diff` with zero code changes
+reporting "no drift against the baseline" at exit 0 — proving the
+underlying pipeline is deterministic and the harness doesn't false-positive
+on its own output. **Correction, 2026-08-11:** this paragraph originally
+also listed `repro_gradient_white_icon.png` as F/0 — wrong, it's D/58 at
+both configs; `docs/photo-quality-root-cause-2026-08-11.md` caught and
+flagged this same error. No dedicated test file: matches this repo's own
+convention that no `tools/*.py` script (including the same-pattern
+`capture_flat_lane_golden.py`) has one, and a full capture run touches
+several photo/SLIC fixtures, too slow for the regular suite.
+
+**2026-08-11 update:** `drone_render.png`'s F/0 now has a landed,
+algorithm-verified-correct fix (#6.1, `select_palette`'s `max_colors`
+floor-aware overflow in `digitizer_core/palette.py`) that does NOT move
+this grade — see area 1 above for the full trace and why (a preflight
+pooled-metric measurement gap, not a fix defect). `summit_badge.png` (#6.2)
+and `repro_gradient_white_icon.png` (#6.3) remain open, same root-cause doc.
 **Next step for this gap:** use the tool by hand against a few real future
 corpus-law/classifier changes to learn what a genuine regression looks like
 here before deciding on hard CI thresholds; the labeled-corpus half stays
@@ -2020,6 +2051,62 @@ and its multi-colour layered follow-up (PR #25, decomposes a region into
 traces one streamline set per shade, dark-to-light). Row 10 was the last
 one this doc was still tracking as open; all of rows 6/8/9/10 are now
 built.
+
+**Fix #6.1 landed, 2026-08-11 — `drone_render.png`'s `max_colors` floor-aware
+overflow (`digitizer_core/palette.py::select_palette`).** Traced in
+`docs/photo-quality-root-cause-2026-08-11.md`: `drone_render.png` (and two
+siblings, `summit_badge.png`/`repro_gradient_white_icon.png` — see that doc)
+scored F/0 on `digitizer/tools/corpus_scorecard.py` at both `80mm/left_chest`
+and `80mm/hat_front`. Root cause specific to `drone_render.png`:
+`select_palette`'s BUILD loop hit `max_colors=12` before its own excess-ΔE
+target was satisfied, force-merging two regions with excellent available
+chart matches (floor 1.98/1.51 ΔE00 — e.g. Isacord "Silver") onto a bad
+spool ("Armour", ΔE 9.10–9.18) purely because the cap bound first.
+
+**Fix:** BUILD's stop rule now allows growth up to `hard_cap = max_k +
+PALETTE_OVERFLOW_K` past the soft `max_colors` cap, but ONLY to rescue a
+region whose own floor is already excellent (`floor <= excess_deltae * 0.5`)
+— never to pad the palette for a region no thread actually matches well.
+Landed on branch `fix-6-1-palette-overflow` (commits `e5b4969` design spec,
+`8270dde` red unit test, `e6aef9c` green fix, `78ba1d7`
+`photo_lane_segment_golden.json` recapture, `818f19a`/`074e515` docstring
+cleanup).
+
+**Verified correct at the algorithm level, not just unit-tested:** a direct
+trace against the real `photo/drone_render.png` fixture (not the synthetic
+Task-1 test scenario) confirms both target regions get correctly rescued —
+assigned to Titanium/White chart spools, present after SWAP — and
+`select_palette`'s own internal metric improves exactly as designed:
+`max_excess_de00` 7.599 → 1.969. A separate golden fixture,
+`digitizer/testdata/photo_lane_segment_golden.json`, was deliberately
+recaptured for the same reason (`drone_render.png` 12→14 threads).
+
+**Does NOT move `drone_render.png`'s corpus-scorecard grade.** Recaptured
+`testdata/corpus_scorecard_baseline.json` post-fix (commit `821d066`) shows,
+at both configs: score/grade unchanged 0/F → 0/F; `color_changes` 14→16;
+`THREAD_MATCH_POOR` findings 5→6 (up, not down); `thread_worst_delta_e`
+unchanged at 9.2. All other 13 fixtures × 2 configs in the corpus unchanged
+beyond sub-1% metric noise — nothing else regressed. Root cause of the
+disconnect, confirmed by direct trace, not guessed: `preflight.py`'s
+`THREAD_MATCH_POOR` finding measures a POOLED per-thread median artwork
+color across every region assigned to a given spool, not this fix's
+per-region excess-over-floor target. The two rescued regions leave Armour's
+other, unrelated pooled regions untouched, and the newly-promoted Titanium
+spool has its own mediocre pooled match (~7.8), so the pooled signal
+doesn't move even though the per-region fix worked exactly as designed.
+This is the same pooled-vs-per-region measurement gap the root-cause doc
+already flags as a contributing factor for `summit_badge.png` (see below) —
+a real, understood preflight-methodology gap worth a future look, not
+chased further here (out of scope for #6.1).
+
+**Still open from the same root-cause doc, untouched by this fix:** #6.2
+`summit_badge.png` (F/0 left_chest, F/10 hat_front — a segmentation-merge
+chaining issue in `stage2_photo_segment.py`'s hierarchical RAG merge, NOT a
+`palette.py` bug) and #6.3 `repro_gradient_white_icon.png` (D/58 both
+configs — a post-vectorization color/geometry desync on thin/hairline
+shapes, needs its own design pass). Ranked by leverage in the root-cause
+doc: #6.1 was the cheapest, most contained fix; #6.2 and #6.3 remain
+genuinely open work.
 
 **Streamline fill grew a per-shape form, 2026-08-07** (branch
 `streamline-fill-flat-lane-override`) — a competitor-research prompt (Ember
