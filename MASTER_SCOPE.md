@@ -28,9 +28,11 @@ across every region sharing a spool, a structurally different signal than
 this fix's per-region excess-over-floor target; the same pooled-vs-
 per-region gap the root-cause doc already flags for `summit_badge.png`
 (fix #6.2, still open, along with #6.3 `repro_gradient_white_icon.png`).
-Nothing else in the 14-fixture × 2-config corpus moved beyond noise. See
-area 1 below and "Evaluation corpus & harness" in Cross-cutting issues for
-the full before/after and root-cause trace.
+Three other fixtures also moved in the recapture, but not from this
+fix — a stale baseline, not noise. See area 1 below and "Evaluation
+corpus & harness" in Cross-cutting issues for the full before/after,
+root-cause trace, and why this fix can only hold a design's grade flat
+or lower it on the current scorecard.
 
 **Previously (2026-08-10):** Ink/Stitch open-source teardown
 (`docs/inkstitch-research-2026-08-10.md`) integrated as a new cross-cutting
@@ -1716,7 +1718,11 @@ harness bug, exactly the kind of honest signal this tool exists to surface
 rather than hide), then an immediate re-`diff` with zero code changes
 reporting "no drift against the baseline" at exit 0 — proving the
 underlying pipeline is deterministic and the harness doesn't false-positive
-on its own output. **Correction, 2026-08-11:** this paragraph originally
+on its own output. **Scope note:** that determinism claim only covers
+re-running the SAME code twice — a recapture spanning real intervening
+commits can still fold in genuine, previously-undiagnosed drift, as the
+correction under "Fix #6.1 landed" (area 1) found for three fixtures in
+the 2026-08-11 recapture. **Correction, 2026-08-11:** this paragraph originally
 also listed `repro_gradient_white_icon.png` as F/0 — wrong, it's D/58 at
 both configs; `docs/photo-quality-root-cause-2026-08-11.md` caught and
 flagged this same error. No dedicated test file: matches this repo's own
@@ -2085,9 +2091,37 @@ recaptured for the same reason (`drone_render.png` 12→14 threads).
 `testdata/corpus_scorecard_baseline.json` post-fix (commit `821d066`) shows,
 at both configs: score/grade unchanged 0/F → 0/F; `color_changes` 14→16;
 `THREAD_MATCH_POOR` findings 5→6 (up, not down); `thread_worst_delta_e`
-unchanged at 9.2. All other 13 fixtures × 2 configs in the corpus unchanged
-beyond sub-1% metric noise — nothing else regressed. Root cause of the
-disconnect, confirmed by direct trace, not guessed: `preflight.py`'s
+unchanged at 9.2.
+
+**Correction: three other fixtures did move in this recapture — not noise,
+and not from this fix.** `region_blobs.png` (`stitch_count` 1081→1079,
+`coverage_area_mm2` 1141→1142, both configs), `gradient_ramp_linear.png`
+(`stitch_count` 712→708, both configs) and `enthusiast_logo.png`
+(`coverage_area_mm2` 667→666, `hat_front` only) all shifted — sub-1%-scale,
+no score/grade/finding change on any of the three, but real movement this
+fix did not cause. `enthusiast_logo.png` classifies `flat`; `pipeline.py`
+routes `flat` designs through `stage2_quantize.quantize()`, which never
+calls `select_palette` — the only function this fix touches, so it cannot
+be the cause, full stop. `region_blobs.png` and `gradient_ramp_linear.png`
+classify `gradient` and do reach `select_palette`, but measured directly
+(instrumented run against today's code): 4 and 2 medoids selected
+respectively, nowhere near `max_colors=12`'s soft cap — BUILD exits via the
+pre-existing excess-satisfied check before this fix's new code path is ever
+reached, so old and new code execute identically for both. The stage-2
+golden in `photo_lane_segment_golden.json` also pins `region_blobs.png`
+byte-identical, and that test currently passes. The real cause of the
+drift: the corpus baseline was last captured 2026-08-08 (commit
+`e455b6c`) and sat unrefreshed through roughly 15 unrelated digitizer
+commits landed since (the SAM2 lane routing, the `kept_masks_to_quant`
+refactor, three new fill techniques, among others) — `821d066` is the
+first recapture since, so it folded that pre-existing, never-diagnosed
+drift into the new baseline alongside fix #6.1's real change, and this
+doc originally misattributed all of it to noise. Not chased further
+here — a stale-baseline habit gap, not a code defect, out of scope for
+#6.1.
+
+Separately, root cause of `drone_render.png`'s own scorecard disconnect,
+confirmed by direct trace, not guessed: `preflight.py`'s
 `THREAD_MATCH_POOR` finding measures a POOLED per-thread median artwork
 color across every region assigned to a given spool, not this fix's
 per-region excess-over-floor target. The two rescued regions leave Armour's
@@ -2098,6 +2132,25 @@ This is the same pooled-vs-per-region measurement gap the root-cause doc
 already flags as a contributing factor for `summit_badge.png` (see below) —
 a real, understood preflight-methodology gap worth a future look, not
 chased further here (out of scope for #6.1).
+
+**This fix is grade-flat-or-negative by construction on the current
+scorecard.** `preflight.py` deducts 12 points per `THREAD_MATCH_POOR:warn`
+finding (30 if severity escalates to `:block`) and adds a
+`COLOR_STOPS_HEAVY` finding once `color_changes` exceeds
+`COLOR_STOPS_MAX` (10) — both keyed off pooled, per-thread signals, not
+per-region ones. Every spool this fix's overflow mechanism adds is one
+more chance at a new `THREAD_MATCH_POOR` finding on that added thread
+(exactly what happened here: 5→6) and pushes `color_changes` a step
+closer to the `COLOR_STOPS_HEAVY` threshold. So on the CURRENT scorecard
+this fix can only hold a design's grade flat or lower it — even when it
+genuinely improves per-region color fidelity — because the scorecard
+measures pooled per-thread match quality, not this fix's per-region
+excess-over-floor target. `drone_render.png` was already floored at
+0/F, so the new finding was invisible here; a design sitting at, say, a
+B grade going in could plausibly drop a full letter grade or more if
+this fires on it. `drone_render.png`'s result (grade unchanged,
+poor-match count up) is the expected general behavior of this fix on
+the current scorecard, not a fixture-specific anomaly.
 
 **Still open from the same root-cause doc, untouched by this fix:** #6.2
 `summit_badge.png` (F/0 left_chest, F/10 hat_front — a segmentation-merge
