@@ -91,7 +91,7 @@ def test_sam2_is_off_by_default_with_the_documented_defaults():
     assert cfg.photo_segment_sam2_checkpoint == "tiny"
     assert cfg.photo_segment_sam2_points_per_side == 16
     assert cfg.photo_segment_sam2_max_side_px == 1024
-    assert cfg.photo_segment_sam2_timeout_s == 180.0
+    assert cfg.photo_segment_sam2_timeout_s == 90.0
 
 
 def test_the_default_checkpoint_tier_is_one_the_worker_knows():
@@ -233,7 +233,7 @@ def test_seam_passes_the_documented_argv_to_the_worker(monkeypatch):
 
     def _spy(cmd, **kwargs):
         seen.append([str(c) for c in cmd])
-        assert kwargs["timeout"] == 180.0, "the starvation bound was not passed"
+        assert kwargs["timeout"] == 90.0, "the starvation bound was not passed"
         assert kwargs["capture_output"] is True
         assert kwargs["text"] is True
         return inner(cmd, **kwargs)

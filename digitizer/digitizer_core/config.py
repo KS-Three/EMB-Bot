@@ -122,12 +122,24 @@ class PipelineConfig:
     photo_segment_sam2_checkpoint: str = "tiny"
     # SAM2's own automatic-mask-generator prompt-grid density. SAM2's library
     # default is 32 (1024 prompts); 16 (256 prompts) quarters the mask-decoder
-    # work, which is the dominant CPU cost here. PRINCIPLED STARTING POINT,
-    # NOT A MEASURED ONE: the reasoning is that a prompt grid finer than the
-    # min-detail floor only produces masks that resolve_small_regions will
-    # absorb anyway. Needs a real-image sweep (Task 6) before anyone treats
-    # it as tuned — see docs/pro-digitizing-playbook.md's own "measured, not
-    # guessed" framing.
+    # work, which is the dominant CPU cost here. MEASURED AND CONFIRMED,
+    # Task 6, 2026-08-10 (this machine: Windows, CPU-only, no GPU, tiny
+    # checkpoint, torch 2.13.0+cpu). Swept 16/32/48 against
+    # testdata/photo/photo_scene_stub.png (target_width_mm=80,
+    # garment_id=left_chest) — the corpus fixture that came back sparse
+    # (1 raw mask) at 16: 32 barely moved it (2 raw masks, 125s vs 40s —
+    # ~3x the wall-clock for +1 mask), and 48 (2304 prompts) blew past the
+    # THEN-180s subprocess timeout entirely (190s wall before the timeout
+    # fired) and fell back to the classical segmenter, exactly as designed.
+    # Conclusion: this fixture's low mask count is a CONTENT property (a
+    # smooth, nearly textureless "scene" raster with no salient objects for
+    # an instance segmenter to find — SAM2 is behaving correctly, not
+    # grid-starved), not a grid-density problem, so raising this constant
+    # buys a worse cost/mask ratio here and real timeout risk against the
+    # new (also Task-6-measured) 90s timeout below, with no corresponding
+    # region-count benefit. Left at 16. See docs/sam2-segmentation-live-
+    # acceptance-2026-08-10.md for the full sweep and the other two corpus
+    # fixtures' raw mask counts at 16 (1 and 14).
     photo_segment_sam2_points_per_side: int = 16
     # Longest side, in px, of the raster handed to the worker. SAM2's image
     # encoder resizes its input to 1024x1024 internally, so sending more than
@@ -144,14 +156,42 @@ class PipelineConfig:
     # single-worker ThreadPoolExecutor with no per-job timeout and no
     # cancellation of a running job, so a call that never returns starves
     # every queued job behind it. Read this number as a starvation bound, not
-    # a performance target. 180s (3x rembg's 60s) because SAM2 on CPU is a
-    # heavier call than a background-removal net: one Hiera-tiny image-encoder
-    # pass at 1024x1024 plus points_per_side^2 prompts through the mask
-    # decoder in batches of 64, plus NMS — and the FIRST call also pays a
-    # one-time ~150 MB checkpoint download and torch import. UNMEASURED on
-    # this hardware; Task 6 times a real run and this number should come down
-    # to roughly 2x the observed warm-cache p95 once it has.
-    photo_segment_sam2_timeout_s: float = 180.0
+    # a performance target.
+    #
+    # MEASURED, Task 6, 2026-08-10 (this machine: Windows, CPU-only, no GPU,
+    # Python 3.14.6, torch 2.13.0+cpu, sam2_isolated venv built fresh —
+    # digitizer/sam2_isolated/README.md's own "python3.12" in the build
+    # command is stale on a machine with no 3.12 interpreter installed;
+    # Python 3.14 has a real cp314 CPU wheel on PyTorch's own index as of
+    # this date and was used instead, see the measurement note for the
+    # detail). `sam2_worker.py testdata/photo/drone_render.png ... tiny 16
+    # 36`, run twice: COLD (pays the one-time ~150 MB checkpoint download
+    # from dl.fbaipublicfiles.com plus torch's own cold import) = 155.98s;
+    # WARM (cache hit, the number that matters) = 39.96s. A second warm
+    # sample through the full seam (photo_scene_stub.png, target_width_mm=80,
+    # garment_id=left_chest) landed within a second of that (40.8s),
+    # so treated as a stable p50, not a fluke.
+    #
+    # Set to roughly 2x the observed warm run (2 * 39.96 = 79.9s), rounded up
+    # to a round number: 90s. This is a REAL trade-off, not a free win, and
+    # is recorded here rather than left implicit: 90s comfortably covers a
+    # warm call with margin, but is now SHORTER than the measured cold
+    # (first-use, cache-miss) path (155.98s) — a fresh deployment's very
+    # first real job will time out and silently fall back to the classical
+    # segmenter even though the checkpoint download would have succeeded
+    # given more time. `sam2_isolated/README.md`'s existing advice to
+    # pre-warm the checkpoint cache by hand before going live is the
+    # mitigation this shipped with; it was optional before this number was
+    # measured and is now load-bearing. The alternative — sizing the timeout
+    # off the cold path instead — was rejected: it would let one hung call
+    # block the single-worker queue for 2.5+ minutes on every occurrence,
+    # which is the failure this bound exists to prevent, to buy safety for a
+    # one-time event a deploy step can just avoid. Corroborated by a real
+    # timeout firing correctly in this same session: a `points_per_side`
+    # sweep (see that field's own comment) drove one warm call to 190s
+    # against the THEN-180s default, and it degraded to the classical
+    # segmenter exactly as designed, not a hang.
+    photo_segment_sam2_timeout_s: float = 90.0
 
     # Stage 3
     min_detail_mm: float = 1.5         # blueprint hard constraint
