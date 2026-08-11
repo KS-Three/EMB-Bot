@@ -2152,6 +2152,40 @@ this fires on it. `drone_render.png`'s result (grade unchanged,
 poor-match count up) is the expected general behavior of this fix on
 the current scorecard, not a fixture-specific anomaly.
 
+**Measured at Studio's real `max_colors` defaults before merge, not just at
+the digitizer's 12.** The whole corpus_scorecard run above uses
+`PipelineConfig.max_colors=12`, but Studio ships `max_colors: 6`
+(`app/src/lib/project.js`'s `DEFAULT_DIGITIZE_PARAMS`) and its slider goes
+down to 2 (`DigitizePanel.svelte`) — so `PALETTE_OVERFLOW_K`'s flat +3
+allowance is a 50% overshoot at the real default and 150% at the minimum,
+and nothing had ever exercised either. Measured directly (all 14 fixtures ×
+2 configs, run twice each with `PALETTE_OVERFLOW_K` patched to 0 vs 3, 56
+digitize runs):
+
+* **`max_colors=6`:** only `drone_render.png` changes at all — 2 of 28
+  combos; every other fixture is identical with the overflow on or off.
+  On it: `color_changes` 9→12, score/grade unchanged 0/F, `THREAD_MATCH_POOR`
+  unchanged at 7, `thread_worst_delta_e` unchanged at 9.5 — but a NEW
+  `COLOR_STOPS_HEAVY` finding appears (0→1), because 9 stops sat just under
+  `COLOR_STOPS_MAX=10` and 12 clears it. That is the paragraph above's
+  −12 exposure showing up concretely; invisible here only because this
+  fixture is already floored at 0.
+* **`max_colors=2`:** again only `drone_render.png` moves (2 of 28).
+  `color_changes` 1→2 — **+1, not the 150% blowup the flat allowance
+  suggests** — no `COLOR_STOPS_HEAVY`, and `thread_worst_delta_e` actually
+  IMPROVES 16.9→11.4. The floor gate self-limits: it only keeps growing
+  while a rescuable low-floor region is the worst offender, and a 2-color
+  palette runs out of those immediately.
+
+So the flat `+3` allowance does not misbehave at small `max_colors` the way
+its arithmetic implies — the gate, not the constant, is what bounds it in
+practice. The one real measured cost is the `COLOR_STOPS_HEAVY` trip at
+`max_colors=6`. **Caveat on how much this proves:** exactly one fixture in
+the 14-fixture corpus exercises the overflow path at any `max_colors`
+setting, so "nothing else is affected" is real evidence but thin evidence —
+a customer photo with a different region/floor landscape could behave
+differently, and no fixture here would catch it.
+
 **Still open from the same root-cause doc, untouched by this fix:** #6.2
 `summit_badge.png` (F/0 left_chest, F/10 hat_front — a segmentation-merge
 chaining issue in `stage2_photo_segment.py`'s hierarchical RAG merge, NOT a
