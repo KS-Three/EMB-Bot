@@ -176,6 +176,19 @@ def diff() -> int:
             if old["grade"] != new["grade"]:
                 lines.append(f"  grade: {old['grade']} -> {new['grade']}")
 
+            # KNOWN BLIND SPOT, found 2026-08-11 -- this comparison is
+            # set-based, so duplicate "{code}:{severity}" strings collapse and
+            # a COUNT change on a code present in BOTH runs is invisible. Real
+            # case that exposed it: fix #6.1 took photo/drone_render.png from
+            # 5 THREAD_MATCH_POOR findings to 6, and `diff` reported only a
+            # `color_changes` metric delta -- the extra finding, the more
+            # meaningful signal, was silently dropped. It was caught only by
+            # calling `_score_one` directly and diffing the raw lists by hand.
+            # This is worse than a missing feature: the tool answers "no
+            # finding drift" when findings did drift. Fixing it means counting
+            # per code (e.g. collections.Counter) rather than set-differencing
+            # -- deliberately NOT done here, since changing what `diff` reports
+            # wants its own pass and a re-look at the stored baseline format.
             appeared = sorted(set(new["findings"]) - set(old["findings"]))
             resolved = sorted(set(old["findings"]) - set(new["findings"]))
             if appeared:
