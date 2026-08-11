@@ -1193,6 +1193,216 @@ def _region_classes(
     return classes
 
 
+def kept_masks_to_quant(
+    p: Prep,
+    cfg: PipelineConfig,
+    kept: list[RegionMask],
+    floor_warnings: list[dict],
+    *,
+    face_regions=None,
+    bg_mask: np.ndarray | None = None,
+    raw_count: int,
+    merged_count: int,
+    raw_unit_label: str = "superpixels",
+    oversegment_labels: np.ndarray | None = None,
+) -> Quant:
+    """Steps 6-7, shared by EVERY photo-path region former.
+
+    Given `kept` — a list of non-overlapping `RegionMask`s that already
+    cleared `stage3_segment.resolve_small_regions`' floor — this does all of
+    the work that has nothing to do with WHICH segmenter produced them:
+    per-region mean Lab, area x class weighting, chart-restricted weighted
+    k-medoids palette selection, spool dedupe into final labels ordered by
+    descending area, the separate enclosed population, the
+    `PHOTO_SEGMENT_REGION_COUNT` / `PHOTO_PALETTE_SELECTED` warnings, and the
+    debug viz.
+
+    Extracted from `segment()` 2026-08-10 so the SAM2 region former
+    (`stage2_sam2_segment.sam2_segment_seam`) reuses it instead of copying
+    it. Several decisions in here are regression fixes with measured
+    defects behind them (`main_thread_colors` vs `len(thread_indices)`, the
+    enclosed population's separate label block, the deliberate choice NOT to
+    trust the merged label array's own 0/nonzero background convention) —
+    two copies of this logic would silently drift apart on exactly those.
+
+    Parameters that differ per segmenter:
+      * `raw_count` / `merged_count` — the two provenance numbers the region-
+        count warning reports. SLIC+RAG passes its superpixel count and its
+        post-merge label count; SAM2 passes its raw mask count and its
+        post-overlap-resolution label count.
+      * `raw_unit_label` — the noun `raw_count` is measured in. Defaults to
+        the classical path's own wording so its warning text is unchanged.
+      * `oversegment_labels` — the pre-merge label array for
+        `debugviz.stage2_photo_slic`. `None` skips that one viz.
+
+    The warning EXTRA field is still named `slic_segments` on both paths, on
+    purpose: it is a warning-schema field other code may already read by
+    name, and this module's own docstring already establishes that the
+    `slic_*` identifiers mean "whatever the oversegmentation step produced".
+    """
+    h, w = p.rgb.shape[:2]
+    flat_rgb = p.rgb.reshape(-1, 3)
+    enclosed = p.enclosed_mask
+    has_enclosed = enclosed is not None and enclosed.any()
+    slic_count = raw_count
+
+    # --- 6. Palette selection (chart-restricted weighted k-medoids) -----------
+    # (Step 5, the face-local threshold drop, already ran inside the RAG
+    # merge above when detections exist.)
+    # Was a per-region `chart.nearest_index` snap before step 7; now the
+    # whole region set selects a bounded palette TOGETHER — a fur ramp's
+    # regions share consolidated family shades instead of each grabbing its
+    # own near-duplicate spool. Weights are area × class multiplier;
+    # `_region_classes` maps eye/skin regions from the YuNet detections and
+    # subject/background regions from a real rembg mask (everything else —
+    # and every run with neither — stays None = plain area).
+    chart = chart_for(cfg)
+    region_labs = [
+        rgb_to_lab(p.rgb[r.mask].reshape(-1, 3).mean(axis=0, keepdims=True))[0]
+        for r in kept
+    ]
+    classes = _region_classes(kept, face_regions, bg_mask)
+    weights = [
+        region_weight(int(r.mask.sum()), c) for r, c in zip(kept, classes)
+    ]
+    selection = select_palette(
+        np.array(region_labs, np.float64).reshape(-1, 3),
+        np.array(weights, np.float64),
+        chart,
+        max_k=cfg.max_colors,
+    )
+    region_spools = selection.region_spools
+
+    # Same convention `stage2_quantize.quantize` ends on: dedupe regions
+    # that snapped to the same spool into one final label, ordered by
+    # descending total sewn area (largest color first) for determinism.
+    by_spool: dict[int, list[int]] = {}
+    for i, s in enumerate(region_spools):
+        by_spool.setdefault(s, []).append(i)
+    ordered_spools = sorted(
+        by_spool.items(),
+        key=lambda kv: -sum(int(kept[i].mask.sum()) for i in kv[1]),
+    )
+
+    out = np.full((h, w), -1, np.int32)
+    thread_indices: list[int] = []
+    for new_label, (spool, idxs) in enumerate(ordered_spools):
+        thread_indices.append(spool)
+        for i in idxs:
+            out[kept[i].mask] = new_label
+    # Captured BEFORE the enclosed population (below) appends its own spools
+    # onto the end of `thread_indices` — this is the thread-color count for
+    # the same population `count`/`len(kept)` below describes (the main
+    # region-former body only), so the two numbers in the warning stay
+    # comparable (`count >= thread_colors` always holds: color-consolidation
+    # can only shrink a region count, never grow it). The enclosed population
+    # is a structurally separate, always-small population already reported by
+    # its own `BACKGROUND_ENCLOSED` warning (stage 1) — folding its spools
+    # into this count would let it exceed `len(kept)` for a reason that has
+    # nothing to do with the region former's own consolidation, re-introducing
+    # a different flavor of the same "these two numbers don't obviously agree"
+    # confusion this fix exists to remove.
+    main_thread_colors = len(thread_indices)
+
+    # --- enclosed population, quantized separately, appended as its own
+    # trailing label block -- the exact merge-back `stage2_quantize.quantize`
+    # does for the same population (see the split's own comment above `segment`
+    # opens with).
+    enc_warnings: list[dict] = []
+    if has_enclosed:
+        enc_labels, enc_spools, enc_warnings = _quantize_population(
+            flat_rgb, enclosed, h, w, cfg, p.bg_edge_rgb
+        )
+        base_k = len(thread_indices)
+        enc_valid = enc_labels >= 0
+        out[enc_valid] = enc_labels[enc_valid] + base_k
+        thread_indices = thread_indices + enc_spools
+
+    warnings: list[dict] = list(floor_warnings) + enc_warnings
+    warnings.append(
+        warn(
+            PHOTO_SEGMENT_REGION_COUNT,
+            # `len(kept)` is the real region count this warning's own name
+            # promises — one entry per surviving RegionMask after the region
+            # former's own merge and the min-area floor, BEFORE palette
+            # selection can consolidate several regions onto one spool. Fixed
+            # 2026-08-04: this used to report `len(thread_indices)` (the
+            # number of THREAD COLORS the palette settled on, always <= the
+            # region count, frequently much smaller once several regions snap
+            # to the same spool) under a message claiming to report regions —
+            # so the number a caller actually saw here was color count
+            # wearing a region-count label, and the real region count never
+            # surfaced anywhere in this warning. `PHOTO_PALETTE_SELECTED`
+            # below already reports both correctly (`colors`/`regions`); this
+            # fix makes THIS warning's own numbers agree with its own name
+            # instead of relying on a reader cross-referencing the other one.
+            # Both `count` and `thread_colors` describe the main region-former
+            # body only (see `main_thread_colors` above) — an enclosed
+            # design's separate population is reported by `BACKGROUND_
+            # ENCLOSED` (stage 1), not folded in here.
+            f"Photo segmentation produced {len(kept)} region"
+            f"{'s' if len(kept) != 1 else ''} "
+            f"({slic_count} {raw_unit_label}, {merged_count} after merging), "
+            f"consolidated to {main_thread_colors} thread color"
+            f"{'s' if main_thread_colors != 1 else ''}.",
+            count=len(kept),
+            thread_colors=main_thread_colors,
+            slic_segments=slic_count,
+            merged_regions=merged_count,
+        )
+    )
+    warnings.append(
+        warn(
+            PHOTO_PALETTE_SELECTED,
+            # `main_thread_colors`, not `len(thread_indices)`: this message
+            # and its `colors` field describe what `select_palette` actually
+            # chose over — the main population, `kept` — and an enclosed
+            # design's separate population (appended to `thread_indices`
+            # above, never part of this k-medoids selection) must not silently
+            # inflate that number. Kept consistent with
+            # `PHOTO_SEGMENT_REGION_COUNT`'s own same-scope `thread_colors`
+            # field just above (added in the same pass this comment was).
+            f"Palette selected {main_thread_colors} thread"
+            f"{'s' if main_thread_colors != 1 else ''} "
+            f"for {len(kept)} region{'s' if len(kept) != 1 else ''} "
+            "(chart-restricted weighted k-medoids).",
+            colors=main_thread_colors,
+            regions=len(kept),
+            max_excess_de00=round(selection.max_excess_de00, 3),
+        )
+    )
+
+    if cfg.debug_dir:
+        from . import debugviz
+
+        dbg = Path(cfg.debug_dir)
+        if oversegment_labels is not None:
+            debugviz.stage2_photo_slic(dbg, p.rgb, oversegment_labels)
+        mean_rgb = {
+            new_label: tuple(int(v) for v in chart[spool].rgb)
+            for new_label, (spool, _idxs) in enumerate(ordered_spools)
+        }
+        # Enclosed-population labels sit past `len(ordered_spools) - 1` (see
+        # the enclosed merge-back above) — give them a debug fill color too
+        # so the viz doesn't silently leave them un-tinted.
+        mean_rgb.update({
+            base_k + i: tuple(int(v) for v in chart[spool].rgb)
+            for i, spool in enumerate(thread_indices[base_k:])
+        } if has_enclosed else {})
+        debugviz.stage2_photo_merged(dbg, p.rgb, out, mean_rgb)
+        debugviz.stage2_photo_regions(
+            dbg, slic_count, merged_count, len(thread_indices),
+            [int((out == lbl).sum()) for lbl in range(len(thread_indices))],
+        )
+
+    return Quant(
+        labels=out,
+        thread_indices=thread_indices,
+        cluster_rgb=np.array([chart[s].rgb for s in thread_indices], np.float64),
+        warnings=warnings,
+    )
+
+
 def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None) -> Quant:
     h, w = p.rgb.shape[:2]
     valid = ~p.bg_mask
@@ -1321,157 +1531,14 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None) -> Qu
 
     kept, floor_warnings = resolve_small_regions(regions, cfg, p.px_per_mm)
 
-    # --- 6. Palette selection (chart-restricted weighted k-medoids) -----------
-    # (Step 5, the face-local threshold drop, already ran inside the RAG
-    # merge above when detections exist.)
-    # Was a per-region `chart.nearest_index` snap before step 7; now the
-    # whole region set selects a bounded palette TOGETHER — a fur ramp's
-    # regions share consolidated family shades instead of each grabbing its
-    # own near-duplicate spool. Weights are area × class multiplier;
-    # `_region_classes` maps eye/skin regions from the YuNet detections and
-    # subject/background regions from a real rembg mask (everything else —
-    # and every run with neither — stays None = plain area).
-    chart = chart_for(cfg)
-    region_labs = [
-        rgb_to_lab(p.rgb[r.mask].reshape(-1, 3).mean(axis=0, keepdims=True))[0]
-        for r in kept
-    ]
-    classes = _region_classes(kept, face_regions, bg_mask)
-    weights = [
-        region_weight(int(r.mask.sum()), c) for r, c in zip(kept, classes)
-    ]
-    selection = select_palette(
-        np.array(region_labs, np.float64).reshape(-1, 3),
-        np.array(weights, np.float64),
-        chart,
-        max_k=cfg.max_colors,
-    )
-    region_spools = selection.region_spools
-
-    # Same convention `stage2_quantize.quantize` ends on: dedupe regions
-    # that snapped to the same spool into one final label, ordered by
-    # descending total sewn area (largest color first) for determinism.
-    by_spool: dict[int, list[int]] = {}
-    for i, s in enumerate(region_spools):
-        by_spool.setdefault(s, []).append(i)
-    ordered_spools = sorted(
-        by_spool.items(),
-        key=lambda kv: -sum(int(kept[i].mask.sum()) for i in kv[1]),
-    )
-
-    out = np.full((h, w), -1, np.int32)
-    thread_indices: list[int] = []
-    for new_label, (spool, idxs) in enumerate(ordered_spools):
-        thread_indices.append(spool)
-        for i in idxs:
-            out[kept[i].mask] = new_label
-    # Captured BEFORE the enclosed population (below) appends its own spools
-    # onto the end of `thread_indices` — this is the thread-color count for
-    # the same population `count`/`len(kept)` below describes (the SLIC+RAG
-    # main body only), so the two numbers in the warning stay comparable
-    # (`count >= thread_colors` always holds: color-consolidation can only
-    # shrink a region count, never grow it). The enclosed population is a
-    # structurally separate, always-small population already reported by its
-    # own `BACKGROUND_ENCLOSED` warning (stage 1) — folding its spools into
-    # this count would let it exceed `len(kept)` for a reason that has
-    # nothing to do with SLIC+RAG's own consolidation, re-introducing a
-    # different flavor of the same "these two numbers don't obviously agree"
-    # confusion this fix exists to remove.
-    main_thread_colors = len(thread_indices)
-
-    # --- enclosed population, quantized separately, appended as its own
-    # trailing label block -- the exact merge-back `stage2_quantize.quantize`
-    # does for the same population (see the split's own comment above `segment`
-    # opens with).
-    enc_warnings: list[dict] = []
-    if has_enclosed:
-        enc_labels, enc_spools, enc_warnings = _quantize_population(
-            flat_rgb, enclosed, h, w, cfg, p.bg_edge_rgb
-        )
-        base_k = len(thread_indices)
-        enc_valid = enc_labels >= 0
-        out[enc_valid] = enc_labels[enc_valid] + base_k
-        thread_indices = thread_indices + enc_spools
-
-    warnings: list[dict] = list(floor_warnings) + enc_warnings
-    warnings.append(
-        warn(
-            PHOTO_SEGMENT_REGION_COUNT,
-            # `len(kept)` is the real region count this warning's own name
-            # promises — one entry per surviving RegionMask after SLIC+RAG
-            # merge and the min-area floor, BEFORE palette selection can
-            # consolidate several regions onto one spool. Fixed 2026-08-04:
-            # this used to report `len(thread_indices)` (the number of
-            # THREAD COLORS the palette settled on, always <= the region
-            # count, frequently much smaller once several regions snap to
-            # the same spool) under a message claiming to report regions —
-            # so the number a caller actually saw here was color count
-            # wearing a region-count label, and the real region count never
-            # surfaced anywhere in this warning. `PHOTO_PALETTE_SELECTED`
-            # below already reports both correctly (`colors`/`regions`); this
-            # fix makes THIS warning's own numbers agree with its own name
-            # instead of relying on a reader cross-referencing the other one.
-            # Both `count` and `thread_colors` describe the SLIC+RAG main
-            # body only (see `main_thread_colors` above) — an enclosed
-            # design's separate population is reported by `BACKGROUND_
-            # ENCLOSED` (stage 1), not folded in here.
-            f"Photo segmentation produced {len(kept)} region"
-            f"{'s' if len(kept) != 1 else ''} "
-            f"({slic_count} superpixels, {merged_count} after merging), "
-            f"consolidated to {main_thread_colors} thread color"
-            f"{'s' if main_thread_colors != 1 else ''}.",
-            count=len(kept),
-            thread_colors=main_thread_colors,
-            slic_segments=slic_count,
-            merged_regions=merged_count,
-        )
-    )
-    warnings.append(
-        warn(
-            PHOTO_PALETTE_SELECTED,
-            # `main_thread_colors`, not `len(thread_indices)`: this message
-            # and its `colors` field describe what `select_palette` actually
-            # chose over — the main SLIC+RAG population, `kept` — and an
-            # enclosed design's separate population (appended to
-            # `thread_indices` above, never part of this k-medoids selection)
-            # must not silently inflate that number. Kept consistent with
-            # `PHOTO_SEGMENT_REGION_COUNT`'s own same-scope `thread_colors`
-            # field just above (added in the same pass this comment was).
-            f"Palette selected {main_thread_colors} thread"
-            f"{'s' if main_thread_colors != 1 else ''} "
-            f"for {len(kept)} region{'s' if len(kept) != 1 else ''} "
-            "(chart-restricted weighted k-medoids).",
-            colors=main_thread_colors,
-            regions=len(kept),
-            max_excess_de00=round(selection.max_excess_de00, 3),
-        )
-    )
-
-    if cfg.debug_dir:
-        from . import debugviz
-
-        dbg = Path(cfg.debug_dir)
-        debugviz.stage2_photo_slic(dbg, p.rgb, slic_labels)
-        mean_rgb = {
-            new_label: tuple(int(v) for v in chart[spool].rgb)
-            for new_label, (spool, _idxs) in enumerate(ordered_spools)
-        }
-        # Enclosed-population labels sit past `len(ordered_spools) - 1` (see
-        # the enclosed merge-back above) — give them a debug fill color too
-        # so the viz doesn't silently leave them un-tinted.
-        mean_rgb.update({
-            base_k + i: tuple(int(v) for v in chart[spool].rgb)
-            for i, spool in enumerate(thread_indices[base_k:])
-        } if has_enclosed else {})
-        debugviz.stage2_photo_merged(dbg, p.rgb, out, mean_rgb)
-        debugviz.stage2_photo_regions(
-            dbg, slic_count, merged_count, len(thread_indices),
-            [int((out == lbl).sum()) for lbl in range(len(thread_indices))],
-        )
-
-    return Quant(
-        labels=out,
-        thread_indices=thread_indices,
-        cluster_rgb=np.array([chart[s].rgb for s in thread_indices], np.float64),
-        warnings=warnings,
+    return kept_masks_to_quant(
+        p,
+        cfg,
+        kept,
+        floor_warnings,
+        face_regions=face_regions,
+        bg_mask=bg_mask,
+        raw_count=slic_count,
+        merged_count=merged_count,
+        oversegment_labels=slic_labels,
     )

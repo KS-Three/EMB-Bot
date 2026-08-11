@@ -1,0 +1,19 @@
+# Isolated SAM2 venv — see README.md in this directory for what this is and
+# why it is separate from digitizer/.venv.
+#
+# torch, torchvision and sam2 itself are NOT in this file, on purpose:
+#   * torch/torchvision must come from PyTorch's CPU wheel index, not PyPI
+#     (on Linux the PyPI torch wheel bundles CUDA and is several GB — this
+#     machine has ~13.5 GB free and no GPU), so they need their own
+#     --index-url and are installed by their own pip command in README.md.
+#   * sam2 must come from Meta's GitHub repo. The PyPI package literally
+#     named `sam2` is an UNRELATED third-party project — never install it.
+#     See README.md for the exact git+https command.
+#
+# What IS here is the one dependency SAM2's own setup.py leaves out of its
+# core install but its automatic mask generator needs: cv2, imported by
+# sam2.utils.amg.remove_small_regions, which runs whenever
+# min_mask_region_area > 0 — and the worker always passes a real min area
+# derived from cfg.min_detail_mm. Headless, matching the shared venv's own
+# choice, because nothing here ever opens a window.
+opencv-python-headless>=4.7.0

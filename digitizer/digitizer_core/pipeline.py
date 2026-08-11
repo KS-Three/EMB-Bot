@@ -36,6 +36,7 @@ from .stage1_photo_prep import (
 )
 from .stage1_prep import Prep, prep
 from .stage2_photo_segment import segment as photo_segment
+from .stage2_sam2_segment import sam2_segment_seam
 from .stage2_quantize import Quant, quantize
 from .stage3_segment import (
     ClassicalSegmenter,
@@ -56,6 +57,7 @@ from .warnings_codes import (
     PHOTO_BACKGROUND_REMOVED,
     PHOTO_FACE_PRIORS_UNAVAILABLE,
     PHOTO_FACES_DETECTED,
+    PHOTO_SAM2_SEGMENTATION_UNAVAILABLE,
     warn,
 )
 
@@ -223,9 +225,39 @@ def run_stages(
         if dbg:
             debugviz.stage1_photo_prep(dbg, pp.rgb_tone, pp.rgb)
 
-    # "photo_subject"/"photo_scene"/"gradient" all branch here now — only
-    # "flat" still takes the plain quantize() call this pipeline has always
-    # made. "gradient" joined 2026-08-04 (`docs/superpowers/plans/
+    # The SAM2 region former (2026-08-10, `docs/superpowers/plans/
+    # 2026-08-10-sam2-segmentation.md`) gets FIRST refusal on the two PHOTO
+    # classes only, behind its own opt-in flag. "gradient" is deliberately
+    # excluded even though it routes to `photo_segment` too: a smooth ramp
+    # has no distinct objects for an instance segmenter to find, and its
+    # reason for being here (k-means dithers gradients into speckle) has
+    # nothing to do with instance segmentation. Any failure at all — venv
+    # not built, checkpoint download blocked, subprocess crash, timeout,
+    # no usable regions — returns (None, reason) and this falls straight
+    # through to the classical SLIC+RAG call below, exactly the same
+    # degrade-and-say-so posture `remove_background_seam` gets above.
+    q: Quant | None = None
+    if cfg.photo_segment_sam2 and classification.class_ in (
+        "photo_subject",
+        "photo_scene",
+    ):
+        q, sam2_reason = sam2_segment_seam(
+            p, cfg, face_regions=face_regions, bg_mask=subject_bg_mask
+        )
+        if q is None:
+            prep_warnings.append(
+                warn(
+                    PHOTO_SAM2_SEGMENTATION_UNAVAILABLE,
+                    f"SAM2 segmentation was skipped — {sam2_reason}. This "
+                    "photo used the classical SLIC+RAG region former "
+                    "instead.",
+                    reason=sam2_reason,
+                )
+            )
+
+    # "photo_subject"/"photo_scene"/"gradient" all branch here — only "flat"
+    # still takes the plain quantize() call this pipeline has always made.
+    # "gradient" joined 2026-08-04 (`docs/superpowers/plans/
     # 2026-08-03-gradient-tier-fragmentation-and-enclosed-white-defects.md`,
     # "Direction 1"): global k-means clusters color independent of position,
     # so a smooth gradient dithers into per-pixel-adjacent ordered bands —
@@ -242,11 +274,12 @@ def run_stages(
     # treatment, on purpose, faces are not this class's concern. `subject_bg_
     # mask` is `None` there for the identical reason — it too is only ever
     # set inside that same double-gate.
-    q: Quant = (
-        photo_segment(p, cfg, face_regions=face_regions, bg_mask=subject_bg_mask)
-        if classification.class_ in ("photo_subject", "photo_scene", "gradient")
-        else quantize(p, cfg)
-    )
+    if q is None:
+        q = (
+            photo_segment(p, cfg, face_regions=face_regions, bg_mask=subject_bg_mask)
+            if classification.class_ in ("photo_subject", "photo_scene", "gradient")
+            else quantize(p, cfg)
+        )
     if dbg:
         debugviz.stage2(dbg, q.labels, q.thread_indices, chart_for(cfg))
 

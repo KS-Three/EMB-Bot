@@ -97,6 +97,115 @@ class PipelineConfig:
     # takes ~1-2s. A slow/blocked download degrades to the no-op fallback
     # exactly like any other subprocess failure, never hangs the job.
     photo_prep_background_removal_timeout_s: float = 60.0
+    # Stage 2 (photo path) — SAM2 region former (digitizer/sam2_isolated/,
+    # see its README.md). A SEPARATE opt-in flag, gated on the PHOTO classes
+    # only: this flag must be True AND stage 0 must classify the design
+    # photo_subject/photo_scene (forced_class counts). "gradient" designs
+    # route through stage2_photo_segment for an unrelated reason (avoiding
+    # k-means dithering on a smooth ramp) and deliberately do NOT get SAM2 —
+    # a gradient has no "distinct objects" for an instance segmenter to find,
+    # and SLIC+RAG is already tuned against two real gradient fixtures. "flat"
+    # never reaches this code path at all. Default False; with it off the
+    # pipeline is exactly what it was before this lane existed. When on and
+    # the isolated venv is missing/broken/times out, the documented fallback
+    # applies (PHOTO_SAM2_SEGMENTATION_UNAVAILABLE): the classical SLIC+RAG
+    # region former runs instead and the job still completes.
+    photo_segment_sam2: bool = False
+    # Which SAM 2.1 checkpoint tier the worker loads — a key of
+    # sam2_worker.CHECKPOINTS ("tiny" | "small" | "base_plus" | "large").
+    # "tiny" is the default and the only tier this lane was built around:
+    # inference here is CPU-only, so the larger tiers get slow enough to be
+    # self-defeating against the timeout below, and embroidery-scale regions
+    # (floored at min_detail_mm) do not need fine-grained natural-scene
+    # accuracy. An unknown name is rejected by the worker (exit 2) and
+    # degrades to the classical fallback like any other worker failure.
+    photo_segment_sam2_checkpoint: str = "tiny"
+    # SAM2's own automatic-mask-generator prompt-grid density. SAM2's library
+    # default is 32 (1024 prompts); 16 (256 prompts) quarters the mask-decoder
+    # work, which is the dominant CPU cost here. MEASURED AND CONFIRMED,
+    # Task 6, 2026-08-10 (this machine: Windows, CPU-only, no GPU, tiny
+    # checkpoint, torch 2.13.0+cpu). Swept 16/32/48 against
+    # testdata/photo/photo_scene_stub.png (target_width_mm=80,
+    # garment_id=left_chest) — the corpus fixture that came back sparse
+    # (1 raw mask) at 16: 32 barely moved it (2 raw masks, 125s vs 40s —
+    # ~3x the wall-clock for +1 mask), and 48 (2304 prompts) blew past the
+    # THEN-180s subprocess timeout entirely (190s wall before the timeout
+    # fired) and fell back to the classical segmenter, exactly as designed.
+    # Conclusion: this fixture's low mask count is a CONTENT property (a
+    # smooth, nearly textureless "scene" raster with no salient objects for
+    # an instance segmenter to find — SAM2 is behaving correctly, not
+    # grid-starved), not a grid-density problem, so raising this constant
+    # buys a worse cost/mask ratio here and real timeout risk against the
+    # new (also Task-6-measured) 90s timeout below, with no corresponding
+    # region-count benefit. Left at 16. See docs/sam2-segmentation-live-
+    # acceptance-2026-08-10.md for the full sweep and the other two corpus
+    # fixtures' raw mask counts at 16 (1 and 14).
+    photo_segment_sam2_points_per_side: int = 16
+    # Longest side, in px, of the raster handed to the worker. SAM2's image
+    # encoder resizes its input to 1024x1024 internally, so sending more than
+    # this costs I/O and post-processing without giving the encoder more to
+    # work with; the returned label map is nearest-neighbour upsampled back
+    # to full resolution, which preserves region identity exactly and costs
+    # at most a pixel of boundary precision — well inside the tolerance
+    # stage 4 already applies via simplify_tol_mm. 0 or negative disables the
+    # downscale entirely. ALSO A STARTING POINT: the boundary-precision half
+    # of that claim is reasoned, not measured.
+    photo_segment_sam2_max_side_px: int = 1024
+    # Subprocess timeout, seconds. This is the ONLY bound this architecture
+    # has on a hung SAM2 call: digitizer_service/jobs.py's JobRegistry is a
+    # single-worker ThreadPoolExecutor with no per-job timeout and no
+    # cancellation of a running job, so a call that never returns starves
+    # every queued job behind it. Read this number as a starvation bound, not
+    # a performance target.
+    #
+    # MEASURED, Task 6, 2026-08-10 (this machine: Windows, CPU-only, no GPU,
+    # Python 3.14.6, torch 2.13.0+cpu, sam2_isolated venv built fresh —
+    # this measurement's own venv had no 3.12 interpreter installed, so it
+    # used Python 3.14, which has a real cp314 CPU wheel on PyTorch's own
+    # index as of this date; digitizer/sam2_isolated/README.md's build
+    # command already documents `python3.14` for this reason, see the
+    # measurement note for the detail). `sam2_worker.py
+    # testdata/photo/drone_render.png ... tiny 16
+    # 36`, run twice: COLD (pays the one-time ~150 MB checkpoint download
+    # from dl.fbaipublicfiles.com plus torch's own cold import) = 155.98s;
+    # WARM (cache hit, the number that matters) = 39.96s. A second warm
+    # sample through the full seam (photo_scene_stub.png, target_width_mm=80,
+    # garment_id=left_chest) landed within a second of that (40.8s),
+    # so treated as a stable p50, not a fluke.
+    #
+    # Set to roughly 2x the observed warm run (2 * 39.96 = 79.9s), rounded up
+    # to a round number: 90s (≈2.25x the sample, not a clean 2x — the round-
+    # number step moved it further than the multiplier alone would have,
+    # still floor-60-compliant). This is a REAL trade-off, not a free win, and
+    # is recorded here rather than left implicit: 90s comfortably covers a
+    # warm call with margin, but is SHORTER than the measured cold
+    # (first-use, cache-miss) path (155.98s). Left unmitigated this is worse
+    # than "the first job is slow": `subprocess.run(timeout=)` kills the
+    # worker externally, which skips `sam2_worker._ensure_checkpoint`'s own
+    # `finally: tmp.unlink()` cleanup, so a timed-out download is orphaned as
+    # a `.part` file and EVERY later job would repeat the identical doomed
+    # download-and-timeout cycle — a permanent, silent degrade to "SAM2
+    # always falls back", not a one-time cost a deploy step can shrug off.
+    # The actual mitigation: `sam2_worker.main` checks whether the checkpoint
+    # is already cached BEFORE attempting anything and refuses fast (exit 4,
+    # an honest reason) instead of racing this timeout when it isn't.
+    # `sam2_isolated/README.md`'s pre-warm step (run the worker once by hand
+    # to populate the cache) is therefore a REQUIRED part of standing this
+    # lane up, not optional advice — skipping it means every real job
+    # degrades to the classical segmenter, fast and loud, until someone runs
+    # it. The alternative — sizing the timeout off the cold path instead —
+    # was rejected: it would let one hung call block the single-worker queue
+    # for 2.5+ minutes on every occurrence, which is the failure this bound
+    # exists to prevent, to buy safety for a cost the pre-warm step already
+    # avoids. Corroborated by a real
+    # timeout firing correctly in this same session: a `points_per_side`
+    # sweep (see that field's own comment) drove one call's SAM2 subprocess
+    # past the THEN-180s default (the bound that fired), and the FULL
+    # digitize() call (SAM2's own 180s wait, plus the classical fallback
+    # that then ran, plus normal pipeline overhead) wall-clocked at 190s
+    # end to end — two numbers for one event, not a contradiction — and it
+    # degraded to the classical segmenter exactly as designed, not a hang.
+    photo_segment_sam2_timeout_s: float = 90.0
 
     # Stage 3
     min_detail_mm: float = 1.5         # blueprint hard constraint
