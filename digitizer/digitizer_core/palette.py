@@ -28,8 +28,13 @@ is a fixed ordered list):
   BUILD  greedily add the chart thread minimizing total weighted cost
          Σ w_i · min(res_i, ΔE00(region_i, candidate)), until every
          region's assignment is within `PALETTE_EXCESS_DELTAE` of its own
-         personal-best chart distance (the "excess" — see below), the
-         `max_k` cap binds, or no candidate strictly improves.
+         personal-best chart distance (the "excess" — see below), or no
+         candidate strictly improves. Bounded stopping: soft cap max_k gates
+         where excess-only stopping applies; past max_k, allows growth to at
+         most hard_cap = max_k + PALETTE_OVERFLOW_K, only when a region with
+         low floor (< excess_deltae/2) exists — never to pad palette for a
+         region no thread actually matches well (docs/photo-quality-root-
+         cause-2026-08-11.md's drone_render.png finding).
   SWAP   repeatedly take the single best (selected, unselected) exchange
          that strictly lowers total weighted cost, at fixed k.
 
@@ -156,7 +161,10 @@ def select_palette(
     `region_labs` — (N, 3) CIELAB (threads.py's pinned convention: true
     CIELAB ranges from skimage rgb2lab, never cv2's 8-bit scaling).
     `region_weights` — (N,) positive weights (`region_weight`'s output).
-    `max_k` — hard palette cap (callers pass cfg.max_colors).
+    `max_k` — soft palette cap: BUILD's stopping point when all regions
+    satisfy the excess bound. May be exceeded up to hard_cap = max_k +
+    PALETTE_OVERFLOW_K if low-floor regions (floor <= excess_deltae/2)
+    require rescue. Callers pass cfg.max_colors.
 
     Deterministic: no RNG; ties resolve to the lowest chart index.
     N = 0 returns an empty selection; N = 1 is exactly the old per-region
