@@ -32,7 +32,7 @@ is a fixed ordered list):
          candidate strictly improves. Bounded stopping: soft cap max_k gates
          where excess-only stopping applies; past max_k, allows growth to at
          most hard_cap = max_k + PALETTE_OVERFLOW_K, only when a region with
-         low floor (< excess_deltae/2) exists — never to pad palette for a
+         low floor (<= excess_deltae/2) exists — never to pad palette for a
          region no thread actually matches well (docs/photo-quality-root-
          cause-2026-08-11.md's drone_render.png finding).
   SWAP   repeatedly take the single best (selected, unselected) exchange
