@@ -6,6 +6,7 @@
   import { EMB } from "../lib/emb.js";
   import { PALETTE_INDEX, STUDIO_PALETTE, getCachedPalette, loadPalette, nearestInList, loadPreferredPaletteId, savePreferredPaletteId } from "../lib/threads.js";
   import { ensureFonts } from "../lib/fontLoader.js";
+  import { effectiveHoop } from "../lib/hoop.js";
   export let project;
   // Task 4 (Slice 5): export now covers every ready element in the project
   // (generateAll's combined design), not just a single text/image design —
@@ -169,7 +170,9 @@
         name: threadLabel(nearestInList(list, [c.r, c.g, c.b])),
       }));
       const garment = EMB.getGarment(project.garmentId);
-      await exportWorksheetPDF(design, garment);
+      // The worksheet names the chosen hoop (manual pick or suggestion,
+      // lib/hoop.js) — the operator mounts a physical hoop, not a garment.
+      await exportWorksheetPDF(design, garment, effectiveHoop(project).hoop);
       msg = "Worksheet saved.";
     } catch (e) {
       msg = e.message;

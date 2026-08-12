@@ -30,6 +30,26 @@ test("defaultProject has a project-level fabricRgb default (Slice 8 Task 2)", ()
   expect(p.fabricRgb).toEqual([235, 232, 223]);
 });
 
+test("defaultProject has a project-level hoopId default of null (= use the suggestion)", () => {
+  expect(defaultProject().hoopId).toBeNull();
+});
+
+test("migrateProject preserves a manual hoopId and fills null onto pre-hoop-picker saves", () => {
+  // A pre-hoop save (no hoopId at all) loads as "use the suggestion" —
+  // same additive spread-merge story as fabricRgb.
+  const old = migrateProject({ version: 2, elements: [defaultTextElement("e1")], selectedId: "e1" });
+  expect(old.hoopId).toBeNull();
+
+  // A manual pick survives migration untouched.
+  const picked = migrateProject({
+    version: 2,
+    elements: [defaultTextElement("e1")],
+    selectedId: "e1",
+    hoopId: "6x10",
+  });
+  expect(picked.hoopId).toBe("6x10");
+});
+
 test("defaultTextElement has sane beginner defaults", () => {
   const el = defaultTextElement("e1");
   expect(el).toEqual({

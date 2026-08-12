@@ -19,6 +19,7 @@
   import { buildProjectFile, parseProjectFile, projectFileName } from "./lib/projectFile.js";
   import { triggerDownload } from "./lib/download.js";
   import { shouldShow, dismiss, visibleHint } from "./lib/hints.js";
+  import { effectiveHoop } from "./lib/hoop.js";
   import { fetchHealth } from "./lib/digitizer.js";
   import { EMB } from "./lib/emb.js";
   import GarmentStep from "./ui/GarmentStep.svelte";
@@ -227,6 +228,11 @@
   // summary all key off this one, not project.elements[0], so they stay in
   // sync with whatever the user clicked on the field).
   $: selectedElement = project.elements.find((el) => el.id === project.selectedId) || project.elements[0];
+
+  // The hoop in effect (manual pick or per-garment suggestion, lib/hoop.js)
+  // — shown in the "Ready to stitch" summary so the review step names the
+  // physical hoop the operator will actually mount.
+  $: hoopInEffect = effectiveHoop(project);
 
   const MM_PER_INCH = 25.4;
 
@@ -711,6 +717,7 @@
           <p>Looks good? The field on the right is your stitch-out.</p>
           <dl class="summary">
             <div><dt>Garment</dt><dd>{readable(project.garmentId)}</dd></div>
+            <div><dt>Hoop</dt><dd>{hoopInEffect.hoop.label}{hoopInEffect.suggested ? " (suggested)" : ""}</dd></div>
             {#if selectedElement.type === "image"}
               <div><dt>Content</dt><dd>Logo / image</dd></div>
               <div><dt>Colors</dt><dd>{selectedElement.nColors}{selectedElement.removeBg ? " · background removed" : ""}</dd></div>

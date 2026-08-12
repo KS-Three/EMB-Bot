@@ -198,6 +198,13 @@ export function defaultProject() {
     // field background so existing projects look unchanged until a user
     // picks a different swatch on the Garment step.
     fabricRgb: [235, 232, 223],
+    // Project-level hoop pick (launch item 2 — home-machine hoop picker).
+    // null = use the per-garment suggestion (the engine's suggestHoop rule);
+    // a hoop preset id ("4x4", "5x7", "6x10", "8x8") = the user's manual
+    // override. Resolution lives in lib/hoop.js's effectiveHoop(). Same
+    // additive-migration story as fabricRgb: older saves simply spread-merge
+    // over this default and load as "use the suggestion".
+    hoopId: null,
   };
 }
 

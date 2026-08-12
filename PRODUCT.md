@@ -31,7 +31,7 @@ Status verified against the repo on 2026-08-11 (not just taken from memory).
 | # | Item | Status | Evidence |
 |---|---|---|---|
 | 1 | PES hardened to byte-verified + JEF export | ✅ Done | PES/JEF live in `digitizer/digitizer_service/formats.py` (pyembroidery-backed; `digitizer_core/export.py` itself is DST-only); PES/JEF round-trip verified |
-| 2 | Home-machine hoop picker (4×4 / 5×7 / 6×10 / 8×8 presets) | ❌ Not started | `src/garments.js` has garment-*type* presets (hat front, left chest, full back, ...) plus one generic 200×200mm ceiling — no selectable hoop-size picker exists |
+| 2 | Home-machine hoop picker (4×4 / 5×7 / 6×10 / 8×8 presets) | ✅ Done | `src/garments.js` `HOOPS`/`suggestHoop`/`hoopFit` (orientation-aware ceiling check, replaces the generic 200×200mm one); Studio picker on the Garment step with per-garment suggestion + manual override, persisted as `project.hoopId` (`.embproj`-safe); chosen hoop on the review stats line, Review summary, and PDF worksheet. Auto-rotating an only-fits-rotated design is a noted follow-up (the warning names the rotate fix) |
 | 3 | Curated starter design pack (12–24 licensed designs via DST import) | ❌ Not started | no trace in repo |
 | 4 | Basic shapes tool (circle / rect / heart / star) | ❌ Not started | no preset-shapes trace in repo — explicitly *not* full freehand draw (which has since shipped as manual draw mode; see the parking-list note below) |
 | 5 | Thread palette sweep (remaining Ink/Stitch `.gpl` brands) | ✅ Done | 68 brand charts in `tools/palettes/`, matching the policy-filtered count (brands from companies that sell embroidery machines/software are excluded on purpose) |
