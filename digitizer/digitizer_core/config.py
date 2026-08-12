@@ -608,6 +608,19 @@ class PipelineConfig:
     # row's other half (the eye recipe) is a documented seam, not built:
     # see stage6_detail's module docstring.
     detail_layer: bool = False
+    # Blend tier, tonal bands (stage6_blend.tonal_bands): let a gradient-class
+    # region that is NOT a fittable ramp still decompose into thread shades,
+    # by bucketing its own pixels on lightness and cutting each bucket's
+    # polygon out of the mask it occupies. Exists because "isn't a ramp" and
+    # "isn't worth shading" turned out to be different questions: on Kent's
+    # owl (2026-08-12) every blend-routed region failed RAMP_R2_MIN — an iris
+    # is a ring and a breast is barred, neither of which a plane or a radial
+    # fit describes — so the 4200 mm2 body sewed as one flat colour despite
+    # spanning 81 points of L*. Only affects regions the ramp path already
+    # declined, so a true ramp still takes the model path unchanged, and the
+    # ramp fixtures stay byte-identical. Off by default pending a corpus run;
+    # see MASTER_SCOPE.md's blend-tier entry for the measured before/after.
+    blend_tonal_bands: bool = False
     # None = fill_row_mm (or the machine default). Contour rings are the same
     # 0.40 mm apart as tatami rows; this exists so the ring tier can be opened
     # up independently, which is what "best used for open fills with low stitch

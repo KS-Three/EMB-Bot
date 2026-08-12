@@ -11,7 +11,64 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-12 (evening) — **first end-to-end Studio photo
+**Last updated:** 2026-08-12 (late) — **the blend tier's real blocker is not
+the r² gate; the multi-colour seam it feeds was never wired.** Chasing PR
+#125's finding to the end found something larger and, unlike the gate, not
+tunable. Merged this pass: PR #125 (blend-tier measurement), PR #126
+(`owl_kent.jpg` — the first REAL photo fixture), PR #127 (two honesty fixes:
+the blend tier no longer claims decomposition it didn't do, and Studio now
+names which DST encoder wrote a file).
+
+- **`stage7_sequence` never reads `shade_thread_idx` / `shade_rgb`.** Both
+  `stage6_blend` and `stage6_streamline` compute a per-shade chart snap and
+  put it in their report; grep finds **no consumer anywhere**. A block's
+  thread is `group[0].region.thread_index` (`stage7_sequence.py:1347`) — the
+  region's ONE assigned thread. **Every shade of every decomposed region
+  sews in the same colour.**
+- **Verified on a fixture where the ramp path fires exactly as designed**,
+  not inferred: `gradient_ramp_linear.png` — 2 regions, both accepted at
+  r² 1.0, 4 shades chosen — emits **2 blocks and 1 colour change**. One
+  thread per region, not per shade. **The blend tier has never produced
+  multi-thread shading in the product.**
+- **This resets what PR #125 concluded.** "The shade machinery is fine; the
+  gate is the problem" is half right. The gate does block decomposition —
+  but removing it does not buy shading, because the threads never reach the
+  machine. Both halves have to land for either to be visible.
+- **Measured, not argued: `blend_tonal_bands` (new, default OFF).** Buckets
+  a non-ramp region's own pixels by lightness and cuts each bucket's polygon
+  out of the mask it occupies — the geometry half, no ramp fit anywhere. On
+  Kent's owl it does what it says (4 of 11 regions decompose, the 4200 mm²
+  body into 5 shades) and the result is **strictly worse today**: 7,725 →
+  10,126 stitches (+31%), trims 33 → 105 (+218%), and `color_changes`
+  unchanged at 13. More thread, more cuts, same picture. **Left off
+  deliberately; it is groundwork, not a fix.**
+- **One real defect found on the way in, fixed:** the first cut reused the
+  ramp path's `FILL_ROW_MM * n` row pitch and sewed the owl body at 1,971
+  stitches against 6,058 flat — a third of the coverage. Ramp bands are
+  contiguous strips that re-tile the region, so widening the pitch by n is
+  right there; tonal bands are interleaved patches that each already cover
+  ~1/n of the area, so the same multiplication under-sews them twice. Same
+  failure mode the earlier `streamline_mode: "layered"` comparison recorded
+  as "3,220 stitches = worse", which is worth re-reading in this light.
+- **Two ways forward, both architectural, both Kent's call.** (a) Teach
+  stage 5/7 that one region can own several thread stops — closest to what
+  the tier's own docstrings already promise, and it makes
+  `streamline_mode: "layered"` work at the same time, but it changes the
+  palette/colour-block model and collides with `max_colors` (the owl already
+  self-limits to 9 threads of 12 allowed). (b) Split tonally-diverse regions
+  upstream at segmentation/palette time, so the existing
+  one-thread-per-region model carries them unchanged — smaller blast radius,
+  and it is the same lever the 2026-08-12 thread-drift measurement pointed
+  at ("tighten simplification so small features stop absorbing their
+  surroundings"). Neither is started. **Until one lands, no amount of work
+  on the blend tier's gates changes what comes out of the machine.**
+- **Not a defect, recorded so it isn't re-found:** the noise fixture in
+  `test_blend_falls_back_to_ordinary_tatami_on_speckle` never reaches the
+  speckle gate — r² is tested first and random noise fails it, so the branch
+  that test is named for is not the one it exercises. Behaviour is correct;
+  the test now says so.
+
+**Prior update, 2026-08-12 (evening):** — **first end-to-end Studio photo
 session with Kent driving, and it moved area 1's diagnosis more than any
 code change did.** Kent digitized a real snowy-owl photo through the Studio,
 annotated the output, and the investigation that followed disproved three

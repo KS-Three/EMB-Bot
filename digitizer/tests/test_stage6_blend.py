@@ -34,6 +34,7 @@ from digitizer_core.stage6_blend import (
     detect_design_ramp_angle,
     detect_ramp,
     detect_ramp_detail,
+    tonal_bands,
 )
 from digitizer_core.stage6_fill import principal_angle_deg, stitch_shape
 from digitizer_core.threads import CHART
@@ -680,3 +681,114 @@ def test_drone_render_ab_debug_artifacts(tmp_path):
         n_shades = len(_layers_of(runs))
         assert 3 <= n_shades <= 5
         assert swatch.shape[1] == swatch.shape[0] * n_shades
+
+
+# --- Tonal bands: decomposition without a ramp fit ---------------------------
+#
+# The 2026-08-12 owl measurement in numbers: every blend-routed region on a
+# real photograph fails RAMP_R2_MIN (best 0.481 against a 0.5 floor), so the
+# tier flattens a 4200 mm2 body that spans 81 points of L* into one thread.
+# `tonal_bands` answers the separate question the ramp fit was standing in
+# for — "is there tone worth shading here?" — without pretending a barred
+# breast or a ring-shaped iris is a slope.
+
+
+def _ramp_free_tonal_source(seed: int = 11) -> tuple[Polygon, SourcePixels]:
+    """A region with strong, structured tone that is emphatically NOT a ramp:
+    concentric rings, light/dark alternating. A plane fit and a centroid-radial
+    fit both fail on it (the radial one because lightness is not MONOTONE in
+    r), which is exactly the iris case from Kent's owl."""
+    h, w = 400, 400
+    yy, xx = np.mgrid[0:h, 0:w]
+    r = np.hypot(xx - w / 2.0, yy - h / 2.0)
+    rings = (np.sin(r / 9.0) * 0.5 + 0.5)
+    img = np.repeat((rings * 255).astype(np.uint8)[:, :, None], 3, axis=2)
+    px_per_mm = 5.0
+    poly = Point(0.0, 0.0).buffer(w / 2.0 / px_per_mm - 2.0, quad_segs=64)
+    return poly, SourcePixels(rgb=img, px_per_mm=px_per_mm,
+                              origin_px=(w / 2.0, h / 2.0))
+
+
+def test_tonal_bands_decompose_a_region_no_ramp_fit_accepts():
+    poly, source = _ramp_free_tonal_source()
+    cfg = PipelineConfig()
+    # The precondition that makes this test meaningful: the shipped ramp path
+    # declines this region outright.
+    assert detect_ramp(poly, source) is None
+
+    bands, shade_labs, n = tonal_bands(poly, source, cfg)
+    assert n >= 3, f"expected a real shade split, got n={n}"
+    assert len(shade_labs) == n
+    assert bands, "a strongly-toned region must produce bands"
+    assert {i for _p, i in bands} == set(range(n)), (
+        "every shade index must contribute at least one band"
+    )
+    # Bands partition the region: they may not spill outside it, and together
+    # they cover most of it (morphological cleanup and the small-piece floor
+    # legitimately shave a little).
+    total = sum(p.area for p, _i in bands)
+    assert total <= poly.area * 1.02, "bands must not exceed the region"
+    assert total >= poly.area * 0.75, f"bands covered only {total / poly.area:.0%}"
+
+
+def test_tonal_bands_decline_a_region_with_no_tone_to_split():
+    """A flat-coloured region has nothing to decompose — the extremes gate
+    must reject it rather than manufacture shades out of quantisation noise."""
+    poly = Polygon([(0, 0), (40, 0), (40, 30), (0, 30)])
+    flat = np.full((200, 260, 3), 128, np.uint8)
+    source = SourcePixels(rgb=flat, px_per_mm=4.0, origin_px=(130.0, 100.0))
+    bands, _labs, n = tonal_bands(poly, source, PipelineConfig())
+    assert bands == [] and n == 0
+
+
+def test_tonal_bands_decline_a_region_too_small_to_hold_the_bands():
+    """Kent's owl irises (4-17 mm2) carry real tonal range but cannot hold a
+    3-5 way split — each band would be a couple of disconnected stitches.
+    Same source as the accepting test, only the polygon shrinks."""
+    _big, source = _ramp_free_tonal_source()
+    tiny = Point(0.0, 0.0).buffer(1.6, quad_segs=32)   # ~8 mm2
+    bands, _labs, n = tonal_bands(tiny, source, PipelineConfig())
+    assert bands == [] and n == 0
+
+
+def test_blend_fill_leaves_the_flat_fallback_alone_unless_the_flag_is_set():
+    """The whole tonal path is opt-in. With the flag off (the default), a
+    non-ramp region must still take the byte-identical flat tatami path —
+    this is what keeps the committed goldens valid."""
+    poly, source = _ramp_free_tonal_source()
+    region = Region(shape_id="Stone", polygon=poly, thread_index=0,
+                    thread_number=CHART[0].number, area_mm2=poly.area)
+    off, off_report = blend_fill(region, source, PipelineConfig())
+    assert off_report["blend_shades"] == 0
+    assert "blend_kind" not in off_report
+
+    on, on_report = blend_fill(region, source,
+                               PipelineConfig(blend_tonal_bands=True))
+    assert on_report["blend_shades"] >= 3
+    assert on_report["blend_kind"] == "tonal"
+    assert [r.points for r in on] != [r.points for r in off]
+
+
+def test_tonal_bands_sew_at_the_normal_row_pitch_not_the_ramp_path_s():
+    """The one place this path deliberately diverges from the ramp path.
+
+    Ramp bands are contiguous strips that re-tile the region, so widening the
+    pitch by n keeps the stitch budget flat. Tonal bands are interleaved
+    patches that already cover ~1/n of the area each, so the same
+    multiplication under-sews them a second time — measured on Kent's owl
+    body at 1971 stitches against 6058 flat, a third of the coverage. Pinned
+    as a density comparison rather than a constant so it keeps meaning if
+    FILL_ROW_MM moves.
+    """
+    poly, source = _ramp_free_tonal_source()
+    region = Region(shape_id="Stone", polygon=poly, thread_index=0,
+                    thread_number=CHART[0].number, area_mm2=poly.area)
+    flat, _ = blend_fill(region, source, PipelineConfig())
+    toned, report = blend_fill(region, source,
+                               PipelineConfig(blend_tonal_bands=True))
+    flat_st = sum(len(r.points) for r in flat)
+    toned_st = sum(len(r.points) for r in toned)
+    assert toned_st >= flat_st * 0.8, (
+        f"tonal bands sewed {toned_st} vs flat {flat_st} — the row pitch is "
+        f"being multiplied by the shade count ({report['blend_shades']}) again"
+    )
