@@ -217,6 +217,30 @@ hand-rolling it in JS.
 
 ### Hard-won lessons — do not relearn these
 
+- **`digitizer/` cites its own docs relative to the package root**, i.e.
+  bare `docs/dt-classifier-spike-2026-08-02.md` meaning
+  `digitizer/docs/...` (8 such references vs 2 spelled-out ones, mostly in
+  READMEs). A dangling-link scan resolved from the repo root will report
+  these as missing files and they are not — `digitizer/docs/` holds the
+  playbook, the DT-classifier spike and the SAM2 live-acceptance doc.
+  Cost one detour on 2026-08-12; don't pay it twice.
+
+- **Parallel lanes each test against their own base, so cross-lane
+  breakage only appears in the merged full suite.** On 2026-08-11 six tests
+  broke that way at once: the new background-existence guards correctly
+  stopped flooding the repro/stub fixtures that other tests' scenarios were
+  built on. The fix pattern is an explicit guards-off config
+  (`bg_border_agreement_min=0.0, bg_border_rival_min=0.0`) with a comment
+  saying which orthogonal mechanism the test is really pinning — see
+  `test_enclosed_background.py`, `test_thread_revalidate.py`,
+  `test_stage6_blend.py`, `test_preflight.py`, `test_service.py`. Run the
+  FULL suite after merging parallel lanes; per-lane green means nothing
+  about their interaction.
+
+- **Never pipe pytest to `tail`** — you get tail's exit code, so a red
+  suite reports success. Redirect to a file and check `$?` directly. Cost a
+  false "suite green" claim on 2026-08-11.
+
 - **Measure on Kent's real art, not the fixtures.** `testdata/logo_whitebg.png`
   routes 1 of 5 regions to satin and reproduces almost nothing he complains
   about. The benchmark is `digitizer/testdata/photo/enthusiast_logo.png`

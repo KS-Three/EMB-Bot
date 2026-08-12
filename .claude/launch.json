@@ -12,7 +12,8 @@
       "runtimeExecutable": "digitizer/.venv/Scripts/python.exe",
       "runtimeArgs": ["-m", "digitizer_service", "--port", "8721"],
       "port": 8721,
-      "url": "http://127.0.0.1:8721"
+      "url": "http://127.0.0.1:8721",
+      "autoPort": false
     }
   ]
 }

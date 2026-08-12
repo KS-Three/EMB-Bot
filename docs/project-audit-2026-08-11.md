@@ -1,5 +1,35 @@
 # EMB-Bot Project Audit — 2026-08-11
 
+> **READ THIS FIRST — most of this audit was actioned the same night.**
+> Written mid-evening 2026-08-11; the work it recommended ran immediately
+> after, so the body below is a snapshot of a state that no longer holds.
+> Do not chase an item from it without checking here first.
+>
+> **Closed the same night:** pystitch swap executed (`39a7adc`); per-region
+> preflight metric + count-aware scorecard diff (`619e9ad`, `2aca949`);
+> the 4 untracked research docs committed (`e922f2f`) plus a 5th recovered
+> from Kent's Desktop (`49d498b`); `main` pushed and the remote moved to
+> KS-Three; `scratch_ink/` + a fresh bundle archived to Drive (bus factor
+> closed); worktree/branch yard emptied; the 2 JS test failures fixed
+> (283/283, `.gitattributes` for LF sidecars); MASTER_SCOPE splice damage
+> and false test counts repaired; README (69→55 fonts, dead `EMB-Bot.html`
+> narrative), PRODUCT.md and COOKBOOK corrected; `tools/bundle.mjs`
+> deleted; LINK_UNCOVERED false-block + its raster overhead fixed.
+>
+> **Ruled by Kent 2026-08-11** (see PRODUCT.md): engine quality is a
+> parallel investment, *not* a launch gate; SAM2 ships post-v1 as an
+> opt-in download. Launch items 2 (hoop picker) and 4 (shapes tool)
+> shipped that night — item 3 (starter design pack) and the billing
+> session are what remain.
+>
+> **Still open exactly as written below:** the DST axis bug reaching
+> customers through lettering exports (sew-out gated — still the single
+> highest-value unblock); `src/fonts.js` dead CDN path still in the engine
+> list; rembg's ~178 MB first-run model download; the 19-minute serial
+> pytest suite (no `pytest-xdist`).
+>
+> Current state always lives in MASTER_SCOPE.md, not here.
+
 Full-project spot check: progress vs anticipated outcomes, .md validation (gaps /
 discrepancies), and tool/feature/code alternatives. Produced by a 4-lane audit
 (MASTER_SCOPE integrity, docs-vs-code fact-check, digitizer quality lane,
