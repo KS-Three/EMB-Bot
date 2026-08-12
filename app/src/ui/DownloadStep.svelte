@@ -50,6 +50,33 @@
     return els.length > 0 && els.every((el) => el.type === "digitized");
   }
 
+  // Encoder provenance, surfaced rather than left implicit.
+  //
+  // The gate above decides WHICH DST encoder runs, and until now nothing told
+  // the user which one they got. That matters for exactly one format: the
+  // browser's own DST codec is confirmed transposed against the Tajima
+  // standard (five independent sources, incl. Ink/Stitch's pystitch — see
+  // MASTER_SCOPE.md's "DST codec axis bug"), so a browser-encoded DST reads a
+  // quarter-turn rotated in third-party software, and its color-change record
+  // (0x43 vs the standard 0xC3) is not seen as a color change at all.
+  //
+  // Deliberately NOT extended to PES/EXP. Both browser encoders had real
+  // byte-framing defects, both were FIXED 2026-08-05 (PR #58) and now decode
+  // identity/rms 0 against pyembroidery, so warning on them would be telling
+  // the user something untrue. DST is the one still open, and it is open
+  // pending a sew-out — fixing the codec would re-orient every DST EMB-Bot
+  // has ever written, which is Kent's call, not this dialog's.
+  //
+  // This is a prediction, not an observation: `exportDesignPreferService`
+  // silently falls back to the browser encoder if the service is unreachable,
+  // so a purely-digitized project can still produce a browser DST. The
+  // post-download message below reports what actually happened, from `via`.
+  $: dstUsesBrowserEncoder = !isPurelyDigitized(project);
+
+  // What the download actually used, set from the returned `via` after every
+  // stitch-format download so the label is observed rather than predicted.
+  let lastExport = null;
+
   // fontsReady gates the (necessarily synchronous, template-bound)
   // combinedColors() derivation below -- it starts false so the very first
   // render never runs generateAll against a possibly-missing font, then
@@ -146,8 +173,14 @@
         preferService: isPurelyDigitized(project),
       });
       triggerDownload(out);
-      msg = "Downloaded " + fmt.toUpperCase() + (out.via === "service" ? " (via digitizer)" : "");
+      // Name the encoder in BOTH directions. The old message only ever
+      // labelled the service path, so a browser-encoded file — the one case
+      // where the encoder is known to matter — was the silent default.
+      lastExport = { fmt, via: out.via };
+      msg = "Downloaded " + fmt.toUpperCase()
+        + (out.via === "service" ? " (digitizer service encoder)" : " (browser encoder)");
     } catch (e) {
+      lastExport = null;
       msg = e.message;
     }
   }
@@ -173,6 +206,9 @@
       // The worksheet names the chosen hoop (manual pick or suggestion,
       // lib/hoop.js) — the operator mounts a physical hoop, not a garment.
       await exportWorksheetPDF(design, garment, effectiveHoop(project).hoop);
+      // Not a stitch format — clear the encoder note so it can't linger next
+      // to a message about a different download.
+      lastExport = null;
       msg = "Worksheet saved.";
     } catch (e) {
       msg = e.message;
@@ -187,6 +223,7 @@
       const design = buildDesign();
       const out = await exportPNG(design);
       triggerDownload({ bytes: out.blob, filename: out.filename, mime: out.mime });
+      lastExport = null;
       msg = "Downloaded PNG";
     } catch (e) {
       msg = e.message;
@@ -228,7 +265,23 @@
   <button on:click={dlPNG}>PNG</button>
   <button on:click={dlWorksheet} disabled={worksheetBusy}>PDF worksheet</button>
 </div>
+{#if dstUsesBrowserEncoder}
+  <p class="encodernote" data-testid="dst-browser-encoder-note">
+    <strong>Heads up about DST:</strong> this project includes lettering or
+    hand-drawn shapes, so its DST is written by EMB-Bot's own encoder. That
+    file opens correctly in EMB-Bot, but other embroidery software reads it
+    rotated a quarter turn and may not see the color stops. PES and EXP are
+    unaffected — use one of those, or a project made only of auto-digitized
+    images, if the file is going somewhere else.
+  </p>
+{/if}
 <p>{msg}</p>
+{#if lastExport && lastExport.fmt === "dst" && lastExport.via === "browser"}
+  <p class="encodernote" data-testid="dst-browser-encoder-downloaded">
+    That DST came from EMB-Bot's own encoder — see the note above before
+    opening it in other software.
+  </p>
+{/if}
 <p class="fontcredits-footer">
   <button type="button" class="linklike" on:click={openCredits}>Fonts: open-source — see credits</button>
 </p>

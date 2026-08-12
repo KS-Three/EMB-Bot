@@ -1069,6 +1069,21 @@ canvas { touch-action: none; }
   gap: var(--space-3);
 }
 
+/* DST encoder provenance (DownloadStep). Uses --warn rather than --danger on
+   purpose: the download succeeds and the file is valid, it just reads rotated
+   outside EMB-Bot, so this is a caution about where the file is going — not a
+   failure. Left-rule instead of a filled panel keeps it from competing with
+   the format buttons directly above it. */
+.encodernote {
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--warn);
+  color: var(--warn);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+}
+.encodernote strong { font-weight: 700; }
+
 /* Footer link to FontCredits (Slice 10B Task 5) — a <button> styled as a
    link (not a real <a>) since it dispatches an event rather than
    navigating; keeps it keyboard/AT accessible without a fake href. */
