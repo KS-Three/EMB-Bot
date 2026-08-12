@@ -620,6 +620,52 @@ input.fabriccustom[type="color"] {
   height: 36px;
 }
 
+/* Hoop size row (Garment step, launch item 2) -- the four home-machine
+   hoop presets. Same bordered-card language as .tile, sized down: these are
+   a setting, not the step's main choice. The "Suggested" chip rides the
+   per-garment suggestion (see GarmentStep.svelte) and stays put while a
+   different hoop is selected. */
+.hooprow {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.hooptile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-3) var(--space-2) var(--space-2);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  cursor: pointer;
+  box-shadow: var(--shadow-1);
+}
+
+.hooptile:hover { border-color: var(--accent); }
+.hooptile.sel { border-color: var(--accent); background: var(--tint); }
+.hooptile.sel .hooptile-name { font-weight: 600; color: var(--accent); }
+
+.hooptile-name { font-size: var(--fs-sm); line-height: 1.2; }
+.hooptile-mm { font-size: var(--fs-xs); color: var(--muted); }
+
+.hooptile-chip {
+  font-size: 10px;
+  line-height: 1;
+  padding: 3px 6px;
+  margin-top: 2px;
+  border-radius: 999px;
+  background: var(--tint);
+  color: var(--accent);
+  border: 1px solid var(--tint-border);
+}
+
+.hoopreset { margin: 0 0 var(--space-5); font-size: var(--fs-xs); }
+
 /* Quick-start template cards — one-click starters shown above the garment
    tiles on the first step. 2x2 on the narrow left panel, auto-fill lets a
    wider layout flow to 4-up. */

@@ -145,6 +145,18 @@ test("exportWorksheetPDF wires window.jspdf and forwards garment box (mm) to EMB
     expect(meta.fileName).toBe("embbot-worksheet.pdf");
     expect(meta.garmentBox.widthMM).toBeCloseTo(127, 5);
     expect(meta.garmentBox.heightMM).toBeCloseTo(57.15, 5);
+    // No hoop passed (pre-picker caller shape) -> explicit null, no line.
+    expect(meta.hoop).toBeNull();
+
+    // With the chosen hoop (launch item 2): forwarded as the plain
+    // { label, widthMm, heightMm } shape pdfsheet.js prints.
+    await exportWorksheetPDF(
+      design,
+      { label: "Left chest", widthIn: 5, heightIn: 2.25 },
+      { id: "4x4", label: "4×4 in", widthMm: 100, heightMm: 100 }
+    );
+    const hoopMeta = buildSpy.mock.calls[1][1];
+    expect(hoopMeta.hoop).toEqual({ label: "4×4 in", widthMm: 100, heightMm: 100 });
 
     expect(window.jspdf).toBeDefined();
     expect(typeof window.jspdf.jsPDF).toBe("function");

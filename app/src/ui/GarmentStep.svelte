@@ -4,6 +4,7 @@
   import TemplateRow from "./TemplateRow.svelte";
   import Hint from "./Hint.svelte";
   import { garmentArt } from "./garmentArt.js";
+  import { effectiveHoop } from "../lib/hoop.js";
   export let project;
   // Whether the "templates" onboarding hint should render right now -- App
   // computes this from hints.js's shouldShow("templates") plus the A7
@@ -57,6 +58,16 @@
 
   $: fabricRgb = project.fabricRgb || DEFAULT_FABRIC_RGB;
   $: isCustomFabric = !FABRIC_SWATCHES.some((f) => sameRgb(fabricRgb, f.rgb));
+
+  // Hoop picker (launch item 2). The engine owns the presets and the
+  // per-garment suggestion rule (src/garments.js); this step only shows
+  // them. `hoopSel` is the hoop in effect (manual pick, or the suggestion
+  // when project.hoopId is null); `suggestedHoop` is always the suggestion
+  // for the CURRENT garment, so the "Suggested" tag stays honest while the
+  // user has something else picked, and switching garments moves it live.
+  const hoops = EMB.HOOPS || [];
+  $: hoopSel = effectiveHoop(project);
+  $: suggestedHoop = EMB.suggestHoop(EMB.getGarment(project.garmentId));
 </script>
 
 {#if showTemplatesHint}
@@ -73,6 +84,30 @@
     </button>
   {/each}
 </div>
+
+<h3>Hoop size</h3>
+<div class="hooprow" role="group" aria-label="Hoop size">
+  {#each hoops as h (h.id)}
+    <button
+      type="button"
+      class="hooptile"
+      class:sel={hoopSel.hoop.id === h.id}
+      aria-pressed={hoopSel.hoop.id === h.id}
+      on:click={() => d("update", { hoopId: h.id })}
+    >
+      <span class="hooptile-name">{h.label}</span>
+      <span class="hooptile-mm">{h.widthMm} × {h.heightMm} mm</span>
+      {#if suggestedHoop.id === h.id}<span class="hooptile-chip">Suggested</span>{/if}
+    </button>
+  {/each}
+</div>
+{#if !hoopSel.suggested && hoopSel.hoop.id !== suggestedHoop.id}
+  <p class="hoopreset">
+    <button type="button" class="linklike" on:click={() => d("update", { hoopId: null })}>
+      Use the suggested {suggestedHoop.label} hoop
+    </button>
+  </p>
+{/if}
 
 <h3>Fabric color</h3>
 <div class="fabricrow">

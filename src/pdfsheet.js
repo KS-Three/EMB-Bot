@@ -63,6 +63,19 @@ const deps =
       doc.text("Placement: " + options.garmentLabel, MARGIN_IN, cursorY + 0.15);
       cursorY += 0.3;
     }
+    // The chosen hoop (launch item 2 — hoop picker), next to the placement:
+    // the operator mounts a physical hoop, so the sheet names it. `hoop` is
+    // { label, widthMm, heightMm } (a garments.js HOOPS preset, forwarded by
+    // app exporters.js); absent on pre-picker callers -> no line, same
+    // optional treatment as garmentLabel above.
+    if (options.hoop && options.hoop.label) {
+      let hoopLine = "Hoop: " + options.hoop.label;
+      if (options.hoop.widthMm && options.hoop.heightMm) {
+        hoopLine += " (" + options.hoop.widthMm + " mm x " + options.hoop.heightMm + " mm)";
+      }
+      doc.text(hoopLine, MARGIN_IN, cursorY + 0.15);
+      cursorY += 0.3;
+    }
 
     // Rendered stitch simulation image.
     const canvas = document.createElement("canvas");

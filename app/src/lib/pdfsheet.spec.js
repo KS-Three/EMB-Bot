@@ -196,6 +196,41 @@ test("buildWorksheetPDF omits the Placement line when no garment label is given"
   }
 });
 
+test("buildWorksheetPDF prints the chosen hoop next to the placement, and omits the line when none is given", () => {
+  const dom = installFakeDom();
+  const originalJspdf = globalThis.window.jspdf;
+  globalThis.window.jspdf = { jsPDF: FakeJsPDF };
+
+  try {
+    // With a hoop (the shape exporters.js forwards from the picker).
+    const withHoop = buildWorksheetPDF(baseDesign(), {
+      fileName: "hooped.pdf",
+      garmentLabel: "Left chest",
+      hoop: { label: "4×4 in", widthMm: 100, heightMm: 100 },
+    });
+    const strings = withHoop.texts.map((t) => t.str);
+    expect(strings).toContain("Hoop: 4×4 in (100 mm x 100 mm)");
+    // Ordered under the placement line, both above the image.
+    const placementY = withHoop.texts.find((t) => t.str.startsWith("Placement:")).y;
+    const hoopY = withHoop.texts.find((t) => t.str.startsWith("Hoop:")).y;
+    expect(hoopY).toBeGreaterThan(placementY);
+
+    // A pre-picker caller (no hoop in meta) gets no Hoop line at all.
+    const without = buildWorksheetPDF(baseDesign(), { fileName: "plain.pdf" });
+    expect(without.texts.some((t) => t.str.startsWith("Hoop:"))).toBe(false);
+
+    // Dims-less hoop still names it, without an empty parenthetical.
+    const bare = buildWorksheetPDF(baseDesign(), {
+      fileName: "bare.pdf",
+      hoop: { label: "5×7 in" },
+    });
+    expect(bare.texts.map((t) => t.str)).toContain("Hoop: 5×7 in");
+  } finally {
+    dom.restore();
+    globalThis.window.jspdf = originalJspdf;
+  }
+});
+
 test("buildWorksheetPDF falls back to 'Color N' when a thread has no name, and to colors.length when colorCount is missing", () => {
   const dom = installFakeDom();
   const originalJspdf = globalThis.window.jspdf;

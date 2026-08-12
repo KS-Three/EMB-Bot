@@ -8,6 +8,7 @@
   import { EMB } from "../lib/emb.js";
   import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizePatches } from "../lib/interact.js";
   import { selectedIdsOf } from "../lib/project.js";
+  import { effectiveHoop, hoopFitNote } from "../lib/hoop.js";
   import Hint from "./Hint.svelte";
   import Icon from "./Icon.svelte";
 
@@ -44,6 +45,12 @@
   let warn = false;
   let hasDesign = false;
   let hint = "";
+  // Hoop ceiling check (launch item 2): the COMBINED design's dims against
+  // the project's chosen hoop (lib/hoop.js). "" = fits, else the user-facing
+  // note ("Exceeds your 4×4 in hoop…"). Set alongside `stats` in paint() —
+  // it's a CHECK on the generated result, never a clamp (the clamp math
+  // stays keyed to the garment placement box).
+  let hoopNote = "";
 
   // Result of the last renderRealistic() call — { toCanvas, scale, designBBoxMm } —
   // kept around so pointer handlers and the selection overlay can hit-test /
@@ -446,6 +453,7 @@
     stats = "";
     warn = false;
     hint = "";
+    hoopNote = "";
     renderResult = null;
     perElementRects = [];
     peById = {};
@@ -490,7 +498,12 @@
 
     const garment = garmentFor(project);
     const c = result.combined;
-    stats = `${c.stitchCount} stitches · ${c.widthMM.toFixed(0)}×${c.heightMM.toFixed(0)} mm`;
+    // The chosen hoop rides the review stats line, and the ceiling check
+    // runs against the combined design (not just the selected element) —
+    // the whole design has to fit the physical hoop.
+    const { hoop } = effectiveHoop(project);
+    stats = `${c.stitchCount} stitches · ${c.widthMM.toFixed(0)}×${c.heightMM.toFixed(0)} mm · ${hoop.label} hoop`;
+    hoopNote = hoopFitNote(c.widthMM, c.heightMM, hoop) || "";
     // Reports the COMBINED design's stitch count (not just the selected
     // element's) -- App uses this for the "drag-field" hint's A8 eligibility
     // condition, which is about whether there's anything on the field to
@@ -1207,6 +1220,6 @@
   </div>
   <div class="fieldmeta">
     {#if error}<span class="err">{error}</span>
-    {:else if stats}<span class="stats">{stats}</span>{#if warn}<span class="warn"> · Smaller than 5 mm — thread can't stitch this cleanly</span>{/if}{/if}
+    {:else if stats}<span class="stats">{stats}</span>{#if warn}<span class="warn"> · Smaller than 5 mm — thread can't stitch this cleanly</span>{/if}{#if hoopNote}<span class="warn"> · {hoopNote}</span>{/if}{/if}
   </div>
 </div>

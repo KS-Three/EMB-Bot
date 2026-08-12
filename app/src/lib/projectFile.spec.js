@@ -26,6 +26,17 @@ test("buildProjectFile -> parseProjectFile round-trips a project and its name lo
   expect(parsed.project).toEqual(migrateProject(project));
 });
 
+test("a manual hoop pick survives the .embproj round trip (launch item 2)", () => {
+  const project = { ...defaultProject(), hoopId: "6x10" };
+  const parsed = parseProjectFile(buildProjectFile(project, "Hooped"));
+  expect(parsed.project.hoopId).toBe("6x10");
+  // and a pre-hoop-picker file (no hoopId key at all) parses to the
+  // "use the suggestion" default rather than undefined
+  const pre = { ...defaultProject() };
+  delete pre.hoopId;
+  expect(parseProjectFile(buildProjectFile(pre, "Old")).project.hoopId).toBeNull();
+});
+
 test("the envelope carries format/version stamps", () => {
   const parsed = JSON.parse(buildProjectFile(defaultProject(), "x"));
   expect(parsed.format).toBe(PROJECT_FILE_FORMAT);
