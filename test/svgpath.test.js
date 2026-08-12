@@ -72,21 +72,33 @@ test("explicit tolerance of 0 is respected, not treated as falsy", () => {
 
 function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
 
-// Maximum distance from any emitted point to the true cubic curve,
-// sampled densely. Used to assert the flattening tolerance is honored.
+function distToSegment(p, a, b) {
+  const abx = b.x - a.x, aby = b.y - a.y;
+  const len2 = abx * abx + aby * aby;
+  let t = len2 === 0 ? 0 : ((p.x - a.x) * abx + (p.y - a.y) * aby) / len2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p.x - (a.x + t * abx), p.y - (a.y + t * aby));
+}
+
+// Maximum distance from the true cubic curve (sampled densely) to the
+// emitted POLYLINE. This is the quantity the flattening tolerance actually
+// bounds. (An earlier version of this test measured distance to the nearest
+// emitted POINT, which is really chord length / 2 — a correct flattener
+// legitimately emits long chords wherever the curve is straight, so that
+// metric can read ~9 while the polyline is within 0.3 of the curve.)
 function maxDeviationFromCubic(points, p0, p1, p2, p3) {
-  const samples = [];
+  let worst = 0;
   for (let i = 0; i <= 2000; i++) {
     const t = i / 2000, u = 1 - t;
-    samples.push({
+    const s = {
       x: u*u*u*p0.x + 3*u*u*t*p1.x + 3*u*t*t*p2.x + t*t*t*p3.x,
       y: u*u*u*p0.y + 3*u*u*t*p1.y + 3*u*t*t*p2.y + t*t*t*p3.y,
-    });
-  }
-  let worst = 0;
-  for (const s of samples) {
+    };
     let best = Infinity;
-    for (const p of points) best = Math.min(best, dist(p, s));
+    for (let j = 0; j + 1 < points.length; j++) {
+      best = Math.min(best, distToSegment(s, points[j], points[j + 1]));
+    }
+    if (points.length === 1) best = dist(points[0], s);
     worst = Math.max(worst, best);
   }
   return worst;
@@ -101,6 +113,40 @@ test("cubic bezier flattens within tolerance", () => {
   const dev = maxDeviationFromCubic(pts,
     { x: 0, y: 0 }, { x: 0, y: 100 }, { x: 100, y: 100 }, { x: 100, y: 0 });
   assert.ok(dev <= 0.5, "deviation " + dev + " exceeded tolerance 0.5");
+});
+
+test("flatness guarantee holds across tolerances and curve shapes", () => {
+  // Each entry: path data + control points for the deviation measurement.
+  // The second curve is the ×16-bug witness: with the old perpendicular
+  // metric it was accepted as a single chord at tolerance 0.5 despite a true
+  // deviation of 0.75. The third overshoots the chord collinearly (the old
+  // metric saw zero error). The fourth is a p0 == p3 loop (degenerate chord,
+  // also zero error under the old metric).
+  const curves = [
+    ["M 0 0 C 0 100 100 100 100 0", [{x:0,y:0},{x:0,y:100},{x:100,y:100},{x:100,y:0}]],
+    ["M 0 0 C 30 1 60 1 90 0",      [{x:0,y:0},{x:30,y:1},{x:60,y:1},{x:90,y:0}]],
+    ["M 0 0 C 15 0 -5 0 10 0",      [{x:0,y:0},{x:15,y:0},{x:-5,y:0},{x:10,y:0}]],
+    ["M 0 0 C 50 100 -50 100 0 0",  [{x:0,y:0},{x:50,y:100},{x:-50,y:100},{x:0,y:0}]],
+  ];
+  for (const tolerance of [2, 0.5, 0.1, 0.02]) {
+    for (const [d, cps] of curves) {
+      const pts = svgpath.parsePathData(d, { tolerance })[0].points;
+      const dev = maxDeviationFromCubic(pts, cps[0], cps[1], cps[2], cps[3]);
+      assert.ok(dev <= tolerance + 1e-9,
+        `"${d}" at tolerance ${tolerance}: deviation ${dev}`);
+    }
+  }
+});
+
+test("tolerance of 0 degrades gracefully via the depth cap", () => {
+  // With a zero tolerance the flatness test can never pass, so the recursion
+  // must be stopped by the depth cap alone: at most 2^16 segments per curve,
+  // finishing in milliseconds rather than minutes.
+  const subs = svgpath.parsePathData("M 0 0 C 0 100 100 100 100 0", { tolerance: 0 });
+  const pts = subs[0].points;
+  assert.ok(pts.length <= 65537, "depth cap exceeded: " + pts.length + " points");
+  assert.ok(pts.length > 1000, "expected a dense polyline, got " + pts.length);
+  assert.deepStrictEqual(pts[pts.length - 1], { x: 100, y: 0 });
 });
 
 test("tighter tolerance produces more points", () => {

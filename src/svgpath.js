@@ -35,18 +35,38 @@
     M: 2, L: 2, H: 1, V: 1, C: 6, S: 4, Q: 4, T: 2, A: 7, Z: 0,
   };
 
+  // Hard ceiling on the adaptive subdivision. Flatness converges long before
+  // this for any sane tolerance; the cap is what keeps tolerance -> 0 (or
+  // garbage geometry) degrading gracefully instead of exploding: one curve
+  // can never emit more than 2^MAX_DEPTH segments (~65k).
+  const MAX_DEPTH = 16;
+
   // Recursive de Casteljau flattening. Emits points for everything AFTER p0
-  // (the caller has already emitted the start point). The flatness test is
-  // the standard control-point-distance-from-chord measure: when both
-  // control points lie within `tolerance` of the chord, the chord is an
-  // acceptable approximation of the curve.
+  // (the caller has already emitted the start point).
+  //
+  // Flatness test: let L(t) = (1-t)p0 + t*p3 be the chord parameterized
+  // linearly. Subtracting it from the Bezier collapses to
+  //   B(t) - L(t) = 3u²t·e1 + 3ut²·e2,   u = 1-t,
+  //   e1 = p1 - (2p0+p3)/3,  e2 = p2 - (p0+2p3)/3
+  // (e1/e2 are how far each control point sits from where it would sit if
+  // the curve were exactly the chord). Since 3u²t + 3ut² = 3ut ≤ 3/4 on
+  // [0,1], the deviation is bounded by (3/4)·max(|e1|,|e2|); requiring that
+  // to be ≤ tolerance GUARANTEES the emitted polyline stays within tolerance
+  // of the true curve. Using 3e1/3e2 avoids the divisions, so the test is
+  // max(|3e1|²,|3e2|²) ≤ 16·tolerance².
+  //
+  // This replaces the earlier perpendicular-distance-to-chord test, which
+  // had three holes: an extra ×16 borrowed from THIS criterion made it 4×
+  // looser than intended (real deviation up to 3× tolerance); measuring only
+  // the perpendicular component accepted control points collinear with but
+  // beyond the chord (overshoot never subdivided); and a degenerate chord
+  // (p0 == p3, a loop) zeroed both sides so any loop passed at depth 0. The
+  // full 2D offset norm has none of those blind spots.
   function flattenCubic(p0, p1, p2, p3, tolerance, out, depth) {
-    if (depth > 24) { out.push({ x: p3.x, y: p3.y }); return; } // safety floor
-    const dx = p3.x - p0.x, dy = p3.y - p0.y;
-    const d1 = Math.abs((p1.x - p3.x) * dy - (p1.y - p3.y) * dx);
-    const d2 = Math.abs((p2.x - p3.x) * dy - (p2.y - p3.y) * dx);
-    const dd = d1 + d2;
-    if (dd * dd <= tolerance * tolerance * (dx * dx + dy * dy) * 16) {
+    const e1x = 3 * p1.x - 2 * p0.x - p3.x, e1y = 3 * p1.y - 2 * p0.y - p3.y;
+    const e2x = 3 * p2.x - p0.x - 2 * p3.x, e2y = 3 * p2.y - p0.y - 2 * p3.y;
+    const err = Math.max(e1x * e1x + e1y * e1y, e2x * e2x + e2y * e2y);
+    if (err <= 16 * tolerance * tolerance || depth >= MAX_DEPTH) {
       out.push({ x: p3.x, y: p3.y });
       return;
     }
