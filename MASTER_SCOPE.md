@@ -68,6 +68,36 @@ flight at write time).
    closed). Known pre-existing env failures unchanged: enthusiast_logo
    OCR-goldens and pushcomp `logo_whitebg/towel` byte-identity.
 
+**Addendum, 2026-08-11 (after the wave, `fix/link-uncovered-preflight`
+lane):** both confirmed LINK_UNCOVERED defects from the 2026-08-02 hardening
+closeout (finding 4) are fixed. (1) The false block on clean artwork: a
+fill's OWN row-skip travel was scored as a between-shape chain link, which
+blocked a clean one-shape design (`bg_uncertain`) at 104–107 mm. The
+transport classification (`preflight._transport_and_content`) now scores
+BETWEEN-shape transport only — a travel piece whose nearest content on both
+sides is the same shape it names is that shape's internal routing, not a
+link. Pinned synthetically (the exact one-shape false-block plan, red on the
+old code) and by a pipeline sweep at 90/104/105/106/107/120 mm on both
+garments that fired; a chain-OFF plan now honestly reports zero link thread
+(the fixture logo's old 87.8 mm "link" reading was all internal routing —
+goldens re-pinned with comments). The false block was LIVE on tonight's own
+corpus baseline, not just historical: `photo/region_blobs.png @ 80mm` was
+blocking on both garments — a chain-off plan, where no between-shape link
+can exist, reading 298 mm of phantom "link thread" with a 7.32 mm max bare
+stretch from the meander/scanline tiers' in-shape travel; it recaptures to
+F/10 -> D/40 with the block gone (its other findings are real, it is a
+stress fixture). (2) The 1.94x preflight slowdown: the
+per-sample disk-stamping raster was replaced with per-run `cv2.polylines` at
+thread width plus an earliest-transport early-exit — link check 10.5→0.6 ms
+(whitebg), 10.2→0.6 (alpha), 12.5→0.8 / 9.4→3.8 chain-on (enthusiast@82);
+whole preflight ~25→~16 ms on the corpus fixtures. Corpus scorecard
+baseline's `link_*` metrics recaptured under the new semantics. One
+pre-existing failure noted, NOT from this lane:
+`test_every_photo_guard_stays_quiet_on_the_committed_photo_happy_path`
+(`subject_bg_delta_l` reads None on `photo_scene_stub`) fails identically on
+this branch's HEAD before the preflight edit — likely fallout of tonight's
+stage-1 background-flood guards.
+
 **Prior update below, still 2026-08-11 (evening):** — **one of the two SAM2
 open risks below is closed, fix #6.3 landed, and fix #6.2 was REFUTED on
 measurement.**
