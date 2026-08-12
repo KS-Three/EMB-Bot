@@ -162,6 +162,22 @@ describe("per-shape stitch-type/angle/underlay/border controls", () => {
 
 // ---- delete / restore ------------------------------------------------------
 
+describe("whole-design params", () => {
+  test("Detail lines for photos renders unchecked and patches params on toggle", async () => {
+    const { getByLabelText, patches } = renderPanel([shapeRow("s1")]);
+    const box = getByLabelText("Detail lines for photos");
+    expect(box.checked).toBe(false);
+
+    await fireEvent.change(box, { target: { checked: true } });
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.params.detail_layer).toBe(true);
+    // The other params must survive the spread — a params patch replaces the
+    // whole object, so dropping one here would silently reset the design.
+    expect(patches[0].patch.params.max_colors).toBe(DEFAULT_DIGITIZE_PARAMS.max_colors);
+    expect(patches[0].patch.params.satin).toBe(DEFAULT_DIGITIZE_PARAMS.satin);
+  });
+});
+
 describe("hiding, restoring, and BACKGROUND_ENCLOSED restore", () => {
   test("hiding a shape adds it to deletedShapeIds", async () => {
     const { container, patches } = renderPanel([shapeRow("s1")]);

@@ -71,6 +71,14 @@ export const DEFAULT_DIGITIZE_PARAMS = {
   satin: true,
   fill_angle_deg: null,
   border: "off",
+  // Off by default, matching the service's own `detail_layer` default — it
+  // costs real stitches (+39% on the owl photo below) and buys nothing on
+  // flat logo art, which is the common case. Measured 2026-08-12 on a snowy
+  // owl photo at 12 colors: without it the bird stitches as one flat pale
+  // mass, because a photo's structure lives in edges the region fill has
+  // already averaged away; with it the silhouette, facial disc, eye rims and
+  // barred chest feathers all come back (7,725 -> 10,727 stitches).
+  detail_layer: false,
 };
 
 // An auto-digitized artwork element (build step 10). Persistence is hybrid

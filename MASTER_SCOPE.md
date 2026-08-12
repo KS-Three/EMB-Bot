@@ -11,7 +11,68 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-12 (small hours) — **wave 2 of the same night
+**Last updated:** 2026-08-12 (evening) — **first end-to-end Studio photo
+session with Kent driving, and it moved area 1's diagnosis more than any
+code change did.** Kent digitized a real snowy-owl photo through the Studio,
+annotated the output, and the investigation that followed disproved three
+hypotheses before landing on the actual cause. Merged: PR #121 (`run-emb-bot`
+skill now leads with Kent's Windows launch blocks + `tools/start-emb-bot.ps1`),
+PR #122 (`.eladd-row` wrap). Open: PR #123 (Studio `detail_layer` control).
+
+- **Kent's six annotated notes are now tracked** — five on the SAM2 on/off
+  comparison, one on the follow-up render. Notes 1–3 are area 1; notes 4–6
+  are the shape-editor request, recorded in full under area 5 (**do not
+  re-compress it — the sub-requirements are the spec**).
+- **The Studio could not reach any photo-quality tier.** `detail_layer`
+  (FDoG line extraction, sewn as a final block over every fill) has been
+  reachable only by editing `digitizer_core/config.py`; `buildDigitizeConfig`
+  never sent it. **Every photo the Studio has ever produced shipped without
+  its linework.** Measured on Kent's owl at 12 colors, Studio defaults
+  otherwise: tatami+off 7,725 stitches = one flat pale mass (what shipped);
+  streamline-layered+off 3,220 = *worse*; streamline-layered+on 6,222 =
+  readable, thin fill; **tatami+on 10,727 = silhouette, facial disc, eye
+  rims, barred chest feathers**. PR #123 exposes it as a checkbox, default
+  False (matching the service; +39% stitches buys nothing on flat logo art).
+  Promoting it to a default wants a corpus run — one image, one config.
+- **`streamline_mode: "layered"` measured a negative** on this image (3,220
+  stitches, sparser than baseline). Not a bug found, but don't reach for it
+  first on photo work.
+- **Three hypotheses disproven — recorded so nobody re-treads them.**
+  (a) *Palette collapse merging bird into wall*: no. Segmentation is clean —
+  27 regions, correct silhouette (`stage2_photo_merged` debug raster).
+  (b) *`max_colors` is the binding constraint*: no. 6→12 left region count
+  at 27 and worst `THREAD_RESNAPPED_AFTER_DRIFT` at dE00 18.3 either way;
+  the chart-restricted k-medoids self-limited to 9 threads when allowed 12.
+  (c) *`MERGE_DELTAE00_THRESH` needs retuning*: no evidence for it on a real
+  photo, and its own tuning history (`stage2_photo_segment.py:452-496`) says
+  a global change costs more than it gains. **Leave 26.0 alone.**
+  All three came from extrapolating the *synthetic* `photo_owl_pale.png`
+  fixture, which is a near-featureless blob (6 regions, one at 98.1% of
+  canvas) and behaves nothing like a real photograph.
+- **Corpus gap, sharpened:** the photo fixtures are procedurally generated
+  on purpose (licensing-clean — see the cross-cutting corpus entry). That
+  cleanliness cost real diagnostic accuracy this session. A licensed real
+  photo would have paid for itself; Kent's own owl sits unmerged on
+  `kent/owl-fixture` pending a **licensing decision** (it appears to be a
+  found image, and this repo's font-license history sets the bar).
+- **Still open from this session, none started:** the thread-drift defect
+  (worst dE00 18.3, unmoved by color budget — it is why the owl's two eyes
+  sew in different threads; `simplify_tol_mm` is 0.2mm and small shapes are
+  documented as bypassing it, so either the bypass misses them or the
+  re-match samples the wrong pixels), and 14 jump-trims on an 80mm design
+  in every variant measured.
+- **`.eladd-row` had been hiding "+ Auto-digitize"** (PR #122): six
+  non-shrinking buttons overflowed the 400px sidebar by 136px, putting the
+  last one 111px past the panel edge. Because that button only renders when
+  the digitizer is reachable, a clipped button was indistinguishable from a
+  dead service — and it silently routed Kent's photo work through the
+  *browser* engine (`+ Image`), which emits none of the pipeline warnings.
+  A full SAM2 on/off comparison was run, and published two result sets, that
+  never touched SAM2 at all. **Worth remembering as a class of bug:** a UI
+  affordance that gates on service health fails indistinguishably from the
+  service itself.
+
+**Prior update, 2026-08-12 (small hours):** — **wave 2 of the same night
 landed:** the LINK_UNCOVERED false-block + raster-overhead fix (see the
 entry below this one), plus:
 
@@ -1754,9 +1815,9 @@ cause was corrected to `stage1_prep.py`, still unresolved at that time.
 |---|---|---|
 | 1. Auto-digitizing quality (image → stitches) | In progress | **Low** beyond flat spot-color art |
 | 2. Font library & lettering | Implemented (library + license remediation) | High (tech) / High (compliance — resolved 2026-08-04 by removal, lawyer consult now an optional restore path) |
-| 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: pending sew-out) |
+| 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: pending sew-out; **no photo-quality tier was reachable from the UI at all** until PR #123 — see the 2026-08-12 evening entry) |
 | 4. Export formats | Implemented | Varies by format — see below |
-| 5. Stitch-out review & manual editing tools | Implemented (narrow scope) | High |
+| 5. Stitch-out review & manual editing tools | Implemented (narrow scope) | High **for what is built** — but the target moved 2026-08-12: Kent's direct-manipulation request (node/line editing, drag, delete-as-entity) is unimplemented and recorded in full under this area |
 
 ---
 
@@ -4299,6 +4360,77 @@ control of this same kind — restoring a `BACKGROUND_ENCLOSED`-excluded
 shape (merged, PR #10) — described under area 1 above rather than
 duplicated here, per this doc's own "documented once" convention for
 cross-cutting features.
+
+#### Kent's direct-manipulation request (2026-08-12) — the target shape of this area
+
+Captured verbatim from Kent's annotations on an owl-photo digitize, because
+the sub-requirements *are* the spec and a summary loses them. This is a
+**product direction for this area, not a defect list.** It supersedes the
+current Layers-panel-only model as the destination; it does not invalidate
+what shipped.
+
+The red annotation: **remove `+ Shape` and `+ Draw shapes`.** They are to be
+replaced by the behaviour below, not supplemented by it.
+
+The blue annotation, on how `+ Image` / auto-digitizing should behave:
+
+> Instead of having the +Shape and +Shape & Draw, i would like the +Image
+> (the autodigitizing to act in the following manner)
+> - Upload Image
+> - Auto Digitize
+> - Populate Lines around the recognized shapes with nodes [Let's have them
+>   "pulse" for the first few seconds]
+> - These lines and nodes capture the recognized digitized shape/feature
+> - I want the ability to manually move the nodes or lines to manually edit
+>   the auto digitized shape/feature (add nodes, move lines, or even select
+>   the ENTIRE shape and drag it around wherever i please (or even delete it
+>   if possible. (each outline shape/feature should be treated like it's own
+>   entity
+
+Broken out, each is independently testable:
+
+1. Every recognized shape gets a visible outline with visible nodes, drawn
+   over the result automatically after digitizing.
+2. Those outlines **pulse for the first few seconds** — an attention cue that
+   the app found these shapes, not a permanent decoration.
+3. The outline is the *shape's own boundary*, not a bounding box — it
+   "captures the recognized digitized shape/feature".
+4. Nodes are draggable. Lines are draggable. Nodes can be **added**.
+5. A whole shape can be selected and dragged anywhere.
+6. A whole shape can be deleted.
+7. **Each outline shape/feature is its own entity** — the organizing
+   principle behind all of the above.
+
+**What already exists toward this** (more than it looks): shapes carry
+stable `shape_id`s; the shape-layers contract v1 (`deleted_shape_ids`,
+`shape_overrides`) and v1.5 (`merge_shape_ids`, `split_shapes`) are
+round-tripped by the service and spoken by the Studio; `Icon.svelte:119`
+already reserves a per-shape "edit this shape's boundary" ✎ affordance.
+
+**The gap** is what the code itself names *the boundary-reshape gap*
+(`stage2_photo_segment.py` / `warnings_codes.py` v1.5 comments): nothing
+today can move a node or a line. Requirements 1–6 above are all
+unimplemented. Requirement 5 (free translation of a shape) has no contract
+representation at all — v1/v1.5 change a shape's *attributes* or the *set* of
+shapes, never its position.
+
+**Recommended posture:** a written design before any code. This is the piece
+where a wrong contract choice is expensive, and it needs Kent's review on
+whether shape geometry becomes user-editable state (a new contract version)
+or whether edits stay a replayable operation list the way v1/v1.5 deliberately
+are — the "sticky, ride every future re-digitize" property in
+`digitizer.js`'s comment is a real design commitment that free node-dragging
+does not obviously preserve.
+
+#### Note 6, from the same session — the render Kent marked "portions of the owl that shouldn't have been removed"
+
+Partly answered, and it is **not** a deletion bug: segmentation found the
+bird correctly (27 regions, clean silhouette). The body read as a flat mass
+because region fill averages away the structure a photo carries in its
+edges — the `detail_layer` finding in the top-of-file entry. Two genuinely
+dropped shapes (`DROPPED_SMALL_SHAPES`) and two absorbed
+(`ABSORBED_SMALL_SHAPES`) remain as a smaller, separate question about
+threshold aggressiveness on pale subjects.
 
 **Open issues:** of the five gaps the landing commit self-flagged, **four are
 now closed** (all merged 2026-08-04, all confirmed against source this
