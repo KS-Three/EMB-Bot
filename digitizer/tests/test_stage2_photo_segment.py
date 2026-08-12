@@ -21,7 +21,9 @@ from digitizer_core.config import PipelineConfig
 from digitizer_core.pipeline import run_stages
 from digitizer_core.stage0_classify import classify
 from digitizer_core.stage1_prep import prep
+from digitizer_core.stage3_segment import RegionMask
 from digitizer_core.stage2_photo_segment import (
+    split_tonal_regions,
     AREA_RATIO_MERGE_FACTOR,
     AREA_RATIO_MIN_SMALL_PX,
     AREA_RATIO_PROTECT_THRESH,
@@ -693,4 +695,98 @@ def test_face_local_threshold_still_avoids_fragmenting_a_solid_block():
         f"a solid two-shade block fragmented into {w['merged_regions']} raw "
         "merged regions instead of consolidating to 1 -- area-ratio "
         "protection is firing on interpolation-seam noise again"
+    )
+
+
+# --- Tonal region splitting ---------------------------------------------------
+#
+# A region is the unit that owns one thread, so a region whose own pixels span
+# more tone than one thread can express sews as a flat average whatever the
+# fill tier does. `split_tonal_regions` cuts those into parts that each get
+# their own mean, palette weight and spool. Measured motivation: Kent's owl
+# body, 4200 mm2 spanning 81 points of L*, sewn as one pale mass.
+
+def _tonal_prep(gradient: bool, px_per_mm: float = 6.0):
+    """A prep whose single foreground blob is either a strong light-to-dark
+    sweep (splittable) or one flat colour (not)."""
+    h, w = 240, 240
+    rgb = np.full((h, w, 3), 250, np.uint8)
+    yy, xx = np.mgrid[0:h, 0:w]
+    blob = (np.hypot(xx - w / 2.0, yy - h / 2.0) < 100)
+    if gradient:
+        ramp = np.clip((xx - 20) * (235.0 / (w - 40)), 10, 245).astype(np.uint8)
+        for c in range(3):
+            rgb[:, :, c] = np.where(blob, ramp, 250)
+    else:
+        rgb[blob] = (90, 90, 90)
+    bg = ~blob
+    return _PrepStub(rgb=rgb, bg_mask=bg, px_per_mm=px_per_mm), blob
+
+
+class _PrepStub:
+    """Only the fields `split_tonal_regions` reads. A real `Prep` carries a
+    dozen more that this function never touches, and building one here would
+    couple the test to stage 1's own signature."""
+
+    def __init__(self, rgb, bg_mask, px_per_mm):
+        self.rgb = rgb
+        self.bg_mask = bg_mask
+        self.px_per_mm = px_per_mm
+        self.enclosed_mask = None
+
+
+def test_split_tonal_regions_is_off_unless_asked():
+    p, blob = _tonal_prep(gradient=True)
+    kept = [RegionMask(mask=blob, layer=0)]
+    out, n = split_tonal_regions(p, PipelineConfig(), kept)
+    assert n == 0 and out is kept, "the split must be strictly opt-in"
+
+
+def test_split_tonal_regions_splits_a_strong_sweep():
+    p, blob = _tonal_prep(gradient=True)
+    kept = [RegionMask(mask=blob, layer=0)]
+    out, n = split_tonal_regions(p, PipelineConfig(split_tonal_regions=True), kept)
+    assert n == 1, "a full light-to-dark sweep must split"
+    assert len(out) >= 2
+
+    # The three properties stage 5 depends on, and the reason this is done with
+    # masks rather than polygons: parts are disjoint, they never leave the
+    # region they came from, and together they are exactly it. Any of these
+    # failing means artwork silently vanishing or regions overlapping.
+    union = np.zeros_like(blob)
+    total = 0
+    for r in out:
+        assert not (union & r.mask).any(), "parts overlap"
+        assert (r.mask & ~blob).sum() == 0, "a part escaped its region"
+        union |= r.mask
+        total += int(r.mask.sum())
+    assert (union == blob).all(), "parts do not cover the original region"
+    assert total == int(blob.sum()), "pixels were lost or double-counted"
+
+
+def test_split_tonal_regions_leaves_a_flat_region_alone():
+    p, blob = _tonal_prep(gradient=False)
+    kept = [RegionMask(mask=blob, layer=0)]
+    out, n = split_tonal_regions(p, PipelineConfig(split_tonal_regions=True), kept)
+    assert n == 0 and len(out) == 1
+
+
+def test_split_tonal_regions_leaves_small_regions_alone():
+    """Kent's owl irises carry real tonal range in 4-17 mm2 and must stay
+    whole — splitting them manufactures slivers for stage 3 to absorb again.
+    Same artwork as the splitting test, at a scale that puts the blob under
+    the area floor."""
+    p, blob = _tonal_prep(gradient=True, px_per_mm=60.0)
+    kept = [RegionMask(mask=blob, layer=0)]
+    out, n = split_tonal_regions(p, PipelineConfig(split_tonal_regions=True), kept)
+    assert n == 0 and len(out) == 1
+
+
+def test_split_tonal_regions_preserves_layer_and_source():
+    p, blob = _tonal_prep(gradient=True)
+    kept = [RegionMask(mask=blob, layer=3, source="sam2")]
+    out, n = split_tonal_regions(p, PipelineConfig(split_tonal_regions=True), kept)
+    assert n == 1
+    assert all(r.layer == 3 and r.source == "sam2" for r in out), (
+        "a split part belongs to the same layer and segmenter as its parent"
     )
