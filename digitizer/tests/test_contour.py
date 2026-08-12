@@ -28,7 +28,8 @@ from digitizer_core import PipelineConfig, machine, plan_stitches
 from digitizer_core.export import export_dst
 from digitizer_core.stage6_contour import (_entry_arc, _ring_points, _step_count,
                                            contour_fill)
-from digitizer_core.warnings_codes import CONTOUR_RING_UNREACHABLE
+from digitizer_core.warnings_codes import (CONTOUR_DIRECTIONAL_COMP_UNSEWN,
+                                           CONTOUR_RING_UNREACHABLE)
 from tests.conftest import PLAN_CFG_KW, cfg
 
 
@@ -505,6 +506,29 @@ def test_contour_fills_the_plan_without_crying_wolf(whitebg):
     assert fills, "contour produced no fill runs at all"
     codes = {w["code"] for w in plan.warnings}
     assert CONTOUR_RING_UNREACHABLE not in codes
+
+
+def test_directional_comp_and_contour_warn_instead_of_composing_silently(whitebg):
+    """Contour takes no fill angle — rings follow the silhouette — so stage 5's
+    directional compensation would stretch the shape along an axis the rings
+    then decline to sew along. Nothing measures that pair, and before this
+    warning existed the pipeline combined the two flags in silence (the only
+    record was a comment in stage7_sequence). The combination is not an error
+    — both flags are opt-in and the output still sews — so per the codebase's
+    config-conflict convention it is a warning the UI can switch on, not a
+    ValueError."""
+    both = plan_stitches(whitebg, cfg(fill_technique="contour",
+                                      directional_comp=True, **PLAN_CFG_KW))
+    assert CONTOUR_DIRECTIONAL_COMP_UNSEWN in {w["code"] for w in both.warnings}
+
+    # Either flag alone is a supported configuration and stays silent.
+    contour_only = plan_stitches(whitebg, cfg(fill_technique="contour",
+                                              **PLAN_CFG_KW))
+    comp_only = plan_stitches(whitebg, cfg(directional_comp=True,
+                                           **PLAN_CFG_KW))
+    for plan in (contour_only, comp_only):
+        assert CONTOUR_DIRECTIONAL_COMP_UNSEWN not in {
+            w["code"] for w in plan.warnings}
 
 
 def test_every_stitch_of_a_contour_plan_stays_inside_its_shape(whitebg):

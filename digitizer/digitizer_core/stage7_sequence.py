@@ -75,6 +75,7 @@ from .stitches import StitchBlock, StitchRun, tie_run
 from .threads import chart_for
 from .warnings_codes import (BORDER_LIGHTENED, BORDER_SEAM_SHARED,
                              BORDER_SKIPPED_TOO_NARROW,
+                             CONTOUR_DIRECTIONAL_COMP_UNSEWN,
                              CONTOUR_RING_UNREACHABLE, LONG_JUMPS_TRIMMED,
                              SHAPE_NOT_STITCHED, SHAPE_TOO_THIN_TO_FILL,
                              SMALL_SHAPES_AS_RUN, warn)
@@ -850,7 +851,9 @@ def sequence(
             # do not compose — stage 5 would have compensated this shape along a
             # fill axis the rings then decline to sew along. Both flags default
             # off, neither is selected automatically, and nothing measures that
-            # pair yet; it is recorded here rather than silently combined.
+            # pair yet; the plan carries a CONTOUR_DIRECTIONAL_COMP_UNSEWN
+            # warning (emitted with the other counters below) instead of
+            # silently combining them.
             runs = []
             report = {}
             need_tatami = False
@@ -1391,6 +1394,16 @@ def sequence(
                 "worth a look on the review screen.",
                 count=starved,
                 rings=rings_skipped,
+            )
+        )
+    if contour and cfg.directional_comp:
+        warnings.append(
+            warn(
+                CONTOUR_DIRECTIONAL_COMP_UNSEWN,
+                "Directional compensation assumes a fill angle, but contour "
+                "rings follow the shape's outline — the compensation was "
+                "applied along an axis the stitches do not sew. Consider "
+                "turning one of the two off.",
             )
         )
     if border_narrow:

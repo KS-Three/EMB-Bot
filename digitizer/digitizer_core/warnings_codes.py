@@ -111,6 +111,13 @@ SMALL_SHAPES_AS_RUN = "SMALL_SHAPES_AS_RUN"        # too small for fill or satin
 
 # Stage 6 (contour fill tier)
 CONTOUR_RING_UNREACHABLE = "CONTOUR_RING_UNREACHABLE"  # contour left a bare patch wider than a ring spacing (measured, barecircle.py). extra: {"count": int, "rings": int}
+# `directional_comp` and `fill_technique="contour"` do not compose: contour
+# takes no fill angle (rings follow the silhouette), so stage 5's directional
+# compensation stretches the shape along an axis the rings then decline to sew
+# along. Both flags are opt-in and the design still sews, so this is a loud
+# warning rather than a config error — but nothing measures the pair, and the
+# compensation geometry is applied regardless.
+CONTOUR_DIRECTIONAL_COMP_UNSEWN = "CONTOUR_DIRECTIONAL_COMP_UNSEWN"
 
 # Stage 6 (border tier)
 BORDER_SKIPPED_TOO_NARROW = "BORDER_SKIPPED_TOO_NARROW"  # no room for an outline. extra: {"count": int}
