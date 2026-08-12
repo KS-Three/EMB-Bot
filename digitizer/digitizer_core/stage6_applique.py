@@ -85,7 +85,9 @@ from shapely.ops import polylabel, unary_union
 from . import machine, stitches
 from .config import PipelineConfig
 from .machine import APPLIQUE_QUANTIZE_MM
-from .stage6_border import _parts, _ring_arc_samples, _satin_loop, round_inward
+from .stage6_border import (_parts, _ring_arc_samples, _satin_loop,
+                            round_inward, run_outline)
+from .stage6_satin import satin_shape
 from .stitches import StitchRun
 from .warnings_codes import (APPLIQUE_COVER_MARGINAL,
                              APPLIQUE_COVER_WIDTH_CLAMPED,
@@ -891,6 +893,7 @@ def applique_steps(poly: Polygon, shape_id: str, geom: AppliqueGeometry, *,
                    tackdown: str | None = None,
                    cover: str = "satin",
                    material_label: str = "appliqué fabric",
+                   gates: list[dict] | None = None,
                    ) -> tuple[list[Step], dict]:
     """Emit one piece's four (or three) layers, grouped into steps. §2.14.
 
@@ -916,8 +919,15 @@ def applique_steps(poly: Polygon, shape_id: str, geom: AppliqueGeometry, *,
 
     The placement run is **never** suppressed, in either mode — §2.15's
     "misaligned appliqué" failure mode is the placement line being skipped.
+
+    `gates` is a pre-evaluated `check_gates(poly, geom)` finding list, so a
+    caller that already ran the gates — `applique_pass`, which needs them
+    BEFORE deciding whether the piece falls through to plain stitching at
+    all — does not pay for the topology bisection twice. `None` (every
+    direct caller) keeps the self-contained behavior.
     """
-    report = {"crosses": 0, "layers": 0, "gates": check_gates(poly, geom),
+    report = {"crosses": 0, "layers": 0,
+              "gates": check_gates(poly, geom) if gates is None else list(gates),
               "cutting_line": False}
     codes = {g["code"] for g in report["gates"]}
 
@@ -1082,6 +1092,40 @@ def _wants_applique(region, cfg: PipelineConfig) -> bool:
     return bool(want)
 
 
+def _fall_through_flat(poly: Polygon, shape_id: str, cfg: PipelineConfig,
+                       entry: tuple[float, float] | None
+                       ) -> tuple[list[StitchRun], str]:
+    """§2.12's fall-through, performed. -> (runs, step code).
+
+    A piece the `APPLIQUE_NO_FABRIC_VISIBLE` gate failed cannot show fabric —
+    the two inner cover rails meet — so laying, tacking and trimming twill
+    that the cover then buries completely is three operator actions spent on
+    nothing. The piece degrades to ordinary flat stitching instead: the real
+    satin tier first (`"SATIN"` — a no-fabric piece is by definition narrower
+    than `2*|c_in| + 1 mm`, i.e. a classic satin ribbon), and where the
+    skeleton cannot resolve the shape (the benchmark's 1.0 mm² dot), the same
+    outline-run rescue stage 7's ladder ends on (`"RUN"`). Sewn on the ARTWORK
+    polygon for the same reason every appliqué layer is: the appliqué path
+    never applies a fabric preset's pull comp, and the run tier is
+    artwork-polygon by its own contract.
+
+    An empty return (both tiers refused — a ring under `RUN_MIN_LOOP_MM`) is
+    the caller's to report; such a piece produced empty appliqué steps before
+    this function existed too.
+    """
+    underlay = "center_run" if cfg.underlay else "none"
+    split_above = math.inf if not cfg.split_satin else cfg.split_satin_above_mm
+    runs, _report = satin_shape(poly, shape_id, underlay_style=underlay,
+                                trim_at_mm=machine.TRIM_AT_MM, start_near=entry,
+                                split_above_mm=split_above,
+                                use_shapefield=bool(cfg.extra.get("shapefield")))
+    if runs:
+        return runs, "SATIN"
+    runs, _report = run_outline(poly, shape_id, entry=entry,
+                                trim_at_mm=machine.TRIM_AT_MM)
+    return runs, "RUN"
+
+
 def applique_pass(planned, cfg: PipelineConfig, chart
                   ) -> tuple[list, list[dict], list, tuple[float, float] | None]:
     """The stage-7 tier branch. -> (blocks, warnings, remaining, cursor).
@@ -1096,6 +1140,18 @@ def applique_pass(planned, cfg: PipelineConfig, chart
     is also not built. Overlaps are detected and warned instead of being sewn
     as two stacked satins on one band, which at the 0.40 mm default is 0.20 mm
     effective — below the 0.30 mm floor, i.e. guaranteed fabric damage (§2.11).
+
+    §2.12's `min_feature_width` fall-through happens HERE, per piece and in
+    place: a piece whose two inner cover rails meet (no fabric can show) is
+    sewn as plain flat stitching — see `_fall_through_flat` — as one block at
+    the piece's own slot in the sequence, never handed back to the normal
+    loop. Both halves of that sentence are load-bearing: handing back
+    fragments the thread order (the piece's thread is sewn among the appliqué
+    blocks, abandoned, then picked up again at the end), and filtering the
+    piece out before the overlap count above silences
+    `APPLIQUE_PIECES_OVERLAP` on exactly the fallen-over-live case where it
+    matters most. Both were measured failures of a prior implementation
+    (hardening-closeout-2026-08-02 §6/§7).
 
     Returns the blocks, the warnings, the regions the normal loop should still
     handle, and where the needle was left.
@@ -1122,6 +1178,13 @@ def applique_pass(planned, cfg: PipelineConfig, chart
     headroom: float | None = None
     clamp_bounds: set[str] = set()
 
+    # Counted over EVERY picked piece — including the ones the no-fabric gate
+    # is about to degrade to plain stitching below. A fallen-through piece
+    # overlapping a live one is the case where this warning matters MOST (a
+    # plain satin sews straight across a live piece's cover), and it is
+    # exactly the case a prior implementation of the fall-through went silent
+    # on by filtering `picked` before counting (hardening-closeout-2026-08-02
+    # §7). The count therefore happens before any per-piece verdict exists.
     overlaps = 0
     for i in range(len(picked)):
         for j in range(i + 1, len(picked)):
@@ -1129,6 +1192,7 @@ def applique_pass(planned, cfg: PipelineConfig, chart
                     picked[i].polygon.intersection(picked[j].polygon).area > 1e-6:
                 overlaps += 1
 
+    fell_satin = fell_run = 0
     blocks = []
     cursor: tuple[float, float] | None = None
     for p in picked:
@@ -1139,20 +1203,77 @@ def applique_pass(planned, cfg: PipelineConfig, chart
             material=cfg.applique_material,
             width_mm=cfg.applique_cover_width_mm,
         )
-        # The artwork polygon, not stage 5's pull-compensated one: B is the
-        # intended finished location of the raw fabric edge, and the offset
-        # chain measures from it. Growing B by the fabric's pull comp first
-        # would move every published offset by that much.
-        steps, report = applique_steps(
-            p.region.polygon, p.shape_id, geom, entry=cursor,
-            tackdown=cfg.applique_tackdown, cover=cfg.applique_cover)
-        for g in report["gates"]:
+        # Gates BEFORE emission, because one of them now decides WHAT is
+        # emitted. Every finding is counted whether or not the piece falls
+        # through — the engine reports everything it measured about the piece
+        # as configured, and the fall-through is itself the response to one
+        # of those findings, not a reason to hide the others.
+        gates = check_gates(p.region.polygon, geom)
+        for g in gates:
             counts[g["code"]] = counts.get(g["code"], 0) + 1
             if g["code"] == APPLIQUE_COVER_MARGINAL:
                 headroom = g["headroom_mm"] if headroom is None else min(
                     headroom, g["headroom_mm"])
             elif g["code"] == APPLIQUE_COVER_WIDTH_CLAMPED:
                 clamp_bounds.add(g["bound"])
+
+        # §2.12's fall-through, in place: the piece degrades to plain
+        # stitching but KEEPS ITS SLOT in the appliqué block sequence, right
+        # beside its thread's other pieces. Handing it back to the normal
+        # color loop instead is the known-bad implementation: the loop sews
+        # after every appliqué block, so a fallen piece's thread was sewn,
+        # abandoned, then picked up again — 5 contiguous same-thread runs
+        # became 6 (hardening-closeout-2026-08-02 §6). In place, the block
+        # sequence groups exactly as the piece order does.
+        if any(g["code"] == APPLIQUE_NO_FABRIC_VISIBLE for g in gates):
+            runs, code = _fall_through_flat(p.region.polygon, p.shape_id,
+                                            cfg, cursor)
+            if not runs:
+                # Both flat tiers refused — the same degenerate ring that
+                # produced nothing but empty appliqué steps before. Reported
+                # on the same counter those were.
+                counts[APPLIQUE_STEP_EMPTY] += 1
+                continue
+            if code == "SATIN":
+                fell_satin += 1
+            else:
+                fell_run += 1
+            step = Step(
+                code=code,
+                label=("Plain satin — piece too narrow to show fabric"
+                       if code == "SATIN"
+                       else "Outline run — piece too narrow to show fabric"),
+                runs=runs,
+                action="Piece complete — sewn as plain stitching, no fabric laid",
+                function=COLOR_CHANGE,
+                piece=p.shape_id,
+                layers=tuple(dict.fromkeys(r.kind for r in runs)),
+            )
+            assert_steps_valid([step])
+            # Ordinary flat stitching gets stage 7's own tie rule, not
+            # §2.14's per-layer appliqué ties — there are no layers here.
+            step.runs[0].jump = True
+            step.runs[0].trim = True
+            stitches.apply_ties(step.runs)
+            thread = chart[p.region.thread_index]
+            blocks.append(StitchBlock(
+                thread_index=p.region.thread_index,
+                thread_number=thread.number,
+                rgb=tuple(thread.rgb),
+                runs=step.runs,
+                step=step.as_meta(len(blocks) + 1, thread.number),
+            ))
+            cursor = step.runs[-1].points[-1]
+            continue
+
+        # The artwork polygon, not stage 5's pull-compensated one: B is the
+        # intended finished location of the raw fabric edge, and the offset
+        # chain measures from it. Growing B by the fabric's pull comp first
+        # would move every published offset by that much.
+        steps, report = applique_steps(
+            p.region.polygon, p.shape_id, geom, entry=cursor,
+            tackdown=cfg.applique_tackdown, cover=cfg.applique_cover,
+            gates=gates)
 
         # §0.2's hazard, caught where it actually lives. Stage 7 drops a block
         # with no runs (`if not ordered: continue`), which would take the stop
@@ -1188,8 +1309,10 @@ def applique_pass(planned, cfg: PipelineConfig, chart
             APPLIQUE_NO_FABRIC_VISIBLE,
             f"{n} appliqué piece{'s are' if n != 1 else ' is'} too narrow for "
             "the cover satin to leave any fabric showing — the two inner rails "
-            "meet. It will read as plain satin, not appliqué.",
-            count=n))
+            f"meet. {'They' if n != 1 else 'It'} fell through to plain "
+            "stitching: no fabric is laid, and the piece sews as an ordinary "
+            "satin column or outline run.",
+            count=n, as_satin=fell_satin, as_run=fell_run))
     n = counts[APPLIQUE_CUTTING_LINE_SUPPRESSED]
     if n:
         warnings.append(warn(
