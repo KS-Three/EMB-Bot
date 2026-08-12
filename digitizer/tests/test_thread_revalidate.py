@@ -29,7 +29,18 @@ from digitizer_core.warnings_codes import THREAD_RESNAPPED_AFTER_DRIFT
 from .conftest import TESTDATA, codes
 
 REPRO = TESTDATA / "photo" / "repro_gradient_white_icon.png"
-CFG = dict(target_width_mm=80.0, garment_id="left_chest")
+# The background-existence guards (2026-08-11, bg_border_agreement_min /
+# bg_border_rival_min) now correctly refuse to flood this full-bleed fixture
+# at defaults — so the Azalea-Pink drift sliver these tests were diagnosed on
+# never forms. The guards are orthogonal to the resnap mechanism pinned here;
+# disabling them reproduces the exact pipeline state of the diagnosis, same
+# pattern as test_enclosed_background.py's repro_cfg.
+CFG = dict(
+    target_width_mm=80.0,
+    garment_id="left_chest",
+    bg_border_agreement_min=0.0,
+    bg_border_rival_min=0.0,
+)
 
 
 def _footprints(result, p):
