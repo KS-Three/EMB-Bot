@@ -27,6 +27,7 @@ from digitizer_core.preflight import (
     COLOR_STOPS_MAX,
     CONTOUR_STARVED,
     DELTA_E_CLEARLY_DIFFERENT,
+    DELTA_E_VISIBLE,
     DENSITY_EXTREME,
     DENSITY_STACKED,
     LETTERING_TOO_SMALL,
@@ -163,6 +164,87 @@ def test_without_the_artwork_the_thread_check_is_skipped_and_says_so(whitebg):
     assert THREAD_MATCH_POOR not in _codes(report)
     assert report["metrics"]["thread_match_checked"] is False
     assert report["metrics"]["thread_worst_delta_e"] is None
+
+
+def test_a_bimodal_thread_is_judged_by_its_worst_region_not_the_pool():
+    """THE trap this instrument used to fall into, twice in one day (docs/
+    photo-quality-root-cause-2026-08-11.md): two regions share one spool,
+    the bigger sits exactly on the spool's colour and the smaller is a
+    different colour entirely. Pooled, the bigger region's pixels own the
+    per-channel median, the pool scores CLEAN, and the old instrument was
+    silent — worse, a verified per-region fix moved its number the wrong way
+    (drone_render's pooled worst read 9.2 -> 33.6 across stage 4's thread
+    revalidation, which HALVED the honest per-region worst, 20.99 -> 10.64).
+    Per-region, the bad region is a block finding that names itself."""
+    from types import SimpleNamespace
+
+    from shapely.geometry import Polygon
+    from skimage.color import deltaE_ciede2000
+
+    from digitizer_core.regions import Region
+    from digitizer_core.stage1_prep import prep
+    from digitizer_core.threads import chart_for, rgb_to_lab
+
+    c = cfg()
+    chart = chart_for(c)
+    spool_i = chart.nearest_index(rgb_to_lab(np.array([[230, 60, 60]]))[0])
+    spool_rgb = chart[spool_i].rgb
+    off_rgb = (60, 60, 230)   # a blue no red spool is anywhere near
+
+    # White background; the big rect painted EXACTLY the spool's colour, at
+    # 4x the pixels of the small rect painted far off it — so the pooled
+    # per-channel median IS the spool colour and the pool hides the defect
+    # by construction. BGR, the ndarray-input convention (stage1_prep._load
+    # treats an ndarray as cv2-decoded).
+    img = np.full((400, 500, 3), 255, np.uint8)
+    img[40:240, 60:260] = spool_rgb[::-1]
+    img[80:180, 320:420] = off_rgb[::-1]
+    p = prep(img, c)
+
+    x0, y0, x1, y1 = p.art_bbox
+    px_cx, px_cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+
+    def rect_mm(px0, py0, px1, py1) -> Polygon:
+        """A pixel rect as the mm polygon preflight rasterizes back over it
+        (origin art-bbox center, y-down), inset 2 px so the eroded mask
+        stays inside the painted colour."""
+        corners = [(px0 + 2, py0 + 2), (px1 - 2, py0 + 2),
+                   (px1 - 2, py1 - 2), (px0 + 2, py1 - 2)]
+        return Polygon([((x - px_cx) / p.px_per_mm, (y - px_cy) / p.px_per_mm)
+                        for x, y in corners])
+
+    def region(shape_id: str, poly: Polygon) -> Region:
+        return Region(shape_id=shape_id, polygon=poly, thread_index=spool_i,
+                      thread_number=chart[spool_i].number,
+                      area_mm2=float(poly.area))
+
+    result = SimpleNamespace(regions=[region("Sgood", rect_mm(60, 40, 260, 240)),
+                                      region("Sbad", rect_mm(320, 80, 420, 180))])
+    report = run_preflight(result, StitchPlan(blocks=[], palette=[]), c, image=img)
+
+    # The pool really is blind here — asserted, not narrated: the per-channel
+    # median over both regions' pixels is the spool's own colour, delta-E ~0.
+    pooled = np.median(np.concatenate([
+        np.tile(spool_rgb, (200 * 200, 1)), np.tile(off_rgb, (100 * 100, 1))
+    ]), axis=0)
+    pooled_de = float(deltaE_ciede2000(
+        rgb_to_lab(pooled.reshape(1, 3)),
+        rgb_to_lab(np.asarray(spool_rgb, np.float64).reshape(1, 3)))[0])
+    assert pooled_de < DELTA_E_VISIBLE
+
+    hit = [f for f in report["findings"] if f["code"] == THREAD_MATCH_POOR]
+    assert len(hit) == 1
+    assert hit[0]["severity"] == "block"
+    assert hit[0]["extra"]["delta_e"] > DELTA_E_CLEARLY_DIFFERENT
+    assert hit[0]["extra"]["worst_shape_id"] == "Sbad"
+    assert "Sbad" in hit[0]["message"]
+    assert hit[0]["extra"]["region_count"] == 1
+    assert hit[0]["extra"]["regions_scored"] == 2
+    assert hit[0]["extra"]["regions"] == [
+        {"shape_id": "Sbad", "delta_e": hit[0]["extra"]["delta_e"]}]
+    # The worst-region number rides out as the metric to watch.
+    assert report["metrics"]["thread_worst_delta_e"] == hit[0]["extra"]["delta_e"]
+    json.dumps(report)
 
 
 # --- Lettering size ----------------------------------------------------------

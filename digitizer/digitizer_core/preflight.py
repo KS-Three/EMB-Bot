@@ -39,6 +39,22 @@ per-object check ever written and still puckers the garment. Its instrument
 is `_coverage_map`, which rasterizes the whole plan's stitch geometry into
 coverage units where 1.0 is one full covering layer of 40wt thread.
 
+The thread-colour instrument is per-REGION, and became so on 2026-08-11.
+`_thread_match_findings` scores every region's own artwork pixels against the
+one spool assigned to it — the median of the PER-PIXEL CIEDE2000, never a
+summary colour — and THREAD_MATCH_POOR is driven by each thread's worst
+region. It used to pool a per-thread median across every region sharing a
+spool, and that pooling failed twice in one day (docs/photo-quality-root-
+cause-2026-08-11.md): the independent per-channel median of a bimodal pool
+is a colour almost no pixel carries, and a verified per-region improvement
+(stage 4's thread revalidation, #6.3) read here as a REGRESSION —
+drone_render's pooled worst moved 9.2 -> 33.6 across a change that HALVED
+the honest per-region worst (20.99 -> 10.64). An instrument that cannot see
+a correct fix is worse than no instrument, so it changed. The 0-100 score
+weighting shifts with it — a thread is now judged by its worst region, so
+multi-region photo work can gain or lose findings — but the philosophy does
+not: a worse colour match still costs more score.
+
 The photo guardrails (photo plan §2 row 15) are the buildable-today subset
 of that plan's preflight row: input resolution vs the photo floor, subject/
 background lightness contrast, the cutaway-stabilizer prescription, and the
@@ -77,7 +93,7 @@ from .threads import chart_for, rgb_to_lab
 
 # --- Codes (may migrate to warnings_codes.py at merge) ---------------------
 
-THREAD_MATCH_POOR = "THREAD_MATCH_POOR"        # extra: {thread_number, thread_name, brand_id, delta_e, artwork_rgb, thread_rgb}
+THREAD_MATCH_POOR = "THREAD_MATCH_POOR"        # extra: {thread_number, thread_name, brand_id, delta_e, worst_shape_id, region_count, regions_scored, regions, artwork_rgb, thread_rgb}
 LETTERING_TOO_SMALL = "LETTERING_TOO_SMALL"    # extra: {count, shapes: [{shape_id, column_mm, extent_mm}]}
 STITCHES_TOO_LONG = "STITCHES_TOO_LONG"        # extra: {count, max_mm}
 STITCHES_TOO_SHORT = "STITCHES_TOO_SHORT"      # extra: {fraction, count, total}
@@ -253,9 +269,18 @@ SAME_HOLE_RATE_MAX = 0.25
 # rather than judging a design on a handful of stitches.
 _MIN_SAMPLES = 30
 
-# Sampled artwork pixels needed before a thread's color is judged. A region
+# Sampled artwork pixels needed before a region's color is judged. A region
 # smaller than this is mostly anti-alias boundary and the median is noise.
 _MIN_COLOR_PIXELS = 50
+
+# Cap on how many of a region's pixels are scored against its spool. The
+# score is a median over per-pixel colour errors, which converges long
+# before a real region runs out of pixels; the stride is even over raster
+# order — deterministic, no RNG — the same idiom stage 4's thread
+# revalidation and stage 2's k-means fit sample use, and for the same
+# reason. Generous relative to stage 4's 256 because this scores ONE spool
+# per region where stage 4 scores the whole ~400-spool chart.
+_COLOR_SAMPLE_PX = 4096
 
 # --- Photo guardrails (photo plan §2 row 15) ---------------------------------
 #
@@ -386,9 +411,19 @@ def finding(code: str, severity: str, message: str, **extra) -> dict:
 
 # --- Thread color fidelity --------------------------------------------------
 
-def _artwork_colors_by_thread(p, result: PipelineResult,
-                              cfg: PipelineConfig) -> dict[int, np.ndarray]:
-    """-> {thread_index: median artwork RGB under that thread's regions}.
+def _region_color_errors(p, result: PipelineResult,
+                         cfg: PipelineConfig) -> list[dict]:
+    """-> per-region colour error rows, one per scoreable region:
+    {shape_id, thread_index, delta_e, artwork_rgb}.
+
+    Each region is scored against ITS OWN pixels and ITS OWN spool — never
+    pooled across the regions sharing a thread. Pooling was this
+    instrument's original sin, documented twice in docs/photo-quality-root-
+    cause-2026-08-11.md: the per-channel median of a bimodal pool is a
+    colour almost no pixel carries, and a fix that improves one region moves
+    the pool it leaves, so the pooled number can worsen across a genuine
+    improvement (drone_render: pooled 9.2 -> 33.6 while the per-region
+    worst halved, 20.99 -> 10.64).
 
     The pipeline does not carry the pre-snap cluster colors into its result,
     so the artwork is re-read through stage 1 (same config, deterministic,
@@ -397,15 +432,24 @@ def _artwork_colors_by_thread(p, result: PipelineResult,
     polygon is rasterized back over it. Region coordinates are mm with
     origin at the artwork bbox CENTER, y-down — the exact inverse of the
     transform stage 4 applied — so px = mm * px_per_mm + center. The mask is
-    eroded one pixel and the color taken as the per-channel MEDIAN: both
-    choices exist to keep anti-alias halo pixels from dragging a flat color
-    toward the background.
+    eroded one pixel and background pixels are excluded, both to keep
+    anti-alias halo pixels from dragging a flat color toward the background.
+
+    `delta_e` is the MEDIAN OF THE PER-PIXEL CIEDE2000 to the region's
+    assigned spool — the estimator stage 4's `revalidate_threads` settled on,
+    for the reason its docstring measures: a drifted or gradient region is
+    bimodal, and any statistic that collapses it to one colour FIRST (mean
+    Lab, median RGB) reports the defect as absent (the traced sliver: mean
+    says 5.54, the pixels say 23.87). `artwork_rgb` is still the region's
+    per-channel median RGB, but it is a display swatch for the finding —
+    never what the score is computed from.
     """
     x0, y0, x1, y1 = p.art_bbox
     cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
     h, w = p.rgb.shape[:2]
+    chart = chart_for(cfg)
 
-    chunks: dict[int, list[np.ndarray]] = {}
+    rows: list[dict] = []
     for r in result.regions:
         mask = np.zeros((h, w), np.uint8)
 
@@ -422,48 +466,80 @@ def _artwork_colors_by_thread(p, result: PipelineResult,
         sel = (eroded > 0) & (~p.bg_mask)
         if not sel.any():
             sel = (mask > 0) & (~p.bg_mask)   # hairline shape: erosion ate it
-        if sel.any():
-            chunks.setdefault(r.thread_index, []).append(p.rgb[sel].reshape(-1, 3))
-
-    out: dict[int, np.ndarray] = {}
-    for t, parts in chunks.items():
-        px = np.concatenate(parts)
-        if len(px) >= _MIN_COLOR_PIXELS:
-            out[t] = np.median(px, axis=0)
-    return out
+        px = p.rgb[sel].reshape(-1, 3)
+        if len(px) < _MIN_COLOR_PIXELS:
+            continue
+        if len(px) > _COLOR_SAMPLE_PX:
+            idx = np.linspace(0, len(px) - 1, _COLOR_SAMPLE_PX).astype(np.int64)
+            px = px[idx]
+        lab_px = rgb_to_lab(px.astype(np.float64))
+        lab_thr = chart.lab[r.thread_index].reshape(1, 3)
+        rows.append({
+            "shape_id": r.shape_id,
+            "thread_index": r.thread_index,
+            "delta_e": float(np.median(deltaE_ciede2000(lab_px, lab_thr))),
+            "artwork_rgb": [int(v) for v in np.median(px, axis=0)],
+        })
+    return rows
 
 
 def _thread_match_findings(p, result: PipelineResult,
                            cfg: PipelineConfig) -> tuple[list[dict], float | None]:
-    """One finding per thread whose spool is visibly off its artwork color.
+    """One finding per thread with a region visibly off that spool's colour,
+    judged by the thread's WORST region — per-region, never pooled (the
+    derivation and both measured failure cases are on `_region_color_errors`).
 
     Distance is CIEDE2000 on CIELAB from skimage's rgb2lab on [0, 1] floats
     — the pinned house convention (threads.py), never cv2's 8-bit Lab.
+
+    Aggregation is per THREAD rather than one finding per bad region, and
+    that is a scoring decision: the operator's remedy (pick a closer spool,
+    or split the artwork's colours) is per spool, and a busy photo plan with
+    one badly-served thread across five regions is one problem, not five.
+    The finding carries every offending region in `extra.regions` (worst
+    first) so the review screen can point at all of them, and the second
+    return value — the worst per-region error across the whole design,
+    offender or not — rides out as `thread_worst_delta_e`, the number to
+    watch across a re-digitize.
     """
+    rows = _region_color_errors(p, result, cfg)
     chart = chart_for(cfg)
     findings: list[dict] = []
     worst: float | None = None
-    for t, art_rgb in sorted(_artwork_colors_by_thread(p, result, cfg).items()):
-        lab_art = rgb_to_lab(art_rgb.reshape(1, 3))
-        lab_thr = rgb_to_lab(np.asarray(chart[t].rgb, np.float64).reshape(1, 3))
-        de = float(deltaE_ciede2000(lab_art, lab_thr)[0])
-        worst = de if worst is None else max(worst, de)
-        if de <= DELTA_E_VISIBLE:
+    by_thread: dict[int, list[dict]] = {}
+    for row in rows:
+        worst = row["delta_e"] if worst is None else max(worst, row["delta_e"])
+        by_thread.setdefault(row["thread_index"], []).append(row)
+
+    for t, t_rows in sorted(by_thread.items()):
+        offenders = sorted((r for r in t_rows if r["delta_e"] > DELTA_E_VISIBLE),
+                           key=lambda r: -r["delta_e"])
+        if not offenders:
             continue
+        top = offenders[0]
         thread = chart[t]
-        clearly = de > DELTA_E_CLEARLY_DIFFERENT
+        clearly = top["delta_e"] > DELTA_E_CLEARLY_DIFFERENT
         what = "is clearly a different color than" if clearly else "is visibly off"
+        n = len(offenders)
+        where = (f"the shape it sews ({top['shape_id']})" if len(t_rows) == 1
+                 else f"{n} of the {len(t_rows)} shapes it sews "
+                      f"(worst: {top['shape_id']})")
         findings.append(finding(
             THREAD_MATCH_POOR,
             "block" if clearly else "warn",
             f"{chart.label} {thread.number} ({thread.name}) {what} "
-            f"the artwork it sews. Pick a closer thread or a different "
+            f"{where}. Pick a closer thread or a different "
             f"brand before sewing.",
             brand_id=chart.id,
             thread_number=thread.number,
             thread_name=thread.name,
-            delta_e=round(de, 1),
-            artwork_rgb=[int(v) for v in art_rgb],
+            delta_e=round(top["delta_e"], 1),
+            worst_shape_id=top["shape_id"],
+            region_count=n,
+            regions_scored=len(t_rows),
+            regions=[{"shape_id": r["shape_id"],
+                      "delta_e": round(r["delta_e"], 1)} for r in offenders],
+            artwork_rgb=top["artwork_rgb"],
             thread_rgb=list(thread.rgb),
         ))
     return findings, worst

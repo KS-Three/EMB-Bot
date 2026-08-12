@@ -282,9 +282,11 @@ def revalidate_threads(regions: list[Region], p: Prep,
     sewing over white linework for most of its length. Taking the MEDIAN OF
     THE PER-PIXEL dE00 keeps the answer on real pixels and is what this
     function scores with — the same trap, in the same direction, that the
-    root-cause doc already documents for `preflight._artwork_colors_by_thread`
+    root-cause doc documented for preflight's thread-match instrument
     (independent per-channel medians over a pooled population, producing a
-    colour no actual pixel carries). An earlier build of this function used
+    colour no actual pixel carries — fixed 2026-08-11: preflight now scores
+    per region with this same estimator, `preflight._region_color_errors`).
+    An earlier build of this function used
     the mean and scored the traced shape at 5.54, i.e. reported the defect it
     exists to find as absent.
     """
