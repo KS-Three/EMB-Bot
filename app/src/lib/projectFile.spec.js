@@ -55,7 +55,6 @@ test("a preset shape element survives the file round-trip with its kind/params i
   expect(el.params).toEqual({ points: 7, innerRatio: 0.35 });
   expect(el.sizeMm).toBe(42);
   expect(el.colorRgb).toEqual([200, 30, 30]);
->>>>>>> feat/basic-shapes
 });
 
 test("the envelope carries format/version stamps", () => {
