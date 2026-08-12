@@ -11,8 +11,66 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-11 (evening) — **one of the two SAM2 open risks
-below is closed, fix #6.3 landed, and fix #6.2 was REFUTED on measurement.**
+**Last updated:** 2026-08-11 (late night) — **the "let it rip" wave: two
+launch-checklist items shipped, five confirmed engine defects fixed, and the
+corpus baseline re-graded under the honest per-region yardstick.** All landed
+on `main` and pushed; every merge passed its targeted test gate (356/356
+engine JS, 671/671 Studio vitest, per-lane pytest subsets; full-suite run in
+flight at write time).
+
+1. **Launch items 2 and 4 shipped.** Hoop picker (`HOOPS`/`suggestHoop`/
+   orientation-aware `hoopFit` in `src/garments.js`, Garment-step picker,
+   `.embproj`-persisted `hoopId`, hoop on review stats + PDF) and the basic
+   shapes tool (`app/src/lib/shapePresets.js` circle/rect/heart/star riding
+   the manual-draw `shapesToRegions → buildQualityDesign` lane, new `"shape"`
+   element type). PRODUCT.md checklist updated; remaining launch work is the
+   starter design pack (needs licensed designs) and the billing session.
+2. **Kent ruled (recorded in PRODUCT.md):** engine quality is a parallel
+   investment, NOT a launch gate; SAM2 ships post-v1 as an opt-in download
+   (`docs/sam2-ship-path-brief-2026-08-11.md`).
+3. **Background flooding fixed — the owl case.** Stage 1's border flood
+   deleted a subject that dominates the border ring (93.8% of the owl-repro
+   subject's pixels). Two guards landed: ported border-agreement
+   (`BACKGROUND_ABSENT`, `bg_border_agreement_min=0.75`) + new rival-ring
+   guard (`BACKGROUND_UNCERTAIN` reason=`subject_dominated_border`). Owl
+   fixture bare cloth 93.4%→3.0%; all 9 real-background fixtures bit-identical
+   bg_mask (verifier re-derived the hashes independently). Two accepted
+   residuals from adversarial review: a one-notch-tighter crop where the
+   subject owns all 4 corners still floods silently, and edge-bleed flat art
+   can false-positive into stitch-everything+warn (conservative direction).
+4. **SVG import is in the engine** (salvaged from the broken WIP branch):
+   tokenizer kept, flattening error metric rewritten with a provable bound
+   (the old AGG-style check used a ×16 constant from the wrong criterion),
+   arcs implemented, `EMB.parseSVG` wired into the Studio engine list.
+   Studio UI wiring (ImagePanel accept path, shape-pack picker) still to do.
+5. **Export/stats circularity broken** (`stitches.iter_machine_commands` is
+   now the single command stream both consume) and the block-boundary dedupe
+   defect fixed — a block opening without jump/trim flags no longer loses its
+   first penetration (tie_run's lock anchor now lands 5 of 5).
+6. **Chaining cover model completed** (tier-blindness closed: a later
+   run-tier shape provides no areal cover) — `chain_links` still default
+   False pending the sew-out; contour's directional_comp non-composition now
+   warns (`CONTOUR_DIRECTIONAL_COMP_UNSEWN`); appliqué's promised no-fabric
+   fall-through implemented (was: docstring lied, contiguity broke, overlap
+   warning silent). One accepted residual: stage-5-dropped split-shape
+   pieces still count as cover (verifier finding, logged for follow-up).
+7. **Corpus baseline recaptured** under the per-region metric + tonight's
+   fixes: flat lane unchanged (A/100, B/88); repro_gradient D/58→B/76 and
+   photo_scene_stub D/52→C/64 are real now-visible improvements;
+   gradient/blob/badge entries dropped because the pooled median had been
+   hiding per-region error — that is the new honest baseline, not a
+   regression. photo_subject_stub A/100→C/70 grades output whose subject
+   now actually survives.
+8. Hygiene: worktree yard emptied (one checkout, `main` only), merged/
+   superseded branches deleted locally and on origin, remote URL moved to
+   KS-Three, fresh Drive backups (`EMB-Bot-2026-08-11.bundle` +
+   `scratch_ink-2026-08-11.zip` — the 368 MB font-source bus-factor risk is
+   closed). Known pre-existing env failures unchanged: enthusiast_logo
+   OCR-goldens and pushcomp `logo_whitebg/towel` byte-identity.
+
+**Prior update below, still 2026-08-11 (evening):** — **one of the two SAM2
+open risks below is closed, fix #6.3 landed, and fix #6.2 was REFUTED on
+measurement.**
 
 1. **The SAM2 venv is a real install now, not a junction.** The 875 MB venv
    was moved out of `.claude/worktrees/sam2-segmentation` into
