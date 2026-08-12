@@ -18,9 +18,11 @@ explicitly *not* the bar.
 Since that pivot, most engineering effort has gone into a professional-grade
 Python auto-digitizing engine (photo/logo → stitch file), which was
 originally tabled and then un-tabled the same day the launch scope below was
-set. That work's relationship to the launch checklist isn't restated
-anywhere — worth Kent confirming whether digitizer-engine quality is itself
-a launch gate, or a parallel, longer-term investment.
+set.
+
+**Ruled 2026-08-11 (Kent): engine quality is a parallel investment, not a
+launch gate.** The launch checklist below is the launch bar; engine quality
+keeps improving alongside it but does not block shipping.
 
 ## Launch scope checklist
 
@@ -39,6 +41,13 @@ Status verified against the repo on 2026-08-11 (not just taken from memory).
 ## Launch posture (decided)
 
 - Desktop-only, stated on the site.
+- **SAM2 photo segmentation ships post-v1** (ruled 2026-08-11): v1 launches
+  without it; it returns as an opt-in "enhanced photo mode" download
+  (~1 GB) after launch, gated on re-measuring `points_per_side=12` on a
+  real photo and resolving the white-subject background hypothesis. The
+  localStorage dev seam stays for internal use. Server-side segmentation
+  rejected — breaks the local-first, no-account promise. Full analysis:
+  `docs/sam2-ship-path-brief-2026-08-11.md`.
 - ~70 fonts is enough — launch does not wait on font expansion.
 - Fast-follow order after launch: ~~`ltr/` importer (mai_en_fleur)~~ **done** (mai_en_fleur ships in the 55-font manifest) → tablet audit → cloud sync (post-revenue).
 
