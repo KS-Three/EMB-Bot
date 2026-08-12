@@ -116,7 +116,15 @@ def test_a_clean_real_plan_earns_a_clean_report(whitebg, plan):
     # travel graph routes around, dropping needle-down link distance
     # 109.0 -> 87.8 mm. Link coverage itself is unaffected (still 0.0 mm
     # bare).
-    assert m["link_thread_mm"] == pytest.approx(87.8, abs=1.0)
+    # Re-pinned 2026-08-11: the link instrument now scores BETWEEN-shape
+    # transport only (hardening closeout 2026-08-02 finding 4 -- a fill's own
+    # row-skip travel is not a chain link). The 87.8 mm this plan used to
+    # report was all stage 6 internal routing; with chaining off nothing here
+    # sews shape-to-shape needle-down, so the honest reading is zero. The
+    # chain-on measurement lives in
+    # test_the_real_fixture_leaves_no_link_on_bare_fabric.
+    assert m["link_segments"] == 0
+    assert m["link_thread_mm"] == 0.0
     assert m["link_uncovered_max_mm"] == pytest.approx(0.0, abs=0.05)
     assert m["fill_axis_concentration"] == pytest.approx(0.974, abs=0.02)
     assert m["contour_starved_shapes"] == 0
@@ -723,17 +731,81 @@ def test_content_thread_on_bare_fabric_is_not_a_link():
     assert report["metrics"]["link_uncovered_max_mm"] == 0.0
 
 
-def test_the_real_fixture_leaves_no_link_on_bare_fabric(plan):
+def test_a_fills_own_row_skip_travel_is_not_a_link():
+    """THE false block of the hardening closeout (2026-08-02, finding 4).
+
+    One shape, two fill columns, and the fill's OWN row-skip travel between
+    them — exactly what `stage6_fill.emit` bridges across a sub-row-spacing
+    neck of one polygon, needle down, inside the shape's own artwork. Most of
+    that bridge lies on fabric the fill leaves bare, and the old transport
+    classification scored it as a chain link: a clean ONE-shape design
+    blocked with "thread crosses bare fabric between shapes" (score 100 ->
+    70, measured on this exact plan). There are no other shapes. Thread from
+    a shape to itself is routing, not a link — and it is not counted in the
+    link metrics either, or the operator reads phantom "link thread" on
+    designs that contain no links at all."""
+    one_shape = _plan(
+        _fill_rect(-13.0, -4.0, -5.0, 4.0, shape_id="F1"),
+        _link_run((-5.0, 4.0), (5.0, -4.0), shape_id="F1"),
+        _fill_rect(5.0, -4.0, 13.0, 4.0, shape_id="F1"))
+    report = run_preflight(None, one_shape, cfg())
+
+    assert LINK_UNCOVERED not in _codes(report)
+    assert report["score"] == 100
+    assert report["metrics"]["link_segments"] == 0
+    assert report["metrics"]["link_thread_mm"] == 0.0
+
+
+def test_a_clean_one_shape_design_is_silent_across_the_2026_08_02_firing_band():
+    """The pipeline half of the same pin, at the sizes the closeout measured
+    the false block: bg_uncertain.png is ONE shape, and at 104-107 mm
+    (left_chest and hat_front) its fill's own row-skip routing used to read
+    as 3.26-3.32 mm of "link" on bare fabric — a block on clean artwork that
+    a 4-value size sweep couldn't find (the band is 4 mm wide). The design
+    must pass inside the band, on its edges, and well outside it, on both
+    garments that fired. The travel-length assertion keeps the pin honest:
+    the design still routes internally (hundreds of mm on hat_front), the
+    instrument just no longer calls that a link between shapes."""
+    art = TESTDATA / "bg_uncertain.png"
+    travel_mm = 0.0
+    for width in (90.0, 104.0, 105.0, 106.0, 107.0, 120.0):
+        result = run_stages(art, cfg(target_width_mm=width))
+        assert len(result.regions) == 1, "the premise: one shape, no links possible"
+        for garment in ("left_chest", "hat_front"):
+            c = cfg(target_width_mm=width, garment_id=garment)
+            stitch_plan = plan_stitches(result, c)
+            travel_mm += sum(r.length_mm for _b, r in stitch_plan.iter_runs()
+                             if r.kind == st.TRAVEL)
+            report = run_preflight(None, stitch_plan, c)
+            assert LINK_UNCOVERED not in _codes(report), (width, garment)
+            assert report["metrics"]["link_thread_mm"] == 0.0, (width, garment)
+    assert travel_mm > 50.0, "the design does travel; the instrument declines to score it"
+
+
+def test_the_real_fixture_leaves_no_link_on_bare_fabric(enthusiast_logo_82mm):
     """The promise every threshold here was validated against. Measured
     2026-08-02 over 60 configurations (5 artworks x 4 sizes x 3 garments, with
     chaining on) the longest bare stretch is 2.29 mm and the p90 is 1.07,
     against a 3.0 mm ceiling on pique knit — so real work is silent, and the
     margin comes from measurement rather than from a threshold rounded up to
-    fit."""
-    stitch_plan, _planned, _warnings = plan
-    m = run_preflight(None, stitch_plan, cfg(**PLAN_CFG_KW))["metrics"]
+    fit.
 
-    assert m["link_segments"] > 0, "the fixture does travel; measure it"
+    Re-pointed 2026-08-11 at the chain-ON benchmark plan: the instrument now
+    scores between-shape transport only, and with chaining off no plan sews
+    from one shape to another needle-down — the chain-off fixture's honest
+    reading is zero link thread (pinned in the clean-report test above).
+    The links this measures are the benchmark's own ~18 chained trims
+    (test_chaining.py's acceptance numbers), the exact thread law 60 is
+    about."""
+    stitch_plan = plan_stitches(
+        enthusiast_logo_82mm,
+        cfg(target_width_mm=82.0, garment_id="left_chest", chain_links=True))
+    m = run_preflight(
+        None, stitch_plan,
+        cfg(target_width_mm=82.0, garment_id="left_chest", chain_links=True),
+    )["metrics"]
+
+    assert m["link_segments"] > 0, "the benchmark chains links; measure them"
     assert m["link_uncovered_max_mm"] < 3.0
     assert m["link_uncovered_mm"] < m["link_thread_mm"] * 0.05
 
