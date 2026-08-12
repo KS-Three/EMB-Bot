@@ -40,6 +40,29 @@ class PipelineConfig:
 
     # Stage 1
     bg_tolerance_lab: float = 6.0      # Delta-E-ish flood tolerance
+    # Fraction of the border ring the modal border color must actually
+    # describe before stage 1 believes a background exists at all. Measured
+    # over every committed fixture (re-measured 2026-08-11 under the
+    # enclosed-regions semantics): real backgrounds score 92.5-100%,
+    # full-bleed art 35.5% and below. Below this, nothing floods and
+    # BACKGROUND_ABSENT says so. Originally derived on the pre-c1b9e35
+    # branch fix/bg-existence-guard (73e0665); the numbers reproduce.
+    bg_border_agreement_min: float = 0.75
+    # The subject-dominated-border guard (the snowy-owl failure): a pale
+    # subject filling a tight portrait crop dominates the border ring, so the
+    # ring's modal color IS the subject and the flood deletes the subject's
+    # body while the real wall survives as "foreground". The tell is a second
+    # COHERENT border color — the wall showing through at the crop's margins.
+    # This is the largest coarse color bin among ring pixels the modal-color
+    # mask does NOT claim, as a fraction of the whole ring. Measured
+    # 2026-08-11: every real-background fixture scores 0.000-0.021 (the
+    # remainder is anti-alias scatter), the owl-repro fixture 0.173. When the
+    # rival is at or above this AND the modal color fails to hold the frame's
+    # corners (a real background owns its corners; a tight crop's wall peeks
+    # through them), stage 1 refuses to flood and reports BACKGROUND_UNCERTAIN
+    # (reason "subject_dominated_border") instead of silently deleting the
+    # subject. Zero or negative disables the guard.
+    bg_border_rival_min: float = 0.10
     bg_margin_mm: float = 3.0          # intrusion past this inside a shape's hull = uncertain
     bg_intrusion_min_mm: float = 2.0   # intrusion below (this mm)^2 is boundary noise, not art loss
     min_px_per_mm: float = 4.0         # resolution floor at target size

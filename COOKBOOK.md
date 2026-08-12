@@ -407,6 +407,36 @@ don't push for it.
   as information-free. Verified post-merge at the HTTP level (opaque-RGBA
   twin of the repro fixture now matches its RGB original exactly); a live
   browser run of the full flow hasn't happened yet.
+- **Background detection flooded the subject out on tight photo crops**
+  (the snowy-owl report: white bird on a beige wall, the bird's body
+  "recognized as background" and deleted) — **FIXED 2026-08-11**, two
+  stage-1 guards, both config-gated:
+  1. The background-EXISTENCE guard, hand-ported from the orphaned
+     `fix/bg-existence-guard` branch (73e0665 — so "closed-by-inference"
+     above was wrong: PR #22 fixed a different problem and this one was
+     still live). If the modal border color describes less than
+     `cfg.bg_border_agreement_min` (0.75) of the border ring, the art runs
+     edge to edge: nothing floods, `BACKGROUND_ABSENT` fires. Re-measured
+     under the enclosed-regions semantics: real backgrounds agree 0.925-1.0
+     with their own ring, full-bleed art 0.355 and below; bare cloth on the
+     gradient repro 27.0% -> 1.1% end to end.
+  2. The SUBJECT-DOMINATED-BORDER guard (the owl itself — a tight crop
+     passes guard 1 because the subject IS the ring's modal color, 0.827 on
+     the committed repro). The tell is a second coherent border color (the
+     wall peeking through the crop margins): largest coarse color bin among
+     ring pixels the modal mask does not claim, >= `cfg.bg_border_rival_min`
+     (0.10; measured 0.000-0.021 on every real-background fixture, 0.173 on
+     the repro), with the modal color also failing to hold a majority of
+     the frame's corners. Nothing floods; `BACKGROUND_UNCERTAIN` with
+     `reason: "subject_dominated_border"` says why. Bare cloth on the owl
+     repro 93.4% -> 3.0% (pre-fix, the subject's whole body was deleted).
+  `bg_mask` is bit-identical on all nine real-background fixtures; the
+  stage-2 photo-lane golden was deliberately re-captured for the two
+  full-bleed fixtures the existence guard changes (repro_gradient_white_icon,
+  photo_subject_stub). New fixture: `digitizer/testdata/photo/
+  tight_crop_pale_subject.png`. Tests that pin the ENCLOSED machinery on the
+  repro fixture now disable the guards explicitly (`repro_cfg` in
+  `tests/test_enclosed_background.py`).
 
 ## Running things
 

@@ -9,6 +9,7 @@ from digitizer_core.stage1_prep import prep
 from digitizer_core.stage2_quantize import quantize
 from digitizer_core.warnings_codes import (
     ABSORBED_SMALL_SHAPES,
+    BACKGROUND_ABSENT,
     BACKGROUND_ENCLOSED,
     BACKGROUND_UNCERTAIN,
     DROPPED_SMALL_SHAPES,
@@ -73,6 +74,86 @@ def test_alpha_and_opaque_variants_agree_on_the_artwork():
     fa, fw = ~a.bg_mask, ~w.bg_mask
     iou = np.logical_and(fa, fw).sum() / np.logical_or(fa, fw).sum()
     assert iou >= 0.98, f"foreground IoU {iou:.4f}"
+
+
+def test_full_bleed_art_keeps_all_of_itself():
+    # Measured 2026-08-11 under the enclosed-regions semantics (c1b9e35):
+    # this fixture has no background at all, and stage 1 invented one out of
+    # a crimson band of its own ramp that happens to touch the border — 6.3%
+    # of the image flooded as background outright, another 19.7% reported as
+    # enclosed "holes" and unstitched by default. A quarter of the artwork
+    # never sewn, on exactly the art the gradient tier exists to serve.
+    p = prep(TESTDATA / "photo" / "repro_gradient_white_icon.png", cfg())
+    assert not p.bg_mask.any(), f"{int(p.bg_mask.sum())} px still called background"
+    got = {w["code"] for w in p.warnings}
+    assert BACKGROUND_ABSENT in got
+    assert BACKGROUND_ENCLOSED not in got, "there are no holes in art with no background"
+    assert p.enclosed_mask is None
+
+
+def test_tight_crop_pale_subject_survives_stage1():
+    # The snowy-owl failure (2026-08-11): a pale subject fills a tight
+    # portrait crop on a slightly-different pale wall. The subject dominates
+    # the border ring (82.7% on this fixture), so _dominant_border_color
+    # picks the SUBJECT's color, the ring agreement passes the
+    # BACKGROUND_ABSENT bar (0.827 >= 0.75), and the flood deletes the
+    # subject's whole body while the actual wall stays "foreground".
+    # BACKGROUND_UNCERTAIN's intrusion guard never fires because the
+    # surviving foreground is only wall slivers whose hulls the flood does
+    # not enter. The rival-ring-color guard is what must catch this: the
+    # wall shows through as a second coherent border color (17.3% of the
+    # ring vs <= 2.1% measured on every real-background fixture).
+    p = prep(TESTDATA / "photo" / "tight_crop_pale_subject.png", cfg())
+    assert not p.bg_mask.any(), (
+        f"{int(p.bg_mask.sum())} px flooded as background — the subject's body"
+    )
+    uncertain = [w for w in p.warnings if w["code"] == BACKGROUND_UNCERTAIN]
+    assert uncertain and uncertain[0].get("reason") == "subject_dominated_border"
+    assert BACKGROUND_ENCLOSED not in {w["code"] for w in p.warnings}
+
+
+def test_tight_crop_pale_subject_survives_digitization():
+    # End to end: the subject's body must come out the other side as sewable
+    # regions, not vanish into the background mask. The subject occupies
+    # ~86% of the frame; if it flooded out, the surviving regions (wall
+    # slivers, eyes, beak) could never cover more than a third of the design.
+    r = run_stages(TESTDATA / "photo" / "tight_crop_pale_subject.png", cfg())
+    assert not r.background.detected
+    design_area = r.design_size_mm[0] * r.design_size_mm[1]
+    covered = sum(reg.area_mm2 for reg in r.regions)
+    assert covered >= 0.6 * design_area, (
+        f"regions cover {covered:.0f} of {design_area:.0f} mm^2 — subject lost"
+    )
+
+
+@pytest.mark.parametrize(
+    "fixture",
+    [
+        "logo_whitebg.png",
+        "logo_alpha.png",
+        "bg_uncertain.png",
+        "ribbon_curve.png",
+        "photo/enthusiast_logo.png",
+        "photo/drone_render.png",
+        "photo/region_blobs.png",
+        "photo/gradient_ramp_linear.png",
+        "photo/gradient_ramp_radial.png",
+    ],
+)
+def test_the_guards_leave_real_backgrounds_alone(fixture):
+    # The regression net for the whole flat lane. Every fixture here has a
+    # real background — the two ramps included, which are ramps WITH padding
+    # (art bbox 70,70..930,580 inside a 1000x650 canvas), and are exactly the
+    # case a "gradients have no background" shortcut would have broken. The
+    # rival guard has margin here too: worst measured rival fraction is
+    # drone_render's 0.021 against the 0.10 default.
+    p = prep(TESTDATA / fixture, cfg())
+    got = {w["code"] for w in p.warnings}
+    assert BACKGROUND_ABSENT not in got
+    assert not any(
+        w.get("reason") == "subject_dominated_border" for w in p.warnings
+    )
+    assert p.bg_mask.any()
 
 
 def test_px_per_mm_follows_the_artwork_not_the_canvas(whitebg):

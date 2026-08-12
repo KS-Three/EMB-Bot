@@ -15,6 +15,7 @@ CLASSIFICATION_UNCERTAIN = "CLASSIFICATION_UNCERTAIN"  # below the confidence fl
 BACKGROUND_UNCERTAIN = "BACKGROUND_UNCERTAIN"      # border flood intruded deep past the artwork margin
 INPUT_LOW_RESOLUTION = "INPUT_LOW_RESOLUTION"      # px_per_mm below floor even after capped upscale
 BACKGROUND_ENCLOSED = "BACKGROUND_ENCLOSED"        # enclosed bg-colored region treated as hole (review-toggleable)
+BACKGROUND_ABSENT = "BACKGROUND_ABSENT"            # full-bleed art: no background found, whole canvas stitched. extra: {"agreement": float}
 
 # Stage 1.5 (photo prep — photo plan §2 rows 3-4, build step 3 first slice)
 # Info, not a problem: tone prep + texture kill ran on this photo-classified
