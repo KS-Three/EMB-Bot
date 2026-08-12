@@ -51,16 +51,32 @@ PR #122 (`.eladd-row` wrap). Open: PR #123 (Studio `detail_layer` control).
   canvas) and behaves nothing like a real photograph.
 - **Corpus gap, sharpened:** the photo fixtures are procedurally generated
   on purpose (licensing-clean — see the cross-cutting corpus entry). That
-  cleanliness cost real diagnostic accuracy this session. A licensed real
-  photo would have paid for itself; Kent's own owl sits unmerged on
-  `kent/owl-fixture` pending a **licensing decision** (it appears to be a
-  found image, and this repo's font-license history sets the bar).
-- **Still open from this session, none started:** the thread-drift defect
-  (worst dE00 18.3, unmoved by color budget — it is why the owl's two eyes
-  sew in different threads; `simplify_tol_mm` is 0.2mm and small shapes are
-  documented as bypassing it, so either the bypass misses them or the
-  re-match samples the wrong pixels), and 14 jump-trims on an 80mm design
-  in every variant measured.
+  cleanliness cost real diagnostic accuracy this session. **Kent ruled the
+  photo's provenance is not a concern (2026-08-12)**, so `owl_kent.jpg` on
+  `kent/owl-fixture` is cleared to land as a real-photo corpus fixture —
+  still unmerged, but no longer blocked.
+- **The "thread drift defect" is NOT an independent defect** — measured
+  2026-08-12, and this closes the item rather than opening it. Instrumenting
+  every shape in Kent's owl (error to current thread, error to the BEST
+  thread the chart can offer, and each shape's own internal colour spread)
+  shows the spread *sets the floor*: S18356282 best-possible 14.70 with
+  spread 17.25; Scbdb8ecc 13.22 / 13.09; S45f13ef0 10.54 / 10.55; and at the
+  clean end S949f0c61 6.60 / 2.98. Current-thread error sits within ~1 dE00
+  of best-possible on nearly every shape, so `stage4_vectorize`'s re-snap is
+  working correctly and has almost nothing left to win. **No single thread
+  can match a shape whose own pixels differ from each other by more than the
+  error being complained about.** The two eyes sew in different threads
+  because each is a ~260–320px shape carrying a *different* mixture of iris,
+  pupil edge and surrounding tissue (spreads 7–13), so "best available
+  thread" honestly resolves differently for each. This is the same root
+  cause as the detail-layer finding — flat fill assigns one thread per
+  region, and photo regions legitimately contain tonal variation — so the
+  real options are narrower: tighten simplification so small features stop
+  absorbing their surroundings, or let a high-spread region decompose into
+  shades the way `stage6_blend` already does for gradient class. **Do not
+  spend time on the re-snap code itself.**
+- **Still open, not started:** 14 jump-trims on an 80mm design, in every
+  variant measured.
 - **`.eladd-row` had been hiding "+ Auto-digitize"** (PR #122): six
   non-shrinking buttons overflowed the 400px sidebar by 136px, putting the
   last one 111px past the panel edge. Because that button only renders when
@@ -1817,7 +1833,7 @@ cause was corrected to `stage1_prep.py`, still unresolved at that time.
 | 2. Font library & lettering | Implemented (library + license remediation) | High (tech) / High (compliance — resolved 2026-08-04 by removal, lawyer consult now an optional restore path) |
 | 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: pending sew-out; **no photo-quality tier was reachable from the UI at all** until PR #123 — see the 2026-08-12 evening entry) |
 | 4. Export formats | Implemented | Varies by format — see below |
-| 5. Stitch-out review & manual editing tools | Implemented (narrow scope) | High **for what is built** — but the target moved 2026-08-12: Kent's direct-manipulation request (node/line editing, drag, delete-as-entity) is unimplemented and recorded in full under this area |
+| 5. Stitch-out review & manual editing tools | Implemented (narrow scope) | High **for what is built** — but the target moved 2026-08-12: Kent's direct-manipulation request (node/line editing, delete-as-entity; whole-shape dragging withdrawn same-day) is unimplemented and recorded in full under this area |
 
 ---
 
@@ -4396,7 +4412,9 @@ Broken out, each is independently testable:
 3. The outline is the *shape's own boundary*, not a bounding box — it
    "captures the recognized digitized shape/feature".
 4. Nodes are draggable. Lines are draggable. Nodes can be **added**.
-5. A whole shape can be selected and dragged anywhere.
+5. ~~A whole shape can be selected and dragged anywhere.~~ **WITHDRAWN by
+   Kent same-day — see the ruling below. Kept numbered so 6 and 7 keep their
+   references.**
 6. A whole shape can be deleted.
 7. **Each outline shape/feature is its own entity** — the organizing
    principle behind all of the above.
@@ -4409,18 +4427,35 @@ already reserves a per-shape "edit this shape's boundary" ✎ affordance.
 
 **The gap** is what the code itself names *the boundary-reshape gap*
 (`stage2_photo_segment.py` / `warnings_codes.py` v1.5 comments): nothing
-today can move a node or a line. Requirements 1–6 above are all
-unimplemented. Requirement 5 (free translation of a shape) has no contract
-representation at all — v1/v1.5 change a shape's *attributes* or the *set* of
-shapes, never its position.
+today can move a node or a line. Requirements 1–4, 6 and 7 above are all
+unimplemented; requirement 5 was withdrawn (below). Worth keeping in view
+either way: v1/v1.5 change a shape's *attributes* or the *set* of shapes,
+never its geometry — so node-level editing needs contract work regardless of
+whether whole-shape translation is in scope.
 
-**Recommended posture:** a written design before any code. This is the piece
-where a wrong contract choice is expensive, and it needs Kent's review on
-whether shape geometry becomes user-editable state (a new contract version)
-or whether edits stay a replayable operation list the way v1/v1.5 deliberately
-are — the "sticky, ride every future re-digitize" property in
-`digitizer.js`'s comment is a real design commitment that free node-dragging
-does not obviously preserve.
+**Kent ruled, 2026-08-12 — requirement 5 (dragging a whole shape) is OUT OF
+SCOPE.** He first asked for it ("moved or dragged around, similar to how
+clipart would work"), then withdrew it the same day once the cost surfaced.
+Both halves are recorded because the reasoning is the useful part:
+
+`regions._raw_id` derives every `shape_id` by bucketing **centroid + thread
+number**. Moving a shape changes its centroid, which changes its id — and id
+stability is exactly what the "sticky, ride every future re-digitize" edit
+model depends on (`digitizer.js`'s comment on `deleted_shape_ids`). Free
+translation and durable edits are in direct tension; dropping translation
+resolves it without inventing a new identity scheme.
+
+**What survives is requirements 1-4, 6 and 7:** outlines with visible nodes,
+the pulse cue, node/line dragging, adding nodes, deleting a shape, and each
+shape being its own entity. Reshaping a boundary still perturbs a centroid,
+so the design must still show that edits survive a re-digitize — but the
+perturbation is now bounded by `CENTROID_BUCKET_MM` rather than unbounded,
+which is a far easier property to hold.
+
+**Recommended posture:** a written design before any code, answering (a) how
+node-level geometry is represented — new contract version vs. an extension of
+v1.5's replayable operation list — and (b) the bounded-centroid-drift
+argument above, with a worked case. Everything else is UI.
 
 #### Note 6, from the same session — the render Kent marked "portions of the owl that shouldn't have been removed"
 
