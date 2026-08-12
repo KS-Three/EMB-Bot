@@ -24,31 +24,37 @@ a launch gate, or a parallel, longer-term investment.
 
 ## Launch scope checklist
 
-Status verified against the repo on 2026-08-03 (not just taken from memory).
+Status verified against the repo on 2026-08-11 (not just taken from memory).
 
 | # | Item | Status | Evidence |
 |---|---|---|---|
-| 1 | PES hardened to byte-verified + JEF export | ✅ Done | `digitizer/digitizer_core/export.py` routes every format through pyembroidery; PES/JEF round-trip verified |
+| 1 | PES hardened to byte-verified + JEF export | ✅ Done | PES/JEF live in `digitizer/digitizer_service/formats.py` (pyembroidery-backed; `digitizer_core/export.py` itself is DST-only); PES/JEF round-trip verified |
 | 2 | Home-machine hoop picker (4×4 / 5×7 / 6×10 / 8×8 presets) | ❌ Not started | `src/garments.js` has garment-*type* presets (hat front, left chest, full back, ...) plus one generic 200×200mm ceiling — no selectable hoop-size picker exists |
 | 3 | Curated starter design pack (12–24 licensed designs via DST import) | ❌ Not started | no trace in repo |
-| 4 | Basic shapes tool (circle / rect / heart / star) | ❌ Not started | no trace in repo — explicitly *not* full freehand draw (that's parked, see below) |
+| 4 | Basic shapes tool (circle / rect / heart / star) | ❌ Not started | no preset-shapes trace in repo — explicitly *not* full freehand draw (which has since shipped as manual draw mode; see the parking-list note below) |
 | 5 | Thread palette sweep (remaining Ink/Stitch `.gpl` brands) | ✅ Done | 68 brand charts in `tools/palettes/`, matching the policy-filtered count (brands from companies that sell embroidery machines/software are excluded on purpose) |
 | 6 | `.embproj` project file save/load | ✅ Done | `app/src/lib/projectFile.js` |
-| 7 | Font-license compliance (hard gate before first dollar) | ⚠️ Partial | Per-font research done for flagged cases (e.g. `milli_marif_bold` — full permission-email trail + OFL text on file in `src/fonts/milli_marif_bold.LICENSE.txt`). But license-text sidecars do **not** ship in the built app — `app/public/fonts/` has zero `.LICENSE.txt` files. A few fonts still need a keep/drop decision and some attributions need fixing (per the last audit; not re-verified line-by-line here). |
+| 7 | Font-license compliance (hard gate before first dollar) | ✅ Done (shipping posture) | Per-font research done for flagged cases (e.g. `milli_marif_bold` — full permission-email trail + OFL text on file in `src/fonts/milli_marif_bold.LICENSE.txt`). The "zero sidecars ship" gap is closed: 55 `.LICENSE.txt` sidecars ship in `app/public/fonts/` (one per shipping font, counted 2026-08-11). All license-flagged fonts were pulled from the build in the 2026-08-04 audit pass rather than kept; the remaining legal question only gates *restoring* pulled fonts (see "Known compliance risk"). |
 
 ## Launch posture (decided)
 
 - Desktop-only, stated on the site.
 - ~70 fonts is enough — launch does not wait on font expansion.
-- Fast-follow order after launch: `ltr/` importer (mai_en_fleur) → tablet audit → cloud sync (post-revenue).
+- Fast-follow order after launch: ~~`ltr/` importer (mai_en_fleur)~~ **done** (mai_en_fleur ships in the 55-font manifest) → tablet audit → cloud sync (post-revenue).
 
 ## Explicit non-goals (parking list — not the Ember bar)
 
 Team names, monogram frames, appliqué, envelopes beyond arc, 3D puff,
 stitch-level editing, decorative fills, imported-design re-density
-(Wilcom-style stitch processor), full freehand draw tools, a sharing
-gallery. No user-upload gallery is a deliberate choice for the starter
-design pack (item 3) too — copyright/moderation exposure declined.
+(Wilcom-style stitch processor), a sharing gallery. No user-upload gallery
+is a deliberate choice for the starter design pack (item 3) too —
+copyright/moderation exposure declined.
+
+"Full freehand draw tools" used to sit on this list, but manual draw mode
+has since shipped (`app/src/lib/manualShapes.js` — the Studio's third
+content type: hand-drawn outlines with curved edges and point editing), so
+it is no longer a non-goal. Item 4's basic *preset* shapes tool
+(circle/rect/heart/star) is still separate and still not started.
 
 ## Open — not yet decided
 
@@ -59,6 +65,9 @@ design pack (item 3) too — copyright/moderation exposure declined.
 
 ## Known compliance risk
 
-- Whether the CC-BY-SA `.embf` binary font format counts as a "derived
-  work" under CC-BY-SA is an open legal question, flagged for a lawyer,
-  not yet resolved.
+- **Zero CC-BY-SA fonts ship.** All 13 ShareAlike fonts were pulled from
+  the build on 2026-08-04 (Kent's call), which made the paid launch
+  independent of the CC-BY-SA legal question. Whether the `.embf` binary
+  font format counts as a "derived work" under CC-BY-SA remains an open
+  legal question flagged for a lawyer — but it now only gates *restoring*
+  those 13 pulled fonts, not launching.

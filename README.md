@@ -2,17 +2,19 @@
 
 EMB Bot is a local, browser-based auto-digitizer and lettering tool. It turns a
 logo/image or typed text into machine-embroidery stitch files, with a live
-stitch preview, right in your browser — no install, no server, no account.
+stitch preview — no account, no subscription, everything running on your own
+machine.
 
-It runs as a single HTML page. There is no backend: image processing, color
-flattening, contour tracing, stitch generation, and file encoding all happen
-client-side in JavaScript.
+The product is **EMB Bot Studio** (the `app/` folder): a guided Svelte app
+(garment → content → review → download). Stitch math and file encoding are
+hand-written JavaScript (`src/`); a Python auto-digitizing engine
+(`digitizer/`) runs behind an optional localhost service for the image
+auto-digitize path — see `digitizer/README.md`.
 
 ## Quick start
 
-**EMB Bot Studio** (the `app/` folder) is the primary product — a guided
-Svelte app with a live stitch preview, multi-element designs, saved projects,
-and a **69-font pre-digitized satin library** loaded on demand. Fonts are
+The Studio has a live stitch preview, multi-element designs, saved projects,
+and a **55-font pre-digitized satin library** loaded on demand. Fonts are
 picked in a searchable browser (search box, Sans/Serif/Script/Display/Small
 filters, per-font recommended size ranges) whose grid uses pre-rendered
 preview images — browsing never downloads font data; only picking a font
@@ -25,21 +27,10 @@ npm install   # first time only
 npm run dev   # then open http://localhost:5173
 ```
 
-The original single-page tool still works for direct/manual use:
-
-- **`EMB-Bot.html`** — loads its modules from the `src/` folder next to it,
-  so keep the folder structure intact. Still uses the older eager font
-  registry (`src/fonts/satin-fonts.js`) — audited 2026-08-04: the 7
-  license-pulled fonts were removed, 14 entries remain (all OFL-1.1/CC0,
-  all also in the shipping library).
-- **`EMB-Bot-standalone.html`** — deleted 2026-08-04 (Kent's call). Use the
-  Studio.
-
-Either way **you need an internet connection**, even though everything runs
-locally: the page loads two libraries and (in Text mode) font data from a
-CDN at runtime — opentype.js 1.3.4 (font outlines), jsPDF 2.x (PDF worksheet),
-and ~137 Google Fonts fetched on demand. A banner warns you if they fail to
-load, so the tool never silently produces broken output.
+The Studio has **no CDN runtime dependencies**: jsPDF is bundled from npm,
+Inter comes via fontsource, and the satin fonts ship locally as `.embf`
+binaries. Nothing is fetched from Google Fonts or any other third-party host
+at runtime.
 
 ## Image mode — the flatten-first workflow
 
@@ -67,9 +58,10 @@ colors. EMB Bot makes that step **visible and controllable**:
 
 ## Text mode
 
-Switch to **Text**, type your text, pick a font from the ~137-font catalog, set
-garment/fabric/format/density, and **Generate**. Thin strokes are stitched as
-satin columns; broader letter bodies as fills.
+Switch to **Text**, type your text, pick a font from the 55-font pre-digitized
+satin library, set garment/fabric/format/density, and **Generate**. Library
+fonts sew as hand-authored satin columns (adapted from the Ink/Stitch open
+embroidery font collection), not auto-traced outlines.
 
 ## What the stitch engine does
 
@@ -127,9 +119,11 @@ replacement for a professional digitizer's judgment on complex or critical work.
 - **Size matters.** Small stacked text (below ~4 mm cap height, common when a
   busy logo is shrunk to a hat) falls below what thread can hold and breaks up.
   Size the text up relative to the artwork, or drop the smallest lines.
-- **Lettering is fill/satin by shape, not per-stroke satin.** Whole letters
-  fill (hole-aware); only genuinely thin strokes satin. A professional would
-  hand-build satin per stroke on fine text.
+- **Lettering inside images is fill/satin by shape, not per-stroke satin.**
+  Whole letters fill (hole-aware); only genuinely thin strokes satin. A
+  professional would hand-build satin per stroke on fine text. (Typed text
+  from the font library doesn't have this limit — those letters *are*
+  hand-built satin columns.)
 - **PES is best-effort; fabric presets are starting points.** Verify both on
   your machine.
 - **For commercial/high-stakes work, check the file in real digitizing
@@ -137,34 +131,36 @@ replacement for a professional digitizer's judgment on complex or critical work.
 
 ## Files & architecture
 
-- **`EMB-Bot.html`** — app shell (markup, styles, CDN `<script>` tags) plus the
-  `src/*.js` modules loaded in dependency order, `app.js` last.
-- **`src/*.js`** — modules, each usable as a browser `<script>` (attaching to a
-  global `EMB`) and as a CommonJS module (Node tests):
+- **`app/`** — EMB Bot Studio, the Svelte 5 + Vite product: `App.svelte` +
+  `ui/` (wizard steps/components) + `lib/` (non-DOM logic, each module
+  paired with a spec file). Loads the engine via `<script>` tags
+  (`app/index.html`) as the global `EMB`.
+- **`src/*.js`** — engine modules, each usable as a browser `<script>`
+  (attaching to a global `EMB`) and as a CommonJS module (Node tests):
   units, garments, **fabrics**, fill/satin stitch engines, geometry
   (hole-aware `traceRegions`), quantize, **flatten** (mode filter / small-region
   absorb / manual merge), **digitize** (the quality orchestrator: satin/fill
   classification, per-shape angle, underlay, pull comp, trims, sequencing),
-  DST/EXP/PES encoders, SVG export, stitch-model, font catalog, canvas renderer,
-  PDF worksheet, and `app.js`.
-- **`EMB-Bot-standalone.html`** — deleted 2026-08-04 (Kent's call). Do not
-  regenerate it; `tools/bundle.mjs` is dead code, left in place but unused.
-
+  DST/EXP/PES encoders, SVG export, stitch-model, canvas renderer, and the
+  PDF worksheet.
+- **`digitizer/`** — Python auto-digitizing engine (`digitizer_core/`) +
+  optional FastAPI service (`digitizer_service/`, loopback-only) for the
+  image auto-digitize path. Own venv, own tests, own README.
 - **`src/fonts/`** — the satin font library. `manifest.json` (per-font
   metadata: tier, group, license id, glyph count) + `bin/*.embf`, a compact
   binary format (quantize ×4 → per-ring delta → Int16; decoder in
-  `src/fontbin.js`). The Studio fetches the manifest at boot and each font's
+  `src/fontbin.js`) + per-font `.LICENSE.txt` sidecars, which ship with the
+  built app. The Studio fetches the manifest at boot and each font's
   binary on first use. Rebuild after tier/source changes:
   `node tools/build-embf.mjs` (needs `scratch_ink/` — see COOKBOOK).
   Only fonts classified **verified** ship; see the tier rules in COOKBOOK.md.
-- **`tools/`** — `bundle.mjs` (standalone builder), `check-fonts.mjs` (font-URL
-  health check), `png.mjs` + `render-dst.mjs` + `run-flatten.mjs` /
-  `run-digitize.mjs` (Node-side decode/render/pipeline harness for testing
-  digitizing on real images without a browser).
+- **`tools/`** — see the directory itself: 28 build/QC/harness scripts (plus
+  `palettes/` thread-brand charts and `font-categories.json`). Highlights:
+  `build-embf.mjs` (font library rebuild), `qc-font.mjs` (font tier gate),
+  `png.mjs` + `render-dst.mjs` + `run-flatten.mjs` / `run-digitize.mjs`
+  (Node-side decode/render/pipeline harness for testing digitizing on real
+  images without a browser).
 - **`docs/superpowers/specs/`** — design specs, including the pro-stitch roadmap
   (trims/sequencing ✓, fabric presets ✓, angles ✓, sequencing polish).
-- **`test/*.test.js`** — unit tests for every non-DOM module. Run:
-
-  ```
-  node --test
-  ```
+- **`test/*.test.js`** — unit tests for every non-DOM engine module
+  (`node --test`); the Studio's own suite runs with `cd app && npm test`.

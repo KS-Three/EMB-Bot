@@ -7,15 +7,17 @@ store, not this repo) — this file is the repo-local, self-contained version.
 ## What this is
 
 Browser-based embroidery auto-digitizer + guided lettering studio, plus a
-Python digitizing engine that runs as a localhost service. Three parts:
+Python digitizing engine that runs as a localhost service. Two parts:
 
-- **`EMB-Bot.html`** — original single-page tool (image-to-stitch +
-  text-to-stitch, manual controls).
 - **`app/`** — "EMB Bot Studio", a Svelte 5 + Vite guided wizard (garment →
-  content → review → download) built on top of the same engine via
-  `window.EMB` (loaded through `<script>` tags, engine untouched).
+  content → review → download) built on top of the JS stitch engine via
+  `window.EMB` (the `src/*.js` modules, copied into `app/public/engine/` by
+  `app/scripts/copy-engine.mjs`).
 - **`digitizer/`** — Python 3.14 auto-digitizing pipeline (OpenCV, scikit-image,
   shapely) + an optional FastAPI service. See the digitizer section below.
+
+(The original single-page `EMB-Bot.html` was deleted 2026-08-08, commit
+cd9dfcb — the Studio is the only front end now.)
 
 **This claim used to read "zero server, zero Python/OpenCV — all stitch math is
 hand-written JS."** That was true until 2026-07-29 and is now wrong in every
@@ -160,10 +162,13 @@ hand-rolling it in JS.
   or set `PYTHONPATH=.`. 567 tests as of 2026-08-04 — see "Running things"
   below for the current pass/fail split, this count only grows.
 - **Pipeline**: image → **classify** (`stage0_classify.py`) → prep
-  (background mask, `stage1_prep.py`) → segment, one of two stages depending
-  on class: `stage2_quantize.py` (global k-means + CIEDE2000 thread snapping,
-  used for `flat`/`gradient`) or `stage2_photo_segment.py` (SLIC superpixels
-  + region-adjacency-graph merge, used for `photo_subject`/`photo_scene`) →
+  (background mask, `stage1_prep.py`) → segment, one of three stages
+  depending on class/config: `stage2_quantize.py` (global k-means +
+  CIEDE2000 thread snapping, used for `flat`/`gradient`),
+  `stage2_photo_segment.py` (SLIC superpixels + region-adjacency-graph
+  merge, used for `photo_subject`/`photo_scene`), or
+  `stage2_sam2_segment.py` (SAM2 mask-based segmentation for
+  photo-classified designs, opt-in via `cfg.photo_segment_sam2`) →
   small-region absorb + enclosed-hole handling (`stage3_segment.py`) →
   contour vectorize (`stage4_vectorize.py`) → stitch planning: overlap
   resolution, fill/satin/border/contour/appliqué/**blend** tiers, sequencing
@@ -320,10 +325,12 @@ Session handoff with the full context:
    `stage6_satin._rasterize`'s rasterization number-for-number rather than
    reimplementing it, both on `origin/main` now. What's left of this slice is
    M0's corpus leg (above) and M2/M3 (below) — neither started. Rationale:
-   `stage7_sequence.py:97` makes the satin/fill call
-   from `2·area/perimeter` (a statistic the source patent warns against —
-   it satins a 20mm disc under a 5mm cap once the edge is serrated) *before*
-   the DT even exists in `stage6_satin.py`. Steps 5+ all lean harder on that
+   the satin/fill call is made from `2·area/perimeter`
+   (`stage6_satin.py`'s `ribbon_width_mm`, duplicated in `shapefield.py` —
+   this bullet's old `stage7_sequence.py:97` pointer is stale, the logic
+   lives there now), a statistic the source patent warns against — it
+   satins a 20mm disc under a 5mm cap once the edge is serrated — decided
+   without the DT ever being consulted. Steps 5+ all lean harder on that
    classifier than anything shipped so far. Full
    architecture: `docs/dt-first-architecture-2026-08-01.md` §2 and
    `docs/masters-teardown-2026-08-01.md`.
@@ -403,10 +410,11 @@ don't push for it.
 
 ## Running things
 
-All three counts below were re-run and verified 2026-08-04 (latest pass, on
-`origin/main` at `354f075` — CI's own green run on this exact commit
-confirms these numbers outside this environment too, not just locally) —
-if one comes back lower, something regressed; don't assume the doc drifted.
+Engine and Studio counts below were re-verified 2026-08-11 (project-audit
+pass); the digitizer count was last verified 2026-08-04 (on `origin/main`
+at `354f075` — CI's own green run on that exact commit confirmed it outside
+this environment too, not just locally). If one comes back lower than
+stated, something regressed; don't assume the doc drifted.
 
 **CI now exists.** `.github/workflows/python-package-conda.yml` (PR #37
 rewrote Kent's initial stock conda template to run the three commands
@@ -422,7 +430,8 @@ before any step (not even checkout) runs. This is NOT a code problem —
 confirmed repeatedly by diffing against the same workflow succeeding
 normally (18s-15min per job) on a parent commit moments earlier, and by
 every affected PR passing its full local test suite. Best diagnosis (not
-confirmed, since this session can't see GitHub's billing UI): a GitHub
+confirmed — the 2026-08-09 session that wrote this couldn't see GitHub's
+billing UI): a GitHub
 Actions minutes/spending-limit or concurrency-quota issue on the account —
 check **Settings → Billing and plans → Plans and usage → Actions** on
 whichever account/org owns this repo. This repo has no required-status-
@@ -433,9 +442,9 @@ workaround given the pattern, not a reason to stop checking whether it's
 actually cleared before assuming so.
 
 ```bash
-node --test                 # engine tests (root) — 267/267
+node --test                 # engine tests (root) — 283 tests, 281/283 as of 2026-08-11 (2 embf-guard failures, fix in progress)
 cd app && npm install && npm run dev     # Studio dev server
-cd app && npm test          # Studio tests (vitest) — 348/348 (25 files)
+cd app && npm test          # Studio tests (vitest) — 615/615 (33 files, 2026-08-11)
 node tools/build-embf.mjs   # rebuild the binary font library (see section above)
 
 cd digitizer && .venv/Scripts/python -m pytest -q   # Python digitizer tests -- 654/658 (~7-11 min)
@@ -459,13 +468,13 @@ this suite against a fresh `origin/main` checkout after the merge. If this
 specific failure resurfaces, that's a real regression, not this note being
 stale.
 
-`EMB-Bot-standalone.html` is **DELETED 2026-08-04, Kent's call** — do not
-regenerate it. `tools/bundle.mjs` (its rebuild step) is now dead/orphaned
-code — left in place, not wired to anything, not to be run.
-
-Opening `EMB-Bot.html` needs internet (CDN: opentype.js@1.3.4 — **pinned,
-v2 hangs** — jsPDF, ~137 Google Fonts). `file://` renders static-only; serve
-over http to actually test Generate.
+`EMB-Bot-standalone.html` is **DELETED 2026-08-04, Kent's call**, and
+`EMB-Bot.html` itself (plus `src/app.js`) followed on **2026-08-08**
+(commit `cd9dfcb`, "remove legacy standalone tool") — do not regenerate
+either. `tools/bundle.mjs` (the standalone's rebuild step) was doubly dead
+— its input and its output both deleted — and is itself **deleted
+2026-08-11**. The Studio has no CDN runtime dependencies (jsPDF is
+npm-bundled, Inter via fontsource, fonts ship locally as `.embf`).
 
 ## The one rule that explains most "quality" bug reports
 
@@ -489,8 +498,11 @@ and controllable to the user.
     lever for lettering (rails+rungs → clean zigzag, not auto-skeletonized).
   - `fabrics.js` — 7 fabric presets driving pull-comp/underlay/density/trim.
   - `flatten.js` — medianCut → modeFilter → absorbSmallRegions pipeline.
-  - `fonts/` — pre-digitized satin font library (14 fonts, JSON + license
-    files, parsed offline from Ink/Stitch's open-source font set).
+  - `fonts/` — pre-digitized satin font library: `manifest.json` (55
+    shipping fonts) + `bin/*.embf` binaries + per-font JSON sources and
+    `.LICENSE.txt` sidecars, parsed offline from Ink/Stitch's open-source
+    font set. (The old "14 fonts" count here was the legacy eager registry
+    `src/fonts/satin-fonts.js`, which is out of the shipping pipeline.)
   - `dst.js` / `exp.js` / `pes.js` — stitch file encoders. DST is
     byte-verified/primary; PES is best-effort.
 - **`app/src/`** — Svelte 5 Studio. `App.svelte` + `ui/` (steps/components) +
@@ -502,11 +514,13 @@ and controllable to the user.
 - **`digitizer/`** — Python auto-digitizing engine + optional FastAPI
   service (`digitizer_core/` importable lib, `digitizer_service/` wrapper).
   Own venv, own test suite, own docs. See "The Python digitizer" above.
-- **`tools/`** — `bundle.mjs` (standalone builder — **run after any src/
-  change**), `build-font.mjs` (Ink/Stitch font → JSON font library),
+- **`tools/`** — 28 build/QC/harness scripts; notable:
+  `build-font.mjs` (Ink/Stitch font → JSON font library),
   `run-digitize.mjs` / `run-flatten.mjs` / `render-dst.mjs` (Node-side
   pipeline runners so you can test digitizing on a real image without a
   browser — useful since the browser tool here can't do file uploads).
+  (`bundle.mjs`, the deleted standalone page's builder, is itself
+  deleted — see "Running things".)
 - **`docs/superpowers/specs/` + `/plans/`** — every feature slice has a spec
   + plan written before building. Read the relevant one before extending that
   area; they contain the "why," not just the "what."
@@ -534,9 +548,6 @@ here since it explains *why*, not *what's currently true*.
 - **Additive, back-compat engine changes.** New `opts.*` fields default to
   exactly today's output when absent — no migration step, no behavior change
   for existing callers. Keep doing this.
-- **Rebuild the standalone bundle** (`node tools/bundle.mjs`) any time
-  `src/` or `EMB-Bot.html` changes — it's a committed 8MB+ artifact, not
-  generated at load time.
 - **Verify claims, don't trust prior summaries at face value** — this very
   cookbook exists because a memory note said work was "merged to main" when
   it was actually sitting unmerged in a worktree. `git log` is ground truth.

@@ -166,8 +166,7 @@ no area's Status/Confidence moves. See Cross-cutting issues below.
 files, not just the foundation two), three more fill techniques added
 (wave, chevron, brick, alongside crosshatch). See areas 1 and 3 below.
 
-**Previously (2026-08-09):** manual-digitizing Trace feature shipped, real
-**Last updated:** 2026-08-09 — cross-hatch fill added as a new opt-in fill
+**Previously (2026-08-09):** cross-hatch fill added as a new opt-in fill
 technique (Python digitizer pipeline), the first of a planned small family
 of new named fill patterns. See area 1 below.
 
@@ -210,7 +209,7 @@ a testing gap on already-shipped, already-correct behavior, not new
 capability or a found defect).
 
 **(2) `feat/svg-import-shapes` formally evaluated and NOT resumed** —
-standing item from before this session, re-examined rather than left to
+standing item from before that 2026-08-07 session, re-examined rather than left to
 keep sitting untouched indefinitely. Checked directly, not assumed: the
 branch is 277 commits behind `main`; of its own 10-task plan
 (`docs/superpowers/plans/2026-07-27-svg-import-and-shapes.md`) only Task 1
@@ -345,7 +344,7 @@ not a quality or trust finding).
 Prior update below, still 2026-08-07:
 
 **Last updated:** 2026-08-07 — documentation-only pass, no code changed:
-recorded this session's competitive research against Ember Design
+recorded that session's (2026-08-07) competitive research against Ember Design
 (`emberdesign.net`) as a new cross-cutting backlog item (see "Ember Design
 competitive research" below) rather than folding it into any capability
 area's status, since none of it changes what's built or how much it's
@@ -602,7 +601,8 @@ this rating, and do not merge the branch, until the `summit_badge.png`
 regression above is actually resolved with real numbers behind the fix —
 not just re-flagged as acceptable.
 
-Prior update below, still 2026-08-07 — `regularize_text_clusters` gains a third,
+Prior update below, still 2026-08-07:
+
 **Last updated:** 2026-08-07 — Kent's own real-world upload of the
 Instagram icon (gradient rounded-square background, white camera-glyph
 linework) still showed "white space, not clean crisp edges" even after the
@@ -946,7 +946,8 @@ explicitly rather than silently left for CI to discover. Full digitizer
 suite NOT re-run locally per this task's own instruction (proven unreliable
 in this environment); CI runs it on the PR.
 
-Prior update below, still 2026-08-06: satin entry/exit point selection now follows
+Prior update below, still 2026-08-07:
+
 **Last updated:** 2026-08-07 — `digitizer_core/textcluster.py`'s text-cluster
 detector gains three classical-CV strengthening passes, all measured against
 the real `enthusiast_logo.png` benchmark rather than assumed (area 1's
@@ -977,7 +978,7 @@ additions), 222 total across the touched suites passing.
 
 Prior update below, still 2026-08-06 — satin entry/exit point selection now follows
 corpus laws 27-29 instead of pure nearest-point, closing the highest-value
-item a `digitizing-quality-auditor` health check surfaced this session (Kent
+item a `digitizing-quality-auditor` health check surfaced in the 2026-08-06 session (Kent
 picked it explicitly over two alternatives it also proposed: border
 seam-sharing, which needs a design sign-off on which shape wins a shared
 edge before it can be built, and appliqué cover pull-comp, both still open).
@@ -1039,18 +1040,8 @@ forward the doc's last-verified Studio count rather than asserting an
 unverified new one. Done directly on the session's own working branch, not
 an isolated worktree — a solo, contained fix.
 
-Prior update below, still 2026-08-06: the "jersey_tee fill underlay" follow-up this
-doc flagged as a low-priority candidate (area 1, below) is investigated and
-**closed as declined, not a code change**: a direct measurement (synthetic
-fill polygons at realistic sizes — 60x40mm, 100x70mm, 20x15mm — run through
-`digitizer_core.stage6_fill._underlay_paths`, computing the real max distance
-from any interior point to the nearest underlay stitch) shows `center_run`
-does NOT close the 13mm interior gap the prior audit measured — it's
-statistically identical to `edge_run` (60x40mm: 19.04mm vs 19.02mm; 100x70mm:
-34.02mm vs 34.01mm; 20x15mm: 6.58mm vs 6.11mm, `center_run` actually
-*slightly worse* on the small shape). A single line through the shape's
-principal axis is exactly as far from off-axis interior points as a
-perimeter walk is; only a full grid/lattice pass (`edge_lattice`/
+Prior update below, still 2026-08-06:
+
 **Last updated:** 2026-08-06 — the satin/fill classifier's DT-tightening fix
 (`satin-classifier-organic-shapes`, area 1 below), previously scoped to
 `gradient`/`photo_subject`/`photo_scene` only on the premise that flat art's
@@ -1400,7 +1391,9 @@ last row this doc was still tracking as open — rows 0–15 are now all built.*
 `EMB-Bot-standalone.html` (6,339 lines) and updated every live doc that
 pointed at it (COOKBOOK.md, README.md, this file, `.claude/skills/
 run-emb-bot/SKILL.md`, `.claude/agents/emb-bot-reviewer.md`); `tools/
-bundle.mjs` is fully dead code now, left in place but not wired to anything.
+bundle.mjs` became fully dead code then, left in place but not wired to
+anything (and was deleted outright 2026-08-11, in the project-audit
+doc-rot pass).
 Re-checked this pass: no live doc still references the file — the only
 remaining mentions are in dated planning/spec/audit docs
 (`docs/superpowers/plans/2026-07-22-emb-bot.md`,
@@ -1937,7 +1930,7 @@ Under that filter, from the three passes:
   - A color-block sequencer UI view (Ember's "Sequencer: Colors" panel —
     collapses shapes into color blocks with thread name/brand/shape count/
     stitch-index range per block) — addresses a gap already found
-    independently this session: cross-color sequencing today has zero
+    independently in the 2026-08-07 research pass: cross-color sequencing today has zero
     geometric-adjacency signal (see area 1's sequencing-research notes).
 - **One concrete, low-risk, testable idea, not yet a backlog promotion
   pending a real test:** Ember's raster-input simplification tolerance
@@ -1978,7 +1971,7 @@ keeping `MASTER_SCOPE.md`/`COOKBOOK.md` matched to shipped reality.
 
 ### `simplify_tol_mm` design-size scaling — measured 2026-08-07, no change justified
 
-One concrete backlog item this session's Ember Design competitive research
+One concrete backlog item the 2026-08-07 Ember Design competitive research
 pass adopted (that research itself is `docs/emberdesign-competitive-
 research-2026-08-07.md`, open as PR #89 at the time of this entry, not yet
 merged — see that PR/doc for the full competitive writeup; this entry is
@@ -2060,19 +2053,20 @@ format library, `pystitch`, is MIT-licensed and usable as a real runtime
 dependency, not just a concept source (see below and the cross-cutting DST
 section above).
 
-**Concrete, low-risk open action item: evaluate `pystitch` as a
-`pyembroidery` replacement.** Ink/Stitch depends on `pystitch`
+**`pystitch` as a `pyembroidery` replacement — evaluation complete,
+adoption in progress 2026-08-11.** Ink/Stitch depends on `pystitch`
 (github.com/inkstitch/pystitch), not upstream pyembroidery — its own
 MIT-licensed fork, hosted under the `inkstitch` org, claiming broader format
 read coverage (46 formats vs. pyembroidery's smaller list) and active
 maintenance. `digitizer/`'s current format read/write
 (`digitizer_service/formats.py` and equivalent call sites) depends on
-upstream `pyembroidery` today. **Not yet evaluated for API
-compatibility — that's the concrete next step, not done:** diff
-`pystitch`'s public API against EMB-Bot's actual `pyembroidery` call sites
-for a compatibility/effort estimate (research doc §6, §10 Tier 1 item 1).
+upstream `pyembroidery` today. The API-compatibility diff this entry used
+to queue as "not done" is DONE: `docs/pystitch-evaluation-2026-08-11.md`
+checked `pystitch`'s public API against EMB-Bot's actual `pyembroidery`
+call sites and its verdict is **Adopt**; the swap itself is in progress in
+a parallel lane as of 2026-08-11.
 
-**A gap this session confirmed directly against EMB-Bot's own code, going
+**A gap the 2026-08-10 pass confirmed directly against EMB-Bot's own code, going
 beyond what the research doc itself could verify.** The research doc could
 only flag satin underlay as an open verification item (§2: Ink/Stitch ships
 three variants — center-walk, contour, zigzag — but could not confirm from
@@ -2149,9 +2143,12 @@ that's how feedback on digitizing quality actually needs to land.
 
 **Status:** In progress. The JS engine is complete but frozen — COOKBOOK.md
 notes it was retired in favor of "feed it clean flat art," not because it's
-broken. The Python pipeline is the active target: `digitizer/README.md`
-states "build steps 1, 3, 4 and 8 of 11" — stitch processor / preflight
-scoring / review-UI polish still to come. SAM2 segmentation (an optional
+broken. The Python pipeline is the active target: stages 1–7, fill + satin,
+the service, preflight scoring (`digitizer_core/preflight.py` — the same
+scorer the corpus scorecard and this doc's fix-grading program run on), and
+the review UI are all built (this entry used to quote a stale
+`digitizer/README.md` line calling preflight "still to come"; that README
+line has itself been corrected). SAM2 segmentation (an optional
 alternative region former for photo-classified designs) is built, merged,
 and now reachable from Studio via the `embstudio:sam2` dev seam, still
 gated behind `cfg.photo_segment_sam2` (default `False`).
@@ -2467,7 +2464,7 @@ catch).
 228 tests across the first seven files alone, no new failures — confirming
 the photo-pipeline's existing streamline behavior and every other tier are
 untouched byte-for-byte. Studio `app` vitest suite: 413/413 real tests
-green (2 suite-load failures traced to this session's own ad-hoc
+green (2 suite-load failures traced to that 2026-08-07 session's own ad-hoc
 node_modules symlink, not a code issue — independently confirmed passing
 23/23 against a real, non-symlinked `node_modules`).
 
@@ -2670,11 +2667,12 @@ seam, is ALSO now closed — see this file's newest "Last updated" entry at
 the top, `palette-subject-background-wiring` commit `7f82511`).
 
 **Confidence: Low** beyond flat spot-color art. Flat-logo digitizing (both
-implementations) is Medium — **267/267** JS tests and **688/694** Python
-tests pass (fresh run this pass at HEAD `fc40d53`; see the "Last updated"
-note above — the 3 failures are the same long-standing container-environment
-goldens this doc has cited every pass since 2026-08-03, not new regressions;
-the 3 skips are pre-existing, not new), and the geometry is internally
+implementations) is Medium — JS: 283 tests, **281/283** at the 2026-08-11
+audit (2 embf-guard failures, fix in progress); Python: **688/694** at HEAD
+`fc40d53` (a 2026-08-04 run — the 3 failures are the same long-standing
+container-environment goldens this doc has cited every pass since
+2026-08-03, not new regressions; the 3 skips are pre-existing, not new),
+and the geometry is internally
 consistent — independent geometry/behavior audits (fresh measurement from
 raw pipeline output, not the shipped tests' own assertions) have now run
 against the sketch tier and the face-priors wiring specifically, on top of
@@ -3824,8 +3822,8 @@ feature commits (the auto-digitize review flow, the Layers panel). README
 calls it "the primary product."
 
 **Confidence: Medium**, with the one gap that was holding it there now
-closed. **347/347** Studio (vitest) tests pass (fresh run this session, 25
-files), and nearly every `app/src/lib/*.js` logic module has a paired spec
+closed. **615/615** Studio (vitest) tests pass (33 files, verified
+2026-08-11), and nearly every `app/src/lib/*.js` logic module has a paired spec
 — that coverage is still mostly **logic-only**, not UI-behavior, but the
 live-browser e2e side grew real breadth this pass: `app/e2e/wizard-smoke
 .spec.js` (merged, PR #6) drives the full garment→content→review→download
@@ -3982,7 +3980,11 @@ here. Fabric-preset accuracy remains sew-out-gated, unchanged.
 DST, EXP, PES, SVG, and the PDF worksheet — both the browser JS encoders and
 the Python digitizer service's `/export` route (pyembroidery-based).
 
-**Status:** Implemented, all five formats, both paths.
+**Status:** Implemented, all five formats, both paths — with one
+reachability caveat: the service `/export` path is only reachable from the
+product for purely-digitized designs (`app/src/ui/DownloadStep.svelte`
+gates `preferService` on `isPurelyDigitized`); any design containing
+lettering or manual shapes downloads through the browser encoders.
 
 **Confidence — varies by format, not one score:**
 - **DST:** split by path. Browser DST is Medium as Studio's sewn-and-shipping
@@ -4098,12 +4100,12 @@ sew-out/read settles the axis question. For PES/EXP, the verdict memo's own
 closing line: a real Brother-machine load (or PE-Design open) of a
 harness-clean PES file, to confirm machine behavior matches the
 cross-validation, not just pyembroidery agreement. Separately, not
-sew-out-gated: whether `pystitch` (Ink/Stitch's MIT-licensed pyembroidery
-fork — see the cross-cutting "Ink/Stitch research" section above) is a
-viable replacement for this area's `pyembroidery` dependency is an open,
-not-yet-evaluated action item — the concrete next step is diffing its
-public API against `digitizer_service/formats.py` and equivalent call
-sites, not done this pass.
+sew-out-gated: `pystitch` (Ink/Stitch's MIT-licensed pyembroidery
+fork — see the cross-cutting "Ink/Stitch research" section above) as a
+replacement for this area's `pyembroidery` dependency is now evaluated —
+`docs/pystitch-evaluation-2026-08-11.md`, verdict **Adopt**, checked
+against `digitizer_service/formats.py` and the other call sites — with
+adoption in progress in a parallel lane as of 2026-08-11.
 
 ---
 
