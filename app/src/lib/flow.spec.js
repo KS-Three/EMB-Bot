@@ -55,6 +55,14 @@ test("create step gates a manual element on having at least one valid completed 
   expect(canAdvance("create", ready)).toBe(true);
 });
 
+test("create step: a preset shape element is ready from birth (kind + params always generate)", () => {
+  let p = defaultProject();
+  p = updateElement(p, "e1", { text: "" }); // the default text element is NOT ready
+  expect(canAdvance("create", p)).toBe(false);
+  p = addElement(p, "shape", 100); // e2
+  expect(canAdvance("create", p)).toBe(true);
+});
+
 test("create step gates design and digitized elements on their baked content, not _hasImage", () => {
   let p = defaultProject();
   p = updateElement(p, "e1", { text: "" });

@@ -6,7 +6,7 @@ import {
   PROJECT_FILE_FORMAT,
   PROJECT_FILE_VERSION,
 } from "./projectFile.js";
-import { defaultProject, migrateProject, updateElement } from "./project.js";
+import { defaultProject, migrateProject, updateElement, addElement } from "./project.js";
 
 // --- round trip ---------------------------------------------------------
 
@@ -24,6 +24,26 @@ test("buildProjectFile -> parseProjectFile round-trips a project and its name lo
   // from this project (parse runs migrateProject, which is idempotent on a
   // current-version project).
   expect(parsed.project).toEqual(migrateProject(project));
+});
+
+test("a preset shape element survives the file round-trip with its kind/params intact", () => {
+  let project = addElement(defaultProject(), "shape", 100);
+  const id = project.selectedId;
+  project = updateElement(project, id, {
+    kind: "star",
+    params: { points: 7, innerRatio: 0.35 },
+    sizeMm: 42,
+    colorRgb: [200, 30, 30],
+  });
+
+  const parsed = parseProjectFile(buildProjectFile(project, "Star patch"));
+  expect(parsed).not.toBeNull();
+  const el = parsed.project.elements.find((e) => e.id === id);
+  expect(el.type).toBe("shape");
+  expect(el.kind).toBe("star");
+  expect(el.params).toEqual({ points: 7, innerRatio: 0.35 });
+  expect(el.sizeMm).toBe(42);
+  expect(el.colorRgb).toEqual([200, 30, 30]);
 });
 
 test("the envelope carries format/version stamps", () => {

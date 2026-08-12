@@ -179,6 +179,33 @@ export function defaultManualElement(id) {
   };
 }
 
+// A preset basic-shape element (launch-checklist item 4): one parametric
+// shape — circle, rectangle, heart, or star — that digitizes through the
+// SAME shapesToRegions -> buildQualityDesign lane manual draw uses. The
+// element persists only the recipe (`kind` + `params`); the point ring is
+// regenerated from it on every generate (lib/shapePresets.js), so there's no
+// baked geometry to go stale when a param changes.
+//
+// `params` is the per-kind SHAPE parameter bag (rect heightMm/cornerRadiusMm,
+// star points/innerRatio — see shapePresets.defaultShapeParams); size is NOT
+// in it: sizeMm below is the shape's width in mm, the same field SizePanel
+// and the canvas resize handles already edit for every element type. Unlike
+// manual mode there is no stitchType — satin-vs-fill is deliberately left to
+// the engine's classifier (generation passes stitchType "auto").
+export function defaultShapeElement(id) {
+  return {
+    id,
+    type: "shape",
+    kind: "circle",
+    params: {},
+    colorRgb: [20, 20, 20],
+    underlay: true,
+    sizeMm: 50,
+    offsetXMm: 0,
+    offsetYMm: 0,
+  };
+}
+
 export function defaultProject() {
   return {
     version: 2,
@@ -228,6 +255,7 @@ export function addElement(project, type, hoopWmm) {
     type === "design" ? defaultDesignElement :
     type === "digitized" ? defaultDigitizedElement :
     type === "manual" ? defaultManualElement :
+    type === "shape" ? defaultShapeElement :
     defaultTextElement;
   let el = factory(id);
   const n = project.elements.length;
@@ -236,8 +264,10 @@ export function addElement(project, type, hoopWmm) {
     // hoop-clamped) — seeding a resize would silently rescale pre-digitized
     // stitches before the user ever sees them at true size. Digitized
     // elements too: their native size IS params.target_width_mm, the size
-    // the stitches were generated for.
-    el = type === "design" || type === "digitized"
+    // the stitches were generated for. Shape elements keep their factory
+    // sizeMm (an explicit, predictable "50 mm" beats a hoop-relative
+    // stagger for a shape the user is about to type an exact size into).
+    el = type === "design" || type === "digitized" || type === "shape"
       ? { ...el, offsetYMm: -10 * n }
       : { ...el, sizeMm: Math.round(0.4 * hoopWmm), offsetYMm: -10 * n };
   }
@@ -405,6 +435,16 @@ export function migrateProject(input) {
       if (!el || el.type !== "manual") return el;
       const d = defaultManualElement(el.id);
       return { ...d, ...el, shapes: Array.isArray(el.shapes) ? el.shapes : d.shapes };
+    });
+    // Shape elements: same additive treatment again — defaults filled in for
+    // fields that postdate the save, and `params` guaranteed to be a real
+    // object even if storage returned something corrupt (shapePresets'
+    // resolvedShapeParams fills per-kind defaults from a sparse bag, so an
+    // empty object is always safe here).
+    merged.elements = merged.elements.map((el) => {
+      if (!el || el.type !== "shape") return el;
+      const d = defaultShapeElement(el.id);
+      return { ...d, ...el, params: el.params && typeof el.params === "object" ? el.params : d.params };
     });
     // selectedIds invariants for pre-multi-select saves (and corrupt input):
     // members must be real element ids, the array must be non-empty, and

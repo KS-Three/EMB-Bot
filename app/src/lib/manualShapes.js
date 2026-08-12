@@ -421,12 +421,23 @@ export function shapesToRegions(shapes) {
     const outer = flattenShape(shape.points, shape.curves, true);
     if (!isValidShape(outer)) continue;
     const angleOverride = (typeof shape.angleDeg === "number" && isFinite(shape.angleDeg)) ? shape.angleDeg : null;
+    // "satin"/"fill" are the user's explicit manual choice, forced through
+    // digitize.js's tierOverride hook. The explicit value "auto" (preset
+    // shape elements, generate.js's "shape" branch) sends NO override,
+    // leaving satin-vs-fill to the engine's own width/branch-guard
+    // classifier — digitize.js treats an absent/null tierOverride as
+    // exactly that. Any OTHER unrecognized value still falls back to
+    // "fill", the long-pinned "never silently satin" conservative default
+    // for manual mode's garbage-input case.
+    const tierOverride =
+      shape.stitchType === "satin" ? "satin" :
+      shape.stitchType === "auto" ? null : "fill";
     regions.push({
       rgb: Array.isArray(shape.colorRgb) ? shape.colorRgb : [20, 20, 20],
       shapes: [{
         outer: outer.map((p) => ({ x: p.x, y: p.y })),
         holes: [],
-        tierOverride: shape.stitchType === "satin" ? "satin" : "fill",
+        tierOverride,
         angleOverride,
       }],
     });

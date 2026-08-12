@@ -22,6 +22,11 @@ export function canAdvance(step, project) {
       el.type === "design" ? !!el.dstBase64 :
       el.type === "digitized" ? !!el.result :
       el.type === "manual" ? (el.shapes || []).some((s) => isValidShape(s.points)) :
+      // A preset shape element is born sewable: its geometry is generated
+      // from kind + params, and shapePresets' generators clamp every input
+      // into a range that always yields a valid ring (pinned by
+      // shapePresets.spec.js), so there is no "empty" state to gate on.
+      el.type === "shape" ? true :
       el._hasImage === true
     );
   }

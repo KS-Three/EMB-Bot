@@ -1,6 +1,7 @@
 import { EMB } from "./emb.js";
 import { flatToRegions } from "./imageRegions.js";
 import { shapesToRegions } from "./manualShapes.js";
+import { shapePresetPoints, DEFAULT_SHAPE_SIZE_MM } from "./shapePresets.js";
 import { combineDesigns, bboxMmFromStitches } from "./combine.js";
 import { decodedFromDesignCached, digitizedBlockColors } from "./digitizer.js";
 
@@ -102,6 +103,33 @@ export function generateElement(element, garment, runtime) {
     // makes the manual satin/fill CHOICE stick instead of being
     // re-classified by width/branch-guard heuristics).
     const { regions, pxPerMm } = shapesToRegions(element.shapes);
+    if (!regions.length) return null;
+    const fabric = EMB.getFabric(EMB.fabricForGarment(garment.id));
+    return EMB.buildQualityDesign(regions, {
+      garment, fabric, pxPerMm, densityMm: 0.4,
+      underlay: element.underlay,
+      targetWidthMm: element.sizeMm || undefined,
+      offsetXMm: element.offsetXMm || 0,
+      offsetYMm: element.offsetYMm || 0,
+    });
+  }
+
+  if (element.type === "shape") {
+    // Preset basic shapes (circle/rect/heart/star): the generator emits a
+    // point ring in EXACTLY the model manual draw uses, so this branch is
+    // the manual branch with the ring computed instead of hand-drawn —
+    // same shapesToRegions, same buildQualityDesign, no parallel pipeline.
+    // stitchType "auto" means shapesToRegions sends no tierOverride:
+    // satin-vs-fill is the engine classifier's call here, unlike manual
+    // mode where that choice is explicitly the user's.
+    const points = shapePresetPoints(
+      element.kind,
+      element.params,
+      element.sizeMm || DEFAULT_SHAPE_SIZE_MM
+    );
+    const { regions, pxPerMm } = shapesToRegions([
+      { points, curves: {}, stitchType: "auto", colorRgb: element.colorRgb, angleDeg: null },
+    ]);
     if (!regions.length) return null;
     const fabric = EMB.getFabric(EMB.fabricForGarment(garment.id));
     return EMB.buildQualityDesign(regions, {
