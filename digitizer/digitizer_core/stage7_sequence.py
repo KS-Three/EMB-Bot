@@ -71,7 +71,7 @@ from .stage6_scanline import scanline_fill
 from .stage6_sketch import sketch_fill
 from .stage6_satin import is_satin_candidate, satin_shape
 from .stage6_streamline import streamline_fill
-from .stitches import StitchBlock, StitchRun, tie_run
+from .stitches import StitchBlock, StitchRun
 from .threads import chart_for
 from .warnings_codes import (BORDER_LIGHTENED, BORDER_SEAM_SHARED,
                              BORDER_SKIPPED_TOO_NARROW,
@@ -477,38 +477,11 @@ def _chain(runs: list[StitchRun], regions: list[PlannedRegion]
     return out, in_shape
 
 
-def _apply_ties(runs: list[StitchRun]) -> None:
-    """Lock the thread wherever it starts and wherever it gets cut.
-
-    Ties are folded into the run they protect rather than added as runs of
-    their own, so nothing downstream has to special-case a two-millimetre run
-    that is not really stitching.
-    """
-    if not runs:
-        return
-
-    def tie_in(run: StitchRun) -> None:
-        if len(run.points) < 2:
-            return
-        pts = tie_run(run.points[0], run.points[1]).points
-        run.points = pts[:-1] + run.points
-
-    def tie_off(run: StitchRun) -> None:
-        if len(run.points) < 2:
-            return
-        pts = tie_run(run.points[-1], run.points[-2]).points
-        run.points = run.points + pts[1:]
-
-    # The first run needs a tie because the thread starts there, and a trimmed
-    # run needs one because the thread starts there too. Ask both questions in
-    # one pass: the first run of a color is always both, and tying it twice
-    # doubles the lock into eight stitches of thread piled in one spot.
-    for i, run in enumerate(runs):
-        if i == 0 or run.trim:
-            tie_in(run)
-        if run.trim and i > 0:
-            tie_off(runs[i - 1])
-    tie_off(runs[-1])
+# Lock-stitch application for a finished block. Hoisted verbatim to
+# `stitches.apply_ties` so the appliqué fall-through (stage6_applique) can tie
+# its plain-stitching block by the same rule; the local name is kept because
+# every call site and comment in this module reads `_apply_ties`.
+_apply_ties = stitches.apply_ties
 
 
 # Hair-width: stage 5 makes two abutting shapes' visible edges the identical

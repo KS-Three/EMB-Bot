@@ -19,6 +19,7 @@ The tests are grouped by the defect each one catches:
 from __future__ import annotations
 
 import io
+import itertools
 import math
 
 import pystitch
@@ -1069,6 +1070,17 @@ def test_applique_pieces_sew_as_consecutive_same_thread_blocks():
     for s in steps:
         assert s["action"].strip(), s
 
+    # Thread-run contiguity over the whole plan — the assertion
+    # hardening-closeout-2026-08-02 §6 found missing ("No test asserts
+    # thread-run contiguity, so this is invisible to the 234"): every thread
+    # sews as ONE contiguous stretch of blocks. A fall-through implementation
+    # that hands a no-fabric piece back to the normal color loop fails this —
+    # the piece's thread is sewn among the appliqué blocks, abandoned, then
+    # picked up again at the end (5 contiguous same-thread runs become 6).
+    threads = [b.thread_number for b in plan.blocks]
+    thread_runs = [k for k, _g in itertools.groupby(threads)]
+    assert len(thread_runs) == len(set(threads)), thread_runs
+
     # And the stops survive into the file.
     from digitizer_core.stage6_applique import plan_steps as read_steps
     assert len(read_steps(plan)) == len(plan.blocks)
@@ -1103,14 +1115,16 @@ def test_pre_cut_costs_one_fewer_stop_per_piece():
 
     Counted per piece, not as `3 * pieces` across the design — which is what
     this test used to assert, and it is not the law. Two gates legitimately
-    shorten a trim-in-place piece to two blocks, and the benchmark logo trips
-    both: one region has a 14.02 mm hole (under the 15 mm scissors floor) so
-    §2.12 forces it pre-cut, and one is 1.0 mm² with a 1.07 mm inscribed
-    diameter, so its tackdown ring at -1.00 mm is annihilated by its own offset
-    and the step is refused. Neither is a lost stop — both are warned, and the
+    change a piece's shape, and the benchmark logo trips both: one region has
+    a 14.02 mm hole (under the 15 mm scissors floor) so §2.12 forces it
+    pre-cut, and two are too narrow for the cover to leave any fabric showing
+    (a 1.0 mm² dot and a 48 mm² thin letterform), so §2.12's fall-through
+    degrades each to ONE block of plain stitching — identical in both modes,
+    no stops, no fabric. Neither is a lost stop — both are warned, and the
     assertions below are that they are warned.
     """
     from digitizer_core.warnings_codes import (APPLIQUE_FORCED_PRE_CUT,
+                                               APPLIQUE_NO_FABRIC_VISIBLE,
                                                APPLIQUE_STEP_EMPTY)
     trim, _ = _applique_plan(applique_mode="trim_in_place")
     pre, _ = _applique_plan(applique_mode="pre_cut")
@@ -1127,11 +1141,26 @@ def test_pre_cut_costs_one_fewer_stop_per_piece():
     trim_codes = {w["code"] for w in trim.warnings}
 
     # Pre-cut is flat: PLACE, then everything else. One stop, one instruction.
+    # A piece the no-fabric gate degraded is flatter still: one block of
+    # plain stitching, and it must be warned, never silent.
+    fell = {}
     for piece, codes in pre_pieces.items():
+        if codes in (["SATIN"], ["RUN"]):
+            fell[piece] = codes
+            continue
         assert codes == ["PLACE", "TACK+COVER"], (piece, codes)
+    if fell:
+        assert APPLIQUE_NO_FABRIC_VISIBLE in {w["code"] for w in pre.warnings}
+    assert fell, "the benchmark's two no-fabric pieces should fall through"
 
     full = {}
     for piece, codes in trim_pieces.items():
+        if codes in (["SATIN"], ["RUN"]):
+            # §2.12's fall-through is mode-independent: no fabric can show
+            # either way, so the piece sews identically in both modes.
+            assert codes == pre_pieces[piece], (piece, codes)
+            assert APPLIQUE_NO_FABRIC_VISIBLE in trim_codes
+            continue
         assert codes[0] == "PLACE", (piece, codes)
         if codes == ["PLACE", "TACK+COVER"]:
             # §2.12 decided for us: no scissors fit, so the piece is pre-cut.
@@ -1147,7 +1176,7 @@ def test_pre_cut_costs_one_fewer_stop_per_piece():
 
     trim_steps = [b.step for b in trim.blocks if b.step]
     pre_steps = [b.step for b in pre.blocks if b.step]
-    assert len(pre_steps) == 2 * len(pre_pieces)
+    assert len(pre_steps) == 2 * (len(pre_pieces) - len(fell)) + len(fell)
     assert len(pre_steps) < len(trim_steps)
     # The economics, exactly: one extra stop per piece that really trims.
     assert len(trim_steps) - len(pre_steps) == len(full)
@@ -1187,9 +1216,12 @@ def test_applique_blocks_survive_export_with_their_stops(mode):
     The load-bearing half is the boundaries where BOTH sides are the same
     thread — the ones a writer that merges adjacent same-colour blocks deletes
     without a word, which §0.2 calls the number-one reported appliqué failure.
-    Measured on the benchmark logo: trim-in-place emits 16 blocks and 15 stops,
-    **11 of which are same-thread**; pre-cut emits 12 blocks, 11 stops, 7 of
-    them same-thread. All of them are in the file.
+    Measured on the benchmark logo: trim-in-place emits 13 blocks and 12 stops,
+    **8 of which are same-thread**; pre-cut emits 10 blocks, 9 stops, 5 of
+    them same-thread. All of them are in the file. (16/15/11 and 12/11/7
+    before §2.12's no-fabric fall-through landed: the two pieces that cannot
+    show fabric now sew as one plain-stitching block each instead of 2-3
+    appliqué blocks.)
 
     Read from the bytes, not from the plan: the file is split at its 0x0000C3
     records and the segments are counted and measured against the plan.
@@ -1205,10 +1237,15 @@ def test_applique_blocks_survive_export_with_their_stops(mode):
     assert all(seg for seg in segments), "a segment sews nothing"
     assert sum(s.count("STITCH") for s in segments) == plan.stats.stitch_count
 
-    # The stops that a same-colour merge would have swallowed.
+    # The stops that a same-colour merge would have swallowed. A piece the
+    # no-fabric gate degraded to plain stitching is ONE block with no internal
+    # stop, so the floor is the pieces that sew as two or more blocks.
     same_thread = [i for i in range(1, len(plan.blocks))
                    if plan.blocks[i].thread_number == plan.blocks[i - 1].thread_number]
-    assert len(same_thread) >= len({b.step["piece"] for b in plan.blocks if b.step})
+    pieces = [b.step["piece"] for b in plan.blocks if b.step]
+    multi_block = {pid for pid in pieces if pieces.count(pid) >= 2}
+    assert multi_block, "every piece fell through -- nothing pins the stops"
+    assert len(same_thread) >= len(multi_block)
 
     # And an independent reader agrees with the raw byte walk.
     pattern = pystitch.read_dst(io.BytesIO(data))
@@ -1232,11 +1269,17 @@ def test_a_jump_does_not_eat_the_penetration_it_lands_on():
 
     Both directions are pinned here, because the dedup is right when the needle
     never left: without the jump flag the coincident point IS the same needle
-    position and skipping it is correct.
+    position and skipping it is correct. "Never left" is scoped WITHIN one
+    block: a block boundary is a machine stop (`stitches.iter_machine_
+    commands`' own rule — sewing restarts fresh after it, whatever flags the
+    next run carries), so the needle-never-left control lives inside a single
+    block, and the two-block case keeps every penetration on BOTH sides of
+    the stop.
 
-    The counts are taken from the decoded file and from `plan.stats`
-    independently — `stats` re-derives the rule rather than reading the
-    exporter, so a fix applied to only one of them fails here.
+    The counts are taken from the decoded file and from `plan.stats` — since
+    the exporter and `stats` consume the same `iter_machine_commands` stream,
+    the file/worksheet agreement is by construction, and asserting both here
+    guards the stream itself.
     """
     square = _sq(0, 0)
 
@@ -1246,17 +1289,20 @@ def test_a_jump_does_not_eat_the_penetration_it_lands_on():
                                                jump=True, trim=True)]),
     ])
     stayed = StitchPlan(palette=[], blocks=[
-        StitchBlock(0, "1801", RED, [StitchRun(points=list(square), kind="run")]),
-        StitchBlock(0, "1801", RED, [StitchRun(points=list(square), kind="run")]),
+        StitchBlock(0, "1801", RED, [StitchRun(points=list(square), kind="run"),
+                                     StitchRun(points=list(square), kind="run")]),
     ])
-    # The two plans hold the identical points; only the needle-up flag differs.
-    assert (lifted.blocks[1].runs[0].points == stayed.blocks[1].runs[0].points
+    # The two plans hold the identical points; only the needle-up flag and
+    # the stop between the paths differ.
+    assert (lifted.blocks[1].runs[0].points == stayed.blocks[0].runs[1].points
             == list(square))
 
     assert [s.count("STITCH") for s in _dst_segments(export.export_dst(lifted))] \
         == [5, 5]
+    # One block, needle never lifted: the coincident re-entry point IS the
+    # same needle position, and exactly one stitch is deduped.
     assert [s.count("STITCH") for s in _dst_segments(export.export_dst(stayed))] \
-        == [5, 4]
+        == [9]
 
     # And the plan's own count agrees with the file in both cases, or the
     # worksheet and the machine tell the operator different numbers.
@@ -1414,3 +1460,155 @@ def test_applique_cover_config_reaches_the_cover_layer_end_to_end():
     # zigzag pitch crosses far fewer times than a 0.40 mm satin pitch over
     # the same boundaries.
     assert zigzag_stitches < satin_stitches / 3
+
+
+# =========================================================================
+# 10. §2.12's no-fabric fall-through — and the two integrity properties a
+#     prior implementation of it measurably broke
+#     (docs/hardening-closeout-2026-08-02.md §6 and §7)
+# =========================================================================
+#
+# `check_gates`' docstring has always promised that a piece failing the
+# min-feature-width gate "falls through to plain satin", quoting §2.12 —
+# and until this section's fixes, nothing performed it: the piece sewed a
+# placement run, a tackdown and a cover over fabric the cover then buried
+# completely, three operator actions spent on nothing visible. The
+# fall-through now happens in `applique_pass`, per piece and IN PLACE,
+# because the one previous implementation of it (a different lineage,
+# audited in the hardening-closeout dossier) got both integrity properties
+# wrong: handing the piece back to the normal color loop fragmented thread
+# contiguity (§6: "thread 1305 is sewn, abandoned for 2905, then picked up
+# again — 5 contiguous thread runs become 6"), and filtering it out of
+# `picked` before the overlap count silenced APPLIQUE_PIECES_OVERLAP on
+# exactly the fallen-over-live case (§7: "Before: 1. After: 0.").
+
+class _Region2:
+    def __init__(self, poly, thread_index, meta):
+        self.polygon = poly
+        self.thread_index = thread_index
+        self.meta = meta
+
+
+class _Planned2:
+    """The minimal `PlannedRegion` surface `applique_pass` reads."""
+
+    def __init__(self, poly, thread_index, sew_index, shape_id, layer=0):
+        self.region = _Region2(poly, thread_index, {"layer": layer})
+        self.polygon = poly
+        self.sew_index = sew_index
+        self.shape_id = shape_id
+
+
+def _run_applique_pass(planned, **cfg_kw):
+    from digitizer_core.stage6_applique import applique_pass
+    from digitizer_core.threads import chart_for
+    c = cfg(applique=True, **cfg_kw)
+    return applique_pass(planned, c, chart_for(c))
+
+
+# A 2.5 mm ribbon away from every other fixture used in this section: under
+# the 4.0 mm no-fabric floor, overlapping nothing.
+APART_RIBBON = Polygon([(-20, 30), (20, 30), (20, 32.5), (-20, 32.5)])
+
+
+def test_a_no_fabric_piece_falls_through_to_plain_satin():
+    """DEFECT 3 (the promise itself): a piece whose two inner cover rails
+    meet sews as ordinary flat stitching — §2.12: "falls through to plain
+    satin, and the engine must say so rather than silently emitting an
+    appliqué with no visible fabric". Before the fix this piece sewed the
+    full appliqué program (placement + tackdown + cover) around fabric that
+    could never show, and the machine stopped twice to ask the operator to
+    lay and trim it.
+    """
+    from digitizer_core.warnings_codes import APPLIQUE_NO_FABRIC_VISIBLE
+
+    blocks, warnings, remaining, _cursor = _run_applique_pass(
+        [_Planned2(THIN_RIBBON, 20, 0, "RB")])
+
+    # In the appliqué block sequence, not handed back to the normal loop.
+    assert remaining == []
+    assert len(blocks) == 1
+    step = blocks[0].step
+    assert step["code"] == "SATIN"
+
+    # Plain stitching, no appliqué layer of any kind.
+    kinds = {r.kind for r in blocks[0].runs}
+    assert not kinds & {PLACEMENT, CUTTING, TACKDOWN, COVER}, kinds
+    assert "satin" in kinds
+
+    # No stop asks the operator to lay fabric that can never show.
+    assert "lay" not in step["action"].lower()
+
+    # The stitching is a real plain satin on the ribbon itself, not the
+    # appliqué cover in disguise: the cover's pull-compensated outer rail
+    # reaches 1.7 mm OUTSIDE B, a plain satin never leaves the artwork by
+    # more than a hair.
+    slack = THIN_RIBBON.buffer(0.5)
+    assert all(slack.covers(Point(p)) for b in blocks
+               for r in b.runs for p in r.points)
+
+    # And the engine says so, in the honest tense.
+    hits = [w for w in warnings if w["code"] == APPLIQUE_NO_FABRIC_VISIBLE]
+    assert hits and hits[0]["count"] == 1
+    assert hits[0]["as_satin"] == 1 and hits[0]["as_run"] == 0
+    assert "fell through" in hits[0]["message"]
+
+
+def test_a_fallen_piece_keeps_its_threads_blocks_contiguous():
+    """DEFECT 1 (dossier §6): the fall-through must not fragment thread
+    order. The fallen piece's block sews at the piece's own slot in the
+    appliqué sequence — right beside its thread's other pieces — so the
+    contiguous same-thread run count through the plan equals the distinct
+    thread count. The known-bad implementation handed the piece back to the
+    normal color loop, which sews after EVERY appliqué block: its thread was
+    sewn, abandoned for the next thread, then picked up again at the end.
+    """
+    live_a = _Planned2(BIG_SQUARE, 10, 0, "A1", layer=0)
+    fallen_a = _Planned2(APART_RIBBON, 10, 0, "A2", layer=0)
+    live_b = _Planned2(Polygon([(60, 60), (100, 60), (100, 100), (60, 100)]),
+                       20, 1, "B1", layer=1)
+    # Input order deliberately interleaved; the pass sorts by layer/sew/id.
+    blocks, _warnings, remaining, _cursor = _run_applique_pass(
+        [live_a, live_b, fallen_a])
+
+    assert remaining == []
+
+    # One contiguous stretch per thread, fallen piece included.
+    seq = [b.thread_index for b in blocks]
+    assert [k for k, _g in itertools.groupby(seq)] == [10, 20], seq
+
+    # The fallen piece degraded to ONE plain-stitching block, and it sits
+    # immediately after its own thread's live piece, not appended after B.
+    a2 = [i for i, b in enumerate(blocks) if b.step["piece"] == "A2"]
+    a1 = [i for i, b in enumerate(blocks) if b.step["piece"] == "A1"]
+    assert len(a2) == 1 and blocks[a2[0]].step["code"] == "SATIN"
+    assert a2[0] == max(a1) + 1
+
+
+def test_overlap_warning_survives_a_fall_through_over_a_live_piece():
+    """DEFECT 2 (dossier §7): `APPLIQUE_PIECES_OVERLAP` must keep firing
+    when one of the two overlapping pieces falls through — the one case
+    where the warning matters MOST, because the fallen piece's plain satin
+    sews straight across the live piece's cover. The known-bad
+    implementation filtered fallen pieces out of `picked` before the
+    overlap count and went silent on exactly this case while the
+    two-live-pieces control still warned.
+    """
+    from digitizer_core.warnings_codes import APPLIQUE_PIECES_OVERLAP
+
+    live = _Planned2(BIG_SQUARE, 10, 0, "SQ", layer=0)
+    fallen = _Planned2(THIN_RIBBON, 20, 1, "RB", layer=1)  # crosses the square
+    blocks, warnings, _remaining, _cursor = _run_applique_pass([live, fallen])
+
+    # The ribbon really fell through (this is what makes the case THE case).
+    rb = [b for b in blocks if b.step["piece"] == "RB"]
+    assert len(rb) == 1 and rb[0].step["code"] == "SATIN"
+
+    hits = [w for w in warnings if w["code"] == APPLIQUE_PIECES_OVERLAP]
+    assert hits and hits[0]["count"] == 1, warnings
+
+    # Control: the same two pieces moved apart warn about nothing.
+    _b, w2, _r, _c = _run_applique_pass(
+        [_Planned2(BIG_SQUARE, 10, 0, "SQ", layer=0),
+         _Planned2(APART_RIBBON, 20, 1, "RB", layer=1)])
+    assert not [w for w in w2 if w["code"] == APPLIQUE_PIECES_OVERLAP]
