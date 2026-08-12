@@ -73,8 +73,42 @@ PR #122 (`.eladd-row` wrap). Open: PR #123 (Studio `detail_layer` control).
   region, and photo regions legitimately contain tonal variation — so the
   real options are narrower: tighten simplification so small features stop
   absorbing their surroundings, or let a high-spread region decompose into
-  shades the way `stage6_blend` already does for gradient class. **Do not
-  spend time on the re-snap code itself.**
+  shades — but NOT via `stage6_blend` as currently gated; see the next entry,
+  which measured that. **Do not spend time on the re-snap code itself.**
+- **The blend fill tier never fires on a real photo — measured 2026-08-12,
+  and this is the live lead for photo colour fidelity.** On Kent's owl
+  (classified `gradient`, `source_pixels` populated, so blend is fully
+  wired), **all 25 regions are rejected**: 24 on `detect_ramp`'s
+  `RAMP_R2_MIN` and one on speckle. `detect_ramp` accepts a region only when
+  its *lightness fits a linear or radial ramp* at r² ≥ 0.5; measured bests
+  were iris 0.295 / 0.232, mid-size shapes 0.478, and the 4200mm² body 0.385
+  — against the 0.994-0.999 that `RAMP_R2_MIN`'s own comment cites for the
+  committed synthetic ramps. **The gate was calibrated on synthetic gradients
+  and real photographic structure is nowhere near it.** This is not a tuning
+  miss: an iris is a *ring* (dark pupil, amber band, darker rim), which
+  neither a linear slope nor a centroid-radial fit describes. Lowering r²
+  would force a ramp model onto things that are not ramps.
+  Three consequences:
+  1. **The user-facing warning is wrong today.** "The blend fill tier will
+     decompose the ramp into a few thread shades instead of flattening it to
+     one flat colour per region" fires on *classification*, before any region
+     is tested — then every region is flattened anyway. Kent believed blend
+     was working because the app said so. Small honest fix: only claim
+     decomposition when it happened.
+  2. **The shade machinery is fine; the gate is the problem.**
+     `streamline_mode: "layered"` reuses the SAME `stage6_blend`
+     shade-selection code driven by each shade's coverage-share map, with no
+     r² test — which is exactly why it produced visibly different output in
+     the tier comparison. A 3-5 shade decomposition of a photo region is
+     already achievable in this codebase.
+  3. **`_speckle_ratio` looks scale-broken** — compared against a 0.35 max,
+     it returned 39.93, 49.45, 78.72 on real regions. A "ratio" reading 78
+     against a 0.35 ceiling means that gate rejects essentially everything it
+     is asked about. Confirm before trusting it; it may be dead weight today.
+  **Recommended direction:** let high-internal-spread regions decompose via
+  the existing coverage-share path *without* a ramp fit. Contained engine
+  work with a clear before/after on the owl — but it needs a corpus run, not
+  a rushed pass.
 - **Still open, not started:** 14 jump-trims on an 80mm design, in every
   variant measured.
 - **`.eladd-row` had been hiding "+ Auto-digitize"** (PR #122): six
