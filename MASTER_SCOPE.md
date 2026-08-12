@@ -2019,6 +2019,36 @@ ordinary use, the same thing devtools/View Source does. Full evidence
 trail, with exact formulas/library names/bug descriptions:
 `docs/emberdesign-competitive-research-2026-08-07.md`.
 
+**Three Ember docs now exist and none indexed the others** (fixed
+2026-08-12): the 08-07 research pass above, a manual/pricing teardown
+(`docs/ember-competitive-teardown-2026-08-09.md`), and a bundle-level
+technical teardown (`docs/ember-technical-teardown-2026-08-08.md`, recovered
+from Kent's Desktop and committed 2026-08-12 — it existed nowhere in the
+repo). Two items from the technical one are actionable and appear in no
+other document:
+
+1. **Ember ships a client-side JS DST *writer*** in the parent app's lazy
+   format-codec chunk, with an `EmbThread` class shape mirroring
+   pyembroidery's. That is a second reference implementation of the codec
+   our own `src/dst.js` disagrees with — and unlike pyembroidery it runs in
+   a browser you can step through. Worth using as one more cross-check on
+   the axis bug (the verdict is already 5-source settled; this is cheap
+   corroboration, not a new gate).
+2. **Fill patterns are data, not code** — each pattern is a function
+   returning `[{rowOffsetMm, rowPatternMm}, …]`, 13 shipped (6 free / 7
+   paid). Our fill-pattern library is the largest named gap vs Ember, and
+   this is the shape that makes new patterns table entries instead of new
+   algorithms. Also worth copying: `underlays[]` as an array from day one
+   (they had to migrate to it) and their versioned-document migration chain
+   (our `.embproj` additive migrations already work this way).
+
+Their monetization split is relevant to the tabled billing decision: all
+*manual* tooling free and unlimited, money charged for **automation** —
+auto-digitize, click-to-stitch, extra fill patterns, unlimited storage
+($9.99/mo). And their auto fill-angle is a one-line bounding-box aspect
+check (`90 * (h >= w)`), which is the entire "intelligence" behind it — our
+per-shape PCA principal axis is already ahead of the benchmark on that axis.
+
 **The prioritization decision matters more than the findings themselves.**
 Resolved via a pressure-tested discussion, not assumed: feature-parity work
 is real and belongs on the roadmap, but under a **standing priority rule,
