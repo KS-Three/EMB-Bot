@@ -21,7 +21,7 @@ from __future__ import annotations
 import io
 import math
 
-import pyembroidery
+import pystitch
 import pytest
 from shapely.geometry import Point, Polygon
 
@@ -79,7 +79,7 @@ def _layer_offsets(steps, poly, kind) -> list[float]:
 def _raw_records(data: bytes) -> list[str]:
     """Decode DST 3-byte records by the published Tajima table.
 
-    Deliberately NOT pyembroidery's reader. Reading back with the library that
+    Deliberately NOT pystitch's reader. Reading back with the library that
     wrote the file only proves self-consistency, and the claim under test is
     about what is in the bytes.
     """
@@ -122,7 +122,7 @@ def _dst_segments(data: bytes) -> list[list[str]]:
 
 def test_same_thread_stop_survives_dst():
     """DST has no STOP opcode — a stop IS a color change (0xC3), and appliqué
-    layers are frequently all one thread. If the writer or pyembroidery's
+    layers are frequently all one thread. If the writer or pystitch's
     encoder merged adjacent same-color blocks, the machine would sew straight
     through "lay the twill" and the operator would never get the garment.
 
@@ -143,9 +143,9 @@ def test_same_thread_stop_survives_dst():
     assert body[idx * 3:idx * 3 + 3] == b"\x00\x00\xc3"
 
     # And it survives a decode, so the machine's parser sees it too.
-    pattern = pyembroidery.read_dst(io.BytesIO(data))
+    pattern = pystitch.read_dst(io.BytesIO(data))
     assert sum(1 for s in pattern.stitches
-               if s[2] == pyembroidery.COLOR_CHANGE) == 1
+               if s[2] == pystitch.COLOR_CHANGE) == 1
 
 
 def test_empty_step_cannot_swallow_its_stop():
@@ -1211,9 +1211,9 @@ def test_applique_blocks_survive_export_with_their_stops(mode):
     assert len(same_thread) >= len({b.step["piece"] for b in plan.blocks if b.step})
 
     # And an independent reader agrees with the raw byte walk.
-    pattern = pyembroidery.read_dst(io.BytesIO(data))
+    pattern = pystitch.read_dst(io.BytesIO(data))
     assert sum(1 for s in pattern.stitches
-               if s[2] == pyembroidery.COLOR_CHANGE) == len(plan.blocks) - 1
+               if s[2] == pystitch.COLOR_CHANGE) == len(plan.blocks) - 1
 
 
 def test_a_jump_does_not_eat_the_penetration_it_lands_on():

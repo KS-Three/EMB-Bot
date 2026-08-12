@@ -16,7 +16,7 @@ Everything is composed in plan space (mm, y-DOWN, like stage 4) and handed to
 contract (0.1 mm ints, +y UP). The DST itself is written by the BROWSER
 encoder via tools/sewout_bridge.mjs — the browser codec is the one with sew
 evidence on Kent's machine (docs/dst-axis-verdict-2026-07-31.md), and the two
-codecs disagree on axis convention, so nothing here touches pyembroidery for
+codecs disagree on axis convention, so nothing here touches pystitch for
 the machine file.
 
 Constant plumbing, verified while building (probed, not assumed):
@@ -36,7 +36,7 @@ Constant plumbing, verified while building (probed, not assumed):
 Usage (from digitizer/):
   PYTHONPATH=. .venv/Scripts/python tools/sewout_card.py            # generate
   PYTHONPATH=. .venv/Scripts/python tools/sewout_card.py --check-dst \
-      debug_out/sewout/EMBBOT_SEWOUT_CARD.dst                       # pyembroidery sanity
+      debug_out/sewout/EMBBOT_SEWOUT_CARD.dst                       # pystitch sanity
 
 Then, from the repo root:
   node tools/sewout_bridge.mjs   # encode with the browser codec + verify + preview
@@ -422,25 +422,25 @@ def main() -> None:
 
 
 def check_dst(path: str) -> None:
-    """pyembroidery sanity read of the finished DST.
+    """pystitch sanity read of the finished DST.
 
-    EXPECTED to disagree with the browser decode: pyembroidery reads the
+    EXPECTED to disagree with the browser decode: pystitch reads the
     standard axis convention, our encoder writes the transposed one, so width
     and height come back SWAPPED — and the 0x43 color-change byte reads as a
-    sequin toggle, so pyembroidery sees 0 color changes. That is the known
+    sequin toggle, so pystitch sees 0 color changes. That is the known
     codec dispute (docs/dst-axis-verdict-2026-07-31.md), reported here rather
     than "fixed".
     """
-    import pyembroidery
-    pat = pyembroidery.read_dst(path)
+    import pystitch
+    pat = pystitch.read_dst(path)
     xs = [s[0] for s in pat.stitches]
     ys = [s[1] for s in pat.stitches]
     colors = sum(1 for s in pat.stitches
-                 if s[2] == pyembroidery.COLOR_CHANGE)
+                 if s[2] == pystitch.COLOR_CHANGE)
     print(json.dumps({
-        "pyembroidery_size_mm": [round((max(xs) - min(xs)) / 10.0, 1),
-                                 round((max(ys) - min(ys)) / 10.0, 1)],
-        "pyembroidery_color_changes": colors,
+        "pystitch_size_mm": [round((max(xs) - min(xs)) / 10.0, 1),
+                             round((max(ys) - min(ys)) / 10.0, 1)],
+        "pystitch_color_changes": colors,
         "records": len(pat.stitches),
         "note": "expect W/H swapped vs browser decode + 0 color changes (0x43)",
     }, indent=2))

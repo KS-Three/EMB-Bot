@@ -20,7 +20,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-import pyembroidery
+import pystitch
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT_BASE = ROOT / "debug_out" / "study"
@@ -39,7 +39,7 @@ def load_runs(path: Path):
     """-> (runs, n_trim, n_jump_moves). A run is needle-down stitches between
     lifts: any TRIM/JUMP/COLOR_CHANGE ends it. Each run carries its block id so
     color structure survives."""
-    pat = pyembroidery.read(str(path))
+    pat = pystitch.read(str(path))
     if pat is None:
         raise SystemExit(f"unreadable: {path}")
     runs: list[dict] = []
@@ -47,18 +47,18 @@ def load_runs(path: Path):
     block = 0
     n_trim = n_jump = 0
     for x, y, c in pat.stitches:
-        cmd = c & pyembroidery.COMMAND_MASK
-        if cmd == pyembroidery.STITCH:
+        cmd = c & pystitch.COMMAND_MASK
+        if cmd == pystitch.STITCH:
             cur.append((x * MM, y * MM))
             continue
         if cur:
             runs.append({"pts": cur, "block": block})
             cur = []
-        if cmd == pyembroidery.TRIM:
+        if cmd == pystitch.TRIM:
             n_trim += 1
-        elif cmd == pyembroidery.JUMP:
+        elif cmd == pystitch.JUMP:
             n_jump += 1
-        elif cmd == pyembroidery.COLOR_CHANGE:
+        elif cmd == pystitch.COLOR_CHANGE:
             block += 1
     if cur:
         runs.append({"pts": cur, "block": block})

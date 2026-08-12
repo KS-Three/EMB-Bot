@@ -1,10 +1,12 @@
 """The universal export adapter's format table.
 
-pyembroidery writes nineteen formats; these are the ones a customer's machine
-actually reads, plus SVG for a vector proof. Exposing the rest would be a menu
-of ways to hand someone a file their machine rejects.
+pystitch (pyembroidery's actively maintained fork — swap vetted in
+`docs/pystitch-evaluation-2026-08-11.md`) writes twenty-plus formats; these are
+the ones a customer's machine actually reads, plus SVG for a vector proof.
+Exposing the rest would be a menu of ways to hand someone a file their machine
+rejects.
 
-**Convention note, and it matters.** Everything here is written by pyembroidery,
+**Convention note, and it matters.** Everything here is written by pystitch,
 which uses the published Tajima bit-weight table (y in the low nibble). EMB-Bot's
 own `src/dst.js` uses the transposed table, so for **DST specifically** the two
 implementations disagree and produce geometry a quarter turn apart. The
@@ -12,7 +14,7 @@ disagreement is unresolved by design — it needs a sew-out on the shop's Tajima
 to settle. Until it is, the browser's DST stays the default for lettering/
 manual designs, the one combination with actual sewn evidence behind it.
 Studio also now sends purely-digitized designs (auto-digitize output) through
-THIS service's pyembroidery-convention path instead — the browser encoder
+THIS service's pystitch-convention path instead — the browser encoder
 never had sew evidence for that combination to begin with, so there is no
 existing trust to protect by keeping it there. Every response says which
 convention wrote the file so nobody has to guess.
@@ -24,7 +26,7 @@ from __future__ import annotations
 
 import io
 
-import pyembroidery
+import pystitch
 
 TAJIMA_STANDARD = "tajima-standard"
 
@@ -87,15 +89,15 @@ FORMATS: dict[str, dict] = {
 }
 
 _WRITERS = {
-    "dst": pyembroidery.write_dst,
-    "pes": pyembroidery.write_pes,
-    "jef": pyembroidery.write_jef,
-    "exp": pyembroidery.write_exp,
-    "pec": pyembroidery.write_pec,
-    "vp3": pyembroidery.write_vp3,
-    "xxx": pyembroidery.write_xxx,
-    "u01": pyembroidery.write_u01,
-    "svg": pyembroidery.write_svg,
+    "dst": pystitch.write_dst,
+    "pes": pystitch.write_pes,
+    "jef": pystitch.write_jef,
+    "exp": pystitch.write_exp,
+    "pec": pystitch.write_pec,
+    "vp3": pystitch.write_vp3,
+    "xxx": pystitch.write_xxx,
+    "u01": pystitch.write_u01,
+    "svg": pystitch.write_svg,
 }
 
 
@@ -103,7 +105,7 @@ def supported() -> list[dict]:
     return [{"format": k, **v} for k, v in FORMATS.items()]
 
 
-def write(pattern: pyembroidery.EmbPattern, fmt: str) -> bytes:
+def write(pattern: pystitch.EmbPattern, fmt: str) -> bytes:
     fmt = fmt.lower().lstrip(".")
     writer = _WRITERS.get(fmt)
     if writer is None:

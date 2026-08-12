@@ -1,20 +1,23 @@
 """Writing a StitchPlan out as a machine file.
 
-pyembroidery (MIT, pure Python) does the format work. Build step 8 turns this
-into the universal export adapter every EMB-Bot design goes through; here it
-exists so a plan can be sewn and judged.
+pystitch (MIT, pure Python — pyembroidery's actively maintained Ink/Stitch
+fork, same API and conventions; swap vetted in
+`docs/pystitch-evaluation-2026-08-11.md`) does the format work. Build step 8
+turns this into the universal export adapter every EMB-Bot design goes
+through; here it exists so a plan can be sewn and judged.
 
-**Coordinate convention, verified rather than assumed.** pyembroidery's stitch
+**Coordinate convention, verified rather than assumed.** pystitch's stitch
 space is 0.1 mm units with y pointing DOWN — the same direction stage 4 chose.
 So the conversion is a scale and nothing else: no flip, no transpose. That was
-established by reading a professionally digitized third-party file
+established (under pyembroidery, whose convention pystitch inherits — eval doc
+§4.1) by reading a professionally digitized third-party file
 (`beckers logo hat.DST`) and rendering it y-down, which produced upright,
 correctly proportioned artwork; rendering it any other way did not. Do not
 "fix" this without repeating that test.
 
 Note for whoever wires up build step 10: the browser engine's own DST codec in
 `src/dst.js` does NOT agree with this convention — see the step-3 findings note
-in the repo README. Round-trip through pyembroidery, not through assumptions.
+in the repo README. Round-trip through pystitch, not through assumptions.
 """
 from __future__ import annotations
 
@@ -22,11 +25,11 @@ import io
 import math
 from pathlib import Path
 
-import pyembroidery
+import pystitch
 
 from .stitches import StitchPlan
 
-# Plan units are mm; DST and pyembroidery both count in 0.1 mm.
+# Plan units are mm; DST and pystitch both count in 0.1 mm.
 _UNITS_PER_MM = 10.0
 # Two positions closer than this are the same needle position, and emitting a
 # stitch between them would be a zero-length record the machine skips anyway.
@@ -42,13 +45,13 @@ def _to_units(pt: tuple[float, float]) -> tuple[int, int]:
     return int(round(pt[0] * _UNITS_PER_MM)), int(round(pt[1] * _UNITS_PER_MM))
 
 
-def plan_to_pattern(plan: StitchPlan) -> pyembroidery.EmbPattern:
+def plan_to_pattern(plan: StitchPlan) -> pystitch.EmbPattern:
     """StitchPlan -> EmbPattern, preserving jumps, trims and color changes."""
-    pattern = pyembroidery.EmbPattern()
+    pattern = pystitch.EmbPattern()
     last: tuple[float, float] | None = None
 
     for bi, block in enumerate(plan.blocks):
-        thread = pyembroidery.EmbThread()
+        thread = pystitch.EmbThread()
         thread.set_color(*block.rgb)
         thread.description = block.thread_number
         pattern.add_thread(thread)
@@ -62,7 +65,7 @@ def plan_to_pattern(plan: StitchPlan) -> pyembroidery.EmbPattern:
                 pattern.trim()
             if run.jump and last is not None:
                 x, y = _to_units(run.points[0])
-                pattern.add_stitch_absolute(pyembroidery.JUMP, x, y)
+                pattern.add_stitch_absolute(pystitch.JUMP, x, y)
                 # The needle is now at points[0] with nothing sewn there. Carry
                 # `last` across this and the coincidence test below deletes the
                 # penetration that starts the new path — measured on the
@@ -77,7 +80,7 @@ def plan_to_pattern(plan: StitchPlan) -> pyembroidery.EmbPattern:
                 if last is not None and math.dist(last, pt) < _SAME_POINT_MM:
                     continue
                 x, y = _to_units(pt)
-                pattern.add_stitch_absolute(pyembroidery.STITCH, x, y)
+                pattern.add_stitch_absolute(pystitch.STITCH, x, y)
                 last = pt
             last = run.points[-1]
 
@@ -90,7 +93,7 @@ def export_dst(plan: StitchPlan, label: str = "EMBBOT") -> bytes:
     pattern = plan_to_pattern(plan)
     pattern.metadata("name", label[:16])
     buf = io.BytesIO()
-    pyembroidery.write_dst(pattern, buf)
+    pystitch.write_dst(pattern, buf)
     return buf.getvalue()
 
 
@@ -109,9 +112,9 @@ def read_dst_points(data: bytes) -> list[tuple[float, float]]:
     third-party file through this path.
     """
     buf = io.BytesIO(data)
-    pattern = pyembroidery.read_dst(buf)
+    pattern = pystitch.read_dst(buf)
     return [
         (s[0] / _UNITS_PER_MM, s[1] / _UNITS_PER_MM)
         for s in pattern.stitches
-        if s[2] == pyembroidery.STITCH
+        if s[2] == pystitch.STITCH
     ]

@@ -183,8 +183,13 @@ is +y **up**, so `adapter.py` owns that flip and is the only place one happens.
 `test_coordinates_are_y_down_and_centered` makes a silent mirror in the
 pipeline detectable; `tests/test_adapter.py` does the same for the boundary.
 
-pyembroidery's stitch space is also y-down, so `export.py` scales mm to 0.1 mm
+pystitch's stitch space is also y-down, so `export.py` scales mm to 0.1 mm
 units and does nothing else. That was measured, not assumed — see below.
+(Measured under pyembroidery; pystitch — its actively maintained Ink/Stitch
+fork, adopted 2026-08-11 — inherits the same API and conventions, verified
+symbol-by-symbol in `docs/pystitch-evaluation-2026-08-11.md`. The historical
+narrative below keeps pyembroidery's name because that is the library the
+2026-07-29 measurement was made with.)
 
 ## Open finding: the browser engine's DST codec disagrees with the standard
 
@@ -213,14 +218,14 @@ hands the browser a `Design` — the same structure `buildLetteringDesign`
 produces — not a DST, so the disputed format never crosses the boundary and a
 digitized design cannot arrive transposed. Studio bakes its own DST with its
 own encoder if it wants one, which round-trips with its own decoder. Machine
-files from `/export` are written by pyembroidery in the standard convention and
+files from `/export` are written by pystitch in the standard convention and
 every response says so in `X-Stitch-Convention`; for DST specifically, Studio's
 own encoder stays the default for lettering/manual designs, the one with sewn
 evidence behind it, while projects made entirely of auto-digitized elements now
 route through this service's `/export` instead. PES and JEF, the formats the
 service exists to unlock, have no competing implementation and no conflict.
 
-DST verification on this side still goes through pyembroidery, never through
+DST verification on this side still goes through pystitch, never through
 the browser codec.
 
 ## Stitch planning: what makes it look professional

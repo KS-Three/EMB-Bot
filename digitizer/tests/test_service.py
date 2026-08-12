@@ -12,7 +12,7 @@ import json
 import time
 from pathlib import Path
 
-import pyembroidery
+import pystitch
 import pytest
 
 fastapi = pytest.importorskip("fastapi", reason="service extra not installed")
@@ -272,14 +272,14 @@ def test_every_machine_format_writes_a_non_empty_file(client, fmt):
 
 def test_pes_and_jef_survive_an_independent_reader(client):
     """These two are why the service exists: the browser cannot write them well.
-    Reading them back with pyembroidery's own parser is the check that they are
+    Reading them back with pystitch's own parser is the check that they are
     real files and not just bytes."""
     design = _digitize(client, {"target_width_mm": 80.0})["design"]
 
-    for fmt, reader in (("pes", pyembroidery.read_pes), ("jef", pyembroidery.read_jef)):
+    for fmt, reader in (("pes", pystitch.read_pes), ("jef", pystitch.read_jef)):
         r = client.post("/export", json={"design": design, "format": fmt})
         pattern = reader(io.BytesIO(r.content))
-        sewn = [s for s in pattern.stitches if s[2] == pyembroidery.STITCH]
+        sewn = [s for s in pattern.stitches if s[2] == pystitch.STITCH]
 
         assert len(sewn) == design["stitchCount"], f"{fmt} lost stitches"
         w = (max(s[0] for s in sewn) - min(s[0] for s in sewn)) / 10.0
@@ -931,8 +931,8 @@ def test_manual_design_exports_to_a_real_machine_file(client):
 def test_manual_pes_survives_an_independent_reader(client):
     design = _digitize_manual(client)["design"]
     r = client.post("/export", json={"design": design, "format": "pes"})
-    pattern = pyembroidery.read_pes(io.BytesIO(r.content))
-    sewn = [s for s in pattern.stitches if s[2] == pyembroidery.STITCH]
+    pattern = pystitch.read_pes(io.BytesIO(r.content))
+    sewn = [s for s in pattern.stitches if s[2] == pystitch.STITCH]
     assert len(sewn) == design["stitchCount"]
 
 

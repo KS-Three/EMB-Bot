@@ -83,13 +83,13 @@ def test_fill_and_satin_shapes_produce_a_real_plan():
 
 
 def test_the_manual_design_exports_a_real_machine_file():
-    """No new export code: the same pyembroidery-backed exporter every other
+    """No new export code: the same pystitch-backed exporter every other
     plan already uses, reused unchanged."""
     result = build_manual_result(_two_shapes(), cfg())
     plan = plan_stitches(result, cfg())
     data = export_dst(plan)
     assert len(data) > 200
-    # A DST file ends with the 0x1A end-of-file byte pyembroidery writes.
+    # A DST file ends with the 0x1A end-of-file byte pystitch writes.
     assert data[-1:] in (b"\x1a", b"\x00") or len(data) > 0
 
 

@@ -14,7 +14,7 @@ So the conversion is `y_design = -y_plan * 10`, and nothing else.
 
 **Why a Design and not a DST file.** The obvious wiring — service writes a DST,
 browser reads it with `decodeDST` — is broken in this project. `src/dst.js`
-puts x in the high nibble of a DST record where pyembroidery and the published
+puts x in the high nibble of a DST record where pystitch and the published
 Tajima table put y, so a file written by one and read by the other comes back
 transposed. That disagreement is real, measured, and deliberately unresolved
 (it needs a sew-out on Kent's machine to settle; see the repo README and the
@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import math
 
-import pyembroidery
+import pystitch
 
 from .stitches import StitchPlan
 
@@ -162,19 +162,19 @@ def design_to_points_mm(design: dict) -> list[tuple[float, float]]:
     ]
 
 
-def design_to_pattern(design: dict, label: str = "EMBBOT") -> pyembroidery.EmbPattern:
-    """EMB-Bot `Design` -> pyembroidery pattern, for the universal exporter.
+def design_to_pattern(design: dict, label: str = "EMBBOT") -> pystitch.EmbPattern:
+    """EMB-Bot `Design` -> pystitch pattern, for the universal exporter.
 
-    Flips back to y-DOWN, which is pyembroidery's convention (verified against a
+    Flips back to y-DOWN, which is pystitch's convention (verified against a
     professionally digitized third-party file during step 3 — see `export.py`).
-    Every format pyembroidery writes inherits that convention; the response says
+    Every format pystitch writes inherits that convention; the response says
     so, because for DST specifically the browser's own encoder disagrees and it
     is the browser's that has been sewn.
     """
-    pattern = pyembroidery.EmbPattern()
+    pattern = pystitch.EmbPattern()
 
     for c in design.get("colors", []) or [{"r": 0, "g": 0, "b": 0}]:
-        thread = pyembroidery.EmbThread()
+        thread = pystitch.EmbThread()
         thread.set_color(int(c.get("r", 0)), int(c.get("g", 0)), int(c.get("b", 0)))
         if c.get("name"):
             thread.description = str(c["name"])
@@ -186,13 +186,13 @@ def design_to_pattern(design: dict, label: str = "EMBBOT") -> pyembroidery.EmbPa
             continue
         x, y = int(s["x"]), -int(s["y"])
         if kind == STITCH:
-            pattern.add_stitch_absolute(pyembroidery.STITCH, x, y)
+            pattern.add_stitch_absolute(pystitch.STITCH, x, y)
         elif kind == JUMP:
-            pattern.add_stitch_absolute(pyembroidery.JUMP, x, y)
+            pattern.add_stitch_absolute(pystitch.JUMP, x, y)
         elif kind == TRIM:
-            pattern.add_stitch_absolute(pyembroidery.TRIM, x, y)
+            pattern.add_stitch_absolute(pystitch.TRIM, x, y)
         elif kind == COLOR:
-            pattern.add_stitch_absolute(pyembroidery.COLOR_CHANGE, x, y)
+            pattern.add_stitch_absolute(pystitch.COLOR_CHANGE, x, y)
 
     pattern.metadata("name", str(label)[:16])
     pattern.end()

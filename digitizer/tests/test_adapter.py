@@ -1,7 +1,7 @@
 """The axis goldens.
 
 This file exists because of a specific, measured hazard: EMB-Bot's DST codec
-and pyembroidery disagree about which nibble carries x, so any coordinate
+and pystitch disagree about which nibble carries x, so any coordinate
 convention that crosses between the Python engine and the browser has to be
 pinned rather than assumed. The plan for build step 8 calls these day-one
 goldens, and they are the reason `adapter.py` is allowed to be the only place a
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import io
 
-import pyembroidery
+import pystitch
 import pytest
 
 from digitizer_core.adapter import (
@@ -86,16 +86,16 @@ def test_plan_bbox_and_design_bbox_agree_after_the_flip():
     assert dy1 / UNITS_PER_MM == pytest.approx(-py0, abs=0.05)
 
 
-def test_export_round_trip_through_pyembroidery_preserves_orientation():
+def test_export_round_trip_through_pystitch_preserves_orientation():
     """Design -> DST -> read back. Wider than tall, the whole way."""
     plan = _plan([(-30.0, -5.0), (30.0, -5.0), (30.0, 5.0), (-30.0, 5.0)])
     design = plan_to_design(plan)
 
     data = io.BytesIO()
-    pyembroidery.write_dst(design_to_pattern(design), data)
-    pattern = pyembroidery.read_dst(io.BytesIO(data.getvalue()))
+    pystitch.write_dst(design_to_pattern(design), data)
+    pattern = pystitch.read_dst(io.BytesIO(data.getvalue()))
 
-    sewn = [(s[0], s[1]) for s in pattern.stitches if s[2] == pyembroidery.STITCH]
+    sewn = [(s[0], s[1]) for s in pattern.stitches if s[2] == pystitch.STITCH]
     assert sewn, "no stitches survived the round trip"
     w = (max(x for x, _ in sewn) - min(x for x, _ in sewn)) / UNITS_PER_MM
     h = (max(y for _, y in sewn) - min(y for _, y in sewn)) / UNITS_PER_MM
@@ -104,7 +104,7 @@ def test_export_round_trip_through_pyembroidery_preserves_orientation():
     assert h == pytest.approx(10.0, abs=0.2)
 
 
-def test_export_flips_back_to_pyembroidery_s_y_down():
+def test_export_flips_back_to_pystitch_s_y_down():
     """The design's y-up must become y-down again on the way to a file, or
     every exported design sews mirrored."""
     plan = _plan([(0.0, 0.0), (0.0, 10.0)])   # plan: straight DOWN in y
@@ -113,8 +113,49 @@ def test_export_flips_back_to_pyembroidery_s_y_down():
     assert sewn_design_y == [0, -100]          # design: y-up, so negative
 
     pattern = design_to_pattern(design)
-    pat_y = [s[1] for s in pattern.stitches if s[2] == pyembroidery.STITCH]
-    assert pat_y == [0, 100]                   # pyembroidery: y-down again
+    pat_y = [s[1] for s in pattern.stitches if s[2] == pystitch.STITCH]
+    assert pat_y == [0, 100]                   # pystitch: y-down again
+
+
+def test_read_back_relabels_long_jump_runs_as_a_trim_and_nothing_else():
+    """Pins the one behavioral wrinkle of the pystitch swap (eval doc §4.2,
+    `docs/pystitch-evaluation-2026-08-11.md`).
+
+    DST has no TRIM opcode, so `read_dst` post-processes with
+    `interpolate_trims(count_max=3, clipping=True)`: an untrimmed run of 3+
+    JUMP records gets a synthesized TRIM inserted in front of it, and a
+    zero-displacement jump run is clipped out. pyembroidery 1.5.1's reader did
+    exactly the same (verified against both installed sources during the
+    2026-08-11 swap), so this pinned no migration change — it exists so a
+    future library bump that alters those defaults gets caught, and it proves
+    STITCH records are never touched by the relabeling.
+    """
+    plan = StitchPlan(
+        blocks=[
+            StitchBlock(0, "1", (0, 0, 0), [
+                StitchRun(points=[(0.0, 0.0), (1.0, 0.0)], kind=FILL),
+                # 39 mm of untrimmed travel -> 3+ JUMP records on disk (the
+                # DST writer chunks a move into <=12.1 mm records).
+                StitchRun(points=[(40.0, 0.0), (41.0, 0.0)], kind=FILL, jump=True),
+            ]),
+        ],
+        palette=[{"number": "1", "name": "A", "rgb": [0, 0, 0]}],
+    )
+    data = io.BytesIO()
+    pystitch.write_dst(design_to_pattern(plan_to_design(plan)), data)
+    pattern = pystitch.read_dst(io.BytesIO(data.getvalue()))
+
+    cmds = [s[2] & pystitch.COMMAND_MASK for s in pattern.stitches]
+    sewn = [(s[0], s[1]) for s in pattern.stitches
+            if s[2] & pystitch.COMMAND_MASK == pystitch.STITCH]
+
+    # Every penetration survives, exactly where it was written.
+    assert sewn == [(0, 0), (10, 0), (400, 0), (410, 0)]
+    # The untrimmed 3+ jump run comes back with exactly one synthesized TRIM,
+    # sitting in front of the run it labels.
+    assert cmds.count(pystitch.TRIM) == 1
+    assert cmds.count(pystitch.JUMP) >= 3
+    assert cmds.index(pystitch.TRIM) < cmds.index(pystitch.JUMP)
 
 
 def test_design_reports_the_size_of_its_own_stitches():

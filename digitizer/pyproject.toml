@@ -18,8 +18,11 @@ dependencies = [
     "shapely>=2.0",
     "scikit-image>=0.22",
     # Machine-file writer (MIT, pure Python). Build step 8 grows this into the
-    # universal export adapter for every EMB-Bot design.
-    "pyembroidery>=1.5.1",
+    # universal export adapter for every EMB-Bot design. pystitch is
+    # pyembroidery's actively maintained Ink/Stitch fork — same API, same
+    # Tajima bit convention; swap vetted symbol-by-symbol in
+    # docs/pystitch-evaluation-2026-08-11.md before adopting (2026-08-11).
+    "pystitch>=1.0.1",
     # `textcluster.py`'s OCR-confidence quality gate (2026-08-07): a thin
     # (Apache-2.0) wrapper around the system `tesseract-ocr` binary (a
     # SEPARATE, non-pip install — see README.md "Setup"; also Apache-2.0).

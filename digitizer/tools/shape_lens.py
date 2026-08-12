@@ -596,18 +596,18 @@ def cmd_dt(args) -> None:
 # GEOMETRY those stitches cover. Different evidence, same question — which is
 # what makes it a referee and not a mirror.
 
-_MM = 0.1  # pyembroidery units are 0.1 mm
+_MM = 0.1  # pystitch units are 0.1 mm
 
 
 def pro_runs(path: Path) -> list[list[tuple[float, float]]]:
     """Needle-down point strings between lifts. Own decode, own loop."""
-    import pyembroidery
-    pat = pyembroidery.read(str(path))
+    import pystitch
+    pat = pystitch.read(str(path))
     if pat is None:
         return []
     out, cur = [], []
     for x, y, c in pat.stitches:
-        if (c & pyembroidery.COMMAND_MASK) == pyembroidery.STITCH:
+        if (c & pystitch.COMMAND_MASK) == pystitch.STITCH:
             cur.append((x * _MM, y * _MM))
             continue
         if len(cur) >= 3:
