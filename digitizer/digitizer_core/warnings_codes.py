@@ -110,6 +110,18 @@ SHAPE_NOT_STITCHED = "SHAPE_NOT_STITCHED"          # geometry produced no stitch
 LONG_JUMPS_TRIMMED = "LONG_JUMPS_TRIMMED"          # travel could not stay inside the shape. extra: {"count": int}
 SMALL_SHAPES_AS_RUN = "SMALL_SHAPES_AS_RUN"        # too small for fill or satin; sewn as run outlines instead. extra: {"count": int}
 
+# Stage 6 (blend fill tier)
+# CLASSIFIED_GRADIENT announces the blend ROUTING at classification time,
+# before any region has been tested. Whether a region actually decomposes
+# into thread shades is a separate, per-region question `detect_ramp`
+# answers much later — and measured on a real photograph (Kent's owl,
+# 2026-08-12) the answer was "no" for all 25 regions: 24 rejected on
+# RAMP_R2_MIN, 1 on speckle, every one then filled with a single flat
+# color. This warning is what makes that outcome visible instead of
+# leaving the classification copy as the user's only signal.
+# extra: {"count": int, "reasons": dict[str, int], "best_r2": float}
+BLEND_NO_REGIONS_DECOMPOSED = "BLEND_NO_REGIONS_DECOMPOSED"
+
 # Stage 6 (contour fill tier)
 CONTOUR_RING_UNREACHABLE = "CONTOUR_RING_UNREACHABLE"  # contour left a bare patch wider than a ring spacing (measured, barecircle.py). extra: {"count": int, "rings": int}
 # `directional_comp` and `fill_technique="contour"` do not compose: contour

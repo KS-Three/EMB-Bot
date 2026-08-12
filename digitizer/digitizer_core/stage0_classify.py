@@ -77,10 +77,17 @@ from .warnings_codes import (
 )
 
 _CEILING_COPY = {
+    # States the ROUTING, which is all this stage actually knows. Whether a
+    # region decomposes is per-region and decided far later, in
+    # `stage6_blend.detect_ramp`; the old copy promised decomposition
+    # outright and was wrong on every real photograph measured (Kent's owl,
+    # 2026-08-12: 25 regions routed, 0 decomposed). Stage 7 raises
+    # BLEND_NO_REGIONS_DECOMPOSED when the answer comes back "none".
     CLASSIFIED_GRADIENT: (
-        "Classified as a gradient/photo blend. The blend fill tier will "
-        "decompose the ramp into a few thread shades instead of flattening "
-        "it to one flat color per region."
+        "Classified as a gradient/photo blend, so shapes are routed to the "
+        "blend fill tier. Each region is then tested on its own: those that "
+        "fit a smooth ramp are split into a few thread shades, and the rest "
+        "sew as one flat color."
     ),
     CLASSIFIED_PHOTO_SUBJECT: (
         "Classified as a photo with a subject (portrait/pet/product). "

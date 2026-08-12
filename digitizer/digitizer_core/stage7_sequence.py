@@ -73,7 +73,8 @@ from .stage6_satin import is_satin_candidate, satin_shape
 from .stage6_streamline import streamline_fill
 from .stitches import StitchBlock, StitchRun
 from .threads import chart_for
-from .warnings_codes import (BORDER_LIGHTENED, BORDER_SEAM_SHARED,
+from .warnings_codes import (BLEND_NO_REGIONS_DECOMPOSED, BORDER_LIGHTENED,
+                             BORDER_SEAM_SHARED,
                              BORDER_SKIPPED_TOO_NARROW,
                              CONTOUR_DIRECTIONAL_COMP_UNSEWN,
                              CONTOUR_RING_UNREACHABLE, LONG_JUMPS_TRIMMED,
@@ -758,6 +759,14 @@ def sequence(
     thin = empty = jumps = as_run = 0
     bordered = lightened = border_narrow = 0
     rings_skipped = starved = 0
+    # Blend-tier outcome, counted across the whole design so the warning can
+    # report what the tier actually did rather than what stage 0's routing
+    # copy promised. `blend_routed` counts regions that reached blend_fill at
+    # all; `blend_decomposed` counts the ones that came back as more than one
+    # thread shade.
+    blend_routed = blend_decomposed = 0
+    blend_rejects: dict[str, int] = {}
+    blend_best_r2 = 0.0
     blocks: list[StitchBlock] = []
     cursor: tuple[float, float] | None = None
     # Every shape whose border tier actually put a circuit down, keyed by id,
@@ -1296,6 +1305,14 @@ def sequence(
             if report.get("starved"):
                 starved += 1
                 rings_skipped += report.get("skipped_rings", 0)
+            if "blend_shades" in report:
+                blend_routed += 1
+                if report["blend_shades"] > 1:
+                    blend_decomposed += 1
+                else:
+                    reason = report.get("blend_reject") or "unknown"
+                    blend_rejects[reason] = blend_rejects.get(reason, 0) + 1
+                blend_best_r2 = max(blend_best_r2, report.get("blend_best_r2", 0.0))
             if report["empty"] or not runs:
                 empty += 1
                 continue
@@ -1396,6 +1413,25 @@ def sequence(
                 "to hold a fill or satin and sewed as a light outline run "
                 "instead.",
                 count=as_run,
+            )
+        )
+    if blend_routed and not blend_decomposed:
+        # Deliberately worded around what the tier DID, not what stage 0's
+        # CLASSIFIED_GRADIENT copy said it would do. Only fires when NOT ONE
+        # region decomposed — a design where some regions split into shades
+        # and others sewed flat is the tier working as designed, and needs no
+        # correction to the classification message.
+        warnings.append(
+            warn(
+                BLEND_NO_REGIONS_DECOMPOSED,
+                f"None of the {blend_routed} shape"
+                f"{'s' if blend_routed != 1 else ''} fit a smooth ramp closely "
+                "enough to split into thread shades, so each sewed as one flat "
+                "color. Photographic areas often carry tonal variation that "
+                "isn't a linear or radial ramp.",
+                count=blend_routed,
+                reasons=dict(sorted(blend_rejects.items())),
+                best_r2=round(blend_best_r2, 3),
             )
         )
     if empty:
