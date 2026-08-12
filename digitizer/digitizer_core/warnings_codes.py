@@ -110,6 +110,17 @@ SHAPE_NOT_STITCHED = "SHAPE_NOT_STITCHED"          # geometry produced no stitch
 LONG_JUMPS_TRIMMED = "LONG_JUMPS_TRIMMED"          # travel could not stay inside the shape. extra: {"count": int}
 SMALL_SHAPES_AS_RUN = "SMALL_SHAPES_AS_RUN"        # too small for fill or satin; sewn as run outlines instead. extra: {"count": int}
 
+# Stage 2 (photo segmentation)
+# A region owns exactly one thread, so a region whose own pixels span more
+# tone than one thread can express sews as a flat average no matter what the
+# fill tier does — Kent's owl body, 4200 mm2 spanning 81 points of L*, sewn
+# as one pale mass. `split_tonal_regions` cuts those into parts that each get
+# their own mean, palette weight and spool. Info-level: this is the pipeline
+# doing its job, reported because it changes the region and colour counts the
+# other segmentation warnings report.
+# extra: {"count": int, "regions_before": int, "regions_after": int}
+TONAL_REGIONS_SPLIT = "TONAL_REGIONS_SPLIT"
+
 # Stage 6 (blend fill tier)
 # CLASSIFIED_GRADIENT announces the blend ROUTING at classification time,
 # before any region has been tested. Whether a region actually decomposes

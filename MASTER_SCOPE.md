@@ -11,7 +11,80 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-12 (evening) — **first end-to-end Studio photo
+**Last updated:** 2026-08-12 (late) — **the blend tier's real blocker is not
+the r² gate; the multi-colour seam it feeds was never wired.** Chasing PR
+#125's finding to the end found something larger and, unlike the gate, not
+tunable. Merged this pass: PR #125 (blend-tier measurement), PR #126
+(`owl_kent.jpg` — the first REAL photo fixture), PR #127 (two honesty fixes:
+the blend tier no longer claims decomposition it didn't do, and Studio now
+names which DST encoder wrote a file).
+
+- **`stage7_sequence` never reads `shade_thread_idx` / `shade_rgb`.** Both
+  `stage6_blend` and `stage6_streamline` compute a per-shade chart snap and
+  put it in their report; grep finds **no consumer anywhere**. A block's
+  thread is `group[0].region.thread_index` (`stage7_sequence.py:1347`) — the
+  region's ONE assigned thread. **Every shade of every decomposed region
+  sews in the same colour.**
+- **Verified on a fixture where the ramp path fires exactly as designed**,
+  not inferred: `gradient_ramp_linear.png` — 2 regions, both accepted at
+  r² 1.0, 4 shades chosen — emits **2 blocks and 1 colour change**. One
+  thread per region, not per shade. **The blend tier has never produced
+  multi-thread shading in the product.**
+- **This resets what PR #125 concluded.** "The shade machinery is fine; the
+  gate is the problem" is half right. The gate does block decomposition —
+  but removing it does not buy shading, because the threads never reach the
+  machine. Both halves have to land for either to be visible.
+- **Kent ruled the fix goes UPSTREAM (2026-08-12).** Two options were on the
+  table: teach stage 5/7 that one region can own several thread stops, or
+  split tonally-diverse regions at segmentation time so the existing
+  one-thread-per-region model carries them. He picked the second — smaller
+  blast radius, no new machinery downstream, and the same lever the
+  thread-drift measurement already pointed at. An in-between attempt
+  (`blend_tonal_bands`, banding inside the fill tier) was built, measured,
+  and **removed** in the same pass: it decomposed the geometry correctly and
+  changed nothing visible, because the shades still shared one thread —
+  7,725 → 10,126 stitches, trims 33 → 105, `color_changes` unchanged at 13.
+  It is recorded here so nobody rebuilds it.
+- **`split_tonal_regions` (new, `stage2_photo_segment`, default OFF).** Cuts
+  a region whose own pixels span more light-to-dark range than one thread can
+  express into parts, each of which then gets its own mean, palette weight
+  and spool by the machinery that already exists. Lightness quantiles, not a
+  colour k-means — deterministic, because this module feeds byte-identity
+  goldens. Placed in `kept_masks_to_quant`, the shared tail, so the classical
+  and SAM2 region formers get it from one implementation.
+- **It works, and it is expensive.** On Kent's owl: 3 regions qualify
+  (27 → 36 masks), and the tonal structure reaches separate threads for the
+  first time — palette 12 → 15 colours, which is exactly
+  `max_colors + PALETTE_OVERFLOW_K`, the documented ceiling rather than a
+  breach of it. Cost: **7,721 → 13,393 stitches (+74%)** and trims 33 → 91.
+  **Left off pending a corpus run and Kent's read on that trade.**
+- **The dominant cost is spatial, and it is worth understanding before
+  tuning further.** A tonal bucket is scattered across a region by
+  construction — the mid-tones of a feathered breast are everywhere — and
+  stage 4 vectorises each connected component into its own polygon with its
+  own underlay and entry/exit. Unfiltered, the owl became **130 regions and
+  14,905 stitches**; keeping only components individually worth sewing
+  brought that to 57 and 13,393. The floor was swept (8 / 20 / 40 mm² → 87 /
+  60 / 57 regions), and the curve is steep below 20 and flat above it, so 40
+  takes the available reduction and no more. **The remaining +74% is
+  structural, not a parameter that has been left untuned** — more regions
+  means more perimeter, and that is the real price of shading this way.
+- **One real defect found and fixed on the way, worth keeping:** the removed
+  banding attempt first reused the ramp path's `FILL_ROW_MM * n` row pitch
+  and sewed the owl body at 1,971 stitches against 6,058 flat — a third of
+  the coverage. Ramp bands are contiguous strips that re-tile a region, so
+  widening the pitch by n is right there; tonal bands are interleaved patches
+  each already covering ~1/n of the area, so the same multiplication
+  under-sews them twice. Same failure mode the earlier `streamline_mode:
+  "layered"` comparison recorded as "3,220 stitches = worse" — worth
+  re-reading in that light, because it suggests that tier has the same bug.
+- **Not a defect, recorded so it isn't re-found:** the noise fixture in
+  `test_blend_falls_back_to_ordinary_tatami_on_speckle` never reaches the
+  speckle gate — r² is tested first and random noise fails it, so the branch
+  that test is named for is not the one it exercises. Behaviour is correct;
+  the test now says so.
+
+**Prior update, 2026-08-12 (evening):** — **first end-to-end Studio photo
 session with Kent driving, and it moved area 1's diagnosis more than any
 code change did.** Kent digitized a real snowy-owl photo through the Studio,
 annotated the output, and the investigation that followed disproved three

@@ -108,7 +108,8 @@ from .stage1_prep import Prep
 from .stage2_quantize import Quant, _quantize_population
 from .stage3_segment import RegionMask, resolve_small_regions
 from .threads import chart_for, rgb_to_lab
-from .warnings_codes import PHOTO_PALETTE_SELECTED, PHOTO_SEGMENT_REGION_COUNT, warn
+from .warnings_codes import (PHOTO_PALETTE_SELECTED, PHOTO_SEGMENT_REGION_COUNT,
+                             TONAL_REGIONS_SPLIT, warn)
 
 # --- Step 1: SEEDS oversegmentation -------------------------------------------
 #
@@ -1193,6 +1194,178 @@ def _region_classes(
     return classes
 
 
+# --- Tonal region splitting --------------------------------------------------
+#
+# A region is the unit that owns ONE thread. Everything downstream assumes it:
+# `kept_masks_to_quant` takes a region's MEAN Lab as its colour,
+# `select_palette` snaps that mean to one spool, and `stage7_sequence` sews a
+# block per spool. So a region whose pixels disagree with each other cannot be
+# rendered honestly no matter what the fill tier does — the mean is the only
+# colour it is allowed to have.
+#
+# That is what Kent's owl ran into (2026-08-12). Segmentation is clean — 27
+# regions, correct silhouette — but the body is a single 4200 mm2 region whose
+# lightness spans 81 of the 100 points of L*, so it sews as one flat pale mass.
+# The blend fill tier was supposed to rescue exactly this and cannot: its
+# shade decomposition computes per-shade threads that `stage7_sequence` never
+# reads (verified on `gradient_ramp_linear.png` — 4 shades chosen, 1 colour
+# change emitted), so every shade sews in the region's one thread anyway.
+#
+# Splitting HERE instead is what makes the existing model carry it: each part
+# becomes a region in its own right, gets its own mean, its own palette
+# weight, and its own spool. Nothing downstream changes. The thread budget
+# stays governed by `select_palette`'s chart-restricted k-medoids and
+# `cfg.max_colors` exactly as before — parts that land on the same spool are
+# deduped back into one label by the loop below, so this can never spend more
+# colours than the palette step already allows.
+#
+# Deliberately lightness quantiles, not a colour k-means: deterministic (this
+# module feeds byte-identity goldens), cheap, and aimed at the failure
+# actually observed — tonal range flattened away, not hue confusion.
+
+# Perceptual distance between a region's dark and light ends before splitting
+# it is worth doing. Matches `stage6_blend.SHADE_STEP_DELTAE * 2`, the point
+# at which that module's own `_choose_shade_count` first asks for a 3rd shade.
+TONAL_SPLIT_MIN_DELTAE = 18.0
+# Measured off percentiles, not min/max: a single specular pixel or one dark
+# outlier should not be able to declare a flat region "tonal".
+TONAL_SPLIT_PCTILE = (5.0, 95.0)
+# A region has to be big enough that its parts are still sewable. Below this
+# the split just manufactures slivers for `resolve_small_regions` to absorb
+# again. Kent's owl body is 4200 mm2; its irises are 4-17 mm2 and stay whole.
+TONAL_SPLIT_MIN_AREA_MM2 = 150.0
+# Each CONNECTED COMPONENT of a part must clear this or it is folded back
+# into the largest part. Swept on Kent's owl (8 / 20 / 40 mm2 -> 87 / 60 /
+# 57 final regions and 14,883 / 13,554 / 13,393 stitches): the curve is
+# steep below 20 and flat above it, so 40 buys the last of the available
+# reduction without discarding shading anyone would notice. Far above the
+# run-tier floor on purpose — a tonal part is only worth its own thread
+# stop if it is a visible AREA, not merely sewable.
+TONAL_SPLIT_MIN_PART_MM2 = 40.0
+TONAL_SPLIT_MAX_PARTS = 4
+# Morphological cleanup on each part before it becomes a region, in pixels.
+# A photo's tone map is speckled at the pixel scale; without this the parts
+# are confetti rather than areas. Small on purpose — removing quantisation
+# artefacts, not reshaping the subject.
+TONAL_SPLIT_CLEAN_PX = 3
+
+
+def _percentile_extremes_deltae(lab: np.ndarray) -> float:
+    """CIEDE2000 between the mean Lab of a region's darkest and lightest
+    decile-ish bands. -> 0.0 when there aren't enough pixels to say."""
+    if len(lab) < 24:
+        return 0.0
+    lo_c, hi_c = np.percentile(lab[:, 0], TONAL_SPLIT_PCTILE)
+    lo = lab[lab[:, 0] <= lo_c]
+    hi = lab[lab[:, 0] >= hi_c]
+    if not len(lo) or not len(hi):
+        return 0.0
+    return float(deltaE_ciede2000(
+        lo.mean(axis=0).reshape(1, 3), hi.mean(axis=0).reshape(1, 3))[0])
+
+
+def split_tonal_regions(
+    p: Prep, cfg: PipelineConfig, kept: list[RegionMask]
+) -> tuple[list[RegionMask], int]:
+    """Split regions whose own pixels span more tone than one thread can tell.
+
+    -> (regions, split_count). Every returned mask is a subset of the input
+    mask it came from, the parts of one input region are disjoint, and their
+    union is exactly the original — so this can neither lose artwork nor
+    create overlap for stage 5 to resolve.
+    """
+    if not getattr(cfg, "split_tonal_regions", False):
+        return kept, 0
+
+    px_per_mm = p.px_per_mm
+    px_area_mm2 = 1.0 / (px_per_mm * px_per_mm) if px_per_mm > 0 else 0.0
+    if px_area_mm2 <= 0:
+        return kept, 0
+
+    out: list[RegionMask] = []
+    split_count = 0
+    for r in kept:
+        px = int(r.mask.sum())
+        area_mm2 = px * px_area_mm2
+        if area_mm2 < TONAL_SPLIT_MIN_AREA_MM2:
+            out.append(r)
+            continue
+        lab = rgb_to_lab(p.rgb[r.mask].reshape(-1, 3))
+        span = _percentile_extremes_deltae(lab)
+        if span < TONAL_SPLIT_MIN_DELTAE:
+            out.append(r)
+            continue
+
+        n = int(np.clip(round(span / 9.0), 2, TONAL_SPLIT_MAX_PARTS))
+        # Quantile edges, so each part holds a comparable pixel COUNT rather
+        # than a comparable slice of the L* axis — a region that is mostly
+        # midtone with a small bright rim splits into useful areas either way.
+        edges = np.percentile(lab[:, 0], np.linspace(0, 100, n + 1)[1:-1])
+        full_l = np.full(r.mask.shape, np.nan, np.float64)
+        full_l[r.mask] = lab[:, 0]
+        bucket = np.digitize(full_l, edges)
+
+        parts: list[np.ndarray] = []
+        for b in range(n):
+            m = r.mask & (bucket == b)
+            if not m.any():
+                continue
+            m8 = m.astype(np.uint8)
+            if TONAL_SPLIT_CLEAN_PX > 1:
+                k = np.ones((TONAL_SPLIT_CLEAN_PX, TONAL_SPLIT_CLEAN_PX), np.uint8)
+                m8 = cv2.morphologyEx(m8, cv2.MORPH_OPEN, k)
+                m8 = cv2.morphologyEx(m8, cv2.MORPH_CLOSE, k)
+            # Re-clip: closing can bulge a part past the region it came from,
+            # and two parts that both bulged would overlap.
+            m = (m8 > 0) & r.mask
+            # Spatial coherence, and the single most important constraint
+            # here. A tonal bucket is scattered across the region by
+            # construction — the mid-tones of a feathered breast are
+            # everywhere — and stage 4 vectorises each connected component
+            # into its OWN polygon, each with its own underlay and its own
+            # entry/exit. Handing the split through unfiltered turned Kent's
+            # owl into 130 regions and 14,905 stitches against 7,721, nearly
+            # all of it perimeter and travel rather than coverage. Keeping
+            # only components that are individually worth sewing is what
+            # makes the difference between "shading" and "confetti"; the
+            # crumbs fall through to `leftover` below and rejoin the body.
+            num, comp = cv2.connectedComponents(m.astype(np.uint8))
+            for c in range(1, num):
+                piece = comp == c
+                if piece.sum() * px_area_mm2 >= TONAL_SPLIT_MIN_PART_MM2:
+                    parts.append(piece)
+
+        if len(parts) < 2:
+            out.append(r)
+            continue
+
+        # Opening/closing can leave a pixel in two parts, or in none. Resolve
+        # both so the union is exactly `r.mask` and the parts are disjoint:
+        # first-come wins an overlap, and whatever is left over joins the
+        # largest part. Without this, stage 5 would see regions that overlap
+        # each other and artwork would silently vanish between them.
+        claimed = np.zeros_like(r.mask)
+        disjoint: list[np.ndarray] = []
+        for m in parts:
+            m = m & ~claimed
+            claimed |= m
+            disjoint.append(m)
+        leftover = r.mask & ~claimed
+        if leftover.any():
+            biggest = max(range(len(disjoint)), key=lambda i: int(disjoint[i].sum()))
+            disjoint[biggest] |= leftover
+        disjoint = [m for m in disjoint if m.any()]
+        if len(disjoint) < 2:
+            out.append(r)
+            continue
+
+        for m in disjoint:
+            out.append(RegionMask(mask=m, layer=r.layer, source=r.source))
+        split_count += 1
+
+    return out, split_count
+
+
 def kept_masks_to_quant(
     p: Prep,
     cfg: PipelineConfig,
@@ -1245,6 +1418,13 @@ def kept_masks_to_quant(
     enclosed = p.enclosed_mask
     has_enclosed = enclosed is not None and enclosed.any()
     slic_count = raw_count
+
+    # Before anything reads a region's MEAN colour, give tonally-diverse
+    # regions the chance to become several regions. Placed here rather than in
+    # either region former so both the classical and SAM2 paths get it from
+    # one implementation — the same reason this function exists.
+    regions_before_split = len(kept)
+    kept, tonal_splits = split_tonal_regions(p, cfg, kept)
 
     # --- 6. Palette selection (chart-restricted weighted k-medoids) -----------
     # (Step 5, the face-local threshold drop, already ran inside the RAG
@@ -1319,6 +1499,19 @@ def kept_masks_to_quant(
         thread_indices = thread_indices + enc_spools
 
     warnings: list[dict] = list(floor_warnings) + enc_warnings
+    if tonal_splits:
+        warnings.append(
+            warn(
+                TONAL_REGIONS_SPLIT,
+                f"{tonal_splits} region{'s' if tonal_splits != 1 else ''} "
+                "carried more light-to-dark range than a single thread can "
+                f"show, and {'were' if tonal_splits != 1 else 'was'} split so "
+                "the shading can sew in separate colors.",
+                count=tonal_splits,
+                regions_before=regions_before_split,
+                regions_after=len(kept),
+            )
+        )
     warnings.append(
         warn(
             PHOTO_SEGMENT_REGION_COUNT,
