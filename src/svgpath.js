@@ -7,7 +7,6 @@
   // SVG allows commands to be repeated implicitly by supplying extra
   // coordinate groups (e.g. "M 0 0 10 10" is a moveto then a lineto), which
   // is why args are collected greedily and chunked by the consumer.
-  const NUM_RE = /-?\d*\.?\d+(?:[eE][-+]?\d+)?/g;
   const NUM_STICKY_RE = /[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?/y;
   const CMD_RE = /[MmLlHhVvCcSsQqTtAaZz]/;
 
