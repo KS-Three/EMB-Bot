@@ -34,18 +34,22 @@ Usage:
     .venv/Scripts/python tools/corpus_scorecard.py diff
         Re-digitizes everything and prints what moved against the stored
         baseline: score deltas, findings that appeared/disappeared (by
-        code), and metric drift beyond a noise threshold. Exit code is
-        non-zero only for the one low-noise, high-confidence signal this
-        script is willing to call a real regression outright: a brand-new
-        "block"-severity finding that was not there before. Everything
-        else is reported, not enforced -- read it, don't just check the
-        exit code.
+        code), COUNT changes on finding codes present in both runs (a code
+        going 5x -> 6x is drift too -- the set-based blind spot pinned in
+        commit 76af7a6, fixed 2026-08-11), and metric drift beyond a noise
+        threshold. Exit code is non-zero only for the one low-noise,
+        high-confidence signal this script is willing to call a real
+        regression outright: a "block"-severity finding that was not there
+        before -- including one MORE instance of a block code the baseline
+        already carried. Everything else is reported, not enforced -- read
+        it, don't just check the exit code.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import sys
+from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -126,6 +130,35 @@ def capture() -> dict:
     return scorecard
 
 
+def _finding_changes(old: list[str], new: list[str]
+                     ) -> tuple[list[str], list[str], list[str], bool]:
+    """Count-aware findings comparison. -> (appeared, resolved, count_lines,
+    new_block).
+
+    `appeared`/`resolved` are the codes present in only one run — the same
+    lists the old set-based diff printed, so that half of the output format
+    is unchanged. `count_lines` is the half the set diff could not see
+    (pinned in commit 76af7a6): a "{code}:{severity}" string present in BOTH
+    runs at different multiplicities, e.g. fix #6.1 taking drone_render from
+    5 THREAD_MATCH_POOR findings to 6 while `diff` reported only a metric
+    delta. The baseline already stores findings as a sorted LIST, duplicates
+    preserved, so no baseline format change is needed — only this comparison
+    ever collapsed them.
+
+    `new_block` is True when the new run carries MORE instances of any
+    ":block" code than the baseline did — a brand-new block code, or one
+    more of an existing one. Both are "a block finding that was not there
+    before", the one signal diff() hard-fails on.
+    """
+    oc, nc = Counter(old), Counter(new)
+    appeared = sorted(k for k in nc if k not in oc)
+    resolved = sorted(k for k in oc if k not in nc)
+    count_lines = [f"{k}: x{oc[k]} -> x{nc[k]}"
+                   for k in sorted(oc.keys() & nc.keys()) if oc[k] != nc[k]]
+    new_block = any(k.endswith(":block") and nc[k] > oc.get(k, 0) for k in nc)
+    return appeared, resolved, count_lines, new_block
+
+
 def _metric_deltas(old: dict, new: dict) -> list[str]:
     lines = []
     for k in sorted(set(old) & set(new)):
@@ -176,26 +209,19 @@ def diff() -> int:
             if old["grade"] != new["grade"]:
                 lines.append(f"  grade: {old['grade']} -> {new['grade']}")
 
-            # KNOWN BLIND SPOT, found 2026-08-11 -- this comparison is
-            # set-based, so duplicate "{code}:{severity}" strings collapse and
-            # a COUNT change on a code present in BOTH runs is invisible. Real
-            # case that exposed it: fix #6.1 took photo/drone_render.png from
-            # 5 THREAD_MATCH_POOR findings to 6, and `diff` reported only a
-            # `color_changes` metric delta -- the extra finding, the more
-            # meaningful signal, was silently dropped. It was caught only by
-            # calling `_score_one` directly and diffing the raw lists by hand.
-            # This is worse than a missing feature: the tool answers "no
-            # finding drift" when findings did drift. Fixing it means counting
-            # per code (e.g. collections.Counter) rather than set-differencing
-            # -- deliberately NOT done here, since changing what `diff` reports
-            # wants its own pass and a re-look at the stored baseline format.
-            appeared = sorted(set(new["findings"]) - set(old["findings"]))
-            resolved = sorted(set(old["findings"]) - set(new["findings"]))
+            # Count-aware since 2026-08-11 (`_finding_changes`) -- the blind
+            # spot commit 76af7a6 pinned here, where the old set difference
+            # collapsed duplicate "{code}:{severity}" strings and answered
+            # "no finding drift" across a real 5 -> 6 THREAD_MATCH_POOR move.
+            appeared, resolved, count_lines, new_block = _finding_changes(
+                old["findings"], new["findings"])
             if appeared:
                 lines.append(f"  findings APPEARED: {appeared}")
             if resolved:
                 lines.append(f"  findings resolved: {resolved}")
-            if any(f.endswith(":block") for f in appeared):
+            for change in count_lines:
+                lines.append(f"  finding count changed: {change}")
+            if new_block:
                 hard_fail = True
 
             lines.extend(_metric_deltas(old["metrics"], new["metrics"]))
