@@ -27,10 +27,13 @@ from digitizer_core import machine, stitches
 from digitizer_core.config import PipelineConfig
 from digitizer_core.regions import Region
 from digitizer_core.stage6_blend import (
+    RAMP_REJECT_LOW_R2,
+    RAMP_REJECT_SPECKLED,
     SourcePixels,
     blend_fill,
     detect_design_ramp_angle,
     detect_ramp,
+    detect_ramp_detail,
 )
 from digitizer_core.stage6_fill import principal_angle_deg, stitch_shape
 from digitizer_core.threads import CHART
@@ -221,6 +224,56 @@ def test_blend_geometry_matches_the_plan_contract(region_factory, source_factory
         )
 
 
+def test_blend_report_distinguishes_decomposed_from_flattened():
+    """The 2026-08-12 defect, at the unit level: nothing in `blend_fill`'s
+    report told a caller whether decomposition ACTUALLY happened, so stage 0's
+    routing announcement ("will decompose the ramp into a few thread shades")
+    was the only signal a user ever got — and on Kent's owl it was wrong for
+    all 25 regions. A real ramp and a noise field must now be
+    distinguishable from the report alone, which is what stage 7 aggregates
+    into BLEND_NO_REGIONS_DECOMPOSED.
+    """
+    cfg = PipelineConfig()
+
+    ramp_region, ramp_source = _linear_region(), _linear_source()
+    _, ramp_report = blend_fill(ramp_region, ramp_source, cfg)
+    assert ramp_report["blend_shades"] >= 3, "a true ramp must report its shades"
+    assert ramp_report["blend_reject"] == ""
+    assert ramp_report["blend_best_r2"] >= 0.5
+
+    rng = np.random.default_rng(3)
+    poly = Polygon([(0, 0), (30, 0), (30, 20), (0, 20)])
+    noise_source = SourcePixels(
+        rgb=rng.integers(0, 256, size=(120, 160, 3), dtype=np.uint8),
+        px_per_mm=4.0, origin_px=(80.0, 60.0))
+    noise_region = Region(shape_id="Snoise", polygon=poly, thread_index=0,
+                          thread_number=CHART[0].number, area_mm2=poly.area)
+    _, noise_report = blend_fill(noise_region, noise_source, cfg)
+    assert noise_report["blend_shades"] == 0, (
+        "a flattened region must not report shades it never sewed"
+    )
+    assert noise_report["blend_reject"] in (RAMP_REJECT_LOW_R2, RAMP_REJECT_SPECKLED)
+
+
+def test_detect_ramp_detail_agrees_with_detect_ramp():
+    """`detect_ramp` is now a wrapper over `detect_ramp_detail`. Pin that the
+    split didn't change the accept/reject decision for either branch — every
+    existing caller and test still goes through the wrapper."""
+    ramp_region, ramp_source = _linear_region(), _linear_source()
+    model, reason, r2 = detect_ramp_detail(ramp_region.polygon, ramp_source)
+    assert model is not None and reason == "" and r2 >= 0.5
+    assert detect_ramp(ramp_region.polygon, ramp_source) is not None
+
+    rng = np.random.default_rng(3)
+    poly = Polygon([(0, 0), (30, 0), (30, 20), (0, 20)])
+    noise_source = SourcePixels(
+        rgb=rng.integers(0, 256, size=(120, 160, 3), dtype=np.uint8),
+        px_per_mm=4.0, origin_px=(80.0, 60.0))
+    model, reason, _ = detect_ramp_detail(poly, noise_source)
+    assert model is None and reason != ""
+    assert detect_ramp(poly, noise_source) is None
+
+
 def test_blend_true_ramp_branch_honors_the_shared_design_angle():
     """`test_blend_geometry_matches_the_plan_contract` above never sets
     `design_row_angle_deg` on either fixture, so it never exercises
@@ -278,7 +331,23 @@ def test_blend_falls_back_to_ordinary_tatami_on_speckle():
         trim_at_mm=machine.TRIM_AT_MM)
     assert [r.points for r in runs] == [r.points for r in expected]
     assert all(r.shape_id == region.shape_id for r in runs)
-    assert report == expected_report
+    # The stitch-planning half of the report must still be byte-identical to
+    # what plain tatami produced — that IS the fallback contract. The blend_*
+    # keys are diagnostics stage 7 aggregates into
+    # BLEND_NO_REGIONS_DECOMPOSED and have no tatami counterpart, so they are
+    # checked separately rather than weakening the equality above.
+    assert {k: v for k, v in report.items()
+            if not k.startswith("blend_")} == expected_report
+    assert report["blend_shades"] == 0, "flat fallback must not claim shades"
+    # Surfaced by the blend_reject diagnostic when it was added (2026-08-12):
+    # despite this test's name, the noise field never reaches the speckle
+    # gate. `detect_ramp` tests r2 FIRST, and random noise has no linear or
+    # radial structure to fit, so it is rejected on RAMP_R2_MIN and the
+    # speckle branch is never evaluated. The fallback behaviour this test
+    # actually guards is unchanged and still correct; only the reason is not
+    # the one the name implies. RAMP_SPECKLE_MAX's own coverage lives in the
+    # radial-disc fixture cited in `_speckle_ratio`'s docstring.
+    assert report["blend_reject"] == RAMP_REJECT_LOW_R2
 
 
 def test_blend_fallback_uses_the_shared_design_angle_when_set():
@@ -306,7 +375,9 @@ def test_blend_fallback_uses_the_shared_design_angle_when_set():
         stitch_mm=machine.FILL_STITCH_MM, underlay_style="none",
         trim_at_mm=machine.TRIM_AT_MM)
     assert [r.points for r in runs] == [r.points for r in expected]
-    assert report == expected_report
+    assert {k: v for k, v in report.items()
+            if not k.startswith("blend_")} == expected_report
+    assert report["blend_shades"] == 0
     # And NOT what the untouched default (no shared angle) would have sewn —
     # otherwise this test could pass even if the angle were silently ignored.
     unforced, _ = stitch_shape(

@@ -318,11 +318,31 @@ def _vertex_range_radial(poly: Polygon, center: tuple[float, float]) -> tuple[fl
     return lo, max(dists)
 
 
-def detect_ramp(poly: Polygon, sp: SourcePixels) -> RampModel | None:
-    """-> the winning ramp model, or None (fall back to ordinary tatami)."""
+# Why a region was NOT accepted as a ramp. Reported per-region by
+# `blend_fill` so the warning the user actually sees can describe what
+# happened instead of what was promised at classification time — the
+# 2026-08-12 measurement on Kent's owl found all 25 regions rejected (24
+# on r2, 1 on speckle) while the app still announced decomposition. These
+# are internal diagnostic strings, not user copy.
+RAMP_OK = ""
+RAMP_REJECT_FEW_SAMPLES = "few_samples"
+RAMP_REJECT_LOW_R2 = "low_r2"
+RAMP_REJECT_SPECKLED = "speckled"
+
+
+def detect_ramp_detail(poly: Polygon, sp: SourcePixels
+                       ) -> tuple[RampModel | None, str, float]:
+    """-> (model or None, rejection reason, best r2 seen).
+
+    The measuring half of `detect_ramp`, split out so callers that need to
+    explain a rejection (`blend_fill`, for the user-facing warning) get the
+    same numbers the decision was made on rather than re-deriving them.
+    `detect_ramp` stays the plain model-or-None entry point every existing
+    caller already uses.
+    """
     mm_x, mm_y, rgb, mask, crop = _sample_pixels(poly, sp)
     if len(mm_x) < 12:
-        return None
+        return None, RAMP_REJECT_FEW_SAMPLES, 0.0
     lab = rgb_to_lab(rgb)
     lightness = lab[:, 0]
 
@@ -332,16 +352,21 @@ def detect_ramp(poly: Polygon, sp: SourcePixels) -> RampModel | None:
 
     best_r2 = max(r2_linear, r2_radial)
     if best_r2 < RAMP_R2_MIN:
-        return None
+        return None, RAMP_REJECT_LOW_R2, best_r2
     if _speckle_ratio(crop, mask) > RAMP_SPECKLE_MAX:
-        return None
+        return None, RAMP_REJECT_SPECKLED, best_r2
 
     if r2_linear >= r2_radial:
         lo, hi = _vertex_range_linear(poly, direction)
-        return RampModel("linear", direction, None, lo, hi, r2_linear)
+        return RampModel("linear", direction, None, lo, hi, r2_linear), RAMP_OK, best_r2
     center = (centroid.x, centroid.y)
     lo, hi = _vertex_range_radial(poly, center)
-    return RampModel("radial", None, center, lo, hi, r2_radial)
+    return RampModel("radial", None, center, lo, hi, r2_radial), RAMP_OK, best_r2
+
+
+def detect_ramp(poly: Polygon, sp: SourcePixels) -> RampModel | None:
+    """-> the winning ramp model, or None (fall back to ordinary tatami)."""
+    return detect_ramp_detail(poly, sp)[0]
 
 
 # Design-wide acceptance floor, deliberately lower than (and separate from)
@@ -515,7 +540,7 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg
     border eligibility, which depends on reading a real report back.
     """
     poly = region.polygon
-    model = detect_ramp(poly, source_pixels)
+    model, reject, best_r2 = detect_ramp_detail(poly, source_pixels)
     if model is None:
         # Not a ramp (or too speckled to trust as one) — ordinary tatami,
         # the same call every other fill-classified shape gets, report and
@@ -532,11 +557,19 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg
         # patchwork is exactly 23 independent PCA axes. None when this
         # design has no shared angle (not gradient-classified, or the
         # whole-design fit itself declined) preserves the untouched default.
-        return stitch_shape(
+        runs, report = stitch_shape(
             poly, region.shape_id, angle_deg=source_pixels.design_row_angle_deg,
             row_mm=machine.FILL_ROW_MM, stitch_mm=machine.FILL_STITCH_MM,
             underlay_style="none", trim_at_mm=machine.TRIM_AT_MM,
         )
+        # Routed to blend, sewn flat. Stage 7 aggregates these across the
+        # design so the warning the user reads can say decomposition did
+        # NOT happen — the classification-time copy only ever described the
+        # routing, and on a real photograph every region lands here.
+        report["blend_shades"] = 0
+        report["blend_reject"] = reject
+        report["blend_best_r2"] = best_r2
+        return runs, report
 
     mm_x, mm_y, rgb, _mask, _crop = _sample_pixels(poly, source_pixels)
     lab = rgb_to_lab(rgb)
@@ -595,7 +628,8 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg
     # Aggregated the same way `stitch_one` aggregates a group of shapes: OR
     # for too_thin (any band pinching to nothing is worth flagging), sum for
     # jumps, AND for empty (empty only if every band produced nothing).
-    report = {"too_thin": False, "jumps": 0, "empty": False}
+    report = {"too_thin": False, "jumps": 0, "empty": False,
+              "blend_shades": n, "blend_reject": RAMP_OK, "blend_best_r2": best_r2}
     for i in range(n):
         t_lo = max(0.0, i / n - (0.0 if i == 0 else _BAND_OVERLAP_T))
         t_hi = min(1.0, (i + 1) / n + (0.0 if i == n - 1 else _BAND_OVERLAP_T))

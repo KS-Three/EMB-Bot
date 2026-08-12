@@ -1116,6 +1116,12 @@ const WARNING_TEXT = {
     plural(w.count || 0,
       "One shape couldn't be stitched and was left out.",
       "{n} shapes couldn't be stitched and were left out."),
+  // Pairs with the gradient classification note, which says shapes were
+  // ROUTED to the blend tier. This one reports what the tier decided.
+  BLEND_NO_REGIONS_DECOMPOSED: (w) =>
+    plural(w.count || 0,
+      "The shape wasn't a smooth enough gradient to shade, so it sews in one flat color.",
+      "None of the {n} shapes were smooth enough gradients to shade, so each sews in one flat color."),
   LONG_JUMPS_TRIMMED: (w) =>
     plural(w.count || 0,
       "The thread gets cut once where it has to travel a long way.",
