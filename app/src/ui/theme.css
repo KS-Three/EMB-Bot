@@ -798,8 +798,22 @@ input.fabriccustom[type="color"] {
 
 .elrow-x:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
 
+/* A wrapping grid, deliberately — this was a single-line flex row until
+   2026-08-12. `.eladd` children never shrink below their own label, so six of
+   them overflowed this sidebar by ~136px at a 1440px viewport and the last
+   button landed 111px past the panel's right edge, invisible with no
+   indication it existed. That last button is "+ Auto-digitize"
+   (ContentStep.svelte), which renders only when the local digitizer service
+   is reachable — so a clipped button was indistinguishable from a service
+   that wasn't running, and reads as "auto-digitize is broken".
+   `auto-fit`/`minmax` reflows to as many equal columns as fit, which also
+   keeps every button the same width: plain `flex-wrap: wrap` fixed the
+   clipping but left a short final line stretching two buttons to 170px
+   against the first line's 79px. Do not restore a nowrap single line — any
+   future seventh button would silently disappear the same way. */
 .eladd-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
   gap: var(--space-3);
   margin-bottom: var(--space-5);
 }
