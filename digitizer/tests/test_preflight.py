@@ -882,8 +882,16 @@ def scene_stub_report():
     photo_scene NATURALLY, so this also exercises the plan.warnings half of
     the class gate — the forced-class half is exercised by the negatives).
     Measured: 12.5 px/mm input, subject/bg delta-L p90 27.6, 4 color
-    changes, ~8k stitches — above every floor and under every ceiling."""
-    return _digitize_report(str(PHOTO / "photo_scene_stub.png"))
+    changes, ~8k stitches — above every floor and under every ceiling.
+
+    Background-existence guards off (2026-08-11): at defaults the guards now
+    read this full-bleed stub as having no background (border agreement below
+    0.75), which makes subject_bg_delta_l unmeasurable — the guards are the
+    subject of their own tests; THIS test needs the with-background happy
+    path so every floor is genuinely measured, not skipped."""
+    return _digitize_report(str(PHOTO / "photo_scene_stub.png"),
+                            bg_border_agreement_min=0.0,
+                            bg_border_rival_min=0.0)
 
 
 def test_every_photo_guard_stays_quiet_on_the_committed_photo_happy_path(scene_stub_report):

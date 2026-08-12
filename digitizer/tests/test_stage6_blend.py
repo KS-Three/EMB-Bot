@@ -326,7 +326,14 @@ def test_detect_design_ramp_angle_finds_the_hue_carried_diagonal():
     find that and return the perpendicular row angle, not decline."""
     from digitizer_core.stage1_prep import prep
 
-    p = prep(str(PHOTO_DIR / "repro_gradient_white_icon.png"), PipelineConfig(target_width_mm=90.0))
+    # Background-existence guards off (2026-08-11): at defaults the guards now
+    # correctly refuse to flood this full-bleed fixture, which changes prep's
+    # design mask and dilutes the b* fit. The detector's math is what's pinned
+    # here, on the exact prep state of the 2026-08-03 diagnosis — same pattern
+    # as test_enclosed_background.py / test_thread_revalidate.py.
+    p = prep(str(PHOTO_DIR / "repro_gradient_white_icon.png"),
+             PipelineConfig(target_width_mm=90.0,
+                            bg_border_agreement_min=0.0, bg_border_rival_min=0.0))
     angle = detect_design_ramp_angle(p)
     assert angle is not None
     # Expected row angle: perpendicular to the ~45 degree diagonal, i.e. also
@@ -402,7 +409,12 @@ def test_gradient_fragments_share_one_fill_angle_end_to_end():
     """
     from digitizer_core.pipeline import plan_stitches, run_stages
 
-    cfg = PipelineConfig(target_width_mm=90.0)
+    # Guards off for the same reason as the detector test above: the
+    # fragmentation-plus-shared-angle scenario needs the diagnosis-time
+    # flooded prep state, which the 2026-08-11 existence guards (correctly)
+    # no longer produce at defaults on this full-bleed fixture.
+    cfg = PipelineConfig(target_width_mm=90.0,
+                         bg_border_agreement_min=0.0, bg_border_rival_min=0.0)
     result = run_stages(str(PHOTO_DIR / "repro_gradient_white_icon.png"), cfg)
     assert len(result.regions) > 1, "the fragmentation this fix works around must still repro"
     assert result.source_pixels is not None

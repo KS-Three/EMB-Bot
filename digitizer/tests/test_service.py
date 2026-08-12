@@ -436,7 +436,13 @@ def test_stitched_default_and_override_round_trip_over_http(client):
     service rejecting the override key and never exposing the field) —
     and a `shape_overrides[sid] = {"stitched": true}` restores it, both in
     the review payload and in the actual stitch plan reaching the design."""
-    first = _digitize(client, {"preflight": False}, art=REPRO)
+    # Guards off (2026-08-11): the background-existence guards now correctly
+    # refuse to flood the full-bleed repro at defaults, so nothing gets
+    # enclosed-background-tagged there. This test pins the service's restore
+    # plumbing, which needs the flooded diagnosis-time state — and doubles as
+    # proof the service accepts the new guard knobs over HTTP.
+    GUARDS_OFF = {"bg_border_agreement_min": 0.0, "bg_border_rival_min": 0.0}
+    first = _digitize(client, {"preflight": False, **GUARDS_OFF}, art=REPRO)
     shapes = first["review"]["shapes"]
     assert all("stitched" in s for s in shapes)
     unstitched = [s for s in shapes if s["stitched"] is False]
@@ -445,6 +451,7 @@ def test_stitched_default_and_override_round_trip_over_http(client):
 
     second = _digitize(client, {
         "preflight": False,
+        **GUARDS_OFF,
         "shape_overrides": {target["shape_id"]: {"stitched": True}},
     }, art=REPRO)
 
