@@ -24,7 +24,11 @@ part company:
     landed, and the run tier sews a small shape's outline and leaves the
     inside bare. Measured over 60 configurations, stage 7's own re-derivation
     reports zero uncovered links in every one while the thread says up to
-    2.29 mm of link lies on open fabric.
+    2.29 mm of link lies on open fabric. Since 2026-08-11 the instrument
+    scores BETWEEN-shape transport only: a shape's own internal routing
+    (stage 6's row-skip travel) is not a chain link, and scoring it blocked
+    a clean one-shape design at 104-107 mm (`_transport_and_content` has the
+    classification and the closeout citation).
   * `_contour_findings` — the contour tier's per-shape starvation report,
     which went to `plan.warnings` and reached nobody reading this report.
   * `_fill_row_advance_mm`'s axis gate — the row-density instrument answered
@@ -1239,38 +1243,75 @@ def _coverage_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
 # --- Uncovered links (chaining law 60) --------------------------------------
 
 def _transport_and_content(plan: StitchPlan
-                           ) -> tuple[list[tuple], list[tuple]]:
-    """Split every needle-DOWN segment into transport and content.
+                           ) -> tuple[list[tuple], dict[int, list[np.ndarray]]]:
+    """Split every needle-DOWN segment into chain transport and content.
 
-    -> ([(a, b, block_index)] transport, [(a, b, block_index)] content)
+    -> ([(a, b, block_index)] transport,
+        {block_index: [run points as (N, 2) float arrays]} content)
 
-    Transport is thread whose job is to get somewhere: a TRAVEL run, and the
-    connection into any run the machine reaches with the needle still down
-    (`jump` False). That connection is easy to miss and is exactly the thread
-    chaining creates — it is not a step inside any run's own point list, so
-    every instrument that iterates a run's consecutive pairs is blind to it,
-    `_coverage_map` included.
+    Transport is thread whose job is to get from one shape to another: a
+    TRAVEL run bridging two different shapes' content, and the connection
+    into any run the machine reaches with the needle still down (`jump`
+    False) across a shape boundary. That connection is easy to miss and is
+    exactly the thread chaining creates — it is not a step inside any run's
+    own point list, so every instrument that iterates a run's consecutive
+    pairs is blind to it, `_coverage_map` included.
+
+    A shape's OWN internal routing is not transport, and getting that wrong
+    was this instrument's measured false block (hardening closeout
+    2026-08-02, finding 4): a fill's row-skip travel — `stage6_fill.emit`'s
+    bridge between two columns of one shape, routed inside that shape's own
+    polygon by construction — was scored as a between-shape link, and a
+    clean ONE-shape design blocked at 104-107 mm with "thread crosses bare
+    fabric between shapes". The tell is provenance the plan already carries,
+    not a router flag: a travel piece is internal exactly when the nearest
+    content runs before and after it in the block belong to the SAME shape
+    the travel itself names. Thread from a shape to itself is that shape's
+    routing in its own colour inside its own artwork; only thread between
+    two different shapes' content can be law 60's stray line. (The same rule
+    deliberately covers a chained in-shape link — content(F) -> travel(F) ->
+    content(F): stage 6 already trims any in-shape lift past `trim_at_mm`,
+    so what chaining sews there is under the float ceiling by construction.)
 
     Everything else — fill rows, satin crosses, borders, beans, underlay,
     ties — is content: thread the design is made of. A fill row lying on bare
     fabric is the design; a link lying on bare fabric is a defect. That is the
     whole distinction, and it is why this cannot be asked of the plan as a
-    whole.
+    whole. Content rides out as per-run point ARRAYS, not per-stitch tuples:
+    the caller rasterizes whole runs (`cv2.polylines`) and a Python tuple per
+    stitch was a measured chunk of the check's 1.94x overhead.
     """
     transport: list[tuple] = []
-    content: list[tuple] = []
+    content: dict[int, list[np.ndarray]] = {}
     for bi, block in enumerate(plan.blocks):
-        prev: tuple[float, float] | None = None
-        for run in block.runs:
+        runs = [r for r in block.runs if r.points]
+        # Shape of the nearest content run at-or-after each index; the +1
+        # sentinel answers "after the last run" with None.
+        nxt: list[str | None] = [None] * (len(runs) + 1)
+        for i in range(len(runs) - 1, -1, -1):
+            nxt[i] = (runs[i].shape_id if runs[i].kind != stitches.TRAVEL
+                      else nxt[i + 1])
+        prev_content: str | None = None
+        prev_pt: tuple[float, float] | None = None
+        for i, run in enumerate(runs):
             pts = run.points
-            if not pts:
-                continue
-            if prev is not None and not run.jump:
-                transport.append((prev, pts[0], bi))
-            bucket = transport if run.kind == stitches.TRAVEL else content
-            for a, b in zip(pts, pts[1:]):
-                bucket.append((a, b, bi))
-            prev = pts[-1]
+            if prev_pt is not None and not run.jump:
+                internal = prev_content is not None and prev_content == nxt[i]
+                if not internal:
+                    transport.append((prev_pt, pts[0], bi))
+            if run.kind == stitches.TRAVEL:
+                internal = (prev_content is not None
+                            and prev_content == nxt[i + 1]
+                            and run.shape_id == prev_content)
+                if not internal:
+                    for a, b in zip(pts, pts[1:]):
+                        transport.append((a, b, bi))
+            else:
+                if len(pts) >= 2:
+                    content.setdefault(bi, []).append(
+                        np.asarray(pts, np.float64))
+                prev_content = run.shape_id
+            prev_pt = pts[-1]
     return transport, content
 
 
@@ -1298,29 +1339,40 @@ def _link_coverage(plan: StitchPlan) -> dict | None:
     nothing else counts: thread from an EARLIER, different colour would leave
     the link legible as a line in the wrong colour across it.
 
-    Blocks are walked last to first so one accumulating mask serves them all.
+    Blocks are walked last to first so one accumulating mask serves them all,
+    and the walk stops at the first block that still has transport below it:
+    content earlier than every remaining link can bury nothing. The content
+    itself is rasterized per RUN with `cv2.polylines` at the thread's own
+    width — one C call per block replacing the old per-sample disk-stamping
+    loop, which sampled every needle-down stitch at cell pitch and then
+    fancy-indexed 13 offsets over all of it. That loop was most of the
+    check's measured 1.94x preflight overhead (hardening closeout
+    2026-08-02, finding 4); the geometry drawn is the same ribbon.
     """
     transport, content = _transport_and_content(plan)
     if not transport:
         return None
 
-    pts = [p for group in (transport, content) for seg in group
-           for p in (seg[0], seg[1])]
-    xs = [p[0] for p in pts]
-    ys = [p[1] for p in pts]
+    lo = np.full(2, np.inf)
+    hi = np.full(2, -np.inf)
+    for seg in transport:
+        for p in (seg[0], seg[1]):
+            lo = np.minimum(lo, p)
+            hi = np.maximum(hi, p)
+    for arrs in content.values():
+        for a in arrs:
+            lo = np.minimum(lo, a.min(axis=0))
+            hi = np.maximum(hi, a.max(axis=0))
     cell = _LINK_CELL_MM
     pad = machine.COVERAGE_THREAD_W_MM
-    x0, y0 = min(xs) - pad, min(ys) - pad
-    span_x, span_y = max(xs) + pad - x0, max(ys) + pad - y0
+    x0, y0 = float(lo[0]) - pad, float(lo[1]) - pad
+    span_x, span_y = float(hi[0]) + pad - x0, float(hi[1]) + pad - y0
     while (int(span_x / cell) + 2) * (int(span_y / cell) + 2) > _LINK_MAX_CELLS:
         cell *= 2.0
     nx = int(span_x / cell) + 2
     ny = int(span_y / cell) + 2
 
     rad = max(1, int(round(machine.COVERAGE_THREAD_W_MM / 2.0 / cell)))
-    offsets = [(dx, dy)
-               for dy in range(-rad, rad + 1) for dx in range(-rad, rad + 1)
-               if dx * dx + dy * dy <= rad * rad]
 
     def sample(segs: list[tuple]) -> tuple[np.ndarray, np.ndarray, np.ndarray,
                                            np.ndarray]:
@@ -1344,30 +1396,36 @@ def _link_coverage(plan: StitchPlan) -> dict | None:
         return (np.clip(cx, 0, nx - 1), np.clip(cy, 0, ny - 1),
                 (ln / n)[idx], n)
 
-    by_block: dict[int, list] = {}
-    for seg in content:
-        by_block.setdefault(seg[2], []).append(seg)
     moves: dict[int, list] = {}
     for seg in transport:
         moves.setdefault(seg[2], []).append(seg)
+    first_move_bi = min(moves)
 
-    laid = np.zeros((ny, nx), bool)
+    # Fixed-point pixel coordinates for polylines: cell k's CENTER is
+    # x0 + (k + 0.5) * cell, so the half-cell shift keeps the drawn ribbon
+    # registered with `sample`'s floor-binned lookup cells.
+    _FP_BITS = 3
+    _FP = float(1 << _FP_BITS)
+
+    def to_px(a: np.ndarray) -> np.ndarray:
+        return np.round(
+            ((a - (x0, y0)) / cell - 0.5) * _FP).astype(np.int32)
+
+    laid = np.zeros((ny, nx), np.uint8)
     total_mm = uncovered_mm = 0.0
     worst_mm = 0.0
     worst_at: tuple[float, float] | None = None
-    for bi in range(len(plan.blocks) - 1, -1, -1):
-        batch = by_block.get(bi)
-        if batch:
-            cx, cy, _step, _n = sample(batch)
-            for dx, dy in offsets:
-                laid[np.clip(cy + dy, 0, ny - 1),
-                     np.clip(cx + dx, 0, nx - 1)] = True
+    for bi in range(len(plan.blocks) - 1, first_move_bi - 1, -1):
+        arrs = content.get(bi)
+        if arrs:
+            cv2.polylines(laid, [to_px(a) for a in arrs], False, 1,
+                          thickness=2 * rad + 1, shift=_FP_BITS)
         batch = moves.get(bi)
         if not batch:
             continue
         cx, cy, step, n = sample(batch)
         total_mm += float(step.sum())
-        covered = laid[cy, cx]
+        covered = laid[cy, cx] != 0
         uncovered_mm += float(step[~covered].sum())
         # Longest unbroken bare stretch. It is carried ACROSS consecutive
         # transport segments that touch, because that is what the thread does:
@@ -1443,11 +1501,17 @@ def _link_findings(plan: StitchPlan,
     over the 60-configuration sweep the longest bare stretch is 2.29 mm with a
     p90 of 1.07, against a 3.0 mm ceiling on pique knit and 4.0 on terry — so
     clean work is silent on every fixture the house owns, with the margin coming
-    from measurement rather than from rounding the threshold up to fit.
+    from measurement rather than from rounding the threshold up to fit. (That
+    sweep predates 2026-08-11 and measured the old transport definition,
+    internal travel included; the between-shape-only instrument can only read
+    lower on the same plans.)
 
     `link_uncovered_max_mm` rides out in the metrics whether or not it fires:
     the number is the point, and an operator watching it move across a
-    re-digitize learns more than a boolean.
+    re-digitize learns more than a boolean. All four link metrics count
+    BETWEEN-shape transport only — a chain-off plan reports zero link thread,
+    because without chaining nothing sews from one shape to another
+    needle-down (`_transport_and_content` owns that classification).
     """
     got = _link_coverage(plan)
     empty = {"link_segments": 0, "link_thread_mm": 0.0,
