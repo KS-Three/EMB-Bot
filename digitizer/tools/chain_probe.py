@@ -38,10 +38,16 @@ from digitizer_core.stage5_overlap import resolve_overlaps  # noqa: E402
 from digitizer_core.stage7_sequence import sequence  # noqa: E402
 
 CASES = [
-    ("benchmark", Path(r"C:\Users\EE-LT-11030\Downloads\enthusiast enterprises logo.png"),
-     "left_chest", 90.0),
-    ("logo_whitebg", ROOT / "testdata/logo_whitebg.png", "left_chest", 80.0),
-    ("ribbon_curve", ROOT / "testdata/ribbon_curve.png", "left_chest", 80.0),
+    # The benchmark art is the committed copy now (testdata/photo/), not the
+    # Downloads original the 2026-08-02 shutdown measured — that file is
+    # gone. 82 mm is the committed benchmark width (see conftest's
+    # enthusiast_logo_82mm fixture for the sweep that chose it); full_back
+    # is the STOCK fleece preset the shutdown measured 29.11 mm of bare
+    # thread on under the old polygon cover model.
+    ("benchmark", ROOT / "testdata/photo/enthusiast_logo.png", "left_chest", 82.0),
+    ("full_back", ROOT / "testdata/photo/enthusiast_logo.png", "full_back", 82.0),
+    ("left_chest", ROOT / "testdata/logo_whitebg.png", "left_chest", 80.0),
+    ("ribbon", ROOT / "testdata/ribbon_curve.png", "left_chest", 80.0),
     ("logo_alpha", ROOT / "testdata/logo_alpha.png", "left_chest", 80.0),
 ]
 

@@ -968,6 +968,36 @@ class PipelineConfig:
     # inscribed radius, <= 0.121 mm beyond the thread edge) — under one
     # thread width, left to the sew-out below.
     #
+    # UPDATE 2026-08-11: the third structural hole is closed — TIER
+    # blindness. `covered_by` unions later layers' artwork with no idea what
+    # tier each shape will sew as, and a shape pinned `tier: "run"` sews
+    # only its outline: its polygon promised areal cover no thread will ever
+    # provide, at ANY size — the inset bounds a fill/satin tier's
+    # sub-millimetre boundary shortfall, not a whole interior. Stage 7 now
+    # predicts run-tier shapes with the same predicate `stitch_one` routes
+    # on (explicit tier "run", or the small-shape rescue's area floor) and
+    # subtracts their artwork from every later-colour cover before the
+    # inset (`_link_cover`'s `run_tier_art`; pinned by
+    # tests/test_chaining.py::test_a_later_run_tier_shape_buries_nothing —
+    # a 10 mm-tall run-tier bridge that linked pre-fix must now cut). The
+    # verification instruments stopped sharing the router's blind spots in
+    # the same pass: `_uncovered_links` now tests one-point links (37% of
+    # the benchmark's — export sews a plain STITCH record through them) and
+    # the REAL sewn path including the two endpoint segments
+    # `_link_stitches` never stores. Acceptance, measured with
+    # `_thread_bare_mm` on all four fixtures (benchmark = the committed
+    # enthusiast_logo @ 82 mm/left_chest, full_back = same art on the stock
+    # fleece preset, left_chest = logo_whitebg, ribbon = ribbon_curve):
+    # chaining-added bare thread is 0.00 mm on every one, and 0.0 ABSOLUTE
+    # where the chain-off floor is zero (benchmark, full_back, ribbon —
+    # left_chest keeps stage 6's own pre-existing ~0.10 mm in-shape-travel
+    # floor, chain-on == chain-off to the digit). The corrected cover
+    # refused no link the fixtures actually used: benchmark still links
+    # 1 -> 18 and lands 4.06 trims/1k chain-on (9.82 off); full_back
+    # 1 -> 14, 7.35 -> 4.73. Pinned by
+    # tests/test_chaining.py::
+    # test_chaining_adds_zero_bare_thread_on_every_acceptance_fixture.
+    #
     # Still outstanding, and still why this stays off by default:
     #   - A sew-out that says at what clearance a needle-down float actually
     #     shows — LINK_COVER_TOL_MM is still a thread spec, not a measurement.

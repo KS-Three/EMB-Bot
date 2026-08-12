@@ -61,7 +61,24 @@ def _cover(planned, sew_index):
 
 
 def _uncovered_links(planned, blocks) -> list[str]:
-    """Shape ids of every needle-down travel run that is NOT buried."""
+    """Shape ids of every needle-down travel run that is NOT buried.
+
+    Two structural blind spots this instrument used to share with
+    `tools/chain_probe.py`, both fixed the way `_thread_bare_mm` (below)
+    always did it:
+
+    - **One-point links are not skipped.** A link whose route densified to a
+      single interior stitch is still a link — export writes a plain STITCH
+      record for it, 37% of the benchmark's links were this shape — and the
+      old `len(run.points) < 2` guard silently exempted every one of them
+      from this check. A 1-point LineString raises in shapely, so the path
+      is rebuilt from the neighbouring runs instead of from the point alone.
+    - **The REAL sewn path is tested, not the stored interior.**
+      `_link_stitches` returns only the route's interior, so the first and
+      last segments the needle actually sews — up to RUN_STITCH_MM each —
+      appear in no run's points. The path here runs from the previous run's
+      last penetration, through the link, to the next run's first.
+    """
     index = {p.shape_id: p.sew_index for p in planned}
     bad: list[str] = []
     for block in blocks:
@@ -70,10 +87,18 @@ def _uncovered_links(planned, blocks) -> list[str]:
         if sew_index is None:
             continue
         cover = _cover(planned, sew_index)
-        for run in block.runs:
-            if run.kind != stitches.TRAVEL or len(run.points) < 2:
+        runs = block.runs
+        for j, run in enumerate(runs):
+            if run.kind != stitches.TRAVEL:
                 continue
-            if not cover.covers(LineString(run.points)):
+            pts = list(run.points)
+            if j and runs[j - 1].points:
+                pts.insert(0, runs[j - 1].points[-1])
+            if j + 1 < len(runs) and runs[j + 1].points:
+                pts.append(runs[j + 1].points[0])
+            if len(pts) < 2:
+                continue
+            if not cover.covers(LineString(pts)):
                 bad.append(run.shape_id)
     return bad
 
@@ -90,9 +115,11 @@ def _needle_up(blocks):
 
 # --- Synthetic geometry ----------------------------------------------------
 
-def _region(poly: Polygon, layer: int, name: str, thread: int) -> Region:
-    # Forced to "fill": these bars are meant to isolate the between/within-
-    # block LINKING decision (laws 59-62), not the satin-vs-fill classifier.
+def _region(poly: Polygon, layer: int, name: str, thread: int,
+            tier: str = "fill") -> Region:
+    # Forced to "fill" by default: these bars are meant to isolate the
+    # between/within-block LINKING decision (laws 59-62), not the
+    # satin-vs-fill classifier.
     # Left on "auto", `is_satin_candidate` takes a plain 10x10 square as satin
     # and `satin_shape` returns it as several disjoint underlay/satin/travel
     # groups — which is a real, separate stage-6 behaviour, but it plants
@@ -100,9 +127,11 @@ def _region(poly: Polygon, layer: int, name: str, thread: int) -> Region:
     # that cover is real thread (not the whole polygon), those extra jumps
     # sometimes cannot be bridged, which reads as this file's own tests
     # failing. Fill sews a bar as one continuous run with no internal jump.
+    # `tier` is overridable so a fixture can pin a shape to the RUN tier —
+    # the outline-only tier whose polygon promises no areal cover at all.
     return Region(shape_id=name, polygon=poly, thread_index=thread,
                   thread_number=f"{1000 + thread}", area_mm2=poly.area,
-                  meta={"layer": layer, "tier": "fill"})
+                  meta={"layer": layer, "tier": tier})
 
 
 def _bar(x0: float, x1: float) -> Polygon:
@@ -292,6 +321,38 @@ def test_a_sliver_of_a_future_colour_no_longer_counts_as_cover():
         "a 1.2 mm sliver of a future colour must not bury a 6 mm link"
     assert cut.jump and cut.trim, "the thread must be cut"
     assert not _uncovered_links(planned, blocks)
+
+
+def test_a_later_run_tier_shape_buries_nothing():
+    """The tier blindness, pinned. `covered_by` is the union of every LATER
+    layer's artwork polygon, and until now it did not know what TIER those
+    shapes would sew as. A shape pinned to the RUN tier sews its OUTLINE only
+    — a bean run around the boundary, zero thread anywhere in its interior —
+    so its polygon promises areal cover that no thread will ever provide.
+    The LINK_COVER_INSET_MM erosion cannot catch this: it bounds a fill or
+    satin tier's boundary shortfall (< 0.75 mm), but a run-tier shape's
+    shortfall is its whole interior, however large the shape is.
+
+    Same geometry as `test_a_gap_a_later_colour_covers_is_sewn_not_cut` — a
+    6 mm gap fully bridged by a later colour, 10 mm tall so the inset leaves
+    a wide honest-looking middle — except the bridge is pinned `tier: "run"`.
+    That test is this one's control: sewn as fill, the same bridge really
+    does bury the link and the transition must chain. Sewn as an outline
+    run, it buries nothing and the transition must fall back to the distance
+    rule: 6 mm on a 3.0 mm-trim fabric is a cut — the cheap direction to be
+    wrong in (a needle-up move, not a float on bare fabric).
+    """
+    regions = [_region(_bar(0, 10), 0, "Sleft", 0),
+               _region(_bar(16, 26), 0, "Sright", 0),
+               _region(Polygon([(10, 0), (16, 0), (16, 10), (10, 10)]),
+                       1, "Sbridge", 1, tier="run")]
+    conf = PipelineConfig(**CHAIN_ON)
+    planned, _ = resolve_overlaps(regions, FABRIC, conf)
+    blocks, _ = sequence(planned, FABRIC, conf)
+    cut = _crossing(blocks)
+    assert cut.kind != stitches.TRAVEL, \
+        "a run-tier bridge sews only its outline — it must not bury a link"
+    assert cut.jump and cut.trim, "the thread must be cut"
 
 
 def test_a_gap_nothing_will_cover_is_still_cut():
@@ -590,6 +651,59 @@ def test_chaining_adds_no_bare_fabric_exposure_on_the_committed_fixture(enthusia
     assert exp1 <= exp0, f"chaining exposed {exp1} runs against a floor of {exp0}"
     assert bare1 <= bare0 + 1e-6, f"chaining's bare exposure GREW to {bare1:.4f} mm"
     assert worst1 <= worst0 + 1e-6, f"worst clearance GREW to {worst1:.4f} mm"
+
+
+def test_chaining_adds_zero_bare_thread_on_every_acceptance_fixture(
+        whitebg, enthusiast_logo_82mm, ribbon):
+    """THE ACCEPTANCE PROPERTY, measured with the honest instrument on every
+    acceptance fixture: with chaining ON, `_thread_bare_mm` reports exactly
+    the same exposure chaining OFF does — chaining-attributable bare thread
+    is 0.0 mm, to the digit, everywhere.
+
+    Four cases, chosen to cover every half of the cover model:
+
+    - **benchmark** (enthusiast_logo @ 82 mm / left_chest): the corpus
+      benchmark, where chaining does the most work (links 1 -> 18).
+    - **full_back** (same art on the STOCK fleece_sweatshirt preset): the
+      fixture the 2026-08-02 shutdown measured 29.11 mm of bare thread on —
+      the polygon cover model's worst case.
+    - **left_chest** (logo_whitebg @ 80 mm): the multi-colour committed logo.
+      Its chain-off floor is NOT zero (stage 6's own in-shape travel carries
+      ~0.1 mm of pre-existing exposure, pinned by the test below this one) —
+      which is exactly why the assertion is on/off EQUALITY, not absolute
+      zero: chaining must add nothing to whatever floor stage 6 already has.
+    - **ribbon** (ribbon_curve @ 80 mm): satin-only, single colour — the
+      degenerate case where the future-colour cover is empty and any link
+      must justify itself against laid thread alone.
+
+    Where the chain-off floor IS zero (benchmark, full_back, ribbon), the
+    equality pins the absolute number: `_thread_bare_mm == 0.0` with
+    chaining enabled.
+    """
+    cases = [
+        ("benchmark", enthusiast_logo_82mm,
+         dict(target_width_mm=82.0, garment_id="left_chest")),
+        ("full_back", enthusiast_logo_82mm,
+         dict(target_width_mm=82.0, garment_id="full_back")),
+        ("left_chest", whitebg, dict(garment_id="left_chest")),
+        ("ribbon", ribbon, dict(garment_id="left_chest")),
+    ]
+    for name, result, kw in cases:
+        off = plan_stitches(result, cfg(**kw, chain_links=False))
+        on = plan_stitches(result, cfg(**kw, chain_links=True))
+        _l0, exp0, bare0, worst0 = _thread_bare_mm(off)
+        _l1, exp1, bare1, worst1 = _thread_bare_mm(on)
+        assert bare1 <= bare0 + 1e-9, (
+            f"{name}: chaining ADDED bare thread — {bare1:.4f} mm on vs "
+            f"{bare0:.4f} mm off")
+        assert exp1 <= exp0, (
+            f"{name}: chaining exposed {exp1} runs against a floor of {exp0}")
+        assert worst1 <= worst0 + 1e-9, (
+            f"{name}: worst clearance grew to {worst1:.4f} mm")
+        if bare0 == 0.0:
+            assert bare1 == 0.0, (
+                f"{name}: the chain-off floor is zero and chaining must "
+                f"keep it zero, measured {bare1:.4f} mm")
 
 
 def test_with_chaining_off_no_link_is_worse_than_stage_6_already_was(alpha):
