@@ -11,12 +11,45 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-11 (late night) — **the "let it rip" wave: two
-launch-checklist items shipped, five confirmed engine defects fixed, and the
-corpus baseline re-graded under the honest per-region yardstick.** All landed
-on `main` and pushed; every merge passed its targeted test gate (356/356
-engine JS, 671/671 Studio vitest, per-lane pytest subsets; full-suite run in
-flight at write time).
+**Last updated:** 2026-08-12 (small hours) — **wave 2 of the same night
+landed:** the LINK_UNCOVERED false-block + raster-overhead fix (see the
+entry below this one), plus:
+
+- **Five procedurally-generated photo-class fixtures** committed
+  (`tools/make_photo_fixtures.py`, licensing-clean, deterministic): owl_pale
+  F/22, sunset_backlit F/34–D/46, dof_meadow D/40–52, grass_macro C/64,
+  chrome_specular C/64–B/76 — the photo lane finally has a graded
+  regression net and a to-do list. Finding worth keeping: stage-0's
+  photo_subject gate is bimodal — textured subjects on smooth backdrops
+  can't reach photo_subject (pinned in the routing test's docstring);
+  and `stage0_classify._load` treats raw ndarrays as BGR (A/B probes must
+  convert first).
+- **DT-first classifier probe: architecture swap is a measured negative**
+  (`docs/dt-first-verdict-2026-08-11.md`): the patented rule as printed
+  sends 62/83 clean satins to fill; corrected arms lose every disagreement
+  they create. One real find — the stage-7 ladder has **no width floor
+  under satin**: 19/162 corpus regions (all photo-class) sew sub-millimetre
+  satin today (Law 31 violations); a near-free `2·p90 < ~1.0mm → run`
+  reroute is proposed, gated on a threshold sweep + the sew-out.
+- **Four cross-lane test regressions fixed** (blend ramp-angle ×2, preflight
+  photo happy path, service stitched-restore): all were built on the
+  repro/stub fixtures' flooded prep state, which the new background guards
+  correctly no longer produce at defaults — each now disables the guards
+  explicitly, documented (same pattern as test_enclosed_background). One
+  real capability note rode out of this: **ramp-angle detection declines on
+  full-bleed gradient prep at the new defaults** (end-to-end repro grade
+  still improved D/58→B/76); if full-bleed gradient angle-sharing matters,
+  the detector needs a no-flood design-mask path — logged as follow-up.
+- Corpus baseline recaptured with all of the above; known env failures
+  (enthusiast OCR goldens, pushcomp towel, tesseract-dependent OCR tests)
+  unchanged.
+
+**Prior update, still the same night (2026-08-11 late):** — **the "let it
+rip" wave: two launch-checklist items shipped, five confirmed engine defects
+fixed, and the corpus baseline re-graded under the honest per-region
+yardstick.** All landed on `main` and pushed; every merge passed its
+targeted test gate (356/356 engine JS, 671/671 Studio vitest, per-lane
+pytest subsets; full-suite run in flight at write time).
 
 1. **Launch items 2 and 4 shipped.** Hoop picker (`HOOPS`/`suggestHoop`/
    orientation-aware `hoopFit` in `src/garments.js`, Garment-step picker,
