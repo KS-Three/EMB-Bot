@@ -1833,7 +1833,7 @@ cause was corrected to `stage1_prep.py`, still unresolved at that time.
 | 2. Font library & lettering | Implemented (library + license remediation) | High (tech) / High (compliance — resolved 2026-08-04 by removal, lawyer consult now an optional restore path) |
 | 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: pending sew-out; **no photo-quality tier was reachable from the UI at all** until PR #123 — see the 2026-08-12 evening entry) |
 | 4. Export formats | Implemented | Varies by format — see below |
-| 5. Stitch-out review & manual editing tools | Implemented (narrow scope) | High **for what is built** — but the target moved 2026-08-12: Kent's direct-manipulation request (node/line editing, drag, delete-as-entity) is unimplemented and recorded in full under this area |
+| 5. Stitch-out review & manual editing tools | Implemented (narrow scope) | High **for what is built** — but the target moved 2026-08-12: Kent's direct-manipulation request (node/line editing, delete-as-entity; whole-shape dragging withdrawn same-day) is unimplemented and recorded in full under this area |
 
 ---
 
@@ -4412,7 +4412,9 @@ Broken out, each is independently testable:
 3. The outline is the *shape's own boundary*, not a bounding box — it
    "captures the recognized digitized shape/feature".
 4. Nodes are draggable. Lines are draggable. Nodes can be **added**.
-5. A whole shape can be selected and dragged anywhere.
+5. ~~A whole shape can be selected and dragged anywhere.~~ **WITHDRAWN by
+   Kent same-day — see the ruling below. Kept numbered so 6 and 7 keep their
+   references.**
 6. A whole shape can be deleted.
 7. **Each outline shape/feature is its own entity** — the organizing
    principle behind all of the above.
@@ -4425,32 +4427,35 @@ already reserves a per-shape "edit this shape's boundary" ✎ affordance.
 
 **The gap** is what the code itself names *the boundary-reshape gap*
 (`stage2_photo_segment.py` / `warnings_codes.py` v1.5 comments): nothing
-today can move a node or a line. Requirements 1–6 above are all
-unimplemented. Requirement 5 (free translation of a shape) has no contract
-representation at all — v1/v1.5 change a shape's *attributes* or the *set* of
-shapes, never its position.
+today can move a node or a line. Requirements 1–4, 6 and 7 above are all
+unimplemented; requirement 5 was withdrawn (below). Worth keeping in view
+either way: v1/v1.5 change a shape's *attributes* or the *set* of shapes,
+never its geometry — so node-level editing needs contract work regardless of
+whether whole-shape translation is in scope.
 
-**Kent ruled, 2026-08-12** (asked directly, because requirement 5 has no
-contract representation and that decides an architecture):
+**Kent ruled, 2026-08-12 — requirement 5 (dragging a whole shape) is OUT OF
+SCOPE.** He first asked for it ("moved or dragged around, similar to how
+clipart would work"), then withdrew it the same day once the cost surfaced.
+Both halves are recorded because the reasoning is the useful part:
 
-> I want the ability for shapes to be "outlined" like I denoted in the photo,
-> and moved or dragged around (similar to how clipart would work.
+`regions._raw_id` derives every `shape_id` by bucketing **centroid + thread
+number**. Moving a shape changes its centroid, which changes its id — and id
+stability is exactly what the "sticky, ride every future re-digitize" edit
+model depends on (`digitizer.js`'s comment on `deleted_shape_ids`). Free
+translation and durable edits are in direct tension; dropping translation
+resolves it without inventing a new identity scheme.
 
-So free translation is **in scope, not a maybe** — and the clipart analogy is
-the standard to design against: select a thing, drag it anywhere, it stays
-where you put it. That settles the question this section previously left open
-and rules out "outline-only, no movement" as a cheaper first cut.
+**What survives is requirements 1-4, 6 and 7:** outlines with visible nodes,
+the pulse cue, node/line dragging, adding nodes, deleting a shape, and each
+shape being its own entity. Reshaping a boundary still perturbs a centroid,
+so the design must still show that edits survive a re-digitize — but the
+perturbation is now bounded by `CENTROID_BUCKET_MM` rather than unbounded,
+which is a far easier property to hold.
 
-**Recommended posture:** a written design before any code. The open question
-is no longer *whether* geometry becomes user-editable but *how it is
-represented*: whether shape geometry becomes user-editable state (a new
-contract version) or whether edits stay a replayable operation list the way
-v1/v1.5 deliberately are. The "sticky, ride every future re-digitize"
-property in `digitizer.js`'s comment is a real design commitment that free
-node-dragging does not obviously preserve — a translated shape has to survive
-a re-digitize that regenerates shape ids from centroids
-(`regions._raw_id` buckets on centroid + thread), and moving a shape *changes
-its centroid*. That interaction is the first thing the design must answer.
+**Recommended posture:** a written design before any code, answering (a) how
+node-level geometry is represented — new contract version vs. an extension of
+v1.5's replayable operation list — and (b) the bounded-centroid-drift
+argument above, with a worked case. Everything else is UI.
 
 #### Note 6, from the same session — the render Kent marked "portions of the owl that shouldn't have been removed"
 
