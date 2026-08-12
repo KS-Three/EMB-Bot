@@ -2360,12 +2360,26 @@ re-snaps it to 0.00. Per-region worst dE00: `repro_gradient_white_icon`
 23.87 → 0.00, `drone_render` 20.99 → 10.64, `summit_badge` mean 3.76 → 3.52.
 `digitizer/tests/test_thread_revalidate.py` (7 tests) pins the mean-vs-
 per-pixel gap so a refactor cannot quietly reintroduce the blind estimator.
-**Does NOT move the corpus scorecard grade** — same structural reason #6.1
-didn't, and on `drone_render` preflight's pooled `thread_worst_delta_e` reads
-9.2 before and 33.6 after while the per-region worst genuinely halves. That is
-the instrument disagreeing with itself; **do not tune against it.** Making
-`_artwork_colors_by_thread` per-region is now the highest-value follow-up in
-this area — it is the prerequisite for any of #6.x being measurable at all.
+**CORRECTED, 2026-08-11 (late) — this entry originally said "#6.3 does not
+move the corpus scorecard grade, do not tune against it." That was measured
+against the OLD pooled instrument and is WRONG now.** `619e9ad` ("score
+THREAD_MATCH_POOR per region, not per pooled thread median") landed the
+prerequisite this entry called for, and re-measuring the same three fixtures
+at the same two configs against the new instrument gives:
+
+| fixture | #6.3 off | #6.3 on |
+|---|---|---|
+| `repro_gradient_white_icon` (both configs) | **F, 0** — worst dE 28.3 | **B, 76** — worst dE 6.8 |
+| `drone_render` (both configs) | F, 0 — worst dE 36.0 | F, 0 — worst dE **14.1** |
+| `summit_badge` (both configs) | F, 0 — worst dE 10.3 | F, 0 — worst dE 10.2 |
+
+The fixture this fix was built for goes from the corpus's worst grade to a B.
+Note the OFF baseline moved too (`repro` was D/58 under the pooled instrument,
+F/0 under the per-region one) — that is the new instrument finally seeing the
+23.9 dE drift the pooled median was averaging away. **The instrument and the
+fix now agree, which is the real result: the corpus harness is trustworthy on
+thread matching for the first time.** `drone_render` stays F/0 because other
+findings dominate its score, but its thread error falls 61%.
 
 **Fix #6.2 REFUTED, 2026-08-11 (evening) — built, swept, and reverted; do not
 rebuild it from the root-cause doc's recommendation.** Capping the RAG

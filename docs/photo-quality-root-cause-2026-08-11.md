@@ -250,15 +250,32 @@ pixels vs its own thread, 80mm/left_chest):
 | `drone_render.png` | 20.99 | 10.64 | 2 |
 | `summit_badge.png` | 9.47 | 9.47 | 2 (mean 3.76 → 3.52) |
 
-**Caveat, stated plainly: this does NOT move the corpus scorecard grade**, for
-the same structural reason #6.1 didn't — `preflight`'s `THREAD_MATCH_POOR`
-measures a pooled per-thread median across every region sharing a spool, so
-re-snapping one region changes which pool it lands in and the pooled statistic
-can move either way. On `drone_render` the pooled `thread_worst_delta_e` reads
-9.2 before and 33.6 after, while the per-region worst genuinely halves. **Do
-not read that as a regression, and do not tune against it** — it is the
-measurement instrument disagreeing with itself, and it is the strongest
-argument yet for making `_artwork_colors_by_thread` per-region.
+**Caveat as first written, now SUPERSEDED — kept because the sequence is the
+lesson.** This section originally read: "this does NOT move the corpus
+scorecard grade... on `drone_render` the pooled `thread_worst_delta_e` reads
+9.2 before and 33.6 after, while the per-region worst genuinely halves. Do not
+read that as a regression, and do not tune against it — it is the measurement
+instrument disagreeing with itself, and it is the strongest argument yet for
+making `_artwork_colors_by_thread` per-region."
+
+That argument was accepted and acted on the same day: `619e9ad` made
+`THREAD_MATCH_POOR` score per region instead of per pooled thread median.
+Re-measured against the new instrument, the caveat is simply false — #6.3
+moves the grade, decisively:
+
+| fixture | #6.3 off | #6.3 on |
+|---|---|---|
+| `repro_gradient_white_icon` (both configs) | **F, 0** — worst dE 28.3 | **B, 76** — worst dE 6.8 |
+| `drone_render` (both configs) | F, 0 — worst dE 36.0 | F, 0 — worst dE **14.1** |
+| `summit_badge` (both configs) | F, 0 — worst dE 10.3 | F, 0 — worst dE 10.2 |
+
+The OFF baseline moved too (`repro` was D/58 under the pooled instrument, F/0
+under the per-region one): the new instrument sees the 23.9 dE drift the pooled
+median had been averaging away, grades it as the failure it is, and then agrees
+that #6.3 fixes it. **The lesson worth keeping: for one day this repo held a
+real fix and a broken instrument, and the instrument's verdict was the one
+written down. When a fix and a metric disagree, establish which one is wrong
+before recording either.**
 
 Tests: `digitizer/tests/test_thread_revalidate.py` (7), including one that
 pins the mean-vs-per-pixel gap so a future refactor cannot quietly reintroduce
