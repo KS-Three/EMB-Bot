@@ -51,16 +51,32 @@ PR #122 (`.eladd-row` wrap). Open: PR #123 (Studio `detail_layer` control).
   canvas) and behaves nothing like a real photograph.
 - **Corpus gap, sharpened:** the photo fixtures are procedurally generated
   on purpose (licensing-clean — see the cross-cutting corpus entry). That
-  cleanliness cost real diagnostic accuracy this session. A licensed real
-  photo would have paid for itself; Kent's own owl sits unmerged on
-  `kent/owl-fixture` pending a **licensing decision** (it appears to be a
-  found image, and this repo's font-license history sets the bar).
-- **Still open from this session, none started:** the thread-drift defect
-  (worst dE00 18.3, unmoved by color budget — it is why the owl's two eyes
-  sew in different threads; `simplify_tol_mm` is 0.2mm and small shapes are
-  documented as bypassing it, so either the bypass misses them or the
-  re-match samples the wrong pixels), and 14 jump-trims on an 80mm design
-  in every variant measured.
+  cleanliness cost real diagnostic accuracy this session. **Kent ruled the
+  photo's provenance is not a concern (2026-08-12)**, so `owl_kent.jpg` on
+  `kent/owl-fixture` is cleared to land as a real-photo corpus fixture —
+  still unmerged, but no longer blocked.
+- **The "thread drift defect" is NOT an independent defect** — measured
+  2026-08-12, and this closes the item rather than opening it. Instrumenting
+  every shape in Kent's owl (error to current thread, error to the BEST
+  thread the chart can offer, and each shape's own internal colour spread)
+  shows the spread *sets the floor*: S18356282 best-possible 14.70 with
+  spread 17.25; Scbdb8ecc 13.22 / 13.09; S45f13ef0 10.54 / 10.55; and at the
+  clean end S949f0c61 6.60 / 2.98. Current-thread error sits within ~1 dE00
+  of best-possible on nearly every shape, so `stage4_vectorize`'s re-snap is
+  working correctly and has almost nothing left to win. **No single thread
+  can match a shape whose own pixels differ from each other by more than the
+  error being complained about.** The two eyes sew in different threads
+  because each is a ~260–320px shape carrying a *different* mixture of iris,
+  pupil edge and surrounding tissue (spreads 7–13), so "best available
+  thread" honestly resolves differently for each. This is the same root
+  cause as the detail-layer finding — flat fill assigns one thread per
+  region, and photo regions legitimately contain tonal variation — so the
+  real options are narrower: tighten simplification so small features stop
+  absorbing their surroundings, or let a high-spread region decompose into
+  shades the way `stage6_blend` already does for gradient class. **Do not
+  spend time on the re-snap code itself.**
+- **Still open, not started:** 14 jump-trims on an 80mm design, in every
+  variant measured.
 - **`.eladd-row` had been hiding "+ Auto-digitize"** (PR #122): six
   non-shrinking buttons overflowed the 400px sidebar by 136px, putting the
   last one 111px past the panel edge. Because that button only renders when
@@ -4414,13 +4430,27 @@ unimplemented. Requirement 5 (free translation of a shape) has no contract
 representation at all — v1/v1.5 change a shape's *attributes* or the *set* of
 shapes, never its position.
 
-**Recommended posture:** a written design before any code. This is the piece
-where a wrong contract choice is expensive, and it needs Kent's review on
-whether shape geometry becomes user-editable state (a new contract version)
-or whether edits stay a replayable operation list the way v1/v1.5 deliberately
-are — the "sticky, ride every future re-digitize" property in
-`digitizer.js`'s comment is a real design commitment that free node-dragging
-does not obviously preserve.
+**Kent ruled, 2026-08-12** (asked directly, because requirement 5 has no
+contract representation and that decides an architecture):
+
+> I want the ability for shapes to be "outlined" like I denoted in the photo,
+> and moved or dragged around (similar to how clipart would work.
+
+So free translation is **in scope, not a maybe** — and the clipart analogy is
+the standard to design against: select a thing, drag it anywhere, it stays
+where you put it. That settles the question this section previously left open
+and rules out "outline-only, no movement" as a cheaper first cut.
+
+**Recommended posture:** a written design before any code. The open question
+is no longer *whether* geometry becomes user-editable but *how it is
+represented*: whether shape geometry becomes user-editable state (a new
+contract version) or whether edits stay a replayable operation list the way
+v1/v1.5 deliberately are. The "sticky, ride every future re-digitize"
+property in `digitizer.js`'s comment is a real design commitment that free
+node-dragging does not obviously preserve — a translated shape has to survive
+a re-digitize that regenerates shape ids from centroids
+(`regions._raw_id` buckets on centroid + thread), and moving a shape *changes
+its centroid*. That interaction is the first thing the design must answer.
 
 #### Note 6, from the same session — the render Kent marked "portions of the owl that shouldn't have been removed"
 
