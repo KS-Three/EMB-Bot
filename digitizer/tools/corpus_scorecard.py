@@ -8,12 +8,12 @@ committed fixture set and remembered the last score.
 
 This is the harness half of that gap, not the corpus half: the 37-file
 `scratch_corpus/` M2/M3 needs is still inaccessible (gitignored, empty in
-every checkout). What IS available is the digitizer's own 14 committed
-`testdata/` fixtures, and `digitizer_core.preflight.run_preflight` already
+every checkout). What IS available is the digitizer's own committed
+`testdata/` fixtures (see FIXTURES below), and `digitizer_core.preflight.run_preflight` already
 computes a rich per-design quality signal (0-100 score, letter grade, typed
 findings, ~20 metrics) for one design at a time — this script is the part
-that was missing: run it over every fixture, remember the result, and diff
-a fresh run against that memory.
+that was missing: run it over every committed fixture, remember the result,
+and diff a fresh run against that memory.
 
 Deliberately a REPORTING tool, not a CI gate, at least for now: this
 project's own history (the corpus-laws-23/26 revert, see MASTER_SCOPE.md)
@@ -71,8 +71,16 @@ FIXTURES = [
     "photo/fur_ramp.png",
     "photo/gradient_ramp_linear.png",
     "photo/gradient_ramp_radial.png",
+    # the five photo-realistic fixtures (tools/make_photo_fixtures.py,
+    # 2026-08-11) — in the matrix but NOT yet in the committed baseline;
+    # `diff` reports them as NEW until the next deliberate recapture.
+    "photo/photo_chrome_specular.png",
+    "photo/photo_dof_meadow.png",
+    "photo/photo_grass_macro.png",
+    "photo/photo_owl_pale.png",
     "photo/photo_scene_stub.png",
     "photo/photo_subject_stub.png",
+    "photo/photo_sunset_backlit.png",
     "photo/region_blobs.png",
     "photo/repro_gradient_white_icon.png",
     "photo/summit_badge.png",
