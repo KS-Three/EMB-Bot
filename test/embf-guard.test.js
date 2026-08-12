@@ -106,7 +106,17 @@ test("every verified-tier font is in the manifest or explicitly excluded by lice
   const tiers = JSON.parse(fs.readFileSync(tiersPath, "utf8"));
   const man = JSON.parse(fs.readFileSync(path.join(FONT_DIR, "manifest.json"), "utf8"));
   const manKeys = new Set(man.fonts.map((f) => f.key));
-  const ALLOWED_MISSING = new Set(["precious"]); // GPL-3.0 — outside license policy
+  // Mirrors the PULLED set in tools/build-embf.mjs (the source of truth —
+  // not importable here: that script runs the whole build at import time).
+  // Pulled fonts are legitimately absent from the manifest despite their
+  // verified tier: audit items 1-3 (2026-08-04, first four) plus the same-day
+  // ShareAlike pull (audit §9, the rest). Keep in sync with build-embf.mjs.
+  const PULLED = new Set(["milli_marif_bold", "tt_directors", "tt_masters",
+    "dejavufont", "apex_lake", "aventurina", "bluenesia_satin",
+    "cherryforinkstitch", "cherryforkaalleen", "emilio_20", "emilio_20_bold",
+    "emilio_20_simple", "emilio_20_simple_small", "geneva_rounded",
+    "geneva_simple", "gingo200", "monicha"]);
+  const ALLOWED_MISSING = new Set(["precious", ...PULLED]); // precious: GPL-3.0 — outside license policy
   for (const t of tiers.filter((x) => x.tier === "verified"))
     if (!manKeys.has(t.pack))
       assert.ok(ALLOWED_MISSING.has(t.pack), "verified font missing from manifest: " + t.pack);

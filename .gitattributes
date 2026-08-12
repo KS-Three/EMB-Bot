@@ -1,0 +1,9 @@
+# License sidecars are compared byte-for-byte against the LF-normalized text
+# embedded in the .embf binaries (test/embf-guard.test.js "bare-binary hole"
+# guard) — core.autocrlf=true checkouts must not convert them to CRLF.
+*.LICENSE.txt text eol=lf
+
+# Binary artifacts: never eol-convert or diff as text.
+*.embf binary
+*.png binary
+*.onnx binary

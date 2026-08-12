@@ -3,14 +3,14 @@
  "fonts": [
   {
    "key": "ags_garamond_latin_grec",
-   "name": "AGS \u0393\u03b1\u03c1\u03b1\u03bc\u03bf\u03c5 Garamond",
+   "name": "AGS Γαραμου Garamond",
    "tier": "verified",
    "group": "Serif",
    "licenseId": "OFL-1.1",
    "sizeMm": 22,
    "glyphCount": 255,
    "bytes": 2426157,
-   "attribution": "This font AGS \u0393\u03b1\u03c1\u03b1\u03bc\u03bf\u03c5 has been adapted for Ink/Stitch by Fran\u00e7oise Lapierre Baillet and is licensed under the SIL Open Font License, Version 1.1. Copyright 2017 The EB Garamond Project Authors (https://github.com/octaviopardo/EBGaramond12), licensed under the SIL Open Font License, Version 1.1.",
+   "attribution": "This font AGS Γαραμου has been adapted for Ink/Stitch by Françoise Lapierre Baillet and is licensed under the SIL Open Font License, Version 1.1. Copyright 2017 The EB Garamond Project Authors (https://github.com/octaviopardo/EBGaramond12), licensed under the SIL Open Font License, Version 1.1.",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -22,7 +22,7 @@
    "sizeMm": 50,
    "glyphCount": 469,
    "bytes": 4593678,
-   "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2018-2020, Ariel Mart\u00edn P\u00e9rez, with Reserved Font Name Ouroboros.",
+   "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2018-2020, Ariel Martín Pérez, with Reserved Font Name Ouroboros.",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -33,19 +33,19 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 55,
    "glyphCount": 170,
-   "bytes": 260495,
+   "bytes": 260295,
    "attribution": "This font has been adapted for Ink/Stitch and is licensed under the SIL Open Font License, Version 1.1. Copyright (c), 2012 Typesenses, with Reserved Font Name \"Euphoria Script\"",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "ambigue",
-   "name": "Ambig\u00fce",
+   "name": "Ambigüe",
    "tier": "verified",
    "group": "Script",
    "licenseId": "OFL-1.1",
    "sizeMm": 27,
    "glyphCount": 158,
-   "bytes": 325347,
+   "bytes": 325145,
    "attribution": "This font has been adapted for Ink/Stitch and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2018, Paratype Inc (https://paratype.com), with Reserved Font Name \"Ambidexter\".",
    "source": "Ink/Stitch embroidery-fonts"
   },
@@ -82,7 +82,7 @@
    "sizeMm": 33.6,
    "glyphCount": 125,
    "bytes": 1263695,
-   "attribution": "This font Apex Simple AGS has been adapted for Ink/Stitch by Fran\u00e7oise Lapierre Baillet and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2003\u20132012, Philipp H. Poll (www.linuxlibertine.org | gillian at linuxlibertine.org), with Reserved Font Name \"Linux Libertine\" and \"Biolinum\".",
+   "attribution": "This font Apex Simple AGS has been adapted for Ink/Stitch by Françoise Lapierre Baillet and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2003–2012, Philipp H. Poll (www.linuxlibertine.org | gillian at linuxlibertine.org), with Reserved Font Name \"Linux Libertine\" and \"Biolinum\".",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -93,8 +93,8 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 33.6,
    "glyphCount": 125,
-   "bytes": 1303797,
-   "attribution": "This font Apex Simple AGS has been adapted for Ink/Stitch by Fran\u00e7oise Lapierre Baillet and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2003\u20132012, Philipp H. Poll (www.linuxlibertine.org | gillian at linuxlibertine.org), with Reserved Font Name \"Linux Libertine\" and \"Biolinum\".",
+   "bytes": 1303693,
+   "attribution": "This font Apex Simple AGS has been adapted for Ink/Stitch by Françoise Lapierre Baillet and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2003–2012, Philipp H. Poll (www.linuxlibertine.org | gillian at linuxlibertine.org), with Reserved Font Name \"Linux Libertine\" and \"Biolinum\".",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -106,7 +106,7 @@
    "sizeMm": 34,
    "glyphCount": 134,
    "bytes": 232178,
-   "attribution": "This font has been adapted for Ink/Stitch by @Marie-Fran\u00e7oise BRIS Copyright (c) 2022, @Marie-Fran\u00e7oise BRIS and is licensed under the SIL Open Font License, Version 1.1.",
+   "attribution": "This font has been adapted for Ink/Stitch by @Marie-Françoise BRIS Copyright (c) 2022, @Marie-Françoise BRIS and is licensed under the SIL Open Font License, Version 1.1.",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -118,7 +118,7 @@
    "sizeMm": 34,
    "glyphCount": 134,
    "bytes": 286452,
-   "attribution": "This font has been adapted for Ink/Stitch by @Marie-Fran\u00e7oise BRIS Copyright (c) 2022, @Marie-Fran\u00e7oise BRIS and is licensed under the SIL Open Font License, Version 1.1.",
+   "attribution": "This font has been adapted for Ink/Stitch by @Marie-Françoise BRIS Copyright (c) 2022, @Marie-Françoise BRIS and is licensed under the SIL Open Font License, Version 1.1.",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -153,7 +153,7 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 40,
    "glyphCount": 157,
-   "bytes": 740233,
+   "bytes": 740029,
    "attribution": "This font has been adapted for Ink/Stitch and is licensed under the SIL Open Font License, Version 1.1. Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow)",
    "source": "Ink/Stitch embroidery-fonts"
   },
@@ -166,7 +166,7 @@
    "sizeMm": 30,
    "glyphCount": 108,
    "bytes": 121595,
-   "attribution": "This font has been adapted for Ink/Stitch by C\u00e9lia Imbert Sabater, Claudette Venneugues-Aminot, Corinne Renaud, Fran\u00e7oise Lapierre Baillet, Laure Doisneau, Marie Fran\u00e7oise Bris, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2011, Cyreal (www.cyreal.org), with Reserved Font Name \"Baumans\".",
+   "attribution": "This font has been adapted for Ink/Stitch by Célia Imbert Sabater, Claudette Venneugues-Aminot, Corinne Renaud, Françoise Lapierre Baillet, Laure Doisneau, Marie Françoise Bris, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2011, Cyreal (www.cyreal.org), with Reserved Font Name \"Baumans\".",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -178,7 +178,7 @@
    "sizeMm": 30,
    "glyphCount": 108,
    "bytes": 121442,
-   "attribution": "This font has been adapted for Ink/Stitch by C\u00e9lia Imbert Sabater, Claudette Venneugues-Aminot, Corinne Renaud, Fran\u00e7oise Lapierre Baillet, Laure Doisneau, Marie Fran\u00e7oise Bris, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2011, Cyreal (www.cyreal.org), with Reserved Font Name \"Baumans\".",
+   "attribution": "This font has been adapted for Ink/Stitch by Célia Imbert Sabater, Claudette Venneugues-Aminot, Corinne Renaud, Françoise Lapierre Baillet, Laure Doisneau, Marie Françoise Bris, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2011, Cyreal (www.cyreal.org), with Reserved Font Name \"Baumans\".",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -190,7 +190,7 @@
    "sizeMm": 26,
    "glyphCount": 114,
    "bytes": 199622,
-   "attribution": "Caesarus SC FI has been adapted for Ink/Stitch by Marie-Fran\u00e7oise Bris, Celia Imbert Sabater, Fran\u00e7oise Lapierre Baillet, Claudine Peyrat, Corinne Renaud and Claudette Venneugues-Aminot, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2012, Brian J. Bonislawsky DBA Astigmatic (AOETI), with Reserved Font Names \"Marcellus\"",
+   "attribution": "Caesarus SC FI has been adapted for Ink/Stitch by Marie-Françoise Bris, Celia Imbert Sabater, Françoise Lapierre Baillet, Claudine Peyrat, Corinne Renaud and Claudette Venneugues-Aminot, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2012, Brian J. Bonislawsky DBA Astigmatic (AOETI), with Reserved Font Names \"Marcellus\"",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -201,7 +201,7 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 16.2,
    "glyphCount": 118,
-   "bytes": 135489,
+   "bytes": 135291,
    "attribution": "This font has been adapted for Ink/Stitch by Corinne Renaud, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2009, Peter Wiegel, www.peter-wiegel.de, with Reserved Font Name \"Espresso Dolce\"",
    "source": "Ink/Stitch embroidery-fonts"
   },
@@ -213,7 +213,7 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 16.2,
    "glyphCount": 118,
-   "bytes": 134647,
+   "bytes": 134449,
    "attribution": "This font has been adapted for Ink/Stitch by Corinne Renaud, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2009, Peter Wiegel, www.peter-wiegel.de, with Reserved Font Name \"Espresso Dolce\"",
    "source": "Ink/Stitch embroidery-fonts"
   },
@@ -225,7 +225,7 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 40,
    "glyphCount": 115,
-   "bytes": 232907,
+   "bytes": 232711,
    "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1.",
    "source": "Ink/Stitch embroidery-fonts"
   },
@@ -286,7 +286,7 @@
    "sizeMm": 85,
    "glyphCount": 121,
    "bytes": 592235,
-   "attribution": "This font has been adapted for Ink/Stitch by @Marie-Fran\u00e7oise BRIS, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2024, @Marie-Fran\u00e7oise BRIS",
+   "attribution": "This font has been adapted for Ink/Stitch by @Marie-Françoise BRIS, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2024, @Marie-Françoise BRIS",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -321,7 +321,7 @@
    "licenseId": "CC0",
    "sizeMm": 18,
    "glyphCount": 143,
-   "bytes": 521979,
+   "bytes": 521963,
    "attribution": "This font has been adapted for Ink/Stitch by Corinne Renaud. This Ink/Stitch font is public domain.",
    "source": "Ink/Stitch embroidery-fonts"
   },
@@ -334,7 +334,7 @@
    "sizeMm": 5.6,
    "glyphCount": 160,
    "bytes": 197627,
-   "attribution": "This font has been adapted for Ink/Stitch by Fran\u00e7oise Lapierre Baillet, and is licensed under the SIL Open Font License, Version 1.1.",
+   "attribution": "This font has been adapted for Ink/Stitch by Françoise Lapierre Baillet, and is licensed under the SIL Open Font License, Version 1.1.",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -369,8 +369,8 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 82,
    "glyphCount": 44,
-   "bytes": 358969,
-   "attribution": "Kum Tsoan has been adapted for Ink/Stitch by Fran\u00e7oise Lapierre Baillet, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2013, gluk, with Reserved Font Names Namskout and NamskoutIn.",
+   "bytes": 358777,
+   "attribution": "Kum Tsoan has been adapted for Ink/Stitch by Françoise Lapierre Baillet, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2013, gluk, with Reserved Font Names Namskout and NamskoutIn.",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -418,7 +418,7 @@
    "sizeMm": 102,
    "glyphCount": 67,
    "bytes": 1110004,
-   "attribution": "This font has been adapted for Ink/Stitch by Fran\u00e7oise Lapierre Baillet, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2011, TypeTogether (www.type-together.com), with Reserved Font Names \"Abril\" and \"Abril Fatface\"",
+   "attribution": "This font has been adapted for Ink/Stitch by Françoise Lapierre Baillet, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2011, TypeTogether (www.type-together.com), with Reserved Font Names \"Abril\" and \"Abril Fatface\"",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -442,7 +442,7 @@
    "sizeMm": 21.4,
    "glyphCount": 101,
    "bytes": 222858,
-   "attribution": "This font has been adapted for Ink/Stitch by C\u00e9lia Imbert Sabater, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2012 by Brian J. Bonislawsky DBA Astigmatic (AOETI)",
+   "attribution": "This font has been adapted for Ink/Stitch by Célia Imbert Sabater, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2012 by Brian J. Bonislawsky DBA Astigmatic (AOETI)",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -454,7 +454,7 @@
    "sizeMm": 52,
    "glyphCount": 162,
    "bytes": 290022,
-   "attribution": "This font has been adapted for Ink/Stitch by Marie-Fran\u00e7oise BRIS and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2012, Eduardo Tunni (http://www.tipo.net.ar), with Reserved Font Name 'Merienda'",
+   "attribution": "This font has been adapted for Ink/Stitch by Marie-Françoise BRIS and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2012, Eduardo Tunni (http://www.tipo.net.ar), with Reserved Font Name 'Merienda'",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -477,7 +477,7 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 54,
    "glyphCount": 165,
-   "bytes": 925123,
+   "bytes": 924923,
    "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2022, Nose AG, https://nose.ch with Reserved Font Name 'Nose Transport'.",
    "source": "Ink/Stitch embroidery-fonts"
   },
@@ -489,13 +489,13 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 27.5,
    "glyphCount": 165,
-   "bytes": 914332,
+   "bytes": 914134,
    "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2022, Nose AG, https://nose.ch with Reserved Font Name 'Nose Transport'.",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
    "key": "neon",
-   "name": "N\u00e9on",
+   "name": "Néon",
    "tier": "verified",
    "group": "Display",
    "licenseId": "OFL-1.1",
@@ -538,7 +538,7 @@
    "sizeMm": 30,
    "glyphCount": 110,
    "bytes": 238235,
-   "attribution": "This font has been adapted for Ink/Stitch by Fran\u00e7oise Lapierre Baillet, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2013, Peter Wiegel, www.peter-wiegel.de, with Reserved Font Name Manuskript Gothisch",
+   "attribution": "This font has been adapted for Ink/Stitch by Françoise Lapierre Baillet, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2013, Peter Wiegel, www.peter-wiegel.de, with Reserved Font Name Manuskript Gothisch",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -549,7 +549,7 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 50,
    "glyphCount": 155,
-   "bytes": 1520672,
+   "bytes": 1520478,
    "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright 2023 The Soft Type Project Authors (https://github.com/scfried/soft-type-jersey)",
    "source": "Ink/Stitch embroidery-fonts"
   },
@@ -561,7 +561,7 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 15.7,
    "glyphCount": 156,
-   "bytes": 146215,
+   "bytes": 146017,
    "attribution": "This font has been adapted for Ink/Stitch by Corinne Renaud, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2011 by Sorkin Type Co (www.sorkintype.com), with Reserved Font Name \"Limelight\".",
    "source": "Ink/Stitch embroidery-fonts"
   },
@@ -573,7 +573,7 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 15.7,
    "glyphCount": 156,
-   "bytes": 145197,
+   "bytes": 144999,
    "attribution": "This font has been adapted for Ink/Stitch by Corinne Renaud, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2011 by Sorkin Type Co (www.sorkintype.com), with Reserved Font Name \"Limelight\".",
    "source": "Ink/Stitch embroidery-fonts"
   },
@@ -586,7 +586,7 @@
    "sizeMm": 25,
    "glyphCount": 107,
    "bytes": 234530,
-   "attribution": "This font Roman AGS has been adapted for Ink/Stitch by Fran\u00e7oise Lapierre Baillet and is licensed under the SIL Open Font License, Version 1.1.",
+   "attribution": "This font Roman AGS has been adapted for Ink/Stitch by Françoise Lapierre Baillet and is licensed under the SIL Open Font License, Version 1.1.",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -610,7 +610,7 @@
    "sizeMm": 19.8,
    "glyphCount": 104,
    "bytes": 332973,
-   "attribution": "This font has been adapted for Ink/Stitch by Fran\u00e7oise Lapierre Baillet, and is licensed under the SIL Open Font License, Version 1.1. Copyright 2010 The Lobster Project Authors (https://github.com/impallari/The-Lobster-Font), with Reserved Font Name \"Lobster\".",
+   "attribution": "This font has been adapted for Ink/Stitch by Françoise Lapierre Baillet, and is licensed under the SIL Open Font License, Version 1.1. Copyright 2010 The Lobster Project Authors (https://github.com/impallari/The-Lobster-Font), with Reserved Font Name \"Lobster\".",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -633,7 +633,7 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 17,
    "glyphCount": 171,
-   "bytes": 1561086,
+   "bytes": 1560888,
    "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright 2011 The Andada Pro Project Authors (https://github.com/huertatipografica/Andada)",
    "source": "Ink/Stitch embroidery-fonts"
   },
@@ -645,7 +645,7 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 17,
    "glyphCount": 171,
-   "bytes": 1561103,
+   "bytes": 1560907,
    "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright 2011 The Andada Pro Project Authors (https://github.com/huertatipografica/Andada)",
    "source": "Ink/Stitch embroidery-fonts"
   },
