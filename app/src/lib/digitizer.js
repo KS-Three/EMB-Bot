@@ -105,6 +105,13 @@ export function buildDigitizeConfig(element, project) {
     max_colors: p.max_colors,
     satin: p.satin,
     border: p.border,
+    // Sent unconditionally like satin/border, NOT omitted-when-falsey the way
+    // fill_angle_deg and photo_segment_sam2 are: those two are an absent-means-
+    // auto sentinel and a dev seam respectively, while this is an ordinary
+    // design property the user toggles and the project persists. Costs one
+    // cache-key change on existing designs, which re-digitize to identical
+    // output since the service's own default is already False.
+    detail_layer: p.detail_layer,
   };
   if (p.fill_angle_deg != null) cfg.fill_angle_deg = p.fill_angle_deg;
   // Dev/ops seam, not a design property (see sam2Enabled above): sent as

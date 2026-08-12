@@ -1094,6 +1094,14 @@
         />
         Satin for thin shapes
       </label>
+      <label class="dgp-checkline">
+        <input
+          type="checkbox"
+          checked={element.params.detail_layer}
+          on:change={(e) => setParam("detail_layer", e.currentTarget.checked)}
+        />
+        Detail lines for photos
+      </label>
       <label class="dgp-param">
         <span>Fill angle</span>
         <select

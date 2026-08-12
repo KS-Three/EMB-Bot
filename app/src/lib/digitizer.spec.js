@@ -55,7 +55,7 @@ const PIPELINE_CONFIG_FIELDS = [
   "fabric_id", "overlap_mm", "fill_row_mm", "fill_stitch_mm", "fill_angle_deg",
   "underlay_style", "underlay", "satin", "satin_max_width_mm", "border",
   "border_width_mm", "deleted_shape_ids", "shape_overrides",
-  "merge_shape_ids", "split_shapes", "photo_segment_sam2",
+  "merge_shape_ids", "split_shapes", "photo_segment_sam2", "detail_layer",
 ];
 
 test("buildDigitizeConfig sends the stored thread-brand preference and the project garment, in service field names", async () => {
@@ -68,6 +68,7 @@ test("buildDigitizeConfig sends the stored thread-brand preference and the proje
     max_colors: 6,
     satin: true,
     border: "off",
+    detail_layer: false,
     thread_brand: "madeira-rayon",
     garment_id: "left_chest",
   });
@@ -123,6 +124,24 @@ test("sam2Enabled is false when localStorage throws, like digitizerUrl's own fal
   vi.resetModules();
   const { sam2Enabled } = await import("./digitizer.js");
   expect(sam2Enabled()).toBe(false);
+});
+
+test("detail_layer rides buildDigitizeConfig both ways, and back-fills false for projects saved before the field existed", async () => {
+  stubStorage({});
+  const { buildDigitizeConfig } = await import("./digitizer.js");
+
+  // digitizedElement()'s params deliberately predate detail_layer — the spread
+  // of DEFAULT_DIGITIZE_PARAMS is what keeps an older saved project loadable
+  // (and re-digitizing to its stored result) instead of sending undefined.
+  expect(buildDigitizeConfig(digitizedElement(), PROJECT).detail_layer).toBe(false);
+
+  const on = digitizedElement({
+    params: {
+      target_width_mm: 80, max_colors: 6, satin: true,
+      fill_angle_deg: null, border: "off", detail_layer: true,
+    },
+  });
+  expect(buildDigitizeConfig(on, PROJECT).detail_layer).toBe(true);
 });
 
 test("startDigitize POSTs multipart image+config to /digitize exactly as test_service.py's client does", async () => {
