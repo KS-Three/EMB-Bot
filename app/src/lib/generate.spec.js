@@ -485,6 +485,134 @@ test("generateAll combines a manual shape element with a text element into one m
   expect(combined.colors.length).toBeGreaterThanOrEqual(2); // text 1 + manual shape's own color
 });
 
+// ---- Preset shape elements (basic shapes tool) -----------------------------
+// Same "meets the REAL engine" rule as the manual-mode block above: no
+// mocking anywhere, so a passing test is proof a preset circle/rect/heart/
+// star digitizes end-to-end through the identical shapesToRegions ->
+// buildQualityDesign lane manual draw uses.
+
+function shapeElement(overrides = {}) {
+  return {
+    id: "e1", type: "shape", kind: "circle", params: {}, colorRgb: [20, 20, 20],
+    underlay: true, sizeMm: 50, offsetXMm: 0, offsetYMm: 0, ...overrides,
+  };
+}
+
+// Needle-down extent only — jumps/trims travel, they don't cover fabric.
+function stitchBboxMm(design) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const s of design.stitches) {
+    if (s.type !== "stitch") continue;
+    if (s.x < minX) minX = s.x;
+    if (s.x > maxX) maxX = s.x;
+    if (s.y < minY) minY = s.y;
+    if (s.y > maxY) maxY = s.y;
+  }
+  return { wMm: (maxX - minX) / 10, hMm: (maxY - minY) / 10 };
+}
+
+test("every preset shape kind digitizes end-to-end with sane stats", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  for (const kind of ["circle", "rect", "heart", "star"]) {
+    const d = generateElement(shapeElement({ kind }), garment, {});
+    expect(d, kind).not.toBeNull();
+    expect(d.stitchCount, `${kind} stitchCount`).toBeGreaterThan(300);
+    expect(d.stitchCount, `${kind} stitchCount ceiling`).toBeLessThan(40000);
+    expect(d.colorCount, kind).toBe(1);
+    expect(d.stitches[d.stitches.length - 1].type).toBe("end");
+  }
+});
+
+test("shape element: thread color rides through to the design palette", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const d = generateElement(shapeElement({ colorRgb: [200, 30, 30] }), garment, {});
+  expect(d.colors[0]).toMatchObject({ r: 200, g: 30, b: 30 });
+});
+
+test("shape element: satin-vs-fill is the engine classifier's call (no tierOverride forced)", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  // A 50 mm circle is far too wide for satin — the classifier must fill it.
+  const wide = generateElement(shapeElement({ kind: "circle", sizeMm: 50 }), garment, {});
+  expect(wide._debug.nFill).toBe(1);
+  expect(wide._debug.nSatin).toBe(0);
+  // A long thin 2 mm-tall rectangle is a classic satin column — the
+  // classifier must be FREE to pick satin, which it can't be if the shape
+  // branch forced tierOverride "fill" the way manual mode's default does.
+  const thin = generateElement(
+    shapeElement({ kind: "rect", params: { heightMm: 2, cornerRadiusMm: 0 }, sizeMm: 40 }),
+    garment,
+    {}
+  );
+  expect(thin._debug.nSatin).toBe(1);
+  expect(thin._debug.nFill).toBe(0);
+});
+
+test("shape element: sizeMm is the sewn width, exactly like every other element type", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  for (const kind of ["circle", "rect", "heart", "star"]) {
+    const d = generateElement(shapeElement({ kind, sizeMm: 40 }), garment, {});
+    expect(d.widthMM, kind).toBeGreaterThanOrEqual(40 - 1.5);
+    expect(d.widthMM, kind).toBeLessThanOrEqual(40 + 1.5);
+  }
+});
+
+test("shape element: rect honors width AND height (w/h contract), circle sews round", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const rect = generateElement(
+    shapeElement({ kind: "rect", params: { heightMm: 20, cornerRadiusMm: 0 }, sizeMm: 60 }),
+    garment,
+    {}
+  );
+  expect(rect.widthMM).toBeCloseTo(60, 0);
+  expect(rect.heightMM).toBeCloseTo(20, 0);
+  const circle = generateElement(shapeElement({ kind: "circle", sizeMm: 40 }), garment, {});
+  expect(circle.heightMM).toBeCloseTo(circle.widthMM, 1);
+});
+
+test("star acid test: narrow tips get real needle-down coverage, not silently dropped", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  // Sharper-than-default tips on purpose (innerRatio 0.3). A 5-point star's
+  // bbox extremes ARE its five tips (top tip = max y, side tips = x
+  // extremes, bottom tips = min y), so needle-down stitches reaching the
+  // design bbox on every side proves every tip actually sews. 1.5 mm slack
+  // covers the last tatami row's spacing plus pull-comp rounding.
+  const d = generateElement(
+    shapeElement({ kind: "star", params: { points: 5, innerRatio: 0.3 }, sizeMm: 50 }),
+    garment,
+    {}
+  );
+  expect(d.stitchCount).toBeGreaterThan(300);
+  const sb = stitchBboxMm(d);
+  expect(sb.wMm).toBeGreaterThanOrEqual(d.widthMM - 1.5);
+  expect(sb.hMm).toBeGreaterThanOrEqual(d.heightMM - 1.5);
+});
+
+test("generateAll combines a preset shape with a text element into one design", async () => {
+  const { generateAll } = await import("./generate.js");
+  const project = {
+    version: 2, garmentId: "left_chest", selectedId: "e1", fabricRgb: [235, 232, 223],
+    elements: [
+      textElement({ id: "e1", text: "AB" }),
+      shapeElement({ id: "e2", kind: "heart", colorRgb: [200, 30, 60], offsetYMm: -20 }),
+    ],
+  };
+  const { combined, perElement } = generateAll(project, {});
+  expect(perElement).toHaveLength(2);
+  expect(combined.colors.length).toBeGreaterThanOrEqual(2);
+});
+
 test("generateAll on a non-cap garment keeps element-list order", async () => {
   const { generateAll } = await import("./generate.js");
   const project = { version: 2, garmentId: "left_chest", selectedId: "e1", fabricRgb: [235, 232, 223], elements: twoStackedElements() };

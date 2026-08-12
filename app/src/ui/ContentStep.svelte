@@ -5,6 +5,7 @@
   import DesignPanel from "./DesignPanel.svelte";
   import DigitizePanel from "./DigitizePanel.svelte";
   import ManualPanel from "./ManualPanel.svelte";
+  import ShapePanel from "./ShapePanel.svelte";
   import SizePanel from "./SizePanel.svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
   import FontSelect from "./FontSelect.svelte";
@@ -100,6 +101,11 @@
       const n = (element.shapes || []).length;
       return n ? `Shapes · ${n}` : "Shapes · empty";
     }
+    if (element.type === "shape") {
+      const labels = { circle: "Circle", rect: "Rectangle", heart: "Heart", star: "Star" };
+      const label = labels[element.kind] || "Shape";
+      return element.sizeMm ? `${label} · ${Math.round(element.sizeMm)} mm` : label;
+    }
     const n = element.nColors || 0;
     return element._hasImage ? `Image · ${n} color${n === 1 ? "" : "s"}` : "Image · empty";
   }
@@ -155,6 +161,11 @@
             <circle cx="18" cy="10" r="1.6" fill="currentColor" />
             <circle cx="14" cy="20" r="1.6" fill="currentColor" />
           </svg>
+        {:else if row.type === "shape"}
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+            <circle cx="9" cy="9" r="6" fill="none" stroke="currentColor" stroke-width="2" />
+            <rect x="11" y="11" width="10" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="2" />
+          </svg>
         {:else}
           <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
             <rect x="2" y="4" width="20" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2" />
@@ -192,6 +203,7 @@
   <button type="button" class="eladd" on:click={() => d("addelement", "text")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Text</button>
   <button type="button" class="eladd" on:click={() => d("addelement", "image")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Image</button>
   <button type="button" class="eladd" on:click={() => d("addelement", "design")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Design file</button>
+  <button type="button" class="eladd" on:click={() => d("addelement", "shape")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Shape</button>
   <button type="button" class="eladd" on:click={() => d("addelement", "manual")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Draw shapes</button>
   {#if digitizerHealth}
     <button type="button" class="eladd" on:click={() => d("addelement", "digitized")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Auto-digitize</button>
@@ -273,6 +285,8 @@
       />
     {:else if el.type === "manual"}
       <ManualPanel element={el} on:elupdate={(e) => d("elupdate", e.detail)} />
+    {:else if el.type === "shape"}
+      <ShapePanel element={el} on:elupdate={(e) => d("elupdate", e.detail)} />
     {:else}
       <TextStep element={el} on:elupdate={(e) => d("elupdate", e.detail)} />
     {/if}

@@ -618,3 +618,56 @@ test("migrateProject preserves a manual element's real shapes, and tolerates a c
   const fixed = migrateProject({ version: 2, garmentId: "left_chest", selectedId: "e2", elements: [corrupt] }).elements[0];
   expect(fixed.shapes).toEqual([]);
 });
+
+// --- preset basic-shape elements (element factory) ---------------------------
+
+import { defaultShapeElement } from "./project.js";
+
+test("defaultShapeElement starts as a 50 mm circle with beginner-safe defaults", () => {
+  const el = defaultShapeElement("e9");
+  expect(el).toEqual({
+    id: "e9",
+    type: "shape",
+    kind: "circle",
+    params: {},
+    colorRgb: [20, 20, 20],
+    underlay: true,
+    sizeMm: 50,
+    offsetXMm: 0,
+    offsetYMm: 0,
+  });
+});
+
+test("addElement 'shape' keeps the factory's explicit 50 mm size (no hoop-relative reseed), staggers like the rest", () => {
+  let p = defaultProject();
+  p = addElement(p, "shape", 100);
+  const el = p.elements[1];
+  expect(el.type).toBe("shape");
+  expect(el.kind).toBe("circle");
+  expect(el.sizeMm).toBe(50); // factory value, NOT 0.4 * hoopWmm
+  expect(el.offsetYMm).toBe(-10);
+  expect(p.selectedId).toBe(el.id);
+});
+
+test("migrateProject fills a shape element's missing fields and tolerates a corrupt params field", () => {
+  const sparse = { id: "e2", type: "shape", kind: "star" }; // saved before some field existed
+  const m = migrateProject({ version: 2, garmentId: "left_chest", selectedId: "e2", elements: [sparse] });
+  const el = m.elements[0];
+  expect(el.kind).toBe("star");
+  expect(el.params).toEqual({});
+  expect(el.underlay).toBe(true);
+  expect(el.colorRgb).toEqual([20, 20, 20]);
+  expect(el.sizeMm).toBe(50);
+
+  const corrupt = { id: "e2", type: "shape", kind: "rect", params: "not-an-object" };
+  const fixed = migrateProject({ version: 2, garmentId: "left_chest", selectedId: "e2", elements: [corrupt] }).elements[0];
+  expect(fixed.params).toEqual({});
+});
+
+test("migrateProject preserves a shape element's real kind/params", () => {
+  const saved = { id: "e2", type: "shape", kind: "star", params: { points: 7, innerRatio: 0.3 }, sizeMm: 32 };
+  const el = migrateProject({ version: 2, garmentId: "left_chest", selectedId: "e2", elements: [saved] }).elements[0];
+  expect(el.kind).toBe("star");
+  expect(el.params).toEqual({ points: 7, innerRatio: 0.3 });
+  expect(el.sizeMm).toBe(32);
+});

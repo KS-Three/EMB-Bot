@@ -98,6 +98,12 @@ test("shapesToRegions: an unrecognized stitchType falls back to 'fill' (never si
   expect(regions[0].shapes[0].tierOverride).toBe("fill");
 });
 
+test("shapesToRegions: the explicit 'auto' stitchType sends NO tierOverride (preset shapes leave satin-vs-fill to the engine classifier)", () => {
+  const shapes = [{ id: "s1", points: tri(0), stitchType: "auto", colorRgb: [1, 1, 1] }];
+  const { regions } = shapesToRegions(shapes);
+  expect(regions[0].shapes[0].tierOverride).toBeNull();
+});
+
 test("shapesToRegions: missing colorRgb falls back to a sane default instead of undefined", () => {
   const shapes = [{ id: "s1", points: tri(0), stitchType: "fill" }];
   const { regions } = shapesToRegions(shapes);
