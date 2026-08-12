@@ -22,23 +22,15 @@ in the repo README. Round-trip through pystitch, not through assumptions.
 from __future__ import annotations
 
 import io
-import math
 from pathlib import Path
 
 import pystitch
 
+from . import stitches
 from .stitches import StitchPlan
 
 # Plan units are mm; DST and pystitch both count in 0.1 mm.
 _UNITS_PER_MM = 10.0
-# Two positions closer than this are the same needle position, and emitting a
-# stitch between them would be a zero-length record the machine skips anyway.
-#
-# "The same needle position" is only true while the needle stays down. A JUMP
-# moves it WITHOUT penetrating, so the first stitch after one is not a repeat of
-# the position before it — it is the first penetration of the new path, and
-# `plan_to_pattern` forgets `last` across a jump for exactly that reason.
-_SAME_POINT_MM = 0.01
 
 
 def _to_units(pt: tuple[float, float]) -> tuple[int, int]:
@@ -46,43 +38,32 @@ def _to_units(pt: tuple[float, float]) -> tuple[int, int]:
 
 
 def plan_to_pattern(plan: StitchPlan) -> pystitch.EmbPattern:
-    """StitchPlan -> EmbPattern, preserving jumps, trims and color changes."""
-    pattern = pystitch.EmbPattern()
-    last: tuple[float, float] | None = None
+    """StitchPlan -> EmbPattern, preserving jumps, trims and color changes.
 
-    for bi, block in enumerate(plan.blocks):
+    The trim/jump/stitch decisions — including which near-coincident
+    penetrations are deduped, and where the dedupe must NOT apply (after a
+    jump, a trim, or a block boundary) — live in
+    `stitches.iter_machine_commands`, the same stream `StitchPlan.stats`
+    counts. This function only scales mm to 0.1 mm units and encodes.
+    """
+    pattern = pystitch.EmbPattern()
+    for block in plan.blocks:
         thread = pystitch.EmbThread()
         thread.set_color(*block.rgb)
         thread.description = block.thread_number
         pattern.add_thread(thread)
-        if bi > 0:
-            pattern.color_change()
 
-        for run in block.runs:
-            if not run.points:
-                continue
-            if run.trim:
-                pattern.trim()
-            if run.jump and last is not None:
-                x, y = _to_units(run.points[0])
-                pattern.add_stitch_absolute(pystitch.JUMP, x, y)
-                # The needle is now at points[0] with nothing sewn there. Carry
-                # `last` across this and the coincidence test below deletes the
-                # penetration that starts the new path — measured on the
-                # appliqué benchmark, where a block's first run enters the ring
-                # nearest the cursor, which after a same-offset layer change is
-                # the previous block's last stitch EXACTLY (distance 0.000000).
-                # What went missing was the first of the five penetrations in
-                # `stitches.tie_run`'s 0.8 mm lock (at, in, at, in, at), i.e.
-                # the anchor holding a thread the trim just cut, landing 4 of 5.
-                last = None
-            for pt in run.points:
-                if last is not None and math.dist(last, pt) < _SAME_POINT_MM:
-                    continue
-                x, y = _to_units(pt)
-                pattern.add_stitch_absolute(pystitch.STITCH, x, y)
-                last = pt
-            last = run.points[-1]
+    for cmd, pt in stitches.iter_machine_commands(plan):
+        if cmd == stitches.CMD_STITCH:
+            x, y = _to_units(pt)
+            pattern.add_stitch_absolute(pystitch.STITCH, x, y)
+        elif cmd == stitches.CMD_JUMP:
+            x, y = _to_units(pt)
+            pattern.add_stitch_absolute(pystitch.JUMP, x, y)
+        elif cmd == stitches.CMD_TRIM:
+            pattern.trim()
+        elif cmd == stitches.CMD_COLOR_CHANGE:
+            pattern.color_change()
 
     pattern.end()
     return pattern
