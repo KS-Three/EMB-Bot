@@ -55,6 +55,30 @@ def test_photo_fixtures_route_to_the_expected_class(filename, expected):
     assert result.class_ == expected, (filename, result.signals, result.confidence)
 
 
+@pytest.mark.parametrize("filename,expected", [
+    ("photo_owl_pale.png", "photo_scene"),
+    ("photo_dof_meadow.png", "photo_scene"),
+    ("photo_grass_macro.png", "photo_subject"),
+    ("photo_sunset_backlit.png", "photo_scene"),
+    ("photo_chrome_specular.png", "photo_scene"),
+])
+def test_photorealistic_fixtures_route_to_photo_territory(filename, expected):
+    """The 2026-08-11 photo-realistic fixtures (tools/make_photo_fixtures.py)
+    — procedurally generated but with real-photo statistics, unlike the two
+    *_stub.png stand-ins. Every one of them must land in photo territory;
+    the subject/scene split below records the CURRENT gate behaviour, one
+    finding included: stage0's photo_subject gate is effectively bimodal
+    (it fires on full-frame fine texture via the measured path or the
+    everything-is-an-edge fallback, but a textured subject against any
+    smooth backdrop keeps enough smooth interior to read photo_scene — the
+    owl portrait and the chrome kettle land there for exactly that reason).
+    Revisit when the subject/scene thresholds are retuned against real
+    portrait fixtures."""
+    result = classify(PHOTO_DIR / filename, cfg())
+    assert result.class_ == expected, (filename, result.signals, result.confidence)
+    assert result.confidence >= 0.9, (filename, result.confidence, result.signals)
+
+
 def test_ambiguous_soft_shadow_fixture_never_crashes():
     """Flat art plus one soft (Gaussian-blurred) drop shadow -- the plan's
     Test 2 ambiguous case. A stable class (any of the four) or
