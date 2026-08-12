@@ -1230,13 +1230,21 @@ def test_a_jump_does_not_eat_the_penetration_it_lands_on():
     in `stitches.tie_run`'s 0.8 mm lock (at, in, at, in, at) — the anchor that
     holds a thread the trim just cut, landing 4 of 5.
 
-    Both directions are pinned here, because the dedup is right when the needle
-    never left: without the jump flag the coincident point IS the same needle
-    position and skipping it is correct.
+    The first fix keyed the reset on the run's `jump` flag, so a block whose
+    opening run carried no flags still lost its first penetration — and a
+    block boundary is a machine STOP whatever the flags say (a color change,
+    or an appliqué/puff step on one thread; `StitchBlock`'s own docstring).
+    Sewing restarts fresh after a stop, so `stopped` pins that case too.
 
-    The counts are taken from the decoded file and from `plan.stats`
-    independently — `stats` re-derives the rule rather than reading the
-    exporter, so a fix applied to only one of them fails here.
+    The dedupe stays right where the needle genuinely never left: two runs of
+    the SAME block sharing an endpoint (`continued`) are one continuous path,
+    and the repeat there is a zero-length record.
+
+    Counts are pinned as literal numbers from the decoded file AND from
+    `plan.stats`, which counts the same `stitches.iter_machine_commands`
+    stream the exporter encodes — the file and the worksheet cannot disagree
+    with each other by construction, so both are checked against the a-priori
+    correct answer instead of against each other.
     """
     square = _sq(0, 0)
 
@@ -1245,23 +1253,31 @@ def test_a_jump_does_not_eat_the_penetration_it_lands_on():
         StitchBlock(0, "1801", RED, [StitchRun(points=list(square), kind="run",
                                                jump=True, trim=True)]),
     ])
-    stayed = StitchPlan(palette=[], blocks=[
+    stopped = StitchPlan(palette=[], blocks=[
         StitchBlock(0, "1801", RED, [StitchRun(points=list(square), kind="run")]),
         StitchBlock(0, "1801", RED, [StitchRun(points=list(square), kind="run")]),
     ])
-    # The two plans hold the identical points; only the needle-up flag differs.
-    assert (lifted.blocks[1].runs[0].points == stayed.blocks[1].runs[0].points
-            == list(square))
+    continued = StitchPlan(palette=[], blocks=[
+        StitchBlock(0, "1801", RED, [StitchRun(points=list(square), kind="run"),
+                                     StitchRun(points=list(square), kind="run")]),
+    ])
+    # All three plans hold the identical points; only the flags and the block
+    # boundaries differ.
+    assert (lifted.blocks[1].runs[0].points == stopped.blocks[1].runs[0].points
+            == continued.blocks[0].runs[1].points == list(square))
 
     assert [s.count("STITCH") for s in _dst_segments(export.export_dst(lifted))] \
         == [5, 5]
-    assert [s.count("STITCH") for s in _dst_segments(export.export_dst(stayed))] \
-        == [5, 4]
+    assert [s.count("STITCH") for s in _dst_segments(export.export_dst(stopped))] \
+        == [5, 5]
+    assert [s.count("STITCH") for s in _dst_segments(export.export_dst(continued))] \
+        == [9]
 
-    # And the plan's own count agrees with the file in both cases, or the
+    # And the plan's own count agrees with the file in all three cases, or the
     # worksheet and the machine tell the operator different numbers.
     assert lifted.stats.stitch_count == 10
-    assert stayed.stats.stitch_count == 9
+    assert stopped.stats.stitch_count == 10
+    assert continued.stats.stitch_count == 9
 
 
 # =========================================================================

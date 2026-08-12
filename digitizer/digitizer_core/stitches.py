@@ -30,6 +30,18 @@ RUN = "run"            # the run tier: a rescued small shape's outline, bean tec
 TRAVEL = "travel"
 TIE = "tie"
 
+# The machine command stream a plan compiles to — see `iter_machine_commands`.
+CMD_STITCH = "stitch"
+CMD_JUMP = "jump"
+CMD_TRIM = "trim"
+CMD_COLOR_CHANGE = "color_change"
+
+# Two positions closer than this are the same needle position, and emitting a
+# stitch between them would be a zero-length record the machine skips anyway.
+# Only meaningful while the needle is sewing a continuous path — see the
+# dedupe rule in `iter_machine_commands` for the three events that reset it.
+SAME_POINT_MM = 0.01
+
 
 @dataclass
 class StitchRun:
@@ -112,30 +124,34 @@ class StitchPlan:
 
     @property
     def stats(self) -> PlanStats:
+        # The accounting is counted off `iter_machine_commands` — the same
+        # stream `export.plan_to_pattern` encodes — so the sheet and the file
+        # tell the operator the same numbers by construction, not by two
+        # hand-kept copies of one rule agreeing. `jumps` counts trim-less
+        # moves only: a trim implies its jump, and the two are reported
+        # disjointly (a cut is a "trim", a float is a "jump").
+        count = trims = jumps = changes = 0
+        prev_cmd: str | None = None
+        for cmd, _pt in iter_machine_commands(self):
+            if cmd == CMD_STITCH:
+                count += 1
+            elif cmd == CMD_TRIM:
+                trims += 1
+            elif cmd == CMD_COLOR_CHANGE:
+                changes += 1
+            elif cmd == CMD_JUMP and prev_cmd != CMD_TRIM:
+                jumps += 1
+            prev_cmd = cmd
+
+        # Geometry is measured over the plan's own points, not the emitted
+        # stream: a deduped penetration coincides with the one that was kept,
+        # so it cannot move the bbox, and thread length is needle-path length.
         x0 = y0 = math.inf
         x1 = y1 = -math.inf
-        count = trims = jumps = 0
         by_color: list[float] = []
-        prev: tuple[float, float] | None = None
         for b in self.blocks:
             for r in b.runs:
-                trims += int(r.trim)
-                jumps += int(r.jump and not r.trim)
-                if r.jump and prev is not None:
-                    # The needle lifts here, so the next point is a new
-                    # penetration however close it lands. Same rule and same
-                    # reason as `export.plan_to_pattern`; the two counts are
-                    # what the sheet and the file each tell the operator, and
-                    # they have to be the same number.
-                    prev = None
                 for x, y in r.points:
-                    # Count what the machine sews: the DST writer skips a point
-                    # coincident with the previous one (two runs can share an
-                    # endpoint exactly), and the operator-facing count must
-                    # match the file's.
-                    if prev is None or math.dist((x, y), prev) >= 0.01:
-                        count += 1
-                    prev = (x, y)
                     x0, y0 = min(x0, x), min(y0, y)
                     x1, y1 = max(x1, x), max(y1, y)
             by_color.append(b.length_mm * machine.THREAD_LENGTH_FACTOR)
@@ -143,13 +159,67 @@ class StitchPlan:
             x0 = y0 = x1 = y1 = 0.0
         return PlanStats(
             stitch_count=count,
-            color_changes=max(0, len(self.blocks) - 1),
+            color_changes=changes,
             trims=trims,
             jumps=jumps,
             bbox_mm=(x0, y0, x1, y1),
             size_mm=(x1 - x0, y1 - y0),
             thread_mm_by_color=by_color,
         )
+
+
+def iter_machine_commands(plan: StitchPlan):
+    """The command stream a plan compiles to — THE one trim/jump/stitch
+    accounting, yielded as `(CMD_*, point-or-None)` in machine order.
+
+    `export.plan_to_pattern` encodes exactly this stream into a pattern, and
+    `StitchPlan.stats` counts it, so the worksheet and the file cannot drift:
+    both are this generator consumed twice. They used to be two hand-kept
+    copies of the same rule, which made the suite's "file holds what the plan
+    promised" check a tautology — a dropped stitch dropped identically from
+    both counts, and the comparison could not fail.
+
+    The dedupe: two penetrations closer than SAME_POINT_MM are the same needle
+    position and the second would be a zero-length record the machine skips
+    anyway — but only while the needle is sewing a continuous path. The
+    tracker is forgotten at every event that breaks the path, because the
+    penetration after it is real however close it lands:
+
+      * a JUMP moves the needle WITHOUT penetrating, so the stitch after one
+        is the first penetration of the new path (bd9afad: carrying `last`
+        across a jump deleted the anchor of `tie_run`'s five-point lock —
+        run 0 point 0 of a block, distance 0.000000 on the appliqué
+        benchmark — landing 4 of 5);
+      * a TRIM cuts the thread, and the next penetration anchors a NEW one;
+      * a block boundary is a machine stop — a color change, or an appliqué /
+        puff step boundary on one thread (see `StitchBlock.step`) — and
+        sewing restarts fresh after it, whatever flags the next run carries.
+
+    A jump is only emitted once something has been sewn: the machine stands
+    at the first run's start, so a leading JUMP would be a move to nowhere.
+    """
+    last: tuple[float, float] | None = None
+    started = False
+    for bi, block in enumerate(plan.blocks):
+        if bi > 0:
+            yield CMD_COLOR_CHANGE, None
+            last = None
+        for run in block.runs:
+            if not run.points:
+                continue
+            if run.trim:
+                yield CMD_TRIM, None
+                last = None
+            if run.jump and started:
+                yield CMD_JUMP, run.points[0]
+                last = None
+            for pt in run.points:
+                if last is not None and math.dist(last, pt) < SAME_POINT_MM:
+                    continue
+                yield CMD_STITCH, pt
+                last = pt
+                started = True
+            last = run.points[-1]
 
 
 def split_long_moves(points: list[tuple[float, float]],

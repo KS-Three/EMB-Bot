@@ -5,8 +5,11 @@ so each test names the defect it exists to catch.
 """
 from __future__ import annotations
 
+import io
 import math
+from collections import Counter
 
+import pystitch
 import pytest
 from shapely.geometry import Point, Polygon
 
@@ -19,10 +22,11 @@ from digitizer_core import (
     machine,
     plan_stitches,
 )
-from digitizer_core.export import read_dst_points
+from digitizer_core.export import plan_to_pattern, read_dst_points
 from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import resolve_overlaps
 from digitizer_core.stage7_sequence import sequence
+from digitizer_core.stitches import StitchBlock, StitchPlan, StitchRun
 from digitizer_core.warnings_codes import HOLE_NEARLY_CLOSED
 
 from .conftest import PLAN_CFG_KW, cfg, segments
@@ -214,6 +218,115 @@ def test_the_dst_holds_exactly_the_stitches_the_plan_promised(plan):
     stitch_plan, _, _ = plan
     points = read_dst_points(export_dst(stitch_plan))
     assert len(points) == stitch_plan.stats.stitch_count
+
+
+def _boundary_plan() -> StitchPlan:
+    """A hand-built plan whose seams pin every way a path can break.
+
+    Block 1 sews a line, then floats (jump, no trim) to a second short run.
+    Block 2 re-enters with trim+jump at EXACTLY where block 1 ended — the
+    appliqué layer-change case — and sews a five-point lock. Block 3's opener
+    carries NO flags at all (a same-thread step boundary: the machine stops,
+    the human does something, sewing resumes in place) and sews another lock;
+    then a mid-block trim+jump hops to a final run. Every coincidence and
+    every flag combination is deliberate, so the correct command stream is
+    knowable a priori rather than read back from the code under test.
+    """
+    red = (200, 30, 30)
+    lock_y = [(5.0, 0.0), (5.0, 0.8), (5.0, 0.0), (5.0, 0.8), (5.0, 0.0)]
+    lock_x = [(5.0, 0.0), (5.8, 0.0), (5.0, 0.0), (5.8, 0.0), (5.0, 0.0)]
+    return StitchPlan(palette=[], blocks=[
+        StitchBlock(0, "1801", red, [
+            StitchRun(points=[(0.0, 0.0), (1.0, 0.0), (2.0, 0.0)]),
+            StitchRun(points=[(4.0, 0.0), (5.0, 0.0)], jump=True),
+        ]),
+        StitchBlock(0, "1801", red, [
+            StitchRun(points=list(lock_y), jump=True, trim=True),
+        ]),
+        StitchBlock(0, "1801", red, [
+            StitchRun(points=list(lock_x)),
+            StitchRun(points=[(9.0, 0.0), (10.0, 0.0)], jump=True, trim=True),
+        ]),
+    ])
+
+
+def test_a_block_boundary_is_a_stop_and_the_lock_after_it_keeps_its_anchor():
+    """The exporter's exact command stream across block boundaries, pinned
+    literally.
+
+    The regression this guards: `plan_to_pattern`'s coincident-point dedupe
+    carrying its position tracker across a boundary and eating the first
+    penetration of the next block — the anchor of `tie_run`'s five-point
+    lock, holding a thread the trim just cut. The tracker must be forgotten
+    at a jump, at a trim, AND at every block boundary regardless of the
+    opening run's flags, because a boundary is a machine stop (block 3 here:
+    no flags, yet all five lock penetrations must land).
+    """
+    pattern = plan_to_pattern(_boundary_plan())
+    s, j, t, c = pystitch.STITCH, pystitch.JUMP, pystitch.TRIM, pystitch.COLOR_CHANGE
+    assert [tuple(rec) for rec in pattern.stitches] == [
+        (0, 0, s), (10, 0, s), (20, 0, s),           # block 1, run 1
+        (40, 0, j), (40, 0, s), (50, 0, s),          # a float: jump, no trim
+        (50, 0, c),                                  # boundary: color change
+        (50, 0, t), (50, 0, j),                      # trim, jump back in place
+        (50, 0, s), (50, 8, s), (50, 0, s), (50, 8, s), (50, 0, s),  # 5 of 5
+        (50, 0, c),                                  # boundary: a bare stop
+        (50, 0, s), (58, 0, s), (50, 0, s), (58, 0, s), (50, 0, s),  # 5 of 5
+        (50, 0, t), (90, 0, j),                      # mid-block trim + hop
+        (90, 0, s), (100, 0, s),
+        (100, 0, pystitch.END),
+    ]
+
+
+def test_the_file_the_worksheet_and_arithmetic_agree_on_the_counts():
+    """The written bytes, decoded, against `stats`, against numbers counted on
+    fingers — all three must be the same story.
+
+    `stats` counts the same `stitches.iter_machine_commands` stream the
+    exporter encodes, so stats-vs-pattern cannot drift by construction; what
+    this adds is the a-priori answer (so a shared bug in the stream itself
+    cannot hide, the way the old twin-copy accounting let a dropped anchor
+    vanish from both counts at once) and the DST encoder/decoder round trip.
+
+    DST has no trim opcode: the writer spells TRIM as a net-zero triple-jump
+    wiggle and the reader folds 3+ jumps back into one TRIM — but refuses one
+    while nothing has been sewn since the last cut. A block-opening trim
+    follows a color change (itself a cut), so it never reaches the decoded
+    stream; the same clipping swallows the boundary's zero-length jump.
+    """
+    plan_ = _boundary_plan()
+    st = plan_.stats
+    # On fingers: 3 + 2 + 5 + 5 + 2 penetrations; 2 trims; 2 stops; 1 float
+    # (the other two jumps ride their trims and are not floats).
+    assert (st.stitch_count, st.trims, st.color_changes, st.jumps) == (17, 2, 2, 1)
+
+    decoded = pystitch.read_dst(io.BytesIO(export_dst(plan_))).stitches
+    counts = Counter(rec[2] for rec in decoded)
+    assert counts[pystitch.STITCH] == st.stitch_count == 17
+    assert counts[pystitch.COLOR_CHANGE] == st.color_changes == 2
+    assert counts[pystitch.TRIM] == st.trims - 1 == 1      # block 2's opener trim rides the CC
+    assert counts[pystitch.JUMP] == 2                       # the float + the mid-block hop;
+    #                                                         block 2's in-place jump clips to nothing
+
+
+def test_the_dst_and_the_worksheet_tell_the_operator_the_same_numbers(plan):
+    """The decode cross-check on a real planned design: every count the
+    worksheet shows must be readable back out of the bytes, up to what DST
+    can spell (see the constructed-plan test above for the trim encoding).
+
+    Every block opener is cut-and-jumped by stage 7, and an opener's trim
+    rides the color change (block 0's rides the start of the file), so
+    exactly `len(blocks)` of the worksheet's trims have no decoded record.
+    """
+    stitch_plan, _, _ = plan
+    st = stitch_plan.stats
+    assert all(b.runs[0].trim for b in stitch_plan.blocks)
+
+    decoded = pystitch.read_dst(io.BytesIO(export_dst(stitch_plan))).stitches
+    counts = Counter(rec[2] for rec in decoded)
+    assert counts[pystitch.STITCH] == st.stitch_count
+    assert counts[pystitch.COLOR_CHANGE] == st.color_changes
+    assert counts[pystitch.TRIM] == st.trims - len(stitch_plan.blocks)
 
 
 def test_the_dst_comes_back_the_same_size_and_the_right_way_up(plan):
