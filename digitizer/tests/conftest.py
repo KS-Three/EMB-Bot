@@ -56,6 +56,15 @@ def enthusiast_logo_82mm():
     return run_stages(TESTDATA / "photo/enthusiast_logo.png", cfg(target_width_mm=82.0))
 
 
+@pytest.fixture(scope="session")
+def ribbon():
+    # The satin-only fixture (one ~2 mm stroke curved through an S — see
+    # tools/make_test_logo.py). One colour, so chaining's future-colour
+    # cover is empty by construction: any link it sewed here would ride the
+    # block's own already-laid thread or nothing.
+    return run_stages(TESTDATA / "ribbon_curve.png", cfg())
+
+
 def codes(result) -> set[str]:
     return {w["code"] for w in result.warnings}
 

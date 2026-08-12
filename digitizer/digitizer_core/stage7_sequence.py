@@ -248,7 +248,8 @@ def _ring_points(geom) -> list[tuple[float, float]]:
     return out
 
 
-def _link_cover(runs: list[StitchRun], regions: list[PlannedRegion]):
+def _link_cover(runs: list[StitchRun], regions: list[PlannedRegion],
+                run_tier_art=None):
     """Where this colour's needle may travel down without showing.
 
     -> (cover geometry, candidate waypoints), or (None, []) with nothing to go on.
@@ -299,15 +300,55 @@ def _link_cover(runs: list[StitchRun], regions: list[PlannedRegion]):
     entirely — a band thinner than twice the inset, a run-tier sliver whose
     outline run covers no interior — promises nothing, and a link it would
     have carried becomes a jump instead: the cheap direction to be wrong in.
+
+    The inset alone is blind to TIER, and `run_tier_art` is that fix: a
+    later shape that will sew as an outline RUN puts zero thread anywhere in
+    its interior, so its shortfall is not a sub-millimetre boundary margin —
+    it is the whole shape, however large. No inset bounds that. The caller
+    passes the union of every later shape whose tier is predictably RUN
+    (`sequence` computes it from the same predicate `stitch_one` routes on),
+    and it is subtracted from `covered_by` before the erosion. Subtracting
+    the whole polygon can also remove honest cover where a run-tier shape
+    overlaps a genuine later fill — that is accepted on purpose: it can only
+    turn a buriable link into a jump, never sew a float. Its outline run's
+    own thread is deliberately NOT credited either: a single 0.4 mm bean
+    line is not the kind of cover law 60's professionals route under.
     """
-    laid = [LineString(r.points) for r in runs
-            if r.kind != stitches.TRAVEL and len(r.points) >= 2]
+    laid: list[object] = []
+    for i, r in enumerate(runs):
+        if r.kind == stitches.TRAVEL:
+            continue
+        if len(r.points) >= 2:
+            laid.append(LineString(r.points))
+        elif r.points:
+            # A one-point run is real thread too: export writes a plain
+            # STITCH record for it, so the machine sews needle-down straight
+            # through the point — the thread arrives from the previous run's
+            # last penetration and leaves into the next run's first. A
+            # 1-point LineString raises in shapely, so the sewn path is
+            # rebuilt from the neighbours instead; each half only exists
+            # where the needle stayed down (`jump` False on the run the
+            # segment enters).
+            pts: list[tuple[float, float]] = []
+            if not r.jump and i > 0 and runs[i - 1].points:
+                pts.append(runs[i - 1].points[-1])
+            pts.append(r.points[0])
+            if i + 1 < len(runs):
+                nxt = runs[i + 1]
+                if not nxt.jump and nxt.points:
+                    pts.append(nxt.points[0])
+            if len(pts) >= 2:
+                laid.append(LineString(pts))
     parts: list[object] = list(laid)
     seen: list[object] = []
     for p in regions:
         c = p.covered_by
         if c is not None and not c.is_empty and not any(c is s for s in seen):
             seen.append(c)
+            if run_tier_art is not None and not run_tier_art.is_empty:
+                c = c.difference(run_tier_art)
+                if c.is_empty:
+                    continue
             g = c.buffer(-machine.LINK_COVER_INSET_MM)
             if not g.is_empty:
                 parts.append(g)
@@ -421,8 +462,8 @@ def _link_stitches(route: list[tuple[float, float]]) -> list[tuple[float, float]
     return inner
 
 
-def _chain(runs: list[StitchRun], regions: list[PlannedRegion]
-           ) -> tuple[list[StitchRun], int]:
+def _chain(runs: list[StitchRun], regions: list[PlannedRegion],
+           run_tier_art=None) -> tuple[list[StitchRun], int]:
     """Sew every needle-up move this colour can bury. -> (runs, in-shape links).
 
     Runs in one pass over the finished block, after every shape has stitched,
@@ -448,7 +489,7 @@ def _chain(runs: list[StitchRun], regions: list[PlannedRegion]
     """
     if len(runs) < 2 or not regions:
         return runs, 0
-    cover, waypoints = _link_cover(runs, regions)
+    cover, waypoints = _link_cover(runs, regions, run_tier_art)
     if cover is None:
         return runs, 0
 
@@ -767,6 +808,28 @@ def sequence(
     blocks.extend(applique_blocks)
     if applique_cursor is not None:
         cursor = applique_cursor
+
+    # Chaining's tier-blindness fix (see `_link_cover`'s docstring): the
+    # artwork polygon of every shape that will predictably sew as an outline
+    # RUN, tagged with its layer's sew index so each block can subtract the
+    # ones that sew AFTER it from its future-colour cover. Predicted with the
+    # same predicate `stitch_one` routes on — an explicit `tier: "run"`, or
+    # the small-shape rescue's area floor. `stitch_one` has two REACTIVE run
+    # outcomes this cannot see, and they are asymmetric on purpose: a
+    # forced-run shape whose outline comes back empty falls through to
+    # fill/satin (MORE thread than predicted here — cover merely
+    # under-counted, a link refused, never a float), while a shape that
+    # defeats both real tiers and rescues as an outline is the one case that
+    # can still over-promise; it is the degenerate geometry the rescue
+    # exists for, and the LINK_COVER_INSET_MM erosion still bounds any shape
+    # of that kind thinner than twice the inset.
+    run_tier_later: list[tuple[int, object]] = []
+    if cfg.chain_links:
+        for p in planned:
+            p_tier = str(p.region.meta.get("tier", "auto")).lower()
+            if p_tier == "run" or (p_tier == "auto" and rescue
+                                   and p.region.polygon.area < detail_mm2):
+                run_tier_later.append((p.sew_index, p.region.polygon))
 
     # Group by (sew_index, step_key) rather than by sew_index alone — §0's
     # third consequence, as code. The nearest-neighbour pass below reorders
@@ -1283,7 +1346,11 @@ def sequence(
         # this turns into a link is also two locks that no longer have to be
         # sewn (`_apply_ties` reads `run.trim` and finds one fewer).
         if cfg.chain_links:
-            ordered, linked_in_shape = _chain(ordered, sewn)
+            later_run_art = [g for i, g in run_tier_later
+                             if i > group[0].sew_index]
+            ordered, linked_in_shape = _chain(
+                ordered, sewn,
+                unary_union(later_run_art) if later_run_art else None)
             jumps -= linked_in_shape
         _apply_ties(ordered)
 
