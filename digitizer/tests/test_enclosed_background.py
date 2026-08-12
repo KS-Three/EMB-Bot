@@ -33,6 +33,20 @@ from .conftest import TESTDATA, cfg, codes
 
 REPRO = TESTDATA / "photo" / "repro_gradient_white_icon.png"
 
+# The background-existence guard (2026-08-11, bg_border_agreement_min) now
+# correctly refuses to flood this full-bleed fixture at all — its border ring
+# only agrees 35.5% with its own modal color, so at defaults there IS no
+# background and therefore nothing enclosed (that end-to-end truth is pinned
+# by test_stages.py::test_full_bleed_art_keeps_all_of_itself). These tests
+# pin a DIFFERENT, orthogonal mechanism — enclosed bg-colored pixels becoming
+# real, restorable Regions — and the repro fixture only reaches that
+# machinery with the existence guards off, which is exactly how the pipeline
+# behaved when this file's diagnosis was made.
+def repro_cfg(**kw):
+    kw.setdefault("bg_border_agreement_min", 0.0)
+    kw.setdefault("bg_border_rival_min", 0.0)
+    return cfg(**kw)
+
 
 # --- stage 1: enclosed pixels join fg; byte-identical when there are none --
 
@@ -75,7 +89,7 @@ def test_repro_fixture_enclosed_mask_is_populated():
     """The real-world repro: a gradient logo with white icon linework
     dropped as holes (docs/superpowers/plans/2026-08-03-gradient-tier-
     fragmentation-and-enclosed-white-defects.md, "Defect 2")."""
-    p = prep(REPRO, cfg())
+    p = prep(REPRO, repro_cfg())
     assert p.enclosed_mask is not None
     assert p.enclosed_mask.any()
 
@@ -99,7 +113,7 @@ def test_only_the_enclosed_region_is_tagged_on_the_ring_hole_fixture(whitebg):
 
 
 def test_repro_fixture_icon_regions_are_tagged_and_excluded_by_default():
-    result = run_stages(REPRO, cfg())
+    result = run_stages(REPRO, repro_cfg())
     assert BACKGROUND_ENCLOSED in codes(result)
     enclosed_warning = next(w for w in result.warnings if w["code"] == BACKGROUND_ENCLOSED)
 
@@ -112,7 +126,7 @@ def test_repro_fixture_icon_regions_are_tagged_and_excluded_by_default():
     for r in tagged:
         assert r.meta["stitched"] is False
 
-    plan = plan_stitches(result, cfg(garment_id="left_chest"))
+    plan = plan_stitches(result, repro_cfg(garment_id="left_chest"))
     stitched_ids = {r.shape_id for _b, r in plan.iter_runs()}
     tagged_ids = {r.shape_id for r in tagged}
     assert not (stitched_ids & tagged_ids), "tagged regions must not reach the stitch plan"
@@ -134,12 +148,12 @@ def test_plan_stitches_excludes_unstitched_regions_but_run_stages_keeps_them():
     tagged ones included — a review screen needs the full list to show a
     restorable shape. `plan_stitches` is the one seam that actually removes
     an unstitched region from what reaches stage 5 (resolve_overlaps)."""
-    result = run_stages(REPRO, cfg())
+    result = run_stages(REPRO, repro_cfg())
     tagged_ids = {r.shape_id for r in result.regions if r.meta.get("enclosed_background")}
     assert tagged_ids
     assert tagged_ids <= {r.shape_id for r in result.regions}  # still in .regions
 
-    plan = plan_stitches(result, cfg(garment_id="left_chest"))
+    plan = plan_stitches(result, repro_cfg(garment_id="left_chest"))
     stitched_ids = {r.shape_id for _b, r in plan.iter_runs()}
     assert not (tagged_ids & stitched_ids)
 
@@ -161,8 +175,8 @@ def test_fully_opaque_alpha_behaves_like_its_rgb_twin():
     ok, buf = cv2.imencode(".png", cv2.cvtColor(bgr, cv2.COLOR_BGR2BGRA))
     assert ok
 
-    opaque = run_stages(bytes(buf), cfg(target_width_mm=90.0))
-    plain = run_stages(REPRO, cfg(target_width_mm=90.0))
+    opaque = run_stages(bytes(buf), repro_cfg(target_width_mm=90.0))
+    plain = run_stages(REPRO, repro_cfg(target_width_mm=90.0))
 
     assert opaque.background.detected is True
     assert BACKGROUND_ENCLOSED in codes(opaque)

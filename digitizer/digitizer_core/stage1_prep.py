@@ -9,6 +9,16 @@ Conventions pinned here and relied on downstream:
 
 Background rules (blueprint v2.1):
   * Alpha channel present -> transparent is background, full stop.
+  * Otherwise, FIRST ask whether a background exists: if the modal border
+    color describes less than cfg.bg_border_agreement_min of the border ring,
+    the artwork runs edge to edge -> nothing is background, BACKGROUND_ABSENT.
+  * Even when the ring agrees with itself, ask WHO the ring belongs to: a
+    second coherent border color at cfg.bg_border_rival_min or more of the
+    ring, with the modal color failing to hold the frame's corners, is the
+    signature of a tight portrait crop whose SUBJECT dominates the border
+    (the snowy-owl failure: pale bird on a pale wall — the modal ring color
+    is the bird, and flooding it deletes the subject's body). Nothing floods;
+    BACKGROUND_UNCERTAIN (reason "subject_dominated_border") says why.
   * Otherwise a border flood: pixels close to the dominant border color AND
     connected to the border. Restricting to border-connected components is
     what stops an interior white shape from being eaten...
@@ -33,6 +43,7 @@ import numpy as np
 from .config import PipelineConfig
 from .threads import rgb_to_lab
 from .warnings_codes import (
+    BACKGROUND_ABSENT,
     BACKGROUND_ENCLOSED,
     BACKGROUND_UNCERTAIN,
     INPUT_LOW_RESOLUTION,
@@ -127,6 +138,60 @@ def _color_close_mask(rgb: np.ndarray, color: np.ndarray, tol: float) -> np.ndar
     return np.sqrt(np.einsum("ijk,ijk->ij", d, d)) <= tol
 
 
+def _border_agreement(close: np.ndarray) -> float:
+    """Fraction of the border ring the background color mask actually claims.
+
+    `close` is the mask of pixels near the modal border color. The question is
+    narrower than it looks: `_dominant_border_color` picks the modal color OF
+    THIS RING, so this asks whether that pick describes the ring it came from.
+    A real background agrees with itself — every committed fixture with one
+    scores 0.925 to 1.000 (re-measured 2026-08-11). Full-bleed artwork cropped
+    through a ramp or a photo does not: its "border color" is one band of
+    many, and the score drops to 0.355 and below.
+    """
+    ring = _border_ring(close.shape[:2])
+    return float(close[ring].mean())
+
+
+def _ring_rival_fraction(rgb: np.ndarray, close: np.ndarray) -> float:
+    """Largest coherent border color the modal pick does NOT describe, as a
+    fraction of the whole ring.
+
+    Among ring pixels outside `close`, coarse-bin exactly the way
+    `_dominant_border_color` votes and take the biggest bin's share of the
+    ring. A real background's remainder is anti-alias scatter (measured
+    0.000-0.021 across every committed real-background fixture); a tight
+    portrait crop's remainder is the actual wall showing through at the
+    margins, one coherent color (0.173 on the owl-repro fixture).
+    """
+    ring = _border_ring(rgb.shape[:2])
+    rest = rgb[ring & ~close]
+    if len(rest) == 0:
+        return 0.0
+    binned = rest.reshape(-1, 3).astype(np.int32) // 16
+    keys = binned[:, 0] * 65536 + binned[:, 1] * 256 + binned[:, 2]
+    _, counts = np.unique(keys, return_counts=True)
+    return float(counts.max() / ring.sum())
+
+
+def _modal_corner_ownership(close: np.ndarray, k: int = 8) -> int:
+    """How many of the frame's four k-by-k corner patches the modal border
+    color holds a majority of.
+
+    A real background owns its corners (all four, unless artwork crosses a
+    corner); a tight crop's subject is central, so the wall peeks through the
+    corners and the modal (subject) color holds few or none. The majority
+    test is structural, not tuned — a corner is either mostly the modal color
+    or it is not.
+    """
+    h, w = close.shape[:2]
+    k = min(k, h, w)
+    patches = [
+        close[:k, :k], close[:k, -k:], close[-k:, :k], close[-k:, -k:]
+    ]
+    return sum(float(p.mean()) > 0.5 for p in patches)
+
+
 def _border_connected(mask: np.ndarray) -> np.ndarray:
     """Subset of `mask` whose components touch the image border."""
     n, labels = cv2.connectedComponents(mask.astype(np.uint8), connectivity=8)
@@ -179,12 +244,59 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
     else:
         bg_color = _dominant_border_color(rgb)
         close = _color_close_mask(rgb, bg_color, cfg.bg_tolerance_lab)
-        border_bg = _border_connected(close)
-        enclosed = close & ~border_bg
-        # Was `border_bg | enclosed` — the same fold described above, for the
-        # far more common no-alpha path (BACKGROUND_ENCLOSED's usual trigger:
-        # bg-colored icon linework enclosed by the surrounding artwork).
-        bg = border_bg
+        # Before flooding, ask whether there is a background to flood. Without
+        # alpha there is no ground truth, and _dominant_border_color always
+        # returns SOMETHING — on full-bleed art that something is one band of
+        # the artwork, and the flood then deletes every pixel matching it
+        # anywhere in the image (re-measured 2026-08-11 on the gradient repro
+        # under the enclosed-regions semantics: 6.3% flooded outright plus
+        # 19.7% reported as enclosed "holes" — 26% of the artwork never sewn
+        # by default). A ring that does not agree with its own modal color is
+        # a ring the artwork runs through.
+        agreement = _border_agreement(close)
+        rival = _ring_rival_fraction(rgb, close)
+        if agreement < cfg.bg_border_agreement_min:
+            border_bg = enclosed = bg = np.zeros(rgb.shape[:2], bool)
+            warnings.append(
+                warn(
+                    BACKGROUND_ABSENT,
+                    "This artwork runs edge to edge — no background was found, so "
+                    "every part of it will be stitched.",
+                    agreement=round(agreement, 3),
+                )
+            )
+        elif (
+            cfg.bg_border_rival_min > 0
+            and rival >= cfg.bg_border_rival_min
+            and _modal_corner_ownership(close) <= 2
+        ):
+            # The ring agrees with itself, but a second coherent color holds a
+            # real share of it and the modal color does not even hold the
+            # frame's corners: a tight crop whose SUBJECT dominates the border
+            # (pale bird, pale wall). Flooding the modal pick would delete the
+            # subject's body, so nothing floods — the whole canvas sews, and
+            # the review screen is told why. Erring this way costs stitches;
+            # erring the other way deletes the customer's subject.
+            border_bg = enclosed = bg = np.zeros(rgb.shape[:2], bool)
+            warnings.append(
+                warn(
+                    BACKGROUND_UNCERTAIN,
+                    "The subject appears to fill the frame, so no background "
+                    "was removed — everything will be stitched. Crop wider or "
+                    "cut the background out first if this is a photo.",
+                    reason="subject_dominated_border",
+                    agreement=round(agreement, 3),
+                    rival=round(rival, 3),
+                )
+            )
+        else:
+            border_bg = _border_connected(close)
+            enclosed = close & ~border_bg
+            # Was `border_bg | enclosed` — the same fold described above, for
+            # the far more common no-alpha path (BACKGROUND_ENCLOSED's usual
+            # trigger: bg-colored icon linework enclosed by the surrounding
+            # artwork).
+            bg = border_bg
 
     # Same guard as before the fold-in existed (`not (border_bg.any() or
     # enclosed.any())`, which is what `not bg.any()` used to mean when `bg`

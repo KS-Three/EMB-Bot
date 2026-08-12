@@ -403,15 +403,14 @@
    900
   ],
   "labels_dtype": "int32",
-  "labels_sha256": "7b05909b8f4f787c42edc8ca4c1fa864e97da127771e80fbf6e46ac874f73195",
+  "labels_sha256": "323c3b163d6d17367e06fccd2111c3b040b011ce87eba4217d9fe62c4e6862ec",
   "thread_indices": [
    204,
    2,
-   120,
    122,
-   151,
-   208,
-   204
+   213,
+   205,
+   189
   ],
   "cluster_rgb": [
    [
@@ -425,46 +424,41 @@
     255.0
    ],
    [
-    249.0,
-    89.0,
-    81.0
-   ],
-   [
     240.0,
     140.0,
     75.0
    ],
    [
-    235.0,
-    93.0,
-    112.0
+    255.0,
+    204.0,
+    230.0
+   ],
+   [
+    243.0,
+    137.0,
+    178.0
    ],
    [
     255.0,
-    185.0,
+    160.0,
     204.0
-   ],
-   [
-    226.0,
-    60.0,
-    115.0
    ]
   ],
   "warnings": [
    {
     "code": "PHOTO_SEGMENT_REGION_COUNT",
-    "message": "Photo segmentation produced 15 regions (1081 superpixels, 6 after merging), consolidated to 6 thread colors.",
-    "count": 15,
+    "message": "Photo segmentation produced 10 regions (784 superpixels, 10 after merging), consolidated to 6 thread colors.",
+    "count": 10,
     "thread_colors": 6,
-    "slic_segments": 1081,
-    "merged_regions": 6
+    "slic_segments": 784,
+    "merged_regions": 10
    },
    {
     "code": "PHOTO_PALETTE_SELECTED",
-    "message": "Palette selected 6 threads for 15 regions (chart-restricted weighted k-medoids).",
+    "message": "Palette selected 6 threads for 10 regions (chart-restricted weighted k-medoids).",
     "colors": 6,
-    "regions": 15,
-    "max_excess_de00": 1.072
+    "regions": 10,
+    "max_excess_de00": 0.0
    }
   ]
  },
@@ -474,21 +468,15 @@
    1000
   ],
   "labels_dtype": "int32",
-  "labels_sha256": "1351e02710eae40320d0c57001ba4d5fbf7d1ae30ea648c0479e707c46f77cd5",
+  "labels_sha256": "3aa297b3f60edd1bb90e65d770881a11cd8ee1796737fa78ee880752e4682c60",
   "thread_indices": [
-   8,
-   275
+   8
   ],
   "cluster_rgb": [
    [
     127.0,
     127.0,
     127.0
-   ],
-   [
-    48.0,
-    68.0,
-    181.0
    ]
   ],
   "warnings": [

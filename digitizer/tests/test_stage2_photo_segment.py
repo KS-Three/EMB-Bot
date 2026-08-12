@@ -350,8 +350,15 @@ def test_enclosed_background_survives_gradient_routing_through_slic_rag():
     pass's routing change, that linework must still end up as its own
     tagged, unstitched-by-default Region(s) — the whole point of the
     enclosed-background restore feature — not silently absorbed into the
-    surrounding gradient."""
-    cfg = PipelineConfig(target_width_mm=90.0)
+    surrounding gradient.
+
+    The background-existence guards are OFF here (2026-08-11): at defaults
+    the guard now correctly refuses to flood this full-bleed fixture at all
+    (border agreement 0.355 < bg_border_agreement_min, BACKGROUND_ABSENT),
+    so nothing is enclosed and the routing machinery under test never runs.
+    See test_enclosed_background.py's repro_cfg comment — same reasoning."""
+    cfg = PipelineConfig(target_width_mm=90.0,
+                         bg_border_agreement_min=0.0, bg_border_rival_min=0.0)
     fixture = str(PHOTO_DIR / "repro_gradient_white_icon.png")
     c = classify(fixture, cfg)
     assert c.class_ == "gradient", "fixture drifted off the class this test needs"
