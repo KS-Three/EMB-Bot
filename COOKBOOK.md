@@ -498,6 +498,7 @@ actually cleared before assuming so.
 ```bash
 node --test                 # engine tests (root) — 283 tests, 281/283 as of 2026-08-11 (2 embf-guard failures, fix in progress)
 cd app && npm install && npm run dev     # Studio dev server
+tools/start-emb-bot.ps1     # Windows: both servers in their own windows + opens the browser
 cd app && npm test          # Studio tests (vitest) — 615/615 (33 files, 2026-08-11)
 node tools/build-embf.mjs   # rebuild the binary font library (see section above)
 
