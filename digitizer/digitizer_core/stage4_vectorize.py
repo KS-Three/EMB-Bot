@@ -59,6 +59,33 @@ def _to_mm(pts: np.ndarray, cx: float, cy: float, px_per_mm: float) -> np.ndarra
     return out
 
 
+def _polygon_parts(geom) -> list[Polygon]:
+    """Every Polygon inside `geom`, however deeply shapely nested it.
+
+    `make_valid` on a self-intersecting ring does not return one shape of one
+    type. Repairing a simple figure-eight gives a bare `MultiPolygon` whose
+    members ARE polygons; repairing a ring that also sheds a dangling edge
+    gives a `GeometryCollection` whose members are a `MultiPolygon` **and** a
+    `LineString` — the polygons are one level deeper, and a flat
+    `geom_type == "Polygon"` scan over the collection finds NONE of them.
+
+    That is not hypothetical. On `owl_kent.jpg`, three masks self-intersect
+    after `approxPolyDP`: the body repairs to a MultiPolygon and survives,
+    while two regions of **944 mm² and 718 mm²** — 20% and 15% of the whole
+    design — repair to GeometryCollections, scan as "no polygon parts", and
+    were dropped outright. They took their thread colours with them
+    (`EMPTY_THREAD_LAYER`) and left bare fabric in the owl's lower body.
+    Recursing is the whole fix.
+    """
+    if geom is None or geom.is_empty:
+        return []
+    if geom.geom_type == "Polygon":
+        return [geom]
+    if hasattr(geom, "geoms"):
+        return [q for g in geom.geoms for q in _polygon_parts(g)]
+    return []
+
+
 def vectorize(
     region_masks: list[RegionMask],
     thread_indices: list[int],
@@ -142,49 +169,50 @@ def vectorize(
                 holes.append(ring)
 
         poly = Polygon(shell, holes)
-        if not poly.is_valid:
-            fixed = make_valid(poly)
-            # make_valid can return a collection; take the largest polygon part.
-            if fixed.geom_type == "Polygon":
-                poly = fixed
-            elif hasattr(fixed, "geoms"):
-                polys = [g for g in fixed.geoms if g.geom_type == "Polygon"]
-                if not polys:
-                    note_drop(rm)
-                    continue
-                poly = max(polys, key=lambda g: g.area)
-            else:
-                note_drop(rm)
-                continue
-        if poly.is_empty:
-            note_drop(rm)
-            continue
-        if poly.area < min_area_mm2:
-            # The run-tier floor, now on real geometry: stage 3's proxy was a
-            # lower bound, so this is the authoritative test of whether the
-            # bean run has a sewable loop and the shape outweighs the thread.
-            rescueable = (sub_detail
-                          and poly.area >= machine.RUN_MIN_AREA_MM2
-                          and poly.exterior.length >= machine.RUN_MIN_LOOP_MM)
-            if not rescueable:
-                note_drop(rm)
-                continue
+        # A self-intersecting ring does not repair into ONE shape. Where the
+        # boundary crossed itself the repair pinches the mask into several
+        # disjoint polygons — all of them the same mask, the same colour, the
+        # same artwork. Keeping only the largest and discarding the rest is
+        # what left bare fabric in the owl's lower body: the body mask repairs
+        # to 4 parts, and the 30 mm² piece that is NOT the largest was thrown
+        # away, so nothing ever sewed there. Every part that clears the same
+        # sewable floor a whole region must clear is kept, each as its own
+        # region — which is what they now are.
+        parts = [poly] if poly.is_valid else _polygon_parts(make_valid(poly))
 
         thread = chart[thread_indices[rm.layer]]
-        meta = {"layer": rm.layer}
-        if sub_detail:
-            meta["rescued_small_shape"] = True
-        regions.append(
-            Region(
-                shape_id="",
-                polygon=poly,
-                thread_index=thread_indices[rm.layer],
-                thread_number=thread.number,
-                area_mm2=float(poly.area),
-                source=rm.source,
-                meta=meta,
+        kept = 0
+        for part in parts:
+            if part.is_empty:
+                continue
+            if part.area < min_area_mm2:
+                # The run-tier floor, now on real geometry: stage 3's proxy was
+                # a lower bound, so this is the authoritative test of whether
+                # the bean run has a sewable loop and the shape outweighs the
+                # thread.
+                rescueable = (sub_detail
+                              and part.area >= machine.RUN_MIN_AREA_MM2
+                              and part.exterior.length >= machine.RUN_MIN_LOOP_MM)
+                if not rescueable:
+                    continue
+            meta = {"layer": rm.layer}
+            if sub_detail:
+                meta["rescued_small_shape"] = True
+            regions.append(
+                Region(
+                    shape_id="",
+                    polygon=part,
+                    thread_index=thread_indices[rm.layer],
+                    thread_number=thread.number,
+                    area_mm2=float(part.area),
+                    source=rm.source,
+                    meta=meta,
+                )
             )
-        )
+            kept += 1
+        if not kept:
+            note_drop(rm)
+            continue
 
     assign_shape_ids(regions)
     # Stable output order: largest first within a layer, layers in sew order.

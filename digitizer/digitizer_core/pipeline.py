@@ -62,6 +62,13 @@ from .warnings_codes import (
 )
 
 
+# How many "min detail" squares a dropped shape has to cover before the
+# DROPPED_SMALL_SHAPES warning stops calling it a detail. An order of magnitude
+# past detail scale (22.5 mm² at the default 1.5 mm) is not a speck the eye
+# would miss — it is a shape the user drew, and the warning has to say so.
+NOT_A_DETAIL_FACTOR = 10
+
+
 @dataclass
 class BackgroundInfo:
     detected: bool
@@ -388,13 +395,34 @@ def run_stages(
         floor = (cfg.min_detail_mm ** 2) * cfg.report_absorb_frac
         reportable = sum(1 for a in dropped_areas if a >= floor)
         if reportable:
+            # Say WHAT was lost, not just how many. This warning used to call
+            # every drop a detail "too small or thin to hold a stitch" — and on
+            # 2026-08-13 that sentence was describing a 2,787 mm² drop on
+            # summit_badge.png (the whole badge body) and 944 + 718 mm² on
+            # owl_kent.jpg. The stage 4 bug behind those is fixed, but the
+            # wording is what kept it invisible: nobody investigates a lost
+            # "detail". Anything an order of magnitude past detail scale is
+            # reported as the real shape it is, with its area.
+            largest = max(dropped_areas)
+            all_small = largest < (cfg.min_detail_mm ** 2) * NOT_A_DETAIL_FACTOR
+            if all_small:
+                message = (f"{reportable} detail{'s' if reportable != 1 else ''} were too "
+                           "small or thin to hold a stitch and were removed.")
+            else:
+                message = (
+                    f"{reportable} shape{'s' if reportable != 1 else ''} could not be "
+                    f"turned into a sewable outline and "
+                    f"{'were' if reportable != 1 else 'was'} removed "
+                    f"(largest {largest:.0f} mm²)."
+                )
             vec_warnings.append(
                 warn(
                     DROPPED_SMALL_SHAPES,
-                    f"{reportable} detail{'s' if reportable != 1 else ''} were too "
-                    "small or thin to hold a stitch and were removed.",
+                    message,
                     count=reportable,
                     cleaned_total=len(dropped_areas),
+                    largest_mm2=round(float(largest), 2),
+                    all_small=bool(all_small),
                 )
             )
     if dbg:
