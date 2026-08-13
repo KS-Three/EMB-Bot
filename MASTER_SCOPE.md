@@ -11,7 +11,17 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-13 — **a node drag on the canvas now moves the
+**Last updated:** 2026-08-13 (later) — **stage 4 was silently throwing away
+whole regions, including the entire body of `summit_badge.png`.** Kent asked
+about "the space in the lower portion of the owl that gets dropped". It was
+not a fill problem: `make_valid`'s repair of a self-intersecting traced
+outline returns different geometry types in different cases, stage 4 only
+understood one of them, and the rest were discarded — **1,662 mm² lost on
+`owl_kent.jpg` (two regions, and their thread colours with them), 2,787 mm² on
+`summit_badge.png`** — every one of them reported to the user as a "detail too
+small or thin to hold a stitch". Full write-up in **area 1**.
+
+**Earlier the same day** — **a node drag on the canvas now moves the
 stitches, not just the outline.** Kent's "i can move the nodes, but the stitch
 fill STILL isn't working" was not a broken edit path: an auto-traced outline
 carries a vertex every ~1.3 mm, so moving one added a needle no fill row could
@@ -2587,6 +2597,55 @@ and its multi-colour layered follow-up (PR #25, decomposes a region into
 traces one streamline set per shade, dark-to-light). Row 10 was the last
 one this doc was still tracking as open; all of rows 6/8/9/10 are now
 built.
+
+**Stage 4 was discarding whole regions, and calling them "details" — found
+and fixed 2026-08-13.** Kent: *"we still have the space in the lower portion
+of the owl that gets dropped."* It was one root cause with two effects, both
+in `stage4_vectorize.vectorize`'s handling of a repaired outline.
+
+`approxPolyDP` can make a traced boundary cross itself, and `make_valid`
+repairs it — but the repair's TYPE varies with the geometry. A simple
+figure-eight comes back as a bare `MultiPolygon` whose members are polygons.
+One that also sheds a dangling edge comes back as a `GeometryCollection`
+holding a `MultiPolygon` **and** a `LineString`, so the polygons sit one level
+deeper. The old code scanned only the top level for `Polygon`, then kept the
+single largest match:
+
+- **A `GeometryCollection` scanned as "no polygons at all" and the entire
+  region was dropped.** On `owl_kent.jpg` that is **944 mm² and 718 mm²** —
+  20% and 15% of the design — which also took their thread colours out of the
+  palette (`EMPTY_THREAD_LAYER`, and Kent's panel showing 9 colours where the
+  palette had picked 12). On `summit_badge.png` it is a single **2,787 mm²**
+  drop: the whole badge body.
+- **Keeping only the largest part threw away the others.** That is Kent's
+  actual bare patch — a 30 mm² piece of the owl's body region that the repair
+  separated and that then lost the size contest. Nothing ever sewed there.
+
+Both are fixed: polygons are collected recursively at any depth, and every
+part clearing the same sewable floor a whole region must clear is kept as its
+own region. Measured across the fixture set — **7 of 10 unchanged, byte for
+byte**, including every flat/line-art fixture and the `enthusiast_logo`
+benchmark (they produce no invalid polygons, so the path never runs):
+
+| fixture | regions | colours | stitches | dropped by stage 4 |
+|---|---|---|---|---|
+| `owl_kent.jpg` | 25 → **35** | 12 → **14** | 7,725 → **11,307** | 1,662 mm² → **0** |
+| `summit_badge.png` | 37 → **43** | 11 → **12** | 3,843 → **8,263** | 2,794 mm² → **5.3 mm²** |
+| `drone_render.png` | 72 → **74** | 17 → 17 | 9,161 → **9,239** | 4.0 mm² → **1.2 mm²** |
+| the other 7 | unchanged | unchanged | unchanged | unchanged |
+
+What remains dropped is now genuinely sub-sewable: 131 slivers totalling
+5.3 mm² on `summit_badge`, none bigger than 0.3 mm².
+
+**The warning is why this survived so long, so it changed too.**
+`DROPPED_SMALL_SHAPES` described every one of these as a detail "too small or
+thin to hold a stitch" — a 2,787 mm² region included. Nobody investigates a
+lost speck. The engine now sends `largest_mm2` and `all_small`, and when a
+drop is an order of magnitude past detail scale both the engine message and
+the Studio panel name it as a shape that could not be turned into a sewable
+outline, with its size, and point at the preview. **Generalises past this
+bug: a warning that makes a large loss sound routine is a defect in its own
+right.**
 
 **Fix #6.3 landed, 2026-08-11 (evening) — post-vectorization thread
 re-validation (`stage4_vectorize.revalidate_threads`, called from

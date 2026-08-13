@@ -1082,6 +1082,15 @@ function plural(n, one, many) {
   return n === 1 ? one : many.replace("{n}", String(n));
 }
 
+// " (largest 2,787 mm²)", or nothing when the engine didn't send a size. An
+// area is the difference between a warning a user can act on and one they
+// scroll past — see DROPPED_SMALL_SHAPES below.
+function areaSuffix(w) {
+  const a = w && w.largest_mm2;
+  if (typeof a !== "number" || !isFinite(a) || a <= 0) return "";
+  return ` (largest ${Math.round(a).toLocaleString("en-US")} mm²)`;
+}
+
 const WARNING_TEXT = {
   BACKGROUND_UNCERTAIN: () =>
     "The background was hard to separate from the art. Check the stitch preview for missing or extra areas.",
@@ -1092,10 +1101,21 @@ const WARNING_TEXT = {
     "Find them in the Layers list, marked \"not sewn — enclosed area,\" to sew them.",
   COLOR_CAP_APPLIED: () =>
     "The art has more colors than the limit. The smallest areas now reuse the nearest kept color — raise Colors to keep more.",
+  // Two sentences, because "too small to sew" is only ONE of the reasons a
+  // shape gets dropped and it is the reassuring one. On 2026-08-13 this
+  // sentence was what the panel showed while the engine was silently losing a
+  // 2,787 mm² region — the entire body of `summit_badge.png` — to a geometry
+  // repair bug. Nobody chases a lost "part too small to sew". The engine now
+  // sends `all_small`, and when it is false the shape gets named for what it
+  // is, with its size, so the next one is visible the day it happens.
   DROPPED_SMALL_SHAPES: (w) =>
-    plural(w.count || 0,
-      "One part of the art was too small to sew and was left out.",
-      "{n} parts of the art were too small to sew and were left out."),
+    w.all_small === false
+      ? plural(w.count || 0,
+          `One shape couldn't be turned into a sewable outline and was left out${areaSuffix(w)}. Check the preview for a bare patch.`,
+          `{n} shapes couldn't be turned into sewable outlines and were left out${areaSuffix(w)}. Check the preview for bare patches.`)
+      : plural(w.count || 0,
+          "One part of the art was too small to sew and was left out.",
+          "{n} parts of the art were too small to sew and were left out."),
   ABSORBED_SMALL_SHAPES: (w) =>
     plural(w.count || 0,
       "One tiny detail was merged into the shape around it.",

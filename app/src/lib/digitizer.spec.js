@@ -1206,6 +1206,31 @@ test("describeWarnings translates pipeline codes to customer language, with coun
   expect(out[2].text).toBe("The thread gets cut 2 times where it has to travel a long way.");
 });
 
+// A shape the engine could not sew is not automatically a speck. On
+// 2026-08-13 this warning was the only thing the panel said while the engine
+// silently lost a 2,787 mm² region (the whole body of summit_badge.png) to a
+// geometry-repair bug — described as a "part too small to sew", which is not
+// something anyone investigates. The engine now sends `all_small`, and a big
+// loss has to read like one.
+test("describeWarnings does not call a large dropped shape a speck — it names the size", async () => {
+  stubStorage({});
+  const { describeWarnings } = await import("./digitizer.js");
+  const out = describeWarnings([
+    { code: "DROPPED_SMALL_SHAPES", message: "engine prose", count: 1, all_small: false, largest_mm2: 2787.3 },
+    { code: "DROPPED_SMALL_SHAPES", message: "engine prose", count: 2, all_small: false, largest_mm2: 944.6 },
+    // all_small true, and the older engines that send neither field, both keep
+    // the reassuring wording — this must stay backward compatible.
+    { code: "DROPPED_SMALL_SHAPES", message: "engine prose", count: 2, all_small: true, largest_mm2: 0.3 },
+    { code: "DROPPED_SMALL_SHAPES", message: "engine prose", count: 2 },
+  ]);
+  expect(out[0].text).toBe(
+    "One shape couldn't be turned into a sewable outline and was left out (largest 2,787 mm²). Check the preview for a bare patch.");
+  expect(out[1].text).toBe(
+    "2 shapes couldn't be turned into sewable outlines and were left out (largest 945 mm²). Check the preview for bare patches.");
+  expect(out[2].text).toBe("2 parts of the art were too small to sew and were left out.");
+  expect(out[3].text).toBe("2 parts of the art were too small to sew and were left out.");
+});
+
 test("describeWarnings speaks the two shape-edit codes: deletions agree with the panel's count, unmatched edits are named, not swallowed", async () => {
   stubStorage({});
   const { describeWarnings } = await import("./digitizer.js");

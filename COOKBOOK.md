@@ -217,6 +217,25 @@ hand-rolling it in JS.
 
 ### Hard-won lessons — do not relearn these
 
+- **`make_valid` does not return one type, and the polygons can be nested a
+  level deeper than you expect.** Repairing a self-intersecting ring gives a
+  bare `MultiPolygon` in the easy case and a `GeometryCollection` holding a
+  `MultiPolygon` **plus** a `LineString` when the repair also sheds a dangling
+  edge. A flat `[g for g in fixed.geoms if g.geom_type == "Polygon"]` finds
+  ZERO polygons in the second case — and stage 4 then dropped the whole
+  region. That cost 1,662 mm² on `owl_kent.jpg` and a single 2,787 mm² drop on
+  `summit_badge.png` (the entire badge body), for three days, invisibly.
+  Always flatten shapely results RECURSIVELY (`_polygon_parts` in
+  `stage4_vectorize.py`). Related: a repair also SPLITS a shape into parts, so
+  "keep the largest" silently discards real area — take every part that clears
+  your sewable floor.
+
+- **A warning that makes a large loss sound routine is itself the defect.**
+  The above was reported on every run as "N details were too small or thin to
+  hold a stitch and were removed" — while N included a 2,787 mm² region.
+  Nobody chases a lost detail. When a warning reports something being
+  discarded, report HOW MUCH; the number is what makes it investigable.
+
 - **The Playwright e2e suite is NOT in CI, so it goes dark silently — run it
   yourself after touching `ContentStep`/`ManualPanel` markup.** `.github`'s
   `studio` job runs `vitest` only; the e2e specs need a real browser and a
