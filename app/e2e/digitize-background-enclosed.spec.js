@@ -127,7 +127,7 @@ test("BACKGROUND_ENCLOSED: enclosed icon linework is held out by default and res
   await page.getByRole("button", { name: "Tote", exact: true }).click();
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
-  await page.getByRole("button", { name: "Auto-digitize" }).click();
+  await page.getByRole("button", { name: "Artwork" }).click();
 
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
   await page.getByRole("button", { name: "Digitize", exact: true }).click();
@@ -185,7 +185,7 @@ test("BACKGROUND_ENCLOSED: the banner's 'Sew all' bulk-restores every enclosed r
   await page.getByRole("button", { name: "Tote", exact: true }).click();
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
-  await page.getByRole("button", { name: "Auto-digitize" }).click();
+  await page.getByRole("button", { name: "Artwork" }).click();
 
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
   await page.getByRole("button", { name: "Digitize", exact: true }).click();

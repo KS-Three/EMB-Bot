@@ -456,6 +456,42 @@ body {
   color: var(--tint-border);
 }
 
+/* Right-click tool menu on the design canvas (EmbroideryField). Drawing tools
+   moved here from the Content step's tile row on 2026-08-13 — a tool belongs
+   on the surface you draw on, not in the row of upload buttons. Absolutely
+   positioned inside .hoop, which is already `position: relative`. */
+.fieldmenu {
+  position: absolute;
+  z-index: 5;
+  margin: 0;
+  padding: var(--space-1);
+  list-style: none;
+  min-width: 9.5rem;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #d7d7e0);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 6px 20px rgba(15, 18, 30, 0.16);
+}
+
+.fieldmenu button {
+  display: block;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm, 5px);
+  background: none;
+  text-align: left;
+  font: inherit;
+  font-size: var(--fs-md);
+  color: var(--text, #1b1b21);
+  cursor: pointer;
+}
+
+.fieldmenu button:hover,
+.fieldmenu button:focus-visible {
+  background: var(--tint, #eef0fb);
+}
+
 .fieldmeta { min-height: 1.25rem; font-size: var(--fs-md); }
 
 /* Zoom control -- overlaid on the field's bottom-right corner (Slice 8 Task

@@ -349,8 +349,22 @@
     return garment ? garment.widthIn * MM_PER_INCH : 300;
   }
 
+  // "artwork" is the Content step's ONE upload tile (Kent's call, 2026-08-13:
+  // "automatically recognize if it's working with a photo or a logo, and
+  // remove all of the unnecessary upload buttons"). It is not an element type
+  // — it is the routing decision that used to be the user's, made from the
+  // one fact that actually determines it: whether the digitizer is running.
+  //
+  // With the service up, uploaded art becomes a `digitized` element and the
+  // pipeline classifies and stitches it. With the service down there is no
+  // pipeline to classify anything, so it becomes an `image` — the browser
+  // engine's own flatten-and-sew lane, which needs no service. Same tile,
+  // same upload, no question asked of the user either way.
   function onAddElement(type) {
-    project = addElement(project, type, hoopWidthMm(project));
+    const resolved = type === "artwork"
+      ? (digitizerHealth ? "digitized" : "image")
+      : type;
+    project = addElement(project, resolved, hoopWidthMm(project));
     persist();
   }
 
@@ -757,6 +771,7 @@
       on:toggleselect={(e) => onToggleSelect(e.detail)}
       on:dims={(e) => onDims(e.detail)}
       on:stats={(e) => onStats(e.detail)}
+      on:addelement={(e) => onAddElement(e.detail)}
       on:dismisshint={() => dismissHint("drag-field")}
     />
   </section>

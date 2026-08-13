@@ -131,7 +131,7 @@ test("stale layer edits: service flags them, the panel surfaces them, Clear + Ap
 
   // The tile is health-gated (App probes /health on reaching this step); it
   // appearing IS the live assertion that the app sees the real service.
-  await page.getByRole("button", { name: "Auto-digitize" }).click();
+  await page.getByRole("button", { name: "Artwork" }).click();
 
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
   await page.getByRole("button", { name: "Digitize", exact: true }).click();
