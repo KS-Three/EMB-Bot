@@ -18,7 +18,7 @@
 // a job already ran) and never touches `element.params`, so the "re-digitize
 // automatically when params change" reactive statement never fires and no
 // network call happens.
-import { beforeAll, describe, expect, test } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { render, fireEvent, waitFor } from "@testing-library/svelte";
 import "@testing-library/jest-dom/vitest";
 import Harness from "./DigitizePanel.testHarness.svelte";
@@ -327,5 +327,83 @@ describe("Sequencer view", () => {
     });
     const trimsEl = container.querySelector(".dgp-seq-trims");
     expect(trimsEl).toHaveClass("heavy");
+  });
+});
+
+// ---- auto-restitch after a shape edit --------------------------------------
+//
+// Kent's call, 2026-08-13: a hand edit on the canvas used to move the outline
+// and leave the stitches where they were until "Apply layer changes" was
+// pressed. It now restitches on its own after a pause.
+//
+// Debounced rather than immediate because a restitch is a full stage 0-7
+// service run — measured 0.65s on line art but ~10s on a real photograph,
+// with no useful cache (the job key folds shape_overrides in, so every edit
+// misses). These tests pin the DEBOUNCE, which is the part that keeps ten
+// nudges from queueing ten 10-second runs.
+
+describe("auto-restitch on shape edits", () => {
+  // `digitize` is the network call runDigitize makes; counting it is how we
+  // observe a restitch without a service.
+  let calls;
+  beforeEach(() => {
+    calls = [];
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  async function panelWithService(shapes, extra = {}) {
+    const mod = await import("../lib/digitizer.js");
+    vi.spyOn(mod, "digitize").mockImplementation(async () => {
+      calls.push(Date.now());
+      return null;   // runDigitize bails on a null job before patching
+    });
+    const patches = [];
+    const utils = render(Harness, {
+      props: {
+        element: baseElement(shapes, {
+          // Enough of a real design for the panel's own stats line to render;
+          // these tests are about the debounce, not the readout.
+          result: { stitches: [], colors: [], stitchCount: 0, colorCount: 0,
+                    name: 'test', widthMM: 50, heightMM: 40 },
+          ...extra,
+        }),
+        health: { ok: true },
+        onPatch: (d) => patches.push(d),
+      },
+    });
+    return { ...utils, patches };
+  }
+
+  test("a shape edit does NOT restitch immediately", async () => {
+    const { getByLabelText } = await panelWithService([shapeRow("s1")]);
+    await fireEvent.change(getByLabelText("Stitch type"), { target: { value: "satin" } });
+    vi.advanceTimersByTime(1500);
+    expect(calls).toHaveLength(0);
+  });
+
+  test("it restitches once the user stops editing", async () => {
+    const { getByLabelText } = await panelWithService([shapeRow("s1")]);
+    await fireEvent.change(getByLabelText("Stitch type"), { target: { value: "satin" } });
+    vi.advanceTimersByTime(2500);
+    await Promise.resolve();
+    expect(calls.length).toBeGreaterThanOrEqual(1);
+  });
+
+  test("rapid edits collapse into ONE restitch, not one per edit", async () => {
+    // The whole point of the debounce: ten adjustments cost one 10-second
+    // run, not ten queued behind each other.
+    const { getByLabelText } = await panelWithService([shapeRow("s1")]);
+    for (const v of ["satin", "fill", "satin", "fill"]) {
+      await fireEvent.change(getByLabelText("Stitch type"), { target: { value: v } });
+      vi.advanceTimersByTime(300);
+    }
+    expect(calls).toHaveLength(0);       // still inside the idle window
+    vi.advanceTimersByTime(2500);
+    await Promise.resolve();
+    expect(calls.length).toBeLessThanOrEqual(1);
   });
 });
