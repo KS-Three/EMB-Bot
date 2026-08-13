@@ -187,6 +187,42 @@
     }
   }
 
+  // Shape edits restitch on their own, after a pause (Kent's call,
+  // 2026-08-13). Before this, a hand edit on the canvas moved the outline and
+  // left the stitches where they were until "Apply layer changes" was pressed
+  // — correct, but it made the canvas editor feel like it was drawing on a
+  // photograph rather than editing a design.
+  //
+  // Debounced rather than immediate because a restitch is a full stage 0-7
+  // service run: measured 0.65s on simple line art but ~10-14s on a real
+  // photograph, with no useful cache (the job key folds shape_overrides into
+  // the config, so every edit is a guaranteed miss). Firing per drag would
+  // queue a 10s run behind every nudge. Waiting for the user to STOP means
+  // ten adjustments cost one run, not ten.
+  const RESTITCH_IDLE_MS = 2000;
+  let restitchTimer = 0;
+  let prevEditsKey = editsKey(canonicalShapeEdits(element));
+  $: {
+    const k = editsKey(canonicalShapeEdits(element));
+    if (k !== prevEditsKey) {
+      prevEditsKey = k;
+      // `health` gates it: with no service there is nothing to restitch to,
+      // and the existing "saved with the design, applied next time you
+      // digitize" branch already covers that honestly.
+      if (element.result && health) scheduleRestitch();
+    }
+  }
+
+  function scheduleRestitch() {
+    clearTimeout(restitchTimer);
+    restitchTimer = setTimeout(() => {
+      restitchTimer = 0;
+      runDigitize(element);
+    }, RESTITCH_IDLE_MS);
+  }
+
+  onDestroy(() => clearTimeout(restitchTimer));
+
   function setParam(key, value) {
     patch({ params: { ...element.params, [key]: value } });
   }
@@ -1711,7 +1747,7 @@
               >
                 {pending ? "Digitizing…" : "Apply layer changes"}
               </button>
-              <p class="dgp-note">Layer changes restitch only when you apply them.</p>
+              <p class="dgp-note">Restitching on its own in a moment — or apply now.</p>
             {:else}
               <p class="dgp-queued">
                 The digitizer isn't running — these layer changes are saved with the design and

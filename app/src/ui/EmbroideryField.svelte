@@ -10,7 +10,7 @@
   import { selectedIdsOf } from "../lib/project.js";
   import { effectiveHoop, hoopFitNote } from "../lib/hoop.js";
   import { shapeOutlinesInFieldMm, pulseAt, createPulseTracker, hitOverlay, moveNode, moveEdge, insertNode, fieldMmToOutlineMm } from "../lib/shapeOverlay.js";
-  import { boundaryIssues } from "../lib/digitizer.js";
+  import { boundaryIssues, canonicalShapeEdits, editsKey } from "../lib/digitizer.js";
   import Hint from "./Hint.svelte";
   import Icon from "./Icon.svelte";
 
@@ -480,15 +480,32 @@
   // Commits the working ring through the SAME shapeOverrides path
   // DigitizePanel's own editor uses, so an edit made here is indistinguishable
   // downstream from one made there — including re-digitize carry-forward.
+  // The exact inputs the FORWARD fit used, frozen at drag start.
+  //
+  // `commitShapeEdit` has to invert that fit. If it re-read `rows`/`bboxMm`
+  // at commit time instead, an auto-restitch landing mid-drag would replace
+  // `review` underneath and the inverse would run against a different source
+  // bbox than the forward pass did — the edit would land somewhere other than
+  // the pointer, silently. Freezing the basis makes a drag self-consistent no
+  // matter what changes beneath it; a stale basis at worst produces an edit
+  // against the geometry the user was actually looking at, which is the
+  // correct answer anyway.
+  function editBasis(edit) {
+    return {
+      rows: edit.rows,
+      bboxMm: edit.pe.bboxMm,
+      rotationDeg: edit.el.rotationDeg || 0,
+    };
+  }
+
   function commitShapeEdit() {
     if (!shapeEdit || !liveRing) return;
     const el = project.elements.find((x) => x.id === shapeEdit.elId);
-    const pe = peById[shapeEdit.elId];
-    const rows = el && digitizedRows(el);
-    if (!el || !pe || !rows) return;
+    const basis = shapeEdit.basis;
+    if (!el || !basis || !basis.rows || !basis.bboxMm) return;
 
     const service = fieldMmToOutlineMm(
-      liveRing.points, rows, pe.bboxMm, el.rotationDeg || 0);
+      liveRing.points, basis.rows, basis.bboxMm, basis.rotationDeg);
     if (!service) return;
     // Same validation the panel editor runs before it will save: a
     // self-intersecting or pinched ring is rejected here rather than sent for
@@ -540,6 +557,44 @@
     const tag = t && t.tagName;
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (t && t.isContentEditable)) return;
     if (deleteSelectedShape()) e.preventDefault();
+  }
+
+  // An element whose saved edits have not been stitched yet. Whole-element
+  // rather than per-shape on purpose: stage 5 resolves overlap BETWEEN shapes,
+  // so editing one boundary genuinely moves its neighbours' stitches too.
+  // Marking only the edited shape would be a more precise-looking half-truth.
+  function isStale(el) {
+    if (!el || el.type !== "digitized" || !el.result) return false;
+    const edits = canonicalShapeEdits(el);
+    return editsKey(edits) !== (el.appliedEdits || editsKey({}));
+  }
+
+  // Hatching over the stitches of an element whose edits have not been sewn
+  // yet. Drawn UNDER the outlines so the thing being edited stays crisp.
+  function drawStaleWash(ctx) {
+    if (!renderResult || !renderResult.toCanvas || !project) return;
+    for (const el of project.elements || []) {
+      if (!isStale(el)) continue;
+      const rect = perElementRects.find((r) => r.id === el.id);
+      if (!rect) continue;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(rect.x, rect.y, rect.w, rect.h);
+      ctx.clip();
+      // Diagonal hatch rather than a flat wash: a flat tint over stitches
+      // reads as a colour change, which is the one thing it must not imply.
+      ctx.strokeStyle = "rgba(120, 130, 145, 0.28)";
+      ctx.lineWidth = 1;
+      const step = 7;
+      const span = rect.w + rect.h;
+      ctx.beginPath();
+      for (let d = -rect.h; d < span; d += step) {
+        ctx.moveTo(rect.x + d, rect.y);
+        ctx.lineTo(rect.x + d - rect.h, rect.y + rect.h);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   function drawShapeOutlines(ctx) {
@@ -634,6 +689,7 @@
   function drawOverlay() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
+    drawStaleWash(ctx);
     drawShapeOutlines(ctx);
     drawGuides(ctx);
     const color = selectionColor();
@@ -1231,7 +1287,8 @@
                                   hit.atPx[1] - renderResult.toCanvas(0, 0).y);
             const grown = insertNode(ring, hit.index, [d.dx, d.dy]);
             shapeEdit = { elId: edit.el.id, shapeId: hit.shapeId, kind: "node",
-                          index: hit.index + 1, startPx: p, ring: grown };
+                          index: hit.index + 1, startPx: p, ring: grown,
+                          basis: editBasis(edit) };
             liveRing = { shapeId: hit.shapeId, points: grown };
             commitShapeEdit();
             shapeEdit = null;
@@ -1240,7 +1297,8 @@
             return;
           }
           shapeEdit = { elId: edit.el.id, shapeId: hit.shapeId, kind: hit.kind,
-                        index: hit.index, startPx: p, ring };
+                        index: hit.index, startPx: p, ring,
+                        basis: editBasis(edit) };
           liveRing = { shapeId: hit.shapeId, points: ring };
           canvas.style.cursor = "grabbing";
           drawOverlay();
@@ -1612,6 +1670,7 @@
   </div>
   <div class="fieldmeta">
     {#if error}<span class="err">{error}</span>
+    {:else if shapeEditError}<span class="err" data-testid="shape-edit-error">{shapeEditError}</span>
     {:else if stats}<span class="stats">{stats}</span>{#if warn}<span class="warn"> · Smaller than 5 mm — thread can't stitch this cleanly</span>{/if}{#if hoopNote}<span class="warn"> · {hoopNote}</span>{/if}{/if}
   </div>
 </div>
