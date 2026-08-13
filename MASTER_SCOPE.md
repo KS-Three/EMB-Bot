@@ -11,7 +11,15 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-12 (late) — **the blend tier's real blocker is not
+**Last updated:** 2026-08-13 — **a node drag on the canvas now moves the
+stitches, not just the outline.** Kent's "i can move the nodes, but the stitch
+fill STILL isn't working" was not a broken edit path: an auto-traced outline
+carries a vertex every ~1.3 mm, so moving one added a needle no fill row could
+occupy (measured: +7 mm² of polygon, **0** stitches in it). Canvas drags now
+carry the neighbouring boundary with them. Full write-up in **area 5**, under
+Kent's direct-manipulation request.
+
+**Previously, 2026-08-12 (late)** — **the blend tier's real blocker is not
 the r² gate; the multi-colour seam it feeds was never wired.** Chasing PR
 #125's finding to the end found something larger and, unlike the gate, not
 tunable. Merged this pass: PR #125 (blend-tier measurement), PR #126
@@ -4611,21 +4619,77 @@ shape at a time, on a small SVG of its own, reachable only by finding a row
 in the Layers panel and clicking a pencil. Nothing drew a shape on the
 design canvas at all.
 
-Status against Kent's list, measured against the code 2026-08-12:
+Status against Kent's list, re-measured against the code 2026-08-13:
 
 | req | | state |
 |---|---|---|
 | 1 | outlines + nodes, automatic after digitize | **shipped** — canvas overlay, `lib/shapeOverlay.js` |
 | 2 | pulse for the first few seconds | **shipped** — fires on a NEW result, not on load |
 | 3 | the shape's own boundary, not a bbox | shipped (`outlineFull`, contract v1.4) |
-| 4 | drag nodes / add nodes | built, panel-only — not yet on the canvas |
-| 4b | drag **lines** | **not built anywhere** — vertices only |
-| 6 | delete a whole shape | built (`deleted_shape_ids`) |
+| 4 | drag nodes / add nodes | **shipped on the canvas** (PR #130) — and the drag now moves stitches, see below |
+| 4b | drag **lines** | **shipped on the canvas** (PR #130) |
+| 6 | delete a whole shape | built (`deleted_shape_ids`) — canvas Delete key too |
 | 7 | each shape its own entity | built (`shape_id`) |
 
-So the remaining work is direct manipulation ON the canvas overlay (reqs 4
-and 4b), wired to the `boundary_override` key that already round-trips —
-not the contract design this section previously called for.
+The rows for 4 and 4b said "not yet on the canvas" until this pass; they have
+been on the canvas since PR #130 (2026-08-12) and the stitches restitch on
+their own since PR #134 (2026-08-13). What was still missing was neither of
+those — see immediately below.
+
+**A node drag now moves the STITCHES, not just the outline — 2026-08-13.**
+Kent, testing the canvas editor on his owl: *"i can move the nodes, but the
+stitch fill in fill STILL isn't working."* Nothing in the edit path was
+broken. The **vertex density of an auto-traced outline** was:
+`owl_kent.jpg`'s body region carries **346 vertices around a 458 mm
+perimeter — one node every 1.3 mm**, so dragging one moved 2.6 mm of
+boundary and added a needle. Measured against the real pipeline: a 6 mm
+single-vertex pull grew the polygon by exactly the 7 mm² it asked for and
+put **0 stitches** in the added area. Every layer downstream did its job;
+the geometry it was given was too thin for a fill row to occupy, while the
+overlay drew a large, obvious spike over unchanged stitching.
+
+- **Why it hid.** On line art the same code was always right:
+  `two-squares.png`'s shapes are 4-vertex squares with 25 mm sides, so one
+  vertex owns a quarter of the shape. A corner drag there restitched
+  correctly (2,153 → 3,107 stitches) both before and after this fix — the
+  browser run is byte-identical, because the pull radius never reaches a
+  neighbour that far away.
+- **The fix** (`shapeOverlay.js`, `pullRing`): a drag carries the
+  neighbouring boundary with it, weighted by **arc length** (never vertex
+  index — one index step is 1.3 mm on a photo outline and 25 mm on a traced
+  square), falling off on a raised cosine over a radius of **2× the drag
+  distance**, floored at 3 mm and capped at a quarter of the ring's
+  perimeter. Radius swept against the pipeline at a 6 mm pull on the owl:
+  1× → 11 stitches in the new area, **2× → 31**, 3× → 27 (wider but
+  shallower starts losing rows again).
+- **The cap is what keeps requirement 5 out of scope.** Without it a large
+  pull on a small shape reaches every vertex and the shape *translates* —
+  which changes its centroid, which changes its `shape_id`, which is what
+  makes edits survive a re-digitize. Pinned by a test that drags a node
+  500 mm and asserts the far side of the ring has not moved at all.
+- **Confirmed in a real browser on the real service**, not just in
+  measurement: the same owl drag that produced an empty spike now fills the
+  bulge it makes (7,698 → 7,810 stitches, and the stitching visibly reaches
+  the dragged outline).
+- **Sharp edge found on the way, NOT fixed (recorded so it isn't rediscovered
+  as a mystery):** `boundary_override` carries only a shape's EXTERIOR ring,
+  and `apply_shape_edits` re-attaches that shape's original holes to it. A
+  shape with holes therefore rejects any edit that pulls the shell across one
+  — `ValueError: ... Hole lies outside shell ...`, a 400, and the restitch
+  fails rather than degrading. On the owl exactly one region has holes (the
+  body, 10 of them) and it is also the largest and most tempting to edit, so
+  this is reachable. It is not silent — `DigitizePanel` renders the message
+  (`.dgp-error`, `role="alert"`) — and the wider pull radius makes it a bit
+  easier to reach than a single-vertex drag did. Fixing it properly means
+  deciding what a hole *means* under a hand edit (drop it? clip it? move it
+  with the shell?), which is a product call, not a bug fix.
+- **Deliberately NOT changed: `DigitizePanel`'s per-shape ✎ boundary
+  editor**, which still moves exactly one vertex. It is the precision tool —
+  one shape, alone, on its own magnified SVG, with vertex delete and
+  keyboard nudge — and one-vertex semantics are the right ones there. The
+  canvas is the direct-manipulation surface and the one Kent reported. Both
+  still write the same `boundary_override` key, so nothing downstream can
+  tell them apart.
 
 **Kent ruled, 2026-08-12 — requirement 5 (dragging a whole shape) is OUT OF
 SCOPE.** He first asked for it ("moved or dragged around, similar to how

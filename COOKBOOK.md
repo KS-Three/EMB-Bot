@@ -217,6 +217,21 @@ hand-rolling it in JS.
 
 ### Hard-won lessons — do not relearn these
 
+- **An auto-traced outline has ~1 node per 1.3 mm, so "move one node" is not
+  an edit the stitches can express.** `owl_kent.jpg`'s body region is 346
+  vertices around a 458 mm perimeter. Dragging one of them moves 2.6 mm of
+  boundary and adds a needle: measured 2026-08-13, a 6 mm single-vertex pull
+  grew the polygon by exactly the 7 mm² asked for and put **0 stitches** in
+  the area it added. Nothing was broken in the fill, the service or the
+  restitch — the geometry handed to them was simply too thin to sew, and the
+  overlay drew a big visible spike over it, so it read as "the fill isn't
+  working". Canvas drags now pull the neighbouring boundary along
+  (`shapeOverlay.js`'s `pullRing`, raised-cosine falloff over an arc-length
+  radius of 2× the drag). **The general lesson: before believing a shape-edit
+  path is broken, check the AREA the edit actually adds or removes against
+  what a fill row can occupy** — on line art (4-vertex squares, 25 mm apart)
+  the same one-vertex code was always fine, which is exactly why this hid.
+
 - **`digitizer/` cites its own docs relative to the package root**, i.e.
   bare `docs/dt-classifier-spike-2026-08-02.md` meaning
   `digitizer/docs/...` (8 such references vs 2 spelled-out ones, mostly in

@@ -342,7 +342,10 @@ describe("hitOverlay", () => {
 describe("node and edge editing", () => {
   const RING = [[0, 0], [10, 0], [10, 10], [0, 10]];
 
-  test("moveNode moves exactly one vertex", () => {
+  test("moveNode moves exactly one vertex when its neighbours are far away", () => {
+    // A 3.6mm drag pulls 7.2mm of boundary; this ring's vertices are 10mm
+    // apart, so nothing else is in range. Sparse, hand-drawn-scale geometry
+    // keeps the plain one-vertex behaviour it always had.
     expect(moveNode(RING, 1, 3, -2)).toEqual([[0, 0], [13, -2], [10, 10], [0, 10]]);
   });
 
@@ -372,6 +375,71 @@ describe("node and edge editing", () => {
     moveEdge(src, 0, 9, 9);
     insertNode(src, 0, [9, 9]);
     expect(src).toEqual(RING);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Proportional dragging on DENSE outlines — the auto-traced case.
+//
+// A one-vertex move is fine on hand-drawn geometry and useless on a traced
+// photo outline: `owl_kent.jpg`'s body region carries 346 vertices around a
+// 458mm perimeter, so one vertex owns ~1.3mm of boundary and dragging it adds
+// a needle. Measured against the real pipeline 2026-08-13, a 6mm single-vertex
+// pull there grew the polygon by 7mm² and put ZERO stitches in the area it
+// added — the outline moved and the stitching did not. These tests pin the
+// falloff that fixes it, and the two limits that keep it from becoming
+// something else.
+describe("proportional dragging (dense, auto-traced rings)", () => {
+  // A circle of 120 vertices, radius 20mm: ~1mm of boundary per vertex, the
+  // same order of density as a traced photo region.
+  const DENSE = Array.from({ length: 120 }, (_, i) => {
+    const a = (2 * Math.PI * i) / 120;
+    return [20 * Math.cos(a), 20 * Math.sin(a)];
+  });
+  const movedCount = (before, after) =>
+    after.filter(([x, y], i) => Math.hypot(x - before[i][0], y - before[i][1]) > 1e-9).length;
+
+  test("a drag carries the neighbouring boundary with it", () => {
+    const out = moveNode(DENSE, 0, 6, 0);
+    expect(movedCount(DENSE, out)).toBeGreaterThan(10);
+  });
+
+  test("the grabbed vertex takes the FULL delta, neighbours a share of it", () => {
+    const out = moveNode(DENSE, 0, 6, 0);
+    expect(out[0][0] - DENSE[0][0]).toBeCloseTo(6, 9);
+    const near = out[2][0] - DENSE[2][0];
+    const far = out[8][0] - DENSE[8][0];
+    expect(near).toBeGreaterThan(far);
+    expect(far).toBeGreaterThan(0);
+  });
+
+  test("the pulled stretch widens with the drag — pull further, yield further", () => {
+    expect(movedCount(DENSE, moveNode(DENSE, 0, 12, 0)))
+      .toBeGreaterThan(movedCount(DENSE, moveNode(DENSE, 0, 3, 0)));
+  });
+
+  test("the far side of the ring never moves, so a pull can never become a MOVE", () => {
+    // Requirement 5 (drag the whole shape) is out of scope by Kent's ruling —
+    // a translated shape gets a new centroid, and the centroid is what makes
+    // shape ids stable across a re-digitize. However hard this is pulled, the
+    // opposite side of the ring has to stay put.
+    const out = moveNode(DENSE, 0, 500, 500);
+    const opposite = out[60];
+    expect(Math.hypot(opposite[0] - DENSE[60][0], opposite[1] - DENSE[60][1])).toBe(0);
+    expect(movedCount(DENSE, out)).toBeLessThan(DENSE.length);
+  });
+
+  test("even a tiny nudge moves a sewable stretch, not a needle", () => {
+    // Below the floor the added area is too thin to hold a fill row, which is
+    // the failure this whole mechanism exists to prevent.
+    expect(movedCount(DENSE, moveNode(DENSE, 0, 0.2, 0))).toBeGreaterThan(2);
+  });
+
+  test("moveEdge pulls from BOTH endpoints and keeps them exactly together", () => {
+    const out = moveEdge(DENSE, 0, 0, 4);
+    expect(out[0][1] - DENSE[0][1]).toBeCloseTo(4, 9);
+    expect(out[1][1] - DENSE[1][1]).toBeCloseTo(4, 9);
+    expect(movedCount(DENSE, out)).toBeGreaterThan(10);
   });
 });
 
