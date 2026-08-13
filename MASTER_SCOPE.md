@@ -199,10 +199,51 @@ PR #122 (`.eladd-row` wrap). Open: PR #123 (Studio `detail_layer` control).
      it returned 39.93, 49.45, 78.72 on real regions. A "ratio" reading 78
      against a 0.35 ceiling means that gate rejects essentially everything it
      is asked about. Confirm before trusting it; it may be dead weight today.
-  **Recommended direction:** let high-internal-spread regions decompose via
-  the existing coverage-share path *without* a ramp fit. Contained engine
-  work with a clear before/after on the owl — but it needs a corpus run, not
-  a rushed pass.
+  **Direction — KENT RULED "option A", 2026-08-12. START A FRESH SESSION
+  HERE.** Scoped but deliberately not started; the scoping below is the
+  handoff.
+
+  **A (chosen): tatami + shade bands.** Add a darkness-based fallback at
+  `stage6_blend.blend_fill`'s `if model is None:` branch (currently
+  `blend_fill` line ~544) so a ramp-less region *still* decomposes into 3-5
+  shades and fills each with tatami, instead of collapsing to one flat
+  colour. That `model is None` branch is the norm, not an edge case — its own
+  comment says "all 23 regions fall back here" on the repro fixture, and all
+  25 do on `owl_kent.jpg`.
+  - **The machinery mostly exists.** `stage6_streamline._shade_layers`
+    already does ramp-free 3-5 shade decomposition off the darkness field,
+    reusing `stage6_blend`'s `_choose_shade_count` / `_shade_lab_colors` /
+    chart snap verbatim, and needs only >= 12 samples
+    (`_SHADE_MIN_SAMPLES`). Its docstring states the premise outright: "a
+    photo region has no ramp to fit, only the same source-darkness field
+    this tier has always read."
+  - **THE OBSTACLE, and where the design effort goes.** `_shade_layers`
+    returns a *continuous* `membership(x_mm, y_mm) -> [0,1]`. Streamline
+    tracing consumes that directly to modulate line density; **tatami needs
+    actual polygons per shade.** So this needs a new darkness-field ->
+    per-shade geometry step. `_band_clip` does not help — it slices by ramp
+    position, which is exactly what does not exist here. Write the design
+    before the code; this step is where a wrong choice gets expensive.
+  - **Validation bar:** corpus run against `drone_render` (must stay inside
+    its documented [20, 80] region band) and `summit_badge`, plus a
+    before/after on `owl_kent.jpg`, now a committed fixture.
+
+  **B (considered, rejected as "cheap"): make streamline `d_sep`
+  subject-relative.** Measured and it is not the shortcut it looks like.
+  Streamline spacing is driven by *absolute* darkness —
+  `STREAMLINE_D_SEP_DARK_MM = 0.8`, `STREAMLINE_D_SEP_LIGHT_MM = 3.2` — so a
+  near-white subject sits at the light end and gets ~3.2mm spacing, roughly
+  25 lines across an 80mm design. That is why the layered variant measured
+  **3,220 stitches against tatami's 7,725**: the tier is working as designed
+  for a subject class it was not designed for. Making `d_sep` relative to a
+  region's own darkness *range* would retune a tier with its own calibration
+  history, against designs that currently work. Not obviously cheaper than A,
+  and lower ceiling.
+
+  **Net state of the two fill paths, for whoever picks this up:** tatami
+  gives solid coverage but one flat thread per region; streamline-layered
+  shades correctly but goes sparse on pale subjects. Neither serves a pale
+  photograph today, and A is the path to one that does.
 - **Still open, not started:** 14 jump-trims on an 80mm design, in every
   variant measured.
 - **`.eladd-row` had been hiding "+ Auto-digitize"** (PR #122): six
