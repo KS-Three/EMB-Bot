@@ -11,7 +11,21 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-13 (later) — **stage 4 was silently throwing away
+**Last updated:** 2026-08-13 (evening) — **the Content step's six tiles are
+three (Text · Artwork · Design file), and the drawing tools moved to a
+right-click menu on the canvas** (PR #138; Kent's "remove all of the
+unnecessary upload buttons" + his amendment keeping Draw shapes as a
+right-click tool — see area 5's red-annotation entry). Same PR repaired the
+last three e2e specs and corrected PR #136's "suite green" claim: the truth
+was 9/13 then, and it is a verified **13/13** now. Also opened, not yet
+built: Kent rated the auto-digitized `becker logo.png` well below its
+professionally digitized version; measured tonight, forcing the flat lane on
+textured logo art makes it WORSE (k-means shatters texture — `summit_badge`
+8,263 → 9,579 stitches), so closing that gap needs an edge-preserving
+flatten BEFORE region forming, plus a side-by-side against the pro file
+(waiting on Kent for `becker logo.png` + the pro DST/PES).
+
+**Earlier the same day** — **stage 4 was silently throwing away
 whole regions, including the entire body of `summit_badge.png`.** Kent asked
 about "the space in the lower portion of the owl that gets dropped". It was
 not a fill problem: `make_valid`'s repair of a self-intersecting traced
@@ -273,7 +287,11 @@ PR #122 (`.eladd-row` wrap). Open: PR #123 (Studio `detail_layer` control).
   A full SAM2 on/off comparison was run, and published two result sets, that
   never touched SAM2 at all. **Worth remembering as a class of bug:** a UI
   affordance that gates on service health fails indistinguishably from the
-  service itself.
+  service itself. *(2026-08-13, PR #138: this whole bug class is now
+  structurally closed for the upload path — the tile row is three
+  always-rendered tiles and "+ Artwork" routes on service health internally
+  instead of appearing/disappearing; the browser-engine fallback is
+  announced in the offline note rather than silently substituted.)*
 
 **Prior update, 2026-08-12 (small hours):** — **wave 2 of the same night
 landed:** the LINK_UNCOVERED false-block + raster-overhead fix (see the
@@ -4622,7 +4640,16 @@ current Layers-panel-only model as the destination; it does not invalidate
 what shipped.
 
 The red annotation: **remove `+ Shape` and `+ Draw shapes`.** They are to be
-replaced by the behaviour below, not supplemented by it.
+replaced by the behaviour below, not supplemented by it. **RESOLVED
+2026-08-13 (PR #138), with a same-day amendment from Kent: not removed but
+RELOCATED** — "instead of dropping it completely, let's make drawing shapes a
+tool that opens up with a right click." Both now live in a right-click menu
+on the design canvas (`EmbroideryField`'s `.fieldmenu`); the Content step's
+tile row is down to **Text · Artwork · Design file**, where `+ Artwork` is
+the merged upload path replacing `+ Image` and `+ Auto-digitize` (routes on
+service health in `App.onAddElement`: service up → digitized element, down →
+the browser flatten lane). Element types, panels and tests for shapes/manual
+drawing are untouched — only the way in moved.
 
 The blue annotation, on how `+ Image` / auto-digitizing should behave:
 
