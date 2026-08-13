@@ -75,9 +75,30 @@ names which DST encoder wrote a file).
   the coverage. Ramp bands are contiguous strips that re-tile a region, so
   widening the pitch by n is right there; tonal bands are interleaved patches
   each already covering ~1/n of the area, so the same multiplication
-  under-sews them twice. Same failure mode the earlier `streamline_mode:
-  "layered"` comparison recorded as "3,220 stitches = worse" — worth
-  re-reading in that light, because it suggests that tier has the same bug.
+  under-sews them twice. **The suspicion this raised about
+  `streamline_mode: "layered"` was WRONG — measured and closed 2026-08-13,
+  see below.**
+- **`streamline_mode: "layered"` does NOT have the blend tier's row-pitch
+  bug — measured 2026-08-13, and this closes a suspicion this document
+  itself raised.** Layered was flagged as a likely twin of the blend defect
+  on the strength of the 2026-08-12 note that it "measured a negative
+  (3,220 stitches, sparser than baseline)". Running mono against layered
+  directly says otherwise — layered is consistently *denser*:
+
+  | fixture | mono | layered |
+  |---|---|---|
+  | `owl_kent.jpg` | 1,902 | **3,215** (2.1x) |
+  | `photo/fur_ramp.png` | 326 | **696** (1.7x) |
+  | `photo/gradient_ramp_linear.png` | 614 | **1,918** (3.1x) |
+
+  The original note compared layered against **tatami** (7,725), not
+  against streamline-mono. Streamline is a line-based tier and is
+  inherently sparser than a solid tatami fill, so "3,220 = worse" was a
+  judgement about the TIER being wrong for that image, not a density
+  defect inside it. `_d_sep` being driven by each shade's coverage share
+  rather than raw darkness is deliberate (see `stage6_streamline`'s "THE
+  MULTI-COLOR SEAM" docstring) and behaves sensibly in measurement. **No
+  fix needed; do not go looking for one.**
 - **Not a defect, recorded so it isn't re-found:** the noise fixture in
   `test_blend_falls_back_to_ordinary_tatami_on_speckle` never reaches the
   speckle gate — r² is tested first and random noise fails it, so the branch
