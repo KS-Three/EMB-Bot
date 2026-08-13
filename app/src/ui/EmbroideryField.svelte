@@ -420,11 +420,18 @@
   // per-shape editor already round-trips, so nothing new had to be invented on
   // the wire.
   //
-  // Precedence: this is tested AFTER the rotate grip and multi-select chrome
-  // but BEFORE the element rect, so grabbing an outline beats moving the
-  // element. Everywhere else inside the element still moves it, which is what
-  // keeps the withdrawn requirement 5 (drag the whole shape) from being missed:
-  // the element still drags, just not by its outlines.
+  // SELECT FIRST, THEN EDIT (Kent's call, 2026-08-13). The first click on an
+  // outline SELECTS that shape; only the selected shape's nodes and lines are
+  // grabbable. The alternative — every outline live the moment it is drawn —
+  // was built first and rejected: on a photo design the outlines cover most of
+  // the artwork, so positioning a design would constantly reshape it by
+  // accident. One extra click buys back "I can still move this thing".
+  //
+  // Precedence: tested AFTER the rotate grip and multi-select chrome but
+  // BEFORE the element rect. Clicking an unselected outline selects it and
+  // does nothing else; clicking the SELECTED shape's outline starts an edit;
+  // everywhere else still moves the element.
+  let selectedShapeId = null;
   let shapeEdit = null;     // { elId, shapeId, kind, index, startPx, ring }
   let liveRing = null;      // { shapeId, points } — the drag's working geometry
   let shapeEditError = "";
@@ -500,6 +507,41 @@
     dispatch("elupdate", { id: el.id, patch: { shapeOverrides: cur } });
   }
 
+  // Requirement 6: delete the selected shape. Rides `deletedShapeIds`, the
+  // same list DigitizePanel's own delete uses — so a shape removed here is
+  // struck through and RESTORABLE from the Layers list exactly as before,
+  // rather than being a second, one-way kind of deletion.
+  // Clearing the shape selection when the ELEMENT selection moves away keeps
+  // Delete from acting on a shape whose element is no longer in front of the
+  // user. Cheap to compute, and it also drops the highlight.
+  $: if (project && project.selectedId !== undefined) {
+    const sel = selectedElement();
+    if (!sel || sel.type !== "digitized") selectedShapeId = null;
+  }
+
+  function deleteSelectedShape() {
+    if (!selectedShapeId) return false;
+    const el = selectedElement();
+    if (!el || el.type !== "digitized") return false;
+    const cur = el.deletedShapeIds || [];
+    if (cur.includes(selectedShapeId)) return false;
+    dispatch("elupdate", { id: el.id, patch: { deletedShapeIds: [...cur, selectedShapeId] } });
+    selectedShapeId = null;
+    shapeEditError = "";
+    return true;
+  }
+
+  function onWindowKey(e) {
+    if (e.key !== "Delete" && e.key !== "Backspace") return;
+    if (!selectedShapeId || simActive) return;
+    // Never steal the key from a field the user is typing in — Backspace
+    // especially. Same guard App.svelte's own global handler uses.
+    const t = e.target;
+    const tag = t && t.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (t && t.isContentEditable)) return;
+    if (deleteSelectedShape()) e.preventDefault();
+  }
+
   function drawShapeOutlines(ctx) {
     if (!renderResult || !renderResult.toCanvas || !project) return;
     const now = performance.now();
@@ -522,9 +564,14 @@
 
       // Hidden shapes stay out of the drawing but stayed IN the transform, so
       // toggling one off does not shift the others.
-      const hidden = new Set(
-        rows.filter((r) => r && r.stitched === false).map((r) => r.id)
-      );
+      // Not drawn: shapes the user turned off, and shapes deleted in review.
+      // A deleted shape stays in `review.shapes` on purpose (that is what
+      // makes it restorable from the Layers list), so it has to be filtered
+      // here or the canvas would keep outlining artwork that no longer sews.
+      const hidden = new Set([
+        ...rows.filter((r) => r && r.stitched === false).map((r) => r.id),
+        ...(el.deletedShapeIds || []),
+      ]);
 
       ctx.save();
       ctx.lineJoin = "round";
@@ -536,7 +583,9 @@
         const src = liveRing && liveRing.shapeId === o.id ? liveRing.points : o.points;
         const pts = src.map(([x, y]) => renderResult.toCanvas(x, y));
         if (pts.length < 3) continue;
-        const editing = !!(shapeEdit && shapeEdit.shapeId === o.id);
+        // Highlighted when SELECTED, not only while dragging: the highlight
+        // is what tells you which shape a Delete or a drag will act on.
+        const editing = o.id === selectedShapeId;
 
         ctx.beginPath();
         ctx.moveTo(pts[0].x, pts[0].y);
@@ -1162,6 +1211,14 @@
     if (edit) {
       const hit = hitOverlay(edit.outlines, p.x, p.y);
       if (hit) {
+        // First click on a shape selects it and stops there — no geometry
+        // moves until you have said which shape you mean.
+        if (hit.shapeId !== selectedShapeId) {
+          selectedShapeId = hit.shapeId;
+          shapeEditError = "";
+          drawOverlay();
+          return;
+        }
         const ring = edit.mmById.get(hit.shapeId);
         if (ring) {
           canvas.setPointerCapture(e.pointerId);
@@ -1189,6 +1246,13 @@
           drawOverlay();
           return;
         }
+      }
+      // Clicked away from every outline — drop the shape selection before
+      // falling through, so the next click on an outline selects rather than
+      // edits, and Delete stops being armed.
+      if (selectedShapeId) {
+        selectedShapeId = null;
+        drawOverlay();
       }
     }
 
@@ -1454,6 +1518,8 @@
     if (!dragMode && canvas) canvas.style.cursor = "default";
   }
 </script>
+
+<svelte:window on:keydown={onWindowKey} />
 
 <div class="fieldwrap">
   <div class="hoop">
