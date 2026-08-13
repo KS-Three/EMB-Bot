@@ -312,22 +312,113 @@ export function hitOverlay(outlinesPx, px, py) {
   return hit;
 }
 
-/** Move one vertex by a delta. Returns a new ring; never mutates. */
+// ---------------------------------------------------------------------------
+// Proportional ("rubber-sheet") dragging, and why a drag is not one vertex
+//
+// Moving ONLY the grabbed vertex is the obvious reading of "move the nodes",
+// and it is what this module did first. On hand-drawn geometry that is right.
+// On an AUTO-TRACED outline it is close to useless, and the reason is vertex
+// density: `owl_kent.jpg`'s body region is 346 vertices around a 458 mm
+// perimeter — **one node every 1.3 mm**. Dragging one of them moves a 2.6 mm
+// stretch of boundary, so the shape gains a needle, and a needle is not a
+// thing a fill can express. Measured against the real pipeline, 2026-08-13:
+// a 6 mm single-vertex pull on that region grew the polygon by 7 mm² and put
+// **0** stitches in the area it added. The outline visibly moved; the
+// stitching did not change at all. That is the whole of "I can move the nodes
+// but the fill still isn't working".
+//
+// So a drag pulls the neighbourhood with it, weighted by ARC-LENGTH distance
+// along the ring (never index distance — one index step is 1.3 mm on that
+// photo outline and 25 mm on `two-squares.png`'s 4-vertex squares, so "three
+// vertices either side" means nothing across shapes). Same edit through the
+// same `boundary_override` key; only the ring handed to it changes.
+//
+// The radius follows the DRAG ITSELF (`PULL_RADIUS_PER_MM` × distance
+// dragged): pull a node a little and the change stays local, pull it far and
+// the boundary yields over a matching stretch — the rubber-sheet behaviour the
+// name borrows. Swept against the pipeline on the same fixture at a 6 mm pull:
+// 1x radius put 11 stitches in the new area, 2x put 31, 3x put 27 (a wider,
+// shallower bulge starts losing rows again). 2x it is.
+const PULL_RADIUS_PER_MM = 2;
+// Floor, mm: even a 0.5 mm nudge should move a stretch of boundary wide enough
+// to sew rather than a needle nothing can fill.
+const PULL_RADIUS_FLOOR_MM = 3;
+// Ceiling, as a share of the ring's own perimeter. Without it a large pull on
+// a small shape reaches every vertex at once and the shape TRANSLATES — which
+// is requirement 5, and Kent ruled it out of scope on 2026-08-12 (a moved
+// shape's centroid changes its `shape_id`, and id stability is what makes
+// edits survive a re-digitize). Capping the radius keeps the far side of the
+// ring anchored, so a pull is always a reshape and never a move.
+const PULL_RADIUS_MAX_FRACTION = 0.25;
+
+function ringPerimeter(points) {
+  let total = 0;
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i];
+    const b = points[(i + 1) % points.length];
+    total += Math.hypot(b[0] - a[0], b[1] - a[1]);
+  }
+  return total;
+}
+
+/**
+ * Apply `(dx, dy)` to `seeds` in full and to their neighbours in proportion,
+ * falling off to nothing at `radius` of arc length away. Returns a new ring.
+ *
+ * The falloff is a raised cosine rather than a linear ramp: it leaves the
+ * boundary smooth where the moved stretch meets the anchored one, and a linear
+ * ramp puts a visible crease (and a stitch-angle discontinuity) at both ends.
+ */
+function pullRing(points, seeds, dx, dy) {
+  const n = points.length;
+  if (!n) return [];
+  const radius = Math.min(
+    Math.max(PULL_RADIUS_FLOOR_MM, Math.hypot(dx, dy) * PULL_RADIUS_PER_MM),
+    ringPerimeter(points) * PULL_RADIUS_MAX_FRACTION
+  );
+  const weight = new Array(n).fill(0);
+  for (const s of seeds) weight[s] = 1;
+  // Half the ring in each direction at most, so a walk can never reach a
+  // vertex the other direction already weighted and double-count it.
+  const maxSteps = Math.floor((n - 1) / 2);
+  for (const s of seeds) {
+    for (const step of [1, -1]) {
+      let arc = 0;
+      let i = s;
+      for (let k = 0; k < maxSteps; k++) {
+        const j = (i + step + n) % n;
+        arc += Math.hypot(points[j][0] - points[i][0], points[j][1] - points[i][1]);
+        if (arc >= radius) break;
+        const w = 0.5 * (1 + Math.cos((Math.PI * arc) / radius));
+        if (w > weight[j]) weight[j] = w;
+        i = j;
+      }
+    }
+  }
+  return points.map(([x, y], i) =>
+    weight[i] ? [x + dx * weight[i], y + dy * weight[i]] : [x, y]
+  );
+}
+
+/**
+ * Drag one vertex, carrying the boundary near it along. Returns a new ring;
+ * never mutates. See the comment above for why this is not a one-vertex move.
+ */
 export function moveNode(points, index, dx, dy) {
-  return points.map(([x, y], i) => (i === index ? [x + dx, y + dy] : [x, y]));
+  return pullRing(points, [index], dx, dy);
 }
 
 /**
  * Move a whole EDGE by a delta — both of its endpoints together, so the
  * segment translates instead of rotating about one end. This is requirement
  * 4b, and it exists nowhere else in the codebase: the panel editor moves
- * vertices only.
+ * vertices only. Both endpoints seed the same falloff `moveNode` uses, so a
+ * line drag reshapes the boundary either side of the line rather than leaving
+ * two creases where the moved segment meets its neighbours.
  */
 export function moveEdge(points, index, dx, dy) {
   const j = (index + 1) % points.length;
-  return points.map(([x, y], i) =>
-    i === index || i === j ? [x + dx, y + dy] : [x, y]
-  );
+  return pullRing(points, [index, j], dx, dy);
 }
 
 /**
