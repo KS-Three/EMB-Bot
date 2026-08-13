@@ -160,6 +160,9 @@ for (const garmentLabel of ["Hat Front", "Full Back"]) {
 // the real Python digitizer service the way digitize-stale-edits.spec.js
 // drives it; nothing here needs that service.
 test("guided wizard: image content path -> review reflects it -> download", async ({ page }) => {
+  // Force the no-digitizer case: this spec is about the browser flatten lane,
+  // which "+ Artwork" only routes to when the service is unreachable.
+  await page.route("**/health", (r) => r.abort());
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "What are you putting this on?" })).toBeVisible();
@@ -168,7 +171,13 @@ test("guided wizard: image content path -> review reflects it -> download", asyn
   await page.getByRole("button", { name: "Next", exact: true }).click();
 
   await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
-  await page.getByRole("button", { name: "Image", exact: true }).click();
+  // "+ Artwork" is one tile that routes on service health (App.onAddElement):
+  // digitizer up -> a digitized element, digitizer down -> an image element
+  // and the browser's own flatten lane, which is what THIS test covers. The
+  // health probe is blocked above so that routing is deterministic — without
+  // it this spec's result would depend on whether a sibling spec's service
+  // happened to be running, since Playwright runs the files in parallel.
+  await page.getByRole("button", { name: "Artwork", exact: true }).click();
 
   await page.locator(".uploadbox input[type=file]").setInputFiles(ART_PNG);
   // Real processed state, not just "the input accepted a file": the panel's

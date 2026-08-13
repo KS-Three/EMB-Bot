@@ -201,18 +201,17 @@
 {/if}
 <div class="eladd-row">
   <button type="button" class="eladd" on:click={() => d("addelement", "text")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Text</button>
-  <button type="button" class="eladd" on:click={() => d("addelement", "image")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Image</button>
+  <button type="button" class="eladd" on:click={() => d("addelement", "artwork")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Artwork</button>
   <button type="button" class="eladd" on:click={() => d("addelement", "design")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Design file</button>
-  <button type="button" class="eladd" on:click={() => d("addelement", "shape")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Shape</button>
-  <button type="button" class="eladd" on:click={() => d("addelement", "manual")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Draw shapes</button>
-  {#if digitizerHealth}
-    <button type="button" class="eladd" on:click={() => d("addelement", "digitized")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Auto-digitize</button>
-  {/if}
 </div>
 {#if !digitizerHealth}
+  <!-- The tile no longer disappears when the service is down — Artwork still
+       works, it just falls back to the browser engine's own flatten-and-sew
+       lane (App.onAddElement). So this says what CHANGES rather than what is
+       missing: art still goes in, it is not auto-digitized. -->
   <p class="digitize-offline">
-    Auto-digitize (art in, stitches out) needs the local digitizer service.
-    Start it, then
+    Artwork will be placed but not auto-digitized — that needs the local
+    digitizer service. Start it, then
     <button type="button" class="digitize-recheck" on:click={() => d("checkservice")}>check again</button>.
   </p>
 {/if}

@@ -549,6 +549,12 @@
   }
 
   function onWindowKey(e) {
+    // Escape closes the tool menu before anything else looks at the key.
+    if (e.key === "Escape" && fieldMenu) {
+      fieldMenu = null;
+      e.preventDefault();
+      return;
+    }
     if (e.key !== "Delete" && e.key !== "Backspace") return;
     if (!selectedShapeId || simActive) return;
     // Never steal the key from a field the user is typing in — Backspace
@@ -1168,7 +1174,49 @@
     });
   }
 
+  // ---- the canvas tool menu (right-click) ----------------------------------
+  //
+  // `+ Shape` and `+ Draw shapes` left the Content step's tile row on
+  // 2026-08-13: Kent asked for the upload buttons to collapse to one, and
+  // ruled these two are not uploads at all — they are drawing TOOLS, and a
+  // tool belongs on the surface you draw on. Nothing was deleted; both
+  // element types, panels and their tests are untouched. Only the way in
+  // moved.
+  //
+  // `{ x, y }` are offsets within the canvas's own positioned parent, so the
+  // menu lands under the pointer at any zoom or scroll position.
+  let fieldMenu = null;
+
+  function onContextMenu(e) {
+    if (simActive) return;          // the simulator owns the canvas while playing
+    e.preventDefault();             // our menu, not the browser's
+    if (!canvas) return;
+    const r = canvas.getBoundingClientRect();
+    fieldMenu = { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+
+  function chooseFieldMenu(type) {
+    fieldMenu = null;
+    dispatch("addelement", type);
+  }
+
+  // Any press that is not ON the menu closes it. Capture phase so it runs
+  // before the menu button's own click handler would be skipped by the
+  // re-render, and `closest` so pressing a menu item does not dismiss it out
+  // from under its own click.
+  function onWindowPointerDown(e) {
+    if (!fieldMenu) return;
+    if (e.target && e.target.closest && e.target.closest(".fieldmenu")) return;
+    fieldMenu = null;
+  }
+
   function onPointerDown(e) {
+    // A right-click opens the tool menu (onContextMenu) and must never also
+    // start a drag, a selection or a shape edit — every branch below assumes
+    // the primary button.
+    if (e.button !== undefined && e.button !== 0) return;
+    if (fieldMenu) fieldMenu = null;
+
     // Auto-dismiss the drag-field hint on the first pointerdown on the
     // canvas WHILE it's actually showing -- gating on showDragHint (rather
     // than dismissing unconditionally) means a click on an empty field
@@ -1577,7 +1625,7 @@
   }
 </script>
 
-<svelte:window on:keydown={onWindowKey} />
+<svelte:window on:keydown={onWindowKey} on:pointerdown|capture={onWindowPointerDown} />
 
 <div class="fieldwrap">
   <div class="hoop">
@@ -1590,8 +1638,32 @@
       on:pointerup={endDrag}
       on:pointercancel={endDrag}
       on:pointerleave={onPointerLeave}
+      on:contextmenu={onContextMenu}
       on:wheel={onWheel}
     ></canvas>
+    {#if fieldMenu}
+      <!-- Drawing tools live here now instead of in the Content step's tile
+           row (Kent's call, 2026-08-13: keep them, but as a right-click tool
+           rather than an upload button). Positioned at the pointer, dismissed
+           by Escape or any click outside — see onWindowPointerDown. -->
+      <ul
+        class="fieldmenu"
+        style="left: {fieldMenu.x}px; top: {fieldMenu.y}px"
+        role="menu"
+        aria-label="Canvas tools"
+      >
+        <li role="none">
+          <button type="button" role="menuitem" on:click={() => chooseFieldMenu("manual")}>
+            Draw shapes
+          </button>
+        </li>
+        <li role="none">
+          <button type="button" role="menuitem" on:click={() => chooseFieldMenu("shape")}>
+            Basic shape
+          </button>
+        </li>
+      </ul>
+    {/if}
     {#if !hasDesign && !error && hint}
       <p class="fieldhint" class:on-dark={project && project.fabricRgb && isDark(project.fabricRgb)}>{hint}</p>
     {/if}

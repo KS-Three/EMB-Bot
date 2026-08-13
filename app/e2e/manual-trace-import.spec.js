@@ -96,7 +96,13 @@ test("upload -> trace preview (colors + hole warning) -> add shapes -> drag a ve
   await page.getByRole("button", { name: "Tote", exact: true }).click();
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
-  await page.getByRole("button", { name: "Draw shapes" }).click();
+  // Drawing tools left the tile row on 2026-08-13 (Kent's call) and live on
+  // the canvas itself now: right-click the design field, pick the tool. Same
+  // element type and panel on the other side of it — only the way in moved.
+  await page.locator("canvas").first().click({ button: "right" });
+  await expect(page.locator(".fieldmenu")).toBeVisible();
+  await page.getByRole("menuitem", { name: "Draw shapes" }).click();
+  await expect(page.locator(".fieldmenu")).toBeHidden();
 
   // ---- open the trace panel, upload the real fixture ---------------------
   await page.getByRole("button", { name: "Trace image…" }).click();
@@ -125,8 +131,15 @@ test("upload -> trace preview (colors + hole warning) -> add shapes -> drag a ve
   await expect(rows).toHaveCount(3);
 
   // ---- select the first traced shape, enter edit mode --------------------
-  await rows.first().click();
-  await expect(page.getByRole("button", { name: "Edit points" })).toBeEnabled();
+  // A trace-add SELECTS its first shape on landing (ManualPanel.onTraced's
+  // "anchor the batch add" selection), and a click on the selected row
+  // TOGGLES the selection off (selectShape). So do not click blindly: click
+  // only if the panel is not already showing the selected-shape controls.
+  // This spec used to click unconditionally and deselect the very shape it
+  // meant to edit — it was written before the auto-select existed.
+  const editBtn = page.getByRole("button", { name: "Edit points" });
+  if (!(await editBtn.isVisible())) await rows.first().click();
+  await expect(editBtn).toBeEnabled();
   await page.getByRole("button", { name: "Edit points" }).click();
 
   const canvas = page.locator(".mp-canvas");
