@@ -4532,13 +4532,38 @@ stable `shape_id`s; the shape-layers contract v1 (`deleted_shape_ids`,
 round-tripped by the service and spoken by the Studio; `Icon.svelte:119`
 already reserves a per-shape "edit this shape's boundary" ✎ affordance.
 
-**The gap** is what the code itself names *the boundary-reshape gap*
-(`stage2_photo_segment.py` / `warnings_codes.py` v1.5 comments): nothing
-today can move a node or a line. Requirements 1–4, 6 and 7 above are all
-unimplemented; requirement 5 was withdrawn (below). Worth keeping in view
-either way: v1/v1.5 change a shape's *attributes* or the *set* of shapes,
-never its geometry — so node-level editing needs contract work regardless of
-whether whole-shape translation is in scope.
+**The gap — corrected 2026-08-12, this paragraph used to be wrong.** It read
+"nothing today can move a node or a line," citing the *boundary-reshape gap*
+in `stage2_photo_segment.py` / `warnings_codes.py`'s v1.5 comments. That
+contradicted this same document's own "**Boundary reshaping — CLOSED
+2026-08-05**" entry a few screens below, and the CLOSED entry is the correct
+one: contract **v1.4's `boundary_override`** ships end to end — service
+validation, `regions.apply_shape_edits`, carry-forward through
+`match_shape_ids`, and a working editor in `DigitizePanel.svelte`
+(`startBoundaryEdit`/`saveBoundaryEdit`: drag a vertex, click an edge
+midpoint to add one, right-click to remove). Node-level editing needs **no**
+new contract work.
+
+What was actually missing is *where and when*: that editor works on ONE
+shape at a time, on a small SVG of its own, reachable only by finding a row
+in the Layers panel and clicking a pencil. Nothing drew a shape on the
+design canvas at all.
+
+Status against Kent's list, measured against the code 2026-08-12:
+
+| req | | state |
+|---|---|---|
+| 1 | outlines + nodes, automatic after digitize | **shipped** — canvas overlay, `lib/shapeOverlay.js` |
+| 2 | pulse for the first few seconds | **shipped** — fires on a NEW result, not on load |
+| 3 | the shape's own boundary, not a bbox | shipped (`outlineFull`, contract v1.4) |
+| 4 | drag nodes / add nodes | built, panel-only — not yet on the canvas |
+| 4b | drag **lines** | **not built anywhere** — vertices only |
+| 6 | delete a whole shape | built (`deleted_shape_ids`) |
+| 7 | each shape its own entity | built (`shape_id`) |
+
+So the remaining work is direct manipulation ON the canvas overlay (reqs 4
+and 4b), wired to the `boundary_override` key that already round-trips —
+not the contract design this section previously called for.
 
 **Kent ruled, 2026-08-12 — requirement 5 (dragging a whole shape) is OUT OF
 SCOPE.** He first asked for it ("moved or dragged around, similar to how
@@ -4559,10 +4584,15 @@ so the design must still show that edits survive a re-digitize — but the
 perturbation is now bounded by `CENTROID_BUCKET_MM` rather than unbounded,
 which is a far easier property to hold.
 
-**Recommended posture:** a written design before any code, answering (a) how
-node-level geometry is represented — new contract version vs. an extension of
-v1.5's replayable operation list — and (b) the bounded-centroid-drift
-argument above, with a worked case. Everything else is UI.
+**Recommended posture — superseded 2026-08-12.** This used to call for a
+written design before any code, answering (a) how node-level geometry is
+represented — new contract version vs. an extension of v1.5's replayable
+operation list. That question was already answered before it was asked:
+`boundary_override` (v1.4) represents it, and has since 2026-08-05. Point
+(b), the bounded-centroid-drift argument, still wants a worked case before
+hand edits are *promised* to survive a re-digitize — but it does not block
+building the canvas editing surface, which is now the actual remaining
+work.
 
 #### Note 6, from the same session — the render Kent marked "portions of the owl that shouldn't have been removed"
 

@@ -1,5 +1,5 @@
 <script>
-  import { onMount, createEventDispatcher } from "svelte";
+  import { onMount, onDestroy, createEventDispatcher } from "svelte";
   import { generateAll } from "../lib/generate.js";
   import { ensureFonts } from "../lib/fontLoader.js";
   import { renderRealistic, isDark } from "../lib/preview.js";
@@ -9,6 +9,7 @@
   import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizePatches } from "../lib/interact.js";
   import { selectedIdsOf } from "../lib/project.js";
   import { effectiveHoop, hoopFitNote } from "../lib/hoop.js";
+  import { shapeOutlinesInFieldMm, pulseAt, createPulseTracker } from "../lib/shapeOverlay.js";
   import Hint from "./Hint.svelte";
   import Icon from "./Icon.svelte";
 
@@ -142,6 +143,11 @@
   let dragGroupBBoxMm = null;
 
   $: selIds = selectedIdsOf(project);
+  // Starts the "we found these shapes" pulse when a digitize result is new.
+  // Safe to run on every project change: `noteOutlineResults` only restarts a
+  // cue when an element's `review` identity actually changed, so editing an
+  // unrelated element (or panning) never re-triggers it.
+  $: project, noteOutlineResults();
   $: multiSel = selIds.length > 1;
 
   // Union canvas-px rect of every selected member — the group's visible box.
@@ -336,9 +342,139 @@
     ctx.restore();
   }
 
+  // ---- auto-digitize shape outlines (Kent's 2026-08-12 request, reqs 1-3, 7)
+  //
+  // Every shape the digitizer recognised, drawn over the stitches as its own
+  // outline with its own nodes — so the result reads as a set of editable
+  // FEATURES rather than one opaque blob of stitching. The geometry (and the
+  // reason it fits a bbox instead of recomputing buildImportedDesign's
+  // transform) lives in lib/shapeOverlay.js.
+  //
+  // Draws under the selection chrome and above the stitches. Deliberately for
+  // EVERY digitized element, not just the selected one: the point of the cue
+  // is "here is what I found", which is not a per-selection question.
+  const NODE_R = 2.6;
+  const OUTLINE_RGB = "0, 200, 255";
+
+  // Fires the cue once per DIGITIZE — not per repaint, and not on load. See
+  // createPulseTracker for why the "not on load" half matters.
+  const pulses = createPulseTracker();
+  let pulseRafId = 0;
+
+  function digitizedRows(el) {
+    const rows = el && el.review && el.review.shapes;
+    if (!Array.isArray(rows) || !rows.length) return null;
+    // A shape the user hid or deleted in review is not something the app
+    // "found" any more — but it still counts toward the shared transform (see
+    // shapeOverlay.outlineBBoxMm), so filter for DRAWING only.
+    return rows;
+  }
+
+  function outlinePulseKey(el) {
+    // `review` is replaced wholesale by each digitize, so its identity is the
+    // cheapest honest "this is a new result" signal available.
+    return el && el.review ? el.review : null;
+  }
+
+  function noteOutlineResults() {
+    if (!project || !Array.isArray(project.elements)) return;
+    const now = performance.now();
+    for (const el of project.elements) {
+      if (el.type !== "digitized" || !digitizedRows(el)) continue;
+      pulses.seen(el.id, outlinePulseKey(el), now);
+    }
+    if (pulses.active(now)) schedulePulseFrame();
+  }
+
+  // The pulse is the only thing on this canvas that animates without user
+  // input, so it drives its own rAF loop and stops itself the moment every
+  // element's cue has finished — no idle timer left running behind a design
+  // the user is just looking at.
+  function schedulePulseFrame() {
+    if (pulseRafId) return;
+    pulseRafId = requestAnimationFrame(() => {
+      pulseRafId = 0;
+      if (simActive) return;      // the simulator owns the canvas while playing
+      repaintView();
+    });
+  }
+
+  function drawShapeOutlines(ctx) {
+    if (!renderResult || !renderResult.toCanvas || !project) return;
+    const now = performance.now();
+    let stillPulsing = false;
+
+    for (const el of project.elements || []) {
+      if (el.type !== "digitized") continue;
+      const rows = digitizedRows(el);
+      if (!rows) continue;
+      const pe = peById[el.id];
+      if (!pe || !pe.bboxMm) continue;
+
+      const outlines = shapeOutlinesInFieldMm(rows, pe.bboxMm, el.rotationDeg || 0);
+      if (!outlines.length) continue;
+
+      const started = pulses.startedAt(el.id);
+      const pulse = started == null ? 0 : pulseAt(now - started);
+      if (pulse > 0) stillPulsing = true;
+
+      // Hidden shapes stay out of the drawing but stayed IN the transform, so
+      // toggling one off does not shift the others.
+      const hidden = new Set(
+        rows.filter((r) => r && r.stitched === false).map((r) => r.id)
+      );
+
+      ctx.save();
+      ctx.lineJoin = "round";
+      for (const o of outlines) {
+        if (hidden.has(o.id)) continue;
+        const pts = o.points.map(([x, y]) => renderResult.toCanvas(x, y));
+        if (pts.length < 3) continue;
+
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.closePath();
+
+        // Cased line: a dark casing under a bright core. An outline traces the
+        // EDGE of the artwork it describes, so it is always sitting on the
+        // boundary between the stitches and the fabric — a single-colour line
+        // disappears into whichever of the two it happens to match. Verified
+        // in a real browser first (2026-08-12): the uncased version was
+        // legible on pale fabric and vanished against dark fill.
+        ctx.strokeStyle = `rgba(10, 22, 30, ${0.5 + 0.3 * pulse})`;
+        ctx.lineWidth = 3.4 + 1.8 * pulse;
+        ctx.stroke();
+        // The pulse rides on opacity and width together — brightening alone
+        // reads as a highlight, widening alone as a wobble; both together read
+        // as a heartbeat.
+        ctx.strokeStyle = `rgba(${OUTLINE_RGB}, ${0.85 + 0.15 * pulse})`;
+        ctx.lineWidth = 1.4 + 1.4 * pulse;
+        ctx.stroke();
+
+        const r = NODE_R + 1.7 * pulse;
+        for (const p of pts) {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+          // Same casing logic as the line: a node lands on the edge too, and
+          // an unringed dot is invisible against matching stitches.
+          ctx.fillStyle = `rgba(${OUTLINE_RGB}, ${0.85 + 0.15 * pulse})`;
+          ctx.fill();
+          ctx.strokeStyle = `rgba(10, 22, 30, ${0.75 + 0.25 * pulse})`;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
+
+    if (stillPulsing) schedulePulseFrame();
+  }
+
   function drawOverlay() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
+    drawShapeOutlines(ctx);
     drawGuides(ctx);
     const color = selectionColor();
     if (multiSel) {
@@ -647,6 +783,13 @@
   }
 
   onMount(paint);
+  onDestroy(() => {
+    // The outline pulse is the one loop here that can be mid-flight with no
+    // user input driving it, so it has to be cancelled explicitly — otherwise
+    // a rAF fires into a destroyed component and repaints a dead canvas.
+    if (pulseRafId) cancelAnimationFrame(pulseRafId);
+    pulseRafId = 0;
+  });
   // repaint whenever the project (garment/elements/selection) or the
   // runtime image state changes. Drag-move deliberately reuses this same
   // path (cheap full regen) rather than a separate translate-only fast path
