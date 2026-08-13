@@ -113,13 +113,30 @@ test("boundary editor: drag a vertex, save, apply -- the shape reshapes through 
   await expect(page.getByText(/^Editing boundary/)).toBeVisible();
 
   const vertex = page.locator(".dgp-editor-vertex").first();
+  // Ground the vertex into unobstructed view before raw mouse events — the
+  // same rule manual-trace-import.spec.js documents. The panel column scrolls
+  // and the wizard StepNav sits below it; near the fold, boundingBox() still
+  // reports the vertex "visible" while elementFromPoint at its centre is the
+  // nav, so the drag lands on a nav button and the edit silently no-ops. The
+  // spec then saves an UNCHANGED ring, the service faithfully re-sews the
+  // identical design, and the only assertion that can notice is the stats
+  // one at the end — which is exactly how this spec failed for three days
+  // (found 2026-08-13). Raw page.mouse does not auto-scroll; .click() does,
+  // which is why every other step here was immune.
+  await vertex.scrollIntoViewIfNeeded();
   const box = await vertex.boundingBox();
   const start = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 
+  const cxBefore = await vertex.getAttribute("cx");
   await page.mouse.move(start.x, start.y);
   await page.mouse.down();
   await page.mouse.move(start.x - 18, start.y - 14, { steps: 6 });
   await page.mouse.up();
+  // Fail HERE if the drag didn't take, not thirty lines later at the stats
+  // assertion: a no-op drag still enables Save (Save can't tell), still
+  // shows the badge, still applies cleanly — the whole rest of the spec
+  // passes while testing nothing.
+  await expect(vertex).not.toHaveAttribute("cx", cxBefore);
 
   // Enlarging a corner grows the polygon: the working preview reflects the
   // drag before anything is saved (still purely local edit state).

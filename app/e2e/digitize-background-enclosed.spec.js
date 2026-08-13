@@ -25,11 +25,25 @@
 //
 // Same service-bootstrap and fixture-sourcing conventions as
 // digitize-boundary-edit.spec.js / digitize-stale-edits.spec.js. The art
-// fixture itself is NOT copied into app/e2e/fixtures like two-squares.png --
-// it's referenced straight from digitizer/testdata/photo/, the same
-// git-tracked file digitizer/tests/test_service.py's and
-// test_enclosed_background.py's REPRO constant point at, so the browser
-// check and the Python-level checks exercise the identical bytes.
+// fixtures are NOT copied into app/e2e/fixtures like two-squares.png --
+// they're referenced straight from digitizer/testdata/, the same git-tracked
+// files the Python suites point at, so the browser check and the
+// Python-level checks exercise the identical bytes.
+//
+// FIXTURE CHANGE, 2026-08-13: these tests originally ran on
+// `repro_gradient_white_icon.png` (Kent's Instagram-icon repro). The
+// 2026-08-11 background-existence guards deliberately stopped treating that
+// edge-to-edge artwork as having a background at all (BACKGROUND_ABSENT) --
+// and with no background there is nothing to tag enclosed, so the banner
+// this spec exists to test can never fire on it. The Python tests took a
+// guards-off config the same day (see COOKBOOK's parallel-lanes lesson);
+// this spec CANNOT -- it drives the real Studio, which sends only real
+// Studio configs -- so it moves to fixtures whose white ground survives the
+// guards. Verified live against the real service before the swap:
+// logo_whitebg -> banner with exactly 1 enclosed area (the single-restore
+// test), enthusiast_logo -> "Sew all 4" (the bulk test). The suite was dark
+// from 2026-08-10 to -13 (tile-locator break), which is why the premise
+// loss went unnoticed.
 import { test, expect } from "@playwright/test";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -38,9 +52,12 @@ import { fileURLToPath } from "node:url";
 
 const SERVICE_URL = "http://127.0.0.1:8721";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ART_PNG = path.join(
+// Single enclosed area: the O-type counter in the logo's lettering.
+const ART_SINGLE_PNG = path.join(__dirname, "../../digitizer/testdata/logo_whitebg.png");
+// Several enclosed areas (4) -- a real bulk-restore case.
+const ART_BULK_PNG = path.join(
   __dirname,
-  "../../digitizer/testdata/photo/repro_gradient_white_icon.png"
+  "../../digitizer/testdata/photo/enthusiast_logo.png"
 );
 
 async function healthy() {
@@ -129,7 +146,7 @@ test("BACKGROUND_ENCLOSED: enclosed icon linework is held out by default and res
   await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
   await page.getByRole("button", { name: "Artwork" }).click();
 
-  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
+  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_SINGLE_PNG);
   await page.getByRole("button", { name: "Digitize", exact: true }).click();
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
 
@@ -161,7 +178,16 @@ test("BACKGROUND_ENCLOSED: enclosed icon linework is held out by default and res
   const restoredRow = page.locator(".dgp-layer").filter({ has: page.locator(".dgp-lbadge", { hasText: "restored" }) });
   await expect(restoredRow).toBeVisible();
   await expect(restoredRow.getByRole("button", { name: "Mark as not sewn again" })).toBeVisible();
-  await expect(banner.getByRole("button")).toHaveText(`Sew all ${countBefore - 1}`);
+  // The banner exists only while unstitched rows remain ({#if
+  // unstitchedRows.length}) — restoring the LAST one removes it outright
+  // rather than showing "Sew all 0". On the old multi-enclosed fixture this
+  // branch never ran; logo_whitebg has exactly one enclosed area, so it
+  // always does.
+  if (countBefore - 1 === 0) {
+    await expect(banner).toBeHidden();
+  } else {
+    await expect(banner.getByRole("button")).toHaveText(`Sew all ${countBefore - 1}`);
+  }
 
   const apply = page.locator(".dgp-apply");
   await expect(apply).toHaveText("Apply layer changes");
@@ -187,7 +213,7 @@ test("BACKGROUND_ENCLOSED: the banner's 'Sew all' bulk-restores every enclosed r
   await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
   await page.getByRole("button", { name: "Artwork" }).click();
 
-  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
+  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_BULK_PNG);
   await page.getByRole("button", { name: "Digitize", exact: true }).click();
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
 
