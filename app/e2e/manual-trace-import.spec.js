@@ -96,7 +96,7 @@ test("upload -> trace preview (colors + hole warning) -> add shapes -> drag a ve
   await page.getByRole("button", { name: "Tote", exact: true }).click();
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
-  await page.getByRole("button", { name: "+ Draw shapes" }).click();
+  await page.getByRole("button", { name: "Draw shapes" }).click();
 
   // ---- open the trace panel, upload the real fixture ---------------------
   await page.getByRole("button", { name: "Trace image…" }).click();

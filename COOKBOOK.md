@@ -217,6 +217,39 @@ hand-rolling it in JS.
 
 ### Hard-won lessons — do not relearn these
 
+- **The Playwright e2e suite is NOT in CI, so it goes dark silently — run it
+  yourself after touching `ContentStep`/`ManualPanel` markup.** `.github`'s
+  `studio` job runs `vitest` only; the e2e specs need a real browser and a
+  live digitizer service, so nothing on GitHub ever executes them. On
+  2026-08-13 all 9 service-backed specs turned out to be failing, and had
+  been since **2026-08-10** — commit `301393e` replaced the literal `+` in
+  the element tiles with an `aria-hidden` `<Icon name="plus">`, so every
+  tile's accessible name lost its `+` and every
+  `getByRole("button", { name: "+ Auto-digitize" })` stopped matching. Three
+  days of no coverage on the shape-edit contract, invisible from CI. Run
+  `npx playwright test` from `app/` after any change to those tiles — and
+  note the failure signature is a 300s TIMEOUT on a locator, not an
+  assertion, so a red run looks like a slow machine unless you read the
+  error context.
+
+  Repairing the locators took the suite from 4 passed / 9 failed in 20
+  minutes to **9 passed / 4 failed in 46 seconds**. The 4 still red are
+  PRE-EXISTING and unrelated — verified by running them at `1ab138d`, before
+  the node-drag fix, where they fail identically. They are product questions
+  for Kent, not test rot, and they are only visible now because the suite
+  runs at all:
+  - `digitize-background-enclosed` (×2): `.dgp-enclosed-banner` never
+    appears. The banner is gated on `unstitchedRows.length`, so the pipeline
+    is no longer flagging `BACKGROUND_ENCLOSED` on that fixture at all.
+  - `digitize-boundary-edit`: after Save boundary + Apply, `.dgp-stats` is
+    still **exactly** `2,153 stitches · 80×30 mm · 2 colors` — the panel
+    editor's vertex drag changed nothing in the design. Same family as the
+    node-density finding below; worth measuring the mm size of the drag that
+    spec actually performs before assuming it is the same cause.
+  - `manual-trace-import`: the `Edit points` button is never found, though
+    `ManualPanel.svelte:846` still renders it — so something earlier in that
+    flow (add shapes) is not completing.
+
 - **An auto-traced outline has ~1 node per 1.3 mm, so "move one node" is not
   an edit the stitches can express.** `owl_kent.jpg`'s body region is 346
   vertices around a 458 mm perimeter. Dragging one of them moves 2.6 mm of
