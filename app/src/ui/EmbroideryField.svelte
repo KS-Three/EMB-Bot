@@ -9,7 +9,8 @@
   import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizePatches } from "../lib/interact.js";
   import { selectedIdsOf } from "../lib/project.js";
   import { effectiveHoop, hoopFitNote } from "../lib/hoop.js";
-  import { shapeOutlinesInFieldMm, pulseAt, createPulseTracker } from "../lib/shapeOverlay.js";
+  import { shapeOutlinesInFieldMm, pulseAt, createPulseTracker, hitOverlay, moveNode, moveEdge, insertNode, fieldMmToOutlineMm } from "../lib/shapeOverlay.js";
+  import { boundaryIssues } from "../lib/digitizer.js";
   import Hint from "./Hint.svelte";
   import Icon from "./Icon.svelte";
 
@@ -361,6 +362,19 @@
   const pulses = createPulseTracker();
   let pulseRafId = 0;
 
+  // Hand edits that have been saved but not yet re-digitized, keyed by shape.
+  // Both the draw pass and the hit-test read through this so what is shown and
+  // what is grabbable are the same geometry.
+  function pendingBoundaries(el) {
+    const ov = (el && el.shapeOverrides) || null;
+    if (!ov) return null;
+    const m = new Map();
+    for (const [sid, entry] of Object.entries(ov)) {
+      if (entry && Array.isArray(entry.boundary_override)) m.set(sid, entry.boundary_override);
+    }
+    return m.size ? m : null;
+  }
+
   function digitizedRows(el) {
     const rows = el && el.review && el.review.shapes;
     if (!Array.isArray(rows) || !rows.length) return null;
@@ -399,6 +413,93 @@
     });
   }
 
+  // ---- shape editing (Kent's requirements 4 and 4b) -------------------------
+  //
+  // Drag a node, drag a whole line, double-click an edge to add a node. Writes
+  // through `boundary_override` (contract v1.4) — the same key DigitizePanel's
+  // per-shape editor already round-trips, so nothing new had to be invented on
+  // the wire.
+  //
+  // Precedence: this is tested AFTER the rotate grip and multi-select chrome
+  // but BEFORE the element rect, so grabbing an outline beats moving the
+  // element. Everywhere else inside the element still moves it, which is what
+  // keeps the withdrawn requirement 5 (drag the whole shape) from being missed:
+  // the element still drags, just not by its outlines.
+  let shapeEdit = null;     // { elId, shapeId, kind, index, startPx, ring }
+  let liveRing = null;      // { shapeId, points } — the drag's working geometry
+  let shapeEditError = "";
+
+  // The canvas transform is an axis-aligned scale+translate, but the y axis
+  // flips (field mm are +y up, canvas px are +y down). Rather than hard-code
+  // that sign — and re-derive it wrongly the first time preview.js changes —
+  // read the basis straight off `toCanvas`.
+  function pxToMmDelta(dxPx, dyPx) {
+    const o = renderResult.toCanvas(0, 0);
+    const ex = renderResult.toCanvas(1, 0);
+    const ey = renderResult.toCanvas(0, 1);
+    const sx = ex.x - o.x;
+    const sy = ey.y - o.y;
+    if (Math.abs(sx) < 1e-9 || Math.abs(sy) < 1e-9) return { dx: 0, dy: 0 };
+    return { dx: dxPx / sx, dy: dyPx / sy };
+  }
+
+  // The outlines of the SELECTED digitized element, in canvas px — what the
+  // pointer actually hit-tests against. Only the selected element is editable;
+  // the others' outlines are there to show what was found, not to be grabbed.
+  function editableOutlinesPx() {
+    const el = selectedElement();
+    if (!el || el.type !== "digitized" || !renderResult || !renderResult.toCanvas) return null;
+    const rows = digitizedRows(el);
+    const pe = peById[el.id];
+    if (!rows || !pe || !pe.bboxMm) return null;
+    const mm = shapeOutlinesInFieldMm(
+      rows, pe.bboxMm, el.rotationDeg || 0, pendingBoundaries(el));
+    return {
+      el,
+      rows,
+      pe,
+      outlines: mm.map((o) => ({
+        id: o.id,
+        points: (liveRing && liveRing.shapeId === o.id ? liveRing.points : o.points)
+          .map(([x, y]) => {
+            const c = renderResult.toCanvas(x, y);
+            return [c.x, c.y];
+          }),
+      })),
+      mmById: new Map(mm.map((o) => [o.id, o.points])),
+    };
+  }
+
+  // Commits the working ring through the SAME shapeOverrides path
+  // DigitizePanel's own editor uses, so an edit made here is indistinguishable
+  // downstream from one made there — including re-digitize carry-forward.
+  function commitShapeEdit() {
+    if (!shapeEdit || !liveRing) return;
+    const el = project.elements.find((x) => x.id === shapeEdit.elId);
+    const pe = peById[shapeEdit.elId];
+    const rows = el && digitizedRows(el);
+    if (!el || !pe || !rows) return;
+
+    const service = fieldMmToOutlineMm(
+      liveRing.points, rows, pe.bboxMm, el.rotationDeg || 0);
+    if (!service) return;
+    // Same validation the panel editor runs before it will save: a
+    // self-intersecting or pinched ring is rejected here rather than sent for
+    // the service to 400 on.
+    const issues = boundaryIssues(service);
+    if (issues.length) {
+      shapeEditError = issues[0];
+      return;
+    }
+    shapeEditError = "";
+    const cur = { ...(el.shapeOverrides || {}) };
+    cur[shapeEdit.shapeId] = {
+      ...(cur[shapeEdit.shapeId] || {}),
+      boundary_override: service.map(([x, y]) => [x, y]),
+    };
+    dispatch("elupdate", { id: el.id, patch: { shapeOverrides: cur } });
+  }
+
   function drawShapeOutlines(ctx) {
     if (!renderResult || !renderResult.toCanvas || !project) return;
     const now = performance.now();
@@ -411,7 +512,8 @@
       const pe = peById[el.id];
       if (!pe || !pe.bboxMm) continue;
 
-      const outlines = shapeOutlinesInFieldMm(rows, pe.bboxMm, el.rotationDeg || 0);
+      const outlines = shapeOutlinesInFieldMm(
+        rows, pe.bboxMm, el.rotationDeg || 0, pendingBoundaries(el));
       if (!outlines.length) continue;
 
       const started = pulses.startedAt(el.id);
@@ -428,8 +530,13 @@
       ctx.lineJoin = "round";
       for (const o of outlines) {
         if (hidden.has(o.id)) continue;
-        const pts = o.points.map(([x, y]) => renderResult.toCanvas(x, y));
+        // Mid-drag, the shape being edited renders from the working ring
+        // rather than from the last committed review — otherwise the outline
+        // would sit still until the pointer came up.
+        const src = liveRing && liveRing.shapeId === o.id ? liveRing.points : o.points;
+        const pts = src.map(([x, y]) => renderResult.toCanvas(x, y));
         if (pts.length < 3) continue;
+        const editing = !!(shapeEdit && shapeEdit.shapeId === o.id);
 
         ctx.beginPath();
         ctx.moveTo(pts[0].x, pts[0].y);
@@ -448,17 +555,21 @@
         // The pulse rides on opacity and width together — brightening alone
         // reads as a highlight, widening alone as a wobble; both together read
         // as a heartbeat.
-        ctx.strokeStyle = `rgba(${OUTLINE_RGB}, ${0.85 + 0.15 * pulse})`;
-        ctx.lineWidth = 1.4 + 1.4 * pulse;
+        ctx.strokeStyle = editing
+          ? "rgba(255, 214, 64, 0.95)"     // the shape under the pointer
+          : `rgba(${OUTLINE_RGB}, ${0.85 + 0.15 * pulse})`;
+        ctx.lineWidth = (editing ? 1.9 : 1.4) + 1.4 * pulse;
         ctx.stroke();
 
-        const r = NODE_R + 1.7 * pulse;
+        const r = NODE_R + 1.7 * pulse + (editing ? 0.6 : 0);
         for (const p of pts) {
           ctx.beginPath();
           ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
           // Same casing logic as the line: a node lands on the edge too, and
           // an unringed dot is invisible against matching stitches.
-          ctx.fillStyle = `rgba(${OUTLINE_RGB}, ${0.85 + 0.15 * pulse})`;
+          ctx.fillStyle = editing
+            ? "rgba(255, 214, 64, 0.95)"
+            : `rgba(${OUTLINE_RGB}, ${0.85 + 0.15 * pulse})`;
           ctx.fill();
           ctx.strokeStyle = `rgba(10, 22, 30, ${0.75 + 0.25 * pulse})`;
           ctx.lineWidth = 1;
@@ -911,6 +1022,14 @@
       canvas.style.cursor = "grab";
       return;
     }
+    // Mirrors the pointerdown precedence exactly. Without this the cursor
+    // would keep promising "move the element" right up to the moment a click
+    // edits a shape instead — the affordance has to agree with the behaviour.
+    const hoverEdit = editableOutlinesPx();
+    if (hoverEdit && hitOverlay(hoverEdit.outlines, p.x, p.y)) {
+      canvas.style.cursor = "pointer";
+      return;
+    }
     let handle = selRect ? hitTest(selRect, p.x, p.y, HANDLE_R) : "none";
     if (handle === "none") {
       // Nothing on the selected element under the pointer — is some OTHER
@@ -1035,6 +1154,44 @@
       return;
     }
 
+    // Shape outlines beat the element body. Tested after the rotate grip
+    // (which sits outside the rect and must never be shadowed) and before the
+    // element rect below, so grabbing a node or a line edits the SHAPE while
+    // everywhere else inside the element still moves the whole element.
+    const edit = editableOutlinesPx();
+    if (edit) {
+      const hit = hitOverlay(edit.outlines, p.x, p.y);
+      if (hit) {
+        const ring = edit.mmById.get(hit.shapeId);
+        if (ring) {
+          canvas.setPointerCapture(e.pointerId);
+          shapeEditError = "";
+          if (e.detail >= 2 && hit.kind === "edge") {
+            // Double-click an edge to add a node there — the canvas
+            // equivalent of the panel editor's "click an edge midpoint".
+            // Commits immediately: there is no drag to wait for.
+            const d = pxToMmDelta(hit.atPx[0] - renderResult.toCanvas(0, 0).x,
+                                  hit.atPx[1] - renderResult.toCanvas(0, 0).y);
+            const grown = insertNode(ring, hit.index, [d.dx, d.dy]);
+            shapeEdit = { elId: edit.el.id, shapeId: hit.shapeId, kind: "node",
+                          index: hit.index + 1, startPx: p, ring: grown };
+            liveRing = { shapeId: hit.shapeId, points: grown };
+            commitShapeEdit();
+            shapeEdit = null;
+            liveRing = null;
+            drawOverlay();
+            return;
+          }
+          shapeEdit = { elId: edit.el.id, shapeId: hit.shapeId, kind: hit.kind,
+                        index: hit.index, startPx: p, ring };
+          liveRing = { shapeId: hit.shapeId, points: ring };
+          canvas.style.cursor = "grabbing";
+          drawOverlay();
+          return;
+        }
+      }
+    }
+
     // Hit-test the SELECTED element's rect first (corners win over body) —
     // that's the only element with visible handles, so it's the only one a
     // resize can start on.
@@ -1101,6 +1258,17 @@
     if (!canvas) return;
     if (simActive) { canvas.style.cursor = "default"; return; }
     const p = canvasPointFromEvent(e);
+    // A shape edit is its own drag mode — it never sets `dragMode`, so the
+    // element move/resize/pan branches below stay untouched by it.
+    if (shapeEdit) {
+      const d = pxToMmDelta(p.x - shapeEdit.startPx.x, p.y - shapeEdit.startPx.y);
+      const next = shapeEdit.kind === "edge"
+        ? moveEdge(shapeEdit.ring, shapeEdit.index, d.dx, d.dy)
+        : moveNode(shapeEdit.ring, shapeEdit.index, d.dx, d.dy);
+      liveRing = { shapeId: shapeEdit.shapeId, points: next };
+      drawOverlay();
+      return;
+    }
     if (!dragMode) {
       updateHoverCursor(p);
       return;
@@ -1242,6 +1410,21 @@
   }
 
   function endDrag(e) {
+    if (shapeEdit) {
+      if (canvas && canvas.hasPointerCapture && canvas.hasPointerCapture(e.pointerId)) {
+        canvas.releasePointerCapture(e.pointerId);
+      }
+      // Commit on release. A rejected edit (self-crossing, pinched shut)
+      // leaves `shapeEditError` set and simply drops the working ring — the
+      // shape snaps back to its last good geometry rather than persisting
+      // something the service would refuse.
+      commitShapeEdit();
+      shapeEdit = null;
+      liveRing = null;
+      if (canvas) canvas.style.cursor = "default";
+      drawOverlay();
+      return;
+    }
     if (canvas && dragMode && canvas.hasPointerCapture && canvas.hasPointerCapture(e.pointerId)) {
       canvas.releasePointerCapture(e.pointerId);
     }

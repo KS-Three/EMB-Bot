@@ -5,6 +5,11 @@
 import { describe, expect, test } from "vitest";
 import {
   createPulseTracker,
+  fieldMmToOutlineMm,
+  hitOverlay,
+  insertNode,
+  moveEdge,
+  moveNode,
   outlineBBoxMm,
   outlineOf,
   pulseAt,
@@ -280,5 +285,213 @@ describe("createPulseTracker", () => {
     t.seen("e1", REV_B, 1000);
     t.seen("e1", REV_A, 9000);   // a third distinct result object
     expect(t.startedAt("e1")).toBe(9000);
+  });
+});
+
+// --- Direct manipulation (requirements 4 and 4b) -----------------------------
+
+describe("hitOverlay", () => {
+  // A 100x100px square in canvas pixels, corners at the nice round numbers.
+  const SQ = [{ id: "s1", points: [[100, 100], [200, 100], [200, 200], [100, 200]] }];
+
+  test("grabs a node when the pointer is near a vertex", () => {
+    const h = hitOverlay(SQ, 102, 103);
+    expect(h).toMatchObject({ shapeId: "s1", kind: "node", index: 0 });
+  });
+
+  test("grabs an edge when the pointer is near a segment but no vertex", () => {
+    const h = hitOverlay(SQ, 150, 102);
+    expect(h).toMatchObject({ shapeId: "s1", kind: "edge", index: 0 });
+    expect(h.atPx[0]).toBeCloseTo(150, 6);
+    expect(h.atPx[1]).toBeCloseTo(100, 6);
+  });
+
+  test("the closing edge is hit-testable, not just the ones between listed points", () => {
+    // Edge 3 runs from the last point back to the first. An implementation
+    // that loops `i < n - 1` silently makes one side of every shape dead.
+    const h = hitOverlay(SQ, 100, 150);
+    expect(h).toMatchObject({ kind: "edge", index: 3 });
+  });
+
+  test("a node beats an edge it sits on", () => {
+    // A vertex is ON two edges, so a pure distance comparison could hand a
+    // dead-centre node hit to whichever edge rounded smaller.
+    const h = hitOverlay(SQ, 200, 200);
+    expect(h.kind).toBe("node");
+    expect(h.index).toBe(2);
+  });
+
+  test("misses cleanly when the pointer is nowhere near", () => {
+    expect(hitOverlay(SQ, 150, 150)).toBe(null);   // dead centre, inside
+    expect(hitOverlay(SQ, 400, 400)).toBe(null);   // far outside
+    expect(hitOverlay([], 100, 100)).toBe(null);
+  });
+
+  test("an edge does not grab past its own endpoints", () => {
+    // Measuring to the infinite LINE instead of the segment would make this
+    // point — 50px beyond the corner, but collinear with the top edge — a hit.
+    expect(hitOverlay(SQ, 250, 100)).toBe(null);
+  });
+
+  test("picks the nearest edge when two are in range", () => {
+    const h = hitOverlay(SQ, 197, 150);
+    expect(h).toMatchObject({ kind: "edge", index: 1 });
+  });
+});
+
+describe("node and edge editing", () => {
+  const RING = [[0, 0], [10, 0], [10, 10], [0, 10]];
+
+  test("moveNode moves exactly one vertex", () => {
+    expect(moveNode(RING, 1, 3, -2)).toEqual([[0, 0], [13, -2], [10, 10], [0, 10]]);
+  });
+
+  test("moveEdge translates BOTH endpoints, so the segment does not pivot", () => {
+    // Requirement 4b. Moving one end would rotate the edge instead of
+    // sliding it, which is what "move lines" plainly does not mean.
+    expect(moveEdge(RING, 1, 0, 5)).toEqual([[0, 0], [10, 5], [10, 15], [0, 10]]);
+  });
+
+  test("moveEdge wraps around the closing segment", () => {
+    expect(moveEdge(RING, 3, 1, 0)).toEqual([[1, 0], [10, 0], [10, 10], [1, 10]]);
+  });
+
+  test("insertNode puts the new vertex AFTER its edge, preserving winding", () => {
+    // Inserting before would swap the two endpoints' order relative to the
+    // rest of the ring, quietly reversing part of the boundary.
+    expect(insertNode(RING, 0, [5, 0])).toEqual([[0, 0], [5, 0], [10, 0], [10, 10], [0, 10]]);
+  });
+
+  test("insertNode on the closing edge appends rather than corrupting the ring", () => {
+    expect(insertNode(RING, 3, [0, 5])).toEqual([...RING, [0, 5]]);
+  });
+
+  test("none of the edit ops mutate their input", () => {
+    const src = RING.map((p) => [...p]);
+    moveNode(src, 0, 9, 9);
+    moveEdge(src, 0, 9, 9);
+    insertNode(src, 0, [9, 9]);
+    expect(src).toEqual(RING);
+  });
+});
+
+describe("fieldMmToOutlineMm", () => {
+  // The round trip is where a coordinate bug hides: forward-only tests pass
+  // happily while an edit lands somewhere other than the pointer.
+  const shapes = [shape("s1", RECT)];
+
+  test("round-trips a point back to where it started", () => {
+    const [fwd] = shapeOutlinesInFieldMm(shapes, BBOX);
+    const back = fieldMmToOutlineMm(fwd.points, shapes, BBOX);
+    for (let i = 0; i < RECT.length; i++) {
+      expect(back[i][0]).toBeCloseTo(RECT[i][0], 6);
+      expect(back[i][1]).toBeCloseTo(RECT[i][1], 6);
+    }
+  });
+
+  test("round-trips under rotation too", () => {
+    // A rotated element is exactly where a forgotten inverse shows up: the
+    // outline draws correctly, and every edit lands spun by the element angle.
+    for (const deg of [90, 180, 270, 37]) {
+      const [fwd] = shapeOutlinesInFieldMm(shapes, BBOX, deg);
+      const back = fieldMmToOutlineMm(fwd.points, shapes, BBOX, deg);
+      for (let i = 0; i < RECT.length; i++) {
+        expect(back[i][0]).toBeCloseTo(RECT[i][0], 6);
+        expect(back[i][1]).toBeCloseTo(RECT[i][1], 6);
+      }
+    }
+  });
+
+  test("a dragged node maps back to a proportional move in service space", () => {
+    // BBOX is 20mm wide for a 20mm-wide RECT, so the scale here is 1:1 and a
+    // 2mm field move must read as a 2mm service move — with y NEGATED, since
+    // the two spaces disagree about which way is up.
+    const [fwd] = shapeOutlinesInFieldMm(shapes, BBOX);
+    const moved = moveNode(fwd.points, 0, 2, 3);
+    const back = fieldMmToOutlineMm(moved, shapes, BBOX);
+    expect(back[0][0]).toBeCloseTo(RECT[0][0] + 2, 6);
+    expect(back[0][1]).toBeCloseTo(RECT[0][1] - 3, 6);
+  });
+
+  test("declines rather than returning NaN when there is no usable transform", () => {
+    expect(fieldMmToOutlineMm([[0, 0]], [], BBOX)).toBe(null);
+    expect(fieldMmToOutlineMm([[0, 0]], shapes, null)).toBe(null);
+    expect(fieldMmToOutlineMm([[0, 0]], shapes, { x0: 1, y0: 1, x1: 1, y1: 1 })).toBe(null);
+  });
+});
+
+describe("pending boundary overrides", () => {
+  const A = shape("a", [[-10, -5], [0, -5], [0, 5], [-10, 5]]);
+  const B = shape("b", [[2, -5], [10, -5], [10, 5], [2, 5]]);
+  const BOX = { x0: 0, y0: 0, x1: 20, y1: 10 };
+
+  test("a pending override is what gets drawn", () => {
+    // Without this, a just-dragged node snaps back to the last digitized
+    // outline the moment the pointer comes up — the edit is saved but looks
+    // lost, which is worse than not saving it.
+    const edited = [[-10, -5], [0, -5], [0, 0], [-10, 5]];
+    const out = shapeOutlinesInFieldMm([A, B], BOX, 0, new Map([["a", edited]]));
+    const plain = shapeOutlinesInFieldMm([A, B], BOX, 0);
+    expect(out[0].points).not.toEqual(plain[0].points);
+    expect(out[1].points).toEqual(plain[1].points);   // untouched shape unmoved
+  });
+
+  test("the transform stays fitted to the ORIGINAL outlines", () => {
+    // Fitting to the edited ring would let dragging one node shift every
+    // other shape on the canvas sideways — an edit with spooky action at a
+    // distance. Shape B must land in exactly the same place either way.
+    const wild = [[-400, -400], [400, -400], [400, 400], [-400, 400]];
+    const out = shapeOutlinesInFieldMm([A, B], BOX, 0, new Map([["a", wild]]));
+    const plain = shapeOutlinesInFieldMm([A, B], BOX, 0);
+    expect(out[1].points).toEqual(plain[1].points);
+  });
+
+  test("a malformed or too-short override is ignored, not drawn", () => {
+    const plain = shapeOutlinesInFieldMm([A, B], BOX, 0);
+    for (const bad of [[[0, 0], [1, 1]], [], null, "nope"]) {
+      const out = shapeOutlinesInFieldMm([A, B], BOX, 0, new Map([["a", bad]]));
+      expect(out[0].points).toEqual(plain[0].points);
+    }
+  });
+
+  test("no pending map at all behaves exactly as before", () => {
+    const plain = shapeOutlinesInFieldMm([A, B], BOX, 0);
+    expect(shapeOutlinesInFieldMm([A, B], BOX, 0, null)).toEqual(plain);
+    expect(shapeOutlinesInFieldMm([A, B], BOX, 0, new Map())).toEqual(plain);
+  });
+});
+
+describe("explicitly-closed rings", () => {
+  // The service sends outline_mm CLOSED (last point == first). With the
+  // duplicate left in, dragging vertex 0 — or the edge starting at it — moves
+  // one copy and strands the other, so the ring self-crosses and the edit is
+  // silently rejected. Found in a real browser 2026-08-13, on edge 0 of a
+  // digitized square.
+  const CLOSED = [[-10, -5], [10, -5], [10, 5], [-10, 5], [-10, -5]];
+
+  test("the duplicate closing point is dropped", () => {
+    expect(outlineOf({ outlineFull: CLOSED })).toHaveLength(4);
+    expect(outlineOf({ outlineFull: CLOSED })).toEqual(RECT);
+  });
+
+  test("an open ring is left exactly as it is", () => {
+    expect(outlineOf({ outlineFull: RECT })).toEqual(RECT);
+  });
+
+  test("a ring that is only 3 points once closed is still usable", () => {
+    const tri = [[0, 0], [4, 0], [2, 3], [0, 0]];
+    expect(outlineOf({ outlineFull: tri })).toEqual([[0, 0], [4, 0], [2, 3]]);
+  });
+
+  test("a degenerate closed ring is rejected, not turned into a 2-point line", () => {
+    expect(outlineOf({ outlineFull: [[0, 0], [1, 1], [0, 0]] })).toBe(null);
+  });
+
+  test("moving edge 0 of a closed ring no longer self-crosses", () => {
+    // The end-to-end symptom, at the unit level: with the duplicate present
+    // this moved 2 of 5 points and left the 5th behind.
+    const ring = outlineOf({ outlineFull: CLOSED });
+    const moved = moveEdge(ring, 0, 0, 4);
+    expect(moved).toEqual([[-10, -1], [10, -1], [10, 5], [-10, 5]]);
   });
 });
