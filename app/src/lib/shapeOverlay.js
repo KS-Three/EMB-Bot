@@ -35,8 +35,32 @@
 // A shape needs at least a triangle to be an outline at all.
 const MIN_RING_POINTS = 3;
 
+// How close two points must be to count as the same vertex, in mm. Well below
+// anything a user could mean, well above float noise from the mm round-trip.
+const SAME_POINT_MM = 1e-6;
+
 export function outlineOf(shape) {
-  const pts = (shape && (shape.outlineFull || shape.outline)) || [];
+  let pts = (shape && (shape.outlineFull || shape.outline)) || [];
+  // Drop an explicitly-closed ring's duplicate final point.
+  //
+  // The service sends `outline_mm` closed — last point equal to first — and
+  // `reviewFromJob` happens to run it through `dedupeRing`. Depending on that
+  // is a trap: with the duplicate present, dragging vertex 0 (or the edge
+  // that starts at it) moves one copy and leaves the other behind, so the ring
+  // crosses itself and `boundaryIssues` rejects the edit. The user sees a drag
+  // that silently snaps back. Found in a real browser, 2026-08-13.
+  //
+  // Every ring here is implicitly closed (the draw path closes the path, the
+  // hit test wraps modulo length), so the duplicate carries no information —
+  // it only creates a vertex that cannot be moved.
+  const n = pts.length;
+  if (n >= 2) {
+    const a = pts[0];
+    const b = pts[n - 1];
+    if (Math.abs(a[0] - b[0]) < SAME_POINT_MM && Math.abs(a[1] - b[1]) < SAME_POINT_MM) {
+      pts = pts.slice(0, n - 1);
+    }
+  }
   return pts.length >= MIN_RING_POINTS ? pts : null;
 }
 
@@ -98,9 +122,21 @@ function bboxOf(points) {
  * @returns [{ id, points: [[x, y], ...] }], empty when there is nothing
  *          trustworthy to draw
  */
-export function shapeOutlinesInFieldMm(shapes, bboxMm, rotationDeg = 0) {
+export function shapeOutlinesInFieldMm(shapes, bboxMm, rotationDeg = 0, pendingById = null) {
   const rows = (shapes || []).filter((s) => outlineOf(s));
   if (!rows.length || !bboxMm) return [];
+
+  // A hand edit lives in `shapeOverrides.boundary_override` until the next
+  // re-digitize folds it into the review. Drawing straight from `outlineFull`
+  // would make a just-dragged node snap back the instant the pointer came up,
+  // and the edit would look lost even though it was saved. So a pending
+  // override wins for DRAWING — while the transform below is still fitted to
+  // the ORIGINAL outlines, so editing one shape cannot shift every other
+  // shape on the canvas.
+  const ringFor = (s) => {
+    const pend = pendingById && pendingById.get ? pendingById.get(s.id) : null;
+    return Array.isArray(pend) && pend.length >= MIN_RING_POINTS ? pend : outlineOf(s);
+  };
 
   // y-down (service) -> y-up (field) BEFORE rotating, so the rotation angle
   // means the same thing here as it does to the stitches it must line up with.
@@ -110,12 +146,18 @@ export function shapeOutlinesInFieldMm(shapes, bboxMm, rotationDeg = 0) {
   const rotated = rows.map((s) => ({
     id: s.id,
     points: rotatePointsDeg(
-      outlineOf(s).map(([x, y]) => [x, -y]),
+      ringFor(s).map(([x, y]) => [x, -y]),
       rotationDeg
     ),
   }));
 
-  const src = bboxOf(rotated.flatMap((r) => r.points));
+  // Fitted from the ORIGINAL outlines, never from the pending edits — see
+  // ringFor above. An edit that moved the fit would drag every other shape
+  // sideways as a side effect.
+  const src = bboxOf(
+    rows.flatMap((s) =>
+      rotatePointsDeg(outlineOf(s).map(([x, y]) => [x, -y]), rotationDeg))
+  );
   const srcW = src.maxX - src.minX;
   const srcH = src.maxY - src.minY;
   const dstW = Math.abs(bboxMm.x1 - bboxMm.x0);
@@ -206,4 +248,133 @@ export function createPulseTracker() {
       return false;
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Direct manipulation (Kent's requirements 4 and 4b: "I want the ability to
+// manually move the nodes or lines to manually edit the auto digitized
+// shape/feature (add nodes, move lines ...)").
+//
+// Pure, and in canvas-PIXEL space on the way in: hit radii are a property of
+// the pointing device, not of the design, so a node must stay equally easy to
+// grab at any zoom. The caller converts back to mm before writing an override.
+
+// Grab radii, canvas px. The node radius is deliberately larger than the dot
+// it selects — the same forgiveness the element-resize handles already use.
+export const NODE_GRAB_PX = 9;
+export const EDGE_GRAB_PX = 6;
+
+function distToSegment(px, py, ax, ay, bx, by) {
+  const vx = bx - ax;
+  const vy = by - ay;
+  const len2 = vx * vx + vy * vy;
+  // t is where the perpendicular from the point lands along the segment,
+  // clamped so a point past either END measures to that endpoint rather than
+  // to the infinite line — otherwise an edge would grab far outside itself.
+  const t = len2 <= 1e-12 ? 0 : Math.max(0, Math.min(1, ((px - ax) * vx + (py - ay) * vy) / len2));
+  const cx = ax + t * vx;
+  const cy = ay + t * vy;
+  return { dist: Math.hypot(px - cx, py - cy), t, x: cx, y: cy };
+}
+
+/**
+ * What is under the pointer, in one pass over the drawn outlines.
+ *
+ * @param outlinesPx [{ id, points: [[xPx, yPx], ...] }] — already projected
+ * @returns { shapeId, kind: "node" | "edge", index, atPx } or null
+ *
+ * Nodes beat edges everywhere, not just when strictly nearer: a node sits ON
+ * two edges, so a distance comparison would hand a dead-centre node hit to
+ * whichever edge happened to round smaller, and dragging a node is both the
+ * more common intent and the harder target.
+ */
+export function hitOverlay(outlinesPx, px, py) {
+  let bestEdge = null;
+  for (const o of outlinesPx) {
+    const pts = o.points;
+    for (let i = 0; i < pts.length; i++) {
+      const d = Math.hypot(px - pts[i][0], py - pts[i][1]);
+      if (d <= NODE_GRAB_PX) {
+        return { shapeId: o.id, kind: "node", index: i, atPx: [pts[i][0], pts[i][1]] };
+      }
+    }
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i];
+      const b = pts[(i + 1) % pts.length];
+      const s = distToSegment(px, py, a[0], a[1], b[0], b[1]);
+      if (s.dist <= EDGE_GRAB_PX && (!bestEdge || s.dist < bestEdge.dist)) {
+        bestEdge = { shapeId: o.id, kind: "edge", index: i, atPx: [s.x, s.y], dist: s.dist };
+      }
+    }
+  }
+  if (!bestEdge) return null;
+  const { dist, ...hit } = bestEdge;
+  return hit;
+}
+
+/** Move one vertex by a delta. Returns a new ring; never mutates. */
+export function moveNode(points, index, dx, dy) {
+  return points.map(([x, y], i) => (i === index ? [x + dx, y + dy] : [x, y]));
+}
+
+/**
+ * Move a whole EDGE by a delta — both of its endpoints together, so the
+ * segment translates instead of rotating about one end. This is requirement
+ * 4b, and it exists nowhere else in the codebase: the panel editor moves
+ * vertices only.
+ */
+export function moveEdge(points, index, dx, dy) {
+  const j = (index + 1) % points.length;
+  return points.map(([x, y], i) =>
+    i === index || i === j ? [x + dx, y + dy] : [x, y]
+  );
+}
+
+/**
+ * Insert a vertex on edge `index`, at `at` (a point already on or near that
+ * edge). Inserting AFTER `index` is what keeps the ring's winding intact —
+ * inserting before would reverse the two endpoints' order relative to the
+ * rest of the ring.
+ */
+export function insertNode(points, index, at) {
+  const out = points.map(([x, y]) => [x, y]);
+  out.splice(index + 1, 0, [at[0], at[1]]);
+  return out;
+}
+
+/**
+ * Field mm -> the service's own outline space (design-centre origin, y-down),
+ * which is what `boundary_override` must be written in.
+ *
+ * The inverse of `shapeOutlinesInFieldMm`'s fit. Rotation is inverted too, so
+ * a hand edit on a rotated element lands where the pointer was rather than
+ * spun by the element's own angle — the failure mode that would make editing
+ * a rotated design feel broken while looking fine on an unrotated one.
+ */
+export function fieldMmToOutlineMm(pointsFieldMm, shapes, bboxMm, rotationDeg = 0) {
+  const rows = (shapes || []).filter((s) => outlineOf(s));
+  if (!rows.length || !bboxMm) return null;
+  const rotated = rows.flatMap((s) =>
+    rotatePointsDeg(outlineOf(s).map(([x, y]) => [x, -y]), rotationDeg)
+  );
+  const src = bboxOf(rotated);
+  const srcW = src.maxX - src.minX;
+  const srcH = src.maxY - src.minY;
+  const dstW = Math.abs(bboxMm.x1 - bboxMm.x0);
+  const dstH = Math.abs(bboxMm.y1 - bboxMm.y0);
+  if (!(srcW > 1e-9) || !(srcH > 1e-9) || !(dstW > 1e-9) || !(dstH > 1e-9)) return null;
+
+  const scale = Math.min(dstW / srcW, dstH / srcH);
+  if (!(scale > 1e-12)) return null;
+  const srcCx = (src.minX + src.maxX) / 2;
+  const srcCy = (src.minY + src.maxY) / 2;
+  const dstCx = (bboxMm.x0 + bboxMm.x1) / 2;
+  const dstCy = (bboxMm.y0 + bboxMm.y1) / 2;
+
+  return pointsFieldMm.map(([x, y]) => {
+    const rx = srcCx + (x - dstCx) / scale;
+    const ry = srcCy + (y - dstCy) / scale;
+    const [ux, uy] = rotatePointsDeg([[rx, ry]], -rotationDeg)[0];
+    return [ux, -uy];   // back to y-down
+  });
 }
