@@ -11,7 +11,7 @@ export const ENGINE_FILES = [
   "fontbin.js",
   "svgpath.js", "svgimport.js",
   "dst.js", "dstimport.js", "exp.js", "pes.js", "svgexport.js", "stitchModel.js",
-  "fonts.js", "digitize.js", "render.js", "pdfsheet.js",
+  "digitize.js", "render.js", "pdfsheet.js",
 ];
 mkdirSync(outDir, { recursive: true });
 for (const f of ENGINE_FILES) {

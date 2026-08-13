@@ -82,10 +82,17 @@ jobs:
         run: |
           pip install flake8
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+      # `-n auto` (pytest-xdist): ~1,100 tests of real OpenCV/shapely work ran
+      # ~19 minutes serially here, on every push, which is long enough that a
+      # red digitizer job stops being noticed promptly. Verified parallel-safe
+      # by running the whole suite both ways and comparing the pass/fail set —
+      # identical, including the three deselects below. Nothing in the suite
+      # writes to a shared path (fixtures are read-only, every test that writes
+      # uses tmp_path), so worker isolation is real rather than assumed.
       - name: Digitizer tests
         working-directory: digitizer
         run: >
-          python -m pytest tests/ -q
+          python -m pytest tests/ -q -n auto
           --deselect "tests/test_flat_lane_byte_identical.py::test_flat_lane_is_byte_identical_to_the_pre_change_golden[logo_alpha.png]"
           --deselect "tests/test_pushcomp.py::test_flag_off_is_byte_identical_to_the_shipped_engine[logo_whitebg.png-towel]"
           --deselect "tests/test_stage2_photo_segment.py::test_flat_and_gradient_lanes_still_match_golden_after_photo_dispatch[logo_alpha.png]"

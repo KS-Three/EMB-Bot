@@ -15,5 +15,15 @@ export const ENGINE_KEYS = [
   "fontbin.js",
   "svgpath.js", "svgimport.js",
   "dst.js", "dstimport.js", "exp.js", "pes.js", "svgexport.js", "stitchModel.js",
-  "fonts.js", "digitize.js", "render.js", "pdfsheet.js",
+  // "fonts.js" is deliberately NOT here. It is 137 Google-Fonts CDN URLs
+  // whose loader needs a global `opentype` that the Studio never loads, so
+  // every one of its entry points throws if called — and nothing in app/src
+  // calls them (FONTS, loadFont, textToRegions, textToLetters, pathToPolygons:
+  // zero references). The Studio's lettering runs on local .embf files via
+  // lib/fontLoader.js instead. The FILE stays: five tools/ scripts still use
+  // it from Node, where `opentype` can be required. Removing it from this list
+  // is what makes "the Studio has no CDN runtime dependencies" true rather
+  // than nearly true. If outline-text ever returns to the browser, use fontkit
+  // (maintained) rather than opentype.js 1.3.4 (dormant since 2020).
+  "digitize.js", "render.js", "pdfsheet.js",
 ];

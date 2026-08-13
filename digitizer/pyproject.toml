@@ -46,7 +46,11 @@ service = [
     "uvicorn[standard]>=0.30",
     "python-multipart>=0.0.9",
 ]
-dev = ["pytest>=8", "httpx>=0.27"]
+# pytest-xdist: this suite is ~1,100 tests of real OpenCV/shapely work and ran
+# ~19 minutes serially in CI, on every push. It parallelises cleanly (verified
+# against a serial run: same pass/fail set), so `-n auto` is the default in CI
+# and worth using locally too.
+dev = ["pytest>=8", "pytest-xdist>=3.5", "httpx>=0.27"]
 
 [build-system]
 requires = ["setuptools>=68"]
