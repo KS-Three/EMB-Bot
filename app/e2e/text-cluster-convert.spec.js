@@ -126,7 +126,7 @@ test("text cluster: badge appears, convert to text, undo -- through the real ser
   await page.getByRole("button", { name: "Tote", exact: true }).click();
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
-  await page.getByRole("button", { name: "+ Auto-digitize" }).click();
+  await page.getByRole("button", { name: "Auto-digitize" }).click();
 
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
 

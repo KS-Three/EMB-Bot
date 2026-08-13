@@ -168,7 +168,7 @@ test("guided wizard: image content path -> review reflects it -> download", asyn
   await page.getByRole("button", { name: "Next", exact: true }).click();
 
   await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
-  await page.getByRole("button", { name: "+ Image", exact: true }).click();
+  await page.getByRole("button", { name: "Image", exact: true }).click();
 
   await page.locator(".uploadbox input[type=file]").setInputFiles(ART_PNG);
   // Real processed state, not just "the input accepted a file": the panel's
