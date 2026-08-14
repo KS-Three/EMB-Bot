@@ -8,9 +8,12 @@ Components (weights sum to 100):
                  colour-surface comparison so a word replaced by the slab it
                  sits on cannot hide inside a good IoU
   direction  20  mean angular agreement of dominant stitch direction over the
-                 shared solid area (2mm cells; 90deg off = 0, 0deg off = 1)
+                 shared solid area (2mm cells; 90deg off = 0, 0deg off = 1),
+                 CHANCE-CORRECTED so random angles score 0 rather than 0.5
   sttype     20  agreement of stitch TYPE (satin vs fill vs run) over the shared
-                 solid area, classified from geometry the same way on both sides
+                 solid area, classified from geometry the same way on both sides,
+                 CHANCE-CORRECTED against the two sides' own type mixes (this is
+                 Cohen's kappa: an all-fill guess on an all-fill design earns 0)
   density    15  thread mm per solid mm2, ours vs pro, scored min(r, 1/r)
   underlay   10  sequence-aware: a stitch is underlay iff the ground it lies on
                  is re-covered later by top stitching of the same element.
@@ -28,12 +31,20 @@ Every overlap metric runs AFTER registration: pro files keep their native hoop
 origin, ours is bbox-centred, so the two are compared only once a best-shift
 search has aligned them.
 
-KNOWN RESIDUAL, not fixed here: `direction` and `sttype` are bounded agreement
-measures whose floor is ~0.5, not 0 — random angles score 0.505 and a shuffled
-type map scores 0.553 across this corpus, so about 21 of their combined 40
-points are paid out for a wrong answer. `--explain` prints each design's chance
-floor and how much of the score was actually earned; correcting the scale itself
-would move every historical number and is a deliberate separate decision.
+SCALE CHANGE, 2026-08-14: `direction` and `sttype` are bounded agreement
+measures whose raw floor is ~0.5, not 0 — random angles score 0.505 and a
+shuffled type map scores 0.553 across this corpus, so about 21 of their combined
+40 points used to be paid out for a wrong answer. Both are now chance-corrected
+before weighting, (observed - chance) / (1 - chance), clamped at 0. Scores from
+before this commit are on the old scale and are NOT comparable; `score_raw` and
+`parts_raw` carry the old numbers forward so the two can be lined up.
+
+The floors are analytic, not sampled, so the score stays deterministic:
+  direction — a random angle mod pi puts the folded difference uniform on
+              [0, pi/2], so the expected raw score is exactly 0.5 for any design
+  sttype    — expected agreement under independence, sum_c p_pro(c)*p_ours(c),
+              which is design-specific: matching a 95%-fill design by calling
+              everything fill is worth ~0.9 raw and ~0 corrected
 
 Usage: scorecard.py [--explain] [--json] <design_dir> [...]   (dirs from prep_all.py)
 Emits score.json per dir and a summary table on stdout.
@@ -91,6 +102,14 @@ UNDERLAY_COVERED = 0.6  # share of a stitch's ground that must be re-covered
 
 WEIGHTS = {"coverage": 20, "direction": 20, "sttype": 20,
            "density": 15, "underlay": 10, "travel": 15}
+
+# Chance floor for `direction`. Folding a random angle mod pi leaves the
+# difference uniform on [0, pi/2], so E[1 - diff/(pi/2)] = 0.5 for every design
+# — no sampling needed, and no seed to make the score wobble.
+DIRECTION_CHANCE = 0.5
+# Above this the two type mixes agree so completely (e.g. both sides all fill)
+# that there is nothing left to discriminate and the correction is 0/0.
+CHANCE_DEGENERATE = 0.999
 
 _MANIFEST = {}
 
@@ -705,6 +724,34 @@ def thread_len(segs):
     return sum(d for (_, _, _, _, d, _, tr) in segs if not tr and d <= LONG_MM)
 
 
+def chance_correct(observed, chance):
+    """Rescale a bounded agreement measure so `chance` reads 0 and 1 stays 1.
+
+    Clamped at 0: doing WORSE than chance is not more informative than chance,
+    and a negative component would let one bad area claw points off another.
+    When chance is degenerate (nothing to discriminate) the raw value is passed
+    through — the alternative is 0/0, and a design whose types genuinely all
+    match should not be marked down for the task having been easy.
+    """
+    if chance >= CHANCE_DEGENERATE:
+        return observed
+    return max(0.0, (observed - chance) / (1.0 - chance))
+
+
+def type_chance(pro_types, our_types):
+    """Expected type agreement if the two maps were independent: the kappa
+    baseline, sum over classes of p_pro(c) * p_ours(c).
+
+    Design-specific on purpose. A design the pro sewed 95% as fill is matched
+    95% of the time by an engine that can only fill, and that number says
+    nothing about whether the engine knows what a satin is.
+    """
+    if pro_types.size == 0 or our_types.size == 0:
+        return 0.0
+    return float(sum(float((pro_types == c).mean()) * float((our_types == c).mean())
+                     for c in (0, 1, 2)))
+
+
 def score_design(dirpath, explain=False):
     d = Path(dirpath)
     slug = d.name
@@ -738,31 +785,35 @@ def score_design(dirpath, explain=False):
     both = np.zeros(pa.shape, bool)
     both[:h, :w] = shared[:h, :w]
     both &= ~np.isnan(pa) & ~np.isnan(oa)
-    chance = {}
+    # Both are chance-corrected before they are weighted — see the module
+    # docstring. `raw` keeps the uncorrected agreement so old scores can still
+    # be lined up against new ones.
+    chance, raw = {}, {}
     if both.any():
         diff = np.abs(pa[both] - oa[both])
         diff = np.minimum(diff, math.pi - diff)          # angles are mod pi
-        parts["direction"] = float(np.mean(1 - diff / (math.pi / 2)))
+        raw["direction"] = float(np.mean(1 - diff / (math.pi / 2)))
+        chance["direction"] = DIRECTION_CHANCE
+        parts["direction"] = chance_correct(raw["direction"], DIRECTION_CHANCE)
+
         tboth = both & (pt >= 0) & (ot >= 0)
-        parts["sttype"] = float(np.mean(pt[tboth] == ot[tboth])) if tboth.any() else 0.0
+        if tboth.any():
+            raw["sttype"] = float(np.mean(pt[tboth] == ot[tboth]))
+            chance["sttype"] = type_chance(pt[tboth], ot[tboth])
+            parts["sttype"] = chance_correct(raw["sttype"], chance["sttype"])
+        else:
+            raw["sttype"] = 0.0
+            chance["sttype"] = 0.0
+            parts["sttype"] = 0.0
         detail["shared_cells"] = int(both.sum())
-        if explain:
-            # What these two components pay out for getting it WRONG. Both are
-            # bounded-agreement measures, so guessing is worth about half marks
-            # and neither reports how much of its score was earned.
-            rng = np.random.default_rng(0)
-            ra = rng.uniform(-math.pi / 2, math.pi / 2, size=int(both.sum()))
-            rd = np.abs(pa[both] - ra)
-            rd = np.minimum(rd, math.pi - rd)
-            chance["direction"] = float(np.mean(1 - rd / (math.pi / 2)))
-            if tboth.any():
-                shuf = ot[tboth].copy()
-                rng.shuffle(shuf)
-                chance["sttype"] = float(np.mean(pt[tboth] == shuf))
+        detail["type_cells"] = int(tboth.sum())
     else:
-        parts["direction"] = 0.0
-        parts["sttype"] = 0.0
+        for k in ("direction", "sttype"):
+            raw[k] = chance[k] = parts[k] = 0.0
         detail["shared_cells"] = 0
+        detail["type_cells"] = 0
+    detail["chance_floor"] = {k: round(v, 3) for k, v in chance.items()}
+    detail["raw_agreement"] = {k: round(v, 3) for k, v in raw.items()}
 
     # 5. density over SOLID area -------------------------------------------
     px = RES * RES
@@ -807,8 +858,12 @@ def score_design(dirpath, explain=False):
     })
 
     total = sum(WEIGHTS[k] * parts[k] for k in WEIGHTS)
+    parts_raw = dict(parts, **raw)          # raw only differs for the two above
+    total_raw = sum(WEIGHTS[k] * parts_raw[k] for k in WEIGHTS)
     out = {"score": round(total, 1),
+           "score_raw": round(total_raw, 1),
            "parts": {k: round(v, 3) for k, v in parts.items()},
+           "parts_raw": {k: round(v, 3) for k, v in parts_raw.items()},
            "detail": detail}
     if explain:
         out["explain"] = {
@@ -817,14 +872,15 @@ def score_design(dirpath, explain=False):
             "lost": {k: round(WEIGHTS[k] * (1 - parts[k]), 2) for k in WEIGHTS},
             "registration": {"shift_mm": [round(dx, 2), round(dy, 2)],
                              "solid_iou_at_shift": round(reg_iou, 3)},
-            # NOT scored — a warning label. Direction and sttype are bounded
-            # agreement measures with a floor well above zero, so part of their
-            # 40 points is paid out for a wrong answer. `chance` is what this
-            # design scores from random angles / a shuffled type map.
+            # Now SCORED, not a warning label: `chance_floor` is the baseline
+            # each component was rescaled against, and `chance_points_removed`
+            # is what the old scale used to hand over for a wrong answer.
             "chance_floor": {k: round(v, 3) for k, v in chance.items()},
-            "earned_over_chance": {
-                k: round(WEIGHTS[k] * (parts[k] - v) / max(1 - v, 1e-6), 2)
-                for k, v in chance.items()},
+            "raw_agreement": {k: round(v, 3) for k, v in raw.items()},
+            "chance_points_removed": {
+                k: round(WEIGHTS[k] * (parts_raw[k] - parts[k]), 2)
+                for k in chance},
+            "score_raw_old_scale": round(total_raw, 1),
             "per_colour_recall": cov_detail["per_colour"],
             "params": {"raster_mm": RES, "thread_mm": THREAD_W,
                        "opacity_win_mm": OPACITY_WIN, "opacity_min": OPACITY_MIN,
@@ -839,18 +895,19 @@ def score_design(dirpath, explain=False):
 def print_explain(name, s):
     p, det = s["parts"], s["detail"]
     e = s.get("explain", {})
-    print(f"\n=== {name}  score {s['score']}/100 ===")
+    print(f"\n=== {name}  score {s['score']}/100 "
+          f"(old uncorrected scale: {s.get('score_raw', '-')}) ===")
     print(f"  registration shift {det['registration_mm']} mm   "
           f"trim data from {det['trim_source']['pro']} (pro) / "
           f"{det['trim_source']['ours']} (ours)")
-    ch = e.get("chance_floor", {})
-    earned = e.get("earned_over_chance", {})
+    ch = det.get("chance_floor", {})
+    rawa = det.get("raw_agreement", {})
     for k in WEIGHTS:
         line = (f"  {k:9s} {p[k]:.3f} x{WEIGHTS[k]:3d} = {e.get('points', {}).get(k, 0):5.2f}"
                 f"   (lost {e.get('lost', {}).get(k, 0):5.2f})")
         if k in ch:
-            line += (f"   [chance floor {ch[k]:.3f} -> only {earned[k]:5.2f} "
-                     f"of those points is earned]")
+            line += (f"   [raw {rawa.get(k, 0):.3f} - chance {ch[k]:.3f} "
+                     f"= {WEIGHTS[k] * (rawa.get(k, 0) - p[k]):5.2f} pts removed]")
         print(line)
     print(f"  coverage : solid IoU {det['solid_iou']} recall {det['recall']} "
           f"precision {det['precision']} colour-surface {det['colour_surface_agreement']} "
@@ -893,7 +950,7 @@ if __name__ == "__main__":
             p = s["parts"]
             print(f"{name:22s} {s['score']:5.1f}  cov={p['coverage']:.2f} dir={p['direction']:.2f} "
                   f"typ={p['sttype']:.2f} den={p['density']:.2f} und={p['underlay']:.2f} "
-                  f"trv={p['travel']:.2f}", flush=True)
+                  f"trv={p['travel']:.2f}  (old scale {s['score_raw']:5.1f})", flush=True)
             if explain:
                 print_explain(name, s)
         except Exception as e:
@@ -903,6 +960,8 @@ if __name__ == "__main__":
                 traceback.print_exc()
     if rows:
         avg = sum(r[1]["score"] for r in rows) / len(rows)
-        print(f"\ncorpus mean: {avg:.1f} / 100 (target 95)")
+        avg_raw = sum(r[1]["score_raw"] for r in rows) / len(rows)
+        print(f"\ncorpus mean: {avg:.1f} / 100 (target 95)"
+              f"   [old uncorrected scale: {avg_raw:.1f}]")
         if as_json:
             print(json.dumps({n: s for n, s in rows}, indent=1))

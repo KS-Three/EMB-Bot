@@ -321,3 +321,152 @@ def test_trim_inference_reads_an_isolated_long_move_as_a_jump():
 
     assert [s[6] for s in jump] == [False, False, True, False]
     assert not any(s[6] for s in walk), "a chain of long steps is sewn thread"
+
+
+# ------------------------------------------------------- 5. chance correction
+# `direction` and `sttype` are bounded agreement measures: both used to pay out
+# ~0.5 for a wrong answer, so ~21 of their combined 40 points were free. They
+# are now rescaled so chance reads 0. These tests pin the floor, and pin that a
+# real answer still scores.
+def test_random_directions_score_nothing_after_correction():
+    """The floor this fixes: two unrelated designs agreed 'half' on direction.
+    The analytic floor must match what random angles actually do."""
+    rng = np.random.default_rng(0)
+    pro = rng.uniform(-math.pi / 2, math.pi / 2, size=20000)
+    ours = rng.uniform(-math.pi / 2, math.pi / 2, size=20000)
+    diff = np.abs(pro - ours)
+    diff = np.minimum(diff, math.pi - diff)
+
+    observed = float(np.mean(1 - diff / (math.pi / 2)))
+
+    assert observed == pytest.approx(sc.DIRECTION_CHANCE, abs=0.01), (
+        "the analytic floor has to be what random angles really score")
+    assert sc.chance_correct(observed, sc.DIRECTION_CHANCE) < 0.02
+
+
+def test_matching_directions_still_score_full_marks():
+    """Correction rescales the floor, it must not move the ceiling."""
+    assert sc.chance_correct(1.0, sc.DIRECTION_CHANCE) == pytest.approx(1.0)
+
+
+def test_doing_worse_than_chance_clamps_to_zero():
+    """A perpendicular answer is wrong, not worth negative points that could
+    claw marks off another component."""
+    assert sc.chance_correct(0.0, sc.DIRECTION_CHANCE) == 0.0
+    assert sc.chance_correct(0.2, sc.DIRECTION_CHANCE) == 0.0
+
+
+def test_calling_everything_fill_on_a_fill_heavy_design_earns_nothing():
+    """The measurement this unblocks. A design the pro sewed 95% as fill is
+    matched 95% of the time by an engine that only knows how to fill, and the
+    old scale paid 19 of 20 points for it. Corrected, that is worth ~0 — so
+    fill-vs-satin routing work has something honest to move."""
+    pro = np.array([2] * 95 + [1] * 5)      # 0=run 1=satin 2=fill
+    ours = np.full(100, 2)                  # everything is a fill
+
+    observed = float(np.mean(pro == ours))
+    chance = sc.type_chance(pro, ours)
+
+    assert observed == pytest.approx(0.95)
+    assert chance == pytest.approx(0.95), (
+        "an all-fill guess agrees exactly as often as chance predicts")
+    assert sc.chance_correct(observed, chance) == 0.0
+
+
+def test_getting_the_satin_fill_split_right_still_scores():
+    """The other half of the contract: an engine that actually routes the
+    satins as satins must be paid for it."""
+    pro = np.array([2] * 60 + [1] * 40)
+    right = pro.copy()
+    wrong = np.full(100, 2)
+
+    assert sc.chance_correct(float(np.mean(pro == right)),
+                             sc.type_chance(pro, right)) == pytest.approx(1.0)
+    assert sc.chance_correct(float(np.mean(pro == wrong)),
+                             sc.type_chance(pro, wrong)) == 0.0
+
+
+def test_a_partly_right_split_lands_between_the_two():
+    """Half the satins found is real progress and has to read as such."""
+    pro = np.array([2] * 60 + [1] * 40)
+    half = np.array([2] * 60 + [1] * 20 + [2] * 20)
+
+    score = sc.chance_correct(float(np.mean(pro == half)), sc.type_chance(pro, half))
+
+    assert 0.2 < score < 0.9
+
+
+def test_degenerate_agreement_passes_through_instead_of_dividing_by_zero():
+    """Both sides all fill: chance agreement is 1.0 and the correction is 0/0.
+    A design whose types genuinely all match must not be marked down for the
+    task having been easy."""
+    allfill = np.full(50, 2)
+
+    chance = sc.type_chance(allfill, allfill)
+
+    assert chance == pytest.approx(1.0)
+    assert sc.chance_correct(1.0, chance) == pytest.approx(1.0)
+
+
+def _write_csv(path, pts, block=0):
+    path.write_text("block,x_mm,y_mm\n"
+                    + "".join(f"{block},{x},{y}\n" for x, y in pts))
+
+
+def _fill_points(x0, y0, w, h, spacing, stitch=3.5):
+    pts, y, flip = [], y0, False
+    n = max(2, int(w / stitch) + 1)
+    while y <= y0 + h + 1e-9:
+        a, b = (x0 + w, x0) if flip else (x0, x0 + w)
+        pts += [(a + (b - a) * i / (n - 1), y) for i in range(n)]
+        flip = not flip
+        y += spacing
+    return pts
+
+
+def test_score_design_reports_both_scales(tmp_path):
+    """Wiring check: the corrected score is what `score` means now, the old
+    number survives as `score_raw`, and identical designs still score at the
+    top of both scales."""
+    pts = _fill_points(0, 0, 20, 12, 0.4)
+    _write_csv(tmp_path / "pro_stitches.csv", pts)
+    _write_csv(tmp_path / "ours_stitches.csv", pts)
+
+    s = sc.score_design(tmp_path)
+
+    assert s["parts"]["direction"] == pytest.approx(1.0, abs=0.05)
+    assert s["parts_raw"]["direction"] == pytest.approx(1.0, abs=0.05)
+    assert s["detail"]["chance_floor"]["direction"] == pytest.approx(0.5)
+    assert s["score"] > 90 and s["score_raw"] > 90
+
+
+def test_a_forty_five_degree_fill_stops_collecting_half_the_direction_points(tmp_path):
+    """Where the correction actually bites. A fill sewn 45 deg off the pro's
+    angle is the chance case exactly — the old scale paid it 10 of the 20
+    direction points for being wrong, and the corrected scale pays none."""
+    base = _fill_points(0, 0, 16, 16, 0.4)
+    a, cx, cy = math.radians(45), 8.0, 8.0
+    rot = [(cx + (x - cx) * math.cos(a) - (y - cy) * math.sin(a),
+            cy + (x - cx) * math.sin(a) + (y - cy) * math.cos(a)) for x, y in base]
+    _write_csv(tmp_path / "pro_stitches.csv", base)
+    _write_csv(tmp_path / "ours_stitches.csv", rot)
+
+    s = sc.score_design(tmp_path)
+
+    assert s["parts_raw"]["direction"] == pytest.approx(0.5, abs=0.05)
+    assert s["parts"]["direction"] == 0.0
+    assert s["score_raw"] - s["score"] == pytest.approx(10.0, abs=1.0)
+
+
+def test_a_perpendicular_fill_was_already_scoring_zero(tmp_path):
+    """The other end, and the reason the 45 deg case is the one that matters:
+    an exact 90 deg miss is 0.0 raw, so the correction has nothing to take and
+    must not push it negative."""
+    _write_csv(tmp_path / "pro_stitches.csv", _fill_points(0, 0, 20, 12, 0.4))
+    _write_csv(tmp_path / "ours_stitches.csv",
+               [(y, x) for x, y in _fill_points(0, 0, 12, 20, 0.4)])
+
+    s = sc.score_design(tmp_path)
+
+    assert s["parts_raw"]["direction"] == pytest.approx(0.0, abs=0.05)
+    assert s["parts"]["direction"] == 0.0
