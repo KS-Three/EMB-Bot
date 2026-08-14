@@ -1,6 +1,6 @@
 # EMB-Bot — read this first
 
-Read `COOKBOOK.md` before touching code — it's the handoff doc (architecture, running things, working conventions). Read `PRODUCT.md` before making a scope call — it's the launch-scope decisions and non-goals, previously only in Kent's memory. Read `MASTER_SCOPE.md` for current status — what's implemented, what's not, and how much to trust each capability area; it's a live dashboard, kept current after PR-sized work, not a one-time requirements doc. Full narrative history/decisions live in Kent's Claude memory (`emb-bot-digitizer`, `dst-codec-axis-discrepancy`), not this repo.
+Read `COOKBOOK.md` before touching code — it's the handoff doc (architecture, running things, working conventions). Read `PRODUCT.md` before making a scope call — it's the launch-scope decisions and non-goals, previously only in Kent's memory. Read `MASTER_SCOPE.md` for current status — what's implemented, what's not, and how much to trust each capability area; it's a live dashboard, kept current after PR-sized work, not a one-time requirements doc. **It is current state ONLY, under an 800-line budget** — dated snapshots live in `docs/scope-history.md` (append-only, never quote a number from it as live status) and per-area detail in `docs/scope/`. Claims in MASTER_SCOPE carry a `(verb date — source)` pointer; one without a pointer is unverified. Full narrative history/decisions live in Kent's Claude memory (`emb-bot-digitizer`, `dst-codec-axis-discrepancy`), not this repo.
 
 ## Things that will silently go wrong if you skip them
 
