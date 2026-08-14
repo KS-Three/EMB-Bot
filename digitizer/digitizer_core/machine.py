@@ -59,6 +59,39 @@ FILL_STAGGERS = 4
 # such shapes there, and only what satin also cannot take gets warned.
 MIN_FILL_WIDTH_MM = 1.2
 
+# --- Density-targeted fill (two-pass "cross + top") ------------------------
+# Corpus measurement (2026-08-14, pro-parity task A2, tools/pro_parity):
+# professional SOLID fill elements (machine_hat/lc, hotel_fremont's cap-logo
+# panels) sew an effective ~0.18-0.21 mm row pitch -- roughly double
+# FILL_ROW_MM's single 0.40 mm pass, not a fresh ultra-tight single pass at
+# that spacing (real risk of fabric distortion/pucker sewing every row that
+# close together in one direction -- the same Euler-column mechanism
+# COVERAGE_CELL_MM's own comment cites for pucker). Standard professional
+# practice for that density is two overlapping passes, not one ultra-tight
+# pass: a "cross" pass and a "top" pass. `stage6_fill._crosshatch_fill_paths`
+# already builds exactly this shape (two `_fill_paths` calls, angle and
+# angle+90, concatenated) for the opt-in textured "crosshatch" look -- that
+# technique widens each pass by CROSSHATCH_ROW_SCALE_FACTOR specifically so
+# the COMBINED density of both passes stays near ONE ordinary pass. This is
+# the identical two-pass mechanism aimed the other way: both passes run at
+# the shape's own (fabric-scaled) row_mm, unwidened, so the two together
+# land the combined density at 2x a single pass -- row_mm/2, which at the
+# shipped 0.40 mm FILL_ROW_MM is 0.20 mm, dead center of the measured
+# 0.18-0.21 mm corpus band.
+#
+# Only a genuinely SOLID element gets the second pass. Doubling the density
+# of a thin strip is exactly the distortion risk the two-pass technique
+# exists to spend on a wide field instead of a fresh tighter single pass --
+# a narrow column does not gain the coverage a wide one does from a second
+# full pass, it only doubles the pucker risk for no corpus-measured benefit
+# (the corpus finding is specific to "solid elements": machine_hat/lc,
+# hotel_fremont's cap panels, not thin lettering fills or open lattice
+# work). A shape counts as solid when it still holds real body after being
+# eroded half this width -- a thread-wide strip or a fine lattice arm does
+# not survive that erosion and stays single-pass; a cap-logo panel easily
+# does. See `stage6_fill.is_solid_fill`.
+FILL_DENSITY_BOOST_MIN_WIDTH_MM = 3.0
+
 # --- Cross-hatch fill (two angled tatami passes) ----------------------------
 # The whole technique is two ordinary `_fill_paths` calls at angle and
 # angle+90, concatenated — the exact trick `_underlay_paths`'s
