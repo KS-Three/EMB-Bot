@@ -30,6 +30,38 @@ untouched; `stitch_count` for `logo_whitebg.png` and every byte of its
 DST export are unchanged (verified separately in
 `tests/test_stages.py`/`tests/test_pushcomp.py`) — only the NEW region's
 own bookkeeping entries moved.
+
+**Second exception, SANCTIONED BUT NOT YET TAKEN (2026-08-14):** the
+`photo/enthusiast_logo.png` entry is stale as of PR #146 (the pro-parity satin
+work: junction entry walk + corner-fork removal —
+`docs/pro-parity-program-2026-08-14.md`). That work exists to change where
+satin columns start and end, so it moves letterform stitches by construction,
+which is exactly what this test is for. **This test and its
+`test_stage2_photo_segment` twin are therefore expected red on CI until the key
+is re-captured — that is the only red they explain.**
+
+The re-capture was earned before being authorised: on this fixture the new
+output has LESS bare fabric (18.32 -> 17.22 mm², 4.75% -> 4.46% of shape area)
+from FEWER stitches (2363 -> 2350), one fewer exposed travel run (2 -> 1) and
+three more underlay runs (35 -> 38), with the rendered letterforms equally
+legible and the remaining holes the same pre-existing ones in the badge. The
+delta is 13 stitches plus ONE of 31 region areas moving 0.0576 mm² (0.3784 ->
+0.3208, a sub-detail speck); `shape_ids` and `warnings` do not move.
+
+It is NOT yet taken because **it cannot be taken on any machine.** The remote
+dev container drifts from this file's pinned values on this specific fixture —
+20 of 2363 coords, up to 0.16 mm, in the photo lane's segmentation, unchanged
+by pinning numpy to the exact requirements version. Capturing there would write
+that drift into the golden and turn CI red for everyone. Note the trap: the
+flat-lane fixtures `ribbon_curve.png` and `logo_whitebg.png` reproduce
+byte-for-byte in that same container, so they look like valid controls and are
+not — they do not exercise the photo lane.
+
+Use `tools/recapture_flat_lane_key.py` with `--pre-change-tree` pointed at a
+checkout from before PR #146. It re-captures this one key only, and refuses to
+write unless that machine first reproduces THIS key byte-for-byte on the old
+engine — which is the proof that what moves afterwards is the engine and not
+the machine.
 """
 
 from __future__ import annotations
