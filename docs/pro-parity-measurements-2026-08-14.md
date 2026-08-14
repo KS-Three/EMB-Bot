@@ -51,13 +51,18 @@ first stitch with a cross rather than a short underlay run, which is what this
 sub-score counts. It is a metric artifact more than a defect — but it is also
 not evidence of improvement.
 
-## 2. Bare fabric, all 23 designs — THE DECIDING NUMBER
+## 2. Bare fabric, all 23 designs
 
 The scorecard does not measure bare fabric. Coverage is a whole-design IoU, so
 a 5 mm² hole inside a covered letter barely moves it. Bare fabric is measured
 separately, with the same instrument (`bare.py`) that originally caught the
 `hotel_fremont_patch` regression: region area not within 0.2 mm of an emitted
 stitch, rasterised at 10 px/mm.
+
+> **READ §2b BEFORE ACTING ON THIS TABLE.** The +6.1% below compares two
+> commits that were both UNLANDED. Measured against what `main` actually had,
+> the same work is −8.0%. The recommendation this table originally carried was
+> wrong, and §2b is the correction.
 
 ```
 design                    bare base  bare new    delta | maxhole b maxhole n   delta
@@ -91,14 +96,66 @@ max-hole GREW >0.5mm2 on 5: becker_lc_large 19.4->21.3, becker_hat_large 17.4->2
 max-hole SHRANK >0.5mm2 on 1: hotel_fremont_patch 5.8->1.7
 ```
 
-**Bare fabric rises 6.1% across the corpus.** `mfab_lc` is not an outlier —
-it is a pattern. `machine_beanie` +30.6 mm², `gaulke_plowing_lc` +22.2 mm²
-with its largest hole growing 4.2 -> 13.7 mm². Ten designs get worse by more
-than 0.5 mm²; eight improve.
+**Against `3a1f673`, bare fabric rises 6.1%.** `machine_beanie` +30.6 mm²,
+`gaulke_plowing_lc` +22.2 mm² with its largest hole growing 4.2 -> 13.7 mm².
+Ten designs get worse by more than 0.5 mm²; eight improve.
 
-This is why the merge is NOT recommended for landing, despite the judge's
-scorecard-based recommendation. The judge measured the scorecard and its own
-fan metric, both of which lane B improves. Neither instrument sees bare fabric.
+That number is real, and it is the right comparison for the narrow question
+"does lane B improve on the entry walk?" — the answer is no. It is the WRONG
+comparison for "should this ship", and it was originally used to answer the
+second question. See §2b.
+
+## 2b. The same work measured against `main` — THE DECIDING NUMBER
+
+**Correction.** §2 compares `3a1f673` -> `070a113`. Neither was ever on `main`.
+`main` carried NONE of the four engine commits, so the decision-relevant
+baseline is `ce516ab` (`main`'s engine before the stack landed), not an
+intermediate step inside it. Measured that way, across all 23 designs:
+
+```
+design                   score pre score now      d | bare pre bare now       d
+becker_hat_large              65.6      69.7   +4.1 |    102.7     87.6   -15.1
+becker_lc_large               70.7      72.8   +2.1 |     80.0     65.5   -14.5
+gaulke_roofing_lc             78.2      79.8   +1.6 |     73.6     60.6   -13.0
+proseal_hat                   74.6      77.6   +3.0 |     30.8     18.4   -12.4
+gaulke_roofing_hat            70.7      73.5   +2.8 |     67.5     55.8   -11.7
+gaulke_jb                     64.4      65.0   +0.6 |     95.7     84.6   -11.1
+toat_beanie                   72.6      69.8   -2.8 |     47.3     37.7    -9.6
+mfab_lc                       70.1      72.5   +2.4 |     31.1     22.8    -8.3
+precision_drone               62.4      62.3   -0.1 |     46.2     38.0    -8.2
+mfab_hat                      74.1      76.3   +2.2 |     29.5     21.3    -8.2
+becker_hat_small              65.1      68.1   +3.0 |     81.2     77.6    -3.6
+golf_hat                      69.3      70.6   +1.3 |     25.9     22.4    -3.5
+becker_chest_small            68.1      71.5   +3.4 |     88.1     84.9    -3.2
+becker_beanie                 70.8      70.6   -0.2 |     58.4     55.9    -2.5
+hotel_fremont_patch           57.7      57.2   -0.5 |     20.9     18.8    -2.1
+hotel_fremont_hat             60.6      68.2   +7.6 |      5.6      3.6    -2.0
+proseal_beanie                71.5      71.4   -0.1 |     18.6     17.6    -1.0
+machine_hat                   79.3      80.2   +0.9 |      3.9      3.3    -0.6
+machine_lc                    79.4      80.1   +0.7 |      3.7      3.2    -0.5
+gaulke_plowing_hat            70.6      70.6   +0.0 |     57.5     60.2    +2.7
+tires_hat_3d                  52.6      53.7   +1.1 |     36.4     40.5    +4.1
+machine_beanie                74.8      73.3   -1.5 |     66.0     77.4   +11.4
+gaulke_plowing_lc             72.3      71.7   -0.6 |     28.6     53.1   +24.5
+
+MEAN / TOTAL                 69.37     70.72  +1.35 |   1099.2   1010.8   -88.4  (-8.0%)
+```
+
+**Score +1.35 (better on 15, worse on 7). Bare fabric -8.0%, down 88 mm²
+(better on 18, worse on 4).** The stack is a clear net improvement on both
+metrics over what `main` actually had. `becker_hat_large` alone sheds 15.1 mm²
+of bare fabric and gains 4.1 points.
+
+Two designs genuinely regress and are the honest follow-up work:
+`gaulke_plowing_lc` (28.6 -> 53.1 mm², largest hole 4.2 -> 13.7) and
+`machine_beanie` (66.0 -> 77.4 mm²).
+
+**The methodology lesson is the durable part, and it is the opposite of the one
+§2 originally taught.** A measurement is only as good as its baseline. Comparing
+against an intermediate commit inside your own unlanded stack answers a question
+nobody asked, and reads as authoritative because the instrument and the corpus
+are identical. Always re-baseline against the branch you are actually proposing
+to change.
 
 ## 3. The regression this work set out to fix — CONFIRMED FIXED
 
@@ -146,16 +203,42 @@ therefore comes from lane B's cap/weld changes, not its headline mechanism.
 Anyone retuning `_FORK_NODE_MULT` to chase the larger hole is tuning the
 wrong constant.
 
-## 6. Test status — INCOMPLETE
+## 6. Test status — RESOLVED (updated after the merge)
 
 - Targeted: `tests/test_satin.py` + `tests/test_textcluster.py` **71 passed**,
   including all four pinned over-correction fixtures.
-- Full suite: **not completed.** The run was stopped part-way. Baseline is 7
-  pre-existing failures (5 tesseract-dependent, 2 `enthusiast_logo` platform
-  goldens). Lane B reported exactly one new failure,
-  `test_chaining_cuts_the_benchmark_fixtures_trim_rate` (4.55 trims/1k against
-  a 4.1 ceiling), which the judge independently confirmed. **The merged form's
-  full-suite status is unverified.**
+- Full suite, run locally on BOTH engines with CI's exact deselects (`-q -n auto`):
+  pre-stack `ce516ab` **7 failed / 1097 passed**, merged engine **7 failed /
+  1132 passed** — the two failure sets are **identical**. Zero new failures, and
+  `test_chaining_cuts_the_benchmark_fixtures_trim_rate` — the one new failure
+  lane B reported on its own — **passes** in the merged form. Composing lane B
+  with the junction-entry walk removed it.
+- CI, however, reports **2 failed / 1137 passed** on `main` at `e725611`, where
+  the pre-merge commit `ee2a9db` was fully green. The difference is
+  environmental, not a contradiction: CI installs Tesseract, so the 5
+  OCR-dependent tests that fail locally pass there, and the 2
+  `photo/enthusiast_logo.png` goldens that fail locally for platform reasons
+  pass there too — which means they are the only tests that CAN newly break on
+  CI, and they are exactly the 2 that did.
+
+**Confirmed cause, measured directly rather than inferred:** the flat-lane
+snapshot for `photo/enthusiast_logo.png` changes across the two engines —
+stitch count 2363 → 2350, coordinates not identical — while `ribbon_curve.png`
+and `logo_whitebg.png` stay **byte-identical**. So the engine moved stitches on
+exactly one photo-lane fixture, and the two goldens pinning that fixture's
+coordinates went red:
+
+- `test_flat_lane_byte_identical[photo/enthusiast_logo.png]`
+- `test_stage2_photo_segment[photo/enthusiast_logo.png]`
+
+**This is a golden re-capture decision, not a bug.** Those goldens exist to
+catch *unintended* stitch movement; this movement is the intended effect of the
+satin work. `test_flat_lane_byte_identical`'s own docstring says "if this test
+goes red, the change under review is wrong", and lane B's report anticipated
+this exactly: *"Any real fix to this defect moves letterform stitches... A more
+aggressive lane will need a deliberate golden re-capture, which the repo treats
+as Kent's call."* Re-capturing the two goldens is Kent's call, and until it
+happens `main`'s CI stays red.
 
 ## 7. Reproducing any of this
 
