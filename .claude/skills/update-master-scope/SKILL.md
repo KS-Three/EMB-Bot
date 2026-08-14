@@ -43,6 +43,11 @@ plans each time. Read it in full before touching it.
    so, and keep it as the single source for that issue rather than
    duplicating detail back into the area row.
 5. Update the "At a glance" table to match.
+5b. Re-check the **"Waiting on Kent"** section (right after At a glance).
+   It is the decision queue — everything blocked on Kent rather than on
+   effort. Add an item when work stops for a call only he can make; REMOVE
+   one the moment he makes that call, and record the ruling in the area it
+   belongs to. A queue that only grows is a queue nobody reads.
 6. Update the "Last updated" line at the top.
 7. If Kent previously overrode a score, don't silently revert it back to my
    own proposal on the next pass — carry his correction forward unless the

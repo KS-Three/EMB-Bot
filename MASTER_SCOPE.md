@@ -2042,6 +2042,71 @@ cause was corrected to `stage1_prep.py`, still unresolved at that time.
 
 ---
 
+## Waiting on Kent
+
+The decision queue. Everything here is BLOCKED on a call only Kent can make —
+not on engineering effort. Each line says what is needed and where the
+evidence lives; the detail stays in its own section rather than being
+duplicated here, so this list can go stale about WHAT IS OPEN but never about
+the facts.
+
+**The two Kent asked to have written down (2026-08-14):**
+
+1. **Fund the stage 0-4 cache?** A boundary edit currently costs a full
+   stage 0-7 re-run — no cache helps, because `jobs.content_key` folds
+   `shape_overrides` into the config, so every geometry edit is a guaranteed
+   miss. Caching stages 0-4 and re-running only `plan_stitches` would take
+   **logo art from ~7.3s to ~1.4s**, but a **photo only from ~14s to ~6.6s**
+   (nearly half a photo's cost is stitch planning, which a boundary edit
+   invalidates by definition). Worth building for logo work; not a route to
+   "instant" on photos. Measured table + the caveat about the numbers being
+   taken under load: **area 5**, under Kent's direct-manipulation request.
+   Not started.
+
+2. **`becker logo.png` + its professionally digitized DST/PES.** Kent rated
+   EMB-Bot's auto-digitized version well below the pro file. Measured
+   2026-08-13: forcing the flat lane on textured logo art makes it WORSE
+   (k-means shatters texture — `summit_badge` 8,263 -> 9,579 stitches), so
+   closing the gap needs an edge-preserving flatten BEFORE region forming,
+   plus a side-by-side against the pro file to know what "good" looks like.
+   **Blocked on Kent supplying both files.** Detail: the "Last updated"
+   entry above and **area 1**.
+
+**Also open, same category — listed so this queue is not a half-truth:**
+
+3. **Schedule a physical sew-out.** Four hoopings specified in
+   `docs/hardening-closeout-2026-08-02.md` would settle nine geometric
+   questions at once (DST axis, fabric presets, Law 19, PES/EXP on real
+   hardware). Kent asked (2026-08-13) that this stop being surfaced as the
+   headline item every session; it stays here because several confidence
+   scores below genuinely cannot move without it. See "No physical sew-out
+   testing has occurred yet".
+4. **The DST codec fix** — gated on the sew-out above, and Kent's call
+   regardless: re-orienting the table changes every DST EMB-Bot has ever
+   written. See "DST codec axis bug".
+5. **Turn `split_tonal_regions` on?** Merged but default-OFF. Costs +74%
+   stitches and pushes the palette to its `max_colors + PALETTE_OVERFLOW_K`
+   ceiling. **Kent parked this until the sew-out** (2026-08-12). See the
+   blend-tier entry.
+6. **Billing / backend.** Tabled since the pivot; Stripe + an entitlement
+   check is the leaning, nothing committed. Needs its own session. See
+   `PRODUCT.md`, "Open — not yet decided".
+7. **Starter design pack (launch item 3).** The last unstarted item on the
+   launch checklist, and it cannot start without a sourcing decision — the
+   non-goals rule out a user-upload gallery on copyright grounds. See
+   `PRODUCT.md`.
+8. **The `scratch_corpus/` 37 files.** Gitignored and empty in every
+   checkout; no session has ever had them. Blocks the DT-first classifier's
+   M2/M3. See the evaluation-corpus entry.
+9. **Font lawyer consult — optional.** Only gates RESTORING the 13 pulled
+   ShareAlike fonts; the brief is written and ready to send. Nothing waits
+   on it. See the font-licence entry.
+
+Items 3-9 predate 2026-08-14 and are unchanged; they are repeated here only
+so a reader does not mistake items 1-2 for the whole queue.
+
+---
+
 ## Cross-cutting issues
 
 Things that don't respect one capability area's boundary. Referenced from the
