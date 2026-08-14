@@ -227,10 +227,18 @@ PR #122 (`.eladd-row` wrap). Open: PR #123 (Studio `detail_layer` control).
      r² test — which is exactly why it produced visibly different output in
      the tier comparison. A 3-5 shade decomposition of a photo region is
      already achievable in this codebase.
-  3. **`_speckle_ratio` looks scale-broken** — compared against a 0.35 max,
-     it returned 39.93, 49.45, 78.72 on real regions. A "ratio" reading 78
-     against a 0.35 ceiling means that gate rejects essentially everything it
-     is asked about. Confirm before trusting it; it may be dead weight today.
+  3. ~~**`_speckle_ratio` looks scale-broken**~~ — **WITHDRAWN 2026-08-14,
+     it is not broken.** The original note (0.35 max vs values of 39.93,
+     49.45, 78.72 on real regions) was hedged "confirm before trusting it"
+     and then hardened into a suspected defect as it was copied forward.
+     Checked: `stage6_blend.py:295-299` computes an **unnormalised
+     Laplacian-gain ratio**, so its scale is not comparable to a 0-1 ratio by
+     inspection, and it discriminates correctly at the shipped threshold.
+     Kept struck through rather than deleted because this is the SECOND
+     suspicion in this document to evaporate on measurement (the streamline
+     row-pitch one was the first) — the pattern is a hedged observation
+     losing its hedge as it is re-copied, and it is worth being able to see
+     that pattern rather than tidying the evidence away.
   **Direction — KENT RULED "option A", 2026-08-12. START A FRESH SESSION
   HERE.** Scoped but deliberately not started; the scoping below is the
   handoff.
