@@ -173,9 +173,22 @@ def rail_overhang(art: Polygon, pts) -> float:
 # fabric") and the reason the first attempt at these two laws was reverted
 # rather than landed piecemeal -- see MASTER_SCOPE.md's cross-cutting/area-1
 # history for that reverted attempt and this landing.
+#
+# RE-BASELINED 2026-08-14 for task A2 (pro-parity density work): satin now
+# gets the fabric preset's own `density_adjust`, the same multiplier fill's
+# row_mm has always had (stage7_sequence.py's `satin_spacing_mm`) -- closing
+# the one place the Python engine's satin ignored a fabric it was already
+# scaling fill for, and matching the browser engine's digitize.js, which has
+# applied densityAdjust to its own satin spacing all along. ONLY the towel
+# entry moves: terry_towel is the one fabric of these two fixtures' garments
+# whose density_adjust (0.85) is not 1.0 -- left_chest (pique_knit) and
+# hat_front (structured_cap) are both 1.0, so their satin spacing is
+# unchanged and neither golden here nor ribbon_curve's two entries move.
+# Tighter spacing (0.4 -> 0.34 mm) on logo_whitebg's satin element adds
+# stitches: 3234 -> 3258.
 GOLDEN_FLAG_OFF = {
     ("logo_whitebg.png", "left_chest"): ("e0b3e7ec366c14ca4685", 2165, 7070),
-    ("logo_whitebg.png", "towel"): ("edf1f92bf38dbeee1905", 3234, 10277),
+    ("logo_whitebg.png", "towel"): ("98c918e7c1576e46f623", 3258, 10349),
     ("ribbon_curve.png", "left_chest"): ("1c3f5ad1d0de847c149a", 1001, 3527),
     ("ribbon_curve.png", "hat_front"): ("d982b1c0fe21b0ed1b5f", 1005, 3539),
 }

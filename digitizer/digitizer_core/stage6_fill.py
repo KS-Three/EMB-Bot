@@ -623,6 +623,42 @@ def _crosshatch_fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitc
     return first_pass + second_pass
 
 
+def is_solid_fill(poly: Polygon) -> bool:
+    """Whether `poly` has a real solid body wide enough for the density
+    boost's second pass (`machine.FILL_DENSITY_BOOST_MIN_WIDTH_MM`), rather
+    than being a thin strip or a fine lattice arm that would only gain
+    pucker risk from a second full-density pass, not coverage.
+
+    Same erosion test `stitch_shape`'s own `too_thin` report already runs
+    (`poly.buffer(-half_width).is_empty`), at the density boost's own,
+    wider threshold — MIN_FILL_WIDTH_MM asks "can this hold a fill row at
+    all", this asks the harder "is this a field, not a stroke".
+    """
+    return not poly.buffer(-machine.FILL_DENSITY_BOOST_MIN_WIDTH_MM / 2.0).is_empty
+
+
+def _density_fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_mm: float,
+                        staggers: int, start_near: tuple[float, float] | None = None,
+                        ) -> list[list[tuple[float, float]]]:
+    """The density-targeted default for a SOLID fill shape: two overlapping
+    tatami passes at the shape's own `row_mm` (unwidened) -- the "cross pass
+    + top pass" professional solid elements measure
+    (`machine.FILL_DENSITY_BOOST_MIN_WIDTH_MM`'s own comment).
+
+    Structurally identical to `_crosshatch_fill_paths` (angle, then
+    angle+90, concatenated, second pass entering from the first pass's own
+    exit point) MINUS that technique's `CROSSHATCH_ROW_SCALE_FACTOR`
+    widening: crosshatch widens each pass so the combined density stays near
+    ONE ordinary pass (an opt-in texture, not a density change); here two
+    full-density passes landing at roughly double density *is* the point,
+    so nothing widens.
+    """
+    first_pass = _fill_paths(poly, angle_deg, row_mm, stitch_mm, staggers, start_near)
+    entry = first_pass[-1][-1] if first_pass else start_near
+    second_pass = _fill_paths(poly, angle_deg + 90.0, row_mm, stitch_mm, staggers, entry)
+    return first_pass + second_pass
+
+
 def _underlay_paths(poly: Polygon, style: str, angle_deg: float,
                     start_near: tuple[float, float] | None = None
                     ) -> list[list[tuple[float, float]]]:
@@ -700,6 +736,7 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                  trim_at_mm: float,
                  start_near: tuple[float, float] | None = None,
                  technique: str = "tatami",
+                 density_boost: bool = False,
                  ) -> tuple[list[StitchRun], dict]:
     """One shape -> its runs, in sew order (underlay first), plus a small report.
 
@@ -708,15 +745,28 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     points is nearest it.
 
     `technique` picks the visible FILL pass only — underlay is unaffected
-    either way. "tatami" (the default, and every existing caller) keeps
-    today's single `_fill_paths` call, byte-identical. "crosshatch" swaps it
-    for `_crosshatch_fill_paths`: two angled tatami passes at a wider spacing
+    either way. "tatami" (the default, and every existing caller with
+    `density_boost` left at its own default False) keeps today's single
+    `_fill_paths` call, byte-identical. "crosshatch" swaps it for
+    `_crosshatch_fill_paths`: two angled tatami passes at a wider spacing
     each, concatenated — see that function's docstring. "wave", "chevron"
     and "brick" stay on the ordinary single `_fill_paths` call — they only
     change how one row's own interior points are placed
     (`_wave_row_points`/`_chevron_row_points`/`_brick_row_points`, dispatched
     inside `_fill_paths` itself via `_ROW_POINT_FNS`), so unlike crosshatch
     they need no second pass or dedicated wrapper function.
+
+    `density_boost` (task A2, machine.FILL_DENSITY_BOOST_MIN_WIDTH_MM) only
+    ever matters together with `technique == "tatami"`: when both hold AND
+    the shape is solid (`is_solid_fill`), the fill pass swaps to
+    `_density_fill_paths` — the same two-pass shape as crosshatch, at full
+    row_mm on both passes instead of crosshatch's deliberately widened one,
+    landing the combined density at the corpus-measured professional target
+    instead of near a single ordinary pass. Defaults False (not "tatami"'s
+    own default technique choice) so every caller that does not explicitly
+    ask for it keeps exactly today's single-pass output — stage 7's plain-
+    tatami fallback is the one caller that turns it on, gated by
+    `PipelineConfig.fill_density_boost`.
 
     Report keys: `too_thin` (nowhere wide enough for a fill), `jumps` (travel
     that had to lift the needle), `empty` (produced nothing).
@@ -770,6 +820,9 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     if technique == "crosshatch":
         fill_paths = _crosshatch_fill_paths(poly, angle, row_mm, stitch_mm,
                                             machine.FILL_STAGGERS, entry)
+    elif technique == "tatami" and density_boost and is_solid_fill(poly):
+        fill_paths = _density_fill_paths(poly, angle, row_mm, stitch_mm,
+                                         machine.FILL_STAGGERS, entry)
     else:
         fill_paths = _fill_paths(poly, angle, row_mm, stitch_mm,
                                  machine.FILL_STAGGERS, entry, technique=technique)

@@ -725,7 +725,8 @@ def _resample(pts: list[tuple[float, float]], n: int) -> list[tuple[float, float
 
 def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
                  fallback_half_mm: float,
-                 field: _WidthField | None = None) -> tuple[list, list]:
+                 field: _WidthField | None = None,
+                 spacing_mm: float = machine.SATIN_SPACING_MM) -> tuple[list, list]:
     """Cast the smoothed, unwrapped normals both ways to find the two rails.
 
     Each rail is capped at ~1.6x the LOCAL medial half-width: at a branch
@@ -734,6 +735,11 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
     junction. Capped, each stroke covers its own corridor and the junction gets
     the modest overlap of its arms — which is exactly what a human digitizer
     does there.
+
+    `spacing_mm` is the outer-rail density target the refinement pass below
+    holds stations to (default `machine.SATIN_SPACING_MM`) — a caller-scaled
+    number when the fabric preset's `density_adjust` applies (task A2), the
+    bare constant otherwise, byte-identical to before that flag existed.
     """
     n = len(spine)
     boundary = poly.boundary
@@ -961,11 +967,11 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
         near_cap = not closed and (i <= 2 or i >= n - 2) and not in_taper
         adv = max(math.dist(rail_a[i - 1], rail_a[i]),
                   math.dist(rail_b[i - 1], rail_b[i]))
-        if near_cap or adv <= machine.SATIN_SPACING_MM * 1.3:
+        if near_cap or adv <= spacing_mm * 1.3:
             ref_a.append(rail_a[i])
             ref_b.append(rail_b[i])
             continue
-        m = int(math.ceil(adv / machine.SATIN_SPACING_MM))
+        m = int(math.ceil(adv / spacing_mm))
         if in_taper:
             # In the taper zone the pieces must also stay ABOVE the guard
             # threshold: a bare ceil splits a 0.53 mm interval into 0.26 mm
@@ -1281,8 +1287,15 @@ def strip_splits(points: list[tuple[float, float]]) -> list[tuple[float, float]]
 def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  field: _WidthField | None = None,
                  split_above_mm: float | None = None,
-                 end_cutback_mm: float = 0.0) -> list[tuple[float, float]]:
+                 end_cutback_mm: float = 0.0,
+                 spacing_mm: float = machine.SATIN_SPACING_MM) -> list[tuple[float, float]]:
     """One stroke -> flat zigzag points (A1, B1, A2, B2, ...).
+
+    `spacing_mm` (task A2, default `machine.SATIN_SPACING_MM`) is the
+    along-column cross spacing this stroke targets — every caller before the
+    fabric preset's `density_adjust` reached satin left it at the bare
+    constant, so this is byte-identical unless a caller passes a different
+    number.
 
     Rails strictly alternate, so EVERY consecutive pair of points is a stitch
     that crosses the column: the outbound leg A(i)->B(i) square across, the
@@ -1344,9 +1357,9 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
     if length <= 0:
         return []
 
-    steps = max(2, int(math.ceil(length / machine.SATIN_SPACING_MM)))
+    steps = max(2, int(math.ceil(length / spacing_mm)))
     spine = _resample(spine, steps)
-    rail_a, rail_b = _rail_points(poly, spine, stroke.closed, half_mm, field)
+    rail_a, rail_b = _rail_points(poly, spine, stroke.closed, half_mm, field, spacing_mm)
     crosses = _short_stitch_guard(rail_a, rail_b)
     above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
 
@@ -1654,6 +1667,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 split_above_mm: float | None = None,
                 end_cutback_mm: float = 0.0,
                 use_shapefield: bool = False,
+                spacing_mm: float = machine.SATIN_SPACING_MM,
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
     contract `stitch_shape` uses, so stage 7 can treat the two identically.
@@ -1662,6 +1676,15 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     `split_above_mm` caps the stitch length before crosses split (None =
     machine.SPLIT_SATIN_ABOVE_MM; `math.inf` disables splitting — the
     mapping stage 7 applies for `PipelineConfig.split_satin = False`).
+
+    `spacing_mm` (task A2) is the along-column cross spacing every stroke in
+    this shape targets, forwarded to `satin_stroke` unchanged — default
+    `machine.SATIN_SPACING_MM`, so a caller that never mentions it keeps
+    today's output exactly. Stage 7 passes the fabric preset's
+    `density_adjust`-scaled number, the same multiplier `row_mm` already
+    gets for fill (`fabrics.py`'s own "mirror src/fabrics.js exactly" table
+    — the browser engine already applies `densityAdjust` to its own satin
+    spacing this way; this closes the one place the Python engine had not).
 
     `end_cutback_mm` is push compensation at open column ends (Law 24); 0.0 is
     the shipped behaviour. It is a length taken off the spine, NOT a shrink of
@@ -1691,7 +1714,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     kept: list[tuple[Stroke, list]] = []
     for st in strokes:
         pts = satin_stroke(poly, st, half_mm, field, split_above_mm,
-                           end_cutback_mm)
+                           end_cutback_mm, spacing_mm)
         if len(pts) >= 4:
             kept.append((st, pts))
     if not kept:

@@ -555,6 +555,12 @@ def reconstruct(blocks, threads, cvs, path, meta_path):
 
 def run_ours(art_path, width_mm, outdir):
     cfg = PipelineConfig()
+    # Task A2 (2026-08-14): fill_density_boost is SEW-OUT GATED off by
+    # default (see PipelineConfig's own comment) — this harness exists
+    # specifically to measure a candidate engine change against the corpus
+    # before it ships, so it opts in explicitly rather than measuring the
+    # shipped single-pass default.
+    cfg.fill_density_boost = True
     cfg.target_width_mm = round(width_mm, 1)
     res = run_stages(str(art_path), cfg)
     plan = plan_stitches(res, cfg)
