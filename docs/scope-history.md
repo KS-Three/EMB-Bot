@@ -25,6 +25,59 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-08-14 (evening) — **the pro-parity scorecard was
+rescaled to chance-corrected, and the corpus re-measured on the new scale**
+(PR #151). `direction` and `sttype` are bounded agreement measures whose raw
+floor is ~0.5, not 0 — measured across this corpus, random angles score 0.505
+and a shuffled type map 0.553, so about 21 of their combined 40 points were
+being paid out for a wrong answer. The scorecard's own docstring had flagged
+this since it was written, deferring the fix because rescaling moves every
+historical number; Kent took that decision this session, ahead of the
+satin-vs-fill routing work, so the routing work would be measured on an honest
+scale from the start rather than needing a re-baseline halfway through.
+
+Both components are now rescaled `(observed - chance) / (1 - chance)`, clamped
+at 0, before weighting. The floors are analytic rather than sampled, so the
+score stays deterministic and seed-free: `direction`'s is exactly 0.5 for every
+design (folding a random angle mod π leaves the difference uniform on [0, π/2]),
+and `sttype`'s is expected agreement under independence, `Σ_c p_pro(c)·p_ours(c)`
+— Cohen's kappa. Degenerate agreement passes the raw value through rather than
+dividing by zero.
+
+Corpus at that moment, all 23 designs (`score` / old `score_raw`):
+
+| | old scale | corrected |
+|---|---|---|
+| corpus mean | 70.9 | 54.8 |
+| `sttype` range | 0.55–0.65 | 0.00–0.54 |
+| `direction` range | 0.50–0.69 | 0.00–0.37 |
+
+Worst: `tires_hat_3d` 53.5 → 39.7. Best: `mfab_hat` 77.0 → 63.8. Two designs
+(`becker_chest_small`, `tires_hat_3d`) scored raw type agreement *below* their
+own chance floor — 0.435 against 0.497, and 0.195 against 0.197 — which the old
+scale still paid roughly 11 points each for.
+
+**The stitch-type confusion matrix measured the same day, over 15,953 shared
+2 mm cells**, is what pointed at satin-vs-fill routing as the next work. Pro
+sews 53.6% satin / 46.1% fill over that shared ground; EMB-Bot sews 47.7% /
+48.5% — the *mix* nearly matches. The per-place agreement does not: 35.0% of
+the pro's satin cells are sewn as fill, and 31.9% of its fill cells are sewn as
+satin. Bidirectional misrouting with a nearly-correct mix is why the corrected
+score is so much harsher than the raw one, and why retuning `satin_max` alone
+cannot help — it would only move the mix that is already right. Per design the
+spread is wide: `mfab_hat` catches 92.4% of the pro's satin (corrected 0.542),
+`becker_chest_small` catches 62.0% while satinning 73% of the pro's *fill*
+(corrected 0.000), and `tires_hat_3d` — a design the pro sews 98.3% satin —
+is sewn 81.5% fill (corrected 0.000).
+
+Method note: the confusion matrix uses the scorecard's own `cell_stats`
+classifier and registration, so it is the same comparison the score reports,
+not a re-derivation. Both runs were made against a scratch-dir corpus prepped
+by `prep_all.py` from Kent's local reference art; neither the sources nor the
+prepped set are in the repo.
+
+---
+
 **Last updated:** 2026-08-13 (evening) — **the Content step's six tiles are
 three (Text · Artwork · Design file), and the drawing tools moved to a
 right-click menu on the canvas** (PR #138; Kent's "remove all of the
