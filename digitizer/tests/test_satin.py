@@ -444,19 +444,10 @@ def test_a_stem_crossing_three_junctions_welds_into_one_stroke():
     """Confirms the fixture actually exercises the multi-junction case
     before trusting the coverage assertion below: the through-weld at each
     of the three T-junctions must chain into a single stroke with both ends
-    free (its own two caps), not stay fragmented into per-segment pieces.
-
-    The stem is picked by the one thing that is TRUE OF THE STEM — it is the
-    stroke that runs the glyph's height — and not, as it once was, by being
-    the longest spine. That worked only while the stem's spine swallowed the
-    two corner forks at its flush corners, which is the geometry
-    `_corner_forks` now declines to build a column on: the stem's own spine
-    runs node to node at 5.25 mm and the bottom bar's, cap included, at 5.32.
-    Every assertion below is the one this test always made.
-    """
+    free (its own two caps), not stay fragmented into per-segment pieces."""
     strokes, _, _ = extract_strokes(E_LETTERFORM)
-    stem = max(strokes, key=lambda s: max(p[1] for p in s.spine)
-               - min(p[1] for p in s.spine))
+    stem = max(strokes, key=lambda s: sum(
+        math.dist(a, b) for a, b in zip(s.spine, s.spine[1:])))
     assert stem.free_start and stem.free_end, \
         "the stem should weld through all three junctions into one open stroke"
     # Three bars, each yielding to the stem with one free end of its own.
