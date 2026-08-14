@@ -98,7 +98,6 @@ _MANIFEST = {}
 # ------------------------------------------------------------------ loading
 def _manifest(dirpath):
     """manifest.json sits beside the design dirs; it carries the pro source path."""
-    global _MANIFEST
     root = Path(dirpath).parent
     if root not in _MANIFEST:
         f = root / "manifest.json"
