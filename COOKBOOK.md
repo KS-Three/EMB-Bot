@@ -379,8 +379,9 @@ Session handoff with the full context:
    pipeline, service contract, and Studio Layers-panel restore UI all
    merged to `main`, and the one caveat that kept it from being real
    end-to-end (an opaque-alpha bug that defeated background detection on
-   real Studio uploads) is fixed too, merged PR #22; see MASTER_SCOPE.md
-   area 1 for the full breakdown, including the one thing still not
+   real Studio uploads) is fixed too, merged PR #22; see
+   `docs/scope/1-auto-digitizing-quality.md` for the full breakdown,
+   including the one thing still not
    verified (a live browser run of the fix, vs. the HTTP-level
    reproduction done so far). The `fix/bg-existence-guard` branch/worktree
    this bullet used to queue no longer exists anywhere in this checkout
@@ -433,7 +434,8 @@ Session handoff with the full context:
    build-order step 7, `digitizer_core/palette.py` — replaces the photo
    path's per-region nearest-thread snap; the eyes/skin/subject class
    multipliers are wired but run at 1.0 until step 3's face priors exist,
-   see that module's THE CLASS-WEIGHT SEAM) — see MASTER_SCOPE.md area 1
+   see that module's THE CLASS-WEIGHT SEAM) — see
+   `docs/scope/1-auto-digitizing-quality.md`
    for the commit-level breakdown. Whatever the plan doc queues past these
    is still open; re-check the plan doc itself rather than trust this
    bullet's row count going forward.
@@ -490,7 +492,8 @@ don't push for it.
   resolves a `stitched` shape-override defaulting to "not enclosed" and
   excludes only at `plan_stitches`, the service (`digitizer_service/app.py`)
   accepts/validates/exposes the `stitched` key, and the Studio Layers panel
-  gained a restore control for it. See MASTER_SCOPE.md area 1 for the
+  gained a restore control for it. See
+  `docs/scope/1-auto-digitizing-quality.md` for the
   commit-level breakdown. **The one caveat that kept this from working
   end-to-end through the actual UI is fixed too, merged PR #22:** Studio's
   real upload path manufactured an opaque alpha channel that defeated
@@ -654,9 +657,13 @@ and controllable to the user.
 ## Known limitations
 
 **See [`MASTER_SCOPE.md`](MASTER_SCOPE.md) for current status, confidence,
-and open issues per capability area** — that's the live dashboard now; this
+and open issues per capability area** — that's the live dashboard; this
 section used to duplicate it and the two drifted, so it doesn't try to be
-exhaustive here anymore. The one exception: the *design decision* that
+exhaustive here anymore. It holds current state only: per-area supporting
+detail is in [`docs/scope/`](docs/scope/), and dated snapshots — test counts,
+corpus grades, "landed PR #N" — are in
+[`docs/scope-history.md`](docs/scope-history.md), which is append-only and
+should never be quoted as live status. The one exception: the *design decision* that
 photographic/gradient art can't reach pro quality via auto-digitizing is
 architectural, not a status snapshot — see "the one rule" above, which stays
 here since it explains *why*, not *what's currently true*.

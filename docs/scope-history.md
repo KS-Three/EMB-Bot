@@ -2049,3 +2049,42 @@ executed — full license texts on disk/served/embedded, complete
 attributions, credits links). Prior update 2026-08-03: the gradient
 angle-fragmentation fix landed that session; `BACKGROUND_ENCLOSED`'s root
 cause was corrected to `stage1_prep.py`, still unresolved at that time.
+
+---
+
+# Resolved cross-cutting issues
+
+Moved out of `MASTER_SCOPE.md` on 2026-08-14. These were fully resolved, so
+only a short standing summary was kept in the live document; the detail below
+is the original record, preserved rather than condensed away.
+
+## Font license compliance gap — RESOLVED 2026-08-04 by removal
+
+`docs/font-license-audit-2026-07-31.md` action checklist: **items 1–3 done**
+(the 4 flagged fonts pulled, 72 → 68 — see the audit's §7) and **items 4–10 +
+12 done** the same day (see its §8): every surviving font had its full
+upstream license text on disk (`src/fonts/<key>.LICENSE.txt`), shipped
+by `copy-engine.mjs` at `/fonts/<key>.LICENSE.txt`, linked per-font in the
+credits dialog, AND embedded verbatim in the `.embf` binary metadata (closes
+the bare-download hole); manifest attributions are complete notices
+(adapter + upstream copyright + Reserved-Font-Name declarations, emails
+stripped); guard tests pin all of it.
+
+**The one-hour lawyer consult this gap used to gate on (audit item 11) is
+now optional, not launch-blocking — merged 2026-08-04 (PR #16,
+`sharealike-pull`):** rather than wait on the consult, Kent's call was to
+pull all 13 ShareAlike fonts (11 CC-BY-SA-4.0 + 2 CC-BY-SA-2.5) from the
+shipping library outright. Recounted directly from `src/fonts/manifest.json`
+this pass: **55 entries**, license breakdown 52 OFL-1.1 + 2 CC0 + 1
+CC-BY-4.0 — zero ShareAlike remaining, zero Reserved Font Name as a primary
+name anywhere. The ready-to-send brief,
+`docs/lawyer-brief-cc-by-sa-2026-08-04.md`, stays on file as the restore
+path if Kent ever wants those 13 fonts back, but booking the consult is no
+longer something first dollar waits on. Stacked on it, **PR #17
+(`legacy-font-audit`), merged same day,** removes the same 7 pulled fonts
+(the original 2 + the 5 ShareAlike) from the legacy `satin-fonts.js`
+registry — diff-verified this pass at 21 → 14 entries — so `EMB-Bot.html`
+carries nothing pulled either. `EMB-Bot-standalone.html` (the only place
+that still embedded a pre-audit inlined copy) is **deleted, 2026-08-04,
+Kent's call** — no pre-audit font list ships anywhere. Still parked for
+Kent: the bluenesia permission screenshots (audit §8).
