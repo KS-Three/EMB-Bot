@@ -42,29 +42,38 @@ still deserves the question.
 worrying about, and every future session gets the files for free. The Drive path
 below is the exception, for files that genuinely should not be committed.
 
-## The git path — the default, and the one to push for
+## The inbox — the default path, and the one to push for
 
-No tooling, no ceiling, versioned, and every future session gets the files for
-free. For anything Kent is willing to publish, this is strictly better than
-Drive and it is what he should be told to do.
+**`digitizer/testdata/inbox/` + `tools/sync-assets.ps1`.** Kent drops files in
+the folder, runs one command, and they are in the repo — any number of files,
+no per-file ceremony. He asked for exactly this (2026-08-14) after being handed
+per-file git commands, and he was right to.
 
-What to tell him, verbatim — he is on Windows at
-`C:\Users\EE-LT-11030\Personal\EMB-Bot`:
+What to tell him:
 
 ```powershell
 cd C:\Users\EE-LT-11030\Personal\EMB-Bot
-# copy the images into digitizer\testdata\photo\ first, then:
-git add digitizer/testdata/photo/<each-file>
-git commit -m "test fixture: <what it is and what it is for>"
-git push
+.\tools\sync-assets.ps1
 ```
 
-Name the files by what they exercise, matching the existing convention —
-`photo_sunset_backlit.png`, `fur_ramp.png`, `tight_crop_pale_subject.png`. Then
-follow *After a pull* below, which applies identically: a committed fixture is
-still invisible to the scorecard until it is in `FIXTURES`.
+The script normalises filenames (spaces and `(1)` markers out — a space in a
+fixture path has already cost this project time), stages **by explicit path**
+per CLAUDE.md footgun #2, commits, and pushes.
 
-Stage files **by explicit path**, never `git add -A` (CLAUDE.md footgun #2).
+### Then file what arrived — the inbox is a staging area, not a home
+
+Assets land unsorted on purpose. Sorting them is the session's job:
+
+| Kind | Destination |
+|---|---|
+| Real photos / art to digitize, kept as fixtures | `digitizer/testdata/photo/` |
+| Professionally digitized DST/PES for comparison | `digitizer/testdata/reference/` |
+| Logo / flat art fixtures | `digitizer/testdata/` |
+
+Rename to say what the file *exercises*, matching the existing convention —
+`photo_sunset_backlit.png`, `fur_ramp.png`, `tight_crop_pale_subject.png` —
+then follow *After a pull* below. **Leave the inbox empty.** Stale files there
+mean the process broke.
 
 ## The Drive path — small, non-publishable files only
 
