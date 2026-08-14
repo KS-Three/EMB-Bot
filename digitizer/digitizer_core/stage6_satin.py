@@ -1169,6 +1169,103 @@ def _trim_chain(pts: list[tuple[float, float]], from_start_mm: float,
 # doubled coverage never reads as a lump.
 _JUNCTION_TUCK_MM = 0.4
 
+# --- where an arm's own ribbon begins, at a junction-anchored end -----------
+#
+# The corridor is walked in these steps. The distance transform is quantised
+# at the raster pitch (1 / _RASTER_PX_PER_MM = 0.167 mm), so "the corridor
+# stopped narrowing" has to tolerate about one quantum of staircase noise
+# before it will fire on a genuinely flat stretch.
+_JUNCTION_STEP_MM = 0.2
+_JUNCTION_STABLE_MM = 0.10
+# ... and it has to HOLD for this far to count. Measured plateaus on real
+# corpus letterforms: `becker_lc_large`'s "E" (S0cdd6202) stroke 2 holds
+# 2.33 mm from 1.25 to 3.75 mm in, its "R" (S6a8697e1) stroke 0 holds 2.17 mm
+# from 2.0 mm in, and the pinned T_SHORT_STEM fixture's stem holds its 1.5 mm
+# half-width for the stem's whole 6 mm. 0.6 mm is comfortably under the
+# shortest of those and comfortably over one raster quantum.
+_JUNCTION_PLATEAU_MM = 0.6
+# The junction's influence does not reach further in than this many of the
+# shape's half-widths, so neither does the search. Past it a stroke is simply
+# in its own body and the fixed offset stands — a plateau found 40 mm down a
+# 90 mm column is not "where this arm's ribbon begins", it is just the column.
+# Set above `_JUNCTION_TWIG_HALFWIDTHS` so a twig is always searched end to
+# end and its verdict never depends on where the bound falls.
+_JUNCTION_REACH_HALFWIDTHS = 3.0
+
+
+def _junction_entry_mm(spine: list[tuple[float, float]], field: _WidthField | None,
+                       half_mm: float, at_start: bool) -> float | None:
+    """How far in from a junction-anchored end this arm's own ribbon starts.
+
+    -> mm along the spine, or None when the arm never has a ribbon at all.
+
+    The end trim at a junction exists because the skeleton's branch node sits
+    in the MIDDLE of the junction, not at its edge: the node of a T is halfway
+    up the bar, so an untrimmed stem sews back across crosses the bar already
+    laid down. `field.half_at(node)` is the obvious offset and it is exactly
+    right on a clean T — the node's distance transform IS the bar's half-width
+    there, so stepping that far puts the stem's first cross on the bar's edge.
+
+    It stops being right on a real letterform, because `half_at` is an
+    OMNIDIRECTIONAL clearance: at a corner or a 3+-arm meeting the widest
+    thing near the node is a diagonal across the whole blob, not the arm the
+    stroke has to clear. Measured on `becker_lc_large`'s "E", whose stroke
+    half-width is 1.75 mm: the top-bar arm reads `half_at` 2.67 at its node
+    and its corridor is already flat at 2.33 by 1.25 mm in — the fixed rule
+    steps 2.27 mm and eats a full millimetre of ribbon that was never part of
+    the junction. Walking in until the corridor STOPS NARROWING finds where
+    the blob ends and the arm begins.
+
+    On a clean T that walk returns 0 — the corridor is flat from the node up,
+    because there is no blob, just two equal ribbons crossing. 0 is not the
+    answer there (it would sew the stem back across the bar), which is why
+    `satin_stroke` floors this against the stroke's own half-width rather
+    than using it raw; see the bounds note at the call site.
+
+    None is the interesting answer. Some "arms" at a junction are not arms:
+    thinning a bold corner forks the skeleton diagonally into the corner and
+    leaves a 3-4 mm twig whose corridor falls from the blob straight to the
+    point, with no flat stretch anywhere along it — measured on the same "E",
+    2.33 mm at the node down to 0.17 mm at the tip in a near-constant
+    0.66 mm-per-mm ramp. There is no ribbon in that twig to find the start
+    of: it is a wedge, and a zigzag across a wedge is the radiating fan this
+    module exists to prevent. `satin_stroke` drops those (see there for the
+    length guard that keeps a genuinely tapering LEG, which is a different
+    thing entirely).
+    """
+    if field is None or len(spine) < 2 or half_mm <= 0:
+        return 0.0
+    pts = list(spine) if at_start else list(reversed(spine))
+    line = LineString(pts)
+    length = line.length
+    if length <= 0:
+        return 0.0
+    reach = min(length, _JUNCTION_REACH_HALFWIDTHS * half_mm)
+    n = int(reach / _JUNCTION_STEP_MM)
+    halves = []
+    for k in range(n + 1):
+        p = line.interpolate(min(k * _JUNCTION_STEP_MM, length))
+        halves.append(field.half_at((p.x, p.y)))
+    hold = max(1, int(round(_JUNCTION_PLATEAU_MM / _JUNCTION_STEP_MM)))
+    for i in range(len(halves)):
+        if i + hold >= len(halves):
+            break   # only the taper into the far end is left: no plateau here
+        if all(halves[j] >= halves[j - 1] - _JUNCTION_STABLE_MM
+               for j in range(i + 1, i + 1 + hold)):
+            return min(i * _JUNCTION_STEP_MM, length)
+    return None
+
+
+# An arm shorter than this many of the shape's half-widths, whose corridor
+# never stops narrowing, is a corner twig of the junction blob rather than a
+# stroke. The measured populations sit either side with room to spare: the
+# corner twigs on `becker_lc_large`'s "E", "A" and "M" run 1.5-2.1 half-widths
+# and ramp all the way, while the "R"'s LEG — a real, genuinely tapering piece
+# of the letterform that must keep its column — is 3.6, and the pinned
+# T_SHORT_STEM stem is 4.0 (and has a plateau anyway, so the length guard
+# never even has to speak for it).
+_JUNCTION_TWIG_HALFWIDTHS = 2.5
+
 
 def _round_corners(spine: list[tuple[float, float]], half_mm: float,
                    closed: bool) -> list[tuple[float, float]]:
@@ -1318,13 +1415,50 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
     # of a T puts the node halfway up the bar, so an untrimmed stem sews right
     # across crosses the bar already laid down. Step back to the junction edge
     # plus a small tuck; the free ends, by contrast, get EXTENDED to the cap.
+    #
+    # WHERE that edge is comes from `_junction_entry_mm` walking the corridor
+    # in until it stops narrowing, not from `half_at(node)` alone: on a clean
+    # T the two agree, on a real letterform's corner blob the omnidirectional
+    # reading is inflated and eats ribbon.
+    #
+    # The walk's answer is then held between two bounds, and BOTH matter:
+    #
+    #  * never MORE than `half_at(node)` — the old rule — so this can only
+    #    give ribbon back, never take a millimetre of stroke that already
+    #    sews today;
+    #  * never LESS than the shape's own half-width, because whatever arm
+    #    this one meets at the node is at least that wide and has to be
+    #    cleared. Without that floor both arms of a corner walk their trims
+    #    down to nearly nothing and sew the corner TWICE — measured on
+    #    `becker_lc_large`'s "E", where the stem and the top bar each
+    #    recovered past each other and crossed at right angles over the
+    #    shared corner. The floor is also what makes this a no-op on a clean
+    #    junction: on T_SHAPE and T_SHORT_STEM `half_at(node)` IS the stroke
+    #    half-width, so the two bounds coincide and the trim is bit-for-bit
+    #    what it was before this walk existed.
     if not stroke.closed and field is not None:
-        t0 = 0.0 if stroke.free_start else max(
-            0.0, field.half_at(spine[0]) - _JUNCTION_TUCK_MM)
-        t1 = 0.0 if stroke.free_end else max(
-            0.0, field.half_at(spine[-1]) - _JUNCTION_TUCK_MM)
-        if t0 or t1:
-            spine = _trim_chain(spine, t0, t1)
+        spine_len = LineString(spine).length if len(spine) > 1 else 0.0
+        twig_len = _JUNCTION_TWIG_HALFWIDTHS * half_mm
+        trims = []
+        for at_start in (True, False):
+            free = stroke.free_start if at_start else stroke.free_end
+            if free:
+                trims.append(0.0)
+                continue
+            end = spine[0] if at_start else spine[-1]
+            blob = field.half_at(end)
+            entry = _junction_entry_mm(spine, field, half_mm, at_start)
+            if entry is None and spine_len <= twig_len:
+                # A corner twig, not an arm: no ribbon anywhere along it, and
+                # short enough that it cannot be a tapering leg. Sewing it
+                # zigzags across a wedge, which is the fan; leave it to the
+                # arms it grew out of, whose own columns already reach into
+                # this corner.
+                return []
+            edge = blob if entry is None else min(blob, max(entry, half_mm))
+            trims.append(max(0.0, edge - _JUNCTION_TUCK_MM))
+        if trims[0] or trims[1]:
+            spine = _trim_chain(spine, trims[0], trims[1])
 
     if stroke.free_start:
         spine = _retract_cap_corner(spine, field, half_mm, at_start=True)
