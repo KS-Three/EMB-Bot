@@ -32,6 +32,49 @@ alternative region former for photo-classified designs) is built, merged,
 and now reachable from Studio via the `embstudio:sam2` dev seam, still
 gated behind `cfg.photo_segment_sam2` (default `False`).
 
+**Satin-vs-fill routing is the named next work (Kent, 2026-08-14), and the
+measurement that picked it says the defect is misrouting, not a threshold.**
+A stitch-type confusion matrix over the pro-parity corpus — 15,953 shared
+2 mm cells across 23 professional designs, using the scorecard's own
+`cell_stats` classifier and registration so it is the same comparison the
+score reports — reads:
+
+| pro \ ours | run | satin | fill | share of ground |
+|---|---|---|---|---|
+| run | 0 | 15 | 32 | 0.3% |
+| satin | 324 | 5,241 | 2,991 | 53.6% |
+| fill | 294 | 2,348 | 4,708 | 46.1% |
+| **ours** | 3.9% | 47.7% | 48.5% | |
+
+The two marginals nearly agree — pro 53.6% satin / 46.1% fill against our
+47.7% / 48.5% — while per-place agreement is 0.624 raw against a 0.479 chance
+floor, i.e. **0.278 corrected**. That combination is the whole finding: the
+engine sews about the right *amount* of satin, in substantially the wrong
+*places*. 35.0% of the pro's satin ground is sewn as fill and 31.9% of its
+fill ground is sewn as satin, so the two errors nearly cancel in the mix and
+hide from any metric that looks at totals. **Retuning `satin_max` cannot fix
+this** — a wider cap buys satin in the places already over-satinned, and a
+narrower one gives up the satin that is currently right.
+
+Spread per design is wide enough to be diagnostic rather than uniform noise:
+`mfab_hat` catches 92.4% of the pro's satin (corrected 0.542), proving the
+classifier does work on some geometry; `becker_chest_small` catches 62.0%
+while satinning 73% of the pro's fill (corrected 0.000, raw 0.435 against a
+0.497 floor — worse than guessing); and `tires_hat_3d`, which the pro sews
+98.3% satin, is sewn 81.5% fill (corrected 0.000). Those three are the
+obvious first fixtures to reason against.
+
+**Where to look first:** `is_satin_candidate` (`stage6_satin.py:185`) is
+three consecutive *rejection* gates — a `2·area/perimeter` width cap, a
+`length_est < 3·w` aspect test, and `_dt_regular_and_within_cap`, which its
+own docstring describes as "a pure TIGHTENING, it can only turn a satin call
+into a fill call, never the reverse". There is no path that promotes a shape
+the width/aspect test rejected. So every pro-satin-sewn-as-fill cell is one
+of those three gates firing, and the reverse errors are shapes that passed
+all three and should not have. *(measured 2026-08-14 — confusion matrix over
+the pro-parity corpus; numbers and method in
+[`docs/scope-history.md`](../scope-history.md), 2026-08-14 entry)*
+
 **Its "tie, not a win" verdict is SUPERSEDED as of 2026-08-11 — and the
 hedge attached to that verdict turned out to be the right one.** The
 2026-08-10 measurement (`digitizer/docs/sam2-segmentation-live-acceptance-

@@ -51,6 +51,19 @@ or move it.
    side-by-side against the pro file. Blocked on Kent supplying
    `becker logo.png` + the pro DST/PES. *(measured 2026-08-13 — scope-history)*
 
+5. **Satin-vs-fill routing sits at chance, and misroutes in BOTH directions.**
+   Against the 23 professional designs, the engine's satin/fill *mix* nearly
+   matches the pro's — so the cap is not simply set too high or too low — while
+   the per-place agreement is barely above chance: roughly a third of the ground
+   the pro satins is sewn as fill, and roughly a third of what it fills is sewn
+   as satin. Two designs score *below* their own chance floor. The failure is
+   the classifier picking the wrong shapes, not a global threshold, so retuning
+   `satin_max` alone cannot fix it — it would only move the mix that is already
+   right. `is_satin_candidate` (`stage6_satin.py:185`) is three rejection gates
+   with no path that promotes a shape back to satin, which is the shape of the
+   hypothesis to test first. *(measured 2026-08-14 — confusion matrix over the
+   pro-parity corpus; per-design detail in area 1)*
+
 ---
 
 ## Standing rulings — decided, do not re-litigate
@@ -169,6 +182,15 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
   touched SAM2 at all. Structurally closed for the upload path by PR #138, but
   the *class* of bug is the thing to remember.
   *(confirmed 2026-08-13 — PR #122, PR #138)*
+- **Pro-parity scores from before 2026-08-14 are on a different scale and do
+  not compare.** `direction` and `sttype` were bounded agreement measures with
+  a floor near 0.5, so ~21 of their combined 40 points were paid out for a
+  wrong answer; both are now chance-corrected. Any score, table or doc quoting
+  a pro-parity number from before that date is reading ~16 points high at the
+  corpus level. `score_raw`/`parts_raw` in `score.json` carry the old scale
+  when the two genuinely need lining up — reach for those rather than
+  re-deriving. *(measured 2026-08-14 — PR #151,
+  `tools/pro_parity/scorecard.py`)*
 - **Three photo hypotheses are disproven** — palette collapse merging subject
   into background, `max_colors` as the binding constraint, and
   `MERGE_DELTAE00_THRESH` needing a retune. All three came from extrapolating
@@ -466,6 +488,26 @@ corpus-law/classifier changes to learn what a genuine regression looks like
 here before deciding on hard CI thresholds; the labeled-corpus half stays
 blocked on `scratch_corpus/` access, unchanged by this pass.
 
+**A second, different harness also exists: `tools/pro_parity/`.** Where
+`corpus_scorecard.py` asks "did our own preflight score move", this one asks
+"how close is our output to the PROFESSIONAL digitization of the same
+design" — 23 of Kent's customer designs, decoded from their PES/DST, scored
+0–100 across six weighted components (coverage, direction, stitch type,
+density, underlay, travel) after a registration search aligns the two.
+**Its scale changed 2026-08-14:** `direction` and `sttype` are bounded
+agreement measures whose floor was ~0.5, so both are now chance-corrected
+against analytic floors (`sttype`'s being Cohen's kappa) and guessing scores
+0. See the Gotcha above before comparing any number to a pre-2026-08-14 one.
+*(confirmed 2026-08-14 — PR #151)*
+
+**The corpus half of this harness is in the same position as
+`scratch_corpus/`, and for the same reason:** it is built by `prep_all.py`
+from Kent's local reference-art folder, which is not in the repo and is not
+reachable from a fresh checkout — so the 23 prepped designs exist only for as
+long as a session's scratch dir does. Nothing about the *scoring* code is
+blocked on that; re-measuring after an engine change is. *(confirmed
+2026-08-14 — `prep_all.py`'s `ROOT`)*
+
 **Not promoted to a sixth top-level capability area.** This session
 evaluated and explicitly rejected splitting area 1 ("auto-digitizing
 quality") into separate "image analysis" (raster → regions/colors) and
@@ -542,7 +584,11 @@ merged and reachable from Studio via the `embstudio:sam2` dev seam, still
 `photo_subject`/`photo_scene` fixtures are synthetic stubs, so the committed
 corpus can neither defend nor refute SAM2's quality — a real-photo fixture is
 the missing piece. *(confirmed 2026-08-11 — area 1 detail)*
-**Next:** option A, tatami + shade bands — see Standing rulings above.
+**Next:** satin-vs-fill routing (live defect 5) — Kent's call 2026-08-14,
+taken ahead of option A, which stays the standing ruling for the blend tier
+whenever it is scheduled. The pro-parity scorecard was chance-corrected first
+(PR #151) so the routing work is measured on a scale where guessing scores 0.
+*(ruled 2026-08-14 — Kent, this session)*
 
 ### 2. Font library & lettering — [detail](docs/scope/2-font-library-lettering.md)
 
