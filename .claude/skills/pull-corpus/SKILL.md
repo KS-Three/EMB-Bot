@@ -24,21 +24,23 @@ is a PUBLIC repository** (verified 2026-08-14 via the GitHub API — `visibility
 public`). Anything committed is published to the world, permanently, in
 history. That single fact decides the routing.
 
+**Kent's ruling, 2026-08-14: the becker comparison assets are fine to publish** —
+asked directly whether the professionally digitized DST/PES should stay off a
+public repo, he said public is fine. So they go in git, and **this specific
+question is settled; do not re-ask it.** What is NOT settled is the general
+case: a different third party's file, or a client logo he has not cleared,
+still deserves the question.
+
 | The asset | Channel | Why |
 |---|---|---|
 | Real photos / art meant to be **permanent test fixtures** | **git** | Already this repo's established practice — `digitizer/testdata/photo/` holds 13 MB of committed PNGs (`drone_render.png` alone is 2.4 MB), added deliberately in commits like `fd17a66 test fixture: snowy owl photo`. MASTER_SCOPE's standing ruling clears real-photo provenance. |
-| **Third-party professional work** — the pro DST/PES for the becker comparison | **Drive → `scratch_reference/`** | Someone else's paid digitizing. Do not publish it to a public repo without Kent saying so explicitly. |
-| Client / company logos where Kent has not said "publish this" | **Drive → `scratch_reference/`** | Same reasoning. Ask, don't assume. |
+| The becker pro DST/PES, and comparison references like it | **git → `digitizer/testdata/reference/`** | Cleared by Kent above. Reference stitch files, not pipeline inputs — keep them out of `testdata/photo/` so they are not mistaken for fixtures. |
+| A third party's file Kent has **not** cleared | **ask first** | Publishing is irreversible; git history keeps it even after a delete. One question costs less than a takedown. |
 | Genuinely temporary scratch — one-off probes, throwaway renders | **Drive → `scratch_corpus/`** | Gitignored on purpose. |
 
-**When an asset is a permanent fixture and Kent is fine publishing it, tell him
-to commit it rather than routing it through Drive.** git is versioned, needs no
-tooling, has no size ceiling worth worrying about, and every future session gets
-it for free. The Drive path below exists for the files that genuinely cannot or
-should not be committed — it is the exception, not the default.
-
-If it is unclear which bucket an asset falls in, **ask Kent before pulling it.**
-A wrong guess toward `git` publishes a third party's commercial work.
+**Default to git.** It is versioned, needs no tooling, has no size ceiling worth
+worrying about, and every future session gets the files for free. The Drive path
+below is the exception, for files that genuinely should not be committed.
 
 ## The git path — the default, and the one to push for
 
