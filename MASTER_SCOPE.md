@@ -2036,9 +2036,9 @@ cause was corrected to `stage1_prep.py`, still unresolved at that time.
 |---|---|---|
 | 1. Auto-digitizing quality (image → stitches) | In progress | **Low** beyond flat spot-color art |
 | 2. Font library & lettering | Implemented (library + license remediation) | High (tech) / High (compliance — resolved 2026-08-04 by removal, lawyer consult now an optional restore path) |
-| 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: pending sew-out; **no photo-quality tier was reachable from the UI at all** until PR #123 — see the 2026-08-12 evening entry) |
+| 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — unchanged, no sew-out has happened). The photo-tier gap PR #123 closed stays fixed; the canvas gained a shape editor and auto-restitch 2026-08-13 |
 | 4. Export formats | Implemented | Varies by format — see below |
-| 5. Stitch-out review & manual editing tools | Implemented (narrow scope) | High **for what is built** — but the target moved 2026-08-12: Kent's direct-manipulation request (node/line editing, delete-as-entity; whole-shape dragging withdrawn same-day) is unimplemented and recorded in full under this area |
+| 5. Stitch-out review & manual editing tools | Implemented — Kent's direct-manipulation request is **complete** (2026-08-13) | High. Every surviving requirement of the 2026-08-12 request ships: outlines+nodes on the canvas, the pulse cue, select-then-edit, node drag, line drag, add node, delete. Requirement 5 (whole-shape drag) was withdrawn by Kent. Geometry is unit-tested (53 tests) and every interaction was driven in a real browser against a live service |
 
 ---
 
@@ -2164,6 +2164,24 @@ carries nothing pulled either. `EMB-Bot-standalone.html` (the only place
 that still embedded a pre-audit inlined copy) is **deleted, 2026-08-04,
 Kent's call** — no pre-audit font list ships anywhere. Still parked for
 Kent: the bluenesia permission screenshots (audit §8).
+
+### CI feedback speed
+
+The digitizer suite (~1,100 tests of real OpenCV/shapely work) ran **18m49s
+serially** on every push — long enough that a red job stops being noticed
+promptly. `-n auto` (pytest-xdist, pinned in `requirements.txt` alongside
+`execnet`, and in pyproject's `dev` extra) brings that to **10m21s–13m12s**
+across four measured runs, ~a third off.
+
+Not the 2.5-3x seen locally, and the reason is worth writing down so nobody
+re-tunes it hoping for more: GitHub's standard runners are **2-core**, so
+`-n auto` gets two workers, and OpenCV's own threading competes with them.
+Adding workers cannot help. The remaining lever is finding which handful of
+tests dominate the runtime (`--durations`), not more parallelism.
+
+Verified parallel-safe rather than assumed: the whole suite was run both
+ways and the pass/fail set is identical. Nothing writes to a shared path —
+fixtures are read-only and every writing test uses `tmp_path`.
 
 ### No physical sew-out testing has occurred yet
 
@@ -4769,6 +4787,34 @@ overlay drew a large, obvious spike over unchanged stitching.
   easier to reach than a single-vertex drag did. Fixing it properly means
   deciding what a hole *means* under a hand edit (drop it? clip it? move it
   with the shell?), which is a product call, not a bug fix.
+- **The restitch is DEBOUNCED at 2s idle, and that number has a reason.**
+  A restitch is a full stage 0-7 service run with no useful cache —
+  `jobs.content_key` folds `shape_overrides` into the config, so every
+  geometry edit is a guaranteed miss. Measured 0.65s on line art, ~10s on a
+  real photograph. Firing per drag would queue a 10s run behind every nudge;
+  waiting for the user to stop means ten adjustments cost one run.
+- **Where the 10 seconds actually goes — measured 2026-08-13, and it decides
+  whether a cache is worth funding** (Kent asked for the number first):
+
+  | fixture | stages 0-4 (cacheable across a boundary edit) | stages 5-7 (must re-run) |
+  |---|---|---|
+  | `owl_kent.jpg` | 7.58s (53%) | **6.63s (47%)** |
+  | `photo/enthusiast_logo.png` | 5.92s (81%) | **1.38s (19%)** |
+  | `asym_source.png` | 0.30s | 0.35s |
+
+  So caching stages 0-4 and re-running only `plan_stitches` would take LOGO
+  art from ~7.3s to ~1.4s, but a real photo only from ~14s to ~6.6s — nearly
+  half a photo's cost is stitch planning, which a boundary edit invalidates
+  by definition. **Worth building for logo work; not a route to "instant" on
+  photos.** Not started; Kent's call. (Absolute figures were taken under
+  heavy machine load — the RATIO is the finding, not the wall-clock.)
+- **OPEN: the restitch trigger only exists on the Content step.**
+  `EmbroideryField` mounts on every step (`App.svelte`, outside the step
+  conditional); `DigitizePanel`, which owns `runDigitize`, mounts only on
+  `step === "content"`. A shape edited from Review/Create/Download saves and
+  hatches as stale but does not restitch until the user returns to Content.
+  Fixing it means lifting the digitize runner into `App.svelte` — a real
+  refactor of a well-tested path, deliberately not done as a rider.
 - **Deliberately NOT changed: `DigitizePanel`'s per-shape ✎ boundary
   editor**, which still moves exactly one vertex. It is the precision tool —
   one shape, alone, on its own magnified SVG, with vertex delete and
