@@ -647,6 +647,9 @@ measurement read as a current claim.
 4. **Budget: 800 lines.** Over it, compact before adding. The number has teeth
    on purpose — a skill already told agents to keep this file current, and it
    reached 5,400 lines anyway, one reasonable paragraph at a time.
+   *(ruled 2026-08-14 — Kent, after the split measured 655 actual; the ~145
+   lines of slack are deliberate, so a normal week of legitimate additions
+   lands without forcing a compaction pass every time)*
 5. **Overflow goes to [`docs/scope/`](docs/scope/), never to the bin.** One
    file per capability area, plus the research backlog. MASTER_SCOPE keeps the
    verdict and a link. Nobody should ever have to delete something load-bearing
