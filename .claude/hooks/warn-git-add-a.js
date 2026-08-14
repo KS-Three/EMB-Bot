@@ -24,7 +24,6 @@ if (isAddAll) {
   console.log(JSON.stringify({
     hookSpecificOutput: {
       hookEventName: 'PreToolUse',
-      permissionDecision: 'allow',
       additionalContext:
         'Heads up: this stages everything. `git status --short` right now:\n' +
         (status || '(clean)') +

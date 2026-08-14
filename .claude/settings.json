@@ -43,19 +43,19 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"C:\\Users\\EE-LT-11030\\EMB-Bot\\.claude\\hooks\\block-powershell-replace.js\""
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-powershell-replace.js\""
           },
           {
             "type": "command",
-            "command": "node \"C:\\Users\\EE-LT-11030\\EMB-Bot\\.claude\\hooks\\block-worktree-mutation.js\""
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-worktree-mutation.js\""
           },
           {
             "type": "command",
-            "command": "node \"C:\\Users\\EE-LT-11030\\EMB-Bot\\.claude\\hooks\\warn-git-add-a.js\""
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/warn-git-add-a.js\""
           },
           {
             "type": "command",
-            "command": "node \"C:\\Users\\EE-LT-11030\\EMB-Bot\\.claude\\hooks\\nudge-cookbook-stale.js\""
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/nudge-cookbook-stale.js\""
           }
         ]
       }

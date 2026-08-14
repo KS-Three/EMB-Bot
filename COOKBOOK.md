@@ -58,8 +58,9 @@ font there unless it is also in the shipping manifest. `EMB-Bot-standalone.html`
   `docs/superpowers/notes/2026-07-27-embf-acceptance.md`.
 - **Rebuild**: `node tools/build-embf.mjs`. Requires `scratch_ink/`
   (gitignored): `_tiers.json` (tier classification) + `_out/*.json` (trial
-  imports). Recreate `scratch_ink/` by copying from Kent's Desktop
-  `Ink-Stitch Fonts` clone and re-running the classify/import steps; the
+  imports). Recreate `scratch_ink/` by copying from the master
+  `Ink-Stitch Fonts` clone at `G:\My Drive\EMB-Bot\Ink-Stitch Fonts\`
+  (see BACKUPS.md) and re-running the classify/import steps; the
   committed `.embf` files are the artifacts of record either way.
 - **Tier rule (Kent's decision): only `tier:"verified"` ships.** Unverified =
   internal work queue with a concrete reason per font in `_tiers.json`.

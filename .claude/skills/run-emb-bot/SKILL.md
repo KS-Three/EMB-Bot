@@ -126,14 +126,27 @@ Svelte + Vite. This is what most feature work touches.
 If you changed anything under `src/`, the Studio picks it up via
 `copy-engine.mjs` on its own `predev`/`prebuild` hook — no manual step needed.
 
-## Verifying a UI change live (Playwright MCP)
+## Verifying a UI change live
 
-With `npm run dev` running **in your own sandbox**, the `playwright` MCP
-server (declared in `.mcp.json`, launched via `tools/mcp-playwright.mjs`) can
-drive a real headless browser against `http://localhost:5173` — navigate the
-wizard, click through garment/font pickers, and take snapshots/screenshots to
-confirm a change actually works, not just that tests pass. Prefer this over
-claiming a frontend change works from reading the diff alone.
+Two ways, both real browsers. Prefer either over claiming a frontend change
+works from reading the diff.
+
+**The e2e suite** (`app/e2e/*.spec.js`, 7 specs) starts its own dev server on
+port 5183 and tears it down again, so it needs nothing running first:
+
+```
+cd app
+npx playwright test                    # or: npx playwright test e2e/wizard-smoke.spec.js
+```
+
+Chromium browsers are installed on Kent's machine as of 2026-08-14 (`npx
+playwright install chromium` if a fresh machine reports a missing browser).
+
+**Interactive driving** — with `npm run dev` running **in your own sandbox**,
+the `playwright` MCP server (declared in `.mcp.json`, launched via
+`tools/mcp-playwright.mjs`) drives a headless browser against
+`http://localhost:5173`: navigate the wizard, click through garment/font
+pickers, take snapshots. Use this for exploring; use the suite for proving.
 
 ## Standalone bundle — deleted, do not rebuild
 
@@ -162,89 +175,26 @@ These exist specifically because the browser tool available in agent
 sessions can't do file uploads — this is the way to test digitizing on a
 real image in this environment.
 
-## Font library
-
-Rebuild after tier/source changes to the satin font library (needs
-`scratch_ink/` — see COOKBOOK.md for how to obtain it):
-
-```
-node tools/build-embf.mjs
-```
-
-`tools/check-fonts.mjs` does a font-URL health check (CDN-fetched Google
-Fonts used by the older eager 21-font registry, not the Studio's library).
-
 ## Python digitizer (`digitizer/`)
 
-Independent Python package + optional FastAPI service. Own venv, own tests,
-own docs (`digitizer/README.md`, `digitizer/docs/`). Needs Python 3.12+ on
-every platform — see the prerequisite note above.
+Setup, test and service commands live in `digitizer/README.md` — follow it
+rather than duplicating it here. Two things that file gets wrong or omits:
 
-**In a Linux sandbox** — use `.venv/bin/python`, not the `.venv/Scripts/python`
-path shown in `digitizer/README.md` (that's the Windows form; swap `Scripts`
-for `bin` and drop the `.exe` throughout). Where the default `python3` is
-older than 3.12, create the venv with an explicit `python3.12`.
+- **In a Linux sandbox**, use `.venv/bin/python`, not the
+  `.venv/Scripts/python.exe` form the README shows (that's Windows). Swap
+  `Scripts` for `bin` and drop `.exe` throughout. Where the default `python3`
+  is older than 3.12, create the venv with an explicit `python3.12`.
+- Run tests as `python -m pytest`, never a bare `pytest` — the module form
+  puts the working directory on `sys.path` so `digitizer_core` imports
+  without a separate install step.
 
-Setup:
+`GET /health` on `127.0.0.1:8721` returns the brand and format inventory —
+confirms the service is really up, not merely launched.
 
-```
-cd digitizer
-python3.12 -m venv .venv
-.venv/bin/python -m pip install -e ".[dev]"
-```
+## Where things live, and the DST trap
 
-Run the test suite (127 tests, all offline):
-
-```
-.venv/bin/python -m pytest -q
-```
-
-Run via `python -m pytest`, not a bare `pytest` — this puts the working
-directory on `sys.path` so `digitizer_core` imports without a separate
-install step.
-
-Run the service (adds `service` extra):
-
-```
-.venv/bin/python -m pip install -e ".[service,dev]"
-.venv/bin/python -m digitizer_service          # binds 127.0.0.1:8721
-```
-
-`GET /health` returns the brand and format inventory — a quick confirmation
-the service is really up rather than merely launched.
-
-Regenerate thread charts after changing `tools/palettes/*.gpl`:
-
-```
-.venv/bin/python tools/gen_charts.py
-```
-
-Regenerate the synthetic test fixtures in `testdata/`:
-
-```
-.venv/bin/python tools/make_test_logo.py
-```
-
-## Which stack to touch
-
-- UI, garment/fabric options, Studio flow, font browsing → `app/` (Studio).
-- Stitch engine internals (fill, satin, DST/EXP/PES encoding), used by both
-  the browser and `node --test` → `src/`.
-- Server-side auto-digitizing quality (segmentation, region forming, stitch
-  planning quality) → `digitizer/digitizer_core`.
-- HTTP API for the digitizer → `digitizer/digitizer_service`.
-
-Cross-stack conventions that must stay in sync (see `digitizer/README.md`
-"Conventions" table for the full list): fabric presets mirror `src/fabrics.js`
-exactly; thread brand ids match `app/src/lib/threadBrandsIndex.js` exactly.
-Changing one without the other silently breaks the match.
-
-## DST codec — do not use as a correctness reference
-
-EMB-Bot's own DST encoder/decoder (`src/dst.js` / `src/dstimport.js`) is
-transposed vs. the Tajima/pyembroidery standard (confirmed, unresolved — see
-CLAUDE.md and `digitizer/README.md`'s "Open finding" section). It round-trips
-correctly with itself but reads wrong-orientation in third-party software.
-When verifying DST output for correctness (not just round-tripping), decode
-through pyembroidery (`digitizer/`'s dependency), never through
-`src/dstimport.js`.
+Architecture and the which-folder-does-what map are in COOKBOOK.md; the DST
+codec's axis bug is footgun #1 in CLAUDE.md. Both are read before this skill,
+so they aren't repeated here. The one operational consequence worth carrying:
+when verifying DST output for **correctness** rather than round-tripping,
+decode through pyembroidery, never through `src/dstimport.js`.

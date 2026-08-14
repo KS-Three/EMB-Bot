@@ -16,12 +16,17 @@ repositories. Drive is for backups; this folder is the workbench.
 Folder: `G:\My Drive\EMB-Bot\` (also visible at drive.google.com under
 "My Drive > EMB-Bot")
 
-- `EMB-Bot-2026-07-27.bundle` — the ENTIRE project history, every version of
-  every file, every branch. To restore on any computer with git:
-  `git clone EMB-Bot-2026-07-27.bundle EMB-Bot`
+- `EMB-Bot-2026-08-11.bundle` — most recent full-history snapshot. Every
+  version of every file, every branch. To restore on any computer with git:
+  `git clone EMB-Bot-2026-08-11.bundle EMB-Bot`
+- `EMB-Bot-2026-07-27.bundle` — the same thing, one snapshot older. Kept as a
+  second restore point; the 08-11 bundle supersedes it.
 - `EMB-Bot-2026-07-27-files.zip` — plain zip of the project files as of
   2026-07-27 (includes the 70-font binary library). For when you just need to
   grab a file without git.
+- `scratch_ink-2026-08-11.zip` — snapshot of the `scratch_ink\` working folder
+  (font imports plus `_tiers.json` classification results). Regenerable, but
+  re-deriving the tier measurements takes a full pipeline run, so it's kept.
 
 ## GitHub (stays current — best reference copy)
 
@@ -33,15 +38,18 @@ this one as current.)
 
 ## Font source material (not in the repo)
 
-- `C:\Users\EE-LT-11030\Desktop\Ink-Stitch Fonts\` — your downloaded clone of
-  the Ink/Stitch open font collection (140 fonts, ~300 MB). Original/master
-  copy.
+- `G:\My Drive\EMB-Bot\Ink-Stitch Fonts\` — your downloaded clone of the
+  Ink/Stitch open font collection (140 fonts, ~366 MB). Original/master copy.
+  Moved here from the Desktop on 2026-08-14 so it lives with the other
+  backups and syncs off-machine. It is reference material, not a git repo,
+  so Drive sync is safe for it.
 - `C:\Users\EE-LT-11030\Personal\EMB-Bot\scratch_ink\` — working copy of the same,
   plus measurement results (`_tiers.json` = the verified/unverified font
   classification, `_out\` = trial-imported font JSONs). Git-ignored;
-  regenerable from the Desktop folder if deleted.
+  regenerable from the Drive folder above if deleted.
 
 ## Not backed up (on purpose, all regenerable)
 
 - `node_modules\` — restore with `npm install` inside `app\`
-- `scratch_ink\` — restore by re-copying from the Desktop folder
+- `scratch_ink\` — restore by re-copying from
+  `G:\My Drive\EMB-Bot\Ink-Stitch Fonts\`

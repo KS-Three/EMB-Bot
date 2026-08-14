@@ -36,7 +36,6 @@ try {
     console.log(JSON.stringify({
       hookSpecificOutput: {
         hookEventName: 'PreToolUse',
-        permissionDecision: 'allow',
         additionalContext:
           `Heads up: COOKBOOK.md hasn't been touched in ${count} source commits ` +
           `(last updated ${lastDate}, commit ${lastCookbookCommit.slice(0, 7)}). ` +

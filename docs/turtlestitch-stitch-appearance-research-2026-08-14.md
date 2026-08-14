@@ -1,5 +1,3 @@
-Not yet merged into the live EMB Bot repo — move to `docs/turtlestitch-stitch-appearance-research-2026-08-14.md` next time the repo is checked out, per this repo's `docs/*-research-*.md` convention.
-
 # TurtleStitch teardown — what's portable to stitch appearance in EMB-Bot
 
 **Date:** 2026-08-14 · **Scope:** primary-source read of TurtleStitch 2.11.5's
