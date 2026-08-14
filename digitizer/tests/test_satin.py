@@ -10,10 +10,14 @@ import math
 
 import numpy as np
 import pytest
-from shapely.geometry import LineString, Point, Polygon
+from shapely.geometry import LineString, Point, Polygon, box
+from shapely.ops import unary_union
 
 from digitizer_core import machine
+from digitizer_core.shapefield import build_shape_field
 from digitizer_core.stage6_satin import (
+    _DT_TIGHTEN_PERCENTILE,
+    _junction_free_radii,
     extract_strokes,
     is_satin_candidate,
     ribbon_width_mm,
@@ -922,3 +926,92 @@ def test_same_rail_spacing_sits_on_the_thread_width_not_below_the_guard():
     below_guard = sum(1 for d in adv if d < machine.SATIN_SHORT_STITCH_AT_MM)
     assert below_guard / len(adv) <= 0.05, \
         f"{below_guard} intervals bunched under the guard threshold — the guard is not doing its job"
+
+
+# --- Junction-free DT width -------------------------------------------------
+# `_dt_regular_and_within_cap`'s p90 term was rejecting on BRANCHINESS rather
+# than width: p90 strips ONE junction's inflation, but a shape with many
+# branch points has well over a tenth of its skeletal pixels inflated, so the
+# 90th percentile never gets clear of them. Measured 2026-08-14 over the
+# pro-parity corpus, that was 11 of 14 satin->fill misroutes.
+
+def _comb(stroke: float, arms: int = 5, h: float = 30.0, span: float = 14.0):
+    """An E/comb letterform: one spine plus `arms` crossbars, every wall the
+    same `stroke` mm. Uniform by construction, so anything the DT width term
+    says about it is about its junctions, not about its stroke varying."""
+    parts = [box(0, 0, stroke, h)]
+    for i in range(arms):
+        y = i * (h - stroke) / (arms - 1)
+        parts.append(box(0, y, span, y + stroke))
+    return unary_union(parts)
+
+
+def _p90_mm(radii, field):
+    return 2.0 * float(np.percentile(radii, _DT_TIGHTEN_PERCENTILE)) / field.scale
+
+
+def test_junction_free_radii_is_the_full_sample_when_nothing_branches():
+    """A plain bar has no junctions, so there is nothing to strip and the
+    sample must come back untouched — the common ribbon case pays nothing."""
+    field = build_shape_field(BAR)
+
+    assert _junction_free_radii(field).size == field.dist[field.skel].size
+
+
+def test_junction_free_radii_drops_the_inflated_neighbourhood():
+    """A comb does branch, so the sample shrinks and the width it reports
+    comes down — that is the whole mechanism."""
+    field = build_shape_field(_comb(4.8))
+    full = field.dist[field.skel]
+    clean = _junction_free_radii(field)
+
+    assert clean.size < full.size
+    assert _p90_mm(clean, field) < _p90_mm(full, field)
+
+
+def test_a_uniform_comb_inside_the_cap_is_no_longer_rejected_for_branching():
+    """The exact misroute, reduced: every wall of this shape is 4.8 mm and
+    `ribbon_width_mm` reads 4.51 — comfortably inside the 5.0 cap, which the
+    first gate duly passes. The old DT term measured 5.47 on the same shape,
+    purely from its five junctions, and overrode that to fill."""
+    comb = _comb(4.8, arms=5)
+    field = build_shape_field(comb)
+
+    assert ribbon_width_mm(comb) < machine.SATIN_MAX_WIDTH_MM, \
+        "the cap gate passes this shape"
+    assert _p90_mm(field.dist[field.skel], field) > machine.SATIN_MAX_WIDTH_MM, \
+        "...and the un-cleaned p90 is what used to reject it"
+    assert is_satin_candidate(comb, machine.SATIN_MAX_WIDTH_MM)
+
+
+def test_a_genuinely_too_wide_comb_is_still_fill():
+    """The ceiling, so this is a fix and not a hole: stripping junctions must
+    not rescue a shape whose STROKE is over the cap. Same geometry, 5.2 mm
+    walls, still rejected after cleaning."""
+    assert not is_satin_candidate(_comb(5.2, arms=5), machine.SATIN_MAX_WIDTH_MM)
+
+
+def test_cleaning_never_turns_a_satin_call_into_a_fill_call():
+    """`_junction_free_radii` may only ever LOWER the measured width, so the
+    change is one-directional by construction. Pins that for the archetypes
+    plus the blob, which must stay fill."""
+    for poly in (BAR, O_RING, C_STROKE, T_SHAPE):
+        assert is_satin_candidate(poly, machine.SATIN_MAX_WIDTH_MM)
+    assert not is_satin_candidate(BLOB, machine.SATIN_MAX_WIDTH_MM)
+
+
+def test_the_serrated_disc_is_still_caught_by_regularity():
+    """The guard on the guard. Junction cleaning is deliberately NOT applied
+    to the regularity term, because that is what actually rejects a blob —
+    and `enthusiast_logo.png`'s `Sff37b029`, one of the two shapes this check
+    was added for, is a regularity rejection (2*sigma/mu 1.06) with a p90 of
+    2.59 mm, nowhere near the cap. Cleaning that sample would hand the
+    starburst back."""
+    for tooth in (0.3, 0.6, 1.2):
+        disc = _serrated_disc(10.0, tooth)
+        field = build_shape_field(disc)
+        radii = field.dist[field.skel]
+
+        assert 2.0 * radii.std() >= radii.mean(), \
+            f"tooth={tooth}: regularity is the term doing the rejecting"
+        assert not is_satin_candidate(disc, machine.SATIN_MAX_WIDTH_MM)

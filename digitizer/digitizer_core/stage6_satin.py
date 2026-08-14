@@ -250,6 +250,53 @@ def is_satin_candidate(poly: Polygon, max_width_mm: float, *,
 _DT_TIGHTEN_PERCENTILE = 90.0
 
 
+# A junction's inscribed circle is inflated over roughly one local radius
+# around it, so that is the neighbourhood to drop. Kept as a multiple of the
+# shape's own median radius rather than a fixed mm: the inflation scales with
+# the stroke, not with the design.
+_JUNCTION_REACH = 1.0
+# Below this share of the skeleton surviving, the "junction-free" sample is no
+# longer a sample of the stroke — a dense lattice of tiny branches can erase
+# nearly all of it — so the full skeleton is used and the term behaves exactly
+# as it did before this change.
+_JUNCTION_FREE_MIN_SHARE = 0.2
+
+
+def _junction_free_radii(field) -> np.ndarray:
+    """Medial-axis radii with each junction's inflated neighbourhood removed.
+
+    Only pixels near a junction AND wider than the shape's own median are
+    dropped. Proximity alone is not enough: a thinned rectangle carries small
+    Y-spurs at its END CAPS, whose radii taper toward zero, and discarding
+    those would RAISE a percentile rather than lower it. Restricting the cut
+    to above-median radii makes the helper one-directional by construction —
+    it can only ever lower the measured width, so no shape that satins today
+    can become a fill because of it.
+
+    Returns the FULL sample unchanged when nothing qualifies, or when too
+    little of the skeleton survives to be representative.
+    """
+    skel = field.skel
+    rad = field.dist[skel]
+    deg = np.zeros(skel.shape, np.int32)
+    s = skel.astype(np.uint8)
+    for dy in (-1, 0, 1):
+        for dx in (-1, 0, 1):
+            if dx or dy:
+                deg += np.roll(np.roll(s, dy, 0), dx, 1)
+    branch = skel & (deg >= 3)
+    if not branch.any():
+        return rad
+    reach = max(1, int(round(_JUNCTION_REACH * float(np.median(rad)))))
+    k = 2 * reach + 1
+    near = cv2.dilate(branch.astype(np.uint8),
+                      cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))) > 0
+    keep = skel & ~(near & (field.dist > float(np.median(rad))))
+    if keep.sum() < max(8, _JUNCTION_FREE_MIN_SHARE * skel.sum()):
+        return rad
+    return field.dist[keep]
+
+
 def _dt_regular_and_within_cap(poly: Polygon, max_width_mm: float) -> bool:
     """A second opinion on `is_satin_candidate`'s call, read off the exact
     distance transform at the medial axis instead of `2*area/perimeter`.
@@ -266,10 +313,35 @@ def _dt_regular_and_within_cap(poly: Polygon, max_width_mm: float) -> bool:
       toward its centre, spreading the radii out. This is what actually
       separates a ribbon from a blob here -- not `max_width_mm`, which both
       can satisfy.
-    - **The 90th-percentile width stays under the cap**: `max` is a junction
-      artefact (a serif crossbar's inscribed circle runs sqrt(2) times its
-      stroke) and rejects real letterforms; `p90` strips that spike while
-      still catching a genuinely wide blob.
+    - **The 90th-percentile width stays under the cap**, measured on
+      JUNCTION-FREE skeletal pixels (`_junction_free_radii`). `max` is a
+      junction artefact (a serif crossbar's inscribed circle runs sqrt(2)
+      times its stroke) and rejects real letterforms; `p90` was chosen to
+      strip that spike, and it does — for ONE junction. It does not hold at
+      branch density: a shape with tens of branch points has well over a
+      tenth of its skeletal pixels sitting in an inflated neighbourhood, so
+      the 90th percentile never gets clear of them and the term rejects on
+      branchiness rather than on width. Measured 2026-08-14 across the
+      pro-parity corpus, this was the dominant misroute: 11 of 14 satin->fill
+      rejections on `tires_hat_3d`/`becker_chest_small`/`mfab_hat` came from
+      this term, on shapes the perimeter-based cap gate had just passed —
+      `p90` runs 1.2-1.45x `ribbon_width_mm` on the same shape while both are
+      compared against the same `max_width_mm`, so the two gates disagreed by
+      construction. `tires_hat_3d`'s script stroke (`2*sigma/mu` 0.23, one of
+      the most uniform in the corpus, and exactly what satin is for) died
+      here. Dropping each junction's own neighbourhood measures the STROKE,
+      which is what this term was always trying to read.
+
+    The junction cleaning is deliberately NOT applied to the regularity term
+    above. The two ask different questions: `p90` wants the stroke's width
+    with artefacts removed, while regularity asks whether the shape is a
+    uniform stroke AT ALL, and a medial axis that collapses toward a centre
+    is exactly the blob signal it exists to catch. `enthusiast_logo.png`'s
+    `Sff37b029` — one of the two shapes this check was added for — is
+    rejected by regularity at `2*sigma/mu` 1.06 with a `p90` of 2.59 mm,
+    nowhere near the cap, so cleaning the regularity sample would hand the
+    starburst back. *(confirmed 2026-08-14 — probe over the committed
+    fixture at 90 mm)*
 
     Returns True (defers to the caller's already-True verdict) on a
     degenerate raster -- a shape too small or thin to skeletonize is not
@@ -285,7 +357,8 @@ def _dt_regular_and_within_cap(poly: Polygon, max_width_mm: float) -> bool:
         return True
     if 2.0 * r.std() >= r.mean():
         return False
-    p90_mm = 2.0 * np.percentile(r, _DT_TIGHTEN_PERCENTILE) / field.scale
+    clean = _junction_free_radii(field)
+    p90_mm = 2.0 * np.percentile(clean, _DT_TIGHTEN_PERCENTILE) / field.scale
     return p90_mm <= max_width_mm
 
 
