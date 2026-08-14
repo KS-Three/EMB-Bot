@@ -1,10 +1,10 @@
 # Where EMB Bot's files live
 
-Quick reference for Kent — updated 2026-07-27.
+Quick reference for Kent — updated 2026-08-14.
 
 ## The working project (the real thing you edit and run)
 
-`C:\Users\EE-LT-11030\EMB-Bot\` — this folder. Git repository.
+`C:\Users\EE-LT-11030\Personal\EMB-Bot\` — this folder. Git repository.
 Run the Studio: `cd app`, `npm install` (first time), `npm run dev`, open
 http://localhost:5173
 
@@ -36,7 +36,7 @@ this one as current.)
 - `C:\Users\EE-LT-11030\Desktop\Ink-Stitch Fonts\` — your downloaded clone of
   the Ink/Stitch open font collection (140 fonts, ~300 MB). Original/master
   copy.
-- `C:\Users\EE-LT-11030\EMB-Bot\scratch_ink\` — working copy of the same,
+- `C:\Users\EE-LT-11030\Personal\EMB-Bot\scratch_ink\` — working copy of the same,
   plus measurement results (`_tiers.json` = the verified/unverified font
   classification, `_out\` = trial-imported font JSONs). Git-ignored;
   regenerable from the Desktop folder if deleted.

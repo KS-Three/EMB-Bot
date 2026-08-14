@@ -15,7 +15,7 @@ everyone's time.
 
 **Kent wants to use EMB-Bot in his own browser** ("run embot", "pull up emb
 bot", "start it up"). This is the common case. He is on **Windows**, at
-`C:\Users\EE-LT-11030\EMB-Bot`. Do **not** start a server in your own
+`C:\Users\EE-LT-11030\Personal\EMB-Bot`. Do **not** start a server in your own
 sandbox — a server you start lives on *your* localhost, which his browser
 can never reach, and handing him a `localhost:5173` link from a cloud
 container is a dead end. Jump to *Launch on Kent's machine* below and give
@@ -35,7 +35,7 @@ command holds its terminal until Ctrl+C, so they cannot share one window.
 **Terminal Window 1 — Studio (required).** Paste:
 
 ```powershell
-cd C:\Users\EE-LT-11030\EMB-Bot\app
+cd C:\Users\EE-LT-11030\Personal\EMB-Bot\app
 npm install
 npm run dev
 ```
@@ -43,7 +43,7 @@ npm run dev
 **Terminal Window 2 — auto-digitizer (optional).** Paste:
 
 ```powershell
-cd C:\Users\EE-LT-11030\EMB-Bot\digitizer
+cd C:\Users\EE-LT-11030\Personal\EMB-Bot\digitizer
 if (-not (Test-Path .venv\Scripts\python.exe)) { py -3.12 -m venv .venv; .venv\Scripts\python -m pip install -e ".[service,dev]" }
 .venv\Scripts\python -m digitizer_service
 ```
@@ -67,7 +67,7 @@ for the port to actually accept connections, then launches the browser. From
 any PowerShell window:
 
 ```powershell
-C:\Users\EE-LT-11030\EMB-Bot\tools\start-emb-bot.ps1
+C:\Users\EE-LT-11030\Personal\EMB-Bot\tools\start-emb-bot.ps1
 ```
 
 Add `-NoDigitizer` to skip Window 2. The script resolves its own repo root
