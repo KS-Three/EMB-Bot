@@ -6,7 +6,11 @@ Per design under OUT/<slug>/:
   art_meta.json          (scale, palette, per-block measurements — the sidecar
                           that says which parts of the art are a STITCH
                           treatment rather than something artwork can express)
-  ours_blocks.json, ours_stitches.csv, ours_regions.json, ours_render.png
+  ours_blocks.json, ours_stitches.csv, ours_regions.json, ours_render.png,
+  ours.dst               (our own machine file — decoded back through the
+                          SAME `decode()` the pro side uses, so `runs` /
+                          `trims` / `jumps` mean one thing on both sides; see
+                          `decode_plan`)
   side_by_side.png
   meta.json              (size, counts, warnings, timing)
 
@@ -58,8 +62,15 @@ from PIL import Image, ImageDraw
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from digitizer_core.pipeline import run_stages, plan_stitches
 from digitizer_core.config import PipelineConfig
+from digitizer_core.export import write_dst
 
-ROOT = Path("/tmp/claude-0/-home-user-EMB-Bot/b97ff48d-88c2-507a-bc61-93cec7183437/scratchpad/embfiles/Embroidery Files")
+# The corpus lives outside the repo (it is customer work — see BACKUPS.md), so
+# the path is per-machine. It used to be hard-coded to the cloud sandbox that
+# first ran this, which meant every local invocation resolved nothing and the
+# `PRO_PARITY_ROOT` the docs tell you to set was read by prep_both.py only.
+ROOT = Path(os.environ.get(
+    "PRO_PARITY_ROOT",
+    "/tmp/claude-0/-home-user-EMB-Bot/b97ff48d-88c2-507a-bc61-93cec7183437/scratchpad/embfiles/Embroidery Files"))
 OUT = Path(os.environ.get(
     "PRO_PARITY_OUT",
     "/tmp/claude-0/-home-user-EMB-Bot/b97ff48d-88c2-507a-bc61-93cec7183437/scratchpad/corpus",
@@ -215,6 +226,28 @@ def decode(path):
         threads = [GREYS[i % len(GREYS)] for i in range(len(blocks))]
     x0, y0, x1, y1 = pat.bounds()
     return blocks, breaks, threads, (x0 / 10, y0 / 10, x1 / 10, y1 / 10), jumps, trims
+
+
+def decode_plan(plan, dst_path):
+    """`decode()` applied to OUR OWN output, so ours and pro are counted in
+    the same unit. -> the same 6-tuple `decode` returns.
+
+    A `StitchPlan` run is a PLAN OBJECT — one per fill, satin, underlay or
+    travel segment. A decoded run is a THREAD PATH. Travel is thread-down, so
+    the machine sews straight through it and one path swallows however many
+    plan objects it was assembled from. The two counts are not the same
+    measurement and were never comparable:
+
+        becker_hat_small   pro 13 runs   ours 290 plan objects   ours 35 paths
+        becker_beanie      pro 14 runs   ours 241 plan objects   ours 37 paths
+
+    Writing the file and reading it back, rather than counting the plan, is
+    deliberate: it shares `decode`'s run-splitting rule by construction
+    instead of keeping a second copy of it in step, and `ours.dst` is a
+    useful artifact in its own right — until now the harness rendered our
+    stitches but never emitted a machine file anyone could open.
+    """
+    return decode(write_dst(plan, dst_path))
 
 
 def flat(runs):
@@ -604,6 +637,21 @@ def run_ours(art_path, width_mm, outdir, garment_id=None):
                     j = jump if k == 0 else 0
                     f.write(f"{i},{ri},{t},{j},{x:.2f},{y:.2f}\n")
                 started = True
+    # Ours in the pro's unit. `plan_runs` is the old `runs` field, renamed
+    # because it never meant what the pro side's `runs` meant — see
+    # `decode_plan`. Anything comparing the two files must read `runs`.
+    mblocks, mbreaks, _mthreads, _mbounds, mjumps, mtrims = decode_plan(
+        plan, outdir / "ours.dst")
+    ours_meta = {
+        "runs": sum(len(r) for r in mblocks),
+        "plan_runs": sum(len(b.runs) for b in plan.blocks),
+        "jumps": mjumps, "trims": mtrims,
+        "run_breaks": {k: sum(kk.count(k) for kk in mbreaks)
+                       for k in ("start", "color", "trim", "jump", "hop")},
+    }
+    # Written rather than returned so `run_ours`'s signature does not move
+    # under the other callers. `machine_meta(outdir)` is the reader.
+    (outdir / "ours_meta.json").write_text(json.dumps(ours_meta, indent=1))
     summary = []
     ours_blocks = []
     for i, b in enumerate(plan.blocks):
@@ -613,7 +661,11 @@ def run_ours(art_path, width_mm, outdir, garment_id=None):
         lens = sorted(math.dist(r[k], r[k + 1]) for r in runs for k in range(len(r) - 1))
         n = len(lens)
         summary.append({
-            "block": i, "rgb": list(b.rgb), "stitches": len(pts), "runs": len(b.runs),
+            "block": i, "rgb": list(b.rgb), "stitches": len(pts),
+            "runs": len(mblocks[i]) if i < len(mblocks) else 0,
+            "plan_runs": len(b.runs),
+            "plan_runs_by_kind": {k: sum(1 for r in b.runs if r.kind == k)
+                                  for k in sorted({r.kind for r in b.runs})},
             "len_p10": round(lens[n // 10], 2) if n else 0,
             "len_p50": round(lens[n // 2], 2) if n else 0,
             "len_p90": round(lens[9 * n // 10], 2) if n else 0,
@@ -624,6 +676,14 @@ def run_ours(art_path, width_mm, outdir, garment_id=None):
                 "bounds": [round(v, 1) for v in r.polygon.bounds]} for r in res.regions]
     (outdir / "ours_regions.json").write_text(json.dumps(regions, indent=1))
     return res, plan, ours_blocks, [tuple(b.rgb) for b in plan.blocks]
+
+
+def machine_meta(outdir):
+    """Our `runs` / `trims` / `jumps` / `run_breaks` for a prepped design, in
+    the same unit `entry["pro"]` reports them in. `{}` on an output directory
+    prepped before this existed, so an old corpus still loads."""
+    p = Path(outdir) / "ours_meta.json"
+    return json.loads(p.read_text()) if p.exists() else {}
 
 
 def main():
@@ -686,6 +746,7 @@ def main():
                 "stitches": sum(len(p) for runs in ours_blocks for p in runs),
                 "blocks": len(ours_blocks),
                 "regions": len(res.regions),
+                **machine_meta(outdir),
                 "warnings": [w["code"] for w in res.warnings],
             }
             allpts = [p for runs in ours_blocks for r in runs for p in r]
@@ -700,7 +761,7 @@ def main():
                 side = Image.new("RGB", (pro_im.width + ours_im.width + 60, h), "white")
                 d = ImageDraw.Draw(side)
                 d.text((20, 8), f"PRO - {entry['pro']['stitches']} st, {entry['pro']['blocks']} blocks, {entry['pro']['trims']} trims", fill="black")
-                d.text((pro_im.width + 40, 8), f"EMB-BOT - {entry['ours']['stitches']} st, {entry['ours']['blocks']} blocks", fill="black")
+                d.text((pro_im.width + 40, 8), f"EMB-BOT - {entry['ours']['stitches']} st, {entry['ours']['blocks']} blocks, {entry['ours']['trims']} trims", fill="black")
                 side.paste(pro_im, (20, 30)); side.paste(ours_im, (pro_im.width + 40, 30))
                 side.save(outdir / "side_by_side.png")
             entry["ok"] = True

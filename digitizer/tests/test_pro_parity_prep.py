@@ -148,6 +148,46 @@ def test_meta_records_the_measurements_the_art_cannot_carry():
 
 
 # ------------------------------------------------------------------ decode
+def _one_block_plan(*runs):
+    from digitizer_core.stitches import StitchBlock, StitchPlan
+    return StitchPlan(blocks=[StitchBlock(0, "1000", (0, 0, 0), runs=list(runs))],
+                      palette=[{}])
+
+
+def test_a_travel_segment_is_not_a_machine_run():
+    """`ours_blocks.json` counted `len(block.runs)` — PLAN objects, one per
+    fill / satin / underlay / travel segment. `pro_blocks.json` counts MACHINE
+    runs, in which a travel walk is thread-down and merges into the path it
+    connects. Read side by side the two inflated ours 6-22x: becker_hat_small
+    reported 290 runs against the pro's 13, and the same design's exported DST
+    decodes to 35.
+    """
+    from digitizer_core.stitches import StitchRun, FILL, TRAVEL
+    a = [(0.0, 0.0), (0.0, 4.0), (1.0, 4.0), (1.0, 0.0)]
+    walk = [(1.0, 0.0), (2.0, 0.0), (3.0, 0.0)]      # under TRAVEL_MM per step
+    b = [(3.0, 0.0), (3.0, 4.0), (4.0, 4.0), (4.0, 0.0)]
+    plan = _one_block_plan(StitchRun(a, FILL), StitchRun(walk, TRAVEL),
+                           StitchRun(b, FILL))
+    assert sum(len(bl.runs) for bl in plan.blocks) == 3, "three plan objects"
+    out = Path(__import__("tempfile").mkdtemp())
+    blocks, _breaks, _t, _bnds, _j, _tr = prep.decode_plan(plan, out / "ours.dst")
+    assert sum(len(r) for r in blocks) == 1, "one continuous thread path"
+
+
+def test_a_trimmed_run_does_open_a_machine_run():
+    """The counterpart guard: the fix must not merge everything. A cut thread
+    is a real break on both sides of the comparison."""
+    from digitizer_core.stitches import StitchRun, FILL
+    a = [(0.0, 0.0), (0.0, 4.0), (1.0, 4.0), (1.0, 0.0)]
+    b = [(3.0, 0.0), (3.0, 4.0), (4.0, 4.0), (4.0, 0.0)]
+    plan = _one_block_plan(StitchRun(a, FILL), StitchRun(b, FILL, jump=True, trim=True))
+    out = Path(__import__("tempfile").mkdtemp())
+    blocks, breaks, _t, _bnds, _j, trims = prep.decode_plan(plan, out / "ours.dst")
+    assert sum(len(r) for r in blocks) == 2
+    assert breaks[0][1] == "trim"
+    assert trims >= 1
+
+
 def test_decode_breaks_runs_on_every_command_the_file_records():
     pytest.importorskip("pystitch")
     import pystitch
