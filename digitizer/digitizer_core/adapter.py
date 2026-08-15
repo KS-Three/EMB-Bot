@@ -37,7 +37,7 @@ import math
 
 import pystitch
 
-from .stitches import StitchPlan
+from .stitches import StitchBlock, StitchPlan
 
 UNITS_PER_MM = 10.0
 
@@ -74,7 +74,7 @@ def plan_to_design(plan: StitchPlan, name: str = "Digitized design") -> dict:
                 "r": int(r),
                 "g": int(g),
                 "b": int(b),
-                "name": f"{block.thread_number} {_thread_name(plan, bi)}".strip(),
+                "name": f"{block.thread_number} {_thread_name(plan, block, bi)}".strip(),
             }
         )
 
@@ -128,10 +128,29 @@ def plan_to_design(plan: StitchPlan, name: str = "Digitized design") -> dict:
     return design
 
 
-def _thread_name(plan: StitchPlan, block_index: int) -> str:
-    """The catalog name for a block, when the palette carries one."""
-    if block_index < len(plan.palette):
-        return str(plan.palette[block_index].get("name", ""))
+def _thread_name(plan: StitchPlan, block: StitchBlock, block_index: int) -> str:
+    """The catalog name for a block, when the palette carries one.
+
+    A name is only ever taken from an entry that AGREES with the block's own
+    thread number. `plan.palette` is block-aligned by construction now, so the
+    entry at `block_index` is the answer in every ordinary case — but this
+    function is the last thing standing between a drifted palette and a cone
+    shipped under another cone's name, and that is not a hypothetical: it read
+    the palette by index alone until 2026-08-14, when the per-LAYER list was
+    passed here and every block after a layer that sewed nothing came out
+    labelled with the previous cone's name (`golf_hat` block 3: thread 0020,
+    black, labelled "0020 Tangerine"; 22 of the corpus's 96 blocks wrong, on
+    6 of its 23 designs, worst `hotel_fremont_patch` at 7 of 8). The
+    number is right in the label either way, which is precisely why nobody
+    caught it. Falls back to a search by number, then to no name at all — an
+    unnamed cone is a gap, a misnamed one is a lie.
+    """
+    entry = plan.palette[block_index] if block_index < len(plan.palette) else None
+    if entry is not None and str(entry.get("number", "")) == block.thread_number:
+        return str(entry.get("name", ""))
+    for candidate in plan.palette:
+        if str(candidate.get("number", "")) == block.thread_number:
+            return str(candidate.get("name", ""))
     return ""
 
 

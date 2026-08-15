@@ -574,6 +574,29 @@ class PipelineConfig:
     #             quantity. Same contract as "wave"/"chevron" above,
     #             including the `tier: "brick"` override.
     fill_technique: str = "tatami"
+
+    # Task A2 (2026-08-14, tools/pro_parity): the corpus's professional
+    # SOLID fill elements sew at roughly double a single ordinary pass's
+    # density — see machine.FILL_DENSITY_BOOST_MIN_WIDTH_MM's own comment
+    # for the measurement and the two-pass "cross + top" mechanism. It only
+    # ever fires where `fill_technique` is still plain "tatami" (any other
+    # technique — crosshatch, wave, sketch, streamline, contour, ... — is an
+    # explicit choice and is left alone) AND the shape itself is solid
+    # (stage6_fill.is_solid_fill) — a thin strip or lattice arm stays
+    # single-pass regardless of this flag.
+    #
+    # SEW-OUT GATED, same standing as `directional_comp` above and
+    # `PUSH_CUTBACK_MM` in machine.py: False is the shipped default because
+    # every golden in the suite is pinned to plain single-pass tatami
+    # (stage6_fill.stitch_shape's own docstring) and turning this on by
+    # default moved a real, measured set of them — not a bug in the
+    # technique, but a shipped-default change that belongs behind Kent's
+    # physical sew-out, exactly the bar `directional_comp` and
+    # `PUSH_CUTBACK_MM` are held to. `tools/pro_parity/prep_all.py` sets
+    # this True explicitly — that harness's whole job is measuring a
+    # candidate engine change against the corpus before it ships, which is
+    # exactly what this flag needs measured.
+    fill_density_boost: bool = False
     # streamline's own sub-mode — irrelevant (and unread) unless
     # fill_technique == "streamline".
     #
