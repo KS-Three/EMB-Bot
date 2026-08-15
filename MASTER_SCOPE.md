@@ -44,12 +44,20 @@ or move it.
 3. **14 jump-trims on an 80mm design,** in every fill variant measured.
    Not started. *(measured 2026-08-12 — scope-history)*
 
-4. **Auto-digitized `becker logo.png` rates well below its professionally
-   digitized version.** Forcing the flat lane on textured logo art makes it
-   *worse* — k-means shatters texture, `summit_badge` 8,263 → 9,579 stitches.
-   Closing this needs an edge-preserving flatten BEFORE region forming, plus a
-   side-by-side against the pro file. Blocked on Kent supplying
-   `becker logo.png` + the pro DST/PES. *(measured 2026-08-13 — scope-history)*
+4. **Our output fragments into 129 runs where the professional uses 15** — on
+   the same logo, at the same size. That is what drives **8.49 trims/1,000
+   stitches against the pro's 1.27**, more than double the 4.1 ceiling this
+   repo's own chaining test treats as the outer limit. Unambiguously a defect,
+   unlike the stitch-count gap beside it. Cause not yet diagnosed.
+   *(measured 2026-08-15 — `docs/becker-pro-parity-2026-08-15.md`)*
+   **No longer blocked:** Kent delivered the artwork and five professionally
+   digitized variants on 2026-08-15; they are committed under
+   `digitizer/testdata/reference/`. Two things that comparison disproved, so
+   nobody re-derives them: the 1-colour-vs-4 difference is **not** defect #1
+   (the source PNG is genuinely monochrome, so one thread is correct — the pro
+   worked from richer artwork than we were given), and most of the
+   3,417-vs-8,694 stitch gap is a **design choice**, not a defect — the pro
+   filled the banner and left the letters bare fabric, we filled the letters.
 
 5. **Satin-vs-fill routing sits at chance, and misroutes in BOTH directions.**
    Against the 23 professional designs, the engine's satin/fill *mix* nearly
@@ -233,14 +241,10 @@ the facts.
    taken under load: **area 5**, under Kent's direct-manipulation request.
    Not started.
 
-2. **`becker logo.png` + its professionally digitized DST/PES.** Kent rated
-   EMB-Bot's auto-digitized version well below the pro file. Measured
-   2026-08-13: forcing the flat lane on textured logo art makes it WORSE
-   (k-means shatters texture — `summit_badge` 8,263 -> 9,579 stitches), so
-   closing the gap needs an edge-preserving flatten BEFORE region forming,
-   plus a side-by-side against the pro file to know what "good" looks like.
-   **Blocked on Kent supplying both files.** Detail: the "Last updated"
-   entry above and **area 1**.
+2. **CLOSED 2026-08-15 — Kent delivered the artwork and five professionally
+   digitized variants.** The comparison is done; see live defect #4 and
+   `docs/becker-pro-parity-2026-08-15.md`. Kept here only long enough for a
+   reader who remembers this as the headline blocker; delete on the next pass.
 
 **Also open, same category — listed so this queue is not a half-truth:**
 
@@ -485,8 +489,21 @@ pooled-metric measurement gap, not a fix defect). `summit_badge.png` (#6.2)
 and `repro_gradient_white_icon.png` (#6.3) remain open, same root-cause doc.
 **Next step for this gap:** use the tool by hand against a few real future
 corpus-law/classifier changes to learn what a genuine regression looks like
-here before deciding on hard CI thresholds; the labeled-corpus half stays
-blocked on `scratch_corpus/` access, unchanged by this pass.
+here before deciding on hard CI thresholds.
+
+**The corpus half is no longer empty (2026-08-15).** Eight files of real
+customer artwork now ship in `FIXTURES` — the first entries that are neither
+synthetic nor hand-picked. They immediately contradicted the synthetic set:
+**stage 0 routes six of the seven logos to the GRADIENT lane, not the flat
+lane**, because real logo art carries JPEG ringing, anti-aliased edges and soft
+shading that the synthetic flat fixtures do not. Any claim about "flat
+spot-colour art" tuned only on synthetics is therefore untested against the
+input this product actually receives. One (`logo_script_tires.png`, a clean
+two-colour script wordmark on white) classifies as `photo_scene` outright — a
+misroute, kept as a fixture so the bug has one.
+*(measured 2026-08-15 — `tools/corpus_scorecard.py:FIXTURES`)*
+This does **not** close `scratch_corpus/`: those 37 files are still
+inaccessible, and the DT-first classifier's M2/M3 still waits on them.
 
 **A second, different harness also exists: `tools/pro_parity/`.** Where
 `corpus_scorecard.py` asks "did our own preflight score move", this one asks
