@@ -92,7 +92,38 @@ chance-corrected:
 |---|---|---|---|
 | post-revert (`main` at 2026-08-15 07:00) | no | 39.4 | 52.1 |
 | PR #146 restored | no | 41.4 | 53.9 |
-| PR #146 restored | **yes** | **42.0** | **54.0** |
+| PR #146 restored | yes | 42.0 | 54.0 |
+| **+ stage6 travel fixes, measured in an isolated worktree at `7298ac8`** | yes | **42.5** | **53.8** |
+
+**42.5 is the number to quote, and it is the first one today measured on a tree
+that could not move underneath it.** The three rows above it were each invalidated
+within the hour by a commit landing mid-measurement — the 07:00 revert, then
+`da42947`, then `f6458a2` / `08e39b5`. A second Claude session was committing to
+this same branch and checkout throughout. The fix was a pinned worktree at
+`.claude/worktrees/parity-measure`, with module resolution verified to hit the
+worktree's own `digitizer_core` rather than the main checkout's editable install.
+**Measure parity in a worktree, not in a shared checkout.**
+
+`f6458a2` ("keep every travel-guide fragment, and never route outside the shape")
+and `08e39b5` ("stitch-length floor under vertex-preserving travel") are net
+**+0.54**, and the shape of the change is worth recording because it is not
+uniform — better on 6 designs, worse on 8:
+
+```
+component   before   after    delta
+travel       0.739   0.811   +0.072      <- what the fixes targeted
+underlay     0.605   0.573   -0.031      <- what they cost
+sttype       0.182   0.176   -0.006
+density      0.551   0.545   -0.006
+coverage     0.573   0.570   -0.003
+direction    0.073   0.077   +0.004
+```
+
+The travel gain lands almost entirely on Becker (`becker_lc_large` travel
+0.44 -> 0.84, +5.8 on the total; `becker_chest_small` 0.48 -> 0.83, +4.3), and the
+underlay cost lands on Hotel Fremont (`hotel_fremont_patch` underlay 0.74 -> 0.55,
+-3.1; `hotel_fremont_hat` 0.69 -> 0.50, -2.7). Whether that trade is right needs a
+sew-out, not a scorecard.
 
 The recon lane at the restored engine reproduces the 2026-08-14 old-scale figures
 almost exactly (`becker_beanie` 70.6 vs 70.6, `gaulke_roofing_lc` 79.8 vs 79.8,
@@ -518,3 +549,78 @@ survived anyway; the reasoning behind it did not.
 - **21 `.PDF` Wilcom ES-65 worksheets.** Vector stitch renders plus a spec sheet
   (stitch count, colour changes, trims, machine, H/W in inches). Useful as an
   independent dimension cross-check; not source art.
+
+## 11. The scorecard's own ceiling — a pro scores 75-84 against a pro
+
+Added 2026-08-15. `selfconsistency.py` feeds the shipped scorecard two of the
+PRO's own files for one logo — file A as `pro`, file B as `ours` — so the ceiling
+is measured through the same registration, rasterisation and chance corrections
+as any design's score. Nothing about it depends on EMB-Bot, so unlike every
+number above it is immune to the engine moving.
+
+**First, it validates the instrument.** On pairs that turn out to be one job saved
+twice, the scorecard returns 96.0 and 99.9. It recognises near-identity correctly,
+which is worth knowing before trusting anything else it says.
+
+**Then the finding.** On the two genuinely independent renditions:
+
+```
+pair                        score   cov   dir   typ   den   und   trv
+hotel_hat_vs_patch           75.2  0.95  0.11  0.80  0.93  0.90  1.00
+machine_beanie_two_files     83.6  0.73  0.85  0.73  0.96  0.94  0.89
+```
+
+**A professional scores 75-84 against a professional.** The 95 target is above
+that. It is not a bar the engine is failing to clear; it is above what
+professional-versus-professional agreement measures on this metric.
+
+Per-component ceilings, and what they say about the weights:
+
+| component | weight | ceiling | verdict |
+|---|---|---|---|
+| `direction` | 20 | **0.11 / 0.85** | lowest, and swings 8x between two jobs by the same digitizer. Least defensible weight in the scorecard |
+| `sttype` | 20 | 0.80 / 0.73 | real headroom |
+| `coverage` | 20 | 0.95 / 0.73 | mostly fine |
+| `density` | 15 | 0.93 / 0.96 | ceiling near 1 — weight is sound |
+| `underlay` | 10 | 0.90 / 0.94 | sound |
+| `travel` | 15 | 1.00 / 0.89 | sound |
+
+`direction` reading 0.11 on one pair and 0.85 on another, from one digitizer on
+one logo, is the clearest statement of the problem: **it measures a choice, not a
+standard.** Its 20 points are mostly not winnable, which retires the idea — floated
+earlier the same day off the chance-corrected 0.073 — that `direction` was a
+20-point opportunity. A per-design oracle rotation, which no engine could know in
+advance, reaches only 0.585 mean raw = 3.4 of the 20 points.
+
+**One real defect did fall out of that sweep, worth fixing on its own merits
+rather than for points:** `bridge_lc`'s fill cells score raw 0.19 — worse than
+chance — and rotating them exactly 90 degrees takes them to 0.81. Half that
+design's fills run across where the pro ran along. A sew-out would show it as
+banding in the wrong axis. `hotel_fremont_patch` (fills 0.28 -> 0.72 at 115
+degrees) may be the same defect or may be the pro's own choice; these two cannot
+be separated without more pairs.
+
+### Do not reweight off this yet — n = 2
+
+Three limitations, all documented in `selfconsistency.py` rather than left as
+silent bias:
+
+- **PES-vs-DST pairs are refused.** DST carries no palette, so `decode()`
+  substitutes its `GREYS` ramp and `coverage`'s colour-surface term scores the
+  FORMAT. This produced a convincing phantom: `toat_beanie_two_files`, two files
+  four stitches apart, scoring coverage 0.50 with every other component at 1.00.
+  That looked like a coverage bug for about ten minutes.
+- **DST-vs-DST pairs INFLATE `coverage`** for the mirror reason — both sides get
+  the same fabricated ramp, so the colour term always agrees. `machine_hat_vs_lc`
+  at coverage 1.00 is partly that artifact.
+- **Some pairs are one file reused** for cap front and left chest (8694 vs 8698
+  stitches; 13886 vs 13875). Useful as a self-test, useless as evidence of
+  discretion. That reuse independently explains §5b's null hat-vs-left-chest
+  result: **there was no second decision to differ.**
+
+Which leaves two valid independent pairs. Growing the sample needs
+**scale-normalised registration in `scorecard.py`** — it registers by translation
+only today, and every other same-logo PES pair in the file set is 4-17% apart in
+width, so `MAX_SIZE_DELTA` correctly refuses them. That is the prerequisite for
+any defensible reweighting, and it is a change to the measuring instrument, which
+makes it Kent's call.
