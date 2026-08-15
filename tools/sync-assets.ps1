@@ -5,7 +5,7 @@
 .DESCRIPTION
     EMB-Bot's code reaches every Claude session automatically; its images never
     do. That asymmetry is why `becker logo.png` and the 37-file scratch_corpus/
-    sat in MASTER_SCOPE's "Waiting on Kent" queue for months — not hard work,
+    sat in MASTER_SCOPE's "Waiting on Kent" queue for months - not hard work,
     just files nobody in a session could see.
 
     This is the fix, and it is deliberately dumb: one folder, one command, any
@@ -19,7 +19,7 @@
     because the rest of the pipeline refers to fixtures by name and a space in
     a path has already cost this project time.
 
-    Staging is BY EXPLICIT PATH — never `git add -A`, per CLAUDE.md footgun #2,
+    Staging is BY EXPLICIT PATH - never `git add -A`, per CLAUDE.md footgun #2,
     which exists because .claude/worktrees/ holds live uncommitted work that a
     blind stage would sweep up.
 
@@ -57,14 +57,14 @@ $skip  = @('README.md', '.gitkeep')
 $files = @(Get-ChildItem -Path $inbox -File | Where-Object { $skip -notcontains $_.Name })
 
 if ($files.Count -eq 0) {
-    Write-Host "Inbox is empty — nothing to sync." -ForegroundColor Yellow
+    Write-Host "Inbox is empty - nothing to sync." -ForegroundColor Yellow
     Write-Host "  $inbox"
     exit 0
 }
 
 Write-Host "Found $($files.Count) file(s) in the inbox." -ForegroundColor Cyan
 
-# Normalise names. Collisions are renamed rather than overwritten — losing a
+# Normalise names. Collisions are renamed rather than overwritten - losing a
 # file silently would be worse than an ugly name.
 $renamed = @()
 foreach ($f in $files) {
@@ -101,7 +101,7 @@ try {
 
     $staged = git diff --cached --name-only
     if (-not $staged) {
-        Write-Host "`nNothing changed — these files are already committed." -ForegroundColor Yellow
+        Write-Host "`nNothing changed - these files are already committed." -ForegroundColor Yellow
         exit 0
     }
 
@@ -122,7 +122,8 @@ try {
         Write-Host "Pushed to $branch." -ForegroundColor Green
     }
 
-    Write-Host "`nNow tell a Claude session: `"I dropped files in the inbox`"" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host 'Now tell a Claude session: "I dropped files in the inbox"' -ForegroundColor Cyan
 }
 finally {
     Pop-Location
