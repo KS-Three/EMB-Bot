@@ -158,12 +158,17 @@ enthusiast_logo.png          0.8%   <- the benchmark logo
 summit_badge.png             0.1%
 ```
 
-The top two are substantial. Worse, `logo_whitebg.png` and `enthusiast_logo.png`
-are both already entangled in the three failures `main` carries today
-(`test_pushcomp[logo_whitebg.png-towel]` and the two `enthusiast_logo.png`
-goldens). Flipping the default means re-capturing goldens on the repo's core
-fixtures on top of an already-red baseline — the condition under which a real
-regression is easiest to miss.
+The top two are substantial, and they are the repo's core fixtures. Flipping the
+default means re-capturing goldens on them.
+
+**Corrected 2026-08-15:** this paragraph originally added that `logo_whitebg.png`
+and `enthusiast_logo.png` were "already entangled in the three failures `main`
+carries today", making the baseline red. That was wrong. `main` is green — the
+three are Windows-only platform divergence against goldens captured on
+`ubuntu-latest` (`pro-parity-real-art-2026-08-15.md` §0b). The argument against
+flipping the default does not depend on it and stands on §5.1-5.3 alone; what
+does change is that the golden churn is only judgeable in CI, so a local run
+cannot tell you whether the re-capture was clean.
 
 ## 6. The shippable remainder
 

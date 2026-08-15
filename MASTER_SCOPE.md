@@ -206,6 +206,24 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
   width). Reweighting before then would re-base every historical score on two data
   points. *(measured 2026-08-15 — `tools/pro_parity/selfconsistency.py`,
   `docs/pro-parity-real-art-2026-08-15.md` §11)*
+- **The byte-identical goldens fail on Windows and pass in CI. That is platform
+  divergence, not a red `main`.** Three tests —
+  `test_flat_lane_byte_identical[photo/enthusiast_logo.png]`,
+  `test_stage2_photo_segment[photo/enthusiast_logo.png]` and
+  `test_pushcomp[logo_whitebg.png-towel]` — fail on a Windows checkout and pass on
+  `ubuntu-latest`, which is what `.github/workflows/python-package-conda.yml`
+  runs and where the goldens were captured. Confirmed: `gh run list --branch main`
+  reports `842d3a1` as `success`. The divergence is one contour, not logic — on
+  `enthusiast_logo` all 31 `shape_ids` match and 30 of 31 areas match exactly,
+  with one region reading 0.3208 mm² against the golden's 0.3784. The tell is that
+  the golden's OWN capture commit (`e364122`) fails locally too, so no commit can
+  be bisected to. Ruled out first: every geometry-relevant pin (numpy, opencv-
+  contrib-headless, scipy, shapely, scikit-image, pillow) matches
+  `requirements.txt` exactly. **So do not read a local golden failure as a
+  regression, and do not re-capture a golden from a Windows run — it would break
+  CI.** Judge a local change by "same failure set before and after"; let CI judge
+  the goldens. *(measured 2026-08-15 — `docs/pro-parity-real-art-2026-08-15.md`
+  §0b)*
 - **Measure pro-parity in a git worktree, never in a shared checkout.** Three
   separate baselines were invalidated on 2026-08-15 by commits landing mid-run: a
   `git pull` carrying the PR #146 revert, then `da42947`, then

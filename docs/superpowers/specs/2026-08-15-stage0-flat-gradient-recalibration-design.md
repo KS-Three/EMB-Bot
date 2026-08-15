@@ -229,7 +229,16 @@ regression (§3) — each rejected or deferred above with a measurement.
 ## 8. Expected cost when it does land
 
 Ten of fifteen designs changing lane will move any golden pinning a
-gradient-classified fixture. `main` already carries three failures, two of them
-`enthusiast_logo.png` goldens. Golden re-capture is Kent's call per repo
+gradient-classified fixture. Golden re-capture is Kent's call per repo
 convention, so the implementation plan must present the churn for approval rather
 than re-capturing.
+
+**Judge that churn in CI, not on Windows.** An earlier version of this section
+said `main` already carried three failures. It does not — `main` is green
+(`gh run list --branch main`, `842d3a1` conclusion `success`). Those three
+failures are Windows-only: CI is `ubuntu-latest`, the goldens were captured
+there, and on `photo/enthusiast_logo.png` all 31 shape_ids match with 30 of 31
+areas identical, one region reading 0.3208 mm² against the golden's 0.3784. The
+golden's own capture commit fails locally too, so it was never produced by this
+platform. See `pro-parity-real-art-2026-08-15.md` §0b for the full ruling-out.
+A recalibration's golden churn is therefore only measurable in CI.

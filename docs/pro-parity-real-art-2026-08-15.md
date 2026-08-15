@@ -53,9 +53,31 @@ suite 1007 passed / 16 failed, dropping to **7 failed** once the documented
 optional `.[service]` deps are installed — exactly the "7 failed, identical
 failure set, zero new" the 2026-08-14 program doc recorded. Those 7 are 4 OCR
 tests needing the `tesseract-ocr` system binary (a separate non-pip install per
-`digitizer/README.md`) plus **3 failures pre-existing on `main`**: two goldens on
-`photo/enthusiast_logo.png` and `test_pushcomp[logo_whitebg.png-towel]`. `main`
-was already red before any of this work.
+`digitizer/README.md`) plus **3 failures that are WINDOWS-ONLY, not `main` being
+red**: two goldens on `photo/enthusiast_logo.png` and
+`test_pushcomp[logo_whitebg.png-towel]`.
+
+**Correction, 2026-08-15.** An earlier version of this paragraph called these
+"3 failures pre-existing on `main`" and said `main` was already red. That was
+wrong, and it was repeated several times before being checked. `main` is GREEN:
+`gh run list --branch main` shows `842d3a1` — the exact commit tested — with
+conclusion `success`, as are the four runs after it. CI is `ubuntu-latest`
+(`.github/workflows/python-package-conda.yml`) and the goldens were captured
+there; this machine is Windows.
+
+The divergence is a single contour, not a logic difference: on
+`photo/enthusiast_logo.png` all 31 `shape_ids` match and 30 of 31 areas match
+exactly, with one region reading 0.3208 mm² against the golden's 0.3784. The
+tell-tale is that the golden's OWN capture commit (`e364122`) also fails here —
+it was never produced by this platform, so no commit can be blamed. Ruled out
+first: every geometry-relevant pin (numpy, opencv-contrib-headless, scipy,
+shapely, scikit-image, pillow) matches `requirements.txt` exactly; the only
+mismatches are `uvicorn`/`starlette`/`packaging`/`typing-inspection`/`uvloop`,
+none of which touch geometry.
+
+**Practical consequence: byte-identical goldens cannot be trusted as a local
+signal on Windows.** Judge a change here by "same failure set before and after",
+which is what was actually done above, and let CI judge the goldens.
 
 **2. `53e02ae` chance-corrected `direction` and `sttype`** (2026-08-14 21:28),
 settling the open decision the 2026-08-14 measurements doc flagged. It re-bases
