@@ -109,22 +109,38 @@ data went local → Drive → local and came back **byte-identical**, sha256
 `949166876eff…` on both sides, still a valid PNG under `file`.
 *(measured 2026-08-14 — this skill's own build session)*
 
-**Large payloads truncate silently, with no error.** A 120,303-byte PNG passed
-as a base64 argument arrived in Drive as **4,908 bytes** — Drive cheerfully
-reported success and stored a corrupt file. Nothing raised. *(measured
-2026-08-14 — same session)* That was the upload direction, which this skill
-does not use (Kent uploads by dragging into Drive's web UI). It is recorded
-because it establishes the failure *mode*: **the truncation is silent.** Assume
-the download direction fails the same way and verify every file.
+**CORRECTION 2026-08-15 — the earlier version of this section blamed Drive for
+silent truncation. That was wrong, and the real cause is worse, because it
+cannot be fixed by picking a better file size.**
+
+What actually happens: **an agent cannot reliably re-emit a long base64 string
+into a tool argument.** The bytes arrive fine; they are lost on the way back
+out, when the agent copies them into a `Write` call or a bash heredoc. Measured
+the same day, same session:
+
+| base64 length | re-emitted faithfully? |
+|---|---|
+| 3,264 chars (2,448-byte PNG) | yes — byte-identical round trip, sha256 match |
+| 9,620 chars (7,213-byte PNG) | yes — exactly 9,620 chars written |
+| 24,628 chars (18,470-byte JPEG) | **NO — 1,965 chars written, 92% lost** |
+
+The two failures previously attributed to Drive were both this: a 120,303-byte
+"upload truncation" and an 18,470-byte "download truncation" were the agent
+dropping the tail of a long string. **Nothing in the tool chain reported an
+error in either case.**
 
 **Practical guidance:**
 
-| Size | Verdict |
+| base64 size | Verdict |
 |---|---|
-| < ~250 KB | Fine. Pull it. |
-| 250 KB – 1 MB | Risky. One file per subagent, verify hard, expect failures. |
-| > 1 MB | Do not attempt. *(estimated, not measured — base64 is ~1.37× and a 1 MB file becomes roughly 350k tokens of tool result)* |
-| Archives (.zip) | Never. |
+| under ~10,000 chars (~7 KB file) | Works, verified twice. Still hash-check it. |
+| 10,000–25,000 chars | Unverified. Assume it will be silently truncated. |
+| above ~25,000 chars (~18 KB file) | **Measured failure.** Do not use this path. |
+
+**So the Drive path is only safe for genuinely tiny files, and even then it
+buys almost nothing over the inbox.** Prefer `digitizer/testdata/inbox/` +
+`tools/sync-assets.ps1` for everything. It has no size ceiling and no encoding
+round-trip, because the bytes never pass through a context window.
 
 **Always `sha256sum` and `file` the result.** A truncated PNG can still have a
 valid header — `file` alone will call it a PNG. Size and hash are the real
@@ -132,10 +148,23 @@ checks. If Kent can give you the source hash, compare against it; if not, at
 minimum confirm the byte count matches Drive's reported `fileSize`.
 
 **The consequence you must not miss:** the photo fixtures in
-`digitizer/testdata/photo/` are **1–2.4 MB each**. Every one of them is far
-above this ceiling. So the files that matter most for corpus work **cannot come
-through Drive at all** — they have to go through git. Re-read the channel table
-above before proposing Drive for anything photo-sized.
+`digitizer/testdata/photo/` are **1–2.4 MB each**. Every one of them is orders
+of magnitude past what this path can carry. The files that matter most for
+corpus work **cannot come through Drive at all** — they have to go through git.
+
+**A failure this path produces that you must actively test for:** a file can
+arrive with the *correct byte count* and still be corrupt. `Becker Marine
+Logo.png` came through at exactly its stated 7,213 bytes, passed `file` as a
+valid PNG, and still would not decode — bad CRC on the IDAT chunk while every
+other chunk's CRC was good. **`file` only reads the header.** Always decode the
+image for real:
+
+```
+.venv/bin/python -c "import cv2,sys;print(cv2.imread(sys.argv[1]) is not None)" <path>
+```
+
+For a PNG, parse the chunk CRCs; for any format, decode it. Byte count alone
+proves nothing.
 
 ### Steps
 
