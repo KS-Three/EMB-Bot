@@ -664,14 +664,6 @@ def sequence(
     no edit.
     """
     row_mm = (cfg.fill_row_mm or FILL_ROW_MM) * max(0.1, fabric.density_adjust)
-    # Task A2: satin gets the same fabric-scaled density the fill row spacing
-    # already has — the browser engine's own digitize.js already multiplies
-    # ITS satin spacingMm by fabric.densityAdjust (src/digitize.js line
-    # ~574); the Python engine had left satin at the bare SATIN_SPACING_MM
-    # constant regardless of fabric, the one place the two engines disagreed
-    # on how a fabric preset reaches density. max(0.1, ...) mirrors row_mm's
-    # own floor so a pathological preset cannot collapse spacing to zero.
-    satin_spacing_mm = machine.SATIN_SPACING_MM * max(0.1, fabric.density_adjust)
     stitch_mm = cfg.fill_stitch_mm or FILL_STITCH_MM
     # Row 14's underlay split (see _PHOTO_FILL_UNDERLAY above for the craft
     # case). Precedence is unchanged in shape, only the FALLBACK moves: an
@@ -887,7 +879,6 @@ def sequence(
                     split_above_mm=split_above,
                     end_cutback_mm=end_cutback,
                     use_shapefield=use_shapefield,
-                    spacing_mm=satin_spacing_mm,
                 )
                 # A ribbon the skeleton could not resolve still has to sew:
                 # fall through to fill rather than silently dropping artwork.
@@ -1176,7 +1167,6 @@ def sequence(
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     start_near=entry,
-                    density_boost=cfg.fill_density_boost,
                 )
 
             # The reactive rescue: a shape can pass every size floor and still

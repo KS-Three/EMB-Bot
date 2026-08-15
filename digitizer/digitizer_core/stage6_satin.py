@@ -115,23 +115,6 @@ class Stroke:
     free_start: bool
     free_end: bool
     closed: bool
-    # A free end that is free because `_merge_through_junctions` found a corner
-    # or a cap where the skeleton had a branch node, rather than because the
-    # skeleton ended there. It is a cap in every way that matters — it extends
-    # to the artwork edge like one — but the geometry it comes from is a
-    # squared-off letterform edge, not a taper, and `_extend_to_cap` treats the
-    # two differently at the very last station.
-    capped_start: bool = False
-    capped_end: bool = False
-    # At an end that tucks under ONE known neighbour — the other arm of a
-    # corner, which took the corner itself — how wide that neighbour's own
-    # corridor is there, in mm. `satin_stroke` clears that instead of the
-    # omnidirectional reading at the node, which at a corner blob is a
-    # diagonal across the whole meeting and costs the stub a millimetre of
-    # ribbon it should have kept. None everywhere else: a T's stem still has
-    # a whole bar to clear and reads the blob, exactly as before.
-    tuck_under_start: float | None = None
-    tuck_under_end: float | None = None
 
 
 @dataclass
@@ -440,106 +423,7 @@ def _skeleton_edges(mask: np.ndarray) -> list[dict]:
     return edges
 
 
-# --- corner forks: skeleton branches that are not arms ---------------------
-#
-# Thinning a bold corner does not stop at the corner. The medial axis forks
-# there and runs a branch all the way into the corner POINT, where the
-# distance transform is zero. That branch is not an arm of the letterform; it
-# IS the corner, expressed as skeleton. The same happens at a flat cap, whose
-# axis forks toward both cap corners — `_prune_spurs` erases most of those,
-# but a corner of a bold stroke reaches about 1.4 half-widths past the node
-# and the ones that clear the pruning threshold survive as full branches.
-#
-# A branch like that has no ribbon anywhere along it: its corridor runs from
-# the junction blob's width straight down to nothing, so a column built on it
-# is a WEDGE, and a zigzag across a wedge is the radiating fan this module
-# exists to prevent. Worse, it is also a weld candidate — its tangent at the
-# node is the most anti-aligned thing a bar's end has to offer, so the bar
-# welds to it and the finished column hooks into the cap corner and sprays
-# there (measured on `becker_lc_large`'s "E": both its top and bottom bar).
-# Neither the arm nor the weld should exist, so this finds them before either
-# happens.
-#
-# Three conditions, and all three are geometry, not taste:
-#
-#  * exactly one free end, and the corridor AT that end is essentially zero —
-#    it runs to a point, not to a cap. A real arm's free end is a cap, where
-#    the axis stops a half-width short of the boundary and the corridor there
-#    reads its own half-width. Measured on `becker_lc_large`: every corner
-#    fork reads 0.08-0.14 of the shape's half-width at its tip, and the
-#    shortest real arm that ends in a point (the "R"'s leg) reads 0.09 —
-#    which is why this alone is not enough.
-#  * short relative to the corridor AT ITS NODE, and this is the load-bearing
-#    one. A fork into a wedge of half-angle T reaches node/sin(T) past the
-#    node: 1.41 at a right-angle corner, 2 at a 60-degree V, unbounded as the
-#    vertex sharpens. So the SHORT ones are exactly the square corners this is
-#    about, and the long ones are acute VERTICES — the point of a "V", a "W",
-#    an "A" — where the fork is not a decoration, it is the only skeleton the
-#    letter's point has and dropping it sews bare fabric (measured on
-#    `mfab_lc`'s "W": at 1.78-1.89 node-radii its two inner points went bare).
-#    1.7 admits a right angle with raster slop to spare and refuses the "W".
-#    The arms that have to survive for other reasons — the "R"'s leg (2.95),
-#    the "N"'s bottom diagonal (2.17), the "M"'s right stem (3.64) — clear it
-#    comfortably too.
-#  * no plateau: the corridor narrows at every probe from the node to the tip.
-#    The "R"'s leg holds 2.17 mm flat for its first 3 mm before it tapers;
-#    that flat stretch is a ribbon and a ribbon is a stroke. A fork's profile
-#    is a straight ramp — 0.71 mm per mm on a right-angle corner, which is
-#    exactly 1/sqrt(2) and no coincidence.
-_FORK_TIP_FRAC = 0.35
-_FORK_NODE_MULT = 1.7
-_FORK_STEP_MM = 0.4
-# One raster quantum is 1/_RASTER_PX_PER_MM = 0.167 mm, so a staircase can
-# hold flat for one probe and then drop two quanta. "Still narrowing" is
-# therefore judged against a tolerance a little under one quantum.
-_FORK_FLAT_MM = 0.12
-
-
-def _corner_forks(edges: list[dict], dt_mm, half_mm: float, scale: float) -> set[int]:
-    """Indices of the edges that are corner forks, not arms. See the note above."""
-    out: set[int] = set()
-    if half_mm <= 0:
-        return out
-    step = max(1, int(round(_FORK_STEP_MM * scale)))
-    for i, e in enumerate(edges):
-        if e["closed"] or e["free_start"] == e["free_end"]:
-            continue                       # a fork has exactly one free end
-        pts = list(e["pts"]) if e["free_end"] else list(reversed(e["pts"]))
-        if len(pts) < 3:
-            continue
-        if dt_mm(pts[-1]) > _FORK_TIP_FRAC * half_mm:
-            continue                       # ends at a cap, not at a point
-        node = dt_mm(pts[0])
-        length = sum(math.dist(a, b) for a, b in zip(pts, pts[1:])) / scale
-        if length > _FORK_NODE_MULT * node:
-            continue                       # too long to be this blob's corner
-        prof = [dt_mm(p) for p in pts[::step]]
-        # A plateau is judged over TWO probes (0.8 mm), not one: the node pixel
-        # itself is often a hair narrower than the pixel inside it, and a
-        # single-step test reads that one blip as a plateau and keeps every
-        # fork (measured on `becker_lc_large`'s "M", node 3.35 then 3.37).
-        # Over 0.8 mm a right-angle corner has narrowed by 0.57 mm and even a
-        # gentle 0.3 mm/mm ramp by 0.24, so nothing real is close to the bar.
-        if any(prof[k + 2] > prof[k] - _FORK_FLAT_MM for k in range(len(prof) - 2)):
-            continue                       # a plateau: there is a ribbon in here
-        out.add(i)
-    return out
-
-
-def _arm_corridor(edge: dict, at_start: bool, dt_mm, reach_px: int) -> float:
-    """How wide this arm's own corridor is just outside the node it starts at.
-
-    Median over the first `reach_px` pixels rather than the value at any one of
-    them: right at the node every arm reads the blob, and a single sample a
-    fixed distance in lands wherever the raster staircase put it.
-    """
-    pts = edge["pts"] if at_start else list(reversed(edge["pts"]))
-    seen = [dt_mm(p) for p in pts[1:reach_px + 1]] or [dt_mm(pts[0])]
-    return sorted(seen)[len(seen) // 2]
-
-
-def _merge_through_junctions(edges: list[dict], dt_mm=None, half_mm: float = 0.0,
-                             scale: float = 1.0) -> list[dict]:
+def _merge_through_junctions(edges: list[dict]) -> list[dict]:
     """Join skeleton edges that run straight through a branch node.
 
     The skeleton of a T is three edges meeting at one node — but the BAR is one
@@ -549,70 +433,13 @@ def _merge_through_junctions(edges: list[dict], dt_mm=None, half_mm: float = 0.0
     tangents are most nearly opposite are welded into a single stroke; arms
     that genuinely turn a corner stay separate and later yield to the through
     stroke at the junction.
-
-    `dt_mm` (a pixel -> corridor half-width in mm lookup, with `half_mm` the
-    shape's own half-width and `scale` its raster pitch) turns on the corner
-    handling. Without it this is exactly the node-welding it always was —
-    `textcluster`'s skeleton-buffer path passes nothing, and gets byte-identical
-    chains. With it, two things happen before any welding:
-
-      * corner FORKS are removed outright (see `_corner_forks`): they are not
-        arms, they have no ribbon, and they must not become strokes OR weld
-        partners;
-      * a node that is left with fewer than three arms is no longer a
-        junction, and ONE arm's end there is re-flagged FREE. This is the half
-        that makes the removal safe. A branch node with two arms and a fork is
-        a CORNER of the letterform: today the fork covers that corner (badly)
-        while both arms trim back out of the blob by `field.half_at(node)`, so
-        deleting the fork alone would leave the corner bare. Flagged free, the
-        arm keeps its full length and `_extend_to_cap` runs it out to the
-        artwork edge, covering the corner square with its own column; the
-        other arm tucks under it, now clearing that arm's measured corridor
-        instead of the blob (`Stroke.tuck_under_start`). A node left with ONE
-        arm is the same story at a flat cap whose two forks both went: the arm
-        ends at a cap and is extended to it, instead of hooking into whichever
-        fork won the weld.
-
-    Ends that still have a through-partner, and every end at a node with three
-    or more surviving arms, are untouched — a T's stem still tucks under its
-    bar exactly as before.
     """
-    corners = dt_mm is not None and half_mm > 0
-    # How far along an arm its direction at the node is measured. Five pixels
-    # is under a millimetre, and at a corner the medial axis has already
-    # started bending toward the fork by then: measured on the E fixture, the
-    # bottom bar reads (0.93, -0.37) and the stem (-0.20, 0.98) over five
-    # pixels — dot -0.55, just past the weld threshold — where over one stroke
-    # width they read (0.98, -0.20) and (0.00, 1.00), dot -0.20, which is what
-    # a right angle actually is. `_rail_points` measures its tangents over one
-    # stroke width for the same reason and says so at length; a column cannot
-    # resolve direction finer than its own width, and a weld is a decision
-    # about where a column goes. Only the corner-aware path uses the wider
-    # baseline, so `textcluster`'s chains are untouched.
-    arm_px = max(5, int(round(2.0 * half_mm * scale))) if corners else 5
-
     def arm_dir(edge: dict, at_start: bool) -> tuple[float, float]:
         pts = edge["pts"] if at_start else list(reversed(edge["pts"]))
-        far = pts[min(arm_px, len(pts) - 1)]
+        far = pts[min(5, len(pts) - 1)]
         dx, dy = far[0] - pts[0][0], far[1] - pts[0][1]
         d = math.hypot(dx, dy) or 1.0
         return dx / d, dy / d
-
-    if corners:
-        forks = _corner_forks(edges, dt_mm, half_mm, scale)
-        if forks:
-            kept = [e for i, e in enumerate(edges) if i not in forks]
-            # A corner fork is a DETAIL of a stroke. If the forks are the
-            # longest thing in the shape then the shape is not strokes with
-            # corners, it is something else — `logo_alpha`'s `Sf5200f3f` is a
-            # 9.7 mm-wide glyph apex whose four arms all run from one fat blob
-            # to a point, and every one of them satisfies a fork's local
-            # geometry. Removing them leaves a 1.2 mm crumb and the shape sews
-            # as nothing at all. Where that is the picture the classification
-            # does not apply and every edge stands.
-            if kept and max(len(e["pts"]) for e in kept) >= \
-                    max(len(edges[i]["pts"]) for i in forks):
-                edges = kept
 
     # node pixel -> [(edge_index, end_is_start)]
     incident: dict[tuple[int, int], list[tuple[int, bool]]] = {}
@@ -636,12 +463,7 @@ def _merge_through_junctions(edges: list[dict], dt_mm=None, half_mm: float = 0.0
     # per end and a three-way junction cannot chain all its arms together.
     welded: set[tuple[int, bool]] = set()
     joins: list[tuple[tuple[int, bool], tuple[int, bool]]] = []
-    # Ends at a node that is not a junction any more — see the docstring.
-    caps: set[tuple[int, bool]] = set()
-    # end -> the corridor half-width of the single arm it tucks under.
-    tucks: dict[tuple[int, bool], float] = {}
     for node, arms in incident.items():
-        degree = len(arms)
         # Keep pairing while a through-pair remains: an X crossing has FOUR
         # arms and two of the pairs run straight through each other.
         while len(arms) >= 2:
@@ -664,52 +486,6 @@ def _merge_through_junctions(edges: list[dict], dt_mm=None, half_mm: float = 0.0
             welded.add(best[2])
             joins.append((best[1], best[2]))
             arms = [a for a in arms if a != best[1] and a != best[2]]
-        # `arms` now holds this node's ends that found no through-partner. If
-        # nothing welded here and fewer than three arms are left standing, this
-        # is a corner (two arms) or a cap (one), not a junction.
-        #
-        # ONE of them owns it. At a cap there is only one arm and it takes its
-        # own cap, which is the whole point. At a corner, letting both arms
-        # extend would sew the corner square twice — about a third of a bold
-        # "E"'s area, at every corner, doubled — so the wider corridor takes
-        # the corner and the other still tucks under it exactly as it does
-        # under a T's bar today. Wider, not longer: on the E fixture the
-        # bottom bar is a hair LONGER than the stem (5.32 vs 5.25 mm) and the
-        # stem is plainly the stroke that should run corner to corner, which
-        # its 1.05 mm corridor against the bar's 0.82 says and nothing else
-        # does.
-        if corners and degree <= 2 and len(arms) == degree and arms:
-            owner = max(arms, key=lambda a: (_arm_corridor(edges[a[0]], a[1],
-                                                           dt_mm, arm_px),
-                                             len(edges[a[0]]["pts"])))
-            caps.add(owner)
-            # Whoever did NOT take the corner now has exactly one thing to
-            # tuck under, and it is measurable: the owner's own corridor.
-            for other in arms:
-                if other != owner:
-                    tucks[other] = _arm_corridor(edges[owner[0]], owner[1],
-                                                 dt_mm, arm_px)
-
-    # A capped end is flagged free — but it is not the same thing as an end
-    # that was free in the skeleton, and one caller has to know the difference:
-    # `extract_strokes` drops a sub-minimum edge UNLESS both its ends are free,
-    # because a short chain between two branch nodes is junction noise while a
-    # short free-standing stroke is a dot or a dash. Capping both ends of a
-    # quarter-millimetre fragment inside a corner blob would smuggle it past
-    # that filter, and `_extend_to_cap` then blows it up into a cross of
-    # full-width crosses — a fan built out of nothing. `capped_*` keeps the
-    # filter reading the skeleton's own answer.
-    edges = [dict(e) for e in edges]
-    for e in edges:
-        e.setdefault("capped_start", False)
-        e.setdefault("capped_end", False)
-        e.setdefault("tuck_under_start", None)
-        e.setdefault("tuck_under_end", None)
-    for ei, at_start in caps:
-        edges[ei]["free_start" if at_start else "free_end"] = True
-        edges[ei]["capped_start" if at_start else "capped_end"] = True
-    for (ei, at_start), width in tucks.items():
-        edges[ei]["tuck_under_start" if at_start else "tuck_under_end"] = width
 
     chains: dict[int, dict] = {i: dict(e) for i, e in enumerate(edges)}
     for (ei, es), (ej, js) in joins:
@@ -723,31 +499,21 @@ def _merge_through_junctions(edges: list[dict], dt_mm=None, half_mm: float = 0.0
         node = edges[ei]["pts"][0] if es else edges[ei]["pts"][-1]
         a, b = chains[ri], chains[rj]
         if a["pts"][-1] == node:
-            a_pts, a_free, a_cap = a["pts"], a["free_start"], a.get("capped_start", False)
-            a_tuck = a.get("tuck_under_start")
+            a_pts, a_free = a["pts"], a["free_start"]
         elif a["pts"][0] == node:
-            a_pts, a_free, a_cap = (list(reversed(a["pts"])), a["free_end"],
-                                    a.get("capped_end", False))
-            a_tuck = a.get("tuck_under_end")
+            a_pts, a_free = list(reversed(a["pts"])), a["free_end"]
         else:
             continue  # node no longer an endpoint of the chain: skip the weld
         if b["pts"][0] == node:
-            b_pts, b_free, b_cap = b["pts"], b["free_end"], b.get("capped_end", False)
-            b_tuck = b.get("tuck_under_end")
+            b_pts, b_free = b["pts"], b["free_end"]
         elif b["pts"][-1] == node:
-            b_pts, b_free, b_cap = (list(reversed(b["pts"])), b["free_start"],
-                                    b.get("capped_start", False))
-            b_tuck = b.get("tuck_under_start")
+            b_pts, b_free = list(reversed(b["pts"])), b["free_start"]
         else:
             continue
         chains[ri] = {
             "pts": a_pts + b_pts[1:],
             "free_start": a_free,
             "free_end": b_free,
-            "capped_start": a_cap,
-            "capped_end": b_cap,
-            "tuck_under_start": a_tuck,
-            "tuck_under_end": b_tuck,
             "closed": False,
         }
         parent[rj] = ri
@@ -855,12 +621,6 @@ def _split_sharp_corners(strokes: list[Stroke], half_mm: float) -> list[Stroke]:
                     free_start=st.free_start if bi == 0 else True,
                     free_end=st.free_end if s1 == n - 1 else True,
                     closed=False,
-                    # A cut end is a mitre joint, never a letterform corner —
-                    # only the original ends keep whatever they were.
-                    capped_start=st.capped_start if bi == 0 else False,
-                    capped_end=st.capped_end if s1 == n - 1 else False,
-                    tuck_under_start=st.tuck_under_start if bi == 0 else None,
-                    tuck_under_end=st.tuck_under_end if s1 == n - 1 else None,
                 ))
     return out
 
@@ -908,31 +668,17 @@ def extract_strokes(poly: Polygon, *,
     def to_mm(p: tuple[int, int]) -> tuple[float, float]:
         return (ox + (p[0] + 0.5) / scale, oy + (p[1] + 0.5) / scale)
 
-    def dt_mm(p: tuple[int, int]) -> float:
-        return float(dist[p[1], p[0]]) / scale
-
     strokes: list[Stroke] = []
     min_len_px = max(3.0, _MIN_STROKE_HALFWIDTHS * half_px)
-    for e in _merge_through_junctions(_skeleton_edges(skel_mask), dt_mm,
-                                      half_px / scale, scale):
+    for e in _merge_through_junctions(_skeleton_edges(skel_mask)):
         length = sum(math.dist(a, b) for a, b in zip(e["pts"], e["pts"][1:]))
-        # "Free" here means free in the SKELETON — a corner end re-flagged by
-        # `_merge_through_junctions` is still a chain between two branch nodes
-        # for the purposes of this filter, and a quarter-millimetre one is
-        # still noise. See the `capped_*` note there.
-        skel_free_start = e["free_start"] and not e.get("capped_start", False)
-        skel_free_end = e["free_end"] and not e.get("capped_end", False)
-        if length < min_len_px and not (skel_free_start and skel_free_end):
+        if length < min_len_px and not (e["free_start"] and e["free_end"]):
             continue  # stub between two branch nodes: junction noise
         strokes.append(Stroke(
             spine=[to_mm(p) for p in e["pts"]],
             free_start=e["free_start"],
             free_end=e["free_end"],
             closed=e["closed"],
-            capped_start=e.get("capped_start", False),
-            capped_end=e.get("capped_end", False),
-            tuck_under_start=e.get("tuck_under_start"),
-            tuck_under_end=e.get("tuck_under_end"),
         ))
     strokes = _split_sharp_corners(strokes, half_px / scale)
     strokes.sort(key=lambda s: -sum(math.dist(a, b) for a, b in zip(s.spine, s.spine[1:])))
@@ -979,8 +725,7 @@ def _resample(pts: list[tuple[float, float]], n: int) -> list[tuple[float, float
 
 def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
                  fallback_half_mm: float,
-                 field: _WidthField | None = None,
-                 spacing_mm: float = machine.SATIN_SPACING_MM) -> tuple[list, list]:
+                 field: _WidthField | None = None) -> tuple[list, list]:
     """Cast the smoothed, unwrapped normals both ways to find the two rails.
 
     Each rail is capped at ~1.6x the LOCAL medial half-width: at a branch
@@ -989,11 +734,6 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
     junction. Capped, each stroke covers its own corridor and the junction gets
     the modest overlap of its arms — which is exactly what a human digitizer
     does there.
-
-    `spacing_mm` is the outer-rail density target the refinement pass below
-    holds stations to (default `machine.SATIN_SPACING_MM`) — a caller-scaled
-    number when the fabric preset's `density_adjust` applies (task A2), the
-    bare constant otherwise, byte-identical to before that flag existed.
     """
     n = len(spine)
     boundary = poly.boundary
@@ -1221,11 +961,11 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
         near_cap = not closed and (i <= 2 or i >= n - 2) and not in_taper
         adv = max(math.dist(rail_a[i - 1], rail_a[i]),
                   math.dist(rail_b[i - 1], rail_b[i]))
-        if near_cap or adv <= spacing_mm * 1.3:
+        if near_cap or adv <= machine.SATIN_SPACING_MM * 1.3:
             ref_a.append(rail_a[i])
             ref_b.append(rail_b[i])
             continue
-        m = int(math.ceil(adv / spacing_mm))
+        m = int(math.ceil(adv / machine.SATIN_SPACING_MM))
         if in_taper:
             # In the taper zone the pieces must also stay ABOVE the guard
             # threshold: a bare ceil splits a 0.53 mm interval into 0.26 mm
@@ -1321,7 +1061,7 @@ def _pull_short(p: tuple, toward: tuple) -> tuple:
 # --- The column ------------------------------------------------------------
 
 def _extend_to_cap(spine: list[tuple[float, float]], poly: Polygon, half_mm: float,
-                   at_start: bool, corner: bool = False) -> list[tuple[float, float]]:
+                   at_start: bool) -> list[tuple[float, float]]:
     """Push a free spine end out to the shape's cap edge along its tangent.
 
     The medial axis of a stroke stops half a width short of each cap (the
@@ -1337,30 +1077,6 @@ def _extend_to_cap(spine: list[tuple[float, float]], poly: Polygon, half_mm: flo
         return spine
     tip = pts[-1]
     prev = pts[-2]
-    if corner:
-        # At a CORNER end the direction is the chord back over one stroke
-        # width, not the last segment. A raster spine's final segment is a
-        # sixth of a millimetre of staircase and can point anywhere within
-        # 45 deg of the truth, and the extension multiplies that error by its
-        # own length: measured on the E fixture's stem, whose skeleton now
-        # ends at the corner node itself, the last segment ran 26 deg off the
-        # stem's own axis and threw the cap 0.6 mm sideways — far enough that
-        # the flush corner the cap exists to cover came out bare. Same
-        # reasoning as `_rail_points`'s tangent baseline: a column cannot
-        # resolve direction finer than its own width.
-        #
-        # Only at a corner end. A spine that ends where the SKELETON ends has
-        # been through spur pruning and `_retract_cap_corner` and is aimed by
-        # its own last segment on purpose, and re-aiming it moves stitches on
-        # every flat fixture — the byte-identical goldens are the contract
-        # that says don't.
-        back = 2.0 * half_mm if half_mm > 0 else 0.0
-        walked = 0.0
-        for j in range(len(pts) - 1, 0, -1):
-            walked += math.dist(pts[j], pts[j - 1])
-            prev = pts[j - 1]
-            if walked >= back:
-                break
     d = math.dist(prev, tip)
     if d < 1e-9:
         return spine
@@ -1382,31 +1098,9 @@ def _extend_to_cap(spine: list[tuple[float, float]], poly: Polygon, half_mm: flo
     if not cands:
         return spine
     cap = min(cands, key=lambda q: (q[0] - tip[0]) ** 2 + (q[1] - tip[1]) ** 2)
-    # At a CORNER cap, a hair inside rather than exactly on. The terminal
-    # station's cross runs along the cap face, and `_rail_points` only keeps a
-    # rail point the polygon covers: from a station sitting exactly ON the
-    # boundary, a normal that rounds a hundredth of a millimetre to the outside
-    # loses that whole side of the cross, and the cap sews as half a stitch.
-    # Measured on the E fixture's stem cap, whose normal tilts 0.8 deg off the
-    # cap face: the left rail landed 0.012 mm outside, every containment
-    # fallback with it, and the corner the cap exists to cover came out 0.5 mm
-    # bare. `corner` is only true for the ends `_merge_through_junctions`
-    # opened up, whose cap is a square letterform edge — a TAPERED tip is a
-    # different geometry (its corridor is pinching, so stepping back widens the
-    # terminal cross and opens a rail gap: measured 0.82 mm on ribbon_curve)
-    # and keeps today's exact behaviour.
-    if corner:
-        ins = min(_CAP_INSET_MM, 0.25 * math.dist(cap, tip))
-        if ins > 0:
-            cap = (cap[0] - ux * ins, cap[1] - uy * ins)
     pts.append(cap)
     return list(reversed(pts)) if at_start else pts
 
-
-# How far short of the artwork edge a cap-extended station stops. Small enough
-# to be under a tenth of a satin spacing, large enough to swallow the normal's
-# own rounding at the terminal cross — see `_extend_to_cap`.
-_CAP_INSET_MM = 0.03
 
 # A free end whose corridor is narrower than this fraction of the stroke's own
 # half-width is not the stroke any more, it is a cap corner.
@@ -1468,98 +1162,6 @@ def _trim_chain(pts: list[tuple[float, float]], from_start_mm: float,
 # fabric pull cannot open a gap between stem and bar, small enough that the
 # doubled coverage never reads as a lump.
 _JUNCTION_TUCK_MM = 0.4
-
-# --- where an arm's own ribbon begins, at a junction-anchored end -----------
-#
-# The corridor is walked in these steps. The distance transform is quantised
-# at the raster pitch (1 / _RASTER_PX_PER_MM = 0.167 mm), so "the corridor
-# stopped narrowing" has to tolerate about one quantum of staircase noise
-# before it will fire on a genuinely flat stretch.
-_JUNCTION_STEP_MM = 0.2
-_JUNCTION_STABLE_MM = 0.10
-# ... and it has to HOLD for this far to count. Measured plateaus on real
-# corpus letterforms: `becker_lc_large`'s "E" (S0cdd6202) stroke 2 holds
-# 2.33 mm from 1.25 to 3.75 mm in, its "R" (S6a8697e1) stroke 0 holds 2.17 mm
-# from 2.0 mm in, and the pinned T_SHORT_STEM fixture's stem holds its 1.5 mm
-# half-width for the stem's whole 6 mm. 0.6 mm is comfortably under the
-# shortest of those and comfortably over one raster quantum.
-_JUNCTION_PLATEAU_MM = 0.6
-# The junction's influence does not reach further in than this many of the
-# shape's half-widths, so neither does the search. Past it a stroke is simply
-# in its own body and the fixed offset stands — a plateau found 40 mm down a
-# 90 mm column is not "where this arm's ribbon begins", it is just the column.
-_JUNCTION_REACH_HALFWIDTHS = 3.0
-
-
-def _junction_entry_mm(spine: list[tuple[float, float]], field: _WidthField | None,
-                       half_mm: float, at_start: bool) -> float | None:
-    """How far in from a junction-anchored end this arm's own ribbon starts.
-
-    -> mm along the spine, or None when the arm never has a ribbon at all.
-
-    The end trim at a junction exists because the skeleton's branch node sits
-    in the MIDDLE of the junction, not at its edge: the node of a T is halfway
-    up the bar, so an untrimmed stem sews back across crosses the bar already
-    laid down. `field.half_at(node)` is the obvious offset and it is exactly
-    right on a clean T — the node's distance transform IS the bar's half-width
-    there, so stepping that far puts the stem's first cross on the bar's edge.
-
-    It stops being right on a real letterform, because `half_at` is an
-    OMNIDIRECTIONAL clearance: at a corner or a 3+-arm meeting the widest
-    thing near the node is a diagonal across the whole blob, not the arm the
-    stroke has to clear. Measured on `becker_lc_large`'s "E", whose stroke
-    half-width is 1.75 mm: the top-bar arm reads `half_at` 2.67 at its node
-    and its corridor is already flat at 2.33 by 1.25 mm in — the fixed rule
-    steps 2.27 mm and eats a full millimetre of ribbon that was never part of
-    the junction. Walking in until the corridor STOPS NARROWING finds where
-    the blob ends and the arm begins.
-
-    On a clean T that walk returns 0 — the corridor is flat from the node up,
-    because there is no blob, just two equal ribbons crossing. 0 is not the
-    answer there (it would sew the stem back across the bar), which is why
-    `satin_stroke` floors this against the stroke's own half-width rather
-    than using it raw; see the bounds note at the call site.
-
-    None means the arm never has a ribbon at all: thinning a bold corner forks
-    the skeleton diagonally into the corner and leaves a 3-4 mm twig whose
-    corridor falls from the blob straight to the point, with no flat stretch
-    anywhere along it — measured on the same "E", 2.33 mm at the node down to
-    0.17 mm at the tip in a near-constant 0.66 mm-per-mm ramp. There is no
-    ribbon in such a twig to find the start of: it is a wedge, and a zigzag
-    across a wedge is the radiating fan this module exists to prevent.
-
-    This function does NOT decide those twigs' fate, and an earlier version of
-    it that did was wrong to. `satin_stroke` used to drop a no-plateau arm
-    outright when it was also short, and that left BARE FABRIC — 9.95 mm² of
-    it on `hotel_fremont_patch`, including a 5.41 mm² hole in the "N" of
-    FREMONT — because a corner twig is only safe to discard once something
-    else is known to cover the corner it occupies, and a length bound cannot
-    know that. `_corner_forks` is where that call belongs: it classifies the
-    same geometry BEFORE welding, and hands the corner to a named arm that
-    extends over it. Here, None simply means "no honest inward reading", and
-    the caller falls back to the `half_at` ceiling.
-    """
-    if field is None or len(spine) < 2 or half_mm <= 0:
-        return 0.0
-    pts = list(spine) if at_start else list(reversed(spine))
-    line = LineString(pts)
-    length = line.length
-    if length <= 0:
-        return 0.0
-    reach = min(length, _JUNCTION_REACH_HALFWIDTHS * half_mm)
-    n = int(reach / _JUNCTION_STEP_MM)
-    halves = []
-    for k in range(n + 1):
-        p = line.interpolate(min(k * _JUNCTION_STEP_MM, length))
-        halves.append(field.half_at((p.x, p.y)))
-    hold = max(1, int(round(_JUNCTION_PLATEAU_MM / _JUNCTION_STEP_MM)))
-    for i in range(len(halves)):
-        if i + hold >= len(halves):
-            break   # only the taper into the far end is left: no plateau here
-        if all(halves[j] >= halves[j - 1] - _JUNCTION_STABLE_MM
-               for j in range(i + 1, i + 1 + hold)):
-            return min(i * _JUNCTION_STEP_MM, length)
-    return None
 
 
 def _round_corners(spine: list[tuple[float, float]], half_mm: float,
@@ -1679,15 +1281,8 @@ def strip_splits(points: list[tuple[float, float]]) -> list[tuple[float, float]]
 def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  field: _WidthField | None = None,
                  split_above_mm: float | None = None,
-                 end_cutback_mm: float = 0.0,
-                 spacing_mm: float = machine.SATIN_SPACING_MM) -> list[tuple[float, float]]:
+                 end_cutback_mm: float = 0.0) -> list[tuple[float, float]]:
     """One stroke -> flat zigzag points (A1, B1, A2, B2, ...).
-
-    `spacing_mm` (task A2, default `machine.SATIN_SPACING_MM`) is the
-    along-column cross spacing this stroke targets — every caller before the
-    fabric preset's `density_adjust` reached satin left it at the bare
-    constant, so this is byte-identical unless a caller passes a different
-    number.
 
     Rails strictly alternate, so EVERY consecutive pair of points is a stitch
     that crosses the column: the outbound leg A(i)->B(i) square across, the
@@ -1710,57 +1305,20 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
     # of a T puts the node halfway up the bar, so an untrimmed stem sews right
     # across crosses the bar already laid down. Step back to the junction edge
     # plus a small tuck; the free ends, by contrast, get EXTENDED to the cap.
-    #
-    # `field.half_at(node)` is the starting answer and the CEILING: it is an
-    # omnidirectional clearance, so it is never too small, only too generous.
-    # Two independent readings are allowed to walk it back in, and both only
-    # ever GIVE RIBBON BACK — neither can trim more than the old rule did:
-    #
-    #  * `_junction_entry_mm` walks this arm's own corridor inward until it
-    #    stops narrowing. On a clean T that agrees with `half_at`; on a real
-    #    letterform's corner blob the blob reading is a diagonal across the
-    #    whole corner and eats a millimetre of ribbon that was never part of
-    #    the junction. Floored at the shape's own half-width, because whatever
-    #    arm this one meets is at least that wide and has to be cleared —
-    #    without the floor both arms of a corner recover past each other and
-    #    sew the corner TWICE (measured on `becker_lc_large`'s "E"). The floor
-    #    is also what makes this a no-op on a clean junction: on T_SHAPE and
-    #    T_SHORT_STEM `half_at(node)` IS the stroke half-width, so the bounds
-    #    coincide and the trim is bit-for-bit what it was before.
-    #
-    #  * `stroke.tuck_under_*` is set where this end is known to be tucking
-    #    under ONE identified neighbour rather than into a meeting of several
-    #    (see `_corner_forks`). That neighbour's own measured corridor is the
-    #    honest number, and it is the only reading here that knows WHICH arm
-    #    has to be cleared rather than how much room there is in every
-    #    direction at once.
     if not stroke.closed and field is not None:
-        trims = []
-        for at_start in (True, False):
-            free = stroke.free_start if at_start else stroke.free_end
-            if free:
-                trims.append(0.0)
-                continue
-            end = spine[0] if at_start else spine[-1]
-            under = stroke.tuck_under_start if at_start else stroke.tuck_under_end
-            edge = field.half_at(end)
-            if under is not None:
-                edge = min(edge, under)
-            entry = _junction_entry_mm(spine, field, half_mm, at_start)
-            if entry is not None:
-                edge = min(edge, max(entry, half_mm))
-            trims.append(max(0.0, edge - _JUNCTION_TUCK_MM))
-        if trims[0] or trims[1]:
-            spine = _trim_chain(spine, trims[0], trims[1])
+        t0 = 0.0 if stroke.free_start else max(
+            0.0, field.half_at(spine[0]) - _JUNCTION_TUCK_MM)
+        t1 = 0.0 if stroke.free_end else max(
+            0.0, field.half_at(spine[-1]) - _JUNCTION_TUCK_MM)
+        if t0 or t1:
+            spine = _trim_chain(spine, t0, t1)
 
     if stroke.free_start:
         spine = _retract_cap_corner(spine, field, half_mm, at_start=True)
-        spine = _extend_to_cap(spine, poly, half_mm, at_start=True,
-                               corner=stroke.capped_start)
+        spine = _extend_to_cap(spine, poly, half_mm, at_start=True)
     if stroke.free_end:
         spine = _retract_cap_corner(spine, field, half_mm, at_start=False)
-        spine = _extend_to_cap(spine, poly, half_mm, at_start=False,
-                               corner=stroke.capped_end)
+        spine = _extend_to_cap(spine, poly, half_mm, at_start=False)
 
     # Push compensation (Law 24). Pull comp is a WIDTH and stage 5 owns it;
     # push is a LENGTH and only this line of the pipeline knows where a column's
@@ -1786,9 +1344,9 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
     if length <= 0:
         return []
 
-    steps = max(2, int(math.ceil(length / spacing_mm)))
+    steps = max(2, int(math.ceil(length / machine.SATIN_SPACING_MM)))
     spine = _resample(spine, steps)
-    rail_a, rail_b = _rail_points(poly, spine, stroke.closed, half_mm, field, spacing_mm)
+    rail_a, rail_b = _rail_points(poly, spine, stroke.closed, half_mm, field)
     crosses = _short_stitch_guard(rail_a, rail_b)
     above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
 
@@ -2096,7 +1654,6 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 split_above_mm: float | None = None,
                 end_cutback_mm: float = 0.0,
                 use_shapefield: bool = False,
-                spacing_mm: float = machine.SATIN_SPACING_MM,
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
     contract `stitch_shape` uses, so stage 7 can treat the two identically.
@@ -2105,15 +1662,6 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     `split_above_mm` caps the stitch length before crosses split (None =
     machine.SPLIT_SATIN_ABOVE_MM; `math.inf` disables splitting — the
     mapping stage 7 applies for `PipelineConfig.split_satin = False`).
-
-    `spacing_mm` (task A2) is the along-column cross spacing every stroke in
-    this shape targets, forwarded to `satin_stroke` unchanged — default
-    `machine.SATIN_SPACING_MM`, so a caller that never mentions it keeps
-    today's output exactly. Stage 7 passes the fabric preset's
-    `density_adjust`-scaled number, the same multiplier `row_mm` already
-    gets for fill (`fabrics.py`'s own "mirror src/fabrics.js exactly" table
-    — the browser engine already applies `densityAdjust` to its own satin
-    spacing this way; this closes the one place the Python engine had not).
 
     `end_cutback_mm` is push compensation at open column ends (Law 24); 0.0 is
     the shipped behaviour. It is a length taken off the spine, NOT a shrink of
@@ -2143,7 +1691,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     kept: list[tuple[Stroke, list]] = []
     for st in strokes:
         pts = satin_stroke(poly, st, half_mm, field, split_above_mm,
-                           end_cutback_mm, spacing_mm)
+                           end_cutback_mm)
         if len(pts) >= 4:
             kept.append((st, pts))
     if not kept:

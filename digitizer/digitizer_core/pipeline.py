@@ -53,13 +53,11 @@ from .stitches import StitchPlan
 from .threads import chart_for
 from .warnings_codes import (
     DROPPED_SMALL_SHAPES,
-    PALETTE_THREAD_MISMATCH,
     PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE,
     PHOTO_BACKGROUND_REMOVED,
     PHOTO_FACE_PRIORS_UNAVAILABLE,
     PHOTO_FACES_DETECTED,
     PHOTO_SAM2_SEGMENTATION_UNAVAILABLE,
-    SHAPES_LEFT_UNSEWN,
     warn,
 )
 
@@ -102,23 +100,6 @@ class PipelineResult:
     @property
     def shape_ids(self) -> list[str]:
         return [r.shape_id for r in self.regions]
-
-
-def _cone(chart, thread_index: int) -> dict:
-    """One palette entry — the cone list's element shape, in one place.
-
-    `run_stages` builds the per-LAYER list a review screen edits against and
-    `plan_stitches` builds the per-BLOCK list the machine actually sews; the
-    two answer different questions (see `StitchPlan.palette`) but they are the
-    same kind of thing and must not drift into two spellings of it.
-    """
-    return {
-        "brand": chart.label,
-        "brand_id": chart.id,
-        "number": chart[thread_index].number,
-        "name": chart[thread_index].name,
-        "rgb": list(chart[thread_index].rgb),
-    }
 
 
 def run_stages(
@@ -533,49 +514,16 @@ def run_stages(
         return out
 
     chart = chart_for(cfg)
-    palette = [_cone(chart, t) for t in thread_indices]
-
-    # The palette is per LAYER; a region's thread is per REGION, and
-    # `revalidate_threads` above can move one without the other (it re-snaps a
-    # shape's spool, deliberately, and never changes its layer). When it does,
-    # this layer's palette entry names a cone no shape in the layer carries —
-    # the operator loads it and it sews nothing, while the thread that IS sewn
-    # is missing from the list. Stage 7 is unaffected (it partitions blocks by
-    # the REGION's thread, see `stage6_applique.nn_group_key`), which is
-    # exactly why this could stay invisible: only the human-facing color list
-    # is wrong. Measured on the pro corpus, 2026-08-14: 5 of 23 designs.
-    #
-    # An explicit `layer` override is exempt, and only that: putting a shape
-    # into another thread's layer is precisely what that override MEANS (see
-    # `apply_layer_overrides` — it moves sew position, never the cone), so
-    # reporting it would be reading the user's own instruction back to them.
-    # Every other mismatch got there by accident.
-    mismatched = [
-        r for r in regions
-        if r.meta["layer"] < len(palette)
-        and palette[r.meta["layer"]]["number"] != r.thread_number
-        and (shape_overrides.get(r.shape_id) or {}).get("layer") is None
+    palette = [
+        {
+            "brand": chart.label,
+            "brand_id": chart.id,
+            "number": chart[t].number,
+            "name": chart[t].name,
+            "rgb": list(chart[t].rgb),
+        }
+        for t in thread_indices
     ]
-    palette_warnings: list[dict] = []
-    if mismatched:
-        layers = sorted({r.meta["layer"] for r in mismatched})
-        worst = max(mismatched, key=lambda r: r.area_mm2)
-        palette_warnings.append(
-            warn(
-                PALETTE_THREAD_MISMATCH,
-                f"{len(mismatched)} shape{'s' if len(mismatched) != 1 else ''} "
-                f"sew in a thread the color list does not name for their layer "
-                f"(largest: {worst.area_mm2:.0f} mm² sews in "
-                f"{worst.thread_number}, the list says "
-                f"{palette[worst.meta['layer']]['number']}).",
-                count=len(mismatched),
-                layers=layers,
-                ids=sorted(r.shape_id for r in mismatched),
-                listed=sorted({palette[r.meta["layer"]]["number"]
-                               for r in mismatched}),
-                actual=sorted({r.thread_number for r in mismatched}),
-            )
-        )
 
     return PipelineResult(
         regions=regions,
@@ -591,7 +539,7 @@ def run_stages(
             [*classification.warnings, *p.warnings, *prep_warnings, *q.warnings,
              *small_warnings, *vec_warnings, *resnap_warnings,
              *merge_edit_warnings, *split_edit_warnings,
-             *edit_warnings, *layer_warnings, *palette_warnings]
+             *edit_warnings, *layer_warnings]
         ),
         segmenter=seg.name,
         debug_dir=dbg,
@@ -629,52 +577,6 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     # enclosing shape's own mask never included those pixels before this
     # slice either — only whether THEY got a Region of their own changed).
     stitched_regions = [r for r in result.regions if r.meta.get("stitched", True)]
-
-    # ...and it SAYS SO. This exclusion used to be silent, and the silence hid
-    # real damage for as long as it lasted: a layer whose every region is
-    # skipped keeps its `compact_layers` palette slot (that pass counts
-    # regions, and a skipped region is still a region), so the color list
-    # carried a cone nothing sews — which then shifted every later block's
-    # name under `adapter._thread_name`'s by-index lookup. A planned color
-    # that disappears between the region list and the needle is the exact
-    # failure class COOKBOOK.md's "hard-won lessons" says must be loud, so
-    # this names the shapes and their area rather than counting them.
-    skipped = [r for r in result.regions if not r.meta.get("stitched", True)]
-    skip_warnings: list[dict] = []
-    if skipped:
-        overrides = cfg.shape_overrides or {}
-        by_override = sum(
-            1 for r in skipped
-            if "stitched" in (overrides.get(r.shape_id) or {})
-        )
-        enclosed = sum(1 for r in skipped
-                       if r.meta.get("enclosed_background", False))
-        total = sum(r.area_mm2 for r in skipped)
-        largest = max(skipped, key=lambda r: r.area_mm2)
-        threads = sorted({r.thread_number for r in skipped})
-        why = ("left out in review" if by_override == len(skipped)
-               else "enclosed background, showing the garment through"
-               if enclosed == len(skipped) else "enclosed background or "
-               "left out in review")
-        skip_warnings.append(
-            warn(
-                SHAPES_LEFT_UNSEWN,
-                f"{len(skipped)} shape{'s' if len(skipped) != 1 else ''} "
-                f"({total:.1f} mm², largest {largest.area_mm2:.1f} mm²) in "
-                f"thread{'s' if len(threads) != 1 else ''} "
-                f"{', '.join(threads)} "
-                f"{'were' if len(skipped) != 1 else 'was'} planned but not "
-                f"sewn — {why}.",
-                count=len(skipped),
-                ids=[r.shape_id for r in skipped],
-                threads=threads,
-                total_mm2=round(float(total), 2),
-                largest_mm2=round(float(largest.area_mm2), 2),
-                enclosed_background=enclosed,
-                by_override=by_override,
-            )
-        )
-
     planned, overlap_warnings = resolve_overlaps(stitched_regions, fabric, cfg,
                                                  design_class=result.design_class)
     if dbg:
@@ -684,23 +586,10 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
                                     source_pixels=result.source_pixels,
                                     design_class=result.design_class)
 
-    # The plan's palette is the list of cones this plan actually sews, one per
-    # BLOCK, in sew order — NOT `result.palette`, which is the per-LAYER list a
-    # review screen edits against. They are different lists and the difference
-    # is not cosmetic: a layer can vanish here (every member skipped above) and
-    # a layer can split into several blocks (specialty steps, and a layer whose
-    # shapes re-snapped onto two threads), so a positional read of the
-    # layer list against blocks silently renames cones. Measured on the pro
-    # corpus 2026-08-14, before this: 13 of 23 designs disagreed, and 22 of
-    # the corpus's 96 blocks shipped under another cone's name.
-    # `stats.thread_mm_by_color` is per block too, so a worksheet can finally
-    # pair the two by index without lying.
-    chart = chart_for(cfg)
     plan = StitchPlan(
         blocks=blocks,
-        palette=[_cone(chart, b.thread_index) for b in blocks],
-        warnings=[*result.warnings, *skip_warnings, *overlap_warnings,
-                  *seq_warnings],
+        palette=result.palette,
+        warnings=[*result.warnings, *overlap_warnings, *seq_warnings],
         design_size_mm=result.design_size_mm,
     )
     if dbg:

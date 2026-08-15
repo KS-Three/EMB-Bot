@@ -349,12 +349,7 @@ def resolve_overlaps(
 
     planned: list[PlannedRegion] = []
     holes_held = 0
-    # The shapes, not just how many. A count answers "did anything go wrong";
-    # only the id and the area answer "which shape, and is it a speck or my
-    # logo" — and on the pro corpus (2026-08-14) this fired exactly once, on
-    # `hotel_fremont_patch`, and the count alone gave nobody a way to tell
-    # that 2.2 mm² from a dropped letter.
-    lost: list[Region] = []
+    lost = 0
     fusing_pairs: set[tuple[str, str]] = set()
 
     for sew_index, L in enumerate(layers):
@@ -414,7 +409,7 @@ def resolve_overlaps(
 
             grown = _largest_polygon(grown)
             if grown is None or grown.is_empty:
-                lost.append(r)
+                lost += 1
                 continue
 
             # Growing the shell shrinks every hole by the same amount. A counter
@@ -431,7 +426,7 @@ def resolve_overlaps(
                 holes_held += len(held)
                 grown = _largest_polygon(grown.difference(unary_union(held)))
                 if grown is None or grown.is_empty:
-                    lost.append(r)
+                    lost += 1
                     continue
 
             # `later[L]` is already computed for the underlap reach above and
@@ -473,23 +468,12 @@ def resolve_overlaps(
             )
         )
     if lost:
-        biggest = max(lost, key=lambda r: r.area_mm2)
-        total_mm2 = sum(r.area_mm2 for r in lost)
-        size = (f"{biggest.area_mm2:.1f} mm² in thread {biggest.thread_number}"
-                if len(lost) == 1 else
-                f"{total_mm2:.1f} mm², largest {biggest.area_mm2:.1f} mm² in "
-                f"thread {biggest.thread_number}")
         warnings.append(
             warn(
                 SHAPE_NOT_STITCHED,
-                f"{len(lost)} shape{'s' if len(lost) != 1 else ''} ({size}) "
-                "disappeared while being fitted against neighbouring colors "
-                f"and {'were' if len(lost) != 1 else 'was'} not stitched.",
-                count=len(lost),
-                ids=[r.shape_id for r in lost],
-                threads=sorted({r.thread_number for r in lost}),
-                total_mm2=round(float(total_mm2), 2),
-                largest_mm2=round(float(biggest.area_mm2), 2),
+                f"{lost} shape{'s' if lost != 1 else ''} disappeared while being "
+                "fitted against neighbouring colors and were not stitched.",
+                count=lost,
             )
         )
     return planned, warnings

@@ -100,57 +100,13 @@ SHAPE_SPLIT_BY_USER = "SHAPE_SPLIT_BY_USER"        # one shape cut by a line int
 # Stage 4 (post-vectorization thread re-validation)
 THREAD_RESNAPPED_AFTER_DRIFT = "THREAD_RESNAPPED_AFTER_DRIFT"  # a shape's simplified polygon moved off the pixels its thread was chosen from; thread re-matched to what it now covers. extra: {"count": int, "ids": list[str], "worst_before_de00": float, "worst_after_de00": float}
 
-# Stages 5-7 entry (pipeline.plan_stitches)
-# The ONE seam where a region that survived all of stages 1-4 — it has an id,
-# a thread, an area, and a row in the review screen — is removed from the
-# machine's work: `meta["stitched"] is False`. Today that is the enclosed-
-# background default (BACKGROUND_ENCLOSED's other half) or an explicit
-# `shape_overrides[sid]["stitched"] = False`.
-#
-# Why it is a warning at all, when the skip is deliberate: until 2026-08-14
-# this seam was SILENT, and the silence was load-bearing. `compact_layers`
-# keeps a palette slot for any layer that still has a Region, stitched or not,
-# so a layer whose every member was skipped left a cone in the color list that
-# nothing sews — and `adapter._thread_name` reads the palette BY BLOCK INDEX,
-# so every block after that phantom entry was labelled with the wrong thread's
-# name (measured on the pro corpus: 22 of 96 blocks across 6 of 23 designs —
-# `golf_hat` block 3 shipped as "0020 Tangerine", a black cone carrying the
-# orange cone's name). Nothing
-# printed a word about any of it. A planned color that vanishes on the way to
-# the needle is exactly the failure class COOKBOOK.md's "hard-won lessons"
-# says must never be quiet again, so it names the shapes and their area.
-# extra: {"count": int, "ids": list[str], "threads": list[str],
-#         "total_mm2": float, "largest_mm2": float,
-#         "enclosed_background": int, "by_override": int}
-SHAPES_LEFT_UNSEWN = "SHAPES_LEFT_UNSEWN"
-
-# Stage 4/5 seam (pipeline.run_stages, after compact_layers)
-# The sew-order palette is per LAYER — `compact_layers` reads each layer's
-# thread out of stage 2's quantized palette. `revalidate_threads` (fix #6.3)
-# runs BEFORE it and re-snaps individual shapes to a different spool, without
-# moving them to another layer, so a layer can end up holding two threads and
-# its palette entry naming a spool no shape in it carries. Stage 7 partitions
-# blocks by (sew_index, step_key, thread) and is therefore right regardless —
-# it is the palette, i.e. the cone list a human loads and the review screen
-# shows, that is wrong. Measured on the pro corpus 2026-08-14: 5 of 23
-# designs, worst `hotel_fremont_patch` (layer 0 lists 1755 Hyacinth while
-# 1,813 of its 1,815 mm² sew in 4071).
-# extra: {"count": int, "layers": list[int], "ids": list[str],
-#         "listed": list[str], "actual": list[str]}
-PALETTE_THREAD_MISMATCH = "PALETTE_THREAD_MISMATCH"
-
 # Stage 5 (overlap resolution / pull compensation)
 HOLE_NEARLY_CLOSED = "HOLE_NEARLY_CLOSED"          # pull comp would swallow a hole; held open. extra: {"count": int}
 SAME_THREAD_SHAPES_MERGED = "SAME_THREAD_SHAPES_MERGED"  # pull comp would fuse two shapes of one thread; gap held open. extra: {"count": int}
 
 # Stage 6 (stitch planning)
 SHAPE_TOO_THIN_TO_FILL = "SHAPE_TOO_THIN_TO_FILL"  # narrower than a fill can hold; satin's job (step 4). extra: {"count": int}
-# Geometry produced no stitches at all — raised by stage 5 (a shape that
-# vanished under pull compensation) and by stage 7 (a shape no tier could
-# fill). Stage 5's now names the shapes: extra: {"count": int, "ids":
-# list[str], "threads": list[str], "total_mm2": float, "largest_mm2": float};
-# stage 7's still carries {"count": int} only.
-SHAPE_NOT_STITCHED = "SHAPE_NOT_STITCHED"
+SHAPE_NOT_STITCHED = "SHAPE_NOT_STITCHED"          # geometry produced no stitches at all. extra: {"count": int}
 LONG_JUMPS_TRIMMED = "LONG_JUMPS_TRIMMED"          # travel could not stay inside the shape. extra: {"count": int}
 SMALL_SHAPES_AS_RUN = "SMALL_SHAPES_AS_RUN"        # too small for fill or satin; sewn as run outlines instead. extra: {"count": int}
 
