@@ -190,15 +190,36 @@ Per §5c, **not the fix** — invariance cannot be reached without the replaceme
 signal, and the replacement signal cannot be calibrated yet. Exactly one thing is
 buildable now, and it is worth building:
 
-**A regression test that asserts scale invariance.** For each committed fixture and
-each of the seven real artworks, classify at several resolutions in a 150-2500 px
-sweep and assert a single class. **It fails today** — `becker_hat_large` alone
-returns three classes — and landing it red pins the property as a test rather than
-as prose in this document, which is the difference between a known bug and a
-documented one.
+**A regression test that asserts scale invariance.** LANDED as
+`digitizer/tests/test_classifier_scale_invariance.py`: **6 passed, 7 xfailed**.
 
-Land it marked expected-fail with a pointer to this spec, so the suite stays green
-and the assertion is nonetheless in the repo. When §6 unblocks, the same test
+Three things about it differ from how this section was first drafted, each because
+building it produced a measurement:
+
+1. **Committed fixtures only, no customer artwork.** The seven real artworks are
+   not in the repo and do not need to be — 8 of the 20 committed fixtures already
+   flip class across a resolution sweep, so the property is demonstrable on repo
+   data alone.
+2. **The defect is not universal, so it is declared per fixture.** A first draft
+   marked every case `xfail(strict=True)` and five XPASSed. The measured sets are
+   now written out: `photo/drone_render.png` and `photo/enthusiast_logo.png` flip
+   across the sweep; those two plus `logo_alpha.png`, `logo_whitebg.png` and
+   `ribbon_curve.png` depart from their own native class. `photo/summit_badge.png`
+   is stable on both counts — and for a reason unrelated to correctness: its
+   gradient reading (0.458) sits far enough above the 0.0015 threshold that no
+   downscale in range crosses it.
+3. **It is not an artifact of the resampler.** `photo/enthusiast_logo.png` is
+   `flat` at its native 1400x316 and `gradient` at 500 px under NEAREST,
+   BILINEAR, BICUBIC and LANCZOS alike. NEAREST interpolates nothing and posts
+   the *highest* reading of the four (23.1). The class also depends on WHICH
+   filter was used: at 1000 px NEAREST gives `flat` while the other three give
+   `gradient`. Two images a human could not tell apart get different lanes.
+
+A companion test pins the native classifications as a plain passing test, so a
+future recalibration that breaks the native answers is caught there instead of
+hiding inside an expected failure. `strict=True` throughout: when the defect is
+fixed these XPASS, which strict mode reports as a failure, forcing the marker to
+be deleted rather than the property silently passing and being forgotten. Their
 turning green *is* the acceptance criterion from §2.
 
 Deliberately NOT in scope: changing any threshold, normalising the input,
