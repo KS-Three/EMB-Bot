@@ -553,14 +553,35 @@ def reconstruct(blocks, threads, cvs, path, meta_path):
     return meas, flags
 
 
-def run_ours(art_path, width_mm, outdir):
+def run_ours(art_path, width_mm, outdir, garment_id=None):
+    """`garment_id=None` (the default, and what every run before 2026-08-15
+    used) leaves `fabrics.py` on `DEFAULT_FABRIC_ID = "pique_knit"` — a polo
+    left chest — for every design including cap fronts and beanies. Passing the
+    real garment picks up that garment's pull compensation and underlay style.
+    Kept optional so existing callers reproduce their recorded numbers exactly;
+    see docs/pro-parity-real-art-2026-08-15.md §5b.
+    """
     cfg = PipelineConfig()
+    cfg.garment_id = garment_id
     # Task A2 (2026-08-14): fill_density_boost is SEW-OUT GATED off by
     # default (see PipelineConfig's own comment) — this harness exists
     # specifically to measure a candidate engine change against the corpus
     # before it ships, so it opts in explicitly rather than measuring the
     # shipped single-pass default.
-    cfg.fill_density_boost = True
+    #
+    # PipelineConfig is a plain dataclass, so a bare `cfg.fill_density_boost =
+    # True` on a tree where that field does not exist sets a stray attribute
+    # nothing reads and raises nothing — the harness would go on silently
+    # measuring a different configuration than its own comment claims. That is
+    # exactly what happened when `a6435f2` reverted PR #146 and removed the
+    # field (2026-08-15). Check instead of assuming, and say so out loud.
+    if "fill_density_boost" in PipelineConfig.__dataclass_fields__:
+        cfg.fill_density_boost = True
+    else:
+        print("  WARNING: PipelineConfig has no `fill_density_boost` field on "
+              "this tree — measuring the shipped default, NOT the boosted fill "
+              "every pro-parity number before 2026-08-15 was measured with.",
+              flush=True)
     cfg.target_width_mm = round(width_mm, 1)
     res = run_stages(str(art_path), cfg)
     plan = plan_stitches(res, cfg)
