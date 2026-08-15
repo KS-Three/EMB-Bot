@@ -406,9 +406,21 @@ session.
    bold up thin strokes; tighten layout to fit a cap front; drop detail below a
    sewable threshold. Seven of fifteen designs turn on exactly those calls, and
    the beanie series puts a number on the target: **+45% solidity at flat row
-   spacing**. Nothing in the engine does this, and no density tuning
-   substitutes. **This is the largest single lever this analysis found and it is
-   not yet started.**
+   spacing**.
+
+   **SUPERSEDED IN PART, same day — see `enclosed-background-verdict-2026-08-15.md`.**
+   This item was written as "the largest single lever, not yet started." Both
+   halves were wrong. A design session on it established that (a) the mechanism
+   is NOT a stroke-width floor — measured, such a rule fires on the designs the
+   pro left alone and stays silent on the ones it filled; (b) the real mechanism
+   is that the artwork's *transparent enclosed regions* are an intended colour
+   the pro stitches and we leave bare; and (c) **that capability already ships**
+   end to end, as `shape_overrides[sid]["stitched"]` / contract v1.1. Turning it
+   on is worth +8.0 per affected design but only **+2.7 on the corpus**, since
+   only the five Becker designs carry material enclosed area. The verdict is not
+   to flip the default: the colour an enclosed region inherits is an artifact of
+   PNG flattening, and the +8.0 is `coverage` rewarding overlap while `density`
+   and `sttype` fall. Item 4 below is the larger lever.
 2. **DONE — thread the garment through the harness.** `garment_id` from the
    pro's filename convention. Worth +0.6, +1.2 on cap fronts, +0.0 on every
    left-chest design; moved `travel` and `underlay`, not `coverage`. Exactly as

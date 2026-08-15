@@ -38,8 +38,19 @@ import prep_all
 import real_art
 
 ROOT = Path(os.environ.get("PRO_PARITY_ROOT", r"G:/My Drive/EMB-Bot/Embroidery Files"))
-OUT = Path(os.environ["PRO_PARITY_OUT"])
 prep_all.ROOT = ROOT
+
+# Resolved in main(), not at import: `DESIGNS` is worth importing from other
+# probes (which garment each design is, which artwork goes with which stitch
+# file) and a module-level `os.environ[...]` made that a KeyError.
+OUT = None
+
+
+def _out():
+    global OUT
+    if OUT is None:
+        OUT = Path(os.environ["PRO_PARITY_OUT"])
+    return OUT
 
 # (slug, pro stitch file, customer artwork, garment_id).
 # PES where it exists (it carries thread colours); DST where that is all the job
@@ -107,8 +118,9 @@ def prep_one(slug, stitch_rel, art_rel, garment_id):
     cvs = prep_all.Canvas(bounds)
     width_mm = bounds[2] - bounds[0]
 
-    recon = OUT / "recon" / slug
-    real = OUT / "real" / slug
+    out = _out()
+    recon = out / "recon" / slug
+    real = out / "real" / slug
     for d in (recon, real):
         d.mkdir(parents=True, exist_ok=True)
 
@@ -156,6 +168,7 @@ def prep_one(slug, stitch_rel, art_rel, garment_id):
             "stitches": sum(len(r) for runs in ours_blocks for r in runs),
             "blocks": len(ours_blocks),
             "regions": len(res.regions),
+            **prep_all.machine_meta(d),
             "warnings": [w["code"] for w in res.warnings],
         }
         allpts = [p for runs in ours_blocks for r in runs for p in r]
@@ -194,7 +207,7 @@ def main():
     # scorecard.py reads manifest.json from the PARENT of each design dir, so
     # both lanes need their own copy.
     for lane in ("recon", "real"):
-        p = OUT / lane / "manifest.json"
+        p = _out() / lane / "manifest.json"
         old = {e["slug"]: e for e in (json.loads(p.read_text()) if p.exists() else [])}
         old.update({e["slug"]: e for e in manifest})
         p.parent.mkdir(parents=True, exist_ok=True)
