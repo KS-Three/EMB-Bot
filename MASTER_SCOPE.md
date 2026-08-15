@@ -191,6 +191,30 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
   when the two genuinely need lining up — reach for those rather than
   re-deriving. *(measured 2026-08-14 — PR #151,
   `tools/pro_parity/scorecard.py`)*
+- **The pro-parity 95 target is above the metric's own ceiling. Do not read
+  `score/95` as an engine deficit.** Scoring two of the PRO's own files for one
+  logo against each other — same scorecard, same registration, same chance
+  corrections — a professional scores **75-84 against a professional**. The
+  scorecard is not broken: on pairs that turn out to be one job saved twice it
+  correctly returns 96-100. But `direction` ceilings at **0.11 on one pair and
+  0.85 on another**, from one digitizer on one logo, against a 20-point weight —
+  it measures a choice, not a standard, and is the least defensible weight in the
+  scorecard. `density`/`underlay`/`travel` ceiling at 0.89-1.00, so those weights
+  are sound. **The target is deliberately NOT revised yet: n=2.** Growing it needs
+  scale-normalised registration in `scorecard.py` (it registers by translation
+  only, and every other same-logo PES pair in the file set is 4-17% apart in
+  width). Reweighting before then would re-base every historical score on two data
+  points. *(measured 2026-08-15 — `tools/pro_parity/selfconsistency.py`,
+  `docs/pro-parity-real-art-2026-08-15.md` §11)*
+- **Measure pro-parity in a git worktree, never in a shared checkout.** Three
+  separate baselines were invalidated on 2026-08-15 by commits landing mid-run: a
+  `git pull` carrying the PR #146 revert, then `da42947`, then
+  `f6458a2`/`08e39b5` from a second Claude session on the same branch. The first
+  symptom each time looked like engine non-determinism; the engine is in fact
+  deterministic — same art, same commit, four processes, byte-identical output.
+  A pinned worktree fixed it; verify module resolution hits the worktree's own
+  `digitizer_core` and not the main checkout's editable install.
+  *(measured 2026-08-15 — `docs/pro-parity-real-art-2026-08-15.md` §1)*
 - **Three photo hypotheses are disproven** — palette collapse merging subject
   into background, `max_colors` as the binding constraint, and
   `MERGE_DELTAE00_THRESH` needing a retune. All three came from extrapolating
