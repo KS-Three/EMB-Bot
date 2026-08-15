@@ -436,19 +436,72 @@ def _densify(a: tuple[float, float], b: tuple[float, float], step_mm: float) -> 
     return [(a[0] + (b[0] - a[0]) * i / n, a[1] + (b[1] - a[1]) * i / n) for i in range(1, n + 1)]
 
 
-def _inset_ring(poly: Polygon, inset_mm: float) -> LineString | None:
-    """A closed path just inside the shape, for travel to follow."""
+def _inset_ring(poly: Polygon, inset_mm: float) -> list[LineString]:
+    """Closed paths just inside the shape, for travel to follow — ONE PER
+    FRAGMENT the inset leaves behind.
+
+    A shape narrower than 2 * inset anywhere pinches apart here, and that is
+    the common case, not the exotic one: an outlined wordmark is a single
+    connected region joined by keylines a millimetre wide, so the inset
+    shatters it into one piece per letter. becker_hat_small's largest region
+    breaks into 59.
+
+    This used to `max(inner.geoms, key=area)` and discard the rest, which left
+    72% of that region with no travel guide at all — every fill path landing
+    there had to be reached by lifting the needle, and past `trim_at_mm` that
+    is a thread cut. 17 of the design's 32 cuts were this one discard.
+    """
     inner = poly.buffer(-inset_mm)
     if inner.is_empty:
         inner = poly
-    if inner.geom_type == "MultiPolygon":
-        inner = max(inner.geoms, key=lambda g: g.area)
-    if inner.is_empty or inner.geom_type != "Polygon":
-        return None
-    return LineString(inner.exterior.coords)
+    parts = list(inner.geoms) if inner.geom_type == "MultiPolygon" else [inner]
+    return [LineString(g.exterior.coords) for g in parts
+            if not g.is_empty and g.geom_type == "Polygon"]
 
 
-def travel_path(poly: Polygon, ring: LineString | None, a: tuple[float, float],
+# How many candidate rings a single travel query will pay a containment test
+# for. Ranked nearest-first, so the ring actually holding both ends is the
+# first or second try in every case measured on the corpus; the cap is what
+# keeps a 59-fragment region from turning one travel into 59 `covers()` calls,
+# which is the most expensive thing stage 6 does.
+_TRAVEL_RING_CANDIDATES = 3
+
+
+def _ring_route(ring: LineString, a: tuple[float, float],
+                b: tuple[float, float]) -> list[tuple[float, float]]:
+    """The shorter way around `ring` from a to b, as waypoints.
+
+    The ring's OWN VERTICES, not samples taken at a fixed arc-length step.
+    Sampling a corner at 2.5 mm intervals puts one waypoint on each side of it
+    and the straight chord between them cuts it off — which at a concave corner
+    means the route leaves the shape. That is how travel escaped into the notch
+    of a U before the containment check caught it; routing vertex to vertex
+    cannot cut a corner because every corner IS a waypoint. Spacing is applied
+    afterwards by `_densify`, which only ever subdivides.
+    """
+    coords = list(ring.coords)
+    total = ring.length
+    cum = [0.0]
+    for i in range(1, len(coords)):
+        cum.append(cum[-1] + math.dist(coords[i - 1], coords[i]))
+    ta, tb = ring.project(Point(a)), ring.project(Point(b))
+    forward = (tb - ta) % total
+    backward = total - forward
+    ahead = forward <= backward
+    span = forward if ahead else backward
+
+    between: list[tuple[float, tuple[float, float]]] = []
+    for i in range(1, len(coords)):
+        offset = (cum[i] - ta) % total if ahead else (ta - cum[i]) % total
+        if 0.0 < offset < span:
+            between.append((offset, coords[i]))
+    between.sort()
+
+    start, end = ring.interpolate(ta), ring.interpolate(tb)
+    return ([(start.x, start.y)] + [c for _, c in between] + [(end.x, end.y)])
+
+
+def travel_path(poly: Polygon, ring, a: tuple[float, float],
                 b: tuple[float, float], slack: Polygon | None = None
                 ) -> list[tuple[float, float]] | None:
     """Stitchable route from a to b that never leaves the shape.
@@ -460,40 +513,48 @@ def travel_path(poly: Polygon, ring: LineString | None, a: tuple[float, float],
     detail size) still is. Pass that widened copy in as `slack` when calling
     repeatedly for one shape — buffering is the most expensive thing in stage 6
     and the result is the same every time.
+
+    `ring` is `_inset_ring`'s list of per-fragment guides (a bare LineString or
+    None is still accepted — stage6_border passes None, and the guide for a
+    shape that does not pinch is a one-element list). Candidates are tried
+    nearest-first, and a route is only returned once it has been checked to
+    stay inside the shape. That check is new with the multi-fragment guides and
+    is not bookkeeping: handed a guide on the far side of a closed neck, the
+    old single-ring code would run along it and then strike out across bare
+    cloth to reach `b`, emitting travel that left the shape entirely.
     """
     if math.dist(a, b) < machine.TINY_STITCH_MM:
         return []
+    cover = slack if slack is not None else poly.buffer(0.01)
     seg = LineString([a, b])
-    if (slack if slack is not None else poly.buffer(0.01)).covers(seg):
+    if cover.covers(seg):
         return _densify(a, b, machine.TRAVEL_STITCH_MM)
     if ring is None:
         return None
-
-    ta, tb = ring.project(Point(a)), ring.project(Point(b))
-    total = ring.length
-    forward = (tb - ta) % total
-    backward = total - forward
-    step = machine.TRAVEL_STITCH_MM
-    if forward <= backward:
-        n = max(1, math.ceil(forward / step))
-        along = [ring.interpolate((ta + forward * i / n) % total) for i in range(n + 1)]
-    else:
-        n = max(1, math.ceil(backward / step))
-        along = [ring.interpolate((ta - backward * i / n) % total) for i in range(n + 1)]
-
-    pts = [(p.x, p.y) for p in along]
-    route = [a] + pts + [b]
-    length = sum(math.dist(route[i - 1], route[i]) for i in range(1, len(route)))
-    direct = math.dist(a, b)
-    if length > max(_TRAVEL_DETOUR_FLOOR_MM, direct * _TRAVEL_DETOUR_FACTOR):
+    rings = [ring] if isinstance(ring, LineString) else list(ring)
+    if not rings:
         return None
 
-    out: list[tuple[float, float]] = []
-    cur = a
-    for p in pts + [b]:
-        out.extend(_densify(cur, p, step))
-        cur = p
-    return out
+    step = machine.TRAVEL_STITCH_MM
+    budget = max(_TRAVEL_DETOUR_FLOOR_MM, math.dist(a, b) * _TRAVEL_DETOUR_FACTOR)
+    pa, pb = Point(a), Point(b)
+    rings.sort(key=lambda r: max(r.distance(pa), r.distance(pb)))
+
+    for candidate in rings[:_TRAVEL_RING_CANDIDATES]:
+        pts = _ring_route(candidate, a, b)
+        route = [a] + pts + [b]
+        length = sum(math.dist(route[i - 1], route[i]) for i in range(1, len(route)))
+        if length > budget:
+            continue
+        if not cover.covers(LineString(route)):
+            continue
+        out: list[tuple[float, float]] = []
+        cur = a
+        for p in pts + [b]:
+            out.extend(_densify(cur, p, step))
+            cur = p
+        return out
+    return None
 
 
 # Which row-point function each fill `technique` dispatches to inside

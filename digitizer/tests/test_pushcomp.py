@@ -186,8 +186,27 @@ def rail_overhang(art: Polygon, pts) -> float:
 # unchanged and neither golden here nor ribbon_curve's two entries move.
 # Tighter spacing (0.4 -> 0.34 mm) on logo_whitebg's satin element adds
 # stitches: 3234 -> 3258.
+# RE-PINNED 2026-08-15, `left_chest` ONLY: stage 6's travel guide stopped
+# discarding every inset fragment but the largest, and started routing along a
+# ring's own vertices instead of samples taken every TRAVEL_STITCH_MM
+# (stage6_fill's `_inset_ring` / `_ring_route`). On this fixture that is ONE
+# extra travel penetration, 2165 -> 2166; trim and jump flags (153 each),
+# region ids, areas and warnings are all unmoved. Earned the way the flat-lane
+# golden's key was: a worktree at the previous commit reproduces the old tuple
+# byte-for-byte on this machine, so what moved is the engine, not the
+# environment.
+#
+# `towel` is NOT re-pinned and its test is expected red. It was ALREADY red
+# before that change — the pre-change worktree returns
+# ("91030f1addf655a9f7a7", 3262, 10361) here, not the tuple below — so this
+# machine cannot tell a stale pin from local drift, and
+# `recapture_flat_lane_key.py`'s doctrine is that a machine failing its own
+# pre-change check may not write a golden. Re-pin it where the pre-change
+# tuple reproduces. (Both `ribbon_curve` entries reproduce exactly, before and
+# after, and are the control that says the change is confined to fills whose
+# inset actually fragments.)
 GOLDEN_FLAG_OFF = {
-    ("logo_whitebg.png", "left_chest"): ("e0b3e7ec366c14ca4685", 2165, 7070),
+    ("logo_whitebg.png", "left_chest"): ("05a59e2bc2a524087c4f", 2166, 7073),
     ("logo_whitebg.png", "towel"): ("98c918e7c1576e46f623", 3258, 10349),
     ("ribbon_curve.png", "left_chest"): ("1c3f5ad1d0de847c149a", 1001, 3527),
     ("ribbon_curve.png", "hat_front"): ("d982b1c0fe21b0ed1b5f", 1005, 3539),

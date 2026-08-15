@@ -62,6 +62,28 @@ checkout from before PR #146. It re-captures this one key only, and refuses to
 write unless that machine first reproduces THIS key byte-for-byte on the old
 engine — which is the proof that what moves afterwards is the engine and not
 the machine.
+
+**Third exception, TAKEN 2026-08-15:** the `logo_whitebg.png` key was
+re-captured for the stage 6 travel fix. `_inset_ring` built the travel guide,
+found the 0.6 mm inset had shattered the region into fragments, and kept only
+the largest — on becker_hat_small that is one piece of 59, holding 28% of the
+shape, leaving the other 72% with nothing to travel along and reachable only by
+lifting the needle. It now keeps every fragment's ring and picks the one
+serving both ends, and routes along a ring's own VERTICES instead of samples
+taken every `TRAVEL_STITCH_MM`, because a chord across a concave corner leaves
+the shape. `travel_path` now verifies containment before returning, which is
+what caught that second bug: the old single-ring code, handed a guide on the far
+side of a closed neck, would run along it and then strike out across bare cloth
+to reach its target. On becker_hat_small it did that 31 times, and every one of
+them was being counted as thread-down travel.
+
+On THIS fixture the whole delta is ONE extra travel penetration, 2165 -> 2166.
+`shape_ids`, `areas_mm2`, `warnings` and the trim/jump flag counts (153 each) do
+not move. The re-capture used `--pre-change-tree` against a worktree at the
+previous commit, which reproduced this key byte-for-byte on this machine first,
+so the one stitch is the engine and not the environment. `ribbon_curve.png`
+reproduces exactly before and after and is the control: the change is confined
+to fills whose inset actually fragments.
 """
 
 from __future__ import annotations
