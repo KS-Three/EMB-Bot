@@ -1096,9 +1096,25 @@ const WARNING_TEXT = {
     "The background was hard to separate from the art. Check the stitch preview for missing or extra areas.",
   INPUT_LOW_RESOLUTION: () =>
     "The image is low resolution for this stitch size. A larger image or a smaller size will sew sharper.",
-  BACKGROUND_ENCLOSED: () =>
-    "Enclosed background-colored areas were left open, like the hole in an O. " +
-    "Find them in the Layers list, marked \"not sewn — enclosed area,\" to sew them.",
+  // "like the hole in an O" explains the concept well and conveys scale badly.
+  // Measured on the Becker Marine artwork 2026-08-15: 40% of the design sat
+  // behind that sentence as bare fabric, and switching those areas on is worth
+  // +8.0 points per design
+  // (docs/enclosed-background-verdict-2026-08-15.md). The capability shipped
+  // 2026-08-04 and went unused for eleven days. Same lesson as
+  // DROPPED_SMALL_SHAPES below: a warning that sounds small does not get
+  // chased, so lead with the share whenever the engine sends one. An engine
+  // predating `area_frac` keeps the original wording rather than rendering
+  // "0% of this design".
+  BACKGROUND_ENCLOSED: (w) => {
+    const f = w && w.area_frac;
+    const lead =
+      typeof f === "number" && isFinite(f) && f > 0
+        ? `${Math.round(f * 100)}% of this design is enclosed background-colored areas, left open`
+        : "Enclosed background-colored areas were left open";
+    return `${lead}, like the hole in an O. ` +
+      "Find them in the Layers list, marked \"not sewn — enclosed area,\" to sew them.";
+  },
   COLOR_CAP_APPLIED: () =>
     "The art has more colors than the limit. The smallest areas now reuse the nearest kept color — raise Colors to keep more.",
   // Two sentences, because "too small to sew" is only ONE of the reasons a

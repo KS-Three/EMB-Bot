@@ -1508,3 +1508,29 @@ test("describeWarnings speaks the two shape-identity codes (contract v1.5)", asy
   expect(out[0].text).toBe("Two shapes were combined into one on the review screen.");
   expect(out[1].text).toBe("{n} shapes were cut into two on the review screen.".replace("{n}", "2"));
 });
+
+// The BACKGROUND_ENCLOSED capability shipped 2026-08-04 and went unused for
+// eleven days. Measured on the Becker Marine artwork
+// (docs/enclosed-background-verdict-2026-08-15.md): 40% of the design was left
+// as bare fabric, and switching those regions on is worth +8.0 points per
+// design. The panel said only "areas were left open, like the hole in an O",
+// which reads like the hole in an O — a detail — not like two fifths of the
+// logo. Same lesson as DROPPED_SMALL_SHAPES above: nobody chases a warning that
+// sounds small.
+test("describeWarnings says how much of the design an enclosed area actually is", async () => {
+  stubStorage({});
+  const { describeWarnings } = await import("./digitizer.js");
+  const out = describeWarnings([
+    { code: "BACKGROUND_ENCLOSED", message: "engine prose", count: 7, area_frac: 0.4032 },
+    { code: "BACKGROUND_ENCLOSED", message: "engine prose", count: 1, area_frac: 0.02 },
+    // An engine that predates the field must keep the old wording rather than
+    // rendering "undefined%" or "0%" — same backward-compatibility contract
+    // `all_small`/`largest_mm2` have.
+    { code: "BACKGROUND_ENCLOSED", message: "engine prose", count: 3 },
+  ]);
+  expect(out[0].text).toContain("40%");
+  expect(out[0].text).toContain("Layers");
+  expect(out[1].text).toContain("2%");
+  expect(out[2].text).not.toContain("%");
+  expect(out[2].text).toContain("Layers");
+});

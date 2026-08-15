@@ -84,6 +84,14 @@ class Prep:
     # the border-flood: `stage4_vectorize.tag_enclosed_background` uses this
     # to tag the Region(s) they end up in. None when no such pixels exist,
     # mirroring `bg_outline_px`/`bg_edge_rgb` above.
+    # Whether `enclosed_mask` carries a usable COLOUR or only a position is
+    # already answered by `bg_from_alpha` above, so there is no separate field:
+    # the no-alpha branch matches background-COLOURED pixels (so the hole really
+    # is the colour it appears — `logo_whitebg.png`'s is White, and sewing it
+    # White is right), while the alpha branch matches TRANSPARENT pixels, whose
+    # RGB is whatever the exporter flattened underneath. `stage4_vectorize.
+    # tag_enclosed_background` reads `bg_from_alpha` and marks the latter
+    # `enclosed_colour_unknown`.
     enclosed_mask: np.ndarray | None = None
     warnings: list[dict] = field(default_factory=list)
 
@@ -371,12 +379,23 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
 
     if enclosed.any():
         n_enc, _ = cv2.connectedComponents(enclosed.astype(np.uint8), connectivity=8)
+        # `count` alone does not convey scale: "3 enclosed areas" reads as a
+        # detail, while the same three areas on the Becker Marine artwork are 41%
+        # of the design left as bare fabric, and switching them on is worth +8.0
+        # points per design (docs/enclosed-background-verdict-2026-08-15.md §4).
+        # This capability shipped 2026-08-04 and went unused for eleven days;
+        # the missing number is the reason. Share of the STITCHABLE area, since
+        # `enclosed` is part of `fg` — so it is directly "this much of what we
+        # are about to sew is a hole".
+        area_frac = float(np.count_nonzero(enclosed) / max(1, np.count_nonzero(fg)))
         warnings.append(
             warn(
                 BACKGROUND_ENCLOSED,
-                "Enclosed background-colored areas are treated as holes and left "
-                "unstitched — toggle them on in review if they should sew.",
+                f"Enclosed background-colored areas are {area_frac:.0%} of this "
+                "design and are treated as holes, left unstitched — toggle them "
+                "on in review if they should sew.",
                 count=max(0, n_enc - 1),
+                area_frac=round(area_frac, 4),
             )
         )
 
