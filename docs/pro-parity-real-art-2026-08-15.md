@@ -81,12 +81,13 @@ be read against the 2026-08-14 tables; the corrected number is the one to trust.
 
 | | recon art | real art | delta |
 |---|---|---|---|
-| **corpus mean** | **54.0** [69.7] | **42.0** [57.8] | **-12.0** |
+| **corpus mean** | **53.8** [69.5] | **42.5** [58.2] | **-11.3** |
 
-**42.0 is the honest baseline.** Target is 95.
+**42.5 is the honest baseline** — isolated worktree at `7298ac8`, see below.
+Target is 95, which §11 shows is above what a pro scores against a pro.
 
-The same corpus was measured four ways because of §0b. Real-art lane,
-chance-corrected:
+The same corpus was measured five ways, for the reasons in §0b and below.
+Real-art lane, chance-corrected:
 
 | engine | garment passed | real | recon |
 |---|---|---|---|
@@ -130,7 +131,7 @@ almost exactly (`becker_beanie` 70.6 vs 70.6, `gaulke_roofing_lc` 79.8 vs 79.8,
 `mfab_hat` 76.3 vs 76.3, `tires_hat_3d` 53.7 vs 53.7), so the harness is anchored
 and -12.0 is a like-for-like delta, not drift.
 
-**-12.0 lands inside the old +10-18 estimate.** That estimate was right about the
+**-11.3 lands inside the old +10-18 estimate.** That estimate was right about the
 magnitude. It was wrong about the mechanism, and the mechanism is what matters
 for deciding what to build.
 
@@ -424,7 +425,7 @@ These are visible in the renders and in the numbers, and are not explained by
 
 The 95/100 target was set against a metric that (a) pays out heavily on two
 components the engine is barely above chance on, and (b) on this corpus penalises
-correct art reproduction wherever the pro chose to deviate. **42.0 is the honest
+correct art reproduction wherever the pro chose to deviate. **42.5 is the honest
 number for "how close are our stitches to this pro's stitches, given the
 customer's art."** It is not the same question as "is this good embroidery," and
 this run is the first time the two have visibly pointed in opposite directions.
