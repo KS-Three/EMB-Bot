@@ -498,7 +498,26 @@ def _ring_route(ring: LineString, a: tuple[float, float],
     between.sort()
 
     start, end = ring.interpolate(ta), ring.interpolate(tb)
-    return ([(start.x, start.y)] + [c for _, c in between] + [(end.x, end.y)])
+    route = [(start.x, start.y)] + [c for _, c in between] + [(end.x, end.y)]
+
+    # A ring is a BUFFER's output, so its vertices are as dense as the buffer's
+    # arc resolution — tenths of a millimetre around every corner. Keeping all
+    # of them puts a penetration on each, and `_densify` only ever subdivides,
+    # so nothing downstream thins them again: becker_hat_small landed 2464
+    # travel stitches over 551 mm of path, 0.22 mm apart, a third of the whole
+    # design. Fixed-step sampling capped that as a side effect; preserving
+    # vertices removed the cap, so the floor is applied here deliberately.
+    #
+    # TINY_STITCH_MM and not something larger because the point of keeping
+    # vertices is corners, and a corner dropped is a corner cut. At 0.5 mm
+    # against a 0.6 mm inset the furthest a dropped vertex can move the path is
+    # a quarter millimetre, and `travel_path` re-checks containment regardless.
+    out = [route[0]]
+    for p in route[1:-1]:
+        if math.dist(out[-1], p) >= machine.TINY_STITCH_MM:
+            out.append(p)
+    out.append(route[-1])
+    return out
 
 
 def travel_path(poly: Polygon, ring, a: tuple[float, float],
