@@ -113,16 +113,6 @@ class PlanStats:
 @dataclass
 class StitchPlan:
     blocks: list[StitchBlock]
-    # The cones this plan sews, ONE PER BLOCK, in sew order — `palette[i]`
-    # describes `blocks[i]`, and `stats.thread_mm_by_color[i]` measures it.
-    # Deliberately NOT `PipelineResult.palette`, which is the per-LAYER list
-    # the review screen edits against: a layer can produce no block at all
-    # (every region in it unstitched — see SHAPES_LEFT_UNSEWN) and a layer can
-    # produce several (a specialty step's stop, or shapes that re-snapped onto
-    # two threads), so the two lists have different lengths and different
-    # meanings. Reading the layer list positionally against blocks is what
-    # shipped `golf_hat`'s black block labelled "0020 Tangerine" until
-    # 2026-08-14.
     palette: list[dict]
     warnings: list[dict] = field(default_factory=list)
     design_size_mm: tuple[float, float] = (0.0, 0.0)
