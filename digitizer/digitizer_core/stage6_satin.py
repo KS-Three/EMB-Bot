@@ -230,16 +230,91 @@ def is_satin_candidate(poly: Polygon, max_width_mm: float, *,
     scope, not a new rule. See `_dt_regular_and_within_cap` for the check
     itself.
     """
+    return classify_ribbon(poly, max_width_mm,
+                           design_class=design_class).satin
+
+
+@dataclass(frozen=True)
+class RibbonVerdict:
+    """`is_satin_candidate`'s verdict, plus WHICH gate produced it.
+
+    `reason` is the first gate that fired, in the same short-circuit order the
+    checks run: `width_cap`, `aspect`, `dt_irregular`, `dt_p90_cap`,
+    `dt_degenerate` (the raster was too small to skeletonize, so the DT check
+    deferred), or `satin` for a shape that passed everything.
+
+    `metrics` carries what each gate measured, so a rejection can be read as a
+    MARGIN rather than a bare no — `docs/superpowers/specs/2026-08-16-satin-
+    routing-gate-attribution-design.md` §3b: a promotion path is only cheap if
+    the misses cluster just past the line.
+    """
+
+    satin: bool
+    reason: str
+    metrics: dict[str, float]
+
+
+def classify_ribbon(poly: Polygon, max_width_mm: float, *,
+                    design_class: str = "flat",
+                    full_metrics: bool = False) -> RibbonVerdict:
+    """`is_satin_candidate`'s implementation. Same verdict, with attribution.
+
+    `full_metrics` runs the distance transform even for a shape an earlier
+    gate already rejected, so a probe can ask "would the DT have taken this
+    one?" of a shape the width cap threw out. It costs a rasterize plus a
+    medial axis per shape, which is why the pipeline's own path leaves it
+    False and sees byte-identical cost to before this function existed.
+    """
+    perim = poly.exterior.length + sum(r.length for r in poly.interiors)
     w = ribbon_width_mm(poly)
-    if w <= 0 or w > max_width_mm:
-        return False
     # Ribbon length estimate: half the perimeter minus one width. For a blob
     # (circle: w = r) this comes out ~2.1 w and fails the aspect test.
-    perim = poly.exterior.length + sum(r.length for r in poly.interiors)
     length_est = perim / 2.0 - w
+    metrics: dict[str, float] = {
+        "ribbon_w": w,
+        "length_est": length_est,
+        "aspect": (length_est / w) if w > 0 else 0.0,
+        "area_mm2": float(poly.area),
+        "dt_mean": 0.0,
+        "dt_std": 0.0,
+        "dt_cv": 0.0,
+        "dt_p90_mm": 0.0,
+    }
+
+    def _with_dt() -> tuple[float, float, float] | None:
+        stats = _dt_stats(poly)
+        if stats is None:
+            return None
+        mean, std, p90_mm = stats
+        metrics["dt_mean"] = mean
+        metrics["dt_std"] = std
+        metrics["dt_cv"] = (std / mean) if mean > 0 else 0.0
+        metrics["dt_p90_mm"] = p90_mm
+        return stats
+
+    def _reject(reason: str) -> RibbonVerdict:
+        if full_metrics:
+            _with_dt()
+        return RibbonVerdict(False, reason, metrics)
+
+    if w <= 0 or w > max_width_mm:
+        return _reject("width_cap")
     if length_est < 3.0 * w:
-        return False
-    return _dt_regular_and_within_cap(poly, max_width_mm)
+        return _reject("aspect")
+
+    stats = _with_dt()
+    if stats is None:
+        # A shape too small or thin to skeletonize is not the DT check's
+        # problem to solve; it defers to the verdict already reached. Named
+        # rather than folded into "satin" so the probe does not count a
+        # deferral as a shape the check positively approved.
+        return RibbonVerdict(True, "dt_degenerate", metrics)
+    mean, std, p90_mm = stats
+    if 2.0 * std >= mean:
+        return RibbonVerdict(False, "dt_irregular", metrics)
+    if p90_mm > max_width_mm:
+        return RibbonVerdict(False, "dt_p90_cap", metrics)
+    return RibbonVerdict(True, "satin", metrics)
 
 
 # The percentile Melco's own patent (US9702070) is documented to use is 70;
@@ -277,16 +352,30 @@ def _dt_regular_and_within_cap(poly: Polygon, max_width_mm: float) -> bool:
     raster edge case into a fill verdict for a shape that may be a perfectly
     good ribbon.
     """
+    stats = _dt_stats(poly)
+    if stats is None:
+        return True
+    mean, std, p90_mm = stats
+    return 2.0 * std < mean and p90_mm <= max_width_mm
+
+
+def _dt_stats(poly: Polygon) -> tuple[float, float, float] | None:
+    """(mean radius, std radius, 2*p90 width in mm) at the shape's skeleton.
+
+    None on a degenerate raster — a shape too small or thin to skeletonize —
+    which every caller reads as "the DT has no opinion here", not as a
+    rejection. Split out of `_dt_regular_and_within_cap` so `classify_ribbon`
+    can report the numbers as well as the verdict; the arithmetic is
+    unchanged.
+    """
     field = build_shape_field(poly)
     if field is None or not field.skel.any():
-        return True
+        return None
     r = field.dist[field.skel]
     if r.size == 0 or r.mean() <= 0:
-        return True
-    if 2.0 * r.std() >= r.mean():
-        return False
-    p90_mm = 2.0 * np.percentile(r, _DT_TIGHTEN_PERCENTILE) / field.scale
-    return p90_mm <= max_width_mm
+        return None
+    p90_mm = 2.0 * float(np.percentile(r, _DT_TIGHTEN_PERCENTILE)) / field.scale
+    return float(r.mean()), float(r.std()), p90_mm
 
 
 # --- Skeleton extraction ---------------------------------------------------

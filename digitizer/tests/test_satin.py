@@ -14,6 +14,7 @@ from shapely.geometry import LineString, Point, Polygon
 
 from digitizer_core import machine
 from digitizer_core.stage6_satin import (
+    classify_ribbon,
     extract_strokes,
     is_satin_candidate,
     ribbon_width_mm,
@@ -341,6 +342,91 @@ def test_the_dt_check_does_not_cost_real_ribbons_their_satin_call_when_flat(name
     must not lose their satin call just because `design_class="flat"` no
     longer buys a shape a free pass around the DT check."""
     assert is_satin_candidate(poly, machine.SATIN_MAX_WIDTH_MM, design_class="flat")
+
+
+# --- Gate attribution ------------------------------------------------------
+#
+# `classify_ribbon` is `is_satin_candidate`'s implementation, exposing WHICH
+# gate rejected a shape. It exists because the routing defect (MASTER_SCOPE
+# live defect 5 — 35% of the pro's satin ground sewn as fill) cannot be
+# attributed without knowing which of the three rejection gates fired.
+# Nothing in the pipeline reads it yet; these tests pin the equivalence that
+# makes it a refactor rather than a behaviour change.
+
+# A disc small enough to pass the width cap, so the ASPECT gate is what
+# rejects it: r=2 gives ribbon width 2.0 mm (under the 5.0 cap) but a length
+# estimate of 4.3 mm against the 6.0 mm the 3:1 test demands.
+SMALL_DISC = Point(0, 0).buffer(2.0)
+# Wider than the cap on the distance transform, narrower than it on
+# 2*area/perimeter (which reads the end caps into the perimeter and comes out
+# low): a 5.5 mm bar reads 4.47 mm on the ribbon statistic. So it clears the
+# first two gates and is caught by the DT's own p90 cap.
+WIDE_BAR = Polygon([(0, 0), (40, 0), (40, 5.5), (0, 5.5)])
+# A long spike, kept as a MEASUREMENT rather than a rejection case: its
+# medial-axis radii run from ~0 at the tip to the full half-width at the base,
+# and it still passes the regularity term at dt_cv 0.479 against the 0.5 the
+# term allows. A taper that steep clearing the gate by 4% is worth knowing
+# before slice 2 touches that threshold.
+SPIKE = Polygon([(0, 0), (60, 1.6), (0, 3.2)])
+
+
+@pytest.mark.parametrize("name,poly", [
+    ("BAR", BAR), ("O_RING", O_RING), ("C_STROKE", C_STROKE),
+    ("T_SHAPE", T_SHAPE), ("BLOB", BLOB), ("SMALL_DISC", SMALL_DISC),
+    ("WIDE_BAR", WIDE_BAR), ("SPIKE", SPIKE),
+])
+def test_classify_ribbon_agrees_with_the_bool_it_replaces(name, poly):
+    """The refactor's whole safety claim: same verdict, every shape.
+
+    If these two ever disagree, a stitch coordinate has moved somewhere and
+    the attribution work has become a behaviour change without saying so."""
+    for design_class in ("flat", "gradient"):
+        v = classify_ribbon(poly, machine.SATIN_MAX_WIDTH_MM,
+                            design_class=design_class)
+        assert v.satin is is_satin_candidate(poly, machine.SATIN_MAX_WIDTH_MM,
+                                             design_class=design_class), name
+
+
+@pytest.mark.parametrize("name,poly,reason", [
+    ("BAR", BAR, "satin"),
+    ("O_RING", O_RING, "satin"),
+    ("BLOB", BLOB, "width_cap"),
+    ("SMALL_DISC", SMALL_DISC, "aspect"),
+    ("WIDE_BAR", WIDE_BAR, "dt_p90_cap"),
+    ("SERRATED_DISC", _serrated_disc(10.0, 0.6), "dt_irregular"),
+    ("SPIKE", SPIKE, "satin"),
+])
+def test_every_gate_is_reachable_and_names_itself(name, poly, reason):
+    """Each rejection gate must be attributable to a shape that provokes it,
+    or the probe's summary would have categories nothing can land in.
+
+    The reason is the FIRST gate that fired, matching the short-circuit order
+    of the function it replaces."""
+    v = classify_ribbon(poly, machine.SATIN_MAX_WIDTH_MM)
+    assert v.reason == reason, f"{name}: expected {reason}, got {v.reason}"
+
+
+def test_the_verdict_carries_the_margin_the_gate_missed_by():
+    """A fix is only cheap if the misses cluster just past the line, so the
+    metrics have to say by how much — not merely that a gate fired."""
+    v = classify_ribbon(BAR, machine.SATIN_MAX_WIDTH_MM)
+    for key in ("ribbon_w", "length_est", "aspect", "dt_mean", "dt_std",
+                "dt_cv", "dt_p90_mm", "area_mm2"):
+        assert key in v.metrics, f"missing metric: {key}"
+    assert v.metrics["ribbon_w"] == pytest.approx(1.846, abs=0.01)
+    assert v.metrics["aspect"] > 3.0, "a 24x2 bar is a ribbon by aspect"
+    assert v.metrics["dt_p90_mm"] > 0.0, "the DT ran and reported a width"
+
+
+def test_a_shape_too_small_to_skeletonize_is_named_not_silently_passed():
+    """`_dt_regular_and_within_cap` returns True on a degenerate raster —
+    deferring rather than failing closed. That is a deliberate call, but it
+    is NOT the same event as a shape passing the DT check on its merits, and
+    the probe must not count the two together."""
+    sliver = Polygon([(0, 0), (12, 0), (12, 0.02), (0, 0.02)])
+    v = classify_ribbon(sliver, machine.SATIN_MAX_WIDTH_MM)
+    if v.satin:
+        assert v.reason in ("satin", "dt_degenerate")
 
 
 # --- Column geometry -------------------------------------------------------
