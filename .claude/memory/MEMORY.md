@@ -9,4 +9,5 @@
 - [Ink/Stitch research](inkstitch-research.md) — 2026-08-10 gap/corroboration sweep; pystitch is 5th DST-axis source + MIT swap candidate; GPL-3.0 caveat on porting
 - [Pro trim threshold](pro-trim-threshold.md) — corpus says the pro floats up to 16.1mm uncut vs our trim_at_mm 3.0, but the cut/float distributions overlap: distance is not the decision variable
 - [Real-artwork parity](real-artwork-parity.md) — 2026-08-15/16: honest baseline 42.5, a pro scores only 75-84 against a pro, and synthetic references flattered the engine in four places
+- [Satin gate attribution](satin-gate-attribution.md) — the DT regularity term loses the pro's satin ground; promotion on `explained` moved the corpus 45.8 to 48.1, and the sub-1mm width floor is disproved for flat art
 - [Windows goldens fail locally](windows-goldens-fail-locally.md) — 3 byte-identical goldens fail on Windows and pass in CI; main is green, never re-capture a golden locally
