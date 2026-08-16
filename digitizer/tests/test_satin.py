@@ -429,6 +429,64 @@ def test_a_shape_too_small_to_skeletonize_is_named_not_silently_passed():
         assert v.reason in ("satin", "dt_degenerate")
 
 
+# --- Promotion back to satin -----------------------------------------------
+#
+# Measured on 15 real customer designs against their professional
+# digitizations (`docs/superpowers/specs/2026-08-16-satin-routing-gate-
+# attribution-design.md`): of the pro's satin ground the classifier declines to
+# satin, 63.6% is rejected by the REGULARITY term and the median miss is 0.05
+# past a 0.5 limit. Simply loosening that limit does not work — a sweep
+# recovers 625 pro-satin cells and leaks 439 pro-fill ones. What separates the
+# two is not how tight the radius spread is but whether the shape IS its spine
+# swept by its width, which is what `explained` measures.
+
+# A 60mm stroke tapering to a point: the radii run from ~0 at the tip to the
+# full half-width at the base, so the regularity term rejects it at dt_cv
+# 0.507 — and it is a ribbon, at explained 0.903.
+TAPERED_STROKE = Polygon([(0, 0), (60, 2.4), (0, 4.8)])
+
+
+def test_a_tapered_stroke_the_regularity_term_rejects_comes_back_as_satin():
+    """The promotion path, on the shape class that provoked it: script and
+    dimensional lettering, whose strokes are thick-and-thin by design."""
+    v = classify_ribbon(TAPERED_STROKE, machine.SATIN_MAX_WIDTH_MM)
+    assert v.metrics["dt_cv"] > 0.5, \
+        "fixture drift: this must still fail the regularity term"
+    assert v.satin, "a tapered stroke is a ribbon; the pro satins it"
+    assert v.reason == "promoted_ribbon"
+
+
+@pytest.mark.parametrize("name,poly", [("WIDE_BAR", WIDE_BAR), ("BLOB", BLOB)])
+def test_promotion_cannot_reopen_the_width_cap(name, poly):
+    """It reopens the REGULARITY term only. A column wider than the machine
+    holds does not become sewable because it is shaped like a ribbon — that
+    is a physical limit, not a proxy the promotion is allowed to overrule."""
+    v = classify_ribbon(poly, machine.SATIN_MAX_WIDTH_MM)
+    assert not v.satin, name
+    assert v.reason in ("dt_p90_cap", "width_cap"), name
+
+
+@pytest.mark.parametrize("tooth", [0.3, 0.6, 1.2])
+def test_promotion_does_not_wave_the_serrated_disc_through(tooth):
+    """The blob the DT check exists to catch must not come back through the
+    door the promotion opens. A disc's area is ~8x what its collapsed medial
+    axis can sweep, so `explained` reads 0.11-0.13 against the 0.80 the
+    promotion demands — the noise that fools `2*area/perimeter` moves this
+    statistic the WRONG way, which is what makes it safe here."""
+    disc = _serrated_disc(10.0, tooth)
+    v = classify_ribbon(disc, machine.SATIN_MAX_WIDTH_MM)
+    assert not v.satin, f"tooth={tooth}: promoted a compact disc"
+
+
+def test_the_four_letterform_archetypes_are_untouched_by_promotion():
+    """Promotion must not change a shape that already had a verdict. All four
+    keep satin, and keep reaching it through the ordinary path rather than
+    through the new one."""
+    for poly in (BAR, O_RING, C_STROKE, T_SHAPE):
+        v = classify_ribbon(poly, machine.SATIN_MAX_WIDTH_MM)
+        assert v.satin and v.reason == "satin"
+
+
 # --- Column geometry -------------------------------------------------------
 
 def test_crosses_run_perpendicular_to_the_bar():

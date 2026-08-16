@@ -54,6 +54,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import scorecard  # noqa: E402
 from digitizer_core import machine  # noqa: E402
+from digitizer_core.shapefield import build_shape_field  # noqa: E402
 from digitizer_core.stage6_satin import classify_ribbon  # noqa: E402
 
 TYPE_NAMES = {0: "run", 1: "satin", 2: "fill"}
@@ -110,7 +111,57 @@ def _cells_of(poly, bb, pt_shape) -> list[tuple[int, int]]:
     return out
 
 
-def probe_design(dirpath: Path, cap: float) -> list[dict]:
+def ribbon_features(poly) -> dict:
+    """Candidate discriminators for a shape the shipped gates rejected.
+
+    The shipped regularity term reads `sigma/mu` over EVERY skeletal radius,
+    which is why a taper or a serif fails it: the radii collapse toward zero at
+    tips and junctions, and those few pixels move sigma more than the whole
+    body of the stroke does. Each feature here is an attempt to describe
+    ribbon-ness in a way that survives that:
+
+    - `spine_len_mm`  — skeleton length. A blob's medial axis is short relative
+      to its width; a stroke's is long however irregular its edges are.
+    - `elongation`    — spine length over mean width. The aspect test the
+      perimeter-based one is trying to be, measured where boundary noise cannot
+      reach it.
+    - `trim_cv`       — sigma/mu over the p25-p95 radii only, so tips and
+      junction spikes stop dominating the spread of a genuinely uniform stroke.
+    - `explained`     — the shape's area over (spine length x mean width). A
+      ribbon IS its spine swept by its width, so this sits near 1; a blob's
+      area outruns what its spine can explain.
+    - `solidity`      — area over convex-hull area. Cheap, and independent of
+      the skeleton entirely.
+    """
+    field = build_shape_field(poly)
+    if field is None or not field.skel.any():
+        return {}
+    r = field.dist[field.skel]
+    if r.size == 0 or r.mean() <= 0:
+        return {}
+    scale = field.scale
+    mean_r_mm = float(r.mean()) / scale
+    # Skeleton length from pixel count: a 1-px-wide thinning has one pixel per
+    # unit of spine, and the diagonal-vs-orthogonal difference (at most 1.41x
+    # on a pure diagonal, ~1.1x in practice) is well inside the separation
+    # being looked for here.
+    spine_len_mm = float(r.size) / scale
+    lo, hi = np.percentile(r, [25, 95])
+    core = r[(r >= lo) & (r <= hi)]
+    trim_cv = float(core.std() / core.mean()) if core.size and core.mean() > 0 else 0.0
+    width_mm = 2.0 * mean_r_mm
+    swept = spine_len_mm * width_mm
+    hull = poly.convex_hull.area
+    return {
+        "spine_len_mm": round(spine_len_mm, 3),
+        "elongation": round(spine_len_mm / width_mm, 3) if width_mm > 0 else 0.0,
+        "trim_cv": round(trim_cv, 4),
+        "explained": round(float(poly.area) / swept, 3) if swept > 0 else 0.0,
+        "solidity": round(float(poly.area) / hull, 4) if hull > 0 else 0.0,
+    }
+
+
+def probe_design(dirpath: Path, cap: float, features: bool = False) -> list[dict]:
     slug = dirpath.name
     regions_path = dirpath / "ours_regions.json"
     if not regions_path.exists():
@@ -165,6 +216,11 @@ def probe_design(dirpath: Path, cap: float) -> list[dict]:
             "margin": _margin(v.reason, v.metrics, cap),
             **{k: round(x, 4) for k, x in v.metrics.items()},
         })
+        if features:
+            f = ribbon_features(poly)
+            rows[-1].update(f or dict.fromkeys(
+                ("spine_len_mm", "elongation", "trim_cv", "explained",
+                 "solidity"), 0.0))
     return rows
 
 
@@ -232,6 +288,9 @@ def main() -> None:
     ap.add_argument("dirs", nargs="+", help="prepped design directories")
     ap.add_argument("--csv", help="write the per-shape table here")
     ap.add_argument("--cap", type=float, default=machine.SATIN_MAX_WIDTH_MM)
+    ap.add_argument("--features", action="store_true",
+                    help="also compute the candidate discriminators "
+                         "(a medial axis per shape — slower)")
     args = ap.parse_args()
 
     rows: list[dict] = []
@@ -241,7 +300,7 @@ def main() -> None:
             continue
         print(f"probing {p.name} ...", flush=True)
         try:
-            rows.extend(probe_design(p, args.cap))
+            rows.extend(probe_design(p, args.cap, features=args.features))
         except Exception as exc:                      # noqa: BLE001
             print(f"  {p.name}: FAILED — {type(exc).__name__}: {exc}")
 

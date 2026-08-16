@@ -279,17 +279,22 @@ def classify_ribbon(poly: Polygon, max_width_mm: float, *,
         "dt_std": 0.0,
         "dt_cv": 0.0,
         "dt_p90_mm": 0.0,
+        "spine_len_mm": 0.0,
+        "explained": 0.0,
+        "elongation": 0.0,
     }
 
-    def _with_dt() -> tuple[float, float, float] | None:
+    def _with_dt() -> _DtStats | None:
         stats = _dt_stats(poly)
         if stats is None:
             return None
-        mean, std, p90_mm = stats
-        metrics["dt_mean"] = mean
-        metrics["dt_std"] = std
-        metrics["dt_cv"] = (std / mean) if mean > 0 else 0.0
-        metrics["dt_p90_mm"] = p90_mm
+        metrics["dt_mean"] = stats.mean
+        metrics["dt_std"] = stats.std
+        metrics["dt_cv"] = (stats.std / stats.mean) if stats.mean > 0 else 0.0
+        metrics["dt_p90_mm"] = stats.p90_mm
+        metrics["spine_len_mm"] = stats.spine_len_mm
+        metrics["explained"] = stats.explained
+        metrics["elongation"] = stats.elongation
         return stats
 
     def _reject(reason: str) -> RibbonVerdict:
@@ -309,10 +314,21 @@ def classify_ribbon(poly: Polygon, max_width_mm: float, *,
         # rather than folded into "satin" so the probe does not count a
         # deferral as a shape the check positively approved.
         return RibbonVerdict(True, "dt_degenerate", metrics)
-    mean, std, p90_mm = stats
-    if 2.0 * std >= mean:
+    if 2.0 * stats.std >= stats.mean:
+        # The regularity term is a PROXY for ribbon-ness, and on real
+        # lettering it is a poor one: a taper, a serif or a script stroke's
+        # thick-and-thin body spreads the radii without making the shape any
+        # less of a ribbon. `explained` measures ribbon-ness directly, so
+        # where the two disagree and the shape is within the width the
+        # machine can hold, the direct measurement wins. This is the one path
+        # in this function that can turn a fill call back into a satin call.
+        if (stats.p90_mm <= max_width_mm
+                and _PROMOTE_EXPLAINED_MIN <= stats.explained
+                <= _PROMOTE_EXPLAINED_MAX
+                and stats.elongation >= _PROMOTE_ELONGATION_MIN):
+            return RibbonVerdict(True, "promoted_ribbon", metrics)
         return RibbonVerdict(False, "dt_irregular", metrics)
-    if p90_mm > max_width_mm:
+    if stats.p90_mm > max_width_mm:
         return RibbonVerdict(False, "dt_p90_cap", metrics)
     return RibbonVerdict(True, "satin", metrics)
 
@@ -355,18 +371,60 @@ def _dt_regular_and_within_cap(poly: Polygon, max_width_mm: float) -> bool:
     stats = _dt_stats(poly)
     if stats is None:
         return True
-    mean, std, p90_mm = stats
-    return 2.0 * std < mean and p90_mm <= max_width_mm
+    return 2.0 * stats.std < stats.mean and stats.p90_mm <= max_width_mm
 
 
-def _dt_stats(poly: Polygon) -> tuple[float, float, float] | None:
-    """(mean radius, std radius, 2*p90 width in mm) at the shape's skeleton.
+# How much of a shape's area its own spine has to account for before the
+# promotion path will overrule the regularity term. A ribbon IS its spine swept
+# by its width, so this sits near 1: the four letterform archetypes read
+# 0.85-0.94 and a 60 mm taper reads 0.90, while the serrated disc the DT check
+# exists to catch reads 0.11-0.13 — boundary noise moves this statistic the
+# opposite way to `2*area/perimeter`, which is what makes it safe to promote
+# on. 0.80 measured best of a 0.5-0.85 sweep across 15 real customer designs
+# (net +333 cells, helping 12 designs and hurting 2), on a plateau rather than
+# a knife edge: 0.70 and 0.75 give +309 and +316.
+_PROMOTE_EXPLAINED_MIN = 0.80
+# Above ~1 the spine has COLLAPSED — a compact shape thins to a point or two,
+# the swept area goes to nothing and the ratio explodes (a plain disc reads
+# 38). Such a shape is a blob, not a ribbon, and the earlier gates normally
+# catch it; this bound closes the path rather than relying on that. Costs one
+# shape and one net cell across the corpus.
+_PROMOTE_EXPLAINED_MAX = 1.25
+# `explained` alone is not enough, and the shape that proves it is this repo's
+# own benchmark star (`photo/enthusiast_logo.png`'s `Sff37b029`): it reads 0.974
+# — a compact 5-pointed star IS well described by its spine — and satinning it
+# produces the literal starburst, crosses fanning from a single point, that
+# `test_flat_lane_starburst_shapes_correctly_flip_to_fill` exists to prevent.
+# What separates it from a stroke is how LONG that spine is relative to the
+# width: the star runs 8.3, real ribbons 12-25. 10.0 clears the star by ~20%
+# and costs 32 net cells across the 15-design corpus (332 -> 300), which is the
+# right trade against a rendering defect confirmed by eye.
+_PROMOTE_ELONGATION_MIN = 10.0
 
-    None on a degenerate raster — a shape too small or thin to skeletonize —
-    which every caller reads as "the DT has no opinion here", not as a
+
+@dataclass(frozen=True)
+class _DtStats:
+    """What the distance transform says about a shape, at its own skeleton.
+
+    `explained` is the shape's area over what its spine sweeps
+    (`spine_len_mm * 2 * mean radius`) — how much of the shape is accounted
+    for by "a stroke of this length at this width".
+    """
+
+    mean: float
+    std: float
+    p90_mm: float
+    spine_len_mm: float
+    explained: float
+    elongation: float
+
+
+def _dt_stats(poly: Polygon) -> _DtStats | None:
+    """None on a degenerate raster — a shape too small or thin to skeletonize
+    — which every caller reads as "the DT has no opinion here", not as a
     rejection. Split out of `_dt_regular_and_within_cap` so `classify_ribbon`
-    can report the numbers as well as the verdict; the arithmetic is
-    unchanged.
+    can report the numbers as well as the verdict; the shipped arithmetic is
+    unchanged and the two new fields are additions.
     """
     field = build_shape_field(poly)
     if field is None or not field.skel.any():
@@ -375,7 +433,22 @@ def _dt_stats(poly: Polygon) -> tuple[float, float, float] | None:
     if r.size == 0 or r.mean() <= 0:
         return None
     p90_mm = 2.0 * float(np.percentile(r, _DT_TIGHTEN_PERCENTILE)) / field.scale
-    return float(r.mean()), float(r.std()), p90_mm
+    # Spine length from the skeleton's pixel count: a 1-px thinning lays one
+    # pixel per unit of spine. Diagonal runs cost up to sqrt(2) more pixels
+    # than orthogonal ones, which is well inside the margin `explained` is
+    # asked to discriminate across (0.13 for a blob against 0.85+ for a
+    # ribbon).
+    spine_len_mm = float(r.size) / field.scale
+    width_mm = 2.0 * float(r.mean()) / field.scale
+    swept = spine_len_mm * width_mm
+    return _DtStats(
+        mean=float(r.mean()),
+        std=float(r.std()),
+        p90_mm=p90_mm,
+        spine_len_mm=spine_len_mm,
+        explained=(float(poly.area) / swept) if swept > 0 else 0.0,
+        elongation=(spine_len_mm / width_mm) if width_mm > 0 else 0.0,
+    )
 
 
 # --- Skeleton extraction ---------------------------------------------------
