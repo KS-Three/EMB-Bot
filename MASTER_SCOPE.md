@@ -11,7 +11,13 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-14. Dated history — every "we shipped X on date Y"
+**START HERE if you are picking up the real-artwork parity work:**
+`docs/handoff-2026-08-16.md` indexes the 2026-08-15/16 session — the honest
+baseline (42.5, not the older ~70), the metric's own 75-84 ceiling, four defects
+real customer artwork exposed, and the traps that cost that session time. Two of
+its findings are standing rulings below.
+
+**Last updated:** 2026-08-16. Dated history — every "we shipped X on date Y"
 entry this file used to carry — now lives in
 [`docs/scope-history.md`](docs/scope-history.md). **This file is current state
 only.** See "How this document works" at the bottom for the rules that keep it
