@@ -436,19 +436,91 @@ def _densify(a: tuple[float, float], b: tuple[float, float], step_mm: float) -> 
     return [(a[0] + (b[0] - a[0]) * i / n, a[1] + (b[1] - a[1]) * i / n) for i in range(1, n + 1)]
 
 
-def _inset_ring(poly: Polygon, inset_mm: float) -> LineString | None:
-    """A closed path just inside the shape, for travel to follow."""
+def _inset_ring(poly: Polygon, inset_mm: float) -> list[LineString]:
+    """Closed paths just inside the shape, for travel to follow — ONE PER
+    FRAGMENT the inset leaves behind.
+
+    A shape narrower than 2 * inset anywhere pinches apart here, and that is
+    the common case, not the exotic one: an outlined wordmark is a single
+    connected region joined by keylines a millimetre wide, so the inset
+    shatters it into one piece per letter. becker_hat_small's largest region
+    breaks into 59.
+
+    This used to `max(inner.geoms, key=area)` and discard the rest, which left
+    72% of that region with no travel guide at all — every fill path landing
+    there had to be reached by lifting the needle, and past `trim_at_mm` that
+    is a thread cut. 17 of the design's 32 cuts were this one discard.
+    """
     inner = poly.buffer(-inset_mm)
     if inner.is_empty:
         inner = poly
-    if inner.geom_type == "MultiPolygon":
-        inner = max(inner.geoms, key=lambda g: g.area)
-    if inner.is_empty or inner.geom_type != "Polygon":
-        return None
-    return LineString(inner.exterior.coords)
+    parts = list(inner.geoms) if inner.geom_type == "MultiPolygon" else [inner]
+    return [LineString(g.exterior.coords) for g in parts
+            if not g.is_empty and g.geom_type == "Polygon"]
 
 
-def travel_path(poly: Polygon, ring: LineString | None, a: tuple[float, float],
+# How many candidate rings a single travel query will pay a containment test
+# for. Ranked nearest-first, so the ring actually holding both ends is the
+# first or second try in every case measured on the corpus; the cap is what
+# keeps a 59-fragment region from turning one travel into 59 `covers()` calls,
+# which is the most expensive thing stage 6 does.
+_TRAVEL_RING_CANDIDATES = 3
+
+
+def _ring_route(ring: LineString, a: tuple[float, float],
+                b: tuple[float, float]) -> list[tuple[float, float]]:
+    """The shorter way around `ring` from a to b, as waypoints.
+
+    The ring's OWN VERTICES, not samples taken at a fixed arc-length step.
+    Sampling a corner at 2.5 mm intervals puts one waypoint on each side of it
+    and the straight chord between them cuts it off — which at a concave corner
+    means the route leaves the shape. That is how travel escaped into the notch
+    of a U before the containment check caught it; routing vertex to vertex
+    cannot cut a corner because every corner IS a waypoint. Spacing is applied
+    afterwards by `_densify`, which only ever subdivides.
+    """
+    coords = list(ring.coords)
+    total = ring.length
+    cum = [0.0]
+    for i in range(1, len(coords)):
+        cum.append(cum[-1] + math.dist(coords[i - 1], coords[i]))
+    ta, tb = ring.project(Point(a)), ring.project(Point(b))
+    forward = (tb - ta) % total
+    backward = total - forward
+    ahead = forward <= backward
+    span = forward if ahead else backward
+
+    between: list[tuple[float, tuple[float, float]]] = []
+    for i in range(1, len(coords)):
+        offset = (cum[i] - ta) % total if ahead else (ta - cum[i]) % total
+        if 0.0 < offset < span:
+            between.append((offset, coords[i]))
+    between.sort()
+
+    start, end = ring.interpolate(ta), ring.interpolate(tb)
+    route = [(start.x, start.y)] + [c for _, c in between] + [(end.x, end.y)]
+
+    # A ring is a BUFFER's output, so its vertices are as dense as the buffer's
+    # arc resolution — tenths of a millimetre around every corner. Keeping all
+    # of them puts a penetration on each, and `_densify` only ever subdivides,
+    # so nothing downstream thins them again: becker_hat_small landed 2464
+    # travel stitches over 551 mm of path, 0.22 mm apart, a third of the whole
+    # design. Fixed-step sampling capped that as a side effect; preserving
+    # vertices removed the cap, so the floor is applied here deliberately.
+    #
+    # TINY_STITCH_MM and not something larger because the point of keeping
+    # vertices is corners, and a corner dropped is a corner cut. At 0.5 mm
+    # against a 0.6 mm inset the furthest a dropped vertex can move the path is
+    # a quarter millimetre, and `travel_path` re-checks containment regardless.
+    out = [route[0]]
+    for p in route[1:-1]:
+        if math.dist(out[-1], p) >= machine.TINY_STITCH_MM:
+            out.append(p)
+    out.append(route[-1])
+    return out
+
+
+def travel_path(poly: Polygon, ring, a: tuple[float, float],
                 b: tuple[float, float], slack: Polygon | None = None
                 ) -> list[tuple[float, float]] | None:
     """Stitchable route from a to b that never leaves the shape.
@@ -460,40 +532,48 @@ def travel_path(poly: Polygon, ring: LineString | None, a: tuple[float, float],
     detail size) still is. Pass that widened copy in as `slack` when calling
     repeatedly for one shape — buffering is the most expensive thing in stage 6
     and the result is the same every time.
+
+    `ring` is `_inset_ring`'s list of per-fragment guides (a bare LineString or
+    None is still accepted — stage6_border passes None, and the guide for a
+    shape that does not pinch is a one-element list). Candidates are tried
+    nearest-first, and a route is only returned once it has been checked to
+    stay inside the shape. That check is new with the multi-fragment guides and
+    is not bookkeeping: handed a guide on the far side of a closed neck, the
+    old single-ring code would run along it and then strike out across bare
+    cloth to reach `b`, emitting travel that left the shape entirely.
     """
     if math.dist(a, b) < machine.TINY_STITCH_MM:
         return []
+    cover = slack if slack is not None else poly.buffer(0.01)
     seg = LineString([a, b])
-    if (slack if slack is not None else poly.buffer(0.01)).covers(seg):
+    if cover.covers(seg):
         return _densify(a, b, machine.TRAVEL_STITCH_MM)
     if ring is None:
         return None
-
-    ta, tb = ring.project(Point(a)), ring.project(Point(b))
-    total = ring.length
-    forward = (tb - ta) % total
-    backward = total - forward
-    step = machine.TRAVEL_STITCH_MM
-    if forward <= backward:
-        n = max(1, math.ceil(forward / step))
-        along = [ring.interpolate((ta + forward * i / n) % total) for i in range(n + 1)]
-    else:
-        n = max(1, math.ceil(backward / step))
-        along = [ring.interpolate((ta - backward * i / n) % total) for i in range(n + 1)]
-
-    pts = [(p.x, p.y) for p in along]
-    route = [a] + pts + [b]
-    length = sum(math.dist(route[i - 1], route[i]) for i in range(1, len(route)))
-    direct = math.dist(a, b)
-    if length > max(_TRAVEL_DETOUR_FLOOR_MM, direct * _TRAVEL_DETOUR_FACTOR):
+    rings = [ring] if isinstance(ring, LineString) else list(ring)
+    if not rings:
         return None
 
-    out: list[tuple[float, float]] = []
-    cur = a
-    for p in pts + [b]:
-        out.extend(_densify(cur, p, step))
-        cur = p
-    return out
+    step = machine.TRAVEL_STITCH_MM
+    budget = max(_TRAVEL_DETOUR_FLOOR_MM, math.dist(a, b) * _TRAVEL_DETOUR_FACTOR)
+    pa, pb = Point(a), Point(b)
+    rings.sort(key=lambda r: max(r.distance(pa), r.distance(pb)))
+
+    for candidate in rings[:_TRAVEL_RING_CANDIDATES]:
+        pts = _ring_route(candidate, a, b)
+        route = [a] + pts + [b]
+        length = sum(math.dist(route[i - 1], route[i]) for i in range(1, len(route)))
+        if length > budget:
+            continue
+        if not cover.covers(LineString(route)):
+            continue
+        out: list[tuple[float, float]] = []
+        cur = a
+        for p in pts + [b]:
+            out.extend(_densify(cur, p, step))
+            cur = p
+        return out
+    return None
 
 
 # Which row-point function each fill `technique` dispatches to inside
@@ -623,6 +703,42 @@ def _crosshatch_fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitc
     return first_pass + second_pass
 
 
+def is_solid_fill(poly: Polygon) -> bool:
+    """Whether `poly` has a real solid body wide enough for the density
+    boost's second pass (`machine.FILL_DENSITY_BOOST_MIN_WIDTH_MM`), rather
+    than being a thin strip or a fine lattice arm that would only gain
+    pucker risk from a second full-density pass, not coverage.
+
+    Same erosion test `stitch_shape`'s own `too_thin` report already runs
+    (`poly.buffer(-half_width).is_empty`), at the density boost's own,
+    wider threshold — MIN_FILL_WIDTH_MM asks "can this hold a fill row at
+    all", this asks the harder "is this a field, not a stroke".
+    """
+    return not poly.buffer(-machine.FILL_DENSITY_BOOST_MIN_WIDTH_MM / 2.0).is_empty
+
+
+def _density_fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_mm: float,
+                        staggers: int, start_near: tuple[float, float] | None = None,
+                        ) -> list[list[tuple[float, float]]]:
+    """The density-targeted default for a SOLID fill shape: two overlapping
+    tatami passes at the shape's own `row_mm` (unwidened) -- the "cross pass
+    + top pass" professional solid elements measure
+    (`machine.FILL_DENSITY_BOOST_MIN_WIDTH_MM`'s own comment).
+
+    Structurally identical to `_crosshatch_fill_paths` (angle, then
+    angle+90, concatenated, second pass entering from the first pass's own
+    exit point) MINUS that technique's `CROSSHATCH_ROW_SCALE_FACTOR`
+    widening: crosshatch widens each pass so the combined density stays near
+    ONE ordinary pass (an opt-in texture, not a density change); here two
+    full-density passes landing at roughly double density *is* the point,
+    so nothing widens.
+    """
+    first_pass = _fill_paths(poly, angle_deg, row_mm, stitch_mm, staggers, start_near)
+    entry = first_pass[-1][-1] if first_pass else start_near
+    second_pass = _fill_paths(poly, angle_deg + 90.0, row_mm, stitch_mm, staggers, entry)
+    return first_pass + second_pass
+
+
 def _underlay_paths(poly: Polygon, style: str, angle_deg: float,
                     start_near: tuple[float, float] | None = None
                     ) -> list[list[tuple[float, float]]]:
@@ -700,6 +816,7 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                  trim_at_mm: float,
                  start_near: tuple[float, float] | None = None,
                  technique: str = "tatami",
+                 density_boost: bool = False,
                  ) -> tuple[list[StitchRun], dict]:
     """One shape -> its runs, in sew order (underlay first), plus a small report.
 
@@ -708,15 +825,28 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     points is nearest it.
 
     `technique` picks the visible FILL pass only — underlay is unaffected
-    either way. "tatami" (the default, and every existing caller) keeps
-    today's single `_fill_paths` call, byte-identical. "crosshatch" swaps it
-    for `_crosshatch_fill_paths`: two angled tatami passes at a wider spacing
+    either way. "tatami" (the default, and every existing caller with
+    `density_boost` left at its own default False) keeps today's single
+    `_fill_paths` call, byte-identical. "crosshatch" swaps it for
+    `_crosshatch_fill_paths`: two angled tatami passes at a wider spacing
     each, concatenated — see that function's docstring. "wave", "chevron"
     and "brick" stay on the ordinary single `_fill_paths` call — they only
     change how one row's own interior points are placed
     (`_wave_row_points`/`_chevron_row_points`/`_brick_row_points`, dispatched
     inside `_fill_paths` itself via `_ROW_POINT_FNS`), so unlike crosshatch
     they need no second pass or dedicated wrapper function.
+
+    `density_boost` (task A2, machine.FILL_DENSITY_BOOST_MIN_WIDTH_MM) only
+    ever matters together with `technique == "tatami"`: when both hold AND
+    the shape is solid (`is_solid_fill`), the fill pass swaps to
+    `_density_fill_paths` — the same two-pass shape as crosshatch, at full
+    row_mm on both passes instead of crosshatch's deliberately widened one,
+    landing the combined density at the corpus-measured professional target
+    instead of near a single ordinary pass. Defaults False (not "tatami"'s
+    own default technique choice) so every caller that does not explicitly
+    ask for it keeps exactly today's single-pass output — stage 7's plain-
+    tatami fallback is the one caller that turns it on, gated by
+    `PipelineConfig.fill_density_boost`.
 
     Report keys: `too_thin` (nowhere wide enough for a fill), `jumps` (travel
     that had to lift the needle), `empty` (produced nothing).
@@ -770,6 +900,9 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     if technique == "crosshatch":
         fill_paths = _crosshatch_fill_paths(poly, angle, row_mm, stitch_mm,
                                             machine.FILL_STAGGERS, entry)
+    elif technique == "tatami" and density_boost and is_solid_fill(poly):
+        fill_paths = _density_fill_paths(poly, angle, row_mm, stitch_mm,
+                                         machine.FILL_STAGGERS, entry)
     else:
         fill_paths = _fill_paths(poly, angle, row_mm, stitch_mm,
                                  machine.FILL_STAGGERS, entry, technique=technique)

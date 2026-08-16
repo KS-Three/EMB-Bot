@@ -24,7 +24,7 @@
    "DROPPED_SMALL_SHAPES:1",
    "EMPTY_THREAD_LAYER:1"
   ],
-  "stitch_count": 2165,
+  "stitch_count": 2166,
   "stitch_coords": [
    [
     -39.3,
@@ -7756,6 +7756,13 @@
    ],
    [
     4.754,
+    -12.8744,
+    "travel",
+    false,
+    false
+   ],
+   [
+    5.5127,
     -12.8744,
     "travel",
     false,

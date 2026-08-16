@@ -185,3 +185,70 @@ def test_fully_opaque_alpha_behaves_like_its_rgb_twin():
     )
     assert tag(opaque) == tag(plain) and tag(plain)
     assert sorted(opaque.shape_ids) == sorted(plain.shape_ids)
+
+
+# --- what the warning tells you, and what it cannot know (2026-08-15) ---------
+#
+# Both fixes below come from `docs/enclosed-background-verdict-2026-08-15.md`.
+# Measured there: on the Becker Marine artwork 41% of the design's region area is
+# enclosed background left as bare fabric, and switching it on is worth +8.0
+# points per design. The capability shipped in 2026-08-04 (this file's original
+# slice) and went unused for eleven days, so the defect is what the warning
+# tells you, not what it can do.
+
+
+def _ring_with_transparent_middle(hole_rgb):
+    """A black ring whose middle is fully TRANSPARENT, with `hole_rgb` sitting
+    under the transparency.
+
+    This is the Becker Marine case reduced to its essentials: art exported with
+    the ink colour flattened underneath the alpha channel, so the hole's RGB is
+    the ring's own colour and carries no information about what the hole should
+    sew as. `hole_rgb` is a parameter precisely to show the tag does not depend
+    on it.
+    """
+    import cv2
+    import numpy as np
+
+    n = 240
+    rgba = np.zeros((n, n, 4), np.uint8)
+    cv2.circle(rgba, (n // 2, n // 2), 100, (20, 20, 20, 255), -1)
+    cv2.circle(rgba, (n // 2, n // 2), 55, (*hole_rgb, 0), -1)
+    ok, buf = cv2.imencode(".png", cv2.cvtColor(rgba, cv2.COLOR_RGBA2BGRA))
+    assert ok
+    return bytes(buf)
+
+
+def test_enclosed_warning_reports_the_area_share_not_just_the_count():
+    """"3 enclosed areas" does not tell a user that 41% of their design is bare
+    fabric. The share of stitchable area that is enclosed is the number that
+    conveys it, so the warning carries it alongside the count."""
+    result = run_stages(REPRO, repro_cfg())
+    w = next(x for x in result.warnings if x["code"] == BACKGROUND_ENCLOSED)
+
+    assert "area_frac" in w, "the warning cannot convey scale without it"
+    assert 0.0 < w["area_frac"] <= 1.0
+    # Sanity: it is a share of the foreground, so it must be consistent with a
+    # design that has both enclosed and ordinary regions.
+    assert w["area_frac"] < 1.0
+
+
+def test_transparent_hole_is_flagged_as_having_no_colour_of_its_own():
+    """A hole made of TRANSPARENT pixels has no colour to inherit. Whatever RGB
+    sits under the alpha is an artifact of how the file was flattened, so the
+    region must be marked rather than silently sewn in it."""
+    result = run_stages(_ring_with_transparent_middle((20, 20, 20)), cfg())
+    tagged = [r for r in result.regions if r.meta.get("enclosed_background")]
+    assert tagged, "the transparent middle should still become a reviewable region"
+    assert all(r.meta.get("enclosed_colour_unknown") for r in tagged)
+
+
+def test_a_hole_that_really_is_background_coloured_keeps_its_colour():
+    """The no-alpha path is NOT affected. There `enclosed` means
+    background-COLOURED-but-not-border-connected, so the colour is genuinely
+    known — `logo_whitebg.png`'s hole is White and pinned as such above. Marking
+    it colour-unknown would be a regression."""
+    result = run_stages(TESTDATA / "logo_whitebg.png", cfg())
+    tagged = [r for r in result.regions if r.meta.get("enclosed_background")]
+    assert tagged
+    assert not any(r.meta.get("enclosed_colour_unknown") for r in tagged)

@@ -16,6 +16,7 @@ from shapely.ops import unary_union
 from digitizer_core import machine
 from digitizer_core.stage6_fill import (
     _brick_row_points,
+    _inset_ring,
     _chevron_row_points,
     _columns,
     _crosshatch_fill_paths,
@@ -165,6 +166,56 @@ def test_travel_prefers_a_straight_run_and_falls_back_to_the_edge():
     assert around is not None, "travel around a hole should follow the edge"
     hole = Polygon(RING.interiors[0]).buffer(-0.25)
     assert not LineString(around).intersects(hole)
+
+
+# A shape that pinches in two under the travel inset: a solid lobe, a 1.0 mm
+# neck (narrower than 2 * TRAVEL_INSET_MM, so it closes), and a U-shaped lobe
+# whose two tips cannot see each other in a straight line. Real artwork does
+# this constantly — becker_hat_small's wordmark is one region whose inset
+# shatters into 59 pieces.
+_DUMBBELL = unary_union([
+    Polygon([(0, 0), (20, 0), (20, 20), (0, 20)]),            # solid lobe
+    Polygon([(20, 9.5), (24, 9.5), (24, 10.5), (20, 10.5)]),  # 1.0 mm neck
+    Polygon([(24, 0), (40, 0), (40, 20), (36, 20), (36, 10),
+             (28, 10), (28, 20), (24, 20)]),                  # U lobe
+])
+
+
+def test_inset_ring_keeps_every_fragment_not_just_the_biggest():
+    """`_inset_ring` took `max(inner.geoms, key=area)` and threw the rest away,
+    so a shape that pinches apart under the inset got a travel guide covering
+    only its largest piece. On becker_hat_small that was 28% of the shape, and
+    every fill path in the other 72% had nothing to travel along — 17 of that
+    design's 32 thread cuts.
+    """
+    inner = _DUMBBELL.buffer(-machine.TRAVEL_INSET_MM)
+    assert inner.geom_type == "MultiPolygon" and len(inner.geoms) == 2, \
+        "fixture must actually pinch apart under the inset"
+    rings = _inset_ring(_DUMBBELL, machine.TRAVEL_INSET_MM)
+    assert len(rings) == 2, "one guide per fragment, not just the largest"
+
+
+def test_travel_follows_the_fragment_it_is_actually_in():
+    """The two tips of the U are 12 mm apart with the notch between them, so
+    the route has to go down one wall and up the other. It used to be handed
+    the SOLID lobe's ring — a guide on the far side of a closed neck — and
+    gave up, which the caller turns into a jump and, past trim_at_mm, a cut."""
+    a, b = (26.0, 18.0), (38.0, 18.0)
+    assert not _DUMBBELL.buffer(0.01).covers(LineString([a, b])), \
+        "fixture must need the ring — a straight route would not exercise it"
+    route = travel_path(_DUMBBELL, _inset_ring(_DUMBBELL, machine.TRAVEL_INSET_MM), a, b)
+    assert route is not None, "travel must follow the fragment holding both ends"
+    assert all(_DUMBBELL.buffer(0.05).covers(Point(p)) for p in route), \
+        "a travel route may never leave the shape"
+
+
+def test_travel_still_refuses_when_the_ends_are_in_different_fragments():
+    """The counterpart guard. Keeping every fragment must not let travel walk
+    across the closed neck — there is no thread-down path there, and inventing
+    one would drag the needle over bare cloth."""
+    route = travel_path(_DUMBBELL, _inset_ring(_DUMBBELL, machine.TRAVEL_INSET_MM),
+                        (2.0, 18.0), (38.0, 18.0))
+    assert route is None
 
 
 def test_principal_angle_follows_the_long_axis():

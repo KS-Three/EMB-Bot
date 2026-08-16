@@ -450,4 +450,18 @@ def tag_enclosed_background(regions: list[Region], p: Prep) -> None:
             if (region_ratio >= ENCLOSED_TAG_OVERLAP_THRESHOLD
                     and comp_ratio >= ENCLOSED_TAG_OVERLAP_THRESHOLD):
                 r.meta["enclosed_background"] = True
+                # A hole found via ALPHA has no colour of its own: the RGB under
+                # the transparency is whatever the exporter flattened there, and
+                # on the Becker Marine artwork that is the enclosing ring's own
+                # near-black — so switching the hole on sews a solid black letter
+                # where the pro sewed a Gray interior inside a Black keyline
+                # (docs/enclosed-background-verdict-2026-08-15.md §5.2). A hole
+                # found by COLOUR is genuinely that colour and keeps it, which is
+                # why `logo_whitebg.png`'s White hole is untouched here.
+                #
+                # This deliberately does NOT change the thread. Substituting some
+                # other colour would be an equally arbitrary guess; the point is
+                # that the inherited one stops reading as a decision.
+                if p.bg_from_alpha:
+                    r.meta["enclosed_colour_unknown"] = True
                 break
