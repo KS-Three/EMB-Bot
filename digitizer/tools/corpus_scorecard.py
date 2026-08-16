@@ -84,6 +84,30 @@ FIXTURES = [
     "photo/region_blobs.png",
     "photo/repro_gradient_white_icon.png",
     "photo/summit_badge.png",
+    # --- Real customer artwork, delivered by Kent 2026-08-15 -----------------
+    # The first fixtures in this corpus that are not synthetic or hand-picked:
+    # eight files pulled straight from the jobs Kent actually digitizes. This
+    # is the "labelled corpus" half of MASTER_SCOPE's evaluation-corpus gap,
+    # which had been open since 2026-08-01 waiting on exactly this.
+    #
+    # They earn their place by disagreeing with the synthetic set. Stage 0
+    # routes SIX of the seven logos to the GRADIENT lane, not the flat lane
+    # (measured 2026-08-15) -- real logo art carries JPEG ringing, anti-aliased
+    # edges and soft shading that the synthetic flat fixtures do not have. Any
+    # claim about "flat spot-colour art" tuned only on the synthetic set is
+    # therefore untested against the input this product actually receives.
+    "becker_marine_logo.png",
+    # Classified photo_scene despite being a clean two-colour script wordmark
+    # on white -- a misroute, kept deliberately so the bug has a fixture.
+    "logo_script_tires.png",
+    "photo/logo_bridge_bar.jpg",
+    "photo/logo_drone_thermal_badge.png",
+    "photo/logo_gaulke_roofing.png",
+    "photo/logo_golden_tee.jpg",
+    "photo/logo_hotel_fremont.webp",
+    # A phone screenshot, status bar and UI chrome included, because that is
+    # how this one arrived from the customer.
+    "photo/screenshot_phone_ui_golke.jpg",
 ]
 
 # Two garments covering two distinct fabric presets (pique_knit / structured_cap

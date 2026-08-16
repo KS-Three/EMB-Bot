@@ -16,6 +16,12 @@ at the bottom for the authority model behind the confidence ratings.
 baseline (42.5, not the older ~70), the metric's own 75-84 ceiling, four defects
 real customer artwork exposed, and the traps that cost that session time. Two of
 its findings are standing rulings below.
+[`docs/handoff-2026-08-16.md`](docs/handoff-2026-08-16.md) indexes the
+2026-08-15/16 session — the honest baseline (**42.5**, not the older ~70), the
+metric's own **75-84** pro-vs-pro ceiling, four defects real customer artwork
+exposed, and the traps that cost that session time. Three of its findings are
+standing rulings below. The code and instruments it describe are in PR #157, not
+on `main`.
 
 **Last updated:** 2026-08-16. Dated history — every "we shipped X on date Y"
 entry this file used to carry — now lives in
@@ -50,12 +56,20 @@ or move it.
 3. **14 jump-trims on an 80mm design,** in every fill variant measured.
    Not started. *(measured 2026-08-12 — scope-history)*
 
-4. **Auto-digitized `becker logo.png` rates well below its professionally
-   digitized version.** Forcing the flat lane on textured logo art makes it
-   *worse* — k-means shatters texture, `summit_badge` 8,263 → 9,579 stitches.
-   Closing this needs an edge-preserving flatten BEFORE region forming, plus a
-   side-by-side against the pro file. Blocked on Kent supplying
-   `becker logo.png` + the pro DST/PES. *(measured 2026-08-13 — scope-history)*
+4. **Our output fragments into 129 runs where the professional uses 15** — on
+   the same logo, at the same size. That is what drives **8.49 trims/1,000
+   stitches against the pro's 1.27**, more than double the 4.1 ceiling this
+   repo's own chaining test treats as the outer limit. Unambiguously a defect,
+   unlike the stitch-count gap beside it. Cause not yet diagnosed.
+   *(measured 2026-08-15 — `docs/becker-pro-parity-2026-08-15.md`)*
+   **No longer blocked:** Kent delivered the artwork and five professionally
+   digitized variants on 2026-08-15; they are committed under
+   `digitizer/testdata/reference/`. Two things that comparison disproved, so
+   nobody re-derives them: the 1-colour-vs-4 difference is **not** defect #1
+   (the source PNG is genuinely monochrome, so one thread is correct — the pro
+   worked from richer artwork than we were given), and most of the
+   3,417-vs-8,694 stitch gap is a **design choice**, not a defect — the pro
+   filled the banner and left the letters bare fabric, we filled the letters.
 
 5. **Satin-vs-fill routing sits at chance, and misroutes in BOTH directions.**
    Against the 23 professional designs, the engine's satin/fill *mix* nearly
@@ -197,6 +211,11 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
   when the two genuinely need lining up — reach for those rather than
   re-deriving. *(measured 2026-08-14 — PR #151,
   `tools/pro_parity/scorecard.py`)*
+- **Every pro-parity number before 2026-08-15 was measured on artwork
+  RECONSTRUCTED from the pro's own stitches, and was flattered by 11.3 points.**
+  Kent supplied 7 real customer artworks (15 designs) on 2026-08-15. Honest
+  baseline: **42.5**. *(measured 2026-08-15 —
+  `docs/pro-parity-real-art-2026-08-15.md`)*
 - **The pro-parity 95 target is above the metric's own ceiling. Do not read
   `score/95` as an engine deficit.** Scoring two of the PRO's own files for one
   logo against each other — same scorecard, same registration, same chance
@@ -239,6 +258,31 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
   A pinned worktree fixed it; verify module resolution hits the worktree's own
   `digitizer_core` and not the main checkout's editable install.
   *(measured 2026-08-15 — `docs/pro-parity-real-art-2026-08-15.md` §1)*
+  width). *(measured 2026-08-15 — `tools/pro_parity/selfconsistency.py`,
+  `docs/pro-parity-real-art-2026-08-15.md` §11)*
+- **The byte-identical goldens fail on Windows and pass in CI. That is platform
+  divergence, not a red `main`.** `test_flat_lane_byte_identical[photo/enthusiast_logo.png]`,
+  `test_stage2_photo_segment[photo/enthusiast_logo.png]` and
+  `test_pushcomp[logo_whitebg.png-towel]` fail on a Windows checkout and pass on
+  `ubuntu-latest`, which is what CI runs and where the goldens were captured.
+  Confirmed: `gh run list --branch main` reports `842d3a1` as `success`. The
+  divergence is one contour — on `enthusiast_logo` all 31 `shape_ids` match and 30
+  of 31 areas match exactly, one region reading 0.3208 mm² against the golden's
+  0.3784. The tell is that the golden's OWN capture commit (`e364122`) fails
+  locally too, so no commit can be bisected to. Ruled out first: every
+  geometry-relevant pin matches `requirements.txt` exactly. **So do not read a
+  local golden failure as a regression, and never re-capture a golden from a
+  Windows run — it would break CI.** Judge a local change by "same failure set
+  before and after". *(measured 2026-08-15 —
+  `docs/pro-parity-real-art-2026-08-15.md` §0b)*
+- **Measure pro-parity in a git worktree, never in a shared checkout.** Three
+  separate baselines were invalidated on 2026-08-15 by commits landing mid-run,
+  including from a second Claude session on the same branch. The first symptom
+  each time looked like engine non-determinism; the engine is deterministic —
+  same art, same commit, four processes, byte-identical output. Verify module
+  resolution hits the worktree's own `digitizer_core`, not the main checkout's
+  editable install. *(measured 2026-08-15 —
+  `docs/pro-parity-real-art-2026-08-15.md` §1)*
 - **Three photo hypotheses are disproven** — palette collapse merging subject
   into background, `max_colors` as the binding constraint, and
   `MERGE_DELTAE00_THRESH` needing a retune. All three came from extrapolating
@@ -281,14 +325,10 @@ the facts.
    taken under load: **area 5**, under Kent's direct-manipulation request.
    Not started.
 
-2. **`becker logo.png` + its professionally digitized DST/PES.** Kent rated
-   EMB-Bot's auto-digitized version well below the pro file. Measured
-   2026-08-13: forcing the flat lane on textured logo art makes it WORSE
-   (k-means shatters texture — `summit_badge` 8,263 -> 9,579 stitches), so
-   closing the gap needs an edge-preserving flatten BEFORE region forming,
-   plus a side-by-side against the pro file to know what "good" looks like.
-   **Blocked on Kent supplying both files.** Detail: the "Last updated"
-   entry above and **area 1**.
+2. **CLOSED 2026-08-15 — Kent delivered the artwork and five professionally
+   digitized variants.** The comparison is done; see live defect #4 and
+   `docs/becker-pro-parity-2026-08-15.md`. Kept here only long enough for a
+   reader who remembers this as the headline blocker; delete on the next pass.
 
 **Also open, same category — listed so this queue is not a half-truth:**
 
@@ -533,8 +573,21 @@ pooled-metric measurement gap, not a fix defect). `summit_badge.png` (#6.2)
 and `repro_gradient_white_icon.png` (#6.3) remain open, same root-cause doc.
 **Next step for this gap:** use the tool by hand against a few real future
 corpus-law/classifier changes to learn what a genuine regression looks like
-here before deciding on hard CI thresholds; the labeled-corpus half stays
-blocked on `scratch_corpus/` access, unchanged by this pass.
+here before deciding on hard CI thresholds.
+
+**The corpus half is no longer empty (2026-08-15).** Eight files of real
+customer artwork now ship in `FIXTURES` — the first entries that are neither
+synthetic nor hand-picked. They immediately contradicted the synthetic set:
+**stage 0 routes six of the seven logos to the GRADIENT lane, not the flat
+lane**, because real logo art carries JPEG ringing, anti-aliased edges and soft
+shading that the synthetic flat fixtures do not. Any claim about "flat
+spot-colour art" tuned only on synthetics is therefore untested against the
+input this product actually receives. One (`logo_script_tires.png`, a clean
+two-colour script wordmark on white) classifies as `photo_scene` outright — a
+misroute, kept as a fixture so the bug has one.
+*(measured 2026-08-15 — `tools/corpus_scorecard.py:FIXTURES`)*
+This does **not** close `scratch_corpus/`: those 37 files are still
+inaccessible, and the DT-first classifier's M2/M3 still waits on them.
 
 **A second, different harness also exists: `tools/pro_parity/`.** Where
 `corpus_scorecard.py` asks "did our own preflight score move", this one asks
