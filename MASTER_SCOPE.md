@@ -15,8 +15,8 @@ at the bottom for the authority model behind the confidence ratings.
 [`docs/handoff-2026-08-16.md`](docs/handoff-2026-08-16.md) indexes the
 2026-08-15/16 session — the honest baseline (**42.5**, not the older ~70), the
 metric's own **75-84** pro-vs-pro ceiling, four defects real customer artwork
-exposed, and the traps that cost that session time. Three of its findings are
-standing rulings below. The code and instruments it describe are in PR #157, not
+exposed, and the traps that cost that session time. Four of its findings are
+standing rulings below. The code and instruments it describes are in PR #157, not
 on `main`.
 
 **Last updated:** 2026-08-16. Dated history — every "we shipped X on date Y"
