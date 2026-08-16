@@ -44,10 +44,16 @@ or move it.
    `gradient_ramp_linear.png`, which accepts at r² 1.0 with 4 shades and still
    emits 2 blocks / 1 colour change)*
 
-2. **No width floor under satin.** 19 of 162 corpus regions, all photo-class,
-   sew sub-millimetre satin — Law 31 violations. A near-free
-   `2·p90 < ~1.0mm → run` reroute is proposed, gated on a threshold sweep plus
-   the sew-out. *(measured 2026-08-11 — `docs/dt-first-verdict-2026-08-11.md`)*
+2. **No width floor under satin — and the proposed fix is DISPROVED for flat
+   art.** 19 of 162 corpus regions, all photo-class, sew sub-millimetre satin
+   (Law 31). The proposed `2·p90 < ~1.0mm → run` reroute must NOT be applied
+   design-wide: on 15 real customer logos, 61 of the 64 shapes classifying satin
+   under 1.0 mm are ground the pro also sewed as satin — professionals satin
+   hairline strokes on flat logo art routinely. The defect stands for the photo
+   lane, where it was measured; the fix has to be gated there and measured
+   there. *(measured 2026-08-11 — `docs/dt-first-verdict-2026-08-11.md`;
+   disproved for flat 2026-08-16 — `docs/satin-gate-attribution-2026-08-16.md`
+   §7)*
 
 3. **14 jump-trims on an 80mm design,** in every fill variant measured.
    Not started. *(measured 2026-08-12 — scope-history)*
@@ -79,6 +85,19 @@ or move it.
    with no path that promotes a shape back to satin, which is the shape of the
    hypothesis to test first. *(measured 2026-08-14 — confusion matrix over the
    pro-parity corpus; per-design detail in area 1)*
+   **Partly closed 2026-08-16.** The hypothesis was right and is now measured:
+   the DT regularity term accounts for 63.6% of the pro-satin ground we fill, at
+   a median miss of 0.05 past its own limit. Loosening that limit is confirmed
+   NOT to work (recovers 625 cells, leaks 439). A promotion path that reopens
+   the regularity term only — on `explained` (area over spine-swept area) with
+   an elongation floor that keeps the benchmark starburst out — landed and moves
+   the corpus **45.8 → 48.1**, better on 8 designs, worse on 1
+   (`bridge_lc`, unexplained), unchanged on 5. **What remains is not the
+   classifier:** an oracle knowing the pro's own answer per shape scores 76.6%
+   against our 55.4%, and 48% of graded cells sit in shapes that are under 75%
+   one type — our regions straddle the pro's satin/fill boundaries, which is a
+   segmentation question. *(measured 2026-08-16 —
+   `docs/satin-gate-attribution-2026-08-16.md`)*
 
 ---
 

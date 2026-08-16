@@ -1,6 +1,16 @@
 # Satin/fill routing — gate attribution, then a targeted promotion path
 
-**Status: APPROVED by Kent 2026-08-16. Slice 1 measures, slice 2 fixes.**
+**Status: BOTH SLICES LANDED 2026-08-16. Results and the numbers that changed
+this plan mid-flight: [`docs/satin-gate-attribution-2026-08-16.md`](../../satin-gate-attribution-2026-08-16.md).**
+
+Two things in this document were overtaken by its own measurement, kept rather
+than rewritten because the corrections are the point:
+
+- §4's width floor is **not built** — measurement disproved it for flat art (61
+  of 64 sub-1mm satin shapes are ground the pro also satins). See that doc §7.
+- §4's promotion path shipped with a second term this spec did not anticipate.
+  `explained` alone promoted the benchmark starburst back to satin; an
+  elongation floor was needed, and an existing test caught it.
 
 Closes MASTER_SCOPE live defect 5 (satin-vs-fill routing sits at chance) and
 live defect 2 (no width floor under satin) as one piece of work, because both
