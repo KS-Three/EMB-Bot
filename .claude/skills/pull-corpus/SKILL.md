@@ -129,18 +129,35 @@ The two failures previously attributed to Drive were both this: a 120,303-byte
 dropping the tail of a long string. **Nothing in the tool chain reported an
 error in either case.**
 
-**Practical guidance:**
+**SECOND CORRECTION, later the same day — it is worse than a length problem,
+and the honest rule is: DO NOT MOVE BINARY FILES THROUGH DRIVE. AT ALL.**
 
-| base64 size | Verdict |
+The 9,620-char case above was re-emitted at the correct *length* and was still
+**corrupt**. Proven by fetching the same file through git and diffing:
+
+- both copies exactly 7,213 bytes, identical PNG chunk lengths
+- **exactly one byte differed** — offset 1613, `0xFD` -> `0xBD`, a single bit
+- 2,845 of the file's 2,846 high bytes survived untouched
+- that one byte broke the IDAT CRC and the image would not decode
+
+So the failure rate scales with length and is never zero:
+
+| base64 length | outcome |
 |---|---|
-| under ~10,000 chars (~7 KB file) | Works, verified twice. Still hash-check it. |
-| 10,000–25,000 chars | Unverified. Assume it will be silently truncated. |
-| above ~25,000 chars (~18 KB file) | **Measured failure.** Do not use this path. |
+| 3,264 chars | intact |
+| 9,620 chars | **1 character wrong -> file destroyed** |
+| 24,628 chars | **92% truncated** |
 
-**So the Drive path is only safe for genuinely tiny files, and even then it
-buys almost nothing over the inbox.** Prefer `digitizer/testdata/inbox/` +
-`tools/sync-assets.ps1` for everything. It has no size ceiling and no encoding
-round-trip, because the bytes never pass through a context window.
+**Why this cannot be engineered around.** The connector returns file content
+into the context window, and an agent must re-emit it to write it to disk.
+That transcription is the corruption, and no size threshold makes it safe —
+99.99% accuracy over 9,620 characters still ruined the file. Nothing raises an
+error, and the byte count still matches, so length checks pass.
+
+**The rule: binary goes through git, via `digitizer/testdata/inbox/` +
+`tools/sync-assets.ps1`.** The bytes never enter a context window, so this
+failure mode cannot occur. Use Drive only for reading *text*, where a wrong
+character is visible rather than silent.
 
 **Always `sha256sum` and `file` the result.** A truncated PNG can still have a
 valid header — `file` alone will call it a PNG. Size and hash are the real
