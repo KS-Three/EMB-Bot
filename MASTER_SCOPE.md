@@ -11,7 +11,15 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**Last updated:** 2026-08-14. Dated history — every "we shipped X on date Y"
+**START HERE if you are picking up the real-artwork parity work:**
+[`docs/handoff-2026-08-16.md`](docs/handoff-2026-08-16.md) indexes the
+2026-08-15/16 session — the honest baseline (**42.5**, not the older ~70), the
+metric's own **75-84** pro-vs-pro ceiling, four defects real customer artwork
+exposed, and the traps that cost that session time. Three of its findings are
+standing rulings below. The code and instruments it describe are in PR #157, not
+on `main`.
+
+**Last updated:** 2026-08-16. Dated history — every "we shipped X on date Y"
 entry this file used to carry — now lives in
 [`docs/scope-history.md`](docs/scope-history.md). **This file is current state
 only.** See "How this document works" at the bottom for the rules that keep it
@@ -199,6 +207,48 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
   when the two genuinely need lining up — reach for those rather than
   re-deriving. *(measured 2026-08-14 — PR #151,
   `tools/pro_parity/scorecard.py`)*
+- **Every pro-parity number before 2026-08-15 was measured on artwork
+  RECONSTRUCTED from the pro's own stitches, and was flattered by 11.3 points.**
+  Kent supplied 7 real customer artworks (15 designs) on 2026-08-15. Honest
+  baseline: **42.5**. *(measured 2026-08-15 —
+  `docs/pro-parity-real-art-2026-08-15.md`)*
+- **The pro-parity 95 target is above the metric's own ceiling. Do not read
+  `score/95` as an engine deficit.** Scoring two of the PRO's own files for one
+  logo against each other — same scorecard, same registration, same chance
+  corrections — a professional scores **75-84 against a professional**. The
+  scorecard is not broken: on pairs that turn out to be one job saved twice it
+  correctly returns 96-100. But `direction` ceilings at **0.11 on one pair and
+  0.85 on another**, from one digitizer on one logo, against a 20-point weight —
+  it measures a choice, not a standard, and is the least defensible weight in the
+  scorecard. `density`/`underlay`/`travel` ceiling at 0.89-1.00, so those weights
+  are sound. **The target is deliberately NOT revised yet: n=2.** Growing it needs
+  scale-normalised registration in `scorecard.py` (it registers by translation
+  only, and every other same-logo PES pair in the file set is 4-17% apart in
+  width). *(measured 2026-08-15 — `tools/pro_parity/selfconsistency.py`,
+  `docs/pro-parity-real-art-2026-08-15.md` §11)*
+- **The byte-identical goldens fail on Windows and pass in CI. That is platform
+  divergence, not a red `main`.** `test_flat_lane_byte_identical[photo/enthusiast_logo.png]`,
+  `test_stage2_photo_segment[photo/enthusiast_logo.png]` and
+  `test_pushcomp[logo_whitebg.png-towel]` fail on a Windows checkout and pass on
+  `ubuntu-latest`, which is what CI runs and where the goldens were captured.
+  Confirmed: `gh run list --branch main` reports `842d3a1` as `success`. The
+  divergence is one contour — on `enthusiast_logo` all 31 `shape_ids` match and 30
+  of 31 areas match exactly, one region reading 0.3208 mm² against the golden's
+  0.3784. The tell is that the golden's OWN capture commit (`e364122`) fails
+  locally too, so no commit can be bisected to. Ruled out first: every
+  geometry-relevant pin matches `requirements.txt` exactly. **So do not read a
+  local golden failure as a regression, and never re-capture a golden from a
+  Windows run — it would break CI.** Judge a local change by "same failure set
+  before and after". *(measured 2026-08-15 —
+  `docs/pro-parity-real-art-2026-08-15.md` §0b)*
+- **Measure pro-parity in a git worktree, never in a shared checkout.** Three
+  separate baselines were invalidated on 2026-08-15 by commits landing mid-run,
+  including from a second Claude session on the same branch. The first symptom
+  each time looked like engine non-determinism; the engine is deterministic —
+  same art, same commit, four processes, byte-identical output. Verify module
+  resolution hits the worktree's own `digitizer_core`, not the main checkout's
+  editable install. *(measured 2026-08-15 —
+  `docs/pro-parity-real-art-2026-08-15.md` §1)*
 - **Three photo hypotheses are disproven** — palette collapse merging subject
   into background, `max_colors` as the binding constraint, and
   `MERGE_DELTAE00_THRESH` needing a retune. All three came from extrapolating
