@@ -393,9 +393,9 @@ these predate 2026-08-14 and are unchanged:**
    launch checklist, and it cannot start without a sourcing decision — the
    non-goals rule out a user-upload gallery on copyright grounds. See
    `PRODUCT.md`.
-7. **The `scratch_corpus/` 37 files.** Gitignored and empty in every
-   checkout; no session has ever had them. Blocks the DT-first classifier's
-   M2/M3. See the evaluation-corpus entry.
+7. **The `scratch_corpus/` 37 files.** Gitignored; cloud checkouts are empty
+   but all 37 are present on Kent's machine (confirmed 2026-08-17), so a local
+   session can run the corpus legs today. Blocks cloud-side M2/M3 only.
 8. **Font lawyer consult — optional.** Only gates RESTORING the 13 pulled
    ShareAlike fonts; the brief is written and ready to send. Nothing waits
    on it. See the font-licence entry.
@@ -580,8 +580,8 @@ input this product actually receives. One (`logo_script_tires.png`, a clean
 two-colour script wordmark on white) classifies as `photo_scene` outright — a
 misroute, kept as a fixture so the bug has one.
 *(measured 2026-08-15 — `tools/corpus_scorecard.py:FIXTURES`)*
-This does **not** close `scratch_corpus/`: those 37 files are still
-inaccessible, and the DT-first classifier's M2/M3 still waits on them.
+This does **not** close `scratch_corpus/`: cloud sessions still can't reach
+those 37 files (present locally — Waiting on Kent #7); M2/M3 still waits.
 
 **A second, different harness also exists: `tools/pro_parity/`.** Where
 `corpus_scorecard.py` asks "did our own preflight score move", this one asks
