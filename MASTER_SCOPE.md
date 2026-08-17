@@ -105,8 +105,7 @@ or move it.
    rise isn't the floor-moving artifact §4 warned about — smaller than the
    raw `45.8 → 48.1` headline since sttype is one of six weighted components.
    *(measured 2026-08-17 — `kappacheck.py` vs `26ceaa3`/`2729ea5`; detail in
-   `docs/satin-gate-attribution-2026-08-16.md` §9; sibling pairs carry ±2pts
-   reference-file variance, `docs/paired-regression-diagnosis-2026-08-17.md`)*
+   `docs/satin-gate-attribution-2026-08-16.md` §9)*
 
 ---
 
