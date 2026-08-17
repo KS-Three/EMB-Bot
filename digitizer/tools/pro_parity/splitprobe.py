@@ -21,6 +21,8 @@ from pathlib import Path
 import numpy as np
 import shapely.wkt
 from shapely.affinity import translate
+from shapely.geometry import Point
+from shapely.prepared import prep
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -28,20 +30,51 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import scorecard  # noqa: E402
 
-# This worktree (`claude/measurement-debt`, cut from `d96f9ff`) predates the
-# ribbon-promotion refactor (`26ceaa3`) that renamed `is_satin_candidate`'s
-# implementation to `classify_ribbon` in `digitizer_core/stage6_satin.py`.
-# `gateprobe.py` imports that name at module scope even though splitprobe
-# never calls it (splitprobe only reuses `_cells_of`/`TYPE_NAMES`, which are
-# unchanged since before that refactor). A no-op stub satisfies the import
-# without touching engine code or backdating this worktree's history — see
-# task-5-report.md for the full trace.
-import digitizer_core.stage6_satin as _stage6_satin  # noqa: E402
+# --- vendored from tools/pro_parity/gateprobe.py, commit 2729ea5 on
+# claude/satin-gate-attribution (verified byte-identical there) ---
+#
+# This worktree (`claude/measurement-debt`) was cut from `d96f9ff`, which
+# predates gateprobe.py's introduction entirely (`26ceaa3`, the same
+# ribbon-promotion refactor that renamed `is_satin_candidate`'s
+# implementation to `classify_ribbon`) — so gateprobe.py is not in this
+# lane's ancestry and cannot be imported as a sibling module without also
+# carrying engine-code dependencies (`classify_ribbon`, `build_shape_field`)
+# this worktree's `digitizer_core` doesn't have yet. A whole-file copy would
+# fork gateprobe.py's own history across lanes; TYPE_NAMES and _cells_of are
+# the only two names splitprobe actually needs, and both are unchanged since
+# before that refactor (scorecard.py, which _cells_of depends on, is
+# byte-identical between `d96f9ff` and current main), so they are inlined
+# here verbatim instead. See task-5-report.md for the full trace.
+TYPE_NAMES = {0: "run", 1: "satin", 2: "fill"}
 
-if not hasattr(_stage6_satin, "classify_ribbon"):
-    _stage6_satin.classify_ribbon = None
 
-import gateprobe  # noqa: E402
+def _cells_of(poly, bb, pt_shape) -> list[tuple[int, int]]:
+    """The 2 mm cells whose CENTRE falls inside the polygon.
+
+    Centres rather than any-overlap: a cell's stitch-type reading is a
+    property of what was sewn across the whole cell, so crediting a shape with
+    a cell it only clips the corner of would attribute the pro's verdict about
+    a NEIGHBOURING shape to this one.
+    """
+    x0, y0, _x1, _y1 = bb
+    H, W = pt_shape
+    px0, py0, px1, py1 = poly.bounds
+    j0 = max(0, int((px0 - x0) / scorecard.CELL))
+    j1 = min(W - 1, int((px1 - x0) / scorecard.CELL) + 1)
+    i0 = max(0, int((py0 - y0) / scorecard.CELL))
+    i1 = min(H - 1, int((py1 - y0) / scorecard.CELL) + 1)
+    if j1 < j0 or i1 < i0:
+        return []
+    ready = prep(poly)
+    out = []
+    for i in range(i0, i1 + 1):
+        cy = y0 + (i + 0.5) * scorecard.CELL
+        for j in range(j0, j1 + 1):
+            cx = x0 + (j + 0.5) * scorecard.CELL
+            if ready.contains(Point(cx, cy)):
+                out.append((i, j))
+    return out
+# --- end vendored block ---
 
 PURITY = 0.75           # attribution doc §4's own threshold; strictly-greater,
                         # so a shape at exactly 75% one type still counts as
@@ -102,12 +135,12 @@ def classify_straddle(grid: np.ndarray) -> str:
 def _shape_grid(poly, dx: float, dy: float, bb, pt: np.ndarray) -> np.ndarray:
     """The pro type map, cropped to this region's own cell bounding box.
 
-    Reuses gateprobe's `_cells_of` verbatim for the centre-in-polygon join;
-    the only new step here is laying those cells out as a local 2-D grid for
+    Uses the vendored `_cells_of` for the centre-in-polygon join; the only
+    new step here is laying those cells out as a local 2-D grid for
     `classify_straddle`, with everything outside the region's cell footprint
     marked -1 the same way an ungraded pro cell already is in `pt`.
     """
-    cells = gateprobe._cells_of(translate(poly, dx, dy), bb, pt.shape)
+    cells = _cells_of(translate(poly, dx, dy), bb, pt.shape)
     if not cells:
         return np.empty((0, 0), dtype=int)
     i0 = min(i for i, _j in cells)

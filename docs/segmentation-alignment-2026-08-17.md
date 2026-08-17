@@ -22,11 +22,13 @@ measured on (`docs/satin-gate-attribution-2026-08-16.md` §9): kappa 0.167 →
 the question that number leaves open — *what shape* is that straddling in.
 
 The join is `tools/pro_parity/gateprobe.py`'s own: `scorecard.load_side` both
-sides, `register`, `cell_stats` for the pro's 2 mm type map, then
-`gateprobe._cells_of` for the centre-in-polygon cells of each of our regions
-(`ours_regions.json`). What's new is `tools/pro_parity/splitprobe.py`: it lays
-those cells out as a local grid per shape (pro type codes, -1 where a cell is
-outside the region or the pro never sewed there) and classifies the layout:
+sides, `register`, `cell_stats` for the pro's 2 mm type map, then `_cells_of`
+for the centre-in-polygon cells of each of our regions (`ours_regions.json`)
+— vendored into `splitprobe.py` itself (see the deviation note below) since
+`gateprobe.py` is not importable as a sibling module in this worktree. What's
+new is `tools/pro_parity/splitprobe.py`: it lays those cells out as a local
+grid per shape (pro type codes, -1 where a cell is outside the region or the
+pro never sewed there) and classifies the layout:
 
 - `ring` — the shape's cell border is decisively (≥80% share) one type and
   its interior decisively the other type. The classic "pro satins the
@@ -46,17 +48,20 @@ the measurement worktree, not committed — regenerate with the command in §4.
 
 **One deviation, evidence-based:** the `claude/measurement-debt` worktree was
 cut from `d96f9ff`, which predates the ribbon-promotion refactor (`26ceaa3`)
-that renamed `is_satin_candidate`'s implementation to `classify_ribbon` —
-`gateprobe.py` doesn't exist in that worktree's history at all (the same gap
-Task 1's report flagged as a plan bug for its own `kappa-before` pin).
-`gateprobe.py` was copied in verbatim from the branch that has it (byte-
-identical, `diff` confirmed) since splitprobe needs it as a real sibling
-module, not a hand-copied one. Its top-level `from digitizer_core.stage6_satin
-import classify_ribbon` still doesn't resolve in this worktree — splitprobe
-never calls `classify_ribbon` (only `_cells_of`/`TYPE_NAMES`, unchanged since
-before that refactor), so a documented no-op stub on `stage6_satin` satisfies
-the import without touching engine code. See `task-5-report.md` for the full
-trace.
+that renamed `is_satin_candidate`'s implementation to `classify_ribbon` and
+introduced `gateprobe.py` in the same commit — `gateprobe.py` doesn't exist
+in this worktree's history at all (the same gap Task 1's report flagged as a
+plan bug for its own `kappa-before` pin), and importing it as a sibling
+module would also require engine-code names (`classify_ribbon`,
+`build_shape_field`) this worktree's `digitizer_core` doesn't have. Rather
+than fork `gateprobe.py`'s own file history across lanes with a whole-file
+copy, `splitprobe.py` vendors just the two names it actually needs —
+`TYPE_NAMES` and `_cells_of` (~26 lines), inlined verbatim with an
+attribution comment naming the source (`gateprobe.py` at commit `2729ea5` on
+`claude/satin-gate-attribution`, confirmed byte-identical there) — both
+unchanged since before that refactor (`scorecard.py`, which `_cells_of`
+depends on, is byte-identical between `d96f9ff` and current main). See
+`task-5-report.md` for the full trace.
 
 ## 2. The distribution
 
@@ -70,11 +75,15 @@ trace.
 
 619 shapes across 15 designs; 446 land on ground the pro also sewed (173 are
 on ground the pro left un-sewn — no type to grade against). 49.8% of graded
-cells sit in a straddled shape (4,253 of 8,539) — matching the attribution
-doc's 48.1% "under 75% one type" figure closely enough to cross-check the
-join (different cell-counting nuance: that figure came from `gateprobe.py`'s
-own summary, this one from the region-level classification pass over the
-same cells).
+cells sit in a straddled shape (4,253 of 8,539) against the attribution doc's
+48.1% "under 75% one type" figure — the same population definition (shapes
+under 75% one pro type), a **1.7-point gap**. Plausibly the cell-counting
+nuance already noted (that figure came from `gateprobe.py`'s own summary,
+this one from the region-level classification pass over the same cells), but
+stated plainly rather than smoothed over: the two runs do not match exactly.
+The gap is immaterial to this doc's verdict either way — the 2.1%
+region-recoverable ceiling in §3 holds whether the straddled population is
+read as 49.8% or 48.1% of graded cells.
 
 **Within the straddled population itself**, the split by pattern:
 

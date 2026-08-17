@@ -29,39 +29,24 @@ either would be shipping engine complexity against a headroom the data says
 is mostly somewhere else.
 
 This document exists to record that the gate was checked, honestly, and
-failed — not to propose the mechanism the plan anticipated. The rest of this
-spec states what WOULD have been proposed had one pattern dominated, purely
-so the reasoning and the acceptance bar are on record if a future
-measurement (different corpus, better registration, finer cell grid) changes
-this verdict.
+failed — not to propose the mechanism the plan anticipated. The acceptance
+bar below is on record for reuse if a future measurement changes this
+verdict. The appendix at the end records what mechanism WOULD have been
+sketched for `ring` or `split` had either dominated — it proposes nothing
+and is not part of this recommendation.
 
 ## What was measured
 
 See `docs/segmentation-alignment-2026-08-17.md` in full. Summary: 446 of 619
 region-shapes across 15 designs land on ground the pro also sewed (8,539
-graded cells); 49.8% of those cells sit in a straddled shape (matching the
-attribution doc's 48.1% "under 75% one type" figure); within that straddled
-population, `speckle` is 95.8% of the cells, `split` 3.8%, `ring` 0.4%.
+graded cells); 49.8% of those cells sit in a straddled shape, a 1.7-point gap
+against the attribution doc's 48.1% "under 75% one type" figure over the same
+population definition — immaterial to the verdict either way (see that doc
+§2). Within the straddled population, `speckle` is 95.8% of the cells,
+`split` 3.8%, `ring` 0.4%.
 `ring` — the classic "pro satins the outline, fills the body" — occurs in
 only 2 of 15 designs and 19 total cells; it is not a real pattern in this
 corpus, not a measurement artifact of a small sample.
-
-## If a future measurement found `ring` or `split` dominant
-
-Recorded for reuse, not proposed now:
-
-- **`ring` dominant** → border-satin generation sized off the pro's measured
-  band width distribution from `splitprobe.py`'s per-shape CSV (`cells`,
-  `purity` columns; band width would need a new column — the current CSV
-  does not carry it, since `ring` never needed sizing on this corpus).
-  Mechanism: for a region `classify_straddle` reads as `ring`, generate a
-  satin border stroke at the measured band width around the existing fill
-  region, rather than re-segmenting.
-- **`split` dominant** → boundary detection restricted to artwork-visible
-  edges (colour/luminance boundaries in the source art), citing where the
-  straddled shapes' partition lines sit relative to those edges — not a
-  generic re-segmentation, which risks manufacturing boundaries the artwork
-  does not have.
 
 ## Acceptance criteria (if built)
 
@@ -92,3 +77,23 @@ Recorded for reuse, not proposed now:
   a region-level segmentation fix, and diagnosing it (registration
   precision? cell-grid resolution? something else?) is unscoped, separate
   work this document does not propose.
+
+## Appendix: hypothetical mechanisms — NOT proposed, recorded only so a future re-measurement need not re-derive them
+
+Neither pattern dominated on this corpus (§ "What was measured" above), so
+neither of the following is proposed work. They exist only so that if a
+future, different measurement finds `ring` or `split` dominant, that work
+doesn't have to re-derive a starting sketch from scratch:
+
+- **`ring` dominant** → border-satin generation sized off the pro's measured
+  band width distribution from `splitprobe.py`'s per-shape CSV (`cells`,
+  `purity` columns; band width would need a new column — the current CSV
+  does not carry it, since `ring` never needed sizing on this corpus).
+  Mechanism: for a region `classify_straddle` reads as `ring`, generate a
+  satin border stroke at the measured band width around the existing fill
+  region, rather than re-segmenting.
+- **`split` dominant** → boundary detection restricted to artwork-visible
+  edges (colour/luminance boundaries in the source art), citing where the
+  straddled shapes' partition lines sit relative to those edges — not a
+  generic re-segmentation, which risks manufacturing boundaries the artwork
+  does not have.
