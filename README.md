@@ -41,9 +41,9 @@ colors. EMB Bot makes that step **visible and controllable**:
 1. Switch to **Image** and upload a logo (PNG/JPG; PNG transparency is honored).
    Optionally check **Remove background**.
 2. The **Flattened art** panel shows your image reduced to N colors (the
-   **Colors** slider, 2–12) with cleanup — stray specks are absorbed into their
-   surrounding color and ragged edges smoothed. This preview is exactly what
-   will stitch.
+   **Colors** slider, 2–8; the auto-digitizer's own Colors control goes to 12)
+   with cleanup — stray specks are absorbed into their surrounding color and
+   ragged edges smoothed. This preview is exactly what will stitch.
 3. Use the **swatch bar** to fix the merge: click the swatches that should be
    one thread (e.g. three near-identical grays), then **Merge selected**.
    **Reset colors** returns to the automatic result. Each swatch also has an
