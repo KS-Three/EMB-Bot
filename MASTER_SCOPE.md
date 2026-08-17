@@ -15,9 +15,11 @@ at the bottom for the authority model behind the confidence ratings.
 [`docs/handoff-2026-08-16.md`](docs/handoff-2026-08-16.md) indexes the
 2026-08-15/16 session — the honest baseline (**42.5**, not the older ~70), the
 metric's own **75-84** pro-vs-pro ceiling, four defects real customer artwork
-exposed, and the traps that cost that session time. Three of its findings are
-standing rulings below. The code and instruments it describe are in PR #157, not
-on `main`.
+exposed, and the traps that cost that session time. Four of its findings are
+standing rulings below. **The code and instruments it describes are ON `main`**
+— PR #157 merged (`4967ed5`), so `digitizer/tools/pro_parity/` including
+`selfconsistency.py` is in a plain checkout. This pointer said "in PR #157, not
+on `main`" until 2026-08-17. *(confirmed 2026-08-17 — `git ls-tree origin/main`)*
 
 **Last updated:** 2026-08-17. Dated history — every "we shipped X on date Y"
 entry this file used to carry — now lives in
