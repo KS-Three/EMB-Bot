@@ -84,6 +84,31 @@ previous commit, which reproduced this key byte-for-byte on this machine first,
 so the one stitch is the engine and not the environment. `ribbon_curve.png`
 reproduces exactly before and after and is the control: the change is confined
 to fills whose inset actually fragments.
+
+**Fourth exception, TAKEN 2026-08-17 — the second exception's sanction finally
+executed:** the `photo/enthusiast_logo.png` entry was re-captured for the
+PR #157 merge, which restored the PR #146 satin stack that sanction covered,
+plus the satin/travel work that accumulated with it (junction entry walk,
+corner-fork removal, junction-free DT width, the stage-6 travel fix above).
+The delta is 2363 -> 2351 stitches and ONLY `stitch_count`/`stitch_coords`
+move: `shape_ids`, `warnings` and all 31 `areas_mm2` are unchanged — tighter
+than the 2026-08-14 sanction anticipated (the 0.3784 -> 0.3208 area move it
+predicted does not occur on the merged stack). Letterforms verified equally
+legible from stage-6 renders of both engines.
+
+The capture was taken on an ubuntu-latest runner — the platform whose CI
+judges this golden, satisfying the ROADMAP standing item that goldens are
+never captured on Windows — by `tools/recapture_flat_lane_key.py` with
+`--pre-change-tree` at main before the merge (`0870c76`), which reproduced
+this key byte-for-byte there first, so the delta is the engine and not the
+machine. Evidence: workflow run 32060082886 on
+`claude/recapture-enthusiast-golden` (temporary workflow, removed with the
+same commit that landed this golden); its `recapture-evidence` artifact holds
+the three-tree attribution log and the renders. The
+`claude/satin-gate-attribution` tip (`2729ea5`, the promotion path `45d817a`)
+produces byte-identical output to main on this fixture — the elongation floor
+keeps the benchmark star `Sff37b029` out, as that commit designed — so this
+one capture serves both branches.
 """
 
 from __future__ import annotations
