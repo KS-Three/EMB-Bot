@@ -60,8 +60,7 @@ copy, `splitprobe.py` vendors just the two names it actually needs —
 attribution comment naming the source (`gateprobe.py` at commit `2729ea5` on
 `claude/satin-gate-attribution`, confirmed byte-identical there) — both
 unchanged since before that refactor (`scorecard.py`, which `_cells_of`
-depends on, is byte-identical between `d96f9ff` and current main). See
-`task-5-report.md` for the full trace.
+depends on, is byte-identical between `d96f9ff` and current main).
 
 ## 2. The distribution
 

@@ -44,7 +44,7 @@ import scorecard  # noqa: E402
 # the only two names splitprobe actually needs, and both are unchanged since
 # before that refactor (scorecard.py, which _cells_of depends on, is
 # byte-identical between `d96f9ff` and current main), so they are inlined
-# here verbatim instead. See task-5-report.md for the full trace.
+# here verbatim instead.
 TYPE_NAMES = {0: "run", 1: "satin", 2: "fill"}
 
 
