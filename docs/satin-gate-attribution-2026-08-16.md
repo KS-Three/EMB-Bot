@@ -140,3 +140,60 @@ PRO_PARITY_OUT=<out> PRO_PARITY_FORCED_CLASS=flat \
 python digitizer/tools/pro_parity/gateprobe.py --features --csv gates.csv <out>/real/*/
 python digitizer/tools/pro_parity/scorecard.py <out>/real/*/
 ```
+
+## 9. Corrected kappa (the spec's actual acceptance bar)
+
+§4 barred raw agreement and set corrected kappa — `scorecard.py`'s
+`parts["sttype"]` — as the acceptance bar. That check had never been run; this
+closes it with `digitizer/tools/pro_parity/kappacheck.py`, comparing the
+promotion commit (`45d817a`) against its direct parent `26ceaa3`, both forced
+flat.
+
+`26ceaa3` is the correct "before", not `origin/main`: it's the immediate
+pre-promotion commit on this branch, and it's where `PRO_PARITY_FORCED_CLASS`
+support was added — `origin/main` (`d96f9ff`) predates that entirely (verified
+via `git diff d96f9ff 26ceaa3 -- digitizer/tools/pro_parity/prep_all.py`), so
+forcing flat against it is silently a no-op and 10 of 15 designs misroute to
+the photo lane. First pass at this measurement used `d96f9ff` and read a 42.5
+corpus mean against a published 45.8 — the wrong-commit reproduction failure
+this doc's own §8 sanity check exists to catch. Re-pinned to `26ceaa3`,
+reproduction is exact: corpus mean 45.8 and 48.1, matching §6 digit for digit.
+
+| design | kappa (before) | kappa (after) | delta |
+|---|---|---|---|
+| becker_beanie | 0.037 | 0.063 | +0.026 |
+| becker_chest_small | 0.067 | 0.126 | +0.059 |
+| becker_hat_large | 0.000 | 0.000 | 0.000 |
+| becker_hat_small | 0.050 | 0.114 | +0.064 |
+| becker_lc_large | 0.000 | 0.000 | 0.000 |
+| bridge_hat | 0.130 | 0.174 | +0.044 |
+| bridge_lc | 0.234 | 0.148 | **-0.086** |
+| gaulke_roofing_hat | 0.041 | 0.041 | 0.000 |
+| gaulke_roofing_lc | 0.042 | 0.042 | 0.000 |
+| hotel_fremont_hat | 0.342 | 0.342 | 0.000 |
+| hotel_fremont_patch | 0.497 | 0.497 | 0.000 |
+| mfab_hat | 0.359 | 0.489 | +0.130 |
+| mfab_lc | 0.542 | 0.548 | +0.006 |
+| precision_drone | 0.164 | 0.306 | +0.142 |
+| tires_hat_3d | 0.004 | 0.004 | 0.000 |
+| **corpus mean kappa** | **0.167** | **0.193** | **+0.026** |
+
+The corrected component rose on 8 designs, fell on 1 (`bridge_lc`, the same
+unexplained regression §6 already flags), and was flat on 6 — the same six §6
+calls unchanged, confirming those designs' routing genuinely didn't move.
+
+This is not the floor moving: the corpus mean chance floor for `sttype` itself
+rose (0.429 -> 0.472) alongside kappa, not fell — a floor drop is the
+mechanism §4 worried would fake a kappa rise, and that mechanism ran backward
+here. Raw agreement also rose (0.517 -> 0.568, consistent with §6's cited
+55.4% -> 58.9%, computed per-cell there vs per-design-averaged here) but per
+§4 is not evidence on its own; it is corroborating, not load-bearing.
+
+**VERDICT: kappa rose (+0.026, corpus mean 0.167 -> 0.193). The promotion's
+gain on stitch-type agreement is real, not the chance floor moving** — smaller
+in relative terms than the +2.3-point composite score headline, since sttype
+is one of six weighted score components and the direction component moved
+independently (§6), but real on its own terms.
+
+*(measured 2026-08-17 — `kappacheck.py` vs `26ceaa3`/`2729ea5`; resolves the
+caveat `MASTER_SCOPE.md` carried since this doc's original publication)*

@@ -99,14 +99,13 @@ or move it.
    is left is segmentation: an oracle knowing the pro's per-shape answer scores
    76.6% against our 55.4%, and 48% of graded cells sit in shapes under 75% one
    type, i.e. our regions straddle the pro's satin/fill boundaries.
-   **CAVEAT — the gain is not yet established: every figure above is RAW.** The
-   satin routing spec sets corrected kappa from `scorecard.py`'s `parts["sttype"]`
-   as the primary bar and explicitly bars raw agreement, because promotion shifts
-   the satin/fill marginals and so moves the chance floor itself. So `45.8 → 48.1`
-   and `55.4% → 58.9%` may be real, partly real, or entirely the floor moving.
-   Short task, not yet run. Do not quote these as an improvement until it is.
-   *(measured 2026-08-16 — `docs/satin-gate-attribution-2026-08-16.md`; caveat
-   raised 2026-08-17 against that spec's §4 acceptance criterion)*
+   **RESOLVED 2026-08-17 — corrected kappa rose, gain is real.** The spec's
+   actual bar, `parts["sttype"]`, moved 0.167 → 0.193 (+0.026) against a
+   chance floor that itself rose (0.429 → 0.472) rather than dropped, so the
+   rise isn't the floor-moving artifact §4 warned about — smaller than the
+   raw `45.8 → 48.1` headline since sttype is one of six weighted components.
+   *(measured 2026-08-17 — `kappacheck.py` vs `26ceaa3`/`2729ea5`; detail in
+   `docs/satin-gate-attribution-2026-08-16.md` §9)*
 
 ---
 
