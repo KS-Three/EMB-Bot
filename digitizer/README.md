@@ -369,13 +369,20 @@ and why `opencv-contrib-python-headless` is **exact-pinned** in `pyproject.toml`
 minor bump can change clustering and silently invalidate the goldens. Bump it
 deliberately, then re-check the fixtures.
 
-Shape IDs have two mechanisms because one is not enough: a content-derived
-hash labels new shapes, and `match_shape_ids()` carries IDs forward across a
-regeneration by geometry matching. The service round-trips
-`deleted_shape_ids` and per-shape `shape_overrides` (recolor, tier, fill
-angle, border, sew layer — the shape-layers contract v1, applied by
-`regions.apply_shape_edits`), and hashing alone churns when a value crosses a
-quantization boundary — measured, not theoretical.
+Shape IDs are produced by `assign_shape_ids()`, a content-derived label from
+bucketed centroid plus thread number. Because the id is *derived* rather than
+remembered, re-digitizing the same art re-derives the same id, and that is what
+carries edits forward: the service round-trips `deleted_shape_ids` and per-shape
+`shape_overrides` (recolor, tier, fill angle, border, sew layer — the
+shape-layers contract v1, applied by `regions.apply_shape_edits`) keyed by that
+id, and they land on the same shapes by plain id match.
+
+A second mechanism, `match_shape_ids()`, carries ids forward by geometry matching
+for the case where hashing alone would churn — a value crossing a quantization
+boundary, measured rather than theoretical. **It has no production caller**: it is
+tested but not wired into `pipeline.run_stages`, so carry-forward today rests
+entirely on `assign_shape_ids` being deterministic. Anything changing how ids are
+derived changes carry-forward directly. *(confirmed 2026-08-17)*
 
 ## Fixtures
 

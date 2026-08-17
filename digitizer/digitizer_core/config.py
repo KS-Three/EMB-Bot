@@ -383,7 +383,9 @@ class PipelineConfig:
     # see the shape_overrides block for why that stays engine-internal for
     # now. Per-shape intent overrides this the same way border's mode is
     # overridden: `Region.meta["underlay_style"]` beats it in both
-    # directions, rides `match_shape_ids` the same as border/tier/fill_angle.
+    # directions, and rides the same carry-forward as border/tier/fill_angle
+    # (deterministic ids from `assign_shape_ids` — see `regions.py`'s docstring;
+    # NOT `match_shape_ids`, which has no production caller).
     underlay_style: str | None = None
     underlay: bool = True
 
@@ -691,8 +693,9 @@ class PipelineConfig:
     # "bean" – the light tier wherever a centreline fits.
     #
     # Per-shape intent overrides the mode: `Region.meta["border"] = True/False`
-    # rides the existing `match_shape_ids` carry-forward, so a review-screen
-    # decision survives a re-digitize with no new contract.
+    # rides the existing id-stability carry-forward (`assign_shape_ids` re-derives
+    # the same id from the same content — see `regions.py`'s docstring), so a
+    # review-screen decision survives a re-digitize with no new contract.
     border: str = "off"
     border_width_mm: float | None = None
 
@@ -705,7 +708,7 @@ class PipelineConfig:
     #
     # Per-shape intent overrides the mode in both directions, exactly as
     # `border` does: `Region.meta["applique"] = True/False` rides the existing
-    # `match_shape_ids` carry-forward, so a review-screen decision survives a
+    # id-stability carry-forward, so a review-screen decision survives a
     # re-digitize with no new contract.
     applique: bool = False
     # "trim_in_place" (4 layers, 2 stops) | "pre_cut" (3 layers, 1 stop).
@@ -856,9 +859,10 @@ class PipelineConfig:
     #                           repair and never a crash downstream.
     # Values ride Region.meta so stages 5 and 7 pick them up where each
     # decision is made (boundary_override is the one exception: it rides
-    # Region.polygon itself, plus a Region.meta record of the edit for
-    # match_shape_ids' carry-forward — see that function). Unknown shape_ids
-    # warn (SHAPE_EDIT_UNKNOWN_ID).
+    # Region.polygon itself, plus a Region.meta record of the edit — the record
+    # is what `match_shape_ids` would carry, though that function is not wired;
+    # see `regions.py`'s docstring). Unknown shape_ids warn
+    # (SHAPE_EDIT_UNKNOWN_ID).
     shape_overrides: dict = field(default_factory=dict)
 
     # Shape identity edits (contract v1.5, `regions.apply_shape_merges` /
