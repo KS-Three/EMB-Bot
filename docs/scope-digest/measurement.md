@@ -97,7 +97,8 @@ Doc names are shortened to their prefix: `pro-parity-real-art` = `docs/pro-parit
   path (`handoff-2026-08-16` §4). The 7 real artworks are on that same Drive (§6) and getting more is the
   highest-leverage non-code action (§3).
 - **`scratch_corpus/`'s 37 files are gitignored and empty in every checkout** — no session has ever had them; blocks
-  the DT-first classifier's M2/M3 (`MASTER_SCOPE.md` § Waiting on Kent 8; `handoff-2026-08-06` § Blocked on Kent 1).
+  the DT-first classifier's M2/M3 (`MASTER_SCOPE.md` § Waiting on Kent, "The `scratch_corpus/` 37 files";
+  `handoff-2026-08-06` § Blocked on Kent 1). Referenced by NAME, not item number — that queue renumbers.
 - **MINOR but structural:** every chaining headline is measured on a PNG in Kent's Downloads folder, and preflight's
   "5 artworks" is 4 PNGs plus a gitignored `scratch_flat.png` carrying all 6 of its density-gate leaks — "no other
   machine can re-derive any of it" (`hardening-closeout` §2.9, §6.9).
@@ -136,7 +137,8 @@ Doc names are shortened to their prefix: `pro-parity-real-art` = `docs/pro-parit
   (`dst-axis-verdict` §3-4).
 - **Stage 0 defect (a) is blocked on inputs, not effort** — siting the threshold needs more than one real gradient
   example, so the open question is artwork-first vs flat-lane-first (`handoff-2026-08-16` §2a, §7). **A sew-out
-  unblocks the most at once** (`handoff-2026-08-06` §1, marked SUPERSEDED as a to-do list; `MASTER_SCOPE.md` § Waiting on Kent 3).
+  unblocks the most at once** (`handoff-2026-08-06` §1, marked SUPERSEDED as a to-do list; `MASTER_SCOPE.md`
+  § Waiting on Kent, "Schedule a physical sew-out").
 
 ## Contradictions
 

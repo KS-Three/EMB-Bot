@@ -1,5 +1,30 @@
 # EMB-Bot project review — 2026-08-16
 
+> **CORRECTION, 2026-08-17 — §1.1 and opportunity #5 are wrong, and the work
+> they ask for already shipped.** This review says "the UI gives the user no
+> indication which encoder produced their file" and ranks "Encoder provenance in
+> the UI" as opportunity #5, *"Blocked on: nothing. Hours of work."* Both halves
+> were already in the product when this was written:
+>
+> - `app/src/ui/DownloadStep.svelte:268-277` warns **before** a browser-encoded
+>   DST download, naming the actual symptom — other software reads it rotated a
+>   quarter turn and may not see the colour stops — and the way out (PES/EXP, or
+>   a project made only of auto-digitized images).
+> - `DownloadStep.svelte:279-284` confirms **after** the download, read from the
+>   observed `via` rather than predicted, so a service outage falling back to the
+>   browser encoder is still reported honestly.
+> - Landed `ad612c9`, **2026-08-12** — four days before this review. Service
+>   routing landed `02cd97c`/`51746bd`, 2026-08-10.
+>
+> So the interim mitigation the 2026-08-11 audit recommended is DONE, not "five
+> days on, no trace of it." **§1.1's underlying risk still stands** — designs
+> containing lettering or a manual shape do still download through the known-wrong
+> browser codec, and that is the headline use case. What is closed is the claim
+> that the user is not told. `MASTER_SCOPE.md`'s DST section carries the same
+> correction. *(verified 2026-08-17 — code read, commit dates checked)*
+>
+> §5 said this review could be wrong by omission. This is where it was.
+
 **What this is:** a read across the repo's 131 markdown files and their research
 findings, asking two questions Kent posed: *what remains in here that could ship
 a flawed product*, and *where are the biggest improvements available*. Written
