@@ -541,6 +541,12 @@ and `repro_gradient_white_icon.png` (#6.3) remain open, same root-cause doc.
 corpus-law/classifier changes to learn what a genuine regression looks like
 here before deciding on hard CI thresholds.
 
+**Update 2026-08-17: the "preflight pooled-metric measurement gap" cited
+above is CLOSED.** `619e9ad` (2026-08-11) rescored `THREAD_MATCH_POOR` per
+region instead of per pooled thread median; see area 1 above
+(`docs/scope/1-auto-digitizing-quality.md`) for the corpus baseline reads
+under the new instrument.
+
 **The corpus half is no longer empty (2026-08-15).** Eight files of real
 customer artwork now ship in `FIXTURES` — the first entries that are neither
 synthetic nor hand-picked. They immediately contradicted the synthetic set:
