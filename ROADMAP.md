@@ -61,11 +61,11 @@ Validate on a dozen designs, not five. Measure in a pinned worktree.
 
 ## Standing item
 
-A red `main` is scaffolding left standing: nothing can be judged by "same failure
-set" until it is green. Re-capture goldens on Linux, never on Windows.
+Keep `main` green: while it is red, nothing can be judged by "same failure set".
+Re-capture goldens on Linux, never on Windows.
 
 ## Before proposing any work
 
 Read `MASTER_SCOPE.md` for status and `docs/scope-digest/` for what has already
-been built, measured and rejected. Those do-not-rebuild records are the most
-expensive knowledge in this repo.
+been built, measured and rejected — the most expensive knowledge in this repo.
+Phase numbers in any other doc are historical; the map is a MASTER_SCOPE gotcha.

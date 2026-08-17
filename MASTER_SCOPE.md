@@ -238,6 +238,10 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
 
 ## Gotchas — cost someone a session once
 
+- **Six phase-numbering schemes exist; only ROADMAP.md's five engine phases
+  are live.** Historical: the 4-phase pro-stitch roadmap, 11 digitizer steps,
+  7 launch items, 8 Studio slices, 13 photo-plan rows.
+  *(confirmed 2026-08-17 — docs review of ROADMAP/PRODUCT/READMEs/sdd ledger)*
 - **The venv holds a STALE non-editable install of `digitizer_core`, and cwd
   decides which one you get.** `pytest` from `digitizer/` imports the working
   tree (verified), so tests are honest — but from any other cwd the same
