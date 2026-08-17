@@ -26,9 +26,9 @@ entry this file used to carry — now lives in
 [`docs/scope-history.md`](docs/scope-history.md). **This file is current state
 only.** See "How this document works" at the bottom for the rules that keep it
 that way, including the line budget. The 2026-08-17 corrections arrived with the
-file at 790 of 800, so they came with a compaction pass — the evaluation-corpus
-entry gave up 40 lines of build narrative that belonged in history, not in a
-current-state dashboard.
+file at 790 of 800 and so came with a compaction pass — the evaluation-corpus
+entry gave up ~40 lines of build narrative that belongs in history, not in a
+current-state dashboard. Do the same when you next find this file full.
 
 **Every claim below carries a pointer** in the form
 `(verb date — source)`: `confirmed` means checked against code or a passing
@@ -238,6 +238,13 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
 
 ## Gotchas — cost someone a session once
 
+- **The venv holds a STALE non-editable install of `digitizer_core`, and cwd
+  decides which one you get.** `pytest` from `digitizer/` imports the working
+  tree (verified), so tests are honest — but from any other cwd the same
+  interpreter imports `.venv/Lib/site-packages/digitizer_core/`, whose files
+  differ from both the working tree and `HEAD`. So a service or script launched
+  from elsewhere can run code that is not in the repo. Reinstall (`pip install
+  -e digitizer`) before trusting any out-of-tree run. *(confirmed 2026-08-17)*
 - **Stage 0's `photo_subject` gate is bimodal** — textured subjects on smooth
   backdrops can't reach `photo_subject`. Pinned in the routing test's docstring.
   *(confirmed 2026-08-12 — scope-history)*
@@ -300,6 +307,15 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
   deselects nobody is assigned to: `docs/pro-parity-real-art-2026-08-15.md` §0b.
   *(corrected 2026-08-17 — Windows column re-run this date: `logo_alpha` ×2
   passed, `enthusiast_logo` ×2 failed; CI column read from the workflow)*
+- **A SECOND expected local failure, nothing to do with goldens: the OCR test
+  needs a binary Windows lacks.** `test_pipeline.py::test_full_pipeline_stamps_ocr_fields_on_the_benchmark_subline`
+  demands one real character read. `pytesseract` is a declared dep and imports
+  fine, but it only wraps the `tesseract` executable — CI apt-installs that
+  (`python-package-conda.yml:75-76`), a Windows box usually has not, so
+  `ocr_char` is `None` throughout and the assert fails. **Not a regression, and
+  deselected nowhere**, so it reads as an unexplained local red. Install
+  Tesseract on `PATH` to go green. *(confirmed 2026-08-17 —
+  `shutil.which("tesseract")` is `None` here; passes on CI)*
 - **Measure pro-parity in a git worktree, never in a shared checkout.** Three
   separate baselines were invalidated on 2026-08-15 by commits landing mid-run,
   including from a second Claude session on the same branch. The first symptom
