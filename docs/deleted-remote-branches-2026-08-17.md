@@ -71,9 +71,20 @@ git push origin <sha>:refs/heads/<branch-name>
 **`claude/real-art-parity-docs` (`9e92813`) is the one commit here that does NOT
 survive in `main`'s history.** Its content — "Three" → "Four" findings and a
 `describe` → `describes` fix in MASTER_SCOPE's START HERE block — was reapplied
-by hand in `832b79f` rather than merged, so the commit object itself becomes
-unreachable and will eventually be garbage-collected. The change is not lost;
-the commit is. Recorded here in case the distinction ever matters.
+by hand in `832b79f` rather than merged, so nothing in `main` reaches the commit
+object.
+
+**Anchored with a tag so the row above is actually true:**
+`archive/real-art-parity-docs`, pushed to `origin`. Without it that SHA would
+have gone unreachable the moment the local branch was deleted, and a recorded SHA
+for a garbage-collected object is not a recovery path — it just looks like one.
+Every other branch in the table is reachable from `main`, so no tag is needed.
+
+Delete the tag if you ever decide the commit is genuinely not worth keeping:
+
+```bash
+git push origin --delete archive/real-art-parity-docs && git tag -d archive/real-art-parity-docs
+```
 
 Kept deliberately: `main`, `claude/emb-bot-stitch-fill-5t69ut` (PR #152, an
 open `DO NOT MERGE` draft) and `claude/satin-gate-attribution` (active).
