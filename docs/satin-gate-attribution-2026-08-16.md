@@ -178,9 +178,13 @@ reproduction is exact: corpus mean 45.8 and 48.1, matching §6 digit for digit.
 | tires_hat_3d | 0.004 | 0.004 | 0.000 |
 | **corpus mean kappa** | **0.167** | **0.193** | **+0.026** |
 
-The corrected component rose on 8 designs, fell on 1 (`bridge_lc`, the same
-unexplained regression §6 already flags), and was flat on 6 — the same six §6
-calls unchanged, confirming those designs' routing genuinely didn't move.
+The corrected component rose on 7 designs, fell on 1 (`bridge_lc`, the same
+unexplained regression §6 already flags), and was flat on 7 (delta 0.000) —
+six of those seven are the same six §6 calls unchanged; the seventh,
+`becker_hat_large`, has a flat sttype kappa here even though its composite
+score still moved in §6, on the direction component. (§6's 8/1/6 split is
+its own, over composite score, not this table's — the two are not the same
+count.)
 
 This is not the floor moving: the corpus mean chance floor for `sttype` itself
 rose (0.429 -> 0.472) alongside kappa, not fell — a floor drop is the
