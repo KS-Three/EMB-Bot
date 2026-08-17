@@ -348,8 +348,10 @@ Also unproven:
   below a genuinely wide region, and it works on this population unmodified.
   70 (Melco's percentile, US9702070) was not tested. That sweep is cheap and
   should happen before any flip.
-- **`SATIN_MAX_WIDTH_MM` is 5.0 here and 3.0 on `main`.** Every number in this
-  document is at 5.0. The discrepancy is still unresolved.
+- **`SATIN_MAX_WIDTH_MM` is 5.0 here, and `main` was 3.0 when this was written.**
+  Every number in this document is at 5.0. **No longer a discrepancy: `main` is
+  also 5.0, so these numbers compare directly.** *(confirmed 2026-08-17 —
+  `digitizer_core/machine.py:336`)*
 
 ---
 

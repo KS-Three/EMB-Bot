@@ -386,7 +386,8 @@ def unit_fixtures() -> list[Case]:
              SPoint(0, 0).buffer(9.0).union(
                  Polygon([(0, -1), (25, -1), (25, 1), (0, 1)])),
              "fill", "stress"),
-        # Right at the cap. SATIN_MAX_WIDTH_MM is 5.0 here, 3.0 on main.
+        # Right at the cap. SATIN_MAX_WIDTH_MM is 5.0 here and on main too
+        # (it was 3.0 on main when this was written; confirmed 2026-08-17).
         Case("BAR 40x2.8", _rect(40, 2.8), "satin", "threshold"),
         Case("BAR 40x4.8", _rect(40, 4.8), "satin", "threshold"),
         Case("BAR 40x5.2", _rect(40, 5.2), "fill", "threshold"),

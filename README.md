@@ -67,8 +67,10 @@ embroidery font collection), not auto-traced outlines.
 
 - **Hole-aware tracing** — rings and letter counters (O, A, D, e, o…) stitch as
   true rings, not filled discs.
-- **Satin vs. fill** — genuinely thin shapes (≤ ~3 mm at final size) get satin
-  columns; broader shapes get tatami fill.
+- **Satin vs. fill** — genuinely thin shapes get satin columns; broader shapes
+  get tatami fill. The cut-off at final size is **~5 mm** through the
+  auto-digitizer and **~3 mm** through the browser engine, which is what text and
+  hand-drawn shapes use.
 - **Per-shape stitch angle** — each element's fill follows its own axis for
   sheen and dimension; override per color in the swatch bar.
 - **Underlay** — foundation stitching under fills/satin (edge-run, lattice,
