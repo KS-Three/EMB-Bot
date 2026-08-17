@@ -57,6 +57,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import pystitch
+import shapely.wkt
 from PIL import Image, ImageDraw
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -596,6 +597,16 @@ def run_ours(art_path, width_mm, outdir, garment_id=None):
     """
     cfg = PipelineConfig()
     cfg.garment_id = garment_id
+    # Stage 0's flat/gradient gate misroutes 10 of the 15 real-artwork designs
+    # into the photo lane, where their regions never reach the satin/fill
+    # ladder at all (docs/classifier-misroutes-real-logos-2026-08-15.md). That
+    # blocks any measurement OF that ladder, and its own fix is blocked on
+    # artwork, so this lets a probe pin the class instead of waiting.
+    # Unset — the default — is exactly the behaviour every run before
+    # 2026-08-16 had.
+    forced = os.environ.get("PRO_PARITY_FORCED_CLASS")
+    if forced:
+        cfg.forced_class = forced
     # Task A2 (2026-08-14): fill_density_boost is SEW-OUT GATED off by
     # default (see PipelineConfig's own comment) — this harness exists
     # specifically to measure a candidate engine change against the corpus
@@ -671,9 +682,17 @@ def run_ours(art_path, width_mm, outdir, garment_id=None):
             "len_p90": round(lens[9 * n // 10], 2) if n else 0,
         })
     (outdir / "ours_blocks.json").write_text(json.dumps(summary, indent=1))
+    # `wkt` is the ARTWORK polygon stage 7 classifies satin-vs-fill on — the
+    # same object `is_satin_candidate` is handed — so a probe can re-ask the
+    # classifier's question about a prepped design without re-running stages
+    # 0-4 and risking a different config than the one that produced these
+    # stitches. Rounded to 3 dp: sub-micron precision on a polygon measured in
+    # millimetres is noise, and the full float repr triples the file size.
     regions = [{"shape_id": r.shape_id, "area_mm2": round(r.area_mm2, 1),
                 "thread": r.thread_number, "tier": r.meta.get("tier"),
-                "bounds": [round(v, 1) for v in r.polygon.bounds]} for r in res.regions]
+                "bounds": [round(v, 1) for v in r.polygon.bounds],
+                "wkt": shapely.wkt.dumps(r.polygon, rounding_precision=3)}
+               for r in res.regions]
     (outdir / "ours_regions.json").write_text(json.dumps(regions, indent=1))
     return res, plan, ours_blocks, [tuple(b.rgb) for b in plan.blocks]
 

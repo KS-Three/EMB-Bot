@@ -324,8 +324,8 @@ def run_stages(
     # bg-colored area stage 1 found (see `tag_enclosed_background`'s
     # docstring for the overlap test and threshold). A computed FACT re-
     # derived every generation — like `layer`, unlike the review-screen
-    # fields `match_shape_ids` carries forward — so it belongs before shape
-    # edits, not after.
+    # fields a resent `shape_overrides` carries forward on a stable id — so it
+    # belongs before shape edits, not after.
     tag_enclosed_background(regions, p)
 
     # Fix #6.3 — re-ask the thread question against the pixels each shape's
@@ -363,7 +363,7 @@ def run_stages(
     # they must run first for a `shape_overrides`/`deleted_shape_ids` entry
     # (keyed on whatever ids exist after this point) to have a consistent set
     # to reference. See `regions.py`'s own module comment for why these two
-    # mint new ids instead of riding `assign_shape_ids`/`match_shape_ids`.
+    # mint new ids instead of riding `assign_shape_ids`' content-derived ones.
     regions, merge_edit_warnings = apply_shape_merges(regions, cfg.merge_shape_ids)
     regions, split_edit_warnings = apply_shape_splits(regions, cfg.split_shapes)
 

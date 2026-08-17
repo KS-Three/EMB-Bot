@@ -101,8 +101,9 @@ in `stage2_photo_segment.py` / `warnings_codes.py`'s v1.5 comments. That
 contradicted this same document's own "**Boundary reshaping — CLOSED
 2026-08-05**" entry a few screens below, and the CLOSED entry is the correct
 one: contract **v1.4's `boundary_override`** ships end to end — service
-validation, `regions.apply_shape_edits`, carry-forward through
-`match_shape_ids`, and a working editor in `DigitizePanel.svelte`
+validation, `regions.apply_shape_edits`, carry-forward on `assign_shape_ids`'
+stable content-derived id (**not** via `match_shape_ids`, which is unwired — see
+the `shape_id` allocation entry below), and a working editor in `DigitizePanel.svelte`
 (`startBoundaryEdit`/`saveBoundaryEdit`: drag a vertex, click an edge
 midpoint to add one, right-click to remove). Node-level editing needs **no**
 new contract work.
@@ -271,7 +272,7 @@ underlay_style}`):
   (`PipelineConfig.underlay_style`, seven named styles) is now a per-shape
   override, following the border/tier/fill_angle_deg pattern exactly:
   validated at the service, applied in `regions.apply_shape_edits`, carried
-  across re-digitize via `match_shape_ids`, resolved per-shape in
+  across re-digitize on the stable id `assign_shape_ids` re-derives, resolved per-shape in
   `stage7_sequence.sequence` ahead of both the tatami and contour emitters,
   and a Layers-panel dropdown next to the fill-angle control (shown only
   when a shape's tier is "fill", since satin ignores it). Deliberately does
@@ -315,7 +316,8 @@ Layers-panel control, tests at every layer.
   never silently repaired geometry. `area_mm2` is recomputed on a
   successful edit; the key was added to `match_shape_ids`' carry-forward
   list alongside `border`/`tier`/`fill_angle_deg`/`sew_order`/
-  `underlay_style`.
+  `underlay_style` (that list is real, but the function is not wired — see the
+  `shape_id` allocation entry below; production carry-forward is id stability).
 - **Studio UI:** `DigitizePanel.svelte` gained an "Edit shape boundary" (✎)
   control per Layers row (shown wherever the other per-shape controls
   already are — not for hidden or not-sewn rows). It opens a small SVG

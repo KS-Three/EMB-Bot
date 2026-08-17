@@ -389,7 +389,7 @@ is_satin_candidate(poly, max_width_mm):
     return length_est >= 3.0 * w
 ```
 
-Two gates: a **mean** width against `SATIN_MAX_WIDTH_MM` (3.0 mm in `machine.py` on `main`; the corpus lane measured 5.0 mm off 19 pro lettering files, median 3.4 / max 5.1 — **that discrepancy is unresolved and should be settled in the same window as M3** [D]), and an aspect ratio ≥ 3:1 from a half-perimeter length estimate.
+Two gates: a **mean** width against `SATIN_MAX_WIDTH_MM` (~~3.0 mm in `machine.py` on `main`~~ — **RESOLVED: `main` is 5.0 now, matching what the corpus lane measured off 19 pro lettering files, median 3.4 / max 5.1; confirmed 2026-08-17 at `machine.py:336`**), and an aspect ratio ≥ 3:1 from a half-perimeter length estimate.
 
 Two things about it are **right and worth protecting through the migration**:
 

@@ -1,23 +1,32 @@
 # EMB Bot Studio
 
-A browser-only, beginner-first embroidery tool (21 satin fonts, quick-start templates, letter spacing, printable PDF worksheet, MULTI-ELEMENT designs, ARC/curved + multi-line text, PNG export, saved designs + first-run hints): pick what you're making → add
-**text** (pre-digitized satin fonts) or a **logo/image** (auto-flattened to
-thread colors, with swatch merging) → watch the realistic 2.5D field render
-live → download a stitch file. No accounts, no server.
+A beginner-first embroidery design studio (Svelte 5 + Vite). Pick what you're
+making, then build the design from elements — **text** in pre-digitized satin
+fonts, a **logo/image** (auto-digitized when the local service is up, else
+flattened to thread colors by the browser engine — decided when the element is
+added), traced or preset **shapes**, or an imported stitch file — arranged on a
+realistic 2.5D thread preview, then download machine-ready files (DST / EXP /
+PES, plus SVG, PNG, and a printable PDF worksheet). Guided steps: garment →
+content → create → download. Elements sew in list order with a trim + color
+change between them. Resizing regenerates text/shape/image stitches so density
+stays correct; imported and auto-digitized elements scale their baked stitches
+instead — density changes with size, and their panels say so.
 
-Sizing: the field shows the real hoop/garment area — drag the design's corner handles to resize (stitches truly regenerate at each size, so density stays correct), drag the body to reposition, or use the Size panel (W/H, inches or mm, Auto-fit). Below ~5 mm the app warns that thread can't stitch that small.
+Local-first, no accounts, no cloud: designs live in the browser (a
+localStorage-backed projects drawer) and as portable `.embproj` files
+(`src/lib/projectFile.js`). The one server is the **optional local digitizer
+service** — the Python pipeline in `../digitizer`, served by FastAPI on
+`127.0.0.1:8721`, loopback-only. The Studio runs without it, but the image
+auto-digitize path needs it, and purely-digitized projects prefer its
+pystitch `/export` for stitch files (the browser's own DST encoder has a
+known axis dispute with third-party software — see `../COOKBOOK.md`).
 
-Multi-element: a design can hold several elements (text lines and images) — add via "+ Text"/"+ Image", click to select on the field or in the list, move/resize each independently; elements sew in list order with a trim + color change between them. Image swatches each get a THREAD color picker (art stays the same, the thread color changes).
-
-Image mode notes: art is flattened to 2–8 thread colors (median-cut + smoothing,
-optional background removal); chips show each color's share and can be merged.
-Clean, flat-color art stitches best — photos with gradients won't stitch cleanly,
-and the UI says so.
-
-It reuses the proven stitch engine in the repo's `../src` (satin fonts,
-underpathing, exporters) — that engine is the source of truth and is **not**
-modified by this app. The engine is loaded via `<script>` tags in `index.html`
-and read from `window.EMB`.
+Text, shape, and image-flatten stitch math is the proven JS engine in
+`../src` (satin fonts, underpathing, exporters) — the source of truth, **not**
+modified by this app. It is loaded via `<script>` tags in `index.html` and read
+from `window.EMB`. The satin font library is defined by
+[`../src/fonts/manifest.json`](../src/fonts/manifest.json) and fetched lazily
+as `.embf` binaries.
 
 ## Develop
 
@@ -25,48 +34,73 @@ and read from `window.EMB`.
 cd app
 npm install
 npm run dev      # http://localhost:5173
+
+# optional, auto-digitize path — run in a SECOND terminal (npm run dev blocks):
+cd ../digitizer && .venv/Scripts/python -m digitizer_service   # 127.0.0.1:8721
 ```
 
+(First run: create the service venv per `../digitizer/README.md` — it needs the
+`pip install -e ".[service,dev]"` step, not just Setup. On Windows,
+`../tools/start-emb-bot.ps1` does all of it: venv, both servers, browser.)
+
 `predev`/`prebuild` run `scripts/copy-engine.mjs`, which copies the engine
-modules (in dependency order) and the satin-font library from `../src` into
-`public/engine/` so the browser can load them.
+modules (in dependency order) into `public/engine/` and the satin-font library
+(manifest, `.embf` binaries, license texts, previews) into `public/fonts/`.
+The engine file list lives in THREE places that must stay in sync —
+`ENGINE_FILES` in `scripts/copy-engine.mjs`, `ENGINE_KEYS` in
+`src/lib/emb.js`, and the `<script>` tags in `index.html`. No test guards
+this; miss one and fonts break only in the live browser while tests stay
+green.
 
 ## Build (static)
 
 ```bash
-npm run build    # -> app/dist/  (index.html + assets + engine/)
+npm run build    # -> app/dist/  (index.html + assets + engine/ + fonts/)
 npm run preview  # serve the built dist locally to sanity-check
 ```
 
-`dist/` is fully static and self-contained (except the CDN libs the image/PDF
-paths use; the text path works offline). Deploy by dropping `dist/` on any static
-host.
+`dist/` is fully static and self-contained, with zero CDN runtime dependencies
+(jsPDF is npm-bundled, Inter ships via `@fontsource-variable/inter`, fonts are
+local `.embf`). Deploy by dropping `dist/` on any static host. Auto-digitizing
+works only when the app itself is served from localhost — the service accepts
+localhost origins only, so a hosted copy can't reach it.
 
 ## Deploy
 
-- **Netlify / Vercel / Cloudflare Pages:** build command `npm run build`,
-  publish directory `app/dist`.
-- **GitHub Pages:** publish `app/dist` (Vite `base` is `"./"`, so it works from a
-  sub-path).
+- **Netlify / Vercel / Cloudflare Pages:** base directory `app`, build command
+  `npm run build`, publish directory `dist`.
+- **GitHub Pages:** root/custom-domain sites only — Vite `base` is `"./"`, but
+  fonts are fetched root-absolute (`/fonts/…`), so a sub-path project page
+  breaks every font.
 
 ## Structure
 
-- `src/lib/` — logic (all unit-tested with Vitest, `*.spec.js`):
-  - `emb.js` — engine accessor (`window.EMB`)
-  - `project.js` — the project model; `flow.js` — guided-step state machine
-  - `generate.js` — project → `EMB.buildLetteringDesign` → design
-  - `strands.js` + `preview.js` — the 2.5D `renderRealistic` thread renderer
-  - `exporters.js` + `download.js` — DST/EXP/PES/SVG export + browser download
-  - `save.js` — localStorage project save/round-trip
-- `src/ui/` — Svelte components: `App.svelte` (owns state) + the 4 step
-  components + `StepNav`, `FontGallery`, `theme.css`.
+- `src/lib/` — plain-JS app logic, one concern per module (project model,
+  wizard flow, stitch generation, the 2.5D renderer, exporters, the digitizer
+  client, save/projects). Unit-tested with Vitest — `*.spec.js` files sit
+  alongside the modules they cover.
+- `src/App.svelte` + `src/ui/` — the Svelte layer: `App.svelte` owns state; the
+  step screens and the panels they open (font browser, auto-digitize, manual
+  trace, shapes, thread picker, projects drawer, …). `*.testHarness.svelte`
+  files exist only for component tests.
+- `e2e/` — Playwright suite: wizard smoke plus the digitize / manual-trace /
+  text-conversion contracts. Runs in CI as the `studio-e2e` job.
+- `scripts/copy-engine.mjs` — the engine copy step above.
 
 ## Test
 
 ```bash
-npm test                 # Vitest (app logic)
-# engine is guarded separately at the repo root: `node --test`
+npm test                          # Vitest (app logic + components)
+npx playwright test --workers=1   # e2e (one worker: specs share one service)
 ```
 
-App test files use `.spec.js` so the repo-root `node --test` (engine gate) never
-picks them up.
+App test files use `.spec.js` so the repo-root `node --test` (engine gate)
+never picks them up; the engine is guarded separately at the repo root.
+The service-gated e2e specs reuse a digitizer that already answers `/health`,
+otherwise start one themselves from `../digitizer/.venv` — and skip when
+neither works.
+
+Deep material — architecture, gotchas, current work-in-progress state — lives
+in [`../COOKBOOK.md`](../COOKBOOK.md); the repo-level
+[`../README.md`](../README.md) is the user-facing overview of the whole
+project.

@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher } from "svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
+  import Icon from "./Icon.svelte";
 
   // Per-letter color ranges editor (Font editing abilities Round 1).
   // Owns none of the actual <textarea> -- TextStep.svelte owns that DOM node
@@ -39,7 +40,11 @@
         <li>
           <span class="cr-swatch" style="background: rgb({r.colorRgb[0]},{r.colorRgb[1]},{r.colorRgb[2]})"></span>
           <span class="cr-text">"{text.slice(r.startIdx, r.endIdx)}"</span>
-          <button type="button" class="cr-remove" aria-label="Remove color range" on:click={() => removeRange(i)}>×</button>
+          <!-- Icon, not a literal "×": a screen reader announces the raw glyph as
+               "multiplication sign", and the aria-label is the only thing that
+               made this button readable at all. Matches the close/remove pattern
+               in FontBrowser, FontCredits, ProjectsDrawer and EmbroideryField. -->
+          <button type="button" class="cr-remove" aria-label="Remove color range" on:click={() => removeRange(i)}><Icon name="close" size={14} /></button>
         </li>
       {/each}
     </ul>
@@ -53,5 +58,5 @@
   .cr-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
   .cr-list li { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs, 12px); }
   .cr-swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--tint-border, #ccd6fb); display: inline-block; }
-  .cr-remove { border: none; background: none; cursor: pointer; font-size: 14px; line-height: 1; color: var(--danger, #c0392b); }
+  .cr-remove { border: none; background: none; cursor: pointer; line-height: 1; color: var(--danger, #c0392b); display: inline-flex; align-items: center; padding: 0; }
 </style>

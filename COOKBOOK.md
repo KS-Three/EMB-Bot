@@ -237,10 +237,12 @@ hand-rolling it in JS.
   Nobody chases a lost detail. When a warning reports something being
   discarded, report HOW MUCH; the number is what makes it investigable.
 
-- **The Playwright e2e suite is NOT in CI, so it goes dark silently — run it
-  yourself after touching `ContentStep`/`ManualPanel` markup.** `.github`'s
-  `studio` job runs `vitest` only; the e2e specs need a real browser and a
-  live digitizer service, so nothing on GitHub ever executes them. On
+- **The Playwright e2e suite goes dark silently when nothing runs it — run it
+  yourself after touching `ContentStep`/`ManualPanel` markup.** Since
+  2026-08-17 the `studio-e2e` CI job runs it (single worker, and a guard step
+  fails the job if any spec skips — the digitize specs skip, not fail, when
+  the service venv is missing); the lesson below is from the era when nothing
+  on GitHub executed them, and it still applies locally. On
   2026-08-13 all 9 service-backed specs turned out to be failing, and had
   been since **2026-08-10** — commit `301393e` replaced the literal `+` in
   the element tiles with an `aria-hidden` `<Icon name="plus">`, so every

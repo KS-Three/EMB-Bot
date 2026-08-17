@@ -25,6 +25,23 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-08-17 — **four docs-review fixes landed.** (1) The
+ROADMAP standing item no longer reads as a CI-colour claim (reworded to the
+imperative "Keep `main` green"); at edit time `main` was in fact red again —
+the PR #157 merge failed the digitizer job on two `photo/enthusiast_logo.png`
+goldens (2351 vs 2363 stitches), which still needs a Linux golden re-capture.
+(2) The six-scheme phase-numbering trap is now a MASTER_SCOPE gotcha, with a
+one-line pointer from ROADMAP. (3) The Playwright e2e suite got a CI job
+(`studio-e2e` in `python-package-conda.yml`); it builds `digitizer/.venv`
+before running because the digitize-* specs skip silently without it — the
+dark-suite failure mode from 2026-08-10..13. (4) A global SessionStart hook on
+Kent's machine (`~/.claude/hooks/roadmap-gates-global.js`) injects the ROADMAP
+gates for sessions rooted in worktrees or secondary checkouts, where project
+settings don't auto-apply; CLAUDE.md footgun #4 updated to match. Verified: the
+hook injects from a nested subdirectory, stays silent in the primary checkout
+and unrelated directories, and both sibling checkouts currently predate
+ROADMAP.md entirely, so they stay silent until they pull.
+
 **Last updated:** 2026-08-14 (evening) — **the pro-parity scorecard was
 rescaled to chance-corrected, and the corpus re-measured on the new scale**
 (PR #151). `direction` and `sttype` are bounded agreement measures whose raw

@@ -41,9 +41,9 @@ colors. EMB Bot makes that step **visible and controllable**:
 1. Switch to **Image** and upload a logo (PNG/JPG; PNG transparency is honored).
    Optionally check **Remove background**.
 2. The **Flattened art** panel shows your image reduced to N colors (the
-   **Colors** slider, 2–12) with cleanup — stray specks are absorbed into their
-   surrounding color and ragged edges smoothed. This preview is exactly what
-   will stitch.
+   **Colors** slider, 2–8; the auto-digitizer's own Colors control goes to 12)
+   with cleanup — stray specks are absorbed into their surrounding color and
+   ragged edges smoothed. This preview is exactly what will stitch.
 3. Use the **swatch bar** to fix the merge: click the swatches that should be
    one thread (e.g. three near-identical grays), then **Merge selected**.
    **Reset colors** returns to the automatic result. Each swatch also has an
@@ -67,8 +67,10 @@ embroidery font collection), not auto-traced outlines.
 
 - **Hole-aware tracing** — rings and letter counters (O, A, D, e, o…) stitch as
   true rings, not filled discs.
-- **Satin vs. fill** — genuinely thin shapes (≤ ~3 mm at final size) get satin
-  columns; broader shapes get tatami fill.
+- **Satin vs. fill** — genuinely thin shapes get satin columns; broader shapes
+  get tatami fill. The cut-off at final size is **~5 mm** through the
+  auto-digitizer and **~3 mm** through the browser engine, which is what text and
+  hand-drawn shapes use.
 - **Per-shape stitch angle** — each element's fill follows its own axis for
   sheen and dimension; override per color in the swatch bar.
 - **Underlay** — foundation stitching under fills/satin (edge-run, lattice,

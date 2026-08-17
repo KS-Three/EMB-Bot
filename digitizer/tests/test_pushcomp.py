@@ -313,7 +313,12 @@ def test_the_fill_angle_stage_5_compensated_for_is_the_one_stage_6_sews():
     assert p.stitch_angle_deg == pytest.approx(on_artwork)
     # The handoff is what makes them agree; without it stage 6 would use
     # `on_grown`. Assert the carried value, not that the two happen to match.
-    assert p.stitch_angle_deg != pytest.approx(on_grown, abs=1e-9) or True
+    #
+    # This line carried `or True` from 2026-08-02 to 2026-08-17, which made it
+    # unfalsifiable: `X or True` is always true, so the one assertion guarding
+    # this lane's whole reason for existing carried zero bits. Removed, and the
+    # test run honestly.
+    assert p.stitch_angle_deg != pytest.approx(on_grown, abs=1e-9)
 
 
 def test_an_explicit_fill_angle_still_wins():

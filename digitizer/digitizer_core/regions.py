@@ -5,20 +5,35 @@ The contract needs a shape identity that survives a stateless round-trip:
 EMB-Bot sends `deleted_shape_ids` and `shape_overrides` back with a
 re-digitize call, and those must still name the same shapes —
 `apply_shape_edits` below is where that round-trip lands. Two identity
-mechanisms, because one is not enough:
+mechanisms exist:
 
-1. `assign_shape_ids` — deterministic content-derived label for a first
-   generation. Same input, same IDs, every run.
+1. `assign_shape_ids` — deterministic content-derived label from bucketed
+   centroid plus thread number. Same input, same IDs, every run. **This is the
+   one the product actually runs, and the only thing carrying edits forward
+   today**: because the id is derived from content rather than remembered,
+   re-digitizing the same art re-derives the same id, and a resent
+   `shape_overrides` keyed by it lands on the same shape by plain id match.
 2. `match_shape_ids` — carries IDs FORWARD from a previous generation by
    matching geometry (same thread, nearest centroid within a tolerance).
+   **NOT WIRED: it has no production caller** (see its own docstring). Kept
+   because it works and is tested, but nothing in `pipeline.run_stages` calls
+   it, so do not reason about carry-forward as though it runs.
 
-Why both: any hash of quantized geometry flips when a value lands on a bucket
-boundary. Measured during step-1 development — a 0.95% area difference moved a
-region across a 5% area bucket and changed its ID. Boundary refinement (the
-SAM segmenter arriving in step 2) moves every centroid and area slightly, so
-hashing alone would churn IDs exactly when stability matters most. The hash
-therefore only labels NEW shapes; continuity comes from matching. Area is
-deliberately absent from the hash for the same jitter reason.
+**Consequence, and the reason this was written down on 2026-08-17:** anything
+that changes how `assign_shape_ids` derives an id changes carry-forward
+behaviour directly, with no matching pass to absorb it. Comments across this
+codebase used to name `match_shape_ids` as the mechanism — right about the
+behaviour, wrong about what produces it, which is the combination that gets a
+future optimisation pass into trouble.
+
+Why the design has both: any hash of quantized geometry flips when a value lands
+on a bucket boundary. Measured during step-1 development — a 0.95% area
+difference moved a region across a 5% area bucket and changed its ID. Boundary
+refinement (the SAM segmenter arriving in step 2) moves every centroid and area
+slightly, so hashing alone would churn IDs exactly when stability matters most.
+Matching was the intended continuity mechanism for that case; it was never
+wired, and bucketing plus the deliberate absence of area from the hash has
+carried the product so far.
 
 A third case, deliberately NOT routed through either mechanism above: shape
 identity edits (contract v1.5, `apply_shape_merges` / `apply_shape_splits`,
@@ -109,6 +124,17 @@ def match_shape_ids(
     tolerance_mm: float = MATCH_TOLERANCE_MM,
 ) -> dict[str, str]:
     """Carry IDs forward from `previous` onto `current` (mutates current).
+
+    **NO PRODUCTION CALLER — confirmed 2026-08-17 by grep over `digitizer_core`,
+    `digitizer_service`, `app/src` and `src`.** The only callers are
+    `tests/test_border.py`, `tests/test_pipeline.py` and
+    `tests/test_shape_overrides.py`. `pipeline.run_stages` does not call it.
+    Carry-forward in the shipped product comes from `assign_shape_ids` deriving
+    the same id from the same content, so a resent `shape_overrides` matches by
+    plain id — see the module docstring. Kept rather than deleted (Kent's call,
+    2026-08-17) because the tolerance matching works, is tested, and has no
+    replacement if boundary edits ever need it; but if you are reading this
+    while changing how ids are derived, THIS function is not what protects you.
 
     Greedy nearest-centroid matching among same-thread candidates, closest
     pairs first, each previous ID claimed at most once. Unmatched current
@@ -246,8 +272,8 @@ def apply_shape_edits(
 
     And it runs AFTER `assign_shape_ids` (stage 4's last act) so the ids were
     assigned against the FULL generation: deleting one shape can never churn a
-    survivor's id, and `match_shape_ids` against a previous generation still
-    sees everything the artwork produced.
+    survivor's id, and a resent override still names the same shape it named
+    last generation.
 
     An id that matches nothing — deleted or overridden — is a warning, not an
     error: the art may have changed under the edit, and a review edit that no
@@ -516,8 +542,8 @@ def _split_shape_id(source_id: str, line, index: int, salt: int = 0) -> str:
 
 
 # Per-shape styling worth carrying from a merge/split's source shape(s) onto
-# the result — the same review-screen fields `match_shape_ids` carries across
-# an ordinary re-digitize — MINUS two exclusions:
+# the result — the same review-screen fields that survive an ordinary
+# re-digitize on a stable id — MINUS two exclusions:
 #   `applique` — its own piece-cutting model has identity assumptions this
 #   pass did not audit; left untouched rather than guessed at.
 #   `boundary_override` — that key describes a HAND-EDITED SHELL for a

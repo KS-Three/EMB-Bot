@@ -303,8 +303,10 @@
 
   // ---- the Layers list (shape-layers contract v1) ---------------------------
   //
-  // One row per shape, keyed by shape_id (content-derived ids survive a
-  // re-digitize via the engine's match_shape_ids). Edits accumulate on the
+  // One row per shape, keyed by shape_id — the engine's assign_shape_ids
+  // re-derives the same id from the same content, which is what makes these
+  // survive a re-digitize (not match_shape_ids, which is unwired). Edits
+  // accumulate on the
   // element (shapeOverrides / deletedShapeIds) and only restitch on Apply —
   // the review payload the rows render from is the LAST job's, so live-
   // editing it would show stitches that don't exist yet.

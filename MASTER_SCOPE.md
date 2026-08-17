@@ -15,15 +15,20 @@ at the bottom for the authority model behind the confidence ratings.
 [`docs/handoff-2026-08-16.md`](docs/handoff-2026-08-16.md) indexes the
 2026-08-15/16 session — the honest baseline (**42.5**, not the older ~70), the
 metric's own **75-84** pro-vs-pro ceiling, four defects real customer artwork
-exposed, and the traps that cost that session time. Three of its findings are
-standing rulings below. The code and instruments it describe are in PR #157, not
-on `main`.
+exposed, and the traps that cost that session time. Four of its findings are
+standing rulings below. **The code and instruments it describes are ON `main`**
+— PR #157 merged (`4967ed5`), so `digitizer/tools/pro_parity/` including
+`selfconsistency.py` is in a plain checkout. This pointer said "in PR #157, not
+on `main`" until 2026-08-17. *(confirmed 2026-08-17 — `git ls-tree origin/main`)*
 
-**Last updated:** 2026-08-16. Dated history — every "we shipped X on date Y"
+**Last updated:** 2026-08-17. Dated history — every "we shipped X on date Y"
 entry this file used to carry — now lives in
 [`docs/scope-history.md`](docs/scope-history.md). **This file is current state
 only.** See "How this document works" at the bottom for the rules that keep it
-that way, including the line budget.
+that way, including the line budget. The 2026-08-17 corrections arrived with the
+file at 790 of 800 and so came with a compaction pass — the evaluation-corpus
+entry gave up ~40 lines of build narrative that belongs in history, not in a
+current-state dashboard. Do the same when you next find this file full.
 
 **Every claim below carries a pointer** in the form
 `(verb date — source)`: `confirmed` means checked against code or a passing
@@ -44,10 +49,16 @@ or move it.
    `gradient_ramp_linear.png`, which accepts at r² 1.0 with 4 shades and still
    emits 2 blocks / 1 colour change)*
 
-2. **No width floor under satin.** 19 of 162 corpus regions, all photo-class,
-   sew sub-millimetre satin — Law 31 violations. A near-free
-   `2·p90 < ~1.0mm → run` reroute is proposed, gated on a threshold sweep plus
-   the sew-out. *(measured 2026-08-11 — `docs/dt-first-verdict-2026-08-11.md`)*
+2. **No width floor under satin — and the proposed fix is DISPROVED for flat
+   art.** 19 of 162 corpus regions, all photo-class, sew sub-millimetre satin
+   (Law 31). The proposed `2·p90 < ~1.0mm → run` reroute must NOT be applied
+   design-wide: on 15 real customer logos, 61 of the 64 shapes classifying satin
+   under 1.0 mm are ground the pro also sewed as satin — professionals satin
+   hairline strokes on flat logo art routinely. The defect stands for the photo
+   lane, where it was measured; the fix has to be gated there and measured
+   there. *(measured 2026-08-11 — `docs/dt-first-verdict-2026-08-11.md`;
+   disproved for flat 2026-08-16 — `docs/satin-gate-attribution-2026-08-16.md`
+   §7)*
 
 3. **14 jump-trims on an 80mm design,** in every fill variant measured.
    Not started. *(measured 2026-08-12 — scope-history)*
@@ -61,24 +72,66 @@ or move it.
    **No longer blocked:** Kent delivered the artwork and five professionally
    digitized variants on 2026-08-15; they are committed under
    `digitizer/testdata/reference/`. Two things that comparison disproved, so
-   nobody re-derives them: the 1-colour-vs-4 difference is **not** defect #1
-   (the source PNG is genuinely monochrome, so one thread is correct — the pro
-   worked from richer artwork than we were given), and most of the
-   3,417-vs-8,694 stitch gap is a **design choice**, not a defect — the pro
-   filled the banner and left the letters bare fabric, we filled the letters.
+   nobody re-derives them: the 1-colour-vs-4 difference is **not** defect #1,
+   and most of the 3,417-vs-8,694 stitch gap is a **design choice**, not a
+   defect — the pro filled the banner and left the letters bare fabric, we
+   filled the letters.
+   **Correction 2026-08-17:** this entry blamed the colour difference on "richer
+   artwork than we were given." Same file, actually — the missing piece is the
+   **alpha channel**, 7,272 transparent pixels forming the letter counters, which
+   the pro sewed as a second colour. The gap is enclosed-background being off by
+   default, worth **+8.0 per Becker design**.
+   *(corrected 2026-08-17 — `docs/handoff-2026-08-16.md` §0)*
 
 5. **Satin-vs-fill routing sits at chance, and misroutes in BOTH directions.**
-   Against the 23 professional designs, the engine's satin/fill *mix* nearly
-   matches the pro's — so the cap is not simply set too high or too low — while
-   the per-place agreement is barely above chance: roughly a third of the ground
-   the pro satins is sewn as fill, and roughly a third of what it fills is sewn
-   as satin. Two designs score *below* their own chance floor. The failure is
-   the classifier picking the wrong shapes, not a global threshold, so retuning
-   `satin_max` alone cannot fix it — it would only move the mix that is already
-   right. `is_satin_candidate` (`stage6_satin.py:185`) is three rejection gates
-   with no path that promotes a shape back to satin, which is the shape of the
-   hypothesis to test first. *(measured 2026-08-14 — confusion matrix over the
-   pro-parity corpus; per-design detail in area 1)*
+   The *mix* nearly matches the pro's, so the cap is not simply too high or too
+   low, while per-place agreement is barely above chance — about a third of the
+   pro's satin ground is filled and a third of its fill is satined, two designs
+   below their own chance floor. Retuning `satin_max` cannot fix a
+   wrong-shapes-picked failure; it only moves the mix that is already right.
+   *(measured 2026-08-14 — confusion matrix over the pro-parity corpus;
+   per-design detail in area 1)*
+   **Partly closed 2026-08-16, and the remainder is NOT the classifier.** The DT
+   regularity term accounts for 63.6% of the pro-satin ground we fill; loosening
+   its limit is confirmed not to work (recovers 625 cells, leaks 439), while a
+   promotion path reopening that term alone moves the corpus **45.8 → 48.1**
+   (better on 8, worse on 1 — `bridge_lc`, unexplained — unchanged on 5). What
+   is left is segmentation: an oracle knowing the pro's per-shape answer scores
+   76.6% against our 55.4%, and 48% of graded cells sit in shapes under 75% one
+   type, i.e. our regions straddle the pro's satin/fill boundaries.
+   **CAVEAT — the gain is not yet established: every figure above is RAW.** The
+   satin routing spec sets corrected kappa from `scorecard.py`'s `parts["sttype"]`
+   as the primary bar and explicitly bars raw agreement, because promotion shifts
+   the satin/fill marginals and so moves the chance floor itself. So `45.8 → 48.1`
+   and `55.4% → 58.9%` may be real, partly real, or entirely the floor moving.
+   Short task, not yet run. Do not quote these as an improvement until it is.
+   *(measured 2026-08-16 — `docs/satin-gate-attribution-2026-08-16.md`; caveat
+   raised 2026-08-17 against that spec's §4 acceptance criterion)*
+
+---
+
+## Latent — gated OFF, DO NOT FLIP without rebuilding its instrument
+
+Safe today only because these ship off; each becomes a live defect the moment
+someone flips a flag that reads like an optimisation. **A green suite is not
+evidence for either** — on chaining, a green suite actively concealed it.
+
+1. **`chain_links` — sews needle-down thread on bare fabric.** 16.15 mm exposed
+   over 17 links on `full_back`/`fleece_sweatshirt`, stock preset, green suite,
+   one point over a millimetre from any thread in the design. **Precondition to
+   flip: rebuild the instrument** — the two shipped ones were structurally blind
+   to this three ways over (one-point links skipped, first/last sewn segment
+   never tested, cover measured as polygons not as where thread lands). Hold it
+   to the contour lane's standard (`config.py:462-521`). *(confirmed OFF
+   2026-08-17 — `config.py:1064`; measured 2026-08-02 —
+   `docs/hardening-closeout-2026-08-02.md`)*
+2. **`split_tonal_regions`** — the shading fix, merged but off; parked until the
+   sew-out. Cost and ceiling under "Waiting on Kent". *(confirmed OFF
+   2026-08-17 — `config.py:647`)*
+
+*(section added 2026-08-17 — `docs/project-review-2026-08-16.md` §1.6: chaining
+was absent from the live-defect list entirely, so a good-faith flip would have
+shipped visible thread on bare fabric with no warning in this dashboard.)*
 
 ---
 
@@ -185,6 +238,17 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
 
 ## Gotchas — cost someone a session once
 
+- **Six phase-numbering schemes exist; only ROADMAP.md's five engine phases
+  are live.** Historical: the 4-phase pro-stitch roadmap, 11 digitizer steps,
+  7 launch items, 8 Studio slices, 13 photo-plan rows.
+  *(confirmed 2026-08-17 — docs review of ROADMAP/PRODUCT/READMEs/sdd ledger)*
+- **The venv holds a STALE non-editable install of `digitizer_core`, and cwd
+  decides which one you get.** `pytest` from `digitizer/` imports the working
+  tree (verified), so tests are honest — but from any other cwd the same
+  interpreter imports `.venv/Lib/site-packages/digitizer_core/`, whose files
+  differ from both the working tree and `HEAD`. So a service or script launched
+  from elsewhere can run code that is not in the repo. Reinstall (`pip install
+  -e digitizer`) before trusting any out-of-tree run. *(confirmed 2026-08-17)*
 - **Stage 0's `photo_subject` gate is bimodal** — textured subjects on smooth
   backdrops can't reach `photo_subject`. Pinned in the routing test's docstring.
   *(confirmed 2026-08-12 — scope-history)*
@@ -192,11 +256,10 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
   convert first. *(confirmed 2026-08-12 — scope-history)*
 - **A UI affordance that gates on service health fails indistinguishably from
   the service itself.** `.eladd-row` overflow hid "+ Auto-digitize" by 111px, so
-  a clipped button read as a dead service — and silently routed photo work
-  through the browser engine, which emits none of the pipeline warnings. A full
-  SAM2 on/off comparison was run, and two result sets published, that never
-  touched SAM2 at all. Structurally closed for the upload path by PR #138, but
-  the *class* of bug is the thing to remember.
+  a clipped button read as a dead service and silently routed photo work through
+  the browser engine, which emits no pipeline warnings — a full SAM2 on/off
+  comparison was run and two result sets published that never touched SAM2.
+  Closed for the upload path; remember the *class*.
   *(confirmed 2026-08-13 — PR #122, PR #138)*
 - **Pro-parity scores from before 2026-08-14 are on a different scale and do
   not compare.** `direction` and `sttype` were bounded agreement measures with
@@ -213,34 +276,50 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
   baseline: **42.5**. *(measured 2026-08-15 —
   `docs/pro-parity-real-art-2026-08-15.md`)*
 - **The pro-parity 95 target is above the metric's own ceiling. Do not read
-  `score/95` as an engine deficit.** Scoring two of the PRO's own files for one
-  logo against each other — same scorecard, same registration, same chance
-  corrections — a professional scores **75-84 against a professional**. The
-  scorecard is not broken: on pairs that turn out to be one job saved twice it
-  correctly returns 96-100. But `direction` ceilings at **0.11 on one pair and
-  0.85 on another**, from one digitizer on one logo, against a 20-point weight —
-  it measures a choice, not a standard, and is the least defensible weight in the
-  scorecard. `density`/`underlay`/`travel` ceiling at 0.89-1.00, so those weights
-  are sound. **The target is deliberately NOT revised yet: n=2.** Growing it needs
-  scale-normalised registration in `scorecard.py` (it registers by translation
-  only, and every other same-logo PES pair in the file set is 4-17% apart in
-  width). *(measured 2026-08-15 — `tools/pro_parity/selfconsistency.py`,
+  `score/95` as an engine deficit** — and any plan quoting "we need to get to 95"
+  is quoting an unreachable number. Two of the PRO's own files for one logo,
+  scored against each other on the same scorecard, give **75-84**. The scorecard
+  is not broken: on pairs that are one job saved twice it correctly returns
+  96-100. But `direction` ceilings at **0.11 on one pair and 0.85 on another**
+  from one digitizer on one logo, against a 20-point weight — it measures a
+  choice, not a standard, and is the least defensible weight in the scorecard;
+  `density`/`underlay`/`travel` ceiling at 0.89-1.00, so those are sound.
+  **Deliberately NOT revised yet: n=2.** Growing n needs scale-normalised
+  registration in `scorecard.py` (it registers by translation only, and every
+  other same-logo PES pair is 4-17% apart in width).
+  *(measured 2026-08-15 — `tools/pro_parity/selfconsistency.py`,
   `docs/pro-parity-real-art-2026-08-15.md` §11)*
-- **The byte-identical goldens fail on Windows and pass in CI. That is platform
-  divergence, not a red `main`.** `test_flat_lane_byte_identical[photo/enthusiast_logo.png]`,
-  `test_stage2_photo_segment[photo/enthusiast_logo.png]` and
-  `test_pushcomp[logo_whitebg.png-towel]` fail on a Windows checkout and pass on
-  `ubuntu-latest`, which is what CI runs and where the goldens were captured.
-  Confirmed: `gh run list --branch main` reports `842d3a1` as `success`. The
-  divergence is one contour — on `enthusiast_logo` all 31 `shape_ids` match and 30
-  of 31 areas match exactly, one region reading 0.3208 mm² against the golden's
-  0.3784. The tell is that the golden's OWN capture commit (`e364122`) fails
-  locally too, so no commit can be bisected to. Ruled out first: every
-  geometry-relevant pin matches `requirements.txt` exactly. **So do not read a
-  local golden failure as a regression, and never re-capture a golden from a
-  Windows run — it would break CI.** Judge a local change by "same failure set
-  before and after". *(measured 2026-08-15 —
-  `docs/pro-parity-real-art-2026-08-15.md` §0b)*
+- **The golden divergence is PER-FIXTURE, not per-platform.** This ruling used
+  to say the goldens "fail on Windows and pass in CI, which is where they were
+  captured." False for `logo_alpha`. Truth is three-way — rows are
+  `flat_lane_byte_identical` and `stage2_photo_segment` unless named:
+
+  | fixture | Windows | CI |
+  |---|---|---|
+  | `pushcomp[logo_whitebg.png-towel]` | fails | fails (deselected) |
+  | both, `[logo_alpha.png]` | **passes** | fails (deselected) |
+  | both, `[photo/enthusiast_logo.png]` | fails | passes |
+
+  CI column is `.github/workflows/python-package-conda.yml:96-98`, which
+  deselects three by name because they *"compare against goldens pinned on the
+  original development machine"* — i.e. they fail there, so `ubuntu-latest` is
+  NOT where every golden was captured. **Consequence:** an `enthusiast_logo`
+  failure locally is expected; a `logo_alpha` failure locally is a genuine
+  regression. Per-platform reasoning gets that backwards. **Still binding: never
+  re-capture a golden from a Windows run.** Judge a change by "same failure set
+  before and after", using the table as that set. Cause and the two permanent CI
+  deselects nobody is assigned to: `docs/pro-parity-real-art-2026-08-15.md` §0b.
+  *(corrected 2026-08-17 — Windows column re-run this date: `logo_alpha` ×2
+  passed, `enthusiast_logo` ×2 failed; CI column read from the workflow)*
+- **A SECOND expected local failure, nothing to do with goldens: the OCR test
+  needs a binary Windows lacks.** `test_pipeline.py::test_full_pipeline_stamps_ocr_fields_on_the_benchmark_subline`
+  demands one real character read. `pytesseract` is a declared dep and imports
+  fine, but it only wraps the `tesseract` executable — CI apt-installs that
+  (`python-package-conda.yml:75-76`), a Windows box usually has not, so
+  `ocr_char` is `None` throughout and the assert fails. **Not a regression, and
+  deselected nowhere**, so it reads as an unexplained local red. Install
+  Tesseract on `PATH` to go green. *(confirmed 2026-08-17 —
+  `shutil.which("tesseract")` is `None` here; passes on CI)*
 - **Measure pro-parity in a git worktree, never in a shared checkout.** Three
   separate baselines were invalidated on 2026-08-15 by commits landing mid-run,
   including from a second Claude session on the same branch. The first symptom
@@ -266,19 +345,17 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
 | 2. Font library & lettering | Implemented (library + license remediation) | High (tech) / High (compliance — resolved 2026-08-04 by removal, lawyer consult now an optional restore path) |
 | 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — unchanged, no sew-out has happened). The photo-tier gap PR #123 closed stays fixed; the canvas gained a shape editor and auto-restitch 2026-08-13 |
 | 4. Export formats | Implemented | Varies by format — see below |
-| 5. Stitch-out review & manual editing tools | Implemented — Kent's direct-manipulation request is **complete** (2026-08-13) | High. Every surviving requirement of the 2026-08-12 request ships: outlines+nodes on the canvas, the pulse cue, select-then-edit, node drag, line drag, add node, delete. Requirement 5 (whole-shape drag) was withdrawn by Kent. Geometry is unit-tested (53 tests) and every interaction was driven in a real browser against a live service |
+| 5. Stitch-out review & manual editing tools | Implemented — Kent's direct-manipulation request is **complete** (2026-08-13) | High. Every surviving requirement of the 2026-08-12 request ships: outlines+nodes on the canvas, the pulse cue, select-then-edit, node drag, line drag, add node, delete. Requirement 5 (whole-shape drag) was withdrawn by Kent. Geometry is unit-tested and every interaction was driven in a real browser against a live service |
 
 ---
 
 ## Waiting on Kent
 
-The decision queue. Everything here is BLOCKED on a call only Kent can make —
-not on engineering effort. Each line says what is needed and where the
-evidence lives; the detail stays in its own section rather than being
-duplicated here, so this list can go stale about WHAT IS OPEN but never about
-the facts.
+The decision queue. Everything here is BLOCKED on a call only Kent can make, not
+on engineering effort. Detail stays in its own section rather than duplicated
+here, so this list can go stale about WHAT IS OPEN but never about the facts.
 
-**The two Kent asked to have written down (2026-08-14):**
+**The one Kent asked to have written down (2026-08-14) that is still open:**
 
 1. **Fund the stage 0-4 cache?** A boundary edit currently costs a full
    stage 0-7 re-run — no cache helps, because `jobs.content_key` folds
@@ -291,43 +368,38 @@ the facts.
    taken under load: **area 5**, under Kent's direct-manipulation request.
    Not started.
 
-2. **CLOSED 2026-08-15 — Kent delivered the artwork and five professionally
-   digitized variants.** The comparison is done; see live defect #4 and
-   `docs/becker-pro-parity-2026-08-15.md`. Kept here only long enough for a
-   reader who remembers this as the headline blocker; delete on the next pass.
+The second of that pair — the Becker artwork and pro-digitized variants — closed
+2026-08-15; its placeholder was deleted here 2026-08-17 as that entry instructed.
 
-**Also open, same category — listed so this queue is not a half-truth:**
+**Also open, same category — listed so this queue is not a half-truth. All of
+these predate 2026-08-14 and are unchanged:**
 
-3. **Schedule a physical sew-out.** Four hoopings specified in
-   `docs/hardening-closeout-2026-08-02.md` would settle nine geometric
-   questions at once (DST axis, fabric presets, Law 19, PES/EXP on real
-   hardware). Kent asked (2026-08-13) that this stop being surfaced as the
-   headline item every session; it stays here because several confidence
-   scores below genuinely cannot move without it. See "No physical sew-out
-   testing has occurred yet".
-4. **The DST codec fix** — gated on the sew-out above, and Kent's call
-   regardless: re-orienting the table changes every DST EMB-Bot has ever
-   written. See "DST codec axis bug".
-5. **Turn `split_tonal_regions` on?** Merged but default-OFF. Costs +74%
+2. **Schedule a physical sew-out.** Four hoopings specified in
+   `docs/hardening-closeout-2026-08-02.md` settle nine geometric questions at
+   once (DST axis, fabric presets, Law 19, PES/EXP on real hardware). Kent asked
+   (2026-08-13) that this stop being the headline item every session; it stays
+   because several confidence scores cannot move without it. See "No physical
+   sew-out testing has occurred yet".
+3. **The DST codec fix** — gated on the sew-out above, and Kent's call
+   regardless: re-orienting the table changes every DST EMB-Bot has written. See
+   "DST codec axis bug".
+4. **Turn `split_tonal_regions` on?** Merged but default-OFF. Costs +74%
    stitches and pushes the palette to its `max_colors + PALETTE_OVERFLOW_K`
    ceiling. **Kent parked this until the sew-out** (2026-08-12). See the
-   blend-tier entry.
-6. **Billing / backend.** Tabled since the pivot; Stripe + an entitlement
+   blend-tier entry and "Latent — gated OFF".
+5. **Billing / backend.** Tabled since the pivot; Stripe + an entitlement
    check is the leaning, nothing committed. Needs its own session. See
    `PRODUCT.md`, "Open — not yet decided".
-7. **Starter design pack (launch item 3).** The last unstarted item on the
+6. **Starter design pack (launch item 3).** The last unstarted item on the
    launch checklist, and it cannot start without a sourcing decision — the
    non-goals rule out a user-upload gallery on copyright grounds. See
    `PRODUCT.md`.
-8. **The `scratch_corpus/` 37 files.** Gitignored and empty in every
+7. **The `scratch_corpus/` 37 files.** Gitignored and empty in every
    checkout; no session has ever had them. Blocks the DT-first classifier's
    M2/M3. See the evaluation-corpus entry.
-9. **Font lawyer consult — optional.** Only gates RESTORING the 13 pulled
+8. **Font lawyer consult — optional.** Only gates RESTORING the 13 pulled
    ShareAlike fonts; the brief is written and ready to send. Nothing waits
    on it. See the font-licence entry.
-
-Items 3-9 predate 2026-08-14 and are unchanged; they are repeated here only
-so a reader does not mistake items 1-2 for the whole queue.
 
 ---
 
@@ -345,35 +417,28 @@ third-party software. Full evidence trail: `dst-codec-axis-discrepancy` in
 memory, `docs/dst-axis-verdict-2026-07-31.md`, `digitizer/README.md`'s "Open
 finding" section.
 
-**A nuance worth flagging, not a fix:** CLAUDE.md says "treat browser DST as
-EMB-Bot-internal only," while `digitizer/README.md`/`digitizer_service/formats.py`
-say browser DST stays the Studio's *default* encoder "because it is the one
-with sewn evidence behind it." These aren't necessarily contradictory — the
-first is about trusting browser DST as correct-orientation for arbitrary
-third-party software; the second is about which of EMB-Bot's own two encoders
-Studio picks internally — but they read differently enough side-by-side that
-it's worth Kent confirming the intended reading rather than assuming.
+**A nuance, reconciled 2026-08-17:** CLAUDE.md's "treat browser DST as
+EMB-Bot-internal only" and `digitizer/README.md`'s "browser DST stays the
+default because it is the one with sewn evidence" are not in conflict — the
+first is about orientation in third-party software, the second about which of
+EMB-Bot's own two encoders Studio picks. The code below settles it either way:
+the choice is per-project and the user is told which one ran.
 
-**A concrete, code-verified gap in that same area, found 2026-08-09 by a
-`digitizing-quality-auditor` pass, not yet acted on:** Studio's actual
-Download button has no path-selection logic at all — `app/src/lib/
-exporters.js` unconditionally calls the browser engine's own `EMB.encodeDST`/
-`encodeEXP`/`encodePES` for every download, regardless of whether the
-design came from the Python auto-digitizer. Grepping `app/src` for any call
-to the Python service's `/export` route turns up none — `app/src/lib/
-digitizer.js` only ever calls `/digitize` and `/jobs/{id}`. So the
-pyembroidery-convention path this doc and CLAUDE.md both call "the
-trustworthy path for anything leaving this app" is currently unreachable
-from the real product for every design type, not just manual/lettering
-ones. A proposed fix exists (route Python-digitized designs through
-`/export` instead, leaving the manual/lettering path on the existing
-browser codec since that's the specific combination with sew evidence) —
-small and code-only, not sew-out-gated itself, but deliberately not done
-yet: it changes what a downloaded file looks like for existing users, and
-needs Kent's explicit sign-off first, same caution the "don't rotate
-everyone's existing files" line above already establishes. Worth raising
-with him as a concrete proposal in a future session rather than left to be
-rediscovered.
+**CLOSED — a stale "unreachable from the real product" paragraph sat here until
+2026-08-17.** That 2026-08-09 finding (no path-selection logic, `/export` with no
+caller) was already false, and both halves ship: `digitizer.js:936` posts to
+`/export` with `DownloadStep.svelte:173` passing `preferService:
+isPurelyDigitized(project)`, so auto-digitized designs leave by pyembroidery
+convention while lettering/manual stays on the browser codec deliberately, that
+being the combination with sew evidence (`02cd97c`/`51746bd`, 2026-08-10). And
+`DownloadStep.svelte:268-284` warns BEFORE a browser-DST download — naming the
+symptom (quarter-turn rotation, colour stops possibly missing) and the way out
+(PES/EXP or an image-only project) — then confirms after from the observed `via`,
+not a prediction (`ad612c9`, 2026-08-12; test ids `dst-browser-encoder-note`,
+`dst-browser-encoder-downloaded`). **So the 2026-08-11 audit's interim mitigation
+is DONE, and `docs/project-review-2026-08-16.md` §1.1 plus its opportunity #5 are
+wrong to list it as available-and-not-done — it shipped four days before that
+review.** *(confirmed 2026-08-17 — code read, commits dated)*
 
 **Resolution path:** a sew-out or third-party read of a browser-encoded DST
 (the "third opinion" `digitizer/README.md` calls for). Fixing the codec itself
@@ -427,33 +492,26 @@ before authorizing it.
 
 All 13 ShareAlike fonts were pulled rather than waiting on a legal opinion
 (72 → 68 → 55). The surviving 55 are 52 OFL-1.1 + 1 CC-BY-4.0 + 2 CC0 — zero
-ShareAlike. Full upstream license texts ship three ways (on disk, served at
-`/fonts/<key>.LICENSE.txt`, and embedded in each `.embf` binary, which closes
-the bare-download hole), attributions are complete notices, and guard tests pin
-all of it. *(confirmed 2026-08-04 — PR #16, `docs/font-license-audit-2026-07-31.md`)*
+ShareAlike. Upstream licence texts ship three ways (on disk, at
+`/fonts/<key>.LICENSE.txt`, embedded in each `.embf`), attributions are complete
+notices, guard tests pin all of it. **No longer launch-gating.** *(confirmed
+2026-08-04 — PR #16, `docs/font-license-audit-2026-07-31.md`)*
 
-**Not launch-gating any more.** The one-hour lawyer consult is now an optional
-restore path, relevant only if Kent wants the 13 pulled fonts back — brief is
-written and ready to send as-is (`docs/lawyer-brief-cc-by-sa-2026-08-04.md`).
-Still parked for Kent: the bluenesia permission screenshots (audit §8).
+**Still open, both Kent's:** the optional lawyer consult, which only gates
+restoring the 13 pulled fonts (brief ready to send —
+`docs/lawyer-brief-cc-by-sa-2026-08-04.md`), and the bluenesia permission
+screenshots (audit §8).
 
 ### CI feedback speed
 
-The digitizer suite (~1,100 tests of real OpenCV/shapely work) ran **18m49s
-serially** on every push — long enough that a red job stops being noticed
-promptly. `-n auto` (pytest-xdist, pinned in `requirements.txt` alongside
-`execnet`, and in pyproject's `dev` extra) brings that to **10m21s–13m12s**
-across four measured runs, ~a third off.
-
-Not the 2.5-3x seen locally, and the reason is worth writing down so nobody
-re-tunes it hoping for more: GitHub's standard runners are **2-core**, so
-`-n auto` gets two workers, and OpenCV's own threading competes with them.
-Adding workers cannot help. The remaining lever is finding which handful of
-tests dominate the runtime (`--durations`), not more parallelism.
-
-Verified parallel-safe rather than assumed: the whole suite was run both
-ways and the pass/fail set is identical. Nothing writes to a shared path —
-fixtures are read-only and every writing test uses `tmp_path`.
+`-n auto` (pytest-xdist, pinned in `requirements.txt` with `execnet` and in
+pyproject's `dev` extra) took the digitizer suite from **18m49s** serial to
+**10m21s–13m12s** over four runs. **Do not re-tune hoping for the 2.5-3x seen
+locally:** GitHub's standard runners are 2-core, so `-n auto` gets two workers
+and OpenCV's own threading competes with them — more workers cannot help. The
+remaining lever is `--durations`, not parallelism. Parallel-safety was verified
+rather than assumed (identical pass/fail set both ways; fixtures read-only,
+every writing test uses `tmp_path`).
 
 ### No physical sew-out testing has occurred yet
 
@@ -471,75 +529,46 @@ something to push for).
 
 ### Evaluation corpus & harness — real gap, newly tracked here
 
-**Newly named as its own cross-cutting item this pass, not a newly-discovered
-problem** — every piece of it was already visible, scattered across area 1's
-history as a recurring blocker with no single name: the DT-first satin/fill
-classifier's M2/M3 has been blocked since 2026-08-01 on a 37-file
-`scratch_corpus/` run that no session has ever had local access to
-(gitignored, confirmed empty in every checkout); several corpus-law
-recalibrations (`docs/corpus-laws-round3-2026-08-01.md`) needed careful,
-one-off validation against golden fixtures specifically because there is no
-standing, automated way to score "did this change make the output better or
-worse" outside of manually re-running the digitizer suite and eyeballing a
-handful of fixtures; and the fundamental confidence ceiling this doc has
-always cited — zero physical sew-out testing — is the same root cause
-wearing a different hat: no repeatable, automated quality signal, so every
-serious quality question queues behind either a corpus nobody has, or a
-sew-out that hasn't been scheduled. This is a real, distinct capability gap
-— a labeled corpus plus a scoring harness — not merely a rhetorical
-reframing of the sew-out gap above; landing it would let future classifier/
-quality changes be judged against *something* before either the corpus or a
-sew-out session is available, not instead of them.
+**The gap: no repeatable automated quality signal**, so every serious quality
+question queues behind either a corpus nobody has or a sew-out nobody has
+scheduled. Not a reframing of the sew-out gap — a labelled corpus plus a scoring
+harness would let a classifier change be judged against *something* before either
+arrives. The DT-first classifier's M2/M3 has been blocked on it since 2026-08-01,
+and the corpus-law recalibrations
+(`docs/corpus-laws-round3-2026-08-01.md`) needed one-off hand validation for
+exactly this reason.
 
-**The harness half is now BUILT, same-day follow-up: `digitizer/tools/
-corpus_scorecard.py`.** The corpus half is untouched — the 37-file
-`scratch_corpus/` M2/M3 needs is still inaccessible, gitignored and empty in
-every checkout, same as above. What this pass adds is the "remember and
-diff" machinery that was missing: `capture` runs every one of the
-digitizer's 14 committed `testdata/` fixtures (top-level and `photo/`)
-through `digitize()` + the already-existing `digitizer_core.preflight.
-run_preflight` — which already computed a 0-100 score, letter grade, typed
-findings and ~20 metrics per design; this pass aggregates that existing
-signal across the corpus rather than inventing a new metric — at two
-configs (80mm width x `left_chest`/`hat_front`, two distinct fabric
-presets) and writes `testdata/corpus_scorecard_baseline.json`. `diff`
-re-runs the same matrix and reports score deltas, findings that appeared/
-resolved by code, and metric drift past a 5% noise threshold against that
-baseline. Shipped deliberately as a REPORTING tool, not a CI gate — the
-script's own docstring cites this doc's corpus-laws-23/26 history (a
-"desk-safe" threshold picked without real validation, later reverted) as
-the reason not to invent pass/fail numbers yet; the one exception treated
-as a hard signal is a brand-new "block"-severity finding, which does flip
-the `diff` command's exit code, since that's the one low-noise, high-
-confidence case. Verified working, not just written: a real captured
-baseline (all 14 fixtures x 2 configs, grades spanning A to F — the F/0
-scores on `drone_render.png` and `summit_badge.png` are real,
-already-documented rough edges in those photo-tier stress fixtures, not a
-harness bug, exactly the kind of honest signal this tool exists to surface
-rather than hide), then an immediate re-`diff` with zero code changes
-reporting "no drift against the baseline" at exit 0 — proving the
-underlying pipeline is deterministic and the harness doesn't false-positive
-on its own output. **Scope note:** that determinism claim only covers
-re-running the SAME code twice — a recapture spanning real intervening
-commits can still fold in genuine, previously-undiagnosed drift, as the
-correction under "Fix #6.1 landed" (area 1) found for three fixtures in
-the 2026-08-11 recapture. **Correction, 2026-08-11:** this paragraph originally
-also listed `repro_gradient_white_icon.png` as F/0 — wrong, it's D/58 at
-both configs; `docs/photo-quality-root-cause-2026-08-11.md` caught and
-flagged this same error. No dedicated test file: matches this repo's own
-convention that no `tools/*.py` script (including the same-pattern
-`capture_flat_lane_golden.py`) has one, and a full capture run touches
-several photo/SLIC fixtures, too slow for the regular suite.
+**Harness half: BUILT — `digitizer/tools/corpus_scorecard.py`.** `capture` runs
+all 14 committed `testdata/` fixtures (top-level and `photo/`) through
+`digitize()` + the existing `digitizer_core.preflight.run_preflight` — which
+already produced a 0-100 score, letter grade, typed findings and ~20 metrics, so
+this aggregates existing signal rather than inventing a metric — at two configs
+(80 mm width × `left_chest`/`hat_front`, two distinct fabric presets), writing
+`testdata/corpus_scorecard_baseline.json`. `diff` re-runs that matrix and reports
+score deltas, findings appeared/resolved, and metric drift past a 5% noise
+threshold. **Deliberately a REPORTING tool, not a CI gate** — the docstring cites
+this file's own corpus-laws-23/26 history (a "desk-safe" threshold picked without
+validation, later reverted) as the reason not to invent pass/fail numbers yet.
+Sole hard signal: a brand-new `block`-severity finding flips `diff`'s exit code.
+**Verified, not just written:** a real baseline (14 × 2, grades A to F — the F/0
+on `drone_render.png` and `summit_badge.png` are documented rough edges in those
+photo-tier stress fixtures, not harness bugs) then an immediate re-`diff` with no
+code changes reporting no drift at exit 0, so the pipeline is deterministic and
+the harness does not false-positive on itself. **Scope limit:** that determinism
+covers re-running the SAME code twice only — a recapture spanning real commits
+can fold in genuine undiagnosed drift, as "Fix #6.1 landed" (area 1) found for
+three fixtures. No dedicated test file, matching the convention that no
+`tools/*.py` has one (including `capture_flat_lane_golden.py`); a full capture is
+too slow for the regular suite. *(`repro_gradient_white_icon.png` is D/58 at both
+configs — an earlier version of this entry said F/0; corrected 2026-08-11 —
+`docs/photo-quality-root-cause-2026-08-11.md`)*
 
-**2026-08-11 update:** `drone_render.png`'s F/0 now has a landed,
-algorithm-verified-correct fix (#6.1, `select_palette`'s `max_colors`
-floor-aware overflow in `digitizer_core/palette.py`) that does NOT move
-this grade — see area 1 above for the full trace and why (a preflight
-pooled-metric measurement gap, not a fix defect). `summit_badge.png` (#6.2)
-and `repro_gradient_white_icon.png` (#6.3) remain open, same root-cause doc.
-**Next step for this gap:** use the tool by hand against a few real future
-corpus-law/classifier changes to learn what a genuine regression looks like
-here before deciding on hard CI thresholds.
+**Still open here:** `summit_badge.png` (#6.2) and
+`repro_gradient_white_icon.png` (#6.3), same root-cause doc — `drone_render.png`'s
+#6.1 fix landed and is algorithm-verified but does not move the grade (a
+preflight pooled-metric measurement gap, traced in area 1). **Next step:** run the
+tool by hand against a few real classifier changes to learn what a genuine
+regression looks like before setting any hard threshold.
 
 **The corpus half is no longer empty (2026-08-15).** Eight files of real
 customer artwork now ship in `FIXTURES` — the first entries that are neither

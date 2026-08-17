@@ -20,7 +20,7 @@ picking a match target; EMB-Bot effectively ships 1 usable fill/tatami), 7 run t
 ~3, and "Ember Bridge" — a free desktop app that pushes designs straight to a Wi-Fi machine,
 no EMB-Bot equivalent even conceptually.
 
-EMB-Bot already leads on: font count (72 vs Ember's 25 built-in), CIEDE2000 perceptual thread
+EMB-Bot already leads on: font count (55 vs Ember's 25 built-in, post-2026-08-04 ShareAlike pull), CIEDE2000 perceptual thread
 matching (ahead of any documented vendor practice, Ember included), and engineering transparency
 (EMB-Bot's docs record real defects with severity; Ember's "AI Auto Digitize" is undocumented
 outside vague privacy-policy boilerplate).

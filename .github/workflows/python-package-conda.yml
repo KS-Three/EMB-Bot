@@ -26,9 +26,9 @@ jobs:
 
   studio:
     # The Svelte Studio app's vitest suite (logic + component specs). The
-    # Playwright e2e specs are excluded from vitest by app/vite.config.js
-    # and are NOT run in CI — they need a real browser + the live digitizer
-    # service (see e2e/*.spec.js's own service-bootstrap notes).
+    # Playwright e2e specs are excluded from vitest by app/vite.config.js —
+    # they need a real browser + the live digitizer service and run in the
+    # studio-e2e job below (see e2e/*.spec.js's own service-bootstrap notes).
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -96,3 +96,63 @@ jobs:
           --deselect "tests/test_flat_lane_byte_identical.py::test_flat_lane_is_byte_identical_to_the_pre_change_golden[logo_alpha.png]"
           --deselect "tests/test_pushcomp.py::test_flag_off_is_byte_identical_to_the_shipped_engine[logo_whitebg.png-towel]"
           --deselect "tests/test_stage2_photo_segment.py::test_flat_and_gradient_lanes_still_match_golden_after_photo_dispatch[logo_alpha.png]"
+
+  studio-e2e:
+    # The real-browser Playwright suite (app/e2e). COOKBOOK's hard-won lesson:
+    # this suite is excluded from vitest and went dark for three days when
+    # nothing ran it automatically — this job exists so that cannot recur.
+    #
+    # The specs are self-contained but need two servers: Playwright's own
+    # webServer config starts Vite on :5183, and the digitize-* specs spawn the
+    # digitizer service themselves from digitizer/.venv (see the bootstrap in
+    # e2e/*.spec.js). They SKIP quietly when that venv is missing — a skip here
+    # would be the dark-suite failure mode all over again — so this job builds
+    # the venv at the exact path the bootstrap probes first.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: digitizer/requirements.txt
+      # Tesseract so the service's OCR-suggested-text pass behaves as it does
+      # in the digitizer job (text-cluster-convert.spec.js drives that UI).
+      - name: Install system dependencies (Tesseract OCR)
+        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
+      - name: Build the digitizer venv the e2e bootstrap looks for
+        working-directory: digitizer
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -r requirements.txt
+          .venv/bin/pip install -e '.[service]'
+      - name: Install
+        working-directory: app
+        run: npm ci
+      - name: Install Playwright Chromium
+        working-directory: app
+        run: npx playwright install --with-deps chromium
+      # --workers=1: the five service-gated specs share one service on :8721
+      # and each file's afterAll kills it when that file finishes — under
+      # parallel workers one file's teardown races another file's mid-test
+      # requests (observed locally: red at 4 workers, green solo). Serial is
+      # bounded by the specs' own timeouts and removes the race entirely.
+      - name: Playwright e2e
+        working-directory: app
+        run: npx playwright test --workers=1 --reporter=list,json
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: results.json
+      # The digitize-* specs SKIP (not fail) when the service bootstrap can't
+      # produce a healthy service — venv missing, spawn failure, dead /health.
+      # A skip here is the dark-suite failure mode wearing a green checkmark,
+      # so treat any skip as a failure. Legitimate skips are zero: wizard-smoke
+      # and manual-trace-import never skip, and this job builds the venv above.
+      - name: Fail if any spec skipped
+        working-directory: app
+        run: |
+          node -e "const s=require('./results.json').stats; console.log(JSON.stringify(s)); if(s.skipped>0){console.error(s.skipped+' spec(s) skipped — the service bootstrap failed; read the skip reasons in the list output above'); process.exit(1)}"
