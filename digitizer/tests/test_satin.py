@@ -13,6 +13,10 @@ import pytest
 from shapely.geometry import LineString, Point, Polygon
 
 from digitizer_core import machine
+# The module itself, not just its names: the degenerate-raster test has to
+# monkeypatch `_dt_stats`, which needs the attribute lookup to go through the
+# module object rather than a name bound at import time.
+from digitizer_core import stage6_satin
 from digitizer_core.stage6_satin import (
     classify_ribbon,
     extract_strokes,
@@ -235,8 +239,8 @@ def test_the_dt_check_catches_the_serrated_disc_a_noisy_design_class_gets():
     up — see `testdata/photo/region_blobs.png`'s `Sd12bfc9e`/`S94f29987` and
     `testdata/photo/summit_badge.png`'s `Sed818ef7`/`S00d736bf`/`S6096e7a9`,
     all real, near-square, organic regions this exact rule used to satin),
-    the second, DT-based opinion (`_dt_regular_and_within_cap`) overrides the
-    perimeter-only verdict above and correctly calls this a blob.
+    the second, DT-based opinion (`classify_ribbon`'s regularity and p90 gates)
+    overrides the perimeter-only verdict above and correctly calls this a blob.
 
     Swept across a few tooth depths because the fix must not be a fluke of
     one specific noise amplitude."""
@@ -418,15 +422,49 @@ def test_the_verdict_carries_the_margin_the_gate_missed_by():
     assert v.metrics["dt_p90_mm"] > 0.0, "the DT ran and reported a width"
 
 
-def test_a_shape_too_small_to_skeletonize_is_named_not_silently_passed():
-    """`_dt_regular_and_within_cap` returns True on a degenerate raster —
-    deferring rather than failing closed. That is a deliberate call, but it
-    is NOT the same event as a shape passing the DT check on its merits, and
-    the probe must not count the two together."""
-    sliver = Polygon([(0, 0), (12, 0), (12, 0.02), (0, 0.02)])
-    v = classify_ribbon(sliver, machine.SATIN_MAX_WIDTH_MM)
-    if v.satin:
-        assert v.reason in ("satin", "dt_degenerate")
+def test_a_degenerate_raster_defers_under_its_own_name(monkeypatch):
+    """`classify_ribbon` returns True on a degenerate raster — deferring
+    rather than failing closed. That is a deliberate call, but it is NOT the
+    same event as a shape passing the DT check on its merits, and the probe's
+    per-gate table must not count the two together.
+
+    Forced via `_dt_stats`, because no polygon can reach this branch (see
+    `test_no_real_polygon_can_reach_the_degenerate_branch` below). An earlier
+    version of this test fed a thin sliver and asserted
+    `reason in ("satin", "dt_degenerate")` inside an `if v.satin:` — which
+    could not fail: the sliver returns `satin`, so the test was passing while
+    demonstrating the exact conflation it names.
+    """
+    monkeypatch.setattr(stage6_satin, "_dt_stats", lambda poly: None)
+    v = classify_ribbon(BAR, machine.SATIN_MAX_WIDTH_MM)
+    assert v.satin, "a degenerate raster defers to the verdict already reached"
+    assert v.reason == "dt_degenerate", (
+        "the deferral must name itself, not borrow `satin` — the probe reads "
+        "`satin` as 'the DT approved this shape'")
+
+
+def test_no_real_polygon_can_reach_the_degenerate_branch():
+    """Why the test above has to force it, pinned so the day that stops being
+    true is a red test rather than a silent gap.
+
+    Two guards make the branch unreachable from any polygon. `w <= 0` sends a
+    zero-area shape to `width_cap` before the DT runs at all, and
+    `rasterize_polygon` picks its scale FROM the shape, so an arbitrarily thin
+    ribbon still rasterizes to a full mask rather than an empty one — a
+    0.02 x 0.001 mm bar comes back at scale 8400 px/mm.
+
+    If a future rasterizer pins its scale instead, this test fails and the
+    `dt_degenerate` branch becomes genuinely reachable — at which point it
+    wants a real fixture, not a monkeypatch.
+    """
+    assert classify_ribbon(
+        Polygon([(0, 0), (10, 0), (10, 0), (0, 0)]),
+        machine.SATIN_MAX_WIDTH_MM).reason == "width_cap", \
+        "a zero-area polygon must be caught by the width cap, not the DT"
+    for w, h in ((12, 0.02), (0.5, 0.01), (0.02, 0.001)):
+        poly = Polygon([(0, 0), (w, 0), (w, h), (0, h)])
+        assert stage6_satin._dt_stats(poly) is not None, \
+            f"{w}x{h} mm unexpectedly degenerate — see this test's docstring"
 
 
 # --- Promotion back to satin -----------------------------------------------

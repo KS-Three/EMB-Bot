@@ -105,7 +105,8 @@ or move it.
    rise isn't the floor-moving artifact §4 warned about — smaller than the
    raw `45.8 → 48.1` headline since sttype is one of six weighted components.
    *(measured 2026-08-17 — `kappacheck.py` vs `26ceaa3`/`2729ea5`; detail in
-   `docs/satin-gate-attribution-2026-08-16.md` §9)*
+   `docs/satin-gate-attribution-2026-08-16.md` §9; sibling pairs carry ±2pts
+   reference-file variance, `docs/paired-regression-diagnosis-2026-08-17.md`)*
 
 ---
 
@@ -310,15 +311,15 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
   deselects nobody is assigned to: `docs/pro-parity-real-art-2026-08-15.md` §0b.
   *(corrected 2026-08-17 — Windows column re-run this date: `logo_alpha` ×2
   passed, `enthusiast_logo` ×2 failed; CI column read from the workflow)*
-- **A SECOND expected local failure, nothing to do with goldens: the OCR test
-  needs a binary Windows lacks.** `test_pipeline.py::test_full_pipeline_stamps_ocr_fields_on_the_benchmark_subline`
-  demands one real character read. `pytesseract` is a declared dep and imports
-  fine, but it only wraps the `tesseract` executable — CI apt-installs that
-  (`python-package-conda.yml:75-76`), a Windows box usually has not, so
-  `ocr_char` is `None` throughout and the assert fails. **Not a regression, and
-  deselected nowhere**, so it reads as an unexplained local red. Install
+- **TWO more expected local failures, nothing to do with goldens: the OCR tests
+  need a binary Windows lacks.** Both `saw_a_real_character` assertions —
+  `test_pipeline.py:313` and `test_service.py:525` — demand a real character
+  read. `pytesseract` is a declared dep and imports fine, but it only wraps the
+  `tesseract` executable: CI apt-installs that (`python-package-conda.yml:75-76`),
+  a Windows box usually has not, so `ocr_char` is `None` and both fail. **Not regressions, and
+  deselected nowhere**, so they read as unexplained local reds. Install
   Tesseract on `PATH` to go green. *(confirmed 2026-08-17 —
-  `shutil.which("tesseract")` is `None` here; passes on CI)*
+  `shutil.which("tesseract")` is `None` here; both pass on CI)*
 - **Measure pro-parity in a git worktree, never in a shared checkout.** Three
   separate baselines were invalidated on 2026-08-15 by commits landing mid-run,
   including from a second Claude session on the same branch. The first symptom
