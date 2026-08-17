@@ -57,7 +57,7 @@ All commands run from each worktree's `digitizer/` directory, with
 ### Step 1 — component story for the pair
 
 ```
-cd .claude/worktrees/kappa-after/digitizer
+cd <kappa-after-worktree>/digitizer
 $PY tools/pro_parity/scorecard.py --explain \
   ../parity_out/real/bridge_lc ../parity_out/real/bridge_hat
 ```
@@ -93,11 +93,11 @@ exactly the corrected-kappa component the promotion targets.
 ### Step 2 — flipped shapes, full 15-design corpus
 
 ```
-cd .claude/worktrees/kappa-after/digitizer
+cd <kappa-after-worktree>/digitizer
 $PY tools/pro_parity/gateprobe.py --features --csv corpus_after.csv \
   (all 15 real/* dirs, absolute paths)
 
-cd .claude/worktrees/kappa-before/digitizer
+cd <kappa-before-worktree>/digitizer
 $PY tools/pro_parity/gateprobe.py --csv corpus_before.csv \
   (all 15 real/* dirs, absolute paths)
 ```
@@ -268,7 +268,7 @@ stronger caution than "reference-file variance": it means single-design
 deltas on ANY pair (sibling or not) can reflect segmentation accidents, not
 just measurement noise. The corpus-level kappa move (0.167 → 0.193, Task 1)
 remains the trustworthy number — it isn't built from this pair's shape
-identity, and 8 other designs moved the same direction independently.
+identity, and 6 other designs moved the same direction independently.
 
 `MASTER_SCOPE.md` is **not** updated by this diagnosis: the brief's
 instruction was to add a sentence only if the reference-file hypothesis is
@@ -280,17 +280,22 @@ brief anticipated adding.
 ## Reproducing
 
 ```
-cd .claude/worktrees/kappa-after/digitizer
+cd <kappa-after-worktree>/digitizer
 $PY tools/pro_parity/scorecard.py --explain \
   ../parity_out/real/bridge_lc ../parity_out/real/bridge_hat
 
 $PY tools/pro_parity/gateprobe.py --features --csv corpus_after.csv \
   ../parity_out/real/*/
 
-cd ../../kappa-before/digitizer
+cd <kappa-before-worktree>/digitizer
 $PY tools/pro_parity/gateprobe.py --csv corpus_before.csv \
   ../parity_out/real/*/   # --features not supported at 26ceaa3
 ```
+
+The kappa-before/kappa-after worktrees are ephemeral (plan cleanup removes
+them); re-create per
+`docs/superpowers/plans/2026-08-17-measurement-debt-knockout.md` Task 1
+steps 1-3 with before ref `26ceaa3`.
 
 Pairing scripts (`pair_shapes.py`, `pair_shapes_v2.py`, `pair_by_colour.py`)
 were throwaway, scratchpad-only, and are not part of this repo; the tables
