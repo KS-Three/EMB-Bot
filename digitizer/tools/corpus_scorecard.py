@@ -26,10 +26,15 @@ the next thing that needs walking back.
 Usage:
     .venv/Scripts/python tools/corpus_scorecard.py capture
         Digitizes every fixture at every config in MATRIX, scores each with
-        run_preflight, and writes testdata/corpus_scorecard_baseline.json.
-        Re-run this deliberately, the same way tools/capture_flat_lane_golden.py
-        works, whenever a change's new behaviour should become the new
-        baseline rather than a regression to flag.
+        run_preflight, and writes testdata/corpus_scorecard_baseline.json,
+        stamped with `captured_at_commit`/`captured_date` so staleness is
+        measured, not remembered (see COOKBOOK.md, "Recapturing
+        corpus_scorecard_baseline.json"). Re-run this deliberately, the same
+        way tools/capture_flat_lane_golden.py works, whenever a change's new
+        behaviour should become the new baseline rather than a regression to
+        flag -- diff the old baseline against HEAD first and attribute every
+        mover in the recapture commit message; an unattributed mover blocks
+        the recapture.
 
     .venv/Scripts/python tools/corpus_scorecard.py diff
         Re-digitizes everything and prints what moved against the stored
@@ -48,8 +53,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from collections import Counter
+from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -128,6 +135,17 @@ def _run_key(fixture: str, cfg_kw: dict) -> str:
     return f"{fixture} @ {cfg_kw['target_width_mm']:g}mm/{cfg_kw['garment_id']}"
 
 
+def _git_head_commit() -> str:
+    """The commit this capture ran against — so a later `diff` (or a human
+    reading the baseline) can tell how stale the ruler is instead of having
+    to remember, per COOKBOOK's "Recapturing corpus_scorecard_baseline.json"
+    rule. Not caught by the per-fixture `_run_key` loop: this key lives
+    alongside the fixture rows, not among them (see `capture`)."""
+    return subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
+    ).strip()
+
+
 def _score_one(fixture: str, cfg_kw: dict) -> dict:
     path = TESTDATA / fixture
     cfg = PipelineConfig(**cfg_kw)
@@ -159,6 +177,12 @@ def capture() -> dict:
             else:
                 print(f"{key}: grade={row['grade']} score={row['score']} "
                       f"findings={len(row['findings'])}")
+    # Stamp the capture commit/date so staleness is measured, not
+    # remembered -- neither key collides with a `_run_key` string, and
+    # `diff` only ever looks up baseline entries by that key, so this is
+    # additive alongside the fixture rows, not a format change.
+    scorecard["captured_at_commit"] = _git_head_commit()
+    scorecard["captured_date"] = date.today().isoformat()
     return scorecard
 
 
