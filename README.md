@@ -156,7 +156,7 @@ replacement for a professional digitizer's judgment on complex or critical work.
   binary on first use. Rebuild after tier/source changes:
   `node tools/build-embf.mjs` (needs `scratch_ink/` — see COOKBOOK).
   Only fonts classified **verified** ship; see the tier rules in COOKBOOK.md.
-- **`tools/`** — see the directory itself: 28 build/QC/harness scripts (plus
+- **`tools/`** — see the directory itself: the build/QC/harness scripts (plus
   `palettes/` thread-brand charts and `font-categories.json`). Highlights:
   `build-embf.mjs` (font library rebuild), `qc-font.mjs` (font tier gate),
   `png.mjs` + `render-dst.mjs` + `run-flatten.mjs` / `run-digitize.mjs`

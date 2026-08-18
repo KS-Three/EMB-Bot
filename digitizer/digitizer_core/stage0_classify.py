@@ -342,13 +342,36 @@ def _write_debug(cfg: PipelineConfig, result: Classification) -> None:
     (dbg / "stage0_classification.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+# The only four classes this function can return, and therefore the only four
+# `forced_class` values that mean anything. Every downstream consumer tests
+# MEMBERSHIP against a subset of these (`pipeline.py`'s
+# `class_ in ("photo_subject", "photo_scene")`, `== "gradient"`,
+# `stage7_sequence.PHOTO_CLASSES`), so an unrecognized value matches none of
+# them and silently takes the flat path — a mis-measurement that looks like a
+# clean run. Hence the check in `classify`.
+CLASSES = ("flat", "gradient", "photo_subject", "photo_scene")
+
+
 def classify(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
              forced_class: str | None = None) -> Classification:
     """4-way input classification. `forced_class` (the escape hatch cfg's
     real `forced_class` field will thread through once `config.py` is
     wired) skips signal computation entirely and returns that class at
-    confidence 1.0."""
+    confidence 1.0.
+
+    Raises `ValueError` on a `forced_class` outside `CLASSES`. It used to
+    accept any string and hand it back at confidence 1.0 with no warning,
+    which meant a typo — `photo` for `photo_subject`, say — routed the whole
+    run down the flat lane while reporting complete success. Callers taking
+    the value from outside the process validate FIRST so the user sees their
+    own error: `digitizer_service.app._validate_config_dict` returns 400, and
+    `tools/pro_parity/prep_all.py` exits with the valid list.
+    """
     if forced_class is not None:
+        if forced_class not in CLASSES:
+            raise ValueError(
+                f"forced_class {forced_class!r} is not one of {', '.join(CLASSES)}"
+            )
         result = Classification(class_=forced_class, confidence=1.0, signals={}, warnings=[])
         _write_debug(cfg, result)
         return result

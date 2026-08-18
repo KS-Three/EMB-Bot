@@ -34,6 +34,7 @@ from digitizer_core.adapter import design_size_mm, design_to_pattern, plan_to_de
 from digitizer_core.manual import build_manual_result
 from digitizer_core.pipeline import digitize, plan_stitches
 from digitizer_core.preflight import run_preflight
+from digitizer_core.stage0_classify import CLASSES
 from digitizer_core.threads import DEFAULT_BRAND, brand_index, load_chart
 
 from . import formats
@@ -391,6 +392,17 @@ def _validate_config_dict(data: dict, allowed_fields: set[str]) -> dict:
                 status_code=400,
                 detail=f"unknown thread brand {brand!r}. See /health for the list.",
             ) from exc
+    # `forced_class` skips stage 0's signal computation entirely, so a value
+    # outside CLASSES matches no downstream branch and silently takes the flat
+    # path. Checked here so a client typo is a 400 naming the valid values,
+    # rather than the ValueError `stage0_classify.classify` raises — which
+    # would reach the caller as a 500.
+    forced = data.get("forced_class")
+    if forced is not None and forced not in CLASSES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"unknown forced_class {forced!r}. Valid: {', '.join(CLASSES)}.",
+        )
     if "deleted_shape_ids" in allowed_fields or "shape_overrides" in allowed_fields:
         _canonicalize_shape_edits(data, len(load_chart(brand or DEFAULT_BRAND)))
     return data

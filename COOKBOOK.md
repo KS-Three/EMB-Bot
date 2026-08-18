@@ -1,8 +1,8 @@
 # EMB Bot — Cookbook for the next Claude agent
 
 Handoff doc. Read this before touching code. Full blow-by-blow history lives in
-Kent's memory file `emb-bot-digitizer.md` (in the operator's Claude memory
-store, not this repo) — this file is the repo-local, self-contained version.
+`.claude/memory/emb-bot-digitizer.md` (moved into the repo 2026-08-14, indexed
+by `.claude/memory/MEMORY.md`) — this file is the self-contained handoff.
 
 ## What this is
 
@@ -660,7 +660,7 @@ and controllable to the user.
 - **`digitizer/`** — Python auto-digitizing engine + optional FastAPI
   service (`digitizer_core/` importable lib, `digitizer_service/` wrapper).
   Own venv, own test suite, own docs. See "The Python digitizer" above.
-- **`tools/`** — 28 build/QC/harness scripts; notable:
+- **`tools/`** — the build/QC/harness scripts (count drifts; list the directory); notable:
   `build-font.mjs` (Ink/Stitch font → JSON font library),
   `run-digitize.mjs` / `run-flatten.mjs` / `render-dst.mjs` (Node-side
   pipeline runners so you can test digitizing on a real image without a

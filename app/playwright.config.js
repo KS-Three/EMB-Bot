@@ -4,7 +4,7 @@
 // /opt/pw-browsers/chromium but blocks outbound access to Playwright's
 // browser-download CDN, so an unpinned config that lets Playwright manage
 // (and try to download) its own browser fails outright with no fallback --
-// confirmed 2026-08-03, see CLAUDE.md footgun #5 and tools/mcp-playwright.mjs,
+// confirmed 2026-08-03, see CLAUDE.md footgun #6 and tools/mcp-playwright.mjs,
 // which pins the same executable for the Playwright MCP server. Passing
 // executablePath only when that path exists keeps this config portable to a
 // normal machine (e.g. Kent's local setup), which still gets Playwright's
