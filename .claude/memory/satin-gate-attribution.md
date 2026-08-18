@@ -43,4 +43,4 @@ is what gets the 10 stage-0-misrouted designs to the satin/fill ladder at all â€
 see [[real-artwork-parity]]. `prep_all` now records each region's polygon WKT so
 `tools/pro_parity/gateprobe.py` can re-ask the classifier's question without
 re-running stages 0-4. Measurement worktree left at
-`C:\Users\EE-LT-11030\Personal\EMB-Bot-satingate` (outside `.claude/worktrees/`).
+`<repo-parent>\EMB-Bot-satingate` (outside `.claude/worktrees/`).

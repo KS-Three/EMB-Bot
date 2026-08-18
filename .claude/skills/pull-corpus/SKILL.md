@@ -52,7 +52,7 @@ per-file git commands, and he was right to.
 What to tell him:
 
 ```powershell
-cd C:\Users\EE-LT-11030\Personal\EMB-Bot
+cd <repo-root>
 .\tools\sync-assets.ps1
 ```
 

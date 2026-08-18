@@ -135,8 +135,8 @@ noise, which is a different, likely harder, and unscoped problem.
 
 ```powershell
 cd digitizer
-& C:/Users/EE-LT-11030/Personal/EMB-Bot/digitizer/.venv/Scripts/python.exe -m pytest -q tests/test_splitprobe.py
-& C:/Users/EE-LT-11030/Personal/EMB-Bot/digitizer/.venv/Scripts/python.exe tools/pro_parity/splitprobe.py --csv straddle.csv `
+& <repo-root>/digitizer/.venv/Scripts/python.exe -m pytest -q tests/test_splitprobe.py
+& <repo-root>/digitizer/.venv/Scripts/python.exe tools/pro_parity/splitprobe.py --csv straddle.csv `
   (Get-ChildItem "<kappa-after-worktree>/parity_out/real" -Directory).FullName
 ```
 

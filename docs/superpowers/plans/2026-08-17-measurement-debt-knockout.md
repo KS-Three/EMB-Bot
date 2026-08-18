@@ -12,7 +12,7 @@
 
 - **Public repo.** Do not introduce any client name, artwork, or stitch file not already committed. The design slugs used below (`becker_*`, `bridge_*`, `hotel_fremont_*`, `mfab_*`, …) already appear in committed docs — using the slugs is fine; committing new files from `G:/My Drive/EMB-Bot/Embroidery Files` or `scratch_kent/` is NOT.
 - **Measure in a pinned worktree** (ROADMAP advisory ordering). Never measure against a drifting checkout.
-- **Worktrees have no `.venv`.** Always invoke the primary checkout's interpreter — `C:/Users/EE-LT-11030/Personal/EMB-Bot/digitizer/.venv/Scripts/python.exe` — with `cwd` inside the worktree's `digitizer/`, and verify module resolution before trusting any number (Task 1 step 2 shows how). The pro-parity scripts insert their own file's parents onto `sys.path`, so running the *worktree's copy* of the script resolves the *worktree's* `digitizer_core`.
+- **Worktrees have no `.venv`.** Always invoke the primary checkout's interpreter — `<repo-root>/digitizer/.venv/Scripts/python.exe` — with `cwd` inside the worktree's `digitizer/`, and verify module resolution before trusting any number (Task 1 step 2 shows how). The pro-parity scripts insert their own file's parents onto `sys.path`, so running the *worktree's copy* of the script resolves the *worktree's* `digitizer_core`.
 - **Never pipe pytest (or any run) to `tail`** — you get tail's exit code.
 - Corpus asset root: `PRO_PARITY_ROOT="G:/My Drive/EMB-Bot/Embroidery Files"` (prep_both.py's documented default; reading from Drive is fine, only live repos are banned there).
 - **Branch routing:** Tasks 1–2 commit to `claude/satin-gate-attribution` (they are that branch's own unmet acceptance criterion — the promotion commit `45d817a` is NOT in main). Tasks 3–5 commit to a new lane `claude/measurement-debt` cut from `origin/main` (`d96f9ff`).
@@ -39,7 +39,7 @@ The satin-routing spec (`docs/superpowers/specs/2026-08-16-satin-routing-gate-at
 - [ ] **Step 1: Create the two pinned worktrees**
 
 ```powershell
-cd C:\Users\EE-LT-11030\Personal\EMB-Bot
+cd <repo-root>
 git worktree add .claude/worktrees/kappa-before d96f9ff
 git worktree add .claude/worktrees/kappa-after 2729ea5
 ```
@@ -47,8 +47,8 @@ git worktree add .claude/worktrees/kappa-after 2729ea5
 - [ ] **Step 2: Verify module resolution hits each worktree's own `digitizer_core`**
 
 ```powershell
-$py = "C:/Users/EE-LT-11030/Personal/EMB-Bot/digitizer/.venv/Scripts/python.exe"
-cd C:\Users\EE-LT-11030\Personal\EMB-Bot\.claude\worktrees\kappa-before\digitizer
+$py = "<repo-root>/digitizer/.venv/Scripts/python.exe"
+cd <repo-root>\.claude\worktrees\kappa-before\digitizer
 & $py -c "import digitizer_core; print(digitizer_core.__file__)"
 ```
 
@@ -61,7 +61,7 @@ For each `$wt` of `kappa-before`, `kappa-after` (from that worktree's `digitizer
 ```powershell
 $wt = "kappa-before"   # or "kappa-after"
 $env:PRO_PARITY_ROOT = "G:/My Drive/EMB-Bot/Embroidery Files"
-$env:PRO_PARITY_OUT  = "C:/Users/EE-LT-11030/Personal/EMB-Bot/.claude/worktrees/$wt/parity_out"
+$env:PRO_PARITY_OUT  = "<repo-root>/.claude/worktrees/$wt/parity_out"
 $env:PRO_PARITY_FORCED_CLASS = "flat"
 & $py tools/pro_parity/prep_both.py
 & $py tools/pro_parity/scorecard.py (Get-ChildItem "$env:PRO_PARITY_OUT/real" -Directory).FullName
@@ -93,8 +93,8 @@ Expected: one row for `x`, `dkappa +0.100`, verdict "KAPPA ROSE".
 
 ```powershell
 & $py digitizer/tools/pro_parity/kappacheck.py `
-  "C:/Users/EE-LT-11030/Personal/EMB-Bot/.claude/worktrees/kappa-before/parity_out/real" `
-  "C:/Users/EE-LT-11030/Personal/EMB-Bot/.claude/worktrees/kappa-after/parity_out/real"
+  "<repo-root>/.claude/worktrees/kappa-before/parity_out/real" `
+  "<repo-root>/.claude/worktrees/kappa-after/parity_out/real"
 ```
 
 Paste the full table into the session log. Both outcomes are acceptable results — "kappa fell" is a finding, not a failure.
@@ -185,7 +185,7 @@ The complaint this plan item started from is already fixed in code: `619e9ad "fi
 - [ ] **Step 1: Cut the lane**
 
 ```powershell
-cd C:\Users\EE-LT-11030\Personal\EMB-Bot
+cd <repo-root>
 git worktree add .claude/worktrees/measurement-debt -b claude/measurement-debt d96f9ff
 ```
 

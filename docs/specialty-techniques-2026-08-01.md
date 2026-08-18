@@ -668,7 +668,7 @@ Note the two Erich Campbell recipes differ by **2×** in stitch cost for the sam
 
 ## 5. `fabrics.py` audit
 
-File: `C:\Users\EE-LT-11030\EMB-Bot\digitizer\digitizer_core\fabrics.py`
+File: `<user-home>\EMB-Bot\digitizer\digitizer_core\fabrics.py`
 
 **Repo constraint first.** The file's own docstring: *"Same ids, same values, deliberately… When a sew-out moves a number, move it in both places."* Every change below must land in `src/fabrics.js` too, or a design digitized in the browser and one built in Python need different tuning on the same garment.
 
