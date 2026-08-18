@@ -47,6 +47,11 @@ def test_constants_track_artfidelity():
 
     assert ef.RES == artfidelity.RES
     assert ef.THREAD_W_MM == artfidelity.THREAD_W_MM
+    # Paint wider than physical thread on purpose: 0.40 mm at RES 10 aliases
+    # against the ~3.98 px fill-row advance and manufactures pinholes
+    # (measured 2026-08-17; see artfidelity.PAINT_W_MM's comment).
+    assert ef.PAINT_W_MM == artfidelity.PAINT_W_MM
+    assert ef.PAINT_W_MM > ef.THREAD_W_MM
 
 
 def test_identical_masks_are_perfect():
@@ -120,7 +125,18 @@ def test_engine_mask_reads_ours_stitches_csv(tmp_path):
     )
     m = ef.engine_mask(p)
     assert m.dtype == bool
-    # 10 mm sewn + 10 mm sewn, 0.4 mm thread → ~2×(100×4) px on, well under
-    # the full canvas; the trim hop (10,0)→(10,5) contributes nothing.
+    # cv2.line's thickness is approximate (a requested 5 paints 7 rows on this
+    # build), so don't pin its internals — self-calibrate: paint one reference
+    # 100 px line at the same requested width and bound the CSV mask against
+    # twice that. The two sewn 10 mm segments must land near 2x the reference;
+    # the trim hop (10,0)→(10,5) must contribute nothing.
+    import cv2
+
+    ref = np.zeros((60, 300), np.uint8)
+    tw = max(1, int(round(ef.PAINT_W_MM * ef.RES)))
+    cv2.line(ref, (4, 30), (104, 30), 1, tw)
+    ref_on = np.count_nonzero(ref)
     on = np.count_nonzero(m)
-    assert 600 <= on <= 1200, on
+    assert 1.7 * ref_on <= on <= 2.3 * ref_on, (on, ref_on)
+    # Trim semantics: the hop's midpoint (10 mm, 2.5 mm) is bare.
+    assert not m[int(2.5 * ef.RES) + 4, int(10.0 * ef.RES) + 4]

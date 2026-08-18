@@ -37,6 +37,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from artfidelity import (  # noqa: E402
+    PAINT_W_MM,
     RES,
     SHIFT_MM,
     THREAD_W_MM,

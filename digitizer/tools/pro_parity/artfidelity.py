@@ -31,7 +31,19 @@ import numpy as np
 from PIL import Image
 
 RES = 10.0          # px per mm
-THREAD_W_MM = 0.40  # same stroke width prep_all paints coverage with
+THREAD_W_MM = 0.40  # physical thread width — kept for reference
+# PAINT width is deliberately wider than the physical thread. At RES 10 a
+# 0.40 mm stroke is 4 px painted over the engine's ~3.98 px fill-row advance,
+# and integer rounding of segment endpoints manufactures 1 px pinholes inside
+# solid fills — measured 2026-08-17: hotel_fremont_hat's mean boundary
+# distance read 2.607 mm at 0.40 paint and 0.799 mm at 0.50, then stayed
+# byte-stable through 0.60 (docs/curve-fidelity-ladder-2026-08-17.md).
+# 0.50 mm closes the rounding gap while staying well under two row advances,
+# so real uncovered structure still reads as uncovered. Note cv2.line's
+# thickness is approximate (a requested 5 px paints 7 rows on this build) —
+# the criterion for this constant is the measured stability above, not the
+# exact painted width.
+PAINT_W_MM = 0.50
 SHIFT_MM = 4.0      # alignment search half-window
 SHIFT_STEP_MM = 0.4
 
@@ -53,7 +65,7 @@ def pro_mask(csv_path):
     w = int((x.max() - x0) * RES) + 8
     h = int((y.max() - y0) * RES) + 8
     m = np.zeros((h, w), np.uint8)
-    tw = max(1, int(round(THREAD_W_MM * RES)))
+    tw = max(1, int(round(PAINT_W_MM * RES)))
     px = ((x - x0) * RES + 4).astype(np.int32)
     py = ((y - y0) * RES + 4).astype(np.int32)
     for k in range(1, len(px)):
