@@ -16,7 +16,7 @@
 
 - **Public repo.** No new client artwork, customer names, or third-party stitch files. Slugs already committed are fine.
 - **Branch:** everything here commits to `claude/shape-fidelity` (worktree `.claude/worktrees/shape-fidelity`, cut from `origin/main` `73f37da`). Only Kent merges.
-- **Worktrees have no `.venv`.** Invoke the primary checkout's interpreter — `C:/Users/EE-LT-11030/Personal/EMB-Bot/digitizer/.venv/Scripts/python.exe` — with cwd inside the worktree's `digitizer/`, and verify `digitizer_core.__file__` resolves into the worktree before trusting any number.
+- **Worktrees have no `.venv`.** Invoke the primary checkout's interpreter — `<repo-root>/digitizer/.venv/Scripts/python.exe` — with cwd inside the worktree's `digitizer/`, and verify `digitizer_core.__file__` resolves into the worktree before trusting any number.
 - **Measure in a pinned worktree** (three baselines died mid-run on 2026-08-15 — `docs/scope-digest/measurement.md:123-125`). One `PRO_PARITY_OUT` per measurement arm; parallel runs corrupt without it (`measurement.md:112`).
 - **Corpus root:** `PRO_PARITY_ROOT` defaults to `G:/My Drive/EMB-Bot/Embroidery Files` (`prep_both.py:40`); `PRO_PARITY_OUT` is required (KeyError if unset). Drive via `prep_both.py`, not `prep_all.py` (its defaults are dead sandbox paths; its DESIGNS list still carries the macOS colon form — `prep_both.py`'s underscore list is the one to use).
 - **ROADMAP hard gate 4:** no quality claim on a raw agreement number, anywhere, in any doc this plan touches.

@@ -8,7 +8,7 @@ metadata:
   modified: 2026-08-18T00:23:55.802Z
 ---
 
-Two machine-local facts about `C:\Users\EE-LT-11030\Personal\EMB-Bot\digitizer` (Kent's Windows box), both confirmed 2026-08-17:
+Two machine-local facts about `<repo-root>\digitizer` (Kent's Windows box), both confirmed 2026-08-17:
 
 1. **Venv is editable now.** The venv had stale NON-editable copies of `digitizer_core`/`digitizer_service` in site-packages (installed 2026-08-15); from any cwd other than `digitizer/` they silently shadowed repo code. Fixed 2026-08-17: `pip uninstall digitizer-core` + `pip install -e ".[service,dev]"`. Verify with `pip show digitizer-core` — it must list `Editable project location: ...\EMB-Bot\digitizer`. If that line is missing, someone reran a non-editable install and the shadowing is back.
 
