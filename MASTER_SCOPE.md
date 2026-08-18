@@ -298,17 +298,20 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
   deselects nobody is assigned to: `docs/pro-parity-real-art-2026-08-15.md` §0b.
   *(corrected 2026-08-17 — Windows column re-run this date: `logo_alpha` ×2
   passed, `enthusiast_logo` ×2 failed; CI column read from the workflow)*
-- **OCR tests skip, not fail, on a machine without the `tesseract` binary.**
-  `pytesseract` is a declared dep and imports fine, but it only wraps the
-  `tesseract` executable: CI apt-installs that (`python-package-conda.yml:75-76`),
-  a Windows box usually has not. The five tests that demand a REAL read — the
-  OCR-gate damaging case, both `test_ocr_suggest` real-read tests, and the
-  `saw_a_real_character` assertions in `test_pipeline.py` / `test_service.py` —
-  used to fail there as unexplained local reds; they now carry
-  `skipif(shutil.which("tesseract") is None)`. Install Tesseract on `PATH` to
-  exercise them locally; CI always runs all five. *(measured 2026-08-17 — the
-  five failed at 73f37da on the tesseract-less Windows machine, skip after the
-  markers landed)*
+- **OCR tests skip, not fail, on a machine without the `tesseract` binary —
+  and never skip on CI.** `pytesseract` is a declared dep and imports fine, but
+  it only wraps the `tesseract` executable: CI apt-installs that
+  (`python-package-conda.yml:75-76`), a Windows box usually has not. The five
+  tests that demand a REAL read — the OCR-gate damaging case, both
+  `test_ocr_suggest` real-read tests, and the `saw_a_real_character` assertions
+  in `test_pipeline.py` / `test_service.py` — used to fail there as unexplained
+  local reds; they now carry the shared `requires_tesseract` marker
+  (`tests/conftest.py`), which skips only when the binary is missing AND `CI`
+  is unset — a CI refactor that loses the tesseract install fails loud instead
+  of going dark behind quiet skips. Install Tesseract on `PATH` to exercise
+  them locally. *(measured 2026-08-17 — the five failed at 73f37da on the
+  tesseract-less Windows machine, skip after the markers landed, and fail
+  again with `CI=1` set)*
 - **Measure pro-parity in a git worktree, never in a shared checkout.** Three
   separate baselines were invalidated on 2026-08-15 by commits landing mid-run,
   including from a second Claude session on the same branch. The first symptom

@@ -537,18 +537,21 @@ don't push for it.
 
 ## Running things
 
-Engine and Studio counts below were re-verified 2026-08-11 (project-audit
-pass); the digitizer count was last verified 2026-08-04 (on `origin/main`
-at `354f075` — CI's own green run on that exact commit confirmed it outside
-this environment too, not just locally). If one comes back lower than
-stated, something regressed; don't assume the doc drifted.
+Pass counts are gone from this section on purpose — the counts-are-gone
+convention: a total that drifts with normal work is never hard-coded in a
+doc; run the suite for today's number and judge the run by its expected
+failure classes instead (precedent: fb2cc18, which dropped the hard-coded
+`tools/` script count the same way). Engine and Studio suites are expected
+CLEAN — engine verified clean 2026-08-17, Studio 2026-08-11 — so any
+failure in those two is a regression, full stop. The digitizer's two
+expected failure classes are documented below the command block.
 
 **CI now exists.** `.github/workflows/python-package-conda.yml` (PR #37
 rewrote Kent's initial stock conda template to run the three commands
 below for real) runs on every push and pull request — three jobs, engine /
-studio / digitizer, the digitizer job deselecting the 3 golden tests that
-mismatch on `ubuntu-latest` (CI's OWN list, not the same three that fail on
-Kent's Windows machine — see the failure classes below). Every PR now needs
+studio / digitizer, the digitizer job deselecting 3 golden tests by node ID
+(CI's OWN long-standing list, not the same three that fail on Kent's
+Windows machine — see the failure classes below). Every PR now needs
 its Actions run green in addition to a local pass before merging.
 
 **Known ongoing issue, since 2026-08-09, unresolved as of this writing:**
@@ -570,21 +573,22 @@ workaround given the pattern, not a reason to stop checking whether it's
 actually cleared before assuming so.
 
 ```bash
-node --test                 # engine tests (root) — 283 tests, 281/283 as of 2026-08-11 (2 embf-guard failures, fix in progress)
+node --test                 # engine tests (root) — expected clean
 cd app && npm install && npm run dev     # Studio dev server
 tools/start-emb-bot.ps1     # Windows: both servers in their own windows + opens the browser
-cd app && npm test          # Studio tests (vitest) — 615/615 (33 files, 2026-08-11)
+cd app && npm test          # Studio tests (vitest) — expected clean
 node tools/build-embf.mjs   # rebuild the binary font library (see section above)
 
-cd digitizer && .venv/Scripts/python -m pytest -q   # Python digitizer tests (~21 min serial as of 2026-08-17; -n auto is parallel-safe)
+cd digitizer && .venv/Scripts/python -m pytest -q -n auto   # Python digitizer tests (runtime + expected failures below)
 cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0.1:8721
 ```
 
 **No pass counts here anymore — judge a run by its failure classes.** The
 totals this note used to carry (654/658, ~7-11 min) were measured in the
 2026-08-03-era dev container and sat unedited while the suite roughly
-doubled; per the counts-are-gone convention (fb2cc18), run the suite for
-today's numbers. What stays true is which failures are EXPECTED:
+doubled; per the counts-are-gone convention (defined at the top of this
+section), run the suite for today's numbers. What stays true is which
+failures are EXPECTED:
 
 1. **Golden/byte-identical mismatches on any machine that didn't capture
    the golden.** Per-fixture platform divergence, not version skew — every
@@ -594,34 +598,36 @@ today's numbers. What stays true is which failures are EXPECTED:
    re-captured on Linux, never on Windows (ROADMAP standing item; PR #159
    is the sanctioned pattern), so WHICH parametrizations mismatch depends
    on where each golden was pinned, and the set moves when one is
-   re-captured. The live per-machine matrix (Windows vs CI, fixture by
-   fixture) is MASTER_SCOPE "Gotchas" → "The golden divergence is
-   PER-FIXTURE, not per-platform"; cause detail in
-   `docs/pro-parity-real-art-2026-08-15.md` §0b; CI deselects its own
-   three known mismatches by node ID (list + rationale in
-   `.github/workflows/python-package-conda.yml`). Measured 2026-08-17 on
-   Kent's Windows machine at 73f37da, the local set is exactly three:
-   `test_flat_lane_byte_identical` and `test_stage2_photo_segment` on
-   `[photo/enthusiast_logo.png]`, plus `test_pushcomp` on
-   `[logo_whitebg.png-towel]`. A golden failure outside the matrix's
-   expected cell — e.g. `[logo_alpha.png]` failing on Windows, where it
-   passes — is a REAL regression, not this note being stale.
+   re-captured. The concrete per-machine set lives in ONE place — the
+   MASTER_SCOPE "Gotchas" matrix ("The golden divergence is PER-FIXTURE,
+   not per-platform") — with cause detail in
+   `docs/pro-parity-real-art-2026-08-15.md` §0b. CI deselects three node
+   IDs (list + rationale in `.github/workflows/python-package-conda.yml`);
+   those deselected tests never RUN on CI, so their ubuntu-latest behavior
+   is inferred from the deselects' history, not measured — the workflow
+   comment's remove-and-see check is standing and unowned. A golden
+   failure outside the matrix's expected cell is a REAL regression, not
+   this note being stale.
 
-2. **OCR tests skip when the `tesseract` binary is not on PATH.**
-   `textcluster.py`'s OCR-confidence gate and OCR-suggested-text passes
-   call the real binary through `pytesseract`; CI apt-installs
-   `tesseract-ocr` (see the workflow), most dev machines don't have it.
-   The five tests that assert a REAL read (not a mocked one) carry
-   `skipif(shutil.which("tesseract") is None)` since 2026-08-17 — before
-   that they FAILED on a tesseract-less machine and read as five
-   unexplained local reds. A skip here means "install tesseract to
-   exercise OCR end-to-end", not that anything is broken.
+2. **OCR tests skip when the `tesseract` binary is not on PATH — except on
+   CI, where a missing binary fails loud.** `textcluster.py`'s
+   OCR-confidence gate and OCR-suggested-text passes call the real binary
+   through `pytesseract`; CI apt-installs `tesseract-ocr` (see the
+   workflow), most dev machines don't have it. The five tests that assert
+   a REAL read (not a mocked one) carry the shared `requires_tesseract`
+   marker (`digitizer/tests/conftest.py`, since 2026-08-17), which skips
+   only when the binary is missing AND `CI` is unset — so a workflow
+   refactor that loses the tesseract install fails the job instead of
+   going dark behind quiet skips. Before the marker these five FAILED on
+   a tesseract-less machine and read as unexplained local reds. A local
+   skip means "install tesseract to exercise OCR end-to-end", not that
+   anything is broken.
 
 Anything red outside those two classes is unexplained and yours to chase.
-Runtime, measured 2026-08-17 on Kent's machine: 21:34 serial for the full
-suite. The suite is verified parallel-safe — CI runs `-n auto`
-(pytest-xdist; see the workflow comment for how that was verified) — so
-local `-n auto` is the sanctioned way to make the wait bearable.
+Runtime: 21:34 serial, measured 2026-08-17 on Kent's machine — which is
+why the command above carries `-n auto`: pytest-xdist is pinned in
+`requirements.txt`, and parallel runs are verified to produce the
+identical pass/fail set (see the workflow comment for how).
 
 `EMB-Bot-standalone.html` is **DELETED 2026-08-04, Kent's call**, and
 `EMB-Bot.html` itself (plus `src/app.js`) followed on **2026-08-08**

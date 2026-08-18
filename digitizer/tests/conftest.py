@@ -1,3 +1,5 @@
+import os
+import shutil
 from pathlib import Path
 
 import pytest
@@ -5,6 +7,15 @@ import pytest
 from digitizer_core import PipelineConfig, run_stages
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
+
+# The real-read OCR tests skip when the tesseract binary is absent — but
+# never on CI, where the workflow apt-installs it: if that provisioning is
+# ever lost in a refactor, the five OCR tests must fail loud, not go dark
+# behind quiet skips (the same rule the studio-e2e job enforces for its
+# specs). GitHub Actions always sets CI=true.
+requires_tesseract = pytest.mark.skipif(
+    shutil.which("tesseract") is None and not os.environ.get("CI"),
+    reason="needs the real tesseract binary on PATH (CI installs tesseract-ocr)")
 
 # The fixture logo's true colors and the Isacord threads they resolve to
 # (CIEDE2000). Pinned so a change in the matcher or the chart is visible.

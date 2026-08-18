@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import io
 import json
-import shutil
 import time
 from pathlib import Path
 
@@ -21,6 +20,8 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from digitizer_service.app import MAX_PIXELS, app  # noqa: E402
 from digitizer_service.jobs import JobRegistry, content_key  # noqa: E402
+
+from .conftest import requires_tesseract  # noqa: E402
 
 ART = Path(__file__).resolve().parents[1] / "testdata" / "logo_whitebg.png"
 # The enclosed-background repro: a gradient logo with white icon linework
@@ -492,9 +493,7 @@ def test_review_payload_carries_text_cluster_fields_over_http(client):
         assert s["text_candidate"] is False
 
 
-@pytest.mark.skipif(
-    shutil.which("tesseract") is None,
-    reason="needs the real tesseract binary on PATH (CI installs tesseract-ocr)")
+@requires_tesseract
 def test_review_payload_carries_ocr_suggested_text_fields_over_http(client):
     """The service-layer half of OCR-suggested text (Studio "Convert to
     text" entry point): `_review_payload` echoes `ocr_char`/`ocr_confidence`
