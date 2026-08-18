@@ -56,6 +56,7 @@ const PIPELINE_CONFIG_FIELDS = [
   "underlay_style", "underlay", "satin", "satin_max_width_mm", "border",
   "border_width_mm", "deleted_shape_ids", "shape_overrides",
   "merge_shape_ids", "split_shapes", "photo_segment_sam2", "detail_layer",
+  "forced_class",
 ];
 
 test("buildDigitizeConfig sends the stored thread-brand preference and the project garment, in service field names", async () => {
@@ -142,6 +143,31 @@ test("detail_layer rides buildDigitizeConfig both ways, and back-fills false for
     },
   });
   expect(buildDigitizeConfig(on, PROJECT).detail_layer).toBe(true);
+});
+
+test("forced_class rides buildDigitizeConfig only when the flat-art override is set", async () => {
+  // Same absent-means-auto sentinel fill_angle_deg uses, for the same reason:
+  // an absent key IS "classify normally" server-side (config.py's
+  // `forced_class: str | None = None`), so sending it unset would only change
+  // the job cache key for every design that never overrode anything.
+  stubStorage({});
+  const { buildDigitizeConfig } = await import("./digitizer.js");
+
+  expect("forced_class" in buildDigitizeConfig(digitizedElement(), PROJECT)).toBe(false);
+
+  const forced = buildDigitizeConfig(
+    digitizedElement({
+      params: {
+        target_width_mm: 80, max_colors: 6, satin: true,
+        fill_angle_deg: null, border: "off", forced_class: "flat",
+      },
+    }),
+    PROJECT
+  );
+  expect(forced.forced_class).toBe("flat");
+  // The service derives its allowlist from PipelineConfig's own fields, so an
+  // extra key here is a 400, not a silently-ignored request.
+  for (const k of Object.keys(forced)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
 });
 
 test("startDigitize POSTs multipart image+config to /digitize exactly as test_service.py's client does", async () => {
@@ -1533,4 +1559,35 @@ test("describeWarnings says how much of the design an enclosed area actually is"
   expect(out[1].text).toContain("2%");
   expect(out[2].text).not.toContain("%");
   expect(out[2].text).toContain("Layers");
+});
+
+// ---- stage-0 classification copy -------------------------------------------
+//
+// The four codes stage 0 can emit (warnings_codes.py lines 8-12) had no
+// WARNING_TEXT entry, so every one of them reached the panel as the engine's
+// own message — "Classified as a photo with a subject (portrait/pet/product).
+// Portrait/pet handling isn't built yet…", which is a build-status note to a
+// developer, not something a customer can act on. That matters more now that
+// the panel offers a flat-art override off the back of exactly these codes:
+// the sentence a user reads before deciding has to be about their artwork.
+const STAGE0_CODES = [
+  "CLASSIFIED_GRADIENT", "CLASSIFIED_PHOTO_SUBJECT",
+  "CLASSIFIED_PHOTO_SCENE", "CLASSIFICATION_UNCERTAIN",
+];
+
+test("describeWarnings speaks all four stage-0 classification codes instead of falling back to the engine's voice", async () => {
+  stubStorage({});
+  const { describeWarnings } = await import("./digitizer.js");
+  const out = describeWarnings(
+    STAGE0_CODES.map((code) => ({ code, message: "ENGINE VOICE, not for customers." }))
+  );
+  expect(out).toHaveLength(4);
+  for (const line of out) {
+    expect(STAGE0_CODES).toContain(line.code);
+    // The fallback in describeWarnings hands back `message` verbatim, so an
+    // untranslated code is exactly this string — this is the assertion that
+    // fails the day a fifth stage-0 code lands without copy.
+    expect(line.text).not.toContain("ENGINE VOICE");
+    expect(line.text.length).toBeGreaterThan(20);
+  }
 });

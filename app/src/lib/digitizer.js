@@ -97,7 +97,9 @@ export async function fetchHealth(fetchFn = globalThis.fetch) {
 //     (digitizer_core/fabrics.py mirrors the engine's GARMENT_FABRIC).
 // fill_angle_deg is omitted when null: null means "per-shape auto" and the
 // service treats an absent key the same way — omitting keeps the config (and
-// the job cache key) minimal.
+// the job cache key) minimal. forced_class (the flat-art override the panel
+// offers on a photo misroute) is omitted the same way and for the same
+// reason: absent IS "classify normally" server-side.
 export function buildDigitizeConfig(element, project) {
   const p = { ...DEFAULT_DIGITIZE_PARAMS, ...((element && element.params) || {}) };
   const cfg = {
@@ -114,6 +116,12 @@ export function buildDigitizeConfig(element, project) {
     detail_layer: p.detail_layer,
   };
   if (p.fill_angle_deg != null) cfg.fill_angle_deg = p.fill_angle_deg;
+  // Stage 0's escape hatch, stored in element.params like any other design
+  // property (so it persists in the .embproj and rides the panel's own
+  // params-changed re-digitize) but written ONLY when the user overrode the
+  // classification — an unset override must not change the config, or every
+  // design that never touched it takes a needless cache miss.
+  if (p.forced_class) cfg.forced_class = p.forced_class;
   // Dev/ops seam, not a design property (see sam2Enabled above): sent as
   // per-request context alongside thread_brand rather than stored in
   // element.params, so it never persists into a saved project. Sent for every
@@ -1092,6 +1100,22 @@ function areaSuffix(w) {
 }
 
 const WARNING_TEXT = {
+  // Stage 0's four classification codes (warnings_codes.py). Untranslated,
+  // they reached the panel as the engine's own build-status prose —
+  // "Portrait/pet handling isn't built yet, so results will be low quality
+  // until it ships" is a note to a developer about a roadmap, not something a
+  // customer can act on. Each of these says what the ENGINE decided about
+  // THEIR artwork, because that is the sentence they read before deciding
+  // whether to override it (DigitizePanel's flat-art nudge fires on the first
+  // three of them).
+  CLASSIFIED_GRADIENT: () =>
+    "The art reads as smooth shading rather than flat color. Areas that shade smoothly enough sew in a few blended thread shades; the rest sew in one flat color.",
+  CLASSIFIED_PHOTO_SUBJECT: () =>
+    "The art reads as a photo of a person, pet or product. Photos sew rougher than flat artwork — check the preview closely before stitching this one out.",
+  CLASSIFIED_PHOTO_SCENE: () =>
+    "The art reads as a photographic scene. Photos sew rougher than flat artwork — check the preview closely before stitching this one out.",
+  CLASSIFICATION_UNCERTAIN: () =>
+    "The art didn't clearly read as flat, shaded or photographic, so it was digitized as flat art. If it's really a photo, expect a rougher result than usual.",
   BACKGROUND_UNCERTAIN: () =>
     "The background was hard to separate from the art. Check the stitch preview for missing or extra areas.",
   INPUT_LOW_RESOLUTION: () =>
