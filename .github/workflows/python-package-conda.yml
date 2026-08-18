@@ -52,14 +52,18 @@ jobs:
     # needed (COOKBOOK.md).
     #
     # Three byte-identical/golden-hash tests are deselected: they compare
-    # against goldens pinned on the original development machine and are
-    # KNOWN to mismatch by a handful of stitches on other environments
-    # (documented in COOKBOOK.md "Running things" — reproduced in the remote
-    # dev container since 2026-08-03, cause suspected to be platform-level
-    # numeric differences in the numpy/opencv/shapely stack, never fully
-    # traced). Deselecting exactly these three keeps CI green AND meaningful:
-    # any NEW golden break still fails the job. If these three ever pass on
-    # CI runners, remove the deselects and find out why.
+    # against goldens pinned before CI existed and are KNOWN to mismatch by
+    # a handful of stitches off their pinning machine (last actually
+    # observed in the 2026-08-03 remote dev container; deselected tests
+    # never run here, so their current ubuntu-latest behavior is inferred,
+    # not measured). Version skew is ruled out — every geometry-relevant
+    # pin matches requirements.txt exactly — and the divergence is
+    # per-fixture platform-level numerics: matrix in MASTER_SCOPE
+    # "Gotchas", failure classes in COOKBOOK.md "Running things", evidence
+    # in .claude/memory/windows-goldens-fail-locally.md. Deselecting
+    # exactly these three keeps CI green AND meaningful: any NEW golden
+    # break still fails the job. If these three ever pass on CI runners,
+    # remove the deselects and find out why.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

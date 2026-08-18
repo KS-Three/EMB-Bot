@@ -25,8 +25,9 @@ Doc names are shortened to their prefix: `pro-parity-real-art` = `docs/pro-parit
   tool, not a CI gate, except a brand-new block-severity finding (`MASTER_SCOPE.md` § Evaluation corpus). Its
   preflight length predicate under-reports on 22/48 configs, median 1.50x, max 9.68x — larger than the margin its
   threshold rests on (`hardening-closeout` §2.4).
-- **Byte-identical goldens** — signal in CI (`ubuntu-latest`), not locally: on Windows they fail from a single
-  contour and the golden's own capture commit fails too, so judge by "same failure set before and after"
+- **Byte-identical goldens** — per-fixture, not per-platform: each golden mismatches wherever it wasn't captured
+  (on Windows the divergence is a single contour; `logo_alpha` PASSES there, so a local `logo_alpha` failure is a
+  real regression). Judge by "same failure set before and after" against the MASTER_SCOPE § Gotchas matrix
   (`pro-parity-real-art` §0b; `MASTER_SCOPE.md` § Gotchas).
 - **Codec harnesses** (`crossval-stitch-formats.mjs` + `crossval_decode.py` vs pyembroidery) — self-validated by
   reproducing the known DST transposition at rms 0.0; prove standard-*reader* agreement, not machine behaviour, and
@@ -102,8 +103,9 @@ Doc names are shortened to their prefix: `pro-parity-real-art` = `docs/pro-parit
 - **MINOR but structural:** every chaining headline is measured on a PNG in Kent's Downloads folder, and preflight's
   "5 artworks" is 4 PNGs plus a gitignored `scratch_flat.png` carrying all 6 of its density-gate leaks — "no other
   machine can re-derive any of it" (`hardening-closeout` §2.9, §6.9).
-- **One machine only:** 3 non-OCR Windows failures plus unusable local goldens, 4 tests needing the `tesseract-ocr`
-  binary, a hand-created `digitizer/.venv` (`pro-parity-real-art` §0b, §8; `handoff-2026-08-16` §4).
+- **One machine only:** 3 golden Windows failures plus locally-unusable goldens, 5 tests needing the `tesseract-ocr`
+  binary (they skip without it since 2026-08-17, never on CI), a hand-created `digitizer/.venv`
+  (`pro-parity-real-art` §0b, §8; `handoff-2026-08-16` §4, corrected 2026-08-17).
 - **Instrument artifacts sit in dead scratch dirs:** the lanes' renders and the judge's `fanmetric.py` /
   `jrender.py` under `/tmp/claude-0/...` (`pro-parity-lane-reports`; `pro-parity-judge-report` §5); the DST
   clean-room decoder and its PNGs (`dst-axis-verdict` § Artifacts); the transition census JSON and 46 overlays
