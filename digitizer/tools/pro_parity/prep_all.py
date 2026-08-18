@@ -607,6 +607,18 @@ def run_ours(art_path, width_mm, outdir, garment_id=None):
     forced = os.environ.get("PRO_PARITY_FORCED_CLASS")
     if forced:
         cfg.forced_class = forced
+    # Curve-fidelity ladder (shape-fidelity plan Task 2): lets an arm override
+    # simplify_tol_mm without forking the harness. Unset — the default —
+    # measures the shipped 0.2 mm exactly as every run before it did. Hard
+    # fail rather than stray-attribute if a future tree renames the field
+    # (the fill_density_boost lesson below, but an arm that silently measures
+    # the wrong tolerance is worse than one that dies).
+    tol = os.environ.get("PRO_PARITY_SIMPLIFY_TOL")
+    if tol:
+        if "simplify_tol_mm" not in PipelineConfig.__dataclass_fields__:
+            raise RuntimeError("PRO_PARITY_SIMPLIFY_TOL set but PipelineConfig "
+                               "has no simplify_tol_mm field on this tree")
+        cfg.simplify_tol_mm = float(tol)
     # Task A2 (2026-08-14): fill_density_boost is SEW-OUT GATED off by
     # default (see PipelineConfig's own comment) — this harness exists
     # specifically to measure a candidate engine change against the corpus
