@@ -243,6 +243,38 @@
   // that tracks the user's own restores.
   $: otherWarningLines = warningLines.filter((w) => w.code !== "BACKGROUND_ENCLOSED");
 
+  // ---- flat-art override (stage 0's escape hatch) ---------------------------
+  //
+  // Stage 0 sometimes routes flat-color logo art down the gradient/photo lane,
+  // where the tonal fills make a mess of something that should have been three
+  // solid colors. The engine already takes the override (`forced_class` in
+  // digitizer_core/config.py, honored by stage0_classify.classify), so all
+  // Studio adds is the offer.
+  //
+  // Deliberately scoped to FLAT-COLOR art, and the copy has to keep saying so:
+  // forcing flat on genuinely TEXTURED logo art measured WORSE, because
+  // k-means shatters the texture. This is "the classifier read your artwork
+  // wrong", not a general "make it better" button.
+  const PHOTO_MISROUTE_CODES = new Set([
+    "CLASSIFIED_PHOTO_SUBJECT", "CLASSIFIED_PHOTO_SCENE", "CLASSIFIED_GRADIENT",
+  ]);
+  // The override is an ordinary digitize param (buildDigitizeConfig sends it
+  // when set), which is the whole reason it needs no machinery of its own:
+  // setting or clearing it changes element.params, and the params-changed
+  // block above re-digitizes. Neither control calls runDigitize itself.
+  $: forcedClass = (element.params && element.params.forced_class) || null;
+  $: offerFlatArt =
+    !forcedClass && warningLines.some((w) => PHOTO_MISROUTE_CODES.has(w.code));
+
+  // Cleared by REMOVING the key, not by nulling it: the params object has to
+  // come back identical to a design that never overrode anything, or the
+  // service's job cache key differs and the revert pays for a run the cache
+  // already holds.
+  function clearForcedClass() {
+    const { forced_class, ...rest } = element.params;
+    patch({ params: rest });
+  }
+
   // Resize honesty (Kent's rule, same as DesignPanel): the field's resize
   // handles SCALE baked stitches, they don't re-digitize — density changes
   // with size. Unlike a .dst import, here the fix is one click away:
@@ -1164,6 +1196,35 @@
       </label>
     </div>
 
+    <!-- Sits with the params, not down in the warnings list, because it IS a
+         param — and because the "on" row has to stand whether or not there is
+         a result to hang it off. Once the override takes effect the art
+         classifies as flat and the CLASSIFIED_* warning is gone: a row anchored
+         to that warning would make the override invisible, and permanent, one
+         run after the user set it. -->
+    {#if forcedClass}
+      <div class="dgp-flatart dgp-flatart-on">
+        <p class="dgp-flatart-text">Digitizing as flat art</p>
+        <button type="button" class="dgp-flatart-btn" on:click={clearForcedClass}>
+          Use automatic detection
+        </button>
+      </div>
+    {:else if offerFlatArt}
+      <div class="dgp-flatart">
+        <p class="dgp-flatart-text">
+          This looks like photo art. If it's a flat-color logo — solid colors, no shading or
+          photo texture — digitize it as flat art instead.
+        </p>
+        <button
+          type="button"
+          class="dgp-flatart-btn"
+          on:click={() => setParam("forced_class", "flat")}
+        >
+          Digitize as flat art
+        </button>
+      </div>
+    {/if}
+
     <button
       type="button"
       class="dgp-run"
@@ -1898,6 +1959,50 @@
     cursor: pointer;
     font-size: var(--fs-xs, 12px);
     white-space: nowrap;
+  }
+  /* The flat-art offer borrows .dgp-enclosed-banner's shape wholesale, for the
+     reason that banner's own comment gives: an offer the user is meant to act
+     on has to be a box, not another dim line in a list. */
+  .dgp-flatart {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 10px 0 0;
+    padding: 8px 10px;
+    border: 1px solid var(--warn-text, #8a6d1a);
+    border-radius: var(--radius-s, 6px);
+    background: var(--warn-bg, #fdf6e3);
+  }
+  .dgp-flatart-text {
+    flex: 1;
+    margin: 0;
+    font-size: var(--fs-xs, 12px);
+    color: var(--warn-text, #8a6d1a);
+  }
+  .dgp-flatart-btn {
+    flex-shrink: 0;
+    padding: 5px 10px;
+    border: 1px solid var(--warn-text, #8a6d1a);
+    border-radius: var(--radius-s, 6px);
+    background: var(--warn-text, #8a6d1a);
+    color: #fff;
+    cursor: pointer;
+    font-size: var(--fs-xs, 12px);
+    white-space: nowrap;
+  }
+  /* With the override ON the row is a STATUS, not a warning — nothing is wrong
+     and nothing needs chasing — and unlike the offer it never goes away. So it
+     drops to .dgp-check's quiet surface/tint vocabulary instead of sitting
+     there in warning yellow for the life of the design. */
+  .dgp-flatart-on {
+    border-color: var(--tint-border, #ccd6fb);
+    background: var(--surface, #fff);
+  }
+  .dgp-flatart-on .dgp-flatart-text { color: var(--muted, #667); }
+  .dgp-flatart-on .dgp-flatart-btn {
+    border-color: var(--tint-border, #ccd6fb);
+    background: var(--surface, #fff);
+    color: inherit;
   }
   .dgp-resize { font-size: var(--fs-xs, 12px); color: var(--warn-text, #8a6d1a); margin: 8px 0 6px; }
   .dgp-blocks { margin-top: 10px; }

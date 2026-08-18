@@ -178,6 +178,101 @@ describe("whole-design params", () => {
   });
 });
 
+// ---- the flat-art override (stage-0 misroute escape hatch) -----------------
+//
+// Stage 0 sometimes routes flat-color logo art down the gradient/photo lane.
+// The engine already takes `forced_class` (config.py) and Studio already
+// persists digitize params in the service's own field names, so the whole
+// feature is one params key — which means the existing "params changed ->
+// re-digitize" reactive statement is the trigger, and these tests deliberately
+// assert on the PATCH, not on a network call.
+//
+// `health` stays null here (renderPanel's default), so that reactive re-run
+// bails at runDigitize's own `!health` guard and no digitize is attempted —
+// same no-service posture as the rest of this file.
+//
+// The offer is scoped to FLAT-COLOR art on purpose and the copy has to keep
+// saying so: forcing flat on genuinely textured logo art measured WORSE
+// (k-means shatters texture into confetti), so "if it's a flat-color logo" is
+// load-bearing, not padding.
+describe("flat-art override — the nudge", () => {
+  const MISROUTE_CODES = [
+    "CLASSIFIED_PHOTO_SUBJECT", "CLASSIFIED_PHOTO_SCENE", "CLASSIFIED_GRADIENT",
+  ];
+
+  function panelWarnedAs(code, extra = {}) {
+    return renderPanel([shapeRow("s1")], {
+      warnings: [{ code, message: "engine prose" }],
+      ...extra,
+    });
+  }
+
+  for (const code of MISROUTE_CODES) {
+    test(`offers the override on ${code}`, () => {
+      const { getByRole, getByText } = panelWarnedAs(code);
+      expect(getByRole("button", { name: "Digitize as flat art" })).toBeTruthy();
+      // The texture caveat, not just the button.
+      expect(getByText(/no shading or photo texture/)).toBeTruthy();
+    });
+  }
+
+  test("stays silent for a flat result whose warnings are about something else", () => {
+    const { queryByRole } = panelWarnedAs("COLOR_CAP_APPLIED");
+    expect(queryByRole("button", { name: "Digitize as flat art" })).toBeNull();
+  });
+
+  test("stays silent once the override is already set — offering it twice is nonsense", () => {
+    const { queryByRole } = panelWarnedAs("CLASSIFIED_PHOTO_SUBJECT", {
+      params: { ...DEFAULT_DIGITIZE_PARAMS, forced_class: "flat" },
+    });
+    expect(queryByRole("button", { name: "Digitize as flat art" })).toBeNull();
+  });
+
+  test("taking the offer writes forced_class in exactly one params patch (one undo step)", async () => {
+    const { getByRole, patches } = panelWarnedAs("CLASSIFIED_PHOTO_SUBJECT");
+    await fireEvent.click(getByRole("button", { name: "Digitize as flat art" }));
+    expect(patches).toHaveLength(1);
+    expect(Object.keys(patches[0].patch)).toEqual(["params"]);
+    expect(patches[0].patch.params.forced_class).toBe("flat");
+    // A params patch replaces the whole object — dropping a sibling here would
+    // silently reset the design's width/colors along with the override.
+    expect(patches[0].patch.params.max_colors).toBe(DEFAULT_DIGITIZE_PARAMS.max_colors);
+    expect(patches[0].patch.params.target_width_mm).toBe(DEFAULT_DIGITIZE_PARAMS.target_width_mm);
+  });
+});
+
+describe("flat-art override — reverting", () => {
+  const FORCED = { params: { ...DEFAULT_DIGITIZE_PARAMS, forced_class: "flat" } };
+
+  test("a standing row says the design is being forced, with no warning left to hang it off", () => {
+    // The point of "standing": after the forced re-digitize the art classifies
+    // as flat and the CLASSIFIED_* warning is GONE. If the row hung off the
+    // warning, the override would become invisible and permanent one run after
+    // the user set it. Hence `warnings: []` here.
+    const { getByText, getByRole } = renderPanel([shapeRow("s1")], { ...FORCED, warnings: [] });
+    expect(getByText("Digitizing as flat art")).toBeTruthy();
+    expect(getByRole("button", { name: "Use automatic detection" })).toBeTruthy();
+  });
+
+  test("absent entirely when no override is set", () => {
+    const { queryByText, queryByRole } = renderPanel([shapeRow("s1")]);
+    expect(queryByText("Digitizing as flat art")).toBeNull();
+    expect(queryByRole("button", { name: "Use automatic detection" })).toBeNull();
+  });
+
+  test("reverting DELETES the key rather than nulling it, in one patch", async () => {
+    // Deleted, not set to null: the params object has to come back byte-
+    // identical to a design that never overrode anything, or the service's job
+    // cache key differs and the revert re-runs a job it already has.
+    const { getByRole, patches } = renderPanel([shapeRow("s1")], FORCED);
+    await fireEvent.click(getByRole("button", { name: "Use automatic detection" }));
+    expect(patches).toHaveLength(1);
+    expect(Object.keys(patches[0].patch)).toEqual(["params"]);
+    expect("forced_class" in patches[0].patch.params).toBe(false);
+    expect(patches[0].patch.params).toEqual({ ...DEFAULT_DIGITIZE_PARAMS });
+  });
+});
+
 describe("hiding, restoring, and BACKGROUND_ENCLOSED restore", () => {
   test("hiding a shape adds it to deletedShapeIds", async () => {
     const { container, patches } = renderPanel([shapeRow("s1")]);
