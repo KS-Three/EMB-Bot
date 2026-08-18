@@ -31,19 +31,31 @@ import numpy as np
 from PIL import Image
 
 RES = 10.0          # px per mm
-THREAD_W_MM = 0.40  # physical thread width — kept for reference
-# PAINT width is deliberately wider than the physical thread. At RES 10 a
-# 0.40 mm stroke is 4 px painted over the engine's ~3.98 px fill-row advance,
-# and integer rounding of segment endpoints manufactures 1 px pinholes inside
-# solid fills — measured 2026-08-17: hotel_fremont_hat's mean boundary
-# distance read 2.607 mm at 0.40 paint and 0.799 mm at 0.50, then stayed
-# byte-stable through 0.60 (docs/curve-fidelity-ladder-2026-08-17.md).
-# 0.50 mm closes the rounding gap while staying well under two row advances,
-# so real uncovered structure still reads as uncovered. Note cv2.line's
-# thickness is approximate (a requested 5 px paints 7 rows on this build) —
-# the criterion for this constant is the measured stability above, not the
-# exact painted width.
-PAINT_W_MM = 0.50
+THREAD_W_MM = 0.40  # same stroke width prep_all paints coverage with
+# A 0.50 mm paint width was tried on 2026-08-17 to suppress 1 px pinholes that
+# integer endpoint rounding manufactures inside solid fills, and REVERTED the
+# same day. Three reasons, all measured, kept here so nobody re-derives them:
+#   1. It made the corpus WORSE, not better. Mean boundary distance over the
+#      15 designs: 0.40 -> 1.205 mm, 0.50 -> 1.359, 0.70 -> 1.880, 0.90 ->
+#      2.172. Widening the paint trades art_missed against pro_extra, so it
+#      flatters under-covering designs and punishes over-covering ones — it is
+#      a re-weighting, not a correction. It was picked by watching one design
+#      improve (hotel_fremont_hat 2.607 -> 0.799) without checking the rest.
+#   2. Its stated evidence did not exist. "Byte-stable from 0.50 to 0.60" is a
+#      cv2.line thickness quantisation identity — tw 5 and tw 6 paint the
+#      identical raster for ANY data — so only two distinct rasters were ever
+#      sampled, and the metric had not converged (0.70 moves again).
+#   3. It silently rebased this instrument's own published pro-side numbers:
+#      at 0.40 the table in docs/pro-parity-real-art-2026-08-15.md reproduces
+#      exactly, and every value moves at 0.50.
+# If the pinhole artifact is worth fixing, a morphological close is the right
+# depth — measured on hotel_fremont_hat it removes 99% of pinholes (203 -> 19)
+# against this approach's 77%, and leaves pro_extra untouched at 0.004 where
+# paint widening more than doubles it. That is an outline-preserving fix; this
+# one displaces the outline that the boundary metric measures.
+# Sibling probes (bare.py, holecrop.py, forkprobe.py) also paint 0.40 — keep
+# any future change to this constant in step with them or the directory's
+# probes stop agreeing about what "covered" means.
 SHIFT_MM = 4.0      # alignment search half-window
 SHIFT_STEP_MM = 0.4
 
@@ -65,7 +77,7 @@ def pro_mask(csv_path):
     w = int((x.max() - x0) * RES) + 8
     h = int((y.max() - y0) * RES) + 8
     m = np.zeros((h, w), np.uint8)
-    tw = max(1, int(round(PAINT_W_MM * RES)))
+    tw = max(1, int(round(THREAD_W_MM * RES)))
     px = ((x - x0) * RES + 4).astype(np.int32)
     py = ((y - y0) * RES + 4).astype(np.int32)
     for k in range(1, len(px)):

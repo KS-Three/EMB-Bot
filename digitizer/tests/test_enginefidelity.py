@@ -40,18 +40,21 @@ def ngon_disc(r_px, n, size=None):
     return m.astype(bool)
 
 
-def test_constants_track_artfidelity():
-    # The two instruments must rasterise identically or their numbers are not
-    # comparable design-by-design.
+def test_rasterisation_constants_agree_across_the_harness():
+    # This used to assert ef.RES == artfidelity.RES, which is a tautology:
+    # enginefidelity IMPORTS those names, so both sides are one object and no
+    # change could ever make it red. The drift that actually matters is
+    # between the fidelity instruments and the harness that paints the
+    # coverage they are compared against — prep_all — plus the sibling probes
+    # in this directory. Those are separate definitions, so they can drift.
     import artfidelity
+    import prep_all
 
-    assert ef.RES == artfidelity.RES
-    assert ef.THREAD_W_MM == artfidelity.THREAD_W_MM
-    # Paint wider than physical thread on purpose: 0.40 mm at RES 10 aliases
-    # against the ~3.98 px fill-row advance and manufactures pinholes
-    # (measured 2026-08-17; see artfidelity.PAINT_W_MM's comment).
-    assert ef.PAINT_W_MM == artfidelity.PAINT_W_MM
-    assert ef.PAINT_W_MM > ef.THREAD_W_MM
+    assert artfidelity.RES == RES, "test expectations below are hardcoded to RES 10"
+    assert artfidelity.THREAD_W_MM == prep_all.THREAD_W_MM, (
+        "artfidelity and prep_all must paint coverage at the same width or "
+        "their rasters are not comparable"
+    )
 
 
 def test_identical_masks_are_perfect():
@@ -125,18 +128,15 @@ def test_engine_mask_reads_ours_stitches_csv(tmp_path):
     )
     m = ef.engine_mask(p)
     assert m.dtype == bool
-    # cv2.line's thickness is approximate (a requested 5 paints 7 rows on this
-    # build), so don't pin its internals — self-calibrate: paint one reference
-    # 100 px line at the same requested width and bound the CSV mask against
-    # twice that. The two sewn 10 mm segments must land near 2x the reference;
-    # the trim hop (10,0)→(10,5) must contribute nothing.
-    import cv2
-
-    ref = np.zeros((60, 300), np.uint8)
-    tw = max(1, int(round(ef.PAINT_W_MM * ef.RES)))
-    cv2.line(ref, (4, 30), (104, 30), 1, tw)
-    ref_on = np.count_nonzero(ref)
     on = np.count_nonzero(m)
-    assert 1.7 * ref_on <= on <= 2.3 * ref_on, (on, ref_on)
-    # Trim semantics: the hop's midpoint (10 mm, 2.5 mm) is bare.
+    # ABSOLUTE bound, deliberately. A self-calibrating version (paint a
+    # reference line at the same constant, assert a ratio) is invariant to the
+    # constant and so passes a silent 2x recalibration of the instrument — the
+    # exact class of change this file is here to catch. Two sewn 10 mm
+    # segments at THREAD_W_MM 0.40 (tw 4, 5 rows painted) measure ~1026 px;
+    # the band tolerates cv2 thickness differences across builds but not a
+    # width change: 0.50 gives 1458 and 0.80 gives 1796, both out.
+    assert 600 <= on <= 1200, (on, "rasterisation width changed?")
+    # Trim semantics, pinned independently of the count: the hop's midpoint
+    # (10 mm, 2.5 mm) laid no thread and must be bare.
     assert not m[int(2.5 * ef.RES) + 4, int(10.0 * ef.RES) + 4]

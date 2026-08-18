@@ -6,21 +6,45 @@ outlier chase Kent promoted at the decision gate. Answers: does lowering
 engine's coverage follows the customer's artwork on the real corpus — and
 where does the large residual boundary error actually live?
 
-**Verdict: leave `simplify_tol_mm = 0.2`.** Tighter tolerances buy no
-measurable art-fidelity (differences ≤0.04 mm, inside raster noise), cost
-+2.6% stitches at 0.10, and 0.05 hard-kills one design. Kent accepted
-2026-08-17 and promoted the outlier investigation, whose findings are below.
+**Verdict: leave `simplify_tol_mm = 0.2` — because nothing here measured it.**
+All reported deltas (≤0.04 mm) sit an order of magnitude inside the
+instrument's own floor (~0.30 mm Hausdorff, ~0.13 mm boundary on a flawless
+synthetic reproduction), and the 0.05 arm is byte-identical to the 0.10 arm
+for 9 of 14 designs because stage 4 floors epsilon at 0.5 px. What survives as
+evidence against a change: 0.05 hard-kills `gaulke_roofing_hat` with a GEOS
+topology error, and 0.10 costs +2.6% stitches. Kent accepted the
+leave-it-alone recommendation 2026-08-17 and promoted the outlier
+investigation, whose findings are below.
 
-> **Correction notice:** this doc's first commit (`820fce2`) reported mean
-> boundary distances that were ~2–3× inflated on fill-heavy designs by a
-> rasterisation artifact in the instrument (pinholes manufactured by 4 px
-> paint over the engine's ~3.98 px fill-row advance), and read "worse when
-> tighter" from numbers the artifact dominated. The artifact was found the
-> same day by the outlier probe, fixed (`artfidelity.PAINT_W_MM = 0.50`),
-> and every number here is from the corrected instrument. The
-> recommendation survived the correction; its stated reason changed from
-> "worse" to "no benefit". `tires_hat_3d`'s "3× degradation at 0.05" in the
-> first version was pure artifact — corrected, it is flat (0.267/0.276/0.269).
+**To actually measure this lever** you need (a) a corpus whose art clears the
+0.5 px floor at every rung, or a floor override, and (b) an instrument floor
+below the effect — finer `SHIFT_STEP_MM`, higher `RES`, or a metric that is
+not alignment-quantised.
+
+> **Correction notice, second revision (2026-08-17, post code-review).**
+> This document has been wrong twice and the honest verdict is weaker than
+> either version claimed. What actually holds:
+>
+> 1. **The ladder did not sweep three rungs.** `stage4_vectorize.py:121`
+>    floors the realized epsilon at 0.5 px, so on low-resolution art (px_per_mm
+>    pinned at 4.0) both 0.10 and 0.05 realize as 0.125 mm. `ours_stitches.csv`
+>    is **byte-identical between the 0.10 and 0.05 arms for 9 of 14 designs**
+>    (becker ×5, bridge ×2, mfab ×2). Those rows compare a file to itself.
+> 2. **The differences were inside the instrument's floor.** A flawless
+>    synthetic reproduction reads ~0.30 mm Hausdorff and ~0.13 mm boundary
+>    distance (`enginefidelity.FLOOR_*`). Every delta this doc reported was
+>    ≤0.04 mm — an order of magnitude below what the instrument resolves.
+> 3. **The first revision's own "fix" was a regression.** `PAINT_W_MM = 0.50`
+>    made the corpus mean worse (1.205 → 1.359 mm; 0.70 → 1.880), was tuned by
+>    watching a single design improve, and rested on a "byte-stable through
+>    0.60" plateau that is a cv2 thickness-quantisation identity. Reverted to
+>    0.40. The `tires_hat_3d` "3× degradation" claim from revision 1 stays
+>    withdrawn.
+>
+> **The recommendation (leave `simplify_tol_mm = 0.2`) stands, on a different
+> basis:** this instrument cannot resolve the effect at this scale, and no
+> measured evidence supports changing the default. That is *not* the same
+> claim as "measured no benefit", which is what revisions 1 and 2 said.
 
 ## Method
 
@@ -66,12 +90,19 @@ the worst-distance points marked. Attribution of every 15–23 mm outlier:
    dark-sum < 720) reads a dark logo as SOLID ink, blind to white text and
    details inside it. The engine correctly leaves those white details unsewn;
    their hole edges then measure 15–21 mm from the nearest art boundary (the
-   logo's outer border). The renders show it plainly: green art outlines
-   exist only at the outer border, red engine outlines trace the interior
-   text/details. **Engine behaviour is correct; the instrument cannot see
-   light-on-dark artwork ink.** Known limitation, now documented in both
-   instruments' terms — a fix (luminance-contrast ink test) is future
-   instrument work, not engine work.
+   logo's outer border). **Engine behaviour is correct; the instrument cannot
+   see light-on-dark artwork ink.** A fix (luminance-contrast ink test) is
+   future instrument work, not engine work.
+
+   *Evidence correction:* the first revision cited the render — "green art
+   outlines exist only at the outer border, red engine outlines trace the
+   interior" — which was partly an artifact of draw order. `boundarywhere.py`
+   painted art green then engine red unconditionally, so every coincident
+   pixel rendered red: on `hotel_fremont_hat` that is 836 of 2862 art-boundary
+   pixels (29.2%), and 43.9% of the art boundary is in fact interior. The
+   probe now paints coincident pixels in their own colour. The conclusion
+   survives on the numeric attribution (art-side distances stay ≤0.5 mm while
+   engine-side reach 15–21 mm), not on the picture.
 2. **Known re-composed layout** (`gaulke_roofing_*`): art_iou 0.25 with
    eng_extra 0.75 and the shift search pinned — the pro re-composed this
    logo; inherited artfidelity limitation, reads low by construction.

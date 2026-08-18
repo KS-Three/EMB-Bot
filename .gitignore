@@ -4,3 +4,4 @@ scratch_*
 scratch_corpus/
 .claude/worktrees/
 .playwright-mcp/
+parity_out*/

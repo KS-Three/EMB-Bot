@@ -57,6 +57,7 @@ def _checker_ring_png(path, px_mm=5.0):
 
 @pytest.mark.xfail(
     strict=True,
+    raises=AssertionError,
     reason="chained absorb annihilates a fragmented ring; fix design pending "
     "(docs/shape-fidelity-findings-2026-08-17.md)",
 )
@@ -65,6 +66,17 @@ def test_fragmented_ring_survives_small_region_cleanup(tmp_path):
     _checker_ring_png(p)
     cfg = PipelineConfig()
     cfg.target_width_mm = 44.0
+    # The fixture only exercises chained absorption while its segments stay
+    # under the small-region floor, and the margin is thinner than it looks:
+    # segments are ~1.80 mm^2 in the source frame but ~2.05 mm^2 once scaled
+    # to target_width_mm, only 9% below the 2.25 mm^2 floor. Guard both inputs
+    # with RuntimeError, NOT assert — `raises=AssertionError` above would
+    # swallow an assert and report a drifted fixture as a clean xfail.
+    if cfg.min_detail_mm != 1.5:
+        raise RuntimeError(
+            f"fixture assumes the 1.5 mm detail floor, got {cfg.min_detail_mm} "
+            "— segment areas must be re-derived before this test means anything"
+        )
     res = run_stages(str(p), cfg)
 
     sewn = [r for r in res.regions if not (r.meta or {}).get("enclosed_background")]

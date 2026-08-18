@@ -8,11 +8,18 @@ enclosed background), or engine cover the art never asked for (displaced or
 invented geometry)?
 
 Per design it writes `boundarywhere_<slug>.png` next to the design dir's own
-files: art outline in green, engine outline in red, and the worst-distance
-boundary pixels circled — blue circles for art-side points far from any
-engine boundary ("engine missed this"), magenta for engine-side points far
-from any art boundary ("engine added this"). Plus a text summary of the top
-clusters with mm coordinates and which side they belong to.
+files: art-only outline in green, engine-only in red, coincident pixels in
+near-black, and the worst-distance boundary pixels circled — blue circles for
+art-side points far from any engine boundary ("engine missed this"), magenta
+for engine-side points far from any art boundary ("engine added this"). Plus
+a text summary of the top clusters and which side they belong to.
+
+Two things this probe does NOT tell you. The printed cluster coordinates are
+in the padded shift-search frame, not design mm — use them to find the spot
+on the emitted PNG, never as a design coordinate. And a same-colour outline
+pair says nothing about whether the artwork's ink was readable in the first
+place: `art_mask` thresholds dark-on-light, so light ink on a dark ground
+reads as solid and the engine gets charged for correctly leaving it unsewn.
 
 Usage:
     python boundarywhere.py <OUT>/real/<slug> [...]
@@ -69,9 +76,16 @@ def probe(design_dir):
     art_far = _clusters(_far_points(ba, be))    # art ink far from engine cover
     eng_far = _clusters(_far_points(be, ba))    # engine cover far from art ink
 
+    # Draw order matters and used to lie. Painting art green then engine red
+    # let red overwrite every coincident pixel — on hotel_fremont_hat that is
+    # 836 of 2862 art-boundary pixels (29.2%), which made "the art outline is
+    # only at the outer border" readable off the render when 43.9% of it is
+    # interior. Coincident pixels now get their own colour instead.
     vis = np.full((H, W, 3), 255, np.uint8)
-    vis[ba] = (0, 160, 0)      # art outline: green
-    vis[be] = (0, 0, 220)      # engine outline: red (BGR)
+    both = ba & be
+    vis[ba] = (0, 160, 0)      # art only: green
+    vis[be] = (0, 0, 220)      # engine only: red (BGR)
+    vis[both] = (40, 40, 40)   # both agree: near-black
     for dist, y, x in art_far:
         cv2.circle(vis, (x, y), int(2.0 * RES), (200, 80, 0), 2)   # blue-ish
     for dist, y, x in eng_far:

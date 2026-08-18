@@ -614,11 +614,37 @@ def run_ours(art_path, width_mm, outdir, garment_id=None):
     # (the fill_density_boost lesson below, but an arm that silently measures
     # the wrong tolerance is worse than one that dies).
     tol = os.environ.get("PRO_PARITY_SIMPLIFY_TOL")
-    if tol:
+    if tol is not None:
+        # `is not None`, not truthiness: PRO_PARITY_SIMPLIFY_TOL="" used to be
+        # falsy, so an arm ran the shipped default while its log claimed an
+        # override — the silent-wrong-configuration outcome this block exists
+        # to prevent.
         if "simplify_tol_mm" not in PipelineConfig.__dataclass_fields__:
             raise RuntimeError("PRO_PARITY_SIMPLIFY_TOL set but PipelineConfig "
                                "has no simplify_tol_mm field on this tree")
-        cfg.simplify_tol_mm = float(tol)
+        try:
+            tol_mm = float(tol)
+        except ValueError:
+            raise RuntimeError(
+                f"PRO_PARITY_SIMPLIFY_TOL={tol!r} is not a number") from None
+        # Reject what shapely would only fail on much later, per design, after
+        # earlier arms have already written output: negative raises deep in
+        # GEOS, nan makes simplify() return None (AttributeError), inf
+        # collapses every polygon silently.
+        if not (0.0 < tol_mm <= 1.0):
+            raise RuntimeError(
+                f"PRO_PARITY_SIMPLIFY_TOL={tol_mm} out of range (0, 1.0]")
+        cfg.simplify_tol_mm = tol_mm
+        # stage4_vectorize floors the realized epsilon at 0.5 px
+        # (`eps_px = max(0.5, simplify_tol_mm * px_per_mm)`), so on
+        # low-resolution art the requested tolerance is NOT what gets applied:
+        # at the 4.0 px/mm floor, 0.10 and 0.05 both realize as 0.125 mm. That
+        # silently collapsed two arms of the 2026-08-17 ladder into one for 9
+        # of 15 designs. Say the requested value out loud; run_stages reports
+        # the realized one once px_per_mm is known.
+        print(f"  simplify_tol_mm={tol_mm} (requested; stage 4 floors "
+              f"eps at 0.5 px, so low-res art may realize coarser)",
+              flush=True)
     # Task A2 (2026-08-14): fill_density_boost is SEW-OUT GATED off by
     # default (see PipelineConfig's own comment) — this harness exists
     # specifically to measure a candidate engine change against the corpus
@@ -671,6 +697,11 @@ def run_ours(art_path, width_mm, outdir, garment_id=None):
         "jumps": mjumps, "trims": mtrims,
         "run_breaks": {k: sum(kk.count(k) for kk in mbreaks)
                        for k in ("start", "color", "trim", "jump", "hop")},
+        # Provenance: without these an arm directory is indistinguishable from
+        # a default run, and prep_both's manifest merge can blend two
+        # tolerances into one file with nothing on disk to reveal it.
+        "simplify_tol_mm": cfg.simplify_tol_mm,
+        "forced_class": getattr(cfg, "forced_class", None),
     }
     # Written rather than returned so `run_ours`'s signature does not move
     # under the other callers. `machine_meta(outdir)` is the reader.

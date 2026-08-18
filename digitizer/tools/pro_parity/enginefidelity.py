@@ -37,7 +37,6 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from artfidelity import (  # noqa: E402
-    PAINT_W_MM,
     RES,
     SHIFT_MM,
     THREAD_W_MM,
@@ -45,6 +44,24 @@ from artfidelity import (  # noqa: E402
     best_iou,
     pro_mask,
 )
+
+
+# pro_mask pads its canvas by 4 px on each side (artfidelity.py's `+ 8` / `+ 4`).
+MASK_PAD_PX = 8
+
+# Floor of this instrument, measured 2026-08-17 on a synthetic perfect engine
+# (fill rows exactly covering the art square) AFTER the pad correction above.
+# The pad fix removed the false `art_missed` entirely (0.042 -> 0.000 on a
+# 10 mm square) but NOT the boundary residual: that is SHIFT_STEP_MM = 0.4
+# alignment quantisation plus the 1 px raster quantum, and it does not cancel
+# between arms. Measured 0.30-0.32 mm haus, 0.12-0.14 mm boundary across
+# 10-100 mm squares; rounded up here.
+#
+# Read these before quoting any delta. The 2026-08-17 ladder's first verdict
+# cited <=0.04 mm differences as evidence that a lever was dead — an order of
+# magnitude inside this floor.
+FLOOR_HAUS_MM = 0.35
+FLOOR_MEANB_MM = 0.15
 
 
 def engine_mask(csv_path):
@@ -69,9 +86,20 @@ def boundary_distance_mm(a, b, res=RES):
 
     Symmetric: directed distances are taken both ways; Hausdorff is the max,
     the mean is the average over both boundaries' pixels. Raises ValueError on
-    an empty mask or a shape mismatch — an empty side means the caller fed a
-    design that produced no coverage, which is its own finding, not a zero.
+    a non-bool input, an empty mask, or a shape mismatch — an empty side means
+    the caller fed a design that produced no coverage, which is its own
+    finding, not a zero.
+
+    The dtype check is not pedantry. `_boundary` on a uint8 mask returns uint8,
+    and the `~dst` below then flips 1 -> 254 instead of True -> False, so every
+    pixel is nonzero, `distanceTransform` sees an all-foreground image, and the
+    function returns OpenCV's saturation sentinel: the same pair of squares
+    that reads (7.071, 5.248) as bool reads (6553.6, 6553.6) as uint8 — a
+    plausible-looking number, past every other guard, with no exception.
     """
+    for name, m in (("a", a), ("b", b)):
+        if m.dtype != bool:
+            raise ValueError(f"{name} must be a bool mask, got {m.dtype}")
     if a.shape != b.shape:
         raise ValueError(f"shape mismatch: {a.shape} vs {b.shape}")
     if not a.any() or not b.any():
@@ -117,7 +145,13 @@ def main():
         if not (ecsv.exists() and art.exists()):
             continue
         E = engine_mask(ecsv)
-        width_mm = E.shape[1] / RES
+        # pro_mask's canvas is the stitch span PLUS a fixed 8 px margin
+        # (artfidelity.py's `+ 8`). Scaling the artwork to the canvas rather
+        # than to the span stretched it 0.8 mm wider than the engine on every
+        # design — measured 2026-08-17, a flawless reproduction read
+        # art_missed 0.042 at 10 mm and haus 0.28 mm at any size. Subtract the
+        # margin so a perfect engine can actually score zero.
+        width_mm = (E.shape[1] - MASK_PAD_PX) / RES
         A = art_mask(art, width_mm)
         iou, extra, missed, dx_mm, dy_mm = best_iou(E, A)
         # Re-place both in the shift-search frame at the winning alignment so
@@ -143,6 +177,10 @@ def main():
         print(
             f"\nmean art_iou {sum(ious)/n:.3f} · mean haus {sum(hauses)/n:.2f} mm "
             f"· mean boundary {sum(means)/n:.3f} mm · over {n} designs"
+        )
+        print(
+            f"instrument floor: haus {FLOOR_HAUS_MM:.2f} mm, boundary "
+            f"{FLOOR_MEANB_MM:.2f} mm — smaller deltas are not signal"
         )
 
 
