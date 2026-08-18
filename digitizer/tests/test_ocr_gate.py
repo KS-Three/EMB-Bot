@@ -30,7 +30,6 @@ either outcome:
 """
 from __future__ import annotations
 
-import shutil
 from unittest.mock import patch
 
 import numpy as np
@@ -46,6 +45,8 @@ from digitizer_core.textcluster import (
     _ocr_regularization_hurts_legibility,
     regularize_text_clusters,
 )
+
+from .conftest import requires_tesseract
 
 _P = Prep(rgb=None, bg_mask=None, px_per_mm=1.0, art_bbox=(0, 0, 1, 1))
 
@@ -105,14 +106,10 @@ def test_regularization_fine_gate_does_not_fire():
         "the skeleton buffer must actually have replaced the polygon"
 
 
-# Only this test skips without the binary: it needs Tesseract to actually
-# REPORT the 92-point confidence drop for the gate to fire. Its sibling above
-# stays un-marked on purpose — without Tesseract the gate fails open (see
-# test_gate_never_fires_when_ocr_is_unavailable) and the skeleton-buffer
-# redraw it asserts still goes through.
-@pytest.mark.skipif(
-    shutil.which("tesseract") is None,
-    reason="needs the real tesseract binary on PATH (CI installs tesseract-ocr)")
+# The fine-gate sibling above stays un-marked on purpose: without Tesseract
+# the gate fails open (see test_gate_never_fires_when_ocr_is_unavailable) and
+# the skeleton-buffer redraw it asserts still goes through.
+@requires_tesseract
 def test_regularization_damaging_gate_falls_back_to_original():
     """"I", thickened (buffer +0.06 mm) enough to clear
     `_REGULARIZE_SKIP_TOLERANCE` the same way. Measured real OCR confidence

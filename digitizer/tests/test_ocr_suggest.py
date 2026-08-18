@@ -15,7 +15,6 @@ for the same reason (a parallel, independently-scoped effort — see
 """
 from __future__ import annotations
 
-import shutil
 from unittest.mock import patch
 
 import pytest
@@ -25,6 +24,8 @@ from shapely.ops import unary_union
 from digitizer_core.regions import Region
 from digitizer_core.stage1_prep import Prep
 from digitizer_core.textcluster import _ocr_glyph_guess, ocr_suggest_text
+
+from .conftest import requires_tesseract
 
 _P = Prep(rgb=None, bg_mask=None, px_per_mm=1.0, art_bbox=(0, 0, 1, 1))
 
@@ -62,9 +63,7 @@ def test_untagged_region_gets_no_new_meta_keys():
     assert "ocr_confidence" not in r.meta
 
 
-@pytest.mark.skipif(
-    shutil.which("tesseract") is None,
-    reason="needs the real tesseract binary on PATH (CI installs tesseract-ocr)")
+@requires_tesseract
 def test_tagged_member_gets_a_real_ocr_read_stamped():
     """A real, clean, legible letterform reads back its own character with a
     real (measured, not mocked) Tesseract call — the actual end-to-end path
@@ -77,9 +76,7 @@ def test_tagged_member_gets_a_real_ocr_read_stamped():
         f"a clean block-letter T should read with real confidence, got {r.meta['ocr_confidence']}"
 
 
-@pytest.mark.skipif(
-    shutil.which("tesseract") is None,
-    reason="needs the real tesseract binary on PATH (CI installs tesseract-ocr)")
+@requires_tesseract
 def test_multiple_tagged_members_each_get_their_own_independent_read():
     t = _region("T", _block_letter_polygon("T"))
     l = _region("L", _block_letter_polygon("L"))

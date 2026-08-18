@@ -1,14 +1,12 @@
 """End-to-end contract invariants: determinism, palette integrity, ID carry-forward."""
 import copy
-import shutil
 
 import numpy as np
-import pytest
 
 from digitizer_core import PipelineConfig, run_stages
 from digitizer_core.regions import match_shape_ids
 
-from .conftest import TESTDATA, cfg
+from .conftest import TESTDATA, cfg, requires_tesseract
 
 
 def fingerprint(result) -> list[tuple[str, str, float]]:
@@ -280,9 +278,7 @@ def test_full_pipeline_regularization_reduces_stroke_width_variance_on_benchmark
 # --- OCR-suggested text wiring -----------------------------------------------
 
 
-@pytest.mark.skipif(
-    shutil.which("tesseract") is None,
-    reason="needs the real tesseract binary on PATH (CI installs tesseract-ocr)")
+@requires_tesseract
 def test_full_pipeline_stamps_ocr_fields_on_the_benchmark_subline():
     """`ocr_suggest_text` is wired into `run_stages` right after
     `regularize_text_clusters` (`pipeline.py`). This is that wiring step's
