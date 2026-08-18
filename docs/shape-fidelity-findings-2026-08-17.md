@@ -98,12 +98,48 @@ after two rejected designs worth recording:
   as-is. No new thresholds, per `plans-engine.md:17` — the same bar, applied
   to the structure instead of to each crumb of it.
 
-Still to verify before this merges: the full digitizer suite. It was started
-2026-08-17 and starved by a concurrent corpus run; judge it against the
-recorded baseline for this worktree (8 environmental failures at `73f37da` —
-3 Linux-captured goldens, 5 needing a `tesseract` binary this machine lacks),
-not against zero. Golden movement is plausible here and is not automatically
-wrong: the fix deliberately changes which regions survive segmentation.
+## Next session — two things, in order
+
+**1. Run the full digitizer suite before anything else.** It is the one piece
+of verification this lane still owes. Started 2026-08-17, starved by a
+concurrent corpus run, killed unfinished — so it has never completed against
+the fix.
+
+```
+cd digitizer && .venv/Scripts/python -m pytest -q     # ~21 min on an idle machine
+```
+
+Judge it against this worktree's recorded baseline at `73f37da`: **8
+environmental failures** — 3 Linux-captured goldens
+(`flat_lane_byte_identical` and `stage2_photo_segment` on
+`photo/enthusiast_logo.png`, `pushcomp` on `logo_whitebg.png-towel`) and 5
+needing a `tesseract` binary this machine lacks. Not against zero. Anything
+beyond those 8 is this lane's doing. Golden movement is plausible and not
+automatically wrong — the fix deliberately changes which regions survive
+segmentation — but it is Kent's call, and goldens re-capture on Linux CI,
+never Windows.
+
+Do not run it alongside a corpus prep. The two starve each other: the same
+suite took 21 minutes alone and was still unfinished after 50 minutes sharing
+four CPUs with `prep_both.py`.
+
+**2. New evidence bearing on the tabled gradient work — Kent's call, not a
+reopening.** Gradient/tonal work is Phase 4 and Kent re-affirmed the tabling
+on 2026-08-17 (`docs/scope-digest/photo-classifier.md:71`, ROADMAP Phase 4).
+Nothing here changes that ruling. But the ring-absorb result added a fact the
+ruling was made without:
+
+The only two designs the fix recovered content on — `bridge_hat` and
+`precision_drone` — are the two whose artwork is photographic. That is
+mechanically consistent rather than coincidental: quantisation is what
+shatters a smooth structure into a chain of sub-floor fragments, and
+fragmentation is precisely the condition the fix rescues. So gradient
+artwork is where silent structural loss concentrates.
+
+The honest bound on that claim: 10 of 15 designs classify gradient/photo and
+only 2 moved, so "gradient" is necessary but far from sufficient — see the
+adjacency table above for what actually predicts a gain. This is one more
+input to a decision that is Kent's, not an argument to un-table.
 
 ## 3. Gap 2 (stage-0 flat-logo misroute) — disposition, no code
 
