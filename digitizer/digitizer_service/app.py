@@ -625,7 +625,7 @@ async def start_digitize(
     def work() -> dict:
         cfg = PipelineConfig(**cfg_dict)
         result, plan = digitize(pixels, cfg)
-        design = plan_to_design(plan, name=cfg_dict.get("name") or "Digitized design")
+        design = plan_to_design(plan, name="Digitized design")
         return {
             "design": design,
             "review": _review_payload(result, plan),
@@ -712,7 +712,7 @@ async def start_digitize_manual(
 
     def work() -> dict:
         plan = plan_stitches(result, cfg)
-        design = plan_to_design(plan, name=cfg_dict.get("name") or "Manual design")
+        design = plan_to_design(plan, name="Manual design")
         return {
             "design": design,
             "review": _review_payload(result, plan),
