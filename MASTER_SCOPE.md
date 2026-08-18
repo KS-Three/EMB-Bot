@@ -570,6 +570,12 @@ preflight pooled-metric measurement gap, traced in area 1). **Next step:** run t
 tool by hand against a few real classifier changes to learn what a genuine
 regression looks like before setting any hard threshold.
 
+**Update 2026-08-17: the "preflight pooled-metric measurement gap" cited
+above is CLOSED.** `619e9ad` (2026-08-11) rescored `THREAD_MATCH_POOR` per
+region instead of per pooled thread median; see area 1 above
+(`docs/scope/1-auto-digitizing-quality.md`) for the corpus baseline reads
+under the new instrument.
+
 **The corpus half is no longer empty (2026-08-15).** Eight files of real
 customer artwork now ship in `FIXTURES` — the first entries that are neither
 synthetic nor hand-picked. They immediately contradicted the synthetic set:

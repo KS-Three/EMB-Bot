@@ -604,6 +604,24 @@ either. `tools/bundle.mjs` (the standalone's rebuild step) was doubly dead
 2026-08-11**. The Studio has no CDN runtime dependencies (jsPDF is
 npm-bundled, Inter via fontsource, fonts ship locally as `.embf`).
 
+### Recapturing `corpus_scorecard_baseline.json`
+
+The baseline once sat unrefreshed through ~15 digitizer commits; the next
+recapture folded all of that undiagnosed drift into itself and the change
+was misread as noise (docs/scope/1-auto-digitizing-quality.md, the 821d066
+correction). Two rules stop a repeat:
+
+1. **Recapture is diff-then-capture, never capture-blind.** Before writing
+   the new baseline, run the scorecard at HEAD against the OLD baseline and
+   attribute every fixture that moved — to your change, or to a named
+   earlier commit, or explicitly as "undiagnosed drift" — in the recapture
+   commit's message. An unattributed mover blocks the recapture.
+2. **Staleness is measured, not remembered.** The baseline records
+   `captured_at_commit`. If `git log --oneline <captured_at_commit>..HEAD
+   -- digitizer/digitizer_core` shows landed pipeline commits, any grade
+   comparison against the baseline is comparing against a stale ruler —
+   say so wherever the comparison is quoted.
+
 ## The one rule that explains most "quality" bug reports
 
 **Flat, spot-color art in → pro-quality stitches out. Photographic/gradient
