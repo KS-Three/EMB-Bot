@@ -99,6 +99,66 @@ def _bbox(mask: np.ndarray) -> tuple[int, int, int, int] | None:
 ENCLOSED_PROTECT_OVERLAP = 0.6
 
 
+def _chained_small_regions(regions, areas, boxes, small, min_area_px,
+                           height, width) -> set[int]:
+    """Sub-floor regions that form a connected structure clearing the floor.
+
+    Returns the indices to KEEP as-is. Nothing is merged: the fragments of a
+    banded ring alternate thread colours, so unioning them would invent a
+    region that sews one colour over another. They are real content and each
+    survives as its own region; stage 4 still re-tests every one against its
+    own real-geometry floor, so nothing unsewable gets through here.
+
+    Adjacency deliberately ignores the layer. Whether a sliver is part of a
+    real structure is a question about geometry, not about which thread it
+    ended up on — and in the motivating case the neighbours on either side of
+    every arc are the OTHER colour, so a same-layer rule would see 84 isolated
+    crumbs and chain nothing. Chains that still miss the floor together fall
+    through to the per-region policy unchanged.
+    """
+    if len(small) < 2:
+        return set()
+
+    parent = {i: i for i in small}
+
+    def find(a):
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+
+    # Adjacency by halo overlap, bbox-pruned exactly like the loop below.
+    for pos, i in enumerate(small):
+        bi = boxes[i]
+        if bi is None:
+            continue
+        wy0, wx0 = max(0, bi[0] - 1), max(0, bi[1] - 1)
+        wy1, wx1 = min(height, bi[2] + 1), min(width, bi[3] + 1)
+        sub = regions[i].mask[wy0:wy1, wx0:wx1]
+        halo = _dilate(sub) & ~sub
+        for j in small[pos + 1:]:
+            bj = boxes[j]
+            if bj is None or bj[2] <= wy0 or bj[0] >= wy1 or bj[3] <= wx0 or bj[1] >= wx1:
+                continue
+            if int((halo & regions[j].mask[wy0:wy1, wx0:wx1]).sum()):
+                ra, rb = find(i), find(j)
+                if ra != rb:
+                    parent[rb] = ra
+
+    groups: dict[int, list[int]] = {}
+    for i in small:
+        groups.setdefault(find(i), []).append(i)
+
+    chained: set[int] = set()
+    for members in groups.values():
+        if len(members) < 2:
+            continue
+        if sum(areas[m] for m in members) < min_area_px:
+            continue  # still detail, even together
+        chained.update(members)
+    return chained
+
+
 def resolve_small_regions(
     regions: list[RegionMask], cfg: PipelineConfig, px_per_mm: float,
     enclosed_mask: np.ndarray | None = None,
@@ -147,6 +207,33 @@ def resolve_small_regions(
     boxes = [_bbox(r.mask) for r in regions]
     height, width = regions[0].mask.shape
     report_floor_px = min_area_px * cfg.report_absorb_frac
+
+    # A structure that arrives FRAGMENTED is not detail, however small its
+    # pieces are individually. Quantization bands a gradient ring into arc
+    # slivers; each sliver is sub-floor, and each sliver's best halo-share
+    # neighbour is the large background region it sits on rather than the
+    # neighbouring arc — so the ordinary policy below absorbs the entire ring
+    # into the background one segment at a time. Measured 2026-08-17: an
+    # 84-segment ring, 172 mm² and 40 mm across, digitised to ZERO sewn
+    # regions with only an advisory ABSORBED_SMALL_SHAPES to show for it
+    # (docs/shape-fidelity-findings-2026-08-17.md).
+    #
+    # So: test connected chains of small regions against the same floor FIRST.
+    # A chain that clears it together is real content and every member is kept
+    # as-is; the rest fall through to the per-region policy unchanged. No new
+    # threshold — `min_area_px` is still the only bar, just applied to the
+    # connected structure instead of to each crumb of it.
+    # Gated on the SAME opt-out as the other rescue path below. This is a
+    # rescue — it keeps geometry the floor would otherwise cull — so a caller
+    # who set `small_shape_rescue=False` to get strict floor behaviour must
+    # keep getting it. Missing this gate silently broke SAM2's
+    # no-usable-regions fallback, which drives four sub-floor blobs with
+    # rescue OFF and expects every one to drop.
+    chained = _chained_small_regions(
+        regions, areas, boxes, small, min_area_px, height, width
+    ) if cfg.small_shape_rescue else set()
+    if chained:
+        small = [i for i in small if i not in chained]
     absorbed = dropped = 0
     absorbed_reportable = dropped_reportable = 0
     rescued: list[int] = []
@@ -226,7 +313,8 @@ def resolve_small_regions(
     # be deterministic (it is: both lists fill in the same smallest-first
     # order the loop walks).
     kept = ([regions[i] for i in keep] + [regions[i] for i in rescued]
-            + [regions[i] for i in protected])
+            + [regions[i] for i in protected]
+            + [regions[i] for i in sorted(chained)])
     warnings: list[dict] = []
     # Only regions big enough to have been intentional artwork are reported;
     # anti-alias slivers are cleaned up silently (see cfg.report_absorb_frac).
