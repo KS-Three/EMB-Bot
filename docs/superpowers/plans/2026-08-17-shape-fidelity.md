@@ -36,10 +36,10 @@ The measurement gap is explicit in the digests: whole-design IoU barely moves fo
 - New: `digitizer/tests/test_enginefidelity.py` (metric core only — pure functions on arrays, no corpus dependency)
 
 **Steps:**
-- [ ] TDD the metric core: rasterize engine stitches (same 10 px/mm, 0.40 mm thread constants as `artfidelity.py`) and compute, per design: `art_iou` (best-shift), `engine_extra` (engine cover the art doesn't ask for), `art_missed` (art ink the engine left unsewn), and **boundary Hausdorff / mean-contour-distance in mm** between the art mask outline and the engine cover outline — the number RDP coarseness actually moves. Failing tests first, on synthetic masks with hand-computable answers (offset squares, ring vs 20-gon ring).
-- [ ] CLI mirroring `artfidelity.py`: consume `<OUT>/real/<slug>/` dirs (engine stitches CSV + `art.png` as `prep_both.py` lays them out — confirm exact engine-side filename from `prep_all.py` before coding, do not guess).
-- [ ] Reuse `artfidelity.py`'s shift-search; inherit its known limit (shift pins at boundary on re-composed layouts — Gaulke reads low by construction). Document it in the module docstring.
-- [ ] Run on ≥10 designs from the local corpus; run twice; numbers identical (the `selfconsistency.py` precedent). Commit instrument + tests + a five-line usage note in the module docstring.
+- [x] TDD the metric core: rasterize engine stitches (same 10 px/mm, 0.40 mm thread constants as `artfidelity.py`) and compute, per design: `art_iou` (best-shift), `engine_extra` (engine cover the art doesn't ask for), `art_missed` (art ink the engine left unsewn), and **boundary Hausdorff / mean-contour-distance in mm** between the art mask outline and the engine cover outline — the number RDP coarseness actually moves. Failing tests first, on synthetic masks with hand-computable answers (offset squares, ring vs 20-gon ring).
+- [x] CLI mirroring `artfidelity.py`: consume `<OUT>/real/<slug>/` dirs (engine stitches CSV + `art.png` as `prep_both.py` lays them out — confirm exact engine-side filename from `prep_all.py` before coding, do not guess).
+- [x] Reuse `artfidelity.py`'s shift-search; inherit its known limit (shift pins at boundary on re-composed layouts — Gaulke reads low by construction). Document it in the module docstring.
+- [x] Run on ≥10 designs from the local corpus; run twice; numbers identical (the `selfconsistency.py` precedent). Commit instrument + tests + a five-line usage note in the module docstring.
 
 **Acceptance:** metric tests green; two identical corpus runs; no engine code touched.
 
@@ -50,9 +50,9 @@ The measurement gap is explicit in the digests: whole-design IoU barely moves fo
 Prior art that bounds the design space (`docs/scope-digest/scope-areas.md:53-54`, `competitors.md:58`): size-proportional tolerance is investigated and CLOSED (Ember's floor is coarser than our default; both call sites already realize constant-mm deviation by construction — that is deliberate). Wholesale Catmull-Rom smoothing was rejected for corner overshoot. So the candidate levers are: (a) lower the constant default, (b) leave the default and have the Studio send a tighter value for logo-class requests, (c) post-RDP arc-aware refinement that preserves corners — (c) is new code and only on the table if the ladder shows the constant alone can't get there.
 
 **Steps:**
-- [ ] Verify module resolution (worktree `digitizer_core`), then run the three arms. Capture per-design: `enginefidelity` metrics, stitch count, trims, `size_mm`, wall time.
-- [ ] Findings doc `docs/curve-fidelity-ladder-2026-08-17.md`: per-arm deltas, mm-boundary-distance improvement vs stitch-count/trim cost, and the golden-churn blast radius of a default change (which goldens move, judged in CI only). No raw-agreement numbers.
-- [ ] Present Kent the decision: change default (+ CI golden recapture) / Studio-sent override / pursue (c). **Stop here — do not implement the chosen lever inside this task.**
+- [x] Verify module resolution (worktree `digitizer_core`), then run the three arms. Capture per-design: `enginefidelity` metrics, stitch count, trims, `size_mm`, wall time.
+- [x] Findings doc `docs/curve-fidelity-ladder-2026-08-17.md`: per-arm deltas, mm-boundary-distance improvement vs stitch-count/trim cost, and the golden-churn blast radius of a default change (which goldens move, judged in CI only). No raw-agreement numbers.
+- [x] Present Kent the decision: change default (+ CI golden recapture) / Studio-sent override / pursue (c). **Stop here — do not implement the chosen lever inside this task.**
 
 **Acceptance:** findings doc committed with all three arms' numbers; decision presented; no default changed.
 
