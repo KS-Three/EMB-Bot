@@ -28,7 +28,7 @@ Each doc gates a different kind of decision. Read the one matching what you're a
   every entry (`emb-bot-digitizer`, `dst-codec-axis-discrepancy`, the Ember
   teardowns). Moved into the repo 2026-08-14 so a cloud session gets the same
   context as a local one; on Kent's machine
-  `~/.claude/projects/C--Users-EE-LT-11030-Personal-EMB-Bot/memory` is a junction
+  `~/.claude/projects/<mangled-repo-path>/memory` is a junction
   pointing here, so automatic memory recall and these files are the same bytes.
 
 ## This repo is PUBLIC

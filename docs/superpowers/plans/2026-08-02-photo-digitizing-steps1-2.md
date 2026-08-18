@@ -21,7 +21,7 @@ pipeline; the flat-art lane is a hard, tested invariant.
 1. **Fixture paths changed.** The source plan's F1/F2 pointed at
    `Downloads/enthusiast enterprises logo.png` and
    `Downloads/ChatGPT Image Jul 15....png`. Both moved during the 2026-08-02
-   file reorg to `C:\Users\EE-LT-11030\Embroidery\Reference Art\`. Rather than
+   file reorg to `<user-home>\Embroidery\Reference Art\`. Rather than
    point tests at a loose home-folder path again (which is exactly how they
    went stale once already), **copy both into `digitizer/testdata/photo/` as
    committed goldens**, matching how `logo_whitebg.png`/`logo_alpha.png`

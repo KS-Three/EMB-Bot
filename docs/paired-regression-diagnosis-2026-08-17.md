@@ -52,7 +52,7 @@ stretched to answer here.
 
 All commands run from each worktree's `digitizer/` directory, with
 `digitizer_core.__file__` verified to resolve inside that worktree first.
-`$PY` = `C:/Users/EE-LT-11030/Personal/EMB-Bot/digitizer/.venv/Scripts/python.exe`.
+`$PY` = `<repo-root>/digitizer/.venv/Scripts/python.exe`.
 
 ### Step 1 — component story for the pair
 

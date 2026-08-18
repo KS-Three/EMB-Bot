@@ -28,4 +28,4 @@ Candidate reconciliations, most to least likely:
 
 Verification wants one confirming sew-out (or the panel-preview check above) after the code change before closing the memory item.
 
-Artifacts: `C:\Users\EE-LT-~1\AppData\Local\Temp\claude\C--Users-EE-LT-11030\b845a108-6467-4184-b54f-1f888a276bca\scratchpad\` (`dst_cleanroom.py`, `beckers_consensus.png`, `beckers_ours.png`, `embbot_consensus.png`, `embbot_ours.png`). Code under dispute: `C:\Users\EE-LT-11030\EMB-Bot\src\dst.js` (lines 9–24, 67), `C:\Users\EE-LT-11030\EMB-Bot\src\dstimport.js` (lines 14–33).
+Artifacts: `<scratch-dir>\` (`dst_cleanroom.py`, `beckers_consensus.png`, `beckers_ours.png`, `embbot_consensus.png`, `embbot_ours.png`). Code under dispute: `<user-home>\EMB-Bot\src\dst.js` (lines 9–24, 67), `<user-home>\EMB-Bot\src\dstimport.js` (lines 14–33).

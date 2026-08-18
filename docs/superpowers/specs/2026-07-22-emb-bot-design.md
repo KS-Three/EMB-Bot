@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-22
 **Owner:** Kent (kent@sdwheel.com)
-**Deliverable:** `C:\Users\EE-LT-11030\EMB-Bot\EMB-Bot.html` — a single self-contained HTML tool.
+**Deliverable:** `<user-home>\EMB-Bot\EMB-Bot.html` — a single self-contained HTML tool.
 
 ## 1. Purpose
 

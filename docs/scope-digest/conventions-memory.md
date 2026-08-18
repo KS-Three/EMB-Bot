@@ -89,7 +89,7 @@ Skills (`.claude/skills/`):
 - DST axis now has 5 independent sources plus a bonus defect: `src/dst.js` writes colour change as `0x43` not `0xC3`, so standard readers see ZERO colour changes in every EMB-Bot DST. A 30-second Tajima panel check would confirm on hardware (memory/dst-codec-axis-discrepancy.md).
 - `pystitch` (Ink/Stitch's MIT pyembroidery fork) as swap candidate and 5th axis source; Ink/Stitch gaps EMB-Bot lacks: meander/stipple, tartan, ripple, circular fill, e/s-stitch satin — clean-room only, GPL-3.0 (memory/inkstitch-research.md).
 - Ember teardowns: no ML in their auto-digitize (fill angle is `90 * (height >= width)`), their client-side codec is a debuggable second DST reference, fill-pattern library + "Ember Bridge" Wi-Fi push are the biggest gaps; EMB-Bot leads on fonts and CIEDE2000 (memory/ember-architecture.md, memory/ember-feature-teardown.md).
-- Origin has been 326 commits ahead of a local checkout once; always `git fetch` and read `origin/main` before trusting a baseline. Copilot worktrees live outside the repo at `C:\Users\EE-LT-11030\copilot-worktrees\EMB-Bot\*` (memory/emb-bot-digitizer.md).
+- Origin has been 326 commits ahead of a local checkout once; always `git fetch` and read `origin/main` before trusting a baseline. Copilot worktrees live outside the repo at `<user-home>\copilot-worktrees\EMB-Bot\*` (memory/emb-bot-digitizer.md).
 - Domain framing: Kent = Fritsch's Stitches, embroidery; the `kent@sdwheel.com` address is an account setting, not business context (memory/fritschs-stitches.md).
 
 ## Contradictions
