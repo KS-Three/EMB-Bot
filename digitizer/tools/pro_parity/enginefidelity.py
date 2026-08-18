@@ -42,6 +42,7 @@ from artfidelity import (  # noqa: E402
     THREAD_W_MM,
     art_mask,
     best_iou,
+    ink_is_ambiguous,
     pro_mask,
 )
 
@@ -165,6 +166,19 @@ def main():
         except ValueError as e:
             print(f"{d.name:22s} {iou:7.3f} {extra:9.3f} {missed:10.3f} "
                   f"{'—':>7s} {'—':>8s}  ({e})", flush=True)
+            continue
+        # A design whose ink the mask cannot identify still gets its numbers
+        # printed — they are the floor of its error, not its error — but it is
+        # marked, and it does NOT enter the means. Averaging in a design the
+        # instrument admits it cannot read is how the 15-21 mm outliers became
+        # a corpus conclusion on 2026-08-17.
+        if ink_is_ambiguous(art):
+            print(
+                f"{d.name:22s} {iou:7.3f} {extra:9.3f} {missed:10.3f} "
+                f"{haus:7.2f} {meanb:8.3f} {dx_mm:6.1f},{dy_mm:5.1f}  "
+                f"INK? (light-on-dark; numbers are a floor, excluded from mean)",
+                flush=True,
+            )
             continue
         ious.append(iou); hauses.append(haus); means.append(meanb)
         print(

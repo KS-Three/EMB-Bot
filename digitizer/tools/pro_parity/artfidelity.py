@@ -108,6 +108,46 @@ def art_mask(art_path, width_mm):
                       interpolation=cv2.INTER_AREA).astype(bool)
 
 
+def ink_is_ambiguous(art_path):
+    """Does `art_mask` know what the ink is on this artwork? Returns bool.
+
+    `art_mask` has two modes and both assume the ink is one tonal population.
+    Alpha-keyed art treats every opaque pixel as ink; opaque art treats every
+    dark pixel as ink. Neither survives a logo that is a DARK PANEL with WHITE
+    LETTERING knocked out of it: the alpha branch calls the whole panel ink
+    including the letters, and the engine — which correctly leaves the white
+    letters unsewn — is then charged for the hole it was right to leave.
+
+    That is not hypothetical. It is why `hotel_fremont_*` and `bridge_*` read
+    15-21 mm of "engine error" on 2026-08-17 while behaving correctly, and it
+    drove a wrong attribution into a published doc before anyone noticed.
+
+    So this does NOT try to fix the mask — silently re-deciding what counts as
+    ink would change every published number for a judgement call the pro's own
+    stitches may disagree with. It reports that the mask is unreliable here, so
+    a caller can refuse to draw a conclusion instead of drawing a wrong one.
+
+    Criterion: inside whatever `art_mask` calls ink, are BOTH a substantial
+    dark population and a substantial light one present? The cut points below
+    are judgement, not measurement — but the test is structural (bimodality),
+    not fitted, and on the 15-design corpus it flags exactly the three designs
+    whose boundary outliers were independently traced to this cause and stays
+    quiet on the rest.
+    """
+    im = Image.open(art_path).convert("RGBA")
+    a = np.asarray(im)
+    if a[..., 3].min() < 255:
+        ink = a[..., 3] > 16
+    else:
+        ink = a[..., :3].astype(np.int32).sum(axis=2) < 720
+    lum = a[..., :3].astype(np.int32).mean(axis=2)[ink]
+    if lum.size == 0:
+        return False
+    dark = float((lum < 96).mean())
+    light = float((lum > 160).mean())
+    return min(dark, light) > 0.15
+
+
 def best_iou(pro, art):
     """IoU at the best whole-pixel shift, art centred on pro to start."""
     H = max(pro.shape[0], art.shape[0]) + int(2 * SHIFT_MM * RES) + 4
