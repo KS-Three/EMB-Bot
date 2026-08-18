@@ -1067,7 +1067,7 @@
 
 <div class="digipanel">
   <label class="dgp-upload">
-    <span class="dgp-upload-btn">{element.sourcePng ? "Replace artwork…" : "Choose artwork…"}</span>
+    <span class="dgp-upload-btn">{element.sourcePng ? "Replace artwork…" : "Auto Digitize Image"}</span>
     <input type="file" accept="image/png,image/jpeg,image/webp,image/*" on:change={onFile} disabled={fileBusy} />
   </label>
   {#if fileBusy}<p class="dgp-note">Reading the image…</p>{/if}

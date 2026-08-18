@@ -296,6 +296,19 @@ already flags as a contributing factor for `summit_badge.png` (see below) —
 a real, understood preflight-methodology gap worth a future look, not
 chased further here (out of scope for #6.1).
 
+**Update 2026-08-17: the pooled-vs-per-region gap described above is
+CLOSED.** `619e9ad` (2026-08-11) rescored `THREAD_MATCH_POOR` per region —
+each thread is judged by its WORST region's per-pixel CIEDE2000 median,
+never a pooled per-thread median (`preflight.py`, `_thread_match_findings`;
+both measured pooling failures are documented on `_region_color_errors`).
+The corpus baseline was recaptured under the per-region yardstick in
+`307e69d`. Current baseline reads for the two designs this section
+discusses: `drone_render.png` (both configs) — grade F, 16
+`THREAD_MATCH_POOR` findings (4 block, 12 warn), worst dE 14.1;
+`summit_badge.png` (both configs) — grade F, 7 `THREAD_MATCH_POOR` findings
+(1 block, 6 warn), worst dE 10.2. The paragraphs above stand as the record
+of why the change was needed.
+
 **This fix is grade-flat-or-negative by construction on the current
 scorecard.** `preflight.py` deducts 12 points per `THREAD_MATCH_POOR:warn`
 finding (30 if severity escalates to `:block`) and adds a
@@ -314,6 +327,15 @@ B grade going in could plausibly drop a full letter grade or more if
 this fires on it. `drone_render.png`'s result (grade unchanged,
 poor-match count up) is the expected general behavior of this fix on
 the current scorecard, not a fixture-specific anomaly.
+
+**Update 2026-08-17: the "pooled, per-thread signals" premise above is
+CLOSED, same as above.** `619e9ad` (2026-08-11) made `THREAD_MATCH_POOR`
+per-region, not pooled-per-thread — `COLOR_STOPS_HEAVY` is unaffected (it
+keys off `color_changes`, not thread-colour matching). The qualitative
+argument (more spools from the overflow mechanism means more chances at a
+`THREAD_MATCH_POOR` finding) was not re-measured against the per-region
+instrument here; treat the paragraph above as the record of the reasoning
+at the time, not a current description of the scorecard's mechanism.
 
 **Measured at Studio's real `max_colors` defaults before merge, not just at
 the digitizer's 12.** The whole corpus_scorecard run above uses

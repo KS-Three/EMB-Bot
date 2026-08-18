@@ -32,7 +32,7 @@ Cited as `1-auto`, `2-font`, `3-studio`, `4-export`, `5-review`, `backlog`, `MAS
 
 ## Blockers
 
-- DT-first classifier M2/M3 cannot proceed until the 37-file `scratch_corpus/` run happens (gitignored, empty in every checkout). `1-auto:926-929`, `1-auto:999-1006`
+- DT-first classifier M2/M3 cannot proceed until the 37-file `scratch_corpus/` run happens (gitignored — empty in cloud checkouts, present on Kent's machine; runnable in a local session). `1-auto:926-929`, `1-auto:999-1006`
 - Defending or refuting SAM2's quality cannot proceed until a real-photo corpus fixture exists — the only photo fixtures are synthetic stubs. `1-auto:86-91`
 - `chain_links` cannot default ON until a sew-out validates `LINK_COVER_TOL_MM` (a thread spec, not a measurement). `1-auto:690-694`
 - `FILL_ROW_MM` cannot move off 0.40 until a sew-out settles the law-19 two-population finding. `1-auto:1100-1103`

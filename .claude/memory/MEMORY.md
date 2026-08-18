@@ -1,7 +1,7 @@
 # Memory Index
 
 - [Fritsch's Stitches](fritschs-stitches.md) — Kent's company is an embroidery business; assume embroidery domain, ignore wheel/tire context
-- [EMB Bot Digitizer](emb-bot-digitizer.md) — embroidery digitizer tool at C:/Users/EE-LT-11030/Personal/EMB-Bot; 2026-07-29 market-parity-vs-Ember launch roadmap; quality engine state + "flat art in, pro out" rule
+- [EMB Bot Digitizer](emb-bot-digitizer.md) — embroidery digitizer tool at <repo-root>; 2026-07-29 market-parity-vs-Ember launch roadmap; quality engine state + "flat art in, pro out" rule
 - [Ember architecture](ember-architecture.md) — competitor teardown: 2 Next.js apps + iframe, PixiJS/MobX/WASM, no ML in auto-digitize; client-side codec usable as DST reference
 - [Ember feature teardown](ember-feature-teardown.md) — 2026-08-09 manual/pricing teardown; fill-pattern lib + Bridge app are biggest gaps; handoff doc in EMB-Bot/docs
 - [Fill density convention](fill-density-convention.md) — Law 19 settled: pro density is measured between same-direction rows, so our tatami is 2x light; satin is correct
@@ -10,4 +10,5 @@
 - [Pro trim threshold](pro-trim-threshold.md) — corpus says the pro floats up to 16.1mm uncut vs our trim_at_mm 3.0, but the cut/float distributions overlap: distance is not the decision variable
 - [Real-artwork parity](real-artwork-parity.md) — 2026-08-15/16: honest baseline 42.5, a pro scores only 75-84 against a pro, and synthetic references flattered the engine in four places
 - [Satin gate attribution](satin-gate-attribution.md) — the DT regularity term loses the pro's satin ground; promotion on `explained` moved the corpus 45.8 to 48.1, and the sub-1mm width floor is disproved for flat art
-- [Windows goldens fail locally](windows-goldens-fail-locally.md) — 3 byte-identical goldens fail on Windows and pass in CI; main is green, never re-capture a golden locally
+- [Windows goldens fail locally](windows-goldens-fail-locally.md) — per-fixture golden divergence: Windows fails a different three than CI deselects; main is green, never re-capture a golden locally; OCR tests skip without tesseract
+- [Digitizer local env](digitizer-local-env.md) — venv editable since 2026-08-17 (stale site-packages shadowing fixed); system tesseract missing, so the real-read OCR tests skip locally (skipif since PR #165) and run in CI

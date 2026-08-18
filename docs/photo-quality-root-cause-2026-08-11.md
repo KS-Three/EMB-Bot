@@ -213,6 +213,11 @@ also that this doc's own caveat about `preflight._artwork_colors_by_thread`
 cannot see a segmentation fix at all**, so making that metric per-region is a
 prerequisite for #6.2 being measurable, not a side quest.
 
+**Update 2026-08-17: that prerequisite landed, same day.** `619e9ad`
+(2026-08-11) made `THREAD_MATCH_POOR` per-region, same as the #6.3 fix below
+records. Whether #6.2 (still reverted, not rebuilt) is now measurable under
+the new instrument was not re-checked here.
+
 ## #6.3 (`repro_gradient_white_icon.png`) — FIXED, and the estimator was the fix
 
 `stage4_vectorize.revalidate_threads`, called from `pipeline.run_stages` right

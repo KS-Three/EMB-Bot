@@ -63,6 +63,7 @@ from PIL import Image, ImageDraw
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from digitizer_core.pipeline import run_stages, plan_stitches
 from digitizer_core.config import PipelineConfig
+from digitizer_core.stage0_classify import CLASSES
 from digitizer_core.export import write_dst
 
 # The corpus lives outside the repo (it is customer work — see BACKUPS.md), so
@@ -606,6 +607,16 @@ def run_ours(art_path, width_mm, outdir, garment_id=None):
     # 2026-08-16 had.
     forced = os.environ.get("PRO_PARITY_FORCED_CLASS")
     if forced:
+        # Checked against the canonical list rather than passed through. An
+        # unrecognized value matches no downstream branch and takes the flat
+        # path silently, so a typo like `photo` for `photo_subject` would
+        # produce a complete, plausible-looking corpus run measured through the
+        # WRONG lane — and these numbers get quoted as project status.
+        # `classify` raises too; this exists so the operator reads the valid
+        # list instead of a traceback, before any design is processed.
+        if forced not in CLASSES:
+            sys.exit(f"PRO_PARITY_FORCED_CLASS={forced!r} is not a class. "
+                     f"Valid: {', '.join(CLASSES)}")
         cfg.forced_class = forced
     # Curve-fidelity ladder (shape-fidelity plan Task 2): lets an arm override
     # simplify_tol_mm without forking the harness. Unset — the default —

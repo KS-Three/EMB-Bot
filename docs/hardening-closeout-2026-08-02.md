@@ -153,7 +153,7 @@ Two pieces, a 40×40 mm square that survives and a 2.5 mm ribbon that falls thro
 - `assert X or True` at `tests/test_pushcomp.py:230` carries zero bits, and it is the line whose comment claims to guard exactly this.
 
 ### 9. MINOR but structural — the headline numbers are not reproducible off this machine
-- Every chaining headline is measured on `C:\Users\EE-LT-11030\Downloads\enthusiast enterprises logo.png`. I confirmed the file exists — **on Kent's Downloads folder, outside the repo.** `find` in the worktree returns nothing.
+- Every chaining headline is measured on `<user-home>\Downloads\enthusiast enterprises logo.png`. I confirmed the file exists — **on Kent's Downloads folder, outside the repo.** `find` in the worktree returns nothing.
 - Preflight's "5 artworks / 80 configurations" is 4 committed PNGs plus `scratch_flat.png` (5,876 bytes, Jul 30, repo root, gitignored by `.gitignore:3`). All 6 of the density-gate leaks are on that file. The report's two sweeps don't even share a fixture set or size set.
 
 ---

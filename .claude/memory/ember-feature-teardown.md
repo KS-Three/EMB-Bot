@@ -12,7 +12,7 @@ Feature-level teardown done 2026-08-09 from an HTTrack mirror of emberdesign.net
 `C:\My Web Sites\Ember Design\emberdesign.net` (manual docs, pricing, fill-pattern list, convert
 tool, bridge tool, ~4,300 explore-gallery pages, ~370 user profiles). Complements the
 architecture-level [[ember-architecture]] teardown from 2026-08-08. Full handoff doc:
-`C:\Users\EE-LT-11030\Personal\EMB-Bot\docs\ember-competitive-teardown-2026-08-09.md`.
+`<repo-root>\docs\ember-competitive-teardown-2026-08-09.md`.
 
 Biggest gaps vs EMB-Bot: fill-pattern library (Ember ships 13-24 named patterns w/ unique params,
 counted two different ways between the two teardowns — reconcile against the live editor before

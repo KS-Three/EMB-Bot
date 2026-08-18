@@ -15,7 +15,7 @@ branch) to see the actual changes. Read `CLAUDE.md` and the relevant parts of
 `COOKBOOK.md` if you haven't already — they are ground truth for this repo,
 not background color.
 
-## The 5 CLAUDE.md footguns — check every diff against these first
+## The 6 CLAUDE.md footguns — check every diff against these first
 
 1. **DST axis bug.** `src/dst.js` / `src/dstimport.js` are transposed vs.
    the Tajima/pyembroidery standard — confirmed, unresolved, Kent's call to
@@ -35,7 +35,11 @@ not background color.
    If a new worktree was created under `.claude/worktrees/<name>/`, check
    whether `.claude/settings.json` was copied into
    `.claude/worktrees/<name>/.claude/settings.json` too.
-5. **`.mcp.json`'s playwright entry.** Must keep routing through
+5. **`scratch_*` directories are gitignored but NOT disposable.**
+   `scratch_corpus/`, `scratch_ink/` (build-embf.mjs needs it),
+   `scratch_kent/`, `scratch_packs/`. Flag any diff or command that deletes,
+   moves, or "cleans up" these paths — only `scratch_ink/` has a backup.
+6. **`.mcp.json`'s playwright entry.** Must keep routing through
    `tools/mcp-playwright.mjs`, not a bare `npx @playwright/mcp@latest` — the
    bundled browser-download path is blocked in this environment class.
 

@@ -62,8 +62,8 @@ copyright/moderation exposure declined.
 "Full freehand draw tools" used to sit on this list, but manual draw mode
 has since shipped (`app/src/lib/manualShapes.js` — the Studio's third
 content type: hand-drawn outlines with curved edges and point editing), so
-it is no longer a non-goal. Item 4's basic *preset* shapes tool
-(circle/rect/heart/star) is still separate and still not started.
+it is no longer a non-goal. (The separate item 4 preset shapes tool also
+shipped — verified live 2026-08-11; see the checklist above.)
 
 ## Open — not yet decided
 

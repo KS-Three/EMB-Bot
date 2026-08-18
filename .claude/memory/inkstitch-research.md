@@ -9,7 +9,7 @@ metadata:
 ---
 
 Research done 2026-08-10 against live Ink/Stitch source (tag v3.3.0, github.com/inkstitch/inkstitch)
-and inkstitch.org docs, not training memory. Full report: `C:\Users\EE-LT-11030\Personal\EMB-Bot\docs\inkstitch-research-2026-08-10.md`.
+and inkstitch.org docs, not training memory. Full report: `<repo-root>\docs\inkstitch-research-2026-08-10.md`.
 
 **Highest-value finding:** Ink/Stitch runs its own MIT-licensed pyembroidery fork, `pystitch`
 (github.com/inkstitch/pystitch), not upstream pyembroidery. Its DST codec is a 5th independent
