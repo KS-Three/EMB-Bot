@@ -1,4 +1,4 @@
-EMB-Bot, C:\Users\EE-LT-11030\EMB-Bot. Read CLAUDE.md and COOKBOOK.md first
+EMB-Bot, <user-home>\EMB-Bot. Read CLAUDE.md and COOKBOOK.md first
 — COOKBOOK.md especially, it's the handoff doc and has the architecture map,
 running instructions, and a "Known bugs" section with everything below
 already logged.

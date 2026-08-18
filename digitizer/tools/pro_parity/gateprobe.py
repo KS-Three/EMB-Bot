@@ -37,6 +37,7 @@ A prepped design directory is what `prep_all.py` / `prep_both.py` write:
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import sys
 from collections import Counter, defaultdict
@@ -308,12 +309,19 @@ def main() -> None:
         print("nothing probed")
         return
     if args.csv:
+        # `csv.DictWriter`, not a hand-rolled `",".join(...)`: `design` is a
+        # directory name read off disk, so a comma anywhere in it silently
+        # shifted every later column on that row — and nothing downstream
+        # validates field counts, so the corruption reads as data. DictWriter
+        # quotes, and `restval=""` reproduces the old None-to-empty behaviour.
         keys = list(rows[0].keys())
-        with open(args.csv, "w", newline="") as f:
-            f.write(",".join(keys) + "\n")
+        with open(args.csv, "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=keys, restval="",
+                               extrasaction="ignore")
+            w.writeheader()
             for r in rows:
-                f.write(",".join("" if r[k] is None else str(r[k])
-                                 for k in keys) + "\n")
+                w.writerow({k: ("" if r.get(k) is None else r[k])
+                            for k in keys})
         print(f"wrote {args.csv} ({len(rows)} shapes)")
     summarise(rows, args.cap)
 

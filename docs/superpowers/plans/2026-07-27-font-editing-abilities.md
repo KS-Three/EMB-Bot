@@ -1125,15 +1125,15 @@ import { createRequire } from "module";
 import fs from "node:fs";
 const require = createRequire(import.meta.url);
 global.window = global;
-const DG = require("C:/Users/EE-LT-11030/EMB-Bot/src/digitize.js");
-const D = require("C:/Users/EE-LT-11030/EMB-Bot/src/dst.js");
+const DG = require("<user-home>/EMB-Bot/src/digitize.js");
+const D = require("<user-home>/EMB-Bot/src/dst.js");
 
 const FONTS = ["geneva_simple", "apex_simple_AGS", "aventurina"];
 const TEXT = "eaogm"; // tightest-countered lowercase letters + one wide letter
 const garment = { widthIn: 8, heightIn: 8 };
 
 for (const fontKey of FONTS) {
-  const font = JSON.parse(fs.readFileSync(`C:/Users/EE-LT-11030/EMB-Bot/src/fonts/${fontKey}.json`, "utf8"));
+  const font = JSON.parse(fs.readFileSync(`<user-home>/EMB-Bot/src/fonts/${fontKey}.json`, "utf8"));
   for (const weightPreset of ["thin", "normal", "bold"]) {
     const design = DG.buildLetteringDesign(font, TEXT, {
       garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false, weightPreset,
@@ -1146,7 +1146,7 @@ for (const fontKey of FONTS) {
 }
 ```
 
-- [ ] Run it from the scratchpad directory: `node render_bold_check.mjs`, then render each of the 9 resulting `.dst` files to PNG at a large scale so counters are clearly visible: `node C:/Users/EE-LT-11030/EMB-Bot/tools/render-dst.mjs boldcheck_<fontKey>_<weightPreset>.dst boldcheck_<fontKey>_<weightPreset>.png 15 boldcheck_<fontKey>_<weightPreset>_colors.json` (repeat for all 9 combinations).
+- [ ] Run it from the scratchpad directory: `node render_bold_check.mjs`, then render each of the 9 resulting `.dst` files to PNG at a large scale so counters are clearly visible: `node <user-home>/EMB-Bot/tools/render-dst.mjs boldcheck_<fontKey>_<weightPreset>.dst boldcheck_<fontKey>_<weightPreset>.png 15 boldcheck_<fontKey>_<weightPreset>_colors.json` (repeat for all 9 combinations).
 - [ ] View each "bold" PNG and confirm no counter (the hole in e/a/o/g) has visibly collapsed shut, and no two adjacent strokes have visibly merged into a solid blob. Compare against the matching "thin"/"normal" PNG for the same font as a reference.
 - [ ] If any font/glyph looks wrong at `bold: 0.3`, reduce the constant in `src/digitize.js`'s `WEIGHT_OFFSET_MM` (try `0.2`), re-run the script, and re-render just the failing font/preset combination to confirm it's now clean.
 - [ ] If a reduction was needed, re-run `node --test test/digitize.test.js` to confirm the "bold widens vs thin" test still passes at the new value (it will, since any positive `bold` value is wider than any negative `thin` value).
@@ -1846,7 +1846,7 @@ git commit -m "Add slant/italic slider to TextStep"
 - [ ] **Step 3:** Rebuild the standalone bundle one final time to make sure it reflects every task's changes: `node tools/bundle.mjs`.
 - [ ] **Step 4:** Re-copy the engine into the app's dev-server public folder: `cd app && node scripts/copy-engine.mjs`.
 - [ ] **Step 5:** Do one final combined live-verification pass in the browser: create a single text element, set a color-range on part of it, rotate it 90°, set it Bold, and add a 10° slant — confirm the Review field renders something sensible (not a crash, not obviously mangled geometry) and the stats line shows a plausible stitch count and size.
-- [ ] **Step 6:** Update project memory (`C:\Users\EE-LT-11030\.claude\projects\C--Users-EE-LT-11030\memory\emb-bot-digitizer.md`) with a summary of what shipped in this round, following the same style as the existing dated entries in that file (what was built, key architectural decisions — the pullCompMm-reuse insight for bold, the charIdx/native-textarea-selection insight for per-letter color, the arc-length-resample insight for slant — and the explicit Round 2 deferral of condensed/expanded width and mixed per-letter size).
+- [ ] **Step 6:** Update project memory (`<user-home>\.claude\projects\<mangled-user-home>\memory\emb-bot-digitizer.md`) with a summary of what shipped in this round, following the same style as the existing dated entries in that file (what was built, key architectural decisions — the pullCompMm-reuse insight for bold, the charIdx/native-textarea-selection insight for per-letter color, the arc-length-resample insight for slant — and the explicit Round 2 deferral of condensed/expanded width and mixed per-letter size).
 - [ ] **Step 7:** Commit anything not yet committed (there shouldn't be much — each task already committed as it went):
 
 ```bash

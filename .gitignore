@@ -5,3 +5,4 @@ scratch_corpus/
 .claude/worktrees/
 .playwright-mcp/
 parity_out*/
+.claude/settings.local.json

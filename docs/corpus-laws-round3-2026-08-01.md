@@ -727,7 +727,7 @@ these.
   `census_pro.py` and `border_pro.py`, nothing from round 3 was written into
   `tools/`. Before any of these numbers is argued with, the instrument has to be
   brought into the repo and re-run. Scratchpad root:
-  `C:\Users\EE-LT-~1\AppData\Local\Temp\claude\C--Users-EE-LT-11030\b845a108-6467-4184-b54f-1f888a276bca\scratchpad\`
+  `<scratch-dir>\`
   — `fill_angle_probe.py` + `fill_angle_agg.py` / `fill_angle_deep.py` /
   `xval.py` (angle); `dens_size.py` + `dsz_*.py` (density, `--selftest`);
   `colorseq_run2\probe.py` (sequencing, `--selftest`); `entryexit\geo.py` +

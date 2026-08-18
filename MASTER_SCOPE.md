@@ -67,8 +67,7 @@ or move it.
    the same logo, at the same size. That is what drives **8.49 trims/1,000
    stitches against the pro's 1.27**, more than double the 4.1 ceiling this
    repo's own chaining test treats as the outer limit. Unambiguously a defect,
-   unlike the stitch-count gap beside it. Cause not yet diagnosed.
-   *(measured 2026-08-15 — `docs/becker-pro-parity-2026-08-15.md`)*
+   unlike the stitch-count gap beside it. Cause not yet diagnosed. *(measured 2026-08-15 — `docs/becker-pro-parity-2026-08-15.md`)*
    **No longer blocked:** Kent delivered the artwork and five professionally
    digitized variants on 2026-08-15; they are committed under
    `digitizer/testdata/reference/`. Two things that comparison disproved, so
@@ -80,8 +79,7 @@ or move it.
    artwork than we were given." Same file, actually — the missing piece is the
    **alpha channel**, 7,272 transparent pixels forming the letter counters, which
    the pro sewed as a second colour. The gap is enclosed-background being off by
-   default, worth **+8.0 per Becker design**.
-   *(corrected 2026-08-17 — `docs/handoff-2026-08-16.md` §0)*
+   default, worth **+8.0 per Becker design**. *(corrected 2026-08-17 — `docs/handoff-2026-08-16.md` §0)*
 
 5. **Satin-vs-fill routing sits at chance, and misroutes in BOTH directions.**
    The *mix* nearly matches the pro's, so the cap is not simply too high or too
@@ -99,14 +97,13 @@ or move it.
    is left is segmentation: an oracle knowing the pro's per-shape answer scores
    76.6% against our 55.4%, and 48% of graded cells sit in shapes under 75% one
    type, i.e. our regions straddle the pro's satin/fill boundaries.
-   **CAVEAT — the gain is not yet established: every figure above is RAW.** The
-   satin routing spec sets corrected kappa from `scorecard.py`'s `parts["sttype"]`
-   as the primary bar and explicitly bars raw agreement, because promotion shifts
-   the satin/fill marginals and so moves the chance floor itself. So `45.8 → 48.1`
-   and `55.4% → 58.9%` may be real, partly real, or entirely the floor moving.
-   Short task, not yet run. Do not quote these as an improvement until it is.
-   *(measured 2026-08-16 — `docs/satin-gate-attribution-2026-08-16.md`; caveat
-   raised 2026-08-17 against that spec's §4 acceptance criterion)*
+   **RESOLVED 2026-08-17 — corrected kappa rose, gain is real.** The spec's
+   actual bar, `parts["sttype"]`, moved 0.167 → 0.193 (+0.026) against a
+   chance floor that itself rose (0.429 → 0.472) rather than dropped, so the
+   rise isn't the floor-moving artifact §4 warned about — smaller than the
+   raw `45.8 → 48.1` headline since sttype is one of six weighted components.
+   *(measured 2026-08-17 — `kappacheck.py` vs `26ceaa3`/`2729ea5`; detail in
+   `docs/satin-gate-attribution-2026-08-16.md` §9)*
 
 ---
 
@@ -150,16 +147,14 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
   obstacle, and where the design effort goes: `_shade_layers` returns a
   *continuous* membership function, and tatami needs actual polygons per shade.
   `_band_clip` does not help — it slices by ramp position, which is exactly what
-  doesn't exist here. **Write the design before the code.**
-  *(ruled 2026-08-12 — scope-history)*
+  doesn't exist here. **Write the design before the code.** *(ruled 2026-08-12 — scope-history)*
 - **Engine quality is a parallel investment, NOT a launch gate.** SAM2 ships
   post-v1 as an opt-in download. *(ruled 2026-08-11 — PRODUCT.md,
   `docs/sam2-ship-path-brief-2026-08-11.md`)*
 - **Real-photo provenance is not a concern**, so real photos are cleared to land
   as corpus fixtures. *(ruled 2026-08-12 — scope-history)*
 - **Draw shapes stays a right-click canvas tool**, not an upload tile — Kent's
-  amendment to "remove all of the unnecessary upload buttons".
-  *(ruled 2026-08-13 — PR #138)*
+  amendment to "remove all of the unnecessary upload buttons". *(ruled 2026-08-13 — PR #138)*
 - **Leave `MERGE_DELTAE00_THRESH` at 26.0.** No evidence for retuning it on a
   real photo, and its own tuning history says a global change costs more than it
   gains. *(measured 2026-08-12 — `stage2_photo_segment.py:452-496`)*
@@ -173,8 +168,7 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
 - **`feat/svg-import-shapes` is not resumed.** 277 commits behind, and the one
   task attempted past the tokenizer is genuinely broken against its own
   tolerance. If the need resurfaces, treat it as a fresh plan against current
-  `main`, not a rebase. Branch left in place; deleting it is Kent's call.
-  *(decided 2026-08-07 — scope-history)*
+  `main`, not a rebase. Branch left in place; deleting it is Kent's call. *(decided 2026-08-07 — scope-history)*
 
 ---
 
@@ -183,28 +177,24 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
 - **`blend_tonal_bands`** (banding inside the fill tier) — built, measured,
   **removed** in the same pass. It decomposed the geometry correctly and changed
   nothing visible, because the shades still shared one thread: 7,725 → 10,126
-  stitches, trims 33 → 105, `color_changes` unchanged at 13.
-  *(measured 2026-08-12 — scope-history)*
+  stitches, trims 33 → 105, `color_changes` unchanged at 13. *(measured 2026-08-12 — scope-history)*
 - **Subject-relative streamline `d_sep`** (the "cheap" alternative to option A)
   — retunes a tier with its own calibration history, against designs that
-  currently work. Not cheaper than A, lower ceiling.
-  *(measured 2026-08-12 — scope-history)*
+  currently work. Not cheaper than A, lower ceiling. *(measured 2026-08-12 — scope-history)*
 - **DT-first classifier architecture swap** — the patented rule as printed sends
   62/83 clean satins to fill; corrected arms lose every disagreement they
   create. *(measured 2026-08-11 — `docs/dt-first-verdict-2026-08-11.md`)*
 - **Swapping the SAM model** — in automatic-mask-generation mode SAM2's image
   encoder is only ~8% of per-image cost and the `points_per_side**2` prompt
   loop is ~92%, while every lightweight SAM variant optimizes the encoder.
-  SAM 1 is *heavier* (375 MB smallest checkpoint).
-  *(researched 2026-08-11 — `docs/sam-alternatives-research-2026-08-11.md`)*
+  SAM 1 is *heavier* (375 MB smallest checkpoint). *(researched 2026-08-11 — `docs/sam-alternatives-research-2026-08-11.md`)*
 - **FastSAM and EdgeSAM are license-disqualified** — FastSAM is AGPL-3.0 despite
   a README claiming Apache, EdgeSAM is non-commercial (NTU S-Lab 1.0).
   *(suspected 2026-08-11 — came from a research subagent, never independently
   re-verified; strong leads, not settled fact)*
 - **Size-proportional `simplify_tol_mm`** — the fixed 0.2 mm constant is correct
   as-is; Ember's scaling equivalent is not a like-for-like comparison. No change
-  made, and the investigation is closed rather than open.
-  *(measured 2026-08-07 — `docs/scope/research-backlog.md`)*
+  made, and the investigation is closed rather than open. *(measured 2026-08-07 — `docs/scope/research-backlog.md`)*
 
 ---
 
@@ -220,8 +210,7 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
   compared layered against **tatami**, not against streamline-mono. Run directly,
   layered is consistently *denser*: `owl_kent.jpg` 1,902 → 3,215 (2.1×),
   `fur_ramp.png` 326 → 696 (1.7×), `gradient_ramp_linear.png` 614 → 1,918
-  (3.1×). **No fix needed; do not go looking for one.**
-  *(measured 2026-08-13 — scope-history)*
+  (3.1×). **No fix needed; do not go looking for one.** *(measured 2026-08-13 — scope-history)*
 - **`_speckle_ratio` is not scale-broken.** The original note (0.35 max vs
   values of 39.93 / 49.45 / 78.72 on real regions) was hedged "confirm before
   trusting it" and hardened into a stated defect as it was copied. It computes
@@ -240,8 +229,7 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
 
 - **Six phase-numbering schemes exist; only ROADMAP.md's five engine phases
   are live.** Historical: the 4-phase pro-stitch roadmap, 11 digitizer steps,
-  7 launch items, 8 Studio slices, 13 photo-plan rows.
-  *(confirmed 2026-08-17 — docs review of ROADMAP/PRODUCT/READMEs/sdd ledger)*
+  7 launch items, 8 Studio slices, 13 photo-plan rows. *(confirmed 2026-08-17 — docs review of ROADMAP/PRODUCT/READMEs/sdd ledger)*
 - **The venv holds a STALE non-editable install of `digitizer_core`, and cwd
   decides which one you get.** `pytest` from `digitizer/` imports the working
   tree (verified), so tests are honest — but from any other cwd the same
@@ -259,8 +247,7 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
   a clipped button read as a dead service and silently routed photo work through
   the browser engine, which emits no pipeline warnings — a full SAM2 on/off
   comparison was run and two result sets published that never touched SAM2.
-  Closed for the upload path; remember the *class*.
-  *(confirmed 2026-08-13 — PR #122, PR #138)*
+  Closed for the upload path; remember the *class*. *(confirmed 2026-08-13 — PR #122, PR #138)*
 - **Pro-parity scores from before 2026-08-14 are on a different scale and do
   not compare.** `direction` and `sttype` were bounded agreement measures with
   a floor near 0.5, so ~21 of their combined 40 points were paid out for a
@@ -311,15 +298,17 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
   deselects nobody is assigned to: `docs/pro-parity-real-art-2026-08-15.md` §0b.
   *(corrected 2026-08-17 — Windows column re-run this date: `logo_alpha` ×2
   passed, `enthusiast_logo` ×2 failed; CI column read from the workflow)*
-- **A SECOND expected local failure, nothing to do with goldens: the OCR test
-  needs a binary Windows lacks.** `test_pipeline.py::test_full_pipeline_stamps_ocr_fields_on_the_benchmark_subline`
-  demands one real character read. `pytesseract` is a declared dep and imports
-  fine, but it only wraps the `tesseract` executable — CI apt-installs that
-  (`python-package-conda.yml:75-76`), a Windows box usually has not, so
-  `ocr_char` is `None` throughout and the assert fails. **Not a regression, and
-  deselected nowhere**, so it reads as an unexplained local red. Install
-  Tesseract on `PATH` to go green. *(confirmed 2026-08-17 —
-  `shutil.which("tesseract")` is `None` here; passes on CI)*
+- **OCR tests skip, not fail, on a machine without the `tesseract` binary.**
+  `pytesseract` is a declared dep and imports fine, but it only wraps the
+  `tesseract` executable: CI apt-installs that (`python-package-conda.yml:75-76`),
+  a Windows box usually has not. The five tests that demand a REAL read — the
+  OCR-gate damaging case, both `test_ocr_suggest` real-read tests, and the
+  `saw_a_real_character` assertions in `test_pipeline.py` / `test_service.py` —
+  used to fail there as unexplained local reds; they now carry
+  `skipif(shutil.which("tesseract") is None)`. Install Tesseract on `PATH` to
+  exercise them locally; CI always runs all five. *(measured 2026-08-17 — the
+  five failed at 73f37da on the tesseract-less Windows machine, skip after the
+  markers landed)*
 - **Measure pro-parity in a git worktree, never in a shared checkout.** Three
   separate baselines were invalidated on 2026-08-15 by commits landing mid-run,
   including from a second Claude session on the same branch. The first symptom
@@ -394,9 +383,9 @@ these predate 2026-08-14 and are unchanged:**
    launch checklist, and it cannot start without a sourcing decision — the
    non-goals rule out a user-upload gallery on copyright grounds. See
    `PRODUCT.md`.
-7. **The `scratch_corpus/` 37 files.** Gitignored and empty in every
-   checkout; no session has ever had them. Blocks the DT-first classifier's
-   M2/M3. See the evaluation-corpus entry.
+7. **The `scratch_corpus/` 37 files.** Gitignored; cloud checkouts are empty
+   but all 37 are present on Kent's machine (confirmed 2026-08-17), so a local
+   session can run the corpus legs today. Blocks cloud-side M2/M3 only.
 8. **Font lawyer consult — optional.** Only gates RESTORING the 13 pulled
    ShareAlike fonts; the brief is written and ready to send. Nothing waits
    on it. See the font-licence entry.
@@ -570,6 +559,12 @@ preflight pooled-metric measurement gap, traced in area 1). **Next step:** run t
 tool by hand against a few real classifier changes to learn what a genuine
 regression looks like before setting any hard threshold.
 
+**Update 2026-08-17: the "preflight pooled-metric measurement gap" cited
+above is CLOSED.** `619e9ad` (2026-08-11) rescored `THREAD_MATCH_POOR` per
+region instead of per pooled thread median; see area 1 above
+(`docs/scope/1-auto-digitizing-quality.md`) for the corpus baseline reads
+under the new instrument.
+
 **The corpus half is no longer empty (2026-08-15).** Eight files of real
 customer artwork now ship in `FIXTURES` — the first entries that are neither
 synthetic nor hand-picked. They immediately contradicted the synthetic set:
@@ -581,8 +576,8 @@ input this product actually receives. One (`logo_script_tires.png`, a clean
 two-colour script wordmark on white) classifies as `photo_scene` outright — a
 misroute, kept as a fixture so the bug has one.
 *(measured 2026-08-15 — `tools/corpus_scorecard.py:FIXTURES`)*
-This does **not** close `scratch_corpus/`: those 37 files are still
-inaccessible, and the DT-first classifier's M2/M3 still waits on them.
+This does **not** close `scratch_corpus/`: cloud sessions still can't reach
+those 37 files (present locally — Waiting on Kent #7); M2/M3 still waits.
 
 **A second, different harness also exists: `tools/pro_parity/`.** Where
 `corpus_scorecard.py` asks "did our own preflight score move", this one asks

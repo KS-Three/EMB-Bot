@@ -10,7 +10,7 @@ metadata:
 
 ## Current state
 
-EMB-Bot lives at `C:\Users\EE-LT-11030\Personal\EMB-Bot` (git repo). Two systems: a browser Studio app (Svelte, `app/`) with its own JS embroidery engine (`src/*.js`, dual-mode browser + Node), and a separate Python auto-digitizing engine plus optional FastAPI service (`digitizer/`, own venv, own pytest suite).
+EMB-Bot lives at `<repo-root>` (git repo). Two systems: a browser Studio app (Svelte, `app/`) with its own JS embroidery engine (`src/*.js`, dual-mode browser + Node), and a separate Python auto-digitizing engine plus optional FastAPI service (`digitizer/`, own venv, own pytest suite).
 
 **This repo now maintains its own current-status docs — read them before trusting anything below as live state; this file is history, decisions, and gotchas, not a dashboard:**
 - `CLAUDE.md` — read first; the handful of things that silently go wrong if skipped.
@@ -18,7 +18,7 @@ EMB-Bot lives at `C:\Users\EE-LT-11030\Personal\EMB-Bot` (git repo). Two systems
 - `PRODUCT.md` — launch-scope checklist, non-goals, open product decisions.
 - `MASTER_SCOPE.md` — live per-capability-area status/confidence plus the "Waiting on Kent" decision queue. Updated proactively and carries a strict no-stale-claims rule (every entry needs a `(verb date — source)` pointer). This is the authority on "what's currently true" now, not this memory file — a 2026-08-14 fact-check of that document found 30 of 56 sampled claims stale, which is exactly the failure mode this trim is trying to avoid here too.
 
-Backups: GitHub `KS-Three/EMB-Bot` (moved from `kent746/EMB-Bot` 2026-08-06) plus Google Drive `G:\My Drive\EMB-Bot\` (repo bundle + scratch_ink zip). Kent also runs parallel lanes through git worktrees and separate GitHub Copilot worktrees (`C:\Users\EE-LT-11030\copilot-worktrees\EMB-Bot\*`); origin has been caught far ahead of a local checkout before (326 commits, once). Always `git fetch` and check `origin/main`'s log before trusting a local baseline.
+Backups: GitHub `KS-Three/EMB-Bot` (moved from `kent746/EMB-Bot` 2026-08-06) plus Google Drive `G:\My Drive\EMB-Bot\` (repo bundle + scratch_ink zip). Kent also runs parallel lanes through git worktrees and separate GitHub Copilot worktrees (`<user-home>\copilot-worktrees\EMB-Bot\*`); origin has been caught far ahead of a local checkout before (326 commits, once). Always `git fetch` and check `origin/main`'s log before trusting a local baseline.
 
 **Core conventions in the Python pipeline** (get these wrong and output is silently bad, not obviously broken): RGB uint8 internally (cv2 loads BGR — convert on load); color math in CIELAB via `skimage.rgb2lab` on `[0,1]` floats, never cv2's 8-bit Lab; thread-chart snapping uses CIEDE2000, not CIE76 (CIE76 once sent a dark navy to a grey thread in testing); plain Euclidean Lab is fine only for cluster-merge/AA-blend collinearity. Plan-stage coordinates are mm floats, origin at the artwork bbox center, **y-axis down**; the JS engine is **y-axis up**; `digitizer_core/adapter.py` owns the single y-flip between them and should be the only place one ever happens. The service's `/digitize` route deliberately returns an EMB-Bot `Design` object, not a DST — routing that disputed format off the service boundary means a digitized design can't arrive pre-rotated while the DST axis question (below) stays open. To run the Python suite: `cd digitizer && .venv/Scripts/python -m pytest -q` — a bare `python probe.py` will NOT put cwd on `sys.path`; use `python -m pytest` or set `PYTHONPATH=.`.
 

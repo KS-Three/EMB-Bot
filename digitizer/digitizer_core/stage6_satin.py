@@ -227,8 +227,10 @@ def is_satin_candidate(poly: Polygon, max_width_mm: float, *,
     four letterform archetypes (`BAR`/`O_RING`/`C_STROKE`/`T_SHAPE` in
     `tests/test_satin.py`) keep their satin call under the DT check exactly
     as already proven for the non-flat classes — this is a widening of
-    scope, not a new rule. See `_dt_regular_and_within_cap` for the check
-    itself.
+    scope, not a new rule. **`classify_ribbon` below is the implementation**;
+    this is a thin bool wrapper over it. (It used to point at
+    `_dt_regular_and_within_cap`, deleted 2026-08-17 once `classify_ribbon`
+    absorbed both of its checks.)
     """
     return classify_ribbon(poly, max_width_mm,
                            design_class=design_class).satin
@@ -341,37 +343,33 @@ def classify_ribbon(poly: Polygon, max_width_mm: float, *,
 _DT_TIGHTEN_PERCENTILE = 90.0
 
 
-def _dt_regular_and_within_cap(poly: Polygon, max_width_mm: float) -> bool:
-    """A second opinion on `is_satin_candidate`'s call, read off the exact
-    distance transform at the medial axis instead of `2*area/perimeter`.
-
-    Local, per-point measurements are immune to the perimeter-based test's
-    failure mode: boundary noise moves individual medial-axis radii by the
-    noise amplitude, not by a global perimeter sum, so a compact blob's
-    radii stay large (its true half-size) no matter how jittery its outline
-    is. Two AND terms, exactly `docs/dt-classifier-spike-2026-08-02.md`'s
-    recommended `VP90` arm:
-
-    - **Regularity** (`2*sigma < mu` at skeletal pixels): a uniform-thickness
-      stroke has a tight radius distribution; a blob's medial axis collapses
-      toward its centre, spreading the radii out. This is what actually
-      separates a ribbon from a blob here -- not `max_width_mm`, which both
-      can satisfy.
-    - **The 90th-percentile width stays under the cap**: `max` is a junction
-      artefact (a serif crossbar's inscribed circle runs sqrt(2) times its
-      stroke) and rejects real letterforms; `p90` strips that spike while
-      still catching a genuinely wide blob.
-
-    Returns True (defers to the caller's already-True verdict) on a
-    degenerate raster -- a shape too small or thin to skeletonize is not
-    this check's problem to solve, and failing closed here would convert a
-    raster edge case into a fill verdict for a shape that may be a perfectly
-    good ribbon.
-    """
-    stats = _dt_stats(poly)
-    if stats is None:
-        return True
-    return 2.0 * stats.std < stats.mean and stats.p90_mm <= max_width_mm
+# The DT arm's reasoning, kept here after `_dt_regular_and_within_cap` was
+# deleted on 2026-08-17. That function was the original home of these two
+# checks; `classify_ribbon` absorbed them when it took over so it could report
+# WHICH one fired, leaving the old one with no callers while three docstrings
+# still pointed at it as the live check. Deleted rather than left as a trap
+# (the `match_shape_ids` lesson), and its argument preserved:
+#
+# The DT reads the exact distance transform at the medial axis instead of
+# `2*area/perimeter`. Local, per-point measurements are immune to the
+# perimeter-based test's failure mode: boundary noise moves individual radii by
+# the noise amplitude, not by a global perimeter sum, so a compact blob's radii
+# stay large (its true half-size) no matter how jittery its outline is. Two AND
+# terms, exactly `docs/dt-classifier-spike-2026-08-02.md`'s recommended `VP90`
+# arm — both now live in `classify_ribbon`:
+#
+# - **Regularity** (`2*sigma < mu` at skeletal pixels): a uniform-thickness
+#   stroke has a tight radius distribution; a blob's medial axis collapses
+#   toward its centre, spreading the radii out. This is what actually separates
+#   a ribbon from a blob -- not `max_width_mm`, which both can satisfy. It is
+#   also the term the promotion path can overrule, on `explained`, because on
+#   real lettering a taper or serif spreads the radii without making the shape
+#   any less of a ribbon.
+# - **The 90th-percentile width stays under the cap**: `max` is a junction
+#   artefact (a serif crossbar's inscribed circle runs sqrt(2) times its
+#   stroke) and rejects real letterforms; `p90` strips that spike while still
+#   catching a genuinely wide blob. The promotion path does NOT reopen this
+#   one -- it is a physical limit, not a proxy.
 
 
 # How much of a shape's area its own spine has to account for before the

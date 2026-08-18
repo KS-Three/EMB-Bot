@@ -78,6 +78,8 @@ def dump(name, path, garment, width):
 
 
 if __name__ == "__main__":
-    dump("benchmark",
-         Path(r"C:\Users\EE-LT-11030\Downloads\enthusiast enterprises logo.png"),
-         "left_chest", 90.0)
+    if len(sys.argv) < 2:
+        sys.exit(f"usage: {Path(__file__).name} <artwork> [garment] [width_mm]")
+    dump("benchmark", Path(sys.argv[1]),
+         sys.argv[2] if len(sys.argv) > 2 else "left_chest",
+         float(sys.argv[3]) if len(sys.argv) > 3 else 90.0)
