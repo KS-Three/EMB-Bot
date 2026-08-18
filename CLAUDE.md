@@ -61,14 +61,15 @@ cd app && npx vitest run test/foo.test.js          # single Studio test
 node tools/build-embf.mjs                          # rebuild the binary font library
 tools/start-emb-bot.ps1                            # Windows: both servers + opens browser
 
-cd digitizer && .venv/Scripts/python -m pytest -q  # Python digitizer tests (~7-11 min)
+cd digitizer && .venv/Scripts/python -m pytest -q  # Python digitizer tests (~21 min serial; -n auto is parallel-safe)
 cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0.1:8721
 ```
 
 - Always `python -m pytest`, never `python foo.py` — a bare invocation does not put
   cwd on `sys.path`.
 - **Never pipe pytest to `tail`** — you get tail's exit code, so a red run reads green.
-- Known-failing counts and which failures are pre-existing live in `COOKBOOK.md`
+- The expected failure classes (golden mismatches on machines that didn't
+  capture the golden, OCR skips without `tesseract`) live in `COOKBOOK.md`
   ("Running things"). Check there before treating a red run as a regression.
 
 ## Things that will silently go wrong if you skip them
