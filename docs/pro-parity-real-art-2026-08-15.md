@@ -1,5 +1,18 @@
 # Pro-parity on REAL customer artwork — the honest baseline (2026-08-15)
 
+> **Instrument note, added 2026-08-17.** Every `art_iou` / `pro_extra` /
+> `art_missed` figure below was measured with `artfidelity.py` painting
+> coverage at `THREAD_W_MM = 0.40`, and **still reproduces exactly at that
+> width** — the 15-design table, the correlations, the `art_iou >= 0.90`
+> cohort split and the `29.8 * art_iou + 21.0` fit are all intact.
+> A same-day experiment widened that paint to 0.50 mm and moved every value
+> here (`art_missed` by −16% to −80%; `tires_hat_3d` 0.930 → 0.901, across
+> this file's own 0.90 cohort boundary) before being reverted for making the
+> corpus mean worse. Nothing here needs restating today. The point of the
+> note is that these numbers are only comparable to output from an instrument
+> painting at 0.40 — if that constant ever moves, this file moves with it,
+> and the fit above is the load-bearing casualty.
+
 The 23-design corpus behind `pro-parity-program-2026-08-14.md` graded the engine
 on artwork **reconstructed from the pro's own stitches**. That file named the
 problem itself (§2, "arguably bigger" than the chance-floor caveat) and

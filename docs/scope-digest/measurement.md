@@ -14,6 +14,14 @@ Doc names are shortened to their prefix: `pro-parity-real-art` = `docs/pro-parit
 - **`artfidelity.py`** (`art_iou`/`pro_extra`/`art_missed`) — how faithfully the PRO followed the customer art;
   pro-side only, immune to engine movement (`handoff-2026-08-16` §5). Its +/-4 mm shift search pins at the boundary
   on Gaulke, so a re-composed layout reads low by construction (`pro-parity-real-art` §3).
+  Paints coverage at `THREAD_W_MM = 0.40`; every published figure assumes it. A 0.50 experiment on
+  2026-08-17 moved all of them and was reverted for making the corpus mean worse (mean boundary
+  1.205 -> 1.359 mm) — that constant is load-bearing for cross-doc comparability, not a free knob
+  (`curve-fidelity-ladder-2026-08-17`).
+- **`enginefidelity.py`** (`art_iou`/`engine_extra`/`art_missed`/`haus_mm`/`meanb_mm`) — the engine-side
+  twin, and the only instrument with an OUTLINE term (the scorecard has none). Floor measured on a
+  flawless synthetic reproduction: haus ~0.10 mm, boundary ~0.04 mm. Deltas under that are alignment
+  quantisation, not signal (`curve-fidelity-ladder-2026-08-17`).
 - **`selfconsistency.py`** — the scorecard's ceiling, pro vs pro; self-validated at 96.0/99.9 on
   one-job-saved-twice pairs. Three documented blind spots: PES-vs-DST pairs score the FORMAT (DST has no palette,
   so `decode()` substitutes a `GREYS` ramp), DST-vs-DST inflates `coverage`, several pairs are one file reused for
