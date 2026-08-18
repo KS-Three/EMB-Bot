@@ -61,7 +61,7 @@ cd app && npx vitest run test/foo.test.js          # single Studio test
 node tools/build-embf.mjs                          # rebuild the binary font library
 tools/start-emb-bot.ps1                            # Windows: both servers + opens browser
 
-cd digitizer && .venv/Scripts/python -m pytest -q  # Python digitizer tests (~21 min serial; -n auto is parallel-safe)
+cd digitizer && .venv/Scripts/python -m pytest -q -n auto  # Python digitizer tests (runtime + failure classes: COOKBOOK "Running things")
 cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0.1:8721
 ```
 
