@@ -37,18 +37,73 @@ and `EMPTY_THREAD_LAYER`. `resolve_small_regions`' size test is
 individually-per-region and blind to the union: 84 mutually-adjacent
 "details" forming one connected 172 mm² structure are not detail.
 
-Landed: `digitizer/tests/test_ring_absorb.py`, xfail `strict=True` per the
-scale-invariance precedent — the test going green IS the fix's acceptance
-criterion. **Fix design pending Kent** (engine change, so it waits):
+### What it is worth on the real corpus (measured 2026-08-17, post-fix)
 
-- **(a) Chain-merge before the size test** (recommended): union
-  mutually-adjacent sub-floor regions first; if the union clears the floor,
-  keep it (merging 84 segments into one colour is acceptable; losing the
-  annulus is not). Localised to `resolve_small_regions`, no new thresholds —
-  the floor stays `cfg.min_detail_mm`-derived per `plans-engine.md:17`.
-- (b) Cap total absorbed area per connected structure and stop absorbing
-  past it. Simpler, but picks an arbitrary cap — a new threshold, which (a)
-  avoids.
+Both lanes of all 15 real-artwork designs, re-prepped with the fix in the
+tree and diffed byte-for-byte against the pre-fix run:
+
+| | |
+|---|---|
+| `bridge_hat` | 8,244 → 8,400 stitches (+156) |
+| `precision_drone` | 6,523 → 6,552 stitches (+29) |
+| the other 13 | **byte-identical** |
+
+**The discriminator is NOT the image class.** Ten of the fifteen classify
+gradient/photo and only two changed, so "gradient art benefits" — an
+intuition this session briefly published — is wrong. Zero of five flat
+designs changed, so the gradient lane is necessary but nowhere near
+sufficient.
+
+It is not the *number* of small regions either. Traced through
+`_chained_small_regions`, counting how many sub-floor regions each design
+has and how many the chain rescues:
+
+| design | small regions | rescued by chain |
+|---|---|---|
+| `bridge_hat` | 199 | **34** |
+| `precision_drone` | 71 | **5** |
+| `tires_hat_3d` | **791** | 0 |
+| `mfab_hat` | 25 | 0 |
+| `hotel_fremont_hat` | 10 | 0 |
+| `becker_hat_large` | 0 | 0 |
+
+`tires_hat_3d` has four times more sub-floor regions than `bridge_hat` and
+gains nothing. The predictor is whether those regions are **mutually
+adjacent and together clear the floor** — a fragmented *structure* — versus
+isolated speckle scattered across the design. Speckle is correctly still
+absorbed; only connected structure is rescued. That is the behaviour the fix
+was designed for, and the corpus confirms it discriminates rather than
+blanket-rescuing.
+
+Practical read: this recovers real content on ~13% of the current corpus and
+provably touches nothing else. It is insurance against silent data loss whose
+value rises with fragmented artwork, not a general quality win.
+
+Landed: `digitizer/tests/test_ring_absorb.py` — landed red as `xfail(strict)`
+and the xfail removed when the fix made it green, so it is now a regression
+guard. **Fix implemented as `_chained_small_regions`** (`stage3_segment.py`),
+after two rejected designs worth recording:
+
+- **Rejected — same-layer chaining.** The first attempt only chained regions
+  sharing a thread. A banded ring alternates colours, so every arc's
+  neighbours are the OTHER colour: the rule saw 84 isolated crumbs and
+  chained nothing. Chain adjacency is a question about geometry, not about
+  which thread a fragment landed on.
+- **Rejected — merging the chain into one region.** Unioning the members
+  would sew one colour over another. The shipped fix *rescues* instead: each
+  fragment survives as its own region with its colour intact, and stage 4
+  still re-tests every one against its own real-geometry floor.
+- **Shipped:** size-test connected chains of sub-floor regions against the
+  same `cfg.min_detail_mm`-derived floor; a chain that clears it is kept
+  as-is. No new thresholds, per `plans-engine.md:17` — the same bar, applied
+  to the structure instead of to each crumb of it.
+
+Still to verify before this merges: the full digitizer suite. It was started
+2026-08-17 and starved by a concurrent corpus run; judge it against the
+recorded baseline for this worktree (8 environmental failures at `73f37da` —
+3 Linux-captured goldens, 5 needing a `tesseract` binary this machine lacks),
+not against zero. Golden movement is plausible here and is not automatically
+wrong: the fix deliberately changes which regions survive segmentation.
 
 ## 3. Gap 2 (stage-0 flat-logo misroute) — disposition, no code
 
