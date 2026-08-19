@@ -24,9 +24,8 @@ on `main`" until 2026-08-17. *(confirmed 2026-08-17 — `git ls-tree origin/main
 **Last updated:** 2026-08-18. Dated history lives in
 [`docs/scope-history.md`](docs/scope-history.md); **this file is current state
 only.** See "How this document works" at the bottom for the rules that keep it
-that way, including the line budget. The 2026-08-17 and 2026-08-18 correction
-passes each arrived with the file near 800 and paid for themselves by
-compacting dated narrative out of the entry they touched. Do the same.
+that way, including the line budget. **This file is currently OVER that budget
+— a known debt.** Spend a real compaction pass before adding anything.
 
 **Every claim below carries a pointer** in the form
 `(verb date — source)`: `confirmed` means checked against code or a passing
@@ -64,14 +63,17 @@ or move it.
 4. **We trim far more than the professional: 8.49 trims/1,000 stitches against
    the pro's 1.27** — same logo, same size, more than double the 4.1 ceiling
    this repo's own chaining test treats as the outer limit. Unambiguously a
-   defect, unlike the stitch-count gap beside it. **Corrected 2026-08-18: the
-   old "129 runs vs 15" counted plan OBJECTS against THREAD PATHS — quote the
-   trim rate, never a run count. Cause no longer undiagnosed** (`_graph_travel`
-   returns a path 0 of 57 times; the unread `run_breaks` histogram attributes
-   the rest) —
+   defect, unlike the stitch-count gap beside it. **Measured like-for-like
+   2026-08-18, 23 designs, same decoder both sides: we open 1,715 `trim` breaks
+   against the pro's 555 — 3.1x. Quote that, or the trim rate; never a run
+   count** (the old "129 vs 15" counted plan OBJECTS against THREAD PATHS), and
+   never the raw `trims` field (pystitch emits ~2 TRIM commands per real cut on
+   the pro's files and 1 on ours). **Cause attributed:** trim-dominated, not
+   travel — the pro never cuts for a move under 11.8 mm and our `trim_at_mm` is
+   3.0 (gate 1: cloth settles that). `_graph_travel` returning nothing is a real
+   but secondary contributor. Detail, retractions and caveats in
    [`docs/fragmentation-attribution-2026-08-18.md`](docs/fragmentation-attribution-2026-08-18.md).
-   *(measured 2026-08-15 — `docs/becker-pro-parity-2026-08-15.md`; corrected
-   2026-08-18 — `prep_all.py:233-251`, `stage6_satin.py:2145`)*
+   *(measured 2026-08-18 — pinned worktree, `prep_all` over the Drive corpus)*
    **Not blocked** — artwork and five pro variants are committed under
    `digitizer/testdata/reference/`. Two things that comparison disproved, so
    nobody re-derives them: the 1-colour-vs-4 gap is **not** defect #1 but
@@ -88,20 +90,18 @@ or move it.
    wrong-shapes-picked failure; it only moves the mix that is already right.
    *(measured 2026-08-14 — confusion matrix over the pro-parity corpus;
    per-design detail in area 1)*
-   **Partly closed 2026-08-16, and the remainder is NOT the classifier.** The DT
-   regularity term accounts for 63.6% of the pro-satin ground we fill; loosening
-   its limit is confirmed not to work (recovers 625 cells, leaks 439), while a
-   promotion path reopening that term alone moves the corpus **45.8 → 48.1**
-   (better on 8, worse on 1 — `bridge_lc`, unexplained — unchanged on 5). What
-   is left is segmentation: an oracle knowing the pro's per-shape answer scores
-   76.6% against our 55.4%, and 48% of graded cells sit in shapes under 75% one
-   type, i.e. our regions straddle the pro's satin/fill boundaries.
-   **RESOLVED 2026-08-17 — corrected kappa rose, gain is real.** The spec's
-   actual bar, `parts["sttype"]`, moved 0.167 → 0.193 (+0.026) against a
-   chance floor that itself rose (0.429 → 0.472) rather than dropped, so the
-   rise isn't the floor-moving artifact §4 warned about — smaller than the
-   raw `45.8 → 48.1` headline since sttype is one of six weighted components.
-   *(measured 2026-08-17 — `kappacheck.py` vs `26ceaa3`/`2729ea5`; detail in
+   **Partly closed, and the remainder is NOT the classifier.** The DT regularity
+   term accounts for 63.6% of the pro-satin ground we fill; loosening its limit
+   is confirmed not to work, while a promotion path reopening it moves the
+   corpus 45.8 → 48.1. The gain is real — corrected kappa `parts["sttype"]`
+   rose 0.167 → 0.193 against a chance floor that itself rose, so it is not the
+   floor-moving artifact §4 warns about. **What is left is segmentation:** an
+   oracle knowing the pro's per-shape answer scores 76.6% against our 55.4%,
+   and 48% of graded cells sit in shapes under 75% one type — our regions
+   straddle the pro's satin/fill boundaries. Note
+   `docs/segmentation-alignment-2026-08-17.md` recommends NOT building the
+   region-level fix: the straddle is 95.8% `speckle`, i.e. grid noise.
+   *(measured 2026-08-17 — `kappacheck.py`; detail in
    `docs/satin-gate-attribution-2026-08-16.md` §9)*
 
 ---

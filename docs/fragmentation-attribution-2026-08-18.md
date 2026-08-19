@@ -149,10 +149,17 @@ emit explicit jump records, so our `hop` is structurally 0. Summed, the
 mechanical (non-cut) breaks are comparable: pro 368, ours 292.
 
 **The whole gap is thread cuts. We trim 3.1x as often as the professional.**
-Use that. It is same-unit, same-decoder, 23 designs — unlike "129 vs 15" and
-unlike "8.49 vs 1.27", which a 2026-08-18 re-run did not reproduce (it measured
-the pro at 2.28-8.15 trims/1k across the corpus, and on `becker_hat_large` and
-`tires_hat_3d` we trim LESS than the pro).
+Use that. Same unit, same decoder, 23 designs.
+
+**Use `run_breaks['trim']`, NEVER the raw `trims` count, when comparing sides.**
+The raw counts are not commensurable: pystitch emits several TRIM commands per
+actual cut on the pro's files (on `becker_hat_small`, 30 of 40 TRIMs are
+followed by another TRIM before any stitch), while our writer emits exactly
+one. Corpus-wide the pro inflates **2.0x** (1,090 raw -> 555 breaks) and we
+inflate **1.0x** (1,715 -> 1,715). A first pass at this comparison divided raw
+commands on one side against real events on the other and wrongly concluded
+that `becker-pro-parity`'s **1.27 trims/1k for the pro was unreproducible**. It
+is correct. `run_breaks` de-duplicates, so the 3.1x above is unaffected.
 
 ### What it attributes the cause to
 
@@ -168,6 +175,30 @@ defect is already built and waiting on cloth, not on code.**
 `_graph_travel` returning nothing (§2) is still a real defect and still worth
 fixing — but this diff says it is not where the bulk of the gap sits, so do not
 size it as though it were.
+
+### The pro's actual cut rule, measured
+
+Distance the pro moves after each trim on `becker_hat_small`:
+
+| | mm |
+|---|---|
+| minimum | **11.8** |
+| median | 23.6 |
+| maximum | 71.7 |
+| under our `trim_at_mm` of 3.0 | **0 of 35** |
+
+The pro never cuts for a move shorter than ~11.8 mm. Our `trim_at_mm` is
+**3.0**, so we cut across a whole band of distances they simply float —
+consistent with `.claude/memory/pro-trim-threshold.md` recording floats up to
+16.1 mm uncut.
+
+That is a second measured mechanism for the 3.1x, independent of §2's travel
+snap, and it is the one the corpus actually attributes the bulk to. **It is
+also gate-1 territory** — `trim_at_mm` governs when thread is cut and how far a
+float is allowed to sit on fabric, which is a cloth question, not a geometric
+one. Do not retune it on this evidence alone. What this measurement DOES
+support without touching a constant is chaining: `chain_links` removes the need
+for the hop instead of re-deciding what to do about it.
 
 ### Caveats that must travel with these numbers
 
