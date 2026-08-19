@@ -160,9 +160,23 @@ grades the pro against itself.
 customer artwork through `real_art.prepare`, which does a uniform-bar crop and
 nothing else (`real_art.py:16-33`). It requires `PRO_PARITY_ROOT` on Google
 Drive — `G:/My Drive/EMB-Bot/Embroidery Files`, confirmed present on Kent's
-machine 2026-08-19, 13 job folders. Against the git-tracked zip alone the real
-lane fails 0/15 (`prep_all.py:78-82`), so **this measurement cannot run in a
-cloud session.**
+machine 2026-08-19, 13 job folders.
+
+**The source artwork is Drive-only, checked file by file 2026-08-19.** All seven
+logo files named in `prep_both.DESIGNS` column 3 — `Becker Marine Logo.png`,
+`Gaulke Roofing Logo.png`, `Hotel Fremont Logo.webp`, `MFab Logo.png`,
+`Precision Thermal Drone Logo.png`, `Tires Logo.png`, `Bridge Bar Logo.jpg` —
+are absent from the tracked `Embroidery Files.zip` and present on `G:`. The zip
+does contain 15 `.JPG` files, but they are per-job order photos with different
+names, not the logo sources. The committed `digitizer/testdata/reference/
+becker_*.jpg` are renders of the pro's own stitch file (two preview panels), so
+they are circular for this measurement in exactly the way the recon lane is.
+
+**Consequence, and the lane's shape.** The corpus run cannot happen in a cloud
+session. The instrument's construction can: every test in §8 except points 1 and
+5 runs on synthetic fixtures with no corpus and no Drive. This plan is therefore
+built in two phases — **A, cloud-safe construction; B, local measurement** —
+with the phase boundary at a committed, calibrated instrument.
 
 **Registration already exists** and is translation-only, never rescaling:
 `artfidelity.best_iou` at `RES = 10.0` px/mm, `THREAD_W_MM = 0.40`, ±4.0 mm
@@ -213,14 +227,21 @@ genuinely wide gap.
 | `band_mm2` | Band area, so a design's shapes can be weighted honestly |
 
 **Arc definition, stated so two implementations cannot differ.** Boundary rings
-are extracted from the band's source mask with `cv2.findContours` (outer ring
-and every hole, each ring walked separately). A boundary pixel is **bare** when
-the inward normal segment of length `W` from that pixel is entirely free of
-thread ribbon. An **arc** is a maximal run of consecutive bare pixels along one
-ring, and its length is the summed pixel-to-pixel distance in mm along that ring.
-Rings close, so a run spanning the start index wraps. `bare_arc_max_mm` is the
-longest such arc over all rings of the shape; a shape with no bare pixel reports
-0.0, never null.
+are extracted from the band's source mask with `cv2.findContours(..., RETR_CCOMP,
+CHAIN_APPROX_NONE)` — outer ring and every hole, each walked separately, every
+boundary pixel in order. A boundary pixel is **bare** when the nearest thread
+pixel is further than `W` from it, i.e. `EDT(~thread)[p] > W`. An **arc** is a
+maximal run of consecutive bare pixels along one ring, and its length is the
+summed pixel-to-pixel distance in mm along that ring. Rings close, so a run
+spanning the start index wraps. `bare_arc_max_mm` is the longest such arc over
+all rings of the shape; a shape with no bare pixel reports 0.0, never null.
+
+*Nearest-thread distance rather than an inward-normal probe (revised
+2026-08-19, before implementation): a normal is ambiguous at a corner and at
+any pixel where the ring doubles back, and two implementations would disagree
+there. An exact Euclidean distance transform has no such freedom, is rotation
+invariant, and states the same physical fact — no thread within `W` of this
+edge point. It matches `barecircle.py`'s own EDT convention.*
 
 Thread masks come from the existing readers — `artfidelity.pro_mask` for the pro,
 `enginefidelity.engine_mask` for ours, both at 10 px/mm — so both sides are
