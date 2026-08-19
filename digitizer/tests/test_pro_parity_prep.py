@@ -212,3 +212,97 @@ def test_decode_breaks_runs_on_every_command_the_file_records():
     cvs = canvas_for(*blocks[0])
     mask, _, _ = prep.analyse_block(blocks[0], cvs)
     assert len(components(mask, cvs.scale, min_mm2=0.1)) == 2
+
+
+# ------------------------------------------------ one pro block, both harnesses
+def _prep_both():
+    """`prep_both.py`, loaded the way this file loads `prep_all.py`. It puts its
+    own directory on `sys.path` and imports `prep_all` under that name, so the
+    instance it holds is NOT the `prep` above — compare behaviour, not identity.
+    """
+    tool = TOOL.parent / "prep_both.py"
+    s = importlib.util.spec_from_file_location("pro_parity_prep_both", tool)
+    mod = importlib.util.module_from_spec(s)
+    sys.modules["pro_parity_prep_both"] = mod
+    s.loader.exec_module(mod)
+    return mod
+
+
+def _fake_decode():
+    """Two blocks, five runs, one of EVERY break kind that can open a run.
+
+    `hop` earns its place: it is the bucket only third-party files produce — a
+    break inferred from distance where the file carries no explicit record —
+    and it is the pro side's second-largest, 368 of 1,054 runs corpus-wide. Our
+    own writer always emits an explicit record, so a fixture built only from
+    kinds WE emit would assert `hop: 0` and pass on a hard-coded zero.
+    """
+    blocks = [[[(0.0, 0.0), (0.0, 4.0)], [(6.0, 0.0), (6.0, 4.0)],
+               [(12.0, 0.0), (12.0, 4.0)], [(18.0, 0.0), (18.0, 4.0)]],
+              [[(0.0, 6.0), (4.0, 6.0)]]]
+    breaks = [["start", "trim", "jump", "hop"], ["color"]]
+    meas = [{"travel_segments": 2, "travel_mm": 11.25},
+            {"travel_segments": 0, "travel_mm": 0.0}]
+    return blocks, breaks, meas
+
+
+def test_pro_meta_histogram_labels_every_run_break():
+    """The `run_breaks` histogram is the instrument that attributes
+    fragmentation to a mechanism — trim vs jump vs colour. Every decoded run
+    must land in exactly one bucket, or the diff under-counts silently."""
+    blocks, breaks, meas = _fake_decode()
+    pro = prep.pro_meta(blocks, breaks, (0.0, 0.0, 20.0, 8.0), jumps=1, trims=1,
+                        meas=meas)
+    assert pro["run_breaks"] == {"start": 1, "color": 1, "trim": 1, "jump": 1,
+                                 "hop": 1}
+    assert sum(pro["run_breaks"].values()) == pro["runs"] == 5
+    assert pro["travel_segments"] == 2 and pro["travel_mm"] == 11.2
+
+
+def test_prep_both_pro_block_is_the_shared_builder_output(tmp_path, monkeypatch):
+    """`prep_both.py` hand-rolled its own `pro` block and omitted `run_breaks`,
+    so the REAL-ART lane could not produce the trim attribution the recon lane
+    already carried — docs/fragmentation-attribution-2026-08-18.md §4's last
+    caveat. The two harnesses decode the same pro file with the same `decode()`;
+    they must summarise it with the same code too.
+
+    Asserted on the OUTPUT, not on the source text. An earlier version of this
+    test grepped `prep_one` for the call, which was wrong in both directions: a
+    mutant that called the shared builder and then dropped `run_breaks` from the
+    result passed it, and a harmless rename turned it red. Equality against
+    `pro_meta`'s own return value catches a divergent copy, a dropped key and a
+    mutated value alike.
+
+    Every heavy dependency is stubbed, so this needs neither the engine nor the
+    Google Drive corpus — the point under test is the summary, not the pipeline.
+    """
+    both = _prep_both()
+    pa, ra = both.prep_all, both.real_art
+    blocks, breaks, meas = _fake_decode()
+    bounds = (0.0, 0.0, 20.0, 8.0)
+    threads = [(0, 0, 0), (255, 255, 255)]
+
+    class _Res:
+        regions = []
+        warnings = []
+
+    monkeypatch.setenv("PRO_PARITY_OUT", str(tmp_path))
+    monkeypatch.setattr(both, "OUT", None)
+    monkeypatch.setattr(pa, "find_file", lambda rel: tmp_path / "fake_source")
+    monkeypatch.setattr(pa, "decode", lambda path: (blocks, breaks, threads, bounds, 1, 1))
+    monkeypatch.setattr(pa, "Canvas", lambda b, **kw: object())
+    monkeypatch.setattr(pa, "reconstruct", lambda *a, **k: (meas, None))
+    monkeypatch.setattr(pa, "block_summary", lambda *a, **k: [])
+    monkeypatch.setattr(pa, "render", lambda *a, **k: Path(a[3]).write_bytes(b"png"))
+    monkeypatch.setattr(pa, "run_ours", lambda *a, **k: (_Res(), None, blocks, threads))
+    monkeypatch.setattr(pa, "machine_meta", lambda d: {})
+    monkeypatch.setattr(ra, "prepare", lambda src, dst: {"ink_bbox_px": [100, 50]})
+    monkeypatch.setattr(ra, "dpi", lambda px, mm: 42.0)
+
+    entry = both.prep_one("fixture", "fake.pes", "fake.png", "left_chest")
+
+    assert entry["pro"] == pa.pro_meta(blocks, breaks, bounds, jumps=1, trims=1,
+                                       meas=meas)
+    # named explicitly: these three are exactly what the private copy dropped
+    for key in ("run_breaks", "travel_segments", "travel_mm"):
+        assert key in entry["pro"], f"the real-art lane lost {key} again"

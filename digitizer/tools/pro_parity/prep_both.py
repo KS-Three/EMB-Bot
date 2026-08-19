@@ -142,14 +142,11 @@ def prep_one(slug, stitch_rel, art_rel, garment_id):
     for n in PRO_FILES:
         shutil.copyfile(recon / n, real / n)
 
-    entry["pro"] = {
-        "stitches": sum(len(p) for runs in blocks for p in runs),
-        "blocks": len(blocks),
-        "runs": sum(len(runs) for runs in blocks),
-        "jumps": jumps, "trims": trims,
-        "width_mm": round(width_mm, 1),
-        "height_mm": round(bounds[3] - bounds[1], 1),
-    }
+    # Built by `prep_all` so both harnesses report the pro side identically —
+    # this used to be a private copy that dropped `run_breaks`, leaving the
+    # real-art lane unable to attribute fragmentation at all.
+    entry["pro"] = prep_all.pro_meta(blocks, breaks, bounds, jumps=jumps,
+                                     trims=trims, meas=meas)
 
     # --- real artwork ------------------------------------------------------
     art_src = prep_all.find_file(art_rel)
