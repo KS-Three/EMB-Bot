@@ -24,9 +24,12 @@ on `main`" until 2026-08-17. *(confirmed 2026-08-17 — `git ls-tree origin/main
 **Last updated:** 2026-08-18. Dated history lives in
 [`docs/scope-history.md`](docs/scope-history.md); **this file is current state
 only.** See "How this document works" at the bottom for the rules that keep it
-that way, including the line budget. The 2026-08-17 and 2026-08-18 correction
-passes each arrived with the file near 800 and paid for themselves by
-compacting dated narrative out of the entry they touched. Do the same.
+that way, including the line budget. **This file is 9 lines OVER its 800 budget
+and that is a known debt, not an oversight.** The 2026-08-18 correction pass
+added a measured number and several retractions, compacted the defect-4 and
+defect-5 entries to pay for most of it, and stopped there rather than cut
+material it had not verified. The next session in here should spend a real
+compaction pass before adding anything.
 
 **Every claim below carries a pointer** in the form
 `(verb date — source)`: `confirmed` means checked against code or a passing
@@ -91,20 +94,18 @@ or move it.
    wrong-shapes-picked failure; it only moves the mix that is already right.
    *(measured 2026-08-14 — confusion matrix over the pro-parity corpus;
    per-design detail in area 1)*
-   **Partly closed 2026-08-16, and the remainder is NOT the classifier.** The DT
-   regularity term accounts for 63.6% of the pro-satin ground we fill; loosening
-   its limit is confirmed not to work (recovers 625 cells, leaks 439), while a
-   promotion path reopening that term alone moves the corpus **45.8 → 48.1**
-   (better on 8, worse on 1 — `bridge_lc`, unexplained — unchanged on 5). What
-   is left is segmentation: an oracle knowing the pro's per-shape answer scores
-   76.6% against our 55.4%, and 48% of graded cells sit in shapes under 75% one
-   type, i.e. our regions straddle the pro's satin/fill boundaries.
-   **RESOLVED 2026-08-17 — corrected kappa rose, gain is real.** The spec's
-   actual bar, `parts["sttype"]`, moved 0.167 → 0.193 (+0.026) against a
-   chance floor that itself rose (0.429 → 0.472) rather than dropped, so the
-   rise isn't the floor-moving artifact §4 warned about — smaller than the
-   raw `45.8 → 48.1` headline since sttype is one of six weighted components.
-   *(measured 2026-08-17 — `kappacheck.py` vs `26ceaa3`/`2729ea5`; detail in
+   **Partly closed, and the remainder is NOT the classifier.** The DT regularity
+   term accounts for 63.6% of the pro-satin ground we fill; loosening its limit
+   is confirmed not to work, while a promotion path reopening it moves the
+   corpus 45.8 → 48.1. The gain is real — corrected kappa `parts["sttype"]`
+   rose 0.167 → 0.193 against a chance floor that itself rose, so it is not the
+   floor-moving artifact §4 warns about. **What is left is segmentation:** an
+   oracle knowing the pro's per-shape answer scores 76.6% against our 55.4%,
+   and 48% of graded cells sit in shapes under 75% one type — our regions
+   straddle the pro's satin/fill boundaries. Note
+   `docs/segmentation-alignment-2026-08-17.md` recommends NOT building the
+   region-level fix: the straddle is 95.8% `speckle`, i.e. grid noise.
+   *(measured 2026-08-17 — `kappacheck.py`; detail in
    `docs/satin-gate-attribution-2026-08-16.md` §9)*
 
 ---
