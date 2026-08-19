@@ -288,6 +288,30 @@
     patch({ params: rest });
   }
 
+  // Checking "This is a photo" clears a stale flat-art override in the SAME
+  // patch that sets isPhoto (controller ruling, fix round 1 2026-08-19):
+  // left alone, the two would visibly contradict each other — this exact
+  // "Digitizing as flat art" banner reads params.forced_class and has no
+  // idea isPhoto exists, so it would keep showing "flat" while
+  // buildDigitizeConfig's isPhoto-wins precedence actually sends
+  // photo_subject. Fixing it at the source (delete the key here) means the
+  // banner needs no isPhoto-awareness of its own — forcedClass above just
+  // goes false, same as any other revert.
+  //
+  // Unchecking does NOT bring a cleared override back — that decision is
+  // gone for good, same one-way "reverting deletes, never restores" posture
+  // clearForcedClass already has. Re-offering flat art from here on is the
+  // nudge's own job (offerFlatArt above), same as it is for anyone who
+  // never checked "This is a photo" at all.
+  function setIsPhoto(checked) {
+    if (checked && element.params && element.params.forced_class) {
+      const { forced_class, ...rest } = element.params;
+      patch({ isPhoto: true, params: rest });
+    } else {
+      patch({ isPhoto: checked });
+    }
+  }
+
   // Resize honesty (Kent's rule, same as DesignPanel): the field's resize
   // handles SCALE baked stitches, they don't re-digitize — density changes
   // with size. Unlike a .dst import, here the fix is one click away:
@@ -1189,7 +1213,7 @@
         <input
           type="checkbox"
           checked={element.isPhoto}
-          on:change={(e) => patch({ isPhoto: e.currentTarget.checked })}
+          on:change={(e) => setIsPhoto(e.currentTarget.checked)}
         />
         This is a photo
       </label>

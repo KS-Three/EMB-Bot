@@ -126,10 +126,20 @@ export function buildDigitizeConfig(element, project) {
   // the SAME wire field the opposite direction, so it is resolved here too —
   // but it lives on the element itself, not element.params (see
   // defaultDigitizedElement's comment), because it names a fact about the
-  // art rather than a PipelineConfig field passed through verbatim. Checked
-  // wins over a leftover params.forced_class: the checkbox is the user's
-  // current, explicit word on the art, and a stale "digitize as flat art"
-  // override from an earlier misroute must not silently out-rank it.
+  // art rather than a PipelineConfig field passed through verbatim.
+  //
+  // Checked wins over a leftover params.forced_class (controller ruling,
+  // fix round 1 2026-08-19): the checkbox is the user's current, explicit
+  // word on the art, and a stale "digitize as flat art" override from an
+  // earlier misroute must not silently out-rank it. The primary defense is
+  // DigitizePanel.svelte's own checkbox handler, which clears
+  // params.forced_class in the SAME patch that sets isPhoto — so the two
+  // never actually coexist on an element edited through the live UI, and
+  // the "Digitizing as flat art" banner (which reads params.forced_class
+  // directly, not this precedence) never gets a chance to contradict what
+  // gets sent. This branch is the safety net for whatever the UI doesn't
+  // reach: a project loaded with both fields already set (saved before the
+  // checkbox existed, or from any path that predates that handler).
   if (element && element.isPhoto) cfg.forced_class = "photo_subject";
   else if (p.forced_class) cfg.forced_class = p.forced_class;
   // Dev/ops seam, not a design property (see sam2Enabled above): sent as

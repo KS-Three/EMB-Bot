@@ -170,6 +170,31 @@ test("forced_class rides buildDigitizeConfig only when the flat-art override is 
   for (const k of Object.keys(forced)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
 });
 
+test("forced_class resolves to photo_subject when isPhoto and a stale params.forced_class:\"flat\" both sit on the element (precedence, controller ruling 2026-08-19 fix round 1)", async () => {
+  // DigitizePanel.svelte's checkbox handler clears params.forced_class in the
+  // same patch that sets isPhoto, so the two should never coexist on an
+  // element edited live through the UI — but this covers the element this
+  // function actually receives regardless of how it got that way: a project
+  // saved before that handler existed (or from any other path), loaded fresh
+  // with both fields already set and no live click in this session. isPhoto
+  // wins as the user's newest explicit intent either way.
+  stubStorage({});
+  const { buildDigitizeConfig } = await import("./digitizer.js");
+
+  const both = buildDigitizeConfig(
+    digitizedElement({
+      isPhoto: true,
+      params: {
+        target_width_mm: 80, max_colors: 6, satin: true,
+        fill_angle_deg: null, border: "off", forced_class: "flat",
+      },
+    }),
+    PROJECT
+  );
+  expect(both.forced_class).toBe("photo_subject");
+  for (const k of Object.keys(both)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
+});
+
 test("startDigitize POSTs multipart image+config to /digitize exactly as test_service.py's client does", async () => {
   stubStorage({ "embstudio:threadPalette": "isacord" });
   const { startDigitize, buildDigitizeConfig } = await import("./digitizer.js");
