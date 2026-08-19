@@ -120,7 +120,52 @@ test("every text-element TEMPLATES entry's fontKey exists in EMB.SATIN_FONTS", a
   const { TEMPLATES } = await import("./templates.js");
   for (const t of TEMPLATES) {
     const el = t.patch.elements[0];
-    if (el.type === "image") continue;
+    if (el.type !== "text") continue; // only text elements carry a fontKey
     expect(EMB.SATIN_FONTS[el.fontKey], `${t.id}: fontKey "${el.fontKey}"`).toBeTruthy();
+  }
+});
+
+// ---- Artwork-intent lane routing (regression: the PR #122 defect class, ----
+// ---- template door). The logo-patch template must make the same          ----
+// ---- health-based lane decision "+ Artwork" makes in App.onAddElement:   ----
+// ---- service up -> digitized (pipeline), down -> image (browser lane).   ----
+
+test("resolveArtworkType routes by digitizer health exactly like onAddElement", async () => {
+  const { resolveArtworkType } = await import("./project.js");
+  expect(resolveArtworkType({ status: "ok" })).toBe("digitized");
+  expect(resolveArtworkType(null)).toBe("image");
+});
+
+test("logo-patch becomes a digitized element when the digitizer service is healthy", async () => {
+  const { TEMPLATES, applyTemplate } = await import("./templates.js");
+  const { defaultProject, defaultDigitizedElement } = await import("./project.js");
+  const logoPatch = TEMPLATES.find((t) => t.id === "logo-patch");
+  const p = applyTemplate(defaultProject(), logoPatch, { status: "ok" });
+  expect(p.garmentId).toBe("patch");
+  expect(p.elements[0].type).toBe("digitized");
+  // A FRESH default digitized element, same shape addElement would build --
+  // not an image element with its type string flipped.
+  expect(p.elements[0]).toEqual(defaultDigitizedElement("e1"));
+});
+
+test("logo-patch stays an image element when the digitizer service is down", async () => {
+  const { TEMPLATES, applyTemplate } = await import("./templates.js");
+  const { defaultProject } = await import("./project.js");
+  const logoPatch = TEMPLATES.find((t) => t.id === "logo-patch");
+  const p = applyTemplate(defaultProject(), logoPatch, null);
+  expect(p.elements[0].type).toBe("image");
+  expect(p.elements[0].nColors).toBe(4);
+  expect(p.elements[0].removeBg).toBe(true);
+});
+
+test("text templates ignore digitizer health entirely", async () => {
+  const { TEMPLATES, applyTemplate } = await import("./templates.js");
+  const { defaultProject } = await import("./project.js");
+  for (const id of ["hat-name", "chest-name", "script-name"]) {
+    const t = TEMPLATES.find((x) => x.id === id);
+    const up = applyTemplate(defaultProject(), t, { status: "ok" });
+    const down = applyTemplate(defaultProject(), t, null);
+    expect(up.elements[0].type).toBe("text");
+    expect(up.elements[0]).toEqual(down.elements[0]);
   }
 });

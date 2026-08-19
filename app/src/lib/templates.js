@@ -1,7 +1,7 @@
 // One-click starter templates for the first screen. Each template's `patch`
 // is a v2 project patch — { garmentId, selectedId, elements } — that gives a
 // beginner a fully-configured, ready-to-stitch starting point.
-import { defaultProject, defaultTextElement, defaultImageElement } from "./project.js";
+import { defaultProject, defaultTextElement, defaultImageElement, defaultDigitizedElement, resolveArtworkType } from "./project.js";
 
 export const TEMPLATES = [
   {
@@ -41,7 +41,12 @@ export const TEMPLATES = [
     patch: {
       garmentId: "patch",
       selectedId: "e1",
-      elements: [defaultImageElement("e1")],
+      // INTENT, not a concrete element: "the user is about to give us
+      // artwork". applyTemplate resolves it against digitizer health so this
+      // template makes the same lane decision "+ Artwork" makes -- baking
+      // defaultImageElement here is what silently routed photos through the
+      // browser engine (the PR #122 defect class, through the template door).
+      elements: [{ id: "e1", type: "artwork" }],
     },
   },
 ];
@@ -61,6 +66,18 @@ export const TEMPLATES = [
 // (strings/numbers/plain objects), so a JSON round-trip is a cheap, safe deep
 // clone that keeps TEMPLATES pristine regardless of what callers do with the
 // project this returns.
-export function applyTemplate(project, template) {
-  return { ...defaultProject(), ...JSON.parse(JSON.stringify(template.patch)) };
+export function applyTemplate(project, template, digitizerHealth = null) {
+  const patch = JSON.parse(JSON.stringify(template.patch));
+  // Resolve artwork INTENT into a concrete element by the same rule
+  // App.onAddElement uses. Builders return fresh objects, so the no-shared-
+  // references guarantee the JSON clone provides for literal patch elements
+  // holds for resolved ones too.
+  patch.elements = patch.elements.map((el) =>
+    el.type === "artwork"
+      ? (resolveArtworkType(digitizerHealth) === "digitized"
+          ? defaultDigitizedElement(el.id)
+          : defaultImageElement(el.id))
+      : el
+  );
+  return { ...defaultProject(), ...patch };
 }
