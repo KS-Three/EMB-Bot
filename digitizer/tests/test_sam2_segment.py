@@ -62,16 +62,58 @@ def test_missing_isolated_venv_gives_a_reason(monkeypatch, tmp_path):
     assert "sam2_isolated/README.md" in reason
 
 
-def test_both_present_is_available(monkeypatch, tmp_path):
+def test_frozen_constant_reports_unavailable_even_though_a_real_venv_exists(
+    monkeypatch, tmp_path
+):
+    """Reproduces the port-8722 scenario found live during Task 5: a
+    long-running process that imported this module before
+    `sam2_isolated/venv` existed on disk freezes `SAM2_VENV_DIR`/
+    `SAM2_VENV_PYTHON` at their POSIX-fallback values forever — those are
+    plain module-level constants resolved once at import time, not
+    re-resolved per call. Restarting the process (not this function) is the
+    only fix for that; what this test pins down is that the zero-arg check
+    still reports an honest reason in that state instead of crashing or
+    (worse) silently claiming availability by accident. A genuinely
+    complete, correctly-shaped venv sits on disk here — the failure is
+    purely the stale constant pointing at a sibling path that was never
+    built."""
     import digitizer_core.stage2_sam2_segment as s2
 
     worker = tmp_path / "worker.py"
-    python = tmp_path / "python"
     worker.write_text("", encoding="utf-8")
-    python.write_text("", encoding="utf-8")
     monkeypatch.setattr(s2, "SAM2_WORKER_PATH", worker)
-    monkeypatch.setattr(s2, "SAM2_VENV_PYTHON", python)
-    assert s2.sam2_segmentation_unavailable_reason() is None
+
+    venv = tmp_path / "venv"
+    (venv / "Scripts").mkdir(parents=True)
+    (venv / "Scripts" / "python.exe").write_bytes(b"stub")
+    (venv / "pyvenv.cfg").write_text("home = x")
+    (venv / "Lib" / "site-packages").mkdir(parents=True)
+
+    monkeypatch.setattr(s2, "SAM2_VENV_DIR", venv)
+    monkeypatch.setattr(s2, "SAM2_VENV_PYTHON", venv / "bin" / "python")
+
+    reason = s2.sam2_segmentation_unavailable_reason()
+    assert reason is not None and "isolated SAM2 venv not found" in reason
+
+
+def test_both_present_is_available(monkeypatch, tmp_path):
+    """A bare stub file at the interpreter path is no longer enough to read
+    as available — see tests/test_sam2_availability.py for the husk-venv
+    case this guards against. This fixture builds a genuinely complete venv
+    shape (interpreter + pyvenv.cfg + Lib/site-packages) via the explicit
+    `venv_dir` parameter, the same way that file's tests do."""
+    import digitizer_core.stage2_sam2_segment as s2
+
+    worker = tmp_path / "worker.py"
+    worker.write_text("", encoding="utf-8")
+    monkeypatch.setattr(s2, "SAM2_WORKER_PATH", worker)
+
+    venv = tmp_path / "venv"
+    (venv / "Scripts").mkdir(parents=True)
+    (venv / "Scripts" / "python.exe").write_bytes(b"stub")
+    (venv / "pyvenv.cfg").write_text("home = x")
+    (venv / "Lib" / "site-packages").mkdir(parents=True)
+    assert s2.sam2_segmentation_unavailable_reason(venv) is None
 
 
 def test_the_real_worker_script_is_actually_on_disk():
@@ -98,7 +140,11 @@ def test_sam2_is_off_by_default_with_the_documented_defaults():
     # measured values; changing either should come with its own measurement.
     assert cfg.photo_segment_sam2_points_per_side == 12
     assert cfg.photo_segment_sam2_max_side_px == 1024
-    assert cfg.photo_segment_sam2_timeout_s == 90.0
+    # Raised 90 -> 240 (Task 5, 2026-08-18/19): 90s did not reliably cover a
+    # real job even with the checkpoint cache warm; re-sized off the
+    # measured 155.98s COLD path instead (Task 6) — see config.py's own
+    # comment on this field for the full history.
+    assert cfg.photo_segment_sam2_timeout_s == 240.0
 
 
 def test_the_default_checkpoint_tier_is_one_the_worker_knows():
@@ -240,7 +286,7 @@ def test_seam_passes_the_documented_argv_to_the_worker(monkeypatch):
 
     def _spy(cmd, **kwargs):
         seen.append([str(c) for c in cmd])
-        assert kwargs["timeout"] == 90.0, "the starvation bound was not passed"
+        assert kwargs["timeout"] == 240.0, "the starvation bound was not passed"
         assert kwargs["capture_output"] is True
         assert kwargs["text"] is True
         return inner(cmd, **kwargs)
@@ -657,7 +703,7 @@ def _spy_seam(monkeypatch, result):
 
     calls: list[dict] = []
 
-    def _seam(p, cfg, face_regions=None, bg_mask=None):
+    def _seam(p, cfg, face_regions=None, bg_mask=None, split_tonal=False):
         calls.append({"face_regions": face_regions, "bg_mask": bg_mask})
         return result
 
@@ -671,9 +717,9 @@ def _spy_photo_segment(monkeypatch):
     real = pipeline_module.photo_segment
     calls: list[int] = []
 
-    def _spy(p, cfg, face_regions=None, bg_mask=None):
+    def _spy(p, cfg, face_regions=None, bg_mask=None, split_tonal=False):
         calls.append(1)
-        return real(p, cfg, face_regions=face_regions, bg_mask=bg_mask)
+        return real(p, cfg, face_regions=face_regions, bg_mask=bg_mask, split_tonal=split_tonal)
 
     monkeypatch.setattr(pipeline_module, "photo_segment", _spy)
     return calls

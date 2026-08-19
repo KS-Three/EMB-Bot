@@ -320,9 +320,9 @@ def test_bg_mask_reaches_photo_segment_when_rembg_succeeds(monkeypatch):
     captured = {}
     real_segment = pipeline_module.photo_segment
 
-    def _spy(p, cfg, face_regions=None, bg_mask=None):
+    def _spy(p, cfg, face_regions=None, bg_mask=None, split_tonal=False):
         captured["bg_mask"] = bg_mask
-        return real_segment(p, cfg, face_regions=face_regions, bg_mask=bg_mask)
+        return real_segment(p, cfg, face_regions=face_regions, bg_mask=bg_mask, split_tonal=split_tonal)
 
     monkeypatch.setattr(pipeline_module, "photo_segment", _spy)
     monkeypatch.setattr(
@@ -350,9 +350,9 @@ def test_bg_mask_stays_none_when_rembg_is_unavailable(monkeypatch):
     captured = {}
     real_segment = pipeline_module.photo_segment
 
-    def _spy(p, cfg, face_regions=None, bg_mask=None):
+    def _spy(p, cfg, face_regions=None, bg_mask=None, split_tonal=False):
         captured["bg_mask"] = bg_mask
-        return real_segment(p, cfg, face_regions=face_regions, bg_mask=bg_mask)
+        return real_segment(p, cfg, face_regions=face_regions, bg_mask=bg_mask, split_tonal=split_tonal)
 
     monkeypatch.setattr(pipeline_module, "photo_segment", _spy)
     monkeypatch.setattr(
@@ -373,9 +373,9 @@ def test_bg_mask_stays_none_when_the_flag_is_off(monkeypatch):
     captured = {}
     real_segment = pipeline_module.photo_segment
 
-    def _spy(p, cfg, face_regions=None, bg_mask=None):
+    def _spy(p, cfg, face_regions=None, bg_mask=None, split_tonal=False):
         captured["bg_mask"] = bg_mask
-        return real_segment(p, cfg, face_regions=face_regions, bg_mask=bg_mask)
+        return real_segment(p, cfg, face_regions=face_regions, bg_mask=bg_mask, split_tonal=split_tonal)
 
     monkeypatch.setattr(pipeline_module, "photo_segment", _spy)
     run_stages(

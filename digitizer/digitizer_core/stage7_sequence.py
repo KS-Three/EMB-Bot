@@ -463,7 +463,7 @@ def _link_stitches(route: list[tuple[float, float]]) -> list[tuple[float, float]
     return inner
 
 
-def _chain(runs: list[StitchRun], regions: list[PlannedRegion],
+def _chain(runs: list[StitchRun], regions: list[PlannedRegion], base_thread: int,
            run_tier_art=None) -> tuple[list[StitchRun], int]:
     """Sew every needle-up move this colour can bury. -> (runs, in-shape links).
 
@@ -476,7 +476,26 @@ def _chain(runs: list[StitchRun], regions: list[PlannedRegion],
     colour, and on the benchmark that blind spot is eight of its ten trims.
 
     `runs[0]` is never touched. The thread is always cut into a new colour, and
-    a link across a colour change would be sewn in the wrong thread.
+    a link across a colour change would be sewn in the wrong thread. That same
+    law now also guards every `shade_thread_index` boundary: `runs` is still
+    the whole group's flat list at this point (block assembly partitions it
+    into one StitchBlock per shade AFTER this returns), so without the guard
+    a gap between two different accepted shades could bury itself under
+    nearby same-block thread the way an ordinary same-colour gap does — legal
+    today only because every shade still sewed in the group's one thread.
+    Once shade partitioning splits them into separate blocks that link would
+    cross a colour it does not share, so it is refused here, at the one
+    place both the runs and their shade keys are still in one list together.
+
+    `base_thread` is the same group thread `_shade_blocks` (below) receives —
+    the guard compares `shade_thread_index` values normalized the identical
+    way `_shade_blocks` buckets them (`None` reads as `base_thread`, F7,
+    2026-08-19), so a run that never went through the blend tier bridges
+    cleanly into one explicitly carrying the group's own base thread; only a
+    REAL cross-shade boundary refuses. Before this normalization the raw `!=`
+    compared `None` against an explicit `base_thread` as unequal, refusing a
+    bridge that cost nothing to bury — a needless trim on any design where
+    chaining and a base-thread-tagged run met.
 
     The returned count is how many of the links replaced a lift INSIDE a shape,
     so the operator-facing "the thread had to be lifted N times inside a shape"
@@ -494,10 +513,24 @@ def _chain(runs: list[StitchRun], regions: list[PlannedRegion],
     if cover is None:
         return runs, 0
 
+    def shade_key(st: int | None) -> int:
+        return base_thread if st is None else st
+
     out = [runs[0]]
     in_shape = 0
     for run in runs[1:]:
         if not run.jump:
+            out.append(run)
+            continue
+        if shade_key(out[-1].shade_thread_index) != shade_key(run.shade_thread_index):
+            # Refused independent of geometry: burying this gap would sew a
+            # bridge in one shade's thread across into another's block.
+            # Normalized through `shade_key` the same way `_shade_blocks`
+            # buckets (`None` reads as `base_thread`), so every existing
+            # caller — whose runs carry `shade_thread_index=None` on both
+            # sides of every boundary — still normalizes to
+            # `base_thread == base_thread` and stays a no-op, same as
+            # before this guard existed.
             out.append(run)
             continue
         a, b = out[-1].points[-1], run.points[0]
@@ -512,8 +545,15 @@ def _chain(runs: list[StitchRun], regions: list[PlannedRegion],
         if run.shape_id == out[-1].shape_id:
             in_shape += 1
         if inner:
+            # Tagged with the shade both sides already share (the guard
+            # above refused this bridge otherwise) — untagged, it would
+            # default to the group's own region thread and land in the
+            # WRONG bucket once block assembly partitions `runs` by shade,
+            # stranding a travel stitch between two runs of a block it is
+            # not actually in.
             out.append(StitchRun(points=inner, kind=stitches.TRAVEL,
-                                 shape_id=run.shape_id))
+                                 shape_id=run.shape_id,
+                                 shade_thread_index=run.shade_thread_index))
         run.jump = False
         run.trim = False
         out.append(run)
@@ -525,6 +565,85 @@ def _chain(runs: list[StitchRun], regions: list[PlannedRegion],
 # its plain-stitching block by the same rule; the local name is kept because
 # every call site and comment in this module reads `_apply_ties`.
 _apply_ties = stitches.apply_ties
+
+
+def _shade_blocks(ordered: list[StitchRun], base_thread: int, chart,
+                  trim_at: float) -> list[StitchBlock]:
+    """One group's finished, chained run list -> one StitchBlock per shade,
+    dark to light.
+
+    Task 1 (photo/tonal v1): a blend-tier run carries the thread its OWN
+    shade snapped to (`shade_thread_index`, stamped by `blend_fill`'s band
+    loop); every other run carries `None` and falls back to `base_thread`
+    (the group's `region.thread_index`), exactly as if this partition were
+    never taken — a design with no blend runs buckets everything into that
+    ONE key and reproduces the pre-Task-1 single block byte-for-byte.
+
+    Bucketing (not a contiguous re-slice) because `_choose_shade_count`'s
+    bands walk the ramp's own spatial `t`, not chart lightness — two
+    non-adjacent bands can snap to the same cone, and they belong in the
+    same block when they do. A run REJOINING a bucket some other shade's
+    runs already interrupted (in `ordered`'s own spatial order) has its
+    jump/trim recomputed against the neighbour it will actually follow —
+    this bucket's own last run so far, not whatever ran right before it in
+    the ramp's band order, which is the wrong question once that other
+    shade sews as its own separate block. Plain distance, the same rule
+    stage 7 already uses to splice unrelated shapes into one group (in
+    `sequence`, above the call site) — no `_chain` retry, since two runs
+    that were never flat-adjacent in `ordered` never had the chance to be
+    considered for a chain bridge either (`_chain`'s own shade guard is
+    what makes that refusal necessary in the first place — see its
+    docstring).
+
+    `_apply_ties` runs once per bucket here, not once on the flat `ordered`
+    list the way it ran before this task existed: a tie protects the block
+    it opens or closes, and once bucketing can pull two flat-sequence-
+    separated runs into the same final block (the same-cone case above),
+    `ordered`'s own trim flags stop marking where the real seams are — only
+    the bucket knows that now. Every bucket's own first run is forced
+    `jump=True, trim=True` unconditionally, not just for buckets past the
+    first — dark -> light sorting can, and often will, put a different
+    bucket first than whichever one happened to start the flat sew order.
+    """
+    shade_buckets: dict[int, list[StitchRun]] = {}
+    bucket_order: list[int] = []
+    prev_key = None
+    for idx, run in enumerate(ordered):
+        key = run.shade_thread_index
+        if key is None:
+            key = base_thread
+        bucket = shade_buckets.get(key)
+        if bucket is None:
+            bucket = shade_buckets[key] = []
+            bucket_order.append(key)
+        elif idx > 0 and prev_key != key:
+            prev_run = bucket[-1]
+            d = math.dist(prev_run.points[-1], run.points[0])
+            run.jump = d >= TINY_STITCH_MM
+            run.trim = run.jump and d > trim_at
+        bucket.append(run)
+        prev_key = key
+
+    # Dark -> light by the chart's own L*, the plan contract's sew order for
+    # a region's shade blocks. Chart index breaks an exact-L* tie so the
+    # order is deterministic (mirrors `Chart.nearest_index`'s own tiebreak).
+    bucket_order.sort(key=lambda k: (chart.lab[k][0], k))
+    out: list[StitchBlock] = []
+    for key in bucket_order:
+        shade_runs = shade_buckets[key]
+        shade_runs[0].jump = True
+        shade_runs[0].trim = True
+        _apply_ties(shade_runs)
+        thread = chart[key]
+        out.append(
+            StitchBlock(
+                thread_index=key,
+                thread_number=thread.number,
+                rgb=tuple(thread.rgb),
+                runs=shade_runs,
+            )
+        )
+    return out
 
 
 # Hair-width: stage 5 makes two abutting shapes' visible edges the identical
@@ -654,6 +773,9 @@ def sequence(
     planned: list[PlannedRegion], fabric: Fabric, cfg: PipelineConfig,
     source_pixels: SourcePixels | None = None,
     design_class: str = "flat",
+    fill_technique: str | None = None,
+    streamline_mode: str | None = None,
+    detail_layer: bool | None = None,
 ) -> tuple[list[StitchBlock], list[dict]]:
     """-> (blocks in sew order, warnings).
 
@@ -662,6 +784,30 @@ def sequence(
     the underlay split below; flat and gradient take byte-identical paths,
     which is why the default is "flat" and every pre-existing caller needs
     no edit.
+
+    `fill_technique`/`streamline_mode`/`detail_layer` (Task 3, photo/tonal
+    v1 spec decision 3 — `fill_technique`/`streamline_mode` fix round 1,
+    `detail_layer` fix round 2): the EFFECTIVE values `plan_stitches`
+    resolved via `pipeline.auto_photo_tier`, threaded in as explicit
+    parameters — never by mutating `cfg` (jobs cache on it) — the same
+    pattern Task 2 used to thread `effective_split_tonal`'s resolved value
+    into `stage2_photo_segment.segment`. All three default `None`, meaning
+    "no override, read `cfg.fill_technique`/`cfg.streamline_mode`/`cfg.
+    detail_layer` exactly as before"; every pre-existing caller (every call
+    site before fix round 1, including every test that builds a plan
+    directly via this function) passes none of them and is byte-identical
+    by construction. `plan_stitches` is the one caller that resolves and
+    passes real values, and only when `auto_photo_tier` actually fires
+    (photo_subject, no explicit `fill_technique`/`detail_layer`) — every
+    other class, and an explicitly-configured photo_subject, gets `None`
+    back from that helper and this function reads `cfg` exactly as it
+    always has. `detail_layer` additionally resolves `True` only when a
+    face was actually detected (`PipelineResult.faces_present` — round 2's
+    own field, a runtime fact `plan_stitches` cannot recompute the way it
+    recomputes the tier decision) — see `plan_stitches`' own comment at its
+    call site for the exact formula, identical to `run_stages`' own
+    `effective_detail_layer` (the one the `PHOTO_AUTO_TIER` warning's text
+    already promises).
     """
     row_mm = (cfg.fill_row_mm or FILL_ROW_MM) * max(0.1, fabric.density_adjust)
     # Task A2: satin gets the same fabric-scaled density the fill row spacing
@@ -716,7 +862,12 @@ def sequence(
     # The fill tier. Contour rings follow the silhouette; tatami rows cut across
     # it. Density is the same either way — the ring spacing IS the row spacing
     # unless the caller opens it up on its own.
-    technique = (cfg.fill_technique or "tatami").lower()
+    #
+    # `fill_technique` (the parameter, above `cfg` in precedence when set) is
+    # `plan_stitches`' resolved photo_subject auto-route value — this is the
+    # one line that makes the automatic tier route from spec decision 3
+    # actually sew, not just warn about what it would sew.
+    technique = (fill_technique or cfg.fill_technique or "tatami").lower()
     contour = technique == "contour"
     contour_spacing = cfg.contour_spacing_mm or row_mm
     # The scan-line mono tonal tier (photo plan, technique row 8). Strictly
@@ -959,7 +1110,14 @@ def sequence(
                 # Empty is honest (an all-highlight shape sews nothing) and
                 # falls through to tatami below rather than dropping
                 # artwork — the standing contract of every tonal tier here.
-                runs, report = streamline_fill(p.region, source_pixels, cfg)
+                # `streamline_mode` (this function's own resolved parameter,
+                # not `cfg.streamline_mode` directly) is threaded through so
+                # a photo_subject auto-route forcing "layered" reaches every
+                # shape this branch fills, per-shape override included —
+                # `streamline_fill` itself falls back to reading `cfg.
+                # streamline_mode` when this is `None` (every other case).
+                runs, report = streamline_fill(p.region, source_pixels, cfg,
+                                               streamline_mode=streamline_mode)
                 need_tatami = report["empty"]
             elif crosshatch or tier == "crosshatch":
                 # The cross-hatch fill tier: two tatami passes on the same
@@ -1349,21 +1507,22 @@ def sequence(
             later_run_art = [g for i, g in run_tier_later
                              if i > group[0].sew_index]
             ordered, linked_in_shape = _chain(
-                ordered, sewn,
+                ordered, sewn, group[0].region.thread_index,
                 unary_union(later_run_art) if later_run_art else None)
             jumps -= linked_in_shape
-        _apply_ties(ordered)
 
-        thread = chart_for(cfg)[group[0].region.thread_index]
-        blocks.append(
-            StitchBlock(
-                thread_index=group[0].region.thread_index,
-                thread_number=thread.number,
-                rgb=tuple(thread.rgb),
-                runs=ordered,
-            )
-        )
-        cursor = ordered[-1].points[-1]
+        # Task 1 (photo/tonal v1): a blend-tier run carries the thread its
+        # OWN shade snapped to, so one group can sew several StitchBlocks —
+        # one per accepted shade, dark to light — instead of collapsing every
+        # run into `group[0].region.thread_index`. See `_shade_blocks`'
+        # docstring for the bucketing/tie/recompute contract; extracted to a
+        # standalone function so it has a call boundary a unit test can drive
+        # directly with a hand-built run list, not just through a full
+        # `sequence()` job.
+        group_blocks = _shade_blocks(ordered, group[0].region.thread_index,
+                                     chart_for(cfg), trim_at)
+        blocks.extend(group_blocks)
+        cursor = group_blocks[-1].runs[-1].points[-1]
 
     # --- The detail layer (stage6_detail, photo plan row 11) -----------------
     # Appended AFTER every artwork block — plan row 14's craft consensus,
@@ -1382,7 +1541,18 @@ def sequence(
     # stage6_sketch's module docstring). Design-wide sketch only: a single
     # shape's tier == "sketch" override changes that shape's fill, never
     # the design's detail pass.
-    if (cfg.detail_layer or sketch) and source_pixels is not None:
+    #
+    # Fix round 2 (Critical): `detail_layer` is this function's own resolved
+    # parameter (`plan_stitches`' effective value — True when a face was
+    # actually detected and the auto-route fired, same as `fill_technique`/
+    # `streamline_mode` above), not `cfg.detail_layer` directly — before
+    # this round the PHOTO_AUTO_TIER warning could promise a detail layer
+    # for a detected face while this gate still read the caller's raw,
+    # untouched `cfg.detail_layer` (False) and never sewed one. `None`
+    # (every pre-existing caller) falls back to `cfg.detail_layer` exactly
+    # as before.
+    eff_detail_layer = detail_layer if detail_layer is not None else cfg.detail_layer
+    if (eff_detail_layer or sketch) and source_pixels is not None:
         d_runs, d_report = detail_runs(source_pixels, cfg, entry=cursor,
                                        trim_at_mm=trim_at)
         if d_runs:

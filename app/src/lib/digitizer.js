@@ -121,7 +121,27 @@ export function buildDigitizeConfig(element, project) {
   // params-changed re-digitize) but written ONLY when the user overrode the
   // classification — an unset override must not change the config, or every
   // design that never touched it takes a needless cache miss.
-  if (p.forced_class) cfg.forced_class = p.forced_class;
+  //
+  // `isPhoto` (spec 2026-08-18 decision 4, "This is a photo" checkbox) drives
+  // the SAME wire field the opposite direction, so it is resolved here too —
+  // but it lives on the element itself, not element.params (see
+  // defaultDigitizedElement's comment), because it names a fact about the
+  // art rather than a PipelineConfig field passed through verbatim.
+  //
+  // Checked wins over a leftover params.forced_class (controller ruling,
+  // fix round 1 2026-08-19): the checkbox is the user's current, explicit
+  // word on the art, and a stale "digitize as flat art" override from an
+  // earlier misroute must not silently out-rank it. The primary defense is
+  // DigitizePanel.svelte's own checkbox handler, which clears
+  // params.forced_class in the SAME patch that sets isPhoto — so the two
+  // never actually coexist on an element edited through the live UI, and
+  // the "Digitizing as flat art" banner (which reads params.forced_class
+  // directly, not this precedence) never gets a chance to contradict what
+  // gets sent. This branch is the safety net for whatever the UI doesn't
+  // reach: a project loaded with both fields already set (saved before the
+  // checkbox existed, or from any path that predates that handler).
+  if (element && element.isPhoto) cfg.forced_class = "photo_subject";
+  else if (p.forced_class) cfg.forced_class = p.forced_class;
   // Dev/ops seam, not a design property (see sam2Enabled above): sent as
   // per-request context alongside thread_brand rather than stored in
   // element.params, so it never persists into a saved project. Sent for every
@@ -1116,6 +1136,15 @@ const WARNING_TEXT = {
     "The art reads as a photographic scene. Photos sew rougher than flat artwork — check the preview closely before stitching this one out.",
   CLASSIFICATION_UNCERTAIN: () =>
     "The art didn't clearly read as flat, shaded or photographic, so it was digitized as flat art. If it's really a photo, expect a rougher result than usual.",
+  // Stage 7's own routing note (digitizer_core/warnings_codes.py) for the
+  // "This is a photo" checkbox and any art that classifies as a photo on its
+  // own: names WHAT tier the auto-route picked, but the code's value is
+  // lowercase ("photo_auto_tier", not PHOTO_AUTO_TIER like every code above)
+  // so the key here has to match that exactly or it silently falls through
+  // to describeWarnings' engine-voice fallback. Text is fixed rather than
+  // naming the tier (w.tier) — "thread-paint" is the customer word for the
+  // streamline tier this route picks; a second tier landing here can revisit.
+  photo_auto_tier: () => "Rendered as a photo (thread-paint).",
   BACKGROUND_UNCERTAIN: () =>
     "The background was hard to separate from the art. Check the stitch preview for missing or extra areas.",
   INPUT_LOW_RESOLUTION: () =>

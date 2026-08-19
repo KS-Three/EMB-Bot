@@ -187,6 +187,19 @@
     }
   }
 
+  // `isPhoto` (spec 2026-08-18 decision 4) lives on the element itself, not
+  // element.params (buildDigitizeConfig reads it directly — see its own
+  // comment), so it needs its own prev-value watcher rather than riding the
+  // params one above. Same re-digitize-on-change behavior as every param
+  // control, just tracking a different field.
+  let prevIsPhoto = element.isPhoto;
+  $: {
+    if (element.isPhoto !== prevIsPhoto) {
+      prevIsPhoto = element.isPhoto;
+      if (element.result) runDigitize(element);
+    }
+  }
+
   // Shape edits restitch on their own, after a pause (Kent's call,
   // 2026-08-13). Before this, a hand edit on the canvas moved the outline and
   // left the stitches where they were until "Apply layer changes" was pressed
@@ -273,6 +286,30 @@
   function clearForcedClass() {
     const { forced_class, ...rest } = element.params;
     patch({ params: rest });
+  }
+
+  // Checking "This is a photo" clears a stale flat-art override in the SAME
+  // patch that sets isPhoto (controller ruling, fix round 1 2026-08-19):
+  // left alone, the two would visibly contradict each other — this exact
+  // "Digitizing as flat art" banner reads params.forced_class and has no
+  // idea isPhoto exists, so it would keep showing "flat" while
+  // buildDigitizeConfig's isPhoto-wins precedence actually sends
+  // photo_subject. Fixing it at the source (delete the key here) means the
+  // banner needs no isPhoto-awareness of its own — forcedClass above just
+  // goes false, same as any other revert.
+  //
+  // Unchecking does NOT bring a cleared override back — that decision is
+  // gone for good, same one-way "reverting deletes, never restores" posture
+  // clearForcedClass already has. Re-offering flat art from here on is the
+  // nudge's own job (offerFlatArt above), same as it is for anyone who
+  // never checked "This is a photo" at all.
+  function setIsPhoto(checked) {
+    if (checked && element.params && element.params.forced_class) {
+      const { forced_class, ...rest } = element.params;
+      patch({ isPhoto: true, params: rest });
+    } else {
+      patch({ isPhoto: checked });
+    }
   }
 
   // Resize honesty (Kent's rule, same as DesignPanel): the field's resize
@@ -1172,6 +1209,17 @@
         />
         Detail lines for photos
       </label>
+      <label class="dgp-checkline">
+        <input
+          type="checkbox"
+          checked={element.isPhoto}
+          on:change={(e) => setIsPhoto(e.currentTarget.checked)}
+        />
+        This is a photo
+      </label>
+      <p class="dgp-note">
+        Renders with thread-paint shading instead of flat color regions.
+      </p>
       <label class="dgp-param">
         <span>Fill angle</span>
         <select

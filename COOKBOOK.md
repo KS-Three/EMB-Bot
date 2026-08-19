@@ -595,8 +595,9 @@ failures are EXPECTED:
    geometry-relevant pip pin matches `requirements.txt` exactly, and one
    such failure traces to a single contour on one region of 31
    (`.claude/memory/windows-goldens-fail-locally.md`). Goldens are
-   re-captured on Linux, never on Windows (ROADMAP standing item; PR #159
-   is the sanctioned pattern), so WHICH parametrizations mismatch depends
+   re-captured on Linux, never on Windows (MASTER_SCOPE.md gotchas — moved
+   from ROADMAP 2026-08-19; PR #159 is the sanctioned pattern), so WHICH
+   parametrizations mismatch depends
    on where each golden was pinned, and the set moves when one is
    re-captured. The concrete per-machine set lives in ONE place — the
    MASTER_SCOPE "Gotchas" matrix ("The golden divergence is PER-FIXTURE,

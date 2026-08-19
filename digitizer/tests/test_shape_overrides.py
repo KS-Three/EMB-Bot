@@ -603,6 +603,7 @@ def test_boundary_override_survives_a_stateless_redigitize_keyed_by_the_stable_s
 # --- the cache seam ----------------------------------------------------------
 
 def test_cache_key_sees_the_edit_fields():
+    pytest.importorskip("fastapi", reason="service extra not installed")
     from digitizer_service.jobs import content_key
 
     img = b"pretend png"
@@ -618,6 +619,7 @@ def test_cache_key_sees_the_edit_fields():
 
 
 def test_cache_key_sees_a_boundary_override():
+    pytest.importorskip("fastapi", reason="service extra not installed")
     from digitizer_service.jobs import content_key
 
     img = b"pretend png"

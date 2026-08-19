@@ -273,6 +273,38 @@ describe("flat-art override — reverting", () => {
   });
 });
 
+// Controller ruling 2026-08-19 (fix round 1, Important 2): checking "This is
+// a photo" while a flat-art override is standing left the config and this
+// exact banner disagreeing — buildDigitizeConfig sends photo_subject
+// (isPhoto wins, see digitizer.spec.js's precedence test) but the banner
+// read only params.forced_class and kept saying "Digitizing as flat art".
+// Fixed at the source: the checkbox clears params.forced_class in the same
+// patch, so the banner (unchanged, still just reading params.forced_class)
+// naturally drops out instead of needing to learn about isPhoto.
+describe('flat-art override — cleared by checking "This is a photo"', () => {
+  const FORCED = { params: { ...DEFAULT_DIGITIZE_PARAMS, forced_class: "flat" } };
+
+  test("checking the box clears forced_class in the same patch, and the banner condition goes false with it", async () => {
+    const { getByLabelText, getByText, queryByText, patches } = renderPanel([shapeRow("s1")], FORCED);
+    // Sanity on the starting contradiction this fix removes.
+    expect(getByText("Digitizing as flat art")).toBeTruthy();
+
+    await fireEvent.change(getByLabelText("This is a photo"), { target: { checked: true } });
+    expect(patches).toHaveLength(1);
+    expect(Object.keys(patches[0].patch)).toEqual(["isPhoto", "params"]);
+    expect(patches[0].patch.isPhoto).toBe(true);
+    expect("forced_class" in patches[0].patch.params).toBe(false);
+    // Rest of the design's params survive the spread, same rule as every
+    // other params-replacing patch in this file.
+    expect(patches[0].patch.params).toEqual({ ...DEFAULT_DIGITIZE_PARAMS });
+
+    // Proves the banner CONDITION, not just the patch shape: the harness
+    // merges the patch into `element` and re-renders the real panel off it,
+    // and forcedClass reads nothing but element.params.forced_class.
+    expect(queryByText("Digitizing as flat art")).toBeNull();
+  });
+});
+
 describe("hiding, restoring, and BACKGROUND_ENCLOSED restore", () => {
   test("hiding a shape adds it to deletedShapeIds", async () => {
     const { container, patches } = renderPanel([shapeRow("s1")]);

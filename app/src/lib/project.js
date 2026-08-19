@@ -127,6 +127,12 @@ export function defaultDigitizedElement(id) {
     name: "",
     sourcePng: null,
     params: { ...DEFAULT_DIGITIZE_PARAMS },
+    // A sibling of params, not a member of it (spec 2026-08-18 decision 4):
+    // this names a fact about the SOURCE ART ("this is a photo"), not a
+    // PipelineConfig field forwarded verbatim, so buildDigitizeConfig reads
+    // it straight off the element rather than through the params spread —
+    // see that function's own comment for how it turns into forced_class.
+    isPhoto: false,
     result: null,
     warnings: [],
     blockColors: {},

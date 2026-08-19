@@ -54,6 +54,7 @@ from .threads import chart_for
 from .warnings_codes import (
     DROPPED_SMALL_SHAPES,
     PALETTE_THREAD_MISMATCH,
+    PHOTO_AUTO_TIER,
     PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE,
     PHOTO_BACKGROUND_REMOVED,
     PHOTO_FACE_PRIORS_UNAVAILABLE,
@@ -69,6 +70,45 @@ from .warnings_codes import (
 # past detail scale (22.5 mm² at the default 1.5 mm) is not a speck the eye
 # would miss — it is a shape the user drew, and the warning has to say so.
 NOT_A_DETAIL_FACTOR = 10
+
+
+def effective_split_tonal(cfg: PipelineConfig, class_: str) -> bool:
+    """Spec 2026-08-18 decision 2: photo classes carry tone via upstream
+    splitting by default; the config flag remains the explicit override for
+    every other class (gradient keeps the blend tier as its tonal carrier)."""
+    return bool(cfg.split_tonal_regions) or class_ in PHOTO_CLASSES
+
+
+def auto_photo_tier(cfg: PipelineConfig, class_: str, faces_present: bool) -> str | None:
+    """Spec 2026-08-18 decision 3: the automatic photo tier map. Returns the
+    fill_technique to apply, or None to leave the caller's config untouched.
+    Only fires when the caller did NOT choose a fill_technique themselves —
+    explicit caller config always wins, silently, same as before this
+    function existed.
+
+    `detail_layer` is NOT part of that explicit gate (F1, 2026-08-19
+    fix-wave correction — it used to be). Spec decision 3 makes the detail
+    layer ADDITIVE to the photo_subject route ("streamline + detail layer"),
+    not an opt-out from it, so `cfg.detail_layer=True` alone must not
+    suppress the auto-route the way an explicit `fill_technique` still does
+    — see `plan_stitches`' own `effective_detail_layer` for how the two
+    compose once this function has fired.
+
+    `photo_scene` stays tatami in v1 — its tone already comes from
+    `effective_split_tonal`'s region splitting above, not a source-reading
+    fill tier (`run_stages`' own source_pixels gate keeps scenes off
+    `want_tonal` for the same reason: no blend tier reads scene ramps yet,
+    so carrying pixels forward for one would only be cost with no reader).
+
+    `faces_present` is accepted, not consulted, here — it decides the
+    CALLER's own `detail_layer` effective-on (see `run_stages`), never the
+    tier name itself: a photo_subject with no detected faces still gets
+    streamline, just without the extra detail block stitched on top.
+    """
+    explicit = (cfg.fill_technique or "tatami").lower() != "tatami"
+    if explicit or class_ != "photo_subject":
+        return None
+    return "streamline"
 
 
 @dataclass
@@ -98,6 +138,18 @@ class PipelineResult:
     # (the photo underlay split keys on it). Defaults "flat" — a hand-built
     # PipelineResult gets exactly the pre-photo behaviour.
     design_class: str = "flat"
+    # Fix round 2 (photo/tonal v1, spec decision 3): stage 1.5's face
+    # detection verdict (`bool(face_regions)` in run_stages), carried for
+    # the SAME "hand it to stage 7" reason `design_class` is — unlike the
+    # fill-technique auto-route (a pure function of cfg + class_,
+    # recomputable anywhere), whether faces were actually found is a
+    # runtime fact stage 1.5 alone can answer; plan_stitches needs the real
+    # value to resolve `auto_photo_tier`'s detail_layer effective-on
+    # decision for stage 7's detail-layer gate, not just for run_stages'
+    # own PHOTO_AUTO_TIER warning text. Defaults False — a hand-built
+    # PipelineResult (every test that doesn't set it, every pre-photo
+    # caller) gets exactly the pre-existing "no faces" behaviour.
+    faces_present: bool = False
 
     @property
     def shape_ids(self) -> list[str]:
@@ -166,7 +218,7 @@ def run_stages(
     # border-flood default here instead would be a dishonest "background"
     # claim about interior regions.
     subject_bg_mask: np.ndarray | None = None
-    if cfg.photo_prep and classification.class_ in ("photo_subject", "photo_scene"):
+    if cfg.photo_prep and classification.class_ in PHOTO_CLASSES:
         # rembg subject cutout (plan §2 row 1) — runs FIRST in this block,
         # before face detection and tone prep, because both of those read
         # `p.bg_mask` (tone prep's foreground-only percentile stretch;
@@ -263,12 +315,10 @@ def run_stages(
     # through to the classical SLIC+RAG call below, exactly the same
     # degrade-and-say-so posture `remove_background_seam` gets above.
     q: Quant | None = None
-    if cfg.photo_segment_sam2 and classification.class_ in (
-        "photo_subject",
-        "photo_scene",
-    ):
+    if cfg.photo_segment_sam2 and classification.class_ in PHOTO_CLASSES:
         q, sam2_reason = sam2_segment_seam(
-            p, cfg, face_regions=face_regions, bg_mask=subject_bg_mask
+            p, cfg, face_regions=face_regions, bg_mask=subject_bg_mask,
+            split_tonal=effective_split_tonal(cfg, classification.class_)
         )
         if q is None:
             prep_warnings.append(
@@ -302,8 +352,11 @@ def run_stages(
     # set inside that same double-gate.
     if q is None:
         q = (
-            photo_segment(p, cfg, face_regions=face_regions, bg_mask=subject_bg_mask)
-            if classification.class_ in ("photo_subject", "photo_scene", "gradient")
+            photo_segment(
+                p, cfg, face_regions=face_regions, bg_mask=subject_bg_mask,
+                split_tonal=effective_split_tonal(cfg, classification.class_)
+            )
+            if classification.class_ in (*PHOTO_CLASSES, "gradient")
             else quantize(p, cfg)
         )
     if dbg:
@@ -454,17 +507,65 @@ def run_stages(
     # SourcePixels.to_mm/to_px depend on this being the one true mapping.
     art_cx, art_cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
     source_pixels = None
+    # `faces_present`: the one signal `auto_photo_tier` (and this block's own
+    # detail-layer decision) need out of stage 1.5's face detection above
+    # (`face_regions`, set at line ~235 only when `detect_faces_seam` both
+    # ran — behind `cfg.photo_prep`'s double gate — AND found at least one
+    # face). A design that never entered stage 1.5 at all (photo_prep off,
+    # the v1 default) therefore reads exactly like one that did and found
+    # nothing: no faces, no auto-on detail layer. Acceptable v1 behaviour,
+    # not a bug — the auto-route still picks the right BASE tier either way
+    # (below), and turning photo_prep on is how a caller gets the detail
+    # layer to ever fire automatically.
+    faces_present = bool(face_regions)
+    # Spec 2026-08-18 decision 3 (`auto_photo_tier`): photo_subject's
+    # automatic tier — streamline, plus the detail layer when faces were
+    # found — unless the caller already chose a fill_technique themselves,
+    # in which case `auto_tier` is None and both effective values below
+    # collapse to exactly the caller's own config, same as every other
+    # class. `detail_layer` alone does NOT suppress it (F1, 2026-08-19 —
+    # see `auto_photo_tier`'s own docstring): the detail layer is additive
+    # to the route, not an opt-out from it. This is the "later slice" the
+    # block's old comment named.
+    auto_tier = auto_photo_tier(cfg, classification.class_, faces_present)
+    effective_fill_technique = auto_tier or cfg.fill_technique
+    effective_detail_layer = cfg.detail_layer or (auto_tier is not None and faces_present)
+    # Fix round 1, concern 4: the automatic route is LAYERED streamline
+    # thread-paint (spec decision 3's own wording), never mono — see
+    # `plan_stitches`' own identical computation, the one that actually
+    # reaches stage 7's dispatch, for the full reasoning. Computed here too,
+    # informationally, so the warning below can name it — this value itself
+    # is not consumed by anything in `run_stages` (`want_tonal` below cares
+    # only about the technique NAME, not its sub-mode).
+    effective_streamline_mode = "layered" if auto_tier is not None else None
+    if auto_tier is not None:
+        prep_warnings.append(
+            warn(
+                PHOTO_AUTO_TIER,
+                f"This photo was automatically routed to the {auto_tier} "
+                f"fill tier ({effective_streamline_mode})" +
+                (" with a detail layer for the detected faces"
+                 if effective_detail_layer else "") +
+                " — no fill_technique was set explicitly.",
+                tier=auto_tier,
+                detail_layer=effective_detail_layer,
+                streamline_mode=effective_streamline_mode,
+            )
+        )
     # Two ways to earn a raster payload, both narrow on purpose: the
-    # "gradient" classification (the blend tier reads it), or the caller
-    # EXPLICITLY opting into a source-reading tier — a mono tonal fill
+    # "gradient" classification (the blend tier reads it), or a
+    # source-reading tier being effectively on — a mono tonal fill
     # (scan-line, meander, streamline) or the detail layer (stage6_detail,
-    # which extracts its lines from the raster) — a per-request config
-    # choice, never an automatic route (automatic photo routing is a later
-    # slice). Every other configuration carries no pixels forward and the
-    # flat lane's byte-for-byte identity is untouched by this field
-    # existing.
-    want_tonal = (cfg.fill_technique or "tatami").lower() in (
-        "scanline_tonal", "meander_tonal", "streamline", "sketch") or cfg.detail_layer
+    # which extracts its lines from the raster), each either the caller's
+    # own explicit config choice or photo_subject's automatic route just
+    # above. `effective_fill_technique`/`effective_detail_layer` are
+    # identical to `cfg.fill_technique`/`cfg.detail_layer` for every class
+    # `auto_photo_tier` returns None for (every class but photo_subject, and
+    # photo_subject itself whenever the caller already chose explicitly) —
+    # so the flat lane's byte-for-byte identity is untouched by this field
+    # existing, exactly as before.
+    want_tonal = (effective_fill_technique or "tatami").lower() in (
+        "scanline_tonal", "meander_tonal", "streamline", "sketch") or effective_detail_layer
     # The per-shape form of the sketch/streamline opt-in (shape-layers
     # contract v1.3's `tier: "sketch"`, v1.6's `tier: "streamline"`): a
     # review-screen edit forcing ONE shape onto a raster-reading tier needs
@@ -597,6 +698,7 @@ def run_stages(
         debug_dir=dbg,
         source_pixels=source_pixels,
         design_class=classification.class_,
+        faces_present=faces_present,
     )
 
 
@@ -680,9 +782,57 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     if dbg:
         debugviz.stage5(dbg, planned, result.design_size_mm, chart_for(cfg))
 
+    # Fix round 1 (spec decision 3, concern 1): `sequence` must actually SEW
+    # the photo_subject auto-route's decision, not just have `run_stages`
+    # capture pixels for it and warn — the gap the first pass of this task
+    # left open. Recomputed here (not frozen from the original `run_stages`
+    # call) via the exact same pure helper `run_stages` calls, against
+    # `result.design_class` — stage 0's verdict, carried on `PipelineResult`
+    # for exactly this "hand it to stage 7" purpose (see that field's own
+    # docstring) — and `result.faces_present`, carried the same way as of
+    # fix round 2 (see that field's own docstring: a runtime fact, not
+    # recomputable from cfg + class_ the way the tier decision is).
+    # Recomputing the TIER (rather than freezing a value from the original
+    # run_stages call) is deliberate: `plan_stitches` is documented "safe to
+    # re-run" with a DIFFERENT cfg each time (a review-screen parameter
+    # tweak), and an explicit `fill_technique` on THIS call's cfg must still
+    # win over the auto-route on THIS call — exactly the "explicit caller
+    # config always wins" contract `auto_photo_tier` already enforces, now
+    # honoured on every re-plan too, not just the first one.
+    auto_tier = auto_photo_tier(cfg, result.design_class, result.faces_present)
+    effective_fill_technique = auto_tier or cfg.fill_technique
+    # Concern 4: the automatic route is layered streamline thread-paint
+    # (spec decision 3's own wording), never mono — mono would sew every
+    # shade of a photo region in one thread, defeating the dark->light
+    # tone chain Task 1's shade_thread_index emission and this task's
+    # earlier streamline-layer shade-stamping fix both exist to carry.
+    # Unconditional whenever the auto-route fires: `auto_photo_tier`'s own
+    # "explicit" gate does not examine `cfg.streamline_mode` (only `fill_
+    # technique`/`detail_layer`), so there is no separate caller override to
+    # defer to here — same as `effective_fill_technique` above, `None` for
+    # every class/config the auto-route does not fire for, which is what
+    # keeps this a no-op for flat, gradient, photo_scene, and an
+    # explicitly-configured photo_subject alike.
+    effective_streamline_mode = "layered" if auto_tier is not None else None
+    # Fix round 2 (Critical): the SAME formula `run_stages` uses for its own
+    # `effective_detail_layer` (pipeline.py, the `PHOTO_AUTO_TIER` warning's
+    # own "with a detail layer for the detected faces" text) — recomputed
+    # here, not carried, for the identical re-plan-responsiveness reason
+    # `effective_fill_technique` above is recomputed rather than frozen.
+    # Before this round, only the WARNING read this formula; stage 7's own
+    # detail-layer gate (below `sequence`, at its own :1519) still read raw
+    # `cfg.detail_layer`, so a photo job with a detected face announced a
+    # detail layer it never actually sewed — the exact defect class this
+    # whole task exists to close for `fill_technique`/`streamline_mode`,
+    # just one field later.
+    effective_detail_layer = cfg.detail_layer or (auto_tier is not None
+                                                  and result.faces_present)
     blocks, seq_warnings = sequence(planned, fabric, cfg,
                                     source_pixels=result.source_pixels,
-                                    design_class=result.design_class)
+                                    design_class=result.design_class,
+                                    fill_technique=effective_fill_technique,
+                                    streamline_mode=effective_streamline_mode,
+                                    detail_layer=effective_detail_layer)
 
     # The plan's palette is the list of cones this plan actually sews, one per
     # BLOCK, in sew order — NOT `result.palette`, which is the per-LAYER list a

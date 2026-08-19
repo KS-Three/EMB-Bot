@@ -208,6 +208,7 @@ def test_service_validates_and_canonicalizes_the_tier(technique):
     and survives `_parse_config`, and an unknown tier is still a 400 at
     submit — the same proof `test_service_validates_and_canonicalizes_the_
     crosshatch_tier` runs for crosshatch."""
+    pytest.importorskip("fastapi", reason="service extra not installed")
     from fastapi import HTTPException
 
     from digitizer_service.app import _parse_config

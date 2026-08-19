@@ -651,7 +651,8 @@ def _trace_layer(poly, tangent_at, darkness_map, ring, slack, shape_id: str
 
 
 def streamline_fill(region: Region, source_pixels: SourcePixels, cfg,
-                    *, darkness_scale: float = 1.0
+                    *, darkness_scale: float = 1.0,
+                    streamline_mode: str | None = None,
                     ) -> tuple[list[StitchRun], dict]:
     """One shape -> its streamline runs plus the standard tier report.
 
@@ -672,7 +673,7 @@ def streamline_fill(region: Region, source_pixels: SourcePixels, cfg,
     (the low-coherence parallel-line path was taken), `field_coherence` (the
     region summary the gate read).
 
-    `cfg.streamline_mode == "layered"` (default `"mono"`) is the multi-color
+    `streamline_mode == "layered"` (default `"mono"`) is the multi-color
     seam (module docstring): `layers`, `shade_thread_idx`, `shade_rgb` and
     `streamlines_by_layer` (all dark-to-light order) are added to the report,
     and `runs` stacks every shade's own runs in that order with an
@@ -680,6 +681,19 @@ def streamline_fill(region: Region, source_pixels: SourcePixels, cfg,
     travel-bridged) at each shade boundary. Mono mode's own code path is
     untouched — same calls, same order — so it stays byte-identical to the
     tier as it shipped before this mode existed.
+
+    Task 3 fix round 1 (photo/tonal v1): `streamline_mode` is now also an
+    explicit KEYWORD ARGUMENT, `None` by default. `None` means "read
+    `cfg.streamline_mode` exactly as before" — every existing caller (every
+    call site in this codebase before this round) passes nothing here and
+    is byte-identical by construction. A caller that DOES pass a value
+    (currently: `stage7_sequence.sequence`, threading photo_subject's
+    automatic route through) overrides `cfg.streamline_mode` for this one
+    call without mutating `cfg` — jobs cache on it. `stage6_sketch.sketch_
+    fill`'s own `mono_cfg` (which forces `cfg.streamline_mode="mono"` via
+    `dataclasses.replace` before calling this function) is unaffected
+    either way: it never passes this new argument, so it keeps reading its
+    own already-forced `mono_cfg.streamline_mode`.
     """
     poly = region.polygon
     report = {"too_thin": False, "jumps": 0, "empty": False,
@@ -732,7 +746,8 @@ def streamline_fill(region: Region, source_pixels: SourcePixels, cfg,
     ring = _inset_ring(poly, machine.TRAVEL_INSET_MM)
     slack = poly.buffer(0.01)
 
-    layered = str(cfg.streamline_mode or "mono").lower() == "layered"
+    _mode = streamline_mode if streamline_mode is not None else cfg.streamline_mode
+    layered = str(_mode or "mono").lower() == "layered"
     if layered:
         shades = _shade_layers(poly, source_pixels, darkness, region, cfg)
         runs: list[StitchRun] = []
@@ -751,6 +766,23 @@ def streamline_fill(region: Region, source_pixels: SourcePixels, cfg,
             streamlines_by_layer.append(n_lines)
             if not layer_runs:
                 continue
+            # Task 3 (photo/tonal v1): stamp the chart thread THIS shade
+            # snapped to on every one of its own runs — the same field
+            # `stage6_blend.blend_fill` stamps on its band runs (`stitches.
+            # StitchRun.shade_thread_index`), and the one thing stage 7's
+            # `_shade_blocks` reads to split a group's flat run list into
+            # per-shade StitchBlocks. Unset here, every shade's runs default
+            # to `None` and `_shade_blocks` buckets them all under the
+            # region's single base thread — dark->light shade COUNT would
+            # still be right (the report above already carries it), but the
+            # design would sew in one spool regardless, silently discarding
+            # the whole point of "layered". Mono mode's own runs are
+            # deliberately left unstamped (`None`, stage 7's documented
+            # "this run sews in the region's one thread" default): there is
+            # only ever one shade there, so the field would name nothing
+            # `_shade_blocks` doesn't already fall back to.
+            for r in layer_runs:
+                r.shade_thread_index = thread_idx
             if runs:
                 # A shade boundary is always a genuine thread/colour change —
                 # never bridged, exactly like stage 7's own per-block forcing
