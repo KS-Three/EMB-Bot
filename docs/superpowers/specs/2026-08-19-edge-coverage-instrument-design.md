@@ -303,7 +303,7 @@ The instrument is done when all of these hold:
    shape with a deliberately deleted last row reports the strip's real length.
 5. The corpus table states, per design, the pro's arc against ours.
 6. No test in the existing suite changes result. Baseline on this branch is
-   **3 failed / 1187 passed** — `test_flat_lane_byte_identical[enthusiast_logo]`,
+   **3 failed / 1218 passed** — `test_flat_lane_byte_identical[enthusiast_logo]`,
    `test_pushcomp[logo_whitebg-towel]`, `test_stage2_photo_segment[enthusiast_logo]`,
    the known Windows golden divergence (measured 2026-08-19, `pytest -q -n auto`).
 

@@ -25,7 +25,7 @@
   ```
   In a cloud session that is the environment's own interpreter. On Kent's machine a worktree has **no `.venv`** — venvs are not tracked — so use the primary checkout's `digitizer/.venv/Scripts/python.exe` while `cd`'d into the worktree's `digitizer/`. That is safe: cwd precedence puts the worktree's `digitizer_core` ahead of the editable install, verified 2026-08-19. It is also exactly why the rule is always `python -m pytest` and never `python foo.py`.
   **Never pipe pytest to `tail`** — you get tail's exit code, so a red run reads green.
-- **Baseline to preserve:** 3 failed / 1187 passed, the known Windows golden divergence (`test_flat_lane_byte_identical[enthusiast_logo]`, `test_pushcomp[logo_whitebg-towel]`, `test_stage2_photo_segment[enthusiast_logo]`). No other test may change result.
+- **Baseline to preserve:** 3 failed / 1218 passed, the known Windows golden divergence (`test_flat_lane_byte_identical[enthusiast_logo]`, `test_pushcomp[logo_whitebg-towel]`, `test_stage2_photo_segment[enthusiast_logo]`). No other test may change result.
 
 ---
 
@@ -790,7 +790,7 @@ def test_origin_agrees_with_the_rasteriser():
 
 - [ ] **Step 3: Run tests to verify they pass**
 
-Expected: 17 passed.
+Expected: 18 passed.
 
 - [ ] **Step 4: Run the full digitizer suite for the regression check**
 
@@ -798,7 +798,7 @@ Run:
 ```bash
 cd .claude/worktrees/edge-coverage/digitizer && python -m pytest -q -n auto
 ```
-Expected: **3 failed, 1187+17 passed.** The three are the known Windows golden divergence. Read the summary line directly — do not pipe to `tail`.
+Expected: **3 failed, 1218+18 passed.** The three are the known Windows golden divergence. Read the summary line directly — do not pipe to `tail`.
 
 - [ ] **Step 5: Commit**
 

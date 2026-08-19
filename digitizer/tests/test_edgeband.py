@@ -260,3 +260,33 @@ def test_origin_agrees_with_the_rasteriser():
     assert (x0, y0) == (3.0, 7.0)
     m = eb.side_mask(tmp / "s.csv")
     assert m[4, 4:6].any(), "the origin stitch must sit at the 4 px pad"
+
+
+def test_a_polygon_past_the_stitch_bbox_is_not_clipped():
+    """The one direction a starvation instrument may not err in.
+
+    `shape_band_rows` framed its canvas on the stitch raster plus 8 px, so a
+    shape starving PAST the design's own stitch bbox had the starved part cut
+    off by `fillPoly` and under-reported. Measured 2026-08-19 before the fix: a
+    polygon 2.4 mm past the last row read 17.4 / 17.0 / 0.00 mm at
+    W = 0.2 / 0.4 / 0.8 — the widest band collapsing to zero exactly where the
+    defect was worst, because the clipped edge sat 0.6 mm from thread instead of
+    2.4. That flatters us, and an instrument built to find bare fabric may not
+    hide it.
+
+    Here the polygon runs 4.8 mm past the last row, so its whole 17 mm bottom
+    edge is bare at every width.
+    """
+    import json
+    tmp = Path(__import__("tempfile").mkdtemp()) / "overhang"
+    d = fake_design(tmp, cover_ours=False)          # rows stop at y = 8.2
+    (d / "ours_regions.json").write_text(json.dumps([{
+        "shape_id": "tall", "area_mm2": 204.0, "thread": 0, "tier": "fill",
+        "bounds": [1.0, 1.0, 18.0, 13.0],
+        "wkt": "POLYGON ((1 1, 18 1, 18 13, 1 13, 1 1))",
+    }]))
+    at = {r["width_mm"]: r for r in eb.shape_band_rows(d)}
+    for w in eb.BAND_WIDTHS_MM:
+        assert at[w]["bare_arc_max_mm"] > 15.0, (
+            f"W={w}: the bottom edge is 17 mm of bare fabric, got "
+            f"{at[w]['bare_arc_max_mm']} mm")

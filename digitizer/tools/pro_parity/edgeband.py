@@ -240,16 +240,19 @@ def shape_band_rows(dirpath, widths_mm=BAND_WIDTHS_MM) -> list[dict]:
     with `scorecard.register`'s hill-climb is how two probes start disagreeing
     about where a shape is. The pro's side of the comparison is `art_band_rows`.
 
-    KNOWN CLIP, carried forward. The canvas is the stitch raster plus 8 px, and
-    `pro_mask` already padded 4 px a side, so a polygon reaching more than
-    0.8 mm beyond the DESIGN-WIDE stitch bbox is silently cut off by `fillPoly`
-    and its bare edge under-reported. Seen on a synthetic dir 2026-08-19: a
-    polygon 2.4 mm past the last row read arcs of 17.4 / 17.0 / 0.00 mm at
-    W = 0.2 / 0.4 / 0.8 — the 0.8 column collapsing because the clipped edge
-    sits 0.6 mm from thread, not 2.4. The bbox is the union over every shape,
-    so an interior shape cannot hit this; only a shape that both defines an
-    extreme of the design and starves by more than 0.8 mm can. Treat a shape
-    whose three widths disagree in that pattern as suspect, not as measured.
+    A CLIP THAT USED TO FLATTER US, fixed 2026-08-19. The canvas was the stitch
+    raster plus 8 px, and `pro_mask` had already padded 4 px a side, so a
+    polygon reaching more than 0.8 mm beyond the DESIGN-WIDE stitch bbox was
+    silently cut off by `fillPoly` and its bare edge under-reported. Measured on
+    a synthetic dir before the fix: a polygon 2.4 mm past the last row read
+    17.4 / 17.0 / **0.00** mm at W = 0.2 / 0.4 / 0.8 — the widest band
+    collapsing to zero precisely where the defect was worst, because the clipped
+    edge sat 0.6 mm from thread instead of 2.4. A starvation instrument that
+    hides starvation in its own worst case is not a conservative instrument, it
+    is a broken one, so the canvas is now framed on the union of the stitch
+    raster and every polygon. Pinned by
+    `test_a_polygon_past_the_stitch_bbox_is_not_clipped`, which reads 0.0 mm
+    against a true 17 mm without it.
     """
     import shapely.wkt
 
@@ -264,18 +267,35 @@ def shape_band_rows(dirpath, widths_mm=BAND_WIDTHS_MM) -> list[dict]:
 
     M = side_mask(csv_path)
     x0, y0 = _origin_mm(csv_path)
-    H = M.shape[0] + 8
-    W = M.shape[1] + 8
-    Mp = _place(M, H, W)
-    # `_place` centres; `pro_mask` itself pads 4 px inside its own raster.
-    oy = (H - M.shape[0]) // 2 + 4 - y0 * RES
-    ox = (W - M.shape[1]) // 2 + 4 - x0 * RES
+
+    polys = [(r, shapely.wkt.loads(r["wkt"])) for r in regions]
+    polys = [(r, p) for r, p in polys if not p.is_empty]
+    if not polys:
+        return []
+
+    # The canvas covers the stitch raster AND every polygon, plus room for the
+    # widest band. Framing it on the stitches alone is what clipped a shape
+    # reaching past the design's stitch bbox — see the note above.
+    pad = 8 + int(round(max(widths_mm) * RES))
+    xs = [0.0, float(M.shape[1])]
+    ys = [0.0, float(M.shape[0])]
+    for _r, p in polys:
+        bx0, by0, bx1, by1 = p.bounds
+        xs += [(bx0 - x0) * RES + 4, (bx1 - x0) * RES + 4]
+        ys += [(by0 - y0) * RES + 4, (by1 - y0) * RES + 4]
+    j0 = int(np.floor(min(xs))) - pad
+    i0 = int(np.floor(min(ys))) - pad
+    W = int(np.ceil(max(xs))) + pad - j0
+    H = int(np.ceil(max(ys))) + pad - i0
+
+    Mp = np.zeros((H, W), bool)
+    Mp[-i0:-i0 + M.shape[0], -j0:-j0 + M.shape[1]] = M
+    # mm -> canvas px. `pro_mask` pads 4 px inside its own raster.
+    ox = 4 - x0 * RES - j0
+    oy = 4 - y0 * RES - i0
 
     rows = []
-    for r in regions:
-        poly = shapely.wkt.loads(r["wkt"])
-        if poly.is_empty:
-            continue
+    for r, poly in polys:
         P = _poly_mask(poly, H, W, oy, ox)
         if not P.any():
             continue
