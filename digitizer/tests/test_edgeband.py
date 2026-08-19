@@ -181,7 +181,9 @@ def fake_design(tmp, cover_ours=True):
         return pts
 
     # `y += 0.4` accumulates in binary, so the last row actually emitted is
-    # 10.2 and 8.2 — a 2.0 mm difference. Asserted below rather than trusted.
+    # 10.2 and 8.2, not 10.6 and 8.6 — a 2.0 mm difference either way, but the
+    # y_end values are ceilings, not the rows themselves. Printed and checked
+    # 2026-08-19, not inferred from the arithmetic.
     write_stitches(d / "pro_stitches.csv", rows(10.6))
     write_stitches(d / "ours_stitches.csv", rows(10.6 if cover_ours else 8.6))
     return d
@@ -223,3 +225,38 @@ def test_a_design_dir_missing_a_side_yields_no_rows_for_it():
     d = fake_design(tmp)
     (d / "ours_stitches.csv").unlink()
     assert {r["side"] for r in eb.art_band_rows(d)} == {"pro"}
+
+
+def test_shape_rows_carry_the_shape_id_and_tier():
+    """Attribution: which shape is short, and in which tier. The polygon is OURS
+    on both sides, so this asks whether the pro laid thread where our shape
+    claims its edge is — stated in every table that reports it."""
+    import json
+    tmp = Path(__import__("tempfile").mkdtemp()) / "shaped"
+    d = fake_design(tmp, cover_ours=False)
+    (d / "ours_regions.json").write_text(json.dumps([{
+        "shape_id": "s1", "area_mm2": 180.0, "thread": 0, "tier": "fill",
+        "bounds": [1.0, 1.0, 18.0, 10.6],
+        "wkt": "POLYGON ((1 1, 18 1, 18 10.6, 1 10.6, 1 1))",
+    }]))
+    rows = eb.shape_band_rows(d)
+    assert rows, "a region with a wkt must produce rows"
+    assert {r["shape_id"] for r in rows} == {"s1"}
+    assert {r["tier"] for r in rows} == {"fill"}
+    assert all(r["band"] == "shape" for r in rows)
+
+
+def test_no_regions_file_is_not_an_error():
+    tmp = Path(__import__("tempfile").mkdtemp()) / "noregions"
+    assert eb.shape_band_rows(fake_design(tmp)) == []
+
+
+def test_origin_agrees_with_the_rasteriser():
+    """`_origin_mm` duplicates two mins from `pro_mask`. This pins them
+    together: a stitch at the mm origin must land at pro_mask's own 4 px pad."""
+    tmp = Path(__import__("tempfile").mkdtemp())
+    write_stitches(tmp / "s.csv", [(3.0, 7.0), (13.0, 7.0), (13.0, 12.0)])
+    x0, y0 = eb._origin_mm(tmp / "s.csv")
+    assert (x0, y0) == (3.0, 7.0)
+    m = eb.side_mask(tmp / "s.csv")
+    assert m[4, 4:6].any(), "the origin stitch must sit at the 4 px pad"

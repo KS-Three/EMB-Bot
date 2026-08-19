@@ -26,6 +26,8 @@ tolerance. It adds no key to the scorecard's WEIGHTS and changes no engine
 behaviour.
 """
 from pathlib import Path
+import csv
+import json
 import sys
 
 import cv2
@@ -200,3 +202,131 @@ def art_band_rows(dirpath, widths_mm=BAND_WIDTHS_MM) -> list[dict]:
             rows.append({"slug": d.name, "band": "art", "side": side,
                          **_summarise(Ap, Mp, w_mm)})
     return rows
+
+
+def _poly_mask(poly, H, W, oy, ox, res=RES) -> np.ndarray:
+    """Rasterise a shapely polygon into a canvas at a known pixel offset.
+
+    `oy`/`ox` are where the side's own raster was placed, so the polygon lands
+    in the same frame its own stitches did.
+    """
+    m = np.zeros((H, W), np.uint8)
+
+    def px(coords):
+        a = np.asarray(coords, np.float64)
+        return np.column_stack([a[:, 0] * res + ox, a[:, 1] * res + oy]).astype(np.int32)
+
+    parts = [poly] if poly.geom_type == "Polygon" else list(poly.geoms)
+    for p in parts:
+        if p.geom_type != "Polygon":
+            continue
+        cv2.fillPoly(m, [px(p.exterior.coords)], 255)
+        for ring in p.interiors:
+            cv2.fillPoly(m, [px(ring.coords)], 0)
+    return m.astype(bool)
+
+
+def shape_band_rows(dirpath, widths_mm=BAND_WIDTHS_MM) -> list[dict]:
+    """Edge coverage per OUR shape — the attribution number.
+
+    Which shapes are short, and in which tier. The polygon is ours on BOTH
+    sides, so this asks whether the pro laid thread where our shape claims its
+    edge is. Where this and `art_band_rows` disagree IS the segmentation-shrink
+    signal: our polygon landing inside the artwork's ink is invisible to any
+    measure that uses our polygon as ground truth.
+
+    Only our own side is measured here. Placing our polygons on the PRO's canvas
+    needs a second registration path, and mixing `best_iou`'s whole-pixel shift
+    with `scorecard.register`'s hill-climb is how two probes start disagreeing
+    about where a shape is. The pro's side of the comparison is `art_band_rows`.
+
+    KNOWN CLIP, carried forward. The canvas is the stitch raster plus 8 px, and
+    `pro_mask` already padded 4 px a side, so a polygon reaching more than
+    0.8 mm beyond the DESIGN-WIDE stitch bbox is silently cut off by `fillPoly`
+    and its bare edge under-reported. Seen on a synthetic dir 2026-08-19: a
+    polygon 2.4 mm past the last row read arcs of 17.4 / 17.0 / 0.00 mm at
+    W = 0.2 / 0.4 / 0.8 — the 0.8 column collapsing because the clipped edge
+    sits 0.6 mm from thread, not 2.4. The bbox is the union over every shape,
+    so an interior shape cannot hit this; only a shape that both defines an
+    extreme of the design and starves by more than 0.8 mm can. Treat a shape
+    whose three widths disagree in that pattern as suspect, not as measured.
+    """
+    import shapely.wkt
+
+    d = Path(dirpath)
+    regions_path = d / "ours_regions.json"
+    csv_path = d / "ours_stitches.csv"
+    if not (regions_path.exists() and csv_path.exists()):
+        return []
+    regions = json.loads(regions_path.read_text())
+    if not regions or "wkt" not in regions[0]:
+        return []
+
+    M = side_mask(csv_path)
+    x0, y0 = _origin_mm(csv_path)
+    H = M.shape[0] + 8
+    W = M.shape[1] + 8
+    Mp = _place(M, H, W)
+    # `_place` centres; `pro_mask` itself pads 4 px inside its own raster.
+    oy = (H - M.shape[0]) // 2 + 4 - y0 * RES
+    ox = (W - M.shape[1]) // 2 + 4 - x0 * RES
+
+    rows = []
+    for r in regions:
+        poly = shapely.wkt.loads(r["wkt"])
+        if poly.is_empty:
+            continue
+        P = _poly_mask(poly, H, W, oy, ox)
+        if not P.any():
+            continue
+        for w_mm in widths_mm:
+            rows.append({"slug": d.name, "band": "shape", "side": "ours",
+                         "shape_id": r.get("shape_id"), "tier": r.get("tier"),
+                         "area_mm2": r.get("area_mm2"),
+                         **_summarise(P, Mp, w_mm)})
+    return rows
+
+
+def _origin_mm(csv_path) -> tuple[float, float]:
+    """The mm corner `pro_mask` measures its raster from.
+
+    Two mins, duplicated from `pro_mask` because it returns only the mask —
+    its docstring says "plus its mm origin" and the code does not. Guarded by
+    `test_origin_agrees_with_the_rasteriser`, which pins a known stitch to a
+    known pixel, so a change to the rasteriser's framing cannot drift this
+    silently.
+    """
+    xs, ys = [], []
+    with open(csv_path) as f:
+        for r in csv.DictReader(f):
+            xs.append(float(r["x_mm"])); ys.append(float(r["y_mm"]))
+    return min(xs), min(ys)
+
+
+def main():
+    out_rows = []
+    for arg in sys.argv[1:]:
+        d = Path(arg)
+        rows = art_band_rows(d) + shape_band_rows(d)
+        if not rows:
+            print(f"{d.name:22s} (no artifacts)", flush=True)
+            continue
+        out_rows += rows
+        art = {(r["side"], r["width_mm"]): r for r in rows if r["band"] == "art"}
+        for w in BAND_WIDTHS_MM:
+            p = art.get(("pro", w)); o = art.get(("ours", w))
+            if p and o:
+                print(f"{d.name:22s} W={w:.1f}  pro arc {p['bare_arc_max_mm']:6.2f} mm"
+                      f" · ours arc {o['bare_arc_max_mm']:6.2f} mm"
+                      f" · pro frac {p['bare_frac']:.3f} · ours frac {o['bare_frac']:.3f}",
+                      flush=True)
+        with open(d / f"edgeband_{d.name}.csv", "w", newline="") as f:
+            keys = sorted({k for r in rows for k in r})
+            w_ = csv.DictWriter(f, fieldnames=keys); w_.writeheader(); w_.writerows(rows)
+    if out_rows:
+        print(f"\n{len(out_rows)} rows over "
+              f"{len({r['slug'] for r in out_rows})} designs")
+
+
+if __name__ == "__main__":
+    main()
