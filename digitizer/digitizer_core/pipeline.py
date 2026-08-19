@@ -54,6 +54,7 @@ from .threads import chart_for
 from .warnings_codes import (
     DROPPED_SMALL_SHAPES,
     PALETTE_THREAD_MISMATCH,
+    PHOTO_AUTO_TIER,
     PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE,
     PHOTO_BACKGROUND_REMOVED,
     PHOTO_FACE_PRIORS_UNAVAILABLE,
@@ -76,6 +77,30 @@ def effective_split_tonal(cfg: PipelineConfig, class_: str) -> bool:
 	splitting by default; the config flag remains the explicit override for
 	every other class (gradient keeps the blend tier as its tonal carrier)."""
 	return bool(cfg.split_tonal_regions) or class_ in ("photo_subject", "photo_scene")
+
+
+def auto_photo_tier(cfg: PipelineConfig, class_: str, faces_present: bool) -> str | None:
+    """Spec 2026-08-18 decision 3: the automatic photo tier map. Returns the
+    fill_technique to apply, or None to leave the caller's config untouched.
+    Only fires when the caller did NOT choose a technique (or the detail
+    layer) themselves — explicit caller config always wins, silently, same
+    as before this function existed.
+
+    `photo_scene` stays tatami in v1 — its tone already comes from
+    `effective_split_tonal`'s region splitting above, not a source-reading
+    fill tier (`run_stages`' own source_pixels gate keeps scenes off
+    `want_tonal` for the same reason: no blend tier reads scene ramps yet,
+    so carrying pixels forward for one would only be cost with no reader).
+
+    `faces_present` is accepted, not consulted, here — it decides the
+    CALLER's own `detail_layer` effective-on (see `run_stages`), never the
+    tier name itself: a photo_subject with no detected faces still gets
+    streamline, just without the extra detail block stitched on top.
+    """
+    explicit = (cfg.fill_technique or "tatami").lower() != "tatami" or cfg.detail_layer
+    if explicit or class_ != "photo_subject":
+        return None
+    return "streamline"
 
 
 @dataclass
@@ -465,17 +490,54 @@ def run_stages(
     # SourcePixels.to_mm/to_px depend on this being the one true mapping.
     art_cx, art_cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
     source_pixels = None
+    # `faces_present`: the one signal `auto_photo_tier` (and this block's own
+    # detail-layer decision) need out of stage 1.5's face detection above
+    # (`face_regions`, set at line ~235 only when `detect_faces_seam` both
+    # ran — behind `cfg.photo_prep`'s double gate — AND found at least one
+    # face). A design that never entered stage 1.5 at all (photo_prep off,
+    # the v1 default) therefore reads exactly like one that did and found
+    # nothing: no faces, no auto-on detail layer. Acceptable v1 behaviour,
+    # not a bug — the auto-route still picks the right BASE tier either way
+    # (below), and turning photo_prep on is how a caller gets the detail
+    # layer to ever fire automatically.
+    faces_present = bool(face_regions)
+    # Spec 2026-08-18 decision 3 (`auto_photo_tier`): photo_subject's
+    # automatic tier — streamline, plus the detail layer when faces were
+    # found — unless the caller already chose a technique or turned the
+    # detail layer on themselves, in which case `auto_tier` is None and both
+    # effective values below collapse to exactly the caller's own config,
+    # same as every other class. This is the "later slice" the block's old
+    # comment named.
+    auto_tier = auto_photo_tier(cfg, classification.class_, faces_present)
+    effective_fill_technique = auto_tier or cfg.fill_technique
+    effective_detail_layer = cfg.detail_layer or (auto_tier is not None and faces_present)
+    if auto_tier is not None:
+        prep_warnings.append(
+            warn(
+                PHOTO_AUTO_TIER,
+                f"This photo was automatically routed to the {auto_tier} "
+                "fill tier" +
+                (" with a detail layer for the detected faces"
+                 if effective_detail_layer else "") +
+                " — no fill_technique was set explicitly.",
+                tier=auto_tier,
+                detail_layer=effective_detail_layer,
+            )
+        )
     # Two ways to earn a raster payload, both narrow on purpose: the
-    # "gradient" classification (the blend tier reads it), or the caller
-    # EXPLICITLY opting into a source-reading tier — a mono tonal fill
+    # "gradient" classification (the blend tier reads it), or a
+    # source-reading tier being effectively on — a mono tonal fill
     # (scan-line, meander, streamline) or the detail layer (stage6_detail,
-    # which extracts its lines from the raster) — a per-request config
-    # choice, never an automatic route (automatic photo routing is a later
-    # slice). Every other configuration carries no pixels forward and the
-    # flat lane's byte-for-byte identity is untouched by this field
-    # existing.
-    want_tonal = (cfg.fill_technique or "tatami").lower() in (
-        "scanline_tonal", "meander_tonal", "streamline", "sketch") or cfg.detail_layer
+    # which extracts its lines from the raster), each either the caller's
+    # own explicit config choice or photo_subject's automatic route just
+    # above. `effective_fill_technique`/`effective_detail_layer` are
+    # identical to `cfg.fill_technique`/`cfg.detail_layer` for every class
+    # `auto_photo_tier` returns None for (every class but photo_subject, and
+    # photo_subject itself whenever the caller already chose explicitly) —
+    # so the flat lane's byte-for-byte identity is untouched by this field
+    # existing, exactly as before.
+    want_tonal = (effective_fill_technique or "tatami").lower() in (
+        "scanline_tonal", "meander_tonal", "streamline", "sketch") or effective_detail_layer
     # The per-shape form of the sketch/streamline opt-in (shape-layers
     # contract v1.3's `tier: "sketch"`, v1.6's `tier: "streamline"`): a
     # review-screen edit forcing ONE shape onto a raster-reading tier needs

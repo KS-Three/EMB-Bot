@@ -165,6 +165,20 @@ SMALL_SHAPES_AS_RUN = "SMALL_SHAPES_AS_RUN"        # too small for fill or satin
 # extra: {"count": int, "regions_before": int, "regions_after": int}
 TONAL_REGIONS_SPLIT = "TONAL_REGIONS_SPLIT"
 
+# pipeline.run_stages, the source_pixels gate (photo auto-routing, spec
+# decision 3, 2026-08-18 — `pipeline.auto_photo_tier`). Sibling to
+# TONAL_REGIONS_SPLIT above: that warning announces automatic TONE (Task 2),
+# this one announces the automatic FILL TIER a photo_subject design picks up
+# when the caller set neither `fill_technique` nor `detail_layer`
+# themselves — streamline, plus the detail layer when stage 1.5 found faces.
+# `photo_scene` and every non-photo class never fire this: `photo_scene`
+# stays tatami in v1 (its tone already comes from TONAL_REGIONS_SPLIT), and
+# an explicit caller choice always wins over the auto-route, silently, the
+# same way it always did before this code existed.
+# Info, not a problem: names WHAT the auto-route picked, for the Studio
+# panel. extra: {"tier": str, "detail_layer": bool}
+PHOTO_AUTO_TIER = "photo_auto_tier"
+
 # Stage 6 (blend fill tier)
 # CLASSIFIED_GRADIENT announces the blend ROUTING at classification time,
 # before any region has been tested. Whether a region actually decomposes

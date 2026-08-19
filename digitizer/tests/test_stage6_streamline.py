@@ -501,6 +501,41 @@ def test_layered_sew_order_is_dark_shade_first_in_the_actual_runs():
         )
 
 
+def test_layered_shades_sew_as_separate_thread_blocks():
+    """Task 3 (photo/tonal v1): layered mode's own shades must reach stage 7
+    as SEPARATE StitchBlocks, dark to light — not collapse into the region's
+    one base thread once `_shade_blocks` (Task 1, stage7_sequence.py)
+    partitions the group's flat run list by `run.shade_thread_index`. Task 1
+    wired that field on `stage6_blend.blend_fill`'s band runs; this tier's
+    own layered loop (`streamline_fill`) never got the same stamp, so
+    without it every shade's runs carry `shade_thread_index=None` and
+    `_shade_blocks` buckets them all under `base_thread` — the report's own
+    `shade_thread_idx` list would say "4 shades" while the machine sews one
+    thread, silently defeating the whole point of layered mode. Routed
+    through the REAL stage 5 + stage 7 (`_plan_for`), not `streamline_fill`
+    directly, because the bug lives in `_shade_blocks`' partitioning, one
+    stage past where `test_layered_shade_count_and_report_contract` and
+    `test_layered_sew_order_is_dark_shade_first_in_the_actual_runs` above
+    already look."""
+    poly = Polygon([(-35, -25), (35, -25), (35, 25), (-35, 25)])
+    # tier="fill" sidesteps this test's only job (shade partitioning) from
+    # satin/run-rescue auto-classification noise on a shape shaped for
+    # streamline testing, not for satin candidacy — same reason
+    # test_shade_thread_emission.py's own chain-guard fixture forces it.
+    plan, _warnings = _plan_for(
+        [_region(poly, meta={"tier": "fill"})], source_pixels=_source(_full_ramp()),
+        streamline_mode="layered", fill_technique="streamline")
+
+    distinct = {b.thread_index for b in plan.blocks}
+    assert len(distinct) >= 3, (
+        f"layered ramp sewed {len(distinct)} thread(s) — shade_thread_index "
+        "not read from the layered runs")
+    # Dark to light, the same contract `_shade_blocks` documents for the
+    # blend tier (Task 1) — chart L*, not raw report order.
+    lightness = [CHART.lab[b.thread_index][0] for b in plan.blocks]
+    assert lightness == sorted(lightness)
+
+
 def test_layered_each_shades_d_sep_tracks_its_own_coverage_share():
     """The seam's own claim: 'each layer's d_sep [is] driven by that shade's
     own coverage share rather than raw darkness'. A shade sitting well

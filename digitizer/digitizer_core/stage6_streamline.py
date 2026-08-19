@@ -751,6 +751,23 @@ def streamline_fill(region: Region, source_pixels: SourcePixels, cfg,
             streamlines_by_layer.append(n_lines)
             if not layer_runs:
                 continue
+            # Task 3 (photo/tonal v1): stamp the chart thread THIS shade
+            # snapped to on every one of its own runs — the same field
+            # `stage6_blend.blend_fill` stamps on its band runs (`stitches.
+            # StitchRun.shade_thread_index`), and the one thing stage 7's
+            # `_shade_blocks` reads to split a group's flat run list into
+            # per-shade StitchBlocks. Unset here, every shade's runs default
+            # to `None` and `_shade_blocks` buckets them all under the
+            # region's single base thread — dark->light shade COUNT would
+            # still be right (the report above already carries it), but the
+            # design would sew in one spool regardless, silently discarding
+            # the whole point of "layered". Mono mode's own runs are
+            # deliberately left unstamped (`None`, stage 7's documented
+            # "this run sews in the region's one thread" default): there is
+            # only ever one shade there, so the field would name nothing
+            # `_shade_blocks` doesn't already fall back to.
+            for r in layer_runs:
+                r.shade_thread_index = thread_idx
             if runs:
                 # A shade boundary is always a genuine thread/colour change —
                 # never bridged, exactly like stage 7's own per-block forcing
