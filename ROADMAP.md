@@ -58,3 +58,4 @@ Starter design pack (sourcing decision and billing pending).
 
 ## Advisory ordering
 Hoist distance transform before satin work. Pull compensation before underlay.
+Standing rules (main-green, goldens-on-Linux, read-scope-first): moved to `MASTER_SCOPE.md` gotchas.

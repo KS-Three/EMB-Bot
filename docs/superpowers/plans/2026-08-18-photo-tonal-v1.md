@@ -38,7 +38,7 @@ un-tabling instead of refusing phase-4 work.
 - [ ] **Step 1: Create the worktree and branch**
 
 ```bash
-cd "C:/Users/EE-LT-11030/Claude Personal/EMB-Bot"
+cd "<repo-root>"
 git worktree add .claude/worktrees/photo-tonal-v1 -b claude/photo-tonal-v1
 ```
 

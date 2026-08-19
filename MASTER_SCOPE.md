@@ -37,14 +37,15 @@ or move it.
 
 ## Live defects — believed true right now
 
-1. **Every shade of every decomposed region sews in the same colour.**
-   `stage6_blend` and `stage6_streamline` both compute a per-shade chart snap
-   (`shade_thread_idx` / `shade_rgb`) and put it in their report; nothing reads
-   it. A block's thread is `group[0].region.thread_index` — the region's ONE
-   assigned thread. The blend tier has never produced multi-thread shading in
-   the product. *(confirmed 2026-08-12 — `stage7_sequence.py:1347`; verified on
-   `gradient_ramp_linear.png`, which accepts at r² 1.0 with 4 shades and still
-   emits 2 blocks / 1 colour change)*
+1. **RESOLVED — every shade of every decomposed region sewed in the same
+   colour.** `stage6_blend`/`stage6_streamline` computed a per-shade chart
+   snap (`shade_thread_idx`/`shade_rgb`) that nothing read; a block's thread
+   collapsed to `group[0].region.thread_index`, the region's one assigned
+   thread. `stage7_sequence._shade_blocks` now buckets a group's runs by
+   `shade_thread_index` (a run that never went through the blend tier falls
+   back to the base thread) into one `StitchBlock` per accepted shade, dark
+   to light. *(fixed 2026-08-19 — stage7_sequence._shade_blocks,
+   tests/test_shade_thread_emission.py)*
 
 2. **No width floor under satin — and the proposed fix is DISPROVED for flat
    art.** 19 of 162 corpus regions, all photo-class, sew sub-millimetre satin
@@ -331,6 +332,15 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
   the *synthetic* `photo_owl_pale.png`, which is a near-featureless blob (6
   regions, one at 98.1% of canvas) and behaves nothing like a real photograph.
   *(measured 2026-08-12 — scope-history)*
+- **Keep `main` green while work is in flight — a red suite makes "same
+  failure set" unjudgeable against.** Goldens are re-captured on Linux,
+  never on Windows. *(moved from ROADMAP 2026-08-19 — 60-line budget,
+  decision by Kent)*
+- **Read `MASTER_SCOPE.md` and `docs/scope-digest/` before proposing any
+  work.** What has already been built, measured and rejected here is the
+  most expensive knowledge in this repo; phase numbers in any other doc are
+  historical — this file is the map. *(moved from ROADMAP 2026-08-19 —
+  60-line budget, decision by Kent)*
 
 ---
 
