@@ -62,6 +62,40 @@ def test_missing_isolated_venv_gives_a_reason(monkeypatch, tmp_path):
     assert "sam2_isolated/README.md" in reason
 
 
+def test_frozen_constant_reports_unavailable_even_though_a_real_venv_exists(
+    monkeypatch, tmp_path
+):
+    """Reproduces the port-8722 scenario found live during Task 5: a
+    long-running process that imported this module before
+    `sam2_isolated/venv` existed on disk freezes `SAM2_VENV_DIR`/
+    `SAM2_VENV_PYTHON` at their POSIX-fallback values forever — those are
+    plain module-level constants resolved once at import time, not
+    re-resolved per call. Restarting the process (not this function) is the
+    only fix for that; what this test pins down is that the zero-arg check
+    still reports an honest reason in that state instead of crashing or
+    (worse) silently claiming availability by accident. A genuinely
+    complete, correctly-shaped venv sits on disk here — the failure is
+    purely the stale constant pointing at a sibling path that was never
+    built."""
+    import digitizer_core.stage2_sam2_segment as s2
+
+    worker = tmp_path / "worker.py"
+    worker.write_text("", encoding="utf-8")
+    monkeypatch.setattr(s2, "SAM2_WORKER_PATH", worker)
+
+    venv = tmp_path / "venv"
+    (venv / "Scripts").mkdir(parents=True)
+    (venv / "Scripts" / "python.exe").write_bytes(b"stub")
+    (venv / "pyvenv.cfg").write_text("home = x")
+    (venv / "Lib" / "site-packages").mkdir(parents=True)
+
+    monkeypatch.setattr(s2, "SAM2_VENV_DIR", venv)
+    monkeypatch.setattr(s2, "SAM2_VENV_PYTHON", venv / "bin" / "python")
+
+    reason = s2.sam2_segmentation_unavailable_reason()
+    assert reason is not None and "isolated SAM2 venv not found" in reason
+
+
 def test_both_present_is_available(monkeypatch, tmp_path):
     """A bare stub file at the interpreter path is no longer enough to read
     as available — see tests/test_sam2_availability.py for the husk-venv
