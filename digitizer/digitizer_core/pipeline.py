@@ -71,6 +71,13 @@ from .warnings_codes import (
 NOT_A_DETAIL_FACTOR = 10
 
 
+def effective_split_tonal(cfg: PipelineConfig, class_: str) -> bool:
+	"""Spec 2026-08-18 decision 2: photo classes carry tone via upstream
+	splitting by default; the config flag remains the explicit override for
+	every other class (gradient keeps the blend tier as its tonal carrier)."""
+	return bool(cfg.split_tonal_regions) or class_ in ("photo_subject", "photo_scene")
+
+
 @dataclass
 class BackgroundInfo:
     detected: bool
@@ -268,7 +275,8 @@ def run_stages(
         "photo_scene",
     ):
         q, sam2_reason = sam2_segment_seam(
-            p, cfg, face_regions=face_regions, bg_mask=subject_bg_mask
+            p, cfg, face_regions=face_regions, bg_mask=subject_bg_mask,
+            split_tonal=effective_split_tonal(cfg, classification.class_)
         )
         if q is None:
             prep_warnings.append(
@@ -302,7 +310,10 @@ def run_stages(
     # set inside that same double-gate.
     if q is None:
         q = (
-            photo_segment(p, cfg, face_regions=face_regions, bg_mask=subject_bg_mask)
+            photo_segment(
+                p, cfg, face_regions=face_regions, bg_mask=subject_bg_mask,
+                split_tonal=effective_split_tonal(cfg, classification.class_)
+            )
             if classification.class_ in ("photo_subject", "photo_scene", "gradient")
             else quantize(p, cfg)
         )

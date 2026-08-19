@@ -1265,7 +1265,7 @@ def _percentile_extremes_deltae(lab: np.ndarray) -> float:
 
 
 def split_tonal_regions(
-    p: Prep, cfg: PipelineConfig, kept: list[RegionMask]
+    p: Prep, cfg: PipelineConfig, kept: list[RegionMask], split_tonal: bool = False
 ) -> tuple[list[RegionMask], int]:
     """Split regions whose own pixels span more tone than one thread can tell.
 
@@ -1274,7 +1274,7 @@ def split_tonal_regions(
     union is exactly the original — so this can neither lose artwork nor
     create overlap for stage 5 to resolve.
     """
-    if not getattr(cfg, "split_tonal_regions", False):
+    if not split_tonal:
         return kept, 0
 
     px_per_mm = p.px_per_mm
@@ -1378,6 +1378,7 @@ def kept_masks_to_quant(
     merged_count: int,
     raw_unit_label: str = "superpixels",
     oversegment_labels: np.ndarray | None = None,
+    split_tonal: bool = False,
 ) -> Quant:
     """Steps 6-7, shared by EVERY photo-path region former.
 
@@ -1424,7 +1425,7 @@ def kept_masks_to_quant(
     # either region former so both the classical and SAM2 paths get it from
     # one implementation — the same reason this function exists.
     regions_before_split = len(kept)
-    kept, tonal_splits = split_tonal_regions(p, cfg, kept)
+    kept, tonal_splits = split_tonal_regions(p, cfg, kept, split_tonal=split_tonal)
 
     # --- 6. Palette selection (chart-restricted weighted k-medoids) -----------
     # (Step 5, the face-local threshold drop, already ran inside the RAG
@@ -1596,7 +1597,7 @@ def kept_masks_to_quant(
     )
 
 
-def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None) -> Quant:
+def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None, split_tonal=False) -> Quant:
     h, w = p.rgb.shape[:2]
     valid = ~p.bg_mask
     flat_rgb = p.rgb.reshape(-1, 3)
@@ -1734,4 +1735,5 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None) -> Qu
         raw_count=slic_count,
         merged_count=merged_count,
         oversegment_labels=slic_labels,
+        split_tonal=split_tonal,
     )

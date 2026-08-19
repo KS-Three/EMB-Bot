@@ -169,6 +169,7 @@ def sam2_segment_seam(
     cfg: PipelineConfig,
     face_regions=None,
     bg_mask: np.ndarray | None = None,
+    split_tonal: bool = False,
 ) -> tuple[Quant | None, str | None]:
     """SAM2-backed stage 2, run in the isolated venv documented at
     `digitizer/sam2_isolated/README.md` — NEVER the shared `digitizer/.venv`.
@@ -313,6 +314,7 @@ def sam2_segment_seam(
         merged_count=merged_count,
         raw_unit_label="SAM2 masks",
         oversegment_labels=labels,
+        split_tonal=split_tonal,
     )
     quant.warnings.append(
         warn(

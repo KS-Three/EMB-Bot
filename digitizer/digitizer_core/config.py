@@ -646,6 +646,9 @@ class PipelineConfig:
     # inside the palette's existing budget because `select_palette` still
     # picks the spools and `max_colors` still caps them. Opt-in pending a
     # corpus run; see MASTER_SCOPE.md's blend-tier entry.
+    # Spec 2026-08-18 decision 2: photo_subject and photo_scene split by
+    # default (cfg false still means yes for those classes); gradient and flat
+    # do not (cfg true is the only way to split them).
     split_tonal_regions: bool = False
     # None = fill_row_mm (or the machine default). Contour rings are the same
     # 0.40 mm apart as tatami rows; this exists so the ring tier can be opened
