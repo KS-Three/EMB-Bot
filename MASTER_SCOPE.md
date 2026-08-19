@@ -24,12 +24,8 @@ on `main`" until 2026-08-17. *(confirmed 2026-08-17 — `git ls-tree origin/main
 **Last updated:** 2026-08-18. Dated history lives in
 [`docs/scope-history.md`](docs/scope-history.md); **this file is current state
 only.** See "How this document works" at the bottom for the rules that keep it
-that way, including the line budget. **This file is 9 lines OVER its 800 budget
-and that is a known debt, not an oversight.** The 2026-08-18 correction pass
-added a measured number and several retractions, compacted the defect-4 and
-defect-5 entries to pay for most of it, and stopped there rather than cut
-material it had not verified. The next session in here should spend a real
-compaction pass before adding anything.
+that way, including the line budget. **This file is currently OVER that budget
+— a known debt.** Spend a real compaction pass before adding anything.
 
 **Every claim below carries a pointer** in the form
 `(verb date — source)`: `confirmed` means checked against code or a passing
