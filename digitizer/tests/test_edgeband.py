@@ -61,3 +61,59 @@ def test_bare_frac_counts_only_band_pixels_with_no_thread():
 def test_bare_frac_of_an_empty_band_is_none_not_zero():
     """None means 'not measured'. Zero would read as 'perfectly covered'."""
     assert eb.bare_frac(np.zeros((10, 10), bool), np.zeros((10, 10), bool)) is None
+
+
+def test_bare_arc_measures_a_strip_of_known_length():
+    """THE calibration test. A 100 px square covered everywhere except a 30 px
+    run of its bottom edge reports 2.1 mm, within one pixel. An instrument never
+    shown a known answer is how this repo acquired a 0.00 mm figure with nothing
+    behind it.
+
+    2.1 and not 3.0, counted rather than assumed. A boundary pixel is bare when
+    the nearest thread is FURTHER than w_px, so the four columns at each end of
+    the strip — within 4 px of the thread that survives beside it — are not bare:
+    30 - 4 - 4 = 22 bare pixels, EDT 5.0 at col 44 and 4.0 at col 43. An arc is
+    then the distance walked BETWEEN its pixels, 21 steps of 0.1 mm. Both
+    subtractions are the module's stated definitions, so this pins them; a
+    version that measured the deleted strip instead would read 3.0 here.
+    """
+    sh = square(140, 140, 20, 20, 100, 100)
+    thread = sh.copy()
+    thread[110:120, 40:70] = False      # 30 px of the bottom edge, 10 px deep
+    arcs = eb.bare_arcs(sh, thread, 4.0)
+    assert arcs, "a 30 px bare strip must produce an arc"
+    assert max(arcs) == pytest.approx(2.1, abs=0.1), f"got {sorted(arcs)}"
+
+
+def test_fully_covered_shape_reports_no_arcs():
+    sh = square(140, 140, 20, 20, 100, 100)
+    assert eb.bare_arcs(sh, sh, 4.0) == []
+
+
+def test_shape_with_no_thread_at_all_reports_its_whole_perimeter():
+    """Perimeter of a 100 px square is 400 px = 40 mm. The contour walks pixel
+    centres, so it traces a 99 px square: 396 px = 39.6 mm."""
+    sh = square(140, 140, 20, 20, 100, 100)
+    arcs = eb.bare_arcs(sh, np.zeros((140, 140), bool), 4.0)
+    assert max(arcs) == pytest.approx(39.6, abs=0.2), f"got {sorted(arcs)}"
+
+
+def test_an_arc_wraps_the_start_of_a_ring():
+    """A bare run straddling the contour's own index 0 is ONE arc, not two.
+    Rings close; an implementation that forgets it halves its worst finding."""
+    sh = square(140, 140, 20, 20, 100, 100)
+    thread = sh.copy()
+    thread[20:30, 20:60] = False        # top edge, spanning the top-left corner
+    thread[20:60, 20:30] = False        # left edge, same corner
+    arcs = eb.bare_arcs(sh, thread, 4.0)
+    assert max(arcs) > 6.0, f"corner-spanning run must not be split: {sorted(arcs)}"
+
+
+def test_holes_are_walked_as_well_as_the_outline():
+    """A ring's inner boundary is an edge like any other."""
+    sh = square(140, 140, 20, 20, 100, 100)
+    sh[55:85, 55:85] = False           # a 30 px square hole
+    thread = sh.copy()
+    thread[50:90, 50:90] = False       # strip thread from all around the hole
+    arcs = eb.bare_arcs(sh, thread, 4.0)
+    assert arcs, "the hole's own boundary must be measured"

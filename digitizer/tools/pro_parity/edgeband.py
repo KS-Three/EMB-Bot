@@ -66,3 +66,70 @@ def bare_frac(band: np.ndarray, thread: np.ndarray) -> float | None:
     if not n:
         return None
     return float(np.count_nonzero(band & ~thread) / n)
+
+
+def _rings(shape: np.ndarray) -> list[np.ndarray]:
+    """Every boundary ring of `shape` as an (N, 2) array of (row, col).
+
+    `CHAIN_APPROX_NONE` because an arc length is a walk along real pixels — the
+    simplified chain would drop the very pixels being measured. `RETR_CCOMP`
+    returns holes as their own rings, and a hole's boundary is an edge like any
+    other.
+    """
+    cs, _h = cv2.findContours(shape.astype(np.uint8), cv2.RETR_CCOMP,
+                              cv2.CHAIN_APPROX_NONE)
+    return [c.reshape(-1, 2)[:, ::-1] for c in cs if len(c) >= 2]
+
+
+def _runs(flags: np.ndarray) -> list[list[int]]:
+    """Maximal runs of True in a CLOSED sequence, as index lists.
+
+    Rings close, so a run straddling index 0 is one run. Rotating the sequence
+    to start at a False is what makes that fall out for free; an all-True ring
+    has no False to rotate to and is returned whole.
+    """
+    n = len(flags)
+    if not flags.any():
+        return []
+    if flags.all():
+        return [list(range(n))]
+    start = int(np.argmax(~flags))
+    out, cur = [], []
+    for k in range(n):
+        i = (start + k) % n
+        if flags[i]:
+            cur.append(i)
+        elif cur:
+            out.append(cur); cur = []
+    if cur:
+        out.append(cur)
+    return out
+
+
+def bare_arcs(shape: np.ndarray, thread: np.ndarray, w_px: float,
+              res: float = RES) -> list[float]:
+    """Lengths in mm of every maximal boundary run further than `w_px` from thread.
+
+    A boundary pixel is bare when the nearest thread pixel is more than `w_px`
+    away. Distance rather than an inward-normal probe: a normal is ambiguous at
+    a corner and wherever a ring doubles back, and two implementations would
+    disagree there. An exact EDT has no such freedom.
+
+    A run's length is the distance walked BETWEEN its pixels, so a lone bare
+    pixel measures 0.0 and a 30 px strip measures 29 steps of 0.1 mm. That is
+    the span a strip of that length actually occupies; counting the step off its
+    final pixel would add a pixel of length that is not there.
+    """
+    if not shape.any():
+        return []
+    dist = (distance_transform_edt(~thread) if thread.any()
+            else np.full(shape.shape, np.inf))
+    out: list[float] = []
+    for ring in _rings(shape):
+        bare = dist[ring[:, 0], ring[:, 1]] > w_px
+        if not bare.any():
+            continue
+        step = np.hypot(*(np.roll(ring, -1, axis=0) - ring).T) / res
+        for run in _runs(bare):
+            out.append(float(step[run[:-1]].sum()) if len(run) > 1 else 0.0)
+    return out
