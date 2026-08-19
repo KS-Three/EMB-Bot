@@ -73,18 +73,26 @@ NOT_A_DETAIL_FACTOR = 10
 
 
 def effective_split_tonal(cfg: PipelineConfig, class_: str) -> bool:
-	"""Spec 2026-08-18 decision 2: photo classes carry tone via upstream
-	splitting by default; the config flag remains the explicit override for
-	every other class (gradient keeps the blend tier as its tonal carrier)."""
-	return bool(cfg.split_tonal_regions) or class_ in ("photo_subject", "photo_scene")
+    """Spec 2026-08-18 decision 2: photo classes carry tone via upstream
+    splitting by default; the config flag remains the explicit override for
+    every other class (gradient keeps the blend tier as its tonal carrier)."""
+    return bool(cfg.split_tonal_regions) or class_ in PHOTO_CLASSES
 
 
 def auto_photo_tier(cfg: PipelineConfig, class_: str, faces_present: bool) -> str | None:
     """Spec 2026-08-18 decision 3: the automatic photo tier map. Returns the
     fill_technique to apply, or None to leave the caller's config untouched.
-    Only fires when the caller did NOT choose a technique (or the detail
-    layer) themselves — explicit caller config always wins, silently, same
-    as before this function existed.
+    Only fires when the caller did NOT choose a fill_technique themselves —
+    explicit caller config always wins, silently, same as before this
+    function existed.
+
+    `detail_layer` is NOT part of that explicit gate (F1, 2026-08-19
+    fix-wave correction — it used to be). Spec decision 3 makes the detail
+    layer ADDITIVE to the photo_subject route ("streamline + detail layer"),
+    not an opt-out from it, so `cfg.detail_layer=True` alone must not
+    suppress the auto-route the way an explicit `fill_technique` still does
+    — see `plan_stitches`' own `effective_detail_layer` for how the two
+    compose once this function has fired.
 
     `photo_scene` stays tatami in v1 — its tone already comes from
     `effective_split_tonal`'s region splitting above, not a source-reading
@@ -97,7 +105,7 @@ def auto_photo_tier(cfg: PipelineConfig, class_: str, faces_present: bool) -> st
     tier name itself: a photo_subject with no detected faces still gets
     streamline, just without the extra detail block stitched on top.
     """
-    explicit = (cfg.fill_technique or "tatami").lower() != "tatami" or cfg.detail_layer
+    explicit = (cfg.fill_technique or "tatami").lower() != "tatami"
     if explicit or class_ != "photo_subject":
         return None
     return "streamline"
@@ -210,7 +218,7 @@ def run_stages(
     # border-flood default here instead would be a dishonest "background"
     # claim about interior regions.
     subject_bg_mask: np.ndarray | None = None
-    if cfg.photo_prep and classification.class_ in ("photo_subject", "photo_scene"):
+    if cfg.photo_prep and classification.class_ in PHOTO_CLASSES:
         # rembg subject cutout (plan §2 row 1) — runs FIRST in this block,
         # before face detection and tone prep, because both of those read
         # `p.bg_mask` (tone prep's foreground-only percentile stretch;
@@ -307,10 +315,7 @@ def run_stages(
     # through to the classical SLIC+RAG call below, exactly the same
     # degrade-and-say-so posture `remove_background_seam` gets above.
     q: Quant | None = None
-    if cfg.photo_segment_sam2 and classification.class_ in (
-        "photo_subject",
-        "photo_scene",
-    ):
+    if cfg.photo_segment_sam2 and classification.class_ in PHOTO_CLASSES:
         q, sam2_reason = sam2_segment_seam(
             p, cfg, face_regions=face_regions, bg_mask=subject_bg_mask,
             split_tonal=effective_split_tonal(cfg, classification.class_)
@@ -351,7 +356,7 @@ def run_stages(
                 p, cfg, face_regions=face_regions, bg_mask=subject_bg_mask,
                 split_tonal=effective_split_tonal(cfg, classification.class_)
             )
-            if classification.class_ in ("photo_subject", "photo_scene", "gradient")
+            if classification.class_ in (*PHOTO_CLASSES, "gradient")
             else quantize(p, cfg)
         )
     if dbg:
@@ -515,11 +520,13 @@ def run_stages(
     faces_present = bool(face_regions)
     # Spec 2026-08-18 decision 3 (`auto_photo_tier`): photo_subject's
     # automatic tier — streamline, plus the detail layer when faces were
-    # found — unless the caller already chose a technique or turned the
-    # detail layer on themselves, in which case `auto_tier` is None and both
-    # effective values below collapse to exactly the caller's own config,
-    # same as every other class. This is the "later slice" the block's old
-    # comment named.
+    # found — unless the caller already chose a fill_technique themselves,
+    # in which case `auto_tier` is None and both effective values below
+    # collapse to exactly the caller's own config, same as every other
+    # class. `detail_layer` alone does NOT suppress it (F1, 2026-08-19 —
+    # see `auto_photo_tier`'s own docstring): the detail layer is additive
+    # to the route, not an opt-out from it. This is the "later slice" the
+    # block's old comment named.
     auto_tier = auto_photo_tier(cfg, classification.class_, faces_present)
     effective_fill_technique = auto_tier or cfg.fill_technique
     effective_detail_layer = cfg.detail_layer or (auto_tier is not None and faces_present)

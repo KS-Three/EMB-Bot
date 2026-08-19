@@ -1265,7 +1265,7 @@ def _percentile_extremes_deltae(lab: np.ndarray) -> float:
 
 
 def split_tonal_regions(
-    p: Prep, cfg: PipelineConfig, kept: list[RegionMask], split_tonal: bool = False
+    p: Prep, kept: list[RegionMask], split_tonal: bool = False
 ) -> tuple[list[RegionMask], int]:
     """Split regions whose own pixels span more tone than one thread can tell.
 
@@ -1425,7 +1425,7 @@ def kept_masks_to_quant(
     # either region former so both the classical and SAM2 paths get it from
     # one implementation — the same reason this function exists.
     regions_before_split = len(kept)
-    kept, tonal_splits = split_tonal_regions(p, cfg, kept, split_tonal=split_tonal)
+    kept, tonal_splits = split_tonal_regions(p, kept, split_tonal=split_tonal)
 
     # --- 6. Palette selection (chart-restricted weighted k-medoids) -----------
     # (Step 5, the face-local threshold drop, already ran inside the RAG

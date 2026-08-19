@@ -125,11 +125,13 @@ def test_shade_blocks_rejoins_a_same_cone_band_and_recomputes_its_seam():
 
 def test_chain_refuses_to_bridge_a_shade_boundary():
     """`_chain`'s shade guard (`out[-1].shade_thread_index !=
-    run.shade_thread_index`): untested by the committed suite before this —
-    `chain_links` defaults False (`PipelineConfig`) and no committed fixture
-    combines it with a blend-routed region, so the guard's `!=` branch never
-    actually ran under pytest, even though it is provably inert for every
-    existing design (every run's `shade_thread_index` is `None` there).
+    run.shade_thread_index`, both sides normalized against `base_thread`
+    the same way `_shade_blocks` buckets — F7, 2026-08-19): untested by the
+    committed suite before this — `chain_links` defaults False
+    (`PipelineConfig`) and no committed fixture combines it with a
+    blend-routed region, so the guard's `!=` branch never actually ran
+    under pytest, even though it is provably inert for every existing
+    design (every run's `shade_thread_index` is `None` there).
 
     Built directly against `_chain`, on the smallest input that lets it try
     to bridge at all — the same shape `test_chaining.py`'s own
@@ -138,7 +140,7 @@ def test_chain_refuses_to_bridge_a_shade_boundary():
     geometry alone says a bridge is legal. `chain_links=False` builds the
     block so the boundary is still a plain, un-chained `jump=True`, then
     `_chain` runs exactly once, directly — so the guard is the only thing
-    that can explain a difference between the two cases below.
+    that can explain a difference between the cases below.
     """
     fabric = fabric_for_garment("left_chest")
 
@@ -166,14 +168,15 @@ def test_chain_refuses_to_bridge_a_shade_boundary():
                 return runs, sewn
         raise AssertionError("never found the Sleft->Sright boundary")
 
-    def crossing(same_shade: bool):
+    def crossing(left_shade, right_shade):
         runs, sewn = unchained_boundary()
+        base_thread = sewn[0].region.thread_index
         for r in runs:
             if r.shape_id == "Sleft":
-                r.shade_thread_index = 5
+                r.shade_thread_index = left_shade
             elif r.shape_id == "Sright":
-                r.shade_thread_index = 5 if same_shade else 7
-        out, _linked = _chain(runs, sewn, None)
+                r.shade_thread_index = right_shade
+        out, _linked = _chain(runs, sewn, base_thread, None)
         for i, r in enumerate(out):
             if i and r.shape_id == "Sright" and out[i - 1].shape_id != "Sright":
                 return out[i - 1], r
@@ -182,12 +185,28 @@ def test_chain_refuses_to_bridge_a_shade_boundary():
     # Control: identical shade on both sides still bridges, same as any
     # ordinary same-colour gap (proves the guard isn't just refusing
     # everything).
-    _prev_same, cross_same = crossing(same_shade=True)
+    _prev_same, cross_same = crossing(5, 5)
     assert not cross_same.jump and not cross_same.trim, (
         "a same-shade gap under full cover should still chain")
 
+    # F7: `None` (the pre-blend default carried by every run that never
+    # went through the blend tier) against the group's own explicit base
+    # thread must normalize to the SAME key `_shade_blocks` buckets it
+    # under, and bridge — not refuse. Before the fix `_chain` compared
+    # `None != base_thread` raw and cut a gap that costs nothing to bury,
+    # a needless trim on every ordinary, non-blend design chaining ever
+    # touches (every such run's `shade_thread_index` is `None` on one or
+    # both sides of *some* boundary the moment even one run in the group
+    # carries an explicit `base_thread` tag).
+    _runs0, _sewn0 = unchained_boundary()
+    base_thread = _sewn0[0].region.thread_index
+    _prev_none, cross_none = crossing(None, base_thread)
+    assert not cross_none.jump and not cross_none.trim, (
+        "None (pre-blend default) must normalize to base_thread and bridge "
+        "like any other same-shade gap under full cover")
+
     # The guard: different shade, identical geometry, must refuse.
-    _prev_diff, cross_diff = crossing(same_shade=False)
+    _prev_diff, cross_diff = crossing(5, 7)
     assert cross_diff.kind != stitches.TRAVEL, (
         "a shade-boundary link would be sewn in the wrong thread")
     assert cross_diff.jump and cross_diff.trim, (

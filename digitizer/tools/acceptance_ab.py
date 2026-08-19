@@ -152,7 +152,11 @@ def _job_stats(job: dict, wall_s: float) -> dict:
     design = job.get("design") or {}
     stats = job.get("stats") or {}
     shapes = review.get("shapes") or []
-    threads = {s.get("thread_index") for s in shapes if isinstance(s, dict)}
+    # F5, 2026-08-19: a shape dict missing `thread_index` folded `None` into
+    # the set as a phantom extra "thread" on top of every real one -- guard
+    # it out rather than count a missing field as a distinct colour.
+    threads = {s.get("thread_index") for s in shapes
+               if isinstance(s, dict) and s.get("thread_index") is not None}
     warnings = [w.get("code", w) if isinstance(w, dict) else w
                 for w in job.get("warnings") or []]
     return {

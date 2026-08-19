@@ -222,6 +222,7 @@ def test_service_validates_and_canonicalizes_the_crosshatch_tier():
     and survives `_parse_config`, and an unknown tier is still a 400 at
     submit — the same proof `test_service_validates_and_canonicalizes_the_
     streamline_tier` runs for "streamline"."""
+    pytest.importorskip("fastapi", reason="service extra not installed")
     import json
 
     from fastapi import HTTPException

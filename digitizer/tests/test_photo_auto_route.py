@@ -33,6 +33,19 @@ def test_explicit_caller_choice_wins():
     assert auto_photo_tier(cfg, "photo_subject", faces_present=False) is None
 
 
+def test_detail_layer_alone_no_longer_suppresses_the_auto_route():
+    """F1 (2026-08-19): spec decision 3 makes the detail layer ADDITIVE to
+    the photo_subject route ("streamline + detail layer"), not an opt-out
+    from it. `auto_photo_tier`'s own `explicit` gate used to also read
+    `cfg.detail_layer`, so `PipelineConfig(detail_layer=True)` alone
+    returned None here (repro: `auto_photo_tier(PipelineConfig(detail_
+    layer=True), "photo_subject", False)` was `None`) — only a genuinely
+    different `fill_technique` (see the sibling test above) may still opt a
+    photo_subject job out of the auto-route."""
+    cfg = PipelineConfig(detail_layer=True)
+    assert auto_photo_tier(cfg, "photo_subject", faces_present=False) == "streamline"
+
+
 def test_gradient_and_flat_untouched():
     assert auto_photo_tier(PipelineConfig(), "gradient", faces_present=False) is None
     assert auto_photo_tier(PipelineConfig(), "flat", faces_present=False) is None
@@ -84,11 +97,24 @@ def test_explicit_fill_technique_suppresses_the_warning_in_the_real_pipeline():
         "just in auto_photo_tier's own return value")
 
 
-def test_explicit_detail_layer_suppresses_the_warning_in_the_real_pipeline():
+def test_explicit_detail_layer_no_longer_suppresses_the_warning_in_the_real_pipeline():
+    """F1 (2026-08-19): rewritten from `..._suppresses_the_warning...`, which
+    pinned the OLD (wrong) behaviour this fix-wave closes — spec decision 3
+    makes the detail layer ADDITIVE to the photo_subject route, so
+    `detail_layer=True` alone must no longer opt a photo_subject job out of
+    the streamline auto-route the way an explicit `fill_technique` still
+    does (see `test_explicit_fill_technique_suppresses_the_warning_in_the_
+    real_pipeline` above). The warning must still fire, naming streamline,
+    with `detail_layer` True because `cfg.detail_layer` itself already
+    forces it — not because a detected face did."""
     cfg = PipelineConfig(target_width_mm=80.0, forced_class="photo_subject",
                          detail_layer=True)
     result = run_stages(_two_square_image(), cfg)
-    assert _warning(result, PHOTO_AUTO_TIER) is None
+    w = _warning(result, PHOTO_AUTO_TIER)
+    assert w is not None, (
+        "detail_layer=True alone must not suppress the streamline auto-route")
+    assert w["tier"] == "streamline"
+    assert w["detail_layer"] is True
 
 
 def test_photo_scene_gets_no_warning_and_no_source_pixels_by_default():

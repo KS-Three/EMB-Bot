@@ -860,6 +860,7 @@ def test_service_validates_and_canonicalizes_the_streamline_tier():
     and an unknown tier is still a 400 at submit — the closed set grew by
     exactly one value, the same proof `test_stage6_sketch.py` runs for
     "sketch"."""
+    pytest.importorskip("fastapi", reason="service extra not installed")
     import json
 
     from fastapi import HTTPException

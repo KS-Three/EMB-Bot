@@ -337,6 +337,7 @@ def test_service_validates_and_canonicalizes_the_sketch_tier():
     contract layers): "Sketch" lowercases and survives `_parse_config`, and
     an unknown tier is still a 400 at submit — the closed set grew by
     exactly one value."""
+    pytest.importorskip("fastapi", reason="service extra not installed")
     from fastapi import HTTPException
 
     from digitizer_service.app import _parse_config

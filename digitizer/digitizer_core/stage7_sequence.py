@@ -463,7 +463,7 @@ def _link_stitches(route: list[tuple[float, float]]) -> list[tuple[float, float]
     return inner
 
 
-def _chain(runs: list[StitchRun], regions: list[PlannedRegion],
+def _chain(runs: list[StitchRun], regions: list[PlannedRegion], base_thread: int,
            run_tier_art=None) -> tuple[list[StitchRun], int]:
     """Sew every needle-up move this colour can bury. -> (runs, in-shape links).
 
@@ -487,6 +487,16 @@ def _chain(runs: list[StitchRun], regions: list[PlannedRegion],
     cross a colour it does not share, so it is refused here, at the one
     place both the runs and their shade keys are still in one list together.
 
+    `base_thread` is the same group thread `_shade_blocks` (below) receives —
+    the guard compares `shade_thread_index` values normalized the identical
+    way `_shade_blocks` buckets them (`None` reads as `base_thread`, F7,
+    2026-08-19), so a run that never went through the blend tier bridges
+    cleanly into one explicitly carrying the group's own base thread; only a
+    REAL cross-shade boundary refuses. Before this normalization the raw `!=`
+    compared `None` against an explicit `base_thread` as unequal, refusing a
+    bridge that cost nothing to bury — a needless trim on any design where
+    chaining and a base-thread-tagged run met.
+
     The returned count is how many of the links replaced a lift INSIDE a shape,
     so the operator-facing "the thread had to be lifted N times inside a shape"
     warning still reports what the machine will actually do.
@@ -503,18 +513,24 @@ def _chain(runs: list[StitchRun], regions: list[PlannedRegion],
     if cover is None:
         return runs, 0
 
+    def shade_key(st: int | None) -> int:
+        return base_thread if st is None else st
+
     out = [runs[0]]
     in_shape = 0
     for run in runs[1:]:
         if not run.jump:
             out.append(run)
             continue
-        if out[-1].shade_thread_index != run.shade_thread_index:
+        if shade_key(out[-1].shade_thread_index) != shade_key(run.shade_thread_index):
             # Refused independent of geometry: burying this gap would sew a
-            # bridge in one shade's thread across into another's block. Every
-            # existing caller passes runs whose `shade_thread_index` is
-            # always None (this compares equal to itself), so this is a
-            # no-op for every non-blend design — see the docstring above.
+            # bridge in one shade's thread across into another's block.
+            # Normalized through `shade_key` the same way `_shade_blocks`
+            # buckets (`None` reads as `base_thread`), so every existing
+            # caller — whose runs carry `shade_thread_index=None` on both
+            # sides of every boundary — still normalizes to
+            # `base_thread == base_thread` and stays a no-op, same as
+            # before this guard existed.
             out.append(run)
             continue
         a, b = out[-1].points[-1], run.points[0]
@@ -1491,7 +1507,7 @@ def sequence(
             later_run_art = [g for i, g in run_tier_later
                              if i > group[0].sew_index]
             ordered, linked_in_shape = _chain(
-                ordered, sewn,
+                ordered, sewn, group[0].region.thread_index,
                 unary_union(later_run_art) if later_run_art else None)
             jumps -= linked_in_shape
 

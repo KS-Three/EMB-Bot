@@ -627,13 +627,24 @@ class PipelineConfig:
     # split_tonal_regions). Exists because a region IS the unit that owns a
     # thread: Kent's owl body is one 4200 mm2 region spanning 81 points of L*,
     # so it sews as a flat pale mass however good the fill tier is. The blend
-    # tier was meant to rescue this and structurally cannot — its per-shade
-    # threads are computed and then never read by stage 7 (measured on
-    # gradient_ramp_linear.png: 4 shades chosen, 1 colour change emitted).
-    # Splitting upstream instead needs no new machinery downstream, and stays
-    # inside the palette's existing budget because `select_palette` still
-    # picks the spools and `max_colors` still caps them. Opt-in pending a
-    # corpus run; see MASTER_SCOPE.md's blend-tier entry.
+    # tier was meant to rescue this and, at the time this flag was written,
+    # could not — its per-shade threads were computed and then never read by
+    # stage 7 (measured on gradient_ramp_linear.png: 4 shades chosen, 1
+    # colour change emitted). FIXED 2026-08-19 — stage7_sequence._shade_
+    # blocks now reads shade_thread_index and sews the shades it chooses;
+    # kept here as the motivating history, since splitting upstream is still
+    # the one route to a region's own thread getting more than one spool
+    # without any source-reading fill tier being in play at all.
+    # Splitting upstream needs no new machinery downstream. It does NOT stay
+    # inside the palette's existing budget, though (F3, 2026-08-19
+    # correction of this comment's old claim): the shade path (stage6_blend's
+    # per-shade snap, read by stage7_sequence._shade_blocks) picks its own
+    # per-shade thread independent of `select_palette`'s own choice, and the
+    # two can and do disagree — measured 9 emitted threads outside the
+    # selected palette, 28 spools sewn vs 14 pre-branch, on Kent's owl.
+    # Palette binding for the shade path is an open engineering item, not
+    # something this flag already solves. Opt-in pending a corpus run; see
+    # MASTER_SCOPE.md's blend-tier entry.
     # Spec 2026-08-18 decision 2: photo_subject and photo_scene split by
     # default (cfg false still means yes for those classes); gradient and flat
     # do not (cfg true is the only way to split them).

@@ -287,6 +287,7 @@ def test_split_no_lines_is_a_no_op():
 # --- the cache seam -----------------------------------------------------------
 
 def test_cache_key_sees_merge_and_split_fields():
+    pytest.importorskip("fastapi", reason="service extra not installed")
     from digitizer_service.jobs import content_key
 
     img = b"pretend png"
