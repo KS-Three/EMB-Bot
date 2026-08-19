@@ -599,11 +599,15 @@ against analytic floors (`sttype`'s being Cohen's kappa) and guessing scores
 0. See the Gotcha above before comparing any number to a pre-2026-08-14 one.
 *(confirmed 2026-08-14 — PR #151)*
 
-**The corpus half of this harness IS in the repo — this entry said otherwise
-until 2026-08-18.** All 23 `DESIGNS` paths resolve inside the tracked
-`Embroidery Files.zip`; extract it outside the tree and set `PRO_PARITY_ROOT`
-(recipe in `prep_all.py`'s `ROOT` comment). Unlike `scratch_corpus/`, nothing
-here is blocked on assets. *(corrected 2026-08-18 — 23/23 resolved)*
+**Half the corpus is in the repo; the half that matters is not.** The tracked
+`Embroidery Files.zip` carries all 23 pro STITCH files, so `prep_all.py`'s
+recon lane (artwork rebuilt from those stitches) runs from a fresh checkout —
+extract outside the tree, set `PRO_PARITY_ROOT`. It carries **zero customer
+artwork** (no PNG/WEBP) and no Bridge Bar job, so `prep_both.py`'s real lane —
+the one behind the 42.5 baseline — still needs the Drive copy and a fresh
+checkout cannot reproduce it. *(measured 2026-08-18 — prep_both from the zip
+fails 0/15 on FileNotFoundError for the artwork; an earlier edit today claimed
+the whole corpus was reachable and was wrong)*
 *(corrected 2026-08-18 — `git ls-files`, `DESIGNS` resolved against the zip)*
 
 **Not promoted to a sixth top-level capability area.** This session

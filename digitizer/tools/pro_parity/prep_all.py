@@ -66,13 +66,26 @@ from digitizer_core.config import PipelineConfig
 from digitizer_core.stage0_classify import CLASSES
 from digitizer_core.export import write_dst
 
-# Corrected 2026-08-18: this said "the corpus lives outside the repo", which
-# stopped being true on 2026-08-13. Every one of DESIGNS' 23 paths resolves
-# inside the tracked `Embroidery Files.zip` at the repo root (checked 23/23),
-# so a fresh checkout CAN reach the corpus:
+# Corrected 2026-08-18, then corrected again the same day — read both halves.
+#
+# THIS module's 23 DESIGNS are pro STITCH files only, and all 23 resolve inside
+# the tracked `Embroidery Files.zip` at the repo root (checked 23/23). The recon
+# lane rebuilds artwork from those stitches, so it needs nothing else:
 #
 #     unzip "Embroidery Files.zip" -d <somewhere outside the repo>
 #     PRO_PARITY_ROOT="<somewhere>/Embroidery Files" python -m tools.pro_parity.prep_all
+#
+# `prep_both.py`'s REAL lane is a different story: it also needs the customer
+# artwork (`Becker Marine Logo.png` and five siblings) plus the Bridge Bar job,
+# and the zip contains NONE of them — zero PNG/WEBP entries. Measured 2026-08-18:
+# prep_both against the extracted zip fails 0/15 on FileNotFoundError. The real
+# lane still requires `G:/My Drive/EMB-Bot/Embroidery Files`.
+#
+# Windows: the zip carries one macOS directory name with a colon
+# (`To a T:Becker Beanies`); `:` is illegal in a Windows filename, so extraction
+# rewrites it to `_`. DESIGNS below still spells it with the colon and will miss
+# that one design on Windows — `prep_both.DESIGNS` carries the underscore form
+# (see its own note at :25).
 #
 # Extract outside the working tree — the loose files are customer work and this
 # repo is public (CLAUDE.md). The default below is the cloud sandbox that first
