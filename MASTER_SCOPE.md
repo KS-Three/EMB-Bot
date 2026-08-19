@@ -21,14 +21,12 @@ standing rulings below. **The code and instruments it describes are ON `main`**
 `selfconsistency.py` is in a plain checkout. This pointer said "in PR #157, not
 on `main`" until 2026-08-17. *(confirmed 2026-08-17 — `git ls-tree origin/main`)*
 
-**Last updated:** 2026-08-17. Dated history — every "we shipped X on date Y"
-entry this file used to carry — now lives in
-[`docs/scope-history.md`](docs/scope-history.md). **This file is current state
+**Last updated:** 2026-08-18. Dated history lives in
+[`docs/scope-history.md`](docs/scope-history.md); **this file is current state
 only.** See "How this document works" at the bottom for the rules that keep it
-that way, including the line budget. The 2026-08-17 corrections arrived with the
-file at 790 of 800 and so came with a compaction pass — the evaluation-corpus
-entry gave up ~40 lines of build narrative that belongs in history, not in a
-current-state dashboard. Do the same when you next find this file full.
+that way, including the line budget. The 2026-08-17 and 2026-08-18 correction
+passes each arrived with the file near 800 and paid for themselves by
+compacting dated narrative out of the entry they touched. Do the same.
 
 **Every claim below carries a pointer** in the form
 `(verb date — source)`: `confirmed` means checked against code or a passing
@@ -63,23 +61,24 @@ or move it.
 3. **14 jump-trims on an 80mm design,** in every fill variant measured.
    Not started. *(measured 2026-08-12 — scope-history)*
 
-4. **Our output fragments into 129 runs where the professional uses 15** — on
-   the same logo, at the same size. That is what drives **8.49 trims/1,000
-   stitches against the pro's 1.27**, more than double the 4.1 ceiling this
-   repo's own chaining test treats as the outer limit. Unambiguously a defect,
-   unlike the stitch-count gap beside it. Cause not yet diagnosed. *(measured 2026-08-15 — `docs/becker-pro-parity-2026-08-15.md`)*
-   **No longer blocked:** Kent delivered the artwork and five professionally
-   digitized variants on 2026-08-15; they are committed under
+4. **We trim far more than the professional: 8.49 trims/1,000 stitches against
+   the pro's 1.27** — same logo, same size, more than double the 4.1 ceiling
+   this repo's own chaining test treats as the outer limit. Unambiguously a
+   defect, unlike the stitch-count gap beside it. **Corrected 2026-08-18: the
+   old "129 runs vs 15" counted plan OBJECTS against THREAD PATHS — quote the
+   trim rate, never a run count. Cause no longer undiagnosed** (`_graph_travel`
+   returns a path 0 of 57 times; the unread `run_breaks` histogram attributes
+   the rest) —
+   [`docs/fragmentation-attribution-2026-08-18.md`](docs/fragmentation-attribution-2026-08-18.md).
+   *(measured 2026-08-15 — `docs/becker-pro-parity-2026-08-15.md`; corrected
+   2026-08-18 — `prep_all.py:233-251`, `stage6_satin.py:2145`)*
+   **Not blocked** — artwork and five pro variants are committed under
    `digitizer/testdata/reference/`. Two things that comparison disproved, so
-   nobody re-derives them: the 1-colour-vs-4 difference is **not** defect #1,
-   and most of the 3,417-vs-8,694 stitch gap is a **design choice**, not a
-   defect — the pro filled the banner and left the letters bare fabric, we
-   filled the letters.
-   **Correction 2026-08-17:** this entry blamed the colour difference on "richer
-   artwork than we were given." Same file, actually — the missing piece is the
-   **alpha channel**, 7,272 transparent pixels forming the letter counters, which
-   the pro sewed as a second colour. The gap is enclosed-background being off by
-   default, worth **+8.0 per Becker design**. *(corrected 2026-08-17 — `docs/handoff-2026-08-16.md` §0)*
+   nobody re-derives them: the 1-colour-vs-4 gap is **not** defect #1 but
+   enclosed-background being off by default (the alpha channel, worth **+8.0
+   per Becker design**), and most of the stitch gap is a **design choice** —
+   the pro left the letters bare fabric. *(corrected 2026-08-17 —
+   `docs/handoff-2026-08-16.md` §0)*
 
 5. **Satin-vs-fill routing sits at chance, and misroutes in BOTH directions.**
    The *mix* nearly matches the pro's, so the cap is not simply too high or too
@@ -122,6 +121,12 @@ evidence for either** — on chaining, a green suite actively concealed it.
    to the contour lane's standard (`config.py:462-521`). *(confirmed OFF
    2026-08-17 — `config.py:1064`; measured 2026-08-02 —
    `docs/hardening-closeout-2026-08-02.md`)*
+   **Precondition MET 2026-08-18 — the blocker is the sew-out now, not the
+   instrument:** blindnesses closed, cover measured where thread lands,
+   thread-derived check shipped, four fixtures accepting at **0.00 mm** added
+   bare thread and **9.82 → 4.06** trims/1k. **Still DO NOT FLIP** — gate 1 names
+   link cover tolerance, still a thread spec. Largest known lever on defect 4.
+   *(confirmed 2026-08-18 — `config.py:1006-1068`, `preflight.py:1483-1543`)*
 2. **`split_tonal_regions`** — the shading fix, merged but off; parked until the
    sew-out. Cost and ceiling under "Waiting on Kent". *(confirmed OFF
    2026-08-17 — `config.py:647`)*
@@ -594,13 +599,16 @@ against analytic floors (`sttype`'s being Cohen's kappa) and guessing scores
 0. See the Gotcha above before comparing any number to a pre-2026-08-14 one.
 *(confirmed 2026-08-14 — PR #151)*
 
-**The corpus half of this harness is in the same position as
-`scratch_corpus/`, and for the same reason:** it is built by `prep_all.py`
-from Kent's local reference-art folder, which is not in the repo and is not
-reachable from a fresh checkout — so the 23 prepped designs exist only for as
-long as a session's scratch dir does. Nothing about the *scoring* code is
-blocked on that; re-measuring after an engine change is. *(confirmed
-2026-08-14 — `prep_all.py`'s `ROOT`)*
+**Half the corpus is in the repo; the half that matters is not.** The tracked
+`Embroidery Files.zip` carries all 23 pro STITCH files, so `prep_all.py`'s
+recon lane (artwork rebuilt from those stitches) runs from a fresh checkout —
+extract outside the tree, set `PRO_PARITY_ROOT`. It carries **zero customer
+artwork** (no PNG/WEBP) and no Bridge Bar job, so `prep_both.py`'s real lane —
+the one behind the 42.5 baseline — still needs the Drive copy and a fresh
+checkout cannot reproduce it. *(measured 2026-08-18 — prep_both from the zip
+fails 0/15 on FileNotFoundError for the artwork; an earlier edit today claimed
+the whole corpus was reachable and was wrong)*
+*(corrected 2026-08-18 — `git ls-files`, `DESIGNS` resolved against the zip)*
 
 **Not promoted to a sixth top-level capability area.** This session
 evaluated and explicitly rejected splitting area 1 ("auto-digitizing
@@ -653,8 +661,10 @@ Nothing in there is a commitment or a defect. Two things from it that DO bind:
   `pystitch`, its MIT-licensed pyembroidery fork, which is usable as a real
   runtime dependency and has since been adopted.
   *(confirmed 2026-08-10 — `docs/inkstitch-research-2026-08-10.md` §0)*
-- **A fifth independent source corroborates the DST axis bug.** No verdict
-  change — see the DST section above. *(confirmed 2026-08-10 — same doc)*
+- **A sixth independent source corroborates the DST axis bug.** pystitch was
+  fifth; TurtleStitch's `encodeTajimaStitch()` — unaffiliated with the
+  pyembroidery/Ink/Stitch lineage — is sixth. No verdict change.
+  *(confirmed 2026-08-14 — `docs/turtlestitch-stitch-appearance-research-2026-08-14.md`)*
 
 ---
 

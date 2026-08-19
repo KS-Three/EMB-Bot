@@ -66,10 +66,31 @@ from digitizer_core.config import PipelineConfig
 from digitizer_core.stage0_classify import CLASSES
 from digitizer_core.export import write_dst
 
-# The corpus lives outside the repo (it is customer work — see BACKUPS.md), so
-# the path is per-machine. It used to be hard-coded to the cloud sandbox that
-# first ran this, which meant every local invocation resolved nothing and the
-# `PRO_PARITY_ROOT` the docs tell you to set was read by prep_both.py only.
+# Corrected 2026-08-18, then corrected again the same day — read both halves.
+#
+# THIS module's 23 DESIGNS are pro STITCH files only, and all 23 resolve inside
+# the tracked `Embroidery Files.zip` at the repo root (checked 23/23). The recon
+# lane rebuilds artwork from those stitches, so it needs nothing else:
+#
+#     unzip "Embroidery Files.zip" -d <somewhere outside the repo>
+#     PRO_PARITY_ROOT="<somewhere>/Embroidery Files" python -m tools.pro_parity.prep_all
+#
+# `prep_both.py`'s REAL lane is a different story: it also needs the customer
+# artwork (`Becker Marine Logo.png` and five siblings) plus the Bridge Bar job,
+# and the zip contains NONE of them — zero PNG/WEBP entries. Measured 2026-08-18:
+# prep_both against the extracted zip fails 0/15 on FileNotFoundError. The real
+# lane still requires `G:/My Drive/EMB-Bot/Embroidery Files`.
+#
+# Windows: the zip carries one macOS directory name with a colon
+# (`To a T:Becker Beanies`); `:` is illegal in a Windows filename, so extraction
+# rewrites it to `_`. DESIGNS below still spells it with the colon and will miss
+# that one design on Windows — `prep_both.DESIGNS` carries the underscore form
+# (see its own note at :25).
+#
+# Extract outside the working tree — the loose files are customer work and this
+# repo is public (CLAUDE.md). The default below is the cloud sandbox that first
+# ran this and resolves nothing anywhere else; it is kept only so an unset
+# PRO_PARITY_ROOT fails loudly rather than silently prepping a partial corpus.
 ROOT = Path(os.environ.get(
     "PRO_PARITY_ROOT",
     "/tmp/claude-0/-home-user-EMB-Bot/b97ff48d-88c2-507a-bc61-93cec7183437/scratchpad/embfiles/Embroidery Files"))
