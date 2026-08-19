@@ -234,7 +234,7 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
 
 - **Six phase-numbering schemes exist; only ROADMAP.md's five engine phases
   are live.** Historical: the 4-phase pro-stitch roadmap, 11 digitizer steps,
-  7 launch items, 8 Studio slices, 13 photo-plan rows. *(confirmed 2026-08-17 — docs review of ROADMAP/PRODUCT/READMEs/sdd ledger)*
+  7 launch items, 8 Studio slices, 16 rows (0–15). *(confirmed 2026-08-18 — docs/scope/1-auto-digitizing-quality.md:1506 and photo plan §2)*
 - **The venv holds a STALE non-editable install of `digitizer_core`, and cwd
   decides which one you get.** `pytest` from `digitizer/` imports the working
   tree (verified), so tests are honest — but from any other cwd the same
@@ -634,7 +634,7 @@ feature culling had "no owner" in this project. Checked directly against
 source this pass — all four already exist and are already documented above:
 quantization is `stage2_quantize.py` (k-means + CIEDE2000 thread snapping)
 and `palette.py` (weighted k-medoids chart selection); segmentation/
-vectorization is `stage2_photo_segment.py` (SLIC+RAG)/`stage3_segment.py`/
+vectorization is `stage2_photo_segment.py` (SLIC+RAG; SEEDS since 2026-08-07 — stage2_photo_segment.py:11-27, internal names still slic_*)/`stage3_segment.py`/
 `stage4_vectorize.py` — the literal subject of the `BACKGROUND_ENCLOSED` and
 gradient-fragmentation sagas already detailed at length above; background
 removal is `stage1_photo_prep.py`'s `remove_background_seam` (rembg,

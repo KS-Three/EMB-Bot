@@ -6,3 +6,6 @@ scratch_corpus/
 .playwright-mcp/
 parity_out*/
 .claude/settings.local.json
+
+# Local-only acceptance photos (public repo — never publish; spec decision 6)
+digitizer/testdata/photo/acceptance/

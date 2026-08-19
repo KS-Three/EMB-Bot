@@ -106,5 +106,5 @@ enhanced result when they didn't.
   wall time). The default is not yet validated against content that matters.
 - The owl white-background failure is **hypothesized to be stage 1**
   (`_dominant_border_color` flooding the white body as background before any
-  segmenter runs) — mechanism identified, **not confirmed against the file**;
-  the owl image is not yet on disk in the repo.
+  segmenter runs) — mechanism identified, confirmed against `owl_kent.jpg`
+  (committed PR #126).

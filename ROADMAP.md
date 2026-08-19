@@ -13,7 +13,11 @@ must say so out loud. It may not move the marker itself.
 
 ## Where we are
 
-**Phase 1 — Foundation.**
+**Phase 1 — Foundation.** In parallel: **Phase 4 — Finish (tonal)**, un-tabled
+by Kent 2026-08-18 (decision record:
+`docs/superpowers/plans/2026-08-18-photo-tonal-v1-spec.md`). Phases 2–3 remain
+open; phase-4 v1 works around stage 0 with an explicit user override, not by
+advancing them.
 
 ## Engine track
 
@@ -31,14 +35,13 @@ must say so out loud. It may not move the marker itself.
    satin width floor, and fragmentation into far more runs than a pro uses.
    *Exit:* stitch-type agreement clears its chance floor by a real margin, and
    trim rate sits under the ceiling this repo's own chaining test pins.
-4. **Finish — tonal work.** Gradient and photo art. Tabled by Kent.
+4. **Finish — tonal work.** Gradient and photo art. Un-tabled by Kent 2026-08-18 — v1 in progress.
    *Exit:* tonal artwork stops being a special case.
 5. **Inspection — sew-out.** *Exit:* thread has met cloth.
 
 ## Launch track — parallel
 
-Neither gates nor is gated by the engine track (Kent's standing ruling). Open: the
-starter design pack, which needs a sourcing decision, and billing.
+Starter design pack (sourcing decision and billing pending).
 
 ## Hard gates — refuse, name the blocker, stop
 
@@ -53,19 +56,5 @@ starter design pack, which needs a sourcing decision, and billing.
 4. **No quality claim on a raw agreement number.** Use the chance-corrected
    figure — raw moves when the mix moves, so a "gain" can be the floor shifting.
 
-## Advisory ordering — state it, never enforce it
-
-Hoist the distance transform before the satin work that depends on it. Pull
-compensation before underlay. Sequencing laws ship together or trims show.
-Validate on a dozen designs, not five. Measure in a pinned worktree.
-
-## Standing item
-
-Keep `main` green: while it is red, nothing can be judged by "same failure set".
-Re-capture goldens on Linux, never on Windows.
-
-## Before proposing any work
-
-Read `MASTER_SCOPE.md` for status and `docs/scope-digest/` for what has already
-been built, measured and rejected — the most expensive knowledge in this repo.
-Phase numbers in any other doc are historical; the map is a MASTER_SCOPE gotcha.
+## Advisory ordering
+Hoist distance transform before satin work. Pull compensation before underlay.
