@@ -511,17 +511,26 @@ def run_stages(
     auto_tier = auto_photo_tier(cfg, classification.class_, faces_present)
     effective_fill_technique = auto_tier or cfg.fill_technique
     effective_detail_layer = cfg.detail_layer or (auto_tier is not None and faces_present)
+    # Fix round 1, concern 4: the automatic route is LAYERED streamline
+    # thread-paint (spec decision 3's own wording), never mono — see
+    # `plan_stitches`' own identical computation, the one that actually
+    # reaches stage 7's dispatch, for the full reasoning. Computed here too,
+    # informationally, so the warning below can name it — this value itself
+    # is not consumed by anything in `run_stages` (`want_tonal` below cares
+    # only about the technique NAME, not its sub-mode).
+    effective_streamline_mode = "layered" if auto_tier is not None else None
     if auto_tier is not None:
         prep_warnings.append(
             warn(
                 PHOTO_AUTO_TIER,
                 f"This photo was automatically routed to the {auto_tier} "
-                "fill tier" +
+                f"fill tier ({effective_streamline_mode})" +
                 (" with a detail layer for the detected faces"
                  if effective_detail_layer else "") +
                 " — no fill_technique was set explicitly.",
                 tier=auto_tier,
                 detail_layer=effective_detail_layer,
+                streamline_mode=effective_streamline_mode,
             )
         )
     # Two ways to earn a raster payload, both narrow on purpose: the
@@ -753,9 +762,44 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     if dbg:
         debugviz.stage5(dbg, planned, result.design_size_mm, chart_for(cfg))
 
+    # Fix round 1 (spec decision 3, concern 1): `sequence` must actually SEW
+    # the photo_subject auto-route's decision, not just have `run_stages`
+    # capture pixels for it and warn — the gap the first pass of this task
+    # left open. Recomputed here (not read off `result`, which carries no
+    # such field) via the exact same pure helper `run_stages` calls,
+    # against `result.design_class` — stage 0's verdict, carried on
+    # `PipelineResult` for exactly this "hand it to stage 7" purpose (see
+    # that field's own docstring). `faces_present` is passed `False`: the
+    # tier decision itself never reads it (only run_stages' OWN detail-
+    # layer decision does, which this call does not need), so any value
+    # gives the identical `auto_tier`. Recomputing (rather than freezing a
+    # value from the original run_stages call) is deliberate: `plan_stitches`
+    # is documented "safe to re-run" with a DIFFERENT cfg each time (a
+    # review-screen parameter tweak), and an explicit `fill_technique` on
+    # THIS call's cfg must still win over the auto-route on THIS call —
+    # exactly the "explicit caller config always wins" contract
+    # `auto_photo_tier` already enforces, now honoured on every re-plan too,
+    # not just the first one.
+    auto_tier = auto_photo_tier(cfg, result.design_class, faces_present=False)
+    effective_fill_technique = auto_tier or cfg.fill_technique
+    # Concern 4: the automatic route is layered streamline thread-paint
+    # (spec decision 3's own wording), never mono — mono would sew every
+    # shade of a photo region in one thread, defeating the dark->light
+    # tone chain Task 1's shade_thread_index emission and this task's
+    # earlier streamline-layer shade-stamping fix both exist to carry.
+    # Unconditional whenever the auto-route fires: `auto_photo_tier`'s own
+    # "explicit" gate does not examine `cfg.streamline_mode` (only `fill_
+    # technique`/`detail_layer`), so there is no separate caller override to
+    # defer to here — same as `effective_fill_technique` above, `None` for
+    # every class/config the auto-route does not fire for, which is what
+    # keeps this a no-op for flat, gradient, photo_scene, and an
+    # explicitly-configured photo_subject alike.
+    effective_streamline_mode = "layered" if auto_tier is not None else None
     blocks, seq_warnings = sequence(planned, fabric, cfg,
                                     source_pixels=result.source_pixels,
-                                    design_class=result.design_class)
+                                    design_class=result.design_class,
+                                    fill_technique=effective_fill_technique,
+                                    streamline_mode=effective_streamline_mode)
 
     # The plan's palette is the list of cones this plan actually sews, one per
     # BLOCK, in sew order — NOT `result.palette`, which is the per-LAYER list a

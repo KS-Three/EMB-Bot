@@ -651,7 +651,8 @@ def _trace_layer(poly, tangent_at, darkness_map, ring, slack, shape_id: str
 
 
 def streamline_fill(region: Region, source_pixels: SourcePixels, cfg,
-                    *, darkness_scale: float = 1.0
+                    *, darkness_scale: float = 1.0,
+                    streamline_mode: str | None = None,
                     ) -> tuple[list[StitchRun], dict]:
     """One shape -> its streamline runs plus the standard tier report.
 
@@ -672,7 +673,7 @@ def streamline_fill(region: Region, source_pixels: SourcePixels, cfg,
     (the low-coherence parallel-line path was taken), `field_coherence` (the
     region summary the gate read).
 
-    `cfg.streamline_mode == "layered"` (default `"mono"`) is the multi-color
+    `streamline_mode == "layered"` (default `"mono"`) is the multi-color
     seam (module docstring): `layers`, `shade_thread_idx`, `shade_rgb` and
     `streamlines_by_layer` (all dark-to-light order) are added to the report,
     and `runs` stacks every shade's own runs in that order with an
@@ -680,6 +681,19 @@ def streamline_fill(region: Region, source_pixels: SourcePixels, cfg,
     travel-bridged) at each shade boundary. Mono mode's own code path is
     untouched — same calls, same order — so it stays byte-identical to the
     tier as it shipped before this mode existed.
+
+    Task 3 fix round 1 (photo/tonal v1): `streamline_mode` is now also an
+    explicit KEYWORD ARGUMENT, `None` by default. `None` means "read
+    `cfg.streamline_mode` exactly as before" — every existing caller (every
+    call site in this codebase before this round) passes nothing here and
+    is byte-identical by construction. A caller that DOES pass a value
+    (currently: `stage7_sequence.sequence`, threading photo_subject's
+    automatic route through) overrides `cfg.streamline_mode` for this one
+    call without mutating `cfg` — jobs cache on it. `stage6_sketch.sketch_
+    fill`'s own `mono_cfg` (which forces `cfg.streamline_mode="mono"` via
+    `dataclasses.replace` before calling this function) is unaffected
+    either way: it never passes this new argument, so it keeps reading its
+    own already-forced `mono_cfg.streamline_mode`.
     """
     poly = region.polygon
     report = {"too_thin": False, "jumps": 0, "empty": False,
@@ -732,7 +746,8 @@ def streamline_fill(region: Region, source_pixels: SourcePixels, cfg,
     ring = _inset_ring(poly, machine.TRAVEL_INSET_MM)
     slack = poly.buffer(0.01)
 
-    layered = str(cfg.streamline_mode or "mono").lower() == "layered"
+    _mode = streamline_mode if streamline_mode is not None else cfg.streamline_mode
+    layered = str(_mode or "mono").lower() == "layered"
     if layered:
         shades = _shade_layers(poly, source_pixels, darkness, region, cfg)
         runs: list[StitchRun] = []

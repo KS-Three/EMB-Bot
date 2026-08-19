@@ -757,6 +757,8 @@ def sequence(
     planned: list[PlannedRegion], fabric: Fabric, cfg: PipelineConfig,
     source_pixels: SourcePixels | None = None,
     design_class: str = "flat",
+    fill_technique: str | None = None,
+    streamline_mode: str | None = None,
 ) -> tuple[list[StitchBlock], list[dict]]:
     """-> (blocks in sew order, warnings).
 
@@ -765,6 +767,22 @@ def sequence(
     the underlay split below; flat and gradient take byte-identical paths,
     which is why the default is "flat" and every pre-existing caller needs
     no edit.
+
+    `fill_technique`/`streamline_mode` (Task 3 fix round 1, photo/tonal v1
+    spec decision 3): the EFFECTIVE values `plan_stitches` resolved via
+    `pipeline.auto_photo_tier`, threaded in as explicit parameters — never
+    by mutating `cfg` (jobs cache on it) — the same pattern Task 2 used to
+    thread `effective_split_tonal`'s resolved value into `stage2_photo_
+    segment.segment`. Both default `None`, meaning "no override, read `cfg.
+    fill_technique`/`cfg.streamline_mode` exactly as before"; every
+    pre-existing caller (every call site before this round, including every
+    test that builds a plan directly via this function) passes neither and
+    is byte-identical by construction. `plan_stitches` is the one caller
+    that resolves and passes real values, and only when `auto_photo_tier`
+    actually fires (photo_subject, no explicit `fill_technique`/`detail_
+    layer`) — every other class, and an explicitly-configured photo_subject,
+    gets `None` back from that helper and this function reads `cfg` exactly
+    as it always has.
     """
     row_mm = (cfg.fill_row_mm or FILL_ROW_MM) * max(0.1, fabric.density_adjust)
     # Task A2: satin gets the same fabric-scaled density the fill row spacing
@@ -819,7 +837,12 @@ def sequence(
     # The fill tier. Contour rings follow the silhouette; tatami rows cut across
     # it. Density is the same either way — the ring spacing IS the row spacing
     # unless the caller opens it up on its own.
-    technique = (cfg.fill_technique or "tatami").lower()
+    #
+    # `fill_technique` (the parameter, above `cfg` in precedence when set) is
+    # `plan_stitches`' resolved photo_subject auto-route value — this is the
+    # one line that makes the automatic tier route from spec decision 3
+    # actually sew, not just warn about what it would sew.
+    technique = (fill_technique or cfg.fill_technique or "tatami").lower()
     contour = technique == "contour"
     contour_spacing = cfg.contour_spacing_mm or row_mm
     # The scan-line mono tonal tier (photo plan, technique row 8). Strictly
@@ -1062,7 +1085,14 @@ def sequence(
                 # Empty is honest (an all-highlight shape sews nothing) and
                 # falls through to tatami below rather than dropping
                 # artwork — the standing contract of every tonal tier here.
-                runs, report = streamline_fill(p.region, source_pixels, cfg)
+                # `streamline_mode` (this function's own resolved parameter,
+                # not `cfg.streamline_mode` directly) is threaded through so
+                # a photo_subject auto-route forcing "layered" reaches every
+                # shape this branch fills, per-shape override included —
+                # `streamline_fill` itself falls back to reading `cfg.
+                # streamline_mode` when this is `None` (every other case).
+                runs, report = streamline_fill(p.region, source_pixels, cfg,
+                                               streamline_mode=streamline_mode)
                 need_tatami = report["empty"]
             elif crosshatch or tier == "crosshatch":
                 # The cross-hatch fill tier: two tatami passes on the same
