@@ -117,3 +117,34 @@ def test_holes_are_walked_as_well_as_the_outline():
     thread[50:90, 50:90] = False       # strip thread from all around the hole
     arcs = eb.bare_arcs(sh, thread, 4.0)
     assert arcs, "the hole's own boundary must be measured"
+
+
+def write_stitches(path, pts, breaks=None):
+    """A minimal `*_stitches.csv` in the harness's own column vocabulary."""
+    breaks = breaks or [False] * len(pts)
+    with open(path, "w", newline="") as f:
+        f.write("x_mm,y_mm,trim,jump\n")
+        for (x, y), b in zip(pts, breaks):
+            f.write(f"{x},{y},{1 if b else 0},0\n")
+
+
+def test_both_sides_read_through_one_rasteriser():
+    """Mutation guard. `prep_both.py` hand-rolled a second copy of a shared
+    block and silently dropped three keys from it for weeks (fixed 5328257).
+    Re-hand-rolling a reader here — any different thread width, any different
+    padding — fails this."""
+    import artfidelity
+    tmp = Path(__import__("tempfile").mkdtemp())
+    pts = [(0.0, 0.0), (10.0, 0.0), (10.0, 6.0), (0.0, 6.0)]
+    write_stitches(tmp / "s.csv", pts)
+    assert np.array_equal(eb.side_mask(tmp / "s.csv"),
+                          artfidelity.pro_mask(tmp / "s.csv"))
+
+
+def test_side_mask_returns_bool():
+    """`boundary_distance_mm` documents what a uint8 mask costs: 6553.6 mm
+    returned as a plausible number, past every guard, with no exception
+    (enginefidelity.py:96-105). Same trap, same guard."""
+    tmp = Path(__import__("tempfile").mkdtemp())
+    write_stitches(tmp / "s.csv", [(0.0, 0.0), (10.0, 0.0), (10.0, 6.0)])
+    assert eb.side_mask(tmp / "s.csv").dtype == bool

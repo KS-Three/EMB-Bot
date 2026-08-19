@@ -34,7 +34,7 @@ from scipy.ndimage import distance_transform_edt
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from artfidelity import RES  # noqa: E402
+from artfidelity import RES, pro_mask  # noqa: E402
 
 # Reported at all three, never one. Picking one would invent a physical
 # constant; gate 1 says cloth settles those. Three widths also separate a thin
@@ -133,3 +133,16 @@ def bare_arcs(shape: np.ndarray, thread: np.ndarray, w_px: float,
         for run in _runs(bare):
             out.append(float(step[run[:-1]].sum()) if len(run) > 1 else 0.0)
     return out
+
+
+def side_mask(csv_path) -> np.ndarray:
+    """The thread raster for EITHER side. One reader, deliberately.
+
+    `enginefidelity.engine_mask` is already `artfidelity.pro_mask` — the
+    trim/jump semantics are identical on both sides — so naming it once here
+    keeps a second copy from appearing. Sibling probes (bare.py, holecrop.py,
+    forkprobe.py) all paint at THREAD_W_MM = 0.40; changing that constant
+    anywhere means changing it in step or the directory stops agreeing about
+    what "covered" means (artfidelity.py:55-57).
+    """
+    return pro_mask(csv_path)
