@@ -61,6 +61,23 @@ def _resolve_venv_python(venv_dir: Path) -> Path:
     return posix
 
 
+def _site_packages_exists(venv_dir: Path) -> bool:
+    """Did packages actually get installed into this venv?
+
+    Two layouts, same as `_resolve_venv_python` above: Windows puts them at
+    `Lib/site-packages` flat, POSIX at `lib/pythonX.Y/site-packages` behind a
+    VERSIONED directory — so a single hardcoded path can only ever be right on
+    one platform. It was `Lib/site-packages` only until 2026-08-19, which
+    rejected every healthy Linux/macOS venv with an "incomplete, rebuild"
+    reason no rebuild could fix, silently downgrading SAM2 to the classical
+    segmenter on the platform this repo's CI (`ubuntu-latest`) and its golden
+    captures both use.
+    """
+    if (venv_dir / "Lib" / "site-packages").is_dir():
+        return True
+    return any((venv_dir / "lib").glob("python*/site-packages"))
+
+
 SAM2_VENV_DIR = _SAM2_ISOLATED_DIR / "venv"
 SAM2_VENV_PYTHON = _resolve_venv_python(SAM2_VENV_DIR)
 
@@ -97,11 +114,12 @@ def sam2_segmentation_unavailable_reason(venv_dir: Path | None = None) -> str | 
     2026-08-18 probe found: such a husk read as "available" here and then
     died mid-job with "worker exited 106: failed to locate pyvenv.cfg");
     `pyvenv.cfg` exists (venv creation actually completed); and
-    `Lib/site-packages` exists (packages actually got installed into it).
+    site-packages exists in whichever layout this platform uses (packages
+    actually got installed into it — see `_site_packages_exists`).
     The last two are what a husk venv fails and a real one never does — a
     real `python -m venv` always writes `pyvenv.cfg` before anything else,
-    and every subsequent `pip install` needs `Lib/site-packages` to unpack
-    into.
+    and every subsequent `pip install` needs a site-packages directory to
+    unpack into.
 
     ENVIRONMENT-ONLY: a per-call runtime failure (a subprocess crash, a
     timeout, a first-use checkpoint download failing on a machine with no
@@ -131,9 +149,9 @@ def sam2_segmentation_unavailable_reason(venv_dir: Path | None = None) -> str | 
             f"sam2 venv incomplete at {venv_dir}: pyvenv.cfg missing "
             "(rebuild per sam2_isolated/README.md)"
         )
-    if not (venv_dir / "Lib" / "site-packages").is_dir():
+    if not _site_packages_exists(venv_dir):
         return (
-            f"sam2 venv incomplete at {venv_dir}: Lib/site-packages missing "
+            f"sam2 venv incomplete at {venv_dir}: site-packages missing "
             "(rebuild per sam2_isolated/README.md)"
         )
     return None
