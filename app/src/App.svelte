@@ -1,5 +1,5 @@
 <script>
-  import { update, updateElement, updateElements, selectElement, toggleSelectElement, addElement, addSeededTextElement, removeElement } from "./lib/project.js";
+  import { update, updateElement, updateElements, selectElement, toggleSelectElement, addElement, addSeededTextElement, removeElement, resolveArtworkType } from "./lib/project.js";
   import { createHistory } from "./lib/history.js";
   import { applyTemplate } from "./lib/templates.js";
   import { canAdvance, nextStep, prevStep } from "./lib/flow.js";
@@ -362,7 +362,7 @@
   // same upload, no question asked of the user either way.
   function onAddElement(type) {
     const resolved = type === "artwork"
-      ? (digitizerHealth ? "digitized" : "image")
+      ? resolveArtworkType(digitizerHealth)
       : type;
     project = addElement(project, resolved, hoopWidthMm(project));
     persist();
@@ -438,7 +438,7 @@
   }
 
   function pickTemplate(template) {
-    project = applyTemplate(project, template);
+    project = applyTemplate(project, template, digitizerHealth);
     persist();
     step = "content";
   }

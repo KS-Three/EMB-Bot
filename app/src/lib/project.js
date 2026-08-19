@@ -258,6 +258,16 @@ function nextElementId(elements) {
   return "e" + (max + 1);
 }
 
+// The ONE artwork lane decision (the PR #122 defect class: an entry point
+// that picks a lane without asking is indistinguishable from a dead service).
+// Every place that turns "user gave us artwork" into an element type must call
+// this: service up -> "digitized" (the pipeline classifies and stitches it),
+// down -> "image" (the browser engine's flatten-and-sew lane, no service
+// needed). App.onAddElement and applyTemplate are the two callers today.
+export function resolveArtworkType(digitizerHealth) {
+  return digitizerHealth ? "digitized" : "image";
+}
+
 // Adds a new element ("text" or "image") to the project and selects it.
 // The first element in a project keeps the factory's plain defaults; every
 // element added after that is seeded with a size relative to the hoop
