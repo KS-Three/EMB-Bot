@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "node scripts/copy-engine.mjs",
+    "predev": "node scripts/copy-engine.mjs && node scripts/ensure-digitizer.mjs",
     "dev": "vite",
     "prebuild": "node scripts/copy-engine.mjs",
     "build": "vite build",
