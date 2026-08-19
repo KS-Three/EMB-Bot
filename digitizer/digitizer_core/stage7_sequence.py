@@ -759,6 +759,7 @@ def sequence(
     design_class: str = "flat",
     fill_technique: str | None = None,
     streamline_mode: str | None = None,
+    detail_layer: bool | None = None,
 ) -> tuple[list[StitchBlock], list[dict]]:
     """-> (blocks in sew order, warnings).
 
@@ -768,21 +769,29 @@ def sequence(
     which is why the default is "flat" and every pre-existing caller needs
     no edit.
 
-    `fill_technique`/`streamline_mode` (Task 3 fix round 1, photo/tonal v1
-    spec decision 3): the EFFECTIVE values `plan_stitches` resolved via
-    `pipeline.auto_photo_tier`, threaded in as explicit parameters — never
-    by mutating `cfg` (jobs cache on it) — the same pattern Task 2 used to
-    thread `effective_split_tonal`'s resolved value into `stage2_photo_
-    segment.segment`. Both default `None`, meaning "no override, read `cfg.
-    fill_technique`/`cfg.streamline_mode` exactly as before"; every
-    pre-existing caller (every call site before this round, including every
-    test that builds a plan directly via this function) passes neither and
-    is byte-identical by construction. `plan_stitches` is the one caller
-    that resolves and passes real values, and only when `auto_photo_tier`
-    actually fires (photo_subject, no explicit `fill_technique`/`detail_
-    layer`) — every other class, and an explicitly-configured photo_subject,
-    gets `None` back from that helper and this function reads `cfg` exactly
-    as it always has.
+    `fill_technique`/`streamline_mode`/`detail_layer` (Task 3, photo/tonal
+    v1 spec decision 3 — `fill_technique`/`streamline_mode` fix round 1,
+    `detail_layer` fix round 2): the EFFECTIVE values `plan_stitches`
+    resolved via `pipeline.auto_photo_tier`, threaded in as explicit
+    parameters — never by mutating `cfg` (jobs cache on it) — the same
+    pattern Task 2 used to thread `effective_split_tonal`'s resolved value
+    into `stage2_photo_segment.segment`. All three default `None`, meaning
+    "no override, read `cfg.fill_technique`/`cfg.streamline_mode`/`cfg.
+    detail_layer` exactly as before"; every pre-existing caller (every call
+    site before fix round 1, including every test that builds a plan
+    directly via this function) passes none of them and is byte-identical
+    by construction. `plan_stitches` is the one caller that resolves and
+    passes real values, and only when `auto_photo_tier` actually fires
+    (photo_subject, no explicit `fill_technique`/`detail_layer`) — every
+    other class, and an explicitly-configured photo_subject, gets `None`
+    back from that helper and this function reads `cfg` exactly as it
+    always has. `detail_layer` additionally resolves `True` only when a
+    face was actually detected (`PipelineResult.faces_present` — round 2's
+    own field, a runtime fact `plan_stitches` cannot recompute the way it
+    recomputes the tier decision) — see `plan_stitches`' own comment at its
+    call site for the exact formula, identical to `run_stages`' own
+    `effective_detail_layer` (the one the `PHOTO_AUTO_TIER` warning's text
+    already promises).
     """
     row_mm = (cfg.fill_row_mm or FILL_ROW_MM) * max(0.1, fabric.density_adjust)
     # Task A2: satin gets the same fabric-scaled density the fill row spacing
@@ -1516,7 +1525,18 @@ def sequence(
     # stage6_sketch's module docstring). Design-wide sketch only: a single
     # shape's tier == "sketch" override changes that shape's fill, never
     # the design's detail pass.
-    if (cfg.detail_layer or sketch) and source_pixels is not None:
+    #
+    # Fix round 2 (Critical): `detail_layer` is this function's own resolved
+    # parameter (`plan_stitches`' effective value — True when a face was
+    # actually detected and the auto-route fired, same as `fill_technique`/
+    # `streamline_mode` above), not `cfg.detail_layer` directly — before
+    # this round the PHOTO_AUTO_TIER warning could promise a detail layer
+    # for a detected face while this gate still read the caller's raw,
+    # untouched `cfg.detail_layer` (False) and never sewed one. `None`
+    # (every pre-existing caller) falls back to `cfg.detail_layer` exactly
+    # as before.
+    eff_detail_layer = detail_layer if detail_layer is not None else cfg.detail_layer
+    if (eff_detail_layer or sketch) and source_pixels is not None:
         d_runs, d_report = detail_runs(source_pixels, cfg, entry=cursor,
                                        trim_at_mm=trim_at)
         if d_runs:

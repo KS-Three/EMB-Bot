@@ -14,6 +14,7 @@ from digitizer_core.pipeline import (
 )
 from digitizer_core.regions import Region
 from digitizer_core.stage6_blend import SourcePixels
+from digitizer_core.stitches import BEAN
 from digitizer_core.threads import CHART
 from digitizer_core.warnings_codes import PHOTO_AUTO_TIER
 
@@ -169,13 +170,22 @@ def _ramp_source_pixels(w_px: int = 320, h_px: int = 240,
                         origin_px=(w_px / 2.0, h_px / 2.0))
 
 
-def _photo_subject_result(poly: Polygon, source_pixels: SourcePixels) -> PipelineResult:
+def _photo_subject_result(poly: Polygon, source_pixels: SourcePixels,
+                          faces_present: bool = False) -> PipelineResult:
     """A hand-built `PipelineResult` — one region over a controlled ramp,
     `design_class="photo_subject"` — so `plan_stitches` (the function under
     test) runs for real while the region topology stays fully deterministic,
     unlike a `digitize()` call through real segmentation. Mirrors how
     `test_photo_sequencing.py`'s own `plan_for` helper and `test_shade_
-    thread_emission.py`'s chain-guard test build inputs by hand."""
+    thread_emission.py`'s chain-guard test build inputs by hand.
+
+    `faces_present` (fix round 2): the unit-level seam `PipelineResult.
+    faces_present` itself is — set directly here rather than driving a real
+    face detector, exactly as the reviewer's own note for this round
+    sanctions ("a faces_present=True seam is fine"). `test_faces_present_
+    turns_the_detail_layer_on_in_the_real_pipeline` above already proves
+    the real-detector, warning-text half end to end; this file's fix-round-2
+    tests below prove the STITCHED half using this seam."""
     region = _big_region(poly)
     return PipelineResult(
         regions=[region],
@@ -186,6 +196,7 @@ def _photo_subject_result(poly: Polygon, source_pixels: SourcePixels) -> Pipelin
         design_size_mm=(70.0, 50.0),
         source_pixels=source_pixels,
         design_class="photo_subject",
+        faces_present=faces_present,
     )
 
 
@@ -259,3 +270,70 @@ def test_default_photo_subject_plan_uses_layered_streamline_multi_thread():
     assert len(distinct) >= 3, (
         f"default-config photo_subject plan sewed {len(distinct)} thread(s) "
         "— the auto-route did not select streamline's layered mode")
+
+
+# --- Fix round 2 (Critical): faces->detail_layer must reach the STITCHED --
+# plan too, not just the PHOTO_AUTO_TIER warning's "with a detail layer for
+# the detected faces" text. `run_stages` has computed `effective_detail_
+# layer` and announced it since round 0; stage 7's own detail-layer gate
+# (stage7_sequence.py, "the detail layer" section) still read raw `cfg.
+# detail_layer` until this round — a photo job with a detected face
+# promised a detail block it never sewed. Same defect class as round 1's
+# fill_technique/streamline_mode gap, one field later.
+
+def _detail_source_pixels(radius_mm: float = 25.0, size: int = 300,
+                          px_per_mm: float = 4.0) -> SourcePixels:
+    """A light field with one thin, high-contrast circle outline — the
+    exact fixture shape test_stage6_detail.py's own suite already proves
+    makes `extract_detail_lines` return a real, non-empty BEAN line (a
+    smooth tonal ramp, this file's `_ramp_source_pixels`, has no local EDGE
+    for FDoG to find; a crisp ring does)."""
+    import cv2
+    img = np.full((size, size), 245, np.uint8)
+    cv2.circle(img, (size // 2, size // 2), int(radius_mm * px_per_mm),
+              30, 2, cv2.LINE_AA)
+    rgb = np.dstack([img] * 3)
+    return SourcePixels(rgb=rgb.astype(np.uint8), px_per_mm=px_per_mm,
+                        origin_px=(size / 2.0, size / 2.0))
+
+
+def test_default_photo_subject_plan_sews_a_detail_layer_when_faces_present():
+    """The Critical finding, closed: a default-config (no explicit fill_
+    technique OR detail_layer) photo_subject plan whose `PipelineResult`
+    carries `faces_present=True` must actually SEW a detail block — real
+    BEAN runs in the emitted plan — not just carry a warning that says so.
+    `faces_present=False` on the identical fixture is the control: it must
+    NOT sew one, proving the assertion above is about the seam, not about
+    this fixture always producing detail lines regardless."""
+    poly = Polygon([(-35, -25), (35, -25), (35, 25), (-35, 25)])
+    source = _detail_source_pixels()
+
+    def bean_runs(plan):
+        return [r for b in plan.blocks for r in b.runs if r.kind == BEAN]
+
+    plan_with_face = plan_stitches(
+        _photo_subject_result(poly, source, faces_present=True), PipelineConfig())
+    plan_without_face = plan_stitches(
+        _photo_subject_result(poly, source, faces_present=False), PipelineConfig())
+
+    assert bean_runs(plan_with_face), (
+        "a photo_subject plan with a detected face must sew a detail "
+        "layer block — PHOTO_AUTO_TIER's own warning promises one")
+    assert not bean_runs(plan_without_face), (
+        "fixture sanity: no detected face must mean no detail layer, or "
+        "the assertion above would not be testing faces_present at all")
+
+
+def test_explicit_detail_layer_still_wins_over_faces_present_stitched():
+    """`cfg.detail_layer=True` explicitly must keep sewing the detail layer
+    regardless of `faces_present` (it already did, pre-round-2, since it
+    read `cfg.detail_layer` directly — this pins that the new override seam
+    does not regress the explicit-caller path while fixing the automatic
+    one)."""
+    poly = Polygon([(-35, -25), (35, -25), (35, 25), (-35, 25)])
+    result = _photo_subject_result(poly, _detail_source_pixels(), faces_present=False)
+
+    plan = plan_stitches(result, PipelineConfig(detail_layer=True))
+
+    bean_runs = [r for b in plan.blocks for r in b.runs if r.kind == BEAN]
+    assert bean_runs, "an explicit cfg.detail_layer=True must still sew one"

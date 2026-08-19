@@ -130,6 +130,18 @@ class PipelineResult:
     # (the photo underlay split keys on it). Defaults "flat" — a hand-built
     # PipelineResult gets exactly the pre-photo behaviour.
     design_class: str = "flat"
+    # Fix round 2 (photo/tonal v1, spec decision 3): stage 1.5's face
+    # detection verdict (`bool(face_regions)` in run_stages), carried for
+    # the SAME "hand it to stage 7" reason `design_class` is — unlike the
+    # fill-technique auto-route (a pure function of cfg + class_,
+    # recomputable anywhere), whether faces were actually found is a
+    # runtime fact stage 1.5 alone can answer; plan_stitches needs the real
+    # value to resolve `auto_photo_tier`'s detail_layer effective-on
+    # decision for stage 7's detail-layer gate, not just for run_stages'
+    # own PHOTO_AUTO_TIER warning text. Defaults False — a hand-built
+    # PipelineResult (every test that doesn't set it, every pre-photo
+    # caller) gets exactly the pre-existing "no faces" behaviour.
+    faces_present: bool = False
 
     @property
     def shape_ids(self) -> list[str]:
@@ -679,6 +691,7 @@ def run_stages(
         debug_dir=dbg,
         source_pixels=source_pixels,
         design_class=classification.class_,
+        faces_present=faces_present,
     )
 
 
@@ -765,22 +778,21 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     # Fix round 1 (spec decision 3, concern 1): `sequence` must actually SEW
     # the photo_subject auto-route's decision, not just have `run_stages`
     # capture pixels for it and warn — the gap the first pass of this task
-    # left open. Recomputed here (not read off `result`, which carries no
-    # such field) via the exact same pure helper `run_stages` calls,
-    # against `result.design_class` — stage 0's verdict, carried on
-    # `PipelineResult` for exactly this "hand it to stage 7" purpose (see
-    # that field's own docstring). `faces_present` is passed `False`: the
-    # tier decision itself never reads it (only run_stages' OWN detail-
-    # layer decision does, which this call does not need), so any value
-    # gives the identical `auto_tier`. Recomputing (rather than freezing a
-    # value from the original run_stages call) is deliberate: `plan_stitches`
-    # is documented "safe to re-run" with a DIFFERENT cfg each time (a
-    # review-screen parameter tweak), and an explicit `fill_technique` on
-    # THIS call's cfg must still win over the auto-route on THIS call —
-    # exactly the "explicit caller config always wins" contract
-    # `auto_photo_tier` already enforces, now honoured on every re-plan too,
-    # not just the first one.
-    auto_tier = auto_photo_tier(cfg, result.design_class, faces_present=False)
+    # left open. Recomputed here (not frozen from the original `run_stages`
+    # call) via the exact same pure helper `run_stages` calls, against
+    # `result.design_class` — stage 0's verdict, carried on `PipelineResult`
+    # for exactly this "hand it to stage 7" purpose (see that field's own
+    # docstring) — and `result.faces_present`, carried the same way as of
+    # fix round 2 (see that field's own docstring: a runtime fact, not
+    # recomputable from cfg + class_ the way the tier decision is).
+    # Recomputing the TIER (rather than freezing a value from the original
+    # run_stages call) is deliberate: `plan_stitches` is documented "safe to
+    # re-run" with a DIFFERENT cfg each time (a review-screen parameter
+    # tweak), and an explicit `fill_technique` on THIS call's cfg must still
+    # win over the auto-route on THIS call — exactly the "explicit caller
+    # config always wins" contract `auto_photo_tier` already enforces, now
+    # honoured on every re-plan too, not just the first one.
+    auto_tier = auto_photo_tier(cfg, result.design_class, result.faces_present)
     effective_fill_technique = auto_tier or cfg.fill_technique
     # Concern 4: the automatic route is layered streamline thread-paint
     # (spec decision 3's own wording), never mono — mono would sew every
@@ -795,11 +807,25 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     # keeps this a no-op for flat, gradient, photo_scene, and an
     # explicitly-configured photo_subject alike.
     effective_streamline_mode = "layered" if auto_tier is not None else None
+    # Fix round 2 (Critical): the SAME formula `run_stages` uses for its own
+    # `effective_detail_layer` (pipeline.py, the `PHOTO_AUTO_TIER` warning's
+    # own "with a detail layer for the detected faces" text) — recomputed
+    # here, not carried, for the identical re-plan-responsiveness reason
+    # `effective_fill_technique` above is recomputed rather than frozen.
+    # Before this round, only the WARNING read this formula; stage 7's own
+    # detail-layer gate (below `sequence`, at its own :1519) still read raw
+    # `cfg.detail_layer`, so a photo job with a detected face announced a
+    # detail layer it never actually sewed — the exact defect class this
+    # whole task exists to close for `fill_technique`/`streamline_mode`,
+    # just one field later.
+    effective_detail_layer = cfg.detail_layer or (auto_tier is not None
+                                                  and result.faces_present)
     blocks, seq_warnings = sequence(planned, fabric, cfg,
                                     source_pixels=result.source_pixels,
                                     design_class=result.design_class,
                                     fill_technique=effective_fill_technique,
-                                    streamline_mode=effective_streamline_mode)
+                                    streamline_mode=effective_streamline_mode,
+                                    detail_layer=effective_detail_layer)
 
     # The plan's palette is the list of cones this plan actually sews, one per
     # BLOCK, in sew order — NOT `result.palette`, which is the per-LAYER list a
