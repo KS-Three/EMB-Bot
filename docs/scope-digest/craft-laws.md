@@ -82,18 +82,26 @@ Geometry can never settle any of these.
 
 ## Unimplemented technique
 
+> **Audited 2026-08-18 — six entries below were stale and now carry a SHIPPED
+> note.** Each was verified by reading the call site, not by trusting a doc.
+> This section exists to stop work being redone, so a stale entry here is the
+> expensive kind of wrong. Still genuinely unbuilt: crosshatch, emitting one
+> thread more than once, topological satin splits, per-end class scoring,
+> per-branch classification (M6), fixed vertices at shared borders (M5), and
+> the `let §2` lettering list.
+
 - **Crosshatch** — a deliberate perpendicular second pass, present in 7 of 8 multi-fill designs (~46 of 153 overlapping pairs at 60–90°). Not built. `r3` law 17
 - **Emitting one thread more than once** — ~56–60% of colour stops are returns to a thread already in the design (Fremont: 9 blocks, 4 threads, 5 returns; beckers: 5 blocks, 2 threads). `PlannedRegion.sew_index` is one index per thread; a lightness sort would collapse Fremont's 9 blocks into 4 and destroy the stack. **Architectural, not a constant.** `r3` law 34
 - **Topological satin splits** at crossings (`SPLIT_SATIN_ABOVE_MM` splits by width only). `r3` law 30
 - **Per-end class scoring** for entry (cap 3 / tee 2 / corner 1 / butt 1) and the 10/20 mm two-tier fade — only a binary free-end flag ships. `r3` law 27–29
-- **Sketch/redwork tier** — whole designs of layered running-stitch passes; 5 corpus files yield zero satin columns. Nothing in our engine emits it. `play` law 10
-- **The step/stop IR** — an ordered `steps[]` with a machine function plus an operator-action string per boundary. Five of eleven specialty techniques need it and none can ship without it. `spec §0`
+- ~~**Sketch/redwork tier** — nothing in our engine emits it.~~ **SHIPPED** (audited 2026-08-18): `digitizer_core/stage6_sketch.py`, called from `stage7_sequence.py`. `play` law 10
+- ~~**The step/stop IR**~~ **BUILT BUT ORPHANED** (audited 2026-08-18): `stage6_applique.plan_steps()` produces the ordered `steps[]` with a per-boundary action string, and `stitches.StitchBlock.step` carries it — but the only callers are tests. `adapter.plan_to_design` drops it, the service never serialises it, and `src/pdfsheet.js` still prints "Color N". The gap is plumbing, not the IR. `spec §0`
 - **Appliqué** (4 layers, offset chain, tolerance solver, partial-cover suppression, dieline SVG), **3D puff** (end-caps, density-normalized columns, underlay suppression, 5-stitch ties), **knockdown fill** (dilate + 45/135 angle pair), **bean/run variants**, **ITH flat patch**, **motif run**, **stipple/faux chenille**. `spec §1`
-- **Lettering underlay of any kind** — `routeGlyph` is passed `opts.underlay` and never reads it; `satinplay.centerRun` has zero callers; the UI switch is inert. Law 50's ladder is built on a mechanism we do not have. `let § Corrections 4`
+- ~~**Lettering underlay of any kind** — `routeGlyph` never reads `opts.underlay`.~~ **SHIPPED** (audited 2026-08-18): `src/satinfont.js:185-212` consumes it and `:45 underlayModeForCapMm` implements Law 50's ladder. `let § Corrections 4`
 - **Ask for a letter height**, per-font size band enforcement, real sew field per placement (flat 200×200 for every placement, incl. `hat_front` where the Brother cap frame is 130×60), monogram mode, script-safe routing, split satin >7 mm, envelopes, mirror, character-count spacing, radius-aware arc spacing, width-gated short stitches, run-stitch mode below the satin floor. `let §2`
-- **Contour fill, motif fill (Tier A pattern + Tier B lattice), density ramp, crossfade, curved/flow fill** — all four fill families beyond tatami. `fill`
+- ~~**Contour fill, motif fill (Tier A pattern + Tier B lattice)**~~ **SHIPPED** (audited 2026-08-18): `stage6_contour.py` (794 lines, default OFF per gate 3) and the motif family at `config.py:525-578`. Also shipped and wrongly listed elsewhere as absent: `stage6_meander.py` (686 lines) and `stage6_scanline.py`, both called from `stage7_sequence.py`. **Still unbuilt: density ramp, crossfade, curved/flow fill** — all tonal-lane, Kent-tabled. `fill`
 - **Per-branch classification** (satin arms + filled body in one region) — flagged by Goldman's inventor, never claimed, no shipping product does it. Note `dtv` closed the *whole-shape* DT swap, not this. `dt §1.3, §2` M6
-- **16-angle fragment minimization** for fill angle; **fixed vertices at shared borders** (`cfg.overlap_mm = 0.25` is currently paying partly for that defect). `dt §2` M5, M7
+- ~~**16-angle fragment minimization** for fill angle~~ **SHIPPED** (audited 2026-08-18): `stage6_fill.py:199` `_FILL_ANGLE_CANDIDATES = 16`, with the PCA angle kept as a 17th candidate so it cannot regress. **`fixed vertices at shared borders` (M5) is still unbuilt** — `stage4_vectorize.py` simplifies each region's contours independently with no adjacency marks, and `cfg.overlap_mm = 0.25` is still partly paying for it. `dt §2` M5, M7
 
 ## Sequence claims
 

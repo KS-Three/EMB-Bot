@@ -209,8 +209,12 @@ format library, `pystitch`, is MIT-licensed and usable as a real runtime
 dependency, not just a concept source (see below and the cross-cutting DST
 section above).
 
-**`pystitch` as a `pyembroidery` replacement — evaluation complete,
-adoption in progress 2026-08-11.** Ink/Stitch depends on `pystitch`
+**`pystitch` as a `pyembroidery` replacement — DONE, not in progress**
+*(corrected 2026-08-18: `digitizer/pyproject.toml:25` and
+`requirements.txt:25` pin pystitch, and `digitizer_core/export.py`,
+`digitizer_core/adapter.py` and `digitizer_service/formats.py` all import it.
+No pyembroidery remains in live source — but see the cross-validation harness
+caveat below, which was left behind by the swap.)* Ink/Stitch depends on `pystitch`
 (github.com/inkstitch/pystitch), not upstream pyembroidery — its own
 MIT-licensed fork, hosted under the `inkstitch` org, claiming broader format
 read coverage (46 formats vs. pyembroidery's smaller list) and active
@@ -240,7 +244,11 @@ scoped gap, cheap to add once satin's medial-axis rail extraction exists
 (the same rails the center-walk/zigzag passes already use).
 
 **Real capability gaps confirmed absent from EMB-Bot, concept-level porting
-only (GPL-3.0 blocks literal code):** meander/stipple fill, tartan/plaid
+only (GPL-3.0 blocks literal code)** — *audited 2026-08-18: `meander/stipple`
+was STALE and is struck from this list. `digitizer_core/stage6_meander.py`
+(686 lines, clean-room Velho & Gomes) ships and is called from
+`stage7_sequence.py:1112`; `stage6_scanline.py` likewise. The rest stand:*
+~~meander/stipple fill,~~ tartan/plaid
 fill, ripple stitch, circular fill + Fermat spiral, satin e-stitch/s-stitch
 point-selection variants, and bean stitch's per-position variable-repeat
 pattern (Ink/Stitch's `bean_stitch(repeats=[0,1,3])` — worth checking
@@ -284,3 +292,32 @@ question — were they independently corpus-measured, or did they end up
 matching because Ink/Stitch's docs were open while picking them — worth a
 quick check by whoever builds `stage6_contour.py`, not resolved either way
 here.
+
+
+---
+
+### Cross-validation harness left behind by the pystitch swap — flagged 2026-08-18
+
+`test/crossval-stitch-formats.test.js` is the only automated check on
+EMB-Bot's third-party-visible DST/PES/EXP output — it holds the DST axis
+control pin, the EXP trim record, and the PES stitch stream and palette. Two
+problems, both verified 2026-08-18:
+
+1. **It still imports `pyembroidery`** (`tools/crossval-stitch-formats.mjs:156`,
+   `tools/crossval_decode.py:27`), which the 2026-08-11 swap removed from the
+   declared dependencies. `digitizer/.venv` raises `ModuleNotFoundError` for it.
+   The harness passes locally only because `resolvePython()` falls through to a
+   Python outside the venv that happens to carry a global copy.
+2. **It runs in no CI job.** The `engine` job has no `setup-python` step, and
+   the `digitizer` job never invokes `node --test`. The workflow comment at
+   `.github/workflows/python-package-conda.yml:14-17` claims these "run for
+   real in the digitizer job's environment" — false on both counts.
+
+Because it self-skips rather than failing, a machine without that incidental
+global install reports **green having asserted nothing** — the same
+green-suite-hides-a-real-defect class ROADMAP gate 3 was written for.
+
+**Fix (not yet done):** repoint both files at `pystitch` — MIT, already a
+declared dependency, and every symbol the decoder imports was confirmed
+present in 1.0.1 — and give the `engine` job a `setup-python` step, or move
+the harness into the `digitizer` job.
