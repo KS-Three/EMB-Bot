@@ -54,6 +54,14 @@ class StitchRun:
     # True when the thread is cut before this run (implies jump).
     trim: bool = False
     shape_id: str = ""
+    # The chart index this run's shade snapped to, for a blend-tier run that
+    # carries its own per-shade thread (stage6_blend.blend_fill) — None is
+    # legacy behaviour, "this run sews in the region's one thread" (every
+    # non-blend run, and blend_fill's own tatami fallback). Stage 7's block
+    # assembly partitions on this field: `shade_thread_index or
+    # region.thread_index`, so an unset run collapses to today's single
+    # region-thread block by construction.
+    shade_thread_index: int | None = None
 
     @property
     def length_mm(self) -> float:

@@ -643,6 +643,15 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg
                 row_mm=row_mm, stitch_mm=machine.FILL_STITCH_MM,
                 underlay_style="none", trim_at_mm=machine.TRIM_AT_MM,
             )
+            # Stamp this band's own snapped thread on every run it produced —
+            # stage 7's block assembly reads this to sew each accepted shade
+            # in its own StitchBlock instead of collapsing all of them into
+            # `region.thread_index`. Stamped here (not left for stage 7 to
+            # infer) because this loop is the only place that still knows
+            # which band index `i` a run came from once `all_runs` flattens
+            # every band together below.
+            for run in runs:
+                run.shade_thread_index = shade_thread_idx[i]
             if runs and this_layer:
                 # `_band_clip` can hand back more than one disconnected part
                 # for a single band (a ring-shaped region straddling the

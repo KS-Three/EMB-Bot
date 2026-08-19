@@ -476,7 +476,16 @@ def _chain(runs: list[StitchRun], regions: list[PlannedRegion],
     colour, and on the benchmark that blind spot is eight of its ten trims.
 
     `runs[0]` is never touched. The thread is always cut into a new colour, and
-    a link across a colour change would be sewn in the wrong thread.
+    a link across a colour change would be sewn in the wrong thread. That same
+    law now also guards every `shade_thread_index` boundary: `runs` is still
+    the whole group's flat list at this point (block assembly partitions it
+    into one StitchBlock per shade AFTER this returns), so without the guard
+    a gap between two different accepted shades could bury itself under
+    nearby same-block thread the way an ordinary same-colour gap does — legal
+    today only because every shade still sewed in the group's one thread.
+    Once shade partitioning splits them into separate blocks that link would
+    cross a colour it does not share, so it is refused here, at the one
+    place both the runs and their shade keys are still in one list together.
 
     The returned count is how many of the links replaced a lift INSIDE a shape,
     so the operator-facing "the thread had to be lifted N times inside a shape"
@@ -500,6 +509,14 @@ def _chain(runs: list[StitchRun], regions: list[PlannedRegion],
         if not run.jump:
             out.append(run)
             continue
+        if out[-1].shade_thread_index != run.shade_thread_index:
+            # Refused independent of geometry: burying this gap would sew a
+            # bridge in one shade's thread across into another's block. Every
+            # existing caller passes runs whose `shade_thread_index` is
+            # always None (this compares equal to itself), so this is a
+            # no-op for every non-blend design — see the docstring above.
+            out.append(run)
+            continue
         a, b = out[-1].points[-1], run.points[0]
         if math.dist(a, b) > machine.LINK_MAX_GAP_MM:
             out.append(run)
@@ -512,8 +529,15 @@ def _chain(runs: list[StitchRun], regions: list[PlannedRegion],
         if run.shape_id == out[-1].shape_id:
             in_shape += 1
         if inner:
+            # Tagged with the shade both sides already share (the guard
+            # above refused this bridge otherwise) — untagged, it would
+            # default to the group's own region thread and land in the
+            # WRONG bucket once block assembly partitions `runs` by shade,
+            # stranding a travel stitch between two runs of a block it is
+            # not actually in.
             out.append(StitchRun(points=inner, kind=stitches.TRAVEL,
-                                 shape_id=run.shape_id))
+                                 shape_id=run.shape_id,
+                                 shade_thread_index=run.shade_thread_index))
         run.jump = False
         run.trim = False
         out.append(run)
@@ -1352,18 +1376,81 @@ def sequence(
                 ordered, sewn,
                 unary_union(later_run_art) if later_run_art else None)
             jumps -= linked_in_shape
-        _apply_ties(ordered)
 
-        thread = chart_for(cfg)[group[0].region.thread_index]
-        blocks.append(
-            StitchBlock(
-                thread_index=group[0].region.thread_index,
-                thread_number=thread.number,
-                rgb=tuple(thread.rgb),
-                runs=ordered,
+        # Task 1 (photo/tonal v1): a blend-tier run carries the thread its
+        # OWN shade snapped to (`shade_thread_index`, stamped by
+        # `blend_fill`'s band loop); every other run carries `None` and
+        # falls back to the group's one region thread, exactly as if this
+        # partition were never taken. Bucketing (not a contiguous re-slice)
+        # because `_choose_shade_count`'s bands walk the ramp's own spatial
+        # `t`, not chart lightness — two non-adjacent bands can snap to the
+        # same cone, and they belong in the same block when they do.
+        #
+        # `_apply_ties` moves from here — once, on the flat `ordered` list,
+        # the way it ran before this task — to once per BUCKET below. A tie
+        # protects the block it opens or closes, and once bucketing can pull
+        # two flat-sequence-separated runs into the same final block (the
+        # same-cone case above), `ordered`'s own trim flags stop marking
+        # where the real seams are; only the bucket knows that now.
+        base_thread = group[0].region.thread_index
+        shade_buckets: dict[int, list[StitchRun]] = {}
+        bucket_order: list[int] = []
+        prev_key = None
+        for idx, run in enumerate(ordered):
+            key = run.shade_thread_index
+            if key is None:
+                key = base_thread
+            bucket = shade_buckets.get(key)
+            if bucket is None:
+                bucket = shade_buckets[key] = []
+                bucket_order.append(key)
+            elif idx > 0 and prev_key != key:
+                # This run is REJOINING a bucket some other shade's runs
+                # already interrupted in `ordered`'s own spatial order (the
+                # same-cone case above). Its jump/trim still answer "how far
+                # from whatever ran right before it in the ramp's band
+                # order" — the wrong question once that other shade sews as
+                # its own separate block. Recompute against the neighbour it
+                # will actually follow: this bucket's own last run so far.
+                # Plain distance, the same rule stage 7 already uses to
+                # splice unrelated shapes into one group (above) — no
+                # `_chain` retry here, since these two runs were never
+                # flat-adjacent and `_chain` never had the chance to
+                # consider bridging them either.
+                prev_run = bucket[-1]
+                d = math.dist(prev_run.points[-1], run.points[0])
+                run.jump = d >= TINY_STITCH_MM
+                run.trim = run.jump and d > trim_at
+            bucket.append(run)
+            prev_key = key
+
+        chart = chart_for(cfg)
+        # Dark -> light by the chart's own L*, the plan contract's sew
+        # order for a region's shade blocks. Chart index breaks an exact-L*
+        # tie so the order is deterministic (mirrors `Chart.nearest_index`'s
+        # own tiebreak).
+        bucket_order.sort(key=lambda k: (chart.lab[k][0], k))
+        for key in bucket_order:
+            shade_runs = shade_buckets[key]
+            # A new block always opens on a real cut, whatever this run's
+            # own flags already say — the same forcing `ordered[0]` gets
+            # above, now applied at every block this split creates and not
+            # only the one that happens to start on `ordered[0]` itself
+            # (dark -> light sorting can, and often will, put a different
+            # bucket first).
+            shade_runs[0].jump = True
+            shade_runs[0].trim = True
+            _apply_ties(shade_runs)
+            thread = chart[key]
+            blocks.append(
+                StitchBlock(
+                    thread_index=key,
+                    thread_number=thread.number,
+                    rgb=tuple(thread.rgb),
+                    runs=shade_runs,
+                )
             )
-        )
-        cursor = ordered[-1].points[-1]
+            cursor = shade_runs[-1].points[-1]
 
     # --- The detail layer (stage6_detail, photo plan row 11) -----------------
     # Appended AFTER every artwork block — plan row 14's craft consensus,
