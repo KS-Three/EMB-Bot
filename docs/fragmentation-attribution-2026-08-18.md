@@ -4,11 +4,13 @@ Detail behind `MASTER_SCOPE.md` live defect 4. Two separate things: the
 headline was measured in the wrong unit, and the cause it recorded as
 undiagnosed now has a mechanism.
 
-**Provenance warning up front.** The new measurements here were taken in the
-SHARED checkout, not a pinned worktree. `MASTER_SCOPE.md`'s own gotchas and
-`docs/handoff-2026-08-16.md` §1 both require a pinned worktree for parity
-numbers — three baselines died mid-run on 2026-08-15 for exactly this reason.
-**Treat every number below as directional and re-measure before quoting one.**
+**Provenance, per section — they differ.** §4's corpus diff was run in the
+pinned worktree `.claude/worktrees/parity-measure` at `751f205` and is the
+quotable one. §2's `_graph_travel` counts were taken in the SHARED checkout,
+which `MASTER_SCOPE.md`'s gotchas and `docs/handoff-2026-08-16.md` §1 both
+forbid for parity numbers — three baselines died mid-run on 2026-08-15 for
+exactly that reason. **Treat §2's numbers as directional; re-measure before
+quoting one.**
 
 ## 1. "129 runs vs the pro's 15" compared two different objects
 
@@ -48,9 +50,11 @@ this repo; the correction existed only in a Python docstring.
    (`docs/becker-pro-parity-2026-08-15.md:91-101`) suggests the plan-run count
    has moved with the engine since 2026-08-15 while the trim rate has not.
 
-**The durable statement is the trim rate: 8.49/1k against the pro's 1.27.**
-That is separately measured and is unaffected by the unit error. Quote it, and
-stop quoting run counts until one is measured in the pro's unit in a worktree.
+**Superseded by §4 — read that before quoting anything.** This section
+originally concluded that the trim RATE (8.49/1k against the pro's 1.27) was
+the durable half. The 2026-08-18 corpus run did not reproduce either side of
+that figure. §4 has the like-for-like replacement: **we trim 3.1x as often as
+the pro**, same decoder, same 23 designs.
 
 ## 2. Mechanism: `_graph_travel` never returns a path
 
@@ -105,19 +109,19 @@ re-capture call — on Linux CI, never Windows.
 
 ## 3. The attribution instrument already exists and has never been read
 
-`prep_all.py:709` (ours) and `:790` (the pro's) each write a `run_breaks`
+`prep_all.py:731` (ours) and `:812` (the pro's) each write a `run_breaks`
 histogram labelling every run boundary `start` / `color` / `trim` / `jump` /
-`hop`, both sides decoded by the same function (`prep_all.py:149-162`). Reader:
-`machine_meta` at `prep_all.py:754-759`. Per-block plan detail rides alongside
-as `plan_runs_by_kind` (`prep_all.py:732-733`).
+`hop`, both sides decoded by the same function (`prep_all.py:149-162`).
+Per-block plan detail rides alongside as `plan_runs_by_kind`.
 
-That is a direct attribution of fragmentation cause, and it is a read rather
-than a build — run `prep_both.py`, diff the two dicts:
+**Run `prep_all.py`, not `prep_both.py`.** `prep_both` builds its own `pro`
+block and omits `run_breaks`, so it cannot produce this diff — confirmed the
+hard way 2026-08-18. It is a read rather than a build:
 
 | dominant break kind | implicated mechanism |
 |---|---|
 | `trim` | chaining / `trim_at_mm` — see the latent `chain_links` entry |
-| `hop` | `travel_path` giving up (`stage6_fill.py:558` budget, `:467` ring cap) — and §2 above |
+| `hop` | *only meaningful for THIRD-PARTY files.* A `hop` is a break inferred from distance where the file carries no explicit record (`prep_all.py:221`). Our writer always emits explicit records, so our `hop` is structurally 0 and can never implicate `travel_path`. Do not read our 0 as evidence either way. |
 | `color` | block structure and sequencing |
 
 The three are mutually exclusive and the file already distinguishes them.
