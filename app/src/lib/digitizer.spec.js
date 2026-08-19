@@ -1,4 +1,4 @@
-import { test, expect, beforeAll, vi } from "vitest";
+import { test, expect, beforeAll, vi, describe, it } from "vitest";
 import { createRequire } from "node:module";
 import fixture from "./fixtures/digitized-asym.json";
 
@@ -1590,4 +1590,16 @@ test("describeWarnings speaks all four stage-0 classification codes instead of f
     expect(line.text).not.toContain("ENGINE VOICE");
     expect(line.text.length).toBeGreaterThan(20);
   }
+});
+
+describe("isPhoto forced class (spec 2026-08-18 decision 4)", () => {
+  it("includes forced_class photo_subject when the element is marked as a photo", async () => {
+    const { buildDigitizeConfig } = await import("./digitizer.js");
+    const el = { isPhoto: true };
+    expect(buildDigitizeConfig(el).forced_class).toBe("photo_subject");
+  });
+  it("omits forced_class entirely when not marked", async () => {
+    const { buildDigitizeConfig } = await import("./digitizer.js");
+    expect("forced_class" in buildDigitizeConfig({ isPhoto: false })).toBe(false);
+  });
 });

@@ -187,6 +187,19 @@
     }
   }
 
+  // `isPhoto` (spec 2026-08-18 decision 4) lives on the element itself, not
+  // element.params (buildDigitizeConfig reads it directly — see its own
+  // comment), so it needs its own prev-value watcher rather than riding the
+  // params one above. Same re-digitize-on-change behavior as every param
+  // control, just tracking a different field.
+  let prevIsPhoto = element.isPhoto;
+  $: {
+    if (element.isPhoto !== prevIsPhoto) {
+      prevIsPhoto = element.isPhoto;
+      if (element.result) runDigitize(element);
+    }
+  }
+
   // Shape edits restitch on their own, after a pause (Kent's call,
   // 2026-08-13). Before this, a hand edit on the canvas moved the outline and
   // left the stitches where they were until "Apply layer changes" was pressed
@@ -1172,6 +1185,17 @@
         />
         Detail lines for photos
       </label>
+      <label class="dgp-checkline">
+        <input
+          type="checkbox"
+          checked={element.isPhoto}
+          on:change={(e) => patch({ isPhoto: e.currentTarget.checked })}
+        />
+        This is a photo
+      </label>
+      <p class="dgp-note">
+        Renders with thread-paint shading instead of flat color regions.
+      </p>
       <label class="dgp-param">
         <span>Fill angle</span>
         <select
