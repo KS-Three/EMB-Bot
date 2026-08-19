@@ -772,6 +772,38 @@ def run_ours(art_path, width_mm, outdir, garment_id=None):
     return res, plan, ours_blocks, [tuple(b.rgb) for b in plan.blocks]
 
 
+def pro_meta(blocks, breaks, bounds, *, jumps, trims, meas):
+    """The pro side of a manifest entry, in the same units `machine_meta`
+    reports ours in.
+
+    Shared with `prep_both.py` deliberately. That harness decodes the same pro
+    files with this module's own `decode()`, but summarised them with a
+    hand-rolled copy of this dict that omitted `run_breaks` — so the real-art
+    lane could not produce the fragmentation attribution the recon lane already
+    carried (`docs/fragmentation-attribution-2026-08-18.md` §4, last caveat).
+    One decoder, one summary."""
+    return {
+        "stitches": sum(len(p) for runs in blocks for p in runs),
+        "blocks": len(blocks),
+        "runs": sum(len(runs) for runs in blocks),
+        "jumps": jumps, "trims": trims,
+        # Every decoded run lands in exactly one bucket, so the histogram sums
+        # to `runs`. This is what says whether fragmentation is thread CUTS
+        # (`trim`) or mechanical breaks. Mind which side you are reading: on the
+        # PRO's third-party files `hop` is the second-largest bucket (368 of
+        # 1,054 runs corpus-wide), because a break with no explicit record is
+        # inferred from distance. On files our own writer emits it is
+        # structurally 0. The two columns are not comparable directly.
+        # *(measured 2026-08-18 — `docs/fragmentation-attribution-2026-08-18.md` §4)*
+        "run_breaks": {k: sum(kk.count(k) for kk in breaks)
+                       for k in ("start", "color", "trim", "jump", "hop")},
+        "travel_segments": sum(m["travel_segments"] for m in meas),
+        "travel_mm": round(sum(m["travel_mm"] for m in meas), 1),
+        "width_mm": round(bounds[2] - bounds[0], 1),
+        "height_mm": round(bounds[3] - bounds[1], 1),
+    }
+
+
 def machine_meta(outdir):
     """Our `runs` / `trims` / `jumps` / `run_breaks` for a prepped design, in
     the same unit `entry["pro"]` reports them in. `{}` on an output directory
@@ -803,18 +835,8 @@ def main():
             cvs = Canvas(bounds)
             meas, flags = reconstruct(blocks, threads, cvs, outdir / "art.png",
                                       outdir / "art_meta.json")
-            entry["pro"] = {
-                "stitches": sum(len(p) for runs in blocks for p in runs),
-                "blocks": len(blocks),
-                "runs": sum(len(runs) for runs in blocks),
-                "jumps": jumps, "trims": trims,
-                "run_breaks": {k: sum(kk.count(k) for kk in breaks)
-                               for k in ("start", "color", "trim", "jump", "hop")},
-                "travel_segments": sum(m["travel_segments"] for m in meas),
-                "travel_mm": round(sum(m["travel_mm"] for m in meas), 1),
-                "width_mm": round(bounds[2] - bounds[0], 1),
-                "height_mm": round(bounds[3] - bounds[1], 1),
-            }
+            entry["pro"] = pro_meta(blocks, breaks, bounds, jumps=jumps,
+                                    trims=trims, meas=meas)
             (outdir / "pro_blocks.json").write_text(
                 json.dumps(block_summary(blocks, threads, meas), indent=1))
             # Row k is still the k'th STITCH of the pattern, in order — the

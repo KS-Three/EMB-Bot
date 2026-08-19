@@ -109,14 +109,18 @@ re-capture call — on Linux CI, never Windows.
 
 ## 3. The attribution instrument already exists and has never been read
 
-`prep_all.py:731` (ours) and `:812` (the pro's) each write a `run_breaks`
-histogram labelling every run boundary `start` / `color` / `trim` / `jump` /
-`hop`, both sides decoded by the same function (`prep_all.py:149-162`).
-Per-block plan detail rides alongside as `plan_runs_by_kind`.
+`prep_all.py:730` (ours) and `pro_meta` (`prep_all.py:775`, the pro's) each
+write a `run_breaks` histogram labelling every run boundary `start` / `color` /
+`trim` / `jump` / `hop`, both sides decoded by the same function
+(`prep_all.py:170-252`). Per-block plan detail rides alongside as
+`plan_runs_by_kind`.
 
-**Run `prep_all.py`, not `prep_both.py`.** `prep_both` builds its own `pro`
-block and omits `run_breaks`, so it cannot produce this diff — confirmed the
-hard way 2026-08-18. It is a read rather than a build:
+**Both harnesses now produce it.** Until 2026-08-18 `prep_both` built its own
+`pro` block and omitted `run_breaks`, so the real-art lane could not produce
+this diff at all — confirmed the hard way that day. `pro_meta` is now the one
+builder both call, guarded by
+`digitizer/tests/test_pro_parity_prep.py::test_prep_both_uses_the_shared_pro_block_builder`.
+It is a read rather than a build:
 
 | dominant break kind | implicated mechanism |
 |---|---|
@@ -207,9 +211,13 @@ for the hop instead of re-deciding what to do about it.
   on the scorecard. Trim counts are less exposed to that than shape scores are,
   but the lane is not the real-art lane.
 - One run, one corpus. Evidence, not proof.
-- The pro-side `run_breaks` exist only in `prep_all.py`'s manifest.
-  `prep_both.py` builds its own `pro` block without them — so the real-art lane
-  cannot produce this table today.
+- ~~The pro-side `run_breaks` exist only in `prep_all.py`'s manifest.~~
+  **Closed 2026-08-18** — `prep_both.py` now calls `prep_all.pro_meta`, so the
+  real-art lane emits the same table. The §4 numbers above are still
+  `prep_all`'s 23-design corpus; the real-art lane's own 15-design version
+  (`prep_both.DESIGNS`) has not been run. The two lists are not subsets of one
+  another — 13 slugs are common, and `bridge_hat` / `bridge_lc` were never in
+  the 23.
 
 ## What to do with this
 
@@ -218,5 +226,11 @@ for the hop instead of re-deciding what to do about it.
 2. Treat `chain_links` as the primary lever. It is built, measured, and blocked
    only on the sew-out — no code work will beat it.
 3. Size the `_graph_travel` snap fix as a secondary contributor, not the cure.
-4. If the real-art lane's version of §4 is wanted, teach `prep_both.py` to carry
-   `run_breaks` on its `pro` block the way `prep_all.py:812` already does.
+4. ~~If the real-art lane's version of §4 is wanted, teach `prep_both.py` to
+   carry `run_breaks` on its `pro` block.~~ **Done 2026-08-18** — both harnesses
+   share `prep_all.pro_meta`, so a `prep_both.py` run now yields the same
+   histogram on both sides, plus `travel_segments` / `travel_mm` it also lacked.
+   A one-design smoke run in the SHARED checkout (`becker_chest_small`, not
+   quotable as a parity number) shows the real lane trim-dominated as well —
+   pro 6 `trim` breaks against our 33. **Still to run: the real-art lane over
+   all 15 designs, in a pinned worktree.**
