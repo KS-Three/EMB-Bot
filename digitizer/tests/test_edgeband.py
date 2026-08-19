@@ -148,3 +148,78 @@ def test_side_mask_returns_bool():
     tmp = Path(__import__("tempfile").mkdtemp())
     write_stitches(tmp / "s.csv", [(0.0, 0.0), (10.0, 0.0), (10.0, 6.0)])
     assert eb.side_mask(tmp / "s.csv").dtype == bool
+
+
+def fake_design(tmp, cover_ours=True):
+    """A design dir: an 18 x 10 mm ink rectangle on a 20 x 12 mm canvas, a pro
+    that covers it in rows, and an ours that either matches or stops 2.0 mm
+    short of the bottom edge.
+
+    2.0 mm, not the 1.0 mm this fixture was first drafted with, and the reason
+    is the instrument's own resolution rather than a preference. `art_mask`
+    scales the artwork to the STITCH SPAN's width — 17.0 mm here, since the rows
+    run x 1.0..18.0 inside an 18 mm ink box — so the art rasterises 94 px tall
+    (100 * 170/180), not the 100 px the ink drew. A 1.0 mm short last row then
+    leaves only 5 px of art uncovered, `best_iou`'s 0.4 mm = 4 px shift grid
+    splits that 3 px top / 2 px bottom, and `EDT > w_px` at w_px = 4 never
+    fires: the arc reads 0.00 mm on both sides. Measured, not assumed —
+    `bare_frac` still reads 0.415 against the pro's 0.000 in that case, so the
+    shortfall IS seen, just not by the arc. `bare_arc_max_mm` has a floor near
+    the band width, which is spec §7.3's warning arriving in practice.
+    """
+    from PIL import Image
+    d = Path(tmp); d.mkdir(parents=True, exist_ok=True)
+    ink = np.full((120, 200, 3), 255, np.uint8)
+    ink[10:110, 10:190] = 0            # 18 x 10 mm of ink at 10 px/mm
+    Image.fromarray(ink).save(d / "art.png")
+
+    def rows(y_end):
+        pts, y, k = [], 1.0, 0
+        while y <= y_end:
+            pts += [(1.0, y), (18.0, y)] if k % 2 == 0 else [(18.0, y), (1.0, y)]
+            y += 0.4; k += 1
+        return pts
+
+    # `y += 0.4` accumulates in binary, so the last row actually emitted is
+    # 10.2 and 8.2 — a 2.0 mm difference. Asserted below rather than trusted.
+    write_stitches(d / "pro_stitches.csv", rows(10.6))
+    write_stitches(d / "ours_stitches.csv", rows(10.6 if cover_ours else 8.6))
+    return d
+
+
+def test_art_band_rows_cover_both_sides_and_all_widths():
+    tmp = Path(__import__("tempfile").mkdtemp()) / "becker_fake"
+    rows = eb.art_band_rows(fake_design(tmp))
+    assert {r["side"] for r in rows} == {"pro", "ours"}
+    assert {r["width_mm"] for r in rows} == set(eb.BAND_WIDTHS_MM)
+    assert all(r["band"] == "art" for r in rows)
+    assert all(r["slug"] == "becker_fake" for r in rows)
+    assert len(rows) == 2 * len(eb.BAND_WIDTHS_MM)
+
+
+def test_a_short_last_row_shows_up_as_a_longer_bare_arc_than_the_pro():
+    """The whole point of the instrument, on a case built to have one answer:
+    ours stops 2.0 mm short of the artwork's ink, the pro does not. Measured
+    19.3 mm against the pro's 0.00 mm along a 17 mm stitched edge.
+
+    Which EDGE the arc lands on is not asserted, deliberately. `best_iou` is
+    translation-only and its shift plateau resolves to the most negative dy, so
+    a side whose thread is shorter than the art gets the art pushed up against
+    it and the whole deficit surfaces on the top boundary. Spec §7.2 names that
+    exact behaviour as a signature to watch for; pinning an edge here would pin
+    a registration tie-break, not an edge-coverage fact.
+    """
+    tmp = Path(__import__("tempfile").mkdtemp()) / "short"
+    rows = eb.art_band_rows(fake_design(tmp, cover_ours=False))
+    at = {(r["side"], r["width_mm"]): r for r in rows}
+    ours = at[("ours", 0.4)]["bare_arc_max_mm"]
+    pro = at[("pro", 0.4)]["bare_arc_max_mm"]
+    assert pro == 0.0, f"the covering pro must leave no arc, got {pro:.2f} mm"
+    assert ours > pro + 5.0, f"ours {ours:.2f} mm vs pro {pro:.2f} mm"
+
+
+def test_a_design_dir_missing_a_side_yields_no_rows_for_it():
+    tmp = Path(__import__("tempfile").mkdtemp()) / "onesided"
+    d = fake_design(tmp)
+    (d / "ours_stitches.csv").unlink()
+    assert {r["side"] for r in eb.art_band_rows(d)} == {"pro"}

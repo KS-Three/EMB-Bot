@@ -34,7 +34,8 @@ from scipy.ndimage import distance_transform_edt
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from artfidelity import RES, pro_mask  # noqa: E402
+from artfidelity import RES, SHIFT_MM, art_mask, best_iou, pro_mask  # noqa: E402
+from enginefidelity import MASK_PAD_PX, _place  # noqa: E402
 
 # Reported at all three, never one. Picking one would invent a physical
 # constant; gate 1 says cloth settles those. Three widths also separate a thin
@@ -146,3 +147,56 @@ def side_mask(csv_path) -> np.ndarray:
     what "covered" means (artfidelity.py:55-57).
     """
     return pro_mask(csv_path)
+
+
+def _summarise(shape, thread, w_mm, res=RES) -> dict:
+    """The four numbers, for one band at one width."""
+    w_px = w_mm * res
+    band = band_mask(shape, w_px)
+    arcs = bare_arcs(shape, thread, w_px, res)
+    return {
+        "width_mm": w_mm,
+        "bare_frac": bare_frac(band, thread),
+        "bare_arc_max_mm": round(max(arcs), 3) if arcs else 0.0,
+        "bare_arc_p90_mm": round(float(np.percentile(arcs, 90)), 3) if arcs else 0.0,
+        "band_mm2": round(int(np.count_nonzero(band)) / (res * res), 2),
+    }
+
+
+def art_band_rows(dirpath, widths_mm=BAND_WIDTHS_MM) -> list[dict]:
+    """Edge coverage against the ARTWORK's own boundary, for both sides.
+
+    The artwork is the only boundary neither side authored, which is the whole
+    reason it is the headline: measuring against our own polygons would let our
+    segmentation decide where "the edge" is — the same circularity that bars the
+    recon lane, whose art.png is reconstructed from the pro's own stitches.
+
+    Each side is aligned to the artwork by the shipped `best_iou` shift and
+    measured on its own canvas. The art geometry is identical between the two;
+    only its placement differs, and placement cannot change an arc length.
+
+    `width_mm` subtracts MASK_PAD_PX because `pro_mask`'s canvas is the stitch
+    span PLUS a fixed 8 px margin. Scaling the artwork to the canvas instead
+    stretched it 0.8 mm wider than the engine on every design and gave a
+    flawless reproduction art_missed 0.042 (enginefidelity.py:50-58).
+    """
+    d = Path(dirpath)
+    art = d / "art.png"
+    if not art.exists():
+        return []
+    rows = []
+    for side, name in (("pro", "pro_stitches.csv"), ("ours", "ours_stitches.csv")):
+        csv_path = d / name
+        if not csv_path.exists():
+            continue
+        M = side_mask(csv_path)
+        A = art_mask(art, (M.shape[1] - MASK_PAD_PX) / RES)
+        _iou, _extra, _missed, dx_mm, dy_mm = best_iou(M, A)
+        H = max(M.shape[0], A.shape[0]) + int(2 * SHIFT_MM * RES) + 4
+        W = max(M.shape[1], A.shape[1]) + int(2 * SHIFT_MM * RES) + 4
+        Mp = _place(M, H, W)
+        Ap = _place(A, H, W, int(round(dx_mm * RES)), int(round(dy_mm * RES)))
+        for w_mm in widths_mm:
+            rows.append({"slug": d.name, "band": "art", "side": side,
+                         **_summarise(Ap, Mp, w_mm)})
+    return rows
