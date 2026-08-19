@@ -7,5 +7,14 @@ scratch_corpus/
 parity_out*/
 .claude/settings.local.json
 
-# Local-only acceptance photos (public repo — never publish; spec decision 6)
-digitizer/testdata/photo/acceptance/
+# Local-only acceptance photos (public repo — never publish; spec decision 6).
+# Trailing "/*" (not "/") is load-bearing: a bare directory-match pattern
+# makes git prune the whole dir from traversal, and a negation line for a
+# file inside it below is then never even evaluated (confirmed empirically
+# with `git check-ignore -v` while wiring Task 6 — see task-6-report.md).
+# The "/*" form still excludes everything by default but keeps the dir
+# itself traversable so the README negation below actually takes effect.
+digitizer/testdata/photo/acceptance/*
+# ...except the dir's own explainer (Task 6) — must follow the exclude
+# above to take effect (gitignore negation order rule).
+!digitizer/testdata/photo/acceptance/README.md
