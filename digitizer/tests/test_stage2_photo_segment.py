@@ -745,7 +745,7 @@ def test_split_tonal_regions_is_off_unless_asked():
 def test_split_tonal_regions_splits_a_strong_sweep():
     p, blob = _tonal_prep(gradient=True)
     kept = [RegionMask(mask=blob, layer=0)]
-    out, n = split_tonal_regions(p, PipelineConfig(split_tonal_regions=True), kept)
+    out, n = split_tonal_regions(p, PipelineConfig(split_tonal_regions=True), kept, split_tonal=True)
     assert n == 1, "a full light-to-dark sweep must split"
     assert len(out) >= 2
 
@@ -767,7 +767,7 @@ def test_split_tonal_regions_splits_a_strong_sweep():
 def test_split_tonal_regions_leaves_a_flat_region_alone():
     p, blob = _tonal_prep(gradient=False)
     kept = [RegionMask(mask=blob, layer=0)]
-    out, n = split_tonal_regions(p, PipelineConfig(split_tonal_regions=True), kept)
+    out, n = split_tonal_regions(p, PipelineConfig(split_tonal_regions=True), kept, split_tonal=True)
     assert n == 0 and len(out) == 1
 
 
@@ -778,14 +778,14 @@ def test_split_tonal_regions_leaves_small_regions_alone():
     the area floor."""
     p, blob = _tonal_prep(gradient=True, px_per_mm=60.0)
     kept = [RegionMask(mask=blob, layer=0)]
-    out, n = split_tonal_regions(p, PipelineConfig(split_tonal_regions=True), kept)
+    out, n = split_tonal_regions(p, PipelineConfig(split_tonal_regions=True), kept, split_tonal=True)
     assert n == 0 and len(out) == 1
 
 
 def test_split_tonal_regions_preserves_layer_and_source():
     p, blob = _tonal_prep(gradient=True)
     kept = [RegionMask(mask=blob, layer=3, source="sam2")]
-    out, n = split_tonal_regions(p, PipelineConfig(split_tonal_regions=True), kept)
+    out, n = split_tonal_regions(p, PipelineConfig(split_tonal_regions=True), kept, split_tonal=True)
     assert n == 1
     assert all(r.layer == 3 and r.source == "sam2" for r in out), (
         "a split part belongs to the same layer and segmenter as its parent"

@@ -657,7 +657,7 @@ def _spy_seam(monkeypatch, result):
 
     calls: list[dict] = []
 
-    def _seam(p, cfg, face_regions=None, bg_mask=None):
+    def _seam(p, cfg, face_regions=None, bg_mask=None, split_tonal=False):
         calls.append({"face_regions": face_regions, "bg_mask": bg_mask})
         return result
 
