@@ -64,14 +64,17 @@ or move it.
 4. **We trim far more than the professional: 8.49 trims/1,000 stitches against
    the pro's 1.27** — same logo, same size, more than double the 4.1 ceiling
    this repo's own chaining test treats as the outer limit. Unambiguously a
-   defect, unlike the stitch-count gap beside it. **Corrected 2026-08-18: the
-   old "129 runs vs 15" counted plan OBJECTS against THREAD PATHS — quote the
-   trim rate, never a run count. Cause no longer undiagnosed** (`_graph_travel`
-   returns a path 0 of 57 times; the unread `run_breaks` histogram attributes
-   the rest) —
+   defect, unlike the stitch-count gap beside it. **Measured like-for-like
+   2026-08-18, 23 designs, same decoder both sides: we open 1,715 `trim` breaks
+   against the pro's 555 — 3.1x. Quote that, or the trim rate; never a run
+   count** (the old "129 vs 15" counted plan OBJECTS against THREAD PATHS), and
+   never the raw `trims` field (pystitch emits ~2 TRIM commands per real cut on
+   the pro's files and 1 on ours). **Cause attributed:** trim-dominated, not
+   travel — the pro never cuts for a move under 11.8 mm and our `trim_at_mm` is
+   3.0 (gate 1: cloth settles that). `_graph_travel` returning nothing is a real
+   but secondary contributor. Detail, retractions and caveats in
    [`docs/fragmentation-attribution-2026-08-18.md`](docs/fragmentation-attribution-2026-08-18.md).
-   *(measured 2026-08-15 — `docs/becker-pro-parity-2026-08-15.md`; corrected
-   2026-08-18 — `prep_all.py:233-251`, `stage6_satin.py:2145`)*
+   *(measured 2026-08-18 — pinned worktree, `prep_all` over the Drive corpus)*
    **Not blocked** — artwork and five pro variants are committed under
    `digitizer/testdata/reference/`. Two things that comparison disproved, so
    nobody re-derives them: the 1-colour-vs-4 gap is **not** defect #1 but
