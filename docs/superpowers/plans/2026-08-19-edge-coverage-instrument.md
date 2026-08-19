@@ -6,7 +6,7 @@
 
 **Architecture:** A standalone probe in `digitizer/tools/pro_parity/`, built on the existing `artfidelity` / `enginefidelity` raster frame (10 px/mm, 0.40 mm thread ribbon, translation-only alignment). It reads the artifacts a `prep_both.py` run already writes and emits a CSV. It imports the shipped mask readers rather than rasterising thread itself, adds no key to the scorecard's `WEIGHTS`, and changes no engine behaviour.
 
-**Tech Stack:** Python 3.14, numpy, OpenCV (`cv2`), `scipy.ndimage.distance_transform_edt`, shapely, pytest. All already installed in `digitizer/.venv`.
+**Tech Stack:** Python 3.14, numpy, OpenCV (`cv2`), `scipy.ndimage.distance_transform_edt`, shapely, pytest. Already present in the digitizer's environment.
 
 **Spec:** [`docs/superpowers/specs/2026-08-19-edge-coverage-instrument-design.md`](../specs/2026-08-19-edge-coverage-instrument-design.md) — read it first; this plan argues from it.
 
@@ -19,11 +19,12 @@
 - **No engine change, no flag flipped, no constant moved.** Not `border`, not `directional_comp`, not `FILL_ROW_MM`, not `BORDER_SEAM_OFFSET_MM`.
 - **Band widths are `(0.2, 0.4, 0.8)` mm, all reported, never one chosen.** Choosing one invents a physical constant; ROADMAP gate 1 says cloth settles those.
 - **Resolution is `artfidelity.RES = 10.0` px/mm**, so one pixel is 0.1 mm. Band widths are 2, 4 and 8 px.
-- **Run tests with the main checkout's venv from the worktree's `digitizer/` directory.** The worktree has no `.venv`; cwd precedence puts the worktree's `digitizer_core` ahead of the editable install — verified 2026-08-19:
+- **Run tests from the `digitizer/` directory of whatever checkout you are in**, with a Python carrying the digitizer's dependencies:
   ```bash
-  cd .claude/worktrees/edge-coverage/digitizer && "C:/Users/EE-LT-11030/Claude Personal/EMB-Bot/digitizer/.venv/Scripts/python.exe" -m pytest -q tests/test_edgeband.py
+  cd digitizer && python -m pytest -q tests/test_edgeband.py
   ```
-  Always `python -m pytest`. **Never pipe pytest to `tail`** — you get tail's exit code, so a red run reads green.
+  In a cloud session that is the environment's own interpreter. On Kent's machine a worktree has **no `.venv`** — venvs are not tracked — so use the primary checkout's `digitizer/.venv/Scripts/python.exe` while `cd`'d into the worktree's `digitizer/`. That is safe: cwd precedence puts the worktree's `digitizer_core` ahead of the editable install, verified 2026-08-19. It is also exactly why the rule is always `python -m pytest` and never `python foo.py`.
+  **Never pipe pytest to `tail`** — you get tail's exit code, so a red run reads green.
 - **Baseline to preserve:** 3 failed / 1187 passed, the known Windows golden divergence (`test_flat_lane_byte_identical[enthusiast_logo]`, `test_pushcomp[logo_whitebg-towel]`, `test_stage2_photo_segment[enthusiast_logo]`). No other test may change result.
 
 ---
@@ -122,7 +123,7 @@ def test_bare_frac_of_an_empty_band_is_none_not_zero():
 
 Run:
 ```bash
-cd .claude/worktrees/edge-coverage/digitizer && "C:/Users/EE-LT-11030/Claude Personal/EMB-Bot/digitizer/.venv/Scripts/python.exe" -m pytest -q tests/test_edgeband.py
+cd .claude/worktrees/edge-coverage/digitizer && python -m pytest -q tests/test_edgeband.py
 ```
 Expected: collection error — `edgeband.py` does not exist.
 
@@ -205,7 +206,7 @@ def bare_frac(band: np.ndarray, thread: np.ndarray) -> float | None:
 
 Run:
 ```bash
-cd .claude/worktrees/edge-coverage/digitizer && "C:/Users/EE-LT-11030/Claude Personal/EMB-Bot/digitizer/.venv/Scripts/python.exe" -m pytest -q tests/test_edgeband.py
+cd .claude/worktrees/edge-coverage/digitizer && python -m pytest -q tests/test_edgeband.py
 ```
 Expected: 4 passed.
 
@@ -284,7 +285,7 @@ def test_holes_are_walked_as_well_as_the_outline():
 
 Run:
 ```bash
-cd .claude/worktrees/edge-coverage/digitizer && "C:/Users/EE-LT-11030/Claude Personal/EMB-Bot/digitizer/.venv/Scripts/python.exe" -m pytest -q tests/test_edgeband.py
+cd .claude/worktrees/edge-coverage/digitizer && python -m pytest -q tests/test_edgeband.py
 ```
 Expected: 5 failures, `AttributeError: module has no attribute 'bare_arcs'`.
 
@@ -364,7 +365,7 @@ def bare_arcs(shape: np.ndarray, thread: np.ndarray, w_px: float,
 
 Run:
 ```bash
-cd .claude/worktrees/edge-coverage/digitizer && "C:/Users/EE-LT-11030/Claude Personal/EMB-Bot/digitizer/.venv/Scripts/python.exe" -m pytest -q tests/test_edgeband.py
+cd .claude/worktrees/edge-coverage/digitizer && python -m pytest -q tests/test_edgeband.py
 ```
 Expected: 9 passed.
 
@@ -795,7 +796,7 @@ Expected: 17 passed.
 
 Run:
 ```bash
-cd .claude/worktrees/edge-coverage/digitizer && "C:/Users/EE-LT-11030/Claude Personal/EMB-Bot/digitizer/.venv/Scripts/python.exe" -m pytest -q -n auto
+cd .claude/worktrees/edge-coverage/digitizer && python -m pytest -q -n auto
 ```
 Expected: **3 failed, 1187+17 passed.** The three are the known Windows golden divergence. Read the summary line directly — do not pipe to `tail`.
 
@@ -820,7 +821,7 @@ git commit -m "feat(measure): per-shape edge attribution and the edgeband CLI"
 - [ ] **Step 1: Prepare the real lane in a pinned worktree**
 
 ```bash
-cd .claude/worktrees/edge-coverage/digitizer && PRO_PARITY_ROOT="G:/My Drive/EMB-Bot/Embroidery Files" PRO_PARITY_OUT="$TMPDIR/edgeband-run" "C:/Users/EE-LT-11030/Claude Personal/EMB-Bot/digitizer/.venv/Scripts/python.exe" tools/pro_parity/prep_both.py
+cd .claude/worktrees/edge-coverage/digitizer && PRO_PARITY_ROOT="G:/My Drive/EMB-Bot/Embroidery Files" PRO_PARITY_OUT="$TMPDIR/edgeband-run" python tools/pro_parity/prep_both.py
 ```
 
 Expect 15 designs under `$PRO_PARITY_OUT/real/`. A `FileNotFoundError` here means the Drive path is wrong — check it before anything else.
@@ -828,7 +829,7 @@ Expect 15 designs under `$PRO_PARITY_OUT/real/`. A `FileNotFoundError` here mean
 - [ ] **Step 2: Run the probe over the real lane**
 
 ```bash
-cd .claude/worktrees/edge-coverage/digitizer && "C:/Users/EE-LT-11030/Claude Personal/EMB-Bot/digitizer/.venv/Scripts/python.exe" tools/pro_parity/edgeband.py "$PRO_PARITY_OUT"/real/*
+cd .claude/worktrees/edge-coverage/digitizer && python tools/pro_parity/edgeband.py "$PRO_PARITY_OUT"/real/*
 ```
 
 - [ ] **Step 3: Write the findings doc**
