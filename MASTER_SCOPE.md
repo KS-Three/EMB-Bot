@@ -21,11 +21,10 @@ standing rulings below. **The code and instruments it describes are ON `main`**
 `selfconsistency.py` is in a plain checkout. This pointer said "in PR #157, not
 on `main`" until 2026-08-17. *(confirmed 2026-08-17 — `git ls-tree origin/main`)*
 
-**Last updated:** 2026-08-18. Dated history lives in
+**Last updated:** 2026-08-19. Dated history lives in
 [`docs/scope-history.md`](docs/scope-history.md); **this file is current state
 only.** See "How this document works" at the bottom for the rules that keep it
-that way, including the line budget. **This file is currently OVER that budget
-— a known debt.** Spend a real compaction pass before adding anything.
+that way, including the line budget.
 
 **Every claim below carries a pointer** in the form
 `(verb date — source)`: `confirmed` means checked against code or a passing
@@ -38,13 +37,10 @@ or move it.
 ## Live defects — believed true right now
 
 1. **RESOLVED — every shade of every decomposed region sewed in the same
-   colour.** `stage6_blend`/`stage6_streamline` computed a per-shade chart
-   snap (`shade_thread_idx`/`shade_rgb`) that nothing read; a block's thread
-   collapsed to `group[0].region.thread_index`, the region's one assigned
-   thread. `stage7_sequence._shade_blocks` now buckets a group's runs by
-   `shade_thread_index` (a run that never went through the blend tier falls
-   back to the base thread) into one `StitchBlock` per accepted shade, dark
-   to light. *(fixed 2026-08-19 — stage7_sequence._shade_blocks,
+   colour.** Chart snap was computed but never read; every block collapsed to
+   the region's one thread. `stage7_sequence._shade_blocks` now buckets runs
+   by `shade_thread_index` into one `StitchBlock` per accepted shade. *(fixed
+   2026-08-19 — stage7_sequence._shade_blocks,
    tests/test_shade_thread_emission.py)*
 
 2. **No width floor under satin — and the proposed fix is DISPROVED for flat
@@ -431,21 +427,16 @@ first is about orientation in third-party software, the second about which of
 EMB-Bot's own two encoders Studio picks. The code below settles it either way:
 the choice is per-project and the user is told which one ran.
 
-**CLOSED — a stale "unreachable from the real product" paragraph sat here until
-2026-08-17.** That 2026-08-09 finding (no path-selection logic, `/export` with no
-caller) was already false, and both halves ship: `digitizer.js:936` posts to
-`/export` with `DownloadStep.svelte:173` passing `preferService:
-isPurelyDigitized(project)`, so auto-digitized designs leave by pyembroidery
-convention while lettering/manual stays on the browser codec deliberately, that
-being the combination with sew evidence (`02cd97c`/`51746bd`, 2026-08-10). And
-`DownloadStep.svelte:268-284` warns BEFORE a browser-DST download — naming the
-symptom (quarter-turn rotation, colour stops possibly missing) and the way out
-(PES/EXP or an image-only project) — then confirms after from the observed `via`,
-not a prediction (`ad612c9`, 2026-08-12; test ids `dst-browser-encoder-note`,
-`dst-browser-encoder-downloaded`). **So the 2026-08-11 audit's interim mitigation
-is DONE, and `docs/project-review-2026-08-16.md` §1.1 plus its opportunity #5 are
-wrong to list it as available-and-not-done — it shipped four days before that
-review.** *(confirmed 2026-08-17 — code read, commits dated)*
+**CLOSED — a stale "unreachable from the real product" claim (2026-08-09: no
+path-selection logic, `/export` with no caller) sat here until 2026-08-17,
+already false by then.** Both halves ship: auto-digitized designs leave by
+pyembroidery `/export`, lettering/manual stays on the browser codec
+deliberately (the sew-evidenced combination), and the download step warns
+before every browser-DST download, naming the symptom and the way out. **So
+the 2026-08-11 audit's interim mitigation is DONE** —
+`docs/project-review-2026-08-16.md` §1.1 and its opportunity #5 are wrong to
+call it available-and-not-done; it shipped four days before that review.
+*(confirmed 2026-08-17 — code read, commits dated)*
 
 **Resolution path:** a sew-out or third-party read of a browser-encoded DST
 (the "third opinion" `digitizer/README.md` calls for). Fixing the codec itself
@@ -453,47 +444,30 @@ is explicitly Kent's call — every existing EMB-Bot DST is affected by any fix.
 
 **Independent corroboration, merged 2026-08-04 (PR #18, `pes-crossval`):** a
 browser-encode → pyembroidery-decode cross-validation harness
-(`tools/crossval-stitch-formats.mjs` + `tools/crossval_decode.py`, pinned by
-`test/crossval-stitch-formats.test.js`, part of the 267/267 engine count
-above) with DST as the control case reproduces the transposition
-independently (anti-transpose, rms 0.0) — the PR frames this as validating
-the harness method itself, not as new information about the DST bug. The
-harness's real news was about the other two encoders, previously unchecked
-against an independent implementation, and is now **FIXED, not just
-documented — merged 2026-08-05 (**PR #58**, `pes-exp-byte-framing-fix`):** the browser
-**PES** encoder's 5-byte stitch-stream mis-framing (one extra header pad
-byte plus two non-standard `0x9000` fields) is deleted and the
-graphics-offset field re-derived against the standard's PEC-relative-512
-baseline, its jump/trim PEC flags are no longer aliased to the same code,
-and it now maps design RGB to the nearest Brother PEC chart index instead of
-always falling back to sequential chart indices; the browser **EXP**
-encoder's 2-byte `0x80 0x03` trim record (which aborted pyembroidery-
-convention readers at the first trim) is replaced with the 4-byte Melco form
-readers expect. Harness re-run: PES now decodes identity/rms 0/15 stitches
-(was 354 phantom stitches, rms 234.6, transform "transpose"); EXP with a
-trim now decodes the whole design incl. the second colour block (was
-truncated at 11 of 15 stitches). DST is untouched and still reproduces its
-documented transposition, confirming the fix didn't touch it. Full writeup
-and before/after: `docs/pes-crossval-verdict-2026-08-04.md` (root-cause
-memo) and this file's "Last updated" entry above (fix + re-run numbers). Both
-encoders had no browser-side importer to create a migration trap, so — per
-the memo's section 5 — this fix carried none of the DST codec's migration
-risk and didn't need to wait on Kent's sign-off the way that fix would;
-Export-formats confidence below is upgraded accordingly.
+(`tools/crossval-stitch-formats.mjs`) reproduces the DST transposition
+exactly (anti-transpose, rms 0.0) — validating the harness itself, not new
+information about the DST bug. It also found the browser **PES**/**EXP**
+encoders broken independently, both now **FIXED, merged 2026-08-05 (PR #58,
+`pes-exp-byte-framing-fix`)**: PES's 5-byte stitch-stream mis-framing (extra
+header pad byte, two non-standard `0x9000` fields) is deleted and its
+palette/jump-flag bugs fixed — was 354 phantom stitches, rms 234.6,
+transform "transpose"; now identity, rms 0, 15/15 stitches. EXP's 2-byte
+trim record (fatal to pyembroidery-convention readers at the first trim) is
+replaced with the standard 4-byte form — was truncated at 11 of 15 stitches;
+now decodes the whole design incl. the second colour block. DST is
+untouched, still reproducing its documented transposition. Neither encoder
+had a browser-side importer, so — unlike DST — this carried no migration
+risk and didn't need to wait on Kent's sign-off; Export-formats confidence
+below is upgraded accordingly. Full writeup and before/after:
+`docs/pes-crossval-verdict-2026-08-04.md`.
 
 **Fifth independent corroboration, 2026-08-10 (Ink/Stitch's `pystitch`):**
-Ink/Stitch's own DST reader/writer (`src/pystitch/DstReader.py` /
-`DstWriter.py` — the format library backing a mature, actively-maintained
-open-source tool with 20,000+ users) uses the identical low-nibble=X/
-high-nibble=Y convention the four sources above already established,
-verified directly against both files' source
-(`docs/inkstitch-research-2026-08-10.md` §6). A fifth independent
-confirmation EMB-Bot's own `src/dst.js`/`dstimport.js` table is the
-transposed outlier, not a new source of doubt. **This does not change the
-verdict or the recommended fix** — swap the movement bits to the consensus
-table, still Kent's call, still gated on a sew-out per the section above —
-it's a stronger citation to put in front of him if he wants more evidence
-before authorizing it.
+Ink/Stitch's own DST reader/writer — the format library behind a mature,
+20,000+-user open-source tool — uses the identical low-nibble=X/high-nibble=Y
+convention the four sources above already established, verified directly
+against source (`docs/inkstitch-research-2026-08-10.md` §6). **Does not
+change the verdict or fix** — still Kent's call, still gated on a sew-out;
+just a stronger citation to put in front of him.
 
 ### Font license compliance — RESOLVED by removal
 
