@@ -232,39 +232,27 @@ class PipelineConfig:
     # garment_id=left_chest) landed within a second of that (40.8s),
     # so treated as a stable p50, not a fluke.
     #
-    # Set to roughly 2x the observed warm run (2 * 39.96 = 79.9s), rounded up
-    # to a round number: 90s (≈2.25x the sample, not a clean 2x — the round-
-    # number step moved it further than the multiplier alone would have,
-    # still floor-60-compliant). This is a REAL trade-off, not a free win, and
-    # is recorded here rather than left implicit: 90s comfortably covers a
-    # warm call with margin, but is SHORTER than the measured cold
-    # (first-use, cache-miss) path (155.98s). Left unmitigated this is worse
-    # than "the first job is slow": `subprocess.run(timeout=)` kills the
-    # worker externally, which skips `sam2_worker._ensure_checkpoint`'s own
-    # `finally: tmp.unlink()` cleanup, so a timed-out download is orphaned as
-    # a `.part` file and EVERY later job would repeat the identical doomed
-    # download-and-timeout cycle — a permanent, silent degrade to "SAM2
-    # always falls back", not a one-time cost a deploy step can shrug off.
-    # The actual mitigation: `sam2_worker.main` checks whether the checkpoint
-    # is already cached BEFORE attempting anything and refuses fast (exit 4,
-    # an honest reason) instead of racing this timeout when it isn't.
-    # `sam2_isolated/README.md`'s pre-warm step (run the worker once by hand
-    # to populate the cache) is therefore a REQUIRED part of standing this
-    # lane up, not optional advice — skipping it means every real job
-    # degrades to the classical segmenter, fast and loud, until someone runs
-    # it. The alternative — sizing the timeout off the cold path instead —
-    # was rejected: it would let one hung call block the single-worker queue
-    # for 2.5+ minutes on every occurrence, which is the failure this bound
-    # exists to prevent, to buy safety for a cost the pre-warm step already
-    # avoids. Corroborated by a real
-    # timeout firing correctly in this same session: a `points_per_side`
-    # sweep (see that field's own comment) drove one call's SAM2 subprocess
-    # past the THEN-180s default (the bound that fired), and the FULL
-    # digitize() call (SAM2's own 180s wait, plus the classical fallback
-    # that then ran, plus normal pipeline overhead) wall-clocked at 190s
-    # end to end — two numbers for one event, not a contradiction — and it
-    # degraded to the classical segmenter exactly as designed, not a hang.
-    photo_segment_sam2_timeout_s: float = 90.0
+    # Originally set to roughly 2x the observed warm run (2 * 39.96 = 79.9s,
+    # rounded up to 90s), on the theory that `sam2_isolated/README.md`'s
+    # required pre-warm step (populate the checkpoint cache by hand before
+    # this lane is ever used for a real job) keeps every real job off the
+    # 155.98s cold path entirely, so sizing the timeout off the cold number
+    # instead would only be buying safety a mandatory setup step already
+    # provides — see this field's git history for that reasoning in full,
+    # including why the alternative was rejected at the time.
+    #
+    # Task 5 (2026-08-18/19, this worktree's own isolated-venv rebuild) found
+    # that trade-off did not hold up: 90s did not reliably cover a real job
+    # even with the checkpoint cache warm. Re-sized off the measured COLD
+    # path instead — 240s is ~1.54x the 155.98s cold-start baseline (Task 6,
+    # 2026-08-10, see the MEASURED paragraph above), not a multiple of the
+    # warm one — so this bound now holds regardless of which path a given
+    # job actually takes. Still short enough that one hung call cannot
+    # starve the single-worker job queue (see this field's own opening
+    # paragraph) for more than a few minutes.
+    #
+    # measured 156 s cold start 2026-08-11; 90 s guaranteed a first-job timeout
+    photo_segment_sam2_timeout_s: float = 240.0
 
     # Stage 3
     min_detail_mm: float = 1.5         # blueprint hard constraint

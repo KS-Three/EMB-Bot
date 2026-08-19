@@ -49,19 +49,20 @@ SAM2_WORKER_PATH = Path(__file__).resolve().parent / "sam2_worker.py"
 _SAM2_ISOLATED_DIR = Path(__file__).resolve().parents[1] / "sam2_isolated"
 
 
-def _default_sam2_venv_python() -> Path:
+def _resolve_venv_python(venv_dir: Path) -> Path:
     """POSIX venvs put the interpreter under bin/, Windows under Scripts/.
     Prefer whichever actually exists; POSIX is the default name used in the
     "missing" reason message when neither does (matching this repo's other
     tooling, which targets POSIX first — see COOKBOOK.md)."""
-    posix = _SAM2_ISOLATED_DIR / "venv" / "bin" / "python"
-    windows = _SAM2_ISOLATED_DIR / "venv" / "Scripts" / "python.exe"
+    posix = venv_dir / "bin" / "python"
+    windows = venv_dir / "Scripts" / "python.exe"
     if windows.is_file() and not posix.is_file():
         return windows
     return posix
 
 
-SAM2_VENV_PYTHON = _default_sam2_venv_python()
+SAM2_VENV_DIR = _SAM2_ISOLATED_DIR / "venv"
+SAM2_VENV_PYTHON = _resolve_venv_python(SAM2_VENV_DIR)
 
 # Hard upper clamp on `cfg.photo_segment_sam2_timeout_s`, applied here in the
 # seam regardless of what a caller asked for. `PipelineConfig` round-trips
@@ -80,25 +81,60 @@ SAM2_VENV_PYTHON = _default_sam2_venv_python()
 SAM2_TIMEOUT_HARD_CAP_S = 300.0
 
 
-def sam2_segmentation_unavailable_reason() -> str | None:
+def sam2_segmentation_unavailable_reason(venv_dir: Path | None = None) -> str | None:
     """None when the isolated SAM2 venv + worker script look runnable here;
     otherwise one honest sentence why not.
+
+    `venv_dir` defaults to the real deploy-time location (`SAM2_VENV_DIR`,
+    i.e. `sam2_isolated/venv`) and only exists as a parameter so tests can
+    point this at a `tmp_path` fixture instead of building a real venv —
+    every real caller (`sam2_segment_seam` included) calls this with no
+    argument.
+
+    Checks, in order: the worker script exists; the venv's python
+    interpreter exists (a husk venv — `Scripts/`/`bin/` stubs with nothing
+    real installed — still passes this one, which is exactly the gap the
+    2026-08-18 probe found: such a husk read as "available" here and then
+    died mid-job with "worker exited 106: failed to locate pyvenv.cfg");
+    `pyvenv.cfg` exists (venv creation actually completed); and
+    `Lib/site-packages` exists (packages actually got installed into it).
+    The last two are what a husk venv fails and a real one never does — a
+    real `python -m venv` always writes `pyvenv.cfg` before anything else,
+    and every subsequent `pip install` needs `Lib/site-packages` to unpack
+    into.
 
     ENVIRONMENT-ONLY: a per-call runtime failure (a subprocess crash, a
     timeout, a first-use checkpoint download failing on a machine with no
     route to Meta's release host) is not knowable from files on disk alone,
     so it is NOT covered here — `sam2_segment_seam` reports that half itself,
     in its own return value. The two never disagree about the
-    environment-level half because both read the exact same two paths. Same
+    environment-level half because both read the exact same paths. Same
     split, for the same reason, as
     `stage1_photo_prep.background_removal_unavailable_reason`.
     """
     if not SAM2_WORKER_PATH.is_file():
         return f"SAM2 worker script missing at {SAM2_WORKER_PATH}"
-    if not SAM2_VENV_PYTHON.is_file():
+
+    if venv_dir is None:
+        venv_dir = SAM2_VENV_DIR
+        venv_python = SAM2_VENV_PYTHON
+    else:
+        venv_python = _resolve_venv_python(venv_dir)
+
+    if not venv_python.is_file():
         return (
-            f"isolated SAM2 venv not found at {SAM2_VENV_PYTHON} — see "
+            f"isolated SAM2 venv not found at {venv_python} — see "
             "digitizer/sam2_isolated/README.md to build it"
+        )
+    if not (venv_dir / "pyvenv.cfg").is_file():
+        return (
+            f"sam2 venv incomplete at {venv_dir}: pyvenv.cfg missing "
+            "(rebuild per sam2_isolated/README.md)"
+        )
+    if not (venv_dir / "Lib" / "site-packages").is_dir():
+        return (
+            f"sam2 venv incomplete at {venv_dir}: Lib/site-packages missing "
+            "(rebuild per sam2_isolated/README.md)"
         )
     return None
 
