@@ -1,200 +1,301 @@
 ---
 name: run-emb-bot
-description: Launch, build, and test EMB-Bot — the Svelte Studio app, the JS stitch engine's Node test harness, and the Python digitizer service. Use when Kent says "run embot", "run emb bot", "start embot", "pull up emb bot", or otherwise asks to run, start, build, verify, or test EMB-Bot, or after changing src/, app/, tools/, or digitizer/.
+description: Launch, build, drive, screenshot, and test EMB-Bot — the Svelte Studio app, the JS stitch engine's Node harness, and the Python digitizer service. Use when Kent says "run embot", "run emb bot", "start embot", "pull up emb bot", or otherwise asks to run, start, build, screenshot, verify, or test EMB-Bot, or after changing src/, app/, tools/, or digitizer/.
 ---
 
 # Running EMB-Bot
 
-EMB-Bot has two independent stacks: a browser-side JS stitch engine (primary
-product, no backend) and an optional Python digitizer service.
+Two independent stacks: a browser-side JS stitch engine (the product, no
+backend) and an optional Python auto-digitizer service on `127.0.0.1:8721`.
+
+**Paths below are relative to the repo root.** Run the driver from the repo
+root or with an absolute path — see Troubleshooting.
 
 ## First — decide which kind of "run" this is
 
-This matters more than anything else in this file, and getting it wrong wastes
-everyone's time.
+Getting this wrong wastes the most time of anything in this file.
 
-**Kent wants to use EMB-Bot in his own browser** ("run embot", "pull up emb
-bot", "start it up"). This is the common case. He is on **Windows**, at
-`<repo-root>`. Do **not** start a server in your own
-sandbox — a server you start lives on *your* localhost, which his browser
-can never reach, and handing him a `localhost:5173` link from a cloud
-container is a dead end. Jump to *Launch on Kent's machine* below and give
-him the paste blocks verbatim.
+**Kent wants EMB-Bot in his own browser** ("run embot", "pull up emb bot").
+He is on **Windows**. A server you start in a cloud sandbox lives on *your*
+localhost and his browser can never reach it — there is no tunnel out. Give
+him the *Launch on Kent's machine* block, and if he wants to see something
+now, drive it here and send screenshots.
 
-**You need to run it yourself** to verify a change you just made. Then the
-sandbox sections apply — *Verifying a UI change live*, *JS engine tests*, and
-the Linux forms under *Python digitizer*.
+**You need to run it yourself** to verify a change. That's everything else
+in this file.
 
-When it's genuinely ambiguous, ask which one before starting anything.
+Ambiguous? Ask before starting anything.
 
-## Launch on Kent's machine (Windows)
+---
 
-Give him exactly this, in this shape. Both windows stay occupied — each
-command holds its terminal until Ctrl+C, so they cannot share one window.
+## Run (agent path) — the driver
 
-**Terminal Window 1 — Studio (required).** Paste:
+`.claude/skills/run-emb-bot/driver.mjs` is a headless-Chromium harness for
+the Studio. It starts the dev server if one isn't up, drives the real UI,
+and writes screenshots.
+
+Written because `chromium-cli` is **not** on PATH in this sandbox class and
+the `playwright` MCP server is session-scoped — neither is something a future
+agent can count on. Playwright itself resolves out of `app/node_modules`.
+
+### One command — proves both lanes work
+
+```bash
+node .claude/skills/run-emb-bot/driver.mjs smoke --serve --port 5199
+```
+
+Runs the lettering lane (pure browser engine) and, **if** the digitizer
+service is answering on 8721, the artwork auto-digitize lane. Starts its own
+Vite on 5199 and tears it down. Verified output:
+
+```
+  text lane: 2452 stitches · 127×16 mm · 5×7 in hoop
+  artwork lane: 2,166 stitches · 80×17 mm · 2 colors
+```
+
+Exit 0 = both lanes produced real stitches and nothing unexpected hit the
+console. Drop `--serve` to reuse a dev server you already have on 5173.
+Screenshots → `/tmp/emb-shots/` (`--shots <dir>` to move them).
+
+### Interactive — pipe commands to the REPL
+
+```bash
+node .claude/skills/run-emb-bot/driver.mjs repl <<'EOF'
+btn Logo patch
+upload input[type=file] app/e2e/fixtures/enthusiast_logo.png
+waitbtn Digitize
+btn Digitize
+ss my-shot
+net 8721
+console errors
+EOF
+```
+
+Each command prints `<< <name>` when it finishes (`<< ERR …` on failure,
+which never kills the REPL), so a tmux-driven caller can poll
+`capture-pane` for the marker instead of sleeping.
+
+| command | what it does |
+|---|---|
+| `nav [path]` | goto base URL + path |
+| `ss [name]` | screenshot → `/tmp/emb-shots/NN-name.png` |
+| `outline` | headings + every visible button/input, with labels — **use this instead of dumping HTML** |
+| `btn <label>` | click a button by text; **exact match first**, then substring; prints what it resolved and how many matched |
+| `waitbtn <label>` | wait for a button whose text is exactly this (needed after `upload`) |
+| `click <sel>` / `fill <sel> <v>` / `type <sel> <v>` / `press <key>` | raw Playwright |
+| `upload <sel> <path>` | real file upload, path relative to repo root |
+| `wait <sel>` / `waittext <text>` | wait for a selector / text |
+| `text <sel>` / `html [sel]` / `eval <js>` | read the page |
+| `net [filter]` | requests the page made — `net 8721` shows whether a click reached the digitizer |
+| `console [errors]` | console messages, each with the URL that produced it |
+| `reload` / `quit` | |
+
+`eval` takes an expression and awaits a promise, so you can poll:
+
+```bash
+eval new Promise(r=>setTimeout(()=>r(document.body.innerText.match(/[\d,]+ stitches[^\n]*/)?.[0]||'none'),30000))
+```
+
+---
+
+## Prerequisites
+
+**No `apt-get` was needed** in this container. Node 22 and `/usr/bin/python3.12`
+were already present, and Chromium is pre-cached at `/opt/pw-browsers/chromium`
+(the driver and `app/playwright.config.js` both pin that path — outbound access
+to Playwright's browser CDN is blocked here, so an unpinned launch fails with
+no download fallback).
+
+`tesseract` is **not** installed; the digitizer's OCR tests skip rather than fail.
+
+## Setup
+
+```bash
+cd app && npm install                      # ~6s warm, 152 packages
+```
+
+Digitizer (only needed for image auto-digitize). **`python3.12` explicitly** —
+the default `python3` here is 3.11 and `pyproject.toml` sets
+`requires-python = ">=3.12"`:
+
+```bash
+cd digitizer
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -e ".[service,dev]"    # a few minutes: OpenCV, scipy, scikit-image
+.venv/bin/python -m digitizer_service &                # binds 127.0.0.1:8721
+curl -s http://127.0.0.1:8721/health | head -c 200     # {"status":"ok","service":"digitizer",...}
+```
+
+On Linux it's `.venv/bin/python` — the digitizer README shows the Windows
+`.venv/Scripts/python.exe` form throughout.
+
+## Direct invocation — no browser
+
+Hit the service straight (this is how to check a digitizer change without the UI):
+
+```bash
+curl -s -X POST http://127.0.0.1:8721/digitize \
+  -F "image=@app/e2e/fixtures/enthusiast_logo.png;type=image/png" \
+  -F 'config={"target_width_mm":80,"max_colors":6}'
+# -> {"job_id":"…","state":"running","cached":false}
+curl -s http://127.0.0.1:8721/jobs/<job_id>
+# done -> stats: {"stitch_count": 2351, "color_changes": 1, "trims": 20,
+#                 "jumps": 37, "size_mm": [80.5, 16.6], "thread_m_total": 4.57}
+```
+
+The **JS** engine's own digitize path is separate and reachable from Node:
+
+```bash
+node tools/run-digitize.mjs app/e2e/fixtures/enthusiast_logo.png
+# -> {"colors":2,"stitches":6536,"satin":6,"fill":7,"sizeMM":[127,25.4]}
+```
+
+Also in `tools/`: `run-flatten.mjs` (color-flatten only), `render-dst.mjs`
+(DST → PNG for visual inspection), `png.mjs` (decode/encode helper).
+
+## Test
+
+```bash
+node --test                    # engine: 356 tests, 350 pass, 6 skip, ~6.5s
+cd app && npm test             # Studio vitest: 40 files, 768 tests, ~27s
+cd app && npx playwright test  # e2e: 13 tests in 7 spec files, ~48s
+cd digitizer && .venv/bin/python -m pytest -q -n auto
+```
+
+`npx playwright test` starts its own dev server on **5183** and stops it, so
+nothing needs to be running first. It also **auto-starts the digitizer**
+itself if `digitizer/.venv` exists (it checks both `bin/python` and
+`Scripts/python.exe`).
+
+## Run (human path — Kent's Windows machine)
+
+One command; it resolves the repo root from `$PSScriptRoot`, so there is no
+path to fill in:
 
 ```powershell
-cd <repo-root>\app
-npm install
-npm run dev
+.\tools\start-emb-bot.ps1          # -NoDigitizer to skip the Python half
 ```
 
-**Terminal Window 2 — auto-digitizer (optional).** Paste:
+Or two windows by hand (each blocks until Ctrl+C, so they can't share one):
 
 ```powershell
-cd <repo-root>\digitizer
-if (-not (Test-Path .venv\Scripts\python.exe)) { py -3.12 -m venv .venv; .venv\Scripts\python -m pip install -e ".[service,dev]" }
-.venv\Scripts\python -m digitizer_service
+cd <repo>\app ; npm install ; npm run dev
+cd <repo>\digitizer ; .venv\Scripts\python -m digitizer_service
 ```
 
-**Then open the browser** to `http://localhost:5173` — typed into the address
-bar with the `http://` prefix.
+Then browser → `http://localhost:5173`, **with** the `http://` prefix.
 
-`npm install` is a no-op after the first run, so the Window 1 block is safe to
-paste every time. The Window 2 block self-heals: it builds the venv on first
-use and skips straight to the service afterward. First-time setup pulls
-OpenCV, numpy, scipy, shapely and scikit-image, so it takes a few minutes.
+### Confirmed failure modes on Kent's machine
 
-Window 2 is only needed for **image auto-digitize**. Text and lettering work
-with Window 1 alone; without the service the Studio just logs a failed probe
-to `127.0.0.1:8721`.
+Each has actually happened; check in this order.
 
-### One-command alternative
+1. **No server running.** `Test-NetConnection -ComputerName localhost -Port 5173`
+   → `TcpTestSucceeded : False` means start Window 1, not debug the browser.
+   (`PingSucceeded : True` only says loopback resolves.)
+2. **`Test-NetConnection` with no arguments** silently checks
+   `internetbeacon.msedge.net` and reports success while telling you nothing.
+3. **URL typed into PowerShell** → `CommandNotFoundException`. It goes in the
+   address bar.
+4. **Scheme omitted** — Chrome/Edge auto-upgrade bare `localhost:5173` to
+   HTTPS; Vite serves plain HTTP.
+5. **A different port.** Vite auto-increments to 5174, 5175… and prints what
+   it bound. `start-emb-bot.ps1` assumes 5173 and will open the wrong URL.
+6. **Server never started.** `app/scripts/copy-engine.mjs` hard-throws
+   `missing engine file: <name>` if any of the **22** files it copies is
+   absent from `src/`; it runs in `predev`, so Vite never boots. The error is
+   above where the Vite banner would be.
+7. **Wrong tree.** A `.claude/worktrees/` lane has its own `node_modules` and
+   `src/`. `git worktree list` confirms which is being served.
+8. **Python too old.** `requires-python = ">=3.12"`; on 3.11 the install dies
+   with `Package 'digitizer-core' requires a different Python`. `py --list`,
+   then use the launcher form `py -3.12` (a bare `python` may resolve older).
 
-`tools/start-emb-bot.ps1` does all of the above — opens both windows, waits
-for the port to actually accept connections, then launches the browser. From
-any PowerShell window:
+---
 
-```powershell
-<repo-root>\tools\start-emb-bot.ps1
-```
+## Gotchas
 
-Add `-NoDigitizer` to skip Window 2. The script resolves its own repo root
-from `$PSScriptRoot`, so it survives the repo being moved or cloned elsewhere.
+These are the ones that cost real time here.
 
-### Prerequisite: Python 3.12+
+- **`btn Digitize` clicks the wrong thing if you substring-match.** Three
+  controls match "Digitize": the element chip **"Digitized · empty"** (first
+  in DOM order), **"Digitize as flat art"** (only flips `forced_class`), and
+  the real **"Digitize"**. Clicking the chip *succeeds* and submits nothing —
+  you then debug the service for an hour. The driver's `btn` tries exact
+  first and prints every candidate; `net 8721` confirms a POST actually left.
 
-`digitizer/pyproject.toml` sets `requires-python = ">=3.12"`. On 3.11 the
-install dies with `ERROR: Package 'digitizer-core' requires a different
-Python: 3.11.x not in '>=3.12'`. Check with `py --list` and substitute the
-version that's actually installed. Note the Windows launcher form `py -3.12`
-is what the paste block uses — a bare `python` may resolve to an older
-interpreter even when 3.12 is present.
+- **The Digitize button does not exist right after `upload`.** It mounts only
+  once the file has been read into `sourcePng`. Immediately after upload, *no*
+  button matching `/digitiz/i` is in the DOM. Always `waitbtn Digitize` first.
 
-### When it "doesn't work" — confirmed failure modes
+- **The service rejects unknown config fields with 400.** It's
+  `target_width_mm`, not `width_mm` →
+  `{"detail":"unknown config field(s): width_mm"}`. The allowlist is
+  `PipelineConfig`'s 70 dataclass fields:
+  `.venv/bin/python -c "from dataclasses import fields; from digitizer_core.config import PipelineConfig; print(sorted(f.name for f in fields(PipelineConfig)))"`
 
-Each of these has actually happened. Check in this order:
+- **`app/scripts/ensure-digitizer.mjs` is Windows-only.** It looks for
+  `.venv/Scripts/python.exe` and, on Linux, just warns
+  `digitizer venv not found (…Scripts/python.exe)` and exits 0. So
+  `npm run dev` **never** auto-starts the digitizer here — start it yourself.
+  (The e2e specs handle both layouts; only this predev hook doesn't.)
 
-1. **No server is running.** By far the most common. `Test-NetConnection
-   -ComputerName localhost -Port 5173` reporting `TcpTestSucceeded : False`
-   means nothing is listening — the fix is to start Window 1, not to debug
-   the browser. Note `PingSucceeded : True` in that same output means only
-   that loopback resolves; it says nothing about the server.
-2. **`Test-NetConnection` run with no arguments.** It silently falls back to
-   an internet check against `internetbeacon.msedge.net` and reports success
-   while telling you nothing about port 5173. The arguments are required.
-3. **The URL typed into PowerShell.** `http://localhost:5173` in a shell
-   returns `CommandNotFoundException` — it belongs in the browser address bar.
-4. **Scheme omitted in the browser.** Chrome and Edge auto-upgrade a bare
-   `localhost:5173` to HTTPS; Vite serves plain HTTP, so a healthy server
-   still fails to load. Type the `http://` prefix.
-5. **A different port.** Vite auto-increments to 5174, 5175… when 5173 is
-   taken, and prints whichever it bound. Read Window 1's own output rather
-   than assuming. `start-emb-bot.ps1` assumes 5173 and will open the wrong
-   URL if Vite moved — check Window 1 in that case.
-6. **The server never started.** `app/scripts/copy-engine.mjs` hard-throws
-   `missing engine file: <name>` if any of the 23 files it copies is absent
-   from `src/`, and that runs in `predev` — so Vite never boots. The error is
-   in Window 1's output, above where the Vite banner would be.
-7. **Wrong tree.** If a `.claude/worktrees/` lane is checked out, `app/` there
-   has its own `node_modules` and its own `src/` state. `git worktree list`
-   confirms which tree is being served.
+- **A green `npx playwright test` can be a smaller run than you think.** The
+  digitize specs `test.skip` when the service is down. 13 tests pass with it
+  up. Confirm the service is healthy before reading a green run as coverage.
 
-Expect a cosmetic `favicon.ico` 404 in the console in all cases.
+- **Playwright *can* upload files.** `setInputFiles` on the hidden
+  `input[type=file]` works headless — earlier notes here claimed agent
+  browsers can't upload and that the `tools/` harness was the only way. It
+  isn't; both paths work.
 
-## Studio app internals (`app/`)
+- **`npm run dev` survives a killed npm.** npm doesn't forward SIGTERM to
+  Vite, so killing the wrapper leaves the port bound and the next run dies on
+  `EADDRINUSE`. The driver spawns `detached: true` and kills the whole process
+  group. By hand: `lsof -ti:5173 -sTCP:LISTEN | xargs -r kill`.
 
-Svelte + Vite. This is what most feature work touches.
+- **Never pipe a test run to `tail`** — you get tail's exit code, so a red run
+  reads green. (CLAUDE.md says this for pytest; it bites identically for the
+  driver: `node driver.mjs smoke | tail` reported `EXIT=0` on a failing run.)
+  Redirect to a file and read it.
 
-- `npm run build` — production build (also runs `predev`/`prebuild`'s
-  `node scripts/copy-engine.mjs` automatically, which syncs the engine from
-  `src/` into the app).
-- `npm run test` — Vitest (`vitest run`).
-- `npm run preview` — serve the production build locally.
+- **A "404 Not Found" console error is almost always the favicon.** The
+  message text is generic — the URL is only in `location()`. The driver
+  records and prints it; its smoke filters favicon 404s and the digitizer
+  probe's `ERR_CONNECTION_REFUSED` (expected when the service is down).
 
-If you changed anything under `src/`, the Studio picks it up via
-`copy-engine.mjs` on its own `predev`/`prebuild` hook — no manual step needed.
+- **`node --test` and `tools/run-digitize.mjs` write into the repo root** —
+  `scratch_flat.png`, `scratch_new.dst`, `scratch_new_colors.json`. Gitignored,
+  but per CLAUDE.md footgun #5 `scratch_*` is *not* safe to delete blindly.
 
-## Verifying a UI change live
+- **DST orientation.** When checking DST for *correctness* rather than
+  round-tripping, decode through pyembroidery/the service's `/export`, never
+  `src/dstimport.js` — CLAUDE.md footgun #1.
 
-Two ways, both real browsers. Prefer either over claiming a frontend change
-works from reading the diff.
+## Troubleshooting
 
-**The e2e suite** (`app/e2e/*.spec.js`, 7 specs) starts its own dev server on
-port 5183 and tears it down again, so it needs nothing running first:
+- **`Cannot find module '…/app/.claude/skills/run-emb-bot/driver.mjs'`** —
+  you're in `app/`. The path is relative to the **repo root**; use an absolute
+  path or `cd` up first.
 
-```
-cd app
-npx playwright test                    # or: npx playwright test e2e/wizard-smoke.spec.js
-```
+- **`nothing serving http://localhost:PORT — start it, or pass --serve`** —
+  the driver won't guess. Add `--serve`, or start `npm run dev` yourself.
 
-Chromium browsers are installed on Kent's machine as of 2026-08-14 (`npx
-playwright install chromium` if a fresh machine reports a missing browser).
+- **Driver appears to hang with no output** — `repl` mode blocks on stdin by
+  design. Pipe it a heredoc, or use `smoke`.
 
-**Interactive driving** — with `npm run dev` running **in your own sandbox**,
-the `playwright` MCP server (declared in `.mcp.json`, launched via
-`tools/mcp-playwright.mjs`) drives a headless browser against
-`http://localhost:5173`: navigate the wizard, click through garment/font
-pickers, take snapshots. Use this for exploring; use the suite for proving.
+- **`ERROR: Package 'digitizer-core' requires a different Python: 3.11.x not
+  in '>=3.12'`** — you used the default `python3`. Use `python3.12 -m venv`.
+
+- **Studio console shows repeated `ERR_CONNECTION_REFUSED` to 127.0.0.1:8721** —
+  the digitizer isn't running. Expected; text/lettering is unaffected and the
+  Content step shows an offline note with a "check again" link.
 
 ## Standalone bundle — deleted, do not rebuild
 
-`EMB-Bot-standalone.html` is **deleted, 2026-08-04 (Kent's call)**.
-`tools/bundle.mjs` is dead code — do not run it, do not regenerate the file.
-Test the plain `EMB-Bot.html` + `src/` combo, or the Studio, instead.
+`EMB-Bot-standalone.html` was deleted 2026-08-04 (Kent's call) and
+`tools/bundle.mjs` is dead code. Test `EMB-Bot.html` + `src/`, or the Studio.
 
-## JS engine tests — no browser needed
+## Where things live
 
-`src/*.js` modules double as CommonJS for Node tests (`test/*.test.js`,
-covers every non-DOM module):
-
-```
-node --test
-```
-
-To exercise the digitizing pipeline itself against a real image without a
-browser, use the Node-side harness in `tools/`:
-
-- `tools/run-digitize.mjs` — run the full digitize pipeline on an image
-- `tools/run-flatten.mjs` — run just the color-flatten step
-- `tools/render-dst.mjs` — render a `.DST` file to PNG for visual inspection
-- `tools/png.mjs` — PNG decode/encode helper used by the above
-
-These exist specifically because the browser tool available in agent
-sessions can't do file uploads — this is the way to test digitizing on a
-real image in this environment.
-
-## Python digitizer (`digitizer/`)
-
-Setup, test and service commands live in `digitizer/README.md` — follow it
-rather than duplicating it here. Two things that file gets wrong or omits:
-
-- **In a Linux sandbox**, use `.venv/bin/python`, not the
-  `.venv/Scripts/python.exe` form the README shows (that's Windows). Swap
-  `Scripts` for `bin` and drop `.exe` throughout. Where the default `python3`
-  is older than 3.12, create the venv with an explicit `python3.12`.
-- Run tests as `python -m pytest`, never a bare `pytest` — the module form
-  puts the working directory on `sys.path` so `digitizer_core` imports
-  without a separate install step.
-
-`GET /health` on `127.0.0.1:8721` returns the brand and format inventory —
-confirms the service is really up, not merely launched.
-
-## Where things live, and the DST trap
-
-Architecture and the which-folder-does-what map are in COOKBOOK.md; the DST
-codec's axis bug is footgun #1 in CLAUDE.md. Both are read before this skill,
-so they aren't repeated here. The one operational consequence worth carrying:
-when verifying DST output for **correctness** rather than round-tripping,
-decode through pyembroidery, never through `src/dstimport.js`.
+Architecture is in COOKBOOK.md; the DST axis bug is CLAUDE.md footgun #1.
+Both are read before this skill, so they aren't repeated here.
