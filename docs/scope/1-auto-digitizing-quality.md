@@ -1895,3 +1895,62 @@ entry above) and `becker_marine_logo.png` was excluded from calibration —
 its artwork is 146×91 px for a 90 mm design (1.6 px/mm, far under
 `PHOTO_MIN_PX_PER_MM=10.0`), so it is a garbage-in case unrelated to this
 check's accuracy.
+
+**Found 2026-08-20 (this session, Kent reporting by eye on a pro-parity chart)
+— `logo_hotel_fremont.webp` at 92.5mm/patch: two real, root-caused defects
+and two refuted misreads, none of them the `enthusiast_logo` coverage-drop
+mechanism.** Kent flagged five things off a rendered comparison chart
+(`digitizer_core, 92.5mm, patch`, 10,319 stitches vs. the professional
+Wilcom file's 15,589 — decoded with pystitch, matching the chart's own
+count). Investigated each against the actual segmentation/plan data, not
+the render:
+
+1. **"THE" incomplete / missing EAT\|STAY\|PLAY — real, but not a coverage
+   drop.** The letter shapes exist and `stitched: true` (confirmed directly:
+   `S42e426b8`, `S3ddcec6c`, `S666da526` for "THE"; `Sbe6c9978`, `Sac264dc6`
+   for the tagline). They're 2-5 mm² at 0.53-0.98mm column width —
+   `preflight` already names this class: `LETTERING_TOO_SMALL` (38 shapes at
+   this config) and `STITCHES_TOO_SHORT` (65% of satin stitches under the
+   1mm needle minimum, "thread breaks are likely"). Too small to read, and
+   likely too small to sew reliably — not dropped. This is a genuine
+   physical-scale limitation the instrumentation already surfaces; nothing
+   new to build.
+2. **Satin border not clean — real, newly root-caused.** The rope-twist
+   border should be one continuous stroke. It sews as **~21 disconnected
+   satin fragments** (2-20 mm² each, all thread 0862), each with its own
+   start/stop. Directly explains `TRIM_HEAVY` (13.0 trims/1000 here vs. the
+   professional file's 21 trims over 15,589 stitches — roughly an order of
+   magnitude fewer per stitch). Not filed as a fix — root cause (why the
+   segmenter fragments a thin continuous rope motif into ~21 islands instead
+   of joining them) is not found, same evidentiary standard as the
+   `enthusiast_logo` bracket entry above.
+3. **`CLASSIFIED_GRADIENT` on genuinely flat vector art — confirmed
+   misclassification, but NOT the fix.** The rope's diagonal light/dark
+   banding is almost certainly what trips stage 0's classifier on artwork
+   the chart's own caption calls "flat vector-style badge art, 4 colors."
+   Tested directly: `forced_class="flat"` on the same job produces **worse**
+   output — 2 colors instead of 5, no letter counters at all, a solid
+   crushed mass (screenshots in chat, not committed — the `hf-flat-mono.png`
+   render). So this is not a one-flag fix; neither route currently has a
+   good answer for fine serif text or a twisted-rope motif at this scale.
+   Worth recording so nobody re-tries `forced_class=flat` as the fix here.
+4. **"Missing backfill stitching for support" — refuted.** Underlay is
+   present: 78 underlay runs across the plan, confirmed directly present
+   under 5 of 6 sampled small letter shapes (`plan.iter_runs()`, `kind ==
+   "underlay"`). Same render-fidelity class as the earlier `render-dst.mjs`
+   white-gaps misread — thin zigzag underlay doesn't visually register as
+   "backing" in a stitch-path line render even when it is really there, and
+   the chart itself is captioned "not thread-realistic."
+
+Method: `digitize()` + `plan.iter_runs()` directly in Python, not the
+service HTTP layer, to get per-run `kind` (`satin`/`fill`/`underlay`/`run`/
+`travel`) that the exported design JSON doesn't carry. `ARTWORK_UNCOVERED`
+(the check filed above) stayed silent on this job (`worst_mm2: 0.2`,
+`total_mm2: 0.0`) — correctly, since nothing here is a coverage drop; this
+was the first real-world use of that check on a fixture it wasn't built
+against, and it didn't false-positive on a design with five other genuine
+problems, which is itself a useful data point for its 5.0mm² threshold.
+
+**Not done:** no fix attempted for the border fragmentation or the
+tiny-lettering legibility floor — both are physical/segmentation-scale
+questions (gate 1 territory for the latter), filed with reproduction only.
