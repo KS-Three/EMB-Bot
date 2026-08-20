@@ -51,19 +51,38 @@ jobs:
     # from digitizer/ puts the package on sys.path; no editable install
     # needed (COOKBOOK.md).
     #
-    # Three byte-identical/golden-hash tests are deselected: they compare
-    # against goldens pinned before CI existed and are KNOWN to mismatch by
-    # a handful of stitches off their pinning machine (last actually
-    # observed in the 2026-08-03 remote dev container; deselected tests
-    # never run here, so their current ubuntu-latest behavior is inferred,
-    # not measured). Version skew is ruled out — every geometry-relevant
-    # pin matches requirements.txt exactly — and the divergence is
-    # per-fixture platform-level numerics: matrix in MASTER_SCOPE
-    # "Gotchas", failure classes in COOKBOOK.md "Running things", evidence
-    # in .claude/memory/windows-goldens-fail-locally.md. Deselecting
-    # exactly these three keeps CI green AND meaningful: any NEW golden
-    # break still fails the job. If these three ever pass on CI runners,
-    # remove the deselects and find out why.
+    # Five byte-identical/golden-hash tests are deselected. The first three
+    # compare against goldens pinned before CI existed and are KNOWN to
+    # mismatch by a handful of stitches off their pinning machine (last
+    # actually observed in the 2026-08-03 remote dev container; deselected
+    # tests never run here, so their current ubuntu-latest behavior is
+    # inferred, not measured). Version skew is ruled out — every
+    # geometry-relevant pin matches requirements.txt exactly — and the
+    # divergence is per-fixture platform-level numerics: matrix in
+    # MASTER_SCOPE "Gotchas", failure classes in COOKBOOK.md "Running
+    # things", evidence in .claude/memory/windows-goldens-fail-locally.md.
+    #
+    # The last two (photo/enthusiast_logo.png, added 2026-08-20) are the
+    # SAME class, newly confirmed rather than newly created: PR #182's
+    # travel-graph cursor retry (stage6_satin.py::_graph_travel) legitimately
+    # moves this fixture's stitch_count 2351->2361 -- verified benign
+    # (ARTWORK_UNCOVERED coverage is unchanged; the two known-defective
+    # bracket shapes from .claude/memory/satin-extremity-drop-and-coverage-
+    # check.md are byte-identical before/after) -- but the golden's
+    # areas_mm2/stitch_coords fields can no longer be safely recaptured to
+    # match: tools/recapture_flat_lane_key.py's own --pre-change-tree machine
+    # check REFUSES on a fresh ubuntu-latest Actions runner too, not just a
+    # dev container, differing from the 2026-08-17-pinned golden even on the
+    # UNMODIFIED pre-change engine (workflow runs 32396593318, 32399279461 on
+    # claude/skill-generator-embot-swwld7). The reference platform drifted
+    # from itself in three days, independent of any code change here.
+    # Deselected rather than force-written, on Kent's call -- re-capture
+    # needs a ubuntu-latest window that realigns with the pin, same as the
+    # three-day wait before PR #159's capture landed.
+    #
+    # Deselecting exactly these five keeps CI green AND meaningful: any NEW
+    # golden break still fails the job. If any of these ever pass on CI
+    # runners, remove its deselect and find out why.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -90,7 +109,7 @@ jobs:
       # ~19 minutes serially here, on every push, which is long enough that a
       # red digitizer job stops being noticed promptly. Verified parallel-safe
       # by running the whole suite both ways and comparing the pass/fail set —
-      # identical, including the three deselects below. Nothing in the suite
+      # identical, including the deselects below. Nothing in the suite
       # writes to a shared path (fixtures are read-only, every test that writes
       # uses tmp_path), so worker isolation is real rather than assumed.
       - name: Digitizer tests
@@ -100,6 +119,8 @@ jobs:
           --deselect "tests/test_flat_lane_byte_identical.py::test_flat_lane_is_byte_identical_to_the_pre_change_golden[logo_alpha.png]"
           --deselect "tests/test_pushcomp.py::test_flag_off_is_byte_identical_to_the_shipped_engine[logo_whitebg.png-towel]"
           --deselect "tests/test_stage2_photo_segment.py::test_flat_and_gradient_lanes_still_match_golden_after_photo_dispatch[logo_alpha.png]"
+          --deselect "tests/test_flat_lane_byte_identical.py::test_flat_lane_is_byte_identical_to_the_pre_change_golden[photo/enthusiast_logo.png]"
+          --deselect "tests/test_stage2_photo_segment.py::test_flat_and_gradient_lanes_still_match_golden_after_photo_dispatch[photo/enthusiast_logo.png]"
 
   studio-e2e:
     # The real-browser Playwright suite (app/e2e). COOKBOOK's hard-won lesson:
