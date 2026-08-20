@@ -1596,6 +1596,16 @@
                    as a small badge plus an undo, so restoring stays a
                    reversible toggle rather than a one-way door. -->
               {@const restoredEnclosed = !dead && stitched && row.stitched === false}
+              <!-- A restored enclosed row whose colour is a flattening
+                   artifact (contract v1.7, reviewFromJob's
+                   enclosedColourUnknown): the RGB it carries is whatever the
+                   exporter flattened under the transparency — usually the
+                   enclosing shape's own colour — so sewing it silently would
+                   turn e.g. a Gray letter interior solid black. Marked until
+                   the user picks a real thread (recolorShape writes
+                   thread_index; unrestoring clears it the other way). -->
+              {@const needsColour = restoredEnclosed && row.enclosedColourUnknown === true &&
+                !(overrides[row.id] && typeof overrides[row.id].thread_index === "number")}
               {@const boundaryEdited = !dead && !unstitched &&
                 !!(overrides[row.id] && overrides[row.id].boundary_override)}
               {@const mergedInfo = !dead && !unstitched ? mergedFromInfo(row.id) : null}
@@ -1651,6 +1661,12 @@
                       <span class="dgp-lname">{rowName(row)}</span>
                       <span class="dgp-larea">{fmtArea(row.areaMm2)}</span>
                       <span class="dgp-ltier tier-{tier || 'none'}">{tier || "not sewn"}</span>
+                      {#if needsColour}
+                        <span
+                          class="dgp-lbadge dgp-lbadge-needscolor"
+                          title="This area was a transparent hole in the artwork, so the color it shows was inherited from whatever the file flattened underneath it — not a real choice. Pick its thread with the color swatch on this row."
+                        >pick a color</span>
+                      {/if}
                       {#if restoredEnclosed}
                         <span
                           class="dgp-lbadge"
@@ -2130,6 +2146,14 @@
     border: 1px solid var(--tint-border, #ccd6fb);
     border-radius: 8px;
     padding: 1px 5px;
+  }
+  /* The needs-colour marker (contract v1.7): warning-tinted like the
+     enclosed-areas banner, since it flags the same class of silent wrong
+     output — a colour nobody chose. */
+  .dgp-lbadge-needscolor {
+    color: var(--warn-text, #8a6d1a);
+    border-color: var(--warn-text, #8a6d1a);
+    background: var(--warn-bg, #fdf6e3);
   }
   .dgp-lthumb {
     width: 24px;

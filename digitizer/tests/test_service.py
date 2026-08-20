@@ -464,6 +464,50 @@ def test_stitched_default_and_override_round_trip_over_http(client):
     assert second["design"]["stitchCount"] > first["design"]["stitchCount"]
 
 
+def test_review_payload_carries_enclosed_colour_unknown():
+    """Contract v1.7: `_review_payload` echoes `enclosed_colour_unknown`
+    straight off `Region.meta` — read-only, no `_OVERRIDE_KEYS` entry, same
+    category as `text_candidate`. Always present so Studio can mark a
+    restored alpha-derived hole as needing a real colour choice instead of
+    silently sewing it in the enclosing ring's own flattened RGB
+    (stage4_vectorize.py's setter comment has the Becker Marine story).
+
+    Direct `_review_payload` unit test, not an HTTP round trip: the flag only
+    fires on an ALPHA-derived background (`p.bg_from_alpha`), which the HTTP
+    repro fixture never takes, so the synthetic transparent-middle ring from
+    test_enclosed_background.py is the cheapest artwork that exercises it.
+    """
+    from digitizer_core.pipeline import run_stages
+    from digitizer_service.app import _review_payload
+
+    from .conftest import cfg
+    from .test_enclosed_background import _ring_with_transparent_middle
+
+    result = run_stages(_ring_with_transparent_middle((20, 20, 20)), cfg())
+    shapes = _review_payload(result)["shapes"]
+    assert all("enclosed_colour_unknown" in s for s in shapes), \
+        "always present, so an absent key can only mean a pre-contract service"
+    by_id = {s["shape_id"]: s for s in shapes}
+    flagged = [r.shape_id for r in result.regions
+               if r.meta.get("enclosed_colour_unknown")]
+    assert flagged, "the transparent middle must produce a flagged region"
+    assert all(by_id[sid]["enclosed_colour_unknown"] is True for sid in flagged)
+    assert all(s["enclosed_colour_unknown"] is False
+               for s in shapes if s["shape_id"] not in flagged), \
+        "a colour-KNOWN shape must read False, never truthy"
+
+
+def test_review_payload_reports_false_when_the_hole_colour_is_known(whitebg):
+    """The no-alpha counterpart: `logo_whitebg.png`'s enclosed hole is
+    genuinely White (colour path, not alpha), so the wire field is False for
+    every shape — the flag never leaks onto a colour-known enclosed region."""
+    from digitizer_service.app import _review_payload
+
+    shapes = _review_payload(whitebg)["shapes"]
+    assert shapes
+    assert all(s["enclosed_colour_unknown"] is False for s in shapes)
+
+
 def test_review_payload_carries_text_cluster_fields_over_http(client):
     """The service-layer half of text-cluster detection (Step 4 of the
     text-cluster-detection plan): `_review_payload` echoes `text_candidate`

@@ -1029,6 +1029,33 @@ test("reviewFromJob maps `stitched` (contract v1.1): explicit false for an exclu
   ]);
 });
 
+test("reviewFromJob maps `enclosed_colour_unknown` (contract v1.7): true for an alpha-derived hole, false when explicit, and false when the field is absent (a pre-contract service)", async () => {
+  stubStorage({});
+  const { reviewFromJob } = await import("./digitizer.js");
+  const wire = {
+    palette: [{ brand_id: "isacord", number: "0020", name: "Black", rgb: [0, 0, 0] }],
+    shapes: [
+      { shape_id: "Salpha", thread_index: 0, thread_number: "0020", area_mm2: 2, source: "quant",
+        layer: null, sew_index: null, sew_block: null, tier: null, stitched: false,
+        enclosed_colour_unknown: true,
+        outline_mm: [[0, 0], [1, 0], [1, 1]], holes_mm: [] },
+      { shape_id: "Sknown", thread_index: 0, thread_number: "0020", area_mm2: 2, source: "quant",
+        layer: null, sew_index: null, sew_block: null, tier: null, stitched: false,
+        enclosed_colour_unknown: false,
+        outline_mm: [[0, 0], [1, 0], [1, 1]], holes_mm: [] },
+      { shape_id: "Sold", thread_index: 0, thread_number: "0020", area_mm2: 10, source: "quant",
+        layer: 0, sew_index: 0, sew_block: 0, tier: "fill",
+        outline_mm: [[0, 0], [1, 0], [1, 1]], holes_mm: [] },
+    ],
+  };
+  const r = reviewFromJob(wire);
+  expect(r.shapes.map((s) => [s.id, s.enclosedColourUnknown])).toEqual([
+    ["Salpha", true], // alpha-derived hole: inherited RGB is a flattening artifact
+    ["Sknown", false], // colour-known enclosed region keeps its colour
+    ["Sold", false], // pre-contract service sends nothing -> colour trusted, today's reading
+  ]);
+});
+
 test("reviewFromJob maps text_candidate/text_cluster_id (text-cluster detection): true+id for a tagged shape, false+null for an untagged one, and false+null when a pre-contract service sends neither field", async () => {
   stubStorage({});
   const { reviewFromJob } = await import("./digitizer.js");

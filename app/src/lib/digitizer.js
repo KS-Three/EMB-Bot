@@ -891,6 +891,17 @@ export function reviewFromJob(review) {
       sewBlock: s.sew_block,
       tier: s.tier,
       stitched: s.stitched !== false,
+      // Whether the shape's colour is a flattening artifact rather than a
+      // decision (contract v1.7, server-computed, read-only — see app.py's
+      // _review_payload comment): an ALPHA-derived enclosed hole inherits
+      // whatever RGB sat under the transparency, usually the enclosing
+      // ring's own colour. The Layers panel uses this to mark a RESTORED
+      // such shape as needing a real thread choice (its ThreadPicker /
+      // recolorShape path) instead of sewing the inherited colour silently.
+      // A pre-contract service sends nothing; that reads as "colour
+      // trusted", the same "absent key = default" convention `stitched`
+      // above already follows.
+      enclosedColourUnknown: s.enclosed_colour_unknown === true,
       outline: thinOutline(s.outline_mm),
       outlineFull: thinOutline(dedupeRing(s.outline_mm), BOUNDARY_MAX_POINTS),
       // Text-cluster detection (server-computed, read-only, no override key —
