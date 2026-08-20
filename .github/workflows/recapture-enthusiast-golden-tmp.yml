@@ -1,0 +1,38 @@
+name: Recapture enthusiast_logo golden (temporary)
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  recapture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: current
+      - uses: actions/checkout@v4
+        with:
+          ref: 852b2763a2ed09b7b68a5d182828b4d75bc07f13
+          path: pre-change
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: current/digitizer/requirements.txt
+      - name: Install
+        working-directory: current/digitizer
+        run: pip install -r requirements.txt
+      - name: Recapture photo/enthusiast_logo.png
+        working-directory: current/digitizer
+        run: |
+          python tools/recapture_flat_lane_key.py "photo/enthusiast_logo.png" \
+            --pre-change-tree "$GITHUB_WORKSPACE/pre-change/digitizer" | tee recapture-log.txt
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: recapture-evidence
+          path: |
+            current/digitizer/testdata/flat_lane_golden.json
+            current/digitizer/recapture-log.txt
+          retention-days: 3
