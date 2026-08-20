@@ -287,19 +287,24 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
   |---|---|---|
   | `pushcomp[logo_whitebg.png-towel]` | fails | fails (deselected) |
   | both, `[logo_alpha.png]` | **passes** | fails (deselected) |
-  | both, `[photo/enthusiast_logo.png]` | fails | passes |
+  | both, `[photo/enthusiast_logo.png]` | fails | fails (deselected) |
 
-  CI column is `.github/workflows/python-package-conda.yml:96-98`, which
-  deselects three by name because they *"compare against goldens pinned on the
-  original development machine"* — i.e. they fail there, so `ubuntu-latest` is
-  NOT where every golden was captured. **Consequence:** an `enthusiast_logo`
+  CI column is `.github/workflows/python-package-conda.yml`, which deselects
+  five by name because they *"compare against goldens pinned on the original
+  development machine"* — i.e. they fail there, so `ubuntu-latest` is NOT
+  where every golden was captured. **Consequence:** an `enthusiast_logo`
   failure locally is expected; a `logo_alpha` failure locally is a genuine
   regression. Per-platform reasoning gets that backwards. **Still binding: never
   re-capture a golden from a Windows run.** Judge a change by "same failure set
-  before and after", using the table as that set. Cause and the two permanent CI
+  before and after", using the table as that set. Cause and the permanent CI
   deselects nobody is assigned to: `docs/pro-parity-real-art-2026-08-15.md` §0b.
   *(corrected 2026-08-17 — Windows column re-run this date: `logo_alpha` ×2
   passed, `enthusiast_logo` ×2 failed; CI column read from the workflow)*
+  *(2026-08-20 — `enthusiast_logo` CI cell moved to fails/deselected: a
+  verified-benign PR #182 change shifted `stitch_count`, but even a fresh
+  `ubuntu-latest` runner fails the recapture tool's own pre-change check
+  against the pin, so it's deselected not forced (Kent's call) — detail in
+  the CI workflow's comment, runs 32396593318/32399279461)*
 - **OCR tests skip, not fail, on a machine without the `tesseract` binary —
   and never skip on CI.** `pytesseract` is a declared dep and imports fine, but
   it only wraps the `tesseract` executable: CI apt-installs that
