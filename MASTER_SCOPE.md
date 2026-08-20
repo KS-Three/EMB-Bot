@@ -672,6 +672,13 @@ merged and reachable from Studio via the `embstudio:sam2` dev seam, still
 `photo_subject`/`photo_scene` fixtures are synthetic stubs, so the committed
 corpus can neither defend nor refute SAM2's quality — a real-photo fixture is
 the missing piece. *(confirmed 2026-08-11 — area 1 detail)*
+**Open defect: satin-tier shapes silently drop extremity features.**
+`enthusiast_logo.png`'s emblem loses 11.5% of its artwork area to unstitched
+spurs — a whole limb and a corner — with correct, symmetric outlines and
+`stitched: true`. Excluded: shape formation, background intrusion, the
+starburst regression. No coverage check (artwork ink vs stitched ink) exists,
+so preflight and the scorecard both score it clean.
+*(measured 2026-08-20 — area 1 detail, overlay diff)*
 **Next:** satin-vs-fill routing (live defect 5) — Kent's call 2026-08-14,
 taken ahead of option A, which stays the standing ruling for the blend tier
 whenever it is scheduled. The pro-parity scorecard was chance-corrected first

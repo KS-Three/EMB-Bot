@@ -1769,3 +1769,77 @@ constant (`test_applique.py`: 58 → 63). Full digitizer suite unaffected
 — a real config-wiring bugfix on an already-built feature, not new
 capability, and still sew-out-unvalidated like the rest of appliqué.
 
+
+**Open defect, found 2026-08-20 (this session, Kent reporting by eye) —
+satin-tier shapes silently drop extremity features: `enthusiast_logo.png`'s
+emblem loses 11.5% of its artwork area to unstitched spurs, with correct
+outlines and `stitched: true`.** Kent spotted two holes in a live render —
+"it lost the left arm of the logo (that heads in the direction of the star)"
+and "the logo lost the bottom right corner". Both are real, and they are the
+**#1 and #3 largest missing regions in the whole design**
+*(measured 2026-08-20 — overlay diff of `app/e2e/fixtures/enthusiast_logo.png`
+against its own stitch output, decoded with pystitch)*:
+
+| missing area | centroid (mm) | what it is |
+|---|---|---|
+| 11.62 mm² | (6.5, 14.3) | left bracket's inward tab, pointing at the star |
+| 6.15 mm² | (1.7, 4.7) | left bracket, outer edge |
+| 5.32 mm² | (25.8, 22.6) | **bottom-right corner** |
+| 4.01 mm² | (0.7, 21.8) | left bracket, lower outer edge |
+
+97.1 mm² of 1372.2 mm² artwork is unstitched overall (7.1%); within the
+emblem alone it is **11.5%**. Method: render the design's own exported DST at
+0.4 mm stroke width (nominal 40wt laid width), scale-match to the source
+artwork's ink mask, and difference. Reproduce at `target_width_mm=150`,
+`max_colors=6` against a running service.
+
+**What it is not** — three candidate causes were tested and each is excluded:
+
+1. **Not shape formation.** The emblem's two shield brackets are formed
+   *correctly and symmetrically*, tabs included: `S041897f7` (left,
+   165.4 mm², 14 pts) and `S0406e2a0` (right, 165.6 mm², 14 pts), both
+   `tier: satin`, both `stitched: true`, both with the inward tab present in
+   `outline_mm`. Plotting the review payload's outlines shows a clean,
+   mirror-symmetric emblem. The geometry is right; the stitches are missing.
+2. **Not background intrusion**, despite the job raising
+   `BACKGROUND_UNCERTAIN` ("Background detection reached deep inside a
+   shape"). `bg_tolerance_lab` 6.0 → 3.0 → 1.5 and `bg_intrusion_min_mm`
+   2.0 → 0.5 all produce **byte-identical** output (4759 stitches, 4 emblem
+   shapes, 383.4 mm² emblem area, warning still raised). The warning is
+   firing on something that is not driving this loss — worth its own look,
+   since a warning that cannot be silenced by its own knobs is misleading.
+3. **Not the starburst regression** (`stage6_satin.is_satin_candidate`'s
+   deleted `design_class == "flat"` early return). That fix is present and
+   the DT check runs unconditionally *(confirmed 2026-08-20 — read at
+   `digitizer_core/stage6_satin.py:185`)*.
+
+So the loss is in **satin rail generation on a bracket-with-spur outline**:
+the ribbon spine covers the main limb and the spur is dropped. It is
+asymmetric — the left bracket loses its inward tab while its mirror twin
+covers the same feature, and the right bracket instead loses its bottom
+corner — which points at a traversal-order or spine-endpoint effect rather
+than a threshold. Not yet root-caused to a function.
+
+**Why this matters more than the corpus score suggests:** `preflight` and
+`corpus_scorecard.py` measure mechanical properties and per-cell stitch-type
+agreement, neither of which notices that an 11.6 mm² limb of a logo is simply
+absent. This is the same blind spot COOKBOOK.md's "Hard-won lessons" names —
+a green suite over a design a customer would reject on sight. A coverage
+check (artwork ink vs stitched ink, per shape) would catch it and does not
+exist today.
+
+**Size is a separate, confirmed axis — and it is not this bug.** The same
+fixture at `target_width_mm` 80 / 120 / 150 shows the *wordmark* recovering
+monotonically with size *(measured 2026-08-20)*: the "N" is a fused blob with
+pinched counters at 80 mm, opens at 120 mm, and is clean satin at 150 mm;
+`SAME_THREAD_SHAPES_MERGED` falls 9 pairs → 2 → 2 and `SMALL_SHAPES_AS_RUN`
+14 → 14 → 4 shapes. At 80 mm the caps are ~5.5 mm tall with ~1.5 mm strokes,
+so pull compensation grows neighbouring strokes into each other and the merge
+pass fuses them. That is a legibility floor, not a defect — but the product
+needs left-chest logos at 80–100 mm, so the actionable gap is an **honest
+warning** ("this wordmark reads better at ≥120 mm"), which is geometry/UX
+work and not sew-out-gated. Where the floor actually sits *is* gate 1
+territory and stays unanswered until fabric says so.
+
+**Not fixed here.** Filed with the reproduction, the exclusions, and the
+measurement so the next session starts from evidence rather than a screenshot.
