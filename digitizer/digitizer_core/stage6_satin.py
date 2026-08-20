@@ -2135,12 +2135,20 @@ def _build_travel_graph(strokes: list[Stroke]):
 
 
 def _graph_travel(cur, target, sewn: set[int], allow: set[int],
-                  nodes, edges, adj) -> list[tuple[float, float]] | None:
+                  nodes, edges, adj, *,
+                  trim_at_mm: float) -> list[tuple[float, float]] | None:
     """Needle-down path from cur to target over UNSEWN spines, or None.
 
     Edges belonging to already-sewn strokes are forbidden: running stitches on
     top of finished satin show, which is the same reason the fill path prefers
     a trim over long travel across finished coverage.
+
+    `trim_at_mm` is the caller's sew-vs-jump bound (the linking loop's), used
+    only as the cursor-side snap retry radius below — the value itself is the
+    caller's business. Note the design coupling this buys: a future
+    cloth-driven retune of trim_at_mm also moves how far off the web a cursor
+    may sit and still walk. Intended — both answer "how long a leg is sewable
+    needle-down" — but it is one knob, not two.
     """
     def snap(p):
         best, bd = None, 0.8
@@ -2151,6 +2159,22 @@ def _graph_travel(cur, target, sewn: set[int], allow: set[int],
         return best
 
     s, t = snap(cur), snap(target)
+    if s is None and nodes:
+        # Cursor-side retry: the needle sits wherever the previous run ended —
+        # often a cap-extended point a millimetre or two off the spine web —
+        # and the strict 0.8mm snap killed the whole walk there, turning a
+        # walkable move into a trim (real-art lane: only 112 of 1,178 travel
+        # calls succeeded; median cursor miss 1.03mm, and 75.2% of cursors sit
+        # within 3.0mm of a node). Snap to the
+        # NEAREST node instead, within the same trim_at_mm the linking loop
+        # uses to sew short hops needle-down: the returned path starts ON the
+        # web, and the short leg from the true cursor onto it is exactly the
+        # kind of hop that loop already covers. Target side stays strict — the
+        # target is a stroke start the graph was built from, so a 0.8mm miss
+        # there means the web genuinely does not reach it.
+        ni = min(range(len(nodes)), key=lambda i: math.dist(cur, nodes[i]))
+        if math.dist(cur, nodes[ni]) <= trim_at_mm:
+            s = ni
     if s is None or t is None:
         return None
     if s == t:
@@ -2353,7 +2377,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 direct = math.dist(cursor, run.points[0])
                 if direct >= machine.TINY_STITCH_MM:
                     path = _graph_travel(cursor, run.points[0], sewn, {ki},
-                                         nodes, g_edges, g_adj)
+                                         nodes, g_edges, g_adj,
+                                         trim_at_mm=trim_at_mm)
                     if path is not None and len(path) >= 2:
                         plen = sum(math.dist(a, b) for a, b in zip(path, path[1:]))
                         # Same cap as the fill path: past this, travel under
