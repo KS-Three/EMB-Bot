@@ -8,7 +8,7 @@ millimetre or two off the spine web — and a strict 0.8mm snap killed
 the whole walk there, turning a walkable move into a trim. The fix
 retries the CURSOR side against the nearest node within the linking
 loop's existing trim_at_mm bound (the same bound that decides sew vs
-jump at :2389). Target side stays strict: the target is a stroke start
+jump at :2414). Target side stays strict: the target is a stroke start
 the graph was built from, so missing it means the web genuinely does
 not reach there.
 

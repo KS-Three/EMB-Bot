@@ -225,6 +225,11 @@ def round_inward(poly: Polygon, r_corner: float, step_mm: float) -> Polygon:
     0.074 / 0.66 / 1% for the uncapped relaxation; adversarial review measured
     the truth at 1.01 / 1.85 / 7.4% — the fixed point of the Laplacian sits
     far deeper than anyone had checked, and the cap now exists because of it.)
+    STALE since law 41 (2026-08-19): `_BITE_MAX_MM` is derived from
+    `BORDER_WIDTH_MM`, which moved 1.40 -> 1.70 mm, so the cap itself moved
+    0.70 -> 0.85 mm and the figures above are the OLD cap's numbers, not
+    re-measured. Whoever next touches this function should re-run the fixture
+    and replace this paragraph rather than trust it.
     A sub-column-width bite reads as rounding; it stays invisible because the
     border rides over a fill that already reaches the true corner, which is
     why the "no border without coverage under it" rule and this one must move
