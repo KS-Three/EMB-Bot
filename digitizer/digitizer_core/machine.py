@@ -444,16 +444,27 @@ SATIN_SHORT_STITCH_PULL_MAX_MM = 0.6
 # border tier at all — so the "a mirrored value moves in both or neither" rule
 # has nothing to move.
 
-# A border column is THINNER than a lettering column: median 1.40 mm
-# (p10 0.78, p90 2.98) against 2.21 mm for satin generally. An outline is a
-# line, not a stroke of letterform weight; bordering at lettering width is
-# most of why a machine outline reads heavy.
-BORDER_WIDTH_MM = 1.40
+# An EDGE-COVERING border is WIDER than round 2's 1.40 claimed
+# (docs/corpus-laws-round3-2026-08-01.md law 41, unapplied-rulings table
+# :670): real covering columns measure 1.66 mm med (p90 3.83), 2.39 mm on the
+# trustworthy >=20 mm subset, and are file-dependent (1.55 to 4.53), so a
+# single value is a compromise — the ruling is 1.70. Round 2's 1.40 was a
+# different population: closed loops, mostly round letters — a population
+# "auto" never sews, because satin-classified shapes never get a border
+# (config.py, stage 7). Derived values move with this constant:
+# stage6_border._BITE_MAX_MM (width/2, 0.70 -> 0.85), the too-narrow gate,
+# stage7's seam-share threshold (2x width, 2.8 -> 3.4 mm), and the bean
+# tier's spine inset sits 0.15 mm deeper (inset feeds host.buffer(-inset) on
+# the lighten path too).
+BORDER_WIDTH_MM = 1.70
 
-# Looser than lettering's 0.40-0.42: median 0.45 mm. A border rides an edge
-# that already has coverage under it. Measured on the RAILS, like law 4 — the
-# spacing between consecutive penetrations on the same side of the column.
-BORDER_DENSITY_MM = 0.45
+# NOT looser than lettering — law 41 refuted round 2's "looser, 0.45, it
+# rides an edge that already has coverage" claim: measured on real covering
+# borders the density is 0.40 mm (p10 0.36, p90 0.42), IDENTICAL to lettering
+# columns; there is no density relaxation, and 0.40 agrees with laws 4 and
+# 21. Measured on the RAILS, like law 4 — the spacing between consecutive
+# penetrations on the same side of the column.
+BORDER_DENSITY_MM = 0.40
 
 # MEASURED, not a boundary condition (docs/corpus-laws-round3-2026-08-01.md,
 # law 40). Round two's over-a-fill detector fired ZERO times across 39 files
@@ -468,22 +479,25 @@ BORDER_DENSITY_MM = 0.45
 BORDER_SEAM_OFFSET_MM = 0.0
 
 # Minimum turn radius forced on a ring before it is offset, so neither rail
-# ever has zero radius. 1.5x the column width, which leaves the inner rail's
-# own radius at r - W = 0.70 mm > 0: the inside of a corner crowds (short
-# stitches fix that) but can never fold back on itself. Below that a corner is
-# not a corner, it is a fold, and law 3 says folds are the only thing
-# professionals split for.
+# ever has zero radius. Set at 1.5x the pre-law-41 column width (unadjudicated,
+# kept when BORDER_WIDTH_MM moved to 1.70); the inner rail's own radius stays
+# r - W = 0.40 mm > 0: the inside of a corner crowds (short stitches fix that)
+# but can never fold back on itself. Below that a corner is not a corner, it
+# is a fold, and law 3 says folds are the only thing professionals split for.
 BORDER_CORNER_RADIUS_MM = 2.10
 
 # A shape must have something left inside the column or the "border" is just a
 # heavy re-fill of the whole shape. Below it the light tier takes over.
 BORDER_HOST_MARGIN_MM = 0.20
 
-# A closed loop shorter than the circumference of a circle of radius
-# BORDER_WIDTH_MM is a dot, not an outline. 2*pi*1.40.
+# A closed loop shorter than the circumference of a circle of radius 1.40 mm
+# is a dot, not an outline. 2*pi*1.40 — the pre-law-41 column width; kept when
+# BORDER_WIDTH_MM moved to 1.70 because the loop gate has no adjudication of
+# its own.
 BORDER_MIN_LOOP_MM = 8.80
 
-# The circuit closes by running past its own start for one column width, at a
+# The circuit closes by running past its own start for 1.40 mm (one pre-law-41
+# column width; unadjudicated, kept when BORDER_WIDTH_MM moved), at a
 # half-station phase shift so the repeated penetrations miss the first holes.
 BORDER_CLOSURE_OVERLAP_MM = 1.40
 
