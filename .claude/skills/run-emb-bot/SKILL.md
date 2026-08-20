@@ -167,6 +167,31 @@ nothing needs to be running first. It also **auto-starts the digitizer**
 itself if `digitizer/.venv` exists (it checks both `bin/python` and
 `Scripts/python.exe`).
 
+### Reading a digitizer run
+
+`3 failed, 1218 passed, 8 skipped, 8 xfailed` in ~7min (`-n auto`, 2026-08-20,
+this container). **Judge the run by its failure classes, not the count** —
+COOKBOOK.md "Running things" is the authority. The three that fail here are
+all expected class #1, golden/byte-identical mismatches on a machine that
+didn't capture the golden:
+
+```
+tests/test_flat_lane_byte_identical.py::…[photo/enthusiast_logo.png]
+tests/test_pushcomp.py::…[logo_whitebg.png-towel]
+tests/test_stage2_photo_segment.py::…[photo/enthusiast_logo.png]
+```
+
+There are now **three different** golden-failure sets in play: CI deselects
+its own 3 by node ID, Kent's Windows machine fails a different 3, and this
+Linux container fails the 3 above. Don't assume another environment's list
+matches yours — and don't "fix" a golden to make it pass.
+
+A failure **outside** that class, or in `node --test` / `npm test` (both
+expected clean), is a regression.
+
+The 8 skips include the OCR tests, which need the `tesseract` binary — a
+separate non-pip install, absent here.
+
 ## Run (human path — Kent's Windows machine)
 
 One command; it resolves the repo root from `$PSScriptRoot`, so there is no
