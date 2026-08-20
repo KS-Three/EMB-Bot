@@ -522,6 +522,19 @@ def _review_payload(result, plan=None) -> dict:
                 # False) — exposed so a client can tell which shapes are
                 # excluded by default and need a restore action.
                 "stitched": r.meta.get("stitched", True),
+                # Whether this enclosed region's colour is a flattening
+                # artifact rather than a decision (contract v1.7, server-
+                # computed, read-only — no `_OVERRIDE_KEYS` entry, same
+                # category as `text_candidate` below): an ALPHA-derived hole
+                # inherits whatever RGB the exporter flattened under the
+                # transparency, usually the enclosing ring's own colour
+                # (stage4_vectorize.py's setter comment has the full story).
+                # Exposed so a client restoring such a shape can mark it as
+                # needing a real thread choice instead of sewing the
+                # inherited one silently. Always present; False for a
+                # colour-KNOWN enclosed region and for everything untagged.
+                "enclosed_colour_unknown": r.meta.get(
+                    "enclosed_colour_unknown", False),
                 # Text-cluster detection (server-computed, read-only — no
                 # `_OVERRIDE_KEYS` entry, same category as `layer` and
                 # `enclosed_background`): whether this shape was tagged as a

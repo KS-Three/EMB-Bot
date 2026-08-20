@@ -10,11 +10,15 @@ circuit, not an assembly of arcs.
 
 What the corpus measured (39 DSTs, `tools/border_pro.py`):
 
-- A border column is **thinner** than a lettering column: median 1.40 mm
-  (p10 0.78, p90 2.98) against 2.21 mm for satin generally. Sewing borders at
-  lettering width is most of why a machine outline reads heavy.
-- Border density is **looser** than lettering: 0.45 mm against 0.40–0.42. A
-  border rides an edge that already has coverage under it.
+- Round 2 called a border column **thinner** than a lettering column (median
+  1.40 mm) — but that population was closed loops, mostly round letters.
+  Round 3's law 41 (`docs/corpus-laws-round3-2026-08-01.md`) measured real
+  EDGE-COVERING borders at 1.66 mm med (2.39 on the >=20 mm subset):
+  `machine.BORDER_WIDTH_MM` carries the adjudicated 1.70.
+- Round 2 called border density **looser** than lettering (0.45 against
+  0.40–0.42, "it rides an edge that already has coverage"). Law 41 refuted
+  that: real covering borders sew at 0.40 mm (p10 0.36, p90 0.42) — identical
+  to lettering. There is no density relaxation.
 - Corners are sewn THROUGH: 1,436 in-run corner events against 18 splits, the
   turn spread over roughly one column width. So this module has no splitter.
 - The light tier is a bean / triple run: 14 found, 2.75 passes median at
@@ -221,6 +225,11 @@ def round_inward(poly: Polygon, r_corner: float, step_mm: float) -> Polygon:
     0.074 / 0.66 / 1% for the uncapped relaxation; adversarial review measured
     the truth at 1.01 / 1.85 / 7.4% — the fixed point of the Laplacian sits
     far deeper than anyone had checked, and the cap now exists because of it.)
+    STALE since law 41 (2026-08-19): `_BITE_MAX_MM` is derived from
+    `BORDER_WIDTH_MM`, which moved 1.40 -> 1.70 mm, so the cap itself moved
+    0.70 -> 0.85 mm and the figures above are the OLD cap's numbers, not
+    re-measured. Whoever next touches this function should re-run the fixture
+    and replace this paragraph rather than trust it.
     A sub-column-width bite reads as rounding; it stays invisible because the
     border rides over a fill that already reaches the true corner, which is
     why the "no border without coverage under it" rule and this one must move

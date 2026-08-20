@@ -43,6 +43,7 @@ function shapeRow(id, overrides = {}) {
     textClusterId: null,
     ocrChar: null,
     ocrConfidence: null,
+    enclosedColourUnknown: false,
     ...overrides,
   };
 }
@@ -327,6 +328,50 @@ describe("hiding, restoring, and BACKGROUND_ENCLOSED restore", () => {
     expect(patches).toHaveLength(1);
     expect(lastOverride(patches, "s1")).toEqual({ stitched: true });
     expect(patches[0].patch.deletedShapeIds).toBeUndefined();
+  });
+
+  // ---- enclosed_colour_unknown (contract v1.7): a restored alpha-derived
+  // hole inherited its RGB from whatever the exporter flattened under the
+  // transparency, so restoring it must surface the row's ThreadPicker /
+  // recolorShape path instead of sewing the inherited colour silently.
+
+  test("'Sew it' on a colour-unknown enclosed row restores it AND marks it as needing a colour pick", async () => {
+    const { getByRole, queryByText, patches } = renderPanel([
+      shapeRow("hole", { stitched: false, enclosedColourUnknown: true }),
+    ]);
+    // No marker while the row is still unstitched — the inherited colour
+    // only becomes a problem once the shape is actually going to sew.
+    expect(queryByText("pick a color")).toBeNull();
+    await fireEvent.click(getByRole("button", { name: "Sew it" }));
+    expect(patches).toHaveLength(1);
+    expect(lastOverride(patches, "hole")).toEqual({ stitched: true });
+    // The harness merged the patch and re-rendered: the restored row now
+    // carries the needs-colour marker beside its ThreadPicker.
+    expect(queryByText("pick a color")).toBeTruthy();
+  });
+
+  test("the needs-colour marker clears once a thread colour override exists (recolorShape ran)", async () => {
+    const { queryByText } = renderPanel(
+      [shapeRow("hole", { stitched: false, enclosedColourUnknown: true })],
+      { shapeOverrides: { hole: { stitched: true, thread_index: 4, rgb: [200, 200, 200] } } },
+    );
+    expect(queryByText("pick a color")).toBeNull();
+  });
+
+  test("'Sew all' (restoreAllUnstitched) restores every enclosed row in one patch and marks only the colour-unknown one", async () => {
+    const { getByRole, queryAllByText, patches } = renderPanel([
+      shapeRow("hole", { stitched: false, enclosedColourUnknown: true }),
+      shapeRow("known", { stitched: false }),
+    ]);
+    await fireEvent.click(getByRole("button", { name: "Sew all 2" }));
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.shapeOverrides).toEqual({
+      hole: { stitched: true },
+      known: { stitched: true },
+    });
+    // Only the flag-carrying row is marked — a colour-KNOWN enclosed region
+    // (logo_whitebg's White hole) restores clean, no marker.
+    expect(queryAllByText("pick a color")).toHaveLength(1);
   });
 });
 

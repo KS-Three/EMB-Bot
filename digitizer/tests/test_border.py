@@ -83,10 +83,22 @@ def test_a_counter_gets_its_own_circuit():
 
 # --- The corpus numbers ----------------------------------------------------
 
+def test_constants_carry_the_law_41_adjudication():
+    """docs/corpus-laws-round3-2026-08-01.md law 41 (unapplied-rulings table,
+    :670-671), adjudicated desk-safe 2026-08-01 and never applied until now:
+    an edge-covering border is WIDER than the closed-loop-letter population
+    law 11 measured (1.66 mm med, 2.39 on the >=20 mm subset; ruling 1.70),
+    and it sews at 0.40 mm density (p10 0.36, p90 0.42) — identical to
+    lettering, refuting round 2's "looser than lettering" 0.45."""
+    assert machine.BORDER_WIDTH_MM == 1.70
+    assert machine.BORDER_DENSITY_MM == 0.40
+
+
 def test_the_column_is_border_width_not_lettering_width():
-    """Corpus law 1: border columns run 1.40 mm median against 2.21 mm for
-    satin generally. Sewing borders at lettering width is most of why a
-    machine outline reads heavy."""
+    """Round 3 law 41: edge-covering borders run 1.66 mm median (2.39 on the
+    >=20 mm subset), still well under 2.21 mm for satin generally. Sewing
+    borders at full lettering width is most of why a machine outline reads
+    heavy."""
     runs, _ = _runs(SQUARE)
     pts = [r.points for r in runs if r.kind == "border"][0]
     crosses = sorted(math.dist(a, b) for a, b in zip(pts, pts[1:]))
@@ -95,9 +107,10 @@ def test_the_column_is_border_width_not_lettering_width():
         f"border column median {med:.2f} mm"
 
 
-def test_density_is_the_looser_border_figure():
-    """Corpus law 2: 0.45 mm, against 0.40-0.42 for lettering. Rails alternate
-    A, B, A, B ... so two apart is the same rail."""
+def test_density_is_the_lettering_figure_no_relaxation():
+    """Round 3 law 41 refuted round 2's "looser than lettering" 0.45: real
+    covering borders sew at 0.40 mm, identical to lettering columns. Rails
+    alternate A, B, A, B ... so two apart is the same rail."""
     runs, _ = _runs(SQUARE)
     pts = [r.points for r in runs if r.kind == "border"][0]
     adv = sorted(math.dist(pts[i], pts[i + 2]) for i in range(len(pts) - 2))
@@ -136,7 +149,7 @@ def test_the_whole_column_lies_inside_the_shape():
 def test_a_shape_too_thin_for_a_column_lightens_to_a_bean_run():
     runs, report = _runs(THIN_BAR)
     assert report["bean_loops"] >= 1
-    assert report["loops"] == 0, "a 2 mm bar cannot host a 1.4 mm column"
+    assert report["loops"] == 0, "a 2 mm bar cannot host a 1.7 mm column"
     assert all(r.kind != "border" for r in runs)
 
 
