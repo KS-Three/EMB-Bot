@@ -87,12 +87,15 @@ designs carry the `CLASSIFIED_GRADIENT` / `PHOTO_SEGMENT_REGION_COUNT` /
 
 **This is ROADMAP engine-track item 2 (Framing).** Its exit condition: "the
 same artwork routes the same way at any export resolution, and real logos
-reach the lane their content actually is." The deep-dive lane was asked
-whether PR #177 (`photo-tonal-v1`, merged) satisfies gate 2's precondition —
-real tonal artwork existing, which was the reason four prior stage-0
-recalibrations were rejected. **Not settled here** — flagged for the next
-session with file evidence to check, because if it holds, the lever is "gate
-2's precondition is now met," which only Kent can act on.
+reach the lane their content actually is."
+
+**Settled by the war-dive fleet (§6): gate 2's precondition is NOT met.**
+PR #177 (`photo-tonal-v1`, merged) was checked file-by-file in both
+checkouts — its only testdata change is one gitignored, empty
+`acceptance/README.md`. No committed tonal artwork exists. Stage-0
+recalibration stays blocked until Kent drops 4–5 real tonal customer files via
+the pull-corpus path. **But a lever exists that does not need that
+artwork** — see §6.
 
 ### 2.2 M9 — small lettering discarded (rank 2)
 
@@ -267,11 +270,100 @@ indefinitely, but preflight's own coverage-stack thresholds
 
 ## 5. Next
 
-The obvious next step — a deep-dive pair on M10 and M9, the two ranked
-highest with no lever yet — was launched as a follow-on fleet the same
-session this doc was written. Its result is not folded in here; check the
-workflow journal or a follow-up doc for that outcome before treating M10/M9
-as still lever-less.
+Superseded by §6 — the war-dive fleet landed the same session. M10 and M9 are
+no longer lever-less.
+
+## 6. War dive — M10 and M9 both have real levers, and they must ship together
+
+A second deep-dive pair, same discipline (proposal, then a skeptic whose
+default is to kill it), targeted specifically at the two mechanisms §1–§2
+ranked highest with no lever yet.
+
+### 6.1 M10 — gradient-lane retreat (CONFIRMED, sizing needs a rerun)
+
+**The lever does not need stage-0 recalibration, and does not need tonal
+artwork.** `stage6_blend.detect_design_ramp_angle` already computes a best-of-6
+r² fit — a measure of whether a "gradient"-classified design actually has
+global tonal structure — and already discards it after extracting an angle.
+The lever: expose that r², and when it's below the *existing, already-
+calibrated* `DESIGN_RAMP_R2_MIN` (0.4, set 2026-08-03), dispatch the design
+down the flat lane's ordinary path instead of the blend lane. Stage 0's
+classifier is untouched, byte-for-byte — the retreat happens one stage later,
+using an instrument that already exists for a different purpose.
+
+**Separation is real:** the ten misrouted designs (six unique artworks —
+becker's hat/lc pairs share art) read r² 0.003–0.325; the corpus's actual
+gradient fixtures read 0.915–0.999. Nearest miss (bridge, 0.325) sits well
+clear of the nearest true-ramp reading (0.835). **Scale-invariant** — the
+killer's own resample sweep (0.5×/1×/2× LANCZOS) found zero decision flips
+and ≤0.05 r² drift, which is the exact resolution-dependence that killed all
+four prior stage-0 attempts, confirmed absent here.
+
+**What's NOT yet true, per the killer's correction:** the sizing (+4.85 mean,
+corpus 42.5→~45.7) is a **pre-#177 estimate** — measured 2026-08-15, before
+`photo-tonal-v1` reworked `pipeline.py` and stage 7 substantially. It needs a
+rerun on current `main` before it's quotable. And this is narrower than
+ROADMAP item 2's full exit condition: it fixes gradient-vs-flat routing
+outcome invariance, but **stage 0 itself stays resolution-broken** — a design
+can still be pushed into `photo_scene` at low enough resolution, which this
+lever doesn't touch.
+
+**Two costs that need your explicit sign-off, not mine:**
+- `hotel_fremont_hat` scores **−4.3** under the retreat. Its byte-identical
+  sibling `hotel_fremont_patch` gains **+8.1** on the same fix — the delta is
+  a property of which pro reference file each one is scored against, not the
+  artwork, and the deep-dive doc states plainly that no in-engine rule can
+  split two identical files differently.
+- `precision_drone` — the only artwork in this corpus with genuine
+  ground-truth tonal content — also retreats (r² 0.13–0.31), because the
+  blend tier has never actually shaded any of its 26 regions anyway (0/26,
+  `blend-tier-never-fires-2026-08-15.md`). Retreating it costs nothing today
+  but is a bigger philosophical call: it's this corpus's one piece of
+  evidence for gate 2 ever unblocking, and this lever routes around needing
+  it rather than exercising it.
+
+### 6.2 M9 — text-line exemption, and why it cannot ship alone (CONFIRMED)
+
+**The lever:** in `stage3_segment.resolve_small_regions`, group sub-floor
+regions into candidate text lines (≥3 members, consistent height, aligned
+baseline, tight horizontal chaining) *before* the absorb pass runs. Members
+that clear the run tier's *existing, unchanged* floors
+(`RUN_MIN_AREA_MM2=0.16`, `RUN_MIN_LOOP_MM=2.2`) skip absorption and reach
+`stage4_vectorize`'s rescue path — which already exists, is already wired to
+stage 7's run-outline route, and has simply never received these regions
+because they die one stage earlier.
+
+**The sequencing trap the killer found, independently reproduced:** on
+`hotel_fremont_hat` forced flat *without* this exemption, `resolve_small_
+regions` absorbs all 462 sub-floor regions and rescues zero — **the entire tan
+layer, letters and rope border both, drops to 0mm of thread.** That means
+**shipping M10's routing fix alone would make this specific defect worse**,
+not better. M9 is not an independent nice-to-have next to M10 — it is the
+mandatory second half of the same change, and the two must land together or
+not at all.
+
+**With both:** 142 regions exempted, 131 rescued as bean-run outlines,
+tagline recovers to 381mm of 614mm pro thread (62%), "EST 1895" to 102mm of
+414mm (25%) — legible outline text where there was previously nothing, still
+short of the pro's micro-satin fill (a separate, later lever). Cost: **+23%
+stitches, an extra colour block, more trims** — working against the M2
+fragmentation defect this same corpus already carries at 3.1× the pro's rate.
+
+**Standalone value, as things ship today (gradient-routed, no M10 fix):**
+small — about +89mm on hotel's tagline (~7% of the missing thread).
+`precision_drone` sees zero effect standalone; its letters are destroyed
+further upstream, not by this absorb path.
+
+### 6.3 What this means for sequencing
+
+Two real, gate-clean levers exist for the two top-ranked mechanisms. Neither
+needs a sew-out, a stage-0 change, or a default flip. But they are coupled —
+M9 must land with or before M10's routing change — and M10's sizing needs a
+post-#177 rerun before it's a number anyone can act on. Both carry a named
+cost on a specific design that only Kent can decide to accept.
+
+Full proposals and kill-audits: workflow run `wf_bd182562-e42`,
+`<session dir>/subagents/workflows/wf_bd182562-e42/journal.jsonl`.
 
 ## Where the raw data lives
 
