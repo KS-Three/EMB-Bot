@@ -153,10 +153,16 @@ failure, and that is where the next lane should look.
 4. **The per-shape band uses our polygon on both sides**, so it is a statement
    about our own emission against our own regions. That is what makes it immune
    to §1 and also what stops it saying anything about the pro.
-5. **`tier` is empty in `ours_regions.json`** on this run — 621 shapes, no tier
-   string — so tier attribution was not possible. Worth fixing before the next
-   run; it is the field that would say whether the starved shapes are satin,
-   fill or run.
+5. **`tier` is empty in `ours_regions.json`, and not by accident** — 621 shapes,
+   no tier string, so tier attribution was impossible. `prep_all.py:767` writes
+   `r.meta.get("tier")`, and that key is set only by a user `shape_overrides`
+   entry (`regions.py:334-342`). It is an INTENT slot — "force this shape to
+   this tier" — not a record of what was sewn. Empty is its correct value when
+   nobody overrode anything. The tier actually used is chosen inside
+   `stage7_sequence.stitch_one`, which returns early at `:868` (run tier),
+   `:895` (satin) and `:1192` (reactive rescue), and is not written per shape
+   anywhere. Attribution needs that decision recorded, not this field
+   populated — a different and slightly larger change than it first looks.
 6. **W = 0.2 mm is two pixels** at `RES = 10` px/mm. Treat the 0.4 and 0.8
    columns as the trustworthy ones for fractions.
 7. **A prior clip in the instrument, fixed before this run** (`df7a34e`): shapes
@@ -174,8 +180,10 @@ failure, and that is where the next lane should look.
 2. **Look at Sc32ce326 and Sf6a92112 directly** — same artwork, two sizes, half
    the edge band bare. Find what declined to sew that perimeter. That is the
    defect this lane was started to find.
-3. **Populate `tier` in `ours_regions.json`** so the next run can say which tier
-   starves.
+3. **Record the tier `stitch_one` actually chose**, per shape, so the next run
+   can say which tier starves. Not the same as populating `ours_regions.json`'s
+   `tier` field, which is a user-override slot and is correctly empty — see
+   caveat 5.
 4. **Do not compare pro against ours on the artwork band until registration is
    fixed** — or restrict to `art_missed <= 0.03` and say so every time.
 5. The instrument itself needs no further work for these questions.
