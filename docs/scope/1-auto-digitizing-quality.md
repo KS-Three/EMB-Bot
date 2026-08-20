@@ -1843,3 +1843,55 @@ territory and stays unanswered until fabric says so.
 
 **Not fixed here.** Filed with the reproduction, the exclusions, and the
 measurement so the next session starts from evidence rather than a screenshot.
+
+**Fixed (instrument), 2026-08-20 — `preflight` gained a coverage check:
+`ARTWORK_UNCOVERED` fires when a sewn shape's own claimed artwork gets no
+thread.** Direct follow-on to the extremity-drop defect above — the blind
+spot that let it score clean is now closed. `digitizer_core/preflight.py`'s
+`_uncovered_findings`, wired into `run_preflight` alongside the other
+artwork-dependent checks (skipped, metrics `None`, when called without an
+image — same contract as the thread-match check).
+
+**Ground truth is `polygon ∩ ink`, and both halves are load-bearing** — each
+alone produces a false-positive class the other kills, both found by testing
+against `becker_marine_logo.png` before trusting either:
+
+- *Polygon alone* claims a letter's open counter (e.g. the "C" in BECKER) as
+  area belonging to that shape, so a correctly-bare counter reads as 62 mm²
+  missing.
+- *Ink alone* (`~bg_mask`) counts every enclosed white counter as artwork
+  needing thread, so the same fixture reads 42.3% "missing" while sewing
+  exactly as designed.
+- A third class, independent of both: `cv2.erode`'s default border does not
+  erode artwork touching the image edge, so a full-bleed design
+  (`logo_gaulke_roofing`) read a permanent 37.5 mm² strip down its border at
+  every erosion width tried, until the erode call got an explicit zero
+  border.
+
+**Verified against the shape Kent named.** `enthusiast_logo.png` at 150 mm:
+`ARTWORK_UNCOVERED`, 7.8 mm² worst patch, names `S041897f7` — the exact left
+bracket from the finding above. Six other fixtures (`logo_whitebg`,
+`logo_alpha`, `ribbon_curve`, `logo_gaulke_roofing`,
+`logo_drone_thermal_badge`, `logo_script_tires`) stay silent, score
+unaffected. Full digitizer suite: 1222 passed (was 1218 — 4 new tests), 8
+skipped, 8 xfailed, the same 3 pre-existing golden mismatches COOKBOOK.md
+already names (`test_flat_lane_byte_identical`, `test_pushcomp`,
+`test_stage2_photo_segment`, all container-environment, none touching this
+change) — no regression.
+
+**The threshold is explicitly flagged provisional in the code
+(`_UNCOVERED_MIN_PATCH_MM2 = 5.0`).** The clean population sits at 0.00-0.25
+mm² and the two adjudicated problem cases at 7.75 and 44.50, but two
+fixtures in the middle — `logo_script_tires` (4.50) and
+`logo_drone_thermal_badge` (3.25) — are unadjudicated: nobody has looked at
+whether those are real drops or acceptable. 5.0 clears both and catches both
+known problems, but the margin to 4.50 is 10%, nothing like
+`_COVERAGE_MIN_PATCH_MM2`'s two-orders-of-magnitude separation. **Do not
+treat 5.0 as settled** — widen the fixture set and adjudicate the middle
+before leaning on it.
+
+**Not done:** the satin rail generation bug itself (still open, per the
+entry above) and `becker_marine_logo.png` was excluded from calibration —
+its artwork is 146×91 px for a 90 mm design (1.6 px/mm, far under
+`PHOTO_MIN_PX_PER_MM=10.0`), so it is a garbage-in case unrelated to this
+check's accuracy.

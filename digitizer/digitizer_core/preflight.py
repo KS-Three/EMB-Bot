@@ -84,6 +84,7 @@ import math
 
 import cv2
 import numpy as np
+from shapely.geometry import Point
 from skimage.color import deltaE_ciede2000
 
 from . import machine, stitches
@@ -106,6 +107,7 @@ DENSITY_EXTREME = "DENSITY_EXTREME"            # extra: {kind, measured_mm, targ
 DENSITY_STACKED = "DENSITY_STACKED"            # extra: {peak_units, p95_units, over_warn_mm2, over_block_mm2, cell_mm}
 SAME_HOLE_HEAVY = "SAME_HOLE_HEAVY"            # extra: {fraction, repeat_points, penetrations, baseline}
 LINK_UNCOVERED = "LINK_UNCOVERED"              # extra: {max_mm, limit_mm, total_mm, at_mm, thread_mm}
+ARTWORK_UNCOVERED = "ARTWORK_UNCOVERED"        # extra: {count, worst_mm2, total_mm2, wanted_mm2, shapes: [{shape_id, missing_mm2, area_mm2}]}
 CONTOUR_STARVED = "CONTOUR_STARVED"            # extra: {count, rings, shapes}
 PHOTO_RESOLUTION_LOW = "PHOTO_RESOLUTION_LOW"  # extra: {px_per_mm, min_px_per_mm}
 SUBJECT_CONTRAST_LOW = "SUBJECT_CONTRAST_LOW"  # extra: {delta_l, min_delta_l, bg_lightness}
@@ -240,6 +242,65 @@ _COVERAGE_FLOOR_UNITS = 0.25
 # shapes; a real stacked-layer failure is a continuous patch two orders of
 # magnitude bigger. The finding sums every patch at or over this size.
 _COVERAGE_MIN_PATCH_MM2 = 25.0
+
+# --- Artwork left uncovered -------------------------------------------------
+
+# The instrument for "the engine meant to sew this and part of it got no
+# thread" — a dropped limb, not a thin spot. Ground truth is the INTERSECTION
+# of two masks, and it has to be both:
+#
+#   * the sewn regions' polygons (holes excluded) — the engine's own claim
+#     about what it is sewing, so an area no region claims is not this
+#     check's business; and
+#   * the artwork's own ink (`~bg_mask`) — so a polygon that over-claims
+#     cannot manufacture a defect.
+#
+# Measured 2026-08-20, each mask alone produces a false-positive class the
+# other kills. Polygon alone: `becker_marine_logo`'s wordmark region claims
+# the open counter of its "C" (a counter that is not an enclosed hole, so it
+# is not an interior ring), and reports 62 mm2 of correctly-bare fabric.
+# Ink alone: the same fixture's letters are hollow in the artwork, and the
+# enclosed white counters are not in `bg_mask`, so 42.3% of the design reads
+# "missing" when it is sewing exactly as designed.
+_UNCOVERED_CELL_MM = 0.5
+
+# Half a thread width plus a cell's diagonal slack. Thread laid along a
+# shape's own boundary covers the inside of the edge and hangs over the
+# outside, so the outermost half-thread of any shape reads under the floor by
+# construction — the same effect `_COVERAGE_FLOOR_UNITS` names for column
+# edge cells. Eroding by less reports every shape's rim as a defect.
+# `cv2.erode` is called with an explicit zero border: without it a full-bleed
+# design (artwork touching the image edge) never erodes there, and
+# `logo_gaulke_roofing` reports a permanent 37.5 mm2 strip down its right
+# border — measured 2026-08-20, 0.0 with the border fixed, at every erosion.
+_UNCOVERED_ERODE_MM = 0.4
+
+# How big one CONNECTED uncovered patch must be to report. Measured
+# 2026-08-20 over the committed fixtures, worst single patch in mm2:
+#
+#   fixture                     mm    px/mm   worst    note
+#   logo_whitebg                80    10.0     0.00
+#   logo_gaulke_roofing         90    14.3     0.00    full-bleed
+#   ribbon_curve                60    13.3     0.00
+#   logo_alpha                  80    10.0     0.25
+#   enthusiast_logo             80    17.5     1.50
+#   logo_drone_thermal_badge    90    17.1     3.25    unadjudicated
+#   enthusiast_logo            120    11.7     3.75
+#   logo_script_tires           90    17.6     4.50    unadjudicated
+#   enthusiast_logo            150     9.3     7.75    <- the reported defect
+#   becker_marine_logo          90     1.6    44.50    input far below floor
+#
+# THIS THRESHOLD IS PROVISIONAL. The clean population sits at 0.00-0.25 and
+# the two designs with a known or self-evident problem sit at 7.75 and 44.50,
+# but the middle of the table is unadjudicated: nobody has looked at whether
+# `logo_script_tires`' 4.50 mm2 and `logo_drone_thermal_badge`' 3.25 mm2 are
+# real drops or acceptable. 5.0 clears every fixture that has been looked at
+# and catches both that have, but the margin to 4.50 is 10%, not the two
+# orders of magnitude `_COVERAGE_MIN_PATCH_MM2` earned. Widen the fixture set
+# and adjudicate the middle before trusting this number. The METRICS below
+# are reported unconditionally and are the honest output; the finding is the
+# opinionated part.
+_UNCOVERED_MIN_PATCH_MM2 = 5.0
 
 # Fraction of a run's direction changes that must reverse (turn past 120 deg)
 # before the run is read as a satin COLUMN rather than a path. A column lays
@@ -1240,6 +1301,133 @@ def _coverage_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
     )], metrics
 
 
+# --- Artwork the design meant to sew and did not ----------------------------
+
+def _uncovered_findings(p, result: PipelineResult, plan: StitchPlan
+                        ) -> tuple[list[dict], dict]:
+    """Artwork a sewn region claims, that ends up with no thread on it.
+
+    The gap this closes: every other check here measures a property of the
+    stitches (how long, how dense, how stacked) or of one object in isolation.
+    None of them asks whether the thread actually LANDED on the artwork, so a
+    shape whose outline is correct, whose tier is correct, and which reports
+    `stitched: true` can lose a whole limb and score clean. That is not
+    hypothetical — `enthusiast_logo.png` drops the emblem's inward tab and a
+    corner, and both `preflight` and the corpus scorecard called it an A.
+
+    Ground truth is `polygon ∩ ink`, and both halves are load-bearing — see
+    `_UNCOVERED_CELL_MM` for the false-positive class each one alone
+    produces. "Covered" is `_coverage_map`'s own units grid at
+    `_COVERAGE_FLOOR_UNITS`, so this check and `DENSITY_STACKED` are reading
+    one instrument from opposite ends: that one says too many layers, this
+    one says none.
+
+    Regions with no runs at all are skipped — `SHAPES_LEFT_UNSEWN` already
+    owns "planned but not sewn", and reporting the same area twice would
+    double-count a deliberate hold-out.
+
+    Needs the artwork, so it is skipped (metrics None) exactly like the
+    thread-match check when `run_preflight` is called without an image.
+    """
+    empty = {"uncovered_checked": False, "uncovered_worst_mm2": None,
+             "uncovered_total_mm2": None, "uncovered_wanted_mm2": None}
+    got = _coverage_map(plan, cell_mm=_UNCOVERED_CELL_MM)
+    if got is None:
+        return [], empty
+    grid, (gx0, gy0) = got
+    covered = grid >= _COVERAGE_FLOOR_UNITS
+    ny, nx = grid.shape
+
+    x0, y0, x1, y1 = p.art_bbox
+    cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+    h, w = p.bg_mask.shape
+
+    def to_px(coords) -> np.ndarray:
+        a = np.asarray(coords, np.float64)
+        return np.column_stack(
+            [a[:, 0] * p.px_per_mm + cx, a[:, 1] * p.px_per_mm + cy]
+        ).astype(np.int32)
+
+    sewn = {r.shape_id for _b, r in plan.iter_runs()}
+    claimed = np.zeros((h, w), np.uint8)
+    for r in result.regions:
+        if r.shape_id not in sewn:
+            continue
+        cv2.fillPoly(claimed, [to_px(r.polygon.exterior.coords)], 1)
+        for ring in r.polygon.interiors:
+            cv2.fillPoly(claimed, [to_px(ring.coords)], 0)
+
+    wanted_px = ((claimed > 0) & (~p.bg_mask)).astype(np.uint8)
+    k = max(1, int(round(_UNCOVERED_ERODE_MM * p.px_per_mm)))
+    wanted_px = cv2.erode(wanted_px, np.ones((2 * k + 1, 2 * k + 1), np.uint8),
+                          borderType=cv2.BORDER_CONSTANT, borderValue=0)
+
+    # Sample the artwork mask at each coverage cell's centre — the exact
+    # inverse of the transform stage 4 applied, same as `_region_color_errors`.
+    gy, gx = np.mgrid[0:ny, 0:nx]
+    sx = np.clip((((gx + 0.5) * _UNCOVERED_CELL_MM + gx0) * p.px_per_mm + cx)
+                 .astype(np.int64), 0, w - 1)
+    sy = np.clip((((gy + 0.5) * _UNCOVERED_CELL_MM + gy0) * p.px_per_mm + cy)
+                 .astype(np.int64), 0, h - 1)
+    wanted = wanted_px[sy, sx] > 0
+
+    cell_area = _UNCOVERED_CELL_MM ** 2
+    wanted_mm2 = float(wanted.sum()) * cell_area
+    missing = (wanted & ~covered).astype(np.uint8)
+    metrics = {"uncovered_checked": True, "uncovered_worst_mm2": 0.0,
+               "uncovered_total_mm2": 0.0,
+               "uncovered_wanted_mm2": round(wanted_mm2, 1)}
+    if not missing.any():
+        return [], metrics
+
+    _n, _labels, stats, cents = cv2.connectedComponentsWithStats(missing, connectivity=8)
+    areas = stats[1:, cv2.CC_STAT_AREA] * cell_area
+    big = np.nonzero(areas >= _UNCOVERED_MIN_PATCH_MM2)[0]
+    metrics["uncovered_worst_mm2"] = round(float(areas.max()), 1)
+    metrics["uncovered_total_mm2"] = round(float(areas[big].sum()), 1)
+    if not len(big):
+        return [], metrics
+
+    # Attribute each patch to the region containing its centroid, so the
+    # finding names the shape a person would go look at.
+    by_shape: dict[str, float] = {}
+    area_of: dict[str, float] = {}
+    for i in big:
+        px_mm = (cents[i + 1][0] + 0.5) * _UNCOVERED_CELL_MM + gx0
+        py_mm = (cents[i + 1][1] + 0.5) * _UNCOVERED_CELL_MM + gy0
+        owner = None
+        for r in result.regions:
+            if r.shape_id in sewn and r.polygon.contains(Point(px_mm, py_mm)):
+                owner = r
+                break
+        key = owner.shape_id if owner is not None else "(unattributed)"
+        by_shape[key] = by_shape.get(key, 0.0) + float(areas[i])
+        if owner is not None:
+            area_of[key] = round(owner.area_mm2, 1)
+
+    shapes = [{"shape_id": sid, "missing_mm2": round(v, 1),
+               "area_mm2": area_of.get(sid)}
+              for sid, v in sorted(by_shape.items(), key=lambda kv: -kv[1])]
+    total = metrics["uncovered_total_mm2"]
+    worst = metrics["uncovered_worst_mm2"]
+    n_sh = len(shapes)
+    noun = "shape" if n_sh == 1 else "shapes"
+    return [finding(
+        ARTWORK_UNCOVERED,
+        "warn",
+        f"{total:.0f} mm2 of artwork across {n_sh} {noun} is claimed by a "
+        f"shape the design sews, but no thread lands on it (largest bare "
+        f"patch {worst:.0f} mm2). A limb or corner is missing from the "
+        f"stitch-out even though the shape itself looks correct. Check the "
+        f"named shapes in review before sewing.",
+        count=n_sh,
+        worst_mm2=worst,
+        total_mm2=total,
+        wanted_mm2=metrics["uncovered_wanted_mm2"],
+        shapes=shapes,
+    )], metrics
+
+
 # --- Uncovered links (chaining law 60) --------------------------------------
 
 def _transport_and_content(plan: StitchPlan
@@ -1717,6 +1905,15 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     coverage_findings, coverage_metrics = _coverage_findings(plan)
     findings.extend(coverage_findings)
     metrics.update(coverage_metrics)
+
+    # Needs both the artwork and the regions, same as the thread-match check.
+    if p is not None and result is not None:
+        unc_findings, unc_metrics = _uncovered_findings(p, result, plan)
+        findings.extend(unc_findings)
+        metrics.update(unc_metrics)
+    else:
+        metrics.update({"uncovered_checked": False, "uncovered_worst_mm2": None,
+                        "uncovered_total_mm2": None, "uncovered_wanted_mm2": None})
 
     link_findings, link_metrics = _link_findings(plan, cfg)
     findings.extend(link_findings)

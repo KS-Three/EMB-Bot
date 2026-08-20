@@ -22,6 +22,7 @@ from digitizer_core import (PipelineConfig, StitchBlock, StitchPlan,
 from digitizer_core import stitches as st
 from digitizer_core.pipeline import digitize, plan_stitches
 from digitizer_core.preflight import (
+    ARTWORK_UNCOVERED,
     CLASS_OVERRIDE_TECHNIQUE_MISMATCH,
     COLOR_STOPS_HEAVY,
     COLOR_STOPS_MAX,
@@ -1280,3 +1281,82 @@ def test_the_report_is_json_safe():
     json.dumps(run_preflight(None, _two_shapes_linked(), cfg()))
     json.dumps(run_preflight(None, _starved_plan(count=1, rings=1,
                                                  shapes=["S1"]), cfg()))
+
+
+# --- Artwork left uncovered -------------------------------------------------
+#
+# The defect these guard is the one every other check in this module is blind
+# to by construction: a shape whose outline is right, whose tier is right, and
+# which reports `stitched: true`, that still puts no thread on part of itself.
+# Found on `enthusiast_logo` 2026-08-20 by eye, after preflight graded it A.
+
+
+def _uncovered(report: dict) -> dict | None:
+    for f in report["findings"]:
+        if f["code"] == ARTWORK_UNCOVERED:
+            return f
+    return None
+
+
+def test_a_dropped_limb_is_reported_and_names_its_shape():
+    """`enthusiast_logo` at 150 mm drops the emblem bracket's inward tab.
+
+    The shape id is the point of the finding: "7.8 mm2 is missing" sends
+    nobody anywhere, `S041897f7` sends them to the bracket. Asserted on the
+    id rather than only the area so a future change that keeps the area but
+    loses the attribution still fails.
+    """
+    art = TESTDATA / "photo/enthusiast_logo.png"
+    c = cfg(target_width_mm=150.0, max_colors=6)
+    result, plan_ = digitize(art, c)
+    report = run_preflight(result, plan_, c, image=art)
+
+    found = _uncovered(report)
+    assert found is not None, "the dropped tab must be reported"
+    assert found["severity"] == "warn"
+    ids = {s["shape_id"] for s in found["extra"]["shapes"]}
+    assert "S041897f7" in ids, f"expected the left bracket, got {ids}"
+    assert report["metrics"]["uncovered_worst_mm2"] >= 5.0
+
+
+def test_a_clean_fixture_leaves_no_artwork_uncovered(whitebg, plan):
+    """The promise every threshold here is validated against, for this check:
+    clean work reports zero, not 'a little'."""
+    stitch_plan, _planned, _warnings = plan
+    report = run_preflight(whitebg, stitch_plan, cfg(**PLAN_CFG_KW), image=ART)
+
+    assert _uncovered(report) is None
+    m = report["metrics"]
+    assert m["uncovered_checked"] is True
+    assert m["uncovered_worst_mm2"] == 0.0
+    assert m["uncovered_wanted_mm2"] > 0.0     # it really did measure something
+
+
+def test_a_full_bleed_design_does_not_report_its_own_border():
+    """Regression guard for the erosion border, measured 2026-08-20.
+
+    `cv2.erode`'s default border does not erode artwork that touches the
+    image edge, so a full-bleed design read a permanent uncovered strip down
+    its rim — 37.5 mm2 on this fixture, at every erosion width, before
+    `borderValue=0`. A check that fires on every full-bleed logo is a check
+    operators learn to ignore.
+    """
+    art = TESTDATA / "photo/logo_gaulke_roofing.png"
+    c = cfg(target_width_mm=90.0, max_colors=6)
+    result, plan_ = digitize(art, c)
+    report = run_preflight(result, plan_, c, image=art)
+
+    assert _uncovered(report) is None
+    assert report["metrics"]["uncovered_worst_mm2"] == 0.0
+
+
+def test_without_the_artwork_the_uncovered_check_is_skipped_and_says_so(whitebg, plan):
+    """No image means no ground truth. It reports None rather than zero —
+    'not measured' and 'measured clean' must not look alike."""
+    stitch_plan, _planned, _warnings = plan
+    report = run_preflight(whitebg, stitch_plan, cfg(**PLAN_CFG_KW), image=None)
+
+    m = report["metrics"]
+    assert m["uncovered_checked"] is False
+    assert m["uncovered_worst_mm2"] is None
+    assert m["uncovered_wanted_mm2"] is None
