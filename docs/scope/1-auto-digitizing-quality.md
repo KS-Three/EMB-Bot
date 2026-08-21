@@ -1954,3 +1954,118 @@ problems, which is itself a useful data point for its 5.0mm² threshold.
 **Not done:** no fix attempted for the border fragmentation or the
 tiny-lettering legibility floor — both are physical/segmentation-scale
 questions (gate 1 territory for the latter), filed with reproduction only.
+
+---
+
+## Why this area is not split in two
+
+*Moved verbatim from `MASTER_SCOPE.md` on 2026-08-21 under that file's rule 5
+("overflow goes to `docs/scope/`, never to the bin") during a trim pass back
+under its 800-line budget. It is a standing argument about how this area is
+TRACKED, not a status claim — which is why it left the dashboard. The
+undated "this session"/"this pass" deixis below refers to the 2026-08-14
+session that wrote it.*
+
+**Not promoted to a sixth top-level capability area.** This session
+evaluated and explicitly rejected splitting area 1 ("auto-digitizing
+quality") into separate "image analysis" (raster → regions/colors) and
+"stitch planning" (regions → technique/stitches) areas, which an external
+review of this doc proposed alongside naming this gap. Reasoning: those are
+tightly-coupled pipeline STAGES of one system (`stage0_classify` →
+`stage1_prep`/`stage1_photo_prep` → `stage2_quantize`/`stage2_photo_segment`
+→ `stage3_segment` → `stage4_vectorize` → stages 5–7), not two separately
+shippable products — nearly every feature this doc tracks under area 1
+(this pass's own text-cluster detection included) touches both halves, so
+splitting the tracking would recreate, at the doc level, the exact
+"handoff nobody owns" problem that review raised as a reason to name this
+gap in the first place. A future session should feel free to promote this
+from a cross-cutting note to its own capability area once real work
+actually lands against it (a labeled fixture set, a scoring script/metric),
+per this doc's own convention of tracking status, not aspiration.
+
+**Correcting the record on that same external review, so a future session
+isn't misled by it:** it also claimed color quantization/palette reduction,
+segmentation & vectorization, background removal, and small-detail/minimum-
+feature culling had "no owner" in this project. Checked directly against
+source this pass — all four already exist and are already documented above:
+quantization is `stage2_quantize.py` (k-means + CIEDE2000 thread snapping)
+and `palette.py` (weighted k-medoids chart selection); segmentation/
+vectorization is `stage2_photo_segment.py` (SLIC+RAG; SEEDS since 2026-08-07 — stage2_photo_segment.py:11-27, internal names still slic_*)/`stage3_segment.py`/
+`stage4_vectorize.py` — the literal subject of the `BACKGROUND_ENCLOSED` and
+gradient-fragmentation sagas already detailed at length above; background
+removal is `stage1_photo_prep.py`'s `remove_background_seam` (rembg,
+isolated venv, PR #43); small-detail culling is `stage3_segment.py`'s
+`small_shape_rescue` path (rescues a shape as a run stitch instead of
+dropping it — the exact mechanism this pass's own text-cluster detection
+builds on top of). The review's two accurate points — text detection in
+logos being a real gap, and this evaluation-corpus/harness gap — are exactly
+the two reflected in this update: the first is now closed by this pass's own
+feature, the second is captured here.
+
+---
+
+## The satin extremity drop — ROOT-CAUSED AND FIXED 2026-08-21
+
+The defect filed above (`enthusiast_logo.png`, the emblem bracket losing its
+inward tab and a corner, 7.8 mm² reported by `ARTWORK_UNCOVERED`, D/52) is
+closed. **The filed hypothesis — "asymmetric between mirror twins, a
+traversal-order smell, not a threshold" — was wrong on both halves.**
+
+**Mechanism.** `stage6_satin._prune_spurs` erases short dead-end skeleton twigs
+and repeats up to 4 times so a twig hidden behind a twig still goes. Erasing a
+spur leaves its branch node standing; a node left holding one arm turns that arm
+into a dead end through no thinning of its own; pass 2 measures that stem against
+the same bar and deletes real limb. Traced pass by pass on the polygon stage 7
+actually satins:
+
+| twin | pass 1 | pass 2 (the stem) | bar | outcome |
+|---|---|---|---|---|
+| left `S041897f7` | both tab twigs, 17.142 px | **19.000 px → pruned** | 19.4770 px | 1 stroke, tab has no spine |
+| right `S0406e2a0` | both tab twigs, 16.728 px | 20.000 px → kept | 19.1152 px | 3 strokes incl. the 3.33 mm tab |
+
+**One raster pixel — 0.167 mm at `_RASTER_PX_PER_MM` 6.0 — decides a 3.3 mm
+tab, between two shapes whose sewn areas differ by 0.06%** (194.530 vs 194.653
+mm²). The left is doubly penalised: shorter stem *and* a 1.9% higher bar from
+its own mean DT. That is why it looks like an asymmetry bug and is not one.
+
+**Fix:** a dead end `_prune_spurs` itself exposed is remembered and never
+counted as a spur tip. Narrow by construction — a node going 3 arms → 2 welds
+its survivors into one longer edge whose free end is elsewhere, and that edge
+stays prunable on its own length. Left bracket now sews a 3.17 mm tab against
+its twin's 3.33 mm; `ARTWORK_UNCOVERED` silent; score 52 → 64, D → C.
+
+**Measured and REFUTED — do not rebuild:**
+- *Retuning the 1.6 multiplier.* Fixes 2 fixtures, breaks 2, 7 test failures.
+  The decision margin is ±0.4% against 3.5% noise in its own input, and 8.2% of
+  all spur decisions across 9 fixtures sit within ±5% of the bar. **No threshold
+  value is correct when the margin is smaller than the noise** — every candidate
+  only moves which shape sits on the knife edge.
+- *A grid-independent normalizer* (median/p75 DT, `ribbon_width_mm`). Correct at
+  shape level, but the twins' skeletons genuinely branch differently, so no
+  length statistic separates them.
+- *Reunifying co-linear twigs before pruning.* The twigs form a ~105° V, not two
+  co-linear halves, the identical V exists on the healthy twin, and it would not
+  save the stem, which dies a pass later in its own right.
+- *Moving `_corner_forks` ahead of `_prune_spurs`.* `_corner_forks` returns the
+  empty set for both twins at the shipped threshold; it is inert here.
+
+**Blast radius** (guard on vs off, 90 mm, `max_colors=6`): `logo_alpha.png` and
+`logo_whitebg.png` **byte-identical** — the genuine-regression canary and the
+pushcomp golden fixture are untouched, so both pre-existing golden failures are
+unrelated. `logo_gaulke_roofing.png` identical. Eight fixtures move, all in one
+direction (satin runs +1 to +3): enthusiast_logo, owl_kent, drone_render,
+hotel_fremont, drone_thermal_badge, repro_gradient_white_icon, becker_marine,
+bridge_bar, golden_tee. **`test_flat_lane_byte_identical[photo/enthusiast_logo.png]`
+legitimately moves** — it was already in the expected-failure matrix on this
+platform and was NOT recaptured here, per COOKBOOK's diff-then-capture rule: a
+recapture on a run where the golden already fails for an unrelated platform
+reason would fold that divergence in.
+
+**The trap that cost the first investigation its whole result, recorded so
+nobody repeats it:** it measured `region.polygon` (165.41 mm²). Stage 7 satins
+the pull-compensated `p.polygon` (194.53 mm², +0.3 mm outward, 17% different
+`half_mm`) — `stage7_sequence.py`'s own comment says so. Every spur length, flip
+point and stroke list was therefore off-pipeline, and the "topology fork"
+conclusion drawn from them was an artifact. Intercept `satin_shape` to get the
+operative polygon; `region.polygon` is only what `is_satin_candidate` classifies
+on. *(measured 2026-08-21 — reproduced independently three times)*

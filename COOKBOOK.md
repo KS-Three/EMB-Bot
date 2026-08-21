@@ -231,6 +231,23 @@ hand-rolling it in JS.
   "keep the largest" silently discards real area — take every part that clears
   your sewable floor.
 
+- **An iterative cleanup pass must not re-judge the mess it made itself.**
+  `stage6_satin._prune_spurs` erases short dead-end skeleton twigs and repeats
+  up to 4 times so a twig behind a twig still goes. But erasing a spur leaves
+  its branch node standing, and a node left holding one arm turns that arm into
+  a dead end — through no thinning of its own. Pass 2 then measured that stem
+  against the same bar and deleted a real limb. On `enthusiast_logo.png` that
+  was the emblem bracket's 3.3 mm tab: stem 19.000 px against a 19.4770 px bar,
+  while its MIRROR TWIN's stem was 20.000 px against 19.1152 px and lived. One
+  raster pixel (0.167 mm at 6 px/mm) decided it, between two shapes whose areas
+  differ by 0.06% — so this reads as a traversal-order or symmetry bug and is
+  neither. **The general trap: when a decision margin is smaller than the noise
+  in its own input, no threshold value is correct** — every candidate just
+  moves which shape sits on the knife edge, which is why the retune was
+  measured and rejected (it fixed two fixtures and broke two others). Fixed by
+  exempting a dead end the function itself created. Also: `_prune_spurs` is
+  shared with `textcluster.py`, so its constant is not private to satin.
+
 - **A warning that makes a large loss sound routine is itself the defect.**
   The above was reported on every run as "N details were too small or thin to
   hold a stitch and were removed" — while N included a 2,787 mm² region.

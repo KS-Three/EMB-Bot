@@ -1104,3 +1104,67 @@ def test_same_rail_spacing_sits_on_the_thread_width_not_below_the_guard():
     below_guard = sum(1 for d in adv if d < machine.SATIN_SHORT_STITCH_AT_MM)
     assert below_guard / len(adv) <= 0.05, \
         f"{below_guard} intervals bunched under the guard threshold — the guard is not doing its job"
+
+
+# --- Spur pruning: what counts as a twig -----------------------------------
+
+def _tab_skeleton() -> np.ndarray:
+    """A body with a tab hanging off it, the tab forking into two twigs.
+
+    This is `enthusiast_logo`'s emblem bracket in miniature. The body runs
+    down x=0; the tab's stem leaves it at (0,10) and ends in a fork at (5,10)
+    whose two twigs are far shorter than the stem.
+
+        (0,0)  |                    (7,8) A
+               |          .        /
+        (0,10) +-----------(5,10)
+               |          `        \
+        (0,20) |                    (7,12) B
+    """
+    m = np.zeros((21, 9), np.uint8)
+    m[0:21, 0] = 1                                  # body: free at both ends
+    for x in range(1, 6):
+        m[10, x] = 1                                # stem, 5 px
+    m[9, 6] = m[8, 7] = 1                           # twig A, 2*sqrt(2) px
+    m[11, 6] = m[12, 7] = 1                         # twig B, same
+    return m
+
+
+def test_a_stem_dead_ended_by_its_own_pruned_twigs_is_not_itself_a_spur():
+    """The `enthusiast_logo` extremity drop, isolated to the graph rule.
+
+    `_prune_spurs` repeats so a twig behind a twig still goes. But erasing a
+    spur leaves its branch node standing, and a node left holding one arm
+    turns that arm into a dead end — through no thinning of its own. Measured
+    again against the same bar, a real limb dies on the second pass.
+
+    On the real fixture that is a 3.3 mm tab, and the margin is one raster
+    pixel: the left bracket's stem is 19.000 px against a 19.4770 px bar, its
+    mirror twin's 20.000 px against 19.1152 px. Same artwork, 0.06% apart in
+    area, opposite outcomes. Retuning the bar cannot fix that — it only moves
+    which shape sits on the knife edge — so the stem is exempted instead.
+    """
+    bar = 6.0                       # both twigs (2.83 px) under it, stem (5 px) under it too
+    m = _tab_skeleton()
+    stage6_satin._prune_spurs(m, bar)
+
+    assert m[9, 6] == 0 and m[8, 7] == 0, "twig A is genuine noise and must still go"
+    assert m[11, 6] == 0 and m[12, 7] == 0, "twig B is genuine noise and must still go"
+    assert [int(m[10, x]) for x in range(1, 6)] == [1, 1, 1, 1, 1], \
+        "the stem lost its branches to pass 1 and was then eaten as a spur itself"
+    assert m[0:21, 0].all(), "the body is free at both ends and was never a spur"
+
+
+def test_a_short_dead_end_hanging_off_a_body_is_still_pruned():
+    """The control for the exemption above: a twig that was ALWAYS a dead end
+    is ordinary noise and must still go, or the guard has simply disabled
+    pruning."""
+    m = np.zeros((21, 9), np.uint8)
+    m[0:21, 0] = 1
+    for x in range(1, 6):
+        m[10, x] = 1                # identical stem, but nothing forks off it
+    stage6_satin._prune_spurs(m, 6.0)
+
+    assert [int(m[10, x]) for x in range(1, 6)] == [0, 0, 0, 0, 0], \
+        "a stem that was a dead end from the start is a spur like any other"
+    assert m[0:21, 0].all()

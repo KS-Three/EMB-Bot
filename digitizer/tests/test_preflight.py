@@ -20,6 +20,9 @@ import pytest
 from digitizer_core import (PipelineConfig, StitchBlock, StitchPlan,
                             StitchRun, machine, run_stages)
 from digitizer_core import stitches as st
+# The module object, not its names: the uncovered-artwork test monkeypatches
+# `_prune_spurs` to re-create the defect the check was built against.
+from digitizer_core import stage6_satin
 from digitizer_core.pipeline import digitize, plan_stitches
 from digitizer_core.preflight import (
     ARTWORK_UNCOVERED,
@@ -1298,14 +1301,41 @@ def _uncovered(report: dict) -> dict | None:
     return None
 
 
-def test_a_dropped_limb_is_reported_and_names_its_shape():
-    """`enthusiast_logo` at 150 mm drops the emblem bracket's inward tab.
+def test_a_dropped_limb_is_reported_and_names_its_shape(monkeypatch):
+    """`enthusiast_logo` at 150 mm used to drop the emblem bracket's inward tab.
 
-    The shape id is the point of the finding: "7.8 mm2 is missing" sends
-    nobody anywhere, `S041897f7` sends them to the bracket. Asserted on the
-    id rather than only the area so a future change that keeps the area but
-    loses the attribution still fails.
+    The drop itself was fixed 2026-08-21 (`stage6_satin._prune_spurs` no longer
+    re-measures a stem its own earlier pass un-branched), and with it went the
+    only fixture in the corpus that put this check on real ground. Rather than
+    lose the positive case, the fault is injected: `_prune_spurs` is restored to
+    its pre-fix behaviour and the check must still fire, still name the shape.
+
+    The shape id is the point of the finding: "7.8 mm2 is missing" sends nobody
+    anywhere, `S041897f7` sends them to the bracket. Asserted on the id rather
+    than only the area so a change that keeps the area but loses the
+    attribution still fails.
     """
+    def unguarded(mask, spur_len_px):
+        """`_prune_spurs` exactly as it shipped before the 2026-08-21 fix."""
+        for _ in range(4):
+            removed = 0
+            for e in stage6_satin._skeleton_edges(mask):
+                if e["closed"] or (e["free_start"] == e["free_end"]):
+                    continue
+                length = sum(math.dist(a, b)
+                             for a, b in zip(e["pts"], e["pts"][1:]))
+                if length >= spur_len_px:
+                    continue
+                keep = e["pts"][-1] if e["free_start"] else e["pts"][0]
+                for px in e["pts"]:
+                    if px != keep:
+                        mask[px[1], px[0]] = 0
+                        removed += 1
+            if not removed:
+                return
+
+    monkeypatch.setattr(stage6_satin, "_prune_spurs", unguarded)
+
     art = TESTDATA / "photo/enthusiast_logo.png"
     c = cfg(target_width_mm=150.0, max_colors=6)
     result, plan_ = digitize(art, c)
@@ -1317,6 +1347,28 @@ def test_a_dropped_limb_is_reported_and_names_its_shape():
     ids = {s["shape_id"] for s in found["extra"]["shapes"]}
     assert "S041897f7" in ids, f"expected the left bracket, got {ids}"
     assert report["metrics"]["uncovered_worst_mm2"] >= 5.0
+
+
+def test_the_bracket_tab_the_check_found_is_now_sewn():
+    """The other half: with the fix in place the same job comes back clean.
+
+    Paired with the fault-injection test above on purpose — together they say
+    the check fires when there IS a hole and stays silent when there is not,
+    which neither test proves alone. `enthusiast_logo` was the corpus's only
+    real uncovered-artwork case, so this is also the regression guard for the
+    prune fix at the product level rather than the graph level.
+    """
+    art = TESTDATA / "photo/enthusiast_logo.png"
+    c = cfg(target_width_mm=150.0, max_colors=6)
+    result, plan_ = digitize(art, c)
+    report = run_preflight(result, plan_, c, image=art)
+
+    assert _uncovered(report) is None, (
+        "the emblem bracket's tab is sewn again — a finding here means the "
+        "prune guard regressed"
+    )
+    assert report["metrics"]["uncovered_checked"] is True
+    assert report["metrics"]["uncovered_worst_mm2"] < 5.0
 
 
 def test_a_clean_fixture_leaves_no_artwork_uncovered(whitebg, plan):

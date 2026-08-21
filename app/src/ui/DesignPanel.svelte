@@ -121,6 +121,22 @@
       {decoded.colorCount} color{decoded.colorCount === 1 ? "" : "s"} · {decoded.trimCount} trims
     </p>
 
+    <!-- The import side of the axis bug DownloadStep already warns about on
+         the export side. EMB-Bot's DST codec is transposed vs. the Tajima
+         standard, so a file digitized anywhere else arrives on its side and
+         the stats line above prints those swapped numbers as fact. Fixing the
+         codec is gated (it would re-orient every DST EMB-Bot has written), so
+         say so and point at Rotate. Measured on all five committed pro
+         references: 5/5 exact transposition. -->
+    <p class="dp-note warn" data-testid="dst-import-orientation-note">
+      <span class="dp-warn-icon"><Icon name="warning" size={14} /></span> If this
+      came from other software and looks turned on its side, it is: EMB-Bot reads
+      DST on the opposite axis convention, so the {decoded.widthMM.toFixed(0)}×{decoded.heightMM.toFixed(0)} mm
+      above is swapped too. Use Rotate to stand it up, then check the size — on a
+      hat or beanie a sideways design gets shrunk to fit the short side. Designs
+      made in EMB-Bot are unaffected.
+    </p>
+
     <div class="dp-blocks">
       <span class="dp-blocks-label">Thread per color block</span>
       {#each Array.from({ length: decoded.colorCount }) as _, i}

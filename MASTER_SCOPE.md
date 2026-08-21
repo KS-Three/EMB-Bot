@@ -36,12 +36,11 @@ or move it.
 
 ## Live defects — believed true right now
 
-1. **RESOLVED — every shade of every decomposed region sewed in the same
-   colour.** Chart snap was computed but never read; every block collapsed to
-   the region's one thread. `stage7_sequence._shade_blocks` now buckets runs
-   by `shade_thread_index` into one `StitchBlock` per accepted shade. *(fixed
-   2026-08-19 — stage7_sequence._shade_blocks,
-   tests/test_shade_thread_emission.py)*
+1. **RESOLVED 2026-08-19 — shade-thread collapse** (every shade of a
+   decomposed region sewed in one colour). Kept numbered, not deleted: ten
+   other documents cite these entries as "live defect N". *(fixed 2026-08-19
+   — `stage7_sequence._shade_blocks`, tests/test_shade_thread_emission.py;
+   detail in docs/scope-history.md)*
 
 2. **No width floor under satin — and the proposed fix is DISPROVED for flat
    art.** 19 of 162 corpus regions, all photo-class, sew sub-millimetre satin
@@ -67,8 +66,17 @@ or move it.
    never the raw `trims` field (pystitch emits ~2 TRIM commands per real cut on
    the pro's files and 1 on ours). **Cause attributed:** trim-dominated, not
    travel — the pro never cuts for a move under 11.8 mm and our `trim_at_mm` is
-   3.0 (gate 1: cloth settles that). `_graph_travel` returning nothing is a real
-   but secondary contributor. Detail, retractions and caveats in
+   3.0 (gate 1: cloth settles that). **The "`_graph_travel` returns nothing"
+   half of that attribution is RETRACTED** — measured before PR #182's
+   cursor-side snap retry landed. Re-measured at HEAD it returns a usable path
+   on 9 of 55 calls over three real fixtures, and the quality-preserving
+   headroom left in it is ~4 trims of 250, so it is not worth a pass. The
+   attribution doc's §2 ("0 successful returns out of 57 calls"; "no test
+   references `_graph_travel`") is stale on both counts —
+   `tests/test_travel_graph.py` exists and passes.
+   *(measured 2026-08-21 — instrumented at HEAD on
+   enthusiast_logo/becker_marine_logo/logo_alpha)*
+   Detail, retractions and caveats in
    [`docs/fragmentation-attribution-2026-08-18.md`](docs/fragmentation-attribution-2026-08-18.md).
    *(measured 2026-08-18 — pinned worktree, `prep_all` over the Drive corpus)*
    **Not blocked** — artwork and five pro variants are committed under
@@ -100,6 +108,27 @@ or move it.
    region-level fix: the straddle is 95.8% `speckle`, i.e. grid noise.
    *(measured 2026-08-17 — `kappacheck.py`; detail in
    `docs/satin-gate-attribution-2026-08-16.md` §9)*
+
+6. **Satin fragments into many small islands on real logo art — and the trim
+   bulk is INSIDE one shape, not between them.** `logo_hotel_fremont.webp` at
+   92.5 mm/patch: 135 trims, 12.60/1,000 by the repo's shared decoder against
+   the five committed pro references at 0.95/1,000 — a **13x** gap. Retire the
+   framing this was filed under: the rope border is **not** one continuous
+   stroke the engine shattered — the artwork is ~136 separate chevrons and the
+   pipeline consolidates them to 21. Merging every fragment on every thread
+   still leaves 98 trims. **69% of trims are intra-shape**, 56 of them inside
+   one 2,095 mm² white field with 46 holes whose tatami breaks into 280 runs.
+   Stage 2 also splits one flat colour across two threads (47%/42%);
+   `revalidate_threads` re-snaps them, but the geometric cut survives.
+   *(measured 2026-08-21 — reproduced independently twice)*
+
+7. **RESOLVED 2026-08-21 — satin silently dropped a bracket's tab** on
+   `enthusiast_logo.png` (7.8 mm² bare, D/52 → C/64). `_prune_spurs` ran to a
+   fixed point and re-measured a stem its OWN first pass had un-branched:
+   19.000 px against a 19.4770 px bar, where the mirror twin's was 20.000 px
+   against 19.1152 px — one raster pixel deciding a 3.3 mm tab. Fixed by
+   exempting a dead end the function itself created, not by moving the bar.
+   *(fixed 2026-08-21 — `stage6_satin._prune_spurs`, tests/test_satin.py)*
 
 ---
 
@@ -447,24 +476,17 @@ call it available-and-not-done; it shipped four days before that review.
 (the "third opinion" `digitizer/README.md` calls for). Fixing the codec itself
 is explicitly Kent's call — every existing EMB-Bot DST is affected by any fix.
 
-**Independent corroboration, merged 2026-08-04 (PR #18, `pes-crossval`):** a
-browser-encode → pyembroidery-decode cross-validation harness
-(`tools/crossval-stitch-formats.mjs`) reproduces the DST transposition
-exactly (anti-transpose, rms 0.0) — validating the harness itself, not new
-information about the DST bug. It also found the browser **PES**/**EXP**
-encoders broken independently, both now **FIXED, merged 2026-08-05 (PR #58,
-`pes-exp-byte-framing-fix`)**: PES's 5-byte stitch-stream mis-framing (extra
-header pad byte, two non-standard `0x9000` fields) is deleted and its
-palette/jump-flag bugs fixed — was 354 phantom stitches, rms 234.6,
-transform "transpose"; now identity, rms 0, 15/15 stitches. EXP's 2-byte
-trim record (fatal to pyembroidery-convention readers at the first trim) is
-replaced with the standard 4-byte form — was truncated at 11 of 15 stitches;
-now decodes the whole design incl. the second colour block. DST is
-untouched, still reproducing its documented transposition. Neither encoder
-had a browser-side importer, so — unlike DST — this carried no migration
-risk and didn't need to wait on Kent's sign-off; Export-formats confidence
-below is upgraded accordingly. Full writeup and before/after:
-`docs/pes-crossval-verdict-2026-08-04.md`.
+**The cross-validation harness that corroborated this is now DEAD, and hides
+a real PES failure.** `tools/crossval-stitch-formats.mjs` reproduced the DST
+transposition exactly (rms 0.0) and found the browser PES/EXP encoders broken
+independently — both fixed in PR #58; history in
+`docs/pes-crossval-verdict-2026-08-04.md`. But it probes `import pyembroidery`,
+which the 2026-08-11 pystitch swap removed, so `node --test
+test/crossval-stitch-formats.test.js` now reports **pass 0 / skipped 6** —
+green having asserted nothing, in a clean checkout and in CI. Revived against
+pystitch it goes **5 pass / 1 FAIL**: PES decodes 13 of 15 stitches, the whole
+design translated −3.0 mm in x. This is the repo's only automated third-party
+format check. *(measured 2026-08-21 — PYTHONPATH shim, no repo file edited)*
 
 **Fifth independent corroboration, 2026-08-10 (Ink/Stitch's `pystitch`):**
 Ink/Stitch's own DST reader/writer — the format library behind a mature,
@@ -490,14 +512,13 @@ screenshots (audit §8).
 
 ### CI feedback speed
 
-`-n auto` (pytest-xdist, pinned in `requirements.txt` with `execnet` and in
-pyproject's `dev` extra) took the digitizer suite from **18m49s** serial to
-**10m21s–13m12s** over four runs. **Do not re-tune hoping for the 2.5-3x seen
-locally:** GitHub's standard runners are 2-core, so `-n auto` gets two workers
-and OpenCV's own threading competes with them — more workers cannot help. The
-remaining lever is `--durations`, not parallelism. Parallel-safety was verified
-rather than assumed (identical pass/fail set both ways; fixtures read-only,
-every writing test uses `tmp_path`).
+`-n auto` (pytest-xdist, pinned in `requirements.txt`) roughly halved the
+digitizer suite. **Do not re-tune hoping for the 2.5-3x seen locally:**
+GitHub's standard runners are 2-core, so `-n auto` gets two workers and
+OpenCV's own threading competes with them — more workers cannot help. The
+remaining lever is `--durations`, not parallelism. Parallel-safety is verified,
+not assumed (identical pass/fail set both ways; every writing test uses
+`tmp_path`). *(measured 2026-08-14 — scope-history)*
 
 ### No physical sew-out testing has occurred yet
 
@@ -599,41 +620,14 @@ fails 0/15 on FileNotFoundError for the artwork; an earlier edit today claimed
 the whole corpus was reachable and was wrong)*
 *(corrected 2026-08-18 — `git ls-files`, `DESIGNS` resolved against the zip)*
 
-**Not promoted to a sixth top-level capability area.** This session
-evaluated and explicitly rejected splitting area 1 ("auto-digitizing
-quality") into separate "image analysis" (raster → regions/colors) and
-"stitch planning" (regions → technique/stitches) areas, which an external
-review of this doc proposed alongside naming this gap. Reasoning: those are
-tightly-coupled pipeline STAGES of one system (`stage0_classify` →
-`stage1_prep`/`stage1_photo_prep` → `stage2_quantize`/`stage2_photo_segment`
-→ `stage3_segment` → `stage4_vectorize` → stages 5–7), not two separately
-shippable products — nearly every feature this doc tracks under area 1
-(this pass's own text-cluster detection included) touches both halves, so
-splitting the tracking would recreate, at the doc level, the exact
-"handoff nobody owns" problem that review raised as a reason to name this
-gap in the first place. A future session should feel free to promote this
-from a cross-cutting note to its own capability area once real work
-actually lands against it (a labeled fixture set, a scoring script/metric),
-per this doc's own convention of tracking status, not aspiration.
-
-**Correcting the record on that same external review, so a future session
-isn't misled by it:** it also claimed color quantization/palette reduction,
-segmentation & vectorization, background removal, and small-detail/minimum-
-feature culling had "no owner" in this project. Checked directly against
-source this pass — all four already exist and are already documented above:
-quantization is `stage2_quantize.py` (k-means + CIEDE2000 thread snapping)
-and `palette.py` (weighted k-medoids chart selection); segmentation/
-vectorization is `stage2_photo_segment.py` (SLIC+RAG; SEEDS since 2026-08-07 — stage2_photo_segment.py:11-27, internal names still slic_*)/`stage3_segment.py`/
-`stage4_vectorize.py` — the literal subject of the `BACKGROUND_ENCLOSED` and
-gradient-fragmentation sagas already detailed at length above; background
-removal is `stage1_photo_prep.py`'s `remove_background_seam` (rembg,
-isolated venv, PR #43); small-detail culling is `stage3_segment.py`'s
-`small_shape_rescue` path (rescues a shape as a run stitch instead of
-dropping it — the exact mechanism this pass's own text-cluster detection
-builds on top of). The review's two accurate points — text detection in
-logos being a real gap, and this evaluation-corpus/harness gap — are exactly
-the two reflected in this update: the first is now closed by this pass's own
-feature, the second is captured here.
+**Area 1 is deliberately NOT split into "image analysis" + "stitch
+planning",** and the four capability gaps an external review of this file
+named (quantization, segmentation/vectorization, background removal,
+small-detail culling) all have owners in code. Both arguments moved to
+[`docs/scope/1-auto-digitizing-quality.md`](docs/scope/1-auto-digitizing-quality.md)
+("Why this area is not split in two") — they govern how this area is
+tracked, not what is currently true of it. *(moved 2026-08-21 — rule 5,
+800-line budget)*
 
 ### Research backlog — competitive and open-source leads
 

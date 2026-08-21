@@ -17,10 +17,29 @@ unstitched overall (7.1%), 11.5% within the emblem alone.
 background intrusion (`bg_tolerance_lab`/`bg_intrusion_min_mm` swept, output
 byte-identical every time despite `BACKGROUND_UNCERTAIN` firing), not the
 starburst regression (`stage6_satin.py`'s DT check runs unconditionally,
-confirmed at the source). Root cause: still open — satin rail generation on
-a bracket-with-spur outline covers the main limb and drops the spur,
-asymmetric between mirror twins (traversal-order smell, not a threshold).
-PR #180 / `docs/scope/1-auto-digitizing-quality.md`.
+confirmed at the source). PR #180 / `docs/scope/1-auto-digitizing-quality.md`.
+
+**ROOT-CAUSED AND FIXED 2026-08-21 — and the traversal-order hypothesis above
+was wrong.** It is `_prune_spurs`' own iterative cascade. Pass 1 correctly
+erases the tab's two short twigs; that leaves the tab STEM holding a single
+arm, i.e. a dead end it did not thin its way into; pass 2 re-measures the stem
+against the same bar and deletes it. Left stem 19.000 px vs bar 19.4770 (2.4%
+under, dies); right stem 20.000 px vs 19.1152 (4.6% over, lives). **One raster
+pixel decides a 3.3 mm tab** between mirror twins 0.06% apart in area. Fixed by
+remembering the dead ends the function itself exposes and never counting one as
+a spur tip — not by moving the bar.
+
+**Two things measured and REFUTED en route, so nobody re-tries them:** lowering
+the 1.6 multiplier globally (fixes 2 fixtures, breaks 2, 7 test failures — the
+decision margin is ±0.4% against 3.5% input noise, so every value just moves
+which shape is on the knife edge), and swapping `dist[skel].mean()` for a
+grid-independent normalizer (the twins' branching differs, so no length
+statistic separates them). **A third trap, worth more than either:** the first
+investigation measured `region.polygon` (165.41 mm²), but stage 7 satins the
+pull-compensated `p.polygon` (194.53 mm², +0.3 mm, 17% different `half_mm`) —
+every spur number, flip point and stroke list came out wrong, and the whole
+"topology fork" story with it. Intercept `satin_shape` to get the operative
+polygon; `region.polygon` is only what `is_satin_candidate` classifies on.
 
 **The instrument that let it hide is fixed, not the bug itself.** `preflight`
 gained `ARTWORK_UNCOVERED` (PR #181, `digitizer_core/preflight.py`
