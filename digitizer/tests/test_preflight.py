@@ -274,6 +274,34 @@ def test_satin_below_sewable_lettering_size_is_flagged():
     assert flagged[0]["extra"]["shapes"][0]["shape_id"] == "S1"
 
 
+def test_lettering_too_small_reports_the_denominator_not_a_target_size():
+    """The count needs its denominator, and must NOT quote a suggested width.
+
+    "38 satin shapes are too small" reads like specks to trim; "38 of 46" says
+    the wordmark does not fit. The denominator is also the only summary that
+    survives rescaling — measured on `logo_hotel_fremont` at 92.5/120/165/220
+    mm, the flagged count falls 38 -> 13 while the median flagged column stays
+    flat near 0.8 mm, because segmentation regenerates sub-millimetre shapes
+    as the design grows. A worst-shape-derived "enlarge to N mm" swings
+    258 -> 697 -> 397 mm over that same sweep, so this check must not offer
+    one; asserting its absence is what keeps a future edit from adding it back
+    without a stable measurement behind it.
+    """
+    tiny = _plan(_satin_column(8, width_mm=0.8, spacing_mm=0.4),
+                 _satin_column(30, width_mm=2.5, spacing_mm=0.4, shape_id="S2"))
+    report = run_preflight(None, tiny, cfg())
+
+    flagged = [f for f in report["findings"] if f["code"] == LETTERING_TOO_SMALL]
+    assert len(flagged) == 1
+    extra = flagged[0]["extra"]
+    assert extra["count"] == 1            # only the 0.8 mm column fails
+    assert extra["satin_total"] == 2      # ...out of two satin shapes
+    assert "1 of 2 satin shape" in flagged[0]["message"]
+    # No fabricated target size, in the message or the payload.
+    assert "needed_width_mm" not in extra
+    assert "mm of design width" not in flagged[0]["message"]
+
+
 def test_a_healthy_column_is_not_lettering_too_small():
     healthy = _plan(_satin_column(30, width_mm=2.5, spacing_mm=0.4))
     assert LETTERING_TOO_SMALL not in _codes(run_preflight(None, healthy, cfg()))
