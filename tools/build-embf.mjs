@@ -140,6 +140,13 @@ for (const s of sources.sort((a, b) => a.key.localeCompare(b.key))) {
     ? readFileSync(licPath, "utf8").trim()
     : String(font.license || "");
   font.license = fullLicense;
+  // Trim the EMBEDDED name too, not just the manifest entry below. The audit
+  // fixed initials_medium's trailing space ("Initials Medium ") in place via
+  // patch-embf-licenses.mjs, which trims font.name before re-encoding — but
+  // this build did not, so any scratch_ink rebuild silently reverted the
+  // binary to the untrimmed name while the manifest stayed clean. Keep the
+  // two writers in agreement; see patch-embf-licenses.mjs.
+  font.name = String(font.name || s.key).trim();
   const id = licenseId(fullLicense);
 
   // Fix 2: enforce license policy on NEW (non-grandfathered) fonts.
