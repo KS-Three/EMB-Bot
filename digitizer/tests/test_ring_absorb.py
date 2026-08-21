@@ -11,15 +11,17 @@ checkered ring (each segment ~1.80 mm^2, the whole ring 172 mm^2 and
 40 mm across) digitised to ZERO sewn regions, with only advisory
 ABSORBED_SMALL_SHAPES / EMPTY_THREAD_LAYER warnings to show for it.
 
-The individually-small test is blind to the union: 84 mutually-adjacent
+The individually-small test was blind to the union: 84 mutually-adjacent
 "details" that together form one connected 172 mm^2 shape are not detail.
-A fix should size-test connected chains of small same-fate regions as a
-unit (or cap total absorbed area) — design pending Kent, see
-docs/shape-fidelity-findings-2026-08-17.md.
+Worse, each sliver's best halo-share neighbour is the large BACKGROUND
+region it sits on rather than the neighbouring arc, so the ring was
+absorbed into the background one segment at a time.
 
-xfail strict=True per the test_classifier_scale_invariance precedent:
-this test turning green IS the acceptance criterion for the fix, and a
-silent pass must fail the suite so the xfail gets removed deliberately.
+FIXED 2026-08-17 by `_chained_small_regions`: connected chains of
+sub-floor regions are size-tested as a unit against the same
+`min_area_mm`-derived floor, and a chain that clears it is kept as-is.
+This test landed red (xfail strict) and the xfail was removed when the fix
+made it green — it is now a regression guard.
 """
 import math
 
@@ -55,12 +57,6 @@ def _checker_ring_png(path, px_mm=5.0):
     Image.fromarray(img).save(path)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="chained absorb annihilates a fragmented ring; fix design pending "
-    "(docs/shape-fidelity-findings-2026-08-17.md)",
-)
 def test_fragmented_ring_survives_small_region_cleanup(tmp_path):
     p = tmp_path / "checker_ring.png"
     _checker_ring_png(p)
