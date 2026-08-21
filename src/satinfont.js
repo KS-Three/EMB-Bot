@@ -69,13 +69,34 @@
   // object since the same glyph repeats often, and combine them with the
   // MEDIAN (not mean) across the line so a stray descender can't drag the
   // whole line's reference down.
+  // Every [x,y] a glyph's ink actually occupies — rails AND run paths. Run
+  // paths were ignored here while the lettering path was satin-only, which was
+  // harmless then; once a runs-only font can stitch, a cols-only scan returns
+  // Infinity for it and every metric derived from it (baseline, ink centering,
+  // cap height) collapses. Runs are either a bare [x,y][] or {pts:[x,y][]} —
+  // see build-font.mjs runFrom — so accept both shapes.
+  // Only STITCHABLE runs count as ink — the same {pts, lenMm} test routeRuns
+  // uses. This is not a detail: satin fonts carry construction/centerline run
+  // paths that are never sewn, and counting those as ink shifted measured cap
+  // height and ink centering for every satin font (caught by satinfont.test.js
+  // — emilio_20_bold's cap/em moved 16.47 -> 16.542, and circle-layout
+  // baselines drifted with it). Geometry that will never be sewn is not ink.
+  function glyphPoints(g) {
+    const out = [];
+    for (const col of (g.cols || [])) { out.push(col.railA, col.railB); }
+    for (const r of (g.runs || [])) {
+      if (!r || !r.pts || !(r.lenMm > 0)) continue;
+      if (r.pts.length) out.push(r.pts);
+    }
+    return out;
+  }
+
   const glyphBottomCache = new WeakMap();
   function glyphBottomUnits(g) {
     if (glyphBottomCache.has(g)) return glyphBottomCache.get(g);
     let maxy = -Infinity;
-    for (const col of g.cols) {
-      for (const p of col.railA) { if (p[1] > maxy) maxy = p[1]; }
-      for (const p of col.railB) { if (p[1] > maxy) maxy = p[1]; }
+    for (const ring of glyphPoints(g)) {
+      for (const p of ring) { if (p[1] > maxy) maxy = p[1]; }
     }
     const c = maxy > -Infinity ? maxy : 0;
     glyphBottomCache.set(g, c);
@@ -99,9 +120,8 @@
     let hit = glyphInkXCache.get(g);
     if (hit) return hit;
     let min = Infinity, max = -Infinity;
-    for (const col of g.cols) {
-      for (const p of col.railA) { if (p[0] < min) min = p[0]; if (p[0] > max) max = p[0]; }
-      for (const p of col.railB) { if (p[0] < min) min = p[0]; if (p[0] > max) max = p[0]; }
+    for (const ring of glyphPoints(g)) {
+      for (const p of ring) { if (p[0] < min) min = p[0]; if (p[0] > max) max = p[0]; }
     }
     hit = min <= max ? { min, max } : { min: 0, max: 0 };
     glyphInkXCache.set(g, hit);
@@ -138,11 +158,14 @@
     let out = null;
     for (const ch of CAP_REF_CHARS) {
       const g = font.glyphs && font.glyphs[ch];
-      if (!g || !g.cols || !g.cols.length) continue;
+      // Was `!g.cols.length` — that skipped every glyph of a runs-only font, so
+      // cap height came back null and the font had no measured size reference.
+      if (!g) continue;
+      const rings = glyphPoints(g);
+      if (!rings.length) continue;
       let mn = Infinity, mx = -Infinity;
-      for (const col of g.cols) {
-        for (const p of col.railA) { if (p[1] < mn) mn = p[1]; if (p[1] > mx) mx = p[1]; }
-        for (const p of col.railB) { if (p[1] < mn) mn = p[1]; if (p[1] > mx) mx = p[1]; }
+      for (const ring of rings) {
+        for (const p of ring) { if (p[1] < mn) mn = p[1]; if (p[1] > mx) mx = p[1]; }
       }
       if (mx > mn) { out = { units: mx - mn, ref: ch }; break; }
     }
@@ -202,6 +225,63 @@
   // the real thing. Downstream only ever tested for `"satin"` (digitize.js's
   // nSatin counter), so the stitch stream is unaffected; the tags are what
   // change, and they change so that these two can never be confused again.
+  // Route a glyph's RUN paths (bean / running-stitch fonts). Satin fonts have
+  // always had their run paths dropped here; this stitches them only when the
+  // font itself authored a stitch length, which build-font.mjs attaches as
+  // {pts, lenMm, repeats} and strips again for any font that has satin columns.
+  // That is deliberate on two counts: ROADMAP gate 1 bars us from inventing a
+  // physical stitch length, so a run with no authored length is not stitchable
+  // and is skipped; and scoping to runs-only fonts keeps every shipped satin
+  // font's stitch stream byte-identical.
+  //
+  // `runs` arrive already transformed into design px. Each is resampled at the
+  // authored length and, when the font asks for bean repeats, each stitch is
+  // backtracked r times (r=1 => the classic triple stitch), matching
+  // Ink/Stitch's own per-stitch bean semantics rather than per-path passes.
+  function routeRuns(runs, opts) {
+    const pxPerMm = opts.pxPerMm;
+    const out = [];
+    let first = opts.firstIsJump !== false;
+    for (const r of runs || []) {
+      const pts = r && r.pts;
+      if (!pts || pts.length < 2) continue;
+      const stepPx = r.lenMm * pxPerMm;
+      if (!(stepPx > 0)) continue;
+      // Walk the polyline emitting a point every stepPx of arc length. The
+      // final vertex is always kept so the stroke reaches its authored end.
+      const walk = [pts[0]];
+      let carry = 0;
+      for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1], b = pts[i];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const seg = Math.hypot(dx, dy);
+        if (!(seg > 0)) continue;
+        let t = stepPx - carry;
+        while (t <= seg) {
+          walk.push({ x: a.x + (dx * t) / seg, y: a.y + (dy * t) / seg });
+          t += stepPx;
+        }
+        carry = (carry + seg) % stepPx;
+      }
+      const last = pts[pts.length - 1];
+      const tail = walk[walk.length - 1];
+      if (Math.hypot(last.x - tail.x, last.y - tail.y) > 1e-9) walk.push(last);
+      if (walk.length < 2) continue;
+      const reps = r.repeats > 0 ? Math.round(r.repeats) : 0;
+      let final = walk;
+      if (reps > 0) {
+        final = [walk[0]];
+        for (let i = 1; i < walk.length; i++) {
+          final.push(walk[i]);
+          for (let k = 0; k < reps; k++) { final.push(walk[i - 1]); final.push(walk[i]); }
+        }
+      }
+      out.push({ pts: final, kind: "run", jump: first });
+      first = false;
+    }
+    return out;
+  }
+
   function routeGlyph(cols, opts) {
     const pxPerMm = opts.pxPerMm, spacingMm = opts.spacingMm, pullCompMm = opts.pullCompMm || 0, slantDeg = opts.slantDeg || 0;
     const satinOpts = { spacingMm, pxPerMm, pullCompMm, slantDeg };
@@ -578,7 +658,22 @@
           railB: col.railB.map((p) => ({ x: TX(p[0]), y: TY(p[1]) })),
           rungs: (col.rungs || []).map((rg) => [{ x: TX(rg[0][0]), y: TY(rg[0][1]) }, { x: TX(rg[1][0]), y: TY(rg[1][1]) }]),
         }));
-        const gRuns = routeGlyph(cols, Object.assign({ pxPerMm, spacingMm, pullCompMm, slantDeg }, underlayOpts));
+        // Run paths that carry an authored stitch length (bean/running-stitch
+        // fonts). Only the {pts, lenMm} shape qualifies, so satin fonts — whose
+        // runs build-font.mjs leaves as bare arrays — contribute nothing here
+        // and their stitch stream is unchanged. Satin first, then runs: the
+        // runs are the glyph's own strokes, not travel between columns.
+        const stitchableRuns = (g.runs || []).filter((r) => r && r.pts && r.lenMm > 0);
+        const gCols = routeGlyph(cols, Object.assign({ pxPerMm, spacingMm, pullCompMm, slantDeg }, underlayOpts));
+        const gRuns = stitchableRuns.length
+          ? gCols.concat(routeRuns(
+              stitchableRuns.map((r) => ({
+                pts: r.pts.map((p) => ({ x: TX(p[0]), y: TY(p[1]) })),
+                lenMm: r.lenMm,
+                repeats: r.repeats,
+              })),
+              { pxPerMm, firstIsJump: gCols.length === 0 }))
+          : gCols;
 
         let place;
         if (circleRole === "middle") {

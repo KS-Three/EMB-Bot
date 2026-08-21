@@ -1,6 +1,7 @@
 {
  "ags_garamond_latin_grec": "Serif",
  "alchemy": "Display",
+ "allegria20": "Script",
  "allegria55": "Script",
  "ambigue": "Script",
  "amitaclo": "Script",
@@ -14,6 +15,7 @@
  "auberge_small": "Small",
  "aventurina": "Script",
  "barstitch_bold": "Sans",
+ "barstitch_mandala": "Display",
  "barstitch_regular": "Sans",
  "barstitch_textured": "Display",
  "bathaus_FI": "Display",
@@ -22,6 +24,7 @@
  "caesarus_SC_FI": "Serif",
  "caffeine_KOR": "Display",
  "caffeine_tiny": "Small",
+ "califragilistic": "Display",
  "cats": "Display",
  "cherryforinkstitch": "Script",
  "cherryforkaalleen": "Script",
@@ -60,6 +63,10 @@
  "monicha": "Script",
  "montecarlo": "Script",
  "neon": "Display",
+ "neon_blinking": "Display",
+ "ondulamarif_Medium": "Script",
+ "ondulamarif_S": "Small",
+ "ondulamarif_XL": "Script",
  "pacificlo": "Script",
  "pacificlo_tiny": "Small",
  "perspective_tricolore_KOR": "Display",
@@ -73,5 +80,6 @@
  "sunset": "Display",
  "venezia": "Serif",
  "venezia_small": "Small",
- "violin_serif": "Serif"
+ "violin_serif": "Serif",
+ "western_light": "Display"
 }
