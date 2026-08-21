@@ -83,6 +83,23 @@ jobs:
     # Deselecting exactly these five keeps CI green AND meaningful: any NEW
     # golden break still fails the job. If any of these ever pass on CI
     # runners, remove its deselect and find out why.
+    #
+    # 2026-08-21, partial answer to that standing check -- NOT yet acted on.
+    # A full local run of the suite on a Linux container (python 3.14,
+    # requirements.txt pins, `pytest -q -n auto`, 3 failed / 1244 passed /
+    # 3 skipped / 7 xfailed) measured all five instead of inferring them:
+    #   FAIL  test_pushcomp[logo_whitebg.png-towel]
+    #   FAIL  test_flat_lane_byte_identical[photo/enthusiast_logo.png]
+    #   FAIL  test_stage2_photo_segment[photo/enthusiast_logo.png]
+    #   PASS  test_flat_lane_byte_identical[logo_alpha.png]
+    #   PASS  test_stage2_photo_segment[logo_alpha.png]
+    # So the two logo_alpha parametrizations are candidates for un-deselecting
+    # and the "last actually observed 2026-08-03" note above is superseded for
+    # them. Deliberately NOT removed here: a Linux container is not an
+    # ubuntu-latest Actions runner, and this comment's own rule pairs removal
+    # with finding out WHY -- which needs a runner-side measurement, i.e.
+    # drop the two deselects in a throwaway PR and read the result. Owner:
+    # unassigned, same as the check above.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
