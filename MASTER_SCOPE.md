@@ -570,8 +570,9 @@ too slow for the regular suite. *(`repro_gradient_white_icon.png` is D/58 at bot
 configs — an earlier version of this entry said F/0; corrected 2026-08-11 —
 `docs/photo-quality-root-cause-2026-08-11.md`)*
 
-**Still open here:** `summit_badge.png` (#6.2) and
-`repro_gradient_white_icon.png` (#6.3), same root-cause doc — `drone_render.png`'s
+**Still open here:** `summit_badge.png` (#6.2 — re-checked 2026-08-21: metric
+responds, grade saturated at F/0; judge a fix on `thread_worst_delta_e`, never
+score) and `repro_gradient_white_icon.png` (#6.3), same doc — `drone_render.png`'s
 #6.1 fix landed and is algorithm-verified but does not move the grade (a
 preflight pooled-metric measurement gap, traced in area 1). **Next step:** run the
 tool by hand against a few real classifier changes to learn what a genuine
