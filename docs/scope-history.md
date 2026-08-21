@@ -25,6 +25,32 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-08-21 (later) — **the sew-out ruling collided with the
+next work item, and Kent resolved it in favour of the gate.** Queuing satin
+border fragmentation surfaced a conflict with the same session's accept-as-is
+ruling: `docs/fragmentation-attribution-2026-08-18.md` §4 measured the defect as
+**trim-dominated, 3.1x the pro** across 23 designs, and both of its primary
+levers are gate-1 thread specs — `chain_links` (**9.82 → 4.06** trims/1k, 0.00 mm
+added bare thread on four fixtures, gate-3 instrument rebuild MET 2026-08-18) and
+`trim_at_mm` (ours 3.0; the pro never cuts for a move under **11.8 mm**). The doc
+had said "no code work will beat it". Accepting the sew-out as-is froze both.
+
+Three calls, all Kent's: (1) **Gate 1 holds** — both levers stay frozen and the
+work proceeds on the gate-clear remainder, accepting a lower ceiling; the
+`chain_links` latent entry now reads *frozen* rather than *pending*. (2) **First
+lever is the 46-hole white field** — one 2,095 mm² region whose 46 holes break
+its tatami into 280 runs, carrying **56 of the design's 135 trims (41%) inside a
+single shape**, and gate-clear geometry rather than a thread spec. (3) **Golden
+re-capture is pre-authorized on Linux CI** under same-failure-set discipline
+(identical failure set before and after, diff reported), never on Windows —
+previously a per-instance ask.
+
+Not started here; recorded so the next session can act. The remaining gate-clear
+candidates, unranked: `_graph_travel` never returning a path (no test in the repo
+references it), stage 2 splitting one flat colour across two threads (47%/42%),
+and running the real-art lane over all 15 designs — the 3.1x is recon-lane, which
+the 2026-08-16 handoff measured as flattering the engine by 11.3 points.
+
 **Last updated:** 2026-08-21 — **two of Kent's decisions resolved, and PR #194
 landed.** (1) **The sew-out is accepted as-is.** A decision of Kent's had been
 carried for days as an unresolved ambiguity — "accept as-is" had been recorded
