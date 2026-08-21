@@ -40,8 +40,27 @@ need Kent's own call on their own merits:
   stitches. Was "parked until the sew-out" (2026-08-12) — that parking is now
   indefinite, which is a different thing from resolved.
 
-Kent's next work item, chosen in the same exchange: **satin border
-fragmentation** (live defect 6) — see [[hotel-fremont-pro-parity-findings]] —
-taken ahead of satin-vs-fill routing, which stays queued behind it.
+**The first thing this ruling broke, in the same exchange.** Kent's next work
+item is **satin border fragmentation** (live defect 6) — see
+[[hotel-fremont-pro-parity-findings]] — taken ahead of satin-vs-fill routing.
+That defect is measured **trim-dominated, 3.1x the pro**, and *both* of its
+primary levers are gate-1 thread specs this ruling has just frozen:
+
+- **`chain_links`** — 9.82 → 4.06 trims/1k, 0.00 mm added bare thread on four
+  fixtures, gate-3 instrument rebuild MET 2026-08-18. Blocked on
+  `LINK_COVER_TOL_MM`. `docs/fragmentation-attribution-2026-08-18.md` says
+  plainly: *"no code work will beat it."*
+- **`trim_at_mm`** — ours is 3.0; the pro never cuts for a move under 11.8 mm.
+
+Kent's call when this was put to him: **gate 1 holds.** Work the gate-clear
+remainder and accept a lower ceiling — do NOT re-propose flipping `chain_links`
+as a shortcut, and do not size the remaining work as though it were a fix.
+**First lever: the 46-hole white field** — one 2,095 mm² region whose 46 holes
+break its tatami into 280 runs, carrying 56 of the design's 135 trims (41%)
+inside a single shape. Gate-clear geometry, not a thread spec.
+
+Also ruled in the same exchange: **golden re-capture is pre-authorized on Linux
+CI** under same-failure-set discipline — identical failure set before and after,
+diff reported. Never on Windows.
 
 See also [[emb-bot-digitizer]] and [[real-artwork-parity]].

@@ -36,11 +36,10 @@ or move it.
 
 ## Live defects — believed true right now
 
-1. **RESOLVED 2026-08-19 — shade-thread collapse** (every shade of a
-   decomposed region sewed in one colour). Kept numbered, not deleted: ten
-   other documents cite these entries as "live defect N". *(fixed 2026-08-19
-   — `stage7_sequence._shade_blocks`, tests/test_shade_thread_emission.py;
-   detail in docs/scope-history.md)*
+1. **RESOLVED 2026-08-19 — shade-thread collapse** (every shade of a decomposed
+   region sewed in one colour). Kept numbered, not deleted: ten other documents
+   cite these entries as "live defect N". *(fixed 2026-08-19 —
+   `stage7_sequence._shade_blocks`, test_shade_thread_emission.py)*
 
 2. **No width floor under satin — and the proposed fix is DISPROVED for flat
    art.** 19 of 162 corpus regions, all photo-class, sew sub-millimetre satin
@@ -145,8 +144,9 @@ evidence for either** — on chaining, a green suite actively concealed it.
    **Precondition MET 2026-08-18 — the blocker is the sew-out now, not the
    instrument:** blindnesses closed, cover measured where thread lands,
    thread-derived check shipped, four fixtures accepting at **0.00 mm** added
-   bare thread and **9.82 → 4.06** trims/1k. **Still DO NOT FLIP** — gate 1 names
-   link cover tolerance, still a thread spec. Largest known lever on defect 4.
+   bare thread and **9.82 → 4.06** trims/1k. **Still DO NOT FLIP, now permanently** — gate 1 names
+   link cover tolerance, a thread spec, and the sew-out is accepted as-is, so
+   this is frozen rather than pending. Largest lever on defects 4 and 6.
    *(confirmed 2026-08-18 — `config.py:1006-1068`, `preflight.py:1483-1543`)*
 2. **`split_tonal_regions`** — the shading fix, merged but off; parked until the
    sew-out. Cost and ceiling under "Waiting on Kent". *(confirmed OFF
@@ -160,6 +160,9 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
 
 ## Standing rulings — decided, do not re-litigate
 
+- **Golden re-capture is pre-authorized on Linux CI**, under same-failure-set
+  discipline: a session may re-capture when the failure set is identical before
+  and after, and must report the diff. Never on Windows. *(ruled 2026-08-21 — Kent)*
 - **The sew-out is accepted as-is — not a scheduled to-do.** Stop treating "no
   sew-out yet" as a blocker awaiting action; dependent scores stay `pending
   sew-out` permanently, and ROADMAP gate 1 is a standing refusal, not a
@@ -671,20 +674,17 @@ merged and reachable from Studio via the `embstudio:sam2` dev seam, still
 `photo_subject`/`photo_scene` fixtures are synthetic stubs, so the committed
 corpus can neither defend nor refute SAM2's quality — a real-photo fixture is
 the missing piece. *(confirmed 2026-08-11 — area 1 detail)*
-**Satin extremity drop — FIXED 2026-08-21, after this line called it open.**
-`enthusiast_logo.png`'s emblem lost a bracket's inward tab and a corner:
-`_prune_spurs` re-measured a stem its OWN first pass had un-branched, one
-raster pixel deciding a 3.3 mm tab. Fixed by exempting a dead end the function
-itself created, not by moving the bar — D/52 → C/64, and the same cascade was
-mangling block letters in `textcluster.py`. **The blind spot that hid it stays
-fixed:** `preflight`'s `ARTWORK_UNCOVERED` (ground truth `polygon ∩ ink`); its
-5.0 mm² threshold is provisional — two calibration fixtures unadjudicated.
-*(fixed 2026-08-21 — `stage6_satin.py:931` on `main`, PR #186)*
-**Next:** satin border fragmentation (live defect 6) — Kent's call 2026-08-21,
-taken ahead of satin-vs-fill routing (live defect 5), which stays queued behind
-it. Root cause has never been found; that entry carries a reproduction only.
-Judge a fix on intra-shape trims — 69% of the gap — not the headline ratio.
-*(ruled 2026-08-21 — Kent, this session)*
+**Satin extremity drop — FIXED 2026-08-21.** `_prune_spurs` re-measured a stem
+its OWN first pass had un-branched, one raster pixel deciding a 3.3 mm tab;
+fixed by exempting a dead end the function itself created, D/52 → C/64. Same
+cascade was mangling block letters in `textcluster.py`. **The blind spot that
+hid it stays fixed:** `preflight`'s `ARTWORK_UNCOVERED` (`polygon ∩ ink`),
+5.0 mm² threshold still provisional. *(fixed 2026-08-21 — PR #186)*
+**Next:** satin border fragmentation (live defect 6), starting at the ONE
+2,095 mm² white field whose 46 holes break its tatami into 280 runs — 56 of the
+design's 135 trims, 41%, in one shape, and gate-clear geometry. **Gate 1 holds:**
+`chain_links` and `trim_at_mm`, the PRIMARY levers, stay frozen — a partial win
+by design, not a fix. Judge on intra-shape trims. *(ruled 2026-08-21 — Kent)*
 
 ### 2. Font library & lettering — [detail](docs/scope/2-font-library-lettering.md)
 
