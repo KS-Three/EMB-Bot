@@ -117,26 +117,45 @@ Verdict: log as confirmed-real, non-viable. Do not re-mine.
   GlyphLayers or `font.json`, and the wiki default is **CC BY-NC-SA 3.0** — NC
   and SA both banned.
 
-## 5. The one lead worth a decision: Hershey vector fonts
+## 5. Hershey vector fonts — REJECTED, not plug-and-play
 
-`techninja/hersheytextjs` — 23 faces including **Cyrillic, Greek, Japanese and
-blackletter**. Glyph data declared **public domain**, MIT wrapper; each glyph is
-already a path plus an advance width.
+`techninja/hersheytextjs` — 23 faces including Cyrillic, Greek and blackletter,
+glyph data public domain under an MIT wrapper. It looked like the only unblocked
+route to non-Latin coverage, and Hershey faces are single-stroke, which is what
+the run/bean lettering path added 2026-08-21 stitches.
 
-This is the only unblocked route to Cyrillic/Greek/Japanese coverage anywhere,
-and Hershey faces are single-stroke, which is precisely what the run/bean
-lettering path added on 2026-08-21 stitches.
+**Kent's decision 2026-08-21: omit. Do not re-propose.** The standing rule it
+came from is worth keeping in mind for any future lead — *we do not spend
+engineering effort reworking font data to make it importable.* A candidate is
+either close to plug-and-play or it is not a candidate.
 
-**But it collides with ROADMAP gate 1, and that is not a detail.** Hershey data
-carries geometry and nothing else — no `running_stitch_length_mm`, no bean
-repeats, because it was never embroidery data. The whole design of the run
-lettering path is that a run stitches *only* when the font's own author supplied
-a length. Importing Hershey means choosing a stitch length for 23 faces with no
-digitizer's judgement behind it, on fabric no one has tested. That is exactly
-the physical constant the gate exists to refuse.
+Inspected the actual data rather than the summary. Every glyph is exactly two
+fields:
 
-Not a blocker to record; a decision to put to Kent explicitly. Options are to
-take a sew-out and set the constant with evidence, or leave Hershey alone.
+```json
+{"d": "M5,1 L5,15 M5,20 L4,21 5,22 6,21 5,20", "o": 5}
+```
+
+`d` is a path, `o` is an advance. That is the entire record. What is missing:
+
+- **No character mapping.** `chars` is a POSITIONAL array of 95 entries with no
+  codepoint or character field anywhere (verified: no key other than `d`/`o`
+  exists in any entry, in any face). The index→character mapping has to be
+  inferred from Hershey's ASCII convention and assumed to hold across all 23
+  faces — including the Cyrillic one, where it plainly does not.
+- **No stitch data at all** — no length, no repeats. It was never embroidery
+  data; it is a 1960s plotter vector library.
+- **No Ink/Stitch structure** — no `font.json`, no GlyphLayers, no satin
+  columns.
+- **No size** — nothing states how large a face is meant to sew.
+
+So importing means writing a converter AND inventing two physical constants
+(stitch length and `sizeMm`) with no digitizer's judgement behind either, on
+fabric nobody has tested. ROADMAP gate 1 refuses exactly that, and the effort is
+a font-authoring project rather than an import.
+
+If non-Latin coverage is ever wanted, the honest routes are commissioned
+digitizing or upstream adding one — not converting plotter data.
 
 ## 6. Searched and empty — do not repeat this sweep
 
