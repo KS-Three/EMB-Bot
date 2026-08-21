@@ -2325,3 +2325,68 @@ runs already bridge boundaries on this shape; the 56 that cut did not get one.
 That points at `_graph_travel` never returning a path — a defect no test in the
 repo exercises. **Not measured here**, and it needs a planner re-run scored on
 real trims, not on filtered endpoint gaps, which is the trap above.
+
+### Travel coverage sized, and it is NOT the lever either (2026-08-21)
+
+Kent's call was to size the recovery before building it, per
+`docs/fragmentation-attribution-2026-08-18.md`'s own instruction. Sized:
+**the ceiling is 4 of 56 cuts, 7%.** Do not build a travel-side fix for this
+shape. Reproduce with `trim_attribution_probe.py --pass travel`.
+
+**The mechanism is exact.** `stage6_fill.py:877` cuts *only* when `travel_path`
+returns `None` **and** the gap exceeds `trim_at_mm`:
+
+```python
+bridge = travel_path(poly, ring, runs[-1].points[-1], pts[0], slack)
+if bridge is None:
+    trim = d > trim_at_mm
+```
+
+So every one of `S78e6cd01`'s 56 cuts is a **travel failure**, and
+`trim_at_mm` only decides whether a failed travel becomes a cut or a silent
+jump. A successful travel never cuts, at any distance.
+
+Replaying those 56 pairs against every one of the shape's 20 ring fragments,
+with the candidate cap and the detour budget both removed:
+
+| | count |
+|---|---|
+| **no route stays inside the shape, at any length** | **52** |
+| routable, length the only objection | 4 |
+
+Recovering all 4 costs 216 mm of extra travel (~86 stitches), 54 mm per cut.
+That is the whole prize. With 46 holes and only 20 inset-ring fragments, the
+shape genuinely disconnects its own fill rows — there is no path to find.
+
+**Two knobs ruled out on the way, both gate-clear and both worthless here:**
+
+- `_TRAVEL_RING_CANDIDATES = 3` (a pure performance cap) recovers **0 of 56**.
+  The right ring being outside the top 3 is not what is happening.
+- `_TRAVEL_DETOUR_FACTOR = 4.0` recovers at most those same 4, and raising it
+  past ~16 buys nothing further.
+
+**A correction this entry has to carry, because a first diagnostic got it
+wrong.** An earlier pass reported "55 of 56 blocked by the detour budget",
+which pointed at the budget as the lever. It was an artifact: that check
+flagged `over-budget` as soon as *any* candidate exceeded the budget, before
+testing whether *any* candidate was covered at all. Test containment first,
+then length — otherwise unroutable pairs masquerade as merely-too-long ones
+and the wrong knob looks like the fix.
+
+**Two stale claims corrected:**
+
+1. `_graph_travel` is **satin-side** (`stage6_satin.py:2159`). A fill shape's
+   travel is `travel_path` (`stage6_fill.py:523`). Pointing at `_graph_travel`
+   for this white field — as an earlier note in this file did — is a category
+   error; they are different code paths.
+2. The attribution doc's "no test references `_graph_travel` or
+   `_build_travel_graph`" is **out of date**: `tests/test_travel_graph.py`
+   exists with 7 tests. The doc was written 2026-08-18; the test landed after.
+
+**Where that leaves live defect 6.** On this shape, under gate 1, the gate-clear
+levers are exhausted: ordering was already correct, travel tops out at 7%, and
+the two mechanisms that would actually move it — `chain_links` and
+`trim_at_mm` — are frozen. The remaining idea is upstream of stitching
+entirely: stop handing a 46-hole, 2,095 mm² perforated region to the filler as
+one shape. That is a stage-2/segmentation question, not a stage-6 one, and it
+has not been sized.

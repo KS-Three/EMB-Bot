@@ -58,8 +58,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from shapely.geometry import LineString, Point  # noqa: E402
+
+from digitizer_core import machine  # noqa: E402
 from digitizer_core.config import PipelineConfig  # noqa: E402
 from digitizer_core.pipeline import digitize  # noqa: E402
+from digitizer_core.stage6_fill import _inset_ring, _ring_route  # noqa: E402
 
 DEFAULT_IMAGE = "testdata/photo/logo_hotel_fremont.webp"
 # The pro's measured floor: it never cut for a move shorter than this.
@@ -177,6 +181,60 @@ def pass_reorder(plan, shape: str, trim_at_mm: float) -> None:
     print("  greedily nearest-first, both directions (stage6_fill.py:594-676).")
 
 
+def pass_travel(result, plan, shape: str) -> None:
+    """Size the travel recovery before promising it.
+
+    `stage6_fill.py:877` cuts ONLY when `travel_path` returns None and the gap
+    exceeds `trim_at_mm`, so every cut is a travel failure. For each one, ask
+    whether ANY ring fragment yields a route that stays inside the shape --
+    ignoring the candidate cap and the detour budget entirely. That separates
+    "too long" (tunable, and both knobs are gate-clear geometry) from "no path
+    exists" (nothing to tune).
+    """
+    reg = next((r for r in (getattr(result, "regions", None) or [])
+                if r.shape_id == shape), None)
+    if reg is None:
+        print(f"  {shape}: no region found")
+        return
+    poly = reg.polygon
+    ring = _inset_ring(poly, machine.TRAVEL_INSET_MM)
+    slack = poly.buffer(0.01)
+    seq = [r for _b, r in plan.iter_runs() if r.shape_id == shape and r.points]
+    pairs = [(seq[i].points[-1], seq[i + 1].points[0])
+             for i in range(len(seq) - 1) if seq[i + 1].trim]
+    print(f"  {shape}: {len(poly.interiors)} holes, {len(ring)} ring fragments, "
+          f"{len(pairs)} cutting boundaries")
+
+    routable, lengths = 0, []
+    for a, b in pairs:
+        if slack.covers(LineString([a, b])):
+            continue
+        best = None
+        for cand in ring:            # every fragment: no cap, no budget
+            pts = _ring_route(cand, a, b)
+            route = [a] + pts + [b]
+            if not slack.covers(LineString(route)):
+                continue
+            L = sum(_dist(route[i - 1], route[i]) for i in range(1, len(route)))
+            best = L if best is None else min(best, L)
+        if best is not None:
+            routable += 1
+            lengths.append((_dist(a, b), best))
+
+    n = len(pairs)
+    print(f"    {n - routable:3d}  NO route stays inside the shape, at any length")
+    print(f"    {routable:3d}  routable (length is the only objection)")
+    print(f"\n  CEILING for any travel-side fix here: {routable}/{n} cuts "
+          f"({100.0 * routable / max(1, n):.0f}%)")
+    if lengths:
+        extra = sum(L - s for s, L in lengths)
+        print(f"  recovering all {routable} costs {extra:.0f} mm extra travel "
+              f"(~{extra / machine.TRAVEL_STITCH_MM:.0f} stitches), "
+              f"{extra / routable:.0f} mm per cut")
+    print("  NOTE _graph_travel is SATIN-side (stage6_satin.py); a fill shape's"
+          "\n  travel is travel_path (stage6_fill.py:523). Do not conflate them.")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -187,7 +245,7 @@ def main() -> None:
     ap.add_argument("--shape", default=None,
                     help="shape_id to dissect; default is whichever carries the most trims")
     ap.add_argument("--pass", dest="which", default="all",
-                    choices=("all", "shapes", "boundaries", "reorder"))
+                    choices=("all", "shapes", "boundaries", "reorder", "travel"))
     ap.add_argument("--trim-at-mm", type=float, default=3.0,
                     help="cut rule the reorder pass scores against (gate 1: do not retune)")
     args = ap.parse_args()
@@ -202,7 +260,8 @@ def main() -> None:
         worst = pass_shapes(result, plan)
         shape = shape or worst
     for name, fn in (("boundaries", lambda: pass_boundaries(plan, shape)),
-                     ("reorder", lambda: pass_reorder(plan, shape, args.trim_at_mm))):
+                     ("reorder", lambda: pass_reorder(plan, shape, args.trim_at_mm)),
+                     ("travel", lambda: pass_travel(result, plan, shape))):
         if args.which in ("all", name):
             print(f"\n=== {name} ===")
             fn()
