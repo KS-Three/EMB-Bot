@@ -62,6 +62,41 @@ export function qcFont(font) {
     }
   }
 
+  // Detached-accent / runaway-bbox check (cyrillic, 2026-08-21). The lettering
+  // path derives its line box from the font's glyph extents, so ONE glyph with
+  // geometry far outside the em box shrinks every string that font can render
+  // — cyrillic's "u" is 71 units tall but its "u-acute" is 725, the accent
+  // marooned ~650 units from the letter body, which clamped "Emb" to 19.8 mm
+  // against a 40 mm target while the Cyrillic glyphs it exists for were fine.
+  // Zero stitches are never produced, so every other check here passes it.
+  // Scoped to single-character glyph names: multi-char names are deliberate
+  // non-letters (art_nouveau's "frame1", montecarlo's "C.alt6", ".notdef")
+  // that legitimately dwarf the letters and must not trip this.
+  // Threshold 4x calibrated against the shipping library, whose worst
+  // single-char ratio is small_font's "&" at 3.11x.
+  const glyphHeight = (g) => {
+    let mn = Infinity, mx = -Infinity;
+    for (const col of g.cols || [])
+      for (const ring of [col.railA, col.railB])
+        for (const p of ring || []) { if (p[1] < mn) mn = p[1]; if (p[1] > mx) mx = p[1]; }
+    return mx > -Infinity ? mx - mn : null;
+  };
+  const letterHeights = letterGlyphs
+    .map((c) => glyphHeight(font.glyphs[c])).filter((v) => v > 0).sort((a, b) => a - b);
+  if (letterHeights.length) {
+    const median = letterHeights[Math.floor(letterHeights.length / 2)];
+    const outliers = [];
+    for (const [ch, g] of Object.entries(font.glyphs)) {
+      if ([...ch].length !== 1) continue;
+      const h = glyphHeight(g);
+      if (h && h / median > 4) outliers.push(`"${ch}" ${(h / median).toFixed(1)}x`);
+    }
+    if (outliers.length)
+      warn(`bbox: ${outliers.length} glyph(s) far taller than the median letter ` +
+        `(${outliers.slice(0, 6).join(", ")}${outliers.length > 6 ? ", …" : ""}) ` +
+        `— inflates the line box and caps how large short text can scale`);
+  }
+
   return { pass: !hardFail, findings };
 }
 

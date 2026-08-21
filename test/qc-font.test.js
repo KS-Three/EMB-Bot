@@ -79,3 +79,36 @@ test("zero advance on a digit is caught", async () => {
   assert.strictEqual(r.pass, false);
   assert.ok(r.findings.some((s) => /advance/i.test(s)));
 });
+
+// --- detached-accent / runaway-bbox (the cyrillic case, 2026-08-21) ----------
+// cyrillic's "ú" measured 725 units tall against a 71-unit "u" — the accent
+// sat ~650 units from the letter body. Stitches still generated, every other
+// check passed, but the inflated line box clamped "Emb" to 19.8 mm against a
+// 40 mm target. Warning-level: the font is renderable, just size-limited.
+test("flags a glyph whose bbox dwarfs the median letter (the cyrillic case)", async () => {
+  const { qcFont } = await import("../tools/qc-font.mjs");
+  const f = goodFont();
+  // letters are 10 units tall; a detached accent puts this one at 80
+  f.glyphs["ú"] = {
+    adv: 10,
+    cols: [{ railA: [[0, 0], [0, 80]], railB: [[2, 0], [2, 80]], rungs: [] }],
+    runs: [],
+  };
+  const r = qcFont(f);
+  assert.strictEqual(r.pass, true, "renderable — must not hard-fail");
+  assert.ok(r.findings.some((s) => /bbox/i.test(s)), r.findings.join("; "));
+});
+
+test("bbox check ignores multi-character glyph names (art_nouveau's frame1)", async () => {
+  const { qcFont } = await import("../tools/qc-font.mjs");
+  const f = goodFont();
+  // a deliberate decorative non-letter, 80 units tall — must NOT trip the check
+  f.glyphs["frame1"] = {
+    adv: 10,
+    cols: [{ railA: [[0, 0], [0, 80]], railB: [[2, 0], [2, 80]], rungs: [] }],
+    runs: [],
+  };
+  const r = qcFont(f);
+  assert.strictEqual(r.pass, true);
+  assert.ok(!r.findings.some((s) => /bbox/i.test(s)), r.findings.join("; "));
+});

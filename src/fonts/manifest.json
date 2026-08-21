@@ -74,6 +74,18 @@
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
+   "key": "apesplit",
+   "name": "Apesplit",
+   "tier": "verified",
+   "group": "Display",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 120,
+   "glyphCount": 26,
+   "bytes": 114600,
+   "attribution": "This font has been adapted for Ink/Stitch from gilda display font by Françoise Lapierre Baillet https://fonts.google.com/specimen/Gilda+Display This Font Software is licensed under the SIL Open Font License, Version 1.1.",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
    "key": "apex_simple_AGS",
    "name": "Apex Simple AGS",
    "tier": "verified",
@@ -95,6 +107,18 @@
    "glyphCount": 125,
    "bytes": 1303693,
    "attribution": "This font Apex Simple AGS has been adapted for Ink/Stitch by Françoise Lapierre Baillet and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2003–2012, Philipp H. Poll (www.linuxlibertine.org | gillian at linuxlibertine.org), with Reserved Font Name \"Linux Libertine\" and \"Biolinum\".",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
+   "key": "art_nouveau",
+   "name": "Art Nouveau",
+   "tier": "verified",
+   "group": "Display",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 20,
+   "glyphCount": 211,
+   "bytes": 291275,
+   "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2010, Peter Wiegel, www.peter-wiegel.de, with Reserved Font Name \"Apollo ASM\"",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -153,7 +177,7 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 40,
    "glyphCount": 157,
-   "bytes": 740029,
+   "bytes": 740272,
    "attribution": "This font has been adapted for Ink/Stitch and is licensed under the SIL Open Font License, Version 1.1. Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow)",
    "source": "Ink/Stitch embroidery-fonts"
   },
@@ -278,6 +302,18 @@
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
+   "key": "colorful",
+   "name": "Colorful",
+   "tier": "verified",
+   "group": "Display",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 31,
+   "glyphCount": 127,
+   "bytes": 519936,
+   "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2011 by Brian J. Bonislawsky DBA Astigmatic (AOETI), with Reserved Font Names \"Spicy Rice\"",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
    "key": "cooper_marif",
    "name": "CooperMarif",
    "tier": "verified",
@@ -371,6 +407,30 @@
    "glyphCount": 44,
    "bytes": 358777,
    "attribution": "Kum Tsoan has been adapted for Ink/Stitch by Françoise Lapierre Baillet, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2013, gluk, with Reserved Font Names Namskout and NamskoutIn.",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
+   "key": "kum_tsoan_tartan",
+   "name": "Kum Tsoan Tartan",
+   "tier": "verified",
+   "group": "Display",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 83,
+   "glyphCount": 44,
+   "bytes": 298093,
+   "attribution": "Kum Tsoan tartan has been adapted for Ink/Stitch by Françoise Lapierre Baillet, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2013, gluk, with Reserved Font Names Namskout and NamskoutIn.",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
+   "key": "magnolia_bicolor",
+   "name": "Magnolia bicolor",
+   "tier": "verified",
+   "group": "Script",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 30,
+   "glyphCount": 114,
+   "bytes": 509300,
+   "attribution": "This font has been adapted for Ink/Stitch by Corinne Renaud, and is licensed under the SIL Open Font License, Version 1.1.",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -494,6 +554,18 @@
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
+   "key": "montecarlo",
+   "name": "Montecarlo",
+   "tier": "verified",
+   "group": "Script",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 35,
+   "glyphCount": 800,
+   "bytes": 1222046,
+   "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright 2011 The MonteCarlo Project Authors (https://github.com/googlefonts/monte-carlo)",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
    "key": "neon",
    "name": "Néon",
    "tier": "verified",
@@ -527,6 +599,18 @@
    "glyphCount": 125,
    "bytes": 143740,
    "attribution": "This font has been adapted for Ink/Stitch by Claudette Venneugues-Aminot, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2021 Claudette Venneugues-Aminot This font is a derivative work from Pacifico font (also licensed under SIL Open Font License)",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
+   "key": "perspective_tricolore_KOR",
+   "name": "Perspective tricolore KOR",
+   "tier": "verified",
+   "group": "Display",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 36,
+   "glyphCount": 62,
+   "bytes": 116468,
+   "attribution": "This font has been adapted for Ink/Stitch by Corinne Renaud, and is licensed under the SIL Open Font License, Version 1.1. Copyright 2020 The Merriweather Project Authors (https://github.com/EbenSorkin/Merriweather4) with Reserved Font Name \"Merriweather\".",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
