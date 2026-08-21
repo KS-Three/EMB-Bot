@@ -2268,3 +2268,60 @@ Re-opening the photo lane needs a measurement, not a flag flip.
 **Worth on the corpus** (measured 2026-08-17, non-photo lane): `bridge_hat`
 +156 stitches, `precision_drone` +29, the other 13 byte-identical. Insurance
 against silent structural loss on fragmented artwork, not a general quality win.
+
+## Trim attribution on the 46-hole white field — the cut rule, measured (2026-08-21)
+
+First measurements against the target Kent ruled first for live defect 6.
+Reproduce with `digitizer/tools/trim_attribution_probe.py`; the tool's own
+docstring carries these numbers and the caveat below.
+
+`logo_hotel_fremont.webp`, 92.5 mm / patch, `max_colors=6`. Shape
+**`S78e6cd01`** — 2095.8 mm², **46 holes**, **280 fill runs** + 63 travel —
+carries **57 of the design's 132 trims, 43%**, inside a single shape. (Recorded
+previously as 56 of 135; same shape, same magnitude, small drift.)
+
+**The cut rule is a step function with nothing else in play.** Every run-to-run
+boundary in that shape, split by whether it cut:
+
+| | gaps that did NOT cut | gaps that DID cut |
+|---|---|---|
+| n | 286 | 56 |
+| range | 0.30 – **2.92 mm** | **3.02** – 31.28 mm |
+| median | 1.35 mm | 5.96 mm |
+
+That is `trim_at_mm = 3.0` and only that — no distance-band logic, no
+cover test, no travel attempt recorded at the boundary. **48 of 56 cuts (86%)
+are moves under 11.8 mm**, the floor
+`docs/fragmentation-attribution-2026-08-18.md` measured the professional as
+never cutting below. `trim_at_mm` is gate-1 territory and the sew-out is
+accepted as-is, so this is **not retunable** — it is the diagnosis, not a fix.
+
+### Ordering is NOT the gap — a first read of this said it was
+
+The probe's `reorder` pass greedily re-sequences the same fill runs
+(nearest endpoint, flipping allowed) and scores them by the same 3.0 mm rule:
+**100 → 44** boundaries, inter-run travel **904 → 510 mm**. A first pass read
+that as a 56% cut reduction available from ordering alone. **It is not, twice
+over:**
+
+1. The pass compares fill-run endpoints only, skipping the **63 travel runs**
+   the planner interleaves. Its "as shipped" 100 is not the plan's 57 trims,
+   so the two numbers are not commensurable and the ratio between them means
+   nothing.
+2. `_fill_paths` **already** orders columns greedily nearest-first, considering
+   both traversal directions (`stage6_fill.py:594-676`). The probe ran the same
+   algorithm, so a real 56% gap between them was never plausible — the gap was
+   the measurement, not the planner.
+
+**Do not re-propose "add nearest-neighbour fill ordering."** It is already
+there. The pass is kept because it bounds what pure ordering can do, not as a
+claim about trims.
+
+### What that leaves gate-clear
+
+Travel **coverage**, not ordering and not the threshold: every 3–11.8 mm gap a
+travel run could bridge is a cut removed without touching a constant. 63 travel
+runs already bridge boundaries on this shape; the 56 that cut did not get one.
+That points at `_graph_travel` never returning a path — a defect no test in the
+repo exercises. **Not measured here**, and it needs a planner re-run scored on
+real trims, not on filtered endpoint gaps, which is the trap above.
