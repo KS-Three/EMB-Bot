@@ -384,11 +384,13 @@ genuinely open work.
 `streamline-fill-flat-lane-override`) — a competitor-research prompt (Ember
 Design ships an equivalent "Streamlines" fill as a generic, per-shape
 pattern choice, not photo-only; see `docs/emberdesign-competitive-research-
-2026-08-07.md` §"Pass 3" if that doc has landed on `main` by the time you
-read this — as of THIS pass it still lives on an unmerged
-`docs-emberdesign-competitive-research` branch/worktree, so this entry is
-self-contained rather than assuming a cross-cutting backlog row already
-exists to close out). **Before:** `stage6_streamline.streamline_fill` was
+2026-08-07.md` §"Pass 3"). **That doc is on `main`.** This entry used to
+hedge — "if that doc has landed by the time you read this; as of THIS pass
+it still lives on an unmerged `docs-emberdesign-competitive-research`
+branch/worktree" — and that condition is now resolved: the doc landed and
+the branch is gone. The entry stays self-contained anyway. *(confirmed
+2026-08-21 — `git log origin/main -- docs/emberdesign-competitive-research-2026-08-07.md`)*
+**Before:** `stage6_streamline.streamline_fill` was
 reachable only design-wide (`cfg.fill_technique == "streamline"` — which,
 worth stating precisely, was already NOT gated to photo-classified designs
 anywhere in `stage7_sequence.py`; `test_stage6_sketch.py::

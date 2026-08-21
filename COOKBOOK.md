@@ -160,8 +160,14 @@ hand-rolling it in JS.
 - **Env**: Python 3.14 venv at `digitizer/.venv` (gitignored). Run tests with
   `cd digitizer && .venv/Scripts/python -m pytest -q` — a bare
   `python probe.py` will NOT put cwd on `sys.path`, must use `python -m pytest`
-  or set `PYTHONPATH=.`. 567 tests as of 2026-08-04 — see "Running things"
-  below for the current pass/fail split, this count only grows.
+  or set `PYTHONPATH=.`. **`.venv/Scripts/` is Kent's Windows box; on Linux —
+  every cloud session — the same interpreter is `.venv/bin/python`, and that
+  substitution is the only difference. It applies to every `.venv/Scripts/`
+  path in this file.** No test count is quoted here on purpose — see
+  "Running things" below for the expected *failure classes*, which are what
+  actually tells you whether a red run is a regression. *(a count lived here
+  until 2026-08-21 and had drifted several hundred tests out of date;
+  MASTER_SCOPE rule 6 bans counts in prose for exactly this reason)*
 - **Pipeline**: image → **classify** (`stage0_classify.py`) → prep
   (background mask, `stage1_prep.py`) → segment, one of three stages
   depending on class/config: `stage2_quantize.py` (global k-means +
@@ -565,29 +571,24 @@ expected failure classes are documented below the command block.
 
 **CI now exists.** `.github/workflows/python-package-conda.yml` (PR #37
 rewrote Kent's initial stock conda template to run the three commands
-below for real) runs on every push and pull request — three jobs, engine /
-studio / digitizer, the digitizer job deselecting 3 golden tests by node ID
-(CI's OWN long-standing list, not the same three that fail on Kent's
-Windows machine — see the failure classes below). Every PR now needs
-its Actions run green in addition to a local pass before merging.
+below for real) runs on every push and pull request — **four** jobs, engine
+/ studio / digitizer / studio-e2e, the digitizer job deselecting **five**
+golden tests by node ID (CI's OWN list, not the same set that fails on
+Kent's Windows machine — see the failure classes below). Every PR needs its
+Actions run green in addition to a local pass before merging.
 
-**Known ongoing issue, since 2026-08-09, unresolved as of this writing:**
-CI checks across many PRs (#106 onward) fail in ~2-4 seconds with
-`runner_id: 0` — no GitHub Actions runner is ever assigned, the job dies
-before any step (not even checkout) runs. This is NOT a code problem —
-confirmed repeatedly by diffing against the same workflow succeeding
-normally (18s-15min per job) on a parent commit moments earlier, and by
-every affected PR passing its full local test suite. Best diagnosis (not
-confirmed — the 2026-08-09 session that wrote this couldn't see GitHub's
-billing UI): a GitHub
-Actions minutes/spending-limit or concurrency-quota issue on the account —
-check **Settings → Billing and plans → Plans and usage → Actions** on
-whichever account/org owns this repo. This repo has no required-status-
-check branch protection, so Kent has been merging past the red checks when
-the failure matches this exact signature (verify via the GitHub API/UI:
-near-instant failure + `runner_id: 0` on the job) — that's a reasonable
-workaround given the pattern, not a reason to stop checking whether it's
-actually cleared before assuming so.
+**The `runner_id: 0` outage is OVER — do not merge past a red check on its
+account.** From 2026-08-09 this file carried a standing "unresolved"
+note: CI checks from PR #106 onward died in ~2-4 seconds with `runner_id:
+0`, no runner ever assigned, and Kent was merging past red checks that
+matched that signature. That workaround is retired. Runs now get real
+runners and execute to completion — run 646 on `main` assigned
+`runner_id: 1000001710` and spent 12m47s inside its `Digitizer tests`
+step before failing, and runs 649/653/654 the same day were green at
+13–18 minutes apiece. **A red check today is a real failure, so read the
+job log rather than assuming the old signature.** *(confirmed 2026-08-21 —
+GitHub Actions API, runs 32486606246 / 32490814989 / 32493902438 /
+32494954449 on `main`)*
 
 ```bash
 node --test                 # engine tests (root) — expected clean
@@ -619,7 +620,7 @@ failures are EXPECTED:
    re-captured. The concrete per-machine set lives in ONE place — the
    MASTER_SCOPE "Gotchas" matrix ("The golden divergence is PER-FIXTURE,
    not per-platform") — with cause detail in
-   `docs/pro-parity-real-art-2026-08-15.md` §0b. CI deselects three node
+   `docs/pro-parity-real-art-2026-08-15.md` §0b. CI deselects five node
    IDs (list + rationale in `.github/workflows/python-package-conda.yml`);
    those deselected tests never RUN on CI, so their ubuntu-latest behavior
    is inferred from the deselects' history, not measured — the workflow
