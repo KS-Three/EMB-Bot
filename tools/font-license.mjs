@@ -33,6 +33,26 @@ export function licenseId(text) {
   const t = String(text || "");
   if (/GNU General Public License|GPL/i.test(t)) return "GPL-3.0";
   if (/SIL Open Font License|OFL/i.test(t)) return "OFL-1.1";
+  // NonCommercial / NoDerivatives Creative Commons variants, checked BEFORE
+  // the plain CC-BY branches below. "CC-BY-NC-SA 4.0" does not match the
+  // CC-BY-SA pattern (the NC sits between BY and SA), so it fell through to
+  // bare CC-BY and returned "CC-BY-4.0" — an ALLOWED_LICENSES id — which
+  // would let a NonCommercial font into a build meant to be sold. Found
+  // 2026-08-21 on upstream PRs #75/#76/#77 (fornow, rigart, therese), all
+  // labeled "CC-BY-NC-SA4 .0"; no shipped font is affected. NC is fatal to a
+  // paid product and ND forbids the .embf adaptation outright, so both
+  // return ids deliberately outside ALLOWED_LICENSES.
+  const ccMods = /CC[- ]BY((?:[- ](?:NC|ND|SA)\b){1,3})/i.exec(t);
+  const isNC = /\bNonCommercial\b/i.test(t) || (ccMods && /\bNC\b/i.test(ccMods[1]));
+  const isND = /\bNoDerivat(?:ive|ion)s?\b|\bNoDerivs\b/i.test(t) ||
+               (ccMods && /\bND\b/i.test(ccMods[1]));
+  if (isNC || isND) {
+    // tolerate the "4 .0" spacing seen in the upstream files
+    const m = /CC[- ]BY(?:[- ](?:NC|ND|SA))+[^\d]{0,10}(\d)\s*\.\s*(\d)/i.exec(t);
+    const ver = m ? m[1] + "." + m[2] : "4.0";
+    const sa = ccMods && /\bSA\b/i.test(ccMods[1]) ? "SA-" : "";
+    return "CC-BY-" + (isNC ? "NC-" : "") + (isND ? "ND-" : "") + sa + ver;
+  }
   if (/CC[- ]BY[- ]SA/i.test(t)) {
     const m = /CC[- ]BY[- ]SA[^\d]{0,10}(\d\.\d)/i.exec(t);
     return "CC-BY-SA-" + (m ? m[1] : "4.0");
