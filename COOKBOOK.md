@@ -64,8 +64,17 @@ font there unless it is also in the shipping manifest. `EMB-Bot-standalone.html`
   committed `.embf` files are the artifacts of record either way.
 - **Tier rule (Kent's decision): only `tier:"verified"` ships.** Unverified =
   internal work queue with a concrete reason per font in `_tiers.json`.
-  License policy for NEW fonts: OFL-1.1 / CC-BY-4.0 / CC-BY-SA-4.0 / CC0
-  only — `precious` is excluded (GPL-3.0). `ondulamarif_XL`
+  License policy for NEW fonts: **OFL-1.1 / CC-BY-4.0 / CC0 only** — this line
+  read "OFL-1.1 / CC-BY-4.0 / CC-BY-SA-4.0 / CC0" until 2026-08-21 and was
+  wrong from 2026-08-04 onward; `ALLOWED_LICENSES` in `build-embf.mjs` is the
+  authority, not this doc. **ShareAlike is permanently closed** (Kent,
+  2026-08-21: SA may propagate through the compiled `.embf` onto customer
+  stitch files — an unbounded liability on the product's core output). Do not
+  re-propose it; the `docs/lawyer-brief-cc-by-sa-2026-08-04.md` restore path is
+  retired. **NonCommercial and NoDerivatives can never ship** in a paid product
+  — `licenseId()` labelled both as plain `CC-BY-4.0` until 2026-08-21
+  (`docs/font-expansion-research-2026-08-21.md` §5). `precious` is excluded
+  (GPL-3.0). `ondulamarif_XL`
   was demoted by QC (letter glyphs runs-only → 0 stitches). `milli_marif_bold`,
   `tt_directors`, `tt_masters`, and `dejavufont` were PULLED from the build
   2026-08-04 per `docs/font-license-audit-2026-07-31.md` action items 1-3
