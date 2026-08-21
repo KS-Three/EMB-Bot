@@ -2325,3 +2325,171 @@ runs already bridge boundaries on this shape; the 56 that cut did not get one.
 That points at `_graph_travel` never returning a path — a defect no test in the
 repo exercises. **Not measured here**, and it needs a planner re-run scored on
 real trims, not on filtered endpoint gaps, which is the trap above.
+
+### Travel coverage sized, and it is NOT the lever either (2026-08-21)
+
+Kent's call was to size the recovery before building it, per
+`docs/fragmentation-attribution-2026-08-18.md`'s own instruction. Sized:
+**the ceiling is 4 of 56 cuts, 7%.** Do not build a travel-side fix for this
+shape. Reproduce with `trim_attribution_probe.py --pass travel`.
+
+**The mechanism is exact.** `stage6_fill.py:877` cuts *only* when `travel_path`
+returns `None` **and** the gap exceeds `trim_at_mm`:
+
+```python
+bridge = travel_path(poly, ring, runs[-1].points[-1], pts[0], slack)
+if bridge is None:
+    trim = d > trim_at_mm
+```
+
+So every one of `S78e6cd01`'s 56 cuts is a **travel failure**, and
+`trim_at_mm` only decides whether a failed travel becomes a cut or a silent
+jump. A successful travel never cuts, at any distance.
+
+Replaying those 56 pairs against every one of the shape's 20 ring fragments,
+with the candidate cap and the detour budget both removed:
+
+| | count |
+|---|---|
+| **no route stays inside the shape, at any length** | **52** |
+| routable, length the only objection | 4 |
+
+Recovering all 4 costs 216 mm of extra travel (~86 stitches), 54 mm per cut.
+That is the whole prize. With 46 holes and only 20 inset-ring fragments, the
+shape genuinely disconnects its own fill rows — there is no path to find.
+
+**Two knobs ruled out on the way, both gate-clear and both worthless here:**
+
+- `_TRAVEL_RING_CANDIDATES = 3` (a pure performance cap) recovers **0 of 56**.
+  The right ring being outside the top 3 is not what is happening.
+- `_TRAVEL_DETOUR_FACTOR = 4.0` recovers at most those same 4, and raising it
+  past ~16 buys nothing further.
+
+**A correction this entry has to carry, because a first diagnostic got it
+wrong.** An earlier pass reported "55 of 56 blocked by the detour budget",
+which pointed at the budget as the lever. It was an artifact: that check
+flagged `over-budget` as soon as *any* candidate exceeded the budget, before
+testing whether *any* candidate was covered at all. Test containment first,
+then length — otherwise unroutable pairs masquerade as merely-too-long ones
+and the wrong knob looks like the fix.
+
+**Two stale claims corrected:**
+
+1. `_graph_travel` is **satin-side** (`stage6_satin.py:2159`). A fill shape's
+   travel is `travel_path` (`stage6_fill.py:523`). Pointing at `_graph_travel`
+   for this white field — as an earlier note in this file did — is a category
+   error; they are different code paths.
+2. The attribution doc's "no test references `_graph_travel` or
+   `_build_travel_graph`" is **out of date**: `tests/test_travel_graph.py`
+   exists with 7 tests. The doc was written 2026-08-18; the test landed after.
+
+**Where that leaves live defect 6.** On this shape, under gate 1, the gate-clear
+levers are exhausted: ordering was already correct, travel tops out at 7%, and
+the two mechanisms that would actually move it — `chain_links` and
+`trim_at_mm` — are frozen. The remaining idea is upstream of stitching
+entirely: stop handing a 46-hole, 2,095 mm² perforated region to the filler as
+one shape. That is a stage-2/segmentation question, not a stage-6 one, and it
+has not been sized.
+
+### CORRECTION — the 7% ceiling was measured with the ORDER HELD FIXED (2026-08-21)
+
+**The entry immediately above concluded "do not build a travel-side fix." That
+conclusion is wrong, and this entry supersedes it.** The 7% number itself is
+correct but answers a narrower question than it appeared to: *given the
+boundaries the planner already chose*, only 4 of 56 were routable. It never
+asked whether a different choice of next run would have been.
+
+It would have been. Reproduce with `trim_attribution_probe.py --pass routable`:
+
+| ordering | cuts | travel |
+|---|---|---|
+| shipped (nearest by distance) | **57** | 188 mm |
+| routable-first (nearest **among reachable**) | **24** | 941 mm |
+
+**33 of 57 cuts — 58% — removed by ordering alone, no constant touched.** This
+is constructive, not a bound: it is an ordering that achieves 24, not an
+estimate of what one might.
+
+**The mechanism.** `_fill_paths` picks the nearest next column by straight-line
+distance. On a 46-hole shape the nearest column is frequently *across a hole*,
+where `travel_path` cannot route, so `stage6_fill.py:877` cuts. A farther column
+in the same travel-connected island would have cost a few more millimetres and
+no cut at all. **The cut is manufactured by the choice, not forced by the
+geometry.** Supporting measurement: the 280 fill runs form only **17
+travel-connected components**, 195 of them in one and 64 in another, so the
+connectivity floor is 16 cuts — the constructive ordering reaches 24.
+
+**Cost.** +752 mm of travel = **+301 stitches on a 10,291-stitch design
+(+2.9%)**, or 22.8 mm per cut removed. That travel stays **inside** the shape —
+`travel_path` requires `cover.covers(route)` — so unlike `chain_links` it is
+not thread on bare fabric, and it is not the gate-1 question `chain_links` is.
+Whether 2.9% more stitches is worth 58% fewer trims is a production judgement,
+not a geometric one.
+
+**Why this was missed twice.** Both earlier readings held something fixed and
+reported the result as a property of the defect:
+
+1. The `reorder` pass compared fill endpoints while ignoring interleaved travel,
+   making ordering look like a 56% win it had not earned.
+2. The `travel` pass held the planner's ordering fixed, making travel look
+   exhausted at 7%.
+
+Each was true of what it measured and false as a claim about the defect. **The
+lever is the interaction between the two** — ordering *by reachability* — which
+neither pass could see alone. Before concluding a lever is dead here, check what
+your measurement is holding constant.
+
+**Status: not implemented.** This is a sizing, on one shape, of a change to
+`_fill_paths`' ordering loop (`stage6_fill.py:594-676`). It would move
+`test_flat_lane_byte_identical` and stroke goldens on every fixture with a
+holed fill, so it needs the corpus run and the same-failure-set discipline —
+golden re-capture on Linux CI is pre-authorized (standing rulings). Nothing
+above is evidence about any shape but this one.
+
+### Routable-first ordering across the corpus — it generalises, but is NOT a drop-in (2026-08-21)
+
+The 58% figure above is one shape. Swept every committed photo fixture, scoring
+cuts by the same `stage6_fill.py:877` rule, on every shape with at least one
+hole and ≥15 fill runs. **Note the config differs from the single-shape entry
+above:** this sweep runs `PipelineConfig(max_colors=6)` at the DEFAULT
+`target_width_mm=80.0`, not 92.5 mm/patch, so its `logo_hotel_fremont` row
+(44 holes, 247 runs, 46→14) is a different geometry from that entry's
+(46 holes, 280 runs, 57→24). Do not quote them as the same measurement.
+
+**17 shapes across 12 fixtures: 290 cuts → 163, 44% removed.**
+
+**But 13 improved and 4 REGRESSED.** A naive swap of the ordering rule would
+make those four worse:
+
+| fixture | shape | holes | runs | shipped | routable | delta |
+|---|---|---|---|---|---|---|
+| `photo_chrome_specular.png` | `S75b4b6e6` | 2 | 74 | 8 | 15 | **+7** |
+| `tight_crop_pale_subject.png` | `Sddefb246` | 9 | 22 | 12 | 17 | **+5** |
+| `photo_dof_meadow.png` | `Sf0dc3da8` | 3 | 30 | 7 | 10 | **+3** |
+| `photo_scene_stub.png` | `S8c97b2f3` | 1 | 15 | 3 | 6 | **+3** |
+
+Biggest wins, for contrast: `logo_hotel_fremont` 46→14, `logo_gaulke_roofing`
+(40 holes) 28→12, `drone_render` (13 holes) 21→6,
+`screenshot_phone_ui_golke` (26 holes) 18→4.
+
+**All four regressions used LESS travel, not more** (−1401, −686, −627,
+−194 mm). That is the tell: on a shape whose boundaries are naturally
+sub-`trim_at_mm`, the shipped nearest-distance walk keeps hops short enough that
+a failed travel becomes a silent jump rather than a cut. Routable-first chases
+reachability instead, and lands in positions where the next run is both far
+*and* unroutable — manufacturing cuts the distance-greedy walk avoided by
+accident. The wins cluster on high-hole-count shapes (13–44 holes); the losses
+on shapes with few holes or few runs.
+
+**So the rule is conditional, not universal.** The obvious form of the fix is
+not "replace the ordering" but **score both and keep the better** — both walks
+are cheap and the cut count is exactly computable before emitting, so a
+per-shape choice is non-regressing by construction. That is a design sketch,
+not a measurement; it has not been built or tested.
+
+**Still not implemented, and the honest ceiling is lower than 44%.** These are
+per-shape numbers on shapes chosen for having holes; they are not a design-level
+or corpus-level trim reduction, and nothing here has been through the corpus
+scorecard. A real implementation still owes: the both-orderings guard, a corpus
+scorecard run, and the golden movement (pre-authorized on Linux CI under
+same-failure-set discipline).

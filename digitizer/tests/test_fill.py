@@ -640,3 +640,33 @@ def test_scanlines_start_inside_the_shape_not_on_its_edge():
     # Row indices are spatial, so the stagger phase means the same thing on
     # every shape regardless of which scanlines happened to find geometry.
     assert [r[0] for r in rows] == list(range(len(rows)))
+
+
+def test_row_spans_repairs_a_self_intersecting_polygon_instead_of_raising():
+    """Stage 5's pull compensation can hand fill an invalid polygon.
+
+    Stage 4 validates every region it emits (`stage4_vectorize` runs
+    `make_valid`), so fill never used to guard. Pull compensation happens after
+    that, and on `photo_sunset_backlit.png` at the DEFAULT 80 mm it produced a
+    self-intersecting polygon; GEOS then raised TopologyException out of
+    `_row_spans`' `intersection` and the whole digitize failed. At 80 mm only,
+    on that one fixture, which is why a green suite never saw it.
+
+    A bowtie is the minimal self-intersection. Before the guard this raised;
+    the contract is that it returns spans for the repaired geometry. Verified
+    load-bearing: reverting the guard fails this test with GEOSException.
+
+    The guard's companion `is_empty` early-return is NOT pinned here -- no
+    input was found that is invalid AND repairs to empty, and a test that
+    passes with the guard reverted would be worse than no test at all.
+    """
+    bowtie = Polygon([(0, 0), (10, 10), (10, 0), (0, 10)])
+    assert not bowtie.is_valid, "fixture must actually be invalid to test the guard"
+
+    rows = _row_spans(bowtie, 1.0)
+
+    assert rows, "expected spans from the repaired polygon, got none"
+    for _i, y, spans in rows:
+        for x0, x1 in spans:
+            assert x1 >= x0
+            assert bowtie.buffer(0).intersects(LineString([(x0, y), (x1, y)]))

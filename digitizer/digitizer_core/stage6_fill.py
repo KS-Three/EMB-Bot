@@ -123,6 +123,20 @@ def _row_spans(poly: Polygon, row_mm: float) -> list[tuple[int, float, list[tupl
     index. That keeps the stagger anchored to real geometry and lets callers
     tell "the next row" from "the next row that had anything in it".
     """
+    # Stage 5's pull compensation can hand fill a SELF-INTERSECTING polygon even
+    # though stage 4 validated every region it emitted (`stage4_vectorize.py:181`
+    # runs `make_valid`). `photo_sunset_backlit.png` at the DEFAULT 80 mm arrives
+    # here as Self-intersection[30.946, 22.677] and GEOS raises TopologyException
+    # out of the `intersection` below, failing the entire digitize -- at 80 mm
+    # only, and on no other committed fixture, so nothing caught it. The same
+    # defensive repair `stage6_border` (:249) and `stage6_contour` (:109) already
+    # make. It fires ONLY on geometry that is already invalid, so a valid polygon
+    # -- every other shape in the corpus -- takes the identical path it always
+    # did and no golden moves.
+    if not poly.is_valid:
+        poly = poly.buffer(0)
+    if poly.is_empty:
+        return []
     minx, miny, maxx, maxy = poly.bounds
     out: list[tuple[int, float, list[tuple[float, float]]]] = []
     n_rows = max(1, int(math.floor((maxy - miny) / row_mm)))
