@@ -1,8 +1,8 @@
-"""Decode stitch files with pyembroidery and dump them as JSON.
+"""Decode stitch files with pystitch and dump them as JSON.
 
 Companion to tools/crossval-stitch-formats.mjs (the cross-validation harness
 for the browser PES/EXP/DST encoders). This script is deliberately dumb: it
-opens each file named on the command line with pyembroidery — an independent,
+opens each file named on the command line with pystitch — an independent,
 standard-conformant reader — and prints exactly what a third-party tool would
 see, as JSON on stdout. All comparison logic lives on the Node side.
 
@@ -13,19 +13,22 @@ Output (one JSON object on stdout):
     { "<basename>": {
         "stitches": [[x, y, "STITCH"|"JUMP"|"TRIM"|...], ...],
         "counts":   {"STITCH": n, "JUMP": n, ...},
-        "bounds":   [minx, miny, maxx, maxy],   # pyembroidery convention, +Y down
+        "bounds":   [minx, miny, maxx, maxy],   # pystitch convention, +Y down
         "threads":  ["#rrggbb", ...],
       }, ... }
 
-Requires: pyembroidery (the digitizer venv has it).
+Requires: pystitch (a declared digitizer dependency; the venv has it).
+This imported pyembroidery until 2026-08-21, which the 2026-08-11 pystitch
+swap had removed from the venv — so the harness skipped silently instead of
+failing loud, and the suite reported pass 0 / skipped 6.
 """
 
 import json
 import os
 import sys
 
-import pyembroidery
-from pyembroidery.EmbConstant import (
+import pystitch
+from pystitch.EmbConstant import (
     COLOR_CHANGE,
     COMMAND_MASK,
     END,
@@ -54,9 +57,9 @@ def _cmd_name(command):
 
 
 def decode(path):
-    pattern = pyembroidery.read(path)
+    pattern = pystitch.read(path)
     if pattern is None:
-        return {"error": "pyembroidery.read returned None (unreadable file)"}
+        return {"error": "pystitch.read returned None (unreadable file)"}
     stitches = [[int(s[0]), int(s[1]), _cmd_name(s[2])] for s in pattern.stitches]
     counts = {}
     for _, _, name in stitches:
