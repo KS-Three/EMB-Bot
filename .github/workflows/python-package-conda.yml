@@ -12,15 +12,30 @@ on: [push, pull_request]
 jobs:
   engine:
     # The browser JS stitch engine's Node test harness (root, no npm deps).
-    # The PES/EXP cross-validation tests self-skip when no python with
-    # pyembroidery is importable — they run for real in the digitizer job's
-    # environment, not here.
+    #
+    # The PES/EXP/DST cross-validation tests need a python that can import
+    # pystitch, so this job installs one. The old comment here claimed they
+    # "run for real in the digitizer job's environment, not here" — they do
+    # not: that job runs `python -m pytest`, never `node --test`, so this is
+    # the only job that invokes them at all. Combined with their probing a
+    # module the 2026-08-11 pystitch swap had removed, the result was
+    # pass 0 / skipped 6 — the repo's ONLY automated third-party format check
+    # asserting nothing, in CI, while a real PES defect sat behind it.
+    # The tests now throw rather than skip when CI is set, so this install
+    # step going missing fails the build instead of going quiet again.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pystitch (the cross-validation reference decoder)
+        # Pinned to the same version digitizer/requirements.txt pins, so the
+        # reference reader in CI is the one the digitizer actually ships.
+        run: pip install pystitch==1.0.1
       - name: Engine tests
         run: node --test
 
