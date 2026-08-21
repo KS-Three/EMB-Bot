@@ -235,6 +235,18 @@
     w.i16le(0x01e0); // 480 - nominal design area width
     w.i16le(0x01b0); // 432 - nominal design area height (standard value; was 0x0140/320)
 
+    // Initial positioning jump. This is NOT optional padding: a standard
+    // reader treats the PEC stitch block as a fixed 15-byte header —
+    // 3 marker bytes + 4 shorts + this 4-byte long-form jump — and skips
+    // all 15 before it starts decoding deltas (PecReader.read_pec's
+    // `f.seek(0x0F, 1)`). Omitting it left the header 4 bytes short, so the
+    // reader consumed the first two stitch records as header and decoded
+    // every remaining point shifted by the delta it had eaten.
+    // Value matches PecWriter.write_pec_block's
+    // `write_jump(-extends[0], -extends[1])`, in PEC screen space (+Y down,
+    // so the design's yMax is the screen-space yMin).
+    pecWriteRecord(w, -ext.xMin, ext.yMax, PEC_FLAG_JUMP);
+
     // stitch data
     pecEncodeStitches(w, stitches);
 

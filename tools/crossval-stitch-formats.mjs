@@ -1,15 +1,15 @@
-// Cross-validation harness: browser PES / EXP / DST encoders vs. pyembroidery.
+// Cross-validation harness: browser PES / EXP / DST encoders vs. pystitch.
 //
 // Encodes a small ASYMMETRIC fixture design (asymmetry is essential — a
 // symmetric design hides axis flips) through the real browser encoders
 // (src/pes.js, src/exp.js, src/dst.js — the exact modules the Studio's
-// exporters.js invokes), then decodes the bytes with pyembroidery (an
+// exporters.js invokes), then decodes the bytes with pystitch (an
 // independent, standard-conformant implementation, via
 // tools/crossval_decode.py) and measures what a third-party reader sees:
 //
 //   - stitch coordinates: best-fit dihedral transform (identity / flips /
 //     transpositions) + translation + residual, vs. the expected mapping.
-//     A correct encoder measures "identity": pyembroidery's internal
+//     A correct encoder measures "identity": pystitch's internal
 //     convention is +Y down, the Design model is +Y up, so the expected
 //     decoded point for a design stitch (x, y) is exactly (x, -y).
 //   - color count / color-change count, trims, jumps
@@ -25,7 +25,10 @@
 //
 // Python resolution: $EMB_CROSSVAL_PYTHON if set, else the digitizer venv
 // next to this checkout (digitizer/.venv/bin/python or Scripts/python.exe),
-// else `python3` on PATH. The interpreter must have pyembroidery installed.
+// else `python3` on PATH. The interpreter must have pystitch installed.
+// (It probed pyembroidery until 2026-08-21. The 2026-08-11 pystitch swap had
+// removed that module, so every check skipped and the suite reported
+// pass 0 / skipped 6 — green having asserted nothing.)
 // Verdict doc: docs/pes-crossval-verdict-2026-08-04.md
 // Pinning test: test/crossval-stitch-formats.test.js
 
@@ -81,7 +84,7 @@ export function buildFixture({ withTrim = true } = {}) {
   };
 }
 
-// Expected pyembroidery view of the fixture's needle-down points: (x, -y).
+// Expected pystitch view of the fixture's needle-down points: (x, -y).
 export function expectedPyembStitches(design) {
   return design.stitches
     .filter((t) => (t.type || "stitch") === "stitch")
@@ -153,7 +156,7 @@ export function resolvePython() {
   );
   for (const p of candidates) {
     try {
-      const r = spawnSync(p, ["-c", "import pyembroidery"], { timeout: 30000 });
+      const r = spawnSync(p, ["-c", "import pystitch"], { timeout: 30000 });
       if (r.status === 0) return p;
     } catch {
       /* try next */
@@ -178,7 +181,7 @@ function pyDecode(python, files) {
 export function runCrossval({ python = resolvePython(), keepDir = null } = {}) {
   if (!python) {
     throw new Error(
-      "No python with pyembroidery found (set EMB_CROSSVAL_PYTHON or create digitizer/.venv)"
+      "No python with pystitch found (set EMB_CROSSVAL_PYTHON or create digitizer/.venv)"
     );
   }
   const dir = keepDir || fs.mkdtempSync(path.join(os.tmpdir(), "emb-crossval-"));
@@ -247,7 +250,7 @@ function fmtReport(results) {
         `offset [${f.offset}], over ${f.compared} pts)` +
         (f.transform !== "identity" || f.rms > 0.5 ? "  << NOT CLEAN" : "  (clean)")
     );
-    lines.push(`  commands seen by pyembroidery: ${JSON.stringify(r.counts)}`);
+    lines.push(`  commands seen by pystitch: ${JSON.stringify(r.counts)}`);
     lines.push(
       `  color changes: expected ${r.expectedColorChanges}, decoded ${r.decodedColorChanges}` +
         (r.decodedSequinToggles ? `  (plus ${r.decodedSequinToggles} spurious SEQUIN_MODE)` : "")

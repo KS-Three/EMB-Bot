@@ -58,6 +58,23 @@ the pro**, same decoder, same 23 designs.
 
 ## 2. Mechanism: `_graph_travel` never returns a path
 
+> **RETRACTED 2026-08-21 — this whole section is measured on pre-PR-#182 code.**
+> It was measured before PR #182's cursor-side snap retry landed, and both of
+> its load-bearing claims are now false:
+>
+> | §2 claim | re-measured at HEAD |
+> |---|---|
+> | "0 successful returns out of 57 calls" | returns a usable path on **9 of 55** calls |
+> | "no test references `_graph_travel`" | `tests/test_travel_graph.py` exists and passes |
+>
+> The conclusion that replaces it: the quality-preserving headroom left in
+> `_graph_travel` is **~4 trims of 250**, so it is not worth a pass. The
+> trim-dominated attribution in §4 is unaffected — that half stands, and it
+> is the half that matters. Read the rest of this section as the reasoning of
+> 2026-08-18, not as current behaviour.
+> *(measured 2026-08-21 — instrumented at HEAD on
+> enthusiast_logo / becker_marine_logo / logo_alpha)*
+
 `digitizer/README.md:316-322` describes a needle-down travel-graph walk as
 shipped — "the corpus trick behind 740-stitch runs and 0.8 trims per 1000". It
 does not fire.

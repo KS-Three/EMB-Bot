@@ -372,13 +372,22 @@ a customer photo with a different region/floor landscape could behave
 differently, and no fixture here would catch it.
 
 **Still open from the same root-cause doc, untouched by this fix:** #6.2
-`summit_badge.png` (F/0 left_chest, F/10 hat_front — a segmentation-merge
-chaining issue in `stage2_photo_segment.py`'s hierarchical RAG merge, NOT a
-`palette.py` bug) and #6.3 `repro_gradient_white_icon.png` (D/58 both
-configs — a post-vectorization color/geometry desync on thin/hairline
-shapes, needs its own design pass). Ranked by leverage in the root-cause
-doc: #6.1 was the cheapest, most contained fix; #6.2 and #6.3 remain
-genuinely open work.
+`summit_badge.png` (a segmentation-merge chaining issue in
+`stage2_photo_segment.py`'s hierarchical RAG merge, NOT a `palette.py` bug)
+and #6.3 `repro_gradient_white_icon.png` (a post-vectorization
+color/geometry desync on thin/hairline shapes, needs its own design pass).
+Ranked by leverage in the root-cause doc: #6.1 was the cheapest, most
+contained fix.
+
+> **Read the paragraph above as of 2026-08-11 morning, not as live status.**
+> #6.3 was fixed that same evening — `stage4_vectorize.revalidate_threads`,
+> table below — and the grades quoted here have both moved since. Re-measured
+> at HEAD: `repro_gradient_white_icon` **B/76 at both configs** (worst dE00
+> 6.8, was D/58 under the pooled instrument and F/0 under the per-region one);
+> `summit_badge` **F/0 at both configs** (worst dE00 10.2, was quoted F/10 at
+> `hat_front`). #6.2 alone is still open, and its grade is saturated — judge
+> any fix on `thread_worst_delta_e`, never on score.
+> *(measured 2026-08-21 — `corpus_scorecard._score_one`, both MATRIX configs)*
 
 **Streamline fill grew a per-shape form, 2026-08-07** (branch
 `streamline-fill-flat-lane-override`) — a competitor-research prompt (Ember
@@ -2162,6 +2171,57 @@ Fremont's small lettering is a separate, unrelated mechanism. Worth stating
 because the two look superficially alike (both "serif details disappearing").
 
 ---
+
+## Junction-free DT width — MEASURED NEGATIVE, do not rebuild (PR #152)
+
+Recorded here 2026-08-21, as PR #152 was closed. The branch was left open
+since 2026-08-14 purely to keep this result reviewable, and it turned out
+to be written down **nowhere else**: PR #192's body claimed it was "durably
+recorded" in MASTER_SCOPE, `.claude/memory/`, and `docs/scope-history.md:401`,
+but all three of those cite the *2026-08-11 DT-first architecture swap* — a
+different experiment with a different conclusion. Closing the PR without this
+entry would have lost it.
+
+**The diagnosis, which still stands.** `_dt_regular_and_within_cap`'s `p90`
+term rejects shapes for being **branchy**, not for being **wide**. `p90`
+strips a junction's inflated inscribed circle (a serif crossbar runs √2 times
+its stroke) for *one* junction; it does not hold at branch density, where tens
+of branch points inflate well over a tenth of the skeletal pixels. Over the
+pro-parity corpus this term is the dominant satin→fill misroute: **11 of 14 DT
+rejections**, on shapes the perimeter-based cap gate had just passed. The two
+gates disagree by construction — `p90` runs **1.2–1.45×** `ribbon_width_mm` on
+the same shape while both are compared against the same `max_width_mm`:
+
+| shape | `ribbon_width_mm` (cap gate) | `p90` (DT gate) | verdict |
+|---|---|---|---|
+| tires `S396ab4ae` | 4.88 ✓ | 5.83 ✗ | fill |
+| becker `Sb92e681c` | 4.21 ✓ | 6.12 ✗ | fill |
+| mfab `Sfb63bcf2` | 4.63 ✓ | 6.33 ✗ | fill |
+
+**Why relaxing it still failed.** It does not put satin where the pro puts it;
+it puts **more** satin everywhere, and more lands wrong than right. Corpus mean
+**54.76 → 54.60**, mean `sttype` **0.217 → 0.198** — the metric it was built to
+move, moving backwards. 9 designs better, **12 worse**, 2 flat. The designs
+that regressed hardest were the ones already working: `mfab_hat` 63.8 → 60.6
+(`sttype` 0.54 → 0.40), `toat_beanie` 56.3 → 53.2 (0.46 → 0.37),
+`becker_hat_large` 53.2 → 51.7 (0.11 → **0.00**). `tires_hat_3d`, the design it
+was built for, gained +0.8 with `sttype` still 0.00.
+
+**The durable result — this is the part that governs live defect 5.** The
+corpus satin/fill *mix* is already nearly correct (pro 53.6/46.1, ours
+47.7/48.5), so any change that only shifts a threshold in one direction must
+move a mix that was already right. **No one-directional adjustment of the
+satin/fill gate — cap, `p90`, aspect, or regularity — can fix this.** Only
+something that moves satin *from* the wrong shapes *to* the right ones can:
+better discrimination, not a looser or tighter gate. That rules out a whole
+class of cheap fixes, and it is consistent with the later oracle measurement
+(2026-08-17: an oracle knowing the pro's per-shape answer scores 76.6% against
+our 55.4%, i.e. the remaining gap is segmentation, not gate tuning).
+
+*(measured 2026-08-14 — PR #152 over the pro-parity corpus; scores are on the
+pre-2026-08-14 scale for `sttype`'s chance correction, so do not compare these
+absolute numbers to post-PR-151 ones — the direction and the ruling-out are
+what carry.)*
 
 ## Chained small-region rescue — LANDED 2026-08-21, gated to the non-photo lane
 

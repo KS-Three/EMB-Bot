@@ -67,15 +67,10 @@ or move it.
    the pro's files and 1 on ours). **Cause attributed:** trim-dominated, not
    travel — the pro never cuts for a move under 11.8 mm and our `trim_at_mm` is
    3.0 (gate 1: cloth settles that). **The "`_graph_travel` returns nothing"
-   half of that attribution is RETRACTED** — measured before PR #182's
-   cursor-side snap retry landed. Re-measured at HEAD it returns a usable path
-   on 9 of 55 calls over three real fixtures, and the quality-preserving
-   headroom left in it is ~4 trims of 250, so it is not worth a pass. The
-   attribution doc's §2 ("0 successful returns out of 57 calls"; "no test
-   references `_graph_travel`") is stale on both counts —
-   `tests/test_travel_graph.py` exists and passes.
-   *(measured 2026-08-21 — instrumented at HEAD on
-   enthusiast_logo/becker_marine_logo/logo_alpha)*
+   half of that attribution is RETRACTED** — it predates PR #182's snap retry;
+   at HEAD the headroom left there is ~4 trims of 250, so it is not worth a
+   pass. Numbers and the correction to the doc's §2 are now in that doc.
+   *(measured 2026-08-21 — instrumented at HEAD)*
    Detail, retractions and caveats in
    [`docs/fragmentation-attribution-2026-08-18.md`](docs/fragmentation-attribution-2026-08-18.md).
    *(measured 2026-08-18 — pinned worktree, `prep_all` over the Drive corpus)*
@@ -215,6 +210,13 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
 - **DT-first classifier architecture swap** — the patented rule as printed sends
   62/83 clean satins to fill; corrected arms lose every disagreement they
   create. *(measured 2026-08-11 — `docs/dt-first-verdict-2026-08-11.md`)*
+- **Junction-free DT width, and one-directional satin/fill gate tuning
+  generally** — relaxing `_dt_regular_and_within_cap`'s `p90` moves the corpus
+  54.76 → 54.60 and `sttype` 0.217 → 0.198, 12 designs worse to 9 better. The
+  diagnosis stands (`p90` rejects branchy, not wide) but the mix is already
+  right, so **no cap/`p90`/aspect/regularity move in one direction can fix
+  routing — only better discrimination can.** Governs live defect 5.
+  *(measured 2026-08-14 — PR #152, closed 2026-08-21; detail in area 1)*
 - **Swapping the SAM model** — in automatic-mask-generation mode SAM2's image
   encoder is only ~8% of per-image cost and the `points_per_side**2` prompt
   loop is ~92%, while every lightweight SAM variant optimizes the encoder.
@@ -566,23 +568,20 @@ covers re-running the SAME code twice only — a recapture spanning real commits
 can fold in genuine undiagnosed drift, as "Fix #6.1 landed" (area 1) found for
 three fixtures. No dedicated test file, matching the convention that no
 `tools/*.py` has one (including `capture_flat_lane_golden.py`); a full capture is
-too slow for the regular suite. *(`repro_gradient_white_icon.png` is D/58 at both
-configs — an earlier version of this entry said F/0; corrected 2026-08-11 —
-`docs/photo-quality-root-cause-2026-08-11.md`)*
+too slow for the regular suite.
 
-**Still open here:** `summit_badge.png` (#6.2 — re-checked 2026-08-21: metric
-responds, grade saturated at F/0; judge a fix on `thread_worst_delta_e`, never
-score) and `repro_gradient_white_icon.png` (#6.3), same doc — `drone_render.png`'s
-#6.1 fix landed and is algorithm-verified but does not move the grade (a
-preflight pooled-metric measurement gap, traced in area 1). **Next step:** run the
-tool by hand against a few real classifier changes to learn what a genuine
-regression looks like before setting any hard threshold.
-
-**Update 2026-08-17: the "preflight pooled-metric measurement gap" cited
-above is CLOSED.** `619e9ad` (2026-08-11) rescored `THREAD_MATCH_POOR` per
-region instead of per pooled thread median; see area 1 above
-(`docs/scope/1-auto-digitizing-quality.md`) for the corpus baseline reads
-under the new instrument.
+**Still open here: `summit_badge.png` (#6.2) alone.** Re-measured at HEAD it is
+F/0 at both configs with `thread_worst_delta_e` 10.2 — the grade is saturated,
+so judge a fix on that metric and never on score. **#6.3
+`repro_gradient_white_icon.png` is CLOSED**, though this list carried it as open
+until 2026-08-21: `stage4_vectorize.revalidate_threads` landed 2026-08-11 and it
+now measures **B/76 at both configs, worst dE00 6.8**, up from the corpus's worst
+grade. `drone_render.png`'s #6.1 landed too but does not move its grade; the
+"preflight pooled-metric gap" that used to explain that is itself closed —
+`619e9ad` rescored `THREAD_MATCH_POOR` per region, not per pooled thread median.
+**Next step:** run the tool against a few real classifier changes to learn what a
+genuine regression looks like before setting any hard threshold.
+*(measured 2026-08-21 — `corpus_scorecard._score_one` at HEAD, both MATRIX configs)*
 
 **The corpus half is no longer empty (2026-08-15).** Eight files of real
 customer artwork now ship in `FIXTURES` — the first entries that are neither
@@ -672,14 +671,15 @@ merged and reachable from Studio via the `embstudio:sam2` dev seam, still
 `photo_subject`/`photo_scene` fixtures are synthetic stubs, so the committed
 corpus can neither defend nor refute SAM2's quality — a real-photo fixture is
 the missing piece. *(confirmed 2026-08-11 — area 1 detail)*
-**Open defect: satin-tier shapes silently drop extremity features.**
-`enthusiast_logo.png`'s emblem loses 11.5% of its artwork to unstitched spurs
-— a whole limb and a corner — with correct, symmetric outlines and
-`stitched: true`. Root cause not yet found; not fixed. **The blind spot that
-hid it is fixed:** `preflight` gained `ARTWORK_UNCOVERED` (ground truth
-`polygon ∩ ink`), verified against the exact shape, silent on 6 other
-fixtures, no regression. Its 5.0 mm² threshold is provisional — two
-calibration fixtures unadjudicated. *(2026-08-20 — area 1 detail)*
+**Satin extremity drop — FIXED 2026-08-21, after this line called it open.**
+`enthusiast_logo.png`'s emblem lost a bracket's inward tab and a corner:
+`_prune_spurs` re-measured a stem its OWN first pass had un-branched, one
+raster pixel deciding a 3.3 mm tab. Fixed by exempting a dead end the function
+itself created, not by moving the bar — D/52 → C/64, and the same cascade was
+mangling block letters in `textcluster.py`. **The blind spot that hid it stays
+fixed:** `preflight`'s `ARTWORK_UNCOVERED` (ground truth `polygon ∩ ink`); its
+5.0 mm² threshold is provisional — two calibration fixtures unadjudicated.
+*(fixed 2026-08-21 — `stage6_satin.py:931` on `main`, PR #186)*
 **Next:** satin-vs-fill routing (live defect 5) — Kent's call 2026-08-14,
 taken ahead of option A, which stays the standing ruling for the blend tier
 whenever it is scheduled. The pro-parity scorecard was chance-corrected first

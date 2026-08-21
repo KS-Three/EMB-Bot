@@ -1,4 +1,4 @@
-// Cross-validation pins: browser PES / EXP / DST encoders vs. pyembroidery.
+// Cross-validation pins: browser PES / EXP / DST encoders vs. pystitch.
 //
 // These tests PIN CURRENT BEHAVIOR — they are a tripwire, not an endorsement.
 // As of 2026-08-05, the PES framing/palette/jump-flag defects and the EXP
@@ -16,8 +16,18 @@
 // If any assertion here starts failing, the encoder's third-party-visible
 // behavior CHANGED — read the docs above before "fixing" anything.
 //
-// Needs a Python interpreter with pyembroidery (the digitizer venv, or
-// $EMB_CROSSVAL_PYTHON). Skips cleanly when none is available.
+// Needs a Python interpreter with pystitch (the digitizer venv, or
+// $EMB_CROSSVAL_PYTHON). Skips locally when none is available -- but NEVER
+// on CI, where a missing interpreter is a failure.
+//
+// That asymmetry is the whole point, and it is the same shape as the
+// `requires_tesseract` marker in digitizer/tests/conftest.py. These checks
+// probed pyembroidery until 2026-08-21; the 2026-08-11 pystitch swap had
+// removed it from the venv, so all six skipped and the file reported
+// pass 0 / skipped 6 -- green, in a clean checkout and in CI, having
+// asserted nothing, while a real PES defect sat behind it. A skip that can
+// go unnoticed is not a safe default for the repo's ONLY automated
+// third-party format check.
 
 const assert = require("node:assert");
 const { test } = require("node:test");
@@ -33,7 +43,15 @@ async function ensureRun() {
   if (run || loadError) return;
   const python = harness.resolvePython();
   if (!python) {
-    loadError = "no python with pyembroidery available";
+    // Fail loud on CI; skip only on a developer box that has no venv yet.
+    if (process.env.CI) {
+      throw new Error(
+        "no python with pystitch available, and CI is set. The cross-validation " +
+          "harness must run for real in CI -- see .github/workflows for the " +
+          "install step that provides it. Do not 'fix' this by allowing the skip."
+      );
+    }
+    loadError = "no python with pystitch available";
     return;
   }
   run = harness.runCrossval({ python });
