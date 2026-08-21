@@ -29,6 +29,18 @@ pixel decides a 3.3 mm tab** between mirror twins 0.06% apart in area. Fixed by
 remembering the dead ends the function itself exposes and never counting one as
 a spur tip — not by moving the bar.
 
+**The same fix closed a second defect in `textcluster.py`**, which shares
+`_prune_spurs` at the identical threshold. Regularizing a block-letter "I"
+erased its two serif caps and then the stem they left dead-ended: area
+1.1120 → 0.7214 mm², OCR confidence 92.0 → **0.0** (no text found at all).
+After the guard: 0.8793 mm², 92.0 → **95.0**, more legible than the original.
+Found only because the fix made `test_ocr_gate.py`'s damage-gate test fail —
+that test pinned the bug's symptom as expected behaviour, and its docstring
+called the collapse a property of the letter. **A green local suite missed it
+entirely: all five `requires_tesseract` tests SKIP without the binary, and one
+was the sole coverage of that caller.** `apt-get install tesseract-ocr` before
+trusting a local run on anything touching skeletons.
+
 **Two things measured and REFUTED en route, so nobody re-tries them:** lowering
 the 1.6 multiplier globally (fixes 2 fixtures, breaks 2, 7 test failures — the
 decision margin is ±0.4% against 3.5% input noise, so every value just moves

@@ -2069,3 +2069,43 @@ point and stroke list was therefore off-pipeline, and the "topology fork"
 conclusion drawn from them was an artifact. Intercept `satin_shape` to get the
 operative polygon; `region.polygon` is only what `is_satin_candidate` classifies
 on. *(measured 2026-08-21 — reproduced independently three times)*
+
+### The same fix closed a second defect, in text-cluster regularization
+
+`_prune_spurs` is shared with `textcluster.py` (imported at :341, called at
+:676 at the identical `max(3.0, half_px * 1.6)`), and the same cascade was
+mangling letters there. `regularize_text_clusters` redraws a cluster member by
+buffering its skeleton to the cluster's shared stroke width; on a block-letter
+"I" the prune pass erased the two serif caps, then erased the stem those caps
+had left dead-ended, and the redraw came back as a bare fragment:
+
+| | area (orig 1.1120 mm²) | shape-context dist | OCR confidence |
+|---|---|---|---|
+| before the guard | 0.7214 mm² — 35% of the letter gone | 0.1834 | 92.0 → **0.0** |
+| after the guard | 0.8793 mm² | 0.0999 | 92.0 → **95.0** |
+
+Tesseract found no text at all in the pre-fix redraw. After the guard the
+regularized letter reads *better* than the original.
+
+**This is how the defect was found: the fix made a test fail.**
+`test_ocr_gate.py::test_regularization_damaging_gate_falls_back_to_original`
+asserted the OCR damage-gate FIRES on that "I" — and with no damage left to
+catch, it correctly stopped firing. The test's own module docstring had
+described the cause as a property of the letter ("buffering an 'I' this way
+collapses the vertical bar's two serif caps into the stem") rather than as a
+bug. **A test that pins a defect's symptom as expected behaviour reads as a
+regression when the defect is fixed** — the docstring now says so.
+
+The gate keeps its positive case, re-based onto the risk its own docstring
+names instead of onto a fixed bug: a target radius mismatched from the
+member's true stroke width. At radius 0.60 against the member's own 0.1542 the
+buffer balloons the letter to 3.9601 mm² and OCR goes 92.0 → 0.0 — the same
+signature, from a cause the gate actually defends against.
+
+**Process note worth more than the fix:** the full local suite was green
+(same failure set as baseline, `logo_alpha` canary clean) and CI still went
+red, because all five `requires_tesseract` tests SKIP without the binary and
+one of them was the only coverage of the shared caller. Installing tesseract
+locally takes about a minute; see COOKBOOK "Running things", failure class 2.
+*(measured 2026-08-21 — reproduced locally with tesseract 5.3.4 after CI
+surfaced it)*

@@ -641,6 +641,18 @@ failures are EXPECTED:
    skip means "install tesseract to exercise OCR end-to-end", not that
    anything is broken.
 
+   **But do not read a local skip as "nothing to see here" before you
+   push — a green local suite with these five skipped is NOT the same run
+   CI makes.** Corrected 2026-08-21, the hard way: a `stage6_satin` change
+   passed the full local suite (same failure set as baseline, canary clean)
+   and CI still went red, because the only test that could see half of what
+   the change did was one of the five. `_prune_spurs` is shared with
+   `textcluster.py`, and `test_ocr_gate.py` was the sole coverage of that
+   path. **On Linux `sudo apt-get install -y tesseract-ocr` takes about a
+   minute** — do it before trusting a local run on anything touching
+   `textcluster.py`, `stage6_satin.py`'s skeleton helpers, or
+   `shapefield.py`. Cheaper than a CI round trip.
+
 Anything red outside those two classes is unexplained and yours to chase.
 Runtime: 21:34 serial, measured 2026-08-17 on Kent's machine — which is
 why the command above carries `-n auto`: pytest-xdist is pinned in
