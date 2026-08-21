@@ -872,15 +872,48 @@ def _lettering_findings(plan: StitchPlan) -> tuple[list[dict], int]:
     if not small:
         return [], len(widths)
     n = len(small)
+    total = len(widths)
     noun = "shape" if n == 1 else "shapes"
+
+    # The denominator is the point of this line. "38 satin shapes are too
+    # small" reads like a handful of stray specks to trim; "38 of 46" says the
+    # wordmark itself does not fit, which is a different decision. It is also
+    # the only summary here that stays honest across sizes -- see below.
+    #
+    # DELIBERATELY NOT a suggested size. "Enlarge the design" invites a
+    # "to what?", and the arithmetic is trivial (MIN_COLUMN_MM / measured
+    # column x current width), but the answer it produces is not real.
+    # Measured on `photo/logo_hotel_fremont.webp` at 92.5 / 120 / 165 / 220 mm
+    # (2026-08-21):
+    #
+    #   width   flagged/total   worst col   median col   "needed" width
+    #    92.5        38/46        0.56         0.80           258
+    #   120          27/47        0.62         0.80           367
+    #   165          25/56        0.52         0.94           697
+    #   220          13/63        0.66         0.79           397
+    #
+    # The flagged COUNT falls honestly (38 -> 13). But the worst column has no
+    # trend at all, and the median flagged column is FLAT near 0.8 mm at every
+    # size: segmentation keeps generating sub-millimetre shapes as the design
+    # grows (satin total 46 -> 63 over the same range), so the failing tail
+    # refills itself and never empties. A worst-shape-driven target therefore
+    # swings 258 -> 697 -> 397 mm and is dominated by whichever sliver landed
+    # on the knife edge -- the same instability the spur-prune multiplier hit
+    # (see `.claude/memory/satin-extremity-drop-and-coverage-check.md`).
+    # Quoting any of those numbers as "enlarge to this" would be inventing a
+    # target the engine cannot hit. If a suggested size is ever wanted, it has
+    # to come from a measurement that is stable under rescaling; this one is
+    # not.
     return [finding(
         LETTERING_TOO_SMALL,
         "warn",
-        f"{n} satin {noun} sew below readable size at this scale — columns "
-        f"under {MIN_COLUMN_MM:g} mm or details under "
-        f"{MIN_LETTER_EXTENT_MM:g} mm. Enlarge the design or remove the "
-        "smallest lettering.",
+        f"{n} of {total} satin {noun} sew below readable size at this scale — "
+        f"columns under {MIN_COLUMN_MM:g} mm or details under "
+        f"{MIN_LETTER_EXTENT_MM:g} mm. Enlarging helps but does not fully "
+        f"clear it: the smallest shapes regenerate at any size. Remove or "
+        f"simplify the smallest lettering.",
         count=n,
+        satin_total=total,
         shapes=small,
     )], len(widths)
 

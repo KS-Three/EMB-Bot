@@ -2109,3 +2109,52 @@ one of them was the only coverage of the shared caller. Installing tesseract
 locally takes about a minute; see COOKBOOK "Running things", failure class 2.
 *(measured 2026-08-21 — reproduced locally with tesseract 5.3.4 after CI
 surfaced it)*
+
+**Measured 2026-08-21 — "enlarge the design" is not a reliably actionable
+instruction, and `LETTERING_TOO_SMALL` no longer implies it is.** Follow-up
+on Hotel Fremont defect 1 (tiny lettering) from the entry above. The obvious
+improvement looked like answering the "enlarge to what?" the warning invites
+— the arithmetic is trivial (`MIN_COLUMN_MM` / measured column × current
+width). Built it, measured it, and **threw it away**: the number it produces
+is not real.
+
+Sweep on `photo/logo_hotel_fremont.webp`, `max_colors=6`, `garment_id=patch`:
+
+| width | flagged / satin total | worst column | median flagged column | derived "needed" width |
+|---|---|---|---|---|
+| 92.5 mm | 38 / 46 | 0.56 mm | 0.80 mm | 258 mm |
+| 120 mm | 27 / 47 | 0.62 mm | 0.80 mm | 367 mm |
+| 165 mm | 25 / 56 | 0.52 mm | 0.94 mm | **697 mm** |
+| 220 mm | 13 / 63 | 0.66 mm | 0.79 mm | 397 mm |
+
+The flagged **count** falls honestly (38 → 13). Everything a size
+recommendation would rest on does not: the worst column has no trend, and
+**the median flagged column is flat near 0.8 mm at every size.** Satin shapes
+rise 46 → 63 across the same range — segmentation keeps generating
+sub-millimetre shapes as the design grows, so the failing tail refills itself
+and never empties. A worst-shape-driven target therefore swings
+258 → 697 → 397 mm, dominated by whichever sliver landed on the knife edge.
+Same instability class as the spur-prune multiplier (`±0.4%` decision margin
+against `3.5%` input noise) recorded in
+`.claude/memory/satin-extremity-drop-and-coverage-check.md`.
+
+**Consequence for the earlier claim in this file that the wordmark "recovers
+monotonically with size."** That still holds for what it measured —
+`SAME_THREAD_SHAPES_MERGED`, `SMALL_SHAPES_AS_RUN` and the visible letterform
+on `enthusiast_logo` — and the flagged count here agrees. But it should not
+be read as "there is a size at which lettering comes clean." On this fixture
+there is not; 2.4× the width still leaves 13 shapes under the needle minimum.
+
+**What shipped instead:** the finding now reports `n of total` rather than a
+bare `n`, and says plainly that enlarging helps without fully clearing it.
+"38 satin shapes are too small" reads like specks to trim; "38 of 46" says
+the wordmark itself does not fit — a different decision. The denominator is
+the only summary in this check that survives rescaling. A regression test
+asserts the *absence* of a suggested width, so a future edit cannot add one
+back without a measurement that is stable under rescaling.
+
+**Also re-measured (2026-08-21):** PR #186's `_prune_spurs` fix does **not**
+move this fixture — 10,319 → 10,294 stitches, still 38 flagged shapes, still
+64/C. That fix closed the serif-cap collapse in `textcluster.py`; Hotel
+Fremont's small lettering is a separate, unrelated mechanism. Worth stating
+because the two look superficially alike (both "serif details disappearing").
