@@ -2445,3 +2445,51 @@ your measurement is holding constant.
 holed fill, so it needs the corpus run and the same-failure-set discipline —
 golden re-capture on Linux CI is pre-authorized (standing rulings). Nothing
 above is evidence about any shape but this one.
+
+### Routable-first ordering across the corpus — it generalises, but is NOT a drop-in (2026-08-21)
+
+The 58% figure above is one shape. Swept every committed photo fixture, scoring
+cuts by the same `stage6_fill.py:877` rule, on every shape with at least one
+hole and ≥15 fill runs. **Note the config differs from the single-shape entry
+above:** this sweep runs `PipelineConfig(max_colors=6)` at the DEFAULT
+`target_width_mm=80.0`, not 92.5 mm/patch, so its `logo_hotel_fremont` row
+(44 holes, 247 runs, 46→14) is a different geometry from that entry's
+(46 holes, 280 runs, 57→24). Do not quote them as the same measurement.
+
+**17 shapes across 12 fixtures: 290 cuts → 163, 44% removed.**
+
+**But 13 improved and 4 REGRESSED.** A naive swap of the ordering rule would
+make those four worse:
+
+| fixture | shape | holes | runs | shipped | routable | delta |
+|---|---|---|---|---|---|---|
+| `photo_chrome_specular.png` | `S75b4b6e6` | 2 | 74 | 8 | 15 | **+7** |
+| `tight_crop_pale_subject.png` | `Sddefb246` | 9 | 22 | 12 | 17 | **+5** |
+| `photo_dof_meadow.png` | `Sf0dc3da8` | 3 | 30 | 7 | 10 | **+3** |
+| `photo_scene_stub.png` | `S8c97b2f3` | 1 | 15 | 3 | 6 | **+3** |
+
+Biggest wins, for contrast: `logo_hotel_fremont` 46→14, `logo_gaulke_roofing`
+(40 holes) 28→12, `drone_render` (13 holes) 21→6,
+`screenshot_phone_ui_golke` (26 holes) 18→4.
+
+**All four regressions used LESS travel, not more** (−1401, −686, −627,
+−194 mm). That is the tell: on a shape whose boundaries are naturally
+sub-`trim_at_mm`, the shipped nearest-distance walk keeps hops short enough that
+a failed travel becomes a silent jump rather than a cut. Routable-first chases
+reachability instead, and lands in positions where the next run is both far
+*and* unroutable — manufacturing cuts the distance-greedy walk avoided by
+accident. The wins cluster on high-hole-count shapes (13–44 holes); the losses
+on shapes with few holes or few runs.
+
+**So the rule is conditional, not universal.** The obvious form of the fix is
+not "replace the ordering" but **score both and keep the better** — both walks
+are cheap and the cut count is exactly computable before emitting, so a
+per-shape choice is non-regressing by construction. That is a design sketch,
+not a measurement; it has not been built or tested.
+
+**Still not implemented, and the honest ceiling is lower than 44%.** These are
+per-shape numbers on shapes chosen for having holes; they are not a design-level
+or corpus-level trim reduction, and nothing here has been through the corpus
+scorecard. A real implementation still owes: the both-orderings guard, a corpus
+scorecard run, and the golden movement (pre-authorized on Linux CI under
+same-failure-set discipline).
