@@ -166,10 +166,59 @@ function parseTransform(str) {
   return M;
 }
 
+// Stitch parameters the DIGITIZER authored on a running-stitch path. We read
+// these rather than picking our own, deliberately: stitch length and bean
+// repeats are physical settings, and ROADMAP gate 1 bars this project from
+// choosing physical constants without a sew-out. The font's author already
+// made that call on real fabric, so their value travels with the glyph and a
+// path that carries no value is simply never stitched (see runFrom below).
+//
+// Ink/Stitch allows a SPACE-SEPARATED LIST, applied per subpath in order
+// (neon_blinking: running_stitch_length_mm="1.5 3.5", bean_stitch_repeats="0 3"
+// — two subpaths, different treatment each). Index into the list by subpath;
+// a shorter list reuses its last entry, which is Ink/Stitch's own behaviour.
+function numList(t, attr) {
+  const m = t.match(new RegExp('inkstitch:' + attr + '="([^"]*)"'));
+  if (!m) return null;
+  const vals = m[1].trim().split(/\s+/).map(Number).filter((n) => Number.isFinite(n));
+  return vals.length ? vals : null;
+}
+function pick(list, i) {
+  if (!list) return null;
+  return list[Math.min(i, list.length - 1)];
+}
+function stitchParams(t) {
+  return {
+    lens: numList(t, "running_stitch_length_mm"),
+    // Ink/Stitch spells bean repeats two ways depending on version.
+    beans: numList(t, "bean_stitch_repeats") || numList(t, "repeats"),
+  };
+}
+// Build one run entry. With an authored length we emit the richer
+// {pts, lenMm, repeats} shape the lettering path knows how to stitch; without
+// one we emit the bare point array exactly as before.
+//
+// IMPORTANT: satin fonts carry authored running-stitch paths too (montecarlo
+// 646, cats 837), which EMB-Bot has always dropped. Honouring them would add
+// stitches to all 62 shipped fonts — a change to every existing customer
+// design, and Kent's call, not this change's. So stripRunParamsIfSatin() below
+// removes these params again for any font that has satin columns, keeping
+// those fonts byte-identical on rebuild. Only genuinely runs-only fonts keep
+// the params and become stitchable.
+function runFrom(poly, sp, i) {
+  const pts = enc(poly);
+  const lenMm = pick(sp && sp.lens, i);
+  if (!(lenMm > 0)) return pts;
+  const repeats = pick(sp && sp.beans, i);
+  const out = { pts, lenMm: r1(lenMm) };
+  if (repeats > 0) out.repeats = Math.round(repeats);
+  return out;
+}
+
 // --- iterate every glyph layer ---
 function paths(layer) {
   const out = []; const re = /<path\b[\s\S]*?\/>/g; let m;
-  while ((m = re.exec(layer))) { const t = m[0]; const dq = t.match(/\sd="([^"]*)"/); if (!dq) continue; out.push({ d: dq[1], satin: /satin_column="True"/i.test(t), running: /running_stitch_length_mm/i.test(t) && !/satin_column="True"/i.test(t) }); }
+  while ((m = re.exec(layer))) { const t = m[0]; const dq = t.match(/\sd="([^"]*)"/); if (!dq) continue; out.push({ d: dq[1], satin: /satin_column="True"/i.test(t), running: /running_stitch_length_mm/i.test(t) && !/satin_column="True"/i.test(t), sp: stitchParams(t) }); }
   return out;
 }
 
@@ -200,6 +249,7 @@ function pathsTf(layer) {
     out.push({
       subs: parsePath(dq[1]).map((sub) => sub.map((p) => mapply(M, p))),
       satin: /satin_column="True"/i.test(t),
+      sp: stitchParams(t),
     });
   }
   return out;
@@ -228,13 +278,13 @@ for (const file of svgFiles) {
     if (dirLayout) {
       for (const p of pathsTf(layer)) {
         if (p.satin && p.subs.length >= 2) cols.push(toColumn(p.subs));
-        else if (p.subs.length) for (const s of p.subs) runs.push(enc(s));
+        else if (p.subs.length) p.subs.forEach((s, i) => runs.push(runFrom(s, p.sp, i)));
       }
     } else {
       for (const p of paths(layer)) {
         const subs = parsePath(p.d);
         if (p.satin && subs.length >= 2) cols.push(toColumn(subs));
-        else if (subs.length) for (const s of subs) runs.push(enc(s));
+        else if (subs.length) subs.forEach((s, i) => runs.push(runFrom(s, p.sp, i)));
       }
     }
     if (!cols.length && !runs.length) continue;
@@ -244,12 +294,29 @@ for (const file of svgFiles) {
       // glyph's right edge + a side bearing, so glyphs don't collapse onto x=0.
       let maxX = -Infinity;
       for (const c of cols) { for (const p of c.railA) if (p[0] > maxX) maxX = p[0]; for (const p of c.railB) if (p[0] > maxX) maxX = p[0]; }
-      for (const rr of runs) for (const p of rr) if (p[0] > maxX) maxX = p[0];
+      // runs are either a bare point array or {pts, lenMm, ...} — see runFrom.
+      for (const rr of runs) for (const p of (rr.pts || rr)) if (p[0] > maxX) maxX = p[0];
       advance = isFinite(maxX) ? Math.round(maxX + 0.08 * meta.units_per_em) : meta.units_per_em;
     }
     glyphs[ch] = { adv: advance, cols, runs }; // duplicate label => later file wins
   }
 }
+// See runFrom: honouring authored run params on a font that ALSO has satin
+// columns would add stitches to every already-shipped satin font. Scope this
+// change to runs-only fonts by stripping the params back off anything satin,
+// which makes those fonts rebuild byte-identically (asserted by
+// test/run-fonts.test.js against the committed .embf set). Revisit only as a
+// deliberate decision to enrich the satin fonts, with a rebuild of all of them.
+(function stripRunParamsIfSatin() {
+  let hasSatin = false;
+  for (const g of Object.values(glyphs)) if ((g.cols || []).length) { hasSatin = true; break; }
+  if (!hasSatin) return;
+  for (const g of Object.values(glyphs)) {
+    if (!g.runs) continue;
+    g.runs = g.runs.map((r) => (r && r.pts ? r.pts : r));
+  }
+})();
+
 const count = Object.keys(glyphs).length;
 
 const outObj = {

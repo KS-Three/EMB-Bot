@@ -26,6 +26,18 @@
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
+   "key": "allegria20",
+   "name": "Allegria 20",
+   "tier": "verified",
+   "group": "Script",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 20,
+   "glyphCount": 169,
+   "bytes": 73452,
+   "attribution": "This font has been adapted for Ink/Stitch and is licensed under the SIL Open Font License, Version 1.1. Copyright (c), 2012 Typesenses, with Reserved Font Name \"Euphoria Script\"",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
    "key": "allegria55",
    "name": "Allegria 55",
    "tier": "verified",
@@ -158,6 +170,18 @@
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
+   "key": "barstitch_mandala",
+   "name": "Barstitch Mandala",
+   "tier": "verified",
+   "group": "Display",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 90,
+   "glyphCount": 159,
+   "bytes": 4369215,
+   "attribution": "This font has been adapted for Ink/Stitch and is licensed under the SIL Open Font License, Version 1.1. Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow)",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
    "key": "barstitch_regular",
    "name": "Barstitch regular",
    "tier": "verified",
@@ -239,6 +263,18 @@
    "glyphCount": 118,
    "bytes": 134449,
    "attribution": "This font has been adapted for Ink/Stitch by Corinne Renaud, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2009, Peter Wiegel, www.peter-wiegel.de, with Reserved Font Name \"Espresso Dolce\"",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
+   "key": "califragilistic",
+   "name": "Califragilistic",
+   "tier": "verified",
+   "group": "Display",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 75,
+   "glyphCount": 156,
+   "bytes": 7689813,
+   "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright 2024 The Ojuju Project Authors (https://github.com/jobosonchisa/ojuju)",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -578,6 +614,54 @@
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
+   "key": "neon_blinking",
+   "name": "Néon blinking",
+   "tier": "verified",
+   "group": "Display",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 40,
+   "glyphCount": 642,
+   "bytes": 512937,
+   "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 1997-2008, gluk, with Reserved Font Names sportrop",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
+   "key": "ondulamarif_Medium",
+   "name": "Ondulamarif M",
+   "tier": "verified",
+   "group": "Script",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 117,
+   "glyphCount": 108,
+   "bytes": 425318,
+   "attribution": "This font has been adapted for Ink/Stitch by @Marie-Françoise BRIST, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2010, gluk, with Reserved Font Name Qumpellka and QumpellkaNo12.",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
+   "key": "ondulamarif_S",
+   "name": "Ondulamarif S",
+   "tier": "verified",
+   "group": "Small",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 117,
+   "glyphCount": 108,
+   "bytes": 424997,
+   "attribution": "This font has been adapted for Ink/Stitch by @Marie-Françoise BRIST, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2010, gluk, with Reserved Font Name Qumpellka and QumpellkaNo12.",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
+   "key": "ondulamarif_XL",
+   "name": "Ondulamarif XL",
+   "tier": "verified",
+   "group": "Script",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 117,
+   "glyphCount": 108,
+   "bytes": 434276,
+   "attribution": "This font has been adapted for Ink/Stitch by @Marie-Françoise BRIST, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2010, gluk, with Reserved Font Name Qumpellka and QumpellkaNo12.",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
    "key": "pacificlo",
    "name": "Pacificlo",
    "tier": "verified",
@@ -743,6 +827,18 @@
    "glyphCount": 100,
    "bytes": 276865,
    "attribution": "This font has been adapted for Ink/Stitch by safire3002, and is licensed under the SIL Open Font License, Version 1.1. Copyright 2022 The Instrument Serif Project Authors (https://github.com/Instrument/instrument-serif)",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
+   "key": "western_light",
+   "name": "Western Light",
+   "tier": "verified",
+   "group": "Display",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 53,
+   "glyphCount": 164,
+   "bytes": 655111,
+   "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2011 by vernon adams, with Reserved Font Names \"Sancreek\"",
    "source": "Ink/Stitch embroidery-fonts"
   }
  ]

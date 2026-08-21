@@ -33,16 +33,32 @@ export function qcFont(font) {
   if (lower.length === 0) warn("coverage: no lowercase glyphs (caps-only font)");
   if (digits.length === 0) warn("coverage: no digit glyphs");
 
-  // Per-LETTER-GLYPH satin check: a letter with zero satin columns stitches
-  // as nothing through buildLetteringDesign.
+  // Per-LETTER-GLYPH stitchability. The real question is not "does this letter
+  // have satin columns" but "does it produce ANY stitches" — those were the same
+  // question while the lettering path was satin-only, and stopped being the same
+  // when bean/running-stitch fonts became stitchable (2026-08-21).
+  //
+  // A run stitches only if the FONT authored a stitch length for it: build-font
+  // attaches {pts, lenMm} and ROADMAP gate 1 bars us from inventing a length, so
+  // a run without one is skipped by satinfont.routeRuns and contributes nothing.
+  // paquerette is exactly this trap — 1641 runs, but only 72 carry a length, so
+  // 31 of its 52 letters stitch as NOTHING while a naive "has runs" check calls
+  // it healthy. Count only what will actually sew.
   const letterGlyphs = [...upper, ...lower];
-  const satinless = letterGlyphs.filter((c) => !(font.glyphs[c].cols || []).length);
-  if (letterGlyphs.length && satinless.length === letterGlyphs.length)
-    fail("every letter glyph has zero satin columns (runs-only font -> 0 stitches through the lettering path)");
-  else if (satinless.length > letterGlyphs.length * 0.10)
-    fail(`satin: ${satinless.length}/${letterGlyphs.length} letter glyphs have no satin columns`);
-  else if (satinless.length > 0)
-    warn(`satin: ${satinless.length}/${letterGlyphs.length} letter glyphs have no satin columns`);
+  const stitchable = (c) => {
+    const g = font.glyphs[c];
+    if ((g.cols || []).length) return true;
+    return (g.runs || []).some((r) => r && r.pts && r.lenMm > 0);
+  };
+  const empty = letterGlyphs.filter((c) => !stitchable(c));
+  const runsOnly = letterGlyphs.length && letterGlyphs.every((c) => !(font.glyphs[c].cols || []).length);
+  const kind = runsOnly ? "run" : "satin";
+  if (letterGlyphs.length && empty.length === letterGlyphs.length)
+    fail("every letter glyph is unstitchable (no satin columns, and no run carries an authored stitch length -> 0 stitches through the lettering path)");
+  else if (empty.length > letterGlyphs.length * 0.10)
+    fail(`${kind}: ${empty.length}/${letterGlyphs.length} letter glyphs stitch as nothing`);
+  else if (empty.length > 0)
+    warn(`${kind}: ${empty.length}/${letterGlyphs.length} letter glyphs stitch as nothing`);
 
   // Advances: zero/null/negative on any present letter glyph or digit is a hard fail.
   const badAdv = [...letterGlyphs, ...digits].filter((c) => !(font.glyphs[c].adv > 0));
