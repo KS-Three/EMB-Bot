@@ -25,6 +25,31 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-08-21 — **two of Kent's decisions resolved, and PR #194
+landed.** (1) **The sew-out is accepted as-is.** A decision of Kent's had been
+carried for days as an unresolved ambiguity — "accept as-is" had been recorded
+without which item it attached to, and sessions had been refusing to guess it
+into MASTER_SCOPE. Asked directly and answered: it was the **sew-out**, not
+satin density. It leaves "Waiting on Kent" as a decided item and becomes a
+standing ruling; the confidence scores beneath it are now permanently
+`pending sew-out` rather than awaiting a date, and ROADMAP gate 1 is a standing
+refusal rather than a temporary one. It explicitly does NOT decide the two
+items that were parked behind it — the DST codec fix and `split_tonal_regions`
+now need their own call on their own merits, and both stay in the queue,
+renumbered 2 and 3. (2) **Next work item is satin border fragmentation** (live
+defect 6), taken ahead of satin-vs-fill routing (live defect 5), which stays
+queued behind it. (3) **PR #194 merged** (`70ec5fb`) — the crossval harness
+revival, the PES initial-positioning-jump fix it surfaced, and three stale-claim
+corrections. Its `engine` CI job went from 350 pass / 6 skipped to **356 pass /
+0 skipped**, the first time the repo's third-party format pins have executed for
+real in CI. (4) The 13 merged `claude/*` branches were verified fully reachable
+from `main` (all ahead=0) and an attempt to delete them was made; the remote
+refused with **HTTP 403** on `send-pack` — an egress/token policy denial, not
+the local permission classifier, which a settings.json allow-rule had already
+cleared. Not retried, per the proxy README's instruction to report rather than
+route around 403s. `claude/emb-bot-stitch-fill-5t69ut` (PR #152's, 64 ahead)
+excluded deliberately.
+
 **Last updated:** 2026-08-17 — **four docs-review fixes landed.** (1) The
 ROADMAP standing item no longer reads as a CI-colour claim (reworded to the
 imperative "Keep `main` green"); at edit time `main` was in fact red again —

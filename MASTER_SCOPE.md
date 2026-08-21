@@ -160,6 +160,11 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
 
 ## Standing rulings — decided, do not re-litigate
 
+- **The sew-out is accepted as-is — not a scheduled to-do.** Stop treating "no
+  sew-out yet" as a blocker awaiting action; dependent scores stay `pending
+  sew-out` permanently, and ROADMAP gate 1 is a standing refusal, not a
+  temporary one. Does NOT decide the two items parked behind it (DST codec fix,
+  `split_tonal_regions`) — those need their own call. *(ruled 2026-08-21 — Kent)*
 - **The shading fix goes UPSTREAM.** Two options were on the table: teach
   stage 5/7 that one region can own several thread stops, or split
   tonally-diverse regions at segmentation so the existing one-thread-per-region
@@ -411,32 +416,27 @@ The second of that pair — the Becker artwork and pro-digitized variants — cl
 2026-08-15; its placeholder was deleted here 2026-08-17 as that entry instructed.
 
 **Also open, same category — listed so this queue is not a half-truth. All of
-these predate 2026-08-14 and are unchanged:**
+these predate 2026-08-14 except where noted:**
 
-2. **Schedule a physical sew-out.** Four hoopings specified in
-   `docs/hardening-closeout-2026-08-02.md` settle nine geometric questions at
-   once (DST axis, fabric presets, Law 19, PES/EXP on real hardware). Kent asked
-   (2026-08-13) that this stop being the headline item every session; it stays
-   because several confidence scores cannot move without it. See "No physical
-   sew-out testing has occurred yet".
-3. **The DST codec fix** — gated on the sew-out above, and Kent's call
-   regardless: re-orienting the table changes every DST EMB-Bot has written. See
-   "DST codec axis bug".
-4. **Turn `split_tonal_regions` on?** Merged but default-OFF. Costs +74%
+2. **The DST codec fix** — was gated on the sew-out; that gate is now permanent
+   (standing rulings), so this needs its own call on its own merits.
+   Re-orienting the table changes every DST EMB-Bot has written. See "DST codec
+   axis bug".
+3. **Turn `split_tonal_regions` on?** Merged but default-OFF. Costs +74%
    stitches and pushes the palette to its `max_colors + PALETTE_OVERFLOW_K`
-   ceiling. **Kent parked this until the sew-out** (2026-08-12). See the
-   blend-tier entry and "Latent — gated OFF".
-5. **Billing / backend.** Tabled since the pivot; Stripe + an entitlement
+   ceiling. Parked until the sew-out (2026-08-12) — that parking is now
+   indefinite, same as above. See the blend-tier entry and "Latent — gated OFF".
+4. **Billing / backend.** Tabled since the pivot; Stripe + an entitlement
    check is the leaning, nothing committed. Needs its own session. See
    `PRODUCT.md`, "Open — not yet decided".
-6. **Starter design pack (launch item 3).** The last unstarted item on the
+5. **Starter design pack (launch item 3).** The last unstarted item on the
    launch checklist, and it cannot start without a sourcing decision — the
    non-goals rule out a user-upload gallery on copyright grounds. See
    `PRODUCT.md`.
-7. **The `scratch_corpus/` 37 files.** Gitignored; cloud checkouts are empty
+6. **The `scratch_corpus/` 37 files.** Gitignored; cloud checkouts are empty
    but all 37 are present on Kent's machine (confirmed 2026-08-17), so a local
    session can run the corpus legs today. Blocks cloud-side M2/M3 only.
-8. **Font lawyer consult — optional.** Only gates RESTORING the 13 pulled
+7. **Font lawyer consult — optional.** Only gates RESTORING the 13 pulled
    ShareAlike fonts; the brief is written and ready to send. Nothing waits
    on it. See the font-licence entry.
 
@@ -532,9 +532,9 @@ This is the single biggest confidence ceiling in the project: fabric-preset
 accuracy, real stitch quality beyond test-suite geometry checks, and the DST
 axis question all wait on this. Four hoopings are already specified in
 `docs/hardening-closeout-2026-08-02.md` and would resolve nine currently-open
-geometric questions at once — the highest-leverage next action across the
-whole project, whenever Kent's ready to schedule it (his explicit call, not
-something to push for).
+geometric questions at once. **Kent accepted this as-is 2026-08-21:** no longer
+a queued action, scores under it read `pending sew-out` permanently rather than
+awaiting a date. Do not re-raise it as the highest-leverage next action.
 
 ### Evaluation corpus & harness — real gap, newly tracked here
 
@@ -680,11 +680,11 @@ mangling block letters in `textcluster.py`. **The blind spot that hid it stays
 fixed:** `preflight`'s `ARTWORK_UNCOVERED` (ground truth `polygon ∩ ink`); its
 5.0 mm² threshold is provisional — two calibration fixtures unadjudicated.
 *(fixed 2026-08-21 — `stage6_satin.py:931` on `main`, PR #186)*
-**Next:** satin-vs-fill routing (live defect 5) — Kent's call 2026-08-14,
-taken ahead of option A, which stays the standing ruling for the blend tier
-whenever it is scheduled. The pro-parity scorecard was chance-corrected first
-(PR #151) so the routing work is measured on a scale where guessing scores 0.
-*(ruled 2026-08-14 — Kent, this session)*
+**Next:** satin border fragmentation (live defect 6) — Kent's call 2026-08-21,
+taken ahead of satin-vs-fill routing (live defect 5), which stays queued behind
+it. Root cause has never been found; that entry carries a reproduction only.
+Judge a fix on intra-shape trims — 69% of the gap — not the headline ratio.
+*(ruled 2026-08-21 — Kent, this session)*
 
 ### 2. Font library & lettering — [detail](docs/scope/2-font-library-lettering.md)
 
