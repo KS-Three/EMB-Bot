@@ -15,7 +15,14 @@ description: Evaluate and import a new satin embroidery font into EMB-Bot's font
   (github.com/inkstitch/embroidery-fonts) — any font with genuine satin-column
   paths from that ecosystem or an equivalent source qualifies.
 - **License must be permissive**: `tools/build-embf.mjs`'s `ALLOWED_LICENSES`
-  is exactly `OFL-1.1`, `CC-BY-4.0`, `CC-BY-SA-4.0`, `CC0`. GPL is hard-excluded
+  is exactly `OFL-1.1`, `CC-BY-4.0`, `CC0`. **ShareAlike is permanently closed**
+  (Kent, 2026-08-21 — SA may propagate through the compiled `.embf` onto
+  customer stitch files; do not re-propose it, and do not trust any doc that
+  still lists `CC-BY-SA-4.0` here — this line did until 2026-08-21).
+  **NonCommercial and NoDerivatives can never ship** in a product meant to be
+  sold; `licenseId()` reported both as plain `CC-BY-4.0` until 2026-08-21, so
+  read the actual LICENSE text rather than trusting the id alone
+  (`docs/font-expansion-research-2026-08-21.md` §5). GPL is hard-excluded
   (`precious` is the existing example). Anything else — commercial/all-rights-
   reserved, an aggregator-only license claim with no traceable source, an
   ad-hoc "see license file" grant — is not eligible for a *new* font. Don't

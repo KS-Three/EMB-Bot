@@ -72,9 +72,20 @@ for (const k of ["apex_lake", "aventurina", "bluenesia_satin",
 }
 
 // Fix 2: license policy — only these ids may ship for NEW (non-grandfathered)
-// fonts. CC-BY-SA-4.0 removed 2026-08-04 with the ShareAlike pull above: no
-// new ShareAlike font may enter the library while the propagation question
-// is unresolved.
+// fonts. CC-BY-SA-4.0 removed 2026-08-04 with the ShareAlike pull above.
+// PERMANENT as of 2026-08-21 (Kent): ShareAlike is not coming back. The open
+// question was whether SA propagates through the compiled .embf onto the
+// stitch files CUSTOMERS generate — if it does, every paying customer's design
+// inherits a copyleft obligation. Unbounded liability on the product's core
+// output, so it is closed by decision rather than by legal opinion; the
+// docs/lawyer-brief-cc-by-sa-2026-08-04.md restore path is retired.
+//
+// Note what this set does NOT protect against on its own: licenseId() derives
+// these ids from license TEXT, and it has been wrong twice — NonCommercial and
+// NoDerivatives both resolved to plain "CC-BY-4.0" until 2026-08-21, and a
+// non-CC license body under an OFL/CC header claim still mislabels today
+// (roman_ags, GUST/LPPL). Adding a font is a text-reading job, not an id-
+// trusting one. See docs/font-expansion-research-2026-08-21.md §5 and §9.
 const ALLOWED_LICENSES = new Set(["OFL-1.1", "CC-BY-4.0", "CC0"]);
 const GRANDFATHERED = new Set(
   readdirSync(FONT_DIR)

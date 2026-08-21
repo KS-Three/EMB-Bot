@@ -4,8 +4,12 @@
 add to the library? Then: can we get to 150?
 
 **Answer: 7 added (55 → 62). Upstream is now exhausted for satin fonts under
-current policy — 0 remain addable. 150 is not reachable from Ink/Stitch;
-§8 gives the real ceiling (~126) and what each step would cost.**
+current policy — 0 remain addable. 150 is not reachable from Ink/Stitch; §8
+gives the real ceiling (~101) and what each step would cost.**
+
+**ShareAlike is permanently closed** (Kent, 2026-08-21 — §8). The single
+remaining large lever is a fill / run-based lettering path: +35 fonts that are
+already licensed and in hand.
 
 Measured against upstream `inkstitch/embroidery-fonts` @ `8c660c4` (2026-08-06),
 the source of record for the existing library. Reproduce with §6.
@@ -178,30 +182,52 @@ Two build defects were found and fixed doing this:
 | lever | fonts | what it costs |
 |---|---:|---|
 | **Shipping today** | **62** | — |
-| Clear the ShareAlike question | +23 | a legal opinion (`docs/lawyer-brief-cc-by-sa-2026-08-04.md`) |
-| ...plus the 2 CC-BY-SA-2.5 Geneva fonts | +2 | same opinion |
+| ~~Clear the ShareAlike question~~ | ~~+25~~ | **ruled out 2026-08-21 — see below** |
 | Build a fill / run-based lettering path | +35 | engineering; no new licensing |
 | `cyrillic` minus its 6 broken glyphs | +1 | product call — loses `ñ` (§4) |
 | `inkstitch_masego` | +1 | get real OFL text from the designer |
 | Admit LPPL/GUST (`roman_ags_bicolor`) | +1 | policy call — see §9 |
 | Admit Ubuntu Font License (`kalinux`) | +1 | policy call |
-| **Absolute ceiling** | **~126** | requires *both* the legal opinion and the new engine path |
+| **Ceiling** | **~101** | dominated by the new engine path |
 
 GPL-3.0 (3 fonts) stays hard-excluded. NonCommercial (8) and NoDerivatives (1)
 can never ship in a paid product.
 
-So **150 needs net-new digitizing**, not more searching. Two realistic routes:
+### ShareAlike is closed — Kent's decision, 2026-08-21
 
-1. **Wait.** Upstream added ~16 fonts in v3.1 and ~21 in v3.2.1. At roughly
-   20/release, 150 is a few years out, free.
-2. **Commission or hand-digitize.** Hand-authoring satin columns over an
-   OFL outline font is how every font here was made. That is the only route
-   that reaches 150 on a schedule we control, and it is a labor cost, not a
+**Do not re-propose the ShareAlike route.** Asked directly, Kent's call was that
+ShareAlike "seems sketchy, you should avoid that." That makes the 2026-08-04
+removal permanent policy rather than a hold pending counsel, and it retires the
+restore path `docs/lawyer-brief-cc-by-sa-2026-08-04.md` describes.
+
+The reasoning holds up independently: the unresolved question was never whether
+CC-BY-SA is a free license — it is — but whether ShareAlike **propagates through
+the compiled `.embf` onto the stitch files customers generate**. If it does,
+every paying customer's design inherits a copyleft obligation they never agreed
+to. That is an unbounded liability attached to the product's core output, and
+25 fonts is a cheap price to make it go away. A legal opinion could only ever
+have said "probably fine."
+
+Practical effect: 23 CC-BY-SA-4.0 fonts plus the 2 CC-BY-SA-2.5 Geneva fonts are
+permanently out, and `CC-BY-SA-*` stays absent from `ALLOWED_LICENSES`. The
+`add-font` skill still lists `CC-BY-SA-4.0` as allowed — that line is stale
+twice over now and should be corrected the next time that file is touched.
+
+### So how do we actually grow the library
+
+**150 needs net-new digitizing, not more searching.** Three routes, ranked:
+
+1. **Build the fill / run-based lettering path — the only large lever left
+   (+35, 62 → 97).** Every one of those fonts is already licensed and already
+   in hand; nothing is blocked on a third party. This is now the single
+   highest-leverage item by a wide margin, and it needs no lawyer.
+2. **Wait.** Upstream added ~16 fonts in v3.1 and ~21 in v3.2.1 — roughly
+   20/release, free, a few years to matter. Worth a periodic re-sweep (§6),
+   which is cheap now that the tooling exists.
+3. **Commission or hand-digitize.** Hand-authoring satin columns over an OFL
+   outline font is how every font here was made. It is the only route that
+   reaches 150 on a schedule we control, and it is a labor cost, not a
    licensing one — auto-tracing remains rejected.
-
-**Highest leverage right now is the ShareAlike legal opinion: +25 fonts (62 →
-87) for one consult, with zero engineering.** The fill/run lettering path is the
-single biggest jump (+35) and needs no lawyer.
 
 ## 9. Still open: `roman_ags` ships mislabeled
 
