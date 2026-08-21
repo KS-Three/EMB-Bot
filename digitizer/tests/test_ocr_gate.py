@@ -23,10 +23,20 @@ either outcome:
   skeleton buffer redraws it, same as before this gate existed, because 1
   point is nowhere near the 20-point floor.
 - **"I" (regularization visibly damages it): 92.0 -> 0.0, a 92-point
-  drop.** Buffering an "I" this way collapses the vertical bar's two serif
-  caps into the stem, and Tesseract goes from reading it confidently to not
-  finding any text in the crop at all. The gate discards the buffer and
-  falls back to the original polygon, exactly like `buffer_failed`.
+  drop.** The gate discards the buffer and falls back to the original
+  polygon, exactly like `buffer_failed`.
+
+**The "I" case was re-based 2026-08-21 and its old wording is worth keeping,
+because it described a BUG as if it were a property of the letter.** It read:
+"buffering an 'I' this way collapses the vertical bar's two serif caps into
+the stem." That collapse was `_prune_spurs` erasing the serifs and then
+erasing the stem they had left dead-ended — fixed in `stage6_satin`, and with
+it the letter survives regularization (area 0.7214 -> 0.8793 mm2, OCR 92.0 ->
+95.0, i.e. MORE legible than the original). The gate then correctly stopped
+firing and this test failed, which is how the second half of that fix was
+found. The damage is now induced by a mismatched target radius instead — see
+the test's own docstring. Generalises: **a test that pins a defect's symptom
+as expected behaviour will read as a regression when the defect is fixed.**
 """
 from __future__ import annotations
 
@@ -77,11 +87,12 @@ def _block_letter_polygon(ch: str, cap_mm: float = 1.8) -> Polygon:
     return poly
 
 
-def _tagged_member(shape_id: str, poly: Polygon) -> Region:
+def _tagged_member(shape_id: str, poly: Polygon,
+                   stroke_mm: float = _TARGET_STROKE_MM) -> Region:
     return Region(shape_id=shape_id, polygon=poly, thread_index=0, thread_number="1",
                   area_mm2=poly.area,
                   meta={"rescued_small_shape": True, "text_cluster_id": "TCgate",
-                        "text_cluster_stroke_mm": _TARGET_STROKE_MM})
+                        "text_cluster_stroke_mm": stroke_mm})
 
 
 def test_regularization_fine_gate_does_not_fire():
@@ -111,14 +122,30 @@ def test_regularization_fine_gate_does_not_fire():
 # the skeleton-buffer redraw it asserts still goes through.
 @requires_tesseract
 def test_regularization_damaging_gate_falls_back_to_original():
-    """"I", thickened (buffer +0.06 mm) enough to clear
-    `_REGULARIZE_SKIP_TOLERANCE` the same way. Measured real OCR confidence
-    drop is 92 points (92.0 -> 0.0, Tesseract finds no text at all in the
-    buffered crop): the gate must discard the buffer and leave the ORIGINAL
-    polygon completely untouched, the same fail-open contract
-    `buffer_failed` already uses."""
+    """"I" regularized against a target 3.9x its own stroke width.
+
+    **Re-based 2026-08-21.** This case used to reach its damage through
+    `_prune_spurs` eating the "I"'s two serif caps, leaving a bare stem: area
+    1.1120 -> 0.7214 mm2, OCR 92.0 -> 0.0. That was a real defect in the
+    regularizer, not a property of the letter, and it is fixed — a stem left
+    dead-ended by the prune pass's OWN earlier pass is no longer treated as a
+    spur (`stage6_satin._prune_spurs`). The same buffer now returns 0.8793 mm2
+    at OCR 92.0 -> **95.0**: more legible than the original, so the gate
+    correctly declines to fire and there is no damage left to catch.
+
+    Rather than pin a fixed bug, the damage now comes from the risk this
+    gate's own docstring names — "a target radius mismatched enough from a
+    member's own true stroke width ... inflates or blows out real structure."
+    At `radius 0.60` against the member's own 0.1542, the buffer balloons the
+    letter to 3.9601 mm2 and Tesseract finds no text in the crop at all:
+    measured 92.0 -> 0.0, the identical signature this test was written for,
+    from a cause the gate is actually meant to defend against. The
+    `already_consistent` check cannot pre-empt it (|0.1542 - 0.60| = 0.4458,
+    far past `_REGULARIZE_SKIP_TOLERANCE * 0.60` = 0.09), so it genuinely
+    reaches the OCR gate.
+    """
     poly = _block_letter_polygon("I").buffer(0.06, join_style=2)
-    r = _tagged_member("I", poly)
+    r = _tagged_member("I", poly, stroke_mm=0.60)
     original_coords = list(r.polygon.exterior.coords)
 
     regularize_text_clusters([r], _P)

@@ -231,6 +231,23 @@ hand-rolling it in JS.
   "keep the largest" silently discards real area — take every part that clears
   your sewable floor.
 
+- **An iterative cleanup pass must not re-judge the mess it made itself.**
+  `stage6_satin._prune_spurs` erases short dead-end skeleton twigs and repeats
+  up to 4 times so a twig behind a twig still goes. But erasing a spur leaves
+  its branch node standing, and a node left holding one arm turns that arm into
+  a dead end — through no thinning of its own. Pass 2 then measured that stem
+  against the same bar and deleted a real limb. On `enthusiast_logo.png` that
+  was the emblem bracket's 3.3 mm tab: stem 19.000 px against a 19.4770 px bar,
+  while its MIRROR TWIN's stem was 20.000 px against 19.1152 px and lived. One
+  raster pixel (0.167 mm at 6 px/mm) decided it, between two shapes whose areas
+  differ by 0.06% — so this reads as a traversal-order or symmetry bug and is
+  neither. **The general trap: when a decision margin is smaller than the noise
+  in its own input, no threshold value is correct** — every candidate just
+  moves which shape sits on the knife edge, which is why the retune was
+  measured and rejected (it fixed two fixtures and broke two others). Fixed by
+  exempting a dead end the function itself created. Also: `_prune_spurs` is
+  shared with `textcluster.py`, so its constant is not private to satin.
+
 - **A warning that makes a large loss sound routine is itself the defect.**
   The above was reported on every run as "N details were too small or thin to
   hold a stitch and were removed" — while N included a 2,787 mm² region.
@@ -623,6 +640,18 @@ failures are EXPECTED:
    a tesseract-less machine and read as unexplained local reds. A local
    skip means "install tesseract to exercise OCR end-to-end", not that
    anything is broken.
+
+   **But do not read a local skip as "nothing to see here" before you
+   push — a green local suite with these five skipped is NOT the same run
+   CI makes.** Corrected 2026-08-21, the hard way: a `stage6_satin` change
+   passed the full local suite (same failure set as baseline, canary clean)
+   and CI still went red, because the only test that could see half of what
+   the change did was one of the five. `_prune_spurs` is shared with
+   `textcluster.py`, and `test_ocr_gate.py` was the sole coverage of that
+   path. **On Linux `sudo apt-get install -y tesseract-ocr` takes about a
+   minute** — do it before trusting a local run on anything touching
+   `textcluster.py`, `stage6_satin.py`'s skeleton helpers, or
+   `shapefield.py`. Cheaper than a CI round trip.
 
 Anything red outside those two classes is unexplained and yours to chase.
 Runtime: 21:34 serial, measured 2026-08-17 on Kent's machine — which is

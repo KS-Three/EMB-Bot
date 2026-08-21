@@ -916,16 +916,38 @@ def _merge_through_junctions(edges: list[dict], dt_mm=None, half_mm: float = 0.0
 
 
 def _prune_spurs(mask: np.ndarray, spur_len_px: float) -> None:
-    """Erase short dead-end twigs in place, keeping their branch node."""
+    """Erase short dead-end twigs in place, keeping their branch node.
+
+    Repeats so a twig hidden behind another twig still goes — but only ever
+    erases dead ends the skeleton grew on its own. Deleting a spur leaves its
+    branch node standing, and a node left holding one arm turns that arm into
+    a dead end through no thinning of its own. Re-measuring such a stem
+    against `spur_len_px` deletes real limb: on `enthusiast_logo.png` the left
+    bracket's tab is a stem plus two twigs, pass 1 correctly takes both twigs,
+    and pass 2 then takes the 19.000 px stem against a 19.4770 px bar. Its
+    mirror twin's stem is 20.000 px against 19.1152 px and survives — one
+    raster pixel (0.167 mm at 6 px/mm) between a sewn tab and a 7.8 mm2 hole,
+    on shapes whose areas differ by 0.06%. So a dead end this function itself
+    exposed is remembered and never counted as a spur tip.
+
+    The guard is deliberately narrow. A node going 3 arms -> 2 welds its two
+    survivors into one longer edge whose free end is somewhere else entirely;
+    that edge stays prunable on its own length, as before.
+    """
+    exposed: set[tuple[int, int]] = set()
     for _ in range(4):
         removed = 0
         for e in _skeleton_edges(mask):
             if e["closed"] or (e["free_start"] == e["free_end"]):
                 continue  # spur = exactly one free end
+            tip = e["pts"][0] if e["free_start"] else e["pts"][-1]
+            if tip in exposed:
+                continue  # a stem we un-branched, not a twig that grew short
             length = sum(math.dist(a, b) for a, b in zip(e["pts"], e["pts"][1:]))
             if length >= spur_len_px:
                 continue
             keep = e["pts"][-1] if e["free_start"] else e["pts"][0]
+            exposed.add(keep)
             for px in e["pts"]:
                 if px != keep:
                     mask[px[1], px[0]] = 0

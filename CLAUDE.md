@@ -65,6 +65,11 @@ cd digitizer && .venv/Scripts/python -m pytest -q -n auto  # Python digitizer te
 cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0.1:8721
 ```
 
+- **`.venv/Scripts/` is Kent's Windows box. On Linux — every cloud session —
+  the same venv is `.venv/bin/python`.** Nothing else changes. This is not
+  written down anywhere else a session reads first, so each one rediscovers it;
+  `.claude/skills/run-emb-bot/SKILL.md` already handles both layouts.
+
 - Always `python -m pytest`, never `python foo.py` — a bare invocation does not put
   cwd on `sys.path`.
 - **Never pipe pytest to `tail`** — you get tail's exit code, so a red run reads green.
