@@ -1723,7 +1723,12 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None, split
         for c in range(1, n_cc):
             regions.append(RegionMask(mask=(cc == c), layer=0, source="photo"))
 
-    kept, floor_warnings = resolve_small_regions(regions, cfg, p.px_per_mm)
+    # chain_rescue=False: the chained-structure rescue is gated OFF on the
+    # photo lane -- see stage3_segment.resolve_small_regions for the
+    # measurement. Photo quantisation makes sub-floor fragments mutually
+    # adjacent everywhere, so chaining stops discriminating here.
+    kept, floor_warnings = resolve_small_regions(
+        regions, cfg, p.px_per_mm, chain_rescue=False)
 
     return kept_masks_to_quant(
         p,
