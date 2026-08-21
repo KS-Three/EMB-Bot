@@ -87,7 +87,13 @@ sits from the fill edge — remains **unmeasured**. Do not invent a number for
 it; fix the detector or measure it by hand from the render before building
 border-over-fill.
 
-## Engine mapping (as of feat/satin-rails)
+## Engine mapping (captured on the since-deleted `feat/satin-rails` branch)
+
+> The statuses in this table are a **snapshot from that branch**, not live
+> state. The branch no longer exists, so nothing here has been re-checked
+> against `main` — re-verify any row before relying on it, and read
+> `MASTER_SCOPE.md` for current status. *(noted 2026-08-21 — branch absent
+> from `git branch -a`)*
 
 | Law | Mechanism | Status |
 |---|---|---|

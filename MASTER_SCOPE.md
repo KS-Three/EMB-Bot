@@ -21,7 +21,7 @@ standing rulings below. **The code and instruments it describes are ON `main`**
 `selfconsistency.py` is in a plain checkout. This pointer said "in PR #157, not
 on `main`" until 2026-08-17. *(confirmed 2026-08-17 — `git ls-tree origin/main`)*
 
-**Last updated:** 2026-08-19. Dated history lives in
+**Last updated:** 2026-08-21. Dated history lives in
 [`docs/scope-history.md`](docs/scope-history.md); **this file is current state
 only.** See "How this document works" at the bottom for the rules that keep it
 that way, including the line budget.
