@@ -218,6 +218,50 @@ prerequisite for #6.2 being measurable, not a side quest.
 records. Whether #6.2 (still reverted, not rebuilt) is now measurable under
 the new instrument was not re-checked here.
 
+**Update 2026-08-21 — re-checked, and the answer is split: the METRIC is
+measurable, the SCORE is not.** Measured on `summit_badge.png`,
+`target_width_mm=80`, `garment_id=left_chest`, sweeping the photo lane's real
+merge lever (`stage2_photo_segment.MERGE_DELTAE00_THRESH`, a module constant,
+monkeypatched for the probe — nothing shipped):
+
+| `MERGE_DELTAE00_THRESH` | regions | grade/score | `thread_worst_delta_e` | `THREAD_MATCH_POOR` findings |
+|---|---|---|---|---|
+| 26.0 (default) | 43 | F/0 | 10.2 | 7 |
+| 20.0 | 44 | F/0 | 10.2 | 7 |
+| 16.0 | 48 | F/0 | 10.2 | 7 |
+| 13.0 | 47 | F/0 | **9.6** | 7 |
+
+The per-region instrument **does** respond — `thread_worst_delta_e` moves
+10.2 → 9.6 as segmentation tightens, which the old pooled-median metric could
+not have shown. The prerequisite genuinely landed and #6.2 is measurable *on
+that number*.
+
+**The grade is blind, and it is arithmetic, not bad luck.** `_DEDUCT` is
+`{warn: 12, block: 30}`. `summit_badge` carries 1 block + 10 warns = **150
+points of deductions against a 100-point scale**, so `max(0, 100 - 150)`
+clamps at zero with **50 points already buried**. A fix must clear ~4.2
+warn-equivalents *before the score moves off 0 at all*. Even a perfect #6.2 —
+every one of the 7 `THREAD_MATCH_POOR` findings gone — lands at
+**D/52**, because the four survivors (`LETTERING_TOO_SMALL`,
+`STITCHES_TOO_SHORT`, `TRIM_HEAVY`, `COLOR_STOPS_HEAVY`) are not
+segmentation defects and would remain.
+
+**Consequence for anyone taking #6.2 on:** judge it on
+`thread_worst_delta_e` and the per-region dE distribution, **never on
+grade/score**. The scorecard's grade column cannot see this fixture improve
+until the fix is nearly total. That is the same trap this doc already warned
+about at the metric level, relocated one layer up into the score — and it is
+why `summit_badge`'s F/0 in `corpus_scorecard_baseline.json` should not be
+read as "no progress."
+
+**A lever that looks right and is inert:** `PipelineConfig.merge_delta_e`
+(default **6.0**) is NOT this knob. It is consumed only by
+`stage2_quantize.py`, the flat lane's colour-cluster merge; `summit_badge`
+classifies `gradient` and goes through `stage2_photo_segment`. Sweeping
+`merge_delta_e` 26 → 14 on this fixture produces byte-identical output at
+every step. Measured 2026-08-21 — the sweep above was re-run against the real
+constant only after that first sweep's flat line proved the lever was dead.
+
 ## #6.3 (`repro_gradient_white_icon.png`) — FIXED, and the estimator was the fix
 
 `stage4_vectorize.revalidate_threads`, called from `pipeline.run_stages` right
