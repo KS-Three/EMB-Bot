@@ -2390,3 +2390,58 @@ the two mechanisms that would actually move it — `chain_links` and
 entirely: stop handing a 46-hole, 2,095 mm² perforated region to the filler as
 one shape. That is a stage-2/segmentation question, not a stage-6 one, and it
 has not been sized.
+
+### CORRECTION — the 7% ceiling was measured with the ORDER HELD FIXED (2026-08-21)
+
+**The entry immediately above concluded "do not build a travel-side fix." That
+conclusion is wrong, and this entry supersedes it.** The 7% number itself is
+correct but answers a narrower question than it appeared to: *given the
+boundaries the planner already chose*, only 4 of 56 were routable. It never
+asked whether a different choice of next run would have been.
+
+It would have been. Reproduce with `trim_attribution_probe.py --pass routable`:
+
+| ordering | cuts | travel |
+|---|---|---|
+| shipped (nearest by distance) | **57** | 188 mm |
+| routable-first (nearest **among reachable**) | **24** | 941 mm |
+
+**33 of 57 cuts — 58% — removed by ordering alone, no constant touched.** This
+is constructive, not a bound: it is an ordering that achieves 24, not an
+estimate of what one might.
+
+**The mechanism.** `_fill_paths` picks the nearest next column by straight-line
+distance. On a 46-hole shape the nearest column is frequently *across a hole*,
+where `travel_path` cannot route, so `stage6_fill.py:877` cuts. A farther column
+in the same travel-connected island would have cost a few more millimetres and
+no cut at all. **The cut is manufactured by the choice, not forced by the
+geometry.** Supporting measurement: the 280 fill runs form only **17
+travel-connected components**, 195 of them in one and 64 in another, so the
+connectivity floor is 16 cuts — the constructive ordering reaches 24.
+
+**Cost.** +752 mm of travel = **+301 stitches on a 10,291-stitch design
+(+2.9%)**, or 22.8 mm per cut removed. That travel stays **inside** the shape —
+`travel_path` requires `cover.covers(route)` — so unlike `chain_links` it is
+not thread on bare fabric, and it is not the gate-1 question `chain_links` is.
+Whether 2.9% more stitches is worth 58% fewer trims is a production judgement,
+not a geometric one.
+
+**Why this was missed twice.** Both earlier readings held something fixed and
+reported the result as a property of the defect:
+
+1. The `reorder` pass compared fill endpoints while ignoring interleaved travel,
+   making ordering look like a 56% win it had not earned.
+2. The `travel` pass held the planner's ordering fixed, making travel look
+   exhausted at 7%.
+
+Each was true of what it measured and false as a claim about the defect. **The
+lever is the interaction between the two** — ordering *by reachability* — which
+neither pass could see alone. Before concluding a lever is dead here, check what
+your measurement is holding constant.
+
+**Status: not implemented.** This is a sizing, on one shape, of a change to
+`_fill_paths`' ordering loop (`stage6_fill.py:594-676`). It would move
+`test_flat_lane_byte_identical` and stroke goldens on every fixture with a
+holed fill, so it needs the corpus run and the same-failure-set discipline —
+golden re-capture on Linux CI is pre-authorized (standing rulings). Nothing
+above is evidence about any shape but this one.

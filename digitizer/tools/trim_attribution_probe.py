@@ -63,12 +63,17 @@ from shapely.geometry import LineString, Point  # noqa: E402
 from digitizer_core import machine  # noqa: E402
 from digitizer_core.config import PipelineConfig  # noqa: E402
 from digitizer_core.pipeline import digitize  # noqa: E402
-from digitizer_core.stage6_fill import _inset_ring, _ring_route  # noqa: E402
+from digitizer_core.stage6_fill import (_inset_ring, _ring_route,  # noqa: E402
+                                        travel_path)
 
 DEFAULT_IMAGE = "testdata/photo/logo_hotel_fremont.webp"
 # The pro's measured floor: it never cut for a move shorter than this.
 # docs/fragmentation-attribution-2026-08-18.md, "The pro's actual cut rule".
 PRO_FLOAT_FLOOR_MM = 11.8
+# How many nearest candidates the routable-first pass probes before declaring a
+# boundary unreachable. 40 is well past the point where a further candidate ever
+# changed the count on this fixture; it exists so one query cannot walk all 280.
+_ROUTABLE_PROBE_LIMIT = 40
 BANDS = ((0.0, 3.0), (3.0, 6.0), (6.0, PRO_FLOAT_FLOOR_MM), (PRO_FLOAT_FLOOR_MM, math.inf))
 
 
@@ -235,6 +240,82 @@ def pass_travel(result, plan, shape: str) -> None:
           "\n  travel is travel_path (stage6_fill.py:523). Do not conflate them.")
 
 
+def pass_routable(result, plan, shape: str, trim_at_mm: float) -> None:
+    """Constructive: prefer a travel-ROUTABLE next run over merely the nearest.
+
+    This pass overturned the `travel` pass's first reading. That one asked
+    whether the boundaries the planner ALREADY chose were routable -- 52 of 56
+    were not, a 7% ceiling -- and concluded travel was a dead end. It was
+    measuring with the ORDER HELD FIXED. Nearest-by-distance repeatedly picks a
+    next run that is close but across a hole, so the cut is manufactured by the
+    choice rather than forced by the geometry. Choosing among reachable runs
+    instead removes most of them.
+
+    Scores a cut exactly as `stage6_fill.py:877` does -- `travel_path` returns
+    None and the gap exceeds `trim_at_mm`. No constant is changed.
+    """
+    reg = next((r for r in (getattr(result, "regions", None) or [])
+                if r.shape_id == shape), None)
+    if reg is None:
+        print(f"  {shape}: no region found")
+        return
+    poly = reg.polygon
+    ring = _inset_ring(poly, machine.TRAVEL_INSET_MM)
+    slack = poly.buffer(0.01)
+    seq = [r for _b, r in plan.iter_runs() if r.shape_id == shape and r.points]
+    shipped_cuts = sum(1 for r in seq if r.trim)
+    shipped_travel = sum(
+        sum(_dist(r.points[k - 1], r.points[k]) for k in range(1, len(r.points)))
+        for r in seq if r.kind == "travel")
+    ends = [(r.points[0], r.points[-1]) for r in seq if r.kind == "fill"]
+    n = len(ends)
+
+    remaining = set(range(1, n))
+    cur, cuts, bridged, travel_mm = ends[0][1], 0, 0, 0.0
+    while remaining:
+        cand = sorted(((min(_dist(cur, ends[j][0]), _dist(cur, ends[j][1])), j)
+                       for j in remaining))[:_ROUTABLE_PROBE_LIMIT]
+        picked = None
+        for _gap, j in cand:
+            for entry, exit_ in ((ends[j][0], ends[j][1]), (ends[j][1], ends[j][0])):
+                route = travel_path(poly, ring, cur, entry, slack)
+                if route is not None:
+                    travel_mm += sum(_dist(route[k - 1], route[k])
+                                     for k in range(1, len(route)))
+                    picked = (j, exit_)
+                    break
+            if picked:
+                break
+        if picked is None:                       # nothing reachable -> forced cut
+            gap, j = cand[0]
+            if gap > trim_at_mm:
+                cuts += 1
+            near_start = _dist(cur, ends[j][0]) <= _dist(cur, ends[j][1])
+            picked = (j, ends[j][1] if near_start else ends[j][0])
+        else:
+            bridged += 1
+        remaining.discard(picked[0])
+        cur = picked[1]
+
+    print(f"  {shape}: {n} fill runs")
+    print(f"    shipped        : {shipped_cuts:3d} cuts, {shipped_travel:6.0f} mm travel")
+    print(f"    routable-first : {cuts:3d} cuts, {travel_mm:6.0f} mm travel "
+          f"({bridged} boundaries bridged)")
+    if cuts >= shipped_cuts:
+        print("\n  No improvement -- the shipped ordering already does this.")
+        return
+    removed = shipped_cuts - cuts
+    delta = travel_mm - shipped_travel
+    added = delta / machine.TRAVEL_STITCH_MM
+    print(f"\n  {removed} of {shipped_cuts} cuts removed "
+          f"({100.0 * removed / shipped_cuts:.0f}%) by ORDERING ALONE.")
+    print(f"  cost: {delta:+.0f} mm travel = {added:+.0f} stitches on "
+          f"{plan.stats.stitch_count} ({100.0 * added / max(1, plan.stats.stitch_count):+.1f}%), "
+          f"{delta / removed:.1f} mm per cut removed")
+    print("  That travel stays INSIDE the shape (travel_path requires")
+    print("  cover.covers(route)), so it is not bare-fabric thread.")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -245,7 +326,8 @@ def main() -> None:
     ap.add_argument("--shape", default=None,
                     help="shape_id to dissect; default is whichever carries the most trims")
     ap.add_argument("--pass", dest="which", default="all",
-                    choices=("all", "shapes", "boundaries", "reorder", "travel"))
+                    choices=("all", "shapes", "boundaries", "reorder", "travel",
+                             "routable"))
     ap.add_argument("--trim-at-mm", type=float, default=3.0,
                     help="cut rule the reorder pass scores against (gate 1: do not retune)")
     args = ap.parse_args()
@@ -261,7 +343,9 @@ def main() -> None:
         shape = shape or worst
     for name, fn in (("boundaries", lambda: pass_boundaries(plan, shape)),
                      ("reorder", lambda: pass_reorder(plan, shape, args.trim_at_mm)),
-                     ("travel", lambda: pass_travel(result, plan, shape))):
+                     ("travel", lambda: pass_travel(result, plan, shape)),
+                     ("routable",
+                      lambda: pass_routable(result, plan, shape, args.trim_at_mm))):
         if args.which in ("all", name):
             print(f"\n=== {name} ===")
             fn()
