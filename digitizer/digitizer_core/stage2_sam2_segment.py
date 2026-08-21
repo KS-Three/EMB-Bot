@@ -338,7 +338,12 @@ def sam2_segment_seam(
     labels = _upsample_labels(raw_labels, (h, w))
     regions = _regions_from_label_map(labels, base_valid)
     merged_count = len(set(np.unique(labels[base_valid]).tolist()))
-    kept, floor_warnings = resolve_small_regions(regions, cfg, p.px_per_mm)
+    # chain_rescue=False: the chained-structure rescue is gated OFF on the
+    # photo lane -- see stage3_segment.resolve_small_regions for the
+    # measurement. Photo quantisation makes sub-floor fragments mutually
+    # adjacent everywhere, so chaining stops discriminating here.
+    kept, floor_warnings = resolve_small_regions(
+        regions, cfg, p.px_per_mm, chain_rescue=False)
     if not kept:
         if not regions:
             # `regions` was already empty BEFORE `resolve_small_regions` ever

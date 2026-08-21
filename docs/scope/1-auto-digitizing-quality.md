@@ -2158,3 +2158,51 @@ move this fixture — 10,319 → 10,294 stitches, still 38 flagged shapes, still
 64/C. That fix closed the serif-cap collapse in `textcluster.py`; Hotel
 Fremont's small lettering is a separate, unrelated mechanism. Worth stating
 because the two look superficially alike (both "serif details disappearing").
+
+---
+
+## Chained small-region rescue — LANDED 2026-08-21, gated to the non-photo lane
+
+`resolve_small_regions` size-tested every region against the ~2.25 mm² floor
+**individually** and was blind to the union. When quantisation shatters one
+structure into sub-floor pieces, each piece's best halo-share neighbour is the
+large BACKGROUND region it sits on rather than the neighbouring fragment — so
+the whole structure was absorbed into the background one piece at a time.
+Measured: an 84-segment ring, 172 mm² and 40 mm across, **digitised to zero
+sewn regions**, with only an advisory `ABSORBED_SMALL_SHAPES` to show for it.
+
+**Fix:** `_chained_small_regions` size-tests connected chains of sub-floor
+regions against the same `cfg.min_detail_mm`-derived floor; a chain that clears
+it is kept, members rescued individually with their colours intact. No new
+threshold — the same bar, applied to the structure instead of each crumb.
+*(fixed 2026-08-17, landed 2026-08-21 — `stage3_segment._chained_small_regions`,
+PR #188; detail in `docs/shape-fidelity-findings-2026-08-17.md`)*
+
+**The lane gate, and why it exists.** The full digitizer suite had never
+completed against this fix (started 2026-08-17, starved by a concurrent corpus
+prep, killed unfinished). Run to completion 2026-08-21 it produced **two
+failures beyond baseline**, both attributable to this one function:
+`photo/summit_badge.png`'s stage-2 golden (**34 regions/12 threads → 46/15**,
+`max_excess_de00` **2.453 → 7.763**) and the full-bleed preflight guard on
+`logo_gaulke_roofing.png` (0.2 mm² that a neighbour used to cover became
+covered by nobody — under the 5.0 mm² reporting floor, no finding fired).
+
+Cause: the fix's evidence — 15 pro-parity designs, 13 byte-identical — is
+**entirely non-photo-lane**. Photo quantisation makes sub-floor fragments
+mutually adjacent everywhere, the exact condition the rescue fires on, so it
+stops discriminating there. `tires_hat_3d`'s reassuring "791 sub-floor regions,
+0 rescued" is flat-ish art and is not evidence about photos.
+
+So `resolve_small_regions` now takes `chain_rescue: bool = True` and both photo
+segmenters pass `False`; the main pipeline call keeps it, which is where the
+ring defect lives. Both failures resolve with **no golden re-captured and no
+assertion relaxed**. *(measured + gated 2026-08-21 — Kent's call; guard is
+`test_ring_absorb.py::test_chain_rescue_is_gated_per_lane`)*
+
+**Do not "simplify" the gate away.** Whether 46 regions beats 34 on
+`summit_badge` is unmeasured, and a raw region count is not a quality claim.
+Re-opening the photo lane needs a measurement, not a flag flip.
+
+**Worth on the corpus** (measured 2026-08-17, non-photo lane): `bridge_hat`
++156 stitches, `precision_drone` +29, the other 13 byte-identical. Insurance
+against silent structural loss on fragmented artwork, not a general quality win.

@@ -100,10 +100,11 @@ after two rejected designs worth recording:
 
 ## Next session — two things, in order
 
-**1. Run the full digitizer suite before anything else.** It is the one piece
-of verification this lane still owes. Started 2026-08-17, starved by a
-concurrent corpus run, killed unfinished — so it has never completed against
-the fix.
+**1. ~~Run the full digitizer suite before anything else.~~ DONE 2026-08-21 —
+and it found two real failures. See "The suite this lane owed" below.** It was
+the one piece of verification this lane still owed. Started 2026-08-17, starved
+by a concurrent corpus run, killed unfinished — so it had never completed
+against the fix until PR #188.
 
 ```
 cd digitizer && .venv/Scripts/python -m pytest -q     # ~21 min on an idle machine
@@ -165,3 +166,85 @@ shatters texture — `scope-history.md:30`), so the control's copy must scope
 it to flat-colour art; and `hotel_fremont_hat` (−4.3, labelled flat,
 unexplained) stands as the open counterexample. PRODUCT.md scope call —
 Kent decides, separately from this lane.
+
+---
+
+## The suite this lane owed — run 2026-08-21, and what it caught
+
+The obligation recorded above is discharged. It was worth keeping: **the run
+found two failures the lane's own evidence had missed**, and both traced to
+the same blind spot.
+
+### The baseline the note recorded did not transfer
+
+The note said to judge against **8 environmental failures at `73f37da`** — 3
+goldens and 5 needing a `tesseract` binary "this machine lacks". Five of those
+eight were an artifact of the machine, not of the code: the container this ran
+in **has** tesseract, so those five execute for real. A fresh baseline was
+captured on the same box at `0feb821` immediately before merging:
+
+| | baseline (`main`) | fix merged | fix + lane gate |
+|---|---|---|---|
+| failed | 3 | **5** | 3 |
+| passed | 1241 | 1240 | 1242 |
+| xfailed | 8 | 7 | 7 |
+
+Baseline failures are the three documented expected cells
+(`enthusiast_logo` ×2, `pushcomp[logo_whitebg.png-towel]`), with `logo_alpha`
+passing — the matrix's own signal that a divergence is platform, not
+regression. **Lesson for the next lane that records a baseline: record what
+the failures ARE, not how many.** A count of 8 silently became a count of 3
+by moving to a box with a different binary installed, and a count comparison
+would have read that as five fixes.
+
+### What the two extra failures were
+
+Both were caused solely by `_chained_small_regions` — confirmed by
+neutralising that one function, after which all 7 photo-lane golden fixtures
+match byte-for-byte again.
+
+1. **`test_photo_lane_byte_identical[photo/summit_badge.png]`.** Stage 2 moved
+   from **34 regions / 12 threads to 46 / 15**, `max_excess_de00` **2.453 →
+   7.763**, and the `ABSORBED_SMALL_SHAPES` warning disappeared. Not an
+   incidental golden drift: `stage2_photo_segment.segment()` *calls*
+   `resolve_small_regions` (line 1726, reusing stage 3 rather than reinventing
+   it), so this golden legitimately covers the fix.
+2. **`test_preflight.py::test_a_full_bleed_design_does_not_report_its_own_border`.**
+   On `logo_gaulke_roofing.png` the rescue kept one extra region, stage 4 then
+   dropped it on its own real-geometry floor, and **0.2 mm² a neighbour used to
+   cover became covered by nobody** — `uncovered_worst_mm2` 0.0 → 0.2. Below
+   the 5.0 mm² reporting floor, `uncovered_total_mm2` still 0.0, no finding
+   fires. Tiny, but directionally the opposite of the fix's purpose.
+
+### Root cause: the evidence never covered the photo lane
+
+The corpus result this fix shipped on — 15 pro-parity designs, 13
+byte-identical — is **all non-photo-lane**. Photo quantisation shatters
+everything into mutually-adjacent sub-floor fragments, which is precisely the
+condition the chain rescue fires on, so the discrimination the corpus
+demonstrated (`tires_hat_3d`: 791 sub-floor regions, 0 rescued) does not hold
+there. That fixture is flat-ish art; it is not evidence about photos.
+
+**Retire the claim "provably touches nothing else."** It was true of the
+corpus it was measured on and false of the lane it was not.
+
+### Shipped: a lane gate, Kent's call 2026-08-21
+
+`resolve_small_regions` takes `chain_rescue: bool = True`; both photo
+segmenters (`stage2_photo_segment`, `stage2_sam2_segment`) pass `False`. The
+main pipeline call keeps it, which is where the motivating ring defect lives.
+No golden was re-captured and no assertion was relaxed — both failures resolve
+because the rescue no longer runs where it was never measured.
+
+Note the mechanism that made the preflight failure disappear, since it is not
+obvious: `logo_gaulke_roofing` classifies **`gradient`**, and the extra region
+came from the *photo segmenter's* call site, not the pipeline's. Under the gate
+the pipeline's own chain call still runs on that fixture and rescues **0**.
+
+`test_ring_absorb.py::test_chain_rescue_is_gated_per_lane` asserts the gate
+directly, so deleting the argument fails with a message that says why rather
+than as an opaque golden mismatch.
+
+**Still open, deliberately:** whether 46 regions is *better* than 34 on
+`summit_badge` is unmeasured, and this repo does not claim quality from a raw
+number. Re-opening the photo lane needs a real measurement, not a flag flip.

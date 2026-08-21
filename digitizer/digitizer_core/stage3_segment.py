@@ -161,7 +161,7 @@ def _chained_small_regions(regions, areas, boxes, small, min_area_px,
 
 def resolve_small_regions(
     regions: list[RegionMask], cfg: PipelineConfig, px_per_mm: float,
-    enclosed_mask: np.ndarray | None = None,
+    enclosed_mask: np.ndarray | None = None, *, chain_rescue: bool = True,
 ) -> tuple[list[RegionMask], list[dict]]:
     """Absorb or drop sub-sewable regions. Returns (kept, warnings).
 
@@ -229,9 +229,19 @@ def resolve_small_regions(
     # keep getting it. Missing this gate silently broke SAM2's
     # no-usable-regions fallback, which drives four sub-floor blobs with
     # rescue OFF and expects every one to drop.
+    # `chain_rescue` is the LANE gate, separate from `cfg.small_shape_rescue`
+    # (the user-facing opt-out). The photo segmenters pass False: measured
+    # 2026-08-21 on `photo/summit_badge.png`, chaining there moves stage 2 from
+    # 34 regions/12 threads to 46/15 and triples the palette's worst excess
+    # (max_excess_de00 2.453 -> 7.763). Quantisation shatters a photo into
+    # mutually-adjacent sub-floor fragments everywhere, which is exactly the
+    # condition this rescue fires on, so it stops discriminating there. The
+    # evidence this fix shipped on -- 15 pro-parity designs, 13 byte-identical
+    # -- did not cover the photo lane. Re-open it behind a real measurement,
+    # not by deleting this argument.
     chained = _chained_small_regions(
         regions, areas, boxes, small, min_area_px, height, width
-    ) if cfg.small_shape_rescue else set()
+    ) if (cfg.small_shape_rescue and chain_rescue) else set()
     if chained:
         small = [i for i in small if i not in chained]
     absorbed = dropped = 0
