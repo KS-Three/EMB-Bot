@@ -22,13 +22,36 @@ for (const f of ENGINE_FILES) {
 console.log("copied", ENGINE_FILES.length, "engine files to", outDir);
 
 // Font binaries + manifest -> public/fonts (served at /fonts/*)
+//
+// If a PERSONAL build exists (node tools/build-embf.mjs --personal), serve that
+// instead — it is Kent's local library with every font, including ShareAlike /
+// GPL / NonCommercial ones that must never ship. This is safe by construction
+// rather than by discipline: `src/fonts/bin-personal/` is gitignored and a
+// fresh clone or CI simply does not have it, so a release build cannot pick it
+// up no matter what. It is served under the ordinary /fonts/* paths so the app
+// needs no personal-build awareness at all.
 const fontsOut = join(here, "..", "public", "fonts");
+const personalManifest = join(srcDir, "fonts", "manifest-personal.json");
+const personalBin = join(srcDir, "fonts", "bin-personal");
+const usePersonal = existsSync(personalManifest) && existsSync(personalBin);
+const binSrc = usePersonal ? personalBin : join(srcDir, "fonts", "bin");
+const manifestSrc = usePersonal ? personalManifest : join(srcDir, "fonts", "manifest.json");
+
 mkdirSync(join(fontsOut, "bin"), { recursive: true });
-copyFileSync(join(srcDir, "fonts", "manifest.json"), join(fontsOut, "manifest.json"));
-for (const f of readdirSync(join(srcDir, "fonts", "bin")))
-  if (f.endsWith(".embf"))
-    copyFileSync(join(srcDir, "fonts", "bin", f), join(fontsOut, "bin", f));
-console.log("copied font manifest + binaries to", fontsOut);
+copyFileSync(manifestSrc, join(fontsOut, "manifest.json"));
+const wantBins = new Set(readdirSync(binSrc).filter((f) => f.endsWith(".embf")));
+// Orphan-clean FIRST: switching between personal and sellable builds must not
+// leave the previous build's binaries being served. Without this, one personal
+// build would keep serving ShareAlike fonts from every later sale build too.
+for (const f of readdirSync(join(fontsOut, "bin")))
+  if (f.endsWith(".embf") && !wantBins.has(f)) unlinkSync(join(fontsOut, "bin", f));
+for (const f of wantBins) copyFileSync(join(binSrc, f), join(fontsOut, "bin", f));
+if (usePersonal) {
+  console.warn("*** serving the PERSONAL font build (" + wantBins.size + " fonts) — NOT FOR DISTRIBUTION ***");
+  console.warn("    delete src/fonts/bin-personal/ + manifest-personal.json to go back to the sellable library");
+} else {
+  console.log("copied font manifest +", wantBins.size, "binaries to", fontsOut);
+}
 
 // License texts -> public/fonts/<key>.LICENSE.txt (served at
 // /fonts/<key>.LICENSE.txt, linked from the credits dialog).

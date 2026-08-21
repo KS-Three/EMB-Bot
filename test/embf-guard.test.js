@@ -11,7 +11,7 @@ const fb = require("../src/fontbin.js");
 const FONT_DIR = path.join(__dirname, "..", "src", "fonts");
 const BIN_DIR = path.join(FONT_DIR, "bin");
 const keys = fs.readdirSync(FONT_DIR)
-  .filter((f) => f.endsWith(".json") && f !== "manifest.json")
+  .filter((f) => f.endsWith(".json") && !f.startsWith("manifest"))
   .map((f) => f.replace(/\.json$/, ""));
 
 test("every static shipped font has a committed .embf", () => {
@@ -161,7 +161,7 @@ test("no shipped NEW font has a license outside the allowed policy set", () => {
   const man = JSON.parse(fs.readFileSync(path.join(FONT_DIR, "manifest.json"), "utf8"));
   const ALLOWED = new Set(["OFL-1.1", "CC-BY-4.0", "CC-BY-SA-4.0", "CC0"]);
   const grandfathered = new Set(fs.readdirSync(FONT_DIR)
-    .filter((f) => f.endsWith(".json") && f !== "manifest.json")
+    .filter((f) => f.endsWith(".json") && !f.startsWith("manifest"))
     .map((f) => f.replace(/\.json$/, "")));
   // geneva_rounded ships from scratch_ink (a trial import, not a static
   // src/fonts/<key>.json) but is the same grandfathered CC-BY-SA-2.5 grant
