@@ -2871,3 +2871,24 @@ available, touching every design's sequencing. The honest comparison:
 named-but-untested assumption is not a sizing. Testing the assumption took one
 measurement and halved the answer — before a large change was built on it,
 rather than after.
+#### The chain_links number is robust across palette sizes (2026-08-22)
+
+The 33% figure is the one Kent may weigh against his accept-the-sew-out-as-is
+call, so it was stress-tested rather than left on a single config.
+
+| `max_colors` | trims | stitches | designs worse on either axis |
+|---|---|---|---|
+| 4 | 119 → 77 (**35%**) | −217 | **0** |
+| 6 | 116 → 75 (**35%**) | −211 | **0** |
+| 8 | 116 → 75 (**35%**) | −211 | **0** |
+
+Identical reduction at every palette size, stitch count down at every one, and
+zero designs worse on either axis in all three runs. Not a config artifact.
+
+**Precision note on the headline.** The widely-quoted **33%** comes from a
+seven-fixture set that includes `logo_alpha.png` and `logo_script_tires.png`;
+`logo_alpha` shows no change at all and dilutes the ratio. Across the six
+real-artwork fixtures alone it is **35%**. Both are true of their own sets —
+**quote 33%**, it is the conservative one, and say which set it is from.
+
+Still gate-1 frozen. Still not a request to flip the flag.
