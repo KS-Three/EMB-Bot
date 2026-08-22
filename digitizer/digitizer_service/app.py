@@ -32,13 +32,13 @@ from digitizer_core import PipelineConfig, __doc__ as core_doc  # noqa: F401
 from digitizer_core import machine
 from digitizer_core.adapter import design_size_mm, design_to_pattern, plan_to_design
 from digitizer_core.manual import build_manual_result
-from digitizer_core.pipeline import digitize, plan_stitches
+from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
 from digitizer_core.preflight import run_preflight
 from digitizer_core.stage0_classify import CLASSES
 from digitizer_core.threads import DEFAULT_BRAND, brand_index, load_chart
 
 from . import formats
-from .jobs import DONE, JobRegistry, content_key
+from .jobs import DONE, GenerationCache, JobRegistry, content_key, generation_key
 
 VERSION = "0.5.0"
 
@@ -52,6 +52,10 @@ MAX_PIXELS = 40_000_000
 _CONFIG_FIELDS = {f.name for f in dataclass_fields(PipelineConfig)} - {"debug_dir", "extra"}
 
 registry = JobRegistry(workers=1)
+# Stage 0-4 generations, cached across review edits — the reason a boundary
+# edit re-runs only `finish_generation` + `plan_stitches` instead of the
+# whole pipeline (area 5's measured table: stages 0-4 are 53-81% of a job).
+generations = GenerationCache()
 
 
 @asynccontextmanager
@@ -605,6 +609,7 @@ def health() -> dict:
         "formats": formats.supported(),
         "limits": {"max_upload_bytes": MAX_UPLOAD_BYTES, "max_pixels": MAX_PIXELS},
         "jobs": registry.stats(),
+        "generations": generations.stats(),
     }
 
 
@@ -633,11 +638,23 @@ async def start_digitize(
 
     cfg_dict = _parse_config(config)
     key = content_key(data, cfg_dict)
+    gen_key = generation_key(data, cfg_dict)
     pixels = await run_in_threadpool(_decode, data)
 
     def work() -> dict:
         cfg = PipelineConfig(**cfg_dict)
-        result, plan = digitize(pixels, cfg)
+        # The generation cache: stages 0-4 keyed on artwork + every config
+        # field EXCEPT the review-edit keys, so an edited re-digitize reuses
+        # the expensive prefix. The cached original stays pristine — every
+        # use (cold path included, since the original goes into the cache)
+        # finishes from a fork; see `Generation.fork` for what that isolates.
+        gen = generations.get(gen_key)
+        gen_hit = gen is not None
+        if gen is None:
+            gen = build_generation(pixels, cfg)
+            generations.put(gen_key, gen)
+        result = finish_generation(gen.fork(), cfg)
+        plan = plan_stitches(result, cfg)
         design = plan_to_design(plan, name="Digitized design")
         return {
             "design": design,
@@ -649,6 +666,14 @@ async def start_digitize(
             # Studio can tell "clean" apart from "never checked".
             "preflight": run_preflight(result, plan, cfg, image=pixels)
                          if cfg.preflight else None,
+            # Observability for the loop this cache exists for (and for the
+            # tests that pin it): whether stages 0-4 were reused. Studio
+            # ignores it. Describes the run that PRODUCED this job, not this
+            # response — a JobRegistry replay of an identical request returns
+            # the recorded value, so a full-job cache hit (strictly better
+            # than a generation hit) still reads whatever the original run
+            # was. Not a hit-rate counter.
+            "generation_cache": "hit" if gen_hit else "miss",
         }
 
     job, cached = registry.submit(key, work)

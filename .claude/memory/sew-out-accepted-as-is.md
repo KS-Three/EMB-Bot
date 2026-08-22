@@ -63,4 +63,15 @@ Also ruled in the same exchange: **golden re-capture is pre-authorized on Linux
 CI** under same-failure-set discipline — identical failure set before and after,
 diff reported. Never on Windows.
 
+**UPDATE 2026-08-22 — the ruling now has a real-artwork price tag.** The next
+work item recorded above (satin border fragmentation) was completed and measures
+**0% on real client logos**. What the sew-out is actually standing in front of,
+measured on Kent's own becker/tires fixtures: **`chain_links` removes 33% of
+trims AND reduces stitch count**, stable at `max_colors` 4/6/8 with zero designs
+worse in any run. Every gate-clear alternative measures ≤9%.
+
+Kent made the accept-as-is call **without that number**. Gate 1 still refuses
+the flag — `LINK_COVER_TOL_MM` is a thread spec — so this is evidence for him to
+re-weigh, never a request to flip it. Detail: [[real-artwork-trim-truth]].
+
 See also [[emb-bot-digitizer]] and [[real-artwork-parity]].

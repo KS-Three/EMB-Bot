@@ -25,7 +25,7 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
-**Last updated:** 2026-08-22 (evening) — **cache funded and built (PR #209), photo width floor landed (PR #210), SAM2 live in the cloud.**
+**Last updated:** 2026-08-22 (evening) — **cache funded, built and MERGED (PR #209), photo width floor landed (PR #210), SAM2 live in the cloud.**
 
 Session shape: Kent's three-answer brief (2026-08-22) — tonal acceptance
 loop + tonal engineering pass + stage 0-4 cache; per-item branches
@@ -37,7 +37,9 @@ enthusiast_logo.png]`, `pushcomp[logo_whitebg.png-towel]`,
 `stage2_photo_segment[photo/enthusiast_logo.png]`), reproduced identically
 on `main` before work and on every branch after.
 
-**PR #209 (stage 0-4 cache) — CI green, awaiting Kent.** Waiting-on-Kent #1
+**PR #209 (stage 0-4 cache) — merged by Kent 2026-08-22 21:18 UTC** (this
+entry originally said "awaiting Kent"; he had merged it 25 minutes before
+it was committed, unread notifications in between). Waiting-on-Kent #1
 resolved: `run_stages` split at the review-edit seam
 (`build_generation`/`finish_generation`), service `GenerationCache` (LRU 4)
 keyed on sha256(image)+config-minus-edit-keys, every request finishing from
@@ -81,6 +83,43 @@ the tonal branch.
 
 ---
 
+**Last updated:** 2026-08-22 — **overnight autonomous run: all four queued items
+answered, none produced shippable code, and the deliverable is a decision.**
+Kent granted full autonomy and went to bed; ten PRs merged (#194 #197 #199 #201
+#202 #205 #206 #207 and two earlier). The table, measured on the six
+real-artwork fixtures rather than the photo corpus: **`chain_links` −33% trims
+AND fewer stitches (gate-1 frozen); exit choice ~9%; cursor placement ≤34% of
+satin travel failures; fill ordering (PR #205) 0%, byte-identical.** Real client
+logos carry 1–3 fill shapes that essentially never cut — they are
+satin-dominated — so trims there are shape-ENTRY trims (first-of-shape counts
+track shape count 10/10, 11/12, 14/16, 8/8) and no fill-side work can reach
+them. `chain_links` was verified stable at `max_colors` 4/6/8 with zero designs
+worse on either axis in any run: the only measurement of the night that did not
+weaken under scrutiny.
+
+**Eleven claims fell to measurement, four of them corrections to beliefs this
+session had itself asserted hours earlier.** (1) "Stage 5 is producing invalid
+geometry", repeatedly called the highest-value open thread — **false**; the
+producer is clean and float ROTATION in `best_fill_angle_deg`'s sweep creates it
+transiently (11 of 17 candidate angles), which makes PR #202's consumer-side
+guard *correct* rather than a workaround. (2) Exit-choice sized at 58%, then
+**28%** once the any-point-exit assumption was actually tested — recommended as
+the next build, then reversed within the hour. (3) "Satin travel fails at the
+cursor" was the `sewn==0` subset (31 of 37) generalised to all 97 failures; it
+covers **34%**. (4) A cost model undercounting travel by **2.5x** let a design
+regress through a cap that was working perfectly — found by instrumenting rather
+than reasoning. Also corrected: the attribution doc's "`_graph_travel` never
+returns a path" (it succeeds 18–30% over 124 calls), and a shipped figure of 33
+cuts that an uncapped prototype had reported as 24.
+
+Also landed: the `_row_spans` crash fix (a committed corpus fixture failed the
+whole digitize at the DEFAULT width, and no test caught it because the only test
+touching that fixture stops at stage 0), the path-order selector at Kent's 25
+st/trim rate with a per-design never-worse guarantee, and
+`tools/trim_exchange_sweep.py` — an instrument that exits non-zero if any design
+regresses, kept because the byte-identical goldens were measured accepting the
+reorder on **zero** shapes and therefore provide no coverage of this class of
+change at all.
 **Last updated:** 2026-08-22 (later again) — **two guards were blind to a
 quarter of the library, and the golden deselect list went from five to three.**
 
