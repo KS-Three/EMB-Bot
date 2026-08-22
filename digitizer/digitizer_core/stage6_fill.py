@@ -599,34 +599,58 @@ def travel_path(poly: Polygon, ring, a: tuple[float, float],
 _ROUTABLE_PROBE_LIMIT = 40
 
 
-def _count_cuts(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
+# What one thread cut is worth, in stitches, when weighing two path orders.
+# Kent's call 2026-08-21: he judged ~9 stitches/trim "clearly worth it", so 9 is
+# a FLOOR on a trim's cost, not an indifference point; 25 sits comfortably above
+# it so a cheap win is never rejected, while the pathological trades are. It is
+# an economics figure — machine stop, cut, and clipping the tail by hand — not a
+# thread or fabric spec, so ROADMAP gate 1 does not reach it. Measured trades it
+# admits: `logo_hotel_fremont` 1.4 st/trim, `logo_gaulke_roofing` 3.7. Measured
+# trade it rejects: `owl_kent` at 101 st/trim (+1,014 stitches for 10 trims).
+_TRIM_STITCH_EQUIVALENT = 25.0
+
+
+def _order_cost(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
                 slack: Polygon, entry: tuple[float, float] | None,
-                trim_at_mm: float) -> int:
-    """How many thread cuts this path ORDER costs, by `fill_region`'s own rule.
+                trim_at_mm: float) -> tuple[int, float]:
+    """-> (cuts, travel stitches) this path ORDER costs, by `fill_region`'s rule.
 
     `emit` cuts exactly when `travel_path` finds no route AND the gap exceeds
-    `trim_at_mm` (see its `bridge is None` branch). Scoring here with the same
-    rule — rather than a distance proxy — is what makes the comparison in
-    `_reorder_for_fewer_cuts` honest: a proxy measured against the real count
-    is how three earlier attempts at this defect reached wrong conclusions.
+    `trim_at_mm` (its `bridge is None` branch), and lays travel stitches when it
+    does find one. Scoring with that same rule rather than a distance proxy is
+    what makes the comparison honest — measuring a proxy against a real count is
+    how three earlier attempts at this defect reached wrong conclusions.
+
+    Only travel is returned, not total stitches: every order sews the SAME fill
+    penetrations, so travel is the entire stitch difference between two orders.
     """
     cuts = 0
+    travel_mm = 0.0
     cur = entry
     for path in paths:
         if not path:
             continue
         if cur is not None:
-            if (travel_path(poly, ring, cur, path[0], slack) is None
-                    and math.dist(cur, path[0]) > trim_at_mm):
-                cuts += 1
+            bridge = travel_path(poly, ring, cur, path[0], slack)
+            if bridge is None:
+                if math.dist(cur, path[0]) > trim_at_mm:
+                    cuts += 1
+            else:
+                travel_mm += sum(math.dist(bridge[i - 1], bridge[i])
+                                 for i in range(1, len(bridge)))
         cur = path[-1]
-    return cuts
+    return cuts, travel_mm / machine.TRAVEL_STITCH_MM
+
+
+def _score(cost: tuple[int, float]) -> float:
+    cuts, travel_stitches = cost
+    return cuts * _TRIM_STITCH_EQUIVALENT + travel_stitches
 
 
 def _reorder_for_fewer_cuts(paths: list[list[tuple[float, float]]], poly: Polygon,
                             ring, slack: Polygon, entry: tuple[float, float] | None,
                             trim_at_mm: float) -> list[list[tuple[float, float]]]:
-    """Prefer a REACHABLE next path over merely the nearest one, if it cuts less.
+    """Prefer a REACHABLE next path over merely the nearest one, when it is cheaper.
 
     `_fill_paths` orders columns by straight-line distance. On a shape with
     holes the nearest column is often across one, where `travel_path` cannot
@@ -634,28 +658,28 @@ def _reorder_for_fewer_cuts(paths: list[list[tuple[float, float]]], poly: Polygo
     travel-connected island would have cost no cut at all. The cut is
     manufactured by the choice, not forced by the geometry.
 
-    Measured on `logo_hotel_fremont.webp`'s 46-hole field: 57 cuts -> 24, a 58%
-    reduction for +752 mm of travel (+2.9% stitches). Across the committed photo
-    corpus, 17 holed shapes went 290 -> 163 cuts. **But four of those seventeen
-    got WORSE** — on shapes whose boundaries are naturally sub-`trim_at_mm`, the
+    **This never replaces the ordering; it scores both and keeps the cheaper.**
+    A naive swap was measured making four of seventeen holed corpus shapes
+    WORSE: where a shape's boundaries are naturally sub-`trim_at_mm`, the
     distance-greedy walk keeps hops short enough that a failed travel becomes a
-    silent jump rather than a cut, and chasing reachability instead lands
-    somewhere both far and unroutable. So this does NOT replace the ordering: it
-    scores both and keeps the better, and ties keep the incoming one. A shape
-    can only improve or stay identical.
+    silent jump rather than a cut, and chasing reachability lands somewhere both
+    far and unroutable. Ties keep the incoming order, so **a shape can only
+    improve or stay identical on the combined score** — Kent's per-design
+    never-worse guarantee (2026-08-21) follows by summation over its shapes,
+    since each shape's contribution is non-increasing.
 
-    Skipped entirely when the incoming order already cuts nothing, which is the
-    common case and keeps this free for every shape that never needed it.
+    Skipped when the incoming order already cuts nothing: there is no cut to buy,
+    and every such shape then pays nothing for this.
     """
     if len(paths) < 3:
         return paths
-    before = _count_cuts(paths, poly, ring, slack, entry, trim_at_mm)
-    if before == 0:
-        return paths                     # nothing to win; do not pay for the walk
-
     ends = [(p[0], p[-1]) for p in paths if p]
     if len(ends) != len(paths):
         return paths                     # an empty path: leave this shape alone
+    before = _order_cost(paths, poly, ring, slack, entry, trim_at_mm)
+    if before[0] == 0:
+        return paths                     # nothing to win; do not pay for the walk
+
     remaining = set(range(len(paths)))
     order: list[int] = []
     flipped: set[int] = set()
@@ -687,11 +711,10 @@ def _reorder_for_fewer_cuts(paths: list[list[tuple[float, float]]], poly: Polygo
         remaining.discard(j)
 
     # Reversing a path sews the same penetrations in the other direction — the
-    # holes land in identical places, so this changes travel, never stitch
-    # placement.
+    # holes land in identical places, so this changes travel, never placement.
     candidate = [paths[j][::-1] if j in flipped else paths[j] for j in order]
-    after = _count_cuts(candidate, poly, ring, slack, entry, trim_at_mm)
-    return candidate if after < before else paths
+    after = _order_cost(candidate, poly, ring, slack, entry, trim_at_mm)
+    return candidate if _score(after) < _score(before) else paths
 
 
 # Which row-point function each fill `technique` dispatches to inside
