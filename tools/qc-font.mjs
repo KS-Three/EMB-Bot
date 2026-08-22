@@ -61,8 +61,13 @@ export function qcFont(font) {
   // attaches {pts, lenMm} and ROADMAP gate 1 bars us from inventing a length, so
   // a run without one is skipped by satinfont.routeRuns and contributes nothing.
   // paquerette is exactly this trap — 1641 runs, but only 72 carry a length, so
-  // 31 of its 52 letters stitch as NOTHING while a naive "has runs" check calls
-  // it healthy. Count only what will actually sew.
+  // 52 of its 82 letter glyphs stitch as NOTHING while a naive "has runs" check
+  // calls it healthy. Count only what will actually sew.
+  //
+  // That figure read "31 of its 52" until 2026-08-22, which is the A-Za-z
+  // count: correct, and silently Latin-scoped in a comment sitting directly
+  // above the \p{L} rewrite that removed exactly that assumption. Re-measured
+  // over every letter glyph.
   const letterGlyphs = (upper.length || lower.length) ? [...upper, ...lower] : nonLatin;
   const stitchable = (c) => {
     const g = font.glyphs[c];

@@ -609,8 +609,9 @@
         // restated here: this comment first said "two", from a scan that only
         // looked at letters and a short punctuation set, and a number in a
         // comment cannot be re-measured the way a test can. The personal build
-        // is worse — paquerette has 31 of its 52 letters in this state, because
-        // only 72 of its 1,641 runs carry an authored stitch length.
+        // is worse — paquerette has 52 of its 82 letter glyphs in this state
+        // (31 of the 52 A-Za-z ones, which is the figure this repo usually
+        // quotes), because only 72 of its 1,641 runs carry an authored length.
         // Same test routeRuns and glyphPoints use, so "sews nothing" here means
         // exactly what the stitch path will do, not an approximation of it. The
         // glyph keeps its own advance: it is a hole of the right width, and

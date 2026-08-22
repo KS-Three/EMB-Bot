@@ -85,8 +85,9 @@ test("a space is never reported — it is laid out, not missing", () => {
 // all 85 shipped fonts there are two such glyphs — western_light's "ç" and
 // ondulamarif_XL's "º" — so typing "façade" in western_light drops the ç with
 // nothing said. The personal build is where it bites hardest: paquerette has
-// 31 of its 52 letters in this state, because only 72 of its 1,641 runs carry
-// an authored stitch length and a run without one is never sewn.
+// 52 of its 82 letter glyphs in this state — 31 of the 52 A-Za-z ones, which
+// is the figure this repo usually quotes — because only 72 of its 1,641 runs
+// carry an authored stitch length and a run without one is never sewn.
 const deadGlyph = { adv: 50, cols: [], runs: [[[0, 0], [0, 40]]] }; // bare array: no lenMm, never sewn
 
 test("a glyph that exists but sews nothing is reported, like a missing one", () => {

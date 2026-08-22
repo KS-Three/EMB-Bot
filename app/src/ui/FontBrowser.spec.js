@@ -6,7 +6,7 @@
 // "EMPTY preview for <key>"), so the file genuinely is not there —
 // infinipicto and paquerette are both in that state in the personal build,
 // paquerette because only 72 of its 1,641 runs carry an authored stitch
-// length and 31 of its 52 letters sew nothing.
+// length and 52 of its 82 letter glyphs sew nothing.
 import { beforeAll, expect, test, vi } from "vitest";
 import { render, fireEvent } from "@testing-library/svelte";
 import "@testing-library/jest-dom/vitest";

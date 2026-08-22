@@ -88,7 +88,8 @@ for (const entry of man.fonts) {
   if (!design.stitchCount) {
     // An empty preview is a real defect in the SELLABLE library and fails the
     // run. The personal library deliberately holds marginal fonts (paquerette
-    // has 31 of 52 letters carrying no authored stitch length), so there it is
+    // has 52 of its 82 letter glyphs carrying no authored stitch length — the
+    // familiar "31 of 52" is the A-Za-z subset), so there it is
     // a warning: failing the run would train Kent to ignore the exit code.
     console.error("EMPTY preview for " + entry.key + (PERSONAL ? " (personal build — skipped)" : " — investigate"));
     if (!PERSONAL) process.exitCode = 1;
