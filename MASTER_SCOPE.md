@@ -40,16 +40,20 @@ or move it.
    ten other documents cite these entries as "live defect N".
    *(fixed 2026-08-19 — `stage7_sequence._shade_blocks`)*
 
-2. **No width floor under satin — and the proposed fix is DISPROVED for flat
-   art.** 19 of 162 corpus regions, all photo-class, sew sub-millimetre satin
-   (Law 31). The proposed `2·p90 < ~1.0mm → run` reroute must NOT be applied
-   design-wide: on 15 real customer logos, 61 of the 64 shapes classifying satin
-   under 1.0 mm are ground the pro also sewed as satin — professionals satin
-   hairline strokes on flat logo art routinely. The defect stands for the photo
-   lane, where it was measured; the fix has to be gated there and measured
-   there. *(measured 2026-08-11 — `docs/dt-first-verdict-2026-08-11.md`;
-   disproved for flat 2026-08-16 — `docs/satin-gate-attribution-2026-08-16.md`
-   §7)*
+2. **No width floor under satin — PHOTO-LANE HALF CLOSED 2026-08-22; still
+   DISPROVED for flat art.** 19 of 162 corpus regions, all photo-family,
+   sew sub-millimetre satin (Law 31); 61/64 sub-1.0 mm satins on real
+   customer logos are ground the pro ALSO satined, so the fix is gated to
+   the photo classes: `classify_ribbon`'s `photo_width_floor` reroutes
+   earned satin under Law 31's 1.0 mm (adopted verbatim, never tuned —
+   gate 1) to the outline run. 58 sub-floor verdicts / **29 emitted-stitch
+   reroutes** under forced photo routing (the rest unsewn or already
+   area-rescued runs), columns 0.23–0.97 mm; flat/gradient byte-identical
+   by suite and audit. Open: default routing — drone/summit classify
+   GRADIENT, barred there — needs stage-0 discrimination (phase 2).
+   *(measured 2026-08-11 — `docs/dt-first-verdict-2026-08-11.md`; disproved
+   2026-08-16 — `docs/satin-gate-attribution-2026-08-16.md` §7; landed
+   2026-08-22 — `docs/tonal-eng-measurements-2026-08-22.md`)*
 
 3. **14 jump-trims on an 80mm design,** in every fill variant measured.
    Not started. *(measured 2026-08-12 — scope-history)*
@@ -272,9 +276,8 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
 
 ## Corrections — suspicions this document itself raised, then disproved
 
-Both entries are kept rather than deleted, because the failure mode they share
-is the reason this file is now split: **a hedged observation loses its hedge as
-it is copied forward.** Seeing the pattern is worth more than a tidy document.
+Kept rather than deleted: the shared failure mode — **a hedged observation
+loses its hedge as it is copied forward** — is why this file is split.
 
 - **`streamline_mode: "layered"` does NOT have the blend tier's row-pitch bug.**
   It was flagged as a likely twin on the strength of a note that layered
@@ -512,17 +515,14 @@ call it available-and-not-done; it shipped four days before that review.
 (the "third opinion" `digitizer/README.md` calls for). Fixing the codec itself
 is explicitly Kent's call — every existing EMB-Bot DST is affected by any fix.
 
-**The cross-validation harness that corroborated this is now DEAD, and hides
-a real PES failure.** `tools/crossval-stitch-formats.mjs` reproduced the DST
-transposition exactly (rms 0.0) and found the browser PES/EXP encoders broken
-independently — both fixed in PR #58; history in
-`docs/pes-crossval-verdict-2026-08-04.md`. But it probes `import pyembroidery`,
-which the 2026-08-11 pystitch swap removed, so `node --test
-test/crossval-stitch-formats.test.js` now reports **pass 0 / skipped 6** —
-green having asserted nothing, in a clean checkout and in CI. Revived against
-pystitch it goes **5 pass / 1 FAIL**: PES decodes 13 of 15 stitches, the whole
-design translated −3.0 mm in x. This is the repo's only automated third-party
-format check. *(measured 2026-08-21 — PYTHONPATH shim, no repo file edited)*
+**The cross-validation harness is ALIVE again — revived 2026-08-21, its PES
+finding (a missing initial positioning jump) fixed in `ef1262b`.** It had
+reproduced the DST transposition exactly (rms 0.0) and caught the broken
+browser PES/EXP encoders (fixed PR #58, history in
+`docs/pes-crossval-verdict-2026-08-04.md`); the 2026-08-11 pystitch swap
+silently starved it (pass 0 / skipped 6, green in CI). CI now fails
+loud when the pins cannot run (`227a9cb`); still the only automated
+third-party format check. *(confirmed 2026-08-22 — engine green, 0 skips)*
 
 **Fifth independent corroboration, 2026-08-10 (Ink/Stitch's `pystitch`):**
 Ink/Stitch's own DST reader/writer — the format library behind a mature,
