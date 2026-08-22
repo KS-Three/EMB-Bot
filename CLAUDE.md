@@ -31,6 +31,24 @@ Each doc gates a different kind of decision. Read the one matching what you're a
   `~/.claude/projects/<mangled-repo-path>/memory` is a junction
   pointing here, so automatic memory recall and these files are the same bytes.
 
+## End a turn by PROMPTING Kent, not by describing options
+
+When work finishes and the next step is Kent's decision, **put the choices in
+front of him with `AskUserQuestion`** — do not narrate the options in prose and
+wait. "Say the word and I'll do X" is not a prompt; it reads as finished work
+and stalls until he re-opens the thread himself. He has asked for this
+explicitly (2026-08-21), after a session that ended four separate turns with
+dangling offers.
+
+Each option needs enough to decide on without scrolling back: what it delivers,
+what it costs, and the catch. Include the option you would not pick, if it is
+genuinely live.
+
+This is about *decisions that are his* — tiering a font, a physical constant
+that needs a sew-out, scope, spending money. Routine judgement calls inside work
+he already approved are still yours to make; asking about those is its own kind
+of stall.
+
 ## This repo is PUBLIC
 
 `gh repo view KS-Three/EMB-Bot` → `visibility: PUBLIC`, confirmed 2026-08-16;

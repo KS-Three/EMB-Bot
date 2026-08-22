@@ -18,3 +18,13 @@ digitizer/testdata/photo/acceptance/*
 # ...except the dir's own explainer (Task 6) — must follow the exclude
 # above to take effect (gitignore negation order rule).
 !digitizer/testdata/photo/acceptance/README.md
+
+# Personal font build (node tools/build-embf.mjs --personal) — contains
+# ShareAlike / GPL / NonCommercial / license-pulled fonts. Private use is not
+# distribution, so these are fine on Kent's machine and must never be committed:
+# a fresh clone and CI have no bin-personal/, which is what makes the sellable
+# build clean by construction rather than by remembering. See build-embf.mjs.
+src/fonts/bin-personal/
+src/fonts/manifest-personal.json
+app/public/fonts/manifest-personal.json
+app/public/fonts/bin-personal/

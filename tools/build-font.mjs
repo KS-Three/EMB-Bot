@@ -16,6 +16,11 @@
 //                          determinism where upstream trusts os.listdir.
 import fs from "node:fs";
 import path from "node:path";
+import { createRequire } from "node:module";
+const require = createRequire(import.meta.url);
+// Grid detection lives with the fill algorithm it serves (src/crossfill.js),
+// so the importer and the renderer can never disagree about the lattice.
+const crossfill = require("../src/crossfill.js");
 
 const SRC = process.argv[2];
 const OUT = process.argv[3];
@@ -72,7 +77,20 @@ function parsePath(d) {
     cur[cur.length - 1] = { x: x2, y: y2 }; // pin the exact endpoint
   };
   while (i < toks.length) {
-    if (/[a-zA-Z]/.test(toks[i])) cmd = toks[i++];
+    // ANCHORED. This test was /[a-zA-Z]/ — unanchored — so any token merely
+    // CONTAINING a letter counted as a command, and SVG scientific notation
+    // ("5.2e-4", which Inkscape emits for sub-micron offsets) contains an "e".
+    // The damage was not a desync but a full stop: cmd became "5.2e-4", no
+    // branch below matches it, and since following tokens are plain numbers
+    // nothing ever reassigns cmd — so the parser consumed the rest of the path
+    // one token at a time and emitted no further points. Every path was
+    // silently TRUNCATED at its first scientific-notation number.
+    // 119 of 132 upstream fonts contain such numbers. Found 2026-08-21 while
+    // the cross-stitch glyphs came out as unrecognisable fragments; see
+    // test/parsepath.test.js.
+    // The tokenizer only ever yields single letters or numbers, so ^...$ is
+    // the exact discriminator.
+    if (/^[a-zA-Z]$/.test(toks[i])) cmd = toks[i++];
     const rel = cmd === cmd.toLowerCase(), C = cmd.toUpperCase();
     let fam = "";
     if (C === "M") { const x = num(), y = num(); cx = rel ? cx + x : x; cy = rel ? cy + y : y; sx = cx; sy = cy; cur = [{ x: cx, y: cy }]; subs.push(cur); cmd = rel ? "l" : "L"; }
@@ -188,10 +206,18 @@ function pick(list, i) {
   return list[Math.min(i, list.length - 1)];
 }
 function stitchParams(t) {
+  const isCross = /inkstitch:fill_method="cross_stitch"/.test(t);
+  const csm = t.match(/inkstitch:cross_stitch_method="([^"]*)"/);
   return {
     lens: numList(t, "running_stitch_length_mm"),
     // Ink/Stitch spells bean repeats two ways depending on version.
     beans: numList(t, "bean_stitch_repeats") || numList(t, "repeats"),
+    // A cross-stitch path is a filled REGION, not a stroke: its outline is
+    // pixel art on the digitizer's grid, and src/crossfill.js fills it with
+    // crosses at layout time. Note we do NOT record pattern_size_mm — the same
+    // "2.0" appears on fonts whose measured cell spans 0.78mm to 4.41mm, so it
+    // cannot be a cell size. The grid is measured from the outlines instead.
+    cross: isCross ? (csm ? csm[1] : "simple_cross") : null,
   };
 }
 // Build one run entry. With an authored length we emit the richer
@@ -207,6 +233,9 @@ function stitchParams(t) {
 // the params and become stitchable.
 function runFrom(poly, sp, i) {
   const pts = enc(poly);
+  // A cross-stitch region is tagged rather than given a stitch length: what
+  // fills it is a grid of crosses, and the grid is derived font-wide below.
+  if (sp && sp.cross) return { pts, fill: "cross", method: sp.cross };
   const lenMm = pick(sp && sp.lens, i);
   if (!(lenMm > 0)) return pts;
   const repeats = pick(sp && sp.beans, i);
@@ -317,6 +346,39 @@ for (const file of svgFiles) {
   }
 })();
 
+// Cross-stitch fonts: recover the digitizer's drawing grid ONCE for the whole
+// font, from every glyph outline at once. Font-wide rather than per-glyph on
+// purpose — a shared lattice is what makes crosses line up across letters, and
+// a sparse glyph like "." has too few edges to solve a phase from. Expressed in
+// glyph units, so it scales with the letterform and states nothing about
+// millimetres (ROADMAP gate 1). See src/crossfill.js.
+const crossGrid = (function detectCrossGrid() {
+  let method = null;
+  const rings = [];
+  for (const g of Object.values(glyphs)) {
+    for (const r of (g.runs || [])) {
+      if (!r || r.fill !== "cross" || !Array.isArray(r.pts)) continue;
+      method = method || r.method;
+      if (r.pts.length > 2) rings.push(r.pts);
+    }
+  }
+  if (!rings.length) return null;
+  const lat = crossfill.detectLattice(rings);
+  if (!lat || !(lat.step > 0)) {
+    console.warn("cross-stitch font but no grid could be measured — fills will be skipped");
+    return null;
+  }
+  // A poor fit means these outlines are not the pixel art this assumes, and a
+  // guessed grid would fill the glyph with crosses in the wrong places. Refuse
+  // rather than emit plausible-looking nonsense.
+  if (lat.fit < 0.9) {
+    console.warn(`cross-stitch grid fit only ${(lat.fit * 100).toFixed(1)}% — refusing to guess; fills skipped`);
+    return null;
+  }
+  return { step: r1(lat.step), offX: r1(lat.offX), offY: r1(lat.offY), method: method || "simple_cross" };
+})();
+if (crossGrid) console.error(`  cross-stitch grid: step=${crossGrid.step} method=${crossGrid.method}`);
+
 const count = Object.keys(glyphs).length;
 
 const outObj = {
@@ -325,6 +387,7 @@ const outObj = {
   advDefault: meta.horiz_adv_x_default != null ? meta.horiz_adv_x_default : Math.round(0.55 * meta.units_per_em),
   advSpace: meta.horiz_adv_x_space != null ? meta.horiz_adv_x_space : Math.round(0.3 * meta.units_per_em),
   kerning: meta.kerning_pairs || {}, glyphCount: count, glyphs,
+  ...(crossGrid ? { crossGrid } : {}),
 };
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, JSON.stringify(outObj));

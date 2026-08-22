@@ -67,9 +67,18 @@ test("bean repeats backtrack each stitch (repeats:1 => triple stitch)", () => {
 });
 
 // --- invariant 2: shipped satin fonts are not disturbed -----------------------
-// Counts captured from the committed .embf files BEFORE run support existed.
-// A change here means satin routing moved — investigate rather than re-baseline.
-const SATIN_BASELINE = { montecarlo: 1157, alchemy: 699, venezia: 995, cats: 1249, apesplit: 4404 };
+// Counts pinned from the committed .embf files. A change here means satin
+// routing moved — investigate rather than re-baseline.
+//
+// Re-baselined ONCE, 2026-08-22, for a reason outside satin routing: the SVG
+// parser was truncating every path at its first scientific-notation number
+// (see test/parsepath.test.js), so 63 of the shipped fonts were missing path
+// segments. Kent's call was to rebuild the library with the corrected geometry
+// rather than freeze the truncation. alchemy 699 -> 751 (+7.44%) is the largest
+// move in the library; 20 of 77 fonts came back byte-identical and the median
+// change is 0.00%. Only alchemy moved among these five, which is why the other
+// four numbers are unchanged from the original pin.
+const SATIN_BASELINE = { montecarlo: 1157, alchemy: 751, venezia: 995, cats: 1249, apesplit: 4404 };
 
 for (const [key, expected] of Object.entries(SATIN_BASELINE)) {
   test(`satin font ${key} stitches exactly as before run support`, () => {
@@ -94,5 +103,45 @@ test("no shipped font carries stitchable run params (they are stripped at import
       for (const r of g.runs || [])
         assert.ok(!(r && r.pts && r.lenMm > 0),
           `${f} is a satin font but carries stitchable run params — it would gain stitches vs. its shipped design`);
+  }
+});
+
+// --- personal build isolation (2026-08-21) --------------------------------
+// `node tools/build-embf.mjs --personal` writes src/fonts/manifest-personal.json
+// and bin-personal/ — Kent's private library with ShareAlike/GPL/NonCommercial
+// fonts. Both are gitignored, so a release build cannot pick them up.
+//
+// The trap this pins: manifest-personal.json lives IN src/fonts/, and several
+// places glob that directory for "*.json that isn't manifest.json" to find font
+// sources. Under the old predicate a personal build made a phantom font named
+// "manifest-personal" and turned four tests red on Kent's machine only, from a
+// file git cannot even see. The rule is now "not a manifest of any kind".
+test("a manifest-* file in src/fonts is never mistaken for a font source", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const FONT_DIR = path.join(__dirname, "..", "src", "fonts");
+  const keys = fs.readdirSync(FONT_DIR)
+    .filter((f) => f.endsWith(".json") && !f.startsWith("manifest"))
+    .map((f) => f.replace(/\.json$/, ""));
+  for (const k of keys)
+    assert.ok(!k.startsWith("manifest"), `"${k}" is a manifest, not a font source`);
+  // and the real manifest is excluded whether or not a personal build exists
+  assert.ok(!keys.includes("manifest"));
+  assert.ok(!keys.includes("manifest-personal"));
+});
+
+test("the sellable library never contains a license-pulled or ShareAlike font", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const FONT_DIR = path.join(__dirname, "..", "src", "fonts");
+  const man = JSON.parse(fs.readFileSync(path.join(FONT_DIR, "manifest.json"), "utf8"));
+  const BANNED = new Set(["milli_marif_bold", "tt_directors", "tt_masters", "dejavufont",
+    "apex_lake", "aventurina", "bluenesia_satin", "cherryforinkstitch", "cherryforkaalleen",
+    "emilio_20", "emilio_20_bold", "emilio_20_simple", "emilio_20_simple_small",
+    "geneva_rounded", "geneva_simple", "gingo200", "monicha"]);
+  for (const f of man.fonts) {
+    assert.ok(!BANNED.has(f.key), `pulled font ${f.key} is in the SELLABLE manifest`);
+    assert.ok(!/SA|NC|ND/.test(f.licenseId.replace("OFL-1.1", "").replace("CC-BY-4.0", "").replace("CC0", "")),
+      `${f.key} ships under ${f.licenseId}`);
   }
 });

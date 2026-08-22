@@ -16,9 +16,27 @@ import assert from "node:assert";
 const require = createRequire(import.meta.url);
 const fb = require("../src/fontbin.js");
 
+// --personal: Kent's own local build, with EVERY font — ShareAlike, GPL,
+// NonCommercial, the license-audit pulls, all of it. Licences govern
+// DISTRIBUTION, not private use, so using any font on his own machine is
+// unrestricted; what must never happen is one of them reaching a build that
+// ships. Kent's framing (2026-08-21) was "all of them for me, questionable ones
+// off on the user's end" — a runtime toggle cannot do that, because by the time
+// a viewer could flip it the bytes have already been distributed. So the split
+// is at BUILD time and the excluded fonts are simply never packaged.
+//
+// Two properties make this fail-safe rather than merely careful:
+//   1. Personal artifacts go to their own paths (bin-personal/,
+//      manifest-personal.json), which .gitignore covers — they cannot be
+//      committed, so they cannot reach a release by accident.
+//   2. A fresh clone and CI have no bin-personal/ at all, so the sale build is
+//      clean BY CONSTRUCTION, not by remembering to rebuild.
+const PERSONAL = process.argv.includes("--personal");
+
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const FONT_DIR = join(root, "src", "fonts");
-const BIN_DIR = join(FONT_DIR, "bin");
+const BIN_DIR = join(FONT_DIR, PERSONAL ? "bin-personal" : "bin");
+const MANIFEST_PATH = join(FONT_DIR, PERSONAL ? "manifest-personal.json" : "manifest.json");
 const GROUPS = JSON.parse(readFileSync(join(root, "tools", "font-categories.json"), "utf8"));
 
 // License id detection + attribution extraction live in tools/font-license.mjs,
@@ -89,7 +107,7 @@ for (const k of ["apex_lake", "aventurina", "bluenesia_satin",
 const ALLOWED_LICENSES = new Set(["OFL-1.1", "CC-BY-4.0", "CC0"]);
 const GRANDFATHERED = new Set(
   readdirSync(FONT_DIR)
-    .filter((f) => f.endsWith(".json") && f !== "manifest.json")
+    .filter((f) => f.endsWith(".json") && !f.startsWith("manifest"))
     .map((f) => f.replace(/\.json$/, ""))
 );
 // (A geneva_rounded grandfather entry lived here until 2026-08-04 — moot
@@ -99,8 +117,28 @@ const GRANDFATHERED = new Set(
 //    (they are the 21 Kent already ships).
 const sources = [];
 for (const f of readdirSync(FONT_DIR)) {
-  if (f.endsWith(".json") && f !== "manifest.json")
+  if (f.endsWith(".json") && !f.startsWith("manifest"))
     sources.push({ key: f.replace(/\.json$/, ""), path: join(FONT_DIR, f), tier: "verified" });
+}
+
+// 1b. --personal: take EVERY trial import in scratch_ink/_out, not just the
+//     tier-approved ones. _tiers.json is Kent's SALE approval list and must
+//     keep that meaning — adding fonts to it to get them into a personal build
+//     would quietly promote them into the sellable library too, which is
+//     exactly the kind of silent widening this file has been bitten by before.
+//     "Personal" means every font on hand; "verified" still means shippable.
+if (PERSONAL) {
+  const outDir = join(root, "scratch_ink", "_out");
+  if (existsSync(outDir)) {
+    const have = new Set(sources.map((s) => s.key));
+    for (const f of readdirSync(outDir)) {
+      if (!f.endsWith(".json")) continue;
+      const key = f.replace(/\.json$/, "");
+      if (have.has(key)) continue;
+      sources.push({ key, path: join(outDir, f), tier: "verified" });
+      have.add(key);
+    }
+  }
 }
 
 // 2. New fonts: verified tier per _tiers.json, data from the trial imports.
@@ -126,12 +164,34 @@ if (existsSync(tiersPath)) {
   process.exit(1);
 }
 
+// Would this font sew anything at all? Same predicate qc-font.mjs uses: a
+// letter glyph stitches if it has satin columns, or a run carrying an authored
+// stitch length. --personal sweeps in every trial import, and 26 of them are
+// cross-stitch/fill fonts the lettering path cannot stitch yet — listing 26
+// dead entries in the font browser is worse than omitting them. Deliberately a
+// STITCHABILITY gate, not a license one, so those fonts light up on their own
+// the day a fill/cross-stitch lettering path exists, with no change here.
+const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+function sewsAnything(font) {
+  const gs = font.glyphs || {};
+  for (const c of LETTERS) {
+    const g = gs[c];
+    if (!g) continue;
+    if ((g.cols || []).length) return true;
+    if (font.crossGrid && (g.runs || []).some((r) => r && r.fill === "cross" && r.pts)) return true;
+    if ((g.runs || []).some((r) => r && r.pts && r.lenMm > 0)) return true;
+  }
+  return false;
+}
+
 mkdirSync(BIN_DIR, { recursive: true });
 const manifest = [];
+const skippedDead = [];
 for (const s of sources.sort((a, b) => a.key.localeCompare(b.key))) {
   // font-license-audit-2026-07-31.md items 1-3: pulled regardless of
   // grandfathered status — see the PULLED comment above for per-font reasons.
-  if (PULLED.has(s.key)) {
+  // --personal keeps them: private use is not distribution.
+  if (PULLED.has(s.key) && !PERSONAL) {
     console.warn("PULLED (license audit):", s.key);
     const stale = join(BIN_DIR, s.key + ".embf");
     if (existsSync(stale)) unlinkSync(stale);
@@ -139,6 +199,17 @@ for (const s of sources.sort((a, b) => a.key.localeCompare(b.key))) {
   }
 
   const font = JSON.parse(readFileSync(s.path, "utf8"));
+
+  // Personal-only stitchability gate (see sewsAnything above). Never applied to
+  // the sellable build, whose contents are tier-approved by Kent and must not
+  // change shape because of a predicate here.
+  if (PERSONAL && !sewsAnything(font)) {
+    skippedDead.push(s.key);
+    const stale = join(BIN_DIR, s.key + ".embf");
+    if (existsSync(stale)) unlinkSync(stale);
+    continue;
+  }
+
   // Audit items 5+8: the sidecar src/fonts/<key>.LICENSE.txt is the license
   // text of record (full upstream text, reconstructed 2026-08-04 for all 68
   // fonts). Embed the FULL text in the binary's license field — the OFL
@@ -161,7 +232,8 @@ for (const s of sources.sort((a, b) => a.key.localeCompare(b.key))) {
   const id = licenseId(fullLicense);
 
   // Fix 2: enforce license policy on NEW (non-grandfathered) fonts.
-  if (!GRANDFATHERED.has(s.key) && !ALLOWED_LICENSES.has(id)) {
+  // --personal skips the policy entirely — it is a private build.
+  if (!PERSONAL && !GRANDFATHERED.has(s.key) && !ALLOWED_LICENSES.has(id)) {
     console.warn("EXCLUDED (license " + id + "):", s.key);
     const stale = join(BIN_DIR, s.key + ".embf");
     if (existsSync(stale)) unlinkSync(stale);
@@ -198,7 +270,16 @@ for (const s of sources.sort((a, b) => a.key.localeCompare(b.key))) {
     source: font.source || "Ink/Stitch embroidery-fonts",
   });
 }
-writeFileSync(join(FONT_DIR, "manifest.json"),
-  JSON.stringify({ version: 1, fonts: manifest }, null, 1));
+writeFileSync(MANIFEST_PATH,
+  JSON.stringify({ version: 1, personal: PERSONAL || undefined, fonts: manifest }, null, 1));
+if (PERSONAL) {
+  if (skippedDead.length)
+    console.warn("skipped " + skippedDead.length + " font(s) that stitch nothing yet (cross-stitch/fill — " +
+      "no lettering path for them): " + skippedDead.join(" "));
+  console.warn("\n*** PERSONAL BUILD — NOT FOR DISTRIBUTION ***");
+  console.warn("Includes ShareAlike / GPL / NonCommercial / license-pulled fonts.");
+  console.warn("Written to src/fonts/bin-personal/ + manifest-personal.json (both gitignored).");
+  console.warn("Run `node tools/build-embf.mjs` with no flag for the sellable library.\n");
+}
 const total = manifest.reduce((a, f) => a + f.bytes, 0);
 console.log("built", manifest.length, "fonts,", (total / 1048576).toFixed(2), "MB binary");
