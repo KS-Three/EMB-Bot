@@ -104,10 +104,17 @@ font there unless it is also in the shipping manifest. `EMB-Bot-standalone.html`
   `qc-font.mjs` now counts stitchability per LETTER GLYPH, not per file, so a
   font whose letters are runs-only no longer classifies as satin (that was
   ondulamarif_XL). The second half, found 2026-08-22: the check asks "does this
-  letter produce stitches", which a glyph can pass while rendering as a STUB —
-  four shipped fonts do. `qc-font.mjs` warns on letters under 0.45x their
-  case-median height, and `test/font-stunted.test.js` pins the known set. If a
-  font looks wrong, render it; do not trust the QC line.
+  letter produce stitches", which a glyph can pass while rendering as a STUB.
+  Four shipped fonts did, and the cause was `build-font` dropping SVG transforms
+  (next bullet). `qc-font.mjs` warns on letters under 0.45x their case-median
+  height and `test/font-stunted.test.js` guards it; the library is currently
+  clean. **If a font looks wrong, render it — do not trust the QC line.**
+- **SVG transforms are applied for BOTH layouts** (`pathsTf`, since 2026-08-22).
+  There used to be a second walk that ignored them, used for every
+  single-`ltr.svg` font. A glyph that places repeated geometry by transform —
+  `mimosa_large`'s "D" is one dot with 38 transforms — collapsed onto a point
+  and sewed 6,193 stitches into 0 mm of height. Do not reintroduce a
+  non-transform-aware fast path.
 - ~~Known perf item for Stage B: opening the font dropdown lazily fetches ALL
   fonts for thumbnails (~30 MB).~~ **FIXED in Stage B:** the font browser
   grid uses committed preview PNGs (`src/fonts/previews/`, regenerate with

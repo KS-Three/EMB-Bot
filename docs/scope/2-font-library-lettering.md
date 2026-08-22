@@ -87,45 +87,53 @@ The 13 pulled ShareAlike fonts remain pulled. The lawyer consult
 (`docs/lawyer-brief-cc-by-sa-2026-08-04.md`) is optional and only gates
 restoring them.
 
-## Known defects
+## Fixed — the transform bug (2026-08-22)
 
-**Stunted glyphs in four shipped fonts** — `mimosa_large` (D 0.11x, E 0.22x),
-`mimosa_medium` (D 0.22x, E 0.44x), `apesplit` (A 0.23x), `initials_medium`
-(A 0.28x), as a ratio of their case median height. All four pass QC because
-they DO stitch: the check asks "does this letter produce stitches", not "does
-it produce the letter".
+`build-font.mjs` had two path walks: a transform-aware one, and a simpler one
+that read each path's `d` and ignored transforms entirely. The simple one ran
+for every font in the standard single-`ltr.svg` layout — most of the library.
 
-**Two of them are severe, not cosmetic.** Measured at a 40 mm target:
+Harmless for a glyph whose coordinates are baked into its `d`; destructive for
+one that places repeated geometry BY transform. `mimosa_large` is a dot-matrix
+face that does both: its "A" carries 38 distinct `d` values and no transforms
+and imported perfectly, while its "D" carries ONE `d` — a single dot — repeated
+38 times with 38 different transforms. Those were dropped, so all 38 dots
+stacked on one point:
 
 | | stitches | rendered size |
 |---|---|---|
-| `mimosa_large` "D" | **6,193** | 40.0 × **0.0 mm** |
-| `mimosa_medium` "D" | **6,117** | 40.0 × **0.0 mm** |
-| `mimosa_large` "A" (healthy) | 996 | 40.0 × 60.1 mm |
+| `mimosa_large` "D" before | **6,193** | 40.0 × **0.0 mm** |
+| `mimosa_large` "D" after | 1,000 | 40.0 × 60.0 mm |
+| `mimosa_large` "A" (never broken) | 996 | 40.0 × 60.1 mm |
 
-A glyph collapsed to zero height with six times a healthy glyph's stitch count
-is a needle hammering one line thousands of times — a machine hazard, not an
-ugly letter. `mimosa_large` "D" renders as a filled circle, not a D. The other
-three (`mimosa_large` E, `apesplit` A, `initials_medium` A) simply sew far
-smaller than their neighbours in a word.
-*(confirmed 2026-08-22 — render measurement; `test/font-stunted.test.js`)*
+A glyph collapsed to zero height carrying six times a healthy glyph's stitch
+count is a needle hammering one line thousands of times — a machine hazard, and
+it shipped. Kent's call was to fix rather than pull.
 
-**Narrowed, not root-caused.** Ruled out: upstream under-tagging — the source
-tagging ratio is uniform across healthy and broken glyphs (`mimosa_large` A
-76 paths/38 tagged, D 76/38), unlike Terminus where it is the whole story. Also
-ruled out: the transform math, which verifies correct in isolation for
-rotate-about-a-point and for parent/child composition. The broken glyphs do
-correlate with a nested `<g>` carrying a `rotate()`, and the imported glyph
-retains its full column and rail-point count (D 38 cols / 1292 pts, identical
-to A) — the geometry is all present and merely placed wrong. Suspicion
-therefore sits on rail pairing in `toColumn` for these dot-matrix and monogram
-faces. A latent second bug was noticed in `pathsTf` while looking: its stack
-pop fires on ANY closing tag, so a non-self-closed `</path>` would corrupt the
-matrix stack. Not the cause here (these files self-close every path), but
-worth fixing when this is picked up.
+Four fonts were affected — `mimosa_large`, `mimosa_medium`, `apesplit`,
+`initials_medium` — and one fix cleared all four. **The library now has zero
+letters under 0.45x their case median, and QC reports 0 failures and 0
+stitchability/geometry warnings across all 80 fonts.**
+*(confirmed 2026-08-22 — `test/font-transforms.test.js`, full-library QC sweep)*
 
-Whether to fix or pull them is Kent's call; the test records them as named
-debt so the set cannot grow silently.
+Dead ends worth not re-walking: it was NOT upstream under-tagging (the source
+tagging ratio is uniform across healthy and broken glyphs — `mimosa_large` A
+76 paths/38 tagged, D 76/38), and NOT the transform math, which verifies
+correct in isolation. The tell was that broken glyphs kept their full column
+and rail-point count while landing on one spot.
+
+**Library-wide impact of the fix:** 25 of 80 byte-identical; of the 55 that
+changed, the great majority moved 0.00% in stitch count. Four real movers, all
+verified by rendering: `apesplit` −43.91%, `initials_medium` −31.75%,
+`mimosa_medium` −19.59%, `pixel10` +1.72%. The large drops are geometry that
+was being stitched twice and now is not, so DOWN is correct here — `apesplit`
+and `initials_medium` now set "ABCDE" as five uniform letters where before the
+A was a tiny mark beside four oversized overlapping ones.
+*(measured 2026-08-22 — full rebuild against a pre-fix baseline)*
+
+A latent second bug was noticed in `pathsTf` while looking, and is NOT fixed:
+its stack pop fires on ANY closing tag, so a non-self-closed `</path>` would
+corrupt the matrix stack. Dormant — every upstream file self-closes its paths.
 
 ## Deferred / not done
 

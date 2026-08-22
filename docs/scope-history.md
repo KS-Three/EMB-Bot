@@ -25,6 +25,53 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-08-22 (later) — **the stunted-glyph defect root-caused:
+build-font was dropping SVG transforms on most of the library, and one fix
+cleared all four affected fonts.**
+
+Kent's three calls this round: fix the transform bug rather than pull the fonts,
+leave the three cosmetic cases to the same fix, and OMIT Terminus.
+
+The bug: `build-font.mjs` had two path walks, and the transform-IGNORING one ran
+for every font in the standard single-`ltr.svg` layout — most of the library.
+Harmless for a glyph with baked coordinates; destructive for one placing repeated
+geometry BY transform. `mimosa_large` "D" is a single dot repeated 38 times with
+38 different transforms, so all 38 stacked on one point: 6,193 stitches into
+40.0 x 0.0 mm, against a healthy "A" at 996 in 40.0 x 60.1 mm. After the fix "D"
+is 1,000 stitches at 40.0 x 60.0.
+
+Two dead ends were ruled out first and are worth not re-walking: it was NOT
+upstream under-tagging — the source tagging ratio is uniform across healthy and
+broken glyphs (`mimosa_large` A 76 paths/38 tagged, D 76/38), which is what
+distinguishes this from Terminus, where under-tagging IS the whole story — and
+NOT the transform math, which verifies correct in isolation for
+rotate-about-a-point and for parent/child composition. The tell was that broken
+glyphs retained their full column and rail-point count while landing on one spot.
+
+Library rebuild after the fix: 25 of 80 byte-identical; of the 55 changed, the
+great majority moved 0.00% in stitch count. Four real movers, each verified by
+rendering rather than by the delta: `apesplit` -43.91%, `initials_medium`
+-31.75%, `mimosa_medium` -19.59%, `pixel10` +1.72%. The large drops are geometry
+that was being stitched twice and now is not, so DOWN is the correct direction —
+`apesplit` and `initials_medium` now set "ABCDE" as five uniform letters where
+before the A was a tiny mark beside four oversized overlapping ones.
+`SATIN_BASELINE` re-pinned a second time (venezia 995->996, cats 1249->1238,
+apesplit 4404->2470) with the reason recorded inline.
+
+Result: **zero** letters under 0.45x their case median across all 80 fonts, and
+a full-library QC sweep reporting 0 failures and 0 stitchability/geometry
+warnings. Engine 390 pass / 0 fail; Studio 776 pass.
+
+One latent bug found and deliberately NOT fixed: `pathsTf`'s stack pop fires on
+any closing tag, so a non-self-closed `</path>` would corrupt the matrix stack.
+Every upstream file self-closes its paths, so it is dormant.
+
+Terminus closed by Kent's ruling. Re-examination found four broken letters, not
+the one QC reported — `q` stitches nothing while `B`, `M` and `t` pass QC and
+render as stubs, all from paths upstream never tagged `satin_column`.
+
+---
+
 **Last updated:** 2026-08-22 — **the font library went 55 -> 80, and five
 defects were found by LOOKING at output that every number called healthy.**
 

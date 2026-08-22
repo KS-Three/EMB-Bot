@@ -8,15 +8,20 @@
 // so only part of each letter became a satin column.
 //
 // Applying the same check to the SHIPPED library found the defect already in
-// it, in four fonts. Two were confirmed by rendering rather than by the metric:
-// mimosa_large's "D" sews as a bare dash, and apesplit's / initials_medium's
-// "A" as a tiny mark floating off the baseline.
+// it, in four fonts: mimosa_large (D, E), mimosa_medium (D, E), apesplit (A)
+// and initials_medium (A). mimosa_large's "D" sewed 6,193 stitches into
+// 40.0 x 0.0 mm — a needle hammering one line.
 //
-// Those four are recorded here rather than quietly fixed or pulled — which
-// fonts ship is Kent's call. The test's job is to stop the set GROWING: a new
-// import with a stunted letter fails, while the existing debt stays listed and
-// visible. Removing a name from KNOWN_STUNTED (by fixing or pulling the font)
-// must also pass, so the list cannot rot into a rubber stamp.
+// ALL FOUR ARE FIXED, by one root cause (2026-08-22, Kent's call to fix rather
+// than pull): build-font applied SVG transforms only for the ltr/-directory
+// layout, so every single-ltr.svg font silently dropped them. A glyph that
+// places repeated geometry BY transform — mimosa_large's "D" is one dot with 38
+// different transforms — collapsed onto a single point. See tools/build-font.mjs.
+//
+// KNOWN_STUNTED is therefore EMPTY, and that is the point: the list is a debt
+// register, not a suppression list. The test still fails in both directions, so
+// a regression that reintroduces a stunted glyph fails here, and an entry added
+// to the register that is not actually stunted fails too.
 const assert = require("node:assert");
 const { test } = require("node:test");
 const fs = require("node:fs");
@@ -26,13 +31,11 @@ const fb = require("../src/fontbin.js");
 const BIN = path.join(__dirname, "..", "src", "fonts", "bin");
 const RATIO = 0.45; // mirrors tools/qc-font.mjs
 
-// Pre-existing debt, measured 2026-08-22. Values are the ratios found then.
-const KNOWN_STUNTED = {
-  mimosa_large: ["D", "E"],
-  mimosa_medium: ["D", "E"],
-  apesplit: ["A"],
-  initials_medium: ["A"],
-};
+// Empty by design — the 2026-08-22 debt was fixed at its root, not suppressed.
+// Add an entry ONLY with a rendered image showing why the glyph is acceptable
+// as-is; a ratio alone is how three of the original four got mistaken for
+// cosmetic when one was a machine hazard.
+const KNOWN_STUNTED = {};
 
 function stuntedLetters(font) {
   const height = (g) => {
@@ -59,7 +62,7 @@ function stuntedLetters(font) {
   return out;
 }
 
-test("no font gains a stunted letter beyond the recorded 2026-08-22 debt", () => {
+test("no shipped font has a letter far shorter than its case median", () => {
   if (!fs.existsSync(BIN)) return;
   for (const f of fs.readdirSync(BIN)) {
     if (!f.endsWith(".embf")) continue;

@@ -70,15 +70,27 @@ test("bean repeats backtrack each stitch (repeats:1 => triple stitch)", () => {
 // Counts pinned from the committed .embf files. A change here means satin
 // routing moved — investigate rather than re-baseline.
 //
-// Re-baselined ONCE, 2026-08-22, for a reason outside satin routing: the SVG
-// parser was truncating every path at its first scientific-notation number
-// (see test/parsepath.test.js), so 63 of the shipped fonts were missing path
-// segments. Kent's call was to rebuild the library with the corrected geometry
-// rather than freeze the truncation. alchemy 699 -> 751 (+7.44%) is the largest
-// move in the library; 20 of 77 fonts came back byte-identical and the median
-// change is 0.00%. Only alchemy moved among these five, which is why the other
-// four numbers are unchanged from the original pin.
-const SATIN_BASELINE = { montecarlo: 1157, alchemy: 751, venezia: 995, cats: 1249, apesplit: 4404 };
+// Re-baselined TWICE, both times for a reason outside satin routing, both times
+// on Kent's explicit call to fix the input rather than freeze the wrong output.
+//
+// 2026-08-22 (a): the SVG parser truncated every path at its first
+// scientific-notation number (test/parsepath.test.js), so 63 shipped fonts were
+// missing path segments. alchemy 699 -> 751 (+7.44%) was the largest move.
+//
+// 2026-08-22 (b): build-font applied SVG transforms ONLY for the ltr/-directory
+// layout, so every single-ltr.svg font — most of the library — dropped them
+// outright. Harmless for a glyph with baked coordinates, catastrophic for one
+// that places repeated geometry BY transform: mimosa_large's "D" is a single
+// dot repeated 38 times with 38 transforms, and it collapsed onto one point,
+// sewing 6,193 stitches into 40.0 x 0.0 mm. Fixing it moved three of these five.
+//
+// The drops are geometry that was being stitched TWICE (or stacked) and now is
+// not, so DOWN is the correct direction here. Each was verified by rendering,
+// not by the delta: apesplit and initials_medium now set "ABCDE" as five
+// uniform letters, where before the A was a tiny mark beside four oversized
+// overlapping ones. Library-wide: 25 of 80 byte-identical, and of the 55 that
+// changed the great majority moved 0.00% in stitch count.
+const SATIN_BASELINE = { montecarlo: 1157, alchemy: 751, venezia: 996, cats: 1238, apesplit: 2470 };
 
 for (const [key, expected] of Object.entries(SATIN_BASELINE)) {
   test(`satin font ${key} stitches exactly as before run support`, () => {

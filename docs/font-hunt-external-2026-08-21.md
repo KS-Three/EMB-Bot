@@ -102,7 +102,12 @@ Two further defects found in the same pass:
   width is exactly the physical constant ROADMAP gate 1 reserves for a sew-out.
 
 **Recommendation: omit.** Four glyph repairs, a rename, a space-advance fix and
-a gate-1 constant, on a font its own project declined. Kent's call, not mine.
+a gate-1 constant, on a font its own project declined.
+
+> **RULED 2026-08-22 — Kent: OMIT. Terminus is closed; do not re-propose it.**
+> Recorded in MASTER_SCOPE under measured negatives. If it is ever reopened, the
+> blockers above are the checklist, and the sizeMm question still needs a
+> sew-out rather than a pick.
 
 ## 3. `m_plus_stitch` — confirmed real, not viable
 
