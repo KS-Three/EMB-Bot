@@ -271,7 +271,16 @@ pre-fix gate)*
 
 ## What now guards the library (2026-08-22)
 
-Five checks, each verified by breaking the thing it guards and watching it go
+**Why this matters to the area's score.** MASTER_SCOPE has rated this area
+High (tech) for a while, and the rating did not move on 2026-08-22 — but what
+it rests on did. It used to rest on a green suite that could not see a machine
+hazard: `mimosa_large` shipped a glyph sewing 6,193 stitches into 40.0 x 0.0 mm
+with every check in the repo calling the font healthy. It now rests on guards
+whose COVERAGE is itself asserted. A score with the same value and a sounder
+basis is worth saying out loud, because "High, and here is what would catch it
+being wrong" is a different claim from "High".
+
+Six checks, each verified by breaking the thing it guards and watching it go
 red. Listed because the gap between them is where the next defect will live.
 
 | guard | what it would catch | population |

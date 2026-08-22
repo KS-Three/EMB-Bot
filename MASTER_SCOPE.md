@@ -417,7 +417,7 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
 | Area | Status | Confidence |
 |---|---|---|
 | 1. Auto-digitizing quality (image → stitches) | In progress | **Low** beyond flat spot-color art |
-| 2. Font library & lettering | Implemented — 85 fonts, satin + bean/running + cross-stitch, LTR + Hebrew RTL | High (tech) / High (compliance). Zero stunted glyphs library-wide since the 2026-08-22 transform fix |
+| 2. Font library & lettering | Implemented — 85 fonts, satin + bean/running + cross-stitch, LTR + Hebrew RTL | High (tech) / High (compliance). Zero stunted glyphs since the 2026-08-22 transform fix; the guards now assert their own coverage |
 | 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — unchanged, no sew-out has happened). The photo-tier gap PR #123 closed stays fixed; the canvas gained a shape editor and auto-restitch 2026-08-13 |
 | 4. Export formats | Implemented | Varies by format — see below |
 | 5. Stitch-out review & manual editing tools | Implemented — Kent's direct-manipulation request is **complete** (2026-08-13) | High. Every surviving requirement of the 2026-08-12 request ships: outlines+nodes on the canvas, the pulse cue, select-then-edit, node drag, line drag, add node, delete. Requirement 5 (whole-shape drag) was withdrawn by Kent. Geometry is unit-tested and every interaction was driven in a real browser against a live service |
@@ -690,12 +690,12 @@ gate-clear alternative measures ≤9%. *(measured 2026-08-22 — area 1 detail)*
 **85 fonts** in the sellable build, the EMBF binary codec, browser UI, and the
 add-font QC/tier pipeline. The lettering path stitches three types — satin,
 bean/running, cross-stitch fill — where before 2026-08-21 it was satin-only. A
-second `--personal` build (125 fonts) carries what cannot be sold. Licences:
-`ALLOWED_LICENSES = {OFL-1.1, CC-BY-4.0, CC0}`, ShareAlike permanently closed,
-texts shipped three ways, guard tests pinning it.
-*(confirmed 2026-08-22 — `src/fonts/manifest.json`, engine suite)*
-**Next:** **upstream is exhausted and re-censused; no external supply** —
-measured, not assumed, and Terminus is closed. Growth means commissioning.
+second `--personal` build (125 fonts) carries what cannot be sold; for licences
+"Font license compliance" above is the single source. Same tech score as before
+on a different basis (see the area doc); known debt is the 26 glyphs that sew
+nothing, in "Waiting on Kent". *(confirmed 2026-08-22 — manifest, engine suite)*
+**Next:** **upstream is exhausted; no external supply** — measured, not
+assumed (area doc, "Supply"). Terminus closed. Growth means commissioning.
 
 ### 3. Studio app / guided wizard — [detail](docs/scope/3-studio-app-wizard.md)
 
