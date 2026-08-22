@@ -312,6 +312,37 @@ and was still measuring nothing in 21 of 85 fonts. Ask what fraction of the
 population a guard actually measures, and assert that — full account in
 `.claude/memory/font-pipeline-silent-failures.md`.
 
+## Looked at, not just measured (2026-08-22)
+
+Everything else on this branch was verified numerically. These four were
+verified by rendering them and looking, because the numbers cannot answer the
+question being asked.
+
+- **Hebrew reads correctly, in the right direction.** `hebrew_font_large`'s
+  preview sets א ב ג ד ה — the first five letters in LOGICAL order — and the
+  aleph lands **rightmost**, which is what `dir: "rtl"` is for. The letterforms
+  are square-script Hebrew with satin fill across each stroke. A coordinate test
+  can show that index 0 has the largest x; it cannot tell a reader who does not
+  read Hebrew that the result is Hebrew.
+- **`mimosa_large`'s "D" is a D.** Rendered "ABCDE" at 80 mm: five uniform,
+  legible letters, the D the same weight and height as its neighbours. That is
+  the glyph that shipped sewing 6,193 stitches into 40.0 × 0.0 mm — 38 dots
+  stacked on a point by the dropped transforms.
+- **`noble`** — cross-stitch letters whose X's sit on one shared lattice across
+  the whole word, which is what measuring `crossGrid` font-wide (rather than
+  per glyph) exists to produce.
+- **`jaquarda_bastarda_9`** — ornate blackletter in single-cell cross chains,
+  matching upstream's own preview. Worth re-stating because this font *looks*
+  broken when inspected numerically (13 rings, 34 sparse cells for an H) and is
+  simply drawn that way.
+
+**Layout timing is unchanged** by the `sewsSomething` check, with the noise
+floor established rather than assumed: repeated runs of the same build vary
+`medium_font` between 3.63 and 4.42 ms/layout, and the before/after difference
+sits inside that. `mimosa_large` is the expensive one at ~25 ms, and that is
+satin routing, not the new check. *(measured 2026-08-22 — 40 layouts per
+sample, pre-change tree at `e56ff13^`)*
+
 ## 26 glyphs that sew nothing — needs Kent, and needs his machine (2026-08-22)
 
 Six shipped fonts contain single-character glyphs that are PRESENT, take their
