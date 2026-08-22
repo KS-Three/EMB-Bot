@@ -335,6 +335,18 @@ question being asked.
   matching upstream's own preview. Worth re-stating because this font *looks*
   broken when inspected numerically (13 rings, 34 sparse cells for an H) and is
   simply drawn that way.
+- **`cyrillic`'s detached accent is really gone** — this was the branch's
+  weakest claim, an inference ("that defect WAS the transform bug") standing in
+  for a measurement. Both now agree: `ú` measures **101.3 units** against the
+  bare `u`'s 71.5, where the original complaint was 725 with the accent
+  marooned ~650 units from the letter body. Rendering "Дúжé" shows both acutes
+  sitting directly on their letters and correct Д and ж forms. The font is
+  shipping on evidence now, not on a plausible story.
+- **`apesplit`'s "ABCDE" is five uniform letters**, which is what its −43.91%
+  stitch drop means. Before the transform fix the A was a tiny mark beside four
+  oversized overlapping ones; the stitches that disappeared were geometry being
+  sewn twice, not detail being lost. A large negative delta on a rebuild is
+  worth looking at rather than accepting — this one is the fix working.
 
 **Layout timing is unchanged** by the `sewsSomething` check, with the noise
 floor established rather than assumed: repeated runs of the same build vary
