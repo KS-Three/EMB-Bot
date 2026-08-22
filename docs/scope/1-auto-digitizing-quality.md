@@ -2493,3 +2493,45 @@ or corpus-level trim reduction, and nothing here has been through the corpus
 scorecard. A real implementation still owes: the both-orderings guard, a corpus
 scorecard run, and the golden movement (pre-authorized on Linux CI under
 same-failure-set discipline).
+
+### RETRACTION — stage 5 is NOT producing invalid geometry (2026-08-22)
+
+**A claim this session raised repeatedly, and called the highest-value open
+thread, is false.** After the `_row_spans` crash fix landed (PR #202), the
+standing worry was that the guard only repaired at the consumer while stage 5's
+pull compensation kept emitting self-intersecting polygons into every other
+consumer. Measured, that is not what happens.
+
+| checked | result |
+|---|---|
+| `PlannedRegion.polygon` values from stage 5 | **0 invalid** |
+| `_largest_polygon` inputs / outputs | **0 invalid** |
+| the source polygon that later goes invalid | **VALID** — area 1255.28 mm², 2 holes |
+
+**The invalidity is created transiently by floating-point ROTATION**, inside
+`best_fill_angle_deg`'s angle sweep (`stage6_fill.py:259`), not by any producer.
+That function rotates the shape through 17 candidate angles to count columns.
+On this shape, **11 of those 17 rotations turn a valid polygon into a
+self-intersecting one** — e.g. angle 11.25° gives
+`Self-intersection[-38.330, -1.663]`. `_row_spans` then hands it to
+`poly.intersection(line)` and GEOS raises `TopologyException`.
+
+Two consequences, both important:
+
+1. **The consumer-side guard is the CORRECT fix, not a workaround.** No producer
+   change could prevent this: the polygon is valid when it leaves stage 5, and
+   rotation is arithmetic. Repairing where the invalid geometry is first *used*
+   is the only place the repair can live. `stage6_border` (:249) and
+   `stage6_contour` (:109) were right all along; fill was the odd one out.
+2. **The angle search is NOT silently degraded.** The obvious follow-on worry —
+   that column counts taken on invalid geometry pick bad fill angles — was
+   measured and refuted: repairing before the sweep changes the chosen angle on
+   **0 of 8 shapes**. The crash was the only consequence.
+
+**Method note, since this took four wrong turns.** The first three hypotheses —
+stage 5's `.difference()` chains, `unary_union`, and `_fill_paths`' own rotation
+— were each checked and each produced zero invalid polygons. The fourth found it
+only by instrumenting `_row_spans` itself with a stack trace, which named
+`best_fill_angle_deg:259` rather than `_fill_paths:787`. **Testing the call site
+you assume is the one is how three of those turns were wasted**; instrument the
+failing function and let it tell you who called it.
