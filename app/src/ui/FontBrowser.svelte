@@ -47,6 +47,14 @@
   // grid must never trigger binary fetches (that was Stage A's 30MB
   // dropdown problem); static preview PNGs carry undecoded fonts.
   let liveThumbs = {};
+  // Tiles whose PNG failed to load, so the grid shows a neutral placeholder
+  // instead of the browser's broken-image glyph. Not hypothetical: a font whose
+  // letters do not stitch renders an EMPTY preview, and build-previews skips
+  // writing a blank tile rather than shipping one (it says so on the console).
+  // infinipicto and paquerette are both in that state in the personal build
+  // (2026-08-22) — paquerette because only 72 of its 1,641 runs carry an
+  // authored stitch length, so 31 of its 52 letters sew nothing.
+  let tileFailed = {};
   // Memoized per (key, text): EMB.SATIN_FONTS accumulates decoded fonts over
   // a session, and re-rendering every decoded font's canvas synchronously on
   // each keystroke/filter change is a real jank risk once several are loaded
@@ -197,11 +205,16 @@
               on:click={() => pick(f.key)}
             >
               <span class="fb-tile-img">
-                <img
-                  src={liveThumbs[f.key] || "/fonts/previews/" + f.key + ".png"}
-                  alt=""
-                  loading="lazy"
-                />
+                {#if tileFailed[f.key] && !liveThumbs[f.key]}
+                  <span class="fb-tile-noimg" aria-hidden="true">Aa</span>
+                {:else}
+                  <img
+                    src={liveThumbs[f.key] || "/fonts/previews/" + f.key + ".png"}
+                    alt=""
+                    loading="lazy"
+                    on:error={() => (tileFailed = { ...tileFailed, [f.key]: true })}
+                  />
+                {/if}
               </span>
               <span class="fb-tile-name">{f.name}</span>
               {#if bestAt(f)}
@@ -341,6 +354,7 @@
     overflow: hidden;
   }
   .fb-tile-img img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+  .fb-tile-noimg { font-size: var(--fs-sm); color: var(--muted); letter-spacing: 0.05em; }
 
   .fb-tile-name { font-size: var(--fs-sm); font-weight: 600; color: var(--ink); }
   .fb-tile-band { font-size: var(--fs-xs); color: var(--muted); }
