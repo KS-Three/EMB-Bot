@@ -67,9 +67,18 @@ test("bean repeats backtrack each stitch (repeats:1 => triple stitch)", () => {
 });
 
 // --- invariant 2: shipped satin fonts are not disturbed -----------------------
-// Counts captured from the committed .embf files BEFORE run support existed.
-// A change here means satin routing moved — investigate rather than re-baseline.
-const SATIN_BASELINE = { montecarlo: 1157, alchemy: 699, venezia: 995, cats: 1249, apesplit: 4404 };
+// Counts pinned from the committed .embf files. A change here means satin
+// routing moved — investigate rather than re-baseline.
+//
+// Re-baselined ONCE, 2026-08-22, for a reason outside satin routing: the SVG
+// parser was truncating every path at its first scientific-notation number
+// (see test/parsepath.test.js), so 63 of the shipped fonts were missing path
+// segments. Kent's call was to rebuild the library with the corrected geometry
+// rather than freeze the truncation. alchemy 699 -> 751 (+7.44%) is the largest
+// move in the library; 20 of 77 fonts came back byte-identical and the median
+// change is 0.00%. Only alchemy moved among these five, which is why the other
+// four numbers are unchanged from the original pin.
+const SATIN_BASELINE = { montecarlo: 1157, alchemy: 751, venezia: 995, cats: 1249, apesplit: 4404 };
 
 for (const [key, expected] of Object.entries(SATIN_BASELINE)) {
   test(`satin font ${key} stitches exactly as before run support`, () => {
