@@ -45,6 +45,7 @@ const GROUPS = JSON.parse(readFileSync(join(root, "tools", "font-categories.json
 // (Audit item 4: the old first-line extraction truncated credits mid-sentence
 // and dropped names that sat past a bare-CR line break.)
 import { licenseId, deriveLicenseFields } from "./font-license.mjs";
+import { qcFont } from "./qc-font.mjs";
 
 // docs/font-license-audit-2026-07-31.md, action checklist items 1-3: these 4
 // fonts are PULLED from the shipping library regardless of grandfathered
@@ -188,7 +189,7 @@ function sewsAnything(font) {
   const latin = [...LETTERS].filter((c) => gs[c]);
   const candidates = latin.length
     ? latin
-    : Object.keys(gs).filter((k) => [...k].length === 1 && k !== " " && !/[0-9]/.test(k));
+    : Object.keys(gs).filter((k) => [...k].length === 1 && /^\p{L}$/u.test(k));
   for (const c of candidates) {
     const g = gs[c];
     if (!g) continue;
@@ -253,6 +254,28 @@ for (const s of sources.sort((a, b) => a.key.localeCompare(b.key))) {
     const stale = join(BIN_DIR, s.key + ".embf");
     if (existsSync(stale)) unlinkSync(stale);
     continue;
+  }
+
+  // The TIER GATE, actually enforced (2026-08-22). qc-font.mjs calls itself
+  // "the tier gate, in the repo, with tests" — but nothing in this builder ever
+  // ran it. The only enforcement was test/embf-guard.test.js, which reads
+  // src/fonts/<key>.json, i.e. the 17 STATIC sources. The other 68 fonts arrive
+  // through scratch_ink/_out and were QC'd by nothing at all on the way in.
+  //
+  // A hard fail EXCLUDES the font from the sellable build, the same treatment
+  // as a PULLED font or a licence outside policy. --personal warns instead:
+  // that build is "every font on hand" by definition, and blocking there would
+  // change what it means.
+  const qc = qcFont(font);
+  if (!qc.pass) {
+    if (PERSONAL) {
+      console.warn("QC (personal, kept):", s.key, "—", qc.findings.join("; "));
+    } else {
+      console.warn("EXCLUDED (QC):", s.key, "—", qc.findings.join("; "));
+      const stale = join(BIN_DIR, s.key + ".embf");
+      if (existsSync(stale)) unlinkSync(stale);
+      continue;
+    }
   }
 
   const bytes = fb.encodeFontBin(font, 4);

@@ -27,10 +27,29 @@ export function qcFont(font) {
   if (!(font.sizeMm > 0)) fail("missing/invalid sizeMm");
   if (!(font.unitsPerEm > 0)) fail("missing/invalid unitsPerEm");
 
+  // Coverage, script-aware (2026-08-22). Every check below used to be scoped to
+  // the Latin alphabet, which meant a font with no Latin at all HARD-FAILED with
+  // "no uppercase letter glyphs" — hebrew_font_large did, and shipped anyway
+  // only because build-embf never runs qcFont on scratch_ink/_out sources. So
+  // the tier gate both rejected a perfectly good font and was not actually
+  // gating the fonts that reach the library that way.
+  //
+  // A font's alphabet is whatever single-character letter glyphs it HAS. Latin
+  // is still preferred when present, so nothing changes for the 83 Latin fonts;
+  // the fallback only engages when there is no Latin to look at.
   const present = (chars) => [...chars].filter((c) => font.glyphs[c]);
   const upper = present(LETTERS), lower = present(LOWER), digits = present(DIGITS);
-  if (upper.length === 0) fail("no uppercase letter glyphs at all");
-  if (lower.length === 0) warn("coverage: no lowercase glyphs (caps-only font)");
+  // \p{L} — actual LETTERS, not merely "not ASCII and not a digit". Hebrew
+  // ships ׳ (geresh) and ״ (gershayim), which are punctuation and legitimately
+  // short; counting them as letters made them "stunted" against a median they
+  // were never part of, exactly as an apostrophe would be in a Latin font.
+  const nonLatin = (upper.length || lower.length) ? [] :
+    Object.keys(font.glyphs).filter((k) => [...k].length === 1 &&
+      /^\p{L}$/u.test(k) && !/^[\x00-\x7f]$/.test(k));
+  if (!upper.length && !nonLatin.length) fail("no letter glyphs at all");
+  else if (!upper.length && nonLatin.length)
+    warn(`coverage: no Latin alphabet (${nonLatin.length} non-Latin letter glyphs)`);
+  if (upper.length && lower.length === 0) warn("coverage: no lowercase glyphs (caps-only font)");
   if (digits.length === 0) warn("coverage: no digit glyphs");
 
   // Per-LETTER-GLYPH stitchability. The real question is not "does this letter
@@ -44,7 +63,7 @@ export function qcFont(font) {
   // paquerette is exactly this trap — 1641 runs, but only 72 carry a length, so
   // 31 of its 52 letters stitch as NOTHING while a naive "has runs" check calls
   // it healthy. Count only what will actually sew.
-  const letterGlyphs = [...upper, ...lower];
+  const letterGlyphs = (upper.length || lower.length) ? [...upper, ...lower] : nonLatin;
   const stitchable = (c) => {
     const g = font.glyphs[c];
     if ((g.cols || []).length) return true;
@@ -138,7 +157,7 @@ export function qcFont(font) {
   // those is Kent's call, not this tool's; test/font-stunted.test.js pins the
   // known set so a NEW font with the defect is caught while these stay visible
   // as debt.
-  for (const set of [LETTERS, LOWER]) {
+  for (const set of ((upper.length || lower.length) ? [LETTERS, LOWER] : [nonLatin.join("")])) {
     const vs = [];
     for (const c of set) {
       const g = font.glyphs[c];
