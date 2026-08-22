@@ -9,6 +9,11 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (root) {
   const _node = typeof module !== "undefined" && module.exports;
   const satinplay = _node ? require("./satinplay.js") : root.EMB;
+  // Cross-stitch fill. In the browser this arrives via root.EMB, which means
+  // crossfill.js must be in ALL THREE engine-file lists (copy-engine.mjs,
+  // emb.js, index.html) — miss the third and cross-stitch fonts break only in
+  // the live Studio while every test stays green (COOKBOOK's standing trap).
+  const crossfill = _node ? require("./crossfill.js") : root.EMB;
   const columnGeom = satinplay.columnGeom;
   const satinFromGeom = satinplay.satinFromGeom;
   const centerFromGeom = satinplay.centerFromGeom;
@@ -665,7 +670,7 @@
         // runs are the glyph's own strokes, not travel between columns.
         const stitchableRuns = (g.runs || []).filter((r) => r && r.pts && r.lenMm > 0);
         const gCols = routeGlyph(cols, Object.assign({ pxPerMm, spacingMm, pullCompMm, slantDeg }, underlayOpts));
-        const gRuns = stitchableRuns.length
+        let gRuns = stitchableRuns.length
           ? gCols.concat(routeRuns(
               stitchableRuns.map((r) => ({
                 pts: r.pts.map((p) => ({ x: TX(p[0]), y: TY(p[1]) })),
@@ -674,6 +679,27 @@
               })),
               { pxPerMm, firstIsJump: gCols.length === 0 }))
           : gCols;
+
+        // Cross-stitch regions. The lattice was measured from the whole font at
+        // import (font.crossGrid, in glyph units) and is scaled here by the very
+        // same u2px the outlines are — so cells stay square, stay aligned across
+        // letters, and scale with the design instead of pinning a millimetre
+        // size the fabric was never asked about.
+        const crossRuns = (g.runs || []).filter((r) => r && r.fill === "cross" && r.pts);
+        if (font.crossGrid && crossRuns.length && crossfill && crossfill.crossFill) {
+          const rings = crossRuns.map((r) => r.pts.map((p) => ({ x: TX(p[0]), y: TY(p[1]) })));
+          const lat = {
+            step: font.crossGrid.step * u2px,
+            // offsets share the glyph's own x-shift, so the grid travels with it
+            offX: (font.crossGrid.offX + ox) * u2px,
+            offY: font.crossGrid.offY * u2px,
+          };
+          const cf = crossfill.crossFill(rings, lat, {
+            method: crossRuns[0].method || font.crossGrid.method,
+            firstIsJump: gRuns.length === 0,
+          });
+          if (cf.length) gRuns = gRuns.concat(cf);
+        }
 
         let place;
         if (circleRole === "middle") {

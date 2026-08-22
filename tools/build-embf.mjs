@@ -178,6 +178,7 @@ function sewsAnything(font) {
     const g = gs[c];
     if (!g) continue;
     if ((g.cols || []).length) return true;
+    if (font.crossGrid && (g.runs || []).some((r) => r && r.fill === "cross" && r.pts)) return true;
     if ((g.runs || []).some((r) => r && r.pts && r.lenMm > 0)) return true;
   }
   return false;

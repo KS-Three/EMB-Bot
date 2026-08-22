@@ -73,23 +73,33 @@
     return { step, offX: px.off, offY: py.off, fit: Math.min(px.frac, py.frac) };
   }
 
-  // Even-odd ray cast across EVERY ring at once. Counters (the hole in an "o")
-  // are separate closed rings, and counting crossings over all of them together
-  // makes an odd total mean "inside the ink" — so holes fall out for free with
-  // no need to know which ring encloses which.
+  // NONZERO winding, which is what SVG's default fill-rule actually is. A
+  // counter (the hole in an "o") is wound opposite to its outer ring and
+  // cancels; two overlapping ring wound the SAME way union, as they visibly do
+  // when the shape is rendered.
+  //
+  // This started as even-odd, which is subtly wrong and produced convincing
+  // wreckage: even-odd XORs overlap into a hole, so jacquard_12 — two rings per
+  // glyph — filled as scattered fragments while jersey_15, one ring per glyph,
+  // came out flawless. Both had ~100% lattice fit, so no metric caught it;
+  // rendering the cells as ASCII did.
+  //
+  // `crossings` counts +1 for an edge crossing the ray upward and -1 downward;
+  // any nonzero total is inside.
   function insideRings(rings, x, y) {
-    let inside = false;
+    let wind = 0;
     for (const ring of rings) {
       const n = ring.length;
       for (let i = 0, j = n - 1; i < n; j = i++) {
         const yi = ring[i].y, yj = ring[j].y;
-        if ((yi > y) !== (yj > y)) {
-          const t = (y - yi) / (yj - yi);
-          if (x < ring[i].x + t * (ring[j].x - ring[i].x)) inside = !inside;
-        }
+        if (yi === yj) continue;
+        if ((yi > y) === (yj > y)) continue;
+        const t = (y - yi) / (yj - yi);
+        if (x >= ring[i].x + t * (ring[j].x - ring[i].x)) continue;
+        wind += yj > yi ? 1 : -1;
       }
     }
-    return inside;
+    return wind !== 0;
   }
 
   // One cross, centred on a cell. `simple` is the two diagonals; `double` adds
@@ -153,14 +163,30 @@
     const h = (step / 2) * (o.inset == null ? 1 : o.inset);
     let first = o.firstIsJump !== false;
     let serp = false;
+    let prev = null;
+    // A carry longer than this is crossing a GAP in the ink, not stepping to the
+    // neighbouring cell, so lift the needle instead of dragging thread across
+    // the letter. Without it, serpentine order stitches straight through the
+    // counter of a "B" and the valley of an "M" — plainly visible as long
+    // diagonals in the Studio, and it would sew that way too. The threshold is
+    // geometric ("is the next cell adjacent?"), not a physical constant, so it
+    // stays clear of gate 1: diagonal neighbours are sqrt(2) cells apart, and
+    // anything beyond 1.5 is a real gap.
+    const GAP_CELLS = 1.5;
     for (const r of rows) {
       const xs = serp ? r.xs.slice().reverse() : r.xs;
       serp = !serp;
-      for (const cx of xs)
+      for (const cx of xs) {
+        const jumpHere = first || (prev !== null &&
+          Math.hypot(cx - prev.x, r.cy - prev.y) > step * GAP_CELLS);
+        let firstOfCell = true;
         for (const stroke of crossStrokes(cx, r.cy, h, method)) {
-          out.push({ pts: stroke, kind: "cross", jump: first });
-          first = false;
+          out.push({ pts: stroke, kind: "cross", jump: firstOfCell && jumpHere });
+          firstOfCell = false;
         }
+        first = false;
+        prev = { x: cx, y: r.cy };
+      }
     }
     return out;
   }

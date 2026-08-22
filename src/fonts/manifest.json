@@ -374,6 +374,30 @@
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
+   "key": "eloquent",
+   "name": "Eloquent",
+   "tier": "verified",
+   "group": "Serif",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 18,
+   "glyphCount": 149,
+   "bytes": 233283,
+   "attribution": "This font has been adapted for Ink/Stitch and is licensed under the SIL Open Font License, Version 1.1. Copyright (C) 2017-2021, Patrick BAUDIN (https://github.com/pbaudin/ACSF)",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
+   "key": "eloquent_small",
+   "name": "Eloquent Small",
+   "tier": "verified",
+   "group": "Small",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 18,
+   "glyphCount": 149,
+   "bytes": 233289,
+   "attribution": "This font has been adapted for Ink/Stitch and is licensed under the SIL Open Font License, Version 1.1. Copyright (C) 2017-2021, Patrick BAUDIN (https://github.com/pbaudin/ACSF)",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
    "key": "excalibur_KOR",
    "name": "Excalibur KOR",
    "tier": "verified",
@@ -410,6 +434,30 @@
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
+   "key": "heavenly",
+   "name": "Heavenly",
+   "tier": "verified",
+   "group": "Script",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 14,
+   "glyphCount": 148,
+   "bytes": 273243,
+   "attribution": "This font has been adapted for Ink/Stitch and is licensed under the SIL Open Font License, Version 1.1. Copyright (C) 2017-2021, Patrick BAUDIN (https://github.com/pbaudin/ACSF)",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
+   "key": "heavenly_small",
+   "name": "Heavenly Small",
+   "tier": "verified",
+   "group": "Small",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 14,
+   "glyphCount": 148,
+   "bytes": 273249,
+   "attribution": "This font has been adapted for Ink/Stitch and is licensed under the SIL Open Font License, Version 1.1. Copyright (C) 2017-2021, Patrick BAUDIN (https://github.com/pbaudin/ACSF)",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
    "key": "initials_medium",
    "name": "Initials Medium",
    "tier": "verified",
@@ -431,6 +479,30 @@
    "glyphCount": 48,
    "bytes": 449115,
    "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2014, gluk, with Reserved Font Name Sortefax.",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
+   "key": "jacquard_12",
+   "name": "Jacquard 12",
+   "tier": "verified",
+   "group": "Display",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 24,
+   "glyphCount": 154,
+   "bytes": 67766,
+   "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright 2023 The Soft Type Project Authors (https://github.com/scfried/soft-type-jacquard)",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
+   "key": "jersey_15",
+   "name": "Jersey 15",
+   "tier": "verified",
+   "group": "Sans",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 45,
+   "glyphCount": 162,
+   "bytes": 85370,
+   "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright 2023 The Soft Type Project Authors (https://github.com/scfried/soft-type-jersey)",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -623,6 +695,18 @@
    "glyphCount": 642,
    "bytes": 512937,
    "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 1997-2008, gluk, with Reserved Font Names sportrop",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
+   "key": "noble",
+   "name": "Noble",
+   "tier": "verified",
+   "group": "Display",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 20,
+   "glyphCount": 147,
+   "bytes": 216123,
+   "attribution": "This font has been adapted for Ink/Stitch and is licensed under the SIL Open Font License, Version 1.1. Copyright (C) 2017-2021, Patrick BAUDIN (https://github.com/pbaudin/ACSF)",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {

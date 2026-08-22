@@ -48,6 +48,10 @@ export function qcFont(font) {
   const stitchable = (c) => {
     const g = font.glyphs[c];
     if ((g.cols || []).length) return true;
+    // A cross-stitch region stitches when the font has a measured grid to fill
+    // it on; without one crossfill emits nothing, so the grid is part of the
+    // test rather than assumed.
+    if (font.crossGrid && (g.runs || []).some((r) => r && r.fill === "cross" && r.pts)) return true;
     return (g.runs || []).some((r) => r && r.pts && r.lenMm > 0);
   };
   const empty = letterGlyphs.filter((c) => !stitchable(c));
