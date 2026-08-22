@@ -97,13 +97,21 @@ def test_one_generation_serves_different_edits_without_cross_talk():
 
 
 def test_repeated_finishes_do_not_accumulate_warnings():
-    """finish_generation appends to warning lists (PHOTO_AUTO_TIER, edit
-    warnings); a fork that shared list containers would grow the cached
-    generation's warnings on every hit."""
+    """finish_generation appends to a generation-owned warning list (the
+    PHOTO_AUTO_TIER append is the one such site); a fork that shared list
+    containers would grow the cached generation on every hit. Forcing
+    photo_subject is what makes that append actually fire — under the
+    fixture's natural `flat` class nothing appends and the test would be
+    vacuous — and the length assertion reads the CACHED original, because
+    `merge_warnings` collapses same-code entries and would hide the growth
+    from any comparison of the finished results alone."""
     art = ART.read_bytes()
-    gen = build_generation(art, PipelineConfig())
-    first = finish_generation(gen.fork(), PipelineConfig())
-    second = finish_generation(gen.fork(), PipelineConfig())
+    cfg = PipelineConfig(forced_class="photo_subject")
+    gen = build_generation(art, cfg)
+    before = len(gen.prep_warnings)
+    first = finish_generation(gen.fork(), cfg)
+    second = finish_generation(gen.fork(), cfg)
+    assert len(gen.prep_warnings) == before, "cached generation must never grow"
     assert [w["code"] for w in first.warnings] == [w["code"] for w in second.warnings]
 
 

@@ -223,8 +223,8 @@ overlay drew a large, obvious spike over unchanged stitching.
   `owl_kent.jpg` re-run **12.10s → 7.11s (1.7x)** — the table's own
   logo-big/photo-modest shape, at slightly less than its predicted ratios
   because `finish_generation` (edits + palette + fork) now rides the paid
-  tail. *(measured 2026-08-22 — perf script over TestClient, cold vs hit
-  vs cache-cleared cold-edit)*
+  tail. *(measured 2026-08-22 — `digitizer/tools/perf_stage_cache.py`,
+  cold vs hit vs cache-cleared cold-edit over TestClient)*
 - **OPEN: the restitch trigger only exists on the Content step.**
   `EmbroideryField` mounts on every step (`App.svelte`, outside the step
   conditional); `DigitizePanel`, which owns `runDigitize`, mounts only on

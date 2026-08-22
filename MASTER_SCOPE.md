@@ -426,21 +426,20 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
 
 ## Waiting on Kent
 
-The decision queue. Everything here is BLOCKED on a call only Kent can make, not
-on engineering effort. Detail stays in its own section rather than duplicated
-here, so this list can go stale about WHAT IS OPEN but never about the facts.
+The decision queue. Everything OPEN here is blocked on a call only Kent can
+make, not on engineering effort; a resolved entry keeps its number rather than
+being deleted, same as the defect list. Detail stays in its own section rather
+than duplicated here, so this list can go stale about WHAT IS OPEN but never
+about the facts.
 
-1. **RESOLVED 2026-08-22 — the stage 0-4 cache is funded and built.** Kept
-   numbered, not deleted (the 2026-08-14 ask and area 5 both cite it as
-   item 1). Kent funded it in the 2026-08-22 session workload answer;
-   `run_stages` now splits at the review-edit seam
-   (`pipeline.build_generation` / `finish_generation`) and the service
-   caches generations across edits (`digitizer_service.jobs.
-   GenerationCache`), so an edited re-digitize re-runs only the finish +
-   `plan_stitches`. The byte-identity property is pinned server-side and
-   core-side. Measured speedup on this container: **area 5**, under the
-   cache entry. *(confirmed 2026-08-22 — tests/test_generation_cache.py,
-   test_service.py's generation-cache round trips)*
+1. **RESOLVED 2026-08-22 — the stage 0-4 cache is funded and built.** Kent
+   funded it in the 2026-08-22 session workload answer; `run_stages` now
+   splits at the review-edit seam (`pipeline.build_generation` /
+   `finish_generation`) and the service caches generations across edits, so
+   an edited re-digitize re-runs only the finish + `plan_stitches`,
+   byte-identically — pinned core- and wire-side. Speedup numbers: **area
+   5**, under the cache entry. *(confirmed 2026-08-22 —
+   tests/test_generation_cache.py, test_service.py's cache round trips)*
 
 **Also open, same category — listed so this queue is not a half-truth. All of
 these predate 2026-08-14 except where noted:**

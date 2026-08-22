@@ -668,7 +668,11 @@ async def start_digitize(
                          if cfg.preflight else None,
             # Observability for the loop this cache exists for (and for the
             # tests that pin it): whether stages 0-4 were reused. Studio
-            # ignores it.
+            # ignores it. Describes the run that PRODUCED this job, not this
+            # response — a JobRegistry replay of an identical request returns
+            # the recorded value, so a full-job cache hit (strictly better
+            # than a generation hit) still reads whatever the original run
+            # was. Not a hit-rate counter.
             "generation_cache": "hit" if gen_hit else "miss",
         }
 
