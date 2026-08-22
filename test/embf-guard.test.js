@@ -178,10 +178,10 @@ test("no shipped NEW font has a license outside the allowed policy set", () => {
       assert.ok(ALLOWED.has(f.licenseId), f.key + " ships with disallowed license " + f.licenseId);
 });
 
-// --- the tier gate over the WHOLE shipped library, not just the 19 JSONs ---
+// --- the tier gate over the WHOLE shipped library, not just the 17 JSONs ---
 //
-// The test above runs qcFont over `src/fonts/*.json`, which is 19 of the 85
-// shipped fonts. The other 66 arrive through scratch_ink/_out and are gated
+// The test above runs qcFont over `src/fonts/*.json`, which is 17 of the 85
+// shipped fonts. The other 68 arrive through scratch_ink/_out and are gated
 // only at build time — and scratch_ink is gitignored, so that gate has never
 // run on CI. The committed binaries ARE on CI, so decoding them and running
 // the same gate is the only way this check covers the library it ships.

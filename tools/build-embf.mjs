@@ -1,7 +1,8 @@
 // Builds the binary font library + manifest from source JSONs.
 //   node tools/build-embf.mjs
-// Inputs:  src/fonts/<key>.json           (the 21 shipped fonts)
-//          scratch_ink/_out/<key>.json    (trial imports of new fonts)
+// Inputs:  src/fonts/<key>.json           (17 committed font sources)
+//          scratch_ink/_out/<key>.json    (138 imports; the SOURCE OF MOST OF
+//                                          THE LIBRARY, not just trials)
 //          scratch_ink/_tiers.json        (tier classification, Kent-approved)
 //          tools/font-categories.json     (display groups)
 // Outputs: src/fonts/bin/<key>.embf   (VERIFIED tier only)

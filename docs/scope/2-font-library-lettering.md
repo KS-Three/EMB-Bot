@@ -279,7 +279,7 @@ red. Listed because the gap between them is where the next defect will live.
 | `test/font-render-smoke.test.js` | a font that throws, renders zero stitches, or packs stitches into no area — **the mimosa_large hazard, in the terms that make it dangerous** | 85/85, rendered through the real lettering path |
 | `test/font-stunted.test.js` | a letter far shorter than its script median, or with no skeleton geometry | 85/85, and a separate test fails if any font is unmeasured |
 | `test/font-dead-glyphs.test.js` | a glyph present in the font that puts no thread down | 85/85, all single-character glyphs |
-| `test/embf-guard.test.js` (tier gate) | any qc-font hard failure, plus any defect-class warning | 85/85 **binaries**, not the 19 committed JSONs |
+| `test/embf-guard.test.js` (tier gate) | any qc-font hard failure, plus any defect-class warning | 85/85 **binaries**, not the 17 committed JSONs |
 | `test/font-license.test.js` | sidecar/manifest licence drift, and a cross-family derivative whose credit line omits its base | 85/85, and it now names the one font that reaches the cross-family assert |
 
 The hazard tripwire has deliberate headroom rather than tightness: measured at
