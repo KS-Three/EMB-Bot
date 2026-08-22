@@ -25,6 +25,62 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-08-22 (evening) — **cache funded and built (PR #209), photo width floor landed (PR #210), SAM2 live in the cloud.**
+
+Session shape: Kent's three-answer brief (2026-08-22) — tonal acceptance
+loop + tonal engineering pass + stage 0-4 cache; per-item branches
+`claude/embot-session-setup-30fk7w-<item>`; Drive for photos (later found
+unusable for binaries — see the queue below). All work verified against the
+"same failure set" discipline: this Linux container's baseline is exactly
+the documented golden trio (`flat_lane_byte_identical[photo/
+enthusiast_logo.png]`, `pushcomp[logo_whitebg.png-towel]`,
+`stage2_photo_segment[photo/enthusiast_logo.png]`), reproduced identically
+on `main` before work and on every branch after.
+
+**PR #209 (stage 0-4 cache) — CI green, awaiting Kent.** Waiting-on-Kent #1
+resolved: `run_stages` split at the review-edit seam
+(`build_generation`/`finish_generation`), service `GenerationCache` (LRU 4)
+keyed on sha256(image)+config-minus-edit-keys, every request finishing from
+a `Generation.fork()`. Byte-identity pinned core- and wire-side; measured
+edited re-runs `enthusiast_logo` 3.59s → 0.99s (3.6x), `owl_kent` 12.10s →
+7.11s (1.7x). `emb-bot-reviewer` pass: one moderate finding (a vacuous
+warnings guard) fixed and verified to flip red under the simulated
+regression.
+
+**Tonal engineering pass (branch `-tonal-eng`)** over the spec's four
+evidence-driven items, full measurements in
+`docs/tonal-eng-measurements-2026-08-22.md`:
+- **Landed:** the photo-lane satin width floor (live defect 2's gated fix;
+  58 sub-floor verdicts / 29 emitted-stitch reroutes under forced photo
+  routing, independently audited against pre-change modules — outline
+  deviation 0.0000 mm, default routes byte-identical), and the SAM2
+  prewarm Content-Length guard (the proxy twice truncated the checkpoint
+  at "success").
+- **Parked with numbers:** the r² floor retune (premise inverted — the
+  speckle gate blocks 41 of 42 floor-clearing real regions; retune
+  candidate is `RAMP_SPECKLE_MAX`, eyeball-gated) and trim-thrash
+  sequencing (21 thread revisits = the deliberate depth sort; 121/215
+  trims intra-shape = `chain_links`-frozen territory).
+- **Already shipped, verified:** "palette-drift resnap" is
+  `revalidate_threads` (17 shapes re-snapped on the owl photo route, worst
+  dE00 26.04 → 13.4).
+
+**The acceptance loop is armed end to end in a cloud container for the
+first time:** SAM2 isolated venv built (torch CPU + Meta's repo), checkpoint
+complete after the truncation fix, and `tools/acceptance_ab.py` produced a
+real classical-vs-SAM2 contact sheet on `owl_kent.jpg`
+(`PHOTO_SAM2_SEGMENTED`: 84 regions / 13,332 stitches vs classical 66 /
+10,001). Blocked on the photos themselves: the approved Drive channel
+cannot carry photo-sized binaries (pull-corpus skill's own corruption
+measurements), so the channel decision is queued to Kent.
+
+Suite state at session end: engine `node --test` green (crossval pins
+executing, 0 skips); Studio vitest green (three files hookTimeout under
+heavy CPU contention only — pass solo); digitizer 1270/3-known/8-skip on
+the tonal branch.
+
+---
+
 **Last updated:** 2026-08-22 (later again) — **two guards were blind to a
 quarter of the library, and the golden deselect list went from five to three.**
 
