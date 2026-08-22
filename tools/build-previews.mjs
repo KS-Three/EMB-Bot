@@ -41,6 +41,21 @@ function sampleFor(font) {
   if ([...name].every(has)) return name;
   const caseFixed = name.replace(/[a-z]/g, (c) => c.toUpperCase());
   if ([...caseFixed].every(has)) return caseFixed;
+  // ONE unrenderable character in the name should not cost the whole name
+  // (2026-08-22). Three fonts were losing it over exactly that, and the tiles
+  // they fell through to were worse in every case:
+  //   fold_inkstitch  "Fold Ink/Stitch" — no "/" glyph — tile read "012345"
+  //   hebrew_font_*   "חוכמה Large"     — no Latin     — tile read "אבגדה"
+  // Dropping just the characters the font cannot set gives "FOLD INKSTITCH"
+  // and "חוכמה" — the font's own name, which is what a browsing tile is for.
+  //
+  // Take whichever of the two spellings survives better rather than picking
+  // one: stripping the ORIGINAL "Fold Ink/Stitch" in a caps-only font leaves
+  // "FIS", while stripping the case-fixed spelling keeps all but the slash.
+  // For Hebrew the two are identical, since case-fixing does nothing to it.
+  const strip = (t) => [...t].filter(has).join("").replace(/\s+/g, " ").trim();
+  const partial = [strip(name), strip(caseFixed)].sort((a, b) => b.length - a.length)[0];
+  if (partial.length >= 3) return partial;
   const own = Object.keys(font.glyphs || {}).filter((k) => /^[A-Za-z0-9]$/.test(k)).slice(0, 6).join("");
   if (own) return own;
   // Non-Latin fonts (Hebrew, 2026-08-22). Every fallback above assumes Latin
