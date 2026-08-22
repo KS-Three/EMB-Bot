@@ -2892,3 +2892,37 @@ real-artwork fixtures alone it is **35%**. Both are true of their own sets —
 **quote 33%**, it is the conservative one, and say which set it is from.
 
 Still gate-1 frozen. Still not a request to flip the flag.
+
+#### CORRECTION: the cursor-snap story covers 34% of satin travel failures, not all (2026-08-22)
+
+The entry titled "Satin travel fails at the CURSOR, not the target" drew its
+numbers from the `sewn == 0` subset — 31 of 37 — and then **let that stand as a
+claim about satin travel generally. It is not.** Measured over the full call
+population on the same six real-artwork fixtures:
+
+| | count | share of failures |
+|---|---|---|
+| `_graph_travel` calls | 124 | |
+| failures | **97** | |
+| cursor **outside** the 3 mm radius — the snap story | **33** | **34%** |
+| cursor **inside** the radius — not a snap problem | **64** | **66%** |
+
+**Two thirds of satin travel failures have the cursor comfortably in range** and
+fail for other reasons — genuine graph disconnection between glyphs, or the
+already-sewn edges that `_graph_travel` is forbidden to reuse. Cursor placement
+cannot touch those.
+
+So the gate-clear cursor lever addresses **at most 34% of satin travel
+failures**, on top of the earlier correction that exit-choice is worth 28% of
+inter-shape trims rather than 58%. Both corrections point the same way: the
+gate-clear satin work is smaller than it first looked, and `chain_links` remains
+the only measured lever with a large real-artwork effect.
+
+**Size-dependence, measured while checking this** (`becker_marine_logo` at four
+widths): success rate 12% at 40 mm, 8% at 60 mm, 25% at 80 mm, and at 120 mm
+`_graph_travel` is **never called at all** — the design routes without needing
+it. No clean trend; do not model this as "worse on small garments".
+
+**The habit that caught it**, for the third time tonight: a number measured on a
+subset was carrying a claim about the whole. Check the denominator before the
+heading generalises.
