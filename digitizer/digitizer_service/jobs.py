@@ -70,6 +70,73 @@ def content_key(image: bytes, config: dict) -> str:
     return h.hexdigest()
 
 
+# The shape-layers contract's review-edit keys — the four config fields that
+# stages 0-4 never read (they are applied between stage 4 and the palette,
+# see `pipeline.finish_generation`). Everything ELSE in the config is part of
+# the generation's identity. Pinned by tests/test_generation_cache.py so a
+# new edit key being added to the contract forces a decision here rather
+# than silently invalidating every edit's cache hit.
+EDIT_KEYS = frozenset(
+    {"deleted_shape_ids", "shape_overrides", "merge_shape_ids", "split_shapes"}
+)
+
+
+def generation_key(image: bytes, config: dict) -> str:
+    """Cache key for the stage 0-4 generation: `content_key` with the
+    review-edit fields stripped, so every edit of one artwork under one
+    parameter set lands on the same expensive prefix."""
+    return content_key(image, {k: v for k, v in config.items() if k not in EDIT_KEYS})
+
+
+# A generation holds the prepped raster plus vectorized regions — roughly
+# 10-40 MB for a photo. Four covers the realistic editing pattern (the shape
+# being edited, plus a couple of parameter variants being A/B'd) without
+# letting an all-day service grow without bound.
+MAX_GENERATIONS = 4
+
+
+class GenerationCache:
+    """LRU for `pipeline.Generation` objects, keyed by `generation_key`.
+
+    Entries are stored pristine and must stay that way: every consumer takes
+    `Generation.fork()` before finishing from one (the fork is what isolates
+    `apply_shape_edits`' in-place mutation), so `get` hands back the shared
+    original and trusts the caller's fork discipline —
+    `digitizer_service.app`'s `/digitize` worker is the only caller.
+
+    Thread-safety note: with `JobRegistry(workers=1)` all access happens on
+    the single digitize worker thread; the lock is defense for a future
+    worker-count bump, not a load-bearing requirement today.
+    """
+
+    def __init__(self, max_entries: int = MAX_GENERATIONS):
+        self._lock = threading.Lock()
+        self._max = max_entries
+        self._entries: OrderedDict[str, Any] = OrderedDict()
+
+    def get(self, key: str):
+        with self._lock:
+            gen = self._entries.get(key)
+            if gen is not None:
+                self._entries.move_to_end(key)
+            return gen
+
+    def put(self, key: str, gen) -> None:
+        with self._lock:
+            self._entries[key] = gen
+            self._entries.move_to_end(key)
+            while len(self._entries) > self._max:
+                self._entries.popitem(last=False)
+
+    def clear(self) -> None:
+        with self._lock:
+            self._entries.clear()
+
+    def stats(self) -> dict:
+        with self._lock:
+            return {"entries": len(self._entries), "max": self._max}
+
+
 class JobRegistry:
     def __init__(self, workers: int = 1):
         self._lock = threading.Lock()
