@@ -632,10 +632,37 @@ test("generateAll reports characters an element's font cannot render", async () 
   const { generateAll } = await import("./generate.js");
   // medium_font has no Cyrillic; "Дом" is three characters it cannot set.
   const project = { garmentId: "left_chest", elements: [textElement({ text: "AДB" })] };
-  const { perElement, unsupported } = generateAll(project, {});
+  const { perElement, unsupported, combined } = generateAll(project, {});
   expect(perElement).toHaveLength(1);
   expect(perElement[0].unsupported).toEqual(["Д"]);
   expect(unsupported).toEqual(["Д"]);
+  // The A and the B still sew. That matters beyond bookkeeping: EmbroideryField
+  // has TWO branches for this, and they say different things — an empty design
+  // gets "Try a different font, or different text", while a design that partly
+  // stitched gets the note on the stats line beside the stitch count. Without
+  // this assertion the test would pass just as happily if the whole element
+  // had produced nothing, which is the other branch entirely.
+  expect(combined).toBeTruthy();
+  expect(combined.stitchCount).toBeGreaterThan(0);
+});
+
+// A glyph that EXISTS in the font and sews nothing reaches the UI by the same
+// route as a missing one, and lands on the same partly-stitched branch — the
+// case worth pinning, because the note's wording ("This font can't stitch X")
+// was written for missing glyphs and has to carry both.
+test("a present-but-unstitchable glyph is reported like a missing one", async () => {
+  const { generateAll } = await import("./generate.js");
+  // western_light HAS a "4" — it is one of the 26 shipped glyphs that put no
+  // thread down (test/font-dead-glyphs.test.js is the census). Typing a year
+  // in this font drops the 4 and keeps the rest.
+  const project = {
+    garmentId: "left_chest",
+    elements: [textElement({ text: "2024", fontKey: "western_light" })],
+  };
+  const { unsupported, combined } = generateAll(project, {});
+  expect(unsupported).toEqual(["4"]);
+  expect(combined).toBeTruthy();
+  expect(combined.stitchCount).toBeGreaterThan(0);
 });
 
 test("generateAll reports nothing unsupported when every character renders", async () => {
