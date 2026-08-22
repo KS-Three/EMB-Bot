@@ -2746,3 +2746,40 @@ it wants its own measurement pass. Recorded because it is the first gate-clear
 lever found on the code path that actually dominates real client artwork —
 everything else measured tonight either helps only photo-lane work or sits
 behind the sew-out.
+
+#### Sizing the cursor-placement lever: 81% upper bound (2026-08-22)
+
+Of the 31 satin-travel failures where the cursor sits outside the 3 mm snap
+radius, **25 (81%) have geometry from another shape passing within 3 mm of the
+target web.** So for four in five, a needle finishing somewhere else would
+already be inside the existing radius — the placement is available, nobody is
+choosing it.
+
+| fixture | out-of-snap failures | other geometry within 3 mm |
+|---|---|---|
+| `becker_hat_polo_large…logo_hat` | 8 | **8** |
+| `becker_hat_polo_large…logolc` | 7 | **7** |
+| `becker_hat_small…` | 5 | **5** |
+| `becker_chest_small…` | 4 | **4** |
+| `becker_marine_logo.png` | 7 | 1 |
+| **total** | **31** | **25 (81%)** |
+
+**Read this as an upper bound, not a forecast.** Three reasons it will come in
+lower:
+
+- "Other geometry passes within 3 mm" is not "a valid exit exists there **and**
+  the sequence can be reordered to use it". Exit points are constrained by where
+  a shape's own stitching can legitimately end.
+- The owner-of-web attribution is a heuristic (nearest-mean matching of plan
+  points to web nodes); a misattributed web would inflate the count.
+- 31 is the out-of-snap subset of the 37 zero-sewn failures, which is itself a
+  subset of the ~97 total `_graph_travel` failures across these fixtures. This
+  sizes one slice, not all satin travel.
+
+`becker_marine_logo` is the honest outlier at 1 of 7 — its shapes are genuinely
+far apart, and no sequencing fixes distance. Expect the win to be design-shaped,
+not uniform.
+
+**Still the most promising unbuilt lever measured this session**, because it is
+the only one that is simultaneously gate-clear, on the code path that dominates
+real client artwork, and grounded in a measured bound rather than a hypothesis.
