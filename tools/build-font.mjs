@@ -72,7 +72,20 @@ function parsePath(d) {
     cur[cur.length - 1] = { x: x2, y: y2 }; // pin the exact endpoint
   };
   while (i < toks.length) {
-    if (/[a-zA-Z]/.test(toks[i])) cmd = toks[i++];
+    // ANCHORED. This test was /[a-zA-Z]/ — unanchored — so any token merely
+    // CONTAINING a letter counted as a command, and SVG scientific notation
+    // ("5.2e-4", which Inkscape emits for sub-micron offsets) contains an "e".
+    // The damage was not a desync but a full stop: cmd became "5.2e-4", no
+    // branch below matches it, and since following tokens are plain numbers
+    // nothing ever reassigns cmd — so the parser consumed the rest of the path
+    // one token at a time and emitted no further points. Every path was
+    // silently TRUNCATED at its first scientific-notation number.
+    // 119 of 132 upstream fonts contain such numbers. Found 2026-08-21 while
+    // the cross-stitch glyphs came out as unrecognisable fragments; see
+    // test/parsepath.test.js.
+    // The tokenizer only ever yields single letters or numbers, so ^...$ is
+    // the exact discriminator.
+    if (/^[a-zA-Z]$/.test(toks[i])) cmd = toks[i++];
     const rel = cmd === cmd.toLowerCase(), C = cmd.toUpperCase();
     let fam = "";
     if (C === "M") { const x = num(), y = num(); cx = rel ? cx + x : x; cy = rel ? cy + y : y; sx = cx; sy = cy; cur = [{ x: cx, y: cy }]; subs.push(cur); cmd = rel ? "l" : "L"; }
