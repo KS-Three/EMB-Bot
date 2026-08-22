@@ -172,10 +172,19 @@ function toColumn(subs) {
 }
 
 // --- 2D affine transforms (SVG transform attribute) ---
-// The single-file fonts ship with paths in final coordinates, but the ltr/-dir
-// fonts position their art through nested <g transform="..."> (mai_en_fleur's
-// flowers are one drawn motif re-placed via matrix() dozens of times per
-// glyph) and per-path transforms — ignoring them scatters the geometry.
+// Both layouts position art through nested <g transform="..."> and per-path
+// transforms — mai_en_fleur's flowers are one drawn motif re-placed via
+// matrix() dozens of times per glyph — and ignoring them scatters the
+// geometry onto a point.
+//
+// This comment used to open "the single-file fonts ship with paths in final
+// coordinates, BUT the ltr/-dir fonts …", and that sentence is the whole bug.
+// It was false: mimosa_large is a single-file font whose "D" is one dot with
+// 38 transforms, and on the strength of that premise the importer ran a
+// non-transform-aware walk for every single-ltr.svg font. All 38 dots stacked
+// on one point and the glyph shipped sewing 6,193 stitches into 40.0 x 0.0 mm.
+// Corrected 2026-08-22 along with the code — a false premise left in a comment
+// above the code that disproved it is how the fast path comes back.
 const M_ID = [1, 0, 0, 1, 0, 0]; // x' = a x + c y + e ; y' = b x + d y + f
 const mmul = (A, B) => [
   A[0] * B[0] + A[2] * B[1], A[1] * B[0] + A[3] * B[1],
@@ -244,8 +253,13 @@ function stitchParams(t) {
 //
 // IMPORTANT: satin fonts carry authored running-stitch paths too (montecarlo
 // 646, cats 837), which EMB-Bot has always dropped. Honouring them would add
-// stitches to all 62 shipped fonts — a change to every existing customer
-// design, and Kent's call, not this change's. So stripRunParamsIfSatin() below
+// stitches to satin fonts that carry such paths — up to the 66 of 85 that have
+// satin columns at all; the exact number is NOT determinable from the built
+// output, because a stripped param and a never-authored one both leave a bare
+// point array, so it needs the scratch_ink/ SVG sources. That is a change to
+// existing customer designs either way, and Kent's call, not this change's.
+// (This read "all 62 shipped fonts" until 2026-08-22 — the library size when
+// it was written, and wrong on both the count and the scope.) So stripRunParamsIfSatin() below
 // removes these params again for any font that has satin columns, keeping
 // those fonts byte-identical on rebuild. Only genuinely runs-only fonts keep
 // the params and become stitchable.
