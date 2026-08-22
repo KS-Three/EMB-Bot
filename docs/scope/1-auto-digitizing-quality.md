@@ -2828,3 +2828,46 @@ shape's exit at it). Blast radius is every design, so it needs the
 baseline-then-after suite comparison and golden re-capture — pre-authorized on
 Linux CI under same-failure-set discipline. **This is the recommended next
 build.**
+
+#### CORRECTION to the entry above: 58% was inflated ~2x; the honest figure is 28% (2026-08-22)
+
+The entry immediately above called exit-choice the "recommended next build" on a
+58% saveable figure. **That bound assumed any point of a shape can be its exit,
+and it flagged the assumption without testing it. Tested, it costs half the
+prize.**
+
+A shape can realistically finish at the END of one of its runs — a satin column
+ends at its end, a fill where its last row lands — not at an arbitrary interior
+point. Re-sizing with run endpoints as the only candidate exits (and entries):
+
+| fixture | trims now | any-point bound | run-endpoints only |
+|---|---|---|---|
+| `becker_hat_polo_large…logolc` | 12 | 8 | 9 |
+| `becker_marine_logo.png` | 9 | 4 | **9 (saves nothing)** |
+| `becker_hat_polo_large…logo_hat` | 9 | 3 | 7 |
+| `becker_hat_small…` | 7 | 1 | 4 |
+| `becker_chest_small…` | 6 | 2 | 2 |
+| **total** | **43** | **18** | **31** |
+
+**Realistic saving: 12 of 43 inter-shape trims (28%), not 25 (58%).** Against
+~130 total real-artwork trims that is roughly **9%**, not 19%.
+
+`becker_marine_logo` saves **nothing** at all under realistic exits (9 → 9),
+consistent with its earlier 1-of-7 showing: its shapes are genuinely far apart
+and no choice of endpoint reaches across.
+
+**Revised recommendation: do NOT build this next.** Nine percent of real-artwork
+trims does not justify threading `end_near` through `stitch_shape` and the satin
+router plus a greedy look-ahead in stage 7 — the highest-blast-radius change
+available, touching every design's sequencing. The honest comparison:
+
+| lever | real-artwork trim reduction | status |
+|---|---|---|
+| `chain_links` | **33%**, and fewer stitches | built, measured, gate-1 frozen |
+| exit choice | **~9%** | unbuilt, large blast radius, gate-clear |
+| fill ordering (PR #205) | **0%** | shipped; helps photo-lane only |
+
+**The lesson is the one this session kept relearning.** An upper bound with a
+named-but-untested assumption is not a sizing. Testing the assumption took one
+measurement and halved the answer — before a large change was built on it,
+rather than after.
