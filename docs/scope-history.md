@@ -25,6 +25,35 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-08-22 (later again) — **two guards were blind to a
+quarter of the library, and the golden deselect list went from five to three.**
+
+The stunted-glyph guard (`test/font-stunted.test.js`) and `tools/qc-font.mjs`
+both measured glyph height from satin columns only, so on the 19 runs-only
+fonts plus the two Hebrew ones — 21 of 85 — they measured nothing and reported
+green. Both were also blind to the exact case they exist for: filtering on
+`v > 0` dropped any glyph flattened to EXACTLY zero height, which is the
+6,193-stitches-into-40.0x0.0mm hazard the files are named for. Verified against
+the pre-fix tool: a collapsed glyph and a run marooned 900 units off its letter
+both produced no finding at all. Nothing in the library is wrong under the
+widened checks (85 fonts, 0 failures, 0 zero-height letters, 0 satin letters
+with no columns) — the finding is the 21 fonts that were never being asked.
+The channel is now chosen per font and never merged: measuring runs as their
+own channel on satin fonts produces 45 false positives, the skeleton channel
+produces zero.
+
+CI's golden deselect list dropped from five to three (`db0e642`) after the
+remove-and-see check ran, and the green run on ubuntu-latest confirmed the two
+`logo_alpha` rows pass there. The count then sat stale in two other places for
+several hours — the workflow's own header comment and COOKBOOK — because the
+reasoning existed in two copies and only one was updated.
+
+Skip accounting on a full local digitizer run at this date: 1258 passed,
+8 skipped (5 tesseract, 2 rembg isolated venv, 1 opencv-contrib-installed),
+7 xfailed, 3 failed (the golden set above). Personal build: 125 fonts.
+
+---
+
 **Last updated:** 2026-08-22 (later still) — **the tier gate was Latin-only AND
 was never actually run.**
 

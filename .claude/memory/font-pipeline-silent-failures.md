@@ -83,5 +83,39 @@ Five tests added in that sweep would have passed VACUOUSLY on first draft. The
 red before trusting it — and check the level below too: a test that iterates a
 list asserts nothing when the list is empty.
 
+**That is not enough, and the same day proved it.** The stunted-glyph guard was
+written, broken on purpose, watched go red, and committed — and was still blind
+to **21 of the 85 fonts** it iterated (the 19 runs-only faces and the two
+Hebrew ones), because it measured height from `cols` and those fonts have none.
+It reported green over all 85. The break-it-on-purpose ritual passed because I
+broke it on a font it could see.
+
+Worse, it was blind to the exact case it existed for. The filter was `v > 0`,
+so a glyph flattened to EXACTLY zero height dropped out of the measurement
+entirely — `mimosa_large`'s "D" at 40.0 × 0.0 mm is the machine hazard the file
+is named for, and a fresh instance of it would have sailed through. `null` (no
+geometry on this channel) and `0` (geometry collapsed onto a line) are not the
+same value and must not share a branch.
+
+`tools/qc-font.mjs` had both holes too, in the tool that gates new fonts at
+build time, silently skipping its runaway-bbox check as well.
+
+Three rules, in order of how much they would have saved:
+
+1. **Ask what fraction of the population a guard actually measures, and assert
+   it.** `test/font-stunted.test.js` now has `every shipped font is actually
+   measured by this check`, which fails and NAMES anything it cannot see. That
+   assertion is worth more than the check it protects.
+2. **Break the guard on the population you are least sure about**, not the one
+   you had in mind when writing it. Both holes surfaced the moment a runs-only
+   font was corrupted instead of a satin one.
+3. **A cross-channel check must not merge channels.** Measuring `cols + runs`
+   together would have fixed the coverage hole and reintroduced the original
+   defect: a satin font's runs are accents (and are not even stitched — see
+   `stripRunParamsIfSatin`), so a full-height accent masks a collapsed column.
+   Pick the skeleton channel per font: cols if it has any, else runs. Measured
+   the other way, the runs channel produces **45 false positives** across the
+   library; the skeleton channel produces zero.
+
 See [[windows-goldens-fail-locally]] for the golden-divergence correction made
 in the same session.

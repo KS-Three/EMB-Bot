@@ -356,39 +356,41 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
   | fixture | Windows | CI |
   |---|---|---|
   | `pushcomp[logo_whitebg.png-towel]` | fails | fails (deselected) |
-  | both, `[logo_alpha.png]` | **passes** | fails (deselected) |
+  | both, `[logo_alpha.png]` | **passes** | **passes** (deselect removed) |
   | both, `[photo/enthusiast_logo.png]` | fails | fails (deselected) |
 
-  CI column is `.github/workflows/python-package-conda.yml`, which deselects
-  five by name because they *"compare against goldens pinned on the original
-  development machine"* — i.e. they fail there, so `ubuntu-latest` is NOT
-  where every golden was captured. **Consequence:** an `enthusiast_logo`
-  failure locally is expected; a `logo_alpha` failure locally is a genuine
-  regression. Per-platform reasoning gets that backwards. **Still binding: never
-  re-capture a golden from a Windows run.** Judge a change by "same failure set
-  before and after", using the table as that set. Cause and the permanent CI
-  deselects nobody is assigned to: `docs/pro-parity-real-art-2026-08-15.md` §0b.
-  *(corrected 2026-08-17 — Windows column re-run this date: `logo_alpha` ×2
-  passed, `enthusiast_logo` ×2 failed; CI column read from the workflow)*
-  *(2026-08-20 — `enthusiast_logo` CI cell moved to fails/deselected: a
-  verified-benign PR #182 change shifted `stitch_count`, but even a fresh
-  `ubuntu-latest` runner fails the recapture tool's own pre-change check
-  against the pin, so it's deselected not forced (Kent's call) — detail in
-  the CI workflow's comment, runs 32396593318/32399279461)*
-- **OCR tests skip, not fail, on a machine without the `tesseract` binary —
-  and never skip on CI.** `pytesseract` is a declared dep and imports fine, but
-  it only wraps the `tesseract` executable: CI apt-installs that
-  (`python-package-conda.yml:75-76`), a Windows box usually has not. The five
-  tests that demand a REAL read — the OCR-gate damaging case, both
-  `test_ocr_suggest` real-read tests, and the `saw_a_real_character` assertions
-  in `test_pipeline.py` / `test_service.py` — used to fail there as unexplained
-  local reds; they now carry the shared `requires_tesseract` marker
-  (`tests/conftest.py`), which skips only when the binary is missing AND `CI`
-  is unset — a CI refactor that loses the tesseract install fails loud instead
-  of going dark behind quiet skips. Install Tesseract on `PATH` to exercise
-  them locally. *(measured 2026-08-17 — the five failed at 73f37da on the
-  tesseract-less Windows machine, skip after the markers landed, and fail
-  again with `CI=1` set)*
+  CI deselects THREE by name, not five: the two `logo_alpha` rows were removed
+  2026-08-22 after the remove-and-see check finally ran, and CI went green
+  without them. **Consequence:** an `enthusiast_logo` failure locally is
+  expected; a `logo_alpha` failure anywhere is a genuine regression.
+  Per-platform reasoning gets that backwards. **Still binding: never re-capture
+  a golden from a Windows run.** Judge a change by "same failure set before and
+  after", using the table as that set. Cause and the deselect rationale:
+  `docs/pro-parity-real-art-2026-08-15.md` §0b and the CI workflow's own
+  comment. *(measured 2026-08-22 — CI column from a green run at `db0e642` on
+  ubuntu-latest; Windows column re-run 2026-08-17 and not since)*
+- **OCR tests skip, not fail, without the `tesseract` binary — and never skip
+  on CI.** `pytesseract` imports fine but only wraps the executable; the five
+  real-read tests carry `requires_tesseract` (`tests/conftest.py`), which skips
+  only when the binary is missing AND `CI` is unset, so a workflow refactor
+  that loses the install fails loud instead of going dark. A local run shows
+  **8** skips, not 5 — the other three are the rembg and opencv-contrib
+  classes, and the full accounting is in COOKBOOK "Running things".
+  *(measured 2026-08-17, skip accounting 2026-08-22 — grouped skip reasons over
+  a full `-rs` run)*
+- **Breaking a guard on purpose does not prove it is not blind — ask what
+  fraction of its population it measures, and assert that.** The
+  stunted-glyph guard was written, broken on purpose, watched go red, and
+  committed, and was still measuring nothing at all in **21 of the 85** fonts
+  it iterated (the runs-only faces have no satin columns and it measured
+  columns), reporting green over all 85. It was also blind to the exact case
+  it exists for: filtering on `v > 0` dropped any glyph flattened to EXACTLY
+  zero height, which is the machine hazard it is named for. `null` (no
+  geometry) and `0` (geometry collapsed onto a line) must not share a branch.
+  Both holes surfaced only when the corruption was applied to the population
+  I was least sure about. `tools/qc-font.mjs` had both, in the tool that gates
+  new fonts at build time. *(measured 2026-08-22 — test/font-stunted.test.js,
+  verified against the pre-fix tool)*
 - **Measure pro-parity in a git worktree, never in a shared checkout.** Three
   separate baselines were invalidated on 2026-08-15 by commits landing mid-run,
   including from a second Claude session on the same branch. The first symptom
@@ -445,9 +447,6 @@ here, so this list can go stale about WHAT IS OPEN but never about the facts.
    "instant" on photos. Measured table + the caveat about the numbers being
    taken under load: **area 5**, under Kent's direct-manipulation request.
    Not started.
-
-The second of that pair — the Becker artwork and pro-digitized variants — closed
-2026-08-15; its placeholder was deleted here 2026-08-17 as that entry instructed.
 
 **Also open, same category — listed so this queue is not a half-truth. All of
 these predate 2026-08-14 except where noted:**
@@ -690,7 +689,7 @@ by design, not a fix. Judge on intra-shape trims. *(ruled 2026-08-21 — Kent)*
 **85 fonts** in the sellable build, the EMBF binary codec, browser UI, and the
 add-font QC/tier pipeline. The lettering path stitches three types — satin,
 bean/running, cross-stitch fill — where before 2026-08-21 it was satin-only. A
-second `--personal` build (120 fonts) carries what cannot be sold. Licences:
+second `--personal` build (125 fonts) carries what cannot be sold. Licences:
 `ALLOWED_LICENSES = {OFL-1.1, CC-BY-4.0, CC0}`, ShareAlike permanently closed,
 texts shipped three ways, guard tests pinning it.
 *(confirmed 2026-08-22 — `src/fonts/manifest.json`, engine suite)*
