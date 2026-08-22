@@ -33,12 +33,12 @@ where the bodies are buried.
 ## Binary font library (Slice 10 Stage A, 2026-07-27)
 
 The Studio's fonts live in `src/fonts/manifest.json` + `src/fonts/bin/*.embf`
-(**55 fonts** as of 2026-08-04, after the 4 license-audit pulls below and the
-same-day removal of all 13 ShareAlike fonts (Kent's call — see the audit
-doc's §9; removal made the paid launch independent of the CC-BY-SA legal
-question, and the lawyer brief is now the optional restore path) —
-previously drifted to 72 without this doc being updated; don't trust either
-number without recounting `manifest.json`), lazily fetched per font by
+(**80 fonts** as of 2026-08-22; was 55 after the 2026-08-04 licence-audit pulls
+and the same-day removal of all 13 ShareAlike fonts (Kent's call — audit §9;
+removal made the paid launch independent of the CC-BY-SA question, and the
+lawyer brief is the optional restore path), then grew through the 2026-08-21/22
+upstream sweeps — this number has drifted twice without the doc being updated,
+so don't trust it without recounting `manifest.json`), lazily fetched per font by
 `app/src/lib/fontLoader.js`. The
 old eager `src/fonts/satin-fonts.js` is OUT of the Studio pipeline but still
 used by legacy `EMB-Bot.html` — do not delete it. **Its audit ran 2026-08-04**
@@ -56,6 +56,14 @@ font there unless it is also in the shipping manifest. `EMB-Bot-standalone.html`
   for all 21 original fonts — it must stay green through any codec change.
   Acceptance evidence (0.00–1.07% stitch drift, visually cleared):
   `docs/superpowers/notes/2026-07-27-embf-acceptance.md`.
+- **Two builds from one tree.** `node tools/build-embf.mjs` writes the
+  **sellable** library (80 fonts, everything inside `ALLOWED_LICENSES`).
+  `node tools/build-embf.mjs --personal` writes Kent's private library (120
+  fonts, adding ShareAlike / NC / GPL / pulled) to `bin-personal/` +
+  `manifest-personal.json` — both gitignored, so a fresh clone or CI cannot
+  produce a build containing them. The split is at BUILD time on purpose: a
+  runtime toggle is not a distribution boundary. `copy-engine.mjs` serves the
+  personal build when it exists and says so loudly.
 - **Rebuild**: `node tools/build-embf.mjs`. Requires `scratch_ink/`
   (gitignored): `_tiers.json` (tier classification) + `_out/*.json` (trial
   imports). Recreate `scratch_ink/` by copying from the master
@@ -92,10 +100,14 @@ font there unless it is also in the shipping manifest. `EMB-Bot-standalone.html`
   and broke fonts only in the live browser (tests preload differently and
   stayed green). Keep all three in sync; legacy `EMB-Bot.html` is a separate,
   fourth list that stays on the old registry.
-- **Classifier gap**: tier classification counts satin columns per FILE, not
-  per GLYPH. A font can classify as satin while its letters are runs-only
-  (that's exactly what ondulamarif_XL was). If a font generates 0 stitches,
-  check per-glyph `cols` first.
+- **Classifier gap — FIXED, and then found to have a second half.**
+  `qc-font.mjs` now counts stitchability per LETTER GLYPH, not per file, so a
+  font whose letters are runs-only no longer classifies as satin (that was
+  ondulamarif_XL). The second half, found 2026-08-22: the check asks "does this
+  letter produce stitches", which a glyph can pass while rendering as a STUB —
+  four shipped fonts do. `qc-font.mjs` warns on letters under 0.45x their
+  case-median height, and `test/font-stunted.test.js` pins the known set. If a
+  font looks wrong, render it; do not trust the QC line.
 - ~~Known perf item for Stage B: opening the font dropdown lazily fetches ALL
   fonts for thumbnails (~30 MB).~~ **FIXED in Stage B:** the font browser
   grid uses committed preview PNGs (`src/fonts/previews/`, regenerate with
@@ -715,9 +727,18 @@ and controllable to the user.
   - `satinplay.js` / `satinfont.js` / `satin.js` — satin column generation.
     `satinplay.js`'s `emitZigzag` + `satinFromRails` is the current quality
     lever for lettering (rails+rungs → clean zigzag, not auto-skeletonized).
+    `satinfont.js` also routes bean/running-stitch runs, but ONLY at a length
+    the font itself authored — gate 1 bars inventing one, so a run without a
+    length is skipped, not defaulted.
+  - `crossfill.js` — cross-stitch fill for pixel-art lettering fonts. Written
+    from first principles, NOT ported: Ink/Stitch's is GPL-3.0 and this product
+    is sold. The grid is MEASURED from the glyph outlines, in glyph units, so
+    no physical constant is chosen. Must load BEFORE `satinfont.js`, and like
+    every engine file it needs registering in all THREE places (see
+    "Engine-file lists live in THREE places" in the font-library section).
   - `fabrics.js` — 7 fabric presets driving pull-comp/underlay/density/trim.
   - `flatten.js` — medianCut → modeFilter → absorbSmallRegions pipeline.
-  - `fonts/` — pre-digitized satin font library: `manifest.json` (55
+  - `fonts/` — pre-digitized font library: `manifest.json` (80
     shipping fonts) + `bin/*.embf` binaries + per-font JSON sources and
     `.LICENSE.txt` sidecars, parsed offline from Ink/Stitch's open-source
     font set. (The old "14 fonts" count here was the legacy eager registry

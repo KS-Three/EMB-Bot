@@ -14,44 +14,111 @@ Dated narrative belongs in [`../scope-history.md`](../scope-history.md).
 
 ---
 
-The 55-font pre-digitized satin library, browser UI, EMBF binary format, the
-add-font QC/tier pipeline, and Text mode. Expandable — but every addition is
-gated by the license rule below (Kent: don't risk copyright infringement if
-this ever sells).
+The pre-digitized font library, browser UI, EMBF binary format, the add-font
+QC/tier pipeline, and Text mode. Expandable — but every addition is gated by
+the licence rule below (Kent: don't risk copyright infringement if this ever
+sells).
 
-**Status:** Implemented (library/UI/format itself) — license remediation
-**resolved 2026-08-04** (audit items 1–10 + 12, plus items 1–3's pulls
-followed by the full 13-font ShareAlike removal, PR #16; see the
-cross-cutting item above). The item-11 lawyer consult is no longer a
-launch gate — it's an optional restore path now.
+## What the library is
 
-**Confidence:**
-- Library/tech: **High.** `src/fontbin.js` (EMBF codec), `manifest.json` +
-  55 `.embf` files (72 → 68 after the audit pulls → 55 after the 2026-08-04
-  ShareAlike removal), lazy loading,
-  `FontBrowser.svelte`/credits UI, and the QC/tier pipeline
-  (`tools/qc-font.mjs`, `tools/build-embf.mjs`, `tools/font-license.mjs`,
-  `tools/patch-embf-licenses.mjs`) all exist and pass the engine suite.
-- License compliance: **High — the open legal question was resolved by
-  removal (Kent's call, 2026-08-04).** All 13 ShareAlike fonts pulled
-  (audit §9); the remaining 55 are 52 OFL-1.1 + 1 CC-BY-4.0 + 2 CC0, zero
-  ShareAlike. Full license texts ship three ways (sidecar file, served
-  `/fonts/<key>.LICENSE.txt`, embedded in each binary), attributions are
-  complete notices, guard tests pin it. The item-11 lawyer consult is now
-  OPTIONAL — kept as the restore path for the 13
-  (`docs/lawyer-brief-cc-by-sa-2026-08-04.md`), no longer launch-gating.
+**80 fonts in the sellable build** *(confirmed 2026-08-22 —
+`src/fonts/manifest.json`, engine suite)*. Two builds are produced from one
+source tree:
 
-**Open issues:** the item-11 consult is optional now, not blocking (above).
-`EMB-Bot-standalone.html` (which embedded a pre-audit inlined font registry)
-is **deleted, 2026-08-04, Kent's call** — the live `satin-fonts.js` residual
-was already closed the same day (audit §10), so no pre-audit font list
-ships anywhere now. On
-the tech side: the font-editing round deferred condensed/expanded width and
-mixed per-letter size (both risk uneven satin distortion) — minor, not
-blocking.
+| Build | Command | Contents |
+|---|---|---|
+| Sellable | `node tools/build-embf.mjs` | 80 fonts, all inside `ALLOWED_LICENSES` |
+| Personal | `node tools/build-embf.mjs --personal` | 120 fonts, adds ShareAlike / NC / GPL / pulled |
 
-**Next step:** font-library expansion is unblocked — the license gate is
-resolved by removal (PR #16 + #17, both merged), and the add-font skill's
-compliance note is backed by guard tests. Booking the lawyer consult (send
-`docs/lawyer-brief-cc-by-sa-2026-08-04.md` as-is) is now purely optional,
-Kent's call, only relevant if he wants the 13 pulled ShareAlike fonts back.
+Personal artifacts (`src/fonts/bin-personal/`, `manifest-personal.json`) are
+gitignored, so a fresh clone or CI cannot produce a build containing them.
+
+## Stitch types the lettering path supports
+
+Three, all added 2026-08-21/22 — before that the path was satin-only, so a
+runs-only font imported fine, passed most checks and stitched exactly ONE
+stitch.
+
+1. **Satin columns** — the original path.
+2. **Bean / running stitch** — `satinfont.routeRuns` resamples a run at the
+   length the FONT authored, and backtracks per stitch for bean repeats. A run
+   with no authored length is skipped, never defaulted (gate 1).
+   *(confirmed 2026-08-21 — `test/run-fonts.test.js`)*
+3. **Cross-stitch fill** — `src/crossfill.js`, written from first principles
+   rather than ported: Ink/Stitch's `cross_stitch.py` is GPL-3.0 and this
+   product is sold. The grid is MEASURED from the pixel-art outlines
+   (`detectLattice`), in glyph units, so it scales with the letterform like
+   satin width and no physical constant is chosen.
+   *(confirmed 2026-08-21 — `test/crossfill.test.js`)*
+
+A font whose outlines do not actually lie on one grid is **refused, not
+guessed at** — the threshold is 0.9 fit. Eleven upstream picture-fonts fit
+26.2%–87.5% and are excluded on that basis; two of them (`handkerchief` 87.5%,
+`nautical` 83.6%) sit close to the line and are still refused.
+*(measured 2026-08-22 — `tools/build-font.mjs` import run)*
+
+## Licence position
+
+**ShareAlike is permanently closed, and NC/ND/GPL are excluded.**
+`ALLOWED_LICENSES = {OFL-1.1, CC-BY-4.0, CC0}` gates the sellable build; guard
+tests pin that no pulled or ShareAlike font reaches the sellable manifest.
+*(confirmed 2026-08-22 — `test/run-fonts.test.js`, `test/font-license.test.js`)*
+
+Full licence texts ship three ways — sidecar file, served at
+`/fonts/<key>.LICENSE.txt`, and embedded in each `.embf`. Attributions are
+complete notices, not first lines. The three-way shipping is what discharges
+the OFL's requirement that the notice travel with every copy, and it is load
+bearing for more than the OFL: see `roman_ags` below.
+
+**Cross-family derivatives.** 71 of the 80 fonts declare a derivative base, but
+for all but one that base is itself OFL, so shipping the OFL text discharges
+everything. `roman_ags` is the exception — OFL-1.1 over Latin Modern Roman,
+which is under the GUST e-foundry Licence (LPPL 1.3c). The relicensing is
+legitimate: LPPL 1.3c clause 10a expressly permits a Derived Work under a
+different licence, and clause 6d ("information sufficient to obtain a complete,
+unmodified copy of the Work") is met by the fontsquirrel URL in the licence
+text. GUST's rename request is itself "requested, but not legally required",
+and is honoured anyway. What was wrong until 2026-08-22 was only the CREDIT:
+`extractAttribution` takes the first paragraph, and the provenance sat in the
+second, so the chain depended on a reader opening the linked file.
+*(confirmed 2026-08-22 — LPPL 1.3c primary text; `ATTRIBUTION_OVERRIDES`)*
+
+The 13 pulled ShareAlike fonts remain pulled. The lawyer consult
+(`docs/lawyer-brief-cc-by-sa-2026-08-04.md`) is optional and only gates
+restoring them.
+
+## Known defects
+
+**Stunted glyphs in four shipped fonts** — `mimosa_large` (D 0.11x, E 0.22x),
+`mimosa_medium` (D 0.22x, E 0.44x), `apesplit` (A 0.23x), `initials_medium`
+(A 0.28x), as a ratio of their case median height. These stitch, so the
+stitchability check passes them, but they render as stubs: `mimosa_large`'s D
+sews as a bare dash and both "initials" fonts' A as a tiny mark floating off
+the baseline. Confirmed by rendering, not by the ratio.
+*(confirmed 2026-08-22 — `test/font-stunted.test.js`, render inspection)*
+
+Whether to fix or pull them is Kent's call; the test records them as named
+debt so the set cannot grow silently.
+
+## Deferred / not done
+
+- **Condensed/expanded width and mixed per-letter size** — both risk uneven
+  satin distortion. Minor, not blocking.
+- **`cyrillic`** — held. Dropping 6 broken glyphs would salvage it but kills
+  `ñ`.
+- **Personal-build previews** — `tools/build-previews.mjs` reads the sellable
+  manifest, so the 40 personal-only fonts have no preview tile. Cosmetic, and
+  fixing it must NOT write those previews into `src/fonts/previews/` (that
+  directory is committed, and these are NC/ShareAlike fonts).
+  *(confirmed 2026-08-22 — `git check-ignore`)*
+
+## Supply
+
+**Upstream is effectively exhausted, and there is no external supply.**
+`inkstitch/embroidery-fonts` is a monoculture: across all of GitHub the
+`horiz_adv_x_space` key returns 16 files, of which the non-upstream remainder
+is four `font.json` files, none viable. Independent non-satin Ink/Stitch
+lettering fonts: zero. Full method and per-candidate verdicts in
+[`../font-hunt-external-2026-08-21.md`](../font-hunt-external-2026-08-21.md)
+and [`../font-expansion-research-2026-08-21.md`](../font-expansion-research-2026-08-21.md).
+*(measured 2026-08-21 — GitHub-wide code search, 20 agents / 9 search angles)*

@@ -25,6 +25,60 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-08-22 — **the font library went 55 -> 80, and five
+defects were found by LOOKING at output that every number called healthy.**
+
+Counts as they stood: 55 fonts at the start of 2026-08-21, 70 after the upstream
+sweep, 77 after cross-stitch lettering, **80** after the `fill_method` re-census.
+The `--personal` build went 106 -> 120. PRs #193, #195, #196, #198, #200, #203
+merged. Engine 387 pass / 0 fail; Studio 776 pass.
+
+Three engine capabilities landed. **Bean / running-stitch lettering:** the path
+was satin-only, so a runs-only font imported fine, passed most checks and
+stitched exactly ONE stitch — 26 licence-clean upstream fonts were unusable for
+that reason alone. **Cross-stitch fill** (`src/crossfill.js`), written from first
+principles rather than ported, because Ink/Stitch's is GPL-3.0 and this product
+is sold. **The sellable/personal build split**, at build time rather than as a
+runtime toggle.
+
+Five defects, and the pattern connecting them is the point. **The SVG parser
+truncated every path at its first scientific-notation number** — `parsePath`
+tested "is this a command?" with an unanchored `/[a-zA-Z]/`, and `5.2e-4`
+contains an `e`. 119 of 132 upstream fonts contain such numbers; 63 of the 70
+then-shipped ones did. It hid because satin rails carry large coordinates where
+truncation lands late: montecarlo lost 95 of 195,997 rail points (0.05%) and
+rendered beautifully. Kent's call was to rebuild rather than freeze the
+truncation: 20 of 77 came back byte-identical, median drift 0.00%, max 7.44%
+(alchemy 699 -> 751). **Even-odd vs nonzero winding** rendered `jersey_15` (one
+ring per glyph) flawlessly and `jacquard_12` (two) as fragments, at ~100% lattice
+fit on both. **Serpentine order dragged thread across gaps**, visible as
+diagonals over the M and B of "EMB". **`roman_ags`'s credit line** named its OFL
+adapter but not its LPPL base. **Four shipped fonts render a letter as a stub**
+and pass QC because they do emit stitches.
+
+Cell counts, QC verdicts and lattice fit all read healthy while glyphs were
+garbage. Rendering cells as ASCII, and looking at the browser, is what caught
+the parser bug, the fill-rule bug and the travel-diagonal bug. Two tests written
+this cycle passed VACUOUSLY on first draft — the roman_ags guard matched nothing
+because upstream's text reads "a derivative work fromm", and a crossfill fixture
+asserted a wrong expectation — both found only by deliberately breaking the
+thing they guarded.
+
+The `fill_method` re-census: cross-stitch fonts declare themselves two ways,
+`cross_stitch_method` and `fill_method="cross_stitch"`. The 2026-08-21 census
+looked only at the first, so 13 fonts were filed as "plain fill" needing a
+tatami row spacing — a gate-1 constant. They needed nothing of the kind;
+`build-font.mjs` had always handled them. 25 upstream cross-stitch fonts exist,
+not 12. Seven of the 18 unshipped measure a confident grid; eleven are refused
+at 26.2%-87.5% fit. Only three of the seven are OFL and therefore sellable.
+
+Terminus (inkstitch PR #2034) was re-fetched and re-evaluated: four broken
+letters rather than the one QC reported, plus a 1/10-width space in a
+fixed-width font, an OFL Reserved Font Name, and no size key. Recommended for
+omission; the decision is Kent's.
+
+---
+
 **Last updated:** 2026-08-21 (later) — **the sew-out ruling collided with the
 next work item, and Kent resolved it in favour of the gate.** Queuing satin
 border fragmentation surfaced a conflict with the same session's accept-as-is

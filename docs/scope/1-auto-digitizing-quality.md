@@ -2493,3 +2493,59 @@ or corpus-level trim reduction, and nothing here has been through the corpus
 scorecard. A real implementation still owes: the both-orderings guard, a corpus
 scorecard run, and the golden movement (pre-authorized on Linux CI under
 same-failure-set discipline).
+
+## The two evaluation harnesses
+
+Moved here from MASTER_SCOPE 2026-08-22 under the 800-line budget (rule 5). The
+live verdict and the link back stay in MASTER_SCOPE's "Evaluation corpus &
+harness" entry; this is the supporting detail.
+
+**Harness half: BUILT — `digitizer/tools/corpus_scorecard.py`.** `capture` runs
+all 14 committed `testdata/` fixtures (top-level and `photo/`) through
+`digitize()` + the existing `digitizer_core.preflight.run_preflight` — which
+already produced a 0-100 score, letter grade, typed findings and ~20 metrics, so
+this aggregates existing signal rather than inventing a metric — at two configs
+(80 mm width × `left_chest`/`hat_front`, two distinct fabric presets), writing
+`testdata/corpus_scorecard_baseline.json`. `diff` re-runs that matrix and reports
+score deltas, findings appeared/resolved, and metric drift past a 5% noise
+threshold. **Deliberately a REPORTING tool, not a CI gate** — the docstring cites
+this file's own corpus-laws-23/26 history (a "desk-safe" threshold picked without
+validation, later reverted) as the reason not to invent pass/fail numbers yet.
+Sole hard signal: a brand-new `block`-severity finding flips `diff`'s exit code.
+**Verified, not just written:** a real baseline (14 × 2, grades A to F — the F/0
+on `drone_render.png` and `summit_badge.png` are documented rough edges in those
+photo-tier stress fixtures, not harness bugs) then an immediate re-`diff` with no
+code changes reporting no drift at exit 0, so the pipeline is deterministic and
+the harness does not false-positive on itself. **Scope limit:** that determinism
+covers re-running the SAME code twice only — a recapture spanning real commits
+can fold in genuine undiagnosed drift, as "Fix #6.1 landed" (area 1) found for
+three fixtures. No dedicated test file, matching the convention that no
+`tools/*.py` has one (including `capture_flat_lane_golden.py`); a full capture is
+too slow for the regular suite.
+
+**A second, different harness also exists: `tools/pro_parity/`.** Where
+`corpus_scorecard.py` asks "did our own preflight score move", this one asks
+"how close is our output to the PROFESSIONAL digitization of the same
+design" — 23 of Kent's customer designs, decoded from their PES/DST, scored
+0–100 across six weighted components (coverage, direction, stitch type,
+density, underlay, travel) after a registration search aligns the two.
+**Its scale changed 2026-08-14:** `direction` and `sttype` are bounded
+agreement measures whose floor was ~0.5, so both are now chance-corrected
+against analytic floors (`sttype`'s being Cohen's kappa) and guessing scores
+0. See the Gotcha above before comparing any number to a pre-2026-08-14 one.
+*(confirmed 2026-08-14 — PR #151)*
+
+### Corpus scorecard — per-fixture state (moved from MASTER_SCOPE 2026-08-22)
+
+**Still open here: `summit_badge.png` (#6.2) alone.** Re-measured at HEAD it is
+F/0 at both configs with `thread_worst_delta_e` 10.2 — the grade is saturated,
+so judge a fix on that metric and never on score. **#6.3
+`repro_gradient_white_icon.png` is CLOSED**, though this list carried it as open
+until 2026-08-21: `stage4_vectorize.revalidate_threads` landed 2026-08-11 and it
+now measures **B/76 at both configs, worst dE00 6.8**, up from the corpus's worst
+grade. `drone_render.png`'s #6.1 landed too but does not move its grade; the
+"preflight pooled-metric gap" that used to explain that is itself closed —
+`619e9ad` rescored `THREAD_MATCH_POOR` per region, not per pooled thread median.
+**Next step:** run the tool against a few real classifier changes to learn what a
+genuine regression looks like before setting any hard threshold.
+*(measured 2026-08-21 — `corpus_scorecard._score_one` at HEAD, both MATRIX configs)*
