@@ -96,6 +96,17 @@
     return out;
   }
 
+  // Will this glyph put thread down? Mirrors routeGlyph/routeRuns/crossFill —
+  // satin columns sew, a run sews only with an authored stitch length (ROADMAP
+  // gate 1 bars inventing one), and a cross-stitch region sews only when the
+  // font carries the measured grid to fill it. Same rule as qc-font's
+  // `stitchable`; if one changes, change both.
+  function sewsSomething(font, g) {
+    if ((g.cols || []).length) return true;
+    if (font.crossGrid && (g.runs || []).some((r) => r && r.fill === "cross" && r.pts)) return true;
+    return (g.runs || []).some((r) => r && r.pts && r.lenMm > 0);
+  }
+
   const glyphBottomCache = new WeakMap();
   function glyphBottomUnits(g) {
     if (glyphBottomCache.has(g)) return glyphBottomCache.get(g);
@@ -588,6 +599,22 @@
         // engine cannot decide what the UI should say, but it can stop hiding
         // the fact — so the characters it dropped are reported.
         if (!g) { unsupportedAt.push([charIdx, ch]); penX += font.advDefault; prev = null; continue; }
+        // A glyph that EXISTS but sews nothing is the same silent gap wearing a
+        // disguise, and the report has to cover it or it reads as a promise it
+        // does not keep: type "ç" in western_light and the letter simply is not
+        // there, while a character the font lacks outright gets a note.
+        // Measured 2026-08-22 across the sellable library: two such glyphs,
+        // western_light's "ç" and ondulamarif_XL's "º". The personal build is
+        // where it bites — paquerette has 31 of its 52 letters in this state,
+        // because only 72 of its 1,641 runs carry an authored stitch length.
+        // Same test routeRuns and glyphPoints use, so "sews nothing" here means
+        // exactly what the stitch path will do, not an approximation of it. The
+        // glyph keeps its own advance: it is a hole of the right width, and
+        // collapsing the text would be a second wrong answer.
+        if (!sewsSomething(font, g)) {
+          unsupportedAt.push([charIdx, ch]);
+          penX += (g.adv || font.advDefault); prev = null; continue;
+        }
         if (prev != null && font.kerning) { const k = font.kerning[prev + ch]; if (k) penX += k; }
         glyphs.push({ g, ox: penX, charIdx });
         penX += g.adv + lsUnits;
