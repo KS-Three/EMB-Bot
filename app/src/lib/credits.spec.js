@@ -26,4 +26,36 @@ describe("creditLines", () => {
     expect(lines[0].modificationNote).toBe(MODIFICATION_NOTE);
     expect(MODIFICATION_NOTE).toMatch(/[Mm]odified/);
   });
+
+  // The credits dialog is where the OFL's "this licence must accompany every
+  // copy" obligation is actually discharged, and a broken link there fails
+  // silently — a 404 in a dialog nobody opens twice. So pin it against the
+  // REAL manifest rather than a fixture: every shipped font gets a line, and
+  // every line's licence href names a file that exists.
+  //
+  // credits.js builds "/fonts/<key>.LICENSE.txt" and copy-engine copies
+  // src/fonts/<key>.LICENSE.txt to that path; this holds the two ends of that
+  // convention together. Verified 2026-08-22 — 85 of 85, no gaps.
+  it("every shipped font gets a complete credit line with a real licence file", async () => {
+    const { createRequire } = await import("node:module");
+    const require = createRequire(import.meta.url);
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const man = require("../../../src/fonts/manifest.json");
+    expect(man.fonts.length).toBeGreaterThan(50); // an empty manifest asserts nothing
+
+    const lines = creditLines(man.fonts);
+    expect(lines).toHaveLength(man.fonts.length);
+
+    const FONT_DIR = path.join(__dirname, "..", "..", "..", "src", "fonts");
+    const broken = lines
+      .filter((l) => !fs.existsSync(path.join(FONT_DIR, l.licenseHref.split("/").pop())))
+      .map((l) => l.licenseHref);
+    expect(broken).toEqual([]);
+
+    const incomplete = lines
+      .filter((l) => !l.attribution || !l.licenseId || !l.source)
+      .map((l) => l.name);
+    expect(incomplete).toEqual([]);
+  });
 });
