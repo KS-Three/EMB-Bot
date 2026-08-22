@@ -2494,6 +2494,439 @@ scorecard. A real implementation still owes: the both-orderings guard, a corpus
 scorecard run, and the golden movement (pre-authorized on Linux CI under
 same-failure-set discipline).
 
+### RETRACTION — stage 5 is NOT producing invalid geometry (2026-08-22)
+
+**A claim this session raised repeatedly, and called the highest-value open
+thread, is false.** After the `_row_spans` crash fix landed (PR #202), the
+standing worry was that the guard only repaired at the consumer while stage 5's
+pull compensation kept emitting self-intersecting polygons into every other
+consumer. Measured, that is not what happens.
+
+| checked | result |
+|---|---|
+| `PlannedRegion.polygon` values from stage 5 | **0 invalid** |
+| `_largest_polygon` inputs / outputs | **0 invalid** |
+| the source polygon that later goes invalid | **VALID** — area 1255.28 mm², 2 holes |
+
+**The invalidity is created transiently by floating-point ROTATION**, inside
+`best_fill_angle_deg`'s angle sweep (`stage6_fill.py:259`), not by any producer.
+That function rotates the shape through 17 candidate angles to count columns.
+On this shape, **11 of those 17 rotations turn a valid polygon into a
+self-intersecting one** — e.g. angle 11.25° gives
+`Self-intersection[-38.330, -1.663]`. `_row_spans` then hands it to
+`poly.intersection(line)` and GEOS raises `TopologyException`.
+
+Two consequences, both important:
+
+1. **The consumer-side guard is the CORRECT fix, not a workaround.** No producer
+   change could prevent this: the polygon is valid when it leaves stage 5, and
+   rotation is arithmetic. Repairing where the invalid geometry is first *used*
+   is the only place the repair can live. `stage6_border` (:249) and
+   `stage6_contour` (:109) were right all along; fill was the odd one out.
+2. **The angle search is NOT silently degraded.** The obvious follow-on worry —
+   that column counts taken on invalid geometry pick bad fill angles — was
+   measured and refuted: repairing before the sweep changes the chosen angle on
+   **0 of 8 shapes**. The crash was the only consequence.
+
+**Method note, since this took four wrong turns.** The first three hypotheses —
+stage 5's `.difference()` chains, `unary_union`, and `_fill_paths`' own rotation
+— were each checked and each produced zero invalid polygons. The fourth found it
+only by instrumenting `_row_spans` itself with a stack trace, which named
+`best_fill_angle_deg:259` rather than `_fill_paths:787`. **Testing the call site
+you assume is the one is how three of those turns were wasted**; instrument the
+failing function and let it tell you who called it.
+
+### Real-artwork validation of the trim work: it is INERT on client logos (2026-08-22)
+
+Kent asked for the path-order selector (PR #205, +143 trims across the committed
+photo corpus) to be checked against real artwork rather than synthetic fixtures.
+Checked, against all six real-artwork fixtures in the repo — the four
+`testdata/reference/becker_*.jpg` client logos plus `becker_marine_logo.png` and
+`logo_script_tires.png`.
+
+**Result: zero difference. Byte-identical trims and stitches on all six.**
+Reproduce with
+`trim_exchange_sweep.py --glob 'testdata/reference/*.jpg' --diff before after`.
+
+Why, measured per fixture:
+
+| fixture | fill shapes | with cuts | reorder accepted | holed regions |
+|---|---|---|---|---|
+| `becker_chest_small…` | 3 | 0 | 0 | 1 |
+| `becker_hat_polo_large…logo_hat` | 1 | 0 | 0 | 4 |
+| `becker_hat_polo_large…logolc` | 3 | **1** | 0 | 5 |
+| `becker_hat_small…` | 3 | 0 | 0 | 1 |
+| `becker_marine_logo.png` | 2 | 0 | 0 | 5 |
+| `logo_script_tires.png` | 1 | 0 | 0 | 1 |
+
+Real client logos carry **1–3 fill shapes each and essentially no cutting
+fills.** They are predominantly satin — lettering and borders. They *do* have
+holed regions (1–5 each), but those fills do not fragment into the many
+travel-stranded columns the selector exists to reorder. Exactly one shape across
+all six designs had any cuts at all, and there the incoming order was already
+the cheaper of the two.
+
+**What this does and does not mean.**
+
+- It does NOT retract PR #205. The +143 trims on the photo corpus are real, and
+  the change is byte-identical here, so it carries **zero risk** on this class of
+  work.
+- It DOES mean the headline number is about photo-lane and large-fill designs,
+  not about the logo work this shop actually sews. Anyone quoting "+143 trims"
+  as a customer-visible win is over-claiming.
+- It is the 2026-08-16 handoff's warning **in reverse**: there, synthetic
+  fixtures flattered the ENGINE by 11.3 points; here they flatter a FIX. The
+  committed photo corpus is not representative of real client artwork in either
+  direction, and a result measured only there needs this caveat attached.
+
+**Follow-on this suggests, unsized:** if real logo work is satin-dominated and
+barely fills, then fill-side trim work has a low ceiling on it regardless of
+mechanism, and `logo_hotel_fremont`-style perforated fields are the exception
+rather than the type. Satin-side trim behaviour is where the customer-visible
+gain would have to come from. Not measured.
+
+### Where real-artwork trims actually come from — and the prize behind gate 1 (2026-08-22)
+
+Follows the finding above that the fill-side trim work is inert on client logos.
+If not fill, then what? Measured across all six real-artwork fixtures.
+
+**Every shape transition costs a cut.** First-of-shape trims track shape count
+almost exactly:
+
+| fixture | trims | first-of-shape | mid-shape | shapes |
+|---|---|---|---|---|
+| `becker_marine_logo.png` | 29 | 10 | 19 | **10** |
+| `becker_hat_polo_large…logo_hat` | 31 | 11 | 20 | **12** |
+| `becker_hat_polo_large…logolc` | 34 | 14 | 20 | **16** |
+| `becker_hat_small…` | 13 | 8 | 5 | **8** |
+| `becker_chest_small…` | 9 | 7 | 2 | **8** |
+| `logo_script_tires.png` | 8 | 4 | 4 | **4** |
+
+Ten of ten, eleven of twelve, fourteen of sixteen, eight of eight. Entering a
+shape costs a trim, and real logos are many small shapes.
+
+**Underlay, not satin or fill, is the largest single trim kind** — 23 of 29 on
+`becker_marine_logo`, 7 of 8 on `logo_script_tires`. But it is NOT an
+intra-shape ordering problem: every underlay call returns fewer than 3 paths, so
+there is nothing to reorder. `_reorder_for_fewer_cuts` was prototyped against
+underlay and qualified on **0 shapes across all six fixtures**. The underlay
+trims are the shape-entry trims, counted by kind.
+
+**So the lever for real artwork is inter-shape linking — which is
+`chain_links`, and it is gate-1 frozen.** Measured with the flag ON, as a probe
+only (the default stays OFF):
+
+| fixture | trims OFF → ON | stitches OFF → ON |
+|---|---|---|
+| `becker_hat_polo_large…logolc` | 34 → **19** | 3999 → **3919** |
+| `becker_hat_polo_large…logo_hat` | 31 → **21** | 4265 → **4221** |
+| `becker_marine_logo.png` | 29 → **20** | 4466 → **4420** |
+| `becker_hat_small…` | 13 → **8** | 2354 → **2325** |
+| `becker_chest_small…` | 9 → **7** | 2440 → **2428** |
+| `logo_script_tires.png` | 8 → **6** | 2302 → **2292** |
+| **total** | **130 → 87, −33%** | **lower on every fixture** |
+
+**Better on both axes on every fixture.** Contrast the fill-side selector, which
+cost stitches on the photo corpus and did nothing at all here.
+
+**This does not reopen gate 1 and is not a request to flip the flag.**
+`LINK_COVER_TOL_MM` is a thread spec; the gate is a refusal and it holds. What
+this adds is a number the gate decision did not previously have on REAL artwork:
+the sew-out that Kent accepted as-is (2026-08-21) is standing in front of a
+**33% trim reduction at zero stitch cost on the work this shop actually sews**,
+not merely a corpus-metric gain. Whether that changes his call is his to decide;
+it should at least be decided against the right number.
+
+**Session synthesis.** Fill-side trim work (PR #205) helps photo-lane and large-
+fill designs and is byte-identical on client logos. The customer-visible trim win
+is `chain_links`, already built, already measured, blocked only on cloth.
+
+### Stage-2 splitting of the perforated field: sized, and NOT recommended (2026-08-22)
+
+The last of the four items Kent queued. The idea was to stop handing a 46-hole,
+2,095 mm² field to the filler as one shape.
+
+**First: the holes are real artwork, not segmentation noise.** Measured — median
+**11.7 mm²**, p75 19.6, max 39.3, and only **2 of 46** fall under the sewable
+floor (`RUN_MIN_AREA_MM2` 0.16). Total hole area is 651.8 mm², **23.7% of the
+filled bbox**. These are letters and elements punched through a background
+field. Any argument for splitting on speckle-removal grounds is dead on arrival,
+and `docs/segmentation-alignment-2026-08-17.md`'s 95.8%-speckle finding is about
+a different thing (grid straddle at cell level), not these holes.
+
+**Second: the remaining gain is small, because PR #205 already took most of it.**
+
+| state | cuts on `S78e6cd01` |
+|---|---|
+| before PR #205 | 57 |
+| **shipped today** | **33** |
+| split into its 17 travel-connected components (estimated) | ~17 |
+
+*(Correction: an earlier prototype predicted 24 for the shipped state. That was
+the UNCAPPED selector; the 25 st/trim cap Kent set correctly rejects the
+expensive trades, landing at 33. 24 was never shipped and should not be quoted.)*
+
+So the split is worth roughly **16 further trims on one shape** — real, but
+against a large cost:
+
+- **It restructures segmentation output.** Region count, shape IDs, the review
+  UI a user edits, and every golden that touches this fixture class. One field
+  becomes seventeen shapes.
+- **It is a UX regression for a geometry win.** A user who sees one white
+  background now sees seventeen pieces to reason about.
+- **The fixture class is unrepresentative.** Today's real-artwork measurement
+  found client logos carry 1–3 fill shapes each with essentially no cutting
+  fills. `logo_hotel_fremont`'s perforated field is the exception, not the type.
+- **The entry trims it trades into are the ones `chain_links` removes.** Each of
+  the 17 new shapes costs an entry trim today; with chaining those largely
+  vanish. Splitting is therefore worth much MORE after a sew-out than before —
+  which is an argument for sequencing it after that decision, not now.
+
+**Recommendation: do not build it.** Revisit only if `chain_links` ships, at
+which point the entry-trim cost of splitting falls and the arithmetic changes.
+Recorded so the next session sizes it from these numbers rather than rebuilding
+the measurement.
+
+### Satin travel fails at the CURSOR, not the target — and that is gate-clear (2026-08-22)
+
+The satin-side counterpart to the fill work, measured on real client artwork
+because that is where satin dominates (1–3 fill shapes per logo, 9–40 satin
+runs).
+
+**First, a stale claim corrected.** `docs/fragmentation-attribution-2026-08-18.md`
+§2 says `_graph_travel` "never returns a path". Measured over 124 calls on six
+real-artwork fixtures, it returns one **18–30% of the time** (0% on one small
+fixture). Not never.
+
+**A hypothesis of mine, refuted before it reached a doc.** `_graph_travel` walks
+only UNSEWN spines, so the obvious theory is that the web is progressively
+consumed and late travels fail. Measured, it is backwards:
+
+| web already sewn | calls | succeeded |
+|---|---|---|
+| **nothing sewn at all** | **37** | **0 (0%)** |
+| 0–20% | 112 | 27 (24%) |
+| 20–40% | 12 | 0 |
+
+With the entire web available, travel fails every time. Consumption cannot
+explain a failure when nothing is consumed.
+
+**The real constraint is the cursor-side snap.** For those 37 failures:
+
+| | distance to nearest web node |
+|---|---|
+| cursor, on failing calls | median **6.96 mm**, max **62.11 mm** |
+| cursor, on succeeding calls | median 1.11 mm, max **2.66 mm** |
+| target, on failing calls | median **0.00 mm** |
+| snap radius (`trim_at_mm`) | **3.0 mm** |
+
+**31 of 37 have the cursor outside the snap radius.** The destination is on the
+web; the needle simply arrives from elsewhere and cannot get onto the web to
+start walking. This is the cursor-side snap the attribution doc named, now with
+numbers.
+
+**Two ways to fix it, and only one is available.**
+
+1. **Widen the snap radius — GATE 1, refused.** The radius *is* `trim_at_mm`,
+   and `_graph_travel`'s own docstring says the coupling is deliberate: "both
+   answer how long a leg is sewable needle-down — but it is one knob, not two."
+   Whether a needle-down leg from an off-web cursor is sewable is a cloth
+   question. Not touchable without a sew-out.
+2. **Put the cursor somewhere better — GATE-CLEAR, unbuilt.** The cursor sits
+   ~7 mm off the web *because of where the previous shape ended*. Nothing
+   physical forces that. Choosing each shape's exit — or the shape order — so
+   the needle finishes near the next shape's web would bring the cursor inside
+   the existing 3 mm radius without changing any constant. This is the same
+   move that worked on the fill side: **choose the order so the geometry
+   works, rather than widening a threshold.**
+
+**Not built, and deliberately not sized here.** It touches stage 7 sequencing
+and the exit-point coupling that PR #205's last-path pin exists to contain, so
+it wants its own measurement pass. Recorded because it is the first gate-clear
+lever found on the code path that actually dominates real client artwork —
+everything else measured tonight either helps only photo-lane work or sits
+behind the sew-out.
+
+#### Sizing the cursor-placement lever: 81% upper bound (2026-08-22)
+
+Of the 31 satin-travel failures where the cursor sits outside the 3 mm snap
+radius, **25 (81%) have geometry from another shape passing within 3 mm of the
+target web.** So for four in five, a needle finishing somewhere else would
+already be inside the existing radius — the placement is available, nobody is
+choosing it.
+
+| fixture | out-of-snap failures | other geometry within 3 mm |
+|---|---|---|
+| `becker_hat_polo_large…logo_hat` | 8 | **8** |
+| `becker_hat_polo_large…logolc` | 7 | **7** |
+| `becker_hat_small…` | 5 | **5** |
+| `becker_chest_small…` | 4 | **4** |
+| `becker_marine_logo.png` | 7 | 1 |
+| **total** | **31** | **25 (81%)** |
+
+**Read this as an upper bound, not a forecast.** Three reasons it will come in
+lower:
+
+- "Other geometry passes within 3 mm" is not "a valid exit exists there **and**
+  the sequence can be reordered to use it". Exit points are constrained by where
+  a shape's own stitching can legitimately end.
+- The owner-of-web attribution is a heuristic (nearest-mean matching of plan
+  points to web nodes); a misattributed web would inflate the count.
+- 31 is the out-of-snap subset of the 37 zero-sewn failures, which is itself a
+  subset of the ~97 total `_graph_travel` failures across these fixtures. This
+  sizes one slice, not all satin travel.
+
+`becker_marine_logo` is the honest outlier at 1 of 7 — its shapes are genuinely
+far apart, and no sequencing fixes distance. Expect the win to be design-shaped,
+not uniform.
+
+**Still the most promising unbuilt lever measured this session**, because it is
+the only one that is simultaneously gate-clear, on the code path that dominates
+real client artwork, and grounded in a measured bound rather than a hypothesis.
+
+#### The exit point is never chosen — and choosing it is worth 58% of inter-shape trims (2026-08-22)
+
+`stage7_sequence.py:1487` decides every shape-entry trim:
+
+```python
+d = math.dist(cursor, runs[0].points[0])
+runs[0].trim = d > trim_at        # NO travel attempt between shapes
+cursor = runs[-1].points[-1]      # exit is wherever the shape happened to end
+```
+
+Shape ORDER is already nearest-neighbour (`polygon.distance(here)`), and ENTRY
+is already cursor-aware (`stitch_one(p, cursor)` → `start_near`). **The EXIT is
+not chosen at all.** It is whatever point the shape's last run finished on, and
+it becomes the next shape's cursor.
+
+Sized on real client artwork — for each consecutive shape pair, the gap as
+sewn versus the best gap achievable over all exit/entry point pairs:
+
+| fixture | transitions | trims now | with ideal exit | saveable |
+|---|---|---|---|---|
+| `becker_hat_polo_large…logolc` | 15 | 12 | 8 | 4 |
+| `becker_hat_polo_large…logo_hat` | 11 | 9 | 3 | **6** |
+| `becker_marine_logo.png` | 9 | 9 | 4 | 5 |
+| `becker_hat_small…` | 7 | 7 | 1 | **6** |
+| `becker_chest_small…` | 7 | 6 | 2 | 4 |
+| **total** | **49** | **43** | **18** | **25 (58%)** |
+
+**~19% of ALL trims on real artwork, with no constant touched.** Compare
+`chain_links` at 33%, which needs a sew-out. This is the gate-clear alternative
+and it is unbuilt.
+
+**Upper bound, and the assumption is a real one:** it assumes any point of a
+shape can serve as its exit. That is false — a satin column ends at its end, a
+fill ends where its last row lands. The realizable share is lower, and the
+honest way to find out is to build it against
+`tools/trim_exchange_sweep.py --diff`.
+
+**What building it needs.** An `end_near` hint threaded into `stitch_shape` and
+the satin router, mirroring the existing `start_near`, plus a greedy
+look-ahead in the stage-7 loop (pick the next shape, then aim the current
+shape's exit at it). Blast radius is every design, so it needs the
+baseline-then-after suite comparison and golden re-capture — pre-authorized on
+Linux CI under same-failure-set discipline. **This is the recommended next
+build.**
+
+#### CORRECTION to the entry above: 58% was inflated ~2x; the honest figure is 28% (2026-08-22)
+
+The entry immediately above called exit-choice the "recommended next build" on a
+58% saveable figure. **That bound assumed any point of a shape can be its exit,
+and it flagged the assumption without testing it. Tested, it costs half the
+prize.**
+
+A shape can realistically finish at the END of one of its runs — a satin column
+ends at its end, a fill where its last row lands — not at an arbitrary interior
+point. Re-sizing with run endpoints as the only candidate exits (and entries):
+
+| fixture | trims now | any-point bound | run-endpoints only |
+|---|---|---|---|
+| `becker_hat_polo_large…logolc` | 12 | 8 | 9 |
+| `becker_marine_logo.png` | 9 | 4 | **9 (saves nothing)** |
+| `becker_hat_polo_large…logo_hat` | 9 | 3 | 7 |
+| `becker_hat_small…` | 7 | 1 | 4 |
+| `becker_chest_small…` | 6 | 2 | 2 |
+| **total** | **43** | **18** | **31** |
+
+**Realistic saving: 12 of 43 inter-shape trims (28%), not 25 (58%).** Against
+~130 total real-artwork trims that is roughly **9%**, not 19%.
+
+`becker_marine_logo` saves **nothing** at all under realistic exits (9 → 9),
+consistent with its earlier 1-of-7 showing: its shapes are genuinely far apart
+and no choice of endpoint reaches across.
+
+**Revised recommendation: do NOT build this next.** Nine percent of real-artwork
+trims does not justify threading `end_near` through `stitch_shape` and the satin
+router plus a greedy look-ahead in stage 7 — the highest-blast-radius change
+available, touching every design's sequencing. The honest comparison:
+
+| lever | real-artwork trim reduction | status |
+|---|---|---|
+| `chain_links` | **33%**, and fewer stitches | built, measured, gate-1 frozen |
+| exit choice | **~9%** | unbuilt, large blast radius, gate-clear |
+| fill ordering (PR #205) | **0%** | shipped; helps photo-lane only |
+
+**The lesson is the one this session kept relearning.** An upper bound with a
+named-but-untested assumption is not a sizing. Testing the assumption took one
+measurement and halved the answer — before a large change was built on it,
+rather than after.
+#### The chain_links number is robust across palette sizes (2026-08-22)
+
+The 33% figure is the one Kent may weigh against his accept-the-sew-out-as-is
+call, so it was stress-tested rather than left on a single config.
+
+| `max_colors` | trims | stitches | designs worse on either axis |
+|---|---|---|---|
+| 4 | 119 → 77 (**35%**) | −217 | **0** |
+| 6 | 116 → 75 (**35%**) | −211 | **0** |
+| 8 | 116 → 75 (**35%**) | −211 | **0** |
+
+Identical reduction at every palette size, stitch count down at every one, and
+zero designs worse on either axis in all three runs. Not a config artifact.
+
+**Precision note on the headline.** The widely-quoted **33%** comes from a
+seven-fixture set that includes `logo_alpha.png` and `logo_script_tires.png`;
+`logo_alpha` shows no change at all and dilutes the ratio. Across the six
+real-artwork fixtures alone it is **35%**. Both are true of their own sets —
+**quote 33%**, it is the conservative one, and say which set it is from.
+
+Still gate-1 frozen. Still not a request to flip the flag.
+
+#### CORRECTION: the cursor-snap story covers 34% of satin travel failures, not all (2026-08-22)
+
+The entry titled "Satin travel fails at the CURSOR, not the target" drew its
+numbers from the `sewn == 0` subset — 31 of 37 — and then **let that stand as a
+claim about satin travel generally. It is not.** Measured over the full call
+population on the same six real-artwork fixtures:
+
+| | count | share of failures |
+|---|---|---|
+| `_graph_travel` calls | 124 | |
+| failures | **97** | |
+| cursor **outside** the 3 mm radius — the snap story | **33** | **34%** |
+| cursor **inside** the radius — not a snap problem | **64** | **66%** |
+
+**Two thirds of satin travel failures have the cursor comfortably in range** and
+fail for other reasons — genuine graph disconnection between glyphs, or the
+already-sewn edges that `_graph_travel` is forbidden to reuse. Cursor placement
+cannot touch those.
+
+So the gate-clear cursor lever addresses **at most 34% of satin travel
+failures**, on top of the earlier correction that exit-choice is worth 28% of
+inter-shape trims rather than 58%. Both corrections point the same way: the
+gate-clear satin work is smaller than it first looked, and `chain_links` remains
+the only measured lever with a large real-artwork effect.
+
+**Size-dependence, measured while checking this** (`becker_marine_logo` at four
+widths): success rate 12% at 40 mm, 8% at 60 mm, 25% at 80 mm, and at 120 mm
+`_graph_travel` is **never called at all** — the design routes without needing
+it. No clean trend; do not model this as "worse on small garments".
+
+**The habit that caught it**, for the third time tonight: a number measured on a
+subset was carrying a claim about the whole. Check the denominator before the
+heading generalises.
+
 ## The two evaluation harnesses
 
 Moved here from MASTER_SCOPE 2026-08-22 under the 800-line budget (rule 5). The

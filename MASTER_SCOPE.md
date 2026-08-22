@@ -111,9 +111,9 @@ or move it.
    pipeline consolidates them to 21. Merging every fragment on every thread
    still leaves 98 trims. **69% of trims are intra-shape**, 56 of them inside
    one 2,095 mm² white field with 46 holes whose tatami breaks into 280 runs.
-   Stage 2 also splits one flat colour across two threads (47%/42%);
-   `revalidate_threads` re-snaps them, but the geometric cut survives.
-   *(measured 2026-08-21 — reproduced independently twice)*
+   Stage 2 also splits one flat colour across two threads; the cut survives
+   `revalidate_threads`. **UNREPRESENTATIVE of client logos** — theirs carry
+   1–3 fill shapes that essentially never cut. *(measured 2026-08-21/22)*
 
 7. **RESOLVED 2026-08-21 — satin silently dropped a bracket's tab** on
    `enthusiast_logo.png` (7.8 mm² bare, D/52 → C/64). `_prune_spurs` re-measured
@@ -677,11 +677,11 @@ fixed by exempting a dead end the function itself created, D/52 → C/64. Same
 cascade was mangling block letters in `textcluster.py`. **The blind spot that
 hid it stays fixed:** `preflight`'s `ARTWORK_UNCOVERED` (`polygon ∩ ink`),
 5.0 mm² threshold still provisional. *(fixed 2026-08-21 — PR #186)*
-**Next:** satin border fragmentation (live defect 6), starting at the ONE
-2,095 mm² white field whose 46 holes break its tatami into 280 runs — 56 of the
-design's 135 trims, 41%, in one shape, and gate-clear geometry. **Gate 1 holds:**
-`chain_links` and `trim_at_mm`, the PRIMARY levers, stay frozen — a partial win
-by design, not a fix. Judge on intra-shape trims. *(ruled 2026-08-21 — Kent)*
+**Next:** NEEDS KENT. The fragmentation work finished 2026-08-22 and measures
+**0% on real client logos** — PR #205 is byte-identical on all six (they are
+satin-dominated, 1–3 fill shapes, no cutting fills). The one large real-artwork
+lever is **`chain_links`: −33% trims AND fewer stitches**, gate-1 frozen; every
+gate-clear alternative measures ≤9%. *(measured 2026-08-22 — area 1 detail)*
 
 ### 2. Font library & lettering — [detail](docs/scope/2-font-library-lettering.md)
 
