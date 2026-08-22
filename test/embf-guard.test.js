@@ -102,7 +102,13 @@ test("no orphan .embf files — every binary has a manifest entry", () => {
 
 test("every verified-tier font is in the manifest or explicitly excluded by license", () => {
   const tiersPath = path.join(__dirname, "..", "scratch_ink", "_tiers.json");
-  if (!fs.existsSync(tiersPath)) return; // scratch material absent in some checkouts
+  // scratch_ink/ is GITIGNORED, so this is not "absent in some checkouts" — it
+  // is absent in EVERY fresh clone and on CI, which means this check is
+  // local-only and has never once run in CI. Left as a skip because the input
+  // genuinely cannot be there, but stated plainly: green CI is not evidence
+  // that the tier list and the manifest agree. Unlike the other early returns
+  // in this suite, this one must NOT throw on CI.
+  if (!fs.existsSync(tiersPath)) return;
   const tiers = JSON.parse(fs.readFileSync(tiersPath, "utf8"));
   const man = JSON.parse(fs.readFileSync(path.join(FONT_DIR, "manifest.json"), "utf8"));
   const manKeys = new Set(man.fonts.map((f) => f.key));

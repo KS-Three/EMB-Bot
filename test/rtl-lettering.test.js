@@ -89,10 +89,22 @@ test("a shipped RTL font carries dir and its glyphs are Hebrew, not Arabic", () 
   const path = require("node:path");
   const fb = require("../src/fontbin.js");
   const BIN = path.join(__dirname, "..", "src", "fonts", "bin");
-  if (!fs.existsSync(BIN)) return;
+  // src/fonts/bin/ is COMMITTED, so this should never fire in a real checkout.
+  // It throws on CI anyway: a test that returns early asserts NOTHING and still
+  // reports green, which is the exact shape that has bitten this suite before
+  // (test/crossval-stitch-formats.test.js throws on CI for the same reason). A
+  // missing font library on CI means the build did not run — not that there is
+  // nothing to check.
+  if (!fs.existsSync(BIN)) {
+    if (process.env.CI) throw new Error("src/fonts/bin missing on CI — the font library did not build");
+    return;
+  }
   const rtl = fs.readdirSync(BIN).filter((f) => f.endsWith(".embf"))
     .map((f) => [f.replace(/\.embf$/, ""), fb.decodeFontBin(fs.readFileSync(path.join(BIN, f)))])
     .filter(([, font]) => font.dir === "rtl");
+  assert.ok(rtl.length > 0,
+    "no shipped font is marked dir:rtl — the Hebrew faces are the reason this check exists, " +
+    "so an empty set means it is asserting nothing");
   for (const [key, font] of rtl) {
     const chars = Object.keys(font.glyphs).filter((c) => [...c].length === 1);
     const arabic = chars.filter((c) => c.codePointAt(0) >= 0x0600 && c.codePointAt(0) <= 0x06ff);

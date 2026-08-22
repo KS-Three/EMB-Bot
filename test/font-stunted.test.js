@@ -30,6 +30,20 @@ const fb = require("../src/fontbin.js");
 
 const BIN = path.join(__dirname, "..", "src", "fonts", "bin");
 const RATIO = 0.45; // mirrors tools/qc-font.mjs
+// src/fonts/bin/ is COMMITTED, so this guard should never fire in a real
+// checkout. It is written to fail loud on CI anyway, because a test that
+// returns early asserts NOTHING and still reports green — the exact shape that
+// has bitten this suite repeatedly (see test/crossval-stitch-formats.test.js,
+// which throws on CI for the same reason). A missing font library on CI means
+// the build did not run, not that there is nothing to check.
+function binDirOrSkip() {
+  if (fs.existsSync(BIN)) return true;
+  if (process.env.CI) throw new Error(
+    "src/fonts/bin is missing on CI — the font library did not build, so this " +
+    "check would have passed without asserting anything");
+  return false;
+}
+
 
 // Empty by design — the 2026-08-22 debt was fixed at its root, not suppressed.
 // Add an entry ONLY with a rendered image showing why the glyph is acceptable
@@ -63,9 +77,13 @@ function stuntedLetters(font) {
 }
 
 test("no shipped font has a letter far shorter than its case median", () => {
-  if (!fs.existsSync(BIN)) return;
-  for (const f of fs.readdirSync(BIN)) {
-    if (!f.endsWith(".embf")) continue;
+  if (!binDirOrSkip()) return;
+  const bins = fs.readdirSync(BIN).filter((f) => f.endsWith(".embf"));
+  // Iterating an empty list asserts nothing and still reports green — the same
+  // vacuous pass as the early return above, one level down. The library is
+  // committed and is 85 fonts; a handful would mean something is badly wrong.
+  assert.ok(bins.length > 50, `only ${bins.length} .embf files — the library did not build`);
+  for (const f of bins) {
     const key = f.replace(/\.embf$/, "");
     const font = fb.decodeFontBin(fs.readFileSync(path.join(BIN, f)));
     const found = stuntedLetters(font);
@@ -80,7 +98,7 @@ test("no shipped font has a letter far shorter than its case median", () => {
 });
 
 test("the recorded debt is real — a fixed or pulled font must be removed from the list", () => {
-  if (!fs.existsSync(BIN)) return;
+  if (!binDirOrSkip()) return;
   for (const [key, letters] of Object.entries(KNOWN_STUNTED)) {
     const p = path.join(BIN, key + ".embf");
     if (!fs.existsSync(p)) continue; // pulled from the library; nothing to check
