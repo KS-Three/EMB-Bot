@@ -430,18 +430,17 @@ The decision queue. Everything here is BLOCKED on a call only Kent can make, not
 on engineering effort. Detail stays in its own section rather than duplicated
 here, so this list can go stale about WHAT IS OPEN but never about the facts.
 
-**The one Kent asked to have written down (2026-08-14) that is still open:**
-
-1. **Fund the stage 0-4 cache?** A boundary edit currently costs a full
-   stage 0-7 re-run — no cache helps, because `jobs.content_key` folds
-   `shape_overrides` into the config, so every geometry edit is a guaranteed
-   miss. Caching stages 0-4 and re-running only `plan_stitches` would take
-   **logo art from ~7.3s to ~1.4s**, but a **photo only from ~14s to ~6.6s**
-   (nearly half a photo's cost is stitch planning, which a boundary edit
-   invalidates by definition). Worth building for logo work; not a route to
-   "instant" on photos. Measured table + the caveat about the numbers being
-   taken under load: **area 5**, under Kent's direct-manipulation request.
-   Not started.
+1. **RESOLVED 2026-08-22 — the stage 0-4 cache is funded and built.** Kept
+   numbered, not deleted (the 2026-08-14 ask and area 5 both cite it as
+   item 1). Kent funded it in the 2026-08-22 session workload answer;
+   `run_stages` now splits at the review-edit seam
+   (`pipeline.build_generation` / `finish_generation`) and the service
+   caches generations across edits (`digitizer_service.jobs.
+   GenerationCache`), so an edited re-digitize re-runs only the finish +
+   `plan_stitches`. The byte-identity property is pinned server-side and
+   core-side. Measured speedup on this container: **area 5**, under the
+   cache entry. *(confirmed 2026-08-22 — tests/test_generation_cache.py,
+   test_service.py's generation-cache round trips)*
 
 **Also open, same category — listed so this queue is not a half-truth. All of
 these predate 2026-08-14 except where noted:**
