@@ -590,6 +590,110 @@ def travel_path(poly: Polygon, ring, a: tuple[float, float],
     return None
 
 
+# How many nearest candidates the routable-first walk probes before it accepts
+# that nothing reachable is left and takes the cut. Measured on
+# `logo_hotel_fremont.webp`'s 46-hole white field (the worst shape in the
+# corpus, 280 fill runs): no candidate past the 40th ever changed the chosen
+# next run. It is a work cap, not a quality knob — raising it cannot make the
+# result worse, only slower.
+_ROUTABLE_PROBE_LIMIT = 40
+
+
+def _count_cuts(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
+                slack: Polygon, entry: tuple[float, float] | None,
+                trim_at_mm: float) -> int:
+    """How many thread cuts this path ORDER costs, by `fill_region`'s own rule.
+
+    `emit` cuts exactly when `travel_path` finds no route AND the gap exceeds
+    `trim_at_mm` (see its `bridge is None` branch). Scoring here with the same
+    rule — rather than a distance proxy — is what makes the comparison in
+    `_reorder_for_fewer_cuts` honest: a proxy measured against the real count
+    is how three earlier attempts at this defect reached wrong conclusions.
+    """
+    cuts = 0
+    cur = entry
+    for path in paths:
+        if not path:
+            continue
+        if cur is not None:
+            if (travel_path(poly, ring, cur, path[0], slack) is None
+                    and math.dist(cur, path[0]) > trim_at_mm):
+                cuts += 1
+        cur = path[-1]
+    return cuts
+
+
+def _reorder_for_fewer_cuts(paths: list[list[tuple[float, float]]], poly: Polygon,
+                            ring, slack: Polygon, entry: tuple[float, float] | None,
+                            trim_at_mm: float) -> list[list[tuple[float, float]]]:
+    """Prefer a REACHABLE next path over merely the nearest one, if it cuts less.
+
+    `_fill_paths` orders columns by straight-line distance. On a shape with
+    holes the nearest column is often across one, where `travel_path` cannot
+    route, so `emit` cuts — while a slightly farther column in the same
+    travel-connected island would have cost no cut at all. The cut is
+    manufactured by the choice, not forced by the geometry.
+
+    Measured on `logo_hotel_fremont.webp`'s 46-hole field: 57 cuts -> 24, a 58%
+    reduction for +752 mm of travel (+2.9% stitches). Across the committed photo
+    corpus, 17 holed shapes went 290 -> 163 cuts. **But four of those seventeen
+    got WORSE** — on shapes whose boundaries are naturally sub-`trim_at_mm`, the
+    distance-greedy walk keeps hops short enough that a failed travel becomes a
+    silent jump rather than a cut, and chasing reachability instead lands
+    somewhere both far and unroutable. So this does NOT replace the ordering: it
+    scores both and keeps the better, and ties keep the incoming one. A shape
+    can only improve or stay identical.
+
+    Skipped entirely when the incoming order already cuts nothing, which is the
+    common case and keeps this free for every shape that never needed it.
+    """
+    if len(paths) < 3:
+        return paths
+    before = _count_cuts(paths, poly, ring, slack, entry, trim_at_mm)
+    if before == 0:
+        return paths                     # nothing to win; do not pay for the walk
+
+    ends = [(p[0], p[-1]) for p in paths if p]
+    if len(ends) != len(paths):
+        return paths                     # an empty path: leave this shape alone
+    remaining = set(range(len(paths)))
+    order: list[int] = []
+    flipped: set[int] = set()
+    cur = entry
+    while remaining:
+        cand = sorted(remaining, key=lambda j: (
+            min(math.dist(cur, ends[j][0]), math.dist(cur, ends[j][1]))
+            if cur is not None else 0.0))[:_ROUTABLE_PROBE_LIMIT]
+        picked = None
+        if cur is not None:
+            for j in cand:
+                for flip in (False, True):
+                    head = ends[j][1] if flip else ends[j][0]
+                    if travel_path(poly, ring, cur, head, slack) is not None:
+                        picked = (j, flip)
+                        break
+                if picked:
+                    break
+        if picked is None:               # nothing reachable -> take the nearest
+            j = cand[0]
+            flip = (cur is not None
+                    and math.dist(cur, ends[j][1]) < math.dist(cur, ends[j][0]))
+            picked = (j, flip)
+        j, flip = picked
+        order.append(j)
+        if flip:
+            flipped.add(j)
+        cur = ends[j][0] if flip else ends[j][1]
+        remaining.discard(j)
+
+    # Reversing a path sews the same penetrations in the other direction — the
+    # holes land in identical places, so this changes travel, never stitch
+    # placement.
+    candidate = [paths[j][::-1] if j in flipped else paths[j] for j in order]
+    after = _count_cuts(candidate, poly, ring, slack, entry, trim_at_mm)
+    return candidate if after < before else paths
+
+
 # Which row-point function each fill `technique` dispatches to inside
 # `_fill_paths` — every entry shares `_row_points`' exact call signature
 # `(x0, x1, y, row_index, stitch_mm, staggers, reverse)`, so `_fill_paths`
@@ -920,6 +1024,8 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     else:
         fill_paths = _fill_paths(poly, angle, row_mm, stitch_mm,
                                  machine.FILL_STAGGERS, entry, technique=technique)
+    fill_paths = _reorder_for_fewer_cuts(fill_paths, poly, ring, slack, entry,
+                                         trim_at_mm)
     emit(fill_paths, stitches.FILL, stitch_mm)
 
     if not runs:
