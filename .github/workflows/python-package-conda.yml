@@ -66,55 +66,48 @@ jobs:
     # from digitizer/ puts the package on sys.path; no editable install
     # needed (COOKBOOK.md).
     #
-    # Five byte-identical/golden-hash tests are deselected. The first three
-    # compare against goldens pinned before CI existed and are KNOWN to
-    # mismatch by a handful of stitches off their pinning machine (last
-    # actually observed in the 2026-08-03 remote dev container; deselected
-    # tests never run here, so their current ubuntu-latest behavior is
-    # inferred, not measured). Version skew is ruled out — every
-    # geometry-relevant pin matches requirements.txt exactly — and the
-    # divergence is per-fixture platform-level numerics: matrix in
-    # MASTER_SCOPE "Gotchas", failure classes in COOKBOOK.md "Running
-    # things", evidence in .claude/memory/windows-goldens-fail-locally.md.
+    # THREE byte-identical/golden-hash tests are deselected, listed at the
+    # run step below. It was five until 2026-08-22; the two logo_alpha.png
+    # parametrizations were removed after the remove-and-see check finally
+    # ran. Keep this the ONE place that explains why -- the run step used to
+    # carry a second copy of this reasoning and the two drifted apart within
+    # the day.
     #
-    # The last two (photo/enthusiast_logo.png, added 2026-08-20) are the
-    # SAME class, newly confirmed rather than newly created: PR #182's
-    # travel-graph cursor retry (stage6_satin.py::_graph_travel) legitimately
-    # moves this fixture's stitch_count 2351->2361 -- verified benign
-    # (ARTWORK_UNCOVERED coverage is unchanged; the two known-defective
-    # bracket shapes from .claude/memory/satin-extremity-drop-and-coverage-
-    # check.md are byte-identical before/after) -- but the golden's
-    # areas_mm2/stitch_coords fields can no longer be safely recaptured to
-    # match: tools/recapture_flat_lane_key.py's own --pre-change-tree machine
-    # check REFUSES on a fresh ubuntu-latest Actions runner too, not just a
-    # dev container, differing from the 2026-08-17-pinned golden even on the
-    # UNMODIFIED pre-change engine (workflow runs 32396593318, 32399279461 on
-    # claude/skill-generator-embot-swwld7). The reference platform drifted
-    # from itself in three days, independent of any code change here.
-    # Deselected rather than force-written, on Kent's call -- re-capture
-    # needs a ubuntu-latest window that realigns with the pin, same as the
-    # three-day wait before PR #159's capture landed.
+    # WHY THEY FAIL. Not version skew: every geometry-relevant pin matches
+    # requirements.txt exactly. It is per-fixture platform-level numerics --
+    # one such failure traces to a single contour on one region of 31. The
+    # matrix lives in MASTER_SCOPE "Gotchas", the failure classes in
+    # COOKBOOK.md "Running things", the evidence in
+    # .claude/memory/windows-goldens-fail-locally.md.
     #
-    # Deselecting exactly these five keeps CI green AND meaningful: any NEW
-    # golden break still fails the job. If any of these ever pass on CI
-    # runners, remove its deselect and find out why.
+    # WHY NOT JUST RE-CAPTURE. tools/recapture_flat_lane_key.py's own
+    # --pre-change-tree machine check REFUSES on a fresh ubuntu-latest Actions
+    # runner, not just in a dev container, differing from the 2026-08-17-pinned
+    # golden even on the UNMODIFIED pre-change engine (runs 32396593318,
+    # 32399279461). The reference platform drifted from itself in three days,
+    # independent of any code change here. Deselected rather than
+    # force-written, on Kent's call -- re-capture needs an ubuntu-latest
+    # window that realigns with the pin, same as the three-day wait before
+    # PR #159's capture landed.
     #
-    # 2026-08-21, partial answer to that standing check -- NOT yet acted on.
-    # A full local run of the suite on a Linux container (python 3.14,
-    # requirements.txt pins, `pytest -q -n auto`, 3 failed / 1244 passed /
-    # 3 skipped / 7 xfailed) measured all five instead of inferring them:
+    # THE REMOVE-AND-SEE CHECK IS DONE -- it was standing and unowned for
+    # months. Run 2026-08-22 on Linux with this job's exact Python (3.12) and
+    # requirements.txt pinned exactly, and again on 3.13 for the same split,
+    # so it is not version skew:
     #   FAIL  test_pushcomp[logo_whitebg.png-towel]
     #   FAIL  test_flat_lane_byte_identical[photo/enthusiast_logo.png]
     #   FAIL  test_stage2_photo_segment[photo/enthusiast_logo.png]
     #   PASS  test_flat_lane_byte_identical[logo_alpha.png]
     #   PASS  test_stage2_photo_segment[logo_alpha.png]
-    # So the two logo_alpha parametrizations are candidates for un-deselecting
-    # and the "last actually observed 2026-08-03" note above is superseded for
-    # them. Deliberately NOT removed here: a Linux container is not an
-    # ubuntu-latest Actions runner, and this comment's own rule pairs removal
-    # with finding out WHY -- which needs a runner-side measurement, i.e.
-    # drop the two deselects in a throwaway PR and read the result. Owner:
-    # unassigned, same as the check above.
+    # The two PASSes were costing real coverage on a fixture that agrees, so
+    # they were removed -- and this is no longer a container measurement being
+    # extrapolated: the push that removed them (db0e642) went GREEN on the real
+    # ubuntu-latest runner, which is the runner-side confirmation the earlier
+    # version of this comment asked for and declined to act without.
+    #
+    # Deselecting exactly these three keeps CI green AND meaningful: any NEW
+    # golden break still fails the job. The standing rule survives -- if any of
+    # these three ever passes here, remove its deselect and find out why.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -144,17 +137,11 @@ jobs:
       # identical, including the deselects below. Nothing in the suite
       # writes to a shared path (fixtures are read-only, every test that writes
       # uses tmp_path), so worker isolation is real rather than assumed.
-      # The remove-and-see check COOKBOOK calls "standing and unowned" was RUN
-      # on 2026-08-22, on Linux with this job's exact Python (3.12) and
-      # requirements.txt pinned exactly: of the five deselects, the two
-      # logo_alpha.png ones PASS and the three below FAIL. Same split on 3.13,
-      # so it is not version skew.
-      #
-      # Both logo_alpha.png deselects are therefore REMOVED — they were costing
-      # real coverage on the flat-lane and photo-dispatch goldens for a fixture
-      # that agrees. If CI disagrees with that measurement, the honest response
-      # is to put them back WITH the CI evidence recorded here, not to assume
-      # the measurement was wrong.
+      # The three --deselect lines below are explained ONCE, in this job's
+      # header comment: what they are, why they fail, why they are not
+      # re-captured, and the measurement that cut the list from five to three.
+      # Do not restate any of that here — that duplication is what let the
+      # header go on claiming "five" after the list became three.
       - name: Digitizer tests
         working-directory: digitizer
         run: >

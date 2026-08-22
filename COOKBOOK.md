@@ -619,8 +619,8 @@ doc; run the suite for today's number and judge the run by its expected
 failure classes instead (precedent: fb2cc18, which dropped the hard-coded
 `tools/` script count the same way). Engine and Studio suites are expected
 CLEAN — engine verified clean 2026-08-17, Studio 2026-08-11 — so any
-failure in those two is a regression, full stop. The digitizer's two
-expected failure classes are documented below the command block.
+failure in those two is a regression, full stop. The digitizer's three
+expected failure/skip classes are documented below the command block.
 
 **CI now exists.** `.github/workflows/python-package-conda.yml` (PR #37
 rewrote Kent's initial stock conda template to run the three commands
@@ -674,8 +674,10 @@ failures are EXPECTED:
    re-captured. The concrete per-machine set lives in ONE place — the
    MASTER_SCOPE "Gotchas" matrix ("The golden divergence is PER-FIXTURE,
    not per-platform") — with cause detail in
-   `docs/pro-parity-real-art-2026-08-15.md` §0b. CI deselects five node
-   IDs (list + rationale in `.github/workflows/python-package-conda.yml`).
+   `docs/pro-parity-real-art-2026-08-15.md` §0b. CI deselects THREE node
+   IDs (list + rationale in `.github/workflows/python-package-conda.yml`);
+   it was five until 2026-08-22, and this sentence said "five" for hours
+   after the workflow said three.
    **The remove-and-see check is no longer unowned — it was run 2026-08-22.**
    On Linux with the digitizer job's exact Python (3.12) and requirements.txt
    pinned exactly, two of the five deselects (`logo_alpha.png` on the flat-lane
@@ -711,7 +713,33 @@ failures are EXPECTED:
    `textcluster.py`, `stage6_satin.py`'s skeleton helpers, or
    `shapefield.py`. Cheaper than a CI round trip.
 
-Anything red outside those two classes is unexplained and yours to chase.
+3. **Three MORE tests skip for reasons that are NOT tesseract, so a local
+   run shows 8 skips and not 5.** Measured 2026-08-22 by grouping every
+   skip reason in a full `-rs` run, because the count not matching this
+   section's only documented skip class is the kind of small discrepancy a
+   session burns twenty minutes on:
+
+   | count | file | reason |
+   |---|---|---|
+   | 5 | `test_ocr_gate` / `test_ocr_suggest` / `test_pipeline` / `test_service` | tesseract binary off PATH (class 2 above) |
+   | 2 | `test_background_removal.py` | the isolated rembg venv is not built — `digitizer/rembg_isolated/README.md` |
+   | 1 | `test_photo_prep.py` | opencv-**contrib** IS installed, so the no-contrib fallback branch cannot fire |
+
+   The last one inverts the usual reading: it skips because the environment
+   is MORE complete, not less. It is half of a deliberate either/or pair in
+   `test_photo_prep.py` — `..._without_contrib_falls_back_to_bilateral` and
+   `..._with_contrib_takes_the_real_path` carry opposite `skipif`s, so
+   exactly one of the two always runs and neither is ever a provisioning
+   gap. What it means in practice: on a box pinned to `requirements.txt`
+   (which brings contrib) you are testing the real rolling-guidance path,
+   and the bilateral fallback is untested by construction — verified at
+   source 2026-08-22, not inferred from the skip string.
+
+   To re-derive this list rather than trusting it:
+   `python -m pytest tests/ -q -n auto -rs 2>&1 | grep '^SKIPPED' | sed 's/:[0-9]*:/: /' | sort | uniq -c`
+
+Anything red outside class 1 is unexplained and yours to chase, and any
+skip outside classes 2-3 is a new one — chase that too.
 Runtime: 21:34 serial, measured 2026-08-17 on Kent's machine — which is
 why the command above carries `-n auto`: pytest-xdist is pinned in
 `requirements.txt`, and parallel runs are verified to produce the
