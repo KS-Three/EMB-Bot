@@ -506,6 +506,30 @@
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
+   "key": "hebrew_font_large",
+   "name": "חוכמה Large",
+   "tier": "verified",
+   "group": "Display",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 23,
+   "glyphCount": 29,
+   "bytes": 104476,
+   "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 1997-2007, SIL International (http://www.sil.org/), with Reserved Font Names \"SIL\" and \"Ezra\". <br><br><b>Copyright",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
+   "key": "hebrew_font_medium",
+   "name": "חוכמה Medium",
+   "tier": "verified",
+   "group": "Display",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 23,
+   "glyphCount": 29,
+   "bytes": 35332,
+   "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 1997-2007, SIL International (http://www.sil.org/), with Reserved Font Names \"SIL\" and \"Ezra\". <br><br><b>Copyright",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
    "key": "initials_medium",
    "name": "Initials Medium",
    "tier": "verified",

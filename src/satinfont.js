@@ -545,13 +545,35 @@
     // selectionStart/selectionEnd exactly, so the UI can let a user select
     // text and tag that range with a color with zero custom index math.
     const rawLines = String(text).split("\n");
+    // Right-to-left fonts (Hebrew; 2026-08-22). Text is stored in LOGICAL
+    // order — first letter first — and rendered with the first letter at the
+    // RIGHT, so the only change needed is to walk each line's characters in
+    // reverse when laying them out. Everything downstream (arc, badge,
+    // per-letter colour, underlay) then works unchanged, because it all keys
+    // off `ox` rather than off character order.
+    //
+    // charIdx deliberately keeps pointing at the ORIGINAL string position, not
+    // the visual one: it exists so the UI can map a <textarea> selection onto
+    // glyphs, and a selection is logical. Reversing it would silently colour
+    // the wrong letters.
+    //
+    // Hebrew needs no more than this — it has no contextual letter forms.
+    // Arabic DOES (initial/medial/final/isolated) and is deliberately NOT
+    // enabled by this: without a joining engine its letters render unjoined,
+    // which is wrong text rather than merely plain text. The three Arabic
+    // fonts upstream stay out until that exists.
+    const rtl = font.dir === "rtl";
     let globalIdx = 0;
     const lineList = rawLines.map((lineText, lineNum) => {
       const chars = Array.from(lineText);
+      const lineStart = globalIdx;
+      const order = chars.map((_, i) => i);
+      if (rtl) order.reverse();
       let penX = 0, prev = null;
       const glyphs = [];
-      for (const ch of chars) {
-        const charIdx = globalIdx++;
+      for (const i of order) {
+        const ch = chars[i];
+        const charIdx = lineStart + i;
         if (ch === " " || ch === "\t") { penX += (font.advSpace || font.advDefault); prev = null; continue; }
         const g = font.glyphs[ch] || font.glyphs[ch.toUpperCase()] || font.glyphs[ch.toLowerCase()];
         if (!g) { penX += font.advDefault; prev = null; continue; }
@@ -560,6 +582,7 @@
         penX += g.adv + lsUnits;
         prev = ch;
       }
+      globalIdx = lineStart + chars.length;
       if (lineNum < rawLines.length - 1) globalIdx++; // the "\n" separator itself
       return { glyphs, adv: penX };
     });

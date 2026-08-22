@@ -21,13 +21,13 @@ sells).
 
 ## What the library is
 
-**83 fonts in the sellable build** *(confirmed 2026-08-22 —
+**85 fonts in the sellable build** *(confirmed 2026-08-22 —
 `src/fonts/manifest.json`, engine suite)*. Two builds are produced from one
 source tree:
 
 | Build | Command | Contents |
 |---|---|---|
-| Sellable | `node tools/build-embf.mjs` | 83 fonts, all inside `ALLOWED_LICENSES` |
+| Sellable | `node tools/build-embf.mjs` | 85 fonts, all inside `ALLOWED_LICENSES` |
 | Personal | `node tools/build-embf.mjs --personal` | 120 fonts, adds ShareAlike / NC / GPL / pulled |
 
 Personal artifacts (`src/fonts/bin-personal/`, `manifest-personal.json`) are
@@ -175,8 +175,35 @@ collapsing, so all 142 upstream fonts were re-imported and re-QC'd after the fix
   and `test/embf-guard.test.js` pins it — the test caught the re-addition, which
   QC could not, because QC cannot see redundant overlapping satin.
 - The 11 refused cross-stitch fonts re-refuse at the same lattice fits.
-- The 5 RTL fonts stay out: rendering Hebrew or Arabic through an LTR layout
-  reverses it, which is worse than not shipping it.
+- The 3 Arabic fonts stay out. RTL *placement* now ships, but Arabic letters
+  take initial/medial/final/isolated forms and must join; without a shaping
+  engine they render unjoined, which is wrong text rather than plain text.
+  The 2 Hebrew fonts ARE now shipped — Hebrew has no contextual forms, so
+  right-to-left placement is the whole requirement.
+
+## Right-to-left lettering (2026-08-22)
+
+Five upstream fonts ship their glyphs in `rtl.svg` rather than `ltr.svg`;
+`build-font` looked only for `ltr.svg`, so all five failed to import with ENOENT
+and the script was absent from the product entirely.
+
+A font imported from `rtl.svg` now carries `dir: "rtl"` (emitted only for RTL
+fonts, so every existing font.json stays byte-identical), and
+`satinfont.layoutText` walks that line's characters in reverse. Everything
+downstream — arc, badge, per-letter colour, underlay — works unchanged, because
+it keys off each glyph's `ox` rather than off character order.
+
+`charIdx` deliberately keeps pointing at the LOGICAL string position, not the
+visual one: it exists so the UI can map a `<textarea>` selection onto glyphs,
+and a selection is logical. Reversing it too would silently colour the wrong
+letters, with nothing to catch it.
+*(confirmed 2026-08-22 — `test/rtl-lettering.test.js`, verified to fail without
+the fix)*
+
+Shipped: `hebrew_font_large`, `hebrew_font_medium` (29 glyphs each, OFL-1.1).
+Fixing this also exposed that `build-previews`' sample-text fallback assumed
+Latin glyph names, so both Hebrew fonts rendered ZERO stitches and shipped with
+no preview tile until the guard test caught it.
 
 ## Deferred / not done
 

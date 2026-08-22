@@ -42,7 +42,17 @@ function sampleFor(font) {
   const caseFixed = name.replace(/[a-z]/g, (c) => c.toUpperCase());
   if ([...caseFixed].every(has)) return caseFixed;
   const own = Object.keys(font.glyphs || {}).filter((k) => /^[A-Za-z0-9]$/.test(k)).slice(0, 6).join("");
-  return own || "?";
+  if (own) return own;
+  // Non-Latin fonts (Hebrew, 2026-08-22). Every fallback above assumes Latin
+  // glyph names, so a Hebrew font fell through to "?" — which it does not
+  // contain either — and rendered ZERO stitches. Both Hebrew faces shipped with
+  // no preview tile at all, and the guard test caught it. Take the font's own
+  // first few single-character glyphs whatever the script; layoutText handles
+  // RTL ordering from font.dir, so the tile reads correctly.
+  const any = Object.keys(font.glyphs || {})
+    .filter((k) => [...k].length === 1 && k !== " " && k !== ".notdef")
+    .slice(0, 5).join("");
+  return any || "?";
 }
 
 const man = JSON.parse(readFileSync(MANIFEST, "utf8"));

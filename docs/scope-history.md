@@ -25,6 +25,45 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-08-22 (night) — **85 fonts, and EMB-Bot can set Hebrew.**
+
+Five upstream fonts ship their glyphs in `rtl.svg` rather than `ltr.svg`, and
+build-font looked only for ltr.svg — so all five failed to import with ENOENT
+and right-to-left script was absent from the product entirely.
+
+Two of them are pure Hebrew and now ship (hebrew_font_large,
+hebrew_font_medium, 29 glyphs each, OFL-1.1). Hebrew needs nothing beyond
+right-to-left PLACEMENT — it has no contextual letter forms — so the change is
+small: a font imported from rtl.svg carries dir:"rtl", and layoutText walks that
+line's characters in reverse. Everything downstream (arc, badge, per-letter
+colour, underlay) works unchanged because it keys off each glyph's ox rather
+than off character order.
+
+charIdx deliberately stays LOGICAL rather than visual. It exists so the UI can
+map a textarea selection onto glyphs, and a selection is logical; reversing it
+too would silently colour the wrong letters with nothing to catch it. Pinned by
+its own test.
+
+The three Arabic fonts stay out, and that is now a standing ruling rather than
+an oversight. Arabic letters take initial/medial/final/isolated forms and must
+join; without a shaping engine they render unjoined, which is WRONG TEXT rather
+than merely plain text. Shipping them on RTL placement alone would look like
+support while producing something no Arabic reader would accept. A test asserts
+no shipped rtl font carries Arabic glyphs.
+
+Two things fell out of doing it. build-previews' sample-text fallback assumed
+Latin glyph names, so a Hebrew font fell through to "?" — which it also does not
+contain — and rendered ZERO stitches; both Hebrew faces shipped with no preview
+tile until the guard test caught it. And a render-sweep of all shipped fonts at
+80mm found exactly one density outlier, neon_blinking at 0.06 stitches/mm2
+against a 0.38 median, which turned out to be correct: it is a runs-only
+single-stroke outline font, so low density is its design.
+
+Engine 397 pass / 0 fail. Studio 776 pass. Library 85 fonts: 82 OFL-1.1 +
+1 CC-BY-4.0 + 2 CC0.
+
+---
+
 **Last updated:** 2026-08-22 (evening) — **83 fonts; the personal build got its
 missing previews and licences; and a font had been excluded by a FILENAME.**
 

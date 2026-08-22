@@ -33,7 +33,7 @@ where the bodies are buried.
 ## Binary font library (Slice 10 Stage A, 2026-07-27)
 
 The Studio's fonts live in `src/fonts/manifest.json` + `src/fonts/bin/*.embf`
-(**83 fonts** as of 2026-08-22; was 55 after the 2026-08-04 licence-audit pulls
+(**85 fonts** as of 2026-08-22; was 55 after the 2026-08-04 licence-audit pulls
 and the same-day removal of all 13 ShareAlike fonts (Kent's call — audit §9;
 removal made the paid launch independent of the CC-BY-SA question, and the
 lawyer brief is the optional restore path), then grew through the 2026-08-21/22
@@ -57,7 +57,7 @@ font there unless it is also in the shipping manifest. `EMB-Bot-standalone.html`
   Acceptance evidence (0.00–1.07% stitch drift, visually cleared):
   `docs/superpowers/notes/2026-07-27-embf-acceptance.md`.
 - **Two builds from one tree.** `node tools/build-embf.mjs` writes the
-  **sellable** library (83 fonts, everything inside `ALLOWED_LICENSES`).
+  **sellable** library (85 fonts, everything inside `ALLOWED_LICENSES`).
   `node tools/build-embf.mjs --personal` writes Kent's private library (120
   fonts, adding ShareAlike / NC / GPL / pulled) to `bin-personal/` +
   `manifest-personal.json` — both gitignored, so a fresh clone or CI cannot
@@ -114,6 +114,13 @@ font there unless it is also in the shipping manifest. `EMB-Bot-standalone.html`
   (next bullet). `qc-font.mjs` warns on letters under 0.45x their case-median
   height and `test/font-stunted.test.js` guards it; the library is currently
   clean. **If a font looks wrong, render it — do not trust the QC line.**
+- **Text direction.** A font imported from `rtl.svg` carries `dir: "rtl"`, and
+  `satinfont.layoutText` walks that line's characters in reverse so the FIRST
+  logical character lands rightmost. `charIdx` deliberately stays logical, since
+  it exists to map a `<textarea>` selection onto glyphs. Hebrew needs nothing
+  more (no contextual forms). **Arabic is NOT supported** and must not be added
+  by simply importing it: its letters need initial/medial/final/isolated forms
+  and must join, so unjoined output is wrong text, not plain text.
 - **SVG transforms are applied for BOTH layouts** (`pathsTf`, since 2026-08-22).
   There used to be a second walk that ignored them, used for every
   single-`ltr.svg` font. A glyph that places repeated geometry by transform —
@@ -750,7 +757,7 @@ and controllable to the user.
     "Engine-file lists live in THREE places" in the font-library section).
   - `fabrics.js` — 7 fabric presets driving pull-comp/underlay/density/trim.
   - `flatten.js` — medianCut → modeFilter → absorbSmallRegions pipeline.
-  - `fonts/` — pre-digitized font library: `manifest.json` (83
+  - `fonts/` — pre-digitized font library: `manifest.json` (85
     shipping fonts) + `bin/*.embf` binaries + per-font JSON sources and
     `.LICENSE.txt` sidecars, parsed offline from Ink/Stitch's open-source
     font set. (The old "14 fonts" count here was the legacy eager registry

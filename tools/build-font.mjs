@@ -25,7 +25,15 @@ const crossfill = require("../src/crossfill.js");
 const SRC = process.argv[2];
 const OUT = process.argv[3];
 if (!SRC || !OUT) { console.error("usage: build-font.mjs <fontDir|svgFile> <outJson>"); process.exit(1); }
-const svgFile = SRC.endsWith(".svg") ? SRC : path.join(SRC, "ltr.svg");
+// A font ships its glyphs in a variant file named for its text direction:
+// ltr.svg for left-to-right, rtl.svg for right-to-left (Hebrew, Arabic).
+// Only ltr.svg was ever looked for, so the five RTL fonts upstream failed to
+// import at all with ENOENT. Fall back to rtl.svg and record the direction on
+// the font, which satinfont.layoutText honours when placing glyphs.
+const ltrFile = SRC.endsWith(".svg") ? SRC : path.join(SRC, "ltr.svg");
+const rtlFile = SRC.endsWith(".svg") ? SRC.replace(/ltr\.svg$/, "rtl.svg") : path.join(SRC, "rtl.svg");
+const isRtl = !fs.existsSync(ltrFile) && fs.existsSync(rtlFile);
+const svgFile = isRtl ? rtlFile : ltrFile;
 const metaFile = SRC.endsWith(".svg") ? SRC.replace(/ltr\.svg$/, "font.json") : path.join(SRC, "font.json");
 // Upstream is not consistent about the case of this filename: 141 of 142 fonts
 // use "LICENSE" and fold_inkstitch uses "license". On Kent's Windows box the
@@ -418,6 +426,11 @@ const outObj = {
   advSpace: meta.horiz_adv_x_space != null ? meta.horiz_adv_x_space : Math.round(0.3 * meta.units_per_em),
   kerning: meta.kerning_pairs || {}, glyphCount: count, glyphs,
   ...(crossGrid ? { crossGrid } : {}),
+  // Emitted ONLY for right-to-left fonts, so every existing font.json stays
+  // byte-identical. Trust the variant file over font.json's own
+  // text_direction: the file that actually holds the glyphs is the fact, and
+  // one upstream font declares a direction its variant does not match.
+  ...(isRtl || meta.text_direction === "rtl" ? { dir: "rtl" } : {}),
 };
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, JSON.stringify(outObj));
