@@ -117,5 +117,39 @@ Three rules, in order of how much they would have saved:
    the other way, the runs channel produces **45 false positives** across the
    library; the skeleton channel produces zero.
 
+## What the guards still could not see
+
+With seven guards in place and all of them green, **three of the 85 browser
+tiles were showing something other than the font** — and nothing failed,
+because a worse tile is not an error. `sampleFor` accepted the font's name only
+if EVERY character rendered, so one missing glyph dropped it to "first six
+alphanumerics": `fold_inkstitch` ("Fold Ink/Stitch", no `/` glyph) read
+**012345**, and both Hebrew faces ("חוכמה Large", no Latin) read **אבגדה**.
+
+Two of the three were introduced by the fix for the previous defect. The
+any-script fallback added that day stopped the Hebrew faces rendering nothing
+and stopped there.
+
+**Rendering it and looking is not a fallback for when tests are hard — it sees
+a different category.** A test can assert that a tile exists, is a PNG, has
+ink, and comes from a font that renders. None of that notices the tile saying
+the wrong thing. Six claims got checked this way and all held (Hebrew reads
+right-to-left correctly, mimosa's "D" is a D, cyrillic's accent is attached,
+apesplit's -43.91% is doubled geometry disappearing); the seventh look found
+the tiles.
+
+**A wrong test expectation is a finding, not a mistake to quietly fix.** I
+expected the alphanumeric fallback to return `ABC123`; it returned `123ABC`,
+because `Object.keys` puts integer-like keys first whatever the insertion
+order. That fallback had been preferring DIGITS over letters for every font,
+which is the actual reason fold_inkstitch's tile read "012345" and not
+"ABCDEF". Had I "corrected" the expectation to match, the defect would have
+been pinned rather than found.
+
+**Measure what a guard costs, not only whether it passes.** Three of the test
+files added here were decoding all 85 binaries once per test — `font-sample`
+took 7.7s to compare strings. Memoising took the engine suite from 20.3s to
+14.5s. A slow guard is a guard someone eventually deletes.
+
 See [[windows-goldens-fail-locally]] for the golden-divergence correction made
 in the same session.
