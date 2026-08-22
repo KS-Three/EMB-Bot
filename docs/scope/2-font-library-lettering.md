@@ -175,9 +175,13 @@ collapsing, so all 142 upstream fonts were re-imported and re-QC'd after the fix
   and `test/embf-guard.test.js` pins it — the test caught the re-addition, which
   QC could not, because QC cannot see redundant overlapping satin.
 - The 11 refused cross-stitch fonts re-refuse at the same lattice fits.
-- The 3 Arabic fonts stay out. RTL *placement* now ships, but Arabic letters
-  take initial/medial/final/isolated forms and must join; without a shaping
-  engine they render unjoined, which is wrong text rather than plain text.
+- The 3 Arabic fonts stay out, and **a shaping engine would not change that**.
+  Arabic letters take initial/medial/final/isolated forms and must join, but all
+  three fonts carry ONLY base-block Arabic (`computer` 45 glyphs, `malika` 36)
+  and **zero presentation forms** (U+FB50–FDFF, U+FE70–FEFF) — the joined glyphs
+  a shaper would select do not exist in them. This is a property of the fonts,
+  not a gap waiting on engine work.
+  *(measured 2026-08-22 — font.json glyph blocks)*
   The 2 Hebrew fonts ARE now shipped — Hebrew has no contextual forms, so
   right-to-left placement is the whole requirement.
 

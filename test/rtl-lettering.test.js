@@ -10,10 +10,14 @@
 //
 // Arabic is deliberately NOT enabled by this work, and that is the point of the
 // last test here. Arabic letters take initial/medial/final/isolated forms and
-// must join; without a shaping engine they render as separate isolated letters,
-// which is WRONG TEXT rather than merely plain-looking text. Shipping the three
-// Arabic fonts on RTL placement alone would look like support while producing
-// something no Arabic reader would accept.
+// must join; on RTL placement alone they render as separate isolated letters,
+// which is WRONG TEXT rather than merely plain-looking text.
+//
+// And a shaping engine would not rescue THESE fonts: measured 2026-08-22, all
+// three carry only base-block Arabic (computer 45 glyphs, malika 36) and ZERO
+// presentation forms (U+FB50-FDFF, U+FE70-FEFF), so the joined glyphs a shaper
+// would select simply do not exist in them. Excluding them is not a temporary
+// gap waiting on engine work — it is a property of the fonts.
 const assert = require("node:assert");
 const { test } = require("node:test");
 require("../src/units.js"); require("../src/geometry.js"); require("../src/satin.js");

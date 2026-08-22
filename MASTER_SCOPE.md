@@ -164,8 +164,8 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
 
 ## Standing rulings — decided, do not re-litigate
 
-- **Arabic stays out until there is a letter-joining engine.** RTL placement ships
-  (Hebrew); Arabic must join, and unjoined is WRONG TEXT. *(ruled 2026-08-22)*
+- **The 3 Arabic fonts can never work, engine or not:** they carry ONLY base-block
+  letters and zero presentation forms. *(measured 2026-08-22 — font.json blocks)*
 - **We do not rework font data to make it importable.** A candidate is either
   close to plug-and-play or not a candidate — this rejected the Hershey faces,
   and makes Terminus's under-tagged glyphs a reason to omit. *(ruled 2026-08-21 — Kent)*
