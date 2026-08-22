@@ -14,6 +14,12 @@
     <path d="M 0,30 H 10 V 40 H 0 Z" inkstitch:running_stitch_length_mm="2" />
     <path d="M 30,30 H 40 V 40 H 30 Z" inkstitch:running_stitch_length_mm="2" />
   </g>
+  <g inkscape:groupmode="layer" inkscape:label="GlyphLayer-D" style="display:none">
+    <g transform="translate(0,50)">
+      <path d="M 0,0 H 10 V 10 H 0 Z" inkstitch:running_stitch_length_mm="2"></path>
+      <path d="M 20,0 H 30 V 10 H 20 Z" inkstitch:running_stitch_length_mm="2" />
+    </g>
+  </g>
   <g inkscape:groupmode="layer" inkscape:label="GlyphLayer-C" style="display:none">
     <path d="M 0,0 H 10 V 10 H 0 Z" transform="rotate(-90,20,20)" inkstitch:running_stitch_length_mm="2" />
   </g>

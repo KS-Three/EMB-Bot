@@ -122,14 +122,12 @@ or move it.
    *(fixed 2026-08-21 — `stage6_satin._prune_spurs`, tests/test_satin.py)*
 
 8. **RESOLVED 2026-08-22 — build-font dropped SVG transforms on most fonts.**
-   It had two path walks and used the transform-IGNORING one for every
-   single-`ltr.svg` font, i.e. most of the library. Harmless for a glyph with
-   baked coordinates, destructive for one placing repeated geometry BY
-   transform: `mimosa_large` "D" is one dot with 38 transforms, so all 38
-   stacked on a point and it sewed 6,193 stitches into 40.0 x **0.0 mm** — a
-   needle hammering one line. Four fonts were affected (`mimosa_large`,
-   `mimosa_medium`, `apesplit`, `initials_medium`) and one fix cleared all four;
-   the library now has **zero** stunted letters. Kent chose fix over pull.
+   It used a transform-IGNORING path walk for every single-`ltr.svg` font, which
+   is destructive for a glyph placing repeated geometry BY transform:
+   `mimosa_large` "D" is one dot with 38 transforms, so all 38 stacked on a point
+   and it sewed 6,193 stitches into 40.0 x **0.0 mm**. Four fonts affected; one
+   fix cleared all four, so the library now has **zero** stunted letters. A
+   second, dormant stack-pop bug in the same walk was fixed with it.
    *(fixed 2026-08-22 — `tools/build-font.mjs`, `test/font-transforms.test.js`)*
 
 ---
@@ -169,14 +167,12 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
 ## Standing rulings — decided, do not re-litigate
 
 - **We do not rework font data to make it importable.** A candidate is either
-  close to plug-and-play or it is not a candidate — this rejected the Hershey
-  faces, and makes Terminus's four under-tagged glyphs a reason to omit rather
-  than a task. *(ruled 2026-08-21 — Kent)*
+  close to plug-and-play or not a candidate — this rejected the Hershey faces,
+  and makes Terminus's under-tagged glyphs a reason to omit. *(ruled 2026-08-21 — Kent)*
 - **The sellable/personal font split is at BUILD time, not runtime.** Kent asked
   for "all fonts for me, questionable ones off on the user's end"; the second
   half cannot work — by the time a viewer could flip a toggle the bytes are on
-  their disk. Excluded fonts are never packaged.
-  *(ruled 2026-08-21 — Kent, PR #203)*
+  their disk. Excluded fonts are never packaged. *(ruled 2026-08-21 — Kent)*
 - **Golden re-capture is pre-authorized on Linux CI**, under same-failure-set
   discipline: a session may re-capture when the failure set is identical before
   and after, and must report the diff. Never on Windows. *(ruled 2026-08-21 — Kent)*
@@ -225,12 +221,17 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
 
 ## Measured negatives — built or proposed, then rejected. Do not rebuild.
 
-- **Terminus is CLOSED — omitted, do not re-propose.** The only genuinely new
-  font found outside upstream. Four broken letters (including `t`) from paths
-  upstream never tagged `satin_column`, a 1/10-width space in a FIXED-WIDTH
-  font, an OFL Reserved Font Name still in its title, and no size value at all.
-  Repairing it is the font-data rework ruled out above.
-  *(ruled 2026-08-22 — Kent; `docs/font-hunt-external-2026-08-21.md` §2)*
+- **Terminus is CLOSED — omitted, do not re-propose.** The one genuinely new
+  font outside upstream: four broken letters (incl. `t`) from paths upstream
+  never tagged `satin_column`, a 1/10-width space in a FIXED-WIDTH font, an OFL
+  Reserved Font Name, and no size value. Repairing it is the rework ruled out
+  above. *(ruled 2026-08-22 — Kent; `docs/font-hunt-external-2026-08-21.md` §2)*
+- **The upstream re-census after the transform fix is DONE — do not redo it.**
+  All 142 re-imported and re-QC'd, since the original census judged them on
+  collapsed geometry. Yield: exactly two — `cyrillic` (466 glyphs, 252 Cyrillic;
+  its old "detached accent" defect WAS the transform bug) and `inkstitch_masego`.
+  The 11 refused cross-stitch fonts re-refuse at the same fits; the 5 RTL fonts
+  stay out (no RTL layout). *(measured 2026-08-22 — 137 of 142 imported)*
 - **There is no external font supply. Do not re-run the hunt.** Ink/Stitch is a
   monoculture: `horiz_adv_x_space` returns 16 files across all of GitHub, and the
   non-upstream remainder is four `font.json` files, none viable. Independent
@@ -418,7 +419,7 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
 | Area | Status | Confidence |
 |---|---|---|
 | 1. Auto-digitizing quality (image → stitches) | In progress | **Low** beyond flat spot-color art |
-| 2. Font library & lettering | Implemented — 80 fonts, satin + bean/running + cross-stitch | High (tech) / High (compliance). Zero stunted glyphs library-wide since the 2026-08-22 transform fix |
+| 2. Font library & lettering | Implemented — 82 fonts, satin + bean/running + cross-stitch | High (tech) / High (compliance). Zero stunted glyphs library-wide since the 2026-08-22 transform fix |
 | 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — unchanged, no sew-out has happened). The photo-tier gap PR #123 closed stays fixed; the canvas gained a shape editor and auto-restitch 2026-08-13 |
 | 4. Export formats | Implemented | Varies by format — see below |
 | 5. Stitch-out review & manual editing tools | Implemented — Kent's direct-manipulation request is **complete** (2026-08-13) | High. Every surviving requirement of the 2026-08-12 request ships: outlines+nodes on the canvas, the pulse cue, select-then-edit, node drag, line drag, add node, delete. Requirement 5 (whole-shape drag) was withdrawn by Kent. Geometry is unit-tested and every interaction was driven in a real browser against a live service |
@@ -540,9 +541,9 @@ never packaged rather than switched off at runtime. Licence texts ship three way
 the cross-family derivative rule: [area 2](docs/scope/2-font-library-lettering.md).
 *(confirmed 2026-08-22 — guard tests; `docs/font-license-audit-2026-07-31.md`)*
 
-**Still open, both Kent's:** the optional lawyer consult, which only gates
-restoring the 13 pulled fonts (`docs/lawyer-brief-cc-by-sa-2026-08-04.md`), and
-the bluenesia permission screenshots (audit §8).
+**Still open, both Kent's:** the optional lawyer consult, which only gates the 13
+pulled fonts (`docs/lawyer-brief-cc-by-sa-2026-08-04.md`), and the bluenesia
+permission screenshots (audit §8).
 
 ### CI feedback speed
 
@@ -686,16 +687,15 @@ by design, not a fix. Judge on intra-shape trims. *(ruled 2026-08-21 — Kent)*
 ### 2. Font library & lettering — [detail](docs/scope/2-font-library-lettering.md)
 
 **Implemented · High (tech) / High (compliance).**
-**80 fonts** in the sellable build, the EMBF binary codec, browser UI, and the
+**82 fonts** in the sellable build, the EMBF binary codec, browser UI, and the
 add-font QC/tier pipeline. The lettering path stitches three types — satin,
 bean/running, cross-stitch fill — where before 2026-08-21 it was satin-only. A
 second `--personal` build (120 fonts) carries what cannot be sold. Licences:
 `ALLOWED_LICENSES = {OFL-1.1, CC-BY-4.0, CC0}`, ShareAlike permanently closed,
 texts shipped three ways, guard tests pinning it.
 *(confirmed 2026-08-22 — `src/fonts/manifest.json`, engine suite)*
-**Next:** **upstream is exhausted; there is no external supply** — measured, not
-assumed, and Terminus (the one external candidate) is closed. Growth from here
-means commissioning fonts.
+**Next:** **upstream is exhausted and re-censused; no external supply** —
+measured, not assumed, and Terminus is closed. Growth means commissioning.
 
 ### 3. Studio app / guided wizard — [detail](docs/scope/3-studio-app-wizard.md)
 

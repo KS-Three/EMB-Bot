@@ -73,3 +73,22 @@ test("rotate(deg,cx,cy) is applied about its stated centre", () => {
   // A rotate applied about the ORIGIN instead would put it at 0,-10..10,0.
   assert.deepStrictEqual(boxOf(font.glyphs["C"]), [0, 30, 10, 40]);
 });
+
+test("a non-self-closed </path> does not pop the transform stack", () => {
+  const font = importFixture();
+  // Glyph D is two squares inside <g transform="translate(0,50)">, the FIRST
+  // written as <path ...></path> rather than self-closed. The walk popped on
+  // any closing tag while only <g> ever pushed, so that </path> discarded the
+  // group's frame and every following sibling lost the parent transform —
+  // here the second square would fall back to y 0..10.
+  //
+  // Dormant across the whole upstream library (every file self-closes its
+  // paths), which is exactly why it needs a test rather than a comment: the
+  // day a font does this, nothing else would catch it.
+  const pts = pointsOf(font.glyphs["D"]);
+  const ys = pts.map((p) => p[1]);
+  assert.strictEqual((font.glyphs["D"].runs || []).length, 2, "expected both squares");
+  assert.ok(Math.min(...ys) === 50 && Math.max(...ys) === 60,
+    `both squares must sit at y 50..60; got ${Math.min(...ys)}..${Math.max(...ys)} — ` +
+    `the </path> popped the group transform off the stack`);
+});

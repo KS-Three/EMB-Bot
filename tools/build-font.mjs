@@ -268,7 +268,14 @@ function pathsTf(layer) {
   const stack = [M_ID];
   while ((m = re.exec(layer))) {
     const t = m[0];
-    if (t[1] === "/") { if (stack.length > 1) stack.pop(); continue; }
+    // Pop for </g> ONLY. This tested `t[1] === "/"`, which fires on any closing
+    // tag — and only <g> ever pushes, so a non-self-closed <path>…</path> popped
+    // a frame it never pushed, silently un-applying its parent group's
+    // transform for every following sibling. Dormant across the upstream
+    // library (every file self-closes its paths) and fixed here rather than
+    // left as a trap for the next font that does not.
+    if (/^<\/g\b/.test(t)) { if (stack.length > 1) stack.pop(); continue; }
+    if (t[1] === "/") continue; // </path> — nothing to do
     const selfClosed = /\/>$/.test(t);
     const tfm = t.match(/\stransform="([^"]*)"/);
     const M = tfm ? mmul(stack[stack.length - 1], parseTransform(tfm[1])) : stack[stack.length - 1];

@@ -33,7 +33,7 @@ where the bodies are buried.
 ## Binary font library (Slice 10 Stage A, 2026-07-27)
 
 The Studio's fonts live in `src/fonts/manifest.json` + `src/fonts/bin/*.embf`
-(**80 fonts** as of 2026-08-22; was 55 after the 2026-08-04 licence-audit pulls
+(**82 fonts** as of 2026-08-22; was 55 after the 2026-08-04 licence-audit pulls
 and the same-day removal of all 13 ShareAlike fonts (Kent's call — audit §9;
 removal made the paid launch independent of the CC-BY-SA question, and the
 lawyer brief is the optional restore path), then grew through the 2026-08-21/22
@@ -57,7 +57,7 @@ font there unless it is also in the shipping manifest. `EMB-Bot-standalone.html`
   Acceptance evidence (0.00–1.07% stitch drift, visually cleared):
   `docs/superpowers/notes/2026-07-27-embf-acceptance.md`.
 - **Two builds from one tree.** `node tools/build-embf.mjs` writes the
-  **sellable** library (80 fonts, everything inside `ALLOWED_LICENSES`).
+  **sellable** library (82 fonts, everything inside `ALLOWED_LICENSES`).
   `node tools/build-embf.mjs --personal` writes Kent's private library (120
   fonts, adding ShareAlike / NC / GPL / pulled) to `bin-personal/` +
   `manifest-personal.json` — both gitignored, so a fresh clone or CI cannot
@@ -745,7 +745,7 @@ and controllable to the user.
     "Engine-file lists live in THREE places" in the font-library section).
   - `fabrics.js` — 7 fabric presets driving pull-comp/underlay/density/trim.
   - `flatten.js` — medianCut → modeFilter → absorbSmallRegions pipeline.
-  - `fonts/` — pre-digitized font library: `manifest.json` (80
+  - `fonts/` — pre-digitized font library: `manifest.json` (82
     shipping fonts) + `bin/*.embf` binaries + per-font JSON sources and
     `.LICENSE.txt` sidecars, parsed offline from Ink/Stitch's open-source
     font set. (The old "14 fonts" count here was the legacy eager registry

@@ -25,6 +25,36 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-08-22 (latest) — **the transform fix invalidated the
+upstream census, so it was redone: 80 -> 82 fonts, and Cyrillic coverage.**
+
+Every earlier judgement about which upstream fonts were viable had been made on
+geometry the importer was silently collapsing. All 142 re-imported and re-QC'd.
+137 imported; the 5 failures are RTL-only (rtl.svg, no ltr.svg).
+
+Yield exactly two, both OFL-1.1: `cyrillic` (466 glyphs, 252 Cyrillic, from
+Roboto) and `inkstitch_masego` (heavy slab display). cyrillic is the notable one
+— it had been HELD because its accents sat ~650 units from their letter bodies
+and inflated the line box, and that defect WAS the transform bug. It now
+measures zero bbox outliers.
+
+Three rejections worth keeping: `sacramarif` QC-passes but renders as a bare
+single-thread line with the E missing; `roman_ags_bicolor` QC-passes and renders
+correctly but carries 79 satin columns for A-H against the mono cut's 57 for
+visually identical output, which a prior decision had already recorded and
+test/embf-guard.test.js pins — the test caught the re-addition where QC could
+not, since QC cannot see redundant overlapping satin. The 11 refused cross-stitch
+fonts re-refuse at the same fits.
+
+The dormant `</path>` stack-pop bug in pathsTf was fixed too, after confirming
+it changes nothing: rebuilt the library byte-identical. It is guarded by a
+fixture case verified to fail without the fix.
+
+Engine 391 pass / 0 fail. Library 82 fonts: 79 OFL-1.1 + 1 CC-BY-4.0 + 2 CC0,
+zero in the "More" category.
+
+---
+
 **Last updated:** 2026-08-22 (later) — **the stunted-glyph defect root-caused:
 build-font was dropping SVG transforms on most of the library, and one fix
 cleared all four affected fonts.**

@@ -362,6 +362,18 @@
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
+   "key": "cyrillic",
+   "name": "Кирилиця",
+   "tier": "verified",
+   "group": "Sans",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 25,
+   "glyphCount": 466,
+   "bytes": 933591,
+   "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright 2011 The Roboto Project Authors (https://github.com/googlefonts/roboto-classic)",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
    "key": "digory_doodles_bean",
    "name": "Digory Doodles Bean",
    "tier": "verified",
@@ -377,7 +389,7 @@
    "key": "egyptian",
    "name": "Egyptian",
    "tier": "verified",
-   "group": "More",
+   "group": "Small",
    "licenseId": "OFL-1.1",
    "sizeMm": 14,
    "glyphCount": 884,
@@ -389,7 +401,7 @@
    "key": "egyptian_small",
    "name": "Egyptian Small",
    "tier": "verified",
-   "group": "More",
+   "group": "Small",
    "licenseId": "OFL-1.1",
    "sizeMm": 14,
    "glyphCount": 884,
@@ -506,6 +518,18 @@
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
+   "key": "inkstitch_masego",
+   "name": "Ink/Stitch Masego",
+   "tier": "verified",
+   "group": "Display",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 14,
+   "glyphCount": 76,
+   "bytes": 50772,
+   "attribution": "This font has been adapted for Ink/Stitch by Benson Muite LICENSE: licensed under the Open Font License.",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
    "key": "jacquard_12",
    "name": "Jacquard 12",
    "tier": "verified",
@@ -521,7 +545,7 @@
    "key": "jaquarda_bastarda_9",
    "name": "Jaquarda Bastarda 9",
    "tier": "verified",
-   "group": "More",
+   "group": "Display",
    "licenseId": "OFL-1.1",
    "sizeMm": 18,
    "glyphCount": 328,

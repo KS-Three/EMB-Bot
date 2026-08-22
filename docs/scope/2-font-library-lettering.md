@@ -21,13 +21,13 @@ sells).
 
 ## What the library is
 
-**80 fonts in the sellable build** *(confirmed 2026-08-22 —
+**82 fonts in the sellable build** *(confirmed 2026-08-22 —
 `src/fonts/manifest.json`, engine suite)*. Two builds are produced from one
 source tree:
 
 | Build | Command | Contents |
 |---|---|---|
-| Sellable | `node tools/build-embf.mjs` | 80 fonts, all inside `ALLOWED_LICENSES` |
+| Sellable | `node tools/build-embf.mjs` | 82 fonts, all inside `ALLOWED_LICENSES` |
 | Personal | `node tools/build-embf.mjs --personal` | 120 fonts, adds ShareAlike / NC / GPL / pulled |
 
 Personal artifacts (`src/fonts/bin-personal/`, `manifest-personal.json`) are
@@ -70,7 +70,7 @@ complete notices, not first lines. The three-way shipping is what discharges
 the OFL's requirement that the notice travel with every copy, and it is load
 bearing for more than the OFL: see `roman_ags` below.
 
-**Cross-family derivatives.** 71 of the 80 fonts declare a derivative base, but
+**Cross-family derivatives.** Most of the library declares a derivative base, but
 for all but one that base is itself OFL, so shipping the OFL text discharges
 everything. `roman_ags` is the exception — OFL-1.1 over Latin Modern Roman,
 which is under the GUST e-foundry Licence (LPPL 1.3c). The relicensing is
@@ -131,9 +131,43 @@ and `initials_medium` now set "ABCDE" as five uniform letters where before the
 A was a tiny mark beside four oversized overlapping ones.
 *(measured 2026-08-22 — full rebuild against a pre-fix baseline)*
 
-A latent second bug was noticed in `pathsTf` while looking, and is NOT fixed:
-its stack pop fires on ANY closing tag, so a non-self-closed `</path>` would
-corrupt the matrix stack. Dormant — every upstream file self-closes its paths.
+A second bug in the same walk was found and fixed with it: the stack pop fired
+on ANY closing tag while only `<g>` ever pushes, so a non-self-closed
+`</path>` popped a frame it never pushed and silently un-applied its parent
+group's transform for every following sibling. Dormant across the whole upstream
+library (every file self-closes its paths) — confirmed by rebuilding and getting
+a byte-identical library — and fixed rather than left as a trap for the next
+font that does not. Guarded by a fixture case, verified to fail without the fix.
+
+## The post-fix re-census (2026-08-22)
+
+The original upstream census had judged every font on geometry the importer was
+collapsing, so all 142 upstream fonts were re-imported and re-QC'd after the fix.
+137 imported; the 5 failures are RTL-only fonts (`rtl.svg`, no `ltr.svg`).
+
+**Yield: exactly two, both OFL-1.1.**
+
+- **`cyrillic`** — 466 glyphs, 252 of them Cyrillic, derived from Roboto. This
+  font was previously HELD because its accents sat ~650 units from their letter
+  bodies and inflated the line box. That defect *was* the transform bug: the
+  accents were placed by transform. It now measures zero bbox outliers.
+  Cyrillic coverage was called out as a real gap in the external hunt.
+- **`inkstitch_masego`** — heavy slab display face, 76 glyphs. Verified against
+  upstream's own preview rather than by eye alone.
+
+**Rejected, with reasons, so they are not re-proposed:**
+
+- `sacramarif` — QC-passes but renders as a bare single-thread line with the E
+  absent; 100 stitches for 80 mm of text.
+- `roman_ags_bicolor` — QC-passes and renders correctly, but EMB-Bot's
+  single-colour pipeline stacks its two colour layers: 79 satin columns for A-H
+  against the mono cut's 57, and 53% more stitches for visually identical output.
+  That is thread buildup for nothing. A prior decision had already recorded this
+  and `test/embf-guard.test.js` pins it — the test caught the re-addition, which
+  QC could not, because QC cannot see redundant overlapping satin.
+- The 11 refused cross-stitch fonts re-refuse at the same lattice fits.
+- The 5 RTL fonts stay out: rendering Hebrew or Arabic through an LTR layout
+  reverses it, which is worse than not shipping it.
 
 ## Deferred / not done
 
