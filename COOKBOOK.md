@@ -625,9 +625,10 @@ expected failure classes are documented below the command block.
 **CI now exists.** `.github/workflows/python-package-conda.yml` (PR #37
 rewrote Kent's initial stock conda template to run the three commands
 below for real) runs on every push and pull request — **four** jobs, engine
-/ studio / digitizer / studio-e2e, the digitizer job deselecting **five**
+/ studio / digitizer / studio-e2e, the digitizer job deselecting **three**
 golden tests by node ID (CI's OWN list, not the same set that fails on
-Kent's Windows machine — see the failure classes below). Every PR needs its
+Kent's Windows machine — see the failure classes below). It was five until
+2026-08-22, when the remove-and-see check below was finally run. Every PR needs its
 Actions run green in addition to a local pass before merging.
 
 **The `runner_id: 0` outage is OVER — do not merge past a red check on its
@@ -674,12 +675,15 @@ failures are EXPECTED:
    MASTER_SCOPE "Gotchas" matrix ("The golden divergence is PER-FIXTURE,
    not per-platform") — with cause detail in
    `docs/pro-parity-real-art-2026-08-15.md` §0b. CI deselects five node
-   IDs (list + rationale in `.github/workflows/python-package-conda.yml`);
-   those deselected tests never RUN on CI, so their ubuntu-latest behavior
-   is inferred from the deselects' history, not measured — the workflow
-   comment's remove-and-see check is standing and unowned. A golden
-   failure outside the matrix's expected cell is a REAL regression, not
-   this note being stale.
+   IDs (list + rationale in `.github/workflows/python-package-conda.yml`).
+   **The remove-and-see check is no longer unowned — it was run 2026-08-22.**
+   On Linux with the digitizer job's exact Python (3.12) and requirements.txt
+   pinned exactly, two of the five deselects (`logo_alpha.png` on the flat-lane
+   and photo-dispatch goldens) PASS and three FAIL; the same split holds on
+   3.13, so it is not version skew. Those two are now removed from the
+   workflow, restoring the coverage they were costing, and the list is three.
+   A golden failure outside the matrix's expected cell is a REAL regression,
+   not this note being stale.
 
 2. **OCR tests skip when the `tesseract` binary is not on PATH — except on
    CI, where a missing binary fails loud.** `textcluster.py`'s

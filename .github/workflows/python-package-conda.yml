@@ -144,13 +144,22 @@ jobs:
       # identical, including the deselects below. Nothing in the suite
       # writes to a shared path (fixtures are read-only, every test that writes
       # uses tmp_path), so worker isolation is real rather than assumed.
+      # The remove-and-see check COOKBOOK calls "standing and unowned" was RUN
+      # on 2026-08-22, on Linux with this job's exact Python (3.12) and
+      # requirements.txt pinned exactly: of the five deselects, the two
+      # logo_alpha.png ones PASS and the three below FAIL. Same split on 3.13,
+      # so it is not version skew.
+      #
+      # Both logo_alpha.png deselects are therefore REMOVED — they were costing
+      # real coverage on the flat-lane and photo-dispatch goldens for a fixture
+      # that agrees. If CI disagrees with that measurement, the honest response
+      # is to put them back WITH the CI evidence recorded here, not to assume
+      # the measurement was wrong.
       - name: Digitizer tests
         working-directory: digitizer
         run: >
           python -m pytest tests/ -q -n auto
-          --deselect "tests/test_flat_lane_byte_identical.py::test_flat_lane_is_byte_identical_to_the_pre_change_golden[logo_alpha.png]"
           --deselect "tests/test_pushcomp.py::test_flag_off_is_byte_identical_to_the_shipped_engine[logo_whitebg.png-towel]"
-          --deselect "tests/test_stage2_photo_segment.py::test_flat_and_gradient_lanes_still_match_golden_after_photo_dispatch[logo_alpha.png]"
           --deselect "tests/test_flat_lane_byte_identical.py::test_flat_lane_is_byte_identical_to_the_pre_change_golden[photo/enthusiast_logo.png]"
           --deselect "tests/test_stage2_photo_segment.py::test_flat_and_gradient_lanes_still_match_golden_after_photo_dispatch[photo/enthusiast_logo.png]"
 
