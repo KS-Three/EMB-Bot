@@ -69,7 +69,7 @@ from .stage6_fill import stitch_shape
 from .stage6_meander import meander_fill
 from .stage6_scanline import scanline_fill
 from .stage6_sketch import sketch_fill
-from .stage6_satin import is_satin_candidate, satin_shape
+from .stage6_satin import classify_ribbon, satin_shape
 from .stage6_streamline import streamline_fill
 from .stitches import StitchBlock, StitchRun
 from .threads import chart_for
@@ -91,6 +91,10 @@ _LINK_SEARCH_NODES = 120
 # The two stage-0 classes that engage photo sequencing (depth-sorted layers +
 # the underlay split, plan §2 row 14). A caller may also opt any design in
 # explicitly via cfg.extra["photo_sequencing"] — same knob, both halves.
+# MIRRORED verbatim as stage6_satin._PHOTO_CLASSES (importing from here
+# would cycle — this module imports stage6_satin); a membership change here
+# must land there too, and tests/test_photo_width_floor.py pins the
+# lockstep so drift fails loud instead of quietly un-flooring a new class.
 PHOTO_CLASSES = ("photo_subject", "photo_scene")
 
 # Row 14's underlay split, expressed in the vocabularies the two tiers
@@ -955,15 +959,18 @@ def sequence(
     # RUN, tagged with its layer's sew index so each block can subtract the
     # ones that sew AFTER it from its future-colour cover. Predicted with the
     # same predicate `stitch_one` routes on — an explicit `tier: "run"`, or
-    # the small-shape rescue's area floor. `stitch_one` has two REACTIVE run
-    # outcomes this cannot see, and they are asymmetric on purpose: a
+    # the small-shape rescue's area floor. `stitch_one` has three REACTIVE
+    # run outcomes this cannot see, and they are asymmetric on purpose: a
     # forced-run shape whose outline comes back empty falls through to
     # fill/satin (MORE thread than predicted here — cover merely
-    # under-counted, a link refused, never a float), while a shape that
-    # defeats both real tiers and rescues as an outline is the one case that
-    # can still over-promise; it is the degenerate geometry the rescue
-    # exists for, and the LINK_COVER_INSET_MM erosion still bounds any shape
-    # of that kind thinner than twice the inset.
+    # under-counted, a link refused, never a float); a shape that defeats
+    # both real tiers and rescues as an outline can still over-promise, but
+    # it is the degenerate geometry the rescue exists for, and the
+    # LINK_COVER_INSET_MM erosion still bounds any shape of that kind
+    # thinner than twice the inset; and a photo-lane `photo_width_floor`
+    # reroute (systematic, not degenerate) is bounded by the same argument —
+    # every floored shape is under 1.0 mm wide, less than twice the 0.75 mm
+    # inset, so its cover polygon erodes to empty rather than floating.
     run_tier_later: list[tuple[int, object]] = []
     if cfg.chain_links:
         for p in planned:
@@ -1026,9 +1033,27 @@ def sequence(
             # differently structured on a towel than on a polo. A forced
             # "satin" skips the classifier (and the global satin switch): the
             # user has already answered the question it asks.
-            if tier == "satin" or (tier == "auto" and cfg.satin
-                                   and is_satin_candidate(p.region.polygon, satin_max,
-                                                           design_class=design_class)):
+            #
+            # One classify_ribbon call carries both decisions the ladder needs:
+            # the satin/fill verdict is_satin_candidate wrapped (identical
+            # computation), and Law 31's photo-lane width floor — a shape that
+            # EARNED satin but would sew a thread-width column
+            # (`photo_width_floor`, photo classes only; see the constant's
+            # comment in stage6_satin for why flat/gradient keep their satin)
+            # reroutes to the same outline run the area rescue above uses, on
+            # the artwork polygon for the same no-compensation reason. An
+            # outline the run tier cannot close falls through to fill rather
+            # than silently dropping artwork, exactly like the satin branch.
+            ribbon = (classify_ribbon(p.region.polygon, satin_max,
+                                      design_class=design_class)
+                      if tier == "auto" and cfg.satin else None)
+            if ribbon is not None and ribbon.reason == "photo_width_floor":
+                runs, report = run_outline(p.region.polygon, p.shape_id,
+                                           entry=entry, trim_at_mm=trim_at)
+                if not report["empty"]:
+                    report["as_run"] = 1
+                    return runs, report, False
+            if tier == "satin" or (ribbon is not None and ribbon.satin):
                 runs, report = satin_shape(
                     p.polygon,
                     p.shape_id,
@@ -1590,8 +1615,8 @@ def sequence(
             warn(
                 SMALL_SHAPES_AS_RUN,
                 f"{as_run} shape{'s were' if as_run != 1 else ' was'} too small "
-                "to hold a fill or satin and sewed as a light outline run "
-                "instead.",
+                "to hold a fill or satin — or too narrow to satin safely — "
+                "and sewed as a light outline run instead.",
                 count=as_run,
             )
         )

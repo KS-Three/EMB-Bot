@@ -236,6 +236,24 @@ def is_satin_candidate(poly: Polygon, max_width_mm: float, *,
                            design_class=design_class).satin
 
 
+# Law 31's satin minimum width, adopted VERBATIM from the printed rule
+# (docs/dt-first-verdict-2026-08-11.md §4: "under 1 mm: convert to multi-ply
+# run") — deliberately NOT tuned or swept: ROADMAP hard gate 1 names the
+# satin width floor a physical constant fabric settles, so the value here is
+# a citation, not a calibration, and any retune waits on cloth. Photo
+# classes only: live defect 2 measured the sub-millimetre-satin defect on
+# photo-family art and DISPROVED the reroute for flat logo art (61 of 64
+# sub-1.0mm satin shapes on real customer logos are ground the pro also
+# satined — professionals satin hairline strokes on flat art routinely), and
+# the disproof population classifies "gradient" like most real logo art, so
+# the only gate consistent with both measurements is the photo lane itself.
+PHOTO_MIN_SATIN_WIDTH_MM = 1.0
+# Mirrored, verbatim, from stage7_sequence.PHOTO_CLASSES — importing it here
+# would cycle (stage7 imports this module). Kept in lockstep the same way
+# regions.py mirrors the service's _TIER_VALUES.
+_PHOTO_CLASSES = ("photo_subject", "photo_scene")
+
+
 @dataclass(frozen=True)
 class RibbonVerdict:
     """`is_satin_candidate`'s verdict, plus WHICH gate produced it.
@@ -243,7 +261,10 @@ class RibbonVerdict:
     `reason` is the first gate that fired, in the same short-circuit order the
     checks run: `width_cap`, `aspect`, `dt_irregular`, `dt_p90_cap`,
     `dt_degenerate` (the raster was too small to skeletonize, so the DT check
-    deferred), or `satin` for a shape that passed everything.
+    deferred), `photo_width_floor` (the shape EARNED satin but its doubled
+    p90 medial width sits under `PHOTO_MIN_SATIN_WIDTH_MM` and this is a
+    photo-class design — stage 7 reroutes it to the outline run), or `satin`
+    for a shape that passed everything.
 
     `metrics` carries what each gate measured, so a rejection can be read as a
     MARGIN rather than a bare no — `docs/superpowers/specs/2026-08-16-satin-
@@ -328,11 +349,30 @@ def classify_ribbon(poly: Polygon, max_width_mm: float, *,
                 and _PROMOTE_EXPLAINED_MIN <= stats.explained
                 <= _PROMOTE_EXPLAINED_MAX
                 and stats.elongation >= _PROMOTE_ELONGATION_MIN):
-            return RibbonVerdict(True, "promoted_ribbon", metrics)
+            return _floor_or(RibbonVerdict(True, "promoted_ribbon", metrics),
+                             stats, design_class, metrics)
         return RibbonVerdict(False, "dt_irregular", metrics)
     if stats.p90_mm > max_width_mm:
         return RibbonVerdict(False, "dt_p90_cap", metrics)
-    return RibbonVerdict(True, "satin", metrics)
+    return _floor_or(RibbonVerdict(True, "satin", metrics),
+                     stats, design_class, metrics)
+
+
+def _floor_or(earned: RibbonVerdict, stats: _DtStats, design_class: str,
+              metrics: dict) -> RibbonVerdict:
+    """Law 31's width floor, applied only to a shape that already EARNED
+    satin, only in the photo classes. `stats.p90_mm` is the DOUBLED p90
+    medial radius — the ARTWORK column width, before stage 5's pull comp
+    widens the sewn cross (up to ~2x pull_comp_mm on top; the classifier
+    deliberately reads the artwork polygon, same as the satin call itself)
+    — so the comparison is the verdict doc's `2·p90/scale < 1.0 mm`
+    verbatim. A `dt_degenerate` deferral never reaches here: no DT numbers,
+    no floor — the rule reads off measurements it does not have.
+    """
+    if (design_class in _PHOTO_CLASSES
+            and stats.p90_mm < PHOTO_MIN_SATIN_WIDTH_MM):
+        return RibbonVerdict(False, "photo_width_floor", metrics)
+    return earned
 
 
 # The percentile Melco's own patent (US9702070) is documented to use is 70;
