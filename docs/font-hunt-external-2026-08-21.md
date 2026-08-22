@@ -65,6 +65,45 @@ build and QC — not taken on an agent's word:
    project rejected is a judgement call. Re-tracing from the current upstream
    TTF would likely beat the PR geometry.
 
+### 2026-08-22 re-examination — it is worse than "1 glyph"
+
+Re-fetched `pull/2034/head`, re-imported with the corrected parser, and
+**rendered every letter** rather than reading QC's verdict. QC counts a glyph as
+broken only when it stitches *nothing*, so it reported 1/52. Looking at the
+output found **four broken letters**, three of which QC passes because they do
+emit some stitches:
+
+| Glyph | Renders as | Source: paths / tagged `satin_column` |
+|---|---|---|
+| `q` | nothing at all | 1 / **0** |
+| `B` | a small stub | 2 / **1** |
+| `t` | a small stub | 2 / **1** |
+| `M` | a half-height "v" | 3 / **1** |
+
+**The cause is in the upstream source, not in EMB-Bot's importer.** Those glyphs
+carry real path geometry that was never tagged `inkstitch:satin_column`, so only
+the tagged fraction becomes a satin column. Every other letter tags all of its
+paths (`A` 2/2, `Q` 2/2, `T` 2/2, `m` 2/2). This is the incomplete digitizing
+that got the PR declined, seen directly rather than inferred.
+
+`t` is among the most frequent letters in English; `B` and `M` are common
+capitals. Repairing them means tagging paths in the source — i.e. **editing the
+font data to make it work, which Kent ruled out on 2026-08-21** (§5 below). By
+that standing rule Terminus is not a candidate: it is not plug-and-play.
+
+Two further defects found in the same pass:
+
+- **`horiz_adv_x_space` is 20 against a `horiz_adv_x_default` of 200** — a
+  1/10-width space in a FIXED-WIDTH font. Words run together.
+- **`sizeMm` measured, not guessable.** Terminus's median satin column is 25.81
+  units of a 400 upem. Against the shipped library's satin widths (62 fonts:
+  p25 1.70 mm, median 2.14 mm, p75 2.64 mm) that puts its natural size at
+  **26.3 / 33.1 / 40.9 mm** respectively. Evidence, not an answer — a satin
+  width is exactly the physical constant ROADMAP gate 1 reserves for a sew-out.
+
+**Recommendation: omit.** Four glyph repairs, a rename, a space-advance fix and
+a gate-1 constant, on a font its own project declined. Kent's call, not mine.
+
 ## 3. `m_plus_stitch` — confirmed real, not viable
 
 `github.com/Godan/japanese-fonts-for-stitch`, `custom_fonts/m_plus_stitch/`.

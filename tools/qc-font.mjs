@@ -117,6 +117,46 @@ export function qcFont(font) {
         `— inflates the line box and caps how large short text can scale`);
   }
 
+  // Stunted-glyph check (2026-08-22). The stitchability test above asks "does
+  // this letter produce stitches", which a glyph can pass while rendering as a
+  // stub. Terminus is what exposed it: QC called it 1/52 broken, but LOOKING at
+  // the rendered alphabet found FOUR broken letters — q stitched nothing (the
+  // one QC caught) while B, M and t emitted a fraction of their geometry and
+  // sailed through. In its source those glyphs carry paths that were never
+  // tagged inkstitch:satin_column, so only part of each letter became a column.
+  //
+  // Compared WITHIN case: lowercase is legitimately shorter than uppercase, so
+  // one library-wide median would flag every x-height letter in every font.
+  // Threshold 0.45 of the case median, and scoped to single-char A-Z/a-z names
+  // — the letters that must render — so decorative alternates and multi-char
+  // ornament glyphs stay out of it.
+  //
+  // This is a WARN, not a hard fail: it found four fonts ALREADY SHIPPING with
+  // the defect (mimosa_large D 0.11x, mimosa_medium D 0.22x, apesplit A 0.23x,
+  // initials_medium A 0.28x — the first two verified by rendering, D as a bare
+  // dash, A as a tiny mark floating off the baseline). Failing the build on
+  // those is Kent's call, not this tool's; test/font-stunted.test.js pins the
+  // known set so a NEW font with the defect is caught while these stay visible
+  // as debt.
+  for (const set of [LETTERS, LOWER]) {
+    const vs = [];
+    for (const c of set) {
+      const g = font.glyphs[c];
+      if (!g) continue;
+      const v = glyphHeight(g);
+      if (v > 0) vs.push([c, v]);
+    }
+    if (vs.length < 8) continue; // too few to have a trustworthy median
+    const sorted = vs.map((v) => v[1]).sort((a, b) => a - b);
+    const med = sorted[Math.floor(sorted.length / 2)];
+    const stunted = vs.filter(([, v]) => v / med < 0.45)
+      .map(([c, v]) => `"${c}" ${(v / med).toFixed(2)}x`);
+    if (stunted.length)
+      warn(`stunted: ${stunted.length} letter(s) far shorter than the case median ` +
+        `(${stunted.join(", ")}) — these stitch, so the stitchability check passes ` +
+        `them, but they render as stubs`);
+  }
+
   return { pass: !hardFail, findings };
 }
 
