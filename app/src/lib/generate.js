@@ -165,6 +165,21 @@ export function generateElement(element, garment, runtime) {
 // Generates every ready element in a project (in array order), combines them
 // into one sewable design, and reports each element's own bbox (mm) so the
 // UI can draw a per-element selection overlay against the combined preview.
+// Formats an `unsupported` array for a person: quoted, comma-separated, and
+// capped so a paragraph of unrenderable text does not become a paragraph of
+// error. Exported (and tested) rather than inlined in the component, matching
+// hoopFitNote — message wording is logic, and logic in a .svelte file is logic
+// nobody unit-tests.
+export function charList(chars, max = 6) {
+  const list = (chars || []).filter((c) => typeof c === "string" && c.length);
+  if (!list.length) return "";
+  const shown = list.slice(0, max).map((c) => `\u201c${c}\u201d`);
+  const rest = list.length - shown.length;
+  const joined = shown.length === 1 ? shown[0]
+    : shown.slice(0, -1).join(", ") + " and " + shown[shown.length - 1];
+  return rest > 0 ? `${shown.join(", ")} and ${rest} more` : joined;
+}
+
 // Elements that aren't ready (see generateElement) are silently skipped —
 // not an error, just nothing to contribute yet. Returns
 // { combined: null, perElement: [] } when nothing in the project is ready.

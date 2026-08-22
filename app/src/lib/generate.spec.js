@@ -664,3 +664,23 @@ test("a project with nothing ready still reports an unsupported array", async ()
   expect(perElement).toEqual([]);
   expect(unsupported).toEqual([]);
 });
+
+test("charList formats an unsupported-character list for a person", async () => {
+  const { charList } = await import("./generate.js");
+  expect(charList([])).toBe("");
+  expect(charList(null)).toBe("");
+  expect(charList(["E"])).toBe("“E”");
+  expect(charList(["E", "m"])).toBe("“E” and “m”");
+  expect(charList(["E", "m", "b"])).toBe("“E”, “m” and “b”");
+});
+
+test("charList caps a long list instead of printing a paragraph", async () => {
+  const { charList } = await import("./generate.js");
+  // A whole sentence typed into a font that has none of it should not turn the
+  // stats line into the same sentence.
+  const many = "ABCDEFGHIJ".split("");
+  const out = charList(many);
+  expect(out).toContain("and 4 more");
+  expect(out).not.toContain("“G”");
+  expect(charList(many, 2)).toBe("“A”, “B” and 8 more");
+});

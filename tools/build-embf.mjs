@@ -172,9 +172,24 @@ if (existsSync(tiersPath)) {
 // STITCHABILITY gate, not a license one, so those fonts light up on their own
 // the day a fill/cross-stitch lettering path exists, with no change here.
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+// Does this font produce stitches for the letters it actually HAS?
+//
+// The candidate set used to be LETTERS — A-Z only — which silently answered
+// "no" for any font with no Latin alphabet at all. The two Hebrew faces were
+// dropped from the personal build on exactly that basis while the sellable
+// build shipped them, so the two libraries disagreed about the same font. A
+// non-Latin font is not a dead font.
+//
+// Scoped to single-character glyph names so ornament and .notdef entries
+// cannot vouch for a font whose letters are empty — that is the ondulamarif_XL
+// trap this gate exists for, and widening the alphabet must not reopen it.
 function sewsAnything(font) {
   const gs = font.glyphs || {};
-  for (const c of LETTERS) {
+  const latin = [...LETTERS].filter((c) => gs[c]);
+  const candidates = latin.length
+    ? latin
+    : Object.keys(gs).filter((k) => [...k].length === 1 && k !== " " && !/[0-9]/.test(k));
+  for (const c of candidates) {
     const g = gs[c];
     if (!g) continue;
     if ((g.cols || []).length) return true;
