@@ -2584,3 +2584,59 @@ barely fills, then fill-side trim work has a low ceiling on it regardless of
 mechanism, and `logo_hotel_fremont`-style perforated fields are the exception
 rather than the type. Satin-side trim behaviour is where the customer-visible
 gain would have to come from. Not measured.
+
+### Where real-artwork trims actually come from — and the prize behind gate 1 (2026-08-22)
+
+Follows the finding above that the fill-side trim work is inert on client logos.
+If not fill, then what? Measured across all six real-artwork fixtures.
+
+**Every shape transition costs a cut.** First-of-shape trims track shape count
+almost exactly:
+
+| fixture | trims | first-of-shape | mid-shape | shapes |
+|---|---|---|---|---|
+| `becker_marine_logo.png` | 29 | 10 | 19 | **10** |
+| `becker_hat_polo_large…logo_hat` | 31 | 11 | 20 | **12** |
+| `becker_hat_polo_large…logolc` | 34 | 14 | 20 | **16** |
+| `becker_hat_small…` | 13 | 8 | 5 | **8** |
+| `becker_chest_small…` | 9 | 7 | 2 | **8** |
+| `logo_script_tires.png` | 8 | 4 | 4 | **4** |
+
+Ten of ten, eleven of twelve, fourteen of sixteen, eight of eight. Entering a
+shape costs a trim, and real logos are many small shapes.
+
+**Underlay, not satin or fill, is the largest single trim kind** — 23 of 29 on
+`becker_marine_logo`, 7 of 8 on `logo_script_tires`. But it is NOT an
+intra-shape ordering problem: every underlay call returns fewer than 3 paths, so
+there is nothing to reorder. `_reorder_for_fewer_cuts` was prototyped against
+underlay and qualified on **0 shapes across all six fixtures**. The underlay
+trims are the shape-entry trims, counted by kind.
+
+**So the lever for real artwork is inter-shape linking — which is
+`chain_links`, and it is gate-1 frozen.** Measured with the flag ON, as a probe
+only (the default stays OFF):
+
+| fixture | trims OFF → ON | stitches OFF → ON |
+|---|---|---|
+| `becker_hat_polo_large…logolc` | 34 → **19** | 3999 → **3919** |
+| `becker_hat_polo_large…logo_hat` | 31 → **21** | 4265 → **4221** |
+| `becker_marine_logo.png` | 29 → **20** | 4466 → **4420** |
+| `becker_hat_small…` | 13 → **8** | 2354 → **2325** |
+| `becker_chest_small…` | 9 → **7** | 2440 → **2428** |
+| `logo_script_tires.png` | 8 → **6** | 2302 → **2292** |
+| **total** | **130 → 87, −33%** | **lower on every fixture** |
+
+**Better on both axes on every fixture.** Contrast the fill-side selector, which
+cost stitches on the photo corpus and did nothing at all here.
+
+**This does not reopen gate 1 and is not a request to flip the flag.**
+`LINK_COVER_TOL_MM` is a thread spec; the gate is a refusal and it holds. What
+this adds is a number the gate decision did not previously have on REAL artwork:
+the sew-out that Kent accepted as-is (2026-08-21) is standing in front of a
+**33% trim reduction at zero stitch cost on the work this shop actually sews**,
+not merely a corpus-metric gain. Whether that changes his call is his to decide;
+it should at least be decided against the right number.
+
+**Session synthesis.** Fill-side trim work (PR #205) helps photo-lane and large-
+fill designs and is byte-identical on client logos. The customer-visible trim win
+is `chain_links`, already built, already measured, blocked only on cloth.
