@@ -2783,3 +2783,48 @@ not uniform.
 **Still the most promising unbuilt lever measured this session**, because it is
 the only one that is simultaneously gate-clear, on the code path that dominates
 real client artwork, and grounded in a measured bound rather than a hypothesis.
+
+#### The exit point is never chosen — and choosing it is worth 58% of inter-shape trims (2026-08-22)
+
+`stage7_sequence.py:1487` decides every shape-entry trim:
+
+```python
+d = math.dist(cursor, runs[0].points[0])
+runs[0].trim = d > trim_at        # NO travel attempt between shapes
+cursor = runs[-1].points[-1]      # exit is wherever the shape happened to end
+```
+
+Shape ORDER is already nearest-neighbour (`polygon.distance(here)`), and ENTRY
+is already cursor-aware (`stitch_one(p, cursor)` → `start_near`). **The EXIT is
+not chosen at all.** It is whatever point the shape's last run finished on, and
+it becomes the next shape's cursor.
+
+Sized on real client artwork — for each consecutive shape pair, the gap as
+sewn versus the best gap achievable over all exit/entry point pairs:
+
+| fixture | transitions | trims now | with ideal exit | saveable |
+|---|---|---|---|---|
+| `becker_hat_polo_large…logolc` | 15 | 12 | 8 | 4 |
+| `becker_hat_polo_large…logo_hat` | 11 | 9 | 3 | **6** |
+| `becker_marine_logo.png` | 9 | 9 | 4 | 5 |
+| `becker_hat_small…` | 7 | 7 | 1 | **6** |
+| `becker_chest_small…` | 7 | 6 | 2 | 4 |
+| **total** | **49** | **43** | **18** | **25 (58%)** |
+
+**~19% of ALL trims on real artwork, with no constant touched.** Compare
+`chain_links` at 33%, which needs a sew-out. This is the gate-clear alternative
+and it is unbuilt.
+
+**Upper bound, and the assumption is a real one:** it assumes any point of a
+shape can serve as its exit. That is false — a satin column ends at its end, a
+fill ends where its last row lands. The realizable share is lower, and the
+honest way to find out is to build it against
+`tools/trim_exchange_sweep.py --diff`.
+
+**What building it needs.** An `end_near` hint threaded into `stitch_shape` and
+the satin router, mirroring the existing `start_near`, plus a greedy
+look-ahead in the stage-7 loop (pick the next shape, then aim the current
+shape's exit at it). Blast radius is every design, so it needs the
+baseline-then-after suite comparison and golden re-capture — pre-authorized on
+Linux CI under same-failure-set discipline. **This is the recommended next
+build.**
