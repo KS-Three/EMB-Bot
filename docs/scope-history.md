@@ -25,6 +25,44 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-08-22 (evening) — **83 fonts; the personal build got its
+missing previews and licences; and a font had been excluded by a FILENAME.**
+
+`fold_inkstitch` is the one worth remembering. 141 of 142 upstream fonts name
+their licence file `LICENSE`; this one names it `license`. build-font looked for
+the uppercase spelling only, which resolves fine on Kent's case-insensitive
+Windows filesystem and silently read NOTHING on Linux — every cloud session. The
+font imported with an empty licence, and licenseId("") returns SEE-LICENSE-FILE,
+which sits outside ALLOWED_LICENSES, so it was excluded from the sellable
+library. It is OFL-1.1. That failed SAFE, but by luck rather than design: the
+identical silence excludes any legitimately-licensed font. Fixed, guarded, and
+the font shipped — 40 glyphs, origami-outline caps face.
+
+The personal build had two real holes, both fixed. Its 37 personal-only fonts had
+no preview tile (the font browser showed them blank) and no licence sidecar (the
+credits dialog linked a 404). Both now generate into SEPARATE gitignored
+directories — previews-personal/ and licenses-personal/ — and copy-engine
+overlays them on the committed ones. The separation is the point: src/fonts/
+previews/ is committed, and a preview is a RENDER of the font, so publishing one
+for a ShareAlike or NonCommercial face is exactly the distribution the build
+split exists to prevent.
+
+Found while doing it: build-embf had NO orphan-clean for its binary directory at
+all. The sellable side was protected only by a guard test — which is how the
+roman_ags_bicolor orphan got caught earlier — and the personal side by nothing,
+so dropping that font left a live .embf in bin-personal/. That is the
+ondulamarif_XL trap. Cleaning now happens at the source for both builds, with
+the test kept as backstop.
+
+An empty preview now fails the run only for the SELLABLE library. The personal
+library deliberately holds marginal fonts (paquerette has 31 of 52 letters with
+no authored stitch length), and failing there would train Kent to ignore the
+exit code.
+
+Engine 392 pass / 0 fail. Library 83 fonts.
+
+---
+
 **Last updated:** 2026-08-22 (latest) — **the transform fix invalidated the
 upstream census, so it was redone: 80 -> 82 fonts, and Cyrillic coverage.**
 

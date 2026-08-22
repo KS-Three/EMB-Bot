@@ -228,10 +228,11 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
   above. *(ruled 2026-08-22 — Kent; `docs/font-hunt-external-2026-08-21.md` §2)*
 - **The upstream re-census after the transform fix is DONE — do not redo it.**
   All 142 re-imported and re-QC'd, since the original census judged them on
-  collapsed geometry. Yield: exactly two — `cyrillic` (466 glyphs, 252 Cyrillic;
-  its old "detached accent" defect WAS the transform bug) and `inkstitch_masego`.
-  The 11 refused cross-stitch fonts re-refuse at the same fits; the 5 RTL fonts
-  stay out (no RTL layout). *(measured 2026-08-22 — 137 of 142 imported)*
+  collapsed geometry. Yield three: `cyrillic` (466 glyphs, 252 Cyrillic; its old
+  "detached accent" defect WAS the transform bug), `inkstitch_masego`, and
+  `fold_inkstitch` (excluded for weeks by a FILENAME, not a licence).
+  The 11 refused cross-stitch fonts re-refuse at the same fits; the 5 RTL fonts stay
+  out (no RTL layout). *(measured 2026-08-22 — 137 of 142 imported)*
 - **There is no external font supply. Do not re-run the hunt.** Ink/Stitch is a
   monoculture: `horiz_adv_x_space` returns 16 files across all of GitHub, and the
   non-upstream remainder is four `font.json` files, none viable. Independent
@@ -419,7 +420,7 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
 | Area | Status | Confidence |
 |---|---|---|
 | 1. Auto-digitizing quality (image → stitches) | In progress | **Low** beyond flat spot-color art |
-| 2. Font library & lettering | Implemented — 82 fonts, satin + bean/running + cross-stitch | High (tech) / High (compliance). Zero stunted glyphs library-wide since the 2026-08-22 transform fix |
+| 2. Font library & lettering | Implemented — 83 fonts, satin + bean/running + cross-stitch | High (tech) / High (compliance). Zero stunted glyphs library-wide since the 2026-08-22 transform fix |
 | 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — unchanged, no sew-out has happened). The photo-tier gap PR #123 closed stays fixed; the canvas gained a shape editor and auto-restitch 2026-08-13 |
 | 4. Export formats | Implemented | Varies by format — see below |
 | 5. Stitch-out review & manual editing tools | Implemented — Kent's direct-manipulation request is **complete** (2026-08-13) | High. Every surviving requirement of the 2026-08-12 request ships: outlines+nodes on the canvas, the pulse cue, select-then-edit, node drag, line drag, add node, delete. Requirement 5 (whole-shape drag) was withdrawn by Kent. Geometry is unit-tested and every interaction was driven in a real browser against a live service |
@@ -537,8 +538,7 @@ ShareAlike was closed by removal rather than by waiting on a legal opinion, and
 stays closed: `ALLOWED_LICENSES` gates the sellable build, so an excluded font is
 never packaged rather than switched off at runtime. Licence texts ship three ways
 (on disk, served, embedded) — load bearing beyond the OFL, since it discharges
-`roman_ags`'s LPPL clause-6d obligation. **No longer launch-gating.** Detail and
-the cross-family derivative rule: [area 2](docs/scope/2-font-library-lettering.md).
+`roman_ags`'s LPPL clause-6d obligation. Detail: [area 2](docs/scope/2-font-library-lettering.md).
 *(confirmed 2026-08-22 — guard tests; `docs/font-license-audit-2026-07-31.md`)*
 
 **Still open, both Kent's:** the optional lawyer consult, which only gates the 13
@@ -687,7 +687,7 @@ by design, not a fix. Judge on intra-shape trims. *(ruled 2026-08-21 — Kent)*
 ### 2. Font library & lettering — [detail](docs/scope/2-font-library-lettering.md)
 
 **Implemented · High (tech) / High (compliance).**
-**82 fonts** in the sellable build, the EMBF binary codec, browser UI, and the
+**83 fonts** in the sellable build, the EMBF binary codec, browser UI, and the
 add-font QC/tier pipeline. The lettering path stitches three types — satin,
 bean/running, cross-stitch fill — where before 2026-08-21 it was satin-only. A
 second `--personal` build (120 fonts) carries what cannot be sold. Licences:

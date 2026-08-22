@@ -21,13 +21,13 @@ sells).
 
 ## What the library is
 
-**82 fonts in the sellable build** *(confirmed 2026-08-22 —
+**83 fonts in the sellable build** *(confirmed 2026-08-22 —
 `src/fonts/manifest.json`, engine suite)*. Two builds are produced from one
 source tree:
 
 | Build | Command | Contents |
 |---|---|---|
-| Sellable | `node tools/build-embf.mjs` | 82 fonts, all inside `ALLOWED_LICENSES` |
+| Sellable | `node tools/build-embf.mjs` | 83 fonts, all inside `ALLOWED_LICENSES` |
 | Personal | `node tools/build-embf.mjs --personal` | 120 fonts, adds ShareAlike / NC / GPL / pulled |
 
 Personal artifacts (`src/fonts/bin-personal/`, `manifest-personal.json`) are
@@ -154,6 +154,15 @@ collapsing, so all 142 upstream fonts were re-imported and re-QC'd after the fix
   Cyrillic coverage was called out as a real gap in the external hunt.
 - **`inkstitch_masego`** — heavy slab display face, 76 glyphs. Verified against
   upstream's own preview rather than by eye alone.
+- **`fold_inkstitch`** — origami-outline caps face, 40 glyphs. It was excluded
+  by a FILENAME, not a licence: 141 of 142 upstream fonts name the file
+  `LICENSE` and this one names it `license`. The importer looked for the
+  uppercase spelling only, which resolves on Kent's case-insensitive Windows
+  filesystem and silently read NOTHING on Linux, so the font imported with an
+  empty licence — and `licenseId("")` returns `SEE-LICENSE-FILE`, outside
+  `ALLOWED_LICENSES`. It is OFL-1.1. Failed safe, but by luck: the same silence
+  would exclude any legitimately-licensed font.
+  *(fixed 2026-08-22 — `tools/build-font.mjs`, guarded in font-transforms.test.js)*
 
 **Rejected, with reasons, so they are not re-proposed:**
 
@@ -175,11 +184,6 @@ collapsing, so all 142 upstream fonts were re-imported and re-QC'd after the fix
   satin distortion. Minor, not blocking.
 - **`cyrillic`** — held. Dropping 6 broken glyphs would salvage it but kills
   `ñ`.
-- **Personal-build previews** — `tools/build-previews.mjs` reads the sellable
-  manifest, so the 40 personal-only fonts have no preview tile. Cosmetic, and
-  fixing it must NOT write those previews into `src/fonts/previews/` (that
-  directory is committed, and these are NC/ShareAlike fonts).
-  *(confirmed 2026-08-22 — `git check-ignore`)*
 
 ## Supply
 

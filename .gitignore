@@ -28,3 +28,10 @@ src/fonts/bin-personal/
 src/fonts/manifest-personal.json
 app/public/fonts/manifest-personal.json
 app/public/fonts/bin-personal/
+# Preview PNGs and licence sidecars for the personal-only fonts. These MUST
+# stay out of src/fonts/previews/ and src/fonts/<key>.LICENSE.txt, which are
+# both committed: a preview is a render of the font, so publishing one for a
+# ShareAlike or NonCommercial face is exactly the distribution the build split
+# exists to prevent.
+src/fonts/previews-personal/
+src/fonts/licenses-personal/

@@ -27,7 +27,17 @@ const OUT = process.argv[3];
 if (!SRC || !OUT) { console.error("usage: build-font.mjs <fontDir|svgFile> <outJson>"); process.exit(1); }
 const svgFile = SRC.endsWith(".svg") ? SRC : path.join(SRC, "ltr.svg");
 const metaFile = SRC.endsWith(".svg") ? SRC.replace(/ltr\.svg$/, "font.json") : path.join(SRC, "font.json");
-const licFile = SRC.endsWith(".svg") ? SRC.replace(/ltr\.svg$/, "LICENSE") : path.join(SRC, "LICENSE");
+// Upstream is not consistent about the case of this filename: 141 of 142 fonts
+// use "LICENSE" and fold_inkstitch uses "license". On Kent's Windows box the
+// filesystem is case-insensitive so both resolve; on Linux — every cloud
+// session — the lowercase one silently read NOTHING, so the font imported with
+// an empty licence. It fails safe for the sellable build (licenseId("") returns
+// SEE-LICENSE-FILE, which is outside ALLOWED_LICENSES) but that is luck, not
+// design: the same silence would wrongly exclude a legitimately-OFL font.
+const licCandidates = SRC.endsWith(".svg")
+  ? [SRC.replace(/ltr\.svg$/, "LICENSE"), SRC.replace(/ltr\.svg$/, "license")]
+  : [path.join(SRC, "LICENSE"), path.join(SRC, "license")];
+const licFile = licCandidates.find((p) => fs.existsSync(p)) || licCandidates[0];
 const ltrDir = SRC.endsWith(".svg") ? null : path.join(SRC, "ltr");
 const dirLayout = !fs.existsSync(svgFile) && ltrDir && fs.existsSync(ltrDir) && fs.statSync(ltrDir).isDirectory();
 const svgFiles = dirLayout

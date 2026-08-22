@@ -458,6 +458,18 @@
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
+   "key": "fold_inkstitch",
+   "name": "Fold Ink/Stitch",
+   "tier": "verified",
+   "group": "Display",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 63,
+   "glyphCount": 40,
+   "bytes": 68990,
+   "attribution": "This font has been adapted for Ink/Stitch by @Marie-Françoise BRIS, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2021, @Marie-Françoise BRIS",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
    "key": "glacial_tiny",
    "name": "Glacial Tiny 60 AGS",
    "tier": "verified",

@@ -92,3 +92,31 @@ test("a non-self-closed </path> does not pop the transform stack", () => {
     `both squares must sit at y 50..60; got ${Math.min(...ys)}..${Math.max(...ys)} — ` +
     `the </path> popped the group transform off the stack`);
 });
+
+test("the licence file is found whether it is LICENSE or license", () => {
+  // 141 of 142 upstream fonts name it LICENSE; fold_inkstitch names it
+  // "license". build-font looked for the uppercase spelling only, which
+  // resolves fine on Kent's case-insensitive Windows filesystem and silently
+  // read NOTHING on Linux — every cloud session. The font then imported with an
+  // empty licence, and licenseId("") returns SEE-LICENSE-FILE, which sits
+  // outside ALLOWED_LICENSES: fold_inkstitch was excluded from the sellable
+  // library for two weeks by a filename, not by its licence, which is in fact
+  // OFL-1.1.
+  //
+  // It failed SAFE, but by luck rather than design — the identical silence
+  // excludes a legitimately-licensed font and would let a badly-licensed one
+  // through if the default ever flipped. Exercised by copying the fixture and
+  // renaming its licence, so no second committed fixture is needed.
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "embfont-lic-"));
+  for (const f of fs.readdirSync(FIXTURE)) {
+    const dest = f === "LICENSE" ? "license" : f;
+    fs.copyFileSync(path.join(FIXTURE, f), path.join(tmp, dest));
+  }
+  assert.ok(!fs.existsSync(path.join(tmp, "LICENSE")), "fixture copy must have only the lowercase name");
+  const out = path.join(tmp, "out.json");
+  execFileSync(process.execPath, [path.join(ROOT, "tools", "build-font.mjs"), tmp, out], { stdio: "ignore" });
+  const font = JSON.parse(fs.readFileSync(out, "utf8"));
+  assert.ok(/Open Font License/i.test(font.license || ""),
+    "licence text was not picked up from a lowercase 'license' file — the font " +
+    "would import with an empty licence and be silently excluded from the build");
+});

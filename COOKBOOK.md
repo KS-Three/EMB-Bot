@@ -33,7 +33,7 @@ where the bodies are buried.
 ## Binary font library (Slice 10 Stage A, 2026-07-27)
 
 The Studio's fonts live in `src/fonts/manifest.json` + `src/fonts/bin/*.embf`
-(**82 fonts** as of 2026-08-22; was 55 after the 2026-08-04 licence-audit pulls
+(**83 fonts** as of 2026-08-22; was 55 after the 2026-08-04 licence-audit pulls
 and the same-day removal of all 13 ShareAlike fonts (Kent's call — audit §9;
 removal made the paid launch independent of the CC-BY-SA question, and the
 lawyer brief is the optional restore path), then grew through the 2026-08-21/22
@@ -57,13 +57,18 @@ font there unless it is also in the shipping manifest. `EMB-Bot-standalone.html`
   Acceptance evidence (0.00–1.07% stitch drift, visually cleared):
   `docs/superpowers/notes/2026-07-27-embf-acceptance.md`.
 - **Two builds from one tree.** `node tools/build-embf.mjs` writes the
-  **sellable** library (82 fonts, everything inside `ALLOWED_LICENSES`).
+  **sellable** library (83 fonts, everything inside `ALLOWED_LICENSES`).
   `node tools/build-embf.mjs --personal` writes Kent's private library (120
   fonts, adding ShareAlike / NC / GPL / pulled) to `bin-personal/` +
   `manifest-personal.json` — both gitignored, so a fresh clone or CI cannot
   produce a build containing them. The split is at BUILD time on purpose: a
   runtime toggle is not a distribution boundary. `copy-engine.mjs` serves the
-  personal build when it exists and says so loudly.
+  personal build when it exists and says so loudly. `--personal` also writes
+  `previews-personal/` and `licenses-personal/` (both gitignored, and they must
+  stay that way — a preview is a RENDER of the font, so publishing one for a
+  ShareAlike/NC face is the distribution the split exists to prevent);
+  `copy-engine` OVERLAYS them on the committed ones. Run
+  `node tools/build-previews.mjs --personal` after a personal rebuild.
 - **Rebuild**: `node tools/build-embf.mjs`. Requires `scratch_ink/`
   (gitignored): `_tiers.json` (tier classification) + `_out/*.json` (trial
   imports). Recreate `scratch_ink/` by copying from the master
@@ -745,7 +750,7 @@ and controllable to the user.
     "Engine-file lists live in THREE places" in the font-library section).
   - `fabrics.js` — 7 fabric presets driving pull-comp/underlay/density/trim.
   - `flatten.js` — medianCut → modeFilter → absorbSmallRegions pipeline.
-  - `fonts/` — pre-digitized font library: `manifest.json` (82
+  - `fonts/` — pre-digitized font library: `manifest.json` (83
     shipping fonts) + `bin/*.embf` binaries + per-font JSON sources and
     `.LICENSE.txt` sidecars, parsed offline from Ink/Stitch's open-source
     font set. (The old "14 fonts" count here was the legacy eager registry

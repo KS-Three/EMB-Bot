@@ -272,6 +272,58 @@ for (const s of sources.sort((a, b) => a.key.localeCompare(b.key))) {
 }
 writeFileSync(MANIFEST_PATH,
   JSON.stringify({ version: 1, personal: PERSONAL || undefined, fonts: manifest }, null, 1));
+
+// Orphan-clean the binary directory (2026-08-22). A font dropped from the
+// build — demoted, pulled, or removed from _tiers.json — left its .embf behind
+// to be picked up by copy-engine and shipped from a dirty tree. That is the
+// ondulamarif_XL trap, and it happened again here: dropping roman_ags_bicolor
+// left a live binary in bin-personal/.
+//
+// The sellable side had a guard TEST for this but no cleaner, so it failed
+// loudly and was fixed by hand; the personal side has no test at all, so it
+// failed silently. Cleaning at the source fixes both, and the test stays as
+// the backstop.
+{
+  const want = new Set(manifest.map((f) => f.key + ".embf"));
+  let removed = 0;
+  for (const f of readdirSync(BIN_DIR))
+    if (f.endsWith(".embf") && !want.has(f)) { unlinkSync(join(BIN_DIR, f)); removed++; }
+  if (removed) console.log("removed", removed, "orphan .embf file(s)");
+}
+
+// Licence sidecars for the PERSONAL-only fonts (2026-08-22). The sellable
+// fonts have committed src/fonts/<key>.LICENSE.txt files, which is what
+// copy-engine serves and the credits dialog links; the 38 personal-only fonts
+// had none, so their credit line linked a 404 in the build Kent actually uses.
+//
+// Written to a SEPARATE gitignored directory rather than alongside the
+// committed ones. That is the whole point: these are ShareAlike / NC /
+// pulled fonts, and a sidecar landing in src/fonts/ would be committed on the
+// next `git add src/fonts/` — publishing exactly what the build split exists
+// to keep unpublished.
+if (PERSONAL) {
+  const licDir = join(FONT_DIR, "licenses-personal");
+  mkdirSync(licDir, { recursive: true });
+  const sellable = new Set(readdirSync(FONT_DIR)
+    .filter((f) => f.endsWith(".LICENSE.txt")).map((f) => f.replace(/\.LICENSE\.txt$/, "")));
+  let wrote = 0;
+  for (const f of manifest) {
+    if (sellable.has(f.key)) continue;              // already has a committed sidecar
+    const src = sources.find((s) => s.key === f.key);
+    if (!src) continue;
+    const text = String(JSON.parse(readFileSync(src.path, "utf8")).license || "").trim();
+    if (!text) continue;
+    writeFileSync(join(licDir, f.key + ".LICENSE.txt"), text + "\n");
+    wrote++;
+  }
+  // Orphan-clean, same reasoning as the .embf and preview cleans: a font
+  // dropped from the personal build must not leave its licence being served.
+  const want = new Set(manifest.map((f) => f.key + ".LICENSE.txt"));
+  for (const f of readdirSync(licDir))
+    if (f.endsWith(".LICENSE.txt") && !want.has(f)) unlinkSync(join(licDir, f));
+  console.log("personal licence sidecars:", wrote);
+}
+
 if (PERSONAL) {
   if (skippedDead.length)
     console.warn("skipped " + skippedDead.length + " font(s) that stitch nothing yet (cross-stitch/fill — " +
