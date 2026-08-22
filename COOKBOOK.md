@@ -114,6 +114,15 @@ font there unless it is also in the shipping manifest. `EMB-Bot-standalone.html`
   (next bullet). `qc-font.mjs` warns on letters under 0.45x their case-median
   height and `test/font-stunted.test.js` guards it; the library is currently
   clean. **If a font looks wrong, render it — do not trust the QC line.**
+- **Unsupported characters are REPORTED, not swallowed.** The lettering path
+  skips a character the font has no glyph for; `buildLetteringDesign` returns
+  `unsupported` (source order, deduplicated) and `generateAll` carries it per
+  element, so the field can say "This font can't stitch …" instead of sitting
+  empty. If you add a code path that builds lettering, pass it through.
+- **Watch for Latin assumptions when touching font tooling.** Adding Hebrew
+  found three, all silent: `build-previews`' sample-text fallback, the personal
+  build's `sewsAnything()` gate, and the lettering path's character skipping.
+  A helper that filters on `[A-Za-z0-9]` is the smell.
 - **Text direction.** A font imported from `rtl.svg` carries `dir: "rtl"`, and
   `satinfont.layoutText` walks that line's characters in reverse so the FIRST
   logical character lands rightmost. `charIdx` deliberately stays logical, since

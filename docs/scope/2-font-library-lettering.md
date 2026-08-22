@@ -201,9 +201,28 @@ letters, with nothing to catch it.
 the fix)*
 
 Shipped: `hebrew_font_large`, `hebrew_font_medium` (29 glyphs each, OFL-1.1).
-Fixing this also exposed that `build-previews`' sample-text fallback assumed
-Latin glyph names, so both Hebrew fonts rendered ZERO stitches and shipped with
-no preview tile until the guard test caught it.
+
+**Three Latin assumptions surfaced when a non-Latin font arrived**, each silent:
+
+1. `build-previews`' sample-text fallback assumed Latin glyph names, so both
+   Hebrew fonts rendered ZERO stitches and shipped with no preview tile.
+2. `sewsAnything()` — the personal build's stitchability gate — only looked at
+   A-Z, so it answered "no" for a font with no Latin alphabet. Both Hebrew
+   faces were dropped from the personal build while the SELLABLE build shipped
+   them: the two libraries disagreed about the same font. Fixing it also
+   recovered `ellenika`, `honoka`, `invercelia` and the two
+   `hebrew_simple_rounded` faces; personal went 119 → 127, sellable unchanged.
+3. The lettering path skipped characters a font has no glyph for **silently**,
+   so picking a Hebrew font and typing Latin produced a valid-looking 0-stitch
+   design with no explanation. `buildLetteringDesign` now reports `unsupported`
+   (source order, deduplicated), `generateAll` carries it per element, and the
+   field surfaces it — as a replacement for the generic empty-field hint when
+   NOTHING stitched, and on the stats line when only part did.
+   *(confirmed 2026-08-22 — `test/unsupported-chars.test.js`, and driven in a
+   real browser across Latin-only / Hebrew-only / mixed)*
+
+Two of those three were invisible to the unit suite and were found by driving
+the Studio in a browser; the third was caught by a guard test.
 
 ## Deferred / not done
 

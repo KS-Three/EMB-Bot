@@ -25,6 +25,46 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-08-22 (late) — **adding one non-Latin font exposed three
+separate places that assumed Latin, all of them silent.**
+
+Shipping Hebrew was a small change. What it flushed out was not:
+
+1. build-previews' sample-text fallback filtered to [A-Za-z0-9], so a Hebrew
+   font fell through to "?" — which it also lacks — and rendered ZERO stitches.
+   Both Hebrew faces shipped with no preview tile; the guard test caught it.
+2. sewsAnything(), the personal build's stitchability gate, only looked at A-Z,
+   so it answered "no" for a font with no Latin alphabet. Both Hebrew faces were
+   dropped from the PERSONAL build while the SELLABLE build shipped them — the
+   two libraries disagreeing about the same font. Fixing it also recovered
+   ellenika, honoka, invercelia and the two hebrew_simple_rounded faces:
+   personal 119 -> 127, sellable unchanged at 85.
+3. The lettering path skipped unrenderable characters silently, so picking a
+   Hebrew font and typing "Emb" produced a structurally valid 0-stitch design
+   with no explanation anywhere.
+
+Only #1 was caught by a test. #2 and #3 were found by driving the Studio in a
+real browser — #2 because the Hebrew font was missing from the picker entirely,
+#3 because the field just sat empty. Neither would have failed CI.
+
+The fix for #3 goes end to end: buildLetteringDesign reports `unsupported` in
+SOURCE order (an RTL line lays out in reverse, so collecting as-placed reports
+"Emb" as b,m,E) and deduplicated; generateAll carries it per element, because it
+is THAT element's font that cannot set THAT text; the field replaces its generic
+empty hint when nothing stitched and appends to the stats line when only part
+did. Verified across Latin-only, Hebrew-only and mixed.
+
+Two smaller things the browser also showed. "Smaller than 5 mm" fired on an
+element with zero stitches, sitting directly in front of the message that
+explained the real cause and reading as a second unrelated fault. And Svelte
+strips leading whitespace inside an element, so " · " had been rendering as
+"…5x7 in hoop· This font…" — pre-existing on the two older warnings and equally
+wrong there.
+
+Engine 403 pass / 0 fail. Studio 782 pass.
+
+---
+
 **Last updated:** 2026-08-22 (night) — **85 fonts, and EMB-Bot can set Hebrew.**
 
 Five upstream fonts ship their glyphs in `rtl.svg` rather than `ltr.svg`, and
