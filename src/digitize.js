@@ -585,14 +585,18 @@
     const WEIGHT_OFFSET_MM = { thin: -0.15, normal: 0, bold: 0.3 };
     const weightPreset = (o.weightPreset && WEIGHT_OFFSET_MM[o.weightPreset] != null) ? o.weightPreset : "normal";
     const pullCompMm = ((fabric && fabric.pullCompMm != null) ? fabric.pullCompMm : (o.pullCompMm == null ? 0.2 : o.pullCompMm)) + WEIGHT_OFFSET_MM[weightPreset];
-    const empty = { stitches: [{ x: 0, y: 0, type: "end" }], colors: [], widthMM: 0, heightMM: 0, stitchCount: 0, colorCount: 0, _debug: { nSatin: 0, nFill: 0, nTrims: 0 } };
-    if (!fontData || !text) return empty;
+    // `unsupported` matters MOST on this path: an empty design is exactly the
+    // case a user needs explained, and returning a bare `empty` here is what
+    // made "pick a Hebrew font, type Emb" fail silently. Built as a function so
+    // each early return reports whatever the layout managed to learn.
+    const emptyWith = (chars) => ({ stitches: [{ x: 0, y: 0, type: "end" }], colors: [], widthMM: 0, heightMM: 0, stitchCount: 0, colorCount: 0, unsupported: chars || [], _debug: { nSatin: 0, nFill: 0, nTrims: 0 } });
+    if (!fontData || !text) return emptyWith([]);
 
     const ls = o.letterSpacingMm || 0;
     // Pass 1: measure the glyph extent (bbox is spacing-independent) so we can
     // fit-to-garment. Coarse spacing keeps it cheap.
     const probe = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: 2, pullCompMm: 0, letterSpacingMm: ls, underlay: false, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align, circleLayout: o.circleLayout });
-    if (!probe.runs.length) return empty;
+    if (!probe.runs.length) return emptyWith(probe.unsupported);
     const bb = probe.bbox;
     const bboxWmm = (bb.x1 - bb.x0) / pxPerMm, bboxHmm = (bb.y1 - bb.y0) / pxPerMm;
     // rotDeg is needed here (ahead of its other use below, near T()) because
@@ -653,7 +657,7 @@
     // through the same pre-division this line already does for spacing and
     // pull comp, so they land at their published values on the fabric.
     const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: densityMm / sc, pullCompMm: pullCompMm / sc, letterSpacingMm: ls, underlay: o.underlay !== false, fitScale: sc, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align, circleLayout: o.circleLayout });
-    if (!lay.runs.length) return empty;
+    if (!lay.runs.length) return emptyWith(lay.unsupported);
     const cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2;
     // Explicit placement offset (Slice 3): applied AFTER the center transform, in
     // DST space — +x right, +y up (DST convention, already matches T()'s y-flip).
@@ -851,7 +855,12 @@
         outHmm = (maxY - minY) / units.DST_UNITS_PER_MM;
       }
     }
-    return { stitches, colors, widthMM: outWmm, heightMM: outHmm, stitchCount, colorCount: colors.length, _debug: { nSatin, nFill: 0, nTrims } };
+    // `unsupported`: characters this font has no glyph for. Carried out of the
+    // layout so a caller can explain a design that came back empty or short —
+    // before this, typing Latin into a Hebrew font returned a valid-looking
+    // 0-stitch, 0x0mm design with nothing anywhere saying why. Always an array;
+    // empty whenever every character rendered.
+    return { stitches, colors, widthMM: outWmm, heightMM: outHmm, stitchCount, colorCount: colors.length, unsupported: lay.unsupported || [], _debug: { nSatin, nFill: 0, nTrims } };
   }
 
   return { buildQualityDesign, buildLetteringDesign, groupRingsIntoShapes, offsetRing, signedArea, underlayRuns };

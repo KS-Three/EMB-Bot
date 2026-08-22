@@ -70,20 +70,44 @@ test("bean repeats backtrack each stitch (repeats:1 => triple stitch)", () => {
 // Counts pinned from the committed .embf files. A change here means satin
 // routing moved — investigate rather than re-baseline.
 //
-// Re-baselined ONCE, 2026-08-22, for a reason outside satin routing: the SVG
-// parser was truncating every path at its first scientific-notation number
-// (see test/parsepath.test.js), so 63 of the shipped fonts were missing path
-// segments. Kent's call was to rebuild the library with the corrected geometry
-// rather than freeze the truncation. alchemy 699 -> 751 (+7.44%) is the largest
-// move in the library; 20 of 77 fonts came back byte-identical and the median
-// change is 0.00%. Only alchemy moved among these five, which is why the other
-// four numbers are unchanged from the original pin.
-const SATIN_BASELINE = { montecarlo: 1157, alchemy: 751, venezia: 995, cats: 1249, apesplit: 4404 };
+// Re-baselined TWICE, both times for a reason outside satin routing, both times
+// on Kent's explicit call to fix the input rather than freeze the wrong output.
+//
+// 2026-08-22 (a): the SVG parser truncated every path at its first
+// scientific-notation number (test/parsepath.test.js), so 63 shipped fonts were
+// missing path segments. alchemy 699 -> 751 (+7.44%) was the largest move.
+//
+// 2026-08-22 (b): build-font applied SVG transforms ONLY for the ltr/-directory
+// layout, so every single-ltr.svg font — most of the library — dropped them
+// outright. Harmless for a glyph with baked coordinates, catastrophic for one
+// that places repeated geometry BY transform: mimosa_large's "D" is a single
+// dot repeated 38 times with 38 transforms, and it collapsed onto one point,
+// sewing 6,193 stitches into 40.0 x 0.0 mm. Fixing it moved three of these five.
+//
+// The drops are geometry that was being stitched TWICE (or stacked) and now is
+// not, so DOWN is the correct direction here. Each was verified by rendering,
+// not by the delta: apesplit and initials_medium now set "ABCDE" as five
+// uniform letters, where before the A was a tiny mark beside four oversized
+// overlapping ones. Library-wide: 25 of 80 byte-identical, and of the 55 that
+// changed the great majority moved 0.00% in stitch count.
+const SATIN_BASELINE = { montecarlo: 1157, alchemy: 751, venezia: 996, cats: 1238, apesplit: 2470 };
+
+// These five are committed, so the guard below should never fire. It throws on
+// CI regardless: a pinned baseline whose font has vanished is not "nothing to
+// check" — it means the pin protecting satin routing is silently unverified,
+// and the test would report green having asserted nothing. Same asymmetry as
+// test/crossval-stitch-formats.test.js.
+function binOrSkip(p, key) {
+  if (fs.existsSync(p)) return true;
+  if (process.env.CI) throw new Error(
+    `${key}.embf is missing on CI — its pinned SATIN_BASELINE is unverified, not satisfied`);
+  return false;
+}
 
 for (const [key, expected] of Object.entries(SATIN_BASELINE)) {
   test(`satin font ${key} stitches exactly as before run support`, () => {
     const p = path.join(BIN, key + ".embf");
-    if (!fs.existsSync(p)) return; // font not in this checkout's library
+    if (!binOrSkip(p, key)) return;
     const font = fb.decodeFontBin(fs.readFileSync(p));
     const text = font.glyphs["a"] ? "Emb" : "EMB";
     const d = DG.buildLetteringDesign(font, text, base);
@@ -92,9 +116,11 @@ for (const [key, expected] of Object.entries(SATIN_BASELINE)) {
 }
 
 test("no shipped font carries stitchable run params (they are stripped at import)", () => {
-  if (!fs.existsSync(BIN)) return;
-  for (const f of fs.readdirSync(BIN)) {
-    if (!f.endsWith(".embf")) continue;
+  if (!binOrSkip(BIN, "src/fonts/bin")) return;
+  const bins = fs.readdirSync(BIN).filter((f) => f.endsWith(".embf"));
+  // Iterating an empty list is the same vacuous pass one level down.
+  assert.ok(bins.length > 50, `only ${bins.length} .embf files — the library did not build`);
+  for (const f of bins) {
     const font = fb.decodeFontBin(fs.readFileSync(path.join(BIN, f)));
     let satin = 0;
     for (const g of Object.values(font.glyphs)) satin += (g.cols || []).length;

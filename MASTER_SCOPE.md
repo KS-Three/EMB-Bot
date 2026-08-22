@@ -36,10 +36,9 @@ or move it.
 
 ## Live defects — believed true right now
 
-1. **RESOLVED 2026-08-19 — shade-thread collapse** (every shade of a decomposed
-   region sewed in one colour). Kept numbered, not deleted: ten other documents
-   cite these entries as "live defect N". *(fixed 2026-08-19 —
-   `stage7_sequence._shade_blocks`, test_shade_thread_emission.py)*
+1. **RESOLVED 2026-08-19 — shade-thread collapse.** Kept numbered, not deleted:
+   ten other documents cite these entries as "live defect N".
+   *(fixed 2026-08-19 — `stage7_sequence._shade_blocks`)*
 
 2. **No width floor under satin — and the proposed fix is DISPROVED for flat
    art.** 19 of 162 corpus regions, all photo-class, sew sub-millimetre satin
@@ -117,12 +116,17 @@ or move it.
    1–3 fill shapes that essentially never cut. *(measured 2026-08-21/22)*
 
 7. **RESOLVED 2026-08-21 — satin silently dropped a bracket's tab** on
-   `enthusiast_logo.png` (7.8 mm² bare, D/52 → C/64). `_prune_spurs` ran to a
-   fixed point and re-measured a stem its OWN first pass had un-branched:
-   19.000 px against a 19.4770 px bar, where the mirror twin's was 20.000 px
-   against 19.1152 px — one raster pixel deciding a 3.3 mm tab. Fixed by
-   exempting a dead end the function itself created, not by moving the bar.
+   `enthusiast_logo.png` (7.8 mm² bare, D/52 → C/64). `_prune_spurs` re-measured
+   a stem its own first pass had un-branched; fixed by exempting a dead end the
+   function itself created, not by moving the bar.
    *(fixed 2026-08-21 — `stage6_satin._prune_spurs`, tests/test_satin.py)*
+
+8. **RESOLVED 2026-08-22 — build-font dropped SVG transforms on most fonts.**
+   A transform-IGNORING path walk ran for every single-`ltr.svg` font, so a glyph
+   placing repeated geometry BY transform collapsed: `mimosa_large` "D" is one
+   dot with 38 transforms and sewed 6,193 stitches into 40.0 x **0.0 mm**. Four
+   fonts affected; one fix cleared all four. *(fixed 2026-08-22 —
+   `tools/build-font.mjs`, `test/font-transforms.test.js`)*
 
 ---
 
@@ -160,6 +164,15 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
 
 ## Standing rulings — decided, do not re-litigate
 
+- **The 3 Arabic fonts can never work, engine or not:** they carry ONLY base-block
+  letters and zero presentation forms. *(measured 2026-08-22 — font.json blocks)*
+- **We do not rework font data to make it importable.** A candidate is either
+  close to plug-and-play or not a candidate — this rejected the Hershey faces,
+  and makes Terminus's under-tagged glyphs a reason to omit. *(ruled 2026-08-21 — Kent)*
+- **The sellable/personal font split is at BUILD time, not runtime.** Kent asked
+  for "all fonts for me, questionable ones off on the user's end"; by the time a
+  viewer could flip a toggle the bytes are on their disk, so excluded fonts are
+  never packaged. *(ruled 2026-08-21 — Kent)*
 - **Golden re-capture is pre-authorized on Linux CI**, under same-failure-set
   discipline: a session may re-capture when the failure set is identical before
   and after, and must report the diff. Never on Windows. *(ruled 2026-08-21 — Kent)*
@@ -208,6 +221,24 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
 
 ## Measured negatives — built or proposed, then rejected. Do not rebuild.
 
+- **Terminus is CLOSED — omitted, do not re-propose.** The one genuinely new
+  font outside upstream: four broken letters (incl. `t`) from paths upstream
+  never tagged `satin_column`, a 1/10-width space in a FIXED-WIDTH font, an OFL
+  Reserved Font Name, and no size value. Repairing it is the rework ruled out
+  above. *(ruled 2026-08-22 — Kent; `docs/font-hunt-external-2026-08-21.md` §2)*
+- **The upstream re-census after the transform fix is DONE — do not redo it.**
+  All 142 re-imported and re-QC'd, since the original census judged them on
+  collapsed geometry. Yield five: `cyrillic` (466 glyphs, 252 Cyrillic; its old
+  "detached accent" defect WAS the transform bug), `inkstitch_masego`,
+  `fold_inkstitch` (excluded by a FILENAME, not a licence) and two Hebrew faces.
+  The 11 refused cross-stitch fonts re-refuse at the same fits.
+  *(measured 2026-08-22 — 137 of 142 imported)*
+- **There is no external font supply. Do not re-run the hunt.** Ink/Stitch is a
+  monoculture: `horiz_adv_x_space` returns 16 files across all of GitHub, and the
+  non-upstream remainder is four `font.json` files, none viable. Independent
+  non-satin Ink/Stitch lettering fonts: zero. Eleven upstream cross-stitch
+  picture-fonts are separately refused — outlines off-grid at 26.2%–87.5%
+  against a 0.9 threshold. *(measured 2026-08-21/22 — font-hunt doc; import runs)*
 - **`blend_tonal_bands`** (banding inside the fill tier) — built, measured,
   **removed** in the same pass. It decomposed the geometry correctly and changed
   nothing visible, because the shades still shared one thread: 7,725 → 10,126
@@ -325,39 +356,36 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
   | fixture | Windows | CI |
   |---|---|---|
   | `pushcomp[logo_whitebg.png-towel]` | fails | fails (deselected) |
-  | both, `[logo_alpha.png]` | **passes** | fails (deselected) |
+  | both, `[logo_alpha.png]` | **passes** | **passes** (deselect removed) |
   | both, `[photo/enthusiast_logo.png]` | fails | fails (deselected) |
 
-  CI column is `.github/workflows/python-package-conda.yml`, which deselects
-  five by name because they *"compare against goldens pinned on the original
-  development machine"* — i.e. they fail there, so `ubuntu-latest` is NOT
-  where every golden was captured. **Consequence:** an `enthusiast_logo`
-  failure locally is expected; a `logo_alpha` failure locally is a genuine
-  regression. Per-platform reasoning gets that backwards. **Still binding: never
-  re-capture a golden from a Windows run.** Judge a change by "same failure set
-  before and after", using the table as that set. Cause and the permanent CI
-  deselects nobody is assigned to: `docs/pro-parity-real-art-2026-08-15.md` §0b.
-  *(corrected 2026-08-17 — Windows column re-run this date: `logo_alpha` ×2
-  passed, `enthusiast_logo` ×2 failed; CI column read from the workflow)*
-  *(2026-08-20 — `enthusiast_logo` CI cell moved to fails/deselected: a
-  verified-benign PR #182 change shifted `stitch_count`, but even a fresh
-  `ubuntu-latest` runner fails the recapture tool's own pre-change check
-  against the pin, so it's deselected not forced (Kent's call) — detail in
-  the CI workflow's comment, runs 32396593318/32399279461)*
-- **OCR tests skip, not fail, on a machine without the `tesseract` binary —
-  and never skip on CI.** `pytesseract` is a declared dep and imports fine, but
-  it only wraps the `tesseract` executable: CI apt-installs that
-  (`python-package-conda.yml:75-76`), a Windows box usually has not. The five
-  tests that demand a REAL read — the OCR-gate damaging case, both
-  `test_ocr_suggest` real-read tests, and the `saw_a_real_character` assertions
-  in `test_pipeline.py` / `test_service.py` — used to fail there as unexplained
-  local reds; they now carry the shared `requires_tesseract` marker
-  (`tests/conftest.py`), which skips only when the binary is missing AND `CI`
-  is unset — a CI refactor that loses the tesseract install fails loud instead
-  of going dark behind quiet skips. Install Tesseract on `PATH` to exercise
-  them locally. *(measured 2026-08-17 — the five failed at 73f37da on the
-  tesseract-less Windows machine, skip after the markers landed, and fail
-  again with `CI=1` set)*
+  CI deselects THREE by name, not five: the two `logo_alpha` rows were removed
+  2026-08-22 after the remove-and-see check finally ran, and CI went green
+  without them. **Consequence:** an `enthusiast_logo` failure locally is
+  expected; a `logo_alpha` failure anywhere is a genuine regression.
+  Per-platform reasoning gets that backwards. **Still binding: never re-capture
+  a golden from a Windows run.** Judge a change by "same failure set before and
+  after", using the table as that set. Cause and the deselect rationale:
+  `docs/pro-parity-real-art-2026-08-15.md` §0b and the CI workflow's own
+  comment. *(measured 2026-08-22 — CI column from a green run at `db0e642` on
+  ubuntu-latest; Windows column re-run 2026-08-17 and not since)*
+- **OCR tests skip, not fail, without the `tesseract` binary — and never skip
+  on CI.** `pytesseract` imports fine but only wraps the executable; the five
+  real-read tests carry `requires_tesseract` (`tests/conftest.py`), which skips
+  only when the binary is missing AND `CI` is unset, so a workflow refactor
+  that loses the install fails loud instead of going dark. A local run shows
+  **8** skips, not 5 — the other three are the rembg and opencv-contrib
+  classes, and the full accounting is in COOKBOOK "Running things".
+  *(measured 2026-08-17, skip accounting 2026-08-22 — grouped skip reasons over
+  a full `-rs` run)*
+- **Breaking a guard on purpose does not prove it is not blind — ask what
+  fraction of its population it measures, and assert that.** The stunted-glyph
+  guard passed that ritual and was still measuring nothing in **21 of the 85**
+  fonts it iterated, and was blind to the exact zero-height case it is named
+  for; `qc-font.mjs` had both holes, in the tool that gates new fonts. Full
+  account, including why the channels must not be merged, in
+  `.claude/memory/font-pipeline-silent-failures.md`. *(measured 2026-08-22 —
+  test/font-stunted.test.js, verified against the pre-fix tool)*
 - **Measure pro-parity in a git worktree, never in a shared checkout.** Three
   separate baselines were invalidated on 2026-08-15 by commits landing mid-run,
   including from a second Claude session on the same branch. The first symptom
@@ -389,7 +417,7 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
 | Area | Status | Confidence |
 |---|---|---|
 | 1. Auto-digitizing quality (image → stitches) | In progress | **Low** beyond flat spot-color art |
-| 2. Font library & lettering | Implemented (library + license remediation) | High (tech) / High (compliance — resolved 2026-08-04 by removal, lawyer consult now an optional restore path) |
+| 2. Font library & lettering | Implemented — 85 fonts, satin + bean/running + cross-stitch, LTR + Hebrew RTL | High (tech) / High (compliance). Zero stunted glyphs since the 2026-08-22 transform fix; the guards now assert their own coverage |
 | 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — unchanged, no sew-out has happened). The photo-tier gap PR #123 closed stays fixed; the canvas gained a shape editor and auto-restitch 2026-08-13 |
 | 4. Export formats | Implemented | Varies by format — see below |
 | 5. Stitch-out review & manual editing tools | Implemented — Kent's direct-manipulation request is **complete** (2026-08-13) | High. Every surviving requirement of the 2026-08-12 request ships: outlines+nodes on the canvas, the pulse cue, select-then-edit, node drag, line drag, add node, delete. Requirement 5 (whole-shape drag) was withdrawn by Kent. Geometry is unit-tested and every interaction was driven in a real browser against a live service |
@@ -415,9 +443,6 @@ here, so this list can go stale about WHAT IS OPEN but never about the facts.
    taken under load: **area 5**, under Kent's direct-manipulation request.
    Not started.
 
-The second of that pair — the Becker artwork and pro-digitized variants — closed
-2026-08-15; its placeholder was deleted here 2026-08-17 as that entry instructed.
-
 **Also open, same category — listed so this queue is not a half-truth. All of
 these predate 2026-08-14 except where noted:**
 
@@ -439,7 +464,13 @@ these predate 2026-08-14 except where noted:**
 6. **The `scratch_corpus/` 37 files.** Gitignored; cloud checkouts are empty
    but all 37 are present on Kent's machine (confirmed 2026-08-17), so a local
    session can run the corpus legs today. Blocks cloud-side M2/M3 only.
-7. **Font lawyer consult — optional.** Only gates RESTORING the 13 pulled
+7. **26 glyphs that sew nothing, in 6 shipped fonts** (`roaring_twenties_KOR`
+   ×2 have ten symbols each). The user-facing half is closed — the Studio now
+   says "This font can't stitch …". The fix needs YOUR MACHINE: the candidate
+   cause is `stripRunParamsIfSatin` being font-wide, and telling that from
+   "upstream never authored a length" needs the `scratch_ink/` SVG sources. The
+   narrow fix regresses nothing but changes auto-scaling. Detail: area 2.
+8. **Font lawyer consult — optional.** Only gates RESTORING the 13 pulled
    ShareAlike fonts; the brief is written and ready to send. Nothing waits
    on it. See the font-licence entry.
 
@@ -453,18 +484,18 @@ area they drag down, documented once here.
 ### DST codec axis bug
 
 EMB-Bot's own browser DST codec (`src/dst.js` / `src/dstimport.js`) is
-transposed vs. the Tajima/pyembroidery standard — confirmed, unresolved.
-It round-trips correctly against itself but reads a quarter-turn wrong in
-third-party software. Full evidence trail: `dst-codec-axis-discrepancy` in
-memory, `docs/dst-axis-verdict-2026-07-31.md`, `digitizer/README.md`'s "Open
-finding" section.
+transposed vs. the Tajima/pyembroidery standard — confirmed, unresolved. It
+round-trips against itself but reads a quarter-turn wrong elsewhere. **Not only
+orientation:** `dst.js` writes the colour-change byte as `0x43` not `0xC3`, read
+as a spurious sequin toggle, so a two-colour design decodes with ZERO colour
+changes elsewhere. Both facets re-measured against pystitch 2026-08-22
+(`tools/crossval-stitch-formats.mjs`); PES and EXP are identity-clean. See `dst-codec-axis-discrepancy` in memory and `docs/dst-axis-verdict-2026-07-31.md`.
 
 **A nuance, reconciled 2026-08-17:** CLAUDE.md's "treat browser DST as
-EMB-Bot-internal only" and `digitizer/README.md`'s "browser DST stays the
-default because it is the one with sewn evidence" are not in conflict — the
-first is about orientation in third-party software, the second about which of
-EMB-Bot's own two encoders Studio picks. The code below settles it either way:
-the choice is per-project and the user is told which one ran.
+EMB-Bot-internal only" and `digitizer/README.md`'s "browser DST stays the default
+because it is the one with sewn evidence" are not in conflict — the first is
+about orientation in third-party software, the second about which of EMB-Bot's
+own two encoders Studio picks. The choice is per-project and the user is told.
 
 **CLOSED — a stale "unreachable from the real product" claim (2026-08-09: no
 path-selection logic, `/export` with no caller) sat here until 2026-08-17,
@@ -501,19 +532,18 @@ against source (`docs/inkstitch-research-2026-08-10.md` §6). **Does not
 change the verdict or fix** — still Kent's call, still gated on a sew-out;
 just a stronger citation to put in front of him.
 
-### Font license compliance — RESOLVED by removal
+### Font license compliance — RESOLVED, and kept resolved by construction
 
-All 13 ShareAlike fonts were pulled rather than waiting on a legal opinion
-(72 → 68 → 55). The surviving 55 are 52 OFL-1.1 + 1 CC-BY-4.0 + 2 CC0 — zero
-ShareAlike. Upstream licence texts ship three ways (on disk, at
-`/fonts/<key>.LICENSE.txt`, embedded in each `.embf`), attributions are complete
-notices, guard tests pin all of it. **No longer launch-gating.** *(confirmed
-2026-08-04 — PR #16, `docs/font-license-audit-2026-07-31.md`)*
+ShareAlike was closed by removal rather than by waiting on a legal opinion, and
+stays closed: `ALLOWED_LICENSES` gates the sellable build, so an excluded font is
+never packaged rather than switched off at runtime. Licence texts ship three ways
+(on disk, served, embedded) — load bearing beyond the OFL, since it discharges
+`roman_ags`'s LPPL clause-6d obligation. Detail: [area 2](docs/scope/2-font-library-lettering.md).
+*(confirmed 2026-08-22 — guard tests; `docs/font-license-audit-2026-07-31.md`)*
 
-**Still open, both Kent's:** the optional lawyer consult, which only gates
-restoring the 13 pulled fonts (brief ready to send —
-`docs/lawyer-brief-cc-by-sa-2026-08-04.md`), and the bluenesia permission
-screenshots (audit §8).
+**Still open, both Kent's:** the optional lawyer consult, which only gates the 13
+pulled fonts (`docs/lawyer-brief-cc-by-sa-2026-08-04.md`), and the bluenesia
+permission screenshots (audit §8).
 
 ### CI feedback speed
 
@@ -550,41 +580,15 @@ and the corpus-law recalibrations
 (`docs/corpus-laws-round3-2026-08-01.md`) needed one-off hand validation for
 exactly this reason.
 
-**Harness half: BUILT — `digitizer/tools/corpus_scorecard.py`.** `capture` runs
-all 14 committed `testdata/` fixtures (top-level and `photo/`) through
-`digitize()` + the existing `digitizer_core.preflight.run_preflight` — which
-already produced a 0-100 score, letter grade, typed findings and ~20 metrics, so
-this aggregates existing signal rather than inventing a metric — at two configs
-(80 mm width × `left_chest`/`hat_front`, two distinct fabric presets), writing
-`testdata/corpus_scorecard_baseline.json`. `diff` re-runs that matrix and reports
-score deltas, findings appeared/resolved, and metric drift past a 5% noise
-threshold. **Deliberately a REPORTING tool, not a CI gate** — the docstring cites
-this file's own corpus-laws-23/26 history (a "desk-safe" threshold picked without
-validation, later reverted) as the reason not to invent pass/fail numbers yet.
-Sole hard signal: a brand-new `block`-severity finding flips `diff`'s exit code.
-**Verified, not just written:** a real baseline (14 × 2, grades A to F — the F/0
-on `drone_render.png` and `summit_badge.png` are documented rough edges in those
-photo-tier stress fixtures, not harness bugs) then an immediate re-`diff` with no
-code changes reporting no drift at exit 0, so the pipeline is deterministic and
-the harness does not false-positive on itself. **Scope limit:** that determinism
-covers re-running the SAME code twice only — a recapture spanning real commits
-can fold in genuine undiagnosed drift, as "Fix #6.1 landed" (area 1) found for
-three fixtures. No dedicated test file, matching the convention that no
-`tools/*.py` has one (including `capture_flat_lane_golden.py`); a full capture is
-too slow for the regular suite.
+**Harness half: BUILT — `digitizer/tools/corpus_scorecard.py`.** `capture`/`diff`
+over 14 fixtures × 2 configs, aggregating preflight's existing score rather than
+inventing a metric. Deliberately a REPORTING tool, not a CI gate. Build detail,
+verification and scope limits: [area 1](docs/scope/1-auto-digitizing-quality.md)
+("The two evaluation harnesses"). *(confirmed 2026-08-21 — area 1)*
 
-**Still open here: `summit_badge.png` (#6.2) alone.** Re-measured at HEAD it is
-F/0 at both configs with `thread_worst_delta_e` 10.2 — the grade is saturated,
-so judge a fix on that metric and never on score. **#6.3
-`repro_gradient_white_icon.png` is CLOSED**, though this list carried it as open
-until 2026-08-21: `stage4_vectorize.revalidate_threads` landed 2026-08-11 and it
-now measures **B/76 at both configs, worst dE00 6.8**, up from the corpus's worst
-grade. `drone_render.png`'s #6.1 landed too but does not move its grade; the
-"preflight pooled-metric gap" that used to explain that is itself closed —
-`619e9ad` rescored `THREAD_MATCH_POOR` per region, not per pooled thread median.
-**Next step:** run the tool against a few real classifier changes to learn what a
-genuine regression looks like before setting any hard threshold.
-*(measured 2026-08-21 — `corpus_scorecard._score_one` at HEAD, both MATRIX configs)*
+**Still open here: `summit_badge.png` (#6.2) alone** — F/0 at both configs, and
+the grade is SATURATED, so judge any fix on `thread_worst_delta_e`, never on
+score. #6.3 is closed. Per-fixture detail: [area 1](docs/scope/1-auto-digitizing-quality.md). *(measured 2026-08-21)*
 
 **The corpus half is no longer empty (2026-08-15).** Eight files of real
 customer artwork now ship in `FIXTURES` — the first entries that are neither
@@ -600,17 +604,11 @@ misroute, kept as a fixture so the bug has one.
 This does **not** close `scratch_corpus/`: cloud sessions still can't reach
 those 37 files (present locally — Waiting on Kent #7); M2/M3 still waits.
 
-**A second, different harness also exists: `tools/pro_parity/`.** Where
-`corpus_scorecard.py` asks "did our own preflight score move", this one asks
-"how close is our output to the PROFESSIONAL digitization of the same
-design" — 23 of Kent's customer designs, decoded from their PES/DST, scored
-0–100 across six weighted components (coverage, direction, stitch type,
-density, underlay, travel) after a registration search aligns the two.
-**Its scale changed 2026-08-14:** `direction` and `sttype` are bounded
-agreement measures whose floor was ~0.5, so both are now chance-corrected
-against analytic floors (`sttype`'s being Cohen's kappa) and guessing scores
-0. See the Gotcha above before comparing any number to a pre-2026-08-14 one.
-*(confirmed 2026-08-14 — PR #151)*
+**A second, different harness exists: `tools/pro_parity/`** — "how close is our
+output to the PROFESSIONAL digitization of the same design", 23 designs, six
+weighted components. **Its scale changed 2026-08-14** (chance-corrected floors);
+see the Gotcha above before comparing to any pre-2026-08-14 number. Detail in
+[area 1](docs/scope/1-auto-digitizing-quality.md). *(confirmed 2026-08-14 — PR #151)*
 
 **Half the corpus is in the repo; the half that matters is not.** The tracked
 `Embroidery Files.zip` carries all 23 pro STITCH files, so `prep_all.py`'s
@@ -689,13 +687,15 @@ gate-clear alternative measures ≤9%. *(measured 2026-08-22 — area 1 detail)*
 ### 2. Font library & lettering — [detail](docs/scope/2-font-library-lettering.md)
 
 **Implemented · High (tech) / High (compliance).**
-55 pre-digitized satin fonts, the EMBF binary codec, browser UI, and the
-add-font QC/tier pipeline. License remediation was resolved by removal: all 13
-ShareAlike fonts pulled, leaving 52 OFL-1.1 + 1 CC-BY-4.0 + 2 CC0, with full
-license texts shipped three ways (sidecar, served, embedded) and guard tests
-pinning it. *(confirmed 2026-08-04 — PR #16, PR #17)*
-**Next:** expansion is unblocked. The lawyer consult is optional now — it only
-matters if Kent wants the 13 pulled fonts restored.
+**85 fonts** in the sellable build, the EMBF binary codec, browser UI, and the
+add-font QC/tier pipeline. The lettering path stitches three types — satin,
+bean/running, cross-stitch fill — where before 2026-08-21 it was satin-only. A
+second `--personal` build (125 fonts) carries what cannot be sold; for licences
+"Font license compliance" above is the single source. Same tech score as before
+on a different basis (see the area doc); known debt is the 26 glyphs that sew
+nothing, in "Waiting on Kent". *(confirmed 2026-08-22 — manifest, engine suite)*
+**Next:** **upstream is exhausted; no external supply** — measured, not
+assumed (area doc, "Supply"). Terminus closed. Growth means commissioning.
 
 ### 3. Studio app / guided wizard — [detail](docs/scope/3-studio-app-wizard.md)
 

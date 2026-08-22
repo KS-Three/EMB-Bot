@@ -28,6 +28,38 @@ describe("filterFonts", () => {
     expect(filterFonts(FONTS, "zzz", "All")).toEqual([]);
     expect(filterFonts([], "x", "Sans")).toEqual([]);
   });
+
+  // Key-matching stopped being a convenience on 2026-08-22 and became the only
+  // route to three shipped fonts. The library now carries names written in
+  // their own scripts — "חוכמה Large", "Кирилиця" — which a customer on a
+  // Latin keyboard cannot type. If this search ever narrowed to `name`, those
+  // fonts would still be in the manifest, still render, and be unreachable
+  // from the browser, with nothing failing anywhere.
+  //
+  // Asserted against the REAL manifest rather than a fixture, because the
+  // property is about the fonts that actually ship.
+  it("every shipped font is reachable from a Latin keyboard", async () => {
+    const { createRequire } = await import("node:module");
+    const require = createRequire(import.meta.url);
+    const man = require("../../../src/fonts/manifest.json");
+    expect(man.fonts.length).toBeGreaterThan(50); // an empty list would assert nothing
+    const unreachable = man.fonts
+      .filter((f) => !filterFonts(man.fonts, f.key, "All").some((x) => x.key === f.key))
+      .map((f) => f.key);
+    expect(unreachable).toEqual([]);
+  });
+
+  it("finds the non-Latin-named fonts by the script they are FOR", async () => {
+    const { createRequire } = await import("node:module");
+    const require = createRequire(import.meta.url);
+    const man = require("../../../src/fonts/manifest.json");
+    const keys = (q) => filterFonts(man.fonts, q, "All").map((f) => f.key).sort();
+    // A customer looking for Hebrew types "hebrew", not "חוכמה".
+    expect(keys("hebrew")).toEqual(["hebrew_font_large", "hebrew_font_medium"]);
+    expect(keys("cyrillic")).toEqual(["cyrillic"]);
+    // ...and someone who CAN type the name still finds it.
+    expect(keys("חוכמה")).toEqual(["hebrew_font_large", "hebrew_font_medium"]);
+  });
 });
 
 describe("sizeBand", () => {

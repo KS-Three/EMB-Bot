@@ -59,21 +59,37 @@ if (usePersonal) {
 // text + copyright notice to accompany every copy as (among other options)
 // stand-alone text files — before this, zero license files shipped in the
 // built app. Stale files are deleted, same reasoning as the previews below.
-const srcLic = new Set(readdirSync(join(srcDir, "fonts")).filter((f) => f.endsWith(".LICENSE.txt")));
+// On a personal build the 37 personal-only fonts have no committed sidecar —
+// theirs are generated into the gitignored licenses-personal/ — so the two
+// directories are OVERLAID. Without this the credits dialog linked a 404 for
+// every personal-only font.
+const licDirs = [join(srcDir, "fonts")];
+const licPersonal = join(srcDir, "fonts", "licenses-personal");
+if (usePersonal && existsSync(licPersonal)) licDirs.push(licPersonal);
+const licFrom = new Map();
+for (const d of licDirs)
+  for (const f of readdirSync(d)) if (f.endsWith(".LICENSE.txt")) licFrom.set(f, join(d, f));
 for (const f of readdirSync(fontsOut))
-  if (f.endsWith(".LICENSE.txt") && !srcLic.has(f)) unlinkSync(join(fontsOut, f));
-for (const f of srcLic) copyFileSync(join(srcDir, "fonts", f), join(fontsOut, f));
-console.log("copied", srcLic.size, "font license files");
+  if (f.endsWith(".LICENSE.txt") && !licFrom.has(f)) unlinkSync(join(fontsOut, f));
+for (const [f, from] of licFrom) copyFileSync(from, join(fontsOut, f));
+console.log("copied", licFrom.size, "font license files");
 
 // Preview PNGs -> public/fonts/previews (served at /fonts/previews/*).
 // Stale files are DELETED from the dest, not just overwritten: a demoted
 // font's preview lingering in a dirty local tree is the same trap as the
 // orphan-.embf case the guard test closes.
-const prevSrc = join(srcDir, "fonts", "previews");
+// Overlaid the same way: previews-personal/ holds ONLY the tiles the committed
+// set does not cover, so a personal build shows every font in its browser grid
+// instead of leaving 37 blank.
 const prevOut = join(fontsOut, "previews");
 mkdirSync(prevOut, { recursive: true });
-const srcPngs = new Set(readdirSync(prevSrc).filter((f) => f.endsWith(".png")));
+const prevDirs = [join(srcDir, "fonts", "previews")];
+const prevPersonal = join(srcDir, "fonts", "previews-personal");
+if (usePersonal && existsSync(prevPersonal)) prevDirs.push(prevPersonal);
+const pngFrom = new Map();
+for (const d of prevDirs)
+  for (const f of readdirSync(d)) if (f.endsWith(".png")) pngFrom.set(f, join(d, f));
 for (const f of readdirSync(prevOut))
-  if (f.endsWith(".png") && !srcPngs.has(f)) unlinkSync(join(prevOut, f));
-for (const f of srcPngs) copyFileSync(join(prevSrc, f), join(prevOut, f));
-console.log("copied", srcPngs.size, "font previews");
+  if (f.endsWith(".png") && !pngFrom.has(f)) unlinkSync(join(prevOut, f));
+for (const [f, from] of pngFrom) copyFileSync(from, join(prevOut, f));
+console.log("copied", pngFrom.size, "font previews");

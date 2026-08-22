@@ -165,6 +165,21 @@ export function generateElement(element, garment, runtime) {
 // Generates every ready element in a project (in array order), combines them
 // into one sewable design, and reports each element's own bbox (mm) so the
 // UI can draw a per-element selection overlay against the combined preview.
+// Formats an `unsupported` array for a person: quoted, comma-separated, and
+// capped so a paragraph of unrenderable text does not become a paragraph of
+// error. Exported (and tested) rather than inlined in the component, matching
+// hoopFitNote — message wording is logic, and logic in a .svelte file is logic
+// nobody unit-tests.
+export function charList(chars, max = 6) {
+  const list = (chars || []).filter((c) => typeof c === "string" && c.length);
+  if (!list.length) return "";
+  const shown = list.slice(0, max).map((c) => `\u201c${c}\u201d`);
+  const rest = list.length - shown.length;
+  const joined = shown.length === 1 ? shown[0]
+    : shown.slice(0, -1).join(", ") + " and " + shown[shown.length - 1];
+  return rest > 0 ? `${shown.join(", ")} and ${rest} more` : joined;
+}
+
 // Elements that aren't ready (see generateElement) are silently skipped —
 // not an error, just nothing to contribute yet. Returns
 // { combined: null, perElement: [] } when nothing in the project is ready.
@@ -174,9 +189,17 @@ export function generateAll(project, runtime) {
   for (const element of project.elements || []) {
     const design = generateElement(element, garment, runtime);
     if (!design) continue;
-    perElement.push({ id: element.id, design, bboxMm: bboxMmFromStitches(design.stitches) });
+    // `unsupported`: characters the element's font has no glyph for. Carried
+    // per element rather than merged, because the fix is per element — it is
+    // THAT element's font that cannot set THAT text. A Hebrew font with Latin
+    // text produces a valid-looking 0-stitch element and, before this, no
+    // explanation anywhere in the UI.
+    perElement.push({
+      id: element.id, design, bboxMm: bboxMmFromStitches(design.stitches),
+      unsupported: design.unsupported || [],
+    });
   }
-  if (!perElement.length) return { combined: null, perElement: [] };
+  if (!perElement.length) return { combined: null, perElement: [], unsupported: [] };
   // SEW order: on cap garments (same predicate as the engine's capMode)
   // elements sew bottom-up — lowest bbox first, bill toward crown — matching
   // the engine's per-element center-out rule, so a stacked cap design pushes
@@ -191,7 +214,11 @@ export function generateAll(project, runtime) {
   const ordered = capMode
     ? perElement.slice().sort((a, b) => a.bboxMm.y0 - b.bboxMm.y0)
     : perElement;
-  return { combined: combineDesigns(ordered.map((pe) => pe.design)), perElement: ordered };
+  // `unsupported` is also surfaced at the top level, deduplicated across
+  // elements, so a caller that only wants "is there anything to tell the user"
+  // does not have to walk perElement.
+  const unsupported = [...new Set(ordered.flatMap((pe) => pe.unsupported))];
+  return { combined: combineDesigns(ordered.map((pe) => pe.design)), perElement: ordered, unsupported };
 }
 
 // Back-compat convenience for a SINGLE-text-element project: everything the

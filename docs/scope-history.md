@@ -25,6 +25,320 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-08-22 (later again) — **two guards were blind to a
+quarter of the library, and the golden deselect list went from five to three.**
+
+The stunted-glyph guard (`test/font-stunted.test.js`) and `tools/qc-font.mjs`
+both measured glyph height from satin columns only, so on the 19 runs-only
+fonts plus the two Hebrew ones — 21 of 85 — they measured nothing and reported
+green. Both were also blind to the exact case they exist for: filtering on
+`v > 0` dropped any glyph flattened to EXACTLY zero height, which is the
+6,193-stitches-into-40.0x0.0mm hazard the files are named for. Verified against
+the pre-fix tool: a collapsed glyph and a run marooned 900 units off its letter
+both produced no finding at all. Nothing in the library is wrong under the
+widened checks (85 fonts, 0 failures, 0 zero-height letters, 0 satin letters
+with no columns) — the finding is the 21 fonts that were never being asked.
+The channel is now chosen per font and never merged: measuring runs as their
+own channel on satin fonts produces 45 false positives, the skeleton channel
+produces zero.
+
+CI's golden deselect list dropped from five to three (`db0e642`) after the
+remove-and-see check ran, and the green run on ubuntu-latest confirmed the two
+`logo_alpha` rows pass there. The count then sat stale in two other places for
+several hours — the workflow's own header comment and COOKBOOK — because the
+reasoning existed in two copies and only one was updated.
+
+Skip accounting on a full local digitizer run at this date: 1258 passed,
+8 skipped (5 tesseract, 2 rembg isolated venv, 1 opencv-contrib-installed),
+7 xfailed, 3 failed (the golden set above). Personal build: 125 fonts.
+
+---
+
+**Last updated:** 2026-08-22 (later still) — **the tier gate was Latin-only AND
+was never actually run.**
+
+qc-font.mjs describes itself as "the tier gate, in the repo, with tests".
+build-embf.mjs never called it. The only enforcement was embf-guard.test.js,
+which reads the 17 static src/fonts/<key>.json sources — so the other 68 fonts,
+the ones arriving through scratch_ink/_out, were QC'd by nothing at all on the
+way into the library. The builder runs it now; a hard fail excludes from the
+sellable build, --personal warns and keeps. Closing it changed nothing today
+(85 fonts, zero exclusions), which is what a real-but-unexercised hole looks
+like.
+
+It was also Latin-only: every coverage check scoped to A-Z, so a font with no
+Latin hard-failed on "no uppercase letter glyphs at all". hebrew_font_large did,
+and shipped regardless because of the first hole — the gate simultaneously
+rejecting a good font and not gating the fonts that reach the library.
+
+The alphabet test is \p{L} rather than "single-char and not a digit", and the
+precision matters twice. Hebrew's geresh and gershayim are punctuation and
+legitimately short, so counting them as letters made them "stunted" against a
+median they were never part of. And circular_3letters_monogram and invercelia
+name their glyphs A.medi / A.init — contextual variants the lettering path can
+never address — leaving punctuation as their only single-char glyphs, which
+under a looser test vouched for a font whose actual letters are unreachable.
+That is the ondulamarif_XL trap the gate exists to catch.
+
+Separately: the SVG path truncation bug fixed on 2026-08-21 had a SECOND copy in
+tools/parse-inkstitch.mjs, a one-glyph debug tool. Nothing shipped is affected,
+but it is the tool you reach for when a glyph looks wrong, so a parser that
+quietly drops geometry would send you hunting a defect the tool invented.
+src/svgpath.js — the user-facing artwork import path — was checked and is safe:
+it matches an explicit command set, so "e" can never be read as a command.
+
+Engine 407 pass / 0 fail. Studio 782 pass.
+
+---
+
+**Last updated:** 2026-08-22 (late) — **adding one non-Latin font exposed three
+separate places that assumed Latin, all of them silent.**
+
+Shipping Hebrew was a small change. What it flushed out was not:
+
+1. build-previews' sample-text fallback filtered to [A-Za-z0-9], so a Hebrew
+   font fell through to "?" — which it also lacks — and rendered ZERO stitches.
+   Both Hebrew faces shipped with no preview tile; the guard test caught it.
+2. sewsAnything(), the personal build's stitchability gate, only looked at A-Z,
+   so it answered "no" for a font with no Latin alphabet. Both Hebrew faces were
+   dropped from the PERSONAL build while the SELLABLE build shipped them — the
+   two libraries disagreeing about the same font. Fixing it also recovered
+   ellenika, honoka, invercelia and the two hebrew_simple_rounded faces:
+   personal 119 -> 127, sellable unchanged at 85.
+3. The lettering path skipped unrenderable characters silently, so picking a
+   Hebrew font and typing "Emb" produced a structurally valid 0-stitch design
+   with no explanation anywhere.
+
+Only #1 was caught by a test. #2 and #3 were found by driving the Studio in a
+real browser — #2 because the Hebrew font was missing from the picker entirely,
+#3 because the field just sat empty. Neither would have failed CI.
+
+The fix for #3 goes end to end: buildLetteringDesign reports `unsupported` in
+SOURCE order (an RTL line lays out in reverse, so collecting as-placed reports
+"Emb" as b,m,E) and deduplicated; generateAll carries it per element, because it
+is THAT element's font that cannot set THAT text; the field replaces its generic
+empty hint when nothing stitched and appends to the stats line when only part
+did. Verified across Latin-only, Hebrew-only and mixed.
+
+Two smaller things the browser also showed. "Smaller than 5 mm" fired on an
+element with zero stitches, sitting directly in front of the message that
+explained the real cause and reading as a second unrelated fault. And Svelte
+strips leading whitespace inside an element, so " · " had been rendering as
+"…5x7 in hoop· This font…" — pre-existing on the two older warnings and equally
+wrong there.
+
+Engine 403 pass / 0 fail. Studio 782 pass.
+
+---
+
+**Last updated:** 2026-08-22 (night) — **85 fonts, and EMB-Bot can set Hebrew.**
+
+Five upstream fonts ship their glyphs in `rtl.svg` rather than `ltr.svg`, and
+build-font looked only for ltr.svg — so all five failed to import with ENOENT
+and right-to-left script was absent from the product entirely.
+
+Two of them are pure Hebrew and now ship (hebrew_font_large,
+hebrew_font_medium, 29 glyphs each, OFL-1.1). Hebrew needs nothing beyond
+right-to-left PLACEMENT — it has no contextual letter forms — so the change is
+small: a font imported from rtl.svg carries dir:"rtl", and layoutText walks that
+line's characters in reverse. Everything downstream (arc, badge, per-letter
+colour, underlay) works unchanged because it keys off each glyph's ox rather
+than off character order.
+
+charIdx deliberately stays LOGICAL rather than visual. It exists so the UI can
+map a textarea selection onto glyphs, and a selection is logical; reversing it
+too would silently colour the wrong letters with nothing to catch it. Pinned by
+its own test.
+
+The three Arabic fonts stay out, and that is now a standing ruling rather than
+an oversight. Arabic letters take initial/medial/final/isolated forms and must
+join; without a shaping engine they render unjoined, which is WRONG TEXT rather
+than merely plain text. Shipping them on RTL placement alone would look like
+support while producing something no Arabic reader would accept. A test asserts
+no shipped rtl font carries Arabic glyphs.
+
+Two things fell out of doing it. build-previews' sample-text fallback assumed
+Latin glyph names, so a Hebrew font fell through to "?" — which it also does not
+contain — and rendered ZERO stitches; both Hebrew faces shipped with no preview
+tile until the guard test caught it. And a render-sweep of all shipped fonts at
+80mm found exactly one density outlier, neon_blinking at 0.06 stitches/mm2
+against a 0.38 median, which turned out to be correct: it is a runs-only
+single-stroke outline font, so low density is its design.
+
+Engine 397 pass / 0 fail. Studio 776 pass. Library 85 fonts: 82 OFL-1.1 +
+1 CC-BY-4.0 + 2 CC0.
+
+---
+
+**Last updated:** 2026-08-22 (evening) — **83 fonts; the personal build got its
+missing previews and licences; and a font had been excluded by a FILENAME.**
+
+`fold_inkstitch` is the one worth remembering. 141 of 142 upstream fonts name
+their licence file `LICENSE`; this one names it `license`. build-font looked for
+the uppercase spelling only, which resolves fine on Kent's case-insensitive
+Windows filesystem and silently read NOTHING on Linux — every cloud session. The
+font imported with an empty licence, and licenseId("") returns SEE-LICENSE-FILE,
+which sits outside ALLOWED_LICENSES, so it was excluded from the sellable
+library. It is OFL-1.1. That failed SAFE, but by luck rather than design: the
+identical silence excludes any legitimately-licensed font. Fixed, guarded, and
+the font shipped — 40 glyphs, origami-outline caps face.
+
+The personal build had two real holes, both fixed. Its 37 personal-only fonts had
+no preview tile (the font browser showed them blank) and no licence sidecar (the
+credits dialog linked a 404). Both now generate into SEPARATE gitignored
+directories — previews-personal/ and licenses-personal/ — and copy-engine
+overlays them on the committed ones. The separation is the point: src/fonts/
+previews/ is committed, and a preview is a RENDER of the font, so publishing one
+for a ShareAlike or NonCommercial face is exactly the distribution the build
+split exists to prevent.
+
+Found while doing it: build-embf had NO orphan-clean for its binary directory at
+all. The sellable side was protected only by a guard test — which is how the
+roman_ags_bicolor orphan got caught earlier — and the personal side by nothing,
+so dropping that font left a live .embf in bin-personal/. That is the
+ondulamarif_XL trap. Cleaning now happens at the source for both builds, with
+the test kept as backstop.
+
+An empty preview now fails the run only for the SELLABLE library. The personal
+library deliberately holds marginal fonts (paquerette has 31 of 52 letters with
+no authored stitch length), and failing there would train Kent to ignore the
+exit code.
+
+Engine 392 pass / 0 fail. Library 83 fonts.
+
+---
+
+**Last updated:** 2026-08-22 (latest) — **the transform fix invalidated the
+upstream census, so it was redone: 80 -> 82 fonts, and Cyrillic coverage.**
+
+Every earlier judgement about which upstream fonts were viable had been made on
+geometry the importer was silently collapsing. All 142 re-imported and re-QC'd.
+137 imported; the 5 failures are RTL-only (rtl.svg, no ltr.svg).
+
+Yield exactly two, both OFL-1.1: `cyrillic` (466 glyphs, 252 Cyrillic, from
+Roboto) and `inkstitch_masego` (heavy slab display). cyrillic is the notable one
+— it had been HELD because its accents sat ~650 units from their letter bodies
+and inflated the line box, and that defect WAS the transform bug. It now
+measures zero bbox outliers.
+
+Three rejections worth keeping: `sacramarif` QC-passes but renders as a bare
+single-thread line with the E missing; `roman_ags_bicolor` QC-passes and renders
+correctly but carries 79 satin columns for A-H against the mono cut's 57 for
+visually identical output, which a prior decision had already recorded and
+test/embf-guard.test.js pins — the test caught the re-addition where QC could
+not, since QC cannot see redundant overlapping satin. The 11 refused cross-stitch
+fonts re-refuse at the same fits.
+
+The dormant `</path>` stack-pop bug in pathsTf was fixed too, after confirming
+it changes nothing: rebuilt the library byte-identical. It is guarded by a
+fixture case verified to fail without the fix.
+
+Engine 391 pass / 0 fail. Library 82 fonts: 79 OFL-1.1 + 1 CC-BY-4.0 + 2 CC0,
+zero in the "More" category.
+
+---
+
+**Last updated:** 2026-08-22 (later) — **the stunted-glyph defect root-caused:
+build-font was dropping SVG transforms on most of the library, and one fix
+cleared all four affected fonts.**
+
+Kent's three calls this round: fix the transform bug rather than pull the fonts,
+leave the three cosmetic cases to the same fix, and OMIT Terminus.
+
+The bug: `build-font.mjs` had two path walks, and the transform-IGNORING one ran
+for every font in the standard single-`ltr.svg` layout — most of the library.
+Harmless for a glyph with baked coordinates; destructive for one placing repeated
+geometry BY transform. `mimosa_large` "D" is a single dot repeated 38 times with
+38 different transforms, so all 38 stacked on one point: 6,193 stitches into
+40.0 x 0.0 mm, against a healthy "A" at 996 in 40.0 x 60.1 mm. After the fix "D"
+is 1,000 stitches at 40.0 x 60.0.
+
+Two dead ends were ruled out first and are worth not re-walking: it was NOT
+upstream under-tagging — the source tagging ratio is uniform across healthy and
+broken glyphs (`mimosa_large` A 76 paths/38 tagged, D 76/38), which is what
+distinguishes this from Terminus, where under-tagging IS the whole story — and
+NOT the transform math, which verifies correct in isolation for
+rotate-about-a-point and for parent/child composition. The tell was that broken
+glyphs retained their full column and rail-point count while landing on one spot.
+
+Library rebuild after the fix: 25 of 80 byte-identical; of the 55 changed, the
+great majority moved 0.00% in stitch count. Four real movers, each verified by
+rendering rather than by the delta: `apesplit` -43.91%, `initials_medium`
+-31.75%, `mimosa_medium` -19.59%, `pixel10` +1.72%. The large drops are geometry
+that was being stitched twice and now is not, so DOWN is the correct direction —
+`apesplit` and `initials_medium` now set "ABCDE" as five uniform letters where
+before the A was a tiny mark beside four oversized overlapping ones.
+`SATIN_BASELINE` re-pinned a second time (venezia 995->996, cats 1249->1238,
+apesplit 4404->2470) with the reason recorded inline.
+
+Result: **zero** letters under 0.45x their case median across all 80 fonts, and
+a full-library QC sweep reporting 0 failures and 0 stitchability/geometry
+warnings. Engine 390 pass / 0 fail; Studio 776 pass.
+
+One latent bug found and deliberately NOT fixed: `pathsTf`'s stack pop fires on
+any closing tag, so a non-self-closed `</path>` would corrupt the matrix stack.
+Every upstream file self-closes its paths, so it is dormant.
+
+Terminus closed by Kent's ruling. Re-examination found four broken letters, not
+the one QC reported — `q` stitches nothing while `B`, `M` and `t` pass QC and
+render as stubs, all from paths upstream never tagged `satin_column`.
+
+---
+
+**Last updated:** 2026-08-22 — **the font library went 55 -> 80, and five
+defects were found by LOOKING at output that every number called healthy.**
+
+Counts as they stood: 55 fonts at the start of 2026-08-21, 70 after the upstream
+sweep, 77 after cross-stitch lettering, **80** after the `fill_method` re-census.
+The `--personal` build went 106 -> 120. PRs #193, #195, #196, #198, #200, #203
+merged. Engine 387 pass / 0 fail; Studio 776 pass.
+
+Three engine capabilities landed. **Bean / running-stitch lettering:** the path
+was satin-only, so a runs-only font imported fine, passed most checks and
+stitched exactly ONE stitch — 26 licence-clean upstream fonts were unusable for
+that reason alone. **Cross-stitch fill** (`src/crossfill.js`), written from first
+principles rather than ported, because Ink/Stitch's is GPL-3.0 and this product
+is sold. **The sellable/personal build split**, at build time rather than as a
+runtime toggle.
+
+Five defects, and the pattern connecting them is the point. **The SVG parser
+truncated every path at its first scientific-notation number** — `parsePath`
+tested "is this a command?" with an unanchored `/[a-zA-Z]/`, and `5.2e-4`
+contains an `e`. 119 of 132 upstream fonts contain such numbers; 63 of the 70
+then-shipped ones did. It hid because satin rails carry large coordinates where
+truncation lands late: montecarlo lost 95 of 195,997 rail points (0.05%) and
+rendered beautifully. Kent's call was to rebuild rather than freeze the
+truncation: 20 of 77 came back byte-identical, median drift 0.00%, max 7.44%
+(alchemy 699 -> 751). **Even-odd vs nonzero winding** rendered `jersey_15` (one
+ring per glyph) flawlessly and `jacquard_12` (two) as fragments, at ~100% lattice
+fit on both. **Serpentine order dragged thread across gaps**, visible as
+diagonals over the M and B of "EMB". **`roman_ags`'s credit line** named its OFL
+adapter but not its LPPL base. **Four shipped fonts render a letter as a stub**
+and pass QC because they do emit stitches.
+
+Cell counts, QC verdicts and lattice fit all read healthy while glyphs were
+garbage. Rendering cells as ASCII, and looking at the browser, is what caught
+the parser bug, the fill-rule bug and the travel-diagonal bug. Two tests written
+this cycle passed VACUOUSLY on first draft — the roman_ags guard matched nothing
+because upstream's text reads "a derivative work fromm", and a crossfill fixture
+asserted a wrong expectation — both found only by deliberately breaking the
+thing they guarded.
+
+The `fill_method` re-census: cross-stitch fonts declare themselves two ways,
+`cross_stitch_method` and `fill_method="cross_stitch"`. The 2026-08-21 census
+looked only at the first, so 13 fonts were filed as "plain fill" needing a
+tatami row spacing — a gate-1 constant. They needed nothing of the kind;
+`build-font.mjs` had always handled them. 25 upstream cross-stitch fonts exist,
+not 12. Seven of the 18 unshipped measure a confident grid; eleven are refused
+at 26.2%-87.5% fit. Only three of the seven are OFL and therefore sellable.
+
+Terminus (inkstitch PR #2034) was re-fetched and re-evaluated: four broken
+letters rather than the one QC reported, plus a 1/10-width space in a
+fixed-width font, an OFL Reserved Font Name, and no size key. Recommended for
+omission; the decision is Kent's.
+
+---
+
 **Last updated:** 2026-08-21 (later) — **the sew-out ruling collided with the
 next work item, and Kent resolved it in favour of the gate.** Queuing satin
 border fragmentation surfaced a conflict with the same session's accept-as-is

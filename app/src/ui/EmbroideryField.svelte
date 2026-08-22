@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
-  import { generateAll } from "../lib/generate.js";
+  import { generateAll, charList } from "../lib/generate.js";
   import { ensureFonts } from "../lib/fontLoader.js";
   import { renderRealistic, isDark } from "../lib/preview.js";
   import { designToStrands } from "../lib/strands.js";
@@ -53,6 +53,12 @@
   // it's a CHECK on the generated result, never a clamp (the clamp math
   // stays keyed to the garment placement box).
   let hoopNote = "";
+  // Characters the element's font has no glyph for. The lettering path skips
+  // them silently, which was obscure while the library was all-Latin and became
+  // a one-click dead end when Hebrew fonts arrived: pick one, type "Emb", and
+  // the field just stays empty. generate.js reports them; this turns them into
+  // something a person can act on.
+  let unsupportedNote = "";
 
   // Result of the last renderRealistic() call — { toCanvas, scale, designBBoxMm } —
   // kept around so pointer handlers and the selection overlay can hit-test /
@@ -735,7 +741,13 @@
     }
     const widthMM = pe.bboxMm.x1 - pe.bboxMm.x0;
     const heightMM = pe.bboxMm.y1 - pe.bboxMm.y0;
-    warn = widthMM < MIN_SIZE_MM || heightMM < MIN_SIZE_MM;
+    // "Smaller than 5 mm" is advice about a design that IS there and is too
+    // small to sew cleanly. On an element with no stitches at all it is not
+    // advice, it is noise — and it sat directly in front of the message that
+    // actually explains the problem ("this font can't stitch E, m and b"),
+    // reading as two unrelated faults instead of one cause.
+    warn = pe.design.stitchCount > 0 &&
+      (widthMM < MIN_SIZE_MM || heightMM < MIN_SIZE_MM);
     dispatch("dims", { widthMM, heightMM });
   }
 
@@ -812,6 +824,7 @@
     warn = false;
     hint = "";
     hoopNote = "";
+    unsupportedNote = "";
     renderResult = null;
     perElementRects = [];
     peById = {};
@@ -846,7 +859,12 @@
 
     if (!result.combined) {
       hasDesign = false;
-      hint = "Your embroidery appears here as you add content.";
+      // A design can be empty because nothing has been typed yet, or because
+      // the chosen font cannot render ANY of what was typed. Those need
+      // different answers, and the second one used to get the first one's.
+      hint = result.unsupported && result.unsupported.length
+        ? `This font can\u2019t stitch ${charList(result.unsupported)}. Try a different font, or different text.`
+        : "Your embroidery appears here as you add content.";
       lastGenerateResult = null;
       clearToFabric();
       dispatch("dims", null);
@@ -862,6 +880,10 @@
     const { hoop } = effectiveHoop(project);
     stats = `${c.stitchCount} stitches · ${c.widthMM.toFixed(0)}×${c.heightMM.toFixed(0)} mm · ${hoop.label} hoop`;
     hoopNote = hoopFitNote(c.widthMM, c.heightMM, hoop) || "";
+    // Something DID stitch, but not all of it — e.g. Latin mixed into Hebrew.
+    // Rides the stats line next to the other warnings rather than blocking.
+    unsupportedNote = (result.unsupported && result.unsupported.length)
+      ? `This font can\u2019t stitch ${charList(result.unsupported)}` : "";
     // Reports the COMBINED design's stitch count (not just the selected
     // element's) -- App uses this for the "drag-field" hint's A8 eligibility
     // condition, which is about whether there's anything on the field to
@@ -1743,6 +1765,9 @@
   <div class="fieldmeta">
     {#if error}<span class="err">{error}</span>
     {:else if shapeEditError}<span class="err" data-testid="shape-edit-error">{shapeEditError}</span>
-    {:else if stats}<span class="stats">{stats}</span>{#if warn}<span class="warn"> · Smaller than 5 mm — thread can't stitch this cleanly</span>{/if}{#if hoopNote}<span class="warn"> · {hoopNote}</span>{/if}{/if}
+    <!-- &nbsp; before each separator, not a plain space: Svelte strips leading
+         whitespace inside an element, so " · " rendered as "…hoop· This font".
+         Pre-existing on the two older warnings; visible on all three now. -->
+    {:else if stats}<span class="stats">{stats}</span>{#if warn}<span class="warn">&nbsp;· Smaller than 5 mm — thread can't stitch this cleanly</span>{/if}{#if hoopNote}<span class="warn">&nbsp;· {hoopNote}</span>{/if}{#if unsupportedNote}<span class="warn">&nbsp;· {unsupportedNote}</span>{/if}{/if}
   </div>
 </div>

@@ -27,10 +27,29 @@ export function qcFont(font) {
   if (!(font.sizeMm > 0)) fail("missing/invalid sizeMm");
   if (!(font.unitsPerEm > 0)) fail("missing/invalid unitsPerEm");
 
+  // Coverage, script-aware (2026-08-22). Every check below used to be scoped to
+  // the Latin alphabet, which meant a font with no Latin at all HARD-FAILED with
+  // "no uppercase letter glyphs" — hebrew_font_large did, and shipped anyway
+  // only because build-embf never runs qcFont on scratch_ink/_out sources. So
+  // the tier gate both rejected a perfectly good font and was not actually
+  // gating the fonts that reach the library that way.
+  //
+  // A font's alphabet is whatever single-character letter glyphs it HAS. Latin
+  // is still preferred when present, so nothing changes for the 83 Latin fonts;
+  // the fallback only engages when there is no Latin to look at.
   const present = (chars) => [...chars].filter((c) => font.glyphs[c]);
   const upper = present(LETTERS), lower = present(LOWER), digits = present(DIGITS);
-  if (upper.length === 0) fail("no uppercase letter glyphs at all");
-  if (lower.length === 0) warn("coverage: no lowercase glyphs (caps-only font)");
+  // \p{L} — actual LETTERS, not merely "not ASCII and not a digit". Hebrew
+  // ships ׳ (geresh) and ״ (gershayim), which are punctuation and legitimately
+  // short; counting them as letters made them "stunted" against a median they
+  // were never part of, exactly as an apostrophe would be in a Latin font.
+  const nonLatin = (upper.length || lower.length) ? [] :
+    Object.keys(font.glyphs).filter((k) => [...k].length === 1 &&
+      /^\p{L}$/u.test(k) && !/^[\x00-\x7f]$/.test(k));
+  if (!upper.length && !nonLatin.length) fail("no letter glyphs at all");
+  else if (!upper.length && nonLatin.length)
+    warn(`coverage: no Latin alphabet (${nonLatin.length} non-Latin letter glyphs)`);
+  if (upper.length && lower.length === 0) warn("coverage: no lowercase glyphs (caps-only font)");
   if (digits.length === 0) warn("coverage: no digit glyphs");
 
   // Per-LETTER-GLYPH stitchability. The real question is not "does this letter
@@ -42,9 +61,14 @@ export function qcFont(font) {
   // attaches {pts, lenMm} and ROADMAP gate 1 bars us from inventing a length, so
   // a run without one is skipped by satinfont.routeRuns and contributes nothing.
   // paquerette is exactly this trap — 1641 runs, but only 72 carry a length, so
-  // 31 of its 52 letters stitch as NOTHING while a naive "has runs" check calls
-  // it healthy. Count only what will actually sew.
-  const letterGlyphs = [...upper, ...lower];
+  // 52 of its 82 letter glyphs stitch as NOTHING while a naive "has runs" check
+  // calls it healthy. Count only what will actually sew.
+  //
+  // That figure read "31 of its 52" until 2026-08-22, which is the A-Za-z
+  // count: correct, and silently Latin-scoped in a comment sitting directly
+  // above the \p{L} rewrite that removed exactly that assumption. Re-measured
+  // over every letter glyph.
+  const letterGlyphs = (upper.length || lower.length) ? [...upper, ...lower] : nonLatin;
   const stitchable = (c) => {
     const g = font.glyphs[c];
     if ((g.cols || []).length) return true;
@@ -94,12 +118,40 @@ export function qcFont(font) {
   // that legitimately dwarf the letters and must not trip this.
   // Threshold 4x calibrated against the shipping library, whose worst
   // single-char ratio is small_font's "&" at 3.11x.
+  // Height on the font's SKELETON channel — cols for a satin font, runs for a
+  // runs-only one. Cols-only was a blind spot worth naming (2026-08-22): the
+  // 19 runs-only faces have no columns at all, so every height came back null,
+  // and both this bbox check and the stunted check below silently measured
+  // NOTHING in them while reporting clean. Nothing is wrong in the library
+  // today (checked), but qc-font is the gate new fonts come through, so the
+  // hole was forward-looking risk rather than a stale finding.
+  //
+  // The channels are not merged, deliberately: a satin font's runs are accents
+  // and are not even stitched (stripRunParamsIfSatin in build-font.mjs), so a
+  // full-height accent would mask a collapsed column — the mimosa defect
+  // exactly. test/font-stunted.test.js uses the identical rule; if you change
+  // one, change both, or a font will pass the build gate and fail the suite.
+  //
+  // null means "no geometry on this channel"; 0 means "geometry collapsed onto
+  // a line". Conflating them is how a zero-height glyph escapes the check
+  // written for it.
   const glyphHeight = (g) => {
-    let mn = Infinity, mx = -Infinity;
-    for (const col of g.cols || [])
-      for (const ring of [col.railA, col.railB])
-        for (const p of ring || []) { if (p[1] < mn) mn = p[1]; if (p[1] > mx) mx = p[1]; }
-    return mx > -Infinity ? mx - mn : null;
+    let mn = Infinity, mx = -Infinity, n = 0;
+    if (runsOnly) {
+      for (const run of g.runs || [])
+        for (const p of (Array.isArray(run) ? run : (run && run.pts) || [])) {
+          if (!p || !Number.isFinite(p[1])) continue;
+          n++; if (p[1] < mn) mn = p[1]; if (p[1] > mx) mx = p[1];
+        }
+    } else {
+      for (const col of g.cols || [])
+        for (const ring of [col.railA, col.railB])
+          for (const p of ring || []) {
+            if (!p || !Number.isFinite(p[1])) continue;
+            n++; if (p[1] < mn) mn = p[1]; if (p[1] > mx) mx = p[1];
+          }
+    }
+    return n ? mx - mn : null;
   };
   const letterHeights = letterGlyphs
     .map((c) => glyphHeight(font.glyphs[c])).filter((v) => v > 0).sort((a, b) => a - b);
@@ -115,6 +167,54 @@ export function qcFont(font) {
       warn(`bbox: ${outliers.length} glyph(s) far taller than the median letter ` +
         `(${outliers.slice(0, 6).join(", ")}${outliers.length > 6 ? ", …" : ""}) ` +
         `— inflates the line box and caps how large short text can scale`);
+  }
+
+  // Stunted-glyph check (2026-08-22). The stitchability test above asks "does
+  // this letter produce stitches", which a glyph can pass while rendering as a
+  // stub. Terminus is what exposed it: QC called it 1/52 broken, but LOOKING at
+  // the rendered alphabet found FOUR broken letters — q stitched nothing (the
+  // one QC caught) while B, M and t emitted a fraction of their geometry and
+  // sailed through. In its source those glyphs carry paths that were never
+  // tagged inkstitch:satin_column, so only part of each letter became a column.
+  //
+  // Compared WITHIN case: lowercase is legitimately shorter than uppercase, so
+  // one library-wide median would flag every x-height letter in every font.
+  // Threshold 0.45 of the case median. Scoped to single-character LETTER
+  // names — the letters that must render — so decorative alternates and
+  // multi-char ornament glyphs (art_nouveau's "frame1", montecarlo's "C.alt6")
+  // stay out of it. That means A-Z and a-z where the font has them, and the
+  // font's own non-Latin letters where it does not: the loop below falls back
+  // to `nonLatin`, which is how the two Hebrew faces get checked at all. This
+  // comment said "A-Z/a-z" until 2026-08-22, describing the behaviour the
+  // \p{L} rewrite in this same file had already replaced.
+  //
+  // This is a WARN, not a hard fail: it found four fonts ALREADY SHIPPING with
+  // the defect (mimosa_large D 0.11x, mimosa_medium D 0.22x, apesplit A 0.23x,
+  // initials_medium A 0.28x — the first two verified by rendering, D as a bare
+  // dash, A as a tiny mark floating off the baseline). Failing the build on
+  // those is Kent's call, not this tool's; test/font-stunted.test.js pins the
+  // known set so a NEW font with the defect is caught while these stay visible
+  // as debt.
+  for (const set of ((upper.length || lower.length) ? [LETTERS, LOWER] : [nonLatin.join("")])) {
+    const vs = [], voids = [];
+    for (const c of set) {
+      const g = font.glyphs[c];
+      if (!g) continue;
+      const v = glyphHeight(g);
+      // A letter present in the font with NO skeleton geometry is the mimosa
+      // defect at its limit, not something to skip past.
+      if (v === null) voids.push(c); else vs.push([c, v]);
+    }
+    if (vs.length + voids.length < 8) continue; // too few for a trustworthy median
+    const sorted = vs.map((v) => v[1]).sort((a, b) => a - b);
+    const med = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
+    const stunted = voids.map((c) => `"${c}" no geometry`).concat(
+      med > 0 ? vs.filter(([, v]) => v / med < 0.45)
+        .map(([c, v]) => `"${c}" ${(v / med).toFixed(2)}x`) : []);
+    if (stunted.length)
+      warn(`stunted: ${stunted.length} letter(s) far shorter than the case median ` +
+        `(${stunted.join(", ")}) — these stitch, so the stitchability check passes ` +
+        `them, but they render as stubs`);
   }
 
   return { pass: !hardFail, findings };

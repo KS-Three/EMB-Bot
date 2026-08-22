@@ -25,9 +25,27 @@ const crossfill = require("../src/crossfill.js");
 const SRC = process.argv[2];
 const OUT = process.argv[3];
 if (!SRC || !OUT) { console.error("usage: build-font.mjs <fontDir|svgFile> <outJson>"); process.exit(1); }
-const svgFile = SRC.endsWith(".svg") ? SRC : path.join(SRC, "ltr.svg");
+// A font ships its glyphs in a variant file named for its text direction:
+// ltr.svg for left-to-right, rtl.svg for right-to-left (Hebrew, Arabic).
+// Only ltr.svg was ever looked for, so the five RTL fonts upstream failed to
+// import at all with ENOENT. Fall back to rtl.svg and record the direction on
+// the font, which satinfont.layoutText honours when placing glyphs.
+const ltrFile = SRC.endsWith(".svg") ? SRC : path.join(SRC, "ltr.svg");
+const rtlFile = SRC.endsWith(".svg") ? SRC.replace(/ltr\.svg$/, "rtl.svg") : path.join(SRC, "rtl.svg");
+const isRtl = !fs.existsSync(ltrFile) && fs.existsSync(rtlFile);
+const svgFile = isRtl ? rtlFile : ltrFile;
 const metaFile = SRC.endsWith(".svg") ? SRC.replace(/ltr\.svg$/, "font.json") : path.join(SRC, "font.json");
-const licFile = SRC.endsWith(".svg") ? SRC.replace(/ltr\.svg$/, "LICENSE") : path.join(SRC, "LICENSE");
+// Upstream is not consistent about the case of this filename: 141 of 142 fonts
+// use "LICENSE" and fold_inkstitch uses "license". On Kent's Windows box the
+// filesystem is case-insensitive so both resolve; on Linux — every cloud
+// session — the lowercase one silently read NOTHING, so the font imported with
+// an empty licence. It fails safe for the sellable build (licenseId("") returns
+// SEE-LICENSE-FILE, which is outside ALLOWED_LICENSES) but that is luck, not
+// design: the same silence would wrongly exclude a legitimately-OFL font.
+const licCandidates = SRC.endsWith(".svg")
+  ? [SRC.replace(/ltr\.svg$/, "LICENSE"), SRC.replace(/ltr\.svg$/, "license")]
+  : [path.join(SRC, "LICENSE"), path.join(SRC, "license")];
+const licFile = licCandidates.find((p) => fs.existsSync(p)) || licCandidates[0];
 const ltrDir = SRC.endsWith(".svg") ? null : path.join(SRC, "ltr");
 const dirLayout = !fs.existsSync(svgFile) && ltrDir && fs.existsSync(ltrDir) && fs.statSync(ltrDir).isDirectory();
 const svgFiles = dirLayout
@@ -154,10 +172,19 @@ function toColumn(subs) {
 }
 
 // --- 2D affine transforms (SVG transform attribute) ---
-// The single-file fonts ship with paths in final coordinates, but the ltr/-dir
-// fonts position their art through nested <g transform="..."> (mai_en_fleur's
-// flowers are one drawn motif re-placed via matrix() dozens of times per
-// glyph) and per-path transforms — ignoring them scatters the geometry.
+// Both layouts position art through nested <g transform="..."> and per-path
+// transforms — mai_en_fleur's flowers are one drawn motif re-placed via
+// matrix() dozens of times per glyph — and ignoring them scatters the
+// geometry onto a point.
+//
+// This comment used to open "the single-file fonts ship with paths in final
+// coordinates, BUT the ltr/-dir fonts …", and that sentence is the whole bug.
+// It was false: mimosa_large is a single-file font whose "D" is one dot with
+// 38 transforms, and on the strength of that premise the importer ran a
+// non-transform-aware walk for every single-ltr.svg font. All 38 dots stacked
+// on one point and the glyph shipped sewing 6,193 stitches into 40.0 x 0.0 mm.
+// Corrected 2026-08-22 along with the code — a false premise left in a comment
+// above the code that disproved it is how the fast path comes back.
 const M_ID = [1, 0, 0, 1, 0, 0]; // x' = a x + c y + e ; y' = b x + d y + f
 const mmul = (A, B) => [
   A[0] * B[0] + A[2] * B[1], A[1] * B[0] + A[3] * B[1],
@@ -226,8 +253,13 @@ function stitchParams(t) {
 //
 // IMPORTANT: satin fonts carry authored running-stitch paths too (montecarlo
 // 646, cats 837), which EMB-Bot has always dropped. Honouring them would add
-// stitches to all 62 shipped fonts — a change to every existing customer
-// design, and Kent's call, not this change's. So stripRunParamsIfSatin() below
+// stitches to satin fonts that carry such paths — up to the 66 of 85 that have
+// satin columns at all; the exact number is NOT determinable from the built
+// output, because a stripped param and a never-authored one both leave a bare
+// point array, so it needs the scratch_ink/ SVG sources. That is a change to
+// existing customer designs either way, and Kent's call, not this change's.
+// (This read "all 62 shipped fonts" until 2026-08-22 — the library size when
+// it was written, and wrong on both the count and the scope.) So stripRunParamsIfSatin() below
 // removes these params again for any font that has satin columns, keeping
 // those fonts byte-identical on rebuild. Only genuinely runs-only fonts keep
 // the params and become stitchable.
@@ -245,29 +277,37 @@ function runFrom(poly, sp, i) {
 }
 
 // --- iterate every glyph layer ---
-function paths(layer) {
-  const out = []; const re = /<path\b[\s\S]*?\/>/g; let m;
-  while ((m = re.exec(layer))) { const t = m[0]; const dq = t.match(/\sd="([^"]*)"/); if (!dq) continue; out.push({ d: dq[1], satin: /satin_column="True"/i.test(t), running: /running_stitch_length_mm/i.test(t) && !/satin_column="True"/i.test(t), sp: stitchParams(t) }); }
-  return out;
-}
-
-// Transform-aware variant of paths() for the ltr/-dir layout: walk the layer's
-// g/path tags keeping a matrix stack (the glyph layer's OWN transform counts —
-// sunset puts one on every layer), apply the composed transform to each path's
-// points, and skip what Ink/Stitch itself never stitches:
+// THE path walk, for BOTH layouts. There used to be a second, simpler paths()
+// that read `d` and ignored transforms entirely, used for every single-ltr.svg
+// font; it was removed 2026-08-22 when that omission turned out to be
+// destroying glyphs (see the call site). Do not reintroduce a non-transform
+// -aware fast path: reading `d` alone is only correct for a glyph whose
+// coordinates are baked in, and nothing about a font guarantees that.
+//
+// Walk the layer's g/path tags keeping a matrix stack (the glyph layer's OWN
+// transform counts — sunset puts one on every layer), apply the composed
+// transform to each path's points, and skip what Ink/Stitch itself never
+// stitches:
 //   - pattern-marker paths (marker*:url(#inkstitch-pattern-marker...)) — they
 //     texture a satin column, they are not stitch geometry (mai_en_fleur has
 //     ~17 per glyph; imported as runs they'd scribble over the flowers);
 //   - display:none paths — lettering command connectors (sunset's "Position
 //     de fin" groups) are hidden hairlines, not stitches.
-// Satin detection and toColumn() downstream are IDENTICAL to the single-file
-// path — this function only changes which coordinates the columns see.
+// Satin detection and toColumn() downstream are unchanged — this function only
+// decides which coordinates the columns see.
 function pathsTf(layer) {
   const out = []; const re = /<\/?(?:g|path)\b[\s\S]*?>/g; let m;
   const stack = [M_ID];
   while ((m = re.exec(layer))) {
     const t = m[0];
-    if (t[1] === "/") { if (stack.length > 1) stack.pop(); continue; }
+    // Pop for </g> ONLY. This tested `t[1] === "/"`, which fires on any closing
+    // tag — and only <g> ever pushes, so a non-self-closed <path>…</path> popped
+    // a frame it never pushed, silently un-applying its parent group's
+    // transform for every following sibling. Dormant across the upstream
+    // library (every file self-closes its paths) and fixed here rather than
+    // left as a trap for the next font that does not.
+    if (/^<\/g\b/.test(t)) { if (stack.length > 1) stack.pop(); continue; }
+    if (t[1] === "/") continue; // </path> — nothing to do
     const selfClosed = /\/>$/.test(t);
     const tfm = t.match(/\stransform="([^"]*)"/);
     const M = tfm ? mmul(stack[stack.length - 1], parseTransform(tfm[1])) : stack[stack.length - 1];
@@ -304,17 +344,29 @@ for (const file of svgFiles) {
     if (end < 0) continue;
     const layer = svg.slice(g0, end);
     const cols = [], runs = [];
-    if (dirLayout) {
-      for (const p of pathsTf(layer)) {
-        if (p.satin && p.subs.length >= 2) cols.push(toColumn(p.subs));
-        else if (p.subs.length) p.subs.forEach((s, i) => runs.push(runFrom(s, p.sp, i)));
-      }
-    } else {
-      for (const p of paths(layer)) {
-        const subs = parsePath(p.d);
-        if (p.satin && subs.length >= 2) cols.push(toColumn(subs));
-        else if (subs.length) subs.forEach((s, i) => runs.push(runFrom(s, p.sp, i)));
-      }
+    // ALWAYS the transform-aware walk, both layouts (2026-08-22). This was
+    // gated on dirLayout, so every single-`ltr.svg` font — most of the library
+    // — went through paths(), which ignores transforms outright.
+    //
+    // That is fine for a glyph whose coordinates are baked into its `d`, and
+    // catastrophic for one that places repeated geometry BY transform.
+    // mimosa_large is a dot-matrix face and does both: its "A" carries 38
+    // distinct `d` values and no transforms and imports perfectly, while its
+    // "D" carries ONE `d` — a single dot — repeated 38 times with 38 different
+    // transforms. Dropping those stacked all 38 dots on one spot, so "D" sewed
+    // 6,193 stitches into 40.0 x 0.0 mm against a healthy glyph's 996 in
+    // 40.0 x 60.1 mm: a needle hammering one line thousands of times.
+    //
+    // pathsTf was already documented as "IDENTICAL downstream — this function
+    // only changes which coordinates the columns see", so this is the narrow
+    // fix. It also picks up two behaviours paths() lacked and Ink/Stitch itself
+    // has: pattern-marker paths and display:none paths are skipped. Note the
+    // display:none check applies to PATH tags only — glyph LAYERS are routinely
+    // display:none (164 of mimosa_large's 165 are; Inkscape shows one at a
+    // time), and skipping those would empty the library.
+    for (const p of pathsTf(layer)) {
+      if (p.satin && p.subs.length >= 2) cols.push(toColumn(p.subs));
+      else if (p.subs.length) p.subs.forEach((s, i) => runs.push(runFrom(s, p.sp, i)));
     }
     if (!cols.length && !runs.length) continue;
     let advance = (meta.horiz_adv_x && meta.horiz_adv_x[ch] != null) ? meta.horiz_adv_x[ch] : meta.horiz_adv_x_default;
@@ -388,6 +440,11 @@ const outObj = {
   advSpace: meta.horiz_adv_x_space != null ? meta.horiz_adv_x_space : Math.round(0.3 * meta.units_per_em),
   kerning: meta.kerning_pairs || {}, glyphCount: count, glyphs,
   ...(crossGrid ? { crossGrid } : {}),
+  // Emitted ONLY for right-to-left fonts, so every existing font.json stays
+  // byte-identical. Trust the variant file over font.json's own
+  // text_direction: the file that actually holds the glyphs is the fact, and
+  // one upstream font declares a direction its variant does not match.
+  ...(isRtl || meta.text_direction === "rtl" ? { dir: "rtl" } : {}),
 };
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, JSON.stringify(outObj));

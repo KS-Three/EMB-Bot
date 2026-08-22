@@ -33,12 +33,12 @@ where the bodies are buried.
 ## Binary font library (Slice 10 Stage A, 2026-07-27)
 
 The Studio's fonts live in `src/fonts/manifest.json` + `src/fonts/bin/*.embf`
-(**55 fonts** as of 2026-08-04, after the 4 license-audit pulls below and the
-same-day removal of all 13 ShareAlike fonts (Kent's call — see the audit
-doc's §9; removal made the paid launch independent of the CC-BY-SA legal
-question, and the lawyer brief is now the optional restore path) —
-previously drifted to 72 without this doc being updated; don't trust either
-number without recounting `manifest.json`), lazily fetched per font by
+(**85 fonts** as of 2026-08-22; was 55 after the 2026-08-04 licence-audit pulls
+and the same-day removal of all 13 ShareAlike fonts (Kent's call — audit §9;
+removal made the paid launch independent of the CC-BY-SA question, and the
+lawyer brief is the optional restore path), then grew through the 2026-08-21/22
+upstream sweeps — this number has drifted twice without the doc being updated,
+so don't trust it without recounting `manifest.json`), lazily fetched per font by
 `app/src/lib/fontLoader.js`. The
 old eager `src/fonts/satin-fonts.js` is OUT of the Studio pipeline but still
 used by legacy `EMB-Bot.html` — do not delete it. **Its audit ran 2026-08-04**
@@ -56,6 +56,19 @@ font there unless it is also in the shipping manifest. `EMB-Bot-standalone.html`
   for all 21 original fonts — it must stay green through any codec change.
   Acceptance evidence (0.00–1.07% stitch drift, visually cleared):
   `docs/superpowers/notes/2026-07-27-embf-acceptance.md`.
+- **Two builds from one tree.** `node tools/build-embf.mjs` writes the
+  **sellable** library (85 fonts, everything inside `ALLOWED_LICENSES`).
+  `node tools/build-embf.mjs --personal` writes Kent's private library (120
+  fonts, adding ShareAlike / NC / GPL / pulled) to `bin-personal/` +
+  `manifest-personal.json` — both gitignored, so a fresh clone or CI cannot
+  produce a build containing them. The split is at BUILD time on purpose: a
+  runtime toggle is not a distribution boundary. `copy-engine.mjs` serves the
+  personal build when it exists and says so loudly. `--personal` also writes
+  `previews-personal/` and `licenses-personal/` (both gitignored, and they must
+  stay that way — a preview is a RENDER of the font, so publishing one for a
+  ShareAlike/NC face is the distribution the split exists to prevent);
+  `copy-engine` OVERLAYS them on the committed ones. Run
+  `node tools/build-previews.mjs --personal` after a personal rebuild.
 - **Rebuild**: `node tools/build-embf.mjs`. Requires `scratch_ink/`
   (gitignored): `_tiers.json` (tier classification) + `_out/*.json` (trial
   imports). Recreate `scratch_ink/` by copying from the master
@@ -92,10 +105,41 @@ font there unless it is also in the shipping manifest. `EMB-Bot-standalone.html`
   and broke fonts only in the live browser (tests preload differently and
   stayed green). Keep all three in sync; legacy `EMB-Bot.html` is a separate,
   fourth list that stays on the old registry.
-- **Classifier gap**: tier classification counts satin columns per FILE, not
-  per GLYPH. A font can classify as satin while its letters are runs-only
-  (that's exactly what ondulamarif_XL was). If a font generates 0 stitches,
-  check per-glyph `cols` first.
+- **Classifier gap — FIXED, and then found to have a second half.**
+  `qc-font.mjs` now counts stitchability per LETTER GLYPH, not per file, so a
+  font whose letters are runs-only no longer classifies as satin (that was
+  ondulamarif_XL). The second half, found 2026-08-22: the check asks "does this
+  letter produce stitches", which a glyph can pass while rendering as a STUB.
+  Four shipped fonts did, and the cause was `build-font` dropping SVG transforms
+  (next bullet). `qc-font.mjs` warns on letters under 0.45x their case-median
+  height and `test/font-stunted.test.js` guards it; the library is currently
+  clean. **If a font looks wrong, render it — do not trust the QC line.**
+- **`build-embf` RUNS the tier gate** (since 2026-08-22). A `qcFont` hard fail
+  excludes a font from the sellable build; `--personal` warns and keeps. Before
+  this the gate was enforced only by a test over the 17 static `src/fonts/*.json`
+  sources, so the 68 fonts arriving via `scratch_ink/_out` were QC'd by nothing.
+- **Unsupported characters are REPORTED, not swallowed.** The lettering path
+  skips a character the font has no glyph for; `buildLetteringDesign` returns
+  `unsupported` (source order, deduplicated) and `generateAll` carries it per
+  element, so the field can say "This font can't stitch …" instead of sitting
+  empty. If you add a code path that builds lettering, pass it through.
+- **Watch for Latin assumptions when touching font tooling.** Adding Hebrew
+  found three, all silent: `build-previews`' sample-text fallback, the personal
+  build's `sewsAnything()` gate, and the lettering path's character skipping.
+  A helper that filters on `[A-Za-z0-9]` is the smell.
+- **Text direction.** A font imported from `rtl.svg` carries `dir: "rtl"`, and
+  `satinfont.layoutText` walks that line's characters in reverse so the FIRST
+  logical character lands rightmost. `charIdx` deliberately stays logical, since
+  it exists to map a `<textarea>` selection onto glyphs. Hebrew needs nothing
+  more (no contextual forms). **Arabic is NOT supported** and must not be added
+  by simply importing it: its letters need initial/medial/final/isolated forms
+  and must join, so unjoined output is wrong text, not plain text.
+- **SVG transforms are applied for BOTH layouts** (`pathsTf`, since 2026-08-22).
+  There used to be a second walk that ignored them, used for every
+  single-`ltr.svg` font. A glyph that places repeated geometry by transform —
+  `mimosa_large`'s "D" is one dot with 38 transforms — collapsed onto a point
+  and sewed 6,193 stitches into 0 mm of height. Do not reintroduce a
+  non-transform-aware fast path.
 - ~~Known perf item for Stage B: opening the font dropdown lazily fetches ALL
   fonts for thumbnails (~30 MB).~~ **FIXED in Stage B:** the font browser
   grid uses committed preview PNGs (`src/fonts/previews/`, regenerate with
@@ -575,15 +619,16 @@ doc; run the suite for today's number and judge the run by its expected
 failure classes instead (precedent: fb2cc18, which dropped the hard-coded
 `tools/` script count the same way). Engine and Studio suites are expected
 CLEAN — engine verified clean 2026-08-17, Studio 2026-08-11 — so any
-failure in those two is a regression, full stop. The digitizer's two
-expected failure classes are documented below the command block.
+failure in those two is a regression, full stop. The digitizer's three
+expected failure/skip classes are documented below the command block.
 
 **CI now exists.** `.github/workflows/python-package-conda.yml` (PR #37
 rewrote Kent's initial stock conda template to run the three commands
 below for real) runs on every push and pull request — **four** jobs, engine
-/ studio / digitizer / studio-e2e, the digitizer job deselecting **five**
+/ studio / digitizer / studio-e2e, the digitizer job deselecting **three**
 golden tests by node ID (CI's OWN list, not the same set that fails on
-Kent's Windows machine — see the failure classes below). Every PR needs its
+Kent's Windows machine — see the failure classes below). It was five until
+2026-08-22, when the remove-and-see check below was finally run. Every PR needs its
 Actions run green in addition to a local pass before merging.
 
 **The `runner_id: 0` outage is OVER — do not merge past a red check on its
@@ -629,13 +674,18 @@ failures are EXPECTED:
    re-captured. The concrete per-machine set lives in ONE place — the
    MASTER_SCOPE "Gotchas" matrix ("The golden divergence is PER-FIXTURE,
    not per-platform") — with cause detail in
-   `docs/pro-parity-real-art-2026-08-15.md` §0b. CI deselects five node
+   `docs/pro-parity-real-art-2026-08-15.md` §0b. CI deselects THREE node
    IDs (list + rationale in `.github/workflows/python-package-conda.yml`);
-   those deselected tests never RUN on CI, so their ubuntu-latest behavior
-   is inferred from the deselects' history, not measured — the workflow
-   comment's remove-and-see check is standing and unowned. A golden
-   failure outside the matrix's expected cell is a REAL regression, not
-   this note being stale.
+   it was five until 2026-08-22, and this sentence said "five" for hours
+   after the workflow said three.
+   **The remove-and-see check is no longer unowned — it was run 2026-08-22.**
+   On Linux with the digitizer job's exact Python (3.12) and requirements.txt
+   pinned exactly, two of the five deselects (`logo_alpha.png` on the flat-lane
+   and photo-dispatch goldens) PASS and three FAIL; the same split holds on
+   3.13, so it is not version skew. Those two are now removed from the
+   workflow, restoring the coverage they were costing, and the list is three.
+   A golden failure outside the matrix's expected cell is a REAL regression,
+   not this note being stale.
 
 2. **OCR tests skip when the `tesseract` binary is not on PATH — except on
    CI, where a missing binary fails loud.** `textcluster.py`'s
@@ -663,7 +713,33 @@ failures are EXPECTED:
    `textcluster.py`, `stage6_satin.py`'s skeleton helpers, or
    `shapefield.py`. Cheaper than a CI round trip.
 
-Anything red outside those two classes is unexplained and yours to chase.
+3. **Three MORE tests skip for reasons that are NOT tesseract, so a local
+   run shows 8 skips and not 5.** Measured 2026-08-22 by grouping every
+   skip reason in a full `-rs` run, because the count not matching this
+   section's only documented skip class is the kind of small discrepancy a
+   session burns twenty minutes on:
+
+   | count | file | reason |
+   |---|---|---|
+   | 5 | `test_ocr_gate` / `test_ocr_suggest` / `test_pipeline` / `test_service` | tesseract binary off PATH (class 2 above) |
+   | 2 | `test_background_removal.py` | the isolated rembg venv is not built — `digitizer/rembg_isolated/README.md` |
+   | 1 | `test_photo_prep.py` | opencv-**contrib** IS installed, so the no-contrib fallback branch cannot fire |
+
+   The last one inverts the usual reading: it skips because the environment
+   is MORE complete, not less. It is half of a deliberate either/or pair in
+   `test_photo_prep.py` — `..._without_contrib_falls_back_to_bilateral` and
+   `..._with_contrib_takes_the_real_path` carry opposite `skipif`s, so
+   exactly one of the two always runs and neither is ever a provisioning
+   gap. What it means in practice: on a box pinned to `requirements.txt`
+   (which brings contrib) you are testing the real rolling-guidance path,
+   and the bilateral fallback is untested by construction — verified at
+   source 2026-08-22, not inferred from the skip string.
+
+   To re-derive this list rather than trusting it:
+   `python -m pytest tests/ -q -n auto -rs 2>&1 | grep '^SKIPPED' | sed 's/:[0-9]*:/: /' | sort | uniq -c`
+
+Anything red outside class 1 is unexplained and yours to chase, and any
+skip outside classes 2-3 is a new one — chase that too.
 Runtime: 21:34 serial, measured 2026-08-17 on Kent's machine — which is
 why the command above carries `-n auto`: pytest-xdist is pinned in
 `requirements.txt`, and parallel runs are verified to produce the
@@ -715,9 +791,18 @@ and controllable to the user.
   - `satinplay.js` / `satinfont.js` / `satin.js` — satin column generation.
     `satinplay.js`'s `emitZigzag` + `satinFromRails` is the current quality
     lever for lettering (rails+rungs → clean zigzag, not auto-skeletonized).
+    `satinfont.js` also routes bean/running-stitch runs, but ONLY at a length
+    the font itself authored — gate 1 bars inventing one, so a run without a
+    length is skipped, not defaulted.
+  - `crossfill.js` — cross-stitch fill for pixel-art lettering fonts. Written
+    from first principles, NOT ported: Ink/Stitch's is GPL-3.0 and this product
+    is sold. The grid is MEASURED from the glyph outlines, in glyph units, so
+    no physical constant is chosen. Must load BEFORE `satinfont.js`, and like
+    every engine file it needs registering in all THREE places (see
+    "Engine-file lists live in THREE places" in the font-library section).
   - `fabrics.js` — 7 fabric presets driving pull-comp/underlay/density/trim.
   - `flatten.js` — medianCut → modeFilter → absorbSmallRegions pipeline.
-  - `fonts/` — pre-digitized satin font library: `manifest.json` (55
+  - `fonts/` — pre-digitized font library: `manifest.json` (85
     shipping fonts) + `bin/*.embf` binaries + per-font JSON sources and
     `.LICENSE.txt` sidecars, parsed offline from Ink/Stitch's open-source
     font set. (The old "14 fonts" count here was the legacy eager registry
