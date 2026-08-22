@@ -623,9 +623,18 @@ def _order_cost(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
 
     Only travel is returned, not total stitches: every order sews the SAME fill
     penetrations, so travel is the entire stitch difference between two orders.
+
+    Travel is counted as the POINTS `emit` will actually append (`bridge[:-1]`),
+    NOT as `length / TRAVEL_STITCH_MM`. Those are not the same number and the
+    difference is not small: `travel_path` densifies each leg of a ring route
+    separately, so a route hugging a many-segmented ring emits far more
+    penetrations than its length implies. Estimating by length undercounted
+    `photo_sunset_backlit.png` by 2.5x (213 predicted against 539 real), which
+    silently turned an apparent 22.9 st/cut trade into roughly 57 and let a
+    design regress through a cap that was doing its job perfectly.
     """
     cuts = 0
-    travel_mm = 0.0
+    travel_stitches = 0
     cur = entry
     for path in paths:
         if not path:
@@ -636,10 +645,9 @@ def _order_cost(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
                 if math.dist(cur, path[0]) > trim_at_mm:
                     cuts += 1
             else:
-                travel_mm += sum(math.dist(bridge[i - 1], bridge[i])
-                                 for i in range(1, len(bridge)))
+                travel_stitches += max(0, len(bridge) - 1)
         cur = path[-1]
-    return cuts, travel_mm / machine.TRAVEL_STITCH_MM
+    return cuts, float(travel_stitches)
 
 
 def _score(cost: tuple[int, float]) -> float:
@@ -663,10 +671,21 @@ def _reorder_for_fewer_cuts(paths: list[list[tuple[float, float]]], poly: Polygo
     WORSE: where a shape's boundaries are naturally sub-`trim_at_mm`, the
     distance-greedy walk keeps hops short enough that a failed travel becomes a
     silent jump rather than a cut, and chasing reachability lands somewhere both
-    far and unroutable. Ties keep the incoming order, so **a shape can only
-    improve or stay identical on the combined score** — Kent's per-design
-    never-worse guarantee (2026-08-21) follows by summation over its shapes,
-    since each shape's contribution is non-increasing.
+    far and unroutable. Ties keep the incoming order, so a shape can only
+    improve or stay identical on its own combined score.
+
+    **The last path is pinned, and that is what makes the guarantee a DESIGN-level
+    one.** Per-shape non-worsening does NOT imply per-design non-worsening on its
+    own: `fill_region` hands the next shape `runs[-1].points[-1]` as its `entry`,
+    so reordering this shape moves where the needle finishes and silently changes
+    the NEXT shape's cost — outside the comparison that approved this one. That
+    was not theory: `photo_sunset_backlit.png` regressed +511 stitches for 17
+    trims (30.1 st/trim) with every individual shape passing a 25 st/trim cap,
+    which is arithmetically impossible unless some shape gained stitches for zero
+    trims. Reordering everything EXCEPT the final path, then re-appending it
+    unflipped, leaves the exit point byte-identical to the incoming order — so
+    downstream shapes see exactly what they saw before, and per-design
+    never-worse (Kent's call, 2026-08-21) follows by summation for real.
 
     Skipped when the incoming order already cuts nothing: there is no cut to buy,
     and every such shape then pays nothing for this.
@@ -680,7 +699,10 @@ def _reorder_for_fewer_cuts(paths: list[list[tuple[float, float]]], poly: Polygo
     if before[0] == 0:
         return paths                     # nothing to win; do not pay for the walk
 
-    remaining = set(range(len(paths)))
+    # Everything but the last path is free to move; the last is pinned so the
+    # shape exits exactly where it did before (see docstring).
+    pinned = len(paths) - 1
+    remaining = set(range(pinned))
     order: list[int] = []
     flipped: set[int] = set()
     cur = entry
@@ -712,7 +734,9 @@ def _reorder_for_fewer_cuts(paths: list[list[tuple[float, float]]], poly: Polygo
 
     # Reversing a path sews the same penetrations in the other direction — the
     # holes land in identical places, so this changes travel, never placement.
+    order.append(pinned)
     candidate = [paths[j][::-1] if j in flipped else paths[j] for j in order]
+    assert candidate[-1][-1] == paths[-1][-1], "exit point must be unchanged"
     after = _order_cost(candidate, poly, ring, slack, entry, trim_at_mm)
     return candidate if _score(after) < _score(before) else paths
 
