@@ -48,5 +48,12 @@ Professional reference: `HOTEL_FREMONT_.DST` (Wilcom), decoded with pystitch
 per CLAUDE.md's no-new-client-artwork-without-asking rule) — this was a
 one-session comparison, source stays in the upload, not `testdata/`.
 
+**UPDATE 2026-08-22 — this fixture is UNREPRESENTATIVE of client work.** Its
+46-hole perforated white field drove a session of fill-side trim work that
+turned out to be **byte-identical on all six real client logos**. Real logos
+carry 1–3 fill shapes that essentially never cut; this one is the exception, not
+the type. Use it to reproduce a defect, never to size how much a fix is worth.
+Detail: [[real-artwork-trim-truth]].
+
 See also [[satin-extremity-drop-and-coverage-check]] and
 [[real-artwork-parity]].
