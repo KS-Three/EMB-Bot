@@ -73,7 +73,14 @@ function deadGlyphs(font) {
     .sort();
 }
 
+// Decoding 85 binaries costs about a second, and every test here needs the
+// whole library — memoised so four tests do not pay it four times.
+let _all;
 function loadAll() {
+  if (_all !== undefined) return _all;
+  return (_all = loadAllUncached());
+}
+function loadAllUncached() {
   // src/fonts/bin/ is COMMITTED. On CI a missing library means the build did
   // not run — not that there is nothing to check — and a test that returns
   // early asserts nothing while reporting green.
@@ -117,7 +124,18 @@ test("the register is real — a glyph that started stitching must come off the 
     "these now stitch — drop them from KNOWN_DEAD so the register keeps meaning something");
 });
 
-test("the engine REPORTS them, which is the half the user actually sees", () => {
+// The rule above is a THIRD copy of "does this glyph sew" — the engine has one
+// (satinfont.js `sewsSomething`) and qc-font has one (`stitchable`). Three
+// copies with comments telling each other to stay in sync is exactly the setup
+// that let CI's deselect count go stale in two places within hours of my
+// changing it, so this asserts they agree instead of asking them to.
+//
+// Deriving the whole census from the engine would be more truthful still, but
+// it costs 10.6s over 85 fonts against ~0 for the static rule. Scoped to the
+// population where the two rules could actually disagree — every font with a
+// recorded dead glyph, plus clean controls — it costs 0.6s and catches the
+// same divergence.
+test("the ENGINE agrees, glyph for glyph, on every font with recorded debt", () => {
   const all = loadAll();
   if (!all) return;
   for (const m of ["units", "garments", "fabrics", "fill", "geometry", "satin",
@@ -125,11 +143,53 @@ test("the engine REPORTS them, which is the half the user actually sees", () => 
     require("../src/" + m + ".js");
   const EMB = globalThis.EMB;
   const byKey = new Map(all);
-  // A census that nobody surfaces is just a list. Pin the actual user-visible
-  // behaviour for one case from each class — a digit, a letter, punctuation.
+
+  // What layoutText itself says is unstitchable, asked over every glyph the
+  // font has. Chunked because one string of 470 glyphs is not a realistic
+  // layout and the point is the verdict, not the line.
+  const engineVerdict = (font) => {
+    const chars = Object.keys(font.glyphs).filter((k) => [...k].length === 1 && k !== " ");
+    const dead = new Set();
+    for (let i = 0; i < chars.length; i += 40) {
+      const lay = EMB.layoutText(font, chars.slice(i, i + 40).join(""), { emMm: 20, pxPerMm: 8 });
+      for (const c of lay.unsupported || []) dead.add(c);
+    }
+    return [...dead].sort();
+  };
+
+  for (const [key, chars] of Object.entries(KNOWN_DEAD)) {
+    const font = byKey.get(key);
+    if (!font) continue; // pulled from the library
+    assert.deepStrictEqual(engineVerdict(font), [...chars].sort(),
+      `${key}: the engine's own verdict differs from this file's rule — one of the ` +
+      `three copies of "does this glyph sew" has drifted (satinfont.js sewsSomething, ` +
+      `qc-font.mjs stitchable, and sews() above)`);
+  }
+
+  // Controls, so "the engine reports nothing" cannot pass this by being true
+  // everywhere: a satin font, a runs-only font, and the Hebrew face.
+  for (const key of ["mimosa_large", "noble", "hebrew_font_large"]) {
+    const font = byKey.get(key);
+    if (!font) continue;
+    assert.deepStrictEqual(engineVerdict(font), [],
+      `${key} has no recorded dead glyphs, so the engine must not find any either`);
+  }
+});
+
+// The census is a list until something surfaces it. Pin the actual
+// user-visible behaviour for one case from each class — a digit, a letter,
+// punctuation — as ordinary text someone would really type.
+test("typing them produces a report, which is the half the user actually sees", () => {
+  const all = loadAll();
+  if (!all) return;
+  for (const m of ["units", "garments", "fabrics", "fill", "geometry", "satin",
+                   "satinplay", "satinfont", "fontbin", "dst", "fonts", "digitize"])
+    require("../src/" + m + ".js");
+  const EMB = globalThis.EMB;
+  const byKey = new Map(all);
   for (const [key, text, want] of [
     ["western_light", "2024", ["4"]],
-    ["western_light", "façade", ["ç"]],
+    ["western_light", "fa\u00e7ade", ["\u00e7"]],
     ["roaring_twenties_KOR", "A-B", ["-"]],
   ]) {
     const font = byKey.get(key);
