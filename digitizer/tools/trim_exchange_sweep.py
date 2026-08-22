@@ -57,8 +57,10 @@ from digitizer_core.pipeline import digitize  # noqa: E402
 TRIM_STITCH_EQUIVALENT = 25.0
 
 
-def sweep(tag: str, max_colors: int, width_mm: float | None) -> None:
-    pats = ("testdata/photo/*.png", "testdata/photo/*.webp", "testdata/photo/*.jpg")
+def sweep(tag: str, max_colors: int, width_mm: float | None,
+          globs: list[str] | None = None) -> None:
+    pats = globs or ("testdata/photo/*.png", "testdata/photo/*.webp",
+                     "testdata/photo/*.jpg")
     for f in sorted(p for pat in pats for p in glob.glob(str(ROOT / pat))):
         name = os.path.basename(f)
         kw = {"max_colors": max_colors}
@@ -125,10 +127,15 @@ def main() -> None:
     ap.add_argument("--max-colors", type=int, default=6)
     ap.add_argument("--width-mm", type=float, default=None,
                     help="override target_width_mm; default leaves the config default")
+    ap.add_argument("--glob", action="append", default=None, metavar="PATTERN",
+                    help="fixture glob relative to digitizer/, repeatable. Default is "
+                         "testdata/photo/*. Use testdata/reference/*.jpg for the real "
+                         "client artwork, which is where synthetic fixtures were "
+                         "measured flattering the engine by 11.3 points (2026-08-16).")
     args = ap.parse_args()
     if args.diff:
         raise SystemExit(diff(*args.diff))
-    sweep(args.tag, args.max_colors, args.width_mm)
+    sweep(args.tag, args.max_colors, args.width_mm, args.glob)
 
 
 if __name__ == "__main__":

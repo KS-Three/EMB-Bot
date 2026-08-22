@@ -2535,3 +2535,52 @@ only by instrumenting `_row_spans` itself with a stack trace, which named
 `best_fill_angle_deg:259` rather than `_fill_paths:787`. **Testing the call site
 you assume is the one is how three of those turns were wasted**; instrument the
 failing function and let it tell you who called it.
+
+### Real-artwork validation of the trim work: it is INERT on client logos (2026-08-22)
+
+Kent asked for the path-order selector (PR #205, +143 trims across the committed
+photo corpus) to be checked against real artwork rather than synthetic fixtures.
+Checked, against all six real-artwork fixtures in the repo — the four
+`testdata/reference/becker_*.jpg` client logos plus `becker_marine_logo.png` and
+`logo_script_tires.png`.
+
+**Result: zero difference. Byte-identical trims and stitches on all six.**
+Reproduce with
+`trim_exchange_sweep.py --glob 'testdata/reference/*.jpg' --diff before after`.
+
+Why, measured per fixture:
+
+| fixture | fill shapes | with cuts | reorder accepted | holed regions |
+|---|---|---|---|---|
+| `becker_chest_small…` | 3 | 0 | 0 | 1 |
+| `becker_hat_polo_large…logo_hat` | 1 | 0 | 0 | 4 |
+| `becker_hat_polo_large…logolc` | 3 | **1** | 0 | 5 |
+| `becker_hat_small…` | 3 | 0 | 0 | 1 |
+| `becker_marine_logo.png` | 2 | 0 | 0 | 5 |
+| `logo_script_tires.png` | 1 | 0 | 0 | 1 |
+
+Real client logos carry **1–3 fill shapes each and essentially no cutting
+fills.** They are predominantly satin — lettering and borders. They *do* have
+holed regions (1–5 each), but those fills do not fragment into the many
+travel-stranded columns the selector exists to reorder. Exactly one shape across
+all six designs had any cuts at all, and there the incoming order was already
+the cheaper of the two.
+
+**What this does and does not mean.**
+
+- It does NOT retract PR #205. The +143 trims on the photo corpus are real, and
+  the change is byte-identical here, so it carries **zero risk** on this class of
+  work.
+- It DOES mean the headline number is about photo-lane and large-fill designs,
+  not about the logo work this shop actually sews. Anyone quoting "+143 trims"
+  as a customer-visible win is over-claiming.
+- It is the 2026-08-16 handoff's warning **in reverse**: there, synthetic
+  fixtures flattered the ENGINE by 11.3 points; here they flatter a FIX. The
+  committed photo corpus is not representative of real client artwork in either
+  direction, and a result measured only there needs this caveat attached.
+
+**Follow-on this suggests, unsized:** if real logo work is satin-dominated and
+barely fills, then fill-side trim work has a low ceiling on it regardless of
+mechanism, and `logo_hotel_fremont`-style perforated fields are the exception
+rather than the type. Satin-side trim behaviour is where the customer-visible
+gain would have to come from. Not measured.
