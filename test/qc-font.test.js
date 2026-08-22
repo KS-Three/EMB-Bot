@@ -168,3 +168,72 @@ test("a Latin font is judged exactly as before — the fallback must not engage"
   assert.strictEqual(r.pass, true);
   assert.ok(!r.findings.some((s) => /no Latin alphabet/.test(s)));
 });
+
+// --- runs-only fonts were invisible to the height-based checks (2026-08-22) ---
+//
+// glyphHeight measured `cols` only, so on the 19 runs-only (bean/running-
+// stitch) faces every height came back null and BOTH height checks — the
+// runaway-bbox one and the stunted one — silently measured nothing while
+// qc-font reported the font clean. Verified against the pre-fix tool: a glyph
+// flattened onto a line and a run marooned 900 units off the letter both came
+// back with no finding at all.
+//
+// The channels are chosen per font, never merged: a satin font's runs are
+// accents and are not even stitched, so merging would let a full-height accent
+// mask a collapsed column — which is the mimosa_large defect exactly.
+function runsOnlyFont() {
+  const glyphs = {};
+  // A plain vertical stroke per letter, with the authored length that makes a
+  // run actually stitch (see runFrom in tools/build-font.mjs).
+  for (const ch of "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
+    glyphs[ch] = { adv: 10, cols: [], runs: [{ pts: [[0, 0], [0, 10]], lenMm: 2 }] };
+  return { name: "Runs Only", license: "OFL", unitsPerEm: 100, sizeMm: 20, advDefault: 10, glyphs };
+}
+
+test("a healthy runs-only font is clean", async () => {
+  const { qcFont } = await import("../tools/qc-font.mjs");
+  const r = qcFont(runsOnlyFont());
+  assert.strictEqual(r.pass, true);
+  assert.deepStrictEqual(r.findings, [], "a well-formed runs-only font must not warn");
+});
+
+test("a collapsed glyph in a RUNS-ONLY font is caught, not skipped", async () => {
+  const { qcFont } = await import("../tools/qc-font.mjs");
+  const f = runsOnlyFont();
+  f.glyphs["E"].runs = [{ pts: [[0, 5], [3, 5]], lenMm: 2 }]; // zero height
+  const r = qcFont(f);
+  assert.ok(r.findings.some((s) => /stunted/.test(s) && /"E"/.test(s)),
+    `expected a stunted finding naming "E"; got: ${r.findings.join("; ") || "(nothing)"}`);
+});
+
+test("a letter with NO geometry at all is a finding, not a silent skip", async () => {
+  const { qcFont } = await import("../tools/qc-font.mjs");
+  const f = goodFont();
+  f.glyphs["E"] = { adv: 10, cols: [], runs: [{ pts: [[0, 0], [0, 10]], lenMm: 2 }] };
+  const r = qcFont(f);
+  // It still stitches (the run carries a length), so the stitchability check
+  // passes it — which is the whole reason the height check has to say something.
+  assert.ok(r.findings.some((s) => /stunted/.test(s) && /"E"/.test(s) && /no geometry/.test(s)),
+    `expected a "no geometry" stunted finding for "E"; got: ${r.findings.join("; ") || "(nothing)"}`);
+});
+
+test("a marooned run in a RUNS-ONLY font trips the bbox check", async () => {
+  const { qcFont } = await import("../tools/qc-font.mjs");
+  const f = runsOnlyFont();
+  f.glyphs["F"].runs = [{ pts: [[0, 0], [0, 10], [0, -900]], lenMm: 2 }];
+  const r = qcFont(f);
+  assert.ok(r.findings.some((s) => /bbox/.test(s) && /"F"/.test(s)),
+    `expected a bbox finding naming "F"; got: ${r.findings.join("; ") || "(nothing)"}`);
+});
+
+test("a satin font's runs are NOT measured as its skeleton", async () => {
+  const { qcFont } = await import("../tools/qc-font.mjs");
+  const f = goodFont();
+  // Every letter keeps its full-height column; add a short accent run to each.
+  // Measuring runs here would call the whole alphabet stunted.
+  for (const ch of "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+    f.glyphs[ch] = { adv: 10, cols: f.glyphs[ch].cols, runs: [[[0, 9], [1, 9.2]]] };
+  const r = qcFont(f);
+  assert.ok(!r.findings.some((s) => /stunted/.test(s)),
+    `accents must not be mistaken for the letter skeleton; got: ${r.findings.join("; ")}`);
+});
