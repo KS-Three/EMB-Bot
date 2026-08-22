@@ -2686,3 +2686,63 @@ against a large cost:
 which point the entry-trim cost of splitting falls and the arithmetic changes.
 Recorded so the next session sizes it from these numbers rather than rebuilding
 the measurement.
+
+### Satin travel fails at the CURSOR, not the target — and that is gate-clear (2026-08-22)
+
+The satin-side counterpart to the fill work, measured on real client artwork
+because that is where satin dominates (1–3 fill shapes per logo, 9–40 satin
+runs).
+
+**First, a stale claim corrected.** `docs/fragmentation-attribution-2026-08-18.md`
+§2 says `_graph_travel` "never returns a path". Measured over 124 calls on six
+real-artwork fixtures, it returns one **18–30% of the time** (0% on one small
+fixture). Not never.
+
+**A hypothesis of mine, refuted before it reached a doc.** `_graph_travel` walks
+only UNSEWN spines, so the obvious theory is that the web is progressively
+consumed and late travels fail. Measured, it is backwards:
+
+| web already sewn | calls | succeeded |
+|---|---|---|
+| **nothing sewn at all** | **37** | **0 (0%)** |
+| 0–20% | 112 | 27 (24%) |
+| 20–40% | 12 | 0 |
+
+With the entire web available, travel fails every time. Consumption cannot
+explain a failure when nothing is consumed.
+
+**The real constraint is the cursor-side snap.** For those 37 failures:
+
+| | distance to nearest web node |
+|---|---|
+| cursor, on failing calls | median **6.96 mm**, max **62.11 mm** |
+| cursor, on succeeding calls | median 1.11 mm, max **2.66 mm** |
+| target, on failing calls | median **0.00 mm** |
+| snap radius (`trim_at_mm`) | **3.0 mm** |
+
+**31 of 37 have the cursor outside the snap radius.** The destination is on the
+web; the needle simply arrives from elsewhere and cannot get onto the web to
+start walking. This is the cursor-side snap the attribution doc named, now with
+numbers.
+
+**Two ways to fix it, and only one is available.**
+
+1. **Widen the snap radius — GATE 1, refused.** The radius *is* `trim_at_mm`,
+   and `_graph_travel`'s own docstring says the coupling is deliberate: "both
+   answer how long a leg is sewable needle-down — but it is one knob, not two."
+   Whether a needle-down leg from an off-web cursor is sewable is a cloth
+   question. Not touchable without a sew-out.
+2. **Put the cursor somewhere better — GATE-CLEAR, unbuilt.** The cursor sits
+   ~7 mm off the web *because of where the previous shape ended*. Nothing
+   physical forces that. Choosing each shape's exit — or the shape order — so
+   the needle finishes near the next shape's web would bring the cursor inside
+   the existing 3 mm radius without changing any constant. This is the same
+   move that worked on the fill side: **choose the order so the geometry
+   works, rather than widening a threshold.**
+
+**Not built, and deliberately not sized here.** It touches stage 7 sequencing
+and the exit-point coupling that PR #205's last-path pin exists to contain, so
+it wants its own measurement pass. Recorded because it is the first gate-clear
+lever found on the code path that actually dominates real client artwork —
+everything else measured tonight either helps only photo-lane work or sits
+behind the sew-out.
