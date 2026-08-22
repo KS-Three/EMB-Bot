@@ -603,10 +603,14 @@
         // disguise, and the report has to cover it or it reads as a promise it
         // does not keep: type "ç" in western_light and the letter simply is not
         // there, while a character the font lacks outright gets a note.
-        // Measured 2026-08-22 across the sellable library: two such glyphs,
-        // western_light's "ç" and ondulamarif_XL's "º". The personal build is
-        // where it bites — paquerette has 31 of its 52 letters in this state,
-        // because only 72 of its 1,641 runs carry an authored stitch length.
+        // 26 such glyphs ship, in 6 fonts — western_light's "4" and "ç",
+        // roaring_twenties_KOR's ten symbols, ondulamarif's punctuation. The
+        // per-font list is test/font-dead-glyphs.test.js, deliberately NOT
+        // restated here: this comment first said "two", from a scan that only
+        // looked at letters and a short punctuation set, and a number in a
+        // comment cannot be re-measured the way a test can. The personal build
+        // is worse — paquerette has 31 of its 52 letters in this state, because
+        // only 72 of its 1,641 runs carry an authored stitch length.
         // Same test routeRuns and glyphPoints use, so "sews nothing" here means
         // exactly what the stitch path will do, not an approximation of it. The
         // glyph keeps its own advance: it is a hole of the right width, and
