@@ -91,11 +91,38 @@ restoring them.
 
 **Stunted glyphs in four shipped fonts** — `mimosa_large` (D 0.11x, E 0.22x),
 `mimosa_medium` (D 0.22x, E 0.44x), `apesplit` (A 0.23x), `initials_medium`
-(A 0.28x), as a ratio of their case median height. These stitch, so the
-stitchability check passes them, but they render as stubs: `mimosa_large`'s D
-sews as a bare dash and both "initials" fonts' A as a tiny mark floating off
-the baseline. Confirmed by rendering, not by the ratio.
-*(confirmed 2026-08-22 — `test/font-stunted.test.js`, render inspection)*
+(A 0.28x), as a ratio of their case median height. All four pass QC because
+they DO stitch: the check asks "does this letter produce stitches", not "does
+it produce the letter".
+
+**Two of them are severe, not cosmetic.** Measured at a 40 mm target:
+
+| | stitches | rendered size |
+|---|---|---|
+| `mimosa_large` "D" | **6,193** | 40.0 × **0.0 mm** |
+| `mimosa_medium` "D" | **6,117** | 40.0 × **0.0 mm** |
+| `mimosa_large` "A" (healthy) | 996 | 40.0 × 60.1 mm |
+
+A glyph collapsed to zero height with six times a healthy glyph's stitch count
+is a needle hammering one line thousands of times — a machine hazard, not an
+ugly letter. `mimosa_large` "D" renders as a filled circle, not a D. The other
+three (`mimosa_large` E, `apesplit` A, `initials_medium` A) simply sew far
+smaller than their neighbours in a word.
+*(confirmed 2026-08-22 — render measurement; `test/font-stunted.test.js`)*
+
+**Narrowed, not root-caused.** Ruled out: upstream under-tagging — the source
+tagging ratio is uniform across healthy and broken glyphs (`mimosa_large` A
+76 paths/38 tagged, D 76/38), unlike Terminus where it is the whole story. Also
+ruled out: the transform math, which verifies correct in isolation for
+rotate-about-a-point and for parent/child composition. The broken glyphs do
+correlate with a nested `<g>` carrying a `rotate()`, and the imported glyph
+retains its full column and rail-point count (D 38 cols / 1292 pts, identical
+to A) — the geometry is all present and merely placed wrong. Suspicion
+therefore sits on rail pairing in `toColumn` for these dot-matrix and monogram
+faces. A latent second bug was noticed in `pathsTf` while looking: its stack
+pop fires on ANY closing tag, so a non-self-closed `</path>` would corrupt the
+matrix stack. Not the cause here (these files self-close every path), but
+worth fixing when this is picked up.
 
 Whether to fix or pull them is Kent's call; the test records them as named
 debt so the set cannot grow silently.
