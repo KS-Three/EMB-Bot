@@ -96,6 +96,17 @@
     return out;
   }
 
+  // Will this glyph put thread down? Mirrors routeGlyph/routeRuns/crossFill —
+  // satin columns sew, a run sews only with an authored stitch length (ROADMAP
+  // gate 1 bars inventing one), and a cross-stitch region sews only when the
+  // font carries the measured grid to fill it. Same rule as qc-font's
+  // `stitchable`; if one changes, change both.
+  function sewsSomething(font, g) {
+    if ((g.cols || []).length) return true;
+    if (font.crossGrid && (g.runs || []).some((r) => r && r.fill === "cross" && r.pts)) return true;
+    return (g.runs || []).some((r) => r && r.pts && r.lenMm > 0);
+  }
+
   const glyphBottomCache = new WeakMap();
   function glyphBottomUnits(g) {
     if (glyphBottomCache.has(g)) return glyphBottomCache.get(g);
@@ -545,21 +556,76 @@
     // selectionStart/selectionEnd exactly, so the UI can let a user select
     // text and tag that range with a color with zero custom index math.
     const rawLines = String(text).split("\n");
+    // Right-to-left fonts (Hebrew; 2026-08-22). Text is stored in LOGICAL
+    // order — first letter first — and rendered with the first letter at the
+    // RIGHT, so the only change needed is to walk each line's characters in
+    // reverse when laying them out. Everything downstream (arc, badge,
+    // per-letter colour, underlay) then works unchanged, because it all keys
+    // off `ox` rather than off character order.
+    //
+    // charIdx deliberately keeps pointing at the ORIGINAL string position, not
+    // the visual one: it exists so the UI can map a <textarea> selection onto
+    // glyphs, and a selection is logical. Reversing it would silently colour
+    // the wrong letters.
+    //
+    // Hebrew needs no more than this — it has no contextual letter forms.
+    // Arabic DOES (initial/medial/final/isolated) and is deliberately NOT
+    // enabled by this: without a joining engine its letters render unjoined,
+    // which is wrong text rather than merely plain text. The three Arabic
+    // fonts upstream stay out until that exists.
+    const rtl = font.dir === "rtl";
+    // Recorded with the source index so the report comes out in LOGICAL order.
+    // An RTL line is walked in reverse, so collecting bare characters would
+    // report "Emb" as b, m, E — technically the order they were laid out in,
+    // and useless in a message to a human.
+    const unsupportedAt = [];
     let globalIdx = 0;
     const lineList = rawLines.map((lineText, lineNum) => {
       const chars = Array.from(lineText);
+      const lineStart = globalIdx;
+      const order = chars.map((_, i) => i);
+      if (rtl) order.reverse();
       let penX = 0, prev = null;
       const glyphs = [];
-      for (const ch of chars) {
-        const charIdx = globalIdx++;
+      for (const i of order) {
+        const ch = chars[i];
+        const charIdx = lineStart + i;
         if (ch === " " || ch === "\t") { penX += (font.advSpace || font.advDefault); prev = null; continue; }
         const g = font.glyphs[ch] || font.glyphs[ch.toUpperCase()] || font.glyphs[ch.toLowerCase()];
-        if (!g) { penX += font.advDefault; prev = null; continue; }
+        // A character the font has no glyph for advances the pen and stitches
+        // NOTHING, silently. That was survivable while the library was all
+        // Latin; with Hebrew in it, picking a Hebrew font and typing "Emb"
+        // produces a 0-stitch, 0x0mm design and no explanation anywhere. The
+        // engine cannot decide what the UI should say, but it can stop hiding
+        // the fact — so the characters it dropped are reported.
+        if (!g) { unsupportedAt.push([charIdx, ch]); penX += font.advDefault; prev = null; continue; }
+        // A glyph that EXISTS but sews nothing is the same silent gap wearing a
+        // disguise, and the report has to cover it or it reads as a promise it
+        // does not keep: type "ç" in western_light and the letter simply is not
+        // there, while a character the font lacks outright gets a note.
+        // 26 such glyphs ship, in 6 fonts — western_light's "4" and "ç",
+        // roaring_twenties_KOR's ten symbols, ondulamarif's punctuation. The
+        // per-font list is test/font-dead-glyphs.test.js, deliberately NOT
+        // restated here: this comment first said "two", from a scan that only
+        // looked at letters and a short punctuation set, and a number in a
+        // comment cannot be re-measured the way a test can. The personal build
+        // is worse — paquerette has 52 of its 82 letter glyphs in this state
+        // (31 of the 52 A-Za-z ones, which is the figure this repo usually
+        // quotes), because only 72 of its 1,641 runs carry an authored length.
+        // Same test routeRuns and glyphPoints use, so "sews nothing" here means
+        // exactly what the stitch path will do, not an approximation of it. The
+        // glyph keeps its own advance: it is a hole of the right width, and
+        // collapsing the text would be a second wrong answer.
+        if (!sewsSomething(font, g)) {
+          unsupportedAt.push([charIdx, ch]);
+          penX += (g.adv || font.advDefault); prev = null; continue;
+        }
         if (prev != null && font.kerning) { const k = font.kerning[prev + ch]; if (k) penX += k; }
         glyphs.push({ g, ox: penX, charIdx });
         penX += g.adv + lsUnits;
         prev = ch;
       }
+      globalIdx = lineStart + chars.length;
       if (lineNum < rawLines.length - 1) globalIdx++; // the "\n" separator itself
       return { glyphs, adv: penX };
     });
@@ -789,6 +855,10 @@
       runs,
       bbox: { x0, y0, x1, y1 },
       cap: { mm: cap.mm, finalMm: capFinalMm, ref: cap.ref, proxy: cap.proxy, underlay: underlayMode },
+      // Distinct characters this font had no glyph for, in the order they
+      // appear in the SOURCE text. Empty for every font/text pair that works,
+      // so a caller can treat a non-empty array as "tell the user".
+      unsupported: [...new Set(unsupportedAt.sort((a, b) => a[0] - b[0]).map((e) => e[1]))],
     };
   }
 

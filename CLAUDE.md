@@ -88,6 +88,18 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
   written down anywhere else a session reads first, so each one rediscovers it;
   `.claude/skills/run-emb-bot/SKILL.md` already handles both layouts.
 
+- **Build that venv with `python3.12` explicitly, NOT the bare `python3`.**
+  `digitizer/pyproject.toml` sets `requires-python = ">=3.12"` and cloud
+  containers default `python3` to 3.11. `.claude/skills/run-emb-bot/SKILL.md`
+  has said this since it was written — it is repeated here because CLAUDE.md is
+  read first and the skill only when invoked.
+  **The trap is the `requirements.txt` path**, which does NOT enforce that floor
+  the way `pip install -e .` does: it gets as far as `numpy==2.5.1`, which
+  publishes no 3.11 wheel, and leaves a venv with no pystitch in it. The failure
+  is then quiet exactly where it matters — `node --test` SKIPS the six format
+  cross-validation tests and still reports green.
+  *(hit 2026-08-22; CI pins 3.12, which is why CI never saw it)*
+
 - Always `python -m pytest`, never `python foo.py` — a bare invocation does not put
   cwd on `sys.path`.
 - **Never pipe pytest to `tail`** — you get tail's exit code, so a red run reads green.

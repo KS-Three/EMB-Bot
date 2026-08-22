@@ -45,7 +45,7 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 55,
    "glyphCount": 170,
-   "bytes": 260709,
+   "bytes": 260692,
    "attribution": "This font has been adapted for Ink/Stitch and is licensed under the SIL Open Font License, Version 1.1. Copyright (c), 2012 Typesenses, with Reserved Font Name \"Euphoria Script\"",
    "source": "Ink/Stitch embroidery-fonts"
   },
@@ -57,7 +57,7 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 27,
    "glyphCount": 158,
-   "bytes": 325199,
+   "bytes": 261795,
    "attribution": "This font has been adapted for Ink/Stitch and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2018, Paratype Inc (https://paratype.com), with Reserved Font Name \"Ambidexter\".",
    "source": "Ink/Stitch embroidery-fonts"
   },
@@ -93,7 +93,7 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 120,
    "glyphCount": 26,
-   "bytes": 114600,
+   "bytes": 112272,
    "attribution": "This font has been adapted for Ink/Stitch from gilda display font by Françoise Lapierre Baillet https://fonts.google.com/specimen/Gilda+Display This Font Software is licensed under the SIL Open Font License, Version 1.1.",
    "source": "Ink/Stitch embroidery-fonts"
   },
@@ -165,7 +165,7 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 23,
    "glyphCount": 157,
-   "bytes": 361089,
+   "bytes": 360974,
    "attribution": "This font has been adapted for Ink/Stitch and is licensed under the SIL Open Font License, Version 1.1. Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow)",
    "source": "Ink/Stitch embroidery-fonts"
   },
@@ -189,7 +189,7 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 23,
    "glyphCount": 160,
-   "bytes": 487114,
+   "bytes": 485730,
    "attribution": "This font has been adapted for Ink/Stitch and is licensed under the SIL Open Font License, Version 1.1. Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow)",
    "source": "Ink/Stitch embroidery-fonts"
   },
@@ -261,7 +261,7 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 16.2,
    "glyphCount": 118,
-   "bytes": 134613,
+   "bytes": 133997,
    "attribution": "This font has been adapted for Ink/Stitch by Corinne Renaud, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2009, Peter Wiegel, www.peter-wiegel.de, with Reserved Font Name \"Espresso Dolce\"",
    "source": "Ink/Stitch embroidery-fonts"
   },
@@ -273,7 +273,7 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 75,
    "glyphCount": 156,
-   "bytes": 7865708,
+   "bytes": 7693466,
    "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright 2024 The Ojuju Project Authors (https://github.com/jobosonchisa/ojuju)",
    "source": "Ink/Stitch embroidery-fonts"
   },
@@ -362,6 +362,18 @@
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
+   "key": "cyrillic",
+   "name": "Кирилиця",
+   "tier": "verified",
+   "group": "Sans",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 25,
+   "glyphCount": 466,
+   "bytes": 933591,
+   "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright 2011 The Roboto Project Authors (https://github.com/googlefonts/roboto-classic)",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
    "key": "digory_doodles_bean",
    "name": "Digory Doodles Bean",
    "tier": "verified",
@@ -371,6 +383,30 @@
    "glyphCount": 101,
    "bytes": 131044,
    "attribution": "This font has been adapted for Ink/Stitch by Tina, and is licensed under the SIL Open Font License, Version 1.1.",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
+   "key": "egyptian",
+   "name": "Egyptian",
+   "tier": "verified",
+   "group": "Small",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 14,
+   "glyphCount": 884,
+   "bytes": 395551,
+   "attribution": "This font has been adapted for Ink/Stitch and is licensed under the SIL Open Font License, Version 1.1. Copyright © 2025 GGBotNet (https://ggbot.net), with Reserved Font Name \"Cairopixel\".",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
+   "key": "egyptian_small",
+   "name": "Egyptian Small",
+   "tier": "verified",
+   "group": "Small",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 14,
+   "glyphCount": 884,
+   "bytes": 395557,
+   "attribution": "This font has been adapted for Ink/Stitch and is licensed under the SIL Open Font License, Version 1.1. Copyright © 2025 GGBotNet (https://ggbot.net), with Reserved Font Name \"Cairopixel\".",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -422,6 +458,18 @@
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
+   "key": "fold_inkstitch",
+   "name": "Fold Ink/Stitch",
+   "tier": "verified",
+   "group": "Display",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 63,
+   "glyphCount": 40,
+   "bytes": 68990,
+   "attribution": "This font has been adapted for Ink/Stitch by @Marie-Françoise BRIS, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2021, @Marie-Françoise BRIS",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
    "key": "glacial_tiny",
    "name": "Glacial Tiny 60 AGS",
    "tier": "verified",
@@ -458,6 +506,30 @@
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
+   "key": "hebrew_font_large",
+   "name": "חוכמה Large",
+   "tier": "verified",
+   "group": "Display",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 23,
+   "glyphCount": 29,
+   "bytes": 104476,
+   "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 1997-2007, SIL International (http://www.sil.org/), with Reserved Font Names \"SIL\" and \"Ezra\". <br><br><b>Copyright",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
+   "key": "hebrew_font_medium",
+   "name": "חוכמה Medium",
+   "tier": "verified",
+   "group": "Display",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 23,
+   "glyphCount": 29,
+   "bytes": 35332,
+   "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 1997-2007, SIL International (http://www.sil.org/), with Reserved Font Names \"SIL\" and \"Ezra\". <br><br><b>Copyright",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
    "key": "initials_medium",
    "name": "Initials Medium",
    "tier": "verified",
@@ -465,7 +537,7 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 70,
    "glyphCount": 48,
-   "bytes": 226612,
+   "bytes": 225816,
    "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2014, gluk, with Reserved Font Name Sortefax.",
    "source": "Ink/Stitch embroidery-fonts"
   },
@@ -477,8 +549,20 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 137,
    "glyphCount": 48,
-   "bytes": 450866,
+   "bytes": 425259,
    "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2014, gluk, with Reserved Font Name Sortefax.",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
+   "key": "inkstitch_masego",
+   "name": "Ink/Stitch Masego",
+   "tier": "verified",
+   "group": "Display",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 14,
+   "glyphCount": 76,
+   "bytes": 50772,
+   "attribution": "This font has been adapted for Ink/Stitch by Benson Muite LICENSE: licensed under the Open Font License.",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -489,8 +573,20 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 24,
    "glyphCount": 154,
-   "bytes": 67766,
+   "bytes": 59630,
    "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright 2023 The Soft Type Project Authors (https://github.com/scfried/soft-type-jacquard)",
+   "source": "Ink/Stitch embroidery-fonts"
+  },
+  {
+   "key": "jaquarda_bastarda_9",
+   "name": "Jaquarda Bastarda 9",
+   "tier": "verified",
+   "group": "Display",
+   "licenseId": "OFL-1.1",
+   "sizeMm": 18,
+   "glyphCount": 328,
+   "bytes": 248918,
+   "attribution": "This font has been adapted for Ink/Stitch and is licensed under the SIL Open Font License, Version 1.1. Copyright 2023 The Soft Type Project Authors (https://github.com/scfried/soft-type-jacquarda-bastarda)",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {
@@ -501,7 +597,7 @@
    "licenseId": "OFL-1.1",
    "sizeMm": 45,
    "glyphCount": 162,
-   "bytes": 85370,
+   "bytes": 76820,
    "attribution": "This font has been adapted for Ink/Stitch, and is licensed under the SIL Open Font License, Version 1.1. Copyright 2023 The Soft Type Project Authors (https://github.com/scfried/soft-type-jersey)",
    "source": "Ink/Stitch embroidery-fonts"
   },
@@ -838,7 +934,7 @@
    "sizeMm": 25,
    "glyphCount": 107,
    "bytes": 272291,
-   "attribution": "This font Roman AGS has been adapted for Ink/Stitch by Françoise Lapierre Baillet and is licensed under the SIL Open Font License, Version 1.1.",
+   "attribution": "This font Roman AGS has been adapted for Ink/Stitch by Françoise Lapierre Baillet and is licensed under the SIL Open Font License, Version 1.1. It is a derivative work from Latin Modern Roman, which is licensed under the GUST e-foundry Licence (the LaTeX Project Public License 1.3c or later); a complete, unmodified copy of that original is obtainable from https://www.fontsquirrel.com/fonts/latin-modern-roman.",
    "source": "Ink/Stitch embroidery-fonts"
   },
   {

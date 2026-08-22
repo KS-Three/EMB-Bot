@@ -184,6 +184,38 @@ export const ATTRIBUTION_OVERRIDES = {
     "based on the Hershey fonts originally created by Dr. A. V. Hershey while working " +
     "at the U.S. National Bureau of Standards. Licensed CC-BY-SA 2.5; see the license " +
     "file for the required Hershey acknowledgements.",
+
+  // 2026-08-22. The ONLY font in the library whose base sits under a
+  // different licence FAMILY than the font itself ships under: Roman AGS is
+  // OFL-1.1, but it derives from Latin Modern Roman, which is under the GUST
+  // e-foundry Licence — i.e. the LaTeX Project Public Licence 1.3c.
+  //
+  // The relicensing is legitimate. LPPL 1.3c clause 10a expressly permits a
+  // Derived Work to be distributed under a different licence, provided that
+  // licence honours clause 6 "in regard to the Work"; 10b then requires the
+  // Derived Work to carry enough documentation for recipients to honour
+  // clause 6 themselves. Clause 6d is the operative condition here, and it is
+  // met by "information sufficient to obtain a complete, unmodified copy of
+  // the Work" — the fontsquirrel URL. GUST's own rename request (clause 1) is
+  // explicitly "requested, but not legally required", and is honoured anyway:
+  // Roman AGS is not Latin Modern Roman.
+  //
+  // So this is NOT a licence to pull, and NOT a SEE-LICENSE-FILE case (that
+  // sentinel is outside ALLOWED_LICENSES and would drop a sellable font).
+  // What was wrong was only the CREDIT: extractAttribution takes the first
+  // paragraph, which is the adapter's bare OFL claim, and the LPPL provenance
+  // plus the clause-6d URL sit in the second. The compliance chain therefore
+  // rested entirely on a reader opening the linked licence file. Naming the
+  // base and its URL in the credit line itself makes the credit self-
+  // sufficient, so nothing downstream can quietly break the chain by
+  // surfacing attribution alone. Pinned by test/font-license.test.js.
+  roman_ags:
+    "This font Roman AGS has been adapted for Ink/Stitch by Françoise Lapierre Baillet " +
+    "and is licensed under the SIL Open Font License, Version 1.1. It is a derivative " +
+    "work from Latin Modern Roman, which is licensed under the GUST e-foundry Licence " +
+    "(the LaTeX Project Public License 1.3c or later); a complete, unmodified copy of " +
+    "that original is obtainable from " +
+    "https://www.fontsquirrel.com/fonts/latin-modern-roman.",
 };
 
 // One call that does the whole job for a font: full text in, manifest

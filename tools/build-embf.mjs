@@ -1,7 +1,8 @@
 // Builds the binary font library + manifest from source JSONs.
 //   node tools/build-embf.mjs
-// Inputs:  src/fonts/<key>.json           (the 21 shipped fonts)
-//          scratch_ink/_out/<key>.json    (trial imports of new fonts)
+// Inputs:  src/fonts/<key>.json           (17 committed font sources)
+//          scratch_ink/_out/<key>.json    (138 imports; the SOURCE OF MOST OF
+//                                          THE LIBRARY, not just trials)
 //          scratch_ink/_tiers.json        (tier classification, Kent-approved)
 //          tools/font-categories.json     (display groups)
 // Outputs: src/fonts/bin/<key>.embf   (VERIFIED tier only)
@@ -45,6 +46,7 @@ const GROUPS = JSON.parse(readFileSync(join(root, "tools", "font-categories.json
 // (Audit item 4: the old first-line extraction truncated credits mid-sentence
 // and dropped names that sat past a bare-CR line break.)
 import { licenseId, deriveLicenseFields } from "./font-license.mjs";
+import { qcFont } from "./qc-font.mjs";
 
 // docs/font-license-audit-2026-07-31.md, action checklist items 1-3: these 4
 // fonts are PULLED from the shipping library regardless of grandfathered
@@ -172,9 +174,24 @@ if (existsSync(tiersPath)) {
 // STITCHABILITY gate, not a license one, so those fonts light up on their own
 // the day a fill/cross-stitch lettering path exists, with no change here.
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+// Does this font produce stitches for the letters it actually HAS?
+//
+// The candidate set used to be LETTERS — A-Z only — which silently answered
+// "no" for any font with no Latin alphabet at all. The two Hebrew faces were
+// dropped from the personal build on exactly that basis while the sellable
+// build shipped them, so the two libraries disagreed about the same font. A
+// non-Latin font is not a dead font.
+//
+// Scoped to single-character glyph names so ornament and .notdef entries
+// cannot vouch for a font whose letters are empty — that is the ondulamarif_XL
+// trap this gate exists for, and widening the alphabet must not reopen it.
 function sewsAnything(font) {
   const gs = font.glyphs || {};
-  for (const c of LETTERS) {
+  const latin = [...LETTERS].filter((c) => gs[c]);
+  const candidates = latin.length
+    ? latin
+    : Object.keys(gs).filter((k) => [...k].length === 1 && /^\p{L}$/u.test(k));
+  for (const c of candidates) {
     const g = gs[c];
     if (!g) continue;
     if ((g.cols || []).length) return true;
@@ -240,6 +257,28 @@ for (const s of sources.sort((a, b) => a.key.localeCompare(b.key))) {
     continue;
   }
 
+  // The TIER GATE, actually enforced (2026-08-22). qc-font.mjs calls itself
+  // "the tier gate, in the repo, with tests" — but nothing in this builder ever
+  // ran it. The only enforcement was test/embf-guard.test.js, which reads
+  // src/fonts/<key>.json, i.e. the 17 STATIC sources. The other 68 fonts arrive
+  // through scratch_ink/_out and were QC'd by nothing at all on the way in.
+  //
+  // A hard fail EXCLUDES the font from the sellable build, the same treatment
+  // as a PULLED font or a licence outside policy. --personal warns instead:
+  // that build is "every font on hand" by definition, and blocking there would
+  // change what it means.
+  const qc = qcFont(font);
+  if (!qc.pass) {
+    if (PERSONAL) {
+      console.warn("QC (personal, kept):", s.key, "—", qc.findings.join("; "));
+    } else {
+      console.warn("EXCLUDED (QC):", s.key, "—", qc.findings.join("; "));
+      const stale = join(BIN_DIR, s.key + ".embf");
+      if (existsSync(stale)) unlinkSync(stale);
+      continue;
+    }
+  }
+
   const bytes = fb.encodeFontBin(font, 4);
   // self-check every font on every build — cheap, and catches codec drift
   const back = fb.decodeFontBin(bytes);
@@ -272,6 +311,58 @@ for (const s of sources.sort((a, b) => a.key.localeCompare(b.key))) {
 }
 writeFileSync(MANIFEST_PATH,
   JSON.stringify({ version: 1, personal: PERSONAL || undefined, fonts: manifest }, null, 1));
+
+// Orphan-clean the binary directory (2026-08-22). A font dropped from the
+// build — demoted, pulled, or removed from _tiers.json — left its .embf behind
+// to be picked up by copy-engine and shipped from a dirty tree. That is the
+// ondulamarif_XL trap, and it happened again here: dropping roman_ags_bicolor
+// left a live binary in bin-personal/.
+//
+// The sellable side had a guard TEST for this but no cleaner, so it failed
+// loudly and was fixed by hand; the personal side has no test at all, so it
+// failed silently. Cleaning at the source fixes both, and the test stays as
+// the backstop.
+{
+  const want = new Set(manifest.map((f) => f.key + ".embf"));
+  let removed = 0;
+  for (const f of readdirSync(BIN_DIR))
+    if (f.endsWith(".embf") && !want.has(f)) { unlinkSync(join(BIN_DIR, f)); removed++; }
+  if (removed) console.log("removed", removed, "orphan .embf file(s)");
+}
+
+// Licence sidecars for the PERSONAL-only fonts (2026-08-22). The sellable
+// fonts have committed src/fonts/<key>.LICENSE.txt files, which is what
+// copy-engine serves and the credits dialog links; the 38 personal-only fonts
+// had none, so their credit line linked a 404 in the build Kent actually uses.
+//
+// Written to a SEPARATE gitignored directory rather than alongside the
+// committed ones. That is the whole point: these are ShareAlike / NC /
+// pulled fonts, and a sidecar landing in src/fonts/ would be committed on the
+// next `git add src/fonts/` — publishing exactly what the build split exists
+// to keep unpublished.
+if (PERSONAL) {
+  const licDir = join(FONT_DIR, "licenses-personal");
+  mkdirSync(licDir, { recursive: true });
+  const sellable = new Set(readdirSync(FONT_DIR)
+    .filter((f) => f.endsWith(".LICENSE.txt")).map((f) => f.replace(/\.LICENSE\.txt$/, "")));
+  let wrote = 0;
+  for (const f of manifest) {
+    if (sellable.has(f.key)) continue;              // already has a committed sidecar
+    const src = sources.find((s) => s.key === f.key);
+    if (!src) continue;
+    const text = String(JSON.parse(readFileSync(src.path, "utf8")).license || "").trim();
+    if (!text) continue;
+    writeFileSync(join(licDir, f.key + ".LICENSE.txt"), text + "\n");
+    wrote++;
+  }
+  // Orphan-clean, same reasoning as the .embf and preview cleans: a font
+  // dropped from the personal build must not leave its licence being served.
+  const want = new Set(manifest.map((f) => f.key + ".LICENSE.txt"));
+  for (const f of readdirSync(licDir))
+    if (f.endsWith(".LICENSE.txt") && !want.has(f)) unlinkSync(join(licDir, f));
+  console.log("personal licence sidecars:", wrote);
+}
+
 if (PERSONAL) {
   if (skippedDead.length)
     console.warn("skipped " + skippedDead.length + " font(s) that stitch nothing yet (cross-stitch/fill — " +

@@ -102,7 +102,13 @@ test("no orphan .embf files — every binary has a manifest entry", () => {
 
 test("every verified-tier font is in the manifest or explicitly excluded by license", () => {
   const tiersPath = path.join(__dirname, "..", "scratch_ink", "_tiers.json");
-  if (!fs.existsSync(tiersPath)) return; // scratch material absent in some checkouts
+  // scratch_ink/ is GITIGNORED, so this is not "absent in some checkouts" — it
+  // is absent in EVERY fresh clone and on CI, which means this check is
+  // local-only and has never once run in CI. Left as a skip because the input
+  // genuinely cannot be there, but stated plainly: green CI is not evidence
+  // that the tier list and the manifest agree. Unlike the other early returns
+  // in this suite, this one must NOT throw on CI.
+  if (!fs.existsSync(tiersPath)) return;
   const tiers = JSON.parse(fs.readFileSync(tiersPath, "utf8"));
   const man = JSON.parse(fs.readFileSync(path.join(FONT_DIR, "manifest.json"), "utf8"));
   const manKeys = new Set(man.fonts.map((f) => f.key));
@@ -170,4 +176,60 @@ test("no shipped NEW font has a license outside the allowed policy set", () => {
   for (const f of man.fonts)
     if (!grandfathered.has(f.key))
       assert.ok(ALLOWED.has(f.licenseId), f.key + " ships with disallowed license " + f.licenseId);
+});
+
+// --- the tier gate over the WHOLE shipped library, not just the 17 JSONs ---
+//
+// The test above runs qcFont over `src/fonts/*.json`, which is 17 of the 85
+// shipped fonts. The other 68 arrive through scratch_ink/_out and are gated
+// only at build time — and scratch_ink is gitignored, so that gate has never
+// run on CI. The committed binaries ARE on CI, so decoding them and running
+// the same gate is the only way this check covers the library it ships.
+//
+// It found nothing when added (2026-08-22): 85 fonts, zero hard failures. That
+// is the point — the build-time gate was doing its job, and now something
+// verifies that on every push instead of trusting it.
+test("qc gate: every SHIPPED binary passes, not just the committed JSONs", async () => {
+  const { qcFont } = await import("../tools/qc-font.mjs");
+  const bins = fs.readdirSync(BIN_DIR).filter((f) => f.endsWith(".embf"));
+  assert.ok(bins.length > 50,
+    `only ${bins.length} .embf files — iterating a short list is how this asserts nothing`);
+  const failures = [];
+  for (const f of bins) {
+    const key = f.replace(/\.embf$/, "");
+    const r = qcFont(fb.decodeFontBin(fs.readFileSync(path.join(BIN_DIR, f))));
+    if (!r.pass) failures.push(key + ": " + r.findings.join("; "));
+  }
+  assert.deepStrictEqual(failures, []);
+});
+
+// Warnings are not failures, and that is exactly how they accumulate unread.
+// Split them: `coverage:` is a structural property of a font (caps-only faces,
+// a Hebrew face with no Latin) and is expected on a known list; every other
+// class — stunted, bbox, satin, geometry, advance — is a defect report and
+// must not appear at all. A font joining or leaving the coverage list fails
+// here too, so the list cannot rot into a suppression list.
+test("no shipped font carries a defect-class warning, and the coverage list is exact", async () => {
+  const { qcFont } = await import("../tools/qc-font.mjs");
+  const EXPECT_COVERAGE_WARNINGS = [
+    // caps-only faces — no lowercase by design
+    "apesplit", "fold_inkstitch", "initials_XL", "initials_medium",
+    "kum_tsoan_AGS", "kum_tsoan_tartan", "perspective_tricolore_KOR",
+    // Hebrew faces — no Latin alphabet, no digits
+    "hebrew_font_large", "hebrew_font_medium",
+  ].sort();
+  const withCoverage = [], defects = [];
+  for (const f of fs.readdirSync(BIN_DIR).filter((x) => x.endsWith(".embf"))) {
+    const key = f.replace(/\.embf$/, "");
+    const r = qcFont(fb.decodeFontBin(fs.readFileSync(path.join(BIN_DIR, f))));
+    const other = r.findings.filter((s) => !/^coverage:/.test(s));
+    if (other.length) defects.push(`${key}: ${other.join("; ")}`);
+    if (r.findings.some((s) => /^coverage:/.test(s))) withCoverage.push(key);
+  }
+  assert.deepStrictEqual(defects, [],
+    "a shipped font is reporting a defect-class QC finding — these are warn-level " +
+    "so nothing else stops them, which is why this test exists");
+  assert.deepStrictEqual(withCoverage.sort(), EXPECT_COVERAGE_WARNINGS,
+    "the set of fonts with coverage warnings changed — if a font legitimately " +
+    "gained or lost one, update the list; do not widen it to make this pass");
 });
