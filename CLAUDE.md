@@ -88,6 +88,15 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
   written down anywhere else a session reads first, so each one rediscovers it;
   `.claude/skills/run-emb-bot/SKILL.md` already handles both layouts.
 
+- **Build that venv with `python3.13` (or 3.12), NOT the bare `python3`.** Cloud
+  containers default `python3` to 3.11, and `requirements.txt` pins
+  `numpy==2.5.1`, which publishes no 3.11 wheel — so `python3 -m venv` gives an
+  install that fails on numpy and a venv with no pystitch in it. The failure is
+  quiet where it matters: `node --test` then SKIPS the six format
+  cross-validation tests and still reports green.
+  `python3.13 -m venv .venv && .venv/bin/pip install -r requirements.txt` works.
+  *(hit 2026-08-22; CI pins 3.12 in the engine job, which is why CI never saw it)*
+
 - Always `python -m pytest`, never `python foo.py` — a bare invocation does not put
   cwd on `sys.path`.
 - **Never pipe pytest to `tail`** — you get tail's exit code, so a red run reads green.
