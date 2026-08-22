@@ -281,12 +281,21 @@ red. Listed because the gap between them is where the next defect will live.
 | `test/font-dead-glyphs.test.js` | a glyph present in the font that puts no thread down | 85/85, all single-character glyphs |
 | `test/embf-guard.test.js` (tier gate) | any qc-font hard failure, plus any defect-class warning | 85/85 **binaries**, not the 17 committed JSONs |
 | `test/font-license.test.js` | sidecar/manifest licence drift, and a cross-family derivative whose credit line omits its base | 85/85, and it now names the one font that reaches the cross-family assert |
+| `test/font-export-smoke.test.js` | a font whose geometry breaks an encoder, or loses stitches through DST | 85/85 × DST/EXP/PES — **no font had ever reached an encoder in a test** |
 
 The hazard tripwire has deliberate headroom rather than tightness: measured at
 emMm 20 / pxPerMm 8, the smallest rendered height in the library is `heavenly`
 at 62.7px and the smallest width is `montecarlo` at 247.0px, against a 10px
 threshold. It is there to catch a collapse, which renders at ~0 — not to
 grade fonts. *(measured 2026-08-22 — all 85 rendered via EMB.layoutText)*
+
+**The one runtime behaviour change on this branch changes no stitches**, which
+was asserted in a commit message and then actually measured: eight designs
+across the six fonts with dead glyphs plus three controls, hashed before and
+after `layoutText` gained its `sewsSomething` check, are **byte-identical** —
+same stitch stream, same counts, same dimensions. The change adds a report and
+nothing else, so no existing design moves. *(measured 2026-08-22 — sha256 of
+the stitch stream, pre-change tree at `e56ff13^` vs HEAD)*
 
 **The lesson these encode, which cost more than any of them:** breaking a guard
 on purpose does not prove it is not blind. The stunted guard passed that ritual
