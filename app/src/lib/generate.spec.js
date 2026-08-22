@@ -621,3 +621,46 @@ test("generateAll on a non-cap garment keeps element-list order", async () => {
   const first = combined.stitches.find((s) => s.type === "stitch");
   expect(first.y).toBeGreaterThan(0); // e1, the upper element, sews first
 });
+
+// Characters a font cannot render (2026-08-22). Adding Hebrew to the library
+// made a previously-obscure failure reachable in one click: pick a Hebrew font,
+// type Latin, and the element generates as a structurally valid design of ZERO
+// stitches with nothing in the UI saying why. The engine now reports which
+// characters it dropped; generateAll carries that per element, because the fix
+// is per element — it is THAT element's font that cannot set THAT text.
+test("generateAll reports characters an element's font cannot render", async () => {
+  const { generateAll } = await import("./generate.js");
+  // medium_font has no Cyrillic; "Дом" is three characters it cannot set.
+  const project = { garmentId: "left_chest", elements: [textElement({ text: "AДB" })] };
+  const { perElement, unsupported } = generateAll(project, {});
+  expect(perElement).toHaveLength(1);
+  expect(perElement[0].unsupported).toEqual(["Д"]);
+  expect(unsupported).toEqual(["Д"]);
+});
+
+test("generateAll reports nothing unsupported when every character renders", async () => {
+  const { generateAll } = await import("./generate.js");
+  const project = { garmentId: "left_chest", elements: [textElement({ text: "AB" })] };
+  const { unsupported, perElement } = generateAll(project, {});
+  expect(unsupported).toEqual([]);
+  expect(perElement[0].unsupported).toEqual([]);
+});
+
+test("generateAll deduplicates unsupported characters across elements", async () => {
+  const { generateAll } = await import("./generate.js");
+  const project = { garmentId: "left_chest", elements: [
+    textElement({ id: "e1", text: "AД" }),
+    textElement({ id: "e2", text: "BД" }),
+  ] };
+  const { unsupported } = generateAll(project, {});
+  expect(unsupported).toEqual(["Д"]);
+});
+
+test("a project with nothing ready still reports an unsupported array", async () => {
+  const { generateAll } = await import("./generate.js");
+  const { combined, perElement, unsupported } = generateAll(
+    { garmentId: "left_chest", elements: [textElement({ text: "" })] }, {});
+  expect(combined).toBe(null);
+  expect(perElement).toEqual([]);
+  expect(unsupported).toEqual([]);
+});

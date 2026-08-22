@@ -563,6 +563,11 @@
     // which is wrong text rather than merely plain text. The three Arabic
     // fonts upstream stay out until that exists.
     const rtl = font.dir === "rtl";
+    // Recorded with the source index so the report comes out in LOGICAL order.
+    // An RTL line is walked in reverse, so collecting bare characters would
+    // report "Emb" as b, m, E — technically the order they were laid out in,
+    // and useless in a message to a human.
+    const unsupportedAt = [];
     let globalIdx = 0;
     const lineList = rawLines.map((lineText, lineNum) => {
       const chars = Array.from(lineText);
@@ -576,7 +581,13 @@
         const charIdx = lineStart + i;
         if (ch === " " || ch === "\t") { penX += (font.advSpace || font.advDefault); prev = null; continue; }
         const g = font.glyphs[ch] || font.glyphs[ch.toUpperCase()] || font.glyphs[ch.toLowerCase()];
-        if (!g) { penX += font.advDefault; prev = null; continue; }
+        // A character the font has no glyph for advances the pen and stitches
+        // NOTHING, silently. That was survivable while the library was all
+        // Latin; with Hebrew in it, picking a Hebrew font and typing "Emb"
+        // produces a 0-stitch, 0x0mm design and no explanation anywhere. The
+        // engine cannot decide what the UI should say, but it can stop hiding
+        // the fact — so the characters it dropped are reported.
+        if (!g) { unsupportedAt.push([charIdx, ch]); penX += font.advDefault; prev = null; continue; }
         if (prev != null && font.kerning) { const k = font.kerning[prev + ch]; if (k) penX += k; }
         glyphs.push({ g, ox: penX, charIdx });
         penX += g.adv + lsUnits;
@@ -812,6 +823,10 @@
       runs,
       bbox: { x0, y0, x1, y1 },
       cap: { mm: cap.mm, finalMm: capFinalMm, ref: cap.ref, proxy: cap.proxy, underlay: underlayMode },
+      // Distinct characters this font had no glyph for, in the order they
+      // appear in the SOURCE text. Empty for every font/text pair that works,
+      // so a caller can treat a non-empty array as "tell the user".
+      unsupported: [...new Set(unsupportedAt.sort((a, b) => a[0] - b[0]).map((e) => e[1]))],
     };
   }
 
