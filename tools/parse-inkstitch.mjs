@@ -32,7 +32,20 @@ function parsePath(d) {
   const subs = []; let cur = null; let cx = 0, cy = 0, sx = 0, sy = 0; let cmd = "";
   const bez = (x0, y0, x1, y1, x2, y2, x3, y3) => { const N = 10; for (let k = 1; k <= N; k++) { const t = k / N, u = 1 - t; const x = u * u * u * x0 + 3 * u * u * t * x1 + 3 * u * t * t * x2 + t * t * t * x3, y = u * u * u * y0 + 3 * u * u * t * y1 + 3 * u * t * t * y2 + t * t * t * y3; cur.push({ x, y }); } };
   while (i < toks.length) {
-    if (/[a-zA-Z]/.test(toks[i])) cmd = toks[i++];
+    // ANCHORED — the same defect fixed in tools/build-font.mjs on 2026-08-21,
+    // which lived on in this second copy of the parser. Unanchored, any token
+    // merely CONTAINING a letter counts as a command, and SVG scientific
+    // notation ("5.2e-4", which Inkscape emits routinely) contains an "e": cmd
+    // becomes "5.2e-4", no branch matches it, nothing reassigns it, and the
+    // path is silently TRUNCATED there. 119 of 132 upstream fonts contain such
+    // numbers.
+    //
+    // This is a debug tool — you reach for it precisely when a glyph looks
+    // wrong — so a parser that quietly drops geometry is worse here than in the
+    // build path: it would send you hunting a defect the tool invented.
+    // The tokenizer only ever yields single letters or numbers, so ^...$ is the
+    // exact discriminator.
+    if (/^[a-zA-Z]$/.test(toks[i])) cmd = toks[i++];
     const rel = cmd === cmd.toLowerCase();
     const C = cmd.toUpperCase();
     if (C === "M") { const x = num(), y = num(); cx = rel ? cx + x : x; cy = rel ? cy + y : y; sx = cx; sy = cy; cur = [{ x: cx, y: cy }]; subs.push(cur); cmd = rel ? "l" : "L"; }
