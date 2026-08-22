@@ -68,6 +68,9 @@ test("every shipped font's sidecar still resolves to its manifest licenseId", as
   const path = require("node:path");
   const FONT_DIR = path.join(__dirname, "..", "src", "fonts");
   const man = JSON.parse(fs.readFileSync(path.join(FONT_DIR, "manifest.json"), "utf8"));
+  // An empty manifest would walk this loop zero times and report green. The
+  // library is 85 fonts; a handful means something upstream of this test broke.
+  assert.ok(man.fonts.length > 50, `only ${man.fonts.length} fonts in the manifest`);
   for (const f of man.fonts) {
     const sidecar = fs.readFileSync(path.join(FONT_DIR, f.key + ".LICENSE.txt"), "utf8");
     assert.strictEqual(await id(sidecar), f.licenseId, "licenseId drift for " + f.key);
@@ -76,9 +79,10 @@ test("every shipped font's sidecar still resolves to its manifest licenseId", as
 });
 
 // A font's own licence is not the whole story: it may DERIVE from a font under
-// a different licence family, whose conditions then ride along. 71 of the 80
+// a different licence family, whose conditions then ride along. 78 of the 85
 // shipped fonts declare a derivative base, but for all but one that base is
 // itself OFL, so shipping the OFL text discharges everything.
+// *(re-measured 2026-08-22; it read "71 of the 80" while the library was 85)*
 //
 // roman_ags is the exception, and the reason this test exists: it ships
 // OFL-1.1 over Latin Modern Roman, which is under the GUST e-foundry Licence
@@ -107,6 +111,13 @@ test("a font deriving from another licence FAMILY names that base in its attribu
     ["Apache", /Apache License/i],
     ["Ubuntu", /Ubuntu Font Licence/i],
   ];
+  assert.ok(man.fonts.length > 50, `only ${man.fonts.length} fonts in the manifest`);
+  // Every path below is a `continue`, so this test can reach zero assertions
+  // and still report green — and it HAS: with a plain \bfrom\b it matched
+  // nothing and passed on the very font it exists for. Recording who was
+  // actually checked, and demanding the known case be among them, is what
+  // makes a future regex tweak fail here instead of going quiet.
+  const asserted = [];
   for (const f of man.fonts) {
     const p = path.join(FONT_DIR, f.key + ".LICENSE.txt");
     if (!fs.existsSync(p)) continue;
@@ -123,6 +134,7 @@ test("a font deriving from another licence FAMILY names that base in its attribu
       if (!m) continue;
       const base = m[1].trim().replace(/\s*fonts?\s*$/i, "");
       if (!base) continue;
+      asserted.push(f.key);
       assert.ok(
         new RegExp(base.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(f.attribution || ""),
         `${f.key} ships ${f.licenseId} but derives from "${base}" under ${fam}; ` +
@@ -130,4 +142,11 @@ test("a font deriving from another licence FAMILY names that base in its attribu
         `(add an ATTRIBUTION_OVERRIDES entry in tools/font-license.mjs)`);
     }
   }
+  // Measured 2026-08-22: exactly one font reaches the assert — roman_ags,
+  // OFL-1.1 over Latin Modern Roman under LPPL. If it stops being checked,
+  // either the font was pulled (update this) or the detection silently broke
+  // (fix that); either way it must not pass quietly.
+  assert.ok(asserted.includes("roman_ags"),
+    `the cross-family check asserted on [${asserted.join(", ") || "nothing"}], and ` +
+    `roman_ags is the case it exists for — it is not being checked any more`);
 });
