@@ -379,18 +379,13 @@ it is copied forward.** Seeing the pattern is worth more than a tidy document.
   *(measured 2026-08-17, skip accounting 2026-08-22 — grouped skip reasons over
   a full `-rs` run)*
 - **Breaking a guard on purpose does not prove it is not blind — ask what
-  fraction of its population it measures, and assert that.** The
-  stunted-glyph guard was written, broken on purpose, watched go red, and
-  committed, and was still measuring nothing at all in **21 of the 85** fonts
-  it iterated (the runs-only faces have no satin columns and it measured
-  columns), reporting green over all 85. It was also blind to the exact case
-  it exists for: filtering on `v > 0` dropped any glyph flattened to EXACTLY
-  zero height, which is the machine hazard it is named for. `null` (no
-  geometry) and `0` (geometry collapsed onto a line) must not share a branch.
-  Both holes surfaced only when the corruption was applied to the population
-  I was least sure about. `tools/qc-font.mjs` had both, in the tool that gates
-  new fonts at build time. *(measured 2026-08-22 — test/font-stunted.test.js,
-  verified against the pre-fix tool)*
+  fraction of its population it measures, and assert that.** The stunted-glyph
+  guard passed that ritual and was still measuring nothing in **21 of the 85**
+  fonts it iterated, and was blind to the exact zero-height case it is named
+  for; `qc-font.mjs` had both holes, in the tool that gates new fonts. Full
+  account, including why the channels must not be merged, in
+  `.claude/memory/font-pipeline-silent-failures.md`. *(measured 2026-08-22 —
+  test/font-stunted.test.js, verified against the pre-fix tool)*
 - **Measure pro-parity in a git worktree, never in a shared checkout.** Three
   separate baselines were invalidated on 2026-08-15 by commits landing mid-run,
   including from a second Claude session on the same branch. The first symptom
@@ -469,7 +464,13 @@ these predate 2026-08-14 except where noted:**
 6. **The `scratch_corpus/` 37 files.** Gitignored; cloud checkouts are empty
    but all 37 are present on Kent's machine (confirmed 2026-08-17), so a local
    session can run the corpus legs today. Blocks cloud-side M2/M3 only.
-7. **Font lawyer consult — optional.** Only gates RESTORING the 13 pulled
+7. **26 glyphs that sew nothing, in 6 shipped fonts** (`roaring_twenties_KOR`
+   ×2 have ten symbols each). The user-facing half is closed — the Studio now
+   says "This font can't stitch …". The fix needs YOUR MACHINE: the candidate
+   cause is `stripRunParamsIfSatin` being font-wide, and telling that from
+   "upstream never authored a length" needs the `scratch_ink/` SVG sources. The
+   narrow fix regresses nothing but changes auto-scaling. Detail: area 2.
+8. **Font lawyer consult — optional.** Only gates RESTORING the 13 pulled
    ShareAlike fonts; the brief is written and ready to send. Nothing waits
    on it. See the font-licence entry.
 

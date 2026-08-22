@@ -269,6 +269,50 @@ pre-fix gate)*
 - **`cyrillic`** — held. Dropping 6 broken glyphs would salvage it but kills
   `ñ`.
 
+## 26 glyphs that sew nothing — needs Kent, and needs his machine (2026-08-22)
+
+Six shipped fonts contain single-character glyphs that are PRESENT, take their
+advance, look selectable in every UI, and put no thread down. Register and
+per-font list: `test/font-dead-glyphs.test.js`, which fails in both directions
+so a new one is caught and a fixed one must come off.
+
+| font | dead glyphs |
+|---|---|
+| `roaring_twenties_KOR` / `_small` | `+ - / < = > \ _ ¯ °` (10 each) |
+| `western_light` | `4`, `ç` |
+| `ondulamarif_XL` | `:`, `º` |
+| `ondulamarif_Medium` / `_S` | `'` |
+
+The user-facing half is CLOSED: `layoutText` reports them (`unsupported`) and
+the Studio shows "This font can't stitch …", so typing "2024" in
+`western_light` now says the 4 is missing instead of quietly dropping it.
+*(confirmed 2026-08-22 — test/font-dead-glyphs.test.js pins the three classes)*
+
+**The candidate cause is proven as a MECHANISM and unproven as an instance.**
+`build-font`'s `stripRunParamsIfSatin` is font-wide: if any glyph has satin
+columns, every glyph's authored run parameters are stripped — including a glyph
+with NO columns, whose runs are the entire character. That is exactly the shape
+here (`roaring_twenties_KOR`'s "-" is one 2-point run; its letters are satin).
+The strip exists for a good reason — honouring authored run params on satin
+fonts would add construction stitches to every already-shipped satin font, a
+change Kent deliberately deferred — but its blast radius includes glyphs where
+the run is not construction, it IS the glyph.
+
+Whether upstream authored a stitch length that was stripped, or never authored
+one, **cannot be told from the built JSON**: both produce a bare point array.
+Deciding it needs the Ink/Stitch SVG sources in `scratch_ink/`, which exist on
+Kent's machine and not in a cloud checkout.
+*(suspected 2026-08-22 — mechanism read from tools/build-font.mjs:377; instance
+not verifiable in this checkout)*
+
+**What the narrow fix would be, if the sources confirm it:** scope the strip to
+glyphs that HAVE columns. It cannot regress any glyph — the ones it affects
+produce zero stitches today — but it is not free: a glyph that starts producing
+ink changes the design's bbox, and therefore its auto-scaling, so "A-B" in
+`roaring_twenties_KOR` would render at a different size than it does now. That
+is a change to existing output, which is why it is Kent's call and not taken
+here.
+
 ## Supply
 
 **Upstream is effectively exhausted, and there is no external supply.**
