@@ -2640,3 +2640,49 @@ it should at least be decided against the right number.
 **Session synthesis.** Fill-side trim work (PR #205) helps photo-lane and large-
 fill designs and is byte-identical on client logos. The customer-visible trim win
 is `chain_links`, already built, already measured, blocked only on cloth.
+
+### Stage-2 splitting of the perforated field: sized, and NOT recommended (2026-08-22)
+
+The last of the four items Kent queued. The idea was to stop handing a 46-hole,
+2,095 mm² field to the filler as one shape.
+
+**First: the holes are real artwork, not segmentation noise.** Measured — median
+**11.7 mm²**, p75 19.6, max 39.3, and only **2 of 46** fall under the sewable
+floor (`RUN_MIN_AREA_MM2` 0.16). Total hole area is 651.8 mm², **23.7% of the
+filled bbox**. These are letters and elements punched through a background
+field. Any argument for splitting on speckle-removal grounds is dead on arrival,
+and `docs/segmentation-alignment-2026-08-17.md`'s 95.8%-speckle finding is about
+a different thing (grid straddle at cell level), not these holes.
+
+**Second: the remaining gain is small, because PR #205 already took most of it.**
+
+| state | cuts on `S78e6cd01` |
+|---|---|
+| before PR #205 | 57 |
+| **shipped today** | **33** |
+| split into its 17 travel-connected components (estimated) | ~17 |
+
+*(Correction: an earlier prototype predicted 24 for the shipped state. That was
+the UNCAPPED selector; the 25 st/trim cap Kent set correctly rejects the
+expensive trades, landing at 33. 24 was never shipped and should not be quoted.)*
+
+So the split is worth roughly **16 further trims on one shape** — real, but
+against a large cost:
+
+- **It restructures segmentation output.** Region count, shape IDs, the review
+  UI a user edits, and every golden that touches this fixture class. One field
+  becomes seventeen shapes.
+- **It is a UX regression for a geometry win.** A user who sees one white
+  background now sees seventeen pieces to reason about.
+- **The fixture class is unrepresentative.** Today's real-artwork measurement
+  found client logos carry 1–3 fill shapes each with essentially no cutting
+  fills. `logo_hotel_fremont`'s perforated field is the exception, not the type.
+- **The entry trims it trades into are the ones `chain_links` removes.** Each of
+  the 17 new shapes costs an entry trim today; with chaining those largely
+  vanish. Splitting is therefore worth much MORE after a sew-out than before —
+  which is an argument for sequencing it after that decision, not now.
+
+**Recommendation: do not build it.** Revisit only if `chain_links` ships, at
+which point the entry-trim cost of splitting falls and the arithmetic changes.
+Recorded so the next session sizes it from these numbers rather than rebuilding
+the measurement.
