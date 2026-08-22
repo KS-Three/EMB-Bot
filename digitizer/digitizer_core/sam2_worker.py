@@ -175,14 +175,33 @@ def _ensure_checkpoint(tier: str) -> Path:
     tmp = Path(tmp_name)
     try:
         with urllib.request.urlopen(url, timeout=DOWNLOAD_TIMEOUT_S) as response:
+            # A proxy or flaky peer can close the stream early WITHOUT an
+            # exception — read() just returns b"" and the loop below exits
+            # exactly as it does on genuine EOF. That happened for real
+            # (2026-08-22, cloud container): two prewarm runs "succeeded" at
+            # 136.9 MB and 140.8 MB of a 156.0 MB checkpoint, each printed
+            # "checkpoint cached", and every later job then died with
+            # torch's "failed finding central directory". So the server's
+            # own Content-Length is held and enforced — a short body is a
+            # loud OSError here, never a cached corrupt file.
+            expected = response.headers.get("Content-Length")
+            expected_bytes = int(expected) if expected and expected.isdigit() else None
+            written = 0
             with tmp.open("wb") as out:
                 while True:
                     chunk = response.read(1 << 20)
                     if not chunk:
                         break
                     out.write(chunk)
-        if tmp.stat().st_size == 0:
+                    written += len(chunk)
+        if written == 0:
             raise OSError(f"downloaded 0 bytes from {url}")
+        if expected_bytes is not None and written != expected_bytes:
+            raise OSError(
+                f"download truncated: got {written} of {expected_bytes} bytes "
+                f"from {url} — the stream ended early without an error. "
+                "Re-run --prewarm; the partial file was discarded."
+            )
         os.replace(tmp, dest)
     finally:
         if tmp.exists():
