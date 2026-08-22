@@ -1,9 +1,36 @@
 ---
 name: windows-goldens-fail-locally
-description: Golden divergence is per-fixture — Kent's Windows fails a different three than CI deselects; never a red main, and never re-capture a golden locally
+description: Golden divergence is per-fixture and MOVES — corrected 2026-08-22, Linux now fails the set this file calls the Windows one; never a red main, never re-capture a golden locally
 metadata:
   type: reference
 ---
+
+> **CORRECTED 2026-08-22 — the set below is no longer the Linux picture, and
+> the headline claim inverted.** Measured on a Linux container with the pinned
+> requirements, on BOTH Python 3.12 (CI's version) and 3.13:
+>
+> | fixture | measured on Linux |
+> |---|---|
+> | `test_flat_lane_byte_identical[logo_alpha.png]` | **PASS** |
+> | `test_stage2_photo_segment[logo_alpha.png]` | **PASS** |
+> | `test_flat_lane_byte_identical[photo/enthusiast_logo.png]` | FAIL |
+> | `test_stage2_photo_segment[photo/enthusiast_logo.png]` | FAIL |
+> | `test_pushcomp[logo_whitebg.png-towel]` | FAIL |
+>
+> That is the *Windows* failure set, on Linux — the exact inverse of the claim
+> below that "the two `enthusiast_logo` rows pass on `ubuntu-latest`". Two
+> independent things corroborate the new reading: CI's deselect list had grown
+> from three to FIVE, adding precisely the two `enthusiast_logo` rows, which
+> only happens if they began failing there; and removing both `logo_alpha`
+> deselects and pushing produced a GREEN CI run (`db0e642`), so those two pass
+> on the real `ubuntu-latest` runner, not just in a container.
+>
+> The original claim was explicitly an inference from where PR #159 captured the
+> golden, not a measurement — and COOKBOOK warns the set moves whenever a golden
+> is re-captured. It moved. CI now deselects three.
+>
+> Everything below is kept as the WINDOWS record, which is what the file is
+> named for and which nothing here re-measured.
 
 Three tests fail on a Windows checkout of EMB-Bot:
 `test_flat_lane_byte_identical[photo/enthusiast_logo.png]`,
