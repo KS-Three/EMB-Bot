@@ -153,9 +153,12 @@ function measuredSets(font) {
   }).map(([name]) => name);
 }
 
-const loadAll = () =>
+// Memoised — every test here needs the whole library, and decoding 85 binaries
+// once per test is pure overhead.
+let _all;
+const loadAll = () => (_all !== undefined ? _all : (_all =
   fs.readdirSync(BIN).filter((f) => f.endsWith(".embf"))
-    .map((f) => [f.replace(/\.embf$/, ""), fb.decodeFontBin(fs.readFileSync(path.join(BIN, f)))]);
+    .map((f) => [f.replace(/\.embf$/, ""), fb.decodeFontBin(fs.readFileSync(path.join(BIN, f)))])));
 
 test("every shipped font is actually measured by this check", () => {
   if (!binDirOrSkip()) return;

@@ -35,7 +35,14 @@ const HAZARD_STITCHES = 50; // below this, "no area" is a dot, not a hazard
 // src/fonts/bin/ is COMMITTED. A missing library on CI means the build did not
 // run — not that there is nothing to check — and a test that returns early
 // asserts nothing while reporting green.
+// Memoised — three tests each need all 85 decoded and all 85 rendered, and
+// paying for that three times was two thirds of this file's runtime.
+let _lib;
 function library() {
+  if (_lib !== undefined) return _lib;
+  return (_lib = libraryUncached());
+}
+function libraryUncached() {
   if (!fs.existsSync(BIN)) {
     if (process.env.CI) throw new Error("src/fonts/bin missing on CI — the font library did not build");
     return null;
@@ -53,7 +60,14 @@ const sampleFor = (font) =>
     .filter((k) => [...k].length === 1 && k !== " " && /^\p{L}$/u.test(k))
     .slice(0, 5).join("");
 
+const _rendered = new Map();
 function render(font) {
+  if (_rendered.has(font)) return _rendered.get(font);
+  const r = renderUncached(font);
+  _rendered.set(font, r);
+  return r;
+}
+function renderUncached(font) {
   const chars = sampleFor(font);
   const lay = EMB.layoutText(font, chars, { emMm: 20, pxPerMm: 8 });
   let stitches = 0;

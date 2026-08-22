@@ -27,7 +27,14 @@ const BIN = path.join(__dirname, "..", "src", "fonts", "bin");
 
 // src/fonts/bin/ is COMMITTED; a missing library on CI means the build did not
 // run, not that there is nothing to check.
+// Memoised: four tests each need the whole library, and decoding 85 binaries
+// four times was costing 7.7s in a file whose actual work is string handling.
+let _lib;
 function library() {
+  if (_lib !== undefined) return _lib;
+  return (_lib = libraryUncached());
+}
+function libraryUncached() {
   if (!fs.existsSync(BIN)) {
     if (process.env.CI) throw new Error("src/fonts/bin missing on CI — the font library did not build");
     return null;
