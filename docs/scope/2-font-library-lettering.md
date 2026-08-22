@@ -280,7 +280,7 @@ whose COVERAGE is itself asserted. A score with the same value and a sounder
 basis is worth saying out loud, because "High, and here is what would catch it
 being wrong" is a different claim from "High".
 
-Six checks, each verified by breaking the thing it guards and watching it go
+Seven checks, each verified by breaking the thing it guards and watching it go
 red. Listed because the gap between them is where the next defect will live.
 
 | guard | what it would catch | population |
@@ -291,6 +291,7 @@ red. Listed because the gap between them is where the next defect will live.
 | `test/embf-guard.test.js` (tier gate) | any qc-font hard failure, plus any defect-class warning | 85/85 **binaries**, not the 17 committed JSONs |
 | `test/font-license.test.js` | sidecar/manifest licence drift, and a cross-family derivative whose credit line omits its base | 85/85, and it now names the one font that reaches the cross-family assert |
 | `test/font-export-smoke.test.js` | a font whose geometry breaks an encoder, or loses stitches through DST | 85/85 × DST/EXP/PES — **no font had ever reached an encoder in a test** |
+| `test/font-sample.test.js` | a browser tile that shows something other than the font — a defect with no natural alarm, since nothing fails | 85/85 must be name-derived, and today all are |
 
 The hazard tripwire has deliberate headroom rather than tightness: measured at
 emMm 20 / pxPerMm 8, the smallest rendered height in the library is `heavenly`
@@ -354,6 +355,31 @@ floor established rather than assumed: repeated runs of the same build vary
 sits inside that. `mimosa_large` is the expensive one at ~25 ms, and that is
 satin routing, not the new check. *(measured 2026-08-22 — 40 layouts per
 sample, pre-change tree at `e56ff13^`)*
+
+## What looking found that measuring could not (2026-08-22)
+
+The systematic checks above all passed while three of the 85 browser tiles
+were showing something other than the font. Nothing failed, because nothing
+was asking — a tile that says less is not an error, it is just a worse tile.
+
+`sampleFor` accepted the font's name only if EVERY character rendered, so one
+missing glyph dropped it to "first six alphanumerics in glyph-key order":
+`fold_inkstitch` ("Fold Ink/Stitch", no `/` glyph) read **012345**, and both
+Hebrew faces ("חוכמה Large", no Latin) read **אבגדה**. Two of the three were
+this branch's own doing — the any-script fallback added here stopped them
+rendering nothing and stopped there.
+
+Now unrenderable characters are dropped and the rest of the name kept, so the
+tiles read **FOLD INKSTITCH** and **חוכמה**. Whichever spelling survives
+better wins: stripping the original in a caps-only font leaves "FIS", while
+stripping the case-fixed spelling keeps all but the slash.
+
+**A second defect fell out of writing the test.** The alphanumeric fallback
+returned `123ABC`, not `ABC123`, because `Object.keys` puts integer-like keys
+first whatever the insertion order — so it preferred DIGITS over letters for
+every font, not just unlucky ones. That is the actual reason fold_inkstitch's
+tile read "012345" and not "ABCDEF". Letters come first explicitly now.
+*(measured 2026-08-22 — 85/85 name-derived, verified by disabling the rule)*
 
 ## 26 glyphs that sew nothing — needs Kent, and needs his machine (2026-08-22)
 
