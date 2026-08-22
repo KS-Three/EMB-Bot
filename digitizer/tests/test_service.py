@@ -589,6 +589,53 @@ def test_an_edit_is_a_different_job_not_a_stale_cache_hit(client):
     assert b2["job_id"] == b["job_id"], "the same edit twice is one job"
 
 
+def test_an_edit_reuses_the_generation_and_matches_a_cold_run(client):
+    """The stage 0-4 cache's whole contract over HTTP: an edited re-digitize
+    reuses the expensive prefix (`generation_cache: "hit"`), and the design
+    it returns is byte-for-byte what a cold run of the same edited request
+    produces. A stale or cross-contaminated generation serving wrong
+    stitches is strictly worse than the slowness the cache removes, so the
+    comparison is the whole design, not a spot check."""
+    from digitizer_service.app import generations
+
+    generations.clear()
+    plain = {"target_width_mm": 49.0, "preflight": False}
+    first = _digitize(client, plain)
+    assert first["generation_cache"] == "miss"
+
+    sid = first["review"]["shapes"][0]["shape_id"]
+    edit = {**plain, "deleted_shape_ids": [sid]}
+    warm = _digitize(client, edit)
+    assert warm["generation_cache"] == "hit"
+    assert sid not in [s["shape_id"] for s in warm["review"]["shapes"]]
+
+    # Cold run of the identical edited request: clear the generation cache
+    # AND dodge the finished-job cache (its key includes the edit, so the
+    # same config would return the warm job verbatim — that would prove
+    # nothing). `preflight` is not read by stages 0-7 themselves, so
+    # flipping it makes a new job whose design must still be identical.
+    generations.clear()
+    cold = _digitize(client, {**edit, "preflight": True})
+    assert cold["generation_cache"] == "miss"
+    assert cold["design"]["stitches"] == warm["design"]["stitches"]
+    assert cold["design"]["colors"] == warm["design"]["colors"]
+    assert [s["shape_id"] for s in cold["review"]["shapes"]] == [
+        s["shape_id"] for s in warm["review"]["shapes"]
+    ]
+
+
+def test_a_non_edit_parameter_change_misses_the_generation_cache(client):
+    """Any config field stages 0-4 actually read must be part of the
+    generation's identity — only the four review-edit keys are excluded."""
+    from digitizer_service.app import generations
+
+    generations.clear()
+    first = _digitize(client, {"target_width_mm": 51.0, "preflight": False})
+    assert first["generation_cache"] == "miss"
+    resized = _digitize(client, {"target_width_mm": 52.0, "preflight": False})
+    assert resized["generation_cache"] == "miss"
+
+
 def test_parse_config_canonicalizes_the_edit_fields():
     """Two spellings of one edit are ONE cache key: the deleted list sorts and
     dedupes, empty containers vanish, and a no-op override ('auto', null)

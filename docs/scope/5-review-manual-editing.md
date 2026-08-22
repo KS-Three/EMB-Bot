@@ -178,11 +178,14 @@ overlay drew a large, obvious spike over unchanged stitching.
   deciding what a hole *means* under a hand edit (drop it? clip it? move it
   with the shell?), which is a product call, not a bug fix.
 - **The restitch is DEBOUNCED at 2s idle, and that number has a reason.**
-  A restitch is a full stage 0-7 service run with no useful cache —
-  `jobs.content_key` folds `shape_overrides` into the config, so every
-  geometry edit is a guaranteed miss. Measured 0.65s on line art, ~10s on a
-  real photograph. Firing per drag would queue a 10s run behind every nudge;
-  waiting for the user to stop means ten adjustments cost one run.
+  When this was written, a restitch was a full stage 0-7 service run with no
+  useful cache — `jobs.content_key` folds `shape_overrides` into the config,
+  so every geometry edit was a guaranteed miss. Measured 0.65s on line art,
+  ~10s on a real photograph. Firing per drag would queue a 10s run behind
+  every nudge; waiting for the user to stop means ten adjustments cost one
+  run. **The full-rerun half of that reasoning is closed by the stage 0-4
+  cache below (2026-08-22); the debounce itself stays — even the cached
+  finish + re-plan is seconds on a photo, not per-keystroke cheap.**
 - **Where the 10 seconds actually goes — measured 2026-08-13, and it decides
   whether a cache is worth funding** (Kent asked for the number first):
 
@@ -196,8 +199,32 @@ overlay drew a large, obvious spike over unchanged stitching.
   art from ~7.3s to ~1.4s, but a real photo only from ~14s to ~6.6s — nearly
   half a photo's cost is stitch planning, which a boundary edit invalidates
   by definition. **Worth building for logo work; not a route to "instant" on
-  photos.** Not started; Kent's call. (Absolute figures were taken under
-  heavy machine load — the RATIO is the finding, not the wall-clock.)
+  photos.** (Absolute figures were taken under heavy machine load — the
+  RATIO is the finding, not the wall-clock.)
+  **BUILT 2026-08-22 — Kent funded it in that session's workload answer.**
+  The split lands exactly at the seam the table predicted: `pipeline.
+  build_generation` (stages 0-4, edit-independent — verified none of it
+  reads the four review-edit keys) / `pipeline.finish_generation` (edits +
+  palette), with `run_stages` recomposed so every other caller is untouched.
+  The service (`digitizer_service.jobs.GenerationCache`, LRU of 4) keys
+  generations on sha256(image) + config-minus-edit-keys and finishes every
+  request from a `Generation.fork()` — Region objects are mutated in place
+  by `apply_shape_edits`, so the fork (fresh Region/meta, shared immutable
+  polygons and rasters) is what keeps the cached original pristine; the
+  cold path forks too, since its generation goes into the cache. The
+  property the tests pin, rather than a speedup number: **a cache-served
+  edit is byte-for-byte the design a cold run of the same request
+  produces** (core: `tests/test_generation_cache.py`; wire:
+  `test_service.py`'s generation-cache round trips, including a
+  fork-isolation case that runs two different edits off one generation).
+  Jobs report `generation_cache: "hit"/"miss"` so the loop is observable.
+  Measured over the service wire, idle cloud container: an edited
+  `enthusiast_logo.png` re-run **3.59s → 0.99s (3.6x)**, an edited
+  `owl_kent.jpg` re-run **12.10s → 7.11s (1.7x)** — the table's own
+  logo-big/photo-modest shape, at slightly less than its predicted ratios
+  because `finish_generation` (edits + palette + fork) now rides the paid
+  tail. *(measured 2026-08-22 — `digitizer/tools/perf_stage_cache.py`,
+  cold vs hit vs cache-cleared cold-edit over TestClient)*
 - **OPEN: the restitch trigger only exists on the Content step.**
   `EmbroideryField` mounts on every step (`App.svelte`, outside the step
   conditional); `DigitizePanel`, which owns `runDigitize`, mounts only on

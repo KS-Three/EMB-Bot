@@ -8,10 +8,21 @@ They are kept separate because they answer different questions. Stages 1-4 ask
 review screen edits. Stages 5-7 ask "how does a machine sew that", and rerunning
 them is cheap. The service (build step 8) re-plans stitches after every
 parameter tweak while reusing one run of the expensive half.
+
+`run_stages` itself splits once more, at the seam the review-edit contract
+already drew: `build_generation` is everything through stage 4's computed
+facts (classification, prep, quantize, segment, vectorize, tagging, ids) —
+none of which reads the four review-edit config keys — and
+`finish_generation` applies those edits and settles the palette. The service
+caches a `Generation` across edits (see `digitizer_service.jobs`), which is
+what takes a boundary-edit re-run from a full stage 0-7 cost to
+`finish_generation` + `plan_stitches`. Every other caller just calls
+`run_stages` and never sees the seam.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import copy
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import numpy as np
@@ -156,6 +167,67 @@ class PipelineResult:
         return [r.shape_id for r in self.regions]
 
 
+@dataclass
+class Generation:
+    """Stages 0-4, done: the expensive, review-edit-independent prefix of
+    `run_stages`, everything from decode through vectorize/tagging with
+    shape ids assigned — the state the shape-layers contract's edits apply
+    TO. None of it reads `deleted_shape_ids` / `shape_overrides` /
+    `merge_shape_ids` / `split_shapes` (verified by the generation-cache
+    tests), which is the property that lets the service cache one of these
+    across a whole editing session.
+
+    A cached Generation must stay pristine while `finish_generation` mutates
+    Region objects in place (`apply_shape_edits` recolors, re-polygons and
+    stamps meta) and appends to warning lists — so every consumer goes
+    through `fork()`, cold path included, and the cache only ever holds a
+    Generation nothing has finished from.
+    """
+
+    classification_class: str
+    classification_warnings: list[dict]
+    p: Prep
+    quant_thread_indices: list[int]
+    quant_warnings: list[dict]
+    regions: list[Region]
+    dropped_areas: list[float]
+    prep_warnings: list[dict]
+    small_warnings: list[dict]
+    resnap_warnings: list[dict]
+    faces_present: bool
+    seg_name: str
+    # Gradient class only (None otherwise): the design-wide fill-row angle,
+    # a pure function of `p` hoisted here so a cache hit does not re-fit it.
+    design_row_angle_deg: float | None
+
+    def fork(self) -> "Generation":
+        """A copy safe to finish from, sharing what is immutable.
+
+        Region.polygon is a shapely 2 geometry (immutable — a boundary
+        override REPLACES it, never mutates it) and `p`'s rasters are only
+        ever read downstream (stages 5-7 index into `rgb`, never assign),
+        so both are shared. Region identity/meta and the warning lists are
+        the in-place-mutation surface, so those are fresh per fork; meta
+        gets a deep copy because nested values (a boundary_override's
+        coordinate list) must not alias across requests either.
+        """
+        return Generation(
+            classification_class=self.classification_class,
+            classification_warnings=list(self.classification_warnings),
+            p=self.p,
+            quant_thread_indices=list(self.quant_thread_indices),
+            quant_warnings=list(self.quant_warnings),
+            regions=[replace(r, meta=copy.deepcopy(r.meta)) for r in self.regions],
+            dropped_areas=list(self.dropped_areas),
+            prep_warnings=list(self.prep_warnings),
+            small_warnings=list(self.small_warnings),
+            resnap_warnings=list(self.resnap_warnings),
+            faces_present=self.faces_present,
+            seg_name=self.seg_name,
+            design_row_angle_deg=self.design_row_angle_deg,
+        )
+
+
 def _cone(chart, thread_index: int) -> dict:
     """One palette entry — the cone list's element shape, in one place.
 
@@ -173,11 +245,14 @@ def _cone(chart, thread_index: int) -> dict:
     }
 
 
-def run_stages(
+def build_generation(
     image: str | Path | bytes | np.ndarray,
     cfg: PipelineConfig | None = None,
     segmenter: Segmenter | None = None,
-) -> PipelineResult:
+) -> Generation:
+    """Stages 0-4: artwork in, a `Generation` out — ids assigned, computed
+    facts tagged, review edits NOT yet applied. `run_stages` composes this
+    with `finish_generation`; the service caches the result across edits."""
     cfg = cfg or PipelineConfig()
     seg = segmenter or ClassicalSegmenter()
     dbg = Path(cfg.debug_dir) if cfg.debug_dir else None
@@ -409,6 +484,44 @@ def run_stages(
     # `textcluster.py`'s module docstring, "OCR-suggested text" section.
     ocr_suggest_text(regions, p)
 
+    # Gradient class: the one shared fill-row angle for the whole design
+    # (2026-08-03 angle-fragmentation fix) — a pure function of `p`, hoisted
+    # into the generation so a cache hit reuses the fit. `finish_generation`
+    # assigns it onto `source_pixels`; see the comment there for who reads
+    # it and who deliberately does not.
+    design_row_angle_deg = (
+        detect_design_ramp_angle(p) if classification.class_ == "gradient" else None
+    )
+
+    return Generation(
+        classification_class=classification.class_,
+        classification_warnings=classification.warnings,
+        p=p,
+        quant_thread_indices=list(q.thread_indices),
+        quant_warnings=q.warnings,
+        regions=regions,
+        dropped_areas=dropped_areas,
+        prep_warnings=prep_warnings,
+        small_warnings=small_warnings,
+        resnap_warnings=resnap_warnings,
+        # `face_regions` is set only when stage 1.5 both ran (photo_prep's
+        # double gate) AND found at least one face — see that block above.
+        faces_present=bool(face_regions),
+        seg_name=seg.name,
+        design_row_angle_deg=design_row_angle_deg,
+    )
+
+
+def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> PipelineResult:
+    """Review edits + palette settlement: the cheap, edit-dependent tail of
+    `run_stages`. Mutates `gen`'s regions and warning lists in place — hand
+    it a `Generation.fork()`, never a cached original."""
+    cfg = cfg or PipelineConfig()
+    dbg = Path(cfg.debug_dir) if cfg.debug_dir else None
+    p = gen.p
+    regions = gen.regions
+    prep_warnings = gen.prep_warnings
+
     # Shape identity edits (contract v1.5): merge/split BEFORE deletions/
     # overrides, on the same "ids assigned against the full generation"
     # reasoning `apply_shape_edits` already documents for itself — merge and
@@ -426,7 +539,7 @@ def run_stages(
     # and a recolor to a brand-new thread gains one. This is the single seam
     # both `digitize()` and a service re-digitize pass through.
     regions, quant_indices, edit_warnings = apply_shape_edits(
-        regions, list(q.thread_indices), cfg.deleted_shape_ids,
+        regions, list(gen.quant_thread_indices), cfg.deleted_shape_ids,
         cfg.shape_overrides, chart_for(cfg))
 
     # Resolution of a region's effective "stitched" state: a
@@ -455,7 +568,7 @@ def run_stages(
     # (dense layers, one thread each) and before apply_layer_overrides, so
     # an explicit review-screen layer override still beats the class
     # default — see depth_sort_layers' docstring for the whole contract.
-    if classification.class_ in PHOTO_CLASSES or bool(cfg.extra.get("photo_sequencing")):
+    if gen.classification_class in PHOTO_CLASSES or bool(cfg.extra.get("photo_sequencing")):
         thread_indices = depth_sort_layers(regions, thread_indices, chart_for(cfg))
     # Explicit sew-order layers wait until the palette is settled: moving a
     # shape between layers must reorder sewing, never drop a thread from the
@@ -463,9 +576,9 @@ def run_stages(
     apply_layer_overrides(regions, cfg.shape_overrides)
 
     vec_warnings: list[dict] = []
-    if dropped_areas:
+    if gen.dropped_areas:
         floor = (cfg.min_detail_mm ** 2) * cfg.report_absorb_frac
-        reportable = sum(1 for a in dropped_areas if a >= floor)
+        reportable = sum(1 for a in gen.dropped_areas if a >= floor)
         if reportable:
             # Say WHAT was lost, not just how many. This warning used to call
             # every drop a detail "too small or thin to hold a stitch" — and on
@@ -475,7 +588,7 @@ def run_stages(
             # wording is what kept it invisible: nobody investigates a lost
             # "detail". Anything an order of magnitude past detail scale is
             # reported as the real shape it is, with its area.
-            largest = max(dropped_areas)
+            largest = max(gen.dropped_areas)
             all_small = largest < (cfg.min_detail_mm ** 2) * NOT_A_DETAIL_FACTOR
             if all_small:
                 message = (f"{reportable} detail{'s' if reportable != 1 else ''} were too "
@@ -492,7 +605,7 @@ def run_stages(
                     DROPPED_SMALL_SHAPES,
                     message,
                     count=reportable,
-                    cleaned_total=len(dropped_areas),
+                    cleaned_total=len(gen.dropped_areas),
                     largest_mm2=round(float(largest), 2),
                     all_small=bool(all_small),
                 )
@@ -508,16 +621,16 @@ def run_stages(
     art_cx, art_cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
     source_pixels = None
     # `faces_present`: the one signal `auto_photo_tier` (and this block's own
-    # detail-layer decision) need out of stage 1.5's face detection above
-    # (`face_regions`, set at line ~235 only when `detect_faces_seam` both
-    # ran — behind `cfg.photo_prep`'s double gate — AND found at least one
-    # face). A design that never entered stage 1.5 at all (photo_prep off,
-    # the v1 default) therefore reads exactly like one that did and found
-    # nothing: no faces, no auto-on detail layer. Acceptable v1 behaviour,
-    # not a bug — the auto-route still picks the right BASE tier either way
-    # (below), and turning photo_prep on is how a caller gets the detail
-    # layer to ever fire automatically.
-    faces_present = bool(face_regions)
+    # detail-layer decision) need out of stage 1.5's face detection
+    # (`build_generation` records `bool(face_regions)`, set only when
+    # `detect_faces_seam` both ran — behind `cfg.photo_prep`'s double gate —
+    # AND found at least one face). A design that never entered stage 1.5 at
+    # all (photo_prep off, the v1 default) therefore reads exactly like one
+    # that did and found nothing: no faces, no auto-on detail layer.
+    # Acceptable v1 behaviour, not a bug — the auto-route still picks the
+    # right BASE tier either way (below), and turning photo_prep on is how a
+    # caller gets the detail layer to ever fire automatically.
+    faces_present = gen.faces_present
     # Spec 2026-08-18 decision 3 (`auto_photo_tier`): photo_subject's
     # automatic tier — streamline, plus the detail layer when faces were
     # found — unless the caller already chose a fill_technique themselves,
@@ -527,7 +640,7 @@ def run_stages(
     # see `auto_photo_tier`'s own docstring): the detail layer is additive
     # to the route, not an opt-out from it. This is the "later slice" the
     # block's old comment named.
-    auto_tier = auto_photo_tier(cfg, classification.class_, faces_present)
+    auto_tier = auto_photo_tier(cfg, gen.classification_class, faces_present)
     effective_fill_technique = auto_tier or cfg.fill_technique
     effective_detail_layer = cfg.detail_layer or (auto_tier is not None and faces_present)
     # Fix round 1, concern 4: the automatic route is LAYERED streamline
@@ -579,22 +692,24 @@ def run_stages(
     want_tonal = want_tonal or any(
         str((ov or {}).get("tier", "")).lower() in ("sketch", "streamline")
         for ov in cfg.shape_overrides.values())
-    if classification.class_ == "gradient" or want_tonal:
+    if gen.classification_class == "gradient" or want_tonal:
         source_pixels = SourcePixels(rgb=p.rgb, px_per_mm=p.px_per_mm,
                                      origin_px=(art_cx, art_cy),
-                                     gradient_class=(classification.class_
+                                     gradient_class=(gen.classification_class
                                                      == "gradient"))
-    if classification.class_ == "gradient":
+    if gen.classification_class == "gradient":
         # One shared fill-row angle for the whole design (2026-08-03 angle-
-        # fragmentation fix) — computed here, once, against `p`'s full
-        # foreground, before stage 2 fragments it into however many k-means
-        # regions. None when the whole-design fit itself declines (no single
-        # shared direction found): `blend_fill` falls back to each region's
-        # own angle exactly as it always has in that case. Gradient-class
-        # only: the scanline tier has its own grain-angle precedence and
-        # never reads this field, and the streamline tier reads the
-        # direction FIELD instead, never this either.
-        source_pixels.design_row_angle_deg = detect_design_ramp_angle(p)
+        # fragmentation fix) — fitted once, against `p`'s full foreground,
+        # before stage 2 fragments it into however many k-means regions;
+        # `build_generation` owns the fit (a pure function of `p`, cached
+        # with it), this just carries it onto the payload. None when the
+        # whole-design fit itself declines (no single shared direction
+        # found): `blend_fill` falls back to each region's own angle exactly
+        # as it always has in that case. Gradient-class only: the scanline
+        # tier has its own grain-angle precedence and never reads this
+        # field, and the streamline tier reads the direction FIELD instead,
+        # never this either.
+        source_pixels.design_row_angle_deg = gen.design_row_angle_deg
 
     bg_outline_mm = None
     if p.bg_outline_px is not None and len(p.bg_outline_px) >= 3:
@@ -689,17 +804,26 @@ def run_stages(
         px_per_mm=p.px_per_mm,
         design_size_mm=design,
         warnings=merge_warnings(
-            [*classification.warnings, *p.warnings, *prep_warnings, *q.warnings,
-             *small_warnings, *vec_warnings, *resnap_warnings,
-             *merge_edit_warnings, *split_edit_warnings,
+            [*gen.classification_warnings, *p.warnings, *prep_warnings,
+             *gen.quant_warnings, *gen.small_warnings, *vec_warnings,
+             *gen.resnap_warnings, *merge_edit_warnings, *split_edit_warnings,
              *edit_warnings, *layer_warnings, *palette_warnings]
         ),
-        segmenter=seg.name,
+        segmenter=gen.seg_name,
         debug_dir=dbg,
         source_pixels=source_pixels,
-        design_class=classification.class_,
+        design_class=gen.classification_class,
         faces_present=faces_present,
     )
+
+
+def run_stages(
+    image: str | Path | bytes | np.ndarray,
+    cfg: PipelineConfig | None = None,
+    segmenter: Segmenter | None = None,
+) -> PipelineResult:
+    cfg = cfg or PipelineConfig()
+    return finish_generation(build_generation(image, cfg, segmenter), cfg)
 
 
 def fabric_for(cfg: PipelineConfig) -> Fabric:
