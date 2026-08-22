@@ -269,6 +269,31 @@ pre-fix gate)*
 - **`cyrillic`** — held. Dropping 6 broken glyphs would salvage it but kills
   `ñ`.
 
+## What now guards the library (2026-08-22)
+
+Five checks, each verified by breaking the thing it guards and watching it go
+red. Listed because the gap between them is where the next defect will live.
+
+| guard | what it would catch | population |
+|---|---|---|
+| `test/font-render-smoke.test.js` | a font that throws, renders zero stitches, or packs stitches into no area — **the mimosa_large hazard, in the terms that make it dangerous** | 85/85, rendered through the real lettering path |
+| `test/font-stunted.test.js` | a letter far shorter than its script median, or with no skeleton geometry | 85/85, and a separate test fails if any font is unmeasured |
+| `test/font-dead-glyphs.test.js` | a glyph present in the font that puts no thread down | 85/85, all single-character glyphs |
+| `test/embf-guard.test.js` (tier gate) | any qc-font hard failure, plus any defect-class warning | 85/85 **binaries**, not the 19 committed JSONs |
+| `test/font-license.test.js` | sidecar/manifest licence drift, and a cross-family derivative whose credit line omits its base | 85/85, and it now names the one font that reaches the cross-family assert |
+
+The hazard tripwire has deliberate headroom rather than tightness: measured at
+emMm 20 / pxPerMm 8, the smallest rendered height in the library is `heavenly`
+at 62.7px and the smallest width is `montecarlo` at 247.0px, against a 10px
+threshold. It is there to catch a collapse, which renders at ~0 — not to
+grade fonts. *(measured 2026-08-22 — all 85 rendered via EMB.layoutText)*
+
+**The lesson these encode, which cost more than any of them:** breaking a guard
+on purpose does not prove it is not blind. The stunted guard passed that ritual
+and was still measuring nothing in 21 of 85 fonts. Ask what fraction of the
+population a guard actually measures, and assert that — full account in
+`.claude/memory/font-pipeline-silent-failures.md`.
+
 ## 26 glyphs that sew nothing — needs Kent, and needs his machine (2026-08-22)
 
 Six shipped fonts contain single-character glyphs that are PRESENT, take their
