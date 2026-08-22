@@ -179,9 +179,14 @@ export function qcFont(font) {
   //
   // Compared WITHIN case: lowercase is legitimately shorter than uppercase, so
   // one library-wide median would flag every x-height letter in every font.
-  // Threshold 0.45 of the case median, and scoped to single-char A-Z/a-z names
-  // — the letters that must render — so decorative alternates and multi-char
-  // ornament glyphs stay out of it.
+  // Threshold 0.45 of the case median. Scoped to single-character LETTER
+  // names — the letters that must render — so decorative alternates and
+  // multi-char ornament glyphs (art_nouveau's "frame1", montecarlo's "C.alt6")
+  // stay out of it. That means A-Z and a-z where the font has them, and the
+  // font's own non-Latin letters where it does not: the loop below falls back
+  // to `nonLatin`, which is how the two Hebrew faces get checked at all. This
+  // comment said "A-Z/a-z" until 2026-08-22, describing the behaviour the
+  // \p{L} rewrite in this same file had already replaced.
   //
   // This is a WARN, not a hard fail: it found four fonts ALREADY SHIPPING with
   // the defect (mimosa_large D 0.11x, mimosa_medium D 0.22x, apesplit A 0.23x,

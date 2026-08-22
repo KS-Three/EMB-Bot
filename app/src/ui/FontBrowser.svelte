@@ -53,7 +53,7 @@
   // writing a blank tile rather than shipping one (it says so on the console).
   // infinipicto and paquerette are both in that state in the personal build
   // (2026-08-22) — paquerette because only 72 of its 1,641 runs carry an
-  // authored stitch length, so 31 of its 52 letters sew nothing.
+  // authored stitch length, so 52 of its 82 letter glyphs sew nothing.
   let tileFailed = {};
   // Memoized per (key, text): EMB.SATIN_FONTS accumulates decoded fonts over
   // a session, and re-rendering every decoded font's canvas synchronously on
