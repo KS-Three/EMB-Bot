@@ -484,18 +484,18 @@ area they drag down, documented once here.
 ### DST codec axis bug
 
 EMB-Bot's own browser DST codec (`src/dst.js` / `src/dstimport.js`) is
-transposed vs. the Tajima/pyembroidery standard — confirmed, unresolved.
-It round-trips correctly against itself but reads a quarter-turn wrong in
-third-party software. Full evidence trail: `dst-codec-axis-discrepancy` in
-memory, `docs/dst-axis-verdict-2026-07-31.md`, `digitizer/README.md`'s "Open
-finding" section.
+transposed vs. the Tajima/pyembroidery standard — confirmed, unresolved. It
+round-trips against itself but reads a quarter-turn wrong elsewhere. **Not only
+orientation:** `dst.js` writes the colour-change byte as `0x43` not `0xC3`, read
+as a spurious sequin toggle, so a two-colour design decodes with ZERO colour
+changes elsewhere. Both facets re-measured against pystitch 2026-08-22
+(`tools/crossval-stitch-formats.mjs`); PES and EXP are identity-clean. See `dst-codec-axis-discrepancy` in memory and `docs/dst-axis-verdict-2026-07-31.md`.
 
 **A nuance, reconciled 2026-08-17:** CLAUDE.md's "treat browser DST as
-EMB-Bot-internal only" and `digitizer/README.md`'s "browser DST stays the
-default because it is the one with sewn evidence" are not in conflict — the
-first is about orientation in third-party software, the second about which of
-EMB-Bot's own two encoders Studio picks. The code below settles it either way:
-the choice is per-project and the user is told which one ran.
+EMB-Bot-internal only" and `digitizer/README.md`'s "browser DST stays the default
+because it is the one with sewn evidence" are not in conflict — the first is
+about orientation in third-party software, the second about which of EMB-Bot's
+own two encoders Studio picks. The choice is per-project and the user is told.
 
 **CLOSED — a stale "unreachable from the real product" claim (2026-08-09: no
 path-selection logic, `/export` with no caller) sat here until 2026-08-17,
