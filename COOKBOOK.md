@@ -114,6 +114,10 @@ font there unless it is also in the shipping manifest. `EMB-Bot-standalone.html`
   (next bullet). `qc-font.mjs` warns on letters under 0.45x their case-median
   height and `test/font-stunted.test.js` guards it; the library is currently
   clean. **If a font looks wrong, render it — do not trust the QC line.**
+- **`build-embf` RUNS the tier gate** (since 2026-08-22). A `qcFont` hard fail
+  excludes a font from the sellable build; `--personal` warns and keeps. Before
+  this the gate was enforced only by a test over the 17 static `src/fonts/*.json`
+  sources, so the 68 fonts arriving via `scratch_ink/_out` were QC'd by nothing.
 - **Unsupported characters are REPORTED, not swallowed.** The lettering path
   skips a character the font has no glyph for; `buildLetteringDesign` returns
   `unsupported` (source order, deduplicated) and `generateAll` carries it per

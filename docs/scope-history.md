@@ -25,6 +25,43 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-08-22 (later still) — **the tier gate was Latin-only AND
+was never actually run.**
+
+qc-font.mjs describes itself as "the tier gate, in the repo, with tests".
+build-embf.mjs never called it. The only enforcement was embf-guard.test.js,
+which reads the 17 static src/fonts/<key>.json sources — so the other 68 fonts,
+the ones arriving through scratch_ink/_out, were QC'd by nothing at all on the
+way into the library. The builder runs it now; a hard fail excludes from the
+sellable build, --personal warns and keeps. Closing it changed nothing today
+(85 fonts, zero exclusions), which is what a real-but-unexercised hole looks
+like.
+
+It was also Latin-only: every coverage check scoped to A-Z, so a font with no
+Latin hard-failed on "no uppercase letter glyphs at all". hebrew_font_large did,
+and shipped regardless because of the first hole — the gate simultaneously
+rejecting a good font and not gating the fonts that reach the library.
+
+The alphabet test is \p{L} rather than "single-char and not a digit", and the
+precision matters twice. Hebrew's geresh and gershayim are punctuation and
+legitimately short, so counting them as letters made them "stunted" against a
+median they were never part of. And circular_3letters_monogram and invercelia
+name their glyphs A.medi / A.init — contextual variants the lettering path can
+never address — leaving punctuation as their only single-char glyphs, which
+under a looser test vouched for a font whose actual letters are unreachable.
+That is the ondulamarif_XL trap the gate exists to catch.
+
+Separately: the SVG path truncation bug fixed on 2026-08-21 had a SECOND copy in
+tools/parse-inkstitch.mjs, a one-glyph debug tool. Nothing shipped is affected,
+but it is the tool you reach for when a glyph looks wrong, so a parser that
+quietly drops geometry would send you hunting a defect the tool invented.
+src/svgpath.js — the user-facing artwork import path — was checked and is safe:
+it matches an explicit command set, so "e" can never be read as a command.
+
+Engine 407 pass / 0 fail. Studio 782 pass.
+
+---
+
 **Last updated:** 2026-08-22 (late) — **adding one non-Latin font exposed three
 separate places that assumed Latin, all of them silent.**
 

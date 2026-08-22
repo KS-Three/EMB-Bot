@@ -228,6 +228,40 @@ Shipped: `hebrew_font_large`, `hebrew_font_medium` (29 glyphs each, OFL-1.1).
 Two of those three were invisible to the unit suite and were found by driving
 the Studio in a browser; the third was caught by a guard test.
 
+## The tier gate (fixed 2026-08-22)
+
+`tools/qc-font.mjs` calls itself "the tier gate, in the repo, with tests". Two
+things were wrong with that, both surfaced by shipping one Hebrew font.
+
+**It was not run.** `build-embf.mjs` never called `qcFont`. The only enforcement
+was `test/embf-guard.test.js`, which reads `src/fonts/<key>.json` — the 17 STATIC
+sources. The other 68 fonts arrive through `scratch_ink/_out` and were QC'd by
+nothing on the way in. The builder now runs it: a hard fail EXCLUDES the font
+from the sellable build, the same treatment as a PULLED font or a licence
+outside policy; `--personal` warns and keeps, since that build is "every font on
+hand" by definition. Closing it changed nothing today — the 85 pass with zero
+exclusions — which is exactly the point.
+
+**It was Latin-only.** Every coverage check was scoped to A–Z, so a font with no
+Latin HARD-FAILED on "no uppercase letter glyphs at all". `hebrew_font_large`
+did, and shipped regardless because of the first hole. A font's alphabet is now
+whatever single-character letter glyphs it has, Latin preferred when present.
+
+The alphabet test is `\p{L}`, and that precision earns its keep twice:
+
+- Hebrew ships `׳` (geresh) and `״` (gershayim) — punctuation, legitimately
+  short. Counting them as letters made them "stunted" against a median they were
+  never part of, exactly as an apostrophe would be in a Latin font.
+- `circular_3letters_monogram` and `invercelia` name their glyphs `A.medi` /
+  `A.init` — contextual variants the lettering path can never address, since it
+  looks up `font.glyphs[ch]` for a plain character. Their only single-character
+  glyphs are punctuation, which under a looser test vouched for a font whose
+  actual letters are unreachable — the ondulamarif_XL trap the gate exists for.
+  `\p{L}` drops both and keeps `ellenika` (69 Greek) and `honoka` (501 Japanese).
+
+*(confirmed 2026-08-22 — `test/qc-font.test.js`, verified to fail against the
+pre-fix gate)*
+
 ## Deferred / not done
 
 - **Condensed/expanded width and mixed per-letter size** — both risk uneven
