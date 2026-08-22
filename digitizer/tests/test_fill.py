@@ -15,8 +15,12 @@ from shapely.ops import unary_union
 
 from digitizer_core import machine
 from digitizer_core.stage6_fill import (
+    _TRIM_STITCH_EQUIVALENT,
     _brick_row_points,
     _inset_ring,
+    _order_cost,
+    _reorder_for_fewer_cuts,
+    _score,
     _chevron_row_points,
     _columns,
     _crosshatch_fill_paths,
@@ -670,3 +674,86 @@ def test_row_spans_repairs_a_self_intersecting_polygon_instead_of_raising():
         for x0, x1 in spans:
             assert x1 >= x0
             assert bowtie.buffer(0).intersects(LineString([(x0, y), (x1, y)]))
+
+
+# --- path-order selection (stage6_fill._reorder_for_fewer_cuts) --------------
+#
+# These pin the LOGIC rather than a stitch count on a real fixture, deliberately.
+# Neither byte-identical golden exercises this code at all -- measured: 0 shapes
+# accepted on `enthusiast_logo.png` and `logo_whitebg.png` -- so a green suite is
+# no evidence about it, and a pinned count on a real fixture would break on every
+# unrelated pipeline change instead.
+
+
+def _slotted_shape():
+    """A slot that nearly spans the shape: two lobes 8 mm apart in a straight
+    line, but a ring detour past the travel budget. Crossing is unroutable;
+    moving along a lobe is not."""
+    poly = Polygon([(0, 0), (100, 0), (100, 40), (0, 40)],
+                   [[(10, 8), (90, 8), (90, 12), (10, 12)]])
+    return poly, _inset_ring(poly, machine.TRAVEL_INSET_MM), poly.buffer(0.01)
+
+
+def test_reorder_prefers_a_reachable_path_over_a_nearer_unroutable_one():
+    """The defect this whole change exists for.
+
+    `_fill_paths` picks the next column by straight-line distance, so on a holed
+    shape it repeatedly hops ACROSS a hole where travel cannot follow and
+    `fill_region` must cut — when a path the same distance away on the same side
+    would have cost nothing. The cut is manufactured by the choice.
+    """
+    poly, ring, slack = _slotted_shape()
+    across = [(50.0, 14.0), (52.0, 14.0)]      # other lobe, 8 mm away
+    same_lobe = [(58.0, 6.0), (60.0, 6.0)]     # same lobe, also 8 mm away
+    first = [(48.0, 6.0), (50.0, 6.0)]
+    last = [(20.0, 6.0), (22.0, 6.0)]
+    entry = (46.0, 6.0)
+
+    # The premise: equal distance, opposite routability.
+    assert math.dist(first[-1], across[0]) == math.dist(first[-1], same_lobe[0])
+    assert travel_path(poly, ring, first[-1], across[0], slack) is None
+    assert travel_path(poly, ring, first[-1], same_lobe[0], slack) is not None
+
+    incoming = [first, across, same_lobe, last]
+    before = _order_cost(incoming, poly, ring, slack, entry, 3.0)
+    out = _reorder_for_fewer_cuts(incoming, poly, ring, slack, entry, 3.0)
+    after = _order_cost(out, poly, ring, slack, entry, 3.0)
+
+    assert out[1][0] == same_lobe[0], "should follow the reachable path, not the nearer one"
+    # Cuts are equal here (2 either way): the far lobe has to be reached
+    # eventually and always costs one. The win on this geometry is travel --
+    # 15 stitches down to 3 -- which is why the selector scores the combined
+    # cost and not cuts alone. Asserting on cuts here would fail while the
+    # code is working, which is how the first draft of this test read.
+    assert _score(after) < _score(before), f"{before} -> {after}"
+
+
+def test_reorder_pins_the_final_path_so_the_shape_exits_where_it_did():
+    """`fill_region` hands the NEXT shape `runs[-1].points[-1]` as its entry, so
+    moving this shape's exit silently changes that shape's cost — outside the
+    comparison that approved this one. Per-design never-worse (Kent, 2026-08-21)
+    does not follow from per-shape non-worsening without this."""
+    poly, ring, slack = _slotted_shape()
+    paths = [[(48.0, 6.0), (50.0, 6.0)], [(50.0, 14.0), (52.0, 14.0)],
+             [(58.0, 6.0), (60.0, 6.0)], [(20.0, 6.0), (22.0, 6.0)]]
+    out = _reorder_for_fewer_cuts(paths, poly, ring, slack, (46.0, 6.0), 3.0)
+    assert out[-1] == paths[-1], "the last path must not move or flip"
+    assert out[-1][-1] == paths[-1][-1], "exit point must be byte-identical"
+
+
+def test_reorder_leaves_a_cut_free_order_untouched():
+    """No cut to buy means nothing to win, and the walk is not paid for."""
+    poly, ring, slack = _slotted_shape()
+    paths = [[(20.0, 6.0), (22.0, 6.0)], [(30.0, 6.0), (32.0, 6.0)],
+             [(40.0, 6.0), (42.0, 6.0)], [(50.0, 6.0), (52.0, 6.0)]]
+    entry = (18.0, 6.0)
+    assert _order_cost(paths, poly, ring, slack, entry, 3.0)[0] == 0
+    assert _reorder_for_fewer_cuts(paths, poly, ring, slack, entry, 3.0) is paths
+
+
+def test_score_prices_a_cut_at_the_trim_stitch_equivalent():
+    """Kent set 25 stitches per trim (2026-08-21). One cut must be worth exactly
+    that many travel stitches, or the cap is not the number he chose."""
+    assert _score((1, 0.0)) == _TRIM_STITCH_EQUIVALENT
+    assert _score((0, _TRIM_STITCH_EQUIVALENT)) == _score((1, 0.0))
+    assert _score((1, 0.0)) < _score((0, _TRIM_STITCH_EQUIVALENT + 1))

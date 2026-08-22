@@ -590,6 +590,157 @@ def travel_path(poly: Polygon, ring, a: tuple[float, float],
     return None
 
 
+# How many nearest candidates the routable-first walk probes before it accepts
+# that nothing reachable is left and takes the cut. Measured on
+# `logo_hotel_fremont.webp`'s 46-hole white field (the worst shape in the
+# corpus, 280 fill runs): no candidate past the 40th ever changed the chosen
+# next run. It is a work cap, not a quality knob — raising it cannot make the
+# result worse, only slower.
+_ROUTABLE_PROBE_LIMIT = 40
+
+
+# What one thread cut is worth, in stitches, when weighing two path orders.
+# Kent's call 2026-08-21: he judged ~9 stitches/trim "clearly worth it", so 9 is
+# a FLOOR on a trim's cost, not an indifference point; 25 sits comfortably above
+# it so a cheap win is never rejected, while the pathological trades are. It is
+# an economics figure — machine stop, cut, and clipping the tail by hand — not a
+# thread or fabric spec, so ROADMAP gate 1 does not reach it. Measured trades it
+# admits: `logo_hotel_fremont` 1.4 st/trim, `logo_gaulke_roofing` 3.7. Measured
+# trade it rejects: `owl_kent` at 101 st/trim (+1,014 stitches for 10 trims).
+_TRIM_STITCH_EQUIVALENT = 25.0
+
+
+def _order_cost(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
+                slack: Polygon, entry: tuple[float, float] | None,
+                trim_at_mm: float) -> tuple[int, float]:
+    """-> (cuts, travel stitches) this path ORDER costs, by `fill_region`'s rule.
+
+    `emit` cuts exactly when `travel_path` finds no route AND the gap exceeds
+    `trim_at_mm` (its `bridge is None` branch), and lays travel stitches when it
+    does find one. Scoring with that same rule rather than a distance proxy is
+    what makes the comparison honest — measuring a proxy against a real count is
+    how three earlier attempts at this defect reached wrong conclusions.
+
+    Only travel is returned, not total stitches: every order sews the SAME fill
+    penetrations, so travel is the entire stitch difference between two orders.
+
+    Travel is counted as the POINTS `emit` will actually append (`bridge[:-1]`),
+    NOT as `length / TRAVEL_STITCH_MM`. Those are not the same number and the
+    difference is not small: `travel_path` densifies each leg of a ring route
+    separately, so a route hugging a many-segmented ring emits far more
+    penetrations than its length implies. Estimating by length undercounted
+    `photo_sunset_backlit.png` by 2.5x (213 predicted against 539 real), which
+    silently turned an apparent 22.9 st/cut trade into roughly 57 and let a
+    design regress through a cap that was doing its job perfectly.
+    """
+    cuts = 0
+    travel_stitches = 0
+    cur = entry
+    for path in paths:
+        if not path:
+            continue
+        if cur is not None:
+            bridge = travel_path(poly, ring, cur, path[0], slack)
+            if bridge is None:
+                if math.dist(cur, path[0]) > trim_at_mm:
+                    cuts += 1
+            else:
+                travel_stitches += max(0, len(bridge) - 1)
+        cur = path[-1]
+    return cuts, float(travel_stitches)
+
+
+def _score(cost: tuple[int, float]) -> float:
+    cuts, travel_stitches = cost
+    return cuts * _TRIM_STITCH_EQUIVALENT + travel_stitches
+
+
+def _reorder_for_fewer_cuts(paths: list[list[tuple[float, float]]], poly: Polygon,
+                            ring, slack: Polygon, entry: tuple[float, float] | None,
+                            trim_at_mm: float) -> list[list[tuple[float, float]]]:
+    """Prefer a REACHABLE next path over merely the nearest one, when it is cheaper.
+
+    `_fill_paths` orders columns by straight-line distance. On a shape with
+    holes the nearest column is often across one, where `travel_path` cannot
+    route, so `emit` cuts — while a slightly farther column in the same
+    travel-connected island would have cost no cut at all. The cut is
+    manufactured by the choice, not forced by the geometry.
+
+    **This never replaces the ordering; it scores both and keeps the cheaper.**
+    A naive swap was measured making four of seventeen holed corpus shapes
+    WORSE: where a shape's boundaries are naturally sub-`trim_at_mm`, the
+    distance-greedy walk keeps hops short enough that a failed travel becomes a
+    silent jump rather than a cut, and chasing reachability lands somewhere both
+    far and unroutable. Ties keep the incoming order, so a shape can only
+    improve or stay identical on its own combined score.
+
+    **The last path is pinned, and that is what makes the guarantee a DESIGN-level
+    one.** Per-shape non-worsening does NOT imply per-design non-worsening on its
+    own: `fill_region` hands the next shape `runs[-1].points[-1]` as its `entry`,
+    so reordering this shape moves where the needle finishes and silently changes
+    the NEXT shape's cost — outside the comparison that approved this one. That
+    was not theory: `photo_sunset_backlit.png` regressed +511 stitches for 17
+    trims (30.1 st/trim) with every individual shape passing a 25 st/trim cap,
+    which is arithmetically impossible unless some shape gained stitches for zero
+    trims. Reordering everything EXCEPT the final path, then re-appending it
+    unflipped, leaves the exit point byte-identical to the incoming order — so
+    downstream shapes see exactly what they saw before, and per-design
+    never-worse (Kent's call, 2026-08-21) follows by summation for real.
+
+    Skipped when the incoming order already cuts nothing: there is no cut to buy,
+    and every such shape then pays nothing for this.
+    """
+    if len(paths) < 3:
+        return paths
+    ends = [(p[0], p[-1]) for p in paths if p]
+    if len(ends) != len(paths):
+        return paths                     # an empty path: leave this shape alone
+    before = _order_cost(paths, poly, ring, slack, entry, trim_at_mm)
+    if before[0] == 0:
+        return paths                     # nothing to win; do not pay for the walk
+
+    # Everything but the last path is free to move; the last is pinned so the
+    # shape exits exactly where it did before (see docstring).
+    pinned = len(paths) - 1
+    remaining = set(range(pinned))
+    order: list[int] = []
+    flipped: set[int] = set()
+    cur = entry
+    while remaining:
+        cand = sorted(remaining, key=lambda j: (
+            min(math.dist(cur, ends[j][0]), math.dist(cur, ends[j][1]))
+            if cur is not None else 0.0))[:_ROUTABLE_PROBE_LIMIT]
+        picked = None
+        if cur is not None:
+            for j in cand:
+                for flip in (False, True):
+                    head = ends[j][1] if flip else ends[j][0]
+                    if travel_path(poly, ring, cur, head, slack) is not None:
+                        picked = (j, flip)
+                        break
+                if picked:
+                    break
+        if picked is None:               # nothing reachable -> take the nearest
+            j = cand[0]
+            flip = (cur is not None
+                    and math.dist(cur, ends[j][1]) < math.dist(cur, ends[j][0]))
+            picked = (j, flip)
+        j, flip = picked
+        order.append(j)
+        if flip:
+            flipped.add(j)
+        cur = ends[j][0] if flip else ends[j][1]
+        remaining.discard(j)
+
+    # Reversing a path sews the same penetrations in the other direction — the
+    # holes land in identical places, so this changes travel, never placement.
+    order.append(pinned)
+    candidate = [paths[j][::-1] if j in flipped else paths[j] for j in order]
+    assert candidate[-1][-1] == paths[-1][-1], "exit point must be unchanged"
+    after = _order_cost(candidate, poly, ring, slack, entry, trim_at_mm)
+    return candidate if _score(after) < _score(before) else paths
+
+
 # Which row-point function each fill `technique` dispatches to inside
 # `_fill_paths` — every entry shares `_row_points`' exact call signature
 # `(x0, x1, y, row_index, stitch_mm, staggers, reverse)`, so `_fill_paths`
@@ -920,6 +1071,8 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     else:
         fill_paths = _fill_paths(poly, angle, row_mm, stitch_mm,
                                  machine.FILL_STAGGERS, entry, technique=technique)
+    fill_paths = _reorder_for_fewer_cuts(fill_paths, poly, ring, slack, entry,
+                                         trim_at_mm)
     emit(fill_paths, stitches.FILL, stitch_mm)
 
     if not runs:
