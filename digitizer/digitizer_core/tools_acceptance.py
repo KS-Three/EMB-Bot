@@ -10,6 +10,8 @@ and task-6-report.md's smoke evidence), not re-mocked here.
 """
 from __future__ import annotations
 
+from .stage6_blend import RAMP_R2_MIN
+
 # The one forced_class every variant shares: it is what routes a photo
 # through the auto-tier (`auto_photo_tier` in pipeline.py picks streamline)
 # and the auto-split (`effective_split_tonal`) on its own, with no other
@@ -31,8 +33,26 @@ def variant_matrix(sam2_available: bool) -> list[dict]:
     live (evidence: debug_out/task5_live_job_sam2.json's `_meta.config_sent`)
     turn on tone/texture prep and route segmentation through SAM2 instead of
     the classical SLIC+merge path.
+
+    The relaxed-speckle arm (Kent's 2026-08-23 answer funding the A/B —
+    `docs/tonal-eng-measurements-2026-08-22.md` §1 for why the speckle gate,
+    not the r² floor, is the blend tier's real off-switch on real art) sets
+    `blend_speckle_r2_override` to `RAMP_R2_MIN` itself: every region whose
+    fit already clears the floor passes the speckle gate too, which is the
+    maximal honest contrast — the sheet shows exactly what trusting the fit
+    over the texture looks like, and Kent's eyes rule on it. Stock stays the
+    first column so the comparison is always present.
     """
-    matrix = [{"tag": "classical", "config": {"forced_class": _FORCED_CLASS}}]
+    matrix = [
+        {"tag": "classical", "config": {"forced_class": _FORCED_CLASS}},
+        {
+            "tag": "relaxed_speckle",
+            "config": {
+                "forced_class": _FORCED_CLASS,
+                "blend_speckle_r2_override": RAMP_R2_MIN,
+            },
+        },
+    ]
     if sam2_available:
         matrix.append({
             "tag": "sam2",

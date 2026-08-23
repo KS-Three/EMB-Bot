@@ -185,7 +185,7 @@ def run(images: list[Path], service: str, out_dir: Path
     sam2_available = sam2_segmentation_unavailable_reason() is None
     matrix = variant_matrix(sam2_available)
     tags = [v["tag"] for v in matrix]
-    note = "" if sam2_available else "  (SAM2 unavailable on this machine -- classical only)"
+    note = "" if sam2_available else "  (SAM2 unavailable on this machine -- no sam2 arm)"
     print(f"variants: {tags}{note}")
 
     rows: list[dict] = []
