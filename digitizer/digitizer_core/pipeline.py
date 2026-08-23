@@ -462,7 +462,17 @@ def build_generation(
     # gates (an enclosed-background shape's colour is the background's by
     # definition), and before `detect_text_clusters` for the same reason both
     # of those run here: a computed fact re-derived every generation.
-    resnap_warnings = revalidate_threads(regions, p, cfg)
+    # `q.thread_indices` is the palette `select_palette` (photo lanes) or
+    # `quantize` (flat) chose; on the PHOTO classes only, the re-ask is
+    # restricted to it — the full-chart argmin was the palette cap's larger
+    # escape hatch (55 block-level threads off a 12-cone list on a real
+    # portrait; see `revalidate_threads`' docstring). Every other class
+    # ignores both arguments and keeps the unrestricted re-snap.
+    resnap_warnings = revalidate_threads(
+        regions, p, cfg,
+        palette_indices=list(q.thread_indices),
+        design_class=classification.class_,
+    )
 
     # Same ordering rationale as `tag_enclosed_background` immediately above:
     # a computed FACT re-derived every generation, so it belongs before shape
