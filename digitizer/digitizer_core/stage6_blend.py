@@ -330,7 +330,8 @@ RAMP_REJECT_LOW_R2 = "low_r2"
 RAMP_REJECT_SPECKLED = "speckled"
 
 
-def detect_ramp_detail(poly: Polygon, sp: SourcePixels
+def detect_ramp_detail(poly: Polygon, sp: SourcePixels,
+                       speckle_r2_override: float | None = None,
                        ) -> tuple[RampModel | None, str, float]:
     """-> (model or None, rejection reason, best r2 seen).
 
@@ -339,6 +340,12 @@ def detect_ramp_detail(poly: Polygon, sp: SourcePixels
     same numbers the decision was made on rather than re-deriving them.
     `detect_ramp` stays the plain model-or-None entry point every existing
     caller already uses.
+
+    `speckle_r2_override` (cfg.blend_speckle_r2_override — see that field's
+    comment for the measurement and Kent's 2026-08-23 funding of it): when
+    set, a region whose best r² is at or above the bar passes the speckle
+    gate regardless of its texture — the fit quality vouches for it. None,
+    the default, is the shipped gate exactly.
     """
     mm_x, mm_y, rgb, mask, crop = _sample_pixels(poly, sp)
     if len(mm_x) < 12:
@@ -353,7 +360,8 @@ def detect_ramp_detail(poly: Polygon, sp: SourcePixels
     best_r2 = max(r2_linear, r2_radial)
     if best_r2 < RAMP_R2_MIN:
         return None, RAMP_REJECT_LOW_R2, best_r2
-    if _speckle_ratio(crop, mask) > RAMP_SPECKLE_MAX:
+    vouched = speckle_r2_override is not None and best_r2 >= speckle_r2_override
+    if not vouched and _speckle_ratio(crop, mask) > RAMP_SPECKLE_MAX:
         return None, RAMP_REJECT_SPECKLED, best_r2
 
     if r2_linear >= r2_radial:
@@ -540,7 +548,9 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg
     border eligibility, which depends on reading a real report back.
     """
     poly = region.polygon
-    model, reject, best_r2 = detect_ramp_detail(poly, source_pixels)
+    model, reject, best_r2 = detect_ramp_detail(
+        poly, source_pixels,
+        speckle_r2_override=cfg.blend_speckle_r2_override)
     if model is None:
         # Not a ramp (or too speckled to trust as one) — ordinary tatami,
         # the same call every other fill-classified shape gets, report and

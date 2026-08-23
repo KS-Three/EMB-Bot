@@ -649,6 +649,19 @@ class PipelineConfig:
     # default (cfg false still means yes for those classes); gradient and flat
     # do not (cfg true is the only way to split them).
     split_tonal_regions: bool = False
+    # The acceptance A/B's speckle-gate knob, funded by Kent 2026-08-23 after
+    # the tonal-eng measurement (docs/tonal-eng-measurements-2026-08-22.md §1)
+    # showed RAMP_SPECKLE_MAX — not the r² floor — blocks 41 of the 42 real
+    # regions whose tonal structure the ramp model explains at r² 0.5-0.99:
+    # real-photo texture reads as speckle even when a ramp explains 92% of
+    # the region. None (the default) is byte-identical shipped behaviour.
+    # Set to an r² bar (the harness's relaxed arm uses RAMP_R2_MIN itself,
+    # 0.5) and a region fitting AT OR ABOVE the bar passes the speckle gate
+    # regardless — the fit quality vouches for the region, the texture no
+    # longer vetoes it. Exists so Kent's eyes can judge stock vs relaxed on
+    # one contact sheet; NOT a shipped default, and flipping it into one is
+    # an eyeball-loop verdict, not an optimisation.
+    blend_speckle_r2_override: float | None = None
     # None = fill_row_mm (or the machine default). Contour rings are the same
     # 0.40 mm apart as tatami rows; this exists so the ring tier can be opened
     # up independently, which is what "best used for open fills with low stitch
