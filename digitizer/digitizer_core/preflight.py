@@ -92,7 +92,11 @@ from .config import PipelineConfig
 from .pipeline import PipelineResult, fabric_for
 from .stage0_classify import classify
 from .stage1_prep import prep
+from .stage6_meander import MEANDER_CELL_MM, MEANDER_COARSE_LEVELS
 from .stage6_satin import strip_splits
+from .stage6_scanline import SCANLINE_LEVEL_STRIDES, SCANLINE_ROW_MM
+from .stage6_streamline import (STREAMLINE_D_SEP_DARK_MM,
+                                STREAMLINE_D_SEP_LIGHT_MM)
 from .stitches import StitchPlan
 from .threads import chart_for, rgb_to_lab
 
@@ -103,7 +107,7 @@ LETTERING_TOO_SMALL = "LETTERING_TOO_SMALL"    # extra: {count, shapes: [{shape_
 STITCHES_TOO_LONG = "STITCHES_TOO_LONG"        # extra: {count, max_mm}
 STITCHES_TOO_SHORT = "STITCHES_TOO_SHORT"      # extra: {fraction, count, total}
 TRIM_HEAVY = "TRIM_HEAVY"                      # extra: {per_1000, trims, stitches}
-DENSITY_EXTREME = "DENSITY_EXTREME"            # extra: {kind, measured_mm, target_mm, ratio}
+DENSITY_EXTREME = "DENSITY_EXTREME"            # extra: {kind, measured_mm, target_mm, ratio} (+ technique, band_mm on a tonal fill)
 DENSITY_STACKED = "DENSITY_STACKED"            # extra: {peak_units, p95_units, over_warn_mm2, over_block_mm2, cell_mm}
 SAME_HOLE_HEAVY = "SAME_HOLE_HEAVY"            # extra: {fraction, repeat_points, penetrations, baseline}
 LINK_UNCOVERED = "LINK_UNCOVERED"              # extra: {max_mm, limit_mm, total_mm, at_mm, thread_mm}
@@ -128,6 +132,15 @@ _CONTOUR_RING_UNREACHABLE = "CONTOUR_RING_UNREACHABLE"
 # signal computation entirely), so `_is_photo_class` checks cfg.forced_class
 # first.
 _CLASSIFIED_PHOTO = ("CLASSIFIED_PHOTO_SUBJECT", "CLASSIFIED_PHOTO_SCENE")
+
+# The photo auto-route's announcement (warnings_codes.PHOTO_AUTO_TIER, emitted
+# by pipeline.run_stages), re-read by the density check under the same
+# by-string convention as the codes above. It has to be the warning: on the
+# auto route `cfg.fill_technique` still reads "tatami" — the tier decision is
+# stage 7's own recomputation (`plan_stitches`: `auto_tier or
+# cfg.fill_technique`) — and this warning is the only place the plan records
+# which fill tier it actually sewed.
+_PHOTO_AUTO_TIER = "photo_auto_tier"
 
 # --- Thresholds, each with its measurement ---------------------------------
 
@@ -1088,6 +1101,71 @@ def _satin_rail_advance_mm(plan: StitchPlan) -> float | None:
     return adv[len(adv) // 2]
 
 
+# What each tonal fill tier means to lay down, as a (darkest, lightest) line
+# spacing band in mm — the tiers' own producing constants, imported so this
+# table cannot drift from what stage 6 sews. There is no single number to
+# mirror the way the tatami target mirrors stage 7's formula: every tier here
+# modulates its spacing by LOCAL IMAGE TONE across its band (streamline's
+# `_d_sep`, scanline's stride ladder, meander's quadtree depths), so the
+# design-wide median advance legitimately lands anywhere inside the band
+# depending on how light the photo is.
+#
+# Measured, first real-portrait acceptance run (2026-08-23,
+# debug_out/acceptance_2026-08-23 — the run that forced this table to exist):
+# the photo auto-route (streamline) scored against the tatami target read
+# "4.3x its 0.40 mm density target ... re-digitize before sewing" and cost a
+# warn on every toggle-route job whose advance the instrument could measure —
+# 9 of 12 (3 arms x 4 portraits; the other 3 declined the axis gate),
+# measured 0.923-2.608 mm, every one INSIDE streamline's own 0.8-3.2 mm
+# intent. The spec had already ruled the score non-authoritative on tonal
+# work (docs/superpowers/plans/2026-08-18-photo-tonal-v1-spec.md, decision
+# 1); the warn TEXT was the live defect, telling every toggle-route user a
+# correct thread-paint result needs re-digitizing.
+#
+# Per-tier edges, each read from the code that produces the spacing:
+#   * streamline — `_d_sep`'s full range, dark to light.
+#   * sketch — streamline's machinery with darkness attenuated
+#     (SKETCH_DARKNESS_SCALE into the same `_d_sep` mapping): attenuation
+#     moves spacing toward the light END of the same band, never outside it.
+#   * scanline_tonal — the base row grid to its widest admitted stride.
+#   * meander_tonal — the finest quadtree cell to the sparsest cell that
+#     still SEWS (`_depth_grid`: darkness >= cutoff earns max_depth - 2);
+#     the one coarser level (7.2 mm) is traveled, not stitched, so it is
+#     no part of the sewn intent.
+#
+# Keys stay in lockstep with _PHOTO_TONAL_TECHNIQUES (pinned by test) — same
+# membership, different job: that tuple gates the class-override check, this
+# table is the density yardstick.
+_TONAL_FILL_BAND_MM = {
+    "streamline": (STREAMLINE_D_SEP_DARK_MM, STREAMLINE_D_SEP_LIGHT_MM),
+    "sketch": (STREAMLINE_D_SEP_DARK_MM, STREAMLINE_D_SEP_LIGHT_MM),
+    "scanline_tonal": (SCANLINE_ROW_MM,
+                       SCANLINE_ROW_MM * max(SCANLINE_LEVEL_STRIDES)),
+    "meander_tonal": (MEANDER_CELL_MM,
+                      MEANDER_CELL_MM * 2 ** (MEANDER_COARSE_LEVELS - 1)),
+}
+
+
+def _tonal_fill_technique(plan: StitchPlan, cfg: PipelineConfig) -> str | None:
+    """The tonal fill tier this plan actually sewed with, or None.
+
+    Mirrors stage 7's own precedence (`plan_stitches`: `auto_tier or
+    cfg.fill_technique`): an explicit `cfg.fill_technique` wins outright —
+    including over a stale PHOTO_AUTO_TIER warning on a re-plan, where
+    stage 7 re-resolves and the explicit choice sews. Only when cfg still
+    reads "tatami" (`auto_photo_tier`'s own not-explicit gate) is the
+    auto-route's published verdict re-read from plan.warnings, the
+    `_contour_findings` pattern.
+    """
+    technique = (cfg.fill_technique or "tatami").lower()
+    if technique == "tatami":
+        for w in plan.warnings:
+            if w.get("code") == _PHOTO_AUTO_TIER:
+                technique = str(w.get("tier", "")).lower()
+                break
+    return technique if technique in _TONAL_FILL_BAND_MM else None
+
+
 def _density_findings(plan: StitchPlan,
                       cfg: PipelineConfig) -> tuple[list[dict], dict]:
     """Emitted density against the planner's own targets.
@@ -1098,10 +1176,23 @@ def _density_findings(plan: StitchPlan,
     emitted geometry diverging from what the pipeline itself intended:
     beyond 1.5x sparse the fabric grins through the rows, beyond 1.5x dense
     it puckers.
+
+    A tonal fill tier — the pipeline's own deliberate density decision,
+    auto-routed or explicit (`_tonal_fill_technique`) — intends a BAND, not
+    a number: spacing follows local image tone across `_TONAL_FILL_BAND_MM`
+    (evidence at the table). The fill advance is scored against that band
+    widened by the tatami target, because stage 7's never-drop ladder
+    legally sews plain tatami rows inside a tonal design wherever a shape
+    came back empty, so a median anywhere between the two intents is the
+    pipeline doing what it said. The same 1.5x slack applies at both edges;
+    past the light edge the tonal fill genuinely collapsed (gaps no tier
+    intended), past the dark edge it matted. Satin is unaffected — no tonal
+    tier emits satin.
     """
     fabric = fabric_for(cfg)
     fill_target = (cfg.fill_row_mm or machine.FILL_ROW_MM) * max(0.1, fabric.density_adjust)
     satin_target = machine.SATIN_SPACING_MM
+    tonal = _tonal_fill_technique(plan, cfg)
 
     fill_adv, fill_conc = _fill_row_advance_mm(plan)
     findings: list[dict] = []
@@ -1113,6 +1204,30 @@ def _density_findings(plan: StitchPlan,
     ):
         metrics[f"{kind}_advance_mm"] = None if measured is None else round(measured, 3)
         if measured is None:
+            continue
+        if kind == "fill" and tonal is not None:
+            dark, light = _TONAL_FILL_BAND_MM[tonal]
+            lo, hi = min(dark, target), max(light, target)
+            if lo / DENSITY_RATIO_MAX <= measured <= hi * DENSITY_RATIO_MAX:
+                continue
+            edge = hi if measured > hi else lo
+            ratio = measured / edge
+            way = ("looser: expect gaps in the coverage" if ratio > 1
+                   else "denser: expect the fabric to pucker")
+            findings.append(finding(
+                DENSITY_EXTREME,
+                "warn",
+                f"The fill stitching came out at {measured:.2f} mm line "
+                f"spacing — outside the {lo:.2f}-{hi:.2f} mm range the "
+                f"{tonal} fill sets from image tone, {way}. Check the "
+                "density settings and re-digitize before sewing.",
+                kind=kind,
+                measured_mm=round(measured, 3),
+                target_mm=round(edge, 3),
+                ratio=round(ratio, 2),
+                technique=tonal,
+                band_mm=[round(lo, 3), round(hi, 3)],
+            ))
             continue
         ratio = measured / target
         if 1.0 / DENSITY_RATIO_MAX <= ratio <= DENSITY_RATIO_MAX:
