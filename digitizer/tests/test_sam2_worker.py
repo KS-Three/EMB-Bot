@@ -141,6 +141,10 @@ def test_prewarm_mode_bypasses_the_cache_check_and_populates_it(
     class _FakeResponse:
         def __init__(self, payload: bytes):
             self._chunks = [payload, b""]
+            # A real urlopen response always carries headers; empty means no
+            # Content-Length, which keeps this test on the no-length path of
+            # the truncation guard (test_sam2_prewarm.py covers the guard).
+            self.headers: dict = {}
 
         def __enter__(self):
             return self

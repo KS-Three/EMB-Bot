@@ -346,8 +346,9 @@ def _write_debug(cfg: PipelineConfig, result: Classification) -> None:
 # `forced_class` values that mean anything. Every downstream consumer tests
 # MEMBERSHIP against a subset of these (`pipeline.py`'s
 # `class_ in ("photo_subject", "photo_scene")`, `== "gradient"`,
-# `stage7_sequence.PHOTO_CLASSES`), so an unrecognized value matches none of
-# them and silently takes the flat path — a mis-measurement that looks like a
+# `stage7_sequence.PHOTO_CLASSES` and its stage6_satin mirror
+# `_PHOTO_CLASSES`), so an unrecognized value matches none of them and
+# silently takes the flat path — a mis-measurement that looks like a
 # clean run. Hence the check in `classify`.
 CLASSES = ("flat", "gradient", "photo_subject", "photo_scene")
 
