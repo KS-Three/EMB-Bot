@@ -5,21 +5,27 @@ scripts' pattern and are exercised live, not here."""
 from digitizer_core.tools_acceptance import variant_matrix, sheet_row
 from tools.acceptance_ab import _job_stats
 
-def test_variant_matrix_without_sam2_is_classical_plus_relaxed_speckle():
-    # The relaxed-speckle arm rides every run (Kent's 2026-08-23 funding of
-    # the speckle A/B); stock classical stays first so the comparison
-    # column is always present.
+def test_variant_matrix_without_sam2_carries_both_routes():
+    # Four arms always: the toggle route (classical + relaxed — the relaxed
+    # arm is measured INERT there, kept as the proof) and the default route
+    # (stock + relaxed), which is where the blend tier — and therefore the
+    # speckle override Kent funded — actually lives: stage 0 sends real
+    # photos to gradient, not photo_subject. Measured on the first real
+    # portraits 2026-08-23.
     assert variant_matrix(sam2_available=False) == [
         {"tag": "classical", "config": {"forced_class": "photo_subject"}},
         {"tag": "relaxed_speckle",
          "config": {"forced_class": "photo_subject",
                     "blend_speckle_r2_override": 0.5}},
+        {"tag": "default_stock", "config": {}},
+        {"tag": "default_relaxed",
+         "config": {"blend_speckle_r2_override": 0.5}},
     ]
 
 def test_variant_matrix_with_sam2_adds_the_ab_arm():
     m = variant_matrix(sam2_available=True)
     assert {"tag": "sam2", "config": {"forced_class": "photo_subject",
-            "photo_prep": True, "photo_segment_sam2": True}} in m and len(m) == 3
+            "photo_prep": True, "photo_segment_sam2": True}} in m and len(m) == 5
 
 def test_sheet_row_carries_counts_not_scores():
     row = sheet_row("dog.jpg", "classical",
