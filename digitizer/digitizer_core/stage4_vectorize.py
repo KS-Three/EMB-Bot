@@ -51,6 +51,15 @@ THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00 = 3.0
 # of them, and the work is (samples x ~400 spools) per region.
 THREAD_REVALIDATE_SAMPLE_PX = 256
 
+# Mirrored, verbatim, from stage7_sequence.PHOTO_CLASSES — the same lockstep
+# arrangement stage6_satin._PHOTO_CLASSES already keeps (there because the
+# import would cycle; here because this early-stage module importing stage 7
+# would drag every fill tier in behind one tuple). A membership change in
+# stage7_sequence must land here too; tests/test_thread_revalidate_palette.py
+# pins the lockstep so drift fails loud instead of quietly unbinding the
+# resnap for a new photo class.
+_PHOTO_CLASSES = ("photo_subject", "photo_scene")
+
 
 def _to_mm(pts: np.ndarray, cx: float, cy: float, px_per_mm: float) -> np.ndarray:
     out = pts.astype(np.float64)
@@ -263,7 +272,9 @@ def _sample_lab(lab: np.ndarray) -> np.ndarray:
 
 
 def revalidate_threads(regions: list[Region], p: Prep,
-                       cfg: PipelineConfig) -> list[dict]:
+                       cfg: PipelineConfig, *,
+                       palette_indices: list[int] | None = None,
+                       design_class: str = "flat") -> list[dict]:
     """Re-check every shape's thread against the pixels its FINAL polygon
     covers, and re-snap the ones that drifted. -> warnings.
 
@@ -295,6 +306,32 @@ def revalidate_threads(regions: list[Region], p: Prep,
       it this would churn thread assignments by fractions of a dE00 across
       the whole corpus for no visible gain, and every golden with it.
 
+    **Photo classes re-snap WITHIN the selected palette** (2026-08-23).
+    `select_palette` exists precisely to cap a photo's spool count, and this
+    pass was the larger of its two escape hatches: the argmin here ran over
+    the FULL chart, so every re-snap on the photo route pulled a brand-new
+    spool into the design — measured live on a real portrait
+    (`baby_deck_laugh`, `forced_class="photo_subject"`): 45 shapes resnapped
+    onto 19 spools outside the 12-spool palette, and the design sewed 55
+    block-level threads / 92 machine colour stops off a 12-cone colour list.
+    When `design_class` is a photo class and `palette_indices` (the caller's
+    `q.thread_indices`) is non-empty, the argmin is masked to that subset:
+    the drifted shape still gets the best thread for the pixels it now
+    covers, chosen from the spools the operator will actually load. Every
+    other class keeps the unrestricted chart argmin, byte-identical to
+    before this parameter existed — deliberately. The phase-4 spec pins the
+    flat and gradient lanes byte-for-byte (their golden suites enforce it),
+    and fix #6.3's own motivating case (`repro_gradient_white_icon.png`) is
+    gradient-lane: nothing guarantees a gradient drift target sits inside
+    the selected palette, and the escape was never the measured defect there
+    (the same four portraits on the default/gradient route: 8/7/8/0 resnaps
+    and 0-6 out-of-palette spools, vs 53/47/45/19 resnaps and 9-22 on the
+    photo route). For honesty's sake: on the repro fixture itself the resnap
+    target (`0015 White`) happens to sit INSIDE its own 6-spool palette
+    (measured 2026-08-23), so that one fixture would survive binding — the
+    byte-identity contract, not the fixture, is what makes the class gate
+    load-bearing.
+
     **The error is measured PER PIXEL, and that choice is the whole fix.**
     A drifted sliver is bimodal by construction — part of it still sits on the
     colour its thread was chosen from, part has moved onto something else — and
@@ -321,6 +358,13 @@ def revalidate_threads(regions: list[Region], p: Prep,
     if not regions:
         return []
     chart = chart_for(cfg)
+    # The photo-route palette binding (docstring above). `None` — every
+    # non-photo class, and any caller that passes no palette — is the
+    # unrestricted chart argmin this function has always run.
+    allowed: np.ndarray | None = None
+    if design_class in _PHOTO_CLASSES and palette_indices is not None \
+            and len(palette_indices) > 0:
+        allowed = np.unique(np.asarray(list(palette_indices), dtype=np.int64))
     x0, y0, x1, y1 = p.art_bbox
     cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
     shape = p.rgb.shape[:2]
@@ -345,7 +389,8 @@ def revalidate_threads(regions: list[Region], p: Prep,
             deltaE_ciede2000(samples[:, None, :], chart.lab[None, :, :]), axis=0
         )
         before = float(per_spool[r.thread_index])
-        best = int(np.argmin(per_spool))
+        best = (int(np.argmin(per_spool)) if allowed is None
+                else int(allowed[np.argmin(per_spool[allowed])]))
         if best == r.thread_index:
             continue
         after = float(per_spool[best])
