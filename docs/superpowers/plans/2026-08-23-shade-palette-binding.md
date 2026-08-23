@@ -105,3 +105,51 @@ exactly this) with an experimental bound-shade arm: today's route vs (a) vs
 per-arm cone-count table. No sew-out is needed to pick a direction; a
 sew-out remains the final word on whether merged shades read as banding on
 cloth (ROADMAP gate 1 territory).
+
+## Measured 2026-08-23 — the bound_shade arm, live (this branch)
+
+The run this doc asked for exists: `variant_matrix` grew a `bound_shade` arm
+(`shade_palette_bind=True` on the classical route, nothing else — the flag is
+default-OFF, `config.py`), and the four portraits went through all six arms
+live (`debug_out/acceptance_2026-08-23/`, contact sheet included). Kent's
+verdict is still the open item; these are the instrument's readings.
+Sparkler first — it is the hard case on every axis.
+
+| photo (classical → bound) | palette | block threads | outside | stops | zero-stitch cones |
+|---------------------------|--------:|--------------:|--------:|------:|------------------:|
+| sparkler_dusk             | 15      | 43 → 15       | 28 → 0  | 75 → 54 | 0 → 0 |
+| boat_dog_toddler          | 12      | 45 → 12       | 33 → 0  | 68 → 45 | 0 → 0 |
+| baby_deck_laugh           | 12      | 50 → 12       | 38 → 0  | 78 → 47 | 0 → 0 |
+| face_closeup_blur         | 7       | 14 → 6        | 8 → 0   | 25 → 16 | **1 → 1 (`1565`)** |
+
+- **Under-naming closes completely**: bound block-level spools == the palette
+  (0 outside) on all four. Stitches/trims also drop a little (e.g. sparkler
+  14,662→14,290 st, 344→269 trims) — merged plateau layers trace fewer,
+  longer streamline sets.
+- **Over-naming does NOT fully close**: `1565` still sews zero stitches on
+  face_closeup_blur even bound — binding restricts shades to the palette but
+  does not force a region's shades onto its own base cone, and every shade
+  of 1565's regions binds elsewhere. The cone list still over-names by one
+  there; `PALETTE_THREAD_MISMATCH` fires identically on both arms (42/22/32/
+  17 shapes) — that warning is per-layer naming, not the shade escape.
+- **Stop delta vs the estimate**: measured removals 21/23/31/9 against the
+  "up to 23/22/30/10" upper bounds — boat and baby beat the bound by one
+  (the estimate modelled adjacent-block merges only; the real decomposition
+  merge also changes run interleaving).
+- **The cost, measured on the real code path** (per escaped shade unit, the
+  shade's own Lab, live masked snap — instrumented run of this branch):
+  median dE00 **11.9 / 8.3 / 7.5 / 8.5** (sparkler/boat/baby/face), worst
+  **19.8 / 15.9 / 19.7 / 15.0**. The plan-doc estimate (block-colour method:
+  median 8.0–11.2, worst ~20) **holds** — re-run live it reads 11.4/8.5/8.0/
+  7.5 med, 19.8/14.8/19.4/15.0 worst. Sparkler is the top of the band both
+  ways. Secondary reading: the *added* perceptual error vs the shade's own
+  unbound spool (dE00-to-bound minus dE00-to-unbound at the shade lab) is
+  median 3.9/3.4/2.2/2.0, worst 19.5/11.8/17.2/7.2.
+- **Shade distinctions collapsed**: block level, exactly the table above —
+  28/33/38/8 distinct spools gone. Decomposition level (the honest merge in
+  `_shade_layers`): 97/54/111/31 of 189/133/239/57 shade units merge away;
+  distinct decomposition spools 47→15, 45→12, 54→12, 15→7.
+
+Flag OFF byte-identity held everywhere it is pinned (full suite green but
+for the three known Linux environment goldens, unchanged pre/post-branch;
+classical arm reproduces this doc's own table exactly).

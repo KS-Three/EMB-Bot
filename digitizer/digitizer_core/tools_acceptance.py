@@ -34,6 +34,11 @@ def variant_matrix(sam2_available: bool) -> list[dict]:
     turn on tone/texture prep and route segmentation through SAM2 instead of
     the classical SLIC+merge path.
 
+    The bound_shade arm (2026-08-23) is the shade-palette-bind experiment's
+    instrument — today's route in `classical`, the bound route beside it;
+    the inline comment at the arm carries the contract and the plan-doc
+    pointer.
+
     The relaxed-speckle arm (Kent's 2026-08-23 answer funding the A/B —
     `docs/tonal-eng-measurements-2026-08-22.md` §1 for why the speckle gate,
     not the r² floor, is the blend tier's real off-switch on real art) sets
@@ -45,6 +50,22 @@ def variant_matrix(sam2_available: bool) -> list[dict]:
     """
     matrix = [
         {"tag": "classical", "config": {"forced_class": _FORCED_CLASS}},
+        # The shade-palette-bind arm (2026-08-23, EXPERIMENT — option (a) of
+        # docs/superpowers/plans/2026-08-23-shade-palette-binding.md, the
+        # contact-sheet run that doc says settles it): identical route to
+        # `classical` except `shade_palette_bind=True`, so the per-shade
+        # chart snap stays inside the plan's own palette and adjacent
+        # same-spool shades merge. Second column, directly beside
+        # `classical`, because the ONE comparison this arm exists for is
+        # Kent's eyes on today's route vs the bound route — shade
+        # flattening against a loadable cone list. Not a shipped default
+        # and not a recommendation: the arm is the instrument, the verdict
+        # is Kent's.
+        {
+            "tag": "bound_shade",
+            "config": {"forced_class": _FORCED_CLASS,
+                       "shade_palette_bind": True},
+        },
         {
             "tag": "relaxed_speckle",
             "config": {

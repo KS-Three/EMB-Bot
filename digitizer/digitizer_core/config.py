@@ -642,13 +642,43 @@ class PipelineConfig:
     # per-shade thread independent of `select_palette`'s own choice, and the
     # two can and do disagree — measured 9 emitted threads outside the
     # selected palette, 28 spools sewn vs 14 pre-branch, on Kent's owl.
-    # Palette binding for the shade path is an open engineering item, not
-    # something this flag already solves. Opt-in pending a corpus run; see
-    # MASTER_SCOPE.md's blend-tier entry.
+    # Palette binding for the shade path is not something this flag solves;
+    # `shade_palette_bind` below (2026-08-23) is its default-OFF measuring
+    # instrument — shipped behaviour is still unbound, pending Kent's call.
+    # Opt-in pending a corpus run; see MASTER_SCOPE.md's blend-tier entry.
     # Spec 2026-08-18 decision 2: photo_subject and photo_scene split by
     # default (cfg false still means yes for those classes); gradient and flat
     # do not (cfg true is the only way to split them).
     split_tonal_regions: bool = False
+    # EXPERIMENT, default OFF, pending Kent's quality call — option (a) of
+    # docs/superpowers/plans/2026-08-23-shade-palette-binding.md, the decision
+    # doc this flag exists to put live evidence in front of. The shade path is
+    # the palette cap's REMAINING escape hatch now that the region-level
+    # resnap is bound (stage4_vectorize.revalidate_threads, 2026-08-23): on
+    # the photo route every tonally-split region decomposes into 3-5 shades
+    # and each shade snaps to the FULL ~400-spool chart independently of
+    # `select_palette`'s choice (stage6_streamline._shade_layers ->
+    # stage7_sequence._shade_blocks) — measured on the four acceptance
+    # portraits, post-region-fix: 43/45/50/14 block-level threads against
+    # palettes of 15/12/12/7, i.e. 28/33/38/8 spools the operator's cone list
+    # never names (and a listed cone can sew ZERO stitches when every shade of
+    # its regions snaps elsewhere — face_closeup_blur's 1565). True masks the
+    # shade snap to the spools this plan's own regions sew (photo classes
+    # only, the same strict class gate the region fix uses) and merges
+    # ADJACENT same-spool shades into one honest fewer-shade layer — the
+    # block level already buckets same-spool shades at sew time
+    # (stage7_sequence._shade_blocks), so the merge makes the DECOMPOSITION
+    # say what actually sews rather than listing shades that only look
+    # distinct. The cost, and why this is not simply on: each bound shade
+    # moves onto its nearest palette spool (plan-doc estimate median 8-11.2
+    # dE00, worst ~20) and the merges re-collapse shade distinctions — the
+    # owl-body flat-mass defect's ghost in palette-sized steps
+    # (`split_tonal_regions` above: a region IS the unit that owns a thread).
+    # Trading shade fidelity for a loadable cone list is Kent's call, made
+    # from the acceptance A/B's bound_shade arm (tools_acceptance.
+    # variant_matrix), not an engineering default. False is byte-identical
+    # shipped behaviour, pinned by tests/test_shade_palette_bind.py.
+    shade_palette_bind: bool = False
     # The acceptance A/B's speckle-gate knob, funded by Kent 2026-08-23 after
     # the tonal-eng measurement (docs/tonal-eng-measurements-2026-08-22.md §1)
     # showed RAMP_SPECKLE_MAX — not the r² floor — blocks 41 of the 42 real

@@ -510,7 +510,8 @@ _SHADE_MIN_SAMPLES = 12
 
 
 def _shade_layers(poly, source_pixels: SourcePixels, base_darkness, region: Region,
-                  cfg) -> list[tuple[int, tuple[int, int, int], object]]:
+                  cfg, *, palette_indices: list[int] | None = None
+                  ) -> list[tuple[int, tuple[int, int, int], object]]:
     """3-5 chart-shade decomposition of this region's own pixels, DARK SHADE
     FIRST. Each entry is `(thread_index, rgb, membership)`, where
     `membership(x_mm, y_mm) -> [0, 1]` is that shade's COVERAGE SHARE at a
@@ -534,6 +535,33 @@ def _shade_layers(poly, source_pixels: SourcePixels, base_darkness, region: Regi
     `blend_fill` buckets on) is what drives BOTH the shade split here and
     every downstream `_trace_streamlines` call — a photo region has no ramp
     to fit, only the same source-darkness field this tier has always read.
+
+    **`palette_indices` (keyword-only, default None) is the shade-palette
+    bind — `cfg.shade_palette_bind`'s EXPERIMENT, option (a) of
+    docs/superpowers/plans/2026-08-23-shade-palette-binding.md.** None (or
+    empty — the defensive degrade `revalidate_threads`' palette argument
+    also has) is the full-chart `chart.nearest_index` snap this function has
+    always run, byte-identical by construction. A non-empty list masks the
+    snap to those chart indices: each shade still gets the perceptually
+    nearest (CIEDE2000) spool, chosen from the spools the caller's plan will
+    actually load. Two adjacent shades landing on ONE palette spool then
+    merge into a single layer whose membership is the sum of their tents — a
+    trapezoid: 1.0 across the merged centers' whole span, tapering to 0 one
+    knot outside it, so the shares across layers still sum to 1 at every
+    point (the partition survives the merge; a singleton "group" reduces to
+    exactly the original tent). The merge is the honest half: `_shade_blocks`
+    (stage 7) already buckets same-spool shades at the block level, so the
+    sew side degrades gracefully without it — but the DECOMPOSITION (layer
+    count, report fields, per-layer streamline sets) would keep listing
+    shades that only look distinct. Non-adjacent shades on one spool stay
+    separate layers, deliberately — their tents are not contiguous, a
+    combined membership would sew the intervening shade's band too, and
+    stage 7's bucketing already reunites them at sew time (its own
+    docstring's "two non-adjacent bands can snap to the same cone" case).
+    Gating (photo classes only, flag off = never) is the CALLER's job —
+    `stage7_sequence.sequence` derives and passes the palette; this function
+    only obeys the argument, mirroring how `revalidate_threads` obeys its
+    own.
     """
     mm_x, mm_y, rgb, _mask, _crop = _sample_pixels(poly, source_pixels)
     if len(mm_x) < _SHADE_MIN_SAMPLES:
@@ -550,7 +578,23 @@ def _shade_layers(poly, source_pixels: SourcePixels, base_darkness, region: Regi
     shade_labs = _shade_lab_colors(ts, lab, n)
 
     chart = chart_for(cfg)
-    thread_idx = [chart.nearest_index(c) for c in shade_labs]
+    if palette_indices:
+        # The shade-palette bind (docstring above): the same masked-argmin
+        # shape `revalidate_threads`' own binding uses — the full per-spool
+        # CIEDE2000 row, argmin restricted to the allowed subset — so the
+        # two bindings cannot drift into two definitions of "nearest in the
+        # palette".
+        allowed = np.unique(np.asarray(list(palette_indices), dtype=np.int64))
+
+        def _nearest_allowed(c: np.ndarray) -> int:
+            ref = np.repeat(np.asarray(c, dtype=np.float64).reshape(1, 3),
+                            len(allowed), axis=0)
+            return int(allowed[int(np.argmin(
+                deltaE_ciede2000(ref, chart.lab[allowed])))])
+
+        thread_idx = [_nearest_allowed(c) for c in shade_labs]
+    else:
+        thread_idx = [chart.nearest_index(c) for c in shade_labs]
     rgbs = [tuple(int(v) for v in chart[t].rgb) for t in thread_idx]
 
     centers = [i / (n - 1) for i in range(n)]
@@ -574,7 +618,37 @@ def _shade_layers(poly, source_pixels: SourcePixels, base_darkness, region: Regi
             return max(0.0, 1.0 - abs(d - center) / knot)
         return membership
 
-    shades = [(thread_idx[i], rgbs[i], _membership_for(centers[i])) for i in range(n)]
+    if palette_indices:
+        # Merge ADJACENT same-spool shades (docstring above). Group runs of
+        # equal bound spool over the light->dark center order, then give
+        # each group the sum of its members' tents in closed form: a
+        # trapezoid at 1.0 over [c_lo, c_hi] (adjacent tents already sum to
+        # exactly 1 between their centers) falling to 0 one knot outside —
+        # for a single-member group c_lo == c_hi and this IS the tent
+        # `_membership_for` builds, same cutoff check first.
+        def _band_membership_for(c_lo: float, c_hi: float):
+            def membership(x: float, y: float) -> float:
+                d = base_darkness(x, y)
+                if d < STREAMLINE_CUTOFF_DARKNESS:
+                    return 0.0
+                if d < c_lo:
+                    return max(0.0, 1.0 - (c_lo - d) / knot)
+                if d > c_hi:
+                    return max(0.0, 1.0 - (d - c_hi) / knot)
+                return 1.0
+            return membership
+
+        groups: list[tuple[int, int]] = []  # inclusive [first, last] shade runs
+        start = 0
+        for i in range(1, n + 1):
+            if i == n or thread_idx[i] != thread_idx[start]:
+                groups.append((start, i - 1))
+                start = i
+        shades = [(thread_idx[a], rgbs[a],
+                   _band_membership_for(centers[a], centers[b]))
+                  for a, b in groups]
+    else:
+        shades = [(thread_idx[i], rgbs[i], _membership_for(centers[i])) for i in range(n)]
     # `centers` ascends light -> dark (index 0 is `_shade_lab_colors`' own
     # t=0 canonical position), so dark-shade-first is simply the reverse.
     shades.reverse()
@@ -653,6 +727,7 @@ def _trace_layer(poly, tangent_at, darkness_map, ring, slack, shape_id: str
 def streamline_fill(region: Region, source_pixels: SourcePixels, cfg,
                     *, darkness_scale: float = 1.0,
                     streamline_mode: str | None = None,
+                    shade_palette_indices: list[int] | None = None,
                     ) -> tuple[list[StitchRun], dict]:
     """One shape -> its streamline runs plus the standard tier report.
 
@@ -694,6 +769,15 @@ def streamline_fill(region: Region, source_pixels: SourcePixels, cfg,
     `dataclasses.replace` before calling this function) is unaffected
     either way: it never passes this new argument, so it keeps reading its
     own already-forced `mono_cfg.streamline_mode`.
+
+    `shade_palette_indices` (2026-08-23, the `cfg.shade_palette_bind`
+    experiment) rides the same keyword pattern: None — the default, and what
+    every caller gets unless the flag is on AND the design class is photo
+    (`stage7_sequence.sequence` owns that gate) — is byte-identical to the
+    parameter not existing. Non-empty, it is handed to `_shade_layers` as
+    the allowed spool subset for the layered mode's per-shade chart snap
+    (see that function's docstring for the bind and the adjacent-same-spool
+    merge); mono mode never reads it — there is no per-shade snap to bind.
     """
     poly = region.polygon
     report = {"too_thin": False, "jumps": 0, "empty": False,
@@ -749,7 +833,8 @@ def streamline_fill(region: Region, source_pixels: SourcePixels, cfg,
     _mode = streamline_mode if streamline_mode is not None else cfg.streamline_mode
     layered = str(_mode or "mono").lower() == "layered"
     if layered:
-        shades = _shade_layers(poly, source_pixels, darkness, region, cfg)
+        shades = _shade_layers(poly, source_pixels, darkness, region, cfg,
+                               palette_indices=shade_palette_indices)
         runs: list[StitchRun] = []
         total_streamlines = 0
         shade_thread_idx = []
