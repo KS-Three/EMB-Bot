@@ -41,19 +41,17 @@ or move it.
    *(fixed 2026-08-19 — `stage7_sequence._shade_blocks`)*
 
 2. **No width floor under satin — PHOTO-LANE HALF CLOSED 2026-08-22; still
-   DISPROVED for flat art.** 19 of 162 corpus regions, all photo-family,
-   sew sub-millimetre satin (Law 31); 61/64 sub-1.0 mm satins on real
-   customer logos are ground the pro ALSO satined, so the fix is gated to
-   the photo classes: `classify_ribbon`'s `photo_width_floor` reroutes
-   earned satin under Law 31's 1.0 mm (adopted verbatim, never tuned —
-   gate 1) to the outline run. 58 sub-floor verdicts / **29 emitted-stitch
-   reroutes** under forced photo routing (the rest unsewn or already
-   area-rescued runs), columns 0.23–0.97 mm; flat/gradient byte-identical
-   by suite and audit. Open: default routing — drone/summit classify
-   GRADIENT, barred there — needs stage-0 discrimination (phase 2).
-   *(measured 2026-08-11 — `docs/dt-first-verdict-2026-08-11.md`; disproved
-   2026-08-16 — `docs/satin-gate-attribution-2026-08-16.md` §7; landed
-   2026-08-22 — `docs/tonal-eng-measurements-2026-08-22.md`)*
+   DISPROVED for flat art.** 19 of 162 corpus regions, all photo-family, sew
+   sub-mm satin (Law 31), but 61/64 sub-1.0 mm satins on real customer logos are
+   ground the pro ALSO satined — so `classify_ribbon`'s `photo_width_floor`
+   reroutes earned sub-1.0 mm satin to the outline run on photo classes ONLY
+   (1.0 mm is Law 31 verbatim, never tuned — gate 1). 58 verdicts / **29
+   emitted-stitch reroutes**, 0.23–0.97 mm; flat/gradient byte-identical by
+   suite and audit. Open: default routing sends drone/summit to GRADIENT, barred
+   there — needs stage-0 discrimination (phase 2). *(measured 2026-08-11 —
+   `docs/dt-first-verdict-2026-08-11.md`; disproved 2026-08-16 —
+   `docs/satin-gate-attribution-2026-08-16.md` §7; landed 2026-08-22 —
+   `docs/tonal-eng-measurements-2026-08-22.md`)*
 
 3. **14 jump-trims on an 80mm design,** in every fill variant measured.
    Not started. *(measured 2026-08-12 — scope-history)*
@@ -120,17 +118,28 @@ or move it.
    1–3 fill shapes that essentially never cut. *(measured 2026-08-21/22)*
 
 7. **RESOLVED 2026-08-21 — satin silently dropped a bracket's tab** on
-   `enthusiast_logo.png` (7.8 mm² bare, D/52 → C/64). `_prune_spurs` re-measured
-   a stem its own first pass had un-branched; fixed by exempting a dead end the
-   function itself created, not by moving the bar.
+   `enthusiast_logo.png` (7.8 mm² bare, D/52 → C/64): `_prune_spurs` re-measured
+   a stem its own first pass had un-branched.
    *(fixed 2026-08-21 — `stage6_satin._prune_spurs`, tests/test_satin.py)*
 
 8. **RESOLVED 2026-08-22 — build-font dropped SVG transforms on most fonts.**
-   A transform-IGNORING path walk ran for every single-`ltr.svg` font, so a glyph
-   placing repeated geometry BY transform collapsed: `mimosa_large` "D" is one
-   dot with 38 transforms and sewed 6,193 stitches into 40.0 x **0.0 mm**. Four
-   fonts affected; one fix cleared all four. *(fixed 2026-08-22 —
-   `tools/build-font.mjs`, `test/font-transforms.test.js`)*
+   A transform-IGNORING path walk collapsed glyphs placing geometry BY transform
+   (`mimosa_large` "D": 6,193 stitches into 40.0 x **0.0 mm**). Four fonts, one
+   fix. *(fixed 2026-08-22 — `tools/build-font.mjs`, `test/font-transforms.test.js`)*
+
+9. **The photo route escapes its own palette — REGION HALF CLOSED 2026-08-23,
+   shade half OPEN (Kent's call: close it).** A 12-cone list sewed 31–35 region
+   threads / 30–92 stops on four real portraits. `revalidate_threads` is now
+   masked to the palette on photo classes: region threads == palette,
+   out-of-palette → **0**, stops → 78/68/25/75, flat+gradient byte-identical.
+   Open: the per-shade snap, 28/33/38/8 out-of-palette spools — binding it
+   collapses adjacent shades, a quality trade. Options + costs:
+   `docs/superpowers/plans/2026-08-23-shade-palette-binding.md` *(PR #217)*
+
+10. **RESOLVED 2026-08-23 — three photo-route robustness defects, every one
+    found by the first real photos, none reachable by a committed fixture:** a
+    7.4 MP OOM (#214), an infinite loop in `select_palette` (#218), preflight
+    condemning correct thread-paint as too loose (#216).
 
 ---
 
@@ -334,9 +343,8 @@ loses its hedge as it is copied forward** — is why this file is split.
   `tools/pro_parity/scorecard.py`)*
 - **Every pro-parity number before 2026-08-15 was measured on artwork
   RECONSTRUCTED from the pro's own stitches, and was flattered by 11.3 points.**
-  Kent supplied 7 real customer artworks (15 designs) on 2026-08-15. Honest
-  baseline: **42.5**. *(measured 2026-08-15 —
-  `docs/pro-parity-real-art-2026-08-15.md`)*
+  Honest baseline on Kent's 7 real artworks (15 designs): **42.5**.
+  *(measured 2026-08-15 — `docs/pro-parity-real-art-2026-08-15.md`)*
 - **The pro-parity 95 target is above the metric's own ceiling. Do not read
   `score/95` as an engine deficit** — and any plan quoting "we need to get to 95"
   is quoting an unreachable number. Two of the PRO's own files for one logo,
@@ -435,14 +443,17 @@ being deleted, same as the defect list. Detail stays in its own section rather
 than duplicated here, so this list can go stale about WHAT IS OPEN but never
 about the facts.
 
-1. **RESOLVED 2026-08-22 — the stage 0-4 cache is funded and built.** Kent
-   funded it in the 2026-08-22 session workload answer; `run_stages` now
-   splits at the review-edit seam (`pipeline.build_generation` /
-   `finish_generation`) and the service caches generations across edits, so
-   an edited re-digitize re-runs only the finish + `plan_stitches`,
-   byte-identically — pinned core- and wire-side. Speedup numbers: **area
-   5**, under the cache entry. *(confirmed 2026-08-22 —
-   tests/test_generation_cache.py, test_service.py's cache round trips)*
+1. **RESOLVED 2026-08-22 — the stage 0-4 cache is funded and built.**
+   `run_stages` splits at the review-edit seam (`build_generation` /
+   `finish_generation`); the service caches generations across edits, so an
+   edited re-digitize re-runs only the finish + `plan_stitches`,
+   byte-identically. Speedups: **area 5**. *(confirmed 2026-08-22 —
+   tests/test_generation_cache.py)*
+
+9. **RESOLVED 2026-08-23 — tonal v1 is NOT done; close the shade escape
+   first.** Kent's ruling on the first real-photo sheet: 68–78 stops a portrait
+   is too many to call v1 finished; the per-shade escape (defect 9) is the
+   remaining lever. Method left to engineering judgment. *(decided 2026-08-23)*
 
 **Also open, same category — listed so this queue is not a half-truth. All of
 these predate 2026-08-14 except where noted:**
@@ -484,51 +495,42 @@ area they drag down, documented once here.
 
 ### DST codec axis bug
 
-EMB-Bot's own browser DST codec (`src/dst.js` / `src/dstimport.js`) is
-transposed vs. the Tajima/pyembroidery standard — confirmed, unresolved. It
-round-trips against itself but reads a quarter-turn wrong elsewhere. **Not only
+EMB-Bot's browser DST codec (`src/dst.js` / `src/dstimport.js`) is transposed
+vs. the Tajima/pyembroidery standard — confirmed, unresolved. It round-trips
+against itself but reads a quarter-turn wrong elsewhere. **Not only
 orientation:** `dst.js` writes the colour-change byte as `0x43` not `0xC3`, read
 as a spurious sequin toggle, so a two-colour design decodes with ZERO colour
-changes elsewhere. Both facets re-measured against pystitch 2026-08-22
-(`tools/crossval-stitch-formats.mjs`); PES and EXP are identity-clean. See `dst-codec-axis-discrepancy` in memory and `docs/dst-axis-verdict-2026-07-31.md`.
+changes elsewhere. Both re-measured against pystitch 2026-08-22; PES and EXP are
+identity-clean. See `dst-codec-axis-discrepancy` in memory.
 
-**A nuance, reconciled 2026-08-17:** CLAUDE.md's "treat browser DST as
-EMB-Bot-internal only" and `digitizer/README.md`'s "browser DST stays the default
-because it is the one with sewn evidence" are not in conflict — the first is
-about orientation in third-party software, the second about which of EMB-Bot's
-own two encoders Studio picks. The choice is per-project and the user is told.
+**A nuance, reconciled 2026-08-17:** CLAUDE.md's "browser DST is
+EMB-Bot-internal only" and `digitizer/README.md`'s "browser DST stays the
+default, it has the sewn evidence" are not in conflict — the first is about
+orientation elsewhere, the second about which encoder Studio picks.
 
-**CLOSED — a stale "unreachable from the real product" claim (2026-08-09: no
-path-selection logic, `/export` with no caller) sat here until 2026-08-17,
-already false by then.** Both halves ship: auto-digitized designs leave by
-pyembroidery `/export`, lettering/manual stays on the browser codec
-deliberately (the sew-evidenced combination), and the download step warns
-before every browser-DST download, naming the symptom and the way out. **So
-the 2026-08-11 audit's interim mitigation is DONE** —
-`docs/project-review-2026-08-16.md` §1.1 and its opportunity #5 are wrong to
-call it available-and-not-done; it shipped four days before that review.
+**CLOSED — the "unreachable from the real product" claim was already false
+when written.** Both halves ship: auto-digitized designs leave by pyembroidery
+`/export`, lettering/manual stays on the browser codec (the sew-evidenced
+combination), and the download step warns before every browser-DST download.
+The 2026-08-11 audit's interim mitigation is DONE, four days before
+`docs/project-review-2026-08-16.md` §1.1 called it outstanding.
 *(confirmed 2026-08-17 — code read, commits dated)*
 
-**Resolution path:** a sew-out or third-party read of a browser-encoded DST
-(the "third opinion" `digitizer/README.md` calls for). Fixing the codec itself
-is explicitly Kent's call — every existing EMB-Bot DST is affected by any fix.
+**Resolution path:** a sew-out or third-party read of a browser-encoded DST.
+Fixing the codec is Kent's call — every existing EMB-Bot DST is affected.
 
-**The cross-validation harness is ALIVE again — revived 2026-08-21, its PES
-finding (a missing initial positioning jump) fixed in `ef1262b`.** It had
-reproduced the DST transposition exactly (rms 0.0) and caught the broken
-browser PES/EXP encoders (fixed PR #58, history in
-`docs/pes-crossval-verdict-2026-08-04.md`); the 2026-08-11 pystitch swap
-silently starved it (pass 0 / skipped 6, green in CI). CI now fails
-loud when the pins cannot run (`227a9cb`); still the only automated
-third-party format check. *(confirmed 2026-08-22 — engine green, 0 skips)*
+**The cross-validation harness is ALIVE again — revived 2026-08-21**, its PES
+finding (a missing initial positioning jump) fixed in `ef1262b`. It reproduced
+the DST transposition exactly (rms 0.0) and caught the broken browser PES/EXP
+encoders (PR #58); the 2026-08-11 pystitch swap silently starved it (pass 0 /
+skipped 6, green in CI). CI now fails loud when the pins cannot run
+(`227a9cb`). *(confirmed 2026-08-22 — engine green, 0 skips)*
 
-**Fifth independent corroboration, 2026-08-10 (Ink/Stitch's `pystitch`):**
-Ink/Stitch's own DST reader/writer — the format library behind a mature,
-20,000+-user open-source tool — uses the identical low-nibble=X/high-nibble=Y
-convention the four sources above already established, verified directly
-against source (`docs/inkstitch-research-2026-08-10.md` §6). **Does not
-change the verdict or fix** — still Kent's call, still gated on a sew-out;
-just a stronger citation to put in front of him.
+**Fifth independent corroboration, 2026-08-10:** Ink/Stitch's `pystitch` —
+the format library behind a 20,000+-user tool — uses the identical
+low-nibble=X/high-nibble=Y convention, verified against source
+(`docs/inkstitch-research-2026-08-10.md` §6). Does not change the verdict or
+the fix; a stronger citation, nothing more.
 
 ### Font license compliance — RESOLVED, and kept resolved by construction
 
@@ -536,11 +538,10 @@ ShareAlike was closed by removal rather than by waiting on a legal opinion, and
 stays closed: `ALLOWED_LICENSES` gates the sellable build, so an excluded font is
 never packaged rather than switched off at runtime. Licence texts ship three ways
 (on disk, served, embedded) — load bearing beyond the OFL, since it discharges
-`roman_ags`'s LPPL clause-6d obligation. Detail: [area 2](docs/scope/2-font-library-lettering.md).
-*(confirmed 2026-08-22 — guard tests; `docs/font-license-audit-2026-07-31.md`)*
+`roman_ags`'s LPPL clause-6d obligation. Detail: [area 2](docs/scope/2-font-library-lettering.md). *(confirmed 2026-08-22 — guard tests; `docs/font-license-audit-2026-07-31.md`)*
 
-**Still open, both Kent's:** the optional lawyer consult, which only gates the 13
-pulled fonts (`docs/lawyer-brief-cc-by-sa-2026-08-04.md`), and the bluenesia
+**Still open, both Kent's:** the optional lawyer consult, which only gates the
+13 pulled fonts (`docs/lawyer-brief-cc-by-sa-2026-08-04.md`), and the bluenesia
 permission screenshots (audit §8).
 
 ### CI feedback speed
@@ -572,11 +573,9 @@ awaiting a date. Do not re-raise it as the highest-leverage next action.
 **The gap: no repeatable automated quality signal**, so every serious quality
 question queues behind either a corpus nobody has or a sew-out nobody has
 scheduled. Not a reframing of the sew-out gap — a labelled corpus plus a scoring
-harness would let a classifier change be judged against *something* before either
-arrives. The DT-first classifier's M2/M3 has been blocked on it since 2026-08-01,
-and the corpus-law recalibrations
-(`docs/corpus-laws-round3-2026-08-01.md`) needed one-off hand validation for
-exactly this reason.
+harness would let a classifier change be judged against *something* before
+either arrives. M2/M3 has been blocked on it since 2026-08-01, and the
+corpus-law recalibrations needed one-off hand validation for the same reason.
 
 **Harness half: BUILT — `digitizer/tools/corpus_scorecard.py`.** `capture`/`diff`
 over 14 fixtures × 2 configs, aggregating preflight's existing score rather than
@@ -584,9 +583,9 @@ inventing a metric. Deliberately a REPORTING tool, not a CI gate. Build detail,
 verification and scope limits: [area 1](docs/scope/1-auto-digitizing-quality.md)
 ("The two evaluation harnesses"). *(confirmed 2026-08-21 — area 1)*
 
-**Still open here: `summit_badge.png` (#6.2) alone** — F/0 at both configs, and
-the grade is SATURATED, so judge any fix on `thread_worst_delta_e`, never on
-score. #6.3 is closed. Per-fixture detail: [area 1](docs/scope/1-auto-digitizing-quality.md). *(measured 2026-08-21)*
+**Still open here: `summit_badge.png` (#6.2) alone** — F/0 at both configs and
+SATURATED, so judge any fix on `thread_worst_delta_e`, never score. #6.3 is
+closed. *(measured 2026-08-21 — area 1)*
 
 **The corpus half is no longer empty (2026-08-15).** Eight files of real
 customer artwork now ship in `FIXTURES` — the first entries that are neither
@@ -599,8 +598,10 @@ input this product actually receives. One (`logo_script_tires.png`, a clean
 two-colour script wordmark on white) classifies as `photo_scene` outright — a
 misroute, kept as a fixture so the bug has one.
 *(measured 2026-08-15 — `tools/corpus_scorecard.py:FIXTURES`)*
-This does **not** close `scratch_corpus/`: cloud sessions still can't reach
-those 37 files (present locally — Waiting on Kent #7); M2/M3 still waits.
+This does **not** close `scratch_corpus/`: cloud sessions still can't reach those
+37 files (Waiting on Kent #7); M2/M3 still waits. **Kent's four real portraits
+(2026-08-23) are the first tonal entries** — gitignored by spec decision 6, so
+they are machine-bound and CI cannot see them (defect 9, 10).
 
 **A second, different harness exists: `tools/pro_parity/`** — "how close is our
 output to the PROFESSIONAL digitization of the same design", 23 designs, six
@@ -666,10 +667,11 @@ broken) and the Python pipeline, which is the active target. Stages 1–7, fill 
 satin, the service, preflight scoring and the review UI are all built. SAM2 is
 merged and reachable from Studio via the `embstudio:sam2` dev seam, still
 `photo_segment_sam2=False` by default.
-**The binding constraint is the corpus, not the code.** The only
-`photo_subject`/`photo_scene` fixtures are synthetic stubs, so the committed
-corpus can neither defend nor refute SAM2's quality — a real-photo fixture is
-the missing piece. *(confirmed 2026-08-11 — area 1 detail)*
+**The corpus constraint is half lifted 2026-08-23.** Kent's four real
+portraits ran the five-arm sheet and found four defects no fixture had (see
+defect 8). They stay gitignored (spec decision 6) — evidence is machine-bound
+and committed `photo_*` fixtures are still synthetic stubs, so SAM2's quality
+remains undefended by anything a CI run can see. *(ran 2026-08-23 — sheet)*
 **Satin extremity drop — FIXED 2026-08-21.** `_prune_spurs` re-measured a stem
 its OWN first pass had un-branched, one raster pixel deciding a 3.3 mm tab;
 fixed by exempting a dead end the function itself created, D/52 → C/64. Same

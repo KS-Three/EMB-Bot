@@ -2618,3 +2618,44 @@ carries nothing pulled either. `EMB-Bot-standalone.html` (the only place
 that still embedded a pre-audit inlined copy) is **deleted, 2026-08-04,
 Kent's call** — no pre-audit font list ships anywhere. Still parked for
 Kent: the bluenesia permission screenshots (audit §8).
+
+## 2026-08-23 — first real-photo acceptance run
+
+Kent supplied four family photographs; they became the first genuinely tonal
+input EMB-Bot has ever been measured on. The five-arm sheet ran them through the
+photo (toggle), default (gradient) and SAM2 routes. Every number below is from
+`digitizer/tools/acceptance_ab.py` against the live service, counts only.
+
+**Four defects, none reachable by any committed fixture.** A 7.4 MP phone photo
+OOM-killed the service at 13.9 GB RSS (PR #214, decode ceiling 2800 px).
+`select_palette`'s SWAP loop ran forever on two bit-identical chart spools —
+an absolute 1e-9 improvement epsilon sitting under a 1.9e-9 ulp at portrait
+cost scale (9.779e6) — hanging one job 25+ minutes behind the single worker
+(PR #218; palettes byte-identical before/after, only termination changed).
+Preflight scored streamline thread-paint against the 0.40 mm tatami target and
+told 9 of 12 jobs "re-digitize before sewing", every measured advance
+(0.923–2.608 mm) inside streamline's own 0.8–3.2 mm band (PR #216). And a
+12-cone colour list sewed 31–35 region threads (PR #217).
+
+**Palette escape, region half (PR #217), before → after:**
+
+| photo | palette | region threads | out-of-palette | stops |
+|---|---:|---:|---:|---:|
+| sparkler_dusk | 15 | 35 → 15 | 20 → 0 | 84 → 75 |
+| boat_dog_toddler | 12 | 34 → 12 | 22 → 0 | 81 → 68 |
+| baby_deck_laugh | 12 | 31 → 12 | 19 → 0 | 92 → 78 |
+| face_closeup_blur | 7 | 16 → 7 | 9 → 0 | 30 → 25 |
+
+Default-route arms byte-identical throughout (the phase-4 lane guard). Total
+preflight findings roughly halved (32→16, 31→16, 35→18, 14→10); grade stays F
+on `THREAD_MATCH_POOR`, which mostly improved (blocks 9→6, 10→9, 12→12) but
+regressed 1→3 on `face_closeup_blur` — the honest cost of forcing shapes into
+seven cones.
+
+**The funded speckle A/B, answered.** Inert on the toggle route: byte-identical
+on all four photos, as the arm was built to prove. On the default route, where
+the blend tier actually lives, three of four are byte-identical; only
+`sparkler_dusk` moves, by +21 stitches and +2 stops.
+
+**Kent's ruling:** tonal v1 is not done — 68–78 stops a portrait is too many —
+close the per-shade palette escape first. Method left to engineering judgment.
