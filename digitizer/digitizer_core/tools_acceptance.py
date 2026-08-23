@@ -24,15 +24,23 @@ def variant_matrix(sam2_available: bool) -> list[dict]:
 
     Always the classical arm: `{"forced_class": "photo_subject"}` alone is
     enough to hit the auto-route (streamline + tonal split), so the variant
-    config carries nothing else. The SAM2 arm is appended only when the
+    config carries nothing else. The SAM2 arm is included only when the
     isolated venv actually looks runnable on this machine — a caller checks
     with `digitizer_core.stage2_sam2_segment.sam2_segmentation_unavailable_
     reason() is None` and passes the answer in; a machine without SAM2 still
-    gets a one-column contact sheet instead of a job that fails mid-run.
+    gets a contact sheet minus that one column instead of a job that fails
+    mid-run.
     `photo_prep`/`photo_segment_sam2` are the exact two flags Task 5 proved
     live (evidence: debug_out/task5_live_job_sam2.json's `_meta.config_sent`)
     turn on tone/texture prep and route segmentation through SAM2 instead of
     the classical SLIC+merge path.
+
+    The first three arms are an attribution LADDER — classical (neither
+    flag) → classical_prep (prep only) → sam2 (prep + SAM2) — one flag
+    flipped per rung, adjacent on the sheet, so prep's effect and SAM2's own
+    effect each read as a single column-to-column delta. The classical_prep
+    comment below carries the confound this ladder repairs and the measured
+    evidence.
 
     The relaxed-speckle arm (Kent's 2026-08-23 answer funding the A/B —
     `docs/tonal-eng-measurements-2026-08-22.md` §1 for why the speckle gate,
@@ -45,6 +53,28 @@ def variant_matrix(sam2_available: bool) -> list[dict]:
     """
     matrix = [
         {"tag": "classical", "config": {"forced_class": _FORCED_CLASS}},
+        # The prep-matched control (added 2026-08-23). The sam2 arm was
+        # CONFOUNDED from the day it was written: its config flips
+        # `photo_prep` AND `photo_segment_sam2` together, so every
+        # "sam2 vs classical" delta the sheet has ever shown measured two
+        # independent changes at once — and a third-arm run on the four
+        # acceptance portraits showed the bigger change is prep's, not
+        # SAM2's. Pre-split regions, classical → classical_prep → sam2:
+        # sparkler_dusk 23 → 61 → 5, baby_deck_laugh 24 → 78 → 14,
+        # boat_dog_toddler 31 → 44 → 7, face_closeup_blur 6 → 19 → 3 — prep
+        # alone roughly TRIPLES the classical route's region count. The
+        # stop/stitch penalty the sheet had been charging to SAM2 is largely
+        # prep's as well: prep turns on face detection, whose appended FDoG
+        # detail block is worth 11,676 stitches on baby_deck_laugh and
+        # ~3,950 on sparkler_dusk. Prep-matched, SAM2 actually REDUCES
+        # stops on all four (91→72, 140→98, 96→90, 36→33). This arm exists
+        # so prep and SAM2 can be attributed separately; without it the
+        # harness answers only "is prep+SAM2 better than neither?", which
+        # nobody asked.
+        {
+            "tag": "classical_prep",
+            "config": {"forced_class": _FORCED_CLASS, "photo_prep": True},
+        },
         {
             "tag": "relaxed_speckle",
             "config": {
@@ -67,7 +97,12 @@ def variant_matrix(sam2_available: bool) -> list[dict]:
         },
     ]
     if sam2_available:
-        matrix.append({
+        # Inserted as the ladder's third rung, not appended (2026-08-23):
+        # tag and config are byte-for-byte what they have always been —
+        # every measurement pinned to "sam2" stays valid — only the sheet
+        # position moved, so the three ladder columns sit adjacent instead
+        # of the SAM2 column landing past the speckle/default arms.
+        matrix.insert(2, {
             "tag": "sam2",
             "config": {
                 "forced_class": _FORCED_CLASS,
