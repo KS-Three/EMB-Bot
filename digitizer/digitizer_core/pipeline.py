@@ -406,6 +406,19 @@ def build_generation(
                 )
             )
 
+    # Which region former ACTUALLY produced this generation's regions — a
+    # fact only this dispatch point knows, captured while it is still live
+    # (2026-08-23). The SAM2 seam stamps RegionMask.source="photo_sam2" on
+    # its intermediate masks, but `kept_masks_to_quant` melts them into a
+    # bare spool-label map, and stage 3 below re-derives masks from that map
+    # through `seg` (ClassicalSegmenter, name "classical") — so until this
+    # variable existed, every stored job JSON reported
+    # review.segmenter="classical" no matter which former ran, and only the
+    # PHOTO_SAM2_SEGMENTED warning told a SAM2 job apart. The classical
+    # photo path (SLIC+RAG) deliberately KEEPS reporting "classical": it is
+    # the classical arm in every doc and acceptance A/B tag this repo uses.
+    region_former = "photo_sam2" if q is not None else None
+
     # "photo_subject"/"photo_scene"/"gradient" all branch here — only "flat"
     # still takes the plain quantize() call this pipeline has always made.
     # "gradient" joined 2026-08-04 (`docs/superpowers/plans/
@@ -517,7 +530,10 @@ def build_generation(
         # `face_regions` is set only when stage 1.5 both ran (photo_prep's
         # double gate) AND found at least one face — see that block above.
         faces_present=bool(face_regions),
-        seg_name=seg.name,
+        # `region_former` (the stage-2 dispatch fact, see its comment) wins
+        # over the stage-3 mask deriver's name, so review.segmenter finally
+        # answers "which segmenter ran" instead of always "classical".
+        seg_name=region_former or seg.name,
         design_row_angle_deg=design_row_angle_deg,
     )
 
