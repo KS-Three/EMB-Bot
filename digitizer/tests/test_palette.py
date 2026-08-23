@@ -27,7 +27,9 @@ from digitizer_core.config import PipelineConfig
 from digitizer_core.palette import (
     CLASS_MULTIPLIERS,
     PALETTE_EXCESS_DELTAE,
+    PALETTE_MAX_SWAP_SWEEPS,
     PALETTE_OVERFLOW_K,
+    _strictly_better,
     region_weight,
     select_palette,
 )
@@ -427,3 +429,94 @@ def test_overflow_is_bounded_by_palette_overflow_k():
         f"cap, but max_excess_de00={sel.max_excess_de00:.3f} is within "
         "bound -- the cap didn't actually bind anything in this scenario"
     )
+
+
+# --- SWAP termination (2026-08-23) -----------------------------------------
+# A 2 MP selfie hung the digitizer service for 25+ minutes inside SWAP, with
+# the single worker blocked behind it. Cause: "strictly lowers cost" was an
+# ABSOLUTE 1e-9, but the two sides of that comparison come from different
+# numpy reductions and disagree by ~1 ulp -- 1.9e-9 at the portrait's 9.8e6
+# cost, i.e. LARGER than the epsilon. SWAP therefore "improved" forever by
+# alternating between two chart spools with bit-identical Lab.
+
+
+def test_strictly_better_rejects_the_measured_ulp_phantom():
+    """The exact cost pair captured from the hung selfie job (N=58, C=398).
+
+    The two values differ by 3.7e-9 -- pure reduction-order noise on a swap
+    whose true gain is zero, which the old absolute 1e-9 accepted. This is
+    the whole bug in one comparison, which is why it is pinned by value.
+    """
+    current = 9779152.0087797325
+    candidate = 9779152.0087797288
+    assert candidate < current, "sanity: the phantom does look like a gain"
+    assert candidate < current - 1e-9, (
+        "sanity: the gap is ~3.7e-9, wider than the old absolute epsilon, "
+        "which is exactly why the old rule accepted this swap forever"
+    )
+    assert not _strictly_better(candidate, current), (
+        "a sub-ulp difference at 9.8e6 scale is noise, not an improvement"
+    )
+
+
+def test_strictly_better_still_accepts_a_real_improvement_at_that_scale():
+    """The guard must not be so wide it stops SWAP doing its job: a gain
+    that is genuinely perceptible (1e-2 of a ΔE00·px cost) still passes at
+    the same 9.8e6 magnitude where the phantom is rejected."""
+    current = 9779152.0087797325
+    assert _strictly_better(current - 1e-2, current)
+    assert _strictly_better(current * 0.999, current)
+
+
+def test_strictly_better_is_scale_free():
+    """Same relative gain, six decades apart, decided the same way -- the
+    property the old absolute epsilon lacked."""
+    for scale in (1.0, 1e3, 1e6, 1e9):
+        assert _strictly_better(scale * (1 - 1e-6), scale), f"scale={scale}"
+        assert not _strictly_better(scale * (1 - 1e-15), scale), f"scale={scale}"
+
+
+def test_select_palette_terminates_on_duplicate_chart_colors():
+    """End-to-end regression: a chart holding two bit-identical spools plus
+    weights heavy enough to put total cost past ~4.5e6 (where one ulp
+    exceeds the old 1e-9) is exactly the selfie's shape. Before the fix this
+    call did not return; the sweep cap alone now bounds it, and the relative
+    tolerance means it settles on the first sweep.
+
+    Uses the real shipped chart so the duplicate is the one that actually
+    bit us, not a synthetic stand-in.
+    """
+    chart = load_chart()
+    dupes = [
+        (i, j)
+        for i in range(len(chart.lab))
+        for j in range(i + 1, min(i + 12, len(chart.lab)))
+        if np.array_equal(chart.lab[i], chart.lab[j])
+    ]
+    assert dupes, (
+        "the shipped chart no longer contains bit-identical Lab entries -- "
+        "this regression's trigger is gone, so re-derive the fixture rather "
+        "than deleting the guard (the tolerance bug is chart-independent)"
+    )
+    i, j = dupes[0]
+
+    rng = np.random.default_rng(0)
+    picks = rng.choice(len(chart.lab), size=58, replace=False)
+    labs = chart.lab[picks].astype(np.float64)
+    labs[0] = chart.lab[i]
+    labs[1] = chart.lab[j]
+    weights = np.full(58, 32_000.0)  # ~1.85e6 total, the selfie's weight sum
+
+    sel = select_palette(labs, weights, chart, max_k=12)
+
+    assert 1 <= len(sel.medoids) <= 12 + PALETTE_OVERFLOW_K
+    assert len(set(sel.medoids)) == len(sel.medoids), "medoids must be distinct"
+    assert len(sel.assignment) == 58
+
+
+def test_swap_sweep_cap_is_a_backstop_not_a_working_limit():
+    """Worst observed need across twelve measured calls is THREE sweeps (on
+    a real photo; the committed fixtures all settle on the first). The cap
+    must stay far above that -- if it ever has to be raised to make a real
+    design work, the tolerance is wrong, not the cap."""
+    assert PALETTE_MAX_SWAP_SWEEPS >= 100

@@ -36,7 +36,11 @@ is a fixed ordered list):
          region no thread actually matches well (docs/photo-quality-root-
          cause-2026-08-11.md's drone_render.png finding).
   SWAP   repeatedly take the single best (selected, unselected) exchange
-         that strictly lowers total weighted cost, at fixed k.
+         that strictly lowers total weighted cost, at fixed k. "Strictly"
+         is RELATIVE to the cost scale (`PALETTE_COST_RTOL`) and the sweep
+         count is capped (`PALETTE_MAX_SWAP_SWEEPS`): with an absolute
+         epsilon this loop cycled forever between two bit-identical chart
+         spools on a real portrait — see those constants for the measurement.
 
 The stop rule is EXCESS over each region's own floor, not an absolute ΔE00:
 a region whose nearest chart thread is already 8.1 ΔE00 away (measured on
@@ -83,6 +87,7 @@ subject patch against a large background field under a binding cap.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 import numpy as np
@@ -113,6 +118,93 @@ CLASS_MULTIPLIERS: dict[str, float] = {
     "subject": 2.0,
     "background": 1.0,
 }
+
+# "Strictly lowers total cost" has to be measured RELATIVE to that cost, not
+# against a fixed 1e-9, because weights are pixel areas: a portrait's total
+# weighted cost runs ~1e7, where one double ULP is ~1.9e-9 -- already larger
+# than the old absolute epsilon. The two sides of the comparison are computed
+# by DIFFERENT numpy reductions (a length-N `(w * d1).sum()` versus a column
+# of an (N, C) `.sum(axis=0)`), so they disagree in the last ulp on a swap
+# that is mathematically a no-op, and the loop accepts it forever.
+#
+# Measured 2026-08-23 on a 2 MP selfie (N=58, C=398, cost 9.779e6): the chart
+# holds two spools with BIT-IDENTICAL Lab (indices 8 and 9, dE00 0.0), SWAP
+# alternated 8 -> 9 -> 8 claiming a 3.7e-9 gain each sweep, and the medoid set
+# repeated on sweep 3 with a total cost drop of exactly 0. The job never
+# returned -- 25+ min of wall clock inside this loop, with the service's
+# single worker blocked behind it.
+#
+# Two conditions have to coincide, which is why this hid for so long. The
+# cost must clear ~4.5e6 (= 2^52 * 1e-9) so that one ulp outgrows the old
+# epsilon -- but that alone is not enough: the four other real portraits
+# measured the same day all clear it (7.4e6 to 1.7e7) and converge fine.
+# A pair of candidates whose TRUE cost difference is zero must also be in
+# play, and the chart's duplicate-Lab spools are the way that happens. Every
+# committed fixture missed the first condition; four real photos met the
+# first and not the second; the selfie met both.
+#
+# 1e-12 relative sits ~5000x above the ulp noise floor at portrait scale
+# (9.8e-6 against a 1.9e-9 ulp) and ~5000x above it at unit scale too, so the
+# rule is scale-free where the old absolute epsilon was not. It is also far
+# below anything perceptual: 1e-12 of a ~1e7 weighted cost is ~1e-5 ΔE00·px,
+# against the 4.5 ΔE00 excess bound this module actually reasons in.
+#
+# The threshold is set from the noise floor, not from observed swap sizes,
+# and the measurement says that is the right way round: across the twelve
+# calls surveyed for PALETTE_MAX_SWAP_SWEEPS, the real accepted swaps are
+# ordinary cost improvements nowhere near this margin, while the rejected
+# one is a bit-for-bit no-op. Old rule vs new produced IDENTICAL medoids on
+# all five real photos including the one that hung -- the fix decides
+# termination, not palettes. `max(1.0, ...)` floors the scale so a near-zero
+# cost cannot collapse the threshold to nothing.
+PALETTE_COST_RTOL = 1e-12
+
+# Belt and braces: PAM's swap phase terminates because each accepted swap
+# strictly lowers a bounded cost, but that argument is only as good as the
+# arithmetic underneath it -- and the bug above is precisely a case where it
+# was not. A cap converts any future floating-point pathology from a hung
+# request into a slightly-suboptimal palette, which is the right way to fail.
+# Measured 2026-08-23 across twelve calls -- seven corpus fixtures
+# (drone_render, owl_kent, fur_ramp, photo_sunset_backlit, photo_dof_meadow,
+# enthusiast_logo) plus five real photos: the fixtures all converge on the
+# first sweep (BUILD's greedy result is already swap-optimal there), and the
+# photos, where SWAP does earn its keep, take at most THREE. 200 is ~65x that
+# worst case and cannot bind on anything resembling current inputs; if it
+# ever does, that is a bug report, not a tuning knob.
+PALETTE_MAX_SWAP_SWEEPS = 200
+
+
+def _strictly_better(candidate_cost: float, current_cost: float) -> bool:
+    """Is `candidate_cost` a REAL improvement on `current_cost`?
+
+    Extracted so the rule is testable without running the loop it guards:
+    under the pre-2026-08-23 absolute epsilon this returned True for the
+    measured pair (9779152.0087797288, 9779152.0087797325) -- a swap between
+    two bit-identical chart spools whose true gain is zero -- and SWAP
+    cycled on it forever. `tests/test_palette.py` pins that exact pair.
+
+    `current_cost` is +inf on BUILD's first pass (nothing selected yet, so
+    every region's residual is inf). A relative margin is meaningless there
+    -- `inf - rtol * inf` is nan, and a nan comparison would silently reject
+    the first medoid and return an EMPTY palette -- so an infinite incumbent
+    is beaten by any finite candidate, which is what the absolute form did.
+    """
+    if not math.isfinite(current_cost):
+        return candidate_cost < current_cost
+    return candidate_cost < current_cost - PALETTE_COST_RTOL * max(1.0, abs(current_cost))
+
+# Belt and braces: PAM's swap phase terminates because each accepted swap
+# strictly lowers a bounded cost, but that argument is only as good as the
+# arithmetic underneath it -- and the bug above is precisely a case where it
+# was not. A cap converts any future floating-point pathology from a hung
+# request into a slightly-suboptimal palette, which is the right way to fail.
+# Measured 2026-08-23 across seven corpus calls (drone_render, owl_kent,
+# fur_ramp, photo_sunset_backlit, photo_dof_meadow, enthusiast_logo, the 2 MP
+# selfie): **every one converges in a single sweep** -- BUILD's greedy result
+# is already swap-optimal on real art, so SWAP's one pass only confirms it.
+# 200 is therefore ~200x observed need and cannot bind on anything resembling
+# current inputs; if it ever does, that is a bug report, not a tuning knob.
+PALETTE_MAX_SWAP_SWEEPS = 200
 
 
 def region_weight(area_px: float, region_class: str | None = None) -> float:
@@ -207,7 +299,7 @@ def select_palette(
         costs[selected] = np.inf
         cand = int(np.argmin(costs))  # ties -> lowest chart index
         current = float((w * res).sum()) if selected else np.inf
-        if costs[cand] >= current - 1e-9:
+        if not _strictly_better(float(costs[cand]), current):
             break  # nothing left improves — adding would only pad the palette
         selected.append(cand)
         res = np.minimum(res, dist[:, cand])
@@ -216,7 +308,7 @@ def select_palette(
     # Refines placement, never count: k was decided by the excess rule above
     # and a swap keeps the excess bound's spirit by only ever lowering total
     # weighted cost.
-    while True:
+    for _sweep in range(PALETTE_MAX_SWAP_SWEEPS):
         sel = np.array(selected)
         d = dist[:, sel]                              # (N, k)
         order = np.argsort(d, axis=1, kind="stable")
@@ -233,7 +325,7 @@ def select_palette(
             costs = (w[:, None] * np.minimum(base[:, None], dist)).sum(axis=0)
             costs[sel] = np.inf
             cand = int(np.argmin(costs))
-            if costs[cand] < best_cost - 1e-9:
+            if _strictly_better(float(costs[cand]), best_cost):
                 best_cost = float(costs[cand])
                 best_swap = (mi, cand)
         if best_swap is None:
