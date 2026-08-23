@@ -52,6 +52,19 @@ def variant_matrix(sam2_available: bool) -> list[dict]:
                 "blend_speckle_r2_override": RAMP_R2_MIN,
             },
         },
+        # The DEFAULT-route pair (added 2026-08-23, first real-photo run):
+        # the toggle route sews tone via split_tonal_regions + streamline and
+        # never consults the blend tier, so the speckle override is inert
+        # there — measured byte-identical on the first three real portraits.
+        # The blend tier (and therefore the funded speckle A/B) lives on the
+        # route stage 0 actually sends real photos down: gradient. These two
+        # arms show what a user who never touches the toggle gets, stock vs
+        # relaxed, which is where the override can matter at all.
+        {"tag": "default_stock", "config": {}},
+        {
+            "tag": "default_relaxed",
+            "config": {"blend_speckle_r2_override": RAMP_R2_MIN},
+        },
     ]
     if sam2_available:
         matrix.append({
