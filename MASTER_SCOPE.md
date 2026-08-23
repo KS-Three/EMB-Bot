@@ -70,8 +70,7 @@ or move it.
    half of that attribution is RETRACTED** — it predates PR #182's snap retry;
    at HEAD the headroom left there is ~4 trims of 250, so it is not worth a
    pass. Numbers and the correction to the doc's §2 are now in that doc.
-   *(measured 2026-08-21 — instrumented at HEAD)*
-   Detail, retractions and caveats in
+   *(measured 2026-08-21 — instrumented at HEAD)* Detail and caveats in
    [`docs/fragmentation-attribution-2026-08-18.md`](docs/fragmentation-attribution-2026-08-18.md).
    *(measured 2026-08-18 — pinned worktree, `prep_all` over the Drive corpus)*
    **Not blocked** — artwork and five pro variants are committed under
@@ -285,8 +284,16 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
 
 ## Corrections — suspicions this document itself raised, then disproved
 
-Kept rather than deleted: the shared failure mode — **a hedged observation
-loses its hedge as it is copied forward** — is why this file is split.
+Kept rather than deleted: the shared failure mode — **a hedged observation loses
+its hedge as it is copied forward** — is why this file is split.
+
+- **Four committed "real customer artwork" fixtures are the vendor's PREVIEW
+  RENDERS** — `testdata/reference/becker_*.jpg` are two-panel stitch simulations
+  of the pro's own output, md5-identical to files in the delivery zip: a run
+  digitizes two half-scale copies of an input derived from the pro's own answer,
+  the recon lane's class, which flattered by 11.3 points. `chain_links` -33%
+  survives (same input both arms); "1-3 fill shapes" does not. Genuine art:
+  `becker_marine_logo.png`, `logo_script_tires.png`. *(md5-verified 2026-08-23)*
 
 - **`streamline_mode: "layered"` does NOT have the blend tier's row-pitch bug.**
   It was flagged as a likely twin on the strength of a note that layered
@@ -398,23 +405,18 @@ loses its hedge as it is copied forward** — is why this file is split.
   `.claude/memory/font-pipeline-silent-failures.md`. *(measured 2026-08-22 —
   test/font-stunted.test.js, verified against the pre-fix tool)*
 - **Measure pro-parity in a git worktree, never in a shared checkout.** Three
-  separate baselines were invalidated on 2026-08-15 by commits landing mid-run,
-  including from a second Claude session on the same branch. The first symptom
-  each time looked like engine non-determinism; the engine is deterministic —
-  same art, same commit, four processes, byte-identical output. Verify module
-  resolution hits the worktree's own `digitizer_core`, not the main checkout's
-  editable install. *(measured 2026-08-15 —
+  baselines were invalidated 2026-08-15 by commits landing mid-run, one from a
+  second Claude session on the same branch. It looks like engine
+  non-determinism; the engine is deterministic. Verify module resolution hits
+  the worktree's own `digitizer_core`. *(measured 2026-08-15 —
   `docs/pro-parity-real-art-2026-08-15.md` §1)*
 - **Three photo hypotheses are disproven** — palette collapse merging subject
-  into background, `max_colors` as the binding constraint, and
-  `MERGE_DELTAE00_THRESH` needing a retune. All three came from extrapolating
-  the *synthetic* `photo_owl_pale.png`, which is a near-featureless blob (6
-  regions, one at 98.1% of canvas) and behaves nothing like a real photograph.
-  *(measured 2026-08-12 — scope-history)*
-- **Keep `main` green while work is in flight — a red suite makes "same
-  failure set" unjudgeable against.** Goldens are re-captured on Linux,
-  never on Windows. *(moved from ROADMAP 2026-08-19 — 60-line budget,
-  decision by Kent)*
+  into background, `max_colors` as binding constraint, `MERGE_DELTAE00_THRESH`
+  needing a retune. All three extrapolated the *synthetic* `photo_owl_pale.png`,
+  a blob with one region at 98.1% of canvas. *(2026-08-12 — scope-history)*
+- **Keep `main` green while work is in flight — a red suite makes "same failure
+  set" unjudgeable against.** Goldens are re-captured on Linux, never Windows.
+  *(moved from ROADMAP 2026-08-19 — 60-line budget, decision by Kent)*
 - **Read `MASTER_SCOPE.md` and `docs/scope-digest/` before proposing any
   work.** What has already been built, measured and rejected here is the
   most expensive knowledge in this repo; phase numbers in any other doc are
@@ -516,15 +518,15 @@ The 2026-08-11 audit's interim mitigation is DONE, four days before
 `docs/project-review-2026-08-16.md` §1.1 called it outstanding.
 *(confirmed 2026-08-17 — code read, commits dated)*
 
-**Resolution path:** a sew-out or third-party read of a browser-encoded DST.
-Fixing the codec is Kent's call — every existing EMB-Bot DST is affected.
+**Resolution path:** a sew-out or third-party read of a browser-encoded DST;
+fixing the codec is Kent's — every existing EMB-Bot DST is affected by a fix.
 
 **The cross-validation harness is ALIVE again — revived 2026-08-21**, its PES
 finding (a missing initial positioning jump) fixed in `ef1262b`. It reproduced
 the DST transposition exactly (rms 0.0) and caught the broken browser PES/EXP
-encoders (PR #58); the 2026-08-11 pystitch swap silently starved it (pass 0 /
-skipped 6, green in CI). CI now fails loud when the pins cannot run
-(`227a9cb`). *(confirmed 2026-08-22 — engine green, 0 skips)*
+encoders (PR #58); the 2026-08-11 pystitch swap silently starved it (pass 0 of 6,
+green in CI). CI now fails loud when the pins cannot run (`227a9cb`).
+*(confirmed 2026-08-22 — engine green, 0 skips)*
 
 **Fifth independent corroboration, 2026-08-10:** Ink/Stitch's `pystitch` —
 the format library behind a 20,000+-user tool — uses the identical
@@ -540,8 +542,8 @@ never packaged rather than switched off at runtime. Licence texts ship three way
 (on disk, served, embedded) — load bearing beyond the OFL, since it discharges
 `roman_ags`'s LPPL clause-6d obligation. Detail: [area 2](docs/scope/2-font-library-lettering.md). *(confirmed 2026-08-22 — guard tests; `docs/font-license-audit-2026-07-31.md`)*
 
-**Still open, both Kent's:** the optional lawyer consult, which only gates the
-13 pulled fonts (`docs/lawyer-brief-cc-by-sa-2026-08-04.md`), and the bluenesia
+**Still open, both Kent's:** the optional lawyer consult (gates only the 13
+pulled fonts, `docs/lawyer-brief-cc-by-sa-2026-08-04.md`) and the bluenesia
 permission screenshots (audit §8).
 
 ### CI feedback speed
@@ -588,15 +590,13 @@ SATURATED, so judge any fix on `thread_worst_delta_e`, never score. #6.3 is
 closed. *(measured 2026-08-21 — area 1)*
 
 **The corpus half is no longer empty (2026-08-15).** Eight files of real
-customer artwork now ship in `FIXTURES` — the first entries that are neither
-synthetic nor hand-picked. They immediately contradicted the synthetic set:
-**stage 0 routes six of the seven logos to the GRADIENT lane, not the flat
-lane**, because real logo art carries JPEG ringing, anti-aliased edges and soft
-shading that the synthetic flat fixtures do not. Any claim about "flat
-spot-colour art" tuned only on synthetics is therefore untested against the
-input this product actually receives. One (`logo_script_tires.png`, a clean
-two-colour script wordmark on white) classifies as `photo_scene` outright — a
-misroute, kept as a fixture so the bug has one.
+customer artwork ship in `FIXTURES` — the first entries neither synthetic nor
+hand-picked. They contradicted the synthetic set at once: **stage 0 routes six
+of the seven logos to the GRADIENT lane**, because real logo art carries JPEG
+ringing, anti-aliased edges and soft shading the synthetic fixtures lack — so
+any "flat spot-colour art" claim tuned only on synthetics is untested against
+real input. `logo_script_tires.png` (a clean two-colour wordmark on white)
+classifies `photo_scene` outright — a misroute kept so the bug has a fixture.
 *(measured 2026-08-15 — `tools/corpus_scorecard.py:FIXTURES`)*
 This does **not** close `scratch_corpus/`: cloud sessions still can't reach those
 37 files (Waiting on Kent #7); M2/M3 still waits. **Kent's four real portraits
