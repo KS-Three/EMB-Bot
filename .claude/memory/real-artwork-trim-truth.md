@@ -7,7 +7,9 @@ metadata:
 
 **Start here before proposing any trim work.** An overnight run measured all
 four of Kent's queued items against the six real-artwork fixtures in the repo
-(`testdata/reference/becker_*.jpg`, `becker_marine_logo.png`,
+(`testdata/reference/becker_*.jpg` — **see the 2026-08-23 correction at the
+foot of this entry: these four are the VENDOR'S PREVIEW RENDERS, not artwork**
+— `becker_marine_logo.png`,
 `logo_script_tires.png`) rather than the photo corpus. Full evidence:
 `docs/scope/1-auto-digitizing-quality.md`, twelve entries dated 2026-08-21/22.
 
@@ -60,3 +62,43 @@ figure.
 
 See also [[sew-out-accepted-as-is]], [[hotel-fremont-pro-parity-findings]],
 [[emb-bot-digitizer]].
+
+---
+
+## CORRECTION 2026-08-23 — four of these "real logos" are the vendor's renders
+
+`testdata/reference/becker_*.jpg` (all four) are the digitizing vendor's
+two-panel preview renders — a stitch-texture simulation of the pro's own
+output, on white beside on dark — delivered in the same job folder as the
+PES/DST. Verified three ways: `becker_chest_small_beckers_logo_lc_2_a.jpg` is
+md5 byte-identical (`19e3fe5a36c109aa7c6a33d6abed5086`) to `Embroidery
+Files/Becker Marine/.../beckers logo LC 2 A.JPG` inside the tracked delivery
+zip, whose parent folder is named "fwd: your digitizing order is ready"; the
+image is visibly two panels of thread texture; and it was found independently
+by a research pass before I re-checked it. Commit `6eb8d49` filed them as
+"Kent's real customer artwork" and no doc recorded otherwise until now.
+
+**So a run on those four digitizes two copies of the logo at half scale each,
+from an input derived from the pro's own answer** — the same provenance class
+as the reconstructed-artwork lane this repo already learned flatters by 11.3
+points, though it distorts differently (thread texture pushes stage 0 toward
+`gradient`; half scale pushes lettering under the size floors).
+
+What survives and what does not:
+
+- **The `chain_links` -33% A/B stands.** Same input both arms, stable across
+  max_colors 4/6/8 — internally valid regardless of what the input depicts.
+- **The framing weakens.** "On the work this shop actually sews" is not
+  supported by these four; they are what the shop RECEIVES BACK, not what it
+  digitizes from.
+- **"Real logos carry 1-3 fill shapes that essentially never cut" is tainted**
+  for these four and should not be quoted as a corpus-wide fact until
+  re-measured on genuine artwork.
+- **Untouched:** the pro-parity 42.5 baseline and the 15-design kappa/satin-gate
+  work, whose real lane used the actual Drive artwork (`prep_both.py`'s
+  `DESIGNS` table), and `tools/corpus_scorecard.py`'s `FIXTURES`, which never
+  listed the renders.
+
+The two genuine committed customer-artwork fixtures are
+**`becker_marine_logo.png`** and **`logo_script_tires.png`**.
+
