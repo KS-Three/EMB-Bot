@@ -13,7 +13,7 @@ Python digitizing engine that runs as a localhost service. Two parts:
   content → review → download) built on top of the JS stitch engine via
   `window.EMB` (the `src/*.js` modules, copied into `app/public/engine/` by
   `app/scripts/copy-engine.mjs`).
-- **`digitizer/`** — Python 3.14 auto-digitizing pipeline (OpenCV, scikit-image,
+- **`digitizer/`** — Python auto-digitizing pipeline (OpenCV, scikit-image,
   shapely) + an optional FastAPI service. See the digitizer section below.
 
 (The original single-page `EMB-Bot.html` was deleted 2026-08-08, commit
@@ -40,8 +40,11 @@ lawyer brief is the optional restore path), then grew through the 2026-08-21/22
 upstream sweeps — this number has drifted twice without the doc being updated,
 so don't trust it without recounting `manifest.json`), lazily fetched per font by
 `app/src/lib/fontLoader.js`. The
-old eager `src/fonts/satin-fonts.js` is OUT of the Studio pipeline but still
-used by legacy `EMB-Bot.html` — do not delete it. **Its audit ran 2026-08-04**
+old eager `src/fonts/satin-fonts.js` is OUT of the Studio pipeline and — since
+`EMB-Bot.html`'s deletion (2026-08-08) — has no consumer left at all (this line
+said "still used by legacy `EMB-Bot.html`, do not delete it" long after that
+page was gone); it survives as the audited legacy registry of record, and
+removing it is Kent's call, not cleanup. **Its audit ran 2026-08-04**
 (`docs/font-license-audit-2026-07-31.md` §10): the 7 license-pulled fonts
 (milli_marif_bold, tt_masters + the 5 ShareAlike: aventurina, emilio_20,
 emilio_20_bold, geneva_simple, monicha) were removed, 21 → 14 entries, all
@@ -52,17 +55,21 @@ font there unless it is also in the shipping manifest. `EMB-Bot-standalone.html`
 
 - **EMBF format** (`src/fontbin.js`): quantize coords ×4 → per-ring delta →
   Int16 stream; skeleton JSON carries everything else. Guard test
-  `test/embf-guard.test.js` pins `decode(encode(font)) == quantizeFont(font)`
-  for all 21 original fonts — it must stay green through any codec change.
+  `test/embf-guard.test.js` pins `decodeFontBin(<committed .embf>) ==
+  quantizeFont(font)` for every static `src/fonts/*.json` source (17 now — the
+  2026-08-04 license pulls shrank the original 21; the test's floor assert is
+  >= 14) — it must stay green through any codec change.
   Acceptance evidence (0.00–1.07% stitch drift, visually cleared):
   `docs/superpowers/notes/2026-07-27-embf-acceptance.md`.
 - **Two builds from one tree.** `node tools/build-embf.mjs` writes the
   **sellable** library (85 fonts, everything inside `ALLOWED_LICENSES`).
-  `node tools/build-embf.mjs --personal` writes Kent's private library (120
-  fonts, adding ShareAlike / NC / GPL / pulled) to `bin-personal/` +
-  `manifest-personal.json` — both gitignored, so a fresh clone or CI cannot
-  produce a build containing them. The split is at BUILD time on purpose: a
-  runtime toggle is not a distribution boundary. `copy-engine.mjs` serves the
+  `node tools/build-embf.mjs --personal` writes Kent's private library — the
+  sellable set plus the ShareAlike / NC / GPL / pulled trial imports (38
+  personal-only faces as of 2026-08-22, per the builder's own sidecar pass;
+  this count drifts with the sweeps, trust the build output) — to
+  `bin-personal/` + `manifest-personal.json`, both gitignored, so a fresh
+  clone or CI cannot produce a build containing them. The split is at BUILD
+  time on purpose: a runtime toggle is not a distribution boundary. `copy-engine.mjs` serves the
   personal build when it exists and says so loudly. `--personal` also writes
   `previews-personal/` and `licenses-personal/` (both gitignored, and they must
   stay that way — a preview is a RENDER of the font, so publishing one for a
@@ -103,8 +110,8 @@ font there unless it is also in the shipping manifest. `EMB-Bot-standalone.html`
   copy-engine.mjs` (ENGINE_FILES), `app/src/lib/emb.js` (ENGINE_KEYS), and
   the `<script>` tags in **`app/index.html`** — the third one was missed once
   and broke fonts only in the live browser (tests preload differently and
-  stayed green). Keep all three in sync; legacy `EMB-Bot.html` is a separate,
-  fourth list that stays on the old registry.
+  stayed green). Keep all three in sync. (There used to be a fourth list in
+  legacy `EMB-Bot.html`; it died with that page, 2026-08-08.)
 - **Classifier gap — FIXED, and then found to have a second half.**
   `qc-font.mjs` now counts stitchability per LETTER GLYPH, not per file, so a
   font whose letters are runs-only no longer classifies as satin (that was
@@ -122,7 +129,11 @@ font there unless it is also in the shipping manifest. `EMB-Bot-standalone.html`
   skips a character the font has no glyph for; `buildLetteringDesign` returns
   `unsupported` (source order, deduplicated) and `generateAll` carries it per
   element, so the field can say "This font can't stitch …" instead of sitting
-  empty. If you add a code path that builds lettering, pass it through.
+  empty. Since 2026-08-22 the same report covers a glyph that EXISTS but sews
+  nothing (satin-less, no authored run length, no cross grid — `e56ff13`): it
+  keeps its own advance (a hole of the right width) and lands in `unsupported`
+  instead of vanishing quietly. If you add a code path that builds lettering,
+  pass it through.
 - **Watch for Latin assumptions when touching font tooling.** Adding Hebrew
   found three, all silent: `build-previews`' sample-text fallback, the personal
   build's `sewsAnything()` gate, and the lettering path's character skipping.
@@ -173,10 +184,15 @@ font there unless it is also in the shipping manifest. `EMB-Bot-standalone.html`
   `scratch_ink/`). Guard tests pin all of this (embedded license == sidecar,
   sidecar present per font, no truncation artifacts).
 - **QC harness** (`tools/qc-font.mjs`, tested): the versioned tier gate.
-  Per-GLYPH satin check (100% satinless letters = hard fail, >10% fail,
-  ≤10% warn), advances incl. digits, finite geometry, coverage warnings.
-  Run on any candidate font JSON before tiering it. The old gitignored
-  scratch classifier is retired as the gate of record.
+  Per-GLYPH stitchability check — satin columns, a run with an authored
+  stitch length, or a cross-stitch region with a measured grid all count,
+  since bean/run and cross-stitch lettering became sewable (2026-08-21);
+  it was satin-only when this bullet was written. 100% unstitchable letters
+  = hard fail, >10% fail, ≤10% warn; plus advances incl. digits, finite
+  geometry, coverage warnings, and the stunted-height warn (see the
+  classifier-gap bullet above). Run on any candidate font JSON before
+  tiering it. The old gitignored scratch classifier is retired as the gate
+  of record.
 - **Attribution parsing gotcha:** upstream license blobs mostly use bare-CR
   (old-Mac) line endings — split on `/\r\n|\r|\n/` or "first line" becomes
   the whole blob.
@@ -210,7 +226,11 @@ in favor of "feed it clean flat art" (see "the one rule" below); this
 subsystem exists to do classical-CV auto-digitizing properly instead of
 hand-rolling it in JS.
 
-- **Env**: Python 3.14 venv at `digitizer/.venv` (gitignored). Run tests with
+- **Env**: Python venv at `digitizer/.venv` (gitignored) — 3.14 on Kent's
+  box; the floor is `requires-python = ">=3.12"` (`pyproject.toml`), CI pins
+  3.12, and cloud sessions must build with `python3.12` explicitly (CLAUDE.md
+  owns that trap — this line used to state 3.14 flatly, which misled cloud
+  sessions whose venv is 3.12). Run tests with
   `cd digitizer && .venv/Scripts/python -m pytest -q` — a bare
   `python probe.py` will NOT put cwd on `sys.path`, must use `python -m pytest`
   or set `PYTHONPATH=.`. **`.venv/Scripts/` is Kent's Windows box; on Linux —
@@ -231,8 +251,16 @@ hand-rolling it in JS.
   photo-classified designs, opt-in via `cfg.photo_segment_sam2`) →
   small-region absorb + enclosed-hole handling (`stage3_segment.py`) →
   contour vectorize (`stage4_vectorize.py`) → stitch planning: overlap
-  resolution, fill/satin/border/contour/appliqué/**blend** tiers, sequencing
-  (stages 5–7) → DST/PES/EXP/SVG export via pyembroidery.
+  resolution, fill/satin/border/contour/appliqué/**blend** tiers plus the
+  photo tonal tiers (scan-line, meander, streamline, sketch —
+  `stage6_scanline/meander/streamline/sketch.py`), sequencing
+  (stages 5–7) → DST/PES/EXP/SVG export via **pystitch** (pyembroidery's
+  actively maintained Ink/Stitch fork, same API and coordinate convention —
+  swapped 2026-08-11, `docs/pystitch-evaluation-2026-08-11.md`; this bullet
+  said "pyembroidery" long after the swap). The pipeline is also split at
+  the review-edit seam — `pipeline.build_generation` (stages 0-4) +
+  `finish_generation` (edits applied, palette, plan) — for the service's
+  generation cache below; `run_stages` composes the two.
 - **The input classifier (`stage0_classify.py`, 2026-08-02)** is 4-way —
   `flat` / `gradient` / `photo_subject` / `photo_scene` — on three signals:
   `unique_color_mass`, `gradient_smoothness` (Sobel local variance,
@@ -255,12 +283,59 @@ hand-rolling it in JS.
   (`detect_faces_seam`, plus the face-local threshold drop this module
   applies) are both real now, gated behind `photo_prep` (background removal
   behind its own extra flag on top of that — see `config.py`).
+- **SAM2 runs in its own isolated venv** (`digitizer/sam2_isolated/`, same
+  subprocess pattern and reasoning as `rembg_isolated/` — torch must never
+  touch the shared venv's exact pins). `stage2_sam2_segment.sam2_segment_seam`
+  shells out to `digitizer_core/sam2_worker.py` under that venv's
+  interpreter; without it built, `photo_segment_sam2` degrades to the
+  classical SLIC+RAG path with an honest warning. The checkpoint cache MUST
+  be pre-warmed (`sam2_worker.py --prewarm tiny`) — job mode refuses to
+  download, by design. The prewarm now enforces the server's Content-Length:
+  a real cloud-container truncation (2026-08-22) had two runs cache 136.9
+  then 140.8 MB of a 156.0 MB checkpoint, print "checkpoint cached", and
+  kill every later job far from the cause — the `.part`-rename discipline
+  can't help when "success" is the lie. The whole lane is proven buildable
+  and runnable in a cloud container, not just on Kent's box; build steps and
+  disk budget in `sam2_isolated/README.md`.
 - **`stage6_blend.py`** is the gradient blend fill tier; its `detect_ramp`
   fitting logic is what the queued gradient-fragmentation fix wants to reuse
   one stage earlier (see Known bugs).
+- **The photo-lane satin width floor** (`stage6_satin`, 2026-08-22): a shape
+  that EARNED satin but whose doubled p90 medial width sits under
+  `PHOTO_MIN_SATIN_WIDTH_MM` (Law 31's 1.0 mm, adopted verbatim — gate 1
+  owns the value, never tune it without cloth) is rerouted to the outline
+  run, with verdict reason `photo_width_floor`. **Photo classes only**, and
+  that gate is the finding, not a hedge: the defect population
+  (drone/summit) and the disproof population (61/64 sub-mm satins on real
+  customer logos are ground the pro also satined) BOTH classify `gradient`,
+  so classification can't separate them — the photo lane ("This is a photo"
+  toggle) is the only honest gate. Flat/gradient stay byte-identical.
 - **Run the service**: `.venv/Scripts/python -m digitizer_service` →
   `127.0.0.1:8721`. `GET /health`, `POST /digitize` (image+config → job),
-  `GET /jobs/{id}`, `POST /export`. Binds loopback only, CORS localhost-only.
+  `POST /digitize-manual` (hand-authored shapes, no image — stages 1-4
+  skipped; same job/response contract), `GET /jobs/{id}`, `POST /export`.
+  Binds loopback only, CORS localhost-only.
+- **The stage 0-4 generation cache** (2026-08-22): `/digitize` caches
+  `build_generation`'s output per artwork + every config field EXCEPT the
+  four review-edit keys (`digitizer_service/jobs.py` — `GenerationCache`,
+  LRU of 4, `EDIT_KEYS` pinned by `tests/test_generation_cache.py`), so an
+  edited re-digitize re-runs only `finish_generation` + `plan_stitches`
+  (stages 0-4 measured at 53-81% of a job). Every consumer finishes from
+  `Generation.fork()`; responses carry `generation_cache: "hit"|"miss"`.
+  Separate gotcha: the JOB cache replays a finished job for an identical
+  request, so after changing machine state a cached job embedded (repairing
+  the SAM2 venv, say) restart the service or you get the pre-repair result
+  back at 0.0s and believe it.
+- **Acceptance A/B contact sheet** (`digitizer/tools/acceptance_ab.py`, pure
+  logic in `digitizer_core/tools_acceptance.py`): the phase-4 eyeball loop.
+  Runs every image in the gitignored `digitizer/testdata/photo/acceptance/`
+  dir through the LIVE service (`/digitize` → `/jobs` → `/export`, Studio's
+  own wire) across five arms — classical, relaxed-speckle
+  (`blend_speckle_r2_override`, Kent-funded 2026-08-23), the default-route
+  stock/relaxed pair (real photos route `gradient`, where the blend tier and
+  therefore the speckle question actually live — the forced-photo arms never
+  consult it), and SAM2 when its venv is runnable. Output is a side-by-side
+  contact sheet Kent judges by eye; deliberately NO score number on it.
 - **The load-bearing boundary decision**: `/digitize` returns an EMB-Bot
   `Design` object, never a DST — see [[dst-codec-axis-discrepancy]] / the
   "Known bugs" section below. Routing the disputed DST format off this
@@ -331,22 +406,29 @@ hand-rolling it in JS.
   error context.
 
   Repairing the locators took the suite from 4 passed / 9 failed in 20
-  minutes to **9 passed / 4 failed in 46 seconds**. The 4 still red are
-  PRE-EXISTING and unrelated — verified by running them at `1ab138d`, before
-  the node-drag fix, where they fail identically. They are product questions
-  for Kent, not test rot, and they are only visible now because the suite
-  runs at all:
-  - `digitize-background-enclosed` (×2): `.dgp-enclosed-banner` never
-    appears. The banner is gated on `unstitchedRows.length`, so the pipeline
-    is no longer flagging `BACKGROUND_ENCLOSED` on that fixture at all.
-  - `digitize-boundary-edit`: after Save boundary + Apply, `.dgp-stats` is
-    still **exactly** `2,153 stitches · 80×30 mm · 2 colors` — the panel
-    editor's vertex drag changed nothing in the design. Same family as the
-    node-density finding below; worth measuring the mm size of the drag that
-    spec actually performs before assuming it is the same cause.
-  - `manual-trace-import`: the `Edit points` button is never found, though
-    `ManualPanel.svelte:846` still renders it — so something earlier in that
-    flow (add shapes) is not completing.
+  minutes to **9 passed / 4 failed in 46 seconds**. The 4 then still red
+  were PRE-EXISTING and unrelated (verified by running them at `1ab138d`,
+  where they failed identically) — and **all four have since been resolved**;
+  they were only visible at all because the suite ran. How each closed is
+  worth keeping, because two were the suite catching real premise drift:
+  - `digitize-background-enclosed` (×2): the 2026-08-11 background-existence
+    guards had deliberately reclassified the old repro fixture as
+    `BACKGROUND_ABSENT` — no background, nothing to tag enclosed, banner can
+    never fire. The Python tests took a guards-off config; a real-browser
+    spec cannot (it sends only real Studio configs), so it moved to fixtures
+    whose white ground survives the guards (`logo_whitebg`,
+    `enthusiast_logo`) — see the spec's own FIXTURE CHANGE banner. Passes
+    2/2, driving the banner + "Sew all N" bulk restore end to end.
+  - `digitize-boundary-edit`: the old panel vertex drag genuinely changed
+    nothing; the spec was rebuilt around the real boundary editor
+    (shape-layers contract v1.4 — drag a vertex, Save boundary, Apply, the
+    design measurably reshapes and resews).
+  - `manual-trace-import`: rewritten around the trace-import flow (real file
+    upload through a real `createImageBitmap` decode, traced shapes landing
+    on ManualPanel's canvas, `Edit points` vertex drag included —
+    `ManualPanel.svelte:846` still renders that button).
+  All seven specs now run green in the `studio-e2e` job, whose no-skip guard
+  means a merge-able PR proves them, not just runs them.
 
 - **An auto-traced outline has ~1 node per 1.3 mm, so "move one node" is not
   an edit the stitches can express.** `owl_kent.jpg`'s body region is 346
@@ -383,9 +465,11 @@ hand-rolling it in JS.
   FULL suite after merging parallel lanes; per-lane green means nothing
   about their interaction.
 
-- **Never pipe pytest to `tail`** — you get tail's exit code, so a red
-  suite reports success. Redirect to a file and check `$?` directly. Cost a
-  false "suite green" claim on 2026-08-11.
+- **Never pipe ANY test suite to `tail`** — you get tail's exit code, so a
+  red suite reports success. Redirect to a file (or background the run and
+  read its file) and check `$?` directly. Cost a false "suite green" claim
+  on pytest 2026-08-11, then bit again on **vitest** 2026-08-22 — the trap
+  is universal, not a pytest quirk.
 
 - **Measure on Kent's real art, not the fixtures.** `testdata/logo_whitebg.png`
   routes 1 of 5 regions to satin and reproduces almost nothing he complains
@@ -446,7 +530,11 @@ assume any specific one is still in flight without checking; a couple were
 observed `locked` (actively in use by another session) during this pass and
 were left untouched, per the "never touch worktrees" rule.
 
-## What's next (queue as of 2026-08-03)
+## What's next (queue as of 2026-08-03 — historical, with resolutions)
+
+This queue is a dated artifact kept for its rationale trails; each item
+carries its outcome inline. **ROADMAP.md owns the live ordering and gates**,
+MASTER_SCOPE.md the live status — don't work from this list.
 
 Decision doc: `docs/superpowers/plans/2026-08-03-dt-first-sequencing.md`.
 Session handoff with the full context:
@@ -459,10 +547,9 @@ Session handoff with the full context:
    merged to `main`, and the one caveat that kept it from being real
    end-to-end (an opaque-alpha bug that defeated background detection on
    real Studio uploads) is fixed too, merged PR #22; see
-   `docs/scope/1-auto-digitizing-quality.md` for the full breakdown,
-   including the one thing still not
-   verified (a live browser run of the fix, vs. the HTTP-level
-   reproduction done so far). The `fix/bg-existence-guard` branch/worktree
+   `docs/scope/1-auto-digitizing-quality.md` for the full breakdown. (The
+   live-browser verification this bullet used to flag as missing exists
+   now — see the Known bugs entry.) The `fix/bg-existence-guard` branch/worktree
    this bullet used to queue no longer exists anywhere in this checkout
    (confirmed 2026-08-04, see "Branches & worktrees" above) — its content
    appears superseded by PR #22's opaque-alpha fix (same problem class:
@@ -494,15 +581,19 @@ Session handoff with the full context:
    path). The byte-identical requirement is enforced, not just stated:
    `tests/test_shapefield_byte_identical.py` duplicates
    `stage6_satin._rasterize`'s rasterization number-for-number rather than
-   reimplementing it, both on `origin/main` now. What's left of this slice is
-   M0's corpus leg (above) and M2/M3 (below) — neither started. Rationale:
+   reimplementing it, both on `origin/main` now. What's left of this slice:
+   M0's corpus leg (above) still waits on Kent; M2/M3 resolved by rejection
+   — see item 4. Rationale:
    the satin/fill call is made from `2·area/perimeter`
    (`stage6_satin.py`'s `ribbon_width_mm`, duplicated in `shapefield.py` —
    this bullet's old `stage7_sequence.py:97` pointer is stale, the logic
    lives there now), a statistic the source patent warns against — it
-   satins a 20mm disc under a 5mm cap once the edge is serrated — decided
-   without the DT ever being consulted. Steps 5+ all lean harder on that
-   classifier than anything shipped so far. Full
+   satins a 20mm disc under a 5mm cap once the edge is serrated — decided,
+   when this was queued, without the DT ever being consulted. (No longer
+   true: `classify_ribbon` now runs DT gates — `dt_irregular`/`dt_p90_cap`,
+   an `explained`-based promotion path, and the photo width floor — on top
+   of the width/aspect screen; see item 4's resolution.) Steps 5+ all lean
+   harder on that classifier than anything shipped so far. Full
    architecture: `docs/dt-first-architecture-2026-08-01.md` §2 and
    `docs/masters-teardown-2026-08-01.md`.
 3. **Photo-digitizing plan steps 5+** (`docs/photo-digitizing-plan-2026-07-31.md`)
@@ -512,8 +603,11 @@ Session handoff with the full context:
    and chart-restricted weighted k-medoids palette selection (row 13 /
    build-order step 7, `digitizer_core/palette.py` — replaces the photo
    path's per-region nearest-thread snap; the eyes/skin/subject class
-   multipliers are wired but run at 1.0 until step 3's face priors exist,
-   see that module's THE CLASS-WEIGHT SEAM) — see
+   multipliers are FULLY WIRED since 2026-08-05 — eyes/skin off the YuNet
+   face priors, subject/background off the rembg mask, both behind the
+   `photo_prep` gates, with plain-area degradation when no prior covers a
+   region; this bullet said "run at 1.0 until step 3's face priors exist"
+   long after they did — see that module's THE CLASS-WEIGHT SEAM) — see
    `docs/scope/1-auto-digitizing-quality.md`
    for the commit-level breakdown. Whatever the plan doc queues past these
    is still open; re-check the plan doc itself rather than trust this
@@ -521,6 +615,14 @@ Session handoff with the full context:
 4. **DT-first M2/M3 onward** — the classifier swap itself, the change a
    customer can see. Corpus-gated *and* sew-out-gated, and it needs the
    corpus disagreement table M0 produces before it can be judged.
+   **Resolution: the swap as designed was measured and REJECTED**
+   (2026-08-11, `docs/dt-first-verdict-2026-08-11.md`): the patented rule as
+   printed sends 62/83 clean satins to fill, and every corrected arm loses
+   the disagreements it creates — it sits on MASTER_SCOPE's don't-build
+   list. What survived instead: the DT consulted as ADDED gates inside
+   `classify_ribbon` (`docs/satin-gate-attribution-2026-08-16.md`) and
+   Law 31's photo-lane width floor (2026-08-22, see the digitizer section).
+   The 37-file corpus leg stays blocked on Kent's local run either way.
 
 A sew-out is still not scheduled — Kent's explicit call: more work first,
 don't push for it.
@@ -578,8 +680,11 @@ don't push for it.
   real upload path manufactured an opaque alpha channel that defeated
   background detection entirely; a fully-opaque channel is now discarded
   as information-free. Verified post-merge at the HTTP level (opaque-RGBA
-  twin of the repro fixture now matches its RGB original exactly); a live
-  browser run of the full flow hasn't happened yet.
+  twin of the repro fixture now matches its RGB original exactly), and the
+  live-browser gap this sentence used to flag is closed:
+  `app/e2e/digitize-background-enclosed.spec.js` drives the full flow —
+  real upload, real service, banner, restore, re-stitch — through the real
+  DigitizePanel, and runs in the `studio-e2e` CI job.
 - **Background detection flooded the subject out on tight photo crops**
   (the snowy-owl report: white bird on a beige wall, the bird's body
   "recognized as background" and deleted) — **FIXED 2026-08-11**, two
@@ -619,8 +724,18 @@ doc; run the suite for today's number and judge the run by its expected
 failure classes instead (precedent: fb2cc18, which dropped the hard-coded
 `tools/` script count the same way). Engine and Studio suites are expected
 CLEAN — engine verified clean 2026-08-17, Studio 2026-08-11 — so any
-failure in those two is a regression, full stop. The digitizer's three
-expected failure/skip classes are documented below the command block.
+failure in those two is a regression, with two caveats. One: the engine's
+PES/EXP/DST cross-validation tests (`test/crossval-stitch-formats.test.js`)
+skip quietly on a machine whose digitizer venv can't import pystitch, and a
+green run with them skipped proves less than it looks (CLAUDE.md's venv
+note is the trap; under CI they throw instead of skipping, and the engine
+job installs pystitch so they run for real). Two: **a loaded box forges
+Studio failures** — the specs' `preloadAllFontsSync` beforeAll decodes the
+whole 85-font library under vitest's 10s hook timeout, and on 2026-08-22 that
+failed 5 spec files under pip/pytest contention, 3 on a second loaded run,
+0 solo; re-run solo before calling a Studio red a regression. The
+digitizer's three expected failure/skip classes are documented below the
+command block.
 
 **CI now exists.** `.github/workflows/python-package-conda.yml` (PR #37
 rewrote Kent's initial stock conda template to run the three commands
@@ -743,7 +858,9 @@ skip outside classes 2-3 is a new one — chase that too.
 Runtime: 21:34 serial, measured 2026-08-17 on Kent's machine — which is
 why the command above carries `-n auto`: pytest-xdist is pinned in
 `requirements.txt`, and parallel runs are verified to produce the
-identical pass/fail set (see the workflow comment for how).
+identical pass/fail set (see the workflow comment for how). A 4-core cloud
+container runs the full suite in ~7 min with `-n auto` (measured
+2026-08-22, twice, with exactly the documented Linux golden set failing).
 
 `EMB-Bot-standalone.html` is **DELETED 2026-08-04, Kent's call**, and
 `EMB-Bot.html` itself (plus `src/app.js`) followed on **2026-08-08**
@@ -803,12 +920,20 @@ and controllable to the user.
   - `fabrics.js` — 7 fabric presets driving pull-comp/underlay/density/trim.
   - `flatten.js` — medianCut → modeFilter → absorbSmallRegions pipeline.
   - `fonts/` — pre-digitized font library: `manifest.json` (85
-    shipping fonts) + `bin/*.embf` binaries + per-font JSON sources and
-    `.LICENSE.txt` sidecars, parsed offline from Ink/Stitch's open-source
-    font set. (The old "14 fonts" count here was the legacy eager registry
+    shipping fonts — recount it, the number drifts) + `bin/*.embf` binaries
+    + `.LICENSE.txt` sidecars, parsed offline from Ink/Stitch's open-source
+    font set. Only 17 fonts have committed per-font JSON sources here; the
+    other 68 import from gitignored `scratch_ink/_out` at build time, which
+    is why `build-embf` runs the QC gate itself (see the font section).
+    (The old "14 fonts" count here was the legacy eager registry
     `src/fonts/satin-fonts.js`, which is out of the shipping pipeline.)
   - `dst.js` / `exp.js` / `pes.js` — stitch file encoders. DST is
-    byte-verified/primary; PES is best-effort.
+    byte-verified/primary; PES is best-effort. All three are cross-validated
+    against pystitch as the third-party reference decoder
+    (`test/crossval-stitch-formats.test.js`, revived 2026-08-21 after the
+    2026-08-11 pystitch swap left it silently skipping — the repo's only
+    automated third-party format check; CI runs it loud, see "Running
+    things").
 - **`app/src/`** — Svelte 5 Studio. `App.svelte` + `ui/` (steps/components) +
   `lib/` (non-DOM logic, each paired with a `.spec.js`): `project.js` (data
   model, v2 = `{version,garmentId,selectedId,elements:[...]}`), `generate.js`
@@ -829,9 +954,11 @@ and controllable to the user.
   + plan written before building. Read the relevant one before extending that
   area; they contain the "why," not just the "what."
 - **`.superpowers/sdd/progress.md`** — task-by-task ledger for the Studio
-  slices (1–8). Doesn't cover the font-editing round (that used a plain
-  worktree, not `subagent-driven-development`) — see the spec/plan above for
-  that instead.
+  slices (1–8). Gitignored and local to Kent's machine — a cloud checkout
+  does not have it (`.superpowers/` is `.gitignore` line 2; nothing under it
+  was ever committed). Doesn't cover the font-editing round (that used a
+  plain worktree, not `subagent-driven-development`) — see the spec/plan
+  above for that instead.
 
 ## Known limitations
 
@@ -859,11 +986,14 @@ here since it explains *why*, not *what's currently true*.
 - **Verify claims, don't trust prior summaries at face value** — this very
   cookbook exists because a memory note said work was "merged to main" when
   it was actually sitting unmerged in a worktree. `git log` is ground truth.
-- When adding a font: must be an Ink/Stitch-style font with real
-  `<path inkstitch:satin_column>` data (rails+rungs), not just an outline
-  font — outline fonts only auto-trace, which Kent has already rejected as
-  lower quality than hand-authored satin columns. Recipe is in the README's
-  "Adding more fonts" section (via memory) / `tools/build-font.mjs` usage.
+- When adding a font: must carry real hand-authored Ink/Stitch stitch data —
+  `<path inkstitch:satin_column>` rails+rungs for satin fonts, and since
+  2026-08-21 also run/bean fonts whose runs carry an AUTHORED stitch
+  length and cross-stitch fonts with a measurable grid (this line was
+  satin-only before those lettering paths existed). What stays rejected is
+  the outline-only font, which can only auto-trace — Kent has already ruled
+  that lower quality than hand-authored stitch data. Full recipe + license
+  gate: `.claude/skills/add-font/SKILL.md` / `tools/build-font.mjs` usage.
 
 ## Who's asking for what
 
