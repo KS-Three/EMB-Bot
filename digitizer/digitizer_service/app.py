@@ -47,6 +47,49 @@ VERSION = "0.5.0"
 MAX_UPLOAD_BYTES = 12 * 1024 * 1024
 MAX_PIXELS = 40_000_000
 
+# The decode-time working-resolution ceiling, applied to the LONG side of
+# anything that clears the MAX_PIXELS gate. MAX_PIXELS rejects absurdities,
+# but it admits images the pipeline still cannot afford: on 2026-08-23 a
+# 1848x4000 (7.4 MP) phone photo — under a fifth of the 40 MP limit — drove
+# the pipeline to 13.9 GB RSS and the cgroup killed the service in a 16 GB
+# container. Input pixel count at the decode seam is the one lever that
+# bounds every downstream stage at once, and it costs nothing in product
+# terms: output is millimetres scaled to cfg.target_width_mm, so pixels past
+# the working resolution buy no stitches — the 413 copy has told callers
+# "2000 px across is plenty" since it was written, and this makes that true.
+# Compute hygiene, in other words, not a physical constant: no sew-out can
+# move this number, only memory measurements and the corpus below.
+#
+# Why 2800 and not 2000: byte-identity with the committed test corpus.
+# Measured 2026-08-23 across every committed raster under testdata/
+# (33 files), the largest is photo/logo_gaulke_roofing.png at 1284x2778,
+# with three more between 2000 and 2778 (logo_hotel_fremont.webp 2500,
+# screenshot_phone_ui_golke.jpg 2207, logo_golden_tee.jpg 2193). A 2000
+# ceiling would resize four fixtures at this seam and shift every golden
+# downstream; 2800 is the nearest round number that clears them all.
+# tests/test_decode_ceiling.py pins that clearance — a future fixture above
+# the ceiling fails loud there instead of as a baffling golden mismatch.
+#
+# Known residual, stated so the next OOM doesn't re-derive it: a long side
+# cap bounds a SQUARE input at 2800^2 ~= 7.8 MP — marginally above the
+# 7.4 MP that OOM'd (that photo was 1848x4000, so IT gets halved to 3.6 MP;
+# squares were not the observed failure). If a native ~2800-square photo
+# ever OOMs too, the next lever is a total-pixel working cap at this same
+# seam: the committed corpus tops out at 4.81 MP (logo_golden_tee.jpg), so
+# ~5-6 MP would still clear every golden.
+#
+# The resize is deliberately SILENT. `_decode` has no path into a job's
+# warnings — it runs at submit time and the job's `warnings` are read off
+# the finished plan; threading a service-side entry in would also mean a new
+# code in digitizer_core's append-only, UI-switched warnings_codes for an
+# event with no user action attached. The one consequence a user could act
+# on — too few pixels for the chosen target width — is stage 1's job, which
+# sees the post-resize image and already upscales toward min_px_per_mm and
+# emits INPUT_LOW_RESOLUTION when it cannot. Nor does this belong in
+# /health's "limits": nothing is rejected, so it is not a limit a caller
+# must obey.
+DECODE_MAX_SIDE_PX = 2800
+
 # Config keys a caller may set. Everything else on PipelineConfig is either
 # internal (debug_dir) or would let a request write to disk.
 _CONFIG_FIELDS = {f.name for f in dataclass_fields(PipelineConfig)} - {"debug_dir", "extra"}
@@ -439,12 +482,18 @@ def _parse_manual_config(data: dict | None) -> dict:
 
 
 def _decode(data: bytes) -> np.ndarray:
-    """Decode and size-check once, here, instead of discovering minutes later.
+    """Decode, size-check, and normalize once, here, instead of minutes later.
 
     The array goes to the pipeline as-is: `stage1_prep._load` treats an ndarray
     exactly as it treats the bytes it would have decoded itself, so this costs
     nothing extra and lets an oversized image fail as a 413 at submit time
-    rather than as a job that hogs the worker.
+    rather than as a job that hogs the worker. Anything that clears the 413 but
+    exceeds DECODE_MAX_SIDE_PX on its long side is downscaled to that ceiling
+    right here (INTER_AREA, aspect preserved), before the pixels reach the
+    generation cache, the pipeline, or preflight — see the constant's comment
+    for the OOM this stops and why it is silent. Job cache keys are the raw
+    upload bytes (`jobs.content_key`), computed by the caller before this runs,
+    so the resize never splits or aliases a cache entry.
     """
     raw = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_UNCHANGED)
     if raw is None:
@@ -461,6 +510,15 @@ def _decode(data: bytes) -> np.ndarray:
                    f"{MAX_PIXELS//1_000_000}. Embroidery needs far less — "
                    "2000 px across is plenty.",
         )
+    long_side = max(h, w)
+    if long_side > DECODE_MAX_SIDE_PX:
+        # Long side lands EXACTLY on the ceiling; the short side rounds, with
+        # a 1 px floor so a pathological sliver can't round to zero. This is
+        # the contract tests/test_decode_ceiling.py pins.
+        scale = DECODE_MAX_SIDE_PX / long_side
+        new_w = DECODE_MAX_SIDE_PX if w == long_side else max(1, round(w * scale))
+        new_h = DECODE_MAX_SIDE_PX if h == long_side else max(1, round(h * scale))
+        raw = cv2.resize(raw, (new_w, new_h), interpolation=cv2.INTER_AREA)
     return raw
 
 
