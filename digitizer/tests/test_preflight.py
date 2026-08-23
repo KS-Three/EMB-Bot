@@ -48,6 +48,8 @@ from digitizer_core.preflight import (
     THREAD_MATCH_POOR,
     TRIM_HEAVY,
     _CONTOUR_RING_UNREACHABLE,
+    _PHOTO_TONAL_TECHNIQUES,
+    _TONAL_FILL_BAND_MM,
     _coverage_map,
     run_preflight,
 )
@@ -413,6 +415,99 @@ def test_a_deliberate_density_override_is_not_extreme():
     report = run_preflight(None, plan, cfg(fill_row_mm=1.0))
 
     assert DENSITY_EXTREME not in _codes(report)
+
+
+# --- Density: the tonal fill band --------------------------------------------
+
+def _tonal_rows(advance_mm: float, tier: str | None = None) -> StitchPlan:
+    """Boustrophedon fill rows `advance_mm` apart — the sparse-fill test's
+    own geometry, with rows long enough (32 mm) that even 6.0 mm advances
+    clear the axis gate (|R| = (32-6)/(32+6) = 0.68 vs the 0.6 floor).
+    `tier` appends the run_stages PHOTO_AUTO_TIER warning the auto route
+    publishes, extras flattened at top level exactly as warnings_codes.warn
+    emits them."""
+    pts: list[tuple[float, float]] = []
+    for row in range(34):
+        xs = [2.0 * i for i in range(17)]
+        if row % 2:
+            xs.reverse()
+        pts.extend((x, row * advance_mm) for x in xs)
+    plan = _plan(StitchRun(points=pts, kind=st.FILL))
+    if tier is not None:
+        plan.warnings.append({"code": "photo_auto_tier", "tier": tier,
+                              "streamline_mode": "layered"})
+    return plan
+
+
+def test_the_photo_auto_routes_own_spacing_is_not_density_extreme():
+    """The 2026-08-23 defect (debug_out/acceptance_2026-08-23): the photo
+    auto-route sews streamline lines ~1.7 mm apart — inside the tier's own
+    0.8-3.2 mm tone band — and the fill check, scoring against the 0.40 mm
+    tatami target, told every toggle-route user to re-digitize ("4.3x its
+    0.40 mm density target", warn, on a real portrait). The pipeline's own
+    deliberate tier choice must not trip its own density check."""
+    report = run_preflight(None, _tonal_rows(1.7, tier="streamline"), cfg())
+
+    assert DENSITY_EXTREME not in _codes(report)
+    # The instrument still measured — the metric rides out either way.
+    assert report["metrics"]["fill_advance_mm"] == pytest.approx(1.7, abs=0.01)
+
+
+def test_an_explicit_tonal_technique_gets_the_same_band():
+    """`fill_technique="streamline"` set by hand is the same intent stated
+    the other way — no auto-route warning exists to re-read, so the band
+    must come off cfg alone."""
+    report = run_preflight(None, _tonal_rows(1.7),
+                           cfg(fill_technique="streamline"))
+
+    assert DENSITY_EXTREME not in _codes(report)
+
+
+def test_a_collapsed_tonal_fill_still_warns():
+    """Rescored, not silenced: 6.0 mm between lines is past even the
+    lightest spacing streamline intends (3.2 mm) by more than the 1.5x
+    slack — a genuinely broken tonal fill keeps its warning, scored
+    against the edge it violated."""
+    report = run_preflight(None, _tonal_rows(6.0, tier="streamline"), cfg())
+
+    hit = [f for f in report["findings"] if f["code"] == DENSITY_EXTREME]
+    assert len(hit) == 1
+    assert hit[0]["extra"]["kind"] == "fill"
+    assert hit[0]["extra"]["technique"] == "streamline"
+    assert hit[0]["extra"]["target_mm"] == pytest.approx(3.2)
+    assert hit[0]["extra"]["ratio"] == pytest.approx(6.0 / 3.2, abs=0.01)
+
+
+def test_a_tonal_designs_tatami_fallback_rows_are_not_extreme():
+    """Stage 7's never-drop ladder sews plain tatami rows inside a tonal
+    design wherever a shape came back empty — at the tatami target, denser
+    than streamline's own 0.8 mm dark edge. The band is widened by that
+    target so the fallback's correct density never reads as matting."""
+    report = run_preflight(None, _tonal_rows(0.4, tier="streamline"), cfg())
+
+    assert DENSITY_EXTREME not in _codes(report)
+
+
+def test_an_explicit_technique_outranks_a_stale_auto_tier_warning():
+    """Stage 7 re-resolves `auto_tier or cfg.fill_technique` on every
+    re-plan, so an explicit non-tonal technique sews tatami-target rows
+    even when the plan still carries the original run's auto-route warning
+    — and the check must score it against the tatami target too."""
+    report = run_preflight(None, _tonal_rows(1.7, tier="streamline"),
+                           cfg(fill_technique="crosshatch"))
+
+    hit = [f for f in report["findings"] if f["code"] == DENSITY_EXTREME]
+    assert len(hit) == 1
+    assert "technique" not in hit[0]["extra"]
+    assert hit[0]["extra"]["ratio"] == pytest.approx(1.7 / 0.4, abs=0.01)
+
+
+def test_the_band_table_stays_in_lockstep_with_the_technique_gate():
+    """_TONAL_FILL_BAND_MM and _PHOTO_TONAL_TECHNIQUES answer for the same
+    tier set — one is the class-override gate, the other the density
+    yardstick. A tier added to one and not the other fails here instead of
+    quietly keeping the tatami yardstick."""
+    assert set(_TONAL_FILL_BAND_MM) == set(_PHOTO_TONAL_TECHNIQUES)
 
 
 # --- Per-region coverage (law 27) --------------------------------------------
