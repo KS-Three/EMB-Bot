@@ -782,6 +782,48 @@ def test_unavailable_sam2_falls_back_to_slic_and_says_so(monkeypatch):
     assert result.regions, "the job itself must still complete"
 
 
+def test_review_segmenter_reports_photo_sam2_when_sam2_formed_the_regions(monkeypatch):
+    """The stored-job-JSON ambiguity fix (2026-08-23): the SAM2 seam stamps
+    RegionMask.source="photo_sam2", but `kept_masks_to_quant` melts that into
+    a bare label map and stage 3 re-derives masks with seg.name=="classical"
+    — so review.segmenter said "classical" on every SAM2 job and only the
+    PHOTO_SAM2_SEGMENTED warning told the truth. The pipeline now captures
+    the dispatch-point fact instead."""
+    from digitizer_core.pipeline import run_stages
+    from digitizer_core.stage1_prep import prep
+    from digitizer_core.stage2_sam2_segment import sam2_segment_seam
+
+    cfg = _cfg(forced_class="photo_subject", photo_segment_sam2=True)
+    p = prep(FIXTURE, cfg)
+
+    import digitizer_core.stage2_sam2_segment as s2
+
+    monkeypatch.setattr(s2, "sam2_segmentation_unavailable_reason", lambda: None)
+    monkeypatch.setattr(s2, "SAM2_VENV_PYTHON", Path("/fake/python"))
+    monkeypatch.setattr(s2, "SAM2_WORKER_PATH", Path("/fake/worker.py"))
+    monkeypatch.setattr(s2.subprocess, "run", _fake_worker(_quadrant_labels))
+
+    quant, reason = sam2_segment_seam(p, cfg)
+    assert reason is None
+
+    _spy_seam(monkeypatch, (quant, None))
+    result = run_stages(FIXTURE, cfg)
+    assert result.segmenter == "photo_sam2"
+
+
+def test_review_segmenter_stays_classical_when_sam2_fell_back(monkeypatch):
+    """The other half of the fix's contract: a job that ASKED for SAM2 but
+    degraded to SLIC+RAG must keep reporting "classical" — the field answers
+    what ran, never what was requested."""
+    from digitizer_core.pipeline import run_stages
+
+    _spy_seam(monkeypatch, (None, "isolated SAM2 venv not found (test)"))
+    result = run_stages(
+        FIXTURE, _cfg(forced_class="photo_subject", photo_segment_sam2=True)
+    )
+    assert result.segmenter == "classical"
+
+
 def test_gradient_class_never_triggers_sam2(monkeypatch):
     """The locked routing rule: 'gradient' routes to stage2_photo_segment for
     an unrelated reason (avoiding k-means dithering) and must NOT pick up

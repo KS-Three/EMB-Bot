@@ -57,8 +57,9 @@ export function digitizerUrl() {
 // needed changing. Whether SAM2 actually RAN is visible in the existing
 // warnings list either way: PHOTO_SAM2_SEGMENTED on success,
 // PHOTO_SAM2_SEGMENTATION_UNAVAILABLE when it silently fell back to SLIC+RAG
-// (that fallback is the seam's whole contract, so the warning is the only
-// way to tell the two segmenters' output apart).
+// (that fallback is the seam's whole contract; since 2026-08-23
+// review.segmenter also reports "photo_sam2" vs "classical" — the warning
+// carries the fallback's reason, the field the verdict).
 export const SAM2_KEY = "embstudio:sam2";
 
 export function sam2Enabled() {
