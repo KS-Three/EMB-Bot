@@ -36,9 +36,8 @@ or move it.
 
 ## Live defects — believed true right now
 
-1. **RESOLVED 2026-08-19 — shade-thread collapse.** Kept numbered, not deleted:
-   ten other documents cite these entries as "live defect N".
-   *(fixed 2026-08-19 — `stage7_sequence._shade_blocks`)*
+1. **RESOLVED 2026-08-19 — shade-thread collapse.** Kept numbered, not
+   deleted: ten other docs cite these as "live defect N". *(`_shade_blocks`)*
 
 2. **No width floor under satin — PHOTO-LANE HALF CLOSED 2026-08-22; still
    DISPROVED for flat art.** 19 of 162 corpus regions, all photo-family, sew
@@ -57,29 +56,18 @@ or move it.
    Not started. *(measured 2026-08-12 — scope-history)*
 
 4. **We trim far more than the professional: 8.49 trims/1,000 stitches against
-   the pro's 1.27** — same logo, same size, more than double the 4.1 ceiling
-   this repo's own chaining test treats as the outer limit. Unambiguously a
-   defect, unlike the stitch-count gap beside it. **Measured like-for-like
-   2026-08-18, 23 designs, same decoder both sides: we open 1,715 `trim` breaks
-   against the pro's 555 — 3.1x. Quote that, or the trim rate; never a run
-   count** (the old "129 vs 15" counted plan OBJECTS against THREAD PATHS), and
-   never the raw `trims` field (pystitch emits ~2 TRIM commands per real cut on
-   the pro's files and 1 on ours). **Cause attributed:** trim-dominated, not
-   travel — the pro never cuts for a move under 11.8 mm and our `trim_at_mm` is
-   3.0 (gate 1: cloth settles that). **The "`_graph_travel` returns nothing"
-   half of that attribution is RETRACTED** — it predates PR #182's snap retry;
-   at HEAD the headroom left there is ~4 trims of 250, so it is not worth a
-   pass. Numbers and the correction to the doc's §2 are now in that doc.
-   *(measured 2026-08-21 — instrumented at HEAD)* Detail and caveats in
-   [`docs/fragmentation-attribution-2026-08-18.md`](docs/fragmentation-attribution-2026-08-18.md).
-   *(measured 2026-08-18 — pinned worktree, `prep_all` over the Drive corpus)*
-   **Not blocked** — artwork and five pro variants are committed under
-   `digitizer/testdata/reference/`. Two things that comparison disproved, so
-   nobody re-derives them: the 1-colour-vs-4 gap is **not** defect #1 but
-   enclosed-background being off by default (the alpha channel, worth **+8.0
-   per Becker design**), and most of the stitch gap is a **design choice** —
-   the pro left the letters bare fabric. *(corrected 2026-08-17 —
-   `docs/handoff-2026-08-16.md` §0)*
+   the pro's 1.27** — same logo, same size, double the 4.1 ceiling this repo's
+   own chaining test treats as the limit. Unambiguously a defect, unlike the
+   stitch-count gap beside it. Like-for-like over 23 designs, same decoder both
+   sides: **1,715 `trim` breaks against 555 — 3.1x. Quote that or the rate;
+   never a run count** (the old "129 vs 15" counted plan OBJECTS against THREAD
+   PATHS) and never raw `trims` (~2 TRIM per real cut on the pro's files, 1 on
+   ours). **Cause:** trim policy, not travel — the pro never cuts under
+   11.8 mm, ours is 3.0, gate 1 says cloth settles that; the `_graph_travel`
+   half of that attribution is RETRACTED (~4 of 250 left at HEAD). **Not
+   blocked** — five pro variants sit in `digitizer/testdata/reference/`.
+   *(measured 2026-08-18/21; detail + disproved claims in
+   `docs/fragmentation-attribution-2026-08-18.md` and scope-history)*
 
 5. **Satin-vs-fill routing sits at chance, and misroutes in BOTH directions.**
    The *mix* nearly matches the pro's, so the cap is not simply too high or too
@@ -117,14 +105,11 @@ or move it.
    1–3 fill shapes that essentially never cut. *(measured 2026-08-21/22)*
 
 7. **RESOLVED 2026-08-21 — satin silently dropped a bracket's tab** on
-   `enthusiast_logo.png` (7.8 mm² bare, D/52 → C/64): `_prune_spurs` re-measured
-   a stem its own first pass had un-branched.
-   *(fixed 2026-08-21 — `stage6_satin._prune_spurs`, tests/test_satin.py)*
+   `enthusiast_logo.png` (7.8 mm² bare, D/52 → C/64). *(`_prune_spurs`)*
 
 8. **RESOLVED 2026-08-22 — build-font dropped SVG transforms on most fonts.**
-   A transform-IGNORING path walk collapsed glyphs placing geometry BY transform
-   (`mimosa_large` "D": 6,193 stitches into 40.0 x **0.0 mm**). Four fonts, one
-   fix. *(fixed 2026-08-22 — `tools/build-font.mjs`, `test/font-transforms.test.js`)*
+   `mimosa_large` "D": 6,193 stitches into 40.0 x **0.0 mm**. Four fonts, one
+   fix. *(`tools/build-font.mjs`, `test/font-transforms.test.js`)*
 
 9. **RESOLVED 2026-08-24 — the photo route escaped its own palette; both
    halves closed.** Region half (#217): `revalidate_threads` masked to the
@@ -140,6 +125,21 @@ or move it.
     found by the first real photos, none reachable by a committed fixture:** a
     7.4 MP OOM (#214), an infinite loop in `select_palette` (#218), preflight
     condemning correct thread-paint as too loose (#216).
+
+11. **RESOLVED 2026-08-24 — the memory ceiling was per-region full-frame
+    masks.** Each of 1,455 components on a 2800x2100 frame carried its own
+    (H, W) bool — 8.56 GB at once, ~102 surviving. Cropped to bboxes:
+    **8,509 → 1,014 MB** (2,767 → 677 on a real portrait), same region counts,
+    19–29% faster, MB/MP now FALLING with size (260→172) where it climbed
+    (643→1,705). Correction: the 12.4 GB OOM was contention with a 10.5 GB
+    script, **not one job** — a service plateaus at ~2.8 GB. *(PR #230)*
+
+12. **RESOLVED 2026-08-24 — preflight graded every photo job F.**
+    `THREAD_MATCH_POOR` fired 256 times at `block` across the sheet: a capped
+    cone list guarantees per-thread distance. Now scores EXCESS over the best
+    already-loaded spool on the photo route (raw elsewhere, byte-identical) —
+    258 of 330 offending regions become 3, and real mis-assignments still
+    block. *(PR #229)*
 
 ---
 
