@@ -643,16 +643,21 @@ class PipelineConfig:
     # two can and do disagree — measured 9 emitted threads outside the
     # selected palette, 28 spools sewn vs 14 pre-branch, on Kent's owl.
     # Palette binding for the shade path is not something this flag solves;
-    # `shade_palette_bind` below (2026-08-23) is its default-OFF measuring
-    # instrument — shipped behaviour is still unbound, pending Kent's call.
+    # `shade_palette_bind` below is what closes it, and since Kent's
+    # 2026-08-24 ruling it is ON by default, so shipped behaviour on the photo
+    # route IS bound. The 28-spools-vs-14 measurement above is the unbound
+    # path, kept as the motivating history.
     # Opt-in pending a corpus run; see MASTER_SCOPE.md's blend-tier entry.
     # Spec 2026-08-18 decision 2: photo_subject and photo_scene split by
     # default (cfg false still means yes for those classes); gradient and flat
     # do not (cfg true is the only way to split them).
     split_tonal_regions: bool = False
-    # EXPERIMENT, default OFF, pending Kent's quality call — option (a) of
+    # DEFAULT ON since 2026-08-24 — Kent's quality call, made from the fresh
+    # 32-job acceptance sheet (4 photos x 8 arms) exactly as spec decision 1
+    # requires: the eyeball loop, not a scorecard, settles tonal work. Was
+    # EXPERIMENT/default-OFF from 2026-08-23 until that ruling. Option (a) of
     # docs/superpowers/plans/2026-08-23-shade-palette-binding.md, the decision
-    # doc this flag exists to put live evidence in front of. The shade path is
+    # doc this flag existed to put live evidence in front of. The shade path is
     # the palette cap's REMAINING escape hatch now that the region-level
     # resnap is bound (stage4_vectorize.revalidate_threads, 2026-08-23): on
     # the photo route every tonally-split region decomposes into 3-5 shades
@@ -669,16 +674,25 @@ class PipelineConfig:
     # block level already buckets same-spool shades at sew time
     # (stage7_sequence._shade_blocks), so the merge makes the DECOMPOSITION
     # say what actually sews rather than listing shades that only look
-    # distinct. The cost, and why this is not simply on: each bound shade
+    # distinct. The cost, and why this stayed off for a day: each bound shade
     # moves onto its nearest palette spool (plan-doc estimate median 8-11.2
     # dE00, worst ~20) and the merges re-collapse shade distinctions — the
     # owl-body flat-mass defect's ghost in palette-sized steps
     # (`split_tonal_regions` above: a region IS the unit that owns a thread).
-    # Trading shade fidelity for a loadable cone list is Kent's call, made
-    # from the acceptance A/B's bound_shade arm (tools_acceptance.
-    # variant_matrix), not an engineering default. False is byte-identical
-    # shipped behaviour, pinned by tests/test_shade_palette_bind.py.
-    shade_palette_bind: bool = False
+    # Trading shade fidelity for a loadable cone list was Kent's call to make,
+    # and he made it ON from the 2026-08-24 sheet: the escape is total without
+    # the bind (43/45/50/14 spools against palettes of 15/12/12/7) and the
+    # review screen cannot show it, because that count comes from shape
+    # thread_index, which IS palette-bound, while the sewing blocks are not.
+    # With the bind every photo lands on exactly its selected palette
+    # (12/12/15/6) and stops fall 78->47, 68->45, 75->54, 25->16.
+    # Option (b) (`shade_palette_demand` below) was measured on the same sheet
+    # and NOT taken: it wins on sparkler alone (48 stops vs 54) and costs a +1
+    # cone residual on face_closeup_blur, so it stays default OFF.
+    # False remains the pre-2026-08-24 shipped behaviour and is still pinned
+    # explicitly by tests/test_shade_palette_bind.py, so the old path stays
+    # reachable and tested rather than becoming dead-by-default.
+    shade_palette_bind: bool = True
     # EXPERIMENT, default OFF — option (b) of the same plan doc, the other
     # half of Kent's 2026-08-23 (a)+(b) decision: `shade_palette_bind` above
     # masks the shade snap to the palette; THIS flag makes the palette worth
@@ -698,11 +712,17 @@ class PipelineConfig:
     # need. The selected palette (anchors included) rides
     # `Quant.palette_spools` -> `PipelineResult.palette_spools` into stage
     # 7's bind set, since an anchor no region's own mean claims would
-    # otherwise never reach `_shade_layers`' mask. Costs are real and are
-    # Kent's to weigh from the acceptance A/B's bound_shade_demand arm:
+    # otherwise never reach `_shade_layers`' mask. Costs are real, and
+    # Kent weighed them on 2026-08-24 from the acceptance A/B's
+    # bound_shade_demand arm and did NOT take this one:
     # demand pressure trips PALETTE_OVERFLOW_K more eagerly (more cones
     # spent — cones cost money), and mid-tone region excess can rise when
-    # anchors squeeze the cap. False is byte-identical shipped behaviour on
+    # anchors squeeze the cap. On that sheet it won on sparkler_dusk alone
+    # (48 stops against the plain bind's 54, 13,091 stitches against 14,290)
+    # and lost on face_closeup_blur, where it left a +1 cone escape — 10
+    # selected, 11 sewn — against the plain bind's clean 7 -> 6. So (a) is on
+    # and (b) stays OFF: a live decision, not an un-run experiment.
+    # False is byte-identical shipped behaviour on
     # every route, pinned by tests/test_shade_palette_demand.py and the
     # byte-identity goldens.
     shade_palette_demand: bool = False

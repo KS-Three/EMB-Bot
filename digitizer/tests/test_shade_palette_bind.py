@@ -99,20 +99,26 @@ def _nearest_spool_to(rgb: tuple[int, int, int]) -> int:
     return int(np.argmin(d))
 
 
-# --- 1. Flag off is byte-identical to today ----------------------------------
+# --- 1. Flag off is byte-identical to the pre-ruling route -------------------
 
-def test_flag_defaults_off_and_the_unbound_paths_are_one_path():
-    """`shade_palette_bind` defaults False, and every spelling of "no
-    palette" — parameter absent, None, empty list — is the same
-    decomposition down to the sampled membership values. A flag-off caller
-    passes None (pinned by the gate tests below), so this chain plus the
-    pre-existing layered suite IS the byte-identity guarantee."""
-    assert PipelineConfig().shade_palette_bind is False
+def test_flag_defaults_on_and_the_unbound_paths_are_one_path():
+    """`shade_palette_bind` defaults TRUE since Kent's 2026-08-24 ruling, and
+    every spelling of "no palette" — parameter absent, None, empty list — is
+    still one decomposition down to the sampled membership values.
+
+    The default assertion is the load-bearing half: a silent revert to False
+    would re-open the cone escape (43/45/50/14 spools against palettes of
+    15/12/12/7) with nothing in the UI to show it, since the review screen's
+    thread count comes from shape thread_index and IS palette-bound while the
+    sewing blocks are not. The unbound path stays reachable through an
+    explicit False, so it is exercised here rather than left dead."""
+    assert PipelineConfig().shade_palette_bind is True
+    assert PipelineConfig(shade_palette_bind=False).shade_palette_bind is False
 
     poly = Polygon([(-35, -25), (35, -25), (35, 25), (-35, 25)])
     source = _source(_full_ramp())
     darkness = _darkness_sampler(source)
-    cfg = PipelineConfig(streamline_mode="layered")
+    cfg = PipelineConfig(streamline_mode="layered", shade_palette_bind=False)
     absent = _shade_layers(poly, source, darkness, _region(poly), cfg)
     (none_arg, _), (empty, _) = _decomposition(None), _decomposition([])
 
@@ -123,9 +129,13 @@ def test_flag_defaults_off_and_the_unbound_paths_are_one_path():
 
 
 def test_sequence_passes_no_palette_when_the_flag_is_off(monkeypatch):
-    """Photo class, flag OFF (the shipped default): the tier must receive
-    `shade_palette_indices=None` — the exact argument value the unbound-path
-    test above proves is the pre-change code path."""
+    """Photo class, flag explicitly OFF (the pre-2026-08-24 shipped route):
+    the tier must receive `shade_palette_indices=None` — the exact argument
+    value the unbound-path test above proves is the pre-change code path.
+
+    Explicit since the default flipped ON: this no longer follows from
+    constructing a bare config, so the opt-out has to be spelled out or the
+    test would silently stop testing the unbound path."""
     seen: list[object] = []
     real = S7.streamline_fill
 
@@ -135,7 +145,8 @@ def test_sequence_passes_no_palette_when_the_flag_is_off(monkeypatch):
 
     monkeypatch.setattr(S7, "streamline_fill", spy)
     poly = Polygon([(-35, -25), (35, -25), (35, 25), (-35, 25)])
-    cfg = PipelineConfig(fill_technique="streamline", streamline_mode="layered")
+    cfg = PipelineConfig(fill_technique="streamline", streamline_mode="layered",
+                         shade_palette_bind=False)
     planned, _ = resolve_overlaps([_region(poly, meta={"tier": "fill"})], FAB,
                                   cfg, design_class="photo_subject")
     S7.sequence(planned, FAB, cfg, source_pixels=_source(_full_ramp()),

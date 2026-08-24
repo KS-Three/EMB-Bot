@@ -537,8 +537,9 @@ def _shade_layers(poly, source_pixels: SourcePixels, base_darkness, region: Regi
     to fit, only the same source-darkness field this tier has always read.
 
     **`palette_indices` (keyword-only, default None) is the shade-palette
-    bind — `cfg.shade_palette_bind`'s EXPERIMENT, option (a) of
-    docs/superpowers/plans/2026-08-23-shade-palette-binding.md.** None (or
+    bind — `cfg.shade_palette_bind`, option (a) of
+    docs/superpowers/plans/2026-08-23-shade-palette-binding.md, ON by default
+    on the photo route since Kent's 2026-08-24 ruling.** None (or
     empty — the defensive degrade `revalidate_threads`' palette argument
     also has) is the full-chart `chart.nearest_index` snap this function has
     always run, byte-identical by construction. A non-empty list masks the

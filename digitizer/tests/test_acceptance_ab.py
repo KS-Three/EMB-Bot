@@ -27,10 +27,20 @@ def test_variant_matrix_without_sam2_carries_both_routes():
     # bound_shade_demand sits directly after bound_shade so (b)'s own effect
     # reads as one column step off (a). Every pre-existing arm keeps its tag
     # and config.
+    #
+    # Every forced-class arm pins `shade_palette_bind` EXPLICITLY as of
+    # 2026-08-24. Kent's ruling flipped that config default ON, so an arm
+    # that inherited it would have changed meaning silently — `classical`
+    # would have become a second `bound_shade` and the sheet would compare
+    # the bound route against itself. The `default_*` pair deliberately does
+    # NOT pin it: showing whatever the shipped default currently is, is the
+    # entire reason that pair exists.
     assert variant_matrix(sam2_available=False) == [
-        {"tag": "classical", "config": {"forced_class": "photo_subject"}},
+        {"tag": "classical", "config": {"forced_class": "photo_subject",
+                                        "shade_palette_bind": False}},
         {"tag": "classical_prep",
-         "config": {"forced_class": "photo_subject", "photo_prep": True}},
+         "config": {"forced_class": "photo_subject", "photo_prep": True,
+                    "shade_palette_bind": False}},
         {"tag": "bound_shade",
          "config": {"forced_class": "photo_subject",
                     "shade_palette_bind": True}},
@@ -40,7 +50,8 @@ def test_variant_matrix_without_sam2_carries_both_routes():
                     "shade_palette_demand": True}},
         {"tag": "relaxed_speckle",
          "config": {"forced_class": "photo_subject",
-                    "blend_speckle_r2_override": 0.5}},
+                    "blend_speckle_r2_override": 0.5,
+                    "shade_palette_bind": False}},
         {"tag": "default_stock", "config": {}},
         {"tag": "default_relaxed",
          "config": {"blend_speckle_r2_override": 0.5}},
@@ -53,7 +64,8 @@ def test_variant_matrix_with_sam2_adds_the_ab_arm():
     # shade-aware palette). All are pinned above.
     m = variant_matrix(sam2_available=True)
     assert {"tag": "sam2", "config": {"forced_class": "photo_subject",
-            "photo_prep": True, "photo_segment_sam2": True}} in m and len(m) == 8
+            "photo_prep": True, "photo_segment_sam2": True,
+            "shade_palette_bind": False}} in m and len(m) == 8
 
 def test_sam2_slots_in_as_the_ladders_third_rung():
     # The deconfounded attribution ladder (the classical_prep comment in

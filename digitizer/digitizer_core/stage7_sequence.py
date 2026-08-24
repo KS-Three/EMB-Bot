@@ -844,9 +844,10 @@ def sequence(
     # stitch_one — its documented "beats the mode both ways" contract).
     photo = (design_class in PHOTO_CLASSES
              or bool(cfg.extra.get("photo_sequencing")))
-    # The shade-palette bind (cfg.shade_palette_bind — EXPERIMENT, default
-    # off; config.py's own comment and docs/superpowers/plans/2026-08-23-
-    # shade-palette-binding.md option (a) carry the full case): the spools
+    # The shade-palette bind (cfg.shade_palette_bind — default ON since
+    # Kent's 2026-08-24 ruling; config.py's own comment and
+    # docs/superpowers/plans/2026-08-23-shade-palette-binding.md option (a)
+    # carry the full case): the spools
     # this plan's own regions sew, handed to the layered streamline tier so
     # its per-shade chart snap stays inside them (`_shade_layers`' masked
     # argmin + adjacent-same-spool merge). Derived from `planned` — the
