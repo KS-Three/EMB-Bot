@@ -60,7 +60,15 @@ def variant_matrix(sam2_available: bool) -> list[dict]:
     first column so the comparison is always present.
     """
     matrix = [
-        {"tag": "classical", "config": {"forced_class": _FORCED_CLASS}},
+        # `shade_palette_bind=False` is EXPLICIT here as of 2026-08-24. It used
+        # to be inherited from the config default, but Kent's ruling that day
+        # flipped that default ON — so without this line `classical` would
+        # silently BECOME `bound_shade` and the sheet would be comparing the
+        # bound route against itself. This arm's whole job is to hold the
+        # pre-ruling route as column one, so every future sheet still shows
+        # what the bind bought.
+        {"tag": "classical",
+         "config": {"forced_class": _FORCED_CLASS, "shade_palette_bind": False}},
         # The prep-matched control (added 2026-08-23). The sam2 arm was
         # CONFOUNDED from the day it was written: its config flips
         # `photo_prep` AND `photo_segment_sam2` together, so every
@@ -81,7 +89,8 @@ def variant_matrix(sam2_available: bool) -> list[dict]:
         # nobody asked.
         {
             "tag": "classical_prep",
-            "config": {"forced_class": _FORCED_CLASS, "photo_prep": True},
+            "config": {"forced_class": _FORCED_CLASS, "photo_prep": True,
+                       "shade_palette_bind": False},
         },
         # The shade-palette-bind arm (2026-08-23, EXPERIMENT — option (a) of
         # docs/superpowers/plans/2026-08-23-shade-palette-binding.md, the
@@ -122,6 +131,10 @@ def variant_matrix(sam2_available: bool) -> list[dict]:
             "config": {
                 "forced_class": _FORCED_CLASS,
                 "blend_speckle_r2_override": RAMP_R2_MIN,
+                # Pinned unbound with the rest of the forced-class set
+                # (2026-08-24) so this arm still isolates the speckle
+                # override against `classical` and nothing else.
+                "shade_palette_bind": False,
             },
         },
         # The DEFAULT-route pair (added 2026-08-23, first real-photo run):
@@ -132,6 +145,12 @@ def variant_matrix(sam2_available: bool) -> list[dict]:
         # route stage 0 actually sends real photos down: gradient. These two
         # arms show what a user who never touches the toggle gets, stock vs
         # relaxed, which is where the override can matter at all.
+        #
+        # These two DELIBERATELY inherit `shade_palette_bind` from the config
+        # default, where every arm above now pins it False (2026-08-24).
+        # Showing the shipped default is the entire job of this pair, so when
+        # that default moves, these arms must move with it — pinning them
+        # would defeat the point.
         {"tag": "default_stock", "config": {}},
         {
             "tag": "default_relaxed",
@@ -140,16 +159,24 @@ def variant_matrix(sam2_available: bool) -> list[dict]:
     ]
     if sam2_available:
         # Inserted as the ladder's third rung, not appended (2026-08-23):
-        # tag and config are byte-for-byte what they have always been —
-        # every measurement pinned to "sam2" stays valid — only the sheet
-        # position moved, so the three ladder columns sit adjacent instead
-        # of the SAM2 column landing past the speckle/default arms.
+        # only the sheet position moved, so the three ladder columns sit
+        # adjacent instead of the SAM2 column landing past the
+        # speckle/default arms.
+        #
+        # `shade_palette_bind=False` added 2026-08-24 with the rest of the
+        # forced-class set. This one line is NOT config drift: the default
+        # flipped ON that day, so leaving it out would have changed what this
+        # arm measures. Pinning it False is what keeps every prior
+        # measurement tagged "sam2" comparable, and keeps the ladder's three
+        # rungs differing in prep and SAM2 alone — which is the attribution
+        # the ladder exists for.
         matrix.insert(2, {
             "tag": "sam2",
             "config": {
                 "forced_class": _FORCED_CLASS,
                 "photo_prep": True,
                 "photo_segment_sam2": True,
+                "shade_palette_bind": False,
             },
         })
     return matrix

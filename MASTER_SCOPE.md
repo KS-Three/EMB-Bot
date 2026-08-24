@@ -126,14 +126,15 @@ or move it.
    (`mimosa_large` "D": 6,193 stitches into 40.0 x **0.0 mm**). Four fonts, one
    fix. *(fixed 2026-08-22 — `tools/build-font.mjs`, `test/font-transforms.test.js`)*
 
-9. **The photo route escapes its own palette — REGION HALF CLOSED 2026-08-23,
-   shade half OPEN (Kent's call: close it).** A 12-cone list sewed 31–35 region
-   threads / 30–92 stops on four real portraits. `revalidate_threads` is now
-   masked to the palette on photo classes: region threads == palette,
-   out-of-palette → **0**, stops → 78/68/25/75, flat+gradient byte-identical.
-   Open: the per-shade snap, 28/33/38/8 out-of-palette spools — binding it
-   collapses adjacent shades, a quality trade. Options + costs:
-   `docs/superpowers/plans/2026-08-23-shade-palette-binding.md` *(PR #217)*
+9. **RESOLVED 2026-08-24 — the photo route escaped its own palette; both
+   halves closed.** Region half (#217): `revalidate_threads` masked to the
+   palette, out-of-palette → **0**, flat+gradient byte-identical. Shade half:
+   the per-shade snap still spent 28/33/38/8 unnamed spools, invisible in the
+   UI (that count reads shape `thread_index` — palette-bound; the sewing
+   blocks are not). `shade_palette_bind` closes it, **default ON** per
+   Kent's 32-job-sheet ruling: cones 43/45/50/14 → **12/12/15/6** (== each
+   palette), stops 78→47, 68→45, 75→54, 25→16; (b) declined (+1 cone on face).
+   Pinned edge: a one-spool design flattens tone, 5→1. *(PR #217 + 08-24 flip)*
 
 10. **RESOLVED 2026-08-23 — three photo-route robustness defects, every one
     found by the first real photos, none reachable by a committed fixture:** a
@@ -452,10 +453,9 @@ about the facts.
    byte-identically. Speedups: **area 5**. *(confirmed 2026-08-22 —
    tests/test_generation_cache.py)*
 
-9. **RESOLVED 2026-08-23 — tonal v1 is NOT done; close the shade escape
-   first.** Kent's ruling on the first real-photo sheet: 68–78 stops a portrait
-   is too many to call v1 finished; the per-shade escape (defect 9) is the
-   remaining lever. Method left to engineering judgment. *(decided 2026-08-23)*
+9. **RESOLVED 2026-08-24 — tonal v1: shade escape closed, bind ships ON.**
+   2026-08-23 Kent ruled v1 not done at 68–78 stops a portrait; 2026-08-24 he
+   took `bound_shade` as the photo-route default, declining (b). *(2026-08-24)*
 
 **Also open, same category — listed so this queue is not a half-truth. All of
 these predate 2026-08-14 except where noted:**

@@ -286,16 +286,58 @@ def test_default_photo_subject_plan_uses_layered_streamline_multi_thread():
     job-level test measures the sibling blend-tier defect: distinct
     `thread_index` values across the EMITTED plan's blocks, on a
     default-config plan — no explicit fill_technique OR streamline_mode
-    anywhere."""
+    anywhere.
+
+    `shade_palette_bind=False` is explicit as of 2026-08-24, and the reason
+    is worth reading before anyone "simplifies" it away. The thread count is
+    a PROXY for mode selection, and the bind — default ON since Kent's ruling
+    that day — invalidates that proxy on this fixture without touching what
+    the test is actually about. This result carries ONE region on ONE spool,
+    so the bind set is a single cone and all five tonal shades snap onto it:
+    5 blocks / 5 threads become 1 / 1. Layered mode was still selected; the
+    proxy just stopped being able to see it. Measuring mode selection means
+    holding the bind out of it.
+
+    The collapse itself is pinned separately below, as behaviour rather than
+    as an accident."""
     poly = Polygon([(-35, -25), (35, -25), (35, 25), (-35, 25)])
     result = _photo_subject_result(poly, _ramp_source_pixels())
 
-    plan = plan_stitches(result, PipelineConfig())
+    plan = plan_stitches(result, PipelineConfig(shade_palette_bind=False))
 
     distinct = {b.thread_index for b in plan.blocks}
     assert len(distinct) >= 3, (
         f"default-config photo_subject plan sewed {len(distinct)} thread(s) "
         "— the auto-route did not select streamline's layered mode")
+
+
+def test_the_bind_collapses_tone_when_a_design_realizes_a_single_spool():
+    """A KNOWN edge of `shade_palette_bind`, pinned so it cannot drift in
+    unnoticed and so the number is on record for Kent.
+
+    The bind masks the per-shade snap to the spools the plan's own regions
+    sew. When those regions realize exactly ONE spool — this fixture, a
+    single photo region — the mask has one entry, every shade snaps to it,
+    and the whole tone chain flattens: 5 cones and 5 blocks unbound become
+    1 and 1 bound.
+
+    That is the accepted trade at its extreme end rather than a bug: the
+    bind still does what it says, trading shade fidelity for a loadable cone
+    list, and here it saves 4 cones. It is pinned because the acceptance
+    corpus never hits it (the four real portraits realize 12/12/15/6 spools,
+    so tone survives), which means only a test will catch a regression that
+    widens this case. Whether a floor guard should keep the bind off below
+    N spools is a quality trade, and quality trades are Kent's."""
+    poly = Polygon([(-35, -25), (35, -25), (35, 25), (-35, 25)])
+    result = _photo_subject_result(poly, _ramp_source_pixels())
+    assert len({r.thread_index for r in result.regions}) == 1
+
+    unbound = plan_stitches(result, PipelineConfig(shade_palette_bind=False))
+    bound = plan_stitches(result, PipelineConfig(shade_palette_bind=True))
+
+    assert len({b.thread_index for b in unbound.blocks}) == 5
+    assert len({b.thread_index for b in bound.blocks}) == 1
+    assert len(bound.blocks) < len(unbound.blocks)
 
 
 # --- Fix round 2 (Critical): faces->detail_layer must reach the STITCHED --

@@ -354,10 +354,15 @@ def test_sequence_ignores_a_stale_carrier_when_the_demand_flag_is_off(
 def test_sequence_still_passes_none_when_the_bind_is_off(monkeypatch):
     """Demand alone does not bind: with `shade_palette_bind` off the tier
     receives None however the demand side is configured — (b) shapes the
-    palette, (a) is what masks the snap, and only Kent flips either."""
+    palette, (a) is what masks the snap.
+
+    The bind must be turned off EXPLICITLY here since 2026-08-24: Kent's
+    ruling took (a) and declined (b), so a bare config now has the bind on
+    and this test would be measuring the bound path instead."""
     anchor = _nearest_spool_to((10, 10, 10))
     cfg = PipelineConfig(fill_technique="streamline",
                          streamline_mode="layered",
+                         shade_palette_bind=False,
                          shade_palette_demand=True)
     seen = _bind_palettes_seen(monkeypatch, cfg,
                                palette_spools=[0, anchor],
