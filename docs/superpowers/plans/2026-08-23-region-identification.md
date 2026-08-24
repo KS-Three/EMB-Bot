@@ -131,10 +131,19 @@ the professional's own files:
    being knocked out (77% median backing share). Any segmentation emitting a
    pixel-partition has already diverged in kind.
 3. **One thread returns many times.** 55% of colour stops are returns to a
-   thread already used (n=14 designs, 92 blocks over 41 threads). EMB-Bot
-   emits one block per thread and cannot express this.
-4. **Order encodes layering**, background→foreground (77% of overlapping pairs
-   put the smaller block later).
+   thread already used (51/92, n=14 palette designs). **Correction 2026-08-23,
+   from the instrument built in Option A:** "EMB-Bot emits one block per thread
+   and cannot express this" is FLAT-LANE ONLY. The tonal lane's shade emission
+   already repeats threads — hotel_fremont sews `[0,1,2,2,1]`, drone_thermal
+   has six reuses. None is a *chosen* background→foreground return, and one of
+   hotel's is an adjacent same-thread stop (machine-pointless, the shade-defect
+   class) — but the engine is not structurally mute here, and the instrument
+   reports the pattern rather than asserting zero.
+4. **Order encodes layering**, background→foreground. **Correction: the 77%
+   figure is not this corpus's.** It came from the 40-file `scratch_corpus`
+   (round-3 law 32). The committed 23-design set reads **70.1%** (211/301),
+   stable 68.8-74.5% across a 16x floor sweep. Direction confirmed, magnitude
+   corpus-dependent.
 5. **Existence is decided against the garment**, not the artwork — the pro
    filled a banner and left the letters as *bare fabric*.
 
@@ -144,6 +153,16 @@ threads / 9 cut paths against the pro's 2 blocks / 2 threads / 9 cut paths.
 produces 187-246 regions and 6-8 threads for a two-thread logo, which points at
 a large share of the gap being *input normalization*, not segmentation. (n=1
 clean control — hypothesis, not finding.)
+
+**Correction 2026-08-23:** that tires case is a real convergence on counts but
+**degenerate as a grouping control** — the pro's second block is a 3D-puff
+underpass with zero visible surface, so the joint domain carries one label and
+agreement is trivially 1.0. The instrument flags it `DEGENERATE` and excludes
+it from aggregates. The input-normalization hypothesis now rests on the count
+comparison alone, which is weaker than it read. Also corrected: the pro's
+"3 threads median" required counting a DST grey-ramp as a palette; palette-only
+truth is **2.5** (n=14), and a <=6-block DST reads zero returns by construction,
+so the instrument reports thread fields as None on synthetic palettes.
 
 ## Options, with measured costs and the bars that apply
 
