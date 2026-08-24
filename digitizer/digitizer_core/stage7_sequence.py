@@ -780,6 +780,7 @@ def sequence(
     fill_technique: str | None = None,
     streamline_mode: str | None = None,
     detail_layer: bool | None = None,
+    palette_spools: list[int] | None = None,
 ) -> tuple[list[StitchBlock], list[dict]]:
     """-> (blocks in sew order, warnings).
 
@@ -812,6 +813,17 @@ def sequence(
     call site for the exact formula, identical to `run_stages`' own
     `effective_detail_layer` (the one the `PHOTO_AUTO_TIER` warning's text
     already promises).
+
+    `palette_spools` (2026-08-23, `cfg.shade_palette_demand`'s EXPERIMENT):
+    the full stage-2 demand palette — `PipelineResult.palette_spools`,
+    threaded by `plan_stitches` — whose ANCHOR spools (selected for the
+    shades, claimed by no region's own mean) join the shade bind's allowed
+    set below. Read only inside the bind derivation, and only when
+    `cfg.shade_palette_demand` is itself on: a re-plan of a demand-built
+    generation with the flag turned off must ignore the stale carrier, the
+    same explicit-config-wins posture every other resolved parameter here
+    keeps. None (every pre-existing caller, every non-demand run) is
+    byte-identical to the parameter not existing.
     """
     row_mm = (cfg.fill_row_mm or FILL_ROW_MM) * max(0.1, fabric.density_adjust)
     # Task A2: satin gets the same fabric-scaled density the fill row spacing
@@ -854,6 +866,20 @@ def sequence(
     shade_palette: list[int] | None = None
     if cfg.shade_palette_bind and design_class in PHOTO_CLASSES and planned:
         shade_palette = sorted({pr.region.thread_index for pr in planned})
+        # The demand palette's anchors (cfg.shade_palette_demand — option
+        # (b) of the same plan doc; `palette_spools`' docstring entry above
+        # carries the contract): spools `select_palette` chose FOR the
+        # shades that no region's own mean claimed. They exist precisely so
+        # the bind has honest dark/light anchors to land on — without this
+        # union the demand run would select them at stage 2 and then mask
+        # the shade snap to a set that never contains them, re-shipping (a)
+        # alone's bind cost with extra ceremony. Union, not replacement:
+        # a review-screen recolor's cone (in `planned`, not in the stage-2
+        # medoids) stays loadable exactly as the bind's own comment above
+        # promises. Double-gated on the cfg flag so a stale carrier from a
+        # demand-built generation cannot leak into a flag-off re-plan.
+        if cfg.shade_palette_demand and palette_spools:
+            shade_palette = sorted(set(shade_palette) | set(palette_spools))
     class_fill_underlay = _PHOTO_FILL_UNDERLAY if photo else fabric.fill_underlay
     underlay_style = (cfg.underlay_style or class_fill_underlay) if cfg.underlay else "none"
     satin_underlay = ((_PHOTO_SATIN_UNDERLAY if photo else fabric.satin_underlay)

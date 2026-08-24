@@ -703,7 +703,8 @@ def _spy_seam(monkeypatch, result):
 
     calls: list[dict] = []
 
-    def _seam(p, cfg, face_regions=None, bg_mask=None, split_tonal=False):
+    def _seam(p, cfg, face_regions=None, bg_mask=None, split_tonal=False,
+             shade_demand=False):
         calls.append({"face_regions": face_regions, "bg_mask": bg_mask})
         return result
 
@@ -717,9 +718,11 @@ def _spy_photo_segment(monkeypatch):
     real = pipeline_module.photo_segment
     calls: list[int] = []
 
-    def _spy(p, cfg, face_regions=None, bg_mask=None, split_tonal=False):
+    def _spy(p, cfg, face_regions=None, bg_mask=None, split_tonal=False,
+             shade_demand=False):
         calls.append(1)
-        return real(p, cfg, face_regions=face_regions, bg_mask=bg_mask, split_tonal=split_tonal)
+        return real(p, cfg, face_regions=face_regions, bg_mask=bg_mask, split_tonal=split_tonal,
+                            shade_demand=shade_demand)
 
     monkeypatch.setattr(pipeline_module, "photo_segment", _spy)
     return calls

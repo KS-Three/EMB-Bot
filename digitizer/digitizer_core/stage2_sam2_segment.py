@@ -224,6 +224,7 @@ def sam2_segment_seam(
     face_regions=None,
     bg_mask: np.ndarray | None = None,
     split_tonal: bool = False,
+    shade_demand: bool = False,
 ) -> tuple[Quant | None, str | None]:
     """SAM2-backed stage 2, run in the isolated venv documented at
     `digitizer/sam2_isolated/README.md` — NEVER the shared `digitizer/.venv`.
@@ -374,6 +375,7 @@ def sam2_segment_seam(
         raw_unit_label="SAM2 masks",
         oversegment_labels=labels,
         split_tonal=split_tonal,
+        shade_demand=shade_demand,
     )
     quant.warnings.append(
         warn(
