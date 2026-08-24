@@ -39,9 +39,116 @@ from .warnings_codes import (
 
 @dataclass
 class RegionMask:
-    mask: np.ndarray     # (H, W) bool
-    layer: int           # index into Quant.thread_indices
+    """One region's footprint, stored CROPPED to its bounding box.
+
+    Full-frame storage was the pipeline's memory ceiling. A 2800x2100 frame
+    yields 1,455 components before the small-region policy culls them to
+    ~102, and each used to carry its own (H, W) bool — 8.56 GB held at once,
+    which IS the whole peak (measured 2026-08-24: RSS 1,076 -> 8,445 MB
+    inside one `segment` call). Cropped, those same 1,455 come to 26.8 MB,
+    0.31% of it, and the superlinear MB-per-megapixel curve flattens too.
+
+    `crop` is bbox-tight and `origin` locates it: the footprint in frame
+    coordinates is `crop` placed at `origin`, False everywhere else.
+
+    There is deliberately NO `.mask` attribute. The old one was mutated in
+    place (`regions[best].mask[box] |= regions[i].mask[box]`), so a property
+    handing back a freshly materialized array would have silently dropped
+    every absorb — a wrong design, not a crash. Removing the name makes each
+    such site fail loudly and get ported on purpose. `union_from` is the
+    supported in-place merge; `full_mask()` the explicit escape hatch for
+    callers that genuinely need a frame-sized array.
+    """
+    crop: np.ndarray                 # (h, w) bool — bbox-tight footprint
+    origin: tuple[int, int]          # (y0, x0) of `crop` within the frame
+    frame_shape: tuple[int, int]     # (H, W) of the frame it belongs to
+    layer: int                       # index into Quant.thread_indices
     source: str = "classical"
+
+    @classmethod
+    def from_full(cls, mask: np.ndarray, layer: int,
+                  source: str = "classical") -> "RegionMask":
+        """Crop a frame-sized bool mask on the way in — for producers that
+        already hold a full frame (the SAM2 route, tests).
+
+        An all-False mask keeps a 1x1 crop at the origin rather than a
+        zero-length one, so `bbox` and the window arithmetic stay total.
+        """
+        box = _bbox(mask)
+        if box is None:
+            return cls(crop=np.zeros((1, 1), bool), origin=(0, 0),
+                       frame_shape=tuple(mask.shape), layer=layer, source=source)
+        y0, x0, y1, x1 = box
+        return cls(crop=np.ascontiguousarray(mask[y0:y1, x0:x1]), origin=(y0, x0),
+                   frame_shape=tuple(mask.shape), layer=layer, source=source)
+
+    @property
+    def area(self) -> int:
+        """Set pixels — O(crop), not O(frame), and free at the producer."""
+        return int(self.crop.sum())
+
+    @property
+    def bbox(self) -> tuple[int, int, int, int]:
+        """(y0, x0, y1, x1), y1/x1 exclusive — `_bbox`'s own convention."""
+        y0, x0 = self.origin
+        h, w = self.crop.shape
+        return y0, x0, y0 + h, x0 + w
+
+    def full_mask(self) -> np.ndarray:
+        """A frame-sized bool copy. Allocates — never call it in a loop over
+        regions, which is the pattern this class exists to kill."""
+        m = np.zeros(self.frame_shape, bool)
+        m[self.frame_slice()] = self.crop
+        return m
+
+    def window(self, wy0: int, wx0: int, wy1: int, wx1: int) -> np.ndarray:
+        """This footprint over a window given in FRAME coordinates.
+
+        Returns a (wy1-wy0, wx1-wx0) bool, False where the window falls
+        outside the crop — so the neighbour/halo tests keep reading in frame
+        coordinates without anyone materializing a frame.
+        """
+        out = np.zeros((wy1 - wy0, wx1 - wx0), bool)
+        y0, x0 = self.origin
+        h, w = self.crop.shape
+        iy0, ix0 = max(wy0, y0), max(wx0, x0)
+        iy1, ix1 = min(wy1, y0 + h), min(wx1, x0 + w)
+        if iy0 >= iy1 or ix0 >= ix1:
+            return out
+        out[iy0 - wy0:iy1 - wy0, ix0 - wx0:ix1 - wx0] = \
+            self.crop[iy0 - y0:iy1 - y0, ix0 - x0:ix1 - x0]
+        return out
+
+    def frame_slice(self) -> tuple[slice, slice]:
+        """The crop's placement, for indexing a frame-sized array:
+        `frame[rm.frame_slice()][rm.crop]` is the old `frame[rm.mask]`."""
+        y0, x0 = self.origin
+        h, w = self.crop.shape
+        return (slice(y0, y0 + h), slice(x0, x0 + w))
+
+    def union_from(self, other: "RegionMask") -> None:
+        """In-place `self |= other`, growing the crop to cover both.
+
+        Replaces `regions[best].mask[box] |= regions[i].mask[box]`.
+        Absorption is the one place a RegionMask is mutated after
+        construction and it has to stay in place: `resolve_small_regions`
+        keeps index-parallel `areas`/`boxes` and re-reads the absorbing
+        region through them.
+        """
+        sy0, sx0 = self.origin
+        sh, sw = self.crop.shape
+        oy0, ox0 = other.origin
+        oh, ow = other.crop.shape
+        ny0, nx0 = min(sy0, oy0), min(sx0, ox0)
+        ny1, nx1 = max(sy0 + sh, oy0 + oh), max(sx0 + sw, ox0 + ow)
+        if (ny0, nx0, ny1, nx1) == (sy0, sx0, sy0 + sh, sx0 + sw):
+            grown = self.crop                      # already covers `other`
+        else:
+            grown = np.zeros((ny1 - ny0, nx1 - nx0), bool)
+            grown[sy0 - ny0:sy0 - ny0 + sh, sx0 - nx0:sx0 - nx0 + sw] = self.crop
+        grown[oy0 - ny0:oy0 - ny0 + oh, ox0 - nx0:ox0 - nx0 + ow] |= other.crop
+        self.crop = grown
+        self.origin = (ny0, nx0)
 
 
 class Segmenter(ABC):
@@ -58,14 +165,28 @@ class ClassicalSegmenter(Segmenter):
     name = "classical"
 
     def segment(self, quant: Quant, prep: Prep, cfg: PipelineConfig) -> list[RegionMask]:
+        """One RegionMask per connected component, cropped at birth.
+
+        `connectedComponentsWithStats` rather than `connectedComponents`
+        because it hands back each component's bounding box for free, so the
+        crop is a slice of the label image inside that box and no
+        frame-sized temporary is ever built. Component order is unchanged
+        (label 1..n-1 per layer, layers in order), which is what keeps the
+        downstream small-region policy and every golden byte-identical.
+        """
         out: list[RegionMask] = []
+        frame_shape = tuple(quant.labels.shape)
         for layer in range(len(quant.thread_indices)):
             layer_mask = (quant.labels == layer).astype(np.uint8)
             if not layer_mask.any():
                 continue
-            n, cc = cv2.connectedComponents(layer_mask, connectivity=8)
+            n, cc, stats, _ = cv2.connectedComponentsWithStats(layer_mask, connectivity=8)
             for c in range(1, n):
-                out.append(RegionMask(mask=cc == c, layer=layer, source=self.name))
+                x0, y0, w, h = (int(v) for v in stats[c, :4])
+                out.append(RegionMask(
+                    crop=np.ascontiguousarray(cc[y0:y0 + h, x0:x0 + w] == c),
+                    origin=(y0, x0), frame_shape=frame_shape,
+                    layer=layer, source=self.name))
         return out
 
 
@@ -134,13 +255,13 @@ def _chained_small_regions(regions, areas, boxes, small, min_area_px,
             continue
         wy0, wx0 = max(0, bi[0] - 1), max(0, bi[1] - 1)
         wy1, wx1 = min(height, bi[2] + 1), min(width, bi[3] + 1)
-        sub = regions[i].mask[wy0:wy1, wx0:wx1]
+        sub = regions[i].window(wy0, wx0, wy1, wx1)
         halo = _dilate(sub) & ~sub
         for j in small[pos + 1:]:
             bj = boxes[j]
             if bj is None or bj[2] <= wy0 or bj[0] >= wy1 or bj[3] <= wx0 or bj[1] >= wx1:
                 continue
-            if int((halo & regions[j].mask[wy0:wy1, wx0:wx1]).sum()):
+            if int((halo & regions[j].window(wy0, wx0, wy1, wx1)).sum()):
                 ra, rb = find(i), find(j)
                 if ra != rb:
                     parent[rb] = ra
@@ -198,14 +319,16 @@ def resolve_small_regions(
     other mask this function keeps.
     """
     min_area_px = (cfg.min_detail_mm * px_per_mm) ** 2
-    areas = [int(r.mask.sum()) for r in regions]
+    areas = [r.area for r in regions]
     small = [i for i, a in enumerate(areas) if a < min_area_px]
     if not small:
         return regions, []
 
     keep = [i for i, a in enumerate(areas) if a >= min_area_px]
-    boxes = [_bbox(r.mask) for r in regions]
-    height, width = regions[0].mask.shape
+    # `bbox` is the crop's own placement, so this no longer scans a frame
+    # per region; an empty region keeps the None the old `_bbox` returned.
+    boxes = [None if r.area == 0 else r.bbox for r in regions]
+    height, width = regions[0].frame_shape
     report_floor_px = min_area_px * cfg.report_absorb_frac
 
     # A structure that arrives FRAGMENTED is not detail, however small its
@@ -269,7 +392,7 @@ def resolve_small_regions(
             continue
         if enclosed_mask is not None and areas[i] > 0:
             by0, bx0, by1, bx1 = box
-            sub_mask = regions[i].mask[by0:by1, bx0:bx1]
+            sub_mask = regions[i].window(by0, bx0, by1, bx1)
             sub_enclosed = enclosed_mask[by0:by1, bx0:bx1]
             if int((sub_mask & sub_enclosed).sum()) / areas[i] >= ENCLOSED_PROTECT_OVERLAP:
                 protected.append(i)
@@ -279,7 +402,7 @@ def resolve_small_regions(
         # the same ring the full-image dilation would.
         wy0, wx0 = max(0, box[0] - 1), max(0, box[1] - 1)
         wy1, wx1 = min(height, box[2] + 1), min(width, box[3] + 1)
-        sub = regions[i].mask[wy0:wy1, wx0:wx1]
+        sub = regions[i].window(wy0, wx0, wy1, wx1)
         halo = _dilate(sub) & ~sub
 
         best, best_share = None, 0
@@ -289,7 +412,7 @@ def resolve_small_regions(
             # which never beat best_share anyway.
             if jb is None or jb[2] <= wy0 or jb[0] >= wy1 or jb[3] <= wx0 or jb[1] >= wx1:
                 continue
-            share = int((halo & regions[j].mask[wy0:wy1, wx0:wx1]).sum())
+            share = int((halo & regions[j].window(wy0, wx0, wy1, wx1)).sum())
             if share > best_share:
                 best, best_share = j, share
 
@@ -308,8 +431,7 @@ def resolve_small_regions(
             dropped += 1
             dropped_reportable += int(reportable)
             continue
-        regions[best].mask[box[0]:box[2], box[1]:box[3]] |= \
-            regions[i].mask[box[0]:box[2], box[1]:box[3]]
+        regions[best].union_from(regions[i])
         # The absorbing region just grew; its box has to grow with it or a
         # later sliver could be rejected against a stale footprint.
         jb = boxes[best]

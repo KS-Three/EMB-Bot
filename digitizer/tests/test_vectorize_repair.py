@@ -96,7 +96,7 @@ def _bowtie_mask(h=120, w=120):
 def test_a_pinched_mask_keeps_BOTH_of_its_parts():
     p = _prep()
     cfg = PipelineConfig()
-    regions, dropped = vectorize([RegionMask(mask=_bowtie_mask(), layer=0)], [0], p, cfg)
+    regions, dropped = vectorize([RegionMask.from_full(_bowtie_mask(), layer=0)], [0], p, cfg)
     assert not dropped, "a sewable mask must never be reported as dropped"
     assert len(regions) == 2, (
         "keeping only the largest part is what left bare fabric in the owl")
@@ -108,7 +108,7 @@ def test_both_parts_carry_the_masks_own_thread_and_layer():
     # They are the same artwork in the same colour — a repair must not invent
     # a thread or strand one part into another layer.
     p = _prep()
-    regions, _ = vectorize([RegionMask(mask=_bowtie_mask(), layer=0)], [0], p, PipelineConfig())
+    regions, _ = vectorize([RegionMask.from_full(_bowtie_mask(), layer=0)], [0], p, PipelineConfig())
     assert {r.thread_index for r in regions} == {0}
     assert {r.meta["layer"] for r in regions} == {0}
     assert len({r.shape_id for r in regions}) == len(regions), "ids must stay unique"
@@ -120,7 +120,7 @@ def test_an_ordinary_solid_mask_still_makes_exactly_one_region():
     p = _prep()
     m = np.zeros((120, 120), bool)
     m[20:100, 20:100] = True
-    regions, dropped = vectorize([RegionMask(mask=m, layer=0)], [0], p, PipelineConfig())
+    regions, dropped = vectorize([RegionMask.from_full(m, layer=0)], [0], p, PipelineConfig())
     assert len(regions) == 1
     assert not dropped
 
@@ -132,7 +132,7 @@ def test_a_mask_with_nothing_sewable_is_still_reported_as_dropped():
     m = np.zeros((120, 120), bool)
     m[10, 10] = True
     cfg = PipelineConfig()
-    regions, dropped = vectorize([RegionMask(mask=m, layer=0)], [0], p, cfg)
+    regions, dropped = vectorize([RegionMask.from_full(m, layer=0)], [0], p, cfg)
     assert regions == []
     assert len(dropped) == 1
 

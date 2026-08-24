@@ -254,7 +254,7 @@ def test_region_classes_maps_eyes_then_skin_then_none():
     def region(y0, y1, x0, x1):
         m = np.zeros(shape, bool)
         m[y0:y1, x0:x1] = True
-        return RegionMask(mask=m, layer=0, source="photo")
+        return RegionMask.from_full(m, layer=0, source="photo")
 
     eye = region(70, 80, 55, 65)        # small patch on the right-eye disk
     skin = region(80, 110, 60, 100)     # mid-face patch inside the ellipse
@@ -279,7 +279,7 @@ def test_region_classes_maps_subject_and_background_from_a_bg_mask():
     def region(y0, y1, x0, x1):
         m = np.zeros(shape, bool)
         m[y0:y1, x0:x1] = True
-        return RegionMask(mask=m, layer=0, source="photo")
+        return RegionMask.from_full(m, layer=0, source="photo")
 
     bg_mask = np.zeros(shape, bool)
     bg_mask[:, 100:] = True  # right half of the frame is background

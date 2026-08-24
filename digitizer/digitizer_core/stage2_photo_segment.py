@@ -1173,21 +1173,22 @@ def _region_classes(
     every region is None — the original pre-face-priors behaviour."""
     if not kept:
         return []
-    shape = kept[0].mask.shape
+    shape = kept[0].frame_shape
     face_mask = _face_ellipse_mask(shape, face_regions) if face_regions else None
     eyes_mask = _eye_disk_mask(shape, face_regions) if face_regions else None
     classes: list[str | None] = []
     for r in kept:
-        area = int(r.mask.sum())
+        area = r.area
         if area == 0:
             classes.append(None)
             continue
-        if eyes_mask is not None and int((r.mask & eyes_mask).sum()) / area >= FACE_MAJORITY_FRAC:
+        sl = r.frame_slice()
+        if eyes_mask is not None and int((r.crop & eyes_mask[sl]).sum()) / area >= FACE_MAJORITY_FRAC:
             classes.append("eyes")
-        elif face_mask is not None and int((r.mask & face_mask).sum()) / area >= FACE_MAJORITY_FRAC:
+        elif face_mask is not None and int((r.crop & face_mask[sl]).sum()) / area >= FACE_MAJORITY_FRAC:
             classes.append("skin")
         elif bg_mask is not None:
-            bg_frac = int((r.mask & bg_mask).sum()) / area
+            bg_frac = int((r.crop & bg_mask[sl]).sum()) / area
             classes.append("background" if bg_frac >= BG_MAJORITY_FRAC else "subject")
         else:
             classes.append(None)
@@ -1285,12 +1286,17 @@ def split_tonal_regions(
     out: list[RegionMask] = []
     split_count = 0
     for r in kept:
-        px = int(r.mask.sum())
+        px = r.area
         area_mm2 = px * px_area_mm2
         if area_mm2 < TONAL_SPLIT_MIN_AREA_MM2:
             out.append(r)
             continue
-        lab = rgb_to_lab(p.rgb[r.mask].reshape(-1, 3))
+        # Crop-space throughout (2026-08-24). Boolean indexing walks the
+        # True positions in row-major order, and a bbox window preserves
+        # that order exactly, so `lab` is the same pixels in the same
+        # sequence the frame-sized mask produced.
+        rsl = r.frame_slice()
+        lab = rgb_to_lab(p.rgb[rsl][r.crop].reshape(-1, 3))
         span = _percentile_extremes_deltae(lab)
         if span < TONAL_SPLIT_MIN_DELTAE:
             out.append(r)
@@ -1301,23 +1307,35 @@ def split_tonal_regions(
         # than a comparable slice of the L* axis — a region that is mostly
         # midtone with a small bright rim splits into useful areas either way.
         edges = np.percentile(lab[:, 0], np.linspace(0, 100, n + 1)[1:-1])
-        full_l = np.full(r.mask.shape, np.nan, np.float64)
-        full_l[r.mask] = lab[:, 0]
+        # Was frame-sized float64 — 47 MB per region at 5.88 MP, and the
+        # bulk of the 0.45 GB of >4 MB `np.full` allocations measured on
+        # that frame. Crop-sized it is a few KB.
+        full_l = np.full(r.crop.shape, np.nan, np.float64)
+        full_l[r.crop] = lab[:, 0]
         bucket = np.digitize(full_l, edges)
 
         parts: list[np.ndarray] = []
         for b in range(n):
-            m = r.mask & (bucket == b)
+            m = r.crop & (bucket == b)
             if not m.any():
                 continue
             m8 = m.astype(np.uint8)
             if TONAL_SPLIT_CLEAN_PX > 1:
                 k = np.ones((TONAL_SPLIT_CLEAN_PX, TONAL_SPLIT_CLEAN_PX), np.uint8)
+                # Zero-pad before morphology. `m` used to be frame-sized,
+                # so the surround was genuinely background; morphologyEx's
+                # default border would instead refuse to erode at a crop
+                # edge and change the result. The pad restores the real
+                # background ring, then comes back off.
+                pad = TONAL_SPLIT_CLEAN_PX
+                m8 = cv2.copyMakeBorder(m8, pad, pad, pad, pad,
+                                        cv2.BORDER_CONSTANT, value=0)
                 m8 = cv2.morphologyEx(m8, cv2.MORPH_OPEN, k)
                 m8 = cv2.morphologyEx(m8, cv2.MORPH_CLOSE, k)
+                m8 = m8[pad:-pad, pad:-pad]
             # Re-clip: closing can bulge a part past the region it came from,
             # and two parts that both bulged would overlap.
-            m = (m8 > 0) & r.mask
+            m = (m8 > 0) & r.crop
             # Spatial coherence, and the single most important constraint
             # here. A tonal bucket is scattered across the region by
             # construction — the mid-tones of a feathered breast are
@@ -1340,17 +1358,17 @@ def split_tonal_regions(
             continue
 
         # Opening/closing can leave a pixel in two parts, or in none. Resolve
-        # both so the union is exactly `r.mask` and the parts are disjoint:
+        # both so the union is exactly `r.crop` and the parts are disjoint:
         # first-come wins an overlap, and whatever is left over joins the
         # largest part. Without this, stage 5 would see regions that overlap
         # each other and artwork would silently vanish between them.
-        claimed = np.zeros_like(r.mask)
+        claimed = np.zeros_like(r.crop)
         disjoint: list[np.ndarray] = []
         for m in parts:
             m = m & ~claimed
             claimed |= m
             disjoint.append(m)
-        leftover = r.mask & ~claimed
+        leftover = r.crop & ~claimed
         if leftover.any():
             biggest = max(range(len(disjoint)), key=lambda i: int(disjoint[i].sum()))
             disjoint[biggest] |= leftover
@@ -1360,7 +1378,12 @@ def split_tonal_regions(
             continue
 
         for m in disjoint:
-            out.append(RegionMask(mask=m, layer=r.layer, source=r.source))
+            # Parts are subsets of the parent, so they share its origin and
+            # frame — no re-cropping, which keeps the split provably
+            # coordinate-identical to the parent it came from.
+            out.append(RegionMask(crop=m, origin=r.origin,
+                                  frame_shape=r.frame_shape,
+                                  layer=r.layer, source=r.source))
         split_count += 1
 
     return out, split_count
@@ -1439,7 +1462,8 @@ def _shade_demand_points(
     point_weights: list[float] = []
     regions_with_demand = 0
     for region_w, r in zip(weights, kept):
-        ys, xs = np.nonzero(r.mask)
+        cys, cxs = np.nonzero(r.crop)
+        ys, xs = cys + r.origin[0], cxs + r.origin[1]
         px = len(xs)
         if px < _SHADE_DEMAND_MIN_SAMPLES:
             continue
@@ -1560,12 +1584,13 @@ def kept_masks_to_quant(
     # and every run with neither — stays None = plain area).
     chart = chart_for(cfg)
     region_labs = [
-        rgb_to_lab(p.rgb[r.mask].reshape(-1, 3).mean(axis=0, keepdims=True))[0]
+        rgb_to_lab(p.rgb[r.frame_slice()][r.crop]
+                   .reshape(-1, 3).mean(axis=0, keepdims=True))[0]
         for r in kept
     ]
     classes = _region_classes(kept, face_regions, bg_mask)
     weights = [
-        region_weight(int(r.mask.sum()), c) for r, c in zip(kept, classes)
+        region_weight(r.area, c) for r, c in zip(kept, classes)
     ]
     sel_labs = np.array(region_labs, np.float64).reshape(-1, 3)
     sel_weights = np.array(weights, np.float64)
@@ -1614,7 +1639,7 @@ def kept_masks_to_quant(
         by_spool.setdefault(s, []).append(i)
     ordered_spools = sorted(
         by_spool.items(),
-        key=lambda kv: -sum(int(kept[i].mask.sum()) for i in kv[1]),
+        key=lambda kv: -sum(kept[i].area for i in kv[1]),
     )
 
     out = np.full((h, w), -1, np.int32)
@@ -1622,7 +1647,9 @@ def kept_masks_to_quant(
     for new_label, (spool, idxs) in enumerate(ordered_spools):
         thread_indices.append(spool)
         for i in idxs:
-            out[kept[i].mask] = new_label
+            # `out[slice]` is a view, so the boolean assignment writes
+            # through to `out` exactly as the frame-sized mask did.
+            out[kept[i].frame_slice()][kept[i].crop] = new_label
     # Captured BEFORE the enclosed population (below) appends its own spools
     # onto the end of `thread_indices` — this is the thread-color count for
     # the same population `count`/`len(kept)` below describes (the main
@@ -1901,9 +1928,16 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
         # enclosed pixels out of every RegionMask here, regardless of which
         # id they ended up wearing.
         comp_mask = ((merged == lbl) & base_valid).astype(np.uint8)
-        n_cc, cc = cv2.connectedComponents(comp_mask, connectivity=8)
+        n_cc, cc, cc_stats, _ = cv2.connectedComponentsWithStats(comp_mask, connectivity=8)
         for c in range(1, n_cc):
-            regions.append(RegionMask(mask=(cc == c), layer=0, source="photo"))
+            # Cropped at birth (2026-08-24), same as the classical segmenter:
+            # `connectedComponentsWithStats` hands back each component's box,
+            # so no frame-sized bool per region is ever built.
+            cx0, cy0, cw, ch = (int(v) for v in cc_stats[c, :4])
+            regions.append(RegionMask(
+                crop=np.ascontiguousarray(cc[cy0:cy0 + ch, cx0:cx0 + cw] == c),
+                origin=(cy0, cx0), frame_shape=tuple(comp_mask.shape),
+                layer=0, source="photo"))
 
     # chain_rescue=False: the chained-structure rescue is gated OFF on the
     # photo lane -- see stage3_segment.resolve_small_regions for the

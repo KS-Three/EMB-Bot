@@ -737,14 +737,14 @@ class _PrepStub:
 
 def test_split_tonal_regions_is_off_unless_asked():
     p, blob = _tonal_prep(gradient=True)
-    kept = [RegionMask(mask=blob, layer=0)]
+    kept = [RegionMask.from_full(blob, layer=0)]
     out, n = split_tonal_regions(p, kept)
     assert n == 0 and out is kept, "the split must be strictly opt-in"
 
 
 def test_split_tonal_regions_splits_a_strong_sweep():
     p, blob = _tonal_prep(gradient=True)
-    kept = [RegionMask(mask=blob, layer=0)]
+    kept = [RegionMask.from_full(blob, layer=0)]
     out, n = split_tonal_regions(p, kept, split_tonal=True)
     assert n == 1, "a full light-to-dark sweep must split"
     assert len(out) >= 2
@@ -756,17 +756,18 @@ def test_split_tonal_regions_splits_a_strong_sweep():
     union = np.zeros_like(blob)
     total = 0
     for r in out:
-        assert not (union & r.mask).any(), "parts overlap"
-        assert (r.mask & ~blob).sum() == 0, "a part escaped its region"
-        union |= r.mask
-        total += int(r.mask.sum())
+        rm_full = r.full_mask()
+        assert not (union & rm_full).any(), "parts overlap"
+        assert (rm_full & ~blob).sum() == 0, "a part escaped its region"
+        union |= rm_full
+        total += r.area
     assert (union == blob).all(), "parts do not cover the original region"
     assert total == int(blob.sum()), "pixels were lost or double-counted"
 
 
 def test_split_tonal_regions_leaves_a_flat_region_alone():
     p, blob = _tonal_prep(gradient=False)
-    kept = [RegionMask(mask=blob, layer=0)]
+    kept = [RegionMask.from_full(blob, layer=0)]
     out, n = split_tonal_regions(p, kept, split_tonal=True)
     assert n == 0 and len(out) == 1
 
@@ -777,14 +778,14 @@ def test_split_tonal_regions_leaves_small_regions_alone():
     Same artwork as the splitting test, at a scale that puts the blob under
     the area floor."""
     p, blob = _tonal_prep(gradient=True, px_per_mm=60.0)
-    kept = [RegionMask(mask=blob, layer=0)]
+    kept = [RegionMask.from_full(blob, layer=0)]
     out, n = split_tonal_regions(p, kept, split_tonal=True)
     assert n == 0 and len(out) == 1
 
 
 def test_split_tonal_regions_preserves_layer_and_source():
     p, blob = _tonal_prep(gradient=True)
-    kept = [RegionMask(mask=blob, layer=3, source="sam2")]
+    kept = [RegionMask.from_full(blob, layer=3, source="sam2")]
     out, n = split_tonal_regions(p, kept, split_tonal=True)
     assert n == 1
     assert all(r.layer == 3 and r.source == "sam2" for r in out), (

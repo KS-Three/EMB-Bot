@@ -112,7 +112,7 @@ def _chain_and_background():
     def block(rows, cols, layer):
         m = np.zeros((20, 20), bool)
         m[rows[0]:rows[1], cols[0]:cols[1]] = True
-        return RegionMask(mask=m, layer=layer)
+        return RegionMask.from_full(m, layer=layer)
 
     # Three touching 2x3 blocks on ALTERNATING layers, sitting on one big
     # region -- the ring's shape in miniature. Each block's nearest large

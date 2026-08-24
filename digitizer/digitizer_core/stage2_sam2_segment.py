@@ -212,9 +212,16 @@ def _regions_from_label_map(
     regions: list[RegionMask] = []
     for lbl in sorted(set(np.unique(labels[base_valid]).tolist())):
         comp_mask = ((labels == lbl) & base_valid).astype(np.uint8)
-        n_cc, cc = cv2.connectedComponents(comp_mask, connectivity=8)
+        n_cc, cc, cc_stats, _ = cv2.connectedComponentsWithStats(comp_mask, connectivity=8)
         for c in range(1, n_cc):
-            regions.append(RegionMask(mask=(cc == c), layer=0, source="photo_sam2"))
+            # Cropped at birth (2026-08-24), same as the classical segmenter:
+            # `connectedComponentsWithStats` hands back each component's box,
+            # so no frame-sized bool per region is ever built.
+            cx0, cy0, cw, ch = (int(v) for v in cc_stats[c, :4])
+            regions.append(RegionMask(
+                crop=np.ascontiguousarray(cc[cy0:cy0 + ch, cx0:cx0 + cw] == c),
+                origin=(cy0, cx0), frame_shape=tuple(comp_mask.shape),
+                layer=0, source="photo_sam2"))
     return regions
 
 

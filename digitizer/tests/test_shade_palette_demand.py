@@ -175,7 +175,7 @@ def test_demand_rows_reach_select_palette_append_only(monkeypatch):
 
     # The extra rows are the proxy, exactly.
     kept, _ = _kept_for(p)
-    weights = [float(m.mask.sum()) for m in kept]
+    weights = [float(m.area) for m in kept]
     d_labs, d_ws, d_regions = S2._shade_demand_points(p, kept, weights)
     assert wd["regions_with_demand"] == d_regions
     assert np.allclose(labs_on[n:], np.asarray(d_labs))
@@ -212,7 +212,7 @@ def test_demand_is_deterministic():
     cfg = PipelineConfig(target_width_mm=80.0)
     p = prep(f"{TESTDATA}/fur_ramp.png", cfg)
     kept, _ = _kept_for(p)
-    weights = [float(m.mask.sum()) for m in kept]
+    weights = [float(m.area) for m in kept]
     a_labs, a_ws, a_n = S2._shade_demand_points(p, kept, weights)
     b_labs, b_ws, b_n = S2._shade_demand_points(p, kept, weights)
     assert a_n == b_n
@@ -223,7 +223,7 @@ def test_demand_is_deterministic():
     assert len(a_labs) >= 3
     total_w_regions = sum(
         w for w, m in zip(weights, kept)
-        if m.mask.sum() >= S2._SHADE_DEMAND_MIN_SAMPLES)
+        if m.area >= S2._SHADE_DEMAND_MIN_SAMPLES)
     assert np.isclose(sum(a_ws), total_w_regions), (
         "each region's shade rows must together weigh exactly the region")
 
