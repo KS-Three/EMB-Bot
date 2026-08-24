@@ -59,6 +59,28 @@ weighting shifts with it — a thread is now judged by its worst region, so
 multi-region photo work can gain or lose findings — but the philosophy does
 not: a worse colour match still costs more score.
 
+On the PHOTO route that instrument changed again on 2026-08-24, for the
+opposite failure. Reducing a photograph to a capped cone list guarantees
+per-thread colour distance, so raw distance condemned work that was already
+optimal: across the 32-job acceptance sheet THREAD_MATCH_POOR fired 256
+times at `block`, and every photo job graded F / "do not sew". The photo
+route is now scored on EXCESS over the best spool the design's own regions
+already sew — a swap that costs the operator nothing — so an optimal
+assignment is silent while a free improvement left untaken still blocks.
+
+Measured in-pipeline across Kent's four acceptance portraits, 330 regions:
+raw distance puts 258 of them over DELTA_E_VISIBLE and 103 over
+DELTA_E_CLEARLY_DIFFERENT; excess puts 3 and 1 there. 277 of the 330 wear
+the single closest cone the design loads. Per photo (regions, cones, raw
+median/max, excess median/max, optimal): sparkler_dusk 99/15, 8.85/19.96,
+0.00/5.29, 82; boat_dog_toddler 88/12, 7.88/24.87, 0.00/6.59, 69;
+baby_deck_laugh 110/12, 6.10/30.13, 0.00/13.18, 95; face_closeup_blur
+33/7, 7.67/12.80, 0.00/1.15, 31. That baby_deck_laugh 13.18 is a real
+mis-assignment and still blocks, which is why this rescores rather than
+exempting photos wholesale.
+
+Non-photo routes keep the raw yardstick byte-for-byte.
+
 The photo guardrails (photo plan §2 row 15) are the buildable-today subset
 of that plan's preflight row: input resolution vs the photo floor, subject/
 background lightness contrast, the cutaway-stabilizer prescription, and the
@@ -102,7 +124,7 @@ from .threads import chart_for, rgb_to_lab
 
 # --- Codes (may migrate to warnings_codes.py at merge) ---------------------
 
-THREAD_MATCH_POOR = "THREAD_MATCH_POOR"        # extra: {thread_number, thread_name, brand_id, delta_e, worst_shape_id, region_count, regions_scored, regions, artwork_rgb, thread_rgb}
+THREAD_MATCH_POOR = "THREAD_MATCH_POOR"        # extra: {thread_number, thread_name, brand_id, delta_e, excess_delta_e, better_spool, worst_shape_id, region_count, regions_scored, regions, artwork_rgb, thread_rgb} — excess_delta_e/better_spool are None off the photo route (raw yardstick), populated on it
 LETTERING_TOO_SMALL = "LETTERING_TOO_SMALL"    # extra: {count, shapes: [{shape_id, column_mm, extent_mm}]}
 STITCHES_TOO_LONG = "STITCHES_TOO_LONG"        # extra: {count, max_mm}
 STITCHES_TOO_SHORT = "STITCHES_TOO_SHORT"      # extra: {fraction, count, total}
@@ -557,11 +579,42 @@ def _region_color_errors(p, result: PipelineResult,
             "thread_index": r.thread_index,
             "delta_e": float(np.median(deltaE_ciede2000(lab_px, lab_thr))),
             "artwork_rgb": [int(v) for v in np.median(px, axis=0)],
+            "_lab_px": lab_px,
         })
     return rows
 
 
-def _thread_match_findings(p, result: PipelineResult,
+def _best_loaded_spool_error(lab_px: np.ndarray, loaded: list[int],
+                             chart) -> tuple[float, int]:
+    """Smallest region error reachable WITHOUT loading a new cone: the best
+    `delta_e` over the spools this design already sews -> (error, spool).
+
+    Scored with `_region_color_errors`' own estimator — the median of the
+    per-pixel CIEDE2000 — recomputed per candidate spool rather than as a
+    distance between summary colours. That is not incidental: the region
+    docstring measures the failure of collapsing first (a bimodal sliver's
+    mean says 5.54 where its pixels say 23.87), and a floor computed the
+    cheap way would sit below every assigned error by construction and
+    manufacture excess that is not there.
+
+    `loaded` is the set of spools this design's own REGIONS sew — precisely,
+    not loosely: on an unbound photo route the machine loads more than that,
+    because the per-shade snap can pull in spools no region claims. Scoring
+    against the narrower set is the conservative direction (a smaller
+    candidate set can only raise the floor and lower the excess), so the
+    rescoring can still only fire when a strictly free swap was available
+    and was not taken.
+    """
+    best_err, best_spool = float("inf"), loaded[0]
+    for spool in loaded:
+        err = float(np.median(deltaE_ciede2000(
+            lab_px, chart.lab[spool].reshape(1, 3))))
+        if err < best_err:
+            best_err, best_spool = err, spool
+    return best_err, best_spool
+
+
+def _thread_match_findings(p, result: PipelineResult, plan: StitchPlan,
                            cfg: PipelineConfig) -> tuple[list[dict], float | None]:
     """One finding per thread with a region visibly off that spool's colour,
     judged by the thread's WORST region — per-region, never pooled (the
@@ -589,34 +642,98 @@ def _thread_match_findings(p, result: PipelineResult,
         worst = row["delta_e"] if worst is None else max(worst, row["delta_e"])
         by_thread.setdefault(row["thread_index"], []).append(row)
 
+    # The photo route is scored on EXCESS over the best already-loaded spool,
+    # not on raw distance (2026-08-24). Reducing a photograph to a capped cone
+    # list guarantees per-thread distance: on the 32-job acceptance sheet this
+    # check fired 256 times at `block`, so every photo job any user ran graded
+    # F / "do not sew" — the same shape as the DENSITY_EXTREME misfire fixed in
+    # PR #216, and the same fix: change the yardstick, not the check.
+    #
+    # Measured in-pipeline before it was written, which is what settled the
+    # design: over the four acceptance portraits' 330 regions, raw distance
+    # puts 258 past DELTA_E_VISIBLE and 103 past DELTA_E_CLEARLY_DIFFERENT,
+    # while excess puts 3 and 1 there — 277 of 330 already wear the closest
+    # cone the design loads. The survivors are real and still fire (worst,
+    # baby_deck_laugh: 13.18 dE00 of excess, a spool sitting loaded and that
+    # much closer), which is why this rescores instead of exempting a class.
+    # The module header carries the full per-photo table.
+    #
+    # An earlier scratchpad pass put the unbound arm's median excess at 4.19
+    # and its worst at 22.60. Those numbers were wrong and are recorded here
+    # so they are not re-derived: they compared median RGBs, which is the
+    # collapse-first mistake `_region_color_errors` measures directly above.
+    # The bind also turns out not to move this check at all — bound and
+    # unbound score identically, because the escape it closes lives in the
+    # shade BLOCKS while this reads `result.regions`.
+    #
+    # `len(loaded) > 1` guards the degenerate design: with a single cone there
+    # is no alternative to be closer, every excess is 0 by construction, and
+    # the check would go permanently silent instead of reporting an honestly
+    # unreachable colour.
+    photo = _is_photo_class(plan, cfg)
+    loaded = sorted(by_thread)
+
     for t, t_rows in sorted(by_thread.items()):
-        offenders = sorted((r for r in t_rows if r["delta_e"] > DELTA_E_VISIBLE),
-                           key=lambda r: -r["delta_e"])
+        # `score` is what the thresholds judge; `delta_e` stays the reported
+        # distance either way, so the operator still sees the true colour gap.
+        for r in t_rows:
+            # Strict early-out, not an approximation: the floor is a distance,
+            # so it is >= 0 and excess <= raw. A region already inside
+            # DELTA_E_VISIBLE therefore cannot become an offender under either
+            # yardstick, and searching the cone list for it is pure cost —
+            # 39 of baby_deck_laugh's 110 regions, 35% of the work.
+            if photo and len(loaded) > 1 and r["delta_e"] > DELTA_E_VISIBLE:
+                best_err, best_spool = _best_loaded_spool_error(
+                    r["_lab_px"], loaded, chart)
+                r["_score"] = max(0.0, r["delta_e"] - best_err)
+                r["_alt"] = best_spool
+            else:
+                r["_score"] = r["delta_e"]
+                r["_alt"] = None
+
+        offenders = sorted((r for r in t_rows if r["_score"] > DELTA_E_VISIBLE),
+                           key=lambda r: -r["_score"])
         if not offenders:
             continue
         top = offenders[0]
         thread = chart[t]
-        clearly = top["delta_e"] > DELTA_E_CLEARLY_DIFFERENT
+        clearly = top["_score"] > DELTA_E_CLEARLY_DIFFERENT
         what = "is clearly a different color than" if clearly else "is visibly off"
         n = len(offenders)
         where = (f"the shape it sews ({top['shape_id']})" if len(t_rows) == 1
                  else f"{n} of the {len(t_rows)} shapes it sews "
                       f"(worst: {top['shape_id']})")
+        if top["_alt"] is not None:
+            alt = chart[top["_alt"]]
+            remedy = (f"{alt.number} ({alt.name}) is already loaded for this "
+                      f"design and matches it better — reassign before sewing.")
+        else:
+            remedy = "Pick a closer thread or a different brand before sewing."
         findings.append(finding(
             THREAD_MATCH_POOR,
             "block" if clearly else "warn",
             f"{chart.label} {thread.number} ({thread.name}) {what} "
-            f"{where}. Pick a closer thread or a different "
-            f"brand before sewing.",
+            f"{where}. {remedy}",
             brand_id=chart.id,
             thread_number=thread.number,
             thread_name=thread.name,
             delta_e=round(top["delta_e"], 1),
+            # Present only on the rescored route, so a reader can tell which
+            # yardstick produced the severity without inferring it.
+            excess_delta_e=(None if top["_alt"] is None
+                            else round(top["_score"], 1)),
+            better_spool=(None if top["_alt"] is None else alt.number),
             worst_shape_id=top["shape_id"],
             region_count=n,
             regions_scored=len(t_rows),
+            # Offenders are ORDERED by whichever yardstick judged them, so on
+            # the photo route each entry carries its excess too — otherwise
+            # the list reads as unsorted by the only number it shows.
             regions=[{"shape_id": r["shape_id"],
-                      "delta_e": round(r["delta_e"], 1)} for r in offenders],
+                      "delta_e": round(r["delta_e"], 1),
+                      **({} if r["_alt"] is None
+                         else {"excess_delta_e": round(r["_score"], 1)})}
+                     for r in offenders],
             artwork_rgb=top["artwork_rgb"],
             thread_rgb=list(thread.rgb),
         ))
@@ -2018,7 +2135,7 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
 
     worst_de: float | None = None
     if p is not None and result is not None:
-        thread_findings, worst_de = _thread_match_findings(p, result, cfg)
+        thread_findings, worst_de = _thread_match_findings(p, result, plan, cfg)
         findings.extend(thread_findings)
     metrics["thread_match_checked"] = p is not None and result is not None
     metrics["thread_worst_delta_e"] = None if worst_de is None else round(worst_de, 1)
