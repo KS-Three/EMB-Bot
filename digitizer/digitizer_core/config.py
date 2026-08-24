@@ -679,6 +679,33 @@ class PipelineConfig:
     # variant_matrix), not an engineering default. False is byte-identical
     # shipped behaviour, pinned by tests/test_shade_palette_bind.py.
     shade_palette_bind: bool = False
+    # EXPERIMENT, default OFF — option (b) of the same plan doc, the other
+    # half of Kent's 2026-08-23 (a)+(b) decision: `shade_palette_bind` above
+    # masks the shade snap to the palette; THIS flag makes the palette worth
+    # binding to. Measured with (a) alone, the palette is sized for region
+    # MEANS only, so binding moves each escaped shade a median 7.5-11.9 dE00
+    # (worst ~20) onto spools chosen with no knowledge the shades exist —
+    # 8.5-12.4% of sewn pixel weight lands >4.5 dE00 (PALETTE_EXCESS_DELTAE)
+    # over its own chart floor. True feeds each kept region's PROXY shade
+    # demand into `select_palette` at stage 2 (photo classes only, the same
+    # strict gate as the bind and the region resnap): the stage-6 shade
+    # decomposition re-derived from what stage 2 already holds — the same
+    # blurred-darkness field, shade-count formula, bucket means and sampling
+    # cap `stage6_streamline._shade_layers` will apply later (constants
+    # mirrored in stage2_photo_segment, cross-pinned by
+    # tests/test_shade_palette_demand.py) — as extra weighted demand rows, so
+    # the k-medoids palette CONTAINS the dark/light anchors the shades will
+    # need. The selected palette (anchors included) rides
+    # `Quant.palette_spools` -> `PipelineResult.palette_spools` into stage
+    # 7's bind set, since an anchor no region's own mean claims would
+    # otherwise never reach `_shade_layers`' mask. Costs are real and are
+    # Kent's to weigh from the acceptance A/B's bound_shade_demand arm:
+    # demand pressure trips PALETTE_OVERFLOW_K more eagerly (more cones
+    # spent — cones cost money), and mid-tone region excess can rise when
+    # anchors squeeze the cap. False is byte-identical shipped behaviour on
+    # every route, pinned by tests/test_shade_palette_demand.py and the
+    # byte-identity goldens.
+    shade_palette_demand: bool = False
     # The acceptance A/B's speckle-gate knob, funded by Kent 2026-08-23 after
     # the tonal-eng measurement (docs/tonal-eng-measurements-2026-08-22.md §1)
     # showed RAMP_SPECKLE_MAX — not the r² floor — blocks 41 of the 42 real

@@ -161,6 +161,16 @@ class PipelineResult:
     # PipelineResult (every test that doesn't set it, every pre-photo
     # caller) gets exactly the pre-existing "no faces" behaviour.
     faces_present: bool = False
+    # The full stage-2 `select_palette` medoid set (chart indices), present
+    # ONLY when shade demand was fed into the selection
+    # (cfg.shade_palette_demand, photo classes — Quant.palette_spools'
+    # docstring carries the why). Carried for the SAME "hand it to stage 7"
+    # reason as `design_class`: demand can select ANCHOR spools no region's
+    # own mean claims, and the shade-palette bind must offer those to
+    # `_shade_layers` or the anchors it asked for would never be sewable.
+    # Defaults None — a hand-built PipelineResult and every non-demand run
+    # read exactly as before the field existed.
+    palette_spools: list[int] | None = None
 
     @property
     def shape_ids(self) -> list[str]:
@@ -199,6 +209,12 @@ class Generation:
     # Gradient class only (None otherwise): the design-wide fill-row angle,
     # a pure function of `p` hoisted here so a cache hit does not re-fit it.
     design_row_angle_deg: float | None
+    # `Quant.palette_spools` carried forward (see that field's docstring):
+    # the full stage-2 medoid set when shade demand was fed
+    # (cfg.shade_palette_demand, photo classes), None everywhere else.
+    # Defaulted so a hand-built Generation (tests) reads exactly as before
+    # the field existed.
+    quant_palette_spools: list[int] | None = None
 
     def fork(self) -> "Generation":
         """A copy safe to finish from, sharing what is immutable.
@@ -225,6 +241,10 @@ class Generation:
             faces_present=self.faces_present,
             seg_name=self.seg_name,
             design_row_angle_deg=self.design_row_angle_deg,
+            quant_palette_spools=(
+                list(self.quant_palette_spools)
+                if self.quant_palette_spools is not None else None
+            ),
         )
 
 
@@ -390,10 +410,21 @@ def build_generation(
     # through to the classical SLIC+RAG call below, exactly the same
     # degrade-and-say-so posture `remove_background_seam` gets above.
     q: Quant | None = None
+    # Stage-2 shade demand (cfg.shade_palette_demand — EXPERIMENT, option
+    # (b) of docs/superpowers/plans/2026-08-23-shade-palette-binding.md):
+    # the STRICT class gate, resolved here and passed as a bool the same way
+    # `effective_split_tonal`'s verdict is — photo classes only, mirroring
+    # the region resnap (`stage4_vectorize._PHOTO_CLASSES`) and the stage-7
+    # bind, and deliberately NOT "gradient" even though gradient routes
+    # through `photo_segment` too: gradient's tone rides the blend tier, not
+    # the streamline shade decomposition this demand is a proxy for.
+    shade_demand = bool(cfg.shade_palette_demand) \
+        and classification.class_ in PHOTO_CLASSES
     if cfg.photo_segment_sam2 and classification.class_ in PHOTO_CLASSES:
         q, sam2_reason = sam2_segment_seam(
             p, cfg, face_regions=face_regions, bg_mask=subject_bg_mask,
-            split_tonal=effective_split_tonal(cfg, classification.class_)
+            split_tonal=effective_split_tonal(cfg, classification.class_),
+            shade_demand=shade_demand,
         )
         if q is None:
             prep_warnings.append(
@@ -442,7 +473,8 @@ def build_generation(
         q = (
             photo_segment(
                 p, cfg, face_regions=face_regions, bg_mask=subject_bg_mask,
-                split_tonal=effective_split_tonal(cfg, classification.class_)
+                split_tonal=effective_split_tonal(cfg, classification.class_),
+                shade_demand=shade_demand,
             )
             if classification.class_ in (*PHOTO_CLASSES, "gradient")
             else quantize(p, cfg)
@@ -535,6 +567,9 @@ def build_generation(
         # answers "which segmenter ran" instead of always "classical".
         seg_name=region_former or seg.name,
         design_row_angle_deg=design_row_angle_deg,
+        quant_palette_spools=(
+            list(q.palette_spools) if q.palette_spools is not None else None
+        ),
     )
 
 
@@ -840,6 +875,10 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         source_pixels=source_pixels,
         design_class=gen.classification_class,
         faces_present=faces_present,
+        palette_spools=(
+            list(gen.quant_palette_spools)
+            if gen.quant_palette_spools is not None else None
+        ),
     )
 
 
@@ -982,7 +1021,14 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
                                     design_class=result.design_class,
                                     fill_technique=effective_fill_technique,
                                     streamline_mode=effective_streamline_mode,
-                                    detail_layer=effective_detail_layer)
+                                    detail_layer=effective_detail_layer,
+                                    # The stage-2 demand palette's anchors,
+                                    # for the shade bind's allowed set —
+                                    # None on every non-demand run, and
+                                    # `sequence` re-gates on cfg before
+                                    # reading it (a re-plan with the flag
+                                    # off must ignore a stale carrier).
+                                    palette_spools=result.palette_spools)
 
     # The plan's palette is the list of cones this plan actually sews, one per
     # BLOCK, in sew order — NOT `result.palette`, which is the per-LAYER list a

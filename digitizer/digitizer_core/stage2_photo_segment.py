@@ -109,7 +109,7 @@ from .stage2_quantize import Quant, _quantize_population
 from .stage3_segment import RegionMask, resolve_small_regions
 from .threads import chart_for, rgb_to_lab
 from .warnings_codes import (PHOTO_PALETTE_SELECTED, PHOTO_SEGMENT_REGION_COUNT,
-                             TONAL_REGIONS_SPLIT, warn)
+                             PHOTO_SHADE_DEMAND, TONAL_REGIONS_SPLIT, warn)
 
 # --- Step 1: SEEDS oversegmentation -------------------------------------------
 #
@@ -1366,6 +1366,112 @@ def split_tonal_regions(
     return out, split_count
 
 
+# --- Stage-2 shade demand (cfg.shade_palette_demand) --------------------------
+#
+# Option (b) of docs/superpowers/plans/2026-08-23-shade-palette-binding.md:
+# the palette should contain the dark/light anchors the shade decomposition
+# will need, which means `select_palette` has to SEE the shades — at stage 2,
+# four stages before `stage6_streamline._shade_layers` computes them. The
+# ordering inversion is shallow because everything `_shade_layers` keys on is
+# already in stage 2's hands: the darkness field is a blur of `p.rgb`'s own
+# luminance, the shade count is a constants-only formula, and the bucketing
+# is nearest-canonical-center over that field. `_shade_demand_points` below
+# re-derives that decomposition per kept region — the same field, the same
+# formula, the same bucket means, and the same ≤2500-px seeded sampling
+# `_sample_pixels` applies (measured 2026-08-23: mirroring the sampling is
+# what makes the proxy track the estimator on sparkler_dusk; a full-mask
+# proxy recovered only 16% of the oracle palette's benefit there, the
+# sampled one over 100%) — and hands each shade's mean Lab in as one
+# weighted demand row.
+#
+# The constants are MIRRORED from stage 6, not imported — the same lockstep
+# arrangement `palette.PALETTE_EXCESS_DELTAE` keeps with
+# `stage6_blend.SHADE_STEP_DELTAE` and `stage4_vectorize._PHOTO_CLASSES`
+# keeps with stage 7's: stage6_blend drags shapely and the fill machinery
+# into any importer, this early-stage module has no other reason to pull
+# that in, and a broken cross-pin should fail a test
+# (tests/test_shade_palette_demand.py), not an import.
+_SHADE_DEMAND_BLUR_MM = 0.6        # = stage6_streamline.STREAMLINE_BLUR_MM
+_SHADE_DEMAND_MIN_SAMPLES = 12     # = stage6_streamline._SHADE_MIN_SAMPLES
+_SHADE_DEMAND_MAX_SAMPLES = 2500   # = stage6_blend.RAMP_MAX_SAMPLES
+_SHADE_DEMAND_SAMPLE_SEED = 0      # = stage6_blend.RAMP_SAMPLE_SEED
+_SHADE_DEMAND_STEP_DELTAE = 9.0    # = stage6_blend.SHADE_STEP_DELTAE
+_SHADE_DEMAND_COUNT_MIN = 3        # = stage6_blend.SHADE_COUNT_MIN
+_SHADE_DEMAND_COUNT_MAX = 5        # = stage6_blend.SHADE_COUNT_MAX
+
+
+def _shade_demand_count(delta_e: float) -> int:
+    """`stage6_blend._choose_shade_count`, verbatim formula — mirrored for
+    the same no-stage-6-import reason as the constants above, and pinned
+    against the original across the whole input range by the test file."""
+    n = round(delta_e / _SHADE_DEMAND_STEP_DELTAE) + 1
+    return max(_SHADE_DEMAND_COUNT_MIN, min(_SHADE_DEMAND_COUNT_MAX, n))
+
+
+def _shade_demand_points(
+    p: Prep, kept: list[RegionMask], weights: list[float]
+) -> tuple[list[np.ndarray], list[float], int]:
+    """Proxy shade Lab targets for `select_palette`, per kept region.
+
+    -> (labs, point_weights, regions_with_demand). Each kept region with at
+    least `_SHADE_DEMAND_MIN_SAMPLES` pixels contributes one row per
+    non-empty shade bucket: the bucket's mean Lab, weighted by the region's
+    own selection weight (`weights[i]` — area × class multiplier, the same
+    number its mean-colour row carries) times the bucket's pixel share, so a
+    region's shade rows together weigh exactly what the region itself does.
+    Regions under the floor contribute nothing, mirroring `_shade_layers`'
+    degenerate single-shade path (which sews the region's own thread — a
+    spool the region's mean row already argues for).
+
+    The decomposition mirrors `stage6_streamline._shade_layers` +
+    `stage6_blend._shade_lab_colors` exactly, INCLUDING `_sample_pixels`'
+    seeded ≤`_SHADE_DEMAND_MAX_SAMPLES` cap — a proxy should replicate the
+    estimator it predicts, sampling and all (the module comment above
+    carries the sparkler_dusk measurement that made this structural rule
+    concrete). Deterministic: the RNG is seeded per region, exactly as
+    `_sample_pixels` seeds per call.
+    """
+    gray = cv2.cvtColor(p.rgb, cv2.COLOR_RGB2GRAY).astype(np.float64) / 255.0
+    sigma = max(0.5, _SHADE_DEMAND_BLUR_MM * p.px_per_mm)
+    dark = 1.0 - cv2.GaussianBlur(gray, (0, 0), sigma)
+
+    labs: list[np.ndarray] = []
+    point_weights: list[float] = []
+    regions_with_demand = 0
+    for region_w, r in zip(weights, kept):
+        ys, xs = np.nonzero(r.mask)
+        px = len(xs)
+        if px < _SHADE_DEMAND_MIN_SAMPLES:
+            continue
+        if px > _SHADE_DEMAND_MAX_SAMPLES:
+            rng = np.random.default_rng(_SHADE_DEMAND_SAMPLE_SEED)
+            idx = rng.choice(px, size=_SHADE_DEMAND_MAX_SAMPLES, replace=False)
+            ys, xs = ys[idx], xs[idx]
+        ts = dark[ys, xs]
+        lab = rgb_to_lab(p.rgb[ys, xs].reshape(-1, 3))
+        i0, i1 = int(np.argmin(ts)), int(np.argmax(ts))
+        extremes = float(deltaE_ciede2000(lab[i0:i0 + 1], lab[i1:i1 + 1])[0])
+        n = _shade_demand_count(extremes)
+        centers = np.array([i / (n - 1) for i in range(n)], np.float64)
+        nearest = np.argmin(np.abs(ts[:, None] - centers[None, :]), axis=1)
+        counted = False
+        for i in range(n):
+            sel = lab[nearest == i]
+            if not len(sel):
+                # An empty bucket's `_shade_lab_colors` fallback is the
+                # overall mean at zero share — zero weight, and
+                # `select_palette` rightly refuses non-positive weights, so
+                # it contributes no row (the analysis convention the
+                # 2026-08-23 proxy measurement used).
+                continue
+            labs.append(sel.mean(axis=0))
+            point_weights.append(float(region_w) * (len(sel) / len(ts)))
+            counted = True
+        if counted:
+            regions_with_demand += 1
+    return labs, point_weights, regions_with_demand
+
+
 def kept_masks_to_quant(
     p: Prep,
     cfg: PipelineConfig,
@@ -1379,6 +1485,7 @@ def kept_masks_to_quant(
     raw_unit_label: str = "superpixels",
     oversegment_labels: np.ndarray | None = None,
     split_tonal: bool = False,
+    shade_demand: bool = False,
 ) -> Quant:
     """Steps 6-7, shared by EVERY photo-path region former.
 
@@ -1413,6 +1520,20 @@ def kept_masks_to_quant(
     purpose: it is a warning-schema field other code may already read by
     name, and this module's own docstring already establishes that the
     `slic_*` identifiers mean "whatever the oversegmentation step produced".
+
+    `shade_demand` (2026-08-23, `cfg.shade_palette_demand`'s EXPERIMENT —
+    see `_shade_demand_points` above): True appends each kept region's proxy
+    shade Labs as extra weighted rows to the `select_palette` call, so the
+    palette contains the anchors the stage-6 shade decomposition will bind
+    to, and records the full medoid set on `Quant.palette_spools` for the
+    stage-7 bind. The extra rows shape the MEDOID SET only — each region
+    still snaps to its own nearest selected spool exactly as before, and the
+    demand rows themselves never become labels. False (the default every
+    pre-existing caller gets) runs the identical `select_palette` call this
+    function has always made — byte-identical by construction, and pinned by
+    the photo-lane golden. Gating (photo classes only, flag off = never) is
+    the CALLER's job — `pipeline.run_stages` derives and passes the bool,
+    the same division of labour the stage-7 bind keeps with `_shade_layers`.
     """
     h, w = p.rgb.shape[:2]
     flat_rgb = p.rgb.reshape(-1, 3)
@@ -1446,13 +1567,44 @@ def kept_masks_to_quant(
     weights = [
         region_weight(int(r.mask.sum()), c) for r, c in zip(kept, classes)
     ]
+    sel_labs = np.array(region_labs, np.float64).reshape(-1, 3)
+    sel_weights = np.array(weights, np.float64)
+    # Stage-2 shade demand (`shade_demand` — see this function's docstring
+    # and `_shade_demand_points`): extra weighted rows APPENDED after the
+    # region rows, so `selection.region_spools[:len(kept)]` below is exactly
+    # the per-region mapping the unmodified call returns — the demand rows
+    # steer which spools get selected, never which label a region becomes.
+    demand_points = 0
+    demand_regions = 0
+    if shade_demand and kept:
+        demand_labs, demand_weights, demand_regions = _shade_demand_points(
+            p, kept, weights)
+        demand_points = len(demand_labs)
+        if demand_points:
+            sel_labs = np.vstack(
+                [sel_labs, np.asarray(demand_labs, np.float64).reshape(-1, 3)])
+            sel_weights = np.concatenate(
+                [sel_weights, np.asarray(demand_weights, np.float64)])
     selection = select_palette(
-        np.array(region_labs, np.float64).reshape(-1, 3),
-        np.array(weights, np.float64),
+        sel_labs,
+        sel_weights,
         chart,
         max_k=cfg.max_colors,
     )
-    region_spools = selection.region_spools
+    region_spools = selection.region_spools[:len(kept)]
+    # `selection.max_excess_de00` spans every row it selected over; with
+    # demand rows in the call that includes the shades, and the
+    # PHOTO_PALETTE_SELECTED warning below has always meant the REGIONS'
+    # worst excess — so recompute it region-side when (and only when) the
+    # row set grew. The no-demand value is the selection's own, untouched.
+    if demand_points:
+        region_dist = deltaE_ciede2000(
+            sel_labs[:len(kept), None, :], np.asarray(chart.lab)[None, :, :])
+        region_excess_de00 = float(
+            (region_dist[np.arange(len(kept)), np.asarray(region_spools)]
+             - region_dist.min(axis=1)).max()) if len(kept) else 0.0
+    else:
+        region_excess_de00 = selection.max_excess_de00
 
     # Same convention `stage2_quantize.quantize` ends on: dedupe regions
     # that snapped to the same spool into one final label, ordered by
@@ -1562,9 +1714,32 @@ def kept_masks_to_quant(
             "(chart-restricted weighted k-medoids).",
             colors=main_thread_colors,
             regions=len(kept),
-            max_excess_de00=round(selection.max_excess_de00, 3),
+            # Region-side by contract (this warning's own docstring in
+            # warnings_codes.py) — `region_excess_de00` IS
+            # `selection.max_excess_de00` whenever no demand rows were fed,
+            # see its computation above.
+            max_excess_de00=round(region_excess_de00, 3),
         )
     )
+    if demand_points:
+        anchors = sorted(set(selection.medoids) - set(region_spools))
+        warnings.append(
+            warn(
+                PHOTO_SHADE_DEMAND,
+                f"Shade demand fed into palette selection: {demand_points} "
+                f"proxy shade color{'s' if demand_points != 1 else ''} from "
+                f"{demand_regions} region{'s' if demand_regions != 1 else ''} "
+                f"joined the selection, which chose "
+                f"{len(selection.medoids)} spool"
+                f"{'s' if len(selection.medoids) != 1 else ''} "
+                f"({len(anchors)} shade-only anchor"
+                f"{'s' if len(anchors) != 1 else ''} no region claims).",
+                points=demand_points,
+                regions_with_demand=demand_regions,
+                palette_k=len(selection.medoids),
+                anchors=len(anchors),
+            )
+        )
 
     if cfg.debug_dir:
         from . import debugviz
@@ -1594,10 +1769,17 @@ def kept_masks_to_quant(
         thread_indices=thread_indices,
         cluster_rgb=np.array([chart[s].rgb for s in thread_indices], np.float64),
         warnings=warnings,
+        # Only when demand actually joined the selection (see the field's
+        # own docstring): the FULL medoid set, anchors included, for the
+        # stage-7 shade bind. None on every pre-existing path.
+        palette_spools=(
+            [int(m) for m in selection.medoids] if demand_points else None
+        ),
     )
 
 
-def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None, split_tonal=False) -> Quant:
+def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
+            split_tonal=False, shade_demand=False) -> Quant:
     h, w = p.rgb.shape[:2]
     valid = ~p.bg_mask
     flat_rgb = p.rgb.reshape(-1, 3)
@@ -1741,4 +1923,5 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None, split
         merged_count=merged_count,
         oversegment_labels=slic_labels,
         split_tonal=split_tonal,
+        shade_demand=shade_demand,
     )

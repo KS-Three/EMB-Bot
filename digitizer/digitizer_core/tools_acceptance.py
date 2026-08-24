@@ -99,6 +99,24 @@ def variant_matrix(sam2_available: bool) -> list[dict]:
             "config": {"forced_class": _FORCED_CLASS,
                        "shade_palette_bind": True},
         },
+        # (a)+(b) — Kent's 2026-08-23 decision on the same plan doc: the
+        # bind AND the shade-aware palette (`shade_palette_demand` feeds
+        # stage-2 proxy shade demand into `select_palette`, so the palette
+        # contains the anchors the bound shades land on). Directly after
+        # `bound_shade` so the sheet reads bind-alone -> bind-plus-demand
+        # as one column step; the comparison that matters is the pair of
+        # them against `classical` (today's route). The cone-count column
+        # is load-bearing for THIS arm in a way it is not for the others:
+        # demand pressure trips the palette's overflow allowance more
+        # eagerly (measured offline: a 7-cone photo's proxy re-fit spent 14
+        # where an oracle wanted 10), and cones cost money — the arm exists
+        # to put that price next to the shade-fidelity gain, not to hide it.
+        {
+            "tag": "bound_shade_demand",
+            "config": {"forced_class": _FORCED_CLASS,
+                       "shade_palette_bind": True,
+                       "shade_palette_demand": True},
+        },
         {
             "tag": "relaxed_speckle",
             "config": {

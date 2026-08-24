@@ -42,6 +42,16 @@ class Quant:
     thread_indices: list[int]     # label value -> index into threads.CHART
     cluster_rgb: np.ndarray       # (K, 3) float, the pre-snap cluster colors
     warnings: list[dict] = field(default_factory=list)
+    # The FULL `select_palette` medoid set (chart indices), set ONLY when
+    # stage-2 shade demand was fed into the selection
+    # (cfg.shade_palette_demand, stage2_photo_segment.kept_masks_to_quant) —
+    # None on every other path, this dataclass's whole life before the field
+    # existed. It exists because demand can select ANCHOR spools no region's
+    # own mean snaps to: those never enter `thread_indices` (label-mapped
+    # spools only), yet they are precisely the spools the shade-palette bind
+    # (stage7_sequence) must offer `_shade_layers`, so they ride here ->
+    # Generation.quant_palette_spools -> PipelineResult.palette_spools.
+    palette_spools: list[int] | None = None
 
 
 def _kmeans(pixels: np.ndarray, k: int, seed: int, iters: int = 60) -> np.ndarray:

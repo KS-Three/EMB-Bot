@@ -67,6 +67,20 @@ PHOTO_SEGMENT_REGION_COUNT = "PHOTO_SEGMENT_REGION_COUNT"
 # weighted selection settled on, and the worst region's ΔE00 excess over its
 # own nearest-thread floor. extra: {"colors": int, "regions": int, "max_excess_de00": float}
 PHOTO_PALETTE_SELECTED = "PHOTO_PALETTE_SELECTED"
+# Stage-2 shade demand (cfg.shade_palette_demand, EXPERIMENT — option (b) of
+# docs/superpowers/plans/2026-08-23-shade-palette-binding.md): proxy shade
+# Lab targets were fed into `select_palette` alongside the region demand, so
+# the palette contains anchors for the shades the streamline decomposition
+# will bind to. Info, plus the accounting the cone-cost question needs:
+# "points" is how many weighted demand rows were added, from
+# "regions_with_demand" regions; "palette_k" is the selected medoid count
+# (may exceed cfg.max_colors up to palette.PALETTE_OVERFLOW_K — demand
+# pressure trips the overflow more eagerly than region demand alone, and
+# cones cost money, so the number is surfaced rather than buried);
+# "anchors" is how many selected spools no region's own mean claimed
+# (shade-only anchors, carried to the stage-7 bind via Quant.palette_spools).
+# extra: {"points": int, "regions_with_demand": int, "palette_k": int, "anchors": int}
+PHOTO_SHADE_DEMAND = "PHOTO_SHADE_DEMAND"
 
 # Stage 2 (photo path) — SAM2 region former. Rides its own opt-in flag
 # (cfg.photo_segment_sam2) PLUS a photo_subject/photo_scene classification;
