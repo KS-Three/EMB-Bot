@@ -832,6 +832,28 @@ def sequence(
     # stitch_one — its documented "beats the mode both ways" contract).
     photo = (design_class in PHOTO_CLASSES
              or bool(cfg.extra.get("photo_sequencing")))
+    # The shade-palette bind (cfg.shade_palette_bind — EXPERIMENT, default
+    # off; config.py's own comment and docs/superpowers/plans/2026-08-23-
+    # shade-palette-binding.md option (a) carry the full case): the spools
+    # this plan's own regions sew, handed to the layered streamline tier so
+    # its per-shade chart snap stays inside them (`_shade_layers`' masked
+    # argmin + adjacent-same-spool merge). Derived from `planned` — the
+    # post-edit, post-skip, post-resnap region set actually being sequenced —
+    # not from `select_palette`'s raw stage-2 choice, because a review-screen
+    # recolor legitimately adds a cone to the list and the bind's whole point
+    # is "spools the operator will load", which by this stage is the regions'
+    # own thread set (the per-layer cone list is compacted FROM it). Gated on
+    # the strict class verdict, NOT the `photo` sequencing bool above: the
+    # `photo_sequencing` extra opts a flat design into sew-ORDER behaviour
+    # only, and the region-level binding this mirrors
+    # (stage4_vectorize.revalidate_threads) keys on the classification alone
+    # — the two bindings must not disagree about which designs are bound.
+    # None — flag off, non-photo class, or nothing planned — reaches
+    # `streamline_fill` as the documented "no restriction" default, byte-
+    # identical to the parameter not existing.
+    shade_palette: list[int] | None = None
+    if cfg.shade_palette_bind and design_class in PHOTO_CLASSES and planned:
+        shade_palette = sorted({pr.region.thread_index for pr in planned})
     class_fill_underlay = _PHOTO_FILL_UNDERLAY if photo else fabric.fill_underlay
     underlay_style = (cfg.underlay_style or class_fill_underlay) if cfg.underlay else "none"
     satin_underlay = ((_PHOTO_SATIN_UNDERLAY if photo else fabric.satin_underlay)
@@ -1141,8 +1163,14 @@ def sequence(
                 # shape this branch fills, per-shape override included —
                 # `streamline_fill` itself falls back to reading `cfg.
                 # streamline_mode` when this is `None` (every other case).
+                # `shade_palette` (derived once above, None unless the
+                # shade-palette-bind experiment is on for a photo class) is
+                # threaded the same way `streamline_mode` is: an explicit
+                # keyword, never a cfg mutation — layered mode's per-shade
+                # snap reads it, mono ignores it.
                 runs, report = streamline_fill(p.region, source_pixels, cfg,
-                                               streamline_mode=streamline_mode)
+                                               streamline_mode=streamline_mode,
+                                               shade_palette_indices=shade_palette)
                 need_tatami = report["empty"]
             elif crosshatch or tier == "crosshatch":
                 # The cross-hatch fill tier: two tatami passes on the same
