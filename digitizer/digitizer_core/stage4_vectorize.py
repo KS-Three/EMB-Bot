@@ -135,11 +135,24 @@ def vectorize(
     dropped: list[float] = []
 
     def note_drop(rm: RegionMask) -> None:
-        dropped.append(float(rm.mask.sum()) / (p.px_per_mm ** 2))
+        dropped.append(float(rm.area) / (p.px_per_mm ** 2))
 
     for rm in region_masks:
+        # Trace the CROP, not a frame-sized mask (2026-08-24). The one-pixel
+        # background pad reproduces the full-frame neighbourhood exactly: a
+        # crop is bbox-tight, so every border row and column carries set
+        # pixels, and tracing it bare would lean on findContours' own
+        # out-of-image convention instead of on a real background ring. The
+        # `offset` puts contours straight back into frame coordinates
+        # (offset is (x, y) where origin is (y, x)), so everything
+        # downstream — `_to_mm`, the hole hierarchy, the area floors — is
+        # unchanged.
+        y0, x0 = rm.origin
+        padded = np.zeros((rm.crop.shape[0] + 2, rm.crop.shape[1] + 2), np.uint8)
+        padded[1:-1, 1:-1] = rm.crop
         contours, hierarchy = cv2.findContours(
-            rm.mask.astype(np.uint8), cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE
+            padded, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE,
+            offset=(x0 - 1, y0 - 1),
         )
         if not contours or hierarchy is None:
             note_drop(rm)

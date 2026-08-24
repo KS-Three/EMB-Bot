@@ -145,7 +145,7 @@ def test_sub_detail_glyphs_survive_simplification():
              bg_mask=np.zeros((80, 80), bool),
              px_per_mm=ppm, art_bbox=(0, 0, 80, 80))
     cfg = PipelineConfig()  # simplify_tol_mm 0.2 -> eps 3 px at this scale
-    regions, dropped = vectorize([RegionMask(mask=mask, layer=0)], [0], p, cfg)
+    regions, dropped = vectorize([RegionMask.from_full(mask, layer=0)], [0], p, cfg)
     assert not dropped and len(regions) == 1, "the glyph must survive at all"
     poly = regions[0].polygon
     assert len(poly.exterior.coords) >= 12, \
@@ -171,7 +171,7 @@ def test_sub_detail_glyph_is_tagged_rescued_in_meta():
              bg_mask=np.zeros((80, 80), bool),
              px_per_mm=ppm, art_bbox=(0, 0, 80, 80))
     cfg = PipelineConfig()
-    regions, dropped = vectorize([RegionMask(mask=mask, layer=0)], [0], p, cfg)
+    regions, dropped = vectorize([RegionMask.from_full(mask, layer=0)], [0], p, cfg)
     assert not dropped and len(regions) == 1
     assert regions[0].meta["rescued_small_shape"] is True
 
@@ -187,7 +187,7 @@ def test_ordinary_shape_has_no_rescued_flag():
              bg_mask=np.zeros((80, 80), bool),
              px_per_mm=ppm, art_bbox=(0, 0, 80, 80))
     cfg = PipelineConfig()
-    regions, dropped = vectorize([RegionMask(mask=mask, layer=0)], [0], p, cfg)
+    regions, dropped = vectorize([RegionMask.from_full(mask, layer=0)], [0], p, cfg)
     assert not dropped and len(regions) == 1
     assert "rescued_small_shape" not in regions[0].meta
 
@@ -235,8 +235,8 @@ def test_simplify_tol_mm_realized_deviation_is_px_per_mm_invariant():
         cfg_tol = PipelineConfig(target_width_mm=999, min_detail_mm=0.01)
         cfg_raw = PipelineConfig(target_width_mm=999, min_detail_mm=0.01,
                                   simplify_tol_mm=1e-6)
-        regions_tol, _ = vectorize([RegionMask(mask=mask, layer=0)], [0], p, cfg_tol)
-        regions_raw, _ = vectorize([RegionMask(mask=mask, layer=0)], [0], p, cfg_raw)
+        regions_tol, _ = vectorize([RegionMask.from_full(mask, layer=0)], [0], p, cfg_tol)
+        regions_raw, _ = vectorize([RegionMask.from_full(mask, layer=0)], [0], p, cfg_raw)
         poly_tol = regions_tol[0].polygon
         poly_raw = regions_raw[0].polygon
         hd = poly_tol.exterior.hausdorff_distance(poly_raw.exterior)

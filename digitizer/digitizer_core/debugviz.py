@@ -60,7 +60,8 @@ def stage3(dir_: Path, rgb: np.ndarray, region_masks) -> None:
     for rm in region_masks:
         color = tuple(int(v) for v in rng.integers(0, 200, 3))
         cnts, _ = cv2.findContours(
-            rm.mask.astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE
+            rm.crop.astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE,
+            offset=(rm.origin[1], rm.origin[0]),
         )
         cv2.drawContours(viz, cnts, -1, color, 2)
     _write(dir_ / "stage3_regions.png", viz)
