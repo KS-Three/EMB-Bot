@@ -1535,3 +1535,161 @@ def test_without_the_artwork_the_uncovered_check_is_skipped_and_says_so(whitebg,
     assert m["uncovered_checked"] is False
     assert m["uncovered_worst_mm2"] is None
     assert m["uncovered_wanted_mm2"] is None
+
+
+# --- Thread fidelity on the photo route (2026-08-24) -------------------------
+#
+# Reducing a photograph to a capped cone list guarantees per-thread colour
+# distance. On the 32-job acceptance sheet THREAD_MATCH_POOR fired 256 times at
+# `block`, so every photo job graded F / "do not sew" — the DENSITY_EXTREME
+# misfire of PR #216 in a different check. The fix rescores the photo route on
+# EXCESS over the best already-loaded spool. These four tests pin both halves:
+# an optimal assignment goes quiet, a genuinely wrong one still blocks.
+
+def _two_spool_photo_scene(assign_swapped: bool):
+    """Two rectangles painted two colours far apart, sewn in two spools.
+
+    Returns (result, cfg_kwargs, image). When `assign_swapped` is False each
+    region gets the loaded spool nearest its own paint — the best any capped
+    cone list could do, so the excess yardstick must read ~0. When True the
+    two assignments are exchanged, so for each region the OTHER already-loaded
+    spool is closer: a free improvement left on the table, which must still
+    block on any route.
+    """
+    from types import SimpleNamespace
+
+    from shapely.geometry import Polygon
+
+    from digitizer_core.regions import Region
+    from digitizer_core.stage1_prep import prep
+    from digitizer_core.threads import chart_for, rgb_to_lab
+
+    c = cfg()
+    chart = chart_for(c)
+    red_rgb = (215, 45, 45)
+    blue_rgb = (45, 45, 215)
+    red_i = chart.nearest_index(rgb_to_lab(np.array([list(red_rgb)], np.uint8))[0])
+    blue_i = chart.nearest_index(rgb_to_lab(np.array([list(blue_rgb)], np.uint8))[0])
+    assert red_i != blue_i, "fixture needs two distinct spools to swap between"
+
+    img = np.full((400, 500, 3), 255, np.uint8)
+    img[40:240, 60:260] = red_rgb[::-1]      # BGR, the ndarray convention
+    img[40:240, 300:460] = blue_rgb[::-1]
+    p = prep(img, c)
+    x0, y0, x1, y1 = p.art_bbox
+    px_cx, px_cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+
+    def rect_mm(px0, py0, px1, py1) -> Polygon:
+        corners = [(px0 + 2, py0 + 2), (px1 - 2, py0 + 2),
+                   (px1 - 2, py1 - 2), (px0 + 2, py1 - 2)]
+        return Polygon([((x - px_cx) / p.px_per_mm, (y - px_cy) / p.px_per_mm)
+                        for x, y in corners])
+
+    r_spool, b_spool = (blue_i, red_i) if assign_swapped else (red_i, blue_i)
+
+    def region(shape_id, poly, spool):
+        return Region(shape_id=shape_id, polygon=poly, thread_index=spool,
+                      thread_number=chart[spool].number,
+                      area_mm2=float(poly.area))
+
+    result = SimpleNamespace(regions=[
+        region("Sred", rect_mm(60, 40, 260, 240), r_spool),
+        region("Sblue", rect_mm(300, 40, 460, 240), b_spool),
+    ])
+    return result, img, chart, red_i, blue_i
+
+
+def test_photo_route_stays_quiet_when_every_cone_is_the_best_one_loaded():
+    """The misfire this rescoring exists to stop.
+
+    Each region wears the closest spool the design loads, so no reassignment
+    could help and preflight must say nothing.
+
+    The second half is what makes that silence meaningful rather than an
+    artifact of well-matched paint: the SAME fixture on a non-photo class
+    does fire — one warn, measured 5.1 dE00, just over DELTA_E_VISIBLE. So
+    the raw yardstick has something to say here, and the photo yardstick
+    correctly answers "no cone this design loads could have done better".
+    """
+    result, img, _chart, _r, _b = _two_spool_photo_scene(assign_swapped=False)
+    empty = StitchPlan(blocks=[], palette=[])
+
+    photo = run_preflight(result, empty, cfg(forced_class="photo_subject"),
+                          image=img)
+    assert THREAD_MATCH_POOR not in _codes(photo)
+
+    raw = run_preflight(result, empty, cfg(), image=img)
+    raw_hits = [f for f in raw["findings"] if f["code"] == THREAD_MATCH_POOR]
+    assert raw_hits, "fixture must be non-trivial: the raw yardstick fires here"
+    assert raw_hits[0]["extra"]["delta_e"] > DELTA_E_VISIBLE
+
+
+def test_photo_route_still_blocks_a_cone_swap_that_was_free():
+    """The half a blanket photo exemption would have thrown away.
+
+    Measured in-pipeline on the real portraits, this class survives the
+    rescoring: baby_deck_laugh carries a region with 13.18 dE00 of excess —
+    a spool sitting loaded and that much closer to the artwork than the one
+    that sewed it — and it still blocks. Swapping two assignments reproduces
+    the class deterministically.
+    """
+    result, img, chart, red_i, blue_i = _two_spool_photo_scene(assign_swapped=True)
+    empty = StitchPlan(blocks=[], palette=[])
+
+    report = run_preflight(result, empty, cfg(forced_class="photo_subject"),
+                           image=img)
+    hit = [f for f in report["findings"] if f["code"] == THREAD_MATCH_POOR]
+    assert hit, "a free, strictly better already-loaded spool must still fire"
+    assert all(f["severity"] == "block" for f in hit)
+
+    # The finding names the swap: excess is populated (so a reader can tell
+    # which yardstick set the severity) and better_spool points at the cone
+    # already on the machine.
+    numbers = {chart[red_i].number, chart[blue_i].number}
+    for f in hit:
+        assert f["extra"]["excess_delta_e"] > DELTA_E_CLEARLY_DIFFERENT
+        assert f["extra"]["better_spool"] in numbers
+        assert f["extra"]["better_spool"] != f["extra"]["thread_number"]
+        assert "already loaded" in f["message"]
+    json.dumps(report)
+
+
+def test_non_photo_routes_keep_the_raw_yardstick_untouched():
+    """Byte-identity guard, the #216 discipline: only the photo route is
+    rescored. On a flat design the same swapped fixture scores on raw
+    distance, and the excess fields stay None so nothing downstream can
+    mistake a raw finding for a rescored one."""
+    result, img, _chart, _r, _b = _two_spool_photo_scene(assign_swapped=True)
+    empty = StitchPlan(blocks=[], palette=[])
+
+    report = run_preflight(result, empty, cfg(), image=img)
+    hit = [f for f in report["findings"] if f["code"] == THREAD_MATCH_POOR]
+    assert hit
+    for f in hit:
+        assert f["extra"]["excess_delta_e"] is None
+        assert f["extra"]["better_spool"] is None
+        assert "Pick a closer thread" in f["message"]
+
+
+def test_a_one_cone_photo_design_is_not_silenced_by_the_rescoring():
+    """The degenerate guard. With a single loaded spool every excess is 0 by
+    construction, so an unguarded rescoring would go permanently quiet and
+    hide an honestly unreachable colour. `len(loaded) > 1` keeps raw scoring
+    there — the one-cone case still reports."""
+    from types import SimpleNamespace
+
+    result, img, chart, red_i, _b = _two_spool_photo_scene(assign_swapped=True)
+    # Collapse to one cone: both regions sew the red spool, so the blue
+    # rectangle is far off it and nothing else is loaded to rescue it.
+    for r in result.regions:
+        r.thread_index = red_i
+        r.thread_number = chart[red_i].number
+    one_cone = SimpleNamespace(regions=result.regions)
+    empty = StitchPlan(blocks=[], palette=[])
+
+    report = run_preflight(one_cone, empty, cfg(forced_class="photo_subject"),
+                           image=img)
+    hit = [f for f in report["findings"] if f["code"] == THREAD_MATCH_POOR]
+    assert hit, "a single-cone photo design must still report an unreachable colour"
+    assert hit[0]["extra"]["excess_delta_e"] is None
+    assert hit[0]["extra"]["delta_e"] > DELTA_E_CLEARLY_DIFFERENT
