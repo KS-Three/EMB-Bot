@@ -141,6 +141,16 @@ or move it.
     258 of 330 offending regions become 3, and real mis-assignments still
     block. *(PR #229)*
 
+13. **RESOLVED 2026-08-24 — the detail layer sewed the background a subject cutout
+    had just removed.** FDoG reads the whole raster, so
+    `photo_prep_background_removal` never reached it: on `baby_deck_laugh`,
+    **91.4% of the detail block and 72.2% of every stitch in the design** sewed
+    removed background. Regions were clean. `SourcePixels.subject_mask` now
+    confines the line map — 10,813 → **537**, all inside the silhouette slack.
+    Invisible until now because **no acceptance arm had EVER set that flag**; the
+    `subject_cutout` arm lands here too — a third default-OFF flag missing from the
+    section below, the gap it exists to close. *(measured 2026-08-24 — [area 1](docs/scope/1-auto-digitizing-quality.md))*
+
 ---
 
 ## Latent — gated OFF, DO NOT FLIP without rebuilding its instrument
@@ -223,12 +233,11 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
   is working and has almost nothing left to win. A shape whose own pixels differ
   from each other by more than the error being complained about cannot be
   matched by any single thread. *(measured 2026-08-12 — scope-history)*
-- **`photo_segment_sam2_max_side_px` stays 1024.** *(measured 2026-08-11 —
-  rejection recorded at the field in `config.py`)*
-- **`feat/svg-import-shapes` is not resumed.** 277 commits behind, and the one
-  task attempted past the tokenizer is genuinely broken against its own
-  tolerance. If the need resurfaces, treat it as a fresh plan against current
-  `main`, not a rebase. Branch left in place; deleting it is Kent's call. *(decided 2026-08-07 — scope-history)*
+- **`photo_segment_sam2_max_side_px` stays 1024.** *(measured 2026-08-11 — `config.py`)*
+- **`feat/svg-import-shapes` is not resumed.** Far behind, and the one task
+  attempted past the tokenizer is broken against its own tolerance. Treat a
+  revival as a fresh plan against `main`, not a rebase; branch left in place,
+  deleting it is Kent's call. *(decided 2026-08-07 — scope-history)*
 
 ---
 
@@ -269,14 +278,13 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
   right, so **no cap/`p90`/aspect/regularity move in one direction can fix
   routing — only better discrimination can.** Governs live defect 5.
   *(measured 2026-08-14 — PR #152, closed 2026-08-21; detail in area 1)*
-- **Swapping the SAM model** — in automatic-mask-generation mode SAM2's image
-  encoder is only ~8% of per-image cost and the `points_per_side**2` prompt
-  loop is ~92%, while every lightweight SAM variant optimizes the encoder.
-  SAM 1 is *heavier* (375 MB smallest checkpoint). *(researched 2026-08-11 — `docs/sam-alternatives-research-2026-08-11.md`)*
-- **FastSAM and EdgeSAM are license-disqualified** — FastSAM is AGPL-3.0 despite
-  a README claiming Apache, EdgeSAM is non-commercial (NTU S-Lab 1.0).
-  *(suspected 2026-08-11 — came from a research subagent, never independently
-  re-verified; strong leads, not settled fact)*
+- **Swapping the SAM model** — in automatic-mask-generation mode SAM2's encoder
+  is only ~8% of per-image cost and the `points_per_side**2` prompt loop is
+  ~92%, while every lightweight variant optimizes the encoder; SAM 1 is
+  *heavier* (375 MB). And FastSAM (AGPL-3.0 despite a README claiming Apache)
+  and EdgeSAM (non-commercial, NTU S-Lab 1.0) are license-disqualified — that
+  half **suspected**, from a research subagent, never re-verified.
+  *(researched 2026-08-11 — `docs/sam-alternatives-research-2026-08-11.md`)*
 - **Size-proportional `simplify_tol_mm`** — the fixed 0.2 mm constant is correct
   as-is; Ember's scaling equivalent is not a like-for-like comparison. No change
   made, and the investigation is closed rather than open. *(measured 2026-08-07 — `docs/scope/research-backlog.md`)*
@@ -446,19 +454,16 @@ being deleted, same as the defect list. Detail stays in its own section rather
 than duplicated here, so this list can go stale about WHAT IS OPEN but never
 about the facts.
 
-1. **RESOLVED 2026-08-22 — the stage 0-4 cache is funded and built.**
-   `run_stages` splits at the review-edit seam (`build_generation` /
-   `finish_generation`); the service caches generations across edits, so an
-   edited re-digitize re-runs only the finish + `plan_stitches`,
-   byte-identically. Speedups: **area 5**. *(confirmed 2026-08-22 —
-   tests/test_generation_cache.py)*
+1. **RESOLVED 2026-08-22 — the stage 0-4 cache is funded and built.** Split at
+   the review-edit seam; an edited re-digitize re-runs only the finish,
+   byte-identically. *(confirmed — tests/test_generation_cache.py)*
 
 9. **RESOLVED 2026-08-24 — tonal v1: shade escape closed, bind ships ON.**
    2026-08-23 Kent ruled v1 not done at 68–78 stops a portrait; 2026-08-24 he
    took `bound_shade` as the photo-route default, declining (b). *(2026-08-24)*
 
-**Also open, same category — listed so this queue is not a half-truth. All of
-these predate 2026-08-14 except where noted:**
+**Also open, same category — so this queue is not a half-truth. All predate
+2026-08-14 except where noted:**
 
 2. **The DST codec fix** — was gated on the sew-out; that gate is now permanent
    (standing rulings), so this needs its own call on its own merits.
@@ -548,27 +553,22 @@ permission screenshots (audit §8).
 
 ### CI feedback speed
 
-`-n auto` (pytest-xdist, pinned in `requirements.txt`) roughly halved the
-digitizer suite. **Do not re-tune hoping for the 2.5-3x seen locally:**
-GitHub's standard runners are 2-core, so `-n auto` gets two workers and
-OpenCV's own threading competes with them — more workers cannot help. The
-remaining lever is `--durations`, not parallelism. Parallel-safety is verified,
-not assumed (identical pass/fail set both ways; every writing test uses
-`tmp_path`). *(measured 2026-08-14 — scope-history)*
+`-n auto` (pytest-xdist, pinned) roughly halved the digitizer suite. **Do not
+re-tune hoping for the 2.5-3x seen locally:** GitHub's standard runners are
+2-core, so `-n auto` gets two workers and OpenCV's threading competes with
+them. The remaining lever is `--durations`, not parallelism. Parallel-safety is
+verified, not assumed. *(measured 2026-08-14 — scope-history)*
 
 ### No physical sew-out testing has occurred yet
 
-Zero sew-out testing has been done anywhere in this project — confirmed
-independently across three separate research passes (auto-digitizing, Studio
-fabric presets, export formats). `docs/hardening-closeout-2026-08-02.md`
-states it plainly: "Nothing was sewn. Every number above... is geometry."
-This is the single biggest confidence ceiling in the project: fabric-preset
-accuracy, real stitch quality beyond test-suite geometry checks, and the DST
-axis question all wait on this. Four hoopings are already specified in
-`docs/hardening-closeout-2026-08-02.md` and would resolve nine currently-open
-geometric questions at once. **Kent accepted this as-is 2026-08-21:** no longer
-a queued action, scores under it read `pending sew-out` permanently rather than
-awaiting a date. Do not re-raise it as the highest-leverage next action.
+Zero sew-out testing anywhere in this project — confirmed across three
+independent research passes. `docs/hardening-closeout-2026-08-02.md`: "Nothing
+was sewn. Every number above... is geometry." It is the single biggest
+confidence ceiling here — fabric presets, real stitch quality, the DST axis
+question all wait on it — and that doc already specifies four hoopings that
+would settle nine open geometric questions at once. **Kent accepted this as-is
+2026-08-21:** not a queued action; scores under it read `pending sew-out`
+permanently. Do not re-raise it as the highest-leverage next action.
 
 ### Evaluation corpus & harness — real gap, newly tracked here
 

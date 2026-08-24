@@ -215,6 +215,17 @@ class Generation:
     # Defaulted so a hand-built Generation (tests) reads exactly as before
     # the field existed.
     quant_palette_spools: list[int] | None = None
+    # The rembg subject cutout, (H, W) bool with True = SUBJECT, or None
+    # (every job that did not opt into `cfg.photo_prep_background_removal`,
+    # and every job where the isolated venv was missing or the worker
+    # failed — the same degrade-to-None contract `remove_background_seam`
+    # itself gives). Carried on the GENERATION rather than recomputed
+    # downstream because it is a stage-1 fact that costs an out-of-process
+    # neural net to produce: a cached generation must not pay for it twice.
+    # `finish_generation` is its only consumer, handing it to `SourcePixels`
+    # so raster-reading tiers stop sewing the background (see that field's
+    # own docstring for the measurement that made it necessary).
+    subject_mask: np.ndarray | None = None
 
     def fork(self) -> "Generation":
         """A copy safe to finish from, sharing what is immutable.
@@ -245,6 +256,10 @@ class Generation:
                 list(self.quant_palette_spools)
                 if self.quant_palette_spools is not None else None
             ),
+            # SHARED, not copied — read-only downstream for exactly the same
+            # reason `p`'s rasters are (this docstring's own rule): nothing
+            # in stages 5-7 assigns into it.
+            subject_mask=self.subject_mask,
         )
 
 
@@ -570,6 +585,14 @@ def build_generation(
         quant_palette_spools=(
             list(q.palette_spools) if q.palette_spools is not None else None
         ),
+        # None unless `remove_background_seam` actually ran and succeeded
+        # this generation — the identical variable stage 2 already gets as
+        # its `bg_mask` argument, inverted here to the subject convention
+        # `SourcePixels.subject_mask` documents. Stage 2 wants "which of
+        # these pixels are background"; a tier reading the raster wants
+        # "which of these pixels are the artwork", and spelling each one the
+        # way its consumer thinks removes a `~` from every call site.
+        subject_mask=(~subject_bg_mask if subject_bg_mask is not None else None),
     )
 
 
@@ -757,7 +780,8 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         source_pixels = SourcePixels(rgb=p.rgb, px_per_mm=p.px_per_mm,
                                      origin_px=(art_cx, art_cy),
                                      gradient_class=(gen.classification_class
-                                                     == "gradient"))
+                                                     == "gradient"),
+                                     subject_mask=gen.subject_mask)
     if gen.classification_class == "gradient":
         # One shared fill-row angle for the whole design (2026-08-03 angle-
         # fragmentation fix) — fitted once, against `p`'s full foreground,
