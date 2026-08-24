@@ -507,6 +507,13 @@ def _resample(pts: list[tuple[float, float]], pitch: float
 # shade (this region's already-assigned thread, full coverage everywhere) —
 # mono in every way but name, never a crash on a sliver region.
 _SHADE_MIN_SAMPLES = 12
+# Below this darkness span, `cfg.shade_axis_normalize` leaves the axis
+# absolute. Measured per-shape spans run median 0.21-0.38 (region-
+# identification diagnosis, defect 1), so a real tonal region clears this by
+# an order of magnitude; what it excludes is the flat region whose whole
+# range is sampling noise, where normalising would stretch that noise across
+# the full axis and invent shade structure that is not in the artwork.
+_SHADE_AXIS_MIN_SPAN = 0.02
 
 
 def _shade_layers(poly, source_pixels: SourcePixels, base_darkness, region: Region,
@@ -576,7 +583,26 @@ def _shade_layers(poly, source_pixels: SourcePixels, base_darkness, region: Regi
                          lab[np.argmax(ts): np.argmax(ts) + 1])[0]
     )
     n = _choose_shade_count(extremes_delta_e)
-    shade_labs = _shade_lab_colors(ts, lab, n)
+    # The shade darkness axis (cfg.shade_axis_normalize — EXPERIMENT, default
+    # off; config.py's comment carries the measurement). `lo`/`span` are
+    # derived ONCE here and used by both the colour bucketing just below and
+    # the membership tents further down, because those two have to describe
+    # the same axis: a shade's colour is the mean of the samples nearest its
+    # centre, so if the centre moves for one and not the other, the colour
+    # stops describing where the tent peaks.
+    #
+    # Flag off is lo=0.0, span=1.0 — every expression reduces to the absolute
+    # axis and the arithmetic is a no-op, which is the byte-identity
+    # guarantee rather than a separate code path to keep in step.
+    lo, span = 0.0, 1.0
+    if cfg.shade_axis_normalize and len(ts):
+        t_lo, t_hi = float(ts.min()), float(ts.max())
+        # A span this small is a flat region, not a ramp: normalising it
+        # would blow sampling noise up to the full axis and invent shade
+        # structure out of nothing. Absolute is the honest fallback.
+        if t_hi - t_lo >= _SHADE_AXIS_MIN_SPAN:
+            lo, span = t_lo, t_hi - t_lo
+    shade_labs = _shade_lab_colors((ts - lo) / span, lab, n)
 
     chart = chart_for(cfg)
     if palette_indices:
@@ -616,7 +642,9 @@ def _shade_layers(poly, source_pixels: SourcePixels, base_darkness, region: Regi
             # hands it and has no notion of "raw" left to fall back on.
             if d < STREAMLINE_CUTOFF_DARKNESS:
                 return 0.0
-            return max(0.0, 1.0 - abs(d - center) / knot)
+            # Onto the same axis the shade colours were bucketed on. Flag off
+            # is lo=0.0/span=1.0, so this is `d` unchanged.
+            return max(0.0, 1.0 - abs((d - lo) / span - center) / knot)
         return membership
 
     if palette_indices:

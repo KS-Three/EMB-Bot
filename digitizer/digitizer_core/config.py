@@ -726,6 +726,36 @@ class PipelineConfig:
     # every route, pinned by tests/test_shade_palette_demand.py and the
     # byte-identity goldens.
     shade_palette_demand: bool = False
+    # EXPERIMENT, default OFF — the shade DARKNESS AXIS, defect 1 of
+    # docs/superpowers/plans/2026-08-23-region-identification.md.
+    #
+    # `_shade_lab_colors` buckets samples against centres pinned at 0,
+    # 1/(n-1), ... 1 on the ABSOLUTE darkness axis, and
+    # `stage6_streamline._shade_layers` centres its membership tents on the
+    # same absolute positions. Measured per-shape darkness spans are median
+    # 0.21-0.38. A span under 0.5 cannot reach both end buckets, so empty
+    # buckets are structurally GUARANTEED, not unlucky: the bucket falls back
+    # to the region's overall mean and mints a shade that duplicates its
+    # neighbour, and its tent — peaked at a darkness the region never
+    # contains — emits nothing. Measured 45.3% of all decomposed shades are
+    # such mean-fallback duplicates, and one spurious cone-and-stop came
+    # with them.
+    #
+    # True min-max normalises the axis to the REGION'S OWN span, for the
+    # colour bucketing and the membership tents together — they have to move
+    # as one, or a shade's colour would stop describing where its tent peaks.
+    # The highlight cutoff deliberately stays on RAW darkness: it is a fact
+    # about the fabric, not about which shade a pixel is nearest
+    # (`_membership_for`'s own comment carries that rule).
+    #
+    # Not simply on, for two reasons. It changes what sews on the photo
+    # route, which spec decision 1 makes Kent's call from a sheet rather than
+    # an engineering default; and the pre-loss measurement had it improving
+    # sewn-vs-source span on 62 shapes while making it worse on 34 (52 tied),
+    # so it is a trade, not a free win. False is byte-identical by
+    # construction — lo=0.0, span=1.0 makes every expression below reduce to
+    # the absolute axis — and pinned by tests/test_shade_axis.py.
+    shade_axis_normalize: bool = False
     # The acceptance A/B's speckle-gate knob, funded by Kent 2026-08-23 after
     # the tonal-eng measurement (docs/tonal-eng-measurements-2026-08-22.md §1)
     # showed RAMP_SPECKLE_MAX — not the r² floor — blocks 41 of the 42 real

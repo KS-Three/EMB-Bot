@@ -126,6 +126,21 @@ def variant_matrix(sam2_available: bool) -> list[dict]:
                        "shade_palette_bind": True,
                        "shade_palette_demand": True},
         },
+        # The shade darkness-axis arm (2026-08-24, EXPERIMENT — defect 1 of
+        # docs/superpowers/plans/2026-08-23-region-identification.md).
+        # Paired with `shade_palette_bind` deliberately: measured alone the
+        # normalisation looks expensive (cones 43->53, stops 75->94 on
+        # sparkler_dusk), and measured WITH the bind — which is the shipped
+        # default since Kent's ruling that day — the cost mostly disappears
+        # (cones 15->15, stitches 14290->14336) because the bind absorbs the
+        # newly-distinct shades onto the same palette. Judging it unbound
+        # would price a combination nobody will ship.
+        {
+            "tag": "bound_axis",
+            "config": {"forced_class": _FORCED_CLASS,
+                       "shade_palette_bind": True,
+                       "shade_axis_normalize": True},
+        },
         {
             "tag": "relaxed_speckle",
             "config": {

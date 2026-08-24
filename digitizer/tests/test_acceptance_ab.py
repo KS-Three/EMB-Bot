@@ -48,6 +48,10 @@ def test_variant_matrix_without_sam2_carries_both_routes():
          "config": {"forced_class": "photo_subject",
                     "shade_palette_bind": True,
                     "shade_palette_demand": True}},
+        {"tag": "bound_axis",
+         "config": {"forced_class": "photo_subject",
+                    "shade_palette_bind": True,
+                    "shade_axis_normalize": True}},
         {"tag": "relaxed_speckle",
          "config": {"forced_class": "photo_subject",
                     "blend_speckle_r2_override": 0.5,
@@ -58,14 +62,14 @@ def test_variant_matrix_without_sam2_carries_both_routes():
     ]
 
 def test_variant_matrix_with_sam2_adds_the_ab_arm():
-    # 7 -> 8 with SAM2: three arms landed 2026-08-23 from separate lanes —
+    # 8 -> 9 with SAM2 (bound_axis landed 2026-08-24): three arms landed 2026-08-23 from separate lanes —
     # classical_prep (the deconfounding rung), bound_shade (the
     # shade-palette-bind experiment), and bound_shade_demand ((a)+(b), the
     # shade-aware palette). All are pinned above.
     m = variant_matrix(sam2_available=True)
     assert {"tag": "sam2", "config": {"forced_class": "photo_subject",
             "photo_prep": True, "photo_segment_sam2": True,
-            "shade_palette_bind": False}} in m and len(m) == 8
+            "shade_palette_bind": False}} in m and len(m) == 9
 
 def test_sam2_slots_in_as_the_ladders_third_rung():
     # The deconfounded attribution ladder (the classical_prep comment in
