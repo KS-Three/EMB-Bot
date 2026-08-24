@@ -1322,17 +1322,17 @@ def split_tonal_regions(
             m8 = m.astype(np.uint8)
             if TONAL_SPLIT_CLEAN_PX > 1:
                 k = np.ones((TONAL_SPLIT_CLEAN_PX, TONAL_SPLIT_CLEAN_PX), np.uint8)
-                # Zero-pad before morphology. `m` used to be frame-sized,
-                # so the surround was genuinely background; morphologyEx's
-                # default border would instead refuse to erode at a crop
-                # edge and change the result. The pad restores the real
-                # background ring, then comes back off.
-                pad = TONAL_SPLIT_CLEAN_PX
-                m8 = cv2.copyMakeBorder(m8, pad, pad, pad, pad,
-                                        cv2.BORDER_CONSTANT, value=0)
+                # NO border pad here, and that is load-bearing rather than an
+                # omission. PR #230 added one on the reasoning that `m` used to
+                # be frame-sized so its surround was real background — and that
+                # pad is what CHANGED the result: `morphologyEx`'s own default
+                # border already reproduces the frame-sized behaviour on the
+                # crop, while explicit zeros erode a ring the frame never lost.
+                # Measured on baby_deck_laugh: with the pad the region set
+                # fingerprints 7ff30d08 (area 13468.796), without it
+                # fb8c422f (13468.237) — the exact pre-#230 value.
                 m8 = cv2.morphologyEx(m8, cv2.MORPH_OPEN, k)
                 m8 = cv2.morphologyEx(m8, cv2.MORPH_CLOSE, k)
-                m8 = m8[pad:-pad, pad:-pad]
             # Re-clip: closing can bulge a part past the region it came from,
             # and two parts that both bulged would overlap.
             m = (m8 > 0) & r.crop

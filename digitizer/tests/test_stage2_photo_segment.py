@@ -791,3 +791,58 @@ def test_split_tonal_regions_preserves_layer_and_source():
     assert all(r.layer == 3 and r.source == "sam2" for r in out), (
         "a split part belongs to the same layer and segmenter as its parent"
     )
+
+
+def test_the_tonal_split_geometry_is_pinned():
+    """A mini golden for `split_tonal_regions`, and an honest note about what
+    it does and does not guard.
+
+    Motivation: PR #230 moved region storage to bbox crops and added a zero
+    border pad before this morphology, reasoning that the old frame-sized mask
+    had real background around it. That pad CHANGED the result. Measured on a
+    real portrait, the region set fingerprints 7ff30d08 / area 13468.796 with
+    it against fb8c422f / 13468.237 without — the latter being what every run
+    before #230 produced. `morphologyEx`'s default border already reproduces
+    frame behaviour on a crop; explicit zeros erode a ring the frame kept.
+
+    What this test does NOT do, stated plainly so nobody trusts it further
+    than it goes: it does not distinguish the padded implementation from the
+    unpadded one. Two attempts failed to build a synthetic fixture that does.
+    A translation-invariance test cannot work, because the pad moves with the
+    crop and the split stays position-independent either way. A shape-level
+    probe does show the pad changing morphology output (a circle in its bbox:
+    2,788 px unpadded against 2,724 padded), but `split_tonal_regions` sweeps
+    every pixel one part loses into `leftover` and hands it to the largest
+    part, so the region-level partition comes out identical. And none of the
+    committed photo fixtures — fur_ramp, drone_render, enthusiast_logo —
+    diverge between the two implementations at all.
+
+    So the real gap is corpus, not assertion: the only artwork that
+    reproduces it is Kent's private photos, which cannot be committed. What
+    this test does buy is a floor under the function's geometry, so any
+    FUTURE change to the split is visible in CI rather than in a live sheet
+    three merges later.
+    """
+    h, w = 240, 240
+    yy, xx = np.mgrid[0:h, 0:w]
+    rgb = np.full((h, w, 3), 250, np.uint8)
+    blob = (np.hypot(xx - w / 2.0, yy - h / 2.0) < 100)
+    ramp = np.clip((xx - 20) * (235.0 / (w - 40)), 10, 245).astype(np.uint8)
+    for c in range(3):
+        rgb[:, :, c] = np.where(blob, ramp, 250)
+    p = _PrepStub(rgb=rgb, bg_mask=~blob, px_per_mm=6.0)
+
+    out, n = split_tonal_regions(p, [RegionMask.from_full(blob, layer=0)],
+                                 split_tonal=True)
+
+    assert n == 1
+    assert [(rm.origin, rm.crop.shape, int(rm.crop.sum())) for rm in out] == [
+        ((21, 21), (199, 199), 7829),
+        ((21, 21), (199, 199), 7768),
+        ((21, 21), (199, 199), 7784),
+        ((21, 21), (199, 199), 8016),
+    ]
+    # The function's own contract, re-asserted on the pinned numbers: the
+    # parts partition the region exactly, so a change here can never be
+    # explained away as artwork gained or lost.
+    assert sum(int(rm.crop.sum()) for rm in out) == int(blob.sum()) == 31397
