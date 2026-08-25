@@ -7,6 +7,7 @@ import {
   nextShapeIds, pointInShape,
   distToSegment, nearestSegmentIndex, insertVertexAtSegment,
   curvedNodeThrough, curvedNodeFlags, CURVED_NODE_BOW,
+  duplicateShape, PASTE_OFFSET_PX, CANVAS_W, CANVAS_H,
 } from "./manualShapes.js";
 
 // ---- isValidShape -----------------------------------------------------
@@ -667,4 +668,77 @@ test("curvedNodeFlags: no curves at all means every node reads straight", () => 
   const pts = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }];
   expect(curvedNodeFlags(pts, {}, true)).toEqual([false, false, false]);
   expect(curvedNodeFlags(pts, null, true)).toEqual([false, false, false]);
+});
+
+// ---- duplicateShape (copy / paste / duplicate) ----------------------------
+
+test("duplicateShape: same geometry and settings, new id, offset clear of the original", () => {
+  const src = {
+    id: "s1",
+    points: [{ x: 100, y: 100 }, { x: 200, y: 100 }, { x: 150, y: 200 }],
+    curves: { 0: { x: 150, y: 60 } },
+    stitchType: "satin",
+    colorRgb: [10, 20, 30],
+    angleDeg: 45,
+  };
+  const copy = duplicateShape(src, "s2");
+  expect(copy.id).toBe("s2");
+  expect(copy.stitchType).toBe("satin");
+  expect(copy.colorRgb).toEqual([10, 20, 30]);
+  expect(copy.angleDeg).toBe(45);
+  // Every anchor moved by the same offset...
+  for (let i = 0; i < src.points.length; i++) {
+    expect(copy.points[i].x).toBe(src.points[i].x + PASTE_OFFSET_PX);
+    expect(copy.points[i].y).toBe(src.points[i].y + PASTE_OFFSET_PX);
+  }
+  // ...and so did the curve CONTROL point. A quadratic control is an absolute
+  // canvas point, not a delta, so a copy that kept the old control would bow
+  // toward the original and read as a different shape.
+  expect(copy.curves[0]).toEqual({ x: 150 + PASTE_OFFSET_PX, y: 60 + PASTE_OFFSET_PX });
+});
+
+test("duplicateShape: the copy does not alias the original — editing one cannot move the other", () => {
+  const src = { id: "s1", points: [{ x: 10, y: 10 }, { x: 20, y: 10 }, { x: 15, y: 20 }], curves: { 0: { x: 15, y: 5 } } };
+  const copy = duplicateShape(src, "s2");
+  copy.points[0].x = 999;
+  copy.curves[0].x = 999;
+  expect(src.points[0].x).toBe(10);
+  expect(src.curves[0].x).toBe(15);
+});
+
+test("duplicateShape: a shape near the edge is pulled back so the copy stays whole and grabbable", () => {
+  // Right up against the bottom-right corner: a naive +offset would push part
+  // of the copy off-canvas, where it cannot be selected or dragged.
+  const src = {
+    id: "s1",
+    points: [
+      { x: CANVAS_W - 5, y: CANVAS_H - 5 },
+      { x: CANVAS_W - 40, y: CANVAS_H - 5 },
+      { x: CANVAS_W - 20, y: CANVAS_H - 40 },
+    ],
+    curves: {},
+  };
+  const copy = duplicateShape(src, "s2");
+  for (const pt of copy.points) {
+    expect(pt.x).toBeLessThanOrEqual(CANVAS_W);
+    expect(pt.y).toBeLessThanOrEqual(CANVAS_H);
+    expect(pt.x).toBeGreaterThanOrEqual(0);
+    expect(pt.y).toBeGreaterThanOrEqual(0);
+  }
+});
+
+test("duplicateShape: the copy is still a valid, sewable shape", () => {
+  const src = { id: "s1", points: [{ x: 100, y: 100 }, { x: 200, y: 100 }, { x: 150, y: 200 }], curves: {} };
+  const copy = duplicateShape(src, "s2");
+  expect(isValidShape(flattenShape(copy.points, copy.curves, true))).toBe(true);
+  // ...and it survives the trip to the stitch plan as its own region.
+  // shapesToRegions returns { regions, pxPerMm }, not a bare array.
+  const { regions } = shapesToRegions([src, copy]);
+  expect(regions).toHaveLength(2);
+});
+
+test("duplicateShape: refuses a shape with no geometry rather than emitting a degenerate one", () => {
+  expect(duplicateShape(null, "s2")).toBeNull();
+  expect(duplicateShape({ id: "s1", points: [] }, "s2")).toBeNull();
+  expect(duplicateShape({ id: "s1" }, "s2")).toBeNull();
 });

@@ -446,6 +446,53 @@ export function insertVertexAtSegment(shape, segIndex, point) {
 // new ids in a single array, so a batch caller gets ["s7","s8","s9"] instead
 // of ["s7","s7","s7"]. Same "s"+N id-format convention/regex as
 // ManualPanel's nextShapeId, so ids from either path never collide.
+// How far a pasted copy lands from its original, in canvas px. Non-zero on
+// purpose: a paste dropped exactly on top of its source is indistinguishable
+// from nothing having happened, and the user cannot grab either copy to
+// separate them. Small enough that the copy stays inside the canvas for any
+// shape that fits with room to spare.
+export const PASTE_OFFSET_PX = 18;
+
+// Duplicate a shape: same geometry, same stitch settings, NEW id, nudged clear
+// of the original. Curve control points move with their anchors — a bowed edge
+// that kept its old controls would flatten or invert on the copy, because a
+// quadratic control is an absolute canvas point, not a delta.
+//
+// Clamped so a paste can never push a copy off-canvas: if the offset would
+// carry any point past an edge, the whole copy shifts back by the overflow, so
+// it stays whole and grabbable rather than being partly unreachable.
+export function duplicateShape(shape, id, offset = PASTE_OFFSET_PX, canvasW = CANVAS_W, canvasH = CANVAS_H) {
+  if (!shape || !Array.isArray(shape.points) || shape.points.length === 0) return null;
+
+  let dx = offset, dy = offset;
+  let maxX = -Infinity, maxY = -Infinity, minX = Infinity, minY = Infinity;
+  const consider = (pt) => {
+    if (!pt) return;
+    if (pt.x > maxX) maxX = pt.x;
+    if (pt.y > maxY) maxY = pt.y;
+    if (pt.x < minX) minX = pt.x;
+    if (pt.y < minY) minY = pt.y;
+  };
+  for (const pt of shape.points) consider(pt);
+  for (const key of Object.keys(shape.curves || {})) consider(shape.curves[key]);
+
+  if (maxX + dx > canvasW) dx = Math.min(dx, canvasW - maxX);
+  if (maxY + dy > canvasH) dy = Math.min(dy, canvasH - maxY);
+  if (minX + dx < 0) dx = Math.max(dx, -minX);
+  if (minY + dy < 0) dy = Math.max(dy, -minY);
+
+  const move = (pt) => ({ x: pt.x + dx, y: pt.y + dy });
+  const curves = {};
+  for (const key of Object.keys(shape.curves || {})) curves[key] = move(shape.curves[key]);
+
+  return {
+    ...shape,
+    id,
+    points: shape.points.map(move),
+    curves,
+  };
+}
+
 export function nextShapeIds(list, count) {
   let max = 0;
   for (const s of list || []) {
