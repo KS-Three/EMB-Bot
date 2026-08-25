@@ -431,3 +431,34 @@ test("thread width is PHYSICAL and MUST NOT be widened — the anti-flattery gua
   expect(expected).toBeGreaterThan(1.5); // above the px floor, so width is what is under test
   expect(Math.max(...widths)).toBeCloseTo(expected, 6);
 });
+
+test("threadStyle 'flat' paints in SEW ORDER, so a recurring colour keeps its own place in z", () => {
+  // The one finding that survived the review's skeptic pass. The flat view
+  // used to group strands into one path per COLOUR, so a colour block that
+  // recurs later in the sequence was merged back into the path created at that
+  // colour's first appearance and drawn at the earlier block's z position:
+  // with red/blue/red and overlapping geometry, flat painted blue on top while
+  // the machine sews red on top — and the lit view of the same design got it
+  // right, so the two views disagreed.
+  //
+  // Reachable through combineDesigns, which concatenates each element's own
+  // colors array, so element1 red / element2 blue / element3 red is ordinary.
+  // Drawing per strand in sew order is what makes it correct; this pins that,
+  // because nothing else does.
+  const RED = "rgb(200,10,10)", BLUE = "rgb(10,10,200)";
+  const design = {
+    stitches: [
+      { x: -60, y: 0, type: "stitch" }, { x: 60, y: 0, type: "stitch" },
+      { x: 60, y: 0, type: "color" },
+      { x: -60, y: 10, type: "stitch" }, { x: 60, y: 10, type: "stitch" },
+      { x: 60, y: 10, type: "color" },
+      { x: -60, y: 20, type: "stitch" }, { x: 60, y: 20, type: "stitch" },
+    ],
+    colors: [{ r: 200, g: 10, b: 10 }, { r: 10, g: 10, b: 200 }, { r: 200, g: 10, b: 10 }],
+  };
+  const ctx = makeCtxSpy();
+  renderRealistic({ width: 600, height: 600, getContext: () => ctx }, design, { threadStyle: "flat" });
+  const painted = ctx.strokeStyleLog.filter((s) => /^rgb\(/.test(s));
+  // Three blocks, one strand each, in the order the machine sews them.
+  expect(painted).toEqual([RED, BLUE, RED]);
+});
