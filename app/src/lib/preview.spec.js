@@ -1,5 +1,5 @@
 import { test, expect, vi } from "vitest";
-import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopOutline, renderRealistic } from "./preview.js";
+import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopOutline, renderRealistic, threadLayers, threadLodLayers, THREAD_WIDTH_MM } from "./preview.js";
 
 // A ctx double that tracks strokeStyle assignments (a plain property can't
 // record its own write history) alongside vi.fn() spies for every 2D-context
@@ -205,22 +205,29 @@ test("renderRealistic view contract (B1): the pan that keeps an arbitrary cursor
 // --- renderRealistic: limitStrands (stitch simulator) ----------------------
 
 test("renderRealistic limitStrands draws only the first N strands; omitting it draws everything (simulator contract)", () => {
-  // 4 chained stitches = 3 strands; each strand is drawn by 3 passes
-  // (shadow, color, sheen) -> moveTo fires 3 * strands times. No hoop and no
-  // weave, so strands are the ONLY moveTo source in this render.
+  // 4 chained stitches = 3 strands. No hoop and no weave, so strands are the
+  // ONLY moveTo source in this render — which makes moveTo a clean proxy for
+  // "how many strands got drawn".
+  //
+  // The per-strand pass count is DERIVED from the single-strand render rather
+  // than hardcoded. What this test owns is the simulator contract (N strands
+  // in -> N strands' worth of drawing out, 0 -> nothing at all); how many
+  // passes drawThreads spends per strand is its business and changes with the
+  // LOD ladder, so pinning a literal here only ever produces a false failure.
   const design = { stitches: [
     { x: 0, y: 0, type: "stitch" },
     { x: 10, y: 0, type: "stitch" },
     { x: 20, y: 0, type: "stitch" },
     { x: 30, y: 0, type: "stitch" },
   ] };
-  const full = makeCtxSpy();
-  renderRealistic({ width: 100, height: 100, getContext: () => full }, design, {});
-  expect(full.moveTo).toHaveBeenCalledTimes(9);
-
   const limited = makeCtxSpy();
   renderRealistic({ width: 100, height: 100, getContext: () => limited }, design, { limitStrands: 1 });
-  expect(limited.moveTo).toHaveBeenCalledTimes(3);
+  const perStrand = limited.moveTo.mock.calls.length;
+  expect(perStrand).toBeGreaterThan(0);
+
+  const full = makeCtxSpy();
+  renderRealistic({ width: 100, height: 100, getContext: () => full }, design, {});
+  expect(full.moveTo).toHaveBeenCalledTimes(perStrand * 3);
 
   const zero = makeCtxSpy();
   renderRealistic({ width: 100, height: 100, getContext: () => zero }, design, { limitStrands: 0 });
@@ -232,9 +239,13 @@ test("renderRealistic limitStrands past the end is a plain full render (clamps, 
     { x: 0, y: 0, type: "stitch" },
     { x: 10, y: 0, type: "stitch" },
   ] };
-  const ctx = makeCtxSpy();
-  renderRealistic({ width: 100, height: 100, getContext: () => ctx }, design, { limitStrands: 999 });
-  expect(ctx.moveTo).toHaveBeenCalledTimes(3); // 1 strand x 3 passes
+  const clamped = makeCtxSpy();
+  renderRealistic({ width: 100, height: 100, getContext: () => clamped }, design, { limitStrands: 999 });
+  // Identical to asking for exactly the one strand this design has.
+  const exact = makeCtxSpy();
+  renderRealistic({ width: 100, height: 100, getContext: () => exact }, design, { limitStrands: 1 });
+  expect(clamped.moveTo.mock.calls.length).toBe(exact.moveTo.mock.calls.length);
+  expect(clamped.moveTo.mock.calls.length).toBeGreaterThan(0);
 });
 
 // --- renderRealistic: jump/trim overlays -----------------------------------
@@ -247,9 +258,15 @@ test("renderRealistic showJumps draws dashed travel lines; showTrims draws X mar
     { x: 60, y: 50, type: "stitch" },
     { x: 60, y: 50, type: "trim" },
   ] };
+  // The TRAVEL-LINE dash is [4,3] specifically. drawThreads also sets a dash
+  // (the beaded thread specular), so "was setLineDash called at all" no longer
+  // isolates the overlay — assert on the overlay's own pattern instead.
+  const dashes = (c) => c.setLineDash.mock.calls.map((a) => JSON.stringify(a[0]));
+  const TRAVEL = JSON.stringify([4, 3]);
+
   const off = makeCtxSpy();
   renderRealistic({ width: 100, height: 100, getContext: () => off }, design, {});
-  expect(off.setLineDash).not.toHaveBeenCalled();
+  expect(dashes(off)).not.toContain(TRAVEL);
 
   const jumps = makeCtxSpy();
   renderRealistic({ width: 100, height: 100, getContext: () => jumps }, design, { showJumps: true });
@@ -261,5 +278,129 @@ test("renderRealistic showJumps draws dashed travel lines; showTrims draws X mar
   const trims = makeCtxSpy();
   renderRealistic({ width: 100, height: 100, getContext: () => trims }, design, { showTrims: true });
   expect(trims.strokeStyleLog).toContain("rgba(220,38,38,0.9)");
-  expect(trims.setLineDash).not.toHaveBeenCalled(); // trim markers are solid
+  expect(dashes(trims)).not.toContain(TRAVEL); // trim markers are solid
+});
+
+// --- threadLayers: the lit-cylinder model ----------------------------------
+// These own the CLAIM the realistic render rests on — that a thread is shaded
+// like a cylinder and that its sheen depends on which way it runs relative to
+// the light. Asserted on the pure function, so no canvas is involved and a
+// regression names itself instead of showing up as "the preview looks off".
+
+// The light direction baked into preview.js, re-derived here rather than
+// imported: if someone moves the lamp, these tests should fail loudly rather
+// than silently follow it.
+const LIGHT_ANGLE = Math.atan2(-0.8321, -0.5547);
+
+function brightnessOf(cssRgb) {
+  const [r, g, b] = cssRgb.match(/\d+/g).map(Number);
+  return luminance([r, g, b]);
+}
+
+test("threadLayers: sheen is DIRECTIONAL — a thread running across the light is brighter than one running along it", () => {
+  const rgb = [180, 60, 50];
+  const along = threadLayers(rgb, LIGHT_ANGLE, 8);
+  const across = threadLayers(rgb, LIGHT_ANGLE + Math.PI / 2, 8);
+  const specular = (ls) => brightnessOf(ls[ls.length - 1].color);
+  // This is the whole visual signature of embroidery: one thread colour reads
+  // as two different colours when the stitch direction changes.
+  expect(specular(across)).toBeGreaterThan(specular(along));
+  // ...and by a margin big enough for a human to see, not float noise.
+  expect(specular(across) - specular(along)).toBeGreaterThan(0.15);
+});
+
+test("threadLayers: layers run widest to narrowest, so painting them in order builds a cylinder instead of erasing it", () => {
+  const ls = threadLayers([120, 140, 200], 0.7, 10);
+  for (let i = 1; i < ls.length; i++) {
+    expect(ls[i].width).toBeLessThan(ls[i - 1].width);
+  }
+  expect(ls[0].width).toBe(10); // the widest layer IS the thread's full width
+});
+
+test("threadLayers: the dark edge is darker than the base and the specular is lighter — a cross-section, not a flat stroke", () => {
+  const rgb = [120, 140, 200];
+  const ls = threadLayers(rgb, Math.PI / 2, 10);
+  const base = luminance(rgb);
+  expect(brightnessOf(ls[0].color)).toBeLessThan(base); // dark rim
+  expect(brightnessOf(ls[ls.length - 1].color)).toBeGreaterThan(base); // specular
+});
+
+test("threadLayers: the specular sits off-centre, toward the lit side, and stays inboard of the silhouette", () => {
+  const ls = threadLayers([200, 200, 200], LIGHT_ANGLE + Math.PI / 2, 10);
+  const hi = ls[ls.length - 1].offset;
+  expect(Math.abs(hi)).toBeGreaterThan(0.5); // genuinely displaced, not centred
+  // A real cylinder's highlight never reaches its own outline.
+  expect(Math.abs(hi)).toBeLessThan(10 / 2);
+});
+
+test("threadLayers: only the narrowest specular is dashed (plied-thread sheen beads; the body does not)", () => {
+  const ls = threadLayers([200, 60, 60], 1.1, 9);
+  expect(ls[ls.length - 1].dash).not.toBeNull();
+  for (let i = 0; i < ls.length - 1; i++) expect(ls[i].dash).toBeNull();
+});
+
+// --- renderRealistic: physical thread width + LOD --------------------------
+
+test("renderRealistic: thread width is PHYSICAL — the widest stroke tracks THREAD_WIDTH_MM x pxPerMm, so preview coverage is the coverage the machine lays", () => {
+  const widths = [];
+  const ctx = makeCtxSpy();
+  Object.defineProperty(ctx, "lineWidth", {
+    get() { return this._lw; },
+    set(v) { this._lw = v; widths.push(v); },
+  });
+  // design-fit path: pxPerMm = t.scale * 10, and t.scale is set by the design
+  // spanning 200 DST units across a 100px canvas with pad 24.
+  const design = { stitches: [
+    { x: -100, y: 0, type: "stitch" },
+    { x: 100, y: 0, type: "stitch" },
+  ] };
+  // A canvas big enough that the physical width clears the 1.2px visibility
+  // floor -- otherwise the floor, not THREAD_WIDTH_MM, is what is under test.
+  renderRealistic({ width: 600, height: 600, getContext: () => ctx }, design, { pad: 24 });
+  const t = fitTransform(design, 600, 600, 24);
+  const expected = THREAD_WIDTH_MM * (t.scale * 10);
+  expect(expected).toBeGreaterThan(1.2); // guard: this case is above the px floor
+  expect(Math.max(...widths)).toBeCloseTo(expected * 1.04, 5); // 1.04 = the shadow pass
+  expect(widths).toContain(expected);
+});
+
+test("renderRealistic: threadWidthMm is overridable, and a wider thread strokes wider", () => {
+  const widthsFor = (mm) => {
+    const w = [];
+    const ctx = makeCtxSpy();
+    Object.defineProperty(ctx, "lineWidth", { get() { return this._lw; }, set(v) { this._lw = v; w.push(v); } });
+    renderRealistic({ width: 200, height: 200, getContext: () => ctx },
+      { stitches: [{ x: -100, y: 0, type: "stitch" }, { x: 100, y: 0, type: "stitch" }] },
+      { threadWidthMm: mm });
+    return Math.max(...w);
+  };
+  expect(widthsFor(0.8)).toBeGreaterThan(widthsFor(0.4));
+});
+
+test("threadLodLayers: a big design or a thin thread sheds layers, and never sheds all of them", () => {
+  const FULL = threadLodLayers(8, 500);
+  expect(FULL).toBe(5);
+  // Big design at a comfortable thread width -> cheaper, still shaded.
+  expect(threadLodLayers(8, 30000)).toBeLessThan(FULL);
+  expect(threadLodLayers(8, 61000)).toBeLessThan(threadLodLayers(8, 30000));
+  // Zoomed out far enough that the narrow layers are sub-pixel.
+  expect(threadLodLayers(1.3, 500)).toBeLessThan(FULL);
+  // Monotonic in both inputs, and always draws something.
+  for (const [lw, n] of [[1.3, 61000], [1.3, 500], [8, 61000], [8, 500], [2.0, 25000]]) {
+    const v = threadLodLayers(lw, n);
+    expect(v).toBeGreaterThanOrEqual(2);
+    expect(v).toBeLessThanOrEqual(5);
+  }
+});
+
+test("renderRealistic: threadLayers overrides the LOD ladder (the escape hatch a caller can force)", () => {
+  const design = { stitches: [
+    { x: -100, y: 0, type: "stitch" },
+    { x: 100, y: 0, type: "stitch" },
+  ] };
+  const two = makeCtxSpy();
+  renderRealistic({ width: 600, height: 600, getContext: () => two }, design, { threadLayers: 2 });
+  const five = makeCtxSpy();
+  renderRealistic({ width: 600, height: 600, getContext: () => five }, design, { threadLayers: 5 });
+  expect(five.moveTo.mock.calls.length).toBeGreaterThan(two.moveTo.mock.calls.length);
 });

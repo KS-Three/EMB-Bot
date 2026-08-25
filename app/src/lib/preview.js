@@ -46,6 +46,185 @@ export function weavePattern(ctx, w, h, rgb, pxPerMm) {
   ctx.restore();
 }
 
+// ---- Realistic thread rendering -------------------------------------------
+//
+// A stitch is a short length of thread lying on cloth, and what makes a render
+// read as embroidery rather than as a line drawing is that a thread is a
+// CYLINDER lit from one side. Three things follow from that, and this section
+// exists to do all three:
+//
+//   1. Across the thread, brightness runs dark edge -> lit core -> dark edge.
+//      Drawn as concentric strokes of decreasing width, each stepped toward
+//      the lit side, rather than one flat stroke.
+//   2. Along the thread, sheen depends on DIRECTION. A cylinder throws its
+//      strongest specular when it runs ACROSS the light and almost none when
+//      it runs along it. This is the signature of real embroidery: two fill
+//      areas of one thread colour look like different colours when their rows
+//      run different ways, and a satin column flashes as it curves. The old
+//      renderer offset every highlight by a fixed (-0.6,-0.9) px regardless of
+//      the strand's direction, which is why its output read as outlined lines.
+//   3. The thread has real WIDTH in mm, so coverage in the preview is the
+//      coverage the machine will actually lay down.
+//
+// On (3) and honesty: THREAD_WIDTH_MM below is the nominal laid width of 40wt
+// embroidery thread, the weight this project plans for. It is a DISPLAY
+// constant — it scales pixels, never stitch geometry, and no planner value is
+// derived from it. It is deliberately NOT inflated to make fills look solid:
+// with the engine's current 0.40 mm fill rows, 0.40 mm thread renders as
+// coverage 1.0, i.e. rows that just barely touch. If bare fabric shows between
+// rows in the preview, that is the design telling the truth about its density,
+// not a rendering artifact — see MASTER_SCOPE's open fill-density item. Making
+// the preview flatter this defect would be exactly the failure ROADMAP gate 3
+// warns about.
+export const THREAD_WIDTH_MM = 0.4;
+
+// Light from the upper left, in CANVAS space (y grows downward), normalized.
+// One shared direction for the cylinder shading, the sheen falloff and the
+// drop shadow, so they can never disagree about where the light is.
+const LIGHT_X = -0.5547;
+const LIGHT_Y = -0.8321;
+
+// Sheen floor/ceiling as the thread turns from along-the-light to across it.
+const SHEEN_MIN = 0.1;
+const SHEEN_MAX = 0.62;
+
+// Strands are bucketed by direction so that every strand in a bucket shares one
+// shading profile and can be drawn as a SINGLE path per layer. That keeps the
+// cost of the extra layers off the per-strand hot path: style changes go from
+// O(strands x layers) to O(buckets x colours x layers), and the whole renderer
+// ends up issuing FEWER stroke() calls than the old three-pass version, which
+// began and stroked a fresh path per strand. Direction is taken modulo 180
+// degrees — a thread looks the same drawn either way round.
+const DIR_BUCKETS = 24;
+
+function shade(rgb, f) {
+  return `rgb(${Math.round(rgb[0] * f)},${Math.round(rgb[1] * f)},${Math.round(rgb[2] * f)})`;
+}
+
+function lighten(rgb, f) {
+  return `rgb(${Math.round(rgb[0] + (255 - rgb[0]) * f)},${Math.round(rgb[1] + (255 - rgb[1]) * f)},${Math.round(rgb[2] + (255 - rgb[2]) * f)})`;
+}
+
+// The cross-section of one lit thread, as concentric strokes drawn widest
+// first. `angle` is the strand's direction in canvas space; `lw` its width in
+// px. Returned offsets are ALONG THE NORMAL in px — the caller displaces each
+// layer's endpoints by (nx,ny) * offset.
+//
+// Exported because it is the whole visual model in one pure function: given a
+// direction and a colour it answers "what does this thread look like", with no
+// canvas involved, so the direction-dependent sheen can be asserted directly.
+export function threadLayers(rgb, angle, lw) {
+  const dx = Math.cos(angle), dy = Math.sin(angle);
+  const nx = -dy, ny = dx; // unit normal
+  // How much the +normal side faces the light, and how much the thread runs
+  // ALONG the light (axial ~ 1 -> pointing at the lamp -> almost no sheen).
+  const k = nx * LIGHT_X + ny * LIGHT_Y;
+  const axial = Math.abs(dx * LIGHT_X + dy * LIGHT_Y);
+  const sheen = SHEEN_MIN + (SHEEN_MAX - SHEEN_MIN) * (1 - axial);
+  // Where the specular sits across the thread: toward the lit edge, never on
+  // it (a real cylinder's highlight is inboard of its silhouette).
+  const hi = Math.max(-0.36, Math.min(0.36, 0.34 * k)) * lw;
+  return [
+    { width: lw, offset: 0, color: shade(rgb, 0.6), dash: null },
+    { width: lw * 0.78, offset: hi * 0.4, color: shade(rgb, 0.82), dash: null },
+    { width: lw * 0.5, offset: hi * 0.75, color: shade(rgb, 1), dash: null },
+    { width: lw * 0.28, offset: hi, color: lighten(rgb, sheen * 0.55), dash: null },
+    // The narrowest specular is DASHED, phase-free: embroidery thread is
+    // plied, so its sheen beads along the length instead of running as one
+    // unbroken line. Cheap, and it is what stops a satin column from reading
+    // as a plastic tube.
+    //
+    // Duty cycle is deliberately lopsided (~3:1 on:off). An even dash reads as
+    // a DASHED LINE on any strand longer than a few thread-widths — a travel
+    // run or a long fill row — instead of as modulated sheen on a continuous
+    // thread. Mostly-on with short breaks reads as the latter at every length.
+    { width: Math.max(0.5, lw * 0.13), offset: hi * 1.12, color: lighten(rgb, sheen), dash: [lw * 1.7, lw * 0.55] },
+  ];
+}
+
+// How many of threadLayers()' layers to actually draw. The stack is ordered so
+// that dropping the TAIL degrades gracefully — cylinder shading survives
+// longest, the beaded specular goes first.
+//
+// Two independent reasons to drop layers, and either one alone is enough:
+//   - Thin thread (zoomed out): below ~1.6 px the narrow layers land inside
+//     the same pixel as the wide ones, so they cost time to draw nothing.
+//   - Big design: the per-strand path work is what scales, so a design past
+//     these counts trades sheen detail for a preview that still repaints
+//     while the user pans.
+//
+// Pure and exported so the ladder can be asserted directly — testing it
+// through renderRealistic would mean building a 60k-stitch design per
+// assertion, which is exactly the kind of test that starves a parallel suite.
+export function threadLodLayers(lw, strandCount) {
+  if (lw < 1.6 || strandCount > 60000) return 2;
+  if (lw < 2.6 || strandCount > 24000) return 4;
+  return 5;
+}
+
+// Draw every strand as a lit thread. Pure canvas work — no transform state of
+// its own; the caller supplies SX/SY already carrying zoom/pan.
+export function drawThreads(ctx, strands, SX, SY, lw, opts) {
+  if (!strands.length) return;
+  const o = opts || {};
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  // Drop shadow: one path for EVERY strand regardless of colour (it is all
+  // black), offset away from the light so it agrees with the cylinder shading.
+  const sx = -LIGHT_X * (lw * 0.35 + 0.7);
+  const sy = -LIGHT_Y * (lw * 0.35 + 0.7);
+  ctx.strokeStyle = "rgba(0,0,0,0.26)";
+  ctx.lineWidth = lw * 1.04;
+  ctx.beginPath();
+  for (const s of strands) {
+    ctx.moveTo(SX(s.x0) + sx, SY(s.y0) + sy);
+    ctx.lineTo(SX(s.x1) + sx, SY(s.y1) + sy);
+  }
+  ctx.stroke();
+
+  // Bucket by (colour, direction). Insertion order is sew order, so a later
+  // colour still paints over an earlier one exactly as the machine lays it.
+  const buckets = new Map();
+  for (const s of strands) {
+    const ang = Math.atan2(SY(s.y1) - SY(s.y0), SX(s.x1) - SX(s.x0));
+    // Modulo PI, then quantized: a strand and its reverse share a bucket.
+    let b = Math.floor((((ang % Math.PI) + Math.PI) % Math.PI) / (Math.PI / DIR_BUCKETS));
+    if (b >= DIR_BUCKETS) b = DIR_BUCKETS - 1;
+    const key = `${s.rgb[0]},${s.rgb[1]},${s.rgb[2]}|${b}`;
+    let bucket = buckets.get(key);
+    if (!bucket) { bucket = { rgb: s.rgb, bucket: b, items: [] }; buckets.set(key, bucket); }
+    bucket.items.push(s);
+  }
+
+  // Layer-major: every bucket's layer 0 before any bucket's layer 1, so a
+  // neighbouring strand's dark edge can never paint over this strand's
+  // highlight and pock the surface with dark speckles.
+  const profiles = [];
+  for (const b of buckets.values()) {
+    const angle = (b.bucket + 0.5) * (Math.PI / DIR_BUCKETS);
+    profiles.push({ b, angle, nx: -Math.sin(angle), ny: Math.cos(angle), layers: threadLayers(b.rgb, angle, lw) });
+  }
+  const layerCount = o.layers != null ? o.layers : 5;
+  for (let li = 0; li < layerCount; li++) {
+    for (const p of profiles) {
+      const L = p.layers[li];
+      if (!L) continue;
+      ctx.strokeStyle = L.color;
+      ctx.lineWidth = L.width;
+      if (L.dash) ctx.setLineDash(L.dash); else ctx.setLineDash([]);
+      const ox = p.nx * L.offset, oy = p.ny * L.offset;
+      ctx.beginPath();
+      for (const s of p.b.items) {
+        ctx.moveTo(SX(s.x0) + ox, SY(s.y0) + oy);
+        ctx.lineTo(SX(s.x1) + ox, SY(s.y1) + oy);
+      }
+      ctx.stroke();
+    }
+  }
+  ctx.setLineDash([]);
+}
+
 // Design stitches are in DST units, whose Y axis points UP; canvas Y points
 // DOWN. fitTransform therefore returns a transform whose TY NEGATES y
 // (canvasY = oy - y*scale) — without that flip every glyph renders vertically
@@ -191,19 +370,12 @@ export function renderRealistic(canvas, design, opts) {
   // finish), so scrubbing/playing renders the design exactly as the machine
   // would sew it. undefined/null = draw everything (every existing caller).
   if (o.limitStrands != null) strands = strands.slice(0, Math.max(0, o.limitStrands));
-  const lw = Math.max(1.5, 0.22 * pxPerMm); // thread thickness in px
-  ctx.lineCap = "round";
-  // shadow pass
-  ctx.strokeStyle = "rgba(0,0,0,0.28)";
-  ctx.lineWidth = lw;
-  for (const s of strands) { ctx.beginPath(); ctx.moveTo(SX(s.x0) + 1, SY(s.y0) + 1.5); ctx.lineTo(SX(s.x1) + 1, SY(s.y1) + 1.5); ctx.stroke(); }
-  // color pass
-  ctx.lineWidth = lw;
-  for (const s of strands) { ctx.strokeStyle = `rgb(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]})`; ctx.beginPath(); ctx.moveTo(SX(s.x0), SY(s.y0)); ctx.lineTo(SX(s.x1), SY(s.y1)); ctx.stroke(); }
-  // highlight pass (sheen)
-  ctx.strokeStyle = "rgba(255,255,255,0.35)";
-  ctx.lineWidth = Math.max(0.6, lw * 0.35);
-  for (const s of strands) { ctx.beginPath(); ctx.moveTo(SX(s.x0) - 0.6, SY(s.y0) - 0.9); ctx.lineTo(SX(s.x1) - 0.6, SY(s.y1) - 0.9); ctx.stroke(); }
+  // Thread width is PHYSICAL (THREAD_WIDTH_MM), with a px floor so a thread
+  // stays visible in the small font/template previews where pxPerMm is tiny.
+  const threadMm = o.threadWidthMm != null ? o.threadWidthMm : THREAD_WIDTH_MM;
+  const lw = Math.max(1.2, threadMm * pxPerMm);
+  const layers = o.threadLayers != null ? o.threadLayers : threadLodLayers(lw, strands.length);
+  drawThreads(ctx, strands, SX, SY, lw, { layers });
 
   // Diagnostic overlays (drawn ON TOP of thread so they're never buried):
   // showJumps -> dashed travel lines; showTrims -> an X marker per trim.
