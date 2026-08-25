@@ -106,13 +106,34 @@ user say. **The defect may be the absence of the choice, not the value of a
 constant.** That is Kent's call and should be put to him with renders of the
 same photo both ways — which is now possible and was not before.
 
-## Suggested lanes for a team
+## LANE A IS KENT'S CALL — start there (2026-08-25)
 
-Each is independently ownable; give each its own worktree.
+He picked it on the spot when the brief was put to him: **"COPY, lane A it
+is."** So lane A is not a suggestion to weigh against the others; it is the
+chosen next step, and re-opening that choice is re-litigating a decision.
+
+Why it is the right first move, restated so nobody has to reconstruct it:
+every other lane spends effort moving numbers, and one of those numbers sits
+behind ROADMAP gate 1. Lane A spends no constants at all. It renders the same
+photo as thread-paint and as a filled design and asks Kent which product a
+photo should BE. If the answer is "filled", lanes C and D are largely moot and
+the work becomes tier selection. If the answer is "thread-paint", the 0.55 is
+not a defect at all and defect 14 closes as a documentation gap. **Either
+answer redirects the other three lanes, which is why it goes first.**
+
+Concretely: `forced_class="photo_subject"` gives the streamline route;
+`fill_technique` set explicitly beats `auto_photo_tier` for every class
+(`pipeline.py:119-121`), so an explicit `"tatami"` on the same photo is the
+filled comparison. Render both with `stitchviz`, put them side by side at the
+same scale, and send them to Kent. Nothing else is needed to answer it.
+
+## The lanes
+
+Each is independently ownable; give each its own worktree. **A first.**
 
 | lane | question | first file |
 |---|---|---|
-| A | Render the same photo through streamline vs forced tatami/blend, side by side in thread. What does Kent actually prefer? | `tools/acceptance_ab.py` |
+| **A** | **CHOSEN.** Render the same photo through streamline vs forced tatami/blend, side by side in thread. Which product should a photo be? | `tools/acceptance_ab.py` |
 | B | Isolate streamline-only coverage from travel/satin/detail contamination — is the real streamline number 0.50 or lower? | `digitizer_core/stitchviz.py` |
 | C | The layered-mode transition-band sparsening (finding 2). Is it a defect or intended? Measure it. | `stage6_streamline.py:519-684` |
 | D | Do the two weak-claim constants (`D_SEP_LIGHT`, `CUTOFF_DARKNESS`) have a defensible non-sew-out experiment? | `stage6_streamline.py:149-157` |
