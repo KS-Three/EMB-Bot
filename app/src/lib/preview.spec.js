@@ -358,10 +358,37 @@ test("renderRealistic: thread width is PHYSICAL — the widest stroke tracks THR
   // floor -- otherwise the floor, not THREAD_WIDTH_MM, is what is under test.
   renderRealistic({ width: 600, height: 600, getContext: () => ctx }, design, { pad: 24 });
   const t = fitTransform(design, 600, 600, 24);
-  const expected = THREAD_WIDTH_MM * (t.scale * 10);
+  // The expected width is derived from the LITERAL 0.4, not from the imported
+  // THREAD_WIDTH_MM. Deriving it from the constant made this assertion
+  // tautological: it moved with the constant, so the whole suite stayed green
+  // when the value was changed to 0.9 -- caught by a mutation probe, 2026-08-25.
+  const expected = 0.4 * (t.scale * 10);
   expect(expected).toBeGreaterThan(1.2); // guard: this case is above the px floor
   expect(Math.max(...widths)).toBeCloseTo(expected * 1.04, 5); // 1.04 = the shadow pass
   expect(widths).toContain(expected);
+});
+
+test("THREAD_WIDTH_MM is 0.4 and MUST NOT be widened — the anti-flattery guard", () => {
+  // This is the one assertion standing between the preview and a defect this
+  // repo has already reasoned about at length, so it pins a literal rather
+  // than anything derived.
+  //
+  // 0.4 mm is nominal 40wt laid thread. Against the engine's current 0.40 mm
+  // fill rows that is coverage EXACTLY 1.0 -- rows that just touch, with no
+  // overlap to hide behind. Widening it would make every fill look solid in
+  // the preview regardless of its real density, which would conceal the open
+  // fill-density item (FILL_ROW_MM running ~2x light) behind the display
+  // layer. That is precisely the failure ROADMAP gate 3 names: a green suite
+  // hiding bare fabric.
+  //
+  // If a sew-out later establishes a different real laid width, change this
+  // number AND the MASTER_SCOPE claim that cites it AND say so out loud --
+  // do not quietly widen it because a fill looked gappy.
+  expect(THREAD_WIDTH_MM).toBe(0.4);
+
+  const FILL_ROW_MM = 0.4; // digitizer/digitizer_core/machine.py's current value
+  const coverage = THREAD_WIDTH_MM / FILL_ROW_MM;
+  expect(coverage).toBe(1); // exactly touching: not flattering, not gapped
 });
 
 test("renderRealistic: threadWidthMm is overridable, and a wider thread strokes wider", () => {
