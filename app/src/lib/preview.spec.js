@@ -404,3 +404,73 @@ test("renderRealistic: threadLayers overrides the LOD ladder (the escape hatch a
   renderRealistic({ width: 600, height: 600, getContext: () => five }, design, { threadLayers: 5 });
   expect(five.moveTo.mock.calls.length).toBeGreaterThan(two.moveTo.mock.calls.length);
 });
+
+// --- renderRealistic: threadStyle "flat" (the realistic-view toggle) --------
+
+test("threadStyle 'flat' drops the lighting entirely — no shadow, no sheen, no dash", () => {
+  const design = { stitches: [
+    { x: -100, y: 0, type: "stitch" },
+    { x: 0, y: 40, type: "stitch" },
+    { x: 100, y: 0, type: "stitch" },
+  ] };
+  const flat = makeCtxSpy();
+  renderRealistic({ width: 600, height: 600, getContext: () => flat }, design, { threadStyle: "flat" });
+  // The black drop-shadow pass and every lightened specular are gone; what is
+  // left is the thread colour itself (plus the fabric fill, which is fillStyle,
+  // not strokeStyle).
+  expect(flat.strokeStyleLog.some((s) => /^rgba\(0,0,0/.test(s))).toBe(false);
+  expect(flat.setLineDash.mock.calls.every((a) => !a[0] || a[0].length === 0)).toBe(true);
+  // One stroke per colour, not one per (colour, direction, layer).
+  expect(flat.stroke).toHaveBeenCalledTimes(1);
+});
+
+test("threadStyle 'flat' keeps PHYSICAL thread width, so switching views never changes the coverage answer", () => {
+  const design = { stitches: [
+    { x: -100, y: 0, type: "stitch" },
+    { x: 100, y: 0, type: "stitch" },
+  ] };
+  const widthsFor = (style) => {
+    const w = [];
+    const ctx = makeCtxSpy();
+    Object.defineProperty(ctx, "lineWidth", { get() { return this._lw; }, set(v) { this._lw = v; w.push(v); } });
+    renderRealistic({ width: 600, height: 600, getContext: () => ctx }, design, { threadStyle: style });
+    return w;
+  };
+  const t = fitTransform(design, 600, 600, 24);
+  const expected = THREAD_WIDTH_MM * (t.scale * 10);
+  expect(widthsFor("flat")).toContain(expected);
+  expect(widthsFor("realistic")).toContain(expected);
+});
+
+test("threadStyle defaults to realistic — omitting it is exactly today's render (every existing caller unaffected)", () => {
+  const design = { stitches: [
+    { x: -100, y: 0, type: "stitch" },
+    { x: 100, y: 0, type: "stitch" },
+  ] };
+  const omitted = makeCtxSpy();
+  renderRealistic({ width: 600, height: 600, getContext: () => omitted }, design, {});
+  const explicit = makeCtxSpy();
+  renderRealistic({ width: 600, height: 600, getContext: () => explicit }, design, { threadStyle: "realistic" });
+  expect(omitted.strokeStyleLog).toEqual(explicit.strokeStyleLog);
+  expect(omitted.moveTo.mock.calls.length).toBe(explicit.moveTo.mock.calls.length);
+  // ...and it is genuinely the lit path, not flat-by-accident.
+  expect(omitted.strokeStyleLog.some((s) => /^rgba\(0,0,0/.test(s))).toBe(true);
+});
+
+test("threadStyle 'flat' still separates colours — a two-colour design strokes each once", () => {
+  const design = {
+    stitches: [
+      { x: -100, y: 0, type: "stitch" },
+      { x: -50, y: 0, type: "stitch" },
+      { x: -50, y: 0, type: "color" },
+      { x: 50, y: 0, type: "stitch" },
+      { x: 100, y: 0, type: "stitch" },
+    ],
+    colors: [{ r: 200, g: 10, b: 10 }, { r: 10, g: 10, b: 200 }],
+  };
+  const ctx = makeCtxSpy();
+  renderRealistic({ width: 600, height: 600, getContext: () => ctx }, design, { threadStyle: "flat" });
+  expect(ctx.strokeStyleLog).toContain("rgb(200,10,10)");
+  expect(ctx.strokeStyleLog).toContain("rgb(10,10,200)");
+  expect(ctx.stroke).toHaveBeenCalledTimes(2);
+});

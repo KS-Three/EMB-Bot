@@ -167,8 +167,39 @@ export function threadLodLayers(lw, strandCount) {
 export function drawThreads(ctx, strands, SX, SY, lw, opts) {
   if (!strands.length) return;
   const o = opts || {};
+  const flat = !!o.flat;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
+
+  // FLAT view: one solid stroke per colour, at the same physical width, and
+  // nothing else — no shadow, no cylinder shading, no sheen. This is the
+  // schematic view, and it is not a cheaper approximation of the realistic one
+  // so much as a different question: with the lighting gone, coverage and
+  // stitch structure read as flat areas of colour, which is what you want while
+  // judging whether a shape is filled rather than how it will look sewn.
+  // Physical width is kept precisely so the coverage answer does not change
+  // between the two views.
+  if (flat) {
+    const byColour = new Map();
+    for (const s of strands) {
+      const key = `${s.rgb[0]},${s.rgb[1]},${s.rgb[2]}`;
+      let list = byColour.get(key);
+      if (!list) { list = { rgb: s.rgb, items: [] }; byColour.set(key, list); }
+      list.items.push(s);
+    }
+    ctx.setLineDash([]);
+    ctx.lineWidth = lw;
+    for (const c of byColour.values()) {
+      ctx.strokeStyle = `rgb(${c.rgb[0]},${c.rgb[1]},${c.rgb[2]})`;
+      ctx.beginPath();
+      for (const s of c.items) {
+        ctx.moveTo(SX(s.x0), SY(s.y0));
+        ctx.lineTo(SX(s.x1), SY(s.y1));
+      }
+      ctx.stroke();
+    }
+    return;
+  }
 
   // Drop shadow: one path for EVERY strand regardless of colour (it is all
   // black), offset away from the light so it agrees with the cylinder shading.
@@ -375,7 +406,8 @@ export function renderRealistic(canvas, design, opts) {
   const threadMm = o.threadWidthMm != null ? o.threadWidthMm : THREAD_WIDTH_MM;
   const lw = Math.max(1.2, threadMm * pxPerMm);
   const layers = o.threadLayers != null ? o.threadLayers : threadLodLayers(lw, strands.length);
-  drawThreads(ctx, strands, SX, SY, lw, { layers });
+  // threadStyle: "realistic" (default, every existing caller) | "flat".
+  drawThreads(ctx, strands, SX, SY, lw, { layers, flat: o.threadStyle === "flat" });
 
   // Diagnostic overlays (drawn ON TOP of thread so they're never buried):
   // showJumps -> dashed travel lines; showTrims -> an X marker per trim.
