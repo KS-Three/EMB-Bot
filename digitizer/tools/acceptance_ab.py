@@ -46,8 +46,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+import base64  # noqa: E402
+
 from digitizer_core.stage1_photo_prep import background_removal_unavailable_reason  # noqa: E402
 from digitizer_core.stage2_sam2_segment import sam2_segmentation_unavailable_reason  # noqa: E402
+from digitizer_core.stitchviz import coverage, render_jpeg_bytes  # noqa: E402
 from digitizer_core.tools_acceptance import sheet_row, variant_matrix  # noqa: E402
 
 DEFAULT_DIR = ROOT / "testdata" / "photo" / "acceptance"
@@ -181,7 +184,8 @@ _WIRE_ERRORS = (urllib.error.URLError, OSError, KeyError, json.JSONDecodeError)
 
 def run(images: list[Path], service: str, out_dir: Path
        ) -> tuple[list[dict], dict[str, dict], list[dict]]:
-    """-> (sheet_rows, {file: {variant_tag: {"svg": str|None, "error": str|None}}}, matrix)"""
+    """-> (sheet_rows, {file: {tag: {"png": b64|None, "coverage": float|None,
+                                 "error": str|None}}}, matrix)"""
     _wait_for_health(service)
     # Both probes run in THIS process, not the service's — they only read
     # paths on disk, and the harness has always been pointed at a service on
@@ -216,7 +220,7 @@ def run(images: list[Path], service: str, out_dir: Path
             except _WIRE_ERRORS as exc:
                 wall_s = time.monotonic() - t0
                 rows.append(sheet_row(file, tag, _fail_stats(wall_s, f"REQUEST_ERROR: {exc}")))
-                cells[file][tag] = {"svg": None, "error": str(exc)}
+                cells[file][tag] = {"png": None, "coverage": None, "error": str(exc)}
                 _write_job_json(out_dir, file, tag, {"error": str(exc)})
                 continue
 
@@ -224,21 +228,36 @@ def run(images: list[Path], service: str, out_dir: Path
             if job.get("state") != "done":
                 detail = job.get("error") or job.get("state")
                 rows.append(sheet_row(file, tag, _fail_stats(wall_s, f"JOB_{detail}")))
-                cells[file][tag] = {"svg": None, "error": str(detail)}
+                cells[file][tag] = {"png": None, "coverage": None, "error": str(detail)}
                 _write_job_json(out_dir, file, tag, job)
                 continue
 
             stats = _job_stats(job, wall_s)
             rows.append(sheet_row(file, tag, stats))
             _write_job_json(out_dir, file, tag, job)
+            # THREAD, not a vector proof (2026-08-24). The sheet used to
+            # embed pystitch's SVG: hairline polylines showing where the
+            # needle went. Kent, looking at a sheet of them: "it's hard to
+            # picture how these would be turned into a digitized or
+            # embroidered product" -- and a vector proof genuinely cannot
+            # answer that, because thread has width, overlaps, and covers
+            # cloth. The first thread render of one of these designs showed
+            # its subject taking a quarter of the frame with the rest given
+            # to deck boards, which two days of vector proofs had not made
+            # visible. `stitchviz`'s own docstring carries what the render
+            # does and does not model.
             try:
-                svg = _export_svg(service, job["design"], label=f"{image_path.stem}_{tag}")
-                cells[file][tag] = {"svg": svg, "error": None}
-            except _WIRE_ERRORS as exc:
-                # Digitizing worked -- the counts above are real -- only the
-                # vector proof is missing, so the row stays, just without a
-                # picture in its cell.
-                cells[file][tag] = {"svg": None, "error": f"export failed: {exc}"}
+                png = render_jpeg_bytes(job["design"])
+                cells[file][tag] = {
+                    "png": base64.b64encode(png).decode("ascii"),
+                    "coverage": coverage(job["design"]),
+                    "error": None,
+                }
+            except Exception as exc:                       # noqa: BLE001
+                # Digitizing worked -- the counts above are real -- so the
+                # row stays, just without a picture.
+                cells[file][tag] = {"png": None, "coverage": None,
+                                    "error": f"render failed: {exc}"}
     return rows, cells, matrix
 
 
@@ -258,14 +277,23 @@ def _print_table(rows: list[dict]) -> None:
         print("  ".join(c.ljust(w) for c, w in zip(cells, widths)))
 
 
-def _counts_html(row: dict | None) -> str:
+def _counts_html(row: dict | None, cell: dict | None = None) -> str:
     if row is None:
         return "<p class=\"counts\">not run</p>"
     warn = ", ".join(html.escape(str(w)) for w in row.get("warnings", [])) or "none"
+    # Coverage sits with the counts because it is the number that separates
+    # the two photo routes at a glance and no other column shows it: the
+    # streamline thread-paint route leaves roughly two fifths of its own
+    # footprint as bare cloth (its declared fabric-as-value intent) where the
+    # gradient blend route sews nearly solid. Measured at a fixed scale --
+    # `stitchviz.COVERAGE_PX_PER_MM` -- so two sheets are comparable.
+    cov = (cell or {}).get("coverage")
+    cov_html = ("" if cov is None
+                else f"{100 * cov:.0f}% cloth covered &middot; ")
     return (
         f"<p class=\"counts\">{row.get('shapes', 0)} regions &middot; "
         f"{row.get('threads', 0)} threads &middot; {row.get('stitches', 0)} stitches &middot; "
-        f"{row.get('trims', 0)} trims &middot; {row.get('wall_s', 0):.1f}s</p>"
+        f"{row.get('trims', 0)} trims &middot; {cov_html}{row.get('wall_s', 0):.1f}s</p>"
         f"<p class=\"warn\">{warn}</p>"
     )
 
@@ -289,8 +317,9 @@ def _render_html(images: list[Path], matrix: list[dict], cells: dict, rows: list
             elif cell.get("error"):
                 proof = f"<p class=\"error\">error: {html.escape(cell['error'])}</p>"
             else:
-                proof = cell["svg"]
-            tds.append(f"<td><div class=\"proof\">{proof}</div>{_counts_html(row)}</td>")
+                proof = (f'<img alt="{html.escape(file)} {html.escape(tag)}" '
+                         f'src="data:image/jpeg;base64,{cell["png"]}">')
+            tds.append(f"<td><div class=\"proof\">{proof}</div>{_counts_html(row, cell)}</td>")
         body_rows.append(f"<tr>{''.join(tds)}</tr>")
 
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -310,8 +339,8 @@ def _render_html(images: list[Path], matrix: list[dict], cells: dict, rows: list
   th {{ background: #f0f0f0; }}
   th.rowhead {{ white-space: nowrap; font-family: monospace; }}
   .proof {{ min-width: 240px; max-width: 340px; }}
-  .proof svg {{ width: 100%; height: auto; max-height: 340px; display: block;
-                background: #fff; border: 1px solid #eee; }}
+  .proof img {{ width: 100%; height: auto; max-height: 420px; display: block;
+                object-fit: contain; background: #fff; border: 1px solid #eee; }}
   .counts {{ font-family: monospace; font-size: 0.8rem; margin: 6px 0 2px; color: #333; }}
   .warn {{ font-size: 0.78rem; color: #a15c00; margin: 0; word-break: break-word; }}
   .error {{ color: #b00020; font-weight: bold; }}
@@ -324,8 +353,10 @@ def _render_html(images: list[Path], matrix: list[dict], cells: dict, rows: list
   dir: <code>{html.escape(str(image_dir))}</code> &middot;
   service: <code>{html.escape(service)}</code> &middot;
   generated {generated} &middot;
-  counts only, no score -- judge by eye (spec: the metric is
-  non-authoritative for this call)
+  thread render + counts, no score -- judge by eye (spec: the metric is
+  non-authoritative for this call). Cells show THREAD, not a vector
+  proof: see digitizer_core/stitchviz for what the render does and
+  does not model -- it is not a sew-out.
 </p>
 <table>
 {header}
