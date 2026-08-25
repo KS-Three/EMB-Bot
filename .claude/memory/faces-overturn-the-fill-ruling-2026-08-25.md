@@ -119,23 +119,18 @@ automatically — a shipped-default change Kent should see land.
   report over-budget rather than cutting something in force.
 
 - **The `digitizer` determinism canary flakes ~1 run in 12, and it is
-  COSMETIC.** It cost an hour on #250, whose diff is two markdown files.
-  `tests/test_stage0_classify.py:116` asserts `a.signals == b.signals` — exact
-  float equality on the published dict, strictly stronger than the class and
-  confidence it also asserts — and `gradient_smoothness` breaks it. The
-  mechanism is catastrophic cancellation at `stage0_classify.py:294`,
-  `local_var = mean_sq - mean * mean`, amplifying a single-ULP float32
-  difference in the boxFilter accumulation into the visible decimal: observed
-  relative spread 1.0e-7 against a float32 epsilon of 1.2e-7. It is
-  cross-PROCESS, not threading — 40 runs at `cv2.setNumThreads(4)` and 40 at
-  `(1)` each gave `distinct=1 of 40, spread=0`. **It cannot flip a class**, and
-  check that before proposing a fix: the fixture that jitters
-  (`logo_whitebg.png`) reads 0.000560 against a flat/gradient boundary of
-  0.0015 whose margin band opens at 0.0007 — 16.5 MILLION times the jitter.
-  So the proportionate fix is rounding the PUBLISHED signals; a two-pass
-  `E[(X - E[X])²]` is more precision than any threshold here consumes. Not
-  pushed — it is a stage-0 edit and #250 was memory-only. The re-run went
-  green, which is the confirmation, not a reason to forget it.
+  COSMETIC — establish that before proposing a fix, as I failed to.** It cost an
+  hour on #250, whose diff is two markdown files. Catastrophic cancellation at
+  `stage0_classify.py:294` (`local_var = mean_sq - mean * mean`) amplifies a
+  single-ULP float32 difference in the `boxFilter` accumulation: relative spread
+  1.0e-7 against a float32 epsilon of 1.2e-7. Cross-PROCESS, not threading — 40
+  runs at `cv2.setNumThreads(4)` and 40 at `(1)` each gave `distinct=1 of 40`.
+  **It cannot flip a class**: the fixture that jitters reads 0.000560 against a
+  flat/gradient boundary of 0.0015, i.e. 16.5 MILLION times the jitter. Only
+  `test_stage0_classify.py:116` sees it, because it asserts exact float equality
+  on the published `signals` dict. So the proportionate fix is rounding those
+  signals, not the two-pass variance I first recommended. Not pushed — stage-0
+  edit, memory-only PR.
 
 ## Two defects found in my own shipped code, both by outside pressure
 
