@@ -87,7 +87,12 @@
   --fs-sm: 0.875rem;
   --fs-md: 1rem;
   --fs-lg: 1.25rem;
-  --fs-xl: 1.5rem;
+  /* 25px, not 24. The scale splits into two ramps on purpose and only one of
+     them is modular. 2xs/xs/sm (11/12/14) is a DENSITY ramp for dense UI —
+     forcing a ratio there would give 8/10/13px, unusable in a tool. From the
+     16px base upward is the DISPLAY ramp, and it is now a clean 1.25:
+     16 -> 20 -> 25. It was 16 -> 20 -> 24, i.e. 1.25 then 1.2. */
+  --fs-xl: 1.5625rem;
 
   /* Line height was the one part of the type system that was never stated.
      Measured on the Garment step: 16 distinct type styles rendered, and 11 of
@@ -97,9 +102,36 @@
      headings and single-line control labels, `snug` as the managed default
      for UI text, `body` for the prose blocks (drawing instructions, upload
      guidance, the DST note) that people actually read a paragraph of. */
-  --lh-tight: 1.25;
-  --lh-snug: 1.45;
-  --lh-body: 1.6;
+  /* Tightened one notch across the board (was 1.25 / 1.45 / 1.6). Editorial
+     setting runs closer than a marketing page; at 16px, --lh-snug is now 22px
+     of line box rather than 23px. */
+  --lh-tight: 1.2;
+  --lh-snug: 1.4;
+  --lh-body: 1.55;
+
+  /* ---- Weight ------------------------------------------------------------
+     Three weights were already in use (400/600/700) as bare literals at 34
+     call sites, so which one meant "emphasis" and which meant "heading" was
+     never stated. 500 is added because the jump from body to 600 is the only
+     step the UI had, and a label that wants to be a little stronger than its
+     value had nowhere to go. */
+  --fw-normal: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* ---- Tracking ----------------------------------------------------------
+     Optical, not decorative: type set large needs pulling in and type set
+     small-and-uppercase needs opening out, or both read wrong at the same
+     nominal spacing. `wide` is the eyebrow/section-label treatment. */
+  --tracking-tight: -0.02em;
+  --tracking-snug: -0.01em;
+  /* Two opened steps, because they are not the same job. `slight` is a nudge
+     for caps set inside a FIXED box (the logomark tile) or a label that just
+     wants air — folding it into `wide` pushed "EMB" past its own 28px tile.
+     `wide` is the eyebrow: small, uppercase, meant to read as a label. */
+  --tracking-slight: 0.02em;
+  --tracking-wide: 0.08em;
 
   /* ---- Layout ------------------------------------------------------------ */
   --topbar-h: 64px;
@@ -116,9 +148,14 @@ body {
   color: var(--ink);
 }
 
-/* Headings set their own tighter measure -- at --lh-snug a 24px h2 carries
-   nearly 11px of leading it does not need. */
-h1, h2, h3, h4 { line-height: var(--lh-tight); }
+/* Headings set their own tighter measure, and pull their tracking in — a
+   display size at default tracking reads loose and unresolved. */
+h1, h2, h3, h4 {
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-snug);
+}
+
+h1, h2 { letter-spacing: var(--tracking-tight); }
 
 /* Visible keyboard focus everywhere (B9) -- the single source of truth for
    focus feedback. Components below rely on this instead of their own
@@ -170,14 +207,14 @@ h1, h2, h3, h4 { line-height: var(--lh-tight); }
   background: var(--accent);
   color: var(--accent-ink);
   font-size: var(--fs-xs);
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-slight);
 }
 
 .logo {
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   font-size: var(--fs-lg);
-  letter-spacing: -0.01em;
+  letter-spacing: var(--tracking-snug);
   white-space: nowrap;
   color: var(--ink);
 }
@@ -194,7 +231,7 @@ h1, h2, h3, h4 { line-height: var(--lh-tight); }
   background: transparent;
   color: var(--ink);
   font: inherit;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   text-align: center;
 }
 
@@ -224,7 +261,7 @@ h1, h2, h3, h4 { line-height: var(--lh-tight); }
   background: var(--surface);
   color: var(--ink);
   font: inherit;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   font-size: var(--fs-sm);
   cursor: pointer;
 }
@@ -244,7 +281,7 @@ h1, h2, h3, h4 { line-height: var(--lh-tight); }
   background: var(--surface);
   color: var(--ink);
   font: inherit;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   cursor: pointer;
 }
 
@@ -276,7 +313,7 @@ h1, h2, h3, h4 { line-height: var(--lh-tight); }
   background: var(--accent);
   color: var(--accent-ink);
   font-size: var(--fs-xs);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 /* Projects drawer — right-side overlay listing every saved design
@@ -333,7 +370,7 @@ h1, h2, h3, h4 { line-height: var(--lh-tight); }
   border-radius: var(--radius-m);
   background: var(--surface);
   color: var(--accent);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   cursor: pointer;
 }
 
@@ -384,7 +421,7 @@ h1, h2, h3, h4 { line-height: var(--lh-tight); }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   font-size: var(--fs-md);
 }
 
@@ -483,8 +520,43 @@ h1, h2, h3, h4 { line-height: var(--lh-tight); }
   background-attachment: local, local, scroll, scroll;
 }
 
-.panel-body h2 { margin-top: 0; font-size: var(--fs-xl); }
-.panel-body h3 { font-size: var(--fs-md); color: var(--muted); margin-bottom: var(--space-2); }
+.panel-body h2 {
+  margin-top: 0;
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+}
+
+/* ---- Section label ("eyebrow") -------------------------------------------
+   Heads a control GROUP. It was `--fs-md` semi-muted — the same size as the
+   body text beneath it — so it competed with its own content instead of
+   ranking above it, and the step's h2 had nothing to rank against. Set small,
+   uppercase and open, it reads as a label at a glance, and the panel gets
+   three clear voices: 25px display, 16px body, 12px label.
+
+   Keyed on ROLE, not on tag. Some group labels are `h3` ("Font", "Threads",
+   "Hoop size", "Quick start") and some are spans inside a component
+   (`.tp-label` = "Color", `.alignlabel` = "Align in hoop") — they rank the
+   same on screen, so giving the treatment only to `h3` would have left
+   "COLOR" and "Font" as mismatched peers three lines apart.
+
+   What deliberately does NOT get it: a FIELD label, which names a single
+   input rather than a group — "Letter spacing", "Curve", "Rotation", the
+   "Chart" beside its select. Those stay sentence case, one rank below. That
+   distinction is the hierarchy; flattening it would undo the point.
+
+   Every label that takes this is one or two words. It would be wrong on a
+   sentence. */
+.panel-body h3,
+.tp-label,
+.alignlabel {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.panel-body h3 { margin-bottom: var(--space-2); }
 
 /* Right pane — the embroidery field / workspace. Shares --field-bg with the
    canvas itself (see EmbroideryField's own render path) so the whole
@@ -778,7 +850,7 @@ h1, h2, h3, h4 { line-height: var(--lh-tight); }
 
 .tile:hover { border-color: var(--accent); }
 .tile.sel { border-color: var(--accent); background: var(--tint); }
-.tile.sel .tile-label { font-weight: 600; color: var(--accent); }
+.tile.sel .tile-label { font-weight: var(--fw-semibold); color: var(--accent); }
 
 /* Garment icon (Slice 8 Task 3) -- one inline SVG per garment id (see
    garmentArt.js), icon-over-label. Icon strokes `currentColor` (the tile's
@@ -853,7 +925,7 @@ input.fabriccustom[type="color"] {
 
 .hooptile:hover { border-color: var(--accent); }
 .hooptile.sel { border-color: var(--accent); background: var(--tint); }
-.hooptile.sel .hooptile-name { font-weight: 600; color: var(--accent); }
+.hooptile.sel .hooptile-name { font-weight: var(--fw-semibold); color: var(--accent); }
 
 .hooptile-name { font-size: var(--fs-sm); line-height: 1.2; }
 .hooptile-mm { font-size: var(--fs-xs); color: var(--muted); }
@@ -925,7 +997,7 @@ input.fabriccustom[type="color"] {
 .tcard-preview svg { width: 30px; height: 30px; color: var(--muted); }
 .tcard-preview .acc { stroke: var(--accent); }
 
-.tcard-label { font-weight: 600; font-size: var(--fs-md); }
+.tcard-label { font-weight: var(--fw-semibold); font-size: var(--fs-md); }
 .tcard-hint { font-size: var(--fs-xs); color: var(--muted); }
 
 /* Element manager (ContentStep) — one compact row per project.elements,
@@ -971,7 +1043,7 @@ input.fabriccustom[type="color"] {
   border-radius: var(--radius-s);
   background: var(--bg);
   color: var(--muted);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   font-size: var(--fs-sm);
 }
 
@@ -1032,7 +1104,7 @@ input.fabriccustom[type="color"] {
   background: var(--surface);
   color: var(--muted);
   font-size: var(--fs-sm);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   cursor: pointer;
 }
 
@@ -1256,8 +1328,8 @@ canvas {
 @media (max-width: 820px) { canvas { max-height: 42vh; } }
 
 .stats { color: var(--muted); margin-top: var(--space-2); }
-.err { color: var(--danger); font-weight: 600; }
-.warn { color: var(--warn); font-weight: 600; }
+.err { color: var(--danger); font-weight: var(--fw-semibold); }
+.warn { color: var(--warn); font-weight: var(--fw-semibold); }
 
 /* Selection handles live on the canvas itself (drawn via ctx), but the
    cursor feedback needs the canvas to accept custom cursors crisply. */
@@ -1297,7 +1369,7 @@ canvas { touch-action: none; }
   border: 1px solid var(--border);
 }
 
-.threadrow-name { flex: 1; min-width: 0; font-weight: 600; font-size: var(--fs-sm); }
+.threadrow-name { flex: 1; min-width: 0; font-weight: var(--fw-semibold); font-size: var(--fs-sm); }
 .threadrow-block { flex: 0 0 auto; color: var(--muted); font-size: var(--fs-xs); white-space: nowrap; }
 
 /* Even grid, not flex-wrap. Six labels of very different lengths (DST ...
@@ -1328,7 +1400,7 @@ canvas { touch-action: none; }
   font-size: var(--fs-sm);
   line-height: var(--lh-snug);
 }
-.encodernote strong { font-weight: 700; }
+.encodernote strong { font-weight: var(--fw-bold); }
 
 /* Footer link to FontCredits (Slice 10B Task 5) — a <button> styled as a
    link (not a real <a>) since it dispatches an event rather than
@@ -1368,7 +1440,7 @@ button.primary {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-ink);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 
 button.primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
@@ -1453,7 +1525,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   border-bottom: 1px solid var(--border);
 }
 .createstep .summary dt { color: var(--muted); margin: 0; }
-.createstep .summary dd { margin: 0; font-weight: 600; text-align: right; }
+.createstep .summary dd { margin: 0; font-weight: var(--fw-semibold); text-align: right; }
 
 /* Image panel — upload */
 .uploadbox {
@@ -1491,7 +1563,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   color: var(--accent-ink);
   font: inherit;
   font-size: var(--fs-sm);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   cursor: pointer;
 }
 
@@ -1581,7 +1653,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .swatch .pct {
   font-size: var(--fs-xs);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--accent-ink);
   text-shadow: 0 1px 2px rgba(var(--shadow-color), 0.65);
 }
@@ -1745,7 +1817,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .dp-error { color: var(--danger); font-size: var(--fs-sm); margin: 0; }
 .dp-stats { font-size: var(--fs-sm); color: var(--muted); margin: 0; }
 .dp-blocks { display: flex; flex-direction: column; gap: var(--space-1); }
-.dp-blocks-label { font-size: var(--fs-sm); font-weight: 600; }
+.dp-blocks-label { font-size: var(--fs-sm); font-weight: var(--fw-semibold); }
 .dp-block { display: flex; align-items: center; gap: var(--space-2); }
 .dp-block-n { font-size: var(--fs-sm); color: var(--muted); min-width: 4.5em; }
 .dp-note { font-size: var(--fs-sm); color: var(--muted); margin: 0; }
@@ -1843,7 +1915,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   background: transparent;
   color: var(--muted);
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   text-align: center;
   cursor: pointer;
 }
@@ -1874,7 +1946,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   background: var(--surface);
   color: var(--muted);
   font-size: var(--fs-2xs);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   line-height: 1;
 }
 
@@ -1905,7 +1977,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   background: var(--tint);
   border-color: var(--tint-border);
   color: var(--accent);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 /* Visual break between the step tabs and Back/Next -- previously nothing

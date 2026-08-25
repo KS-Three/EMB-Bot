@@ -288,6 +288,48 @@ repeats as the identity label on every digitize layer row where it
 distinguishes nothing — the useful part (glyph, area) is set smaller than the
 part that identifies nothing. *(confirmed 2026-08-25 — driven in browser)*
 
-Typography direction is a Kent call, tracked as item 10 in MASTER_SCOPE's
-"Waiting on Kent": irregular scale ratios, `h3` at body size, and untokenised
-weights. All three are defensible as-is and all three change how the app feels.
+Typography was the third open item here and is **closed** — Kent gave the
+direction on 2026-08-25 and it shipped. See "Typography — Kent's standing
+direction" at the end of this file.
+
+## Typography — Kent's standing direction (2026-08-25)
+
+Asked for a direction and gave one: **"tighter and more editorial."** That is a
+standing ruling, not a one-off approval — new UI is set to it rather than
+re-deciding each time. It closed the three items the design-system pass had
+left as taste, and MASTER_SCOPE's queue item 10 is resolved on it.
+
+What it resolved to, and the reasoning worth keeping:
+
+**The section label is an eyebrow, and it is keyed on ROLE.** `h3` used to
+render at `--fs-md` semi-muted — the same size as the body text under it — so
+it competed with its own content and the step's `h2` had nothing to rank
+against. Now `--fs-xs`, semibold, uppercase, `--tracking-wide`. Critically the
+rule also covers `.tp-label` and `.alignlabel`, which are spans inside
+components rather than headings: an `h3`-only rule left "COLOR" and "Font" as
+mismatched peers three lines apart on the Content step. **If you add a label
+that heads a control GROUP, add it to that selector list.**
+*(confirmed 2026-08-25 — driven in browser)*
+
+**A FIELD label is deliberately NOT an eyebrow.** "Letter spacing", "Curve",
+"Rotation", the "Chart" beside its select — these name one input, not a group,
+and they stay sentence case one rank below. That distinction is the hierarchy;
+flattening it undoes the point. Three voices: 25px display, 12px group label,
+16px body, with field labels at 14px between the last two.
+
+**The scale is two ramps and only one is modular.** `--fs-2xs/xs/sm`
+(11/12/14) is a DENSITY ramp for dense UI — forcing a ratio there yields
+8/10/13px, unusable in a tool. From `--fs-md` up is the DISPLAY ramp and it is
+a clean 1.25: 16 → 20 → 25. Do not "regularise" the small end.
+*(confirmed 2026-08-25 — theme.css `:root`)*
+
+**Tracking has two opened steps because they are different jobs.**
+`--tracking-slight` (0.02em) is a nudge for caps in a FIXED box or a label that
+wants air; `--tracking-wide` (0.08em) is the eyebrow. Folding the first into
+the second pushed the logomark's "EMB" past its own 28px tile — a real
+overflow, caught by sweeping every text node for `scrollWidth > clientWidth`.
+Run that sweep after any type change. *(confirmed 2026-08-25 — same sweep)*
+
+Measured on the Garment step after the pass: distinct size/weight pairs
+**16 → 11**, every size on the scale, every weight a token, zero overflows,
+zero WCAG AA failures.
