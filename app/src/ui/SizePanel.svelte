@@ -181,7 +181,8 @@
 
 <style>
   .alignrow { margin-top: 10px; }
-  .alignlabel { display: block; font-size: var(--fs-xs, 12px); margin-bottom: 4px; }
+  /* Type comes from theme.css's shared section-label rule. */
+  .alignlabel { display: block; margin-bottom: 4px; }
   .alignbtns { display: flex; gap: 6px; }
   .alignbtn {
     padding: 5px 10px;
