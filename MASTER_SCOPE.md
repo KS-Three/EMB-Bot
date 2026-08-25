@@ -36,8 +36,8 @@ or move it.
 
 ## Live defects — believed true right now
 
-1. **RESOLVED 2026-08-19 — shade-thread collapse.** Kept numbered, not
-   deleted: ten other docs cite these as "live defect N". *(`_shade_blocks`)*
+1. **RESOLVED 2026-08-19 — shade-thread collapse.** Numbered, not deleted: ten
+   other docs cite these by number. *(`_shade_blocks`)*
 
 2. **No width floor under satin — PHOTO-LANE HALF CLOSED 2026-08-22; still
    DISPROVED for flat art.** 19 of 162 corpus regions, all photo-family, sew
@@ -151,6 +151,12 @@ or move it.
     `subject_cutout` arm lands here too — a third default-OFF flag missing from the
     section below, the gap it exists to close. *(measured 2026-08-24 — [area 1](docs/scope/1-auto-digitizing-quality.md))*
 
+14. **OPEN — the photo route leaves half the cloth bare INSIDE each shape.**
+    Kent's front as of 2026-08-25, and the first item here about fill QUALITY
+    rather than region identification. `stitchviz.coverage`: streamline
+    thread-paint covers **0.55–0.59** of its footprint, the blend tier **0.99**.
+    Not diagnosed; do not assume the fix is density. *(measured 2026-08-24 — PR #234; [area 1](docs/scope/1-auto-digitizing-quality.md))*
+
 ---
 
 ## Latent — gated OFF, DO NOT FLIP without rebuilding its instrument
@@ -229,7 +235,7 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
   is working and has almost nothing left to win. A shape whose own pixels differ
   from each other by more than the error being complained about cannot be
   matched by any single thread. *(measured 2026-08-12 — scope-history)*
-- **`photo_segment_sam2_max_side_px` stays 1024.** *(measured 2026-08-11 — `config.py`)*
+- **`photo_segment_sam2_max_side_px` stays 1024.** *(2026-08-11 — `config.py`)*
 - **The photo subject cutout ships ON, and rembg is a DEPLOY REQUIREMENT.**
   `photo_prep` + `photo_prep_background_removal` default True as a PAIR, never
   singly; an unavailable cutout skips prep entirely rather than degrading onto
@@ -585,9 +591,9 @@ inventing a metric. Deliberately a REPORTING tool, not a CI gate. Build detail,
 verification and scope limits: [area 1](docs/scope/1-auto-digitizing-quality.md)
 ("The two evaluation harnesses"). *(confirmed 2026-08-21 — area 1)*
 
-**Still open here: `summit_badge.png` (#6.2) alone** — F/0 at both configs and
-SATURATED, so judge any fix on `thread_worst_delta_e`, never score. #6.3 is
-closed. *(measured 2026-08-21 — area 1)*
+**Still open: `summit_badge.png` (#6.2) alone** — F/0 at both configs and
+SATURATED, so judge any fix on `thread_worst_delta_e`, never score.
+*(measured 2026-08-21 — area 1)*
 
 **The corpus half is no longer empty (2026-08-15).** Eight files of real
 customer artwork ship in `FIXTURES` — the first entries neither synthetic nor
@@ -599,35 +605,29 @@ real input. `logo_script_tires.png` (a clean two-colour wordmark on white)
 classifies `photo_scene` outright — a misroute kept so the bug has a fixture.
 *(measured 2026-08-15 — `tools/corpus_scorecard.py:FIXTURES`)*
 This does **not** close `scratch_corpus/`: cloud sessions still can't reach those
-37 files (Waiting on Kent #7); M2/M3 still waits. **Kent's four real portraits
-(2026-08-23) are the first tonal entries** — gitignored by spec decision 6, so
-they are machine-bound and CI cannot see them (defect 9, 10).
+37 files (Waiting on Kent #7). **Kent's four real portraits (2026-08-23) are the
+first tonal entries** — gitignored, machine-bound, invisible to CI.
 
-**A second, different harness exists: `tools/pro_parity/`** — "how close is our
-output to the PROFESSIONAL digitization of the same design", 23 designs, six
-weighted components. **Its scale changed 2026-08-14** (chance-corrected floors);
-see the Gotcha above before comparing to any pre-2026-08-14 number. Detail in
-[area 1](docs/scope/1-auto-digitizing-quality.md). *(confirmed 2026-08-14 — PR #151)*
+**A second harness exists: `tools/pro_parity/`** — how close our output is to
+the PROFESSIONAL digitization of the same design, 23 designs, six weighted
+components. **Its scale changed 2026-08-14** (chance-corrected floors); see the
+Gotcha above before comparing to any earlier number. *(confirmed — PR #151)*
 
 **Half the corpus is in the repo; the half that matters is not.** The tracked
 `Embroidery Files.zip` carries all 23 pro STITCH files, so `prep_all.py`'s
-recon lane (artwork rebuilt from those stitches) runs from a fresh checkout —
-extract outside the tree, set `PRO_PARITY_ROOT`. It carries **zero customer
-artwork** (no PNG/WEBP) and no Bridge Bar job, so `prep_both.py`'s real lane —
-the one behind the 42.5 baseline — still needs the Drive copy and a fresh
-checkout cannot reproduce it. *(measured 2026-08-18 — prep_both from the zip
-fails 0/15 on FileNotFoundError for the artwork; an earlier edit today claimed
-the whole corpus was reachable and was wrong)*
-*(corrected 2026-08-18 — `git ls-files`, `DESIGNS` resolved against the zip)*
+recon lane runs from a fresh checkout (extract outside the tree, set
+`PRO_PARITY_ROOT`). It carries **zero customer artwork**, so `prep_both.py`'s
+real lane — the one behind the 42.5 baseline — still needs the Drive copy.
+*(corrected 2026-08-18 — prep_both from the zip fails 0/15 on
+FileNotFoundError; an earlier edit that day claimed the whole corpus was
+reachable and was wrong)*
 
 **Area 1 is deliberately NOT split into "image analysis" + "stitch
-planning",** and the four capability gaps an external review of this file
-named (quantization, segmentation/vectorization, background removal,
-small-detail culling) all have owners in code. Both arguments moved to
-[`docs/scope/1-auto-digitizing-quality.md`](docs/scope/1-auto-digitizing-quality.md)
-("Why this area is not split in two") — they govern how this area is
-tracked, not what is currently true of it. *(moved 2026-08-21 — rule 5,
-800-line budget)*
+planning",** and the four capability gaps an external review named
+(quantization, segmentation/vectorization, background removal, small-detail
+culling) all have owners in code. Both arguments live in [area
+1](docs/scope/1-auto-digitizing-quality.md) ("Why this area is not split in
+two"). *(moved 2026-08-21 — rule 5)*
 
 ### Research backlog — competitive and open-source leads
 
