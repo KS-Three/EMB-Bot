@@ -189,6 +189,19 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
 
 ## Standing rulings — decided, do not re-litigate
 
+- **A photo sews FILLED (~0.99 cov), not as thread-paint (~0.52–0.55).** Lane A,
+  answered on renders of both products: *"the left image is WAAAAAAAAYYYY
+  BETTER"*. Held on 4 fixtures, mean luminance 0.32–0.60; 3 were run to
+  overturn the first and did not. **Not yet acted on:** `auto_photo_tier` still
+  routes `photo_subject` to streamline, against this ruling.
+  *(ruled 2026-08-25 — Kent; `docs/superpowers/plans/2026-08-25-fill-coverage-team-brief.md`)*
+- **Satin borders go on shapes significant AND smooth, never blanket.** *"if
+  it's abrupt, it probably doesn't require a border, or is wrong."* On
+  `owl_kent`, blanket `border="auto"` spends **+60% stitches to worsen the
+  silhouette** (it traces the pixel staircase in a contrasting texture); the
+  selective rule takes 4 shapes of 35 for **+4%**. Shipped `border="significant"`.
+  *(ruled 2026-08-25 — Kent; measured same day — PR #239)*
+
 - **The 3 Arabic fonts can never work, engine or not:** they carry ONLY base-block
   letters and zero presentation forms. *(measured 2026-08-22 — font.json blocks)*
 - **We do not rework font data to make it importable.** A candidate is either

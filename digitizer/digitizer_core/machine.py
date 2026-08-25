@@ -504,6 +504,39 @@ BORDER_CLOSURE_OVERLAP_MM = 1.40
 # How far the join may slide from the nearest station to find a flat stretch.
 BORDER_JOIN_SEARCH_MM = 3.0
 
+# --- The "significant" border mode's two gates (2026-08-25) ---------------
+#
+# Kent's rule, in his words: *"a clean satin border around 'significant'
+# shapes helps [create pop]. Doing the stitched border is typically very clean
+# and smooth, if it's abrupt, it probably doesn't require a border, or is
+# wrong."* Two gates, and BOTH are dimensionless on purpose — neither is a
+# length, so neither is a physical constant ROADMAP gate 1 reserves for a
+# sew-out (contrast BORDER_WIDTH_MM above, which IS corpus-measured and which
+# this mode reuses rather than re-deriving).
+#
+# NOT CORPUS-MEASURED. Both were read off the region census of ONE image
+# (`owl_kent.jpg`, 35 regions) where the two populations separate cleanly:
+# eyes and beak score 1.3-2.7 raggedness, the big face/background regions
+# 4.0/11.7/13.6. Treat them as a starting position that wants real portraits
+# behind it, not a ruling — a human face's catchlights and nostrils are
+# exactly the small-and-compact population no fixture here covers.
+
+# Share of the design's own stitched area a shape must carry to be
+# "significant". 0.25% keeps the owl's eyes and beak and drops all 30 of its
+# confetti regions.
+BORDER_SIGNIFICANT_AREA_SHARE = 0.0025
+
+# The "abrupt" gate: isoperimetric ratio, perimeter^2 / (4*pi*area). 1.0 is a
+# circle; higher is a more contorted outline for the area enclosed. A shape
+# above this is one whose border would trace a pixel staircase in a
+# contrasting texture — advertising the raggedness instead of covering it,
+# which is what blanket "auto" does to the owl's silhouette (+60% stitches for
+# a WORSE edge). Measured alternative rejected: fraction of turns over 60
+# degrees does not discriminate at all here (26-67% across every region big
+# and small), because the staircase is universal — it is the shape's overall
+# contortion that separates the populations, not its local step angles.
+BORDER_ABRUPT_RAGGEDNESS = 3.5
+
 # Bean / triple run — the light outline tier, and the fallback wherever a
 # column will not fit. 14 found: 2.75 passes median (p90 3.27) at 0.73 mm
 # stitch length (p10 0.67, p90 1.87).

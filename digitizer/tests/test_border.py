@@ -38,17 +38,87 @@ def _runs(poly, style="auto", **kw):
 
 # --- The default promises nothing changes ----------------------------------
 
-def test_off_is_the_default_and_changes_nothing():
-    """The measured case for `off`: our fill already ends both row ends on the
-    shape's edge, so there is no ragged edge for a border to cover, and an
-    unearned outline is a few hundred stitches of machine time for nothing."""
-    assert PipelineConfig().border == "off"
+def test_no_border_is_the_default_and_changes_nothing():
+    """The measured case for no border: our fill already ends both row ends on
+    the shape's edge, so there is no ragged edge for a border to cover, and an
+    unearned outline is a few hundred stitches of machine time for nothing.
+
+    The default moved from the string "off" to None on 2026-08-25 so that "the
+    caller chose off" and "the caller chose nothing" stop being the same value
+    — see config.py's border block for why that distinction is load-bearing.
+    None still resolves to "off" for every class but the photo ones, which is
+    what keeps this fixture's assertion (a flat logo) true unchanged.
+    """
+    assert PipelineConfig().border is None
 
     plain = digitize(TESTDATA / "logo_whitebg.png", cfg(garment_id="hat_front"))[1]
     off = digitize(TESTDATA / "logo_whitebg.png",
                    cfg(garment_id="hat_front", border="off"))[1]
     assert plain.stats.stitch_count == off.stats.stitch_count
     assert not [r for _b, r in off.iter_runs() if r.kind in ("border", "bean")]
+
+
+# --- The "significant" mode: Kent's rule, 2026-08-25 -----------------------
+
+def test_border_worthy_wants_significant_and_smooth():
+    """Both gates, independently: a shape earns a border by being a real share
+    of the design AND by having an outline a border can trace cleanly.
+
+    The populations these numbers came off (owl_kent.jpg): eyes and beak at
+    1.3-2.7 raggedness, the head and background at 4.0/11.7/13.6.
+    """
+    from digitizer_core.stage7_sequence import _border_worthy, _raggedness
+
+    disc = Point(0, 0).buffer(10.0)            # compact: raggedness ~1.0
+    assert _raggedness(disc) == pytest.approx(1.0, abs=0.02)
+    assert _raggedness(HAIRLINE) > machine.BORDER_ABRUPT_RAGGEDNESS
+
+    total = disc.area * 100.0
+    # Significant and smooth -> bordered.
+    assert _border_worthy(disc, total, 0.0025, machine.BORDER_ABRUPT_RAGGEDNESS)
+    # Smooth but too small a share -> not significant, no border.
+    assert not _border_worthy(disc, disc.area * 10_000.0, 0.0025,
+                              machine.BORDER_ABRUPT_RAGGEDNESS)
+    # Big enough but abrupt -> the border would trace the raggedness.
+    assert not _border_worthy(HAIRLINE, HAIRLINE.area * 2.0, 0.0025,
+                              machine.BORDER_ABRUPT_RAGGEDNESS)
+
+
+def test_border_worthy_survives_degenerate_geometry():
+    """A zero-area fragment is neither significant nor borderable, and stage 7
+    must not die on one — it used to, see the seam test below."""
+    from digitizer_core.stage7_sequence import _border_worthy
+
+    assert not _border_worthy(Polygon(), 100.0, 0.0025, 3.5)
+    assert not _border_worthy(SQUARE, 0.0, 0.0025, 3.5)
+
+
+def test_geometry_collection_visible_geom_does_not_crash():
+    """REGRESSION (2026-08-25). Shapely 2.1.2 returns None for
+    `GeometryCollection.boundary`, and `_seam_band` called `.boundary.buffer()`
+    on it unguarded — an AttributeError that took the whole `plan_stitches`
+    call down, not a warning. Stage 5's overlap resolution can leave a visible
+    geometry as exactly such a collection (a polygon plus a degenerate sliver).
+
+    Never fired in production because `border` was "off" for everything;
+    `testdata/photo/photo_dof_meadow.png` hits it the moment borders are on,
+    which the photo route now turns them on for.
+    """
+    from shapely.geometry import GeometryCollection, LineString as _LS
+
+    from digitizer_core.stage7_sequence import _polygonal_boundary, _seam_band
+
+    coll = GeometryCollection([SQUARE, _LS([(30, 30), (34, 34)])])
+    assert coll.boundary is None, "shapely changed; this guard may be moot"
+    assert _polygonal_boundary(coll) is not None
+
+    # The abutting neighbour shares SQUARE's right edge, so this is the real
+    # seam case, not just a no-crash smoke test.
+    band, length = _seam_band(coll, Polygon([(20, 0), (40, 0), (40, 20), (20, 20)]))
+    assert band is not None and length == pytest.approx(20.0, abs=0.5)
+
+    # And a collection with no polygonal part at all reports "no seam".
+    assert _seam_band(GeometryCollection([_LS([(0, 0), (1, 1)])]), SQUARE) == (None, 0.0)
 
 
 def test_style_none_and_missing_geometry_are_no_ops():

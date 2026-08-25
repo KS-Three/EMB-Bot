@@ -841,13 +841,38 @@ class PipelineConfig:
     #          a column, bean run where it is not. A shape classified as satin
     #          never gets one; see stage 7.
     # "bean" – the light tier wherever a centreline fits.
+    # "significant" – "auto", but only on shapes that EARN a border: big
+    #          enough to matter (machine.BORDER_SIGNIFICANT_AREA_SHARE of the
+    #          design's stitched area) AND smooth enough that the border reads
+    #          clean (under machine.BORDER_ABRUPT_RAGGEDNESS). This is the
+    #          photo route's mode, and it exists because blanket "auto" makes
+    #          a photo WORSE: measured on owl_kent.jpg, "auto" spends +60%
+    #          stitches to trace the head's own pixel staircase in a
+    #          contrasting texture, while "significant" borders 4 shapes of 35
+    #          for +4% and lands the eyes and beak. Both gates' provenance —
+    #          and their one-image sample size — are on the constants.
+    #
+    # DEFAULT IS None, NOT "off": None means "let the class decide" (photo
+    # classes take "significant", every other class takes "off" and sews
+    # byte-for-byte what it always did), while an explicit "off" from the
+    # caller suppresses borders everywhere including photos. Those two have to
+    # be distinguishable, and a `str = "off"` default cannot tell them apart —
+    # the exact sentinel trap `fill_technique = "tatami"` still has at
+    # pipeline.auto_photo_tier, where an explicit "tatami" reads as "no
+    # choice made" and silently loses to the auto route. Do not "simplify"
+    # this back to a plain string default.
     #
     # Per-shape intent overrides the mode: `Region.meta["border"] = True/False`
     # rides the existing id-stability carry-forward (`assign_shape_ids` re-derives
     # the same id from the same content — see `regions.py`'s docstring), so a
     # review-screen decision survives a re-digitize with no new contract.
-    border: str = "off"
+    border: str | None = None
     border_width_mm: float | None = None
+    # The "significant" mode's two gates, each None -> the machine constant.
+    # Exposed because they are a starting position off one image, not a
+    # ruling: expect to move them once real portraits are on screen.
+    border_significant_area_share: float | None = None
+    border_abrupt_raggedness: float | None = None
 
     # Stage 6 — the appliqué tier (docs/specialty-techniques-2026-08-01.md §2).
     #

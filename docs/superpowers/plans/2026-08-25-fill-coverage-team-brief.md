@@ -127,6 +127,71 @@ Concretely: `forced_class="photo_subject"` gives the streamline route;
 filled comparison. Render both with `stitchviz`, put them side by side at the
 same scale, and send them to Kent. Nothing else is needed to answer it.
 
+> **THE RECIPE IN THE PARAGRAPH ABOVE DOES NOT WORK — corrected 2026-08-25.**
+> `pipeline.py:119` reads
+> `explicit = (cfg.fill_technique or "tatami").lower() != "tatami"`, and
+> `"tatami"` IS the default sentinel, so an explicit `"tatami"` does **not**
+> read as explicit: `auto_photo_tier` fires anyway and both arms render
+> **streamline**. On a forced `photo_subject` there is no `fill_technique`
+> value that yields plain tatami at all — anything making `explicit` true is
+> by definition not tatami. The failure is silent: two identical columns, and
+> the natural misreading is "the difference doesn't matter."
+>
+> **What actually works:** do not force the class. Let the photo classify on
+> its own — it lands `gradient` or `photo_scene`, `auto_photo_tier` returns
+> None for both, and `cfg.fill_technique` survives as tatami. That is the
+> filled arm. Keep `forced_class="photo_subject"` for the thread-paint arm.
+
+## LANE A IS ANSWERED — filled wins (2026-08-25)
+
+Run on four fixtures, both arms rendered through `stitchviz` at one scale and
+put to Kent: *"the left image is WAAAAAAAAYYYY BETTER"* — left being filled.
+
+| fixture | mean lum | filled | thread-paint |
+|---|---|---|---|
+| `owl_kent.jpg` | 0.60 | **0.991** cov, 20 blocks, 11,361 st | 0.551, 41 blocks, 9,516 st |
+| `photo_sunset_backlit.png` | 0.315 | **0.994**, 6 blocks, 11,513 st | 0.547, 8 blocks, 3,333 st |
+| `photo_dof_meadow.png` | 0.399 | **0.991**, 6 blocks, 9,404 st | 0.522, 9 blocks, 3,282 st |
+| `drone_render.png` | 0.341 | 0.516, 24 blocks | 0.349, 33 blocks |
+
+The pale owl was run first and is near-worst-case for a darkness-driven tier,
+so three darker images — two of them scenes — were run specifically to try to
+overturn it. They did not. `drone_render` is the one weak case and is flat
+vector art misclassifying as gradient, not a photograph.
+
+**Why nobody could see this before:** all ten arms in
+`tools_acceptance.variant_matrix` carry `forced_class: "photo_subject"` and
+none sets `fill_technique`, so every sheet ever judged was layered streamline,
+varying only in segmentation lane. This repo already wrote the lesson down
+after the background-removal defect — *a defect present in every column of a
+comparison harness is invisible to that harness*. Fill tier was the second
+instance.
+
+**Consequence for B/C/D:** as the brief predicted, "filled" makes C and D
+largely moot and turns the work into tier selection. The live follow-on is
+that `auto_photo_tier` routes every `photo_subject` to streamline with no
+coverage consideration — that is now a shipped default pointing the wrong way.
+
+### What shipped off the back of it
+
+Kent's own next call, verbatim: *"We need to create some 'pop' to the
+digitizing, typically a clean satin border around 'significant' shapes help.
+Doing the stitched boarder is typically very clean and smooth, if it's abrupt,
+it probably doesn't require a border, or is wrong."*
+
+Measured on `owl_kent`: blanket `border="auto"` is **worse** — +60% stitches to
+trace the head's own pixel staircase in a contrasting texture. The abruptness
+half of Kent's rule is the gate that fixes it. Shipped as `border="significant"`
+(4 of 35 shapes, +4% stitches, eyes and beak land, silhouette untouched), and
+it is what `border=None` now resolves to on the photo classes. See
+`machine.BORDER_SIGNIFICANT_AREA_SHARE` / `BORDER_ABRUPT_RAGGEDNESS` for both
+gates and their one-image sample size.
+
+Turning borders on also exposed a **shipped crash**: `_seam_band` did
+`.boundary.buffer()` unguarded, and Shapely 2.1.2 returns None for
+`GeometryCollection.boundary`. `border="auto"` died on `photo_dof_meadow.png`.
+Fixed, with a regression test.
+
 ## The lanes
 
 Each is independently ownable; give each its own worktree. **A first.**
