@@ -915,7 +915,20 @@
     color: var(--accent-ink, #fff);
     border-color: var(--accent, #4f46e5);
   }
-  .mp-shapelist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+  /* Bounded like DigitizePanel's layer list: one row per shape with no
+     ceiling means a drawing with many shapes pushes the stitch-type, colour
+     and angle controls below it off the panel. Rows here are ~30px, so this
+     only engages on genuinely long lists. */
+  .mp-shapelist {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 320px;
+    overflow-y: auto;
+  }
   .mp-shapelist li { display: flex; align-items: center; gap: 4px; }
   .mp-shaperow {
     flex: 1;
@@ -930,7 +943,7 @@
     font-size: var(--fs-xs, 12px);
     text-align: left;
   }
-  .mp-shaperow.sel { border-color: var(--accent, #4f46e5); background: rgba(79,70,229,0.08); }
+  .mp-shaperow.sel { border-color: var(--accent, #4f46e5); background: var(--tint, #eef0ff); }
   .mp-swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--tint-border, #ccd6fb); display: inline-block; flex: none; }
   .mp-remove { border: none; background: none; cursor: pointer; font-size: 13px; color: var(--danger, #c0392b); padding: 4px; }
   .mp-empty { font-size: var(--fs-xs, 12px); color: var(--muted, #6b7280); margin: 0; }

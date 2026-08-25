@@ -1410,6 +1410,11 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .hint {
   font-size: var(--fs-sm);
   color: var(--muted);
+  /* These are the app's longest text blocks -- ManualPanel's drawing
+     instructions run seven lines, ImagePanel stacks two paragraphs -- and
+     with no line-height they inherited the browser default, so a run of grey
+     text in a ~400px column set as one tight slab. */
+  line-height: 1.5;
   margin: 0 0 var(--space-5);
 }
 

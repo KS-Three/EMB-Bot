@@ -1953,7 +1953,12 @@
     outline: 2px solid var(--accent, #4f46e5);
     outline-offset: 1px;
   }
-  .dgp-note { font-size: var(--fs-xs, 12px); color: var(--muted, #667); margin: 8px 0 0; }
+  .dgp-note {
+    font-size: var(--fs-xs, 12px);
+    line-height: 1.5;
+    color: var(--muted, #6b7280);
+    margin: 8px 0 0;
+  }
   .dgp-src { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
   .dgp-thumb {
     width: 56px;
