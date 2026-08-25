@@ -114,7 +114,12 @@
       error = (err && err.message) || "Could not read this image file.";
       workImage = null;
       fileName = "";
-      d("image", { image: null });
+      // Deliberately does NOT clear the parent's tracing backdrop. A failed
+      // decode means THIS file is unusable, not that the image already showing
+      // behind the canvas is — wiping it would take away a working backdrop
+      // (and its whole control row) that the user never asked to remove, in
+      // response to them picking a bad file. Removing it is its own button.
+      // Found by review, 2026-08-25.
     } finally {
       busy = false;
     }

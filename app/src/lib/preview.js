@@ -142,9 +142,20 @@ export function threadLayers(rgb, angle, lw) {
   ];
 }
 
-// How many of threadLayers()' layers to actually draw. The stack is ordered so
-// that dropping the TAIL degrades gracefully — cylinder shading survives
-// longest, the beaded specular goes first.
+// WHICH of threadLayers()' layers to draw, as explicit indices.
+//
+// This returns a SUBSET, not a prefix, and that is the whole point. Layer 2 is
+// the only one painted in the thread's true colour (`shade(rgb, 1)`); layers 0
+// and 1 are the darkened rim and its inboard step. A prefix ladder that took
+// the first two layers therefore never painted the true colour at all — every
+// zoomed-out preview and every design past the strand ceiling rendered about
+// 15% dark, uniformly, and nothing caught it because no test compared a
+// low-LOD render's colour against the thread's own. Found by review, 2026-08-25.
+//
+// So every rung includes layer 2. What gets dropped is sheen detail, in order
+// of how much it costs versus how much it shows:
+//   - the beaded specular (4) goes first
+//   - then the broad specular (3) and the rim step (1)
 //
 // Two independent reasons to drop layers, and either one alone is enough:
 //   - Thin thread (zoomed out): below ~1.6 px the narrow layers land inside
@@ -157,10 +168,15 @@ export function threadLayers(rgb, angle, lw) {
 // through renderRealistic would mean building a 60k-stitch design per
 // assertion, which is exactly the kind of test that starves a parallel suite.
 export function threadLodLayers(lw, strandCount) {
-  if (lw < 1.6 || strandCount > 60000) return 2;
-  if (lw < 2.6 || strandCount > 24000) return 4;
-  return 5;
+  if (lw < 1.6 || strandCount > 60000) return [0, 2];
+  if (lw < 2.6 || strandCount > 24000) return [0, 1, 2, 3];
+  return [0, 1, 2, 3, 4];
 }
+
+// The index of the layer carrying the thread's undarkened, unlightened colour.
+// Exported so a test can assert every LOD rung includes it without hardcoding
+// the stack's shape in two places.
+export const TRUE_COLOUR_LAYER = 2;
 
 // Draw every strand as a lit thread. Pure canvas work — no transform state of
 // its own; the caller supplies SX/SY already carrying zoom/pan.
@@ -214,43 +230,70 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
   }
   ctx.stroke();
 
-  // Bucket by (colour, direction). Insertion order is sew order, so a later
-  // colour still paints over an earlier one exactly as the machine lays it.
-  const buckets = new Map();
+  // Group into colour BLOCKS first, then by direction inside each block.
+  //
+  // A block is a run of consecutive same-colour strands — i.e. what the machine
+  // sews between two colour changes. Blocks matter for two reasons an earlier
+  // version of this got wrong (both found by review, 2026-08-25):
+  //
+  //   1. Ordering has to be block-major. Drawing layer-major across ALL buckets
+  //      put an earlier colour's layers 1..4 on top of a later colour's
+  //      full-width layer 0, so wherever two colours overlap the UNDER colour
+  //      bled through the over colour's edges — the exact opposite of the sew
+  //      order this is supposed to reproduce.
+  //   2. Keying buckets by colour alone merged a colour that RECURS later in
+  //      the sequence back into its first block, silently moving those strands
+  //      earlier in z-order.
+  //
+  // Inside one block, layer-major still holds, and still for its original
+  // reason: a neighbouring strand's dark rim must not paint over this strand's
+  // highlight and pock the surface with dark speckles. That hazard is
+  // within-colour, so confining layer-major to a block keeps the benefit and
+  // drops the cross-colour bug.
+  const blocks = [];
+  let curBlock = null;
+  let prevRgb = null;
   for (const s of strands) {
+    const rgb = s.rgb;
+    if (!curBlock || !prevRgb || rgb[0] !== prevRgb[0] || rgb[1] !== prevRgb[1] || rgb[2] !== prevRgb[2]) {
+      curBlock = { rgb, buckets: new Map() };
+      blocks.push(curBlock);
+    }
+    prevRgb = rgb;
     const ang = Math.atan2(SY(s.y1) - SY(s.y0), SX(s.x1) - SX(s.x0));
     // Modulo PI, then quantized: a strand and its reverse share a bucket.
     let b = Math.floor((((ang % Math.PI) + Math.PI) % Math.PI) / (Math.PI / DIR_BUCKETS));
     if (b >= DIR_BUCKETS) b = DIR_BUCKETS - 1;
-    const key = `${s.rgb[0]},${s.rgb[1]},${s.rgb[2]}|${b}`;
-    let bucket = buckets.get(key);
-    if (!bucket) { bucket = { rgb: s.rgb, bucket: b, items: [] }; buckets.set(key, bucket); }
+    let bucket = curBlock.buckets.get(b);
+    if (!bucket) { bucket = { bucket: b, items: [] }; curBlock.buckets.set(b, bucket); }
     bucket.items.push(s);
   }
 
-  // Layer-major: every bucket's layer 0 before any bucket's layer 1, so a
-  // neighbouring strand's dark edge can never paint over this strand's
-  // highlight and pock the surface with dark speckles.
-  const profiles = [];
-  for (const b of buckets.values()) {
-    const angle = (b.bucket + 0.5) * (Math.PI / DIR_BUCKETS);
-    profiles.push({ b, angle, nx: -Math.sin(angle), ny: Math.cos(angle), layers: threadLayers(b.rgb, angle, lw) });
-  }
-  const layerCount = o.layers != null ? o.layers : 5;
-  for (let li = 0; li < layerCount; li++) {
-    for (const p of profiles) {
-      const L = p.layers[li];
-      if (!L) continue;
-      ctx.strokeStyle = L.color;
-      ctx.lineWidth = L.width;
-      if (L.dash) ctx.setLineDash(L.dash); else ctx.setLineDash([]);
-      const ox = p.nx * L.offset, oy = p.ny * L.offset;
-      ctx.beginPath();
-      for (const s of p.b.items) {
-        ctx.moveTo(SX(s.x0) + ox, SY(s.y0) + oy);
-        ctx.lineTo(SX(s.x1) + ox, SY(s.y1) + oy);
+  const layerIdx = o.layers != null
+    ? (Array.isArray(o.layers) ? o.layers : [0, 1, 2, 3, 4].slice(0, o.layers))
+    : [0, 1, 2, 3, 4];
+
+  for (const blk of blocks) {
+    const profiles = [];
+    for (const b of blk.buckets.values()) {
+      const angle = (b.bucket + 0.5) * (Math.PI / DIR_BUCKETS);
+      profiles.push({ b, nx: -Math.sin(angle), ny: Math.cos(angle), layers: threadLayers(blk.rgb, angle, lw) });
+    }
+    for (const li of layerIdx) {
+      for (const p of profiles) {
+        const L = p.layers[li];
+        if (!L) continue;
+        ctx.strokeStyle = L.color;
+        ctx.lineWidth = L.width;
+        if (L.dash) ctx.setLineDash(L.dash); else ctx.setLineDash([]);
+        const ox = p.nx * L.offset, oy = p.ny * L.offset;
+        ctx.beginPath();
+        for (const s of p.b.items) {
+          ctx.moveTo(SX(s.x0) + ox, SY(s.y0) + oy);
+          ctx.lineTo(SX(s.x1) + ox, SY(s.y1) + oy);
+        }
+        ctx.stroke();
       }
-      ctx.stroke();
     }
   }
   ctx.setLineDash([]);

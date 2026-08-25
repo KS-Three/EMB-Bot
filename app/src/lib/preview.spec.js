@@ -1,5 +1,5 @@
 import { test, expect, vi } from "vitest";
-import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopOutline, renderRealistic, threadLayers, threadLodLayers, THREAD_WIDTH_MM } from "./preview.js";
+import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopOutline, renderRealistic, threadLayers, threadLodLayers, drawThreads, TRUE_COLOUR_LAYER, THREAD_WIDTH_MM } from "./preview.js";
 
 // A ctx double that tracks strokeStyle assignments (a plain property can't
 // record its own write history) alongside vi.fn() spies for every 2D-context
@@ -406,18 +406,63 @@ test("renderRealistic: threadWidthMm is overridable, and a wider thread strokes 
 
 test("threadLodLayers: a big design or a thin thread sheds layers, and never sheds all of them", () => {
   const FULL = threadLodLayers(8, 500);
-  expect(FULL).toBe(5);
+  expect(FULL).toEqual([0, 1, 2, 3, 4]);
   // Big design at a comfortable thread width -> cheaper, still shaded.
-  expect(threadLodLayers(8, 30000)).toBeLessThan(FULL);
-  expect(threadLodLayers(8, 61000)).toBeLessThan(threadLodLayers(8, 30000));
+  expect(threadLodLayers(8, 30000).length).toBeLessThan(FULL.length);
+  expect(threadLodLayers(8, 61000).length).toBeLessThan(threadLodLayers(8, 30000).length);
   // Zoomed out far enough that the narrow layers are sub-pixel.
-  expect(threadLodLayers(1.3, 500)).toBeLessThan(FULL);
-  // Monotonic in both inputs, and always draws something.
+  expect(threadLodLayers(1.3, 500).length).toBeLessThan(FULL.length);
+  // Always draws something, and never an out-of-range index.
   for (const [lw, n] of [[1.3, 61000], [1.3, 500], [8, 61000], [8, 500], [2.0, 25000]]) {
     const v = threadLodLayers(lw, n);
-    expect(v).toBeGreaterThanOrEqual(2);
-    expect(v).toBeLessThanOrEqual(5);
+    expect(v.length).toBeGreaterThanOrEqual(2);
+    expect(v.length).toBeLessThanOrEqual(5);
+    for (const i of v) expect(i).toBeGreaterThanOrEqual(0);
+    for (const i of v) expect(i).toBeLessThan(5);
   }
+});
+
+test("threadLodLayers: EVERY rung paints the thread's true colour — the ladder is a subset, never a prefix", () => {
+  // The regression this exists for: the ladder used to return a COUNT, and the
+  // cheapest rung took the first two layers — which are the darkened rim and
+  // its inboard step. The true colour lives at index 2, so every zoomed-out
+  // preview rendered ~15% dark, uniformly, with the whole suite green.
+  const rungs = [
+    threadLodLayers(8, 500),      // full
+    threadLodLayers(8, 30000),    // big design
+    threadLodLayers(8, 61000),    // huge design
+    threadLodLayers(1.3, 500),    // zoomed out
+    threadLodLayers(1.3, 61000),  // both
+    threadLodLayers(2.0, 25000),  // the middle rung
+  ];
+  for (const r of rungs) expect(r).toContain(TRUE_COLOUR_LAYER);
+
+  // And prove index 2 really is the undarkened colour, so the guard above
+  // cannot rot if the stack is reordered.
+  const rgb = [180, 60, 50];
+  const layers = threadLayers(rgb, 0.7, 10);
+  expect(layers[TRUE_COLOUR_LAYER].color).toBe(`rgb(${rgb[0]},${rgb[1]},${rgb[2]})`);
+});
+
+test("drawThreads draws BLOCK-major: a later colour covers an earlier one, and a recurring colour keeps its own place in sew order", () => {
+  // Strand order is sew order. Red, then blue, then red again: the strokes
+  // must come out in exactly that order, or an under-colour bleeds through
+  // the over-colour's edges where they overlap.
+  const RED = [200, 10, 10], BLUE = [10, 10, 200];
+  const strands = [
+    { x0: 0, y0: 0, x1: 10, y1: 0, rgb: RED, kind: "stitch" },
+    { x0: 0, y0: 0, x1: 10, y1: 0, rgb: BLUE, kind: "stitch" },
+    { x0: 0, y0: 0, x1: 10, y1: 0, rgb: RED, kind: "stitch" },
+  ];
+  const ctx = makeCtxSpy();
+  drawThreads(ctx, strands, (x) => x, (y) => y, 8, { layers: [2] }); // true colour only
+  // Drop the shadow pass's black, keep the thread colours in draw order.
+  const painted = ctx.strokeStyleLog.filter((s) => /^rgb\(/.test(s));
+  expect(painted).toEqual([
+    "rgb(200,10,10)",
+    "rgb(10,10,200)",
+    "rgb(200,10,10)", // the recurring block paints LAST, not merged into the first
+  ]);
 });
 
 test("renderRealistic: threadLayers overrides the LOD ladder (the escape hatch a caller can force)", () => {

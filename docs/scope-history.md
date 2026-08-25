@@ -82,6 +82,66 @@ are plausible prose rather than overlapping lines. Check a compaction against
 
 ---
 
+**Last updated:** 2026-08-25 (evening) — **the first four real HUMAN portraits, and they overturn the day's headline ruling.** Snapshot; nothing here is a live baseline.
+
+Kent attached four family photographs to chat (the only channel that works — the
+acceptance dir is gitignored under spec decision 6, and the pull-corpus skill's
+own measurement bars binary through Drive). All four decoded 1848x4000, EXIF
+orientation honoured by cv2, downscaled to the service's 2800 px ceiling.
+
+**Every one classifies `gradient`, and by a wide margin.** unique_color_mass:
+
+| fixture | ucm | grad_smoothness |
+|---|---|---|
+| portrait_two_faces_sky | 0.0230 | 1.09 |
+| portrait_adult_graphic_shirt | 0.0267 | 1.16 |
+| portrait_child_closeup | 0.0586 | 1.49 |
+| portrait_sparkler_backlit | 0.0686 | 1.31 |
+| *(owl_kent, for scale)* | *0.1107* | *1.29* |
+| *(summit_badge — a LOGO)* | *0.1152* | *0.46* |
+| *(drone_render — a LOGO)* | *0.1592* | *4.46* |
+
+Real photographs are the LOWEST unique_color_mass content in the whole corpus —
+below every gradient logo. This is the measurement behind the standing ruling
+that "is this a photograph" must be declared, not detected.
+
+**`is_photographic=True` held all four inside `max_colors` (12):** spools
+20→10, 19→12, 25→12, 20→12. Preflight moved F/0 → F/10, D/52, D/40, C/64.
+
+**The 3.5 raggedness cutoff landed in a real empty gap on all four faces** —
+gaps 3.46→3.53, 3.31→3.68, 3.29→3.65, 3.44→4.26 — independently validating a
+threshold that had only ever seen an owl. Borders fired far more often than on
+the owl: 43/71, 19/36, 22/41, 20/32 regions.
+
+**But filled DESTROYS a face.** Visually confirmed on two: the child's face
+quantized to one flat skin field with the eyes and nose gone entirely, only the
+lips surviving; on the adult the person vanished altogether, leaving a floating
+flag shirt on a brown ground. Thread-paint rendered both as recognisable people
+— eyes, nose, smile, hair — at 0.51–0.64 coverage. Its cost: trims 257–406
+against filled's 57–114.
+
+Kent's call on seeing it: *"Faces may be a little too challenging at this stage
+of the project."* Tabled, not abandoned — parked until a more capable tier exists.
+
+**And the checkbox is not the answer.** Kent: *"Why do we need check boxes?
+Can't the tool automatically recognize what it's working with?"* Measured the
+same evening — stage 0's COLOUR signals cannot, but two things the repo already
+ships do:
+
+| signal | real photos | logos / art |
+|---|---|---|
+| EXIF camera Make/Model | **4/4** (all "samsung Galaxy S26 Ultra") | 0/9 |
+| YuNet `detect_faces_seam` | **4/4** (1, 1, 1, and 2 on the two-person shot) | 0/9 |
+
+Blind spots, both known: EXIF is stripped by re-saving — `owl_kent` is a real
+photograph carrying **zero** tags — and the face detector misses pets and
+landscapes. Neither alone is sufficient; EXIF-or-face covers every case in this
+corpus except a stripped photo with no people in it, which is exactly what
+`owl_kent` is. So the design is auto-detect with the declaration as fallback,
+not a checkbox as the primary mechanism. Not built.
+
+---
+
 **Last updated:** 2026-08-25 — **four display/UI passes over the Studio, merged as PRs #239, #240, #242, #244.** Two of the defects were functional, not cosmetic.
 
 Session shape: Kent opened with "I NEED YOU TO HELP WITH THE DISPLAY / UI....

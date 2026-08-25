@@ -598,6 +598,37 @@ test("curvedNodeThrough: takes its side from the TURN, so a run of curved nodes 
   expect(new Set(sides).size).toBe(1);
 });
 
+test("curvedNodeThrough: the bow FLIPS when the path reverses its turn — the side really is read from the corner", () => {
+  // The consistently-left square above cannot tell the real rule apart from
+  // "always bow left" or from an inverted flip: every corner there turns the
+  // same way, so all three implementations agree. Deleting the turn logic
+  // outright left that test green (checked by mutation, 2026-08-25).
+  //
+  // This fixture zigzags, so it contains BOTH a left turn and right turns, and
+  // the bow must land on the outside of each corner independently.
+  const pts = [
+    { x: 0, y: 0 }, { x: 100, y: 0 }, { x: 150, y: 80 },
+    { x: 250, y: 80 }, { x: 300, y: 0 },
+  ];
+  const samples = [];
+  for (let i = 2; i < pts.length; i++) {
+    const before = pts[i - 2], a = pts[i - 1], b = pts[i];
+    const t = curvedNodeThrough(a, b, before);
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const turn = Math.sign((a.x - before.x) * dy - (a.y - before.y) * dx);
+    const side = Math.sign(dx * (t.y - a.y) - dy * (t.x - a.x));
+    samples.push({ turn, side });
+  }
+  // The fixture genuinely exercises both directions — otherwise this test
+  // would be no stronger than the one above.
+  expect(new Set(samples.map((s) => s.turn)).size).toBe(2);
+  // Bow to the OUTSIDE of the corner: the side is the opposite of the turn.
+  for (const s of samples) {
+    expect(s.turn).not.toBe(0);
+    expect(s.side).toBe(-s.turn);
+  }
+});
+
 test("curvedNodeThrough: a zero-length chord returns the midpoint rather than NaN", () => {
   const p = { x: 7, y: 9 };
   const t = curvedNodeThrough(p, { ...p }, null);

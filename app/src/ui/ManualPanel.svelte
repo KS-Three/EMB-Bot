@@ -284,10 +284,19 @@
   // (curveControlOrNull's existing straighten epsilon), so nothing here is a
   // one-way door.
   function onCanvasContextMenu(e) {
-    // Only while drawing. Outside a draft the browser menu is more useful than
-    // anything this canvas could offer, and the design field's own right-click
-    // tools menu sets the precedent that right-click means "tool", not "point".
-    if (editingId) return;
+    // Only while a draft is actually in progress. Outside one the browser menu
+    // is more useful than anything this canvas could offer, and the design
+    // field's own right-click tools menu sets the precedent that right-click
+    // means "tool", not "point".
+    //
+    // The `draft.length` half of that guard was missing until review caught it
+    // (2026-08-25): right-clicking on empty canvas swallowed the browser menu
+    // AND started a draft, and right-clicking ON an existing shape started a
+    // stray draft on top of it instead of selecting it the way a left-click
+    // does. A curved FIRST node is meaningless anyway — it has no incoming
+    // segment to bow — so requiring a left-click to open the shape costs
+    // nothing and makes the two buttons mean one thing each.
+    if (editingId || draft.length === 0) return;
     e.preventDefault();
     const pt = canvasPointFromEvent(e);
     if (draft.length >= 2 && isNearStart(draft, pt.x, pt.y)) {
@@ -456,8 +465,16 @@
   // "close enough to straight, un-curve it" (see curveControlOrNull).
   function commitCurve(points, curves, segIndex, through) {
     const n = points.length;
+    // The shape can vanish mid-gesture: a pointerdown arms a curve-handle
+    // drag, then something empties the draft before pointerup — Escape
+    // (clearDraft), Enter or a close-click (finishShape). `n` is then 0, so
+    // `(segIndex + 1) % n` is NaN, both endpoints come back undefined, and
+    // curveControlOrNull dereferences them. Bail with the curves untouched
+    // instead: there is no segment left to bow. Found by review, 2026-08-25.
+    if (n < 2 || segIndex < 0 || segIndex >= n) return curves;
     const a = points[segIndex];
     const c = points[(segIndex + 1) % n];
+    if (!a || !c || !through) return curves;
     const control = curveControlOrNull(a, c, through);
     const next = { ...curves };
     if (control) next[segIndex] = control;
@@ -473,6 +490,12 @@
     // swallow an unrelated future point-placement click if it weren't reset
     // here first.
     suppressNextClick = false;
+    // Only the primary button arms a drag. A right-click's pointerdown used to
+    // arm a curve-handle grab that its own contextmenu then invalidated by
+    // finishing the shape, and the pointerup landed on an empty draft. Right-
+    // click means "place a curved node" here; it should never also start a
+    // gesture. (button is 0 for touch and pen, so this is mouse-only.)
+    if (e.button != null && e.button !== 0) return;
     const pt = canvasPointFromEvent(e);
     if (editingId) {
       const idx = hitTestVertex(editPoints, pt.x, pt.y);
@@ -664,15 +687,26 @@
     if (e.key === "Delete" || e.key === "Backspace") {
       // Mid-draft, Backspace takes back the last node — the same key that
       // means "undo that character" everywhere else, and what the Ember demo
-      // reaches for after a misplaced node. It cannot mean "delete the shape"
-      // here because a draft has no shape to delete yet, so the two readings
-      // never compete for the key.
+      // reaches for after a misplaced node.
       if (draft.length && !editingId) {
         undoPoint();
         e.preventDefault();
         return;
       }
-      if (selectedShapeId && draft.length === 0 && !editingId) {
+      // ...and the moment the draft runs out, the key STOPS doing anything
+      // destructive until it is released.
+      //
+      // Without the `e.repeat` guard these two branches chain: hold Backspace
+      // to unwind a draft, the draft empties, and the very next auto-repeat
+      // tick falls through to here and deletes the selected shape — a shape
+      // the user never touched, with no draft left to warn them. That is
+      // reachable in normal use, because selecting a shape and then clicking
+      // empty canvas to start a new one leaves BOTH selectedShapeId set and a
+      // draft in progress (onCanvasClick starts a draft without clearing the
+      // selection). Found by review, 2026-08-25.
+      //
+      // A deliberate, discrete press with nothing drafted still deletes.
+      if (selectedShapeId && draft.length === 0 && !editingId && !e.repeat) {
         deleteShape(selectedShapeId);
         e.preventDefault();
       }
