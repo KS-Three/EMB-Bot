@@ -25,6 +25,71 @@ function rgbCss(rgb, alpha) {
     : `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${alpha})`;
 }
 
+// ---- The lit filament -----------------------------------------------------
+// Thread is a cylinder lying on cloth, not a coloured line. Two consequences,
+// and this renderer had neither until 2026-08-25, when Kent said of a fill
+// sheet: *"It feels like i'm looking at an image made up of vectors and not
+// stitches."*
+//
+//   1. HOW MUCH light a filament catches depends on its angle to the source,
+//      so a field of parallel rows stops being one flat tone.
+//   2. WHERE its highlight sits is off-centre, toward the light, with the far
+//      side in shadow. That shadow is what separates one row from the next.
+//
+// This is the SAME model as `digitizer_core/stitchviz.py`'s `_draw_filament`,
+// deliberately: what Kent rules on in an acceptance sheet and what a customer
+// sees on the canvas have to agree. Change one, change both.
+//
+// The light is in CANVAS coordinates, where y increases downward -- 225 deg is
+// up and to the left, which is what the old fixed offsets (+1/+1.5 shadow,
+// -0.6/-0.9 sheen) were approximating.
+const THREAD_MM = 0.4; // 40wt polyester filament diameter; was 0.22 here, i.e.
+                       // 55% of real width, which is why thread read as line art
+const LIGHT_DEG = 225;
+const LX = Math.cos((LIGHT_DEG * Math.PI) / 180);
+const LY = Math.sin((LIGHT_DEG * Math.PI) / 180);
+const AMBIENT = 0.8;
+const DIFFUSE = 0.42;
+// [width, offset toward light, tone], as fractions of the nominal width.
+// Every band is clamped inside that width by drawFilament, so shading never
+// widens the drawn thread -- the Python side measures coverage by rendering,
+// and the two models are kept identical.
+const BANDS = [
+  [1.0, 0.0, 0.62],   // shadowed body -- defines the footprint
+  [0.66, 0.14, 1.0],  // lit body
+  [0.28, 0.26, 1.22], // specular
+];
+
+export function drawFilament(ctx, x0, y0, x1, y1, rgb, lw) {
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len;
+  const uy = dy / len;
+
+  // Lambert on a cylinder: the axis-to-light cross product. Absolute value
+  // because a filament is symmetric -- signing it would make sew DIRECTION
+  // show up as tone, so the same row sewn back the other way would differ.
+  const tone = AMBIENT + DIFFUSE * Math.abs(ux * LY - uy * LX);
+
+  // Perpendicular, resolved to point at the light.
+  let nx = -uy;
+  let ny = ux;
+  if (nx * LX + ny * LY < 0) { nx = -nx; ny = -ny; }
+
+  for (const [wFrac, offFrac, shade] of BANDS) {
+    const w = Math.max(0.5, wFrac * lw);
+    const off = Math.max(0, Math.min(offFrac * lw, (lw - w) / 2));
+    const k = tone * shade;
+    ctx.strokeStyle = `rgb(${Math.min(255, Math.round(rgb[0] * k))},${Math.min(255, Math.round(rgb[1] * k))},${Math.min(255, Math.round(rgb[2] * k))})`;
+    ctx.lineWidth = w;
+    ctx.beginPath();
+    ctx.moveTo(x0 + nx * off, y0 + ny * off);
+    ctx.lineTo(x1 + nx * off, y1 + ny * off);
+    ctx.stroke();
+  }
+}
+
 // A cheap procedural weave: a low-alpha crosshatch (both directions, every
 // ~3px) in a tone darkened off the fabric color, drawn AFTER the bg fill but
 // BEFORE strands. Skipped when the view is zoomed out enough that the lines
@@ -191,19 +256,15 @@ export function renderRealistic(canvas, design, opts) {
   // finish), so scrubbing/playing renders the design exactly as the machine
   // would sew it. undefined/null = draw everything (every existing caller).
   if (o.limitStrands != null) strands = strands.slice(0, Math.max(0, o.limitStrands));
-  const lw = Math.max(1.5, 0.22 * pxPerMm); // thread thickness in px
+  const lw = Math.max(1.5, THREAD_MM * pxPerMm); // thread thickness in px
   ctx.lineCap = "round";
-  // shadow pass
-  ctx.strokeStyle = "rgba(0,0,0,0.28)";
-  ctx.lineWidth = lw;
-  for (const s of strands) { ctx.beginPath(); ctx.moveTo(SX(s.x0) + 1, SY(s.y0) + 1.5); ctx.lineTo(SX(s.x1) + 1, SY(s.y1) + 1.5); ctx.stroke(); }
-  // color pass
-  ctx.lineWidth = lw;
-  for (const s of strands) { ctx.strokeStyle = `rgb(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]})`; ctx.beginPath(); ctx.moveTo(SX(s.x0), SY(s.y0)); ctx.lineTo(SX(s.x1), SY(s.y1)); ctx.stroke(); }
-  // highlight pass (sheen)
-  ctx.strokeStyle = "rgba(255,255,255,0.35)";
-  ctx.lineWidth = Math.max(0.6, lw * 0.35);
-  for (const s of strands) { ctx.beginPath(); ctx.moveTo(SX(s.x0) - 0.6, SY(s.y0) - 0.9); ctx.lineTo(SX(s.x1) - 0.6, SY(s.y1) - 0.9); ctx.stroke(); }
+  // One lit filament per strand, in sew order, so a later stitch's shadow
+  // falls ON an earlier stitch the way it physically does. This used to be
+  // three GLOBAL passes -- every shadow, then every colour, then every
+  // sheen -- which put an early stitch's highlight on top of a late
+  // stitch's body, and gave every strand the same fixed 1px/1.5px offset
+  // regardless of zoom or of which way the stitch ran.
+  for (const s of strands) drawFilament(ctx, SX(s.x0), SY(s.y0), SX(s.x1), SY(s.y1), s.rgb, lw);
 
   // Diagnostic overlays (drawn ON TOP of thread so they're never buried):
   // showJumps -> dashed travel lines; showTrims -> an X marker per trim.
