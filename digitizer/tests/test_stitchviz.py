@@ -240,7 +240,14 @@ def test_the_two_renderers_agree_on_the_light():
     import digitizer_core.stitchviz as sv
 
     js = (Path(__file__).resolve().parents[2] / "app" / "src" / "lib" / "preview.js").read_text(encoding="utf-8")
-    assert f"const LIGHT_DEG = {int(sv.LIGHT_DEG)};" in js, (
+
+    # Compare the constants the JS renderer ACTUALLY uses. The first version of
+    # this test matched a `LIGHT_DEG = 225` that a later merge left behind as
+    # dead code, so it went on passing while the live canvas lit from a
+    # different corner entirely -- a test that cannot fail is worse than none.
+    assert f"const LIGHT_X = {sv.LIGHT_X};" in js, (
         "preview.js and stitchviz disagree about the light direction")
-    assert f"const THREAD_MM = {sv.THREAD_MM};" in js, (
+    assert f"const LIGHT_Y = {sv.LIGHT_Y};" in js, (
+        "preview.js and stitchviz disagree about the light direction")
+    assert f"export const THREAD_WIDTH_MM = {sv.THREAD_MM};" in js, (
         "preview.js and stitchviz disagree about filament width")

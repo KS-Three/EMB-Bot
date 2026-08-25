@@ -1,4 +1,6 @@
 import { test, expect, vi } from "vitest";
+import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopOutline, renderRealistic, threadLayers, threadLodLayers, drawThreads, TRUE_COLOUR_LAYER, THREAD_WIDTH_MM } from "./preview.js";
+import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopOutline, renderRealistic } from "./preview.js";
 import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopOutline, renderRealistic, drawFilament } from "./preview.js";
 
 // A ctx double that tracks strokeStyle assignments (a plain property can't
