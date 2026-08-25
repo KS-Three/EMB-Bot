@@ -365,6 +365,18 @@
       ? resolveArtworkType(digitizerHealth)
       : type;
     project = addElement(project, resolved, hoopWidthMm(project));
+    // Land on the step that actually shows the new element. addElement
+    // already selects it, but its editor lives in the Content step's panel,
+    // and this handler has two callers: ContentStep's own tile row (already
+    // on "content", so this is a no-op) and the FIELD's right-click tool
+    // menu, which EmbroideryField exposes on EVERY step. From the Garment
+    // step, "Draw shapes" therefore created and persisted a real manual
+    // element with no visible change anywhere in the UI — right-click three
+    // times and you have three orphans you cannot see, edit or delete until
+    // you happen to walk to the Content step. Gated on the same canAdvance()
+    // the step nav uses, so this can never route into a step the flow itself
+    // treats as unreachable.
+    if (step !== "content" && canAdvance("garment", project)) step = "content";
     persist();
   }
 

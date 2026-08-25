@@ -1136,7 +1136,9 @@
 
 <div class="digipanel">
   <label class="dgp-upload">
-    <span class="dgp-upload-btn">{element.sourcePng ? "Replace artwork…" : "Auto Digitize Image"}</span>
+    <span class="dgp-upload-btn" class:dgp-upload-cta={!element.sourcePng}
+      >{element.sourcePng ? "Replace artwork…" : "Auto Digitize Image"}</span
+    >
     <input type="file" accept="image/png,image/jpeg,image/webp,image/*" on:change={onFile} disabled={fileBusy} />
   </label>
   {#if fileBusy}<p class="dgp-note">Reading the image…</p>{/if}
@@ -1931,11 +1933,32 @@
     background: var(--surface, #fff);
     font-size: var(--fs-xs, 12px);
   }
+  /* Primary only while it is the panel's sole action (no artwork yet). */
+  .dgp-upload-cta {
+    padding: 10px 20px;
+    min-height: 40px;
+    border: 2px solid var(--accent, #4f46e5);
+    border-radius: var(--radius-s, 8px);
+    background: var(--accent, #4f46e5);
+    color: var(--accent-ink, #fff);
+    font-weight: 600;
+    font-size: var(--fs-sm, 14px);
+  }
+  .dgp-upload:hover .dgp-upload-cta {
+    background: var(--accent-dark, #4338ca);
+    border-color: var(--accent-dark, #4338ca);
+  }
+
   .dgp-upload:focus-within .dgp-upload-btn {
     outline: 2px solid var(--accent, #4f46e5);
     outline-offset: 1px;
   }
-  .dgp-note { font-size: var(--fs-xs, 12px); color: var(--muted, #667); margin: 8px 0 0; }
+  .dgp-note {
+    font-size: var(--fs-xs, 12px);
+    line-height: 1.5;
+    color: var(--muted, #6b7280);
+    margin: 8px 0 0;
+  }
   .dgp-src { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
   .dgp-thumb {
     width: 56px;
@@ -1967,19 +1990,46 @@
   .dgp-params { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
   .dgp-param { display: flex; align-items: center; gap: 8px; font-size: var(--fs-xs, 12px); }
   .dgp-param > span:first-child { min-width: 96px; }
-  .dgp-param input[type="number"] { width: 70px; }
   .dgp-param input[type="range"] { flex: 1; }
+
+  /* Bare OS widgets otherwise -- a grey system dropdown and a hairline text
+     box sitting directly under the app's 2px-bordered, 8px-radius controls.
+     Matches theme.css's `.unitselect`/`.sizeinput` treatment (this file is
+     component-scoped, so the rule cannot be shared, only mirrored). The
+     panel-level selects also stretch to a common edge instead of each
+     sizing to its own longest option, which is why "Auto (per shape)" and
+     "None" used to end at different x. */
+  .dgp-param select,
+  .dgp-param input[type="number"] {
+    padding: 4px 6px;
+    border: 2px solid var(--border, #e2e5eb);
+    border-radius: var(--radius-s, 8px);
+    background: var(--surface, #fff);
+    color: var(--ink, #1c1f26);
+    font: inherit;
+    font-size: var(--fs-xs, 12px);
+  }
+  .dgp-param select { flex: 1; min-width: 0; cursor: pointer; }
+  .dgp-param input[type="number"] { width: 70px; }
+  .dgp-param select:hover { border-color: var(--accent, #4f46e5); }
+  .dgp-param input[type="number"]:focus { border-color: var(--accent, #4f46e5); }
   .dgp-unit { color: var(--muted, #667); }
   .dgp-checkline { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs, 12px); }
   .dgp-run {
     margin-top: 12px;
-    padding: 7px 16px;
-    border: 1px solid var(--accent, #4f46e5);
-    border-radius: var(--radius-s, 6px);
+    padding: 10px 20px;
+    min-height: 40px;
+    border: 2px solid var(--accent, #4f46e5);
+    border-radius: var(--radius-s, 8px);
     background: var(--accent, #4f46e5);
-    color: #fff;
+    color: var(--accent-ink, #fff);
     cursor: pointer;
-    font-size: var(--fs-s, 13px);
+    font-weight: 600;
+    font-size: var(--fs-sm, 14px);
+  }
+  .dgp-run:hover:not(:disabled) {
+    background: var(--accent-dark, #4338ca);
+    border-color: var(--accent-dark, #4338ca);
   }
   .dgp-run:disabled { opacity: 0.6; cursor: default; }
   .dgp-status { font-size: var(--fs-xs, 12px); color: var(--muted, #667); margin: 6px 0 0; }
@@ -2119,7 +2169,40 @@
   .dgp-seq-count { flex: 1; }
   .dgp-seq-span { flex: none; color: var(--muted, #667); }
   .dgp-seq-btns { display: flex; gap: 2px; flex: none; }
-  .dgp-layerlist { list-style: none; margin: 6px 0 0; padding: 0; }
+  /* Bounded, with its own scroll. One shape per row and no ceiling meant a
+     31-shape logo pushed everything after the list -- thread-per-color,
+     rotation, and the whole Size panel -- more than three screens down the
+     panel, and shape count scales with artwork complexity, so a busy logo is
+     worse. Capping the list keeps the panel a fixed, navigable length no
+     matter what the artwork contains. Nothing is hidden: every row stays in
+     the DOM, and scroll chaining still carries the wheel on to the panel
+     once the list reaches its end. */
+  .dgp-layerlist {
+    list-style: none;
+    margin: 6px 0 0;
+    padding: 0;
+    max-height: 420px;
+    overflow-y: auto;
+    /* The cap only helps if the list LOOKS like a scroll region -- otherwise
+       the rows just stop and the 25 shapes below them are invisible. A frame
+       plus the same cover/shadow gradient pair .panel-body uses says both
+       "this is its own box" and "there is more in it". */
+    border: 1px solid var(--tint-border, #ccd6fb);
+    border-radius: var(--radius-s, 8px);
+    background:
+      linear-gradient(var(--surface, #fff) 30%, var(--surface-fade, rgba(255, 255, 255, 0))),
+      linear-gradient(var(--surface-fade, rgba(255, 255, 255, 0)), var(--surface, #fff) 70%) 0 100%,
+      radial-gradient(farthest-side at 50% 0, rgba(15, 23, 42, 0.13), transparent),
+      radial-gradient(farthest-side at 50% 100%, rgba(15, 23, 42, 0.13), transparent) 0 100%;
+    background-repeat: no-repeat;
+    background-color: var(--surface, #fff);
+    background-size: 100% 24px, 100% 24px, 100% 8px, 100% 8px;
+    background-attachment: local, local, scroll, scroll;
+  }
+  /* The frame now supplies the outer edges, so the first/last row's own
+     rules would double them up. */
+  .dgp-layerlist > .dgp-layer:first-child { border-top: none; }
+  .dgp-layerlist > .dgp-layer:last-child { border-bottom: none; }
   .dgp-layer {
     display: flex;
     align-items: flex-start;
@@ -2175,8 +2258,36 @@
     border-radius: 8px;
     color: var(--muted, #667);
   }
-  .dgp-lsel { font-size: 11px; max-width: 110px; }
-  .dgp-lbtns { display: flex; flex-direction: column; gap: 2px; flex: none; }
+  .dgp-lsel {
+    font-size: 11px;
+    max-width: 110px;
+    padding: 2px 4px;
+    border: 1px solid var(--tint-border, #ccd6fb);
+    border-radius: var(--radius-s, 8px);
+    background: var(--surface, #fff);
+    color: var(--ink, #1c1f26);
+    cursor: pointer;
+  }
+  .dgp-lsel:hover { border-color: var(--accent, #4f46e5); }
+  /* A 4-wide grid, not a 1-wide column. These seven 26x18 buttons were
+     stacked vertically, which made `.dgp-lbtns` 26px wide and 138px TALL --
+     and since it is the tallest child of `.dgp-layer`, it set every row's
+     height. Measured: rows were 151px while their actual content
+     (`.dgp-lmain`) was 54px, so ~97px of every row was empty space held open
+     by a column of icons, and a 31-shape logo produced a 4,234px list. A
+     wrapped grid puts the same buttons in 2 rows of ~110px, which the
+     content beside them already covers. `repeat(4, auto)` also handles the
+     dead/unstitched branches, where the only child is one wide text button
+     ("Restore" / "Sew it"): it lands in column 1 and sizes to its content
+     while the empty columns collapse. */
+  .dgp-lbtns {
+    display: grid;
+    grid-template-columns: repeat(4, auto);
+    gap: 2px;
+    flex: none;
+    justify-content: end;
+    align-content: start;
+  }
   .dgp-lbtn {
     display: flex;
     align-items: center;
