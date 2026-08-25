@@ -546,3 +546,37 @@ def test_border_seam_warning_names_only_unresolved_pairs():
     assert w["code"] == BORDER_SEAM_SHARED
     assert w["count"] == 2
     assert {tuple(p) for p in w["pairs"]} == {("Sa", "Sb"), ("Sc", "Sd")}
+
+
+def test_the_area_share_floor_is_off_and_stays_off():
+    """REGRESSION (2026-08-25). `BORDER_SIGNIFICANT_AREA_SHARE` shipped at
+    0.0025 and was disabled the same day: it is inert at the 80 mm it was
+    derived on, and at 160 mm it deletes 8 of 9 borders on the same artwork —
+    shapes of 4.2-62.3 mm2, which on a portrait at jacket-back size are the
+    iris, nostril and catchlight population the constant's own comment
+    admitted no fixture covers.
+
+    The inversion is the point, and it is why re-tuning the number cannot fix
+    it: a bigger target width makes stage 2 resolve MORE regions, so the
+    denominator grows and every shape's share shrinks — a fixed share gets
+    quietly STRICTER as the design gets bigger. Any fixed share does this.
+
+    Significance is tested downstream instead, where it is physically
+    grounded: `border_runs` refuses a shape too narrow to host a column
+    against the corpus-measured BORDER_WIDTH_MM.
+    """
+    assert machine.BORDER_SIGNIFICANT_AREA_SHARE == 0.0
+
+    disc = Point(0, 0).buffer(10.0)
+    T = machine.BORDER_ABRUPT_RAGGEDNESS
+    from digitizer_core.stage7_sequence import _border_worthy
+
+    # With the floor off, a smooth shape is worthy no matter how small its
+    # share — the emitter, not this gate, decides whether it can be sewn.
+    for denominator in (disc.area * 10.0, disc.area * 10_000.0):
+        assert _border_worthy(disc, denominator,
+                              machine.BORDER_SIGNIFICANT_AREA_SHARE, T)
+
+    # The knob still works for a caller who wants it, so the escape hatch
+    # survives; only the default changed.
+    assert not _border_worthy(disc, disc.area * 10_000.0, 0.0025, T)

@@ -532,12 +532,35 @@ BORDER_JOIN_SEARCH_MM = 3.0
 # `_raggedness` actually returns.)
 
 # Share of the design's own stitched area a shape must carry to be
-# "significant". On owl_kent's 35 regions, 0.25% drops 21 outright; of the 14
-# that clear it, the abruptness gate then refuses 10, leaving the 4 that get
-# bordered. (An earlier version of this comment said it "drops all 30 of its
-# confetti regions" — it does not: 30 is the count of regions under 50 mm2,
-# a different measurement, and this gate is a share, not an area floor.)
-BORDER_SIGNIFICANT_AREA_SHARE = 0.0025
+# "significant" — DISABLED (0.0) as of 2026-08-25, hours after it shipped at
+# 0.0025, because measurement showed it does NOTHING where it was tuned and
+# real DAMAGE where it was not. Kept as a live knob rather than deleted so the
+# escape hatch survives; `cfg.border_significant_area_share` still overrides.
+#
+# THE MEASUREMENT, on owl_kent through the real emitter:
+#   80 mm  share 0.0025 -> 3 border runs, 479 border stitches
+#   80 mm  share 0.0001 -> 3 border runs, 479 border stitches   (identical)
+#   160 mm share 0.0025 -> 1 border run,  383 border stitches
+#   160 mm share 0.0001 -> 9 border runs, 1352 border stitches
+# At the 80 mm the constant was derived on, it is inert: `border_runs` has
+# already refused every shape it would drop. At 160 mm it deletes 8 of 9
+# borders, and the shapes it deletes measure 4.2-62.3 mm2 — iris, nostril and
+# catchlight scale on a portrait sewn at jacket-back size, which is precisely
+# the population this file admitted no fixture covers.
+#
+# WHY IT INVERTS. The metric is dimensionless, but it is not scale-invariant
+# in practice: at a larger target width stage 2 resolves MORE regions, so the
+# denominator grows and every shape's share shrinks. A fixed share therefore
+# gets quietly STRICTER as the design gets bigger — the opposite of what a
+# significance floor should do. Do not "fix" this by re-tuning the number; any
+# fixed share has the same inversion.
+#
+# The significance test that actually works is already downstream and is
+# physically grounded: `border_runs` refuses a shape too narrow to host a
+# column (an absolute mm test against the corpus-measured BORDER_WIDTH_MM) and
+# lightens the marginal ones to a bean run. Let it do the job. What remains
+# here is the abruptness gate, which is the half that was doing real work.
+BORDER_SIGNIFICANT_AREA_SHARE = 0.0
 
 # The "abrupt" gate: isoperimetric ratio, perimeter^2 / (4*pi*area), taken
 # PER RING (see stage7_sequence._raggedness for why per ring and not per
