@@ -541,12 +541,11 @@ about the facts.
    cause is `stripRunParamsIfSatin` being font-wide, and telling that from
    "upstream never authored a length" needs the `scratch_ink/` SVG sources. The
    narrow fix regresses nothing but changes auto-scaling. Detail: area 2.
-10. **Studio typography — a direction, not an approval.** Irregular scale
-   ratios, `h3` at body size so headings do not step, untokenised weights. All
-   three are defensible as-is and all three change how the app FEELS, so they
-   are his call. The measurable half of the type work shipped without them.
-   Unblocks on one sentence: tighter and more editorial, or softer and more
-   spacious. *(confirmed 2026-08-25 — area doc)*
+10. **RESOLVED 2026-08-25 — Studio typography: "tighter and more editorial."**
+   Kent's direction, given when asked. It settled the three items the earlier
+   type work left alone (irregular scale ratios, `h3` at body size, untokenised
+   weights) and it is a STANDING one — new UI is set to it, not re-litigated.
+   What it means in practice is in the area doc. *(2026-08-25)*
 
 8. **Font lawyer consult — optional.** Only gates RESTORING the 13 pulled
    ShareAlike fonts; the brief is written and ready to send. Nothing waits
