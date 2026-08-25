@@ -130,12 +130,20 @@ def test_flag_on_is_byte_identical_for_flat_classified_designs(fixture):
 # --- 2. Flag OFF, photo class: nothing happens --------------------------------
 
 
+# `photo_prep_background_removal=False` is PINNED in the prep-gate tests
+# below as of 2026-08-24. Kent flipped that default ON that day, and a
+# requested-but-unavailable cutout now skips the entire prep block
+# (see pipeline.build_generation) — so without the pin these would stop
+# exercising the gate they are named for and quietly start exercising
+# the fallback. Exactly why every forced-class acceptance arm pins
+# `shade_palette_bind` after its own default moved.
 def test_flag_off_emits_no_prep_and_flag_on_emits_one():
     """The opt-in half of the double gate, plus the warning contract."""
     off = run_stages(FIXTURE, _cfg(forced_class="photo_scene"))
     assert not any(w["code"] == PHOTO_PREP_APPLIED for w in off.warnings)
 
-    on = run_stages(FIXTURE, _cfg(forced_class="photo_scene", photo_prep=True))
+    on = run_stages(FIXTURE, _cfg(forced_class="photo_scene", photo_prep=True,
+                                  photo_prep_background_removal=False))
     applied = [w for w in on.warnings if w["code"] == PHOTO_PREP_APPLIED]
     assert len(applied) == 1
     w = applied[0]
