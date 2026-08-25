@@ -147,3 +147,100 @@ def test_png_bytes_are_a_real_png():
     every cell as a broken image."""
     b = render_png_bytes(_design(_run(0, 0, 200, 200)))
     assert b[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+# --- the lit filament (2026-08-25) -----------------------------------------
+# Kent, on a fill sheet: *"It feels like i'm looking at an image made up of
+# vectors and not stitches."* The cause was that every stitch was shaded
+# identically regardless of which way it ran, so a field of parallel rows was
+# one flat tone. Scale was NOT the cause and was ruled out first: the same
+# design reads as hatching at 6, 8, 16 and 28 px/mm alike.
+
+
+def test_shading_cannot_move_coverage():
+    """THE load-bearing test for the whole lit render.
+
+    `coverage` is measured BY RENDERING, so any change to how thread is
+    shaded threatens every coverage figure ever recorded -- and those figures
+    are what the fill-tier, border and shade-bind rulings were decided on.
+    The first cut of this shading moved coverage by 8e-4 across the board,
+    purely because off-centre bands push their anti-aliased fringe a shade
+    wider than centred ones do.
+
+    The fix was to split the two: shading is display, coverage measures
+    FOOTPRINT and renders `lit=False`. This pins that split by making the
+    shading absurd -- one full-width band, no offsets -- and requiring the
+    number not to twitch.
+    """
+    import digitizer_core.stitchviz as sv
+
+    d = _design(_run(0, 0, 400, 0) + _run(0, 10, 400, 10) + _run(0, 20, 400, 20))
+    before = coverage(d)
+
+    original = sv._BANDS
+    try:
+        sv._BANDS = ((1.0, 0.0, 0.10),)          # nothing like the shipped bands
+        assert coverage(d) == before, "shading leaked into the measurement"
+        sv._BANDS = ((1.0, 0.49, 3.0), (0.2, 0.0, 0.1))
+        assert coverage(d) == before, "shading leaked into the measurement"
+    finally:
+        sv._BANDS = original
+
+
+def test_a_filament_is_lit_by_the_angle_it_runs_at():
+    """The term that stops a tatami field being one flat tone. A row across
+    the light is brighter than one along it; without this the render is
+    hatching, which is exactly what it looked like."""
+    import math
+
+    import digitizer_core.stitchviz as sv
+
+    lx, ly = sv._LIGHT
+    along = math.degrees(math.atan2(ly, lx))
+
+    def tone_of(deg):
+        r = 400
+        a = (0, 0)
+        b = (int(r * math.cos(math.radians(deg))), int(r * math.sin(math.radians(deg))))
+        d = _design([{"x": a[0], "y": a[1], "type": "stitch"},
+                     {"x": b[0], "y": b[1], "type": "stitch"}])
+        img = render_design(d, px_per_mm=20.0)
+        px = img.reshape(-1, 3)
+        thread = px[np.any(px != np.array(FABRIC_BGR), axis=1)]
+        return float(thread.mean())
+
+    # Design y is UP and the light is in image coords, so flip to compare.
+    assert tone_of(-along + 90) > tone_of(-along), (
+        "a filament across the light must read brighter than one along it")
+
+
+def test_the_unlit_path_is_the_pre_shading_draw_exactly():
+    """`lit=False` is the frozen measurement path, and it is frozen at three
+    CENTRED bands in a specific order -- not at 'one opaque band of the same
+    width', which was tried and moved coverage by 1.2e-3. Each anti-aliased
+    pass re-blends the fringe of the one before, so the soft edge depends on
+    how many passes there were, not only how wide they were."""
+    d = _design(_run(0, 0, 0, 300))          # VERTICAL, so a row crosses it
+    img = render_design(d, px_per_mm=20.0, lit=False)
+    mid = img[img.shape[0] // 2]
+    dist = np.linalg.norm(mid.astype(int) - np.array(FABRIC_BGR), axis=1)
+    solid = np.where(dist > dist.max() / 2.0)[0]
+    # Same nominal-width assertion the lit-agnostic width test makes, on the
+    # path coverage actually uses.
+    assert len(solid) == pytest.approx(THREAD_MM * 20.0, abs=2.0)
+
+
+def test_the_two_renderers_agree_on_the_light():
+    """`preview.js` implements this same model for the Studio canvas. If the
+    two lit from different corners, what Kent rules on in an acceptance sheet
+    and what a customer sees would disagree -- which is the whole reason the
+    model is shared. This pins the constant the JS side mirrors."""
+    from pathlib import Path
+
+    import digitizer_core.stitchviz as sv
+
+    js = (Path(__file__).resolve().parents[2] / "app" / "src" / "lib" / "preview.js").read_text(encoding="utf-8")
+    assert f"const LIGHT_DEG = {int(sv.LIGHT_DEG)};" in js, (
+        "preview.js and stitchviz disagree about the light direction")
+    assert f"const THREAD_MM = {sv.THREAD_MM};" in js, (
+        "preview.js and stitchviz disagree about filament width")

@@ -1,5 +1,6 @@
 import { test, expect, vi } from "vitest";
 import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopOutline, renderRealistic, threadLayers, threadLodLayers, drawThreads, TRUE_COLOUR_LAYER, THREAD_WIDTH_MM } from "./preview.js";
+import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopOutline, renderRealistic, drawFilament } from "./preview.js";
 
 // A ctx double that tracks strokeStyle assignments (a plain property can't
 // record its own write history) alongside vi.fn() spies for every 2D-context
@@ -619,4 +620,91 @@ test("drawThreads leaves no dash set on the context — the overlays that draw a
   expect(calls.length).toBeGreaterThan(0);
   const last = calls[calls.length - 1][0];
   expect(last).toEqual([]); // solid on exit, whatever it did in between
+});
+
+
+// --- the lit filament (2026-08-25) -----------------------------------------
+// Kent, on a fill sheet: "It feels like i'm looking at an image made up of
+// vectors and not stitches." On this canvas it was literal: thread was drawn
+// at 0.22 mm against a 0.4 mm filament, so adjacent satin stitches never
+// touched and every letter rendered HOLLOW, with cloth showing between the
+// stitches. The shading was also fixed-offset, so it detached from the thread
+// as you zoomed.
+
+// A spy that records lineWidth as well as strokeStyle -- the shared
+// makeCtxSpy above leaves lineWidth a plain property with no write history,
+// and width is the whole point of these tests.
+function makeBandSpy() {
+  const bands = [];
+  let _sw, _lw;
+  const ctx = {
+    beginPath: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(),
+    stroke: vi.fn(() => bands.push({ strokeStyle: _sw, lineWidth: _lw })),
+    get strokeStyle() { return _sw; }, set strokeStyle(v) { _sw = v; },
+    get lineWidth() { return _lw; }, set lineWidth(v) { _lw = v; },
+    bands,
+  };
+  return ctx;
+}
+
+const rgbOf = (s) => s.match(/\d+/g).map(Number);
+
+test("drawFilament: the widest band is exactly the nominal thread width, and no band reaches past it", () => {
+  // Shading must never widen the drawn thread. The Python side measures
+  // COVERAGE by rendering the same model, so a band spilling past the nominal
+  // width would silently move every coverage figure on record.
+  const ctx = makeBandSpy();
+  const lw = 12;
+  drawFilament(ctx, 0, 0, 100, 0, [200, 100, 50], lw);
+
+  expect(ctx.bands.length).toBe(3);
+  expect(Math.max(...ctx.bands.map((b) => b.lineWidth))).toBeCloseTo(lw, 6);
+  for (const b of ctx.bands) expect(b.lineWidth).toBeLessThanOrEqual(lw + 1e-9);
+});
+
+test("drawFilament: a stitch across the light is brighter than one along it (this is what stops a fill being flat hatching)", () => {
+  const rgb = [180, 180, 180];
+  const lw = 10;
+  // The light is 225 deg in canvas coords; 45/225 runs ALONG it, 135/315 across.
+  const along = makeBandSpy();
+  drawFilament(along, 0, 0, 100, 100, rgb, lw);   // 45 deg -- parallel to light
+  const across = makeBandSpy();
+  drawFilament(across, 0, 0, 100, -100, rgb, lw); // 135 deg -- perpendicular
+
+  const lum = (c) => rgbOf(c.bands[1].strokeStyle).reduce((a, b) => a + b, 0);
+  expect(lum(across)).toBeGreaterThan(lum(along));
+});
+
+test("drawFilament: sew DIRECTION is not visible as tone -- the same row sewn back the other way looks identical", () => {
+  // The Lambert term takes |cross|, deliberately. Signed, a boustrophedon
+  // fill would stripe light/dark on alternate rows for no physical reason.
+  const fwd = makeBandSpy();
+  drawFilament(fwd, 0, 0, 100, 40, [120, 90, 60], 8);
+  const rev = makeBandSpy();
+  drawFilament(rev, 100, 40, 0, 0, [120, 90, 60], 8);
+  expect(fwd.bands.map((b) => b.strokeStyle)).toEqual(rev.bands.map((b) => b.strokeStyle));
+});
+
+test("renderRealistic draws thread at a real 0.4 mm filament, not the 0.22 mm that made letters hollow", () => {
+  const ctx = makeBandSpy();
+  Object.assign(ctx, { save: vi.fn(), restore: vi.fn(), closePath: vi.fn(),
+    arcTo: vi.fn(), fillRect: vi.fn(), setLineDash: vi.fn(), lineCap: "", fillStyle: "" });
+  const design = { stitches: [
+    { x: 0, y: 0, type: "stitch" },
+    { x: 100, y: 0, type: "stitch" },
+  ] };
+  // A hoop is required (renderRealistic returns undefined without one), and
+  // the canvas is deliberately LARGE: at 400x300 the px-per-mm is ~3.7, which
+  // drives lw under its 1.5px floor and lets the hoop outline's own 2px
+  // stroke become the widest thing drawn. Sized up, the filament is
+  // unambiguously the widest stroke and the floor is not in play.
+  const canvas = { width: 2000, height: 1500, getContext: () => ctx };
+  const result = renderRealistic(canvas, design, { hoop: { garment: { widthIn: 4, heightIn: 3 } } });
+  const pxPerMm = result.scale;
+  expect(0.4 * pxPerMm).toBeGreaterThan(2); // floor and hoop outline both out of the way
+
+  const widest = Math.max(...ctx.bands.map((b) => b.lineWidth));
+  expect(widest).toBeCloseTo(0.4 * pxPerMm, 6);
+  // The old value, pinned so a revert is loud rather than quiet.
+  expect(widest).not.toBeCloseTo(0.22 * pxPerMm, 3);
 });
