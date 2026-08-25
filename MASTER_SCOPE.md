@@ -153,47 +153,49 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
 
 ## Standing rulings — decided, do not re-litigate
 
-- **"Is this a photograph" is DECLARED (`cfg.is_photographic`), never detected,
-  and lives in ONE place (`config.is_photographic`).** Stage 0's signals cannot
-  separate the populations — real photographs are the LOWEST `unique_color_mass`
-  content in the corpus, *below every gradient logo*, confirmed on four real
-  portraits as well as the owl. Deriving a new signal is stage-0 recalibration
-  → gate 2. The gate was written in **15 places across 5 modules** with
-  `PHOTO_CLASSES` defined **3 times**; that is how a photograph landing in the
-  `gradient` lane missed the palette bind and was graded on the tatami
-  yardstick. Declaring it holds every real photo inside `max_colors` and lifts
-  the grade. **Deliberately NOT wired:** `effective_split_tonal` (gate 3) and
-  `stage6_satin`'s photo width floor (defect 2's open half — Law 31).
-  *(measured + landed 2026-08-25 — PR #245; numbers in scope-history 08-25)*
+- **"Is this a photograph" lives in ONE place (`config.is_photographic`), and is
+  DECLARED today only because nothing is wired to answer it yet.** Stage 0's
+  COLOUR signals cannot: real photographs are the LOWEST `unique_color_mass`
+  content in the corpus, *below every gradient logo* — so re-tuning that gate is
+  not the answer, and would be stage-0 recalibration (gate 2) besides. **Two
+  signals the repo ALREADY OWNS do separate them, and neither is a colour
+  statistic:** EXIF camera Make/Model (4/4 photos, 0/9 logos) and the YuNet
+  detector at `stage1_photo_prep.detect_faces_seam` (4/4 portraits, 0/9 logos).
+  Each has a blind spot — EXIF dies on re-save (`owl_kent` has none), faces miss
+  pets and landscapes — so the route is EXIF-or-face with the declaration as
+  FALLBACK, never a checkbox as the primary mechanism. Not built.
+  The gate was written in 15 places across 5 modules with `PHOTO_CLASSES`
+  defined 3 times; that is how a photograph in the `gradient` lane missed the
+  palette bind and was graded on the tatami yardstick. **NOT wired:**
+  `effective_split_tonal` (gate 3) and `stage6_satin`'s width floor (defect 2).
+  *(measured 2026-08-25 — PR #245; detail in scope-history 08-25)*
 
 - **A photo sews FILLED — on a HIGH-CONTRAST SUBJECT. On a human face it is
-  REFUTED, and faces are out of scope for now.** Lane A was answered on an owl
-  and two landscapes (*"the left image is WAAAAAAAAYYYY BETTER"*), then tested
-  the same day on four real portraits and inverted: filled quantizes a face to
-  one flat skin field and the eyes and nose disappear — on one portrait the
-  person vanished entirely, leaving a floating shirt. Thread-paint rendered
-  both as recognisable people, at 3–4x the trims. **The mechanism is the
-  subject's own contrast:** the owl's features ARE distinct colour regions and
-  survive quantization; a face's are continuous low-contrast tone and do not.
-  Kent, on seeing it: *"Faces may be a little too challenging at this stage of
-  the project."* So the ruling stands for the content we ship against, and
-  faces are a deliberate non-goal until the project is further along — do not
-  re-open either half without new evidence.
-  *(ruled 2026-08-25 — Kent, twice; measured same day — scope-history 08-25 evening)*
+  REFUTED, and faces are TABLED, not abandoned.** Lane A was answered on an owl
+  and two landscapes, then tested the same day on four real portraits and
+  inverted: filled quantizes a face to one flat skin field and the eyes and nose
+  disappear — on one, the person vanished entirely, leaving a floating shirt.
+  Thread-paint rendered both as recognisable people, at 3–4x the trims. **The
+  mechanism is the subject's own contrast:** an owl's features ARE distinct
+  colour regions and survive quantization; a face's are continuous low-contrast
+  tone and do not. Kent: *"let's just table it for later when the tool gets more
+  powerful."* The ruling stands for the content we ship against; faces are
+  parked pending a more capable tier, since neither existing tier renders one
+  well. *(ruled 2026-08-25 — Kent, twice; measured — scope-history 08-25)*
+
 - **Satin borders go on shapes significant AND smooth, never blanket.** *"if
-  it's abrupt, it probably doesn't require a border, or is wrong."* On
-  `owl_kent`, blanket `border="auto"` spends **+60% stitches to worsen the
-  silhouette**; the selective rule takes 4 shapes of 35 for **+4%** at 80 mm.
-  Shipped `border="significant"`. Abruptness is the ONLY live gate: measured
-  per RING (a thin smooth ring is not abrupt) and it tracks MACRO SPRAWL, not
-  edge noise. **The 3.5 cutoff is validated beyond its origin fixture** — it
-  lands in a real empty gap on all four real portraits too, not just the owl.
-  **The area-share half is disabled (0.0)** — inert at the 80 mm it was tuned
-  on, and at 160 mm it deleted 8 of 9 borders at iris/nostril scale. A fixed
-  share INVERTS with size (bigger design → more regions → smaller shares →
-  stricter gate), so re-tuning it cannot work; significance is tested
-  downstream by `border_runs` against the corpus-measured `BORDER_WIDTH_MM`.
-  *(ruled 2026-08-25 — Kent; measured same day — PR #241, corrected #243)*
+  it's abrupt, it probably doesn't require a border, or is wrong."* Blanket
+  `border="auto"` spends **+60% stitches to worsen the silhouette**; the
+  selective rule takes 4 of 35 shapes for **+4%**. Shipped
+  `border="significant"`. Abruptness is the ONLY live gate: measured per RING (a
+  thin smooth ring is not abrupt) and it tracks MACRO SPRAWL, not edge noise.
+  **The 3.5 cutoff is validated beyond its origin fixture** — it lands in a real
+  empty gap on all four real portraits, not just the owl. **The area-share half
+  is disabled (0.0)**: inert at the 80 mm it was tuned on, and at 160 mm it
+  deleted 8 of 9 borders at iris scale, because a fixed share INVERTS with size
+  (bigger design → more regions → smaller shares → stricter gate). Significance
+  is tested downstream by `border_runs` against `BORDER_WIDTH_MM`.
+  *(ruled 2026-08-25 — Kent; measured — PR #241, corrected #243)*
 
 - **The 3 Arabic fonts can never work, engine or not:** they carry ONLY base-block
   letters and zero presentation forms. *(measured 2026-08-22 — font.json blocks)*
@@ -450,7 +452,7 @@ its hedge as it is copied forward** — is why this file is split.
 
 | Area | Status | Confidence |
 |---|---|---|
-| 1. Auto-digitizing quality (image → stitches) | In progress | **Low** beyond flat spot-color art; human faces an explicit non-goal *(Kent, 2026-08-25)* |
+| 1. Auto-digitizing quality (image → stitches) | In progress | **Low** beyond flat spot-color art; human faces TABLED pending a more capable tier *(Kent, 2026-08-25)* |
 | 2. Font library & lettering | Implemented — 85 fonts, satin + bean/running + cross-stitch, LTR + Hebrew RTL | High (tech) / High (compliance). Zero stunted glyphs since the 2026-08-22 transform fix; the guards now assert their own coverage |
 | 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — unchanged, no sew-out has happened). Held at Medium by that gate alone; the display layer had a defect class that shipped unseen for want of UI-behaviour coverage, and a 2026-08-25 sweep closed the known ones *(confirmed — area doc)* |
 | 4. Export formats | Implemented | Varies by format — see below |
@@ -656,7 +658,7 @@ diverge, fix both rather than picking one.
 ### 1. Auto-digitizing quality (image → stitches) — [detail](docs/scope/1-auto-digitizing-quality.md)
 
 **In progress · Low confidence beyond flat spot-color art, and human faces are
-now an explicit non-goal.**
+now TABLED pending a more capable tier.**
 Covers both implementations as one capability: the browser JS engine (complete
 but frozen — retired in favour of "feed it clean flat art", not because it is
 broken) and the Python pipeline, the active target. Stages 1–7, fill + satin,

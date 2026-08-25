@@ -64,7 +64,24 @@ flag shirt on a brown ground. Thread-paint rendered both as recognisable people
 against filled's 57–114.
 
 Kent's call on seeing it: *"Faces may be a little too challenging at this stage
-of the project."*
+of the project."* Tabled, not abandoned — parked until a more capable tier exists.
+
+**And the checkbox is not the answer.** Kent: *"Why do we need check boxes?
+Can't the tool automatically recognize what it's working with?"* Measured the
+same evening — stage 0's COLOUR signals cannot, but two things the repo already
+ships do:
+
+| signal | real photos | logos / art |
+|---|---|---|
+| EXIF camera Make/Model | **4/4** (all "samsung Galaxy S26 Ultra") | 0/9 |
+| YuNet `detect_faces_seam` | **4/4** (1, 1, 1, and 2 on the two-person shot) | 0/9 |
+
+Blind spots, both known: EXIF is stripped by re-saving — `owl_kent` is a real
+photograph carrying **zero** tags — and the face detector misses pets and
+landscapes. Neither alone is sufficient; EXIF-or-face covers every case in this
+corpus except a stripped photo with no people in it, which is exactly what
+`owl_kent` is. So the design is auto-detect with the declaration as fallback,
+not a checkbox as the primary mechanism. Not built.
 
 ---
 
