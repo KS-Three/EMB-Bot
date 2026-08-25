@@ -111,45 +111,29 @@ or move it.
    `mimosa_large` "D": 6,193 stitches into 40.0 x **0.0 mm**. Four fonts, one
    fix. *(`tools/build-font.mjs`, `test/font-transforms.test.js`)*
 
-9. **RESOLVED 2026-08-24 — the photo route escaped its own palette; both
-   halves closed.** Region half (#217): `revalidate_threads` masked to the
-   palette, out-of-palette → **0**, flat+gradient byte-identical. Shade half:
-   the per-shade snap still spent 28/33/38/8 unnamed spools, invisible in the
-   UI (that count reads shape `thread_index` — palette-bound; the sewing
-   blocks are not). `shade_palette_bind` closes it, **default ON** per
-   Kent's 32-job-sheet ruling: cones 43/45/50/14 → **12/12/15/6** (== each
-   palette), stops 78→47, 68→45, 75→54, 25→16; (b) declined (+1 cone on face).
-   Pinned edge: a one-spool design flattens tone, 5→1. *(PR #217 + 08-24 flip)*
+9. **RESOLVED 2026-08-24 — the photo route escaped its own palette**, both
+   halves. `shade_palette_bind` ships default ON per Kent's 32-job-sheet
+   ruling. *(PR #217 + 08-24 flip; measurements in scope-history)*
 
-10. **RESOLVED 2026-08-23 — three photo-route robustness defects, every one
-    found by the first real photos, none reachable by a committed fixture:** a
+10. **RESOLVED 2026-08-23 — three photo-route robustness defects**, every one
+    found by the first real photos, none reachable by a committed fixture: a
     7.4 MP OOM (#214), an infinite loop in `select_palette` (#218), preflight
     condemning correct thread-paint as too loose (#216).
 
 11. **RESOLVED 2026-08-24 — the memory ceiling was per-region full-frame
-    masks.** Each of 1,455 components on a 2800x2100 frame carried its own
-    (H, W) bool — 8.56 GB at once, ~102 surviving. Cropped to bboxes:
-    **8,509 → 1,014 MB** (2,767 → 677 on a real portrait), same region counts,
-    19–29% faster, MB/MP now FALLING with size (260→172) where it climbed
-    (643→1,705). Correction: the 12.4 GB OOM was contention with a 10.5 GB
-    script, **not one job** — a service plateaus at ~2.8 GB. *(PR #230)*
+    masks;** cropping them to bboxes cleared it. *(PR #230; figures in
+    scope-history)*
 
 12. **RESOLVED 2026-08-24 — preflight graded every photo job F.**
-    `THREAD_MATCH_POOR` fired 256 times at `block` across the sheet: a capped
-    cone list guarantees per-thread distance. Now scores EXCESS over the best
-    already-loaded spool on the photo route (raw elsewhere, byte-identical) —
-    258 of 330 offending regions become 3, and real mis-assignments still
-    block. *(PR #229)*
+    `THREAD_MATCH_POOR` now scores EXCESS over the best already-loaded spool on
+    the photo route. *(PR #229; figures in scope-history)*
 
-13. **RESOLVED 2026-08-24 — the detail layer sewed the background a subject cutout
-    had just removed.** FDoG reads the whole raster, so
-    `photo_prep_background_removal` never reached it: on `baby_deck_laugh`,
-    **91.4% of the detail block and 72.2% of every stitch in the design** sewed
-    removed background. Regions were clean. `SourcePixels.subject_mask` now
-    confines the line map — 10,813 → **537**, all inside the silhouette slack.
-    Invisible until now because **no acceptance arm had EVER set that flag**; the
-    `subject_cutout` arm lands here too — a third default-OFF flag missing from the
-    section below, the gap it exists to close. *(measured 2026-08-24 — [area 1](docs/scope/1-auto-digitizing-quality.md))*
+13. **RESOLVED 2026-08-24 — the detail layer sewed the background a subject
+    cutout had just removed.** `SourcePixels.subject_mask` now confines the FDoG
+    line map. Invisible until then because **no acceptance arm had EVER set that
+    flag** — the same default-OFF gap the Latent section exists to close.
+    *(measured 2026-08-24 — [area 1](docs/scope/1-auto-digitizing-quality.md);
+    figures in scope-history)*
 
 14. **OPEN — the photo route leaves half the cloth bare INSIDE each shape.**
     Kent's front as of 2026-08-25, and the first item here about fill QUALITY
@@ -492,9 +476,9 @@ its hedge as it is copied forward** — is why this file is split.
 |---|---|---|
 | 1. Auto-digitizing quality (image → stitches) | In progress | **Low** beyond flat spot-color art |
 | 2. Font library & lettering | Implemented — 85 fonts, satin + bean/running + cross-stitch, LTR + Hebrew RTL | High (tech) / High (compliance). Zero stunted glyphs since the 2026-08-22 transform fix; the guards now assert their own coverage |
-| 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — unchanged, no sew-out has happened). Held at Medium by that gate alone; the display layer had a defect class that shipped unseen for want of UI-behaviour coverage, and a 2026-08-25 sweep closed the known ones *(confirmed — area doc)* |
+| 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — unchanged, no sew-out has happened). Held at Medium by that gate alone; the display layer had a defect class that shipped unseen for want of UI-behaviour coverage, and a 2026-08-25 sweep closed the known ones *(confirmed — area doc)*. The preview now renders thread as a lit cylinder at physical width; its lighting is eye-tuned, not sew-verified |
 | 4. Export formats | Implemented | Varies by format — see below |
-| 5. Stitch-out review & manual editing tools | Implemented — Kent's direct-manipulation request is **complete** (2026-08-13) | High. Every surviving requirement of the 2026-08-12 request ships: outlines+nodes on the canvas, the pulse cue, select-then-edit, node drag, line drag, add node, delete. Requirement 5 (whole-shape drag) was withdrawn by Kent. Geometry is unit-tested and every interaction was driven in a real browser against a live service |
+| 5. Stitch-out review & manual editing tools | Implemented — Kent's direct-manipulation request is **complete** (2026-08-13) | High. Every surviving requirement of the 2026-08-12 request ships: outlines+nodes on the canvas, the pulse cue, select-then-edit, node drag, line drag, add node, delete. Requirement 5 (whole-shape drag) was withdrawn by Kent. Geometry is unit-tested and every interaction was driven in a real browser against a live service. Manual draw mode now traces over the uploaded artwork, and right-click places a curved node |
 
 ---
 
@@ -634,62 +618,46 @@ permanently. Do not re-raise it as the highest-leverage next action.
 question queues behind either a corpus nobody has or a sew-out nobody has
 scheduled. Not a reframing of the sew-out gap — a labelled corpus plus a scoring
 harness would let a classifier change be judged against *something* before
-either arrives. M2/M3 has been blocked on it since 2026-08-01, and the
-corpus-law recalibrations needed one-off hand validation for the same reason.
+either arrives. M2/M3 has been blocked on it since 2026-08-01.
 
-**Harness half: BUILT — `digitizer/tools/corpus_scorecard.py`.** `capture`/`diff`
-over 14 fixtures × 2 configs, aggregating preflight's existing score rather than
-inventing a metric. Deliberately a REPORTING tool, not a CI gate. Build detail,
-verification and scope limits: [area 1](docs/scope/1-auto-digitizing-quality.md)
+**Harness half: BUILT — `digitizer/tools/corpus_scorecard.py`,** deliberately a
+REPORTING tool, not a CI gate. **A second harness, `tools/pro_parity/`,** scores
+against the PROFESSIONAL digitization of the same design; **its scale changed
+2026-08-14** (chance-corrected floors), so see the Gotcha above before comparing
+to any earlier number. Both: [area 1](docs/scope/1-auto-digitizing-quality.md)
 ("The two evaluation harnesses"). *(confirmed 2026-08-21 — area 1)*
 
-**Still open: `summit_badge.png` (#6.2) alone** — F/0 at both configs and
-SATURATED, so judge any fix on `thread_worst_delta_e`, never score.
-*(measured 2026-08-21 — area 1)*
-
-**The corpus half is no longer empty (2026-08-15).** Eight files of real
-customer artwork ship in `FIXTURES` — the first entries neither synthetic nor
-hand-picked. They contradicted the synthetic set at once: **stage 0 routes six
-of the seven logos to the GRADIENT lane**, because real logo art carries JPEG
-ringing, anti-aliased edges and soft shading the synthetic fixtures lack — so
-any "flat spot-colour art" claim tuned only on synthetics is untested against
-real input. `logo_script_tires.png` (a clean two-colour wordmark on white)
-classifies `photo_scene` outright — a misroute kept so the bug has a fixture.
+**Real artwork contradicted the synthetic set at once: stage 0 routes six of the
+seven committed logos to the GRADIENT lane,** because real logo art carries JPEG
+ringing, anti-aliased edges and soft shading synthetics lack. **So any "flat
+spot-colour art" claim tuned only on synthetics is untested against real input.**
 *(measured 2026-08-15 — `tools/corpus_scorecard.py:FIXTURES`)*
-This does **not** close `scratch_corpus/`: cloud sessions still can't reach those
-37 files (Waiting on Kent #7). **Kent's four real portraits (2026-08-23) are the
-first tonal entries** — gitignored, machine-bound, invisible to CI.
-
-**A second harness exists: `tools/pro_parity/`** — how close our output is to
-the PROFESSIONAL digitization of the same design, 23 designs, six weighted
-components. **Its scale changed 2026-08-14** (chance-corrected floors); see the
-Gotcha above before comparing to any earlier number. *(confirmed — PR #151)*
 
 **Half the corpus is in the repo; the half that matters is not.** The tracked
-`Embroidery Files.zip` carries all 23 pro STITCH files, so `prep_all.py`'s
-recon lane runs from a fresh checkout (extract outside the tree, set
-`PRO_PARITY_ROOT`). It carries **zero customer artwork**, so `prep_both.py`'s
-real lane — the one behind the 42.5 baseline — still needs the Drive copy.
-*(corrected 2026-08-18 — prep_both from the zip fails 0/15 on
-FileNotFoundError; an earlier edit that day claimed the whole corpus was
-reachable and was wrong)*
+`Embroidery Files.zip` carries all 23 pro STITCH files, so `prep_all.py`'s recon
+lane runs from a fresh checkout. It carries **zero customer artwork**, so
+`prep_both.py`'s real lane — the one behind the 42.5 baseline — still needs the
+Drive copy. Nor does the zip close `scratch_corpus/`: cloud sessions still
+cannot reach those 37 files (Waiting on Kent #7), and Kent's four real portraits
+are gitignored and machine-bound. *(corrected 2026-08-18 — `prep_both` from the
+zip fails 0/15 on FileNotFoundError)*
 
-**Area 1 is deliberately NOT split into "image analysis" + "stitch
-planning",** and the four capability gaps an external review named
-(quantization, segmentation/vectorization, background removal, small-detail
-culling) all have owners in code. Both arguments live in [area
-1](docs/scope/1-auto-digitizing-quality.md) ("Why this area is not split in
-two"). *(moved 2026-08-21 — rule 5)*
+**Area 1 is deliberately NOT split into "image analysis" + "stitch planning",**
+and the four capability gaps an external review named all have owners in code.
+Both arguments: [area 1](docs/scope/1-auto-digitizing-quality.md) ("Why this
+area is not split in two"). *(moved 2026-08-21 — rule 5)*
 
 ### Research backlog — competitive and open-source leads
 
-Two capability sweeps produced backlog items rather than status changes:
-Ember Design (`emberdesign.net`, a browser-based competitor) and Ink/Stitch
-(the open-source Inkscape extension). Both catalogues, plus the closed
-`simplify_tol_mm` investigation they generated, now live in
-[`docs/scope/research-backlog.md`](docs/scope/research-backlog.md).
+Sweeps of Ember Design and Ink/Stitch produced backlog items, not status
+changes; both catalogues plus the closed `simplify_tol_mm` investigation live in
+[`docs/scope/research-backlog.md`](docs/scope/research-backlog.md). Nothing there
+is a commitment or a defect. Three things from it DO bind:
 
-Nothing in there is a commitment or a defect. Two things from it that DO bind:
+- **Ember's own editor toolset is on file** (Pen/node, Closed Shape, Drawing
+  Blocks, stitch simulator, realistic-view toggle) — check it before scoping
+  manual-digitizing work, rather than re-deriving it.
+  *(confirmed 2026-08-08 — `docs/ember-technical-teardown-2026-08-08.md`)*
 
 - **Ink/Stitch is GPL-3.0** — concept-level clean-room reimplementation only,
   no literal copying or near-verbatim translation. The exception is
@@ -773,6 +741,26 @@ warning colours, one bypassing the token system; two more tokens failed WCAG AA
 on the app's own non-white grounds while passing on white. Both closed; re-run
 the check when a new component lands. *(confirmed 2026-08-25 — theme.css)*
 
+**Preview thread width is PHYSICAL, and deliberately not flattering.**
+`preview.js`'s `THREAD_WIDTH_MM` (0.4, nominal 40wt) renders coverage 1.0
+against the engine's 0.40 mm fill rows — rows that just touch. Bare fabric
+between rows in the preview is therefore a density signal, not a render
+artifact. **Do not widen it to make fills look solid**: that would hide the
+open fill-density item (Cross-cutting issues) behind the display layer, which
+is the failure ROADMAP gate 3 names. It is display-only — it scales pixels,
+never stitch geometry. *(confirmed 2026-08-25 — `preview.js`)*
+
+**The stitch simulator already exists — do not build a second one.**
+`lib/simulate.js` plus EmbroideryField's `simbar`: play/pause, a scrub slider,
+speed cycling, close. `renderRealistic`'s `limitStrands` is its drawing
+contract. This was nearly rebuilt from scratch on the assumption it was a gap.
+*(confirmed 2026-08-25 — driven in a browser)*
+
+**Thread lighting is unverified against real thread.** The light direction,
+sheen ceiling and shadow weight are eye-tuned judgement calls. No sew-out has
+happened, so there is nothing to compare a render against — treat the look as
+a preference setting, not a calibrated one. *(suspected 2026-08-25)*
+
 ### 4. Export formats — [detail](docs/scope/4-export-formats.md)
 
 **Implemented (all five) · Confidence varies by format, not one score.**
@@ -805,6 +793,21 @@ withdrawn by Kent. Geometry is unit-tested (53 cases in `shapeOverlay.spec.js`)
 and every interaction was driven in a real browser against a live service.
 **Do not compress the detail file's copy of Kent's request** — it is captured
 verbatim there because the sub-requirements *are* the spec.
+
+**Manual draw mode can now trace over the artwork.** An uploaded image paints
+under the drawing canvas (fadeable, removable) as soon as it decodes, before
+any question of auto-tracing — so hand-digitizing a logo by eye is reachable,
+which it was not while the canvas was blank. **The backdrop and any shapes
+traced from it must share one fit:** `manualTrace.js`'s `traceFitRect()` is
+called by both, and a second implementation would drift into outlines sitting
+slightly off the artwork — a bug that reads as an inaccurate *tracer*.
+*(confirmed 2026-08-25 — `traceFitRect` test + browser)*
+
+**Right-click places a curved node, left-click a straight one**, coloured green
+and indigo respectively. Ember's gesture and colour vocabulary, matched
+deliberately. The default bow takes its side from the turn the path is making,
+so a run of curved nodes arcs instead of scalloping. Backspace mid-draft takes
+back the last node. *(confirmed 2026-08-25 — `curvedNodeThrough` tests + browser)*
 
 ---
 

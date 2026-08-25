@@ -3193,3 +3193,63 @@ visible.
   fill appearance was made without the evidence.
 
 *(measured 2026-08-24 — PR #234's coverage column; Kent's framing 2026-08-25)*
+
+
+---
+
+## Evaluation corpus & harness — detail compacted out of MASTER_SCOPE (2026-08-25)
+
+Moved, not deleted, to keep MASTER_SCOPE under its line budget. Every figure here was accurate on the date its own pointer carries and has not been re-verified since.
+
+### Evaluation corpus & harness — real gap, newly tracked here
+
+**The gap: no repeatable automated quality signal**, so every serious quality
+question queues behind either a corpus nobody has or a sew-out nobody has
+scheduled. Not a reframing of the sew-out gap — a labelled corpus plus a scoring
+harness would let a classifier change be judged against *something* before
+either arrives. M2/M3 has been blocked on it since 2026-08-01, and the
+corpus-law recalibrations needed one-off hand validation for the same reason.
+
+**Harness half: BUILT — `digitizer/tools/corpus_scorecard.py`.** `capture`/`diff`
+over 14 fixtures × 2 configs, aggregating preflight's existing score rather than
+inventing a metric. Deliberately a REPORTING tool, not a CI gate. Build detail,
+verification and scope limits: [area 1](docs/scope/1-auto-digitizing-quality.md)
+("The two evaluation harnesses"). *(confirmed 2026-08-21 — area 1)*
+
+**Still open: `summit_badge.png` (#6.2) alone** — F/0 at both configs and
+SATURATED, so judge any fix on `thread_worst_delta_e`, never score.
+*(measured 2026-08-21 — area 1)*
+
+**The corpus half is no longer empty (2026-08-15).** Eight files of real
+customer artwork ship in `FIXTURES` — the first entries neither synthetic nor
+hand-picked. They contradicted the synthetic set at once: **stage 0 routes six
+of the seven logos to the GRADIENT lane**, because real logo art carries JPEG
+ringing, anti-aliased edges and soft shading the synthetic fixtures lack — so
+any "flat spot-colour art" claim tuned only on synthetics is untested against
+real input. `logo_script_tires.png` (a clean two-colour wordmark on white)
+classifies `photo_scene` outright — a misroute kept so the bug has a fixture.
+*(measured 2026-08-15 — `tools/corpus_scorecard.py:FIXTURES`)*
+This does **not** close `scratch_corpus/`: cloud sessions still can't reach those
+37 files (Waiting on Kent #7). **Kent's four real portraits (2026-08-23) are the
+first tonal entries** — gitignored, machine-bound, invisible to CI.
+
+**A second harness exists: `tools/pro_parity/`** — how close our output is to
+the PROFESSIONAL digitization of the same design, 23 designs, six weighted
+components. **Its scale changed 2026-08-14** (chance-corrected floors); see the
+Gotcha above before comparing to any earlier number. *(confirmed — PR #151)*
+
+**Half the corpus is in the repo; the half that matters is not.** The tracked
+`Embroidery Files.zip` carries all 23 pro STITCH files, so `prep_all.py`'s
+recon lane runs from a fresh checkout (extract outside the tree, set
+`PRO_PARITY_ROOT`). It carries **zero customer artwork**, so `prep_both.py`'s
+real lane — the one behind the 42.5 baseline — still needs the Drive copy.
+*(corrected 2026-08-18 — prep_both from the zip fails 0/15 on
+FileNotFoundError; an earlier edit that day claimed the whole corpus was
+reachable and was wrong)*
+
+**Area 1 is deliberately NOT split into "image analysis" + "stitch
+planning",** and the four capability gaps an external review named
+(quantization, segmentation/vectorization, background removal, small-detail
+culling) all have owners in code. Both arguments live in [area
+1](docs/scope/1-auto-digitizing-quality.md) ("Why this area is not split in
+two"). *(moved 2026-08-21 — rule 5)*

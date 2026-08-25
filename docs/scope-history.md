@@ -25,6 +25,88 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-08-25 — **realistic thread rendering + manual-digitize tracing, PR #249.** Prompted by Kent pointing at 4:50 of an Ember review video (`aV45vVuB9SQ`).
+
+Two fetch attempts for the video were blocked (bot-check redirect; empty
+caption track); `yt-dlp` got the transcript on a later attempt, which is what
+settled the node-interaction scope. The video is a review of **Ember**, already
+covered by three primary-source teardowns in `docs/`.
+
+**Scoping finding.** Most of the "nodes and shape trace" feature Kent described
+was already built — `manualShapes.js`, `shapeOverlay.js`, `manualTrace.js` +
+`TraceImportPanel`. The stitch-player scrubber he asked for next was ALSO
+already built (`lib/simulate.js` + the `simbar`), verified running at ~250
+strands/sec at 1x. Both were nearly rebuilt from scratch. Two genuine gaps
+remained: no reference image behind the drawing canvas (`drawImage` appeared
+zero times in `ManualPanel.svelte`), and no way to place a curved node directly.
+
+**Renderer, measured.** Bucketing strands by (colour, direction) and drawing one
+path per bucket per layer replaced a per-strand `beginPath`/`stroke`, so the
+richer render is ~6x cheaper. Same data, same context, back to back, in-browser:
+10,000 strands 82.5ms → 13.9ms; 25,000 188.6 → 26.5; 60,000 415.9 → 73.3;
+120,000 791.3 → 130.8.
+
+**Suites at the time:** Studio 42 files / 807 tests passing (787 before this
+work); engine `node --test` 435 pass, 0 fail, 6 skipped — the documented format
+cross-validation skips, no Python venv in the container.
+
+**A test that broke other suites.** A first-cut LOD test rendered 61,000 strands
+into `vi.fn()` spies, which record every call; under the parallel runner it
+starved two unrelated spec files into `beforeAll` timeouts. Confirmed against a
+clean tree rather than assumed, then fixed by extracting the LOD ladder as a
+pure function (`threadLodLayers`) and testing that instead.
+
+**Three existing preview tests were rewritten** from implementation shape
+(`moveTo` called 3x per strand; `setLineDash` never called) to contract (N
+strands in → N strands' worth out; the travel-line dash `[4,3]` specifically).
+
+**Ember gaps noted, not built:** realistic-view as a toggle, copy/paste of a
+shape, per-layer transparency. The reviewer also found Ember has no horizontal
+flip.
+
+**Compacted out of MASTER_SCOPE on this date** (resolved defects 9-13, moved not deleted — the file was 65 lines over its 800 budget before this session's additions):
+
+9. **RESOLVED 2026-08-24 — the photo route escaped its own palette; both
+   halves closed.** Region half (#217): `revalidate_threads` masked to the
+   palette, out-of-palette → **0**, flat+gradient byte-identical. Shade half:
+   the per-shade snap still spent 28/33/38/8 unnamed spools, invisible in the
+   UI (that count reads shape `thread_index` — palette-bound; the sewing
+   blocks are not). `shade_palette_bind` closes it, **default ON** per
+   Kent's 32-job-sheet ruling: cones 43/45/50/14 → **12/12/15/6** (== each
+   palette), stops 78→47, 68→45, 75→54, 25→16; (b) declined (+1 cone on face).
+   Pinned edge: a one-spool design flattens tone, 5→1. *(PR #217 + 08-24 flip)*
+
+10. **RESOLVED 2026-08-23 — three photo-route robustness defects, every one
+    found by the first real photos, none reachable by a committed fixture:** a
+    7.4 MP OOM (#214), an infinite loop in `select_palette` (#218), preflight
+    condemning correct thread-paint as too loose (#216).
+
+11. **RESOLVED 2026-08-24 — the memory ceiling was per-region full-frame
+    masks.** Each of 1,455 components on a 2800x2100 frame carried its own
+    (H, W) bool — 8.56 GB at once, ~102 surviving. Cropped to bboxes:
+    **8,509 → 1,014 MB** (2,767 → 677 on a real portrait), same region counts,
+    19–29% faster, MB/MP now FALLING with size (260→172) where it climbed
+    (643→1,705). Correction: the 12.4 GB OOM was contention with a 10.5 GB
+    script, **not one job** — a service plateaus at ~2.8 GB. *(PR #230)*
+
+12. **RESOLVED 2026-08-24 — preflight graded every photo job F.**
+    `THREAD_MATCH_POOR` fired 256 times at `block` across the sheet: a capped
+    cone list guarantees per-thread distance. Now scores EXCESS over the best
+    already-loaded spool on the photo route (raw elsewhere, byte-identical) —
+    258 of 330 offending regions become 3, and real mis-assignments still
+    block. *(PR #229)*
+
+13. **RESOLVED 2026-08-24 — the detail layer sewed the background a subject cutout
+    had just removed.** FDoG reads the whole raster, so
+    `photo_prep_background_removal` never reached it: on `baby_deck_laugh`,
+    **91.4% of the detail block and 72.2% of every stitch in the design** sewed
+    removed background. Regions were clean. `SourcePixels.subject_mask` now
+    confines the line map — 10,813 → **537**, all inside the silhouette slack.
+    Invisible until now because **no acceptance arm had EVER set that flag**; the
+    `subject_cutout` arm lands here too — a third default-OFF flag missing from the
+    section below, the gap it exists to close. *(measured 2026-08-24 — [area 1](docs/scope/1-auto-digitizing-quality.md))*
+
+
 **Last updated:** 2026-08-25 — **four display/UI passes over the Studio, merged as PRs #239, #240, #242, #244.** Two of the defects were functional, not cosmetic.
 
 Session shape: Kent opened with "I NEED YOU TO HELP WITH THE DISPLAY / UI....
