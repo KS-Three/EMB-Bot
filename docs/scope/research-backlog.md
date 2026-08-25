@@ -321,3 +321,14 @@ green-suite-hides-a-real-defect class ROADMAP gate 3 was written for.
 declared dependency, and every symbol the decoder imports was confirmed
 present in 1.0.1 — and give the `engine` job a `setup-python` step, or move
 the harness into the `digitizer` job.
+
+## TurtleStitch — a sixth independent DST-axis corroboration
+
+`encodeTajimaStitch()` in TurtleStitch uses the same low-nibble=X /
+high-nibble=Y convention as every other reading of the Tajima format. It
+matters only because it is **unaffiliated with the pyembroidery / Ink/Stitch
+lineage** that produced corroborations one through five, so it is not the same
+source counted twice. No verdict change and no fix implied — the DST axis bug's
+resolution path is unchanged and remains Kent's call.
+*(confirmed 2026-08-14 — `docs/turtlestitch-stitch-appearance-research-2026-08-14.md`;
+moved here from MASTER_SCOPE 2026-08-25 under the line budget)*
