@@ -338,12 +338,45 @@ def test_the_bind_collapses_tone_when_a_design_realizes_a_single_spool():
     result = _photo_subject_result(poly, _ramp_source_pixels())
     assert len({r.thread_index for r in result.regions}) == 1
 
-    unbound = plan_stitches(result, PipelineConfig(shade_palette_bind=False))
-    bound = plan_stitches(result, PipelineConfig(shade_palette_bind=True))
+    # `border="off"` explicitly, so this measures the BIND and nothing else.
+    # Since 2026-08-25 the photo classes default to the "significant" border
+    # mode, and this fixture's shape — one big smooth rectangle carrying the
+    # whole design — earns a border under both of its gates. That is the mode
+    # working, not a regression, but it is orthogonal noise here. The explicit
+    # "off" is exactly the escape hatch the None default exists to preserve.
+    unbound = plan_stitches(result, PipelineConfig(shade_palette_bind=False,
+                                                   border="off"))
+    bound = plan_stitches(result, PipelineConfig(shade_palette_bind=True,
+                                                 border="off"))
 
     assert len({b.thread_index for b in unbound.blocks}) == 5
     assert len({b.thread_index for b in bound.blocks}) == 1
     assert len(bound.blocks) < len(unbound.blocks)
+
+
+def test_a_border_on_a_shade_decomposed_region_costs_one_extra_spool():
+    """The edge the bind test above sidesteps, pinned in its own right.
+
+    A shade-decomposed photo region sews its tone in SHADE threads, but its
+    border sews in the region's OWN thread — so on the thread-paint route a
+    border is worth one extra cone. On the filled route it is free (the
+    acceptance scenes measure 6 blocks / 5 spools with borders on and off,
+    +738 stitches and no new spool), which is why this is acceptable given
+    Kent's 2026-08-25 ruling that a photo should sew filled. If photos ever
+    go back to thread-paint by default, this is a cost to re-weigh against
+    max_colors.
+    """
+    poly = Polygon([(-35, -25), (35, -25), (35, 25), (-35, 25)])
+    result = _photo_subject_result(poly, _ramp_source_pixels())
+
+    off = plan_stitches(result, PipelineConfig(shade_palette_bind=False,
+                                               border="off"))
+    auto = plan_stitches(result, PipelineConfig(shade_palette_bind=False))
+
+    off_spools = {b.thread_index for b in off.blocks}
+    auto_spools = {b.thread_index for b in auto.blocks}
+    assert len(auto_spools) == len(off_spools) + 1
+    assert auto_spools > off_spools, "the border adds a spool, never swaps one"
 
 
 # --- Fix round 2 (Critical): faces->detail_layer must reach the STITCHED --

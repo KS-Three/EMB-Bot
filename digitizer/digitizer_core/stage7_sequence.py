@@ -656,6 +656,65 @@ def _shade_blocks(ordered: list[StitchRun], base_thread: int, chart,
 _BORDER_SEAM_EPS_MM = 0.02
 
 
+def _polygonal_boundary(geom):
+    """`geom.boundary`, but defined for a GeometryCollection too.
+
+    Shapely returns **None** for `GeometryCollection.boundary` (2.1.2), and
+    stage 5's overlap resolution can leave a shape's visible geometry as a
+    collection — a polygon plus a degenerate sliver the difference could not
+    remove. `_seam_band` then did `.boundary.buffer(...)` on None and took the
+    whole `plan_stitches` call down with an AttributeError, not a warning.
+    Never fired in production because `border` was "off" for everything;
+    `photo_dof_meadow.png` hits it the moment borders are on (regression:
+    tests/test_border.py::test_geometry_collection_visible_geom_does_not_crash).
+
+    Taking the polygonal parts first gives the identical boundary for every
+    geometry that already had one, and None — not a crash — for one with no
+    area to bound at all.
+    """
+    edge = getattr(geom, "boundary", None)
+    if edge is not None:
+        return edge
+    polys = [g for g in getattr(geom, "geoms", ())
+             if g.geom_type in ("Polygon", "MultiPolygon")]
+    if not polys:
+        return None
+    return unary_union(polys).boundary
+
+
+def _raggedness(geom) -> float:
+    """Isoperimetric ratio, perimeter^2 / (4*pi*area). 1.0 is a circle.
+
+    The "abrupt" half of the `significant` border gate. Scale-free by
+    construction, so it says the same thing about a shape at 30 mm and at
+    90 mm — which is what makes it safe to compare against one constant.
+    """
+    area = getattr(geom, "area", 0.0) or 0.0
+    edge = _polygonal_boundary(geom)
+    if area <= 0.0 or edge is None or edge.is_empty:
+        return math.inf
+    return (edge.length ** 2) / (4.0 * math.pi * area)
+
+
+def _border_worthy(geom, total_area: float, share_min: float,
+                   iso_max: float) -> bool:
+    """Kent's rule (2026-08-25): border a shape that is SIGNIFICANT and not
+    ABRUPT. Significant = it carries a real share of the design. Abrupt = its
+    outline is contorted enough that a border would trace the raggedness in a
+    contrasting texture rather than cover it.
+
+    Returns False rather than raising on a degenerate shape: a zero-area
+    fragment is neither significant nor borderable, and stage 7 must not die
+    on one (see `_polygonal_boundary` for what that failure looked like).
+    """
+    area = getattr(geom, "area", 0.0) or 0.0
+    if total_area <= 0.0 or area <= 0.0:
+        return False
+    if (area / total_area) < share_min:
+        return False
+    return _raggedness(geom) < iso_max
+
+
 def _seam_band(a_geom, b_geom) -> tuple[object | None, float]:
     """-> (the coincident strip between two shapes' own edges, its length).
 
@@ -668,8 +727,11 @@ def _seam_band(a_geom, b_geom) -> tuple[object | None, float]:
     so its AREA divided by that width recovers the coincident length without
     walking the curve. `(None, 0.0)` when the edges do not coincide at all.
     """
-    shared = (a_geom.boundary.buffer(_BORDER_SEAM_EPS_MM)
-             .intersection(b_geom.boundary.buffer(_BORDER_SEAM_EPS_MM)))
+    a_edge, b_edge = _polygonal_boundary(a_geom), _polygonal_boundary(b_geom)
+    if a_edge is None or b_edge is None:
+        return None, 0.0
+    shared = (a_edge.buffer(_BORDER_SEAM_EPS_MM)
+             .intersection(b_edge.buffer(_BORDER_SEAM_EPS_MM)))
     if shared.is_empty:
         return None, 0.0
     return shared, shared.area / (2.0 * _BORDER_SEAM_EPS_MM)
@@ -888,7 +950,25 @@ def sequence(
     satin_max = cfg.satin_max_width_mm or SATIN_MAX_WIDTH_MM
     trim_at = fabric.trim_at_mm
 
-    border_style = (cfg.border or "off").lower()
+    # `cfg.border is None` means "let the class decide" — see config.py's own
+    # block for why None and not "off". Only the real PHOTO_CLASSES take the
+    # significant mode: `gradient` is deliberately NOT included (Kent,
+    # 2026-08-24 — gradient is also the class for genuine gradient logos), so
+    # a photograph stage 0 routes to gradient does not get borders
+    # automatically. That is a stage-0 routing question, not a border one.
+    border_style = (cfg.border or ("significant" if photo else "off")).lower()
+    # The significance denominator: the design's own stitched area, so the
+    # gate is a SHARE and moves with the design instead of being a mm floor
+    # (which would be a physical constant, and gate 1 territory).
+    border_total_area = sum(
+        (getattr(p.region.polygon, "area", 0.0) or 0.0) for p in planned
+    ) if border_style == "significant" else 0.0
+    border_share_min = (cfg.border_significant_area_share
+                        if cfg.border_significant_area_share is not None
+                        else machine.BORDER_SIGNIFICANT_AREA_SHARE)
+    border_iso_max = (cfg.border_abrupt_raggedness
+                      if cfg.border_abrupt_raggedness is not None
+                      else machine.BORDER_ABRUPT_RAGGEDNESS)
     rescue = cfg.small_shape_rescue
     # The config-to-emitter mapping the split-satin knobs document: False
     # sews raw crosses however long (a real house style — jolly-af ships
@@ -1445,7 +1525,14 @@ def sequence(
                 style = "bean" if w == "bean" else "auto"
                 want = w != "off"
             if want is None:
-                want = border_style != "off"
+                # "significant" is "auto" with an earned-it gate in front:
+                # per-shape intent above still beats it in both directions,
+                # exactly as it beats every other mode.
+                if border_style == "significant":
+                    want = _border_worthy(p.region.polygon, border_total_area,
+                                          border_share_min, border_iso_max)
+                else:
+                    want = border_style != "off"
             if want and runs:
                 # THE REAL FIX for stage6_border's KNOWN LIMITATION (was
                 # detect-only, PR #67): pull this shape's border input back
