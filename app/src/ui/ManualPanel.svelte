@@ -685,14 +685,23 @@
       return;
     }
     if (e.key === "Delete" || e.key === "Backspace") {
-      // Mid-draft, Backspace takes back the last node — the same key that
+      // Mid-draft, BACKSPACE takes back the last node — the same key that
       // means "undo that character" everywhere else, and what the Ember demo
       // reaches for after a misplaced node.
-      if (draft.length && !editingId) {
+      //
+      // Backspace only, not Delete. Gating this on both made Delete quietly
+      // eat draft nodes too, which contradicted this comment, the panel's own
+      // hint text, and the pre-existing "Delete does NOT touch the selected
+      // shape while a draft is mid-progress" test — that test asserts only
+      // that no patch was dispatched, so it kept passing while the draft was
+      // being emptied under it. Found by review, 2026-08-25.
+      if (e.key === "Backspace" && draft.length && !editingId) {
         undoPoint();
         e.preventDefault();
         return;
       }
+      // Delete mid-draft stays a no-op, as it was before this feature.
+      if (draft.length && !editingId) return;
       // ...and the moment the draft runs out, the key STOPS doing anything
       // destructive until it is released.
       //

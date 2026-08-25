@@ -910,3 +910,101 @@ describe("importing shapes from a traced image", () => {
     expect(oldRow.className).not.toContain("sel");
   });
 });
+
+// ---- right-click curved nodes, and the keys around a draft -----------------
+// All of this shipped with zero component coverage; the gaps below were found
+// by review, 2026-08-25, and two of them were live defects.
+
+describe("right-click places a curved node", () => {
+  test("a right-clicked node bows the segment ARRIVING at it, at the correct segment index", async () => {
+    const { canvas, patches } = renderPanel();
+    const [p0, p1, p2] = tri();
+    await clickAt(canvas, p0.x, p0.y);                                  // node 0, straight
+    await fireEvent.contextMenu(canvas, { clientX: p1.x, clientY: p1.y }); // node 1, CURVED
+    await clickAt(canvas, p2.x, p2.y);                                  // node 2, straight
+    await clickAt(canvas, p0.x + 2, p0.y);                              // close
+
+    expect(patches).toHaveLength(1);
+    const shape = patches[0].patch.shapes[0];
+    expect(shape.points).toHaveLength(3);
+    // Segment 0 is p0->p1, the one arriving at the right-clicked node.
+    expect(shape.curves).toBeTruthy();
+    expect(shape.curves[0]).toBeTruthy();
+    expect(Number.isFinite(shape.curves[0].x)).toBe(true);
+    expect(Number.isFinite(shape.curves[0].y)).toBe(true);
+    // ...and only that segment is curved.
+    expect(shape.curves[1]).toBeFalsy();
+    expect(shape.curves[2]).toBeFalsy();
+  });
+
+  test("Backspace after a right-clicked node removes BOTH the node and its curve, leaving no orphan", async () => {
+    // The curve is written at index draft.length-1 (pre-append) and undoPoint
+    // removes draft.length-2 (pre-slice). Those are two different expressions
+    // of the same segment; if they ever disagree, a bow outlives its node and
+    // silently reattaches to whatever lands at that index next.
+    const { canvas, patches } = renderPanel();
+    const [p0, p1, p2] = tri();
+    await clickAt(canvas, p0.x, p0.y);
+    await fireEvent.contextMenu(canvas, { clientX: p1.x, clientY: p1.y }); // curved node 1
+    await fireEvent.keyDown(canvas, { key: "Backspace" });                 // take it back
+    await clickAt(canvas, p1.x, p1.y);                                     // re-place it STRAIGHT
+    await clickAt(canvas, p2.x, p2.y);
+    await clickAt(canvas, p0.x + 2, p0.y);
+
+    expect(patches).toHaveLength(1);
+    const shape = patches[0].patch.shapes[0];
+    expect(shape.points).toHaveLength(3);
+    // No curve survived the undo.
+    const curves = shape.curves || {};
+    expect(Object.keys(curves)).toHaveLength(0);
+  });
+
+  test("right-click with no draft in progress does nothing — it neither starts a shape nor steals the browser menu", async () => {
+    const { canvas, patches, queryByText } = renderPanel();
+    const ev = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 150, clientY: 150 });
+    canvas.dispatchEvent(ev);
+    expect(ev.defaultPrevented).toBe(false); // browser menu left alone
+    expect(patches).toHaveLength(0);
+    // No draft was started, so there is nothing to undo.
+    expect(queryByText("Undo point").disabled).toBe(true);
+  });
+});
+
+describe("draft keys never destroy a finished shape", () => {
+  test("holding Backspace past the end of a draft does NOT delete the selected shape", async () => {
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const { canvas, getByText, patches } = renderPanel([shape]);
+    await fireEvent.click(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button")); // select s1
+    await clickAt(canvas, 300, 300); // start a draft WITHOUT clearing that selection
+    await clickAt(canvas, 340, 300);
+
+    // Auto-repeat: unwind the draft, then keep the key held one tick too long.
+    await fireEvent.keyDown(canvas, { key: "Backspace", repeat: true });
+    await fireEvent.keyDown(canvas, { key: "Backspace", repeat: true });
+    await fireEvent.keyDown(canvas, { key: "Backspace", repeat: true }); // draft is empty by now
+
+    expect(patches).toHaveLength(0); // s1 survives
+  });
+
+  test("a deliberate, discrete Backspace with no draft still deletes the selected shape", async () => {
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const { canvas, getByText, patches } = renderPanel([shape]);
+    await fireEvent.click(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
+    await fireEvent.keyDown(canvas, { key: "Backspace" }); // no repeat flag
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.shapes).toEqual([]);
+  });
+
+  test("Delete mid-draft eats neither the draft nor the selected shape", async () => {
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const { canvas, getByText, patches, queryByText } = renderPanel([shape]);
+    await fireEvent.click(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
+    await clickAt(canvas, 300, 300);
+    await clickAt(canvas, 340, 300);
+    await fireEvent.keyDown(canvas, { key: "Delete" });
+    await fireEvent.keyDown(canvas, { key: "Delete" });
+
+    expect(patches).toHaveLength(0);                       // the shape is untouched...
+    expect(queryByText("Undo point").disabled).toBe(false); // ...and so is the draft
+  });
+});

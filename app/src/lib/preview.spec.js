@@ -514,19 +514,39 @@ test("threadStyle 'flat' keeps PHYSICAL thread width, so switching views never c
   expect(widthsFor("realistic")).toContain(expected);
 });
 
-test("threadStyle defaults to realistic — omitting it is exactly today's render (every existing caller unaffected)", () => {
+test("threadStyle: omitting it takes the SAME branch as 'realistic', and a different one from 'flat'", () => {
+  // Scope, stated honestly: this pins which BRANCH the default takes. It is
+  // not a baseline of what the realistic renderer draws — any change to the
+  // shading moves both sides of the omitted-vs-explicit comparison equally, so
+  // that pair can only ever catch a flipped default. The title used to claim
+  // "exactly today's render", which overstated it (review, 2026-08-25); the
+  // flat comparison below is what makes the branch check meaningful at all.
   const design = { stitches: [
     { x: -100, y: 0, type: "stitch" },
     { x: 100, y: 0, type: "stitch" },
   ] };
-  const omitted = makeCtxSpy();
-  renderRealistic({ width: 600, height: 600, getContext: () => omitted }, design, {});
-  const explicit = makeCtxSpy();
-  renderRealistic({ width: 600, height: 600, getContext: () => explicit }, design, { threadStyle: "realistic" });
-  expect(omitted.strokeStyleLog).toEqual(explicit.strokeStyleLog);
-  expect(omitted.moveTo.mock.calls.length).toBe(explicit.moveTo.mock.calls.length);
-  // ...and it is genuinely the lit path, not flat-by-accident.
-  expect(omitted.strokeStyleLog.some((s) => /^rgba\(0,0,0/.test(s))).toBe(true);
+  const shot = (opts) => {
+    const ctx = makeCtxSpy();
+    const widths = [];
+    Object.defineProperty(ctx, "lineWidth", { get() { return this._lw; }, set(v) { this._lw = v; widths.push(v); } });
+    renderRealistic({ width: 600, height: 600, getContext: () => ctx }, design, opts);
+    return { strokes: ctx.strokeStyleLog, moves: ctx.moveTo.mock.calls.length, widths };
+  };
+  const omitted = shot({});
+  const explicit = shot({ threadStyle: "realistic" });
+  const flat = shot({ threadStyle: "flat" });
+
+  // Default === realistic, on every channel this double can observe.
+  expect(omitted.strokes).toEqual(explicit.strokes);
+  expect(omitted.moves).toBe(explicit.moves);
+  expect(omitted.widths).toEqual(explicit.widths);
+
+  // And that branch is genuinely the lit one: it differs from flat, and it
+  // lays down the drop shadow flat has no equivalent of.
+  expect(omitted.strokes).not.toEqual(flat.strokes);
+  expect(omitted.moves).toBeGreaterThan(flat.moves);
+  expect(omitted.strokes.some((s) => /^rgba\(0,0,0/.test(s))).toBe(true);
+  expect(flat.strokes.some((s) => /^rgba\(0,0,0/.test(s))).toBe(false);
 });
 
 test("threadStyle 'flat' still separates colours — a two-colour design strokes each once", () => {
@@ -545,4 +565,58 @@ test("threadStyle 'flat' still separates colours — a two-colour design strokes
   expect(ctx.strokeStyleLog).toContain("rgb(200,10,10)");
   expect(ctx.strokeStyleLog).toContain("rgb(10,10,200)");
   expect(ctx.stroke).toHaveBeenCalledTimes(2);
+});
+
+// --- the render path actually USES each strand's direction --------------------
+// Every other sheen assertion calls threadLayers() directly, which pins the
+// model but not its wiring: replacing `threadLayers(rgb, angle, lw)` with
+// `threadLayers(rgb, 0, lw)` inside drawThreads neuters the whole feature and
+// leaves those tests green (confirmed by mutation, 2026-08-25). These close
+// that gap by going through drawThreads.
+
+test("drawThreads feeds each strand's OWN direction into the shading — two directions render different colours", () => {
+  const rgb = [180, 60, 50];
+  const paint = (x1, y1) => {
+    const ctx = makeCtxSpy();
+    drawThreads(ctx, [{ x0: 0, y0: 0, x1, y1, rgb, kind: "stitch" }], (v) => v, (v) => v, 8, {});
+    return ctx.strokeStyleLog.filter((s) => /^rgb\(/.test(s));
+  };
+  const horizontal = paint(100, 0);
+  const diagonal = paint(70, 70);
+  expect(horizontal.length).toBeGreaterThan(0);
+  expect(horizontal.length).toBe(diagonal.length);
+  // Same colour, same width, different heading -> the stroke colours must
+  // differ somewhere. If the render path ignored direction they would be
+  // identical, which is exactly the mutation this guards.
+  expect(horizontal).not.toEqual(diagonal);
+});
+
+test("drawThreads: a strand running ACROSS the light paints a brighter specular than one running along it", () => {
+  const rgb = [180, 60, 50];
+  // preview.js's light, re-derived here so moving the lamp fails loudly.
+  const LIGHT_ANGLE = Math.atan2(-0.8321, -0.5547);
+  const brightest = (angle) => {
+    const ctx = makeCtxSpy();
+    const x1 = Math.cos(angle) * 100, y1 = Math.sin(angle) * 100;
+    drawThreads(ctx, [{ x0: 0, y0: 0, x1, y1, rgb, kind: "stitch" }], (v) => v, (v) => v, 8, {});
+    return Math.max(
+      ...ctx.strokeStyleLog
+        .filter((s) => /^rgb\(/.test(s))
+        .map((s) => luminance(s.match(/\d+/g).map(Number))),
+    );
+  };
+  expect(brightest(LIGHT_ANGLE + Math.PI / 2)).toBeGreaterThan(brightest(LIGHT_ANGLE));
+});
+
+test("drawThreads leaves no dash set on the context — the overlays that draw after it must start solid", () => {
+  // The rewritten jump/trim test checks only that the [4,3] TRAVEL pattern is
+  // absent, which a leaked beaded-specular dash satisfies. This pins the reset
+  // itself: drop drawThreads' final setLineDash([]) and the trim markers
+  // inherit the thread sheen's dash in a real browser.
+  const ctx = makeCtxSpy();
+  drawThreads(ctx, [{ x0: 0, y0: 0, x1: 100, y1: 0, rgb: [180, 60, 50], kind: "stitch" }], (v) => v, (v) => v, 8, {});
+  const calls = ctx.setLineDash.mock.calls;
+  expect(calls.length).toBeGreaterThan(0);
+  const last = calls[calls.length - 1][0];
+  expect(last).toEqual([]); // solid on exit, whatever it did in between
 });
