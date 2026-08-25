@@ -174,3 +174,120 @@ gap this doc tracked longest is closed; whether that alone earns a bump to
 High or Medium stays right pending real UI-behavior (not just logic) specs
 is Kent's call, not this pass's to decide unilaterally — left at Medium
 here. Fabric-preset accuracy remains sew-out-gated, unchanged.
+
+---
+
+## The display layer, 2026-08-25 — four passes, and what they say about coverage
+
+Four PRs (#239, #240, #242, #244) swept the wizard, both artwork panels, the
+embroidery field and the design tokens. Numbers, PR-by-PR detail and the
+session's process notes are in [`../scope-history.md`](../scope-history.md)
+under its 2026-08-25 entry; what belongs here is what still governs a decision.
+
+**The suite does not speak for the display layer, and the gap is not small.**
+Every defect below was live on `main`, and none of them failed a test. Two were
+functional rather than cosmetic:
+
+- **The wizard's `Next` button rendered white-on-white on every step.** A
+  neutral `background` on `.stepnav-controls button` matched `button.primary`
+  at equal specificity (0,1,1) and won on source order ~490 lines later; the
+  white `color` came from `button.primary` and was never overridden. The flow's
+  primary CTA was a blank rounded rectangle.
+  *(confirmed 2026-08-25 — computed style read off the live page)*
+- **The field's right-click tool menu created invisible elements.** It is
+  available on every step, but element editors live in the Content step's
+  panel, so "Draw shapes" from the Garment step appended and persisted a real
+  element with no visible change anywhere. Repeat it and you accumulate orphans
+  you cannot see, edit or delete.
+  *(confirmed 2026-08-25 — element read back out of localStorage)*
+
+The standing lesson: **a Studio change is not verified until it has been looked
+at in a browser.** Logic coverage is broad and did not help here.
+
+`app/e2e/field-chrome.spec.js` (added #242) is the first spec covering the
+field's own chrome — control-bar placement, canvas sizing, and the simulator.
+
+**Writing a regression test is not the same as writing one that catches the
+regression.** That spec's first version passed with the bug deliberately
+re-introduced. The trigger turned out to be narrower than assumed: `.simbar`
+merely being in flow does not reproduce it, because side by side the control
+row's height is unchanged — only *stacking* the bars does. A regression spec
+should be run against the real broken state before it is trusted.
+*(confirmed 2026-08-25 — repro run both ways)*
+
+**The paint effect is coupled to `simActive`, and it is a live trap.**
+`paint()` opens with `stopSim()`, which reads `simActive`, so the effect's
+dependency set reaches it. Any layout change that resizes the canvas while the
+simulator is starting will re-enter `paint()` after `startSim()` set the flag
+and switch the simulator off in the same tick. `.fieldbars` exists to keep the
+control row's height independent of `simActive` for exactly this reason; the
+e2e spec fails if a future change lets the bars stack again.
+*(confirmed 2026-08-25 — stack trace captured from the running app)*
+
+Related, observed but deliberately not changed: that same effect re-runs on a
+simulator toggle with `project`, `runtime` and `canvas` all unchanged,
+regenerating the whole design for nothing. It is harmless on `main` today
+because it fires before `simActive` is set. It is render scheduling rather than
+display, so it was left rather than folded into a UI pass.
+*(suspected 2026-08-25 — observed, not root-caused)*
+
+**The embroidery field sizes its bitmap to its pane.** It was a hardcoded
+760×560 canvas centred in a much larger pane, using about half the available
+area and never growing on a wider screen. A `ResizeObserver` on `.hoop` now
+sets `canvas.width/height` to the measured box. This is a view change and
+nothing more — `renderRealistic` derives its whole mm→px transform from
+`canvas.width/height` via `hoopTransform(garment, cw, ch, pad)`, so a bigger
+bitmap is the same hoop and the same design at more pixels, and no physical
+constant is involved (ROADMAP gate 1 is untouched). Intrinsic size tracks
+displayed size deliberately: stretching the bitmap with CSS instead would
+render a blurry stitch preview. `canvasPointFromEvent` already rescales client
+px to canvas px, so pointer math holds at any size.
+*(confirmed 2026-08-25 — e2e/field-chrome.spec.js pins both properties)*
+
+**Chrome does not sit on the sewable field.** The zoom bar, the drag hint and
+the simulator bar were all absolutely positioned inside `.hoop`, painting over
+canvas inside the hoop guide — and the two bars collided with each other at the
+same offset. `.hoop` holds the canvas and nothing else that can paint over it;
+the spec asserts zero overlap. *(confirmed 2026-08-25 — same spec)*
+
+### Design tokens
+
+**A `var(--x, fallback)` whose name is undefined is not a fallback — it is a
+silent bespoke value.** Three names the code already consumed did not exist
+(`--warn-text`, `--warn-bg`, `--fs-s`), so every call site took its hardcoded
+literal and the app shipped two different warning colours, one of them
+bypassing the token system entirely. Defining the names fixed every call site
+without touching one of them. Worth re-running that check after any new
+component lands. *(confirmed 2026-08-25 — theme.css `:root`)*
+
+**Contrast must be checked against the ground a string actually sits on.**
+`--muted` and `--warn` both passed on `--surface` and both failed WCAG AA on
+`--field-bg` and `--tint`, which is where a good deal of the app's secondary
+text lives. Both are retargeted with headroom rather than to the 4.5 line.
+*(confirmed 2026-08-25 — sweep walking up for the first non-transparent
+ancestor, zero failures after)*
+
+The scale also gained a line-height system (`--lh-tight` / `--lh-snug` /
+`--lh-body`, with `--lh-snug` managed on `body`), a density step `--fs-2xs`
+that collapsed thirteen off-scale literals, and `--ring` for the selection ring
+that was written longhand at three call sites.
+
+**What the audit did not find is the more useful half.** The spacing scale is
+respected — the bespoke px left in `theme.css` are borders, icon boxes and grid
+gutters, not spacing. Elevation is applied consistently across two tokens plus
+one deliberately directional drawer shadow. The card and tile treatments
+already agree with each other; only `.fs-trigger` was out of step. **Do not
+re-audit these three expecting to find something.**
+*(confirmed 2026-08-25 — usage counts over theme.css and the components)*
+
+### Still open
+
+Two display defects were judged least-severe and deferred, not missed: the DST
+provenance note on the Download step is a seven-line wall of prose, and `#0134`
+repeats as the identity label on every digitize layer row where it
+distinguishes nothing — the useful part (glyph, area) is set smaller than the
+part that identifies nothing. *(confirmed 2026-08-25 — driven in browser)*
+
+Typography direction is a Kent call, tracked as item 10 in MASTER_SCOPE's
+"Waiting on Kent": irregular scale ratios, `h3` at body size, and untokenised
+weights. All three are defensible as-is and all three change how the app feels.
