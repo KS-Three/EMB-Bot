@@ -9,7 +9,17 @@
     isValidShape, isNearStart, isDuplicateOfLast, shapeIssues, flattenShape,
     curveControlOrNull, hitTestSegmentMidpoint, curveHandlePoint, pointInShape,
     nearestSegmentIndex, insertVertexAtSegment,
+    curvedNodeThrough, curvedNodeFlags, quadraticControlForPointOnCurve,
   } from "../lib/manualShapes.js";
+  import { traceFitRect } from "../lib/manualTrace.js";
+
+  // Node colours, straight vs curved. Same vocabulary the Ember demo uses
+  // ("blue nodes means it's straight and the green ones means it's curved"),
+  // because it is genuinely the readable choice and matching it costs a user
+  // coming from that tool nothing to relearn. Blue is the panel's existing
+  // indigo accent, so straight nodes look exactly as they always did.
+  const NODE_STRAIGHT = "#4f46e5";
+  const NODE_CURVED = "#15a34a";
 
   // Manual digitizing mode (MVP slice): draw straight- or curved-line
   // polygon outlines directly on a canvas, then assign each one a stitch
@@ -54,6 +64,53 @@
   // ephemeral UI state, same "not part of the persisted element" category as
   // `draft`/`selectedShapeId` above.
   let traceOpen = false;
+
+  // ---- Tracing backdrop --------------------------------------------------
+  // The reference artwork, painted UNDER the shapes so a user can click nodes
+  // around what they can actually see. Ephemeral like `draft` above: an
+  // authoring aid, never persisted into the element (nothing about the
+  // backdrop reaches the stitch plan — it is looked at, not digitized).
+  //
+  // `backdropImage` is TraceImportPanel's own decoded { rgba, w, h }, so the
+  // backdrop and any shapes traced from it are the same pixels at the same
+  // size, and traceFitRect() puts both in the same place.
+  let backdropImage = null;
+  let backdropCanvas = null; // ImageData painted once into an offscreen canvas
+  let backdropOpacity = 0.4;
+  let backdropOn = true;
+
+  // Build the drawable once per image rather than per repaint: render() runs
+  // on every pointermove during a vertex drag, and putImageData on each of
+  // those would make dragging stutter on a large photo.
+  function setBackdrop(img) {
+    backdropImage = img;
+    backdropCanvas = null;
+    if (!img || !img.w || !img.h) return;
+    // jsdom has no real 2D context; a component spec that seeds an image still
+    // exercises every other path rather than throwing here.
+    try {
+      const off = document.createElement("canvas");
+      off.width = img.w;
+      off.height = img.h;
+      const octx = off.getContext("2d");
+      if (!octx || typeof octx.putImageData !== "function") return;
+      const id = octx.createImageData(img.w, img.h);
+      id.data.set(img.rgba);
+      octx.putImageData(id, 0, 0);
+      backdropCanvas = off;
+    } catch {
+      backdropCanvas = null;
+    }
+  }
+
+  function onBackdropImage(e) {
+    setBackdrop((e.detail && e.detail.image) || null);
+    if (backdropImage) backdropOn = true;
+  }
+
+  function clearBackdrop() {
+    setBackdrop(null);
+  }
 
   // ---- Vertex editing for a finished shape ------------------------------
   // A selected finished shape can be dropped into "edit points" mode: drag
@@ -216,6 +273,52 @@
     draft = [...draft, pt];
   }
 
+  // Right-click places a CURVED node: same point, but the segment arriving at
+  // it starts out bowed instead of straight. Placing a rounded outline is then
+  // one click per node rather than a click per node plus a handle drag per
+  // segment, which is the difference between tracing a mushroom cap in ten
+  // clicks and in twenty-odd gestures.
+  //
+  // The default bow is a starting point, not a commitment — the segment handle
+  // still drags, and dragging it back to the chord straightens the node again
+  // (curveControlOrNull's existing straighten epsilon), so nothing here is a
+  // one-way door.
+  function onCanvasContextMenu(e) {
+    // Only while a draft is actually in progress. Outside one the browser menu
+    // is more useful than anything this canvas could offer, and the design
+    // field's own right-click tools menu sets the precedent that right-click
+    // means "tool", not "point".
+    //
+    // The `draft.length` half of that guard was missing until review caught it
+    // (2026-08-25): right-clicking on empty canvas swallowed the browser menu
+    // AND started a draft, and right-clicking ON an existing shape started a
+    // stray draft on top of it instead of selecting it the way a left-click
+    // does. A curved FIRST node is meaningless anyway — it has no incoming
+    // segment to bow — so requiring a left-click to open the shape costs
+    // nothing and makes the two buttons mean one thing each.
+    if (editingId || draft.length === 0) return;
+    e.preventDefault();
+    const pt = canvasPointFromEvent(e);
+    if (draft.length >= 2 && isNearStart(draft, pt.x, pt.y)) {
+      finishShape();
+      return;
+    }
+    if (isDuplicateOfLast(draft, pt.x, pt.y)) return;
+    if (draft.length >= MAX_SHAPE_POINTS) {
+      flashCapHint();
+      return;
+    }
+    const prev = draft[draft.length - 1];
+    const next = [...draft, pt];
+    if (prev) {
+      const segIdx = draft.length - 1; // the segment prev -> pt
+      const before = draft.length >= 2 ? draft[draft.length - 2] : null;
+      const through = curvedNodeThrough(prev, pt, before);
+      draftCurves = { ...draftCurves, [segIdx]: quadraticControlForPointOnCurve(prev, through, pt) };
+    }
+    draft = next;
+  }
+
   // A double-click is two `click` events THEN one `dblclick`. The second
   // click lands on (or within DUP_POINT_EPS_PX of) the same point as the
   // first, so onCanvasClick's duplicate-consecutive-point dedupe already
@@ -362,8 +465,16 @@
   // "close enough to straight, un-curve it" (see curveControlOrNull).
   function commitCurve(points, curves, segIndex, through) {
     const n = points.length;
+    // The shape can vanish mid-gesture: a pointerdown arms a curve-handle
+    // drag, then something empties the draft before pointerup — Escape
+    // (clearDraft), Enter or a close-click (finishShape). `n` is then 0, so
+    // `(segIndex + 1) % n` is NaN, both endpoints come back undefined, and
+    // curveControlOrNull dereferences them. Bail with the curves untouched
+    // instead: there is no segment left to bow. Found by review, 2026-08-25.
+    if (n < 2 || segIndex < 0 || segIndex >= n) return curves;
     const a = points[segIndex];
     const c = points[(segIndex + 1) % n];
+    if (!a || !c || !through) return curves;
     const control = curveControlOrNull(a, c, through);
     const next = { ...curves };
     if (control) next[segIndex] = control;
@@ -379,6 +490,12 @@
     // swallow an unrelated future point-placement click if it weren't reset
     // here first.
     suppressNextClick = false;
+    // Only the primary button arms a drag. A right-click's pointerdown used to
+    // arm a curve-handle grab that its own contextmenu then invalidated by
+    // finishing the shape, and the pointerup landed on an empty draft. Right-
+    // click means "place a curved node" here; it should never also start a
+    // gesture. (button is 0 for touch and pen, so this is mouse-only.)
+    if (e.button != null && e.button !== 0) return;
     const pt = canvasPointFromEvent(e);
     if (editingId) {
       const idx = hitTestVertex(editPoints, pt.x, pt.y);
@@ -568,7 +685,37 @@
       return;
     }
     if (e.key === "Delete" || e.key === "Backspace") {
-      if (selectedShapeId && draft.length === 0 && !editingId) {
+      // Mid-draft, BACKSPACE takes back the last node — the same key that
+      // means "undo that character" everywhere else, and what the Ember demo
+      // reaches for after a misplaced node.
+      //
+      // Backspace only, not Delete. Gating this on both made Delete quietly
+      // eat draft nodes too, which contradicted this comment, the panel's own
+      // hint text, and the pre-existing "Delete does NOT touch the selected
+      // shape while a draft is mid-progress" test — that test asserts only
+      // that no patch was dispatched, so it kept passing while the draft was
+      // being emptied under it. Found by review, 2026-08-25.
+      if (e.key === "Backspace" && draft.length && !editingId) {
+        undoPoint();
+        e.preventDefault();
+        return;
+      }
+      // Delete mid-draft stays a no-op, as it was before this feature.
+      if (draft.length && !editingId) return;
+      // ...and the moment the draft runs out, the key STOPS doing anything
+      // destructive until it is released.
+      //
+      // Without the `e.repeat` guard these two branches chain: hold Backspace
+      // to unwind a draft, the draft empties, and the very next auto-repeat
+      // tick falls through to here and deletes the selected shape — a shape
+      // the user never touched, with no draft left to warn them. That is
+      // reachable in normal use, because selecting a shape and then clicking
+      // empty canvas to start a new one leaves BOTH selectedShapeId set and a
+      // draft in progress (onCanvasClick starts a draft without clearing the
+      // selection). Found by review, 2026-08-25.
+      //
+      // A deliberate, discrete press with nothing drafted still deletes.
+      if (selectedShapeId && draft.length === 0 && !editingId && !e.repeat) {
         deleteShape(selectedShapeId);
         e.preventDefault();
       }
@@ -652,6 +799,19 @@
     ctx.fillStyle = "#f4f2ec";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // The reference artwork, under everything else. Faded by default so the
+    // shape strokes and node handles stay the highest-contrast thing on the
+    // canvas — the image is there to aim at, not to compete with what you are
+    // drawing. traceFitRect is the SAME fit rescaleTracedShapes uses, so an
+    // auto-traced outline lands exactly on the artwork it came from.
+    if (backdropCanvas && backdropOn && backdropOpacity > 0) {
+      const fit = traceFitRect(backdropImage.w, backdropImage.h, canvas.width, canvas.height);
+      ctx.save();
+      ctx.globalAlpha = backdropOpacity;
+      ctx.drawImage(backdropCanvas, fit.offsetX, fit.offsetY, fit.drawnW, fit.drawnH);
+      ctx.restore();
+    }
+
     for (const s of shapeList) {
       const editing = s.id === editId;
       // The shape being edited draws from the LIVE (possibly momentarily
@@ -684,12 +844,14 @@
         drawCurveHandles(ctx, pts, liveCrv, true, dragTarget === "edit" ? dragSeg : null);
         // Draggable vertex handles instead of the centroid label — this IS
         // the "edit points" affordance.
-        for (const p of pts) {
+        const curvedHere = curvedNodeFlags(pts, liveCrv, true);
+        for (let i = 0; i < pts.length; i++) {
+          const p = pts[i];
           ctx.beginPath();
           ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
           ctx.fillStyle = "#fff";
           ctx.fill();
-          ctx.strokeStyle = invalid ? "#c0392b" : "#4f46e5";
+          ctx.strokeStyle = invalid ? "#c0392b" : (curvedHere[i] ? NODE_CURVED : NODE_STRAIGHT);
           ctx.lineWidth = 2;
           ctx.stroke();
         }
@@ -712,34 +874,45 @@
       const liveCrv = liveCurvesFor(draftCrv, draftPts, dragTarget === "draft", dragSeg, dragPoint);
       drawShape(ctx, draftPts, liveCrv, false, null, "#4f46e5", 2);
       if (draftPts.length >= 2) drawCurveHandles(ctx, draftPts, liveCrv, false, dragTarget === "draft" ? dragSeg : null);
+      const curvedDraft = curvedNodeFlags(draftPts, liveCrv, false);
       for (let i = 0; i < draftPts.length; i++) {
         const p = draftPts[i];
+        const curved = curvedDraft[i];
         ctx.beginPath();
-        ctx.arc(p.x, p.y, i === 0 ? 5 : 3, 0, Math.PI * 2);
-        ctx.fillStyle = i === 0 ? "#4f46e5" : "#fff";
+        ctx.arc(p.x, p.y, i === 0 ? 5 : 3.5, 0, Math.PI * 2);
+        // The first node keeps its solid fill — it is the click target that
+        // closes the shape, so "where do I finish" outranks "what kind of node
+        // is this" for that one point.
+        ctx.fillStyle = i === 0 ? NODE_STRAIGHT : (curved ? NODE_CURVED : "#fff");
         ctx.fill();
-        ctx.strokeStyle = "#4f46e5";
+        ctx.strokeStyle = curved ? NODE_CURVED : NODE_STRAIGHT;
         ctx.lineWidth = 1.5;
         ctx.stroke();
       }
     }
   }
 
+  // backdropCanvas/backdropOn/backdropOpacity are listed as arguments, not
+  // merely referenced inside render(), because Svelte's reactive dependency
+  // tracking only sees what the statement itself touches — a backdrop change
+  // read only from inside the function body would not repaint.
   $: render(
     canvasEl, shapes, draft, draftCurves, selectedShapeId,
     editingId, editPoints, editCurves, editIssues.length === 0,
-    curveDragSeg, curveDragPoint, curveTarget
+    curveDragSeg, curveDragPoint, curveTarget,
+    backdropCanvas, backdropOn, backdropOpacity
   );
 </script>
 
 <div class="manualpanel">
   <p class="hint">
-    Click to place points. Click near the first point (or double-click) to close the shape.
-    Drag the small dot at the middle of any line to bow it into a curve — drag it back to
+    <strong>Left-click</strong> places a straight node (blue); <strong>right-click</strong>
+    places a curved one (green). Click near the first point (or double-click) to close the
+    shape. Drag the small dot at the middle of any line to adjust its curve — drag it back to
     the line to straighten it again. Once a shape is selected, click its edge to add a new
     point there. Draw as many shapes as you like, then pick each one's stitch type, color,
-    and angle below. Escape cancels a draft, Enter finishes it, Delete removes the selected
-    shape.
+    and angle below. Backspace takes back the last node, Escape cancels the draft, Enter
+    finishes it, and Delete removes the selected shape.
   </p>
 
   <div class="mp-canvas-wrap">
@@ -750,6 +923,7 @@
       height={CANVAS_H}
       tabindex="0"
       on:click={onCanvasClick}
+      on:contextmenu={onCanvasContextMenu}
       on:dblclick={onCanvasDblClick}
       on:pointerdown={onCanvasPointerDown}
       on:pointermove={onCanvasPointerMove}
@@ -784,8 +958,31 @@
       existingShapes={shapes}
       workImage={traceWorkImage}
       on:traced={onTraced}
+      on:image={onBackdropImage}
       on:cancel={() => (traceOpen = false)}
     />
+  {/if}
+
+  {#if backdropImage}
+    <div class="mp-backdrop" role="group" aria-label="Tracing image">
+      <label class="mp-bd-show">
+        <input type="checkbox" bind:checked={backdropOn} />
+        Show tracing image
+      </label>
+      <label class="mp-bd-fade">
+        Fade
+        <input
+          type="range"
+          min="0.1"
+          max="1"
+          step="0.05"
+          bind:value={backdropOpacity}
+          disabled={!backdropOn}
+          aria-label="Tracing image opacity"
+        />
+      </label>
+      <button type="button" class="mp-bd-clear" on:click={clearBackdrop}>Remove</button>
+    </div>
   {/if}
 
   {#if shapes.length}
@@ -910,6 +1107,33 @@
     font-size: var(--fs-xs, 12px);
   }
   .mp-tools button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .mp-backdrop {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid #e2e0da;
+    border-radius: 6px;
+    background: #faf9f6;
+    font-size: 0.82rem;
+    color: #444;
+  }
+  .mp-backdrop label { display: flex; align-items: center; gap: 0.35rem; }
+  .mp-bd-fade input[type="range"] { width: 8rem; }
+  .mp-bd-fade input:disabled { opacity: 0.45; }
+  .mp-bd-clear {
+    margin-left: auto;
+    border: 1px solid #d8d5cd;
+    background: #fff;
+    border-radius: 5px;
+    padding: 0.2rem 0.55rem;
+    cursor: pointer;
+    font-size: 0.8rem;
+  }
+  .mp-bd-clear:hover { background: #f1efe9; }
   .mp-tools button.primary {
     background: var(--accent, #4f46e5);
     color: var(--accent-ink, #fff);

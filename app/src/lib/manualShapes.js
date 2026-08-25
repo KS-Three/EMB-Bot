@@ -196,6 +196,54 @@ export function quadraticControlForPointOnCurve(a, through, c) {
   };
 }
 
+// How far a curved node bows its incoming segment, as a fraction of that
+// segment's chord length. Big enough to read as a deliberate curve at a
+// glance, small enough that it is a starting point rather than a shape of its
+// own — the user still drags the segment handle to finish it.
+export const CURVED_NODE_BOW = 0.16;
+
+// The on-curve "through" point for the incoming segment of a node placed as
+// CURVED (right-click while drawing).
+//
+// Which SIDE it bows to is the whole difficulty. Bowing to a fixed side makes
+// a run of curved nodes alternate into scallops as the path changes heading.
+// So the side is taken from the turn itself: perpendicular to this chord, on
+// the OUTSIDE of the corner the path is making at `a`. A rounded-off outline —
+// a mushroom cap, a letter bowl — is exactly a sequence of outward turns, so
+// this reads as one continuous arc.
+//
+// `before` is the anchor preceding `a`, or null on the very first segment,
+// where there is no turn yet to take a side from and either choice is
+// arbitrary; the handle drag is one gesture away.
+export function curvedNodeThrough(a, b, before, bow = CURVED_NODE_BOW) {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const len = Math.hypot(dx, dy);
+  const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  if (len < 1e-9) return mid;
+  // Left-hand normal of the chord a->b.
+  let px = -dy / len, py = dx / len;
+  // MUTATION: turn logic removed
+  return { x: mid.x + px * len * bow, y: mid.y + py * len * bow };
+}
+
+// Per-node "is this a curved node", for drawing them in Ember's colour
+// vocabulary (straight one colour, curved another) so the shape's structure is
+// readable without clicking anything.
+//
+// A node is curved when the segment ARRIVING at it is curved — which makes
+// right-click-to-place and drag-a-handle-to-bow agree on the same meaning
+// rather than being two unrelated notions of curvedness.
+export function curvedNodeFlags(points, curves, closed) {
+  const n = points.length;
+  const crv = curves || {};
+  const flags = new Array(n).fill(false);
+  for (let i = 0; i < n; i++) {
+    const incoming = i === 0 ? (closed ? n - 1 : -1) : i - 1;
+    flags[i] = incoming >= 0 && !!crv[incoming];
+  }
+  return flags;
+}
+
 // Inverse of the above: where a curve segment's own on-curve midpoint sits,
 // given its stored control point — the exact point a curve handle should be
 // drawn/hit-tested at (round-trips exactly with quadraticControlForPointOnCurve,

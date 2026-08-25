@@ -68,6 +68,14 @@
     // standing in for the traditional magnet color band.
     magnet: `<path d="M7 4V14A5 5 0 0 0 17 14V4"/><line x1="5.5" y1="8" x2="8.5" y2="8"/><line x1="15.5" y1="8" x2="18.5" y2="8"/>`,
 
+    // Realistic-thread toggle (EmbroideryField's view toolbar). A big
+    // four-point sparkle plus a small one -- "shine" is what that toggle
+    // literally adds, since the realistic render is the lit-cylinder shading
+    // in preview.js. Deliberately NOT the lightbulb: that one already means
+    // "onboarding hint" on another surface, and one glyph meaning two
+    // unrelated things is exactly the hodgepodge this set exists to avoid.
+    sparkle: `<path d="M10 3C10 7 11 8 15 8C11 8 10 9 10 13C10 9 9 8 5 8C9 8 10 7 10 3Z"/><path d="M17 13C17 15.2 17.4 15.6 19.5 15.6C17.4 15.6 17 16 17 18.2C17 16 16.6 15.6 14.5 15.6C16.6 15.6 17 15.2 17 13Z"/>`,
+
     // "Show jumps" (needle-up travel between stitch points) -- a dashed
     // route between two solid points. EmbroideryField's ⤳.
     jump: `<line x1="5" y1="19" x2="19" y2="5" stroke-dasharray="3 2.5"/><circle cx="5" cy="19" r="1.3" fill="currentColor" stroke="none"/><circle cx="19" cy="5" r="1.3" fill="currentColor" stroke="none"/>`,

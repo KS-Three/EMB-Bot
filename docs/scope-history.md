@@ -25,6 +25,67 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-08-25 — **realistic thread rendering + manual-digitize tracing, PR #249.** Prompted by Kent pointing at 4:50 of an Ember review video (`aV45vVuB9SQ`).
+
+Two fetch attempts for the video were blocked (bot-check redirect; empty
+caption track); `yt-dlp` got the transcript on a later attempt, which is what
+settled the node-interaction scope. The video is a review of **Ember**, already
+covered by three primary-source teardowns in `docs/`.
+
+**Scoping finding.** Most of the "nodes and shape trace" feature Kent described
+was already built — `manualShapes.js`, `shapeOverlay.js`, `manualTrace.js` +
+`TraceImportPanel`. The stitch-player scrubber he asked for next was ALSO
+already built (`lib/simulate.js` + the `simbar`), verified running at ~250
+strands/sec at 1x. Both were nearly rebuilt from scratch. Two genuine gaps
+remained: no reference image behind the drawing canvas (`drawImage` appeared
+zero times in `ManualPanel.svelte`), and no way to place a curved node directly.
+
+**Renderer, measured.** Bucketing strands by (colour, direction) and drawing one
+path per bucket per layer replaced a per-strand `beginPath`/`stroke`, so the
+richer render is ~6x cheaper. Same data, same context, back to back, in-browser:
+10,000 strands 82.5ms → 13.9ms; 25,000 188.6 → 26.5; 60,000 415.9 → 73.3;
+120,000 791.3 → 130.8.
+
+**Suites at the time:** Studio 42 files / 807 tests passing (787 before this
+work); engine `node --test` 435 pass, 0 fail, 6 skipped — the documented format
+cross-validation skips, no Python venv in the container.
+
+**A test that broke other suites.** A first-cut LOD test rendered 61,000 strands
+into `vi.fn()` spies, which record every call; under the parallel runner it
+starved two unrelated spec files into `beforeAll` timeouts. Confirmed against a
+clean tree rather than assumed, then fixed by extracting the LOD ladder as a
+pure function (`threadLodLayers`) and testing that instead.
+
+**Three existing preview tests were rewritten** from implementation shape
+(`moveTo` called 3x per strand; `setLineDash` never called) to contract (N
+strands in → N strands' worth out; the travel-line dash `[4,3]` specifically).
+
+**Ember gaps.** Written first as "noted, not built: realistic-view as a toggle,
+copy/paste of a shape, per-layer transparency" — then Kent picked the toggle
+from that list and it shipped in this same PR (`threadStyle`, plus the
+`viewtoggle` button and a `sparkle` icon). Corrected before merge rather than
+left to read as a gap the change did not close. **Still not built:** copy/paste
+of a shape, per-layer transparency. The reviewer also found Ember has no
+horizontal flip.
+
+**A compaction that collided.** This session compacted resolved defects 9-13
+and the "Evaluation corpus & harness" section out of MASTER_SCOPE to pay for
+its additions — and `main` had independently compacted **the same two
+sections**, better and with newer measurements, while this branch was open.
+Merging produced a silently mis-resolved file: entries 9-14 duplicated, item
+11's text interleaved into item 14, and two full copies of the Evaluation
+section under one heading. Git resolved it without a conflict marker, so
+nothing flagged it.
+
+Resolved by taking `main`'s version of both sections wholesale and re-applying
+only this branch's genuinely-new content on top. **The lesson is the one the
+merge did not raise: a doc-compaction pass on a long-lived branch conflicts
+with the same pass on `main` in a way git cannot detect**, because both sides
+are plausible prose rather than overlapping lines. Check a compaction against
+`main` before merging it, not after.
+
+---
+
 **Last updated:** 2026-08-25 (evening) — **the first four real HUMAN portraits, and they overturn the day's headline ruling.** Snapshot; nothing here is a live baseline.
 
 Kent attached four family photographs to chat (the only channel that works — the

@@ -98,6 +98,14 @@
   function toggleJumps() { showJumps = !showJumps; scheduleViewRepaint(); }
   function toggleTrims() { showTrims = !showTrims; scheduleViewRepaint(); }
 
+  // Realistic vs flat thread. Ember ships this as a toggle and it earns its
+  // place for the same reason: with the lighting off, coverage and stitch
+  // structure read as flat areas of colour, which is the better view while
+  // judging whether a shape is actually filled. Physical thread width is the
+  // same in both, so the coverage answer never changes with the view.
+  let realisticView = true;
+  function toggleRealistic() { realisticView = !realisticView; scheduleViewRepaint(); }
+
   // ---- stitch simulator state (see lib/simulate.js for the pure math) ----
   // simIndex is a FLOAT while playing (fractional progress carries across
   // frames); everything that renders/display floors it. The simulator is a
@@ -900,6 +908,7 @@
       view,
       showJumps,
       showTrims,
+      threadStyle: realisticView ? "realistic" : "flat",
     });
     hasDesign = true;
 
@@ -934,6 +943,7 @@
         view,
         showJumps,
         showTrims,
+        threadStyle: realisticView ? "realistic" : "flat",
         // While simulating, every repaint (zoom/pan included) draws only the
         // sewn-so-far prefix -- otherwise a mid-playback wheel event would
         // flash the finished design.
@@ -1799,6 +1809,16 @@
         aria-label="Show trims"
         title="Show thread trims"
       ><Icon name="scissors" /></button>
+      <button
+        type="button"
+        class="zoombtn viewtoggle"
+        class:simon={realisticView}
+        on:click={toggleRealistic}
+        disabled={!hasDesign}
+        aria-pressed={realisticView}
+        aria-label="Realistic view"
+        title="Realistic thread — off for a flat view of coverage and stitch structure"
+      ><Icon name="sparkle" /></button>
       <button
         type="button"
         class="zoombtn"
