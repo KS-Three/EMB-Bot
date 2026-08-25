@@ -24,6 +24,15 @@
   --danger: #c0392b;
   --danger-hover: #a5311f;
   --warn: #b45309;
+  /* DigitizePanel asks for these by name 23 times (--warn-text x20,
+     --warn-bg x3) and neither was ever defined, so every warning surface in
+     the digitize flow silently took its hardcoded fallback -- an olive
+     #8a6d1a on #fdf6e3 -- while DownloadStep's warning used --warn above.
+     Two different warning colours in one app, one of them bypassing the
+     token system entirely. Defining the names both closes that and makes
+     the 23 existing call sites correct without touching any of them. */
+  --warn-text: var(--warn);
+  --warn-bg: #fff7ed; /* the tint that pairs with --warn */
 
   /* Transparency-grid neutrals (flattened-art preview only). */
   --checker-1: #f0f0f0;
@@ -1344,7 +1353,57 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   margin-bottom: var(--space-2);
 }
 
-.uploadbox input[type="file"] { flex: 1; min-width: 0; }
+.uploadbox input[type="file"] {
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+/* The entry point to the whole artwork path was a bare OS widget -- a grey
+   "Choose File" chip and "No file chosen" -- sitting inside the app's dashed
+   drop target. ::file-selector-button styles the control's own button
+   without replacing the input, so every existing behaviour and every test
+   that drives `.uploadbox input[type=file]` keeps working. */
+.uploadbox input[type="file"]::file-selector-button {
+  margin-right: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius-s);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.uploadbox input[type="file"]::file-selector-button:hover {
+  background: var(--accent-dark);
+  border-color: var(--accent-dark);
+}
+
+/* Labelled range rows (ImagePanel's Colors). Without this the label's text
+   and its slider are siblings in an inline flow, so "Colors: 4" broke across
+   two lines with the value orphaned under its own label. */
+.rangerow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  white-space: nowrap;
+  margin-bottom: var(--space-3);
+}
+
+.rangerow input[type="range"] { flex: 1; min-width: 0; }
+
+.checkrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
 
 .filename { font-size: var(--fs-sm); color: var(--muted); }
 

@@ -261,11 +261,11 @@
 
 <canvas class="flatprev" class:hidden={!flat} bind:this={previewCanvas}></canvas>
 
-<label>
+<label class="rangerow">
   Colors: {element.nColors}
   <input type="range" min="2" max="8" step="1" value={element.nColors} on:input={onColorsInput} />
 </label>
-<label>
+<label class="checkrow">
   <input type="checkbox" checked={element.removeBg} on:change={onRemoveBgChange} />
   Remove background
 </label>
