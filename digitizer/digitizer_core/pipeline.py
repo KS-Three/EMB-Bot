@@ -59,6 +59,7 @@ from .stage4_vectorize import revalidate_threads, tag_enclosed_background, vecto
 from .textcluster import detect_text_clusters, ocr_suggest_text, regularize_text_clusters
 from .stage5_overlap import resolve_overlaps
 from .stage6_blend import SourcePixels, detect_design_ramp_angle
+from .config import is_photographic
 from .stage7_sequence import PHOTO_CLASSES, depth_sort_layers, sequence
 from .stitches import StitchPlan
 from .threads import chart_for
@@ -353,7 +354,7 @@ def build_generation(
     # exactly that. Only a cutout that was ASKED FOR and could not be
     # delivered triggers the skip.
     cutout_requested = (cfg.photo_prep and cfg.photo_prep_background_removal
-                        and classification.class_ in PHOTO_CLASSES)
+                        and is_photographic(cfg, classification.class_))
     cutout_failed = False
     if cutout_requested:
         bg_removed, bg_reason = remove_background_seam(p.rgb, p.px_per_mm, cfg)
@@ -387,7 +388,7 @@ def build_generation(
                     background_frac_after=frac_after,
                 )
             )
-    if cfg.photo_prep and classification.class_ in PHOTO_CLASSES \
+    if cfg.photo_prep and is_photographic(cfg, classification.class_) \
             and not cutout_failed:
         # YuNet face priors (plan §2 row 2) — detected on the raster BEFORE
         # texture kill, because a face the smoothing has already softened is
@@ -457,8 +458,8 @@ def build_generation(
     # through `photo_segment` too: gradient's tone rides the blend tier, not
     # the streamline shade decomposition this demand is a proxy for.
     shade_demand = bool(cfg.shade_palette_demand) \
-        and classification.class_ in PHOTO_CLASSES
-    if cfg.photo_segment_sam2 and classification.class_ in PHOTO_CLASSES:
+        and is_photographic(cfg, classification.class_)
+    if cfg.photo_segment_sam2 and is_photographic(cfg, classification.class_):
         q, sam2_reason = sam2_segment_seam(
             p, cfg, face_regions=face_regions, bg_mask=subject_bg_mask,
             split_tonal=effective_split_tonal(cfg, classification.class_),
@@ -675,7 +676,8 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     # (dense layers, one thread each) and before apply_layer_overrides, so
     # an explicit review-screen layer override still beats the class
     # default — see depth_sort_layers' docstring for the whole contract.
-    if gen.classification_class in PHOTO_CLASSES or bool(cfg.extra.get("photo_sequencing")):
+    if is_photographic(cfg, gen.classification_class) \
+            or bool(cfg.extra.get("photo_sequencing")):
         thread_indices = depth_sort_layers(regions, thread_indices, chart_for(cfg))
     # Explicit sew-order layers wait until the palette is settled: moving a
     # shape between layers must reorder sewing, never drop a thread from the

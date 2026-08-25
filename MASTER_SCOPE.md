@@ -189,6 +189,21 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
 
 ## Standing rulings — decided, do not re-litigate
 
+- **"Is this a photograph" is DECLARED (`cfg.is_photographic`), never detected,
+  and lives in ONE place (`config.is_photographic`).** Stage 0's signals cannot
+  separate the populations: on the primary gate a real photograph reads *lower*
+  than two gradient logos (`owl_kent` ucm **0.1107** vs `summit_badge` 0.1152,
+  `drone_render` 0.1592), and inside their spread on the secondary. Deriving a
+  new signal is stage-0 recalibration → gate 2. The gate was written in **15
+  places across 5 modules** with `PHOTO_CLASSES` defined **3 times**; that is
+  how a photograph in the `gradient` lane came to miss the palette bind and be
+  graded on the tatami yardstick — 14 cones against `max_colors` 12, grade F/0.
+  Declaring it: **14 → 12 cones, F/0 → D/40, `THREAD_MATCH_POOR` 12 → 0**, no
+  visible quality change. **Deliberately NOT wired:** `effective_split_tonal`
+  (gate 3, tonal-region splitting) and `stage6_satin`'s photo width floor
+  (defect 2's open half — Law 31, changes satin routing).
+  *(measured + landed 2026-08-25 — PR #244)*
+
 - **A photo sews FILLED (~0.99 cov), not as thread-paint (~0.52–0.55).** Lane A,
   answered on renders of both products: *"the left image is WAAAAAAAAYYYY
   BETTER"*. Held on 4 fixtures, mean luminance 0.32–0.60; 3 were run to

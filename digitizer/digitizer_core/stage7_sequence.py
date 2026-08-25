@@ -95,7 +95,7 @@ _LINK_SEARCH_NODES = 120
 # would cycle — this module imports stage6_satin); a membership change here
 # must land there too, and tests/test_photo_width_floor.py pins the
 # lockstep so drift fails loud instead of quietly un-flooring a new class.
-PHOTO_CLASSES = ("photo_subject", "photo_scene")
+from .config import PHOTO_CLASSES, is_photographic  # canonical copy lives in config.py
 
 # Row 14's underlay split, expressed in the vocabularies the two tiers
 # actually speak (fabrics.py's ids):
@@ -944,7 +944,7 @@ def sequence(
     # switch still zeroes both, and the per-shape meta["underlay_style"]
     # override still beats all of it both ways (`eff_underlay_style` in
     # stitch_one — its documented "beats the mode both ways" contract).
-    photo = (design_class in PHOTO_CLASSES
+    photo = (is_photographic(cfg, design_class)
              or bool(cfg.extra.get("photo_sequencing")))
     # The shade-palette bind (cfg.shade_palette_bind — default ON since
     # Kent's 2026-08-24 ruling; config.py's own comment and
@@ -967,7 +967,7 @@ def sequence(
     # `streamline_fill` as the documented "no restriction" default, byte-
     # identical to the parameter not existing.
     shade_palette: list[int] | None = None
-    if cfg.shade_palette_bind and design_class in PHOTO_CLASSES and planned:
+    if cfg.shade_palette_bind and is_photographic(cfg, design_class) and planned:
         shade_palette = sorted({pr.region.thread_index for pr in planned})
         # The demand palette's anchors (cfg.shade_palette_demand — option
         # (b) of the same plan doc; `palette_spools`' docstring entry above
