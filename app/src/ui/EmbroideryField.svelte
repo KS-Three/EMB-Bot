@@ -1026,13 +1026,68 @@
     else simPlay();
   }
 
-  onMount(paint);
+  // ---- the canvas sizes itself to the pane ---------------------------------
+  //
+  // The bitmap was hardcoded `width="760" height="560"` and centred in a pane
+  // that measures 980x836 at 1440x900 -- 52% of the available area -- and it
+  // never grew on a wider screen, so the field stayed a fixed island with 242px
+  // of dead height under it and 218px of dead width beside it.
+  //
+  // This is a VIEW change only, not a geometry one: renderRealistic derives its
+  // entire mm->px transform from canvas.width/height (hoopTransform(garment,
+  // cw, ch, pad)), so a bigger bitmap is the same hoop and the same design at
+  // more pixels. No physical constant is touched -- every mm is unchanged, and
+  // canvasPointFromEvent already rescales client px to canvas px, so pointer
+  // math holds at any size.
+  let hoopEl = null;
+  let sizeObserver = null;
+  let sizeRaf = 0;
+
+  function fitCanvasToPane() {
+    if (!canvas || !hoopEl) return;
+    const r = hoopEl.getBoundingClientRect();
+    // Floors, so a mid-layout measurement of 0 can never blank the canvas.
+    const w = Math.max(320, Math.round(r.width));
+    const h = Math.max(240, Math.round(r.height));
+    if (canvas.width === w && canvas.height === h) return;
+    canvas.width = w;   // note: assigning either dimension clears the bitmap,
+    canvas.height = h;  // which is why the repaint below is unconditional.
+    // repaintView(), NOT paint(): a resize changes the mm->px transform, not
+    // the stitches, and paint() opens with stopSim() because a REGENERATION
+    // invalidates the simulator's strand count. Going through paint() here
+    // made the simulator un-openable: `.simbar` renders as an in-flow sibling
+    // of `.hoop`, so opening it shrinks the canvas -> observer -> paint() ->
+    // stopSim() -> `.simbar` unmounts -> canvas grows back -> observer again.
+    // repaintView() re-renders from lastGenerateResult at the new size and
+    // recomputes perElementRects (drag hit-testing) without touching the
+    // simulator; it clears to fabric when there is nothing generated yet.
+    repaintView();
+  }
+
+  onMount(() => {
+    paint();
+    if (hoopEl && typeof ResizeObserver !== "undefined") {
+      sizeObserver = new ResizeObserver(() => {
+        // Deferred to the next frame so our own width/height write cannot
+        // re-enter the observer inside the same layout pass.
+        if (sizeRaf) return;
+        sizeRaf = requestAnimationFrame(() => { sizeRaf = 0; fitCanvasToPane(); });
+      });
+      sizeObserver.observe(hoopEl);
+    }
+    fitCanvasToPane();
+  });
+
   onDestroy(() => {
     // The outline pulse is the one loop here that can be mid-flight with no
     // user input driving it, so it has to be cancelled explicitly — otherwise
     // a rAF fires into a destroyed component and repaints a dead canvas.
     if (pulseRafId) cancelAnimationFrame(pulseRafId);
     pulseRafId = 0;
+    if (sizeRaf) cancelAnimationFrame(sizeRaf);
+    sizeRaf = 0;
+    if (sizeObserver) sizeObserver.disconnect();
+    sizeObserver = null;
   });
   // repaint whenever the project (garment/elements/selection) or the
   // runtime image state changes. Drag-move deliberately reuses this same
@@ -1650,7 +1705,19 @@
 <svelte:window on:keydown={onWindowKey} on:pointerdown|capture={onWindowPointerDown} />
 
 <div class="fieldwrap">
-  <div class="hoop">
+  {#if showDragHint}
+    <!-- In-flow, not floating over the canvas. Hint.svelte's own note said
+         the floating variant was safe because "nothing else interactive
+         underlies it there" -- but it sat at the canvas's top-right corner,
+         which is interactive (drag, resize, right-click tool menu) and is
+         inside the hoop guide, i.e. sewable field. Measured at 1440x900 it
+         covered 18,188px of canvas. This is the same in-flow callout every
+         other hint in the app already uses. -->
+    <Hint on:dismiss={() => dispatch("dismisshint")}>
+      Drag the design to move it — corners resize.
+    </Hint>
+  {/if}
+  <div class="hoop" bind:this={hoopEl}>
     <canvas
       bind:this={canvas}
       width="760"
@@ -1689,12 +1756,16 @@
     {#if !hasDesign && !error && hint}
       <p class="fieldhint" class:on-dark={project && project.fabricRgb && isDark(project.fabricRgb)}>{hint}</p>
     {/if}
-    {#if showDragHint}
-      <Hint floating on:dismiss={() => dispatch("dismisshint")}>
-        Drag the design to move it — corners resize.
-      </Hint>
-    {/if}
-    <div class="zoomctl">
+  </div>
+  <!-- Controls sit BELOW the canvas, not on top of it. Both were
+       absolutely positioned inside .hoop: .zoomctl pinned bottom-right
+       and .simbar bottom-centre, so they covered sewable field (the zoom
+       bar measured 10,351px of canvas at 1440x900) and collided with each
+       other whenever the simulator was open -- same `bottom: var(--space-3)`,
+       one right-aligned, one centred. The field pane had 242px of unused
+       height directly under the canvas to put them in. -->
+  <div class="fieldbars">
+      <div class="zoomctl">
       <button type="button" class="zoombtn" on:click={zoomOut} disabled={view.zoom <= MIN_ZOOM} aria-label="Zoom out"><Icon name="minus" /></button>
       <span class="zoompct">{Math.round(view.zoom * 100)}%</span>
       <button type="button" class="zoombtn" on:click={zoomIn} disabled={view.zoom >= MAX_ZOOM} aria-label="Zoom in"><Icon name="plus" /></button>
