@@ -25,6 +25,111 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-08-25 — **four display/UI passes over the Studio, merged as PRs #239, #240, #242, #244.** Two of the defects were functional, not cosmetic.
+
+Session shape: Kent opened with "I NEED YOU TO HELP WITH THE DISPLAY / UI....
+IT NEEDS ALOT OF WORK", a cloud session running beside his own local one on a
+dedicated lane (`claude/display-ui-improvements-iyc20h`). Method throughout was
+driving the running app in a real browser at 1440, 1024 and 760 wide and
+measuring, rather than reading CSS — every number below came off the live page.
+Kent chose the target for each successive pass.
+
+**PR #239 — the wizard.** `Next` rendered white-on-white on every step:
+`.stepnav-controls button` paints `background: var(--surface)`, matches at the
+same specificity as `button.primary` (0,1,1) and sits ~490 lines later in
+theme.css, so it won the cascade; `color` still came from `button.primary`
+(`--accent-ink`, also white). Computed `{bg: rgb(255,255,255), color:
+rgb(255,255,255)}` — the flow's primary CTA was a blank rounded rectangle. Also:
+the font trigger's fixed 260px thumb cap left the name ~50px so it wrapped into
+a ragged 3-line sliver; the <=820px stacked layout put StepNav below the fold
+(`height: auto` gave the page a scrollbar); the topbar clipped the project name
+mid-glyph with no narrow handling; the Download formats were a flex-wrap of six
+mismatched widths; thread-chart pickers were bare OS dropdowns; the panel's
+scroll edge cut headings in half with no cue.
+
+**PR #240 — the digitize panel, and the canvas menu.** `.dgp-lbtns` stacked its
+seven 26x18 action buttons in a vertical column, making that element 26px wide
+and 138px TALL; as the tallest child of `.dgp-layer` it set every row's height.
+Measured with a 31-shape logo through the live service:
+
+    layer row     151px -> 67px   (content was 54px; ~97px was empty space)
+    layer list   4234px -> 2296px
+    panel scroll 6004px -> 2225px  (8.8 screens -> 3.2)
+
+Separately, `--warn-text` (x20) and `--warn-bg` (x3) were never defined in
+theme.css, so all 23 call sites silently took a hardcoded olive #8a6d1a on
+#fdf6e3 while DownloadStep used `--warn` #b45309 — two warning colours in one
+app, one bypassing the token system. `--fs-s` was likewise not a token (the
+scale is xs/sm/md/lg/xl) so its one use always took its 13px fallback. And
+`EmbroideryField`'s right-click menu is available on every step while element
+editors live in the Content step's panel, so "Draw shapes" from the Garment
+step created and persisted a real element with no visible change anywhere —
+verified in localStorage as `{type: "manual", id: "e4"}` with the step still
+reading "1 Garment".
+
+**PR #242 — the embroidery field.** The canvas was a hardcoded
+`<canvas width="760" height="560">` centred in a 980x836 pane and never grew on
+a wider screen: 52% of the available area, 242px of dead height under it, 218px
+of dead width beside it. Sized to the pane via ResizeObserver it went 760x560 ->
+932x630 (utilisation 52% -> 72%), intrinsic tracking displayed so the preview
+stays sharp. Three pieces of chrome were painted on the sewable field, all
+absolutely positioned inside `.hoop`: `.zoomctl` covering 10,351px2, the
+floating drag hint 18,188px2, and `.simbar` — which also collided with
+`.zoomctl`, both at `bottom: var(--space-3)`, one right-aligned one centred.
+6.7% of the canvas permanently obscured, inside the hoop guide.
+
+**The regression that pass introduced, and how it was caught.** Moving the bars
+briefly made them stack, so opening the simulator grew the row, shrank `.hoop`
+and fired the ResizeObserver. The paint effect's dependency set reaches
+`simActive` (paint() opens with stopSim(), which reads it), so that extra pass
+re-entered paint() AFTER startSim() had set the flag and turned the simulator
+off in the same tick — it became impossible to open at all. The full suite
+stayed green: nothing covered the field's chrome. It was found by clicking the
+play button by hand, then bisected by checking out `origin/main`'s
+EmbroideryField and confirming the simulator worked there.
+`app/e2e/field-chrome.spec.js` was written to pin it — and its FIRST version
+passed with the bug re-introduced, i.e. was worthless. `.simbar` merely being in
+flow does not reproduce it; side by side the row height is unchanged. Only
+stacking does. The corrected repro fails the spec on its aria-pressed assertion.
+
+**PR #244 — the design system audited against itself.** Contrast measured
+against the ground each string actually sits on (walking up for the first
+non-transparent ancestor): `--muted` #6b7280 scored 4.16 on `--field-bg` and
+4.27 on `--tint`; `--warn` #b45309 scored 4.33 and 4.43. All four are body text
+under the 4.5:1 AA floor, and all four pass on white — which is presumably how
+they were checked. Retargeted to 4.83 and 4.79 on the worst ground each is used
+on. Line height had never been specified: 16 distinct type styles rendered on
+the Garment step alone and 11 fell through to the browser's `normal` (~1.21 for
+Inter), the other five carrying six different one-off literals across fifteen
+declarations. Three named steps replaced that, costing +6px on cards, +2px on
+tiles, +17px total panel scroll (1.3%) with nothing clipped; the #240 layer-row
+compaction re-measured at 70px, so it survived. Thirteen font-size literals
+(11px x7, 10px x5, 13px x1) were off-scale and collapsed onto a new `--fs-2xs`.
+
+**What the #244 audit did NOT find, which is the more useful half:** the spacing
+scale is respected (the bespoke px left in theme.css are borders, icon boxes and
+grid gutters, not spacing), elevation is applied consistently (`--shadow-1` x11,
+`--shadow-2` x5, one deliberately directional drawer shadow), and the card/tile
+treatments already agree with each other. Only `.fs-trigger` was out of step —
+the one 2px/`--radius-m`/`--surface` card without `--shadow-1`. The system was
+in better shape than the brief implied.
+
+**Process note.** All four PRs were merged by Kent within roughly a minute of
+opening, three of them while `studio-e2e` and `digitizer` were still
+in_progress. Twice this stranded later commits on a branch whose PR had already
+merged, each time requiring a rebase onto the new main and a fresh PR (#240 ->
+#242, #242 -> #244) rather than reuse of the merged one. Every merge run on main
+nevertheless completed green (runs 928, 933, 940, 950).
+
+Verification each pass: full vitest suite plus the full Playwright e2e suite
+against a real Python 3.12 venv and a live digitizer service, built in-session
+per CLAUDE.md (`python3.12 -m venv`, then `pip install -e ".[service]"` — the
+requirements.txt path does not enforce the 3.12 floor). Two flaky
+`preloadAllFontsSync()` hook timeouts appeared under parallel load and passed in
+isolation; same class as the pre-existing `generate.spec.js` flake.
+
+---
+
 **Last updated:** 2026-08-22 (evening) — **cache funded, built and MERGED (PR #209), photo width floor landed (PR #210), SAM2 live in the cloud.**
 
 Session shape: Kent's three-answer brief (2026-08-22) — tonal acceptance

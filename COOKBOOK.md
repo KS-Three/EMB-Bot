@@ -311,7 +311,14 @@ hand-rolling it in JS.
   so classification can't separate them — the photo lane ("This is a photo"
   toggle) is the only honest gate. Flat/gradient stay byte-identical.
 - **Run the service**: `.venv/Scripts/python -m digitizer_service` →
-  `127.0.0.1:8721`. `GET /health`, `POST /digitize` (image+config → job),
+  `127.0.0.1:8721`. **Building the venv from scratch takes TWO installs, not
+  one.** CLAUDE.md sends you to `pip install -e .` (correctly — it enforces the
+  3.12 floor that `requirements.txt` does not), but the web stack is an
+  optional extra in `pyproject.toml`, so that command alone gives you a venv
+  that imports `digitizer_core` fine and dies on `ModuleNotFoundError: No
+  module named 'fastapi'` the moment you start the service. Use
+  `pip install -e ".[service]"`. Cost a cycle on 2026-08-25.
+  *(confirmed — `digitizer/pyproject.toml` `[project.optional-dependencies]`)* `GET /health`, `POST /digitize` (image+config → job),
   `POST /digitize-manual` (hand-authored shapes, no image — stages 1-4
   skipped; same job/response contract), `GET /jobs/{id}`, `POST /export`.
   Binds loopback only, CORS localhost-only.
@@ -1018,6 +1025,18 @@ here since it explains *why*, not *what's currently true*.
 - **Verify claims, don't trust prior summaries at face value** — this very
   cookbook exists because a memory note said work was "merged to main" when
   it was actually sitting unmerged in a worktree. `git log` is ground truth.
+- **A Studio change is not verified until it has been LOOKED AT in a
+  browser.** The suite is broad on logic and near-silent on presentation: a
+  2026-08-25 sweep found an invisible primary CTA (white on white, every step
+  of the wizard) and a canvas menu that created elements with no feedback,
+  both live on `main`, neither failing a spec. Drive the running app at more
+  than one width, and read computed styles rather than the stylesheet —
+  cascade bugs do not show up in the rule you are looking at.
+- **A regression test must be run against the real broken state before you
+  trust it.** The first spec written for the 2026-08-25 simulator regression
+  passed with the bug deliberately re-introduced, because the repro was
+  narrower than assumed. A green new test proves nothing until you have
+  watched it go red.
 - When adding a font: must carry real hand-authored Ink/Stitch stitch data —
   `<path inkstitch:satin_column>` rails+rungs for satin fonts, and since
   2026-08-21 also run/bean fonts whose runs carry an AUTHORED stitch

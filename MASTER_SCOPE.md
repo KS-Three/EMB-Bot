@@ -21,7 +21,7 @@ standing rulings below. **The code and instruments it describes are ON `main`**
 `selfconsistency.py` is in a plain checkout. This pointer said "in PR #157, not
 on `main`" until 2026-08-17. *(confirmed 2026-08-17 — `git ls-tree origin/main`)*
 
-**Last updated:** 2026-08-22. Dated history lives in
+**Last updated:** 2026-08-25. Dated history lives in
 [`docs/scope-history.md`](docs/scope-history.md); **this file is current state
 only.** See "How this document works" at the bottom for the rules that keep it
 that way, including the line budget.
@@ -492,7 +492,7 @@ its hedge as it is copied forward** — is why this file is split.
 |---|---|---|
 | 1. Auto-digitizing quality (image → stitches) | In progress | **Low** beyond flat spot-color art |
 | 2. Font library & lettering | Implemented — 85 fonts, satin + bean/running + cross-stitch, LTR + Hebrew RTL | High (tech) / High (compliance). Zero stunted glyphs since the 2026-08-22 transform fix; the guards now assert their own coverage |
-| 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — unchanged, no sew-out has happened). The photo-tier gap PR #123 closed stays fixed; the canvas gained a shape editor and auto-restitch 2026-08-13 |
+| 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — unchanged, no sew-out has happened). Held at Medium by that gate alone; the display layer had a defect class that shipped unseen for want of UI-behaviour coverage, and a 2026-08-25 sweep closed the known ones *(confirmed — area doc)* |
 | 4. Export formats | Implemented | Varies by format — see below |
 | 5. Stitch-out review & manual editing tools | Implemented — Kent's direct-manipulation request is **complete** (2026-08-13) | High. Every surviving requirement of the 2026-08-12 request ships: outlines+nodes on the canvas, the pulse cue, select-then-edit, node drag, line drag, add node, delete. Requirement 5 (whole-shape drag) was withdrawn by Kent. Geometry is unit-tested and every interaction was driven in a real browser against a live service |
 
@@ -541,6 +541,13 @@ about the facts.
    cause is `stripRunParamsIfSatin` being font-wide, and telling that from
    "upstream never authored a length" needs the `scratch_ink/` SVG sources. The
    narrow fix regresses nothing but changes auto-scaling. Detail: area 2.
+10. **Studio typography — a direction, not an approval.** Irregular scale
+   ratios, `h3` at body size so headings do not step, untokenised weights. All
+   three are defensible as-is and all three change how the app FEELS, so they
+   are his call. The measurable half of the type work shipped without them.
+   Unblocks on one sentence: tighter and more editorial, or softer and more
+   spacious. *(confirmed 2026-08-25 — area doc)*
+
 8. **Font lawyer consult — optional.** Only gates RESTORING the 13 pulled
    ShareAlike fonts; the brief is written and ready to send. Nothing waits
    on it. See the font-licence entry.
@@ -750,9 +757,22 @@ The Svelte guided flow (garment → content → review → download), saved proj
 the Layers panel, and fabric/garment presets. Logic coverage is broad —
 nearly every `app/src/lib/*.js` module has a paired spec — with UI-behaviour
 coverage riding on live-browser e2e specs across several garments, the image
-content path, and four export formats.
+content path, four export formats, and the embroidery field's own chrome.
 **What holds it at Medium:** fabric-preset accuracy is sew-out-gated, and no
 sew-out has happened. See Cross-cutting issues.
+
+**The display layer is a distinct risk surface, and the suite does not speak
+for it.** A 2026-08-25 browser sweep found defects a green suite never touched
+— a primary CTA rendering white-on-white on every wizard step, and a canvas
+menu creating elements with no visible feedback. Both were shipped. **A Studio
+change is not verified until it has been *looked at* in a browser.** Two lesser
+display defects are deferred, not missed. *(confirmed 2026-08-25 — area doc)*
+
+**A `var(--x, fallback)` whose name is undefined is not a fallback — it is a
+silent bespoke value.** Three such names shipped, so the app carried two
+warning colours, one bypassing the token system; two more tokens failed WCAG AA
+on the app's own non-white grounds while passing on white. Both closed; re-run
+the check when a new component lands. *(confirmed 2026-08-25 — theme.css)*
 
 ### 4. Export formats — [detail](docs/scope/4-export-formats.md)
 
