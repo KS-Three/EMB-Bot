@@ -945,7 +945,7 @@
   }
   .mp-shaperow.sel { border-color: var(--accent, #4f46e5); background: var(--tint, #eef0ff); }
   .mp-swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--tint-border, #ccd6fb); display: inline-block; flex: none; }
-  .mp-remove { border: none; background: none; cursor: pointer; font-size: 13px; color: var(--danger, #c0392b); padding: 4px; }
+  .mp-remove { border: none; background: none; cursor: pointer; font-size: var(--fs-sm, 0.875rem); color: var(--danger, #c0392b); padding: 4px; }
   .mp-empty { font-size: var(--fs-xs, 12px); color: var(--muted, #6b7280); margin: 0; }
   .mp-assign { border-top: 1px solid var(--tint-border, #ccd6fb); padding-top: 10px; margin-top: 4px; }
   .mp-assign h3 { margin: 0 0 8px; font-size: var(--fs-xs, 12px); }

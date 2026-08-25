@@ -188,7 +188,7 @@
     display: block;
     width: fit-content;
     margin-bottom: 6px;
-    font-size: 10px;
+    font-size: var(--fs-2xs, 0.6875rem);
     color: var(--warn-text, #8a6d1a);
     border: 1px solid var(--warn-text, #8a6d1a);
     border-radius: 8px;

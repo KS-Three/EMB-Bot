@@ -1955,7 +1955,7 @@
   }
   .dgp-note {
     font-size: var(--fs-xs, 12px);
-    line-height: 1.5;
+    line-height: var(--lh-body, 1.6);
     color: var(--muted, #6b7280);
     margin: 8px 0 0;
   }
@@ -1977,7 +1977,7 @@
     font-size: var(--fs-xs, 12px);
   }
   .dgp-offline p { margin: 0 0 6px; }
-  .dgp-cmd code { font-size: 11px; }
+  .dgp-cmd code { font-size: var(--fs-2xs, 0.6875rem); }
   .dgp-check,
   .dgp-resizefix {
     padding: 5px 10px;
@@ -2126,7 +2126,7 @@
   .dgp-layers { margin-top: 12px; }
   .dgp-layers-head { display: flex; align-items: baseline; gap: 8px; }
   .dgp-layers-title { font-size: var(--fs-xs, 12px); font-weight: 600; }
-  .dgp-layers-order { font-size: 11px; color: var(--muted, #667); }
+  .dgp-layers-order { font-size: var(--fs-2xs, 0.6875rem); color: var(--muted, #667); }
   .dgp-sequencer { margin-top: 6px; }
   .dgp-seq-toggle {
     display: flex;
@@ -2138,7 +2138,7 @@
     border-radius: var(--radius-s, 6px);
     background: var(--surface, #fff);
     cursor: pointer;
-    font-size: 11px;
+    font-size: var(--fs-2xs, 0.6875rem);
     text-align: left;
   }
   /* `chevron` points down at rest -- that's the "open" reading, so the
@@ -2156,7 +2156,7 @@
     gap: 6px;
     padding: 4px 6px;
     border-top: 1px solid var(--tint-border, #ccd6fb);
-    font-size: 11px;
+    font-size: var(--fs-2xs, 0.6875rem);
   }
   .dgp-seq-swatch {
     width: 12px;
@@ -2224,7 +2224,7 @@
     border-color: var(--warn-text, #8a6d1a);
   }
   .dgp-lbadge {
-    font-size: 10px;
+    font-size: var(--fs-2xs, 0.6875rem);
     color: var(--muted, #667);
     border: 1px solid var(--tint-border, #ccd6fb);
     border-radius: 8px;
@@ -2248,9 +2248,9 @@
   .dgp-lmain { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
   .dgp-lrow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .dgp-lname { font-size: var(--fs-xs, 12px); font-weight: 600; }
-  .dgp-larea { font-size: 11px; color: var(--muted, #667); }
+  .dgp-larea { font-size: var(--fs-2xs, 0.6875rem); color: var(--muted, #667); }
   .dgp-ltier {
-    font-size: 10px;
+    font-size: var(--fs-2xs, 0.6875rem);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     padding: 1px 5px;
@@ -2259,7 +2259,7 @@
     color: var(--muted, #667);
   }
   .dgp-lsel {
-    font-size: 11px;
+    font-size: var(--fs-2xs, 0.6875rem);
     max-width: 110px;
     padding: 2px 4px;
     border: 1px solid var(--tint-border, #ccd6fb);
@@ -2297,7 +2297,7 @@
     border-radius: var(--radius-s, 6px);
     background: var(--surface, #fff);
     cursor: pointer;
-    font-size: 11px;
+    font-size: var(--fs-2xs, 0.6875rem);
     line-height: 1.3;
   }
   .dgp-lbtn:disabled { opacity: 0.4; cursor: default; }
