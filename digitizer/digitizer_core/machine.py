@@ -515,25 +515,84 @@ BORDER_JOIN_SEARCH_MM = 3.0
 # this mode reuses rather than re-deriving).
 #
 # NOT CORPUS-MEASURED. Both were read off the region census of ONE image
-# (`owl_kent.jpg`, 35 regions) where the two populations separate cleanly:
-# eyes and beak score 1.3-2.7 raggedness, the big face/background regions
-# 4.0/11.7/13.6. Treat them as a starting position that wants real portraits
-# behind it, not a ruling — a human face's catchlights and nostrils are
-# exactly the small-and-compact population no fixture here covers.
+# (`owl_kent.jpg` on its own default route, 35 regions). The two populations
+# do separate with an actual empty band between them: the four shapes that
+# earn a border score 2.09 / 2.51 / 2.72 / 3.39 per-ring raggedness, and the
+# ten significant ones refused as abrupt run 3.91 / 4.02 / 4.53 ... 12.22. So
+# the cutoff sits in a real gap rather than slicing through one population —
+# but it is ONE image, and it wants real portraits behind it before it counts
+# as a ruling. A human face's catchlights and nostrils are exactly the
+# small-and-compact population no fixture here covers.
+#
+# (Correction, 2026-08-25: this comment first read "1.3-2.7" and
+# "4.0/11.7/13.6". Those came from an ad-hoc script that paired an
+# EXTERIOR-only perimeter with a HOLE-SUBTRACTED area — a formula the shipped
+# code never used. Anyone re-deriving them got different numbers and would
+# reasonably conclude the code had changed. The figures above are what
+# `_raggedness` actually returns.)
 
 # Share of the design's own stitched area a shape must carry to be
-# "significant". 0.25% keeps the owl's eyes and beak and drops all 30 of its
-# confetti regions.
-BORDER_SIGNIFICANT_AREA_SHARE = 0.0025
+# "significant" — DISABLED (0.0) as of 2026-08-25, hours after it shipped at
+# 0.0025, because measurement showed it does NOTHING where it was tuned and
+# real DAMAGE where it was not. Kept as a live knob rather than deleted so the
+# escape hatch survives; `cfg.border_significant_area_share` still overrides.
+#
+# THE MEASUREMENT, on owl_kent through the real emitter:
+#   80 mm  share 0.0025 -> 3 border runs, 479 border stitches
+#   80 mm  share 0.0001 -> 3 border runs, 479 border stitches   (identical)
+#   160 mm share 0.0025 -> 1 border run,  383 border stitches
+#   160 mm share 0.0001 -> 9 border runs, 1352 border stitches
+# At the 80 mm the constant was derived on, it is inert: `border_runs` has
+# already refused every shape it would drop. At 160 mm it deletes 8 of 9
+# borders, and the shapes it deletes measure 4.2-62.3 mm2 — iris, nostril and
+# catchlight scale on a portrait sewn at jacket-back size, which is precisely
+# the population this file admitted no fixture covers.
+#
+# WHY IT INVERTS. The metric is dimensionless, but it is not scale-invariant
+# in practice: at a larger target width stage 2 resolves MORE regions, so the
+# denominator grows and every shape's share shrinks. A fixed share therefore
+# gets quietly STRICTER as the design gets bigger — the opposite of what a
+# significance floor should do. Do not "fix" this by re-tuning the number; any
+# fixed share has the same inversion.
+#
+# The significance test that actually works is already downstream and is
+# physically grounded: `border_runs` refuses a shape too narrow to host a
+# column (an absolute mm test against the corpus-measured BORDER_WIDTH_MM) and
+# lightens the marginal ones to a bean run. Let it do the job. What remains
+# here is the abruptness gate, which is the half that was doing real work.
+BORDER_SIGNIFICANT_AREA_SHARE = 0.0
 
-# The "abrupt" gate: isoperimetric ratio, perimeter^2 / (4*pi*area). 1.0 is a
-# circle; higher is a more contorted outline for the area enclosed. A shape
-# above this is one whose border would trace a pixel staircase in a
-# contrasting texture — advertising the raggedness instead of covering it,
-# which is what blanket "auto" does to the owl's silhouette (+60% stitches for
-# a WORSE edge). Measured alternative rejected: fraction of turns over 60
-# degrees does not discriminate at all here (26-67% across every region big
-# and small), because the staircase is universal — it is the shape's overall
+# The "abrupt" gate: isoperimetric ratio, perimeter^2 / (4*pi*area), taken
+# PER RING (see stage7_sequence._raggedness for why per ring and not per
+# shape). 1.0 is a circle; higher is a more contorted outline for the area
+# enclosed. Blanket "auto" spends +60% stitches on owl_kent to make the
+# silhouette WORSE; this gate is what stops that.
+#
+# WHAT IT ACTUALLY MEASURES — corrected 2026-08-25, and the first version of
+# this comment got the mechanism wrong. It said a high-raggedness ring is one
+# whose border would "trace a pixel staircase". There is no pixel staircase
+# to trace: stage 4 already runs Douglas-Peucker (`stage4_vectorize.py`
+# approxPolyDP at `cfg.simplify_tol_mm`, config.py:359, 0.2 mm and deliberate)
+# and meets that tolerance to within 0.002 mm. What raggedness actually tracks
+# is MACRO SHAPE COMPLEXITY — sprawl, not edge noise. Measured on the three
+# largest owl_kent regions, solidity (share of its own convex hull a shape
+# fills) is 0.873 / 0.476 / 0.329: the two ragged ones are multi-armed
+# sprawling shapes, and Gaussian smoothing at 8.6x the current tolerance moves
+# region #2's raggedness by 0.04 (11.59 -> 11.55). No smoother can touch this
+# number, because it is a SEGMENTATION output, not a contour-quality one.
+#
+# That is still the right gate for the right reason: a satin border on a
+# sprawling multi-armed region follows every arm and inlet and reads as
+# clutter rather than definition. But do not reach for a smoother to "fix"
+# a shape's raggedness — see MASTER_SCOPE's measured negatives.
+#
+# Sits in the 3.39-to-3.91 gap measured above, but is NOT centred in it —
+# 3.65 would be. Left at 3.5 as a rounder number with real margin either
+# side; the honest reason to revisit is portraits, not centring.
+#
+# Measured alternative REJECTED: fraction of turns over 60 degrees does not
+# discriminate at all here (26-67% across every region, big and small),
+# because the pixel staircase is universal — it is the ring's overall
 # contortion that separates the populations, not its local step angles.
 BORDER_ABRUPT_RAGGEDNESS = 3.5
 
