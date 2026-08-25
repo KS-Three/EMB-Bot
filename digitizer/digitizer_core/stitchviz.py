@@ -143,11 +143,22 @@ def coverage(design: dict) -> float:
     """Fraction of the design's own footprint that carries thread, 0..1.
 
     The number that separates the two photo routes at a glance: measured
-    2026-08-24, the streamline thread-paint route covers 0.61-0.67 of its
-    bounding box (a third of it is bare cloth, which is that tier's declared
-    fabric-as-value intent) while the gradient blend route covers 0.99.
-    Neither is wrong; they are different products, and the sheet never said
-    so because a vector proof cannot.
+    2026-08-24 on the acceptance portraits, the streamline thread-paint route
+    covers **0.55-0.59** of its footprint while the gradient blend route
+    covers **0.99**. Neither is wrong; they are different products, and the
+    sheet never said so because a vector proof cannot.
+
+    (This docstring said "0.61-0.67 of its bounding box" until 2026-08-25,
+    which contradicted the very next paragraph — this function measures the
+    FOOTPRINT, not a bounding box, and the two are not the same denominator.
+    The footprint figure is the one every other doc quotes.)
+
+    Why 0.55-0.59 and not something adjustable: `STREAMLINE_D_SEP_DARK_MM`
+    is 0.8 mm — exactly TWO thread widths — so at full black the tightest
+    line spacing that tier can draw leaves half the cloth bare BY
+    CONSTRUCTION, and 0.50 is its hard analytic ceiling. The blend tier
+    reaches 0.99 because `machine.FILL_ROW_MM` is 0.40 mm, exactly ONE
+    thread width: rows sit edge to edge. That is the whole difference.
 
     Measured inside the footprint, not the padded canvas, so padding cannot
     dilute it, and always at `COVERAGE_PX_PER_MM` rather than at whatever

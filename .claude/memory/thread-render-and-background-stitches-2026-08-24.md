@@ -100,7 +100,17 @@ identification — it is fill quality, and the renderer already measured it:
 
 Nearly half the cloth inside a photo-route shape is bare. The streamline
 tier's *fabric-as-value* intent is documented and deliberate — but it is a
-DIFFERENT PRODUCT from a filled one, and no sheet ever said so. Start there.
+DIFFERENT PRODUCT from a filled one, and no sheet ever said so.
+
+**The mechanism is already mapped** (two read-only agents, 2026-08-25):
+coverage is `THREAD_MM / d_sep`, and `STREAMLINE_D_SEP_DARK_MM = 0.8` is
+exactly TWO thread widths — so **0.50 is a hard analytic ceiling at pure
+black, by construction**. Blend reaches 0.99 because `FILL_ROW_MM = 0.40` is
+exactly ONE thread width. Full brief, gate-1 triage of every constant, three
+findings that were not previously written down, and four suggested agent
+lanes: `docs/superpowers/plans/2026-08-25-fill-coverage-team-brief.md`.
+**Read it before spawning a team** — the sweep is done, do not pay for it
+twice.
 
 ## Traps re-hit or newly found
 
@@ -118,6 +128,33 @@ DIFFERENT PRODUCT from a filled one, and no sheet ever said so. Start there.
   white, and read the difference.
 - **A coverage number that moves with display scale is not evidence.** The
   same design read 0.75 at 8 px/mm and 0.67 at 14 before it was pinned.
+
+## A segfault that is NOT in the shipped code — do not chase it again
+
+Running the digitizer suite in the PRIMARY checkout after a long session of
+service/sheet work produced **21 failures**, including hard `Segmentation
+fault` (exit 139) in `stage2_photo_segment._seeds_superpixels` (OpenCV
+contrib SEEDS). It looks alarming and it is not a regression. Bounded on
+2026-08-25:
+
+- **CI on `main` is green** — run 919, `6b1ccdf`, clean checkout, success.
+  That is the authoritative answer.
+- The same test passes in a **clean worktree** with the **same venv**.
+- In the primary checkout, with byte-identical source (md5-verified) in the
+  same directory: the identical `run_stages` call **succeeds via direct
+  Python and segfaults under pytest**.
+- Ruled out: memory (14 GB free), xdist contention (reproduces serially),
+  stale `__pycache__`/`.pytest_cache` (cleared, still crashes),
+  `OPENCV_NUM_THREADS=1`, `-p no:faulthandler`, and egg-info entry points
+  (the egg-info has none).
+
+So: environmental, pytest-only, primary-checkout-only, cause unidentified.
+The nine `test_service.py` failures in the same run are the documented
+loaded-box class, and two "worker crashed" entries are this segfault
+cascading through xdist.
+
+**If you see this: run the suite from a fresh worktree, and believe CI.**
+Do not "fix" tests against it.
 
 *(PRs #234, #235, #236, all merged to main 2026-08-25; four family photos,
 never committed — they live in the session upload dir and are staged
