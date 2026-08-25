@@ -3141,3 +3141,55 @@ gate 2 itself.
 
 *(ruled 2026-08-24 — Kent; measurements same day, re-runnable from the
 acceptance stage dir)*
+
+## Fill quality INSIDE the shapes — Kent's front as of 2026-08-25
+
+Kent, on the first thread renders of the subject-cutout arm: *"your
+shape/bordering and feature recognition is getting VEERY good ... My main
+concern is how the stitching looks within each one of those photos."*
+
+That is a different problem from everything area 1 has worked on this month.
+Region identification got good enough that what shows is what happens
+**inside** each region.
+
+### The number already exists
+
+`stitchviz.coverage` (PR #234) renders a design twice — once on black, once on
+white — and reads the per-pixel difference, so a fully covered pixel matches,
+a bare one differs by 255, and an anti-aliased edge differs in proportion. It
+runs at a fixed `COVERAGE_PX_PER_MM`, never the display scale, because a
+number that moves with how you look at it is not evidence.
+
+| route | covers its own footprint |
+|---|---|
+| streamline thread-paint (`classical`, `bound_shade`, `subject_cutout`, …) | **0.55 – 0.59** |
+| gradient blend (`default_stock`, `default_relaxed`) | **0.99** |
+
+**Nearly half the cloth inside a photo-route shape is bare.**
+
+### Why this is not simply a bug
+
+The streamline tier's *fabric-as-value* intent is documented and deliberate:
+the garment colour reads as a tone, and the thread supplies the darker values.
+That is a legitimate embroidery idiom, not an accident.
+
+But it is a **different product** from a filled design, and no contact sheet
+ever said so — the two routes sat in adjacent columns of the same sheet,
+scored by the same counts, with nothing indicating that one covers the cloth
+and one does not. Kent has been judging them side by side without that being
+visible.
+
+### What NOT to assume
+
+- **Not necessarily density.** Raising row density on a tier whose whole
+  premise is exposed fabric may just make it a bad fill instead of a sparse
+  one. The question is which product each design should be, and possibly
+  whether the tier choice itself is the defect.
+- **Not settled by geometry.** How much bare fabric reads as "shading" versus
+  "unfinished" is a fabric-and-thread question — ROADMAP gate 1 territory the
+  moment it turns into a spacing constant.
+- **Not measurable from the old instrument.** Every pre-2026-08-24 sheet was
+  vector proofs, which cannot show coverage at all. Any prior judgement about
+  fill appearance was made without the evidence.
+
+*(measured 2026-08-24 — PR #234's coverage column; Kent's framing 2026-08-25)*
