@@ -103,10 +103,18 @@
       const img = await loadImage(file);
       workImage = prepRGBA(img);
       fileName = file.name;
+      // Hand the decoded image straight up as a tracing BACKDROP, before any
+      // question of auto-tracing. The two ways to digitize this artwork are
+      // both live from here: take the auto-traced shapes below, or ignore
+      // them, close this panel, and click your own nodes around the artwork
+      // now showing under the canvas. The second is the whole point of a
+      // manual tool and was impossible while the drawing canvas was blank.
+      d("image", { image: workImage });
     } catch (err) {
       error = (err && err.message) || "Could not read this image file.";
       workImage = null;
       fileName = "";
+      d("image", { image: null });
     } finally {
       busy = false;
     }
@@ -216,8 +224,9 @@
 
 <div class="tip">
   <p class="tip-hint">
-    Upload flat-color art (a logo works best) to get a rough shape-per-color starting point —
-    tune colors/background below, then add the shapes and hand-refine them like any other.
+    Upload your artwork and it appears behind the drawing canvas to trace over — click your own
+    points around it, the same as any hand-drawn shape. Or let it do the first pass for you:
+    tune colors/background below, add the traced shapes, and hand-refine them.
     PNG with sharp, non-anti-aliased edges traces best. Art already has a transparent background?
     Uncheck "Remove background" below.
   </p>

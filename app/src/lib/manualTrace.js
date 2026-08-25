@@ -207,14 +207,34 @@ export function fitCurvesForRing(rawRing, simplifiedRing, curveTolPx) {
 // (canvasW - 2*marginPx) x (canvasH - 2*marginPx), preserving aspect ratio
 // (letterbox, never stretched), centered. Transforms BOTH anchor points and
 // curve control points identically.
-export function rescaleTracedShapes(shapes, srcW, srcH, canvasW = CANVAS_W, canvasH = CANVAS_H, marginPx = 12) {
+// Where a source image of srcW x srcH lands on the authoring canvas: letterbox
+// fit inside a margin, centred, never stretched.
+//
+// This is its own exported function for ONE reason, and it is a correctness
+// reason rather than a tidiness one. Two things have to agree about this
+// rectangle: the traced shapes (rescaleTracedShapes, below) and the reference
+// image ManualPanel paints UNDER them as a tracing backdrop. If the two ever
+// computed it separately they could drift, and the failure mode is the worst
+// kind — the outlines would sit slightly off the artwork, which reads as "the
+// tracer is inaccurate" rather than as a transform bug. One function, both
+// callers, no second implementation to drift.
+export function traceFitRect(srcW, srcH, canvasW = CANVAS_W, canvasH = CANVAS_H, marginPx = 12) {
   const availW = Math.max(1, canvasW - 2 * marginPx);
   const availH = Math.max(1, canvasH - 2 * marginPx);
   const scale = srcW > 0 && srcH > 0 ? Math.min(availW / srcW, availH / srcH) : 1;
   const drawnW = srcW * scale;
   const drawnH = srcH * scale;
-  const offsetX = (canvasW - drawnW) / 2;
-  const offsetY = (canvasH - drawnH) / 2;
+  return {
+    scale,
+    drawnW,
+    drawnH,
+    offsetX: (canvasW - drawnW) / 2,
+    offsetY: (canvasH - drawnH) / 2,
+  };
+}
+
+export function rescaleTracedShapes(shapes, srcW, srcH, canvasW = CANVAS_W, canvasH = CANVAS_H, marginPx = 12) {
+  const { scale, offsetX, offsetY } = traceFitRect(srcW, srcH, canvasW, canvasH, marginPx);
 
   const transformPoint = (p) => ({ x: p.x * scale + offsetX, y: p.y * scale + offsetY });
 

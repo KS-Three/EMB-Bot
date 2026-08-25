@@ -397,3 +397,59 @@ test("simplifyRingAdaptive: falls back to uniform-stride decimation of the simpl
     expect(ring.some((rp) => rp.x === p.x && rp.y === p.y)).toBe(true);
   }
 });
+
+// ---- traceFitRect ---------------------------------------------------------
+// The tracing backdrop (ManualPanel paints the reference artwork under the
+// drawing canvas) and the traced shapes must land in the SAME rectangle. These
+// own that invariant: if they ever disagree, auto-traced outlines sit slightly
+// off the artwork they came from, which reads as an inaccurate tracer rather
+// than as a transform bug.
+
+test("traceFitRect: letterboxes without stretching — one scale for both axes, centred", async () => {
+  const { traceFitRect } = await import("./manualTrace.js");
+  // A wide source into a 600x400 canvas with a 12px margin: width-limited.
+  const fit = traceFitRect(1200, 300, 600, 400, 12);
+  expect(fit.scale).toBeCloseTo(576 / 1200, 9); // (600 - 24) / 1200
+  expect(fit.drawnW).toBeCloseTo(576, 6);
+  expect(fit.drawnH).toBeCloseTo(144, 6);
+  expect(fit.offsetX).toBeCloseTo(12, 6);
+  expect(fit.offsetY).toBeCloseTo((400 - 144) / 2, 6); // centred vertically
+  // Never bigger than the available box on either axis.
+  expect(fit.drawnW).toBeLessThanOrEqual(600 - 24 + 1e-9);
+  expect(fit.drawnH).toBeLessThanOrEqual(400 - 24 + 1e-9);
+});
+
+test("traceFitRect: a portrait source is height-limited and centred horizontally", async () => {
+  const { traceFitRect } = await import("./manualTrace.js");
+  const fit = traceFitRect(300, 1200, 600, 400, 12);
+  expect(fit.scale).toBeCloseTo(376 / 1200, 9); // (400 - 24) / 1200
+  expect(fit.offsetY).toBeCloseTo(12, 6);
+  expect(fit.offsetX).toBeCloseTo((600 - fit.drawnW) / 2, 6);
+});
+
+test("traceFitRect: degenerate source dimensions fall back to scale 1 instead of NaN/Infinity", async () => {
+  const { traceFitRect } = await import("./manualTrace.js");
+  for (const [w, h] of [[0, 0], [0, 100], [100, 0]]) {
+    const fit = traceFitRect(w, h, 600, 400, 12);
+    expect(Number.isFinite(fit.scale)).toBe(true);
+    expect(fit.scale).toBe(1);
+    expect(Number.isFinite(fit.offsetX)).toBe(true);
+    expect(Number.isFinite(fit.offsetY)).toBe(true);
+  }
+});
+
+test("traceFitRect and rescaleTracedShapes agree — a shape spanning the whole source lands exactly on the backdrop's corners", async () => {
+  const { traceFitRect, rescaleTracedShapes } = await import("./manualTrace.js");
+  const srcW = 640, srcH = 480;
+  const fit = traceFitRect(srcW, srcH, CANVAS_W, CANVAS_H, 12);
+  // A rectangle covering the source image exactly.
+  const [scaled] = rescaleTracedShapes(
+    [{ points: [{ x: 0, y: 0 }, { x: srcW, y: 0 }, { x: srcW, y: srcH }, { x: 0, y: srcH }] }],
+    srcW, srcH, CANVAS_W, CANVAS_H, 12,
+  );
+  // Its corners must be the drawn image's corners, to the pixel.
+  expect(scaled.points[0].x).toBeCloseTo(fit.offsetX, 9);
+  expect(scaled.points[0].y).toBeCloseTo(fit.offsetY, 9);
+  expect(scaled.points[2].x).toBeCloseTo(fit.offsetX + fit.drawnW, 9);
+  expect(scaled.points[2].y).toBeCloseTo(fit.offsetY + fit.drawnH, 9);
+});

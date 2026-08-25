@@ -10,6 +10,7 @@
     curveControlOrNull, hitTestSegmentMidpoint, curveHandlePoint, pointInShape,
     nearestSegmentIndex, insertVertexAtSegment,
   } from "../lib/manualShapes.js";
+  import { traceFitRect } from "../lib/manualTrace.js";
 
   // Manual digitizing mode (MVP slice): draw straight- or curved-line
   // polygon outlines directly on a canvas, then assign each one a stitch
@@ -54,6 +55,53 @@
   // ephemeral UI state, same "not part of the persisted element" category as
   // `draft`/`selectedShapeId` above.
   let traceOpen = false;
+
+  // ---- Tracing backdrop --------------------------------------------------
+  // The reference artwork, painted UNDER the shapes so a user can click nodes
+  // around what they can actually see. Ephemeral like `draft` above: an
+  // authoring aid, never persisted into the element (nothing about the
+  // backdrop reaches the stitch plan — it is looked at, not digitized).
+  //
+  // `backdropImage` is TraceImportPanel's own decoded { rgba, w, h }, so the
+  // backdrop and any shapes traced from it are the same pixels at the same
+  // size, and traceFitRect() puts both in the same place.
+  let backdropImage = null;
+  let backdropCanvas = null; // ImageData painted once into an offscreen canvas
+  let backdropOpacity = 0.4;
+  let backdropOn = true;
+
+  // Build the drawable once per image rather than per repaint: render() runs
+  // on every pointermove during a vertex drag, and putImageData on each of
+  // those would make dragging stutter on a large photo.
+  function setBackdrop(img) {
+    backdropImage = img;
+    backdropCanvas = null;
+    if (!img || !img.w || !img.h) return;
+    // jsdom has no real 2D context; a component spec that seeds an image still
+    // exercises every other path rather than throwing here.
+    try {
+      const off = document.createElement("canvas");
+      off.width = img.w;
+      off.height = img.h;
+      const octx = off.getContext("2d");
+      if (!octx || typeof octx.putImageData !== "function") return;
+      const id = octx.createImageData(img.w, img.h);
+      id.data.set(img.rgba);
+      octx.putImageData(id, 0, 0);
+      backdropCanvas = off;
+    } catch {
+      backdropCanvas = null;
+    }
+  }
+
+  function onBackdropImage(e) {
+    setBackdrop((e.detail && e.detail.image) || null);
+    if (backdropImage) backdropOn = true;
+  }
+
+  function clearBackdrop() {
+    setBackdrop(null);
+  }
 
   // ---- Vertex editing for a finished shape ------------------------------
   // A selected finished shape can be dropped into "edit points" mode: drag
@@ -652,6 +700,19 @@
     ctx.fillStyle = "#f4f2ec";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // The reference artwork, under everything else. Faded by default so the
+    // shape strokes and node handles stay the highest-contrast thing on the
+    // canvas — the image is there to aim at, not to compete with what you are
+    // drawing. traceFitRect is the SAME fit rescaleTracedShapes uses, so an
+    // auto-traced outline lands exactly on the artwork it came from.
+    if (backdropCanvas && backdropOn && backdropOpacity > 0) {
+      const fit = traceFitRect(backdropImage.w, backdropImage.h, canvas.width, canvas.height);
+      ctx.save();
+      ctx.globalAlpha = backdropOpacity;
+      ctx.drawImage(backdropCanvas, fit.offsetX, fit.offsetY, fit.drawnW, fit.drawnH);
+      ctx.restore();
+    }
+
     for (const s of shapeList) {
       const editing = s.id === editId;
       // The shape being edited draws from the LIVE (possibly momentarily
@@ -725,10 +786,15 @@
     }
   }
 
+  // backdropCanvas/backdropOn/backdropOpacity are listed as arguments, not
+  // merely referenced inside render(), because Svelte's reactive dependency
+  // tracking only sees what the statement itself touches — a backdrop change
+  // read only from inside the function body would not repaint.
   $: render(
     canvasEl, shapes, draft, draftCurves, selectedShapeId,
     editingId, editPoints, editCurves, editIssues.length === 0,
-    curveDragSeg, curveDragPoint, curveTarget
+    curveDragSeg, curveDragPoint, curveTarget,
+    backdropCanvas, backdropOn, backdropOpacity
   );
 </script>
 
@@ -784,8 +850,31 @@
       existingShapes={shapes}
       workImage={traceWorkImage}
       on:traced={onTraced}
+      on:image={onBackdropImage}
       on:cancel={() => (traceOpen = false)}
     />
+  {/if}
+
+  {#if backdropImage}
+    <div class="mp-backdrop" role="group" aria-label="Tracing image">
+      <label class="mp-bd-show">
+        <input type="checkbox" bind:checked={backdropOn} />
+        Show tracing image
+      </label>
+      <label class="mp-bd-fade">
+        Fade
+        <input
+          type="range"
+          min="0.1"
+          max="1"
+          step="0.05"
+          bind:value={backdropOpacity}
+          disabled={!backdropOn}
+          aria-label="Tracing image opacity"
+        />
+      </label>
+      <button type="button" class="mp-bd-clear" on:click={clearBackdrop}>Remove</button>
+    </div>
   {/if}
 
   {#if shapes.length}
@@ -910,6 +999,33 @@
     font-size: var(--fs-xs, 12px);
   }
   .mp-tools button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .mp-backdrop {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid #e2e0da;
+    border-radius: 6px;
+    background: #faf9f6;
+    font-size: 0.82rem;
+    color: #444;
+  }
+  .mp-backdrop label { display: flex; align-items: center; gap: 0.35rem; }
+  .mp-bd-fade input[type="range"] { width: 8rem; }
+  .mp-bd-fade input:disabled { opacity: 0.45; }
+  .mp-bd-clear {
+    margin-left: auto;
+    border: 1px solid #d8d5cd;
+    background: #fff;
+    border-radius: 5px;
+    padding: 0.2rem 0.55rem;
+    cursor: pointer;
+    font-size: 0.8rem;
+  }
+  .mp-bd-clear:hover { background: #f1efe9; }
   .mp-tools button.primary {
     background: var(--accent, #4f46e5);
     color: var(--accent-ink, #fff);
