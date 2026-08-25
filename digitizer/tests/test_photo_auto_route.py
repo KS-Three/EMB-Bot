@@ -154,8 +154,14 @@ def test_faces_present_turns_the_detail_layer_on_in_the_real_pipeline():
     # (the tier name does not change) — it is `run_stages` that turns the
     # detail layer on when the auto-route fires AND stage 1.5 actually found
     # a face. Proven on a real detector run, not a stubbed face list.
+    # `photo_prep_background_removal=False` PINNED 2026-08-24: Kent flipped
+    # that default ON, and a requested-but-unavailable cutout now skips the
+    # whole prep block — including the face detection this test's entire
+    # point depends on. Unpinned, this would pass or fail according to
+    # whether the machine happens to have `rembg_isolated/venv` built, which
+    # is not a property any test should be sensitive to.
     cfg = PipelineConfig(target_width_mm=80.0, forced_class="photo_subject",
-                         photo_prep=True)
+                         photo_prep=True, photo_prep_background_removal=False)
     result = run_stages(_astronaut(), cfg)
     w = _warning(result, PHOTO_AUTO_TIER)
     assert w is not None

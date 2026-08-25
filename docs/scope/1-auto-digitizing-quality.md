@@ -2982,3 +2982,162 @@ grade. `drone_render.png`'s #6.1 landed too but does not move its grade; the
 **Next step:** run the tool against a few real classifier changes to learn what a
 genuine regression looks like before setting any hard threshold.
 *(measured 2026-08-21 — `corpus_scorecard._score_one` at HEAD, both MATRIX configs)*
+
+## The detail layer sewed the background a subject cutout had just removed — FIXED 2026-08-24
+
+`cfg.photo_prep_background_removal` runs rembg in an isolated venv and hands
+stage 1 a real subject/background split. Stage 2 respects it (background
+pixels get label -1 and never become regions). The FDoG **detail layer** did
+not, because it does not read regions at all — `extract_detail_lines` runs
+over `SourcePixels.rgb`, the whole frame, and there was nothing on
+`SourcePixels` for it to respect.
+
+### Measured, per block
+
+`baby_deck_laugh.png`, `forced_class=photo_subject` + `photo_prep` +
+`photo_prep_background_removal`. rembg puts the subject at **10.0% of the
+frame**. Every stitch point mapped back through `SourcePixels.to_px` and
+tested against the mask the pipeline itself derived:
+
+| | in subject | in removed background | bg share |
+|---|---|---|---|
+| blocks 0-15 (regions) | 4,278 | 301 | 6.6% |
+| **block 16 (FDoG detail)** | 1,022 | **10,813** | **91.4%** |
+| **design total** | 4,278 | **11,114** | **72.2%** |
+
+The regions' 301 is boundary spill — fills reaching a hair past the mask,
+plus nearest-pixel rounding in the probe. It is not worth chasing. The
+detail block is **97.3% of all background stitches** on the design.
+
+### The fix
+
+`SourcePixels.subject_mask` (True = subject), set by `finish_generation`
+from the same rembg mask stage 2 already receives, carried across the
+generation cache on `Generation`. `stage6_detail._mask_to_subject` resamples
+it to the field's working resolution (INTER_AREA, majority vote), dilates by
+`_SUBJECT_SLACK_PX = 1`, and ANDs it into the line map.
+
+Masking the **line map** rather than the traced polylines is load-bearing: a
+polyline is kept or dropped whole, so post-filtering would keep any line that
+merely starts inside the subject and then runs off across the deck.
+
+| | before | after |
+|---|---|---|
+| detail-block background stitches | 10,813 | **537** |
+| detail-block subject stitches | 1,022 | 1,062 |
+| design stitches | 15,392 | **5,156** |
+| design background share | 72.2% | **16.3%** |
+
+**The 537 survivors are the slack band, not a leak** — verified by distance
+transform, not asserted: median 0.82 working px outside the subject, p99
+1.67, **worst 1.79, and zero beyond 3**. That band is the subject's own
+silhouette, which is the single most valuable line FDoG finds on a cutout
+portrait, and keeping it is why the dilation is there.
+
+### Why the mask is the rembg one and not `~Prep.bg_mask`
+
+The wider rule — mask to every background stage 1 knows about, including the
+border flood — sounds more general and is very nearly inert. A flooded
+background is uniform by construction and FDoG responds to a luminance step.
+Measured on `testdata/logo_whitebg.png` (flat class, detail layer forced on,
+flood covering **74.4%** of the frame): **0 of the detail block's 1,523
+stitches** sew flooded background. So the narrow scope gives up nothing, and
+it buys a guarantee the wide one could not — with no cutout the field is
+`None` and `_mask_to_subject` returns its input array *by identity*, so no
+pre-existing lane can have moved a stitch.
+
+### The reason nobody saw this
+
+**No acceptance arm had ever set `photo_prep_background_removal`.** Every
+contact sheet judged to date sewed the whole frame, so "the background is
+being embroidered" was never on screen as a thing to notice — it was the
+picture. `variant_matrix` now carries a `subject_cutout` arm, gated on the
+isolated venv the way `sam2` is (an ungated arm would sew a byte-identical
+copy of `classical_prep` under a name promising a cutout — a silently-inert
+column reads as "the cutout changed nothing", which is worse than a missing
+one). Measured on the fixed code, all three unbound:
+
+| arm | regions | blocks | cones | stitches |
+|---|---|---|---|---|
+| classical | 110 | 79 | 50 | 17,167 |
+| classical_prep | 175 | 140 | 62 | 33,371 |
+| **subject_cutout** | **29** | **21** | **13** | **5,190** |
+
+Against its one-flag control `classical_prep`: **-83% regions, -79% cones,
+-84% stitches**. And note the middle row — prep alone is the most expensive
+arm on the sheet, and the cutout is the only thing that has ever paid it
+back.
+
+*(measured 2026-08-24 — per-block stitch/mask audit and distance-transform
+check, both re-runnable against the acceptance stage dir)*
+
+## The cutout ships ON, and the fallback direction was backwards — RULED 2026-08-24
+
+Kent's ruling the day the subject cutout became visible in thread. Two parts,
+and the second is the one with teeth.
+
+### 1. The pair ships on
+
+`photo_prep` and `photo_prep_background_removal` both default True, **as a
+pair**. They are not independently defaultable, because prep alone is the most
+expensive arm the acceptance harness measures — worse than doing nothing, on
+all four portraits.
+
+Measured on `baby_deck_laugh`, forced photo class, everything else default:
+
+| path | regions | blocks | cones | stitches |
+|---|---|---|---|---|
+| cutout available (the shipped default) | **29** | 17 | **7** | **5,156** |
+| cutout requested, venv missing → fallback | 110 | 48 | 12 | 16,570 |
+| prep alone — what the OLD fallback gave | 175 | 84 | 12 | 32,663 |
+| control, `photo_prep=False` | 110 | 48 | 12 | 16,570 |
+
+Rows 2 and 4 are **identical geometry**, asserted by comparing every emitted
+stitch coordinate rather than a pair of counts (`test_an_unavailable_cutout_
+falls_back_to_no_prep_at_all`). Row 3 is 6.3x the stitches of row 1.
+
+### 2. The fallback was failing in the expensive direction
+
+A fallback is supposed to be the safe direction to fail in. This one degraded
+onto row 3 — the worst result on the sheet — on precisely the machines least
+able to absorb it. `pipeline.build_generation` now resolves the cutout first
+and, if it was REQUESTED and could not be delivered, skips the whole prep
+block: no face detection, no tone/texture pass.
+
+The asymmetry is deliberate: `photo_prep=True` with the cutout flag OFF is an
+explicit request for prep alone and still gets exactly that. Only an
+undeliverable *requested* cutout triggers the skip. Without that, the fix would
+have quietly deleted `classical_prep` — the acceptance ladder's second rung.
+
+**Four existing tests had to pin `photo_prep_background_removal=False`.** Each
+set `photo_prep=True` while relying on the cutout flag defaulting off, so each
+would have silently stopped testing the gate it is named for and started
+testing the fallback. Exactly what happened to every forced-class acceptance
+arm when `shade_palette_bind`'s default moved, and worth expecting the next
+time a default flips.
+
+### 3. rembg is a deploy requirement — and CI is not evidence
+
+Kent ruled the isolated venv a required deploy step, the same shape as building
+`digitizer/.venv` itself. CI deliberately does NOT build it, so **CI exercises
+the fallback path and a green CI run says nothing about the cutout.** That is
+defensible — the fallback is the real shipped behaviour on a box without the
+venv — but it must not be mistaken for coverage of the feature.
+
+### 4. It ships knowingly inert for real uploads
+
+Measured 2026-08-24: all four acceptance photos classify **`gradient` at
+confidence 1.00**, and `gradient` is not in `PHOTO_CLASSES`, so the double gate
+never opens for them. The pair is live only for a caller that forces
+`photo_subject`/`photo_scene` — every acceptance arm, and any Studio photo
+override, but not a user upload.
+
+Kent's call was to ship it anyway and revisit at gate 2 rather than widen the
+gate to gradient. The reason widening is not free: `gradient` is also the class
+for genuine gradient LOGOS (`drone_render`, `summit_badge` are in the corpus),
+where rembg would invent a subject that is not there. Telling photo-gradient
+from logo-gradient is stage-0 discrimination wearing a different hat — which is
+gate 2 itself.
+
+*(ruled 2026-08-24 — Kent; measurements same day, re-runnable from the
+acceptance stage dir)*

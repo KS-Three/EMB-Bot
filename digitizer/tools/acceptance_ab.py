@@ -46,6 +46,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from digitizer_core.stage1_photo_prep import background_removal_unavailable_reason  # noqa: E402
 from digitizer_core.stage2_sam2_segment import sam2_segmentation_unavailable_reason  # noqa: E402
 from digitizer_core.tools_acceptance import sheet_row, variant_matrix  # noqa: E402
 
@@ -182,10 +183,23 @@ def run(images: list[Path], service: str, out_dir: Path
        ) -> tuple[list[dict], dict[str, dict], list[dict]]:
     """-> (sheet_rows, {file: {variant_tag: {"svg": str|None, "error": str|None}}}, matrix)"""
     _wait_for_health(service)
+    # Both probes run in THIS process, not the service's — they only read
+    # paths on disk, and the harness has always been pointed at a service on
+    # the same box. A remote service would need these asked over the wire.
     sam2_available = sam2_segmentation_unavailable_reason() is None
-    matrix = variant_matrix(sam2_available)
+    rembg_reason = background_removal_unavailable_reason()
+    matrix = variant_matrix(sam2_available, rembg_reason is None)
     tags = [v["tag"] for v in matrix]
-    note = "" if sam2_available else "  (SAM2 unavailable on this machine -- no sam2 arm)"
+    notes = []
+    if not sam2_available:
+        notes.append("SAM2 unavailable on this machine -- no sam2 arm")
+    if rembg_reason is not None:
+        # The reason, not just the fact: a missing isolated venv is a
+        # one-command fix (rembg_isolated/README.md) and the whole point of
+        # printing it here is that whoever ran the sheet finds that out now
+        # rather than wondering why the cutout column is absent.
+        notes.append(f"no subject_cutout arm -- {rembg_reason}")
+    note = f"  ({'; '.join(notes)})" if notes else ""
     print(f"variants: {tags}{note}")
 
     rows: list[dict] = []

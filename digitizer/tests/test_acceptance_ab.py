@@ -81,6 +81,71 @@ def test_sam2_slots_in_as_the_ladders_third_rung():
     m = variant_matrix(sam2_available=True)
     assert [v["tag"] for v in m[:3]] == ["classical", "classical_prep", "sam2"]
 
+# --- the subject-cutout arm (2026-08-24) -------------------------------------
+
+def test_subject_cutout_is_gated_on_the_isolated_rembg_venv():
+    """Absent unless the caller says rembg can actually run — and the
+    default is absent, which is what keeps every assertion above true.
+
+    The gate is not caution, it is correctness: with the isolated venv
+    missing, `photo_prep_background_removal` degrades to a documented
+    no-op, so an ungated arm would produce a byte-identical copy of
+    `classical_prep` under a tag promising a subject cutout. A column that
+    silently measures nothing is worse than a missing one — it reads as
+    'the cutout changed nothing'.
+    """
+    for m in (variant_matrix(sam2_available=False),
+              variant_matrix(sam2_available=True),
+              variant_matrix(sam2_available=True, rembg_available=False)):
+        assert "subject_cutout" not in [v["tag"] for v in m]
+
+
+def test_subject_cutout_carries_both_gates_of_the_double_gate():
+    """`photo_prep_background_removal` rides ON TOP of `photo_prep` (that
+    flag's own docstring): setting it alone does nothing at all, so the arm
+    must set both or it is another silently-inert column."""
+    m = variant_matrix(sam2_available=False, rembg_available=True)
+    arm = next(v for v in m if v["tag"] == "subject_cutout")
+    assert arm["config"] == {
+        "forced_class": "photo_subject",
+        "photo_prep": True,
+        "photo_prep_background_removal": True,
+        "shade_palette_bind": False,
+    }
+
+
+def test_subject_cutout_is_one_flag_from_its_control():
+    """The attribution property, DERIVED from the matrix rather than
+    restated: `classical_prep` is this arm's control, and the sheet can
+    only attribute the delta to the cutout if exactly one flag separates
+    them. Computed, so a future edit to either arm's config fails here
+    instead of quietly making the comparison mean two things — the exact
+    confound the ladder itself was added to repair.
+    """
+    m = variant_matrix(sam2_available=True, rembg_available=True)
+    prep = next(v for v in m if v["tag"] == "classical_prep")["config"]
+    cut = next(v for v in m if v["tag"] == "subject_cutout")["config"]
+    differing = {k for k in set(prep) | set(cut)
+                 if prep.get(k) != cut.get(k)}
+    assert differing == {"photo_prep_background_removal"}
+
+
+def test_subject_cutout_never_splits_the_attribution_ladder():
+    """Placement, in both availability worlds. With SAM2 present the arm
+    sits immediately AFTER the three-rung ladder (whose adjacency is
+    load-bearing — see `test_sam2_slots_in_as_the_ladders_third_rung`);
+    without it, the arm inherits the free slot directly beside the
+    `classical_prep` it is one flag from."""
+    with_sam2 = [v["tag"] for v in
+                 variant_matrix(sam2_available=True, rembg_available=True)]
+    assert with_sam2[:4] == ["classical", "classical_prep", "sam2",
+                             "subject_cutout"]
+
+    without = [v["tag"] for v in
+               variant_matrix(sam2_available=False, rembg_available=True)]
+    assert without[:3] == ["classical", "classical_prep", "subject_cutout"]
+
+
 def test_sheet_row_carries_counts_not_scores():
     row = sheet_row("dog.jpg", "classical",
                     {"shapes": 30, "stitches": 12000, "trims": 40,

@@ -768,7 +768,32 @@ node tools/build-embf.mjs   # rebuild the binary font library (see section above
 
 cd digitizer && .venv/Scripts/python -m pytest -q -n auto   # Python digitizer tests (runtime + expected failures below)
 cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0.1:8721
+
+python3.12 -m venv rembg_isolated/venv                      # REQUIRED for deploy — see below
+rembg_isolated/venv/bin/pip install -r rembg_isolated/requirements.txt
 ```
+
+**The isolated rembg venv is a DEPLOY REQUIREMENT as of 2026-08-24**, not an
+optional extra — Kent's ruling the day `photo_prep` and
+`photo_prep_background_removal` both became shipped defaults. A box without
+it still completes every job, but every photo-class job takes the plain
+classical route and the subject cutout never runs, which on the acceptance
+portraits is the difference between 29 regions and 110. Build it wherever
+the service actually runs; `digitizer/rembg_isolated/README.md` is the
+authority, including why it cannot live in the shared venv (numba refuses
+numpy>=2.5, which the shared venv pins for the k-means goldens).
+
+Two consequences worth knowing before they cost you an hour:
+
+- **CI does not build it**, deliberately. So CI exercises the FALLBACK, not
+  the cutout, and a green CI run is not evidence about the cutout path.
+- **A missing venv now skips tone/texture/face prep too**, not just the
+  cutout. That is the fix, not a bug: prep without the cutout is the worst
+  arm the acceptance harness measures — worse than no prep at all on all
+  four portraits — so the old behaviour failed in the expensive direction.
+  An explicit `photo_prep=True` with the cutout flag OFF still gets prep
+  alone; only a cutout that was asked for and could not be delivered
+  triggers the skip.
 
 **No pass counts here anymore — judge a run by its failure classes.** The
 totals this note used to carry (654/658, ~7-11 min) were measured in the
@@ -829,7 +854,14 @@ failures are EXPECTED:
    `shapefield.py`. Cheaper than a CI round trip.
 
 3. **Three MORE tests skip for reasons that are NOT tesseract, so a local
-   run shows 8 skips and not 5.** Measured 2026-08-22 by grouping every
+   run shows 8 skips and not 5** — on a box with neither tesseract nor the
+   rembg venv. **The TOTAL is environment-dependent and the per-class rows
+   below are the real content**; two levers move it, and both are things a
+   session may well have just changed. Installing tesseract removes 5;
+   building `rembg_isolated/venv` removes 2. A cloud container with
+   tesseract preinstalled and the rembg venv built shows **1** — measured
+   2026-08-24, and that lone skip is the opencv-contrib inversion, which
+   never goes away.** Measured 2026-08-22 by grouping every
    skip reason in a full `-rs` run, because the count not matching this
    section's only documented skip class is the kind of small discrepancy a
    session burns twenty minutes on:
