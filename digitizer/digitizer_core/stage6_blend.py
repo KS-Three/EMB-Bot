@@ -123,6 +123,37 @@ class SourcePixels:
     # layer is the first): those opt-ins carry pixels for their own use and
     # must leave every fill shape on the exact tatami path it always took.
     gradient_class: bool = False
+    # (H, W) bool, True = SUBJECT, aligned to `rgb` — set by
+    # `pipeline.finish_generation` only when a real subject cutout ran
+    # (`cfg.photo_prep_background_removal` + rembg actually succeeding), and
+    # `None` in every other job this repo has ever produced.
+    #
+    # It exists because a tier that reads the raster reads ALL of it. The
+    # detail layer proved that on 2026-08-24: on `baby_deck_laugh` with the
+    # cutout on (subject = 10% of the frame), 10,813 of the FDoG block's
+    # 11,835 stitches — 91.4% — landed in background rembg had already
+    # removed, and 72.2% of every stitch in the whole design sewed nothing
+    # but deck boards. The regions were fine; they respect `Prep.bg_mask`
+    # already. Only the raster-reading tier did not, because until this
+    # field existed there was nothing on `SourcePixels` for it to respect.
+    #
+    # Deliberately NOT `~Prep.bg_mask`, and the narrower choice costs
+    # nothing. Handing stage 1's border-flood background to this tier as
+    # well SOUNDS like the more general fix, but it is very close to inert:
+    # a flooded background is uniform by construction and FDoG responds to a
+    # luminance step, so there is nothing there for it to find. Measured
+    # 2026-08-24 on `testdata/logo_whitebg.png` (flat class, detail layer
+    # forced on, border flood covering 74.4% of the frame): 0 of the detail
+    # block's 1,523 stitches sew flooded background. The whole gain is on
+    # the cutout route, where the "background" is a photographed deck and
+    # full of real edges.
+    #
+    # So the rembg scope is not a compromise — it is where the defect lives.
+    # And it buys a guarantee the wider rule could not: a job that did not
+    # opt into the cutout carries `None` here and `_mask_to_subject` returns
+    # its input array BY IDENTITY, so no existing lane can have moved a
+    # stitch.
+    subject_mask: np.ndarray | None = None
 
     def to_px(self, x_mm: float, y_mm: float) -> tuple[float, float]:
         return (x_mm * self.px_per_mm + self.origin_px[0],

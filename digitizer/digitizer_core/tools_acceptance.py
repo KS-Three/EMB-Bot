@@ -19,7 +19,8 @@ from .stage6_blend import RAMP_R2_MIN
 _FORCED_CLASS = "photo_subject"
 
 
-def variant_matrix(sam2_available: bool) -> list[dict]:
+def variant_matrix(sam2_available: bool,
+                   rembg_available: bool = False) -> list[dict]:
     """The A/B arms this run puts every acceptance image through.
 
     Always the classical arm: `{"forced_class": "photo_subject"}` alone is
@@ -58,6 +59,36 @@ def variant_matrix(sam2_available: bool) -> list[dict]:
     maximal honest contrast — the sheet shows exactly what trusting the fit
     over the texture looks like, and Kent's eyes rule on it. Stock stays the
     first column so the comparison is always present.
+
+    `subject_cutout` (2026-08-24) is `classical_prep` plus the rembg
+    subject cutout — one flag apart from that arm, which is its control.
+    It is GATED the same way `sam2` is, on the isolated venv actually being
+    built (`stage1_photo_prep.background_removal_unavailable_reason() is
+    None`, passed in as `rembg_available`), and for the same reason: with
+    the venv missing, `photo_prep_background_removal` degrades to a
+    documented no-op, so an ungated arm would sew a byte-identical copy of
+    `classical_prep` under a name promising a cutout. That is precisely the
+    confound `classical_prep` itself was added to repair, and it would be
+    worse here — a silently-inert column reads as "the cutout changed
+    nothing".
+
+    Why it exists at all: until this arm, NO acceptance arm set
+    `photo_prep_background_removal`, so every sheet Kent has ever judged
+    showed the whole frame sewn — on the four acceptance portraits the
+    subject is around a tenth of it, and the rest is deck boards, grass and
+    dusk sky rendered in thread. Measured on `baby_deck_laugh` the day this
+    arm landed, against its own control (both unbound, so the only
+    difference is the cutout):
+
+        classical        regions 110  blocks  79  cones 50  stitches 17,167
+        classical_prep   regions 175  blocks 140  cones 62  stitches 33,371
+        subject_cutout   regions  29  blocks  21  cones 13  stitches  5,190
+
+    -83% regions, -79% cones and -84% stitches against `classical_prep`.
+    Note what the middle row costs: prep ALONE is the most expensive arm on
+    the sheet, and the cutout is the only thing that has ever paid that
+    back. Both facts are visible in one three-column read, which is why the
+    arm sits where it does.
     """
     matrix = [
         # `shade_palette_bind=False` is EXPLICIT here as of 2026-08-24. It used
@@ -172,6 +203,29 @@ def variant_matrix(sam2_available: bool) -> list[dict]:
             "config": {"blend_speckle_r2_override": RAMP_R2_MIN},
         },
     ]
+    # BOTH inserts target index 2, and rembg's goes FIRST on purpose: sam2's
+    # then pushes `subject_cutout` to 3, leaving the classical ->
+    # classical_prep -> sam2 ladder adjacent (its comment below explains why
+    # that adjacency is load-bearing) with `subject_cutout` immediately
+    # after it. Reverse the order and SAM2 lands at index 3, splitting the
+    # ladder. With SAM2 unavailable `subject_cutout` simply takes index 2,
+    # directly beside the `classical_prep` it is one flag from — the ideal
+    # placement, available for free exactly when nothing competes for it.
+    if rembg_available:
+        matrix.insert(2, {
+            "tag": "subject_cutout",
+            "config": {
+                "forced_class": _FORCED_CLASS,
+                "photo_prep": True,
+                "photo_prep_background_removal": True,
+                # Pinned unbound with the rest of the forced-class set
+                # (2026-08-24, same reason as every arm above): the default
+                # flipped ON that day, so without this line the arm would
+                # differ from its `classical_prep` control in TWO flags and
+                # measure neither.
+                "shade_palette_bind": False,
+            },
+        })
     if sam2_available:
         # Inserted as the ladder's third rung, not appended (2026-08-23):
         # only the sheet position moved, so the three ladder columns sit

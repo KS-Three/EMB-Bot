@@ -344,3 +344,144 @@ def test_drone_render_end_to_end(tmp_path, capsys):
     img = cv2.imread(str(out))
     assert img is not None
     assert img.min() < 100, "the render drew nothing"
+
+
+# --- The subject mask: a raster-reading tier must not sew the background -----
+#
+# Added 2026-08-24. The defect these pin, measured on a real cutout portrait
+# (`baby_deck_laugh`, subject = 10% of the frame): 10,813 of the detail
+# block's 11,835 stitches — 91.4% — landed in background rembg had already
+# removed, and 72.2% of every stitch in the design sewed deck boards. The
+# region blocks were already clean; only this tier read the whole raster.
+
+def _two_circles() -> np.ndarray:
+    """One drawn circle in each half of a wide frame — so 'lines exist on
+    both sides' is true by construction before any mask is applied, and the
+    mask's effect is a difference against that, not an assumption."""
+    img = np.full((300, 600), 245, np.uint8)
+    for cx in (150, 450):
+        cv2.circle(img, (cx, 150), 90, 30, 2, cv2.LINE_AA)
+    return img
+
+
+def _working_px_mm(sp: SourcePixels) -> float:
+    """One FIELD pixel, in mm — the unit `_SUBJECT_SLACK_PX` is denominated
+    in. Read from the sampler rather than hardcoded so these tests keep
+    meaning the same thing if the field's downscale rule ever changes."""
+    from digitizer_core.stage6_streamline import _field_for
+    return 1.0 / _field_for(sp).scale / sp.px_per_mm
+
+
+def test_no_subject_mask_returns_the_very_same_array():
+    """The byte-identity guarantee, stated as strongly as Python allows:
+    with no subject mask the helper returns the INPUT OBJECT, not an equal
+    copy — so no job that skipped the rembg cutout can have moved a stitch,
+    and no amount of future editing inside the masked branch can reach one.
+    """
+    from digitizer_core.stage6_detail import _mask_to_subject
+
+    line_map = np.zeros((40, 40), bool)
+    line_map[10:30, 20] = True
+    sp = _source(np.full((40, 40), 128, np.uint8))
+    assert sp.subject_mask is None
+    assert _mask_to_subject(line_map, sp) is line_map
+
+
+def test_subject_mask_removes_background_lines_and_keeps_the_subject_s():
+    """The fix itself, as a difference against the unmasked run on the same
+    raster: both halves carry extracted lines with no mask, only the subject
+    half does with one."""
+    img = _two_circles()
+    h, w = img.shape
+
+    unmasked = extract_detail_lines(_source(img))
+    xs = [x for line in unmasked for x, _ in line]
+    assert min(xs) < 0 and max(xs) > 0, (
+        "fixture is not exercising the test — need lines in BOTH halves "
+        "before masking can be shown to remove one"
+    )
+
+    sp = _source(img)
+    subject = np.zeros((h, w), bool)
+    subject[:, : w // 2] = True          # left half only
+    sp.subject_mask = subject
+
+    masked = extract_detail_lines(sp)
+    assert masked, "masking to the subject must not extinguish the layer"
+    slack_mm = 2.0 * _working_px_mm(sp)
+    worst = max(x for line in masked for x, _ in line)
+    assert worst <= slack_mm, (
+        f"a line reached {worst:.2f} mm into the background — further than "
+        f"the {slack_mm:.2f} mm boundary slack allows"
+    )
+
+
+def test_the_kept_half_survives_masking_substantially_intact():
+    """The other half of the contract: the mask must cut the background
+    away WITHOUT eating the subject's own outline, which is the single most
+    valuable line FDoG finds on a cutout portrait."""
+    img = _two_circles()
+    h, w = img.shape
+
+    sp_open = _source(img)
+    left_only_open = sum(
+        LineString(line).length for line in extract_detail_lines(sp_open)
+        if max(x for x, _ in line) < 0)
+
+    sp = _source(img)
+    subject = np.zeros((h, w), bool)
+    subject[:, : w // 2] = True
+    sp.subject_mask = subject
+    left_masked = sum(LineString(line).length
+                      for line in extract_detail_lines(sp))
+
+    assert left_masked >= 0.9 * left_only_open, (
+        f"masking cost the subject half {100*(1-left_masked/left_only_open):.0f}% "
+        "of its own line length — the slack is not doing its job"
+    )
+
+
+def test_the_mask_is_resampled_when_the_field_downscales():
+    """`line_map` lives at the field's working resolution and the mask at
+    full resolution, so the shapes routinely disagree. The helper must
+    resample rather than raise or broadcast-fail."""
+    from digitizer_core.stage6_detail import _mask_to_subject
+
+    full = np.zeros((400, 400), bool)
+    full[:, :200] = True
+    sp = _source(np.full((400, 400), 128, np.uint8))
+    sp.subject_mask = full
+
+    line_map = np.ones((100, 100), bool)          # quarter scale
+    out = _mask_to_subject(line_map, sp)
+    assert out.shape == line_map.shape
+    assert out[:, :50].all(), "the subject half must survive whole"
+    assert not out[:, 55:].any(), (
+        "the background half must be gone beyond the one-pixel slack"
+    )
+
+
+def test_pipeline_leaves_the_subject_mask_none_without_the_cutout():
+    """The wiring's default: no `photo_prep_background_removal`, no mask —
+    which is what makes every existing lane byte-identical."""
+    from digitizer_core.pipeline import run_stages
+
+    result = run_stages(str(LOGO), PipelineConfig(
+        target_width_mm=90.0, forced_class="flat", detail_layer=True))
+    assert result.source_pixels is not None
+    assert result.source_pixels.subject_mask is None
+
+
+def test_generation_fork_carries_the_subject_mask():
+    """A cached generation is only ever consumed through `fork()`, so a
+    field the fork drops is a field that silently does not exist on the
+    service's warm path — the exact shape of bug `quant_palette_spools`
+    needed its own fork line for."""
+    from digitizer_core.pipeline import build_generation
+
+    gen = build_generation(str(LOGO), PipelineConfig(
+        target_width_mm=90.0, forced_class="flat", detail_layer=True))
+    mask = np.zeros((4, 4), bool)
+    mask[1:3, 1:3] = True
+    gen.subject_mask = mask
+    assert gen.fork().subject_mask is mask

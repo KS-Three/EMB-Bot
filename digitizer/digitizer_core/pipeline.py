@@ -215,6 +215,17 @@ class Generation:
     # Defaulted so a hand-built Generation (tests) reads exactly as before
     # the field existed.
     quant_palette_spools: list[int] | None = None
+    # The rembg subject cutout, (H, W) bool with True = SUBJECT, or None
+    # (every job that did not opt into `cfg.photo_prep_background_removal`,
+    # and every job where the isolated venv was missing or the worker
+    # failed — the same degrade-to-None contract `remove_background_seam`
+    # itself gives). Carried on the GENERATION rather than recomputed
+    # downstream because it is a stage-1 fact that costs an out-of-process
+    # neural net to produce: a cached generation must not pay for it twice.
+    # `finish_generation` is its only consumer, handing it to `SourcePixels`
+    # so raster-reading tiers stop sewing the background (see that field's
+    # own docstring for the measurement that made it necessary).
+    subject_mask: np.ndarray | None = None
 
     def fork(self) -> "Generation":
         """A copy safe to finish from, sharing what is immutable.
@@ -245,6 +256,10 @@ class Generation:
                 list(self.quant_palette_spools)
                 if self.quant_palette_spools is not None else None
             ),
+            # SHARED, not copied — read-only downstream for exactly the same
+            # reason `p`'s rasters are (this docstring's own rule): nothing
+            # in stages 5-7 assigns into it.
+            subject_mask=self.subject_mask,
         )
 
 
@@ -313,44 +328,67 @@ def build_generation(
     # border-flood default here instead would be a dishonest "background"
     # claim about interior regions.
     subject_bg_mask: np.ndarray | None = None
-    if cfg.photo_prep and classification.class_ in PHOTO_CLASSES:
-        # rembg subject cutout (plan §2 row 1) — runs FIRST in this block,
-        # before face detection and tone prep, because both of those read
-        # `p.bg_mask` (tone prep's foreground-only percentile stretch;
-        # face detection doesn't today, but a cleaner bg_mask can only help
-        # a later consumer, never hurt this one). Its OWN opt-in flag on top
-        # of photo_prep — see config.py's comment for why.
-        if cfg.photo_prep_background_removal:
-            bg_removed, bg_reason = remove_background_seam(p.rgb, p.px_per_mm, cfg)
-            if bg_removed is None:
-                # The documented no-op fallback: this environment cannot run
-                # the isolated rembg subprocess (venv missing, worker
-                # crashed, timed out, ...). The job proceeds with stage 1's
-                # border-flood bg_mask exactly as before — and says so.
-                prep_warnings.append(
-                    warn(
-                        PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE,
-                        f"Background removal was skipped — {bg_reason}. "
-                        "This photo keeps stage 1's border-flood background "
-                        "only.",
-                        reason=bg_reason,
-                    )
+    # The rembg subject cutout (plan §2 row 1) is resolved BEFORE the rest
+    # of photo prep — it always had to be, because tone prep's
+    # foreground-only percentile stretch reads `p.bg_mask` — and as of
+    # 2026-08-24 its OUTCOME also decides whether that rest runs at all.
+    #
+    # Why (Kent's ruling, the day he flipped both defaults): on a machine
+    # that cannot run the isolated venv this used to degrade onto
+    # tone/texture/face prep WITHOUT the cutout, and that combination is
+    # the single worst arm the acceptance harness measures — worse than
+    # doing nothing, on all four portraits (`baby_deck_laugh` 110 -> 175
+    # regions and 17,167 -> 32,663 stitches against no prep at all). A
+    # fallback is meant to be the safe direction to fail in; this one was
+    # failing toward the most expensive result on the sheet, on precisely
+    # the machines least equipped to absorb it.
+    #
+    # So a REQUESTED-but-unavailable cutout now skips the whole prep block:
+    # no face detection, no tone/texture pass, `subject_bg_mask` left None.
+    # That is the plain classical route — byte-identical to `photo_prep=
+    # False`, which a test asserts rather than assumes.
+    #
+    # Note the asymmetry, which is deliberate: `photo_prep=True` with the
+    # cutout flag OFF is an explicit request for prep alone and still gets
+    # exactly that. Only a cutout that was ASKED FOR and could not be
+    # delivered triggers the skip.
+    cutout_requested = (cfg.photo_prep and cfg.photo_prep_background_removal
+                        and classification.class_ in PHOTO_CLASSES)
+    cutout_failed = False
+    if cutout_requested:
+        bg_removed, bg_reason = remove_background_seam(p.rgb, p.px_per_mm, cfg)
+        if bg_removed is None:
+            # This environment cannot run the isolated rembg subprocess
+            # (venv missing, worker crashed, timed out, ...). Still not a
+            # hard failure — but no longer a partial one either.
+            cutout_failed = True
+            prep_warnings.append(
+                warn(
+                    PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE,
+                    f"Background removal was skipped — {bg_reason}. Tone, "
+                    "texture and face prep were skipped with it, because "
+                    "prep without the cutout measures worse than no prep "
+                    "at all; this photo took the plain classical route.",
+                    reason=bg_reason,
                 )
-            else:
-                subject_bg_mask = bg_removed
-                frac_before = round(float(p.bg_mask.mean()), 3)
-                p.bg_mask = p.bg_mask | bg_removed
-                frac_after = round(float(p.bg_mask.mean()), 3)
-                prep_warnings.append(
-                    warn(
-                        PHOTO_BACKGROUND_REMOVED,
-                        "Background removed via rembg subject cutout — "
-                        f"background pixel fraction {frac_before:.0%} -> "
-                        f"{frac_after:.0%}.",
-                        background_frac_before=frac_before,
-                        background_frac_after=frac_after,
-                    )
+            )
+        else:
+            subject_bg_mask = bg_removed
+            frac_before = round(float(p.bg_mask.mean()), 3)
+            p.bg_mask = p.bg_mask | bg_removed
+            frac_after = round(float(p.bg_mask.mean()), 3)
+            prep_warnings.append(
+                warn(
+                    PHOTO_BACKGROUND_REMOVED,
+                    "Background removed via rembg subject cutout — "
+                    f"background pixel fraction {frac_before:.0%} -> "
+                    f"{frac_after:.0%}.",
+                    background_frac_before=frac_before,
+                    background_frac_after=frac_after,
                 )
+            )
+    if cfg.photo_prep and classification.class_ in PHOTO_CLASSES \
+            and not cutout_failed:
         # YuNet face priors (plan §2 row 2) — detected on the raster BEFORE
         # texture kill, because a face the smoothing has already softened is
         # exactly the face most likely to slip under the detector; the boxes
@@ -570,6 +608,14 @@ def build_generation(
         quant_palette_spools=(
             list(q.palette_spools) if q.palette_spools is not None else None
         ),
+        # None unless `remove_background_seam` actually ran and succeeded
+        # this generation — the identical variable stage 2 already gets as
+        # its `bg_mask` argument, inverted here to the subject convention
+        # `SourcePixels.subject_mask` documents. Stage 2 wants "which of
+        # these pixels are background"; a tier reading the raster wants
+        # "which of these pixels are the artwork", and spelling each one the
+        # way its consumer thinks removes a `~` from every call site.
+        subject_mask=(~subject_bg_mask if subject_bg_mask is not None else None),
     )
 
 
@@ -757,7 +803,8 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         source_pixels = SourcePixels(rgb=p.rgb, px_per_mm=p.px_per_mm,
                                      origin_px=(art_cx, art_cy),
                                      gradient_class=(gen.classification_class
-                                                     == "gradient"))
+                                                     == "gradient"),
+                                     subject_mask=gen.subject_mask)
     if gen.classification_class == "gradient":
         # One shared fill-row angle for the whole design (2026-08-03 angle-
         # fragmentation fix) — fitted once, against `p`'s full foreground,

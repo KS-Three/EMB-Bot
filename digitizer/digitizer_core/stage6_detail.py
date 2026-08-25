@@ -321,6 +321,54 @@ def _trace_polylines(skel: np.ndarray) -> list[list[tuple[int, int]]]:
 
 # --- Extraction (px -> mm) ----------------------------------------------------
 
+# One working pixel of slack at the subject boundary, applied as a single
+# dilation of the resampled mask. NOT a physical constant and not tunable:
+# the silhouette is the highest-value line FDoG finds on a cutout portrait
+# (it is the outline of the subject), it sits exactly ON the boundary the
+# mask splits at, and a majority-vote resample alone clips roughly half of
+# it. One step is the smallest slack that keeps a boundary-straddling line
+# whole; anything larger starts re-admitting the background this exists to
+# remove.
+_SUBJECT_SLACK_PX = 1
+
+
+def _mask_to_subject(line_map: np.ndarray, sp: SourcePixels) -> np.ndarray:
+    """Drop line pixels outside `sp.subject_mask`, or pass `line_map`
+    straight back when there is no subject mask to respect.
+
+    `line_map` lives at the FIELD's working resolution and the source mask
+    at full resolution, so the mask is resampled down INTER_AREA — a
+    per-cell subject fraction — and kept where the majority of the cell is
+    subject, then dilated by `_SUBJECT_SLACK_PX` (see that constant). The
+    target shape is taken from `line_map` itself rather than from the
+    field's scale factor: the array in hand is the authority on what
+    resolution it is at, and there is then no second source of truth to
+    drift from it.
+
+    The mask is applied to the LINE MAP rather than to the traced polylines
+    for a reason worth stating: filtering afterwards would keep a line that
+    merely starts inside the subject and then runs off across the
+    background, because a polyline is kept or dropped whole. Cutting the
+    raster first means such a line is traced only as far as the subject
+    goes, and the part over bare fabric never becomes a bean run at all.
+
+    `sp.subject_mask is None` — every job that did not opt into the rembg
+    cutout — returns the input array unchanged, by identity, so this
+    function cannot move a single existing stitch.
+    """
+    subject = sp.subject_mask
+    if subject is None:
+        return line_map
+    h, w = line_map.shape[:2]
+    if subject.shape[:2] != (h, w):
+        subject = cv2.resize(subject.astype(np.float32), (w, h),
+                             interpolation=cv2.INTER_AREA) >= 0.5
+    keep = cv2.dilate(subject.astype(np.uint8),
+                      np.ones((3, 3), np.uint8),
+                      iterations=_SUBJECT_SLACK_PX).astype(bool)
+    return line_map & keep
+
+
 def extract_detail_lines(sp: SourcePixels) -> list[list[tuple[float, float]]]:
     """The full FDoG extraction over one design's source raster -> mm
     polylines (simplified, floor-filtered), possibly empty — an honest
@@ -330,6 +378,10 @@ def extract_detail_lines(sp: SourcePixels) -> list[list[tuple[float, float]]]:
     streamline tier (`_field_for`): direction and line-ness are scale-local,
     and full-resolution FDoG costs seconds for no detail a 0.73 mm bean
     station could express.
+
+    Confined to `sp.subject_mask` when the job carries one — see
+    `_mask_to_subject`. Without a mask (every job that did not opt into the
+    rembg cutout) this reads the whole raster exactly as it always has.
     """
     sampler = _field_for(sp)
     h, w = sp.rgb.shape[:2]
@@ -343,6 +395,7 @@ def extract_detail_lines(sp: SourcePixels) -> list[list[tuple[float, float]]]:
 
     line_map = fdog_line_map(gray, sampler.field.tangent,
                              sampler.field.coherence)
+    line_map = _mask_to_subject(line_map, sp)
     if not line_map.any():
         return []
     skel = skeletonize(line_map)

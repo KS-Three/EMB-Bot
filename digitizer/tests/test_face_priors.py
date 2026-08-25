@@ -151,6 +151,13 @@ def test_corrupt_model_fails_integrity_and_degrades_to_none(monkeypatch, tmp_pat
     assert spp.detect_faces_seam(_astronaut(), _cfg()) is None
 
 
+# `photo_prep_background_removal=False` is PINNED in the prep-gate tests
+# below as of 2026-08-24. Kent flipped that default ON that day, and a
+# requested-but-unavailable cutout now skips the entire prep block
+# (see pipeline.build_generation) — so without the pin these would stop
+# exercising the gate they are named for and quietly start exercising
+# the fallback. Exactly why every forced-class acceptance arm pins
+# `shade_palette_bind` after its own default moved.
 def test_pipeline_says_so_when_the_detector_is_unavailable(monkeypatch):
     """The documented no-op fallback, observed at the pipeline boundary: the
     job completes and carries PHOTO_FACE_PRIORS_UNAVAILABLE instead of
@@ -159,7 +166,8 @@ def test_pipeline_says_so_when_the_detector_is_unavailable(monkeypatch):
         pipeline_module, "detect_faces_seam", lambda rgb, cfg: None
     )
     result = run_stages(
-        NO_FACE_FIXTURE, _cfg(forced_class="photo_scene", photo_prep=True)
+        NO_FACE_FIXTURE, _cfg(forced_class="photo_scene", photo_prep=True,
+                              photo_prep_background_removal=False)
     )
     hits = [w for w in result.warnings
             if w["code"] == PHOTO_FACE_PRIORS_UNAVAILABLE]
@@ -174,7 +182,8 @@ def test_pipeline_says_so_when_the_detector_is_unavailable(monkeypatch):
 def test_pipeline_emits_faces_detected_behind_the_photo_prep_gate():
     rgb = _astronaut()
 
-    on = run_stages(rgb, _cfg(forced_class="photo_subject", photo_prep=True))
+    on = run_stages(rgb, _cfg(forced_class="photo_subject", photo_prep=True,
+                              photo_prep_background_removal=False))
     hits = [w for w in on.warnings if w["code"] == PHOTO_FACES_DETECTED]
     assert len(hits) == 1
     w = hits[0]
@@ -193,7 +202,8 @@ def test_pipeline_emits_faces_detected_behind_the_photo_prep_gate():
 
 def test_no_face_photo_run_emits_neither_face_warning():
     result = run_stages(
-        NO_FACE_FIXTURE, _cfg(forced_class="photo_scene", photo_prep=True)
+        NO_FACE_FIXTURE, _cfg(forced_class="photo_scene", photo_prep=True,
+                              photo_prep_background_removal=False)
     )
     codes = {w["code"] for w in result.warnings}
     assert PHOTO_FACES_DETECTED not in codes
