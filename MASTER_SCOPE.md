@@ -18,8 +18,8 @@ metric's own **75-84** pro-vs-pro ceiling, four defects real customer artwork
 exposed, and the traps that cost that session time. Four of its findings are
 standing rulings below. **The code and instruments it describes are ON `main`**
 — PR #157 merged (`4967ed5`), so `digitizer/tools/pro_parity/` including
-`selfconsistency.py` is in a plain checkout. This pointer said "in PR #157, not
-on `main`" until 2026-08-17. *(confirmed 2026-08-17 — `git ls-tree origin/main`)*
+`selfconsistency.py` is in a plain checkout.
+*(confirmed 2026-08-17 — `git ls-tree origin/main`)*
 
 **Last updated:** 2026-08-25. Dated history lives in
 [`docs/scope-history.md`](docs/scope-history.md); **this file is current state
@@ -40,69 +40,43 @@ or move it.
    other docs cite these by number. *(`_shade_blocks`)*
 
 2. **No width floor under satin — PHOTO-LANE HALF CLOSED 2026-08-22; still
-   DISPROVED for flat art.** 19 of 162 corpus regions, all photo-family, sew
-   sub-mm satin (Law 31), but 61/64 sub-1.0 mm satins on real customer logos are
+   DISPROVED for flat art.** Corpus regions that sew sub-mm satin are all
+   photo-family, but 61 of 64 sub-1.0 mm satins on real customer logos are
    ground the pro ALSO satined — so `classify_ribbon`'s `photo_width_floor`
-   reroutes earned sub-1.0 mm satin to the outline run on photo classes ONLY
-   (1.0 mm is Law 31 verbatim, never tuned — gate 1). 58 verdicts / **29
-   emitted-stitch reroutes**, 0.23–0.97 mm; flat/gradient byte-identical by
-   suite and audit. Open: default routing sends drone/summit to GRADIENT, barred
-   there — needs stage-0 discrimination (phase 2). *(measured 2026-08-11 —
-   `docs/dt-first-verdict-2026-08-11.md`; disproved 2026-08-16 —
-   `docs/satin-gate-attribution-2026-08-16.md` §7; landed 2026-08-22 —
-   `docs/tonal-eng-measurements-2026-08-22.md`)*
+   reroutes earned sub-1.0 mm satin on photo classes ONLY (1.0 mm is Law 31
+   verbatim, never tuned — gate 1); flat/gradient byte-identical. **Open:**
+   default routing sends drone/summit to GRADIENT, where the floor is barred.
+   `cfg.is_photographic` is deliberately NOT wired here — it moves satin
+   routing, not palette or grading. *(measured 2026-08-11, landed 2026-08-22
+   — `docs/tonal-eng-measurements-2026-08-22.md`)*
 
 3. **14 jump-trims on an 80mm design,** every fill variant measured. Not
    started. *(measured 2026-08-12 — scope-history)*
 
-4. **We trim far more than the professional: 8.49 trims/1,000 stitches against
-   the pro's 1.27** — same logo, same size, double the 4.1 ceiling this repo's
-   own chaining test treats as the limit. Unambiguously a defect, unlike the
-   stitch-count gap beside it. Like-for-like over 23 designs, same decoder both
-   sides: **1,715 `trim` breaks against 555 — 3.1x. Quote that or the rate;
-   never a run count** (the old "129 vs 15" counted plan OBJECTS against THREAD
-   PATHS) and never raw `trims` (~2 TRIM per real cut on the pro's files, 1 on
-   ours). **Cause:** trim policy, not travel — the pro never cuts under
-   11.8 mm, ours is 3.0, gate 1 says cloth settles that; the `_graph_travel`
-   half of that attribution is RETRACTED (~4 of 250 left at HEAD). **Not
-   blocked** — five pro variants sit in `digitizer/testdata/reference/`.
-   *(measured 2026-08-18/21; detail + disproved claims in
-   `docs/fragmentation-attribution-2026-08-18.md` and scope-history)*
+4. **We trim far more than the professional — 3.1x the trim breaks on a
+   like-for-like corpus.** Quote the rate or the break count, never a run
+   count and never raw `trims`. **Cause: trim policy, not travel** — the pro
+   never cuts under 11.8 mm, ours is 3.0, and gate 1 says cloth settles that.
+   The `_graph_travel` half of the old attribution is RETRACTED. Not blocked:
+   five pro variants sit in `digitizer/testdata/reference/`.
+   *(measured 2026-08-18/21 — `docs/fragmentation-attribution-2026-08-18.md`)*
 
 5. **Satin-vs-fill routing sits at chance, and misroutes in BOTH directions.**
-   The *mix* nearly matches the pro's, so the cap is not simply too high or too
-   low, while per-place agreement is barely above chance — about a third of the
-   pro's satin ground is filled and a third of its fill is satined, two designs
-   below their own chance floor. Retuning `satin_max` cannot fix a
-   wrong-shapes-picked failure; it only moves the mix that is already right.
-   *(measured 2026-08-14 — confusion matrix over the pro-parity corpus;
-   per-design detail in area 1)*
-   **Partly closed, and the remainder is NOT the classifier.** The DT regularity
-   term accounts for 63.6% of the pro-satin ground we fill; loosening its limit
-   is confirmed not to work, while a promotion path reopening it moves the
-   corpus 45.8 → 48.1. The gain is real — corrected kappa `parts["sttype"]`
-   rose 0.167 → 0.193 against a chance floor that itself rose, so it is not the
-   floor-moving artifact §4 warns about. **What is left is segmentation:** an
-   oracle knowing the pro's per-shape answer scores 76.6% against our 55.4%,
-   and 48% of graded cells sit in shapes under 75% one type — our regions
-   straddle the pro's satin/fill boundaries. Note
-   `docs/segmentation-alignment-2026-08-17.md` recommends NOT building the
-   region-level fix: the straddle is 95.8% `speckle`, i.e. grid noise.
-   *(measured 2026-08-17 — `kappacheck.py`; detail in
+   The *mix* nearly matches the pro's, so retuning `satin_max` cannot fix it —
+   it only moves a mix that is already right. **Partly closed, and the
+   remainder is NOT the classifier: it is SEGMENTATION.** An oracle knowing
+   the pro's per-shape answer scores 76.6% against our 55.4% — our regions
+   straddle the pro's satin/fill boundaries. `docs/segmentation-alignment-
+   2026-08-17.md` recommends NOT building the region-level fix (the straddle
+   is 95.8% grid noise). *(measured 2026-08-14/17 —
    `docs/satin-gate-attribution-2026-08-16.md` §9)*
 
 6. **Satin fragments into many small islands on real logo art — and the trim
-   bulk is INSIDE one shape, not between them.** `logo_hotel_fremont.webp` at
-   92.5 mm/patch: 135 trims, 12.60/1,000 by the repo's shared decoder against
-   the five committed pro references at 0.95/1,000 — a **13x** gap. Retire the
-   framing this was filed under: the rope border is **not** one continuous
-   stroke the engine shattered — the artwork is ~136 separate chevrons and the
-   pipeline consolidates them to 21. Merging every fragment on every thread
-   still leaves 98 trims. **69% of trims are intra-shape**, 56 of them inside
-   one 2,095 mm² white field with 46 holes whose tatami breaks into 280 runs.
-   Stage 2 also splits one flat colour across two threads; the cut survives
-   `revalidate_threads`. **UNREPRESENTATIVE of client logos** — theirs carry
-   1–3 fill shapes that essentially never cut. *(measured 2026-08-21/22)*
+   bulk is INSIDE one shape, not between them.** 69% of trims are
+   intra-shape. Retire the old framing: the rope border was never one stroke
+   the engine shattered — the artwork is ~136 separate chevrons. **And it is
+   UNREPRESENTATIVE of client logos**, which carry 1–3 fill shapes that
+   essentially never cut. *(measured 2026-08-21/22 — area 1)*
 
 7. **RESOLVED 2026-08-21 — satin silently dropped a bracket's tab** on
    `enthusiast_logo.png` (7.8 mm² bare, D/52 → C/64). *(`_prune_spurs`)*
@@ -113,13 +87,10 @@ or move it.
 
 9. **RESOLVED 2026-08-24 — the photo route escaped its own palette; both
    halves closed.** Region half (#217): `revalidate_threads` masked to the
-   palette, out-of-palette → **0**, flat+gradient byte-identical. Shade half:
-   the per-shade snap still spent 28/33/38/8 unnamed spools, invisible in the
-   UI (that count reads shape `thread_index` — palette-bound; the sewing
-   blocks are not). `shade_palette_bind` closes it, **default ON** per
-   Kent's 32-job-sheet ruling: cones 43/45/50/14 → **12/12/15/6** (== each
-   palette), stops 78→47, 68→45, 75→54, 25→16; (b) declined (+1 cone on face).
-   Pinned edge: a one-spool design flattens tone, 5→1. *(PR #217 + 08-24 flip)*
+   palette, flat+gradient byte-identical. Shade half: `shade_palette_bind`,
+   **default ON** per Kent's 32-job-sheet ruling — every design's cones now
+   equal its palette. Pinned edge: a one-spool design flattens tone.
+   *(PR #217 + 08-24 flip)*
 
 10. **RESOLVED 2026-08-23 — three photo-route robustness defects, every one
     found by the first real photos, none reachable by a committed fixture:** a
@@ -127,35 +98,28 @@ or move it.
     condemning correct thread-paint as too loose (#216).
 
 11. **RESOLVED 2026-08-24 — the memory ceiling was per-region full-frame
-    masks.** Each of 1,455 components on a 2800x2100 frame carried its own
-    (H, W) bool — 8.56 GB at once, ~102 surviving. Cropped to bboxes:
-    **8,509 → 1,014 MB** (2,767 → 677 on a real portrait), same region counts,
-    19–29% faster, MB/MP now FALLING with size (260→172) where it climbed
-    (643→1,705). Correction: the 12.4 GB OOM was contention with a 10.5 GB
-    script, **not one job** — a service plateaus at ~2.8 GB. *(PR #230)*
+    masks**, now cropped to bboxes: an 8x drop, same region counts, and
+    MB/MP falls with size where it used to climb. Correction: the 12.4 GB
+    OOM was contention with another script, not one job. *(PR #230)*
 
-12. **RESOLVED 2026-08-24 — preflight graded every photo job F.**
-    `THREAD_MATCH_POOR` fired 256 times at `block` across the sheet: a capped
-    cone list guarantees per-thread distance. Now scores EXCESS over the best
-    already-loaded spool on the photo route (raw elsewhere, byte-identical) —
-    258 of 330 offending regions become 3, and real mis-assignments still
-    block. *(PR #229)*
+12. **RESOLVED 2026-08-24 — preflight graded every photo job F.** A capped
+    cone list guarantees per-thread distance, so `THREAD_MATCH_POOR` fired on
+    every job; it now scores EXCESS over the best already-loaded spool on the
+    photo route (raw elsewhere, byte-identical). *(PR #229)*
 
-13. **RESOLVED 2026-08-24 — the detail layer sewed the background a subject cutout
-    had just removed.** FDoG reads the whole raster, so
-    `photo_prep_background_removal` never reached it: on `baby_deck_laugh`,
-    **91.4% of the detail block and 72.2% of every stitch in the design** sewed
-    removed background. Regions were clean. `SourcePixels.subject_mask` now
-    confines the line map — 10,813 → **537**, all inside the silhouette slack.
-    Invisible until now because **no acceptance arm had EVER set that flag**; the
-    `subject_cutout` arm lands here too — a third default-OFF flag missing from the
-    section below, the gap it exists to close. *(measured 2026-08-24 — [area 1](docs/scope/1-auto-digitizing-quality.md))*
+13. **RESOLVED 2026-08-24 — the detail layer sewed the background a subject
+    cutout had just removed.** FDoG reads the whole raster, so the removal
+    never reached it; `SourcePixels.subject_mask` now confines the line map.
+    Invisible until then because **no acceptance arm had EVER set that flag**
+    — the same blind spot the section below exists to close.
+    *(measured 2026-08-24 — [area 1](docs/scope/1-auto-digitizing-quality.md))*
 
-14. **OPEN — the photo route leaves half the cloth bare INSIDE each shape.**
-    Kent's front as of 2026-08-25, and the first item here about fill QUALITY
-    rather than region identification. `stitchviz.coverage`: streamline
-    thread-paint covers **0.55–0.59** of its footprint, the blend tier **0.99**.
-    Not diagnosed; do not assume the fix is density. *(measured 2026-08-24 — PR #234; [area 1](docs/scope/1-auto-digitizing-quality.md))*
+14. **ANSWERED 2026-08-25 — the photo route leaves half the cloth bare inside
+    each shape, and that is the THREAD-PAINT TIER, not a density bug.**
+    Streamline covers 0.55–0.59 of its footprint against the filled tier's
+    0.99. Kent ruled filled for high-contrast subjects; see the standing
+    ruling for the face exception. *(measured 2026-08-24/25 — PR #234;
+    [area 1](docs/scope/1-auto-digitizing-quality.md))*
 
 ---
 
@@ -189,41 +153,49 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
 
 ## Standing rulings — decided, do not re-litigate
 
-- **"Is this a photograph" is DECLARED (`cfg.is_photographic`), never detected,
-  and lives in ONE place (`config.is_photographic`).** Stage 0's signals cannot
-  separate the populations: on the primary gate a real photograph reads *lower*
-  than two gradient logos (`owl_kent` ucm **0.1107** vs `summit_badge` 0.1152,
-  `drone_render` 0.1592), and inside their spread on the secondary. Deriving a
-  new signal is stage-0 recalibration → gate 2. The gate was written in **15
-  places across 5 modules** with `PHOTO_CLASSES` defined **3 times**; that is
-  how a photograph in the `gradient` lane came to miss the palette bind and be
-  graded on the tatami yardstick — 14 cones against `max_colors` 12, grade F/0.
-  Declaring it: **14 → 12 cones, F/0 → D/40, `THREAD_MATCH_POOR` 12 → 0**, no
-  visible quality change. **Deliberately NOT wired:** `effective_split_tonal`
-  (gate 3, tonal-region splitting) and `stage6_satin`'s photo width floor
-  (defect 2's open half — Law 31, changes satin routing).
-  *(measured + landed 2026-08-25 — PR #244)*
+- **"Is this a photograph" lives in ONE place (`config.is_photographic`), and is
+  DECLARED today only because nothing is wired to answer it yet.** Stage 0's
+  COLOUR signals cannot: real photographs are the LOWEST `unique_color_mass`
+  content in the corpus, *below every gradient logo* — so re-tuning that gate is
+  not the answer, and would be stage-0 recalibration (gate 2) besides. **Two
+  signals the repo ALREADY OWNS do separate them, and neither is a colour
+  statistic:** EXIF camera Make/Model (4/4 photos, 0/9 logos) and the YuNet
+  detector at `stage1_photo_prep.detect_faces_seam` (4/4 portraits, 0/9 logos).
+  Each has a blind spot — EXIF dies on re-save (`owl_kent` has none), faces miss
+  pets and landscapes — so the route is EXIF-or-face with the declaration as
+  FALLBACK, never a checkbox as the primary mechanism. Not built.
+  The gate was written in 15 places across 5 modules with `PHOTO_CLASSES`
+  defined 3 times; that is how a photograph in the `gradient` lane missed the
+  palette bind and was graded on the tatami yardstick. **NOT wired:**
+  `effective_split_tonal` (gate 3) and `stage6_satin`'s width floor (defect 2).
+  *(measured 2026-08-25 — PR #245; detail in scope-history 08-25)*
 
-- **A photo sews FILLED (~0.99 cov), not as thread-paint (~0.52–0.55).** Lane A,
-  answered on renders of both products: *"the left image is WAAAAAAAAYYYY
-  BETTER"*. Held on 4 fixtures, mean luminance 0.32–0.60; 3 were run to
-  overturn the first and did not. **Not yet acted on:** `auto_photo_tier` still
-  routes `photo_subject` to streamline, against this ruling.
-  *(ruled 2026-08-25 — Kent; `docs/superpowers/plans/2026-08-25-fill-coverage-team-brief.md`)*
+- **A photo sews FILLED — on a HIGH-CONTRAST SUBJECT. On a human face it is
+  REFUTED, and faces are TABLED, not abandoned.** Lane A was answered on an owl
+  and two landscapes, then tested the same day on four real portraits and
+  inverted: filled quantizes a face to one flat skin field and the eyes and nose
+  disappear — on one, the person vanished entirely, leaving a floating shirt.
+  Thread-paint rendered both as recognisable people, at 3–4x the trims. **The
+  mechanism is the subject's own contrast:** an owl's features ARE distinct
+  colour regions and survive quantization; a face's are continuous low-contrast
+  tone and do not. Kent: *"let's just table it for later when the tool gets more
+  powerful."* The ruling stands for the content we ship against; faces are
+  parked pending a more capable tier, since neither existing tier renders one
+  well. *(ruled 2026-08-25 — Kent, twice; measured — scope-history 08-25)*
+
 - **Satin borders go on shapes significant AND smooth, never blanket.** *"if
-  it's abrupt, it probably doesn't require a border, or is wrong."* On
-  `owl_kent`, blanket `border="auto"` spends **+60% stitches to worsen the
-  silhouette**; the selective rule takes 4 shapes of 35 for **+4%** at 80 mm.
-  Shipped `border="significant"`. Abruptness is the ONLY live gate: measured
-  per RING (a thin smooth ring is not abrupt) and it tracks MACRO SPRAWL, not
-  edge noise — bordered shapes run 2.09–3.39, refused ones 3.91–12.22, 3.5
-  sits in that gap. **The area-share half is disabled (0.0)** — it was inert
-  at the 80 mm it was tuned on and at 160 mm deleted 8 of 9 borders at
-  4.2–62.3 mm², iris/nostril scale. A fixed share INVERTS with size (bigger
-  design → more regions → smaller shares → stricter gate), so re-tuning it
-  cannot work; significance is tested downstream by `border_runs` against the
-  corpus-measured `BORDER_WIDTH_MM`.
-  *(ruled 2026-08-25 — Kent; measured same day — PR #241, corrected #243)*
+  it's abrupt, it probably doesn't require a border, or is wrong."* Blanket
+  `border="auto"` spends **+60% stitches to worsen the silhouette**; the
+  selective rule takes 4 of 35 shapes for **+4%**. Shipped
+  `border="significant"`. Abruptness is the ONLY live gate: measured per RING (a
+  thin smooth ring is not abrupt) and it tracks MACRO SPRAWL, not edge noise.
+  **The 3.5 cutoff is validated beyond its origin fixture** — it lands in a real
+  empty gap on all four real portraits, not just the owl. **The area-share half
+  is disabled (0.0)**: inert at the 80 mm it was tuned on, and at 160 mm it
+  deleted 8 of 9 borders at iris scale, because a fixed share INVERTS with size
+  (bigger design → more regions → smaller shares → stricter gate). Significance
+  is tested downstream by `border_runs` against `BORDER_WIDTH_MM`.
+  *(ruled 2026-08-25 — Kent; measured — PR #241, corrected #243)*
 
 - **The 3 Arabic fonts can never work, engine or not:** they carry ONLY base-block
   letters and zero presentation forms. *(measured 2026-08-22 — font.json blocks)*
@@ -385,70 +357,64 @@ its hedge as it is copied forward** — is why this file is split.
   7 launch items, 8 Studio slices, 16 rows (0–15). *(confirmed 2026-08-18 — docs/scope/1-auto-digitizing-quality.md:1506 and photo plan §2)*
 - **The venv holds a STALE non-editable install of `digitizer_core`, and cwd
   decides which one you get.** `pytest` from `digitizer/` imports the working
-  tree (verified), so tests are honest — but from any other cwd the same
-  interpreter imports `.venv/Lib/site-packages/digitizer_core/`, whose files
-  differ from both the working tree and `HEAD`. So a service or script launched
-  from elsewhere can run code that is not in the repo. Reinstall (`pip install
-  -e digitizer`) before trusting any out-of-tree run. *(confirmed 2026-08-17)*
+  tree, so tests are honest — but from any other cwd the same interpreter
+  imports `.venv/.../site-packages/digitizer_core/`, whose files differ from
+  both the working tree and `HEAD`. A service or script launched from
+  elsewhere can run code that is not in the repo. Reinstall
+  (`pip install -e digitizer`) before trusting any out-of-tree run.
+  *(confirmed 2026-08-17)*
+
 - **Stage 0's `photo_subject` gate is bimodal** — textured subjects on smooth
   backdrops can't reach `photo_subject`. Pinned in the routing test's docstring.
   *(confirmed 2026-08-12 — scope-history)*
 - **`stage0_classify._load` treats raw ndarrays as BGR** — A/B probes must
   convert first. *(confirmed 2026-08-12 — scope-history)*
 - **A UI affordance that gates on service health fails indistinguishably from
-  the service itself.** `.eladd-row` overflow hid "+ Auto-digitize" by 111px, so
-  a clipped button read as a dead service and silently routed photo work through
-  the browser engine, which emits no pipeline warnings — a full SAM2 on/off
-  comparison was run and two result sets published that never touched SAM2.
-  Closed for the upload path; remember the *class*. *(confirmed 2026-08-13 — PR #122, PR #138)*
+  the service itself.** An overflow clipped "+ Auto-digitize" by 111px, so a
+  hidden button read as a dead service and silently routed photo work through
+  the browser engine — a full SAM2 on/off comparison was published that never
+  touched SAM2. Closed for the upload path; remember the *class*.
+  *(confirmed 2026-08-13 — PR #122, PR #138)*
+
 - **Pro-parity scores from before 2026-08-14 are on a different scale and do
-  not compare.** `direction` and `sttype` were bounded agreement measures with
-  a floor near 0.5, so ~21 of their combined 40 points were paid out for a
-  wrong answer; both are now chance-corrected. Any score, table or doc quoting
-  a pro-parity number from before that date is reading ~16 points high at the
-  corpus level. `score_raw`/`parts_raw` in `score.json` carry the old scale
-  when the two genuinely need lining up — reach for those rather than
-  re-deriving. *(measured 2026-08-14 — PR #151,
-  `tools/pro_parity/scorecard.py`)*
+  not compare.** `direction` and `sttype` were bounded agreement measures
+  with a floor near 0.5, so about half their combined 40 points were paid out
+  for a wrong answer; both are now chance-corrected. Anything quoting a
+  pro-parity number from before that date reads ~16 points high at corpus
+  level. `score_raw`/`parts_raw` in `score.json` carry the old scale when the
+  two genuinely need lining up. *(measured 2026-08-14 — PR #151)*
+
 - **Every pro-parity number before 2026-08-15 was measured on artwork
   RECONSTRUCTED from the pro's own stitches, and was flattered by 11.3 points.**
-  Honest baseline on Kent's 7 real artworks (15 designs): **42.5**.
-  *(measured 2026-08-15 — `docs/pro-parity-real-art-2026-08-15.md`)*
+  Honest baseline on Kent's 7 real artworks (15 designs): **42.5**. That
+  rescaling compounds with the chance-correction above; treat any pre-08-15
+  figure as unusable. *(measured 2026-08-15 —
+  `docs/pro-parity-real-art-2026-08-15.md`)*
+
 - **The pro-parity 95 target is above the metric's own ceiling. Do not read
-  `score/95` as an engine deficit** — and any plan quoting "we need to get to 95"
+  `score/95` as an engine deficit** — any plan quoting "we need to get to 95"
   is quoting an unreachable number. Two of the PRO's own files for one logo,
-  scored against each other on the same scorecard, give **75-84**. The scorecard
-  is not broken: on pairs that are one job saved twice it correctly returns
-  96-100. But `direction` ceilings at **0.11 on one pair and 0.85 on another**
-  from one digitizer on one logo, against a 20-point weight — it measures a
-  choice, not a standard, and is the least defensible weight in the scorecard;
-  `density`/`underlay`/`travel` ceiling at 0.89-1.00, so those are sound.
-  **Deliberately NOT revised yet: n=2.** Growing n needs scale-normalised
-  registration in `scorecard.py` (it registers by translation only, and every
-  other same-logo PES pair is 4-17% apart in width).
-  *(measured 2026-08-15 — `tools/pro_parity/selfconsistency.py`,
-  `docs/pro-parity-real-art-2026-08-15.md` §11)*
-- **The golden divergence is PER-FIXTURE, not per-platform.** This ruling used
-  to say the goldens "fail on Windows and pass in CI, which is where they were
-  captured." False for `logo_alpha`. Truth is three-way — rows are
-  `flat_lane_byte_identical` and `stage2_photo_segment` unless named:
+  scored against each other, give **75-84**. The scorecard is not broken (it
+  returns 96-100 on one job saved twice), but `direction` ceilings as low as
+  0.11 against a 20-point weight — it measures a choice, not a standard, and is
+  the least defensible weight; `density`/`underlay`/`travel` ceiling at
+  0.89-1.00. **Deliberately NOT revised: n=2.** Growing n needs
+  scale-normalised registration in `scorecard.py`.
+  *(measured 2026-08-15 — `docs/pro-parity-real-art-2026-08-15.md` §11)*
 
-  | fixture | Windows | CI |
-  |---|---|---|
-  | `pushcomp[logo_whitebg.png-towel]` | fails | fails (deselected) |
-  | both, `[logo_alpha.png]` | **passes** | **passes** (deselect removed) |
-  | both, `[photo/enthusiast_logo.png]` | fails | fails (deselected) |
+- **The golden divergence is PER-FIXTURE, not per-platform.** CI deselects
+  exactly THREE by name — `pushcomp[logo_whitebg.png-towel]` and the
+  `[photo/enthusiast_logo.png]` rows of `flat_lane_byte_identical` and
+  `stage2_photo_segment`. The two `logo_alpha` rows were REMOVED 2026-08-22
+  after the remove-and-see check ran green without them. **Consequence:** an
+  `enthusiast_logo` failure locally is expected; a `logo_alpha` failure
+  anywhere is a genuine regression — per-platform reasoning gets that
+  backwards. **Still binding: never re-capture a golden from a Windows run.**
+  Judge a change by "same failure set before and after". Rationale:
+  `docs/pro-parity-real-art-2026-08-15.md` §0b and the CI workflow comment.
+  *(measured 2026-08-22 — green CI run at `db0e642`; Windows column
+  last re-run 2026-08-17)*
 
-  CI deselects THREE by name, not five: the two `logo_alpha` rows were removed
-  2026-08-22 after the remove-and-see check finally ran, and CI went green
-  without them. **Consequence:** an `enthusiast_logo` failure locally is
-  expected; a `logo_alpha` failure anywhere is a genuine regression.
-  Per-platform reasoning gets that backwards. **Still binding: never re-capture
-  a golden from a Windows run.** Judge a change by "same failure set before and
-  after", using the table as that set. Cause and the deselect rationale:
-  `docs/pro-parity-real-art-2026-08-15.md` §0b and the CI workflow's own
-  comment. *(measured 2026-08-22 — CI column from a green run at `db0e642` on
-  ubuntu-latest; Windows column re-run 2026-08-17 and not since)*
 - **OCR tests skip, not fail, without the `tesseract` binary — and never skip
   on CI.** The five real-read tests carry `requires_tesseract`
   (`tests/conftest.py`), which skips only when the binary is missing AND `CI`
@@ -458,13 +424,10 @@ its hedge as it is copied forward** — is why this file is split.
   accounting in COOKBOOK "Running things", never by the total.
   *(measured 2026-08-17; accounting refreshed 2026-08-24)*
 - **Breaking a guard on purpose does not prove it is not blind — ask what
-  fraction of its population it measures, and assert that.** The stunted-glyph
-  guard passed that ritual and was still measuring nothing in **21 of the 85**
-  fonts it iterated, and was blind to the exact zero-height case it is named
-  for; `qc-font.mjs` had both holes, in the tool that gates new fonts. Full
-  account, including why the channels must not be merged, in
-  `.claude/memory/font-pipeline-silent-failures.md`. *(measured 2026-08-22 —
-  test/font-stunted.test.js, verified against the pre-fix tool)*
+  SHAPE of failure it would miss.** A guard that catches a deliberate break
+  can still be blind to the failure mode that actually occurs; construct the
+  realistic failure, not the convenient one. *(2026-08-22)*
+
 - **Measure pro-parity in a git worktree, never in a shared checkout.** Three
   baselines were invalidated 2026-08-15 by commits landing mid-run, one from a
   second Claude session on the same branch. It looks like engine
@@ -479,10 +442,9 @@ its hedge as it is copied forward** — is why this file is split.
   set" unjudgeable against.** Goldens are re-captured on Linux, never Windows.
   *(moved from ROADMAP 2026-08-19 — 60-line budget, decision by Kent)*
 - **Read `MASTER_SCOPE.md` and `docs/scope-digest/` before proposing any
-  work.** What has already been built, measured and rejected here is the
-  most expensive knowledge in this repo; phase numbers in any other doc are
-  historical — this file is the map. *(moved from ROADMAP 2026-08-19 —
-  60-line budget, decision by Kent)*
+  work.** What has already been built, measured and rejected here is the most
+  expensive knowledge in this repo; phase numbers in any other doc are
+  historical. *(moved from ROADMAP 2026-08-19 — decision by Kent)*
 
 ---
 
@@ -490,7 +452,7 @@ its hedge as it is copied forward** — is why this file is split.
 
 | Area | Status | Confidence |
 |---|---|---|
-| 1. Auto-digitizing quality (image → stitches) | In progress | **Low** beyond flat spot-color art |
+| 1. Auto-digitizing quality (image → stitches) | In progress | **Low** beyond flat spot-color art; human faces TABLED pending a more capable tier *(Kent, 2026-08-25)* |
 | 2. Font library & lettering | Implemented — 85 fonts, satin + bean/running + cross-stitch, LTR + Hebrew RTL | High (tech) / High (compliance). Zero stunted glyphs since the 2026-08-22 transform fix; the guards now assert their own coverage |
 | 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — unchanged, no sew-out has happened). Held at Medium by that gate alone; the display layer had a defect class that shipped unseen for want of UI-behaviour coverage, and a 2026-08-25 sweep closed the known ones *(confirmed — area doc)* |
 | 4. Export formats | Implemented | Varies by format — see below |
@@ -565,37 +527,28 @@ vs. the Tajima/pyembroidery standard — confirmed, unresolved. It round-trips
 against itself but reads a quarter-turn wrong elsewhere. **Not only
 orientation:** `dst.js` writes the colour-change byte as `0x43` not `0xC3`, read
 as a spurious sequin toggle, so a two-colour design decodes with ZERO colour
-changes elsewhere. Both re-measured against pystitch 2026-08-22; PES and EXP are
-identity-clean. See `dst-codec-axis-discrepancy` in memory.
+changes elsewhere. PES and EXP are identity-clean. Full evidence trail, and a
+fifth independent corroboration from Ink/Stitch's `pystitch`:
+`dst-codec-axis-discrepancy` in memory. *(re-measured 2026-08-22)*
 
-**A nuance, reconciled 2026-08-17:** CLAUDE.md's "browser DST is
-EMB-Bot-internal only" and `digitizer/README.md`'s "browser DST stays the
-default, it has the sewn evidence" are not in conflict — the first is about
-orientation elsewhere, the second about which encoder Studio picks.
+**Not a conflict:** CLAUDE.md's "browser DST is EMB-Bot-internal only" is about
+orientation elsewhere; `digitizer/README.md`'s "browser DST stays the default"
+is about which encoder Studio picks.
 
-**CLOSED — the "unreachable from the real product" claim was already false
-when written.** Both halves ship: auto-digitized designs leave by pyembroidery
-`/export`, lettering/manual stays on the browser codec (the sew-evidenced
-combination), and the download step warns before every browser-DST download.
-The 2026-08-11 audit's interim mitigation is DONE, four days before
-`docs/project-review-2026-08-16.md` §1.1 called it outstanding.
+**CLOSED — the "unreachable from the real product" claim was false when
+written.** Auto-digitized designs leave by pyembroidery `/export`, lettering and
+manual stay on the browser codec (the sew-evidenced combination), and the
+download step warns before every browser-DST download.
 *(confirmed 2026-08-17 — code read, commits dated)*
 
-**Resolution path:** a sew-out or third-party read of a browser-encoded DST;
-fixing the codec is Kent's — every existing EMB-Bot DST is affected by a fix.
+**Resolution path:** a sew-out or third-party read of a browser-encoded DST.
+Fixing the codec is **Kent's call** — every existing EMB-Bot DST is affected.
 
-**The cross-validation harness is ALIVE again — revived 2026-08-21**, its PES
-finding (a missing initial positioning jump) fixed in `ef1262b`. It reproduced
-the DST transposition exactly (rms 0.0) and caught the broken browser PES/EXP
-encoders (PR #58); the 2026-08-11 pystitch swap silently starved it (pass 0 of 6,
-green in CI). CI now fails loud when the pins cannot run (`227a9cb`).
+**The cross-validation harness is ALIVE again — revived 2026-08-21.** It
+reproduced the DST transposition exactly (rms 0.0) and caught the broken browser
+PES/EXP encoders; the 2026-08-11 pystitch swap had silently starved it to 0 of 6
+passes while staying green in CI. CI now fails loud when the pins cannot run.
 *(confirmed 2026-08-22 — engine green, 0 skips)*
-
-**Fifth independent corroboration, 2026-08-10:** Ink/Stitch's `pystitch` —
-the format library behind a 20,000+-user tool — uses the identical
-low-nibble=X/high-nibble=Y convention, verified against source
-(`docs/inkstitch-research-2026-08-10.md` §6). Does not change the verdict or
-the fix; a stronger citation, nothing more.
 
 ### Font license compliance — RESOLVED, and kept resolved by construction
 
@@ -631,75 +584,67 @@ permanently. Do not re-raise it as the highest-leverage next action.
 ### Evaluation corpus & harness — real gap, newly tracked here
 
 **The gap: no repeatable automated quality signal**, so every serious quality
-question queues behind either a corpus nobody has or a sew-out nobody has
-scheduled. Not a reframing of the sew-out gap — a labelled corpus plus a scoring
-harness would let a classifier change be judged against *something* before
-either arrives. M2/M3 has been blocked on it since 2026-08-01, and the
-corpus-law recalibrations needed one-off hand validation for the same reason.
+question queues behind a corpus nobody has or a sew-out nobody has scheduled. A
+labelled corpus plus a scoring harness would let a classifier change be judged
+against *something* before either arrives.
 
 **Harness half: BUILT — `digitizer/tools/corpus_scorecard.py`.** `capture`/`diff`
-over 14 fixtures × 2 configs, aggregating preflight's existing score rather than
-inventing a metric. Deliberately a REPORTING tool, not a CI gate. Build detail,
-verification and scope limits: [area 1](docs/scope/1-auto-digitizing-quality.md)
-("The two evaluation harnesses"). *(confirmed 2026-08-21 — area 1)*
+over 14 fixtures x 2 configs, aggregating preflight's score rather than
+inventing a metric. Deliberately a REPORTING tool, not a CI gate. Detail and
+scope limits: [area 1](docs/scope/1-auto-digitizing-quality.md). Still open:
+`summit_badge.png` (#6.2) is F/0 at both configs and SATURATED, so judge any fix
+on `thread_worst_delta_e`, never score. *(confirmed 2026-08-21 — area 1)*
 
-**Still open: `summit_badge.png` (#6.2) alone** — F/0 at both configs and
-SATURATED, so judge any fix on `thread_worst_delta_e`, never score.
-*(measured 2026-08-21 — area 1)*
+**Corpus half — the real-artwork entries keep contradicting the synthetics.**
+Eight files of real customer logo art ship in `FIXTURES`: **stage 0 routes six
+of seven to GRADIENT**, because real logo art carries JPEG ringing and
+anti-aliased edges the synthetics lack, so any "flat spot-colour art" claim
+tuned only on synthetics is untested against real input.
+`logo_script_tires.png` classifies `photo_scene` outright — a misroute kept so
+the bug has a fixture. **Real PHOTOGRAPHS go further still: all four of Kent's
+portraits classify `gradient` with the LOWEST `unique_color_mass` in the whole
+corpus — below every gradient logo.** That is the measurement behind
+`cfg.is_photographic` being declared rather than detected.
+*(measured 2026-08-15 and 2026-08-25 — `tools/corpus_scorecard.py:FIXTURES`;
+scope-history 08-25 evening)*
 
-**The corpus half is no longer empty (2026-08-15).** Eight files of real
-customer artwork ship in `FIXTURES` — the first entries neither synthetic nor
-hand-picked. They contradicted the synthetic set at once: **stage 0 routes six
-of the seven logos to the GRADIENT lane**, because real logo art carries JPEG
-ringing, anti-aliased edges and soft shading the synthetic fixtures lack — so
-any "flat spot-colour art" claim tuned only on synthetics is untested against
-real input. `logo_script_tires.png` (a clean two-colour wordmark on white)
-classifies `photo_scene` outright — a misroute kept so the bug has a fixture.
-*(measured 2026-08-15 — `tools/corpus_scorecard.py:FIXTURES`)*
-This does **not** close `scratch_corpus/`: cloud sessions still can't reach those
-37 files (Waiting on Kent #7). **Kent's four real portraits (2026-08-23) are the
-first tonal entries** — gitignored, machine-bound, invisible to CI.
+**The tonal corpus is machine-bound and does not survive a session.** Kent's
+portraits live in the gitignored `testdata/photo/acceptance/` (spec decision 6 —
+public repo, never publish), so they are invisible to CI and must be re-attached
+to chat each session. Drive cannot carry them: the pull-corpus skill's own
+measurement shows binary corrupts silently in transit, and these are 3-8 MB.
+`scratch_corpus/`'s 37 files remain unreachable from a cloud session (Waiting on
+Kent #7). **Consequence: every threshold validated on faces today is validated
+by evidence CI cannot see.** *(confirmed 2026-08-25)*
 
 **A second harness exists: `tools/pro_parity/`** — how close our output is to
 the PROFESSIONAL digitization of the same design, 23 designs, six weighted
 components. **Its scale changed 2026-08-14** (chance-corrected floors); see the
 Gotcha above before comparing to any earlier number. *(confirmed — PR #151)*
 
-**Half the corpus is in the repo; the half that matters is not.** The tracked
-`Embroidery Files.zip` carries all 23 pro STITCH files, so `prep_all.py`'s
-recon lane runs from a fresh checkout (extract outside the tree, set
-`PRO_PARITY_ROOT`). It carries **zero customer artwork**, so `prep_both.py`'s
-real lane — the one behind the 42.5 baseline — still needs the Drive copy.
-*(corrected 2026-08-18 — prep_both from the zip fails 0/15 on
-FileNotFoundError; an earlier edit that day claimed the whole corpus was
-reachable and was wrong)*
+**Half that corpus is in the repo; the half that matters is not.** The tracked
+`Embroidery Files.zip` carries all 23 pro STITCH files, so `prep_all.py`'s recon
+lane runs from a fresh checkout. It carries **zero customer artwork**, so
+`prep_both.py`'s real lane — the one behind the 42.5 baseline — still needs the
+Drive copy. *(corrected 2026-08-18 — prep_both from the zip fails 0/15)*
 
-**Area 1 is deliberately NOT split into "image analysis" + "stitch
-planning",** and the four capability gaps an external review named
-(quantization, segmentation/vectorization, background removal, small-detail
-culling) all have owners in code. Both arguments live in [area
-1](docs/scope/1-auto-digitizing-quality.md) ("Why this area is not split in
-two"). *(moved 2026-08-21 — rule 5)*
+**Area 1 is deliberately NOT split into "image analysis" + "stitch planning"**,
+and the four capability gaps an external review named all have owners in code.
+Both arguments live in [area 1](docs/scope/1-auto-digitizing-quality.md).
+*(moved 2026-08-21 — rule 5)*
 
 ### Research backlog — competitive and open-source leads
 
-Two capability sweeps produced backlog items rather than status changes:
-Ember Design (`emberdesign.net`, a browser-based competitor) and Ink/Stitch
-(the open-source Inkscape extension). Both catalogues, plus the closed
-`simplify_tol_mm` investigation they generated, now live in
-[`docs/scope/research-backlog.md`](docs/scope/research-backlog.md).
-
-Nothing in there is a commitment or a defect. Two things from it that DO bind:
+Two capability sweeps produced backlog items rather than status changes: Ember
+Design (a browser-based competitor) and Ink/Stitch. Both catalogues, the closed
+`simplify_tol_mm` investigation, and a sixth independent DST-axis corroboration
+live in [`docs/scope/research-backlog.md`](docs/scope/research-backlog.md).
+Nothing in there is a commitment or a defect. One thing from it binds here:
 
 - **Ink/Stitch is GPL-3.0** — concept-level clean-room reimplementation only,
-  no literal copying or near-verbatim translation. The exception is
-  `pystitch`, its MIT-licensed pyembroidery fork, which is usable as a real
-  runtime dependency and has since been adopted.
-  *(confirmed 2026-08-10 — `docs/inkstitch-research-2026-08-10.md` §0)*
-- **A sixth independent source corroborates the DST axis bug.** pystitch was
-  fifth; TurtleStitch's `encodeTajimaStitch()` — unaffiliated with the
-  pyembroidery/Ink/Stitch lineage — is sixth. No verdict change.
-  *(confirmed 2026-08-14 — `docs/turtlestitch-stitch-appearance-research-2026-08-14.md`)*
+  no literal copying or near-verbatim translation. The exception is `pystitch`,
+  its MIT-licensed pyembroidery fork, usable as a real runtime dependency and
+  since adopted. *(confirmed 2026-08-10 — `docs/inkstitch-research-2026-08-10.md` §0)*
 
 ---
 
@@ -712,29 +657,28 @@ diverge, fix both rather than picking one.
 
 ### 1. Auto-digitizing quality (image → stitches) — [detail](docs/scope/1-auto-digitizing-quality.md)
 
-**In progress · Low confidence beyond flat spot-color art.**
+**In progress · Low confidence beyond flat spot-color art, and human faces are
+now TABLED pending a more capable tier.**
 Covers both implementations as one capability: the browser JS engine (complete
 but frozen — retired in favour of "feed it clean flat art", not because it is
-broken) and the Python pipeline, which is the active target. Stages 1–7, fill +
-satin, the service, preflight scoring and the review UI are all built. SAM2 is
-merged and reachable from Studio via the `embstudio:sam2` dev seam, still
-`photo_segment_sam2=False` by default.
-**The corpus constraint is half lifted 2026-08-23.** Kent's four real
-portraits ran the five-arm sheet and found four defects no fixture had (see
-defect 8). They stay gitignored (spec decision 6) — evidence is machine-bound
-and committed `photo_*` fixtures are still synthetic stubs, so SAM2's quality
-remains undefended by anything a CI run can see. *(ran 2026-08-23 — sheet)*
+broken) and the Python pipeline, the active target. Stages 1–7, fill + satin,
+the service, preflight and the review UI are built. SAM2 is merged and reachable
+via the `embstudio:sam2` dev seam, still `photo_segment_sam2=False`.
+**Tonal work has a shape now (2026-08-25).** Filled beats thread-paint on
+high-contrast subjects and loses badly on faces; the satin-border rule, the
+GeometryCollection crash, the per-ring abruptness gate and `cfg.is_photographic`
+all landed and all validated against four real portraits. **What none of it has
+is CI cover** — the tonal evidence is gitignored and machine-bound, so every
+threshold shipped is defended only by an owl. *(measured 2026-08-25 — PRs
+#241/#243/#245; scope-history 08-25 evening)*
 **Satin extremity drop — FIXED 2026-08-21.** `_prune_spurs` re-measured a stem
-its OWN first pass had un-branched, one raster pixel deciding a 3.3 mm tab;
-fixed by exempting a dead end the function itself created, D/52 → C/64. Same
-cascade was mangling block letters in `textcluster.py`. **The blind spot that
-hid it stays fixed:** `preflight`'s `ARTWORK_UNCOVERED` (`polygon ∩ ink`),
+its OWN first pass had un-branched, one raster pixel deciding a 3.3 mm tab.
+**The blind spot that hid it stays fixed:** `preflight`'s `ARTWORK_UNCOVERED`,
 5.0 mm² threshold still provisional. *(fixed 2026-08-21 — PR #186)*
-**Next:** NEEDS KENT. The fragmentation work finished 2026-08-22 and measures
-**0% on real client logos** — PR #205 is byte-identical on all six (they are
-satin-dominated, 1–3 fill shapes, no cutting fills). The one large real-artwork
-lever is **`chain_links`: −33% trims AND fewer stitches**, gate-1 frozen; every
-gate-clear alternative measures ≤9%. *(measured 2026-08-22 — area 1 detail)*
+**Next:** NEEDS KENT. Fragmentation work measures **0% on real client logos**
+(they are satin-dominated, 1–3 fill shapes, no cutting fills). The one large
+real-artwork lever is **`chain_links`: −33% trims AND fewer stitches**, gate-1
+frozen; every gate-clear alternative measures ≤9%. *(measured 2026-08-22)*
 
 ### 2. Font library & lettering — [detail](docs/scope/2-font-library-lettering.md)
 
