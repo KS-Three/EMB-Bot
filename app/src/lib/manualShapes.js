@@ -222,7 +222,12 @@ export function curvedNodeThrough(a, b, before, bow = CURVED_NODE_BOW) {
   if (len < 1e-9) return mid;
   // Left-hand normal of the chord a->b.
   let px = -dy / len, py = dx / len;
-  // MUTATION: turn logic removed
+  if (before) {
+    // Cross product of the incoming chord with this one: > 0 means the path
+    // is turning left here, so the outside of the corner is to the RIGHT.
+    const cross = (a.x - before.x) * dy - (a.y - before.y) * dx;
+    if (cross > 0) { px = -px; py = -py; }
+  }
   return { x: mid.x + px * len * bow, y: mid.y + py * len * bow };
 }
 
