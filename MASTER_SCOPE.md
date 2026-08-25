@@ -721,14 +721,27 @@ warning colours, one bypassing the token system; two more tokens failed WCAG AA
 on the app's own non-white grounds while passing on white. Both closed; re-run
 the check when a new component lands. *(confirmed 2026-08-25 — theme.css)*
 
-**Preview thread width is PHYSICAL, and deliberately not flattering.**
-`preview.js`'s `THREAD_WIDTH_MM` (0.4, nominal 40wt) renders coverage 1.0
-against the engine's 0.40 mm fill rows — rows that just touch. Bare fabric
-between rows in the preview is therefore a density signal, not a render
-artifact. **Do not widen it to make fills look solid**: that would hide the
-open fill-density item (Cross-cutting issues) behind the display layer, which
-is the failure ROADMAP gate 3 names. It is display-only — it scales pixels,
-never stitch geometry. *(confirmed 2026-08-25 — `preview.js`)*
+**Preview thread width is PHYSICAL, and must not be widened.**
+`preview.js`'s `THREAD_WIDTH_MM` (0.4, nominal 40wt) is coverage 1.0 against
+the engine's 0.40 mm fill rows — rows that just touch — so a fill that is too
+open looks too open. **Do not widen it to make fills look solid.** Row spacing
+is an unresolved two-population question standing *pending sew-out* (area 1,
+"Fill row spacing (law 19)"; `machine.py:45-49`), so widening thread would be
+the display layer prejudging a question only cloth can settle — ROADMAP gate 1.
+Display-only: it scales pixels, never stitch geometry.
+**Caveat:** `lw` has a 1.2 px floor, so below ~3 px/mm the floor sets the drawn
+width and coverage reads high. The property holds zoomed in, not on a
+thumbnail. Guarded by a test pinning the literal 0.4.
+*(confirmed 2026-08-25 — `preview.js`, `preview.spec.js`)*
+
+**Correction (2026-08-25).** The paragraph above first read that widening
+thread would "hide the open fill-density item … FILL_ROW_MM running ~2x
+light." That overstated a hedge into a defect: the ~0.20 mm figure is a
+satin-rail **artifact** for one file population (refuted) and a genuine denser
+pitch on 43 commissioned cap logos (still alive) — unresolved, not open-and-
+known. It also pointed at Cross-cutting issues, which has never carried such an
+item. Imported from the 2026-08-09 Ember teardown without re-checking it was
+still live. *(corrected 2026-08-25 — area 1 "Fill row spacing (law 19)")*
 
 **The stitch simulator already exists — do not build a second one.**
 `lib/simulate.js` plus EmbroideryField's `simbar`: play/pause, a scrub slider,

@@ -69,13 +69,34 @@ export function weavePattern(ctx, w, h, rgb, pxPerMm) {
 // On (3) and honesty: THREAD_WIDTH_MM below is the nominal laid width of 40wt
 // embroidery thread, the weight this project plans for. It is a DISPLAY
 // constant — it scales pixels, never stitch geometry, and no planner value is
-// derived from it. It is deliberately NOT inflated to make fills look solid:
-// with the engine's current 0.40 mm fill rows, 0.40 mm thread renders as
-// coverage 1.0, i.e. rows that just barely touch. If bare fabric shows between
-// rows in the preview, that is the design telling the truth about its density,
-// not a rendering artifact — see MASTER_SCOPE's open fill-density item. Making
-// the preview flatter this defect would be exactly the failure ROADMAP gate 3
-// warns about.
+// derived from it.
+//
+// It is deliberately NOT inflated to make fills look solid. Against the
+// engine's current 0.40 mm fill rows, 0.40 mm thread is coverage 1.0 — rows
+// that just touch, with no overlap to hide behind — so a fill that is too open
+// looks too open here.
+//
+// WHY that matters is narrower than an earlier version of this comment
+// claimed, and the correction is worth keeping. It said the preview must not
+// "flatter the open fill-density defect" of FILL_ROW_MM running ~2x light.
+// That is not the repo's position: per `machine.py` and area 1's "Fill row
+// spacing (law 19)", the ~0.20 mm figure is a satin-rail ARTIFACT for one file
+// population (refuted) and a genuine denser pitch on 43 commissioned cap logos
+// (still alive) — an unresolved TWO-POPULATION question, with 0.40 standing
+// pending a sew-out, not a known defect. Stating it as settled was the exact
+// hardening-of-a-hedge that MASTER_SCOPE's Corrections section exists to catch.
+//
+// The rule survives the correction, and is better for it: row spacing is
+// genuinely undecided and sew-out-gated (ROADMAP gate 1), so the display layer
+// must not PREJUDGE it. Widening thread here would make every fill look solid
+// whatever spacing wins, which is a display-layer answer to a question only
+// cloth can settle.
+//
+// One caveat this comment owes the reader: `lw` has a 1.2 px visibility floor
+// (see renderRealistic). Below ~3 px/mm the floor, not this constant, sets the
+// drawn width, so thread renders WIDER than physical and coverage reads high.
+// The "what you see is what it lays" property holds when zoomed in, not on a
+// thumbnail.
 export const THREAD_WIDTH_MM = 0.4;
 
 // Light from the upper left, in CANVAS space (y grows downward), normalized.

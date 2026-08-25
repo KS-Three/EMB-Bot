@@ -60,9 +60,13 @@ pure function (`threadLodLayers`) and testing that instead.
 (`moveTo` called 3x per strand; `setLineDash` never called) to contract (N
 strands in → N strands' worth out; the travel-line dash `[4,3]` specifically).
 
-**Ember gaps noted, not built:** realistic-view as a toggle, copy/paste of a
-shape, per-layer transparency. The reviewer also found Ember has no horizontal
-flip.
+**Ember gaps.** Written first as "noted, not built: realistic-view as a toggle,
+copy/paste of a shape, per-layer transparency" — then Kent picked the toggle
+from that list and it shipped in this same PR (`threadStyle`, plus the
+`viewtoggle` button and a `sparkle` icon). Corrected before merge rather than
+left to read as a gap the change did not close. **Still not built:** copy/paste
+of a shape, per-layer transparency. The reviewer also found Ember has no
+horizontal flip.
 
 **A compaction that collided.** This session compacted resolved defects 9-13
 and the "Evaluation corpus & harness" section out of MASTER_SCOPE to pay for
