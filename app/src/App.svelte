@@ -728,7 +728,7 @@
       {:else if step === "create"}
         <div class="createstep">
           <h2>Ready to stitch</h2>
-          <p>Looks good? The field on the right is your stitch-out.</p>
+          <p>Looks good? The live field is your stitch-out.</p>
           <dl class="summary">
             <div><dt>Garment</dt><dd>{readable(project.garmentId)}</dd></div>
             <div><dt>Hoop</dt><dd>{hoopInEffect.hoop.label}{hoopInEffect.suggested ? " (suggested)" : ""}</dd></div>

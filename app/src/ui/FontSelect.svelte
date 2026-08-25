@@ -78,7 +78,7 @@
 </script>
 
 <div class="fontselect">
-  <button type="button" class="fs-trigger" on:click={openBrowser}>
+  <button type="button" class="fs-trigger" title={selName} on:click={openBrowser}>
     {#if triggerThumb}
       <img class="fs-thumb" src={triggerThumb} alt={selName} />
     {/if}
