@@ -64,19 +64,18 @@ DEFAULT_PX_PER_MM = 8.0
 # `preview.js` in the Studio implements this same model against a canvas; the
 # two are kept in step deliberately, so what Kent rules on and what a customer
 # sees agree. Change one, change both.
-# In IMAGE coordinates, where y increases DOWNWARD: this points up and to the
-# LEFT, the direction thread catalogues shoot to.
+# In IMAGE coordinates, where y increases DOWNWARD: 225 deg points up and to
+# the LEFT, the direction thread catalogues shoot to. `preview.js` lights the
+# Studio canvas from the same angle, and
+# `test_the_two_renderers_agree_on_the_light` holds them together.
 #
-# Stated as a VECTOR, not an angle, and carrying the same literals as
-# `preview.js`'s `LIGHT_X`/`LIGHT_Y`, so the two can be compared without a
-# degrees<->radians conversion that could drift between them. It is (-2, -3)
-# normalised. `test_the_two_renderers_agree_on_the_light` greps the JS for
-# these exact values -- an earlier version of that test compared against a
-# `LIGHT_DEG = 225` in `preview.js` that had become DEAD CODE, so it passed
-# while the live renderer lit from a different corner. Compare live constants
-# or do not bother comparing.
-LIGHT_X, LIGHT_Y = -0.5547, -0.8321
-_LIGHT = (LIGHT_X, LIGHT_Y)
+# THAT TEST HAS BEEN WRONG ONCE, so it now also checks the constant is LIVE.
+# It used to grep `preview.js` for `LIGHT_DEG = 225` -- and after a merge left
+# that constant behind as dead code, it went on passing while the live canvas
+# lit from a different corner entirely. Greping a name proves the name exists,
+# not that anything reads it.
+LIGHT_DEG = 225.0
+_LIGHT = (math.cos(math.radians(LIGHT_DEG)), math.sin(math.radians(LIGHT_DEG)))
 AMBIENT, DIFFUSE = 0.80, 0.42     # tone = AMBIENT + DIFFUSE * |axis x light|
 
 # The three bands, as fractions of the nominal filament width: (width, offset

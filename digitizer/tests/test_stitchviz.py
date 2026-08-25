@@ -241,13 +241,17 @@ def test_the_two_renderers_agree_on_the_light():
 
     js = (Path(__file__).resolve().parents[2] / "app" / "src" / "lib" / "preview.js").read_text(encoding="utf-8")
 
-    # Compare the constants the JS renderer ACTUALLY uses. The first version of
-    # this test matched a `LIGHT_DEG = 225` that a later merge left behind as
-    # dead code, so it went on passing while the live canvas lit from a
-    # different corner entirely -- a test that cannot fail is worse than none.
-    assert f"const LIGHT_X = {sv.LIGHT_X};" in js, (
+    assert f"const LIGHT_DEG = {int(sv.LIGHT_DEG)};" in js, (
         "preview.js and stitchviz disagree about the light direction")
-    assert f"const LIGHT_Y = {sv.LIGHT_Y};" in js, (
-        "preview.js and stitchviz disagree about the light direction")
-    assert f"export const THREAD_WIDTH_MM = {sv.THREAD_MM};" in js, (
+    assert f"const THREAD_MM = {sv.THREAD_MM};" in js, (
         "preview.js and stitchviz disagree about filament width")
+
+    # AND THAT THOSE CONSTANTS ARE LIVE. Matching a name only proves the name
+    # is present. On 2026-08-25 a merge left `LIGHT_DEG` in `preview.js` as
+    # dead code and this test kept passing for hours while the canvas lit from
+    # a different corner. So: the drawing function must actually read them.
+    body = js[js.index("export function drawFilament"):]
+    body = body[:body.index("\n}\n") + 3]
+    assert "LX" in body and "LY" in body, (
+        "drawFilament does not read the light constants -- they are dead again")
+    assert "lw" in body, "drawFilament does not read a thread width"
