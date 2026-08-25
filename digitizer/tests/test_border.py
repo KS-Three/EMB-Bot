@@ -64,8 +64,14 @@ def test_border_worthy_wants_significant_and_smooth():
     """Both gates, independently: a shape earns a border by being a real share
     of the design AND by having an outline a border can trace cleanly.
 
-    The populations these numbers came off (owl_kent.jpg): eyes and beak at
-    1.3-2.7 raggedness, the head and background at 4.0/11.7/13.6.
+    The populations these numbers came off (owl_kent.jpg on its own default
+    route, 35 regions, per-ring raggedness): the four shapes that earn a
+    border sit at 2.09 / 2.51 / 2.72 / 3.39, and the ten significant ones
+    refused as abrupt start at 3.91 and run to 12.22. The 3.5 cutoff falls in
+    that empty band — it separates two real populations rather than slicing
+    through one. It is not CENTRED in the band, though: 3.65 would be. Left at
+    3.5 because a rounder number is easier to reason about and the margin
+    either side is real; revisit when portraits exist to measure.
     """
     from digitizer_core.stage7_sequence import _border_worthy, _raggedness
 
@@ -82,6 +88,38 @@ def test_border_worthy_wants_significant_and_smooth():
     # Big enough but abrupt -> the border would trace the raggedness.
     assert not _border_worthy(HAIRLINE, HAIRLINE.area * 2.0, 0.0025,
                               machine.BORDER_ABRUPT_RAGGEDNESS)
+
+
+def test_a_smooth_ring_is_not_abrupt_however_thin():
+    """REGRESSION (2026-08-25, same day the gate shipped). Raggedness is
+    measured PER RING, so a clean annulus reads 1.0 no matter how thin it is.
+
+    Measuring the whole shape at once summed every ring's perimeter over the
+    hole-subtracted area, which made thinness look like raggedness: an outer
+    10 / inner 8 ring scored 9.0 and an inner 9.4 scored 32.3, so both were
+    refused a border — when a ring is the IDEAL border candidate (a letter O,
+    a badge outline). That was the gate accidentally measuring WIDTH, which
+    `border_runs` already handles downstream and better (a too-thin shape
+    lightens to a bean run, a hairline is refused outright).
+    """
+    from digitizer_core.stage7_sequence import _border_worthy, _raggedness
+
+    T = machine.BORDER_ABRUPT_RAGGEDNESS
+    for inner in (2.0, 5.0, 8.0, 9.4):
+        annulus = Point(0, 0).buffer(10.0).difference(Point(0, 0).buffer(inner))
+        assert _raggedness(annulus) == pytest.approx(1.0, abs=0.05), \
+            f"ring 10/{inner} should read as smooth as the circle it is"
+        assert _border_worthy(annulus, annulus.area * 50.0, 0.0025, T), \
+            f"ring 10/{inner} is smooth and significant — it earns a border"
+
+    # ...and the fix does NOT let a genuinely ragged shape through: a ring
+    # whose inner edge is a star still fails on that ring alone.
+    spikes = Polygon([(math.cos(t) * (3.0 + 2.5 * (i % 2)),
+                       math.sin(t) * (3.0 + 2.5 * (i % 2)))
+                      for i, t in enumerate(np.linspace(0, 2 * math.pi, 41))])
+    ragged_ring = Point(0, 0).buffer(10.0).difference(spikes)
+    assert _raggedness(ragged_ring) > T
+    assert not _border_worthy(ragged_ring, ragged_ring.area * 50.0, 0.0025, T)
 
 
 def test_border_worthy_survives_degenerate_geometry():

@@ -198,9 +198,12 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
 - **Satin borders go on shapes significant AND smooth, never blanket.** *"if
   it's abrupt, it probably doesn't require a border, or is wrong."* On
   `owl_kent`, blanket `border="auto"` spends **+60% stitches to worsen the
-  silhouette** (it traces the pixel staircase in a contrasting texture); the
-  selective rule takes 4 shapes of 35 for **+4%**. Shipped `border="significant"`.
-  *(ruled 2026-08-25 — Kent; measured same day — PR #239)*
+  silhouette**; the selective rule takes 4 shapes of 35 for **+4%**. Shipped
+  `border="significant"`. "Abrupt" is measured per RING (a thin smooth ring
+  is not abrupt — that bug shipped and was fixed the same day) and it tracks
+  MACRO SPRAWL, not edge noise: bordered shapes run 2.09–3.39, refused ones
+  3.91–12.22, and the 3.5 cutoff sits in that gap.
+  *(ruled 2026-08-25 — Kent; measured same day — PR #241)*
 
 - **The 3 Arabic fonts can never work, engine or not:** they carry ONLY base-block
   letters and zero presentation forms. *(measured 2026-08-22 — font.json blocks)*
@@ -262,6 +265,16 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
 ---
 
 ## Measured negatives — built or proposed, then rejected. Do not rebuild.
+
+- **Smoothing region polygons to fix "ragged edges" — NO EFFECT, do not build.**
+  Douglas-Peucker already runs (`stage4_vectorize`, `simplify_tol_mm` 0.2 mm)
+  and meets its tolerance to 0.002 mm, so there is no staircase left at the
+  polygon's scale. The raggedness number is MACRO SPRAWL, not edge noise —
+  solidity 0.873/0.476/0.329 on owl_kent's three largest — and Gaussian
+  smoothing at 8.6× the tolerance moved the worst by 0.04 (11.59→11.55). A
+  smoothing radius would also be a NEW gate-1 physical constant, and at the
+  only sigma that helped anything it erased the owl's pupils.
+  *(measured 2026-08-25 — staircase lever; independently re-checked)*
 
 - **Terminus is CLOSED — omitted, do not re-propose.** The one genuinely new
   font outside upstream: four broken letters (incl. `t`) from paths upstream

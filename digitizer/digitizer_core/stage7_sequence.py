@@ -52,7 +52,7 @@ import heapq
 import math
 
 import shapely
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import unary_union
 
 from . import machine, stitches
@@ -683,17 +683,57 @@ def _polygonal_boundary(geom):
 
 
 def _raggedness(geom) -> float:
-    """Isoperimetric ratio, perimeter^2 / (4*pi*area). 1.0 is a circle.
+    """The WORST isoperimetric ratio (perimeter^2 / 4*pi*area) among the
+    shape's own rings. 1.0 is a circle; higher is a more contorted outline for
+    the area it encloses.
 
     The "abrupt" half of the `significant` border gate. Scale-free by
     construction, so it says the same thing about a shape at 30 mm and at
     90 mm — which is what makes it safe to compare against one constant.
+
+    It measures MACRO SHAPE SPRAWL, not edge noise, and the distinction is
+    load-bearing (established 2026-08-25 — the gate's first comment claimed
+    the opposite). Stage 4 already simplifies every contour with
+    Douglas-Peucker at `cfg.simplify_tol_mm` (0.2 mm) and meets it to within
+    0.002 mm, so there is no pixel staircase left at the polygon's own scale
+    for a border to trace. What a high number marks is a multi-armed shape:
+    owl_kent's three largest regions have solidity 0.873 / 0.476 / 0.329, and
+    Gaussian smoothing at 8.6x the simplify tolerance moves the worst one by
+    0.04. That is a segmentation output, not a contour-quality one — reaching
+    for a smoother to lower it is a measured negative, not a fix.
+
+    PER RING, not per shape (fixed 2026-08-25, hours after the gate shipped).
+    A border is sewn as one closed circuit PER RING — `stage6_border`'s own
+    contract: "A shape with a hole has two visible edges, so it has two
+    borders." Measuring the whole shape at once summed every ring's perimeter
+    over the hole-subtracted area, which conflated "contorted outline" with
+    "thin" and got a smooth annulus flatly wrong: a clean ring of outer 10 /
+    inner 8 scored 9.0 and was refused a border, 32.3 at inner 9.4 — when a
+    ring is the IDEAL border candidate (a letter O, a badge outline). Per
+    ring every one of those reads 1.0, which is what they are.
+
+    That failure was the gate quietly measuring WIDTH, and width is already
+    handled downstream and better: `border_runs` lightens a shape too thin to
+    host a column to a bean run, and refuses a hairline outright. The gate was
+    doing that job a second time, worse, by accident.
+
+    Costs nothing on real content — `owl_kent` borders the same 4 shapes of 35
+    either way — and it still keeps ragged shapes out for the right reason:
+    that owl's head carries TEN holes and its worst ring reads 4.02, clear of
+    the 3.5 cutoff. (Judging only the exterior ring also fixes the annulus,
+    but drops the same head to 3.77 — a 7% margin where this keeps 15%.)
     """
-    area = getattr(geom, "area", 0.0) or 0.0
-    edge = _polygonal_boundary(geom)
-    if area <= 0.0 or edge is None or edge.is_empty:
-        return math.inf
-    return (edge.length ** 2) / (4.0 * math.pi * area)
+    parts = ([geom] if getattr(geom, "geom_type", "") == "Polygon"
+             else [g for g in getattr(geom, "geoms", ())
+                   if g.geom_type == "Polygon"])
+    worst = 0.0
+    for part in parts:
+        for ring in [part.exterior, *part.interiors]:
+            enclosed = Polygon(ring).area
+            if enclosed <= 0.0:
+                return math.inf
+            worst = max(worst, (ring.length ** 2) / (4.0 * math.pi * enclosed))
+    return worst or math.inf
 
 
 def _border_worthy(geom, total_area: float, share_min: float,
