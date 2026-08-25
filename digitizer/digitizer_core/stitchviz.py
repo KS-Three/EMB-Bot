@@ -27,6 +27,8 @@ needs the machine (ROADMAP gate 1).
 """
 from __future__ import annotations
 
+import math
+
 import cv2
 import numpy as np
 
@@ -42,6 +44,45 @@ THREAD_MM = 0.4
 # Enough that a 0.4 mm filament lands on 3 px and reads as thread rather than
 # as a hairline. Below about 5 the sheen core rounds away to nothing.
 DEFAULT_PX_PER_MM = 8.0
+
+# ---- The lit filament ---------------------------------------------------
+# A stitch is a cylinder lying on cloth, not a coloured line. Two things
+# follow, and this render had neither until 2026-08-25 -- Kent, looking at a
+# fill sheet: *"It feels like i'm looking at an image made up of vectors and
+# not stitches."* He was right, and scale was not the cause: the same design
+# reads as flat hatching at 6, 8, 16 and 28 px/mm alike, because every stitch
+# was shaded identically no matter which way it ran.
+#
+# 1. HOW MUCH light a filament catches depends on its angle to the source. A
+#    row running across the light is bright; one running along it is dim.
+#    Without this term a tatami field of parallel rows is one flat tone --
+#    which is precisely what hatching looks like.
+# 2. WHERE the highlight sits is off-centre, pushed toward the light, with the
+#    far side falling into shadow. That shadow is what separates one row from
+#    the next and makes the surface read as raised rather than printed.
+#
+# `preview.js` in the Studio implements this same model against a canvas; the
+# two are kept in step deliberately, so what Kent rules on and what a customer
+# sees agree. Change one, change both.
+# Measured in IMAGE coordinates, where y increases DOWNWARD -- so 225 deg is
+# up and to the LEFT. That is the direction thread catalogues shoot to, and
+# the direction `preview.js` already lit from (shadow +1/+1.5, highlight
+# -0.6/-0.9); matching it is why this is 225 and not 135. Getting this
+# backwards is easy and costs nothing visually except that every render is
+# lit from the opposite corner to the Studio's.
+LIGHT_DEG = 225.0
+_LIGHT = (math.cos(math.radians(LIGHT_DEG)), math.sin(math.radians(LIGHT_DEG)))
+AMBIENT, DIFFUSE = 0.80, 0.42     # tone = AMBIENT + DIFFUSE * |axis x light|
+
+# The three bands, as fractions of the nominal filament width: (width, offset
+# toward the light). EVERY band is clamped inside the nominal width by
+# `_band` below, and the widest is exactly `tw` -- so the drawn FOOTPRINT is
+# unchanged by shading. That is not cosmetic: `coverage` is measured by
+# rendering, so a band spilling half a pixel past the filament would inflate
+# every coverage figure ever recorded, silently.
+_BANDS = ((1.00, 0.00, 0.62),     # shadowed body -- defines the footprint
+          (0.66, 0.14, 1.00),     # lit body
+          (0.28, 0.26, 1.22))     # specular
 
 # A light garment. Deliberately not white: bare cloth has to be
 # distinguishable from white thread, or a highlight and a hole look alike.
@@ -85,7 +126,7 @@ def _bounds(stitches: list[dict]) -> tuple[int, int, int, int] | None:
 
 def render_design(design: dict, px_per_mm: float = DEFAULT_PX_PER_MM,
                   fabric_bgr: tuple[int, int, int] = FABRIC_BGR,
-                  pad_mm: float = 2.0) -> np.ndarray:
+                  pad_mm: float = 2.0, lit: bool = True) -> np.ndarray:
     """-> BGR image of `design` sewn on `fabric_bgr`.
 
     Colour changes advance through `design["colors"]` in order, which is the
@@ -129,14 +170,75 @@ def render_design(design: dict, px_per_mm: float = DEFAULT_PX_PER_MM,
             continue
         p = to_px(s)
         if prev is not None and prev != p:
-            base = (int(rgb["b"]), int(rgb["g"]), int(rgb["r"]))
-            body = tuple(int(c * 0.78) for c in base)
-            core = tuple(min(255, int(c * 1.16 + 14)) for c in base)
-            cv2.line(img, prev, p, body, tw, cv2.LINE_AA)
-            cv2.line(img, prev, p, base, max(1, tw - 1), cv2.LINE_AA)
-            cv2.line(img, prev, p, core, max(1, tw // 3), cv2.LINE_AA)
+            _draw_filament(img, prev, p, rgb, tw, lit)
         prev = p
     return img
+
+
+def _band(tw: int, w_frac: float, off_frac: float) -> tuple[int, float]:
+    """One shading band's pixel width and its offset toward the light.
+
+    The offset is CLAMPED so the band never reaches past the nominal
+    filament: at small `tw` the fractions round to whole pixels that would
+    otherwise poke out the side, which would widen the footprint and move
+    `coverage`. Clamping costs a little contrast on tiny thread and keeps
+    the measurement honest, which is the right trade.
+    """
+    w = max(1, int(round(w_frac * tw)))
+    return w, max(0.0, min(off_frac * tw, (tw - w) / 2.0))
+
+
+def _draw_filament(img: np.ndarray, a: tuple[int, int], b: tuple[int, int],
+                   rgb: dict, tw: int, lit: bool = True) -> None:
+    """One stitch, as a lit cylinder. Bands are painted widest first, so the
+    specular lands on top of the body lands on top of the shadow.
+
+    `lit=False` draws ONE opaque band at the full nominal width and nothing
+    else. That is the filament's footprint with no shading in it, and it is
+    what `coverage` measures: coverage asks how much cloth the thread hides,
+    which is a question about width, not about light. Keeping the two apart
+    is what lets the render be restyled without moving a recorded number --
+    the first cut of this shading moved coverage by 8e-4 across the board,
+    because off-centre bands push their anti-aliased fringe a fraction wider
+    than centred ones do.
+    """
+    base = (int(rgb["b"]), int(rgb["g"]), int(rgb["r"]))
+    if not lit:
+        # The pre-2026-08-25 draw, kept EXACTLY: three centred bands, in this
+        # order, at these widths. Not "something equivalent" -- each
+        # anti-aliased pass re-blends the fringe pixels of the one before, so
+        # the footprint's soft edge depends on the NUMBER of passes as well as
+        # their width. Collapsing these three into one opaque band at `tw` was
+        # tried and moved coverage by 1.2e-3; three bands reproduce it to the
+        # last bit. Do not tidy this.
+        body = tuple(int(c * 0.78) for c in base)
+        core = tuple(min(255, int(c * 1.16 + 14)) for c in base)
+        cv2.line(img, a, b, body, tw, cv2.LINE_AA)
+        cv2.line(img, a, b, base, max(1, tw - 1), cv2.LINE_AA)
+        cv2.line(img, a, b, core, max(1, tw // 3), cv2.LINE_AA)
+        return
+
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    ln = math.hypot(dx, dy) or 1.0
+    ux, uy = dx / ln, dy / ln
+    lx, ly = _LIGHT
+
+    # Lambert on a cylinder: the axis-to-light cross product. |x| because a
+    # filament is symmetric -- running north-east and south-west catch the
+    # same light, and signing this would make sew DIRECTION visible as tone.
+    tone = AMBIENT + DIFFUSE * abs(ux * ly - uy * lx)
+
+    # Perpendicular, resolved to point AT the light.
+    nx, ny = -uy, ux
+    if nx * lx + ny * ly < 0:
+        nx, ny = -nx, -ny
+
+    for w_frac, off_frac, shade in _BANDS:
+        w, off = _band(tw, w_frac, off_frac)
+        colour = tuple(int(max(0, min(255, c * tone * shade))) for c in base)
+        pa = (int(round(a[0] + nx * off)), int(round(a[1] + ny * off)))
+        pb = (int(round(b[0] + nx * off)), int(round(b[1] + ny * off)))
+        cv2.line(img, pa, pb, colour, w, cv2.LINE_AA)
 
 
 def coverage(design: dict) -> float:
@@ -167,9 +269,9 @@ def coverage(design: dict) -> float:
     reading: half a filament's width over a pixel hides half its cloth.
     """
     lo = render_design(design, px_per_mm=COVERAGE_PX_PER_MM,
-                       fabric_bgr=_COVER_LO_BGR).astype(np.int16)
+                       fabric_bgr=_COVER_LO_BGR, lit=False).astype(np.int16)
     hi = render_design(design, px_per_mm=COVERAGE_PX_PER_MM,
-                       fabric_bgr=_COVER_HI_BGR).astype(np.int16)
+                       fabric_bgr=_COVER_HI_BGR, lit=False).astype(np.int16)
     show_through = np.abs(hi - lo).max(axis=2) / 255.0     # 1.0 = bare cloth
     covered = 1.0 - show_through
     ys, xs = np.where(covered > 0.01)
