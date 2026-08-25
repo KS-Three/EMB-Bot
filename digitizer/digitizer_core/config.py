@@ -82,7 +82,16 @@ class PipelineConfig:
     # weights, the preflight face-size guard) ride this SAME double gate:
     # no separate flag, no face machinery on any lane this flag doesn't
     # open. See stage1_photo_prep.detect_faces_seam.
-    photo_prep: bool = False
+    #
+    # DEFAULT FLIPPED ON 2026-08-24 by Kent, together with
+    # `photo_prep_background_removal` below and as ONE decision with it —
+    # the two are a pair now, and prep alone is emphatically not what was
+    # chosen. Measured on the four acceptance portraits, prep alone is the
+    # most expensive arm on the sheet (`baby_deck_laugh` 110 -> 175 regions
+    # and 17,167 -> 32,663 stitches against no prep at all); prep WITH the
+    # cutout is the cheapest. That asymmetry is why the failure path in
+    # `pipeline.build_generation` now refuses to leave a job on prep-alone.
+    photo_prep: bool = True
     # Texture-kill technique: "bilateral" (default, zero-dep) | "meanshift"
     # (zero-dep) | "rolling_guidance" (real path since the 2026-08-04
     # opencv-contrib-headless swap in requirements.txt; falls back to
@@ -104,10 +113,29 @@ class PipelineConfig:
     # subprocess and a neural net on every photo job. Default False; with it
     # off the pipeline is exactly what it was before this slice existed,
     # including for every design that has photo_prep=True. When on and the
-    # isolated venv is missing/broken/times out, the documented no-op
-    # fallback applies (PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE): stage 1's
-    # border-flood bg_mask is kept unchanged and the job still completes.
-    photo_prep_background_removal: bool = False
+    # isolated venv is missing/broken/times out, the fallback applies
+    # (PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE): stage 1's border-flood
+    # bg_mask is kept unchanged, tone/texture/face prep is SKIPPED WITH IT,
+    # and the job completes on the plain classical route.
+    #
+    # DEFAULT FLIPPED ON 2026-08-24 by Kent, as one decision with
+    # `photo_prep` above. Measured against its one-flag control (prep
+    # alone) on the four acceptance portraits: regions -83/-59/-66/-6%,
+    # stitches -84/-72/-69/-8%, trims -86/-67/-76/-21%. The small last
+    # column is `face_closeup_blur`, where the subject already fills the
+    # frame so there is almost no background to remove — the honest shape
+    # of this feature, not a defect in it.
+    #
+    # KNOWN INERT ON THE ROUTE REAL UPLOADS TAKE, and this flip does not
+    # change that. Measured 2026-08-24: all four acceptance photos classify
+    # `gradient` at confidence 1.00, and `gradient` is not in
+    # `PHOTO_CLASSES`, so the double gate above never opens for them. This
+    # pair is live only for a caller that forces `photo_subject`/
+    # `photo_scene` — every acceptance arm, and any Studio photo override.
+    # Reaching a real upload needs either stage-0 discrimination (ROADMAP
+    # gate 2, closed) or a deliberate decision to extend the cutout to the
+    # gradient class. Both are Kent's, and neither is taken here.
+    photo_prep_background_removal: bool = True
     # Which rembg model the worker loads. "isnet-general-use" is the plan's
     # default tier (§2 row 1); "birefnet-general-lite" (quality) and
     # "u2net_human_seg" (portrait fast tier) are documented seams — the

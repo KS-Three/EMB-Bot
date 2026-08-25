@@ -52,8 +52,8 @@ or move it.
    `docs/satin-gate-attribution-2026-08-16.md` §7; landed 2026-08-22 —
    `docs/tonal-eng-measurements-2026-08-22.md`)*
 
-3. **14 jump-trims on an 80mm design,** in every fill variant measured.
-   Not started. *(measured 2026-08-12 — scope-history)*
+3. **14 jump-trims on an 80mm design,** every fill variant measured. Not
+   started. *(measured 2026-08-12 — scope-history)*
 
 4. **We trim far more than the professional: 8.49 trims/1,000 stitches against
    the pro's 1.27** — same logo, same size, double the 4.1 ceiling this repo's
@@ -161,20 +161,16 @@ evidence for either** — on chaining, a green suite actively concealed it.
 
 1. **`chain_links` — sews needle-down thread on bare fabric.** 16.15 mm exposed
    over 17 links on `full_back`/`fleece_sweatshirt`, stock preset, green suite,
-   one point over a millimetre from any thread in the design. **Precondition to
-   flip: rebuild the instrument** — the two shipped ones were structurally blind
-   to this three ways over (one-point links skipped, first/last sewn segment
-   never tested, cover measured as polygons not as where thread lands). Hold it
-   to the contour lane's standard (`config.py:462-521`). *(confirmed OFF
-   2026-08-17 — `config.py:1064`; measured 2026-08-02 —
-   `docs/hardening-closeout-2026-08-02.md`)*
-   **Precondition MET 2026-08-18 — the blocker is the sew-out now, not the
-   instrument:** blindnesses closed, cover measured where thread lands,
-   thread-derived check shipped, four fixtures accepting at **0.00 mm** added
-   bare thread and **9.82 → 4.06** trims/1k. **Still DO NOT FLIP, now permanently** — gate 1 names
-   link cover tolerance, a thread spec, and the sew-out is accepted as-is, so
-   this is frozen rather than pending. Largest lever on defects 4 and 6.
-   *(confirmed 2026-08-18 — `config.py:1006-1068`, `preflight.py:1483-1543`)*
+   one point over a millimetre from any thread in the design. The two shipped
+   instruments were blind three ways over (one-point links skipped, first/last
+   sewn segment never tested, cover measured as polygons not as where thread
+   lands) — all three CLOSED 2026-08-18: thread-derived check shipped, four
+   fixtures accepting at **0.00 mm** added bare thread, **9.82 → 4.06**
+   trims/1k. **Still DO NOT FLIP, now permanently:** gate 1 names link cover
+   tolerance, a thread spec, and the sew-out is accepted as-is, so this is
+   frozen rather than pending. Largest lever on defects 4 and 6. *(measured
+   2026-08-02 — `docs/hardening-closeout-2026-08-02.md`; confirmed 2026-08-18 —
+   `config.py:1006-1068`, `preflight.py:1483-1543`)*
 2. **`split_tonal_regions`** — the shading fix, merged but off; parked until the
    sew-out. Cost and ceiling under "Waiting on Kent". *(confirmed OFF
    2026-08-17 — `config.py:647`)*
@@ -234,6 +230,11 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
   from each other by more than the error being complained about cannot be
   matched by any single thread. *(measured 2026-08-12 — scope-history)*
 - **`photo_segment_sam2_max_side_px` stays 1024.** *(measured 2026-08-11 — `config.py`)*
+- **The photo subject cutout ships ON, and rembg is a DEPLOY REQUIREMENT.**
+  `photo_prep` + `photo_prep_background_removal` default True as a PAIR, never
+  singly; an unavailable cutout skips prep entirely rather than degrading onto
+  prep-alone. **Ships KNOWINGLY INERT for real uploads** — all four acceptance
+  photos classify `gradient` at 1.00, which the gate excludes; revisit at gate 2. *(ruled 2026-08-24 — Kent; [area 1](docs/scope/1-auto-digitizing-quality.md))*
 - **`feat/svg-import-shapes` is not resumed.** Far behind, and the one task
   attempted past the tokenizer is broken against its own tolerance. Treat a
   revival as a fresh plan against `main`, not a rebase; branch left in place,
@@ -276,14 +277,14 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
   54.76 → 54.60 and `sttype` 0.217 → 0.198, 12 designs worse to 9 better. The
   diagnosis stands (`p90` rejects branchy, not wide) but the mix is already
   right, so **no cap/`p90`/aspect/regularity move in one direction can fix
-  routing — only better discrimination can.** Governs live defect 5.
-  *(measured 2026-08-14 — PR #152, closed 2026-08-21; detail in area 1)*
+  routing — only better discrimination can.** Governs live defect 5. *(measured
+  2026-08-14 — PR #152, closed 2026-08-21; detail in area 1)*
 - **Swapping the SAM model** — in automatic-mask-generation mode SAM2's encoder
   is only ~8% of per-image cost and the `points_per_side**2` prompt loop is
   ~92%, while every lightweight variant optimizes the encoder; SAM 1 is
   *heavier* (375 MB). And FastSAM (AGPL-3.0 despite a README claiming Apache)
   and EdgeSAM (non-commercial, NTU S-Lab 1.0) are license-disqualified — that
-  half **suspected**, from a research subagent, never re-verified.
+  half **suspected**, from a subagent, never re-verified.
   *(researched 2026-08-11 — `docs/sam-alternatives-research-2026-08-11.md`)*
 - **Size-proportional `simplify_tol_mm`** — the fixed 0.2 mm constant is correct
   as-is; Ember's scaling equivalent is not a like-for-like comparison. No change
@@ -397,14 +398,13 @@ its hedge as it is copied forward** — is why this file is split.
   comment. *(measured 2026-08-22 — CI column from a green run at `db0e642` on
   ubuntu-latest; Windows column re-run 2026-08-17 and not since)*
 - **OCR tests skip, not fail, without the `tesseract` binary — and never skip
-  on CI.** `pytesseract` imports fine but only wraps the executable; the five
-  real-read tests carry `requires_tesseract` (`tests/conftest.py`), which skips
-  only when the binary is missing AND `CI` is unset, so a workflow refactor
-  that loses the install fails loud instead of going dark. A local run shows
-  **8** skips, not 5 — the other three are the rembg and opencv-contrib
-  classes, and the full accounting is in COOKBOOK "Running things".
-  *(measured 2026-08-17, skip accounting 2026-08-22 — grouped skip reasons over
-  a full `-rs` run)*
+  on CI.** The five real-read tests carry `requires_tesseract`
+  (`tests/conftest.py`), which skips only when the binary is missing AND `CI`
+  is unset, so a workflow refactor losing the install fails loud instead of
+  going dark. The TOTAL skip count is environment-dependent — tesseract, and
+  whether `rembg_isolated/venv` is built — so judge it by the per-class
+  accounting in COOKBOOK "Running things", never by the total.
+  *(measured 2026-08-17; accounting refreshed 2026-08-24)*
 - **Breaking a guard on purpose does not prove it is not blind — ask what
   fraction of its population it measures, and assert that.** The stunted-glyph
   guard passed that ritual and was still measuring nothing in **21 of the 85**

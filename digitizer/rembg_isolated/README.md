@@ -33,11 +33,32 @@ is standalone by design). `stage1_photo_prep.py` looks for the interpreter at
 (Windows) by default; nothing else to configure.
 
 **This venv is NOT committed** (`.venv/`-style — see `digitizer/.gitignore`)
-and is a workstation/deploy-time setup step, the same shape as building
-`digitizer/.venv` itself. Without it built, `photo_prep_background_removal`
-degrades to the documented no-op (`PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE`) —
-the rest of the pipeline, including every other `photo_prep` feature, is
-unaffected.
+and is a **required** deploy-time setup step, the same shape as building
+`digitizer/.venv` itself — Kent's ruling 2026-08-24, the day
+`photo_prep_background_removal` became a shipped default rather than an
+opt-in.
+
+Without it built, `photo_prep_background_removal` degrades to
+`PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE` and the job completes on the plain
+classical route. **Note what changed there**: this file used to say "the
+rest of the pipeline, including every other `photo_prep` feature, is
+unaffected", and that is no longer true. Tone prep, texture kill and the
+YuNet face priors are now skipped WITH the cutout, deliberately — prep
+without the cutout is the worst arm the acceptance harness measures, worse
+than doing nothing on all four portraits (`baby_deck_laugh`: 110 -> 175
+regions and 17,167 -> 32,663 stitches against no prep at all), so failing
+onto it was failing in the expensive direction. See
+`pipeline.build_generation`'s `cutout_requested` / `cutout_failed`.
+
+An explicit `photo_prep=True` with `photo_prep_background_removal=False` is
+untouched by any of this: that asks for prep alone and still gets exactly
+prep alone.
+
+CI does NOT build this venv, so CI exercises the fallback path rather than
+the cutout. That is intentional — the fallback is the shipped behaviour on
+a box without the venv, and it deserves the coverage — but it means a green
+CI run is not evidence about the cutout itself. The tests that do cover it
+carry `requires_rembg`-style skips (`tests/test_background_removal.py`).
 
 ## The model
 

@@ -3070,3 +3070,74 @@ back.
 
 *(measured 2026-08-24 — per-block stitch/mask audit and distance-transform
 check, both re-runnable against the acceptance stage dir)*
+
+## The cutout ships ON, and the fallback direction was backwards — RULED 2026-08-24
+
+Kent's ruling the day the subject cutout became visible in thread. Two parts,
+and the second is the one with teeth.
+
+### 1. The pair ships on
+
+`photo_prep` and `photo_prep_background_removal` both default True, **as a
+pair**. They are not independently defaultable, because prep alone is the most
+expensive arm the acceptance harness measures — worse than doing nothing, on
+all four portraits.
+
+Measured on `baby_deck_laugh`, forced photo class, everything else default:
+
+| path | regions | blocks | cones | stitches |
+|---|---|---|---|---|
+| cutout available (the shipped default) | **29** | 17 | **7** | **5,156** |
+| cutout requested, venv missing → fallback | 110 | 48 | 12 | 16,570 |
+| prep alone — what the OLD fallback gave | 175 | 84 | 12 | 32,663 |
+| control, `photo_prep=False` | 110 | 48 | 12 | 16,570 |
+
+Rows 2 and 4 are **identical geometry**, asserted by comparing every emitted
+stitch coordinate rather than a pair of counts (`test_an_unavailable_cutout_
+falls_back_to_no_prep_at_all`). Row 3 is 6.3x the stitches of row 1.
+
+### 2. The fallback was failing in the expensive direction
+
+A fallback is supposed to be the safe direction to fail in. This one degraded
+onto row 3 — the worst result on the sheet — on precisely the machines least
+able to absorb it. `pipeline.build_generation` now resolves the cutout first
+and, if it was REQUESTED and could not be delivered, skips the whole prep
+block: no face detection, no tone/texture pass.
+
+The asymmetry is deliberate: `photo_prep=True` with the cutout flag OFF is an
+explicit request for prep alone and still gets exactly that. Only an
+undeliverable *requested* cutout triggers the skip. Without that, the fix would
+have quietly deleted `classical_prep` — the acceptance ladder's second rung.
+
+**Four existing tests had to pin `photo_prep_background_removal=False`.** Each
+set `photo_prep=True` while relying on the cutout flag defaulting off, so each
+would have silently stopped testing the gate it is named for and started
+testing the fallback. Exactly what happened to every forced-class acceptance
+arm when `shade_palette_bind`'s default moved, and worth expecting the next
+time a default flips.
+
+### 3. rembg is a deploy requirement — and CI is not evidence
+
+Kent ruled the isolated venv a required deploy step, the same shape as building
+`digitizer/.venv` itself. CI deliberately does NOT build it, so **CI exercises
+the fallback path and a green CI run says nothing about the cutout.** That is
+defensible — the fallback is the real shipped behaviour on a box without the
+venv — but it must not be mistaken for coverage of the feature.
+
+### 4. It ships knowingly inert for real uploads
+
+Measured 2026-08-24: all four acceptance photos classify **`gradient` at
+confidence 1.00**, and `gradient` is not in `PHOTO_CLASSES`, so the double gate
+never opens for them. The pair is live only for a caller that forces
+`photo_subject`/`photo_scene` — every acceptance arm, and any Studio photo
+override, but not a user upload.
+
+Kent's call was to ship it anyway and revisit at gate 2 rather than widen the
+gate to gradient. The reason widening is not free: `gradient` is also the class
+for genuine gradient LOGOS (`drone_render`, `summit_badge` are in the corpus),
+where rembg would invent a subject that is not there. Telling photo-gradient
+from logo-gradient is stage-0 discrimination wearing a different hat — which is
+gate 2 itself.
+
+*(ruled 2026-08-24 — Kent; measurements same day, re-runnable from the
+acceptance stage dir)*

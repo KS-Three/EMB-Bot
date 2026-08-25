@@ -46,6 +46,7 @@ from digitizer_core.stage1_photo_prep import (
 from digitizer_core.warnings_codes import (
     PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE,
     PHOTO_BACKGROUND_REMOVED,
+    PHOTO_PREP_APPLIED,
 )
 
 from .test_flat_lane_byte_identical import GOLDEN
@@ -435,3 +436,102 @@ def test_clean_background_mask_is_a_noop_on_a_clean_mask():
 
 def test_alpha_threshold_is_the_documented_midpoint():
     assert REMBG_ALPHA_THRESHOLD == 128
+
+
+# --- 8. The fallback direction (Kent's ruling, 2026-08-24) -----------------------
+#
+# Before this date a cutout that was REQUESTED but unavailable degraded onto
+# tone/texture/face prep WITHOUT the cutout — and that combination is the
+# single worst arm the acceptance harness measures, worse than doing nothing
+# on all four portraits (`baby_deck_laugh`: 110 -> 175 regions and
+# 17,167 -> 32,663 stitches against no prep at all). A fallback is supposed
+# to be the safe direction to fail in; that one failed toward the most
+# expensive result on the sheet, on exactly the machines least able to
+# absorb it. These pin the new direction.
+
+
+def _plan_signature(cfg) -> tuple:
+    """Every emitted stitch coordinate, plus the block/thread structure —
+    a full-geometry signature, so 'lands exactly on the classical route' is
+    a comparison and not an eyeballed pair of counts."""
+    result = run_stages(TESTDATA / "photo" / "region_blobs.png", cfg)
+    plan = pipeline_module.plan_stitches(result, cfg)
+    return (
+        len(result.regions),
+        tuple((b.thread_number, tuple(tuple(p) for r in b.runs for p in r.points))
+              for b in plan.blocks),
+    )
+
+
+def test_an_unavailable_cutout_falls_back_to_no_prep_at_all(monkeypatch):
+    """A requested-but-undeliverable cutout must land on the PLAIN classical
+    route — identical geometry to `photo_prep=False`, not merely similar.
+
+    Derived rather than pinned to numbers: whatever the classical route
+    produces on this fixture today, the fallback must produce the same
+    thing, so this keeps meaning the right thing as the route evolves.
+    """
+    monkeypatch.setattr(
+        pipeline_module,
+        "remove_background_seam",
+        lambda rgb, px_per_mm, cfg: (None, "isolated rembg venv not found (test)"),
+    )
+    fell_back = _plan_signature(_cfg(
+        forced_class="photo_scene", photo_prep=True,
+        photo_prep_background_removal=True))
+    classical = _plan_signature(_cfg(
+        forced_class="photo_scene", photo_prep=False,
+        photo_prep_background_removal=False))
+    assert fell_back == classical, (
+        "an unavailable cutout must not leave the job on prep-alone — that "
+        "is the most expensive arm on the acceptance sheet"
+    )
+
+
+def test_the_fallback_skips_prep_but_still_says_why(monkeypatch):
+    """Skipping quietly would be its own defect: the job must still carry
+    PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE, and must NOT claim prep ran."""
+    monkeypatch.setattr(
+        pipeline_module,
+        "remove_background_seam",
+        lambda rgb, px_per_mm, cfg: (None, "isolated rembg venv not found (test)"),
+    )
+    result = run_stages(
+        TESTDATA / "photo" / "region_blobs.png",
+        _cfg(forced_class="photo_scene", photo_prep=True,
+             photo_prep_background_removal=True),
+    )
+    codes = {w["code"] for w in result.warnings}
+    assert PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE in codes
+    assert PHOTO_PREP_APPLIED not in codes, (
+        "the fallback skips prep, so nothing may report that prep applied"
+    )
+    assert result.regions, "the job itself must still complete"
+
+
+def test_prep_alone_is_still_reachable_when_the_cutout_was_never_asked_for():
+    """The deliberate asymmetry. `photo_prep=True` with the cutout flag OFF
+    is an explicit request for prep alone and still gets exactly that —
+    only a cutout that was ASKED FOR and could not be delivered triggers
+    the skip. Without this, the fix above would quietly delete a
+    configuration the acceptance harness depends on (`classical_prep`, the
+    ladder's second rung)."""
+    result = run_stages(
+        TESTDATA / "photo" / "region_blobs.png",
+        _cfg(forced_class="photo_scene", photo_prep=True,
+             photo_prep_background_removal=False),
+    )
+    codes = {w["code"] for w in result.warnings}
+    assert PHOTO_PREP_APPLIED in codes
+    assert PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE not in codes
+
+
+def test_the_shipped_defaults_are_the_cutout_PAIR():
+    """Kent's 2026-08-24 ruling, pinned where a silent revert would show up.
+
+    They flip together or not at all: `photo_prep` alone defaulting True
+    would ship the worst-measured arm as the product, which is the exact
+    outcome the fallback fix above exists to prevent."""
+    cfg = PipelineConfig()
+    assert cfg.photo_prep is True
+    assert cfg.photo_prep_background_removal is True
