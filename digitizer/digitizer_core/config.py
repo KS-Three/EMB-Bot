@@ -7,6 +7,52 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
+# The two classes stage 0 routes photographic content to. THE canonical copy:
+# `stage7_sequence.PHOTO_CLASSES`, `stage4_vectorize._PHOTO_CLASSES` and
+# `stage6_satin._PHOTO_CLASSES` all alias this now. Three independent literals
+# is how the gate below drifted apart in the first place — the same question
+# was asked in fifteen places and nobody could see them all at once.
+PHOTO_CLASSES = ("photo_subject", "photo_scene")
+
+
+def is_photographic(cfg: "PipelineConfig", class_: str | None) -> bool:
+    """Is this design PHOTOGRAPHIC CONTENT? — the one place that decides.
+
+    Distinct from "which fill tier does it get", which stays stage 0's call.
+    A photograph can legitimately sew through the gradient lane (Kent's
+    2026-08-25 ruling that a photo sews FILLED routes it exactly there), and
+    when it does it must still get the palette bind, the photo yardstick and
+    the rest of the photographic machinery.
+
+    WHY THIS IS DECLARED, NOT DETECTED (2026-08-25). Stage 0's own signals do
+    not separate the two populations — measured across every fixture here, a
+    real photograph reads LESS photographic than several gradient logos:
+
+        owl_kent.jpg      (real photo)  unique_color_mass 0.1107  grad 1.2877
+        summit_badge.png  (badge logo)                    0.1152       0.4578
+        drone_render.png  (vector logo)                   0.1592       4.4635
+
+    `unique_color_mass` is stage 0's PRIMARY photo gate (see that module's
+    "Real-fixture note"), and the owl sits BELOW two logos on it and inside
+    their spread on the secondary gate. No threshold or combination separates
+    them, so there is nothing here to infer from. Deriving a new signal would
+    be stage-0 recalibration, which ROADMAP gate 2 refuses without real tonal
+    artwork — and one owl is not a corpus.
+
+    So the caller declares it. The person uploading a photograph knows it is
+    one; the classifier demonstrably does not.
+
+    None means "no declaration — fall back to the class", which is exactly
+    today's behaviour and keeps every existing lane byte-identical. An
+    explicit False suppresses the machinery even on a photo class, because
+    "the caller said no" and "the caller said nothing" have to be different
+    values — the same sentinel trap `fill_technique = "tatami"` still carries
+    at `pipeline.auto_photo_tier`.
+    """
+    if cfg.is_photographic is not None:
+        return bool(cfg.is_photographic)
+    return class_ in PHOTO_CLASSES
+
 
 @dataclass
 class PipelineConfig:
@@ -21,6 +67,19 @@ class PipelineConfig:
     # One of "flat" | "gradient" | "photo_subject" | "photo_scene", or None
     # to classify normally.
     forced_class: str | None = None
+
+    # "This is a photograph" — DECLARED by the caller, not detected. Read
+    # ONLY through `is_photographic()` above, never directly; that function
+    # carries the measurement showing why stage 0 cannot infer this and what
+    # None/True/False each mean.
+    #
+    # Orthogonal to `forced_class` on purpose. `forced_class` says which fill
+    # TIER the design gets; this says whether the photographic MACHINERY
+    # applies — the palette resnap bind, the shade bind, preflight's photo
+    # yardstick. They came apart the moment Kent ruled a photo should sew
+    # filled, which routes real photographs through the gradient lane where
+    # every one of those was gated off by class name.
+    is_photographic: bool | None = None
 
     # Stage 2
     # Which manufacturer's chart the design is snapped to. Ids match the

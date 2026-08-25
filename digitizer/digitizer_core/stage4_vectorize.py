@@ -58,7 +58,8 @@ THREAD_REVALIDATE_SAMPLE_PX = 256
 # stage7_sequence must land here too; tests/test_thread_revalidate_palette.py
 # pins the lockstep so drift fails loud instead of quietly unbinding the
 # resnap for a new photo class.
-_PHOTO_CLASSES = ("photo_subject", "photo_scene")
+from .config import PHOTO_CLASSES as _PHOTO_CLASSES  # canonical copy lives in config.py
+from .config import is_photographic
 
 
 def _to_mm(pts: np.ndarray, cx: float, cy: float, px_per_mm: float) -> np.ndarray:
@@ -375,7 +376,7 @@ def revalidate_threads(regions: list[Region], p: Prep,
     # non-photo class, and any caller that passes no palette — is the
     # unrestricted chart argmin this function has always run.
     allowed: np.ndarray | None = None
-    if design_class in _PHOTO_CLASSES and palette_indices is not None \
+    if is_photographic(cfg, design_class) and palette_indices is not None \
             and len(palette_indices) > 0:
         allowed = np.unique(np.asarray(list(palette_indices), dtype=np.int64))
     x0, y0, x1, y1 = p.art_bbox

@@ -251,7 +251,7 @@ PHOTO_MIN_SATIN_WIDTH_MM = 1.0
 # Mirrored, verbatim, from stage7_sequence.PHOTO_CLASSES — importing it here
 # would cycle (stage7 imports this module). Kept in lockstep the same way
 # regions.py mirrors the service's _TIER_VALUES.
-_PHOTO_CLASSES = ("photo_subject", "photo_scene")
+from .config import PHOTO_CLASSES as _PHOTO_CLASSES  # canonical copy lives in config.py
 
 
 @dataclass(frozen=True)

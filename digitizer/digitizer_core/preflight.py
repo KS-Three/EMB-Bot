@@ -110,7 +110,7 @@ from shapely.geometry import Point
 from skimage.color import deltaE_ciede2000
 
 from . import machine, stitches
-from .config import PipelineConfig
+from .config import PHOTO_CLASSES, PipelineConfig
 from .pipeline import PipelineResult, fabric_for
 from .stage0_classify import classify
 from .stage1_prep import prep
@@ -753,7 +753,9 @@ def _is_photo_class(plan: StitchPlan, cfg: PipelineConfig) -> bool:
     `_contour_findings` pattern. CLASSIFICATION_UNCERTAIN designs fell back
     to flat and correctly read False here.
     """
-    if cfg.forced_class in ("photo_subject", "photo_scene"):
+    if cfg.is_photographic is not None:
+        return bool(cfg.is_photographic)
+    if cfg.forced_class in PHOTO_CLASSES:
         return True
     return any(w.get("code") in _CLASSIFIED_PHOTO for w in plan.warnings)
 
