@@ -9,8 +9,17 @@
     isValidShape, isNearStart, isDuplicateOfLast, shapeIssues, flattenShape,
     curveControlOrNull, hitTestSegmentMidpoint, curveHandlePoint, pointInShape,
     nearestSegmentIndex, insertVertexAtSegment,
+    curvedNodeThrough, curvedNodeFlags, quadraticControlForPointOnCurve,
   } from "../lib/manualShapes.js";
   import { traceFitRect } from "../lib/manualTrace.js";
+
+  // Node colours, straight vs curved. Same vocabulary the Ember demo uses
+  // ("blue nodes means it's straight and the green ones means it's curved"),
+  // because it is genuinely the readable choice and matching it costs a user
+  // coming from that tool nothing to relearn. Blue is the panel's existing
+  // indigo accent, so straight nodes look exactly as they always did.
+  const NODE_STRAIGHT = "#4f46e5";
+  const NODE_CURVED = "#15a34a";
 
   // Manual digitizing mode (MVP slice): draw straight- or curved-line
   // polygon outlines directly on a canvas, then assign each one a stitch
@@ -262,6 +271,43 @@
       return;
     }
     draft = [...draft, pt];
+  }
+
+  // Right-click places a CURVED node: same point, but the segment arriving at
+  // it starts out bowed instead of straight. Placing a rounded outline is then
+  // one click per node rather than a click per node plus a handle drag per
+  // segment, which is the difference between tracing a mushroom cap in ten
+  // clicks and in twenty-odd gestures.
+  //
+  // The default bow is a starting point, not a commitment — the segment handle
+  // still drags, and dragging it back to the chord straightens the node again
+  // (curveControlOrNull's existing straighten epsilon), so nothing here is a
+  // one-way door.
+  function onCanvasContextMenu(e) {
+    // Only while drawing. Outside a draft the browser menu is more useful than
+    // anything this canvas could offer, and the design field's own right-click
+    // tools menu sets the precedent that right-click means "tool", not "point".
+    if (editingId) return;
+    e.preventDefault();
+    const pt = canvasPointFromEvent(e);
+    if (draft.length >= 2 && isNearStart(draft, pt.x, pt.y)) {
+      finishShape();
+      return;
+    }
+    if (isDuplicateOfLast(draft, pt.x, pt.y)) return;
+    if (draft.length >= MAX_SHAPE_POINTS) {
+      flashCapHint();
+      return;
+    }
+    const prev = draft[draft.length - 1];
+    const next = [...draft, pt];
+    if (prev) {
+      const segIdx = draft.length - 1; // the segment prev -> pt
+      const before = draft.length >= 2 ? draft[draft.length - 2] : null;
+      const through = curvedNodeThrough(prev, pt, before);
+      draftCurves = { ...draftCurves, [segIdx]: quadraticControlForPointOnCurve(prev, through, pt) };
+    }
+    draft = next;
   }
 
   // A double-click is two `click` events THEN one `dblclick`. The second
@@ -616,6 +662,16 @@
       return;
     }
     if (e.key === "Delete" || e.key === "Backspace") {
+      // Mid-draft, Backspace takes back the last node — the same key that
+      // means "undo that character" everywhere else, and what the Ember demo
+      // reaches for after a misplaced node. It cannot mean "delete the shape"
+      // here because a draft has no shape to delete yet, so the two readings
+      // never compete for the key.
+      if (draft.length && !editingId) {
+        undoPoint();
+        e.preventDefault();
+        return;
+      }
       if (selectedShapeId && draft.length === 0 && !editingId) {
         deleteShape(selectedShapeId);
         e.preventDefault();
@@ -745,12 +801,14 @@
         drawCurveHandles(ctx, pts, liveCrv, true, dragTarget === "edit" ? dragSeg : null);
         // Draggable vertex handles instead of the centroid label — this IS
         // the "edit points" affordance.
-        for (const p of pts) {
+        const curvedHere = curvedNodeFlags(pts, liveCrv, true);
+        for (let i = 0; i < pts.length; i++) {
+          const p = pts[i];
           ctx.beginPath();
           ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
           ctx.fillStyle = "#fff";
           ctx.fill();
-          ctx.strokeStyle = invalid ? "#c0392b" : "#4f46e5";
+          ctx.strokeStyle = invalid ? "#c0392b" : (curvedHere[i] ? NODE_CURVED : NODE_STRAIGHT);
           ctx.lineWidth = 2;
           ctx.stroke();
         }
@@ -773,13 +831,18 @@
       const liveCrv = liveCurvesFor(draftCrv, draftPts, dragTarget === "draft", dragSeg, dragPoint);
       drawShape(ctx, draftPts, liveCrv, false, null, "#4f46e5", 2);
       if (draftPts.length >= 2) drawCurveHandles(ctx, draftPts, liveCrv, false, dragTarget === "draft" ? dragSeg : null);
+      const curvedDraft = curvedNodeFlags(draftPts, liveCrv, false);
       for (let i = 0; i < draftPts.length; i++) {
         const p = draftPts[i];
+        const curved = curvedDraft[i];
         ctx.beginPath();
-        ctx.arc(p.x, p.y, i === 0 ? 5 : 3, 0, Math.PI * 2);
-        ctx.fillStyle = i === 0 ? "#4f46e5" : "#fff";
+        ctx.arc(p.x, p.y, i === 0 ? 5 : 3.5, 0, Math.PI * 2);
+        // The first node keeps its solid fill — it is the click target that
+        // closes the shape, so "where do I finish" outranks "what kind of node
+        // is this" for that one point.
+        ctx.fillStyle = i === 0 ? NODE_STRAIGHT : (curved ? NODE_CURVED : "#fff");
         ctx.fill();
-        ctx.strokeStyle = "#4f46e5";
+        ctx.strokeStyle = curved ? NODE_CURVED : NODE_STRAIGHT;
         ctx.lineWidth = 1.5;
         ctx.stroke();
       }
@@ -800,12 +863,13 @@
 
 <div class="manualpanel">
   <p class="hint">
-    Click to place points. Click near the first point (or double-click) to close the shape.
-    Drag the small dot at the middle of any line to bow it into a curve — drag it back to
+    <strong>Left-click</strong> places a straight node (blue); <strong>right-click</strong>
+    places a curved one (green). Click near the first point (or double-click) to close the
+    shape. Drag the small dot at the middle of any line to adjust its curve — drag it back to
     the line to straighten it again. Once a shape is selected, click its edge to add a new
     point there. Draw as many shapes as you like, then pick each one's stitch type, color,
-    and angle below. Escape cancels a draft, Enter finishes it, Delete removes the selected
-    shape.
+    and angle below. Backspace takes back the last node, Escape cancels the draft, Enter
+    finishes it, and Delete removes the selected shape.
   </p>
 
   <div class="mp-canvas-wrap">
@@ -816,6 +880,7 @@
       height={CANVAS_H}
       tabindex="0"
       on:click={onCanvasClick}
+      on:contextmenu={onCanvasContextMenu}
       on:dblclick={onCanvasDblClick}
       on:pointerdown={onCanvasPointerDown}
       on:pointermove={onCanvasPointerMove}

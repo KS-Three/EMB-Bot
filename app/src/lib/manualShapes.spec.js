@@ -6,6 +6,7 @@ import {
   flattenQuadraticSegment, flattenShape, hitTestSegmentMidpoint, CURVE_HANDLE_HIT_R,
   nextShapeIds, pointInShape,
   distToSegment, nearestSegmentIndex, insertVertexAtSegment,
+  curvedNodeThrough, curvedNodeFlags, CURVED_NODE_BOW,
 } from "./manualShapes.js";
 
 // ---- isValidShape -----------------------------------------------------
@@ -569,4 +570,70 @@ test("insertVertexAtSegment: a shape with no curves field at all still inserts c
   const next = insertVertexAtSegment(shape, 2, { x: 25, y: 5 });
   expect(next.points).toHaveLength(7);
   expect(next.curves).toEqual({});
+});
+
+// ---- curved nodes (right-click while drawing) -----------------------------
+
+test("curvedNodeThrough: bows perpendicular to the chord, by CURVED_NODE_BOW of its length", () => {
+  const a = { x: 0, y: 0 }, b = { x: 100, y: 0 };
+  const t = curvedNodeThrough(a, b, null);
+  expect(t.x).toBeCloseTo(50, 6);                        // stays at the chord midpoint...
+  expect(Math.abs(t.y)).toBeCloseTo(100 * CURVED_NODE_BOW, 6); // ...displaced across it
+});
+
+test("curvedNodeThrough: takes its side from the TURN, so a run of curved nodes arcs one way instead of scalloping", () => {
+  // A path turning consistently left (counter-clockwise around a square).
+  const pts = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }];
+  const sides = [];
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i], before = i >= 2 ? pts[i - 2] : null;
+    if (!before) continue;
+    const t = curvedNodeThrough(a, b, before);
+    // Signed side of `through` relative to the chord a->b.
+    const cross = (b.x - a.x) * (t.y - a.y) - (b.y - a.y) * (t.x - a.x);
+    sides.push(Math.sign(cross));
+  }
+  expect(sides.length).toBeGreaterThan(1);
+  // Every bow lands on the SAME side of its own chord — no alternation.
+  expect(new Set(sides).size).toBe(1);
+});
+
+test("curvedNodeThrough: a zero-length chord returns the midpoint rather than NaN", () => {
+  const p = { x: 7, y: 9 };
+  const t = curvedNodeThrough(p, { ...p }, null);
+  expect(Number.isFinite(t.x)).toBe(true);
+  expect(Number.isFinite(t.y)).toBe(true);
+  expect(t).toEqual({ x: 7, y: 9 });
+});
+
+test("curvedNodeThrough round-trips through the existing curve helpers — the drawn curve passes through it", () => {
+  const a = { x: 10, y: 10 }, b = { x: 90, y: 40 }, before = { x: 0, y: 0 };
+  const through = curvedNodeThrough(a, b, before);
+  const control = quadraticControlForPointOnCurve(a, through, b);
+  // curveHandlePoint is the inverse: the handle must sit back on `through`,
+  // so a right-clicked node and a hand-dragged one are the same kind of thing.
+  const back = curveHandlePoint(a, b, control);
+  expect(back.x).toBeCloseTo(through.x, 9);
+  expect(back.y).toBeCloseTo(through.y, 9);
+});
+
+test("curvedNodeFlags: a node is curved when the segment ARRIVING at it is curved", () => {
+  const pts = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }];
+  // Segment 1 (pts[1] -> pts[2]) is curved, so node 2 is the curved one.
+  const flags = curvedNodeFlags(pts, { 1: { x: 15, y: 5 } }, true);
+  expect(flags).toEqual([false, false, true, false]);
+});
+
+test("curvedNodeFlags: on a CLOSED shape the closing segment feeds node 0; on an open draft node 0 is never curved", () => {
+  const pts = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }];
+  const closingCurved = { 2: { x: -5, y: 5 } }; // segment pts[2] -> pts[0]
+  expect(curvedNodeFlags(pts, closingCurved, true)[0]).toBe(true);
+  // An open draft has no closing segment at all, so nothing can arrive at 0.
+  expect(curvedNodeFlags(pts, closingCurved, false)[0]).toBe(false);
+});
+
+test("curvedNodeFlags: no curves at all means every node reads straight", () => {
+  const pts = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }];
+  expect(curvedNodeFlags(pts, {}, true)).toEqual([false, false, false]);
+  expect(curvedNodeFlags(pts, null, true)).toEqual([false, false, false]);
 });

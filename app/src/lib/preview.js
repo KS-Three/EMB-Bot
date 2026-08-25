@@ -85,8 +85,8 @@ const LIGHT_X = -0.5547;
 const LIGHT_Y = -0.8321;
 
 // Sheen floor/ceiling as the thread turns from along-the-light to across it.
-const SHEEN_MIN = 0.1;
-const SHEEN_MAX = 0.62;
+const SHEEN_MIN = 0.08;
+const SHEEN_MAX = 0.52;
 
 // Strands are bucketed by direction so that every strand in a bucket shares one
 // shading profile and can be drawn as a SINGLE path per layer. That keeps the
@@ -125,8 +125,8 @@ export function threadLayers(rgb, angle, lw) {
   // it (a real cylinder's highlight is inboard of its silhouette).
   const hi = Math.max(-0.36, Math.min(0.36, 0.34 * k)) * lw;
   return [
-    { width: lw, offset: 0, color: shade(rgb, 0.6), dash: null },
-    { width: lw * 0.78, offset: hi * 0.4, color: shade(rgb, 0.82), dash: null },
+    { width: lw, offset: 0, color: shade(rgb, 0.66), dash: null },
+    { width: lw * 0.78, offset: hi * 0.4, color: shade(rgb, 0.85), dash: null },
     { width: lw * 0.5, offset: hi * 0.75, color: shade(rgb, 1), dash: null },
     { width: lw * 0.28, offset: hi, color: lighten(rgb, sheen * 0.55), dash: null },
     // The narrowest specular is DASHED, phase-free: embroidery thread is
@@ -172,9 +172,9 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
 
   // Drop shadow: one path for EVERY strand regardless of colour (it is all
   // black), offset away from the light so it agrees with the cylinder shading.
-  const sx = -LIGHT_X * (lw * 0.35 + 0.7);
-  const sy = -LIGHT_Y * (lw * 0.35 + 0.7);
-  ctx.strokeStyle = "rgba(0,0,0,0.26)";
+  const sx = -LIGHT_X * (lw * 0.18 + 0.5);
+  const sy = -LIGHT_Y * (lw * 0.18 + 0.5);
+  ctx.strokeStyle = "rgba(0,0,0,0.22)";
   ctx.lineWidth = lw * 1.04;
   ctx.beginPath();
   for (const s of strands) {
