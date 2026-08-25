@@ -4,6 +4,27 @@
 product question confidently on an owl and two landscapes, shipped three PRs on
 that answer, and then the first human face inverted it.
 
+## START HERE — Kent's decision, made 2026-08-25 before a /clear
+
+**BUILD THE AUTO-DETECT ROUTE.** He chose it explicitly. The design is settled
+and measured below; nothing about it is an open question:
+
+1. Read EXIF camera Make/Model at decode.
+2. Use the YuNet detector that ALREADY RUNS (`stage1_photo_prep.detect_faces_seam`).
+3. Default `cfg.is_photographic` from EITHER signal.
+4. Keep the explicit declaration as the fallback for the residual case — a
+   stripped photo with no people in it, which is exactly what `owl_kent` is.
+
+**It is a shipped-default change**: photographs start getting the palette bind
+and preflight's photo yardstick automatically. Kent wants to see the first
+renders land rather than discover it, so show him before treating it as routine.
+
+Two more of his calls the same evening: MASTER_SCOPE stays at 809 lines against
+its 800 budget (it was 865 that morning — the budget did its job), and his four
+family portraits were DELETED from the container at his request. **They are gone.
+Any face work needs him to re-attach them to chat first** — git is barred by
+spec decision 6 and Drive corrupts binary silently.
+
 ## The shape of the day, which is the lesson
 
 Kent opened with "what would you do if I said 'A'?" — a live referent: lane A of
