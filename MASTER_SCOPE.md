@@ -85,12 +85,6 @@ or move it.
    `mimosa_large` "D": 6,193 stitches into 40.0 x **0.0 mm**. Four fonts, one
    fix. *(`tools/build-font.mjs`, `test/font-transforms.test.js`)*
 
-9. **RESOLVED 2026-08-24 — the photo route escaped its own palette**, both
-   halves. `shade_palette_bind` ships default ON per Kent's 32-job-sheet
-   ruling. *(PR #217 + 08-24 flip; measurements in scope-history)*
-
-10. **RESOLVED 2026-08-23 — three photo-route robustness defects**, every one
-    found by the first real photos, none reachable by a committed fixture: a
 9. **RESOLVED 2026-08-24 — the photo route escaped its own palette; both
    halves closed.** Region half (#217): `revalidate_threads` masked to the
    palette, flat+gradient byte-identical. Shade half: `shade_palette_bind`,
@@ -104,25 +98,6 @@ or move it.
     condemning correct thread-paint as too loose (#216).
 
 11. **RESOLVED 2026-08-24 — the memory ceiling was per-region full-frame
-    masks;** cropping them to bboxes cleared it. *(PR #230; figures in
-    scope-history)*
-
-12. **RESOLVED 2026-08-24 — preflight graded every photo job F.**
-    `THREAD_MATCH_POOR` now scores EXCESS over the best already-loaded spool on
-    the photo route. *(PR #229; figures in scope-history)*
-
-13. **RESOLVED 2026-08-24 — the detail layer sewed the background a subject
-    cutout had just removed.** `SourcePixels.subject_mask` now confines the FDoG
-    line map. Invisible until then because **no acceptance arm had EVER set that
-    flag** — the same default-OFF gap the Latent section exists to close.
-    *(measured 2026-08-24 — [area 1](docs/scope/1-auto-digitizing-quality.md);
-    figures in scope-history)*
-
-14. **OPEN — the photo route leaves half the cloth bare INSIDE each shape.**
-    Kent's front as of 2026-08-25, and the first item here about fill QUALITY
-    rather than region identification. `stitchviz.coverage`: streamline
-    thread-paint covers **0.55–0.59** of its footprint, the blend tier **0.99**.
-    Not diagnosed; do not assume the fix is density. *(measured 2026-08-24 — PR #234; [area 1](docs/scope/1-auto-digitizing-quality.md))*
     masks**, now cropped to bboxes: an 8x drop, same region counts, and
     MB/MP falls with size where it used to climb. Correction: the 12.4 GB
     OOM was contention with another script, not one job. *(PR #230)*
@@ -609,37 +584,6 @@ permanently. Do not re-raise it as the highest-leverage next action.
 ### Evaluation corpus & harness — real gap, newly tracked here
 
 **The gap: no repeatable automated quality signal**, so every serious quality
-question queues behind either a corpus nobody has or a sew-out nobody has
-scheduled. Not a reframing of the sew-out gap — a labelled corpus plus a scoring
-harness would let a classifier change be judged against *something* before
-either arrives. M2/M3 has been blocked on it since 2026-08-01.
-
-**Harness half: BUILT — `digitizer/tools/corpus_scorecard.py`,** deliberately a
-REPORTING tool, not a CI gate. **A second harness, `tools/pro_parity/`,** scores
-against the PROFESSIONAL digitization of the same design; **its scale changed
-2026-08-14** (chance-corrected floors), so see the Gotcha above before comparing
-to any earlier number. Both: [area 1](docs/scope/1-auto-digitizing-quality.md)
-("The two evaluation harnesses"). *(confirmed 2026-08-21 — area 1)*
-
-**Real artwork contradicted the synthetic set at once: stage 0 routes six of the
-seven committed logos to the GRADIENT lane,** because real logo art carries JPEG
-ringing, anti-aliased edges and soft shading synthetics lack. **So any "flat
-spot-colour art" claim tuned only on synthetics is untested against real input.**
-*(measured 2026-08-15 — `tools/corpus_scorecard.py:FIXTURES`)*
-
-**Half the corpus is in the repo; the half that matters is not.** The tracked
-`Embroidery Files.zip` carries all 23 pro STITCH files, so `prep_all.py`'s recon
-lane runs from a fresh checkout. It carries **zero customer artwork**, so
-`prep_both.py`'s real lane — the one behind the 42.5 baseline — still needs the
-Drive copy. Nor does the zip close `scratch_corpus/`: cloud sessions still
-cannot reach those 37 files (Waiting on Kent #7), and Kent's four real portraits
-are gitignored and machine-bound. *(corrected 2026-08-18 — `prep_both` from the
-zip fails 0/15 on FileNotFoundError)*
-
-**Area 1 is deliberately NOT split into "image analysis" + "stitch planning",**
-and the four capability gaps an external review named all have owners in code.
-Both arguments: [area 1](docs/scope/1-auto-digitizing-quality.md) ("Why this
-area is not split in two"). *(moved 2026-08-21 — rule 5)*
 question queues behind a corpus nobody has or a sew-out nobody has scheduled. A
 labelled corpus plus a scoring harness would let a classifier change be judged
 against *something* before either arrives.
@@ -689,27 +633,22 @@ and the four capability gaps an external review named all have owners in code.
 Both arguments live in [area 1](docs/scope/1-auto-digitizing-quality.md).
 *(moved 2026-08-21 — rule 5)*
 
-Sweeps of Ember Design and Ink/Stitch produced backlog items, not status
-changes; both catalogues plus the closed `simplify_tol_mm` investigation live in
-[`docs/scope/research-backlog.md`](docs/scope/research-backlog.md). Nothing there
-is a commitment or a defect. Three things from it DO bind:
-
-- **Ember's own editor toolset is on file** (Pen/node, Closed Shape, Drawing
-  Blocks, stitch simulator, realistic-view toggle) — check it before scoping
-  manual-digitizing work, rather than re-deriving it.
-  *(confirmed 2026-08-08 — `docs/ember-technical-teardown-2026-08-08.md`)*
 ### Research backlog — competitive and open-source leads
 
 Two capability sweeps produced backlog items rather than status changes: Ember
 Design (a browser-based competitor) and Ink/Stitch. Both catalogues, the closed
 `simplify_tol_mm` investigation, and a sixth independent DST-axis corroboration
 live in [`docs/scope/research-backlog.md`](docs/scope/research-backlog.md).
-Nothing in there is a commitment or a defect. One thing from it binds here:
+Nothing in there is a commitment or a defect. Two things from it bind here:
 
 - **Ink/Stitch is GPL-3.0** — concept-level clean-room reimplementation only,
   no literal copying or near-verbatim translation. The exception is `pystitch`,
   its MIT-licensed pyembroidery fork, usable as a real runtime dependency and
   since adopted. *(confirmed 2026-08-10 — `docs/inkstitch-research-2026-08-10.md` §0)*
+- **Ember's own editor toolset is on file** (Pen/node, Closed Shape, Drawing
+  Blocks, stitch simulator, realistic-view toggle) — check it before scoping
+  manual-digitizing work rather than re-deriving it.
+  *(confirmed 2026-08-08 — `docs/ember-technical-teardown-2026-08-08.md`)*
 
 ---
 

@@ -64,105 +64,21 @@ strands in → N strands' worth out; the travel-line dash `[4,3]` specifically).
 shape, per-layer transparency. The reviewer also found Ember has no horizontal
 flip.
 
-**Compacted out of MASTER_SCOPE on this date** (resolved defects 9-13, moved not deleted — the file was 65 lines over its 800 budget before this session's additions):
+**A compaction that collided.** This session compacted resolved defects 9-13
+and the "Evaluation corpus & harness" section out of MASTER_SCOPE to pay for
+its additions — and `main` had independently compacted **the same two
+sections**, better and with newer measurements, while this branch was open.
+Merging produced a silently mis-resolved file: entries 9-14 duplicated, item
+11's text interleaved into item 14, and two full copies of the Evaluation
+section under one heading. Git resolved it without a conflict marker, so
+nothing flagged it.
 
-9. **RESOLVED 2026-08-24 — the photo route escaped its own palette; both
-   halves closed.** Region half (#217): `revalidate_threads` masked to the
-   palette, out-of-palette → **0**, flat+gradient byte-identical. Shade half:
-   the per-shade snap still spent 28/33/38/8 unnamed spools, invisible in the
-   UI (that count reads shape `thread_index` — palette-bound; the sewing
-   blocks are not). `shade_palette_bind` closes it, **default ON** per
-   Kent's 32-job-sheet ruling: cones 43/45/50/14 → **12/12/15/6** (== each
-   palette), stops 78→47, 68→45, 75→54, 25→16; (b) declined (+1 cone on face).
-   Pinned edge: a one-spool design flattens tone, 5→1. *(PR #217 + 08-24 flip)*
-
-10. **RESOLVED 2026-08-23 — three photo-route robustness defects, every one
-    found by the first real photos, none reachable by a committed fixture:** a
-    7.4 MP OOM (#214), an infinite loop in `select_palette` (#218), preflight
-    condemning correct thread-paint as too loose (#216).
-
-11. **RESOLVED 2026-08-24 — the memory ceiling was per-region full-frame
-    masks.** Each of 1,455 components on a 2800x2100 frame carried its own
-    (H, W) bool — 8.56 GB at once, ~102 surviving. Cropped to bboxes:
-    **8,509 → 1,014 MB** (2,767 → 677 on a real portrait), same region counts,
-    19–29% faster, MB/MP now FALLING with size (260→172) where it climbed
-    (643→1,705). Correction: the 12.4 GB OOM was contention with a 10.5 GB
-    script, **not one job** — a service plateaus at ~2.8 GB. *(PR #230)*
-
-12. **RESOLVED 2026-08-24 — preflight graded every photo job F.**
-    `THREAD_MATCH_POOR` fired 256 times at `block` across the sheet: a capped
-    cone list guarantees per-thread distance. Now scores EXCESS over the best
-    already-loaded spool on the photo route (raw elsewhere, byte-identical) —
-    258 of 330 offending regions become 3, and real mis-assignments still
-    block. *(PR #229)*
-
-13. **RESOLVED 2026-08-24 — the detail layer sewed the background a subject cutout
-    had just removed.** FDoG reads the whole raster, so
-    `photo_prep_background_removal` never reached it: on `baby_deck_laugh`,
-    **91.4% of the detail block and 72.2% of every stitch in the design** sewed
-    removed background. Regions were clean. `SourcePixels.subject_mask` now
-    confines the line map — 10,813 → **537**, all inside the silhouette slack.
-    Invisible until now because **no acceptance arm had EVER set that flag**; the
-    `subject_cutout` arm lands here too — a third default-OFF flag missing from the
-    section below, the gap it exists to close. *(measured 2026-08-24 — [area 1](docs/scope/1-auto-digitizing-quality.md))*
-
-**Last updated:** 2026-08-25 (evening) — **the first four real HUMAN portraits, and they overturn the day's headline ruling.** Snapshot; nothing here is a live baseline.
-
-Kent attached four family photographs to chat (the only channel that works — the
-acceptance dir is gitignored under spec decision 6, and the pull-corpus skill's
-own measurement bars binary through Drive). All four decoded 1848x4000, EXIF
-orientation honoured by cv2, downscaled to the service's 2800 px ceiling.
-
-**Every one classifies `gradient`, and by a wide margin.** unique_color_mass:
-
-| fixture | ucm | grad_smoothness |
-|---|---|---|
-| portrait_two_faces_sky | 0.0230 | 1.09 |
-| portrait_adult_graphic_shirt | 0.0267 | 1.16 |
-| portrait_child_closeup | 0.0586 | 1.49 |
-| portrait_sparkler_backlit | 0.0686 | 1.31 |
-| *(owl_kent, for scale)* | *0.1107* | *1.29* |
-| *(summit_badge — a LOGO)* | *0.1152* | *0.46* |
-| *(drone_render — a LOGO)* | *0.1592* | *4.46* |
-
-Real photographs are the LOWEST unique_color_mass content in the whole corpus —
-below every gradient logo. This is the measurement behind the standing ruling
-that "is this a photograph" must be declared, not detected.
-
-**`is_photographic=True` held all four inside `max_colors` (12):** spools
-20→10, 19→12, 25→12, 20→12. Preflight moved F/0 → F/10, D/52, D/40, C/64.
-
-**The 3.5 raggedness cutoff landed in a real empty gap on all four faces** —
-gaps 3.46→3.53, 3.31→3.68, 3.29→3.65, 3.44→4.26 — independently validating a
-threshold that had only ever seen an owl. Borders fired far more often than on
-the owl: 43/71, 19/36, 22/41, 20/32 regions.
-
-**But filled DESTROYS a face.** Visually confirmed on two: the child's face
-quantized to one flat skin field with the eyes and nose gone entirely, only the
-lips surviving; on the adult the person vanished altogether, leaving a floating
-flag shirt on a brown ground. Thread-paint rendered both as recognisable people
-— eyes, nose, smile, hair — at 0.51–0.64 coverage. Its cost: trims 257–406
-against filled's 57–114.
-
-Kent's call on seeing it: *"Faces may be a little too challenging at this stage
-of the project."* Tabled, not abandoned — parked until a more capable tier exists.
-
-**And the checkbox is not the answer.** Kent: *"Why do we need check boxes?
-Can't the tool automatically recognize what it's working with?"* Measured the
-same evening — stage 0's COLOUR signals cannot, but two things the repo already
-ships do:
-
-| signal | real photos | logos / art |
-|---|---|---|
-| EXIF camera Make/Model | **4/4** (all "samsung Galaxy S26 Ultra") | 0/9 |
-| YuNet `detect_faces_seam` | **4/4** (1, 1, 1, and 2 on the two-person shot) | 0/9 |
-
-Blind spots, both known: EXIF is stripped by re-saving — `owl_kent` is a real
-photograph carrying **zero** tags — and the face detector misses pets and
-landscapes. Neither alone is sufficient; EXIF-or-face covers every case in this
-corpus except a stripped photo with no people in it, which is exactly what
-`owl_kent` is. So the design is auto-detect with the declaration as fallback,
-not a checkbox as the primary mechanism. Not built.
+Resolved by taking `main`'s version of both sections wholesale and re-applying
+only this branch's genuinely-new content on top. **The lesson is the one the
+merge did not raise: a doc-compaction pass on a long-lived branch conflicts
+with the same pass on `main` in a way git cannot detect**, because both sides
+are plausible prose rather than overlapping lines. Check a compaction against
+`main` before merging it, not after.
 
 ---
 
