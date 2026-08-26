@@ -3239,6 +3239,24 @@ band, ours the whole logo, and we fragment 43-vs-7), and the pro itself spreads
 | 2 | **`_prune_spurs` destroys the branch node its docstring promises to keep.** Deleting a short corner twig drops a 3-way node to degree 2, so the walker welds two arms into one column folding ~108°. `_WELD_MAX_DOT` exists for this and is never consulted; it would have refused (dot +0.386). | `stage6_satin.py:958`, called `:1126`; consts `:93`, `:100` | Ablation: PRECISION.N bare **12.7 → 4.1%**, DRONE.N 18.6 → 0.9%, AND.N 14.0 → 1.3%. Confirmed on Becker's `R`. | none |
 | 3 | **"AND DRONE" is below renderable size** — 0.55–0.70 mm strokes at 2.91 mm caps, against a ~5 mm / ~1 mm trade minimum. | `s12_stroke.py` | With pull comp it covers but reads `AИD DROИX`; without, letterforms are right but 20–39% bare, reading `ΛND DRONL`. **Coverage or shape, not both.** | not a code problem — Kent's sizing call, parked 2026-08-26 |
 
+### The angle policy's prerequisite is not free
+
+`detect_text_clusters` (`textcluster.py:618`, wired at `pipeline.py:564`)
+already groups regions into words — but its candidate set is gated on
+`rescued_small_shape` (`textcluster.py:541`), so ordinary lettering never
+enters it. Measured: `becker_marine_logo.png` 17 regions / 0 rescued / **0
+text_candidate**; `drone_render.png` 74 / 10 / **0**. **We currently identify
+zero letters on both a real client logo and the wordmark fixture.** Widening
+the entry condition is necessary and may not be sufficient —
+`MIN_CLUSTER_MEMBERS = 3` and the stroke-CV/aspect filters are next in line.
+*(measured 2026-08-26)*
+
+**A pattern worth carrying:** this is the third mechanism in one investigation
+that is correctly implemented and scoped to a subset excluding the common case
+— with `stage5_overlap.py:424` (guard tests `poly.interiors` only) and
+`stage6_satin.py:958` (`_prune_spurs` keeps the node pixel, drops its degree).
+Each is invisible to tests because the narrow case it *does* cover works.
+
 ### Two candidate fixes that must NOT ship as written
 
 - **`_SPLIT_TURN_DEG 90 → 70`** cures all three N's in one line, and breaks

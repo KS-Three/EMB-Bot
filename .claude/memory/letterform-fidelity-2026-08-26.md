@@ -181,6 +181,49 @@ already models. **No ROADMAP gate blocks designing it** (it changes no physical
 constant), but which angle a pro would actually pick, and whether the diagonal
 of an `N` is an exception, is Kent's domain call, not geometry's.
 
+### The prerequisite is NOT free — and it fails the same way, a third time
+
+An angle policy needs to know *which regions form a word*. That machinery
+already exists and is already wired in: `detect_text_clusters`
+(`textcluster.py:618`, called from `pipeline.py:564`) unions similarly-sized,
+aligned regions into text clusters and tags them `text_candidate` /
+`text_cluster_id`.
+
+**It fires on nothing we care about.** Measured 2026-08-26:
+
+| fixture | regions | `rescued_small_shape` | `text_candidate` |
+|---|---|---|---|
+| `becker_marine_logo.png` (a real client logo) | 17 | **0** | **0** |
+| `drone_render.png` (the wordmark fixture) | 74 | 10 | **0** |
+
+The reason is one line, `textcluster.py:541`:
+
+```python
+if not r.meta.get("rescued_small_shape"):
+    continue
+```
+
+**Only regions that were RESCUED SMALL SHAPES are ever candidates.** Ordinary
+lettering — anything large enough to survive segmentation on its own, which is
+most real lettering — never enters the candidate set at all. On `drone_render`
+candidates do exist (10) and still no cluster qualifies, so widening the entry
+condition is necessary but may not be sufficient (`MIN_CLUSTER_MEMBERS = 3`
+plus the stroke-CV and aspect filters are next in line).
+
+**This is the same failure shape for the third time in one investigation:**
+
+1. `stage5_overlap.py:424` — the min-feature guard, scoped to `poly.interiors`,
+   so it protects `O`'s counter and never tests the `E`'s arm slots.
+2. `stage6_satin.py:958` — `_prune_spurs` keeps the node as a *pixel* and drops
+   its *degree*, so every consumer asking "is this a junction?" answers no.
+3. `textcluster.py:541` — text detection, scoped to rescued small shapes, so it
+   cannot see ordinary lettering.
+
+Each is a real mechanism, correctly implemented, **scoped to a subset that
+excludes the common case** — and each is invisible to the tests because the
+narrow case it does cover works. Worth carrying as a smell, not just three
+bugs.
+
 **Weight it accordingly.** Kent's words for this whole class are *"lettering
 should be smooth"* and *"ROOKIE MISTAKE"*. Fidelity and coverage — everything
 ranked below — cannot see an inconsistent angle at all: a letter sewn at the
