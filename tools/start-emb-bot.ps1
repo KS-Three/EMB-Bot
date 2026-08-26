@@ -24,7 +24,7 @@
 
 .PARAMETER TimeoutSeconds
     How long to wait for the Studio before giving up on opening the browser.
-    Defaults to 180 — a cold `npm install` can take a while.
+    Defaults to 180 - a cold `npm install` can take a while.
 
 .EXAMPLE
     .\tools\start-emb-bot.ps1
@@ -51,7 +51,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $appDir 'package.json'))) {
 }
 
 # Each server gets its own window: both hold their terminal until Ctrl+C.
-# Only single quotes inside these commands — Start-Process passes the whole
+# Only single quotes inside these commands - Start-Process passes the whole
 # string as one argument and embedded double quotes would be mangled.
 function Start-ServerWindow {
     param(
@@ -67,7 +67,7 @@ Write-Host 'Window 1: Studio (npm run dev)'
 Start-ServerWindow -Title 'EMB-Bot Studio' -Command "Set-Location -LiteralPath '$appDir'; npm install; npm run dev"
 
 if ($NoDigitizer) {
-    Write-Host 'Window 2: skipped (-NoDigitizer) — image auto-digitize will be unavailable.'
+    Write-Host 'Window 2: skipped (-NoDigitizer) - image auto-digitize will be unavailable.'
 }
 else {
     Write-Host 'Window 2: auto-digitizer (127.0.0.1:8721)'
@@ -104,7 +104,7 @@ while ((Get-Date) -lt $deadline) {
 
 if ($ready) {
     $url = "http://localhost:$Port"
-    Write-Host "Studio is up — opening $url"
+    Write-Host "Studio is up - opening $url"
     Start-Process $url
 }
 else {

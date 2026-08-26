@@ -1,4 +1,4 @@
-# Curve-fidelity tol ladder — shape-fidelity plan Task 2.
+# Curve-fidelity tol ladder - shape-fidelity plan Task 2.
 #
 # Three sequential arms; each preps both lanes for all 15 designs. Paths are
 # resolved from this script's own location (the convention tools/start-emb-bot.ps1
@@ -6,7 +6,7 @@
 # and a transient worktree name), so it survives the worktree being merged away.
 #
 # Reads the corpus from PRO_PARITY_ROOT (prep_both.py's Drive default) and
-# writes each arm to its own PRO_PARITY_OUT — never share one between arms.
+# writes each arm to its own PRO_PARITY_OUT - never share one between arms.
 [CmdletBinding()]
 param(
     # Interpreter: worktrees carry no .venv, so this defaults to the primary
@@ -76,7 +76,7 @@ finally {
 }
 
 if ($failed.Count) {
-    "LADDER INCOMPLETE — failed arms: $($failed -join ', ')" |
+    "LADDER INCOMPLETE - failed arms: $($failed -join ', ')" |
         Tee-Object -FilePath $log -Append
     exit 1
 }
