@@ -1223,6 +1223,13 @@ def sequence(
                     report["as_run"] = 1
                     return runs, report, False
             if tier == "satin" or (ribbon is not None and ribbon.satin):
+                # The house cross angle (2026-08-26). Per-shape intent beats
+                # the global, the same precedence border/underlay_style/
+                # fill_angle already use; None on both keeps today's output
+                # byte-identical, which is what every golden is pinned to.
+                satin_angle_deg = p.region.meta.get("satin_angle_deg")
+                if satin_angle_deg is None:
+                    satin_angle_deg = cfg.satin_angle_deg
                 runs, report = satin_shape(
                     p.polygon,
                     p.shape_id,
@@ -1233,6 +1240,7 @@ def sequence(
                     end_cutback_mm=end_cutback,
                     use_shapefield=use_shapefield,
                     spacing_mm=satin_spacing_mm,
+                    angle_deg=satin_angle_deg,
                 )
                 # A ribbon the skeleton could not resolve still has to sew:
                 # fall through to fill rather than silently dropping artwork.

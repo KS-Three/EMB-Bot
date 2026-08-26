@@ -1168,3 +1168,89 @@ def test_a_short_dead_end_hanging_off_a_body_is_still_pruned():
     assert [int(m[10, x]) for x in range(1, 6)] == [0, 0, 0, 0, 0], \
         "a stem that was a dead end from the start is a spur like any other"
     assert m[0:21, 0].all()
+
+
+# --- the house cross angle for lettering (2026-08-26) -----------------------
+# Kent, on a sewn Becker Marine logo: *"When doing lettering, fill angle should
+# be the same (for almost every block style font like this). Why is the 'N'
+# running Vertically?"* Every cross used to come from that stroke's OWN spine
+# tangent, so each letter -- and each stroke inside a letter -- chose in
+# isolation. Measured on that artwork, EMB-Bot's letter angles were
+# statistically indistinguishable from random; the pro's were not.
+
+
+def _axis_offsets(pts, house_deg):
+    """How far each cross sits from the stroke axis it has to span, in deg."""
+    import numpy as np
+    a = np.asarray(pts, dtype=float)
+    v = np.diff(a, axis=0)
+    L = np.hypot(v[:, 0], v[:, 1])
+    keep = L > 0.2
+    return np.degrees(np.arctan2(v[keep, 1], v[keep, 0])) % 180.0
+
+
+def test_no_house_angle_is_byte_identical_to_not_passing_one():
+    """The default has to be invisible. Every golden in the suite is pinned to
+    the per-stroke tangent, so `satin_angle_deg=None` must not merely look the
+    same -- it must be the same points."""
+    from shapely.geometry import Polygon as _P
+    from digitizer_core.stage6_satin import satin_shape
+
+    poly = _P([(0, 0), (3, 0), (3, 40), (0, 40)])
+    a, _ = satin_shape(poly, "s1", underlay_style="none", trim_at_mm=99.0)
+    b, _ = satin_shape(poly, "s1", underlay_style="none", trim_at_mm=99.0,
+                       angle_deg=None)
+    assert [list(r.points) for r in a] == [list(r.points) for r in b]
+
+
+def test_the_house_angle_actually_moves_the_crosses():
+    """A vertical bar's crosses are horizontal either way, so prove the knob
+    works on a bar the house angle genuinely disagrees with: a 60 deg bar,
+    whose own tangent would give 150 deg crosses, asked for 0."""
+    import numpy as np
+    from shapely import affinity
+    from shapely.geometry import Polygon as _P
+    from digitizer_core.stage6_satin import satin_shape
+
+    bar = affinity.rotate(_P([(0, 0), (3, 0), (3, 40), (0, 40)]), 60 - 90,
+                          origin="centroid")
+    stock, _ = satin_shape(bar, "s", underlay_style="none", trim_at_mm=99.0)
+    housed, _ = satin_shape(bar, "s", underlay_style="none", trim_at_mm=99.0,
+                            angle_deg=0.0)
+    sm = np.median(_axis_offsets([p for r in stock for p in r.points], 0.0))
+    hm = np.median(_axis_offsets([p for r in housed for p in r.points], 0.0))
+    # Stock follows the bar (crosses ~150 deg); housed is pulled toward 0/180.
+    assert abs((sm - 150 + 90) % 180 - 90) < 25, f"stock crosses at {sm:.0f}"
+    assert abs((hm - 0 + 90) % 180 - 90) < 25, f"housed crosses at {hm:.0f}"
+
+
+def test_the_clamp_never_lets_a_cross_run_along_its_own_stroke():
+    """THE load-bearing guard. A satin cross has to SPAN its column; forced
+    parallel to the stroke it would lie along it and the column collapses.
+    `_clamp_to_span` holds the house angle where the stroke allows and rotates
+    to the nearest spanning angle where it does not -- so no orientation,
+    anywhere in 180 deg, may come out under the floor."""
+    import math
+
+    from digitizer_core.stage6_satin import (SATIN_HOUSE_MIN_SPAN_DEG,
+                                             _clamp_to_span)
+
+    worst = 90.0
+    for axis in range(0, 180):
+        out = math.degrees(_clamp_to_span(0.0, math.radians(axis))) % 180.0
+        worst = min(worst, abs((out - axis + 90) % 180 - 90))
+    assert worst >= SATIN_HOUSE_MIN_SPAN_DEG - 1e-6, (
+        f"a cross came out {worst:.1f} deg off its own axis")
+
+
+def test_a_stroke_that_can_span_the_house_angle_gets_it_exactly():
+    """"Held loosely" is not "approximately". Where the stroke can span it,
+    the house angle is passed through untouched -- the clamp only ever engages
+    on the strokes that would degenerate."""
+    import math
+
+    from digitizer_core.stage6_satin import _clamp_to_span
+
+    for axis in (90, 75, 60, 46):          # all >= the 45 deg floor from 0
+        assert abs(_clamp_to_span(0.0, math.radians(axis))) < 1e-9, (
+            f"house angle was moved on a {axis} deg stroke that could span it")
