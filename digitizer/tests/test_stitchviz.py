@@ -9,6 +9,8 @@ render and the one number it produces.
 """
 from __future__ import annotations
 
+import re
+
 import numpy as np
 import pytest
 
@@ -230,6 +232,28 @@ def test_the_unlit_path_is_the_pre_shading_draw_exactly():
     assert len(solid) == pytest.approx(THREAD_MM * 20.0, abs=2.0)
 
 
+def _js_function_body(js: str, name: str) -> str:
+    """The source of one top-level `export function NAME` in `preview.js`.
+
+    Brace-matching, not the `\\n}\\n` scan the discarded version of this check
+    used. That scan takes the first column-0 `}` after the signature, which is
+    the end of the function only while nothing inside it ever closes a block at
+    column 0 -- true today, silently wrong the first time someone reformats.
+    Cheap to do properly, and a helper that quietly returns a FRAGMENT would
+    weaken every assertion built on it instead of failing.
+    """
+    start = js.index(f"export function {name}(")
+    depth = 0
+    for i in range(js.index("{", start), len(js)):
+        if js[i] == "{":
+            depth += 1
+        elif js[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return js[start:i + 1]
+    raise AssertionError(f"{name} in preview.js has unbalanced braces")
+
+
 def test_the_two_renderers_agree_on_the_light():
     """`preview.js` implements this same model for the Studio canvas. If the
     two lit from different corners, what Kent rules on in an acceptance sheet
@@ -251,3 +275,50 @@ def test_the_two_renderers_agree_on_the_light():
         "preview.js and stitchviz disagree about the light direction")
     assert f"export const THREAD_WIDTH_MM = {sv.THREAD_MM};" in js, (
         "preview.js and stitchviz disagree about filament width")
+
+    # AND THAT THOSE CONSTANTS ARE LIVE. Matching a declaration only proves the
+    # name is present in the file; it says nothing about anything reading it.
+    # That is not hypothetical -- it is how this test failed on 2026-08-25: a
+    # merge left `LIGHT_DEG = 225` behind as dead code and the grep kept
+    # passing for hours while the live canvas lit from a different corner.
+    # Comparing live constants (above) fixed the WHICH; this fixes the WHETHER.
+    #
+    # The chain that has to hold: renderRealistic -> drawThreads -> LIGHT_*.
+    # Assert every link. A dead constant breaks the last one, and a merge that
+    # bolts a second renderer into renderRealistic breaks the middle one.
+    render = _js_function_body(js, "renderRealistic")
+    threads = _js_function_body(js, "drawThreads")
+    assert "drawThreads(" in render, (
+        "renderRealistic no longer routes through drawThreads -- the shared "
+        "lighting model is bypassed, so these constants prove nothing")
+    for const in ("LIGHT_X", "LIGHT_Y"):
+        assert const in threads, (
+            f"drawThreads does not read {const} -- the light constants are "
+            "dead again, and this test would pass while the canvas disagrees")
+    assert "THREAD_WIDTH_MM" in render, (
+        "renderRealistic does not read THREAD_WIDTH_MM -- filament width is "
+        "dead code and coverage in the preview no longer means anything")
+
+
+def test_render_realistic_declares_each_local_once():
+    """A bad merge of `preview.js` has landed FOUR times, always the same way:
+    a superseded copy of the thread-drawing block is re-applied on top of the
+    current one inside `renderRealistic`, giving two `const lw` in one scope.
+
+    The JS suite does catch it -- as `SyntaxError: Identifier 'lw' has already
+    been declared`, with no hint of what merged wrong. This catches the same
+    class here, in a job that runs separately from vitest, and names it.
+    """
+    from pathlib import Path
+
+    js = (Path(__file__).resolve().parents[2] / "app" / "src" / "lib" / "preview.js").read_text(encoding="utf-8")
+    body = _js_function_body(js, "renderRealistic")
+
+    # Top-level declarations in the function body only: `const` at exactly one
+    # indent level. Nested-block locals legitimately shadow and are skipped.
+    names = re.findall(r"^  (?:const|let) (\w+)\s*=", body, re.MULTILINE)
+    dupes = sorted({n for n in names if names.count(n) > 1})
+    assert not dupes, (
+        f"renderRealistic declares {dupes} more than once in one scope. This "
+        "is the recurring bad merge: a stale thread-drawing block re-applied "
+        "over the current one. Keep the block that calls drawThreads.")
