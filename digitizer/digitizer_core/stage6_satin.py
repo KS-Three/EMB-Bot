@@ -1199,10 +1199,59 @@ def _resample(pts: list[tuple[float, float]], n: int) -> list[tuple[float, float
     return [(p.x, p.y) for p in (line.interpolate(line.length * i / (n - 1)) for i in range(n))]
 
 
+# --- The house angle for satin lettering (2026-08-26) ------------------------
+# Kent, on a sewn Becker Marine logo: *"When doing lettering, fill angle should
+# be the same (for almost every block style font like this). Why is the 'N'
+# running Vertically?"* He was right, and it was structural: every cross angle
+# came from that stroke's OWN spine tangent, so each letter -- and each stroke
+# inside a letter -- chose in isolation. Measured on that logo, EMB-Bot's letter
+# angles were statistically indistinguishable from random (9/43 within +/-20 deg
+# of the mode, against a 22% chance baseline); the pro's were not.
+#
+# `fill_angle_deg` has carried this idea for the FILL tier all along. This is
+# satin's counterpart, and it is deliberately the same shape: None = today's
+# behaviour exactly, a number forces the house angle.
+#
+# WHY IT IS A CLAMP AND NOT AN ASSIGNMENT. A satin cross has to SPAN its
+# column. Forced onto a stroke it runs near-parallel to -- an E's arms under a
+# horizontal house angle -- the "cross" would lie along the stroke and the
+# column collapses. So the house angle is held where the stroke allows it and
+# rotated to the nearest angle that still spans where it does not. That is also
+# the honest reading of the pro's file: its crosses cluster near horizontal on
+# stems, which for block letters largely FOLLOWS from vertical strokes carrying
+# most of the area -- it is not evidence of horizontal crosses forced onto
+# horizontal strokes.
+#
+# The floor is 45 deg off the stroke axis because cross length grows as
+# 1/sin(d): 41% longer at 45 deg, and `_rail_points` already caps rails at
+# ~1.6x the local half-width, so 1.41x still fits under a cap that exists for
+# an unrelated reason. Below 45 the stitch gets long faster than it gets
+# useful.
+SATIN_HOUSE_MIN_SPAN_DEG = 45.0
+
+
+def _clamp_to_span(house: float, tangent: float) -> float:
+    """The house cross angle, rotated the least amount that still spans a
+    stroke running at `tangent`. Both radians; returns radians.
+
+    A cross perpendicular to the tangent spans best (d = 90 deg). d is folded
+    to [0, 90] because a cross sewn either way round is the same cross.
+    """
+    ideal = tangent + math.pi / 2.0
+    # Signed difference house->ideal, folded to (-90, 90]: rotating a cross by
+    # 180 deg is the same cross, so never rotate further than that.
+    diff = (house - ideal + math.pi / 2.0) % math.pi - math.pi / 2.0
+    limit = math.radians(90.0 - SATIN_HOUSE_MIN_SPAN_DEG)
+    if abs(diff) <= limit:
+        return house
+    return ideal + math.copysign(limit, diff)
+
+
 def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
                  fallback_half_mm: float,
                  field: _WidthField | None = None,
-                 spacing_mm: float = machine.SATIN_SPACING_MM) -> tuple[list, list]:
+                 spacing_mm: float = machine.SATIN_SPACING_MM,
+                 angle_deg: float | None = None) -> tuple[list, list]:
     """Cast the smoothed, unwrapped normals both ways to find the two rails.
 
     Each rail is capped at ~1.6x the LOCAL medial half-width: at a branch
@@ -1239,6 +1288,16 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
         a = spine[max(0, i - k)] if not closed else spine[(i - k) % n]
         b = spine[min(n - 1, i + k)] if not closed else spine[(i + k) % n]
         angles.append(math.atan2(b[1] - a[1], b[0] - a[0]) + math.pi / 2)
+
+    # The house angle, if one is set: hold it where this stroke can span it,
+    # rotate to the nearest spanning angle where it cannot. Applied BEFORE the
+    # unwrap and the smoothing below so both still do their job -- a clamped
+    # sequence can still step, and the smoothing is what keeps that step from
+    # becoming a visible kink.
+    if angle_deg is not None:
+        house = math.radians(angle_deg)
+        angles = [_clamp_to_span(house, a - math.pi / 2.0) for a in angles]
+
     for i in range(1, n):
         while angles[i] - angles[i - 1] > math.pi / 2:
             angles[i] -= math.pi
@@ -1902,8 +1961,15 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  field: _WidthField | None = None,
                  split_above_mm: float | None = None,
                  end_cutback_mm: float = 0.0,
-                 spacing_mm: float = machine.SATIN_SPACING_MM) -> list[tuple[float, float]]:
+                 spacing_mm: float = machine.SATIN_SPACING_MM,
+                 angle_deg: float | None = None) -> list[tuple[float, float]]:
     """One stroke -> flat zigzag points (A1, B1, A2, B2, ...).
+
+    `angle_deg` is the house cross angle for satin lettering (2026-08-26).
+    None -- the default, and what every caller that never mentions it gets --
+    keeps today's output exactly: each cross perpendicular to this stroke's own
+    spine tangent. A number holds that angle wherever the stroke can span it;
+    see `_clamp_to_span` for why it is a clamp and not an assignment.
 
     `spacing_mm` (task A2, default `machine.SATIN_SPACING_MM`) is the
     along-column cross spacing this stroke targets — every caller before the
@@ -2010,7 +2076,8 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
 
     steps = max(2, int(math.ceil(length / spacing_mm)))
     spine = _resample(spine, steps)
-    rail_a, rail_b = _rail_points(poly, spine, stroke.closed, half_mm, field, spacing_mm)
+    rail_a, rail_b = _rail_points(poly, spine, stroke.closed, half_mm, field,
+                                  spacing_mm, angle_deg)
     crosses = _short_stitch_guard(rail_a, rail_b)
     above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
 
@@ -2343,6 +2410,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 end_cutback_mm: float = 0.0,
                 use_shapefield: bool = False,
                 spacing_mm: float = machine.SATIN_SPACING_MM,
+                angle_deg: float | None = None,
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
     contract `stitch_shape` uses, so stage 7 can treat the two identically.
@@ -2389,7 +2457,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     kept: list[tuple[Stroke, list]] = []
     for st in strokes:
         pts = satin_stroke(poly, st, half_mm, field, split_above_mm,
-                           end_cutback_mm, spacing_mm)
+                           end_cutback_mm, spacing_mm, angle_deg)
         if len(pts) >= 4:
             kept.append((st, pts))
     if not kept:

@@ -450,6 +450,27 @@ class PipelineConfig:
     # None = per-region principal axis (what the browser engine does, and what
     # beat a fixed angle in practice). A number forces every region to it.
     fill_angle_deg: float | None = None
+    # SATIN's counterpart to fill_angle_deg, and until 2026-08-26 there was
+    # none -- which is the whole defect. Every satin cross came from that
+    # stroke's OWN spine tangent, so each letter, and each stroke inside a
+    # letter, chose in isolation. Kent, on a sewn Becker Marine logo: *"When
+    # doing lettering, fill angle should be the same ... Why is the 'N' running
+    # Vertically?"* Measured on that artwork, EMB-Bot's letter angles were
+    # statistically indistinguishable from random (9/43 within +/-20 deg of the
+    # mode, chance baseline 22%); the pro's were not (6/7).
+    #
+    # None = today's behaviour exactly, per-stroke tangent, byte-identical.
+    # A number is a HOUSE ANGLE, held loosely: `stage6_satin._clamp_to_span`
+    # holds it wherever a stroke can span it and rotates to the nearest
+    # spanning angle where it cannot, because a cross forced parallel to its
+    # own stroke does not cross. Per-shape intent beats it the same way
+    # border/underlay_style/fill_angle do: `Region.meta["satin_angle_deg"]`,
+    # riding the same deterministic-id carry-forward.
+    #
+    # NOT a physical constant and NOT ROADMAP gate 1: it changes no fill row
+    # spacing, satin width floor, link cover tolerance, fabric preset or DST
+    # orientation. It is a design choice, exactly as fill_angle_deg is.
+    satin_angle_deg: float | None = None
     # None = the fabric preset's fill underlay style. One of "none" |
     # "edge_run" | "center_run" | "edge_zigzag" | "edge_lattice" |
     # "double_lattice" | "zigzag" (fabrics.py's own vocabulary). Feeds the
