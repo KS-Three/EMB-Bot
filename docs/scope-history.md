@@ -25,6 +25,75 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-08-26 — **review pass on the manual-digitize / realistic-preview work, and the seven defects it found.**
+
+An eight-angle adversarial review of what shipped in PRs #249-#259. All eight
+angles independently flagged the same top defect, which was worth noting on its
+own: consensus among finders that cannot see each other is a much stronger
+signal than any one of them.
+
+Every finding was re-verified against the shipped modules before being reported,
+by importing them directly rather than trusting the reviewers' reasoning. Five
+were confirmed by measurement, two by reading compiler output. All seven were
+mine, all were live on `main`, and none had a failing test.
+
+**What was wrong.**
+
+1. `drawThreads`' FLAT path keyed its buckets by RGB alone, merging a colour
+   that recurs later in the sew sequence back into its first block. Measured:
+   red→blue→red painted `[red, blue]` in flat and `[red, blue, red]` in lit.
+   The lit path had been fixed for exactly this the day before; the flat path
+   was missed. Worst possible surface for it — flat is the view you switch to
+   in order to judge coverage.
+2. `renderRealistic`'s public `threadLayers` option accepted a COUNT, forwarded
+   to `layers`, where it meant `slice(0, n)`. The only undarkened layer is index
+   2, so `{ threadLayers: 2 }` painted `rgb(132,7,7)` and `rgb(170,9,9)` for a
+   `rgb(200,10,10)` thread — the true colour never appeared. Same prefix bug as
+   the LOD ladder's, one layer down, missed because the ladder stopped emitting
+   counts while this caller-facing option went on accepting them.
+3. `duplicateShape` clamped to `dx = dy = 0` for any shape flush to the right
+   and bottom edges — the copy landed exactly on the original, the one outcome
+   `PASTE_OFFSET_PX`'s own comment forbids. Reachable by every traced outline,
+   since `traceFitRect` letterboxes artwork to the canvas edges.
+4. In the same function, the min-edge clamps OVERWROTE the max-edge clamps
+   instead of intersecting with them, pushing an oversize shape further off
+   canvas (measured: maxX 700 → 750 on a 640-wide canvas) — the opposite of
+   what the doc comment promised.
+5. `shapeAlpha` was never pruned on delete, and `nextShapeId` recycles ids
+   (max+1 over survivors), so deleting a dimmed `s2` and drawing a new shape
+   gave it the id `s2` and the dead shape's dim value. New shape, born faded,
+   no visible cause.
+6. The Dim slider's `value` and the Reset button's `disabled` both compiled to
+   `$.untrack(() => alphaFor(...))` with only `selectedShape` tracked, so
+   neither followed `shapeAlpha`. Clicking Reset repainted the canvas while the
+   slider stayed at the dimmed position and Reset stayed enabled.
+7. `preview.spec.js`'s anti-flattery guard comment restated the fill-density
+   claim retracted on 2026-08-25, and cited ROADMAP gate 3 where the
+   physical-constants gate is gate 1.
+
+**The lesson worth keeping,** and the reason 1, 2 and 6 all existed: *a fix
+applied to one path is not applied to its siblings.* The prefix-vs-subset bug
+was found and fixed in the LOD ladder on 2026-08-25 and left in two other places
+that spoke the same language. The block-ordering bug was found and fixed in the
+lit renderer and left in the flat one. Each fix's own test passed. Nothing asked
+"where else does this shape of code live?" — which is now what the flat/lit test
+asserts, as an invariant between the two views rather than two independent
+expectations.
+
+**And the Svelte trap, restated:** the legacy `$:` dependency list is built from
+what a statement *textually* references. A read that only happens inside a
+called function is invisible to it. This repo already had the workaround written
+down — `render()`'s "ghost argument" list carries `backdropCanvas`,
+`backdropOn`, `backdropOpacity`, `shapeAlpha` for exactly this reason — and the
+Dim control was written next to it without using it.
+
+All seven fixed. Every fix pinned by a test verified to FAIL against the old
+code and pass against the new one (five mutants applied and reverted). Suites at
+the time of the fix: engine 441/441 with zero skips, Studio 837/837,
+`test_stitchviz.py` 12/12, `vite build` clean.
+
+---
+
 **Last updated:** 2026-08-25 — **realistic thread rendering + manual-digitize tracing, PR #249.** Prompted by Kent pointing at 4:50 of an Ember review video (`aV45vVuB9SQ`).
 
 Two fetch attempts for the video were blocked (bot-check redirect; empty

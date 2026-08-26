@@ -1,5 +1,5 @@
 <script>
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
   import TraceImportPanel from "./TraceImportPanel.svelte";
   import Icon from "./Icon.svelte";
@@ -10,6 +10,7 @@
     curveControlOrNull, hitTestSegmentMidpoint, curveHandlePoint, pointInShape,
     nearestSegmentIndex, insertVertexAtSegment,
     curvedNodeThrough, curvedNodeFlags, quadraticControlForPointOnCurve,
+    shouldScrollCanvasIntoView,
     duplicateShape, nextShapeIds,
   } from "../lib/manualShapes.js";
   import { traceFitRect } from "../lib/manualTrace.js";
@@ -175,6 +176,31 @@
   // continuously (not just after a drag ends) so a mid-drag self-intersect
   // shows up live, the same way the draft-drawing flow already behaves.
   $: editIssues = editingId ? shapeIssues(editFlat) : [];
+
+  // Bring the drawing canvas into view on entry, but only when it is actually
+  // clipped. Measured 2026-08-26 in a real browser: the panel opens with a
+  // seven-line instruction paragraph above the canvas, so at a 1280x720
+  // viewport only 14% of the canvas is inside the scroll port -- you land in
+  // "Draw shapes" unable to see most of the thing you draw on. At 1440x900 it
+  // is 92% and at 1920x1080 it is 100%, which is why this never showed up on
+  // a desktop.
+  //
+  // Guarded on the clipping rather than run unconditionally: a scroll that
+  // fires where nothing was wrong is just a jump the user did not ask for.
+  // 'nearest' rather than 'center' for the same reason -- it moves the
+  // minimum needed, keeping the instructions in view when they still fit.
+  onMount(() => {
+    if (!canvasEl || typeof canvasEl.scrollIntoView !== "function") return;
+    // The nearest ancestor that actually scrolls -- .panel-body in the app.
+    let port = canvasEl.parentElement;
+    while (port && port.scrollHeight <= port.clientHeight) port = port.parentElement;
+    if (!port) return;
+    // 'nearest', not 'center': move the minimum needed, so the instructions
+    // just above the canvas stay in view whenever they still fit.
+    if (shouldScrollCanvasIntoView(canvasEl.getBoundingClientRect(), port.getBoundingClientRect())) {
+      canvasEl.scrollIntoView({ block: "nearest" });
+    }
+  });
 
   function nextShapeId(list) {
     let max = 0;
@@ -418,14 +444,59 @@
   // reaching it by accident later, and it stays out of the .embproj too.
   let shapeAlpha = {}; // { [shapeId]: 0..1 }
 
-  function alphaFor(id) {
-    const v = shapeAlpha[id];
+  // Prune entries for shapes that no longer exist. Ids are RECYCLED --
+  // nextShapeId is max+1 over the surviving list, so deleting s2 from
+  // [s1, s2] makes the next shape s2 again -- and a stale entry meant that
+  // new shape appeared already dimmed, with a slider the user never touched
+  // and no visible cause (found by review 2026-08-26). Pruning here rather
+  // than only in deleteShape catches every removal path (delete, undo of a
+  // create, load, clear) with one rule. Undoing a delete does not restore the
+  // dim, which is correct: it is ephemeral view state, not document state.
+  //
+  // Guarded on an actual change so this never reassigns shapeAlpha on a
+  // no-op pass -- render() below lists shapeAlpha as a dependency, and an
+  // unconditional reassign here would retrigger it on every shapes change.
+  $: {
+    const live = new Set(shapes.map((s) => s.id));
+    const keys = Object.keys(shapeAlpha);
+    if (keys.some((k) => !live.has(k))) {
+      const next = {};
+      for (const k of keys) if (live.has(k)) next[k] = shapeAlpha[k];
+      shapeAlpha = next;
+    }
+  }
+
+  // Takes the map explicitly so a `$:` statement can name it -- see
+  // selectedAlpha below for why that matters. alphaFor is the convenience
+  // wrapper for the non-reactive callers (render()'s draw loop).
+  function alphaIn(map, id) {
+    const v = map[id];
     return typeof v === "number" ? v : 1;
+  }
+
+  function alphaFor(id) {
+    return alphaIn(shapeAlpha, id);
   }
 
   function setAlpha(id, v) {
     shapeAlpha = { ...shapeAlpha, [id]: Number(v) };
   }
+
+  // The selected shape's dim level, as reactive STATE rather than a call to
+  // alphaFor() in the markup. Svelte compiles a bare `alphaFor(x.id)` in an
+  // attribute to `$.untrack(() => alphaFor(x.id))` with only `selectedShape`
+  // as a tracked dependency, so the slider thumb and the Reset button's
+  // disabled state never moved when shapeAlpha changed: clicking Reset
+  // repainted the canvas (render() lists shapeAlpha explicitly) while the
+  // slider stayed at the dimmed position and Reset stayed enabled -- the
+  // control lying about the shape it controls.
+  //
+  // shapeAlpha is passed as an ARGUMENT rather than read inside alphaFor,
+  // for the same reason render() below takes its ghost arguments: Svelte's
+  // legacy `$:` dependency list is built from what the statement itself
+  // textually references, so a read that only happens inside a called
+  // function is invisible to it and the statement never re-runs.
+  $: selectedAlpha = selectedShape ? alphaIn(shapeAlpha, selectedShape.id) : 1;
 
   // ---- Vertex editing ----------------------------------------------------
   function startShapeEdit(id) {
@@ -1102,7 +1173,7 @@
           min="0.15"
           max="1"
           step="0.05"
-          value={alphaFor(selectedShape.id)}
+          value={selectedAlpha}
           on:input={(e) => setAlpha(selectedShape.id, e.currentTarget.value)}
           aria-label="Dim this shape"
           title="See through this shape to what is underneath — a view control, it does not change the stitches"
@@ -1111,7 +1182,7 @@
           type="button"
           class="mp-dim-reset"
           on:click={() => setAlpha(selectedShape.id, 1)}
-          disabled={alphaFor(selectedShape.id) === 1}
+          disabled={selectedAlpha === 1}
         >Reset</button>
       </div>
       <div class="mp-row">

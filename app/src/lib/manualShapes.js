@@ -451,6 +451,39 @@ export function insertVertexAtSegment(shape, segIndex, point) {
 // from nothing having happened, and the user cannot grab either copy to
 // separate them. Small enough that the copy stays inside the canvas for any
 // shape that fits with room to spare.
+// Should the drawing canvas scroll itself into view on entry?
+//
+// Measured in a real browser 2026-08-26: ManualPanel opens with a seven-line
+// instruction paragraph above the canvas, so at a 1280x720 viewport only 14%
+// of the canvas sat inside the scroll port -- you land in "Draw shapes" unable
+// to see most of the surface you draw on. 1440x900 was 92%, 1920x1080 was
+// 100%, which is why it never showed up on a desktop.
+//
+// Two things it must NOT do, and both are the reason this is a predicate
+// rather than an unconditional scrollIntoView:
+//   - Never scroll where nothing is clipped. A jump the user did not ask for
+//     is its own bug, and it is the common case on a tall screen.
+//   - Never scroll off an unmeasurable rect. A zero-height canvas means
+//     layout has not happened (or there is none, as under jsdom), not that
+//     the canvas is hidden. Returning false is the safe reading; scrolling on
+//     a guess is not. (NaN from 0/0 would also fall through the comparison,
+//     but relying on that is a coincidence, not a decision.)
+//
+// Pure and exported so the rule can be asserted directly -- the same reason
+// preview.js's threadLodLayers is a standalone function. Testing it through a
+// mounted component would mean faking a layout jsdom does not have, which is
+// how you end up with a test that cannot fail.
+export function shouldScrollCanvasIntoView(canvasRect, portRect, minVisible = 0.9) {
+  if (!canvasRect || !portRect) return false;
+  const h = canvasRect.bottom - canvasRect.top;
+  if (!(h > 0)) return false;
+  const visible = Math.max(
+    0,
+    Math.min(canvasRect.bottom, portRect.bottom) - Math.max(canvasRect.top, portRect.top),
+  );
+  return visible / h < minVisible;
+}
+
 export const PASTE_OFFSET_PX = 18;
 
 // Duplicate a shape: same geometry, same stitch settings, NEW id, nudged clear
@@ -460,7 +493,9 @@ export const PASTE_OFFSET_PX = 18;
 //
 // Clamped so a paste can never push a copy off-canvas: if the offset would
 // carry any point past an edge, the whole copy shifts back by the overflow, so
-// it stays whole and grabbable rather than being partly unreachable.
+// it stays whole and grabbable rather than being partly unreachable. A shape
+// bigger than the canvas has no on-canvas offset at all -- that one keeps the
+// nominal nudge, because every alternative is equally off-canvas.
 export function duplicateShape(shape, id, offset = PASTE_OFFSET_PX, canvasW = CANVAS_W, canvasH = CANVAS_H) {
   if (!shape || !Array.isArray(shape.points) || shape.points.length === 0) return null;
 
@@ -476,10 +511,41 @@ export function duplicateShape(shape, id, offset = PASTE_OFFSET_PX, canvasW = CA
   for (const pt of shape.points) consider(pt);
   for (const key of Object.keys(shape.curves || {})) consider(shape.curves[key]);
 
-  if (maxX + dx > canvasW) dx = Math.min(dx, canvasW - maxX);
-  if (maxY + dy > canvasH) dy = Math.min(dy, canvasH - maxY);
-  if (minX + dx < 0) dx = Math.max(dx, -minX);
-  if (minY + dy < 0) dy = Math.max(dy, -minY);
+  // Clamp to the range of offsets that keeps the copy on-canvas, then pick the
+  // one closest to `offset`. Two bugs lived in the obvious four-if version
+  // (both found by review 2026-08-26):
+  //
+  //   1. The min-edge ifs OVERWROTE the max-edge ifs instead of intersecting
+  //      with them. A shape already hanging off both edges (minX < 0 and
+  //      maxX > canvasW -- routine for artwork wider than the canvas) got
+  //      dx = -minX, pushing the copy FURTHER right, the exact opposite of
+  //      what the comment above promises.
+  //   2. Nothing kept the offset off zero. A shape whose bounds touch the
+  //      right and bottom edges -- routine for a traced outline, since
+  //      traceFitRect letterboxes artwork flush to the canvas -- clamped to
+  //      dx = dy = 0, landing the copy exactly on the original. Invisible
+  //      duplicate, and dragging "the copy" moves the original instead.
+  //
+  // When the shape is larger than the canvas the window is empty (lo > hi);
+  // there is no offset that keeps it whole, so clamping is pointless and we
+  // keep the nominal offset rather than making things worse.
+  const clampAxis = (d, minV, maxV, extent) => {
+    const lo = -minV;          // smallest offset that keeps the low edge on-canvas
+    const hi = extent - maxV;  // largest offset that keeps the high edge on-canvas
+    if (lo > hi) return d;
+    return Math.min(Math.max(d, lo), hi);
+  };
+  dx = clampAxis(dx, minX, maxX, canvasW);
+  dy = clampAxis(dy, minY, maxY, canvasH);
+
+  // Never land exactly on the original. If the clamp took BOTH axes to zero
+  // there is no room in the +offset direction, so go the other way -- the
+  // window is guaranteed to have room there or the shape fills the canvas
+  // exactly, in which case an overlapping copy is unavoidable and honest.
+  if (dx === 0 && dy === 0) {
+    dx = clampAxis(-offset, minX, maxX, canvasW);
+    dy = clampAxis(-offset, minY, maxY, canvasH);
+  }
 
   const move = (pt) => ({ x: pt.x + dx, y: pt.y + dy });
   const curves = {};

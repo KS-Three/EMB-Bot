@@ -802,6 +802,42 @@ deliberately. The default bow takes its side from the turn the path is making,
 so a run of curved nodes arcs instead of scalloping. Backspace mid-draft takes
 back the last node. *(confirmed 2026-08-25 — `curvedNodeThrough` tests + browser)*
 
+**Copy/paste (Ctrl+C/V), Duplicate (Ctrl+D), and a per-shape Dim slider.** The
+clipboard holds a shape *snapshot*, not an id, so a paste after the original was
+edited or deleted still pastes what was copied. Dim is view-only and never
+reaches the stitch plan or the `.embproj`. Both shipped with defects that a
+pure-logic test could not see and a later review caught: `duplicateShape`
+landed the copy exactly on the original for any shape flush to the canvas edge
+(every traced outline, since `traceFitRect` letterboxes to the edges), and the
+Dim slider froze at whatever value the shape had when it was selected, because
+Svelte's legacy `$:` dependency list only sees what a statement *textually*
+names — a read inside a called function is invisible to it. Both fixed, both
+now pinned by tests proven to fail against the old code.
+*(confirmed 2026-08-26 — `manualShapes.spec.js` + `ManualPanel.spec.js`, mutation-checked)*
+
+**Driven in a real browser 2026-08-26** — right-click curved nodes, the tracing
+backdrop, Duplicate, and the Dim slider, all exercised by hand rather than only
+by tests. Two things were wrong that no test could see. The drawing canvas
+opened mostly below the fold on a short viewport (14% visible at 1280x720, 92%
+at 1440x900, 100% at 1080p — which is why it never showed on a desktop); it now
+scrolls itself in **only when measurably clipped**, so a tall screen is
+untouched. And the trace panel's file picker was a bare `<input type="file">`
+rendering as raw OS chrome that read "No file chosen" even after a file loaded
+(`onFile` clears the input's value so re-picking the same file still fires);
+it now uses the same styled-label pattern as `DigitizePanel`'s `.dgp-upload`.
+Confirmed working and NOT broken: the traced outline lands exactly on the
+backdrop artwork, and the dropped-hole warning does show — before you accept
+the shapes, which is the moment it matters.
+*(confirmed 2026-08-26 — Playwright browser session, measured at three viewports)*
+
+**The flat and realistic views now agree about sew order.** A colour that
+recurs later in the sequence is its own block in both, not merged back into its
+first appearance. The lit path was fixed for this on 2026-08-25; the flat path
+kept the bug for another day, on the one view you switch to specifically to
+judge coverage. Pinned as an invariant — the two views must produce the *same*
+block sequence — rather than as two independent expectations.
+*(confirmed 2026-08-26 — `preview.spec.js`, mutation-checked)*
+
 ---
 
 ## How this document works

@@ -236,8 +236,19 @@
     Uncheck "Remove background" below.
   </p>
 
+  <!-- Styled label + visually-hidden input, the same pattern DigitizePanel's
+       .dgp-upload uses for its own artwork picker. A bare <input type="file">
+       renders as raw browser chrome ("Choose File | No file chosen"), which is
+       the one control in this panel that does not speak the app's visual
+       language -- and it reads "No file chosen" even after a file loads,
+       because onFile clears the input's value so re-picking the same file
+       still fires a change event. The filename beside it is the real answer;
+       the native text was contradicting it. -->
   <div class="tip-upload">
-    <input type="file" accept="image/png,image/jpeg,image/webp,image/*" on:change={onFile} />
+    <label class="tip-uploadwrap">
+      <span class="tip-uploadbtn">{fileName ? "Replace image…" : "Choose image…"}</span>
+      <input type="file" accept="image/png,image/jpeg,image/webp,image/*" on:change={onFile} />
+    </label>
     {#if busy}<span class="tip-filename">Loading…</span>
     {:else if fileName}<span class="tip-filename">{fileName}</span>{/if}
   </div>
@@ -298,6 +309,30 @@
   }
   .tip-hint { font-size: var(--fs-xs, 12px); color: var(--muted, #6b7280); margin: 0; }
   .tip-upload { display: flex; align-items: center; gap: 8px; }
+  .tip-uploadwrap { display: inline-block; cursor: pointer; }
+  .tip-uploadwrap input[type="file"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    overflow: hidden;
+  }
+  .tip-uploadbtn {
+    display: inline-block;
+    padding: 6px 12px;
+    border: 1px solid var(--tint-border, #ccd6fb);
+    border-radius: var(--radius-s, 6px);
+    background: var(--surface, #fff);
+    font-size: var(--fs-xs, 12px);
+  }
+  /* Keyboard focus lands on the hidden input, so the ring has to be drawn on
+     the span the user can actually see. :focus-within on the wrapper, not a
+     sibling selector -- the input follows the span in the markup, so `+`
+     would never match it. */
+  .tip-uploadwrap:focus-within .tip-uploadbtn {
+    outline: 2px solid var(--accent, #4f46e5);
+    outline-offset: 2px;
+  }
   .tip-filename { font-size: var(--fs-xs, 12px); color: var(--muted, #6b7280); }
   .tip-err { font-size: var(--fs-xs, 12px); color: var(--danger, #c0392b); margin: 0; }
   .tip-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; font-size: var(--fs-xs, 12px); }

@@ -8,6 +8,7 @@ import {
   distToSegment, nearestSegmentIndex, insertVertexAtSegment,
   curvedNodeThrough, curvedNodeFlags, CURVED_NODE_BOW,
   duplicateShape, PASTE_OFFSET_PX, CANVAS_W, CANVAS_H,
+  shouldScrollCanvasIntoView,
 } from "./manualShapes.js";
 
 // ---- isValidShape -----------------------------------------------------
@@ -727,6 +728,73 @@ test("duplicateShape: a shape near the edge is pulled back so the copy stays who
   }
 });
 
+test("duplicateShape: a shape FLUSH to the edge still moves — the copy never lands on the original", () => {
+  // The bug this exists for: with the bounds exactly ON the right and bottom
+  // edges, both clamps collapsed to `Math.min(18, 0)` = 0 and the copy was
+  // placed at dx = dy = 0, precisely on top of the original. Invisible
+  // duplicate; dragging "the copy" moved the original instead. Flush bounds
+  // are not exotic -- traceFitRect letterboxes imported artwork right up
+  // against the canvas, so any traced outline hits this. Found by review,
+  // 2026-08-26.
+  const src = {
+    id: "s1",
+    points: [
+      { x: CANVAS_W, y: CANVAS_H },
+      { x: CANVAS_W - 100, y: CANVAS_H },
+      { x: CANVAS_W - 50, y: CANVAS_H - 100 },
+    ],
+    curves: {},
+  };
+  const copy = duplicateShape(src, "s2");
+  const dx = copy.points[0].x - src.points[0].x;
+  const dy = copy.points[0].y - src.points[0].y;
+  expect(dx === 0 && dy === 0).toBe(false);
+  expect(Math.abs(dx)).toBe(PASTE_OFFSET_PX);
+  expect(Math.abs(dy)).toBe(PASTE_OFFSET_PX);
+  // ...and it is still fully on-canvas, which is what the clamp is FOR.
+  for (const pt of copy.points) {
+    expect(pt.x).toBeGreaterThanOrEqual(0);
+    expect(pt.y).toBeGreaterThanOrEqual(0);
+    expect(pt.x).toBeLessThanOrEqual(CANVAS_W);
+    expect(pt.y).toBeLessThanOrEqual(CANVAS_H);
+  }
+});
+
+test("duplicateShape: a shape bigger than the canvas is not shoved FURTHER off it", () => {
+  // The min-edge clamps used to overwrite the max-edge clamps rather than
+  // intersect with them, so a shape hanging off both sides got dx = -minX --
+  // pushing the copy further right, the exact opposite of the doc comment's
+  // promise. Measured: maxX 700 -> 750 on a 640-wide canvas.
+  const src = {
+    id: "s1",
+    points: [{ x: -50, y: -50 }, { x: CANVAS_W + 60, y: -50 }, { x: CANVAS_W + 60, y: CANVAS_H + 80 }],
+    curves: {},
+  };
+  const copy = duplicateShape(src, "s2");
+  const srcMaxX = Math.max(...src.points.map((p) => p.x));
+  const copyMaxX = Math.max(...copy.points.map((p) => p.x));
+  // No offset can keep an oversize shape whole, so the nominal nudge stands --
+  // but it must not exceed it, which is what the overwrite bug did.
+  expect(copyMaxX - srcMaxX).toBeLessThanOrEqual(PASTE_OFFSET_PX);
+});
+
+test("duplicateShape: curve control points are clamped alongside the anchors", () => {
+  // consider() folds curves into the bounds, so a bowed edge bulging past the
+  // canvas must pull the whole copy back with it -- otherwise the anchors look
+  // on-canvas while the bow the user actually sees is not.
+  const src = {
+    id: "s1",
+    points: [{ x: CANVAS_W - 60, y: 100 }, { x: CANVAS_W - 60, y: 200 }, { x: CANVAS_W - 120, y: 150 }],
+    curves: { 0: { x: CANVAS_W, y: 150 } },
+    stitchType: "fill",
+  };
+  const copy = duplicateShape(src, "s2");
+  expect(copy.curves[0].x).toBeLessThanOrEqual(CANVAS_W);
+  // and the control moved by the SAME delta as the anchors, or the bow warps.
+  expect(copy.curves[0].x - src.curves[0].x).toBe(copy.points[0].x - src.points[0].x);
+  expect(copy.curves[0].y - src.curves[0].y).toBe(copy.points[0].y - src.points[0].y);
+});
+
 test("duplicateShape: the copy is still a valid, sewable shape", () => {
   const src = { id: "s1", points: [{ x: 100, y: 100 }, { x: 200, y: 100 }, { x: 150, y: 200 }], curves: {} };
   const copy = duplicateShape(src, "s2");
@@ -741,4 +809,40 @@ test("duplicateShape: refuses a shape with no geometry rather than emitting a de
   expect(duplicateShape(null, "s2")).toBeNull();
   expect(duplicateShape({ id: "s1", points: [] }, "s2")).toBeNull();
   expect(duplicateShape({ id: "s1" }, "s2")).toBeNull();
+});
+
+// ---- shouldScrollCanvasIntoView -----------------------------------------
+
+test("shouldScrollCanvasIntoView: scrolls only when the canvas is actually clipped", () => {
+  const port = { top: 0, bottom: 500 };
+  // Fully inside the scroll port -- nothing is wrong, so do not move the page.
+  expect(shouldScrollCanvasIntoView({ top: 100, bottom: 340 }, port)).toBe(false);
+  // Exactly flush with the bottom edge: still fully visible.
+  expect(shouldScrollCanvasIntoView({ top: 260, bottom: 500 }, port)).toBe(false);
+
+  // The measured real case: entry at 1280x720 put 34px of a 234px canvas
+  // inside the port (14%).
+  expect(shouldScrollCanvasIntoView({ top: 466, bottom: 700 }, port)).toBe(true);
+  // Entirely below the fold.
+  expect(shouldScrollCanvasIntoView({ top: 600, bottom: 834 }, port)).toBe(true);
+  // Clipped at the TOP counts too -- scrolled past, not just not-reached-yet.
+  expect(shouldScrollCanvasIntoView({ top: -200, bottom: 34 }, port)).toBe(true);
+
+  // The 1440x900 measurement: 92% visible, above the 90% threshold.
+  expect(shouldScrollCanvasIntoView({ top: 0, bottom: 274 }, { top: 0, bottom: 252 })).toBe(false);
+});
+
+test("shouldScrollCanvasIntoView: an unmeasurable rect is never a reason to scroll", () => {
+  const port = { top: 0, bottom: 500 };
+  // Zero-height canvas = layout has not happened (or there is none, as under
+  // jsdom). That is "cannot tell", not "hidden" -- scrolling on a guess yanks
+  // the page for no reason. 0/0 would be NaN and fall through the comparison
+  // anyway, but this is a decision, not a coincidence, so it is pinned.
+  expect(shouldScrollCanvasIntoView({ top: 120, bottom: 120 }, port)).toBe(false);
+  expect(shouldScrollCanvasIntoView({ top: 0, bottom: 0 }, { top: 0, bottom: 0 })).toBe(false);
+  // A negative-height rect is nonsense, not an instruction.
+  expect(shouldScrollCanvasIntoView({ top: 300, bottom: 100 }, port)).toBe(false);
+  // Missing rects (a detached node) must not throw.
+  expect(shouldScrollCanvasIntoView(null, port)).toBe(false);
+  expect(shouldScrollCanvasIntoView({ top: 0, bottom: 100 }, null)).toBe(false);
 });
