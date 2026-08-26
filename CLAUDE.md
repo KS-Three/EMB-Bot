@@ -100,6 +100,26 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
   cross-validation tests and still reports green.
   *(hit 2026-08-22; CI pins 3.12, which is why CI never saw it)*
 
+  **The `pip install -e` path has the MIRROR hole**, so neither documented way
+  of building this venv is complete. The `service` extra asks for
+  `fastapi>=0.115` UNPINNED, which now resolves `starlette` 1.6, whose
+  `TestClient` refuses to import without **`httpx2`** — a separate
+  distribution that nothing here pins. Adding `dev` does not save you: it
+  installs `httpx>=0.27`, which is a DIFFERENT package from `httpx2`, so the
+  skill's own recommended `pip install -e ".[service,dev]"` still has the hole.
+  Starlette says so verbatim: *"The starlette.testclient module requires the
+  httpx2 package to be installed."*
+
+  The result is a COLLECTION error on `tests/test_service.py`, so its **123
+  tests never run** — and pytest reports that as a bland `4 errors` line beside
+  a large passing count, which is very easy to wave past. A session did exactly
+  that and then published an understated number in a PR body.
+  **Symptom:** `1309 tests collected` instead of 1432, or `3 failed, 1291
+  passed` where the reference below says 1414+. **Fix:** `pip install httpx2`.
+  CI is unaffected — it installs from `requirements.txt`, which pins
+  `starlette==1.3.1` and `httpx==0.28.1`, a combination whose TestClient works.
+  *(found 2026-08-26 by chasing a suspicious number in my own PR body)*
+
 - Always `python -m pytest`, never `python foo.py` — a bare invocation does not put
   cwd on `sys.path`.
 - **Never pipe pytest to `tail`** — you get tail's exit code, so a red run reads green.
@@ -134,6 +154,34 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
    then holds the merge until all four pass and merges it unattended. Kent's call,
    2026-08-26, chosen over branch protection deliberately: it costs nothing, needs
    no admin settings, and still leaves a genuine hotfix hand-mergeable.
+
+   **`enable_pr_auto_merge` CANNOT be armed on this repo — MEASURED, both
+   states refuse.** The tool has exactly two guards and they leave no window:
+
+   | `mergeable_state` | what the API says |
+   | --- | --- |
+   | `unstable` (checks pending) | *"in unstable status (required checks are failing)"* |
+   | `clean` (all four green) | *"already in clean status … Auto-merge only applies when checks are pending — you can merge directly"* |
+
+   Tried on PRs #268, #269 and #272; the `clean` case was captured on #272 on
+   2026-08-26. Note the `unstable` message is misleading — nothing was failing,
+   every check was `success` or `in_progress`.
+
+   The underlying cause is that the repo has NO REQUIRED status checks
+   (`allow_auto_merge: true`, zero rulesets, branch protection unreadable to a
+   session token — 403). Auto-merge exists to hold a merge on a pending
+   *required* check; with none configured there is nothing to hold, so the
+   pending window the tool wants never exists.
+
+   **So do not follow the paragraph above as written — you cannot "enable
+   auto-merge instead of waiting."** What is actually available:
+   - Wait for all four and let Kent merge (what has happened on every PR so far).
+   - Or Kent adds one required check (branch protection or a ruleset), after
+     which auto-merge should work — an admin setting he can see and a session
+     cannot. That is his call, not a session's.
+
+   The GitHub UI button is a different code path and was NOT tested; it may
+   still work. *(measured 2026-08-26)*
 
    Two related traps, both already bitten:
    - **`pytest` exit codes.** `pytest > log; echo $?` is fine, but whatever runs
