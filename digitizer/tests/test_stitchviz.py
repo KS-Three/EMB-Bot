@@ -411,3 +411,83 @@ def test_render_realistic_declares_each_local_once():
         f"renderRealistic declares {dupes} more than once in one scope. This "
         "is the recurring bad merge: a stale thread-drawing block re-applied "
         "over the current one. Keep the block that calls drawThreads.")
+
+
+# --------------------------------------------------------------- sew order
+#
+# `test_the_two_renderers_agree_on_the_light` above pins three lighting
+# constants by substring-grepping preview.js. That is all it pins. It asserts
+# nothing about strand grouping, block order, or z-order -- so the pre-2026-08-26
+# bug in preview.js's drawThreads (bucketing strands into a Map keyed on rgb,
+# which merged a colour that RECURS into its first appearance) passed it green
+# while the two renderers disagreed about which colour covers which.
+#
+# stitchviz.py never had that bug: render_design walks the stitch list in strict
+# order and lays each filament as it goes, so later thread covers earlier by
+# construction. That is a property worth PINNING rather than assuming, because
+# the obvious optimisation -- batch the segments per colour and draw each colour
+# once -- would silently reintroduce exactly the JS bug on this side.
+
+
+def _line(y, x0, x1, step=5):
+    return [{"x": x, "y": y, "type": "stitch"} for x in range(x0, x1 + 1, step)]
+
+
+def test_render_design_paints_a_recurring_colour_LAST():
+    """A colour that comes back later covers what ran between it."""
+    import numpy as np
+
+    import digitizer_core.stitchviz as sv
+
+    RED = {"r": 220, "g": 20, "b": 20}
+    BLUE = {"r": 20, "g": 20, "b": 220}
+    # The "outline last" build: red, then blue over it, then red again on top.
+    design = {
+        "colors": [RED, BLUE, RED],
+        "stitches": (
+            _line(0, -200, 200)
+            + [{"x": 200, "y": 0, "type": "color"}]
+            + _line(0, -200, 200)
+            + [{"x": 200, "y": 0, "type": "color"}]
+            + _line(0, -200, 200)
+            + [{"x": 200, "y": 0, "type": "end"}]
+        ),
+    }
+    img = sv.render_design(design, px_per_mm=8.0)
+
+    # The centre of the line is covered by all three runs. Whatever is visible
+    # there is whichever ran LAST.
+    h, w = img.shape[:2]
+    patch = img[h // 2, w // 2]           # BGR
+    b, g, r = int(patch[0]), int(patch[1]), int(patch[2])
+    assert r > b, (
+        f"centre pixel is BGR {(b, g, r)} -- blue is on top, so the recurring "
+        "red was merged back into its first run instead of being painted last"
+    )
+
+
+def test_the_js_side_still_guards_its_own_sew_order():
+    """preview.js is guarded on the JS side; this asserts that guard exists.
+
+    Deliberately a cross-file existence check and nothing cleverer. A
+    structural assertion about HOW drawThreads groups would break on any
+    innocent refactor, and re-implementing a JS renderer in Python to compare
+    outputs is a second source of truth, not a guard. What actually prevents
+    the two renderers drifting is that each side keeps a test asserting later
+    thread covers earlier -- so this pins that the JS one has not been deleted,
+    and says plainly that it does not check whether it still PASSES (the Studio
+    suite does that).
+    """
+    from pathlib import Path
+
+    spec = (Path(__file__).resolve().parents[2] / "app" / "src" / "lib" / "preview.spec.js").read_text(
+        encoding="utf-8"
+    )
+    assert "FLAT view agrees with the lit view about sew order" in spec, (
+        "preview.spec.js no longer asserts that the flat and lit paths produce "
+        "the same block sequence -- the JS side of the parity is unguarded"
+    )
+    assert "the recurring block paints LAST, not merged into the first" in spec, (
+        "preview.spec.js no longer asserts that a recurring colour keeps its "
+        "own place in sew order"
+    )

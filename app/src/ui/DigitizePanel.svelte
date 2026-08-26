@@ -24,6 +24,7 @@
     textClusterIds,
     textClusterMembers,
     textClusterSeed,
+    remapBlockColors,
   } from "../lib/digitizer.js";
   import { loadPalette, nearestInList } from "../lib/threads.js";
 
@@ -152,6 +153,16 @@
       // restorable row (the fresh review no longer contains them).
       patch({
         result: job.design,
+        // The new palette is not the old one, and blockColors is keyed by
+        // palette INDEX -- so a per-block thread override has to be carried
+        // across by the colour it was chosen for, or it lands on whatever
+        // thread now occupies that index. See remapBlockColors for the
+        // measurement (a white block exporting as the navy picked for red).
+        blockColors: remapBlockColors(
+          (el.result && el.result.colors) || [],
+          el.blockColors,
+          (job.design && job.design.colors) || [],
+        ),
         warnings: job.warnings || [],
         review: reconcileReview(el.review, reviewFromJob(job.review), el.deletedShapeIds),
         preflight: job.preflight || null,
@@ -1563,7 +1574,18 @@
           {/if}
           {#if visibleClusterIds.length}
             {#each visibleClusterIds as clusterId (clusterId)}
-              {@const members = clusterMembers(clusterId)}
+              <!-- textClusterMembers(liveReviewShapes, ...) directly, NOT the
+                   clusterMembers(clusterId) wrapper: an {@const} tracks only
+                   what it textually names, and this each is keyed by
+                   clusterId -- a string that by definition never changes for a
+                   surviving block. So the wrapper's read of liveReviewShapes
+                   was invisible and the member list was computed once, ever.
+                   Delete one member row from a 4-shape "looks like text"
+                   cluster and the banner kept saying "4 shapes" while the
+                   cluster really had 3. Found 2026-08-26. The two other
+                   clusterMembers() callers are event handlers, where reading
+                   the closure is correct. -->
+              {@const members = textClusterMembers(liveReviewShapes, clusterId)}
               {@const convertedId = textConversions[clusterId]}
               <div class="dgp-mergebar">
                 <span>"looks like text" · {members.length} shape{members.length === 1 ? "" : "s"}</span>

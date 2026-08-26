@@ -223,6 +223,38 @@ test("removeElement leaves selectedId alone when a non-selected element is remov
   expect(q.elements).toHaveLength(1);
 });
 
+test("removeElement prunes textConversions entries naming the removed element", () => {
+  // Element ids are recycled (nextElementId is max+1 over the SURVIVORS), so a
+  // conversion entry left pointing at a deleted element ends up naming an
+  // innocent NEW one -- and DigitizePanel's "Undo — remove text element"
+  // button then deletes that. Found by a sibling-pattern sweep 2026-08-26.
+  let p = addElement(defaultProject(), "text", 100); // e1, e2
+  p = updateElement(p, "e1", { textConversions: { c1: "e2", c2: "e3" } });
+
+  const q = removeElement(p, "e2");
+  const e1 = q.elements.find((el) => el.id === "e1");
+  expect(e1.textConversions).toEqual({ c2: "e3" }); // c1 pruned, c2 untouched
+
+  // And the recycling that makes it matter is real, not hypothetical: the very
+  // next element added takes the freed id back.
+  const r = addElement(q, "text", 100);
+  expect(r.elements.map((el) => el.id)).toContain("e2");
+  // ...and it inherits nothing.
+  const stillE1 = r.elements.find((el) => el.id === "e1");
+  expect(Object.values(stillE1.textConversions)).not.toContain("e2");
+});
+
+test("removeElement leaves untouched elements strictly identical", () => {
+  // The prune must not rebuild elements that carry no matching entry -- keyed
+  // {#each} blocks and identity-based memoization would see spurious changes.
+  let p = addElement(defaultProject(), "text", 100); // e1, e2
+  p = addElement(p, "text", 100);                    // e3
+  p = updateElement(p, "e1", { textConversions: { c1: "e3" } });
+  const before = p.elements.find((el) => el.id === "e2");
+  const q = removeElement(p, "e3");
+  expect(q.elements.find((el) => el.id === "e2")).toBe(before); // same object
+});
+
 // --- selectElement / updateElement ----------------------------------------
 
 test("selectElement sets selectedId immutably", () => {

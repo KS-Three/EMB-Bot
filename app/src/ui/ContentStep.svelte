@@ -63,16 +63,31 @@
 
   // "All text members agree" per bulk-editable field — drives the active /
   // mixed presentation. null = mixed (or no text members).
-  function shared(field) {
-    if (!selTextMembers.length) return null;
-    const v = JSON.stringify(selTextMembers[0][field] ?? null);
-    return selTextMembers.every((e) => JSON.stringify(e[field] ?? null) === v)
-      ? selTextMembers[0][field]
+  //
+  // `members` is passed in rather than read off the component, and that is
+  // load-bearing. Svelte 5's legacy `$:` dependency list is built from what the
+  // statement TEXTUALLY names; a read inside a called function is invisible to
+  // it. These three used to name only `multi` -- a BOOLEAN -- so once
+  // multi-select was entered and multi went true it never changed again
+  // (safe_not_equal(true, true) is false), the effects never re-ran, and all
+  // three froze at the values they had the moment the selection was made.
+  //
+  // What that looked like: Ctrl+click two text elements with different
+  // weights, see "Weight · mixed", click Bold. The bulk edit applies and both
+  // elements really do change -- but sharedWeight stays null, the label keeps
+  // reading "mixed", and no button lights up. The user's own edit appears to
+  // have done nothing. Found by a sibling-pattern sweep 2026-08-26, confirmed
+  // against the compiled output. Same idiom as ManualPanel's alphaIn(map, id).
+  function shared(members, field) {
+    if (!members.length) return null;
+    const v = JSON.stringify(members[0][field] ?? null);
+    return members.every((e) => JSON.stringify(e[field] ?? null) === v)
+      ? members[0][field]
       : null;
   }
-  $: sharedColor = multi ? shared("colorRgb") : null;
-  $: sharedWeight = multi ? shared("weightPreset") : null;
-  $: sharedFont = multi ? shared("fontKey") : null;
+  $: sharedColor = multi ? shared(selTextMembers, "colorRgb") : null;
+  $: sharedWeight = multi ? shared(selTextMembers, "weightPreset") : null;
+  $: sharedFont = multi ? shared(selTextMembers, "fontKey") : null;
 
   function bulkPatch(patch) {
     const patchById = {};

@@ -156,6 +156,66 @@ def test_a_missing_colour_cannot_hide_behind_a_good_iou():
     assert slab < 0.85
 
 
+def test_an_outline_sewn_last_is_not_scored_as_if_it_were_buried():
+    """Identical geometry, different SEW ORDER, and the surface must notice.
+
+    The "outline last" build -- ground, then a word, then the ground colour
+    again on top -- is ordinary in the professional corpus. `surface()` used to
+    be handed colour-keyed buckets and paint each at its EARLIEST block, so
+    both golds were painted first and the black word covered them. The pro's
+    outline-on-top and our outline-buried then rendered to the SAME picture and
+    scored as agreeing perfectly.
+
+    Both sides here sew exactly the same segments; only the block ORDER
+    differs. So iou and recall are ~1 by construction and the colour surface is
+    the only thing that can move -- which is what makes this discriminating
+    rather than merely passing. Found by a sibling-pattern sweep 2026-08-26.
+
+    The existing colour test above uses [gold, black] with no recurring colour,
+    so it exercises coverage_component without covering this case at all.
+
+    MEASURED on this fixture, 2026-08-26: colour_surface_agreement went
+    1.000 -> 0.894 and the coverage component 1.000 -> 0.947. So the fix moves
+    parity scores DOWN on outline-last designs -- the grader stops handing out
+    credit for a divergence it could not see. How far it moves on the real
+    corpus depends on how many of those 37 files recur a colour
+    non-consecutively, which needs a run on a machine that has scratch_corpus/.
+    """
+    bb = (-2.0, -2.0, 34.0, 24.0)
+    GOLD = [208, 166, 96]
+    BLACK = [0, 0, 0]
+
+    slab = fill_block(0, 0, 30, 20, 0.4, block=0)
+    word_area = (4, 4, 10, 6)
+
+    # PRO: slab, word, then the gold detail sewn back OVER the word.
+    pro_segs = (slab
+                + fill_block(*word_area, 0.4, block=1)
+                + fill_block(*word_area, 0.4, block=2))
+    pro_blocks = [{"block": 0, "rgb": GOLD}, {"block": 1, "rgb": BLACK}, {"block": 2, "rgb": GOLD}]
+
+    # OURS: the same three passes, but the black word sewn LAST -- so it buries
+    # the gold detail instead of sitting under it.
+    our_segs = (slab
+                + fill_block(*word_area, 0.4, block=1)
+                + fill_block(*word_area, 0.4, block=2))
+    our_blocks = [{"block": 0, "rgb": GOLD}, {"block": 1, "rgb": GOLD}, {"block": 2, "rgb": BLACK}]
+
+    _score, sp, so, d = sc.coverage_component(pro_segs, our_segs, bb, pro_blocks, our_blocks)
+
+    # Same thread on the same fabric: the ground agrees completely.
+    assert d["solid_iou"] > 0.99, "the two sides sew identical geometry"
+    assert d["recall"] > 0.99
+
+    # ...and yet the customer sees a gold detail on one and a black slab on the
+    # other. Before the fix both painted black there and this read 1.0.
+    assert d["colour_surface_agreement"] < 0.95, (
+        "an outline sewn last renders identically to one buried under the word "
+        f"-- colour_surface_agreement {d['colour_surface_agreement']} says the "
+        "grader cannot tell them apart"
+    )
+
+
 # ---------------------------------------------------------------- 3. travel
 def test_drag_across_bare_fabric_is_measured_in_mm():
     """Two blobs joined by one untrimmed 20 mm move. That thread lies on fabric
