@@ -510,6 +510,12 @@ hand-rolling it in JS.
 - **Never edit a source file with a PowerShell `(Get-Content -Raw) -replace |
   Set-Content` round-trip.** It re-encodes the file: BOM added, every em-dash
   and ± mangled. Bit this repo twice. Use the Edit tool.
+- **Keep `.ps1` files ASCII-only.** The reading side of the same trap: Windows
+  PowerShell 5.1 decodes a BOM-less script as ANSI, so a UTF-8 em-dash becomes
+  three chars ending in U+201D, which PowerShell honours as a string delimiter.
+  `tools/start-emb-bot.ps1` and `digitizer/tools/pro_parity/ladder.ps1` both
+  failed to parse on 5.1 for this reason (fixed 2026-08-26) while working fine
+  under `pwsh` 7, which reads UTF-8 -- so a PS7 author never sees it.
 
 ## Manual digitize: copy/paste and per-shape dim (merged 2026-08-26, PR #255)
 
