@@ -173,6 +173,13 @@ def test_an_outline_sewn_last_is_not_scored_as_if_it_were_buried():
 
     The existing colour test above uses [gold, black] with no recurring colour,
     so it exercises coverage_component without covering this case at all.
+
+    MEASURED on this fixture, 2026-08-26: colour_surface_agreement went
+    1.000 -> 0.894 and the coverage component 1.000 -> 0.947. So the fix moves
+    parity scores DOWN on outline-last designs -- the grader stops handing out
+    credit for a divergence it could not see. How far it moves on the real
+    corpus depends on how many of those 37 files recur a colour
+    non-consecutively, which needs a run on a machine that has scratch_corpus/.
     """
     bb = (-2.0, -2.0, 34.0, 24.0)
     GOLD = [208, 166, 96]
