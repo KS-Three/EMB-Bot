@@ -1076,3 +1076,25 @@ describe("the Dim control tells the truth about the shape it controls", () => {
     expect(container.querySelector(".mp-dim-reset").disabled).toBe(true);
   });
 });
+
+// ---- entry scroll --------------------------------------------------------
+
+test("mounting never scrolls the page when the canvas cannot be measured", () => {
+  // The scroll RULE is pinned directly in manualShapes.spec.js
+  // (shouldScrollCanvasIntoView) -- a pure function, because faking a layout
+  // jsdom does not have is how you end up with a test that cannot fail.
+  //
+  // What this one pins is the wiring: under jsdom nothing has a real scroll
+  // height and nothing has a real rect, so the component must decide "cannot
+  // tell" and leave the page alone. A panel that yanks the scroll position on
+  // every mount is its own bug.
+  const calls = [];
+  const orig = Element.prototype.scrollIntoView;
+  Element.prototype.scrollIntoView = function (...a) { calls.push(a); };
+  try {
+    renderPanel();
+    expect(calls).toHaveLength(0);
+  } finally {
+    Element.prototype.scrollIntoView = orig;
+  }
+});

@@ -8,6 +8,7 @@ import {
   distToSegment, nearestSegmentIndex, insertVertexAtSegment,
   curvedNodeThrough, curvedNodeFlags, CURVED_NODE_BOW,
   duplicateShape, PASTE_OFFSET_PX, CANVAS_W, CANVAS_H,
+  shouldScrollCanvasIntoView,
 } from "./manualShapes.js";
 
 // ---- isValidShape -----------------------------------------------------
@@ -808,4 +809,40 @@ test("duplicateShape: refuses a shape with no geometry rather than emitting a de
   expect(duplicateShape(null, "s2")).toBeNull();
   expect(duplicateShape({ id: "s1", points: [] }, "s2")).toBeNull();
   expect(duplicateShape({ id: "s1" }, "s2")).toBeNull();
+});
+
+// ---- shouldScrollCanvasIntoView -----------------------------------------
+
+test("shouldScrollCanvasIntoView: scrolls only when the canvas is actually clipped", () => {
+  const port = { top: 0, bottom: 500 };
+  // Fully inside the scroll port -- nothing is wrong, so do not move the page.
+  expect(shouldScrollCanvasIntoView({ top: 100, bottom: 340 }, port)).toBe(false);
+  // Exactly flush with the bottom edge: still fully visible.
+  expect(shouldScrollCanvasIntoView({ top: 260, bottom: 500 }, port)).toBe(false);
+
+  // The measured real case: entry at 1280x720 put 34px of a 234px canvas
+  // inside the port (14%).
+  expect(shouldScrollCanvasIntoView({ top: 466, bottom: 700 }, port)).toBe(true);
+  // Entirely below the fold.
+  expect(shouldScrollCanvasIntoView({ top: 600, bottom: 834 }, port)).toBe(true);
+  // Clipped at the TOP counts too -- scrolled past, not just not-reached-yet.
+  expect(shouldScrollCanvasIntoView({ top: -200, bottom: 34 }, port)).toBe(true);
+
+  // The 1440x900 measurement: 92% visible, above the 90% threshold.
+  expect(shouldScrollCanvasIntoView({ top: 0, bottom: 274 }, { top: 0, bottom: 252 })).toBe(false);
+});
+
+test("shouldScrollCanvasIntoView: an unmeasurable rect is never a reason to scroll", () => {
+  const port = { top: 0, bottom: 500 };
+  // Zero-height canvas = layout has not happened (or there is none, as under
+  // jsdom). That is "cannot tell", not "hidden" -- scrolling on a guess yanks
+  // the page for no reason. 0/0 would be NaN and fall through the comparison
+  // anyway, but this is a decision, not a coincidence, so it is pinned.
+  expect(shouldScrollCanvasIntoView({ top: 120, bottom: 120 }, port)).toBe(false);
+  expect(shouldScrollCanvasIntoView({ top: 0, bottom: 0 }, { top: 0, bottom: 0 })).toBe(false);
+  // A negative-height rect is nonsense, not an instruction.
+  expect(shouldScrollCanvasIntoView({ top: 300, bottom: 100 }, port)).toBe(false);
+  // Missing rects (a detached node) must not throw.
+  expect(shouldScrollCanvasIntoView(null, port)).toBe(false);
+  expect(shouldScrollCanvasIntoView({ top: 0, bottom: 100 }, null)).toBe(false);
 });

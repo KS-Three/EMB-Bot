@@ -120,6 +120,23 @@ describe("initial (no image yet) state", () => {
     expect(btn).toHaveTextContent("Add 0 shapes");
     expect(btn).toBeDisabled();
   });
+
+  test("the file picker is a styled label, not raw browser chrome", () => {
+    // Driven in a browser 2026-08-26: a bare <input type="file"> renders as
+    // the OS's own "Choose File | No file chosen" control -- the one thing in
+    // this panel not speaking the app's visual language, sitting next to
+    // "Trace image..." and "Duplicate". Worse, onFile clears the input's
+    // value (so re-picking the same file still fires a change event), which
+    // left the native text reading "No file chosen" while the filename beside
+    // it said otherwise. Same visually-hidden-input pattern DigitizePanel's
+    // .dgp-upload already uses.
+    const utils = renderPanel();
+    const wrap = utils.container.querySelector(".tip-uploadwrap");
+    expect(wrap).not.toBeNull();
+    const input = wrap.querySelector('input[type="file"]');
+    expect(input).not.toBeNull();          // still a real input: keyboard + a11y intact
+    expect(wrap.querySelector(".tip-uploadbtn")).toHaveTextContent("Choose image…");
+  });
 });
 
 // ---- colors / remove-background controls -------------------------------

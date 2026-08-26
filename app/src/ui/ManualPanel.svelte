@@ -1,5 +1,5 @@
 <script>
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
   import TraceImportPanel from "./TraceImportPanel.svelte";
   import Icon from "./Icon.svelte";
@@ -10,6 +10,7 @@
     curveControlOrNull, hitTestSegmentMidpoint, curveHandlePoint, pointInShape,
     nearestSegmentIndex, insertVertexAtSegment,
     curvedNodeThrough, curvedNodeFlags, quadraticControlForPointOnCurve,
+    shouldScrollCanvasIntoView,
     duplicateShape, nextShapeIds,
   } from "../lib/manualShapes.js";
   import { traceFitRect } from "../lib/manualTrace.js";
@@ -175,6 +176,31 @@
   // continuously (not just after a drag ends) so a mid-drag self-intersect
   // shows up live, the same way the draft-drawing flow already behaves.
   $: editIssues = editingId ? shapeIssues(editFlat) : [];
+
+  // Bring the drawing canvas into view on entry, but only when it is actually
+  // clipped. Measured 2026-08-26 in a real browser: the panel opens with a
+  // seven-line instruction paragraph above the canvas, so at a 1280x720
+  // viewport only 14% of the canvas is inside the scroll port -- you land in
+  // "Draw shapes" unable to see most of the thing you draw on. At 1440x900 it
+  // is 92% and at 1920x1080 it is 100%, which is why this never showed up on
+  // a desktop.
+  //
+  // Guarded on the clipping rather than run unconditionally: a scroll that
+  // fires where nothing was wrong is just a jump the user did not ask for.
+  // 'nearest' rather than 'center' for the same reason -- it moves the
+  // minimum needed, keeping the instructions in view when they still fit.
+  onMount(() => {
+    if (!canvasEl || typeof canvasEl.scrollIntoView !== "function") return;
+    // The nearest ancestor that actually scrolls -- .panel-body in the app.
+    let port = canvasEl.parentElement;
+    while (port && port.scrollHeight <= port.clientHeight) port = port.parentElement;
+    if (!port) return;
+    // 'nearest', not 'center': move the minimum needed, so the instructions
+    // just above the canvas stay in view whenever they still fit.
+    if (shouldScrollCanvasIntoView(canvasEl.getBoundingClientRect(), port.getBoundingClientRect())) {
+      canvasEl.scrollIntoView({ block: "nearest" });
+    }
+  });
 
   function nextShapeId(list) {
     let max = 0;

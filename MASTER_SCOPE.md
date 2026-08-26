@@ -815,6 +815,21 @@ names — a read inside a called function is invisible to it. Both fixed, both
 now pinned by tests proven to fail against the old code.
 *(confirmed 2026-08-26 — `manualShapes.spec.js` + `ManualPanel.spec.js`, mutation-checked)*
 
+**Driven in a real browser 2026-08-26** — right-click curved nodes, the tracing
+backdrop, Duplicate, and the Dim slider, all exercised by hand rather than only
+by tests. Two things were wrong that no test could see. The drawing canvas
+opened mostly below the fold on a short viewport (14% visible at 1280x720, 92%
+at 1440x900, 100% at 1080p — which is why it never showed on a desktop); it now
+scrolls itself in **only when measurably clipped**, so a tall screen is
+untouched. And the trace panel's file picker was a bare `<input type="file">`
+rendering as raw OS chrome that read "No file chosen" even after a file loaded
+(`onFile` clears the input's value so re-picking the same file still fires);
+it now uses the same styled-label pattern as `DigitizePanel`'s `.dgp-upload`.
+Confirmed working and NOT broken: the traced outline lands exactly on the
+backdrop artwork, and the dropped-hole warning does show — before you accept
+the shapes, which is the moment it matters.
+*(confirmed 2026-08-26 — Playwright browser session, measured at three viewports)*
+
 **The flat and realistic views now agree about sew order.** A colour that
 recurs later in the sequence is its own block in both, not merged back into its
 first appearance. The lit path was fixed for this on 2026-08-25; the flat path

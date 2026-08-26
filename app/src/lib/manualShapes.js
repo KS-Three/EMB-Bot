@@ -451,6 +451,39 @@ export function insertVertexAtSegment(shape, segIndex, point) {
 // from nothing having happened, and the user cannot grab either copy to
 // separate them. Small enough that the copy stays inside the canvas for any
 // shape that fits with room to spare.
+// Should the drawing canvas scroll itself into view on entry?
+//
+// Measured in a real browser 2026-08-26: ManualPanel opens with a seven-line
+// instruction paragraph above the canvas, so at a 1280x720 viewport only 14%
+// of the canvas sat inside the scroll port -- you land in "Draw shapes" unable
+// to see most of the surface you draw on. 1440x900 was 92%, 1920x1080 was
+// 100%, which is why it never showed up on a desktop.
+//
+// Two things it must NOT do, and both are the reason this is a predicate
+// rather than an unconditional scrollIntoView:
+//   - Never scroll where nothing is clipped. A jump the user did not ask for
+//     is its own bug, and it is the common case on a tall screen.
+//   - Never scroll off an unmeasurable rect. A zero-height canvas means
+//     layout has not happened (or there is none, as under jsdom), not that
+//     the canvas is hidden. Returning false is the safe reading; scrolling on
+//     a guess is not. (NaN from 0/0 would also fall through the comparison,
+//     but relying on that is a coincidence, not a decision.)
+//
+// Pure and exported so the rule can be asserted directly -- the same reason
+// preview.js's threadLodLayers is a standalone function. Testing it through a
+// mounted component would mean faking a layout jsdom does not have, which is
+// how you end up with a test that cannot fail.
+export function shouldScrollCanvasIntoView(canvasRect, portRect, minVisible = 0.9) {
+  if (!canvasRect || !portRect) return false;
+  const h = canvasRect.bottom - canvasRect.top;
+  if (!(h > 0)) return false;
+  const visible = Math.max(
+    0,
+    Math.min(canvasRect.bottom, portRect.bottom) - Math.max(canvasRect.top, portRect.top),
+  );
+  return visible / h < minVisible;
+}
+
 export const PASTE_OFFSET_PX = 18;
 
 // Duplicate a shape: same geometry, same stitch settings, NEW id, nudged clear
