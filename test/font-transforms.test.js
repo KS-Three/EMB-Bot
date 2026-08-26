@@ -112,11 +112,30 @@ test("the licence file is found whether it is LICENSE or license", () => {
     const dest = f === "LICENSE" ? "license" : f;
     fs.copyFileSync(path.join(FIXTURE, f), path.join(tmp, dest));
   }
-  assert.ok(!fs.existsSync(path.join(tmp, "LICENSE")), "fixture copy must have only the lowercase name");
+  // The precondition reads DIRECTORY ENTRIES, not existsSync: NTFS is
+  // case-insensitive, so existsSync("LICENSE") is true for a file written as
+  // "license" and this assert failed on Windows for the whole life of the
+  // test. readdir reports the name actually on disk, which is the thing being
+  // asserted, and is right on both filesystems.
+  const names = fs.readdirSync(tmp);
+  assert.ok(names.includes("license") && !names.includes("LICENSE"),
+    `fixture copy must have only the lowercase name; got ${names.join(", ")}`);
+  // What the test can PROVE is still platform-dependent, and that is a
+  // property of the filesystem, not something to paper over: on a
+  // case-insensitive filesystem an uppercase-only lookup opens the lowercase
+  // file anyway, so a regression to the LICENSE-only lookup passes here and
+  // fails on Linux CI, where it matters. Detected by probing the temp dir
+  // rather than by process.platform — a case-sensitive volume on Windows, or a
+  // case-insensitive one on macOS/Linux, both report themselves correctly.
+  const caseInsensitiveFs = fs.existsSync(path.join(tmp, "LICENSE"));
   const out = path.join(tmp, "out.json");
   execFileSync(process.execPath, [path.join(ROOT, "tools", "build-font.mjs"), tmp, out], { stdio: "ignore" });
   const font = JSON.parse(fs.readFileSync(out, "utf8"));
   assert.ok(/Open Font License/i.test(font.license || ""),
     "licence text was not picked up from a lowercase 'license' file — the font " +
-    "would import with an empty licence and be silently excluded from the build");
+    "would import with an empty licence and be silently excluded from the build" +
+    (caseInsensitiveFs
+      ? " (and this filesystem is case-insensitive, so build-font did not even " +
+        "have to find the lowercase name — licence parsing is broken outright)"
+      : ""));
 });
