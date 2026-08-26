@@ -47,10 +47,29 @@ async function main() {
 
   const appDir = dirname(dirname(fileURLToPath(import.meta.url)));
   const digitizerDir = join(dirname(appDir), "digitizer");
-  const python = join(digitizerDir, ".venv", "Scripts", "python.exe");
 
-  if (!existsSync(python)) {
-    console.warn(`digitizer venv not found (${python}) — Studio will run with artwork on the browser-lane fallback`);
+  // BOTH venv layouts. This checked only `.venv/Scripts/python.exe` -- the
+  // Windows one -- so on Linux (every cloud session, and CI) it always warned
+  // "venv not found" and silently declined to start the service, even with a
+  // perfectly good `.venv/bin/python` sitting right there.
+  //
+  // The cost is not the missing service, it is the misattribution: the e2e
+  // specs each bootstrap the service themselves, which under two parallel
+  // workers is slow and racy, so `npx playwright test` fails 2-3 of the
+  // digitize-* specs while each one passes alone. That reads as a flaky test
+  // suite. Start the service here and the same run is 15/15 in 34s.
+  // (Diagnosed 2026-08-26 after it cost a session twenty minutes.)
+  //
+  // CLAUDE.md already flags `.venv/Scripts/` vs `.venv/bin/` as the trap every
+  // session rediscovers; this was one of the places still only knowing one.
+  const candidates = [
+    join(digitizerDir, ".venv", "Scripts", "python.exe"), // Windows
+    join(digitizerDir, ".venv", "bin", "python"),         // Linux / macOS
+  ];
+  const python = candidates.find((p) => existsSync(p));
+
+  if (!python) {
+    console.warn(`digitizer venv not found (looked for ${candidates.join(" and ")}) — Studio will run with artwork on the browser-lane fallback`);
     return;
   }
 

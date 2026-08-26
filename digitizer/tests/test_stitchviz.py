@@ -254,6 +254,51 @@ def _js_function_body(js: str, name: str) -> str:
     raise AssertionError(f"{name} in preview.js has unbalanced braces")
 
 
+def _js_top_level_locals(body: str) -> list[str]:
+    """Every name a JS function body binds with `const`/`let` at ONE indent
+    level, in source order. Nested-block locals legitimately shadow and are
+    deliberately skipped.
+
+    The discarded version of this was `^  (?:const|let) (\\w+)\\s*=`, which only
+    sees a declaration whose FIRST declarator is immediately assigned. Measured
+    against `renderRealistic` on 2026-08-26 it caught 20 of 30 top-level
+    locals. The ten it missed were exactly the two forms that regex cannot
+    express:
+
+      const cw = ..., ch = ...;        -> sees `cw`, misses `ch`
+      let t, TX0, TY0, pxPerMm0;       -> sees nothing at all
+
+    That second form IS the transform block, which is precisely the region the
+    two rival renderers kept fighting over -- so a stale block re-applied there
+    would redeclare `t`/`TX0`/`TY0`/`pxPerMm0`, break `preview.js` with a
+    SyntaxError, and leave this guard green. A guard blind to the exact case it
+    exists for is worse than no guard, because it is quoted as coverage.
+    """
+    names: list[str] = []
+    for m in re.finditer(r"^  (?:const|let)\s+(.+?);\s*$", body, re.MULTILINE | re.DOTALL):
+        # Split the declarator list on commas that are not inside (), [], {},
+        # so `const a = f(x, y), b = 1;` yields `a = f(x, y)` and `b = 1`.
+        depth = 0
+        buf = ""
+        parts = []
+        for ch in m.group(1):
+            if ch in "([{":
+                depth += 1
+            elif ch in ")]}":
+                depth -= 1
+            if ch == "," and depth == 0:
+                parts.append(buf)
+                buf = ""
+            else:
+                buf += ch
+        parts.append(buf)
+        for part in parts:
+            ident = re.match(r"\s*([A-Za-z_$][\w$]*)", part)
+            if ident:
+                names.append(ident.group(1))
+    return names
+
+
 def test_the_two_renderers_agree_on_the_light():
     """`preview.js` implements this same model for the Studio canvas. If the
     two lit from different corners, what Kent rules on in an acceptance sheet
@@ -300,6 +345,53 @@ def test_the_two_renderers_agree_on_the_light():
         "dead code and coverage in the preview no longer means anything")
 
 
+
+def _render_realistic_body() -> str:
+    """`renderRealistic`'s source, read from the Studio's preview.js."""
+    from pathlib import Path
+
+    js = (Path(__file__).resolve().parents[2] / "app" / "src" / "lib" / "preview.js").read_text(
+        encoding="utf-8"
+    )
+    return _js_function_body(js, "renderRealistic")
+
+
+def test_the_duplicate_declaration_guard_can_actually_fail():
+    """The guard above is only worth its line count if it SEES the forms the
+    bad merge produces. Its predecessor did not -- so this pins the parser on
+    the two declarator shapes that defeated it, using the exact names from the
+    transform block the rival renderers fought over.
+
+    Written because the previous version of this guard passed against a
+    `renderRealistic` it could only see two thirds of, and was cited as
+    coverage for the one failure mode it was blind to.
+    """
+    # Multi-declarator: the regex form saw only the first name.
+    assert _js_top_level_locals("  const cw = 1, ch = 2;\n") == ["cw", "ch"]
+
+    # Declaration with no initializer: the regex form saw nothing at all. This
+    # is the transform block.
+    assert _js_top_level_locals("  let t, TX0, TY0, pxPerMm0;\n") == [
+        "t", "TX0", "TY0", "pxPerMm0",
+    ]
+
+    # A comma inside a call argument list is not a declarator boundary.
+    assert _js_top_level_locals("  const a = f(x, y), b = 1;\n") == ["a", "b"]
+
+    # Nested-block locals still shadow legitimately and stay invisible.
+    assert _js_top_level_locals("    const inner = 1;\n") == []
+
+    # And end to end: a duplicate in EITHER form is caught. Both of these
+    # passed the predecessor.
+    for stale in ("  let t, TX0, TY0, pxPerMm0;\n", "  const cw = 9, ch = 9;\n"):
+        # Leading newline: the extracted body ends at the closing brace with
+        # no trailing newline, so a bare append lands on that same line.
+        names = _js_top_level_locals(_render_realistic_body() + "\n" + stale)
+        assert sorted({n for n in names if names.count(n) > 1}), (
+            f"a re-applied {stale.strip()!r} is invisible to the guard"
+        )
+
+
 def test_render_realistic_declares_each_local_once():
     """A bad merge of `preview.js` has landed FOUR times, always the same way:
     a superseded copy of the thread-drawing block is re-applied on top of the
@@ -311,12 +403,9 @@ def test_render_realistic_declares_each_local_once():
     """
     from pathlib import Path
 
-    js = (Path(__file__).resolve().parents[2] / "app" / "src" / "lib" / "preview.js").read_text(encoding="utf-8")
-    body = _js_function_body(js, "renderRealistic")
+    body = _render_realistic_body()
 
-    # Top-level declarations in the function body only: `const` at exactly one
-    # indent level. Nested-block locals legitimately shadow and are skipped.
-    names = re.findall(r"^  (?:const|let) (\w+)\s*=", body, re.MULTILINE)
+    names = _js_top_level_locals(body)
     dupes = sorted({n for n in names if names.count(n) > 1})
     assert not dupes, (
         f"renderRealistic declares {dupes} more than once in one scope. This "

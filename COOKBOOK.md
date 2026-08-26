@@ -887,6 +887,18 @@ doubled; per the counts-are-gone convention (defined at the top of this
 section), run the suite for today's numbers. What stays true is which
 failures are EXPECTED:
 
+0. **The Studio e2e suite looks flaky locally when the digitizer service is
+   down.** `npx playwright test` fails 2-3 of the `digitize-*` specs, each
+   taking ~5 minutes, while every one of them PASSES run alone in ~5 seconds.
+   Not a flake and not a regression: those specs each bootstrap the service
+   themselves, which under Playwright's two parallel workers is slow and racy.
+   With the service already up the same suite is 15/15 in ~35s. `npm run dev`'s
+   `predev` starts it via `app/scripts/ensure-digitizer.mjs` -- which until
+   2026-08-26 only looked for the WINDOWS venv (`.venv/Scripts/python.exe`) and
+   so silently declined to start anything on Linux. If you see this pattern,
+   check `curl 127.0.0.1:8721/health` before suspecting your diff.
+   *(root-caused 2026-08-26, after it cost a session twenty minutes)*
+
 1. **Golden/byte-identical mismatches on any machine that didn't capture
    the golden.** Per-fixture platform divergence, not version skew — every
    geometry-relevant pip pin matches `requirements.txt` exactly, and one

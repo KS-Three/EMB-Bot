@@ -1078,23 +1078,62 @@ describe("the Dim control tells the truth about the shape it controls", () => {
 });
 
 // ---- entry scroll --------------------------------------------------------
+//
+// The scroll RULE itself is pinned in manualShapes.spec.js
+// (shouldScrollCanvasIntoView), a pure function -- faking a layout jsdom does
+// not have is how you end up with a test that cannot fail. What these pin is
+// the WIRING: which rect the component measures the canvas against.
 
-test("mounting never scrolls the page when the canvas cannot be measured", () => {
-  // The scroll RULE is pinned directly in manualShapes.spec.js
-  // (shouldScrollCanvasIntoView) -- a pure function, because faking a layout
-  // jsdom does not have is how you end up with a test that cannot fail.
-  //
-  // What this one pins is the wiring: under jsdom nothing has a real scroll
-  // height and nothing has a real rect, so the component must decide "cannot
-  // tell" and leave the page alone. A panel that yanks the scroll position on
-  // every mount is its own bug.
+function withScrollSpy(fn) {
   const calls = [];
   const orig = Element.prototype.scrollIntoView;
   Element.prototype.scrollIntoView = function (...a) { calls.push(a); };
-  try {
-    renderPanel();
-    expect(calls).toHaveLength(0);
-  } finally {
-    Element.prototype.scrollIntoView = orig;
-  }
+  try { fn(calls); } finally { Element.prototype.scrollIntoView = orig; }
+  return calls;
+}
+
+function withCanvasRect(rect, fn) {
+  const orig = HTMLCanvasElement.prototype.getBoundingClientRect;
+  HTMLCanvasElement.prototype.getBoundingClientRect = () => ({
+    left: 0, right: CANVAS_W, width: CANVAS_W,
+    x: 0, y: rect.top, height: rect.bottom - rect.top,
+    top: rect.top, bottom: rect.bottom, toJSON() {},
+  });
+  try { return fn(); } finally { HTMLCanvasElement.prototype.getBoundingClientRect = orig; }
+}
+
+test("a canvas already on screen is left alone — no unrequested jump", () => {
+  const calls = withCanvasRect({ top: 100, bottom: 500 }, () =>
+    withScrollSpy(() => { renderPanel(); }));
+  expect(calls).toHaveLength(0);
+});
+
+test("a canvas below the fold is scrolled in, measured against the VIEWPORT when no ancestor scrolls", () => {
+  // The bug this exists for (found by review 2026-08-26): the port walk took
+  // the first ancestor whose scrollHeight exceeded its clientHeight, without
+  // checking it actually SCROLLS. Run past every real scroller and it lands on
+  // documentElement, whose rect spans the whole document -- the canvas is
+  // inside it by definition, the ratio computes ~1.0, and the guard never
+  // fires however far below the fold the canvas sits. jsdom reports
+  // scrollHeight === clientHeight === 0 everywhere, which is exactly that
+  // "no scrolling ancestor" case, so the viewport fallback is what must
+  // answer here.
+  expect(window.innerHeight).toBeGreaterThan(0);
+  const below = window.innerHeight + 200;
+  const calls = withCanvasRect({ top: below, bottom: below + 400 }, () =>
+    withScrollSpy(() => { renderPanel(); }));
+  expect(calls).toHaveLength(1);
+  expect(calls[0][0]).toEqual({ block: "nearest" });
+});
+
+test("a canvas straddling the fold scrolls once it is more than a tenth clipped", () => {
+  const h = window.innerHeight;
+  // 95% visible -> above the 0.9 threshold, left alone.
+  const calls95 = withCanvasRect({ top: h - 380, bottom: h + 20 }, () =>
+    withScrollSpy(() => { renderPanel(); }));
+  expect(calls95).toHaveLength(0);
+  // 25% visible -> scrolled.
+  const calls25 = withCanvasRect({ top: h - 100, bottom: h + 300 }, () =>
+    withScrollSpy(() => { renderPanel(); }));
+  expect(calls25).toHaveLength(1);
 });
