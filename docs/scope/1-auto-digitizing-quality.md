@@ -3295,9 +3295,19 @@ commit **`10ae9cc`** — pick it up from there rather than rebuilding.
    The cheap aspect/height pre-filters were added ahead of the skeleton call
    for exactly this reason and evidently were not enough on a slow runner.
 
+   **One datapoint added 2026-08-26, and it is a datapoint, not a control.**
+   `312574f` — docs, standalone tools and one docstring, so **zero Python
+   behaviour change** — ran the digitizer job GREEN in **15:28**, with the
+   `test_service` test passing. That is the same suite without the widening.
+   It does not settle it: the red run had FOUR CI runs queued against this
+   one's TWO, so the contention is not matched. What it does do is make
+   "contention alone" a longer stretch than it was — contention at this level
+   cost 15:28 and passed.
+
    **Whoever resumes this must measure `detect_text_clusters` wall time
    directly**, per fixture, before and after — not infer it from suite
-   duration. A 60 s service budget is the constraint to design against.
+   duration, including not from the paragraph above. A 60 s service budget is
+   the constraint to design against.
 
 **Do not reach for thread purity — it is DISPROVEN.** Requiring one thread per
 cluster excludes the star and destroys `drone_render` detection entirely: its
