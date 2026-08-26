@@ -163,6 +163,11 @@ export function threadLayers(rgb, angle, lw) {
   ];
 }
 
+// The index of the layer carrying the thread's undarkened, unlightened colour.
+// Exported so a test can assert every LOD rung includes it without hardcoding
+// the stack's shape in two places.
+export const TRUE_COLOUR_LAYER = 2;
+
 // WHICH of threadLayers()' layers to draw, as explicit indices.
 //
 // This returns a SUBSET, not a prefix, and that is the whole point. Layer 2 is
@@ -194,10 +199,28 @@ export function threadLodLayers(lw, strandCount) {
   return [0, 1, 2, 3, 4];
 }
 
-// The index of the layer carrying the thread's undarkened, unlightened colour.
-// Exported so a test can assert every LOD rung includes it without hardcoding
-// the stack's shape in two places.
-export const TRUE_COLOUR_LAYER = 2;
+// A layer COUNT, as renderRealistic's `threadLayers` option still accepts,
+// resolved to a subset that obeys the same rule as the ladder above: the true
+// colour is never what gets dropped.
+//
+// This used to be `[0,1,2,3,4].slice(0, n)` inline in drawThreads -- the same
+// prefix bug as the LOD ladder's, just one layer down and missed when that one
+// was fixed, because the ladder stopped producing counts while this public
+// option went on accepting them. `{ threadLayers: 2 }` painted rgb(132,7,7)
+// and rgb(170,9,9) for a rgb(200,10,10) thread: the true colour never appeared
+// at all. Found by review, 2026-08-26.
+//
+// Counts outside 1..5 clamp rather than throw: this is a display hint from a
+// caller tuning preview cost, and a bad number should cost detail, not a
+// blank canvas.
+export function layerSubsetForCount(n) {
+  const c = Math.max(1, Math.min(5, Math.round(n)));
+  if (c === 1) return [TRUE_COLOUR_LAYER];
+  if (c === 2) return [0, TRUE_COLOUR_LAYER];
+  if (c === 3) return [0, TRUE_COLOUR_LAYER, 3];
+  if (c === 4) return [0, 1, TRUE_COLOUR_LAYER, 3];
+  return [0, 1, 2, 3, 4];
+}
 
 // Draw every strand as a lit thread. Pure canvas work — no transform state of
 // its own; the caller supplies SX/SY already carrying zoom/pan.
@@ -217,16 +240,29 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
   // Physical width is kept precisely so the coverage answer does not change
   // between the two views.
   if (flat) {
-    const byColour = new Map();
+    // Grouped into consecutive-colour BLOCKS, not keyed by colour. A colour
+    // that RECURS later in the sequence is a separate block, sewn on top of
+    // whatever ran between; keying by colour alone merged it back into its
+    // first appearance and quietly moved those strands earlier in z-order.
+    // That made flat and realistic disagree about which colour covers which
+    // -- on the one view you pick specifically to judge coverage. Same bug,
+    // same fix, as reason 2 in the lit path's block grouping below (found by
+    // review 2026-08-26, after the lit path had already been corrected).
+    const blocks = [];
+    let curFlat = null;
+    let prevFlatRgb = null;
     for (const s of strands) {
-      const key = `${s.rgb[0]},${s.rgb[1]},${s.rgb[2]}`;
-      let list = byColour.get(key);
-      if (!list) { list = { rgb: s.rgb, items: [] }; byColour.set(key, list); }
-      list.items.push(s);
+      const rgb = s.rgb;
+      if (!curFlat || !prevFlatRgb || rgb[0] !== prevFlatRgb[0] || rgb[1] !== prevFlatRgb[1] || rgb[2] !== prevFlatRgb[2]) {
+        curFlat = { rgb, items: [] };
+        blocks.push(curFlat);
+      }
+      prevFlatRgb = rgb;
+      curFlat.items.push(s);
     }
     ctx.setLineDash([]);
     ctx.lineWidth = lw;
-    for (const c of byColour.values()) {
+    for (const c of blocks) {
       ctx.strokeStyle = `rgb(${c.rgb[0]},${c.rgb[1]},${c.rgb[2]})`;
       ctx.beginPath();
       for (const s of c.items) {
@@ -290,9 +326,11 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
     bucket.items.push(s);
   }
 
-  const layerIdx = o.layers != null
-    ? (Array.isArray(o.layers) ? o.layers : [0, 1, 2, 3, 4].slice(0, o.layers))
-    : [0, 1, 2, 3, 4];
+  // Indices preferred; a count goes through layerSubsetForCount so it can
+  // never drop the true colour (see that function for the bug it replaces).
+  const layerIdx = Array.isArray(o.layers)
+    ? o.layers
+    : (o.layers != null ? layerSubsetForCount(o.layers) : [0, 1, 2, 3, 4]);
 
   for (const blk of blocks) {
     const profiles = [];

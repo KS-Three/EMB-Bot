@@ -1008,3 +1008,71 @@ describe("draft keys never destroy a finished shape", () => {
     expect(queryByText("Undo point").disabled).toBe(false); // ...and so is the draft
   });
 });
+
+// ---- per-shape Dim -------------------------------------------------------
+//
+// Two bugs found by review 2026-08-26, both invisible to any pure-logic test
+// because both live in the wiring between shapeAlpha and the DOM.
+
+describe("the Dim control tells the truth about the shape it controls", () => {
+  test("the slider and Reset follow shapeAlpha, instead of freezing at the value the shape had when it was selected", async () => {
+    // Svelte's legacy `$:` dependency list is built from what a statement
+    // textually references, so `value={alphaFor(shape.id)}` compiled to
+    // `$.untrack(() => alphaFor(...))` with only `selectedShape` tracked.
+    // Result: clicking Reset repainted the canvas (render() names shapeAlpha
+    // explicitly) while the slider stayed at the dimmed position and Reset
+    // stayed enabled.
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const { container, getByText } = renderPanel([shape]);
+    await fireEvent.click(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
+
+    const slider = container.querySelector(".mp-dim");
+    const reset = container.querySelector(".mp-dim-reset");
+    expect(slider.value).toBe("1");
+    expect(reset.disabled).toBe(true);
+
+    await fireEvent.input(slider, { target: { value: "0.15" } });
+    expect(slider.value).toBe("0.15");
+    expect(reset.disabled).toBe(false); // the control moved, so Reset is live
+
+    await fireEvent.click(reset);
+    expect(slider.value).toBe("1");      // ...and it goes back
+    expect(reset.disabled).toBe(true);
+  });
+
+  test("a dimmed shape's alpha dies with it — a new shape reusing its id is NOT born dimmed", async () => {
+    // nextShapeId is max+1 over the surviving list, so deleting s2 from
+    // [s1, s2] makes the very next shape s2 again. shapeAlpha kept the dead
+    // entry, so that new shape appeared already faded, with a slider the user
+    // never touched and no visible cause.
+    const shapes = [
+      { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null },
+      { id: "s2", points: tri(220, 0), stitchType: "fill", colorRgb: [90, 20, 20], angleDeg: null },
+    ];
+    const { canvas, container, getAllByText } = renderPanel(shapes);
+
+    // Dim s2 all the way down.
+    await fireEvent.click(getAllByText(/Shape 2/, { selector: ".mp-shapename" })[0].closest("button"));
+    await fireEvent.input(container.querySelector(".mp-dim"), { target: { value: "0.15" } });
+    expect(container.querySelector(".mp-dim").value).toBe("0.15");
+
+    // Delete it (discrete Backspace, no draft in progress).
+    await fireEvent.keyDown(canvas, { key: "Backspace" });
+    expect(container.querySelectorAll(".mp-shapename")).toHaveLength(1);
+
+    // Draw a replacement, which is handed the recycled id "s2".
+    const [q0, q1, q2] = tri(0, 220);
+    await clickAt(canvas, q0.x, q0.y);
+    await clickAt(canvas, q1.x, q1.y);
+    await clickAt(canvas, q2.x, q2.y);
+    await clickAt(canvas, q0.x + 2, q0.y);
+    expect(container.querySelectorAll(".mp-shapename")).toHaveLength(2);
+
+    // finishShape selects what it just created, so the Dim row on screen is
+    // already the new shape's -- no extra click (selectShape TOGGLES, so a
+    // click here would deselect it and take the row away entirely).
+    expect(getAllByText(/Shape 2/, { selector: ".mp-shapename" })).toHaveLength(1); // id recycled
+    expect(container.querySelector(".mp-dim").value).toBe("1");
+    expect(container.querySelector(".mp-dim-reset").disabled).toBe(true);
+  });
+});

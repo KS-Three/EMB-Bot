@@ -802,6 +802,27 @@ deliberately. The default bow takes its side from the turn the path is making,
 so a run of curved nodes arcs instead of scalloping. Backspace mid-draft takes
 back the last node. *(confirmed 2026-08-25 — `curvedNodeThrough` tests + browser)*
 
+**Copy/paste (Ctrl+C/V), Duplicate (Ctrl+D), and a per-shape Dim slider.** The
+clipboard holds a shape *snapshot*, not an id, so a paste after the original was
+edited or deleted still pastes what was copied. Dim is view-only and never
+reaches the stitch plan or the `.embproj`. Both shipped with defects that a
+pure-logic test could not see and a later review caught: `duplicateShape`
+landed the copy exactly on the original for any shape flush to the canvas edge
+(every traced outline, since `traceFitRect` letterboxes to the edges), and the
+Dim slider froze at whatever value the shape had when it was selected, because
+Svelte's legacy `$:` dependency list only sees what a statement *textually*
+names — a read inside a called function is invisible to it. Both fixed, both
+now pinned by tests proven to fail against the old code.
+*(confirmed 2026-08-26 — `manualShapes.spec.js` + `ManualPanel.spec.js`, mutation-checked)*
+
+**The flat and realistic views now agree about sew order.** A colour that
+recurs later in the sequence is its own block in both, not merged back into its
+first appearance. The lit path was fixed for this on 2026-08-25; the flat path
+kept the bug for another day, on the one view you switch to specifically to
+judge coverage. Pinned as an invariant — the two views must produce the *same*
+block sequence — rather than as two independent expectations.
+*(confirmed 2026-08-26 — `preview.spec.js`, mutation-checked)*
+
 ---
 
 ## How this document works

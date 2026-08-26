@@ -1,5 +1,5 @@
 import { test, expect, vi } from "vitest";
-import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopOutline, renderRealistic, threadLayers, threadLodLayers, drawThreads, TRUE_COLOUR_LAYER, THREAD_WIDTH_MM } from "./preview.js";
+import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopOutline, renderRealistic, threadLayers, threadLodLayers, layerSubsetForCount, drawThreads, TRUE_COLOUR_LAYER, THREAD_WIDTH_MM } from "./preview.js";
 
 // A ctx double that tracks strokeStyle assignments (a plain property can't
 // record its own write history) alongside vi.fn() spies for every 2D-context
@@ -376,10 +376,18 @@ test("THREAD_WIDTH_MM is 0.4 and MUST NOT be widened — the anti-flattery guard
   // 0.4 mm is nominal 40wt laid thread. Against the engine's current 0.40 mm
   // fill rows that is coverage EXACTLY 1.0 -- rows that just touch, with no
   // overlap to hide behind. Widening it would make every fill look solid in
-  // the preview regardless of its real density, which would conceal the open
-  // fill-density item (FILL_ROW_MM running ~2x light) behind the display
-  // layer. That is precisely the failure ROADMAP gate 3 names: a green suite
-  // hiding bare fabric.
+  // the preview regardless of its real density, which would hide a genuine
+  // density problem behind the display layer.
+  //
+  // The open density item this protects is the denser-than-nominal pitch
+  // measured on the 43 commissioned cap logos -- tracked in area 1, still
+  // unresolved and sew-out-gated. It is NOT the "~2x light" figure an earlier
+  // version of this comment cited: that number was retracted 2026-08-25 as a
+  // satin-rail measurement artifact (see the Correction block in
+  // MASTER_SCOPE.md). And the gate that forbids changing a physical constant
+  // without a sew-out is ROADMAP gate 1, not gate 3 -- gate 3 is about
+  // flipping a default-OFF tier on. Getting that number wrong here points
+  // the next reader at the wrong refusal.
   //
   // If a sew-out later establishes a different real laid width, change this
   // number AND the MASTER_SCOPE claim that cites it AND say so out loud --
@@ -463,6 +471,76 @@ test("drawThreads draws BLOCK-major: a later colour covers an earlier one, and a
     "rgb(10,10,200)",
     "rgb(200,10,10)", // the recurring block paints LAST, not merged into the first
   ]);
+});
+
+test("FLAT view agrees with the lit view about sew order — a recurring colour is its own block there too", () => {
+  // The flat path used to key its buckets by RGB alone, so the third strand
+  // below was merged back into the first block and drawn BEFORE the blue it
+  // is sewn on top of. Flat is the view you switch to specifically to judge
+  // coverage, so it disagreeing with realistic about what covers what was the
+  // worst possible place for this bug (found by review 2026-08-26).
+  const RED = [200, 10, 10], BLUE = [10, 10, 200];
+  const strands = [
+    { x0: 0, y0: 0, x1: 10, y1: 0, rgb: RED, kind: "stitch" },
+    { x0: 0, y0: 0, x1: 10, y1: 0, rgb: BLUE, kind: "stitch" },
+    { x0: 0, y0: 0, x1: 10, y1: 0, rgb: RED, kind: "stitch" },
+  ];
+
+  const flatCtx = makeCtxSpy();
+  drawThreads(flatCtx, strands, (x) => x, (y) => y, 8, { flat: true });
+  const flatOrder = flatCtx.strokeStyleLog.filter((c) => /^rgb\(/.test(c));
+  expect(flatOrder).toEqual([
+    "rgb(200,10,10)",
+    "rgb(10,10,200)",
+    "rgb(200,10,10)",
+  ]);
+
+  // Stated as an invariant, not two independent expectations: whatever the
+  // block sequence is, the two views must produce the SAME one.
+  const litCtx = makeCtxSpy();
+  drawThreads(litCtx, strands, (x) => x, (y) => y, 8, { layers: [TRUE_COLOUR_LAYER] });
+  const litOrder = litCtx.strokeStyleLog.filter((c) => /^rgb\(/.test(c));
+  expect(flatOrder).toEqual(litOrder);
+});
+
+test("FLAT view still merges nothing it should not: consecutive same-colour strands are ONE stroke pass", () => {
+  // The fix must not cost the batching -- one beginPath/stroke per block, not
+  // per strand, or a big design pays a path setup for every stitch.
+  const RED = [200, 10, 10];
+  const strands = Array.from({ length: 50 }, () => (
+    { x0: 0, y0: 0, x1: 10, y1: 0, rgb: RED, kind: "stitch" }
+  ));
+  const ctx = makeCtxSpy();
+  drawThreads(ctx, strands, (x) => x, (y) => y, 8, { flat: true });
+  expect(ctx.stroke).toHaveBeenCalledTimes(1);
+  expect(ctx.strokeStyleLog.filter((c) => /^rgb\(/.test(c))).toEqual(["rgb(200,10,10)"]);
+});
+
+test("a layer COUNT paints the true colour too — the same prefix bug, one layer down", () => {
+  // renderRealistic's public `threadLayers` option forwards a number straight
+  // to drawThreads' `layers`, where it used to mean `slice(0, n)`. Every
+  // prefix shorter than 3 excluded index 2, the only undarkened layer, so
+  // `{ threadLayers: 2 }` painted rgb(132,7,7) and rgb(170,9,9) for a
+  // rgb(200,10,10) thread and never the colour itself. The LOD ladder was
+  // fixed for exactly this on 2026-08-25; this caller-facing path kept the
+  // bug because the ladder stopped emitting counts while the option went on
+  // accepting them.
+  for (let n = 1; n <= 5; n++) {
+    expect(layerSubsetForCount(n)).toContain(TRUE_COLOUR_LAYER);
+    expect(layerSubsetForCount(n).length).toBe(n);
+  }
+  // Out-of-range clamps rather than throwing or emptying the stack.
+  expect(layerSubsetForCount(0)).toContain(TRUE_COLOUR_LAYER);
+  expect(layerSubsetForCount(99)).toEqual([0, 1, 2, 3, 4]);
+
+  // And end to end: the narrowest count still puts real thread colour down.
+  const RED = [200, 10, 10];
+  const strands = [{ x0: 0, y0: 0, x1: 10, y1: 0, rgb: RED, kind: "stitch" }];
+  for (const n of [1, 2, 3, 4, 5]) {
+    const ctx = makeCtxSpy();
+    drawThreads(ctx, strands, (x) => x, (y) => y, 8, { layers: n });
+    expect(ctx.strokeStyleLog).toContain("rgb(200,10,10)");
+  }
 });
 
 test("renderRealistic: threadLayers overrides the LOD ladder (the escape hatch a caller can force)", () => {
