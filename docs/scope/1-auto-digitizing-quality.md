@@ -3193,3 +3193,178 @@ visible.
   fill appearance was made without the evidence.
 
 *(measured 2026-08-24 — PR #234's coverage column; Kent's framing 2026-08-25)*
+
+## Letterform quality — MEASURED 2026-08-26, four mechanisms, nothing fixed yet
+
+Kent, on a sewn `drone_render` wordmark: *"All N's look bad — bottom right
+drops away too quickly"*, *"the H edges are not clean and crisp"*, *"the E in
+THERMAL doesn't look clean"*; and on a sewn **Becker Marine** logo the same
+day: *"We lost the bottom right portion of the R — ROOKIE MISTAKE"*, *"the R
+Radius is rough and jumpy, lettering should be smooth (along with the A)"*,
+*"When doing lettering, fill angle should be the same ... Why is the N running
+Vertically?"*
+
+**No code changed. Narrative, traps and the ruled-out list:
+`.claude/memory/letterform-fidelity-2026-08-26.md`. Re-derivation:
+`digitizer/tools/letterform_fidelity/`.** (measured 2026-08-26 — 13-agent
+workflow on `drone_render.png`, plus Kent's annotated Becker screenshot)
+
+### The instrument was the reason this survived
+
+**Bare-fabric coverage scores THERMAL's `H` at 1.9% bare — "fine". The `H` is
+visibly deformed.** Coverage cannot see a tilted column, a rounded corner or a
+scalloped edge; thread is present in all three, just in the wrong place.
+Shape fidelity (thread-vs-artwork IoU, `s11_iou.py`) reads **0.587** design-wide
+over 20 letters — 0.652 big text, 0.489 small. Screening only: it saturates on
+small letters (`DRONE` `E` scores 0.534 against a 0.580 ceiling while sewing as
+an "L"). Per gate 4 it is a direct geometric measure, not an agreement rate —
+**but no quality claim rides on it yet.**
+
+### The four mechanisms, ranked
+
+| # | Mechanism | Site | Evidence | Gate |
+|---|---|---|---|---|
+| 0 | **No stitch-angle policy for satin.** `satin_shape()` takes no angle argument; every cross is that shape's own spine tangent, so each letter and each stroke picks its own angle. `fill_angle_deg` exists for FILL with a global + per-shape override + PCA fallback; satin has **no counterpart**. | `stage6_satin.py:2339`, `:1241`; cf. `config.py:452` | Kent's Becker note. Coverage and fidelity are **blind** to it — wrong angle can score a perfect IoU. | none (design decision; the angle a pro picks is Kent's call) |
+**Measured against the pro (2026-08-26).** Cross angles by stitch length
+(>= 0.8 mm), mod 180, from the professional `becker_*.dst` for artwork we also
+have; EMB-Bot's side read from the planner, never through a DST. Pro: modal
+2 deg, **6/7 letter runs within +/-20 deg**, 50.7% of satin length within
++/-15. EMB-Bot, same artwork: modal 92 deg, **9/43 = 21%**, 18.0%. **A +/-20
+window is 22% by chance — our letter angles are indistinguishable from
+random; the pro's are not.** Not a matched benchmark (the pro side is one text
+band, ours the whole logo, and we fragment 43-vs-7), and the pro itself spreads
+~19 deg, so the convention is "one angle held loosely". *(measured 2026-08-26)*
+
+| 1 | **Pull comp is a blunt round-join dilate applied BEFORE decomposition**, with no minimum-feature floor. Corners become 0.3 mm arcs (N: 11 vertices → 130); every exterior concavity narrows by `2 × pull`. The min-feature guard **exists but is scoped to `poly.interiors`** — counters protected, the E's arm slots and the N's crotch untested. | `stage5_overlap.py:227`, guard at `:424` | THERMAL E slots 0.936 → **0.336 mm** (< one thread); DRONE E 0.728 → **0.128 mm**, sealed. `pull=0` control: fidelity 0.587 → 0.747. | Fix not blocked (subtracts only, changes no constant). The **control** is diagnostic — pull comp itself is gate 1. |
+| 2 | **`_prune_spurs` destroys the branch node its docstring promises to keep.** Deleting a short corner twig drops a 3-way node to degree 2, so the walker welds two arms into one column folding ~108°. `_WELD_MAX_DOT` exists for this and is never consulted; it would have refused (dot +0.386). | `stage6_satin.py:958`, called `:1126`; consts `:93`, `:100` | Ablation: PRECISION.N bare **12.7 → 4.1%**, DRONE.N 18.6 → 0.9%, AND.N 14.0 → 1.3%. Confirmed on Becker's `R`. | none |
+| 3 | **"AND DRONE" is below renderable size** — 0.55–0.70 mm strokes at 2.91 mm caps, against a ~5 mm / ~1 mm trade minimum. | `s12_stroke.py` | With pull comp it covers but reads `AИD DROИX`; without, letterforms are right but 20–39% bare, reading `ΛND DRONL`. **Coverage or shape, not both.** | not a code problem — Kent's sizing call, parked 2026-08-26 |
+
+### Text clustering — WIDENING ATTEMPTED AND REVERTED 2026-08-26 (code: `10ae9cc`)
+
+Kent's scope call, built, measured, and then **backed out of PR #267 by his
+decision** when it turned a real e2e contract red. The code is preserved at
+commit **`10ae9cc`** — pick it up from there rather than rebuilding.
+
+**What it proved (all measured, all still true):**
+
+- The `rescued_small_shape` gate at `textcluster.py:541` is what blinds this
+  feature: `becker_marine_logo.png` 17 regions -> 0 candidates;
+  `drone_render.png` 74 -> 10 candidates, 0 clusters.
+- Two extra doors fix that — an eligibility bound (aspect + height 1.5–60 mm,
+  a sewability floor and a *cost* ceiling) and a looser stroke-CV bound for
+  non-rescued regions. `STROKE_CV_MAX = 0.32` is calibrated on fragments and
+  too tight for whole glyphs, whose skeletons cross junctions: Becker's six
+  text-band letters read **0.41–0.48** and were all rejected. 0.55 clears them
+  and still refuses that logo's graphic mark at 0.68.
+- Result: becker **11** in 1 cluster, drone_render **26** in 2,
+  enthusiast_logo 25 in 2, summit_badge 24 in 3, logo_bridge_bar 18 in 4. On
+  `enthusiast_logo` it correctly finds **"ENTHUSIAST"** (10 letters, thread 14,
+  6.5 mm caps) alongside the pre-existing rescued "ENTERPRISES INC" (14, 1.6 mm).
+- Keeping `regularize_text_clusters` scoped to all-rescued clusters (via a new
+  `text_cluster_all_rescued` flag) means **no stitch moves**: all 60 golden
+  byte-identity tests passed, full suite 1417 passed / 3 failed (the documented
+  deselects, unchanged node IDs).
+
+**Why it was reverted — two separable problems:**
+
+1. **A stale e2e contract.** `app/e2e/text-cluster-convert.spec.js:225` converts
+   one cluster then asserts *page-wide* that zero "looks like text" badges
+   remain, and that `unstitched == unstitchedBefore + badgeCountBefore`. Both
+   hold only while a design has exactly ONE cluster. Mechanical to fix — the
+   assertions need to be per-cluster — but it is a real behavioural change the
+   golden suite could not see, because `text_candidate` drives a **UI badge and
+   the Convert-to-text flow**, not geometry.
+2. **A false positive with no known discriminator.** That new cluster has 11
+   members and "ENTHUSIAST" has 10. The extra is the star inside the red shield
+   (`x −35.6…−30.2`, 5.4×5.4 mm, thread 149 vs the letters' 14). Converting the
+   cluster would drag a graphic glyph into the text.
+
+3. **A suspected COST regression — the one that was least expected.** CI's
+   digitizer job went red on `10ae9cc` with
+   `test_service.py::test_review_payload_carries_text_cluster_fields_over_http`
+   timing out: that test polls `/digitize` on `enthusiast_logo.png` 600 x 0.1 s
+   and got `running` at the 60 s budget. The run took **17:55** against
+   **9:38** for the same suite locally, where it passed.
+
+   Suspected, not proven. **For:** removing the `rescued_small_shape` early
+   exit makes `_skeleton_stroke_stats` (rasterize + skeletonize) run on far
+   more regions, and the single test that failed is the one most directly
+   exercising text clusters — generic slowness would have been likelier to
+   hit some other long test. **Against:** four CI runs were queued
+   concurrently, so runner contention alone could explain a slower wall clock.
+   The cheap aspect/height pre-filters were added ahead of the skeleton call
+   for exactly this reason and evidently were not enough on a slow runner.
+
+   **One datapoint added 2026-08-26, and it is a datapoint, not a control.**
+   `312574f` — docs, standalone tools and one docstring, so **zero Python
+   behaviour change** — ran the digitizer job GREEN in **15:28**, with the
+   `test_service` test passing. That is the same suite without the widening.
+   It does not settle it: the red run had FOUR CI runs queued against this
+   one's TWO, so the contention is not matched. What it does do is make
+   "contention alone" a longer stretch than it was — contention at this level
+   cost 15:28 and passed.
+
+   **Whoever resumes this must measure `detect_text_clusters` wall time
+   directly**, per fixture, before and after — not infer it from suite
+   duration, including not from the paragraph above. A 60 s service budget is
+   the constraint to design against.
+
+**Do not reach for thread purity — it is DISPROVEN.** Requiring one thread per
+cluster excludes the star and destroys `drone_render` detection entirely: its
+23 genuine letters span six near-identical quantized threads
+(`{308:6, 17:1, 16:3, 119:5, 8:7, 101:1}`). Measured 2026-08-26.
+
+Next candidate is inter-glyph gap — the star sits **6.3 mm** from its neighbour
+against **~0.4 mm** between letters — but a bound tight enough to exclude it
+risks splitting "ENTERPRISES INC" at its word space, so it needs measuring
+across fixtures, not tuning on one. *(measured 2026-08-26)*
+
+### The angle policy's prerequisite is not free
+
+`detect_text_clusters` (`textcluster.py:618`, wired at `pipeline.py:564`)
+already groups regions into words — but its candidate set is gated on
+`rescued_small_shape` (`textcluster.py:541`), so ordinary lettering never
+enters it. Measured: `becker_marine_logo.png` 17 regions / 0 rescued / **0
+text_candidate**; `drone_render.png` 74 / 10 / **0**. **We currently identify
+zero letters on both a real client logo and the wordmark fixture.** Widening
+the entry condition is necessary and may not be sufficient —
+`MIN_CLUSTER_MEMBERS = 3` and the stroke-CV/aspect filters are next in line.
+*(measured 2026-08-26)*
+
+**A pattern worth carrying:** this is the third mechanism in one investigation
+that is correctly implemented and scoped to a subset excluding the common case
+— with `stage5_overlap.py:424` (guard tests `poly.interiors` only) and
+`stage6_satin.py:958` (`_prune_spurs` keeps the node pixel, drops its degree).
+Each is invisible to tests because the narrow case it *does* cover works.
+
+### Two candidate fixes that must NOT ship as written
+
+- **`_SPLIT_TURN_DEG 90 → 70`** cures all three N's in one line, and breaks
+  `test_satin.py:799` plus the `ribbon_curve.png` byte-identity golden
+  (1001 → 1019 stitches) — a key clean today, not a sanctioned exception, whose
+  rule reads *"If this test ever goes red, the change under review is wrong."*
+  The 90.0 is corpus-derived (1,436 in-run corner events vs 18 splits across 19
+  professional files). **Withdrawn.**
+- **Mitre join instead of round** keeps corners square but deposits
+  `pull / sin(θ/2)` — measured 0.4243 mm at 90°, 0.9405 mm on a 3.4° wedge —
+  against a 0.30 preset, failing the repo's own invariant (0.3746 vs 0.3 ±
+  0.002). **ROADMAP gate 1 — blocked until a sew-out.**
+
+### Ruled out — do not re-investigate
+
+Stages 1–3 (per-glyph IoU 1.000 for 24 of 27 glyphs, never below 0.995).
+Stage 4 `approxPolyDP`/`simplify_tol_mm`/`min_detail_mm` (worst deviation
+0.196 mm against a 0.2 mm promise; sweeping `min_detail_mm` 1.5 → 0.3 recovers
+no area — stage 4 is the healthiest stage in the pipeline). Tier
+misclassification (all 24 letters correctly satin; flat and gradient identical
+by construction; forcing flat is worse, 74 → 350 regions). Forcing letters to
+FILL (threshold swings with `fabric.pull_comp_mm`, the coupling
+`stage7_sequence.py:1197-1203` forbids). `SATIN_MIN_CROSS_MM` dropping the N's
+crosses (drops 2 of 54, both ~9 mm from the fold — the corner is bare because
+no spine goes there).
+
+### Separate ticket, different fixture
+
+On `summit_badge.png`, where glyphs sit on a filled ground, **stage 2 fuses
+"U"+"M" and cuts the "S" in half.** Irrelevant to `drone_render`, whose glyphs
+are topologically isolated islands, but real.

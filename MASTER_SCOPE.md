@@ -182,6 +182,15 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
   powerful."* The ruling stands for the content we ship against; faces are
   parked pending a more capable tier, since neither existing tier renders one
   well. *(ruled 2026-08-25 — Kent, twice; measured — scope-history 08-25)*
+  **RE-VERIFIED 2026-08-26 through the fixed renderer, and it holds — harder.**
+  Every arm of this ruling was judged on the PRE-FIX render, which had no light
+  in it, so sparse thread drew as tidy hatching. Re-rendered lit, thread-paint's
+  0.52–0.59 coverage reads as what it is — bare cloth between strokes — while
+  filled is unchanged at 0.99. The old instrument FLATTERED the arm Kent
+  rejected and he rejected it anyway. Coverage figures did not move by
+  construction (see the `lit=False` note under "Traps"). *(re-measured
+  2026-08-26 — `owl_kent` 0.991/0.594, `photo_sunset_backlit` 0.994/0.547,
+  `photo_dof_meadow` 0.991/0.544, `drone_render` 0.516/0.364)*
 
 - **Satin borders go on shapes significant AND smooth, never blanket.** *"if
   it's abrupt, it probably doesn't require a border, or is wrong."* Blanket
@@ -196,6 +205,12 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
   (bigger design → more regions → smaller shares → stricter gate). Significance
   is tested downstream by `border_runs` against `BORDER_WIDTH_MM`.
   *(ruled 2026-08-25 — Kent; measured — PR #241, corrected #243)*
+  **RE-VERIFIED 2026-08-26 through the fixed renderer.** Re-run on `owl_kent`:
+  off 11,370 st, `significant` 11,845 (**+4.2%**, recorded +4%), blanket
+  `auto` 18,138 (**+59.5%**, recorded +60%). Both figures reproduce, and lit
+  rendering makes the silhouette claim plainer than it was: blanket wraps every
+  shape in a heavy rim so the bird reads as a cut-out, while `significant`
+  spends its 4% on the eyes. *(re-measured 2026-08-26)*
 
 - **The 3 Arabic fonts can never work, engine or not:** they carry ONLY base-block
   letters and zero presentation forms. *(measured 2026-08-22 — font.json blocks)*
@@ -679,6 +694,20 @@ threshold shipped is defended only by an owl. *(measured 2026-08-25 — PRs
 its OWN first pass had un-branched, one raster pixel deciding a 3.3 mm tab.
 **The blind spot that hid it stays fixed:** `preflight`'s `ARTWORK_UNCOVERED`,
 5.0 mm² threshold still provisional. *(fixed 2026-08-21 — PR #186)*
+**Lettering quality — MEASURED 2026-08-26, FOUR mechanisms, nothing fixed.**
+Kent on two sewn logos: *"lettering should be smooth"*, *"ROOKIE MISTAKE"*.
+**He named the one a 13-agent workflow missed: there is no stitch-angle policy
+for satin at all** — `satin_shape()` takes no angle argument, every cross is
+that shape's own spine tangent, so nothing can make a word's letters agree;
+`fill_angle_deg` exists for FILL only. Then pull comp's min-feature guard is
+scoped to `poly.interiors` (the E's arm slots close to 0.336 mm while O's
+counters are protected), and `_prune_spurs` drops a 3-way node to 2-way so the
+walker welds the N's diagonal to its stem through a 108° fold — **the same
+function PR #186 fixed, a different consequence one layer on.**
+**The instrument is why this survived: bare-fabric coverage scores the visibly
+deformed H at "1.9% bare".** Shape fidelity reads 0.587 design-wide, and is
+screening only — no quality claim rides on it. *(measured 2026-08-26 — [area
+1](docs/scope/1-auto-digitizing-quality.md); `.claude/memory/letterform-fidelity-2026-08-26.md`)*
 **Next:** NEEDS KENT. Fragmentation work measures **0% on real client logos**
 (they are satin-dominated, 1–3 fill shapes, no cutting fills). The one large
 real-artwork lever is **`chain_links`: −33% trims AND fewer stitches**, gate-1

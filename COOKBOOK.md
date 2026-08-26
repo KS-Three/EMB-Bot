@@ -554,6 +554,37 @@ colours.
 not an array. Destructure it; `.toHaveLength()` on the return value is a
 mistake this repo has already made.
 
+## `coverage()` is measured BY RENDERING — restyle the render, move every number (2026-08-25)
+
+`digitizer_core/stitchviz.coverage()` renders the design twice, on black and on
+white, and reads the difference. There is no separate geometric path. So **any
+change to how thread is DRAWN silently rewrites every coverage figure ever
+recorded** — and those figures are what the fill-tier, border and shade-bind
+rulings were decided on.
+
+Adding the lit-cylinder shading hit this twice before it was split correctly:
+
+| attempt | coverage drift |
+|---|--:|
+| off-centre bands (their anti-aliased fringe runs fractionally wider) | **8e-4** |
+| collapse the measurement to ONE opaque band at the nominal width | **1.2e-3** |
+
+The second is the instructive one and the trap a tidier will fall into. Three
+concentric anti-aliased lines are **not** equivalent to one line of the widest
+width: each pass re-blends the fringe pixels of the pass before, so the
+footprint's soft edge depends on **how many passes** there were, not only how
+wide they were.
+
+**The split that fixes it:** `render_design(..., lit=False)` reproduces the
+pre-shading draw EXACTLY — three centred bands, in that order, at those widths
+— and `coverage()` is the only caller that passes it. Shading is display; the
+measurement is frozen. `test_shading_cannot_move_coverage` pins it by setting
+the shading bands to something absurd and requiring the number not to twitch.
+
+Verified 2026-08-26 by loading the pre-change module alongside the current one:
+coverage is **bit-identical on four stitch angles**. If you touch the draw,
+re-run that comparison before you believe anything.
+
 ## The `preview.js` renderer collision — three broken `main`s in one night (2026-08-25)
 
 Worth reading before touching `app/src/lib/preview.js`, and as the clearest

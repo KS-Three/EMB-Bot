@@ -198,14 +198,15 @@ def _draw_filament(img: np.ndarray, a: tuple[int, int], b: tuple[int, int],
     """One stitch, as a lit cylinder. Bands are painted widest first, so the
     specular lands on top of the body lands on top of the shadow.
 
-    `lit=False` draws ONE opaque band at the full nominal width and nothing
-    else. That is the filament's footprint with no shading in it, and it is
-    what `coverage` measures: coverage asks how much cloth the thread hides,
-    which is a question about width, not about light. Keeping the two apart
-    is what lets the render be restyled without moving a recorded number --
-    the first cut of this shading moved coverage by 8e-4 across the board,
-    because off-centre bands push their anti-aliased fringe a fraction wider
-    than centred ones do.
+    `lit=False` reproduces the PRE-SHADING draw exactly -- the three centred
+    bands below, in that order, at those widths -- and nothing else. That is
+    the filament's footprint with no shading in it, and it is what `coverage`
+    measures: coverage asks how much cloth the thread hides, which is a
+    question about width, not about light. Keeping the two apart is what lets
+    the render be restyled without moving a recorded number.
+
+    This docstring used to say `lit=False` draws ONE opaque band. It does not,
+    and the difference is the whole point -- see the comment in the branch.
     """
     base = (int(rgb["b"]), int(rgb["g"]), int(rgb["r"]))
     if not lit:
