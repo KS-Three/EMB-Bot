@@ -3225,6 +3225,16 @@ an "L"). Per gate 4 it is a direct geometric measure, not an agreement rate —
 | # | Mechanism | Site | Evidence | Gate |
 |---|---|---|---|---|
 | 0 | **No stitch-angle policy for satin.** `satin_shape()` takes no angle argument; every cross is that shape's own spine tangent, so each letter and each stroke picks its own angle. `fill_angle_deg` exists for FILL with a global + per-shape override + PCA fallback; satin has **no counterpart**. | `stage6_satin.py:2339`, `:1241`; cf. `config.py:452` | Kent's Becker note. Coverage and fidelity are **blind** to it — wrong angle can score a perfect IoU. | none (design decision; the angle a pro picks is Kent's call) |
+**Measured against the pro (2026-08-26).** Cross angles by stitch length
+(>= 0.8 mm), mod 180, from the professional `becker_*.dst` for artwork we also
+have; EMB-Bot's side read from the planner, never through a DST. Pro: modal
+2 deg, **6/7 letter runs within +/-20 deg**, 50.7% of satin length within
++/-15. EMB-Bot, same artwork: modal 92 deg, **9/43 = 21%**, 18.0%. **A +/-20
+window is 22% by chance — our letter angles are indistinguishable from
+random; the pro's are not.** Not a matched benchmark (the pro side is one text
+band, ours the whole logo, and we fragment 43-vs-7), and the pro itself spreads
+~19 deg, so the convention is "one angle held loosely". *(measured 2026-08-26)*
+
 | 1 | **Pull comp is a blunt round-join dilate applied BEFORE decomposition**, with no minimum-feature floor. Corners become 0.3 mm arcs (N: 11 vertices → 130); every exterior concavity narrows by `2 × pull`. The min-feature guard **exists but is scoped to `poly.interiors`** — counters protected, the E's arm slots and the N's crotch untested. | `stage5_overlap.py:227`, guard at `:424` | THERMAL E slots 0.936 → **0.336 mm** (< one thread); DRONE E 0.728 → **0.128 mm**, sealed. `pull=0` control: fidelity 0.587 → 0.747. | Fix not blocked (subtracts only, changes no constant). The **control** is diagnostic — pull comp itself is gate 1. |
 | 2 | **`_prune_spurs` destroys the branch node its docstring promises to keep.** Deleting a short corner twig drops a 3-way node to degree 2, so the walker welds two arms into one column folding ~108°. `_WELD_MAX_DOT` exists for this and is never consulted; it would have refused (dot +0.386). | `stage6_satin.py:958`, called `:1126`; consts `:93`, `:100` | Ablation: PRECISION.N bare **12.7 → 4.1%**, DRONE.N 18.6 → 0.9%, AND.N 14.0 → 1.3%. Confirmed on Becker's `R`. | none |
 | 3 | **"AND DRONE" is below renderable size** — 0.55–0.70 mm strokes at 2.91 mm caps, against a ~5 mm / ~1 mm trade minimum. | `s12_stroke.py` | With pull comp it covers but reads `AИD DROИX`; without, letterforms are right but 20–39% bare, reading `ΛND DRONL`. **Coverage or shape, not both.** | not a code problem — Kent's sizing call, parked 2026-08-26 |

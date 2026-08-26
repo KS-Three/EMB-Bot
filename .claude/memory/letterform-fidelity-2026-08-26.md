@@ -140,6 +140,40 @@ So the `N` does not run vertically because of a bug in the `N`. It runs
 vertically because nothing ever told it not to, and its medial axis happened to
 come out that way — while `R` and `I` beside it happened to come out otherwise.
 
+### Measured against the pro, same logo (2026-08-26)
+
+Kent's observation is now a number. Cross angles measured on stitch LENGTH
+(>= 0.8 mm, so underlay and travel cannot wash the signal out), angle mod 180,
+from `testdata/reference/becker_*.dst` — the professional digitizer's own file
+for artwork we also have. EMB-Bot's side is read straight from the planner's
+runs, never through a DST, so the axis bug cannot colour it.
+
+| | modal angle | letter runs within +/-20 deg of it | satin length within +/-15 deg |
+|---|---|---|---|
+| **Pro**, Becker chest logo, text band | 2 deg | **6/7 = 86%** | 50.7% |
+| **EMB-Bot**, same artwork | 92 deg | **9/43 = 21%** | 18.0% |
+| *random baseline* | — | *22%* | *~17%* |
+
+**A +/-20 deg window is 40 of 180 degrees, so chance alone scores 22%.
+EMB-Bot's letter angles are statistically indistinguishable from random. The
+pro's are not.** Per-run means on our side run 113, 24, 75, 77, 83, 22, 22, 22,
+35, 179, 175, 26, 178, 149, 8, 67, 90, 90, 154 ... — every stroke choosing for
+itself, which is exactly what the code does.
+
+The modal angle held at 2 deg across cross-length thresholds of 0.8 / 1.5 /
+2.2 mm, so the pro signal is not an artefact of where the cut is drawn.
+
+**Read the honest limits before quoting this.** The comparison is *not*
+perfectly matched: the pro side is restricted to one text band while EMB-Bot's
+is the whole logo, and EMB-Bot fragments far more (43 letter-sized runs against
+7). The dispersion gap is far too large to be explained by either, but the
+exact percentages are not a benchmark. Scripts:
+`scratchpad/ang/{pro_angles,pro_band,pro_house,embot_angles}.py` — **not kept
+in the repo**, unlike the fidelity kit; re-derive from this description if
+needed. Also note the pro spreads about 19 deg across its letters (per-run
+means -17 to +2 deg), so the convention is "one angle, held loosely", not a
+single rigid value.
+
 **This is a capability gap, not a defect.** There is no constant to change and
 no test to fix; it needs a design decision — a house angle for satin-classified
 lettering, per word or per design, with the per-shape override `fill_angle_deg`
