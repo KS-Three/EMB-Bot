@@ -679,6 +679,20 @@ threshold shipped is defended only by an owl. *(measured 2026-08-25 — PRs
 its OWN first pass had un-branched, one raster pixel deciding a 3.3 mm tab.
 **The blind spot that hid it stays fixed:** `preflight`'s `ARTWORK_UNCOVERED`,
 5.0 mm² threshold still provisional. *(fixed 2026-08-21 — PR #186)*
+**Lettering quality — MEASURED 2026-08-26, FOUR mechanisms, nothing fixed.**
+Kent on two sewn logos: *"lettering should be smooth"*, *"ROOKIE MISTAKE"*.
+**He named the one a 13-agent workflow missed: there is no stitch-angle policy
+for satin at all** — `satin_shape()` takes no angle argument, every cross is
+that shape's own spine tangent, so nothing can make a word's letters agree;
+`fill_angle_deg` exists for FILL only. Then pull comp's min-feature guard is
+scoped to `poly.interiors` (the E's arm slots close to 0.336 mm while O's
+counters are protected), and `_prune_spurs` drops a 3-way node to 2-way so the
+walker welds the N's diagonal to its stem through a 108° fold — **the same
+function PR #186 fixed, a different consequence one layer on.**
+**The instrument is why this survived: bare-fabric coverage scores the visibly
+deformed H at "1.9% bare".** Shape fidelity reads 0.587 design-wide, and is
+screening only — no quality claim rides on it. *(measured 2026-08-26 — [area
+1](docs/scope/1-auto-digitizing-quality.md); `.claude/memory/letterform-fidelity-2026-08-26.md`)*
 **Next:** NEEDS KENT. Fragmentation work measures **0% on real client logos**
 (they are satin-dominated, 1–3 fill shapes, no cutting fills). The one large
 real-artwork lever is **`chain_links`: −33% trims AND fewer stitches**, gate-1

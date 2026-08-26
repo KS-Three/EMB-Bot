@@ -3193,3 +3193,70 @@ visible.
   fill appearance was made without the evidence.
 
 *(measured 2026-08-24 — PR #234's coverage column; Kent's framing 2026-08-25)*
+
+## Letterform quality — MEASURED 2026-08-26, four mechanisms, nothing fixed yet
+
+Kent, on a sewn `drone_render` wordmark: *"All N's look bad — bottom right
+drops away too quickly"*, *"the H edges are not clean and crisp"*, *"the E in
+THERMAL doesn't look clean"*; and on a sewn **Becker Marine** logo the same
+day: *"We lost the bottom right portion of the R — ROOKIE MISTAKE"*, *"the R
+Radius is rough and jumpy, lettering should be smooth (along with the A)"*,
+*"When doing lettering, fill angle should be the same ... Why is the N running
+Vertically?"*
+
+**No code changed. Narrative, traps and the ruled-out list:
+`.claude/memory/letterform-fidelity-2026-08-26.md`. Re-derivation:
+`digitizer/tools/letterform_fidelity/`.** (measured 2026-08-26 — 13-agent
+workflow on `drone_render.png`, plus Kent's annotated Becker screenshot)
+
+### The instrument was the reason this survived
+
+**Bare-fabric coverage scores THERMAL's `H` at 1.9% bare — "fine". The `H` is
+visibly deformed.** Coverage cannot see a tilted column, a rounded corner or a
+scalloped edge; thread is present in all three, just in the wrong place.
+Shape fidelity (thread-vs-artwork IoU, `s11_iou.py`) reads **0.587** design-wide
+over 20 letters — 0.652 big text, 0.489 small. Screening only: it saturates on
+small letters (`DRONE` `E` scores 0.534 against a 0.580 ceiling while sewing as
+an "L"). Per gate 4 it is a direct geometric measure, not an agreement rate —
+**but no quality claim rides on it yet.**
+
+### The four mechanisms, ranked
+
+| # | Mechanism | Site | Evidence | Gate |
+|---|---|---|---|---|
+| 0 | **No stitch-angle policy for satin.** `satin_shape()` takes no angle argument; every cross is that shape's own spine tangent, so each letter and each stroke picks its own angle. `fill_angle_deg` exists for FILL with a global + per-shape override + PCA fallback; satin has **no counterpart**. | `stage6_satin.py:2339`, `:1241`; cf. `config.py:452` | Kent's Becker note. Coverage and fidelity are **blind** to it — wrong angle can score a perfect IoU. | none (design decision; the angle a pro picks is Kent's call) |
+| 1 | **Pull comp is a blunt round-join dilate applied BEFORE decomposition**, with no minimum-feature floor. Corners become 0.3 mm arcs (N: 11 vertices → 130); every exterior concavity narrows by `2 × pull`. The min-feature guard **exists but is scoped to `poly.interiors`** — counters protected, the E's arm slots and the N's crotch untested. | `stage5_overlap.py:227`, guard at `:424` | THERMAL E slots 0.936 → **0.336 mm** (< one thread); DRONE E 0.728 → **0.128 mm**, sealed. `pull=0` control: fidelity 0.587 → 0.747. | Fix not blocked (subtracts only, changes no constant). The **control** is diagnostic — pull comp itself is gate 1. |
+| 2 | **`_prune_spurs` destroys the branch node its docstring promises to keep.** Deleting a short corner twig drops a 3-way node to degree 2, so the walker welds two arms into one column folding ~108°. `_WELD_MAX_DOT` exists for this and is never consulted; it would have refused (dot +0.386). | `stage6_satin.py:958`, called `:1126`; consts `:93`, `:100` | Ablation: PRECISION.N bare **12.7 → 4.1%**, DRONE.N 18.6 → 0.9%, AND.N 14.0 → 1.3%. Confirmed on Becker's `R`. | none |
+| 3 | **"AND DRONE" is below renderable size** — 0.55–0.70 mm strokes at 2.91 mm caps, against a ~5 mm / ~1 mm trade minimum. | `s12_stroke.py` | With pull comp it covers but reads `AИD DROИX`; without, letterforms are right but 20–39% bare, reading `ΛND DRONL`. **Coverage or shape, not both.** | not a code problem — Kent's sizing call, parked 2026-08-26 |
+
+### Two candidate fixes that must NOT ship as written
+
+- **`_SPLIT_TURN_DEG 90 → 70`** cures all three N's in one line, and breaks
+  `test_satin.py:799` plus the `ribbon_curve.png` byte-identity golden
+  (1001 → 1019 stitches) — a key clean today, not a sanctioned exception, whose
+  rule reads *"If this test ever goes red, the change under review is wrong."*
+  The 90.0 is corpus-derived (1,436 in-run corner events vs 18 splits across 19
+  professional files). **Withdrawn.**
+- **Mitre join instead of round** keeps corners square but deposits
+  `pull / sin(θ/2)` — measured 0.4243 mm at 90°, 0.9405 mm on a 3.4° wedge —
+  against a 0.30 preset, failing the repo's own invariant (0.3746 vs 0.3 ±
+  0.002). **ROADMAP gate 1 — blocked until a sew-out.**
+
+### Ruled out — do not re-investigate
+
+Stages 1–3 (per-glyph IoU 1.000 for 24 of 27 glyphs, never below 0.995).
+Stage 4 `approxPolyDP`/`simplify_tol_mm`/`min_detail_mm` (worst deviation
+0.196 mm against a 0.2 mm promise; sweeping `min_detail_mm` 1.5 → 0.3 recovers
+no area — stage 4 is the healthiest stage in the pipeline). Tier
+misclassification (all 24 letters correctly satin; flat and gradient identical
+by construction; forcing flat is worse, 74 → 350 regions). Forcing letters to
+FILL (threshold swings with `fabric.pull_comp_mm`, the coupling
+`stage7_sequence.py:1197-1203` forbids). `SATIN_MIN_CROSS_MM` dropping the N's
+crosses (drops 2 of 54, both ~9 mm from the fold — the corner is bare because
+no spine goes there).
+
+### Separate ticket, different fixture
+
+On `summit_badge.png`, where glyphs sit on a filled ground, **stage 2 fuses
+"U"+"M" and cuts the "S" in half.** Irrelevant to `drone_render`, whose glyphs
+are topologically isolated islands, but real.

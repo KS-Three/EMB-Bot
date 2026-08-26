@@ -35,3 +35,8 @@ app/public/fonts/bin-personal/
 # exists to prevent.
 src/fonts/previews-personal/
 src/fonts/licenses-personal/
+
+# Regenerable outputs of the letterform-fidelity analysis scripts (see
+# digitizer/tools/letterform_fidelity/README.md) — the METHOD is tracked, the
+# renders and the pickled capture are not.
+digitizer/tools/letterform_fidelity/out/
