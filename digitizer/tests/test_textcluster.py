@@ -32,11 +32,8 @@ from shapely.geometry import Polygon
 from digitizer_core.regions import Region
 from digitizer_core.stage1_prep import Prep
 from digitizer_core.textcluster import (
-    LETTER_STROKE_CV_MAX,
     SHAPE_CONTEXT_MAX_DIST,
-    STROKE_CV_MAX,
     _candidates,
-    _skeleton_stroke_stats,
     _stroke_stats_mm,
     detect_text_clusters,
     regularize_text_clusters,
@@ -178,17 +175,8 @@ def test_clusters_of_clearly_different_scale_stay_separate():
 
 
 def test_non_rescued_neighbor_is_not_swept_into_the_cluster():
-    """Geometric closeness to a real cluster must not pull a bystander in.
-
-    **The reason this passes changed on 2026-08-26 and the docstring has to
-    say so.** It used to hold because a region without `rescued_small_shape`
-    was never a candidate at all. Detection widened, so the bystander below IS
-    a candidate now (it clears the letter-door bounds) — what keeps it out is
-    `_cluster`'s similarity check, a weaker guarantee than the old flag gate.
-    The assertion below is unchanged and still true; the mechanism under it is
-    not, and a test whose stated reason has quietly stopped being the real one
-    is the kind that stops being able to fail. So it now asserts BOTH: that the
-    bystander is eligible, and that eligibility alone tags nothing."""
+    """A region with no `rescued_small_shape` key was never a candidate —
+    geometric closeness to a real cluster must not pull it in."""
     regions = _row("C", 4)
     bystander = Region(
         shape_id="Bystander", polygon=_rect(2.3 * 4, 0.0, 0.9, 1.8),
@@ -196,77 +184,9 @@ def test_non_rescued_neighbor_is_not_swept_into_the_cluster():
     regions.append(bystander)
     detect_text_clusters(regions, _P)
 
-    assert bystander.shape_id in {c.region.shape_id for c in _candidates(regions)}, (
-        "precondition: the bystander IS eligible post-widening -- if this ever "
-        "goes false the test has stopped exercising what it claims to")
-    assert bystander.meta == {}, "eligible but dissimilar -> meta untouched entirely"
+    assert bystander.meta == {}, "never a candidate -> meta untouched entirely"
     cluster = [r for r in regions if r.shape_id != "Bystander"]
     assert all(r.meta.get("text_candidate") is True for r in cluster)
-
-
-def test_a_row_of_non_rescued_letters_now_clusters():
-    """The capability the 2026-08-26 widening exists for.
-
-    Before it, `becker_marine_logo.png` produced 0 candidates from 17 regions
-    and `drone_render.png` 0 clusters from 74 -- ordinary lettering, being too
-    big to have been "rescued", could never be seen. Anything keyed off text
-    detection was therefore dead on real logos."""
-    regions = _row("N", 5)
-    for r in regions:
-        r.meta.pop("rescued_small_shape")          # ordinary, un-rescued glyphs
-    detect_text_clusters(regions, _P)
-
-    assert all(r.meta.get("text_candidate") is True for r in regions)
-    assert len({r.meta["text_cluster_id"] for r in regions}) == 1
-
-
-def test_the_rescued_population_keeps_its_tighter_stroke_cv():
-    """Widening added a SECOND door; it must not have widened the first.
-
-    A 0.9 x 1.8 rect measures stroke CV ~0.42 -- above `STROKE_CV_MAX` (0.32)
-    and below `LETTER_STROKE_CV_MAX` (0.55). So the same geometry must be
-    refused when it is a rescued fragment and admitted when it is not. That
-    asymmetry is the whole safety argument for the change: every measurement
-    behind this module was taken on the rescued population, and this proves
-    that population still sees the bound it was calibrated with."""
-    shape = _rect(0.0, 0.0, 0.9, 1.8)
-    as_rescued = Region(shape_id="R", polygon=shape, thread_index=0,
-                        thread_number="1", area_mm2=shape.area,
-                        meta={"rescued_small_shape": True})
-    as_ordinary = Region(shape_id="O", polygon=shape, thread_index=0,
-                         thread_number="1", area_mm2=shape.area, meta={})
-
-    stats = _skeleton_stroke_stats(as_rescued)
-    assert stats is not None and STROKE_CV_MAX < stats.cv <= LETTER_STROKE_CV_MAX, (
-        f"fixture must sit BETWEEN the two bounds to discriminate; cv={stats and stats.cv}")
-
-    assert [c.region.shape_id for c in _candidates([as_rescued])] == []
-    assert [c.region.shape_id for c in _candidates([as_ordinary])] == ["O"]
-
-
-def test_a_widened_cluster_is_tagged_but_never_redrawn():
-    """Detection widened; regularization deliberately did not follow.
-
-    `regularize_text_clusters` REPLACES a member's polygon, and every
-    measurement justifying that -- the stroke-variance drop, the
-    SHAPE_CONTEXT_MAX_DIST calibration, the OCR-confidence gate -- was taken on
-    rescued small shapes, where apparent stroke weight is unreliable. Ordinary
-    lettering is usually already the right width. Redrawing it on the strength
-    of evidence from a different population is the overreach this module's
-    fails-open discipline exists to prevent."""
-    regions = _row("W", 5)
-    for r in regions:
-        r.meta.pop("rescued_small_shape")
-    before = [r.polygon.wkt for r in regions]
-
-    detect_text_clusters(regions, _P)
-    regularize_text_clusters(regions, _P)
-
-    assert all(r.meta.get("text_candidate") is True for r in regions)
-    assert all(r.meta.get("text_cluster_all_rescued") is False for r in regions)
-    assert [r.polygon.wkt for r in regions] == before, "polygons must be untouched"
-    assert all(r.meta.get("text_cluster_regularize_skip_reason")
-               == "cluster_not_all_rescued" for r in regions)
 
 
 def test_determinism_regardless_of_input_order():

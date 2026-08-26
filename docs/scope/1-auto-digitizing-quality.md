@@ -1611,8 +1611,6 @@ recognized, read, or auto-filled:
 
 Photo/gradient design classes are untouched by construction (this feature
 only acts on `rescued_small_shape`-flagged Regions, a flat-lane-only
-(**superseded 2026-08-26 — see "Text clustering WIDENED" above; detection now
-admits ordinary lettering, REGULARIZATION still does not**)
 concept); every existing byte-identical golden not involving
 `enthusiast_logo.png` is unaffected. Out of scope, on purpose: general
 shape-primitive recognition (classifying arbitrary shapes as circle/
@@ -3241,42 +3239,55 @@ band, ours the whole logo, and we fragment 43-vs-7), and the pro itself spreads
 | 2 | **`_prune_spurs` destroys the branch node its docstring promises to keep.** Deleting a short corner twig drops a 3-way node to degree 2, so the walker welds two arms into one column folding ~108°. `_WELD_MAX_DOT` exists for this and is never consulted; it would have refused (dot +0.386). | `stage6_satin.py:958`, called `:1126`; consts `:93`, `:100` | Ablation: PRECISION.N bare **12.7 → 4.1%**, DRONE.N 18.6 → 0.9%, AND.N 14.0 → 1.3%. Confirmed on Becker's `R`. | none |
 | 3 | **"AND DRONE" is below renderable size** — 0.55–0.70 mm strokes at 2.91 mm caps, against a ~5 mm / ~1 mm trade minimum. | `s12_stroke.py` | With pull comp it covers but reads `AИD DROИX`; without, letterforms are right but 20–39% bare, reading `ΛND DRONL`. **Coverage or shape, not both.** | not a code problem — Kent's sizing call, parked 2026-08-26 |
 
-### Text clustering WIDENED 2026-08-26 — it can now see ordinary lettering
+### Text clustering — WIDENING ATTEMPTED AND REVERTED 2026-08-26 (code: `10ae9cc`)
 
-**A SCOPE change, not a bug fix**, and Kent's call. `textcluster.py`'s
-`_candidates` required `rescued_small_shape`, which this doc (below) and the
-module docstring both recorded as a deliberate flat-lane-only boundary. The
-cost of that boundary, measured: `becker_marine_logo.png` 17 regions -> **0
-candidates, 0 clusters**; `drone_render.png` 74 regions -> 10 candidates, **0
-clusters**. Anything keyed off text detection was dead on real logos.
+Kent's scope call, built, measured, and then **backed out of PR #267 by his
+decision** when it turned a real e2e contract red. The code is preserved at
+commit **`10ae9cc`** — pick it up from there rather than rebuilding.
 
-Two additional doors, each leaving the rescued population's behaviour exactly
-as measured:
+**What it proved (all measured, all still true):**
 
-- **Eligibility.** A non-rescued region may now try, gated on aspect (existing
-  bound) plus `LETTER_MIN_HEIGHT_MM` 1.5 / `LETTER_MAX_HEIGHT_MM` 60 — a
-  sewability floor and a *cost* ceiling, not a definition of a letter. Cheap
-  geometry now runs BEFORE `_skeleton_stroke_stats`, so a photo's regions no
-  longer pay skeleton cost to be rejected on aspect.
-- **Stroke variability.** `STROKE_CV_MAX` (0.32) is too tight for whole
-  glyphs, whose skeletons cross junctions and stroke ends: Becker's six
-  text-band letters read 0.41–0.48 and were all rejected. Non-rescued regions
-  use `LETTER_STROKE_CV_MAX = 0.55`, which clears that band and still refuses
-  the same logo's graphic mark at 0.68. **Calibrated on few fixtures —
-  provisional.** It is a screening bound; `_cluster` (>= 3 similar-sized,
-  similarly-weighted glyphs on a shared baseline) remains the real filter.
+- The `rescued_small_shape` gate at `textcluster.py:541` is what blinds this
+  feature: `becker_marine_logo.png` 17 regions -> 0 candidates;
+  `drone_render.png` 74 -> 10 candidates, 0 clusters.
+- Two extra doors fix that — an eligibility bound (aspect + height 1.5–60 mm,
+  a sewability floor and a *cost* ceiling) and a looser stroke-CV bound for
+  non-rescued regions. `STROKE_CV_MAX = 0.32` is calibrated on fragments and
+  too tight for whole glyphs, whose skeletons cross junctions: Becker's six
+  text-band letters read **0.41–0.48** and were all rejected. 0.55 clears them
+  and still refuses that logo's graphic mark at 0.68.
+- Result: becker **11** in 1 cluster, drone_render **26** in 2,
+  enthusiast_logo 25 in 2, summit_badge 24 in 3, logo_bridge_bar 18 in 4. On
+  `enthusiast_logo` it correctly finds **"ENTHUSIAST"** (10 letters, thread 14,
+  6.5 mm caps) alongside the pre-existing rescued "ENTERPRISES INC" (14, 1.6 mm).
+- Keeping `regularize_text_clusters` scoped to all-rescued clusters (via a new
+  `text_cluster_all_rescued` flag) means **no stitch moves**: all 60 golden
+  byte-identity tests passed, full suite 1417 passed / 3 failed (the documented
+  deselects, unchanged node IDs).
 
-Result across five fixtures — becker **11** in 1 cluster, drone_render **26**
-in 2, enthusiast_logo 25 in 2, summit_badge 24 in 3, logo_bridge_bar 18 in 4.
+**Why it was reverted — two separable problems:**
 
-**Regularization deliberately did NOT follow.** `regularize_text_clusters`
-*replaces* a member's polygon, and every measurement behind it (stroke-variance
-drop, `SHAPE_CONTEXT_MAX_DIST`, the OCR-confidence gate) was taken on rescued
-shapes, where apparent stroke weight is unreliable. Clusters carry
-`text_cluster_all_rescued`; a mixed or ordinary cluster is tagged and grouped
-but never redrawn (`skip_reason = "cluster_not_all_rescued"`). **That split is
-why this is safe: the 60 golden byte-identity tests pass unchanged** — the
-change adds grouping information and moves no stitch. *(measured 2026-08-26)*
+1. **A stale e2e contract.** `app/e2e/text-cluster-convert.spec.js:225` converts
+   one cluster then asserts *page-wide* that zero "looks like text" badges
+   remain, and that `unstitched == unstitchedBefore + badgeCountBefore`. Both
+   hold only while a design has exactly ONE cluster. Mechanical to fix — the
+   assertions need to be per-cluster — but it is a real behavioural change the
+   golden suite could not see, because `text_candidate` drives a **UI badge and
+   the Convert-to-text flow**, not geometry.
+2. **A false positive with no known discriminator.** That new cluster has 11
+   members and "ENTHUSIAST" has 10. The extra is the star inside the red shield
+   (`x −35.6…−30.2`, 5.4×5.4 mm, thread 149 vs the letters' 14). Converting the
+   cluster would drag a graphic glyph into the text.
+
+**Do not reach for thread purity — it is DISPROVEN.** Requiring one thread per
+cluster excludes the star and destroys `drone_render` detection entirely: its
+23 genuine letters span six near-identical quantized threads
+(`{308:6, 17:1, 16:3, 119:5, 8:7, 101:1}`). Measured 2026-08-26.
+
+Next candidate is inter-glyph gap — the star sits **6.3 mm** from its neighbour
+against **~0.4 mm** between letters — but a bound tight enough to exclude it
+risks splitting "ENTERPRISES INC" at its word space, so it needs measuring
+across fixtures, not tuning on one. *(measured 2026-08-26)*
 
 ### The angle policy's prerequisite is not free
 

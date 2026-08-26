@@ -212,6 +212,25 @@ candidates do exist (10) and still no cluster qualifies, so widening the entry
 condition is necessary but may not be sufficient (`MIN_CLUSTER_MEMBERS = 3`
 plus the stroke-CV and aspect filters are next in line).
 
+**Widening was BUILT and then REVERTED the same day** (code at commit
+`10ae9cc`, Kent's call). It worked — becker 0 -> 11 letters, drone_render 0 ->
+26, and on `enthusiast_logo` it correctly found "ENTHUSIAST" — and moved no
+stitches (60 goldens green, 1417 passed). It was backed out because
+`text_candidate` also drives a **UI badge and the Convert-to-text flow**, which
+the golden suite cannot see: `e2e/text-cluster-convert.spec.js:225` asserts
+page-wide that zero badges remain after converting one cluster, true only while
+a design has exactly one. And the new cluster carried a false positive — the
+star inside the shield, 11 members for a 10-letter word.
+
+**The obvious fix is disproven, so do not spend the hour:** requiring one
+thread per cluster excludes the star AND destroys drone_render, whose 23 real
+letters span six quantized threads. Gap is the next candidate (6.3 mm vs
+0.4 mm) but risks splitting "ENTERPRISES INC" at its space.
+
+**The lesson worth carrying past this feature:** a green golden suite proved
+only that GEOMETRY was unchanged. Detection metadata drives UI, and nothing in
+the Python suite touches it. "No stitch moved" is not "nothing changed".
+
 **This is the same failure shape for the third time in one investigation:**
 
 1. `stage5_overlap.py:424` — the min-feature guard, scoped to `poly.interiors`,
