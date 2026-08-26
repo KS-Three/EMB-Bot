@@ -155,23 +155,33 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
    2026-08-26, chosen over branch protection deliberately: it costs nothing, needs
    no admin settings, and still leaves a genuine hotfix hand-mergeable.
 
-   **UNVERIFIED — this may not actually be possible via the API.** Two attempts
-   the same day, on PRs #268 and #269, both refused with *"The pull request is in
-   unstable status (required checks are failing)"* while NOTHING was failing —
-   every check was `success` or `in_progress`. The repo has
-   `allow_auto_merge: true`, zero rulesets, and branch protection that a session
-   token cannot read (403). Likely cause: with no REQUIRED checks, GitHub has
-   nothing to hold the merge on, so it refuses while pending and would refuse
-   again as "clean" once green. Both PRs were merged by hand instead.
+   **`enable_pr_auto_merge` CANNOT be armed on this repo — MEASURED, both
+   states refuse.** The tool has exactly two guards and they leave no window:
 
-   That second half was never tested — the green window passed while the session
-   was asleep — so do not treat this paragraph as settled either way. **Settle it
-   in one call:** on the next PR, once all four checks are green, invoke
-   `enable_pr_auto_merge` and read the error. "clean status" / "already
-   mergeable" ⇒ auto-merge needs a required check (branch protection or a
-   ruleset) and the advice above must be rewritten. Success ⇒ delete this
-   warning. Kent can also answer it instantly from Settings → Branches, which a
-   session cannot see. *(2026-08-26)*
+   | `mergeable_state` | what the API says |
+   | --- | --- |
+   | `unstable` (checks pending) | *"in unstable status (required checks are failing)"* |
+   | `clean` (all four green) | *"already in clean status … Auto-merge only applies when checks are pending — you can merge directly"* |
+
+   Tried on PRs #268, #269 and #272; the `clean` case was captured on #272 on
+   2026-08-26. Note the `unstable` message is misleading — nothing was failing,
+   every check was `success` or `in_progress`.
+
+   The underlying cause is that the repo has NO REQUIRED status checks
+   (`allow_auto_merge: true`, zero rulesets, branch protection unreadable to a
+   session token — 403). Auto-merge exists to hold a merge on a pending
+   *required* check; with none configured there is nothing to hold, so the
+   pending window the tool wants never exists.
+
+   **So do not follow the paragraph above as written — you cannot "enable
+   auto-merge instead of waiting."** What is actually available:
+   - Wait for all four and let Kent merge (what has happened on every PR so far).
+   - Or Kent adds one required check (branch protection or a ruleset), after
+     which auto-merge should work — an admin setting he can see and a session
+     cannot. That is his call, not a session's.
+
+   The GitHub UI button is a different code path and was NOT tested; it may
+   still work. *(measured 2026-08-26)*
 
    Two related traps, both already bitten:
    - **`pytest` exit codes.** `pytest > log; echo $?` is fine, but whatever runs
