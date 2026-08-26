@@ -227,6 +227,14 @@ thread per cluster excludes the star AND destroys drone_render, whose 23 real
 letters span six quantized threads. Gap is the next candidate (6.3 mm vs
 0.4 mm) but risks splitting "ENTERPRISES INC" at its space.
 
+A THIRD problem surfaced only in CI: the digitizer job timed out on
+`test_review_payload_carries_text_cluster_fields_over_http`, a 60 s `/digitize`
+budget that returned `running`. Suspected to be the skeleton cost of screening
+many more regions — the failing test is the one most directly about text
+clusters — but four CI runs were queued concurrently, so contention is a live
+confound. Measure `detect_text_clusters` wall time per fixture directly before
+resuming; do not infer it from suite duration.
+
 **The lesson worth carrying past this feature:** a green golden suite proved
 only that GEOMETRY was unchanged. Detection metadata drives UI, and nothing in
 the Python suite touches it. "No stitch moved" is not "nothing changed".

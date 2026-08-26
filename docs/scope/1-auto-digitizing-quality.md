@@ -3279,6 +3279,26 @@ commit **`10ae9cc`** — pick it up from there rather than rebuilding.
    (`x −35.6…−30.2`, 5.4×5.4 mm, thread 149 vs the letters' 14). Converting the
    cluster would drag a graphic glyph into the text.
 
+3. **A suspected COST regression — the one that was least expected.** CI's
+   digitizer job went red on `10ae9cc` with
+   `test_service.py::test_review_payload_carries_text_cluster_fields_over_http`
+   timing out: that test polls `/digitize` on `enthusiast_logo.png` 600 x 0.1 s
+   and got `running` at the 60 s budget. The run took **17:55** against
+   **9:38** for the same suite locally, where it passed.
+
+   Suspected, not proven. **For:** removing the `rescued_small_shape` early
+   exit makes `_skeleton_stroke_stats` (rasterize + skeletonize) run on far
+   more regions, and the single test that failed is the one most directly
+   exercising text clusters — generic slowness would have been likelier to
+   hit some other long test. **Against:** four CI runs were queued
+   concurrently, so runner contention alone could explain a slower wall clock.
+   The cheap aspect/height pre-filters were added ahead of the skeleton call
+   for exactly this reason and evidently were not enough on a slow runner.
+
+   **Whoever resumes this must measure `detect_text_clusters` wall time
+   directly**, per fixture, before and after — not infer it from suite
+   duration. A 60 s service budget is the constraint to design against.
+
 **Do not reach for thread purity — it is DISPROVEN.** Requiring one thread per
 cluster excludes the star and destroys `drone_render` detection entirely: its
 23 genuine letters span six near-identical quantized threads
