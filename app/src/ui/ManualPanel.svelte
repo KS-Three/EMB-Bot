@@ -189,15 +189,39 @@
   // fires where nothing was wrong is just a jump the user did not ask for.
   // 'nearest' rather than 'center' for the same reason -- it moves the
   // minimum needed, keeping the instructions in view when they still fit.
+  // The rect the canvas has to be visible WITHIN. `.panel-body` in the shipped
+  // layout, but this must not assume that.
+  //
+  // Overflowing is not the same as scrolling, and taking the first ancestor
+  // whose scrollHeight exceeds its clientHeight gets both directions wrong
+  // (found by review 2026-08-26):
+  //   - An `overflow: visible` ancestor whose content merely spills reports
+  //     the same inequality while clipping nothing, so a canvas fully on
+  //     screen reads as hidden and the page jumps for no reason.
+  //   - If the walk runs past every real scroller it lands on
+  //     documentElement, whose rect spans the WHOLE document -- the canvas is
+  //     then inside it by definition, the ratio computes ~1.0, and the guard
+  //     never fires however far below the fold the canvas actually sits.
+  // So: require a scrolling overflow style, and when there is no such
+  // ancestor (page-level scrolling), measure against the viewport, which is
+  // what "below the fold" means in that case.
+  function scrollPortRect(el) {
+    for (let n = el.parentElement; n && n !== document.documentElement; n = n.parentElement) {
+      const style = typeof getComputedStyle === "function" ? getComputedStyle(n) : null;
+      const scrolls = style && /^(auto|scroll|overlay)$/.test(style.overflowY);
+      if (scrolls && n.scrollHeight > n.clientHeight) return n.getBoundingClientRect();
+    }
+    const h = typeof window !== "undefined" ? window.innerHeight : 0;
+    return h > 0 ? { top: 0, bottom: h } : null;
+  }
+
   onMount(() => {
     if (!canvasEl || typeof canvasEl.scrollIntoView !== "function") return;
-    // The nearest ancestor that actually scrolls -- .panel-body in the app.
-    let port = canvasEl.parentElement;
-    while (port && port.scrollHeight <= port.clientHeight) port = port.parentElement;
+    const port = scrollPortRect(canvasEl);
     if (!port) return;
     // 'nearest', not 'center': move the minimum needed, so the instructions
     // just above the canvas stay in view whenever they still fit.
-    if (shouldScrollCanvasIntoView(canvasEl.getBoundingClientRect(), port.getBoundingClientRect())) {
+    if (shouldScrollCanvasIntoView(canvasEl.getBoundingClientRect(), port)) {
       canvasEl.scrollIntoView({ block: "nearest" });
     }
   });

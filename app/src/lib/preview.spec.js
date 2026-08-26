@@ -5,7 +5,12 @@ import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopO
 // list, so the same seven names were declared three times over. esbuild
 // tolerates that, which is exactly why it survived: the suite stayed green
 // while the file quietly recorded a merge nobody had finished.
-import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopOutline, renderRealistic, threadLayers, threadLodLayers, drawThreads, TRUE_COLOUR_LAYER, THREAD_WIDTH_MM } from "./preview.js";
+//
+// It came back a FOURTH time: commit 423576a deleted the stale copy, and the
+// next merge of main reinstated it, directly under this comment saying not to.
+// If you are reconciling this file again, `node --input-type=module --check`
+// on it is the check that actually fails -- vitest will not, because esbuild
+// dedupes same-module bindings and runs all 42 tests regardless.
 
 // A ctx double that tracks strokeStyle assignments (a plain property can't
 // record its own write history) alongside vi.fn() spies for every 2D-context
