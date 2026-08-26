@@ -120,3 +120,27 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
 5. **`scratch_*` directories are gitignored but NOT disposable.** `scratch_corpus/` (37-file third-party DST corpus), `scratch_ink/` (Ink/Stitch font clone — `build-embf.mjs` needs it), `scratch_kent/` (Kent's commissioned files), `scratch_packs/`. "Gitignored" here means "kept out of the public repo on purpose", not "safe to delete" — only `scratch_ink/` has a Drive backup (`BACKUPS.md`). Details: `COOKBOOK.md` "Gitignored reference material that is NOT disposable".
 
 6. **Playwright MCP needs an explicit browser path in this class of sandbox.** `@playwright/mcp`'s bundled `playwright-core` expects a newer browser revision than what's pre-cached at `/opt/pw-browsers/`, and outbound access to Playwright's browser-download CDN is blocked (403) in this environment class — so the plain `npx @playwright/mcp@latest` config fails outright, with no download fallback. `.mcp.json` launches it through `tools/mcp-playwright.mjs` instead, which passes `--executable-path /opt/pw-browsers/chromium` only when that path exists (so a machine without it, e.g. Kent's local setup, still gets normal auto-download behavior). Don't simplify `.mcp.json` back to a bare `npx @playwright/mcp@latest` command. Confirmed 2026-08-03.
+
+7. **Three green checks is NOT a green PR — the fourth is the slow one.** CI runs
+   four jobs. `engine` and `studio` finish in well under a minute; `digitizer`
+   takes 12–18 minutes and `studio-e2e` several. So a PR shows 3/4 green long
+   before it is green, and merging there is how `main` has gone red — run 994
+   (PR #249) and run 1006 (PR #253) both merged to a failing conclusion, and
+   `preview.js` has arrived unparseable on `main` **four** times, each one caught
+   only by the job nobody waited for.
+
+   **Enable auto-merge on the PR instead of waiting or watching**
+   (`mcp__github__enable_pr_auto_merge`, or the button in the GitHub UI). GitHub
+   then holds the merge until all four pass and merges it unattended. Kent's call,
+   2026-08-26, chosen over branch protection deliberately: it costs nothing, needs
+   no admin settings, and still leaves a genuine hotfix hand-mergeable.
+
+   Two related traps, both already bitten:
+   - **`pytest` exit codes.** `pytest > log; echo $?` is fine, but whatever runs
+     LAST sets the code your harness reports — a wrapper ending in `tail` reports
+     tail's `0` over pytest's `1`. Read the recorded code, not the harness's.
+   - **The digitizer suite's expected reds.** A full local run fails exactly
+     three golden tests (`test_pushcomp`, `test_flat_lane_byte_identical`,
+     `test_stage2_photo_segment` — platform-level numerics). CI deselects those
+     same three by node ID, so local `3 failed, 1414 passed` and a green CI job
+     agree. A FOURTH failure is a real regression. *(measured 2026-08-26)*
