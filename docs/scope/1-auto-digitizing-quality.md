@@ -1611,6 +1611,8 @@ recognized, read, or auto-filled:
 
 Photo/gradient design classes are untouched by construction (this feature
 only acts on `rescued_small_shape`-flagged Regions, a flat-lane-only
+(**superseded 2026-08-26 — see "Text clustering WIDENED" above; detection now
+admits ordinary lettering, REGULARIZATION still does not**)
 concept); every existing byte-identical golden not involving
 `enthusiast_logo.png` is unaffected. Out of scope, on purpose: general
 shape-primitive recognition (classifying arbitrary shapes as circle/
@@ -3238,6 +3240,43 @@ band, ours the whole logo, and we fragment 43-vs-7), and the pro itself spreads
 | 1 | **Pull comp is a blunt round-join dilate applied BEFORE decomposition**, with no minimum-feature floor. Corners become 0.3 mm arcs (N: 11 vertices → 130); every exterior concavity narrows by `2 × pull`. The min-feature guard **exists but is scoped to `poly.interiors`** — counters protected, the E's arm slots and the N's crotch untested. | `stage5_overlap.py:227`, guard at `:424` | THERMAL E slots 0.936 → **0.336 mm** (< one thread); DRONE E 0.728 → **0.128 mm**, sealed. `pull=0` control: fidelity 0.587 → 0.747. | Fix not blocked (subtracts only, changes no constant). The **control** is diagnostic — pull comp itself is gate 1. |
 | 2 | **`_prune_spurs` destroys the branch node its docstring promises to keep.** Deleting a short corner twig drops a 3-way node to degree 2, so the walker welds two arms into one column folding ~108°. `_WELD_MAX_DOT` exists for this and is never consulted; it would have refused (dot +0.386). | `stage6_satin.py:958`, called `:1126`; consts `:93`, `:100` | Ablation: PRECISION.N bare **12.7 → 4.1%**, DRONE.N 18.6 → 0.9%, AND.N 14.0 → 1.3%. Confirmed on Becker's `R`. | none |
 | 3 | **"AND DRONE" is below renderable size** — 0.55–0.70 mm strokes at 2.91 mm caps, against a ~5 mm / ~1 mm trade minimum. | `s12_stroke.py` | With pull comp it covers but reads `AИD DROИX`; without, letterforms are right but 20–39% bare, reading `ΛND DRONL`. **Coverage or shape, not both.** | not a code problem — Kent's sizing call, parked 2026-08-26 |
+
+### Text clustering WIDENED 2026-08-26 — it can now see ordinary lettering
+
+**A SCOPE change, not a bug fix**, and Kent's call. `textcluster.py`'s
+`_candidates` required `rescued_small_shape`, which this doc (below) and the
+module docstring both recorded as a deliberate flat-lane-only boundary. The
+cost of that boundary, measured: `becker_marine_logo.png` 17 regions -> **0
+candidates, 0 clusters**; `drone_render.png` 74 regions -> 10 candidates, **0
+clusters**. Anything keyed off text detection was dead on real logos.
+
+Two additional doors, each leaving the rescued population's behaviour exactly
+as measured:
+
+- **Eligibility.** A non-rescued region may now try, gated on aspect (existing
+  bound) plus `LETTER_MIN_HEIGHT_MM` 1.5 / `LETTER_MAX_HEIGHT_MM` 60 — a
+  sewability floor and a *cost* ceiling, not a definition of a letter. Cheap
+  geometry now runs BEFORE `_skeleton_stroke_stats`, so a photo's regions no
+  longer pay skeleton cost to be rejected on aspect.
+- **Stroke variability.** `STROKE_CV_MAX` (0.32) is too tight for whole
+  glyphs, whose skeletons cross junctions and stroke ends: Becker's six
+  text-band letters read 0.41–0.48 and were all rejected. Non-rescued regions
+  use `LETTER_STROKE_CV_MAX = 0.55`, which clears that band and still refuses
+  the same logo's graphic mark at 0.68. **Calibrated on few fixtures —
+  provisional.** It is a screening bound; `_cluster` (>= 3 similar-sized,
+  similarly-weighted glyphs on a shared baseline) remains the real filter.
+
+Result across five fixtures — becker **11** in 1 cluster, drone_render **26**
+in 2, enthusiast_logo 25 in 2, summit_badge 24 in 3, logo_bridge_bar 18 in 4.
+
+**Regularization deliberately did NOT follow.** `regularize_text_clusters`
+*replaces* a member's polygon, and every measurement behind it (stroke-variance
+drop, `SHAPE_CONTEXT_MAX_DIST`, the OCR-confidence gate) was taken on rescued
+shapes, where apparent stroke weight is unreliable. Clusters carry
+`text_cluster_all_rescued`; a mixed or ordinary cluster is tagged and grouped
+but never redrawn (`skip_reason = "cluster_not_all_rescued"`). **That split is
+why this is safe: the 60 golden byte-identity tests pass unchanged** — the
+change adds grouping information and moves no stitch. *(measured 2026-08-26)*
 
 ### The angle policy's prerequisite is not free
 

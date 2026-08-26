@@ -428,6 +428,29 @@ STROKE_CV_MAX = 0.32
 # 0.107-0.964 (portrait), its 3 non-member fragments 1.778-2.125
 # (landscape) -- these bounds leave real margin either side of the letters'
 # measured range while staying well clear of the fragments'.
+# Height bounds for the non-rescued door added 2026-08-26. A COST ceiling and a
+# sewability floor, NOT a definition of a letter: under 1.5 mm a glyph cannot
+# carry a satin column, and over 60 mm we decline to skeletonize a
+# background-sized region on the chance it is one. Rescued shapes bypass both,
+# so the original population is untouched.
+LETTER_MIN_HEIGHT_MM = 1.5
+LETTER_MAX_HEIGHT_MM = 60.0
+# STROKE_CV_MAX (0.32) was calibrated on rescued fragments and is too tight for
+# whole letters: a real glyph's skeleton runs through junctions and stroke ends
+# where the distance transform spikes and dips, so its width varies more than a
+# fragment's does. Measured on `becker_marine_logo.png`, whose six text-band
+# glyphs (all 13.0 mm tall) read 0.41 / 0.42 / 0.43 / 0.45 / 0.48 / 0.41 —
+# every one rejected by 0.32, which is why that logo produced ZERO candidates.
+# 0.55 clears the observed block-letter band with margin and still refuses the
+# same logo's graphic mark at 0.68.
+#
+# CALIBRATED ON FEW FIXTURES — treat as provisional. It is a SCREENING bound,
+# not the filter: `_cluster` still demands MIN_CLUSTER_MEMBERS similarly-sized,
+# similarly-weighted glyphs on a shared baseline before anything is tagged.
+# Rescued shapes keep STROKE_CV_MAX exactly, so the measured population is
+# untouched.
+LETTER_STROKE_CV_MAX = 0.55
+
 ASPECT_RATIO_MIN = 0.05
 ASPECT_RATIO_MAX = 1.4
 
@@ -536,21 +559,56 @@ def _drop_nested(cands: list[_Candidate]) -> list[_Candidate]:
 
 
 def _candidates(regions: list[Region]) -> list[_Candidate]:
+    """Every region that could be one glyph of a word.
+
+    **Scope widened 2026-08-26 — Kent's call, and it is a SCOPE change, not a
+    bug fix.** This used to require `rescued_small_shape`, which this module's
+    docstring and `docs/scope/1-auto-digitizing-quality.md` both recorded as a
+    deliberate flat-lane-only boundary. The consequence was measured: on
+    `becker_marine_logo.png` (a real client logo) 17 regions produced **0**
+    candidates and 0 clusters, and on `drone_render.png` 74 regions produced 10
+    candidates and still 0 clusters. Ordinary lettering — anything large enough
+    to survive segmentation on its own, which is most real lettering — could
+    never be seen. Nothing downstream that keys off text detection could fire.
+
+    A rescued shape is still admitted on that flag alone, exactly as before, so
+    the population this feature was built and measured on is unchanged. What is
+    new is the second door: a region that *looks* like a glyph gets to try.
+
+    Note the ordering. The cheap geometric tests run BEFORE
+    `_skeleton_stroke_stats`, which rasterizes and skeletonizes. Under the old
+    gate the candidate set was tiny and the order did not matter; opened up, a
+    photo's every region would otherwise pay skeleton cost to be rejected on an
+    aspect ratio.
+
+    Admission is deliberately loose because it is not the real filter —
+    `_cluster` is. A candidate has to find `MIN_CLUSTER_MEMBERS - 1` others of
+    similar size and stroke weight, on a shared baseline, before anything is
+    tagged. One stray blob that passes here still tags nothing.
+    """
     raw: list[_Candidate] = []
     for r in regions:
-        if not r.meta.get("rescued_small_shape"):
-            continue
-        stats = _skeleton_stroke_stats(r)
-        if stats is None:
-            continue
-        if stats.cv > STROKE_CV_MAX:
-            continue
         x0, y0, x1, y1 = r.polygon.bounds
         width_mm, height_mm = x1 - x0, y1 - y0
         if height_mm <= 0 or width_mm <= 0:
             continue
         aspect = width_mm / height_mm
         if not (ASPECT_RATIO_MIN <= aspect <= ASPECT_RATIO_MAX):
+            continue
+        if not r.meta.get("rescued_small_shape"):
+            # The second door. Height bounds are a COST ceiling and a
+            # sewability floor, not a claim about what a letter is: below
+            # LETTER_MIN_HEIGHT_MM a glyph cannot carry a satin column at all,
+            # and above LETTER_MAX_HEIGHT_MM we decline to skeletonize a
+            # background-sized region on the chance it is a letter.
+            if not (LETTER_MIN_HEIGHT_MM <= height_mm <= LETTER_MAX_HEIGHT_MM):
+                continue
+        stats = _skeleton_stroke_stats(r)
+        if stats is None:
+            continue
+        cv_max = (STROKE_CV_MAX if r.meta.get("rescued_small_shape")
+                  else LETTER_STROKE_CV_MAX)
+        if stats.cv > cv_max:
             continue
         raw.append(_Candidate(region=r, height_mm=height_mm, width_mm=width_mm,
                                stroke_mean_mm=stats.mean_mm, stroke_cv=stats.cv,
@@ -638,10 +696,18 @@ def detect_text_clusters(regions: list[Region], p: Prep) -> None:
         shape_ids = sorted(c.region.shape_id for c in group)
         cluster_id = _text_cluster_id(shape_ids)
         stroke_mm = float(np.median([c.stroke_mean_mm for c in group]))
+        # Which door every member came through. Detection widened on
+        # 2026-08-26; REGULARIZATION deliberately did not follow it, because
+        # that pass REDRAWS a member's polygon and its evidence is entirely
+        # from the rescued population. A cluster containing any non-rescued
+        # member is therefore tagged and grouped, but never redrawn. Splitting
+        # the two is the whole reason widening detection is a safe change.
+        all_rescued = all(c.region.meta.get("rescued_small_shape") for c in group)
         for c in group:
             c.region.meta["text_candidate"] = True
             c.region.meta["text_cluster_id"] = cluster_id
             c.region.meta["text_cluster_stroke_mm"] = stroke_mm
+            c.region.meta["text_cluster_all_rescued"] = all_rescued
 
 
 # --- Regularization (Step 5): redraw each member at a shared stroke width ---
@@ -862,6 +928,20 @@ def regularize_text_clusters(regions: list[Region], p: Prep) -> None:
     """
     for r in regions:
         if not r.meta.get("text_cluster_id"):
+            continue
+
+        # Detection's 2026-08-26 widening stops here on purpose. Every
+        # measurement justifying this pass — the stroke-variance reduction, the
+        # SHAPE_CONTEXT_MAX_DIST calibration, the OCR-confidence gate — was
+        # taken on rescued small shapes, where a glyph's apparent stroke weight
+        # is unreliable and worth normalizing. None of it was taken on ordinary
+        # lettering, whose stroke width is usually already right. Redrawing
+        # those polygons on the strength of evidence from a different
+        # population would be exactly the overreach this module's "fails open"
+        # discipline exists to prevent.
+        if not r.meta.get("text_cluster_all_rescued", True):
+            r.meta["text_cluster_regularize_skipped"] = True
+            r.meta["text_cluster_regularize_skip_reason"] = "cluster_not_all_rescued"
             continue
 
         if r.polygon.interiors:
