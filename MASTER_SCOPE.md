@@ -182,6 +182,15 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
   powerful."* The ruling stands for the content we ship against; faces are
   parked pending a more capable tier, since neither existing tier renders one
   well. *(ruled 2026-08-25 — Kent, twice; measured — scope-history 08-25)*
+  **RE-VERIFIED 2026-08-26 through the fixed renderer, and it holds — harder.**
+  Every arm of this ruling was judged on the PRE-FIX render, which had no light
+  in it, so sparse thread drew as tidy hatching. Re-rendered lit, thread-paint's
+  0.52–0.59 coverage reads as what it is — bare cloth between strokes — while
+  filled is unchanged at 0.99. The old instrument FLATTERED the arm Kent
+  rejected and he rejected it anyway. Coverage figures did not move by
+  construction (see the `lit=False` note under "Traps"). *(re-measured
+  2026-08-26 — `owl_kent` 0.991/0.594, `photo_sunset_backlit` 0.994/0.547,
+  `photo_dof_meadow` 0.991/0.544, `drone_render` 0.516/0.364)*
 
 - **Satin borders go on shapes significant AND smooth, never blanket.** *"if
   it's abrupt, it probably doesn't require a border, or is wrong."* Blanket
@@ -196,6 +205,12 @@ shipped visible thread on bare fabric with no warning in this dashboard.)*
   (bigger design → more regions → smaller shares → stricter gate). Significance
   is tested downstream by `border_runs` against `BORDER_WIDTH_MM`.
   *(ruled 2026-08-25 — Kent; measured — PR #241, corrected #243)*
+  **RE-VERIFIED 2026-08-26 through the fixed renderer.** Re-run on `owl_kent`:
+  off 11,370 st, `significant` 11,845 (**+4.2%**, recorded +4%), blanket
+  `auto` 18,138 (**+59.5%**, recorded +60%). Both figures reproduce, and lit
+  rendering makes the silhouette claim plainer than it was: blanket wraps every
+  shape in a heavy rim so the bird reads as a cut-out, while `significant`
+  spends its 4% on the eyes. *(re-measured 2026-08-26)*
 
 - **The 3 Arabic fonts can never work, engine or not:** they carry ONLY base-block
   letters and zero presentation forms. *(measured 2026-08-22 — font.json blocks)*
