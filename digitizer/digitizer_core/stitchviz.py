@@ -64,14 +64,19 @@ DEFAULT_PX_PER_MM = 8.0
 # `preview.js` in the Studio implements this same model against a canvas; the
 # two are kept in step deliberately, so what Kent rules on and what a customer
 # sees agree. Change one, change both.
-# Measured in IMAGE coordinates, where y increases DOWNWARD -- so 225 deg is
-# up and to the LEFT. That is the direction thread catalogues shoot to, and
-# the direction `preview.js` already lit from (shadow +1/+1.5, highlight
-# -0.6/-0.9); matching it is why this is 225 and not 135. Getting this
-# backwards is easy and costs nothing visually except that every render is
-# lit from the opposite corner to the Studio's.
-LIGHT_DEG = 225.0
-_LIGHT = (math.cos(math.radians(LIGHT_DEG)), math.sin(math.radians(LIGHT_DEG)))
+# In IMAGE coordinates, where y increases DOWNWARD: this points up and to the
+# LEFT, the direction thread catalogues shoot to.
+#
+# Stated as a VECTOR, not an angle, and carrying the same literals as
+# `preview.js`'s `LIGHT_X`/`LIGHT_Y`, so the two can be compared without a
+# degrees<->radians conversion that could drift between them. It is (-2, -3)
+# normalised. `test_the_two_renderers_agree_on_the_light` greps the JS for
+# these exact values -- an earlier version of that test compared against a
+# `LIGHT_DEG = 225` in `preview.js` that had become DEAD CODE, so it passed
+# while the live renderer lit from a different corner. Compare live constants
+# or do not bother comparing.
+LIGHT_X, LIGHT_Y = -0.5547, -0.8321
+_LIGHT = (LIGHT_X, LIGHT_Y)
 AMBIENT, DIFFUSE = 0.80, 0.42     # tone = AMBIENT + DIFFUSE * |axis x light|
 
 # The three bands, as fractions of the nominal filament width: (width, offset
