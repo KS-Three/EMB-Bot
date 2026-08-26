@@ -1,7 +1,10 @@
 import { test, expect, vi } from "vitest";
-import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopOutline, renderRealistic, drawFilament } from "./preview.js";
+// ONE import line, deliberately. Three had accumulated here -- each bad merge
+// of this file stacked another partial copy on top rather than reconciling the
+// list, so the same seven names were declared three times over. esbuild
+// tolerates that, which is exactly why it survived: the suite stayed green
+// while the file quietly recorded a merge nobody had finished.
 import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopOutline, renderRealistic, threadLayers, threadLodLayers, drawThreads, TRUE_COLOUR_LAYER, THREAD_WIDTH_MM } from "./preview.js";
-import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopOutline, renderRealistic } from "./preview.js";
 
 // A ctx double that tracks strokeStyle assignments (a plain property can't
 // record its own write history) alongside vi.fn() spies for every 2D-context
