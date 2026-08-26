@@ -511,6 +511,78 @@ hand-rolling it in JS.
   Set-Content` round-trip.** It re-encodes the file: BOM added, every em-dash
   and ± mangled. Bit this repo twice. Use the Edit tool.
 
+## Manual digitize: copy/paste and per-shape dim (merged 2026-08-26, PR #255)
+
+Studio Mode 2 (`app/src/ui/ManualPanel.svelte` + `app/src/lib/manualShapes.js`).
+Two of the three Ember gaps Kent picked.
+
+**Copy / paste / duplicate.** `Ctrl+C` / `Ctrl+V` / `Ctrl+D`, plus a Duplicate
+button so it is discoverable without knowing the shortcut. `duplicateShape()`
+is pure and tested. Two things it has to get right, both of which read as a
+different shape if you get them wrong:
+
+- **Curve control points move WITH their anchors.** A quadratic control is an
+  absolute canvas point, not a delta — a copy that kept the original's
+  controls bows toward the original.
+- **The paste offset is clamped to the canvas** (`PASTE_OFFSET_PX`, against
+  `CANVAS_W`/`CANVAS_H`). A shape near an edge would otherwise paste partly
+  off-canvas where it cannot be selected or dragged; the copy shifts back by
+  the overflow instead.
+
+The clipboard holds a **snapshot, not an id**, so pasting still works after
+the original was edited or deleted. Duplicate deliberately does NOT route
+through the clipboard — the one-gesture case must not clobber what the user
+actually copied. Both are ephemeral and stay out of the saved `.embproj`.
+
+**Per-shape dim (`shapeAlpha`).** A view control for seeing what a shape
+covers. Held as ephemeral component state, **not** as a field on the shape.
+`shapesToRegions` only reads `points`/`curves`/`stitchType`/`colorRgb`/
+`angleDeg`, so a field on the shape would not reach the stitch plan *today* —
+keeping it off the shape entirely means it cannot start reaching it by
+accident later. Verified end-to-end in the browser, not just by unit test: the
+main stitch canvas is byte-identical at `shapeAlpha` 1.0 vs 0.15, checked
+non-vacuously against a canvas rendering 1764 stitches over 580 distinct
+colours.
+
+**Watch the return type.** `shapesToRegions()` returns `{regions, pxPerMm}`,
+not an array. Destructure it; `.toHaveLength()` on the return value is a
+mistake this repo has already made.
+
+## The `preview.js` renderer collision — three broken `main`s in one night (2026-08-25)
+
+Worth reading before touching `app/src/lib/preview.js`, and as the clearest
+worked example of the parallel-lane hazard.
+
+#249 and #251 both rewrote the thread draw. They merged with no textual
+conflict into a file containing BOTH draw paths and two `const lw` in one
+scope — a `SyntaxError`, so the module did not load and the Studio canvas was
+dead. Then **two sessions fixed that in opposite directions twenty minutes
+apart** (77333cf kept `drawFilament`; 872d950 kept `drawThreads`), both fixes
+merged, and git applied **both deletions and neither implementation**. The
+union of two self-consistent fixes was worse than the original bug. A third
+lane (#254) then proposed a fourth resolution before Kent closed it.
+
+**Settled: `drawThreads` wins** (#256, confirmed by Kent). Not on merit —
+`stitchviz.py` and `test_stitchviz.py` grep `preview.js` for
+`const LIGHT_X = -0.5547;`, `const LIGHT_Y = -0.8321;` and
+`export const THREAD_WIDTH_MM = 0.4;`, all defined only in that section, so
+the other resolution leaves the JS↔Python parity test asserting against
+symbols that do not exist. **Do not relitigate this.** Ping-pong is what cost
+the evening.
+
+What actually catches it, in one second, and is worth running by hand after
+any merge that touches this file:
+
+```bash
+cd app && node --input-type=module -e "import('./src/lib/preview.js')"
+```
+
+A green suite is NOT evidence here: when a spec file fails to parse, vitest
+reports "0 tests collected" and the run still reads as a pass. Same class:
+`preview.spec.js` carried a duplicate `import ... from "./preview.js"` for
+days — `node --check` rejects it outright, and it only ran because Vite's
+transform is lenient (fixed 2026-08-26, #257).
+
 ## Branches & worktrees
 
 This repo uses git worktrees under `.claude/worktrees/` for parallel feature
@@ -1037,6 +1109,15 @@ here since it explains *why*, not *what's currently true*.
   passed with the bug deliberately re-introduced, because the repro was
   narrower than assumed. A green new test proves nothing until you have
   watched it go red.
+- **A clean git merge of two green branches is not a safe merge.** On
+  2026-08-25 `main` was broken three times in one evening by merges that
+  produced no conflict and no failing check: two rival thread renderers
+  merged into one function, then two opposite fixes for that merged into a
+  file with both call sites and neither definition. Each branch was green on
+  its own; the union did not parse. After merging anything into a file a
+  parallel lane is also editing, run the module's own parse check by hand
+  (see the `preview.js` section) rather than trusting the suite — a module
+  that fails to load reports as "0 tests collected", which reads as a pass.
 - When adding a font: must carry real hand-authored Ink/Stitch stitch data —
   `<path inkstitch:satin_column>` rails+rungs for satin fonts, and since
   2026-08-21 also run/bean fonts whose runs carry an AUTHORED stitch
