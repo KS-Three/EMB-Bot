@@ -95,17 +95,30 @@ else {
 Write-Host "Waiting for the Studio on port $Port (up to $TimeoutSeconds s)..."
 $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
 $ready = $false
+# Both loopbacks, each with a client built for its own address family.
+# Vite binds the IPv6 loopback: it listens on [::1]:$Port with nothing on
+# 127.0.0.1, so the old IPv4-literal probe never connected - this loop ran its
+# full timeout on every launch and skipped opening the browser while the Studio
+# was serving fine. Passing 'localhost' does not fix it (it resolves to
+# 127.0.0.1 first and stops there), and neither does passing ::1 to a
+# parameterless TcpClient, which is an IPv4 socket and refuses an IPv6 target
+# even when something is listening on it. The digitizer, for its part, binds
+# 127.0.0.1 - so both families have to be tried. (2026-08-26)
+$loopbacks = @([System.Net.IPAddress]::Loopback, [System.Net.IPAddress]::IPv6Loopback)
 while ((Get-Date) -lt $deadline) {
-    $client = New-Object System.Net.Sockets.TcpClient
-    try {
-        $client.Connect('127.0.0.1', $Port)
-        $ready = $true
-    }
-    catch {
-        # Not listening yet.
-    }
-    finally {
-        $client.Dispose()
+    foreach ($ip in $loopbacks) {
+        $client = New-Object System.Net.Sockets.TcpClient($ip.AddressFamily)
+        try {
+            $client.Connect($ip, $Port)
+            $ready = $true
+        }
+        catch {
+            # Not listening on this loopback yet.
+        }
+        finally {
+            $client.Dispose()
+        }
+        if ($ready) { break }
     }
     if ($ready) { break }
     Start-Sleep -Seconds 2
