@@ -451,6 +451,22 @@
 
   function pickTemplate(template) {
     project = applyTemplate(project, template, digitizerHealth);
+    // Clear the per-element runtime, exactly as enterProject does.
+    //
+    // applyTemplate REPLACES the design ("start from template" semantics) with
+    // fresh elements, and every template's patch hard-codes the id "e1" -- so
+    // without this the new element inherits the PREVIOUS design's flattened
+    // artwork, which is keyed by element id. Pick "Logo patch", upload a logo,
+    // go Back and pick a template again: the fresh e1 reports _hasImage false
+    // and the user has uploaded nothing, but runtime.flats.e1 still holds the
+    // old logo. enterProject (the other whole-project-replacement path) has
+    // always cleared this; pickTemplate was its unfixed sibling. Found by a
+    // sibling-pattern sweep 2026-08-26.
+    //
+    // designDims is deliberately NOT reset here: it is re-dispatched on the
+    // next generate, and unlike runtime it is not keyed by element id, so a
+    // stale value cannot attach itself to the wrong element.
+    runtime = { flats: {}, workImages: {} };
     persist();
     step = "content";
   }

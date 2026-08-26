@@ -467,13 +467,53 @@ def colour_groups(blocks):
     return groups
 
 
-def surface(segs, bb, groups, order):
+def colour_runs(blocks):
+    """(rgb, [block ids]) per CONSECUTIVE RUN of one colour, in sew order.
+
+    Distinct from colour_groups on purpose. A colour that recurs later in the
+    sequence is a SEPARATE run: the standard "outline last" build sews black
+    fill, then red, then a black outline ON TOP of the red, and that last black
+    is a third run, not more of the first one.
+
+    colour_groups collapses those two blacks into one bucket, which is right
+    for per-colour recall (how much of this thread is present at all — order
+    cannot matter) and wrong for the visible surface, where order is the whole
+    question. surface() used to be handed the colour-keyed groups and paint
+    each at the position of its EARLIEST block (`min(pg[i])`), so the outline
+    was painted first and then buried by the red it is physically on top of.
+    The grader then scored us against a picture of the pro's design that the
+    pro's own customer would never see.
+
+    Same bug shape, and the same fix, as app/src/lib/preview.js drawThreads --
+    which had it in both its draw paths and was corrected 2026-08-25/26. Found
+    here by a sibling-pattern sweep, 2026-08-26.
+    """
+    runs = []
+    prev = None
+    for b in blocks:
+        rgb = tuple(b.get("rgb", (0, 0, 0)))
+        if not runs or rgb != prev:
+            runs.append((rgb, []))
+        prev = rgb
+        runs[-1][1].append(b["block"])
+    return runs
+
+
+def surface(segs, bb, painted):
     """Per-pixel visible colour id, painted in sew order — last thread down wins,
-    which is what the customer actually sees. -1 = bare fabric."""
+    which is what the customer actually sees. -1 = bare fabric.
+
+    `painted` is [(colour_id, [block ids])] already IN SEW ORDER, so a colour
+    that recurs gets painted again at each of its positions. It used to take a
+    colour-keyed dict plus an order derived from each group's earliest block,
+    which could not express "this thread comes back later".
+    """
     W, H = _grid(bb, RES)
     lab = np.full((H, W), -1, np.int16)
-    for cid in order:
-        m = solid(raster(segs, bb, only_blocks=set(groups[cid])))
+    for cid, blocks in painted:
+        if not blocks:
+            continue
+        m = solid(raster(segs, bb, only_blocks=set(blocks)))
         lab[m] = cid
     return lab
 
@@ -506,17 +546,25 @@ def coverage_component(pro_segs, our_segs, bb, pro_blocks, our_blocks):
     # surface; comparing the two catches "right ground, wrong shape" — a word
     # replaced by the slab it sits on covers the same mm2 and still reads wrong.
     pgroups = colour_groups(pro_blocks)
-    ogroups_rgb = colour_groups(our_blocks)
     pkeys = list(pgroups.keys())
     if pkeys:
-        ogroups = {}
-        for rgb, idxs in ogroups_rgb.items():
-            near = min(range(len(pkeys)),
+        # Painted per consecutive RUN, not per colour bucket, so an
+        # outline-last build reads as on top on both sides. The colour-ID space
+        # is unchanged -- pro colours are still enumerated by pkeys and ours
+        # still map to the nearest of them -- so `agree` and the per-colour
+        # surface_keep below compare exactly what they did before; only the
+        # PAINT ORDER is corrected. pgroups is left alone: per-colour recall
+        # (below) wants every block of a thread together, order irrelevant.
+        pid = {rgb: i for i, rgb in enumerate(pkeys)}
+        pruns = colour_runs(pro_blocks)
+        oruns = colour_runs(our_blocks)
+
+        def nearest_pro(rgb):
+            return min(range(len(pkeys)),
                        key=lambda i: sum((a - b) ** 2 for a, b in zip(rgb, pkeys[i])))
-            ogroups.setdefault(near, []).extend(idxs)
-        pg = {i: pgroups[k] for i, k in enumerate(pkeys)}
-        plab = surface(pro_segs, bb, pg, sorted(pg, key=lambda i: min(pg[i])))
-        olab = surface(our_segs, bb, ogroups, sorted(ogroups, key=lambda i: min(ogroups[i])))
+
+        plab = surface(pro_segs, bb, [(pid[rgb], blks) for rgb, blks in pruns])
+        olab = surface(our_segs, bb, [(nearest_pro(rgb), blks) for rgb, blks in oruns])
         vis = sp | so
         agree = float((plab[vis] == olab[vis]).mean()) if vis.any() else 0.0
     else:

@@ -1655,3 +1655,63 @@ describe("isPhoto forced class (spec 2026-08-18 decision 4)", () => {
     expect("forced_class" in buildDigitizeConfig({ isPhoto: false })).toBe(false);
   });
 });
+
+// ---- remapBlockColors ----------------------------------------------------
+
+test("remapBlockColors: a thread override follows its COLOUR across a re-palette", async () => {
+  // The bug (measured 2026-08-26): blockColors is keyed by palette index, the
+  // service re-derives the palette on every run, and nothing remapped it. Set
+  // "Red -> navy" at index 1, re-digitize 4 colours down to 3, and index 1 is
+  // now WHITE -- which then rendered and EXPORTED as navy. Wrong thread colour
+  // in the customer's machine file.
+  const { remapBlockColors } = await import("./digitizer.js");
+  const C = (r, g, b, name) => ({ r, g, b, name });
+  const NAVY = [20, 30, 110];
+
+  const oldPalette = [C(0, 0, 0, "Black"), C(200, 20, 20, "Red"), C(255, 255, 255, "White"), C(212, 175, 55, "Gold")];
+  // Red drops out; the survivors shuffle down.
+  const newPalette = [C(0, 0, 0, "Black"), C(255, 255, 255, "White"), C(212, 175, 55, "Gold")];
+
+  // Red is gone from the new palette, so its override goes with it -- there is
+  // no longer a block it could mean.
+  expect(remapBlockColors(oldPalette, { 1: NAVY }, newPalette)).toEqual({});
+
+  // Gold survives, moving 3 -> 2. Its override moves with it.
+  expect(remapBlockColors(oldPalette, { 3: NAVY }, newPalette)).toEqual({ 2: NAVY });
+
+  // White survives, moving 2 -> 1: the override must NOT stay at index 2.
+  expect(remapBlockColors(oldPalette, { 2: NAVY }, newPalette)).toEqual({ 1: NAVY });
+});
+
+test("remapBlockColors: the degenerate cases do not invent overrides", async () => {
+  const { remapBlockColors } = await import("./digitizer.js");
+  const C = (r, g, b) => ({ r, g, b });
+  const pal = [C(0, 0, 0), C(1, 1, 1)];
+  expect(remapBlockColors(pal, {}, pal)).toEqual({});
+  expect(remapBlockColors(pal, null, pal)).toEqual({});
+  expect(remapBlockColors(null, { 0: [9, 9, 9] }, pal)).toEqual({});
+  expect(remapBlockColors(pal, { 0: [9, 9, 9] }, null)).toEqual({});
+  // An index that is not in the old palette at all cannot be matched.
+  expect(remapBlockColors(pal, { 7: [9, 9, 9] }, pal)).toEqual({});
+  // An unchanged palette is the identity.
+  expect(remapBlockColors(pal, { 1: [9, 9, 9] }, pal)).toEqual({ 1: [9, 9, 9] });
+});
+
+test("remapBlockColors: two blocks collapsing onto one colour keep the EARLIER choice", async () => {
+  // A re-palette can merge two near colours into one. Sew order decides:
+  // the earlier block's pick wins, deterministically, rather than whichever
+  // key Object.keys happened to hand back last.
+  const { remapBlockColors } = await import("./digitizer.js");
+  const C = (r, g, b) => ({ r, g, b });
+  // Both old blocks are the SAME thread -- the service does emit a colour more
+  // than once -- so both genuinely resolve to new index 0. (An earlier version
+  // of this fixture used two DIFFERENT colours, only one of which survived, so
+  // it never exercised the collision at all and passed with the guard removed.
+  // Caught by mutation, 2026-08-26.)
+  const oldPalette = [C(200, 20, 20), C(200, 20, 20)];
+  const newPalette = [C(200, 20, 20)];
+  const A = [1, 1, 1], B = [2, 2, 2];
+  expect(remapBlockColors(oldPalette, { 0: A, 1: B }, newPalette)).toEqual({ 0: A });
+  // Same answer whichever order the keys arrive in.
+  expect(remapBlockColors(oldPalette, { 1: B, 0: A }, newPalette)).toEqual({ 0: A });
+});

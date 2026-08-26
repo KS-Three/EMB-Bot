@@ -451,6 +451,52 @@ test("generateElement: two manually-drawn shapes each become their own color/reg
   expect(d.colorCount).toBe(2);
 });
 
+test("generateElement: manual shapes sew in DRAW order, not brightest-first", async () => {
+  // The bug this exists for (found by a sibling-pattern sweep, 2026-08-26, and
+  // reproduced against the real engine): digitize.js sequences light-to-dark
+  // by default, and the manual branch did not opt out. A dark shape drawn
+  // FIRST and a pale shape drawn on top of it came back sewn pale-then-dark,
+  // so the dark one covered the shape the user deliberately put above it.
+  // ManualPanel paints later-over-earlier and hit-tests back-to-front to
+  // match, and it has no reorder control -- so the stacking the user drew was
+  // simply unreachable.
+  //
+  // Asserted as "the engine's colour order equals the shape order I passed",
+  // not as a hardcoded [navy, cream]: the point is the RELATIONSHIP, and a
+  // literal pair would still pass if the sort were reinstated and the fixture
+  // happened to be already-sorted.
+  const { generateElement } = await import("./generate.js");
+  const { defaultManualElement, defaultManualShape } = await import("./project.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+
+  const NAVY = [20, 30, 80];
+  const CREAM = [245, 240, 220];
+  // Navy drawn first, cream drawn second and therefore ON TOP.
+  const navy = {
+    ...defaultManualShape("s1"),
+    points: [{ x: 0, y: 0 }, { x: 300, y: 0 }, { x: 300, y: 300 }, { x: 0, y: 300 }],
+    colorRgb: NAVY,
+  };
+  const cream = {
+    ...defaultManualShape("s2"),
+    points: [{ x: 80, y: 80 }, { x: 220, y: 80 }, { x: 220, y: 220 }, { x: 80, y: 220 }],
+    colorRgb: CREAM,
+  };
+  const el = { ...defaultManualElement("e1"), shapes: [navy, cream] };
+  const d = generateElement(el, garment, {});
+
+  const sewn = d.colors.map((c) => [c.r, c.g, c.b]);
+  expect(sewn).toEqual([NAVY, CREAM]);
+
+  // And the other way round, so this cannot pass by the fixture happening to
+  // already be in brightness order: reverse the draw order, get the reverse
+  // sew order.
+  const flipped = { ...defaultManualElement("e1"), shapes: [cream, navy] };
+  const d2 = generateElement(flipped, garment, {});
+  expect(d2.colors.map((c) => [c.r, c.g, c.b])).toEqual([CREAM, NAVY]);
+});
+
 test("generateElement: manual sizeMm target scales the design width, same rule text/image follow", async () => {
   const { generateElement } = await import("./generate.js");
   const { defaultManualElement, defaultManualShape } = await import("./project.js");

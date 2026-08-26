@@ -107,6 +107,27 @@ export function generateElement(element, garment, runtime) {
     const fabric = EMB.getFabric(EMB.fabricForGarment(garment.id));
     return EMB.buildQualityDesign(regions, {
       garment, fabric, pxPerMm, densityMm: 0.4,
+      // DRAW ORDER IS SEW ORDER here, so the brightness sort must not run.
+      //
+      // digitize.js sequences light-to-dark by default (`darkOnTop`), which is
+      // right for IMAGE mode: nothing in a raster says which colour the artist
+      // meant on top, and dark-last is the professional default. It is wrong
+      // here. In manual mode the user drew these shapes in an order they can
+      // see -- ManualPanel paints `for (const s of shapeList)`, later over
+      // earlier, and hit-tests back-to-front to match -- and shapesToRegions
+      // preserves that order deliberately, one region per shape.
+      //
+      // Without this, a navy rectangle drawn first and a cream circle drawn on
+      // top of it sew cream-then-navy: the navy covers the circle the user put
+      // above it. Measured against the real engine 2026-08-26 -- input order
+      // [navy, cream] came back as colors [cream, navy], exactly reversed --
+      // and there is no reorder control in ManualPanel, so the stacking the
+      // user drew was simply unreachable.
+      //
+      // Kent's call, 2026-08-26. Image mode keeps the heuristic (see the
+      // artwork branch above); this changes what already-saved manual designs
+      // sew, which is the point.
+      darkOnTop: false,
       underlay: element.underlay,
       targetWidthMm: element.sizeMm || undefined,
       offsetXMm: element.offsetXMm || 0,
@@ -134,6 +155,12 @@ export function generateElement(element, garment, runtime) {
     const fabric = EMB.getFabric(EMB.fabricForGarment(garment.id));
     return EMB.buildQualityDesign(regions, {
       garment, fabric, pxPerMm, densityMm: 0.4,
+      // Same rule as the manual branch above. A no-op today -- this branch
+      // always emits exactly one region, and a sort of one element cannot
+      // reorder anything -- but it is the same code path the moment presets
+      // can be stacked, and the two branches drifting apart is precisely how
+      // the manual one ended up wrong.
+      darkOnTop: false,
       underlay: element.underlay,
       targetWidthMm: element.sizeMm || undefined,
       offsetXMm: element.offsetXMm || 0,

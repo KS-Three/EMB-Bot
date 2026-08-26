@@ -358,8 +358,36 @@ export function addSeededTextElement(project, seed, hoopWmm) {
 // falls back the same way if that empties it).
 export function removeElement(project, id) {
   if (project.elements.length <= 1) return project;
-  const elements = project.elements.filter((el) => el.id !== id);
+  let elements = project.elements.filter((el) => el.id !== id);
   if (elements.length === project.elements.length) return project; // id not found
+
+  // Prune conversion provenance that pointed at the element just removed.
+  //
+  // Element ids are RECYCLED: nextElementId is max+1 over the SURVIVING
+  // elements, so deleting e2 hands "e2" straight back to the next element
+  // added. A `textConversions` entry left naming the dead id would then name
+  // an innocent NEW element, and DigitizePanel's cluster bar would still show
+  // "Undo — remove text element" — which deletes that new element instead of
+  // the one the user converted. Found by a sibling-pattern sweep 2026-08-26;
+  // it is the same never-pruned-map-over-a-recycled-id shape as the shapeAlpha
+  // bug fixed in PR #264, one level up.
+  //
+  // Pruning rather than making ids monotonic: a project-level counter would
+  // change the persisted schema, need a migrateProject default for every
+  // existing save, and break the literal-id expectations this file's own spec
+  // asserts. Recycling is already a documented property the app compensates
+  // for elsewhere; this keeps that contract instead of inverting it.
+  //
+  // Elements with no matching entry pass through BY REFERENCE, so keyed
+  // {#each} blocks and identity-based memoization see no change.
+  if (elements.some((el) => el.textConversions && Object.values(el.textConversions).includes(id))) {
+    elements = elements.map((el) => {
+      if (!el.textConversions) return el;
+      const kept = Object.entries(el.textConversions).filter(([, v]) => v !== id);
+      if (kept.length === Object.keys(el.textConversions).length) return el;
+      return { ...el, textConversions: Object.fromEntries(kept) };
+    });
+  }
   const selectedId = project.selectedId === id ? elements[0].id : project.selectedId;
   let selectedIds = selectedIdsOf(project).filter((sid) => sid !== id);
   if (!selectedIds.length) selectedIds = [selectedId];

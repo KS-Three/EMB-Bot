@@ -1098,6 +1098,50 @@ export function decodedFromDesignCached(design) {
   return hit;
 }
 
+// Carry per-block thread overrides across a RE-DIGITIZE.
+//
+// `blockColors` is keyed by palette INDEX, and the service re-derives a whole
+// new palette on every run -- change Colors(max), tweak any param, or delete a
+// shape and let the debounced restitch fire, and index 1 is a different thread
+// than it was. Nothing remapped it, and only a brand-new artwork upload reset
+// it, so the override silently transferred to whatever colour now sits at that
+// index. Measured 2026-08-26: override "Red -> navy" at index 1, re-digitize
+// 4 colours down to 3, and the WHITE block renders and EXPORTS as navy. That
+// one reaches the customer's machine file, which is why this remaps rather
+// than simply pruning: dropping the override loses the user's choice, and
+// keeping the index applies it to the wrong thread.
+//
+// Matched on the colour the override was chosen FOR, not the index it landed
+// at. A thread that survives the re-palette keeps its override wherever it
+// moved to; one the new palette dropped loses it, which is the only honest
+// answer -- there is nothing left to recolour. Two old blocks collapsing onto
+// one new colour keep the EARLIER block's choice, matching sew order.
+//
+// Storage format is unchanged (still index-keyed), so saved .embproj files
+// need no migration.
+export function remapBlockColors(oldColors, overrides, newColors) {
+  const ov = overrides || {};
+  const keys = Object.keys(ov);
+  if (!keys.length) return {};
+  const oldC = oldColors || [];
+  const newC = newColors || [];
+  const key = (c) => (c ? `${c.r || 0},${c.g || 0},${c.b || 0}` : null);
+  const newIndexByColour = new Map();
+  for (let j = 0; j < newC.length; j++) {
+    const k = key(newC[j]);
+    if (k != null && !newIndexByColour.has(k)) newIndexByColour.set(k, j);
+  }
+  const out = {};
+  for (const raw of keys.map(Number).filter((n) => Number.isInteger(n)).sort((a, b) => a - b)) {
+    const k = key(oldC[raw]);
+    if (k == null) continue;
+    const j = newIndexByColour.get(k);
+    if (j == null || out[j] != null) continue; // dropped from the palette, or an earlier block already claimed it
+    out[j] = ov[raw];
+  }
+  return out;
+}
+
 // Block colors for buildImportedDesign: the service palette (real thread
 // colors, already brand-snapped) as the default for every block, the user's
 // per-block overrides on top. Passing a FULL map matters — any block left out
