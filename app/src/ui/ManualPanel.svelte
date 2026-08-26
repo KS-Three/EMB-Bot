@@ -10,6 +10,7 @@
     curveControlOrNull, hitTestSegmentMidpoint, curveHandlePoint, pointInShape,
     nearestSegmentIndex, insertVertexAtSegment,
     curvedNodeThrough, curvedNodeFlags, quadraticControlForPointOnCurve,
+    duplicateShape, nextShapeIds,
   } from "../lib/manualShapes.js";
   import { traceFitRect } from "../lib/manualTrace.js";
 
@@ -365,6 +366,67 @@
     patch({ shapes: shapes.map((s) => (s.id === id ? { ...s, ...p } : s)) });
   }
 
+  // ---- Copy / paste ------------------------------------------------------
+  // The clipboard is a SHAPE SNAPSHOT, not an id: pasting after the original
+  // has been edited or deleted must still paste what was copied, and holding
+  // an id would either paste the edited version or nothing at all.
+  //
+  // Ephemeral like `draft` — a copied shape does not belong in the saved
+  // document, and a .embproj that restored someone's clipboard would be
+  // surprising.
+  let clipboardShape = null;
+
+  function copySelected() {
+    const shape = shapes.find((s) => s.id === selectedShapeId);
+    if (!shape) return;
+    // Deep enough: points and curves are the only nested structures, and both
+    // must not alias the live shape or a later edit would rewrite the copy.
+    clipboardShape = {
+      ...shape,
+      points: shape.points.map((pt) => ({ ...pt })),
+      curves: { ...(shape.curves || {}) },
+    };
+  }
+
+  function pasteShape(source) {
+    const src = source || clipboardShape;
+    if (!src) return;
+    const [id] = nextShapeIds(shapes, 1);
+    const copy = duplicateShape(src, id);
+    if (!copy) return;
+    patch({ shapes: [...shapes, copy] });
+    // Select the COPY, not the original: the paste is what the user is now
+    // working with, and it is the thing they will want to drag or recolour.
+    selectedShapeId = id;
+    stopShapeEdit();
+  }
+
+  // Duplicate = copy + paste in one gesture, without disturbing the clipboard.
+  // This is the common case (place one eye, duplicate it for the other), and
+  // routing it through the clipboard would clobber whatever was copied.
+  function duplicateSelected() {
+    const shape = shapes.find((s) => s.id === selectedShapeId);
+    if (!shape) return;
+    pasteShape(shape);
+  }
+
+  // ---- Per-shape dimming -------------------------------------------------
+  // A VIEW control, and ephemeral on purpose: it exists to see what a shape is
+  // covering while you work, so it must never reach the stitch plan.
+  // shapesToRegions only reads points/curves/stitchType/colorRgb/angleDeg, but
+  // keeping this out of the shape object entirely means it cannot start
+  // reaching it by accident later, and it stays out of the .embproj too.
+  let shapeAlpha = {}; // { [shapeId]: 0..1 }
+
+  function alphaFor(id) {
+    const v = shapeAlpha[id];
+    return typeof v === "number" ? v : 1;
+  }
+
+  function setAlpha(id, v) {
+    shapeAlpha = { ...shapeAlpha, [id]: Number(v) };
+  }
+
   // ---- Vertex editing ----------------------------------------------------
   function startShapeEdit(id) {
     const shape = shapes.find((s) => s.id === id);
@@ -684,6 +746,16 @@
       }
       return;
     }
+    // Copy/paste, on the shortcuts everyone already has in their fingers.
+    // Guarded on a modifier so a plain "c" or "v" is never swallowed, and
+    // skipped mid-draft: the draft is not a shape yet, so there is nothing
+    // meaningful to copy and a paste would land behind the outline being drawn.
+    if ((e.ctrlKey || e.metaKey) && !editingId && draft.length === 0) {
+      const k = e.key.toLowerCase();
+      if (k === "c" && selectedShapeId) { copySelected(); e.preventDefault(); return; }
+      if (k === "v" && clipboardShape) { pasteShape(); e.preventDefault(); return; }
+      if (k === "d" && selectedShapeId) { duplicateSelected(); e.preventDefault(); return; }
+    }
     if (e.key === "Delete" || e.key === "Backspace") {
       // Mid-draft, BACKSPACE takes back the last node — the same key that
       // means "undo that character" everywhere else, and what the Ember demo
@@ -834,10 +906,14 @@
       // what it was before de-emphasis existed.
       const dimmed = !!selectedId && !isSel;
       const invalid = editing && !editValid;
+      // The user's own per-shape dimming multiplies the selection dimming
+      // rather than replacing it, so "see what is underneath this" and "focus
+      // the selected shape" compose instead of fighting.
+      const a = alphaFor(s.id);
       drawShape(
         ctx, pts, liveCrv, true,
-        invalid ? "rgba(192,57,43,0.25)" : `rgba(${r},${g},${b},${dimmed ? 0.18 : 0.55})`,
-        invalid ? "#c0392b" : (isSel ? "#4f46e5" : `rgb(${r},${g},${b})`),
+        invalid ? "rgba(192,57,43,0.25)" : `rgba(${r},${g},${b},${(dimmed ? 0.18 : 0.55) * a})`,
+        invalid ? "#c0392b" : (isSel ? `rgba(79,70,229,${a})` : `rgba(${r},${g},${b},${a})`),
         isSel || editing ? 3 : (dimmed ? 1 : 1.5)
       );
       if (editing) {
@@ -900,7 +976,7 @@
     canvasEl, shapes, draft, draftCurves, selectedShapeId,
     editingId, editPoints, editCurves, editIssues.length === 0,
     curveDragSeg, curveDragPoint, curveTarget,
-    backdropCanvas, backdropOn, backdropOpacity
+    backdropCanvas, backdropOn, backdropOpacity, shapeAlpha
   );
 </script>
 
@@ -950,6 +1026,7 @@
     <button type="button" on:click={undoPoint} disabled={!draft.length}>Undo point</button>
     <button type="button" on:click={clearDraft} disabled={!draft.length}>Clear shape</button>
     <button type="button" class="primary" on:click={finishShape} disabled={!canFinish}>Finish shape</button>
+    <button type="button" on:click={duplicateSelected} disabled={!selectedShapeId || !!editingId}>Duplicate</button>
     <button type="button" on:click={() => (traceOpen = !traceOpen)}>Trace image…</button>
   </div>
 
@@ -1017,6 +1094,26 @@
   {#if selectedShape}
     <div class="mp-assign">
       <h3>{summary(selectedShape)}</h3>
+      <div class="mp-row">
+        <span class="mp-label">Dim</span>
+        <input
+          type="range"
+          class="mp-dim"
+          min="0.15"
+          max="1"
+          step="0.05"
+          value={alphaFor(selectedShape.id)}
+          on:input={(e) => setAlpha(selectedShape.id, e.currentTarget.value)}
+          aria-label="Dim this shape"
+          title="See through this shape to what is underneath — a view control, it does not change the stitches"
+        />
+        <button
+          type="button"
+          class="mp-dim-reset"
+          on:click={() => setAlpha(selectedShape.id, 1)}
+          disabled={alphaFor(selectedShape.id) === 1}
+        >Reset</button>
+      </div>
       <div class="mp-row">
         <span class="mp-label">Stitch type</span>
         <div class="mp-btns">
@@ -1097,6 +1194,17 @@
     color: var(--danger, #c0392b);
     margin: 0;
   }
+  .mp-dim { flex: 1; min-width: 6rem; max-width: 11rem; }
+  .mp-dim-reset {
+    border: 1px solid #d8d5cd;
+    background: #fff;
+    border-radius: 5px;
+    padding: 0.15rem 0.5rem;
+    cursor: pointer;
+    font-size: 0.78rem;
+  }
+  .mp-dim-reset:disabled { opacity: 0.45; cursor: not-allowed; }
+
   .mp-tools { display: flex; gap: 6px; flex-wrap: wrap; }
   .mp-tools button {
     padding: 5px 10px;
