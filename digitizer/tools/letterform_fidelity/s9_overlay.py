@@ -13,7 +13,7 @@ from PIL import Image, ImageDraw
 OUT = _OUT
 d = pickle.load(open(OUT + "/cap.pkl", "rb"))
 regs = dict(d["regions"])
-im = Image.open("/home/user/EMB-Bot/digitizer/testdata/photo/drone_render.png").convert("RGB")
+im = Image.open(str(_pl.Path(_DIGITIZER) / "testdata/photo/drone_render.png")).convert("RGB")
 PPM = 9.6125
 CX, CY = 768.0, 512.0
 S = 10

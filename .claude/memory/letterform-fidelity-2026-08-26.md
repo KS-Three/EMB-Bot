@@ -167,10 +167,12 @@ The modal angle held at 2 deg across cross-length thresholds of 0.8 / 1.5 /
 perfectly matched: the pro side is restricted to one text band while EMB-Bot's
 is the whole logo, and EMB-Bot fragments far more (43 letter-sized runs against
 7). The dispersion gap is far too large to be explained by either, but the
-exact percentages are not a benchmark. Scripts:
-`scratchpad/ang/{pro_angles,pro_band,pro_house,embot_angles}.py` — **not kept
-in the repo**, unlike the fidelity kit; re-derive from this description if
-needed. Also note the pro spreads about 19 deg across its letters (per-run
+exact percentages are not a benchmark. Scripts are KEPT:
+`digitizer/tools/letterform_fidelity/{pro_angles,pro_band,pro_house,embot_angles}.py`
+(they lived only in a session scratchpad until the end of that session; lifted
+in and made portable before it closed). Quote `CROSS_MIN_MM` with any figure —
+the modal angle is stable across 0.8 / 1.5 / 2.2 mm but the agreement count is
+not (6/7, 6/7, 5/7). Also note the pro spreads about 19 deg across its letters (per-run
 means -17 to +2 deg), so the convention is "one angle, held loosely", not a
 single rigid value.
 

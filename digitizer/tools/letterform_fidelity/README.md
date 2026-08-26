@@ -52,6 +52,37 @@ cd digitizer
 | `s12_stroke.py` | Stroke width and cap height per letter |
 | `s14_fig.py` | The four-strip before/after figure |
 
+## The angle kit (added 2026-08-26)
+
+The measurement behind "why is the N running vertically". Cross angles by
+stitch LENGTH, mod 180, so a cross sewn either way round is one angle.
+
+| Script | What it answers |
+|---|---|
+| `pro_angles.py` | Per-run dominant angle + concentration, any DST |
+| `pro_band.py` | Inside ONE letter: one angle, or one per stroke? |
+| `pro_house.py` | Does a pro hold one angle across a lettering run? |
+| `embot_angles.py` | The same question of EMB-Bot's own planner output |
+
+```bash
+.venv/bin/python tools/letterform_fidelity/pro_house.py \
+  "testdata/reference/becker_chest_small_beckers_logo_lc_2_a.dst:9:25"
+```
+
+Reproduces: modal **2 deg**, **6/7** letter runs within +/-20 deg, 49.1% of
+satin length within +/-15. `embot_angles.py` on the same artwork: modal 92 deg,
+**9/43 = 21%**, 18.0%. **A +/-20 window is 22% by chance**, so our letter
+angles are indistinguishable from random and the pro's are not.
+
+`embot_angles.py` reads the planner directly, never a DST, so the known axis
+bug cannot colour the comparison.
+
+**Quote `CROSS_MIN_MM` with any figure.** The modal angle is stable across
+0.8 / 1.5 / 2.2 mm, but the agreement count is not (6/7, 6/7, 5/7). And the
+comparison is NOT matched: the pro side is one text band, ours the whole logo,
+and we fragment 43 runs against 7. The dispersion gap is the finding; the exact
+percentages are not a benchmark.
+
 Verified portable and reproducing on 2026-08-26 after being lifted out of a
 session scratchpad: `s1_cap.py` → `design_class gradient, regions 74, blocks
 24`; `s12_stroke.py` → `DRONE E` 0.551 mm stroke at 2.91 mm cap height.
