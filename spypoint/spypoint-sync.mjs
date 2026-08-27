@@ -110,33 +110,72 @@ function findFirst(obj, keyRe, pred = () => true) {
 }
 
 const isNum = v => typeof v === 'number' && Number.isFinite(v);
+const first = a => (Array.isArray(a) ? a[0] : undefined);
 
+// Field paths below were confirmed against a real 4-camera FLEX-M account on
+// 2026-08-27 via --inspect. The generic findFirst() hunts remain as fallbacks,
+// since other SpyPoint models may lay their documents out differently.
+//
+// Location arrives as a GeoJSON Point (status.coordinates[0].position), so
+// `coordinates` is [longitude, latitude] — NOT the other way round. Verified by
+// converting the sibling DMS strings on the same object: "N43 53.140980" is
+// 43.885683, which equals element [1], and "W89 1.904100" is -89.031735, which
+// equals element [0]. Do not "fix" this to [lat,lng].
 function cameraSummary(cam) {
-  const name = cam?.config?.name
-    ?? findFirst(cam, /^name$/i, v => typeof v === 'string' && v.length > 0)?.value
-    ?? String(cam?.id ?? 'camera');
-  const lat = findFirst(cam, /^lat(itude)?$/i, isNum)?.value ?? null;
-  const lng = findFirst(cam, /^(lng|lon|long|longitude)$/i, isNum)?.value ?? null;
-  // Some models carry location as a bare 2-number array; [lng,lat] vs [lat,lng]
-  // order is unverified — check one camera against the app map before trusting.
-  const coords = (lat === null || lng === null)
-    ? (findFirst(cam, /coord|position/i, v => Array.isArray(v) && v.length === 2)?.value ?? null)
-    : null;
+  const st = cam?.status ?? {};
+  const gps = first(st.coordinates);
+  const pos = gps?.position?.coordinates;
+  const geo = Array.isArray(pos) && isNum(pos[0]) && isNum(pos[1]);
+  const power = first(st.powerSources);
+  // status.signal is an object, so an earlier "first number named signal" hunt
+  // silently found nothing and every camera reported an unknown signal.
+  const sig = st.signal ?? {};
+  const sub = first(cam?.subscriptions);
+
   return {
     id: String(cam?.id ?? ''),
-    name,
-    model: findFirst(cam, /^model$/i, v => typeof v === 'string')?.value ?? null,
-    lat, lng, coords,
-    battery: findFirst(cam, /batter/i, isNum)?.value ?? null,
-    signal: findFirst(cam, /signal|cellular/i, isNum)?.value ?? null,
-    lastSeen: findFirst(cam, /last.?(update|sync|comm|photo)/i, v => typeof v === 'string')?.value ?? null,
+    name: cam?.config?.name
+      ?? findFirst(cam, /^name$/i, v => typeof v === 'string' && v.length > 0)?.value
+      ?? String(cam?.id ?? 'camera'),
+    model: st.model ?? findFirst(cam, /^model$/i, v => typeof v === 'string')?.value ?? null,
+    lat: geo ? pos[1] : findFirst(cam, /^lat(itude)?$/i, isNum)?.value ?? null,
+    lng: geo ? pos[0] : findFirst(cam, /^(lng|lon|long|longitude)$/i, isNum)?.value ?? null,
+    gpsFix: gps?.dateTime ?? null,
+    battery: power?.percentage ?? first(st.batteries)
+      ?? findFirst(cam, /batter/i, isNum)?.value ?? null,
+    batteryLevel: power?.level ?? first(st.batteryLevels) ?? null,
+    batterySource: power?.type ?? st.batteryType ?? null,
+    signal: sig.processed?.percentage ?? null,
+    signalBars: sig.processed?.bar ?? sig.bar ?? null,
+    signalLevel: sig.processed?.level ?? null,
+    signalType: sig.type ?? null,
+    tempValue: st.temperature?.value ?? null,
+    tempUnit: st.temperature?.unit ?? null,
+    memUsed: st.memory?.used ?? null,
+    memSize: st.memory?.size ?? null,
+    plan: sub?.plan?.name ?? null,
+    photoCount: sub?.photoCount ?? null,
+    photoLimit: sub?.photoLimit ?? null,
+    lastSeen: st.lastUpdate
+      ?? findFirst(cam, /last.?(update|sync|comm|photo)/i, v => typeof v === 'string')?.value ?? null,
   };
 }
 
-const fmtLoc = r =>
-  r.lat !== null && r.lng !== null ? `${r.lat},${r.lng}`
-  : r.coords ? `${JSON.stringify(r.coords)} (order unverified)`
-  : '?';
+const fmtLoc = r => (r.lat !== null && r.lng !== null ? `${r.lat},${r.lng}` : '?');
+
+const fmtPct = (v, suffix = '%') => (isNum(v) ? `${v}${suffix}` : '?');
+
+// A camera that has not phoned home in months has no new photos to fetch, and
+// that is far and away the likeliest reason for an empty sync. Say so loudly
+// rather than letting "0 new photos" read as a broken script.
+function daysSince(iso) {
+  if (!iso) return null;
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return null;
+  return Math.floor((Date.now() - t) / 86400000);
+}
+
+const STALE_DAYS = 30;
 
 const DATE_KEYS = ['originDate', 'date', 'createDate', 'creationDate', 'dateTime'];
 function photoDate(p) {
@@ -230,9 +269,22 @@ async function main() {
 
   if (OPT.inspect) {
     dumpPaths('camera[0] raw fields', cameras[0]);
-    if (cameras[0]?.id) {
-      const page = await fetchPage(token, cameras[0].id, FUTURE);
-      dumpPaths('photo[0] raw fields', (page?.photos ?? [])[0]);
+    // An empty photo list is ambiguous on its own: it could mean the account
+    // genuinely holds no photos, or that this query is shaped wrong. Dump the
+    // response envelope for EVERY camera so the two can be told apart.
+    for (const cam of cameras) {
+      const label = cam?.config?.name ?? cam?.id ?? 'camera';
+      if (!cam?.id) continue;
+      const page = await fetchPage(token, cam.id, FUTURE);
+      const photos = page?.photos ?? [];
+      console.log(`\n=== photo/all envelope for ${label} ===`);
+      console.log(`  response keys: ${Object.keys(page ?? {}).join(', ') || '(none)'}`);
+      console.log(`  photos array present: ${Array.isArray(page?.photos)}`);
+      console.log(`  photos returned: ${photos.length}`);
+      for (const k of ['countPhotos', 'count', 'total', 'totalPhotos']) {
+        if (page?.[k] !== undefined) console.log(`  ${k}: ${JSON.stringify(page[k])}`);
+      }
+      if (photos.length) { dumpPaths(`photo[0] raw fields (${label})`, photos[0]); break; }
     }
     console.log('\n(Trim anything you consider sensitive before sharing this output.)');
     return;
@@ -243,18 +295,47 @@ async function main() {
     ? rows.filter(r => OPT.cameras.some(f =>
         r.name.toLowerCase().includes(f) || r.id.toLowerCase().includes(f)))
     : rows;
+  const stale = [];
   for (const r of rows) {
     const mark = selected.includes(r) ? '' : '   (skipped by --cameras)';
-    log(`  ${r.name}  model=${r.model ?? '?'}  loc=${fmtLoc(r)}  battery=${r.battery ?? '?'}  signal=${r.signal ?? '?'}  last=${r.lastSeen ?? '?'}${mark}`);
+    const age = daysSince(r.lastSeen);
+    if (age !== null && age >= STALE_DAYS) stale.push({ name: r.name, age });
+    const ageTxt = age === null ? '?' : `${r.lastSeen.slice(0, 10)} (${age}d ago)`;
+    log(`  ${r.name}  model=${r.model ?? '?'}  loc=${fmtLoc(r)}`);
+    log(`      battery=${fmtPct(r.battery)}${r.batteryLevel ? ` (${r.batteryLevel})` : ''}` +
+        `  signal=${fmtPct(r.signal)}${r.signalBars !== null ? ` / ${r.signalBars} bars` : ''}` +
+        `${r.signalType ? ` ${r.signalType}` : ''}` +
+        `  temp=${r.tempValue !== null ? `${r.tempValue}°${r.tempUnit ?? ''}` : '?'}` +
+        `  last=${ageTxt}${mark}`);
+  }
+  const plan = rows.find(r => r.plan);
+  if (plan) {
+    log(`Plan: ${plan.plan} — ${plan.photoCount ?? '?'}/${plan.photoLimit ?? '?'} photos used this billing cycle.`);
+  }
+  if (stale.length) {
+    warn(`\nNOTE: ${stale.length} of ${rows.length} camera(s) have not reported in over ${STALE_DAYS} days:`);
+    for (const s of stale) warn(`  ${s.name}: last contact ${s.age} days ago`);
+    warn('A camera that is not transmitting has no new photos to fetch, so an empty');
+    warn('sync below is expected rather than a failure.\n');
   }
 
   if (!OPT.dryRun) {
     await fs.mkdir(OPT.out, { recursive: true });
     await fs.writeFile(path.join(OPT.out, 'cameras.raw.json'), JSON.stringify(cameras, null, 2));
-    const header = 'id,name,model,latitude,longitude,coords_raw,battery,signal,last_seen';
+    const header = [
+      'id', 'name', 'model', 'latitude', 'longitude', 'gps_fix',
+      'battery_pct', 'battery_level', 'battery_source',
+      'signal_pct', 'signal_bars', 'signal_level', 'signal_type',
+      'temperature', 'temperature_unit', 'memory_used_mb', 'memory_size_mb',
+      'plan', 'photos_used', 'photo_limit', 'last_seen', 'days_since_seen',
+    ].join(',');
     const lines = rows.map(r => [
-      r.id, q(r.name), q(r.model), r.lat ?? '', r.lng ?? '',
-      r.coords ? q(JSON.stringify(r.coords)) : '', r.battery ?? '', r.signal ?? '', q(r.lastSeen),
+      r.id, q(r.name), q(r.model), r.lat ?? '', r.lng ?? '', q(r.gpsFix),
+      r.battery ?? '', q(r.batteryLevel), q(r.batterySource),
+      r.signal ?? '', r.signalBars ?? '', q(r.signalLevel), q(r.signalType),
+      r.tempValue ?? '', q(r.tempUnit), r.memUsed ?? '', r.memSize ?? '',
+      q(r.plan), r.photoCount ?? '', r.photoLimit ?? '',
+      q(r.lastSeen), daysSince(r.lastSeen) ?? '',
     ].join(','));
     await fs.writeFile(path.join(OPT.out, 'cameras.csv'), [header, ...lines].join('\n') + '\n');
   }
