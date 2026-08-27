@@ -417,6 +417,19 @@ its hedge as it is copied forward** — is why this file is split.
   scale-normalised registration in `scorecard.py`.
   *(measured 2026-08-15 — `docs/pro-parity-real-art-2026-08-15.md` §11)*
 
+- **Pro-parity numbers measured before 2026-08-26 are on a THIRD scale, and the
+  delta is still unquantified.** `scorecard.py`'s `surface()` was handed
+  colour-keyed buckets and painted each colour at its EARLIEST block, so an
+  outline-last build (black, red, black on top) had the outline painted first
+  and buried by the red it physically covers — the grader scored a picture of
+  the pro's design that the pro's customer would never see, and did the same to
+  ours. `colour_runs()` now walks consecutive runs instead. `colour_groups` is
+  deliberately unchanged: per-colour recall wants every block of a thread
+  together and order cannot matter there. **The corpus-wide delta needs a run
+  on Kent's machine** — `scratch_corpus/` is gitignored and absent from a cloud
+  container, so this could not be quantified where it was fixed.
+  *(fixed 2026-08-26 — PR #269; delta NOT measured)*
+
 - **The golden divergence is PER-FIXTURE, not per-platform.** CI deselects
   exactly THREE by name — `pushcomp[logo_whitebg.png-towel]` and the
   `[photo/enthusiast_logo.png]` rows of `flat_lane_byte_identical` and
@@ -866,6 +879,53 @@ kept the bug for another day, on the one view you switch to specifically to
 judge coverage. Pinned as an invariant — the two views must produce the *same*
 block sequence — rather than as two independent expectations.
 *(confirmed 2026-08-26 — `preview.spec.js`, mutation-checked)*
+
+**Eight more defects fixed by sweeping for the bug SHAPES, not the instances.**
+PR #264 fixed nine defects in this area, and three of them existed for one
+reason: a fix applied to one code path was never applied to its siblings. PR
+#269 swept the repo for the shapes instead. What a user would have hit:
+
+- **Manual shapes did not sew in draw order.** `digitize.js` sequences
+  light-to-dark by default and the manual branch never opted out, so a cream
+  circle drawn on top of a navy rectangle sewed cream-then-navy and the navy
+  buried it. `ManualPanel` paints later-over-earlier and hit-tests
+  back-to-front to match, and offers no reorder control — the stacking the user
+  drew was simply unreachable. Now `darkOnTop: false` on the manual and
+  preset-shape branches **only**; image mode keeps the heuristic, correctly,
+  because nothing in a raster says which colour the artist meant on top.
+  **This changes what already-saved manual designs sew**, which is the point.
+- **A thread override landed on the wrong colour and EXPORTED that way.**
+  `blockColors` is keyed by palette index, the service re-derives the whole
+  palette on every run, and nothing remapped it: set "red → navy", re-digitize
+  4 colours down to 3, and the override is now on white. `remapBlockColors`
+  matches on the colour the override was chosen *for*, so it follows a thread
+  that moved and is dropped with one the palette removed. Storage stays
+  index-keyed — no `.embproj` migration.
+- **A stale undo button deleted an innocent element.** Element ids are recycled
+  (`nextElementId` is `max+1` over the survivors) and `textConversions` kept
+  naming a deleted one, so a new element taking the freed id could be destroyed
+  by the old cluster bar's "Undo". Pruned in `removeElement`, which every
+  removal path funnels through. Monotonic ids were considered and rejected:
+  schema change plus a migration for every existing save.
+- **A bulk edit looked like it did nothing.** `sharedColor`/`sharedWeight`/
+  `sharedFont` named only `multi`, a boolean — once multi-select is entered it
+  is `true` and stays `true`, and `safe_not_equal(true, true)` is false, so all
+  three readouts froze. The edits really applied; the panel just kept saying
+  "mixed".
+- **A stale cluster member count** (`{@const}` inside an `each` keyed by a
+  string that never changes), and **a new template inheriting the last design's
+  artwork** (`pickTemplate` replaced the project but never cleared the
+  element-keyed `runtime`; `enterProject` has always cleared it — the unfixed
+  sibling again).
+
+Two of the guards pin RULES rather than call sites, which is the actual lesson
+of the sweep: `ContentStep.reactivity.spec.js` asserts on compiled Svelte
+dependency lists, and `App.projectReplacement.spec.js` asserts that every
+whole-project-replacement path clears `runtime`. Twelve mutations were applied
+and reverted, including faithful reproductions of each original bug — and one
+test was caught passing for the WRONG reason (a `blockColors` fixture that never
+actually collided two blocks onto one index) and its fixture corrected until the
+mutation killed it. *(fixed 2026-08-26 — PR #269, mutation-checked)*
 
 ---
 
