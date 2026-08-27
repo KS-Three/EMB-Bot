@@ -128,6 +128,52 @@ resolves a lever the raster could not, and nothing more. `simplify_tol_mm` stays
 0.2 (Kent, 2026-08-17); re-opening it needs arms that hold the trace population
 constant, and that is its own piece of work.
 
+## The full fixture sweep, and what not to read into it
+
+All fourteen `artfidelity_self` fixtures, sorted by `roughness_deg`:
+
+| fixture | route | gini | rough | curve v | corner v | traces |
+|---|---|---|---|---|---|---|
+| `becker_marine_logo` | flat | 0.5026 | 13.153 | 1991 | 1029 | 50 |
+| `logo_script_tires` | photo_scene | 0.5984 | 12.835 | 957 | 617 | 15 |
+| `enthusiast_logo` | flat | 0.5264 | 11.479 | 898 | 653 | 49 |
+| `logo_bridge_bar` | gradient | 0.5295 | 11.112 | 4137 | 1381 | 137 |
+| `drone_render` | gradient | 0.5730 | 9.557 | 2336 | 901 | 107 |
+| `ribbon_curve` | flat | 0.5732 | 9.446 | 462 | 6 | 2 |
+| `logo_gaulke_roofing` | gradient | 0.7231 | 9.315 | 411 | 121 | 5 |
+| `summit_badge` | gradient | 0.5604 | 8.977 | 1166 | 315 | 41 |
+| `logo_golden_tee` | gradient | 0.5454 | 7.236 | 4032 | 788 | 98 |
+| `logo_hotel_fremont` | gradient | 0.5751 | 5.460 | 2131 | 190 | 88 |
+| `logo_whitebg` | flat | 0.9559 | 1.613 | 113 | 22 | 2 |
+| `logo_alpha` | flat | 0.9455 | 0.485 | 110 | 25 | 2 |
+| `bg_uncertain` | flat | — | — | 0 | 0 | 0 |
+| `region_blobs` | gradient | — | — | 0 | 0 | 0 |
+
+The two refusals are correct: neither design produces a single visible outline
+run, so there is no curve to read and the instrument says so instead of
+returning a number.
+
+**One observation, deliberately stated as less than it looks.** The four
+designs Kent described in edge-noise language — `becker` (*"jaged"*),
+`logo_script_tires` (*"sawtoothed and jaged"*), `enthusiast_logo` (*"wavey and
+not crisp"*), `logo_bridge_bar` (*"should be cleaner and more crisp"*) — are the
+top four on `roughness_deg`. That is 4 of 4, and it is worth knowing.
+
+It is **not** a validation, for three reasons, and none of them should be
+skipped when quoting the table:
+
+1. It is a post-hoc read of twelve designs, not a pre-registered test.
+2. `roughness_deg` was built to detect POLYGONISATION. On real artwork it may
+   be responding to stitch-level edge noise instead — which is
+   `edge_smoothness.ragged_mm`'s question, not this instrument's. Cross-checking
+   the two columns on these same fixtures is the obvious next step and has not
+   been done (`edge_smoothness.py` is unmerged on another lane).
+3. **The `turn_gini` column must not be ranked at all here.** `logo_whitebg` and
+   `logo_alpha` top it at 0.95, on **2 traces and ~110 vertices each** — one
+   satin column's two rails. A concentration statistic on a denominator that
+   small is not comparable to a 137-trace design's. This is the "not a grade,
+   a paired measure" limit showing up in practice on the very first corpus run.
+
 ## Status
 
 Instrument only — no engine behaviour changed. Runs on the flat lane against
