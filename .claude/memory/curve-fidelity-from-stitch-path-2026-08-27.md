@@ -64,6 +64,28 @@ this reason — **read them alongside every delta**. No engine default was chang
 on that table, and `simplify_tol_mm` stays 0.2 (Kent, 2026-08-17); re-opening it
 needs arms that hold the trace population constant.
 
+**What the two numbers turn out to measure (checked 2026-08-27, both
+instruments off ONE `digitize()` per design, 12 fixtures).** Two results:
+
+- **`roughness_deg` is NOT edge noise.** Against `edge_smoothness.ragged_mm`:
+  Spearman **0.028**, Pearson 0.153, 95% CI [-0.55, 0.59]. Rankings near-inverted
+  at the ends (`becker` tops roughness, 8th of 12 on raggedness; `summit_badge`
+  the reverse). The curve-fidelity and edge-noise halves of Kent's complaint are
+  genuinely separate measurements. n = 12 and the CI is wide — this rules out
+  REDUNDANCY, it does not prove independence.
+- **`turn_gini` is substantially a COMPLEXITY statistic and must not be ranked
+  down a column.** Against log(trace count): Pearson **-0.763**, Spearman -0.676.
+  The two 2-trace designs (`logo_whitebg`, `logo_alpha`) pin the top at 0.95
+  while every design with 5+ traces collapses into a 0.50-0.72 band. That is also
+  why the two columns read Pearson **-0.832 against each other** on real artwork
+  while moving together on the synthetic ladder — gini is pulled down by
+  complexity as roughness drifts up with it. **`roughness_deg` is the number to
+  read per design;** gini earns its keep on the ladder and inside a paired arm
+  where the design is held fixed. The CLI marks designs under
+  `TRACE_FLOOR_FOR_RANKING` (5) as `thin`. This also sharpens the tol-ladder
+  caution: `becker`'s 50 -> 77 trace move is not a minor confound on gini, it is
+  the dominant term.
+
 Mechanical notes: a satin run is an alternating zigzag, so its raw point
 sequence turns ~180 deg per vertex and reads as noise — `points[0::2]` /
 `[1::2]` are the two rails, each tracing an artwork edge (verified on

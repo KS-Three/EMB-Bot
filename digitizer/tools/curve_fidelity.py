@@ -143,6 +143,44 @@ exactly that reason. No engine default should be changed on this table — it
 demonstrates that the instrument resolves a lever the raster could not, and
 nothing more.
 
+## What the two numbers turn out to measure on REAL artwork
+
+Measured 2026-08-27 over 12 fixtures, both instruments computed from ONE
+`digitize()` per design so the comparison is exact. Two results, and the second
+one demotes a column.
+
+**`roughness_deg` is not edge noise.** The worry was that it might simply be
+re-reading `edge_smoothness.ragged_mm` — the sawtoothing complaint — rather than
+curve coarseness. It does not: Spearman 0.028, Pearson 0.153 against `ragged_mm`
+(95% CI [-0.55, 0.59]). The rankings are near-inverted at the ends —
+`becker_marine_logo` tops roughness and sits 8th of 12 on raggedness;
+`summit_badge` tops raggedness and sits 8th on roughness. On n = 12 that
+interval is wide, so this rules out the two being REDUNDANT; it does not prove
+them independent.
+
+**`turn_gini` is substantially a complexity statistic, and must not be ranked
+down a column.** Against log(trace count) it reads Pearson -0.763 / Spearman
+-0.676. The two 2-trace designs pin the top of the ranking at 0.95 while every
+design with 5+ traces collapses into a 0.50-0.72 band:
+
+    fixture                traces   gini   rough
+    logo_alpha                  2  0.946    0.48
+    logo_whitebg                2  0.956    1.61
+    ribbon_curve                2  0.573    9.45
+    logo_gaulke_roofing         5  0.723    9.32
+    becker_marine_logo         50  0.503   13.15
+    logo_bridge_bar           137  0.529   11.11
+
+That is also why the two columns read Pearson -0.832 against EACH OTHER on real
+artwork while they move together on the synthetic n-gon ladder: gini is being
+pulled down by complexity as roughness drifts up with it. The docstring above
+calls them "two views of one thing that fail differently" — on synthetic shapes
+that is exactly right, and on a real corpus their disagreement is mostly
+structural rather than informative. `roughness_deg` is the number to read per
+design; `turn_gini` earns its keep on the ladder and inside a paired arm, where
+the design is held fixed. The CLI marks any design under
+`TRACE_FLOOR_FOR_RANKING` as `thin` for this reason.
+
 Usage:
     python -m tools.curve_fidelity <image> [<image> ...]
     python -m tools.curve_fidelity --all
@@ -187,6 +225,15 @@ VISIBLE_KINDS = (stitches.SATIN, stitches.BORDER, stitches.BEAN, stitches.RUN)
 # Below this total turning a trace is a straight line, and the concentration
 # of near-zero float noise is not a measurement.
 MIN_TOTAL_TURN_DEG = 30.0
+
+# A design carrying fewer traces than this has its `turn_gini` marked `thin` in
+# the CLI, because on the real corpus that column turns out to be substantially
+# a COMPLEXITY statistic: measured 2026-08-27 over 12 fixtures, `turn_gini` vs
+# log(trace count) is Pearson -0.763 / Spearman -0.676. The two 2-trace designs
+# (`logo_whitebg`, `logo_alpha`) pin the top of the ranking at 0.95 while every
+# design with 5+ traces collapses into a 0.50-0.72 band. The number is not
+# wrong; reading it DOWN a column of mixed designs is.
+TRACE_FLOOR_FOR_RANKING = 5
 
 
 def _rails(points: list[tuple[float, float]]) -> list[np.ndarray]:
@@ -336,9 +383,13 @@ def main(argv: list[str] | None = None) -> int:
         rg = r["roughness_deg"]
         gs = f"{g:>8.4f}" if g == g else f"{'--':>8s}"
         rs = f"{rg:>10.3f}" if rg == rg else f"{'--':>10s}"
+        thin = (not r["refusal"]
+                and r["traces"] < TRACE_FLOOR_FOR_RANKING)
         print(f"{r['fixture']:26s} {r['route']:12s} {gs} {rs} "
               f"{r['curve_vertices']:>7d} {r['corner_vertices']:>8d}"
-              + (f"   REFUSED: {r['refusal']}" if r["refusal"] else ""))
+              + (f"   REFUSED: {r['refusal']}" if r["refusal"]
+                 else (f"   thin ({r['traces']} traces) — gini not rankable"
+                       if thin else "")))
 
     if args.csv:
         args.csv.parent.mkdir(parents=True, exist_ok=True)

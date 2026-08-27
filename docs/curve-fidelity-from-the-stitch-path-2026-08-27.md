@@ -163,16 +163,66 @@ It is **not** a validation, for three reasons, and none of them should be
 skipped when quoting the table:
 
 1. It is a post-hoc read of twelve designs, not a pre-registered test.
-2. `roughness_deg` was built to detect POLYGONISATION. On real artwork it may
-   be responding to stitch-level edge noise instead — which is
-   `edge_smoothness.ragged_mm`'s question, not this instrument's. Cross-checking
-   the two columns on these same fixtures is the obvious next step and has not
-   been done (`edge_smoothness.py` is unmerged on another lane).
+2. `roughness_deg` was built to detect POLYGONISATION, and might have been
+   re-reading stitch-level edge noise instead — `edge_smoothness.ragged_mm`'s
+   question, not this instrument's. **This has now been checked; see the next
+   section. It is not edge noise.**
 3. **The `turn_gini` column must not be ranked at all here.** `logo_whitebg` and
    `logo_alpha` top it at 0.95, on **2 traces and ~110 vertices each** — one
    satin column's two rails. A concentration statistic on a denominator that
    small is not comparable to a 137-trace design's. This is the "not a grade,
    a paired measure" limit showing up in practice on the very first corpus run.
+
+## What the two numbers actually measure (checked, 2026-08-27)
+
+Both instruments computed from ONE `digitize()` per design, over the same 12
+measurable fixtures, so the comparison is exact rather than two separate runs.
+
+### `roughness_deg` is not edge noise
+
+| pair | Pearson | Spearman | 95% CI (Spearman) |
+|---|---|---|---|
+| `roughness_deg` vs `ragged_mm` | 0.153 | **0.028** | [−0.55, 0.59] |
+| `turn_gini` vs `ragged_mm` | −0.021 | 0.028 | [−0.55, 0.59] |
+
+The rankings are near-inverted at the ends: `becker_marine_logo` tops roughness
+and sits 8th of 12 on raggedness; `summit_badge` tops raggedness and sits 8th on
+roughness. So the two instruments are **not redundant** — the curve-fidelity and
+edge-noise halves of Kent's complaint really are separate measurements.
+
+On n = 12 that confidence interval is wide. This rules out the two being
+redundant; it does **not** prove them independent, and nobody should quote it as
+though it did.
+
+### But `turn_gini` is substantially a complexity statistic
+
+| pair | Pearson | Spearman |
+|---|---|---|
+| `turn_gini` vs log(trace count) | **−0.763** | −0.676 |
+| `roughness_deg` vs log(trace count) | 0.496 | 0.359 |
+
+| fixture | traces | gini | rough |
+|---|---|---|---|
+| `logo_alpha` | 2 | 0.946 | 0.48 |
+| `logo_whitebg` | 2 | 0.956 | 1.61 |
+| `ribbon_curve` | 2 | 0.573 | 9.45 |
+| `logo_gaulke_roofing` | 5 | 0.723 | 9.32 |
+| `becker_marine_logo` | 50 | 0.503 | 13.15 |
+| `logo_bridge_bar` | 137 | 0.529 | 11.11 |
+
+The two 2-trace designs pin the top of the gini ranking at 0.95, and everything
+with 5+ traces collapses into a 0.50–0.72 band. That is also why the two columns
+read Pearson −0.832 against **each other** on real artwork while they move
+together on the synthetic ladder: gini is pulled down by complexity as roughness
+drifts up with it.
+
+**Consequence, and it is a real demotion.** `roughness_deg` is the number to read
+per design. `turn_gini` earns its keep on the synthetic ladder and inside a
+paired arm where the design is held fixed — not down a column of mixed designs.
+The CLI now marks any design under `TRACE_FLOOR_FOR_RANKING` (5) as `thin`, so
+the misreading is harder to make by accident. This also sharpens the paired-arm
+caution above: `becker`'s trace count moving 50 → 77 between tol arms is not a
+minor confound on the gini column, it is the dominant term.
 
 ## Status
 
