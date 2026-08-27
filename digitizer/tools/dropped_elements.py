@@ -21,21 +21,51 @@ dropped out"*. Whole elements, gone.
   * `preflight` graded `logo_whitebg` **A 100** on a design he says is not
     smooth, and `enthusiast_logo` **B 88** with a limb missing.
 
-So this instrument asks the question from the ARTWORK's side. It never looks at
-the region list, which is exactly the blind spot: it takes the artwork's own
-connected components of ink and asks, for each one, how much thread landed on
-it. An element the pipeline dropped before stage 3 ever made a region has no
-shape to be "uncovered" — but it is still a blob of ink with no thread on it,
-and that is visible here.
+## What it measures
 
-Two directions, because Kent's notes contain both:
+Per-pixel CIEDE2000 between the artwork **painted on white cloth** and the
+rendered stitch-out, thresholded at `LOST_DELTA_E`, opened at half a millimetre
+to drop the hairline of disagreement every shape boundary carries, then split
+into connected regions. Each region is somewhere the stitch-out does not look
+like the artwork, and its size and position say what and where.
 
-    dropped   artwork ink that carries (almost) no thread — a limb, a word, a
-              detail the stitch-out simply does not have.
-    flooded   artwork GROUND enclosed by ink that carries thread anyway — a
-              knocked-out letter sewn over, so the lettering disappears into
-              the panel. `logo_hotel_fremont`'s "EAT | STAY | PLAY" is this
-              shape of failure, not the first one.
+Painting the artwork on white is what makes one test cover all three ways Kent
+described the failure:
+
+    never sewn          white cloth where a colour belongs
+    knockout filled in  a colour where bare cloth belongs
+    wrong thread        one colour where another belongs
+
+## Segment the disagreement, not the artwork
+
+Three definitions of "element" were tried first and each had a hole. They are
+recorded here because the holes are the instructive part, and because each one
+looked correct until it was run against a design Kent had already told us was
+broken:
+
+  1. **Connected ink components.** Merges a red arm into the shield it touches,
+     and on alpha-keyed art the whole badge is one blob. Reported ZERO lost
+     elements on `enthusiast_logo`, which is visibly missing a limb.
+  2. **Ink plus enclosed ground.** Meant to catch a knockout sewn over. Still
+     missed it: that shield's hexagon has BREAKS, so its interior white reaches
+     the frame edge and no flood test calls it enclosed. Found 1.1 mm2 of a
+     failure an order of magnitude larger.
+  3. **Whole-frame colour components.** Makes the background ONE component
+     spanning the frame, and a median over it hides a small filled-in patch
+     entirely.
+
+Per-pixel first, components second, has none of those holes — the same ordering
+lesson as `artfidelity_self`'s colour component, where taking medians before
+the subtraction produced a metric that could not fire at all.
+
+## What this does NOT measure
+
+Kent's other complaint, on eight of fourteen designs: *"shapes are accurate but
+smoothness is not"*, *"sawtoothed and jaged"*. That lives in the boundary
+hairline `HALO_OPEN_PX` deliberately removes here, because a half-millimetre
+band around every shape would otherwise swamp the lost elements this instrument
+exists to find. Removing it is not a claim that it does not matter — it is the
+second instrument, and that band is where it should look.
 
 Usage:
     python -m tools.dropped_elements <image> [<image> ...]
@@ -77,33 +107,15 @@ MIN_ELEMENT_MM2 = 1.0
 # floor, and the smallest thing Kent named by name (the "E" on DRONE) is
 # lettering, which cannot be sewn at all below roughly 1 mm2 of ink.
 
-DROPPED_COVER_MAX = 0.15
-# An ink component with less than this fraction of its area carrying thread is
-# reported as dropped. JUDGEMENT. Not 0.0: a satin border that clips the edge of
-# a component, or a travel stitch crossing it, puts a little thread on something
-# that is otherwise absent, and a detector that demanded exactly zero would miss
-# those. Not high either — above ~0.3 a partially-sewn element starts being a
-# coverage problem (which `preflight.ARTWORK_UNCOVERED` already owns for shapes
-# that exist) rather than a missing one.
-
-COLOUR_BIN = 24
-# Channel width, 0-255, for grouping artwork pixels into one "colour". An
-# element is a connected run of pixels within one bin — which is what makes the
-# red arm a separate element from the shield it sits on. JUDGEMENT: wide enough
-# that JPEG ringing and anti-alias fringe do not shatter a flat colour into
-# stripes, narrow enough to keep visibly different colours apart. Flat
-# spot-colour art (what this instrument is for) has colours far further apart
-# than one bin; a smooth gradient shatters into bands, which is why gradient
-# artwork is refused rather than scored here.
-
 HALO_OPEN_PX = 5
 # Morphological opening kernel, in pixels at RES (so 0.5 mm), applied to the
 # disagreement mask before it is broken into elements. Every shape boundary
 # disagrees by a hairline — thread lands a fraction of a millimetre off the ink
 # edge — and that is Kent's OTHER complaint (smoothness), not a lost element.
 # Opening at half a millimetre removes those outlines and keeps anything with
-# real width. JUDGEMENT: one thread is 0.4 mm, so this is "thinner than a
-# stitch" rounded up to an odd kernel.
+# real width. JUDGEMENT: 5 px at RES is 0.50 mm, the smallest odd kernel at or
+# above one thread width (machine.COVERAGE_THREAD_W_MM, 0.40 mm) — so it clears
+# up to about one stitch and keeps anything wider.
 
 LOST_DELTA_E = 20.0
 # Median CIEDE2000 between an artwork element's own colour and what the
@@ -112,14 +124,6 @@ LOST_DELTA_E = 20.0
 # filled in. JUDGEMENT, sanity-anchored on the shipped scale: preflight calls
 # 10.0 "clearly different", and this is deliberately well above that, because
 # the question here is not "is the colour off" but "is the element GONE".
-
-FLOODED_COVER_MIN = 0.85
-# The mirror: an enclosed GROUND component (a counter, a knockout) with more
-# than this fraction sewn has been filled in, and whatever it was supposed to
-# read as is gone. Deliberately strict — a little thread bleeding into a counter
-# from the surrounding satin is normal and is a pull-compensation question, not
-# a lost element.
-
 
 def _components(mask: np.ndarray, min_px: int):
     """Connected components of `mask`, as (label_image, [stats...]) filtered to
@@ -143,24 +147,6 @@ def _components(mask: np.ndarray, min_px: int):
             "cy": float(cent[i][1]),
         })
     return lab, out
-
-
-def _enclosed_ground(ink: np.ndarray) -> np.ndarray:
-    """Ground fully enclosed by ink — counters, knockouts, the hole in an O.
-
-    Flood the ground inward from the frame border; whatever the flood cannot
-    reach is enclosed. The border itself is padded first so a component touching
-    the edge is still reachable and therefore still counted as outside.
-    """
-    h, w = ink.shape
-    ground = (~ink).astype(np.uint8)
-    pad = np.zeros((h + 2, w + 2), np.uint8)
-    pad[1:-1, 1:-1] = ground
-    ff = pad.copy()
-    mask = np.zeros((h + 4, w + 4), np.uint8)
-    cv2.floodFill(ff, mask, (0, 0), 2)
-    outside = (ff[1:-1, 1:-1] == 2)
-    return (ground > 0) & ~outside
 
 
 def art_colour_field(art_path, width_mm):
@@ -205,31 +191,21 @@ def sewn_colour_field(design):
     return cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
 
 
-def colour_elements(rgb, ink, min_px):
-    """Connected runs of one artwork colour -> (label image, [component stats]).
+def disagreement(a_rgb: np.ndarray, s_rgb: np.ndarray) -> tuple:
+    """-> (per-pixel CIEDE2000, boolean mask of where it exceeds LOST_DELTA_E
+    after the boundary hairline is opened away).
 
-    This is what makes an "element" the thing Kent's eye calls one: the red arm
-    is its own element even though it touches the shield, because it is a
-    different colour. Ink-vs-ground connectivity cannot see that — on an
-    alpha-keyed logo the whole badge is one blob, which is exactly why the first
-    version of this instrument reported zero dropped elements on a design with a
-    visibly missing limb.
+    Split out from `analyse` so the part with the judgement in it can be tested
+    on hand-built arrays, without running the engine.
     """
-    binned = (rgb.astype(np.int32) // COLOUR_BIN).astype(np.int32)
-    key = binned[..., 0] * 10000 + binned[..., 1] * 100 + binned[..., 2]
-    key = np.where(ink, key, -1)
-    out_lab = np.zeros(key.shape, np.int32)
-    comps = []
-    next_label = 1
-    for k in np.unique(key):
-        if k < 0:
-            continue
-        lab, cs = _components(key == k, min_px)
-        for c in cs:
-            out_lab[lab == c["label"]] = next_label
-            comps.append({**c, "label": next_label})
-            next_label += 1
-    return out_lab, comps
+    de = deltaE_ciede2000(
+        rgb_to_lab(a_rgb.reshape(-1, 3).astype(np.float64)),
+        rgb_to_lab(s_rgb.reshape(-1, 3).astype(np.float64)),
+    ).reshape(a_rgb.shape[:2])
+    k = np.ones((HALO_OPEN_PX, HALO_OPEN_PX), np.uint8)
+    wrong = cv2.morphologyEx((de > LOST_DELTA_E).astype(np.uint8),
+                             cv2.MORPH_OPEN, k) > 0
+    return de, wrong
 
 
 def analyse(image_path: str | Path, cfg: PipelineConfig | None = None) -> dict:
@@ -316,18 +292,7 @@ def analyse(image_path: str | Path, cfg: PipelineConfig | None = None) -> dict:
     # look like the artwork is flagged, and contiguous runs of it are the
     # elements. This is the same ordering lesson as `artfidelity_self`'s colour
     # component — subtract per pixel, aggregate afterwards.
-    de_px = deltaE_ciede2000(
-        rgb_to_lab(A_show.reshape(-1, 3).astype(np.float64)),
-        rgb_to_lab(S_rgb.reshape(-1, 3).astype(np.float64)),
-    ).reshape(A_show.shape[:2])
-    wrong = de_px > LOST_DELTA_E
-
-    # Open with a small kernel first: every shape boundary carries a hairline of
-    # disagreement (thread lands a fraction of a millimetre off the ink edge, and
-    # that is a smoothness question, not a lost element). Without this the report
-    # is a list of one-pixel outlines around everything.
-    k = np.ones((HALO_OPEN_PX, HALO_OPEN_PX), np.uint8)
-    wrong = cv2.morphologyEx(wrong.astype(np.uint8), cv2.MORPH_OPEN, k) > 0
+    de_px, wrong = disagreement(A_show, S_rgb)
 
     lab, comps = _components(wrong, min_px)
     thread = O_f >= 0.5
@@ -357,7 +322,6 @@ def analyse(image_path: str | Path, cfg: PipelineConfig | None = None) -> dict:
     return {
         "fixture": image_path.name,
         "route": result.design_class,
-        "elements": len(comps),
         "lost": len(lost),
         "lost_mm2": round(lost_mm2, 1),
         "lost_frac": round(lost_mm2 / ink_mm2, 4) if ink_mm2 else 0.0,
@@ -403,22 +367,22 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[{i}/{len(paths)}] {p.name} ...", file=sys.stderr, flush=True)
         r = analyse(p)
         rows.append(r)
-        print(f"[{i}/{len(paths)}] {p.name}: {r['lost']} lost of "
-              f"{r['elements']} elements ({r['lost_mm2']} mm2)",
+        print(f"[{i}/{len(paths)}] {p.name}: {r['lost']} regions "
+              f"({r['lost_mm2']} mm2, {100 * r['lost_frac']:.1f}%)",
               file=sys.stderr, flush=True)
 
     if not rows:
         print("nothing analysed", file=sys.stderr)
         return 1
 
-    head = (f"{'fixture':26s} {'route':12s} {'elems':>6} {'lost':>6} "
-            f"{'mm2':>8} {'% ink':>7} {'worst':>8}")
+    head = (f"{'fixture':26s} {'route':12s} {'regions':>8} "
+            f"{'mm2':>8} {'% of art':>9} {'worst':>8}")
     print(head)
     print("-" * len(head))
     for r in rows:
-        print(f"{r['fixture']:26s} {r['route']:12s} {r['elements']:>6} "
-              f"{r['lost']:>6} {r['lost_mm2']:>8.1f} "
-              f"{100 * r['lost_frac']:>6.1f}% {r['worst_mm2']:>8.1f}"
+        print(f"{r['fixture']:26s} {r['route']:12s} {r['lost']:>8} "
+              f"{r['lost_mm2']:>8.1f} {100 * r['lost_frac']:>8.1f}% "
+              f"{r['worst_mm2']:>8.1f}"
               + ("   REFUSED" if r["refusal"] else ""))
         if args.detail and r["_lost"]:
             for d in r["_lost"][:6]:
