@@ -238,6 +238,332 @@ function dumpPaths(label, obj) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Dashboard
+//
+// Written as a single self-contained HTML file next to the synced data, with
+// the camera rows baked in as JSON. That keeps coordinates on this machine (no
+// server, no upload) and makes the page work by double-clicking it — a page
+// that fetched cameras.csv over file:// would be blocked by the browser.
+//
+// The slippy map is hand-rolled rather than pulled from a CDN so the page has
+// no dependency to break. Only the OpenStreetMap raster tiles come from the
+// network; with no connection the pins still lay out correctly over blank
+// tiles, and the camera cards below are unaffected.
+// ---------------------------------------------------------------------------
+
+const RANK = { ok: 0, warn: 1, bad: 2 };
+const worst = (a, b) => (RANK[b] > RANK[a] ? b : a);
+
+function healthOf(r) {
+  let level = 'ok';
+  const notes = [];
+  const age = daysSince(r.lastSeen);
+  if (age === null) { level = worst(level, 'warn'); notes.push('never reported'); }
+  else if (age >= STALE_DAYS) { level = worst(level, 'bad'); notes.push(`silent ${age} days`); }
+  else if (age >= 7) { level = worst(level, 'warn'); notes.push(`quiet ${age} days`); }
+
+  if (isNum(r.battery)) {
+    if (r.battery <= 10) { level = worst(level, 'bad'); notes.push(`battery ${r.battery}%`); }
+    else if (r.battery <= 30) { level = worst(level, 'warn'); notes.push(`battery ${r.battery}%`); }
+  }
+  return { level, notes, age };
+}
+
+// Embedding JSON in a <script> block: the only sequence that can break out is
+// a literal "</script>", and & / < are escaped so nothing in a camera name can
+// inject markup.
+const embed = data => JSON.stringify(data)
+  .replace(/&/g, '\\u0026').replace(/</g, '\\u003c').replace(/>/g, '\\u003e');
+
+function dashboardHtml(rows, photos, generatedAt) {
+  const payload = embed({
+    generatedAt,
+    staleDays: STALE_DAYS,
+    cameras: rows.map(r => ({ ...r, health: healthOf(r) })),
+    photos,
+  });
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trail Cameras</title>
+<style>
+  :root {
+    --bg: #f6f7f5; --panel: #fff; --ink: #1a1c19; --muted: #5d6159;
+    --line: #dcdfd8; --ok: #2f7d4f; --warn: #b06d15; --bad: #b3352b;
+    --accent: #375a3f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14160f; --panel: #1d2018; --ink: #e8eae2; --muted: #9aa08f;
+      --line: #2f3428; --ok: #6bbb85; --warn: #e0a850; --bad: #e8776b;
+      --accent: #8fbf9c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 20px 64px; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline;
+           justify-content: space-between; margin-bottom: 20px; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .alert { border-left: 3px solid var(--bad); background: var(--panel);
+           padding: 12px 16px; border-radius: 0 8px 8px 0; margin-bottom: 20px; }
+  .alert h2 { margin: 0 0 6px; font-size: 14px; }
+  .alert ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
+  #map { height: 420px; border: 1px solid var(--line); border-radius: 10px;
+         position: relative; overflow: hidden; background: var(--panel);
+         cursor: grab; touch-action: none; margin-bottom: 8px; }
+  #map.drag { cursor: grabbing; }
+  #tiles img { position: absolute; width: 256px; height: 256px; user-select: none;
+               -webkit-user-drag: none; }
+  .pin { position: absolute; width: 18px; height: 18px; border-radius: 50%;
+         border: 2px solid #fff; transform: translate(-50%, -50%);
+         box-shadow: 0 1px 4px rgba(0,0,0,.5); cursor: pointer; }
+  .pin.ok { background: var(--ok); } .pin.warn { background: var(--warn); }
+  .pin.bad { background: var(--bad); }
+  .plabel { position: absolute; transform: translate(-50%, -170%); font-size: 11px;
+            font-weight: 600; white-space: nowrap; padding: 1px 5px; border-radius: 4px;
+            background: rgba(0,0,0,.72); color: #fff; pointer-events: none; }
+  .zoom { position: absolute; right: 10px; top: 10px; display: grid; gap: 4px; z-index: 5; }
+  .zoom button { width: 30px; height: 30px; font-size: 17px; cursor: pointer;
+                 border: 1px solid var(--line); background: var(--panel);
+                 color: var(--ink); border-radius: 6px; }
+  .attrib { font-size: 11px; color: var(--muted); margin-bottom: 24px; }
+  .attrib a { color: inherit; }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+  .card { background: var(--panel); border: 1px solid var(--line);
+          border-radius: 10px; padding: 14px 16px; }
+  .card.bad { border-left: 3px solid var(--bad); }
+  .card.warn { border-left: 3px solid var(--warn); }
+  .card.ok { border-left: 3px solid var(--ok); }
+  .card h3 { margin: 0 0 2px; font-size: 15px; }
+  .model { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+  .row { display: flex; justify-content: space-between; gap: 10px;
+         font-size: 13px; padding: 3px 0; }
+  .row span:first-child { color: var(--muted); }
+  .bar { height: 5px; border-radius: 3px; background: var(--line);
+         overflow: hidden; margin-top: 3px; }
+  .bar i { display: block; height: 100%; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 20px;
+         border: 1px solid currentColor; margin-top: 9px; }
+  .tag.ok { color: var(--ok); } .tag.warn { color: var(--warn); } .tag.bad { color: var(--bad); }
+  a.coord { color: var(--accent); text-decoration: none; font-variant-numeric: tabular-nums; }
+  a.coord:hover { text-decoration: underline; }
+  h2.section { font-size: 15px; margin: 32px 0 12px; }
+  .photos { display: grid; gap: 10px;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .photos figure { margin: 0; }
+  .photos img { width: 100%; border-radius: 8px; display: block; border: 1px solid var(--line); }
+  .photos figcaption { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .empty { background: var(--panel); border: 1px dashed var(--line); border-radius: 10px;
+           padding: 20px; color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Trail Cameras</h1>
+      <div class="sub" id="sub"></div>
+    </div>
+    <div class="sub" id="plan"></div>
+  </header>
+  <div id="alerts"></div>
+  <div id="map"><div id="tiles"></div><div id="pins"></div>
+    <div class="zoom"><button id="zin" title="Zoom in">+</button><button id="zout" title="Zoom out">\u2212</button></div>
+  </div>
+  <div class="attrib">Map data \u00a9 <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors. Drag to pan.</div>
+  <div class="grid" id="cards"></div>
+  <h2 class="section">Recent photos</h2>
+  <div id="photoArea"></div>
+</div>
+<script type="application/json" id="data">${payload}</script>
+<script>
+const D = JSON.parse(document.getElementById('data').textContent);
+const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
+  if (x !== undefined) n.textContent = x; return n; };
+const fmtDate = s => { if (!s) return 'never';
+  const d = new Date(s); return isNaN(d) ? 'never' : d.toLocaleDateString(); };
+
+document.getElementById('sub').textContent =
+  D.cameras.length + ' camera' + (D.cameras.length === 1 ? '' : 's') +
+  ' \u00b7 synced ' + new Date(D.generatedAt).toLocaleString();
+const planned = D.cameras.find(c => c.plan);
+if (planned) document.getElementById('plan').textContent =
+  planned.plan + ' plan \u00b7 ' + planned.photoCount + '/' + planned.photoLimit + ' photos this cycle';
+
+// ---- alerts -----------------------------------------------------------
+const bad = D.cameras.filter(c => c.health.level !== 'ok');
+if (bad.length) {
+  const box = el('div', 'alert');
+  box.appendChild(el('h2', null, 'Needs attention'));
+  const ul = el('ul');
+  for (const c of bad) ul.appendChild(el('li', null, c.name + ' \u2014 ' + c.health.notes.join(', ')));
+  box.appendChild(ul);
+  document.getElementById('alerts').appendChild(box);
+}
+
+// ---- map --------------------------------------------------------------
+const TS = 256;
+const located = D.cameras.filter(c => typeof c.lat === 'number' && typeof c.lng === 'number');
+const mapEl = document.getElementById('map');
+const tilesEl = document.getElementById('tiles');
+const pinsEl = document.getElementById('pins');
+
+// Web Mercator, in pixels at the current zoom.
+const projX = (lng, z) => (lng + 180) / 360 * TS * 2 ** z;
+const projY = (lat, z) => {
+  const s = Math.sin(lat * Math.PI / 180);
+  return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * TS * 2 ** z;
+};
+
+let zoom = 16, centre = { lat: 0, lng: 0 };
+if (located.length) {
+  const lats = located.map(c => c.lat), lngs = located.map(c => c.lng);
+  const [m1, m2] = [Math.min(...lats), Math.max(...lats)];
+  const [n1, n2] = [Math.min(...lngs), Math.max(...lngs)];
+  centre = { lat: (m1 + m2) / 2, lng: (n1 + n2) / 2 };
+  // Widest zoom whose pixel span still fits, so every camera lands on screen.
+  for (let z = 18; z >= 2; z--) {
+    const w = Math.abs(projX(n2, z) - projX(n1, z)), h = Math.abs(projY(m1, z) - projY(m2, z));
+    if (w < mapEl.clientWidth - 90 && h < mapEl.clientHeight - 90) { zoom = z; break; }
+  }
+}
+
+function draw() {
+  const W = mapEl.clientWidth, H = mapEl.clientHeight;
+  const cx = projX(centre.lng, zoom), cy = projY(centre.lat, zoom);
+  const left = cx - W / 2, top = cy - H / 2;
+  const n = 2 ** zoom;
+  tilesEl.textContent = ''; pinsEl.textContent = '';
+  for (let tx = Math.floor(left / TS); tx <= Math.floor((left + W) / TS); tx++) {
+    for (let ty = Math.floor(top / TS); ty <= Math.floor((top + H) / TS); ty++) {
+      if (ty < 0 || ty >= n) continue;
+      const img = new Image();
+      img.src = 'https://tile.openstreetmap.org/' + zoom + '/' + ((tx % n) + n) % n + '/' + ty + '.png';
+      img.alt = ''; img.loading = 'lazy';
+      img.style.left = (tx * TS - left) + 'px';
+      img.style.top = (ty * TS - top) + 'px';
+      tilesEl.appendChild(img);
+    }
+  }
+  for (const c of located) {
+    const x = projX(c.lng, zoom) - left, y = projY(c.lat, zoom) - top;
+    if (x < -40 || y < -40 || x > W + 40 || y > H + 40) continue;
+    const lab = el('div', 'plabel', c.name);
+    lab.style.left = x + 'px'; lab.style.top = y + 'px';
+    const p = el('div', 'pin ' + c.health.level);
+    p.style.left = x + 'px'; p.style.top = y + 'px';
+    p.title = c.name + ' \u2014 last contact ' + fmtDate(c.lastSeen);
+    p.onclick = () => document.getElementById('cam-' + c.id)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    pinsEl.append(lab, p);
+  }
+}
+
+let drag = null;
+mapEl.addEventListener('pointerdown', e => {
+  if (e.target.closest('.zoom')) return;
+  drag = { x: e.clientX, y: e.clientY }; mapEl.classList.add('drag');
+  mapEl.setPointerCapture(e.pointerId);
+});
+mapEl.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  drag = { x: e.clientX, y: e.clientY };
+  const cx = projX(centre.lng, zoom) - dx, cy = projY(centre.lat, zoom) - dy;
+  const n = TS * 2 ** zoom;
+  centre.lng = cx / n * 360 - 180;
+  centre.lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * cy / n))) * 180 / Math.PI;
+  draw();
+});
+for (const ev of ['pointerup', 'pointercancel'])
+  mapEl.addEventListener(ev, () => { drag = null; mapEl.classList.remove('drag'); });
+document.getElementById('zin').onclick = () => { zoom = Math.min(19, zoom + 1); draw(); };
+document.getElementById('zout').onclick = () => { zoom = Math.max(2, zoom - 1); draw(); };
+addEventListener('resize', draw);
+if (located.length) draw();
+else mapEl.innerHTML = '<div style="padding:20px;color:#888">No camera reported GPS coordinates.</div>';
+
+// ---- camera cards -----------------------------------------------------
+const cards = document.getElementById('cards');
+const meter = (pct, colour) => {
+  const b = el('div', 'bar'), i = el('i');
+  i.style.width = Math.max(0, Math.min(100, pct)) + '%';
+  i.style.background = colour; b.appendChild(i); return b;
+};
+const line = (k, v) => { const r = el('div', 'row');
+  r.append(el('span', null, k), typeof v === 'string' ? el('span', null, v) : v); return r; };
+
+for (const c of D.cameras) {
+  const card = el('div', 'card ' + c.health.level);
+  card.id = 'cam-' + c.id;
+  card.appendChild(el('h3', null, c.name));
+  card.appendChild(el('div', 'model', [c.model, c.signalType].filter(Boolean).join(' \u00b7 ') || '\u2014'));
+
+  if (typeof c.battery === 'number') {
+    const v = el('span', null, c.battery + '%' + (c.batteryLevel ? ' (' + c.batteryLevel + ')' : ''));
+    card.appendChild(line('Battery', v));
+    card.appendChild(meter(c.battery,
+      c.battery <= 10 ? 'var(--bad)' : c.battery <= 30 ? 'var(--warn)' : 'var(--ok)'));
+  }
+  if (typeof c.signal === 'number') {
+    card.appendChild(line('Signal', c.signal + '%' +
+      (c.signalBars !== null ? ' \u00b7 ' + c.signalBars + ' bars' : '')));
+    card.appendChild(meter(c.signal, 'var(--accent)'));
+  }
+  if (typeof c.tempValue === 'number')
+    card.appendChild(line('Temperature', c.tempValue + '\u00b0' + (c.tempUnit || '')));
+  if (typeof c.memUsed === 'number' && typeof c.memSize === 'number')
+    card.appendChild(line('SD card', c.memUsed + ' / ' + c.memSize + ' MB'));
+  card.appendChild(line('Last contact', fmtDate(c.lastSeen) +
+    (c.health.age !== null ? ' (' + c.health.age + 'd)' : '')));
+
+  if (typeof c.lat === 'number') {
+    const a = document.createElement('a');
+    a.className = 'coord';
+    a.href = 'https://www.openstreetmap.org/?mlat=' + c.lat + '&mlon=' + c.lng + '#map=17/' + c.lat + '/' + c.lng;
+    a.target = '_blank'; a.rel = 'noopener';
+    a.textContent = c.lat.toFixed(6) + ', ' + c.lng.toFixed(6);
+    card.appendChild(line('Location', a));
+  }
+  const t = el('span', 'tag ' + c.health.level,
+    c.health.level === 'ok' ? 'healthy' : c.health.notes.join(' \u00b7 '));
+  card.appendChild(t);
+  cards.appendChild(card);
+}
+
+// ---- photos -----------------------------------------------------------
+const area = document.getElementById('photoArea');
+if (!D.photos.length) {
+  const why = D.cameras.every(c => c.health.age !== null && c.health.age >= D.staleDays)
+    ? 'Every camera has been silent for months, so there is nothing to download. Photos will appear here after the cameras start transmitting again and you re-run the sync.'
+    : 'No photos have been synced yet. Run the script without --dry-run to download them.';
+  area.appendChild(el('div', 'empty', why));
+} else {
+  const g = el('div', 'photos');
+  for (const p of D.photos.slice(0, 60)) {
+    const f = document.createElement('figure');
+    const i = new Image(); i.src = p.file; i.alt = p.cameraName + ' ' + fmtDate(p.date);
+    i.loading = 'lazy';
+    const cap = el('figcaption', null,
+      p.cameraName + ' \u00b7 ' + fmtDate(p.date) + (p.tags && p.tags.length ? ' \u00b7 ' + p.tags.join(', ') : ''));
+    f.append(i, cap); g.appendChild(f);
+  }
+  area.appendChild(g);
+}
+</script>
+</body>
+</html>
+`;
+}
+
 async function main() {
   const email = process.env.SPYPOINT_EMAIL;
   const password = process.env.SPYPOINT_PASSWORD;
@@ -363,12 +689,14 @@ async function main() {
         if (!id || seen.has(id)) continue;
         const url = photoUrl(p, OPT.size);
         if (!url) { warn(`  ${cam.name}: photo ${id} has no downloadable URL, skipped`); continue; }
+        // Stored with forward slashes and relative to the output dir, because
+        // the dashboard loads it as an <img src> from that same folder.
+        const rel = ['photos', safe(cam.name), d ? safe(d.slice(0, 7)) : 'unknown-date', `${id}.jpg`].join('/');
         if (OPT.dryRun) {
           log(`  [dry] ${cam.name}  ${id}  ${d ?? 'date?'}`);
         } else {
-          const dest = path.join(photoRoot, safe(cam.name), d ? safe(d.slice(0, 7)) : 'unknown-date', `${id}.jpg`);
           try {
-            await download(url, dest);
+            await download(url, path.join(OPT.out, ...rel.split('/')));
           } catch (err) {
             warn(`  ${cam.name}: download failed for ${id} (${err.message}) — will retry next run`);
             continue;
@@ -377,7 +705,7 @@ async function main() {
         seen.add(id);
         meta.push(JSON.stringify({
           id, camera: cam.id, cameraName: cam.name, date: d,
-          tags: p.tag ?? p.tags ?? [], url,
+          tags: p.tag ?? p.tags ?? [], url, file: rel,
         }));
         fetched++; totalNew++;
         if (OPT.max && fetched >= OPT.max) {
@@ -397,6 +725,24 @@ async function main() {
   if (meta.length && !OPT.dryRun) {
     await fs.appendFile(path.join(OPT.out, 'photos.jsonl'), meta.join('\n') + '\n');
   }
+
+  if (!OPT.dryRun) {
+    // Read back the whole log, not just this run's additions, so the dashboard
+    // shows every photo ever synced rather than only tonight's.
+    let all = [];
+    try {
+      all = (await fs.readFile(path.join(OPT.out, 'photos.jsonl'), 'utf8'))
+        .split('\n').filter(Boolean)
+        .map(l => { try { return JSON.parse(l); } catch { return null; } })
+        .filter(p => p && p.file);
+    } catch { /* no photos synced yet — the dashboard says so itself */ }
+    all.sort((a, b) => Date.parse(b.date ?? 0) - Date.parse(a.date ?? 0));
+
+    const dash = path.join(OPT.out, 'dashboard.html');
+    await fs.writeFile(dash, dashboardHtml(rows, all, new Date().toISOString()));
+    log(`Dashboard: ${dash}`);
+  }
+
   console.log(`Done: ${totalNew} new photo(s)${OPT.dryRun ? ' would be downloaded (dry run)' : ''}. Output: ${OPT.out}`);
 }
 
