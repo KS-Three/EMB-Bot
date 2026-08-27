@@ -175,14 +175,29 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
    and `GET /repos/KS-Three/EMB-Bot/branches/main` — both answer a session
    token, even though `/branches/main/protection` returns 403 to one.
 
-   **Why auto-merge used to refuse, for the record.** Before protection existed
-   `mcp__github__enable_pr_auto_merge` failed in BOTH states — *"in unstable
-   status (required checks are failing)"* while checks were pending (nothing was
-   failing; every check was `success` or `in_progress`), and *"already in clean
-   status … you can merge directly"* once green. Tried on PRs #268, #269, #272.
-   The cause was that the repo had zero required checks, so the pending window
-   the tool wants never existed. That cause is now gone; whether the tool
-   actually arms is measured on the PR carrying this paragraph.
+   **Auto-merge WORKS now — arm it instead of waiting or watching.** Measured on
+   PR #275, 2026-08-27: `mcp__github__enable_pr_auto_merge` returned *"Auto-merge
+   enabled … will merge automatically once all required checks pass"* instead of
+   refusing. That is the arming step, which is the part that was impossible
+   before; do not sit on a PR watching `digitizer` for 15 minutes. Two
+   conditions, both learned on that same PR:
+
+   - **Mark the PR ready for review FIRST.** On a draft it fails with
+     *"Pull request is a draft"* — a third refusal message, distinct from the
+     two below, and the one a session hits by default, since PRs here are
+     opened as drafts.
+   - **Arm it while `mergeable_state` is `blocked`.** That is the state
+     required checks produce (required, not yet reported). It is NOT
+     `unstable`, which is what this repo used to show and what the note below
+     describes.
+
+   **Why it used to refuse, for the record.** Before protection existed the tool
+   failed in BOTH available states — *"in unstable status (required checks are
+   failing)"* while checks were pending (nothing was failing; every check was
+   `success` or `in_progress`), and *"already in clean status … you can merge
+   directly"* once green. Tried on PRs #268, #269, #272. The cause was that the
+   repo had zero required checks, so the pending window the tool wants never
+   existed. Adding the required checks created that window.
 
    **The CI double-run was fixed FIRST, on purpose** — see the `on:` block in
    `.github/workflows/python-package-conda.yml`. While the workflow fired on
