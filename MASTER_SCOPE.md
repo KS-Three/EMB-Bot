@@ -703,6 +703,26 @@ all landed and all validated against four real portraits. **What none of it has
 is CI cover** — the tonal evidence is gitignored and machine-bound, so every
 threshold shipped is defended only by an owl. *(measured 2026-08-25 — PRs
 #241/#243/#245; scope-history 08-25 evening)*
+**Kent's own verdict, 2026-08-27: these are 60% of the way to Ember parity.**
+First per-design feedback in his words on all fourteen designs. `artfidelity_self`
+averages **83.7** and `preflight` **80.0** on the same set, agreeing with each
+other at only **rho = 0.405** — so **never quote ARTFID as a quality
+percentage**: it is a fidelity score, blind to craft, which is most of his
+missing 40%. He named the split himself — *"Shapes are accurate but smoothness
+is not."* Two themes, equally weighted by him: smoothness (8 of 14) and whole
+elements missing (7 of 14; both his "out of place" marks lost an element).
+**Bears on ROADMAP phase 1's exit condition** — a fidelity-only metric may not
+be able to agree with a partly craft-driven ranking at all.
+**`ARTWORK_UNCOVERED` cannot see a dropped element**: fired on 1 of those 7,
+`0.0 mm²` on the rest with `uncovered_checked: True`, because it is scoped to
+shapes the design already sews. `tools/dropped_elements.py` measures it from the
+artwork's side — 99.1% lost on the logo Kent called "5% completed at most".
+**Two engine defects open, unfixed:** `summit_badge`'s half-removed background,
+and `stage1_prep.py:254-266` answering a structural question (`BACKGROUND_ABSENT`)
+through a colour threshold (`bg_tolerance_lab`).
+*(measured 2026-08-27 — `docs/kent-review-2026-08-27.md`; memory
+`kent-eye-vs-instruments-2026-08-27`. PR #276's body claims the engine is
+correct on `summit_badge` — that sentence is wrong, its instrument fix stands.)*
 **Satin extremity drop — FIXED 2026-08-21.** `_prune_spurs` re-measured a stem
 its OWN first pass had un-branched, one raster pixel deciding a 3.3 mm tab.
 **The blind spot that hid it stays fixed:** `preflight`'s `ARTWORK_UNCOVERED`,
