@@ -52,7 +52,14 @@ const OPT = {
 
 const log = (...a) => { if (!OPT.quiet) console.log(...a); };
 const warn = (...a) => console.error(...a);
-const die = msg => { console.error(`\nERROR: ${msg}`); process.exit(1); };
+// Calling process.exit() while fetch still holds open sockets trips a libuv
+// assertion on Windows — "Assertion failed: !(handle->flags & UV_HANDLE_CLOSING),
+// file src\win\async.c" — which prints a crash dump right after the real error
+// message and makes a clean failure look like a broken script. Unwind with a
+// thrown error and set the exit code instead, so Node shuts down in its own
+// time. (Seen on Node 24.18.0 / Windows, 2026-08-27.)
+class Fatal extends Error {}
+const die = msg => { throw new Fatal(msg); };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function api(method, route, { token, body } = {}) {
@@ -746,4 +753,9 @@ async function main() {
   console.log(`Done: ${totalNew} new photo(s)${OPT.dryRun ? ' would be downloaded (dry run)' : ''}. Output: ${OPT.out}`);
 }
 
-main().catch(err => die(err.stack ?? String(err)));
+main().catch(err => {
+  // A Fatal is one of this script's own diagnosed failures, so its message is
+  // the whole story; anything else is unexpected and earns a stack trace.
+  console.error(`\nERROR: ${err instanceof Fatal ? err.message : err.stack ?? String(err)}`);
+  process.exitCode = 1;
+});
