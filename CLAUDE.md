@@ -173,12 +173,32 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
    *required* check; with none configured there is nothing to hold, so the
    pending window the tool wants never exists.
 
-   **So do not follow the paragraph above as written — you cannot "enable
-   auto-merge instead of waiting."** What is actually available:
-   - Wait for all four and let Kent merge (what has happened on every PR so far).
-   - Or Kent adds one required check (branch protection or a ruleset), after
-     which auto-merge should work — an admin setting he can see and a session
-     cannot. That is his call, not a session's.
+   **So do not follow the paragraph above as written until branch protection
+   exists — you cannot "enable auto-merge instead of waiting."** Until then:
+   wait for all four and let Kent merge, which is what has happened on every PR.
+
+   **RESOLUTION IN PROGRESS, Kent's call 2026-08-26.** He is adding required
+   status checks on `main` — which fixes the actual problem (merging at 3/4
+   green is how `main` went red) and re-opens the auto-merge window as a side
+   effect. The four contexts to require, verified against a real run:
+   `engine`, `studio`, `studio-e2e`, `digitizer`. NOT `Supabase Preview` —
+   third-party, reports `skipped`, and requiring it could hang PRs.
+   Deliberately left off: "Require branches to be up to date" (`main` moves
+   constantly here; it would force a merge-forward on every PR) and "Do not
+   allow bypassing" (a genuine hotfix stays hand-mergeable, which is why Kent
+   preferred auto-merge over branch protection in the first place).
+
+   **The CI double-run was fixed FIRST, on purpose** — see the `on:` block in
+   `.github/workflows/python-package-conda.yml`. While the workflow fired on
+   both `push` and `pull_request`, every PR head got two runs and every check
+   name appeared twice on one SHA; a phantom duplicate run pinned PR #272 at
+   `unstable` for ~25 minutes on 2026-08-26. Cosmetic then, a hard merge block
+   once the checks are required. If you are reading this because a PR will not
+   merge, check for a second run on the same SHA before anything else.
+
+   Once protection is on, re-test: `enable_pr_auto_merge` should succeed while
+   checks are pending. If it still refuses, the entry above is still the truth
+   and this paragraph is the thing that is wrong.
 
    The GitHub UI button is a different code path and was NOT tested; it may
    still work. *(measured 2026-08-26)*
