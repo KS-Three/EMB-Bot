@@ -59,7 +59,7 @@ field names instead of guesses.
 ```
 spypoint-data/
   cameras.raw.json    full camera documents, untouched
-  cameras.csv         id, name, model, latitude, longitude, battery, signal, last_seen
+  cameras.csv         location, battery, signal, temperature, memory, plan, last_seen + age
   photos.jsonl        one metadata line per downloaded photo (id, camera, date, tags, url)
   photos/<camera>/<YYYY-MM>/<photoId>.jpg
 ```
@@ -93,26 +93,37 @@ themselves only upload a few times a day on their transmission schedule.
 - **Photos are the transmitted versions** (compressed cellular uploads). The
   full-resolution originals stay on the SD card; HD retrieval still goes
   through the SpyPoint app/plan.
-- **Coordinates:** the location is the pin set in the app, or the camera's own
-  GPS on models that have it. If your cameras report location as a bare
-  2-number array, the lat/lng **order is unverified** — check one camera
-  against the app's map before trusting it (the CSV keeps such arrays raw in
-  `coords_raw` for exactly this reason).
+- **Coordinates are GeoJSON `[longitude, latitude]`**, from
+  `status.coordinates[0].position.coordinates` — confirmed 2026-08-27, not
+  assumed. The same object also carries DMS strings (`latitude: "N43
+  53.140980"`, `longitude: "W89 1.904100"`), and converting those reproduces
+  the numeric array exactly with longitude first. Don't "fix" the order.
+- **A camera only has photos if it is still transmitting.** The script flags
+  any camera silent for more than 30 days, because a stale camera producing
+  zero photos is the expected outcome, not a failure.
 - **Politeness is built in:** ~250 ms between API calls, ~150 ms between
   downloads, no retry storms.
 
 ## What has actually been verified
 
-As of 2026-08-27, on Node 22 in a Linux container:
+As of 2026-08-27, against a real 4-camera FLEX-M account:
 
-- Script parses (`node --check`).
-- Missing-credentials path exits 1 with the usage message.
-- A live login attempt against `restapi.spypoint.com` with deliberately wrong
-  credentials returned HTTP 401 and was reported cleanly — so the host, the
-  request shape, and the auth wiring are confirmed working up to that point.
+- **Login works** and returns a usable bearer token.
+- **`camera/all` works** — all four cameras came back with GPS, battery,
+  signal, temperature, memory, firmware, and subscription details.
+- **Field extraction is unit-tested** against the real camera document, with
+  assertions pinning the `[lng, lat]` ordering, the signal fields, and the
+  battery source, plus a differently-shaped fixture covering the fallback
+  paths and garbage input.
+- **Photo listing is reachable and correctly returned zero photos.** Every
+  camera on that account had been offline for 7–9 months, and the SpyPoint
+  app itself showed no photos either — so the empty result was cross-checked
+  against the vendor's own client and matches. The query is not at fault.
 
-Everything past login — camera listing, photo paging, downloads — mirrors the
-two community clients but gets its first real exercise on your first run.
+The one thing still untested is the **download and paging path**, which has
+never run against an actual photo, because there was none to run against.
+Expect the first sync from a live camera to be where any remaining bug shows
+up.
 
 ## Testing from a Claude cloud session
 
