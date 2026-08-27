@@ -243,3 +243,74 @@ jobs:
         working-directory: app
         run: |
           node -e "const s=require('./results.json').stats; console.log(JSON.stringify(s)); if(s.skipped>0){console.error(s.skipped+' spec(s) skipped — the service bootstrap failed; read the skip reasons in the list output above'); process.exit(1)}"
+
+  art-fidelity-baseline:
+    # REPORT-ONLY. Runs tools/artfidelity_self.py over the tracked fixture set
+    # and publishes the table; it never fails the build and gates nothing.
+    #
+    # Why it exists: that instrument answers "does our stitch-out look like the
+    # artwork" with no professional reference, which is the question ROADMAP
+    # phase 1's exit condition is phrased in terms of. Its numbers are
+    # platform-sensitive the same way the three deselected golden tests are, so
+    # a number measured on Kent's Windows box is not comparable to one measured
+    # anywhere else. This job's whole job is to capture the LINUX baseline, on
+    # main, so later runs have something legitimate to be compared against.
+    #
+    # main-only and push-only, deliberately. A baseline is a main-branch fact,
+    # and the run digitizes fourteen designs — several of them photo/gradient
+    # routes that take minutes apiece — so putting it on every PR would add
+    # that cost to every push while measuring a branch no baseline refers to.
+    #
+    # `continue-on-error` is belt-and-braces on top of the tool's own exit
+    # code: this must never be the reason a green main goes red. If it starts
+    # failing, that is a bug in the instrument to fix on a branch, not a
+    # signal about the engine.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: digitizer/requirements.txt
+      # Same Tesseract install as the digitizer job: the fixture set includes
+      # designs whose route runs textcluster's OCR pass, and a silently
+      # OCR-less run would measure a different pipeline than the suite does.
+      - name: Install system dependencies (Tesseract OCR)
+        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
+      - name: Install
+        working-directory: digitizer
+        run: pip install -r requirements.txt
+      # No pipe. `... | tee file` would hand this step TEE's exit code instead
+      # of the tool's — the same trap COOKBOOK.md records for `pytest | tail`,
+      # and a report-only job is exactly where a silently-swallowed failure
+      # would go unnoticed longest. The tool writes its table to stdout and its
+      # per-fixture progress to stderr, so redirecting stdout alone captures
+      # the table while progress still streams live into the run log.
+      - name: Score the tracked fixture set
+        working-directory: digitizer
+        run: python -m tools.artfidelity_self --all --csv artfid-baseline.csv > artfid-baseline.txt
+      # The table in the log scrolls away with the run; the summary is what
+      # someone actually reads when asking "what did this measure".
+      - name: Publish the table to the run summary
+        if: always()
+        working-directory: digitizer
+        run: |
+          {
+            echo '## Art-fidelity baseline (report-only)'
+            echo
+            echo 'Linux, `ubuntu-latest`. Not comparable to a Windows run.'
+            echo
+            echo '```'
+            cat artfid-baseline.txt || echo '(no table — the run did not finish)'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the baseline CSV
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: artfid-baseline-${{ github.sha }}
+          path: digitizer/artfid-baseline.csv
+          if-no-files-found: warn
