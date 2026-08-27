@@ -7,7 +7,41 @@
 # push).
 name: CI
 
-on: [push, pull_request]
+# ONE run per commit, not two.
+#
+# This was `on: [push, pull_request]`, which fires BOTH events for any branch
+# that has a PR open — so every PR head got two full runs and every check name
+# (`engine`, `studio`, `studio-e2e`, `digitizer`) appeared twice on the same
+# SHA. Measured 2026-08-26: 7 of the 12 most recent heads ran twice, and
+# `digitizer` alone is 12–15 minutes, so each PR push burned ~13 minutes of
+# runner time reproducing a result it already had.
+#
+# The duplication was not just wasteful, it was load-bearing on a bug. On
+# 2026-08-26 the pull_request run for f95db7a hit `startup_failure`, was
+# re-queued by GitHub, then sat `queued` with ZERO jobs — neither re-runnable
+# nor cancellable (409 "Cannot cancel a workflow re-run that has not yet
+# queued"). Its four orphaned check runs pinned PR #272 at
+# mergeable_state=unstable for ~25 minutes while the push run had already
+# passed everything. It cleared on its own that time. Once these checks are
+# REQUIRED for merge, the same phantom is a hard block instead of a cosmetic
+# one — which is why this is fixed before branch protection goes on, not after.
+#
+# `push` is now main-only, so:
+#   - a PR branch is covered exactly once, by the pull_request event
+#   - main is still covered on every merge
+#   - a branch pushed with no PR open gets no run until the PR exists, which
+#     is fine here: a PR is how everything reaches main.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Supersede in-flight runs for the same ref rather than racing them. Never
+# cancels on main — a merge's run is the record that main is green, and there
+# is no later run coming to replace it.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   engine:
