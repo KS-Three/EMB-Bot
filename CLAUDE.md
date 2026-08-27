@@ -162,14 +162,16 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
      (third-party, reports `skipped`, requiring it could hang PRs).
      Deliberately off: "Require branches to be up to date" (`main` moves
      constantly here; it would force a merge-forward on every PR).
-   - **Two rulesets also landed, and they are stricter than that.** `main-1`
-     (id 21660818) blocks `deletion` and `non_fast_forward`; `main-2`
-     (id 21660819) requires the SAME four checks. Both `active`, both scoped to
-     `refs/heads/main`, both with **no bypass actors at all**. Rulesets stack on
-     top of branch protection and the strictest layer wins, so `main-2`
-     nullifies the `non_admins` escape hatch — the hotfix path Kent explicitly
-     asked for. Unresolved, his call: delete `main-2`, or add "Repository
-     admin" as a bypass actor on it.
+   - **Two rulesets also landed alongside it.** `main-1` (id 21660818) blocks
+     `deletion` and `non_fast_forward` on `main` — keep it, nobody should be
+     force-pushing `main`. `main-2` (id 21660819) required the SAME four checks
+     with **no bypass actors**, which stacks on top of branch protection and
+     (per GitHub's docs — not measured here) cancels the `non_admins` hotfix
+     escape hatch. **Kent's call 2026-08-27: delete `main-2`**, leaving branch
+     protection as the single layer enforcing the four checks, at `non_admins`.
+     A session cannot do it — `DELETE /rulesets/21660819` returns 403 to a
+     session token. If a future read still shows `main-2` present, it was never
+     executed; say so rather than assuming.
 
    Read the live state with `GET /repos/KS-Three/EMB-Bot/rules/branches/main`
    and `GET /repos/KS-Three/EMB-Bot/branches/main` — both answer a session
