@@ -1,0 +1,4 @@
+# Synced trail-camera output — never commit photos, camera locations, or the
+# credential-bearing scheduler wrapper to a public repo.
+spypoint-data/
+sync.cmd
