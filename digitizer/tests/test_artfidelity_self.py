@@ -217,6 +217,59 @@ def test_ink_is_ambiguous_stays_quiet_on_ordinary_alpha_keyed_art(tmp_path):
     assert afs.ink_is_ambiguous(p) is False
 
 
+def test_ink_saturation_refuses_a_mask_that_claims_the_whole_frame(tmp_path):
+    """The defect found the day after this instrument shipped.
+
+    A design on a DARK backdrop: the opaque-art rule (mean RGB < 240) calls the
+    backdrop ink too, so the mask claims the entire frame. Coverage is then an
+    IoU against all-ones — "what fraction of the canvas did you sew" — and it
+    rewards the engine for sewing a background it was right to remove. On
+    `summit_badge` that was worth 21 points of coverage in the wrong direction.
+    """
+    a = np.full((300, 300, 4), (60, 56, 52, 255), np.uint8)   # dark backdrop
+    a[100:200, 100:200] = (200, 120, 40, 255)                 # the actual mark
+    p = tmp_path / "on_dark.png"
+    write_rgba(p, a)
+
+    assert afs.ink_saturation(p) == pytest.approx(1.0, abs=0.01)
+    assert afs.ink_saturation(p) > afs.INK_SATURATION_MAX
+
+
+def test_ink_saturation_is_low_for_a_mark_on_a_light_ground(tmp_path):
+    a = np.full((300, 300, 4), (255, 255, 255, 255), np.uint8)
+    a[120:180, 120:180] = (20, 20, 20, 255)
+    p = tmp_path / "on_light.png"
+    write_rgba(p, a)
+
+    sat = afs.ink_saturation(p)
+    assert sat == pytest.approx(0.04, abs=0.01)
+    assert sat < afs.INK_SATURATION_MAX
+
+
+def test_ink_saturation_measures_the_frame_not_the_crop(tmp_path):
+    """`art_ink_field` crops to the ink bbox, and the crop is exactly what
+    hides this failure: a mask claiming the whole frame crops to the whole
+    frame and then looks like an ordinary solid design. So saturation must be
+    read BEFORE the crop — a small mark on a light ground must stay low even
+    though its own bbox is 100% ink."""
+    a = np.full((400, 400, 4), (255, 255, 255, 255), np.uint8)
+    a[190:210, 190:210] = (0, 0, 0, 255)          # 20x20 solid mark
+    p = tmp_path / "small.png"
+    write_rgba(p, a)
+
+    # Its cropped bbox IS entirely ink...
+    assert afs.art_ink_field(p, width_mm=5.0).mean() > 0.95
+    # ...but the frame is not, and that is the number the refusal reads.
+    assert afs.ink_saturation(p) < 0.01
+
+
+def test_ink_saturation_cut_sits_between_the_observed_populations():
+    # Measured over the tracked set 2026-08-27: legitimate fixtures span
+    # 4.7%-62.9%, `summit_badge` saturates at 100.0%. Wide room on both sides,
+    # not a cut fitted to the data.
+    assert 0.63 < afs.INK_SATURATION_MAX < 1.0
+
+
 def test_mismatch_cut_sits_between_the_observed_populations():
     # The artifact's one subject-mismatch row measured 5.1x and every scored
     # row sat far below the cut. Pin that the cut still separates them, so a
