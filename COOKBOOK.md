@@ -516,6 +516,18 @@ hand-rolling it in JS.
   `tools/start-emb-bot.ps1` and `digitizer/tools/pro_parity/ladder.ps1` both
   failed to parse on 5.1 for this reason (fixed 2026-08-26) while working fine
   under `pwsh` 7, which reads UTF-8 -- so a PS7 author never sees it.
+- **Run the pro-parity corpus with `digitizer/tools/pro_parity/parity_run.ps1`,
+  not by hand from `prep_both.py`'s docstring.** That docstring is bash, and
+  both halves fail SILENTLY under PowerShell. `PRO_PARITY_OUT=<dir> python ...`
+  is bash's per-command env syntax; PowerShell either errors on it or, worse,
+  reuses a `$env:PRO_PARITY_OUT` left over from an earlier run and writes to
+  the wrong directory. And `scorecard.py <OUT>/real/*` needs the SHELL to
+  expand the glob — PowerShell does not, so `scorecard.py` gets the literal
+  string, finds no `pro_stitches.csv`, skips every entry without complaining
+  and prints a clean empty report. **Zero designs scored looks exactly like a
+  successful run.** The wrapper enumerates the design dirs explicitly and fails
+  loudly on an empty lane. `-SkipPrep` re-scores an existing output directory,
+  which is what you want when only the SCORER changed.
 
 ## Manual digitize: copy/paste and per-shape dim (merged 2026-08-26, PR #255)
 
