@@ -58,6 +58,25 @@ if (-not (Test-Path -LiteralPath (Join-Path $proParity 'prep_both.py'))) {
     throw "prep_both.py not found next to this script ($proParity)."
 }
 
+# Fail in two seconds, not fifteen failures deep. prep_both.py resolves every
+# design path under PRO_PARITY_ROOT and catches per-design exceptions, so a
+# corpus that is missing entirely (Drive not mounted, not synced on this
+# machine, moved) does not stop the run - it produces 15 consecutive FAILED
+# lines and an exit code that still has to be read to notice.
+#
+# The literal below DUPLICATES prep_both.py's own default (its ROOT), so the
+# two can drift. Deliberate: importing prep_both to ask it would pull in
+# prep_all and real_art for a preflight. The drift is safe in the only
+# direction it can go - a stale literal makes this refuse a run that would
+# have worked, which -Root gets past, and it can never let a wrong corpus
+# through, because prep_both resolves the real path itself either way.
+$corpus = if ($Root) { $Root } else { 'G:/My Drive/EMB-Bot/Embroidery Files' }
+if (-not $SkipPrep -and -not (Test-Path -LiteralPath $corpus)) {
+    throw ("Corpus root not found: '$corpus'. " +
+           "Check Google Drive is mounted and synced on this machine, or pass -Root <path>. " +
+           "(-SkipPrep does not need the corpus - it only re-scores an existing -Out.)")
+}
+
 if (-not $Out) { $Out = Join-Path $repo 'parity_out_run' }
 if ($SkipPrep -and -not (Test-Path -LiteralPath $Out)) {
     throw "-SkipPrep needs an existing -Out directory; '$Out' does not exist."
