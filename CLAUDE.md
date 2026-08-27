@@ -142,66 +142,55 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
 6. **Playwright MCP needs an explicit browser path in this class of sandbox.** `@playwright/mcp`'s bundled `playwright-core` expects a newer browser revision than what's pre-cached at `/opt/pw-browsers/`, and outbound access to Playwright's browser-download CDN is blocked (403) in this environment class — so the plain `npx @playwright/mcp@latest` config fails outright, with no download fallback. `.mcp.json` launches it through `tools/mcp-playwright.mjs` instead, which passes `--executable-path /opt/pw-browsers/chromium` only when that path exists (so a machine without it, e.g. Kent's local setup, still gets normal auto-download behavior). Don't simplify `.mcp.json` back to a bare `npx @playwright/mcp@latest` command. Confirmed 2026-08-03.
 
 7. **Three green checks is NOT a green PR — the fourth is the slow one.** CI runs
-   four jobs. `engine` and `studio` finish in well under a minute; `digitizer`
-   takes 12–18 minutes and `studio-e2e` several. So a PR shows 3/4 green long
+   four jobs on a PR. `engine` and `studio` finish in well under a minute;
+   `digitizer` takes 12–18 minutes and `studio-e2e` several. (A fifth job,
+   `art-fidelity-baseline`, is push-to-`main`-only and `continue-on-error` — it
+   never appears on a PR and gates nothing.) So a PR shows 3/4 green long
    before it is green, and merging there is how `main` has gone red — run 994
    (PR #249) and run 1006 (PR #253) both merged to a failing conclusion, and
    `preview.js` has arrived unparseable on `main` **four** times, each one caught
    only by the job nobody waited for.
 
-   **Enable auto-merge on the PR instead of waiting or watching**
-   (`mcp__github__enable_pr_auto_merge`, or the button in the GitHub UI). GitHub
-   then holds the merge until all four pass and merges it unattended. Kent's call,
-   2026-08-26, chosen over branch protection deliberately: it costs nothing, needs
-   no admin settings, and still leaves a genuine hotfix hand-mergeable.
+   **Protection is ON as of 2026-08-27 — `main` now requires all four.**
+   Kent added it after runs 994 and 1006 showed what merging at 3/4 costs.
+   Measured state, all of it readable without admin:
 
-   **`enable_pr_auto_merge` CANNOT be armed on this repo — MEASURED, both
-   states refuse.** The tool has exactly two guards and they leave no window:
+   - **Branch protection** requires `engine`, `studio`, `studio-e2e`,
+     `digitizer` — all `app_id: 15368` (GitHub Actions) — at
+     `enforcement_level: non_admins`, so Kent bypasses and a genuine hotfix
+     stays hand-mergeable. Deliberately NOT required: `Supabase Preview`
+     (third-party, reports `skipped`, requiring it could hang PRs).
+     Deliberately off: "Require branches to be up to date" (`main` moves
+     constantly here; it would force a merge-forward on every PR).
+   - **Two rulesets also landed, and they are stricter than that.** `main-1`
+     (id 21660818) blocks `deletion` and `non_fast_forward`; `main-2`
+     (id 21660819) requires the SAME four checks. Both `active`, both scoped to
+     `refs/heads/main`, both with **no bypass actors at all**. Rulesets stack on
+     top of branch protection and the strictest layer wins, so `main-2`
+     nullifies the `non_admins` escape hatch — the hotfix path Kent explicitly
+     asked for. Unresolved, his call: delete `main-2`, or add "Repository
+     admin" as a bypass actor on it.
 
-   | `mergeable_state` | what the API says |
-   | --- | --- |
-   | `unstable` (checks pending) | *"in unstable status (required checks are failing)"* |
-   | `clean` (all four green) | *"already in clean status … Auto-merge only applies when checks are pending — you can merge directly"* |
+   Read the live state with `GET /repos/KS-Three/EMB-Bot/rules/branches/main`
+   and `GET /repos/KS-Three/EMB-Bot/branches/main` — both answer a session
+   token, even though `/branches/main/protection` returns 403 to one.
 
-   Tried on PRs #268, #269 and #272; the `clean` case was captured on #272 on
-   2026-08-26. Note the `unstable` message is misleading — nothing was failing,
-   every check was `success` or `in_progress`.
-
-   The underlying cause is that the repo has NO REQUIRED status checks
-   (`allow_auto_merge: true`, zero rulesets, branch protection unreadable to a
-   session token — 403). Auto-merge exists to hold a merge on a pending
-   *required* check; with none configured there is nothing to hold, so the
-   pending window the tool wants never exists.
-
-   **So do not follow the paragraph above as written until branch protection
-   exists — you cannot "enable auto-merge instead of waiting."** Until then:
-   wait for all four and let Kent merge, which is what has happened on every PR.
-
-   **RESOLUTION IN PROGRESS, Kent's call 2026-08-26.** He is adding required
-   status checks on `main` — which fixes the actual problem (merging at 3/4
-   green is how `main` went red) and re-opens the auto-merge window as a side
-   effect. The four contexts to require, verified against a real run:
-   `engine`, `studio`, `studio-e2e`, `digitizer`. NOT `Supabase Preview` —
-   third-party, reports `skipped`, and requiring it could hang PRs.
-   Deliberately left off: "Require branches to be up to date" (`main` moves
-   constantly here; it would force a merge-forward on every PR) and "Do not
-   allow bypassing" (a genuine hotfix stays hand-mergeable, which is why Kent
-   preferred auto-merge over branch protection in the first place).
+   **Why auto-merge used to refuse, for the record.** Before protection existed
+   `mcp__github__enable_pr_auto_merge` failed in BOTH states — *"in unstable
+   status (required checks are failing)"* while checks were pending (nothing was
+   failing; every check was `success` or `in_progress`), and *"already in clean
+   status … you can merge directly"* once green. Tried on PRs #268, #269, #272.
+   The cause was that the repo had zero required checks, so the pending window
+   the tool wants never existed. That cause is now gone; whether the tool
+   actually arms is measured on the PR carrying this paragraph.
 
    **The CI double-run was fixed FIRST, on purpose** — see the `on:` block in
    `.github/workflows/python-package-conda.yml`. While the workflow fired on
    both `push` and `pull_request`, every PR head got two runs and every check
    name appeared twice on one SHA; a phantom duplicate run pinned PR #272 at
    `unstable` for ~25 minutes on 2026-08-26. Cosmetic then, a hard merge block
-   once the checks are required. If you are reading this because a PR will not
-   merge, check for a second run on the same SHA before anything else.
-
-   Once protection is on, re-test: `enable_pr_auto_merge` should succeed while
-   checks are pending. If it still refuses, the entry above is still the truth
-   and this paragraph is the thing that is wrong.
-
-   The GitHub UI button is a different code path and was NOT tested; it may
-   still work. *(measured 2026-08-26)*
+   now that the checks are required. If you are reading this because a PR will
+   not merge, check for a second run on the same SHA before anything else.
 
    Two related traps, both already bitten:
    - **`pytest` exit codes.** `pytest > log; echo $?` is fine, but whatever runs
