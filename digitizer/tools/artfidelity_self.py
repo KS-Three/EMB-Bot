@@ -38,6 +38,15 @@ Recovered exactly from that artifact:
     0.08. That is a recovery, not a guess.
   * the two refusal classes, and which fixtures fall in them.
 
+A THIRD refusal class was added 2026-08-27, after the rebuild shipped and was
+not in the artifact at all: `INK_SATURATION_MAX`. `summit_badge` is a badge on
+a dark grey vignette backdrop, and the opaque-art ink rule calls that backdrop
+ink too — 100.0% of the frame. Coverage became an IoU against all-ones, which
+rewarded the engine for sewing a background stage 1 was right to remove, and
+the row was ranked 7th of 9 on the strength of it. The artifact's own table
+scored that fixture too, so its 69.1 there is subject to the same defect. Found
+by sweeping `bg_tolerance_lab` and chasing why one fixture moved 16.8 points.
+
 NOT recoverable, and therefore STATED CHOICES here, each flagged at its
 constant: the ink-mask threshold, the registration window and step, the SSIM
 scale count and window, the colour scale constant, and the subject-mismatch
@@ -150,6 +159,34 @@ _FLOOR_SAMPLE_PX = 512
 # two are always commensurable and the excess can never come out negative
 # through a sampling mismatch.
 
+INK_SATURATION_MAX = 0.90
+# Refusal: the fraction of the FRAME that `art_ink_field` calls ink. At the
+# top of this range the mask has not separated ink from ground, and `coverage`
+# — an IoU against a mask that is almost all ones — degenerates into "what
+# fraction of the canvas did you sew", which is not fidelity. `structure` reads
+# the same field, so the whole row goes with it.
+#
+# Found 2026-08-27, the day after this file shipped, by chasing a 16.8-point
+# ARTFID step on `summit_badge`. That fixture is a badge on a DARK GREY
+# VIGNETTE BACKDROP, and `art_ink_field`'s opaque-art rule (mean RGB < 240)
+# calls the backdrop ink too — 100.0% of the frame. Stage 1 removes that
+# backdrop, correctly; coverage then charges us 21 points for it, and rewards
+# any setting that sews the backdrop instead. The metric was upside down on
+# that row, and it was ranked 7th of 9 on the strength of it.
+#
+# JUDGEMENT, with room on both sides rather than a fitted cut: measured over
+# the tracked set, legitimate fixtures run 4.7%-62.9% and `summit_badge` is
+# 100.0%. (`logo_gaulke_roofing` reads 84.7% but is already refused as a
+# subject mismatch.) A genuinely full-bleed artwork would also land here, and
+# would also be unscoreable by ink IoU for the same reason — so refusing is
+# right in both cases, not just the broken-mask one.
+#
+# Deliberately NOT defined as "the mask disagrees with the engine's own
+# background decision", which is the sharper-looking test: it would make the
+# instrument refuse to score exactly the designs where stage 1 wrongly floods,
+# hiding the defect class hard gate 3 exists to keep visible. This criterion
+# reads the artwork alone and asks nothing of the engine.
+
 MISMATCH_MAX = 3.0
 # Refusal: ink area vs sewn area, larger over smaller. Above this the mask and
 # the engine are not looking at the same picture and no component on the row
@@ -219,6 +256,23 @@ def art_ink_field(art_path: str | Path, width_mm: float) -> np.ndarray:
     # lie. `stitch_coverage_field` clamps for the same reason, so both sides
     # of every comparison are honestly 0..1.
     return np.clip(out, 0.0, 1.0)
+
+
+def ink_saturation(art_path: str | Path) -> float:
+    """Fraction of the FRAME that `art_ink_field`'s rule calls ink, 0..1.
+
+    Measured on the uncropped image, before `art_ink_field` crops to the ink
+    bbox — the crop is what hides this failure, because a mask that claims the
+    whole frame crops to the whole frame and then looks like a perfectly
+    ordinary solid design.
+    """
+    im = Image.open(art_path).convert("RGBA")
+    a = np.asarray(im)
+    if a[..., 3].min() < 255:
+        ink = a[..., 3] > 16
+    else:
+        ink = a[..., :3].astype(np.int32).sum(axis=2) < 720
+    return float(ink.mean())
 
 
 def ink_is_ambiguous(art_path: str | Path) -> bool:
@@ -505,6 +559,7 @@ def score_image(image_path: str | Path,
     # the same picture, "is the ink ambiguous" is not the interesting problem.
     ink_px = float((art >= 0.5).sum())
     sewn_px = float((ours >= 0.5).sum())
+    saturation = ink_saturation(image_path)
 
     refusal = None
     mismatch = None
@@ -518,6 +573,11 @@ def score_image(image_path: str | Path,
         mismatch = max(ink_px, sewn_px) / min(ink_px, sewn_px)
         if mismatch > MISMATCH_MAX:
             refusal = f"subject mismatch, {mismatch:.1f}x"
+        elif saturation > INK_SATURATION_MAX:
+            # Checked before ambiguity: when the mask claims the whole frame
+            # there is no ink/ground split for "is the ink ambiguous" to be a
+            # question about.
+            refusal = f"ink mask saturates the frame, {saturation:.0%}"
         elif ink_is_ambiguous(image_path):
             refusal = "ink ambiguous (knocked-out lettering)"
 
@@ -541,6 +601,7 @@ def score_image(image_path: str | Path,
         "shift_x_mm": round(dx_mm, 1),
         "shift_y_mm": round(dy_mm, 1),
         "subject_ratio": None if mismatch is None else round(mismatch, 2),
+        "ink_saturation": round(saturation, 3),
         "refusal": refusal,
     }
 
