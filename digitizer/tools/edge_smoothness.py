@@ -46,6 +46,35 @@ question; the other is what Kent is looking at. So:
                     smooth one enclosing the same shape. 1.0 is a perfect
                     trace; a sawtooth runs well above it.
 
+## Curve fidelity is NOT measurable from a raster — measured, not assumed
+
+Kent's notes hold TWO smoothness complaints and he confirmed both matter about
+equally: "sawtoothed and jaged" (edge noise, which `ragged_mm` addresses) and
+"Lines/circles are not smooth like the photo" — a curve sewn as a polygon,
+the case `enginefidelity.py`'s docstring names as "a 20 mm circle RDP'd into a
+20-gon".
+
+A turning-concentration measure for the second was built and REJECTED here on
+2026-08-27. The idea was sound — a circle spreads its 360 degrees evenly, a
+20-gon concentrates them in 20 corners — but it cannot work on a rasterised
+mask, and the experiment says so plainly. Turning concentration of a 20 mm
+circle against regular n-gons, at four resample steps:
+
+    step mm   circle   60-gon   40-gon   20-gon   12-gon   monotonic?
+        0.5    0.320    0.222    0.231    0.414    0.554   no
+        1.0    0.314    0.236    0.217    0.296    0.373   no
+        2.0    0.211    0.126    0.121    0.154    0.230   no
+        3.0    0.177    0.100    0.108    0.100    0.163   no
+
+The rasterised CIRCLE scores more angular than a 40-gon at every step, because
+a raster boundary is itself a staircase of 45 and 90 degree steps — the raster
+IS a polygon, and no resampling of it recovers the curve underneath.
+
+So curve fidelity has to be read from the STITCH PATH — `plan.iter_runs()`'s
+own points, which are the vertices the machine actually sews — not from any
+render of it. That is the next instrument, and it is a different input, not a
+different threshold.
+
 `ragged_mm` and `perimeter_ratio` are deliberately two views of one thing. They
 fail differently — the ratio is fooled by a shape that gains detail, the
 deviation by a boundary that wanders slowly — and a design where they disagree
