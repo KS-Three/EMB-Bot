@@ -22,21 +22,26 @@ picked to dodge the filter under test.
 """
 from __future__ import annotations
 
+import math
 import random
+import statistics
 from unittest.mock import patch
 
 import numpy as np
 import pytest
+from shapely.affinity import rotate as shapely_rotate
 from shapely.geometry import Polygon
 
 from digitizer_core.regions import Region
 from digitizer_core.stage1_prep import Prep
+from digitizer_core.stage6_satin import satin_shape
 from digitizer_core.textcluster import (
     SHAPE_CONTEXT_MAX_DIST,
     _candidates,
     _stroke_stats_mm,
     detect_text_clusters,
     regularize_text_clusters,
+    set_text_cluster_satin_angle,
 )
 
 # Fixtures in this file are bare rectangles standing in for letters (see
@@ -620,3 +625,211 @@ def test_regularize_gates_on_shape_context_distance():
     assert mismatched.meta["text_cluster_shape_context_dist"] > SHAPE_CONTEXT_MAX_DIST
     assert list(mismatched.polygon.exterior.coords) == mismatched_before_coords, \
         "a shape-context-gated skip must leave the polygon byte-identical, same discipline as every other skip"
+
+
+# --- The house cross angle (Step 6) -------------------------------------------
+#
+# `_row`'s default glyph is a 0.3 x 1.8 mm bar: a VERTICAL stem, which is what
+# block capitals are mostly made of. A cross has to span its stroke, so the
+# right answer on vertical stems is a HORIZONTAL cross -- 0 deg on the
+# [0, 180) axis these angles live on. That is the whole fixture: the letters
+# run one way, the crosses come back the other.
+
+
+def _circ_delta_deg(a: float, b: float) -> float:
+    """Signed a->b difference on the half-circle these angles live on, folded
+    to (-90, 90]. Comparing 179 deg against 1 deg as a 178 deg gap would be
+    wrong twice over: they are 2 deg apart, and on an axis they are the same
+    line."""
+    return (b - a + 90.0) % 180.0 - 90.0
+
+
+def _rotated(regions: list[Region], deg: float, origin) -> list[Region]:
+    """The same cluster, rigidly rotated. Rotation changes no stroke width, no
+    spacing ratio and no relative position, so a row that clustered before
+    still clusters after -- the only thing under test is the angle."""
+    out = []
+    for r in regions:
+        poly = shapely_rotate(r.polygon, deg, origin=origin)
+        out.append(Region(shape_id=r.shape_id, polygon=poly, thread_index=0,
+                          thread_number="1", area_mm2=poly.area,
+                          meta={"rescued_small_shape": True}))
+    return out
+
+
+def _angles_of(regions: list[Region]) -> list[float]:
+    return [r.meta["satin_angle_deg"] for r in regions
+            if "satin_angle_deg" in r.meta]
+
+
+def test_a_row_of_vertical_stems_gets_a_horizontal_house_angle():
+    regions = _row("L", 5)
+    detect_text_clusters(regions, _P)
+    set_text_cluster_satin_angle(regions, _P)
+
+    angles = _angles_of(regions)
+    assert len(angles) == len(regions), "every member of the word should be angled"
+    # Horizontal crosses over vertical stems. Loose tolerance on purpose: the
+    # votes come off a raster skeleton, so a couple of degrees of quantisation
+    # is expected and harmless -- what must not happen is 90 deg out.
+    assert abs(_circ_delta_deg(0.0, angles[0])) < 5.0, angles[0]
+
+
+def test_every_letter_in_a_word_gets_the_SAME_angle():
+    """The point of the feature. Kent's complaint was not that any one letter
+    was wrong, it was that they disagreed with each other."""
+    regions = _row("L", 5)
+    detect_text_clusters(regions, _P)
+    set_text_cluster_satin_angle(regions, _P)
+
+    assert len(set(_angles_of(regions))) == 1
+
+
+def test_the_house_angle_TRACKS_a_rotated_wordmark():
+    """A hardcoded angle would pass the two tests above and fail this one. A
+    logotype set on a slant has to get its own angle read off the artwork, not
+    the horizontal one that happens to suit an upright fixture.
+
+    Both rows are tagged BY HAND rather than through `detect_text_clusters`,
+    because that pass does not tag a rotated row at all (measured here,
+    2026-08-27: its candidate/link tests read axis-aligned bounding boxes, so
+    a 30 deg row fails them). That is a limitation of DETECTION and is out of
+    scope for this pass, which is only asked what angle a cluster should sew
+    at once something has decided it is one. Tagging both rows the same way
+    also leaves rotation as the single variable between them."""
+    upright = _row("L", 5)
+    turned = _rotated(_row("L", 5), 30.0, origin=(4.6, 0.0))
+    for row, cid in ((upright, "upright"), (turned, "turned")):
+        for r in row:
+            r.meta["text_cluster_id"] = cid
+        set_text_cluster_satin_angle(row, _P)
+
+    assert _angles_of(upright) and _angles_of(turned)
+    shift = _circ_delta_deg(_angles_of(upright)[0], _angles_of(turned)[0])
+    assert abs(shift - 30.0) < 5.0, f"expected ~30 deg of shift, got {shift}"
+
+
+def test_an_angle_already_set_on_a_shape_is_not_overwritten():
+    """Per-shape intent beats a derived default, the precedence
+    `config.satin_angle_deg`'s own comment describes."""
+    regions = _row("L", 5)
+    detect_text_clusters(regions, _P)
+    regions[2].meta["satin_angle_deg"] = 77.0
+    set_text_cluster_satin_angle(regions, _P)
+
+    assert regions[2].meta["satin_angle_deg"] == 77.0
+    others = {r.meta["satin_angle_deg"] for r in regions if r is not regions[2]}
+    assert len(others) == 1 and 77.0 not in others
+
+
+def test_shapes_that_are_not_a_text_cluster_get_no_angle_at_all():
+    """Absent means "per-stroke tangent, exactly as before" -- the guarantee
+    that every golden in the suite still holds."""
+    regions = _row("L", 2)          # below MIN_CLUSTER_MEMBERS
+    detect_text_clusters(regions, _P)
+    set_text_cluster_satin_angle(regions, _P)
+
+    assert not any("satin_angle_deg" in r.meta for r in regions)
+
+
+def test_a_cluster_whose_strokes_disagree_is_left_alone():
+    """No dominant direction means there is no house angle to find. Forcing
+    one would be worse than the per-stroke tangent it replaces, so the pass
+    writes nothing."""
+    members = _row("L", 4)
+    for r in members:
+        r.meta["text_cluster_id"] = "mixed"
+    # Four bars 45 deg apart: in doubled-angle space their votes sit at 0, 90,
+    # 180 and 270 deg and cancel exactly, so the resultant is ~0 by
+    # construction rather than by a tuned fixture.
+    spread = []
+    for i, r in enumerate(members):
+        poly = shapely_rotate(r.polygon, i * 45.0, origin="centroid")
+        spread.append(Region(shape_id=r.shape_id, polygon=poly, thread_index=0,
+                             thread_number="1", area_mm2=poly.area,
+                             meta={"text_cluster_id": "mixed"}))
+    set_text_cluster_satin_angle(spread, _P)
+
+    assert not any("satin_angle_deg" in r.meta for r in spread)
+
+
+def test_a_long_stem_outweighs_short_arms_running_across_it():
+    """Votes are weighted by LENGTH, not counted per skeleton sample, and this
+    is the fixture where that decides the outcome.
+
+    `build_shape_field` normalises raster SIZE rather than resolution, so every
+    member comes back with roughly the same pixel count whatever its physical
+    size — a 24 mm stem and a 1.6 mm arm each contribute about as many skeleton
+    samples. Counting samples therefore lets two short arms dilute a stem that
+    carries an order of magnitude more thread: measured here, the resultant
+    falls to 0.18 and the cluster gets NO angle at all. Weighted by mm it comes
+    out at 0.32 and the stem decides, which is the mechanism
+    `stage6_satin`'s own note attributes the pro's near-horizontal crosses to —
+    "vertical strokes carrying most of the area".
+    """
+    stem = _rect(0.0, 0.0, 1.6, 24.0)
+    arms = [_rect(8.0 + i * 3.0, 0.0, 1.6, 0.4) for i in range(2)]
+    members = [
+        Region(shape_id=f"S{i}", polygon=poly, thread_index=0,
+               thread_number="1", area_mm2=poly.area,
+               meta={"text_cluster_id": "stem_and_arms"})
+        for i, poly in enumerate([stem, *arms])
+    ]
+    set_text_cluster_satin_angle(members, _P)
+
+    angles = _angles_of(members)
+    assert angles, "the stem should carry the cluster to a confident angle"
+    # Horizontal crosses over the vertical stem, not vertical ones over the arms.
+    assert abs(_circ_delta_deg(0.0, angles[0])) < 5.0, angles[0]
+
+
+def _median_cross_angle(runs) -> float:
+    """Median direction of the actual cross stitches, mod 180. Sub-0.05 mm
+    steps are skipped: they are travel/tie artifacts, not crosses, and their
+    direction is numerically meaningless at that length."""
+    angles = []
+    for run in runs:
+        for (x0, y0), (x1, y1) in zip(run.points, run.points[1:]):
+            dx, dy = x1 - x0, y1 - y0
+            if math.hypot(dx, dy) > 0.05:
+                angles.append(math.degrees(math.atan2(dy, dx)) % 180.0)
+    return statistics.median(angles)
+
+
+def test_the_derived_angle_actually_MOVES_THE_STITCHES():
+    """The one test that would fail if this pass were inert.
+
+    Everything above checks the number written into `Region.meta`. This
+    follows that number into `satin_shape` and measures the crosses that come
+    out, because a house angle nothing consumes is worth nothing — and the
+    whole reason this pass exists is that the machinery to consume it was
+    built on 2026-08-26 and then never fed.
+
+    Measured here on a vertical stem: today's per-stroke tangent yields a
+    median cross of ~160.6 deg — 19.4 deg off the perpendicular it is
+    nominally aiming at, the raster wander `_rail_points` smooths but cannot
+    remove. The house angle brings it to 0.0.
+    """
+    stem = _rect(0.0, 0.0, 1.2, 12.0)
+    members = [
+        Region(shape_id=f"S{i}", polygon=poly, thread_index=0,
+               thread_number="1", area_mm2=poly.area,
+               meta={"text_cluster_id": "word"})
+        for i, poly in enumerate([stem, _rect(4.0, 0.0, 1.2, 12.0),
+                                  _rect(8.0, 0.0, 1.2, 12.0)])
+    ]
+    set_text_cluster_satin_angle(members, _P)
+    house = members[0].meta["satin_angle_deg"]
+
+    without, _ = satin_shape(stem, "S0", underlay_style="none",
+                             trim_at_mm=3.0, angle_deg=None)
+    with_, _ = satin_shape(stem, "S0", underlay_style="none",
+                           trim_at_mm=3.0, angle_deg=house)
+
+    off_without = abs(_circ_delta_deg(house, _median_cross_angle(without)))
+    off_with = abs(_circ_delta_deg(house, _median_cross_angle(with_)))
+    # Two independent claims, both with real margin against the 19.4 deg
+    # measured above: the crosses were genuinely off the house angle before,
+    # and they land on it after.
+    assert off_without > 5.0, f"nothing to fix: crosses already at {off_without:.1f} deg"
+    assert off_with < 5.0, f"house angle not honoured: {off_with:.1f} deg off"

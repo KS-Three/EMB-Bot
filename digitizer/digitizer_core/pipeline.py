@@ -56,7 +56,9 @@ from .stage3_segment import (
     resolve_small_regions,
 )
 from .stage4_vectorize import revalidate_threads, tag_enclosed_background, vectorize
-from .textcluster import detect_text_clusters, ocr_suggest_text, regularize_text_clusters
+from .textcluster import (detect_text_clusters, ocr_suggest_text,
+                          regularize_text_clusters,
+                          set_text_cluster_satin_angle)
 from .stage5_overlap import resolve_overlaps
 from .stage6_blend import SourcePixels, detect_design_ramp_angle
 from .config import is_photographic
@@ -577,6 +579,15 @@ def build_generation(
     # feeds back into detection/regularization/geometry itself. See
     # `textcluster.py`'s module docstring, "OCR-suggested text" section.
     ocr_suggest_text(regions, p)
+
+    # The house cross angle (Step 6): one satin angle per detected word, so a
+    # wordmark's letters agree instead of each following its own spine
+    # tangent. Reads the FINAL polygons for the same reason `ocr_suggest_text`
+    # does — it must describe the strokes that will actually sew, which
+    # regularization above may have redrawn. Metadata only, and only on
+    # clusters whose strokes carry a dominant direction: everything else keeps
+    # today's per-stroke behaviour byte-identical.
+    set_text_cluster_satin_angle(regions, p)
 
     # Gradient class: the one shared fill-row angle for the whole design
     # (2026-08-03 angle-fragmentation fix) — a pure function of `p`, hoisted
