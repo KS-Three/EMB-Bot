@@ -727,20 +727,53 @@ correct on `summit_badge` — that sentence is wrong, its instrument fix stands.
 its OWN first pass had un-branched, one raster pixel deciding a 3.3 mm tab.
 **The blind spot that hid it stays fixed:** `preflight`'s `ARTWORK_UNCOVERED`,
 5.0 mm² threshold still provisional. *(fixed 2026-08-21 — PR #186)*
-**Lettering quality — MEASURED 2026-08-26, FOUR mechanisms, nothing fixed.**
-Kent on two sewn logos: *"lettering should be smooth"*, *"ROOKIE MISTAKE"*.
-**He named the one a 13-agent workflow missed: there is no stitch-angle policy
-for satin at all** — `satin_shape()` takes no angle argument, every cross is
-that shape's own spine tangent, so nothing can make a word's letters agree;
-`fill_angle_deg` exists for FILL only. Then pull comp's min-feature guard is
-scoped to `poly.interiors` (the E's arm slots close to 0.336 mm while O's
-counters are protected), and `_prune_spurs` drops a 3-way node to 2-way so the
-walker welds the N's diagonal to its stem through a 108° fold — **the same
-function PR #186 fixed, a different consequence one layer on.**
-**The instrument is why this survived: bare-fabric coverage scores the visibly
-deformed H at "1.9% bare".** Shape fidelity reads 0.587 design-wide, and is
-screening only — no quality claim rides on it. *(measured 2026-08-26 — [area
+**Lettering quality — the STITCH-ANGLE mechanism is FIXED 2026-08-27. Three
+others remain open.** Kent on two sewn logos: *"lettering should be smooth"*,
+*"ROOKIE MISTAKE"*, and *"Why is the 'N' running Vertically?"*
+
+**Fixed: a word's letters now share one house angle.** `stage6_satin` grew
+`satin_shape(angle_deg=...)` on 2026-08-26 — held loosely by `_clamp_to_span`,
+which rotates the house angle only where a stroke cannot span it — but nothing
+ever SET it, so the sewn output did not change. PR #282 added the derivation
+(length-weighted, aggregated in `directionfield`'s doubled-angle space) and PR
+#283 made it fire. Measured on the Becker Marine logo: satin and fill strokes
+within ±20° of the modal direction go **29% → 51%** against a 22% chance
+baseline, with **total thread −2.4%**, trims and jumps unchanged.
+
+Three things had to be corrected to get there, each a threshold applied to a
+population it was not calibrated on — the reusable lesson:
+- `detect_text_clusters`' candidate set is gated on `rescued_small_shape` and
+  on `STROKE_CV_MAX` (0.32). **Zero** of that logo's 17 regions carry the flag,
+  and all 17 score CV **0.36–0.68**, so it finds no real lettering at all.
+  `_lettering_groups` keeps the tests that transfer and drops those two;
+  `detect_text_clusters` itself is untouched.
+- The confidence gate was `directionfield.COHERENCE_FALLBACK_MIN` (0.25), which
+  grades a per-pixel structure-tensor field. Real lettering sits UNDER it
+  (R = 0.197 and 0.203). No raw threshold works: directionless square rings sit
+  at 0.167. Replaced with Rayleigh's test — chance-corrected, rings and letters
+  separate 10× where raw they separate 1.2×. Gate 4 in miniature.
+- **7 of 11 lettering regions sew as FILL**, where the satin angle is not read
+  and `best_fill_angle_deg` picks rows per shape by minimising that shape's own
+  column count — which put two adjacent near-identical capitals at 22.5° and
+  90.0°. That is the half Kent's complaint actually names. The house angle now
+  sets `fill_angle_deg` too.
+*(fixed 2026-08-27 — PRs #282/#283, mutation-checked; renders in the #283 body)*
+
+**Still open, all three measured 2026-08-26 and unfixed:** pull comp's
+min-feature guard is scoped to `poly.interiors` (verified still true
+2026-08-27 at `stage5_overlap.py:424` — the E's arm slots close to 0.336 mm
+while O's counters are protected); `_prune_spurs` drops a 3-way node to 2-way
+so the walker welds the N's diagonal to its stem through a 108° fold — **the
+same function PR #186 fixed, a different consequence one layer on**; and **the
+instrument that hid all of it**, bare-fabric coverage scoring the visibly
+deformed H at "1.9% bare". Shape fidelity reads 0.587 design-wide and is
+screening only. *(measured 2026-08-26 — [area
 1](docs/scope/1-auto-digitizing-quality.md); `.claude/memory/letterform-fidelity-2026-08-26.md`)*
+
+**Confidence limit on the fix:** two real lettering groups, both from ONE logo.
+The honest validation is a run over real client artwork and `scratch_corpus/`,
+neither of which reaches a cloud container.
+
 **Next:** NEEDS KENT. Fragmentation work measures **0% on real client logos**
 (they are satin-dominated, 1–3 fill shapes, no cutting fills). The one large
 real-artwork lever is **`chain_links`: −33% trims AND fewer stitches**, gate-1
