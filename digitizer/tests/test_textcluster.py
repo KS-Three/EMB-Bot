@@ -30,18 +30,20 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 from shapely.affinity import rotate as shapely_rotate
-from shapely.geometry import Polygon
+from shapely.geometry import Point, Polygon
 
 from digitizer_core.regions import Region
 from digitizer_core.stage1_prep import Prep
 from digitizer_core.stage6_satin import satin_shape
 from digitizer_core.textcluster import (
     SHAPE_CONTEXT_MAX_DIST,
+    _cluster_house_angle_deg,
+    _lettering_groups,
     _candidates,
     _stroke_stats_mm,
     detect_text_clusters,
     regularize_text_clusters,
-    set_text_cluster_satin_angle,
+    set_lettering_house_angle,
 )
 
 # Fixtures in this file are bare rectangles standing in for letters (see
@@ -665,7 +667,7 @@ def _angles_of(regions: list[Region]) -> list[float]:
 def test_a_row_of_vertical_stems_gets_a_horizontal_house_angle():
     regions = _row("L", 5)
     detect_text_clusters(regions, _P)
-    set_text_cluster_satin_angle(regions, _P)
+    set_lettering_house_angle(regions, _P)
 
     angles = _angles_of(regions)
     assert len(angles) == len(regions), "every member of the word should be angled"
@@ -680,7 +682,7 @@ def test_every_letter_in_a_word_gets_the_SAME_angle():
     was wrong, it was that they disagreed with each other."""
     regions = _row("L", 5)
     detect_text_clusters(regions, _P)
-    set_text_cluster_satin_angle(regions, _P)
+    set_lettering_house_angle(regions, _P)
 
     assert len(set(_angles_of(regions))) == 1
 
@@ -702,7 +704,7 @@ def test_the_house_angle_TRACKS_a_rotated_wordmark():
     for row, cid in ((upright, "upright"), (turned, "turned")):
         for r in row:
             r.meta["text_cluster_id"] = cid
-        set_text_cluster_satin_angle(row, _P)
+        set_lettering_house_angle(row, _P)
 
     assert _angles_of(upright) and _angles_of(turned)
     shift = _circ_delta_deg(_angles_of(upright)[0], _angles_of(turned)[0])
@@ -715,7 +717,7 @@ def test_an_angle_already_set_on_a_shape_is_not_overwritten():
     regions = _row("L", 5)
     detect_text_clusters(regions, _P)
     regions[2].meta["satin_angle_deg"] = 77.0
-    set_text_cluster_satin_angle(regions, _P)
+    set_lettering_house_angle(regions, _P)
 
     assert regions[2].meta["satin_angle_deg"] == 77.0
     others = {r.meta["satin_angle_deg"] for r in regions if r is not regions[2]}
@@ -727,7 +729,7 @@ def test_shapes_that_are_not_a_text_cluster_get_no_angle_at_all():
     that every golden in the suite still holds."""
     regions = _row("L", 2)          # below MIN_CLUSTER_MEMBERS
     detect_text_clusters(regions, _P)
-    set_text_cluster_satin_angle(regions, _P)
+    set_lettering_house_angle(regions, _P)
 
     assert not any("satin_angle_deg" in r.meta for r in regions)
 
@@ -748,7 +750,7 @@ def test_a_cluster_whose_strokes_disagree_is_left_alone():
         spread.append(Region(shape_id=r.shape_id, polygon=poly, thread_index=0,
                              thread_number="1", area_mm2=poly.area,
                              meta={"text_cluster_id": "mixed"}))
-    set_text_cluster_satin_angle(spread, _P)
+    set_lettering_house_angle(spread, _P)
 
     assert not any("satin_angle_deg" in r.meta for r in spread)
 
@@ -761,9 +763,10 @@ def test_a_long_stem_outweighs_short_arms_running_across_it():
     member comes back with roughly the same pixel count whatever its physical
     size — a 24 mm stem and a 1.6 mm arm each contribute about as many skeleton
     samples. Counting samples therefore lets two short arms dilute a stem that
-    carries an order of magnitude more thread: measured here, the resultant
-    falls to 0.18 and the cluster gets NO angle at all. Weighted by mm it comes
-    out at 0.32 and the stem decides, which is the mechanism
+    carries an order of magnitude more thread: measured here, chance-corrected
+    n_eff*R^2 falls to 4.8 against a 6.9 critical value and the group gets NO
+    angle at all. Weighted by mm it reaches 13.2 and the stem decides, which is
+    the mechanism
     `stage6_satin`'s own note attributes the pro's near-horizontal crosses to —
     "vertical strokes carrying most of the area".
     """
@@ -771,14 +774,15 @@ def test_a_long_stem_outweighs_short_arms_running_across_it():
     arms = [_rect(8.0 + i * 3.0, 0.0, 1.6, 0.4) for i in range(2)]
     members = [
         Region(shape_id=f"S{i}", polygon=poly, thread_index=0,
-               thread_number="1", area_mm2=poly.area,
-               meta={"text_cluster_id": "stem_and_arms"})
+               thread_number="1", area_mm2=poly.area)
         for i, poly in enumerate([stem, *arms])
     ]
-    set_text_cluster_satin_angle(members, _P)
-
-    angles = _angles_of(members)
-    assert angles, "the stem should carry the cluster to a confident angle"
+    # Straight at the derivation, not through the pass: a stem and two stubby
+    # arms are not a line of lettering and `_lettering_groups` is right to
+    # refuse them. What is under test here is how the votes are WEIGHTED once
+    # something has decided a set of shapes belongs together.
+    angles = [a for a in [_cluster_house_angle_deg(members)] if a is not None]
+    assert angles, "the stem should carry the group to a confident angle"
     # Horizontal crosses over the vertical stem, not vertical ones over the arms.
     assert abs(_circ_delta_deg(0.0, angles[0])) < 5.0, angles[0]
 
@@ -818,7 +822,7 @@ def test_the_derived_angle_actually_MOVES_THE_STITCHES():
         for i, poly in enumerate([stem, _rect(4.0, 0.0, 1.2, 12.0),
                                   _rect(8.0, 0.0, 1.2, 12.0)])
     ]
-    set_text_cluster_satin_angle(members, _P)
+    set_lettering_house_angle(members, _P)
     house = members[0].meta["satin_angle_deg"]
 
     without, _ = satin_shape(stem, "S0", underlay_style="none",
@@ -833,3 +837,115 @@ def test_the_derived_angle_actually_MOVES_THE_STITCHES():
     # and they land on it after.
     assert off_without > 5.0, f"nothing to fix: crosses already at {off_without:.1f} deg"
     assert off_with < 5.0, f"house angle not honoured: {off_with:.1f} deg off"
+
+
+# --- Finding the lettering in the first place (Step 6b) -----------------------
+
+
+def test_letters_are_found_without_the_rescued_small_shape_flag():
+    """The bug this pass shipped with. It originally grouped by
+    `detect_text_clusters`' `text_cluster_id`, whose candidate set is gated on
+    `rescued_small_shape` — a flag ordinary lettering never carries. Measured
+    on Kent's Becker Marine logo: 0 of 17 regions had it, so the feature was
+    inert on the exact artwork the complaint came from."""
+    regions = _row("L", 5, w=1.2, h=12.0)
+    for r in regions:
+        r.meta.pop("rescued_small_shape", None)
+    assert not any(r.meta for r in regions), "fixture must carry no flags at all"
+
+    set_lettering_house_angle(regions, _P)
+    assert len(_angles_of(regions)) == len(regions)
+
+
+def test_two_lines_of_different_size_do_not_merge_into_one_group():
+    """A logotype's second line must get its own angle, not be averaged into
+    the first. On the Becker logo the module's own `SIMILARITY_RATIO` (0.5)
+    merged 13 mm capitals with an arched 18-27 mm line into one 11-member
+    group whose strokes then cancelled to no angle at all."""
+    # 13 and 20 mm: a ratio of 0.65, deliberately BETWEEN the module's own
+    # SIMILARITY_RATIO (0.5, which merges them) and SATIN_ANGLE_HEIGHT_RATIO
+    # (0.8, which does not). Heights further apart would separate under either
+    # and the test would prove nothing.
+    small = _row("S", 4, y=0.0, w=1.2, h=13.0, spacing=3.5)
+    big = _row("B", 4, y=40.0, w=1.6, h=20.0, spacing=5.0)
+    groups = _lettering_groups(small + big)
+
+    assert len(groups) == 2, [len(g) for g in groups]
+    assert {len(g) for g in groups} == {4}
+
+
+def test_an_isotropic_group_is_rejected_however_many_members_it_has():
+    """The gate is a significance test, so the obvious way to break it is to
+    pile on members until noise looks significant. Circular annuli have no
+    stroke direction at all; measured, they sit at R = 0.008 and nR^2 stays
+    far under the critical value even at 24 of them, because R falls toward
+    zero under a true null instead of holding at a floor."""
+    annuli = []
+    for i in range(24):
+        c = Point(i * 16.0, 0.0)
+        poly = c.buffer(6.0).difference(c.buffer(5.4))
+        annuli.append(Region(shape_id=f"A{i}", polygon=poly, thread_index=0,
+                             thread_number="1", area_mm2=poly.area))
+    assert _cluster_house_angle_deg(annuli) is None
+
+
+def test_a_weak_but_real_direction_over_many_strokes_is_ADMITTED():
+    """The case the borrowed 0.25 coherence floor got wrong, and the reason
+    the gate is chance-corrected.
+
+    Eight bars fanned across 140 deg sit at R = 0.209 — under 0.25, so a raw
+    floor rejects them — but over n_eff = 399 weighted votes that is nR^2 =
+    17.5 against a 6.9 critical value. R = 0.209 is not an arbitrary target:
+    it is the band Kent's own lettering measures in (MARINE 0.197, BECKER
+    0.203), which the raw floor rejected and left the whole feature inert.
+    """
+    bars = []
+    for i in range(8):
+        poly = shapely_rotate(_rect(i * 4.0, 0.0, 1.0, 8.0), i * 140.0 / 8,
+                              origin="centroid")
+        bars.append(Region(shape_id=f"F{i}", polygon=poly, thread_index=0,
+                           thread_number="1", area_mm2=poly.area))
+    assert _cluster_house_angle_deg(bars) is not None
+
+
+def test_the_same_weak_direction_over_FEW_strokes_is_rejected():
+    """The other half of the same claim: the gate must read sample size, not
+    just the resultant. Three buffered square rings lean diagonal for a real
+    reason (45 deg corner arcs) and sit at R = 0.167 — close to the lettering
+    band above — but over only n_eff = 78 votes that is nR^2 = 2.2 and does
+    not clear the bar. A gate that ignored n_eff would admit both."""
+    rings = []
+    for i in range(3):
+        sq = _rect(i * 16.0, 0.0, 10.0, 10.0)
+        poly = Polygon(sq.exterior).buffer(0.6)
+        rings.append(Region(shape_id=f"K{i}", polygon=poly, thread_index=0,
+                            thread_number="1", area_mm2=poly.area))
+    assert _cluster_house_angle_deg(rings) is None
+
+
+def test_a_word_gets_the_house_angle_on_BOTH_tiers():
+    """A word does not get to pick its tier — `classify_ribbon` routes each
+    letter on its own width, so one wordmark's glyphs routinely split across
+    satin and fill. On Kent's Becker logo 7 of 11 lettering regions sew as
+    fill, and that is the half his complaint names."""
+    regions = _row("L", 5, w=1.2, h=12.0)
+    set_lettering_house_angle(regions, _P)
+
+    for r in regions:
+        assert "satin_angle_deg" in r.meta
+        assert "fill_angle_deg" in r.meta
+        assert r.meta["fill_angle_deg"] == r.meta["satin_angle_deg"]
+
+
+def test_a_fill_angle_already_set_on_a_shape_is_not_overwritten():
+    """`fill_angle_deg` is in `regions.match_and_carry`'s carry-forward tuple,
+    so unlike the satin key it really can arrive carrying operator intent from
+    a previous generation. Deriving must never overwrite that."""
+    regions = _row("L", 5, w=1.2, h=12.0)
+    regions[1].meta["fill_angle_deg"] = 33.0
+    set_lettering_house_angle(regions, _P)
+
+    assert regions[1].meta["fill_angle_deg"] == 33.0
+    assert regions[1].meta["satin_angle_deg"] != 33.0
+    others = {r.meta["fill_angle_deg"] for r in regions if r is not regions[1]}
+    assert len(others) == 1 and 33.0 not in others

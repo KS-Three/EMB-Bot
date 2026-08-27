@@ -334,7 +334,6 @@ from PIL import Image
 from shapely.geometry import LineString, MultiLineString, Polygon
 
 from . import machine
-from .directionfield import COHERENCE_FALLBACK_MIN
 from .regions import Region
 from .shapecontext import shape_context_distance
 from .shapefield import ShapeField, build_shape_field
@@ -565,11 +564,17 @@ def _similar(a: float, b: float, ratio: float) -> bool:
     return hi > 0 and lo / hi >= ratio
 
 
-def _linked(a: _Candidate, b: _Candidate) -> bool:
+def _linked(a: _Candidate, b: _Candidate,
+            height_ratio: float = SIMILARITY_RATIO) -> bool:
     """Symmetric by construction (every term is order-independent), which is
     what makes the union-find result in `_cluster` invariant to input order —
-    the determinism this module is required to guarantee."""
-    if not _similar(a.height_mm, b.height_mm, SIMILARITY_RATIO):
+    the determinism this module is required to guarantee.
+
+    `height_ratio` defaults to `SIMILARITY_RATIO`, so every existing caller is
+    byte-identical; `_lettering_groups` passes a tighter one to keep two lines
+    of a logotype apart. See `SATIN_ANGLE_HEIGHT_RATIO`.
+    """
+    if not _similar(a.height_mm, b.height_mm, height_ratio):
         return False
     if not _similar(a.stroke_mean_mm, b.stroke_mean_mm, SIMILARITY_RATIO):
         return False
@@ -577,7 +582,8 @@ def _linked(a: _Candidate, b: _Candidate) -> bool:
     return dist <= PROXIMITY_HEIGHT_MULT * max(a.height_mm, b.height_mm)
 
 
-def _cluster(cands: list[_Candidate]) -> list[list[_Candidate]]:
+def _cluster(cands: list[_Candidate],
+             height_ratio: float = SIMILARITY_RATIO) -> list[list[_Candidate]]:
     """Connected components of the `_linked` graph, via union-find. Grouping
     by graph connectivity (rather than e.g. greedy nearest-first merging)
     means the partition depends only on the SET of pairwise links, never on
@@ -598,7 +604,7 @@ def _cluster(cands: list[_Candidate]) -> list[list[_Candidate]]:
 
     for i in range(len(cands)):
         for j in range(i + 1, len(cands)):
-            if _linked(cands[i], cands[j]):
+            if _linked(cands[i], cands[j], height_ratio):
                 union(cands[i].region.shape_id, cands[j].region.shape_id)
 
     groups: dict[str, list[_Candidate]] = {}
@@ -963,13 +969,127 @@ def regularize_text_clusters(regions: list[Region], p: Prep) -> None:
 # and sizes) and a curved stroke by 0.35 deg, so it was removed rather than
 # kept as unearned machinery. End-trimming below is what actually mattered.
 
-# Below this the strokes genuinely disagree and there is no house angle to
-# find -- a circular monogram, a script face, a cluster of dingbats. Forcing
-# one there would be worse than the per-stroke tangent it replaces, so the
-# pass writes nothing and the shape keeps today's behaviour. Reused from
-# `directionfield`, whose `use_house_angle` gates the identical question
-# ("is this dominant direction real, or noise") on the identical statistic.
-SATIN_ANGLE_MIN_COHERENCE = COHERENCE_FALLBACK_MIN
+# Letters on ONE line of a wordmark share a cap height almost exactly -- the
+# six capitals of "MARINE" on Kent's Becker logo all measure 13.0 mm. The
+# module's own `SIMILARITY_RATIO` (0.5) is deliberately looser than that,
+# because it exists to link RESCUED BLOBS whose measured size is dominated by
+# vectorization noise; for whole glyphs the size is the design's own.
+#
+# 0.5 is too loose here for a concrete reason, measured 2026-08-27: it merges
+# "MARINE" with the arched "BECKER" above it (heights 18.0-26.8 mm) into one
+# 11-member group whose strokes then cancel. Separating them needs a floor
+# above 13.0/26.8 = 0.49; staying inside one line needs a floor below ~1.0.
+# 0.8 sits in the middle of that empty band rather than on either edge.
+#
+# KNOWN LIMIT: this is right for the ALL-CAPS block lettering Kent named
+# ("almost every block style font like this") and splits MIXED-case text into
+# a caps group and an x-height group. That failure is benign -- each group
+# derives its own angle, and on upright text those angles agree -- but it is
+# not the same thing as being correct. One logo is the whole evidence base.
+SATIN_ANGLE_HEIGHT_RATIO = 0.8
+
+
+def _lettering_groups(regions: list[Region]) -> list[list[Region]]:
+    """Groups of glyph-shaped regions that plausibly form one line of text.
+
+    Deliberately NOT `detect_text_clusters`'s candidate set, which this pass
+    originally rode and which is empty on real lettering for two reasons
+    measured on Kent's Becker Marine logo (2026-08-27):
+
+      * its first gate is `rescued_small_shape`, a Step-1 flag for glyphs that
+        `resolve_small_regions` saved from being dropped as noise. Ordinary
+        lettering is segmented normally and never carries it -- 0 of that
+        logo's 17 regions do.
+      * `STROKE_CV_MAX` (0.32) rejects real glyphs outright. All 17 regions
+        score 0.36-0.68: a letter's skeleton runs through junctions and tapers
+        that a rescued blob's does not, so its stroke-width variance is
+        genuinely higher. That constant is calibrated for blobs and is not
+        wrong there; it is measuring a different population here.
+
+    So this keeps the geometric tests that do transfer -- aspect ratio, mutual
+    stroke-width and height similarity, proximity, `_drop_nested`, and a
+    minimum member count -- and drops the two that do not. `detect_text_
+    clusters` is untouched: changing ITS candidate set would pull
+    `regularize_text_clusters` onto real letters and redraw them at a shared
+    stroke width, which is a much larger behaviour change than this pass wants
+    to make.
+    """
+    raw: list[_Candidate] = []
+    for r in regions:
+        stats = _skeleton_stroke_stats(r)
+        if stats is None:
+            continue
+        x0, y0, x1, y1 = r.polygon.bounds
+        width_mm, height_mm = x1 - x0, y1 - y0
+        if height_mm <= 0 or width_mm <= 0:
+            continue
+        if not (ASPECT_RATIO_MIN <= width_mm / height_mm <= ASPECT_RATIO_MAX):
+            continue
+        raw.append(_Candidate(region=r, height_mm=height_mm, width_mm=width_mm,
+                              stroke_mean_mm=stats.mean_mm, stroke_cv=stats.cv,
+                              cx=(x0 + x1) / 2.0, cy=(y0 + y1) / 2.0))
+    return [[c.region for c in g]
+            for g in _cluster(_drop_nested(raw), SATIN_ANGLE_HEIGHT_RATIO)
+            if len(g) >= MIN_CLUSTER_MEMBERS]
+
+
+# Is the dominant direction real, or is it noise? This was
+# `directionfield.COHERENCE_FALLBACK_MIN` (0.25) on the reasoning that the two
+# modules ask the identical question. Measured 2026-08-27, they do not: that
+# constant grades a per-pixel STRUCTURE-TENSOR field, and against real glyph
+# skeletons it rejects the exact case this feature exists for. Kent's own
+# Becker Marine logo scores R = 0.197 on "MARINE" (six upright block capitals
+# on one baseline, deriving a correct 171.2 deg) and R = 0.203 on the arched
+# "BECKER" -- both below 0.25, so the whole feature was inert on the artwork
+# the complaint came from.
+#
+# The raw resultant CANNOT do this job at any threshold. Three rings, which
+# have no stroke direction at all, score R = 0.167 -- close enough to MARINE's
+# 0.197 that no cut separates them. What separates them is SAMPLE SIZE: R
+# falls toward zero as votes accumulate under a null of no direction, so a
+# modest R over hundreds of segments means something a similar R over dozens
+# does not. This is ROADMAP gate 4 in miniature ("raw moves when the mix
+# moves"), and the fix it prescribes: use the chance-corrected figure.
+#
+# So the gate is Rayleigh's test for a non-uniform circular distribution,
+# applied in the same doubled-angle space the votes are aggregated in. Under
+# the null, n*R^2 is approximately exponential, so p ~ exp(-n R^2) and the
+# critical value is -ln(alpha). Measured on the six cases available:
+#
+#     MARINE, real lettering       R 0.197  n_eff  562   nR^2  21.7  admit
+#     BECKER, real lettering       R 0.203  n_eff 1043   nR^2  42.8  admit
+#     5 parallel stems             R 0.388  n_eff  175   nR^2  26.3  admit
+#     3 rings, no direction        R 0.167  n_eff   78   nR^2   2.2  reject
+#     4 bars 45 deg apart          R 0.060  n_eff  125   nR^2   0.5  reject
+#     8 bars spread over 180 deg   R 0.019  n_eff  290   nR^2   0.1  reject
+#
+# Rings and lettering are 10x apart chance-corrected and 1.2x apart raw.
+#
+# alpha = 0.001 rather than a conventional 0.05: this decides whether to
+# OVERRIDE per-stroke geometry that is already correct-by-construction, so the
+# burden belongs on the override. It is not tuned to the fixtures -- every
+# admit above clears 6.9 by at least 3x and every reject misses it by at
+# least 3x, so nothing here sits near the line.
+#
+# The null was checked rather than assumed, because a significance test is only
+# as good as what it tests against. Circular annuli -- genuinely isotropic --
+# score R = 0.0081 and stay rejected at every scale tried, up to 48 of them at
+# n_eff ~ 20,000 (nR^2 = 1.3 against the 6.9 critical value). So the raster
+# contributes no meaningful directional bias of its own, and R does fall toward
+# zero under a true null the way the test requires.
+#
+# What DOES rise with sample count is a real weak grain. Twelve buffered SQUARE
+# rings clear the gate (R = 0.167 held constant, nR^2 8.6) where three do not.
+# That is not a false positive: a rounded square has 45 deg corner arcs and
+# genuinely leans diagonal. It is the honest behaviour of a significance test —
+# enough evidence of a small effect is still evidence — and `_clamp_to_span`
+# bounds what it can cost, since a stroke that cannot span the house angle
+# keeps its own.
+#
+# KNOWN LIMIT: only two real lettering groups exist in this repo's fixtures,
+# both from one logo. The honest validation is a run over Kent's own client
+# artwork and `scratch_corpus/`, neither of which reaches a cloud container.
+SATIN_ANGLE_RAYLEIGH_ALPHA = 0.001
 
 
 def _trim_ends(chain: list[tuple[float, float]],
@@ -1017,7 +1137,7 @@ def _cluster_house_angle_deg(members: list[Region]) -> float | None:
     Fails open the way the rest of this module does: a member that will not
     field, or has no skeleton, contributes nothing instead of raising.
     """
-    c2 = s2 = total = 0.0
+    c2 = s2 = total = sq_weight = 0.0
     for r in members:
         field = build_shape_field(r.polygon)
         if field is None or not field.skel.any():
@@ -1040,20 +1160,32 @@ def _cluster_house_angle_deg(members: list[Region]) -> float | None:
                 c2 += length * (tx * tx - ty * ty)
                 s2 += length * (2.0 * tx * ty)
                 total += length
+                sq_weight += length * length
     if total <= 0.0:
         return None
     c2 /= total
     s2 /= total
-    if math.hypot(c2, s2) < SATIN_ANGLE_MIN_COHERENCE:
+    # Rayleigh: n_eff * R^2 against -ln(alpha). `n_eff` is Kish's effective
+    # sample size for weighted votes, (sum w)^2 / sum w^2 -- NOT the segment
+    # count, which would credit a thousand hair-length raster steps as a
+    # thousand independent observations of direction.
+    n_eff = (total * total) / sq_weight if sq_weight > 0.0 else 0.0
+    resultant = math.hypot(c2, s2)
+    if n_eff * resultant * resultant < -math.log(SATIN_ANGLE_RAYLEIGH_ALPHA):
         return None
     tangent = math.degrees(0.5 * math.atan2(s2, c2))
     return (tangent + 90.0) % 180.0
 
 
-def set_text_cluster_satin_angle(regions: list[Region], p: Prep) -> None:
-    """Post-regularization pass: give every member of a detected word ONE
-    house cross angle, so its letters agree instead of each following its own
-    spine tangent (`satin_angle_deg` in `Region.meta`).
+def set_lettering_house_angle(regions: list[Region], p: Prep) -> None:
+    """Post-regularization pass: give every member of one line of lettering
+    ONE house cross angle, so its letters agree instead of each following its
+    own spine tangent (`satin_angle_deg` in `Region.meta`).
+
+    Groups with `_lettering_groups`, NOT with `detect_text_clusters`'
+    `text_cluster_id`. That was the original wiring and it made this pass
+    inert on real artwork -- see `_lettering_groups` for the two gates that
+    empty its candidate set on an ordinary logo.
 
     `p` is accepted, not read, matching `detect_text_clusters` and
     `regularize_text_clusters` for the same reason: a future revision that
@@ -1084,18 +1216,28 @@ def set_text_cluster_satin_angle(regions: list[Region], p: Prep) -> None:
     place in the tuple, and this pass should skip shapes carrying an
     operator-set value rather than a derived one.
     """
-    by_cluster: dict[str, list[Region]] = {}
-    for r in regions:
-        cluster_id = r.meta.get("text_cluster_id")
-        if cluster_id is not None:
-            by_cluster.setdefault(cluster_id, []).append(r)
-
-    for members in by_cluster.values():
+    for members in _lettering_groups(regions):
         angle = _cluster_house_angle_deg(members)
         if angle is None:
             continue
         for r in members:
             r.meta.setdefault("satin_angle_deg", angle)
+            # The SAME angle on the fill tier, because a word does not get to
+            # pick its tier: `classify_ribbon` routes each letter on its own
+            # width, so one word's glyphs routinely split across satin and
+            # fill. Measured on Kent's Becker logo (2026-08-27), 7 of its 11
+            # lettering regions sew as FILL, and `best_fill_angle_deg` chose
+            # each one's rows by minimising THAT SHAPE's column count -- which
+            # put two adjacent, near-identical capitals at 22.5 and 90.0 deg.
+            # That is the same "each shape chooses in isolation" disease the
+            # satin half of this pass exists to cure, one tier over, and it is
+            # the half his complaint actually names.
+            #
+            # One value for both tiers: satin's is a CROSS angle and fill's a
+            # ROW angle, but both describe the direction thread is laid across
+            # the glyph, so matching them is what makes a word read as one
+            # piece whichever tier each letter took.
+            r.meta.setdefault("fill_angle_deg", angle)
 
 # --- OCR-suggested text (see module docstring's "OCR-suggested text" section) --
 
