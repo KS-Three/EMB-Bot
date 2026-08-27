@@ -40,3 +40,10 @@ src/fonts/licenses-personal/
 # digitizer/tools/letterform_fidelity/README.md) — the METHOD is tracked, the
 # renders and the pickled capture are not.
 digitizer/tools/letterform_fidelity/out/
+
+# Regenerable output of tools/artfidelity_self.py — the METHOD and the
+# instrument's tests are tracked, a run's own table and CSV are not. The
+# authoritative Linux baseline is the art-fidelity-baseline CI job's uploaded
+# artifact, not a file someone happened to leave in their checkout.
+digitizer/artfid-baseline.csv
+digitizer/artfid-baseline.txt
