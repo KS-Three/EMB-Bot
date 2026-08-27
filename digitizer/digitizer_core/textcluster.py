@@ -324,6 +324,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+from bisect import bisect_left
 from dataclasses import dataclass
 
 import cv2
@@ -333,6 +334,7 @@ from PIL import Image
 from shapely.geometry import LineString, MultiLineString, Polygon
 
 from . import machine
+from .directionfield import COHERENCE_FALLBACK_MIN
 from .regions import Region
 from .shapecontext import shape_context_distance
 from .shapefield import ShapeField, build_shape_field
@@ -647,6 +649,20 @@ def detect_text_clusters(regions: list[Region], p: Prep) -> None:
 # --- Regularization (Step 5): redraw each member at a shared stroke width ---
 
 
+def _spur_len_px(field: ShapeField) -> float:
+    """The spur-pruning length (pixels) `extract_strokes` applies before
+    walking a skeleton into strokes: a raster medial axis grows short spurious
+    twigs at every junction, and left in they'd buffer into little toes
+    sticking out of an otherwise clean letterform.
+
+    Its own function because it is now read twice — once to prune, and once by
+    `_cluster_house_angle_deg` to decide how much of a chain END is medial-axis
+    artifact rather than stroke direction. Those are the same structure
+    measured for two purposes, so they must not drift apart.
+    """
+    return max(3.0, float(field.dist[field.skel].mean()) * 1.6)
+
+
 def _skeleton_chains_mm(field: ShapeField) -> list[list[tuple[float, float]]]:
     """A tagged shape's skeleton, decomposed into stroke chains in mm space.
 
@@ -668,12 +684,7 @@ def _skeleton_chains_mm(field: ShapeField) -> list[list[tuple[float, float]]]:
     if not field.skel.any():
         return []
     skel_mask = field.skel.astype(np.uint8).copy()  # _prune_spurs mutates in place
-    half_px = float(field.dist[field.skel].mean())
-    # Same spur-pruning threshold `extract_strokes` applies before walking a
-    # skeleton into strokes: a raster medial axis grows short spurious twigs
-    # at every junction, and left in they'd buffer into little toes sticking
-    # out of an otherwise clean letterform.
-    _prune_spurs(skel_mask, max(3.0, half_px * 1.6))
+    _prune_spurs(skel_mask, _spur_len_px(field))
     if not skel_mask.any():
         return []
 
@@ -899,6 +910,192 @@ def regularize_text_clusters(regions: list[Region], p: Prep) -> None:
         r.polygon = new_poly
         r.area_mm2 = new_poly.area
 
+
+# --- The house cross angle for a detected word (Step 6) -----------------------
+#
+# Kent, on a sewn Becker Marine logo: *"When doing lettering, fill angle should
+# be the same (for almost every block style font like this). Why is the 'N'
+# running Vertically?"* `stage6_satin` grew the machinery to answer that on
+# 2026-08-26 -- `satin_shape(angle_deg=...)`, held loosely by `_clamp_to_span`
+# -- and `config.satin_angle_deg` / `Region.meta["satin_angle_deg"]` carry it.
+# NOTHING EVER SET EITHER. The lever was built and left at None, which is
+# today's per-stroke-tangent behaviour, so the sewn output never changed.
+# This pass is what pulls it.
+#
+# WHY A DERIVED ANGLE AND NOT A CONSTANT. A wordmark is not always horizontal
+# (arcs, slanted logotypes, a badge's rotated sub-line), so a hardcoded 0 deg
+# would be right on the fixture and wrong on the next logo. The angle is read
+# off the artwork instead: the direction the cluster's own strokes mostly run,
+# turned 90 deg to cross them.
+#
+# WHY LENGTH-WEIGHTED. `stage6_satin`'s own note on the pro's file reads the
+# crosses as clustering near horizontal on stems "which for block letters
+# largely FOLLOWS from vertical strokes carrying most of the area." Weighting
+# each skeleton segment by its length reproduces that mechanism rather than
+# assuming its result: in block capitals the vertical stems out-measure the
+# arms, so the dominant tangent comes out vertical and the cross horizontal --
+# and on a genuinely slanted wordmark the same arithmetic tracks the slant.
+# Length alone, not length x width. `regularize_text_clusters` targets ONE
+# shared half-width across a cluster, so within one word length is already a
+# good proxy for area. A per-vote width factor would be strictly better on the
+# members regularization SKIPS (they keep their own width) -- it is left out
+# because it was never measured, not because it would be wrong, and the test
+# that pins the weighting would not distinguish the two.
+#
+# The aggregation is `directionfield.region_direction`'s, deliberately: angles
+# on a half-circle average in DOUBLED-ANGLE space, and that module already
+# carries the repo's implementation and its rationale. Same move here, with
+# skeleton segments as the votes instead of structure-tensor pixels.
+#
+# Doubling turns a 90 deg rotation into a 180 deg one -- a negation -- which
+# leaves the resultant's LENGTH untouched. So aggregating tangents and adding
+# 90 deg at the end is identical to aggregating the crosses themselves, and
+# reads more directly against the skeleton the votes come from.
+#
+# WHY THE VOTES ARE PER RASTER SEGMENT and not resampled over one stroke width
+# the way `_rail_points` measures ITS tangents. That correction exists because
+# a raster staircase can only step in eight directions, so a pointwise tangent
+# carries up to +/-22.5 deg of noise -- and `_rail_points` needs each cross's
+# angle individually, where that noise is visible in the sewn column. This
+# function needs one AGGREGATE over hundreds of length-weighted segments,
+# where the same noise cancels. Both were built and measured here (2026-08-27):
+# resampling changed the worst-case error by 0.4 deg (2.3 vs 2.7 over rotations
+# and sizes) and a curved stroke by 0.35 deg, so it was removed rather than
+# kept as unearned machinery. End-trimming below is what actually mattered.
+
+# Below this the strokes genuinely disagree and there is no house angle to
+# find -- a circular monogram, a script face, a cluster of dingbats. Forcing
+# one there would be worse than the per-stroke tangent it replaces, so the
+# pass writes nothing and the shape keeps today's behaviour. Reused from
+# `directionfield`, whose `use_house_angle` gates the identical question
+# ("is this dominant direction real, or noise") on the identical statistic.
+SATIN_ANGLE_MIN_COHERENCE = COHERENCE_FALLBACK_MIN
+
+
+def _trim_ends(chain: list[tuple[float, float]],
+               end_mm: float) -> list[tuple[float, float]]:
+    """`chain` with `end_mm` of arc dropped from each end, or [] if that
+    leaves nothing.
+
+    A stroke's medial axis is not a clean centreline near its ENDS: a
+    rectangle's is an I-beam, with 45 deg arms reaching to each corner, and
+    `_merge_through_junctions` can weld one of those arms onto the main chain.
+    Measured on a rotated-bar fixture (2026-08-27), that pulls the chain's
+    direction toward the diagonal: a 6 mm bar yields 7.17 mm of skeleton whose
+    chord reads 113.9 deg where the bar runs at 105. Worst-case bias over
+    rotations and sizes was 8.2 deg untrimmed and 2.3 deg trimmed.
+
+    `end_mm` is `_spur_len_px` in mm rather than a new number: that threshold
+    already exists to decide how far a junction artifact reaches into this
+    same skeleton. A short arm survives it (a 2.5 mm arm at 1 mm stroke keeps
+    2.0 mm of its 3.3 mm), so trimming suppresses the artifact without
+    silently discarding real short strokes.
+    """
+    if end_mm <= 0.0 or len(chain) < 2:
+        return chain
+    cum = [0.0]
+    for a, b in zip(chain, chain[1:]):
+        cum.append(cum[-1] + math.dist(a, b))
+    total = cum[-1]
+    if total <= 2.0 * end_mm:
+        return []
+    i = bisect_left(cum, end_mm)
+    j = bisect_left(cum, total - end_mm)
+    return chain[i:j + 1] if j > i else []
+
+
+def _cluster_house_angle_deg(members: list[Region]) -> float | None:
+    """The dominant CROSS angle over a text cluster's strokes, in degrees on
+    [0, 180), or None when the strokes carry no dominant direction.
+
+    Votes are the segments of every member's pruned, end-trimmed skeleton
+    chains, weighted by length in mm. `_skeleton_chains_mm` prunes with the same
+    threshold `extract_strokes` applies before building satin rails, so these
+    are the strokes that will actually sew, not a different reading of the
+    glyph.
+
+    Fails open the way the rest of this module does: a member that will not
+    field, or has no skeleton, contributes nothing instead of raising.
+    """
+    c2 = s2 = total = 0.0
+    for r in members:
+        field = build_shape_field(r.polygon)
+        if field is None or not field.skel.any():
+            continue
+        # `_spur_len_px` in mm: how far the medial-axis end artifact reaches
+        # into this chain. Each member gets its OWN field, and
+        # `build_shape_field` normalises raster SIZE rather than resolution,
+        # so px/mm differs per member -- the conversion is per member too.
+        end_mm = _spur_len_px(field) / field.scale
+        for chain in _skeleton_chains_mm(field):
+            trimmed = _trim_ends(chain, end_mm)
+            for (x0, y0), (x1, y1) in zip(trimmed, trimmed[1:]):
+                dx, dy = x1 - x0, y1 - y0
+                length = math.hypot(dx, dy)
+                if length <= 0.0:
+                    continue
+                # Unit tangent, so (tx^2 - ty^2, 2 tx ty) is exactly
+                # (cos 2t, sin 2t) -- see directionfield.region_direction.
+                tx, ty = dx / length, dy / length
+                c2 += length * (tx * tx - ty * ty)
+                s2 += length * (2.0 * tx * ty)
+                total += length
+    if total <= 0.0:
+        return None
+    c2 /= total
+    s2 /= total
+    if math.hypot(c2, s2) < SATIN_ANGLE_MIN_COHERENCE:
+        return None
+    tangent = math.degrees(0.5 * math.atan2(s2, c2))
+    return (tangent + 90.0) % 180.0
+
+
+def set_text_cluster_satin_angle(regions: list[Region], p: Prep) -> None:
+    """Post-regularization pass: give every member of a detected word ONE
+    house cross angle, so its letters agree instead of each following its own
+    spine tangent (`satin_angle_deg` in `Region.meta`).
+
+    `p` is accepted, not read, matching `detect_text_clusters` and
+    `regularize_text_clusters` for the same reason: a future revision that
+    needs `Prep` should not have to change every call site again.
+
+    Runs AFTER `regularize_text_clusters` because that pass redraws member
+    polygons, and the angle has to describe the strokes that will sew rather
+    than the ones vectorization happened to leave behind.
+
+    Fails open throughout, same discipline as the passes above: a cluster
+    whose strokes carry no dominant direction gets NO new meta key at all,
+    and absent means "per-stroke tangent, exactly as before". An angle a
+    caller already set on a shape is left alone -- per-shape intent beats a
+    derived default, the same precedence `config.satin_angle_deg`'s own
+    comment describes.
+
+    NOT carried forward between generations, and deliberately so.
+    `config.satin_angle_deg`'s comment says the per-shape key rides
+    `regions.match_and_carry`'s deterministic-id carry-forward; it does not --
+    `satin_angle_deg` is absent from that key tuple (checked 2026-08-27), and
+    nothing outside this pass writes it, so there is no operator intent to
+    preserve yet. Adding it there would be actively wrong while this pass is
+    the only writer: carry-forward fires only when the key is MISSING from the
+    current generation, which is exactly the case where new artwork stopped
+    being coherent enough to angle -- it would resurrect the previous
+    generation's angle for a word that no longer supports one. If a review
+    screen ever lets a user set this per shape, that is when the key earns its
+    place in the tuple, and this pass should skip shapes carrying an
+    operator-set value rather than a derived one.
+    """
+    by_cluster: dict[str, list[Region]] = {}
+    for r in regions:
+        cluster_id = r.meta.get("text_cluster_id")
+        if cluster_id is not None:
+            by_cluster.setdefault(cluster_id, []).append(r)
+
+    for members in by_cluster.values():
+        angle = _cluster_house_angle_deg(members)
+        if angle is None:
+            continue
+        for r in members:
+            r.meta.setdefault("satin_angle_deg", angle)
 
 # --- OCR-suggested text (see module docstring's "OCR-suggested text" section) --
 
