@@ -333,3 +333,54 @@ Run that sweep after any type change. *(confirmed 2026-08-25 — same sweep)*
 Measured on the Garment step after the pass: distinct size/weight pairs
 **16 → 11**, every size on the scale, every weight a token, zero overflows,
 zero WCAG AA failures.
+
+## Display-layer detail moved from MASTER_SCOPE (2026-08-27)
+
+Moved verbatim under the 800-line budget rule; MASTER_SCOPE keeps every rule
+in compressed form. Nothing here was edited in the move.
+
+**The display layer is a distinct risk surface, and the suite does not speak
+for it.** A 2026-08-25 browser sweep found defects a green suite never touched
+— a primary CTA rendering white-on-white on every wizard step, and a canvas
+menu creating elements with no visible feedback. Both were shipped. **A Studio
+change is not verified until it has been *looked at* in a browser.** Two lesser
+display defects are deferred, not missed. *(confirmed 2026-08-25 — area doc)*
+
+**A `var(--x, fallback)` whose name is undefined is not a fallback — it is a
+silent bespoke value.** Three such names shipped, so the app carried two
+warning colours, one bypassing the token system; two more tokens failed WCAG AA
+on the app's own non-white grounds while passing on white. Both closed; re-run
+the check when a new component lands. *(confirmed 2026-08-25 — theme.css)*
+
+**Preview thread width is PHYSICAL, and must not be widened.**
+`preview.js`'s `THREAD_WIDTH_MM` (0.4, nominal 40wt) is coverage 1.0 against
+the engine's 0.40 mm fill rows — rows that just touch — so a fill that is too
+open looks too open. **Do not widen it to make fills look solid.** Row spacing
+is an unresolved two-population question standing *pending sew-out* (area 1,
+"Fill row spacing (law 19)"; `machine.py:45-49`), so widening thread would be
+the display layer prejudging a question only cloth can settle — ROADMAP gate 1.
+Display-only: it scales pixels, never stitch geometry.
+**Caveat:** `lw` has a 1.2 px floor, so below ~3 px/mm the floor sets the drawn
+width and coverage reads high. The property holds zoomed in, not on a
+thumbnail. Guarded by a test pinning the literal 0.4.
+*(confirmed 2026-08-25 — `preview.js`, `preview.spec.js`)*
+
+**Correction (2026-08-25).** The paragraph above first read that widening
+thread would "hide the open fill-density item … FILL_ROW_MM running ~2x
+light." That overstated a hedge into a defect: the ~0.20 mm figure is a
+satin-rail **artifact** for one file population (refuted) and a genuine denser
+pitch on 43 commissioned cap logos (still alive) — unresolved, not open-and-
+known. It also pointed at Cross-cutting issues, which has never carried such an
+item. Imported from the 2026-08-09 Ember teardown without re-checking it was
+still live. *(corrected 2026-08-25 — area 1 "Fill row spacing (law 19)")*
+
+**The stitch simulator already exists — do not build a second one.**
+`lib/simulate.js` plus EmbroideryField's `simbar`: play/pause, a scrub slider,
+speed cycling, close. `renderRealistic`'s `limitStrands` is its drawing
+contract. This was nearly rebuilt from scratch on the assumption it was a gap.
+*(confirmed 2026-08-25 — driven in a browser)*
+
+**Thread lighting is unverified against real thread.** The light direction,
+sheen ceiling and shadow weight are eye-tuned judgement calls. No sew-out has
+happened, so there is nothing to compare a render against — treat the look as
+a preference setting, not a calibrated one. *(suspected 2026-08-25)*

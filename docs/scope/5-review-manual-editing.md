@@ -722,3 +722,91 @@ true:
   disappearing on edit, and never appearing for ordinary user-typed text.
   Full Studio suite green (see "Running things" for the count this pass
   observed).
+
+## Review & manual-editing detail moved from MASTER_SCOPE (2026-08-27)
+
+Moved verbatim under the 800-line budget rule; MASTER_SCOPE keeps the verdict
+and the two invariants. Nothing here was edited in the move.
+
+**Copy/paste (Ctrl+C/V), Duplicate (Ctrl+D), and a per-shape Dim slider.** The
+clipboard holds a shape *snapshot*, not an id, so a paste after the original was
+edited or deleted still pastes what was copied. Dim is view-only and never
+reaches the stitch plan or the `.embproj`. Both shipped with defects that a
+pure-logic test could not see and a later review caught: `duplicateShape`
+landed the copy exactly on the original for any shape flush to the canvas edge
+(every traced outline, since `traceFitRect` letterboxes to the edges), and the
+Dim slider froze at whatever value the shape had when it was selected, because
+Svelte's legacy `$:` dependency list only sees what a statement *textually*
+names — a read inside a called function is invisible to it. Both fixed, both
+now pinned by tests proven to fail against the old code.
+*(confirmed 2026-08-26 — `manualShapes.spec.js` + `ManualPanel.spec.js`, mutation-checked)*
+
+**Driven in a real browser 2026-08-26** — right-click curved nodes, the tracing
+backdrop, Duplicate, and the Dim slider, all exercised by hand rather than only
+by tests. Two things were wrong that no test could see. The drawing canvas
+opened mostly below the fold on a short viewport (14% visible at 1280x720, 92%
+at 1440x900, 100% at 1080p — which is why it never showed on a desktop); it now
+scrolls itself in **only when measurably clipped**, so a tall screen is
+untouched. And the trace panel's file picker was a bare `<input type="file">`
+rendering as raw OS chrome that read "No file chosen" even after a file loaded
+(`onFile` clears the input's value so re-picking the same file still fires);
+it now uses the same styled-label pattern as `DigitizePanel`'s `.dgp-upload`.
+Confirmed working and NOT broken: the traced outline lands exactly on the
+backdrop artwork, and the dropped-hole warning does show — before you accept
+the shapes, which is the moment it matters.
+*(confirmed 2026-08-26 — Playwright browser session, measured at three viewports)*
+
+**The flat and realistic views now agree about sew order.** A colour that
+recurs later in the sequence is its own block in both, not merged back into its
+first appearance. The lit path was fixed for this on 2026-08-25; the flat path
+kept the bug for another day, on the one view you switch to specifically to
+judge coverage. Pinned as an invariant — the two views must produce the *same*
+block sequence — rather than as two independent expectations.
+*(confirmed 2026-08-26 — `preview.spec.js`, mutation-checked)*
+
+**Eight more defects fixed by sweeping for the bug SHAPES, not the instances.**
+PR #264 fixed nine defects in this area, and three of them existed for one
+reason: a fix applied to one code path was never applied to its siblings. PR
+#269 swept the repo for the shapes instead. What a user would have hit:
+
+- **Manual shapes did not sew in draw order.** `digitize.js` sequences
+  light-to-dark by default and the manual branch never opted out, so a cream
+  circle drawn on top of a navy rectangle sewed cream-then-navy and the navy
+  buried it. `ManualPanel` paints later-over-earlier and hit-tests
+  back-to-front to match, and offers no reorder control — the stacking the user
+  drew was simply unreachable. Now `darkOnTop: false` on the manual and
+  preset-shape branches **only**; image mode keeps the heuristic, correctly,
+  because nothing in a raster says which colour the artist meant on top.
+  **This changes what already-saved manual designs sew**, which is the point.
+- **A thread override landed on the wrong colour and EXPORTED that way.**
+  `blockColors` is keyed by palette index, the service re-derives the whole
+  palette on every run, and nothing remapped it: set "red → navy", re-digitize
+  4 colours down to 3, and the override is now on white. `remapBlockColors`
+  matches on the colour the override was chosen *for*, so it follows a thread
+  that moved and is dropped with one the palette removed. Storage stays
+  index-keyed — no `.embproj` migration.
+- **A stale undo button deleted an innocent element.** Element ids are recycled
+  (`nextElementId` is `max+1` over the survivors) and `textConversions` kept
+  naming a deleted one, so a new element taking the freed id could be destroyed
+  by the old cluster bar's "Undo". Pruned in `removeElement`, which every
+  removal path funnels through. Monotonic ids were considered and rejected:
+  schema change plus a migration for every existing save.
+- **A bulk edit looked like it did nothing.** `sharedColor`/`sharedWeight`/
+  `sharedFont` named only `multi`, a boolean — once multi-select is entered it
+  is `true` and stays `true`, and `safe_not_equal(true, true)` is false, so all
+  three readouts froze. The edits really applied; the panel just kept saying
+  "mixed".
+- **A stale cluster member count** (`{@const}` inside an `each` keyed by a
+  string that never changes), and **a new template inheriting the last design's
+  artwork** (`pickTemplate` replaced the project but never cleared the
+  element-keyed `runtime`; `enterProject` has always cleared it — the unfixed
+  sibling again).
+
+Two of the guards pin RULES rather than call sites, which is the actual lesson
+of the sweep: `ContentStep.reactivity.spec.js` asserts on compiled Svelte
+dependency lists, and `App.projectReplacement.spec.js` asserts that every
+whole-project-replacement path clears `runtime`. Twelve mutations were applied
+and reverted, including faithful reproductions of each original bug — and one
+test was caught passing for the WRONG reason (a `blockColors` fixture that never
+actually collided two blocks onto one index) and its fixture corrected until the
+mutation killed it. *(fixed 2026-08-26 — PR #269, mutation-checked)*

@@ -21,7 +21,7 @@ standing rulings below. **The code and instruments it describes are ON `main`**
 `selfconsistency.py` is in a plain checkout.
 *(confirmed 2026-08-17 — `git ls-tree origin/main`)*
 
-**Last updated:** 2026-08-25. Dated history lives in
+**Last updated:** 2026-08-27. Dated history lives in
 [`docs/scope-history.md`](docs/scope-history.md); **this file is current state
 only.** See "How this document works" at the bottom for the rules that keep it
 that way, including the line budget.
@@ -717,6 +717,22 @@ be able to agree with a partly craft-driven ranking at all.
 `0.0 mm²` on the rest with `uncovered_checked: True`, because it is scoped to
 shapes the design already sews. `tools/dropped_elements.py` measures it from the
 artwork's side — 99.1% lost on the logo Kent called "5% completed at most".
+**Both halves of the smoothness complaint now have instruments, and they are not
+the same measurement.** `tools/edge_smoothness.py` owns the edge noise; the curve
+half — *"Lines/circles are not smooth like the photo"* — is
+`tools/curve_fidelity.py`, read from `plan.iter_runs()` because it is **not
+readable from a raster** (a rasterised circle scores more angular than a 40-gon;
+the raster boundary is itself a staircase). Rebuilt on path geometry it is
+monotonic across the n-gon ladder at 0.5/1.0/2.0 mm sampling, and **dead at
+3.0 mm** — a physical floor, not a bug: the needle is then as coarse as the
+polygon, so never compare arms across stitch lengths. **Read `roughness_deg` per
+design. `turn_gini` is substantially a COMPLEXITY statistic** (Pearson −0.763 vs
+log trace count; two 2-trace designs pin the top at 0.95) and belongs only on the
+ladder or inside a paired arm holding one design fixed. The two instruments are
+not redundant — `roughness_deg` vs `ragged_mm` is Spearman 0.028, which on n = 12
+rules out redundancy without proving independence. Instrument only, no engine
+change. *(measured 2026-08-27 — PR #281;
+`docs/curve-fidelity-from-the-stitch-path-2026-08-27.md`)*
 **Two engine defects open, unfixed:** `summit_badge`'s half-removed background,
 and `stage1_prep.py:254-266` answering a structural question (`BACKGROUND_ABSENT`)
 through a colour threshold (`bg_tolerance_lab`).
@@ -740,23 +756,13 @@ ever SET it, so the sewn output did not change. PR #282 added the derivation
 within ±20° of the modal direction go **29% → 51%** against a 22% chance
 baseline, with **total thread −2.4%**, trims and jumps unchanged.
 
-Three things had to be corrected to get there, each a threshold applied to a
-population it was not calibrated on — the reusable lesson:
-- `detect_text_clusters`' candidate set is gated on `rescued_small_shape` and
-  on `STROKE_CV_MAX` (0.32). **Zero** of that logo's 17 regions carry the flag,
-  and all 17 score CV **0.36–0.68**, so it finds no real lettering at all.
-  `_lettering_groups` keeps the tests that transfer and drops those two;
-  `detect_text_clusters` itself is untouched.
-- The confidence gate was `directionfield.COHERENCE_FALLBACK_MIN` (0.25), which
-  grades a per-pixel structure-tensor field. Real lettering sits UNDER it
-  (R = 0.197 and 0.203). No raw threshold works: directionless square rings sit
-  at 0.167. Replaced with Rayleigh's test — chance-corrected, rings and letters
-  separate 10× where raw they separate 1.2×. Gate 4 in miniature.
-- **7 of 11 lettering regions sew as FILL**, where the satin angle is not read
-  and `best_fill_angle_deg` picks rows per shape by minimising that shape's own
-  column count — which put two adjacent near-identical capitals at 22.5° and
-  90.0°. That is the half Kent's complaint actually names. The house angle now
-  sets `fill_angle_deg` too.
+Three thresholds had to be corrected to get there, each applied to a population
+it was not calibrated on — the reusable lesson, and **gate 4 in miniature**: the
+confidence gate was replaced with Rayleigh's test, chance-corrected, where
+lettering and directionless square rings separate 10x against 1.2x raw. The
+three (`detect_text_clusters`' candidate gating, the coherence floor, and the
+7-of-11 lettering regions that sew as FILL) are in
+[area 1](docs/scope/1-auto-digitizing-quality.md).
 *(fixed 2026-08-27 — PRs #282/#283, mutation-checked; renders in the #283 body)*
 
 **Mechanism 2 — pull comp's min-feature guard scoped to `poly.interiors` —
@@ -832,51 +838,41 @@ content path, four export formats, and the embroidery field's own chrome.
 **What holds it at Medium:** fabric-preset accuracy is sew-out-gated, and no
 sew-out has happened. See Cross-cutting issues.
 
-**The display layer is a distinct risk surface, and the suite does not speak
-for it.** A 2026-08-25 browser sweep found defects a green suite never touched
-— a primary CTA rendering white-on-white on every wizard step, and a canvas
-menu creating elements with no visible feedback. Both were shipped. **A Studio
-change is not verified until it has been *looked at* in a browser.** Two lesser
-display defects are deferred, not missed. *(confirmed 2026-08-25 — area doc)*
+**A Studio change is not verified until it has been *looked at* in a browser.**
+A 2026-08-25 sweep found a primary CTA rendering white-on-white on every wizard
+step and a canvas menu creating elements with no feedback — both shipped, both
+invisible to a green suite. *(confirmed 2026-08-25 — area doc)*
 
 **A `var(--x, fallback)` whose name is undefined is not a fallback — it is a
-silent bespoke value.** Three such names shipped, so the app carried two
-warning colours, one bypassing the token system; two more tokens failed WCAG AA
-on the app's own non-white grounds while passing on white. Both closed; re-run
-the check when a new component lands. *(confirmed 2026-08-25 — theme.css)*
+silent bespoke value.** Three such names shipped; two more tokens failed WCAG AA
+on the app's own non-white grounds while passing on white. Closed — **re-run the
+check when a new component lands.** *(confirmed 2026-08-25 — theme.css)*
 
 **Preview thread width is PHYSICAL, and must not be widened.**
-`preview.js`'s `THREAD_WIDTH_MM` (0.4, nominal 40wt) is coverage 1.0 against
-the engine's 0.40 mm fill rows — rows that just touch — so a fill that is too
-open looks too open. **Do not widen it to make fills look solid.** Row spacing
-is an unresolved two-population question standing *pending sew-out* (area 1,
-"Fill row spacing (law 19)"; `machine.py:45-49`), so widening thread would be
-the display layer prejudging a question only cloth can settle — ROADMAP gate 1.
-Display-only: it scales pixels, never stitch geometry.
-**Caveat:** `lw` has a 1.2 px floor, so below ~3 px/mm the floor sets the drawn
-width and coverage reads high. The property holds zoomed in, not on a
-thumbnail. Guarded by a test pinning the literal 0.4.
+`preview.js`'s `THREAD_WIDTH_MM` (0.4, nominal 40wt) is coverage 1.0 against the
+engine's 0.40 mm fill rows, so a fill that is too open LOOKS too open. Widening
+it to make fills look solid would be the display layer prejudging row spacing —
+a two-population question standing *pending sew-out* — which is ROADMAP gate 1.
+Caveat: `lw` has a 1.2 px floor, so the property holds zoomed in, not on a
+thumbnail. Pinned by a test on the literal 0.4.
 *(confirmed 2026-08-25 — `preview.js`, `preview.spec.js`)*
 
-**Correction (2026-08-25).** The paragraph above first read that widening
-thread would "hide the open fill-density item … FILL_ROW_MM running ~2x
-light." That overstated a hedge into a defect: the ~0.20 mm figure is a
-satin-rail **artifact** for one file population (refuted) and a genuine denser
-pitch on 43 commissioned cap logos (still alive) — unresolved, not open-and-
-known. It also pointed at Cross-cutting issues, which has never carried such an
-item. Imported from the 2026-08-09 Ember teardown without re-checking it was
-still live. *(corrected 2026-08-25 — area 1 "Fill row spacing (law 19)")*
+**Correction (2026-08-25).** That paragraph first read that widening thread would
+"hide the open fill-density item … FILL_ROW_MM running ~2x light" — overstating a
+hedge into a defect. The ~0.20 mm figure is a satin-rail **artifact** for one file
+population (refuted) and a genuine denser pitch on 43 commissioned cap logos
+(still alive): unresolved, not open-and-known. Imported from the 2026-08-09 Ember
+teardown without re-checking it was still live.
+*(corrected 2026-08-25 — area 1 "Fill row spacing (law 19)")*
 
 **The stitch simulator already exists — do not build a second one.**
-`lib/simulate.js` plus EmbroideryField's `simbar`: play/pause, a scrub slider,
-speed cycling, close. `renderRealistic`'s `limitStrands` is its drawing
-contract. This was nearly rebuilt from scratch on the assumption it was a gap.
-*(confirmed 2026-08-25 — driven in a browser)*
+`lib/simulate.js` plus EmbroideryField's `simbar`. This was nearly rebuilt from
+scratch on the assumption it was a gap. *(confirmed 2026-08-25 — driven in a
+browser)*
 
-**Thread lighting is unverified against real thread.** The light direction,
-sheen ceiling and shadow weight are eye-tuned judgement calls. No sew-out has
-happened, so there is nothing to compare a render against — treat the look as
-a preference setting, not a calibrated one. *(suspected 2026-08-25)*
+**Thread lighting is unverified against real thread** — eye-tuned, no sew-out to
+compare against. Treat the look as a preference, not a calibration.
+*(suspected 2026-08-25)*
 
 ### 4. Export formats — [detail](docs/scope/4-export-formats.md)
 
@@ -926,88 +922,17 @@ deliberately. The default bow takes its side from the turn the path is making,
 so a run of curved nodes arcs instead of scalloping. Backspace mid-draft takes
 back the last node. *(confirmed 2026-08-25 — `curvedNodeThrough` tests + browser)*
 
-**Copy/paste (Ctrl+C/V), Duplicate (Ctrl+D), and a per-shape Dim slider.** The
-clipboard holds a shape *snapshot*, not an id, so a paste after the original was
-edited or deleted still pastes what was copied. Dim is view-only and never
-reaches the stitch plan or the `.embproj`. Both shipped with defects that a
-pure-logic test could not see and a later review caught: `duplicateShape`
-landed the copy exactly on the original for any shape flush to the canvas edge
-(every traced outline, since `traceFitRect` letterboxes to the edges), and the
-Dim slider froze at whatever value the shape had when it was selected, because
-Svelte's legacy `$:` dependency list only sees what a statement *textually*
-names — a read inside a called function is invisible to it. Both fixed, both
-now pinned by tests proven to fail against the old code.
-*(confirmed 2026-08-26 — `manualShapes.spec.js` + `ManualPanel.spec.js`, mutation-checked)*
-
-**Driven in a real browser 2026-08-26** — right-click curved nodes, the tracing
-backdrop, Duplicate, and the Dim slider, all exercised by hand rather than only
-by tests. Two things were wrong that no test could see. The drawing canvas
-opened mostly below the fold on a short viewport (14% visible at 1280x720, 92%
-at 1440x900, 100% at 1080p — which is why it never showed on a desktop); it now
-scrolls itself in **only when measurably clipped**, so a tall screen is
-untouched. And the trace panel's file picker was a bare `<input type="file">`
-rendering as raw OS chrome that read "No file chosen" even after a file loaded
-(`onFile` clears the input's value so re-picking the same file still fires);
-it now uses the same styled-label pattern as `DigitizePanel`'s `.dgp-upload`.
-Confirmed working and NOT broken: the traced outline lands exactly on the
-backdrop artwork, and the dropped-hole warning does show — before you accept
-the shapes, which is the moment it matters.
-*(confirmed 2026-08-26 — Playwright browser session, measured at three viewports)*
-
-**The flat and realistic views now agree about sew order.** A colour that
-recurs later in the sequence is its own block in both, not merged back into its
-first appearance. The lit path was fixed for this on 2026-08-25; the flat path
-kept the bug for another day, on the one view you switch to specifically to
-judge coverage. Pinned as an invariant — the two views must produce the *same*
-block sequence — rather than as two independent expectations.
-*(confirmed 2026-08-26 — `preview.spec.js`, mutation-checked)*
-
-**Eight more defects fixed by sweeping for the bug SHAPES, not the instances.**
-PR #264 fixed nine defects in this area, and three of them existed for one
-reason: a fix applied to one code path was never applied to its siblings. PR
-#269 swept the repo for the shapes instead. What a user would have hit:
-
-- **Manual shapes did not sew in draw order.** `digitize.js` sequences
-  light-to-dark by default and the manual branch never opted out, so a cream
-  circle drawn on top of a navy rectangle sewed cream-then-navy and the navy
-  buried it. `ManualPanel` paints later-over-earlier and hit-tests
-  back-to-front to match, and offers no reorder control — the stacking the user
-  drew was simply unreachable. Now `darkOnTop: false` on the manual and
-  preset-shape branches **only**; image mode keeps the heuristic, correctly,
-  because nothing in a raster says which colour the artist meant on top.
-  **This changes what already-saved manual designs sew**, which is the point.
-- **A thread override landed on the wrong colour and EXPORTED that way.**
-  `blockColors` is keyed by palette index, the service re-derives the whole
-  palette on every run, and nothing remapped it: set "red → navy", re-digitize
-  4 colours down to 3, and the override is now on white. `remapBlockColors`
-  matches on the colour the override was chosen *for*, so it follows a thread
-  that moved and is dropped with one the palette removed. Storage stays
-  index-keyed — no `.embproj` migration.
-- **A stale undo button deleted an innocent element.** Element ids are recycled
-  (`nextElementId` is `max+1` over the survivors) and `textConversions` kept
-  naming a deleted one, so a new element taking the freed id could be destroyed
-  by the old cluster bar's "Undo". Pruned in `removeElement`, which every
-  removal path funnels through. Monotonic ids were considered and rejected:
-  schema change plus a migration for every existing save.
-- **A bulk edit looked like it did nothing.** `sharedColor`/`sharedWeight`/
-  `sharedFont` named only `multi`, a boolean — once multi-select is entered it
-  is `true` and stays `true`, and `safe_not_equal(true, true)` is false, so all
-  three readouts froze. The edits really applied; the panel just kept saying
-  "mixed".
-- **A stale cluster member count** (`{@const}` inside an `each` keyed by a
-  string that never changes), and **a new template inheriting the last design's
-  artwork** (`pickTemplate` replaced the project but never cleared the
-  element-keyed `runtime`; `enterProject` has always cleared it — the unfixed
-  sibling again).
-
-Two of the guards pin RULES rather than call sites, which is the actual lesson
-of the sweep: `ContentStep.reactivity.spec.js` asserts on compiled Svelte
-dependency lists, and `App.projectReplacement.spec.js` asserts that every
-whole-project-replacement path clears `runtime`. Twelve mutations were applied
-and reverted, including faithful reproductions of each original bug — and one
-test was caught passing for the WRONG reason (a `blockColors` fixture that never
-actually collided two blocks onto one index) and its fixture corrected until the
-mutation killed it. *(fixed 2026-08-26 — PR #269, mutation-checked)*
+**Detail moved to the area doc (2026-08-27, rule 5):** the copy/paste, Duplicate
+and Dim-slider defects; the 2026-08-26 browser session (a canvas opening below
+the fold, a raw file picker); and PR #269's eight-defect sweep. Two invariants
+from them still govern and stay here: **the flat and realistic views must
+produce the SAME block sequence** (a recurring colour is its own block in both),
+and **manual/preset shapes sew in draw order** — `darkOnTop: false` on those
+branches only, image mode keeps the heuristic because nothing in a raster says
+which colour the artist meant on top. The sweep's reusable lesson: pin RULES,
+not call sites — three of PR #264's nine defects existed because a fix was never
+applied to its siblings. *(fixed 2026-08-26 — PR #269, mutation-checked;
+[detail](docs/scope/5-review-manual-editing.md))*
 
 ---
 
