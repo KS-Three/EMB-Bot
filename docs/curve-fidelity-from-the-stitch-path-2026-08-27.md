@@ -278,3 +278,84 @@ Recorded because the refuted version is the more natural thing to believe, and i
 would have hardened into a stated defect on the next copy-forward — the failure
 mode `MASTER_SCOPE`'s own Corrections section exists to keep visible.
 
+---
+
+## Correction (2026-08-28): the section above is wrong about size
+
+**Everything in "First run on REAL client artwork" that reads as a SIZE effect
+is a misread of what was run, and it is left standing above rather than edited
+away, per this repo's convention for a claim that has to be withdrawn.**
+
+All four runs used the default `target_width_mm = 80.0`. The words "small" and
+"large" in those filenames are the PROFESSIONAL's garment placement — chest,
+hat, hat-polo — not the size anything was digitized at. Nothing in that table
+varied physical size, so it cannot say anything about it. The framing that the
+four were "the same mark at different physical sizes, the one case where
+`turn_gini` is legitimately readable" is wrong twice over: the design was not
+held fixed (they are four different source files) and the scale never changed.
+
+What the table actually shows, measured:
+
+| file | traces | curve v | gini | rough |
+|---|---|---|---|---|
+| chest_small…lc_2_a | 10 | 116 | 0.536 | 12.31 |
+| hat_small…hat_2_a | 11 | 151 | 0.491 | 12.25 |
+| hat_polo_large…logo_hat | 52 | 1338 | 0.521 | 10.46 |
+| hat_polo_large…logolc | 46 | 1081 | 0.533 | 9.75 |
+
+The two rough ones carry **10-11 traces against 46-52** — a five-fold gap in
+design complexity at identical target size. That is the axis already documented
+above, arriving again. The corner-threshold sub-claim, itself already refuted on
+its own terms, was answering a question the data could not pose.
+
+### And the 0.5 px epsilon floor is not involved either
+
+It was the obvious suspect and it is **provably inactive here.** All four sources
+are 807-826 px wide at an 80 mm target, so `px_per_mm` is 10.09-10.32, and
+`eps_px = max(0.5, 0.2 x 10.2) = 2.04` — four times clear of the floor. The floor
+binds only below `0.5 / simplify_tol_mm` = **2.5 px/mm**, and stage 1's
+`min_px_per_mm = 4.0` upscale means shipped configurations do not reach it. The
+2026-08-17 ladder saw the floor bite because its 0.10 and 0.05 ARMS put `eps_px`
+at 0.4 and 0.2; at the shipped 0.2 it never engages.
+
+**So: do not chase the epsilon floor as a cause of rough curves at shipped
+settings.** It is dead by arithmetic, not by argument.
+
+### Size tested properly, and there is no clean size effect either
+
+The experiment the section above should have been: ONE artwork, only
+`target_width_mm` varying, so the design really is held fixed.
+
+`becker_hat_polo_large_logo_hat` (the rich one, 46-52 traces at 80 mm):
+
+| width mm | px/mm | eps_px | gini | rough | traces | curve v |
+|---|---|---|---|---|---|---|
+| 40 | 20.55 | 4.11 | 0.506 | 10.39 | 23 | 427 |
+| 60 | 13.70 | 2.74 | 0.504 | 11.01 | 29 | 790 |
+| 80 | 10.28 | 2.06 | 0.521 | 10.46 | 52 | 1338 |
+| 120 | 6.85 | 1.37 | 0.556 | 11.17 | 78 | 2268 |
+
+`becker_chest_small_logo_lc_2_a` (the sparse one):
+
+| width mm | px/mm | eps_px | gini | rough | traces | curve v |
+|---|---|---|---|---|---|---|
+| 40 | 20.65 | 4.13 | 0.507 | **18.33** | **3** | 79 |
+| 60 | 13.77 | 2.75 | 0.512 | 12.53 | 7 | 72 |
+| 80 | 10.32 | 2.06 | 0.536 | 12.31 | 10 | 116 |
+
+**Roughness is flat across a 3x size range on the rich artwork** — 10.39, 11.01,
+10.46, 11.17, with no trend. The sparse one does climb as it shrinks (12.31 ->
+18.33), but at 40 mm it is down to **3 traces and 79 vertices**, which the CLI
+itself flags `thin`; size and surviving complexity move together there and
+cannot be separated by this design.
+
+`eps_px` spans 1.37 to 4.13 over the whole sweep — the 0.5 px floor is not
+approached anywhere, at any size, confirming the arithmetic above empirically.
+
+**Negative result, recorded per house convention:** neither physical size nor the
+epsilon floor explains rough curves at shipped settings. What keeps surviving
+every cut of this data is design complexity — trace count — which is the one
+axis the instrument's own docstring already warns is confounded with everything
+else. Anyone wanting a size answer needs artwork whose surviving shape count
+does NOT move with scale, and nothing in the corpus does that today.
+

@@ -17,8 +17,15 @@ failure mode this skill exists to prevent:**
 | File | Holds | Rule |
 |---|---|---|
 | `MASTER_SCOPE.md` | current state only | **800-line budget** |
+| `DOCTRINE.md` | decided / tried / disproved / paid for | no budget; must change what someone DOES |
 | `docs/scope-history.md` | dated snapshots | append-only, never edited |
 | `docs/scope/<area>.md` | per-area supporting detail | linked from the verdict |
+
+`DOCTRINE.md` was split out of MASTER_SCOPE on 2026-08-28 and holds **Standing
+rulings, Measured negatives, Corrections and Gotchas**. Do NOT move those back:
+they do not go stale and only accumulate, so sharing the 800-line budget with
+current status meant status kept losing. A ruling, a rejected approach, a
+correction or a session-costing trap goes there, not here.
 
 This split was made 2026-08-14 after a fact-check found 30 of 56 sampled
 claims stale and 17 false. The cause was structural, not careless: history and
@@ -103,7 +110,9 @@ rules below are mechanical rather than advisory.
 
    **Compact by moving, never by deleting.** In order of preference:
    1. Anything "was true then" that slipped in → `docs/scope-history.md`.
-   2. Per-area supporting detail → the matching `docs/scope/<area>.md`, leaving
+   2. Anything still in force but not current STATUS — a ruling, a rejected
+      approach, a correction, a trap → `DOCTRINE.md`.
+   3. Per-area supporting detail → the matching `docs/scope/<area>.md`, leaving
       the verdict plus a link behind.
    3. A research catalogue or a closed investigation →
       `docs/scope/research-backlog.md`.

@@ -16,6 +16,12 @@ Each doc gates a different kind of decision. Read the one matching what you're a
   things, working conventions.
 - **`PRODUCT.md` — before making a scope call.** Launch-scope decisions and
   non-goals, previously only in Kent's memory.
+- **`DOCTRINE.md` — before proposing work.** What has already been decided,
+  tried, disproved, or paid for: standing rulings, measured negatives,
+  corrections, and the traps that cost a session. Split out of MASTER_SCOPE
+  2026-08-28 because it does not go stale and only accumulates, so it kept
+  crowding out current status. **No line budget — but nothing enters unless it
+  would change what someone DOES.**
 - **`MASTER_SCOPE.md` — for current status.** What's implemented, what's not, and
   how much to trust each capability area. A live dashboard kept current after
   PR-sized work, not a one-time requirements doc. **Current state ONLY, under an
