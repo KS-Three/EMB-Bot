@@ -3368,3 +3368,26 @@ no spine goes there).
 On `summit_badge.png`, where glyphs sit on a filled ground, **stage 2 fuses
 "U"+"M" and cuts the "S" in half.** Irrelevant to `drone_render`, whose glyphs
 are topologically isolated islands, but real.
+
+## Lettering house-angle: the three miscalibrated thresholds (moved from MASTER_SCOPE 2026-08-27)
+
+Moved verbatim under the 800-line budget rule. Nothing edited in the move.
+
+Three things had to be corrected to get there, each a threshold applied to a
+population it was not calibrated on — the reusable lesson:
+- `detect_text_clusters`' candidate set is gated on `rescued_small_shape` and
+  on `STROKE_CV_MAX` (0.32). **Zero** of that logo's 17 regions carry the flag,
+  and all 17 score CV **0.36–0.68**, so it finds no real lettering at all.
+  `_lettering_groups` keeps the tests that transfer and drops those two;
+  `detect_text_clusters` itself is untouched.
+- The confidence gate was `directionfield.COHERENCE_FALLBACK_MIN` (0.25), which
+  grades a per-pixel structure-tensor field. Real lettering sits UNDER it
+  (R = 0.197 and 0.203). No raw threshold works: directionless square rings sit
+  at 0.167. Replaced with Rayleigh's test — chance-corrected, rings and letters
+  separate 10× where raw they separate 1.2×. Gate 4 in miniature.
+- **7 of 11 lettering regions sew as FILL**, where the satin angle is not read
+  and `best_fill_angle_deg` picks rows per shape by minimising that shape's own
+  column count — which put two adjacent near-identical capitals at 22.5° and
+  90.0°. That is the half Kent's complaint actually names. The house angle now
+  sets `fill_angle_deg` too.
+*(fixed 2026-08-27 — PRs #282/#283, mutation-checked; renders in the #283 body)*
