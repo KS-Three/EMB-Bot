@@ -774,12 +774,29 @@ other side is mechanism 4 below. Full numbers and both directions:
 `docs/exterior-notch-guard-2026-08-28.md`.
 *(prototyped 2026-08-28, not merged)*
 
+**Mechanism 4 — the instrument that hid all of it — is HALF CLOSED
+2026-08-28.** Bare-fabric coverage scored the visibly deformed H at "1.9%
+bare" and thread-vs-artwork IoU saturates on small letters, and they fail for
+one reason: **both average, and deformation is local.** `stroke_coverage.py`
+reports the WORST medial-axis stroke instead: DRONE's E, which sews as a
+visible "L", reads **58.3% worst against 72.7% mean** where coverage called it
+fine. The gap between worst and mean is the signal — local damage opens one,
+uniform thinness does not.
+**It is still blind to TILT** — THERMAL's deformed H scores 100%, because
+thread is on every stroke at the wrong angle. **The obvious tilt metric was
+built and REJECTED the same day**: per-stroke deviation from the medial axis's
+local perpendicular ranks a good PRECISION O (31.7° median) worse than the
+deformed H (16.6°), because on a curved letter the spine turns constantly and
+the reference confounds curvature with deformation. Recorded in the kit's
+README so it is not rebuilt. *(2026-08-28 — `tools/letterform_fidelity/`)*
+
 **Still open and unfixed:** `_prune_spurs` drops a 3-way node to 2-way
 so the walker welds the N's diagonal to its stem through a 108° fold — **the
-same function PR #186 fixed, a different consequence one layer on**; and **the
-instrument that hid all of it**, bare-fabric coverage scoring the visibly
-deformed H at "1.9% bare". Shape fidelity reads 0.587 design-wide and is
-screening only. *(measured 2026-08-26 — [area
+same function PR #186 fixed, a different consequence one layer on**. The memory
+note is explicit that it is **prototyped twice and not shippable as written**
+(it propagates the H defect to every square-capped satin bar, and two prototypes
+of nominally the same rule measured −18.3% and +20.5% off identical baselines);
+it needs a cap-arm classifier written once, carefully. *(measured 2026-08-26 — [area
 1](docs/scope/1-auto-digitizing-quality.md); `.claude/memory/letterform-fidelity-2026-08-26.md`)*
 
 **Confidence limit on the fix:** two real lettering groups, both from ONE logo.
