@@ -3391,3 +3391,24 @@ population it was not calibrated on — the reusable lesson:
   90.0°. That is the half Kent's complaint actually names. The house angle now
   sets `fill_angle_deg` too.
 *(fixed 2026-08-27 — PRs #282/#283, mutation-checked; renders in the #283 body)*
+
+## Curve-fidelity instrument — the fuller MASTER_SCOPE entry (moved 2026-08-28)
+
+Compressed in MASTER_SCOPE under the 800-line budget; kept here in full.
+
+**Both halves of the smoothness complaint now have instruments, and they are not
+the same measurement.** `tools/edge_smoothness.py` owns the edge noise; the curve
+half — *"Lines/circles are not smooth like the photo"* — is
+`tools/curve_fidelity.py`, read from `plan.iter_runs()` because it is **not
+readable from a raster** (a rasterised circle scores more angular than a 40-gon;
+the raster boundary is itself a staircase). Rebuilt on path geometry it is
+monotonic across the n-gon ladder at 0.5/1.0/2.0 mm sampling, and **dead at
+3.0 mm** — a physical floor, not a bug: the needle is then as coarse as the
+polygon, so never compare arms across stitch lengths. **Read `roughness_deg` per
+design. `turn_gini` is substantially a COMPLEXITY statistic** (Pearson −0.763 vs
+log trace count; two 2-trace designs pin the top at 0.95) and belongs only on the
+ladder or inside a paired arm holding one design fixed. The two instruments are
+not redundant — `roughness_deg` vs `ragged_mm` is Spearman 0.028, which on n = 12
+rules out redundancy without proving independence. Instrument only, no engine
+change. *(measured 2026-08-27 — PR #281;
+`docs/curve-fidelity-from-the-stitch-path-2026-08-27.md`)*

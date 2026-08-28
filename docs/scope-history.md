@@ -2883,6 +2883,62 @@ Moved out of `MASTER_SCOPE.md` on 2026-08-14. These were fully resolved, so
 only a short standing summary was kept in the live document; the detail below
 is the original record, preserved rather than condensed away.
 
+## Closed live-defect entries, moved out of MASTER_SCOPE 2026-08-27
+
+**Last updated:** 2026-08-27. These were resolved and still occupying the
+"believed true right now" list. Moved verbatim; MASTER_SCOPE keeps a numbered
+stub for each because other docs cite them by number.
+
+1. **RESOLVED 2026-08-19 — shade-thread collapse.** Numbered, not deleted: ten
+   other docs cite these by number. *(`_shade_blocks`)*
+
+7. **RESOLVED 2026-08-21 — satin silently dropped a bracket's tab** on
+   `enthusiast_logo.png` (7.8 mm² bare, D/52 → C/64). *(`_prune_spurs`)*
+
+8. **RESOLVED 2026-08-22 — build-font dropped SVG transforms on most fonts.**
+   `mimosa_large` "D": 6,193 stitches into 40.0 x **0.0 mm**. Four fonts, one
+   fix. *(`tools/build-font.mjs`, `test/font-transforms.test.js`)*
+
+9. **RESOLVED 2026-08-24 — the photo route escaped its own palette; both
+   halves closed.** Region half (#217): `revalidate_threads` masked to the
+   palette, flat+gradient byte-identical. Shade half: `shade_palette_bind`,
+   **default ON** per Kent's 32-job-sheet ruling — every design's cones now
+   equal its palette. Pinned edge: a one-spool design flattens tone.
+   *(PR #217 + 08-24 flip)*
+
+10. **RESOLVED 2026-08-23 — three photo-route robustness defects, every one
+    found by the first real photos, none reachable by a committed fixture:** a
+    7.4 MP OOM (#214), an infinite loop in `select_palette` (#218), preflight
+    condemning correct thread-paint as too loose (#216).
+
+11. **RESOLVED 2026-08-24 — the memory ceiling was per-region full-frame
+    masks**, now cropped to bboxes: an 8x drop, same region counts, and
+    MB/MP falls with size where it used to climb. Correction: the 12.4 GB
+    OOM was contention with another script, not one job. *(PR #230)*
+
+12. **RESOLVED 2026-08-24 — preflight graded every photo job F.** A capped
+    cone list guarantees per-thread distance, so `THREAD_MATCH_POOR` fired on
+    every job; it now scores EXCESS over the best already-loaded spool on the
+    photo route (raw elsewhere, byte-identical). *(PR #229)*
+
+13. **RESOLVED 2026-08-24 — the detail layer sewed the background a subject
+    cutout had just removed.** FDoG reads the whole raster, so the removal
+    never reached it; `SourcePixels.subject_mask` now confines the line map.
+    Invisible until then because **no acceptance arm had EVER set that flag**
+    — the same blind spot the section below exists to close.
+    *(measured 2026-08-24 — [area 1](docs/scope/1-auto-digitizing-quality.md))*
+
+14. **ANSWERED 2026-08-25 — the photo route leaves half the cloth bare inside
+    each shape, and that is the THREAD-PAINT TIER, not a density bug.**
+    Streamline covers 0.55–0.59 of its footprint against the filled tier's
+    0.99. Kent ruled filled for high-contrast subjects; see the standing
+    ruling for the face exception. *(measured 2026-08-24/25 — PR #234;
+    [area 1](docs/scope/1-auto-digitizing-quality.md))*
+
+---
+
+---
+
 ## Font license compliance gap — RESOLVED 2026-08-04 by removal
 
 `docs/font-license-audit-2026-07-31.md` action checklist: **items 1–3 done**
