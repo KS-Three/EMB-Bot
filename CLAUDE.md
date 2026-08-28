@@ -55,6 +55,27 @@ that needs a sew-out, scope, spending money. Routine judgement calls inside work
 he already approved are still yours to make; asking about those is its own kind
 of stall.
 
+## Open PRs ready for review, not as drafts
+
+**Kent's call 2026-08-28.** Open a PR ready-for-review whenever you have
+verified the work yourself — tests run, diff re-read adversarially. Keep `draft`
+only when you genuinely want his eyes before CI spends fifteen minutes on it.
+
+Two reasons this is not cosmetic:
+
+- **Auto-merge cannot be armed on a draft.** It fails with *"Pull request is a
+  draft"*, so every draft puts the ~15-minute `digitizer` wait on Kent instead
+  of on the machine. He un-drafted all four PRs on 2026-08-27/28 himself before
+  merging.
+- **Auto-merge has a THIRD refusal you will hit if you wait too long** —
+  *"already in clean status … you can merge directly"*. Arm it while
+  `mergeable_state` is `blocked` (required checks pending). Once every check is
+  green there is nothing left to arm, and the PR simply sits waiting for a human
+  click. Hit on PR #289, 2026-08-28.
+
+**Merging is still Kent's.** Ready-for-review and auto-merge are yours to set;
+clicking merge is not.
+
 ## This repo is PUBLIC
 
 `gh repo view KS-Three/EMB-Bot` → `visibility: PUBLIC`, confirmed 2026-08-16;
