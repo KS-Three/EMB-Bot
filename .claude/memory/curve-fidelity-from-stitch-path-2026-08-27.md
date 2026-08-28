@@ -86,20 +86,32 @@ instruments off ONE `digitize()` per design, 12 fixtures).** Two results:
   caution: `becker`'s 50 -> 77 trace move is not a minor confound on gini, it is
   the dominant term.
 
-**First REAL-artwork run, 2026-08-28** — the four Becker placements in
-`testdata/reference/` (same mark, different physical sizes, so `turn_gini` is
-legitimately readable there). All four route `gradient`. **The SMALL placements
-measure rougher: 12.3 / 12.3 against 9.8 / 10.5 at hat-polo size** — fewer
-stitches span the same curve, and it matches Kent calling the Becker edges
-jagged. They also exclude far more vertices as corners (44% / 38% vs 31%), and
-the obvious reading of that — polygonisation crossing `CORNER_DEG`, so the
-instrument is blindest where the fault is worst — was **TESTED AND REFUTED the
-same hour**: 73-80% of excluded turns exceed 120° with a median near 140°, at
-BOTH sizes, so they are genuine reversals and the threshold works as designed.
-Small placements really are rougher; the corner threshold is not why. Recorded
-because the refuted version is the more natural thing to believe.
+**First REAL-artwork run, 2026-08-28, and the wrong conclusion drawn from it.**
+Ran the four Becker artworks in `testdata/reference/`. Reported that SMALL
+placements sew rougher (12.3 vs 9.8-10.5) and built a size story on it.
+**That is withdrawn — it is not a size effect.** All four ran at the default
+`target_width_mm = 80`; "small"/"large" in those filenames is the PRO's garment
+placement, not the digitized size, and the four are different source files, so
+neither was the design held fixed nor did scale vary. What actually separates
+them is trace count: the two rough ones carry **10-11 traces against 46-52** at
+identical target size — the complexity axis, arriving again. A corner-threshold
+sub-claim built on top of it was refuted on its own terms the same hour, and was
+answering a question the data could not pose anyway.
 
-Mechanical notes: a satin run is an alternating zigzag, so its raw point
+**The 0.5 px epsilon floor is DEAD as an explanation of rough curves at shipped
+settings — by arithmetic, not argument.** `eps_px = max(0.5, simplify_tol_mm *
+px_per_mm)`, so the floor binds only below `0.5/tol` = **2.5 px/mm**, and stage
+1's `min_px_per_mm = 4.0` upscale keeps shipped configs clear of it. On the
+Becker set (807-826 px at 80 mm) `px_per_mm` is 10.09-10.32 and `eps_px` = 2.04,
+four times clear. The 2026-08-17 ladder saw the floor bite only because its 0.10
+and 0.05 ARMS drove `eps_px` to 0.4 and 0.2. Do not re-chase it.
+
+**And physical size, tested properly (one artwork, only `target_width_mm`
+varying), does not move roughness monotonically** — 10.39 at 40 mm, 11.01 at 60,
+10.46 at 80. Size and complexity are themselves confounded, because more shapes
+survive at larger sizes (23 -> 29 -> 52 traces over that sweep).
+
+Mechanical notes: a satin run is an alternating zigzagMechanical notes: a satin run is an alternating zigzag, so its raw point
 sequence turns ~180 deg per vertex and reads as noise — `points[0::2]` /
 `[1::2]` are the two rails, each tracing an artwork edge (verified on
 `logo_whitebg`: raw chords 2.66-2.69 mm, rails a clean 0.406 mm). Only the
