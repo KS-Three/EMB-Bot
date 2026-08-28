@@ -36,9 +36,6 @@ or move it.
 
 ## Live defects — believed true right now
 
-1. **RESOLVED 2026-08-19 — shade-thread collapse.** Numbered, not deleted: ten
-   other docs cite these by number. *(`_shade_blocks`)*
-
 2. **No width floor under satin — PHOTO-LANE HALF CLOSED 2026-08-22; still
    DISPROVED for flat art.** Corpus regions that sew sub-mm satin are all
    photo-family, but 61 of 64 sub-1.0 mm satins on real customer logos are
@@ -78,48 +75,20 @@ or move it.
    UNREPRESENTATIVE of client logos**, which carry 1–3 fill shapes that
    essentially never cut. *(measured 2026-08-21/22 — area 1)*
 
-7. **RESOLVED 2026-08-21 — satin silently dropped a bracket's tab** on
-   `enthusiast_logo.png` (7.8 mm² bare, D/52 → C/64). *(`_prune_spurs`)*
+### Closed — kept numbered, because ten other docs cite them by number
 
-8. **RESOLVED 2026-08-22 — build-font dropped SVG transforms on most fonts.**
-   `mimosa_large` "D": 6,193 stitches into 40.0 x **0.0 mm**. Four fonts, one
-   fix. *(`tools/build-font.mjs`, `test/font-transforms.test.js`)*
+Full text moved to [`docs/scope-history.md`](docs/scope-history.md) 2026-08-27;
+these are pointers, not status.
 
-9. **RESOLVED 2026-08-24 — the photo route escaped its own palette; both
-   halves closed.** Region half (#217): `revalidate_threads` masked to the
-   palette, flat+gradient byte-identical. Shade half: `shade_palette_bind`,
-   **default ON** per Kent's 32-job-sheet ruling — every design's cones now
-   equal its palette. Pinned edge: a one-spool design flattens tone.
-   *(PR #217 + 08-24 flip)*
-
-10. **RESOLVED 2026-08-23 — three photo-route robustness defects, every one
-    found by the first real photos, none reachable by a committed fixture:** a
-    7.4 MP OOM (#214), an infinite loop in `select_palette` (#218), preflight
-    condemning correct thread-paint as too loose (#216).
-
-11. **RESOLVED 2026-08-24 — the memory ceiling was per-region full-frame
-    masks**, now cropped to bboxes: an 8x drop, same region counts, and
-    MB/MP falls with size where it used to climb. Correction: the 12.4 GB
-    OOM was contention with another script, not one job. *(PR #230)*
-
-12. **RESOLVED 2026-08-24 — preflight graded every photo job F.** A capped
-    cone list guarantees per-thread distance, so `THREAD_MATCH_POOR` fired on
-    every job; it now scores EXCESS over the best already-loaded spool on the
-    photo route (raw elsewhere, byte-identical). *(PR #229)*
-
-13. **RESOLVED 2026-08-24 — the detail layer sewed the background a subject
-    cutout had just removed.** FDoG reads the whole raster, so the removal
-    never reached it; `SourcePixels.subject_mask` now confines the line map.
-    Invisible until then because **no acceptance arm had EVER set that flag**
-    — the same blind spot the section below exists to close.
-    *(measured 2026-08-24 — [area 1](docs/scope/1-auto-digitizing-quality.md))*
-
-14. **ANSWERED 2026-08-25 — the photo route leaves half the cloth bare inside
-    each shape, and that is the THREAD-PAINT TIER, not a density bug.**
-    Streamline covers 0.55–0.59 of its footprint against the filled tier's
-    0.99. Kent ruled filled for high-contrast subjects; see the standing
-    ruling for the face exception. *(measured 2026-08-24/25 — PR #234;
-    [area 1](docs/scope/1-auto-digitizing-quality.md))*
+1. shade-thread collapse (`_shade_blocks`) — RESOLVED 2026-08-19.
+7. satin dropped a bracket's tab on `enthusiast_logo` (`_prune_spurs`) — RESOLVED 2026-08-21.
+8. build-font dropped SVG transforms on four fonts — RESOLVED 2026-08-22.
+9. the photo route escaped its own palette, both halves — RESOLVED 2026-08-24 (PR #217 + the 08-24 `shade_palette_bind` flip, default ON per Kent's 32-job-sheet ruling).
+10. three photo-route robustness defects the first real photos found — RESOLVED 2026-08-23 (#214 OOM, #218 `select_palette` loop, #216 preflight).
+11. the memory ceiling was per-region full-frame masks — RESOLVED 2026-08-24 (PR #230).
+12. preflight graded every photo job F — RESOLVED 2026-08-24 (PR #229).
+13. the detail layer sewed the background a cutout had just removed — RESOLVED 2026-08-24. **Its lesson stands: no acceptance arm had EVER set that flag**, which is the blind spot the evaluation-harness section exists to close.
+14. half the cloth bare inside each shape is the THREAD-PAINT TIER, not a density bug — ANSWERED 2026-08-25 (streamline covers 0.55-0.59 of its footprint vs the filled tier's 0.99; Kent's filled-for-high-contrast ruling, and the face exception, are in Standing rulings).
 
 ---
 
@@ -718,20 +687,24 @@ be able to agree with a partly craft-driven ranking at all.
 shapes the design already sews. `tools/dropped_elements.py` measures it from the
 artwork's side — 99.1% lost on the logo Kent called "5% completed at most".
 **Both halves of the smoothness complaint now have instruments, and they are not
-the same measurement.** `tools/edge_smoothness.py` owns the edge noise; the curve
-half — *"Lines/circles are not smooth like the photo"* — is
-`tools/curve_fidelity.py`, read from `plan.iter_runs()` because it is **not
-readable from a raster** (a rasterised circle scores more angular than a 40-gon;
-the raster boundary is itself a staircase). Rebuilt on path geometry it is
-monotonic across the n-gon ladder at 0.5/1.0/2.0 mm sampling, and **dead at
-3.0 mm** — a physical floor, not a bug: the needle is then as coarse as the
-polygon, so never compare arms across stitch lengths. **Read `roughness_deg` per
-design. `turn_gini` is substantially a COMPLEXITY statistic** (Pearson −0.763 vs
-log trace count; two 2-trace designs pin the top at 0.95) and belongs only on the
-ladder or inside a paired arm holding one design fixed. The two instruments are
-not redundant — `roughness_deg` vs `ragged_mm` is Spearman 0.028, which on n = 12
-rules out redundancy without proving independence. Instrument only, no engine
-change. *(measured 2026-08-27 — PR #281;
+the same measurement** (Spearman 0.028 between them, n = 12 — rules out
+redundancy, does not prove independence). `tools/edge_smoothness.py` owns the
+edge noise; the curve half is `tools/curve_fidelity.py`, read from
+`plan.iter_runs()` because **curve fidelity is not readable from a raster** — a
+rasterised circle scores more angular than a 40-gon, the boundary being itself a
+staircase. Three rules for reading it: **`roughness_deg` is the per-design
+number**; **`turn_gini` is substantially a COMPLEXITY statistic** (Pearson −0.763
+vs log trace count) and is valid only on the synthetic ladder or inside a paired
+arm holding one design fixed; and its floor is **stitch length** — dead at 3.0 mm
+sampling, so never compare arms across stitch lengths. On Kent's four real Becker
+placements the SMALL ones measure roughest (12.3/12.3 against 9.8/10.5 at hat-polo
+size). They also exclude more vertices as corners (44%/38% against 31%), and the
+tempting reading — that polygonisation is creeping over the 60° threshold, so the
+instrument under-reports where the fault is worst — was **tested and refuted**:
+the excluded turns are >120° for 73–80% of cases at BOTH sizes, median ~140°, so
+they are genuine reversals and the threshold is behaving as designed. Small
+placements really are rougher; the corner threshold is not why. Instrument only,
+no engine change. *(measured 2026-08-27/28 — PR #281;
 `docs/curve-fidelity-from-the-stitch-path-2026-08-27.md`)*
 **Two engine defects open, unfixed:** `summit_badge`'s half-removed background,
 and `stage1_prep.py:254-266` answering a structural question (`BACKGROUND_ABSENT`)

@@ -216,5 +216,24 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
    - **The digitizer suite's expected reds.** A full local run fails exactly
      three golden tests (`test_pushcomp`, `test_flat_lane_byte_identical`,
      `test_stage2_photo_segment` — platform-level numerics). CI deselects those
-     same three by node ID, so local `3 failed, 1414 passed` and a green CI job
-     agree. A FOURTH failure is a real regression. *(measured 2026-08-26)*
+     same three by node ID, so a local run and a green CI job agree. A FOURTH
+     failure is a real regression. **Trust the three NAMED tests, not the
+     total** — the count moves as tests land: 1414 passed on 2026-08-26, 1491
+     on 2026-08-27. Collection is its own tripwire: 1509 collected that day,
+     and anything near 1309 means `tests/test_service.py` failed to collect
+     (the `httpx2` hole above). *(measured 2026-08-27)*
+
+8. **`git log --all -- <path>` will tell you a file NEVER existed when your
+   remote refs are stale — and the wrong answer looks thorough.** A cloud
+   session starts from a fresh clone, but `origin/*` only knows what that clone
+   fetched; anything pushed to another lane afterwards is invisible. `git log
+   --all`, a `git ls-tree` sweep over `git rev-list --all`, and a filesystem
+   `find` will then all agree, confidently, that the file is absent and never
+   existed — three independent checks corroborating one stale snapshot.
+   **Run `git fetch --all` BEFORE concluding that prior work does not exist.**
+   Hit 2026-08-27: a session was asked to continue work whose reasoning and
+   rejected-approach table lived in an unmerged
+   `digitizer/tools/edge_smoothness.py`, ran all three checks, and reported the
+   file had never been committed on any branch. One `git fetch --all` produced
+   it — on a sibling lane, intact. The cost of being wrong here is rebuilding
+   from scratch exactly what someone wrote down so it would not have to be.

@@ -86,6 +86,19 @@ instruments off ONE `digitize()` per design, 12 fixtures).** Two results:
   caution: `becker`'s 50 -> 77 trace move is not a minor confound on gini, it is
   the dominant term.
 
+**First REAL-artwork run, 2026-08-28** — the four Becker placements in
+`testdata/reference/` (same mark, different physical sizes, so `turn_gini` is
+legitimately readable there). All four route `gradient`. **The SMALL placements
+measure rougher: 12.3 / 12.3 against 9.8 / 10.5 at hat-polo size** — fewer
+stitches span the same curve, and it matches Kent calling the Becker edges
+jagged. They also exclude far more vertices as corners (44% / 38% vs 31%), and
+the obvious reading of that — polygonisation crossing `CORNER_DEG`, so the
+instrument is blindest where the fault is worst — was **TESTED AND REFUTED the
+same hour**: 73-80% of excluded turns exceed 120° with a median near 140°, at
+BOTH sizes, so they are genuine reversals and the threshold works as designed.
+Small placements really are rougher; the corner threshold is not why. Recorded
+because the refuted version is the more natural thing to believe.
+
 Mechanical notes: a satin run is an alternating zigzag, so its raw point
 sequence turns ~180 deg per vertex and reads as noise — `points[0::2]` /
 `[1::2]` are the two rails, each tracing an artwork edge (verified on

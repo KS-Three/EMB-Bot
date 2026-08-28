@@ -228,3 +228,53 @@ minor confound on the gini column, it is the dominant term.
 
 Instrument only — no engine behaviour changed. Runs on the flat lane against
 real stitch paths; `--all` covers the fourteen `artfidelity_self` fixtures.
+
+## First run on REAL client artwork (2026-08-28)
+
+Everything above is the fourteen built-in fixtures. `digitizer/testdata/reference/`
+carries four of Kent's actual Becker logos — the same mark at different
+placements and physical sizes, which is the one case where `turn_gini` is
+legitimately readable, because the design is held fixed and only scale changes.
+
+| placement | route | gini | rough | curve v | corner v | corners as % |
+|---|---|---|---|---|---|---|
+| chest **small** | gradient | 0.536 | **12.31** | 116 | 120 | 50.8% |
+| hat **small** | gradient | 0.491 | **12.25** | 151 | 111 | 42.4% |
+| hat polo **large** (logolc) | gradient | 0.533 | 9.75 | 1081 | 397 | 26.9% |
+| hat polo **large** (logo_hat) | gradient | 0.521 | 10.46 | 1338 | 632 | 32.1% |
+
+All four route `gradient`, corroborating the standing corpus finding that real
+logo art carries JPEG ringing and anti-aliased edges the synthetics lack.
+
+**The small placements measure rougher — 12.3 against 9.8–10.5.** That is
+physically sensible: fewer stitches span the same curve, so the polygonisation
+shows. It is also consistent with Kent calling the Becker edges jagged.
+
+### An inference that looked obvious, and was refuted the same hour
+
+The small placements also exclude far more vertices as corners (44% and 38% of
+all turns, against 31% at hat-polo size). The tempting reading is that at small
+scale the polygonisation turns grow past `CORNER_DEG` and get thrown out — so the
+instrument would be blindest exactly where the fault is worst, and small-placement
+numbers would be floors.
+
+**Tested by looking at where the excluded turns actually sit, and it does not
+hold:**
+
+| placement | excluded | 60–75° | 75–90° | 90–120° | >120° | median |
+|---|---|---|---|---|---|---|
+| chest small | 44.0% | 7.5% | 5.0% | 7.5% | **80.0%** | 143.9° |
+| hat small | 37.6% | 10.8% | 6.3% | 9.0% | **73.9%** | 143.3° |
+| hat large | 31.0% | 6.3% | 7.1% | 13.4% | **73.1%** | 137.5° |
+
+If polygonisation were crossing the threshold, the excluded turns would pile up
+just above 60°. They do not — 73–80% of them exceed 120°, with a median near 140°,
+at **both** sizes. Those are genuine reversals, and the distribution barely moves
+with scale. The corner threshold is behaving as designed; the small placements
+simply carry a higher share of sharp features relative to smooth curve.
+
+**So: small placements really are rougher, and the corner threshold is not why.**
+Recorded because the refuted version is the more natural thing to believe, and it
+would have hardened into a stated defect on the next copy-forward — the failure
+mode `MASTER_SCOPE`'s own Corrections section exists to keep visible.
+
