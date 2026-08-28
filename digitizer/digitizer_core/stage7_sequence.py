@@ -620,8 +620,31 @@ def _merge_adjacent_same_thread(blocks: list[StitchBlock],
     return out
 
 
-def _block_thread_geom(block: StitchBlock, margin_mm: float):
-    """Where this block's thread actually lands, buffered by `margin_mm`.
+def _within_margin(a, b, margin_mm: float) -> bool:
+    """Is `a` within `margin_mm` of `b`? Bounding boxes first.
+
+    `distance`, not `buffer(m).intersects`. Buffering a block's thread is
+    correct and unusably slow: it inflates thousands of short segments into
+    one polygon with an enormous vertex count, and measured on
+    `repro_gradient_white_icon.png` it took the whole digitize from 11.0s to
+    64.0s -- past `tests/test_service.py`'s 60s job poll, which is how this
+    was caught. `distance` answers the same question without building the
+    polygon.
+
+    The bbox reject in front of it is the cheap half: two blocks whose
+    envelopes are further apart than the margin cannot be within it, and on
+    real artwork most pairs fail that way.
+    """
+    ax0, ay0, ax1, ay1 = a.bounds
+    bx0, by0, bx1, by1 = b.bounds
+    if (bx0 - ax1 > margin_mm or ax0 - bx1 > margin_mm
+            or by0 - ay1 > margin_mm or ay0 - by1 > margin_mm):
+        return False
+    return a.distance(b) <= margin_mm
+
+
+def _block_thread_geom(block: StitchBlock):
+    """Where this block's thread actually lands, as sewn geometry.
 
     Built from the sewn runs rather than from the regions' artwork polygons,
     for the same reason the 2026-08-18 chaining instrument was rebuilt that
@@ -643,15 +666,15 @@ def _block_thread_geom(block: StitchBlock, margin_mm: float):
             parts.append(Point(r.points[0]))
     if not parts:
         return None
-    geom = unary_union(parts)
-    # `LineString.buffer(0)` is EMPTY, not the line — a line has no area. Left
-    # unguarded that makes every block empty at margin 0, `intersects` False
-    # for every pair, and the whole safety gate vacuous: it would wave through
-    # every reorder while looking like it was checking something. The call
-    # site treats 0 as "pass disabled", so this never shipped, but a check
-    # that silently answers "safe" to everything is the exact shape of the
-    # chaining defect a green suite already concealed here once.
-    return geom.buffer(margin_mm) if margin_mm > 0 else geom
+    # Deliberately NOT buffered: the margin is applied by `_within_margin` as
+    # a distance instead. An earlier cut buffered here and was ~6x slower (see
+    # that function), and buffering also had a trap of its own worth recording
+    # -- `LineString.buffer(0)` is EMPTY, not the line, because a line has no
+    # area, so a zero margin made every block empty, every intersection test
+    # False, and the whole safety gate vacuous while it still looked like it
+    # was checking something. Distance has no such degenerate case: 0 means
+    # "must not touch at all", which is the honest reading.
+    return unary_union(parts)
 
 
 def _hoist_same_thread(blocks: list[StitchBlock], trim_at: float,
@@ -688,7 +711,7 @@ def _hoist_same_thread(blocks: list[StitchBlock], trim_at: float,
     """
     if len(blocks) < 3:
         return blocks
-    geoms = [_block_thread_geom(b, margin_mm) for b in blocks]
+    geoms = [_block_thread_geom(b) for b in blocks]
     order = list(range(len(blocks)))
 
     moved = True
@@ -706,7 +729,8 @@ def _hoist_same_thread(blocks: list[StitchBlock], trim_at: float,
                 continue        # no revisit, or already adjacent
             mover = geoms[j]
             crossed = [geoms[order[k]] for k in range(target + 1, pos)]
-            if mover is None or any(g is None or mover.intersects(g)
+            if mover is None or any(g is None
+                                    or _within_margin(mover, g, margin_mm)
                                     for g in crossed):
                 continue        # a real coverage relationship; leave it alone
             order.insert(target + 1, order.pop(pos))

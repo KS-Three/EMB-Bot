@@ -137,6 +137,8 @@ def test_ties_are_applied_exactly_once_across_the_merge():
 # test below is really asking the same question: does the geometry gate let
 # through exactly the reorders that cannot move a seam, and refuse the rest?
 
+from shapely.geometry import LineString
+
 from digitizer_core.stage7_sequence import (_block_thread_geom,
                                             _hoist_same_thread)
 
@@ -196,7 +198,7 @@ def test_an_empty_block_is_never_treated_as_clear_space():
     """A block with no sewable geometry returns None, and None must read as
     'cannot prove this is safe', not as 'nothing in the way'."""
     empty = _block(9, [])
-    assert _block_thread_geom(empty, 0.5) is None
+    assert _block_thread_geom(empty) is None
     out = _hoist_same_thread([_at(7, 0, 1), empty, _at(7, 4, 5)],
                              trim_at=3.0, margin_mm=0.5)
     assert [b.thread_index for b in out] == [7, 9, 7]
@@ -207,7 +209,7 @@ def test_a_one_point_run_still_has_geometry():
     one-point links. A degenerate run is a real needle position and must not
     silently become clear space."""
     b = _block(7, [StitchRun(points=[(1.0, 1.0)], shape_id="s")])
-    g = _block_thread_geom(b, 0.5)
+    g = _block_thread_geom(b)
     assert g is not None and not g.is_empty
 
 
@@ -239,3 +241,37 @@ def test_flat_artwork_is_untouched_by_the_hoist_too():
     shape = lambda p: [(b.thread_index, [tuple(r.points) for r in b.runs])
                        for b in p.blocks]
     assert shape(off) == shape(on)
+
+
+def test_block_geometry_is_not_buffered():
+    """Regression guard, 2026-08-28. The first cut buffered each block's thread
+    by the margin and tested `intersects`. That is correct and unusably slow:
+    it inflates thousands of short segments into one polygon with an enormous
+    vertex count, and on repro_gradient_white_icon.png it took the digitize
+    from 11.0s to 64.0s -- past tests/test_service.py's 60s job poll, which is
+    the only reason it surfaced at all, and in an unrelated test.
+
+    The margin is applied as a DISTANCE instead. Asserting the geometry's type
+    pins that decision deterministically, where a timing assertion would be
+    flaky on a loaded container.
+    """
+    b = _block(7, [_run(0.0, 1.0), _run(5.0, 6.0)])
+    g = _block_thread_geom(b)
+    assert g.geom_type in ("LineString", "MultiLineString"), (
+        f"block geometry is {g.geom_type} — buffering is back, and with it a "
+        "~6x digitize slowdown that only an unrelated test's timeout catches")
+    assert g.area == 0.0, "a buffered geometry would have area"
+
+
+def test_within_margin_matches_a_plain_distance_test():
+    """The bbox reject in front of `distance` is an optimisation, so it must
+    never change the answer — including for the diagonal case a naive
+    axis-only reject gets wrong."""
+    from digitizer_core.stage7_sequence import _within_margin
+    a = LineString([(0.0, 0.0), (1.0, 0.0)])
+    for bx, by, margin in [(1.2, 0.0, 0.5), (1.2, 0.0, 0.1),
+                           (5.0, 5.0, 0.5), (1.1, 1.1, 2.0),
+                           (0.5, 0.0, 0.0), (1.05, 1.05, 0.05)]:
+        b = LineString([(bx, by), (bx + 1.0, by)])
+        assert _within_margin(a, b, margin) == (a.distance(b) <= margin), (
+            f"bbox reject changed the answer at ({bx}, {by}) margin {margin}")
