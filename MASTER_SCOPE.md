@@ -759,10 +759,22 @@ population it was not calibrated on — the reusable lesson:
   sets `fill_angle_deg` too.
 *(fixed 2026-08-27 — PRs #282/#283, mutation-checked; renders in the #283 body)*
 
-**Still open, all three measured 2026-08-26 and unfixed:** pull comp's
-min-feature guard is scoped to `poly.interiors` (verified still true
-2026-08-27 at `stage5_overlap.py:424` — the E's arm slots close to 0.336 mm
-while O's counters are protected); `_prune_spurs` drops a 3-way node to 2-way
+**Mechanism 2 — pull comp's min-feature guard scoped to `poly.interiors` —
+is PROTOTYPED AND COSTED, deliberately not shipped.** The fix is small and
+correct (an exterior-pocket branch asking the identical question the hole loop
+asks, patch in `docs/prototypes/`), and on
+`logo_drone_thermal_badge.png` it holds 15 real slots at 0.528–0.920 mm while
+skipping 82 slivers of median width 0.140 mm. **It reds the chaining trim
+benchmark**: `enthusiast_logo.png` @82mm goes 3.8 → 6.4 trims/1k against a 4.1
+ceiling, because restoring a notch breaks the gap chaining was bridging.
+Shipped default (`chain_links=False`) the cost is +2 trims, 22 → 24.
+**Kent's call 2026-08-28: hold it.** It trades a MEASURED trim regression
+against an UNMEASURED fidelity gain — the instrument that would price the
+other side is mechanism 4 below. Full numbers and both directions:
+`docs/exterior-notch-guard-2026-08-28.md`.
+*(prototyped 2026-08-28, not merged)*
+
+**Still open and unfixed:** `_prune_spurs` drops a 3-way node to 2-way
 so the walker welds the N's diagonal to its stem through a 108° fold — **the
 same function PR #186 fixed, a different consequence one layer on**; and **the
 instrument that hid all of it**, bare-fabric coverage scoring the visibly

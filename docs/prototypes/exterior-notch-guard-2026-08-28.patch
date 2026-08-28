@@ -1,0 +1,268 @@
+commit cba9903d39a86dee4bf1f84ff49dbc14b21b33ba
+Author: Claude <noreply@anthropic.com>
+Date:   Fri Aug 28 00:07:51 2026 +0000
+
+    fix(comp): hold an exterior notch open, the way a counter already is
+    
+    Pull comp grows every shape by one pull per side, and stage 5 has always held
+    an INTERIOR ring open when that would shrink it below the sewable floor. The
+    same arithmetic closes exterior notches -- an E's arm slots, an N's crotch --
+    and nothing asked the question there, because `poly.interiors` is empty for a
+    shape whose concavities are notches rather than rings. An O's counters were
+    protected; an E's slots were not.
+    
+    Measured on a block E at 0.3 mm pull: a 0.8 mm slot keeps 0.2 mm. On
+    logo_drone_thermal_badge.png the guard now holds 15 pockets spanning
+    0.528-0.920 mm, which covers the slots this was reported against (THERMAL's E
+    at 0.936 mm, DRONE's at 0.728 mm); the 82 it skips have a median width of
+    0.140 mm and are vectorization slivers.
+    
+    Pockets come from the convex hull of the shape with its holes FILLED. Against
+    the raw polygon a hole is absent from the shape and present in its hull, so an
+    O's counter returns as a "pocket" and is held twice -- idempotent
+    geometrically, but it doubles what the HOLE_NEARLY_CLOSED warning reports.
+    Convex hull rather than bounding box because this file already records a defect
+    where compensation rode on bounding boxes and "the same artwork sewed
+    differently rotated 45 degrees"; a test pins that invariance.
+    
+    Safe by construction, and stated in the docstring because the caller takes
+    `_largest_polygon` afterwards: a pocket is disjoint from the shape, so
+    `grown - pocket` still contains all of the original. Holding one can restore an
+    outline but can never cut into artwork or split a shape further than it already
+    was. An interior hole cannot split a polygon at all; an exterior notch could.
+    
+    The area floor is kept rather than swapped for a width test, and the boundary
+    it produces is documented with the measurement (0.53 mm held at 2.59 mm2,
+    0.61 mm skipped at 2.16 mm2) instead of tuned away. Area conflates a slot's
+    width with its length; a width criterion would buy a narrow band around 0.6 mm
+    at the cost of a new constant, and thresholds calibrated on the wrong
+    population are exactly what this defect was.
+    
+    Five mutations applied and reverted, all killed. A sixth is noted in the
+    docstring as unreachable rather than left looking untested: a degenerate
+    LineString already fails the caller's area test.
+    
+    Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+    Claude-Session: https://claude.ai/code/session_0169GUJAVhmvoBAywFGpAbUe
+
+diff --git a/digitizer/digitizer_core/stage5_overlap.py b/digitizer/digitizer_core/stage5_overlap.py
+index ad1cf52..a638ae8 100644
+--- a/digitizer/digitizer_core/stage5_overlap.py
++++ b/digitizer/digitizer_core/stage5_overlap.py
+@@ -229,6 +229,37 @@ def _grow(poly, pull: float, axis_deg: float | None):
+     return _axial_offset(poly, pull, axis_deg, 1.0)
+ 
+ 
++def _exterior_pockets(poly: Polygon) -> list[Polygon]:
++    """The shape's concave pockets — the exterior counterpart of `interiors`.
++
++    Every place the outline turns inward: an E's arm slots, an N's crotch, a
++    C's mouth.
++
++    Differenced against the shape with its holes FILLED, not against the shape
++    itself. `convex_hull - poly` looks right and is not: a hole is absent from
++    `poly` and present in its hull, so an O's counter comes back as a "pocket"
++    and gets held twice — once by the interior loop and once here. Geometrically
++    that is idempotent, but it doubles the count the HOLE_NEARLY_CLOSED warning
++    reports. Filling first leaves the two lists a genuine partition of the
++    negative space the grow can close.
++
++    SAFE BY CONSTRUCTION, and worth stating because the caller subtracts these
++    from a grown shape and then takes `_largest_polygon`. A pocket is disjoint
++    from `poly` by definition, so `grown - pocket` still contains all of
++    `poly`: holding a pocket open can restore the original outline but can
++    never cut into original artwork, and can never split the shape into more
++    pieces than it already had. An interior hole cannot split a polygon at all;
++    an exterior notch could, which is why this needs saying rather than
++    assuming.
++    """
++    filled = Polygon(poly.exterior)
++    pockets = filled.convex_hull.difference(filled)
++    if pockets.is_empty:
++        return []
++    geoms = getattr(pockets, "geoms", [pockets])
++    return [g for g in geoms if g.geom_type == "Polygon" and not g.is_empty]
++
++
+ def _shrink(poly, pull: float, axis_deg: float | None):
+     """The matching erosion, for asking whether a hole survives compensation."""
+     if pull <= 0:
+@@ -427,6 +458,35 @@ def resolve_overlaps(
+                     continue           # already below the floor; stage 3's call
+                 if _shrink(hole, pull, axis).area < hole_floor:
+                     held.append(hole)
++            # The same question asked on the OUTSIDE, which the loop above
++            # cannot reach. An E's arm slots and an N's crotch are notches in
++            # the EXTERIOR boundary, not interior rings, so `poly.interiors` is
++            # empty for them — and they close under exactly the same
++            # arithmetic, one pull per side. Measured on a block E with 0.8 mm
++            # slots at 0.3 mm pull: 0.800 mm of slot becomes 0.200 mm, while an
++            # O's counters next to it are protected. That asymmetry is the
++            # defect; the fix is to ask both sides the same question.
++            for pocket in _exterior_pockets(poly):
++                # Same AREA floor the hole loop uses, deliberately, so the two
++                # sides ask one question rather than two. It is not a perfect
++                # measure for a notch: area conflates a slot's width with its
++                # length, so a SHORT wide slot can fall under a floor a LONG
++                # narrow one clears. Measured on `logo_drone_thermal_badge.png`
++                # (2026-08-27) that boundary sits between 0.53 mm held at
++                # 2.59 mm2 and 0.61 mm skipped at 2.16 mm2.
++                #
++                # Left as the area floor anyway. The 15 pockets this holds span
++                # 0.528-0.920 mm, which covers the slots the defect was
++                # reported against (THERMAL's E at 0.936 mm, DRONE's at
++                # 0.728 mm), and the 82 it skips have a MEDIAN width of
++                # 0.140 mm -- vectorization slivers, not artwork. Swapping in a
++                # width criterion would buy a narrow band around 0.6 mm at the
++                # cost of a new tuned constant, and this file already carries
++                # the scars of thresholds calibrated on the wrong population.
++                if pocket.area < hole_floor:
++                    continue           # already below the floor, as above
++                if _shrink(pocket, pull, axis).area < hole_floor:
++                    held.append(pocket)
+             if held:
+                 holes_held += len(held)
+                 grown = _largest_polygon(grown.difference(unary_union(held)))
+diff --git a/digitizer/tests/test_pushcomp.py b/digitizer/tests/test_pushcomp.py
+index f25b367..6c270d4 100644
+--- a/digitizer/tests/test_pushcomp.py
++++ b/digitizer/tests/test_pushcomp.py
+@@ -19,7 +19,8 @@ import math
+ 
+ import pytest
+ from shapely import affinity
+-from shapely.geometry import Point, Polygon
++from shapely.geometry import Point, Polygon, box
++from shapely.ops import unary_union
+ 
+ from digitizer_core import PipelineConfig, get_fabric, machine, plan_stitches
+ from digitizer_core import stitches as ST
+@@ -466,3 +467,128 @@ def test_a_fabric_with_no_pull_comp_is_untouched_either_way():
+                       notes="")
+     planned, _ = resolve_overlaps([region(art)], zero, c)
+     assert planned[0].polygon.equals(art)
++
++
++# --- Exterior concavities: the same floor the counters already get -----------
++#
++# The interior branch has always held a hole open when pull comp would shrink
++# it below the sewable floor. Nothing asked the same question on the OUTSIDE,
++# so an E's arm slots and an N's crotch closed under exactly the arithmetic an
++# O's counters were protected from.
++
++
++def block_E(slot_mm: float = 0.8) -> Polygon:
++    """A block E: one stem, four arms, three slots of `slot_mm`. The slots are
++    notches in the EXTERIOR boundary — `poly.interiors` is empty for this
++    shape, which is precisely why the hole guard never saw them."""
++    parts = [box(0.0, 0.0, 2.0, 12.0)]
++    y = 0.0
++    while y + 2.6 <= 12.0:
++        parts.append(box(2.0, y, 8.0, y + 2.6))
++        y += 2.6 + slot_mm
++    return unary_union(parts)
++
++
++def slot_gap(shape: Polygon, y0: float, y1: float) -> float:
++    """Height of what is still open in the arm band y0..y1, in mm."""
++    remaining = box(2.0, y0, 8.0, y1).difference(shape)
++    if remaining.is_empty:
++        return 0.0
++    b = remaining.bounds
++    return b[3] - b[1]
++
++
++def test_an_E_keeps_its_arm_slots_through_pull_compensation():
++    """The defect, in the shape that names it. At 0.3 mm pull each side, a
++    0.8 mm slot has 0.6 mm taken out of it and 0.2 mm left — a slot the
++    machine cannot resolve, in artwork that clearly showed one."""
++    art = block_E(0.8)
++    assert not art.interiors, "fixture must have NO interior rings"
++    planned, _ = planned_for(art, directional=False)
++
++    for y0, y1 in ((2.6, 3.4), (6.0, 6.8)):
++        assert slot_gap(art, y0, y1) == pytest.approx(0.8, abs=0.01)
++        assert slot_gap(planned.polygon, y0, y1) == pytest.approx(0.8, abs=0.05), \
++            f"slot {y0}-{y1} closed under compensation"
++
++
++def test_holding_a_pocket_open_can_never_eat_original_artwork():
++    """The safety property the implementation leans on: a pocket is disjoint
++    from the shape, so subtracting it from the grown shell always leaves a
++    result that still contains every bit of the original. Without this,
++    `_largest_polygon` downstream could silently drop half a split shape."""
++    art = block_E(0.8)
++    planned, _ = planned_for(art, directional=False)
++    assert planned.polygon.contains(art.buffer(-1e-9))
++
++
++def test_a_slot_already_under_the_floor_is_left_alone():
++    """Matches the interior branch's own early `continue`: a feature that was
++    already below the sewable floor before compensation is stage 3's call, not
++    this guard's, and inventing protection for it here would resurrect detail
++    the pipeline deliberately dropped."""
++    tiny = block_E(0.05)
++    planned, _ = planned_for(tiny, directional=False)
++    assert slot_gap(planned.polygon, 2.6, 2.65) == 0.0
++
++
++def test_an_O_still_keeps_its_counter():
++    """Regression guard on the branch that already worked — the exterior pass
++    must not disturb interior rings, and `convex_hull - poly` must not
++    double-count a ring the hole loop already holds."""
++    ring = Point(0, 0).buffer(6.0).difference(Point(0, 0).buffer(5.2))
++    assert len(ring.interiors) == 1
++    planned, _ = planned_for(ring, directional=False)
++    assert len(planned.polygon.interiors) == 1, "the counter closed up"
++
++
++def test_a_slot_wide_enough_to_survive_is_still_compensated():
++    """The guard protects features that would CLOSE, not every concave edge.
++    A 3.0 mm slot losing 0.6 mm is compensation working as designed; holding
++    it open too would quietly suppress pull comp on every inward corner in the
++    design."""
++    art = block_E(3.0)
++    planned, _ = planned_for(art, directional=False)
++    gap = slot_gap(planned.polygon, 2.6, 5.6)
++    assert gap == pytest.approx(3.0 - 2 * PULL, abs=0.05), \
++        f"expected the slot to narrow to {3.0 - 2 * PULL}, got {gap}"
++
++
++def test_slot_protection_does_not_depend_on_the_coordinate_axes():
++    """This file already records a defect where compensation rode on STRtree
++    bounding boxes, "so the same artwork sewed differently rotated 45
++    degrees". The pocket envelope must not reintroduce that: an axis-aligned
++    bounding box would, a convex hull does not.
++
++    Asserted as an INVARIANCE between two rotations rather than against a
++    fixed area, because the claim is that the answer does not depend on the
++    axes — a hardcoded number would be a second thing to get wrong and would
++    not test the property."""
++    grew = []
++    for rot in (0.0, 45.0):
++        art = affinity.rotate(block_E(0.8), rot, origin="centroid")
++        planned, _ = planned_for(art, directional=False)
++        grew.append(planned.polygon.area - art.area)
++    assert grew[0] == pytest.approx(grew[1], rel=0.02), \
++        f"grew {grew[0]:.2f} mm2 upright but {grew[1]:.2f} mm2 at 45 deg"
++
++
++def test_a_counter_is_not_held_twice():
++    """`convex_hull - poly` would return an O's counter as an exterior pocket,
++    because a hole is absent from the shape and present in its hull. Held by
++    both loops it is geometrically idempotent but doubles what the
++    HOLE_NEARLY_CLOSED warning reports, and a count that overstates by 2x is
++    how a real 'openings were kept open' signal stops being trusted."""
++    # Inner radius 1.0 mm: the counter is 3.14 mm2, above the 2.25 mm2 floor,
++    # and 0.3 mm of pull would take it to 1.54 mm2 — below. So it is exactly a
++    # counter the hole guard has to hold, which is what makes the count
++    # observable.
++    ring = Point(0, 0).buffer(3.0).difference(Point(0, 0).buffer(1.0))
++    assert len(ring.interiors) == 1
++    _, warnings = resolve_overlaps(
++        [region(ring)], PIQUE,
++        PipelineConfig(overlap_mm=0.25, directional_comp=False))
++    held = [w for w in warnings if w.get("count") is not None
++            and "kept open" in w.get("message", "")]
++    assert held, "the counter should have been held at all"
++    assert held[0]["count"] == 1, f"counted {held[0]['count']} openings, not 1"
