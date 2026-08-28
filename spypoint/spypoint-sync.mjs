@@ -124,10 +124,14 @@ const first = a => (Array.isArray(a) ? a[0] : undefined);
 // since other SpyPoint models may lay their documents out differently.
 //
 // Location arrives as a GeoJSON Point (status.coordinates[0].position), so
-// `coordinates` is [longitude, latitude] — NOT the other way round. Verified by
-// converting the sibling DMS strings on the same object: "N43 53.140980" is
-// 43.885683, which equals element [1], and "W89 1.904100" is -89.031735, which
-// equals element [0]. Do not "fix" this to [lat,lng].
+// `coordinates` is [longitude, latitude] — NOT the other way round. Verified
+// against a live camera document by converting the sibling DMS strings on the
+// same object: the "N.." string matched element [1] and the "W.." string
+// matched element [0], to six decimal places. Do not "fix" this to [lat,lng].
+//
+// The actual figures are deliberately not written down here. This repo is
+// public, and a trail-camera fix is the location of somebody's hunting
+// property; the ordering argument holds without them.
 function cameraSummary(cam) {
   const st = cam?.status ?? {};
   const gps = first(st.coordinates);

@@ -121,9 +121,11 @@ themselves only upload a few times a day on their transmission schedule.
   through the SpyPoint app/plan.
 - **Coordinates are GeoJSON `[longitude, latitude]`**, from
   `status.coordinates[0].position.coordinates` — confirmed 2026-08-27, not
-  assumed. The same object also carries DMS strings (`latitude: "N43
-  53.140980"`, `longitude: "W89 1.904100"`), and converting those reproduces
-  the numeric array exactly with longitude first. Don't "fix" the order.
+  assumed. The same object also carries DMS strings (`latitude: "N.."`,
+  `longitude: "W.."`), and converting those reproduces the numeric array
+  exactly with longitude first. Don't "fix" the order. The figures themselves
+  are not reproduced here: this repo is public, and a camera fix is the
+  location of somebody's hunting property.
 - **A camera only has photos if it is still transmitting.** The script flags
   any camera silent for more than 30 days, because a stale camera producing
   zero photos is the expected outcome, not a failure.
