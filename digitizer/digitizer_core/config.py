@@ -820,6 +820,27 @@ class PipelineConfig:
     # path reachable and tested rather than dead-by-default, the same posture
     # `shade_palette_bind` keeps for its own off-path.
     merge_adjacent_same_thread: bool = True
+    # The NON-adjacent half of the same revisit defect (2026-08-28): a cone
+    # sewn, left for other colours, and returned to. Unlike the adjacent merge
+    # this genuinely reorders stitches, so it is gated on geometry rather than
+    # shipped unconditionally.
+    # A block is hoisted beside an earlier block of its own thread only when
+    # its thread does not come within this many mm of ANY block it jumps over.
+    # `covered_by` is the union of the layers sewing after a given one and
+    # `visible` is that union subtracted from the sewing polygon, so two
+    # disjoint blocks contribute nothing to each other's `visible` and their
+    # relative order cannot move a seam. Where they touch, the coverage
+    # question is real and the revisit correctly stays.
+    # The margin is not decoration: ABUTTING is order-dependent too, because
+    # stage 5 picks which of two touching shapes extends underneath the other
+    # from their sew order. 0 disables the pass.
+    # Measured on owl_kent.jpg at 100 mm: at 0.5 mm, 3 of 6 revisits clear the
+    # test undeclared and 1 of 3 with is_photographic=True.
+    # NOT a physical constant under gate 1 -- it is a geometry-comparison
+    # tolerance on where thread already landed, not a claim about how thread
+    # behaves on cloth. Kept conservative for that reason: too large only
+    # declines merges, which costs stops rather than quality.
+    hoist_same_thread_margin_mm: float = 0.5
     # EXPERIMENT, default OFF — option (b) of the same plan doc, the other
     # half of Kent's 2026-08-23 (a)+(b) decision: `shade_palette_bind` above
     # masks the shade snap to the palette; THIS flag makes the palette worth
