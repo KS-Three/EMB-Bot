@@ -25,6 +25,59 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-08-28 (later) — **the non-adjacent revisit merge (PR #293), and a correction: the "This is a photo" checkbox makes Kent's owl WORSE.**
+
+**PR #293 — `_hoist_same_thread`.** The non-adjacent half of the revisit
+defect, gated on geometry: a block moves up beside an earlier same-thread
+block only when its thread stays clear of everything it jumps over. Two
+disjoint blocks contribute nothing to each other's `visible`, so their order
+cannot move a seam; where they touch the pass declines and the revisit stays.
+Measured on `owl_kent.jpg` at 100 mm — undeclared 20 → 17 blocks and 19 → 16
+stops, declared 15 → 13 and 14 → 12, stitch delta +0, renders byte-identical
+in both. Suite 3 failed / 1546 passed, the same three expected goldens.
+
+Two defects in the first cut of that pass, both found rather than reasoned:
+
+- **A ~6x slowdown.** Buffering each block's thread by the margin inflated
+  thousands of short segments into a polygon with an enormous vertex count:
+  `repro_gradient_white_icon.png` went 11.03s → 64.00s, past
+  `tests/test_service.py`'s 600 x 0.1s job poll. It surfaced as a timeout in
+  an UNRELATED test, in a run that also had two OOM worker crashes, so it
+  first read as environmental. Running the three suspect files serially
+  separated them: the other two passed alone, this one did not. Fixed by
+  applying the margin as a distance with a bbox reject — 10.46s, and
+  behaviour improved, because buffering both sides had made the effective
+  tolerance 2x the margin.
+- **A vacuous gate at margin 0.** `LineString.buffer(0)` is EMPTY, not the
+  line, so every block read as empty, every intersection False, and the
+  safety check would have approved every reorder while appearing to check.
+  Never shipped (the call site treats 0 as disabled), and deleted rather than
+  patched when the buffer went away.
+
+**The correction.** Earlier that day this session told Kent repeatedly to tick
+the Studio's "This is a photo" checkbox, quoting 19 → 16 stops. That number
+came from `PipelineConfig(is_photographic=True)` — a field the Studio never
+sends. `app/src/lib/digitizer.js:144` sets `forced_class="photo_subject"`
+instead, which additionally fires `auto_photo_tier` → streamline. Measured on
+`owl_kent.jpg` at 100 mm:
+
+    nothing set                    gradient        16 stops   14 spools   coverage 0.992
+    is_photographic=True           gradient        12 stops   12 spools   coverage 0.990
+    forced_class=photo_subject     photo_subject   26 stops   15 spools   coverage 0.591
+
+The checkbox nearly doubles the colour stops and drops coverage to 0.591 —
+the thread-paint figure Kent's own 2026-08-25 ruling already records against
+the filled tier's 0.99. The advice would have made his artwork worse on every
+axis he had named. `is_photographic` has 0 hits in `app/src`, so the setting
+that does help is unreachable through the UI at all.
+
+Also of note: the "nothing set" row reads 16 stops rather than the 19 measured
+earlier the same day, because #291 and #293 had landed in between — the
+improvement Kent was told to go and click for had already shipped underneath
+him.
+
+---
+
 **Last updated:** 2026-08-28 — **colour-stop investigation on Kent's owl: the obvious suspect was wrong twice, PR #291.**
 
 Kent ran `owl_kent.jpg` through the Studio and watched the machine start the

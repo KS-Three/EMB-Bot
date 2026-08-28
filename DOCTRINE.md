@@ -248,6 +248,20 @@ its hedge as it is copied forward** — is why this file is split.
 
 ## Gotchas — cost someone a session once
 
+- **`cfg.is_photographic` and the Studio's "This is a photo" checkbox are
+  DIFFERENT CONTROLS, and measuring one tells you nothing about the other.**
+  The field declares the art photographic: the palette bind and depth
+  sequencing come on, the class and the fill tier do not move. The checkbox
+  sends `forced_class="photo_subject"` (`app/src/lib/digitizer.js:144`), which
+  additionally fires `auto_photo_tier` → streamline. On `owl_kent.jpg` at
+  100 mm that is 12 stops / 0.990 coverage against 26 stops / 0.591 — opposite
+  directions from the same-sounding intent. A session measured the field,
+  reported the number as what the checkbox does, and told Kent four times to
+  tick a box that would have made his artwork worse on every axis he had
+  named. `is_photographic` has 0 hits in `app/src`: it is not reachable from
+  the UI at all. **Before quoting a config field as a user-facing setting,
+  grep the Studio for it and read what the checkbox actually sends.**
+  *(measured 2026-08-28 — scope-history 08-28)*
 - **`pipeline.py` binds stage functions at IMPORT, so patching the source
   module to instrument a run does nothing — and the silence looks like
   evidence.** It does `from .stage4_vectorize import revalidate_threads`, so
