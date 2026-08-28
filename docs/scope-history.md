@@ -25,6 +25,68 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-08-28 — **colour-stop investigation on Kent's owl: the obvious suspect was wrong twice, PR #291.**
+
+Kent ran `owl_kent.jpg` through the Studio and watched the machine start the
+black nose, jump to the white feathers, and come back to finish the nose. He
+asked for the stitch rules, and set the priority explicitly: quality first,
+then efficiency (fewer colour changes, fewer jumps).
+
+**Measured, shipped defaults, 100 mm:** 20 blocks over 14 distinct spools, 19
+colour stops against a 13-stop floor. Thread 4 (black) sews at blocks 2, 8 and
+16, with block 1 — thread 17, near-white, 8,822 stitches — between the first
+two. Threads 46 (3 groups), 12 and 155 also revisited. 9 of the 20 blocks hold
+under 100 stitches each: 477 stitches, 2.9% of the design's thread, buying 9 of
+the 19 stops.
+
+**Two wrong diagnoses, both killed by instrumenting rather than reading.**
+First guess was `_shade_blocks` splitting a group per shade cone. Spying on it
+gave 20 groups each emitting exactly one block and ZERO shade splits — the
+blend path is not active on this design at all. A tail-coalescing flag built on
+that reading was a measured no-op at every threshold (0/50/100/250) and was
+reverted rather than shipped inert. Second guess was `depth_sort_layers`
+ordering badly; the spy never fired, and the reason is worth keeping: `pipeline.py`
+binds these names at import (`from .stage4_vectorize import revalidate_threads`),
+so patching the SOURCE module misses. Patching `pipeline.<name>` is what works.
+`_shade_blocks` was spy-able only because stage 7 calls it through its own
+module globals.
+
+**Actual cause.** Stage 2 chose a clean 12-cone palette with no duplicates.
+`revalidate_threads` then re-snapped 8 of 36 regions onto better-matching cones
+— including one stage-2 cone scattering to four different ones — WITHOUT moving
+those regions to the new cone's layer. Post-resnap: 14 distinct threads off a
+12-cone palette, 2 spools the operator's cone list never names. `nn_group_key`
+is `(sew_index, step_key, thread_index)`, so a layer holding several threads
+splits into several groups, and one cone ends up owned by layers that sew at
+different positions. Nothing downstream rejoins them.
+
+**The biggest lever needed no code.** `is_photographic` is declared, not
+detected, and Kent's run had it off; `owl_kent.jpg` is the fixture that
+function's own docstring cites as reading LESS photographic than two logos
+(`unique_color_mass` 0.1107 against summit_badge's 0.1152). Declaring it:
+20 → 17 blocks, 14 → 12 spools, 19 → 16 stops, tiny blocks 9 → 4, and
+`depth_sort_layers` starts running (sequence opens on black and closes on
+near-white).
+
+**What PR #291 shipped.** `merge_adjacent_same_thread`, default ON: fold blocks
+that are already adjacent AND already sew the identical cone. On the declared
+owl, 17 → 15 blocks and 16 → 14 stops with the stitch count unchanged at 17,258
+and the lit render BYTE-IDENTICAL — zero pixels moved. `logo_whitebg`,
+`enthusiast_logo` and `becker_marine_logo` byte-identical either way.
+Suite 3 failed / 1535 passed / 8 skipped / 7 xfailed, the same three expected
+goldens as the pre-change baseline of 3 / 1526, +9 from the new tests;
+collection 1544.
+
+**The constraint that shaped the implementation:** `apply_ties` is not
+idempotent, so the merge had to move ahead of tie application rather than run
+after it. `_shade_blocks` gained `tie=False`. Deferring is safe for the sew
+cursor because `tie_run` both starts and ends at the point it protects.
+
+Not attempted: the non-adjacent revisit (needs stage 5's `covered_by`), and
+thread jumps at all (`chain_links` is frozen under gate 1).
+
+---
+
 **Last updated:** 2026-08-26 — **review pass on the manual-digitize / realistic-preview work, and the seven defects it found.**
 
 An eight-angle adversarial review of what shipped in PRs #249-#259. All eight
