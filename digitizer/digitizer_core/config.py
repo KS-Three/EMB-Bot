@@ -801,6 +801,25 @@ class PipelineConfig:
     # explicitly by tests/test_shade_palette_bind.py, so the old path stays
     # reachable and tested rather than becoming dead-by-default.
     shade_palette_bind: bool = True
+    # Fold CONSECUTIVE same-thread colour blocks into one (2026-08-28, from
+    # Kent's own owl and his "quality first, then efficiency" ordering).
+    # A stop between two blocks sewing the identical cone makes the operator
+    # cut and re-thread the spool already on the machine. Measured on
+    # testdata/photo/owl_kent.jpg at 100 mm, is_photographic=True: 17 blocks
+    # over 12 spools, and two of the sixteen stops (t46 at blocks 3-4, t12 at
+    # 14-15) separate blocks in the SAME thread.
+    # Strictly a bookkeeping merge: nothing is reordered and no stitch moves,
+    # so stage 5's coverage/underlap plan is untouched -- which is what makes
+    # this safe where the NON-adjacent merge (the same cone revisited with
+    # other colours in between, t4 at blocks 0/2/7 on the same run) is not.
+    # That one needs stage 5's `covered_by` to prove no seam moves, and is
+    # deliberately NOT attempted here.
+    # Default ON: the merge is a no-op wherever no two adjacent blocks share a
+    # thread, which is every flat design measured here, so the byte-identical
+    # goldens are unaffected by construction. False keeps the pre-2026-08-28
+    # path reachable and tested rather than dead-by-default, the same posture
+    # `shade_palette_bind` keeps for its own off-path.
+    merge_adjacent_same_thread: bool = True
     # EXPERIMENT, default OFF — option (b) of the same plan doc, the other
     # half of Kent's 2026-08-23 (a)+(b) decision: `shade_palette_bind` above
     # masks the shade snap to the palette; THIS flag makes the palette worth
