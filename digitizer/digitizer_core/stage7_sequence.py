@@ -620,6 +620,109 @@ def _merge_adjacent_same_thread(blocks: list[StitchBlock],
     return out
 
 
+def _block_thread_geom(block: StitchBlock, margin_mm: float):
+    """Where this block's thread actually lands, buffered by `margin_mm`.
+
+    Built from the sewn runs rather than from the regions' artwork polygons,
+    for the same reason the 2026-08-18 chaining instrument was rebuilt that
+    way: cover measured as polygons is not cover measured as where thread
+    lands, and the three instruments that measured polygons were blind three
+    ways over. A run of one point degenerates to a Point rather than being
+    dropped -- a one-point run is exactly what the old chaining check skipped.
+
+    The margin exists because ABUTTING is order-dependent too, not just
+    overlapping: stage 5 decides which of two touching shapes extends
+    underneath the other from their sew order, so a zero-margin test would
+    call a shared seam safe to reorder.
+    """
+    parts = []
+    for r in block.runs:
+        if len(r.points) >= 2:
+            parts.append(LineString(r.points))
+        elif r.points:
+            parts.append(Point(r.points[0]))
+    if not parts:
+        return None
+    geom = unary_union(parts)
+    # `LineString.buffer(0)` is EMPTY, not the line — a line has no area. Left
+    # unguarded that makes every block empty at margin 0, `intersects` False
+    # for every pair, and the whole safety gate vacuous: it would wave through
+    # every reorder while looking like it was checking something. The call
+    # site treats 0 as "pass disabled", so this never shipped, but a check
+    # that silently answers "safe" to everything is the exact shape of the
+    # chaining defect a green suite already concealed here once.
+    return geom.buffer(margin_mm) if margin_mm > 0 else geom
+
+
+def _hoist_same_thread(blocks: list[StitchBlock], trim_at: float,
+                       margin_mm: float) -> list[StitchBlock]:
+    """Move a block up to sit beside an earlier block of the SAME thread, but
+    only where the geometry proves the reorder changes nothing. -> new list.
+
+    This is the non-adjacent half of the revisit defect, and unlike
+    `_merge_adjacent_same_thread` it genuinely REORDERS stitches: the hoisted
+    block now sews before blocks it used to follow. That is the thing stage 7's
+    own docstring warns about -- stage 5 has already planned coverage against
+    the old order, and a reorder can "bury links under colors that no longer
+    sew later and put seams on the wrong side of every boundary".
+
+    So the move is gated on the one condition that makes the warning moot:
+    **the hoisted block's thread must not touch any block it jumps over.**
+    `covered_by` is the union of the layers that sew after a given one, and
+    `visible` is that union subtracted from the sewing polygon. If B is
+    disjoint from every block between it and its target, then B was
+    contributing nothing to those blocks' `visible` and they were contributing
+    nothing to B's, so subtracting in either order gives the same geometry and
+    no seam moves. Where they DO touch, the coverage question is real and this
+    pass declines -- the revisit stays, which is the correct answer, not a
+    failure.
+
+    Measured on `owl_kent.jpg` at 100 mm: 3 of 6 revisits clear this test
+    undeclared, 1 of 3 with `is_photographic=True`. The rest are genuinely
+    order-dependent.
+
+    Runs before ties, like the adjacent merge, because `apply_ties` is not
+    idempotent. Hoisting creates new adjacency, so the caller re-runs
+    `_merge_adjacent_same_thread` afterwards to fold what this pass brought
+    together.
+    """
+    if len(blocks) < 3:
+        return blocks
+    geoms = [_block_thread_geom(b, margin_mm) for b in blocks]
+    order = list(range(len(blocks)))
+
+    moved = True
+    while moved:
+        moved = False
+        for pos in range(len(order) - 1, 0, -1):
+            j = order[pos]
+            # The nearest earlier block sewing this same thread, if any.
+            target = None
+            for k in range(pos - 1, -1, -1):
+                if blocks[order[k]].thread_index == blocks[j].thread_index:
+                    target = k
+                    break
+            if target is None or target == pos - 1:
+                continue        # no revisit, or already adjacent
+            mover = geoms[j]
+            crossed = [geoms[order[k]] for k in range(target + 1, pos)]
+            if mover is None or any(g is None or mover.intersects(g)
+                                    for g in crossed):
+                continue        # a real coverage relationship; leave it alone
+            order.insert(target + 1, order.pop(pos))
+            moved = True
+            break
+
+    out = [blocks[i] for i in order]
+    # Every block that did not open the sequence re-opens on a real cut until
+    # the adjacent pass re-asks it: a hoisted block's old neighbour is gone.
+    for b in out[1:]:
+        if b.runs:
+            b.runs[0].jump = True
+            b.runs[0].trim = True
+    return out
+
+
 def _shade_blocks(ordered: list[StitchRun], base_thread: int, chart,
                   trim_at: float, tie: bool = True) -> list[StitchBlock]:
     """One group's finished, chained run list -> one StitchBlock per shade,
@@ -1213,6 +1316,7 @@ def sequence(
     # of blocks it is allowed to join.
     art_blocks: list[StitchBlock] = []
     merge_same_thread = bool(cfg.merge_adjacent_same_thread)
+    hoist_same_thread = max(0.0, float(cfg.hoist_same_thread_margin_mm))
     for _group_key in sorted({nn_group_key(p) for p in planned}):
         group = [p for p in planned if nn_group_key(p) == _group_key]
 
@@ -1807,6 +1911,13 @@ def sequence(
     # per-layer tie rule is §2.14's, not this one's.
     if merge_same_thread:
         art_blocks = _merge_adjacent_same_thread(art_blocks, trim_at)
+        # The non-adjacent half, gated on geometry (see `_hoist_same_thread`).
+        # Hoisting only ever CREATES adjacency, so the adjacent pass re-runs to
+        # fold what it brought together; ties wait for both to finish.
+        if hoist_same_thread > 0:
+            art_blocks = _hoist_same_thread(art_blocks, trim_at,
+                                            hoist_same_thread)
+            art_blocks = _merge_adjacent_same_thread(art_blocks, trim_at)
         for _b in art_blocks:
             _apply_ties(_b.runs)
     blocks.extend(art_blocks)

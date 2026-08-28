@@ -129,3 +129,113 @@ def test_ties_are_applied_exactly_once_across_the_merge():
     # No two adjacent blocks may share a thread once the pass has run.
     seq = [b.thread_index for b in on.blocks]
     assert all(x != y for x, y in zip(seq, seq[1:]))
+
+
+# --- The non-adjacent half: _hoist_same_thread -----------------------------
+#
+# Unlike the adjacent merge, this one genuinely reorders stitches, so every
+# test below is really asking the same question: does the geometry gate let
+# through exactly the reorders that cannot move a seam, and refuse the rest?
+
+from digitizer_core.stage7_sequence import (_block_thread_geom,
+                                            _hoist_same_thread)
+
+
+def _at(thread, x0, x1):
+    """One block of one run, laid along y=0 from x0 to x1."""
+    return _block(thread, [_run(x0, x1)])
+
+
+def test_a_revisit_is_hoisted_when_it_clears_everything_it_jumps():
+    # t7 at 0-1 and again at 4-5; the t9 between them sits far away at 50.
+    out = _hoist_same_thread([_at(7, 0, 1), _at(9, 50, 51), _at(7, 4, 5)],
+                             trim_at=3.0, margin_mm=0.5)
+    assert [b.thread_index for b in out] == [7, 7, 9]
+
+
+def test_a_revisit_is_refused_when_it_would_cross_geometry_it_touches():
+    """The coverage question is real here: t9 lies between the two t7 blocks
+    in space as well as in order, so stage 5 planned which of them extends
+    under the other. Leaving the revisit in place is the correct answer."""
+    out = _hoist_same_thread([_at(7, 0, 10), _at(9, 5, 6), _at(7, 4, 5)],
+                             trim_at=3.0, margin_mm=0.5)
+    assert [b.thread_index for b in out] == [7, 9, 7]
+
+
+def test_abutting_counts_as_touching_and_is_refused():
+    """Zero gap is still order-dependent — stage 5 picks which of two touching
+    shapes extends underneath from their sew order. The margin is what makes
+    a shared seam read as unsafe rather than as clear space."""
+    # The gap that matters is between the MOVER and what it jumps over, not
+    # between the target and the crossed block: 0.2mm from t9's end (2.0) to
+    # the mover's start (2.2).
+    blocks = [_at(7, 0, 1), _at(9, 1.2, 2.0), _at(7, 2.2, 3.0)]
+    assert [b.thread_index for b in _hoist_same_thread(
+        blocks, trim_at=3.0, margin_mm=0.5)] == [7, 9, 7]
+    # Same geometry, margin small enough that 0.2mm reads as clear: allowed.
+    blocks2 = [_at(7, 0, 1), _at(9, 1.2, 2.0), _at(7, 2.2, 3.0)]
+    assert [b.thread_index for b in _hoist_same_thread(
+        blocks2, trim_at=3.0, margin_mm=0.05)] == [7, 7, 9]
+
+
+def test_margin_zero_still_gates_on_real_intersection():
+    """0 disables the pass at the call site, but the function itself must not
+    treat a zero margin as 'reorder anything' — overlapping geometry is
+    unsafe at any tolerance."""
+    out = _hoist_same_thread([_at(7, 0, 10), _at(9, 5, 6), _at(7, 4, 5)],
+                             trim_at=3.0, margin_mm=0.0)
+    assert [b.thread_index for b in out] == [7, 9, 7]
+
+
+def test_fewer_than_three_blocks_cannot_have_a_revisit():
+    src = [_at(7, 0, 1), _at(7, 4, 5)]
+    assert _hoist_same_thread(src, trim_at=3.0, margin_mm=0.5) == src
+
+
+def test_an_empty_block_is_never_treated_as_clear_space():
+    """A block with no sewable geometry returns None, and None must read as
+    'cannot prove this is safe', not as 'nothing in the way'."""
+    empty = _block(9, [])
+    assert _block_thread_geom(empty, 0.5) is None
+    out = _hoist_same_thread([_at(7, 0, 1), empty, _at(7, 4, 5)],
+                             trim_at=3.0, margin_mm=0.5)
+    assert [b.thread_index for b in out] == [7, 9, 7]
+
+
+def test_a_one_point_run_still_has_geometry():
+    """The 2026-08-18 chaining rebuild found the shipped instruments skipped
+    one-point links. A degenerate run is a real needle position and must not
+    silently become clear space."""
+    b = _block(7, [StitchRun(points=[(1.0, 1.0)], shape_id="s")])
+    g = _block_thread_geom(b, 0.5)
+    assert g is not None and not g.is_empty
+
+
+def test_the_hoist_moves_no_stitches_and_changes_no_pixels_on_the_owl():
+    """The whole safety argument, end to end: if the gate is right, reordering
+    disjoint blocks cannot change what the design looks like. A changed render
+    would mean the gate let through a reorder that moved a seam."""
+    from digitizer_core.adapter import plan_to_design
+    from digitizer_core.stitchviz import render_png_bytes
+
+    img = TESTDATA / "photo/owl_kent.jpg"
+    off = digitize(img, PipelineConfig(target_width_mm=100.0,
+                                       hoist_same_thread_margin_mm=0.0))[1]
+    on = digitize(img, PipelineConfig(target_width_mm=100.0))[1]
+
+    assert len(on.blocks) < len(off.blocks), "no revisit was hoisted at all"
+    n_off = sum(len(r.points) for b in off.blocks for r in b.runs)
+    n_on = sum(len(r.points) for b in on.blocks for r in b.runs)
+    assert n_on == n_off, "hoisting changed the stitch count"
+    assert (render_png_bytes(plan_to_design(off), px_per_mm=8.0)
+            == render_png_bytes(plan_to_design(on), px_per_mm=8.0)), (
+        "the render moved — the disjointness gate let a real seam reorder through")
+
+
+def test_flat_artwork_is_untouched_by_the_hoist_too():
+    img = TESTDATA / "logo_whitebg.png"
+    off = digitize(img, PipelineConfig(hoist_same_thread_margin_mm=0.0))[1]
+    on = digitize(img, PipelineConfig())[1]
+    shape = lambda p: [(b.thread_index, [tuple(r.points) for r in b.runs])
+                       for b in p.blocks]
+    assert shape(off) == shape(on)
