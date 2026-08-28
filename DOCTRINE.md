@@ -248,6 +248,31 @@ its hedge as it is copied forward** — is why this file is split.
 
 ## Gotchas — cost someone a session once
 
+- **`pipeline.py` binds stage functions at IMPORT, so patching the source
+  module to instrument a run does nothing — and the silence looks like
+  evidence.** It does `from .stage4_vectorize import revalidate_threads`, so
+  `s4.revalidate_threads = spy` never fires and you conclude the stage did not
+  run. Patch `pipeline.<name>` instead. `_shade_blocks` IS spy-able through
+  `stage7_sequence` only because stage 7 calls it via its own module globals.
+  Cost a session two wrong conclusions in a row, one of which ("depth_sort_layers
+  never ran") happened to be true for an unrelated reason and so did not
+  self-correct. *(confirmed 2026-08-28 — colour-stop investigation)*
+- **`stitches.apply_ties` is NOT idempotent.** It folds lock stitches into
+  `run.points` in place; its own docstring warns that tying twice "doubles the
+  lock into eight stitches of thread piled in one spot". Anything that
+  re-partitions blocks must run BEFORE ties, never after — there is no
+  un-tie. Deferring ties is safe for the sew cursor, because `tie_run` "both
+  starts and ends at `at`" and so moves neither `points[0]` nor `points[-1]`;
+  a +0 stitch delta across the change is the cheap proof you tied once.
+  *(confirmed 2026-08-28 — PR #291)*
+- **A colour-stop complaint is probably NOT `_shade_blocks`.** The per-shade
+  block split is the obvious suspect and was wrong on the one real design that
+  prompted the question: `owl_kent.jpg` gives 20 groups, one block each, zero
+  shade splits — the blend path was not active at all. Count groups and splits
+  before theorising. The real mechanism is `revalidate_threads` re-snapping a
+  region onto a better cone without moving it to that cone's LAYER, so one
+  spool ends up owned by layers that sew at different positions.
+  *(measured 2026-08-28 — scope-history 08-28)*
 - **Six phase-numbering schemes exist; only ROADMAP.md's five engine phases
   are live.** Historical: the 4-phase pro-stitch roadmap, 11 digitizer steps,
   7 launch items, 8 Studio slices, 16 rows (0–15). *(confirmed 2026-08-18 — docs/scope/1-auto-digitizing-quality.md:1506 and photo plan §2)*

@@ -78,6 +78,31 @@ or move it.
    UNREPRESENTATIVE of client logos**, which carry 1–3 fill shapes that
    essentially never cut. *(measured 2026-08-21/22 — area 1)*
 
+15. **An UNDECLARED photograph gets neither depth sequencing nor the palette
+    bind, and its region re-snap escapes the selected palette.** Closed defect
+    9 fixed that escape for the PHOTO route — but `is_photographic` gates the
+    fix and it is DECLARED, not detected, with `owl_kent.jpg` cited in its own
+    docstring as reading less photographic than two logos. So a photograph left
+    undeclared routes gradient: `depth_sort_layers` never runs and the re-snap
+    is unrestricted, sewing more spools than the operator's cone list names.
+    Declaring it is a large, free improvement on the same artwork. **Whether
+    the Studio should let an undeclared photograph be this much worse is
+    Kent's call** (queue item 11), not a threshold to tune — gate 2 bars
+    inferring it. *(measured 2026-08-28 — PR #291 investigation; numbers in
+    scope-history 08-28)*
+
+16. **One spool is revisited across other colours, and is not safely mergeable
+    yet.** `revalidate_threads` re-snaps a region onto a better cone without
+    moving it to that cone's LAYER, so `nn_group_key`'s `(sew_index, step_key,
+    thread_index)` splits that layer and one spool ends up owned by layers
+    sewing at different positions; nothing downstream rejoins them. This is the
+    defect behind Kent's "black nose, white feathers, back to the nose".
+    PR #291 merged only the ADJACENT case, which moves no stitches. Closing the
+    rest needs stage 5's `covered_by` to prove no seam moves first — stage 7's
+    own docstring warns that resequencing after stage 5 has planned coverage
+    buries links under colours that no longer sew later. *(measured 2026-08-28
+    — `stage7_sequence.py`; scope-history 08-28)*
+
 ### Closed — kept numbered, because ten other docs cite them by number
 
 Full text moved to [`docs/scope-history.md`](docs/scope-history.md) 2026-08-27;
@@ -200,6 +225,15 @@ its own merits.
    type work left alone (irregular scale ratios, `h3` at body size, untokenised
    weights) and it is a STANDING one — new UI is set to it, not re-litigated.
    What it means in practice is in the area doc. *(2026-08-25)*
+
+11. **Should an undeclared photograph be silently worse?** `is_photographic`
+   is declared, not detected — deliberately, because stage 0's signals cannot
+   separate the populations (gate 2 bars inferring it). Today an unticked
+   "This is a photo" costs depth sequencing AND the palette bind, so the file
+   sews spools the cone list never names. Options are a louder prompt when the
+   classifier is uncertain, defaulting the gradient route to the bind, or
+   leaving it as is. Not an engineering blocker — a product call about how much
+   a wrong checkbox is allowed to cost. See defect 15. *(2026-08-28)*
 
 8. **Font lawyer consult — optional.** Only gates RESTORING the 13 pulled
    ShareAlike fonts; the brief is written and ready to send. Nothing waits
