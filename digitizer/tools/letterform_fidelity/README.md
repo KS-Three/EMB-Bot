@@ -24,6 +24,44 @@ measure rather than an agreement rate, so it needs no chance correction — but
 do not put a quality claim on it until it can separate a tilted column from a
 covered one.
 
+## Half of that ask is now closed (2026-08-28)
+
+`stroke_coverage.py` + `s15_cover.py` answer the DROPPED-FEATURE half. The
+insight is that coverage and IoU fail for the same reason — **they average**,
+and deformation is local — so this reports the WORST medial-axis stroke rather
+than the mean:
+
+| letter | IoU | mean coverage | worst stroke |
+| --- | --- | --- | --- |
+| `DRONE` `E`, sews as an "L" | 0.384 | 72.7% | **58.3%** |
+| `THERMAL` `E` | 0.594 | 96.6% | 92.9% |
+| `PRECISION` `P` | 0.685 | 96.3% | 86.1% |
+| `PRECISION` `O` | 0.644 | 100% | 100% |
+| `THERMAL` `L` | 0.633 | 100% | 100% |
+
+Read the GAP between worst and mean: local damage opens one, uniform thinness
+does not. Pinned by `tests/test_stroke_coverage.py`.
+
+**It is still blind to tilt** — `THERMAL`'s deformed `H` scores 100%, because
+thread is on every stroke, just at the wrong angle. The ask above stands.
+
+### The obvious tilt metric was built and REJECTED — do not rebuild it
+
+Per-stroke deviation of thread direction from the medial axis's local
+perpendicular. It ranks a good letter worse than the deformed one:
+
+| letter | median cross-angle error | p90 |
+| --- | --- | --- |
+| `THERMAL` `H`, deformed | 16.6° | 62.3° |
+| `THERMAL` `L`, control | 14.7° | 47.3° |
+| `PRECISION` `O`, control | **31.7°** | **75.5°** |
+
+The reference is what is wrong, not the idea: on a curved letter the spine
+turns constantly, so "perpendicular to the local spine" confounds curvature
+with deformation and the roundest letter scores worst. A tilt metric needs a
+reference stable under curvature — the satin RAILS the engine built, rather
+than the medial axis it built them from, is the untried candidate.
+
 ## Running them
 
 From `digitizer/`, with the venv. Outputs land in `$LF_OUT` (default `./out`
