@@ -571,8 +571,57 @@ def _chain(runs: list[StitchRun], regions: list[PlannedRegion], base_thread: int
 _apply_ties = stitches.apply_ties
 
 
+def _merge_adjacent_same_thread(blocks: list[StitchBlock],
+                                trim_at: float) -> list[StitchBlock]:
+    """Fold each run of CONSECUTIVE same-thread blocks into one. -> new list.
+
+    A colour stop between two blocks that sew the identical cone asks the
+    operator to cut, re-thread the spool already on the machine, and carry on.
+    The machine stops for nothing. Measured on `owl_kent.jpg` at 100 mm with
+    `is_photographic=True`: blocks 3-4 both sew t46 and blocks 14-15 both sew
+    t12, so two of sixteen stops buy nothing at all.
+
+    This removes ONLY that. Blocks already adjacent in the finished sew order,
+    already in the same thread, become one block. Nothing is reordered and no
+    stitch moves, so stage 5's coverage/underlap plan — which this module's
+    docstring warns must never be resequenced here — is untouched by
+    construction, and the merged block sews precisely the path the two blocks
+    sewed before it.
+
+    Two seams are re-asked, because they stop being block boundaries:
+
+    - The absorbed block's first run carries the unconditional
+      `jump=True, trim=True` that `_shade_blocks` forces onto every block
+      opener. Mid-block it is an ordinary transition, so it is recomputed on
+      plain distance — the same rule `_shade_blocks` uses for a run rejoining
+      a bucket some other shade interrupted.
+    - Ties. `apply_ties` is NOT idempotent (its own docstring: tying twice
+      "doubles the lock into eight stitches of thread piled in one spot"), so
+      this must run BEFORE ties are applied, never after. The caller ties each
+      surviving block exactly once, afterwards.
+
+    Deferring ties is safe for the sew cursor: `tie_run` "both starts and ends
+    at `at`", so tying changes neither `points[0]` nor `points[-1]` of the run
+    it protects, and `sequence`'s `cursor` reads the same coordinate either
+    way.
+    """
+    out: list[StitchBlock] = []
+    for b in blocks:
+        if out and out[-1].thread_index == b.thread_index and b.runs:
+            prev = out[-1]
+            if prev.runs:
+                first = b.runs[0]
+                d = math.dist(prev.runs[-1].points[-1], first.points[0])
+                first.jump = d >= TINY_STITCH_MM
+                first.trim = first.jump and d > trim_at
+            prev.runs.extend(b.runs)
+        else:
+            out.append(b)
+    return out
+
+
 def _shade_blocks(ordered: list[StitchRun], base_thread: int, chart,
-                  trim_at: float) -> list[StitchBlock]:
+                  trim_at: float, tie: bool = True) -> list[StitchBlock]:
     """One group's finished, chained run list -> one StitchBlock per shade,
     dark to light.
 
@@ -637,7 +686,11 @@ def _shade_blocks(ordered: list[StitchRun], base_thread: int, chart,
         shade_runs = shade_buckets[key]
         shade_runs[0].jump = True
         shade_runs[0].trim = True
-        _apply_ties(shade_runs)
+        # `tie=False` defers this to the caller, which merges adjacent
+        # same-thread blocks first — `apply_ties` is not idempotent, so it has
+        # to run once, on the final block list.
+        if tie:
+            _apply_ties(shade_runs)
         thread = chart[key]
         out.append(
             StitchBlock(
@@ -1155,6 +1208,11 @@ def sequence(
     # destroy an operator instruction with it. Regions carrying no `step_key`
     # all key on "", so a design with no steps groups and sorts exactly as it
     # always did.
+    # Artwork blocks accumulate separately from `blocks` (which already holds
+    # the appliqué pass) so the same-thread merge below sees exactly the run
+    # of blocks it is allowed to join.
+    art_blocks: list[StitchBlock] = []
+    merge_same_thread = bool(cfg.merge_adjacent_same_thread)
     for _group_key in sorted({nn_group_key(p) for p in planned}):
         group = [p for p in planned if nn_group_key(p) == _group_key]
 
@@ -1735,9 +1793,23 @@ def sequence(
         # directly with a hand-built run list, not just through a full
         # `sequence()` job.
         group_blocks = _shade_blocks(ordered, group[0].region.thread_index,
-                                     chart_for(cfg), trim_at)
-        blocks.extend(group_blocks)
+                                     chart_for(cfg), trim_at,
+                                     tie=not merge_same_thread)
+        art_blocks.extend(group_blocks)
         cursor = group_blocks[-1].runs[-1].points[-1]
+
+    # Adjacent same-thread merge (2026-08-28). Deferred to here, after every
+    # artwork group has emitted, because the pairs it folds are produced by
+    # DIFFERENT groups: `nn_group_key` partitions on thread, so a group can
+    # never contain two blocks this pass would join. Ties are applied once,
+    # below, on whatever survives. Appliqué blocks (already in `blocks`, and
+    # already tied by their own pass) are deliberately outside this: their
+    # per-layer tie rule is §2.14's, not this one's.
+    if merge_same_thread:
+        art_blocks = _merge_adjacent_same_thread(art_blocks, trim_at)
+        for _b in art_blocks:
+            _apply_ties(_b.runs)
+    blocks.extend(art_blocks)
 
     # --- The detail layer (stage6_detail, photo plan row 11) -----------------
     # Appended AFTER every artwork block — plan row 14's craft consensus,
