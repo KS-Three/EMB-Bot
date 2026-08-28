@@ -85,10 +85,13 @@ or move it.
     docstring as reading less photographic than two logos. So a photograph left
     undeclared routes gradient: `depth_sort_layers` never runs and the re-snap
     is unrestricted, sewing more spools than the operator's cone list names.
-    Declaring it is a large, free improvement on the same artwork. **Whether
-    the Studio should let an undeclared photograph be this much worse is
-    Kent's call** (queue item 11), not a threshold to tune — gate 2 bars
-    inferring it. *(measured 2026-08-28 — PR #291 investigation; numbers in
+    Declaring it via `cfg.is_photographic` is a large improvement (16 → 12
+    stops on `owl_kent.jpg`, coverage unmoved at 0.99) — but **the Studio
+    exposes that field nowhere**, and its "This is a photo" checkbox sends
+    `forced_class="photo_subject"` instead, which adds the thread-paint tier
+    and lands at 26 stops / 0.591 coverage. So the improvement is currently
+    unreachable through the UI. **What to expose is Kent's call** (queue item
+    11), not a threshold to tune — gate 2 bars inferring it. *(measured 2026-08-28 — PR #291 investigation; numbers in
     scope-history 08-28)*
 
 16. **One spool is revisited across other colours, and is not safely mergeable
@@ -226,14 +229,25 @@ its own merits.
    weights) and it is a STANDING one — new UI is set to it, not re-litigated.
    What it means in practice is in the area doc. *(2026-08-25)*
 
-11. **Should an undeclared photograph be silently worse?** `is_photographic`
-   is declared, not detected — deliberately, because stage 0's signals cannot
-   separate the populations (gate 2 bars inferring it). Today an unticked
-   "This is a photo" costs depth sequencing AND the palette bind, so the file
-   sews spools the cone list never names. Options are a louder prompt when the
-   classifier is uncertain, defaulting the gradient route to the bind, or
-   leaving it as is. Not an engineering blocker — a product call about how much
-   a wrong checkbox is allowed to cost. See defect 15. *(2026-08-28)*
+11. **The setting that helps a misrouted photograph has no UI, and the
+   checkbox that looks like it is a different, harsher control.**
+   CORRECTED 2026-08-28 — the first draft of this entry said an unticked
+   "This is a photo" costs the palette bind and depth sequencing, implying
+   ticking it is a free win. It is not, and the error was mine.
+   `cfg.is_photographic` — the declaration that turns on the bind and depth
+   sequencing while the fill tier stays FILLED — appears **nowhere** in
+   `app/src` (grep, 0 hits). The checkbox sends something else entirely:
+   `digitizer.js:144` sets `forced_class="photo_subject"`, which also fires
+   `auto_photo_tier` → streamline. Measured on `owl_kent.jpg` at 100 mm:
+   16 stops / 0.992 coverage undeclared, 12 / 0.990 with `is_photographic`,
+   and **26 stops / 0.591 coverage** through the checkbox — 0.591 being the
+   thread-paint number Kent's own 2026-08-25 filled-beats-thread-paint ruling
+   already records. So the one control the Studio offers makes his artwork
+   worse on every axis, and the one that helps cannot be reached.
+   The product call is what to expose, not whether to nag: surface
+   `is_photographic` on its own, split the checkbox into declaration vs tier,
+   or leave both alone. See defect 15. *(measured 2026-08-28 —
+   scope-history 08-28)*
 
 8. **Font lawyer consult — optional.** Only gates RESTORING the 13 pulled
    ShareAlike fonts; the brief is written and ready to send. Nothing waits
