@@ -248,6 +248,16 @@ its hedge as it is copied forward** — is why this file is split.
 
 ## Gotchas — cost someone a session once
 
+- **A shipped `.embf` answers more than it looks like it can — decode it before
+  asking Kent for source files.** The 26-dead-glyph item sat in the queue for
+  six days marked "needs YOUR MACHINE", because telling `stripRunParamsIfSatin`
+  apart from "upstream authored no length" was assumed to need the Ink/Stitch
+  SVGs. It does not: the strip fires if and only if the font has any satin
+  glyph, and that is readable straight out of the binary
+  (`EMB.decodeFontBin`). Four of the six fonts have ZERO satin, which acquits
+  the strip for them outright. A session went hunting through Google Drive for
+  sources before checking the artefact already committed to the repo.
+  *(measured 2026-08-28 — scope-history 08-28)*
 - **`cfg.is_photographic` and the Studio's "This is a photo" checkbox are
   DIFFERENT CONTROLS, and measuring one tells you nothing about the other.**
   The field declares the art photographic: the palette bind and depth
