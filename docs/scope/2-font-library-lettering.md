@@ -417,6 +417,37 @@ Kent's machine and not in a cloud checkout.
 *(suspected 2026-08-22 — mechanism read from tools/build-font.mjs:377; instance
 not verifiable in this checkout)*
 
+**WHICH CAUSE APPLIES TO WHICH FONT — SETTLED 2026-08-28, from the shipped
+binaries, with no SVG source needed.** This section previously said telling the
+two candidates apart required Kent's machine. It did not: decoding
+`src/fonts/bin/<key>.embf` and counting glyphs that carry satin columns answers
+it, because `stripRunParamsIfSatin` fires if and only if the font has any satin
+at all.
+
+| font | glyphs with satin | strip fires | dead | cause |
+|---|---|---|---|---|
+| `roaring_twenties_KOR` | 146 / 156 | yes | 10 | the strip |
+| `roaring_twenties_KOR_small` | 146 / 156 | yes | 10 | the strip |
+| `western_light` | 0 / 164 | **no** | 2 | no authored length |
+| `ondulamarif_XL` | 0 / 108 | **no** | 2 | no authored length |
+| `ondulamarif_Medium` | 0 / 108 | **no** | 1 | no authored length |
+| `ondulamarif_S` | 0 / 108 | **no** | 1 | no authored length |
+
+The four zero-satin fonts are the decisive half. The strip cannot have touched
+them, yet every dead glyph's runs are bare arrays — and `runFrom` returns a
+bare array only when `!(lenMm > 0)`. So upstream authored no length for those
+six glyphs, and **defaulting one is a gate-1 refusal already enforced by
+`test/run-fonts.test.js:44`** ("gate 1: a run with NO authored length is
+skipped, not defaulted"). Those six are not work; they are a standing ruling.
+
+For the twenty in `roaring_twenties_KOR`/`_small` the strip IS the mechanism —
+those glyphs are runs-only (`cols=0`) inside a 94%-satin font. What the binary
+cannot say is whether upstream authored a length that the strip then discarded,
+because the discard happened at build time. That is one grep, not a session:
+count `running_stitch_length_mm` in `<ink-stitch>/src/roaring_twenties_KOR/
+ltr.svg`. Zero would mean these twenty are the same gate-1 case as the other
+six and no fix exists at all. *(measured 2026-08-28 — `.embf` decode)*
+
 **What the narrow fix would be, if the sources confirm it:** scope the strip to
 glyphs that HAVE columns. It cannot regress any glyph — the ones it affects
 produce zero stitches today — but it is not free: a glyph that starts producing

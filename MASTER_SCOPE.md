@@ -217,12 +217,30 @@ its own merits.
 6. **The `scratch_corpus/` 37 files.** Gitignored; cloud checkouts are empty
    but all 37 are present on Kent's machine (confirmed 2026-08-17), so a local
    session can run the corpus legs today. Blocks cloud-side M2/M3 only.
-7. **26 glyphs that sew nothing, in 6 shipped fonts** (`roaring_twenties_KOR`
-   ×2 have ten symbols each). The user-facing half is closed — the Studio now
-   says "This font can't stitch …". The fix needs YOUR MACHINE: the candidate
-   cause is `stripRunParamsIfSatin` being font-wide, and telling that from
-   "upstream never authored a length" needs the `scratch_ink/` SVG sources. The
-   narrow fix regresses nothing but changes auto-scaling. Detail: area 2.
+7. **26 glyphs that sew nothing, in 6 shipped fonts — SPLIT IN TWO 2026-08-28,
+   and the diagnosis needed no SVG sources after all.** The user-facing half was
+   already closed (the Studio says "This font can't stitch …"). Decoding the six
+   shipped `.embf` binaries settles which of the two candidate causes applies to
+   each font, from committed data alone:
+   - **20 glyphs — `stripRunParamsIfSatin`, confirmed.** `roaring_twenties_KOR`
+     and `_small` carry satin on 146 of 156 glyphs, so the font-wide strip
+     fires; the ten dead glyphs in each are runs-only (`cols=0`), so it takes
+     their params and the engine skips the bare arrays that remain.
+   - **6 glyphs — a GATE 1 REFUSAL, not work.** `western_light` and the three
+     `ondulamarif` cuts have **zero** satin glyphs, so the strip never runs —
+     yet their runs are bare anyway. `runFrom` only returns a bare array when
+     `!(lenMm > 0)`, so upstream authored no length, and defaulting one is
+     already refused by a test named for the gate:
+     `test/run-fonts.test.js:44` "gate 1: a run with NO authored length is
+     skipped, not defaulted".
+   **Still open, and it is one grep, not a session:** whether upstream authored
+   lengths for the 20. Count `running_stitch_length_mm` in
+   `<ink-stitch>/src/roaring_twenties_KOR/ltr.svg`. **>0** and the narrow fix
+   (scope the strip to glyphs that HAVE columns) revives them — Kent's call,
+   since a glyph that starts inking changes the bbox and so the auto-scaling of
+   any text containing `+ - / < = > \ _ ¯ °`. **0** and all 26 are the same
+   gate-1 case, no fix exists, and this item closes permanently.
+   *(measured 2026-08-28 — `.embf` decode; detail: area 2)*
 10. **RESOLVED 2026-08-25 — Studio typography: "tighter and more editorial."**
    Kent's direction, given when asked. It settled the three items the earlier
    type work left alone (irregular scale ratios, `h3` at body size, untokenised
