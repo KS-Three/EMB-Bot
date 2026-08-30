@@ -164,9 +164,16 @@ describe("per-shape stitch-type/angle/underlay/border controls", () => {
 // ---- delete / restore ------------------------------------------------------
 
 describe("whole-design params", () => {
-  test("Detail lines for photos renders unchecked and patches params on toggle", async () => {
-    const { getByLabelText, patches } = renderPanel([shapeRow("s1")]);
-    const box = getByLabelText("Detail lines for photos");
+  // `detail_layer` moved out of the params list and onto the reading row
+  // (Kent's call 2026-08-30): it only does anything on tonal art, so it shows
+  // only where the art is actually going down that lane -- by the engine's
+  // reading or by the user's own override -- instead of sitting beside stitch
+  // width labelled "Detail lines for photos" on a flat logo that never uses it.
+  const TONAL = { warnings: [{ code: "CLASSIFIED_PHOTO_SUBJECT", message: "engine prose" }] };
+
+  test("Add fine detail lines renders unchecked on tonal art and patches params on toggle", async () => {
+    const { getByLabelText, patches } = renderPanel([shapeRow("s1")], TONAL);
+    const box = getByLabelText("Add fine detail lines");
     expect(box.checked).toBe(false);
 
     await fireEvent.change(box, { target: { checked: true } });
@@ -176,6 +183,26 @@ describe("whole-design params", () => {
     // whole object, so dropping one here would silently reset the design.
     expect(patches[0].patch.params.max_colors).toBe(DEFAULT_DIGITIZE_PARAMS.max_colors);
     expect(patches[0].patch.params.satin).toBe(DEFAULT_DIGITIZE_PARAMS.satin);
+  });
+
+  test("absent on flat art, which cannot use it", () => {
+    const { queryByLabelText } = renderPanel([shapeRow("s1")]);
+    expect(queryByLabelText("Add fine detail lines")).toBeNull();
+  });
+
+  test("present on a user-declared photo, whose reading carries no warning at all", () => {
+    // The override path, not the engine's: isPhoto forces the tonal lane, and
+    // the forced row has no CLASSIFIED_* warning to read.
+    const { getByLabelText } = renderPanel([shapeRow("s1")], { isPhoto: true, warnings: [] });
+    expect(getByLabelText("Add fine detail lines")).toBeTruthy();
+  });
+
+  test("absent under a forced-FLAT override, even if the engine had read it as a photo", () => {
+    const { queryByLabelText } = renderPanel([shapeRow("s1")], {
+      ...TONAL,
+      params: { ...DEFAULT_DIGITIZE_PARAMS, forced_class: "flat" },
+    });
+    expect(queryByLabelText("Add fine detail lines")).toBeNull();
   });
 });
 

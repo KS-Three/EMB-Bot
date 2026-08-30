@@ -590,8 +590,11 @@ Studio asked anyway, with a "This is a photo" checkbox in the params list and a
 Digitize button to find. Now the run starts on upload and the panel STATES what
 the art was read as ("Read as flat art" / "as a photo" / "as shaded artwork" /
 "couldn't tell"), with the override recast as a one-click correction to that
-sentence. Nothing changed in what gets sent, so area 1's photo-control numbers
-are untouched. The engine's own routing is unchanged too — ROADMAP gate 2 bars
+sentence. `detail_layer` moved onto that row too (Kent 2026-08-30) and appears
+only where the art is actually on a tonal lane, by reading or by override —
+it was "Detail lines for photos" in the params list, on every flat logo that
+could never use it. Nothing changed in what gets sent, so area 1's
+photo-control numbers are untouched. The engine's own routing is unchanged too — ROADMAP gate 2 bars
 recalibrating stage 0, and phase-4 v1 is built to work around it with exactly
 this override. *(driven 2026-08-30 in a real browser against the real service:
 upload → 2153 stitches with no Digitize click; `owl_kent.jpg` read as shaded

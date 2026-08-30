@@ -372,6 +372,15 @@
   // k-means shatters the texture. This is "the classifier read your artwork
   // wrong", not a general "make it better" button.
   $: offerFlat = artRead === "photo" || artRead === "gradient";
+  // Whether the art is being sewn down a TONAL lane at all -- by the engine's
+  // reading or by the user's own override. `detail_layer` only does anything
+  // there, so the control rides this rather than sitting in the params list
+  // beside stitch width labelled "Detail lines for photos" on a flat logo
+  // that will never use it (Kent's call, 2026-08-30).
+  $: tonalLane =
+    element.isPhoto ? true :
+    forcedClass ? forcedClass !== "flat" :
+    offerFlat;
   // The other direction. Not offered from a standing photo override (there is
   // nothing to correct) and not from a forced-flat one either, where the
   // "It's a photo" button below is the one-click path instead.
@@ -1304,14 +1313,6 @@
         />
         Satin for thin shapes
       </label>
-      <label class="dgp-checkline">
-        <input
-          type="checkbox"
-          checked={element.params.detail_layer}
-          on:change={(e) => setParam("detail_layer", e.currentTarget.checked)}
-        />
-        Detail lines for photos
-      </label>
       <label class="dgp-param">
         <span>Fill angle</span>
         <select
@@ -1344,22 +1345,12 @@
          anchored to that warning would make the override invisible, and
          permanent, one run after the user set it. The automatic readings do
          hang off the last run, since before it there is nothing to report. -->
-    {#if artRead === "forced"}
-      <div class="dgp-read dgp-read-on">
-        <p class="dgp-read-text">You set this to {forcedLabel}.</p>
-        {#if forcedClass === "flat"}
-          <button type="button" class="dgp-read-btn" on:click={() => setIsPhoto(true)}>
-            It's a photo
-          </button>
-        {/if}
-        <button type="button" class="dgp-read-btn" on:click={useAutomatic}>
-          Use automatic detection
-        </button>
-      </div>
-    {:else if element.result}
+    {#if artRead === "forced" || element.result}
       <div class="dgp-read" class:dgp-read-on={!offerFlat}>
         <p class="dgp-read-text">
-          {#if artRead === "photo"}
+          {#if artRead === "forced"}
+            You set this to {forcedLabel}.
+          {:else if artRead === "photo"}
             Read as a photo, so it's sewing with shaded thread. If it's really a flat-color
             logo — solid colors, no shading or photo texture — say so and it'll sew as flat art.
           {:else if artRead === "gradient"}
@@ -1372,7 +1363,16 @@
             Read as flat art, sewing as solid color regions.
           {/if}
         </p>
-        {#if offerFlat}
+        {#if artRead === "forced"}
+          {#if forcedClass === "flat"}
+            <button type="button" class="dgp-read-btn" on:click={() => setIsPhoto(true)}>
+              It's a photo
+            </button>
+          {/if}
+          <button type="button" class="dgp-read-btn" on:click={useAutomatic}>
+            Use automatic detection
+          </button>
+        {:else if offerFlat}
           <button
             type="button"
             class="dgp-read-btn"
@@ -1384,6 +1384,16 @@
           <button type="button" class="dgp-read-btn" on:click={() => setIsPhoto(true)}>
             It's a photo
           </button>
+        {/if}
+        {#if tonalLane}
+          <label class="dgp-checkline dgp-read-opt">
+            <input
+              type="checkbox"
+              checked={element.params.detail_layer}
+              on:change={(e) => setParam("detail_layer", e.currentTarget.checked)}
+            />
+            Add fine detail lines
+          </label>
         {/if}
       </div>
     {/if}
@@ -2224,6 +2234,15 @@
     font-size: var(--fs-xs, 12px);
     color: var(--warn-text, #8a6d1a);
   }
+  /* The detail-lines option rides this row rather than the params list, so it
+     takes the row's own width and sits on its own line under the sentence and
+     the correction -- never sharing a line with a button. It takes the same
+     two-state colour as .dgp-read-text so it reads as part of whichever row it
+     is in, rather than inheriting the panel default through the container. */
+  .dgp-read-opt {
+    flex: 1 1 100%;
+    color: var(--warn-text, #8a6d1a);
+  }
   .dgp-read-btn {
     flex-shrink: 0;
     padding: 5px 10px;
@@ -2244,7 +2263,8 @@
     border-color: var(--tint-border, #ccd6fb);
     background: var(--surface, #fff);
   }
-  .dgp-read-on .dgp-read-text { color: var(--muted, #667); }
+  .dgp-read-on .dgp-read-text,
+  .dgp-read-on .dgp-read-opt { color: var(--muted, #667); }
   .dgp-read-on .dgp-read-btn {
     border-color: var(--tint-border, #ccd6fb);
     background: var(--surface, #fff);
