@@ -87,9 +87,11 @@ or move it.
     is unrestricted, sewing more spools than the operator's cone list names.
     Declaring it via `cfg.is_photographic` is a large improvement (16 → 12
     stops on `owl_kent.jpg`, coverage unmoved at 0.99) — but **the Studio
-    exposes that field nowhere**, and its "This is a photo" checkbox sends
-    `forced_class="photo_subject"` instead, which adds the thread-paint tier
-    and lands at 26 stops / 0.591 coverage. So the improvement is currently
+    exposes that field nowhere**, and the one photo control it does offer
+    (the reading row's "It's a photo" correction, a "This is a photo"
+    checkbox until 2026-08-30 — renamed and moved, unchanged in what it
+    sends) sends `forced_class="photo_subject"` instead, which adds the
+    thread-paint tier and lands at 26 stops / 0.591 coverage. So the improvement is currently
     unreachable through the UI. **What to expose is Kent's call** (queue item
     11), not a threshold to tune — gate 2 bars inferring it. *(measured 2026-08-28 — PR #291 investigation; numbers in
     scope-history 08-28)*
@@ -248,7 +250,11 @@ its own merits.
    What it means in practice is in the area doc. *(2026-08-25)*
 
 11. **The setting that helps a misrouted photograph has no UI, and the
-   checkbox that looks like it is a different, harsher control.**
+   control that looks like it is a different, harsher one.**
+   (That control is now the reading row's "It's a photo" correction; it was
+   a "This is a photo" checkbox until 2026-08-30. Renamed and moved out of
+   the params list — what it SENDS is unchanged, so every number below still
+   stands.)
    CORRECTED 2026-08-28 — the first draft of this entry said an unticked
    "This is a photo" costs the palette bind and depth sequencing, implying
    ticking it is a free win. It is not, and the error was mine.
@@ -577,6 +583,22 @@ sew-out has happened. See Cross-cutting issues.
 A 2026-08-25 sweep found a primary CTA rendering white-on-white on every wizard
 step and a canvas menu creating elements with no feedback — both shipped, both
 invisible to a green suite. *(confirmed 2026-08-25 — area doc)*
+
+**Uploading artwork is the whole interaction — the panel no longer asks the
+user to classify it first.** Stage 0 always classified every job on its own;
+Studio asked anyway, with a "This is a photo" checkbox in the params list and a
+Digitize button to find. Now the run starts on upload and the panel STATES what
+the art was read as ("Read as flat art" / "as a photo" / "as shaded artwork" /
+"couldn't tell"), with the override recast as a one-click correction to that
+sentence. `detail_layer` moved onto that row too (Kent 2026-08-30) and appears
+only where the art is actually on a tonal lane, by reading or by override —
+it was "Detail lines for photos" in the params list, on every flat logo that
+could never use it. Nothing changed in what gets sent, so area 1's
+photo-control numbers are untouched. The engine's own routing is unchanged too — ROADMAP gate 2 bars
+recalibrating stage 0, and phase-4 v1 is built to work around it with exactly
+this override. *(confirmed 2026-08-30 — driven in a real browser against the
+real service, every state of the row clicked through and looked at; pinned by
+e2e `digitize-auto-start.spec.js`; numbers in scope-history 08-30)*
 
 **A `var(--x, fallback)` whose name is undefined is not a fallback — it is a
 silent bespoke value.** Three such names shipped; two more tokens failed WCAG AA

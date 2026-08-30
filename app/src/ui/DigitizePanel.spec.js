@@ -164,9 +164,16 @@ describe("per-shape stitch-type/angle/underlay/border controls", () => {
 // ---- delete / restore ------------------------------------------------------
 
 describe("whole-design params", () => {
-  test("Detail lines for photos renders unchecked and patches params on toggle", async () => {
-    const { getByLabelText, patches } = renderPanel([shapeRow("s1")]);
-    const box = getByLabelText("Detail lines for photos");
+  // `detail_layer` moved out of the params list and onto the reading row
+  // (Kent's call 2026-08-30): it only does anything on tonal art, so it shows
+  // only where the art is actually going down that lane -- by the engine's
+  // reading or by the user's own override -- instead of sitting beside stitch
+  // width labelled "Detail lines for photos" on a flat logo that never uses it.
+  const TONAL = { warnings: [{ code: "CLASSIFIED_PHOTO_SUBJECT", message: "engine prose" }] };
+
+  test("Add fine detail lines renders unchecked on tonal art and patches params on toggle", async () => {
+    const { getByLabelText, patches } = renderPanel([shapeRow("s1")], TONAL);
+    const box = getByLabelText("Add fine detail lines");
     expect(box.checked).toBe(false);
 
     await fireEvent.change(box, { target: { checked: true } });
@@ -177,26 +184,51 @@ describe("whole-design params", () => {
     expect(patches[0].patch.params.max_colors).toBe(DEFAULT_DIGITIZE_PARAMS.max_colors);
     expect(patches[0].patch.params.satin).toBe(DEFAULT_DIGITIZE_PARAMS.satin);
   });
+
+  test("absent on flat art, which cannot use it", () => {
+    const { queryByLabelText } = renderPanel([shapeRow("s1")]);
+    expect(queryByLabelText("Add fine detail lines")).toBeNull();
+  });
+
+  test("present on a user-declared photo, whose reading carries no warning at all", () => {
+    // The override path, not the engine's: isPhoto forces the tonal lane, and
+    // the forced row has no CLASSIFIED_* warning to read.
+    const { getByLabelText } = renderPanel([shapeRow("s1")], { isPhoto: true, warnings: [] });
+    expect(getByLabelText("Add fine detail lines")).toBeTruthy();
+  });
+
+  test("absent under a forced-FLAT override, even if the engine had read it as a photo", () => {
+    const { queryByLabelText } = renderPanel([shapeRow("s1")], {
+      ...TONAL,
+      params: { ...DEFAULT_DIGITIZE_PARAMS, forced_class: "flat" },
+    });
+    expect(queryByLabelText("Add fine detail lines")).toBeNull();
+  });
 });
 
-// ---- the flat-art override (stage-0 misroute escape hatch) -----------------
+// ---- what the art was read as, and correcting it ---------------------------
 //
-// Stage 0 sometimes routes flat-color logo art down the gradient/photo lane.
-// The engine already takes `forced_class` (config.py) and Studio already
-// persists digitize params in the service's own field names, so the whole
-// feature is one params key — which means the existing "params changed ->
-// re-digitize" reactive statement is the trigger, and these tests deliberately
-// assert on the PATCH, not on a network call.
+// Stage 0 classifies every job on its own (flat / gradient / photo_subject /
+// photo_scene). This row is Studio finally SAYING so in plain words, with the
+// override recast as a correction to that sentence instead of a question asked
+// before anything has been digitized -- Kent 2026-08-30, "choose flat work,
+// real photo etc. IDK what ANY of that even means".
 //
-// `health` stays null here (renderPanel's default), so that reactive re-run
-// bails at runDigitize's own `!health` guard and no digitize is attempted —
-// same no-service posture as the rest of this file.
+// What gets SENT is unchanged, and these tests hold that line: "It's flat art"
+// still writes forced_class=flat, "It's a photo" still sets isPhoto (which
+// buildDigitizeConfig turns into forced_class=photo_subject -- see
+// digitizer.spec.js's precedence test).
 //
-// The offer is scoped to FLAT-COLOR art on purpose and the copy has to keep
-// saying so: forcing flat on genuinely textured logo art measured WORSE
-// (k-means shatters texture into confetti), so "if it's a flat-color logo" is
-// load-bearing, not padding.
-describe("flat-art override — the nudge", () => {
+// `health` stays null here (renderPanel's default), so the reactive re-run
+// bails at runDigitize's own `!health` guard and no digitize is attempted --
+// same no-service posture as the rest of this file, and the reason these
+// assert on the PATCH rather than on a network call.
+//
+// The flat correction is scoped to FLAT-COLOR art on purpose and the copy has
+// to keep saying so: forcing flat on genuinely TEXTURED logo art measured
+// WORSE (k-means shatters the texture into confetti), so "no shading or photo
+// texture" is load-bearing, not padding.
+describe("the reading row -- correcting a photo/gradient reading to flat", () => {
   const MISROUTE_CODES = [
     "CLASSIFIED_PHOTO_SUBJECT", "CLASSIFIED_PHOTO_SCENE", "CLASSIFIED_GRADIENT",
   ];
@@ -209,40 +241,58 @@ describe("flat-art override — the nudge", () => {
   }
 
   for (const code of MISROUTE_CODES) {
-    test(`offers the override on ${code}`, () => {
+    test(`offers the flat correction on ${code}`, () => {
       const { getByRole, getByText } = panelWarnedAs(code);
-      expect(getByRole("button", { name: "Digitize as flat art" })).toBeTruthy();
+      expect(getByRole("button", { name: "It's flat art" })).toBeTruthy();
       // The texture caveat, not just the button.
       expect(getByText(/no shading or photo texture/)).toBeTruthy();
     });
   }
 
-  test("stays silent for a flat result whose warnings are about something else", () => {
-    const { queryByRole } = panelWarnedAs("COLOR_CAP_APPLIED");
-    expect(queryByRole("button", { name: "Digitize as flat art" })).toBeNull();
+  test("a flat reading states itself and offers the OTHER direction instead", () => {
+    // Was "stays silent for a flat result whose warnings are about something
+    // else". It no longer stays silent -- saying what the art was read as is
+    // the point of the row -- but the FLAT correction is still absent, which
+    // is what that test was actually protecting.
+    const { queryByRole, getByRole, getByText } = panelWarnedAs("COLOR_CAP_APPLIED");
+    expect(queryByRole("button", { name: "It's flat art" })).toBeNull();
+    expect(getByText(/Read as flat art/)).toBeTruthy();
+    expect(getByRole("button", { name: "It's a photo" })).toBeTruthy();
   });
 
-  test("stays silent once the override is already set — offering it twice is nonsense", () => {
+  test("an uncertain classification says so rather than claiming a reading", () => {
+    const { getByText, getByRole } = panelWarnedAs("CLASSIFICATION_UNCERTAIN");
+    expect(getByText(/Couldn't tell what this artwork is/)).toBeTruthy();
+    expect(getByRole("button", { name: "It's a photo" })).toBeTruthy();
+  });
+
+  test("stays silent once the override is already set -- offering it twice is nonsense", () => {
     const { queryByRole } = panelWarnedAs("CLASSIFIED_PHOTO_SUBJECT", {
       params: { ...DEFAULT_DIGITIZE_PARAMS, forced_class: "flat" },
     });
-    expect(queryByRole("button", { name: "Digitize as flat art" })).toBeNull();
+    expect(queryByRole("button", { name: "It's flat art" })).toBeNull();
   });
 
-  test("taking the offer writes forced_class in exactly one params patch (one undo step)", async () => {
+  test("says nothing about a reading before the first run has produced one", () => {
+    const { queryByText, queryByRole } = renderPanel([shapeRow("s1")], { result: null });
+    expect(queryByText(/Read as/)).toBeNull();
+    expect(queryByRole("button", { name: "It's a photo" })).toBeNull();
+  });
+
+  test("taking the correction writes forced_class in exactly one params patch (one undo step)", async () => {
     const { getByRole, patches } = panelWarnedAs("CLASSIFIED_PHOTO_SUBJECT");
-    await fireEvent.click(getByRole("button", { name: "Digitize as flat art" }));
+    await fireEvent.click(getByRole("button", { name: "It's flat art" }));
     expect(patches).toHaveLength(1);
     expect(Object.keys(patches[0].patch)).toEqual(["params"]);
     expect(patches[0].patch.params.forced_class).toBe("flat");
-    // A params patch replaces the whole object — dropping a sibling here would
+    // A params patch replaces the whole object -- dropping a sibling here would
     // silently reset the design's width/colors along with the override.
     expect(patches[0].patch.params.max_colors).toBe(DEFAULT_DIGITIZE_PARAMS.max_colors);
     expect(patches[0].patch.params.target_width_mm).toBe(DEFAULT_DIGITIZE_PARAMS.target_width_mm);
   });
 });
 
-describe("flat-art override — reverting", () => {
+describe("the reading row -- a standing override, and going back to automatic", () => {
   const FORCED = { params: { ...DEFAULT_DIGITIZE_PARAMS, forced_class: "flat" } };
 
   test("a standing row says the design is being forced, with no warning left to hang it off", () => {
@@ -251,13 +301,13 @@ describe("flat-art override — reverting", () => {
     // warning, the override would become invisible and permanent one run after
     // the user set it. Hence `warnings: []` here.
     const { getByText, getByRole } = renderPanel([shapeRow("s1")], { ...FORCED, warnings: [] });
-    expect(getByText("Digitizing as flat art")).toBeTruthy();
+    expect(getByText("You set this to flat art.")).toBeTruthy();
     expect(getByRole("button", { name: "Use automatic detection" })).toBeTruthy();
   });
 
   test("absent entirely when no override is set", () => {
     const { queryByText, queryByRole } = renderPanel([shapeRow("s1")]);
-    expect(queryByText("Digitizing as flat art")).toBeNull();
+    expect(queryByText(/^You set this to/)).toBeNull();
     expect(queryByRole("button", { name: "Use automatic detection" })).toBeNull();
   });
 
@@ -272,25 +322,36 @@ describe("flat-art override — reverting", () => {
     expect("forced_class" in patches[0].patch.params).toBe(false);
     expect(patches[0].patch.params).toEqual({ ...DEFAULT_DIGITIZE_PARAMS });
   });
+
+  test("a standing PHOTO override reads the same way, and reverting clears isPhoto alone", async () => {
+    // isPhoto lives on the element, not in params, so reverting it must not
+    // manufacture a params patch -- that would change the job cache key on a
+    // design whose params never moved.
+    const { getByText, getByRole, patches } = renderPanel([shapeRow("s1")], { isPhoto: true });
+    expect(getByText("You set this to a photo.")).toBeTruthy();
+    await fireEvent.click(getByRole("button", { name: "Use automatic detection" }));
+    expect(patches).toHaveLength(1);
+    expect(Object.keys(patches[0].patch)).toEqual(["isPhoto"]);
+    expect(patches[0].patch.isPhoto).toBe(false);
+  });
 });
 
-// Controller ruling 2026-08-19 (fix round 1, Important 2): checking "This is
-// a photo" while a flat-art override is standing left the config and this
-// exact banner disagreeing — buildDigitizeConfig sends photo_subject
-// (isPhoto wins, see digitizer.spec.js's precedence test) but the banner
-// read only params.forced_class and kept saying "Digitizing as flat art".
-// Fixed at the source: the checkbox clears params.forced_class in the same
-// patch, so the banner (unchanged, still just reading params.forced_class)
-// naturally drops out instead of needing to learn about isPhoto.
-describe('flat-art override — cleared by checking "This is a photo"', () => {
+// Controller ruling 2026-08-19 (fix round 1, Important 2): declaring the art a
+// photo while a flat-art override is standing left the config and the row
+// disagreeing -- buildDigitizeConfig sends photo_subject (isPhoto wins, see
+// digitizer.spec.js's precedence test) while the row read only
+// params.forced_class and kept saying flat. Fixed at the source: the handler
+// clears params.forced_class in the SAME patch. The row now also resolves
+// isPhoto first, so the two cannot disagree even if a patch ever left both set.
+describe("the reading row -- \"It's a photo\" from a standing flat override", () => {
   const FORCED = { params: { ...DEFAULT_DIGITIZE_PARAMS, forced_class: "flat" } };
 
-  test("checking the box clears forced_class in the same patch, and the banner condition goes false with it", async () => {
-    const { getByLabelText, getByText, queryByText, patches } = renderPanel([shapeRow("s1")], FORCED);
+  test("clears forced_class in the same patch, and the row stops saying flat", async () => {
+    const { getByRole, getByText, queryByText, patches } = renderPanel([shapeRow("s1")], FORCED);
     // Sanity on the starting contradiction this fix removes.
-    expect(getByText("Digitizing as flat art")).toBeTruthy();
+    expect(getByText("You set this to flat art.")).toBeTruthy();
 
-    await fireEvent.change(getByLabelText("This is a photo"), { target: { checked: true } });
+    await fireEvent.click(getByRole("button", { name: "It's a photo" }));
     expect(patches).toHaveLength(1);
     expect(Object.keys(patches[0].patch)).toEqual(["isPhoto", "params"]);
     expect(patches[0].patch.isPhoto).toBe(true);
@@ -299,10 +360,10 @@ describe('flat-art override — cleared by checking "This is a photo"', () => {
     // other params-replacing patch in this file.
     expect(patches[0].patch.params).toEqual({ ...DEFAULT_DIGITIZE_PARAMS });
 
-    // Proves the banner CONDITION, not just the patch shape: the harness
-    // merges the patch into `element` and re-renders the real panel off it,
-    // and forcedClass reads nothing but element.params.forced_class.
-    expect(queryByText("Digitizing as flat art")).toBeNull();
+    // Proves the row CONDITION, not just the patch shape: the harness merges
+    // the patch into `element` and re-renders the real panel off it.
+    expect(queryByText("You set this to flat art.")).toBeNull();
+    expect(getByText("You set this to a photo.")).toBeTruthy();
   });
 });
 
