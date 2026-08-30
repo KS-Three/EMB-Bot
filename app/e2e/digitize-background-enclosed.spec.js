@@ -147,7 +147,9 @@ test("BACKGROUND_ENCLOSED: enclosed icon linework is held out by default and res
   await page.getByRole("button", { name: "Artwork" }).click();
 
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_SINGLE_PNG);
-  await page.getByRole("button", { name: "Digitize", exact: true }).click();
+  // No Digitize click: choosing the file starts the run (DigitizePanel's
+  // sourcePng watcher). The button reads "Digitize again" by the time a
+  // result exists, so clicking an exact "Digitize" here would hang.
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
 
   // ---- the pipeline actually classified this art as carrying enclosed
@@ -214,7 +216,9 @@ test("BACKGROUND_ENCLOSED: the banner's 'Sew all' bulk-restores every enclosed r
   await page.getByRole("button", { name: "Artwork" }).click();
 
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_BULK_PNG);
-  await page.getByRole("button", { name: "Digitize", exact: true }).click();
+  // No Digitize click: choosing the file starts the run (DigitizePanel's
+  // sourcePng watcher). The button reads "Digitize again" by the time a
+  // result exists, so clicking an exact "Digitize" here would hang.
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
 
   const banner = page.locator(".dgp-enclosed-banner");

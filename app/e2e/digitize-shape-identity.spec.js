@@ -127,7 +127,9 @@ test("split editor: cut one shape into two through the real service, then undo",
   await page.getByRole("button", { name: "Artwork" }).click();
 
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
-  await page.getByRole("button", { name: "Digitize", exact: true }).click();
+  // No Digitize click: choosing the file starts the run (DigitizePanel's
+  // sourcePng watcher). The button reads "Digitize again" by the time a
+  // result exists, so clicking an exact "Digitize" here would hang.
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
 
   const statsBefore = await page.locator(".dgp-stats").innerText();
@@ -177,7 +179,9 @@ test("merge selection: picking shapes of two different colors shows the same-col
   await page.getByRole("button", { name: "Artwork" }).click();
 
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
-  await page.getByRole("button", { name: "Digitize", exact: true }).click();
+  // No Digitize click: choosing the file starts the run (DigitizePanel's
+  // sourcePng watcher). The button reads "Digitize again" by the time a
+  // result exists, so clicking an exact "Digitize" here would hang.
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
 
   const rows = page.locator(".dgp-layer");

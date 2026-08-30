@@ -134,7 +134,9 @@ test("stale layer edits: service flags them, the panel surfaces them, Clear + Ap
   await page.getByRole("button", { name: "Artwork" }).click();
 
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
-  await page.getByRole("button", { name: "Digitize", exact: true }).click();
+  // No Digitize click: choosing the file starts the run (DigitizePanel's
+  // sourcePng watcher). The button reads "Digitize again" by the time a
+  // result exists, so clicking an exact "Digitize" here would hang.
 
   // Editable layer rows: the black square and the red square -- plus,
   // depending on the service's stage1 build, the white ground. The panel's

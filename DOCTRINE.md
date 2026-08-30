@@ -258,8 +258,12 @@ its hedge as it is copied forward** — is why this file is split.
   the strip for them outright. A session went hunting through Google Drive for
   sources before checking the artefact already committed to the repo.
   *(measured 2026-08-28 — scope-history 08-28)*
-- **`cfg.is_photographic` and the Studio's "This is a photo" checkbox are
+- **`cfg.is_photographic` and the Studio's user-declared photo control are
   DIFFERENT CONTROLS, and measuring one tells you nothing about the other.**
+  (That control is the reading row's "It's a photo" correction in
+  `DigitizePanel.svelte`; it was a "This is a photo" checkbox in the params
+  list until 2026-08-30, when it was renamed and moved. It sends exactly what
+  it always sent, so every number in this entry stands as measured.)
   The field declares the art photographic: the palette bind and depth
   sequencing come on, the class and the fill tier do not move. The checkbox
   sends `forced_class="photo_subject"` (`app/src/lib/digitizer.js:144`), which

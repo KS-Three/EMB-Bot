@@ -143,8 +143,12 @@ test("text cluster: badge appears, convert to text, undo -- through the real ser
   await widthInput.blur();
   await expect(widthInput).toHaveValue("90");
 
-  await page.getByRole("button", { name: "Digitize", exact: true }).click();
-  await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
+  // No Digitize click: choosing the file already started a run at the DEFAULT
+  // width, and the 90 above re-runs it (the params watcher counts an in-flight
+  // first run, so the change is not dropped into the pre-result window). Both
+  // runs write .dgp-stats, so waiting for mere visibility could read the 80mm
+  // one -- wait for the benchmark width itself.
+  await expect(page.locator(".dgp-stats")).toContainText(/\b90×/, { timeout: 120_000 });
 
   // ---- "looks like text" badge appears on at least one row ----------------
   const textBadges = page.locator(".dgp-lbadge", { hasText: "looks like text" });

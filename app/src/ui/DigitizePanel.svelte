@@ -186,15 +186,25 @@
     }
   }
 
-  // Param changes re-digitize automatically once a result exists (the review
-  // loop); before the first result the Digitize button is the explicit start.
-  // Same prev-value guard pattern as ImagePanel's re-flatten.
+  // Param changes re-digitize automatically once the artwork's first run is
+  // under way or done (the review loop). Same prev-value guard pattern as
+  // ImagePanel's re-flatten.
+  //
+  // `phase !== "idle"` is in that test, not just `element.result`, because the
+  // upload now starts a run by itself: a param changed while that FIRST run is
+  // still in flight would otherwise land in the window where no result exists
+  // yet and no watcher fires again, and be silently dropped -- the design
+  // would sit showing stitches at a width the user had already changed.
+  // runDigitize's own in-flight guard turns this into `rerunWanted`, so the
+  // new params re-run once the first job returns rather than racing it.
+  // (Before the upload auto-started, that window could not be reached: nothing
+  // ran until the user pressed Digitize.)
   let prevParamsJson = JSON.stringify(element.params);
   $: {
     const now = JSON.stringify(element.params);
     if (now !== prevParamsJson) {
       prevParamsJson = now;
-      if (element.result) runDigitize(element);
+      if (element.result || phase !== "idle") runDigitize(element);
     }
   }
 
@@ -207,7 +217,40 @@
   $: {
     if (element.isPhoto !== prevIsPhoto) {
       prevIsPhoto = element.isPhoto;
-      if (element.result) runDigitize(element);
+      if (element.result || phase !== "idle") runDigitize(element);
+    }
+  }
+
+  // New artwork digitizes ITSELF. Every other change in this panel already
+  // re-runs on its own once a result exists; the first run was the single
+  // thing left that the user had to ask for by hand, which meant uploading an
+  // image and then hunting for a button to make anything happen. Stage 0 reads
+  // the artwork without being told what it is, so there is nothing to collect
+  // before starting (Kent 2026-08-30 -- see the artRead block above).
+  //
+  // Watches `sourcePng` rather than firing at the end of onFile because the
+  // patch travels up to App and comes back down as a new `element` prop:
+  // calling runDigitize inside onFile would submit the element as it was
+  // BEFORE the upload -- on a first upload, one with no image at all. Same
+  // prev-value guard pattern as the two watchers above, so it stays quiet on
+  // mount (a saved project re-opening must not re-digitize itself) and fires
+  // only on a genuine change of artwork.
+  //
+  // Known edge, left alone on purpose: re-picking the IDENTICAL file re-encodes
+  // to the identical base64, so this sees no change and does not fire. The
+  // patch has already cleared the old result, so the panel simply sits at the
+  // Digitize button -- one click, in the one case where the user asked for the
+  // artwork they already had. Detecting it would mean a serial the element
+  // does not need, and a watcher that fires before the new `element` has
+  // arrived would digitize the PREVIOUS art, which is the worse failure.
+  let prevSourcePng = element.sourcePng;
+  $: {
+    if (element.sourcePng !== prevSourcePng) {
+      prevSourcePng = element.sourcePng;
+      // `health` gates it exactly as runDigitize's own guard would: with no
+      // service running, the offline panel is the honest answer and the
+      // Digitize button stays the way back in.
+      if (element.sourcePng && health) runDigitize(element);
     }
   }
 
@@ -267,53 +310,98 @@
   // that tracks the user's own restores.
   $: otherWarningLines = warningLines.filter((w) => w.code !== "BACKGROUND_ENCLOSED");
 
-  // ---- flat-art override (stage 0's escape hatch) ---------------------------
+  // ---- what stage 0 made of the art, and correcting it ----------------------
   //
-  // Stage 0 sometimes routes flat-color logo art down the gradient/photo lane,
-  // where the tonal fills make a mess of something that should have been three
-  // solid colors. The engine already takes the override (`forced_class` in
-  // digitizer_core/config.py, honored by stage0_classify.classify), so all
-  // Studio adds is the offer.
+  // Stage 0 already classifies every job on its own (flat / gradient /
+  // photo_subject / photo_scene) and reports the answer as a CLASSIFIED_*
+  // warning. Studio used to keep that to itself and instead ASK: a "This is a
+  // photo" checkbox sitting in the params list beside stitch width, plus a
+  // "digitize as flat art" nudge that appeared only on a misroute and spoke
+  // the engine's vocabulary. Kent, 2026-08-30: "the photo upload is very
+  // confusing -- choose flat work, real photo etc. IDK what ANY of that even
+  // means, can't we just upload a photo/image and the tool AUTOMATICALLY
+  // recognizes what needs to be done?"
   //
-  // Deliberately scoped to FLAT-COLOR art, and the copy has to keep saying so:
-  // forcing flat on genuinely TEXTURED logo art measured WORSE, because
-  // k-means shatters the texture. This is "the classifier read your artwork
-  // wrong", not a general "make it better" button.
-  const PHOTO_MISROUTE_CODES = new Set([
-    "CLASSIFIED_PHOTO_SUBJECT", "CLASSIFIED_PHOTO_SCENE", "CLASSIFIED_GRADIENT",
-  ]);
+  // It always did. So the question stops being asked up front: the run starts
+  // on upload (see the sourcePng watcher below), the panel STATES what the
+  // art was read as in plain words, and the override becomes a correction to
+  // that sentence rather than a quiz taken before anything has been seen.
+  //
+  // The override itself stays, deliberately: ROADMAP phase 2 is open ("most
+  // real logos reach the wrong lane") and phase-4 v1 is built to work around
+  // stage 0 with an explicit user override, not by advancing it (spec
+  // 2026-08-18 decision 4). Nothing about what gets SENT changed here --
+  // isPhoto still means forced_class=photo_subject, and the flat correction
+  // still writes forced_class=flat.
   // The override is an ordinary digitize param (buildDigitizeConfig sends it
   // when set), which is the whole reason it needs no machinery of its own:
   // setting or clearing it changes element.params, and the params-changed
   // block above re-digitizes. Neither control calls runDigitize itself.
   $: forcedClass = (element.params && element.params.forced_class) || null;
-  $: offerFlatArt =
-    !forcedClass && warningLines.some((w) => PHOTO_MISROUTE_CODES.has(w.code));
 
-  // Cleared by REMOVING the key, not by nulling it: the params object has to
-  // come back identical to a design that never overrode anything, or the
-  // service's job cache key differs and the revert pays for a run the cache
-  // already holds.
-  function clearForcedClass() {
-    const { forced_class, ...rest } = element.params;
-    patch({ params: rest });
+  // Plain-language names for the four classes, used only when something has
+  // been forced -- the automatic readings get their own sentences below.
+  const FORCED_LABEL = {
+    flat: "flat art",
+    gradient: "shaded artwork",
+    photo_subject: "a photo",
+    photo_scene: "a photo",
+  };
+
+  // One state for the whole flat/photo business, in the order that decides it:
+  // `warningLines` is read INLINE here, not through a `hasCode(...)` helper:
+  // these are legacy `$:` statements, whose dependencies are collected
+  // syntactically, so a helper would leave this tracking only the (never
+  // reassigned) function and the reading would freeze at its first value.
+  // an explicit user override outranks whatever the engine read, and isPhoto
+  // outranks a leftover params.forced_class exactly as buildDigitizeConfig's
+  // own precedence does -- so the sentence on screen can never disagree with
+  // the config that gets sent (the 2026-08-19 contradiction, now impossible by
+  // construction rather than by the checkbox handler alone).
+  $: artRead =
+    element.isPhoto ? "forced" :
+    forcedClass ? "forced" :
+    warningLines.some((w) => w.code === "CLASSIFIED_PHOTO_SUBJECT" || w.code === "CLASSIFIED_PHOTO_SCENE") ? "photo" :
+    warningLines.some((w) => w.code === "CLASSIFIED_GRADIENT") ? "gradient" :
+    warningLines.some((w) => w.code === "CLASSIFICATION_UNCERTAIN") ? "unsure" :
+    "flat";
+  $: forcedLabel =
+    element.isPhoto ? FORCED_LABEL.photo_subject : (FORCED_LABEL[forcedClass] || "your own setting");
+  // Offering flat is scoped to FLAT-COLOR art and the copy has to keep saying
+  // so: forcing flat on genuinely TEXTURED logo art measured WORSE, because
+  // k-means shatters the texture. This is "the classifier read your artwork
+  // wrong", not a general "make it better" button.
+  $: offerFlat = artRead === "photo" || artRead === "gradient";
+  // The other direction. Not offered from a standing photo override (there is
+  // nothing to correct) and not from a forced-flat one either, where the
+  // "It's a photo" button below is the one-click path instead.
+  $: offerPhoto = artRead === "flat" || artRead === "unsure";
+
+  // Back to automatic clears BOTH overrides in ONE patch (one undo step), and
+  // clears forced_class by REMOVING the key rather than nulling it: the params
+  // object has to come back identical to a design that never overrode
+  // anything, or the service's job cache key differs and the revert pays for a
+  // run the cache already holds.
+  function useAutomatic() {
+    const next = {};
+    if (element.params && "forced_class" in element.params) {
+      const { forced_class, ...rest } = element.params;
+      next.params = rest;
+    }
+    if (element.isPhoto) next.isPhoto = false;
+    if (Object.keys(next).length) patch(next);
   }
 
-  // Checking "This is a photo" clears a stale flat-art override in the SAME
-  // patch that sets isPhoto (controller ruling, fix round 1 2026-08-19):
-  // left alone, the two would visibly contradict each other — this exact
-  // "Digitizing as flat art" banner reads params.forced_class and has no
-  // idea isPhoto exists, so it would keep showing "flat" while
-  // buildDigitizeConfig's isPhoto-wins precedence actually sends
-  // photo_subject. Fixing it at the source (delete the key here) means the
-  // banner needs no isPhoto-awareness of its own — forcedClass above just
-  // goes false, same as any other revert.
+  // "It's a photo" clears a stale flat-art override in the SAME patch that
+  // sets isPhoto (controller ruling, fix round 1 2026-08-19): left alone, the
+  // two would visibly contradict each other -- buildDigitizeConfig's
+  // isPhoto-wins precedence sends photo_subject while params.forced_class
+  // still said flat. Fixing it at the source means no reader of
+  // params.forced_class needs isPhoto-awareness of its own.
   //
-  // Unchecking does NOT bring a cleared override back — that decision is
+  // Unchecking does NOT bring a cleared override back -- that decision is
   // gone for good, same one-way "reverting deletes, never restores" posture
-  // clearForcedClass already has. Re-offering flat art from here on is the
-  // nudge's own job (offerFlatArt above), same as it is for anyone who
-  // never checked "This is a photo" at all.
+  // useAutomatic has.
   function setIsPhoto(checked) {
     if (checked && element.params && element.params.forced_class) {
       const { forced_class, ...rest } = element.params;
@@ -1156,10 +1244,12 @@
 
   {#if !element.sourcePng}
     <p class="dgp-note">
-      Upload flat art — a logo, a mark, lettering as an image — and it comes back as stitches you
-      can place like any other element. Clean, solid colors digitize best; photos and gradients
-      won't sew cleanly. PNG with a transparent background and sharp, non-anti-aliased edges
-      digitizes best — a bigger image sews sharper than a small one.
+      Drop in any image — a logo, a mark, lettering, a photo. It reads the artwork itself,
+      picks how to sew it, and starts as soon as the file lands; afterwards it says what it
+      made of the art so you can correct it if it read it wrong. Solid-color art still sews
+      best — photos and gradients are newer ground and come back rougher. A bigger image sews
+      sharper than a small one, and a PNG with a transparent background and sharp,
+      non-anti-aliased edges digitizes cleanest.
     </p>
   {:else}
     <div class="dgp-src">
@@ -1222,17 +1312,6 @@
         />
         Detail lines for photos
       </label>
-      <label class="dgp-checkline">
-        <input
-          type="checkbox"
-          checked={element.isPhoto}
-          on:change={(e) => setIsPhoto(e.currentTarget.checked)}
-        />
-        This is a photo
-      </label>
-      <p class="dgp-note">
-        Renders with thread-paint shading instead of flat color regions.
-      </p>
       <label class="dgp-param">
         <span>Fill angle</span>
         <select
@@ -1257,32 +1336,55 @@
       </label>
     </div>
 
-    <!-- Sits with the params, not down in the warnings list, because it IS a
-         param — and because the "on" row has to stand whether or not there is
-         a result to hang it off. Once the override takes effect the art
-         classifies as flat and the CLASSIFIED_* warning is gone: a row anchored
-         to that warning would make the override invisible, and permanent, one
-         run after the user set it. -->
-    {#if forcedClass}
-      <div class="dgp-flatart dgp-flatart-on">
-        <p class="dgp-flatart-text">Digitizing as flat art</p>
-        <button type="button" class="dgp-flatart-btn" on:click={clearForcedClass}>
+    <!-- What the art was read as, in plain words, plus the one correction that
+         applies to that reading. Sits with the params, not down in the warnings
+         list, because it IS a param — and a FORCED row has to stand whether or
+         not there is a result to hang it off. Once a flat override takes effect
+         the art classifies as flat and the CLASSIFIED_* warning is gone: a row
+         anchored to that warning would make the override invisible, and
+         permanent, one run after the user set it. The automatic readings do
+         hang off the last run, since before it there is nothing to report. -->
+    {#if artRead === "forced"}
+      <div class="dgp-read dgp-read-on">
+        <p class="dgp-read-text">You set this to {forcedLabel}.</p>
+        {#if forcedClass === "flat"}
+          <button type="button" class="dgp-read-btn" on:click={() => setIsPhoto(true)}>
+            It's a photo
+          </button>
+        {/if}
+        <button type="button" class="dgp-read-btn" on:click={useAutomatic}>
           Use automatic detection
         </button>
       </div>
-    {:else if offerFlatArt}
-      <div class="dgp-flatart">
-        <p class="dgp-flatart-text">
-          This looks like photo art. If it's a flat-color logo — solid colors, no shading or
-          photo texture — digitize it as flat art instead.
+    {:else if element.result}
+      <div class="dgp-read" class:dgp-read-on={!offerFlat}>
+        <p class="dgp-read-text">
+          {#if artRead === "photo"}
+            Read as a photo, so it's sewing with shaded thread. If it's really a flat-color
+            logo — solid colors, no shading or photo texture — say so and it'll sew as flat art.
+          {:else if artRead === "gradient"}
+            Read as shaded artwork, so it's sewing in blended thread shades. If it's really a
+            flat-color logo — solid colors, no shading or photo texture — say so and it'll sew
+            as flat art.
+          {:else if artRead === "unsure"}
+            Couldn't tell what this artwork is, so it's sewing as flat art.
+          {:else}
+            Read as flat art, sewing as solid color regions.
+          {/if}
         </p>
-        <button
-          type="button"
-          class="dgp-flatart-btn"
-          on:click={() => setParam("forced_class", "flat")}
-        >
-          Digitize as flat art
-        </button>
+        {#if offerFlat}
+          <button
+            type="button"
+            class="dgp-read-btn"
+            on:click={() => setParam("forced_class", "flat")}
+          >
+            It's flat art
+          </button>
+        {:else if offerPhoto}
+          <button type="button" class="dgp-read-btn" on:click={() => setIsPhoto(true)}>
+            It's a photo
+          </button>
+        {/if}
       </div>
     {/if}
 
@@ -2096,12 +2198,18 @@
     font-size: var(--fs-xs, 12px);
     white-space: nowrap;
   }
-  /* The flat-art offer borrows .dgp-enclosed-banner's shape wholesale, for the
+  /* The reading row borrows .dgp-enclosed-banner's shape wholesale, for the
      reason that banner's own comment gives: an offer the user is meant to act
      on has to be a box, not another dim line in a list. */
-  .dgp-flatart {
+  .dgp-read {
     display: flex;
     align-items: center;
+    /* Wraps because a forced-flat row carries TWO buttons ("It's a photo" and
+       "Use automatic detection"), which together outrun the panel's width and
+       would otherwise squeeze the sentence into a three-word column. The
+       min-width on the text below is what decides the break: one button still
+       sits inline, two drop to their own line. */
+    flex-wrap: wrap;
     gap: 10px;
     margin: 10px 0 0;
     padding: 8px 10px;
@@ -2109,13 +2217,14 @@
     border-radius: var(--radius-s, 6px);
     background: var(--warn-bg, #fdf6e3);
   }
-  .dgp-flatart-text {
-    flex: 1;
+  .dgp-read-text {
+    flex: 1 1 auto;
+    min-width: 55%;
     margin: 0;
     font-size: var(--fs-xs, 12px);
     color: var(--warn-text, #8a6d1a);
   }
-  .dgp-flatart-btn {
+  .dgp-read-btn {
     flex-shrink: 0;
     padding: 5px 10px;
     border: 1px solid var(--warn-text, #8a6d1a);
@@ -2126,16 +2235,17 @@
     font-size: var(--fs-xs, 12px);
     white-space: nowrap;
   }
-  /* With the override ON the row is a STATUS, not a warning — nothing is wrong
-     and nothing needs chasing — and unlike the offer it never goes away. So it
+  /* A row that is only STATING what happened — a forced override, or a reading
+     with nothing to correct — is not a warning: nothing is wrong and nothing
+     needs chasing, and unlike the flat-art offer it never goes away. So it
      drops to .dgp-check's quiet surface/tint vocabulary instead of sitting
      there in warning yellow for the life of the design. */
-  .dgp-flatart-on {
+  .dgp-read-on {
     border-color: var(--tint-border, #ccd6fb);
     background: var(--surface, #fff);
   }
-  .dgp-flatart-on .dgp-flatart-text { color: var(--muted, #667); }
-  .dgp-flatart-on .dgp-flatart-btn {
+  .dgp-read-on .dgp-read-text { color: var(--muted, #667); }
+  .dgp-read-on .dgp-read-btn {
     border-color: var(--tint-border, #ccd6fb);
     background: var(--surface, #fff);
     color: inherit;
