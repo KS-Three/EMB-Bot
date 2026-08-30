@@ -596,10 +596,9 @@ it was "Detail lines for photos" in the params list, on every flat logo that
 could never use it. Nothing changed in what gets sent, so area 1's
 photo-control numbers are untouched. The engine's own routing is unchanged too — ROADMAP gate 2 bars
 recalibrating stage 0, and phase-4 v1 is built to work around it with exactly
-this override. *(driven 2026-08-30 in a real browser against the real service:
-upload → 2153 stitches with no Digitize click; `owl_kent.jpg` read as shaded
-artwork, matching the "acceptance photos classify gradient" entry; both
-corrections and the revert clicked through; e2e `digitize-auto-start.spec.js`)*
+this override. *(confirmed 2026-08-30 — driven in a real browser against the
+real service, every state of the row clicked through and looked at; pinned by
+e2e `digitize-auto-start.spec.js`; numbers in scope-history 08-30)*
 
 **A `var(--x, fallback)` whose name is undefined is not a fallback — it is a
 silent bespoke value.** Three such names shipped; two more tokens failed WCAG AA

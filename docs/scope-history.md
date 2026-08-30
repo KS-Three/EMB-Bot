@@ -25,6 +25,42 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-08-30 — **the photo-upload UX pass: upload starts the run, and the panel says what stage 0 read.**
+
+Kent: *"the photo upload is very confusing -- choose flat work, real photo etc.
+IDK what ANY of that even means, can't we just upload a photo/image and the
+tool AUTOMATICALLY recognizes what needs to be done?"* It always did -- stage 0
+classifies every job -- so the change was to stop asking, not to add detection.
+Choosing a file now starts the run; the panel then states the reading ("Read as
+flat art" / "as a photo" / "as shaded artwork" / "couldn't tell") with the
+override as a one-click correction to that sentence. `detail_layer` moved onto
+the same row and shows only on a tonal lane. Nothing moved in what is SENT:
+isPhoto is still `forced_class=photo_subject`, the flat correction still
+`forced_class=flat`, so the 08-28 photo-control numbers stand and ROADMAP gate
+2 is untouched.
+
+Driven in a browser against the real service: upload produced **2153 stitches
+with no Digitize click**; `owl_kent.jpg` read as **shaded artwork** (gradient),
+consistent with the 08-24 "all four acceptance photos classify `gradient` at
+1.00" record; both corrections and the revert clicked through; the
+detail-lines tick survived its own re-run. Suites at the time: Studio
+**859 passed**, Playwright **16 passed, 0 skipped**.
+
+One regression the auto-start introduced and this pass fixed: a param changed
+while the FIRST run was still in flight landed in a window where no result
+existed yet and no watcher fired again, so it was silently dropped -- the
+design sat showing stitches at a width the user had already changed
+(unreachable before, since nothing ran until Digitize was pressed). The params
+and isPhoto watchers now count an in-flight first run.
+`text-cluster-convert.spec.js` is the live proof: it sets 90 mm before any
+result exists, and now waits for 90 mm stitches rather than for `.dgp-stats`
+to merely appear.
+
+Five e2e specs clicked an exact `"Digitize"` immediately after uploading; that
+button reads "Digitize again" once a result exists, so those clicks are gone.
+
+---
+
 **Last updated:** 2026-08-28 (later) — **the non-adjacent revisit merge (PR #293), and a correction: the "This is a photo" checkbox makes Kent's owl WORSE.**
 
 **PR #293 — `_hoist_same_thread`.** The non-adjacent half of the revisit
