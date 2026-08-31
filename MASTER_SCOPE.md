@@ -22,7 +22,7 @@ describes are ON `main`**
 `selfconsistency.py` is in a plain checkout.
 *(confirmed 2026-08-17 — `git ls-tree origin/main`)*
 
-**Last updated:** 2026-08-28. **This file is current state only, under an
+**Last updated:** 2026-08-31. **This file is current state only, under an
 800-line budget.** Its three companions: standing rulings, rejected approaches,
 corrections and session-costing traps live in [`DOCTRINE.md`](DOCTRINE.md);
 dated snapshots in [`docs/scope-history.md`](docs/scope-history.md); per-area
@@ -102,11 +102,43 @@ or move it.
     thread_index)` splits that layer and one spool ends up owned by layers
     sewing at different positions; nothing downstream rejoins them. This is the
     defect behind Kent's "black nose, white feathers, back to the nose".
-    PR #291 merged only the ADJACENT case, which moves no stitches. Closing the
-    rest needs stage 5's `covered_by` to prove no seam moves first — stage 7's
-    own docstring warns that resequencing after stage 5 has planned coverage
-    buries links under colours that no longer sew later. *(measured 2026-08-28
-    — `stage7_sequence.py`; scope-history 08-28)*
+    PR #291 merged the ADJACENT case, which moves no stitches. **PR #293 then
+    took the non-adjacent half PARTWAY** (`_hoist_same_thread`, default ON at
+    `hoist_same_thread_margin_mm = 0.5`): a revisit is hoisted beside its own
+    thread only where the mover's sewn geometry stays clear of every block it
+    jumps, which is the `covered_by` argument this entry used to say was still
+    owed — two disjoint blocks contribute nothing to each other's `visible`, so
+    their order cannot move a seam. It closes 3 of 6 revisits on `owl_kent.jpg`
+    at 100 mm (1 of 3 with `is_photographic=True`); the rest genuinely touch
+    and correctly stay. **Still open:** the remaining touching revisits, which
+    need real coverage reasoning rather than a disjointness proof.
+    *(measured 2026-08-28 — `stage7_sequence.py`; scope-history 08-28;
+    hoist half confirmed 2026-08-31 — `da7fc80`, `tests/test_merge_adjacent_same_thread.py`)*
+
+17. **The hoist leaves `sequence`'s sew cursor stale, so the detail layer
+    plans from the wrong needle position.** `stage7_sequence.sequence` sets
+    `cursor = group_blocks[-1].runs[-1].points[-1]` inside the artwork loop
+    (~L1927), then `_hoist_same_thread` REORDERS `art_blocks` below it
+    (~L1942) — and its scan starts at the last position, so the block that
+    sews last can change. `cursor` is consumed afterwards as
+    `detail_runs(..., entry=cursor)` (~L1978), where `cur = entry` seeds the
+    nearest-neighbour ordering of the detail lines
+    (`stage6_detail.detail_runs`). The repo's own
+    `test_a_revisit_is_hoisted_when_it_clears_everything_it_jumps` shows the
+    reorder that does it: `[t7, t9, t7]` -> `[7, 7, 9]`, a different last
+    block. **No stitch is misplaced** — the art->detail seam is forced
+    `jump=True, trim=True` unconditionally either way — so the cost is a
+    suboptimal detail-line sew order plus a slightly wrong `jumps` tally
+    (`jumps += d_report["jumps"]`), which matters here only because trim/jump
+    counts are a headline tracked metric (defect 4). Needs both halves live:
+    `merge_adjacent_same_thread` (default True) with a non-zero hoist margin
+    (default 0.5), AND a detail layer — which auto-routes ON for a detected
+    face on the same photo path the hoist was measured on. **Fix is one line:**
+    recompute `cursor` from the final `art_blocks` after the merge/hoist and
+    before the detail branch. Not applied — it changes photo-path stitch
+    output, so it is Kent's call.
+    *(found 2026-08-31 by adversarial review of `da7fc80`; verified against
+    `stage7_sequence.py` and `stage6_detail.py:495`)*
 
 ### Closed — kept numbered, because ten other docs cite them by number
 
