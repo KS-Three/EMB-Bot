@@ -853,6 +853,26 @@ class PipelineConfig:
     # the lever the sequencing A/B used — same posture as the two passes
     # above, which remain downstream as the net for other split sources.
     rehome_resnapped: bool = True
+    # Borders-last craft sequencing (2026-08-31, from the FIRST PHYSICAL
+    # SEW-OUT — Kent's Instagram-icon test): the sewn DST put the design's
+    # entire border satin down at 0%, then sewed seven background cones
+    # around and against it; Kent's own reading was "wouldn't it make most
+    # sense to put it towards the end?". Craft layering is fills first,
+    # edge/border satin on top of the seams it covers, details late and
+    # crisp. ON, satin-dominated layers sew after fill-dominated layers
+    # (`stage7_sequence.borders_last_layers`, upstream of stage 5 so
+    # coverage, underlap and every jump/trim derive from the new order —
+    # the same one-consistent-story argument depth_sort_layers makes), and
+    # within each thread block satin-tier shapes are picked after every
+    # fill (`sequence`'s loop; an explicit `sew_order` pin still wins).
+    # Pure sequencing — no physical constant enters, gate 1 untouched.
+    # Default OFF: unlike `merge_adjacent_same_thread` this is NOT a no-op
+    # on the flat/gradient lanes (reordering changes travel and underlap
+    # wherever satin abuts fill), so ON moves the three byte-identical
+    # goldens — flipping the default is Kent's call, taken together with
+    # deliberately regenerating them. tests/test_borders_last.py pins the
+    # default and drives both halves with the flag explicit.
+    borders_last: bool = False
     # EXPERIMENT, default OFF — option (b) of the same plan doc, the other
     # half of Kent's 2026-08-23 (a)+(b) decision: `shade_palette_bind` above
     # masks the shade snap to the palette; THIS flag makes the palette worth

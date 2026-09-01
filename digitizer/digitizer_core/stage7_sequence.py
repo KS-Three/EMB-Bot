@@ -69,7 +69,7 @@ from .stage6_fill import stitch_shape
 from .stage6_meander import meander_fill
 from .stage6_scanline import scanline_fill
 from .stage6_sketch import sketch_fill
-from .stage6_satin import classify_ribbon, satin_shape
+from .stage6_satin import classify_ribbon, is_satin_candidate, satin_shape
 from .stage6_streamline import streamline_fill
 from .stitches import StitchBlock, StitchRun
 from .threads import chart_for
@@ -203,6 +203,117 @@ def depth_sort_layers(regions, thread_indices: list[int], chart) -> list[int]:
         r.meta["layer"] = remap[r.meta["layer"]]
     # Restore stage 4's stable output order under the new layer numbers —
     # the same re-sort apply_shape_edits/apply_layer_overrides already do.
+    regions.sort(key=lambda r: (r.meta["layer"], -r.area_mm2, r.shape_id))
+    return [thread_indices[L] for L in order]
+
+
+def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
+                design_class: str) -> bool:
+    """Will this region reach the satin tier? — the borders-last predicate.
+
+    Mirrors `stitch_one`'s routing exactly: an explicit review-screen
+    `tier: "satin"` forces the tier regardless of the classifier AND the
+    global satin switch (the user already answered the question), while an
+    auto shape reaches satin only when `cfg.satin` is on and
+    `is_satin_candidate` says ribbon — the identical call, on the identical
+    artwork polygon, `_comp_axis` and `stitch_one` both make, so the three
+    cannot disagree about which shapes those are. Every other pinned tier
+    reads as not-satin even for a ribbon-shaped polygon: an explicit "fill"
+    is an instruction, not a hint.
+
+    Two edges, stated honestly (the first version of this docstring had the
+    width-floor case BACKWARDS — caught in review before it shipped):
+
+    - A shape this returns True for can still SEW as an outline run: the
+      small-shape rescue in `stitch_one` fires on area BEFORE the
+      classifier is consulted, so a tiny ribbon is sequenced late here and
+      then rescued to a run. A detail pass by any craft reading — late
+      stays the right answer.
+    - A photo-lane shape demoted by the width floor sews EARLY, with the
+      fills: `photo_width_floor` is a not-satin verdict
+      (`RibbonVerdict(False, ...)`), so `is_satin_candidate` — and
+      therefore this predicate — says False, even though `stitch_one`
+      reroutes exactly those shapes to an outline run. Treating them as
+      late details would mean reading `classify_ribbon`'s reason here;
+      deliberately NOT done yet — it engages only in the photo classes,
+      where the flag's interaction with `depth_sort_layers` is itself
+      still unmeasured (see the call-site comment in pipeline.py), and
+      both belong to the same default-flip decision. Likewise an explicit
+      `tier: "run"` detail gets no late bias — this rule is scoped to the
+      sew-out's own defect, border SATIN, on purpose.
+    """
+    tier = str(region.meta.get("tier", "auto")).lower()
+    if tier == "satin":
+        return True
+    return (tier == "auto" and cfg.satin
+            and is_satin_candidate(region.polygon, satin_max_mm,
+                                   design_class=design_class))
+
+
+def borders_last_layers(regions, thread_indices: list[int],
+                        cfg: PipelineConfig,
+                        design_class: str = "flat") -> list[int]:
+    """Move satin-dominated layers after fill-dominated ones (cfg.borders_last).
+
+    The cross-thread half of the borders-last rule, from the first physical
+    sew-out (Kent's Instagram-icon test, 2026-08-31): the sewn DST opened
+    with the entire white glyph — border satin, 5,453 stitches — at 0%, then
+    sewed seven background cones around and against it. Craft layering is
+    the reverse: fills first, edge/border satin on top of the seams it
+    covers. Largest-area-first (stage 2's order) gets that wrong the moment
+    a border outweighs the background slices it fences, which is exactly
+    what a quantized gradient produces.
+
+    Same mechanics and same slot as `depth_sort_layers`: mutates
+    `meta["layer"]`, restores stage 4's stable output order, returns
+    `thread_indices` permuted to match so the palette stays the sew-order
+    thread list. Runs BEFORE stage 5 on purpose — stage 5 sorts whatever
+    layer numbers it is given and plans coverage/underlap against them, so
+    the moved order is the only order any downstream pass ever sees: fills
+    extend underneath the satin that now sews after them, every jump/trim
+    is derived from the final sequence, and none of the post-hoc safety
+    proof `_hoist_same_thread` needs applies. Called after
+    `depth_sort_layers` (a photo design keeps its depth story, this only
+    refines it) and before `apply_layer_overrides`, so an explicit
+    review-screen `layer` override still beats the craft default.
+
+    A layer is on the satin side when its satin-tier stitched area outweighs
+    the rest (`_sews_satin`, area-summed) — dominance, not unanimity,
+    because the sew-out's own glyph is two satin rings PLUS a compact dot
+    that classifies fill, and a single small member must not pin a border
+    layer early. Unstitched regions get no vote (depth_sort_layers' own
+    posture) unless they are all the layer has. Relative order inside each
+    class is preserved: fills keep stage 2's area story among themselves,
+    satins keep theirs. The whole pass is a stable partition, so a design
+    with no satin-dominated layer — every flat golden — comes back
+    untouched, order and palette both.
+
+    Costs one `is_satin_candidate` per stitched region when the flag is on
+    (stage 7 will classify again when it routes); the flag's own default is
+    OFF, so no pre-existing caller pays anything.
+    """
+    if not regions:
+        return list(thread_indices)
+    satin_max = cfg.satin_max_width_mm or SATIN_MAX_WIDTH_MM
+    layers = sorted({r.meta["layer"] for r in regions})
+    by_layer = {L: [r for r in regions if r.meta["layer"] == L] for L in layers}
+
+    def satin_side(L: int) -> bool:
+        members = by_layer[L]
+        basis = [r for r in members if r.meta.get("stitched", True)] or members
+        satin = sum(r.area_mm2 for r in basis
+                    if _sews_satin(r, cfg, satin_max, design_class))
+        return satin > sum(r.area_mm2 for r in basis) - satin
+
+    side = {L: satin_side(L) for L in layers}
+    order = [L for L in layers if not side[L]] + [L for L in layers if side[L]]
+    if order == layers:
+        return list(thread_indices)
+    remap = {old: new for new, old in enumerate(order)}
+    for r in regions:
+        r.meta["layer"] = remap[r.meta["layer"]]
+    # Restore stage 4's stable output order under the new layer numbers —
+    # the same re-sort depth_sort_layers/apply_layer_overrides already do.
     regions.sort(key=lambda r: (r.meta["layer"], -r.area_mm2, r.shape_id))
     return [thread_indices[L] for L in order]
 
@@ -1841,6 +1952,27 @@ def sequence(
                      for i in range(len(group))
                      if group[i].region.meta.get("sew_order") is not None}
 
+        # Borders-last, the within-cone half (cfg.borders_last — the
+        # cross-thread half is `borders_last_layers`, upstream): satin-tier
+        # shapes wait until every fill in their own group has sewn, so
+        # interior detail satin lands late in its cone instead of wherever
+        # nearest-neighbour travel happens to start. Legal without any
+        # coverage argument because within-a-layer order has always been
+        # stage 7's own free choice (stage 5's docstring: "Within a layer
+        # the order is stage 7's problem") and it is settled here, BEFORE
+        # the stitches exist — jump, trim and ties all derive from the
+        # final order exactly as they always have. The predicate is the
+        # same `_sews_satin` the layer pass uses, so the two halves cannot
+        # disagree about which shapes are the borders. An explicit
+        # `sew_order` pin still beats the bias (the pick logic below is
+        # untouched for pinned shapes), the precedence every review-screen
+        # override gets.
+        late: set[int] = set()
+        if cfg.borders_last:
+            late = {i for i in range(len(group))
+                    if _sews_satin(group[i].region, cfg, satin_max,
+                                   design_class)}
+
         remaining = list(range(len(group)))
         ordered: list[StitchRun] = []
         # Which shapes actually put thread down. A link may only be routed
@@ -1852,13 +1984,18 @@ def sequence(
             pinned = [i for i in remaining if i in sew_order]
             due = min(pinned, key=lambda i: (sew_order[i], rank[i])) if pinned else None
             unpinned = [i for i in remaining if i not in sew_order]
+            # `unpinned` (not `pool`) decides whether a pin is forced early:
+            # satin shapes deferred by the bias are still unpinned shapes
+            # that will take their turn, not a reason to pre-empt them.
+            pool = (([i for i in unpinned if i not in late] or unpinned)
+                    if late else unpinned)
             if due is not None and (sew_order[due] <= next_slot or not unpinned):
                 pick = due
             elif cursor is None:
-                pick = min(unpinned, key=lambda i: (-far[i], rank[i]))
+                pick = min(pool, key=lambda i: (-far[i], rank[i]))
             else:
                 here = Point(cursor)
-                pick = min(unpinned, key=lambda i: (
+                pick = min(pool, key=lambda i: (
                     round(group[i].polygon.distance(here), 6), rank[i]))
             p = group[pick]
             remaining.remove(pick)

@@ -108,7 +108,7 @@ overclaiming "no committed artwork reaches the hoist with a same-thread
 split" — TRUE for the re-snap mechanism, FALSE for duplicate quantize-time
 declarations, which survive on `drone_render` (t16 at 30.9%/98.9%, t119 at
 74.2%/99.4% — the final block, both tail revisits flagged REENTRY; verified
-independently). Filed as live defect 17.
+independently). Filed as live defect 18 (17 was claimed hours earlier by the borders-last lane, PR #300).
 
 Kent: *"the photo upload is very confusing -- choose flat work, real photo etc.
 IDK what ANY of that even means, can't we just upload a photo/image and the
@@ -3244,3 +3244,68 @@ the blend tier actually lives, three of four are byte-identical; only
 
 **Kent's ruling:** tonal v1 is not done — 68–78 stops a portrait is too many —
 close the per-shade palette escape first. Method left to engineering judgment.
+
+---
+
+## 2026-09-01 — THE FIRST PHYSICAL STITCH-OUT. Thread has met cloth.
+
+Kent sewed his Instagram-style icon and rated it **6/10** ("everything is so
+close"). First cloth evidence in the project's history. Full session record in
+memory (`first-physical-sewout-2026-09-01`); this is the measured summary.
+
+**What sewed:** Kent's own icon PNG (not in the repo — only the structural
+repro `photo/repro_gradient_white_icon.png` is committed), exported through
+the **Python service** (pystitch decodes all 7 colour changes as standard
+0xC3, so the browser codec — and its axis bug — was never in the path).
+80.5 x 80.5 mm, **8 cones, 18,959 stitches, 26 trims, 51 jumps**. Pique polo,
+cutaway backing (Kent-stated). Sewn colours were random operator threading
+(Kent-stated) — DST carries no palette; never grade colour from this out.
+
+**Kent's four findings, mapped against the decoded file + five photos:**
+
+1. *"Satin border jumped back and forth between adjacent shapes."* CONFIRMED
+   as the shade-patch quilt: the background decomposed into 7 shade cones
+   whose regions interleave spatially, so adjacent patches sew far apart in
+   time; a **229-stitch cone re-enters the lens interior at 76%** of the run;
+   a **104-stitch cone sews at 99.4%**; the tail is jump-chains stepping
+   8-11.5 mm across finished work. Defects 6 and 16, on cloth.
+2. *"Infill density wasn't high enough — I could see fabric through it."*
+   The pitch explanation was proposed and **RETRACTED the same night**:
+   measured from the sewn file, all four band fills sit at **0.18-0.19 mm
+   median row pitch** — pro-level (the blend path sews its own pitch;
+   `FILL_ROW_MM = 0.40` was never in this design's fills). Macro photos
+   confirm patch interiors are solid. What reads as see-through is
+   **(a) seam trenches between adjacent shade patches, (b) raw fill ends on
+   the bottom-left outer perimeter that no border covers, and (c) late
+   fragments riding ON TOP of the pre-sewn black glyph satin** (sage over
+   the lens ring's lower-right, amber over its top). Fix class: seams,
+   borders, sequencing — NOT pitch. Card block 2 stays worth sewing as the
+   controlled A/B/C on the same fabric.
+3. *"The inner circle satin went in right away — shouldn't it be near the
+   end?"* CONFIRMED: the entire glyph (body outline + lens ring + dot,
+   5,453 st) is **block 0**, sewn before every background cone. The engine
+   has no borders-last rule — within a cone, order is nearest-neighbour
+   travel. Kent's instinct is the pro convention.
+4. *"Outside satin border flawless; interior needs work."* Consistent: the
+   big glyph outline is one contiguous early satin pass; the interior is
+   where quilt seams, late-fragment intrusion, and tight ring curvature
+   concentrate.
+
+Also on the photos: a contraction/wrinkle halo around the design (cause not
+attributable from photos — fabric, hooping, or compensation; gate 1 turf) and
+uncut tail threads (operator cosmetic).
+
+**Ruled/queued (Kent, this session):** sew the card next (block 2 = density
+A/B/C); TWO approved work items issued as task cards — borders-last stage-7
+sequencing, and shade-patch-quilt cleanup (tiny-cone merges, enclosed-interior
+re-entries, tail jump-chains). Gate 1 STANDS — nothing here settles a
+physical constant; the card's controlled blocks do that, not this icon.
+
+**Evidence custody:** the sewn DST and five photos were uploaded in-session
+only and are deliberately NOT committed (public repo; CLAUDE.md's
+no-new-artwork rule). They live on Kent's machine; his call whether copies go
+under `scratch_kent/`.
+
+**A datum for defect 3's ledger:** a real 80 mm design sews 26 trims / 7
+stops today. (The "14 jump-trims" claim itself remains unreproducible as
+written — see the 2026-08-31 note on defect 3.)

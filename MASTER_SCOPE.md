@@ -22,7 +22,7 @@ describes are ON `main`**
 `selfconsistency.py` is in a plain checkout.
 *(confirmed 2026-08-17 — `git ls-tree origin/main`)*
 
-**Last updated:** 2026-08-31. **This file is current state only, under an
+**Last updated:** 2026-09-01. **This file is current state only, under an
 800-line budget.** Its three companions: standing rulings, rejected approaches,
 corrections and session-costing traps live in [`DOCTRINE.md`](DOCTRINE.md);
 dated snapshots in [`docs/scope-history.md`](docs/scope-history.md); per-area
@@ -36,6 +36,12 @@ a claim with no pointer as unverified — and if you find one, either verify it
 or move it.
 
 ---
+
+**FIRST PHYSICAL STITCH-OUT 2026-09-01 — thread has met cloth.** Kent's
+Instagram icon at 80 mm, 6/10; the full measured record is scope-history
+2026-09-01 and memory `first-physical-sewout-2026-09-01`. Gate 1 still
+stands — constants wait on the sew-out CARD's controlled blocks, not this
+icon. Cloth pointers added to defects 3, 6 and 16 below.
 
 ## Live defects — believed true right now
 
@@ -66,8 +72,11 @@ or move it.
    mistake this note exists to prevent. **Kent: name the design and this
    becomes checkable in one run.** The underlying concern is independently
    supported by defect 4, which does not depend on this number.
+   **A real 80 mm datum now exists:** the 2026-09-01 sew-out's icon sews
+   26 trims / 7 stops (service DST, decoded). Not the same design — the
+   original claim stays unreproducible — but this one is pinned to a file.
    *(measured 2026-08-12 — scope-history; reproduction attempted and failed
-   2026-08-31 — two fixtures x three fill variants)*
+   2026-08-31 — two fixtures x three fill variants; 80 mm datum 2026-09-01)*
 
 4. **We trim far more than the professional — 3.1x the trim breaks on a
    like-for-like corpus.** Quote the rate or the break count, never a run
@@ -92,7 +101,10 @@ or move it.
    intra-shape. Retire the old framing: the rope border was never one stroke
    the engine shattered — the artwork is ~136 separate chevrons. **And it is
    UNREPRESENTATIVE of client logos**, which carry 1–3 fill shapes that
-   essentially never cut. *(measured 2026-08-21/22 — area 1)*
+   essentially never cut. **On cloth 2026-09-01:** the first sew-out's tail
+   is exactly this — late satin fragments riding over pre-sewn work, jump-
+   chains stepping 8–11.5 mm. *(measured 2026-08-21/22 — area 1; cloth
+   2026-09-01 — scope-history)*
 
 15. **An UNDECLARED photograph gets neither depth sequencing nor the palette
     bind, and its region re-snap escapes the selected palette.** Closed defect
@@ -114,7 +126,24 @@ or move it.
     11), not a threshold to tune — gate 2 bars inferring it. *(measured 2026-08-28 — PR #291 investigation; numbers in
     scope-history 08-28)*
 
-17. **Duplicate quantize-time declarations put one cone in two layers — the
+17. **The sew order has no craft layering — border satin opens the design.**
+    Found by the FIRST PHYSICAL SEW-OUT (Kent's Instagram-icon test, 80 mm
+    pique polo, 2026-08-31, rated 6/10): the sewn DST put the whole white
+    glyph — border satin, 5,453 stitches — down at 0%, then sewed seven
+    background cones against it; on the repro fixture the pink border ring
+    opens the design at 0.0%, before its own cone's fills. **FIX BUILT,
+    default OFF, awaiting Kent's default call:** `cfg.borders_last` —
+    satin-dominated layers sew after fill-dominated ones
+    (`borders_last_layers`, upstream of stage 5 so coverage/underlap/ties
+    derive from the final order) and satin-tier shapes wait for their
+    group's fills in `sequence`'s pick loop; review-screen pins still win.
+    ON, the repro ring moves 0.0% → 54.5%, stitch count unchanged, renders
+    byte-identical — order-only there. OFF stays default because ON moves
+    the three byte-identical goldens; flipping + regenerating is one
+    decision, Kent's. *(measured 2026-08-31 — `tests/test_borders_last.py`,
+    15 passing; suite 3 failed/1561 passed, the documented platform three)*
+
+18. **Duplicate quantize-time declarations put one cone in two layers — the
     second spool-revisit mechanism, untouched by defect 16's fix.** Two
     stage-2 clusters snap to the same chart cone and keep separate layers, so
     the spool sews at two positions; `rehome_resnapped_regions` keys on the
@@ -128,6 +157,8 @@ or move it.
     own measured pass, not a rider. *(measured 2026-08-31/09-01 —
     `tools/sequence_census.py` on drone_render; found by the PR review pass)*
 
+### Closed — kept numbered, because ten other docs cite them by number
+
 Full text moved to [`docs/scope-history.md`](docs/scope-history.md) 2026-08-27;
 these are pointers, not status.
 
@@ -140,7 +171,7 @@ these are pointers, not status.
 12. preflight graded every photo job F — RESOLVED 2026-08-24 (PR #229).
 13. the detail layer sewed the background a cutout had just removed — RESOLVED 2026-08-24. **Its lesson stands: no acceptance arm had EVER set that flag**, which is the blind spot the evaluation-harness section exists to close.
 14. half the cloth bare inside each shape is the THREAD-PAINT TIER, not a density bug — ANSWERED 2026-08-25 (streamline covers 0.55-0.59 of its footprint vs the filled tier's 0.99; Kent's filled-for-high-contrast ruling, and the face exception, are in Standing rulings).
-16. one spool revisited across other colours, THE RE-SNAP MECHANISM — RESOLVED 2026-08-31 (`rehome_resnapped_regions`: a pipeline re-snap joins its cone's layer upstream of stage 5, so the coverage plan sees the order actually sewn; a review recolor was never a source, `apply_shape_edits` already moves the layer. Owl sews every spool exactly once on BOTH routes, 17 → 14 blocks default; the #291/#293 merge/hoist passes stay as the net for other split sources, pinned by `test_merge_adjacent_same_thread.py`. Sweep in scope-history 08-31. **The SYMPTOM is not fully gone — duplicate quantize declarations are a second mechanism, defect 17.**)
+16. one spool revisited across other colours, THE RE-SNAP MECHANISM — RESOLVED 2026-08-31 (`rehome_resnapped_regions`: a pipeline re-snap joins its cone's layer upstream of stage 5, so the coverage plan sees the order actually sewn; a review recolor was never a source, `apply_shape_edits` already moves the layer. Owl sews every spool exactly once on BOTH routes, 17 → 14 blocks default; the #291/#293 merge/hoist passes stay as the net for other split sources, pinned by `test_merge_adjacent_same_thread.py`. Sweep in scope-history 08-31. On cloth 2026-09-01: the first sew-out spent a 229-stitch cone re-entering the lens interior at 76% and a 104-stitch cone at 99.4% — the pattern this fix removes from the repro. **The SYMPTOM is not fully gone — duplicate quantize declarations are a second mechanism, defect 18.**)
 
 ---
 
