@@ -103,6 +103,12 @@ lever (the A/B's own instrument). Full local suite: the three named
 platform-divergence reds only (pushcomp, flat-lane, stage2 — all on their
 documented fixtures).
 
+Defect 3's 2026-08-31 reproduction attempt, moved here from MASTER_SCOPE for
+the line budget: at `target_width_mm=80` over tatami / streamline-mono /
+streamline-layered, counting runs with `trim=True`, runs with `jump=True`,
+and the intra-shape lift warning — `owl_kent.jpg` gives 71/67/142 trims,
+`photo_owl_pale.png` 9/26/28. Neither is 14; neither is variant-invariant.
+
 Post-review addendum (2026-09-01): the review pass caught the docs
 overclaiming "no committed artwork reaches the hoist with a same-thread
 split" — TRUE for the re-snap mechanism, FALSE for duplicate quantize-time

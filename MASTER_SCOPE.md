@@ -58,25 +58,17 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
 
 3. **14 jump-trims on an 80mm design,** every fill variant measured. Not
    started. **UNREPRODUCIBLE AS WRITTEN — the entry does not name the design,
-   and its own pointer does not carry one.** `scope-history` line 1277 is the
-   only occurrence of the claim anywhere in the repo and is a one-line
-   restatement: no design, no definition of "jump-trim", no variant table.
-   Tried 2026-08-31 on the two fixtures its surrounding 2026-08-12 context
-   discusses, at `target_width_mm=80`, over tatami / streamline-mono /
-   streamline-layered, counting runs with `trim=True`, runs with `jump=True`,
-   and the intra-shape lift warning: `owl_kent.jpg` gives 71/67/142 trims,
-   `photo_owl_pale.png` 9/26/28. Neither is 14, and neither is
-   variant-invariant, so "in every variant" does not hold for either.
-   **Do not read those numbers as a regression** — without knowing the design
-   or the metric, they are not comparable to 14; that comparison is the
-   mistake this note exists to prevent. **Kent: name the design and this
-   becomes checkable in one run.** The underlying concern is independently
-   supported by defect 4, which does not depend on this number.
-   **A real 80 mm datum now exists:** the 2026-09-01 sew-out's icon sews
-   26 trims / 7 stops (service DST, decoded). Not the same design — the
-   original claim stays unreproducible — but this one is pinned to a file.
-   *(measured 2026-08-12 — scope-history; reproduction attempted and failed
-   2026-08-31 — two fixtures x three fill variants; 80 mm datum 2026-09-01)*
+   and its own pointer does not carry one.** A 2026-08-31 reproduction
+   attempt (two fixtures × three fill variants, three trim readings each —
+   full table in scope-history 08-31 context) found nothing near 14 and
+   nothing variant-invariant. **Do not read those numbers as a regression** —
+   without the design or the metric they are not comparable to 14; that
+   comparison is the mistake this note exists to prevent. **Kent: name the
+   design and this becomes checkable in one run.** Defect 4 supports the
+   underlying concern independently. **A real 80 mm datum now exists:** the
+   2026-09-01 sew-out's icon sews 26 trims / 7 stops (service DST, decoded) —
+   not the same design, but pinned to a file. *(measured 2026-08-12 —
+   scope-history; repro attempted and failed 2026-08-31; datum 2026-09-01)*
 
 4. **We trim far more than the professional — 3.1x the trim breaks on a
    like-for-like corpus.** Quote the rate or the break count, never a run
@@ -141,21 +133,18 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
     byte-identical — order-only there. OFF stays default because ON moves
     the three byte-identical goldens; flipping + regenerating is one
     decision, Kent's. *(measured 2026-08-31 — `tests/test_borders_last.py`,
-    15 passing; suite 3 failed/1561 passed, the documented platform three)*
+    15 passing)*
 
 18. **Duplicate quantize-time declarations put one cone in two layers — the
-    second spool-revisit mechanism, untouched by defect 16's fix.** Two
-    stage-2 clusters snap to the same chart cone and keep separate layers, so
-    the spool sews at two positions; `rehome_resnapped_regions` keys on the
-    re-snap stamp and correctly ignores these, and the hoist declines them
-    where their thread touches what they jump. On `drone_render` at 80 mm:
-    t16 sews at 30.9% and again 40 st at 98.9%, t119 at 74.2% and again 60 st
-    as the FINAL block at 99.4%, both tail blocks re-entering sewn territory —
-    the sew-out's b4/b7 pattern by another route. Candidate fix is the same
-    upstream shape: merge same-cone layers at declaration time (before stage
-    5), but unlike the re-snap case it moves whole clusters, so it wants its
-    own measured pass, not a rider. *(measured 2026-08-31/09-01 —
-    `tools/sequence_census.py` on drone_render; found by the PR review pass)*
+    second spool-revisit mechanism, untouched by defect 16's fix** (which keys
+    on the re-snap stamp and correctly ignores these; the hoist declines them
+    where threads touch). `drone_render` 80 mm: t16 sews at 30.9% and again
+    40 st at 98.9%, t119 at 74.2% and again 60 st as the FINAL block, both
+    tail blocks re-entering sewn territory — the sew-out's b4/b7 pattern by
+    another route. Candidate fix: merge same-cone layers at declaration time,
+    upstream like the rehome — but it moves whole clusters, so it wants its
+    own measured pass. *(measured 2026-09-01 — `tools/sequence_census.py`;
+    found by the PR #301 review pass)*
 
 ### Closed — kept numbered, because ten other docs cite them by number
 
@@ -171,7 +160,7 @@ these are pointers, not status.
 12. preflight graded every photo job F — RESOLVED 2026-08-24 (PR #229).
 13. the detail layer sewed the background a cutout had just removed — RESOLVED 2026-08-24. **Its lesson stands: no acceptance arm had EVER set that flag**, which is the blind spot the evaluation-harness section exists to close.
 14. half the cloth bare inside each shape is the THREAD-PAINT TIER, not a density bug — ANSWERED 2026-08-25 (streamline covers 0.55-0.59 of its footprint vs the filled tier's 0.99; Kent's filled-for-high-contrast ruling, and the face exception, are in Standing rulings).
-16. one spool revisited across other colours, THE RE-SNAP MECHANISM — RESOLVED 2026-08-31 (`rehome_resnapped_regions`: a pipeline re-snap joins its cone's layer upstream of stage 5, so the coverage plan sees the order actually sewn; a review recolor was never a source, `apply_shape_edits` already moves the layer. Owl sews every spool exactly once on BOTH routes, 17 → 14 blocks default; the #291/#293 merge/hoist passes stay as the net for other split sources, pinned by `test_merge_adjacent_same_thread.py`. Sweep in scope-history 08-31. On cloth 2026-09-01: the first sew-out spent a 229-stitch cone re-entering the lens interior at 76% and a 104-stitch cone at 99.4% — the pattern this fix removes from the repro. **The SYMPTOM is not fully gone — duplicate quantize declarations are a second mechanism, defect 18.**)
+16. one spool revisited across other colours, THE RE-SNAP MECHANISM — RESOLVED 2026-08-31 (`rehome_resnapped_regions`: a pipeline re-snap joins its cone's layer upstream of stage 5, so the coverage plan sees the order actually sewn; a review recolor was never a source, `apply_shape_edits` already moves the layer. Owl: every spool exactly once on BOTH routes, 17 → 14 blocks default; #291/#293 merge/hoist stay as the net for other sources. On cloth 2026-09-01: a 229-st cone re-entered the lens interior at 76%, a 104-st cone at 99.4% — the pattern this removes from the repro. Sweep: scope-history 08-31. **The SYMPTOM is not fully gone — defect 18 is a second mechanism.**)
 
 ---
 
@@ -270,28 +259,17 @@ its own merits.
    but all 37 are present on Kent's machine (confirmed 2026-08-17), so a local
    session can run the corpus legs today. Blocks cloud-side M2/M3 only.
 7. **26 glyphs that sew nothing, in 6 shipped fonts — SPLIT IN TWO 2026-08-28,
-   and the diagnosis needed no SVG sources after all.** The user-facing half was
-   already closed (the Studio says "This font can't stitch …"). Decoding the six
-   shipped `.embf` binaries settles which of the two candidate causes applies to
-   each font, from committed data alone:
-   - **20 glyphs — `stripRunParamsIfSatin`, confirmed.** `roaring_twenties_KOR`
-     and `_small` carry satin on 146 of 156 glyphs, so the font-wide strip
-     fires; the ten dead glyphs in each are runs-only (`cols=0`), so it takes
-     their params and the engine skips the bare arrays that remain.
-   - **6 glyphs — a GATE 1 REFUSAL, not work.** `western_light` and the three
-     `ondulamarif` cuts have **zero** satin glyphs, so the strip never runs —
-     yet their runs are bare anyway. `runFrom` only returns a bare array when
-     `!(lenMm > 0)`, so upstream authored no length, and defaulting one is
-     already refused by a test named for the gate:
-     `test/run-fonts.test.js:44` "gate 1: a run with NO authored length is
-     skipped, not defaulted".
-   **Still open, and it is one grep, not a session:** whether upstream authored
-   lengths for the 20. Count `running_stitch_length_mm` in
-   `<ink-stitch>/src/roaring_twenties_KOR/ltr.svg`. **>0** and the narrow fix
-   (scope the strip to glyphs that HAVE columns) revives them — Kent's call,
-   since a glyph that starts inking changes the bbox and so the auto-scaling of
-   any text containing `+ - / < = > \ _ ¯ °`. **0** and all 26 are the same
-   gate-1 case, no fix exists, and this item closes permanently.
+   diagnosed from the shipped `.embf` binaries alone** (user-facing half
+   already closed — the Studio says "This font can't stitch …"). 20 are
+   `stripRunParamsIfSatin` taking runs-only glyphs' params; 6 are a GATE 1
+   refusal (no authored run length upstream — defaulting one is refused by
+   `test/run-fonts.test.js:44`). Full per-font diagnosis: area 2 doc,
+   "stripRunParamsIfSatin". **Still open, one grep not a session:** count
+   `running_stitch_length_mm` in `<ink-stitch>/src/roaring_twenties_KOR/
+   ltr.svg`. **>0** → the narrow fix (scope the strip to glyphs WITH columns)
+   revives the 20 — Kent's call, since inking those glyphs changes the bbox
+   auto-scaling of any text containing `+ - / < = > \ _ ¯ °`. **0** → all 26
+   are the same gate-1 case and this closes permanently.
    *(measured 2026-08-28 — `.embf` decode; detail: area 2)*
 10. **RESOLVED 2026-08-25 — Studio typography: "tighter and more editorial."**
    Kent's direction, given when asked. It settled the three items the earlier
@@ -329,15 +307,13 @@ its own merits.
    on it. See the font-licence entry.
 
 12. **Merge a tiny cone into an ADJACENT SHADE — a colour-difference call,
-   and it needs Kent's real icon PNG.** The sew-out's b4 (229 st) / b7
-   (104 st) class: after the 2026-08-31 sequencing fixes, the only way to
-   cut such a cone further is sewing its patches in a neighbouring shade's
-   thread, which trades a colour step for a stop — quality, not gate-1
-   physics. Unmeasurable on the repro (its 3 surviving cones are
-   White/Fuchsia/Date, no defensible merge pair), and his icon's source PNG
-   is not in the repo — `pull-corpus` gets it here, and
-   `tools/sequence_census.py` then puts per-cone stitch counts against the
-   candidate ΔE in one run. *(measured 2026-08-31 — scope-history 08-31)*
+   and it needs Kent's real icon PNG.** The sew-out's b4/b7 class: post-08-31
+   sequencing fixes, cutting such a cone further means sewing its patches in
+   a neighbouring shade's thread — a colour step for a stop, quality not
+   gate-1 physics. Unmeasurable on the repro (no defensible merge pair);
+   `pull-corpus` his PNG, then `tools/sequence_census.py` puts per-cone
+   stitch counts against candidate ΔE in one run. *(measured 2026-08-31 —
+   scope-history 08-31)*
 
 ---
 
