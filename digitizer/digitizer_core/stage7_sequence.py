@@ -62,7 +62,7 @@ from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITC
 from .stage5_overlap import PlannedRegion
 from .stage6_applique import applique_pass, nn_group_key
 from .stage6_blend import SourcePixels, blend_fill
-from .stage6_border import border_runs, run_outline
+from .stage6_border import border_runs, run_outline, silhouette_cap
 from .stage6_contour import contour_fill
 from .stage6_detail import detail_runs
 from .stage6_fill import stitch_shape
@@ -77,7 +77,9 @@ from .warnings_codes import (BLEND_NO_REGIONS_DECOMPOSED, BORDER_LIGHTENED,
                              BORDER_SEAM_SHARED,
                              BORDER_SKIPPED_TOO_NARROW,
                              CONTOUR_DIRECTIONAL_COMP_UNSEWN,
-                             CONTOUR_RING_UNREACHABLE, LONG_JUMPS_TRIMMED,
+                             CONTOUR_RING_UNREACHABLE, EDGE_CAP_APPLIED,
+                             EDGE_CAP_EMPTY,
+                             EDGE_CAP_LIGHTENED, LONG_JUMPS_TRIMMED,
                              SHAPE_NOT_STITCHED, SHAPE_TOO_THIN_TO_FILL,
                              SMALL_SHAPES_AS_RUN, warn)
 
@@ -1145,6 +1147,47 @@ def _yield_frontage(
     return trimmed, []
 
 
+def _cap_thread(silhouette, sewn: list[PlannedRegion],
+                default_thread: int) -> int:
+    """Which cone the design-silhouette cap sews in (cfg.edge_cap).
+
+    The cap continues an edge that already exists, so it sews in the thread
+    of whichever region owns the most of that edge: for each sewn region,
+    how much of its own boundary lies ON the silhouette boundary, summed per
+    thread. A region buried in the middle of the design contributes nothing;
+    the colours actually facing bare fabric decide.
+
+    This is deliberately a CHOICE AMONG THREADS THE DESIGN ALREADY SEWS, not
+    a chart lookup: the result-level palette is regions-derived (see
+    `sequence`'s shade-bind comment), and a cap is the one pass with no
+    colour of its own to sample — inventing a cone for it would grow the
+    operator's cone list for a decoration nobody asked to be a new colour.
+
+    Ties break on the lower thread index, the same deterministic tiebreak
+    the geometry picks use. `default_thread` covers the degenerate case
+    where no region touches the silhouette measurably.
+    """
+    if silhouette is None or getattr(silhouette, "is_empty", True):
+        return default_thread
+    try:
+        edge = silhouette.boundary.buffer(_BORDER_SEAM_EPS_MM)
+    except Exception:
+        return default_thread
+    frontage: dict[int, float] = {}
+    for p in sewn:
+        try:
+            shared = p.polygon.boundary.intersection(edge)
+        except Exception:
+            continue
+        length = getattr(shared, "length", 0.0)
+        if length > 0:
+            ti = p.region.thread_index
+            frontage[ti] = frontage.get(ti, 0.0) + length
+    if not frontage:
+        return default_thread
+    return min(frontage, key=lambda ti: (-round(frontage[ti], 6), ti))
+
+
 def _border_seam_warning(unresolved: list[tuple[str, str, float]]) -> dict | None:
     """`BORDER_SEAM_SHARED`, built from the seams `_yield_frontage` could not
     resolve — or `None` when every shared seam this design had was.
@@ -1453,6 +1496,11 @@ def sequence(
     # the appliqué pass) so the same-thread merge below sees exactly the run
     # of blocks it is allowed to join.
     art_blocks: list[StitchBlock] = []
+    # Every region that actually put thread down, across all groups — the
+    # design-silhouette cap's input (cfg.edge_cap). The per-group `sewn`
+    # list below is scoped to one colour; the silhouette is the union of
+    # all of them, and a region that produced nothing has no edge to cap.
+    cap_sewn: list[PlannedRegion] = []
     merge_same_thread = bool(cfg.merge_adjacent_same_thread)
     hoist_same_thread = max(0.0, float(cfg.hoist_same_thread_margin_mm))
     for _group_key in sorted({nn_group_key(p) for p in planned}):
@@ -2066,6 +2114,7 @@ def sequence(
                                      tie=not merge_same_thread)
         art_blocks.extend(group_blocks)
         cursor = group_blocks[-1].runs[-1].points[-1]
+        cap_sewn.extend(sewn)
 
     # Adjacent same-thread merge (2026-08-28). Deferred to here, after every
     # artwork group has emitted, because the pairs it folds are produced by
@@ -2086,6 +2135,77 @@ def sequence(
         for _b in art_blocks:
             _apply_ties(_b.runs)
     blocks.extend(art_blocks)
+
+    # --- The design-silhouette edge cap (cfg.edge_cap) ----------------------
+    # Kent's first sew-out, second finding: every tatami row in the icon's
+    # background ended in open air, because the design's OUTER edge belongs
+    # to no single shape and so no shape's own border covers it. This closes
+    # it with one ring on the union of everything that actually sewed.
+    #
+    # Placed AFTER every artwork block and BEFORE the detail layer, which is
+    # borders-last read at design scale: the cap covers row ends, so it has
+    # to sew on top of the rows it covers, and detail lines still ride on
+    # top of everything (plan row 14's "details last"). Strictly opt-in —
+    # "none" is the default and this branch never runs, which is what keeps
+    # every existing plan byte-identical.
+    #
+    # The cap sews in a thread the design ALREADY loads (`_cap_thread`), so
+    # it costs the operator no extra cone — but it is its own block, because
+    # a block boundary is where the needle lifts and this pass starts
+    # somewhere the previous colour did not end. When the picked thread
+    # happens to match the last artwork block, the same-thread merge above
+    # has already run and will not fold this one in; that is deliberate,
+    # not an oversight — the merge pass reasons about artwork groups, and
+    # the cap is a design-level pass whose own boundary is meaningful.
+    cap_style = str(cfg.edge_cap or "none").lower()
+    cap_lightened = 0
+    cap_empty_style = ""
+    cap_cost: dict | None = None
+    if cap_style in ("bean", "satin") and cap_sewn:
+        silhouette = unary_union([p.polygon for p in cap_sewn])
+        c_runs, c_report = silhouette_cap(
+            silhouette,
+            "__edge_cap__",
+            style=cap_style,
+            entry=cursor,
+            trim_at_mm=trim_at,
+            width_mm=cfg.border_width_mm,
+        )
+        if c_runs:
+            jumps += c_report["jumps"]
+            cap_lightened = c_report["bean_loops"]
+            # The needle always lifts into a new block and the thread is
+            # always cut coming out of the previous one — the same forcing
+            # the detail layer below and every artwork block above get.
+            c_runs[0].jump = True
+            c_runs[0].trim = True
+            _apply_ties(c_runs)
+            c_index = _cap_thread(silhouette, cap_sewn,
+                                  cap_sewn[0].region.thread_index)
+            c_thread = chart_for(cfg)[c_index]
+            blocks.append(
+                StitchBlock(
+                    thread_index=c_index,
+                    thread_number=c_thread.number,
+                    rgb=tuple(c_thread.rgb),
+                    runs=c_runs,
+                )
+            )
+            cursor = c_runs[-1].points[-1]
+            # The bill, always. See EDGE_CAP_APPLIED: the cost is not
+            # predictable from the design's size, it scales with how
+            # fragmented the silhouette is, so the only honest thing is to
+            # measure it on THIS design and say so.
+            _cap_st = sum(len(r.points) for r in c_runs)
+            _art_st = sum(b.stitch_count for b in blocks) - _cap_st
+            cap_cost = {
+                "style": cap_style,
+                "stitches": _cap_st,
+                "percent": round(100.0 * _cap_st / _art_st, 1) if _art_st else 0.0,
+                "edges": c_report["loops"] + c_report["bean_loops"],
+            }
+        else:
+            cap_empty_style = cap_style
 
     # --- The detail layer (stage6_detail, photo plan row 11) -----------------
     # Appended AFTER every artwork block — plan row 14's craft consensus,
@@ -2232,6 +2352,39 @@ def sequence(
                 f"{border_narrow} shape{'s were' if border_narrow != 1 else ' was'} "
                 "too narrow to hold an outline at all, and went unbordered.",
                 count=border_narrow,
+            )
+        )
+    if cap_cost is not None:
+        warnings.append(
+            warn(
+                EDGE_CAP_APPLIED,
+                f"The design-edge cap added {cap_cost['stitches']:,} stitches "
+                f"(+{cap_cost['percent']}% of the design) across "
+                f"{cap_cost['edges']} separate edge"
+                f"{'s' if cap_cost['edges'] != 1 else ''}. A design whose "
+                "shapes do not join into one silhouette is being outlined "
+                "many times over, which is where a cap stops being cheap.",
+                **cap_cost,
+            )
+        )
+    if cap_empty_style:
+        warnings.append(
+            warn(
+                EDGE_CAP_EMPTY,
+                "The design-edge cap was switched on but found no edge long "
+                "enough to sew — the silhouette is too small or too narrow to "
+                "hold an outline.",
+                style=cap_empty_style,
+            )
+        )
+    if cap_lightened:
+        warnings.append(
+            warn(
+                EDGE_CAP_LIGHTENED,
+                f"{cap_lightened} stretch{'es' if cap_lightened != 1 else ''} of "
+                "the design edge had no room for a satin column and capped as a "
+                "bean run instead.",
+                count=cap_lightened,
             )
         )
     # `_yield_frontage` (above, called from `stitch_one`) is the real fix for

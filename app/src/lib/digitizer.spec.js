@@ -56,7 +56,7 @@ const PIPELINE_CONFIG_FIELDS = [
   "underlay_style", "underlay", "satin", "satin_max_width_mm", "border",
   "border_width_mm", "deleted_shape_ids", "shape_overrides",
   "merge_shape_ids", "split_shapes", "photo_segment_sam2", "detail_layer",
-  "forced_class",
+  "forced_class", "edge_cap",
 ];
 
 test("buildDigitizeConfig sends the stored thread-brand preference and the project garment, in service field names", async () => {
@@ -70,6 +70,7 @@ test("buildDigitizeConfig sends the stored thread-brand preference and the proje
     satin: true,
     border: "off",
     detail_layer: false,
+    edge_cap: "none",
     thread_brand: "madeira-rayon",
     garment_id: "left_chest",
   });
@@ -143,6 +144,26 @@ test("detail_layer rides buildDigitizeConfig both ways, and back-fills false for
     },
   });
   expect(buildDigitizeConfig(on, PROJECT).detail_layer).toBe(true);
+});
+
+test("edge_cap rides buildDigitizeConfig, and back-fills \"none\" for projects saved before the field existed", async () => {
+  stubStorage({});
+  const { buildDigitizeConfig } = await import("./digitizer.js");
+
+  // Same additive-default contract detail_layer relies on above: a project
+  // saved before the design-edge cap existed must send "none" — the service's
+  // own default, whose off-path is byte-identity tested — not undefined.
+  expect(buildDigitizeConfig(digitizedElement(), PROJECT).edge_cap).toBe("none");
+
+  for (const style of ["bean", "satin"]) {
+    const el = digitizedElement({
+      params: {
+        target_width_mm: 80, max_colors: 6, satin: true,
+        fill_angle_deg: null, border: "off", edge_cap: style,
+      },
+    });
+    expect(buildDigitizeConfig(el, PROJECT).edge_cap).toBe(style);
+  }
 });
 
 test("forced_class rides buildDigitizeConfig only when the flat-art override is set", async () => {
@@ -1282,6 +1303,30 @@ test("describeWarnings translates pipeline codes to customer language, with coun
   expect(out[0].text).toBe("3 parts of the art were too small to sew and were left out.");
   expect(out[1].text).toBe("One part of the art was too small to sew and was left out.");
   expect(out[2].text).toBe("The thread gets cut 2 times where it has to travel a long way.");
+});
+
+test("describeWarnings puts the design-edge cap's bill in the user's language", async () => {
+  stubStorage({});
+  const { describeWarnings } = await import("./digitizer.js");
+  const out = describeWarnings([
+    { code: "EDGE_CAP_APPLIED", message: "engine prose", style: "bean", stitches: 1572, percent: 13.2, edges: 4 },
+    { code: "EDGE_CAP_APPLIED", message: "engine prose", style: "satin", stitches: 1101, percent: 35.0, edges: 1 },
+    { code: "EDGE_CAP_EMPTY", message: "engine prose", style: "bean" },
+    { code: "EDGE_CAP_LIGHTENED", message: "engine prose", count: 3 },
+  ]);
+  // The fragmented case names the many-edges problem — it is the whole
+  // reason the number can surprise, and the thing that decides bean vs satin
+  // on a photo-lane design (drone_render: 43 edges, +56.9%).
+  expect(out[0].text).toContain("1,572 stitches (+13.2%)");
+  expect(out[0].text).toContain("4 separate edges");
+  // One clean silhouette says nothing about fragmentation — no scare copy
+  // where there is nothing to be scared of.
+  expect(out[1].text).toBe("The design edge adds 1,101 stitches (+35%) around the outside of the design.");
+  expect(out[1].text).not.toContain("separate edges");
+  expect(out[2].text).toContain("no edge long enough");
+  expect(out[3].text).toBe("3 stretches of the design edge were too narrow for a satin cap and sew as light run lines instead.");
+  // None of them fall through to the engine's own prose.
+  for (const w of out) expect(w.text).not.toBe("engine prose");
 });
 
 // A shape the engine could not sew is not automatically a speck. On

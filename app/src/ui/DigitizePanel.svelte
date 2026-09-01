@@ -1335,6 +1335,23 @@
           <option value="bean">Bean (light outline)</option>
         </select>
       </label>
+      <!-- The DESIGN's outer edge, not each shape's (that is Border, above).
+           Kent's first sew-out: every tatami row in the background ended in
+           open air, because the silhouette is the union of several shapes and
+           no per-shape border rides it. Toggleable on purpose — bean and
+           satin read very differently on cloth and the choice is his, per
+           design. -->
+      <label class="dgp-param">
+        <span>Design edge</span>
+        <select
+          value={element.params.edge_cap}
+          on:change={(e) => setParam("edge_cap", e.currentTarget.value)}
+        >
+          <option value="none">Leave open</option>
+          <option value="bean">Bean cap (light outline)</option>
+          <option value="satin">Satin cap (full column)</option>
+        </select>
+      </label>
     </div>
 
     <!-- What the art was read as, in plain words, plus the one correction that

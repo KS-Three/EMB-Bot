@@ -885,6 +885,56 @@ class PipelineConfig:
     # travel-only order reachable and tested rather than dead-by-default.
     # tests/test_borders_last.py pins the default and both halves.
     borders_last: bool = True
+    # Design-silhouette edge cap (2026-09-01, the sew-out's OTHER edge
+    # finding). `borders_last` above fixed the ORDER the design's borders
+    # sew in; this is about the edge that has no border at all. On Kent's
+    # Instagram icon every tatami row in the background ends in open air —
+    # 100% of the 293.2 mm outer silhouette is uncovered at 1.0 mm, against
+    # 0.0% on the glyph edge he rated flawless — so the row ends read as
+    # cut stubs and the fabric shows straight through the gaps between
+    # them. A per-shape border cannot close it: the silhouette is the union
+    # of several shapes' outer edges, and each shape's own border rides
+    # its own ring.
+    #
+    # "none" (default) is today's engine, unchanged. "bean" traces the
+    # silhouette exactly as a three-pass bean run (`run_outline`);
+    # "satin" lays a column just inside it (`border_runs(style="auto")`),
+    # the same treatment the glyph edge already gets. Measured on that
+    # icon, 9,596 stitches: bean +1,207 (+12.6%), satin +1,465 (+15.3%).
+    # Kent asked for BOTH, toggleable, 2026-09-01 — the two read very
+    # differently on cloth and the choice is per design, not a default
+    # anyone can pick for him.
+    #
+    # No physical constant enters, gate 1 untouched: bean sews at
+    # `machine.BEAN_STITCH_MM` x `BEAN_PASSES` and satin at
+    # `BORDER_WIDTH_MM`/`BORDER_DENSITY_MM` (or `border_width_mm`), every
+    # one of them already corpus-measured and already sewing on the border
+    # tier. The cap adds no new number, only a new place to apply the ones
+    # we have.
+    #
+    # Default "none" is gate 3, not timidity: a blanket border was MEASURED
+    # spending +60% of stitches to worsen a silhouette (DOCTRINE). That
+    # ruling was about bordering every shape and this is one ring, which is
+    # why the option exists at all — but nothing has been sewn yet that
+    # says a cap helps, so it stays opt-in until cloth says otherwise.
+    # KNOWN LIMIT, measured 2026-09-01 at 80 mm: the cost scales with how
+    # FRAGMENTED the silhouette is, not with the design's size, and a
+    # photo/gradient lane can shatter one visual object into dozens of
+    # parts. The repro icon caps 3 parts / 23 holes for +13.2%;
+    # `drone_render` caps 38 parts / 78 holes for +56.9% — within a whisker
+    # of the "+60% of stitches to worsen a silhouette" DOCTRINE records for
+    # blanket bordering. On such a design "the design silhouette" is not one
+    # edge and this feature's premise does not hold. Rather than guess a
+    # fragmentation threshold nobody has sewn (gate 1), every run reports
+    # its own bill as `EDGE_CAP_APPLIED` — stitches, percent, and how many
+    # separate edges were outlined. Note the styles INVERT there: satin is
+    # cheaper than bean on fragmented art (+34.9% vs +56.9% on
+    # `drone_render`), because `border_runs` drops loops under
+    # BORDER_MIN_LOOP_MM (8.80) while `run_outline`'s floor is
+    # RUN_MIN_LOOP_MM (2.2), so satin simply declines the crumbs.
+    # tests/test_edge_cap.py pins the default, both styles, the cost
+    # report, and the off-path byte-identity.
+    edge_cap: str = "none"
     # EXPERIMENT, default OFF — option (b) of the same plan doc, the other
     # half of Kent's 2026-08-23 (a)+(b) decision: `shade_palette_bind` above
     # masks the shade snap to the palette; THIS flag makes the palette worth

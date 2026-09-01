@@ -118,23 +118,6 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
     11), not a threshold to tune — gate 2 bars inferring it. *(measured 2026-08-28 — PR #291 investigation; numbers in
     scope-history 08-28)*
 
-17. **The sew order has no craft layering — border satin opens the design.**
-    Found by the FIRST PHYSICAL SEW-OUT (Kent's Instagram-icon test, 80 mm
-    pique polo, 2026-08-31, rated 6/10): the sewn DST put the whole white
-    glyph — border satin, 5,453 stitches — down at 0%, then sewed seven
-    background cones against it; on the repro fixture the pink border ring
-    opens the design at 0.0%, before its own cone's fills. **FIX BUILT,
-    default OFF, awaiting Kent's default call:** `cfg.borders_last` —
-    satin-dominated layers sew after fill-dominated ones
-    (`borders_last_layers`, upstream of stage 5 so coverage/underlap/ties
-    derive from the final order) and satin-tier shapes wait for their
-    group's fills in `sequence`'s pick loop; review-screen pins still win.
-    ON, the repro ring moves 0.0% → 54.5%, stitch count unchanged, renders
-    byte-identical — order-only there. OFF stays default because ON moves
-    the three byte-identical goldens; flipping + regenerating is one
-    decision, Kent's. *(measured 2026-08-31 — `tests/test_borders_last.py`,
-    15 passing)*
-
 18. **Duplicate quantize-time declarations put one cone in two layers — the
     second spool-revisit mechanism, untouched by defect 16's fix** (which keys
     on the re-snap stamp and correctly ignores these; the hoist declines them
@@ -145,6 +128,25 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
     upstream like the rehome — but it moves whole clusters, so it wants its
     own measured pass. *(measured 2026-09-01 — `tools/sequence_census.py`;
     found by the PR #301 review pass)*
+
+19. **The design's own outer edge is uncapped — every fill row ends in open
+    air.** The other sew-out edge finding, and one no per-shape border can
+    reach: the silhouette is the union of several shapes' edges, so each
+    border rides its own ring and the design/fabric boundary is nobody's.
+    On Kent's icon, **100% of the 293.2 mm outer silhouette uncovered at
+    1.0 mm** vs 0.0% on the glyph edge he rated flawless. **FIX BUILT,
+    default OFF, both styles opt-in:** `cfg.edge_cap` — `"bean"` traces it
+    (`run_outline`), `"satin"` lays a column just inside (`border_runs`),
+    one design-level block after all artwork, before the detail layer, in a
+    thread already loaded. No new constant (gate 1 clean); `"none"` is
+    gate 3. Both toggleable at Kent's ask; Studio exposes **Design edge**.
+    Icon: bean +12.6%, satin +15.3%. KNOWN LIMIT: cost scales with
+    silhouette FRAGMENTATION, not design size — `drone_render` caps 38
+    parts / 78 holes for **+56.9%**, a whisker off DOCTRINE's
+    blanket-border negative, and there the styles invert (satin +34.9% is
+    cheaper). Every run reports its bill as `EDGE_CAP_APPLIED` rather than
+    guess an unsewn threshold. **A sew-out settles which cap, if either.**
+    *(built 2026-09-01 — `tests/test_edge_cap.py`, 18 passing)*
 
 ### Closed — kept numbered, because ten other docs cite them by number
 
@@ -161,6 +163,7 @@ these are pointers, not status.
 13. the detail layer sewed the background a cutout had just removed — RESOLVED 2026-08-24. **Its lesson stands: no acceptance arm had EVER set that flag**, which is the blind spot the evaluation-harness section exists to close.
 14. half the cloth bare inside each shape is the THREAD-PAINT TIER, not a density bug — ANSWERED 2026-08-25 (streamline covers 0.55-0.59 of its footprint vs the filled tier's 0.99; Kent's filled-for-high-contrast ruling, and the face exception, are in Standing rulings).
 16. one spool revisited across other colours, THE RE-SNAP MECHANISM — RESOLVED 2026-08-31 (`rehome_resnapped_regions`: a pipeline re-snap joins its cone's layer upstream of stage 5, so the coverage plan sees the order actually sewn; a review recolor was never a source, `apply_shape_edits` already moves the layer. Owl: every spool exactly once on BOTH routes, 17 → 14 blocks default; #291/#293 merge/hoist stay as the net for other sources. On cloth 2026-09-01: a 229-st cone re-entered the lens interior at 76%, a 104-st cone at 99.4% — the pattern this removes from the repro. Sweep: scope-history 08-31. **The SYMPTOM is not fully gone — defect 18 is a second mechanism.**)
+17. sew order had no craft layering, BORDER SATIN OPENED THE DESIGN — FIXED, DEFAULT ON 2026-09-01 (Kent's flip ruling, PR #302). `cfg.borders_last`: satin-dominated layers sew after fill-dominated ones (`borders_last_layers`, upstream of stage 5 so coverage/underlap/ties derive from the sewn order) and satin-tier shapes wait for their group's fills; review-screen pins still win. Repro ring 0.0% → 54.5%, stitch count unchanged. Found on cloth by the first sew-out. Of eight golden keys one moves — the one already deselected in CI for platform numerics; its ubuntu re-capture is the standing follow-up. `tests/test_borders_last.py`.
 
 ---
 
