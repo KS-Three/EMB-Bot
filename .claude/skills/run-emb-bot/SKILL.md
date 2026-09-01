@@ -49,9 +49,15 @@ service is answering on 8721, the artwork auto-digitize lane. Starts its own
 Vite on 5199 and tears it down. Verified output:
 
 ```
-  text lane: 2452 stitches · 127×16 mm · 5×7 in hoop
-  artwork lane: 2,166 stitches · 80×17 mm · 2 colors
+  text lane: 2465 stitches · 127×16 mm · 5×7 in hoop
+  artwork lane: 2,156 stitches · 80×17 mm · 2 colors
 ```
+
+**Treat both counts as a shape, not a pin** — they move when engine work
+lands, and neither is asserted anywhere. This block read 2452 / 2,166 when it
+was written; on 2026-09-01, at `ace3c4d`, the same command gives the numbers
+above (the artwork count moved with PRs #291/#293's colour-block folding).
+What matters is that each lane produces a real caption and the run exits 0.
 
 Exit 0 = both lanes produced real stitches and nothing unexpected hit the
 console. Drop `--serve` to reuse a dev server you already have on 5173.
@@ -63,8 +69,7 @@ Screenshots → `/tmp/emb-shots/` (`--shots <dir>` to move them).
 node .claude/skills/run-emb-bot/driver.mjs repl <<'EOF'
 btn Logo patch
 upload input[type=file] app/e2e/fixtures/enthusiast_logo.png
-waitbtn Digitize
-btn Digitize
+eval new Promise(r=>{const t=setInterval(()=>{const m=document.body.innerText.match(/[\d,]+ stitches[^\n]*/);if(m){clearInterval(t);r(m[0])}},1000);setTimeout(()=>{clearInterval(t);r('TIMEOUT')},120000)})
 ss my-shot
 net 8721
 console errors
@@ -81,7 +86,7 @@ which never kills the REPL), so a tmux-driven caller can poll
 | `ss [name]` | screenshot → `/tmp/emb-shots/NN-name.png` |
 | `outline` | headings + every visible button/input, with labels — **use this instead of dumping HTML** |
 | `btn <label>` | click a button by text; **exact match first**, then substring; prints what it resolved and how many matched |
-| `waitbtn <label>` | wait for a button whose text is exactly this (needed after `upload`) |
+| `waitbtn <label>` | wait for a button whose text is exactly this. **Not** the way to follow an `upload` — see the auto-start gotcha below |
 | `click <sel>` / `fill <sel> <v>` / `type <sel> <v>` / `press <key>` | raw Playwright |
 | `upload <sel> <path>` | real file upload, path relative to repo root |
 | `wait <sel>` / `waittext <text>` | wait for a selector / text |
@@ -241,16 +246,36 @@ Each has actually happened; check in this order.
 
 These are the ones that cost real time here.
 
-- **`btn Digitize` clicks the wrong thing if you substring-match.** Three
+- **Do NOT click Digitize after an upload — the upload IS the run.** PR #296
+  ("uploading the image is the whole interaction", Kent 2026-08-30) made
+  DigitizePanel watch `element.sourcePng` and call `runDigitize` the moment it
+  changes, as long as the service is healthy. `upload` then
+  `waitbtn Digitize` now **hangs the full 30s and throws** — which is exactly
+  how the smoke failed on 2026-09-01, and it reads like a broken app when
+  nothing is wrong. Upload, then poll for the stitch caption:
+
+  ```
+  upload input[type=file] app/e2e/fixtures/enthusiast_logo.png
+  eval new Promise(r=>{const t=setInterval(()=>{const m=document.body.innerText.match(/[\d,]+ stitches[^\n]*/);if(m){clearInterval(t);r(m[0])}},1000);setTimeout(()=>{clearInterval(t);r('TIMEOUT')},120000)})
+  ```
+
+  `app/e2e/digitize-auto-start.spec.js` is the authority: it proves stitches
+  land with no Digitize click anywhere in it.
+
+- **The Digitize button still exists — its LABEL is what moves.** It was not
+  deleted; it is the way back in when the service is offline, or when the user
+  re-picks the identical file (that re-encodes to identical base64, so the
+  watcher sees no change). But it renders
+  `pending ? "Digitizing…" : element.result ? "Digitize again" : "Digitize"`,
+  so with the service up the auto-start flips `pending` before any wait can
+  catch the bare "Digitize". Never key a wait on that exact string.
+
+- **`btn Digitize` clicks the wrong thing if you substring-match.** Several
   controls match "Digitize": the element chip **"Digitized · empty"** (first
-  in DOM order), **"Digitize as flat art"** (only flips `forced_class`), and
-  the real **"Digitize"**. Clicking the chip *succeeds* and submits nothing —
+  in DOM order), **"Auto Digitize Image"**, **"Digitize again"**, and the
+  transient **"Digitize"**. Clicking the chip *succeeds* and submits nothing —
   you then debug the service for an hour. The driver's `btn` tries exact
   first and prints every candidate; `net 8721` confirms a POST actually left.
-
-- **The Digitize button does not exist right after `upload`.** It mounts only
-  once the file has been read into `sourcePng`. Immediately after upload, *no*
-  button matching `/digitiz/i` is in the DOM. Always `waitbtn Digitize` first.
 
 - **The service rejects unknown config fields with 400.** It's
   `target_width_mm`, not `width_mm` →
