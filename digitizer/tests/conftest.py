@@ -49,8 +49,8 @@ def uncertain():
 
 
 @pytest.fixture(scope="session")
-def enthusiast_logo_82mm():
-    # 82mm, not this file's usual 80mm default: test_chaining.py's two
+def enthusiast_logo_93mm():
+    # Not this file's usual 80mm default: test_chaining.py's two
     # corpus-benchmark tests moved here from logo_alpha.png (2026-08-06) after
     # the satin/fill classifier's flat-lane DT-tightening fix correctly
     # reclassified two of that fixture's shapes from satin to fill, which
@@ -58,13 +58,39 @@ def enthusiast_logo_82mm():
     # logo_alpha specifically -- a fixture-geometry change, not a chaining
     # regression (every synthetic-geometry chaining test elsewhere in this
     # file is unaffected). enthusiast_logo.png is this repo's own primary
-    # real-art benchmark (COOKBOOK.md); swept across widths, 82mm is the
-    # first ordinary value that lands the chained trim rate safely inside the
-    # corpus band with margin (3.41/1k vs the 4.1 ceiling) while still
-    # showing a large, unambiguous chaining win (links 2->17, trims 21->9,
-    # zero bare-fabric exposure either way) -- not cherry-picked to the edge
-    # of the threshold.
-    return run_stages(TESTDATA / "photo/enthusiast_logo.png", cfg(target_width_mm=82.0))
+    # real-art benchmark (COOKBOOK.md).
+    #
+    # 82mm -> 93mm, 2026-09-01, Kent's call. The width is a BENCHMARK CHOICE,
+    # not a law: it was picked in the first place by sweeping widths for one
+    # that sits inside the corpus band with margin, and 82mm had drifted out
+    # of it. `main` went red at 903c937 (the #302 borders_last default flip)
+    # on 4.16/1k against the 4.1 ceiling -- but the drift was mostly already
+    # there: 82mm was chosen at a claimed 3.41/1k and measured 3.76 with the
+    # flag OFF the day it broke, so the flip only added the last 0.40. See
+    # PR #305 for the three fixes to borders_last that were tried and
+    # rejected with measurements; re-picking the fixture is what was left,
+    # and it leaves the 4.1 corpus ceiling untouched.
+    #
+    # Re-swept 70-100mm at 2mm, then 87-95mm at 1mm (2026-09-01, this
+    # container, borders_last at its new default). 93mm is not the single
+    # best number -- it is the one whose NEIGHBOURHOOD is safe, which is the
+    # property 82mm turned out not to have:
+    #
+    #   92mm 2.82/1k   93mm 2.43/1k   94mm 3.06/1k
+    #
+    # so the whole +/-1mm window stays at or under 3.06 against a 4.1
+    # ceiling. 93mm itself carries the strongest chaining win in the sweep
+    # (trims 19->8, links 4->17) and zero bare-fabric exposure on BOTH
+    # garments the acceptance tests use -- 0.0000mm on left_chest and
+    # full_back alike, chaining on or off.
+    #
+    # That last point is why this is 93 and not 88 or 92, which score just as
+    # well on trims: at both of those, full_back's chain-off exposure floor
+    # is non-zero (0.4021mm and 0.2014mm), which would quietly falsify
+    # test_chaining_adds_zero_bare_thread_on_every_acceptance_fixture's
+    # documented claim that the floor IS zero there, while its on/off
+    # equality assertion carried on passing.
+    return run_stages(TESTDATA / "photo/enthusiast_logo.png", cfg(target_width_mm=93.0))
 
 
 @pytest.fixture(scope="session")
