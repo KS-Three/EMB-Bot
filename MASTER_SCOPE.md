@@ -102,7 +102,9 @@ or move it.
     undeclared routes gradient: `depth_sort_layers` never runs and the re-snap
     is unrestricted, sewing more spools than the operator's cone list names.
     Declaring it via `cfg.is_photographic` is a large improvement (16 → 12
-    stops on `owl_kent.jpg`, coverage unmoved at 0.99) — but **the Studio
+    stops on `owl_kent.jpg` when measured 2026-08-28; the 2026-08-31 rehome
+    shrinks both sides to 13 → 11 and declaration still wins — measured,
+    sequence census) — but **the Studio
     exposes that field nowhere**, and the one photo control it does offer
     (the reading row's "It's a photo" correction, a "This is a photo"
     checkbox until 2026-08-30 — renamed and moved, unchanged in what it
@@ -111,25 +113,6 @@ or move it.
     unreachable through the UI. **What to expose is Kent's call** (queue item
     11), not a threshold to tune — gate 2 bars inferring it. *(measured 2026-08-28 — PR #291 investigation; numbers in
     scope-history 08-28)*
-
-16. **One spool is revisited across other colours, and is not safely mergeable
-    yet.** `revalidate_threads` re-snaps a region onto a better cone without
-    moving it to that cone's LAYER, so `nn_group_key`'s `(sew_index, step_key,
-    thread_index)` splits that layer and one spool ends up owned by layers
-    sewing at different positions; nothing downstream rejoins them. This is the
-    defect behind Kent's "black nose, white feathers, back to the nose".
-    PR #291 merged the ADJACENT case, which moves no stitches. **PR #293 then
-    took the non-adjacent half PARTWAY** (`_hoist_same_thread`, default ON at
-    `hoist_same_thread_margin_mm = 0.5`): a revisit is hoisted beside its own
-    thread only where the mover's sewn geometry stays clear of every block it
-    jumps, which is the `covered_by` argument this entry used to say was still
-    owed — two disjoint blocks contribute nothing to each other's `visible`, so
-    their order cannot move a seam. It closes 3 of 6 revisits on `owl_kent.jpg`
-    at 100 mm (1 of 3 with `is_photographic=True`); the rest genuinely touch
-    and correctly stay. **Still open:** the remaining touching revisits, which
-    need real coverage reasoning rather than a disjointness proof.
-    *(measured 2026-08-28 — `stage7_sequence.py`; scope-history 08-28;
-    hoist half confirmed 2026-08-31 — `da7fc80`, `tests/test_merge_adjacent_same_thread.py`)*
 
 ### Closed — kept numbered, because ten other docs cite them by number
 
@@ -145,6 +128,7 @@ these are pointers, not status.
 12. preflight graded every photo job F — RESOLVED 2026-08-24 (PR #229).
 13. the detail layer sewed the background a cutout had just removed — RESOLVED 2026-08-24. **Its lesson stands: no acceptance arm had EVER set that flag**, which is the blind spot the evaluation-harness section exists to close.
 14. half the cloth bare inside each shape is the THREAD-PAINT TIER, not a density bug — ANSWERED 2026-08-25 (streamline covers 0.55-0.59 of its footprint vs the filled tier's 0.99; Kent's filled-for-high-contrast ruling, and the face exception, are in Standing rulings).
+16. one spool revisited across other colours — RESOLVED 2026-08-31 (`rehome_resnapped_regions`: a pipeline re-snap joins its cone's layer upstream of stage 5, so the coverage plan sees the order actually sewn; a review recolor was never a source, `apply_shape_edits` already moves the layer. Owl sews every spool exactly once on BOTH routes, 17 → 14 blocks default; the #291/#293 merge/hoist passes stay as the net for future split sources, pinned by `test_merge_adjacent_same_thread.py`. Sweep in scope-history 08-31).
 
 ---
 
@@ -286,7 +270,8 @@ its own merits.
    `app/src` (grep, 0 hits). The checkbox sends something else entirely:
    `digitizer.js:144` sets `forced_class="photo_subject"`, which also fires
    `auto_photo_tier` → streamline. Measured on `owl_kent.jpg` at 100 mm:
-   16 stops / 0.992 coverage undeclared, 12 / 0.990 with `is_photographic`,
+   16 stops / 0.992 coverage undeclared, 12 / 0.990 with `is_photographic`
+   (2026-08-31: the rehome shrinks these to 13 and 11 — the ordering holds),
    and **26 stops / 0.591 coverage** through the checkbox — 0.591 being the
    thread-paint number Kent's own 2026-08-25 filled-beats-thread-paint ruling
    already records. So the one control the Studio offers makes his artwork
@@ -299,6 +284,17 @@ its own merits.
 8. **Font lawyer consult — optional.** Only gates RESTORING the 13 pulled
    ShareAlike fonts; the brief is written and ready to send. Nothing waits
    on it. See the font-licence entry.
+
+12. **Merge a tiny cone into an ADJACENT SHADE — a colour-difference call,
+   and it needs Kent's real icon PNG.** The sew-out's b4 (229 st) / b7
+   (104 st) class: after the 2026-08-31 sequencing fixes, the only way to
+   cut such a cone further is sewing its patches in a neighbouring shade's
+   thread, which trades a colour step for a stop — quality, not gate-1
+   physics. Unmeasurable on the repro (its 3 surviving cones are
+   White/Fuchsia/Date, no defensible merge pair), and his icon's source PNG
+   is not in the repo — `pull-corpus` gets it here, and
+   `tools/sequence_census.py` then puts per-cone stitch counts against the
+   candidate ΔE in one run. *(measured 2026-08-31 — scope-history 08-31)*
 
 ---
 

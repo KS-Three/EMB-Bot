@@ -267,7 +267,11 @@ its hedge as it is copied forward** — is why this file is split.
   **What would make it real:** a design whose final block shares a thread with
   an earlier block AND is geometrically disjoint from everything between them.
   Worth re-measuring if the hoist margin is raised, or if `revalidate_threads`
-  starts re-snapping late layers onto earlier cones. Even then the cost is
+  starts re-snapping late layers onto earlier cones — though as of 2026-08-31
+  `rehome_resnapped_regions` consolidates pipeline re-snaps upstream of stage
+  5, so no committed artwork reaches the hoist with a same-thread split at
+  all (owl: merge-off equals merge-on) and the trigger is further from
+  firing, not closer. Even then the cost is
   bounded — no stitch is misplaced, because the art->detail seam is forced
   `jump=True, trim=True` either way; only the detail sew order and the `jumps`
   tally move. *(raised and disproved in one session, 2026-08-31 — filed as a
