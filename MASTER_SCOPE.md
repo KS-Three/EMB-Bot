@@ -51,7 +51,23 @@ or move it.
    — `docs/tonal-eng-measurements-2026-08-22.md`)*
 
 3. **14 jump-trims on an 80mm design,** every fill variant measured. Not
-   started. *(measured 2026-08-12 — scope-history)*
+   started. **UNREPRODUCIBLE AS WRITTEN — the entry does not name the design,
+   and its own pointer does not carry one.** `scope-history` line 1277 is the
+   only occurrence of the claim anywhere in the repo and is a one-line
+   restatement: no design, no definition of "jump-trim", no variant table.
+   Tried 2026-08-31 on the two fixtures its surrounding 2026-08-12 context
+   discusses, at `target_width_mm=80`, over tatami / streamline-mono /
+   streamline-layered, counting runs with `trim=True`, runs with `jump=True`,
+   and the intra-shape lift warning: `owl_kent.jpg` gives 71/67/142 trims,
+   `photo_owl_pale.png` 9/26/28. Neither is 14, and neither is
+   variant-invariant, so "in every variant" does not hold for either.
+   **Do not read those numbers as a regression** — without knowing the design
+   or the metric, they are not comparable to 14; that comparison is the
+   mistake this note exists to prevent. **Kent: name the design and this
+   becomes checkable in one run.** The underlying concern is independently
+   supported by defect 4, which does not depend on this number.
+   *(measured 2026-08-12 — scope-history; reproduction attempted and failed
+   2026-08-31 — two fixtures x three fill variants)*
 
 4. **We trim far more than the professional — 3.1x the trim breaks on a
    like-for-like corpus.** Quote the rate or the break count, never a run
