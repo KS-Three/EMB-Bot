@@ -154,6 +154,45 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Measured negatives — built or proposed, then rejected. Do not rebuild.
 
+- **The borders-last trim on `enthusiast_logo` is NOT cheaply winnable — three
+  approaches measured, all rejected. Do not re-run them.** The `borders_last`
+  default flip (PR #302) costs exactly one trim on the benchmark: chained
+  trims 10 → 11, **3.76 → 4.16 per 1k**, past the 4.1 professional-corpus
+  ceiling `test_chaining` pins — which is why `main` went red at 903c937.
+  Isolated to the **within-group** half; the layer half
+  (`borders_last_layers`) is free. The cone is a degenerate case — **26 satin
+  shapes and ONE fill** — so the blanket rule drags that lone fill to the
+  front and knocks the nearest-neighbour sweep off its optimum. What was
+  tried:
+  1. **Area-dominance guard** (mirroring `borders_last_layers`' own
+     satin-outweighs-the-rest test, applied to the group): recovers the trim
+     exactly (3.76/1k) but lets a satin sew before its cone's fill —
+     `test_repro_fixture_border_satin_sews_after_its_cone_s_fills` catches
+     it. Trades the sew-out fix for the trim.
+  2. **Extreme-start at the fills→satins pool switch** (the code's own
+     anti-stranding argument, applied to the second pool): **21 trims,
+     8.12/1k.** Dramatically worse.
+  3. **Cover-aware waiting** — a satin waits only for fills whose seam it
+     rides (`_seam_band` at `_BORDER_SEAM_EPS_MM`). Recovers the benchmark
+     to 3.76 AND improves the repro's own trims 11 → 10 — but **the sew-out
+     defect returns**: the repro's first thread down becomes `S7cfe53b9`,
+     a border satin, because it sits 3.44 mm from the nearest fill and
+     shares a seam with none of them. Seam-coincidence is too narrow a test
+     of "covers"; widening it to proximity means inventing a tuned distance
+     constant, which is gate 1.
+  **The blanket rule is load-bearing for the defect, and the trim is its
+  genuine price.** Chaining cannot pay it back either: every refused link on
+  that fixture is *"no covered route"*, not one is distance-limited, so
+  recovering them means loosening cover — gate 3, the failure mode that
+  already hid needle-down thread on bare fabric once. Separately: the
+  fixture had ALREADY drifted before the flip — its own docstring claims
+  82 mm was chosen for a 3.41/1k margin "not cherry-picked to the edge of
+  the threshold", but it measures **3.76 with the flag OFF today**, so most
+  of the erosion toward 4.1 is not the flip's. Re-baselining the ceiling or
+  re-picking the fixture is Kent's open call.
+  *(measured 2026-09-01 — all four numbers on one machine so platform
+  numerics cancel; `tests/test_chaining.py`, `tests/test_borders_last.py`)*
+
 - **Smoothing region polygons to fix "ragged edges" — NO EFFECT, do not build.**
   Douglas-Peucker already runs (`stage4_vectorize`, `simplify_tol_mm` 0.2 mm)
   and meets its tolerance to 0.002 mm, so there is no staircase left at the

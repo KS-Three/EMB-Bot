@@ -1,4 +1,4 @@
-"""Borders-last craft sequencing (`cfg.borders_last`, default OFF).
+"""Borders-last craft sequencing (`cfg.borders_last`, default ON).
 
 Kent's first physical sew-out (Instagram-icon test, 80 mm on pique polo,
 reported 2026-08-31) surfaced the defect this rule exists for: the design's
