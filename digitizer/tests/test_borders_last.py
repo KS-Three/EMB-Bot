@@ -26,9 +26,18 @@ same argument `depth_sort_layers` already makes — no post-hoc reorder, no
 
 The unit tests drive `borders_last_layers` directly with hand-built regions,
 the same posture `test_merge_adjacent_same_thread.py` takes for its passes.
-The flag defaults OFF: ON legitimately moves flat/gradient-lane bytes
-(reordering changes travel and underlap), so flipping the default is Kent's
-call, together with regenerating the three byte-identical goldens.
+
+The flag defaults ON since Kent's 2026-09-01 ruling ("ON for
+flat+gradient"): the defect was his own sewn garment, so OFF-by-default kept
+it in his own exports. The layer half is gated OFF on the photo-sequencing
+lane (there the layer order IS the depth story — depth_sort_layers'
+contract says the satin classifier is not a depth cue), pinned below.
+Golden blast radius was MEASURED at the flip, OFF-vs-ON on one machine so
+platform numerics cancel: of the eight committed golden keys exactly one
+moves — `photo/enthusiast_logo.png`, the key already deselected in CI and
+locally red for platform numerics — so no judged golden changed and its
+ubuntu re-capture stands as the follow-up (config.py's comment carries the
+numbers).
 """
 from __future__ import annotations
 
@@ -227,9 +236,9 @@ def _one_thread_regions():
 
 
 def test_within_a_block_satin_sews_after_fills_when_the_flag_is_on():
-    off = sew_rank(plan_for(_one_thread_regions()))
+    off = sew_rank(plan_for(_one_thread_regions(), borders_last=False))
     assert off["SAT"] < off["FIL"], \
-        "flag OFF pins today's travel order: the ribbon sews first"
+        "flag OFF pins the travel-only order: the ribbon sews first"
 
     on = sew_rank(plan_for(_one_thread_regions(), borders_last=True))
     assert on["FIL"] < on["SAT"], \
@@ -245,12 +254,38 @@ def test_a_sew_order_pin_still_beats_the_within_block_bias():
         "an explicit review-screen pin outranks the craft default"
 
 
-def test_borders_last_defaults_off():
-    """ON legitimately moves flat/gradient-lane bytes (travel and underlap
-    both change), so the default flip is Kent's decision together with the
-    three byte-identical goldens — recorded here as a failing test the day
-    the default changes without that."""
-    assert PipelineConfig().borders_last is False
+def test_borders_last_defaults_on():
+    """Kent's 2026-09-01 flip ruling, recorded as a failing test the day the
+    default silently changes again."""
+    assert PipelineConfig().borders_last is True
+
+
+def test_photo_sequencing_lane_keeps_its_layer_order():
+    """The flip ruling's photo gate, end to end: on the photo-sequencing
+    lane the block-level layer order is the depth story
+    (background → dark→light → details), and `depth_sort_layers`' own
+    contract refuses the satin classifier as a depth cue — so the LAYER
+    half must not run there, flag or no flag. The within-group half still
+    does (it orders shapes inside one cone and cannot touch the ramp).
+    `photo_sequencing` opts this gradient fixture into the photo sew-order
+    lane without dragging in the photo fill tiers, so the comparison
+    isolates exactly the gate."""
+    img = TESTDATA / "photo" / "repro_gradient_white_icon.png"
+
+    def plan_with(flag: bool):
+        _res, plan = digitize(img, PipelineConfig(
+            target_width_mm=90.0, borders_last=flag,
+            extra={"photo_sequencing": True}))
+        return plan
+
+    off, on = plan_with(False), plan_with(True)
+    assert ([b.thread_index for b in on.blocks]
+            == [b.thread_index for b in off.blocks]), \
+        "the layer half ran on the photo-sequencing lane — depth story moved"
+    # The within-group half still applies: the two arms disagree about the
+    # order shapes sew inside their blocks.
+    assert sew_rank(on) != sew_rank(off), \
+        "the within-group half went dormant on the photo lane too"
 
 
 # --- the repro fixture, end to end -------------------------------------------

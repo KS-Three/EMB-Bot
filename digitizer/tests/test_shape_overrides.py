@@ -215,7 +215,14 @@ def test_recolor_that_empties_a_thread_drops_its_cone_from_the_palette(base, edi
     assert "2905" not in numbers, "nothing sews 2905 any more"
     assert "1305" in numbers, "1305 still has its big rectangle"
     base_numbers = [p["number"] for p in base[0].palette]
-    assert [n for n in base_numbers if n != "2905"] == numbers
+    # CONTENT, not order. The claim this test makes is "exactly one cone
+    # left, and it is 2905" — the equality that used to carry it also
+    # pinned the palette's ORDER, which is the sew order, which
+    # `borders_last` (default ON since 2026-09-01) is entitled to move:
+    # emptying a thread changes which layer is satin-dominated, and 0015
+    # and 5510 swap places as a result. Sew order has its own tests.
+    assert sorted(n for n in base_numbers if n != "2905") == sorted(numbers)
+    assert len(numbers) == len(set(numbers)), "a cone is listed twice"
 
 
 # --- tier --------------------------------------------------------------------

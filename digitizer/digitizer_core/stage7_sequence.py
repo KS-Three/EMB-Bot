@@ -235,12 +235,12 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
       therefore this predicate — says False, even though `stitch_one`
       reroutes exactly those shapes to an outline run. Treating them as
       late details would mean reading `classify_ribbon`'s reason here;
-      deliberately NOT done yet — it engages only in the photo classes,
-      where the flag's interaction with `depth_sort_layers` is itself
-      still unmeasured (see the call-site comment in pipeline.py), and
-      both belong to the same default-flip decision. Likewise an explicit
-      `tier: "run"` detail gets no late bias — this rule is scoped to the
-      sew-out's own defect, border SATIN, on purpose.
+      deliberately NOT done — it engages only in the photo classes, where
+      Kent's 2026-09-01 flip ruling kept the layer half out entirely (the
+      pipeline call-site gate) and left the photo lane's ordering to the
+      measured depth story. Likewise an explicit `tier: "run"` detail
+      gets no late bias — this rule is scoped to the sew-out's own
+      defect, border SATIN, on purpose.
     """
     tier = str(region.meta.get("tier", "auto")).lower()
     if tier == "satin":
@@ -272,10 +272,13 @@ def borders_last_layers(regions, thread_indices: list[int],
     the moved order is the only order any downstream pass ever sees: fills
     extend underneath the satin that now sews after them, every jump/trim
     is derived from the final sequence, and none of the post-hoc safety
-    proof `_hoist_same_thread` needs applies. Called after
-    `depth_sort_layers` (a photo design keeps its depth story, this only
-    refines it) and before `apply_layer_overrides`, so an explicit
-    review-screen `layer` override still beats the craft default.
+    proof `_hoist_same_thread` needs applies. Called between
+    `depth_sort_layers` and `apply_layer_overrides` — and NOT AT ALL on
+    the photo-sequencing lane (the caller gates on the depth sort's own
+    engagement condition): there the layer order IS the depth story, and
+    depth_sort_layers' contract refuses the satin classifier as a depth
+    cue. An explicit review-screen `layer` override still beats the craft
+    default either way.
 
     A layer is on the satin side when its satin-tier stitched area outweighs
     the rest (`_sews_satin`, area-summed) — dominance, not unanimity,
@@ -289,8 +292,8 @@ def borders_last_layers(regions, thread_indices: list[int],
     untouched, order and palette both.
 
     Costs one `is_satin_candidate` per stitched region when the flag is on
-    (stage 7 will classify again when it routes); the flag's own default is
-    OFF, so no pre-existing caller pays anything.
+    (stage 7 will classify again when it routes) — accepted with the
+    2026-09-01 default flip; `borders_last=False` opts back out.
     """
     if not regions:
         return list(thread_indices)

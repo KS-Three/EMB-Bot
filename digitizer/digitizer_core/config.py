@@ -866,13 +866,25 @@ class PipelineConfig:
     # within each thread block satin-tier shapes are picked after every
     # fill (`sequence`'s loop; an explicit `sew_order` pin still wins).
     # Pure sequencing — no physical constant enters, gate 1 untouched.
-    # Default OFF: unlike `merge_adjacent_same_thread` this is NOT a no-op
-    # on the flat/gradient lanes (reordering changes travel and underlap
-    # wherever satin abuts fill), so ON moves the three byte-identical
-    # goldens — flipping the default is Kent's call, taken together with
-    # deliberately regenerating them. tests/test_borders_last.py pins the
-    # default and drives both halves with the flag explicit.
-    borders_last: bool = False
+    # Default ON since Kent's 2026-09-01 ruling (option "ON for
+    # flat+gradient" of the flip question): the defect is his own sewn
+    # garment, and OFF-by-default meant his own exports kept it. The layer
+    # half is gated OFF on the photo-sequencing lane at the call site —
+    # there the layer order is the depth story and the satin classifier is
+    # not a depth cue (depth_sort_layers' own contract); the within-group
+    # half runs everywhere. Golden blast radius, MEASURED at the flip
+    # (2026-09-01, OFF-vs-ON on the same machine so platform numerics
+    # cancel): of the eight committed golden keys exactly ONE moves —
+    # `photo/enthusiast_logo.png` (2393 -> 2382 stitches, coords only;
+    # ids/areas/warnings still), the key ALREADY deselected in CI and
+    # locally red for per-fixture platform numerics, in both its
+    # flat-lane and stage-2 twins. So the flip changes no judged golden;
+    # its ubuntu re-capture (recapture_flat_lane_key.py, the fourth-
+    # exception workflow precedent) is the standing follow-up, to be
+    # taken against the flipped engine. False keeps the pre-craft
+    # travel-only order reachable and tested rather than dead-by-default.
+    # tests/test_borders_last.py pins the default and both halves.
+    borders_last: bool = True
     # EXPERIMENT, default OFF — option (b) of the same plan doc, the other
     # half of Kent's 2026-08-23 (a)+(b) decision: `shade_palette_bind` above
     # masks the shade snap to the palette; THIS flag makes the palette worth
