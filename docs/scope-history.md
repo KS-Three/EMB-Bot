@@ -3315,3 +3315,36 @@ under `scratch_kent/`.
 **A datum for defect 3's ledger:** a real 80 mm design sews 26 trims / 7
 stops today. (The "14 jump-trims" claim itself remains unreproducible as
 written — see the 2026-08-31 note on defect 3.)
+
+## 2026-09-01 (addendum) — the density reading above is CONTESTED, and the edge got a fix
+
+Two corrections to the entry above, both from later the same day. The entry
+itself is left as written — this doc is append-only, and what it records is
+what was concluded at the time.
+
+**1. Finding 2's "0.18-0.19 mm median row pitch" does not reproduce.** A
+purpose-built pitch estimator — autocorrelation of the cross-row projection
+profile, calibrated against a known answer BEFORE being pointed at anything —
+recovered **0.400 mm where 0.400 is the truth** (the engine plan), then read
+**0.400 mm median on `design.dst`, the file Kent sewed, with 0% of measurable
+passes anywhere near 0.19**. Its own stated limit: only ~16 of roughly 1,700
+needle-down passes are wide enough for it to read, so it speaks for the
+substantial fills, not every small patch.
+
+So the density story is **UNSETTLED, not closed**: two measurements of one
+file disagree by a factor of two, and **neither has a committed instrument** —
+the estimator was never committed and exists on no ref (verified across all
+branches after `git fetch --all`). Do not quote either number as settled.
+Live context: `.claude/memory/first-physical-sewout-2026-09-01.md`, which
+carries both readings. What is NOT in dispute: macros show patch interiors
+solid, and the see-through is at least partly seam trenches, raw perimeter
+fill ends, and late fragments over the pre-sewn glyph satin — geometry and
+order, fixed as geometry and order.
+
+**2. The "raw fill ends on the bottom-left outer perimeter that no border
+covers" half now has a fix.** `cfg.edge_cap` (default "none") caps the design
+SILHOUETTE — the union of every sewn region, an edge no per-shape border can
+reach — as either a bean trace or a satin column. Measured on the committed
+repro at 80 mm: bean +13.2%, satin +16.0% (Kent's own icon: +12.6% / +15.3%).
+No new physical constant; gate 1 untouched. Which cap, if either, is a
+sew-out question and remains open.
