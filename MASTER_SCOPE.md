@@ -114,7 +114,19 @@ or move it.
     11), not a threshold to tune — gate 2 bars inferring it. *(measured 2026-08-28 — PR #291 investigation; numbers in
     scope-history 08-28)*
 
-### Closed — kept numbered, because ten other docs cite them by number
+17. **Duplicate quantize-time declarations put one cone in two layers — the
+    second spool-revisit mechanism, untouched by defect 16's fix.** Two
+    stage-2 clusters snap to the same chart cone and keep separate layers, so
+    the spool sews at two positions; `rehome_resnapped_regions` keys on the
+    re-snap stamp and correctly ignores these, and the hoist declines them
+    where their thread touches what they jump. On `drone_render` at 80 mm:
+    t16 sews at 30.9% and again 40 st at 98.9%, t119 at 74.2% and again 60 st
+    as the FINAL block at 99.4%, both tail blocks re-entering sewn territory —
+    the sew-out's b4/b7 pattern by another route. Candidate fix is the same
+    upstream shape: merge same-cone layers at declaration time (before stage
+    5), but unlike the re-snap case it moves whole clusters, so it wants its
+    own measured pass, not a rider. *(measured 2026-08-31/09-01 —
+    `tools/sequence_census.py` on drone_render; found by the PR review pass)*
 
 Full text moved to [`docs/scope-history.md`](docs/scope-history.md) 2026-08-27;
 these are pointers, not status.
@@ -128,7 +140,7 @@ these are pointers, not status.
 12. preflight graded every photo job F — RESOLVED 2026-08-24 (PR #229).
 13. the detail layer sewed the background a cutout had just removed — RESOLVED 2026-08-24. **Its lesson stands: no acceptance arm had EVER set that flag**, which is the blind spot the evaluation-harness section exists to close.
 14. half the cloth bare inside each shape is the THREAD-PAINT TIER, not a density bug — ANSWERED 2026-08-25 (streamline covers 0.55-0.59 of its footprint vs the filled tier's 0.99; Kent's filled-for-high-contrast ruling, and the face exception, are in Standing rulings).
-16. one spool revisited across other colours — RESOLVED 2026-08-31 (`rehome_resnapped_regions`: a pipeline re-snap joins its cone's layer upstream of stage 5, so the coverage plan sees the order actually sewn; a review recolor was never a source, `apply_shape_edits` already moves the layer. Owl sews every spool exactly once on BOTH routes, 17 → 14 blocks default; the #291/#293 merge/hoist passes stay as the net for future split sources, pinned by `test_merge_adjacent_same_thread.py`. Sweep in scope-history 08-31).
+16. one spool revisited across other colours, THE RE-SNAP MECHANISM — RESOLVED 2026-08-31 (`rehome_resnapped_regions`: a pipeline re-snap joins its cone's layer upstream of stage 5, so the coverage plan sees the order actually sewn; a review recolor was never a source, `apply_shape_edits` already moves the layer. Owl sews every spool exactly once on BOTH routes, 17 → 14 blocks default; the #291/#293 merge/hoist passes stay as the net for other split sources, pinned by `test_merge_adjacent_same_thread.py`. Sweep in scope-history 08-31. **The SYMPTOM is not fully gone — duplicate quantize declarations are a second mechanism, defect 17.**)
 
 ---
 

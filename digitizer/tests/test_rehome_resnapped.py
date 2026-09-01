@@ -126,6 +126,20 @@ def test_repro_sews_one_block_per_spool_end_to_end():
     assert region_threads == sewn
 
 
+def test_flag_off_reproduces_the_split():
+    """`rehome_resnapped=False` keeps the pre-2026-08-31 behaviour reachable
+    and tested (the family posture `merge_adjacent_same_thread` documents):
+    the repro's re-snap split comes back — one spool sewing more than one
+    block — which is also the lever the sequencing A/B measured with."""
+    cfg = PipelineConfig(target_width_mm=80.0, rehome_resnapped=False,
+                         merge_adjacent_same_thread=False)
+    _result, plan = digitize(REPRO, cfg)
+    threads = [b.thread_index for b in plan.blocks]
+    assert len(threads) > len(set(threads)), (
+        f"expected the un-rehomed split to revisit a spool: {threads}"
+    )
+
+
 def test_repro_regions_sit_in_their_cones_layer():
     cfg = PipelineConfig(target_width_mm=80.0)
     result = run_stages(REPRO, cfg)

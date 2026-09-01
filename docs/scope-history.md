@@ -92,12 +92,23 @@ into an ADJACENT SHADE (Kent's b2-class blocks, e.g. 460 st of Date at 96.1%)
 his real icon PNG to measure (repro's 3 surviving cones are White/Fuchsia/Date,
 too far apart in ΔE for any defensible merge).
 
-Flat lane untouched by construction AND by fixture evidence: none of the four
-flat-golden fixtures carries a re-snap (no `THREAD_RESNAPPED_AFTER_DRIFT` in
-`flat_lane_golden.json` warnings), and `blend_fill` never runs on flat. No
-golden regenerated, no flag added. Full local suite: the three named
+Flat lane: `blend_fill` never runs on flat (construction); the rehome is
+fixture-evidence only — none of the four flat-golden fixtures carries a
+re-snap (no `THREAD_RESNAPPED_AFTER_DRIFT` in `flat_lane_golden.json`
+warnings), but `revalidate_threads` DOES run unrestricted on flat, so a
+non-golden flat design that re-snaps onto another layer's declared cone will
+reorder — the same population fix #6.3 already re-threads. No golden
+regenerated; `rehome_resnapped: bool = True` added as the family-convention
+lever (the A/B's own instrument). Full local suite: the three named
 platform-divergence reds only (pushcomp, flat-lane, stage2 — all on their
 documented fixtures).
+
+Post-review addendum (2026-09-01): the review pass caught the docs
+overclaiming "no committed artwork reaches the hoist with a same-thread
+split" — TRUE for the re-snap mechanism, FALSE for duplicate quantize-time
+declarations, which survive on `drone_render` (t16 at 30.9%/98.9%, t119 at
+74.2%/99.4% — the final block, both tail revisits flagged REENTRY; verified
+independently). Filed as live defect 17.
 
 Kent: *"the photo upload is very confusing -- choose flat work, real photo etc.
 IDK what ANY of that even means, can't we just upload a photo/image and the
