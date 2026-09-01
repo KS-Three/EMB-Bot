@@ -102,6 +102,19 @@
   let showTrims = false;
   function toggleJumps() { showJumps = !showJumps; scheduleViewRepaint(); }
   function toggleTrims() { showTrims = !showTrims; scheduleViewRepaint(); }
+  // Every shape of a digitized element used to be outlined in cyan, with a
+  // node on every vertex, permanently — not tied to selection, not tied to an
+  // edit mode, and unaffected by the Realistic view toggle. On a two-colour
+  // logo that is 31 outlines over the artwork, so the one screen meant to
+  // answer "what will this look like sewn?" answered "here is a wireframe".
+  //
+  // Off by default, like the other two diagnostic overlays it now sits
+  // beside. The SELECTED shape is always outlined regardless (see
+  // drawShapeOutlines) — that highlight is what tells you which shape a
+  // Delete or a drag is about to act on, so hiding it would break editing
+  // rather than declutter it.
+  let showOutlines = false;
+  function toggleOutlines() { showOutlines = !showOutlines; scheduleViewRepaint(); }
 
   // Realistic vs flat thread. Ember ships this as a toggle and it earns its
   // place for the same reason: with the lighting off, coverage and stitch
@@ -742,6 +755,18 @@
         // Highlighted when SELECTED, not only while dragging: the highlight
         // is what tells you which shape a Delete or a drag will act on.
         const editing = o.id === selectedShapeId;
+        // The default view is the stitch-out, so only the shape being acted
+        // on is outlined until the user asks for all of them.
+        //
+        // Clicking still selects with the outlines hidden: hit-testing runs
+        // off the geometry (hitOverlay), never off what was drawn, and the
+        // shape highlights the moment it is picked. What IS lost is the
+        // signpost that the shapes are individually clickable at all — which
+        // is what the toggle is for, and why it sits with the other two
+        // diagnostic overlays rather than being hidden in a menu. (Note the
+        // Layers list does not drive this: selectedShapeId is set from a
+        // canvas hit only.)
+        if (!showOutlines && !editing) continue;
 
         ctx.beginPath();
         ctx.moveTo(pts[0].x, pts[0].y);
@@ -1898,7 +1923,16 @@
          screen reader to hand arrow keys to the page instead of using them
          for its own browse mode — which is the whole point of focusing here.
          The bitmap attributes stay as a pre-mount fallback only; fitCanvasToPane
-         replaces both with the pane size times devicePixelRatio. -->
+         replaces both with the pane size times devicePixelRatio.
+
+         The warning below fires because Svelte classes <canvas> as an
+         interactive element and `application` as a non-interactive role. For
+         a static canvas that rule is right — but this one is a focusable
+         widget with its own key handling, which is the exact case WAI-ARIA
+         defines `application` for. Silenced deliberately, not worked around:
+         dropping the role would leave arrow keys to the screen reader's
+         browse mode and the nudge would never reach onCanvasKey. -->
+    <!-- svelte-ignore a11y_no_interactive_element_to_noninteractive_role -->
     <canvas
       bind:this={canvas}
       width="760"
@@ -1964,6 +1998,16 @@
         aria-label="Auto-snap"
         title="Auto-snap to other elements and hoop center (hold Alt to suspend)"
       ><Icon name="magnet" /></button>
+      <button
+        type="button"
+        class="zoombtn viewtoggle"
+        class:simon={showOutlines}
+        on:click={toggleOutlines}
+        disabled={!hasDesign}
+        aria-pressed={showOutlines}
+        aria-label="Show shape outlines"
+        title="Outline every digitized shape — off for a clean view of the stitch-out"
+      ><Icon name="nodes" /></button>
       <button
         type="button"
         class="zoombtn viewtoggle"

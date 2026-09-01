@@ -81,6 +81,30 @@
   let projectName = nameFor(currentId);
   let step = "garment";
 
+  // The step panel scrolls, and its scroll offset used to survive a step
+  // change — which lands on the path EVERY user takes, because the fabric
+  // picker sits below the fold. Measured on the shipped build at 1440x900:
+  // the garment step is 1320px of content in a 741px viewport with "Fabric
+  // color" 529px down, so choosing a fabric requires scrolling; pressing
+  // Next then opened the content step already 493px down, with "what do you
+  // want to say?" off-screen above and no visible way forward.
+  //
+  // Reset on the project too, not just the step: switching projects replaces
+  // the panel's content just as completely, and leaving that scrolled is the
+  // same defect wearing a different hat.
+  //
+  // Set synchronously, and deliberately NOT via tick()/afterUpdate: calling
+  // tick() from inside a reactive statement re-enters Svelte's flush from
+  // within the flush and spins the main thread — the app booted to a blank
+  // page that never fired `load`, which is how it was caught (every
+  // wizard-smoke e2e failed at page.goto, not on any assertion).
+  //
+  // Waiting for the DOM would buy nothing anyway: 0 is in range for ANY
+  // content height, so unlike a non-zero offset it can never be clamped by
+  // the outgoing step's shorter content.
+  let panelBody = null;
+  $: if (panelBody) { step; currentId; panelBody.scrollTop = 0; }
+
   // ---- Undo/redo (Ember-audit follow-up) ------------------------------------
   // Per-project, in-memory only (never persisted). Every committed project
   // change routes through persist() below, which records a snapshot; pure
@@ -724,7 +748,7 @@
 
 <div class="studio">
   <aside class="panel">
-    <div class="panel-body">
+    <div class="panel-body" bind:this={panelBody}>
       {#if step === "garment"}
         <GarmentStep
           {project}

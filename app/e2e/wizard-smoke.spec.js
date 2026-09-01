@@ -263,3 +263,41 @@ test("guided wizard: PES, EXP, and PDF worksheet exports produce real files", as
   expect(pdfBytes.subarray(0, 5).toString("ascii")).toBe("%PDF-");
   await expect(page.getByText("Worksheet saved.")).toBeVisible();
 });
+
+// --- the step panel starts at the top -------------------------------------
+
+// The panel scrolls, and its offset used to survive a step change. That lands
+// on the path EVERY user takes, because the fabric picker sits below the fold:
+// measured on the shipped build at 1440x900, the garment step was 1320px of
+// content in a 741px viewport with "Fabric color" 529px down, so choosing a
+// fabric REQUIRED scrolling — and pressing Next then opened the content step
+// already 493px down, with "what do you want to say?" off-screen above it and
+// no visible way forward.
+test("the step panel is scrolled to the top after every step change", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+
+  const panel = page.locator(".panel-body");
+  const scrollTop = () => panel.evaluate((el) => el.scrollTop);
+
+  // The garment step really is taller than its viewport — if it ever stops
+  // being, this test would pass without exercising anything.
+  const overflow = await panel.evaluate((el) => el.scrollHeight - el.clientHeight);
+  expect(overflow).toBeGreaterThan(100);
+
+  await page.getByRole("button", { name: "Tote", exact: true }).click();
+
+  // Scroll the way someone picking a fabric colour has to.
+  await panel.evaluate((el) => { el.scrollTop = el.scrollHeight; });
+  expect(await scrollTop()).toBeGreaterThan(100);
+
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
+  await expect.poll(scrollTop).toBe(0);
+
+  // And on the way back, which is the same defect in the other direction.
+  await panel.evaluate((el) => { el.scrollTop = el.scrollHeight; });
+  await page.getByRole("button", { name: "Back", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "What are you putting this on?" })).toBeVisible();
+  await expect.poll(scrollTop).toBe(0);
+});

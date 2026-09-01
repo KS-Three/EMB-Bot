@@ -76,6 +76,13 @@
     // unrelated things is exactly the hodgepodge this set exists to avoid.
     sparkle: `<path d="M10 3C10 7 11 8 15 8C11 8 10 9 10 13C10 9 9 8 5 8C9 8 10 7 10 3Z"/><path d="M17 13C17 15.2 17.4 15.6 19.5 15.6C17.4 15.6 17 16 17 18.2C17 16 16.6 15.6 14.5 15.6C16.6 15.6 17 15.2 17 13Z"/>`,
 
+    // "Show shape outlines" -- an open path with a node on each vertex,
+    // which is literally what the toggle draws on the field. Nodes are
+    // stroked rings rather than solid dots so it reads as an editable
+    // outline (the `edit` pencil is about editing ONE boundary, this is
+    // about seeing them all).
+    nodes: `<path d="M6 17.5L12 6.5L18 14"/><circle cx="6" cy="17.5" r="2"/><circle cx="12" cy="6.5" r="2"/><circle cx="18" cy="14" r="2"/>`,
+
     // "Show jumps" (needle-up travel between stitch points) -- a dashed
     // route between two solid points. EmbroideryField's ⤳.
     jump: `<line x1="5" y1="19" x2="19" y2="5" stroke-dasharray="3 2.5"/><circle cx="5" cy="19" r="1.3" fill="currentColor" stroke="none"/><circle cx="19" cy="5" r="1.3" fill="currentColor" stroke="none"/>`,

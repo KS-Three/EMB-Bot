@@ -1412,6 +1412,24 @@ canvas { touch-action: none; }
   max-width: 372px;
 }
 
+/* A format that works but carries the caveat spelled out in .encodernote —
+   today only DST, and only when the browser encoder writes it. Same --warn
+   tone as the note, so the asterisk on the button and the note it points at
+   read as one thing. Deliberately NOT disabled or danger-red: the file is
+   valid and is exactly right for opening back in EMB-Bot; the caution is
+   about where it is going. */
+.formats button.caveat {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.caveat-mark {
+  font-weight: 700;
+  vertical-align: super;
+  font-size: 0.75em;
+  margin-left: 1px;
+}
+
 /* DST encoder provenance (DownloadStep). Uses --warn rather than --danger on
    purpose: the download succeeds and the file is valid, it just reads rotated
    outside EMB-Bot, so this is a caution about where the file is going — not a
