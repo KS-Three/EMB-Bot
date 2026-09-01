@@ -22,6 +22,7 @@ function makeCtxSpy() {
   let _strokeStyle;
   return {
     save: vi.fn(), restore: vi.fn(),
+    setTransform: vi.fn(),
     beginPath: vi.fn(), closePath: vi.fn(),
     moveTo: vi.fn(), lineTo: vi.fn(), arcTo: vi.fn(),
     stroke: vi.fn(), fillRect: vi.fn(),
@@ -290,6 +291,48 @@ test("renderRealistic showJumps draws dashed travel lines; showTrims draws X mar
   renderRealistic({ width: 100, height: 100, getContext: () => trims }, design, { showTrims: true });
   expect(trims.strokeStyleLog).toContain("rgba(220,38,38,0.9)");
   expect(dashes(trims)).not.toContain(TRAVEL); // trim markers are solid
+});
+
+// --- renderRealistic: devicePixelRatio -------------------------------------
+
+// The field's bitmap is cut at devicePixelRatio so the preview is sharp on a
+// HiDPI screen rather than drawn at half resolution and upscaled. The whole
+// contract is that NOTHING else has to know: the base transform absorbs the
+// ratio, so the geometry a caller gets back is in CSS px at any dpr.
+test("renderRealistic at dpr 2 scales the context and keeps the returned transform in CSS px", () => {
+  const garment = { widthIn: 4, heightIn: 4 };
+  const design = { stitches: [{ x: 0, y: 0, type: "stitch" }, { x: 100, y: 100, type: "stitch" }] };
+
+  const at1 = makeCtxSpy();
+  const r1 = renderRealistic(
+    { width: 400, height: 300, getContext: () => at1 }, design, { hoop: { garment } });
+
+  // Same CSS box, bitmap cut at 2x — what EmbroideryField does on a Retina
+  // screen.
+  const at2 = makeCtxSpy();
+  const r2 = renderRealistic(
+    { width: 800, height: 600, getContext: () => at2 }, design, { hoop: { garment }, dpr: 2 });
+
+  expect(at2.setTransform).toHaveBeenCalledWith(2, 0, 0, 2, 0, 0);
+  // Identical geometry: same px-per-mm, same origin. A design 40 mm across
+  // still measures 40 mm worth of CSS px, so hit-testing and the overlay need
+  // no dpr of their own.
+  expect(r2.scale).toBeCloseTo(r1.scale, 6);
+  const p1 = r1.toCanvas(10, 10), p2 = r2.toCanvas(10, 10);
+  expect(p2.x).toBeCloseTo(p1.x, 6);
+  expect(p2.y).toBeCloseTo(p1.y, 6);
+  // The fabric fill covers the whole bitmap, expressed in the scaled space.
+  expect(at2.fillRect).toHaveBeenCalledWith(0, 0, 400, 300);
+});
+
+test("renderRealistic leaves the context transform alone at the default dpr", () => {
+  // Every caller but the field passes no dpr, and two of the ctx doubles in
+  // this repo have no setTransform at all — so the default path must not
+  // touch it.
+  const ctx = makeCtxSpy();
+  renderRealistic({ width: 400, height: 300, getContext: () => ctx }, { stitches: [] }, {});
+  expect(ctx.setTransform).not.toHaveBeenCalled();
+  expect(ctx.fillRect).toHaveBeenCalledWith(0, 0, 400, 300);
 });
 
 // --- threadLayers: the lit-cylinder model ----------------------------------

@@ -434,6 +434,13 @@ export function drawHoopOutline(ctx, t, fabricRgb) {
 //   colorOverride  existing strand-recolor contract -- unchanged.
 //   weave          true -> draw weavePattern() over the bg fill (needs
 //                  fabricRgb; a no-op without it).
+//   dpr            device pixel ratio the canvas BITMAP is sized for; the
+//                  caller sets canvas.width = cssWidth * dpr and this scales
+//                  the context to match. Defaults to 1 (bitmap == CSS box),
+//                  which is every caller but EmbroideryField. The returned
+//                  transform is in CSS px at any dpr, so hit-testing and
+//                  overlay code need no dpr of their own -- but a caller that
+//                  reads canvas.width directly must divide by dpr.
 //   view           { zoom, panX, panY } -- defaults to identity, so callers
 //                  that never pass one (FontSelect thumbnails, exportPNG) get
 //                  back exactly the pre-Slice-8 transform. B1 (BLOCKING): the
@@ -447,7 +454,18 @@ export function drawHoopOutline(ctx, t, fabricRgb) {
 export function renderRealistic(canvas, design, opts) {
   const o = opts || {};
   const ctx = canvas.getContext("2d");
-  const cw = canvas.width, ch = canvas.height;
+  // `dpr` (default 1) lets a caller back the canvas with a bitmap denser than
+  // its CSS box -- the Studio field does, so the preview is sharp on HiDPI
+  // screens instead of drawn at half resolution and upscaled by the browser.
+  // Everything below this line keeps working in CSS px: the base transform
+  // does the scaling ONCE, so every px constant in here (the thread-width
+  // floor, the trim-marker radius, `pad`) still means the same physical size
+  // it always did. dpr === 1 skips setTransform entirely, which is what keeps
+  // every other caller -- and the ctx doubles in the specs, which have no
+  // setTransform -- behaving exactly as before.
+  const dpr = o.dpr > 0 ? o.dpr : 1;
+  if (dpr !== 1) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const cw = canvas.width / dpr, ch = canvas.height / dpr;
   const view = o.view || { zoom: 1, panX: 0, panY: 0 };
   const zoom = view.zoom || 1;
   const panX = view.panX || 0;
