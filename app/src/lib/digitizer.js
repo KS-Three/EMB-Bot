@@ -115,6 +115,13 @@ export function buildDigitizeConfig(element, project) {
     // cache-key change on existing designs, which re-digitize to identical
     // output since the service's own default is already False.
     detail_layer: p.detail_layer,
+    // Sent unconditionally for the same reason detail_layer is: an ordinary
+    // design property the user picks and the project persists, not an
+    // absent-means-auto sentinel. Existing designs take one cache-key change
+    // and re-digitize to identical output, since "none" is the service's own
+    // default and its off-path is byte-identity tested
+    // (digitizer/tests/test_edge_cap.py).
+    edge_cap: p.edge_cap,
   };
   if (p.fill_angle_deg != null) cfg.fill_angle_deg = p.fill_angle_deg;
   // Stage 0's escape hatch, stored in element.params like any other design

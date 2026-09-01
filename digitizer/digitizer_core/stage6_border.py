@@ -656,6 +656,68 @@ def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
     return runs, report
 
 
+EDGE_CAP_STYLES = ("none", "bean", "satin")
+
+
+def silhouette_cap(silhouette, shape_id: str, *, style: str,
+                   entry: tuple[float, float] | None,
+                   trim_at_mm: float,
+                   width_mm: float | None = None) -> tuple[list[StitchRun], dict]:
+    """Close the DESIGN's outer edge — one cap on the whole silhouette.
+
+    The two tiers below already outline a SHAPE. This outlines the union of
+    them: the boundary between the design and bare fabric, where a tatami
+    row simply stops and nothing holds its end. That edge belongs to no
+    single shape, so no per-shape border can reach it (`border_runs` draws
+    on one region's visible geometry; several regions share the silhouette),
+    which is why this is a design-level pass rather than another rung on
+    stitch_one's ladder.
+
+    Both styles are the engine's own emitters on new geometry, not new
+    geometry code:
+
+    - "bean" -> `run_outline`. Traces the ring exactly, three passes at
+      0.73 mm stations. Locks the row ends and reads as a drawn line
+      without adding a column's visual weight. NOT a single walking pass —
+      the run tier is bean-based and there is no lighter emitter here.
+    - "satin" -> `border_runs(style="auto")`. A column just inside the
+      edge, the same treatment a bordered shape gets, so it covers the row
+      ends outright rather than pinning them. Falls back to its own bean
+      lightening wherever the silhouette is too narrow to host a column —
+      that fallback is `border_runs`' contract and is reported as
+      `bean_loops`, not silently.
+
+    Interior holes of the silhouette are capped too: a hole's edge is bare
+    fabric on the same terms as the outer boundary, and both emitters walk
+    exterior and interiors alike.
+
+    -> (runs, report). Report keys are the union of both tiers' own, so a
+    caller reads one shape regardless of style: `loops`, `bean_loops`,
+    `jumps`, `empty`, plus `style` (what actually ran).
+    """
+    report = {"loops": 0, "bean_loops": 0, "jumps": 0, "empty": True,
+              "style": "none"}
+    if silhouette is None or style not in ("bean", "satin"):
+        return [], report
+    if getattr(silhouette, "is_empty", True):
+        return [], report
+
+    if style == "bean":
+        runs, r = run_outline(silhouette, shape_id, entry=entry,
+                              trim_at_mm=trim_at_mm)
+        report["loops"] = r["loops"]
+    else:
+        runs, r = border_runs(silhouette, shape_id, entry=entry,
+                              trim_at_mm=trim_at_mm, style="auto",
+                              width_mm=width_mm)
+        report["loops"] = r["loops"]
+        report["bean_loops"] = r["bean_loops"]
+    report["jumps"] = r["jumps"]
+    report["empty"] = not runs
+    report["style"] = style
+    return runs, report
+
+
 def run_outline(poly, shape_id: str, *, entry: tuple[float, float] | None,
                 trim_at_mm: float) -> tuple[list[StitchRun], dict]:
     """The run tier: a shape too small to fill or satin, sewn as bean runs on

@@ -56,7 +56,7 @@ const PIPELINE_CONFIG_FIELDS = [
   "underlay_style", "underlay", "satin", "satin_max_width_mm", "border",
   "border_width_mm", "deleted_shape_ids", "shape_overrides",
   "merge_shape_ids", "split_shapes", "photo_segment_sam2", "detail_layer",
-  "forced_class",
+  "forced_class", "edge_cap",
 ];
 
 test("buildDigitizeConfig sends the stored thread-brand preference and the project garment, in service field names", async () => {
@@ -70,6 +70,7 @@ test("buildDigitizeConfig sends the stored thread-brand preference and the proje
     satin: true,
     border: "off",
     detail_layer: false,
+    edge_cap: "none",
     thread_brand: "madeira-rayon",
     garment_id: "left_chest",
   });
@@ -143,6 +144,26 @@ test("detail_layer rides buildDigitizeConfig both ways, and back-fills false for
     },
   });
   expect(buildDigitizeConfig(on, PROJECT).detail_layer).toBe(true);
+});
+
+test("edge_cap rides buildDigitizeConfig, and back-fills \"none\" for projects saved before the field existed", async () => {
+  stubStorage({});
+  const { buildDigitizeConfig } = await import("./digitizer.js");
+
+  // Same additive-default contract detail_layer relies on above: a project
+  // saved before the design-edge cap existed must send "none" — the service's
+  // own default, whose off-path is byte-identity tested — not undefined.
+  expect(buildDigitizeConfig(digitizedElement(), PROJECT).edge_cap).toBe("none");
+
+  for (const style of ["bean", "satin"]) {
+    const el = digitizedElement({
+      params: {
+        target_width_mm: 80, max_colors: 6, satin: true,
+        fill_angle_deg: null, border: "off", edge_cap: style,
+      },
+    });
+    expect(buildDigitizeConfig(el, PROJECT).edge_cap).toBe(style);
+  }
 });
 
 test("forced_class rides buildDigitizeConfig only when the flat-art override is set", async () => {

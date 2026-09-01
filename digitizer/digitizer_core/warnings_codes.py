@@ -215,6 +215,18 @@ CONTOUR_RING_UNREACHABLE = "CONTOUR_RING_UNREACHABLE"  # contour left a bare pat
 # compensation geometry is applied regardless.
 CONTOUR_DIRECTIONAL_COMP_UNSEWN = "CONTOUR_DIRECTIONAL_COMP_UNSEWN"
 
+# Stage 6 (design-silhouette edge cap, cfg.edge_cap)
+# Asked for a cap and got none — the silhouette was too small or too narrow
+# for either emitter to hold a loop. Fires only when the cap was explicitly
+# switched on, because silence on an opt-in the user set is how a knob comes
+# to look broken. extra: {"style": str}
+EDGE_CAP_EMPTY = "EDGE_CAP_EMPTY"
+# The satin cap fell back to its own bean lightening on part of the
+# silhouette — `border_runs`' documented contract, surfaced rather than
+# absorbed so a cap that reads lighter than expected has a reason on screen.
+# extra: {"count": int}
+EDGE_CAP_LIGHTENED = "EDGE_CAP_LIGHTENED"
+
 # Stage 6 (border tier)
 BORDER_SKIPPED_TOO_NARROW = "BORDER_SKIPPED_TOO_NARROW"  # no room for an outline. extra: {"count": int}
 BORDER_LIGHTENED = "BORDER_LIGHTENED"                    # column would not fit; bean run instead. extra: {"count": int}

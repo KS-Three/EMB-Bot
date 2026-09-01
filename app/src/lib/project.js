@@ -71,6 +71,14 @@ export const DEFAULT_DIGITIZE_PARAMS = {
   satin: true,
   fill_angle_deg: null,
   border: "off",
+  // The design-silhouette edge cap (PipelineConfig.edge_cap) — "none",
+  // "bean" or "satin". Distinct from `border` above: that outlines each
+  // SHAPE, this closes the outer edge of the whole design, which belongs to
+  // no single shape and which no per-shape border can reach. From Kent's
+  // first sew-out, where every tatami row in the background ended in open
+  // air. "none" matches the service default; bean costs about +12.6% of the
+  // design's stitches and satin about +15.3% (measured on that icon).
+  edge_cap: "none",
   // Off by default, matching the service's own `detail_layer` default — it
   // costs real stitches (+39% on the owl photo below) and buys nothing on
   // flat logo art, which is the common case. Measured 2026-08-12 on a snowy
