@@ -841,6 +841,18 @@ class PipelineConfig:
     # behaves on cloth. Kept conservative for that reason: too large only
     # declines merges, which costs stops rather than quality.
     hoist_same_thread_margin_mm: float = 0.5
+    # The UPSTREAM half of the same revisit defect (2026-08-31): a region the
+    # pipeline itself re-snapped (`revalidate_threads`) joins the layer that
+    # DECLARES its new cone, before stage 5 plans coverage, so one spool sews
+    # at one position and no after-the-fact disjointness proof is needed —
+    # see `stage4_vectorize.rehome_resnapped_regions` for the three refusals
+    # (stamped re-snaps only, declared cones only, never a step region).
+    # Default ON: a no-op on any design with no re-snap (all four flat-lane
+    # golden fixtures, measured 2026-08-31), so the byte-identical goldens
+    # are unaffected. False keeps the pre-2026-08-31 split reachable and is
+    # the lever the sequencing A/B used — same posture as the two passes
+    # above, which remain downstream as the net for other split sources.
+    rehome_resnapped: bool = True
     # Borders-last craft sequencing (2026-08-31, from the FIRST PHYSICAL
     # SEW-OUT — Kent's Instagram-icon test): the sewn DST put the design's
     # entire border satin down at 0%, then sewed seven background cones

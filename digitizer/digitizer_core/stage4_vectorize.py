@@ -432,6 +432,56 @@ def revalidate_threads(regions: list[Region], p: Prep,
     )]
 
 
+def rehome_resnapped_regions(regions: list[Region],
+                             layer_threads: list[int]) -> int:
+    """Move each pipeline-re-snapped region into the layer that DECLARES its
+    new cone, so one spool sews at one position. -> how many moved.
+
+    The other half of fix #6.3, found on the first physical sew-out
+    (2026-09-01 follow-up; MASTER_SCOPE defect 16): `revalidate_threads`
+    re-snaps `thread_index` and leaves `meta["layer"]` alone, so
+    `nn_group_key`'s `(sew_index, step_key, thread_index)` splits the spool
+    across layers sewing at different positions — on
+    `repro_gradient_white_icon.png` at 80 mm that is White owning three
+    layers and Fuchsia two, a 50-stitch Fuchsia cone at 99.6% of the design
+    re-entering territory sewn at 0%, and a palette naming six cones for
+    three sewn. Stage 7's merge/hoist passes rejoin only what they can
+    PROVE order-independent after the fact; this runs BEFORE stage 5, which
+    is the seam stage 7's own docstring prescribes for sequencing changes —
+    coverage and underlap are then planned against the order actually sewn,
+    and no after-the-fact disjointness proof is needed at all.
+
+    Three deliberate refusals:
+
+    - **Only regions the pipeline itself re-snapped** — keyed on the
+      `meta["thread_resnapped_de00"]` stamp `revalidate_threads` leaves.
+      A review-screen recolor changes `thread_index` by the same mechanism
+      but is an explicit user act on a shape IN ITS PLACE; if the user
+      wants it sewn elsewhere, the contract's own `layer` override says so.
+    - **Only onto a layer that DECLARES the cone** (`layer_threads`, the
+      quantize-time layer→cone list): the earliest such layer, matching
+      every other earliest-wins tiebreak in the pipeline. A re-snap onto a
+      cone no layer declares keeps its position — there is no "home" to
+      send it to, and inventing one would reorder against nothing.
+    - **Never a step region** (`meta["step_key"]`): a specialty step's stop
+      sequence is an operator instruction, the same §0 consequence that
+      keeps steps out of `nn_group_key`'s pools.
+    """
+    home: dict[int, int] = {}
+    for layer, thread in enumerate(layer_threads):
+        home.setdefault(thread, layer)
+    moved = 0
+    for r in regions:
+        if "thread_resnapped_de00" not in r.meta or r.meta.get("step_key"):
+            continue
+        target = home.get(r.thread_index)
+        if target is None or target == r.meta["layer"]:
+            continue
+        r.meta["layer"] = target
+        moved += 1
+    return moved
+
+
 def tag_enclosed_background(regions: list[Region], p: Prep) -> None:
     """Post-vectorization pass: mark `region.meta["enclosed_background"]`
     True for every Region that is (nearly) the same shape as one connected

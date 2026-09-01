@@ -115,20 +115,73 @@ def test_ties_are_applied_exactly_once_across_the_merge():
     """`apply_ties` is not idempotent — its own docstring warns that tying
     twice "doubles the lock into eight stitches of thread piled in one spot".
     The merge defers tying so it happens once, on the surviving blocks; if it
-    ever ran twice the stitch count would jump."""
-    img = TESTDATA / "photo/owl_kent.jpg"
-    cfg = dict(target_width_mm=100.0, is_photographic=True)
-    _r1, off = digitize(img, PipelineConfig(**cfg,
-                                            merge_adjacent_same_thread=False))
-    _r2, on = digitize(img, PipelineConfig(**cfg,
-                                           merge_adjacent_same_thread=True))
-    n_off = sum(len(r.points) for b in off.blocks for r in b.runs)
-    n_on = sum(len(r.points) for b in on.blocks for r in b.runs)
+    ever ran twice the stitch count would jump.
+
+    Until 2026-08-31 this drove the owl end-to-end, because the pipeline's
+    own re-snaps supplied same-thread adjacency for free. Both job-level
+    split sources are now consolidated UPSTREAM of stage 7 — pipeline
+    re-snaps by `rehome_resnapped_regions`, review-screen recolors by
+    `apply_shape_edits`' own layer-move (regions.py: "the layer moves with
+    it") — so no committed artwork reaches the merge with anything to fold
+    (the owl sews 12 blocks with the flag OFF; pinned below). The invariant
+    is exercised where the file's unit tests already live: `sequence()` on
+    hand-built regions whose thread identity is forced, the one lane —
+    upstream state this pipeline no longer produces, or a future split
+    source — the pass still exists to serve."""
+    from digitizer_core import fabric_for_garment
+    from digitizer_core.stage5_overlap import resolve_overlaps
+    from digitizer_core.stage7_sequence import sequence
+    from shapely.geometry import Polygon as _Poly
+    from digitizer_core.regions import Region
+
+    fabric = fabric_for_garment("left_chest")
+
+    def region(x0, layer, name, thread):
+        poly = _Poly([(x0, 0), (x0 + 10, 0), (x0 + 10, 10), (x0, 10)])
+        return Region(shape_id=name, polygon=poly, thread_index=thread,
+                      thread_number=f"{1000 + thread}", area_mm2=poly.area,
+                      meta={"layer": layer, "tier": "fill"})
+
+    def blocks_with(merge: bool):
+        # t7 at layers 0 and 2 with t9 between — [t7, t9, t7] raw. The
+        # shapes sit 20 mm apart, far beyond both the hoist margin (their
+        # order provably cannot move a seam) and trim_at (every block
+        # boundary stays a real cut, so tie sites agree across the two
+        # variants and only a DOUBLED tie could move the stitch count).
+        regions = [region(0, 0, "Sa", 7), region(30, 1, "Sb", 9),
+                   region(60, 2, "Sc", 7)]
+        conf = PipelineConfig(garment_id="left_chest",
+                              merge_adjacent_same_thread=merge)
+        planned, _ = resolve_overlaps(regions, fabric, conf)
+        blocks, _ = sequence(planned, fabric, conf)
+        return blocks
+
+    off, on = blocks_with(False), blocks_with(True)
+    assert [b.thread_index for b in off] == [7, 9, 7]
+    n_off = sum(len(r.points) for b in off for r in b.runs)
+    n_on = sum(len(r.points) for b in on for r in b.runs)
     assert n_on == n_off, "merging changed the stitch count — ties doubled?"
-    assert len(on.blocks) < len(off.blocks), "nothing merged on the owl"
+    assert len(on) < len(off), "nothing merged"
     # No two adjacent blocks may share a thread once the pass has run.
-    seq = [b.thread_index for b in on.blocks]
+    seq = [b.thread_index for b in on]
     assert all(x != y for x, y in zip(seq, seq[1:]))
+
+
+def test_the_pipelines_own_output_no_longer_needs_the_merge():
+    """The owl, flag OFF, must sew NO adjacent same-thread blocks: the
+    re-snap splits that used to produce them (t46 at blocks 3-4, t12 at
+    14-15, 2026-08-28) are consolidated upstream by
+    `rehome_resnapped_regions` now, so merge-off equals merge-on. If this
+    ever fails, a NEW split source has appeared — find it before reaching
+    for the merge to paper over it."""
+    img = TESTDATA / "photo/owl_kent.jpg"
+    _r, off = digitize(img, PipelineConfig(target_width_mm=100.0,
+                                           is_photographic=True,
+                                           merge_adjacent_same_thread=False))
+    seq = [b.thread_index for b in off.blocks]
+    assert all(x != y for x, y in zip(seq, seq[1:])), (
+        f"adjacent same-thread blocks are back: {seq}"
+    )
 
 
 # --- The non-adjacent half: _hoist_same_thread -----------------------------

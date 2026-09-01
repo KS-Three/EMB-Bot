@@ -571,12 +571,26 @@ def _band_clip(poly: Polygon, model: RampModel, t_lo: float, t_hi: float) -> lis
 
 # --- Emission ------------------------------------------------------------------
 
-def blend_fill(region: Region, source_pixels: SourcePixels, cfg
+def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
+               start_near: tuple[float, float] | None = None
                ) -> tuple[list[StitchRun], dict]:
     """Ramp region -> (stitches, report). Same `(runs, report)` contract as
     `stage6_fill.stitch_shape` and its other siblings, so stage 7 sequencing
     treats a blend group exactly like any other fill tier — including
     border eligibility, which depends on reading a real report back.
+
+    `start_near` is where the needle already is — the same contract every
+    other tier takes from stage 7's picking loop. Until 2026-08-31 this tier
+    silently dropped it: both `stitch_shape` call sites below passed
+    nothing, so every gradient-class region entered at its own
+    geometry-default corner however far the needle was (measured on
+    `repro_gradient_white_icon.png` at 80 mm: a 72.0 mm and a 46 mm hop
+    inside single colour blocks — the criss-cross half of the 2026-09-01
+    sew-out's fragmentation verdict). The fallback path hands it straight
+    to tatami; the band path chains — the first band enters near the
+    caller's cursor and every later part enters near wherever stitching
+    actually ended, which costs band ORDER nothing (bands still sew 0..n-1;
+    `_shade_blocks` re-sorts accepted shades dark→light downstream).
     """
     poly = region.polygon
     model, reject, best_r2 = detect_ramp_detail(
@@ -602,6 +616,7 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg
             poly, region.shape_id, angle_deg=source_pixels.design_row_angle_deg,
             row_mm=machine.FILL_ROW_MM, stitch_mm=machine.FILL_STITCH_MM,
             underlay_style="none", trim_at_mm=machine.TRIM_AT_MM,
+            start_near=start_near,
         )
         # Routed to blend, sewn flat. Stage 7 aggregates these across the
         # design so the warning the user reads can say decomposition did
@@ -671,6 +686,10 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg
     # jumps, AND for empty (empty only if every band produced nothing).
     report = {"too_thin": False, "jumps": 0, "empty": False,
               "blend_shades": n, "blend_reject": RAMP_OK, "blend_best_r2": best_r2}
+    # The needle's running position across the band loop: the caller's
+    # cursor first, then wherever the last emitted part actually ended —
+    # each part enters near it instead of at its own top-left default.
+    cur = start_near
     for i in range(n):
         t_lo = max(0.0, i / n - (0.0 if i == 0 else _BAND_OVERLAP_T))
         t_hi = min(1.0, (i + 1) / n + (0.0 if i == n - 1 else _BAND_OVERLAP_T))
@@ -683,7 +702,10 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg
                 part, f"{region.shape_id}-blend{i}", angle_deg=angle,
                 row_mm=row_mm, stitch_mm=machine.FILL_STITCH_MM,
                 underlay_style="none", trim_at_mm=machine.TRIM_AT_MM,
+                start_near=cur,
             )
+            if runs:
+                cur = runs[-1].points[-1]
             # Stamp this band's own snapped thread on every run it produced —
             # stage 7's block assembly reads this to sew each accepted shade
             # in its own StitchBlock instead of collapsing all of them into
