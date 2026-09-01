@@ -22,7 +22,7 @@ describes are ON `main`**
 `selfconsistency.py` is in a plain checkout.
 *(confirmed 2026-08-17 — `git ls-tree origin/main`)*
 
-**Last updated:** 2026-08-31. **This file is current state only, under an
+**Last updated:** 2026-09-01. **This file is current state only, under an
 800-line budget.** Its three companions: standing rulings, rejected approaches,
 corrections and session-costing traps live in [`DOCTRINE.md`](DOCTRINE.md);
 dated snapshots in [`docs/scope-history.md`](docs/scope-history.md); per-area
@@ -36,6 +36,12 @@ a claim with no pointer as unverified — and if you find one, either verify it
 or move it.
 
 ---
+
+**FIRST PHYSICAL STITCH-OUT 2026-09-01 — thread has met cloth.** Kent's
+Instagram icon at 80 mm, 6/10; the full measured record is scope-history
+2026-09-01 and memory `first-physical-sewout-2026-09-01`. Gate 1 still
+stands — constants wait on the sew-out CARD's controlled blocks, not this
+icon. Cloth pointers added to defects 3, 6 and 16 below.
 
 ## Live defects — believed true right now
 
@@ -66,8 +72,11 @@ or move it.
    mistake this note exists to prevent. **Kent: name the design and this
    becomes checkable in one run.** The underlying concern is independently
    supported by defect 4, which does not depend on this number.
+   **A real 80 mm datum now exists:** the 2026-09-01 sew-out's icon sews
+   26 trims / 7 stops (service DST, decoded). Not the same design — the
+   original claim stays unreproducible — but this one is pinned to a file.
    *(measured 2026-08-12 — scope-history; reproduction attempted and failed
-   2026-08-31 — two fixtures x three fill variants)*
+   2026-08-31 — two fixtures x three fill variants; 80 mm datum 2026-09-01)*
 
 4. **We trim far more than the professional — 3.1x the trim breaks on a
    like-for-like corpus.** Quote the rate or the break count, never a run
@@ -92,7 +101,10 @@ or move it.
    intra-shape. Retire the old framing: the rope border was never one stroke
    the engine shattered — the artwork is ~136 separate chevrons. **And it is
    UNREPRESENTATIVE of client logos**, which carry 1–3 fill shapes that
-   essentially never cut. *(measured 2026-08-21/22 — area 1)*
+   essentially never cut. **On cloth 2026-09-01:** the first sew-out's tail
+   is exactly this — late satin fragments riding over pre-sewn work, jump-
+   chains stepping 8–11.5 mm. *(measured 2026-08-21/22 — area 1; cloth
+   2026-09-01 — scope-history)*
 
 15. **An UNDECLARED photograph gets neither depth sequencing nor the palette
     bind, and its region re-snap escapes the selected palette.** Closed defect
@@ -128,8 +140,11 @@ or move it.
     at 100 mm (1 of 3 with `is_photographic=True`); the rest genuinely touch
     and correctly stay. **Still open:** the remaining touching revisits, which
     need real coverage reasoning rather than a disjointness proof.
+    **On cloth 2026-09-01:** the first sew-out spent a 229-stitch cone
+    re-entering the lens interior at 76% and a 104-stitch cone at 99.4%.
     *(measured 2026-08-28 — `stage7_sequence.py`; scope-history 08-28;
-    hoist half confirmed 2026-08-31 — `da7fc80`, `tests/test_merge_adjacent_same_thread.py`)*
+    hoist half confirmed 2026-08-31 — `da7fc80`, `tests/test_merge_adjacent_same_thread.py`;
+    cloth 2026-09-01 — scope-history)*
 
 ### Closed — kept numbered, because ten other docs cite them by number
 

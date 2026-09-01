@@ -73,7 +73,21 @@ TRIM_AT = 3.0
 FILL_UNDERLAY = "edge_lattice"
 SATIN_UNDERLAY = "center_run"
 
-FONT = "C:/Windows/Fonts/arial.ttf"   # regular weight: the honest small-text test
+# Regular weight: the honest small-text test. Arial on Kent's machine; a
+# cloud/Linux build falls back to Liberation Sans, the metric-compatible
+# Arial substitute — same advance widths, slightly different glyph outlines,
+# so block 5's letterforms differ a hair between the two builds while every
+# other block is byte-identical. A card sewn for block 5 specifically should
+# be built where Arial lives.
+_FONT_CANDIDATES = [
+    "C:/Windows/Fonts/arial.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+]
+import os as _os
+FONT = next((f for f in _FONT_CANDIDATES if _os.path.exists(f)), None)
+if FONT is None:
+    raise SystemExit(
+        "sewout_card: no usable font found; tried:\n  " + "\n  ".join(_FONT_CANDIDATES))
 
 
 # --- small helpers ----------------------------------------------------------
