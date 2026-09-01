@@ -131,6 +131,23 @@ or move it.
     *(measured 2026-08-28 — `stage7_sequence.py`; scope-history 08-28;
     hoist half confirmed 2026-08-31 — `da7fc80`, `tests/test_merge_adjacent_same_thread.py`)*
 
+17. **The sew order has no craft layering — border satin opens the design.**
+    Found by the FIRST PHYSICAL SEW-OUT (Kent's Instagram-icon test, 80 mm
+    pique polo, 2026-08-31, rated 6/10): the sewn DST put the whole white
+    glyph — border satin, 5,453 stitches — down at 0%, then sewed seven
+    background cones against it; on the repro fixture the pink border ring
+    opens the design at 0.0%, before its own cone's fills. **FIX BUILT,
+    default OFF, awaiting Kent's default call:** `cfg.borders_last` —
+    satin-dominated layers sew after fill-dominated ones
+    (`borders_last_layers`, upstream of stage 5 so coverage/underlap/ties
+    derive from the final order) and satin-tier shapes wait for their
+    group's fills in `sequence`'s pick loop; review-screen pins still win.
+    ON, the repro ring moves 0.0% → 54.5%, stitch count unchanged, renders
+    byte-identical — order-only there. OFF stays default because ON moves
+    the three byte-identical goldens; flipping + regenerating is one
+    decision, Kent's. *(measured 2026-08-31 — `tests/test_borders_last.py`,
+    15 passing; suite 3 failed/1561 passed, the documented platform three)*
+
 ### Closed — kept numbered, because ten other docs cite them by number
 
 Full text moved to [`docs/scope-history.md`](docs/scope-history.md) 2026-08-27;
