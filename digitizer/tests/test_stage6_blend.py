@@ -680,3 +680,84 @@ def test_drone_render_ab_debug_artifacts(tmp_path):
         n_shades = len(_layers_of(runs))
         assert 3 <= n_shades <= 5
         assert swatch.shape[1] == swatch.shape[0] * n_shades
+
+
+# --- start_near (2026-08-31, sew-out fragmentation follow-up) ---------------
+# The gradient lane silently dropped the sew cursor: stage 7's picking loop
+# hands every tier `entry` ("where the needle already is"), and blend_fill's
+# two stitch_shape call sites passed nothing — so every gradient-class
+# region entered at its own geometry-default corner however far the needle
+# was. Measured on repro_gradient_white_icon.png at 80 mm: a 72.0 mm hop
+# into one shape and 46 mm into another, inside single colour blocks.
+
+
+def test_blend_fallback_honors_start_near():
+    """The fallback tatami path (every k-means fragment of a real gradient
+    takes it) must enter near the needle, exactly like the plain-tatami tier
+    stage 7 calls directly."""
+    rng = np.random.default_rng(3)
+    poly = Polygon([(0, 0), (30, 0), (30, 20), (0, 20)])
+    noise = rng.integers(0, 256, size=(120, 160, 3), dtype=np.uint8)
+    source = SourcePixels(rgb=noise, px_per_mm=4.0, origin_px=(80.0, 60.0))
+    region = Region(shape_id="Snoise", polygon=poly, thread_index=0,
+                    thread_number=CHART[0].number, area_mm2=poly.area)
+    assert detect_ramp(poly, source) is None
+
+    cfg = PipelineConfig()
+    near_a, _ = blend_fill(region, source, cfg, start_near=(0.0, 0.0))
+    near_b, _ = blend_fill(region, source, cfg, start_near=(30.0, 20.0))
+    a0, b0 = near_a[0].points[0], near_b[0].points[0]
+    assert math.dist(a0, (0.0, 0.0)) < math.dist(b0, (0.0, 0.0))
+    assert math.dist(b0, (30.0, 20.0)) < math.dist(a0, (30.0, 20.0))
+
+    # And the geometry itself is the fallback's own: same rows, entered from
+    # the requested side, byte-identical to what plain tatami does with the
+    # same entry.
+    expected, _ = stitch_shape(
+        poly, region.shape_id, angle_deg=None, row_mm=machine.FILL_ROW_MM,
+        stitch_mm=machine.FILL_STITCH_MM, underlay_style="none",
+        trim_at_mm=machine.TRIM_AT_MM, start_near=(0.0, 0.0))
+    assert [r.points for r in near_a] == [r.points for r in expected]
+
+
+def test_blend_bands_chain_and_honor_start_near():
+    """Decomposed bands: the FIRST band enters near the caller's cursor, and
+    every later band enters near wherever the previous band's stitching
+    ended, instead of each stitch_shape call starting at its own
+    geometry-default corner."""
+    region, source = _linear_region(), _linear_source()
+    cfg = PipelineConfig()
+    x0, y0, x1, y1 = region.polygon.bounds
+
+    runs_a, report = blend_fill(region, source, cfg, start_near=(x0, y0))
+    runs_b, _ = blend_fill(region, source, cfg, start_near=(x1, y1))
+    assert report["blend_shades"] > 1, "fixture must decompose for this test"
+    a0, b0 = runs_a[0].points[0], runs_b[0].points[0]
+    assert math.dist(a0, (x0, y0)) < math.dist(b0, (x0, y0))
+
+    # The discriminating half: band 0's two different entries leave the
+    # needle at two different exits, and CHAINING means band 1 must respond
+    # to that — enter differently in the two calls. The pre-fix code sewed
+    # every band from its own fixed geometry default, byte-identical in
+    # both calls no matter where the needle was.
+    la, lb = _layers_of(runs_a), _layers_of(runs_b)
+    band1 = f"{region.shape_id}-blend1"
+    assert la[band1][0].points[0] != lb[band1][0].points[0]
+
+    # Band boundaries chain: at every marked band seam, the entry chosen is
+    # no farther from the previous stitch than the band's own far corner —
+    # i.e. the seam gap stays under the band strip's own breadth instead of
+    # flying to a fixed corner. Checked structurally: each band's first run
+    # must start strictly nearer the previous band's exit than the WORST
+    # entry the same band offers (its farthest stitch point).
+    layers = _layers_of(runs_a)
+    ids = sorted(layers, key=lambda s: int(s.rsplit("-blend", 1)[1]))
+    prev_end = None
+    for sid in ids:
+        band_runs = layers[sid]
+        first = band_runs[0].points[0]
+        if prev_end is not None:
+            pts = [p for r in band_runs for p in r.points]
+            worst = max(math.dist(prev_end, p) for p in pts)
+            assert math.dist(prev_end, first) < worst
+        prev_end = band_runs[-1].points[-1]
