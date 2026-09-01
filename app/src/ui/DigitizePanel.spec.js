@@ -93,7 +93,7 @@ function lastOverride(patches, sid) {
 describe("per-shape stitch-type/angle/underlay/border controls", () => {
   test("changing Stitch type writes a tier override", async () => {
     const { getByLabelText, patches } = renderPanel([shapeRow("s1")]);
-    await fireEvent.change(getByLabelText("Stitch type"), { target: { value: "satin" } });
+    await fireEvent.change(getByLabelText(/^Stitch type \u2014 /), { target: { value: "satin" } });
     expect(patches).toHaveLength(1);
     expect(lastOverride(patches, "s1")).toEqual({ tier: "satin" });
   });
@@ -102,7 +102,7 @@ describe("per-shape stitch-type/angle/underlay/border controls", () => {
     const { getByLabelText, patches } = renderPanel([shapeRow("s1")], {
       shapeOverrides: { s1: { tier: "satin" } },
     });
-    await fireEvent.change(getByLabelText("Stitch type"), { target: { value: "auto" } });
+    await fireEvent.change(getByLabelText(/^Stitch type \u2014 /), { target: { value: "auto" } });
     expect(patches).toHaveLength(1);
     expect(patches[0].patch.shapeOverrides.s1).toBeUndefined();
   });
@@ -113,8 +113,13 @@ describe("per-shape stitch-type/angle/underlay/border controls", () => {
   // is ambiguous. The per-shape selects are the only ones carrying an
   // explicit `aria-label` attribute, so an attribute selector disambiguates
   // cleanly without needing to scope into the row's own DOM subtree.
+  // Prefix, not equality: every per-shape control's name now ends with the
+  // row it acts on ("Border \u2014 shape 1 of 3, thread #0134, 18.7 mm\u00b2"), so
+  // the list is navigable by screen reader and addressable by voice. The
+  // separator is what keeps "Sew later" from also matching "Sew later within
+  // this color".
   function perShapeSelect(container, label) {
-    return container.querySelector(`select[aria-label="${label}"]`);
+    return container.querySelector(`select[aria-label^="${label} \u2014 "]`);
   }
 
   test("Fill angle and Underlay style only appear once a shape's effective tier is fill", async () => {
@@ -370,7 +375,7 @@ describe("the reading row -- \"It's a photo\" from a standing flat override", ()
 describe("hiding, restoring, and BACKGROUND_ENCLOSED restore", () => {
   test("hiding a shape adds it to deletedShapeIds", async () => {
     const { container, patches } = renderPanel([shapeRow("s1")]);
-    const hideBtn = container.querySelector('button[aria-label="Hide this shape"]');
+    const hideBtn = container.querySelector('button[aria-label^="Hide this shape — "]');
     await fireEvent.click(hideBtn);
     expect(patches).toHaveLength(1);
     expect(patches[0].patch.deletedShapeIds).toEqual(["s1"]);
@@ -452,7 +457,7 @@ describe("sew-order reorder buttons", () => {
       shapeRow("b", { layer: 1, sewIndex: 1 }),
     ];
     const { patches } = renderPanel(rows);
-    const laterBtns = document.querySelectorAll('button[aria-label="Sew later"]');
+    const laterBtns = document.querySelectorAll('button[aria-label^="Sew later — "]');
     await fireEvent.click(laterBtns[0]); // move "a" later, past "b"'s layer
     expect(patches).toHaveLength(1);
     expect(lastOverride(patches, "a")).toEqual({ layer: 2 });
@@ -467,7 +472,7 @@ describe("sew-order reorder buttons", () => {
       shapeRow("b", { layer: 1, sewIndex: 1 }),
     ];
     const { patches } = renderPanel(rows);
-    const laterBtns = document.querySelectorAll('button[aria-label="Sew later"]');
+    const laterBtns = document.querySelectorAll('button[aria-label^="Sew later — "]');
     await fireEvent.click(laterBtns[0]);
     expect(patches).toHaveLength(1);
     expect(lastOverride(patches, "a")).toEqual({ layer: 1 });
@@ -476,10 +481,48 @@ describe("sew-order reorder buttons", () => {
   test("the first row's Sew earlier and the last row's Sew later are disabled", async () => {
     const rows = [shapeRow("a", { layer: 0 }), shapeRow("b", { layer: 1 })];
     renderPanel(rows);
-    const earlierBtns = document.querySelectorAll('button[aria-label="Sew earlier"]');
-    const laterBtns = document.querySelectorAll('button[aria-label="Sew later"]');
+    const earlierBtns = document.querySelectorAll('button[aria-label^="Sew earlier — "]');
+    const laterBtns = document.querySelectorAll('button[aria-label^="Sew later — "]');
     expect(earlierBtns[0]).toBeDisabled();
     expect(laterBtns[laterBtns.length - 1]).toBeDisabled();
+  });
+
+  // Rows of one colour used to be indistinguishable to anything that reads
+  // names: the merge checkbox was labelled by thread number, which every
+  // shape in a colour shares, and the rest were bare verbs repeated once per
+  // row. "Click Sew later" was ambiguous as many ways as there were shapes.
+  // Same thread number on every row here on purpose — that is the case that
+  // used to collapse.
+  test("every control in a shape row is named for the row it acts on", async () => {
+    const rows = [shapeRow("a", { layer: 0 }), shapeRow("b", { layer: 1 }), shapeRow("c", { layer: 2 })];
+    const { container } = renderPanel(rows);
+
+    for (const sel of ['input[type="checkbox"][aria-label]', "button[aria-label]", "select[aria-label]"]) {
+      const named = [...container.querySelectorAll(sel)]
+        .map((el) => el.getAttribute("aria-label"))
+        .filter((n) => / shape \d+ of \d+, /.test(n));
+      expect(named.length).toBeGreaterThan(0);
+      // The point of the change: no two of them read the same.
+      expect(new Set(named).size).toBe(named.length);
+    }
+
+    // And the qualifier carries what the row shows on screen, so what is
+    // heard matches what is seen.
+    const hide = container.querySelector('button[aria-label^="Hide this shape — "]');
+    expect(hide.getAttribute("aria-label")).toBe("Hide this shape — shape 1 of 3, thread #1000, 120 mm²");
+  });
+
+  // A compact ThreadPicker renders a swatch and nothing else, so before this
+  // it reached the accessibility tree as a button with no name at all — one
+  // per shape row.
+  test("the per-row thread swatch has an accessible name", async () => {
+    const { container } = renderPanel([shapeRow("a")]);
+    const unnamed = [...container.querySelectorAll("button")]
+      .filter((b) => !b.textContent.trim() && !b.getAttribute("aria-label"));
+    expect(unnamed).toEqual([]);
+    expect(
+      container.querySelector('button[aria-label^="Thread color for shape 1 of 1"]'),
+    ).toBeTruthy();
   });
 });
 
@@ -613,14 +656,14 @@ describe("auto-restitch on shape edits", () => {
 
   test("a shape edit does NOT restitch immediately", async () => {
     const { getByLabelText } = await panelWithService([shapeRow("s1")]);
-    await fireEvent.change(getByLabelText("Stitch type"), { target: { value: "satin" } });
+    await fireEvent.change(getByLabelText(/^Stitch type \u2014 /), { target: { value: "satin" } });
     vi.advanceTimersByTime(1500);
     expect(calls).toHaveLength(0);
   });
 
   test("it restitches once the user stops editing", async () => {
     const { getByLabelText } = await panelWithService([shapeRow("s1")]);
-    await fireEvent.change(getByLabelText("Stitch type"), { target: { value: "satin" } });
+    await fireEvent.change(getByLabelText(/^Stitch type \u2014 /), { target: { value: "satin" } });
     vi.advanceTimersByTime(2500);
     await Promise.resolve();
     expect(calls.length).toBeGreaterThanOrEqual(1);
@@ -631,7 +674,7 @@ describe("auto-restitch on shape edits", () => {
     // run, not ten queued behind each other.
     const { getByLabelText } = await panelWithService([shapeRow("s1")]);
     for (const v of ["satin", "fill", "satin", "fill"]) {
-      await fireEvent.change(getByLabelText("Stitch type"), { target: { value: v } });
+      await fireEvent.change(getByLabelText(/^Stitch type \u2014 /), { target: { value: v } });
       vi.advanceTimersByTime(300);
     }
     expect(calls).toHaveLength(0);       // still inside the idle window

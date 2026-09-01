@@ -909,7 +909,7 @@ def test_a_clean_one_shape_design_is_silent_across_the_2026_08_02_firing_band():
     assert travel_mm > 50.0, "the design does travel; the instrument declines to score it"
 
 
-def test_the_real_fixture_leaves_no_link_on_bare_fabric(enthusiast_logo_82mm):
+def test_the_real_fixture_leaves_no_link_on_bare_fabric(enthusiast_logo_93mm):
     """The promise every threshold here was validated against. Measured
     2026-08-02 over 60 configurations (5 artworks x 4 sizes x 3 garments, with
     chaining on) the longest bare stretch is 2.29 mm and the p90 is 1.07,
@@ -925,11 +925,11 @@ def test_the_real_fixture_leaves_no_link_on_bare_fabric(enthusiast_logo_82mm):
     (test_chaining.py's acceptance numbers), the exact thread law 60 is
     about."""
     stitch_plan = plan_stitches(
-        enthusiast_logo_82mm,
-        cfg(target_width_mm=82.0, garment_id="left_chest", chain_links=True))
+        enthusiast_logo_93mm,
+        cfg(target_width_mm=93.0, garment_id="left_chest", chain_links=True))
     m = run_preflight(
         None, stitch_plan,
-        cfg(target_width_mm=82.0, garment_id="left_chest", chain_links=True),
+        cfg(target_width_mm=93.0, garment_id="left_chest", chain_links=True),
     )["metrics"]
 
     assert m["link_segments"] > 0, "the benchmark chains links; measure them"

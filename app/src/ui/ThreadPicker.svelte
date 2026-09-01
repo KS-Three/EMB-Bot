@@ -22,6 +22,9 @@
   export let rgb; // current color, [r,g,b]
   export let label = ""; // optional text label rendered above the trigger
   export let compact = false; // ImagePanel's per-swatch usage: swatch-only trigger, no name text
+  // Who this picker belongs to, for the trigger's accessible name only —
+  // never rendered. `label` above can't do this job: it draws visible text.
+  export let name = "";
 
   const d = createEventDispatcher();
 
@@ -115,12 +118,20 @@
 
 <div class="threadpicker" class:compact>
   {#if label}<span class="tp-label">{label}</span>{/if}
+  <!-- In `compact` mode the trigger is a bare swatch: no text child, and a
+       `title` is not an accessible name a screen reader or voice control can
+       rely on — so every compact picker (one per shape row, 29 of them on a
+       two-colour logo) was a button with no name at all. `name` qualifies it
+       with the row it belongs to; without one it still says what it is and
+       which thread it currently holds. -->
   <button
     type="button"
     class="tp-trigger"
     on:click|stopPropagation={toggle}
     aria-haspopup="true"
     aria-expanded={open}
+    aria-label={"Thread color" + (name ? " for " + name : "") + " — " +
+      (pending ? "loading" : threadLabel(nearest))}
     title={threadLabel(nearest)}
   >
     <span class="tp-swatch" style="background: rgb({rgb[0]},{rgb[1]},{rgb[2]})"></span>

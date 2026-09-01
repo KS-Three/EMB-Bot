@@ -615,6 +615,27 @@
     return row.threadNumber ? "#" + row.threadNumber : "Shape";
   }
 
+  // The accessible name for every control in ONE shape row.
+  //
+  // rowName() alone is the thread number, which every shape in a colour
+  // shares — on a two-colour logo that left 29 merge checkboxes with 2
+  // distinct names between them, and 27 controls each called just "Stitch
+  // type". Nothing said WHICH shape a control acted on, so the list was
+  // unusable by screen reader and unaddressable by voice ("click Sew later"
+  // was ambiguous 27 ways).
+  //
+  // The ordinal leads because it is the part a person can say out loud and
+  // the only part guaranteed unique; the thread number and area follow
+  // because they are what the row shows on screen, so what is heard matches
+  // what is seen.
+  function rowLabel(row, i, total) {
+    const parts = [`shape ${i + 1} of ${total}`];
+    if (row.threadNumber) parts.push("thread #" + row.threadNumber);
+    const area = fmtArea(row.areaMm2);
+    if (area) parts.push(area);
+    return parts.join(", ");
+  }
+
   function fmtArea(a) {
     if (a == null) return "";
     return (a >= 100 ? Math.round(a) : a.toFixed(1)) + " mm²";
@@ -1740,6 +1761,10 @@
           {/if}
           <ol class="dgp-layerlist">
             {#each orderedShapes as row, i (row.id)}
+              <!-- One name per row, reused by every control in it, so a
+                   screen reader and a voice command can both tell the rows
+                   apart. See rowLabel(). -->
+              {@const rowAria = rowLabel(row, i, orderedShapes.length)}
               {@const dead = deletedIds.includes(row.id)}
               {@const stitched = effStitched(row, overrides)}
               {@const unstitched = !dead && !stitched}
@@ -1775,7 +1800,7 @@
                       type="checkbox"
                       checked={mergeSelection.includes(row.id)}
                       on:change={() => toggleMergeSelect(row.id)}
-                      aria-label={"Select " + rowName(row) + " for merge"}
+                      aria-label={"Select " + rowAria + " for merge"}
                     />
                   </label>
                 {/if}
@@ -1810,7 +1835,7 @@
                         >not sewn — enclosed area</span>
                       {/if}
                     {:else}
-                      <ThreadPicker {rgb} compact on:pick={(e) => recolorShape(row.id, e.detail)} />
+                      <ThreadPicker {rgb} compact name={rowAria} on:pick={(e) => recolorShape(row.id, e.detail)} />
                       <span class="dgp-lname">{rowName(row)}</span>
                       <span class="dgp-larea">{fmtArea(row.areaMm2)}</span>
                       <span class="dgp-ltier tier-{tier || 'none'}">{tier || "not sewn"}</span>
@@ -1856,7 +1881,7 @@
                         class="dgp-lsel"
                         value={overrideTier(row, overrides)}
                         on:change={(e) => setShapeTier(row.id, e.currentTarget.value)}
-                        aria-label="Stitch type"
+                        aria-label={"Stitch type — " + rowAria}
                       >
                         <option value="auto">Auto{row.tier ? " (" + row.tier + ")" : ""}</option>
                         <option value="satin">Satin</option>
@@ -1874,7 +1899,7 @@
                           class="dgp-lsel"
                           value={overrideAngle(row, overrides)}
                           on:change={(e) => setShapeAngle(row.id, e.currentTarget.value)}
-                          aria-label="Fill angle"
+                          aria-label={"Fill angle — " + rowAria}
                         >
                           {#each SHAPE_ANGLES as a}
                             <option value={a.value == null ? "auto" : String(a.value)}>{a.label}</option>
@@ -1884,7 +1909,7 @@
                           class="dgp-lsel"
                           value={overrideUnderlay(row, overrides)}
                           on:change={(e) => setShapeUnderlay(row.id, e.currentTarget.value)}
-                          aria-label="Underlay style"
+                          aria-label={"Underlay style — " + rowAria}
                         >
                           {#each SHAPE_UNDERLAYS as u}
                             <option value={u.value == null ? "auto" : u.value}>{u.label}</option>
@@ -1895,7 +1920,7 @@
                         class="dgp-lsel"
                         value={overrideBorder(row, overrides)}
                         on:change={(e) => setShapeBorder(row.id, e.currentTarget.value)}
-                        aria-label="Border"
+                        aria-label={"Border — " + rowAria}
                       >
                         <option value="default">Design ({element.params.border})</option>
                         <option value="off">No border</option>
@@ -1925,7 +1950,7 @@
                       class="dgp-lbtn"
                       disabled={i === 0}
                       title="Sew earlier"
-                      aria-label="Sew earlier"
+                      aria-label={"Sew earlier — " + rowAria}
                       on:click={() => moveShape(row, -1)}
                     ><Icon name="arrowUp" size={12} /></button>
                     <button
@@ -1933,7 +1958,7 @@
                       class="dgp-lbtn"
                       disabled={i === orderedShapes.length - 1}
                       title="Sew later"
-                      aria-label="Sew later"
+                      aria-label={"Sew later — " + rowAria}
                       on:click={() => moveShape(row, 1)}
                     ><Icon name="arrowDown" size={12} /></button>
                     {#if siblings.length > 1}
@@ -1942,7 +1967,7 @@
                         class="dgp-lbtn"
                         disabled={siblingIdx <= 0}
                         title="Sew earlier within this color"
-                        aria-label="Sew earlier within this color"
+                        aria-label={"Sew earlier within this color — " + rowAria}
                         on:click={() => moveShapeWithinLayer(row, -1)}
                       ><Icon name="chevron" size={12} class="dgp-caret-up" /></button>
                       <button
@@ -1950,7 +1975,7 @@
                         class="dgp-lbtn"
                         disabled={siblingIdx < 0 || siblingIdx === siblings.length - 1}
                         title="Sew later within this color"
-                        aria-label="Sew later within this color"
+                        aria-label={"Sew later within this color — " + rowAria}
                         on:click={() => moveShapeWithinLayer(row, 1)}
                       ><Icon name="chevron" size={12} /></button>
                     {/if}
@@ -1959,7 +1984,7 @@
                         type="button"
                         class="dgp-lbtn"
                         title="Mark as not sewn again (enclosed area)"
-                        aria-label="Mark as not sewn again"
+                        aria-label={"Mark as not sewn again — " + rowAria}
                         on:click={() => unrestoreStitching(row.id)}
                       ><Icon name="exclude" size={12} /></button>
                     {/if}
@@ -1968,7 +1993,7 @@
                         type="button"
                         class="dgp-lbtn"
                         title="Undo this merge (the original shapes come back)"
-                        aria-label="Undo merge"
+                        aria-label={"Undo merge — " + rowAria}
                         on:click={() => undoMerge(row.id)}
                       ><Icon name="revert" size={12} /></button>
                     {:else if splitInfo}
@@ -1976,7 +2001,7 @@
                         type="button"
                         class="dgp-lbtn"
                         title="Undo this split (the original shape comes back)"
-                        aria-label="Undo split"
+                        aria-label={"Undo split — " + rowAria}
                         on:click={() => undoSplit(row.id)}
                       ><Icon name="revert" size={12} /></button>
                     {:else}
@@ -1984,7 +2009,7 @@
                         type="button"
                         class="dgp-lbtn"
                         title="Cut this shape into two"
-                        aria-label="Split shape"
+                        aria-label={"Split shape — " + rowAria}
                         on:click={() => startSplitEdit(row)}
                       ><Icon name="scissors" size={12} /></button>
                     {/if}
@@ -1992,14 +2017,14 @@
                       type="button"
                       class="dgp-lbtn"
                       title="Edit this shape's boundary"
-                      aria-label="Edit shape boundary"
+                      aria-label={"Edit shape boundary — " + rowAria}
                       on:click={() => startBoundaryEdit(row)}
                     ><Icon name="edit" size={12} /></button>
                     <button
                       type="button"
                       class="dgp-lbtn"
                       title="Hide this shape (restorable)"
-                      aria-label="Hide this shape"
+                      aria-label={"Hide this shape — " + rowAria}
                       on:click={() => deleteShape(row.id)}
                     ><Icon name="close" size={12} /></button>
                   {/if}

@@ -102,6 +102,67 @@ test("a mixed project is warned — it cannot take the service path either", () 
   expect(getByTestId("dst-browser-encoder-note")).toBeInTheDocument();
 });
 
+// The warning was doing its job while the layout undid it: DST was the
+// filled `primary` button, first in the grid, sitting directly above the
+// paragraph explaining that this exact file reads a quarter-turn rotated
+// everywhere else. The most prominent choice was the broken one, and a user
+// who trusts the emphasis rather than reading the note gets a ruined
+// sew-out. Emphasis now follows the encoder.
+test("when the browser encoder writes the DST, PES leads and DST carries the caveat", () => {
+  const view = render(DownloadStep, {
+    props: { project: project(LETTERING), runtime: {} },
+  });
+  const { container } = view;
+  const formats = [...container.querySelectorAll(".formats button")];
+  const primary = formats.filter((b) => b.classList.contains("primary"));
+
+  expect(primary).toHaveLength(1);
+  expect(primary[0].textContent.trim()).toBe("PES");
+  // First in the grid as well as filled — reading order is emphasis too.
+  expect(formats[0].textContent.trim()).toBe("PES");
+
+  const dst = formats.find((b) => b.textContent.trim().startsWith("DST"));
+  expect(dst.classList.contains("primary")).toBe(false);
+  expect(dst.classList.contains("caveat")).toBe(true);
+  // The button is still NAMED "DST" — the caveat is a description, not part
+  // of the name — so it stays addressable by voice and by every existing
+  // query. The asterisk is aria-hidden because "star" announces nothing.
+  expect(dst).toHaveAccessibleName("DST");
+  expect(dst.getAttribute("aria-describedby")).toBe("dst-encoder-note");
+  expect(container.querySelector("#dst-encoder-note")).toBe(
+    view.getByTestId("dst-browser-encoder-note"),
+  );
+});
+
+test("a project that exports through the service keeps DST primary", () => {
+  // The point is not that DST is bad — it is the industry default and the
+  // service's DST is spec-correct. Demoting it unconditionally would push
+  // users off the right format for their machine.
+  const { container } = render(DownloadStep, {
+    props: { project: project(DIGITIZED), runtime: {} },
+  });
+  const formats = [...container.querySelectorAll(".formats button")];
+  expect(formats[0].textContent.trim()).toBe("DST");
+  expect(formats[0].classList.contains("primary")).toBe(true);
+  expect(container.querySelector(".formats button.caveat")).toBeNull();
+});
+
+test("every format is still reachable in both encoder states", () => {
+  // The conditional branch duplicates the DST/PES/EXP buttons, which is
+  // exactly the shape of edit that drops one of them.
+  for (const els of [LETTERING, DIGITIZED]) {
+    const { container, unmount } = render(DownloadStep, {
+      props: { project: project(els), runtime: {} },
+    });
+    const labels = [...container.querySelectorAll(".formats button")]
+      .map((b) => b.textContent.trim().replace(/\*.*$/s, "").trim());
+    for (const want of ["DST", "PES", "EXP", "SVG", "PNG", "PDF worksheet"]) {
+      expect(labels).toContain(want);
+    }
+    unmount();
+  }
+});
+
 test("the warning names PES and EXP as the unaffected formats", () => {
   // PR #58 fixed both browser encoders' byte framing (identity/rms 0 against
   // pyembroidery). Warning about them too would be telling the user

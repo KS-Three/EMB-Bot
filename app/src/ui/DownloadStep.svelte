@@ -257,17 +257,44 @@
   </div>
 {/if}
 
+<!-- Which format is PRE-BLESSED follows the encoder, not habit.
+     DST is the industry default and stays first and primary for a project
+     that exports through the service (pyembroidery convention, spec-correct).
+     But when the browser's own encoder will write it — `dstUsesBrowserEncoder`,
+     i.e. any project with lettering or hand-drawn shapes — DST is the one
+     format we KNOW reads a quarter-turn rotated in other software, and it was
+     still the filled button sitting directly above the paragraph saying so.
+     The most prominent choice was the broken one. In that case PES leads
+     instead: it is unaffected, it round-trips against pyembroidery, and it is
+     what a home machine wants anyway.
+
+     This changes button order and emphasis only. Nothing here touches the
+     codec — the axis fix re-orients every DST EMB-Bot has ever written and is
+     gated on a sew-out, which is Kent's call, not this dialog's. -->
 <div class="formats">
-  <button class="primary" on:click={() => dl("dst")}>DST</button>
-  <button on:click={() => dl("pes")}>PES</button>
-  <button on:click={() => dl("exp")}>EXP</button>
+  {#if dstUsesBrowserEncoder}
+    <button class="primary" on:click={() => dl("pes")}>PES</button>
+    <button on:click={() => dl("exp")}>EXP</button>
+    <!-- The caveat rides aria-describedby, NOT the button's name: the name
+         stays exactly "DST" so the control is still called what it is, and
+         "click DST" still works for voice control. The asterisk is the
+         sighted equivalent and is aria-hidden, since "star" announces
+         nothing useful. -->
+    <button class="caveat" aria-describedby="dst-encoder-note" on:click={() => dl("dst")}>
+      DST<span class="caveat-mark" aria-hidden="true">*</span>
+    </button>
+  {:else}
+    <button class="primary" on:click={() => dl("dst")}>DST</button>
+    <button on:click={() => dl("pes")}>PES</button>
+    <button on:click={() => dl("exp")}>EXP</button>
+  {/if}
   <button on:click={() => dl("svg")}>SVG</button>
   <button on:click={dlPNG}>PNG</button>
   <button on:click={dlWorksheet} disabled={worksheetBusy}>PDF worksheet</button>
 </div>
 {#if dstUsesBrowserEncoder}
-  <p class="encodernote" data-testid="dst-browser-encoder-note">
-    <strong>Heads up about DST:</strong> this project includes lettering or
+  <p class="encodernote" id="dst-encoder-note" data-testid="dst-browser-encoder-note">
+    <strong>* Heads up about DST:</strong> this project includes lettering or
     hand-drawn shapes, so its DST is written by EMB-Bot's own encoder. That
     file opens correctly in EMB-Bot, but other embroidery software reads it
     rotated a quarter turn and may not see the color stops. PES and EXP are

@@ -47,6 +47,11 @@
   let warn = false;
   let hasDesign = false;
   let hint = "";
+  // Spoken to a screen reader after a keyboard nudge (see nudgeSelected). It
+  // is the position readout a sighted user gets from the moveBadge and from
+  // simply watching the design move, so it carries the same two facts: where
+  // the design now sits, or that the hoop edge refused the move.
+  let liveMsg = "";
   // Hoop ceiling check (launch item 2): the COMBINED design's dims against
   // the project's chosen hoop (lib/hoop.js). "" = fits, else the user-facing
   // note ("Exceeds your 4×4 in hoop…"). Set alongside `stats` in paint() —
@@ -97,6 +102,19 @@
   let showTrims = false;
   function toggleJumps() { showJumps = !showJumps; scheduleViewRepaint(); }
   function toggleTrims() { showTrims = !showTrims; scheduleViewRepaint(); }
+  // Every shape of a digitized element used to be outlined in cyan, with a
+  // node on every vertex, permanently — not tied to selection, not tied to an
+  // edit mode, and unaffected by the Realistic view toggle. On a two-colour
+  // logo that is 31 outlines over the artwork, so the one screen meant to
+  // answer "what will this look like sewn?" answered "here is a wireframe".
+  //
+  // Off by default, like the other two diagnostic overlays it now sits
+  // beside. The SELECTED shape is always outlined regardless (see
+  // drawShapeOutlines) — that highlight is what tells you which shape a
+  // Delete or a drag is about to act on, so hiding it would break editing
+  // rather than declutter it.
+  let showOutlines = false;
+  function toggleOutlines() { showOutlines = !showOutlines; scheduleViewRepaint(); }
 
   // Realistic vs flat thread. Ember ships this as a toggle and it earns its
   // place for the same reason: with the lighting off, coverage and stitch
@@ -203,6 +221,7 @@
     if (!canvas) return;
     const garment = garmentFor(project);
     renderResult = renderRealistic(canvas, EMPTY_DESIGN, {
+      dpr,
       hoop: garment ? { garment } : undefined,
       fabricRgb: project && project.fabricRgb,
       weave: true,
@@ -255,14 +274,14 @@
       const x = Math.round(renderResult.toCanvas(activeGuides.vXMm, 0).x) + 0.5;
       ctx.beginPath();
       ctx.moveTo(x, 0);
-      ctx.lineTo(x, canvas.height);
+      ctx.lineTo(x, cssH());
       ctx.stroke();
     }
     if (activeGuides.hYMm != null) {
       const y = Math.round(renderResult.toCanvas(0, activeGuides.hYMm).y) + 0.5;
       ctx.beginPath();
       ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y);
+      ctx.lineTo(cssW(), y);
       ctx.stroke();
     }
     ctx.restore();
@@ -302,8 +321,8 @@
     ctx.font = "11px system-ui, sans-serif";
     const w = ctx.measureText(text).width + 12;
     const h = 18;
-    const x = Math.round(Math.min(Math.max(cx - w / 2, 4), canvas.width - w - 4));
-    const y = Math.round(Math.min(Math.max(cy - h / 2, 4), canvas.height - h - 4));
+    const x = Math.round(Math.min(Math.max(cx - w / 2, 4), cssW() - w - 4));
+    const y = Math.round(Math.min(Math.max(cy - h / 2, 4), cssH() - h - 4));
     ctx.fillStyle = "rgba(24, 26, 38, 0.85)";
     if (ctx.roundRect) {
       ctx.beginPath();
@@ -562,6 +581,81 @@
     return true;
   }
 
+  // ---- keyboard placement ---------------------------------------------------
+  //
+  // The field was mouse-only: nothing here could be moved without a pointer,
+  // and the canvas carried no name, so a screen reader walked the whole
+  // four-step wizard to a surface that announced nothing at all.
+  //
+  // Arrow keys drive the SAME clamp-and-patch path a drag uses
+  // (clampOffsets -> "elupdate"), so hoop containment and the undo history
+  // behave identically whichever way the design was moved — including the
+  // 500 ms coalesce in lib/history.js, which collapses a held arrow's
+  // auto-repeat into one undo step exactly as it does a drag.
+  //
+  // 1 mm a press, 10 mm with Shift: the step pairing every design tool
+  // shares. 1 mm is already finer than a 0.4 mm thread holds a placement to,
+  // so a smaller default would be precision the fabric cannot keep.
+  const NUDGE_MM = 1;
+  const NUDGE_MM_COARSE = 10;
+
+  function nudgeSelected(dxMm, dyMm) {
+    // The simulator is a watch-mode (pointer editing is disabled there too),
+    // and mid-boundary-edit the arrows belong to the ring being dragged.
+    if (!project || simActive || shapeEdit) return;
+    const id = project.selectedId;
+    if (!id) return;
+    const el = (project.elements || []).find((e) => e.id === id);
+    const pe = peById[id];
+    if (!el || !pe || !pe.bboxMm) return;
+    const { wMm: hoopWmm, hMm: hoopHmm } = hoopSizeMm(project);
+    if (!hoopWmm || !hoopHmm) return;
+    const curX = el.offsetXMm || 0;
+    const curY = el.offsetYMm || 0;
+    const clamped = clampOffsets(
+      curX + dxMm, curY + dyMm,
+      pe.bboxMm.x1 - pe.bboxMm.x0, pe.bboxMm.y1 - pe.bboxMm.y0,
+      hoopWmm, hoopHmm,
+    );
+    if (Math.abs(clamped.offsetXMm - curX) < 0.001 &&
+        Math.abs(clamped.offsetYMm - curY) < 0.001) {
+      // The clamp refused the move — the design is already against the hoop
+      // edge on that axis. Saying so is the only feedback a non-sighted user
+      // gets that the key did anything at all.
+      liveMsg = "At the edge of the hoop";
+      return;
+    }
+    dispatch("elupdate", { id, patch: clamped });
+    liveMsg = offsetPhrase(clamped.offsetXMm, clamped.offsetYMm);
+  }
+
+  // "3 mm right and 1 mm up from center". Only the axes that are actually
+  // off-center are named — a readout that says "centered" about one axis
+  // while the other has moved is a sentence nobody can parse — and the
+  // direction is a word, because a signed number read aloud as "minus three"
+  // says nothing about which way the design went.
+  function offsetPhrase(xMm, yMm) {
+    const parts = [];
+    if (Math.abs(xMm) >= 0.05) parts.push(`${Math.abs(xMm).toFixed(1)} mm ${xMm > 0 ? "right" : "left"}`);
+    if (Math.abs(yMm) >= 0.05) parts.push(`${Math.abs(yMm).toFixed(1)} mm ${yMm > 0 ? "up" : "down"}`);
+    return parts.length ? `${parts.join(" and ")} from center` : "Centered in the hoop";
+  }
+
+  function onCanvasKey(e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return; // leave browser/OS shortcuts alone
+    const step = e.shiftKey ? NUDGE_MM_COARSE : NUDGE_MM;
+    if (e.key === "ArrowLeft") nudgeSelected(-step, 0);
+    else if (e.key === "ArrowRight") nudgeSelected(step, 0);
+    // +y is UP in offset space (clampOffsets' contract), so ArrowUp adds.
+    else if (e.key === "ArrowUp") nudgeSelected(0, step);
+    else if (e.key === "ArrowDown") nudgeSelected(0, -step);
+    else return;
+    // Swallowed whether or not anything moved: the canvas fills its pane, and
+    // an arrow that scrolls the page out from under a focused field reads as
+    // a bug even when the design was simply already at the edge.
+    e.preventDefault();
+  }
+
   function onWindowKey(e) {
     // Escape closes the tool menu before anything else looks at the key.
     if (e.key === "Escape" && fieldMenu) {
@@ -661,6 +755,18 @@
         // Highlighted when SELECTED, not only while dragging: the highlight
         // is what tells you which shape a Delete or a drag will act on.
         const editing = o.id === selectedShapeId;
+        // The default view is the stitch-out, so only the shape being acted
+        // on is outlined until the user asks for all of them.
+        //
+        // Clicking still selects with the outlines hidden: hit-testing runs
+        // off the geometry (hitOverlay), never off what was drawn, and the
+        // shape highlights the moment it is picked. What IS lost is the
+        // signpost that the shapes are individually clickable at all — which
+        // is what the toggle is for, and why it sits with the other two
+        // diagnostic overlays rather than being hidden in a menu. (Note the
+        // Layers list does not drive this: selectedShapeId is set from a
+        // canvas hit only.)
+        if (!showOutlines && !editing) continue;
 
         ctx.beginPath();
         ctx.moveTo(pts[0].x, pts[0].y);
@@ -709,6 +815,19 @@
   function drawOverlay() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
+    // The overlay's px constants (node radius, handle size, line widths) are
+    // CSS px like everything else, so it needs the same scale renderRealistic
+    // uses. It sets its own rather than inheriting because drawOverlay also
+    // runs WITHOUT a preceding render — endDrag calls it to erase drag chrome
+    // — and on those paths there is no render to have left one.
+    //
+    // Note the two calls mask each other: after any full paint the context
+    // already carries this transform, so deleting EITHER line alone still
+    // looks right in steady state (deleting preview.js's shows up only on the
+    // first frame after a resize, which clears the transform). That is why
+    // preview.spec.js asserts renderRealistic makes the call itself, rather
+    // than leaving the library side to the end-to-end check.
+    if (dpr !== 1) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawStaleWash(ctx);
     drawShapeOutlines(ctx);
     drawGuides(ctx);
@@ -902,6 +1021,7 @@
     // the combined design already carries the right colors per-part.
     lastGenerateResult = result; // B2: cached for view-only repaints below
     renderResult = renderRealistic(canvas, c, {
+      dpr,
       hoop: { garment },
       fabricRgb: project.fabricRgb,
       weave: true,
@@ -937,6 +1057,7 @@
     if (lastGenerateResult && lastGenerateResult.combined) {
       const garment = garmentFor(project);
       renderResult = renderRealistic(canvas, lastGenerateResult.combined, {
+        dpr,
         hoop: { garment },
         fabricRgb: project.fabricRgb,
         weave: true,
@@ -1043,8 +1164,15 @@
   // never grew on a wider screen, so the field stayed a fixed island with 242px
   // of dead height under it and 218px of dead width beside it.
   //
+  // The bitmap is also cut at devicePixelRatio (capped at 2) rather than at
+  // the CSS size, so the preview is sharp on a HiDPI screen instead of drawn
+  // at half resolution and upscaled. That makes canvas.width/height DEVICE px
+  // and every other measurement here CSS px — use cssW()/cssH() below, never
+  // the raw attributes, and see renderRealistic's `dpr` option for why the
+  // drawing code needs no other change.
+  //
   // This is a VIEW change only, not a geometry one: renderRealistic derives its
-  // entire mm->px transform from canvas.width/height (hoopTransform(garment,
+  // entire mm->px transform from the canvas size (hoopTransform(garment,
   // cw, ch, pad)), so a bigger bitmap is the same hoop and the same design at
   // more pixels. No physical constant is touched -- every mm is unchanged, and
   // canvasPointFromEvent already rescales client px to canvas px, so pointer
@@ -1052,16 +1180,44 @@
   let hoopEl = null;
   let sizeObserver = null;
   let sizeRaf = 0;
+  // Device pixel ratio the bitmap is currently sized for. Kept in state (not
+  // read fresh at each use) so one paint can never mix two ratios, and so a
+  // monitor change resizes the bitmap exactly once — see dprQuery below.
+  let dpr = 1;
+  let dprQuery = null;
+
+  // The bitmap is sized in DEVICE px, everything else in CSS px. Capped at 2:
+  // a 3x phone would triple the memory for a difference nobody can see at
+  // arm's length, and this canvas is repainted on every drag frame.
+  function currentDpr() {
+    const raw = typeof window !== "undefined" ? window.devicePixelRatio : 1;
+    return Math.min(2, Math.max(1, raw || 1));
+  }
+
+  // CSS-px size of the drawing surface. renderRealistic's transform puts the
+  // context in CSS px at any dpr, so ALL layout/hit-test math below uses
+  // these two, never canvas.width/height (which are device px).
+  function cssW() { return canvas ? canvas.width / dpr : 0; }
+  function cssH() { return canvas ? canvas.height / dpr : 0; }
 
   function fitCanvasToPane() {
     if (!canvas || !hoopEl) return;
     const r = hoopEl.getBoundingClientRect();
     // Floors, so a mid-layout measurement of 0 can never blank the canvas.
-    const w = Math.max(320, Math.round(r.width));
-    const h = Math.max(240, Math.round(r.height));
-    if (canvas.width === w && canvas.height === h) return;
-    canvas.width = w;   // note: assigning either dimension clears the bitmap,
-    canvas.height = h;  // which is why the repaint below is unconditional.
+    // Deliberately NOT rounded here: the pane's CSS width is routinely
+    // fractional (it's a flex child), and rounding it before scaling by dpr
+    // throws away up to half a device pixel of the resolution this whole
+    // change exists to gain. One rounding, at the end, on the device-px
+    // figure that has to be an integer.
+    const w = Math.max(320, r.width);
+    const h = Math.max(240, r.height);
+    const nextDpr = currentDpr();
+    const bw = Math.round(w * nextDpr);
+    const bh = Math.round(h * nextDpr);
+    if (canvas.width === bw && canvas.height === bh && dpr === nextDpr) return;
+    dpr = nextDpr;
+    canvas.width = bw;  // note: assigning either dimension clears the bitmap,
+    canvas.height = bh; // which is why the repaint below is unconditional.
     // repaintView(), NOT paint(): a resize changes the mm->px transform, not
     // the stitches, and paint() opens with stopSim() because a REGENERATION
     // invalidates the simulator's strand count. Going through paint() here
@@ -1085,8 +1241,26 @@
       });
       sizeObserver.observe(hoopEl);
     }
+    // Dragging the window between a HiDPI laptop screen and an external 1x
+    // monitor changes devicePixelRatio without changing the CSS layout, so
+    // the ResizeObserver above never fires and the bitmap would stay at the
+    // old ratio. A `resolution` media query is the standard way to hear it;
+    // it only matches the CURRENT ratio, so it's re-armed after each change.
+    watchDpr();
     fitCanvasToPane();
   });
+
+  function watchDpr() {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    if (dprQuery) dprQuery.removeEventListener("change", onDprChange);
+    dprQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+    dprQuery.addEventListener("change", onDprChange);
+  }
+
+  function onDprChange() {
+    watchDpr();
+    fitCanvasToPane();
+  }
 
   onDestroy(() => {
     // The outline pulse is the one loop here that can be mid-flight with no
@@ -1094,6 +1268,8 @@
     // a rAF fires into a destroyed component and repaints a dead canvas.
     if (pulseRafId) cancelAnimationFrame(pulseRafId);
     pulseRafId = 0;
+    if (dprQuery) dprQuery.removeEventListener("change", onDprChange);
+    dprQuery = null;
     if (sizeRaf) cancelAnimationFrame(sizeRaf);
     sizeRaf = 0;
     if (sizeObserver) sizeObserver.disconnect();
@@ -1108,6 +1284,14 @@
   // directly instead, so a view-only change never pays for a full generateAll.
   $: if (canvas) { project; runtime; paint(); }
 
+  // The canvas's accessible name. `stats` already says what is on the field
+  // in the words the meta line uses, so the two never drift apart; the key
+  // hint rides along because a focusable canvas gives no other clue that
+  // arrows do anything.
+  $: fieldLabel = hasDesign
+    ? `Embroidery field. ${stats}. Arrow keys move the selected design, hold Shift for 10 mm steps.`
+    : "Embroidery field. Nothing on it yet — add content to see your embroidery here.";
+
   // ---- zoom / pan -----------------------------------------------------------
 
   // Zooms from view.zoom to view.zoom*factor, solving for the panX/panY that
@@ -1120,7 +1304,7 @@
   // verify renderRealistic's view contract keeps an arbitrary mm-point fixed.
   function zoomBy(factor, anchorPx) {
     if (!canvas) return;
-    const cw = canvas.width, ch = canvas.height;
+    const cw = cssW(), ch = cssH();
     const ccx = cw / 2, ccy = ch / 2;
     const p = anchorPx || { x: ccx, y: ccy };
     const oldZoom = view.zoom;
@@ -1159,13 +1343,19 @@
 
   function canvasPointFromEvent(e) {
     const r = canvas.getBoundingClientRect();
-    // The canvas's CSS size (r.width/height) can differ from its internal
-    // pixel size (canvas.width/height) — e.g. it's scaled down to fit the
-    // viewport via CSS `max-width`. Without this ratio, pointer coordinates
-    // would be off by that scale factor on any screen where the canvas is
-    // displayed smaller than its native 760x560.
-    const scaleX = canvas.width / r.width;
-    const scaleY = canvas.height / r.height;
+    // Returns DRAWING-space px, which renderRealistic's transform makes CSS
+    // px — the same space perElementRects and the overlay live in.
+    //
+    // Two corrections, and they are separate. The canvas's laid-out size
+    // (r.width/height) can differ from the size the bitmap was cut for — it's
+    // scaled down to fit the viewport via CSS `max-width`, or the observer
+    // hasn't caught up with a resize yet — so client px are first converted
+    // to bitmap px by canvas.width / r.width. That lands in DEVICE px, which
+    // is dpr times too large, so dividing by dpr gets back to drawing space.
+    // At dpr 1 with the bitmap matching its box, both factors are 1 and this
+    // is the plain offset it has always been.
+    const scaleX = canvas.width / r.width / dpr;
+    const scaleY = canvas.height / r.height / dpr;
     return { x: (e.clientX - r.left) * scaleX, y: (e.clientY - r.top) * scaleY };
   }
 
@@ -1538,7 +1728,7 @@
       // zoom button.
       const rawPanX = dragStartPanX + (p.x - dragStartPx.x);
       const rawPanY = dragStartPanY + (p.y - dragStartPx.y);
-      const { panX, panY } = clampPan(rawPanX, rawPanY, view.zoom, canvas.width, canvas.height);
+      const { panX, panY } = clampPan(rawPanX, rawPanY, view.zoom, cssW(), cssH());
       view = { zoom: view.zoom, panX, panY };
       scheduleViewRepaint();
       return;
@@ -1728,10 +1918,29 @@
     </Hint>
   {/if}
   <div class="hoop" bind:this={hoopEl}>
+    <!-- tabindex + aria-label + on:keydown: the field is reachable and
+         operable without a pointer. `role="application"` is what tells a
+         screen reader to hand arrow keys to the page instead of using them
+         for its own browse mode — which is the whole point of focusing here.
+         The bitmap attributes stay as a pre-mount fallback only; fitCanvasToPane
+         replaces both with the pane size times devicePixelRatio.
+
+         The warning below fires because Svelte classes <canvas> as an
+         interactive element and `application` as a non-interactive role. For
+         a static canvas that rule is right — but this one is a focusable
+         widget with its own key handling, which is the exact case WAI-ARIA
+         defines `application` for. Silenced deliberately, not worked around:
+         dropping the role would leave arrow keys to the screen reader's
+         browse mode and the nudge would never reach onCanvasKey. -->
+    <!-- svelte-ignore a11y_no_interactive_element_to_noninteractive_role -->
     <canvas
       bind:this={canvas}
       width="760"
       height="560"
+      tabindex="0"
+      role="application"
+      aria-label={fieldLabel}
+      on:keydown={onCanvasKey}
       on:pointerdown={onPointerDown}
       on:pointermove={onPointerMove}
       on:pointerup={endDrag}
@@ -1789,6 +1998,16 @@
         aria-label="Auto-snap"
         title="Auto-snap to other elements and hoop center (hold Alt to suspend)"
       ><Icon name="magnet" /></button>
+      <button
+        type="button"
+        class="zoombtn viewtoggle"
+        class:simon={showOutlines}
+        on:click={toggleOutlines}
+        disabled={!hasDesign}
+        aria-pressed={showOutlines}
+        aria-label="Show shape outlines"
+        title="Outline every digitized shape — off for a clean view of the stitch-out"
+      ><Icon name="nodes" /></button>
       <button
         type="button"
         class="zoombtn viewtoggle"
@@ -1853,6 +2072,13 @@
       </div>
     {/if}
   </div>
+  <!-- Keyboard-nudge feedback, spoken not shown. A sibling of `.hoop`, never
+       a child: `.hoop` holds the canvas and nothing else, which is what keeps
+       chrome off the sewable field (pinned by e2e/field-chrome.spec.js). It
+       is off-screen rather than hidden because display:none and
+       visibility:hidden both drop an element out of the accessibility tree,
+       and a live region outside the tree is never announced. -->
+  <p class="fieldlive" aria-live="polite">{liveMsg}</p>
   <div class="fieldmeta">
     {#if error}<span class="err">{error}</span>
     {:else if shapeEditError}<span class="err" data-testid="shape-edit-error">{shapeEditError}</span>
