@@ -40,7 +40,7 @@ from digitizer_core.stage5_overlap import resolve_overlaps
 from digitizer_core.stage6_border import EDGE_CAP_STYLES, silhouette_cap
 from digitizer_core.stage7_sequence import _cap_thread, sequence
 from digitizer_core.threads import CHART
-from digitizer_core.warnings_codes import EDGE_CAP_EMPTY
+from digitizer_core.warnings_codes import EDGE_CAP_APPLIED, EDGE_CAP_EMPTY
 
 FAB = get_fabric("pique_knit")
 
@@ -219,6 +219,45 @@ def test_a_silhouette_too_small_to_cap_warns_rather_than_going_silent():
     if cap_block(plan) is None:
         codes = [w["code"] for w in plan.warnings]
         assert EDGE_CAP_EMPTY in codes
+
+
+# --- what it cost --------------------------------------------------------------
+
+def _cap_warning(plan):
+    for w in plan.warnings:
+        if w["code"] == EDGE_CAP_APPLIED:
+            return w
+    return None
+
+
+def test_the_cap_always_reports_what_it_cost():
+    """Reported every time the cap runs, not above some threshold. The cap is
+    opt-in, so a message when you opt in is the answer to "what did that buy
+    me" — and the cost is NOT predictable from the design's size, so the only
+    honest thing is to measure it on this design and say so."""
+    for style in ("bean", "satin"):
+        plan = plan_for(BOTH, edge_cap=style)
+        w = _cap_warning(plan)
+        assert w is not None, f"{style} cap reported no cost"
+        assert w["style"] == style
+        assert w["stitches"] == cap_block(plan).stitch_count
+        assert w["edges"] >= 1
+        assert w["percent"] > 0
+
+
+def test_no_cost_report_when_the_cap_is_off():
+    assert _cap_warning(plan_for(BOTH)) is None
+    assert _cap_warning(plan_for(BOTH, edge_cap="none")) is None
+
+
+def test_the_reported_percent_is_against_the_artwork_not_the_total():
+    """+13.2% must mean "the design grew by an eighth", not "the cap is an
+    eighth of what you now have" — the two differ by enough to matter at the
+    sizes this feature costs."""
+    base = stitch_count(plan_for(BOTH))
+    plan = plan_for(BOTH, edge_cap="satin")
+    w = _cap_warning(plan)
+    assert w["percent"] == round(100.0 * w["stitches"] / base, 1)
 
 
 # --- the emitter, driven directly ---------------------------------------------

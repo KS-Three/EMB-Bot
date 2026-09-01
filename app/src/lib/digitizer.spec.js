@@ -1305,6 +1305,30 @@ test("describeWarnings translates pipeline codes to customer language, with coun
   expect(out[2].text).toBe("The thread gets cut 2 times where it has to travel a long way.");
 });
 
+test("describeWarnings puts the design-edge cap's bill in the user's language", async () => {
+  stubStorage({});
+  const { describeWarnings } = await import("./digitizer.js");
+  const out = describeWarnings([
+    { code: "EDGE_CAP_APPLIED", message: "engine prose", style: "bean", stitches: 1572, percent: 13.2, edges: 4 },
+    { code: "EDGE_CAP_APPLIED", message: "engine prose", style: "satin", stitches: 1101, percent: 35.0, edges: 1 },
+    { code: "EDGE_CAP_EMPTY", message: "engine prose", style: "bean" },
+    { code: "EDGE_CAP_LIGHTENED", message: "engine prose", count: 3 },
+  ]);
+  // The fragmented case names the many-edges problem — it is the whole
+  // reason the number can surprise, and the thing that decides bean vs satin
+  // on a photo-lane design (drone_render: 43 edges, +56.9%).
+  expect(out[0].text).toContain("1,572 stitches (+13.2%)");
+  expect(out[0].text).toContain("4 separate edges");
+  // One clean silhouette says nothing about fragmentation — no scare copy
+  // where there is nothing to be scared of.
+  expect(out[1].text).toBe("The design edge adds 1,101 stitches (+35%) around the outside of the design.");
+  expect(out[1].text).not.toContain("separate edges");
+  expect(out[2].text).toContain("no edge long enough");
+  expect(out[3].text).toBe("3 stretches of the design edge were too narrow for a satin cap and sew as light run lines instead.");
+  // None of them fall through to the engine's own prose.
+  for (const w of out) expect(w.text).not.toBe("engine prose");
+});
+
 // A shape the engine could not sew is not automatically a speck. On
 // 2026-08-13 this warning was the only thing the panel said while the engine
 // silently lost a 2,787 mm² region (the whole body of summit_badge.png) to a

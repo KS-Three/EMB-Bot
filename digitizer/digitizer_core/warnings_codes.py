@@ -221,6 +221,19 @@ CONTOUR_DIRECTIONAL_COMP_UNSEWN = "CONTOUR_DIRECTIONAL_COMP_UNSEWN"
 # switched on, because silence on an opt-in the user set is how a knob comes
 # to look broken. extra: {"style": str}
 EDGE_CAP_EMPTY = "EDGE_CAP_EMPTY"
+# What the cap actually cost, reported EVERY time it runs. Not noise: the cap
+# is opt-in, so a message when you opt in is the answer to "what did that buy
+# me". It exists because the cost is not predictable from the design's size —
+# it scales with how FRAGMENTED the silhouette is, and a photo/gradient lane
+# can shatter one visual object into dozens of parts. Measured 2026-09-01 at
+# 80 mm: the repro icon caps 3 parts / 23 holes for +13.2%, but `drone_render`
+# caps 38 parts / 78 holes for +56.9% — within a whisker of the "+60% of
+# stitches to worsen a silhouette" DOCTRINE records for blanket bordering.
+# On that design "the design silhouette" is not one edge and the feature's
+# premise does not hold, so the honest move is to report the bill rather than
+# to guess a fragmentation threshold nobody has sewn.
+# extra: {"style": str, "stitches": int, "percent": float, "edges": int}
+EDGE_CAP_APPLIED = "EDGE_CAP_APPLIED"
 # The satin cap fell back to its own bean lightening on part of the
 # silhouette — `border_runs`' documented contract, surfaced rather than
 # absorbed so a cap that reads lighter than expected has a reason on screen.

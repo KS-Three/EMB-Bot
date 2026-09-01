@@ -77,7 +77,8 @@ from .warnings_codes import (BLEND_NO_REGIONS_DECOMPOSED, BORDER_LIGHTENED,
                              BORDER_SEAM_SHARED,
                              BORDER_SKIPPED_TOO_NARROW,
                              CONTOUR_DIRECTIONAL_COMP_UNSEWN,
-                             CONTOUR_RING_UNREACHABLE, EDGE_CAP_EMPTY,
+                             CONTOUR_RING_UNREACHABLE, EDGE_CAP_APPLIED,
+                             EDGE_CAP_EMPTY,
                              EDGE_CAP_LIGHTENED, LONG_JUMPS_TRIMMED,
                              SHAPE_NOT_STITCHED, SHAPE_TOO_THIN_TO_FILL,
                              SMALL_SHAPES_AS_RUN, warn)
@@ -2159,6 +2160,7 @@ def sequence(
     cap_style = str(cfg.edge_cap or "none").lower()
     cap_lightened = 0
     cap_empty_style = ""
+    cap_cost: dict | None = None
     if cap_style in ("bean", "satin") and cap_sewn:
         silhouette = unary_union([p.polygon for p in cap_sewn])
         c_runs, c_report = silhouette_cap(
@@ -2190,6 +2192,18 @@ def sequence(
                 )
             )
             cursor = c_runs[-1].points[-1]
+            # The bill, always. See EDGE_CAP_APPLIED: the cost is not
+            # predictable from the design's size, it scales with how
+            # fragmented the silhouette is, so the only honest thing is to
+            # measure it on THIS design and say so.
+            _cap_st = sum(len(r.points) for r in c_runs)
+            _art_st = sum(b.stitch_count for b in blocks) - _cap_st
+            cap_cost = {
+                "style": cap_style,
+                "stitches": _cap_st,
+                "percent": round(100.0 * _cap_st / _art_st, 1) if _art_st else 0.0,
+                "edges": c_report["loops"] + c_report["bean_loops"],
+            }
         else:
             cap_empty_style = cap_style
 
@@ -2338,6 +2352,19 @@ def sequence(
                 f"{border_narrow} shape{'s were' if border_narrow != 1 else ' was'} "
                 "too narrow to hold an outline at all, and went unbordered.",
                 count=border_narrow,
+            )
+        )
+    if cap_cost is not None:
+        warnings.append(
+            warn(
+                EDGE_CAP_APPLIED,
+                f"The design-edge cap added {cap_cost['stitches']:,} stitches "
+                f"(+{cap_cost['percent']}% of the design) across "
+                f"{cap_cost['edges']} separate edge"
+                f"{'s' if cap_cost['edges'] != 1 else ''}. A design whose "
+                "shapes do not join into one silhouette is being outlined "
+                "many times over, which is where a cap stops being cheap.",
+                **cap_cost,
             )
         )
     if cap_empty_style:

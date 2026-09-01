@@ -130,20 +130,23 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
     found by the PR #301 review pass)*
 
 19. **The design's own outer edge is uncapped — every fill row ends in open
-    air.** The other edge finding of the first sew-out, and one no per-shape
-    border can reach: the silhouette is the union of several shapes' outer
-    edges, so each border rides its own ring and the design/fabric boundary
-    is left to whatever the fill did there. On Kent's icon, **100% of the
-    293.2 mm outer silhouette uncovered at 1.0 mm** against 0.0% on the glyph
-    edge he rated flawless. **FIX BUILT, default OFF, both styles opt-in:**
-    `cfg.edge_cap` — `"bean"` traces it (`run_outline`, 3 passes),
-    `"satin"` lays a column just inside (`border_runs`), one design-level
-    block after all artwork, before the detail layer, in a thread already
-    loaded. No new constant (gate 1 clean); `"none"` default is gate 3.
-    Kent asked for both toggleable, 2026-09-01; Studio exposes **Design
-    edge**. On the icon at 9,596 st: bean +1,207 (+12.6%), satin +1,465
-    (+15.3%). **A sew-out settles which, if either.** *(built 2026-09-01 —
-    `tests/test_edge_cap.py`, 15 passing)*
+    air.** The other sew-out edge finding, and one no per-shape border can
+    reach: the silhouette is the union of several shapes' edges, so each
+    border rides its own ring and the design/fabric boundary is nobody's.
+    On Kent's icon, **100% of the 293.2 mm outer silhouette uncovered at
+    1.0 mm** vs 0.0% on the glyph edge he rated flawless. **FIX BUILT,
+    default OFF, both styles opt-in:** `cfg.edge_cap` — `"bean"` traces it
+    (`run_outline`), `"satin"` lays a column just inside (`border_runs`),
+    one design-level block after all artwork, before the detail layer, in a
+    thread already loaded. No new constant (gate 1 clean); `"none"` is
+    gate 3. Both toggleable at Kent's ask; Studio exposes **Design edge**.
+    Icon: bean +12.6%, satin +15.3%. KNOWN LIMIT: cost scales with
+    silhouette FRAGMENTATION, not design size — `drone_render` caps 38
+    parts / 78 holes for **+56.9%**, a whisker off DOCTRINE's
+    blanket-border negative, and there the styles invert (satin +34.9% is
+    cheaper). Every run reports its bill as `EDGE_CAP_APPLIED` rather than
+    guess an unsewn threshold. **A sew-out settles which cap, if either.**
+    *(built 2026-09-01 — `tests/test_edge_cap.py`, 18 passing)*
 
 ### Closed — kept numbered, because ten other docs cite them by number
 

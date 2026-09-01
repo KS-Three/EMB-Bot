@@ -1304,6 +1304,26 @@ const WARNING_TEXT = {
     plural(w.count || 0,
       "One shape was cut into two on the review screen.",
       "{n} shapes were cut into two on the review screen."),
+  // The design-edge cap (params.edge_cap). Reported on EVERY run that caps,
+  // because the cost is not predictable from the design's size — it scales
+  // with how broken-up the outline is, and this is the number the choice
+  // between Bean and Satin actually turns on. Written to be read while
+  // deciding, so it leads with the stitch cost and names the fragmentation
+  // case in the user's terms rather than the engine's.
+  EDGE_CAP_APPLIED: (w) => {
+    const st = (w.stitches || 0).toLocaleString();
+    const edges = w.edges || 0;
+    const head = `The design edge adds ${st} stitches (+${w.percent || 0}%)`;
+    return edges > 1
+      ? `${head}, going around ${edges} separate edges. Shapes that don't join into one outline get capped one by one, which is where this stops being cheap.`
+      : `${head} around the outside of the design.`;
+  },
+  EDGE_CAP_EMPTY: () =>
+    "The design edge was switched on, but there's no edge long enough to sew around — the design is too small or too narrow for it.",
+  EDGE_CAP_LIGHTENED: (w) =>
+    plural(w.count || 0,
+      "One stretch of the design edge was too narrow for a satin cap and sews as a light run line instead.",
+      "{n} stretches of the design edge were too narrow for a satin cap and sew as light run lines instead."),
 };
 
 // [{ code, message, ...extra }] -> [{ code, text }] for the panel.

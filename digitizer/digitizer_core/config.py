@@ -917,8 +917,23 @@ class PipelineConfig:
     # ruling was about bordering every shape and this is one ring, which is
     # why the option exists at all — but nothing has been sewn yet that
     # says a cap helps, so it stays opt-in until cloth says otherwise.
-    # tests/test_edge_cap.py pins the default, both styles, and the
-    # off-path byte-identity.
+    # KNOWN LIMIT, measured 2026-09-01 at 80 mm: the cost scales with how
+    # FRAGMENTED the silhouette is, not with the design's size, and a
+    # photo/gradient lane can shatter one visual object into dozens of
+    # parts. The repro icon caps 3 parts / 23 holes for +13.2%;
+    # `drone_render` caps 38 parts / 78 holes for +56.9% — within a whisker
+    # of the "+60% of stitches to worsen a silhouette" DOCTRINE records for
+    # blanket bordering. On such a design "the design silhouette" is not one
+    # edge and this feature's premise does not hold. Rather than guess a
+    # fragmentation threshold nobody has sewn (gate 1), every run reports
+    # its own bill as `EDGE_CAP_APPLIED` — stitches, percent, and how many
+    # separate edges were outlined. Note the styles INVERT there: satin is
+    # cheaper than bean on fragmented art (+34.9% vs +56.9% on
+    # `drone_render`), because `border_runs` drops loops under
+    # BORDER_MIN_LOOP_MM (8.80) while `run_outline`'s floor is
+    # RUN_MIN_LOOP_MM (2.2), so satin simply declines the crumbs.
+    # tests/test_edge_cap.py pins the default, both styles, the cost
+    # report, and the off-path byte-identity.
     edge_cap: str = "none"
     # EXPERIMENT, default OFF — option (b) of the same plan doc, the other
     # half of Kent's 2026-08-23 (a)+(b) decision: `shade_palette_bind` above
