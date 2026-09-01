@@ -55,7 +55,8 @@ from .stage3_segment import (
     compact_layers,
     resolve_small_regions,
 )
-from .stage4_vectorize import revalidate_threads, tag_enclosed_background, vectorize
+from .stage4_vectorize import (rehome_resnapped_regions, revalidate_threads,
+                               tag_enclosed_background, vectorize)
 from .textcluster import (detect_text_clusters, ocr_suggest_text,
                           regularize_text_clusters,
                           set_lettering_house_angle)
@@ -559,6 +560,12 @@ def build_generation(
         palette_indices=list(q.thread_indices),
         design_class=classification.class_,
     )
+    # Defect 16's remainder (2026-08-31): a re-snapped region joins the layer
+    # that declares its new cone, so one spool sews at one position and the
+    # stage-5 coverage plan sees the order actually sewn. Runs here — same
+    # generation step as the re-snap it corrects, before anything reads
+    # layers — and never touches user recolors (see its docstring).
+    rehome_resnapped_regions(regions, list(q.thread_indices))
 
     # Same ordering rationale as `tag_enclosed_background` immediately above:
     # a computed FACT re-derived every generation, so it belongs before shape
