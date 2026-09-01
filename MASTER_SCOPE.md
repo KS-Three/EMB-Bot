@@ -22,7 +22,7 @@ describes are ON `main`**
 `selfconsistency.py` is in a plain checkout.
 *(confirmed 2026-08-17 — `git ls-tree origin/main`)*
 
-**Last updated:** 2026-08-28. **This file is current state only, under an
+**Last updated:** 2026-08-31. **This file is current state only, under an
 800-line budget.** Its three companions: standing rulings, rejected approaches,
 corrections and session-costing traps live in [`DOCTRINE.md`](DOCTRINE.md);
 dated snapshots in [`docs/scope-history.md`](docs/scope-history.md); per-area
@@ -51,7 +51,23 @@ or move it.
    — `docs/tonal-eng-measurements-2026-08-22.md`)*
 
 3. **14 jump-trims on an 80mm design,** every fill variant measured. Not
-   started. *(measured 2026-08-12 — scope-history)*
+   started. **UNREPRODUCIBLE AS WRITTEN — the entry does not name the design,
+   and its own pointer does not carry one.** `scope-history` line 1277 is the
+   only occurrence of the claim anywhere in the repo and is a one-line
+   restatement: no design, no definition of "jump-trim", no variant table.
+   Tried 2026-08-31 on the two fixtures its surrounding 2026-08-12 context
+   discusses, at `target_width_mm=80`, over tatami / streamline-mono /
+   streamline-layered, counting runs with `trim=True`, runs with `jump=True`,
+   and the intra-shape lift warning: `owl_kent.jpg` gives 71/67/142 trims,
+   `photo_owl_pale.png` 9/26/28. Neither is 14, and neither is
+   variant-invariant, so "in every variant" does not hold for either.
+   **Do not read those numbers as a regression** — without knowing the design
+   or the metric, they are not comparable to 14; that comparison is the
+   mistake this note exists to prevent. **Kent: name the design and this
+   becomes checkable in one run.** The underlying concern is independently
+   supported by defect 4, which does not depend on this number.
+   *(measured 2026-08-12 — scope-history; reproduction attempted and failed
+   2026-08-31 — two fixtures x three fill variants)*
 
 4. **We trim far more than the professional — 3.1x the trim breaks on a
    like-for-like corpus.** Quote the rate or the break count, never a run
@@ -102,11 +118,18 @@ or move it.
     thread_index)` splits that layer and one spool ends up owned by layers
     sewing at different positions; nothing downstream rejoins them. This is the
     defect behind Kent's "black nose, white feathers, back to the nose".
-    PR #291 merged only the ADJACENT case, which moves no stitches. Closing the
-    rest needs stage 5's `covered_by` to prove no seam moves first — stage 7's
-    own docstring warns that resequencing after stage 5 has planned coverage
-    buries links under colours that no longer sew later. *(measured 2026-08-28
-    — `stage7_sequence.py`; scope-history 08-28)*
+    PR #291 merged the ADJACENT case, which moves no stitches. **PR #293 then
+    took the non-adjacent half PARTWAY** (`_hoist_same_thread`, default ON at
+    `hoist_same_thread_margin_mm = 0.5`): a revisit is hoisted beside its own
+    thread only where the mover's sewn geometry stays clear of every block it
+    jumps, which is the `covered_by` argument this entry used to say was still
+    owed — two disjoint blocks contribute nothing to each other's `visible`, so
+    their order cannot move a seam. It closes 3 of 6 revisits on `owl_kent.jpg`
+    at 100 mm (1 of 3 with `is_photographic=True`); the rest genuinely touch
+    and correctly stay. **Still open:** the remaining touching revisits, which
+    need real coverage reasoning rather than a disjointness proof.
+    *(measured 2026-08-28 — `stage7_sequence.py`; scope-history 08-28;
+    hoist half confirmed 2026-08-31 — `da7fc80`, `tests/test_merge_adjacent_same_thread.py`)*
 
 ### Closed — kept numbered, because ten other docs cite them by number
 

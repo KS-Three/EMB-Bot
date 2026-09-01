@@ -127,25 +127,36 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
   cross-validation tests and still reports green.
   *(hit 2026-08-22; CI pins 3.12, which is why CI never saw it)*
 
-  **The `pip install -e` path has the MIRROR hole**, so neither documented way
-  of building this venv is complete. The `service` extra asks for
+  **The `pip install -e ".[service]"` path has the MIRROR hole** — but ONLY
+  that path, and the difference matters. The `service` extra asks for
   `fastapi>=0.115` UNPINNED, which now resolves `starlette` 1.6, whose
-  `TestClient` refuses to import without **`httpx2`** — a separate
-  distribution that nothing here pins. Adding `dev` does not save you: it
-  installs `httpx>=0.27`, which is a DIFFERENT package from `httpx2`, so the
-  skill's own recommended `pip install -e ".[service,dev]"` still has the hole.
-  Starlette says so verbatim: *"The starlette.testclient module requires the
-  httpx2 package to be installed."*
+  `TestClient` wants **`httpx2`** — a separate distribution that nothing here
+  pins. `service` is deliberately minimal (fastapi, uvicorn,
+  python-multipart), so on its own NEITHER package is present and the import
+  raises verbatim: *"The starlette.testclient module requires the httpx2
+  package to be installed."*
 
-  The result is a COLLECTION error on `tests/test_service.py`, so its **123
-  tests never run** — and pytest reports that as a bland `4 errors` line beside
-  a large passing count, which is very easy to wave past. A session did exactly
-  that and then published an understated number in a PR body.
-  **Symptom:** `1309 tests collected` instead of 1432, or `3 failed, 1291
-  passed` where the reference below says 1414+. **Fix:** `pip install httpx2`.
+  **Adding `dev` DOES save you, as of `starlette` 1.6.0** — so the skill's
+  recommended `pip install -e ".[service,dev]"` is complete, and this entry
+  used to say the opposite. `testclient.py` tries `httpx2`, then FALLS BACK to
+  `httpx`, and raises only when neither is installed; `dev` ships
+  `httpx>=0.27`, so you get a `StarletteDeprecationWarning` and all 123 tests.
+  Verified 2026-08-31 by uninstalling `httpx2` and re-collecting:
+  `123 tests collected`, warning only. Don't spend a session chasing a
+  phantom — but do keep the tripwire below, because the `[service]`-only path
+  still fails exactly as described, and an older `starlette` has no fallback.
+
+  When it DOES bite, it is a COLLECTION error on `tests/test_service.py`, so
+  its **123 tests never run** — and pytest reports that as a bland `4 errors`
+  line beside a large passing count, which is very easy to wave past. A
+  session did exactly that and then published an understated number in a PR
+  body. **Symptom:** a collection count ~123 short of the reference below
+  (`1309` against 1432 when this was found; `1441` against 1564 on
+  2026-08-31). **Fix:** `pip install httpx2`, or install the `dev` extra.
   CI is unaffected — it installs from `requirements.txt`, which pins
   `starlette==1.3.1` and `httpx==0.28.1`, a combination whose TestClient works.
-  *(found 2026-08-26 by chasing a suspicious number in my own PR body)*
+  *(found 2026-08-26 by chasing a suspicious number in my own PR body;
+  scoped down 2026-08-31 after the `[service,dev]` half was measured false)*
 
 - Always `python -m pytest`, never `python foo.py` — a bare invocation does not put
   cwd on `sys.path`.
@@ -194,15 +205,25 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
      force-pushing `main`. `main-2` (id 21660819) required the SAME four checks
      with **no bypass actors**, which stacks on top of branch protection and
      (per GitHub's docs — not measured here) cancels the `non_admins` hotfix
-     escape hatch. **Kent's call 2026-08-27: delete `main-2`**, leaving branch
+     escape hatch. **Kent's call 2026-08-27: delete `main-2`** — leaving branch
      protection as the single layer enforcing the four checks, at `non_admins`.
-     A session cannot do it — `DELETE /rulesets/21660819` returns 403 to a
-     session token. If a future read still shows `main-2` present, it was never
-     executed; say so rather than assuming.
+     A session cannot do it: `DELETE /rulesets/21660819` returns 403 to a
+     session token.
+     **DONE — verified 2026-08-31, nothing left to chase here.**
+     `/rules/branches/main` now returns ONLY ruleset 21660818 (`main-1`,
+     `deletion` + `non_fast_forward`); `main-2` is gone. `/branches/main`
+     confirms the intended end state survived it: `protected: true`,
+     `enforcement_level: non_admins`, contexts exactly
+     `engine, studio, studio-e2e, digitizer`.
 
    Read the live state with `GET /repos/KS-Three/EMB-Bot/rules/branches/main`
-   and `GET /repos/KS-Three/EMB-Bot/branches/main` — both answer a session
-   token, even though `/branches/main/protection` returns 403 to one.
+   and `GET /repos/KS-Three/EMB-Bot/branches/main`.
+   **Use plain `curl` — the repo is public and both answer an UNAUTHENTICATED
+   request with HTTP 200.** Don't conclude "no access" from a tool that
+   refuses: `WebFetch` returns 403 on these same URLs, and a session that
+   stops there reports the ruleset state as unverifiable when one `curl` — no
+   token needed — settles it. `/branches/main/protection` is the genuinely
+   restricted one. *(measured 2026-08-31)*
 
    **Auto-merge WORKS now — arm it instead of waiting or watching.** Measured on
    PR #275, 2026-08-27: `mcp__github__enable_pr_auto_merge` returned *"Auto-merge
@@ -246,9 +267,12 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
      same three by node ID, so a local run and a green CI job agree. A FOURTH
      failure is a real regression. **Trust the three NAMED tests, not the
      total** — the count moves as tests land: 1414 passed on 2026-08-26, 1491
-     on 2026-08-27. Collection is its own tripwire: 1509 collected that day,
-     and anything near 1309 means `tests/test_service.py` failed to collect
-     (the `httpx2` hole above). *(measured 2026-08-27)*
+     on 2026-08-27, 1546 on 2026-08-31 (3 failed, 8 skipped, 7 xfailed, 9m28s
+     with `-n auto`). Collection is its own tripwire, but read it as a GAP not
+     a fixed number, since the total keeps growing: 1509 collected on
+     2026-08-27, 1564 on 2026-08-31, and anything ~123 short of the current
+     total means `tests/test_service.py` failed to collect (the `httpx2` hole
+     above). *(measured 2026-08-31 — full local run, `python3.12` venv)*
 
 8. **`git log --all -- <path>` will tell you a file NEVER existed when your
    remote refs are stale — and the wrong answer looks thorough.** A cloud

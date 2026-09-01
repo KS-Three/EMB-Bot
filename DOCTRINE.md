@@ -243,6 +243,36 @@ its hedge as it is copied forward** — is why this file is split.
   gate — r² is tested first and random noise fails it, so the branch that test is
   named for is not the one it exercises. Behaviour is correct; the test now says
   so. *(confirmed 2026-08-12 — scope-history)*
+- **`_hoist_same_thread` does NOT leave `sequence`'s sew cursor stale in
+  practice. Do not "fix" it.** The reasoning is sound and the conclusion is
+  still wrong, which is why it is written down. `sequence` sets `cursor` from
+  the last artwork block (~L1927), `_hoist_same_thread` then REORDERS
+  `art_blocks` below it (~L1942), and `cursor` is consumed afterwards as
+  `detail_runs(..., entry=cursor)` (~L1978), where `cur = entry` seeds the
+  nearest-neighbour ordering of the detail lines. The hoist's scan starts at
+  the last position, and the repo's own
+  `test_a_revisit_is_hoisted_when_it_clears_everything_it_jumps` proves the
+  reorder CAN change which block sews last (`[t7, t9, t7]` -> `[7, 7, 9]`), so
+  by construction the entry point can go stale. **Measured: it never does.**
+  Eight fixtures at 100 mm with `is_photographic=True, detail_layer=True` —
+  `owl_kent`, `logo_bridge_bar`, `logo_golden_tee`, `drone_render`,
+  `photo_owl_pale`, `logo_gaulke_roofing`, `enthusiast_logo`,
+  `photo_sunset_backlit`. Four reorder (the owl goes 16 blocks -> 14); **zero
+  move the last block**, and `entry` equals the true final art stitch to
+  within 1e-9 every time. The structural reason: the hoist only ever moves a
+  block EARLIER, toward a same-thread block that precedes it, so the last
+  block moves only when its own thread also appears earlier and clears the
+  disjointness gate — and a sew order ends on its last layer's cone, which
+  characteristically appears once.
+  **What would make it real:** a design whose final block shares a thread with
+  an earlier block AND is geometrically disjoint from everything between them.
+  Worth re-measuring if the hoist margin is raised, or if `revalidate_threads`
+  starts re-snapping late layers onto earlier cones. Even then the cost is
+  bounded — no stitch is misplaced, because the art->detail seam is forced
+  `jump=True, trim=True` either way; only the detail sew order and the `jumps`
+  tally move. *(raised and disproved in one session, 2026-08-31 — filed as a
+  live defect on the code read, then withdrawn on the measurement; instrument:
+  scratch sweep patching `_hoist_same_thread` and `detail_runs`)*
 
 ---
 
