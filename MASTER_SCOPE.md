@@ -115,31 +115,6 @@ or move it.
     *(measured 2026-08-28 — `stage7_sequence.py`; scope-history 08-28;
     hoist half confirmed 2026-08-31 — `da7fc80`, `tests/test_merge_adjacent_same_thread.py`)*
 
-17. **The hoist leaves `sequence`'s sew cursor stale, so the detail layer
-    plans from the wrong needle position.** `stage7_sequence.sequence` sets
-    `cursor = group_blocks[-1].runs[-1].points[-1]` inside the artwork loop
-    (~L1927), then `_hoist_same_thread` REORDERS `art_blocks` below it
-    (~L1942) — and its scan starts at the last position, so the block that
-    sews last can change. `cursor` is consumed afterwards as
-    `detail_runs(..., entry=cursor)` (~L1978), where `cur = entry` seeds the
-    nearest-neighbour ordering of the detail lines
-    (`stage6_detail.detail_runs`). The repo's own
-    `test_a_revisit_is_hoisted_when_it_clears_everything_it_jumps` shows the
-    reorder that does it: `[t7, t9, t7]` -> `[7, 7, 9]`, a different last
-    block. **No stitch is misplaced** — the art->detail seam is forced
-    `jump=True, trim=True` unconditionally either way — so the cost is a
-    suboptimal detail-line sew order plus a slightly wrong `jumps` tally
-    (`jumps += d_report["jumps"]`), which matters here only because trim/jump
-    counts are a headline tracked metric (defect 4). Needs both halves live:
-    `merge_adjacent_same_thread` (default True) with a non-zero hoist margin
-    (default 0.5), AND a detail layer — which auto-routes ON for a detected
-    face on the same photo path the hoist was measured on. **Fix is one line:**
-    recompute `cursor` from the final `art_blocks` after the merge/hoist and
-    before the detail branch. Not applied — it changes photo-path stitch
-    output, so it is Kent's call.
-    *(found 2026-08-31 by adversarial review of `da7fc80`; verified against
-    `stage7_sequence.py` and `stage6_detail.py:495`)*
-
 ### Closed — kept numbered, because ten other docs cite them by number
 
 Full text moved to [`docs/scope-history.md`](docs/scope-history.md) 2026-08-27;
