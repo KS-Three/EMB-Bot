@@ -173,9 +173,16 @@ def test_the_improvement_gate_turns_the_rule_off_entirely():
     on = run_stages(str(REPRO), cfg)
     assert THREAD_RESNAPPED_AFTER_DRIFT in codes(on)
     # Same geometry either way — this rule re-matches threads, never outlines.
+    # Matched BY SHAPE ID, not by position: re-matching a thread can change
+    # which layer is satin-dominated, and `borders_last` (default ON since
+    # 2026-09-01) then orders those layers differently. The claim under test
+    # is that no OUTLINE moved, which is a per-shape claim; zipping the two
+    # lists positionally was asserting a sew order this rule never promised.
     assert len(on.regions) == len(off.regions)
-    for a, b in zip(on.regions, off.regions):
-        assert a.polygon.equals(b.polygon)
+    by_id = {r.shape_id: r.polygon for r in off.regions}
+    assert {r.shape_id for r in on.regions} == set(by_id)
+    for r in on.regions:
+        assert r.polygon.equals(by_id[r.shape_id]),             f"{r.shape_id}'s outline moved; this rule only re-matches threads"
 
 
 def test_enclosed_background_shapes_are_never_resnapped():
