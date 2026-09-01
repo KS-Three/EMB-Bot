@@ -696,10 +696,16 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     # Borders-last (cfg.borders_last, default OFF — Kent's first physical
     # sew-out, 2026-08-31): satin-dominated layers move after the fill
     # layers, so a design's border/detail satin sews on top of the fills
-    # it fences instead of opening the design. Same slot as the depth sort
-    # and AFTER it (a photo design keeps its depth story; this refines it),
-    # still before apply_layer_overrides so an explicit layer override
-    # beats the craft default — see borders_last_layers' docstring.
+    # it fences instead of opening the design. Same slot as the depth sort,
+    # AFTER it, still before apply_layer_overrides so an explicit layer
+    # override beats the craft default — see borders_last_layers' docstring.
+    # PHOTO CAVEAT, owed to the default-flip decision: on a photo class
+    # this moves layers on exactly the signal depth_sort_layers' contract
+    # refuses as a depth cue ("a satin-classified ribbon may be a whole
+    # object"), so a satin-dominated ≥1 mm layer (rigging, branches) would
+    # jump the dark→light ramp to the end. Unmeasured — dormant while the
+    # default is OFF; flipping the default engages it, so either gate this
+    # layer half to non-photo classes then, or measure one photo run first.
     if cfg.borders_last:
         thread_indices = borders_last_layers(
             regions, thread_indices, cfg,

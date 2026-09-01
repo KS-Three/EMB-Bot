@@ -221,9 +221,26 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
     reads as not-satin even for a ribbon-shaped polygon: an explicit "fill"
     is an instruction, not a hint.
 
-    A shape this returns True for can still SEW as an outline run (the
-    photo-lane width floor's reroute) — that is a detail pass by any craft
-    reading, so sequencing it late remains the right answer.
+    Two edges, stated honestly (the first version of this docstring had the
+    width-floor case BACKWARDS — caught in review before it shipped):
+
+    - A shape this returns True for can still SEW as an outline run: the
+      small-shape rescue in `stitch_one` fires on area BEFORE the
+      classifier is consulted, so a tiny ribbon is sequenced late here and
+      then rescued to a run. A detail pass by any craft reading — late
+      stays the right answer.
+    - A photo-lane shape demoted by the width floor sews EARLY, with the
+      fills: `photo_width_floor` is a not-satin verdict
+      (`RibbonVerdict(False, ...)`), so `is_satin_candidate` — and
+      therefore this predicate — says False, even though `stitch_one`
+      reroutes exactly those shapes to an outline run. Treating them as
+      late details would mean reading `classify_ribbon`'s reason here;
+      deliberately NOT done yet — it engages only in the photo classes,
+      where the flag's interaction with `depth_sort_layers` is itself
+      still unmeasured (see the call-site comment in pipeline.py), and
+      both belong to the same default-flip decision. Likewise an explicit
+      `tier: "run"` detail gets no late bias — this rule is scoped to the
+      sew-out's own defect, border SATIN, on purpose.
     """
     tier = str(region.meta.get("tier", "auto")).lower()
     if tier == "satin":
