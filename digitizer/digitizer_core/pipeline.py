@@ -55,7 +55,8 @@ from .stage3_segment import (
     compact_layers,
     resolve_small_regions,
 )
-from .stage4_vectorize import revalidate_threads, tag_enclosed_background, vectorize
+from .stage4_vectorize import (rehome_resnapped_regions, revalidate_threads,
+                               tag_enclosed_background, vectorize)
 from .textcluster import (detect_text_clusters, ocr_suggest_text,
                           regularize_text_clusters,
                           set_lettering_house_angle)
@@ -560,6 +561,13 @@ def build_generation(
         palette_indices=list(q.thread_indices),
         design_class=classification.class_,
     )
+    # Defect 16's remainder (2026-08-31): a re-snapped region joins the layer
+    # that declares its new cone, so one spool sews at one position and the
+    # stage-5 coverage plan sees the order actually sewn. Runs here — same
+    # generation step as the re-snap it corrects, before anything reads
+    # layers — and never touches user recolors (see its docstring).
+    if cfg.rehome_resnapped:
+        rehome_resnapped_regions(regions, list(q.thread_indices))
 
     # Same ordering rationale as `tag_enclosed_background` immediately above:
     # a computed FACT re-derived every generation, so it belongs before shape
@@ -893,14 +901,16 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     palette = [_cone(chart, t) for t in thread_indices]
 
     # The palette is per LAYER; a region's thread is per REGION, and
-    # `revalidate_threads` above can move one without the other (it re-snaps a
-    # shape's spool, deliberately, and never changes its layer). When it does,
-    # this layer's palette entry names a cone no shape in the layer carries —
-    # the operator loads it and it sews nothing, while the thread that IS sewn
-    # is missing from the list. Stage 7 is unaffected (it partitions blocks by
-    # the REGION's thread, see `stage6_applique.nn_group_key`), which is
-    # exactly why this could stay invisible: only the human-facing color list
-    # is wrong. Measured on the pro corpus, 2026-08-14: 5 of 23 designs.
+    # `revalidate_threads` above can move one without the other. Since
+    # 2026-08-31 `rehome_resnapped_regions` moves the region to the layer
+    # DECLARING its new cone, so the surviving population here is the
+    # re-snap whose target no layer declares (it stays put, its layer's
+    # palette entry names a cone it no longer carries — drone_render's L1
+    # carries re-snapped t0/t17 in t16's layer, live proof) plus whatever a
+    # future mechanism invents. The operator loads a cone that sews nothing
+    # while the thread that IS sewn is missing from the list; only this
+    # human-facing color list is wrong, which is exactly why it could stay
+    # invisible. Measured on the pro corpus, 2026-08-14: 5 of 23 designs.
     #
     # An explicit `layer` override is exempt, and only that: putting a shape
     # into another thread's layer is precisely what that override MEANS (see

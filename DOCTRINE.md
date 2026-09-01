@@ -267,7 +267,15 @@ its hedge as it is copied forward** — is why this file is split.
   **What would make it real:** a design whose final block shares a thread with
   an earlier block AND is geometrically disjoint from everything between them.
   Worth re-measuring if the hoist margin is raised, or if `revalidate_threads`
-  starts re-snapping late layers onto earlier cones. Even then the cost is
+  starts re-snapping late layers onto earlier cones. As of 2026-08-31
+  `rehome_resnapped_regions` consolidates the RE-SNAP splits upstream of
+  stage 5 (owl: merge-off equals merge-on) — but duplicate quantize-time
+  declarations still put one cone in two layers on committed artwork
+  (`drone_render` 80 mm: t16 sews at 30.9% and again at 98.9%, t119 at 74.2%
+  and again as the FINAL block, 99.4%), so same-thread splits still reach
+  the hoist, and drone's final block now shares a thread with an earlier one
+  — half of the "what would make it real" precondition above. Re-measure
+  against drone first if this entry is ever re-opened. Even then the cost is
   bounded — no stitch is misplaced, because the art->detail seam is forced
   `jump=True, trim=True` either way; only the detail sew order and the `jumps`
   tally move. *(raised and disproved in one session, 2026-08-31 — filed as a

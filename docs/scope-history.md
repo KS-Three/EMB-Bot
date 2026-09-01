@@ -25,7 +25,96 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
-**Last updated:** 2026-08-30 — **the photo-upload UX pass: upload starts the run, and the panel says what stage 0 read.**
+**Last updated:** 2026-08-31 — **the sew-out fragmentation follow-up: two
+mechanical causes of the patch-quilt, measured and closed.**
+
+Kent's first physical sew-out (80 mm gradient icon, pique + cutaway, service
+export) came back: outer border flawless, interior satin 6/10, and the verdict
+that matters here — the gradient background sewed as scattered per-shade
+patches, criss-crossing sewn work, re-entering enclosed interiors late (b4 =
+229 st inside the lens ring at 76%), and ending on a 104-st cone at 99.4% with
+jump-chains walking 8–11.5 mm steps across finished work. 8 cones / 7 changes /
+26 trims / 18,959 st. Density measured pro-level (~0.18 mm row pitch per
+cone-block) — the quilt, not the rows, was the defect.
+
+Two mechanical causes found on the repro fixture, both fixed:
+
+1. **The gradient lane dropped the sew cursor.** Both `blend_fill` →
+   `stitch_shape` call sites passed no `start_near`, so every gradient-class
+   region entered at its own geometry-default corner — a 72.0 mm and a 46 mm
+   hop inside single colour blocks on `repro_gradient_white_icon.png` at
+   80 mm. Fallback now passes it through; bands chain part-to-part.
+2. **Pipeline re-snaps split one spool across layers** (defect 16's
+   remainder). `revalidate_threads` moved `thread_index` and left
+   `meta["layer"]`; `rehome_resnapped_regions` (stage 4) now moves the region
+   to the layer declaring its cone, upstream of stage 5, so coverage plans
+   against the order actually sewn. The repro's palette had named 6 cones for
+   3 sewn; White owned three layers, Fuchsia two.
+
+**Sequence census (tools/sequence_census.py), base 504086b → after:**
+
+| fixture (mm) | blocks | trims | needle-up mm (intra+inter) | tail mm | re-entries |
+|---|---|---|---|---|---|
+| repro_gradient_white_icon 80 | 4 → 3 | 12 → 14 | 443 → 325 | 278 → 88 | 1 → 0 |
+| drone_render 80 | 20 → 19 | 89 → 84 | 1385 → 1251 | 475 → 330 | 11 → 11 |
+| summit_badge 80 | 12 → 12 | 38 → 42 | 619 → 591 | 156 → 128 | 9 → 9 |
+| owl_kent 100 | 17 → 14 | 80 → 77 | 1983 → 1591 | 868 → 731 | 11 → 10 |
+| owl_kent 100 `is_photographic` | 13 → 12 | 86 → 86 | 2250 → 1749 | 70 → 148 | 5 → 6 |
+
+Colour changes and total needle-up travel fall on every fixture; trims fall
+net (−2 across the sweep) but rise on repro (+2) and summit (+4) — different
+fill entries change each shape's own internal fragment walk, and intra-shape
+trims are defect 6's territory, not sequencing's. The repro's 50-st
+same-thread revisit at 99.6% (its miniature of Kent's b4/b7) is gone, along
+with its re-entry. Owl stitch count drops 16,199 → 15,852 (default route) from
+the consistent coverage replan.
+
+Attribution A/B on the repro (rehome alone vs both): rehome alone keeps trims
+at 12 and cross-travel lower (102 vs 176 mm); adding start_near wins total
+travel (325 vs 371 mm), inter-block (39 vs 90 mm) and tail (88 vs 165 mm).
+Both kept: start_near is the contract stage 7's ordering premise depends on.
+
+Fallout worth remembering: with both split sources consolidated upstream
+(pipeline re-snaps by the rehome; review recolors were ALREADY layer-moved by
+`apply_shape_edits`, regions.py "the layer moves with it"), **no committed
+artwork reaches `_merge_adjacent_same_thread` with anything to fold** — the
+owl sews 12 blocks with the flag OFF, equal to flag ON. The merge/hoist passes
+are now the safety net for future split sources only;
+`test_merge_adjacent_same_thread.py` pins both facts (tie-once via a
+hand-built `sequence()` run, and the owl's no-adjacency at flag-off).
+
+Directions NOT taken, deliberately: within-cone patch ordering beyond greedy
+NN measured near-optimal on the repro once entries were honest (the 67.9 mm
+stranded hop became 0.65 mm — greedy NN picks the far shape exactly when the
+needle finishes beside it), and the remaining candidate — merging tiny cones
+into an ADJACENT SHADE (Kent's b2-class blocks, e.g. 460 st of Date at 96.1%)
+— is a colour-difference quality call for Kent, not gate-1 physics, and needs
+his real icon PNG to measure (repro's 3 surviving cones are White/Fuchsia/Date,
+too far apart in ΔE for any defensible merge).
+
+Flat lane: `blend_fill` never runs on flat (construction); the rehome is
+fixture-evidence only — none of the four flat-golden fixtures carries a
+re-snap (no `THREAD_RESNAPPED_AFTER_DRIFT` in `flat_lane_golden.json`
+warnings), but `revalidate_threads` DOES run unrestricted on flat, so a
+non-golden flat design that re-snaps onto another layer's declared cone will
+reorder — the same population fix #6.3 already re-threads. No golden
+regenerated; `rehome_resnapped: bool = True` added as the family-convention
+lever (the A/B's own instrument). Full local suite: the three named
+platform-divergence reds only (pushcomp, flat-lane, stage2 — all on their
+documented fixtures).
+
+Defect 3's 2026-08-31 reproduction attempt, moved here from MASTER_SCOPE for
+the line budget: at `target_width_mm=80` over tatami / streamline-mono /
+streamline-layered, counting runs with `trim=True`, runs with `jump=True`,
+and the intra-shape lift warning — `owl_kent.jpg` gives 71/67/142 trims,
+`photo_owl_pale.png` 9/26/28. Neither is 14; neither is variant-invariant.
+
+Post-review addendum (2026-09-01): the review pass caught the docs
+overclaiming "no committed artwork reaches the hoist with a same-thread
+split" — TRUE for the re-snap mechanism, FALSE for duplicate quantize-time
+declarations, which survive on `drone_render` (t16 at 30.9%/98.9%, t119 at
+74.2%/99.4% — the final block, both tail revisits flagged REENTRY; verified
+independently). Filed as live defect 18 (17 was claimed hours earlier by the borders-last lane, PR #300).
 
 Kent: *"the photo upload is very confusing -- choose flat work, real photo etc.
 IDK what ANY of that even means, can't we just upload a photo/image and the

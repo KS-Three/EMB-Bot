@@ -1787,7 +1787,8 @@ def sequence(
                 # gradient-or-not is a per-design one), so unlike contour
                 # there is no further fallback needed here — if blend_fill
                 # came back empty, plain tatami would have too.
-                runs, report = blend_fill(p.region, source_pixels, cfg)
+                runs, report = blend_fill(p.region, source_pixels, cfg,
+                                          start_near=entry)
             elif contour:
                 runs, report = contour_fill(
                     p.polygon,
