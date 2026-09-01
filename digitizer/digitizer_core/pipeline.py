@@ -62,7 +62,8 @@ from .textcluster import (detect_text_clusters, ocr_suggest_text,
 from .stage5_overlap import resolve_overlaps
 from .stage6_blend import SourcePixels, detect_design_ramp_angle
 from .config import is_photographic
-from .stage7_sequence import PHOTO_CLASSES, depth_sort_layers, sequence
+from .stage7_sequence import (PHOTO_CLASSES, borders_last_layers,
+                              depth_sort_layers, sequence)
 from .stitches import StitchPlan
 from .threads import chart_for
 from .warnings_codes import (
@@ -692,6 +693,23 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     if is_photographic(cfg, gen.classification_class) \
             or bool(cfg.extra.get("photo_sequencing")):
         thread_indices = depth_sort_layers(regions, thread_indices, chart_for(cfg))
+    # Borders-last (cfg.borders_last, default OFF — Kent's first physical
+    # sew-out, 2026-08-31): satin-dominated layers move after the fill
+    # layers, so a design's border/detail satin sews on top of the fills
+    # it fences instead of opening the design. Same slot as the depth sort,
+    # AFTER it, still before apply_layer_overrides so an explicit layer
+    # override beats the craft default — see borders_last_layers' docstring.
+    # PHOTO CAVEAT, owed to the default-flip decision: on a photo class
+    # this moves layers on exactly the signal depth_sort_layers' contract
+    # refuses as a depth cue ("a satin-classified ribbon may be a whole
+    # object"), so a satin-dominated ≥1 mm layer (rigging, branches) would
+    # jump the dark→light ramp to the end. Unmeasured — dormant while the
+    # default is OFF; flipping the default engages it, so either gate this
+    # layer half to non-photo classes then, or measure one photo run first.
+    if cfg.borders_last:
+        thread_indices = borders_last_layers(
+            regions, thread_indices, cfg,
+            design_class=gen.classification_class)
     # Explicit sew-order layers wait until the palette is settled: moving a
     # shape between layers must reorder sewing, never drop a thread from the
     # color list (see `apply_layer_overrides`).
