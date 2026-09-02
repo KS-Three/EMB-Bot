@@ -150,7 +150,26 @@ export function buildDigitizeConfig(element, project) {
   // disagree even if a patch ever left both set). This branch is the safety net for whatever the UI doesn't
   // reach: a project loaded with both fields already set (saved before the
   // checkbox existed, or from any path that predates that handler).
-  if (element && element.isPhoto) cfg.forced_class = "photo_subject";
+  //
+  // WHAT IT SENDS CHANGED 2026-09-02 (Kent's call, defect 15). It used to
+  // send `forced_class="photo_subject"`, which forces stage 0's FILL TIER
+  // and adds thread-paint. That is a different question from "is this
+  // photographic content", which is what the user is actually answering,
+  // and on real photographs it made things worse: on `owl_kent.jpg` @ 80 mm
+  // the checkbox took the design from 13 stops to SEVENTEEN, while
+  // `is_photographic` takes it to ELEVEN on twelve cones instead of
+  // fourteen — depth sequencing plus the palette bind, without forcing the
+  // tier. (MASTER_SCOPE's 26-stop figure for the forced route is from
+  // 2026-08-28 and predates the rehome, borders-last and the cone fold; 17
+  // is what it measures today. The ordering it was cited for is unchanged.)
+  // It costs ~6% more stitches and buys two fewer operator stops and two
+  // fewer spools, which is the trade the palette bind exists to make.
+  //
+  // `forced_class` remains reachable through a stored `params.forced_class`
+  // — the flat-art override on a photo MISROUTE, which is the opposite
+  // correction and still legitimate. Only the "it's a photo" direction
+  // moved.
+  if (element && element.isPhoto) cfg.is_photographic = true;
   else if (p.forced_class) cfg.forced_class = p.forced_class;
   // Dev/ops seam, not a design property (see sam2Enabled above): sent as
   // per-request context alongside thread_brand rather than stored in

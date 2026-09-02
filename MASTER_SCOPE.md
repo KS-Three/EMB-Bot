@@ -88,24 +88,21 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
    2026-09-01 — scope-history)*
 
 15. **An UNDECLARED photograph gets neither depth sequencing nor the palette
-    bind, and its region re-snap escapes the selected palette.** Closed defect
-    9 fixed that escape for the PHOTO route — but `is_photographic` gates the
-    fix and it is DECLARED, not detected, with `owl_kent.jpg` cited in its own
-    docstring as reading less photographic than two logos. So a photograph left
-    undeclared routes gradient: `depth_sort_layers` never runs and the re-snap
-    is unrestricted, sewing more spools than the operator's cone list names.
-    Declaring it via `cfg.is_photographic` is a large improvement (16 → 12
-    stops on `owl_kent.jpg` when measured 2026-08-28; the 2026-08-31 rehome
-    shrinks both sides to 13 → 11 and declaration still wins — measured,
-    sequence census) — but **the Studio
-    exposes that field nowhere**, and the one photo control it does offer
-    (the reading row's "It's a photo" correction, a "This is a photo"
-    checkbox until 2026-08-30 — renamed and moved, unchanged in what it
-    sends) sends `forced_class="photo_subject"` instead, which adds the
-    thread-paint tier and lands at 26 stops / 0.591 coverage. So the improvement is currently
-    unreachable through the UI. **What to expose is Kent's call** (queue item
-    11), not a threshold to tune — gate 2 bars inferring it. *(measured 2026-08-28 — PR #291 investigation; numbers in
-    scope-history 08-28)*
+    bind, and its region re-snap escapes the selected palette.** `is_photographic`
+    gates the fix and is DECLARED, not detected — `owl_kent.jpg` reads LESS
+    photographic than two logos, so a photograph left undeclared routes
+    gradient and the re-snap sews more spools than the cone list names.
+    **UI HALF FIXED 2026-09-02 (Kent's call):** the reading row's "It's a
+    photo" correction now sends `is_photographic` instead of
+    `forced_class="photo_subject"`. It was answering the wrong question —
+    forcing the FILL TIER rather than declaring content — and measurably
+    hurt: owl_kent @ 80 mm goes 13 stops → **17** forced, vs **11 on 12
+    cones** (from 14) declared, for ~6% more stitches. The flat-art override
+    is untouched; only the photo direction moved. **Still open:** detection
+    itself — gate 2 bars inferring it, so an undeclared photo is still
+    undeclared until a human says so. *(measured 2026-09-02; the earlier
+    26-stop figure for the forced route predates the rehome, borders-last
+    and the cone fold — 17 is current, the ordering it was cited for is not)*
 
 18. **Duplicate quantize-time declarations put one cone in two layers — the
     second spool-revisit mechanism, untouched by defect 16's fix.** Stage 2

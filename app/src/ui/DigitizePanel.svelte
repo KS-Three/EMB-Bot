@@ -335,9 +335,13 @@
   // The override itself stays, deliberately: ROADMAP phase 2 is open ("most
   // real logos reach the wrong lane") and phase-4 v1 is built to work around
   // stage 0 with an explicit user override, not by advancing it (spec
-  // 2026-08-18 decision 4). Nothing about what gets SENT changed here --
-  // isPhoto still means forced_class=photo_subject, and the flat correction
-  // still writes forced_class=flat.
+  // 2026-08-18 decision 4). What gets SENT changed 2026-09-02 (Kent's call,
+  // defect 15): isPhoto now means `is_photographic=true` -- photographic
+  // CONTENT, which buys depth sequencing and the palette bind -- not
+  // `forced_class=photo_subject`, which forced the FILL TIER and measurably
+  // hurt (owl_kent @ 80mm: 13 stops -> 17 forced, vs 11 declared). The flat
+  // correction is unchanged and still writes forced_class=flat; only the
+  // "it's a photo" direction moved.
   // The override is an ordinary digitize param (buildDigitizeConfig sends it
   // when set), which is the whole reason it needs no machinery of its own:
   // setting or clearing it changes element.params, and the params-changed
@@ -409,7 +413,7 @@
   // "It's a photo" clears a stale flat-art override in the SAME patch that
   // sets isPhoto (controller ruling, fix round 1 2026-08-19): left alone, the
   // two would visibly contradict each other -- buildDigitizeConfig's
-  // isPhoto-wins precedence sends photo_subject while params.forced_class
+  // isPhoto-wins precedence sends is_photographic while params.forced_class
   // still said flat. Fixing it at the source means no reader of
   // params.forced_class needs isPhoto-awareness of its own.
   //

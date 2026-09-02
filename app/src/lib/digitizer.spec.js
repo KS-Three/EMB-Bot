@@ -56,7 +56,7 @@ const PIPELINE_CONFIG_FIELDS = [
   "underlay_style", "underlay", "satin", "satin_max_width_mm", "border",
   "border_width_mm", "deleted_shape_ids", "shape_overrides",
   "merge_shape_ids", "split_shapes", "photo_segment_sam2", "detail_layer",
-  "forced_class", "edge_cap",
+  "forced_class", "edge_cap", "is_photographic",
 ];
 
 test("buildDigitizeConfig sends the stored thread-brand preference and the project garment, in service field names", async () => {
@@ -191,7 +191,7 @@ test("forced_class rides buildDigitizeConfig only when the flat-art override is 
   for (const k of Object.keys(forced)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
 });
 
-test("forced_class resolves to photo_subject when isPhoto and a stale params.forced_class:\"flat\" both sit on the element (precedence, controller ruling 2026-08-19 fix round 1)", async () => {
+test("isPhoto sends is_photographic and still out-ranks a stale params.forced_class:\"flat\" (precedence, controller ruling 2026-08-19 fix round 1)", async () => {
   // DigitizePanel.svelte's checkbox handler clears params.forced_class in the
   // same patch that sets isPhoto, so the two should never coexist on an
   // element edited live through the UI — but this covers the element this
@@ -212,7 +212,13 @@ test("forced_class resolves to photo_subject when isPhoto and a stale params.for
     }),
     PROJECT
   );
-  expect(both.forced_class).toBe("photo_subject");
+  // The PRECEDENCE this test exists for is unchanged — isPhoto is still the
+  // user's newest explicit word and still beats a leftover override. What
+  // moved (2026-09-02, Kent's call, defect 15) is which field carries it:
+  // is_photographic, not forced_class. The stale "flat" must not leak
+  // through now that the branch writes a different key.
+  expect(both.is_photographic).toBe(true);
+  expect("forced_class" in both).toBe(false);
   for (const k of Object.keys(both)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
 });
 
@@ -1690,14 +1696,36 @@ test("describeWarnings speaks all four stage-0 classification codes instead of f
 });
 
 describe("isPhoto forced class (spec 2026-08-18 decision 4)", () => {
-  it("includes forced_class photo_subject when the element is marked as a photo", async () => {
+  // Defect 15, Kent's 2026-09-02 call. "It's a photo" answers "is this
+  // photographic CONTENT", which is `is_photographic` — depth sequencing and
+  // the palette bind. It used to send `forced_class="photo_subject"`, which
+  // answers a different question (which FILL TIER) and measurably hurt: on
+  // owl_kent.jpg @ 80mm the checkbox took 13 stops to 17, where
+  // is_photographic takes it to 11 on 12 cones instead of 14.
+  it("sends is_photographic when the element is marked as a photo", async () => {
     const { buildDigitizeConfig } = await import("./digitizer.js");
     const el = { isPhoto: true };
-    expect(buildDigitizeConfig(el).forced_class).toBe("photo_subject");
+    expect(buildDigitizeConfig(el).is_photographic).toBe(true);
   });
-  it("omits forced_class entirely when not marked", async () => {
+  it("does NOT force the fill tier when the element is marked as a photo", async () => {
+    // The regression this replaces: forcing photo_subject adds thread-paint
+    // on top, which is not what the user was asked and not what they want.
     const { buildDigitizeConfig } = await import("./digitizer.js");
-    expect("forced_class" in buildDigitizeConfig({ isPhoto: false })).toBe(false);
+    expect("forced_class" in buildDigitizeConfig({ isPhoto: true })).toBe(false);
+  });
+  it("omits both fields entirely when not marked", async () => {
+    const { buildDigitizeConfig } = await import("./digitizer.js");
+    const cfg = buildDigitizeConfig({ isPhoto: false });
+    expect("forced_class" in cfg).toBe(false);
+    expect("is_photographic" in cfg).toBe(false);
+  });
+  it("still carries a flat-art override, the opposite correction", async () => {
+    // A photo MISROUTE correction ("digitize this as flat art") is a
+    // different, still-legitimate direction and must survive the change.
+    const { buildDigitizeConfig } = await import("./digitizer.js");
+    const cfg = buildDigitizeConfig({ isPhoto: false, params: { forced_class: "flat" } });
+    expect(cfg.forced_class).toBe("flat");
+    expect("is_photographic" in cfg).toBe(false);
   });
 });
 

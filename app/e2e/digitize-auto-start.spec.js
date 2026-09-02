@@ -138,8 +138,11 @@ test("uploading artwork digitizes it on its own, and the panel says what it read
   const statsBefore = await page.locator(".dgp-stats").innerText();
   await read.getByRole("button", { name: "It's a photo" }).click();
   await expect(read).toContainText("You set this to a photo.", { timeout: 120_000 });
-  // The correction reached the engine: a photo_subject run is not the flat
-  // one it replaced.
+  // The correction reached the engine: since 2026-09-02 it sends
+  // `is_photographic` (photographic CONTENT -> depth sequencing + palette
+  // bind) rather than forcing the fill tier, so the class may still read
+  // flat while the SEW ORDER changes. What is asserted is what the user can
+  // actually check: the run is not the one it replaced.
   await expect(page.locator(".dgp-stats")).not.toHaveText(statsBefore, { timeout: 120_000 });
 
   // ---- and back, in one click, with no override left behind --------------
