@@ -13,17 +13,32 @@ rather than from scratch.
 
 | | |
 |---|---|
-| Baseline last written | **2026-08-24** (`6b1ccdf`) |
-| Merges since | **73** (25 touching `digitizer_core/`) |
+| Baseline last written | **2026-08-12** (`4f7d80f3`) |
+| Merges since | **206** (95 commits touching `digitizer_core/`) |
 | Entries that moved | **30 of 38** |
 | Score changes | **17** |
 | `captured_at_commit` / `captured_date` | **absent** |
 
-The missing stamp is its own small defect. `capture()` has written both fields
-since the very commit that last wrote this baseline (`6b1ccdf`, lines 184-185),
-so the shipped artefact predates its own stamping and the tool's docstring
-promise that "staleness is measured, not remembered" is not true of it. Any
-recapture fixes that for free.
+**Corrected 2026-09-02, and the correction is the lesson.** This table first
+read "2026-08-24 (`6b1ccdf`), 73 merges". Both numbers came from a SHALLOW
+clone — a cloud session's default. `6b1ccdf` is that clone's graft root, and a
+graft root answers `git log -- <path>` as the thing that last touched every
+file in the tree, wearing the subject line of a real merge commit while
+`%p` shows it has no parents. So the wrong commit looked like the right one,
+and the two headline numbers were both understated by roughly a factor of
+three. `git fetch --unshallow` gives 1390 commits where the graft gave 219.
+
+This is CLAUDE.md gotcha 8 wearing a different face: there the stale clone
+says a file NEVER existed, here it names the wrong commit as the file's author
+and every conclusion drawn from that date inherits the error. **Unshallow
+before dating anything.** One session already burned an afternoon on the first
+face of this; this entry is the second.
+
+The absent stamp is NOT a defect, and an earlier draft of this file called it
+one. `capture()` at `4f7d80f3` did not write `captured_at_commit` or
+`captured_date` — grep the file at that commit, the fields are not there. The
+stamping came later. The artefact is simply older than the feature; any
+recapture picks it up for free.
 
 ## What moved
 
@@ -205,7 +220,7 @@ than because a fixture regressed.
 
 The method that worked twice above is cheap and should be reused: **run the one
 fixture with the one flag flipped**, roughly ten seconds a test, rather than
-bisecting 73 merges with a four-minute full capture each time.
+bisecting 206 merges with a four-minute full capture each time.
 
 1. Confirm the `THREAD_MATCH_POOR` population is all `2d58da8` by spot-checking
    two or three of the fixtures that *improved* (`fur_ramp` 40 → 88,
@@ -215,12 +230,12 @@ bisecting 73 merges with a four-minute full capture each time.
    and it was a real defect); `summit_badge`'s doubled stitch count is the
    remaining one that could be hiding another.
 3. Drop the duplicate fixture name, so the recapture does not re-enrol one
-   design at double weight for another eight days.
+   design at double weight for another three weeks.
 4. Then re-capture, listing every mover and its cause in the commit message,
    as the tool's docstring requires.
 
 Until then the scorecard still works as a **diff** — it is how all of the above
-was found. What it cannot currently do is tell a regression from eight days of
+was found. What it cannot currently do is tell a regression from three weeks of
 intended change, which is the job it exists for.
 
 *(measured 2026-09-02 on `main` at `0bd9f0f`, one machine so platform numerics
