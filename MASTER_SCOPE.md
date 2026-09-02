@@ -559,15 +559,15 @@ three (`detect_text_clusters`' candidate gating, the coherence floor, and the
 [area 1](docs/scope/1-auto-digitizing-quality.md).
 *(fixed 2026-08-27 — PRs #282/#283, mutation-checked; renders in the #283 body)*
 **And it was NOT FIRING on slab-serif lettering — a FOURTH miscalibrated
-threshold, fixed 2026-09-02.** Hotel Fremont's capitals cancel in doubled-angle
-space (112 mm vertical vs 44 mm horizontal skeleton: nR² 4.7 vs 6.9), so Kent's
-*"E heavy on top and bottom"* / *"T left side drops"* — hanging-serif corner
-fans the house angle cures — sewed per-stroke. A four-fold second reading
-admits two orthogonal families, on 4 px-resampled chains (raw skeleton steps
-carry a four-fold raster grain: annuli 0.160 at 45°) with an effect floor
-(the residual clears significance under a biased null), at the **45°
-bisector** — house = 0 scrambles every horizontal through the span clamp.
-Becker/enthusiast byte-identical; drone's THERMAL gains it (+0.4% st). *(measured and fixed 2026-09-02 — `docs/hotel-fremont-fine-details-2026-09-02.md`, PR #321; area 1 has the table)*
+threshold, fixed 2026-09-02 (PR #321).** Hotel Fremont's capitals cancel in
+doubled-angle space (nR² 4.7 vs 6.9: 112 mm vertical vs 44 mm horizontal
+skeleton), so Kent's *"E heavy on top and bottom"* / *"T left side drops"* —
+hanging-serif corner fans the house angle cures — sewed per-stroke. A four-fold
+second reading admits two orthogonal families on 4 px-resampled chains (raw
+steps carry a four-fold raster grain), with an effect floor, at the **45°
+bisector** (house = 0 scrambles every horizontal through the span clamp).
+Becker/enthusiast byte-identical; drone's THERMAL gains it (+0.4% st).
+*(measured and fixed 2026-09-02 — `docs/hotel-fremont-fine-details-2026-09-02.md`; area 1 has the table)*
 
 **Mechanism 2 — pull comp's min-feature guard scoped to `poly.interiors` —
 is PROTOTYPED AND COSTED, deliberately not shipped.** An exterior-pocket branch
