@@ -1,7 +1,13 @@
 # Attributing the corpus scorecard baseline — 2026-09-02
 
-**Verdict, revised twice as the evidence came in: every mover is now
-attributed, and the recapture is unblocked.** The first draft of this file said "do NOT re-capture, most
+**Verdict, revised three times, and the last revision is the important one:
+the recapture is STILL BLOCKED — by something nobody had looked at.**
+
+A trial recapture was run and then DISCARDED rather than committed, because
+`diff`'s one hard-fail signal fired: a new block-severity finding. Behind it
+sits a cross-fixture density regression on the photo lane that no dashboard
+tracks. See "The recapture that must not be committed" at the bottom. The
+attributions below all stand; they were simply not the whole population. The first draft of this file said "do NOT re-capture, most
 movers are unattributed" and singled out two that "could be hiding a real
 defect". Both have since been run down, and neither is a reason to hold:
 
@@ -383,3 +389,161 @@ container; `tools/corpus_scorecard.py diff`, `digitizer_core.preflight`,
 `tools/sequence_census.py`, and `git archive`-extracted trees at `4f7d80f3` and
 95 commits after it. Platform numerics do not cancel here — they were shown not
 to apply: all 38 rows reproduce on this machine.)*
+
+## The recapture that must not be committed — a photo-lane density regression
+
+The recapture was run (26 fixtures x 2 = 52 rows, stamped `8eb4dbbb` /
+2026-09-02) and then **thrown away**. `tools/corpus_scorecard.py`'s own rule
+names the reason: the one signal it hard-fails on is "a block-severity finding
+that was not there before", and one fired.
+
+```
+photo/photo_scene_stub.png @ 80mm/hat_front
+   score 64 -> 34   +DENSITY_STACKED:block
+```
+
+**The block is real, and specific:** *"31 mm² of this design stacks more than
+3.5 layers of thread on one patch of fabric (peak 7.2) ... That much thread
+puckers the garment and breaks needles."*
+
+It is not one fixture. Every photo-lane fixture is laying more thread, stacking
+it higher, and returning to the same needle hole several times as often:
+
+| fixture | `coverage_max` | stitches | `same_hole_fraction` |
+|---|---|---|---|
+| `photo_scene_stub` @hat_front | 4.87 → **7.18** | 6,534 → 10,720 | 0.008 → **0.049** |
+| `photo_scene_stub` @left_chest | 4.70 → **6.97** | 6,491 → 11,084 | 0.006 → **0.044** |
+| `photo_dof_meadow` @left_chest | 3.45 → **5.04** | 7,369 → 10,116 | 0.014 → **0.069** |
+| `photo_chrome_specular` @left_chest | 4.78 → **5.34** | 12,035 → 17,893 | 0.012 → **0.053** |
+
+`same_hole_fraction` rising four to seven times over is the needle-breakage and
+fabric-damage signal, and `coverage_max` 7.18 is double the 3.5-layer ceiling.
+This is exactly the class of problem the scorecard exists to catch, and it has
+been invisible for three weeks because the ruler was stale.
+
+**Why this was missed until the recapture.** The attribution work above was
+driven by this file's original mover list, which came from a `diff` focused on
+metrics and the `THREAD_MATCH_POOR` population. It never enumerated the other
+finding codes. Five of them move — `STITCHES_TOO_SHORT`, `LETTERING_TOO_SMALL`,
+`DENSITY_STACKED`, `TRIM_HEAVY`, `COLOR_STOPS_HEAVY` — and **all five existed
+at `4f7d80f3`**, so their appearance is real behaviour change, not a new check
+being added. (Only `ARTWORK_UNCOVERED` is genuinely new machinery.) Checking
+which codes predate the baseline is one grep, and it should be step zero of any
+future attribution pass, before a single bisect.
+
+Not found in MASTER_SCOPE, DOCTRINE or `docs/scope/` — `coverage_max` appears
+once in a scope doc, as a passing assertion in an unrelated test claim, not as
+a tracked defect. Stated that way deliberately: this same session already
+published a "discovery" that turned out to be documented in a tool ten days
+earlier.
+
+**The candidate baseline is not lost.** It is a clean 52-row capture with the
+stamp fields populated, and re-running `capture` reproduces it. Nothing is
+gained by committing it before the density question is answered — and a great
+deal is lost, because committing it makes 7.18 layers the new normal and the
+next person has no ruler that remembers 4.87.
+
+
+### Attributed: `d3f3c547`, and it is a ROADMAP gate 3 question for Kent
+
+Bisected on `coverage_max` (preflight's own metric, not a proxy — see the
+`satin_steps` trap above), ten probes over the 95-commit window:
+
+```
+[ 0] 21a415c0  2026-08-12  ->  4.87    <- the baseline's own value
+[20] f52143e1  2026-08-19  ->  4.40
+[21] d3f3c547  2026-08-19  ->  6.44    <- the jump
+[94] 78d9f5d8  2026-09-01  ->  7.18
+```
+
+`d3f3c547` is **"feat(engine): photo classes split tonal regions by default
+(spec decision 2)"**. It adds `pipeline.effective_split_tonal`:
+
+```python
+return bool(cfg.split_tonal_regions) or class_ in PHOTO_CLASSES
+```
+
+For a photo class that is `True` **unconditionally**. `cfg.split_tonal_regions`
+can only turn it ON, never off — measured: setting it explicitly False on
+`photo_scene_stub` gives byte-identical output (7.18, 10,720 stitches,
+same-hole 0.049). **There is no off switch for photo classes.**
+
+Three facts sit awkwardly together, and only Kent can say which one moves:
+
+1. **ROADMAP gate 3** names this tier: *"No default-OFF tier flipped on until
+   its instrument is rebuilt. Chaining, contour, **tonal-region splitting**. A
+   green suite has already hidden needle-down thread on bare fabric here."*
+2. **MASTER_SCOPE** carries it under "Latent — gated OFF, DO NOT FLIP": *"the
+   shading fix, merged but off; parked until the sew-out. (confirmed OFF
+   2026-08-17 — `config.py:647`)"*. That confirmation reads the FIELD, which
+   `d3f3c547` stopped being the deciding value two days later. The field is
+   still `False`; the behaviour is not.
+3. **The commit says "spec decision 2"**, citing a 2026-08-18 spec — so this
+   may be a deliberate ruling that the dashboard simply never recorded, rather
+   than an unnoticed flip.
+
+Which it is decides everything downstream, and it is not a call to make from
+the code. What is NOT in question is the measured cost: `coverage_max` 4.40 →
+6.44 on that commit alone, 7.18 today against a 3.5-layer ceiling, and
+`same_hole_fraction` up six-fold — a `DENSITY_STACKED` **block** on a fixture
+that scored 64 before.
+
+Gate 3 exists for exactly this, so this file names the blocker and stops.
+
+
+## Measuring what tonal splitting buys — the cost is clear, the benefit is NOT MEASURABLE with what we have
+
+Kent ratified the tier 2026-09-02 and asked for the tradeoff quantified. Half
+of that is now answered and the other half is blocked by an instrument, which
+is itself worth knowing.
+
+**First, the tier got an off switch** (`split_tonal_regions` is now tri-state:
+`None` per-class as before, `True` everywhere, `False` nowhere INCLUDING photo
+classes). Without it there was no "without" to compare against. Shipped
+behaviour is unchanged — verified byte-identical against the baseline captured
+the same hour.
+
+**The cost, on the 8 photo-classified fixtures, at 80 mm/left_chest:**
+
+| fixture | Δstitches | Δcoverage_max | Δstops |
+|---|---|---|---|
+| `photo_scene_stub` | **+3,249** | +2.18 | +1 |
+| `photo_dof_meadow` | **+2,524** | +1.22 | +2 |
+| `photo_chrome_specular` | **+2,351** | +0.49 | +2 |
+| `photo_sunset_backlit` | **+2,331** | +0.57 | +2 |
+| `photo_subject_stub` | 0 | 0 | 0 |
+| `photo_grass_macro` | 0 | 0 | 0 |
+| `fur_ramp` | 0 | 0 | 0 |
+| `photo_owl_pale` | 0 | 0 | 0 |
+
+**It fires on half of them and does nothing at all on the other half** — an
+exact zero on four fixtures, not a small delta. Where it fires it costs roughly
+a third more stitches and one to two extra thread stops. That is the shape of
+the bill, and it is the first time it has had one.
+
+**The benefit cannot be read, because `artfidelity_self` REFUSES every row.**
+All eight are refused: seven for `ink mask saturates the frame` (95–100%) and
+`fur_ramp` for `ink ambiguous (knocked-out lettering)`. The tool's own contract
+is that a refusal is "the reason this row must not be read as an engine
+result", and its docstring records exactly why saturation poisons the score —
+coverage becomes an IoU against all-ones, which rewards the engine for sewing
+a background stage 1 was right to remove.
+
+**That is a finding about the instrument, not a footnote.** A photograph fills
+its frame by definition, so the opaque-art ink rule calls the whole frame ink.
+The self-fidelity tool therefore cannot score the class it would be most
+valuable on — the photo lane, where tonal work actually happens — and this is
+the first time anything has needed it to. `INK_SATURATION_MAX` was added
+2026-08-27 after one fixture (`summit_badge`) was found ranked on that defect;
+the sweep here says the problem is not one fixture, it is the entire photo
+population.
+
+**One lead, deliberately not quoted as a result.** The `colour` component
+(per-region CIEDE2000 excess over the best available spool) moved on two
+fixtures — `photo_sunset_backlit` **+0.310** and `photo_dof_meadow` +0.096 —
+and mechanically that component never touches the ink mask, so the saturation
+defect cannot reach it. It is still a number off a refused row, and reading one
+component out of a row the instrument declined is precisely the "I know better
+than the tool" move that this file has already been burned by twice. Recorded
+as the place to look first once a photo-capable fidelity measure exists.
+
