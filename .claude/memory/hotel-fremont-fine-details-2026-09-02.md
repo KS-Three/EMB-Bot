@@ -33,7 +33,7 @@ This entry is the decisions and the traps.
 - **Wisconsin** → 15-vertex polygon, 14 fill rows at 45°, peninsula under
   `MIN_FILL_WIDTH_MM`. A scale + border question; Border was None.
 
-## The fix that shipped, and the three traps inside it
+## The fix — BUILT, DEFAULT OFF — and the three traps inside it
 
 Second reading in `_cluster_house_angle_deg`: when doubled space finds
 nothing, quadrupled space, same Rayleigh test — two orthogonal families
@@ -59,6 +59,15 @@ are byte-identical by construction (Becker, enthusiast md5-checked).
    only defined mod 90, so "axis + 45" gave drone 45.1 and Fremont 134.4 —
    mirror slants on the same upright text. `_bisector_deg` takes the one
    nearer the convention.
+
+**Why it is OFF (`satin_house_fourfold`, Kent's call):** the full suite
+found a fourth red — `test_chaining`'s benchmark, `enthusiast_logo` @ 93 mm,
+**2.43 → 4.62/1k**. The eleven ENTHUSIAST capitals clear the four-fold gate
+at 48°; the N's diagonal runs near the house, `_clamp_to_span` pins it to
+the 45° limit and thread piles at the junction (rendered); chaining loses
+seven covered routes. The diagonal blind spot, on the benchmark fixture,
+the same day it was named. **A fixture set that is byte-identical at 80 mm
+is not evidence at 93 mm** — the benchmark's pitch is the one to run.
 
 **Measured on drone_render:** the four regions that gained an angle are
 **T, H, E, R of THERMAL** — the letters Kent called "not clean" on

@@ -61,10 +61,17 @@ Becker's MARINE at R = 0.197) applied to one it had never seen.
 Four-fold angle space sees exactly what doubled space cancels. Quadrupled, a
 vertical and a horizontal both vote at 0°, so two orthogonal families
 **reinforce**: Hotel Fremont reads **R4 = 0.444, nR4² = 90** on the same
-votes. Shipped in `textcluster._cluster_house_angle_deg` as a SECOND reading,
+votes. Built in `textcluster._cluster_house_angle_deg` as a SECOND reading,
 tried only when the doubled reading found nothing — so every cluster admitted
-before is admitted at the identical angle (Becker and enthusiast_logo:
+before is admitted at the identical angle (Becker and enthusiast_logo @ 80 mm:
 byte-identical plans, md5-checked).
+
+**It ships DEFAULT OFF — `PipelineConfig.satin_house_fourfold`, Kent's call
+to flip.** The reason is in the section after the fixture table: on the
+chaining benchmark fixture it angles a block sans word at 48°, clamps the
+N's diagonal into a pile of thread, and reds the trim ceiling. Off, every plan
+in the repo is byte-identical to before the reading existed (md5 on ten
+fixtures); on, it does everything this section describes.
 
 Three things had to be right, each measured:
 
@@ -116,7 +123,7 @@ Three things had to be right, each measured:
   upright text always gets the same slant. 45 vs 135 is Kent's convention
   call; the constant is where to change it.
 
-### Where it fires — the four fixtures measured first (six more below)
+### Where it fires — all ten committed fixtures with lettering, flag ON
 
 | fixture | before | after |
 |---|---|---|
@@ -124,7 +131,47 @@ Three things had to be right, each measured:
 | `enthusiast_logo` | 14 angled, 2382 st, 21 trims | **byte-identical** |
 | `drone_render` | 17 angled, 9317 st, 86 trims | **21 angled** at 45.1°, 9355 st (+0.4%), 86 trims |
 | `logo_hotel_fremont` | 0 angled, 6473 st, 47 trims | **15 angled** (12 capitals + "THE"), at 42.8–44.4° (two groups), 6493 st (+0.3%), 47 trims |
+| `logo_gaulke_roofing` | 34 angled, 3954 st | byte-identical |
+| `logo_golden_tee` | 12 angled, 6711 st | byte-identical |
+| `logo_bridge_bar` | 0 angled, 10938 st | byte-identical |
+| `logo_drone_thermal_badge` | 17 angled, 9317 st | same image as `drone_render`: 21 angled, 9355 st |
+| `summit_badge` | 0 angled, 8431 st | byte-identical |
+| `screenshot_phone_ui_golke` | 56 angled, 5707 st | byte-identical |
 
+All at the default 80 mm. The review asked for the six extra ones and it was
+right to: the eleventh case, below, is at a size none of these ran.
+
+### Where it hurts — the benchmark fixture at 93 mm, and why the flag is off
+
+`enthusiast_logo` @ 93 mm, `left_chest` — the chaining trim benchmark's own
+pitch. At 80 mm the reading is byte-identical there; at 93 mm the eleven large
+ENTHUSIAST capitals (7.5 mm caps, plus the shield's star, the known false
+member) form a group the doubled reading rejects and the four-fold reading
+admits at **48.0°**.
+
+| | flag off | flag on |
+|---|---|---|
+| angled regions | 14 (the small line, 122.5°) | 25 (+11 at 48.0°) |
+| stitches, chaining off | 2943 | 3072 (+4.4%) |
+| trims, chaining off (shipped default) | 19 | **22** |
+| trims, chaining on (the benchmark) | 8 | **15** |
+| benchmark rate | 2.43 / 1k | **4.62 / 1k** against the 4.1 ceiling — `test_chaining` red |
+
+Rendered: E, T, H come out uniform, as on Fremont. **The N does not.** Its
+diagonal runs within a few degrees of the 48° house, so `_clamp_to_span`
+rotates the cross to the 45° span limit, the crosses stretch to 1.4× the
+stroke width, and thread piles at the lower junction; the U's corner piles
+too. That is the diagonal blind spot the review named, on the benchmark
+fixture, in a render. The trims follow: seven more cuts with chaining on
+because the re-angled columns no longer share covered routes — winning them
+back means loosening cover, which is gate 3.
+
+So the reading has a rendered gain on two slab/serif wordmarks, a rendered
+loss on one diagonal, and a measured trim regression on the fixture the
+corpus law is pinned to. That is the exterior-notch guard's shape exactly,
+and it gets the same disposition: **built, default OFF, Kent's call**, with
+the bill written down. The per-stroke path for diagonals under a house angle
+is a separate, older problem (`_clamp_to_span` at 45° is where it lives).
 The four drone regions that gained an angle are **T, H, E, R of THERMAL** —
 the letters Kent called *"not clean"* on 2026-08-26. Before, the E's stem sewed
 a scramble of diagonals and the H's right stem tilted at both ends (the
@@ -224,6 +271,11 @@ crosses unsewn ground, or deferring it to a covered route.
 
 ## Open questions for Kent
 
+0. **Flip `satin_house_fourfold` on?** Gain: Hotel Fremont and THERMAL sew
+   at one angle (renders in the artifact). Cost: ENTHUSIAST @ 93 mm piles
+   its N and the chaining benchmark goes 2.43 → 4.62/1k, so the corpus law
+   test would need Kent's ruling on how a diagonal should take a house
+   angle before it could pass. Off, nothing changes.
 1. **45 or 135?** Which slant a house-angle word should carry on upright block
    lettering. One constant.
 2. **One-angle lettering the pro's way** — horizontals as wide short columns

@@ -141,15 +141,13 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
     `coverage_max`; [notes](docs/scorecard-baseline-attribution-2026-09-02.md))*
 
 21. **Fill travel is laid OVER columns already sewn** — Kent's *"in-fill
-    doesn't look clean"*, and it is the stitches, not the render (the pro's
-    tatami is smooth in the same `stitchviz`). Hotel Fremont's white field:
-    **39 travel runs, 570 mm**, 10.5% of its fill, each after the columns it
-    crosses. Gate-clean sequencing, same class as the 2026-09-01 cards.
+    doesn't look clean"*; the stitches, not the render (the pro's tatami is
+    smooth in the same `stitchviz`). Hotel Fremont's field: **39 travel runs,
+    570 mm**, each after the columns it crosses. Gate-clean sequencing.
     *(measured 2026-09-02 — `docs/hotel-fremont-fine-details-2026-09-02.md`)*
 
 22. **Small curves sew as polygons** — `simplify_tol_mm` 0.2 makes a 2.4 mm
-    counter a **9-gon, ±0.25 mm** (Kent: *"this O is not round"*). The 0.2
-    ruling predates a curve instrument; Kent's call. *(measured 2026-09-02 — same doc)*
+    counter a **9-gon, ±0.25 mm** (Kent: *"this O is not round"*); Kent's call. *(measured 2026-09-02 — same doc)*
 
 ### Closed — kept numbered, because ten other docs cite them by number
 
@@ -338,6 +336,10 @@ its own merits.
 
 ---
 
+13. **Flip `satin_house_fourfold` on?** Cures Fremont's and THERMAL's
+    per-stroke lettering; reds the chaining benchmark (2.43 → 4.62/1k @ 93 mm)
+    and piles the N's diagonal. Needs a diagonal ruling first. *(built 2026-09-02 — PR #321)*
+
 ## Cross-cutting issues
 
 Things that don't respect one capability area's boundary. Referenced from the
@@ -514,17 +516,15 @@ be able to agree with a partly craft-driven ranking at all.
 shapes the design already sews. `tools/dropped_elements.py` measures it from the
 artwork's side — 99.1% lost on the logo Kent called "5% completed at most".
 **Both halves of the smoothness complaint now have instruments, and they are not
-the same measurement** (Spearman 0.028, n = 12 — rules out redundancy, does not prove independence). `tools/edge_smoothness.py` owns
-edge noise; `tools/curve_fidelity.py` owns the curve half, read from
-`plan.iter_runs()` because **curve fidelity is not readable from a raster**.
-Three rules: **`roughness_deg` is the per-design number**; **`turn_gini` is
-substantially a COMPLEXITY statistic** (Pearson −0.763 vs log trace count),
-valid only on the ladder or inside a paired arm; and the floor is **stitch
-length** — never compare arms across stitch lengths. On Kent's four Becker
-artworks the two SPARSE ones (10-11 traces) measure roughest — complexity, not
-size (all four ran at 80 mm; an earlier "small placements sew rougher" reading
-is withdrawn). Instrument only, no engine change. *(measured 2026-08-27/28 —
-PR #281; `docs/curve-fidelity-from-the-stitch-path-2026-08-27.md`)*
+the same measurement** (Spearman 0.028, n = 12 — rules out redundancy, not
+dependence). `tools/edge_smoothness.py` owns edge noise; `tools/curve_fidelity.py`
+owns the curve half, read from `plan.iter_runs()` because **curve fidelity is
+not readable from a raster**. Read **`roughness_deg`** per design; `turn_gini` is
+substantially a COMPLEXITY statistic (Pearson −0.763 vs log trace count), valid
+only on the ladder or a paired arm; the floor is **stitch length**. On Kent's
+four Becker artworks the two SPARSE ones measure roughest — complexity, not
+size (an earlier "small placements sew rougher" reading is withdrawn).
+*(measured 2026-08-27/28 — PR #281; `docs/curve-fidelity-from-the-stitch-path-2026-08-27.md`)*
 **Two engine defects open, unfixed:** `summit_badge`'s half-removed background,
 and `stage1_prep.py:254-266` answering a structural question (`BACKGROUND_ABSENT`)
 through a colour threshold (`bg_tolerance_lab`).
@@ -559,23 +559,20 @@ three (`detect_text_clusters`' candidate gating, the coherence floor, and the
 [area 1](docs/scope/1-auto-digitizing-quality.md).
 *(fixed 2026-08-27 — PRs #282/#283, mutation-checked; renders in the #283 body)*
 **And it was NOT FIRING on slab-serif lettering — a FOURTH miscalibrated
-threshold, fixed 2026-09-02 (PR #321).** Hotel Fremont's capitals cancel in
-doubled-angle space (nR² 4.7 vs 6.9: 112 mm vertical vs 44 mm horizontal
-skeleton), so Kent's *"E heavy on top and bottom"* / *"T left side drops"* —
-hanging-serif corner fans the house angle cures — sewed per-stroke. A four-fold
-second reading admits two orthogonal families on 4 px-resampled chains (raw
-steps carry a four-fold raster grain), with an effect floor, at the **45°
-bisector** (house = 0 scrambles every horizontal through the span clamp).
-Becker/enthusiast byte-identical; drone's THERMAL gains it (+0.4% st).
-*(measured and fixed 2026-09-02 — `docs/hotel-fremont-fine-details-2026-09-02.md`; area 1 has the table)*
+threshold; fix BUILT, DEFAULT OFF, Kent's call (PR #321).** Fremont's capitals
+cancel in doubled-angle space (nR² 4.7 vs 6.9), so Kent's *"E heavy on top and
+bottom"* / *"T left side drops"* — corner fans the house angle cures — sewed
+per-stroke. `satin_house_fourfold` admits two orthogonal families at the 45°
+bisector: Fremont and THERMAL sew at one angle, eight fixtures byte-identical,
+and `enthusiast_logo` @ 93 mm angles ENTHUSIAST at 48°, piles the N's diagonal
+and reds the chaining benchmark 2.43 → 4.62/1k. Off, byte-identical. Waiting
+on Kent, entry 13. *(measured 2026-09-02 — `docs/hotel-fremont-fine-details-2026-09-02.md`)*
 
 **Mechanism 2 — pull comp's min-feature guard scoped to `poly.interiors` —
-is PROTOTYPED AND COSTED, deliberately not shipped.** An exterior-pocket branch
-holds 15 real slots at 0.528–0.920 mm on `logo_drone_thermal_badge.png`, and
-reds the chaining trim benchmark (`enthusiast_logo` 3.8 → 6.4 trims/1k vs 4.1;
-+2 trims at the shipped `chain_links=False`). **Kent's call 2026-08-28: hold
-it** — a MEASURED trim regression against an UNMEASURED fidelity gain.
-`docs/exterior-notch-guard-2026-08-28.md`. *(prototyped 2026-08-28, not merged)*
+PROTOTYPED AND COSTED, not shipped.** An exterior-pocket branch holds 15 real
+slots at 0.528–0.920 mm and reds the chaining benchmark (3.8 → 6.4 trims/1k vs
+4.1; +2 trims at the shipped `chain_links=False`). **Kent's call 2026-08-28:
+hold it.** `docs/exterior-notch-guard-2026-08-28.md`. *(prototyped 2026-08-28)*
 
 **Mechanism 4 — the instrument that hid all of it — is HALF CLOSED
 2026-08-28.** Coverage and IoU average, and deformation is local, so
@@ -584,18 +581,14 @@ worst vs 72.7% mean). **Still blind to TILT**; the obvious tilt metric was
 built and REJECTED (ranks a good O worse than the deformed H). Detail in
 `tools/letterform_fidelity/README.md`. *(2026-08-28)*
 
-**Still open and unfixed:** `_prune_spurs` drops a 3-way node to 2-way
-so the walker welds the N's diagonal to its stem through a 108° fold — **the
-same function PR #186 fixed, a different consequence one layer on**. The memory
-note is explicit that it is **prototyped twice and not shippable as written**
-(it propagates the H defect to every square-capped satin bar, and two prototypes
-of nominally the same rule measured −18.3% and +20.5% off identical baselines);
-it needs a cap-arm classifier written once, carefully. *(measured 2026-08-26 — [area
-1](docs/scope/1-auto-digitizing-quality.md); `.claude/memory/letterform-fidelity-2026-08-26.md`)*
+**Still open and unfixed:** `_prune_spurs` drops a 3-way node to 2-way so
+the walker welds the N's diagonal to its stem through a 108° fold — the same
+function PR #186 fixed, one consequence on. Prototyped twice, NOT shippable
+as written (propagates the H defect to every square-capped bar; two
+prototypes measured −18.3% and +20.5% off one baseline); needs a cap-arm
+classifier. *(measured 2026-08-26 — `.claude/memory/letterform-fidelity-2026-08-26.md`)*
 
-**Confidence limit on the fix:** two real lettering groups, both from ONE logo.
-The honest validation is a run over real client artwork and `scratch_corpus/`,
-neither of which reaches a cloud container.
+**Confidence limit on the fix:** two real lettering groups from ONE logo; real-artwork validation needs Kent's box.
 
 **Next:** NEEDS KENT. Fragmentation work measures **0% on real client logos**
 (they are satin-dominated, 1–3 fill shapes, no cutting fills). The one large

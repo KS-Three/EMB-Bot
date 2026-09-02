@@ -1294,16 +1294,19 @@ def _fourfold_votes(chains: list[tuple[list[tuple[float, float]], float]],
     return resultant, n_eff, axis
 
 
-def _cluster_house_angle_deg(members: list[Region]) -> float | None:
+def _cluster_house_angle_deg(members: list[Region], *,
+                             fourfold: bool = False) -> float | None:
     """The dominant CROSS angle over a text cluster's strokes, in degrees on
     [0, 180), or None when the strokes carry no dominant direction.
 
     Two readings, tried in order. One dominant stroke direction (a row of
     stems, an arched word) gives the cross perpendicular to it. Failing
-    that, two ORTHOGONAL families -- block lettering whose bars balance its
-    stems, which cancel to nothing in the first reading -- give the cross
-    that bisects them; see `SATIN_HOUSE_BISECTOR_DEG` for why the bisector
-    and not the stems' perpendicular.
+    that, and only with `fourfold=True` (`config.satin_house_fourfold`,
+    default OFF -- see that field for the bill), two ORTHOGONAL families --
+    block lettering whose bars balance its stems, which cancel to nothing in
+    the first reading -- give the cross that bisects them; see
+    `SATIN_HOUSE_BISECTOR_DEG` for why the bisector and not the stems'
+    perpendicular.
 
     Votes are the segments of every member's pruned, end-trimmed skeleton
     chains, weighted by length in mm. `_skeleton_chains_mm` prunes with the same
@@ -1345,7 +1348,9 @@ def _cluster_house_angle_deg(members: list[Region]) -> float | None:
         return (tangent + 90.0) % 180.0
     # No single direction. Two orthogonal ones? Same test in four-fold space,
     # on grain-free votes, and with an effect-size floor -- see
-    # SATIN_HOUSE_CHORD_PX and SATIN_HOUSE_FOURFOLD_MIN_R for both.
+    # SATIN_HOUSE_CHORD_PX and SATIN_HOUSE_FOURFOLD_MIN_R for both. Opt-in.
+    if not fourfold:
+        return None
     votes = _fourfold_votes(chains)
     if votes is None:
         return None
@@ -1357,7 +1362,8 @@ def _cluster_house_angle_deg(members: list[Region]) -> float | None:
     return _bisector_deg(axis)
 
 
-def set_lettering_house_angle(regions: list[Region], p: Prep) -> None:
+def set_lettering_house_angle(regions: list[Region], p: Prep, *,
+                              fourfold: bool = False) -> None:
     """Post-regularization pass: give every member of one line of lettering
     ONE house cross angle, so its letters agree instead of each following its
     own spine tangent (`satin_angle_deg` in `Region.meta`).
@@ -1366,6 +1372,10 @@ def set_lettering_house_angle(regions: list[Region], p: Prep) -> None:
     `text_cluster_id`. That was the original wiring and it made this pass
     inert on real artwork -- see `_lettering_groups` for the two gates that
     empty its candidate set on an ordinary logo.
+
+    `fourfold` enables the second reading (`config.satin_house_fourfold`,
+    default OFF); absent it, this pass is byte-identical to what shipped
+    before that reading existed.
 
     `p` is accepted, not read, matching `detect_text_clusters` and
     `regularize_text_clusters` for the same reason: a future revision that
@@ -1397,7 +1407,7 @@ def set_lettering_house_angle(regions: list[Region], p: Prep) -> None:
     operator-set value rather than a derived one.
     """
     for members in _lettering_groups(regions):
-        angle = _cluster_house_angle_deg(members)
+        angle = _cluster_house_angle_deg(members, fourfold=fourfold)
         if angle is None:
             continue
         for r in members:

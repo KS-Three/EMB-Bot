@@ -961,7 +961,7 @@ def test_the_four_fold_grain_stays_well_under_the_floor():
     # And the reason the floor exists at all: over this many votes the
     # residual IS significant, so significance alone would admit it.
     assert n_eff * resultant * resultant > -math.log(SATIN_ANGLE_RAYLEIGH_ALPHA)
-    assert _cluster_house_angle_deg(annuli) is None
+    assert _cluster_house_angle_deg(annuli, fourfold=True) is None
 
 
 def test_raw_pixel_steps_carry_a_four_fold_grain_the_chord_removes():
@@ -982,7 +982,7 @@ def test_raw_pixel_steps_carry_a_four_fold_grain_the_chord_removes():
     assert votes is not None
     resultant, _n_eff, _axis = votes
     assert resultant < SATIN_HOUSE_FOURFOLD_MIN_R, resultant
-    assert _cluster_house_angle_deg(bars) is None
+    assert _cluster_house_angle_deg(bars, fourfold=True) is None
 
 
 def test_two_orthogonal_families_get_the_bisector():
@@ -1014,7 +1014,7 @@ def test_two_orthogonal_families_get_the_bisector():
         poly = stem.union(top).union(bottom)
         glyphs.append(Region(shape_id=f"I{i}", polygon=poly, thread_index=0,
                              thread_number="1", area_mm2=poly.area))
-    house = _cluster_house_angle_deg(glyphs)
+    house = _cluster_house_angle_deg(glyphs, fourfold=True)
 
     assert house is not None, "two orthogonal families were not seen"
     off = abs(_circ_delta_deg(SATIN_HOUSE_BISECTOR_DEG, house))
@@ -1023,7 +1023,7 @@ def test_two_orthogonal_families_get_the_bisector():
     # And it TRACKS the artwork: rotate the row 20 deg and the bisector
     # rotates with it, because both families rotated together.
     turned = _rotated(glyphs, 20.0, origin=(0.0, 0.0))
-    house_t = _cluster_house_angle_deg(turned)
+    house_t = _cluster_house_angle_deg(turned, fourfold=True)
     assert house_t is not None
     assert abs(_circ_delta_deg(house + 20.0, house_t)) < 3.0, (house, house_t)
 
@@ -1043,13 +1043,34 @@ def test_the_bisector_does_not_flip_when_the_axis_wraps_at_90():
     assert abs(_circ_delta_deg(25.0, _bisector_deg(70.0))) < 1e-9
 
 
+def test_the_four_fold_reading_is_opt_in():
+    """`config.satin_house_fourfold` defaults OFF (Kent's call, 2026-09-02):
+    it reds the chaining benchmark and piles the N on enthusiast_logo @ 93
+    mm. Off, a two-family word that the doubled reading rejects gets NO
+    angle -- byte-identical to before the reading existed -- and the
+    pipeline threads the flag through `set_lettering_house_angle`."""
+    glyphs = []
+    for i in range(6):
+        cx = i * 8.0
+        poly = _rect(cx, 0.0, 0.8, 6.0).union(_rect(cx, -2.6, 4.0, 0.8)) \
+            .union(_rect(cx, 2.6, 4.0, 0.8))
+        glyphs.append(Region(shape_id=f"I{i}", polygon=poly, thread_index=0,
+                             thread_number="1", area_mm2=poly.area))
+    assert _cluster_house_angle_deg(glyphs) is None
+    assert _cluster_house_angle_deg(glyphs, fourfold=True) is not None
+    set_lettering_house_angle(glyphs, _P)
+    assert not any("satin_angle_deg" in r.meta for r in glyphs)
+    set_lettering_house_angle(glyphs, _P, fourfold=True)
+    assert all("satin_angle_deg" in r.meta for r in glyphs)
+
+
 def test_one_dominant_direction_still_wins_over_the_bisector():
     """The doubled reading is tried FIRST, so a stems-dominated word keeps
     the perpendicular-to-stems answer it always had: the four-fold reading
     never gets a say when the first one is significant. Vertical stems ->
     a horizontal (0 deg) cross, not a 45 deg one."""
     regions = _row("S", 6)
-    house = _cluster_house_angle_deg(regions)
+    house = _cluster_house_angle_deg(regions, fourfold=True)
     assert house is not None
     assert abs(_circ_delta_deg(0.0, house)) < 3.0, house
 

@@ -471,6 +471,25 @@ class PipelineConfig:
     # spacing, satin width floor, link cover tolerance, fabric preset or DST
     # orientation. It is a design choice, exactly as fill_angle_deg is.
     satin_angle_deg: float | None = None
+    # The house angle's SECOND reading: when a line of lettering has no single
+    # dominant direction in doubled-angle space -- slab-serif and block faces
+    # whose horizontals balance their stems cancel there (Hotel Fremont:
+    # nR^2 4.7 against the 6.9 bar, so nothing fired) -- look for TWO
+    # orthogonal families in four-fold space and set the 45 deg bisector.
+    # See `textcluster.SATIN_HOUSE_BISECTOR_DEG` for the measurements.
+    #
+    # Default OFF, Kent's call to flip (2026-09-02). ON it cures Hotel
+    # Fremont's serif corner fans and drone_render's THERMAL, byte-identical
+    # everywhere the first reading already fired -- and on `enthusiast_logo`
+    # @ 93 mm it angles the eleven ENTHUSIAST capitals at 48 deg, which
+    # clamps the N's diagonal to the span limit and piles thread at its
+    # junction, and costs trims: 19 -> 22 chaining off, 8 -> 15 chaining on,
+    # which is the chaining benchmark going 2.43 -> 4.62 per 1k against its
+    # 4.1 ceiling. A measured trim regression against a rendered fidelity
+    # gain on two wordmarks and a rendered LOSS on one diagonal -- the same
+    # shape as the parked exterior-notch guard, so the same disposition.
+    # Off, every plan is byte-identical to before the reading existed.
+    satin_house_fourfold: bool = False
     # None = the fabric preset's fill underlay style. One of "none" |
     # "edge_run" | "center_run" | "edge_zigzag" | "edge_lattice" |
     # "double_lattice" | "zigzag" (fabrics.py's own vocabulary). Feeds the

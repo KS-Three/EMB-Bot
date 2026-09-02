@@ -3416,3 +3416,17 @@ five notes and asked for professional-grade fine detail. Full record:
 - **Fixtures:** buffered square/hex rings are degenerate under
   `_skeleton_chains_mm` (2.5–3.5 mm remnants per ring); the test file no
   longer builds a direction claim on them.
+
+## 2026-09-02 (addendum) — the four-fold reading ships OFF: the benchmark fixture said so
+
+Correction to the entry above, from the adversarial review and the full
+suite: the reading is **built, default OFF** (`satin_house_fourfold`), not
+shipped on. The review asked for the six committed lettering fixtures the
+first pass had not run (all byte-identical at 80 mm, `logo_drone_thermal_
+badge` being the same image as `drone_render`), and the suite turned up a
+fourth failure beyond the three platform goldens: `test_chaining`'s trim
+benchmark, `enthusiast_logo` @ 93 mm, **2.43 → 4.62/1k** against 4.1. At that
+size the eleven ENTHUSIAST capitals clear the four-fold gate at 48°, the N's
+diagonal is clamped to the span limit and piles thread (rendered), and
+chaining loses seven covered routes. Same shape as the exterior-notch guard,
+same disposition. Off, all ten fixtures are md5-identical to main.

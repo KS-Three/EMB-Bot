@@ -3431,7 +3431,16 @@ the axis is only defined mod 90, `_bisector_deg` picks the bisector nearer
 the convention — raw "axis + 45" gave drone 45.1 and Fremont 134.4.
 
 Fires on `drone_render`'s THERMAL (T, H, E, R gain 45.1°, +0.4% stitches,
-trims flat) — the letters of the 2026-08-26 complaint. **Still open:** the
+trims flat) — the letters of the 2026-08-26 complaint.
+
+**Default OFF — `PipelineConfig.satin_house_fourfold`.** On `enthusiast_logo`
+@ 93 mm (the chaining benchmark's pitch) the reading angles the eleven
+ENTHUSIAST capitals at 48°: E, T, H uniform, but the N's diagonal runs near
+the house and `_clamp_to_span` piles it at the junction, and trims go 19 → 22
+chaining off, 8 → 15 chaining on — **2.43 → 4.62/1k against the 4.1 ceiling**.
+Measured trim regression, rendered gain on two wordmarks, rendered loss on
+one diagonal: the exterior-notch guard's shape, so the same disposition.
+Off, ten fixtures md5-identical to main. *(measured 2026-09-02)* **Still open:** the
 pro sews horizontals as wide short columns at ONE near-horizontal angle; our
 rail model cannot (a cross along a bar collapses to the centreline). That is
 a new construction, Kent's call.
