@@ -154,6 +154,26 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Measured negatives — built or proposed, then rejected. Do not rebuild.
 
+- **The stitch simulator already exists — do not build a second one.**
+  `app/src/lib/simulate.js` plus EmbroideryField's `simbar`. This was nearly
+  rebuilt from scratch on the assumption it was a gap. *(confirmed 2026-08-25 —
+  driven in a browser; moved here from MASTER_SCOPE 2026-09-02)*
+
+- **Merging near-identical cones by folding LAYER PALETTE SLOTS — built,
+  measured inert, reverted. Do not rebuild it that way.** A layer's palette is
+  not its region cone list (`drone_render`: 16 palette slots against 19 region
+  cones) and blocks key on the region's own `thread_index`, so folding slots
+  matched nothing the sequencer reads — the pass ran on every fixture, found no
+  pairs, and reported success. It would also have clobbered
+  `rehome_resnapped_regions`: a folded slot discards the re-snap that put a
+  region in its cone's layer. **Fold on REGION cones if this is ever rebuilt.**
+  Same shape as the four thresholds-on-the-wrong-population findings — the tell
+  was again a pass that should find something finding nothing. What survived
+  and shipped: `digitizer/tools/cone_merge_survey.py` (near-cone pairs, split
+  within-layer vs across-layer) and `threads.delta_e`, the pairwise question
+  that had existed only inline in five places. *(2026-09-02 — PR #318; the
+  colour question itself is TABLED by Kent — MASTER_SCOPE queue 12)*
+
 - **The borders-last trim on `enthusiast_logo` is NOT cheaply winnable — three
   approaches measured, all rejected. Do not re-run them.** The `borders_last`
   default flip (PR #302) costs exactly one trim on the benchmark: chained
@@ -266,6 +286,16 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 Kept rather than deleted: the shared failure mode — **a hedged observation loses
 its hedge as it is copied forward** — is why this file is split.
+
+- **Widening preview thread would NOT "hide the open fill-density item".** The
+  area-3 paragraph on `THREAD_WIDTH_MM` first read that it would hide
+  "FILL_ROW_MM running ~2x light" — overstating a hedge into a defect. The
+  ~0.20 mm figure is a satin-rail **artifact** for one file population
+  (refuted) and a genuine denser pitch on 43 commissioned cap logos (still
+  alive): unresolved, not open-and-known. Imported from the 2026-08-09 Ember
+  teardown without re-checking it was still live. The paragraph's actual rule
+  stands — physical thread width is gate 1, do not widen it to flatter a fill.
+  *(corrected 2026-08-25; moved here from MASTER_SCOPE 2026-09-02)*
 
 - **Four committed "real customer artwork" fixtures are the vendor's PREVIEW
   RENDERS** — `testdata/reference/becker_*.jpg` are two-panel stitch simulations
@@ -495,3 +525,48 @@ its hedge as it is copied forward** — is why this file is split.
   work.** What has already been built, measured and rejected here is the most
   expensive knowledge in this repo; phase numbers in any other doc are
   historical. *(moved from ROADMAP 2026-08-19 — decision by Kent)*
+
+- **`git log -- <path>` on a SHALLOW clone names the graft root as every file's
+  last author — wearing a real merge's subject line.** Every cloud session
+  starts from a shallow clone. The boundary commit keeps its own message, so
+  `git log -1 -- <path>` returns a plausible hash, a plausible date and a
+  plausible subject for a file it never touched; only `%p` gives it away (a
+  graft root prints no parents). This dated the scorecard baseline to
+  2026-08-24 and produced a published claim that the baseline was incoherent
+  and had to be recaptured. `git fetch --unshallow` (219 → 1390 commits) put
+  the real capture at `4f7d80f3`, 2026-08-12 — **206 merges earlier** — and all
+  38 rows then reproduced exactly. **Run `git rev-parse
+  --is-shallow-repository` before attributing anything to a commit**, and
+  `git fetch --all` before concluding prior work does not exist (CLAUDE.md 8).
+  *(2026-09-02 — `docs/scorecard-baseline-attribution-2026-09-02.md`)*
+
+- **A `vi.mock` that omits an export the component newly calls does not fail
+  the spec — it silently disables the feature under test.**
+  `DownloadStep.spec.js` mocked `../lib/hoop.js` without `hoopFitNote`; the
+  component calls it inside a try/catch, so the throw was swallowed and every
+  export-gate spec passed against a gate that never ran. The suite was green
+  *because* the feature was dead. **When you add a call to an already-mocked
+  module, add it to the mock and watch one spec go red first** — the same
+  discipline the `satin_shape(angle_deg=)` inert-wiring finding already
+  demanded. *(2026-09-02 — PR #317)*
+
+- **A test whose NAME claims both directions will often assert only one.**
+  `test_explicit_flag_still_wins_everywhere` checked only that the config flag
+  could turn tonal splitting ON. `effective_split_tonal` ORed the flag with the
+  class, so the OFF direction had never worked at all and no test noticed —
+  the override was advertised as an override and was really a one-way switch.
+  Read the assertions, not the name, especially on a test guarding an override
+  or a default. *(2026-09-02 — PR #316)*
+
+- **A `var(--x, fallback)` whose name is undefined is not a fallback — it is a
+  silent bespoke value.** Three such names shipped in `app/src/theme.css`; two
+  more tokens failed WCAG AA on the app's own non-white grounds while passing
+  on white. The named cases are fixed, but the CHECK is standing: **re-run it
+  whenever a new component lands.** It is two halves and only one is cheap.
+  The grep half — every `var(--name` used under `app/src` against every
+  `--name:` defined — **re-run 2026-09-02 and CLEAN: 52 used, 54 defined, zero
+  undefined**, covering the three components that landed that day (export
+  confirm dialog, adjustment chips, run-delta line). The contrast half needs
+  COMPUTED styles in a real browser on the app's non-white grounds, and was
+  **not** re-run against those three. *(2026-08-25 — theme.css; moved here and
+  half re-run 2026-09-02)*
