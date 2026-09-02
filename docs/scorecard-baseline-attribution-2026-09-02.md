@@ -1,13 +1,26 @@
-# The corpus scorecard baseline cannot be re-captured yet — 2026-09-02
+# Attributing the corpus scorecard baseline — 2026-09-02
 
-**Verdict: do NOT re-capture `testdata/corpus_scorecard_baseline.json` today.**
-Not because the drift is small — it is enormous — but because
-`tools/corpus_scorecard.py`'s own rule is that "an unattributed mover blocks
-the recapture", and most movers are still unattributed. Re-capturing now would
-silently bless a fixture whose stitch count more than doubled.
+**Verdict, revised as the evidence came in: not yet, but the blockers are now
+small and named.** The first draft of this file said "do NOT re-capture, most
+movers are unattributed" and singled out two that "could be hiding a real
+defect". Both have since been run down, and neither is a reason to hold:
 
-This file records what was measured so the next attempt starts from evidence
-rather than from scratch.
+- `link_segments` 0 → 4 was a **defect in the instrument** — a jump read as
+  thread. Fixed (attribution 3).
+- `summit_badge` 3839 → 8431 was a **defect being fixed** — the baseline caught
+  the design sewn without its badge body (attribution 4).
+
+And the baseline itself was proved sound: re-scored against the engine at its
+own commit it reproduces **38 of 38 rows exactly**, so every mover is real
+engine change and none of it is corruption or platform noise.
+
+What still stands between here and a recapture is ordinary and listed at the
+bottom: a spot-check of the `THREAD_MATCH_POOR` population, a handful of
+non-score-moving `color_changes`/`satin_steps` deltas, and one duplicate
+fixture name to drop. None of it is a mystery any more.
+
+**Read the corrections in "The state of the ruler" first** — this file's own
+opening numbers were wrong for a reason worth knowing about.
 
 ## The state of the ruler
 
@@ -105,10 +118,9 @@ Two things in that table deserve their own look:
 - **`link_segments` 0 → 4 — ATTRIBUTED, and it was a defect in the instrument.
   Fixed here.** See "Attribution 3" below; this bullet is kept only so the
   trail from "a number moved" to "an instrument was lying" stays readable.
-- **`summit_badge` stitch_count 3839 → 8431**, coverage area 1808 → 4789 mm²,
-  satin_steps 995 → 1557. The design more than doubled. MASTER_SCOPE already
-  flags this fixture as saturated at F/0 so its *score* says nothing — which is
-  exactly why a doubling in its geometry could sit here unnoticed.
+- **`summit_badge` stitch_count 3839 → 8431 — ATTRIBUTED, and it is a FIX.**
+  See "Attribution 4" below. The design did not grow; the baseline caught it
+  sewn with a piece missing.
 
 Other unexplained geometry movement, listed so the next pass has targets:
 
@@ -191,6 +203,72 @@ leans on when it waves in-shape chained links through. Getting that wrong
 hides needle-down thread, which is the exact failure gate 3 exists for. It is
 worth a session; it is not worth a guess.
 
+## The baseline REPRODUCES — 38 of 38, so every mover is real
+
+Re-scored against the engine at its own commit (`4f7d80f3`, the tree extracted
+with `git archive` and run with this container's venv), the shipped baseline
+comes back **exactly**:
+
+```
+of 38 baseline rows re-scored on the 4f7d80f3 engine
+agree     : 38
+DISAGREE  : 0
+errored   : 0
+```
+
+Three things fall out of that, and each was an open question:
+
+1. **The baseline is a valid ruler**, not a corrupted or hand-edited artefact.
+   Every one of the 30 movers is genuine engine change over 206 merges — which
+   is what makes attributing them worth the work rather than a wild goose
+   chase.
+2. **No metric here is platform-sensitive.** The photo lane reproduced bit-for-bit
+   on a Linux container against a three-week-old commit. That is NOT true of
+   the three goldens CI deselects (`test_pushcomp`,
+   `test_flat_lane_byte_identical`, `test_stage2_photo_segment`), so it could
+   not be assumed. A recapture run in a cloud session is comparable to one on
+   Kent's box for these numbers.
+3. **The method is cheap and repeatable.** `git archive <commit> digitizer |
+   tar -x` into a throwaway directory, then run it with the existing venv. No
+   worktree, no checkout, the working tree never touched. That is what makes
+   the bisect below a five-minute job instead of an afternoon.
+
+## Attribution 4 — `summit_badge` did not grow; it was BROKEN when captured
+
+Bisected over the 95 commits touching `digitizer_core/` in the real window,
+binary search on the stitch count (~10 probes at ~30s):
+
+```
+[ 0] 21a415c0  2026-08-12  ->  3843     <- the baseline's own reading
+[ 2] e460ceba  2026-08-12  ->  3843
+[ 3] d2184fa2  2026-08-13  ->  8263     <- the jump, one commit later
+[47] 21bb0d65  2026-08-23  ->  8412
+[94] 78d9f5d8  2026-09-01  ->  8433
+```
+
+`d2184fa2` is *"fix(digitizer): stage 4 was discarding whole regions and
+calling them 'details'"*, and it names this fixture in its own commit message:
+
+> On `summit_badge.png` it is one 2,787 mm² drop: **the whole badge body**.
+
+`approxPolyDP` can make a traced boundary self-intersect; `make_valid` repairs
+it, but returns a bare `MultiPolygon` for a simple figure-eight and a
+`GeometryCollection` when the shape also sheds a dangling edge — polygons one
+level deeper. Stage 4 scanned only the top level, read "no polygons at all",
+and dropped the region entire.
+
+So the baseline's row is a snapshot of `summit_badge` **sewn without its badge
+body**, captured the day before the fix landed. 3839 → 8263 is that body coming
+back; the remaining +2% over 90 further commits is ordinary drift. The
+coverage-area move (1808 → 4789 mm², +2,981) is the 2,787 mm² body plus its
+knock-on.
+
+**This retires the entry's last real worry.** MASTER_SCOPE flags this fixture
+as saturated at F/0, so its *score* says nothing and a geometry doubling could
+sit unnoticed — which is why it was singled out for a look. Looked at, it is
+the corpus doing its job: recording a defect being fixed. Nothing here blocks
+a recapture.
+
 ## And the corpus scores one design TWICE
 
 Found while sweeping the same fixture list for cone colours, and it is one
@@ -226,9 +304,12 @@ bisecting 206 merges with a four-minute full capture each time.
    two or three of the fixtures that *improved* (`fur_ramp` 40 → 88,
    `photo_owl_pale` 22 → 46) the same way — declare them and see the baseline
    score return.
-2. Attribute the geometry population. `link_segments` is DONE (attribution 3,
-   and it was a real defect); `summit_badge`'s doubled stitch count is the
-   remaining one that could be hiding another.
+2. Attribute the geometry population. Both singled-out movers are DONE:
+   `link_segments` was a real defect in the instrument (attribution 3), and
+   `summit_badge` was a real defect being FIXED (attribution 4). What is left
+   is the small stuff in the table above — `color_changes` on the gradient
+   ramps and `drone_render`, `satin_steps` on `enthusiast_logo` — none of it
+   score-moving, all of it bisectable the same cheap way.
 3. Drop the duplicate fixture name, so the recapture does not re-enrol one
    design at double weight for another three weeks.
 4. Then re-capture, listing every mover and its cause in the commit message,
@@ -238,5 +319,8 @@ Until then the scorecard still works as a **diff** — it is how all of the abov
 was found. What it cannot currently do is tell a regression from three weeks of
 intended change, which is the job it exists for.
 
-*(measured 2026-09-02 on `main` at `0bd9f0f`, one machine so platform numerics
-cancel; `tools/corpus_scorecard.py diff`, `digitizer_core.preflight`)*
+*(measured 2026-09-02 across `main` at `0bd9f0f` through `78d9f5d8`, one Linux
+container; `tools/corpus_scorecard.py diff`, `digitizer_core.preflight`,
+`tools/sequence_census.py`, and `git archive`-extracted trees at `4f7d80f3` and
+95 commits after it. Platform numerics do not cancel here — they were shown not
+to apply: all 38 rows reproduce on this machine.)*
