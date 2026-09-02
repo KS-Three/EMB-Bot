@@ -43,6 +43,22 @@ const ART_PNG = path.join(__dirname, "fixtures", "two-squares.png");
 // "Ready to stitch" review step. Callers vary garmentLabel/text; assertions
 // on what the review step reflects are left to each caller since that's the
 // point being tested.
+// Every stitch-format export in this file runs on a TOTE, and a tote design
+// exceeds its hoop by construction: the placement box is 8 in = 203.2 mm, the
+// largest hoop the app offers is "8x8 in" = 200 mm, and the design is auto-fit
+// to the BOX. So the field caption has always read "Exceeds your 8x8 in hoop"
+// here, and since 2026-09-02 exporting one costs a deliberate confirm.
+//
+// Asserted rather than tolerated: the dialog is deterministic for this garment,
+// so a conditional dismiss would hide it the day it stops appearing. PNG and
+// the PDF worksheet are not gated and must NOT call this.
+async function confirmOversizeExport(page, fmt) {
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText("Exceeds your 8×8 in hoop");
+  await page.getByRole("button", { name: `Download ${fmt} anyway`, exact: true }).click();
+}
+
 async function reachReviewWithText(page, garmentLabel, text) {
   await page.goto("/");
 
@@ -113,6 +129,7 @@ test("guided wizard: garment -> content -> review -> download", async ({ page })
 
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "DST", exact: true }).click();
+  await confirmOversizeExport(page, "DST");
   const download = await downloadPromise;
 
   expect(download.suggestedFilename()).toBe("design.dst");
@@ -205,6 +222,10 @@ test("guided wizard: image content path -> review reflects it -> download", asyn
 
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "DST", exact: true }).click();
+  // NO confirm here, deliberately: the imported PNG does not fill the
+  // placement box the way auto-fit lettering does, so this design fits the
+  // 8x8 hoop and downloads in one click. The contrast with the text path
+  // above is the gate working -- it fires on the design, not on the garment.
   const download = await downloadPromise;
 
   expect(download.suggestedFilename()).toBe("design.dst");
@@ -228,6 +249,7 @@ test("guided wizard: PES, EXP, and PDF worksheet exports produce real files", as
   // ---- PES: has a real, checkable magic header ("#PES0001") -------------
   const pesDownloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "PES", exact: true }).click();
+  await confirmOversizeExport(page, "PES");
   const pesDownload = await pesDownloadPromise;
   expect(pesDownload.suggestedFilename()).toBe("design.pes");
   const pesPath = await pesDownload.path();
@@ -243,6 +265,7 @@ test("guided wizard: PES, EXP, and PDF worksheet exports produce real files", as
   // handful of bytes; an empty/failed export would be near-zero).
   const expDownloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "EXP", exact: true }).click();
+  await confirmOversizeExport(page, "EXP");
   const expDownload = await expDownloadPromise;
   expect(expDownload.suggestedFilename()).toBe("design.exp");
   const expPath = await expDownload.path();

@@ -123,10 +123,13 @@ test("the review step shows the grade, the findings, and the thread bill", async
   const first = (await rows.first().innerText()).trim();
   expect(first.length).toBeGreaterThan(30);
 
-  // The `stats` half. Thread length lives only on the job envelope, so a
-  // metre figure here proves the new plumbing, not just preflight's metrics.
+  // The `stats` half. Thread length AND the trim count live only on the job
+  // envelope, never in preflight's metrics, so both figures here prove the
+  // plumbing rather than re-reading something preflight already had. Trims
+  // sit before metres on purpose: trims and thread changes are what the
+  // operator has to DO, metres is what they have to buy.
   await expect(quality.locator(".qr-bill"))
-    .toHaveText(/[\d,]+ stitches · \d+ thread changes? · [\d.]+ m of thread/);
+    .toHaveText(/[\d,]+ stitches · \d+ thread changes? · \d+ trims? · [\d.]+ m of thread/);
 });
 
 test("a lettering-only project shows no quality section", async ({ page }) => {

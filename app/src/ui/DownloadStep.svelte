@@ -6,7 +6,7 @@
   import { EMB } from "../lib/emb.js";
   import { PALETTE_INDEX, STUDIO_PALETTE, getCachedPalette, loadPalette, nearestInList, loadPreferredPaletteId, savePreferredPaletteId } from "../lib/threads.js";
   import { ensureFonts } from "../lib/fontLoader.js";
-  import { effectiveHoop } from "../lib/hoop.js";
+  import { effectiveHoop, hoopFitNote } from "../lib/hoop.js";
   export let project;
   // Task 4 (Slice 5): export now covers every ready element in the project
   // (generateAll's combined design), not just a single text/image design —
@@ -165,6 +165,79 @@
     return { block: i + 1, rgb: nearest.rgb, name: threadLabel(nearest) };
   });
 
+  // ---- The hoop-exceeds gate ------------------------------------------
+  //
+  // A design bigger than the chosen hoop was, until now, one clause of grey
+  // caption text under the canvas while Download stayed enabled the whole
+  // time. That is a file the machine physically cannot stitch, handed over
+  // without a question — so exporting one now costs a deliberate yes.
+  //
+  // Computed here rather than plumbed down from the canvas: `hoopNote` is a
+  // local `let` inside EmbroideryField and is never dispatched anywhere, and
+  // this component already has both halves (it imports `effectiveHoop` for the
+  // worksheet, and `generateAll` for the design). Never-throws for the same
+  // reason `combinedColors` does not: it runs on every project change,
+  // including while nothing is ready to stitch.
+  function exceedsNote(project, runtime) {
+    try {
+      const { combined } = generateAll(project, runtime);
+      if (!combined) return "";
+      const { hoop } = effectiveHoop(project);
+      return hoopFitNote(combined.widthMM, combined.heightMM, hoop) || "";
+    } catch (e) {
+      return "";
+    }
+  }
+  $: hoopExceeds = exceedsNote(project, runtime);
+
+  // The format the confirm is holding, or null when it is closed. Holding the
+  // FORMAT rather than a boolean is what lets one dialog serve every button
+  // without a second piece of state to keep in step.
+  let pendingFmt = null;
+  let confirmEl;
+  let confirmOpener = null;
+
+  function askThenDl(fmt) {
+    // `hoopFitNote` is silent when the design fits, when no hoop is known, and
+    // when it only needs rotating — so the dialog appears on exactly the case
+    // it is for, and every other download is one click as before.
+    if (!hoopExceeds) return dl(fmt);
+    confirmOpener = typeof document !== "undefined" ? document.activeElement : null;
+    pendingFmt = fmt;
+    return undefined;
+  }
+
+  function closeConfirm() {
+    pendingFmt = null;
+    // Focus restore is the opener's job — the convention FontCredits records.
+    if (confirmOpener && confirmOpener.focus) confirmOpener.focus();
+    confirmOpener = null;
+  }
+
+  function confirmDl() {
+    const fmt = pendingFmt;
+    closeConfirm();
+    if (fmt) dl(fmt);
+  }
+
+  function onConfirmKeydown(e) {
+    if (e.key === "Escape") { closeConfirm(); return; }
+    if (e.key !== "Tab" || !confirmEl) return;
+    const els = Array.from(confirmEl.querySelectorAll("button:not([disabled])"))
+      .filter((el) => el.offsetParent !== null);
+    if (!els.length) return;
+    const first = els[0], last = els[els.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first || !confirmEl.contains(document.activeElement)) {
+        e.preventDefault(); last.focus();
+      }
+    } else if (document.activeElement === last || !confirmEl.contains(document.activeElement)) {
+      e.preventDefault(); first.focus();
+    }
+  }
+
+  $: if (confirmEl) confirmEl.focus();
+
   async function dl(fmt) {
     try {
       await ensureFonts(fontKeysOf(project));
@@ -273,25 +346,57 @@
      gated on a sew-out, which is Kent's call, not this dialog's. -->
 <div class="formats">
   {#if dstUsesBrowserEncoder}
-    <button class="primary" on:click={() => dl("pes")}>PES</button>
-    <button on:click={() => dl("exp")}>EXP</button>
+    <button class="primary" on:click={() => askThenDl("pes")}>PES</button>
+    <button on:click={() => askThenDl("exp")}>EXP</button>
     <!-- The caveat rides aria-describedby, NOT the button's name: the name
          stays exactly "DST" so the control is still called what it is, and
          "click DST" still works for voice control. The asterisk is the
          sighted equivalent and is aria-hidden, since "star" announces
          nothing useful. -->
-    <button class="caveat" aria-describedby="dst-encoder-note" on:click={() => dl("dst")}>
+    <button class="caveat" aria-describedby="dst-encoder-note" on:click={() => askThenDl("dst")}>
       DST<span class="caveat-mark" aria-hidden="true">*</span>
     </button>
   {:else}
-    <button class="primary" on:click={() => dl("dst")}>DST</button>
-    <button on:click={() => dl("pes")}>PES</button>
-    <button on:click={() => dl("exp")}>EXP</button>
+    <button class="primary" on:click={() => askThenDl("dst")}>DST</button>
+    <button on:click={() => askThenDl("pes")}>PES</button>
+    <button on:click={() => askThenDl("exp")}>EXP</button>
   {/if}
-  <button on:click={() => dl("svg")}>SVG</button>
+  <button on:click={() => askThenDl("svg")}>SVG</button>
   <button on:click={dlPNG}>PNG</button>
   <button on:click={dlWorksheet} disabled={worksheetBusy}>PDF worksheet</button>
 </div>
+
+<!-- PNG and the PDF worksheet are deliberately NOT gated: neither is a file a
+     machine stitches, so neither can be the file that will not fit. -->
+{#if pendingFmt}
+  <div
+    class="hg-backdrop"
+    role="presentation"
+    on:click={(e) => { if (e.target === e.currentTarget) closeConfirm(); }}
+  >
+    <div
+      class="hg-panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="hg-title"
+      tabindex="-1"
+      bind:this={confirmEl}
+      on:keydown={onConfirmKeydown}
+    >
+      <h3 id="hg-title">This design is bigger than your hoop</h3>
+      <p class="hg-note">{hoopExceeds}</p>
+      <p class="hg-body">
+        The machine cannot stitch past the edge of the hoop — the needle would
+        hit the frame. Make the design smaller, or choose a larger hoop back on
+        the first step.
+      </p>
+      <div class="hg-btns">
+        <button class="primary" on:click={closeConfirm}>Go back</button>
+        <button on:click={confirmDl}>Download {pendingFmt.toUpperCase()} anyway</button>
+      </div>
+    </div>
+  </div>
+{/if}
 {#if dstUsesBrowserEncoder}
   <p class="encodernote" id="dst-encoder-note" data-testid="dst-browser-encoder-note">
     <strong>* Heads up about DST:</strong> this project includes lettering or
@@ -312,3 +417,31 @@
 <p class="fontcredits-footer">
   <button type="button" class="linklike" on:click={openCredits}>Fonts: open-source — see credits</button>
 </p>
+
+<style>
+  /* Backdrop/panel tokens mirror FontCredits.svelte, the leanest of the three
+     hand-rolled dialogs this app already ships. */
+  .hg-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--overlay);
+    padding: var(--space-5);
+  }
+
+  .hg-panel {
+    width: min(440px, 100%);
+    background: var(--surface);
+    border-radius: var(--radius-l);
+    box-shadow: var(--shadow-2);
+    padding: var(--space-5);
+  }
+
+  .hg-panel h3 { margin: 0 0 var(--space-3); }
+  .hg-note { margin: 0 0 var(--space-3); font-weight: 600; }
+  .hg-body { margin: 0 0 var(--space-4); line-height: 1.5; }
+  .hg-btns { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+</style>
