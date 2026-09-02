@@ -56,22 +56,11 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
    routing, not palette or grading. *(measured 2026-08-11, landed 2026-08-22
    — `docs/tonal-eng-measurements-2026-08-22.md`)*
 
-3. **14 jump-trims on an 80mm design,** every fill variant measured. Not
-   started. **UNREPRODUCIBLE AS WRITTEN — the entry does not name the design,
-   and its own pointer does not carry one.** A 2026-08-31 reproduction
-   attempt (two fixtures × three fill variants, three trim readings each —
-   full table in scope-history 08-31 context) found nothing near 14 and
-   nothing variant-invariant. **Do not read those numbers as a regression** —
-   without the design or the metric they are not comparable to 14; that
-   comparison is the mistake this note exists to prevent. **Kent: name the
-   design and this becomes checkable in one run.** Defect 4 supports the
-   underlying concern independently. **A real 80 mm datum now exists:** the
-   2026-09-01 sew-out's icon sews 26 trims / 7 stops (service DST, decoded) —
-   not the same design, but pinned to a file. *(measured 2026-08-12 —
-   scope-history; repro attempted and failed 2026-08-31; datum 2026-09-01)*
-
 4. **We trim far more than the professional — 3.1x the trim breaks on a
-   like-for-like corpus.** Quote the rate or the break count, never a run
+   like-for-like corpus.** (Absorbs retired defect 3's live concern; a real
+   80 mm datum now exists — the 2026-09-01 sew-out icon at 26 trims / 7
+   stops, pinned to an actual decoded file rather than to a number nobody
+   could reproduce.) Quote the rate or the break count, never a run
    count and never raw `trims`. **Cause: trim policy, not travel** — the pro
    never cuts under 11.8 mm, ours is 3.0, and gate 1 says cloth settles that.
    The `_graph_travel` half of the old attribution is RETRACTED. Not blocked:
@@ -122,12 +111,13 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
     second spool-revisit mechanism, untouched by defect 16's fix.** Stage 2
     quantizes to COLOURS, so two can snap to one cone: `drone_render` 80 mm
     declares 21 slots holding 17 threads (t16, t308, t119, t101 each TWICE),
-    the smaller sewing late over finished work. **FIX BUILT, default OFF:**
-    `cfg.merge_duplicate_cones` folds each into the FIRST layer declaring its
-    cone, upstream of stage 5 so coverage/seams derive from the merged order
-    (`_hoist_same_thread` tries it downstream and rightly declines). ON:
-    blocks 19→17 (**two fewer stops**), revisits 2→0, needle-up 1295→1237 mm,
-    others byte-identical. *(2026-09-01 — `test_duplicate_cone_layers.py`, 13)*
+    the smaller sewing late over finished work. **FIXED, DEFAULT ON** since
+    Kent's 2026-09-01 ruling: `cfg.merge_duplicate_cones` folds each into the
+    FIRST layer declaring its cone, upstream of stage 5 so coverage/seams
+    derive from the merged order (`_hoist_same_thread` tries it downstream
+    and rightly declines). Blocks 19→17 (**two fewer stops**), revisits 2→0,
+    needle-up 1295→1237 mm, others byte-identical, no golden moved.
+    *(2026-09-01 — `test_duplicate_cone_layers.py`, 13)*
 
 19. **The design's own outer edge is uncapped — every fill row ends in open
     air.** The other sew-out edge finding, and one no per-shape border can
@@ -154,6 +144,7 @@ Full text moved to [`docs/scope-history.md`](docs/scope-history.md) 2026-08-27;
 these are pointers, not status.
 
 1. shade-thread collapse (`_shade_blocks`) — RESOLVED 2026-08-19.
+3. 14 jump-trims on an 80mm design — RETIRED 2026-09-01 (Kent's call) as UNREPRODUCIBLE: the entry never named the design and its pointer carried none, so the number was never checkable. A 2026-08-31 repro (two fixtures x three fill variants, three trim readings each) found nothing near 14 and nothing variant-invariant. Do NOT read those readings as a regression — without the design or the metric they are not comparable to 14, which is the mistake this line exists to prevent. The live concern moved to defect 4, which supports it independently and now carries a real 80 mm datum.
 7. satin dropped a bracket's tab on `enthusiast_logo` (`_prune_spurs`) — RESOLVED 2026-08-21.
 8. build-font dropped SVG transforms on four fonts — RESOLVED 2026-08-22.
 9. the photo route escaped its own palette, both halves — RESOLVED 2026-08-24 (PR #217 + the 08-24 `shade_palette_bind` flip, default ON per Kent's 32-job-sheet ruling).
