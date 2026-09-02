@@ -3392,6 +3392,44 @@ population it was not calibrated on — the reusable lesson:
   sets `fill_angle_deg` too.
 *(fixed 2026-08-27 — PRs #282/#283, mutation-checked; renders in the #283 body)*
 
+## Lettering house-angle: the FOURTH miscalibrated threshold, and the four-fold reading (2026-09-02)
+
+The doubled-angle Rayleigh gate above is blind to lettering whose horizontals
+balance its verticals — most slab-serif and many sans block faces. Hotel
+Fremont's twelve capitals: R = 0.055, n_eff 1554, nR² 4.7 against 6.9,
+rejected, and the whole word sewed per-stroke — which is Kent's *"E heavy on
+top and bottom"* and *"T left side drops"* (hanging-serif corner fans, see the
+mechanism table in `docs/hotel-fremont-fine-details-2026-09-02.md`).
+
+`_cluster_house_angle_deg` now tries a second reading in four-fold space when
+the first finds nothing. Three measured constraints, each pinned by a test in
+`tests/test_textcluster.py`:
+
+| | raw pixel steps | 4 px chord |
+|---|---|---|
+| 24 annuli (no direction) | R4 **0.160 @ 45°** | 0.051 |
+| 4 bars 45° apart (cancel by construction) | **0.527** | 0.127 |
+| Hotel Fremont capitals | 0.185 | **0.444** (nR4² 90) |
+| Hotel Fremont "THE" (2.6 mm) | 0.316 | **0.657** |
+| 6 synthetic I-beams | 0.707 | **0.903** |
+
+Raw steps carry the raster's own four-fold staircase, so the four-fold votes
+are resampled at `SATIN_HOUSE_CHORD_PX` = 4; the doubled votes stay raw, so
+every previously admitted cluster is byte-identical (Becker, enthusiast:
+md5-checked). The residual ~0.05 is systematic and clears significance at 24
+annuli (8.0), so `SATIN_HOUSE_FOURFOLD_MIN_R` = 0.25 is an effect floor
+against a biased null — a floor against bias, not a quality threshold. The
+angle is the 45° bisector: house = 0 scrambles every horizontal through
+`_clamp_to_span`'s ±45 sign flip (rendered, worse than nothing); and because
+the axis is only defined mod 90, `_bisector_deg` picks the bisector nearer
+the convention — raw "axis + 45" gave drone 45.1 and Fremont 134.4.
+
+Fires on `drone_render`'s THERMAL (T, H, E, R gain 45.1°, +0.4% stitches,
+trims flat) — the letters of the 2026-08-26 complaint. **Still open:** the
+pro sews horizontals as wide short columns at ONE near-horizontal angle; our
+rail model cannot (a cross along a bar collapses to the centreline). That is
+a new construction, Kent's call.
+
 ## Curve-fidelity instrument — the fuller MASTER_SCOPE entry (moved 2026-08-28)
 
 Compressed in MASTER_SCOPE under the 800-line budget; kept here in full.

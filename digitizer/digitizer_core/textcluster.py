@@ -1091,6 +1091,143 @@ def _lettering_groups(regions: list[Region]) -> list[list[Region]]:
 # artwork and `scratch_corpus/`, neither of which reaches a cloud container.
 SATIN_ANGLE_RAYLEIGH_ALPHA = 0.001
 
+# The doubled-angle test above is BLIND to block lettering whose horizontals
+# balance its verticals, and that is most slab-serif and many sans block
+# faces. In doubled-angle space a vertical stem votes at 180 deg and a
+# horizontal bar at 0 deg, so the two families cancel exactly and R falls to
+# the noise floor however much lettering there is. Measured on the Hotel
+# Fremont wordmark (`testdata/photo/logo_hotel_fremont.webp` @ 80 mm,
+# 2026-09-02): twelve slab-serif capitals with 112 mm of vertical and 44 mm
+# of horizontal skeleton read R = 0.055 over n_eff = 1554, nR^2 = 4.7 against
+# the 6.9 bar -- rejected, and every horizontal element then sewed at its own
+# angle while the stems sewed at theirs. The same population mistake this
+# module has now made four times: a gate correct on one population (stems-
+# dominated lettering) applied to one it had never seen (lettering with two
+# orthogonal families).
+#
+# Four-fold angle space sees exactly that structure: quadrupled, a vertical
+# and a horizontal both vote at 0 deg, so two orthogonal families REINFORCE
+# instead of cancelling, and the same Rayleigh test at the same alpha admits
+# them (Hotel Fremont: R4 = 0.185, nR4^2 = 53.1). Circular annuli stay
+# rejected in four-fold space for the same reason they are in two-fold; four
+# bars 45 deg apart cancel in both. The test is tried SECOND, only when the
+# doubled-angle test found nothing, so every cluster that was admitted before
+# is admitted at the identical angle.
+#
+# Which cross angle, once two orthogonal families are found? The bisector,
+# `axis + SATIN_HOUSE_BISECTOR_DEG`. It is the only choice that holds one
+# angle across the whole word: a cross perpendicular to the stems (0 deg on
+# these letters) is 90 deg off every horizontal bar, beyond
+# `stage6_satin.SATIN_HOUSE_MIN_SPAN_DEG`, so `_clamp_to_span` rotates it
+# back to +/-45 deg with the SIGN decided by sub-degree tangent noise -- and
+# the smoothing pass then sweeps each bar's crosses through 90 deg between
+# flips. Rendered at house = 0 on Hotel Fremont the bars came out worse than
+# with no house angle at all. At 45 deg the cross sits exactly at the span
+# limit for BOTH families, nothing is clamped, nothing flips, and every
+# stroke of every letter sews at one angle with no fan at the corners --
+# which is the "same angle for the whole word" the feature exists to give.
+# 45 vs 135 is a convention, not a measurement; the constant is where to
+# change it. Two orthogonal families have TWO bisectors, 90 deg apart, and the
+# family axis the votes return is only defined mod 90 -- so "axis + 45" is
+# not a convention at all: Hotel Fremont's stems read 89.4 deg and got 134.4,
+# drone_render's read 0.1 and got 45.1, the same upright lettering sewing at
+# mirror-image angles on sub-degree tangent noise. `_bisector_deg` takes the
+# bisector nearer this constant instead, so upright text always gets the
+# same slant whichever way its axis rounds. The one genuine ambiguity is
+# lettering rotated by exactly 45 deg, whose bisectors are 0 and 90.
+SATIN_HOUSE_BISECTOR_DEG = 45.0
+
+
+def _bisector_deg(axis_deg: float) -> float:
+    """The bisector of the two orthogonal stroke families at `axis_deg`
+    (mod 90) that lies nearest `SATIN_HOUSE_BISECTOR_DEG`, on [0, 180)."""
+    a, b = (axis_deg + 45.0) % 180.0, (axis_deg + 135.0) % 180.0
+
+    def gap(x: float) -> float:
+        return abs((x - SATIN_HOUSE_BISECTOR_DEG + 90.0) % 180.0 - 90.0)
+    return a if gap(a) <= gap(b) else b
+
+# The four-fold reading cannot vote on raw skeleton pixel steps the way the
+# doubled reading does. An 8-connected walk only ever steps in the eight
+# compass directions, and that staircase is itself four-fold symmetric: it
+# cancels in doubled space (24 rasterised annuli read R = 0.008 there) and
+# does NOT cancel in quadrupled space, where the same annuli read R4 = 0.160
+# at exactly 45 deg and four bars 45 deg apart -- which should cancel -- read
+# 0.527. Measured 2026-09-02. So the four-fold votes come from each chain
+# resampled at `SATIN_HOUSE_CHORD_PX` pixels: over a four-pixel chord the
+# walk can express directions between the compass points, and the grain
+# collapses (annuli 0.051, the four bars 0.127) while two real orthogonal
+# families keep their signal (Hotel Fremont's twelve capitals 0.444, its
+# three tiny "THE" glyphs 0.657, six synthetic I-beams 0.903). Four is the
+# shortest chord that does this; at three the annuli still read 0.064 and at
+# six the real cases lose votes faster than the grain does. A raster
+# resolution, not a fabric number. The doubled reading stays on raw steps so
+# every angle it already derives is unchanged.
+SATIN_HOUSE_CHORD_PX = 4.0
+
+# What resampling leaves behind on a true circle is a residual grain of
+# ~0.04-0.06 that a significance test alone cannot reject: it is small but
+# SYSTEMATIC, so enough annuli make it "significant" (24 of them: nR4^2 =
+# 8.0 against 6.9; 48 larger ones: 15.9). Under a biased null a
+# significance test answers the wrong question, so the four-fold reading
+# also asks for an EFFECT: R4 at least this much. 0.25 is five times the
+# residual and under six-tenths of the weakest real case measured, so
+# nothing sits near it; `test_the_four_fold_grain_stays_well_under_the_floor`
+# pins the margin. This is a floor against a known bias, not a raw quality
+# threshold, which is the distinction ROADMAP gate 4 draws.
+SATIN_HOUSE_FOURFOLD_MIN_R = 0.25
+
+
+def _resample_chain(chain: list[tuple[float, float]],
+                    step_mm: float) -> list[tuple[float, float]]:
+    """`chain` re-sampled at `step_mm` intervals of arc, keeping both ends."""
+    if step_mm <= 0.0 or len(chain) < 2:
+        return chain
+    out = [chain[0]]
+    acc = 0.0
+    for a, b in zip(chain, chain[1:]):
+        d = math.dist(a, b)
+        while d > 0.0 and acc + d >= step_mm:
+            t = (step_mm - acc) / d
+            a = (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
+            out.append(a)
+            d = math.dist(a, b)
+            acc = 0.0
+        acc += d
+    if out[-1] != chain[-1]:
+        out.append(chain[-1])
+    return out
+
+
+def _fourfold_votes(members: list[Region]) -> tuple[float, float, float] | None:
+    """(R4, n_eff, stroke axis in degrees mod 90) over the members' chains
+    resampled at `SATIN_HOUSE_CHORD_PX`, or None with nothing to vote on."""
+    c4 = s4 = total = sq_weight = 0.0
+    for r in members:
+        field = build_shape_field(r.polygon)
+        if field is None or not field.skel.any():
+            continue
+        end_mm = _spur_len_px(field) / field.scale
+        step_mm = SATIN_HOUSE_CHORD_PX / field.scale
+        for chain in _skeleton_chains_mm(field):
+            trimmed = _resample_chain(_trim_ends(chain, end_mm), step_mm)
+            for (x0, y0), (x1, y1) in zip(trimmed, trimmed[1:]):
+                dx, dy = x1 - x0, y1 - y0
+                length = math.hypot(dx, dy)
+                if length <= 0.0:
+                    continue
+                theta = math.atan2(dy, dx)
+                c4 += length * math.cos(4.0 * theta)
+                s4 += length * math.sin(4.0 * theta)
+                total += length
+                sq_weight += length * length
+    if total <= 0.0:
+        return None
+    n_eff = (total * total) / sq_weight
+    resultant = math.hypot(c4, s4) / total
+    axis = math.degrees(0.25 * math.atan2(s4, c4)) % 90.0
+    return resultant, n_eff, axis
+
 
 def _trim_ends(chain: list[tuple[float, float]],
                end_mm: float) -> list[tuple[float, float]]:
@@ -1127,6 +1264,13 @@ def _trim_ends(chain: list[tuple[float, float]],
 def _cluster_house_angle_deg(members: list[Region]) -> float | None:
     """The dominant CROSS angle over a text cluster's strokes, in degrees on
     [0, 180), or None when the strokes carry no dominant direction.
+
+    Two readings, tried in order. One dominant stroke direction (a row of
+    stems, an arched word) gives the cross perpendicular to it. Failing
+    that, two ORTHOGONAL families -- block lettering whose bars balance its
+    stems, which cancel to nothing in the first reading -- give the cross
+    that bisects them; see `SATIN_HOUSE_BISECTOR_DEG` for why the bisector
+    and not the stems' perpendicular.
 
     Votes are the segments of every member's pruned, end-trimmed skeleton
     chains, weighted by length in mm. `_skeleton_chains_mm` prunes with the same
@@ -1170,11 +1314,23 @@ def _cluster_house_angle_deg(members: list[Region]) -> float | None:
     # count, which would credit a thousand hair-length raster steps as a
     # thousand independent observations of direction.
     n_eff = (total * total) / sq_weight if sq_weight > 0.0 else 0.0
+    critical = -math.log(SATIN_ANGLE_RAYLEIGH_ALPHA)
     resultant = math.hypot(c2, s2)
-    if n_eff * resultant * resultant < -math.log(SATIN_ANGLE_RAYLEIGH_ALPHA):
+    if n_eff * resultant * resultant >= critical:
+        tangent = math.degrees(0.5 * math.atan2(s2, c2))
+        return (tangent + 90.0) % 180.0
+    # No single direction. Two orthogonal ones? Same test in four-fold space,
+    # on grain-free votes, and with an effect-size floor -- see
+    # SATIN_HOUSE_CHORD_PX and SATIN_HOUSE_FOURFOLD_MIN_R for both.
+    votes = _fourfold_votes(members)
+    if votes is None:
         return None
-    tangent = math.degrees(0.5 * math.atan2(s2, c2))
-    return (tangent + 90.0) % 180.0
+    resultant4, n_eff4, axis = votes
+    if resultant4 < SATIN_HOUSE_FOURFOLD_MIN_R:
+        return None
+    if n_eff4 * resultant4 * resultant4 < critical:
+        return None
+    return _bisector_deg(axis)
 
 
 def set_lettering_house_angle(regions: list[Region], p: Prep) -> None:

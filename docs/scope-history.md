@@ -3388,3 +3388,31 @@ median. A fixture with more substantial fills is what that comparison needs.
 
 Gate 1 untouched throughout — this measures, and cloth still settles the
 constant.
+
+## 2026-09-02 — Hotel Fremont: five notes, one silent gate, the four-fold reading
+
+Kent annotated a Studio screenshot of `logo_hotel_fremont.webp` @ 80 mm with
+five notes and asked for professional-grade fine detail. Full record:
+`docs/hotel-fremont-fine-details-2026-09-02.md`.
+
+- **E/L/T weight complaints** = hanging-serif strokes walked as one L (E arm
+  5.33 mm, both ends free, rising into the terminal slab) + six-pass angle
+  smoothing. Cured by the house angle, which was **not firing**: nR² 4.7 vs
+  6.9 — slab-serif verticals (112 mm) and horizontals (44 mm) cancel in
+  doubled-angle space.
+- **Shipped:** a four-fold second reading in `_cluster_house_angle_deg`.
+  Raw skeleton steps carry a four-fold grain (annuli R4 0.160 at 45°, four
+  bars-at-45° 0.527); resampled at 4 px → 0.051 / 0.127 vs lettering
+  0.44–0.90. Effect floor 0.25 because 24 annuli clear significance (8.0).
+  Bisector 45°, chosen nearer the convention (raw "axis + 45" gave drone 45.1
+  and Fremont 134.4). Becker/enthusiast byte-identical; drone THERMAL T,H,E,R
+  gain the angle, 9317 → 9355 st, trims 86 flat; Fremont 0 → 15 angled at 42.8–44.4° (two groups), 6473 → 6493 st, trims 47.
+- **O not round:** counter is a 9-gon, ±0.238/+0.267 mm (outer 16-gon,
+  ±0.02). `simplify_tol_mm` 0.2 — not changed, Kent's ruling.
+- **In-fill:** 39 travel runs / 570 mm over finished columns; pro tatami is
+  smooth in the same renderer → geometry, not render. Defect 21.
+- **Wisconsin:** 15-vertex polygon, ~14 rows at 45°, peninsula under the fill
+  floor. Not changed.
+- **Fixtures:** buffered square/hex rings are degenerate under
+  `_skeleton_chains_mm` (2.5–3.5 mm remnants per ring); the test file no
+  longer builds a direction claim on them.

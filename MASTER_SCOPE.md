@@ -140,6 +140,18 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
     (`effective_split_tonal` ORs flag with class). *(2026-09-02 — bisect on
     `coverage_max`; [notes](docs/scorecard-baseline-attribution-2026-09-02.md))*
 
+21. **Fill travel is laid OVER columns already sewn** — Kent's *"in-fill
+    doesn't look clean"*, and it is the stitches, not the render (the pro's
+    tatami is smooth in the same `stitchviz`). Hotel Fremont's white field:
+    **39 travel runs, 570 mm**, 10.5% of its fill, each after the columns it
+    crosses. Gate-clean sequencing, same class as the 2026-09-01 cards.
+    *(measured 2026-09-02 — `docs/hotel-fremont-fine-details-2026-09-02.md`)*
+
+22. **Small curves sew as polygons** — `simplify_tol_mm` 0.2 makes a 2.4 mm
+    counter a **9-gon, ±0.25 mm** (Kent: *"this O is not round"*; the outer
+    ring keeps 16 verts at ±0.02). The 0.2 ruling predates a curve
+    instrument; re-opening is Kent's call. *(measured 2026-09-02 — same doc)*
+
 ### Closed — kept numbered, because ten other docs cite them by number
 
 Full text moved to [`docs/scope-history.md`](docs/scope-history.md) 2026-08-27;
@@ -496,25 +508,17 @@ be able to agree with a partly craft-driven ranking at all.
 shapes the design already sews. `tools/dropped_elements.py` measures it from the
 artwork's side — 99.1% lost on the logo Kent called "5% completed at most".
 **Both halves of the smoothness complaint now have instruments, and they are not
-the same measurement** (Spearman 0.028 between them, n = 12 — rules out
-redundancy, does not prove independence). `tools/edge_smoothness.py` owns the
-edge noise; the curve half is `tools/curve_fidelity.py`, read from
-`plan.iter_runs()` because **curve fidelity is not readable from a raster** — a
-rasterised circle scores more angular than a 40-gon, the boundary being itself a
-staircase. Three rules for reading it: **`roughness_deg` is the per-design
-number**; **`turn_gini` is substantially a COMPLEXITY statistic** (Pearson −0.763
-vs log trace count) and is valid only on the synthetic ladder or inside a paired
-arm holding one design fixed; and its floor is **stitch length** — dead at 3.0 mm
-sampling, so never compare arms across stitch lengths. On Kent's four real Becker
-artworks the two SPARSE ones (10-11 traces) measure roughest, 12.3 against
-9.8-10.5 for the two carrying 46-52 — the complexity axis again, not size.
-**Correction 2026-08-28:** an earlier revision read this as small PLACEMENTS
-sewing rougher. It is not a size effect at all — all four ran at the default
-`target_width_mm` 80, and "small"/"large" in those filenames is the PRO's
-garment placement, not the digitized size. The refuted corner-threshold
-sub-claim went with it. Instrument only,
-no engine change. *(measured 2026-08-27/28 — PR #281;
-`docs/curve-fidelity-from-the-stitch-path-2026-08-27.md`)*
+the same measurement** (Spearman 0.028, n = 12). `tools/edge_smoothness.py` owns
+edge noise; `tools/curve_fidelity.py` owns the curve half, read from
+`plan.iter_runs()` because **curve fidelity is not readable from a raster**.
+Three rules: **`roughness_deg` is the per-design number**; **`turn_gini` is
+substantially a COMPLEXITY statistic** (Pearson −0.763 vs log trace count),
+valid only on the ladder or inside a paired arm; and the floor is **stitch
+length** — never compare arms across stitch lengths. On Kent's four Becker
+artworks the two SPARSE ones (10-11 traces) measure roughest — complexity, not
+size (all four ran at 80 mm; an earlier "small placements sew rougher" reading
+is withdrawn). Instrument only, no engine change. *(measured 2026-08-27/28 —
+PR #281; `docs/curve-fidelity-from-the-stitch-path-2026-08-27.md`)*
 **Two engine defects open, unfixed:** `summit_badge`'s half-removed background,
 and `stage1_prep.py:254-266` answering a structural question (`BACKGROUND_ABSENT`)
 through a colour threshold (`bg_tolerance_lab`).
@@ -546,37 +550,32 @@ three (`detect_text_clusters`' candidate gating, the coherence floor, and the
 7-of-11 lettering regions that sew as FILL) are in
 [area 1](docs/scope/1-auto-digitizing-quality.md).
 *(fixed 2026-08-27 — PRs #282/#283, mutation-checked; renders in the #283 body)*
+**And it was NOT FIRING on slab-serif lettering — a FOURTH miscalibrated
+threshold, fixed 2026-09-02.** Hotel Fremont's capitals cancel in doubled-angle
+space (112 mm vertical vs 44 mm horizontal skeleton: nR² 4.7 vs 6.9), so Kent's
+*"E heavy on top and bottom"* / *"T left side drops"* — hanging-serif corner
+fans the house angle cures — sewed per-stroke. A four-fold second reading
+admits two orthogonal families, on 4 px-resampled chains (raw skeleton steps
+carry a four-fold raster grain: annuli 0.160 at 45°) with an effect floor
+(the residual clears significance under a biased null), at the **45°
+bisector** — house = 0 scrambles every horizontal through the span clamp.
+Becker/enthusiast byte-identical; drone's THERMAL gains it (+0.4% st).
+*(2026-09-02 — `docs/hotel-fremont-fine-details-2026-09-02.md`; area 1 has the table)*
 
 **Mechanism 2 — pull comp's min-feature guard scoped to `poly.interiors` —
-is PROTOTYPED AND COSTED, deliberately not shipped.** The fix is small and
-correct (an exterior-pocket branch asking the identical question the hole loop
-asks, patch in `docs/prototypes/`), and on
-`logo_drone_thermal_badge.png` it holds 15 real slots at 0.528–0.920 mm while
-skipping 82 slivers of median width 0.140 mm. **It reds the chaining trim
-benchmark**: `enthusiast_logo.png` @82mm goes 3.8 → 6.4 trims/1k against a 4.1
-ceiling, because restoring a notch breaks the gap chaining was bridging.
-Shipped default (`chain_links=False`) the cost is +2 trims, 22 → 24.
-**Kent's call 2026-08-28: hold it.** It trades a MEASURED trim regression
-against an UNMEASURED fidelity gain — the instrument that would price the
-other side is mechanism 4 below. Full numbers and both directions:
-`docs/exterior-notch-guard-2026-08-28.md`.
-*(prototyped 2026-08-28, not merged)*
+is PROTOTYPED AND COSTED, deliberately not shipped.** An exterior-pocket branch
+holds 15 real slots at 0.528–0.920 mm on `logo_drone_thermal_badge.png`, and
+reds the chaining trim benchmark (`enthusiast_logo` 3.8 → 6.4 trims/1k vs 4.1;
++2 trims at the shipped `chain_links=False`). **Kent's call 2026-08-28: hold
+it** — a MEASURED trim regression against an UNMEASURED fidelity gain.
+`docs/exterior-notch-guard-2026-08-28.md`. *(prototyped 2026-08-28, not merged)*
 
 **Mechanism 4 — the instrument that hid all of it — is HALF CLOSED
-2026-08-28.** Bare-fabric coverage scored the visibly deformed H at "1.9%
-bare" and thread-vs-artwork IoU saturates on small letters, and they fail for
-one reason: **both average, and deformation is local.** `stroke_coverage.py`
-reports the WORST medial-axis stroke instead: DRONE's E, which sews as a
-visible "L", reads **58.3% worst against 72.7% mean** where coverage called it
-fine. The gap between worst and mean is the signal — local damage opens one,
-uniform thinness does not.
-**It is still blind to TILT** — THERMAL's deformed H scores 100%, because
-thread is on every stroke at the wrong angle. **The obvious tilt metric was
-built and REJECTED the same day**: per-stroke deviation from the medial axis's
-local perpendicular ranks a good PRECISION O (31.7° median) worse than the
-deformed H (16.6°), because on a curved letter the spine turns constantly and
-the reference confounds curvature with deformation. Recorded in the kit's
-README so it is not rebuilt. *(2026-08-28 — `tools/letterform_fidelity/`)*
+2026-08-28.** Coverage and IoU average, and deformation is local, so
+`stroke_coverage.py` reports the WORST medial-axis stroke (DRONE's E: 58.3%
+worst vs 72.7% mean). **Still blind to TILT**; the obvious tilt metric was
+built and REJECTED (ranks a good O worse than the deformed H). Detail in
+`tools/letterform_fidelity/README.md`. *(2026-08-28)*
 
 **Still open and unfixed:** `_prune_spurs` drops a 3-way node to 2-way
 so the walker welds the N's diagonal to its stem through a 108° fold — **the
