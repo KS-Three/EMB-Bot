@@ -87,10 +87,9 @@ biggest recent sew-order change does not account for this fixture's drift.
 
 Two things in that table deserve their own look:
 
-- **`link_segments` 0 → 4 while `chain_links` ships default-OFF.** Chaining is
-  the one latent flag the dashboard says must never be flipped without
-  rebuilding its instrument. Something is emitting links, or the metric changed
-  meaning. Either answer matters.
+- **`link_segments` 0 → 4 — ATTRIBUTED, and it was a defect in the instrument.
+  Fixed here.** See "Attribution 3" below; this bullet is kept only so the
+  trail from "a number moved" to "an instrument was lying" stays readable.
 - **`summit_badge` stitch_count 3839 → 8431**, coverage area 1808 → 4789 mm²,
   satin_steps 995 → 1557. The design more than doubled. MASTER_SCOPE already
   flags this fixture as saturated at F/0 so its *score* says nothing — which is
@@ -105,6 +104,103 @@ Other unexplained geometry movement, listed so the next pass has targets:
 | `repro_gradient_white_icon` | `color_changes` 5 → 2 |
 | `enthusiast_logo` | `satin_steps` 1416 → 1284 |
 
+## Attribution 3 — `link_segments` 0 → 4 was a false positive, now fixed
+
+The one mover that could have been hiding a real defect, and it was hiding a
+defect in the *ruler* instead. `_link_findings`' own docstring promises that
+"a chain-off plan reports zero link thread"; `chain_links` ships default-OFF;
+this fixture reported four link segments and 4.2 mm of link thread.
+
+**Cause: a jump is not thread, and the classifier forgot it for travel runs.**
+A shape routinely OPENS with its own travel run, and stage 7 marks that run
+`jump` because the machine lifts to reach it (`machine.TINY_STITCH_MM`, 0.5 mm).
+On this fixture:
+
+```
+r22  satin     S6959709e  jump=False       <- last content of the first shape
+r23  travel    Scd87e08f  jump=True        <- SECOND shape's own opening routing
+r24  underlay  Scd87e08f  jump=False
+```
+
+The needle is UP between r22 and r23, so no thread goes from `S6959709e` to
+`Scd87e08f` at all. But `_transport_and_content` compared against the last
+CONTENT it had seen rather than against where the needle was standing, so
+r23's 3.51 mm and the 0.24 mm step out of it into r24 were both scored as
+between-shape transport. The connect branch already encoded the rule
+(`not run.jump`); the travel branch did not — so the fix is one rule made
+consistent with itself, not a threshold loosened. It tracks the shape the
+needle STANDS in (`at_shape`, cleared on every lift), and can only ever
+reclassify thread the needle was not down for.
+
+Measured over the whole scorecard corpus, chaining off, old vs new:
+
+| | old | new |
+|---|---|---|
+| runs reporting any link | 12 of 54 | 10 of 54 |
+| total link thread | 39.8 mm | 9.0 mm |
+| worst single run | `logo_hotel_fremont @left_chest` 7.2 mm | `photo_subject_stub @left_chest` 2.9 mm |
+
+**30.8 mm of the 39.8 was thread the needle was not down for.** No fixture
+blocked before or after — `link_uncovered_mm` is 0.0 everywhere, so nothing
+sat on bare fabric and this was never a safety breach. What it was is an
+instrument guarding a gate-3 flag reading 4.2 mm where its own contract says
+0.0, which is how a real breach later gets waved past.
+
+`tests/test_preflight.py` now pins all three halves: the jumped-open shape
+reports zero, a genuine link that merely *starts* after a jump still blocks,
+and on the real fixture a chain-off plan can never reach the float ceiling.
+The first and third fail against the old classifier (4.2 mm, verified by
+reverting).
+
+### The 9.0 mm that remains is a SECOND provenance bug — measured, NOT fixed
+
+`photo_subject_stub @left_chest`, the new worst case, is one travel run:
+
+```
+r64  fill    Sad8d0cf6-shade0
+r65  travel  Sad8d0cf6        <- 2.88 mm, both segments scored as transport
+r66  border  Sad8d0cf6
+```
+
+That is one region's own routing between its shade-0 fill and its own border.
+It reads as between-shape only because the layered streamline tier derives its
+per-shade ids as `f"{region.shape_id}-shade{i}"`
+(`stage6_streamline.py:875`, the single construction site) and the classifier
+compares ids as opaque strings.
+
+**Deliberately not fixed in the same change.** The jump fix has an airtight
+argument — the needle was up, so no thread exists. Normalising the shade
+suffix does not: it needs an answer to whether stage 6/7 treat shade layers of
+one region as one shape for the trim rule, which is the premise the docstring
+leans on when it waves in-shape chained links through. Getting that wrong
+hides needle-down thread, which is the exact failure gate 3 exists for. It is
+worth a session; it is not worth a guess.
+
+## And the corpus scores one design TWICE
+
+Found while sweeping the same fixture list for cone colours, and it is one
+`md5sum` deep:
+
+```
+adb0a79f25ff43a54c77957cc03e1bef  testdata/photo/drone_render.png
+adb0a79f25ff43a54c77957cc03e1bef  testdata/photo/logo_drone_thermal_badge.png
+```
+
+`corpus_scorecard.FIXTURES` lists **27 files that are 26 distinct images**.
+Both names are scored, at both matrix configs, so that one design carries
+**twice the weight** of every other in every corpus-wide number — the
+baseline included, and every aggregate anyone computes off this list from
+here on. It also means the "eight files pulled straight from the jobs Kent
+actually digitizes" the FIXTURES comment describes are seven new ones and a
+second copy of a synthetic-set fixture that was already there.
+
+Nothing is wrong with the fixture itself; the defect is that it is enrolled
+twice. Not fixed here because dropping a name from `FIXTURES` moves the
+baseline, and this file's whole subject is not moving the baseline until its
+movers are attributed. It belongs in the same recapture: drop one name, and
+say in the commit message that the entry count fell for this reason rather
+than because a fixture regressed.
+
 ## What would unblock a recapture
 
 The method that worked twice above is cheap and should be reused: **run the one
@@ -115,9 +211,12 @@ bisecting 73 merges with a four-minute full capture each time.
    two or three of the fixtures that *improved* (`fur_ramp` 40 → 88,
    `photo_owl_pale` 22 → 46) the same way — declare them and see the baseline
    score return.
-2. Attribute the geometry population. `link_segments` and `summit_badge` first,
-   since those two are the ones that could be hiding a real defect.
-3. Then re-capture, listing every mover and its cause in the commit message,
+2. Attribute the geometry population. `link_segments` is DONE (attribution 3,
+   and it was a real defect); `summit_badge`'s doubled stitch count is the
+   remaining one that could be hiding another.
+3. Drop the duplicate fixture name, so the recapture does not re-enrol one
+   design at double weight for another eight days.
+4. Then re-capture, listing every mover and its cause in the commit message,
    as the tool's docstring requires.
 
 Until then the scorecard still works as a **diff** — it is how all of the above
