@@ -1570,6 +1570,83 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .createstep .summary dt { color: var(--muted); margin: 0; }
 .createstep .summary dd { margin: 0; font-weight: var(--fw-semibold); text-align: right; }
 
+/* Create step — the digitizer's own preflight report (ui/QualityReport.svelte).
+   Deliberately quieter than the settings recap above it: this is a list of
+   sentences to READ, so the findings carry no card, no fill and no rule of
+   their own — only the severity glyph is coloured, and the text stays in ink.
+   A row per finding wrapped in a panel would have made five warnings look like
+   five failures. */
+.quality { margin: var(--space-5) 0 0; }
+.quality h3 {
+  font-size: var(--fs-sm);
+  color: var(--muted);
+  margin: 0 0 var(--space-3);
+}
+.qr + .qr { margin-top: var(--space-5); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+.qr-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.qr-name { color: var(--muted); font-size: var(--fs-sm); }
+/* The grade is a chip, never a hero number: it is a deduction from 100 by
+   finding severity, so it summarises the list below rather than measuring
+   anything the list does not already say. */
+.qr-grade {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-left: auto;
+  padding: 2px var(--space-3);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-full);
+  line-height: 1.5;
+}
+.qr-grade b { font-weight: var(--fw-semibold); }
+.qr-grade .qr-score { font-size: var(--fs-xs); opacity: 0.85; }
+/* No success token exists in this palette, and inventing a green for one chip
+   would put a fourth status hue in the app. --accent IS this app's affirmative
+   colour (the Next button, every selected state), so a good grade wears it. */
+.qr-grade.tone-good { color: var(--accent); }
+.qr-grade.tone-warn { color: var(--warn); }
+.qr-grade.tone-bad  { color: var(--danger); }
+
+.qr-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
+.qr-list li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-3);
+  align-items: start;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+/* Colour marks the glyph only. Severity is also carried by the glyph SHAPE
+   (a warning triangle vs a bulb) and by reading order, so it never rests on
+   colour alone. */
+.qr-list li :global(svg) { margin-top: 2px; }
+.qr-list li.sev-block :global(svg) { color: var(--danger); }
+.qr-list li.sev-warn :global(svg) { color: var(--warn); }
+.qr-list li.sev-info :global(svg) { color: var(--muted); }
+
+.qr-clean, .qr-none {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+.qr-clean :global(svg) { color: var(--accent); }
+
+.qr-bill {
+  margin: var(--space-4) 0 0;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 /* Image panel — upload */
 .uploadbox {
   display: flex;
