@@ -215,6 +215,13 @@ CONTOUR_RING_UNREACHABLE = "CONTOUR_RING_UNREACHABLE"  # contour left a bare pat
 # compensation geometry is applied regardless.
 CONTOUR_DIRECTIONAL_COMP_UNSEWN = "CONTOUR_DIRECTIONAL_COMP_UNSEWN"
 
+# Two quantized COLOURS snapped to one physical cone, so the palette declared
+# the same spool twice and the operator was sent to the rack twice for it —
+# the second visit sewing a late fragment over finished work (defect 18).
+# Folded upstream of stage 5 by `merge_duplicate_cone_layers`.
+# extra: {"count": int, "cones": list[int]}
+DUPLICATE_CONE_LAYERS_MERGED = "DUPLICATE_CONE_LAYERS_MERGED"
+
 # Stage 6 (design-silhouette edge cap, cfg.edge_cap)
 # Asked for a cap and got none — the silhouette was too small or too narrow
 # for either emitter to hold a loop. Fires only when the cap was explicitly
