@@ -176,6 +176,31 @@ leans on when it waves in-shape chained links through. Getting that wrong
 hides needle-down thread, which is the exact failure gate 3 exists for. It is
 worth a session; it is not worth a guess.
 
+## And the corpus scores one design TWICE
+
+Found while sweeping the same fixture list for cone colours, and it is one
+`md5sum` deep:
+
+```
+adb0a79f25ff43a54c77957cc03e1bef  testdata/photo/drone_render.png
+adb0a79f25ff43a54c77957cc03e1bef  testdata/photo/logo_drone_thermal_badge.png
+```
+
+`corpus_scorecard.FIXTURES` lists **27 files that are 26 distinct images**.
+Both names are scored, at both matrix configs, so that one design carries
+**twice the weight** of every other in every corpus-wide number — the
+baseline included, and every aggregate anyone computes off this list from
+here on. It also means the "eight files pulled straight from the jobs Kent
+actually digitizes" the FIXTURES comment describes are seven new ones and a
+second copy of a synthetic-set fixture that was already there.
+
+Nothing is wrong with the fixture itself; the defect is that it is enrolled
+twice. Not fixed here because dropping a name from `FIXTURES` moves the
+baseline, and this file's whole subject is not moving the baseline until its
+movers are attributed. It belongs in the same recapture: drop one name, and
+say in the commit message that the entry count fell for this reason rather
+than because a fixture regressed.
+
 ## What would unblock a recapture
 
 The method that worked twice above is cheap and should be reused: **run the one
@@ -189,7 +214,9 @@ bisecting 73 merges with a four-minute full capture each time.
 2. Attribute the geometry population. `link_segments` is DONE (attribution 3,
    and it was a real defect); `summit_badge`'s doubled stitch count is the
    remaining one that could be hiding another.
-3. Then re-capture, listing every mover and its cause in the commit message,
+3. Drop the duplicate fixture name, so the recapture does not re-enrol one
+   design at double weight for another eight days.
+4. Then re-capture, listing every mover and its cause in the commit message,
    as the tool's docstring requires.
 
 Until then the scorecard still works as a **diff** — it is how all of the above

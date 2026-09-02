@@ -300,14 +300,19 @@ its own merits.
    ShareAlike fonts; the brief is written and ready to send. Nothing waits
    on it. See the font-licence entry.
 
-12. **Merge a tiny cone into an ADJACENT SHADE — a colour-difference call,
-   and it needs Kent's real icon PNG.** The sew-out's b4/b7 class: post-08-31
+12. **Merge a tiny cone into an ADJACENT SHADE — a colour call, and the
+   COMMITTED corpus can now pose it.** The sew-out's b4/b7 class: post-08-31
    sequencing fixes, cutting such a cone further means sewing its patches in
    a neighbouring shade's thread — a colour step for a stop, quality not
-   gate-1 physics. Unmeasurable on the repro (no defensible merge pair);
-   `pull-corpus` his PNG, then `tools/sequence_census.py` puts per-cone
-   stitch counts against candidate ΔE in one run. *(measured 2026-08-31 —
-   scope-history 08-31)*
+   gate-1 physics. "Unmeasurable, needs Kent's PNG" was wrong twice over:
+   `sequence_census.py` reported no colour at all until 2026-09-02 (it does
+   now), and committed art carries defensible pairs — ΔE **1.41**
+   (`screenshot_phone_ui_golke`, 62st → 79st), **1.78** (`logo_bridge_bar`,
+   197st → 444st), **2.65** (`drone_render`, 338st → 1560st). The repro
+   genuinely has none: its closest two cones are 33.4 ΔE apart. Real artwork
+   also runs 15–18 cones, so the tiny-cone population is not rare. **Still
+   Kent's call:** how much colour step buys a stop is cloth, not a constant.
+   *(measured 2026-09-02 — `sequence_census.py` per-cone, 26 fixtures)*
 
 ---
 
