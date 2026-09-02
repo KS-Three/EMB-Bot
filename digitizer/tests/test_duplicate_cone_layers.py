@@ -1,4 +1,4 @@
-"""One cone, one layer (`cfg.merge_duplicate_cones`, default OFF).
+"""One cone, one layer (`cfg.merge_duplicate_cones`, default ON).
 
 Defect 18 — the SECOND spool-revisit mechanism, the one defect 16's fix
 correctly ignores. Stage 2 quantizes to COLOURS, and two different quantized
@@ -123,7 +123,8 @@ def test_three_declarations_of_one_cone_all_land_on_the_first():
 
 @pytest.fixture(scope="module")
 def drone_off():
-    return digitize(DRONE, cfg(target_width_mm=80.0))
+    return digitize(DRONE, cfg(target_width_mm=80.0,
+                              merge_duplicate_cones=False))
 
 
 @pytest.fixture(scope="module")
@@ -131,8 +132,10 @@ def drone_on():
     return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=True))
 
 
-def test_the_default_is_off():
-    assert PipelineConfig().merge_duplicate_cones is False
+def test_the_default_is_on():
+    """Flipped by Kent 2026-09-01 with the measured pass in hand — the same
+    call, and the same posture, as `borders_last`."""
+    assert PipelineConfig().merge_duplicate_cones is True
 
 
 def test_the_fixture_still_declares_duplicate_cones(drone_off):

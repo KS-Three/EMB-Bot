@@ -904,14 +904,22 @@ class PipelineConfig:
     # over, which on this fixture is most of them.
     #
     # Pure sequencing — no physical constant enters, gate 1 untouched.
-    # Default OFF pending a measured pass, the same posture `borders_last`
-    # shipped under: it moves whole clusters (a duplicate's regions sew at
-    # its cone's FIRST position instead of its own), so the blast radius is
-    # real even though the direction is forced — stage 2 orders the palette
-    # largest-area-first, so a duplicate's second slot is by construction
-    # the smaller one and folds into the larger.
-    # tests/test_duplicate_cone_layers.py pins the default and the fold.
-    merge_duplicate_cones: bool = False
+    # Default ON since Kent's 2026-09-01 ruling, taken with the measured
+    # pass in hand (the same posture and the same call he made for
+    # `borders_last`): on `drone_render` the fold buys two fewer operator
+    # stops, removes both cone revisits, and costs LESS thread —
+    # 9486 -> 9321 stitches and 1295 -> 1237 mm of needle-up travel, over
+    # two more but far shorter lifts. It moves whole clusters (a
+    # duplicate's regions sew at its cone's FIRST position instead of
+    # their own), which is why it was measured before being flipped; the
+    # direction itself is forced, since stage 2 orders the palette
+    # largest-area-first and a duplicate's second slot is by construction
+    # the smaller one. Golden blast radius MEASURED at the flip: none —
+    # every non-duplicating fixture is byte-identical and no committed
+    # golden moves. False keeps the pre-fold order reachable and tested
+    # rather than dead-by-default.
+    # tests/test_duplicate_cone_layers.py pins the default and both paths.
+    merge_duplicate_cones: bool = True
     # Design-silhouette edge cap (2026-09-01, the sew-out's OTHER edge
     # finding). `borders_last` above fixed the ORDER the design's borders
     # sew in; this is about the edge that has no border at all. On Kent's
