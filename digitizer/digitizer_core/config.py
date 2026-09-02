@@ -757,9 +757,22 @@ class PipelineConfig:
     # path, kept as the motivating history.
     # Opt-in pending a corpus run; see MASTER_SCOPE.md's blend-tier entry.
     # Spec 2026-08-18 decision 2: photo_subject and photo_scene split by
-    # default (cfg false still means yes for those classes); gradient and flat
-    # do not (cfg true is the only way to split them).
-    split_tonal_regions: bool = False
+    # default; gradient and flat do not.
+    #
+    # TRI-STATE, and None is the default rather than False — the same sentinel
+    # pattern `border` below spells out, for the same reason. `False` used to
+    # be both "the default" and "the caller said no", which made those two
+    # indistinguishable, and since the resolver ORed the flag with the class
+    # there was NO WAY to turn splitting off for a photo class at all. That is
+    # not a hypothetical: it meant the tier could not be measured against its
+    # own absence, so the density it costs (defect 20 — coverage_max 7.18
+    # against a 3.5-layer ceiling) had no denominator.
+    #
+    #   None  -> let the class decide: photo_subject/photo_scene split,
+    #            gradient/flat do not. IDENTICAL to the old default behaviour.
+    #   True  -> split every class.
+    #   False -> split nothing, photo classes INCLUDED. This is the new one.
+    split_tonal_regions: bool | None = None
     # DEFAULT ON since 2026-08-24 — Kent's quality call, made from the fresh
     # 32-job acceptance sheet (4 photos x 8 arms) exactly as spec decision 1
     # requires: the eyeball loop, not a scorecard, settles tonal work. Was
