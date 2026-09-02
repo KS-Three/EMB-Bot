@@ -490,3 +490,60 @@ that scored 64 before.
 
 Gate 3 exists for exactly this, so this file names the blocker and stops.
 
+
+## Measuring what tonal splitting buys — the cost is clear, the benefit is NOT MEASURABLE with what we have
+
+Kent ratified the tier 2026-09-02 and asked for the tradeoff quantified. Half
+of that is now answered and the other half is blocked by an instrument, which
+is itself worth knowing.
+
+**First, the tier got an off switch** (`split_tonal_regions` is now tri-state:
+`None` per-class as before, `True` everywhere, `False` nowhere INCLUDING photo
+classes). Without it there was no "without" to compare against. Shipped
+behaviour is unchanged — verified byte-identical against the baseline captured
+the same hour.
+
+**The cost, on the 8 photo-classified fixtures, at 80 mm/left_chest:**
+
+| fixture | Δstitches | Δcoverage_max | Δstops |
+|---|---|---|---|
+| `photo_scene_stub` | **+3,249** | +2.18 | +1 |
+| `photo_dof_meadow` | **+2,524** | +1.22 | +2 |
+| `photo_chrome_specular` | **+2,351** | +0.49 | +2 |
+| `photo_sunset_backlit` | **+2,331** | +0.57 | +2 |
+| `photo_subject_stub` | 0 | 0 | 0 |
+| `photo_grass_macro` | 0 | 0 | 0 |
+| `fur_ramp` | 0 | 0 | 0 |
+| `photo_owl_pale` | 0 | 0 | 0 |
+
+**It fires on half of them and does nothing at all on the other half** — an
+exact zero on four fixtures, not a small delta. Where it fires it costs roughly
+a third more stitches and one to two extra thread stops. That is the shape of
+the bill, and it is the first time it has had one.
+
+**The benefit cannot be read, because `artfidelity_self` REFUSES every row.**
+All eight are refused: seven for `ink mask saturates the frame` (95–100%) and
+`fur_ramp` for `ink ambiguous (knocked-out lettering)`. The tool's own contract
+is that a refusal is "the reason this row must not be read as an engine
+result", and its docstring records exactly why saturation poisons the score —
+coverage becomes an IoU against all-ones, which rewards the engine for sewing
+a background stage 1 was right to remove.
+
+**That is a finding about the instrument, not a footnote.** A photograph fills
+its frame by definition, so the opaque-art ink rule calls the whole frame ink.
+The self-fidelity tool therefore cannot score the class it would be most
+valuable on — the photo lane, where tonal work actually happens — and this is
+the first time anything has needed it to. `INK_SATURATION_MAX` was added
+2026-08-27 after one fixture (`summit_badge`) was found ranked on that defect;
+the sweep here says the problem is not one fixture, it is the entire photo
+population.
+
+**One lead, deliberately not quoted as a result.** The `colour` component
+(per-region CIEDE2000 excess over the best available spool) moved on two
+fixtures — `photo_sunset_backlit` **+0.310** and `photo_dof_meadow` +0.096 —
+and mechanically that component never touches the ink mask, so the saturation
+defect cannot reach it. It is still a number off a refused row, and reading one
+component out of a row the instrument declined is precisely the "I know better
+than the tool" move that this file has already been burned by twice. Recorded
+as the place to look first once a photo-capable fidelity measure exists.
+
