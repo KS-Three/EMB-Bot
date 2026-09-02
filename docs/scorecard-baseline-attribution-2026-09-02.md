@@ -269,30 +269,38 @@ sit unnoticed — which is why it was singled out for a look. Looked at, it is
 the corpus doing its job: recording a defect being fixed. Nothing here blocks
 a recapture.
 
-## And the corpus scores one design TWICE
-
-Found while sweeping the same fixture list for cone colours, and it is one
-`md5sum` deep:
+## And the corpus scores one design TWICE — already known since 2026-08-23
 
 ```
 adb0a79f25ff43a54c77957cc03e1bef  testdata/photo/drone_render.png
 adb0a79f25ff43a54c77957cc03e1bef  testdata/photo/logo_drone_thermal_badge.png
 ```
 
-`corpus_scorecard.FIXTURES` lists **27 files that are 26 distinct images**.
-Both names are scored, at both matrix configs, so that one design carries
-**twice the weight** of every other in every corpus-wide number — the
-baseline included, and every aggregate anyone computes off this list from
-here on. It also means the "eight files pulled straight from the jobs Kent
-actually digitizes" the FIXTURES comment describes are seven new ones and a
-second copy of a synthetic-set fixture that was already there.
+`corpus_scorecard.FIXTURES` lists **27 files that are 26 distinct images**, both
+scored at both matrix configs, so that one design carries twice the weight of
+every other in every corpus-wide number — the baseline included.
 
-Nothing is wrong with the fixture itself; the defect is that it is enrolled
-twice. Not fixed here because dropping a name from `FIXTURES` moves the
-baseline, and this file's whole subject is not moving the baseline until its
-movers are attributed. It belongs in the same recapture: drop one name, and
-say in the commit message that the entry count fell for this reason rather
-than because a fixture regressed.
+**This was found on 2026-08-23, not here.** An earlier draft of this file
+reported it as a discovery; it is a rediscovery, and the difference matters
+because the earlier find already did the harder half. `tools/pro_parity/
+blockcensus.py` documents it in its module docstring — *"the scorecard's
+FIXTURES carries both, so its aggregates double-count one image"* — includes
+the image once, and, better than a comment, **verifies the duplication at
+runtime** (`_dup_note`), printing a DIVERGED warning if the two files ever
+stop matching so nobody trusts a stale note. `docs/superpowers/plans/
+2026-08-24-option-c-is-inert.md` uses it too, to discount an apparent
+corroboration: *"`drone_render.png` and `logo_drone_thermal_badge.png`
+reporting identical 19/11 ... is not two independent confirmations."*
+
+So the defect is not that nobody noticed. It is that the notice lived in the
+tool that worked around it and in one plan doc, while `FIXTURES` itself and
+MASTER_SCOPE carried the uncorrected claim — and the scorecard, the thing whose
+aggregates are actually skewed, still enrols both names. Two sessions have now
+paid to rediscover it.
+
+**The fix is to drop the name from `FIXTURES`**, which moves the baseline, so
+it belongs in the recapture rather than before it — listed below. `blockcensus`
+needs no change: it already does the right thing.
 
 ## What would unblock a recapture
 
@@ -300,16 +308,34 @@ The method that worked twice above is cheap and should be reused: **run the one
 fixture with the one flag flipped**, roughly ten seconds a test, rather than
 bisecting 206 merges with a four-minute full capture each time.
 
-1. Confirm the `THREAD_MATCH_POOR` population is all `2d58da8` by spot-checking
-   two or three of the fixtures that *improved* (`fur_ramp` 40 → 88,
-   `photo_owl_pale` 22 → 46) the same way — declare them and see the baseline
-   score return.
+1. ~~Confirm the `THREAD_MATCH_POOR` population is all `2d58da8`.~~ **DONE —
+   it is, in both directions.** Measured on the three fixtures that moved most:
+
+   | fixture | stage 0 verdict | photo ruler? | score | `worst_dE` then/now |
+   |---|---|---|---|---|
+   | `fur_ramp` | `CLASSIFIED_PHOTO_SCENE` | yes, undeclared | 40 → 88 | 9.3 / **9.3** |
+   | `photo_owl_pale` | `CLASSIFIED_PHOTO_SCENE` | yes, undeclared | 22 → 46 | 6.9 / **6.9** |
+   | `region_blobs` | `CLASSIFIED_GRADIENT` | no | 40 → 0 | 9.1 / 10.7 |
+
+   The two improvers carry an **identical** `thread_worst_delta_e` across the
+   change: the engine's thread choice never moved, only the yardstick applied
+   to it. Declaring them `is_photographic=True` is a NO-OP — they already
+   classify photo, so `_is_photo_class` returns True without a declaration —
+   and that no-op is easy to misread as the hypothesis failing. It is the
+   hypothesis holding. `region_blobs` is the mirror: classified GRADIENT, so it
+   lost the lenient ruler and needs an explicit declaration to get it back,
+   which restores exactly 40.
 2. Attribute the geometry population. Both singled-out movers are DONE:
    `link_segments` was a real defect in the instrument (attribution 3), and
-   `summit_badge` was a real defect being FIXED (attribution 4). What is left
-   is the small stuff in the table above — `color_changes` on the gradient
-   ramps and `drone_render`, `satin_steps` on `enthusiast_logo` — none of it
-   score-moving, all of it bisectable the same cheap way.
+   `summit_badge` was a real defect being FIXED (attribution 4). Of the small
+   remainder, the gradient ramps are also done — **`gradient_ramp_linear`
+   `color_changes` 1 → 3 bisects to `b37cd808` (2026-08-19), "stage 7 sews
+   blend shades in their snapped threads"**, which is the shade-bind work
+   landing: a ramp that used to collapse to one thread now sews the three its
+   per-shade snap had already computed and stage 7 was throwing away. Intended,
+   and `gradient_ramp_radial` moves identically. Still open: `drone_render`
+   `color_changes` 23 → 18 and `enthusiast_logo` `satin_steps` 1416 → 1284,
+   neither score-moving, both bisectable the same cheap way.
 3. Drop the duplicate fixture name, so the recapture does not re-enrol one
    design at double weight for another three weeks.
 4. Then re-capture, listing every mover and its cause in the commit message,
