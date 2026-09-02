@@ -632,6 +632,93 @@ describe("Sequencer view", () => {
 // misses). These tests pin the DEBOUNCE, which is the part that keeps ten
 // nudges from queueing ten 10-second runs.
 
+describe("findings that have a knob behind them", () => {
+  // Item 8. Kent's call was that this belongs AFTER the run, not before it —
+  // the panel was deliberately moved away from asking anything up front. So
+  // this is not a preset picker; it is the findings the app already computes,
+  // each paired with the one adjustment that addresses it.
+  const RESULT = { stitchCount: 2400, widthMM: 50, heightMM: 40, colorCount: 3,
+                   stitches: [], colors: [] };
+
+  function withFindings(findings, params = {}) {
+    return render(Harness, {
+      props: {
+        element: baseElement([], {
+          result: RESULT,
+          preflight: { score: 60, grade: "D", findings, metrics: {} },
+          params: { target_width_mm: 80, max_colors: 6, satin: true,
+                    fill_angle_deg: null, border: null, edge_cap: "none",
+                    detail_layer: false, ...params },
+        }),
+        onPatch: () => {},
+      },
+    });
+  }
+
+  test("too many color stops offers fewer colors, and says what it spends", async () => {
+    const { getByTestId } = withFindings(
+      [{ code: "COLOR_STOPS_HEAVY", severity: "warn", message: "14 color stops." }]);
+    const box = getByTestId("digitize-fixes");
+    expect(box.textContent).toMatch(/Use fewer colors/);
+    // The cost is named up front — a fix that silently halves the palette is
+    // not an offer, it is a surprise.
+    expect(box.textContent).toMatch(/6 → 4 colors/);
+  });
+
+  test("lettering below readable size offers to enlarge", () => {
+    const { getByTestId } = withFindings(
+      [{ code: "LETTERING_TOO_SMALL", severity: "warn", message: "sews below readable size." }]);
+    expect(getByTestId("digitize-fixes").textContent).toMatch(/Make it bigger/);
+    expect(getByTestId("digitize-fixes").textContent).toMatch(/80 → 100 mm wide/);
+  });
+
+  test("two findings with the SAME cure offer one button, not two", () => {
+    const { container } = withFindings([
+      { code: "LETTERING_TOO_SMALL", severity: "warn", message: "a" },
+      { code: "STITCHES_TOO_SHORT", severity: "warn", message: "b" },
+    ]);
+    expect(container.querySelectorAll(".dgp-fix").length).toBe(1);
+  });
+
+  test("a finding with NO knob behind it offers nothing — silence beats a button that does not help", () => {
+    // TRIM_HEAVY's lever is chain_links, frozen by gate 1; DENSITY_STACKED has
+    // no exposed density control. A plausible-looking button there would be
+    // worse than none, because it would be tried.
+    const { queryByTestId } = withFindings([
+      { code: "TRIM_HEAVY", severity: "warn", message: "10.3 trims per 1,000." },
+      { code: "DENSITY_STACKED", severity: "block", message: "stacks 7.2 layers." },
+    ]);
+    expect(queryByTestId("digitize-fixes")).toBeNull();
+  });
+
+  test("a fix already at its limit is not offered", () => {
+    // "Make it bigger" on a design already at the 400 mm ceiling would do
+    // nothing and cost a full re-digitize.
+    const { queryByTestId } = withFindings(
+      [{ code: "LETTERING_TOO_SMALL", severity: "warn", message: "small" }],
+      { target_width_mm: 400 });
+    expect(queryByTestId("digitize-fixes")).toBeNull();
+  });
+
+  test("pressing one writes the param, so it takes the normal re-digitize path", async () => {
+    const patches = [];
+    const view = render(Harness, {
+      props: {
+        element: baseElement([], {
+          result: RESULT,
+          preflight: { score: 60, grade: "D", metrics: {},
+                       findings: [{ code: "COLOR_STOPS_HEAVY", severity: "warn", message: "x" }] },
+          params: { target_width_mm: 80, max_colors: 6, satin: true, fill_angle_deg: null,
+                    border: null, edge_cap: "none", detail_layer: false },
+        }),
+        onPatch: (d) => patches.push(d),
+      },
+    });
+    await fireEvent.click(view.container.querySelector(".dgp-fix"));
+    expect(patches.at(-1).patch.params.max_colors).toBe(4);
+  });
+});
+
 describe("what changed since the last run", () => {
   // A re-digitize replaced the design in place with nothing to compare
   // against, so a knob you turned and a knob you only thought you turned

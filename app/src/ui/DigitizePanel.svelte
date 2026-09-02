@@ -128,6 +128,78 @@
   // `el` is passed explicitly (never closed over) so a re-run always reads
   // the element as it is NOW — the blockRgb(element, i) lesson from
   // DesignPanel applies to async work too.
+  // Findings that have a KNOB behind them, in the language of the outcome
+  // rather than the language of the control. Item 8 asked for presets — "the
+  // panel offers knobs where the user has a job" — and Kent's 2026-09-02 call
+  // was that they belong AFTER the run, not before it: the panel was
+  // deliberately moved away from asking anything up front ("can't we just
+  // upload a photo and the tool AUTOMATICALLY recognizes what needs to be
+  // done?", 2026-08-30), and a preset picker answered before upload
+  // re-introduces exactly that.
+  //
+  // So this is not a preset list. It is the quality report's own findings,
+  // each paired with the one adjustment that addresses it — the app already
+  // computes "31 trims" and "sews below readable size"; what was missing was
+  // an action. `LETTERING_TOO_SMALL`'s own message ends "Enlarging helps",
+  // and until now nothing offered to enlarge it.
+  //
+  // DELIBERATELY SHORT, and the omissions are the honest part. Most findings
+  // have no knob that helps and get nothing rather than a button that does
+  // something adjacent: TRIM_HEAVY's lever is `chain_links`, frozen by gate 1;
+  // DENSITY_STACKED has no exposed density control; PHOTO_RESOLUTION_LOW needs
+  // better artwork, not a setting. Offering a plausible-looking button there
+  // would be worse than silence, because it would be tried.
+  //
+  // Nothing here contradicts a standing ruling: no fix sets `border: "auto"`
+  // (DOCTRINE: +60% stitches and WORSE on a photo), none sets `forced_class`
+  // speculatively (measured worse on textured logo art), and none turns on
+  // `edge_cap`, which Kent reserved per design and which no sew-out has
+  // settled.
+  const FIX_FOR = {
+    COLOR_STOPS_HEAVY: {
+      label: "Use fewer colors",
+      // The slider's own floor is 2; step down by two so one press is a real
+      // move rather than a nudge nobody can see in the result.
+      next: (p) => ({ max_colors: Math.max(2, (p.max_colors || 6) - 2) }),
+      spent: (p) => `${p.max_colors} → ${Math.max(2, (p.max_colors || 6) - 2)} colors`,
+    },
+    LETTERING_TOO_SMALL: {
+      label: "Make it bigger",
+      next: (p) => ({ target_width_mm: Math.min(400, Math.round((p.target_width_mm || 80) * 1.25)) }),
+      spent: (p) => `${Math.round(p.target_width_mm)} → ${Math.min(400, Math.round((p.target_width_mm || 80) * 1.25))} mm wide`,
+    },
+    // Same cure as above, and deduped below so two findings never offer the
+    // same button twice.
+    STITCHES_TOO_SHORT: {
+      label: "Make it bigger",
+      next: (p) => ({ target_width_mm: Math.min(400, Math.round((p.target_width_mm || 80) * 1.25)) }),
+      spent: (p) => `${Math.round(p.target_width_mm)} → ${Math.min(400, Math.round((p.target_width_mm || 80) * 1.25))} mm wide`,
+    },
+  };
+
+  function offeredFixes(el) {
+    const found = (el && el.preflight && el.preflight.findings) || [];
+    const out = [];
+    for (const f of found) {
+      const fix = FIX_FOR[f.code];
+      if (!fix || out.some((o) => o.label === fix.label)) continue;
+      const patch = fix.next(el.params || {});
+      // A fix already at its limit is not offered: "Make it bigger" on a
+      // design already at 400 mm would do nothing and cost a full re-digitize.
+      const key = Object.keys(patch)[0];
+      if ((el.params || {})[key] === patch[key]) continue;
+      out.push({ label: fix.label, patch, spent: fix.spent(el.params || {}), why: f.message });
+    }
+    return out;
+  }
+  $: fixes = offeredFixes(element);
+
+  function applyFix(fix) {
+    // Straight through setParam, so it takes the same auto-re-digitize path a
+    // knob does and lands as one undo step.
+    for (const [k, v] of Object.entries(fix.patch)) setParam(k, v);
+  }
+
   // The five figures a person compares across a re-digitize. Null when there
   // is nothing to compare against -- a first digitize is not "unchanged", it
   // is the baseline, and saying "+0 stitches" there would be a lie dressed as
@@ -1545,6 +1617,21 @@
            nothing to compare against, so a knob you turned and a knob you
            imagined turning looked identical. `role="status"` because this
            appears as the RESULT of an action the user just took. -->
+      <!-- Item 8, in the shape Kent chose 2026-09-02: outcome language, AFTER
+           the run, with the knobs still underneath. Not a preset picker —
+           that would re-introduce the pre-upload question he had removed. -->
+      {#if fixes.length}
+        <div class="dgp-fixes" data-testid="digitize-fixes">
+          {#each fixes as fix}
+            <button type="button" class="dgp-fix" on:click={() => applyFix(fix)}
+                    title={fix.why}>
+              {fix.label}
+              <span class="dgp-fix-cost">{fix.spent}</span>
+            </button>
+          {/each}
+        </div>
+      {/if}
+
       {#if hasPrior}
         <p class="dgp-delta" role="status" data-testid="digitize-delta">
           {#if changed.length}
@@ -2341,6 +2428,25 @@
   .dgp-run:disabled { opacity: 0.6; cursor: default; }
   .dgp-status { font-size: var(--fs-xs, 12px); color: var(--muted, #667); margin: 6px 0 0; }
   .dgp-error { font-size: var(--fs-xs, 12px); color: var(--danger, #b3261e); margin: 6px 0 0; }
+  .dgp-fixes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .dgp-fix {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-s);
+    background: var(--surface);
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .dgp-fix-cost { color: var(--muted); }
+
   .dgp-delta {
     margin: 2px 0 0;
     font-size: 12px;
