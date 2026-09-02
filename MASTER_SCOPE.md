@@ -387,14 +387,17 @@ labelled corpus plus a scoring harness would let a classifier change be judged
 against *something* before either arrives.
 
 **Harness half: BUILT — `digitizer/tools/corpus_scorecard.py`.** `capture`/`diff`
-over 14 fixtures x 2 configs, aggregating preflight's score. REPORTING, not a CI
-gate; detail: [area 1](docs/scope/1-auto-digitizing-quality.md). **Baseline stale,
-recapture BLOCKED** — 30 of 38 entries move, 17 on score, movers unattributed;
-two (incl. `summit_badge` #6.2, F/0 and SATURATED so judge it on
-`thread_worst_delta_e`) want a look. *(2026-08-21; 2026-09-02 — [notes](docs/scorecard-baseline-attribution-2026-09-02.md))*
+over 27 fixtures x 2 configs, aggregating preflight's score. REPORTING, not a CI
+gate; detail: [area 1](docs/scope/1-auto-digitizing-quality.md). **Baseline is
+2026-08-12 and SOUND — it re-scores 38/38 exactly on its own commit, so all 30
+movers are real.** Both flagged ones are attributed: `link_segments` a defect in
+the instrument (fixed), `summit_badge` a defect being FIXED (stage 4 dropped its
+badge body). Recapture wants a `THREAD_MATCH_POOR` spot-check and one duplicate
+fixture name dropped. *(2026-08-21; 2026-09-02 — [notes](docs/scorecard-baseline-attribution-2026-09-02.md))*
 
 **Corpus half — the real-artwork entries keep contradicting the synthetics.**
-Eight files of real customer logo art ship in `FIXTURES`: **stage 0 routes six
+Eight names of real customer logo art ship in `FIXTURES` (seven distinct — one
+duplicates `drone_render.png` byte for byte, so that design is scored twice): **stage 0 routes six
 of seven to GRADIENT**, because real logo art carries JPEG ringing and
 anti-aliased edges the synthetics lack, so any "flat spot-colour art" claim
 tuned only on synthetics is untested against real input.
