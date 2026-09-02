@@ -3385,6 +3385,12 @@ population it was not calibrated on — the reusable lesson:
   (R = 0.197 and 0.203). No raw threshold works: directionless square rings sit
   at 0.167. Replaced with Rayleigh's test — chance-corrected, rings and letters
   separate 10× where raw they separate 1.2×. Gate 4 in miniature.
+  **Correction 2026-09-02:** the 0.167 was read on a DEGENERATE fixture —
+  buffered square rings survive spur pruning as 2.5–3.5 mm corner-arc
+  remnants, and true circular annuli read R = 0.008, which a raw floor WOULD
+  separate from lettering. The chance-corrected conclusion still stands on
+  independent evidence (the 8-bar fan at R = 0.209 admitted on n_eff; the
+  3-bar fan at 0.234 rejected on n_eff — `test_textcluster.py`).
 - **7 of 11 lettering regions sew as FILL**, where the satin angle is not read
   and `best_fill_angle_deg` picks rows per shape by minimising that shape's own
   column count — which put two adjacent near-identical capitals at 22.5° and

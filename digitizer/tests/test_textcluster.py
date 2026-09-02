@@ -43,6 +43,7 @@ from digitizer_core.textcluster import (
     _cluster_house_angle_deg,
     _bisector_deg,
     _fourfold_votes,
+    _house_chains,
     _lettering_groups,
     _candidates,
     _stroke_stats_mm,
@@ -915,24 +916,27 @@ def test_a_weak_but_real_direction_over_many_strokes_is_ADMITTED():
 
 def test_the_same_weak_direction_over_FEW_strokes_is_rejected():
     """The other half of the same claim: the gate must read sample size, not
-    just the resultant. Three annuli carry the same nothing that 24 do, over
-    far fewer votes, and neither reading may clear on them.
+    just the resultant. The same fan, cut down to three 3 mm bars, carries
+    the SAME weak direction (R = 0.234 against the eight-bar fan's 0.209 and
+    Kent's lettering band) over n_eff = 101 votes -- nR^2 = 5.5, under the
+    6.9 bar -- and is rejected; a fourth bar makes it n_eff = 144, nR^2 =
+    8.1, admitted. A gate that ignored n_eff would admit both. (Measured
+    2026-09-02; the four-fold reading does not rescue the three-bar case
+    either -- R4 = 0.22 under the 0.25 floor, and n_eff * R4^2 = 1.6.)
 
-    This fixture was three buffered SQUARE rings until the four-fold reading
-    landed (2026-09-02). A square ring is not directionless -- its sides are
-    two orthogonal families, which is exactly the structure the second
-    reading exists to find -- and under this pipeline a 10 mm ring's skeleton
-    survives spur pruning only as a few millimetres of remnant per corner
-    (measured: 2.5-3.5 mm of chain per ring after `_trim_ends`, the corner
-    arcs), so whatever it reads is a handful of votes at 45 deg either way.
-    Not a fixture for any claim about direction."""
-    annuli = []
-    for i in range(3):
-        c = Point(i * 16.0, 0.0)
-        poly = c.buffer(6.0).difference(c.buffer(5.4))
-        annuli.append(Region(shape_id=f"A{i}", polygon=poly, thread_index=0,
-                             thread_number="1", area_mm2=poly.area))
-    assert _cluster_house_angle_deg(annuli) is None
+    This fixture was three buffered SQUARE rings until 2026-09-02. Under
+    this pipeline a 10 mm ring's skeleton survives spur pruning only as
+    2.5-3.5 mm of corner-arc remnant per ring, so whatever it reads is a
+    handful of votes at 45 deg, and three annuli -- the interim replacement
+    -- are rejected on R alone and prove nothing about n. Neither is a
+    fixture for any claim about direction."""
+    def fan(n: int) -> list[Region]:
+        return [Region(shape_id=f"F{i}", thread_index=0, thread_number="1",
+                       polygon=shapely_rotate(_rect(i * 4.0, 0.0, 0.5, 3.0),
+                                              i * 140.0 / n, origin="centroid"),
+                       area_mm2=1.5) for i in range(n)]
+    assert _cluster_house_angle_deg(fan(3)) is None
+    assert _cluster_house_angle_deg(fan(4)) is not None
 
 
 def test_the_four_fold_grain_stays_well_under_the_floor():
@@ -950,7 +954,7 @@ def test_the_four_fold_grain_stays_well_under_the_floor():
         poly = c.buffer(6.0).difference(c.buffer(5.4))
         annuli.append(Region(shape_id=f"A{i}", polygon=poly, thread_index=0,
                              thread_number="1", area_mm2=poly.area))
-    votes = _fourfold_votes(annuli)
+    votes = _fourfold_votes(_house_chains(annuli))
     assert votes is not None
     resultant, n_eff, _axis = votes
     assert resultant < SATIN_HOUSE_FOURFOLD_MIN_R / 3.0, resultant
@@ -960,17 +964,21 @@ def test_the_four_fold_grain_stays_well_under_the_floor():
     assert _cluster_house_angle_deg(annuli) is None
 
 
-def test_raw_pixel_steps_would_have_seen_a_four_fold_grain():
+def test_raw_pixel_steps_carry_a_four_fold_grain_the_chord_removes():
     """Why the four-fold votes are resampled and the doubled votes are not.
     Four bars 45 deg apart cancel in BOTH angle spaces by construction, yet
     on raw 8-connected skeleton steps they read R4 = 0.527 (measured
-    2026-09-02) -- the staircase, not the bars. Resampled at the chord they
-    read ~0.13 over a few dozen votes and do not clear either test."""
+    2026-09-02) -- the staircase, not the bars. Both readings are asserted
+    here: the raw one ABOVE the floor (so removing the resample would flip
+    this test), the chord one under it and not clearing either gate."""
     bars = [Region(shape_id=f"B{i}", thread_index=0, thread_number="1",
                    polygon=shapely_rotate(_rect(i * 4.0, 0.0, 0.3, 1.8),
                                           i * 45.0, origin="centroid"),
                    area_mm2=1.0) for i in range(4)]
-    votes = _fourfold_votes(bars)
+    chains = _house_chains(bars)
+    raw = _fourfold_votes(chains, chord_px=0.0)
+    assert raw is not None and raw[0] > SATIN_HOUSE_FOURFOLD_MIN_R, raw
+    votes = _fourfold_votes(chains)
     assert votes is not None
     resultant, _n_eff, _axis = votes
     assert resultant < SATIN_HOUSE_FOURFOLD_MIN_R, resultant
@@ -986,7 +994,8 @@ def test_two_orthogonal_families_get_the_bisector():
     rejected the whole word, so every bar sewed at its own angle.
 
     Four-fold space sees the structure the doubled space cancels: that same
-    word reads nR4^2 = 53.1. The answer is the BISECTOR of the two families,
+    word reads nR4^2 = 53.1 on raw skeleton steps, 90 on the resampled votes
+    the reading ships on. The answer is the BISECTOR of the two families,
     not the perpendicular to the stems: at 0 deg every horizontal is 90 deg
     off the house and `_clamp_to_span` flips it to +/-45 on tangent noise,
     which rendered worse than no house angle at all. At 45 deg nothing is

@@ -83,19 +83,31 @@ Three things had to be right, each measured:
   "significant" — 24 of them: nR4² = 8.0 against 6.9. Under a biased null a
   significance test answers the wrong question, so the four-fold reading also
   demands an effect: **R4 ≥ 0.25**, five times the residual and under
-  six-tenths of the weakest real case. `test_the_four_fold_grain_stays_well_
-  under_the_floor` pins the margin at a third of the floor.
+  six-tenths of the weaker of the **two real wordmarks measured** (0.444 and
+  0.657; the third case is synthetic). `test_the_four_fold_grain_stays_well_
+  under_the_floor` pins the margin at a third of the floor. Read that
+  honestly: it is a raw floor calibrated on two cases, in the module whose
+  own history says raw floors fail on the next population — and the next
+  population is nameable now: lettering rich in diagonals (A, V, W, X, K, M,
+  N, Y, Z) votes at 180° in four-fold space and cancels the orthogonals, so
+  a word like AVIATION can fail both readings and sew per-stroke. Nothing
+  here has measured one. The principled replacement is a test against the
+  measured biased null — `n_eff · max(0, R4 − grain)² ≥ critical`, grain
+  pinned by the annuli test — which changes the gate's shape and is Kent's
+  call (question 5 below).
 - **Which angle: the bisector, NOT the perpendicular to the stems.** Rendered
   both. At house = 0° (horizontal crosses, the Becker answer) the stems are
   clean and **every horizontal element is scrambled**: a bar is 90° off the
   house, past `SATIN_HOUSE_MIN_SPAN_DEG` (45), so `_clamp_to_span` rotates it
   to ±45° with the SIGN decided by sub-degree tangent noise, and the
   smoothing pass then sweeps each bar's crosses through 90° between flips.
-  Worse than no house angle at all. At **45°** the cross sits exactly at the
-  span limit for both families, nothing is clamped, nothing flips, and every
-  stroke of every letter — stems, arms, serifs, the O — sews at one angle
-  with no corner fan. The E's arms weigh the same as its stem; the T's left
-  slab no longer drops.
+  Worse than no house angle at all. At exactly **45°** the cross sits at the
+  span limit for both families and nothing is clamped or flipped. A derived
+  bisector a degree or two off (Fremont's 42.8–44.4°) nudges the family it
+  is further from back to the 45° limit — same sign, no flip — so the two
+  families sew within ~2° of each other, with no corner fan. In the
+  `stitchviz` render (n = 1, no cloth yet) the E's arms weigh the same as
+  its stem and the T's left slab no longer drops.
   **And the bisector needs a convention, because there are two.** The family
   axis comes back mod 90, so "axis + 45" handed drone's THERMAL (axis 0.1°)
   45° and Hotel Fremont (axis 89.4°) 134° — mirror-image slants on the same
@@ -104,7 +116,7 @@ Three things had to be right, each measured:
   upright text always gets the same slant. 45 vs 135 is Kent's convention
   call; the constant is where to change it.
 
-### Where it fires, measured on every committed fixture that has lettering
+### Where it fires — the four fixtures measured first (six more below)
 
 | fixture | before | after |
 |---|---|---|
@@ -220,3 +232,6 @@ crosses unsewn ground, or deferring it to a covered route.
 3. **Re-open `simplify_tol_mm` for curves**, now that `tools/curve_fidelity.py`
    can measure it from the stitch path and the O gives a direct number.
 4. **Fill travel under cover** — schedule it with the two sequencing cards.
+5. **The four-fold effect floor's shape.** Keep `R4 ≥ 0.25` (a raw floor on
+   two real cases) or replace it with the chance-corrected test against the
+   measured grain. Either way, measure a diagonal-heavy word first.

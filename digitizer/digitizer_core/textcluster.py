@@ -1108,11 +1108,16 @@ SATIN_ANGLE_RAYLEIGH_ALPHA = 0.001
 # Four-fold angle space sees exactly that structure: quadrupled, a vertical
 # and a horizontal both vote at 0 deg, so two orthogonal families REINFORCE
 # instead of cancelling, and the same Rayleigh test at the same alpha admits
-# them (Hotel Fremont: R4 = 0.185, nR4^2 = 53.1). Circular annuli stay
-# rejected in four-fold space for the same reason they are in two-fold; four
-# bars 45 deg apart cancel in both. The test is tried SECOND, only when the
-# doubled-angle test found nothing, so every cluster that was admitted before
-# is admitted at the identical angle.
+# them (Hotel Fremont on raw skeleton steps: R4 = 0.185, nR4^2 = 53.1; on the
+# resampled votes the reading actually ships on, 0.444 and 90 -- see
+# SATIN_HOUSE_CHORD_PX). Four bars 45 deg apart cancel in both spaces. The
+# test is tried SECOND, only when the doubled-angle test found nothing, so
+# every cluster that was admitted before is admitted at the identical angle.
+#
+# KNOWN BLIND SPOT, named now so the fifth instance is not a surprise:
+# lettering rich in DIAGONALS (A, V, W, X, K, M, N, Y, Z) votes at 180 deg in
+# four-fold space and cancels the orthogonals, so a word like AVIATION can
+# fail both readings and sew per-stroke. Nothing here has measured one.
 #
 # Which cross angle, once two orthogonal families are found? The bisector,
 # `axis + SATIN_HOUSE_BISECTOR_DEG`. It is the only choice that holds one
@@ -1122,10 +1127,13 @@ SATIN_ANGLE_RAYLEIGH_ALPHA = 0.001
 # back to +/-45 deg with the SIGN decided by sub-degree tangent noise -- and
 # the smoothing pass then sweeps each bar's crosses through 90 deg between
 # flips. Rendered at house = 0 on Hotel Fremont the bars came out worse than
-# with no house angle at all. At 45 deg the cross sits exactly at the span
-# limit for BOTH families, nothing is clamped, nothing flips, and every
-# stroke of every letter sews at one angle with no fan at the corners --
-# which is the "same angle for the whole word" the feature exists to give.
+# with no house angle at all. At exactly 45 deg the cross sits at the span
+# limit for BOTH families and nothing is clamped or flipped; a derived
+# bisector a degree or two off (Hotel Fremont: 42.8-44.4) nudges the
+# family it is further from back to the 45 deg limit, same sign, no flip, so
+# the two families sew within ~2 deg of each other with no fan at the
+# corners -- which is the "same angle for the whole word" the feature exists
+# to give.
 # 45 vs 135 is a convention, not a measurement; the constant is where to
 # change it. Two orthogonal families have TWO bisectors, 90 deg apart, and the
 # family axis the votes return is only defined mod 90 -- so "axis + 45" is
@@ -1171,10 +1179,15 @@ SATIN_HOUSE_CHORD_PX = 4.0
 # 8.0 against 6.9; 48 larger ones: 15.9). Under a biased null a
 # significance test answers the wrong question, so the four-fold reading
 # also asks for an EFFECT: R4 at least this much. 0.25 is five times the
-# residual and under six-tenths of the weakest real case measured, so
-# nothing sits near it; `test_the_four_fold_grain_stays_well_under_the_floor`
-# pins the margin. This is a floor against a known bias, not a raw quality
-# threshold, which is the distinction ROADMAP gate 4 draws.
+# residual and under six-tenths of the weaker of the TWO real wordmarks
+# measured (Hotel Fremont 0.444, its "THE" 0.657; one synthetic 0.903), so
+# nothing measured sits near it; `test_the_four_fold_grain_stays_well_under_
+# the_floor` pins the margin. It is a floor against a known bias in the
+# null, and it is still a raw floor calibrated on two cases -- the diagonal
+# blind spot above is where it would first be found wanting. The principled
+# replacement is a test against the measured biased null, n_eff * max(0,
+# R4 - grain)^2 >= critical, with the grain pinned by the annuli test; that
+# changes the gate's shape and is Kent's call.
 SATIN_HOUSE_FOURFOLD_MIN_R = 0.25
 
 
@@ -1197,36 +1210,6 @@ def _resample_chain(chain: list[tuple[float, float]],
     if out[-1] != chain[-1]:
         out.append(chain[-1])
     return out
-
-
-def _fourfold_votes(members: list[Region]) -> tuple[float, float, float] | None:
-    """(R4, n_eff, stroke axis in degrees mod 90) over the members' chains
-    resampled at `SATIN_HOUSE_CHORD_PX`, or None with nothing to vote on."""
-    c4 = s4 = total = sq_weight = 0.0
-    for r in members:
-        field = build_shape_field(r.polygon)
-        if field is None or not field.skel.any():
-            continue
-        end_mm = _spur_len_px(field) / field.scale
-        step_mm = SATIN_HOUSE_CHORD_PX / field.scale
-        for chain in _skeleton_chains_mm(field):
-            trimmed = _resample_chain(_trim_ends(chain, end_mm), step_mm)
-            for (x0, y0), (x1, y1) in zip(trimmed, trimmed[1:]):
-                dx, dy = x1 - x0, y1 - y0
-                length = math.hypot(dx, dy)
-                if length <= 0.0:
-                    continue
-                theta = math.atan2(dy, dx)
-                c4 += length * math.cos(4.0 * theta)
-                s4 += length * math.sin(4.0 * theta)
-                total += length
-                sq_weight += length * length
-    if total <= 0.0:
-        return None
-    n_eff = (total * total) / sq_weight
-    resultant = math.hypot(c4, s4) / total
-    axis = math.degrees(0.25 * math.atan2(s4, c4)) % 90.0
-    return resultant, n_eff, axis
 
 
 def _trim_ends(chain: list[tuple[float, float]],
@@ -1261,6 +1244,56 @@ def _trim_ends(chain: list[tuple[float, float]],
     return chain[i:j + 1] if j > i else []
 
 
+def _house_chains(members: list[Region]) -> list[tuple[list[tuple[float, float]], float]]:
+    """(end-trimmed skeleton chain in mm, raster px/mm) for every chain of
+    every member -- the one vote set both readings below draw from.
+
+    Fails open the way the rest of this module does: a member that will not
+    field, or has no skeleton, contributes nothing instead of raising.
+    """
+    out: list[tuple[list[tuple[float, float]], float]] = []
+    for r in members:
+        field = build_shape_field(r.polygon)
+        if field is None or not field.skel.any():
+            continue
+        # `_spur_len_px` in mm: how far the medial-axis end artifact reaches
+        # into this chain. Each member gets its OWN field, and
+        # `build_shape_field` normalises raster SIZE rather than resolution,
+        # so px/mm differs per member -- the conversion is per member too.
+        end_mm = _spur_len_px(field) / field.scale
+        for chain in _skeleton_chains_mm(field):
+            out.append((_trim_ends(chain, end_mm), field.scale))
+    return out
+
+
+def _fourfold_votes(chains: list[tuple[list[tuple[float, float]], float]],
+                    chord_px: float = SATIN_HOUSE_CHORD_PX,
+                    ) -> tuple[float, float, float] | None:
+    """(R4, n_eff, stroke axis in degrees mod 90) over `chains` (from
+    `_house_chains`) resampled at `chord_px` pixels -- 0 votes on the raw
+    skeleton steps, which is how the grain was measured -- or None with
+    nothing to vote on."""
+    c4 = s4 = total = sq_weight = 0.0
+    for chain, scale in chains:
+        pts = _resample_chain(chain, chord_px / scale) if chord_px > 0 else chain
+        for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+            dx, dy = x1 - x0, y1 - y0
+            length = math.hypot(dx, dy)
+            if length <= 0.0:
+                continue
+            theta = math.atan2(dy, dx)
+            c4 += length * math.cos(4.0 * theta)
+            s4 += length * math.sin(4.0 * theta)
+            total += length
+            sq_weight += length * length
+    if total <= 0.0:
+        return None
+    n_eff = (total * total) / sq_weight
+    resultant = math.hypot(c4, s4) / total
+    axis = math.degrees(0.25 * math.atan2(s4, c4)) % 90.0
+    return resultant, n_eff, axis
+
+
 def _cluster_house_angle_deg(members: list[Region]) -> float | None:
     """The dominant CROSS angle over a text cluster's strokes, in degrees on
     [0, 180), or None when the strokes carry no dominant direction.
@@ -1281,30 +1314,21 @@ def _cluster_house_angle_deg(members: list[Region]) -> float | None:
     Fails open the way the rest of this module does: a member that will not
     field, or has no skeleton, contributes nothing instead of raising.
     """
+    chains = _house_chains(members)
     c2 = s2 = total = sq_weight = 0.0
-    for r in members:
-        field = build_shape_field(r.polygon)
-        if field is None or not field.skel.any():
-            continue
-        # `_spur_len_px` in mm: how far the medial-axis end artifact reaches
-        # into this chain. Each member gets its OWN field, and
-        # `build_shape_field` normalises raster SIZE rather than resolution,
-        # so px/mm differs per member -- the conversion is per member too.
-        end_mm = _spur_len_px(field) / field.scale
-        for chain in _skeleton_chains_mm(field):
-            trimmed = _trim_ends(chain, end_mm)
-            for (x0, y0), (x1, y1) in zip(trimmed, trimmed[1:]):
-                dx, dy = x1 - x0, y1 - y0
-                length = math.hypot(dx, dy)
-                if length <= 0.0:
-                    continue
-                # Unit tangent, so (tx^2 - ty^2, 2 tx ty) is exactly
-                # (cos 2t, sin 2t) -- see directionfield.region_direction.
-                tx, ty = dx / length, dy / length
-                c2 += length * (tx * tx - ty * ty)
-                s2 += length * (2.0 * tx * ty)
-                total += length
-                sq_weight += length * length
+    for trimmed, _scale in chains:
+        for (x0, y0), (x1, y1) in zip(trimmed, trimmed[1:]):
+            dx, dy = x1 - x0, y1 - y0
+            length = math.hypot(dx, dy)
+            if length <= 0.0:
+                continue
+            # Unit tangent, so (tx^2 - ty^2, 2 tx ty) is exactly
+            # (cos 2t, sin 2t) -- see directionfield.region_direction.
+            tx, ty = dx / length, dy / length
+            c2 += length * (tx * tx - ty * ty)
+            s2 += length * (2.0 * tx * ty)
+            total += length
+            sq_weight += length * length
     if total <= 0.0:
         return None
     c2 /= total
@@ -1322,7 +1346,7 @@ def _cluster_house_angle_deg(members: list[Region]) -> float | None:
     # No single direction. Two orthogonal ones? Same test in four-fold space,
     # on grain-free votes, and with an effect-size floor -- see
     # SATIN_HOUSE_CHORD_PX and SATIN_HOUSE_FOURFOLD_MIN_R for both.
-    votes = _fourfold_votes(members)
+    votes = _fourfold_votes(chains)
     if votes is None:
         return None
     resultant4, n_eff4, axis = votes

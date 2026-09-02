@@ -148,9 +148,8 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
     *(measured 2026-09-02 — `docs/hotel-fremont-fine-details-2026-09-02.md`)*
 
 22. **Small curves sew as polygons** — `simplify_tol_mm` 0.2 makes a 2.4 mm
-    counter a **9-gon, ±0.25 mm** (Kent: *"this O is not round"*; the outer
-    ring keeps 16 verts at ±0.02). The 0.2 ruling predates a curve
-    instrument; re-opening is Kent's call. *(measured 2026-09-02 — same doc)*
+    counter a **9-gon, ±0.25 mm** (Kent: *"this O is not round"*). The 0.2
+    ruling predates a curve instrument; Kent's call. *(measured 2026-09-02 — same doc)*
 
 ### Closed — kept numbered, because ten other docs cite them by number
 
@@ -508,7 +507,7 @@ be able to agree with a partly craft-driven ranking at all.
 shapes the design already sews. `tools/dropped_elements.py` measures it from the
 artwork's side — 99.1% lost on the logo Kent called "5% completed at most".
 **Both halves of the smoothness complaint now have instruments, and they are not
-the same measurement** (Spearman 0.028, n = 12). `tools/edge_smoothness.py` owns
+the same measurement** (Spearman 0.028, n = 12 — rules out redundancy, does not prove independence). `tools/edge_smoothness.py` owns
 edge noise; `tools/curve_fidelity.py` owns the curve half, read from
 `plan.iter_runs()` because **curve fidelity is not readable from a raster**.
 Three rules: **`roughness_deg` is the per-design number**; **`turn_gini` is
@@ -545,7 +544,9 @@ baseline, with **total thread −2.4%**, trims and jumps unchanged.
 Three thresholds had to be corrected to get there, each applied to a population
 it was not calibrated on — the reusable lesson, and **gate 4 in miniature**: the
 confidence gate was replaced with Rayleigh's test, chance-corrected, where
-lettering and directionless square rings separate 10x against 1.2x raw. The
+lettering and directionless square rings separate 10x against 1.2x raw
+(**the ring half of that figure is a degenerate fixture** — 2026-09-02, area 1;
+the Rayleigh conclusion rests on the 8-bar fan, which stands). The
 three (`detect_text_clusters`' candidate gating, the coherence floor, and the
 7-of-11 lettering regions that sew as FILL) are in
 [area 1](docs/scope/1-auto-digitizing-quality.md).
@@ -559,8 +560,7 @@ admits two orthogonal families, on 4 px-resampled chains (raw skeleton steps
 carry a four-fold raster grain: annuli 0.160 at 45°) with an effect floor
 (the residual clears significance under a biased null), at the **45°
 bisector** — house = 0 scrambles every horizontal through the span clamp.
-Becker/enthusiast byte-identical; drone's THERMAL gains it (+0.4% st).
-*(2026-09-02 — `docs/hotel-fremont-fine-details-2026-09-02.md`; area 1 has the table)*
+Becker/enthusiast byte-identical; drone's THERMAL gains it (+0.4% st). *(measured and fixed 2026-09-02 — `docs/hotel-fremont-fine-details-2026-09-02.md`, PR #321; area 1 has the table)*
 
 **Mechanism 2 — pull comp's min-feature guard scoped to `poly.interiors` —
 is PROTOTYPED AND COSTED, deliberately not shipped.** An exterior-pocket branch
