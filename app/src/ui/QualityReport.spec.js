@@ -158,6 +158,42 @@ test("one thread change reads as singular", () => {
   expect(container.querySelector(".qr-bill").textContent).toBe("500 stitches · 1 thread change");
 });
 
+test("trims ride the production line, because they are hand work", () => {
+  // Every trim leaves thread tails somebody clips with scissors after the
+  // machine stops, so the count is a chore this screen can warn about and the
+  // stitch count cannot. It sits before thread length: trims and colour
+  // changes are both "what the operator has to DO", metres is shopping.
+  const withTrims = entry({
+    preflight: { score: 76, grade: "C", findings: [], metrics: { stitch_count: 10938, color_changes: 17 } },
+    stats: { trims: 31, thread_m_total: 20.14 },
+  });
+  const { container } = render(QualityReport, { props: { entries: [withTrims] } });
+  expect(container.querySelector(".qr-bill").textContent).toBe(
+    "10,938 stitches · 17 thread changes · 31 trims · 20.1 m of thread");
+});
+
+test("ZERO trims is printed, not suppressed as a missing number", () => {
+  // The one place the omit-a-missing-number rule must NOT apply. A design that
+  // trims nothing is the good case, and "0 trims" is the sentence that says
+  // there is nothing to clip — swallowing it leaves the operator unable to
+  // tell "clean" from "this job predates the field".
+  const clean = entry({
+    preflight: { score: 100, grade: "A", findings: [], metrics: { stitch_count: 500 } },
+    stats: { trims: 0 },
+  });
+  const { container } = render(QualityReport, { props: { entries: [clean] } });
+  expect(container.querySelector(".qr-bill").textContent).toBe("500 stitches · 0 trims");
+});
+
+test("one trim reads as singular", () => {
+  const one = entry({
+    preflight: { score: 88, grade: "B", findings: [], metrics: { stitch_count: 500 } },
+    stats: { trims: 1 },
+  });
+  const { container } = render(QualityReport, { props: { entries: [one] } });
+  expect(container.querySelector(".qr-bill").textContent).toBe("500 stitches · 1 trim");
+});
+
 test("several artworks are named; a single one is not", () => {
   const solo = render(QualityReport, { props: { entries: [entry()] } });
   expect(solo.container.querySelector(".qr-name")).toBeNull();

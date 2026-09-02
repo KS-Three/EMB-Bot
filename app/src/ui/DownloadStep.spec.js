@@ -16,7 +16,7 @@
 // and the crossval harness own that), and the service round trip
 // (exporters.spec.js owns the `via` tagging itself). This file only asserts
 // what the panel SAYS about which encoder ran.
-import { beforeAll, expect, test, vi } from "vitest";
+import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { render, fireEvent, waitFor, within } from "@testing-library/svelte";
 import "@testing-library/jest-dom/vitest";
 
@@ -49,7 +49,16 @@ vi.mock("../lib/exporters.js", () => ({
 vi.mock("../lib/download.js", () => ({ triggerDownload: () => {} }));
 vi.mock("../lib/fontLoader.js", () => ({ ensureFonts: async () => {} }));
 vi.mock("../lib/emb.js", () => ({ EMB: { getGarment: () => ({ label: "", widthIn: 4, heightIn: 4 }) } }));
-vi.mock("../lib/hoop.js", () => ({ effectiveHoop: () => ({ hoop: null }) }));
+// Mutable so the hoop-exceeds gate can be exercised: `hoopFitNote` returning a
+// string is the ONLY thing that opens the confirm. It must be listed here even
+// for the tests that never use it — the component calls it inside a try/catch
+// that returns "" on throw, so a mock missing the export would leave every gate
+// test passing against a gate that never ran.
+let fitNote = "";
+vi.mock("../lib/hoop.js", () => ({
+  effectiveHoop: () => ({ hoop: { label: "4×4 in", widthMm: 100, heightMm: 100 } }),
+  hoopFitNote: () => fitNote,
+}));
 vi.mock("../lib/threads.js", () => ({
   PALETTE_INDEX: [{ id: "studio", label: "Studio" }],
   STUDIO_PALETTE: { threads: [] },
@@ -64,6 +73,8 @@ let DownloadStep;
 beforeAll(async () => {
   ({ default: DownloadStep } = await import("./DownloadStep.svelte"));
 });
+
+beforeEach(() => { fitNote = ""; });
 
 function project(elements) {
   return { version: 2, name: "EMBBOT", garmentId: "left_chest", elements };
@@ -248,4 +259,59 @@ test("the post-download note clears when a non-stitch format is downloaded next"
   await waitFor(() =>
     expect(ui(view).queryByTestId("dst-browser-encoder-downloaded")).not.toBeInTheDocument()
   );
+});
+
+// --- the hoop-exceeds export gate ------------------------------------------
+//
+// A design bigger than the hoop used to be one clause of grey caption text
+// while Download stayed enabled. These pin that it now costs a deliberate yes,
+// and — the half that matters more — that it costs NOTHING when it fits.
+
+const P = { props: { project: project(DIGITIZED), runtime: {} } };
+
+test("a design that fits downloads in one click, with no dialog", async () => {
+  const view = render(DownloadStep, P);
+  await fireEvent.click(fmtButton(view, "DST"));
+  expect(view.queryByRole("dialog")).toBeNull();
+  expect(exportCalls.map((c) => c.format)).toContain("dst");
+});
+
+test("a design bigger than the hoop must be confirmed before it exports", async () => {
+  fitNote = "Exceeds your 4×4 in hoop";
+  const view = render(DownloadStep, P);
+  const before = exportCalls.length;
+  await fireEvent.click(fmtButton(view, "DST"));
+
+  // Nothing has been written yet — that is the whole point.
+  expect(exportCalls.length).toBe(before);
+  const dialog = view.getByRole("dialog");
+  // It repeats the measured reason rather than inventing its own wording.
+  expect(dialog.textContent).toMatch(/Exceeds your 4×4 in hoop/);
+
+  await fireEvent.click(view.getByText(/Download DST anyway/));
+  expect(exportCalls.map((c) => c.format)).toContain("dst");
+});
+
+test("Go back cancels the export entirely", async () => {
+  fitNote = "Exceeds your 4×4 in hoop";
+  const view = render(DownloadStep, P);
+  const before = exportCalls.length;
+  await fireEvent.click(fmtButton(view, "DST"));
+  await fireEvent.click(view.getByText("Go back"));
+  expect(view.queryByRole("dialog")).toBeNull();
+  expect(exportCalls.length).toBe(before);
+});
+
+test("the confirm names the format it holds, so one dialog serves them all", async () => {
+  fitNote = "Exceeds your 4×4 in hoop";
+  const view = render(DownloadStep, P);
+  await fireEvent.click(fmtButton(view, "PES"));
+  expect(view.getByRole("dialog").textContent).toMatch(/Download PES anyway/);
+});
+
+test("PNG is NOT gated — it is not a file a machine stitches", async () => {
+  fitNote = "Exceeds your 4×4 in hoop";
+  const view = render(DownloadStep, P);
+  await fireEvent.click(fmtButton(view, "PNG"));
+  expect(view.queryByRole("dialog")).toBeNull();
 });

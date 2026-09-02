@@ -379,11 +379,33 @@ const MM_PER_INCH = 25.4; // inlined (no dependency on the engine global here)
 // design's bbox — into cw x ch, so the design renders at its true size and
 // position within the garment/hoop frame instead of being stretched to fill
 // the canvas.
-export function hoopTransform(garment, cw, ch, pad) {
+// `hoop` is OPTIONAL and additive: the real hoop preset (`{ widthMm, heightMm }`
+// from EMB.HOOPS) when the caller knows it. Omit it and every number below is
+// exactly what it was before this parameter existed -- which is what keeps the
+// design-fit callers and this module's own specs byte-identical.
+//
+// When it IS given, the fit spans the UNION of the placement box and the hoop,
+// because the two are different rectangles and neither is reliably the larger:
+// a 4x4 hoop (100 mm) is smaller than the left-chest box (101.6 mm), while a
+// 6x10 hoop (160x250) dwarfs the hat-front box (127x57). Fitting only the
+// placement box, which is what this did when its one caller passed a garment
+// and called it a hoop, drew a 6x10 hoop off the edge of the canvas -- and
+// fitting only the hoop would shrink the box the design is actually positioned
+// against. The union costs a smaller design on a mismatched pair, and that
+// shrink is the honest answer to "how much of this hoop am I using".
+export function hoopTransform(garment, cw, ch, pad, hoop) {
+  // The PLACEMENT BOX, in mm. Named `hoopWmm` for the callers and the specs
+  // that already read it; it has never been a hoop. See `boxWmm` below for the
+  // name this should have had.
   const hoopWmm = garment.widthIn * MM_PER_INCH;
   const hoopHmm = garment.heightIn * MM_PER_INCH;
-  const scale = Math.min((cw - 2 * pad) / hoopWmm, (ch - 2 * pad) / hoopHmm);
-  return { scale, ox: cw / 2, oy: ch / 2, hoopWmm, hoopHmm };
+  const realWmm = hoop ? hoop.widthMm : null;
+  const realHmm = hoop ? hoop.heightMm : null;
+  const fitW = realWmm ? Math.max(hoopWmm, realWmm) : hoopWmm;
+  const fitH = realHmm ? Math.max(hoopHmm, realHmm) : hoopHmm;
+  const scale = Math.min((cw - 2 * pad) / fitW, (ch - 2 * pad) / fitH);
+  return { scale, ox: cw / 2, oy: ch / 2, hoopWmm, hoopHmm,
+           boxWmm: hoopWmm, boxHmm: hoopHmm, realWmm, realHmm };
 }
 
 function roundRectPath(ctx, x, y, w, h, r) {
@@ -402,7 +424,16 @@ function roundRectPath(ctx, x, y, w, h, r) {
 // `fabricRgb` (B7) picks the outline/inset tone: the original dark-on-light
 // chrome when the fabric is light (or unspecified -- back-compat), a light
 // variant when the fabric is dark enough that the dark chrome would wash out.
-export function drawHoopOutline(ctx, t, fabricRgb) {
+// `opts.inset: false` drops the dashed safe-margin ring, and `opts.dashed`
+// strokes the outline itself dashed. Both exist to tell the two rectangles
+// apart once they are BOTH on screen: the hoop keeps this function's original
+// treatment -- solid ring plus the 3 mm margin, which is what the paragraph
+// above describes and has always been about a hoop's clamp -- and the garment
+// placement box, which merely says where on the shirt the design sits, becomes
+// a dashed outline with no margin of its own. Defaults reproduce the original
+// call exactly, so a caller that knows no hoop is unaffected.
+export function drawHoopOutline(ctx, t, fabricRgb, opts) {
+  const { inset = true, dashed = false } = opts || {};
   const dark = isDark(fabricRgb || DEFAULT_FABRIC_RGB);
   const outlineColor = dark ? "rgba(255,255,255,0.45)" : "rgba(60,50,40,0.35)";
   const insetColor = dark ? "rgba(255,255,255,0.35)" : "rgba(60,50,40,0.28)";
@@ -412,11 +443,13 @@ export function drawHoopOutline(ctx, t, fabricRgb) {
   ctx.save();
   ctx.lineWidth = 2;
   ctx.strokeStyle = outlineColor;
+  if (dashed) ctx.setLineDash([7, 5]);
   roundRectPath(ctx, x, y, wPx, hPx, r);
   ctx.stroke();
+  if (dashed) ctx.setLineDash([]);
   const insetPx = 3 * t.scale; // ~3mm stitch-limit margin
   const iw = wPx - 2 * insetPx, ih = hPx - 2 * insetPx;
-  if (iw > 0 && ih > 0) {
+  if (inset && iw > 0 && ih > 0) {
     ctx.setLineDash([5, 4]);
     ctx.lineWidth = 1;
     ctx.strokeStyle = insetColor;
@@ -478,7 +511,7 @@ export function renderRealistic(canvas, design, opts) {
   let t, TX0, TY0, pxPerMm0;
 
   if (hooped) {
-    t = hoopTransform(o.hoop.garment, cw, ch, o.pad || 24);
+    t = hoopTransform(o.hoop.garment, cw, ch, o.pad || 24, o.hoop.hoop);
     TX0 = (xMm) => t.ox + xMm * t.scale;
     TY0 = (yMm) => t.oy - yMm * t.scale; // Y-flip: hoop mm y-up -> canvas y-down
     pxPerMm0 = t.scale;
@@ -504,7 +537,17 @@ export function renderRealistic(canvas, design, opts) {
     // outline is always drawn at the current view's scale/position -- one
     // shared transform, not a second parallel calculation (B4).
     const viewedT = { scale: pxPerMm, ox: TX(0), oy: TY(0), hoopWmm: t.hoopWmm, hoopHmm: t.hoopHmm };
-    drawHoopOutline(ctx, viewedT, o.fabricRgb);
+    if (t.realWmm) {
+      // The real hoop FIRST, so the placement box reads as sitting inside it
+      // rather than the other way round -- and so a caller that passes no hoop
+      // leaves this module's stroke order, which one spec asserts by index,
+      // exactly as it was.
+      drawHoopOutline(ctx, { ...viewedT, hoopWmm: t.realWmm, hoopHmm: t.realHmm },
+                      o.fabricRgb);
+      drawHoopOutline(ctx, viewedT, o.fabricRgb, { inset: false, dashed: true });
+    } else {
+      drawHoopOutline(ctx, viewedT, o.fabricRgb);
+    }
   }
 
   // Strand coordinates come straight from design.stitches, i.e. DST units

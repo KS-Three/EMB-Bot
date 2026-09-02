@@ -72,6 +72,71 @@ test("hoopTransform fits the full hoop (not the design) into the canvas, +y up",
   expect(t.oy - 10 * t.scale).toBeLessThan(t.oy);
 });
 
+test("a real hoop widens the fit, so a big hoop cannot be drawn off-canvas", () => {
+  // Hat front (127 x 57.15 mm) inside a 6x10 hoop (160 x 250) -- the hoop is
+  // nearly five times taller than the placement box. Fitting the box alone,
+  // which is all this did when its one caller passed a garment and named it a
+  // hoop, would put most of that hoop outside the canvas.
+  const garment = { widthIn: 5, heightIn: 2.25 };
+  const t = hoopTransform(garment, 640, 420, 20, { widthMm: 160, heightMm: 250 });
+  expect(t.realWmm).toBe(160);
+  expect(t.realHmm).toBe(250);
+  // The placement box is still reported, unchanged, under its old name.
+  expect(t.hoopWmm).toBeCloseTo(127, 1);
+  expect(t.boxWmm).toBeCloseTo(127, 1);
+  // Scale now fits 160 x 250: min(600/160, 380/250) = min(3.75, 1.52).
+  expect(t.scale).toBeCloseTo(1.52, 2);
+  // And the whole hoop lands inside the canvas, which is the point.
+  expect(t.oy - (t.realHmm / 2) * t.scale).toBeGreaterThanOrEqual(0);
+  expect(t.ox + (t.realWmm / 2) * t.scale).toBeLessThanOrEqual(640);
+});
+
+test("a hoop SMALLER than the placement box does not shrink the view", () => {
+  // Left chest is 101.6 mm; the 4x4 hoop is 100. The union is the box, so the
+  // canvas keeps the scale it had before hoops were drawn at all.
+  const garment = { widthIn: 4, heightIn: 4 };
+  const withHoop = hoopTransform(garment, 640, 420, 20, { widthMm: 100, heightMm: 100 });
+  const without = hoopTransform(garment, 640, 420, 20);
+  expect(withHoop.scale).toBeCloseTo(without.scale, 6);
+});
+
+test("omitting the hoop reproduces the old transform exactly", () => {
+  // The back-compat contract every other caller and spec depends on.
+  const garment = { widthIn: 5, heightIn: 2.25 };
+  const t = hoopTransform(garment, 640, 420, 20);
+  expect(t.realWmm).toBeNull();
+  expect(t.realHmm).toBeNull();
+  expect(t.scale).toBeCloseTo(4.724, 2);
+});
+
+test("with a hoop the canvas draws TWO rectangles, not one", () => {
+  // The bug this fixes, stated the way the audit measured it: switching hoops
+  // left the rendered canvas byte-identical, because only the placement box
+  // was ever drawn. With a hoop there is strictly more ink, and the two rects
+  // are told apart by the dash -- the hoop keeps the solid ring and its 3 mm
+  // margin, the box becomes dashed with no margin of its own.
+  const garment = { widthIn: 4, heightIn: 4 };
+  const design = { stitches: [] };
+
+  const bareCtx = makeCtxSpy();
+  renderRealistic({ width: 640, height: 420, getContext: () => bareCtx }, design,
+                  { hoop: { garment }, fabricRgb: [240, 240, 240] });
+
+  const hoopedCtx = makeCtxSpy();
+  renderRealistic({ width: 640, height: 420, getContext: () => hoopedCtx }, design,
+                  { hoop: { garment, hoop: { widthMm: 130, heightMm: 180 } },
+                    fabricRgb: [240, 240, 240] });
+
+  expect(hoopedCtx.stroke.mock.calls.length)
+    .toBeGreaterThan(bareCtx.stroke.mock.calls.length);
+
+  // The box's dash. `setLineDash([5,4])` is the hoop's existing inset margin,
+  // so the discriminator is the 7 -- present only once a hoop is known.
+  const dashes = (c) => c.setLineDash.mock.calls.map((a) => a[0]).filter(Boolean);
+  expect(dashes(hoopedCtx).some((d) => d[0] === 7)).toBe(true);
+  expect(dashes(bareCtx).some((d) => d[0] === 7)).toBe(false);
+});
+
 // --- luminance / isDark (Slice 8 Task 2, B7) -------------------------------
 
 test("luminance: black is 0, white is 1", () => {

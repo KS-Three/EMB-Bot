@@ -217,12 +217,23 @@
   // view) -- no separate hardcoded-color fill path. An empty design just
   // means designToStrands() inside renderRealistic contributes zero strands;
   // the background/hoop-outline/weave painting is identical either way.
+  // The two rectangles the canvas draws, together, because they are different
+  // objects and the picture used to show only one of them: `garment` is the
+  // placement box (where on the shirt the design sits), `hoop` is the frame the
+  // machine actually clamps. Before this, changing the hoop in step 1 left the
+  // canvas BYTE-IDENTICAL -- the only signal was a line of caption text --
+  // because every paint passed the garment and the renderer called it a hoop.
+  function hoopOpt(p) {
+    const garment = garmentFor(p);
+    if (!garment) return undefined;
+    return { garment, hoop: effectiveHoop(p).hoop || undefined };
+  }
+
   function clearToFabric() {
     if (!canvas) return;
-    const garment = garmentFor(project);
     renderResult = renderRealistic(canvas, EMPTY_DESIGN, {
       dpr,
-      hoop: garment ? { garment } : undefined,
+      hoop: hoopOpt(project),
       fabricRgb: project && project.fabricRgb,
       weave: true,
       view,
@@ -999,7 +1010,6 @@
       return;
     }
 
-    const garment = garmentFor(project);
     const c = result.combined;
     // The chosen hoop rides the review stats line, and the ceiling check
     // runs against the combined design (not just the selected element) —
@@ -1022,7 +1032,7 @@
     lastGenerateResult = result; // B2: cached for view-only repaints below
     renderResult = renderRealistic(canvas, c, {
       dpr,
-      hoop: { garment },
+      hoop: hoopOpt(project),
       fabricRgb: project.fabricRgb,
       weave: true,
       view,
@@ -1055,10 +1065,9 @@
   function repaintView() {
     if (!canvas) return;
     if (lastGenerateResult && lastGenerateResult.combined) {
-      const garment = garmentFor(project);
       renderResult = renderRealistic(canvas, lastGenerateResult.combined, {
         dpr,
-        hoop: { garment },
+        hoop: hoopOpt(project),
         fabricRgb: project.fabricRgb,
         weave: true,
         view,
