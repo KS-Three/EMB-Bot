@@ -10,7 +10,23 @@ made of, per design:
   whether the block re-enters territory earlier blocks already sewed;
 - per block, the needle-up travel BETWEEN its patches (the intra-block
   criss-cross), plus how much of that travel crosses thread already laid;
-- design totals: cones, trims, jumps, needle-up mm, tail travel.
+- design totals: cones, trims, jumps, needle-up mm, tail travel;
+- per CONE, the cheapest merge candidate: its nearest neighbour cone by
+  CIEDE2000 and that delta-E, against the stops the cone costs.
+
+That last section is the queue's "merge a tiny cone into an adjacent shade"
+question, made answerable in one run. MASTER_SCOPE described this tool as
+already putting "per-cone stitch counts against candidate delta-E in one run"
+-- it did not; it reported no colour at all, so the join was by hand and the
+question stayed parked as "unmeasurable on the repro (no defensible merge
+pair)" without anyone re-checking that on the committed corpus.
+
+It RANKS, it does not decide. Merging a cone into a neighbouring shade sews
+its patches in the wrong thread -- a visible colour step traded for a stop --
+and how much difference is acceptable is a call on cloth, not a constant this
+tool may pick. So there is deliberately no delta-E threshold here, no
+"mergeable" boolean, and no recommendation: the numbers go in front of a
+person. (ROADMAP gate 1 is untouched for the same reason.)
 
 A "patch" is a maximal needle-down streak: a run opened by jump/trim plus
 everything after it up to the next lifted run. Patch travel is the straight
@@ -35,6 +51,9 @@ sys.path.insert(0, str(ROOT))
 from shapely.geometry import LineString, Point  # noqa: E402
 from shapely.ops import unary_union  # noqa: E402
 
+import numpy as np  # noqa: E402
+from skimage.color import deltaE_ciede2000, rgb2lab  # noqa: E402
+
 from digitizer_core import PipelineConfig  # noqa: E402
 from digitizer_core.pipeline import digitize  # noqa: E402
 
@@ -47,6 +66,61 @@ def _block_geom(block):
         elif r.points:
             parts.append(Point(r.points[0]))
     return unary_union(parts) if parts else None
+
+
+def _cone_merge_candidates(blocks, out_blocks, total_st: int) -> list[dict]:
+    """Per CONE: what it costs the operator, and the nearest shade to fold it into.
+
+    Rolled up by thread NUMBER, not by block. A cone can hold several blocks
+    (that is defects 16 and 18's whole subject), and the operator loads a spool
+    once per stop regardless -- so "this cone costs 3 stops for 229 stitches" is
+    the sentence the merge question is actually about, and a per-block table
+    cannot say it.
+
+    `nearest` is the closest OTHER cone in this design by CIEDE2000 on the
+    thread's own RGB -- the same metric `threads.py` snaps with and `preflight`
+    grades thread match on, so a number here means what it means everywhere
+    else. It is the cheapest merge available, not a merge that should happen:
+    the cost of taking it is that this cone's patches sew in that thread.
+
+    `stops_cost` is an UPPER bound on the stops a merge removes. Folding the
+    cone away removes its own blocks, but if that leaves two same-cone blocks
+    adjacent the sequencer may then join them and save one more; nothing here
+    re-plans to find out, and over-stating the saving would be the wrong
+    direction to be wrong in.
+    """
+    by_cone: dict[str, dict] = {}
+    for b, ob in zip(blocks, out_blocks):
+        c = by_cone.setdefault(ob["number"], {
+            "number": ob["number"], "rgb": list(b.rgb), "stitches": 0,
+            "stops_cost": 0, "patches": 0, "trims": 0, "jumps": 0,
+        })
+        c["stitches"] += ob["stitches"]
+        c["stops_cost"] += 1
+        c["patches"] += ob["patches"]
+        c["trims"] += ob["trims"]
+        c["jumps"] += ob["jumps"]
+
+    cones = list(by_cone.values())
+    if len(cones) > 1:
+        rgb = np.array([[c["rgb"] for c in cones]], dtype=float) / 255.0
+        lab = rgb2lab(rgb)[0]
+        for i, c in enumerate(cones):
+            others = [j for j in range(len(cones)) if j != i]
+            ref = np.repeat(lab[i:i + 1], len(others), axis=0)
+            d = deltaE_ciede2000(ref, lab[others])
+            k = others[int(np.argmin(d))]
+            c["nearest"] = {
+                "number": cones[k]["number"],
+                "rgb": cones[k]["rgb"],
+                "delta_e": round(float(d.min()), 2),
+                "stitches": cones[k]["stitches"],
+            }
+    for c in cones:
+        c.setdefault("nearest", None)
+        c["share_pct"] = round(100.0 * c["stitches"] / total_st, 1) if total_st else 0.0
+    # Smallest first: the merge question is always asked of the tiny cone.
+    return sorted(cones, key=lambda c: c["stitches"])
 
 
 def census(image: Path, width: float, photo: bool) -> dict:
@@ -160,6 +234,7 @@ def census(image: Path, width: float, photo: bool) -> dict:
         "tail_travel_mm": round(tail_travel, 1),
         "reentries": sum(1 for b in out_blocks if b["reentry_into_sewn"]),
         "per_block": out_blocks,
+        "per_cone": _cone_merge_candidates(plan.blocks, out_blocks, total_st),
     }
 
 
@@ -190,6 +265,15 @@ def main() -> None:
               f"trims={b['trims']} jumps={b['jumps']} travel={b['travel_mm']}mm "
               f"max={b['travel_max_mm']} cross={b['cross_mm']}mm"
               f"{'  REENTRY' if b['reentry_into_sewn'] else ''}")
+
+    print("cones, smallest first — merge candidate is the nearest OTHER cone "
+          "by CIEDE2000, ranked not recommended:")
+    for cone in c["per_cone"]:
+        n = cone["nearest"]
+        near = (f"nearest {n['number']} at dE {n['delta_e']}" if n
+                else "only cone in the design")
+        print(f"  {cone['number']:>6}  {cone['stitches']:>6}st ({cone['share_pct']:>4}%)  "
+              f"{cone['stops_cost']} stop(s), {cone['patches']} patches  ->  {near}")
 
 
 if __name__ == "__main__":
