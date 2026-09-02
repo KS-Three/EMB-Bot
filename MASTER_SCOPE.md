@@ -22,7 +22,7 @@ describes are ON `main`**
 `selfconsistency.py` is in a plain checkout.
 *(confirmed 2026-08-17 — `git ls-tree origin/main`)*
 
-**Last updated:** 2026-09-01. **This file is current state only, under an
+**Last updated:** 2026-09-02. **This file is current state only, under an
 800-line budget.** Its three companions: standing rulings, rejected approaches,
 corrections and session-costing traps live in [`DOCTRINE.md`](DOCTRINE.md);
 dated snapshots in [`docs/scope-history.md`](docs/scope-history.md); per-area
@@ -394,11 +394,11 @@ labelled corpus plus a scoring harness would let a classifier change be judged
 against *something* before either arrives.
 
 **Harness half: BUILT — `digitizer/tools/corpus_scorecard.py`.** `capture`/`diff`
-over 14 fixtures x 2 configs, aggregating preflight's score rather than
-inventing a metric. Deliberately a REPORTING tool, not a CI gate. Detail and
-scope limits: [area 1](docs/scope/1-auto-digitizing-quality.md). Still open:
-`summit_badge.png` (#6.2) is F/0 at both configs and SATURATED, so judge any fix
-on `thread_worst_delta_e`, never score. *(confirmed 2026-08-21 — area 1)*
+over 14 fixtures x 2 configs, aggregating preflight's score. REPORTING, not a CI
+gate; detail: [area 1](docs/scope/1-auto-digitizing-quality.md). **Baseline stale,
+recapture BLOCKED** — 30 of 38 entries move, 17 on score, movers unattributed;
+two (incl. `summit_badge` #6.2, F/0 and SATURATED so judge it on
+`thread_worst_delta_e`) want a look. *(2026-08-21; 2026-09-02 — [notes](docs/scorecard-baseline-attribution-2026-09-02.md))*
 
 **Corpus half — the real-artwork entries keep contradicting the synthetics.**
 Eight files of real customer logo art ship in `FIXTURES`: **stage 0 routes six
