@@ -883,6 +883,90 @@ def test_a_fills_own_row_skip_travel_is_not_a_link():
     assert report["metrics"]["link_thread_mm"] == 0.0
 
 
+def test_a_shape_the_needle_JUMPED_to_opens_with_routing_not_a_link():
+    """The SECOND false positive of this instrument (found 2026-09-02).
+
+    Real plans routinely open a shape with that shape's own travel run, and
+    stage 7 marks it `jump` because the machine lifts to reach it (the gap
+    beats `machine.TINY_STITCH_MM`). The needle is UP across that boundary,
+    so no thread goes from F1 to F2 at all — but the classifier compared
+    against the last CONTENT it had seen (F1) rather than against where the
+    needle was standing, and scored F2's own opening travel, plus the step
+    out of it into F2's fill, as between-shape transport.
+
+    Measured on `enthusiast_logo @ 80 mm/hat_front` with chaining shipping
+    default-OFF: 4 link segments and 4.2 mm of "link thread" on a plan that
+    chains nothing — the exact reading `_link_findings` promises is
+    impossible. It is what moved that fixture's `link_segments` 0 -> 4 in the
+    corpus scorecard, and it is why the connect branch's `not run.jump` rule
+    now applies to travel runs too.
+
+    The travel here is deliberately laid across bare fabric BETWEEN the two
+    squares, so nothing about coverage rescues the answer: only reading the
+    lift does.
+    """
+    jumped = _plan(
+        _fill_rect(-14.0, -4.0, -6.0, 4.0, shape_id="F1"),
+        # F2's own opening routing, reached with the needle up.
+        StitchRun(points=_link_run((-6.0, 0.0), (6.0, 0.0)).points,
+                  kind=st.TRAVEL, shape_id="F2", jump=True),
+        _fill_rect(6.0, -4.0, 14.0, 4.0, shape_id="F2"))
+    report = run_preflight(None, jumped, cfg())
+
+    assert LINK_UNCOVERED not in _codes(report)
+    assert report["metrics"]["link_segments"] == 0
+    assert report["metrics"]["link_thread_mm"] == 0.0
+
+
+def test_reading_the_lift_does_not_blind_the_instrument_to_a_real_link():
+    """The other half of the pin, and the one that matters more.
+
+    Same plan, same jump — but the travel now belongs to F1 and ends inside
+    F2's fill, so it is thread that genuinely leaves one shape's routing and
+    lands in another's content. `link_segments` skipping a lift must not
+    become "a link that starts after a jump is free": chaining sews exactly
+    such links, and law 60 is about the thread, not about how the needle got
+    to its start.
+    """
+    real = _plan(
+        _fill_rect(-14.0, -4.0, -6.0, 4.0, shape_id="F1"),
+        StitchRun(points=_link_run((-6.0, 0.0), (6.0, 0.0)).points,
+                  kind=st.TRAVEL, shape_id="F1", jump=True),
+        _fill_rect(6.0, -4.0, 14.0, 4.0, shape_id="F2"))
+    report = run_preflight(None, real, cfg())
+
+    assert LINK_UNCOVERED in _codes(report)
+    assert report["metrics"]["link_thread_mm"] > 10.0
+
+
+def test_with_chaining_off_no_link_can_reach_the_float_ceiling():
+    """The property that makes `_link_findings`' promise checkable.
+
+    That docstring used to say a chain-off plan reports zero link thread. Very
+    nearly true, and the exception is structural rather than a bug: stage 7
+    lifts only once a gap beats `machine.TINY_STITCH_MM` (0.5 mm), so two
+    shapes whose ends land closer than that stay joined needle-down without
+    any chaining at all. On `enthusiast_logo @ 80 mm/hat_front` that is one
+    0.4 mm connection — real thread, correctly counted, and six times under
+    the 3 mm float this fabric cuts at.
+
+    So the honest invariant is the one asserted here: with chaining off the
+    instrument may report thread, but never enough to block. Anything past
+    half a millimetre means either chaining ran or the classifier is reading
+    thread the needle was not down for — the failure this test exists for.
+    """
+    art = TESTDATA / "photo" / "enthusiast_logo.png"
+    for garment in ("left_chest", "hat_front"):
+        c = cfg(target_width_mm=80.0, garment_id=garment)
+        assert c.chain_links is False, "the premise"
+        result = run_stages(art, c)
+        stitch_plan = plan_stitches(result, c)
+        report = run_preflight(None, stitch_plan, c)
+        m = report["metrics"]
+        assert LINK_UNCOVERED not in _codes(report), garment
+        assert m["link_thread_mm"] < machine.TINY_STITCH_MM, (garment, m)
+
+
 def test_a_clean_one_shape_design_is_silent_across_the_2026_08_02_firing_band():
     """The pipeline half of the same pin, at the sizes the closeout measured
     the false block: bg_uncertain.png is ONE shape, and at 104-107 mm

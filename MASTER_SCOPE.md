@@ -174,17 +174,17 @@ someone flips a flag that reads like an optimisation. **A green suite is not
 evidence for either** — on chaining, a green suite actively concealed it.
 
 1. **`chain_links` — sews needle-down thread on bare fabric.** 16.15 mm exposed
-   over 17 links on `full_back`/`fleece_sweatshirt`, stock preset, green suite,
-   one point over a millimetre from any thread in the design. The two shipped
-   instruments were blind three ways over (one-point links skipped, first/last
-   sewn segment never tested, cover measured as polygons not as where thread
-   lands) — all three CLOSED 2026-08-18: thread-derived check shipped, four
-   fixtures accepting at **0.00 mm** added bare thread, **9.82 → 4.06**
-   trims/1k. **Still DO NOT FLIP, now permanently:** gate 1 names link cover
-   tolerance, a thread spec, and the sew-out is accepted as-is, so this is
-   frozen rather than pending. Largest lever on defects 4 and 6. *(measured
-   2026-08-02 — `docs/hardening-closeout-2026-08-02.md`; confirmed 2026-08-18 —
-   `config.py:1006-1068`, `preflight.py:1483-1543`)*
+   over 17 links on `full_back`/`fleece_sweatshirt`, stock preset, green suite.
+   The two shipped instruments were blind three ways over (one-point links
+   skipped, first/last sewn segment never tested, cover as polygons not as
+   where thread lands) — all three CLOSED 2026-08-18: four fixtures at **0.00 mm**
+   added bare thread, **9.82 → 4.06** trims/1k. Its replacement then erred the
+   OTHER way, reading a jump as thread: **39.8 → 9.0 mm** of phantom link on
+   chain-OFF corpus plans, fixed 2026-09-02 (residual is a `-shadeN` id,
+   measured not fixed). **Still DO NOT FLIP, now permanently:** gate 1 names
+   link cover tolerance and the sew-out is accepted as-is. Largest lever on
+   defects 4 and 6. *(2026-08-02/18 — `docs/hardening-closeout-2026-08-02.md`;
+   2026-09-02 — `docs/scorecard-baseline-attribution-2026-09-02.md`)*
 2. **`split_tonal_regions`** — the shading fix, merged but off; parked until the
    sew-out. Cost and ceiling under "Waiting on Kent". *(confirmed OFF
    2026-08-17 — `config.py:647`)*

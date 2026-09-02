@@ -1728,6 +1728,29 @@ def _transport_and_content(plan: StitchPlan
     content(F): stage 6 already trims any in-shape lift past `trim_at_mm`,
     so what chaining sews there is under the float ceiling by construction.)
 
+    **A JUMP breaks that provenance, and forgetting so was this instrument's
+    second measured false positive** (found 2026-09-02 chasing why the corpus
+    scorecard's `enthusiast_logo @ 80 mm/hat_front` moved from 0 link segments
+    to 4 with chaining shipping default-OFF — the exact reading `_link_findings`
+    promises is impossible). A shape often OPENS with its own travel run, and
+    stage 7 marks that run `jump` because the machine lifts to reach it:
+
+        satin(A) ... | jump | travel(B) -> underlay(B) -> satin(B)
+
+    The needle is UP across that boundary, so no thread goes from A to B — but
+    comparing against the last CONTENT seen (A) read travel(B) and the 0.24 mm
+    step out of it as between-shape transport, and reported 4.2 mm of link
+    thread on a plan that chains nothing. The connect branch already encoded
+    the rule (`not run.jump`); the travel branch did not, so the fix is one
+    rule made consistent with itself rather than a threshold loosened. Tracking
+    where the needle STANDS (`at_shape`, cleared on every lift) instead of what
+    it last sewed is what makes the two agree, and it can only ever reclassify
+    thread the needle was not down for. Corpus-wide that took chain-off link
+    thread from 39.8 mm to 9.0 mm; the 9.0 that remains is a THIRD provenance
+    bug of the same family (`-shadeN` ids), measured and left alone on
+    purpose — see `docs/scorecard-baseline-attribution-2026-09-02.md` for why
+    guessing at that one is how a real breach gets waved through.
+
     Everything else — fill rows, satin crosses, borders, beans, underlay,
     ties — is content: thread the design is made of. A fill row lying on bare
     fabric is the design; a link lying on bare fabric is a defect. That is the
@@ -1746,26 +1769,41 @@ def _transport_and_content(plan: StitchPlan
         for i in range(len(runs) - 1, -1, -1):
             nxt[i] = (runs[i].shape_id if runs[i].kind != stitches.TRAVEL
                       else nxt[i + 1])
-        prev_content: str | None = None
+        # The shape the needle is standing in -- None when it was just lifted,
+        # because nothing sewn before a jump can be joined by thread to
+        # anything after it.
+        at_shape: str | None = None
         prev_pt: tuple[float, float] | None = None
         for i, run in enumerate(runs):
             pts = run.points
-            if prev_pt is not None and not run.jump:
-                internal = prev_content is not None and prev_content == nxt[i]
+            if run.jump:
+                at_shape = None
+            elif prev_pt is not None:
+                internal = at_shape is not None and at_shape == nxt[i]
                 if not internal:
                     transport.append((prev_pt, pts[0], bi))
             if run.kind == stitches.TRAVEL:
-                internal = (prev_content is not None
-                            and prev_content == nxt[i + 1]
-                            and run.shape_id == prev_content)
-                if not internal:
+                # This shape's own routing when it lands in that shape's
+                # content and no OTHER shape's thread leads into it. The
+                # `at_shape is None` arm is the lifted-needle case: the
+                # travel's own `shape_id` is then the only provenance there
+                # is, and a run carrying no id has none.
+                internal = run.shape_id == nxt[i + 1] and (
+                    at_shape == run.shape_id
+                    or (at_shape is None and bool(run.shape_id)))
+                if internal:
+                    # The needle is now demonstrably inside this shape, so the
+                    # connection out of this travel into its content is that
+                    # shape's routing too.
+                    at_shape = run.shape_id
+                else:
                     for a, b in zip(pts, pts[1:]):
                         transport.append((a, b, bi))
             else:
                 if len(pts) >= 2:
                     content.setdefault(bi, []).append(
                         np.asarray(pts, np.float64))
-                prev_content = run.shape_id
+                at_shape = run.shape_id
             prev_pt = pts[-1]
     return transport, content
 
@@ -1964,9 +2002,26 @@ def _link_findings(plan: StitchPlan,
     `link_uncovered_max_mm` rides out in the metrics whether or not it fires:
     the number is the point, and an operator watching it move across a
     re-digitize learns more than a boolean. All four link metrics count
-    BETWEEN-shape transport only — a chain-off plan reports zero link thread,
-    because without chaining nothing sews from one shape to another
-    needle-down (`_transport_and_content` owns that classification).
+    BETWEEN-shape transport only (`_transport_and_content` owns that
+    classification).
+
+    This used to promise that "a chain-off plan reports zero link thread". It
+    is very nearly true and the residue is structural, not chaining: stage 7
+    lifts only once a gap beats `machine.TINY_STITCH_MM` (0.5 mm), so two
+    shapes whose ends land closer than that stay joined needle-down with no
+    chaining involved — 0.4 mm of it on `enthusiast_logo @ 80 mm/hat_front`.
+    Real thread, correctly counted, six times under the float this fabric cuts
+    at. The checkable version of the promise, and what
+    `test_with_chaining_off_no_link_can_reach_the_float_ceiling` pins, is that
+    a chain-off plan may report thread but never enough to BLOCK.
+
+    Measured on the scorecard corpus 2026-09-02, chaining off: 9.0 mm of link
+    thread over 54 runs, none of it uncovered, worst single run 2.9 mm against
+    a 3.0 mm ceiling. That worst case is a KNOWN false positive of a third
+    kind, measured and deliberately not yet fixed — the layered streamline
+    tier derives per-shade ids as `f"{shape_id}-shade{i}"`, so one region's
+    travel between its own shade fill and its own border reads as
+    between-shape. See `docs/scorecard-baseline-attribution-2026-09-02.md`.
     """
     got = _link_coverage(plan)
     empty = {"link_segments": 0, "link_thread_mm": 0.0,
