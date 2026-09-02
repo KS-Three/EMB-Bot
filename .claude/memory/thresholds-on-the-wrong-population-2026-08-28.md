@@ -56,7 +56,11 @@ One house angle per line of lettering, on **both** the satin and fill tiers.
 - The gate is **Rayleigh's test** in doubled-angle space, `n_eff·R²` against
   `−ln(α)` with α = 0.001, `n_eff` being Kish's effective sample size. **No raw
   threshold can work here**: directionless square rings sit at R = 0.167 and
-  real lettering at 0.197. Chance-corrected they are 10× apart. This is ROADMAP
+  real lettering at 0.197. *(Correction 2026-09-02: that ring figure is a
+  degenerate fixture — 2.5–3.5 mm of corner-arc remnant per ring survives
+  pruning; true annuli read 0.008. The n_eff argument now rests on the
+  3-bar vs 4-bar fan pair in `test_textcluster.py`; see
+  `hotel-fremont-fine-details-2026-09-02.md`.)* Chance-corrected they are 10× apart. This is ROADMAP
   gate 4 in miniature.
 - The null was **checked, not assumed** — circular annuli score R = 0.0081 and
   stay rejected to n_eff ≈ 20,000.

@@ -3385,12 +3385,65 @@ population it was not calibrated on — the reusable lesson:
   (R = 0.197 and 0.203). No raw threshold works: directionless square rings sit
   at 0.167. Replaced with Rayleigh's test — chance-corrected, rings and letters
   separate 10× where raw they separate 1.2×. Gate 4 in miniature.
+  **Correction 2026-09-02:** the 0.167 was read on a DEGENERATE fixture —
+  buffered square rings survive spur pruning as 2.5–3.5 mm corner-arc
+  remnants, and true circular annuli read R = 0.008, which a raw floor WOULD
+  separate from lettering. The chance-corrected conclusion still stands on
+  independent evidence (the 8-bar fan at R = 0.209 admitted on n_eff; the
+  3-bar fan at 0.234 rejected on n_eff — `test_textcluster.py`).
 - **7 of 11 lettering regions sew as FILL**, where the satin angle is not read
   and `best_fill_angle_deg` picks rows per shape by minimising that shape's own
   column count — which put two adjacent near-identical capitals at 22.5° and
   90.0°. That is the half Kent's complaint actually names. The house angle now
   sets `fill_angle_deg` too.
 *(fixed 2026-08-27 — PRs #282/#283, mutation-checked; renders in the #283 body)*
+
+## Lettering house-angle: the FOURTH miscalibrated threshold, and the four-fold reading (2026-09-02)
+
+The doubled-angle Rayleigh gate above is blind to lettering whose horizontals
+balance its verticals — most slab-serif and many sans block faces. Hotel
+Fremont's twelve capitals: R = 0.055, n_eff 1554, nR² 4.7 against 6.9,
+rejected, and the whole word sewed per-stroke — which is Kent's *"E heavy on
+top and bottom"* and *"T left side drops"* (hanging-serif corner fans, see the
+mechanism table in `docs/hotel-fremont-fine-details-2026-09-02.md`).
+
+`_cluster_house_angle_deg` now tries a second reading in four-fold space when
+the first finds nothing. Three measured constraints, each pinned by a test in
+`tests/test_textcluster.py`:
+
+| | raw pixel steps | 4 px chord |
+|---|---|---|
+| 24 annuli (no direction) | R4 **0.160 @ 45°** | 0.051 |
+| 4 bars 45° apart (cancel by construction) | **0.527** | 0.127 |
+| Hotel Fremont capitals | 0.185 | **0.444** (nR4² 90) |
+| Hotel Fremont "THE" (2.6 mm) | 0.316 | **0.657** |
+| 6 synthetic I-beams | 0.707 | **0.903** |
+
+Raw steps carry the raster's own four-fold staircase, so the four-fold votes
+are resampled at `SATIN_HOUSE_CHORD_PX` = 4; the doubled votes stay raw, so
+every previously admitted cluster is byte-identical (Becker, enthusiast:
+md5-checked). The residual ~0.05 is systematic and clears significance at 24
+annuli (8.0), so `SATIN_HOUSE_FOURFOLD_MIN_R` = 0.25 is an effect floor
+against a biased null — a floor against bias, not a quality threshold. The
+angle is the 45° bisector: house = 0 scrambles every horizontal through
+`_clamp_to_span`'s ±45 sign flip (rendered, worse than nothing); and because
+the axis is only defined mod 90, `_bisector_deg` picks the bisector nearer
+the convention — raw "axis + 45" gave drone 45.1 and Fremont 134.4.
+
+Fires on `drone_render`'s THERMAL (T, H, E, R gain 45.1°, +0.4% stitches,
+trims flat) — the letters of the 2026-08-26 complaint.
+
+**Default OFF — `PipelineConfig.satin_house_fourfold`.** On `enthusiast_logo`
+@ 93 mm (the chaining benchmark's pitch) the reading angles the eleven
+ENTHUSIAST capitals at 48°: E, T, H uniform, but the N's diagonal runs near
+the house and `_clamp_to_span` piles it at the junction, and trims go 19 → 22
+chaining off, 8 → 15 chaining on — **2.43 → 4.62/1k against the 4.1 ceiling**.
+Measured trim regression, rendered gain on two wordmarks, rendered loss on
+one diagonal: the exterior-notch guard's shape, so the same disposition.
+Off, ten fixtures md5-identical to main. *(measured 2026-09-02)* **Still open:** the
+pro sews horizontals as wide short columns at ONE near-horizontal angle; our
+rail model cannot (a cross along a bar collapses to the centreline). That is
+a new construction, Kent's call.
 
 ## Curve-fidelity instrument — the fuller MASTER_SCOPE entry (moved 2026-08-28)
 

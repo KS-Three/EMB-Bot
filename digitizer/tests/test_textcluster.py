@@ -37,7 +37,13 @@ from digitizer_core.stage1_prep import Prep
 from digitizer_core.stage6_satin import satin_shape
 from digitizer_core.textcluster import (
     SHAPE_CONTEXT_MAX_DIST,
+    SATIN_ANGLE_RAYLEIGH_ALPHA,
+    SATIN_HOUSE_BISECTOR_DEG,
+    SATIN_HOUSE_FOURFOLD_MIN_R,
     _cluster_house_angle_deg,
+    _bisector_deg,
+    _fourfold_votes,
+    _house_chains,
     _lettering_groups,
     _candidates,
     _stroke_stats_mm,
@@ -910,17 +916,163 @@ def test_a_weak_but_real_direction_over_many_strokes_is_ADMITTED():
 
 def test_the_same_weak_direction_over_FEW_strokes_is_rejected():
     """The other half of the same claim: the gate must read sample size, not
-    just the resultant. Three buffered square rings lean diagonal for a real
-    reason (45 deg corner arcs) and sit at R = 0.167 — close to the lettering
-    band above — but over only n_eff = 78 votes that is nR^2 = 2.2 and does
-    not clear the bar. A gate that ignored n_eff would admit both."""
-    rings = []
-    for i in range(3):
-        sq = _rect(i * 16.0, 0.0, 10.0, 10.0)
-        poly = Polygon(sq.exterior).buffer(0.6)
-        rings.append(Region(shape_id=f"K{i}", polygon=poly, thread_index=0,
-                            thread_number="1", area_mm2=poly.area))
-    assert _cluster_house_angle_deg(rings) is None
+    just the resultant. The same fan, cut down to three 3 mm bars, carries
+    the SAME weak direction (R = 0.234 against the eight-bar fan's 0.209 and
+    Kent's lettering band) over n_eff = 101 votes -- nR^2 = 5.5, under the
+    6.9 bar -- and is rejected; a fourth bar makes it n_eff = 144, nR^2 =
+    8.1, admitted. A gate that ignored n_eff would admit both. (Measured
+    2026-09-02; the four-fold reading does not rescue the three-bar case
+    either -- R4 = 0.22 under the 0.25 floor, and n_eff * R4^2 = 1.6.)
+
+    This fixture was three buffered SQUARE rings until 2026-09-02. Under
+    this pipeline a 10 mm ring's skeleton survives spur pruning only as
+    2.5-3.5 mm of corner-arc remnant per ring, so whatever it reads is a
+    handful of votes at 45 deg, and three annuli -- the interim replacement
+    -- are rejected on R alone and prove nothing about n. Neither is a
+    fixture for any claim about direction."""
+    def fan(n: int) -> list[Region]:
+        return [Region(shape_id=f"F{i}", thread_index=0, thread_number="1",
+                       polygon=shapely_rotate(_rect(i * 4.0, 0.0, 0.5, 3.0),
+                                              i * 140.0 / n, origin="centroid"),
+                       area_mm2=1.5) for i in range(n)]
+    assert _cluster_house_angle_deg(fan(3)) is None
+    assert _cluster_house_angle_deg(fan(4)) is not None
+
+
+def test_the_four_fold_grain_stays_well_under_the_floor():
+    """The four-fold reading's null is BIASED: a rasterised circle's skeleton
+    keeps a small four-fold grain even after resampling at
+    `SATIN_HOUSE_CHORD_PX`, and with enough annuli that grain becomes
+    "significant" (24 of them clear the Rayleigh bar). The effect-size floor
+    is what rejects it, so the margin between the grain and the floor is the
+    thing to pin: if a raster-resolution change ever pushes the grain up
+    toward the floor, this is the test that says so. Measured 0.051 at 4 px
+    against a 0.25 floor; asserted at a third of the floor."""
+    annuli = []
+    for i in range(24):
+        c = Point(i * 16.0, 0.0)
+        poly = c.buffer(6.0).difference(c.buffer(5.4))
+        annuli.append(Region(shape_id=f"A{i}", polygon=poly, thread_index=0,
+                             thread_number="1", area_mm2=poly.area))
+    votes = _fourfold_votes(_house_chains(annuli))
+    assert votes is not None
+    resultant, n_eff, _axis = votes
+    assert resultant < SATIN_HOUSE_FOURFOLD_MIN_R / 3.0, resultant
+    # And the reason the floor exists at all: over this many votes the
+    # residual IS significant, so significance alone would admit it.
+    assert n_eff * resultant * resultant > -math.log(SATIN_ANGLE_RAYLEIGH_ALPHA)
+    assert _cluster_house_angle_deg(annuli, fourfold=True) is None
+
+
+def test_raw_pixel_steps_carry_a_four_fold_grain_the_chord_removes():
+    """Why the four-fold votes are resampled and the doubled votes are not.
+    Four bars 45 deg apart cancel in BOTH angle spaces by construction, yet
+    on raw 8-connected skeleton steps they read R4 = 0.527 (measured
+    2026-09-02) -- the staircase, not the bars. Both readings are asserted
+    here: the raw one ABOVE the floor (so removing the resample would flip
+    this test), the chord one under it and not clearing either gate."""
+    bars = [Region(shape_id=f"B{i}", thread_index=0, thread_number="1",
+                   polygon=shapely_rotate(_rect(i * 4.0, 0.0, 0.3, 1.8),
+                                          i * 45.0, origin="centroid"),
+                   area_mm2=1.0) for i in range(4)]
+    chains = _house_chains(bars)
+    raw = _fourfold_votes(chains, chord_px=0.0)
+    assert raw is not None and raw[0] > SATIN_HOUSE_FOURFOLD_MIN_R, raw
+    votes = _fourfold_votes(chains)
+    assert votes is not None
+    resultant, _n_eff, _axis = votes
+    assert resultant < SATIN_HOUSE_FOURFOLD_MIN_R, resultant
+    assert _cluster_house_angle_deg(bars, fourfold=True) is None
+
+
+def test_two_orthogonal_families_get_the_bisector():
+    """Block lettering whose bars balance its stems has NO dominant direction
+    in doubled-angle space -- a vertical votes at 180 deg, a horizontal at 0,
+    and they cancel however much lettering there is. On Kent's Hotel Fremont
+    wordmark (twelve slab-serif capitals, 112 mm of vertical skeleton against
+    44 mm of horizontal) the doubled test read nR^2 = 4.7 against 6.9 and
+    rejected the whole word, so every bar sewed at its own angle.
+
+    Four-fold space sees the structure the doubled space cancels: that same
+    word reads nR4^2 = 53.1 on raw skeleton steps, 90 on the resampled votes
+    the reading ships on. The answer is the BISECTOR of the two families,
+    not the perpendicular to the stems: at 0 deg every horizontal is 90 deg
+    off the house and `_clamp_to_span` flips it to +/-45 on tangent noise,
+    which rendered worse than no house angle at all. At 45 deg nothing is
+    clamped and every stroke agrees.
+
+    Fixture: a synthetic slab-serif row. Each glyph is a vertical stem with a
+    top bar and a bottom bar of comparable length -- an I-beam -- so vertical
+    and horizontal skeleton lengths are close and the doubled resultant is
+    near zero by construction."""
+    glyphs = []
+    for i in range(6):
+        cx = i * 8.0
+        stem = _rect(cx, 0.0, 0.8, 6.0)
+        top = _rect(cx, -2.6, 4.0, 0.8)
+        bottom = _rect(cx, 2.6, 4.0, 0.8)
+        poly = stem.union(top).union(bottom)
+        glyphs.append(Region(shape_id=f"I{i}", polygon=poly, thread_index=0,
+                             thread_number="1", area_mm2=poly.area))
+    house = _cluster_house_angle_deg(glyphs, fourfold=True)
+
+    assert house is not None, "two orthogonal families were not seen"
+    off = abs(_circ_delta_deg(SATIN_HOUSE_BISECTOR_DEG, house))
+    assert off < 3.0, f"expected the bisector, got {house:.1f} deg"
+
+    # And it TRACKS the artwork: rotate the row 20 deg and the bisector
+    # rotates with it, because both families rotated together.
+    turned = _rotated(glyphs, 20.0, origin=(0.0, 0.0))
+    house_t = _cluster_house_angle_deg(turned, fourfold=True)
+    assert house_t is not None
+    assert abs(_circ_delta_deg(house + 20.0, house_t)) < 3.0, (house, house_t)
+
+
+def test_the_bisector_does_not_flip_when_the_axis_wraps_at_90():
+    """The family axis is only defined mod 90, so 0.1 deg and 89.9 deg are
+    the same upright lettering -- and "axis + 45" would hand them 45 and 135,
+    mirror-image slants decided by which side of the wrap the tangent noise
+    fell. Measured on two real wordmarks the same day (2026-09-02): drone's
+    THERMAL read 0.1 -> 45.1, Hotel Fremont read 89.4 -> 134.4. The bisector
+    nearer the convention is the stable choice."""
+    assert abs(_circ_delta_deg(45.0, _bisector_deg(0.1))) < 0.2
+    assert abs(_circ_delta_deg(45.0, _bisector_deg(89.4))) < 1.0, _bisector_deg(89.4)
+    assert abs(_circ_delta_deg(45.0, _bisector_deg(89.9))) < 0.2
+    # A tilted word tracks its tilt on the same side of the convention.
+    assert abs(_circ_delta_deg(65.0, _bisector_deg(20.0))) < 1e-9
+    assert abs(_circ_delta_deg(25.0, _bisector_deg(70.0))) < 1e-9
+
+
+def test_the_four_fold_reading_is_opt_in():
+    """`config.satin_house_fourfold` defaults OFF (Kent's call, 2026-09-02):
+    it reds the chaining benchmark and piles the N on enthusiast_logo @ 93
+    mm. Off, a two-family word that the doubled reading rejects gets NO
+    angle -- byte-identical to before the reading existed -- and the
+    pipeline threads the flag through `set_lettering_house_angle`."""
+    glyphs = []
+    for i in range(6):
+        cx = i * 8.0
+        poly = _rect(cx, 0.0, 0.8, 6.0).union(_rect(cx, -2.6, 4.0, 0.8)) \
+            .union(_rect(cx, 2.6, 4.0, 0.8))
+        glyphs.append(Region(shape_id=f"I{i}", polygon=poly, thread_index=0,
+                             thread_number="1", area_mm2=poly.area))
+    assert _cluster_house_angle_deg(glyphs) is None
+    assert _cluster_house_angle_deg(glyphs, fourfold=True) is not None
+    set_lettering_house_angle(glyphs, _P)
+    assert not any("satin_angle_deg" in r.meta for r in glyphs)
+    set_lettering_house_angle(glyphs, _P, fourfold=True)
+    assert all("satin_angle_deg" in r.meta for r in glyphs)
+
+
+def test_one_dominant_direction_still_wins_over_the_bisector():
+    """The doubled reading is tried FIRST, so a stems-dominated word keeps
+    the perpendicular-to-stems answer it always had: the four-fold reading
+    never gets a say when the first one is significant. Vertical stems ->
+    a horizontal (0 deg) cross, not a 45 deg one."""
+    regions = _row("S", 6)
+    house = _cluster_house_angle_deg(regions, fourfold=True)
+    assert house is not None
+    assert abs(_circ_delta_deg(0.0, house)) < 3.0, house
 
 
 def test_a_word_gets_the_house_angle_on_BOTH_tiers():
