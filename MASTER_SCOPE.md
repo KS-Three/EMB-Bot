@@ -314,9 +314,16 @@ its own merits.
    (`screenshot_phone_ui_golke`, 62st → 79st), **1.78** (`logo_bridge_bar`,
    197st → 444st), **2.65** (`drone_render`, 338st → 1560st). The repro
    genuinely has none: its closest two cones are 33.4 ΔE apart. Real artwork
-   also runs 15–18 cones, so the tiny-cone population is not rare. **Still
-   Kent's call:** how much colour step buys a stop is cloth, not a constant.
-   *(measured 2026-09-02 — `sequence_census.py` per-cone, 26 fixtures)*
+   also runs 15–18 cones, so the tiny-cone population is not rare.
+   **TABLED — Kent, 2026-09-02:** *"I'm honestly not concerned about the
+   hopping idea, we can table this one for a further discussion."* Not
+   resolved, parked — do not build the shade-merge (or further
+   hopping/sequencing polish beyond what already shipped) until he reopens
+   it. The ΔE pairs above stay ready for that discussion. The two mechanical
+   causes fixed 2026-08-31 (`start_near`, the re-snap rehome) are merged and
+   unaffected by this tabling.
+   *(measured 2026-09-02 — `sequence_census.py` per-cone, 26 fixtures;
+   tabled 2026-09-02 — Kent, in session)*
 
 ---
 
