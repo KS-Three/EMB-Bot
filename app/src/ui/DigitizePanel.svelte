@@ -567,6 +567,13 @@
   // since "I was editing shapes" does not carry from one artwork to another.
   let layersOpen = false;
 
+  // What the design-level border setting is called in a per-shape row's
+  // "Design (...)" option. null is the automatic default and has no bare word
+  // of its own, so it gets one here rather than rendering "Design ()".
+  function borderLabel(v) {
+    return v == null ? "automatic" : v;
+  }
+
   const SHAPE_ANGLES = [{ value: null, label: "Auto angle" }, ...FILL_ANGLES.slice(1)];
 
   // Underlay style (shape-layers contract v1): fabrics.py's own vocabulary,
@@ -1421,9 +1428,16 @@
       <label class="dgp-param">
         <span>Border</span>
         <select
-          value={element.params.border}
-          on:change={(e) => setParam("border", e.currentTarget.value)}
+          value={element.params.border ?? ""}
+          on:change={(e) => setParam("border", e.currentTarget.value || null)}
         >
+          <!-- The empty value is the null sentinel: it sends no `border` at
+               all, so the service picks per artwork class -- `significant` on
+               a photo, off elsewhere. It is first and it is the default
+               because that per-class answer is the measured-good one, and
+               until 2026-09-02 the Studio's unconditional "off" made it
+               unreachable. -->
+          <option value="">Automatic (by artwork)</option>
           <option value="off">None</option>
           <option value="auto">Auto (satin where it fits)</option>
           <option value="bean">Bean (light outline)</option>
@@ -2038,7 +2052,7 @@
                         on:change={(e) => setShapeBorder(row.id, e.currentTarget.value)}
                         aria-label={"Border — " + rowAria}
                       >
-                        <option value="default">Design ({element.params.border})</option>
+                        <option value="default">Design ({borderLabel(element.params.border)})</option>
                         <option value="off">No border</option>
                         <option value="auto">Auto border</option>
                         <option value="bean">Bean border</option>

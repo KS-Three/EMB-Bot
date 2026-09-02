@@ -70,7 +70,21 @@ export const DEFAULT_DIGITIZE_PARAMS = {
   max_colors: 6,
   satin: true,
   fill_angle_deg: null,
-  border: "off",
+  // NULL, NOT "off" — the same absent-means-auto sentinel `fill_angle_deg`
+  // above uses, and for a sharper reason. The service resolves
+  // `cfg.border or ("significant" if photo else "off")`, so ANY string the
+  // Studio sends short-circuits that per-class default. Shipping "off" here
+  // meant every photo digitized from the Studio sent a truthy "off" and could
+  // never reach `significant` — the one border mode DOCTRINE actually
+  // blesses (borders 4 shapes of 35 for +4% on owl_kent, where blanket
+  // "auto" spends +60% to trace the photo's own pixel staircase and makes it
+  // WORSE). The measured-good option was unreachable and the measured-bad one
+  // was a click away.
+  //
+  // null means "let the class decide" and is omitted from the wire entirely.
+  // An explicit "off" is still a real choice and is still sent — the two have
+  // to stay distinguishable, which a string default cannot do.
+  border: null,
   // The design-silhouette edge cap (PipelineConfig.edge_cap) — "none",
   // "bean" or "satin". Distinct from `border` above: that outlines each
   // SHAPE, this closes the outer edge of the whole design, which belongs to

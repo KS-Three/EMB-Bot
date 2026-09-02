@@ -77,6 +77,36 @@ test("buildDigitizeConfig sends the stored thread-brand preference and the proje
   for (const k of Object.keys(cfg)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
 });
 
+test("border is OMITTED when unset, so the service picks per artwork class", async () => {
+  // The bug this fixes: the Studio sent `border` unconditionally and defaulted
+  // it to "off", and the service resolves
+  //   border_style = cfg.border or ("significant" if photo else "off")
+  // so any string short-circuits that. A photo could therefore never reach
+  // `significant` — the one mode DOCTRINE blesses (+4% stitches, borders 4
+  // shapes of 35) — while blanket "auto", measured at +60% and WORSE, sat one
+  // click away in the same dropdown.
+  const { buildDigitizeConfig } = await import("./digitizer.js");
+  const auto = buildDigitizeConfig(
+    digitizedElement({ params: { target_width_mm: 80, max_colors: 6, satin: true,
+                                 fill_angle_deg: null, border: null } }),
+    PROJECT);
+  expect("border" in auto).toBe(false);
+});
+
+test("an explicit border choice is still sent — including \"off\"", async () => {
+  // The other half, and the reason null had to be a separate value: a user who
+  // genuinely wants no borders must still be able to say so, and "unset" and
+  // "the user said off" cannot be the same value.
+  const { buildDigitizeConfig } = await import("./digitizer.js");
+  for (const choice of ["off", "bean", "auto"]) {
+    const cfg = buildDigitizeConfig(
+      digitizedElement({ params: { target_width_mm: 80, max_colors: 6, satin: true,
+                                   fill_angle_deg: null, border: choice } }),
+      PROJECT);
+    expect(cfg.border).toBe(choice);
+  }
+});
+
 test("buildDigitizeConfig omits thread_brand for the generic Studio palette (service default applies), includes fill_angle_deg only when set", async () => {
   stubStorage({}); // no stored preference -> "studio"
   const { buildDigitizeConfig } = await import("./digitizer.js");

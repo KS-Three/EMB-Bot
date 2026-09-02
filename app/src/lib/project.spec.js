@@ -536,7 +536,11 @@ test("migrateProject fills a digitized element's missing fields (additive migrat
   const m = migrateProject(old);
   const el = m.elements[0];
   expect(el.params.target_width_mm).toBe(55); // saved value wins
-  expect(el.params.border).toBe("off"); // newer knob defaulted
+  // Newer knob defaulted — and null, not "off": null is the sentinel that
+  // sends no `border` at all so the service picks per artwork class. A saved
+  // project that predates the knob gets the automatic behaviour, while one
+  // that saved an explicit "off" keeps it (the test below).
+  expect(el.params.border).toBeNull();
   expect(el.params.satin).toBe(true);
   expect(el.warnings).toEqual([]);
   expect(el.blockColors).toEqual({});
