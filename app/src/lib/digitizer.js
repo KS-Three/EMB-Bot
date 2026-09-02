@@ -107,7 +107,6 @@ export function buildDigitizeConfig(element, project) {
     target_width_mm: p.target_width_mm,
     max_colors: p.max_colors,
     satin: p.satin,
-    border: p.border,
     // Sent unconditionally like satin/border, NOT omitted-when-falsey the way
     // fill_angle_deg and photo_segment_sam2 are: those two are an absent-means-
     // auto sentinel and a dev seam respectively, while this is an ordinary
@@ -124,6 +123,15 @@ export function buildDigitizeConfig(element, project) {
     edge_cap: p.edge_cap,
   };
   if (p.fill_angle_deg != null) cfg.fill_angle_deg = p.fill_angle_deg;
+  // Omitted when null, for a stronger reason than fill_angle_deg's. The
+  // service resolves `cfg.border or ("significant" if photo else "off")`, so
+  // sending ANY string short-circuits its per-class default -- and the Studio
+  // used to send "off" unconditionally, which meant a photo could never reach
+  // `significant`, the one mode DOCTRINE blesses (+4% stitches, borders 4
+  // shapes of 35, lands the eyes and beak; blanket "auto" costs +60% and
+  // makes the photo worse). Omitting it is what hands the decision back.
+  // An explicit "off" from the user is still a choice and is still sent.
+  if (p.border != null) cfg.border = p.border;
   // Stage 0's escape hatch, stored in element.params like any other design
   // property (so it persists in the .embproj and rides the panel's own
   // params-changed re-digitize) but written ONLY when the user overrode the

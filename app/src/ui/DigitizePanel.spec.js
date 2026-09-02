@@ -632,6 +632,167 @@ describe("Sequencer view", () => {
 // misses). These tests pin the DEBOUNCE, which is the part that keeps ten
 // nudges from queueing ten 10-second runs.
 
+describe("findings that have a knob behind them", () => {
+  // Item 8. Kent's call was that this belongs AFTER the run, not before it —
+  // the panel was deliberately moved away from asking anything up front. So
+  // this is not a preset picker; it is the findings the app already computes,
+  // each paired with the one adjustment that addresses it.
+  const RESULT = { stitchCount: 2400, widthMM: 50, heightMM: 40, colorCount: 3,
+                   stitches: [], colors: [] };
+
+  function withFindings(findings, params = {}) {
+    return render(Harness, {
+      props: {
+        element: baseElement([], {
+          result: RESULT,
+          preflight: { score: 60, grade: "D", findings, metrics: {} },
+          params: { target_width_mm: 80, max_colors: 6, satin: true,
+                    fill_angle_deg: null, border: null, edge_cap: "none",
+                    detail_layer: false, ...params },
+        }),
+        onPatch: () => {},
+      },
+    });
+  }
+
+  test("too many color stops offers fewer colors, and says what it spends", async () => {
+    const { getByTestId } = withFindings(
+      [{ code: "COLOR_STOPS_HEAVY", severity: "warn", message: "14 color stops." }]);
+    const box = getByTestId("digitize-fixes");
+    expect(box.textContent).toMatch(/Use fewer colors/);
+    // The cost is named up front — a fix that silently halves the palette is
+    // not an offer, it is a surprise.
+    expect(box.textContent).toMatch(/6 → 4 colors/);
+  });
+
+  test("lettering below readable size offers to enlarge", () => {
+    const { getByTestId } = withFindings(
+      [{ code: "LETTERING_TOO_SMALL", severity: "warn", message: "sews below readable size." }]);
+    expect(getByTestId("digitize-fixes").textContent).toMatch(/Make it bigger/);
+    expect(getByTestId("digitize-fixes").textContent).toMatch(/80 → 100 mm wide/);
+  });
+
+  test("two findings with the SAME cure offer one button, not two", () => {
+    const { container } = withFindings([
+      { code: "LETTERING_TOO_SMALL", severity: "warn", message: "a" },
+      { code: "STITCHES_TOO_SHORT", severity: "warn", message: "b" },
+    ]);
+    expect(container.querySelectorAll(".dgp-fix").length).toBe(1);
+  });
+
+  test("a finding with NO knob behind it offers nothing — silence beats a button that does not help", () => {
+    // TRIM_HEAVY's lever is chain_links, frozen by gate 1; DENSITY_STACKED has
+    // no exposed density control. A plausible-looking button there would be
+    // worse than none, because it would be tried.
+    const { queryByTestId } = withFindings([
+      { code: "TRIM_HEAVY", severity: "warn", message: "10.3 trims per 1,000." },
+      { code: "DENSITY_STACKED", severity: "block", message: "stacks 7.2 layers." },
+    ]);
+    expect(queryByTestId("digitize-fixes")).toBeNull();
+  });
+
+  test("a fix already at its limit is not offered", () => {
+    // "Make it bigger" on a design already at the 400 mm ceiling would do
+    // nothing and cost a full re-digitize.
+    const { queryByTestId } = withFindings(
+      [{ code: "LETTERING_TOO_SMALL", severity: "warn", message: "small" }],
+      { target_width_mm: 400 });
+    expect(queryByTestId("digitize-fixes")).toBeNull();
+  });
+
+  test("pressing one writes the param, so it takes the normal re-digitize path", async () => {
+    const patches = [];
+    const view = render(Harness, {
+      props: {
+        element: baseElement([], {
+          result: RESULT,
+          preflight: { score: 60, grade: "D", metrics: {},
+                       findings: [{ code: "COLOR_STOPS_HEAVY", severity: "warn", message: "x" }] },
+          params: { target_width_mm: 80, max_colors: 6, satin: true, fill_angle_deg: null,
+                    border: null, edge_cap: "none", detail_layer: false },
+        }),
+        onPatch: (d) => patches.push(d),
+      },
+    });
+    await fireEvent.click(view.container.querySelector(".dgp-fix"));
+    expect(patches.at(-1).patch.params.max_colors).toBe(4);
+  });
+});
+
+describe("what changed since the last run", () => {
+  // A re-digitize replaced the design in place with nothing to compare
+  // against, so a knob you turned and a knob you only thought you turned
+  // looked the same. `priorRun` is written at the one moment the old numbers
+  // still exist -- the patch that overwrites them.
+  const RESULT = { stitchCount: 2400, widthMM: 50, heightMM: 40, colorCount: 3,
+                   stitches: [], colors: [] };
+
+  function withPrior(prior, extra = {}) {
+    return render(Harness, {
+      props: {
+        element: baseElement([], {
+          result: RESULT,
+          priorRun: prior,
+          preflight: { score: 76, grade: "C", findings: [], metrics: { color_changes: 5 } },
+          stats: { trims: 20 },
+          ...extra,
+        }),
+        onPatch: () => {},
+      },
+    });
+  }
+
+  test("a FIRST digitize shows no comparison at all", () => {
+    // Not "unchanged" -- there is nothing to be different from, and "+0
+    // stitches" here would be a lie dressed as information.
+    const { queryByTestId } = withPrior(null);
+    expect(queryByTestId("digitize-delta")).toBeNull();
+  });
+
+  test("it names what moved, in the operator's direction", () => {
+    const { getByTestId } = withPrior({
+      stitch_count: 2000, color_changes: 3, trims: 26, score: 88, grade: "B",
+    });
+    const txt = getByTestId("digitize-delta").textContent;
+    expect(txt).toMatch(/\+400 stitches/);
+    expect(txt).toMatch(/\+2 thread changes/);
+    expect(txt).toMatch(/\u22126 trims/);   // fewer trims reads as a minus
+    expect(txt).toMatch(/B \u2192 C/);
+  });
+
+  test("a re-digitize that changed NOTHING says so — the point of the line", () => {
+    // The most useful answer it gives: the setting you just changed did
+    // nothing to the stitches. Without it, that is indistinguishable from a
+    // run that changed everything.
+    const { getByTestId } = withPrior({
+      stitch_count: 2400, color_changes: 5, trims: 20, score: 76, grade: "C",
+    });
+    expect(getByTestId("digitize-delta").textContent).toMatch(/no change/i);
+  });
+
+  test("an unchanged figure is omitted rather than printed as zero", () => {
+    const { getByTestId } = withPrior({
+      stitch_count: 2400, color_changes: 3, trims: 20, score: 76, grade: "C",
+    });
+    const txt = getByTestId("digitize-delta").textContent;
+    expect(txt).toMatch(/\+2 thread changes/);
+    expect(txt).not.toMatch(/stitch/);
+    expect(txt).not.toMatch(/trim/);
+  });
+
+  test("a missing figure on an older stored run is skipped, not treated as 0", () => {
+    // priorRun from a job that predates the trims field: reporting "-20
+    // trims" would invent a change that never happened.
+    const { getByTestId } = withPrior({
+      stitch_count: 2000, color_changes: null, trims: null, score: null, grade: null,
+    });
+    const txt = getByTestId("digitize-delta").textContent;
+    expect(txt).toMatch(/\+400 stitches/);
+    expect(txt).not.toMatch(/trim/);
+    expect(txt).not.toMatch(/thread change/);
+  });
+});
+
 describe("the Edit shapes disclosure", () => {
   // Renders WITHOUT openLayers on purpose -- this is the state the shared
   // helper opens past, so it is the one thing the other 46 tests cannot see.

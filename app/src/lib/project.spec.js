@@ -536,12 +536,34 @@ test("migrateProject fills a digitized element's missing fields (additive migrat
   const m = migrateProject(old);
   const el = m.elements[0];
   expect(el.params.target_width_mm).toBe(55); // saved value wins
-  expect(el.params.border).toBe("off"); // newer knob defaulted
+  // Newer knob defaulted — and null, not "off": null is the sentinel that
+  // sends no `border` at all so the service picks per artwork class. A saved
+  // project that predates the knob gets the automatic behaviour, while one
+  // that saved an explicit "off" keeps it (the test below).
+  expect(el.params.border).toBeNull();
   expect(el.params.satin).toBe(true);
   expect(el.warnings).toEqual([]);
   expect(el.blockColors).toEqual({});
   expect(el.offsetXMm).toBe(3);
   expect(el.result).toEqual({ stitches: [], colors: [] });
+  // A save that predates the re-digitize comparison loads with nothing to
+  // compare against, rather than with a fabricated "unchanged" reading.
+  expect(el.priorRun).toBeNull();
+});
+
+test("a saved priorRun survives the round trip — the comparison is not lost on reload", () => {
+  const saved = {
+    version: 2, garmentId: "left_chest", selectedId: "e1",
+    elements: [{
+      id: "e1", type: "digitized", name: "logo.png", sourcePng: "QQ==",
+      result: { stitches: [], colors: [] },
+      priorRun: { stitch_count: 2000, color_changes: 3, trims: 26, score: 88, grade: "B" },
+    }],
+  };
+  const el = migrateProject(saved).elements[0];
+  expect(el.priorRun).toEqual({
+    stitch_count: 2000, color_changes: 3, trims: 26, score: 88, grade: "B",
+  });
 });
 
 test("migrateProject fills the shape-layers fields on a pre-layers digitized save (review/overrides/deletions/appliedEdits)", () => {

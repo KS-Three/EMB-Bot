@@ -128,6 +128,130 @@
   // `el` is passed explicitly (never closed over) so a re-run always reads
   // the element as it is NOW — the blockRgb(element, i) lesson from
   // DesignPanel applies to async work too.
+  // Findings that have a KNOB behind them, in the language of the outcome
+  // rather than the language of the control. Item 8 asked for presets — "the
+  // panel offers knobs where the user has a job" — and Kent's 2026-09-02 call
+  // was that they belong AFTER the run, not before it: the panel was
+  // deliberately moved away from asking anything up front ("can't we just
+  // upload a photo and the tool AUTOMATICALLY recognizes what needs to be
+  // done?", 2026-08-30), and a preset picker answered before upload
+  // re-introduces exactly that.
+  //
+  // So this is not a preset list. It is the quality report's own findings,
+  // each paired with the one adjustment that addresses it — the app already
+  // computes "31 trims" and "sews below readable size"; what was missing was
+  // an action. `LETTERING_TOO_SMALL`'s own message ends "Enlarging helps",
+  // and until now nothing offered to enlarge it.
+  //
+  // DELIBERATELY SHORT, and the omissions are the honest part. Most findings
+  // have no knob that helps and get nothing rather than a button that does
+  // something adjacent: TRIM_HEAVY's lever is `chain_links`, frozen by gate 1;
+  // DENSITY_STACKED has no exposed density control; PHOTO_RESOLUTION_LOW needs
+  // better artwork, not a setting. Offering a plausible-looking button there
+  // would be worse than silence, because it would be tried.
+  //
+  // Nothing here contradicts a standing ruling: no fix sets `border: "auto"`
+  // (DOCTRINE: +60% stitches and WORSE on a photo), none sets `forced_class`
+  // speculatively (measured worse on textured logo art), and none turns on
+  // `edge_cap`, which Kent reserved per design and which no sew-out has
+  // settled.
+  const FIX_FOR = {
+    COLOR_STOPS_HEAVY: {
+      label: "Use fewer colors",
+      // The slider's own floor is 2; step down by two so one press is a real
+      // move rather than a nudge nobody can see in the result.
+      next: (p) => ({ max_colors: Math.max(2, (p.max_colors || 6) - 2) }),
+      spent: (p) => `${p.max_colors} → ${Math.max(2, (p.max_colors || 6) - 2)} colors`,
+    },
+    LETTERING_TOO_SMALL: {
+      label: "Make it bigger",
+      next: (p) => ({ target_width_mm: Math.min(400, Math.round((p.target_width_mm || 80) * 1.25)) }),
+      spent: (p) => `${Math.round(p.target_width_mm)} → ${Math.min(400, Math.round((p.target_width_mm || 80) * 1.25))} mm wide`,
+    },
+    // Same cure as above, and deduped below so two findings never offer the
+    // same button twice.
+    STITCHES_TOO_SHORT: {
+      label: "Make it bigger",
+      next: (p) => ({ target_width_mm: Math.min(400, Math.round((p.target_width_mm || 80) * 1.25)) }),
+      spent: (p) => `${Math.round(p.target_width_mm)} → ${Math.min(400, Math.round((p.target_width_mm || 80) * 1.25))} mm wide`,
+    },
+  };
+
+  function offeredFixes(el) {
+    const found = (el && el.preflight && el.preflight.findings) || [];
+    const out = [];
+    for (const f of found) {
+      const fix = FIX_FOR[f.code];
+      if (!fix || out.some((o) => o.label === fix.label)) continue;
+      const patch = fix.next(el.params || {});
+      // A fix already at its limit is not offered: "Make it bigger" on a
+      // design already at 400 mm would do nothing and cost a full re-digitize.
+      const key = Object.keys(patch)[0];
+      if ((el.params || {})[key] === patch[key]) continue;
+      out.push({ label: fix.label, patch, spent: fix.spent(el.params || {}), why: f.message });
+    }
+    return out;
+  }
+  $: fixes = offeredFixes(element);
+
+  function applyFix(fix) {
+    // Straight through setParam, so it takes the same auto-re-digitize path a
+    // knob does and lands as one undo step.
+    for (const [k, v] of Object.entries(fix.patch)) setParam(k, v);
+  }
+
+  // The five figures a person compares across a re-digitize. Null when there
+  // is nothing to compare against -- a first digitize is not "unchanged", it
+  // is the baseline, and saying "+0 stitches" there would be a lie dressed as
+  // information. Drawn from both sources because neither carries all five:
+  // trims live only on the job envelope, score/grade only on preflight.
+  function runSnapshot(el) {
+    if (!el || !el.result) return null;
+    const m = (el.preflight && el.preflight.metrics) || {};
+    const st = el.stats || {};
+    const snap = {
+      stitch_count: el.result.stitchCount,
+      color_changes: m.color_changes ?? st.color_changes ?? null,
+      trims: typeof st.trims === "number" ? st.trims : null,
+      score: el.preflight ? el.preflight.score : null,
+      grade: el.preflight ? el.preflight.grade : null,
+    };
+    return snap;
+  }
+
+  // What moved since the last run. Returns [] when nothing did, and the
+  // caller renders "no change" for that -- which is the most useful answer
+  // this line gives: it means the setting you just changed did nothing to the
+  // stitches, and without it a re-digitize that changed nothing is
+  // indistinguishable from one that changed everything.
+  //
+  // Signs are stated from the operator's side, not the engine's: FEWER trims
+  // and FEWER stops are wins, so they read as "-6 trims" and the reader does
+  // not have to know which direction is good. No colouring on that basis
+  // though -- "fewer stitches" is not automatically better (it can mean
+  // coverage was lost), so this reports the movement and declines to grade it.
+  function runDelta(el) {
+    const prev = el && el.priorRun;
+    if (!prev || !el.result) return [];
+    const m = (el.preflight && el.preflight.metrics) || {};
+    const st = el.stats || {};
+    const out = [];
+    const push = (was, now, one, many) => {
+      if (typeof was !== "number" || typeof now !== "number" || was === now) return;
+      const d = now - was;
+      out.push(`${d > 0 ? "+" : "\u2212"}${Math.abs(d).toLocaleString()} ${Math.abs(d) === 1 ? one : many}`);
+    };
+    push(prev.stitch_count, el.result.stitchCount, "stitch", "stitches");
+    push(prev.color_changes, m.color_changes ?? st.color_changes, "thread change", "thread changes");
+    push(prev.trims, typeof st.trims === "number" ? st.trims : undefined, "trim", "trims");
+    if (el.preflight && prev.grade && prev.grade !== el.preflight.grade) {
+      out.push(`${prev.grade} \u2192 ${el.preflight.grade}`);
+    }
+    return out;
+  }
+  $: changed = runDelta(element);
+  $: hasPrior = !!(element && element.priorRun && element.result);
+
   async function runDigitize(el) {
     if (!el.sourcePng || !health) return;
     if (phase !== "idle") {
@@ -171,6 +295,11 @@
         // dropped them: `result` keeps job.design, not the stats beside it. The
         // review step's shopping list is the first thing to want them.
         stats: job.stats || null,
+        // Item 10: keep what the LAST run produced, because this line is the
+        // only moment the old numbers still exist -- one statement later they
+        // are gone. Read off `el`, the pre-patch element, not off `element`,
+        // which a mid-flight edit may already have moved on.
+        priorRun: runSnapshot(el),
         appliedEdits: editsKey({
           deleted_shape_ids: cfg.deleted_shape_ids,
           shape_overrides: cfg.shape_overrides,
@@ -509,6 +638,13 @@
   // element, so this resets when you switch designs -- which is what you want,
   // since "I was editing shapes" does not carry from one artwork to another.
   let layersOpen = false;
+
+  // What the design-level border setting is called in a per-shape row's
+  // "Design (...)" option. null is the automatic default and has no bare word
+  // of its own, so it gets one here rather than rendering "Design ()".
+  function borderLabel(v) {
+    return v == null ? "automatic" : v;
+  }
 
   const SHAPE_ANGLES = [{ value: null, label: "Auto angle" }, ...FILL_ANGLES.slice(1)];
 
@@ -1364,9 +1500,16 @@
       <label class="dgp-param">
         <span>Border</span>
         <select
-          value={element.params.border}
-          on:change={(e) => setParam("border", e.currentTarget.value)}
+          value={element.params.border ?? ""}
+          on:change={(e) => setParam("border", e.currentTarget.value || null)}
         >
+          <!-- The empty value is the null sentinel: it sends no `border` at
+               all, so the service picks per artwork class -- `significant` on
+               a photo, off elsewhere. It is first and it is the default
+               because that per-class answer is the measured-good one, and
+               until 2026-09-02 the Studio's unconditional "off" made it
+               unreachable. -->
+          <option value="">Automatic (by artwork)</option>
           <option value="off">None</option>
           <option value="auto">Auto (satin where it fits)</option>
           <option value="bean">Bean (light outline)</option>
@@ -1469,6 +1612,35 @@
         {element.result.widthMM.toFixed(0)}×{element.result.heightMM.toFixed(0)} mm ·
         {element.result.colorCount} color{element.result.colorCount === 1 ? "" : "s"}
       </p>
+
+      <!-- Item 10: a re-digitize used to replace the design in place with
+           nothing to compare against, so a knob you turned and a knob you
+           imagined turning looked identical. `role="status"` because this
+           appears as the RESULT of an action the user just took. -->
+      <!-- Item 8, in the shape Kent chose 2026-09-02: outcome language, AFTER
+           the run, with the knobs still underneath. Not a preset picker —
+           that would re-introduce the pre-upload question he had removed. -->
+      {#if fixes.length}
+        <div class="dgp-fixes" data-testid="digitize-fixes">
+          {#each fixes as fix}
+            <button type="button" class="dgp-fix" on:click={() => applyFix(fix)}
+                    title={fix.why}>
+              {fix.label}
+              <span class="dgp-fix-cost">{fix.spent}</span>
+            </button>
+          {/each}
+        </div>
+      {/if}
+
+      {#if hasPrior}
+        <p class="dgp-delta" role="status" data-testid="digitize-delta">
+          {#if changed.length}
+            Since last run: {changed.join(" · ")}
+          {:else}
+            Since last run: no change to stitches, threads or trims.
+          {/if}
+        </p>
+      {/if}
 
       {#if unstitchedRows.length}
         <div class="dgp-enclosed-banner" role="alert">
@@ -1967,7 +2139,7 @@
                         on:change={(e) => setShapeBorder(row.id, e.currentTarget.value)}
                         aria-label={"Border — " + rowAria}
                       >
-                        <option value="default">Design ({element.params.border})</option>
+                        <option value="default">Design ({borderLabel(element.params.border)})</option>
                         <option value="off">No border</option>
                         <option value="auto">Auto border</option>
                         <option value="bean">Bean border</option>
@@ -2256,6 +2428,31 @@
   .dgp-run:disabled { opacity: 0.6; cursor: default; }
   .dgp-status { font-size: var(--fs-xs, 12px); color: var(--muted, #667); margin: 6px 0 0; }
   .dgp-error { font-size: var(--fs-xs, 12px); color: var(--danger, #b3261e); margin: 6px 0 0; }
+  .dgp-fixes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .dgp-fix {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-s);
+    background: var(--surface);
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .dgp-fix-cost { color: var(--muted); }
+
+  .dgp-delta {
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: var(--muted, #6f685c);
+  }
+
   .dgp-stats { font-size: var(--fs-xs, 12px); margin: 10px 0 0; }
   .dgp-warnings {
     margin: 8px 0 0;
