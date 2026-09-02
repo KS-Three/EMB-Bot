@@ -119,15 +119,15 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
     scope-history 08-28)*
 
 18. **Duplicate quantize-time declarations put one cone in two layers — the
-    second spool-revisit mechanism, untouched by defect 16's fix** (which keys
-    on the re-snap stamp and correctly ignores these; the hoist declines them
-    where threads touch). `drone_render` 80 mm: t16 sews at 30.9% and again
-    40 st at 98.9%, t119 at 74.2% and again 60 st as the FINAL block, both
-    tail blocks re-entering sewn territory — the sew-out's b4/b7 pattern by
-    another route. Candidate fix: merge same-cone layers at declaration time,
-    upstream like the rehome — but it moves whole clusters, so it wants its
-    own measured pass. *(measured 2026-09-01 — `tools/sequence_census.py`;
-    found by the PR #301 review pass)*
+    second spool-revisit mechanism, untouched by defect 16's fix.** Stage 2
+    quantizes to COLOURS, so two can snap to one cone: `drone_render` 80 mm
+    declares 21 slots holding 17 threads (t16, t308, t119, t101 each TWICE),
+    the smaller sewing late over finished work. **FIX BUILT, default OFF:**
+    `cfg.merge_duplicate_cones` folds each into the FIRST layer declaring its
+    cone, upstream of stage 5 so coverage/seams derive from the merged order
+    (`_hoist_same_thread` tries it downstream and rightly declines). ON:
+    blocks 19→17 (**two fewer stops**), revisits 2→0, needle-up 1295→1237 mm,
+    others byte-identical. *(2026-09-01 — `test_duplicate_cone_layers.py`, 13)*
 
 19. **The design's own outer edge is uncapped — every fill row ends in open
     air.** The other sew-out edge finding, and one no per-shape border can

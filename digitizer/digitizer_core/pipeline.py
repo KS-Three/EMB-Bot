@@ -53,6 +53,7 @@ from .stage3_segment import (
     ClassicalSegmenter,
     Segmenter,
     compact_layers,
+    merge_duplicate_cone_layers,
     resolve_small_regions,
 )
 from .stage4_vectorize import (rehome_resnapped_regions, revalidate_threads,
@@ -688,6 +689,20 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         )
 
     thread_indices, layer_warnings = compact_layers(regions, quant_indices)
+    # One cone, one layer (cfg.merge_duplicate_cones, default OFF — defect
+    # 18). Two quantized COLOURS can snap to one physical thread, and
+    # nothing downstream deduped them: the palette declared the spool
+    # twice and its second, smaller layer sewed a fragment late over
+    # finished work. Folded HERE, immediately after compaction and before
+    # every pass that reorders layers, so the depth sort and borders-last
+    # order the deduped set, an explicit `apply_layer_overrides` layer
+    # still beats it, and stage 5 plans coverage against the order
+    # actually sewn — see the function's own docstring for why the
+    # equivalent downstream repair (`_hoist_same_thread`) cannot do this.
+    if cfg.merge_duplicate_cones:
+        thread_indices, dup_warnings = merge_duplicate_cone_layers(
+            regions, thread_indices)
+        layer_warnings = layer_warnings + dup_warnings
     # Photo depth sequencing (plan §2 row 14): photo-classified designs (or
     # an explicit cfg.extra["photo_sequencing"] opt-in) replace stage 2's
     # largest-area-first layer order with background→foreground, dark→light,

@@ -885,6 +885,33 @@ class PipelineConfig:
     # travel-only order reachable and tested rather than dead-by-default.
     # tests/test_borders_last.py pins the default and both halves.
     borders_last: bool = True
+    # One cone, one layer (defect 18, the SECOND spool-revisit mechanism).
+    # Stage 2 quantizes to COLOURS, and two quantized colours can snap to one
+    # physical cone: `drone_render` @ 80 mm declares 21 palette slots holding
+    # only 17 distinct threads, with t16, t308, t119 and t101 each declared
+    # TWICE. Nothing deduped them, so the operator was sent to the rack twice
+    # for one spool and the second visit sewed a fragment late over finished
+    # work — t16 at 46.1% then 40 st at 98.9%, t119 at 77.1% then 60 st at
+    # 99.4%. That is the sew-out's own tail pattern by another route.
+    #
+    # ON folds each duplicate into the FIRST layer declaring its cone
+    # (`stage3_segment.merge_duplicate_cone_layers`), upstream of stage 5 so
+    # coverage, underlap and every seam derive from the merged order — the
+    # same one-consistent-story argument `rehome_resnapped` and
+    # `borders_last` both make. Downstream repair is NOT equivalent and is
+    # why this exists: `_hoist_same_thread` attempts it after the fact and
+    # correctly declines wherever the moved thread touches what it jumps
+    # over, which on this fixture is most of them.
+    #
+    # Pure sequencing — no physical constant enters, gate 1 untouched.
+    # Default OFF pending a measured pass, the same posture `borders_last`
+    # shipped under: it moves whole clusters (a duplicate's regions sew at
+    # its cone's FIRST position instead of its own), so the blast radius is
+    # real even though the direction is forced — stage 2 orders the palette
+    # largest-area-first, so a duplicate's second slot is by construction
+    # the smaller one and folds into the larger.
+    # tests/test_duplicate_cone_layers.py pins the default and the fold.
+    merge_duplicate_cones: bool = False
     # Design-silhouette edge cap (2026-09-01, the sew-out's OTHER edge
     # finding). `borders_last` above fixed the ORDER the design's borders
     # sew in; this is about the edge that has no border at all. On Kent's

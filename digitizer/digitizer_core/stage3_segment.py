@@ -32,6 +32,7 @@ from .stage2_quantize import Quant
 from .warnings_codes import (
     ABSORBED_SMALL_SHAPES,
     DROPPED_SMALL_SHAPES,
+    DUPLICATE_CONE_LAYERS_MERGED,
     EMPTY_THREAD_LAYER,
     warn,
 )
@@ -473,6 +474,80 @@ def resolve_small_regions(
             )
         )
     return kept, warnings
+
+
+def merge_duplicate_cone_layers(regions, thread_indices: list[int]
+                                ) -> tuple[list[int], list[dict]]:
+    """One cone, one layer: fold layers that declare the SAME chart thread.
+
+    Defect 18, the second spool-revisit mechanism. Stage 2 quantizes to
+    COLOURS, and two different quantized colours can snap to one physical
+    cone — on `drone_render` @ 80 mm the declared palette is 21 slots
+    carrying only 17 distinct threads, with t16, t308, t119 and t101 each
+    declared TWICE. Nothing downstream deduped them, so the operator was
+    sent to the rack twice for one spool and the second visit sewed a
+    fragment late over finished work: t16 at 46.1% and again 40 st at
+    98.9%, t119 at 77.1% and again 60 st at 99.4% — the sew-out's own
+    tail pattern by another route.
+
+    The later slot is always the SMALLER one: stage 2 orders the palette
+    largest-area-first, so a duplicate's second appearance is by
+    construction the lesser of the two. So the fold runs one way — later
+    regions join the FIRST layer that declared their cone — and the design
+    keeps the area story stage 2 built.
+
+    **Upstream of stage 5 on purpose**, which is the whole reason this can
+    be done at all. `stage7_sequence._hoist_same_thread` already tries the
+    same repair downstream and correctly DECLINES most of it: by then stage
+    5 has planned coverage, underlap and every seam against the un-merged
+    order, so moving a block is only safe where its thread touches nothing
+    it jumps over. Merging here means there is no reorder to justify —
+    the coverage plan is built from the merged order in the first place.
+    That is `rehome_resnapped_regions`' argument exactly, and this is the
+    other half of the same job: the rehome keys on the re-snap stamp and
+    correctly ignores these, because these were never re-snapped.
+
+    Runs BEFORE `depth_sort_layers` / `borders_last_layers` (so they order
+    the deduped set) and before `apply_layer_overrides` (so an explicit
+    review-screen layer still wins). Returns the compacted palette and any
+    warnings, matching `compact_layers`' shape so the call site reads the
+    same. A palette with no duplicate cone returns it unchanged, which is
+    what keeps every non-duplicating design byte-identical.
+    """
+    first_slot: dict[int, int] = {}
+    remap: dict[int, int] = {}          # old layer -> layer it folds into
+    for slot, cone in enumerate(thread_indices):
+        if cone in first_slot:
+            remap[slot] = first_slot[cone]
+        else:
+            first_slot[cone] = slot
+    if not remap:
+        return thread_indices, []
+
+    for r in regions:
+        lay = r.meta["layer"]
+        if lay in remap:
+            r.meta["layer"] = remap[lay]
+
+    # Drop the folded slots and renumber what is left, densely and in order.
+    kept = [i for i in range(len(thread_indices)) if i not in remap]
+    dense = {old: new for new, old in enumerate(kept)}
+    for r in regions:
+        r.meta["layer"] = dense[r.meta["layer"]]
+    merged = [thread_indices[i] for i in kept]
+
+    folded = len(remap)
+    return merged, [
+        warn(
+            DUPLICATE_CONE_LAYERS_MERGED,
+            f"{folded} color layer{'s' if folded != 1 else ''} asked for a "
+            f"spool another layer already uses, so {'they were' if folded != 1 else 'it was'} "
+            "sewn together — one less trip to the thread rack "
+            f"{'each' if folded != 1 else ''}.".replace("  ", " "),
+            count=folded,
+            cones=sorted({thread_indices[i] for i in remap}),
+        )
+    ]
 
 
 def compact_layers(regions, thread_indices: list[int]) -> tuple[list[int], list[dict]]:
