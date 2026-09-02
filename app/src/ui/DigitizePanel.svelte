@@ -166,6 +166,11 @@
         warnings: job.warnings || [],
         review: reconcileReview(el.review, reviewFromJob(job.review), el.deletedShapeIds),
         preflight: job.preflight || null,
+        // The service has always returned these (thread metres total and
+        // per colour, trims, jumps, colour changes) and the Studio has always
+        // dropped them: `result` keeps job.design, not the stats beside it. The
+        // review step's shopping list is the first thing to want them.
+        stats: job.stats || null,
         appliedEdits: editsKey({
           deleted_shape_ids: cfg.deleted_shape_ids,
           shape_overrides: cfg.shape_overrides,

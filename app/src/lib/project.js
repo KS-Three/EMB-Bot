@@ -127,7 +127,14 @@ export const DEFAULT_DIGITIZE_PARAMS = {
 //                       treatment as the text-cluster fields above), or null
 //                       when the job predates this field or the caller
 //                       turned preflight off. Used by the Sequencer view's
-//                       trims-per-1000 header; nothing else reads it today.
+//                       trims-per-1000 header, and by the review step's
+//                       quality report (ui/QualityReport.svelte).
+//   `stats`           — the job's own `{ stitch_count, color_changes, trims,
+//                       jumps, thread_m_total, thread_m_by_color, size_mm }`
+//                       verbatim, or null on an older stored job. Same
+//                       read-only, echoed-back treatment as `preflight`;
+//                       thread length lives ONLY here, never in preflight's
+//                       metrics, which is why the review step reads both.
 export function defaultDigitizedElement(id) {
   return {
     id,
@@ -149,6 +156,7 @@ export function defaultDigitizedElement(id) {
     deletedShapeIds: [],
     appliedEdits: null,
     preflight: null,
+    stats: null,
     sizeMm: null,
     offsetXMm: 0,
     offsetYMm: 0,

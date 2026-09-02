@@ -28,6 +28,7 @@
   import StepNav from "./ui/StepNav.svelte";
   import EmbroideryField from "./ui/EmbroideryField.svelte";
   import SizePanel from "./ui/SizePanel.svelte";
+  import QualityReport from "./ui/QualityReport.svelte";
   import ProjectsDrawer from "./ui/ProjectsDrawer.svelte";
   import FontCredits from "./ui/FontCredits.svelte";
   import Icon from "./ui/Icon.svelte";
@@ -104,6 +105,25 @@
   // the outgoing step's shorter content.
   let panelBody = null;
   $: if (panelBody) { step; currentId; panelBody.scrollTop = 0; }
+
+  // Every digitized element that has been through the service, for the review
+  // step's quality report. Deliberately NOT scoped to the selected element the
+  // way the summary above it is: the report answers "should I sew this file",
+  // and the file is the whole project — a clean logo does not stop mattering
+  // because a text element happens to be selected.
+  //
+  // Text, shape and hand-drawn elements are absent on purpose, not by
+  // oversight: preflight runs in the Python digitizer, so nothing generated in
+  // the browser has a report to show. That is a real gap in the coverage this
+  // screen implies, and it belongs to the engine, not to this component.
+  $: qualityEntries = (project.elements || [])
+    .filter((el) => el.type === "digitized" && (el.preflight || el.stats))
+    .map((el) => ({
+      id: el.id,
+      label: el.name || "Artwork",
+      preflight: el.preflight,
+      stats: el.stats,
+    }));
 
   // ---- Undo/redo (Ember-audit follow-up) ------------------------------------
   // Per-project, in-memory only (never persisted). Every committed project
@@ -795,6 +815,7 @@
               <div><dt>Font</dt><dd>{readable(selectedElement.fontKey)}</dd></div>
             {/if}
           </dl>
+          <QualityReport entries={qualityEntries} />
           <p class="hint">Not quite right? Go back to adjust the garment or content — the field updates live.</p>
           <SizePanel project={{ ...project, ...selectedElement }} {designDims} on:update={(e) => elUpdate(selectedElement.id, e.detail)} />
         </div>
