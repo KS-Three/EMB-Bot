@@ -443,3 +443,50 @@ gained by committing it before the density question is answered — and a great
 deal is lost, because committing it makes 7.18 layers the new normal and the
 next person has no ruler that remembers 4.87.
 
+
+### Attributed: `d3f3c547`, and it is a ROADMAP gate 3 question for Kent
+
+Bisected on `coverage_max` (preflight's own metric, not a proxy — see the
+`satin_steps` trap above), ten probes over the 95-commit window:
+
+```
+[ 0] 21a415c0  2026-08-12  ->  4.87    <- the baseline's own value
+[20] f52143e1  2026-08-19  ->  4.40
+[21] d3f3c547  2026-08-19  ->  6.44    <- the jump
+[94] 78d9f5d8  2026-09-01  ->  7.18
+```
+
+`d3f3c547` is **"feat(engine): photo classes split tonal regions by default
+(spec decision 2)"**. It adds `pipeline.effective_split_tonal`:
+
+```python
+return bool(cfg.split_tonal_regions) or class_ in PHOTO_CLASSES
+```
+
+For a photo class that is `True` **unconditionally**. `cfg.split_tonal_regions`
+can only turn it ON, never off — measured: setting it explicitly False on
+`photo_scene_stub` gives byte-identical output (7.18, 10,720 stitches,
+same-hole 0.049). **There is no off switch for photo classes.**
+
+Three facts sit awkwardly together, and only Kent can say which one moves:
+
+1. **ROADMAP gate 3** names this tier: *"No default-OFF tier flipped on until
+   its instrument is rebuilt. Chaining, contour, **tonal-region splitting**. A
+   green suite has already hidden needle-down thread on bare fabric here."*
+2. **MASTER_SCOPE** carries it under "Latent — gated OFF, DO NOT FLIP": *"the
+   shading fix, merged but off; parked until the sew-out. (confirmed OFF
+   2026-08-17 — `config.py:647`)"*. That confirmation reads the FIELD, which
+   `d3f3c547` stopped being the deciding value two days later. The field is
+   still `False`; the behaviour is not.
+3. **The commit says "spec decision 2"**, citing a 2026-08-18 spec — so this
+   may be a deliberate ruling that the dashboard simply never recorded, rather
+   than an unnoticed flip.
+
+Which it is decides everything downstream, and it is not a call to make from
+the code. What is NOT in question is the measured cost: `coverage_max` 4.40 →
+6.44 on that commit alone, 7.18 today against a 3.5-layer ceiling, and
+`same_hole_fraction` up six-fold — a `DENSITY_STACKED` **block** on a fixture
+that scored 64 before.
+
+Gate 3 exists for exactly this, so this file names the blocker and stops.
+
