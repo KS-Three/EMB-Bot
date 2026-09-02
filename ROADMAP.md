@@ -50,9 +50,13 @@ Starter design pack (sourcing decision and billing pending).
    geometry cannot.
 2. **No stage-0 recalibration without real tonal artwork.** Four approaches were
    measured and rejected; synthetic fixtures are barred as substitutes.
-3. **No default-OFF tier flipped on until its instrument is rebuilt.** Chaining,
-   contour, tonal-region splitting. A green suite has already hidden needle-down
-   thread on bare fabric here.
+3. **No default-OFF tier flipped on until its instrument is rebuilt.** Chaining
+   and contour. A green suite has already hidden needle-down thread on bare
+   fabric here. **Tonal-region splitting LEFT this gate 2026-08-19** — Kent's
+   spec decision 2, shipped in `d3f3c547`: photo classes split by default
+   (`pipeline.effective_split_tonal`), and the config flag is an override that
+   can only turn it ON. Re-confirmed as deliberate 2026-09-02. Its density cost
+   is real and tracked as a defect, not as a gate.
 4. **No quality claim on a raw agreement number.** Use the chance-corrected
    figure — raw moves when the mix moves, so a "gain" can be the floor shifting.
 

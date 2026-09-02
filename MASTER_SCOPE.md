@@ -107,33 +107,38 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
 18. **Duplicate quantize-time declarations put one cone in two layers — the
     second spool-revisit mechanism, untouched by defect 16's fix.** Stage 2
     quantizes to COLOURS, so two can snap to one cone: `drone_render` 80 mm
-    declares 21 slots holding 17 threads (t16, t308, t119, t101 each TWICE),
-    the smaller sewing late over finished work. **FIXED, DEFAULT ON** since
-    Kent's 2026-09-01 ruling: `cfg.merge_duplicate_cones` folds each into the
-    FIRST layer declaring its cone, upstream of stage 5 so coverage/seams
-    derive from the merged order (`_hoist_same_thread` tries it downstream
-    and rightly declines). Blocks 19→17 (**two fewer stops**), revisits 2→0,
-    needle-up 1295→1237 mm, others byte-identical, no golden moved.
+    declares 21 slots holding 17 threads, the smaller sewing late over
+    finished work. **FIXED, DEFAULT ON** (Kent, 2026-09-01):
+    `cfg.merge_duplicate_cones` folds each into the FIRST layer declaring its
+    cone, upstream of stage 5 so coverage/seams derive from the merged order.
+    Blocks 19→17, revisits 2→0, needle-up 1295→1237 mm, no golden moved.
     *(2026-09-01 — `test_duplicate_cone_layers.py`, 13)*
 
 19. **The design's own outer edge is uncapped — every fill row ends in open
     air.** The other sew-out edge finding, and one no per-shape border can
-    reach: the silhouette is the union of several shapes' edges, so each
-    border rides its own ring and the design/fabric boundary is nobody's.
-    On Kent's icon, **100% of the 293.2 mm outer silhouette uncovered at
-    1.0 mm** vs 0.0% on the glyph edge he rated flawless. **FIX BUILT,
-    default OFF, both styles opt-in:** `cfg.edge_cap` — `"bean"` traces it
-    (`run_outline`), `"satin"` lays a column just inside (`border_runs`),
-    one design-level block after all artwork, before the detail layer, in a
-    thread already loaded. No new constant (gate 1 clean); `"none"` is
-    gate 3. Both toggleable at Kent's ask; Studio exposes **Design edge**.
-    Icon: bean +12.6%, satin +15.3%. KNOWN LIMIT: cost scales with
-    silhouette FRAGMENTATION, not design size — `drone_render` caps 38
-    parts / 78 holes for **+56.9%**, a whisker off DOCTRINE's
-    blanket-border negative, and there the styles invert (satin +34.9% is
-    cheaper). Every run reports its bill as `EDGE_CAP_APPLIED` rather than
-    guess an unsewn threshold. **A sew-out settles which cap, if either.**
+    reach: the silhouette is the union of several shapes' edges, so the
+    design/fabric boundary is nobody's. On Kent's icon, **100% of the 293.2 mm
+    outer silhouette uncovered at 1.0 mm** vs 0.0% on the glyph edge he rated
+    flawless. **FIX BUILT, default OFF, both styles opt-in:** `cfg.edge_cap` —
+    `"bean"` traces it, `"satin"` lays a column just inside, one design-level
+    block after all artwork in a thread already loaded. No new constant (gate 1
+    clean); Studio exposes **Design edge**.
+    Icon: bean +12.6%, satin +15.3%. KNOWN LIMIT: cost scales with silhouette
+    FRAGMENTATION, not size — `drone_render` caps 38 parts / 78 holes for
+    **+56.9%**, a whisker off DOCTRINE's blanket-border negative, and there
+    satin (+34.9%) is cheaper. Bills every run as `EDGE_CAP_APPLIED`.
+    **A sew-out settles which cap, if either.**
     *(built 2026-09-01 — `tests/test_edge_cap.py`, 18 passing)*
+
+20. **Photo tonal splitting stacks thread past the pucker ceiling.** The bill
+    for the ratified spec-decision-2 flip (`d3f3c547`), found only because the
+    stale baseline remembered the before. `photo_scene_stub` `coverage_max`
+    **4.40 → 6.44** on that commit, **7.18** today against a 3.5-layer ceiling
+    — a `DENSITY_STACKED` **block** on a fixture that scored 64. Lane-wide:
+    `photo_dof_meadow` 3.45 → 5.04, `same_hole_fraction` up **4–7x** — the
+    needle-breakage signal. **No off switch for photo classes**
+    (`effective_split_tonal` ORs flag with class). *(2026-09-02 — bisect on
+    `coverage_max`; [notes](docs/scorecard-baseline-attribution-2026-09-02.md))*
 
 ### Closed — kept numbered, because ten other docs cite them by number
 
@@ -157,25 +162,27 @@ these are pointers, not status.
 
 ## Latent — gated OFF, DO NOT FLIP without rebuilding its instrument
 
-Safe today only because these ship off; each becomes a live defect the moment
-someone flips a flag that reads like an optimisation. **A green suite is not
-evidence for either** — on chaining, a green suite actively concealed it.
+Safe only because it ships off; a live defect the moment someone flips a flag
+that reads like an optimisation. **A green suite is not evidence** — on
+chaining one concealed it. Entry 2 is the other failure mode: a flag that LEFT
+this list without the list noticing, for two weeks.
 
 1. **`chain_links` — sews needle-down thread on bare fabric.** 16.15 mm exposed
-   over 17 links on `full_back`/`fleece_sweatshirt`, stock preset, green suite.
-   The two shipped instruments were blind three ways over (one-point links
-   skipped, first/last sewn segment never tested, cover as polygons not as
-   where thread lands) — all three CLOSED 2026-08-18: four fixtures at **0.00 mm**
-   added bare thread, **9.82 → 4.06** trims/1k. Its replacement then erred the
-   OTHER way, reading a jump as thread: **39.8 → 9.0 mm** of phantom link on
-   chain-OFF corpus plans, fixed 2026-09-02 (residual is a `-shadeN` id,
-   measured not fixed). **Still DO NOT FLIP, now permanently:** gate 1 names
-   link cover tolerance and the sew-out is accepted as-is. Largest lever on
-   defects 4 and 6. *(2026-08-02/18 — `docs/hardening-closeout-2026-08-02.md`;
-   2026-09-02 — `docs/scorecard-baseline-attribution-2026-09-02.md`)*
-2. **`split_tonal_regions`** — the shading fix, merged but off; parked until the
-   sew-out. Cost and ceiling under "Waiting on Kent". *(confirmed OFF
-   2026-08-17 — `config.py:647`)*
+   over 17 links, stock preset, green suite. Both shipped instruments were
+   blind three ways; all closed 2026-08-18 (four fixtures at **0.00 mm** added
+   bare thread, **9.82 → 4.06** trims/1k). The replacement then erred the other
+   way — a jump read as thread, **39.8 → 9.0 mm** phantom link, fixed
+   2026-09-02, residual is a `-shadeN` id. **Still DO NOT FLIP, permanently:**
+   gate 1 names link cover tolerance and the sew-out is accepted as-is. Largest
+   lever on defects 4 and 6. *(`docs/hardening-closeout-2026-08-02.md`;
+   [2026-09-02](docs/scorecard-baseline-attribution-2026-09-02.md))*
+2. ~~`split_tonal_regions`~~ — **NOT LATENT: ON for photo classes since
+   2026-08-19** (`d3f3c547`, spec decision 2); this said otherwise for two
+   weeks. `effective_split_tonal` returns `bool(flag) or class_ in
+   PHOTO_CLASSES` — the field only turns it ON. The old "confirmed OFF —
+   `config.py`" read the FIELD, which stopped deciding two days later: **a
+   per-class default cannot be confirmed from a dataclass line.** Ratified
+   2026-09-02, left gate 3; cost is defect 20. *(`pipeline.py:92`)*
 
 *(section added 2026-08-17 — `docs/project-review-2026-08-16.md` §1.6: chaining
 was absent from the live-defect list entirely, so a good-faith flip would have
@@ -387,27 +394,24 @@ labelled corpus plus a scoring harness would let a classifier change be judged
 against *something* before either arrives.
 
 **Harness half: BUILT — `digitizer/tools/corpus_scorecard.py`.** `capture`/`diff`
-over 27 fixtures x 2 configs, aggregating preflight's score. REPORTING, not a CI
-gate; detail: [area 1](docs/scope/1-auto-digitizing-quality.md). **Baseline is
-2026-08-12 and SOUND — it re-scores 38/38 exactly on its own commit, so all 30
-movers are real.** Both flagged ones are attributed: `link_segments` a defect in
-the instrument (fixed), `summit_badge` a defect being FIXED (stage 4 dropped its
-badge body). Recapture wants a `THREAD_MATCH_POOR` spot-check and one duplicate
-fixture name dropped. *(2026-08-21; 2026-09-02 — [notes](docs/scorecard-baseline-attribution-2026-09-02.md))*
+over 26 fixtures x 2, aggregating preflight's score. REPORTING, not a CI gate;
+detail: [area 1](docs/scope/1-auto-digitizing-quality.md). **The 2026-08-12
+baseline was SOUND — 38/38 rows re-scored exactly on its own commit, so every
+mover was real**, and all were attributed before the 2026-09-02 recapture,
+which also drops the duplicate fixture and stamps its commit.
+*(2026-08-21; 2026-09-02 — [notes](docs/scorecard-baseline-attribution-2026-09-02.md))*
 
 **Corpus half — the real-artwork entries keep contradicting the synthetics.**
-Eight names of real customer logo art ship in `FIXTURES` (seven distinct — one
-duplicates `drone_render.png` byte for byte, so that design is scored twice): **stage 0 routes six
-of seven to GRADIENT**, because real logo art carries JPEG ringing and
-anti-aliased edges the synthetics lack, so any "flat spot-colour art" claim
-tuned only on synthetics is untested against real input.
+Seven distinct real customer logos ship in `FIXTURES`: **stage 0 routes six of
+seven to GRADIENT**, because real logo art carries JPEG ringing and anti-aliased
+edges the synthetics lack, so a "flat spot-colour art" claim tuned only on
+synthetics is untested against real input.
 `logo_script_tires.png` classifies `photo_scene` outright — a misroute kept so
-the bug has a fixture. **Real PHOTOGRAPHS go further still: all four of Kent's
-portraits classify `gradient` with the LOWEST `unique_color_mass` in the whole
-corpus — below every gradient logo.** That is the measurement behind
-`cfg.is_photographic` being declared rather than detected.
-*(measured 2026-08-15 and 2026-08-25 — `tools/corpus_scorecard.py:FIXTURES`;
-scope-history 08-25 evening)*
+the bug has a fixture. **Real PHOTOGRAPHS go further: all four of Kent's
+portraits classify `gradient` with the LOWEST `unique_color_mass` in the corpus,
+below every gradient logo** — the measurement behind `cfg.is_photographic`
+being declared rather than detected.
+*(2026-08-15 / 08-25 — `corpus_scorecard.py:FIXTURES`; scope-history 08-25)*
 
 **The tonal corpus is machine-bound and does not survive a session.** Kent's
 portraits live in the gitignored `testdata/photo/acceptance/` (spec decision 6 —
