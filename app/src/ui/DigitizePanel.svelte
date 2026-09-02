@@ -503,6 +503,13 @@
   // for anyone who never opens it.
   let sequencerOpen = false;
 
+  // Same reasoning one level up: the per-shape rows are the panel's DEEPEST
+  // control surface and its least-used one, so they open on request rather
+  // than on arrival. `{#key el.id}` in ContentStep remounts this component per
+  // element, so this resets when you switch designs -- which is what you want,
+  // since "I was editing shapes" does not carry from one artwork to another.
+  let layersOpen = false;
+
   const SHAPE_ANGLES = [{ value: null, label: "Auto angle" }, ...FILL_ANGLES.slice(1)];
 
   // Underlay style (shape-layers contract v1): fabrics.py's own vocabulary,
@@ -1768,6 +1775,35 @@
               </div>
             {/each}
           {/if}
+          <!-- Closed by default. On a two-colour logo this list is 235
+               buttons, 59 selects and 29 checkboxes -- 329 controls, 2,148 px
+               of content in a 741 px viewport -- and fourteen of its rows are
+               the individual letters of one wordmark. For a product whose
+               premise is that anyone can use it, that is the moment the
+               promise breaks. Everything a person needs BEFORE editing shapes
+               one at a time now sits above this: the stitch/size/colour
+               summary, the trim-density readout, and "Convert to text", which
+               is the correct answer to those fourteen letter rows.
+               Same idiom as the Sequencer toggle above, deliberately -- a
+               plain button with aria-expanded and an {#if}-gated body, because
+               this app has no <details> anywhere and one disclosure pattern is
+               enough. -->
+          <button
+            type="button"
+            class="dgp-seq-toggle"
+            aria-expanded={layersOpen}
+            on:click={() => (layersOpen = !layersOpen)}
+          >
+            <Icon
+              name="chevron"
+              size={12}
+              class={"dgp-seq-caret" + (layersOpen ? "" : " dgp-seq-caret-closed")}
+            />
+            <span class="dgp-seq-title">
+              Edit shapes ({orderedShapes.length})
+            </span>
+          </button>
+          {#if layersOpen}
           <ol class="dgp-layerlist">
             {#each orderedShapes as row, i (row.id)}
               <!-- One name per row, reused by every control in it, so a
@@ -2041,6 +2077,7 @@
               </li>
             {/each}
           </ol>
+          {/if}
           {/if}
 
           {#if unmatchedCount}

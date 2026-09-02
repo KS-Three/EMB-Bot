@@ -17,6 +17,17 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+// The per-shape rows sit behind a closed-by-default "Edit shapes" disclosure
+// (2026-09-02: a two-colour logo otherwise opened 329 controls). Anything that
+// drives a row has to open it first. Idempotent, so it is safe to call after
+// every re-digitize -- the panel remounts per element and closes again.
+async function openShapeRows(page) {
+  const btn = page.getByRole("button", { name: /^Edit shapes/ });
+  await expect(btn).toBeVisible({ timeout: 120_000 });
+  if ((await btn.getAttribute("aria-expanded")) !== "true") await btn.click();
+}
+
+
 const SERVICE_URL = "http://127.0.0.1:8721";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ART_PNG = path.join(__dirname, "fixtures", "two-squares.png");
@@ -105,6 +116,7 @@ test("boundary editor: drag a vertex, save, apply -- the shape reshapes through 
   // sourcePng watcher). The button reads "Digitize again" by the time a
   // result exists, so clicking an exact "Digitize" here would hang.
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
+  await openShapeRows(page);
 
   const statsBefore = await page.locator(".dgp-stats").innerText();
   const blackRow = page.locator(".dgp-layer").filter({ hasText: "#0020" });

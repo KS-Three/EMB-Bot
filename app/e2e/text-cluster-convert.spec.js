@@ -36,6 +36,17 @@ import { existsSync, readFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+// The per-shape rows sit behind a closed-by-default "Edit shapes" disclosure
+// (2026-09-02: a two-colour logo otherwise opened 329 controls). Anything that
+// drives a row has to open it first. Idempotent, so it is safe to call after
+// every re-digitize -- the panel remounts per element and closes again.
+async function openShapeRows(page) {
+  const btn = page.getByRole("button", { name: /^Edit shapes/ });
+  await expect(btn).toBeVisible({ timeout: 120_000 });
+  if ((await btn.getAttribute("aria-expanded")) !== "true") await btn.click();
+}
+
+
 const SERVICE_URL = "http://127.0.0.1:8721";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ART_PNG = path.join(__dirname, "fixtures", "enthusiast_logo.png");
@@ -149,6 +160,7 @@ test("text cluster: badge appears, convert to text, undo -- through the real ser
   // runs write .dgp-stats, so waiting for mere visibility could read the 80mm
   // one -- wait for the benchmark width itself.
   await expect(page.locator(".dgp-stats")).toContainText(/\b90×/, { timeout: 120_000 });
+  await openShapeRows(page);
 
   // ---- "looks like text" badge appears on at least one row ----------------
   const textBadges = page.locator(".dgp-lbadge", { hasText: "looks like text" });
@@ -215,6 +227,7 @@ test("text cluster: badge appears, convert to text, undo -- through the real ser
   // ---- navigate back to the digitized element's panel ----------------------
   await page.locator(".ellist .elrow").filter({ hasText: "Digitized" }).click();
   await expect(page.locator(".dgp-stats")).toBeVisible();
+  await openShapeRows(page);
   const clusterBarAgain = page.locator(".dgp-mergebar").filter({ hasText: "looks like text" }).first();
 
   // The action bar now shows Undo instead of Convert -- this is the first

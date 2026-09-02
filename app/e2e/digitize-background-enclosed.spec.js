@@ -50,6 +50,17 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+// The per-shape rows sit behind a closed-by-default "Edit shapes" disclosure
+// (2026-09-02: a two-colour logo otherwise opened 329 controls). Anything that
+// drives a row has to open it first. Idempotent, so it is safe to call after
+// every re-digitize -- the panel remounts per element and closes again.
+async function openShapeRows(page) {
+  const btn = page.getByRole("button", { name: /^Edit shapes/ });
+  await expect(btn).toBeVisible({ timeout: 120_000 });
+  if ((await btn.getAttribute("aria-expanded")) !== "true") await btn.click();
+}
+
+
 const SERVICE_URL = "http://127.0.0.1:8721";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Single enclosed area: the O-type counter in the logo's lettering.
@@ -151,6 +162,7 @@ test("BACKGROUND_ENCLOSED: enclosed icon linework is held out by default and res
   // sourcePng watcher). The button reads "Digitize again" by the time a
   // result exists, so clicking an exact "Digitize" here would hang.
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
+  await openShapeRows(page);
 
   // ---- the pipeline actually classified this art as carrying enclosed
   // background-colored regions, surfaced as the loud, actionable banner ----
@@ -220,6 +232,7 @@ test("BACKGROUND_ENCLOSED: the banner's 'Sew all' bulk-restores every enclosed r
   // sourcePng watcher). The button reads "Digitize again" by the time a
   // result exists, so clicking an exact "Digitize" here would hang.
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
+  await openShapeRows(page);
 
   const banner = page.locator(".dgp-enclosed-banner");
   await expect(banner).toBeVisible();

@@ -75,11 +75,25 @@ function baseElement(shapes = [], extra = {}) {
   };
 }
 
+// The per-shape rows live behind a closed-by-default "Edit shapes" disclosure
+// (a two-colour logo otherwise opens 329 controls), so every test ABOUT a row
+// has to open it first. Done here rather than in each test so the disclosure
+// cannot quietly change what 20 tests are asserting; the default-closed state
+// gets its own test below, which is the one thing this helper would hide.
+function openLayers(utils) {
+  const btn = utils.container.querySelector('button[aria-expanded][class*="seq-toggle"]');
+  const shapesBtn = [...utils.container.querySelectorAll("button")]
+    .find((b) => /^Edit shapes/.test(b.textContent.trim()));
+  if (shapesBtn) fireEvent.click(shapesBtn);
+  return utils;
+}
+
 function renderPanel(shapes = [], extra = {}) {
   const patches = [];
   const utils = render(Harness, {
     props: { element: baseElement(shapes, extra), onPatch: (d) => patches.push(d) },
   });
+  openLayers(utils);
   return { ...utils, patches };
 }
 
@@ -618,6 +632,55 @@ describe("Sequencer view", () => {
 // misses). These tests pin the DEBOUNCE, which is the part that keeps ten
 // nudges from queueing ten 10-second runs.
 
+describe("the Edit shapes disclosure", () => {
+  // Renders WITHOUT openLayers on purpose -- this is the state the shared
+  // helper opens past, so it is the one thing the other 46 tests cannot see.
+  function raw(shapes) {
+    return render(Harness, {
+      props: { element: baseElement(shapes), onPatch: () => {} },
+    });
+  }
+
+  test("the shape rows are closed on arrival", () => {
+    const { container } = raw([shapeRow("s1"), shapeRow("s2")]);
+    expect(container.querySelector(".dgp-layerlist")).toBeNull();
+    expect(container.querySelectorAll(".dgp-layer").length).toBe(0);
+  });
+
+  test("it says how many shapes are behind it, so closed is not blind", () => {
+    const { container } = raw([shapeRow("s1"), shapeRow("s2"), shapeRow("s3")]);
+    const btn = [...container.querySelectorAll("button")]
+      .find((b) => /^Edit shapes/.test(b.textContent.trim()));
+    expect(btn).toBeTruthy();
+    expect(btn.textContent).toMatch(/Edit shapes \(3\)/);
+    expect(btn.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  test("opening it reveals the rows and flips aria-expanded", async () => {
+    const view = raw([shapeRow("s1"), shapeRow("s2")]);
+    const btn = [...view.container.querySelectorAll("button")]
+      .find((b) => /^Edit shapes/.test(b.textContent.trim()));
+    await fireEvent.click(btn);
+    expect(view.container.querySelectorAll(".dgp-layer").length).toBe(2);
+    expect(btn.getAttribute("aria-expanded")).toBe("true");
+  });
+
+  test("the wall of controls is what closing actually removes", () => {
+    // The measured complaint: a two-colour logo opened 329 interactive
+    // controls. Counting them is the only assertion that would notice the
+    // disclosure being reintroduced open, or the rows leaking out of it.
+    const rows = Array.from({ length: 6 }, (_, i) => shapeRow("s" + i));
+    const closed = raw(rows);
+    const closedCount = closed.container.querySelectorAll("button, select, input").length;
+    const open = raw(rows);
+    const btn = [...open.container.querySelectorAll("button")]
+      .find((b) => /^Edit shapes/.test(b.textContent.trim()));
+    fireEvent.click(btn);
+    const openCount = open.container.querySelectorAll("button, select, input").length;
+    expect(openCount).toBeGreaterThan(closedCount * 2);
+  });
+});
+
 describe("auto-restitch on shape edits", () => {
   // `digitize` is the network call runDigitize makes; counting it is how we
   // observe a restitch without a service.
@@ -651,6 +714,7 @@ describe("auto-restitch on shape edits", () => {
         onPatch: (d) => patches.push(d),
       },
     });
+    openLayers(utils);   // these tests drive a per-shape control; see openLayers
     return { ...utils, patches };
   }
 

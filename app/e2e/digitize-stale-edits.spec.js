@@ -25,6 +25,17 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+// The per-shape rows sit behind a closed-by-default "Edit shapes" disclosure
+// (2026-09-02: a two-colour logo otherwise opened 329 controls). Anything that
+// drives a row has to open it first. Idempotent, so it is safe to call after
+// every re-digitize -- the panel remounts per element and closes again.
+async function openShapeRows(page) {
+  const btn = page.getByRole("button", { name: /^Edit shapes/ });
+  await expect(btn).toBeVisible({ timeout: 120_000 });
+  if ((await btn.getAttribute("aria-expanded")) !== "true") await btn.click();
+}
+
+
 const SERVICE_URL = "http://127.0.0.1:8721";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -149,6 +160,7 @@ test("stale layer edits: service flags them, the panel surfaces them, Clear + Ap
   // the recovery flow below.
   const rows = page.locator(".dgp-layer");
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
+  await openShapeRows(page);
   const rowCount = await rows.count();
   expect([2, 3]).toContain(rowCount);
 
