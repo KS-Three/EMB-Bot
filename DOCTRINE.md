@@ -188,10 +188,21 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   fixture had ALREADY drifted before the flip — its own docstring claims
   82 mm was chosen for a 3.41/1k margin "not cherry-picked to the edge of
   the threshold", but it measures **3.76 with the flag OFF today**, so most
-  of the erosion toward 4.1 is not the flip's. Re-baselining the ceiling or
-  re-picking the fixture is Kent's open call.
+  of the erosion toward 4.1 is not the flip's. **SETTLED the same day by
+  re-pitching the fixture, NOT by moving the ceiling** (PR #306): the
+  benchmark went 82 mm -> 93 mm, where chaining cuts trims 19 -> 8 at
+  **2.43/1k against the unchanged 4.1** — a 1.67 margin instead of hugging
+  the threshold, and the strongest chaining win in that sweep. The corpus
+  law is intact; what moved was a benchmark pitch small enough that ONE
+  trim swung the rate 0.42. Read that assertion as "still inside the
+  professional corpus band", never as an exact number — drifting out of it
+  is what happened here. main was red from 903c937 to 769c609 and green
+  again at b7fe492.
   *(measured 2026-09-01 — all four numbers on one machine so platform
-  numerics cancel; `tests/test_chaining.py`, `tests/test_borders_last.py`)*
+  numerics cancel; `tests/test_chaining.py`, `tests/test_borders_last.py`;
+  resolution verified on main, CI run 33570264885 all five jobs green, and
+  a local full suite at 3 failed / 1599 passed — exactly the three
+  platform-numeric goldens CI deselects)*
 
 - **Smoothing region polygons to fix "ragged edges" — NO EFFECT, do not build.**
   Douglas-Peucker already runs (`stage4_vectorize`, `simplify_tol_mm` 0.2 mm)
