@@ -3348,3 +3348,43 @@ reach — as either a bean trace or a satin column. Measured on the committed
 repro at 80 mm: bean +13.2%, satin +16.0% (Kent's own icon: +12.6% / +15.3%).
 No new physical constant; gate 1 untouched. Which cap, if either, is a
 sew-out question and remains open.
+
+## 2026-09-02 — what pitch does the PROFESSIONAL actually sew? First measurement.
+
+The density disagreement from the first sew-out (0.18-0.19 vs 0.400 mm on the
+same file) had no instrument until PR #310 rebuilt one:
+`digitizer/tools/fill_pitch.py`, calibrated by recovering TWO different
+configured row spacings rather than one, 14 tests passing.
+
+**Nobody had pointed it at the professional files.** The five commissioned
+`testdata/reference/becker_*.dst` files — a third-party digitizer's work on
+Kent's own logo — read:
+
+```
+becker_chest_small_..._lc_2_a      0.380 mm median   (3 of 15 passes read)
+becker_hat_polo_large_..._hat      0.370 mm median   (3 of 14)
+becker_hat_polo_large_..._logolc   0.400 mm median   (4 of 15)
+becker_hat_small_..._hat_2_a       0.380 mm median   (3 of 15)
+becker_hat_small_..._smaller       0.535 mm median   (4 of 15)
+```
+
+Four of five sit at **0.37-0.40 mm**, which is exactly where
+`machine.FILL_ROW_MM = 0.40` already is. **On the passes this instrument can
+read, these professional files do not support "0.40 is half professional
+coverage"** — the claim that reopened the density story after the sew-out.
+
+**Its limit, stated because the tool states its own:** only 3-4 of 14-15
+passes per file are wide enough to score, so this is a first datum, not a
+population assignment. The p10s (0.21-0.33) do show some passes near 0.20,
+consistent with `FILL_ROW_MM`'s own note that the corpus splits at ~0.20 into
+a genuine dense population and a SATIN-CROSSING HALF-STEP ARTIFACT. Reading
+A's 0.18-0.19 sits exactly where that artifact lives, which remains the most
+likely explanation of a two-fold disagreement about one file.
+
+Our own engine could not be compared like-for-like on these fixtures: it
+reads 1 of 39 scoreable passes on `enthusiast_logo` and 6 of 107 on
+`drone_render`, which is too thin to quote against a 3-4 pass professional
+median. A fixture with more substantial fills is what that comparison needs.
+
+Gate 1 untouched throughout — this measures, and cloth still settles the
+constant.
