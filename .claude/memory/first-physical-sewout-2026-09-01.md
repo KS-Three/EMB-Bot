@@ -33,10 +33,27 @@ Full measured record: `docs/scope-history.md` 2026-09-01 entry.
   - *Its own stated limit:* only **16 of roughly 1,700** needle-down
     passes are wide enough for that estimator to read, so it speaks for
     the substantial fills, not every small patch.
-  - **Neither reading has a committed instrument.** Reading B's estimator
-    was never committed — verified 2026-09-01 across every branch after a
-    `git fetch --all`, it exists on no ref. Rebuilding it is what would
-    make either number re-measurable instead of quoted.
+  - **The instrument now EXISTS** — `digitizer/tools/fill_pitch.py`
+    (PR #310), rebuilt to Reading B's method and calibrated by recovering
+    TWO different configured row spacings, not one (a stopped clock
+    recovers 0.40). 14 tests pass.
+  - **FIRST MEASUREMENT OF THE PROFESSIONAL FILES, 2026-09-01** — nobody
+    had pointed an instrument at them before. The five commissioned
+    `testdata/reference/becker_*.dst` files read **0.380 / 0.370 / 0.400 /
+    0.380 / 0.535 mm** median row pitch. Four of five sit at 0.37-0.40,
+    which is exactly where `FILL_ROW_MM = 0.40` already is. On the passes
+    this instrument can read, **these professional files do NOT support
+    "0.40 is half professional coverage"** — the claim that reopened the
+    density story.
+    *Its limit, stated because the tool states it:* only 3-4 of 14-15
+    passes per file are wide enough to read, so this is a first datum, not
+    a population assignment. Their p10s (0.21-0.33) do show some passes
+    near 0.20 — consistent with `FILL_ROW_MM`'s own note that the corpus
+    splits at ~0.20 into a genuine dense population and a SATIN-CROSSING
+    HALF-STEP ARTIFACT. Reading A's 0.18-0.19 is exactly where that
+    artifact lives, which is the most likely explanation of the whole
+    disagreement.
+    Gate 1 is untouched: this measures, it does not set the constant.
   - What is NOT in dispute: macros show patch interiors solid, and the
     see-through is at least partly seam trenches between patches, raw
     perimeter fill ends (bottom-left has no covering border), and late
