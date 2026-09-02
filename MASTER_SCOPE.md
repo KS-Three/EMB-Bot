@@ -325,9 +325,16 @@ its own merits.
    (`screenshot_phone_ui_golke`, 62st → 79st), **1.78** (`logo_bridge_bar`,
    197st → 444st), **2.65** (`drone_render`, 338st → 1560st). The repro
    genuinely has none: its closest two cones are 33.4 ΔE apart. Real artwork
-   also runs 15–18 cones, so the tiny-cone population is not rare. **Still
-   Kent's call:** how much colour step buys a stop is cloth, not a constant.
-   *(measured 2026-09-02 — `sequence_census.py` per-cone, 26 fixtures)*
+   also runs 15–18 cones, so the tiny-cone population is not rare.
+   **TABLED — Kent, 2026-09-02:** *"I'm honestly not concerned about the
+   hopping idea, we can table this one for a further discussion."* Not
+   resolved, parked — do not build the shade-merge (or further
+   hopping/sequencing polish beyond what already shipped) until he reopens
+   it. The ΔE pairs above stay ready for that discussion. The two mechanical
+   causes fixed 2026-08-31 (`start_near`, the re-snap rehome) are merged and
+   unaffected by this tabling.
+   *(measured 2026-09-02 — `sequence_census.py` per-cone, 26 fixtures;
+   tabled 2026-09-02 — Kent, in session)*
 
 ---
 
@@ -625,25 +632,38 @@ step and a canvas menu creating elements with no feedback — both shipped, both
 invisible to a green suite. *(confirmed 2026-08-25 — area doc)*
 
 **Uploading artwork is the whole interaction — the panel no longer asks the
-user to classify it first.** Stage 0 always classified every job on its own;
-Studio asked anyway, with a "This is a photo" checkbox in the params list and a
-Digitize button to find. Now the run starts on upload and the panel STATES what
+user to classify it first.** The run starts on upload and the panel STATES what
 the art was read as ("Read as flat art" / "as a photo" / "as shaded artwork" /
 "couldn't tell"), with the override recast as a one-click correction to that
-sentence. `detail_layer` moved onto that row too (Kent 2026-08-30) and appears
-only where the art is actually on a tonal lane, by reading or by override —
-it was "Detail lines for photos" in the params list, on every flat logo that
-could never use it. Nothing changed in what gets sent, so area 1's
-photo-control numbers are untouched. The engine's own routing is unchanged too — ROADMAP gate 2 bars
-recalibrating stage 0, and phase-4 v1 is built to work around it with exactly
-this override. *(confirmed 2026-08-30 — driven in a real browser against the
+sentence. `detail_layer` sits on that row too (Kent 2026-08-30) and appears only
+where the art is actually on a tonal lane, by reading or by override. Nothing
+changed in what gets sent, so area 1's photo-control numbers are untouched, and
+the engine's routing is unchanged — ROADMAP gate 2 bars recalibrating stage 0,
+and phase-4 v1 works around it with exactly this override.
+*(confirmed 2026-08-30 — driven in a real browser against the
 real service, every state of the row clicked through and looked at; pinned by
 e2e `digitize-auto-start.spec.js`; numbers in scope-history 08-30)*
 
-**A `var(--x, fallback)` whose name is undefined is not a fallback — it is a
-silent bespoke value.** Three such names shipped; two more tokens failed WCAG AA
-on the app's own non-white grounds while passing on white. Closed — **re-run the
-check when a new component lands.** *(confirmed 2026-08-25 — theme.css)*
+**The hoop you picked is now DRAWN, and the export gate uses it.** `preview.js`
+had one box — the garment's PLACEMENT box — and called it the hoop, so choosing a
+hoop changed nothing on screen. `hoopTransform` returns both and fits to the
+larger; `DownloadStep` warns before a stitch export that will not fit (confirm,
+not block; PNG and PDF worksheet ungated — not machine files). **Live: the stock
+Tote / Full Back preset is 203.2 mm against a 200 mm max hoop**, so it fires on a
+shipped preset — whether auto-fit should CAP is open. *(2026-09-02 — PR #317;
+`preview.spec.js`, `DownloadStep.spec.js`, e2e)*
+
+**The digitize panel states what CHANGED and offers the fix.** Shape list behind
+an "Edit shapes (N)" disclosure, closed by default; a re-digitize reads as a
+delta against `priorRun`; `COLOR_STOPS_HEAVY`, `LETTERING_TOO_SMALL` and
+`STITCHES_TOO_SHORT` render as one-click adjustment chips offered AFTER the run
+(Kent's call — an adjustment, not a pre-run form). `QualityReport` surfaces
+trims. *(2026-09-02 — PRs #317/#318)*
+
+**`cfg.border` could never reach its own default — the Studio always sent one.**
+`project.js` seeded `border: "off"` and `digitizer.js` sent the key
+unconditionally. Now `null` = unset, key omitted when unset, panel says
+"automatic" — `fill_angle_deg`'s sentinel shape. *(2026-09-02 — PR #318)*
 
 **Preview thread width is PHYSICAL, and must not be widened.**
 `preview.js`'s `THREAD_WIDTH_MM` (0.4, nominal 40wt) is coverage 1.0 against the
@@ -653,19 +673,6 @@ a two-population question standing *pending sew-out* — which is ROADMAP gate 1
 Caveat: `lw` has a 1.2 px floor, so the property holds zoomed in, not on a
 thumbnail. Pinned by a test on the literal 0.4.
 *(confirmed 2026-08-25 — `preview.js`, `preview.spec.js`)*
-
-**Correction (2026-08-25).** That paragraph first read that widening thread would
-"hide the open fill-density item … FILL_ROW_MM running ~2x light" — overstating a
-hedge into a defect. The ~0.20 mm figure is a satin-rail **artifact** for one file
-population (refuted) and a genuine denser pitch on 43 commissioned cap logos
-(still alive): unresolved, not open-and-known. Imported from the 2026-08-09 Ember
-teardown without re-checking it was still live.
-*(corrected 2026-08-25 — area 1 "Fill row spacing (law 19)")*
-
-**The stitch simulator already exists — do not build a second one.**
-`lib/simulate.js` plus EmbroideryField's `simbar`. This was nearly rebuilt from
-scratch on the assumption it was a gap. *(confirmed 2026-08-25 — driven in a
-browser)*
 
 **Thread lighting is unverified against real thread** — eye-tuned, no sew-out to
 compare against. Treat the look as a preference, not a calibration.

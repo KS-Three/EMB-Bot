@@ -73,6 +73,12 @@ Full measured record: `docs/scope-history.md` 2026-09-01 entry.
 2. A sew-out photo grades SEAMS and ORDER as much as density — the two
    queued fixes (borders-last sequencing; patch-quilt cleanup, both issued
    as task cards 2026-09-01, Kent-approved) are sequencing work, gate-clean.
+   **Update 2026-09-02: the quilt/hopping remainder is TABLED by Kent**
+   ("I'm honestly not concerned about the hopping idea, we can table this
+   one for a further discussion") — see MASTER_SCOPE queue item 12. Do not
+   build the shade-merge or further hopping polish until he reopens it; what
+   already merged (start_near, the re-snap rehome, borders-last PR #302,
+   the duplicate-cone fold) stays merged.
 3. Gate 1 still stands: this icon settles no physical constant. The
    controlled instrument is `EMBBOT_SEWOUT_CARD.dst` (buildable on Linux
    since PR #299), block 2 = 0.40 / 0.20 / double-pass on one hooping.
