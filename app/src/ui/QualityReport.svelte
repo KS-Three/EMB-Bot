@@ -44,12 +44,22 @@
     return severity === "info" ? "lightbulb" : "warning";
   }
 
-  // The three production numbers a person actually decides on, drawn from
+  // The four production numbers a person actually decides on, drawn from
   // whichever source already carries each: stitches and thread changes come
-  // from preflight's metrics, thread length only from the job's stats (the
-  // service computes it, and until now the Studio dropped it on the floor).
-  // Any one may be missing on an older stored job, so each is rendered only
-  // when it is really there rather than as a zero.
+  // from preflight's metrics, thread length and trims only from the job's
+  // stats (the service computes both, and the Studio dropped them on the
+  // floor). Any one may be missing on an older stored job, so each is
+  // rendered only when it is really there rather than as a zero.
+  //
+  // Trims are here because they are HAND WORK, not machine time: every trim
+  // leaves thread tails on the garment that somebody clips with scissors
+  // afterwards, so "31 trims" is a chore this screen can warn about and the
+  // stitch count cannot. Deliberately the raw count and NOT preflight's
+  // `trims_per_1000` — the rate is the right thing to grade on (it is what
+  // TRIM_HEAVY fires from, and it already rides the Sequencer header) and the
+  // wrong thing to hand an operator, who will clip a number of tails, not a
+  // rate. Zero is worth printing for the same reason a clean report is:
+  // "0 trims" says there is nothing to clip.
   function facts(preflight, stats) {
     const m = (preflight && preflight.metrics) || {};
     const out = [];
@@ -58,6 +68,9 @@
     const changes = m.color_changes ?? (stats && stats.color_changes);
     if (typeof changes === "number") {
       out.push(`${changes} thread ${changes === 1 ? "change" : "changes"}`);
+    }
+    if (stats && typeof stats.trims === "number") {
+      out.push(`${stats.trims} ${stats.trims === 1 ? "trim" : "trims"}`);
     }
     if (stats && typeof stats.thread_m_total === "number") {
       out.push(`${stats.thread_m_total.toFixed(1)} m of thread`);
