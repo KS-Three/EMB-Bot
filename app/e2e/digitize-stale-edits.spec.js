@@ -185,6 +185,13 @@ test("stale layer edits: service flags them, the panel surfaces them, Clear + Ap
   await expect(apply).toBeHidden({ timeout: 120_000 });
   // The service actually sewed the border: the stitch count moved.
   await expect(page.locator(".dgp-stats")).not.toHaveText(statsBefore);
+  // ...and the panel SAYS it moved. Before this line existed a re-digitize
+  // replaced the design in place with nothing to compare against, so a knob
+  // that did something and a knob that did nothing looked identical. Asserted
+  // here rather than only in a component test because the numbers come from a
+  // real service round trip, which is the only place `priorRun` is written.
+  await expect(page.getByTestId("digitize-delta")).toContainText(/Since last run:/);
+  await expect(page.getByTestId("digitize-delta")).not.toContainText(/no change/i);
   await expect(blackRow.getByLabel("Border")).toHaveValue("bean");
   // A valid, applied edit is NOT unmatched.
   await expect(page.locator(".dgp-unmatched")).toBeHidden();

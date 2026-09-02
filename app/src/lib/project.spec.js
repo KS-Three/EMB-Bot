@@ -542,6 +542,24 @@ test("migrateProject fills a digitized element's missing fields (additive migrat
   expect(el.blockColors).toEqual({});
   expect(el.offsetXMm).toBe(3);
   expect(el.result).toEqual({ stitches: [], colors: [] });
+  // A save that predates the re-digitize comparison loads with nothing to
+  // compare against, rather than with a fabricated "unchanged" reading.
+  expect(el.priorRun).toBeNull();
+});
+
+test("a saved priorRun survives the round trip — the comparison is not lost on reload", () => {
+  const saved = {
+    version: 2, garmentId: "left_chest", selectedId: "e1",
+    elements: [{
+      id: "e1", type: "digitized", name: "logo.png", sourcePng: "QQ==",
+      result: { stitches: [], colors: [] },
+      priorRun: { stitch_count: 2000, color_changes: 3, trims: 26, score: 88, grade: "B" },
+    }],
+  };
+  const el = migrateProject(saved).elements[0];
+  expect(el.priorRun).toEqual({
+    stitch_count: 2000, color_changes: 3, trims: 26, score: 88, grade: "B",
+  });
 });
 
 test("migrateProject fills the shape-layers fields on a pre-layers digitized save (review/overrides/deletions/appliedEdits)", () => {

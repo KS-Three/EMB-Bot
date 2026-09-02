@@ -632,6 +632,80 @@ describe("Sequencer view", () => {
 // misses). These tests pin the DEBOUNCE, which is the part that keeps ten
 // nudges from queueing ten 10-second runs.
 
+describe("what changed since the last run", () => {
+  // A re-digitize replaced the design in place with nothing to compare
+  // against, so a knob you turned and a knob you only thought you turned
+  // looked the same. `priorRun` is written at the one moment the old numbers
+  // still exist -- the patch that overwrites them.
+  const RESULT = { stitchCount: 2400, widthMM: 50, heightMM: 40, colorCount: 3,
+                   stitches: [], colors: [] };
+
+  function withPrior(prior, extra = {}) {
+    return render(Harness, {
+      props: {
+        element: baseElement([], {
+          result: RESULT,
+          priorRun: prior,
+          preflight: { score: 76, grade: "C", findings: [], metrics: { color_changes: 5 } },
+          stats: { trims: 20 },
+          ...extra,
+        }),
+        onPatch: () => {},
+      },
+    });
+  }
+
+  test("a FIRST digitize shows no comparison at all", () => {
+    // Not "unchanged" -- there is nothing to be different from, and "+0
+    // stitches" here would be a lie dressed as information.
+    const { queryByTestId } = withPrior(null);
+    expect(queryByTestId("digitize-delta")).toBeNull();
+  });
+
+  test("it names what moved, in the operator's direction", () => {
+    const { getByTestId } = withPrior({
+      stitch_count: 2000, color_changes: 3, trims: 26, score: 88, grade: "B",
+    });
+    const txt = getByTestId("digitize-delta").textContent;
+    expect(txt).toMatch(/\+400 stitches/);
+    expect(txt).toMatch(/\+2 thread changes/);
+    expect(txt).toMatch(/\u22126 trims/);   // fewer trims reads as a minus
+    expect(txt).toMatch(/B \u2192 C/);
+  });
+
+  test("a re-digitize that changed NOTHING says so — the point of the line", () => {
+    // The most useful answer it gives: the setting you just changed did
+    // nothing to the stitches. Without it, that is indistinguishable from a
+    // run that changed everything.
+    const { getByTestId } = withPrior({
+      stitch_count: 2400, color_changes: 5, trims: 20, score: 76, grade: "C",
+    });
+    expect(getByTestId("digitize-delta").textContent).toMatch(/no change/i);
+  });
+
+  test("an unchanged figure is omitted rather than printed as zero", () => {
+    const { getByTestId } = withPrior({
+      stitch_count: 2400, color_changes: 3, trims: 20, score: 76, grade: "C",
+    });
+    const txt = getByTestId("digitize-delta").textContent;
+    expect(txt).toMatch(/\+2 thread changes/);
+    expect(txt).not.toMatch(/stitch/);
+    expect(txt).not.toMatch(/trim/);
+  });
+
+  test("a missing figure on an older stored run is skipped, not treated as 0", () => {
+    // priorRun from a job that predates the trims field: reporting "-20
+    // trims" would invent a change that never happened.
+    const { getByTestId } = withPrior({
+      stitch_count: 2000, color_changes: null, trims: null, score: null, grade: null,
+    });
+    const txt = getByTestId("digitize-delta").textContent;
+    expect(txt).toMatch(/\+400 stitches/);
+    expect(txt).not.toMatch(/trim/);
+    expect(txt).not.toMatch(/thread change/);
+  });
+});
+
 describe("the Edit shapes disclosure", () => {
   // Renders WITHOUT openLayers on purpose -- this is the state the shared
   // helper opens past, so it is the one thing the other 46 tests cannot see.

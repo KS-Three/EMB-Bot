@@ -128,6 +128,58 @@
   // `el` is passed explicitly (never closed over) so a re-run always reads
   // the element as it is NOW — the blockRgb(element, i) lesson from
   // DesignPanel applies to async work too.
+  // The five figures a person compares across a re-digitize. Null when there
+  // is nothing to compare against -- a first digitize is not "unchanged", it
+  // is the baseline, and saying "+0 stitches" there would be a lie dressed as
+  // information. Drawn from both sources because neither carries all five:
+  // trims live only on the job envelope, score/grade only on preflight.
+  function runSnapshot(el) {
+    if (!el || !el.result) return null;
+    const m = (el.preflight && el.preflight.metrics) || {};
+    const st = el.stats || {};
+    const snap = {
+      stitch_count: el.result.stitchCount,
+      color_changes: m.color_changes ?? st.color_changes ?? null,
+      trims: typeof st.trims === "number" ? st.trims : null,
+      score: el.preflight ? el.preflight.score : null,
+      grade: el.preflight ? el.preflight.grade : null,
+    };
+    return snap;
+  }
+
+  // What moved since the last run. Returns [] when nothing did, and the
+  // caller renders "no change" for that -- which is the most useful answer
+  // this line gives: it means the setting you just changed did nothing to the
+  // stitches, and without it a re-digitize that changed nothing is
+  // indistinguishable from one that changed everything.
+  //
+  // Signs are stated from the operator's side, not the engine's: FEWER trims
+  // and FEWER stops are wins, so they read as "-6 trims" and the reader does
+  // not have to know which direction is good. No colouring on that basis
+  // though -- "fewer stitches" is not automatically better (it can mean
+  // coverage was lost), so this reports the movement and declines to grade it.
+  function runDelta(el) {
+    const prev = el && el.priorRun;
+    if (!prev || !el.result) return [];
+    const m = (el.preflight && el.preflight.metrics) || {};
+    const st = el.stats || {};
+    const out = [];
+    const push = (was, now, one, many) => {
+      if (typeof was !== "number" || typeof now !== "number" || was === now) return;
+      const d = now - was;
+      out.push(`${d > 0 ? "+" : "\u2212"}${Math.abs(d).toLocaleString()} ${Math.abs(d) === 1 ? one : many}`);
+    };
+    push(prev.stitch_count, el.result.stitchCount, "stitch", "stitches");
+    push(prev.color_changes, m.color_changes ?? st.color_changes, "thread change", "thread changes");
+    push(prev.trims, typeof st.trims === "number" ? st.trims : undefined, "trim", "trims");
+    if (el.preflight && prev.grade && prev.grade !== el.preflight.grade) {
+      out.push(`${prev.grade} \u2192 ${el.preflight.grade}`);
+    }
+    return out;
+  }
+  $: changed = runDelta(element);
+  $: hasPrior = !!(element && element.priorRun && element.result);
+
   async function runDigitize(el) {
     if (!el.sourcePng || !health) return;
     if (phase !== "idle") {
@@ -171,6 +223,11 @@
         // dropped them: `result` keeps job.design, not the stats beside it. The
         // review step's shopping list is the first thing to want them.
         stats: job.stats || null,
+        // Item 10: keep what the LAST run produced, because this line is the
+        // only moment the old numbers still exist -- one statement later they
+        // are gone. Read off `el`, the pre-patch element, not off `element`,
+        // which a mid-flight edit may already have moved on.
+        priorRun: runSnapshot(el),
         appliedEdits: editsKey({
           deleted_shape_ids: cfg.deleted_shape_ids,
           shape_overrides: cfg.shape_overrides,
@@ -1470,6 +1527,20 @@
         {element.result.colorCount} color{element.result.colorCount === 1 ? "" : "s"}
       </p>
 
+      <!-- Item 10: a re-digitize used to replace the design in place with
+           nothing to compare against, so a knob you turned and a knob you
+           imagined turning looked identical. `role="status"` because this
+           appears as the RESULT of an action the user just took. -->
+      {#if hasPrior}
+        <p class="dgp-delta" role="status" data-testid="digitize-delta">
+          {#if changed.length}
+            Since last run: {changed.join(" · ")}
+          {:else}
+            Since last run: no change to stitches, threads or trims.
+          {/if}
+        </p>
+      {/if}
+
       {#if unstitchedRows.length}
         <div class="dgp-enclosed-banner" role="alert">
           <p class="dgp-enclosed-banner-text">
@@ -2256,6 +2327,12 @@
   .dgp-run:disabled { opacity: 0.6; cursor: default; }
   .dgp-status { font-size: var(--fs-xs, 12px); color: var(--muted, #667); margin: 6px 0 0; }
   .dgp-error { font-size: var(--fs-xs, 12px); color: var(--danger, #b3261e); margin: 6px 0 0; }
+  .dgp-delta {
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: var(--muted, #6f685c);
+  }
+
   .dgp-stats { font-size: var(--fs-xs, 12px); margin: 10px 0 0; }
   .dgp-warnings {
     margin: 8px 0 0;

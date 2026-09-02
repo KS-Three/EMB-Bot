@@ -135,6 +135,11 @@ export const DEFAULT_DIGITIZE_PARAMS = {
 //                       read-only, echoed-back treatment as `preflight`;
 //                       thread length lives ONLY here, never in preflight's
 //                       metrics, which is why the review step reads both.
+//   `priorRun`        — the five headline figures from the run BEFORE the
+//                       current one, or null on a first digitize. Written by
+//                       DigitizePanel's runDigitize at the same moment it
+//                       overwrites `stats`/`preflight`, which is the only
+//                       moment the old values still exist.
 export function defaultDigitizedElement(id) {
   return {
     id,
@@ -157,6 +162,16 @@ export function defaultDigitizedElement(id) {
     appliedEdits: null,
     preflight: null,
     stats: null,
+    // The numbers the PREVIOUS digitize produced, captured the moment a new
+    // result replaces it — so "Digitize again" can say what moved instead of
+    // silently swapping the design out. Null until a second run exists; a
+    // first digitize has nothing to be different from.
+    //
+    // A flat snapshot of five figures, deliberately, not a copy of the whole
+    // `stats`/`preflight` pair: this rides in the saved project file, and the
+    // point is a one-line comparison, not a second full report the reader has
+    // to diff by eye. `{ stitch_count, color_changes, trims, score, grade }`.
+    priorRun: null,
     sizeMm: null,
     offsetXMm: 0,
     offsetYMm: 0,
