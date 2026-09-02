@@ -85,6 +85,24 @@ class Chart:
     def lab(self) -> np.ndarray:
         return self._lab
 
+    def delta_e(self, i: int, j: int) -> float:
+        """CIEDE2000 between two of this chart's own threads.
+
+        The pairwise question -- "how far apart are these two cones?" -- as
+        opposed to `nearest_index`'s "which cone is this colour closest to".
+        It existed only inline, in `tools/sequence_census._cone_merge_candidates`
+        and four places in the stages; this is the one implementation so a
+        caller cannot accidentally introduce a second colour space. See the
+        module docstring for why every number here is true CIELAB and never
+        cv2's 8-bit Lab.
+
+        For scale, from `preflight.DELTA_E_VISIBLE`'s own citation (Mokrzycki
+        & Tatol 2011): 1.0 is a just-noticeable difference, 2-3.5 noticeable
+        to an attentive eye, 3.5-5 clear, and above 5 most people call them
+        two different colours.
+        """
+        return float(deltaE_ciede2000(self._lab[i:i + 1], self._lab[j:j + 1])[0])
+
     def nearest_index(self, lab: np.ndarray) -> int:
         """Index of the perceptually nearest (CIEDE2000) thread.
 
