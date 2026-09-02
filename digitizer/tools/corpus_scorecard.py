@@ -52,6 +52,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import subprocess
 import sys
@@ -108,7 +109,15 @@ FIXTURES = [
     # on white -- a misroute, kept deliberately so the bug has a fixture.
     "logo_script_tires.png",
     "photo/logo_bridge_bar.jpg",
-    "photo/logo_drone_thermal_badge.png",
+    # NOT "photo/logo_drone_thermal_badge.png" -- it is byte-identical to
+    # photo/drone_render.png above, so enrolling both scored one design twice
+    # and gave it double weight in every corpus-wide number. Known since
+    # 2026-08-23 (tools/pro_parity/blockcensus.py documents it and includes
+    # the image once); this list kept both until the 2026-09-02 recapture,
+    # which is the first write that could drop a row without orphaning the
+    # baseline. `_assert_no_duplicate_art` re-checks it at runtime rather
+    # than trusting this comment -- if the two files ever DIVERGE, the badge
+    # is real customer art again and belongs back in the list.
     "photo/logo_gaulke_roofing.png",
     "photo/logo_golden_tee.jpg",
     "photo/logo_hotel_fremont.webp",
@@ -129,6 +138,35 @@ MATRIX = [
 # Metric drift below this fraction of the baseline value is noise (raster/
 # resample quantisation, float rounding) -- not worth a report line.
 _METRIC_NOISE_FRAC = 0.05
+
+
+def _assert_no_duplicate_art() -> None:
+    """No two FIXTURES entries may be the same bytes. Checked, not remembered.
+
+    `photo/logo_drone_thermal_badge.png` was byte-identical to
+    `photo/drone_render.png` and both were enrolled, so one design carried
+    twice the weight of every other in every aggregate this tool produces --
+    including the baseline it writes. The comment in FIXTURES says so; this
+    says so at runtime, which is the difference between a note and a guard,
+    and it is the pattern `tools/pro_parity/blockcensus._dup_note` already
+    uses for the same pair.
+
+    Prints rather than raises: a duplicate is a corpus-composition problem for
+    a person to resolve (which copy is the real customer file?), not a reason
+    to refuse to score anything.
+    """
+    seen: dict[str, str] = {}
+    for fixture in FIXTURES:
+        path = TESTDATA / fixture
+        if not path.exists():
+            continue
+        digest = hashlib.md5(path.read_bytes()).hexdigest()
+        if digest in seen:
+            print(f"[warn] {fixture} is byte-identical to {seen[digest]} — "
+                  f"this corpus scores that one design twice. Drop one name "
+                  f"from FIXTURES at the next recapture.")
+        else:
+            seen[digest] = fixture
 
 
 def _run_key(fixture: str, cfg_kw: dict) -> str:
@@ -166,6 +204,9 @@ def _score_one(fixture: str, cfg_kw: dict) -> dict:
 
 
 def capture() -> dict:
+    # Before writing a new ruler, check the corpus is not weighting one design
+    # twice -- a recapture is exactly when that gets baked in for weeks.
+    _assert_no_duplicate_art()
     scorecard = {}
     for fixture in FIXTURES:
         for cfg_kw in MATRIX:

@@ -1,7 +1,7 @@
 # Attributing the corpus scorecard baseline — 2026-09-02
 
-**Verdict, revised as the evidence came in: not yet, but the blockers are now
-small and named.** The first draft of this file said "do NOT re-capture, most
+**Verdict, revised twice as the evidence came in: every mover is now
+attributed, and the recapture is unblocked.** The first draft of this file said "do NOT re-capture, most
 movers are unattributed" and singled out two that "could be hiding a real
 defect". Both have since been run down, and neither is a reason to hold:
 
@@ -333,9 +333,42 @@ bisecting 206 merges with a four-minute full capture each time.
    blend shades in their snapped threads"**, which is the shade-bind work
    landing: a ramp that used to collapse to one thread now sews the three its
    per-shade snap had already computed and stage 7 was throwing away. Intended,
-   and `gradient_ramp_radial` moves identically. Still open: `drone_render`
-   `color_changes` 23 → 18 and `enthusiast_logo` `satin_steps` 1416 → 1284,
-   neither score-moving, both bisectable the same cheap way.
+   and `gradient_ramp_radial` moves identically.
+
+   **`drone_render` `color_changes` 23 → 16 bisects to `da7fc806`** (#293,
+   2026-08-28, "hoist a revisited spool beside itself when geometry allows"),
+   which takes it 23 → 19; #309's duplicate-cone folding and #311's default
+   flip take the remaining 19 → 16. That is the defect-16 work stream doing
+   exactly what it exists for — one spool revisited across other colours,
+   hoisted back beside itself — so every step of this mover is an intended
+   reduction in stops. (An earlier draft said 23 → 18; that was measured
+   before #309 and #311 landed.)
+
+   **`enthusiast_logo` `satin_steps` 1416 → 1278 is `070a1136`** (2026-08-14,
+   "never build a column on a corner fork"), and the revert/reapply pair around
+   it confirms the attribution better than any bisect could:
+
+   ```
+   [5] c91ab601  ->  1416   <- the baseline's own value
+   [6] 3a1f6735  ->  1459
+   [7] 070a1136  ->  1278   <- the corner-fork fix
+   [8] a6435f2a  ->  1416   <- Revert "DO NOT MERGE — pro-parity engine work"
+   [9] 83683544  ->  1278   <- Reapply
+   ```
+
+   Back to exactly 1416 on the revert, down again on the reapply. The fix stops
+   building satin columns on corner forks — the medial axis runs a branch into
+   a bold corner's point, and a zigzag across that wedge IS the starburst Kent
+   saw on `becker_lc_large`'s "E" and "A". Fewer satin steps because it stops
+   sewing spurious wedges. A quality fix; the remaining 1278 → 1284 over 85
+   further commits is drift.
+
+   **A trap worth recording:** the first attempt bisected on a hand-rolled
+   proxy (count points on satin runs) instead of preflight's own `satin_steps`.
+   The proxy reads 1448 where preflight reads 1416, so the equality test never
+   matched, the search collapsed to the wrong end of the window, and it named a
+   commit with confidence. Bisect on the METRIC THE BASELINE STORES, not on
+   something that correlates with it.
 3. Drop the duplicate fixture name, so the recapture does not re-enrol one
    design at double weight for another three weeks.
 4. Then re-capture, listing every mover and its cause in the commit message,
