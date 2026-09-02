@@ -1,7 +1,13 @@
 # Attributing the corpus scorecard baseline — 2026-09-02
 
-**Verdict, revised twice as the evidence came in: every mover is now
-attributed, and the recapture is unblocked.** The first draft of this file said "do NOT re-capture, most
+**Verdict, revised three times, and the last revision is the important one:
+the recapture is STILL BLOCKED — by something nobody had looked at.**
+
+A trial recapture was run and then DISCARDED rather than committed, because
+`diff`'s one hard-fail signal fired: a new block-severity finding. Behind it
+sits a cross-fixture density regression on the photo lane that no dashboard
+tracks. See "The recapture that must not be committed" at the bottom. The
+attributions below all stand; they were simply not the whole population. The first draft of this file said "do NOT re-capture, most
 movers are unattributed" and singled out two that "could be hiding a real
 defect". Both have since been run down, and neither is a reason to hold:
 
@@ -383,3 +389,57 @@ container; `tools/corpus_scorecard.py diff`, `digitizer_core.preflight`,
 `tools/sequence_census.py`, and `git archive`-extracted trees at `4f7d80f3` and
 95 commits after it. Platform numerics do not cancel here — they were shown not
 to apply: all 38 rows reproduce on this machine.)*
+
+## The recapture that must not be committed — a photo-lane density regression
+
+The recapture was run (26 fixtures x 2 = 52 rows, stamped `8eb4dbbb` /
+2026-09-02) and then **thrown away**. `tools/corpus_scorecard.py`'s own rule
+names the reason: the one signal it hard-fails on is "a block-severity finding
+that was not there before", and one fired.
+
+```
+photo/photo_scene_stub.png @ 80mm/hat_front
+   score 64 -> 34   +DENSITY_STACKED:block
+```
+
+**The block is real, and specific:** *"31 mm² of this design stacks more than
+3.5 layers of thread on one patch of fabric (peak 7.2) ... That much thread
+puckers the garment and breaks needles."*
+
+It is not one fixture. Every photo-lane fixture is laying more thread, stacking
+it higher, and returning to the same needle hole several times as often:
+
+| fixture | `coverage_max` | stitches | `same_hole_fraction` |
+|---|---|---|---|
+| `photo_scene_stub` @hat_front | 4.87 → **7.18** | 6,534 → 10,720 | 0.008 → **0.049** |
+| `photo_scene_stub` @left_chest | 4.70 → **6.97** | 6,491 → 11,084 | 0.006 → **0.044** |
+| `photo_dof_meadow` @left_chest | 3.45 → **5.04** | 7,369 → 10,116 | 0.014 → **0.069** |
+| `photo_chrome_specular` @left_chest | 4.78 → **5.34** | 12,035 → 17,893 | 0.012 → **0.053** |
+
+`same_hole_fraction` rising four to seven times over is the needle-breakage and
+fabric-damage signal, and `coverage_max` 7.18 is double the 3.5-layer ceiling.
+This is exactly the class of problem the scorecard exists to catch, and it has
+been invisible for three weeks because the ruler was stale.
+
+**Why this was missed until the recapture.** The attribution work above was
+driven by this file's original mover list, which came from a `diff` focused on
+metrics and the `THREAD_MATCH_POOR` population. It never enumerated the other
+finding codes. Five of them move — `STITCHES_TOO_SHORT`, `LETTERING_TOO_SMALL`,
+`DENSITY_STACKED`, `TRIM_HEAVY`, `COLOR_STOPS_HEAVY` — and **all five existed
+at `4f7d80f3`**, so their appearance is real behaviour change, not a new check
+being added. (Only `ARTWORK_UNCOVERED` is genuinely new machinery.) Checking
+which codes predate the baseline is one grep, and it should be step zero of any
+future attribution pass, before a single bisect.
+
+Not found in MASTER_SCOPE, DOCTRINE or `docs/scope/` — `coverage_max` appears
+once in a scope doc, as a passing assertion in an unrelated test claim, not as
+a tracked defect. Stated that way deliberately: this same session already
+published a "discovery" that turned out to be documented in a tool ten days
+earlier.
+
+**The candidate baseline is not lost.** It is a clean 52-row capture with the
+stamp fields populated, and re-running `capture` reproduces it. Nothing is
+gained by committing it before the density question is answered — and a great
+deal is lost, because committing it makes 7.18 layers the new normal and the
+next person has no ruler that remembers 4.87.
+
