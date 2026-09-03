@@ -3760,3 +3760,7 @@ Costs: thread +10–17% on lettering, stitches +4–7%, rail jitter p50 +50%
 Becker, 67 → 108 drone; wider per-side filters trade back with no knee.
 Pull comp was tuned with the far rail stopping short — sew-out question,
 Kent's flip. *(measured 2026-09-03 — `docs/rail-dents-2026-09-03.md` §7)*
+
+## 2026-09-03 — fill density: the professional's rows, read as rows
+
+`tools/row_pitch_union.py` (7 tests) reads the adjacent-row pitch of the UNION of every pass: pro Fremont patch ground **0.141 mm** (one pass, 52 rows in 8 mm), pro Becker letter bodies **0.166–0.169**; ours **0.400** on every fill including the blend bands. The per-pass `fill_pitch.py` reading of 0.37–0.40 on the same pro files is its autocorrelation locking onto the tatami penetration cycle. Gate 1 untouched. Record and the tool-wide plan for Kent's five sew-out findings: `docs/sewout-findings-2026-09-03.md`.

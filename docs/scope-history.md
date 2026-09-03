@@ -3657,3 +3657,30 @@ drone 6.1 → 4.6%, Fremont 8.6 → 6.9%; cost +10–17% thread, rail jitter
 p50 +50%, more guard retractions on bends; pull comp tuned with the far
 rail short. Sew-out question; flag OFF. Off-centre bar test pins both
 states.
+
+## 2026-09-03 — the professional's row pitch, read as ROWS: 0.14–0.17 mm, not 0.37–0.40
+
+The 2026-09-02 entry above measured the professional's Becker files with
+`tools/fill_pitch.py` at 0.37–0.40 mm median per pass and concluded they "do
+NOT support '0.40 is half professional coverage'". **Retracted.** That
+instrument's autocorrelation locks onto a professional tatami's
+penetration-offset cycle (the split pattern repeats every ~3 rows, and 3 ×
+0.14 = 0.42), not the row pitch. `tools/row_pitch_union.py` (new, 7 tests)
+counts the rows in the densest 8 mm of a field — the union of every pass,
+which is what the cloth sees:
+
+| field | pitch | rows/mm |
+|---|---:|---:|
+| pro Hotel Fremont patch ground (one pass, 52 rows in 8 mm) | 0.141 mm | 6.7 |
+| pro Becker LC large, letter bodies | 0.169 mm | 5.9 |
+| pro Becker chest small, letter bodies | 0.166 mm | 6.0 |
+| ours — Fremont ground, Becker MARINE, icon repro blend union | 0.400 mm | 2.6 |
+
+So the professional lays 2.4–2.8× our rows per millimetre; Law 19's "2×
+light" was conservative. Two interleaved 0.40 passes offset 0.20 read 0.20
+here and 0.40 per pass — the case the per-pass reading structurally misses,
+pinned by `test_two_interleaved_passes_read_as_their_union`. Gate 1 is
+untouched: cloth sets `FILL_ROW_MM`; this measures the professional's choice.
+The sew-out card's block 2 (0.40 / 0.20 / two-pass 0.20 effective) has no arm
+at the professional's 0.15. Prompted by Kent's five sew-out findings from
+another chat, all five checked in `docs/sewout-findings-2026-09-03.md`.
