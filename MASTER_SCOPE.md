@@ -138,7 +138,7 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
     `photo_dof_meadow` 3.45 → 5.04, `same_hole_fraction` up **4–7x** — the
     needle-breakage signal. **No off switch for photo classes**
     (`effective_split_tonal` ORs flag with class). *(2026-09-02 — bisect on
-    `coverage_max`; [notes](docs/scorecard-baseline-attribution-2026-09-02.md))*
+    `coverage_max`; [notes](docs/scorecard-baseline-attribution-2026-09-02.md))* **Numbers above are in the pre-2026-09-03 coverage base** (one 0.40 fill = 1.0); since the fill row moved to 0.15 the same stack reads 8.0 against a 9.33 block / 6.67 warn, i.e. a warn — the thread is unchanged, the ruler is in fill layers now (scope-history 2026-09-03).
 
 21. **Fill travel is laid OVER columns already sewn — FIXED, DEFAULT ON (Kent's flip
     2026-09-03)** (`cfg.fill_travel_under_cover`, PR #323): the column order prefers a next

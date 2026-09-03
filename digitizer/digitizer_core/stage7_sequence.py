@@ -1380,7 +1380,10 @@ def sequence(
     # actually sew, not just warn about what it would sew.
     technique = (fill_technique or cfg.fill_technique or "tatami").lower()
     contour = technique == "contour"
-    contour_spacing = cfg.contour_spacing_mm or row_mm
+    # Rings keep their own calibrated pitch (machine.CONTOUR_RING_MM), not the
+    # fill row — see that constant for why the gated-OFF tier did not follow
+    # FILL_ROW_MM to 0.15 on 2026-09-03. Fabric density_adjust never applied here.
+    contour_spacing = cfg.contour_spacing_mm or machine.CONTOUR_RING_MM
     # The scan-line mono tonal tier (photo plan, technique row 8). Strictly
     # opt-in: with any other fill_technique this flag is False and every
     # branch below reads exactly as it did before the tier existed. It needs

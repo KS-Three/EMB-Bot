@@ -59,7 +59,7 @@ SHAPES = {"annulus": ANNULUS, "crescent": CRESCENT, "blob": BLOB, "star": STAR,
 
 
 def _fill(poly, **kw):
-    kw.setdefault("spacing_mm", machine.FILL_ROW_MM)
+    kw.setdefault("spacing_mm", machine.CONTOUR_RING_MM)
     kw.setdefault("stitch_mm", machine.FILL_STITCH_MM)
     kw.setdefault("underlay_style", "edge_lattice")
     kw.setdefault("trim_at_mm", machine.TRIM_AT_MM)
@@ -338,7 +338,7 @@ def test_rings_reach_the_middle_or_account_for_what_they_leave(name):
     shortfall = inradius - deepest
 
     assert shortfall >= -1e-6, "no stitch may sit deeper than the deepest point"
-    if shortfall <= 2 * machine.FILL_ROW_MM:
+    if shortfall <= 2 * machine.CONTOUR_RING_MM:
         return
 
     # Stopping further short than a ring pair is law 44's drop, and that is
@@ -350,7 +350,7 @@ def test_rings_reach_the_middle_or_account_for_what_they_leave(name):
     # And the drop has to be big enough to explain the gap. Rings stop one pair
     # short for free, so what is left uncovered is at least a disc of the
     # remainder; anything the report claims must cover it.
-    owed = math.pi * (shortfall - 2 * machine.FILL_ROW_MM) ** 2
+    owed = math.pi * (shortfall - 2 * machine.CONTOUR_RING_MM) ** 2
     assert report["skipped_area_mm2"] >= owed, (
         f"{name} leaves a {shortfall:.3f} mm core but only counts "
         f"{report['skipped_area_mm2']:.3f} mm2 against {owed:.3f} owed")

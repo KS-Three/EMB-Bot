@@ -3684,3 +3684,58 @@ untouched: cloth sets `FILL_ROW_MM`; this measures the professional's choice.
 The sew-out card's block 2 (0.40 / 0.20 / two-pass 0.20 effective) has no arm
 at the professional's 0.15. Prompted by Kent's five sew-out findings from
 another chat, all five checked in `docs/sewout-findings-2026-09-03.md`.
+
+## 2026-09-03 — FILL_ROW_MM 0.40 → 0.15: fill row spacing leaves gate 1, by Kent's ruling
+
+Kent's call, the same day the professional's rows were read as rows (entry
+above): *rule the pro's 0.15 now.* `machine.FILL_ROW_MM` is 0.15; fabric
+presets still scale it (pile 0.85–0.90 sews tighter). What moved with it,
+all deliberate:
+
+- **Stitch counts.** Studio defaults, same fixtures as the render pass:
+  Hotel Fremont 92.5 mm patch 9,990 → **18,180** (thread 14.8 → 27.4 m);
+  Becker Marine 100 mm 6,459 → **9,224** (17.0 → 23.6 m); `logo_whitebg`
+  80 mm 1,982 → **4,902**; the icon repro 80.5 mm 10,395 → **17,145**. Fill
+  rows are 2.67× as many; satin, underlay and runs are untouched, so whole
+  designs rise 43–147% depending on their fill share.
+- **The coverage grader is re-based in FILL LAYERS.** The unit stays
+  physical (one tiled 0.40 mm ribbon), so one plain fill now reads
+  `COVERAGE_FILL_LAYER_UNITS` = 2.67 and law 27's thresholds are the same
+  multiples of a fill they always were: `COVERAGE_WARN_UNITS` 2.5 → 6.67,
+  `COVERAGE_BLOCK_UNITS` 3.5 → 9.33. Every coverage number recorded before
+  this date (defect 20's 7.18, the 3.5 ceiling, the 1.36–1.39 contour
+  reading) is in the old base — multiply by 2.67 to compare. Grades on the
+  four fixtures above: A 100, A 100, A 100 and Fremont's pre-existing C 64.
+- **The coverage map samples the ribbon eight times across its width**
+  (`COVERAGE_ACROSS_SAMPLES`, was two): the two half-ribbon samples sat on
+  an exact 0.2 mm lattice at a 0.40 pitch and read 1.000, but at 0.15 they
+  landed thirteen in one cell and fourteen in the next — one plain fill
+  read 2.4 / 2.8 cell to cell where the truth is 2.667. Eight strips of
+  0.05 mm sit on a lattice that 0.15, 0.20 and 0.40 all divide. An
+  instrument artifact, fixed before it could be graded as stacking; it also
+  reads partially covered edge cells at their true fraction, so
+  `uncovered_*` numbers move a little on every fixture (attributed in the
+  baseline recapture).
+- **Blend shade layers are exempt from the per-run density check.** A
+  four-shade blend sews each layer at `FILL_ROW_MM × 4` and interleaves
+  them, so the union is the row; the per-run reader called the pure linear
+  ramp fixture "4.0x sparse" the moment the row moved (at 0.40 the 1.6 mm
+  advances had fallen outside what it takes for rows). Runs stamped with
+  `shade_thread_index` are now skipped by `_fill_row_advance_mm`; the
+  fallback tatami inside a blend region carries no stamp and is still
+  judged. Two tests pin both directions.
+- **The contour tier did not follow.** `machine.CONTOUR_RING_MM` = 0.40
+  holds the gated-OFF ring tier and its bare-circle instrument byte-identical
+  (every cited figure in `test_barecircle.py` was measured at 0.40); whether
+  rings should sit at the professional's pitch is that tier's instrument
+  rebuild, which MASTER_SCOPE's gate already demands before it is flipped.
+- **Underlay does not move** — its lattices have their own constants. The
+  opt-in two-pass density boost is superseded (it would land at 0.075) and
+  stays opt-in. The blend tier's bands keep their union at 0.15.
+- **Not moved, deliberately:** the browser engine's `densityMm` defaults
+  (`src/digitize.js`, 0.45 for image digitize and 0.4 for lettering).
+  `fabrics.py`'s rule is that both engines make the same physical choices,
+  so that is the next PR, with its own tests; the Studio's auto-digitize
+  path is the Python service and is what this ruling changes.
+- Goldens and the scorecard baseline: see the PR for what was re-captured
+  and why each mover is this change.

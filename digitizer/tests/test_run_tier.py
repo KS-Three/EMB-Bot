@@ -18,6 +18,8 @@ import math
 
 import numpy as np
 import pytest
+
+from digitizer_core import machine
 from shapely.geometry import Polygon
 
 from digitizer_core import PipelineConfig, digitize, machine
@@ -279,7 +281,11 @@ def test_a_shape_no_tier_can_stitch_sews_its_outline():
     subject (sequence()'s handling of a genuinely empty fill report)
     independent of how good angle auto-selection happens to be.
     """
-    hair = Polygon([(0, 0), (20, 0), (20, 0.15), (0, 0.15)])
+    # Thinner than half a fill row at whatever FILL_ROW_MM is (0.15 since
+    # 2026-09-03; the literal 0.15 mm this ribbon used to be became a whole
+    # row that day and the rescue stopped being exercised).
+    hair_h = machine.FILL_ROW_MM * 0.4
+    hair = Polygon([(0, 0), (20, 0), (20, hair_h), (0, hair_h)])
     reg = Region(shape_id="Shair", polygon=hair, thread_index=0,
                  thread_number="0134", area_mm2=hair.area, source="test",
                  meta={"layer": 0, "fill_angle_deg": 0.0})

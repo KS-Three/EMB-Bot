@@ -34,6 +34,25 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Standing rulings — decided, do not re-litigate
 
+- **Fill row spacing is settled: 0.15 mm, the professional's pitch.** Kent's
+  call 2026-09-03 on two pieces of evidence, one of them cloth — his first
+  stitch-out at 0.40 showed fabric between every fill row, and the
+  commissioned files in `Embroidery Files.zip`, read as ROWS
+  (`tools/row_pitch_union.py`, the union of every pass), lay their fills at
+  0.141 (Hotel Fremont patch ground, one pass), 0.169 and 0.166 mm (both
+  Becker letter bodies). `machine.FILL_ROW_MM` is 0.15; fabric presets still
+  scale it. The coverage grader's thresholds are re-based in FILL LAYERS
+  (`COVERAGE_FILL_LAYER_UNITS`), so every coverage number recorded before
+  this date is 2.67× smaller than the same stack reads today. Sew-out card
+  block 2 now verifies the ruling rather than deciding it; stiffness and
+  pucker on light fabrics are the accepted risk, and a fabric that puckers
+  gets a preset, not a different constant. **Do not quote
+  `tools/fill_pitch.py` on a professional file** — its per-pass
+  autocorrelation reads a tatami's penetration cycle, ~2.7× the row pitch.
+  ROADMAP gate 1 keeps every other physical constant. *(Kent's call
+  2026-09-03 — `docs/sewout-findings-2026-09-03.md`; scope-history
+  2026-09-03)*
+
 - **Bold never closes a counter, hairline faces included — the guard stays
   as built.** The font path's Bold widening is held per rail wherever a rail
   faces another across a gap the 0.5 mm cross floor cannot spare (PR #332),

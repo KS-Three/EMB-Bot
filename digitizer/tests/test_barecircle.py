@@ -75,7 +75,7 @@ DUMBBELL = (_circle(7.0, cx=-10.0).union(_circle(7.0, cx=10.0))
 
 
 def _fill(poly, **kw):
-    kw.setdefault("spacing_mm", machine.FILL_ROW_MM)
+    kw.setdefault("spacing_mm", machine.CONTOUR_RING_MM)
     kw.setdefault("stitch_mm", machine.FILL_STITCH_MM)
     kw.setdefault("underlay_style", "none")
     kw.setdefault("trim_at_mm", machine.TRIM_AT_MM)
@@ -132,8 +132,8 @@ def test_reproduces_the_cited_contour_figure_on_the_fixture_logo(whitebg):
     `machine.CONTOUR_BARE_CORE_MM` for the structural-dot measurement this
     number is judged against.
     """
-    p, row, fabric = _logo_shape(whitebg, "Sb253ebba")
-    runs, report = contour_fill(p.polygon, p.shape_id, spacing_mm=row,
+    p, _row, fabric = _logo_shape(whitebg, "Sb253ebba")
+    runs, report = contour_fill(p.polygon, p.shape_id, spacing_mm=machine.CONTOUR_RING_MM,
                                 stitch_mm=machine.FILL_STITCH_MM,
                                 underlay_style=fabric.fill_underlay,
                                 trim_at_mm=fabric.trim_at_mm)
@@ -146,7 +146,12 @@ def test_reproduces_the_cited_contour_figure_on_the_fixture_logo(whitebg):
 def test_reproduces_the_cited_tatami_figure_on_the_fixture_logo(whitebg):
     """Cited: tatami's own worst bare spot on the same shape is 0.090 mm.
     Measured: 0.094. This is the reference for what a fill CAN do, and it is
-    what makes contour's 7x figure a defect rather than a fact of life."""
+    what makes contour's 7x figure a defect rather than a fact of life.
+
+    RE-MEASURED 2026-09-03 at FILL_ROW_MM 0.15 (Kent's ruling): 0.000 — rows
+    2.67x as close leave no bare spot the instrument can find. The 0.090 was
+    the 0.40 engine's figure; contour's own numbers above did not move
+    because the ring tier is held at `machine.CONTOUR_RING_MM` (0.40)."""
     p, row, fabric = _logo_shape(whitebg, "Sb253ebba")
     runs, _report = stitch_shape(p.polygon, p.shape_id,
                                  angle_deg=p.stitch_angle_deg, row_mm=row,
@@ -154,7 +159,7 @@ def test_reproduces_the_cited_tatami_figure_on_the_fixture_logo(whitebg):
                                  underlay_style=fabric.fill_underlay,
                                  trim_at_mm=fabric.trim_at_mm)
     bc = widest_bare_circle(p.polygon, runs)
-    assert bc.radius_mm == pytest.approx(0.090, abs=0.05)
+    assert bc.radius_mm == pytest.approx(0.0, abs=0.05)
 
 
 def test_the_stars_offsets_die_at_half_its_depth_and_the_ledger_never_hears():
@@ -184,9 +189,9 @@ def test_the_stars_offsets_die_at_half_its_depth_and_the_ledger_never_hears():
     inrad = shapely.maximum_inscribed_circle(STAR_SHARP, 1e-4).length
     assert inrad == pytest.approx(10.0, abs=0.02)
 
-    gens = _rings(STAR_SHARP, machine.FILL_ROW_MM)
-    deepest = (machine.FILL_ROW_MM * machine.CONTOUR_FIRST_INSET_FRAC
-               + machine.FILL_ROW_MM * (len(gens) - 1))
+    gens = _rings(STAR_SHARP, machine.CONTOUR_RING_MM)
+    deepest = (machine.CONTOUR_RING_MM * machine.CONTOUR_FIRST_INSET_FRAC
+               + machine.CONTOUR_RING_MM * (len(gens) - 1))
     assert deepest < 0.55 * inrad, "the annihilation the defect describes"
 
     runs, report = _fill(STAR_SHARP)
@@ -217,7 +222,7 @@ def test_the_cited_stars_own_readings():
     apart from a healthy shape's floor instead of hiding under a threshold
     that could not resolve either one.
     """
-    d = machine.FILL_ROW_MM * machine.CONTOUR_FIRST_INSET_FRAC
+    d = machine.CONTOUR_RING_MM * machine.CONTOUR_FIRST_INSET_FRAC
     while True:
         g = STAR_CITED.buffer(-d, join_style=2,
                               mitre_limit=machine.CONTOUR_MITRE_LIMIT)
@@ -226,7 +231,7 @@ def test_the_cited_stars_own_readings():
                  and p.area >= machine.CONTOUR_MIN_RING_AREA_MM2]
         if not parts:
             break
-        d += machine.FILL_ROW_MM
+        d += machine.CONTOUR_RING_MM
     assert d == pytest.approx(5.6, abs=0.3)
 
     runs, report = _fill(STAR_CITED)
@@ -289,7 +294,7 @@ def test_starved_now_fires_where_the_area_gate_was_silent():
     _runs, report = _fill(STAR_SHARP)
     assert report["skipped_area_mm2"] < 0.01 * STAR_SHARP.area, \
         "old gate: silent"
-    assert report["bare_radius_mm"] > starved_threshold_mm(machine.FILL_ROW_MM)
+    assert report["bare_radius_mm"] > starved_threshold_mm(machine.CONTOUR_RING_MM)
     assert report["starved"] == 1
 
 
@@ -300,7 +305,7 @@ def test_starved_is_now_silent_where_the_area_gate_cried_wolf():
     poly = _circle(3.0)
     _runs, report = _fill(poly)
     assert report["skipped_area_mm2"] > 0.01 * poly.area, "old gate: fired"
-    assert report["bare_radius_mm"] < starved_threshold_mm(machine.FILL_ROW_MM)
+    assert report["bare_radius_mm"] < starved_threshold_mm(machine.CONTOUR_RING_MM)
     assert report["starved"] == 0
 
 
@@ -320,8 +325,8 @@ def test_the_cited_0_51_false_alarm_is_the_fixture_logos_own(whitebg):
     moved too.
     """
     for shape_id, cited in (("Sf5200f3f", 0.168), ("Sb253ebba", 0.154)):
-        p, row, fabric = _logo_shape(whitebg, shape_id)
-        _runs, report = contour_fill(p.polygon, p.shape_id, spacing_mm=row,
+        p, _row, fabric = _logo_shape(whitebg, shape_id)
+        _runs, report = contour_fill(p.polygon, p.shape_id, spacing_mm=machine.CONTOUR_RING_MM,
                                      stitch_mm=machine.FILL_STITCH_MM,
                                      underlay_style=fabric.fill_underlay,
                                      trim_at_mm=fabric.trim_at_mm)

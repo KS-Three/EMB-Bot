@@ -42,6 +42,16 @@ reproduced both old entries on this machine before the capture
 (`tools/recapture_flat_lane_key.py --pre-change-tree`). `enthusiast_logo`
 stays the platform red.
 
+**Exception TAKEN 2026-09-03, FILL_ROW_MM 0.40 -> 0.15 (Kent's ruling, DOCTRINE
+standing rulings):** the `logo_whitebg.png` and `logo_alpha.png` entries were
+re-captured after `machine.FILL_ROW_MM` moved to the professional's pitch —
+every fill row is now one of 2.67x as many, so every fill stitch coordinate
+moved and nothing else did (region ids, areas and warnings unmoved; the satin
+columns' coordinates unmoved). `ribbon_curve.png` is satin-only and stays
+byte-identical, the control; the pre-change tree (`main` at 1679e7d, 0.40)
+reproduced both old entries on this machine before the capture
+(`tools/recapture_flat_lane_key.py --pre-change-tree`). `enthusiast_logo`
+stays the platform red and is not re-pinned.
 **Exception TAKEN 2026-09-03, defect 25 (fill dust):** the `logo_whitebg.png`
 and `logo_alpha.png` entries were re-captured after `stitches.split_long_moves`
 gained a micron of tolerance — it had been halving every fill step that

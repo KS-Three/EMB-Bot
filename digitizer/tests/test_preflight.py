@@ -17,6 +17,8 @@ import cv2
 import numpy as np
 import pytest
 
+from digitizer_core import machine
+
 from digitizer_core import (PipelineConfig, StitchBlock, StitchPlan,
                             StitchRun, machine, run_stages)
 from digitizer_core import stitches as st
@@ -96,7 +98,7 @@ def test_a_clean_real_plan_earns_a_clean_report(whitebg, plan):
     # And the instruments actually measured, rather than silently skipping.
     m = report["metrics"]
     assert m["thread_match_checked"] is True
-    assert m["fill_advance_mm"] == pytest.approx(0.40, abs=0.05)
+    assert m["fill_advance_mm"] == pytest.approx(machine.FILL_ROW_MM, abs=0.05)
     assert m["satin_advance_mm"] == pytest.approx(0.40, abs=0.05)
     assert m["satin_short_fraction"] < 0.25
     # Law 27's region sum measured, and comfortably inside its budget.
@@ -104,7 +106,9 @@ def test_a_clean_real_plan_earns_a_clean_report(whitebg, plan):
     # fill_underlay dropped its crosshatch-lattice pass (edge_lattice ->
     # edge_run), so a clean single-layer fill now reads the geometric ideal
     # of 1.00 rather than the old lattice-inflated 1.20.
-    assert m["coverage_p50"] == pytest.approx(1.0, abs=0.1)
+    # One engine-density fill is one FILL LAYER (2.67 physical units since
+    # 2026-09-03 -- see COVERAGE_FILL_LAYER_UNITS).
+    assert m["coverage_p50"] == pytest.approx(machine.COVERAGE_FILL_LAYER_UNITS, abs=0.15)
     assert m["coverage_over_warn_mm2"] == 0.0
     assert m["same_hole_fraction"] is not None
     # Chaining law 60 and the contour tier, both measured rather than skipped.
@@ -373,8 +377,8 @@ def test_trim_heavy_measures_the_file_not_the_plan():
 # --- Density -----------------------------------------------------------------
 
 def test_sparse_fill_rows_are_density_extreme():
-    """Rows advancing 1.0 mm against the 0.40 target is 2.5x sparse — bare
-    fabric grinning through the coverage."""
+    """Rows advancing 1.0 mm against the FILL_ROW_MM target (0.15 since
+    2026-09-03, so 6.7x sparse) — bare fabric grinning through the coverage."""
     pts: list[tuple[float, float]] = []
     for row in range(34):
         xs = [0.0, 2.0, 4.0, 6.0, 8.0]
@@ -387,7 +391,7 @@ def test_sparse_fill_rows_are_density_extreme():
     hit = [f for f in report["findings"] if f["code"] == DENSITY_EXTREME]
     assert len(hit) == 1
     assert hit[0]["extra"]["kind"] == "fill"
-    assert hit[0]["extra"]["ratio"] == pytest.approx(2.5, abs=0.1)
+    assert hit[0]["extra"]["ratio"] == pytest.approx(1.0 / machine.FILL_ROW_MM, abs=0.2)
 
 
 def test_overdense_satin_is_density_extreme():
@@ -499,7 +503,47 @@ def test_an_explicit_technique_outranks_a_stale_auto_tier_warning():
     hit = [f for f in report["findings"] if f["code"] == DENSITY_EXTREME]
     assert len(hit) == 1
     assert "technique" not in hit[0]["extra"]
-    assert hit[0]["extra"]["ratio"] == pytest.approx(1.7 / 0.4, abs=0.01)
+    assert hit[0]["extra"]["ratio"] == pytest.approx(1.7 / machine.FILL_ROW_MM, abs=0.05)
+
+
+def _interleaved_shade_layers(n: int = 4, side_mm: float = 14.0, stamped: bool = True):
+    """`n` blend-style layers of one square, each at FILL_ROW_MM * n and offset
+    by one row from the last, so the union sits exactly at FILL_ROW_MM."""
+    runs = []
+    for i in range(n):
+        pts = []
+        y = -side_mm / 2 + i * machine.FILL_ROW_MM
+        row = 0
+        while y <= side_mm / 2:
+            xs = [-side_mm / 2 + 2.0 * k for k in range(int(side_mm / 2.0) + 1)]
+            if row % 2:
+                xs.reverse()
+            pts.extend((x, y) for x in xs)
+            y += machine.FILL_ROW_MM * n
+            row += 1
+        runs.append(StitchRun(points=pts, kind=st.FILL, shape_id=f"S1-blend{i}",
+                              shade_thread_index=(i if stamped else None)))
+    return _plan(*runs)
+
+
+def test_blend_shade_layers_are_not_judged_on_their_own_row_advance():
+    """Four interleaved shade layers each sew rows at four times the row; the
+    union is the row. The per-run reader must not call that 4x sparse —
+    exactly what it did on the pure linear ramp fixture on 2026-09-03."""
+    report = run_preflight(None, _interleaved_shade_layers(4), cfg())
+
+    assert DENSITY_EXTREME not in _codes(report)
+    assert report["metrics"]["fill_advance_mm"] is None
+
+
+def test_the_same_rows_without_the_blend_stamp_are_still_sparse():
+    """The exemption keys on the stamp, not on the geometry: the identical
+    rows sewn as plain tatami are genuinely 4x sparse and must still warn."""
+    report = run_preflight(None, _interleaved_shade_layers(4, stamped=False), cfg())
+
+    hit = [f for f in report["findings"] if f["code"] == DENSITY_EXTREME]
+    assert len(hit) == 1
+    assert hit[0]["extra"]["ratio"] == pytest.approx(4.0, abs=0.1)
 
 
 def test_the_band_table_stays_in_lockstep_with_the_technique_gate():
@@ -542,10 +586,16 @@ def test_one_full_density_fill_measures_exactly_one_covering_layer():
     rows at the 0.40 mm default sit edge to edge and ARE one full covering
     layer. If this reads anything but 1.0, every threshold above is nonsense.
     """
-    m = run_preflight(None, _stacked(1), cfg())["metrics"]
+    one_layer = _plan(_square_fill(spacing_mm=machine.COVERAGE_THREAD_W_MM))
+    m = run_preflight(None, one_layer, cfg())["metrics"]
 
     assert m["coverage_p50"] == pytest.approx(1.0, abs=0.02)
     assert m["coverage_max"] == pytest.approx(1.0, abs=0.05)
+
+    # And one fill at the engine's own pitch (0.15 since 2026-09-03) reads
+    # exactly the fill-layer factor the thresholds are stated in.
+    m = run_preflight(None, _stacked(1), cfg())["metrics"]
+    assert m["coverage_p50"] == pytest.approx(machine.COVERAGE_FILL_LAYER_UNITS, abs=0.05)
 
 
 def test_a_satin_column_counts_one_layer_per_same_rail_advance():
@@ -591,7 +641,7 @@ def test_two_full_density_fills_stay_inside_the_budget():
     condemns a legal construction."""
     report = run_preflight(None, _stacked(2), cfg())
 
-    assert report["metrics"]["coverage_p50"] == pytest.approx(2.0, abs=0.05)
+    assert report["metrics"]["coverage_p50"] == pytest.approx(2 * machine.COVERAGE_FILL_LAYER_UNITS, abs=0.1)
     assert DENSITY_STACKED not in _codes(report)
 
 
@@ -610,7 +660,7 @@ def test_a_third_stacked_layer_warns_though_every_object_passes_alone():
     hit = [f for f in report["findings"] if f["code"] == DENSITY_STACKED]
     assert len(hit) == 1
     assert hit[0]["severity"] == "warn"
-    assert hit[0]["extra"]["peak_units"] == pytest.approx(3.0, abs=0.1)
+    assert hit[0]["extra"]["peak_units"] == pytest.approx(3 * machine.COVERAGE_FILL_LAYER_UNITS, abs=0.15)
     assert hit[0]["extra"]["over_warn_mm2"] > 100.0
     assert hit[0]["extra"]["over_block_mm2"] == 0.0
 
@@ -623,7 +673,7 @@ def test_a_fourth_stacked_layer_blocks():
 
     assert len(hit) == 1
     assert hit[0]["severity"] == "block"
-    assert hit[0]["extra"]["peak_units"] == pytest.approx(4.0, abs=0.1)
+    assert hit[0]["extra"]["peak_units"] == pytest.approx(4 * machine.COVERAGE_FILL_LAYER_UNITS, abs=0.2)
 
 
 def test_a_stacked_speckle_too_small_to_act_on_is_not_a_finding():
@@ -733,7 +783,8 @@ def test_coverage_reads_stitch_geometry_through_ties_and_splits(plan):
     # contributes almost nothing outside the boundary walk, so the region
     # reads the geometric ideal 1.00 rather than the old lattice-inflated
     # 1.20 (see COVERAGE_WARN_UNITS's derivation comment in machine.py).
-    assert m["coverage_p50"] == pytest.approx(1.0, abs=0.1)
+    # One fill layer (2.67 physical units at FILL_ROW_MM 0.15, 2026-09-03).
+    assert m["coverage_p50"] == pytest.approx(machine.COVERAGE_FILL_LAYER_UNITS, abs=0.15)
     assert m["coverage_p95"] < machine.COVERAGE_WARN_UNITS
 
 
@@ -1106,7 +1157,7 @@ def test_the_gate_does_not_blind_the_instrument_to_real_rows():
     m = run_preflight(None, _stacked(1), cfg())["metrics"]
 
     assert m["fill_axis_concentration"] > 0.6
-    assert m["fill_advance_mm"] == pytest.approx(0.40, abs=0.02)
+    assert m["fill_advance_mm"] == pytest.approx(machine.FILL_ROW_MM, abs=0.02)
 
 
 # --- Same-hole strikes (law 17) ----------------------------------------------

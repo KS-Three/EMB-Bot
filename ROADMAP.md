@@ -45,9 +45,9 @@ Starter design pack (sourcing decision and billing pending).
 
 ## Hard gates — refuse, name the blocker, stop
 
-1. **No sew-out, no physical constants.** Fill row spacing, the satin width floor,
-   link cover tolerance, fabric presets, DST orientation. Fabric settles these,
-   geometry cannot.
+1. **No sew-out, no physical constants.** The satin width floor, link cover
+   tolerance, fabric presets, DST orientation (fill row spacing: settled, see
+   `DOCTRINE.md`). Fabric settles these, geometry cannot.
 2. **No stage-0 recalibration without real tonal artwork.** Four approaches were
    measured and rejected; synthetic fixtures are barred as substitutes.
 3. **No default-OFF tier flipped on until its instrument is rebuilt.** Chaining
