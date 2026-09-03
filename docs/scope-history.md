@@ -3457,3 +3457,19 @@ adopted (DOCTRINE standing ruling), the diagonal lean cap is 30°
 (`SATIN_HOUSE_MIN_SPAN_DEG` 45 → 60 when built), density compensation is
 built first. The 45 vs 135 question is closed as moot. Next engineering item
 by Kent's pick: fill travel under cover (defect 21).
+
+## 2026-09-03 — fill travel under cover (defect 21), default ON
+
+Kent's pick after the Hotel Fremont notes. Routing alone did nothing (Fremont
+286 → 286 mm exposed: the inset ring runs through sewn columns and the
+exposure is decided by the ORDER); the cover-aware column order plus routing
+through the unsewn remainder is the lever. Fill-phase exposed travel: Fremont
+286 → 92 mm (22 → 6 runs), gaulke_roofing 209 → 8, becker 27 → 14,
+photo_sunset_backlit 711 → 291 (trims 53 → 30, stitches −5%), photo_dof_meadow
+691 → 301 (trims 33 → 27), drone 546 → 61 (trims 86 → 90, stitches −6%).
+Flag off is md5-identical to main on becker, drone, enthusiast, Fremont. Time:
++7–11% on logos, +49% on sunset (263 fill runs) after two optimisations
+(`_ring_route` arc-table cache, unsewn-ring reuse). Goldens: `logo_whitebg`
+re-pinned (flat lane + pushcomp left_chest, 2166 → 2162 travel penetrations)
+with the pre-change worktree reproducing the old pins first; towel unchanged
+and still the known red. `docs/fill-travel-under-cover-2026-09-03.md`.

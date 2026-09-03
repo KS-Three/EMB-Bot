@@ -3465,3 +3465,42 @@ not redundant — `roughness_deg` vs `ragged_mm` is Spearman 0.028, which on n =
 rules out redundancy without proving independence. Instrument only, no engine
 change. *(measured 2026-08-27 — PR #281;
 `docs/curve-fidelity-from-the-stitch-path-2026-08-27.md`)*
+
+## Fill travel under cover — defect 21 FIXED, default ON (2026-09-03)
+
+Kent's *"the in-fill stitching doesn't look clean"* (Hotel Fremont, 2026-09-02)
+was 22 of 27 fill-phase travel runs, 286 of 450 mm, laid on top of columns
+already sewn. Two mechanisms in `stage6_fill`, behind
+`PipelineConfig.fill_travel_under_cover` (default True; False is byte-identical
+to before — md5 on becker, drone, enthusiast, Fremont):
+
+- `travel_path(..., sewn=...)`: straight only if straight crosses unsewn
+  ground; else the inset rings of the UNSEWN remainder (`cover − sewn`, half-
+  row inset, either way round, endpoints allowed one travel stitch); else the
+  shape's rings both ways; else the exposed route it always took.
+- `_reorder_for_cover`: the nearest-first column walk prefers a next column
+  whose straight bridge is inside the shape and off the fill laid so far;
+  scored by `_order_cost` (cuts × 25 + travel + exposed travel × 2) against
+  the incoming order and kept only when cheaper; last path pinned.
+
+Measured (fill-phase travel over sewn footprint, one-stitch tolerance):
+
+| fixture | exposed before → after | stitches | trims |
+|---|---|---|---|
+| `logo_hotel_fremont` | 286 → 92 mm | 6473 → 6394 | 47 → 47 |
+| `logo_gaulke_roofing` | 209 → 8 mm | 3954 → 3885 | 24 → 21 |
+| `becker_marine_logo` | 27 → 14 mm | 4557 → 4531 | 28 → 28 |
+| `drone_render` | 546 → 61 mm | 9317 → 8724 | 86 → 90 |
+| `photo_dof_meadow` | 691 → 301 mm | 10116 → 9679 | 33 → 27 |
+| `photo_sunset_backlit` | 711 → 291 mm | 12345 → 11779 | 53 → 30 |
+
+Routing alone was measured first and moved nothing (Fremont 286 → 286): the
+inset ring runs through sewn columns, and by the time a bridge is built the
+exposure is already decided by the order. Cost: digitize +7–11% on logos,
++49% on sunset's 263-run blend fill after two optimisations (`_ring_route`
+rebuilt its arc table per call — 34.8 s of a 90 s profile — now cached; the
+unsewn rings are reused across bridges and re-checked against the current
+unsewn ground). What remains exposed on Fremont is the field's own topology:
+hauls between regions the letters cut it into. `logo_whitebg` goldens
+re-pinned (2166 → 2162, travel only) with the pre-change worktree reproducing
+the old pins first. *(measured 2026-09-03 — `docs/fill-travel-under-cover-2026-09-03.md`)*

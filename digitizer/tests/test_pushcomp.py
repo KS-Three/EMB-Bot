@@ -205,8 +205,19 @@ def rail_overhang(art: Polygon, pts) -> float:
 # tuple reproduces. (Both `ribbon_curve` entries reproduce exactly, before and
 # after, and are the control that says the change is confined to fills whose
 # inset actually fragments.)
+# RE-PINNED 2026-09-03, `left_chest` ONLY, for fill travel under cover
+# (`PipelineConfig.fill_travel_under_cover`, stage6_fill's `_reorder_for_cover`
+# and `travel_path(sewn=...)`): the fill's column order now prefers a next
+# column reachable over ground not yet sewn, and a bridge that would lie on
+# finished fill is routed through unsewn ground instead. On this fixture that
+# is FOUR fewer travel penetrations, 2166 -> 2162, no trim or jump moved.
+# Earned the same way as the 2026-08-15 pin: a worktree at origin/main
+# (baf702c) reproduces ("05a59e2bc2a524087c4f", 2166, 7073) byte-for-byte on
+# this machine, so what moved is the engine. `towel` is unchanged by the same
+# engine ("2d173fc202dd3105b5f6", 3259, 10352 before AND after here) and stays
+# un-re-pinned for the reason above; `ribbon_curve` both entries reproduce.
 GOLDEN_FLAG_OFF = {
-    ("logo_whitebg.png", "left_chest"): ("05a59e2bc2a524087c4f", 2166, 7073),
+    ("logo_whitebg.png", "left_chest"): ("97316210b2accf82f696", 2162, 7061),
     ("logo_whitebg.png", "towel"): ("98c918e7c1576e46f623", 3258, 10349),
     ("ribbon_curve.png", "left_chest"): ("1c3f5ad1d0de847c149a", 1001, 3527),
     ("ribbon_curve.png", "hat_front"): ("d982b1c0fe21b0ed1b5f", 1005, 3539),

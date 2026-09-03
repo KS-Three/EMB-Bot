@@ -31,6 +31,17 @@ DST export are unchanged (verified separately in
 `tests/test_stages.py`/`tests/test_pushcomp.py`) — only the NEW region's
 own bookkeeping entries moved.
 
+**Third exception, TAKEN (2026-09-03):** the `logo_whitebg.png` entry was
+re-captured for fill travel under cover (`PipelineConfig.fill_travel_under_
+cover`, default on): the fill's column order now prefers a next column
+reachable over ground not yet sewn, and a bridge that would lie on finished
+fill is routed through unsewn ground. Travel is exactly what moves — 2166 ->
+2162 stitch coords, four fewer travel penetrations, region ids, areas and
+warnings unmoved — and `tools/recapture_flat_lane_key.py --pre-change-tree`
+(a worktree at origin/main baf702c) reproduced the old golden byte-for-byte
+first, with `ribbon_curve.png` as the untouched control. `enthusiast_logo`'s
+entry did not move (its fill has no travel at all) and stays as it was.
+
 **Second exception, SANCTIONED BUT NOT YET TAKEN (2026-08-14):** the
 `photo/enthusiast_logo.png` entry is stale as of PR #146 (the pro-parity satin
 work: junction entry walk + corner-fork removal —

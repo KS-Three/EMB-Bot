@@ -616,7 +616,7 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
             poly, region.shape_id, angle_deg=source_pixels.design_row_angle_deg,
             row_mm=machine.FILL_ROW_MM, stitch_mm=machine.FILL_STITCH_MM,
             underlay_style="none", trim_at_mm=machine.TRIM_AT_MM,
-            start_near=start_near,
+            start_near=start_near, under_cover=cfg.fill_travel_under_cover,
         )
         # Routed to blend, sewn flat. Stage 7 aggregates these across the
         # design so the warning the user reads can say decomposition did
@@ -702,7 +702,7 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
                 part, f"{region.shape_id}-blend{i}", angle_deg=angle,
                 row_mm=row_mm, stitch_mm=machine.FILL_STITCH_MM,
                 underlay_style="none", trim_at_mm=machine.TRIM_AT_MM,
-                start_near=cur,
+                start_near=cur, under_cover=cfg.fill_travel_under_cover,
             )
             if runs:
                 cur = runs[-1].points[-1]

@@ -23,6 +23,7 @@ Everything works in mm, y-down, the same space stage 4 produced.
 """
 from __future__ import annotations
 
+import functools
 import math
 from functools import lru_cache
 
@@ -481,9 +482,37 @@ def _inset_ring(poly: Polygon, inset_mm: float) -> list[LineString]:
 _TRAVEL_RING_CANDIDATES = 3
 
 
+@functools.lru_cache(maxsize=256)
+def _ring_arc(ring: LineString) -> tuple[list[tuple[float, float]], list[float]]:
+    """(vertices, cumulative arc length at each vertex) of a travel ring.
+
+    Cached on the geometry (shapely 2 geometries hash on their bytes): a
+    shape's rings are built once and routed along thousands of times —
+    `_ring_route` was the hottest function in stage 6 before this, 34.8 s of
+    a 90 s profile on `photo_sunset_backlit`, most of it rebuilding this
+    table per call.
+    """
+    coords = list(ring.coords)
+    cum = [0.0]
+    for i in range(1, len(coords)):
+        cum.append(cum[-1] + math.dist(coords[i - 1], coords[i]))
+    return coords, cum
+
+
+def _ring_ways(ring: LineString, a: tuple[float, float],
+               b: tuple[float, float]) -> tuple[str, str]:
+    """("ahead", "back") ordered shorter way round first."""
+    total = ring.length
+    forward = (ring.project(Point(b)) - ring.project(Point(a))) % total
+    return ("ahead", "back") if forward <= total - forward else ("back", "ahead")
+
+
 def _ring_route(ring: LineString, a: tuple[float, float],
-                b: tuple[float, float]) -> list[tuple[float, float]]:
-    """The shorter way around `ring` from a to b, as waypoints.
+                b: tuple[float, float], way: str | None = None,
+                ) -> list[tuple[float, float]]:
+    """The shorter way around `ring` from a to b, as waypoints — or, with
+    `way` = "ahead" / "back", that specific way round, which the covered
+    routing below asks for when the shorter one would run over sewn fill.
 
     The ring's OWN VERTICES, not samples taken at a fixed arc-length step.
     Sampling a corner at 2.5 mm intervals puts one waypoint on each side of it
@@ -493,15 +522,12 @@ def _ring_route(ring: LineString, a: tuple[float, float],
     cannot cut a corner because every corner IS a waypoint. Spacing is applied
     afterwards by `_densify`, which only ever subdivides.
     """
-    coords = list(ring.coords)
+    coords, cum = _ring_arc(ring)
     total = ring.length
-    cum = [0.0]
-    for i in range(1, len(coords)):
-        cum.append(cum[-1] + math.dist(coords[i - 1], coords[i]))
     ta, tb = ring.project(Point(a)), ring.project(Point(b))
     forward = (tb - ta) % total
     backward = total - forward
-    ahead = forward <= backward
+    ahead = forward <= backward if way is None else way == "ahead"
     span = forward if ahead else backward
 
     between: list[tuple[float, tuple[float, float]]] = []
@@ -534,10 +560,41 @@ def _ring_route(ring: LineString, a: tuple[float, float],
     return out
 
 
+# How much of a travel route may lie over fill already sewn before the route
+# counts as EXPOSED. A bridge starts at the last penetration of the column just
+# sewn, so its first half-row is inside that column's footprint by
+# construction, and a route that skims the seam between two abutting columns
+# grazes both footprints' edges. One travel stitch of overlap is that
+# unavoidable start and seam; anything longer is thread lying on top of
+# finished stitching, which is what Kent sees as the fill "not looking clean"
+# (2026-09-02, the Hotel Fremont field: 27 fill-phase travel runs, 22 of them
+# over sewn columns, 286 of 450 mm). Geometry, not a fabric constant.
+_EXPOSED_TOLERANCE_MM = machine.TRAVEL_STITCH_MM
+
+
+def _exposed_mm(route: list[tuple[float, float]], sewn) -> float:
+    """Length of `route` lying over `sewn`, the footprint of fill already laid."""
+    if sewn is None or sewn.is_empty or len(route) < 2:
+        return 0.0
+    return float(LineString(route).intersection(sewn).length)
+
+
 def travel_path(poly: Polygon, ring, a: tuple[float, float],
-                b: tuple[float, float], slack: Polygon | None = None
+                b: tuple[float, float], slack: Polygon | None = None,
+                sewn=None, cache: dict | None = None,
                 ) -> list[tuple[float, float]] | None:
     """Stitchable route from a to b that never leaves the shape.
+
+    With `sewn` — the union of fill footprints already laid in this shape — the
+    route also prefers to stay OFF them: straight if straight crosses only
+    unsewn ground, else the inset ring whichever way round keeps clear, and
+    only then the route this function returned before `sewn` existed. A route
+    that is not exposed is byte-identical to the one chosen without `sewn`, so
+    a shape whose nearest-first order never crosses its own finished columns
+    sews exactly as it did. Professional digitizers hide travel under fill
+    still to come or along an edge a border will cover; the machine cannot
+    hide a running stitch on top of finished tatami, and on light thread over
+    light fill it reads as a line.
 
     Straight if it can be, along the edge if it must be, None when the thread
     genuinely has to be lifted. The straight test is run against a hair-widened
@@ -555,39 +612,90 @@ def travel_path(poly: Polygon, ring, a: tuple[float, float],
     is not bookkeeping: handed a guide on the far side of a closed neck, the
     old single-ring code would run along it and then strike out across bare
     cloth to reach `b`, emitting travel that left the shape entirely.
+
+    `cache` (a dict the caller keeps across one shape's bridges) holds the
+    last unsewn-ground rings: the unsewn region loses one column per path, so
+    the previous rings are usually still valid and are tried first, against
+    the CURRENT unsewn ground, before the expensive inset buffer is rebuilt.
     """
     if math.dist(a, b) < machine.TINY_STITCH_MM:
         return []
     cover = slack if slack is not None else poly.buffer(0.01)
     seg = LineString([a, b])
+    fallback: list[tuple[float, float]] | None = None
     if cover.covers(seg):
-        return _densify(a, b, machine.TRAVEL_STITCH_MM)
+        straight = _densify(a, b, machine.TRAVEL_STITCH_MM)
+        if sewn is None or _exposed_mm([a, b], sewn) <= _EXPOSED_TOLERANCE_MM:
+            return straight
+        fallback = straight            # exposed: keep looking, take it last
     if ring is None:
-        return None
+        return fallback
     rings = [ring] if isinstance(ring, LineString) else list(ring)
     if not rings:
-        return None
+        return fallback
 
     step = machine.TRAVEL_STITCH_MM
     budget = max(_TRAVEL_DETOUR_FLOOR_MM, math.dist(a, b) * _TRAVEL_DETOUR_FACTOR)
     pa, pb = Point(a), Point(b)
     rings.sort(key=lambda r: max(r.distance(pa), r.distance(pb)))
 
-    for candidate in rings[:_TRAVEL_RING_CANDIDATES]:
-        pts = _ring_route(candidate, a, b)
-        route = [a] + pts + [b]
-        length = sum(math.dist(route[i - 1], route[i]) for i in range(1, len(route)))
-        if length > budget:
-            continue
-        if not cover.covers(LineString(route)):
-            continue
-        out: list[tuple[float, float]] = []
-        cur = a
-        for p in pts + [b]:
-            out.extend(_densify(cur, p, step))
-            cur = p
-        return out
-    return None
+    def along(ring_list, both_ways: bool, inside) -> list[tuple[float, float]] | None:
+        nonlocal fallback
+        for candidate in ring_list:
+            for way in (_ring_ways(candidate, a, b) if both_ways else (None,)):
+                pts = _ring_route(candidate, a, b, way)
+                route = [a] + pts + [b]
+                length = sum(math.dist(route[i - 1], route[i]) for i in range(1, len(route)))
+                if length > budget:
+                    continue
+                if not inside.covers(LineString(route)):
+                    continue
+                out: list[tuple[float, float]] = []
+                cur = a
+                for p in pts + [b]:
+                    out.extend(_densify(cur, p, step))
+                    cur = p
+                if sewn is None or _exposed_mm(route, sewn) <= _EXPOSED_TOLERANCE_MM:
+                    return out
+                if fallback is None:
+                    fallback = out
+        return None
+
+    # Without `sewn`: the shorter way round the nearest ring that stays inside
+    # the shape and within budget, exactly as before.
+    if sewn is None:
+        return along(rings[:_TRAVEL_RING_CANDIDATES], False, cover)
+
+    # With it, the straight route was exposed (or there was none). Where a pro
+    # hides travel is under fill STILL TO COME, so route through the part of
+    # the shape not yet sewn: its own edge-hugging rings, either way round,
+    # inside the unsewn ground. The unsewn region between sewn columns is
+    # often narrower than twice the travel inset, so its inset is the half
+    # row — a route there rides the seam of the next column, which the next
+    # column covers. Then the shape's own rings both ways round (rarely clear,
+    # measured), then the exposed route of last resort.
+    unsewn = cover.difference(sewn)
+    if not unsewn.is_empty:
+        # `a` is the last penetration of the column just sewn, so it lies
+        # inside `sewn` by construction and a route can only LEAVE the unsewn
+        # ground at its two ends; allow one travel stitch around each.
+        inside = unsewn.buffer(0.01).union(pa.buffer(_EXPOSED_TOLERANCE_MM)) \
+                       .union(pb.buffer(_EXPOSED_TOLERANCE_MM))
+        stale = cache.get("unsewn_rings") if cache is not None else None
+        if stale:
+            near = sorted(stale, key=lambda r: max(r.distance(pa), r.distance(pb)))
+            found = along(near[:_TRAVEL_RING_CANDIDATES], True, inside)
+            if found is not None:
+                return found
+        u_rings = _inset_ring(unsewn, min(machine.TRAVEL_INSET_MM, machine.FILL_ROW_MM / 2.0))
+        if cache is not None:
+            cache["unsewn_rings"] = u_rings
+        u_rings.sort(key=lambda r: max(r.distance(pa), r.distance(pb)))
+        found = along(u_rings[:_TRAVEL_RING_CANDIDATES], True, inside)
+        if found is not None:
+            return found
+    found = along(rings[:_TRAVEL_RING_CANDIDATES], True, cover)
+    return found if found is not None else fallback
 
 
 # How many nearest candidates the routable-first walk probes before it accepts
@@ -612,8 +720,17 @@ _TRIM_STITCH_EQUIVALENT = 25.0
 
 def _order_cost(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
                 slack: Polygon, entry: tuple[float, float] | None,
-                trim_at_mm: float) -> tuple[int, float]:
-    """-> (cuts, travel stitches) this path ORDER costs, by `fill_region`'s rule.
+                trim_at_mm: float, row_mm: float | None = None,
+                ) -> tuple[int, float, float]:
+    """-> (cuts, travel stitches, exposed travel stitches) this path ORDER
+    costs, by `fill_region`'s rule.
+
+    `row_mm` turns on the covered routing `stitch_shape` uses when
+    `under_cover` is set — the same `travel_path(..., sewn=...)` call with the
+    same footprint accumulation — so the cost is measured with the routing
+    that will actually sew, and the third figure is how many of those travel
+    stitches lie over fill already laid. Without it the third figure is 0.0
+    and the first two are exactly what this function returned before.
 
     `emit` cuts exactly when `travel_path` finds no route AND the gap exceeds
     `trim_at_mm` (its `bridge is None` branch), and lays travel stitches when it
@@ -635,24 +752,46 @@ def _order_cost(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
     """
     cuts = 0
     travel_stitches = 0
+    exposed_mm = 0.0
+    sewn = None
+    cache: dict = {}
     cur = entry
     for path in paths:
         if not path:
             continue
         if cur is not None:
-            bridge = travel_path(poly, ring, cur, path[0], slack)
+            bridge = travel_path(poly, ring, cur, path[0], slack,
+                                 sewn if row_mm is not None else None, cache)
             if bridge is None:
                 if math.dist(cur, path[0]) > trim_at_mm:
                     cuts += 1
             else:
                 travel_stitches += max(0, len(bridge) - 1)
+                if row_mm is not None and sewn is not None:
+                    exposed_mm += max(0.0, _exposed_mm([cur] + bridge, sewn)
+                                      - _EXPOSED_TOLERANCE_MM)
+        if row_mm is not None and len(path) > 1:
+            footprint = LineString(path).simplify(row_mm / 2.0).buffer(row_mm)
+            sewn = footprint if sewn is None else sewn.union(footprint)
         cur = path[-1]
-    return cuts, float(travel_stitches)
+    return cuts, float(travel_stitches), exposed_mm / machine.TRAVEL_STITCH_MM
 
 
-def _score(cost: tuple[int, float]) -> float:
-    cuts, travel_stitches = cost
-    return cuts * _TRIM_STITCH_EQUIVALENT + travel_stitches
+# What one EXPOSED travel stitch — thread lying on top of fill already sewn,
+# not merely a stitch — costs against a hidden one, when weighing two path
+# orders. 2.0: it is sewn once and seen once. A 20 mm haul across finished
+# tatami (8 travel stitches) then weighs 16 against a cut's 25, so a cut is
+# still never bought to hide a short hop, while a long visible line is worth a
+# longer hidden route. A judgement about how a design LOOKS, like
+# `_TRIM_STITCH_EQUIVALENT` is about how long it takes; not a fabric constant.
+_EXPOSED_STITCH_WEIGHT = 2.0
+
+
+def _score(cost: tuple) -> float:
+    cuts, travel_stitches, *rest = cost      # (cuts, travel) or (cuts, travel, exposed)
+    exposed_stitches = rest[0] if rest else 0.0
+    return (cuts * _TRIM_STITCH_EQUIVALENT + travel_stitches
+            + exposed_stitches * _EXPOSED_STITCH_WEIGHT)
 
 
 def _reorder_for_fewer_cuts(paths: list[list[tuple[float, float]]], poly: Polygon,
@@ -738,6 +877,83 @@ def _reorder_for_fewer_cuts(paths: list[list[tuple[float, float]]], poly: Polygo
     candidate = [paths[j][::-1] if j in flipped else paths[j] for j in order]
     assert candidate[-1][-1] == paths[-1][-1], "exit point must be unchanged"
     after = _order_cost(candidate, poly, ring, slack, entry, trim_at_mm)
+    return candidate if _score(after) < _score(before) else paths
+
+
+def _reorder_for_cover(paths: list[list[tuple[float, float]]], poly: Polygon,
+                       ring, slack: Polygon, entry: tuple[float, float] | None,
+                       trim_at_mm: float, row_mm: float,
+                       ) -> list[list[tuple[float, float]]]:
+    """Prefer a next path whose bridge crosses UNSEWN ground, when it is cheaper.
+
+    The nearest-first walk finishes a column at its far end and takes the
+    nearest remaining start, which on a holed shape is routinely back across
+    columns already sewn — and once the walk has left an island behind, every
+    later haul to it is over finished fill. On the Hotel Fremont field 22 of
+    27 fill-phase travel runs were exposed, 286 of 450 mm, and the covered
+    routing alone recovers almost none of it because the exposure is decided
+    by the ORDER: by the time the bridge is built there is no unsewn ground
+    left between the two ends.
+
+    Same contract as `_reorder_for_fewer_cuts`: this scores both orders with
+    `_order_cost` and keeps the cheaper, so a shape can only improve or stay
+    identical; the last path is pinned so the exit point, and every shape
+    after it, is untouched. The greedy pick is cheap on purpose — the
+    straight-line exposure of each candidate against the fill sewn so far —
+    and the real routing is only run inside the scoring.
+    """
+    if len(paths) < 3:
+        return paths
+    ends = [(p[0], p[-1]) for p in paths if p]
+    if len(ends) != len(paths):
+        return paths
+    before = _order_cost(paths, poly, ring, slack, entry, trim_at_mm, row_mm)
+    if before[2] <= 0.0:
+        return paths                     # nothing exposed; nothing to win
+
+    pinned = len(paths) - 1
+    remaining = set(range(pinned))
+    order: list[int] = []
+    flipped: set[int] = set()
+    sewn = None
+    cur = entry
+    while remaining:
+        cand = sorted(remaining, key=lambda j: (
+            min(math.dist(cur, ends[j][0]), math.dist(cur, ends[j][1]))
+            if cur is not None else 0.0))[:_ROUTABLE_PROBE_LIMIT]
+        picked = None
+        if cur is not None and sewn is not None:
+            # Nearest candidate whose straight bridge is inside the shape and
+            # off the fill already laid, entered from whichever end is nearer.
+            for j in cand:
+                for flip in (False, True):
+                    head = ends[j][1] if flip else ends[j][0]
+                    seg = LineString([cur, head])
+                    if slack.covers(seg) and _exposed_mm([cur, head], sewn) <= _EXPOSED_TOLERANCE_MM:
+                        picked = (j, flip)
+                        break
+                if picked:
+                    break
+        if picked is None:               # nothing hidden -> the nearest, as before
+            j = cand[0]
+            flip = (cur is not None
+                    and math.dist(cur, ends[j][1]) < math.dist(cur, ends[j][0]))
+            picked = (j, flip)
+        j, flip = picked
+        order.append(j)
+        if flip:
+            flipped.add(j)
+        path = paths[j][::-1] if flip else paths[j]
+        if len(path) > 1:
+            footprint = LineString(path).simplify(row_mm / 2.0).buffer(row_mm)
+            sewn = footprint if sewn is None else sewn.union(footprint)
+        cur = path[-1]
+        remaining.discard(j)
+
+    order.append(pinned)
+    candidate = [paths[j][::-1] if j in flipped else paths[j] for j in order]
+    assert candidate[-1][-1] == paths[-1][-1], "exit point must be unchanged"
+    after = _order_cost(candidate, poly, ring, slack, entry, trim_at_mm, row_mm)
     return candidate if _score(after) < _score(before) else paths
 
 
@@ -982,8 +1198,17 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                  start_near: tuple[float, float] | None = None,
                  technique: str = "tatami",
                  density_boost: bool = False,
+                 under_cover: bool = False,
                  ) -> tuple[list[StitchRun], dict]:
     """One shape -> its runs, in sew order (underlay first), plus a small report.
+
+    `under_cover` (`PipelineConfig.fill_travel_under_cover`, which stage 7 and
+    the blend tier pass through): fill-phase travel prefers routes over
+    ground not yet sewn, and the column order prefers a next column reachable
+    over unsewn ground — see `travel_path`'s `sewn` and `_reorder_for_cover`.
+    Underlay-phase travel is left alone: the fill covers it anyway. The
+    parameter itself defaults False so a caller that does not pass it (the
+    contour tier's finish patches) is byte-identical to before it existed.
 
     `start_near` is where the needle is when this shape's turn comes; the
     underlay and the fill both begin at whichever of their own valid starting
@@ -1024,8 +1249,17 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     runs: list[StitchRun] = []
     ring = _inset_ring(poly, machine.TRAVEL_INSET_MM)
     slack = poly.buffer(0.01)
+    # The footprint of fill laid so far, for `travel_path`'s covered routing.
+    # A full-row buffer of a half-row-simplified copy of each path: a half-row
+    # buffer of a zigzag leaves slivers between the legs and the unsewn ground
+    # shattered into hundreds of parts (measured on the Hotel Fremont field);
+    # a full row closes them and over-claims the column ends by one row, which
+    # the exposure tolerance already allows.
+    sewn = None
+    route_cache: dict = {}
 
     def emit(paths: list[list[tuple[float, float]]], kind: str, max_step: float) -> None:
+        nonlocal sewn
         for path in paths:
             # No tiny-stitch filter here, deliberately. Row turns are exactly one
             # row spacing long — 0.4 mm at standard density — and dropping them
@@ -1039,12 +1273,17 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
             if len(pts) < 2:
                 continue
             if runs:
-                bridge = travel_path(poly, ring, runs[-1].points[-1], pts[0], slack)
+                bridge = travel_path(poly, ring, runs[-1].points[-1], pts[0], slack,
+                                     sewn if (under_cover and kind == stitches.FILL) else None,
+                                     route_cache)
                 if bridge is None:
                     d = math.dist(runs[-1].points[-1], pts[0])
                     report["jumps"] += 1
                     runs.append(StitchRun(points=pts, kind=kind, jump=True,
                                           trim=d > trim_at_mm, shape_id=shape_id))
+                    if under_cover and kind == stitches.FILL and len(pts) > 1:
+                        footprint = LineString(pts).simplify(row_mm / 2.0).buffer(row_mm)
+                        sewn = footprint if sewn is None else sewn.union(footprint)
                     continue
                 # The bridge starts where the last run ended and finishes where
                 # the next one begins, so both ends belong to their own runs.
@@ -1055,6 +1294,9 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                     runs.append(StitchRun(points=middle, kind=stitches.TRAVEL,
                                           shape_id=shape_id))
             runs.append(StitchRun(points=pts, kind=kind, shape_id=shape_id))
+            if under_cover and kind == stitches.FILL and len(pts) > 1:
+                footprint = LineString(pts).simplify(row_mm / 2.0).buffer(row_mm)
+                sewn = footprint if sewn is None else sewn.union(footprint)
 
     emit(_underlay_paths(poly, underlay_style, angle, start_near),
          stitches.UNDERLAY, machine.UNDERLAY_STITCH_MM)
@@ -1073,6 +1315,9 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                                  machine.FILL_STAGGERS, entry, technique=technique)
     fill_paths = _reorder_for_fewer_cuts(fill_paths, poly, ring, slack, entry,
                                          trim_at_mm)
+    if under_cover:
+        fill_paths = _reorder_for_cover(fill_paths, poly, ring, slack, entry,
+                                        trim_at_mm, row_mm)
     emit(fill_paths, stitches.FILL, stitch_mm)
 
     if not runs:

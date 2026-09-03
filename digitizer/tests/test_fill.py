@@ -35,6 +35,10 @@ from digitizer_core.stage6_fill import (
     principal_angle_deg,
     stitch_shape,
     travel_path,
+    _reorder_for_cover,
+    _exposed_mm,
+    _EXPOSED_TOLERANCE_MM,
+    _EXPOSED_STITCH_WEIGHT,
 )
 
 RECT = Polygon([(0, 0), (40, 0), (40, 20), (0, 20)])
@@ -757,3 +761,115 @@ def test_score_prices_a_cut_at_the_trim_stitch_equivalent():
     assert _score((1, 0.0)) == _TRIM_STITCH_EQUIVALENT
     assert _score((0, _TRIM_STITCH_EQUIVALENT)) == _score((1, 0.0))
     assert _score((1, 0.0)) < _score((0, _TRIM_STITCH_EQUIVALENT + 1))
+
+
+# --- Fill travel under cover (2026-09-03, Kent's pick after the Hotel Fremont
+# notes: "the in-fill stitching doesn't look clean" was 22 of 27 fill-phase
+# travel runs, 286 of 450 mm, laid on top of columns already sewn) ----------
+
+# A wide bar with a hole in the middle: sewn top-down, the columns beside the
+# hole are the last to be reached, and the walk has to get from one side of
+# the hole to the other. Straight across is through the hole; around it is
+# through the columns above and below, which by then are sewn.
+_HOLED = Polygon([(0, 0), (40, 0), (40, 12), (0, 12)]).difference(
+    Polygon([(16, 3), (24, 3), (24, 9), (16, 9)]))
+
+
+def _fill_exposed_mm(runs, row_mm=0.4):
+    """Travel laid over fill already sewn in the same run list, beyond the
+    one-stitch tolerance — the instrument the feature is judged by."""
+    sewn = None
+    exposed = 0.0
+    for r in runs:
+        if r.kind == "fill" and len(r.points) > 1:
+            fp = LineString(r.points).simplify(row_mm / 2).buffer(row_mm)
+            sewn = fp if sewn is None else sewn.union(fp)
+        elif r.kind == "travel" and sewn is not None and len(r.points) > 1:
+            exposed += max(0.0, LineString(r.points).intersection(sewn).length
+                           - _EXPOSED_TOLERANCE_MM)
+    return exposed
+
+
+def test_travel_path_without_sewn_is_the_route_it_always_was():
+    """`sewn=None` is the old signature: same straight run, same shorter way
+    round, so every caller that does not opt in is byte-identical."""
+    ring = _inset_ring(RING, machine.TRAVEL_INSET_MM)
+    for a, b in (((-11, 0), (11, 0)), ((5, 5), (30, 15))):
+        poly = RING if a == (-11, 0) else RECT
+        r = ring if poly is RING else _inset_ring(RECT, machine.TRAVEL_INSET_MM)
+        assert travel_path(poly, r, a, b) == travel_path(poly, r, a, b, None, None)
+
+
+def test_travel_path_routes_through_unsewn_ground_when_straight_is_exposed():
+    """Left half sewn, needle at its right edge, next column at the far right:
+    straight across lies on the sewn half; the route must go round through
+    the unsewn half and come out under the exposure tolerance."""
+    poly = Polygon([(0, 0), (40, 0), (40, 10), (0, 10)])
+    sewn = Polygon([(0, 0), (20, 0), (20, 10), (0, 10)])
+    a, b = (19.5, 5.0), (39.0, 5.0)
+    ring = _inset_ring(poly, machine.TRAVEL_INSET_MM)
+    plain = travel_path(poly, ring, a, b, None, None)
+    covered = travel_path(poly, ring, a, b, None, sewn)
+    assert plain is not None and covered is not None
+    # The plain route is the straight line and it is not over sewn ground
+    # either (it leaves the sewn half at its first stitch) -- so this is the
+    # byte-identical case, and proves the exposure test is not a blanket
+    # detour.
+    assert _exposed_mm([a] + plain, sewn) <= _EXPOSED_TOLERANCE_MM
+    assert covered == plain
+    # Now the sewn ground is the RIGHT half except a strip the route can use:
+    # straight is exposed, and the covered route avoids it.
+    sewn2 = Polygon([(21, 0), (40, 0), (40, 8), (21, 8)])
+    a2, b2 = (20.5, 4.0), (39.0, 9.5)
+    plain2 = travel_path(poly, ring, a2, b2, None, None)
+    covered2 = travel_path(poly, ring, a2, b2, None, sewn2)
+    assert _exposed_mm([a2] + plain2, sewn2) > _EXPOSED_TOLERANCE_MM, "fixture must expose the straight route"
+    assert _exposed_mm([a2] + covered2, sewn2) <= _EXPOSED_TOLERANCE_MM, covered2
+    assert all(poly.buffer(0.05).covers(Point(p)) for p in covered2)
+
+
+def test_order_cost_reports_exposed_travel_only_when_asked():
+    """The third figure exists only with `row_mm`; without it the first two are
+    the pre-change pair and the third is 0.0, so `_reorder_for_fewer_cuts`
+    scores exactly as before."""
+    runs, _ = stitch_shape(_HOLED, "S1", angle_deg=0.0, row_mm=0.4, stitch_mm=3.0,
+                           underlay_style="none", trim_at_mm=3.0)
+    paths = [list(r.points) for r in runs if r.kind == "fill"]
+    ring = _inset_ring(_HOLED, machine.TRAVEL_INSET_MM)
+    slack = _HOLED.buffer(0.01)
+    old = _order_cost(paths, _HOLED, ring, slack, None, 3.0)
+    new = _order_cost(paths, _HOLED, ring, slack, None, 3.0, 0.4)
+    assert old[2] == 0.0
+    assert new[2] >= 0.0
+    assert _score((1, 0.0, 0.0)) == _TRIM_STITCH_EQUIVALENT
+    assert _score((0, 0.0, 1.0)) == _EXPOSED_STITCH_WEIGHT
+
+
+def test_under_cover_hides_travel_on_a_holed_shape_without_buying_cuts():
+    """The feature's own contract: less thread on top of finished fill, and
+    the order is only swapped when its cut-and-travel score is lower."""
+    off, _ = stitch_shape(_HOLED, "S1", angle_deg=0.0, row_mm=0.4, stitch_mm=3.0,
+                          underlay_style="none", trim_at_mm=3.0, under_cover=False)
+    on, _ = stitch_shape(_HOLED, "S1", angle_deg=0.0, row_mm=0.4, stitch_mm=3.0,
+                         underlay_style="none", trim_at_mm=3.0, under_cover=True)
+    exposed_off, exposed_on = _fill_exposed_mm(off), _fill_exposed_mm(on)
+    assert exposed_off > 0.0, "fixture must expose travel with the flag off"
+    assert exposed_on < exposed_off, (exposed_off, exposed_on)
+    cuts = lambda rs: sum(1 for r in rs if r.trim)
+    assert cuts(on) <= cuts(off)
+    # Same penetrations either way: only order and travel move.
+    fill = lambda rs: sorted(p for r in rs if r.kind == "fill" for p in r.points)
+    assert fill(on) == fill(off)
+
+
+def test_reorder_for_cover_pins_the_exit_point():
+    """Per-design never-worse rests on the exit point: the last path stays
+    last and unflipped, so the next shape's entry is untouched."""
+    runs, _ = stitch_shape(_HOLED, "S1", angle_deg=0.0, row_mm=0.4, stitch_mm=3.0,
+                           underlay_style="none", trim_at_mm=3.0, under_cover=False)
+    paths = [list(r.points) for r in runs if r.kind == "fill"]
+    ring = _inset_ring(_HOLED, machine.TRAVEL_INSET_MM)
+    out = _reorder_for_cover(paths, _HOLED, ring, _HOLED.buffer(0.01), None, 3.0, 0.4)
+    assert out[-1][-1] == paths[-1][-1]
+    assert sorted(map(tuple, (p for path in out for p in path))) == \
+        sorted(map(tuple, (p for path in paths for p in path)))
