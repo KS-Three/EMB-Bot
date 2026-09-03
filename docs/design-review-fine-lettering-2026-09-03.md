@@ -500,8 +500,11 @@ for the small crops. Read the two baselines carefully, because they differ:
 ![Hotel Fremont, the 2.6 mm THE](renders/fine-lettering-2026-09-03/fremont_the.png)
 
 *Fremont, "THE" at 2.6 mm caps, 4×.* Before, the E had no arms and the word
-read "T H ."; after, the arms sew as bean runs and it reads THE. This is
-item 1, the whole of what it does on real art at this size.
+read "T H ."; after, the top and bottom arms sew as bean runs and it reads
+"T H C" — the middle arm (about 1 mm, under the three-station spine) still
+does not sew, visible in this crop's own after panel (corrected 2026-09-03,
+`docs/kent-review-2026-09-03.md`). This is item 1, the whole of what it does
+on real art at this size.
 
 ![Hotel Fremont, the hexagon band](renders/fine-lettering-2026-09-03/fremont_band.png)
 
