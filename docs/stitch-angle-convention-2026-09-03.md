@@ -215,3 +215,113 @@ Kent's decisions, in order of what each unblocks:
 - [Common Embroidery Stitch Matrix — A&E](https://www.amefird.com/wp-content/uploads/2010/02/CommonEmbStitchMatrix-2-11-10.pdf)
 - Goldman US7587256B2 and Pulse US6390005B1 as digested in `docs/masters-teardown-2026-08-01.md`
 - Measurements: `testdata/reference/becker_*.dst` (five files, pystitch), `src/fonts/*.json` + `src/fonts/bin/*.embf` (86 fonts, `EMBF` decoded in Python)
+
+## 7. Pass 1 BUILT (2026-09-03, same day) — items 2, 3, 4; one correction to item 1
+
+Kent adopted the rule and the 30° cap, then picked pass 1 (fallback, cap,
+density compensation) over the Goldman join. Built in `stage6_satin` and
+`textcluster`; `satin_house_fourfold` stays OFF (Kent's flip), and every
+fixture without a house angle is md5-identical (whitebg, alpha, ribbon_curve,
+Fremont with the flag off).
+
+**Item 2 + 3, reconciled as one function.** Items 2 and 3 read against each
+other at the boundary: "a stroke that cannot span the house takes its own
+perpendicular" and "past the cap, lean by the cap". If the cap simply
+held past its edge, a bar 89.9° from the house would lean +30 and one at
+90.1° would lean −30 — the same side flip the bisector was built to dodge,
+narrowed but not gone. `_clamp_to_span` now holds the house within the cap
+and past it **fades the lean linearly to zero at the house axis**:
+`lean = cap · (90 − |d|) / (90 − cap)`. Continuous everywhere (pinned in
+half-degree steps), the full cap at the cap's edge, 22.5° on a true 45°
+diagonal (pro p75 26°, fonts diagonals-only 29.5°), perpendicular with no
+side for a bar along the axis. `SATIN_HOUSE_MIN_SPAN_DEG` 45 → 60.
+
+**Item 4.** `_cross_angles` (factored out of `_rail_points`, byte-identical
+with no house) returns each station's lean against the smoothed perpendicular
+the stroke would otherwise carry; `_resample_by_pitch` spreads the stations
+evenly along ∫cos(lean) ds, so the along-spine step is spacing / cos(lean)
+and the pitch across the thread stays what `SATIN_SPACING_MM` means; the
+outer-rail refinement targets the same lean-corrected pitch. Measured with
+`tools/satin_lean.py` (thread pitch = half the station spacing, two threads
+per station):
+
+| housed lettering | thread pitch before → after | crosses | stitches | trims |
+|---|---|---|---|---|
+| Fremont, four-fold on (house 44° → **0°**) | **0.152 → 0.198 mm** | 885 → 812 | 6405 → 6343 | 52 → 52 |
+| ENTHUSIAST @ 93, four-fold on (48° → **3°**) | **0.152 → 0.200** | 1096 → 1001 | 3072 → 3005 | 22 → 25 |
+| THERMAL, four-fold on (45° → **0°**) | 0.175 → 0.195 | 1829 → 1859 | 8791 → 8856 | 91 → 93 |
+| Becker MARINE (doubled reading, 171°) | 0.193 → 0.186 | 694 → 724 | 4529 → 4524 | 28 → 28 |
+
+The ENTHUSIAST chaining benchmark with the flag on: **4.62 → 4.09 / 1k**
+against the 4.1 ceiling (off: 2.43, unchanged). Lean off each cross's own
+perpendicular on Fremont: p50 45 → **20**, p90 64 → 37, past 45°: 50% → 3%
+— against a stock (no house) floor of p50 19, p90 32, 1%, which is the
+raster wander a skeleton column carries anyway. Corners still sweep (a
+merged stem-to-bar chain turns its cross 90° across the smoothing width;
+Becker 40% past 45° against a 24% stock floor): that is the Goldman join,
+pass 2.
+
+**Item 1, corrected: "the longer family" is the wrong tie-break.** On
+end-trimmed chains Fremont's stems win 84 : 72 mm, but THERMAL reads
+20 : 23 and ENTHUSIAST's eleven capitals 61 : 71 — the bars longer on two
+upright wordmarks, and "longer" would have sewn their stems as bars. What
+makes a stem a stem is that it stands square to the **line of text**, which
+a lettering group knows and a glyph does not: `_line_of_text_deg` is the
+principal axis of the members' centroids, and the house is the four-fold
+family nearer it (`_house_along_line_deg`). Right on all four measured
+groups (Fremont 179.4°, THE 177.8°, THERMAL 0.1°, ENTHUSIAST 3.0°), agrees
+with the doubled reading on both Becker lines, rotates with the art, fails
+open when the centroids make no line (second singular value over a third of
+the first). Known limit: stacked glyphs, where the line runs along the
+stems — no fixture has one, and the doubled reading still answers where
+stems dominate. `_bisector_deg` and `SATIN_HOUSE_BISECTOR_DEG` are gone.
+
+**Found on the way, NOT fixed here — rail dents on rotated columns.**
+`_rail_points`' `place` puts each rail at the measured width and shrinks it
+to 0.85× when `poly.covers` fails; on a **stock** 3 mm bar rotated 25° one
+whole rail sits at 1.22–1.27 mm against the other's 1.44–1.46 — the thread
+stops ~0.2 mm short of the artwork on one side of every rotated column,
+today, in every golden. Under lean the same dust fires on a few stations of
+an upright bar and the outer-rail refinement re-inserts a station at each
+dent, so the compensation's count saving on a synthetic leaned bar is 3%
+where cos(25°) says 9% (real art above is unaffected: the pitch is what was
+measured). A fix touches every satin golden; recorded as a defect.
+
+**Found on the way, tried and WITHDRAWN — hairline columns under a house
+angle.** Fremont's 2.6 mm "THE" has 0.40–0.45 mm bars and 0.52 mm stems. A
+perpendicular cross on them is at or under `SATIN_MIN_CROSS_MM` (0.5) once
+the rails sit symmetric at the nearer boundary hit and `place` dents one, so
+under the rule the bars vanish (3 runs where the bisector sewed 7). The
+shipped default already loses THE's bars — its stems survive only because
+the ~19° raster wander happens to lengthen the cross — and the bisector kept
+them by accident at 0.62 mm. A per-station lean floor (lean as far as a
+target cross length demands, from the boundary distance) was built and
+measured: the distance collapses toward the caps, the lean fans 45→2→45°
+over a 2.5 mm stem, and the crosses still come out 0.44–0.49 mm (H stems 0
+of 10 kept against the stock's 8–10). Withdrawn; lettering that small wants a
+different tier (running stitch, or a bar sewn as a wide column), not a lean
+hack. Recorded as a limit, not a defect of the rule.
+
+**Review hardening.** The lean is a difference of two separately unwrapped
+sequences, so a spine turning ~60° between adjacent stations (nothing the
+smoothing delivers today) could push the smoothed difference through 90° and
+the compensation to ×60; the cosine is floored at cos(cap), a no-op on
+every output measured. `_resample_by_pitch` snaps both ends exactly.
+
+What pass 1 does not do: sew a bar as a wide column at the house angle (the
+pro's way; new construction), join corners (Goldman, pass 2), or flip the
+four-fold flag — the numbers above are what the flip would buy.
+
+## 8. `satin_house_fourfold` DEFAULT ON — Kent's flip (2026-09-03, same session)
+
+On the pass-1 numbers Kent flipped the four-fold reading on. What moves:
+`logo_hotel_fremont` (6385 → 6343 st, trims 52) and `drone_render`'s
+THERMAL (8872 → 8856, trims 93). Byte-identical with the flag on: whitebg,
+alpha, ribbon_curve, becker, bg_uncertain, gaulke, summit_badge,
+region_blobs, fur_ramp, repro_gradient_white_icon, enthusiast @ 80 (the
+eleven-capital group fires at 93 mm, the chaining benchmark's pitch, where
+the benchmark reads 4.09/1k under 4.1). Digitize time unchanged on all
+thirteen. No golden moves: drone's golden pins stage 2 only, enthusiast's
+flat-lane entries are the platform reds CI already deselects. The function
+default in `set_lettering_house_angle` stays False. The 0.01 margin under
+the benchmark ceiling is thin and the test is the tripwire.

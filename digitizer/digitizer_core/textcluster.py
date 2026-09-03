@@ -1119,42 +1119,32 @@ SATIN_ANGLE_RAYLEIGH_ALPHA = 0.001
 # four-fold space and cancels the orthogonals, so a word like AVIATION can
 # fail both readings and sew per-stroke. Nothing here has measured one.
 #
-# Which cross angle, once two orthogonal families are found? The bisector,
-# `axis + SATIN_HOUSE_BISECTOR_DEG`. It is the only choice that holds one
-# angle across the whole word: a cross perpendicular to the stems (0 deg on
-# these letters) is 90 deg off every horizontal bar, beyond
-# `stage6_satin.SATIN_HOUSE_MIN_SPAN_DEG`, so `_clamp_to_span` rotates it
-# back to +/-45 deg with the SIGN decided by sub-degree tangent noise -- and
-# the smoothing pass then sweeps each bar's crosses through 90 deg between
-# flips. Rendered at house = 0 on Hotel Fremont the bars came out worse than
-# with no house angle at all. At exactly 45 deg the cross sits at the span
-# limit for BOTH families and nothing is clamped or flipped; a derived
-# bisector a degree or two off (Hotel Fremont: 42.8-44.4) nudges the
-# family it is further from back to the 45 deg limit, same sign, no flip, so
-# the two families sew within ~2 deg of each other with no fan at the
-# corners -- which is the "same angle for the whole word" the feature exists
-# to give.
-# 45 vs 135 is a convention, not a measurement; the constant is where to
-# change it. Two orthogonal families have TWO bisectors, 90 deg apart, and the
-# family axis the votes return is only defined mod 90 -- so "axis + 45" is
-# not a convention at all: Hotel Fremont's stems read 89.4 deg and got 134.4,
-# drone_render's read 0.1 and got 45.1, the same upright lettering sewing at
-# mirror-image angles on sub-degree tangent noise. `_bisector_deg` takes the
-# bisector nearer this constant instead, so upright text always gets the
-# same slant whichever way its axis rounds. The one genuine ambiguity is
-# lettering rotated by exactly 45 deg, whose bisectors are 0 and 90.
-SATIN_HOUSE_BISECTOR_DEG = 45.0
-
-
-def _bisector_deg(axis_deg: float) -> float:
-    """The bisector of the two orthogonal stroke families at `axis_deg`
-    (mod 90) that lies nearest `SATIN_HOUSE_BISECTOR_DEG`, on [0, 180)."""
-    a, b = (axis_deg + 45.0) % 180.0, (axis_deg + 135.0) % 180.0
-
-    def gap(x: float) -> float:
-        return abs((x - SATIN_HOUSE_BISECTOR_DEG + 90.0) % 180.0 - 90.0)
-    return a if gap(a) <= gap(b) else b
-
+# Which cross angle, once two orthogonal families are found? The
+# PERPENDICULAR TO THE STEMS -- the stitch-angle rule Kent adopted on
+# 2026-09-03 (`docs/stitch-angle-convention-2026-09-03.md`): the pro file
+# sews stems square (4.7 deg off), the 86 shipped fonts do too (1.8), and a
+# bar that cannot span the house takes ITS OWN perpendicular (fonts: 3.0),
+# which `stage6_satin._clamp_to_span` now gives it by fading the lean to
+# zero along the house axis instead of snapping to +/-45 on tangent noise.
+# The 45 deg bisector this reading shipped with (OFF) was a workaround for
+# that snap: the one angle that clamped nothing, and what no source does.
+#
+# WHICH family is the stems. The four-fold axis is defined mod 90, so the
+# votes cannot say. Skeleton LENGTH cannot either, and the rule's first
+# draft said it could: measured on end-trimmed chains (2026-09-03), Hotel
+# Fremont's stems win 84 : 72 mm, but drone_render's THERMAL reads 20 : 23
+# and enthusiast_logo's eleven-glyph line 61 : 71 -- the BARS longer, both
+# upright wordmarks, and "longer" would have sewn their stems as bars.
+# What defines a stem is that it stands square to the LINE OF TEXT, and the
+# line is the one thing a lettering group knows about itself that a single
+# glyph does not: the principal axis of its members' centroids
+# (`_line_of_text_deg`). The house is the family nearer that line -- the
+# cross runs along the baseline, the stems across it -- and it rotates
+# with the art. Right on all four measured groups, and it agrees with the
+# doubled reading on both Becker lines, where both fire. The known limit is
+# a word whose glyphs are STACKED (the line runs along the stems), which no
+# fixture has; there the doubled reading still answers where stems
+# dominate, and this one fails open when the centroids do not make a line.
 # The four-fold reading cannot vote on raw skeleton pixel steps the way the
 # doubled reading does. An 8-connected walk only ever steps in the eight
 # compass directions, and that staircase is itself four-fold symmetric: it
@@ -1266,6 +1256,37 @@ def _house_chains(members: list[Region]) -> list[tuple[list[tuple[float, float]]
     return out
 
 
+def _line_of_text_deg(members: list[Region]) -> float | None:
+    """The direction the members are laid out along, in degrees on [0, 180)
+    -- the principal axis of their centroids -- or None when they do not
+    make a line (fewer than two, or the spread is nearer a blob than a row:
+    the second singular value within a third of the first).
+
+    That ratio also fails open on a TWO-LINE wordmark grouped as one cluster
+    up to ~6 glyphs per line (12 per line reads as a line again), so a short
+    two-line group gets no four-fold house -- safe, per-stroke, and the one
+    limit besides stacked glyphs worth knowing (review probe, 2026-09-03)."""
+    if len(members) < 2:
+        return None
+    c = np.array([[r.polygon.centroid.x, r.polygon.centroid.y] for r in members])
+    c -= c.mean(axis=0)
+    _u, sv, vt = np.linalg.svd(c, full_matrices=False)
+    if sv[0] <= 0.0 or (len(sv) > 1 and sv[1] > sv[0] / 3.0):
+        return None
+    return math.degrees(math.atan2(vt[0][1], vt[0][0])) % 180.0
+
+
+def _house_along_line_deg(axis_deg: float, line_deg: float) -> float:
+    """Of the two orthogonal families at `axis_deg` and `axis_deg + 90`, the
+    one nearer `line_deg` -- the family running ALONG the line of text, whose
+    direction is the house cross (the stems are the other one)."""
+    a, b = axis_deg % 180.0, (axis_deg + 90.0) % 180.0
+
+    def gap(x: float) -> float:
+        return abs((x - line_deg + 90.0) % 180.0 - 90.0)
+    return a if gap(a) <= gap(b) else b
+
+
 def _fourfold_votes(chains: list[tuple[list[tuple[float, float]], float]],
                     chord_px: float = SATIN_HOUSE_CHORD_PX,
                     ) -> tuple[float, float, float] | None:
@@ -1304,9 +1325,9 @@ def _cluster_house_angle_deg(members: list[Region], *,
     that, and only with `fourfold=True` (`config.satin_house_fourfold`,
     default OFF -- see that field for the bill), two ORTHOGONAL families --
     block lettering whose bars balance its stems, which cancel to nothing in
-    the first reading -- give the cross that bisects them; see
-    `SATIN_HOUSE_BISECTOR_DEG` for why the bisector and not the stems'
-    perpendicular.
+    the first reading -- give the cross perpendicular to the STEMS, the
+    family square to the line of text; see `_house_along_line_deg` and the
+    note above it for why not the bisector and not the longer family.
 
     Votes are the segments of every member's pruned, end-trimmed skeleton
     chains, weighted by length in mm. `_skeleton_chains_mm` prunes with the same
@@ -1359,7 +1380,10 @@ def _cluster_house_angle_deg(members: list[Region], *,
         return None
     if n_eff4 * resultant4 * resultant4 < critical:
         return None
-    return _bisector_deg(axis)
+    line = _line_of_text_deg(members)
+    if line is None:
+        return None
+    return _house_along_line_deg(axis, line)
 
 
 def set_lettering_house_angle(regions: list[Region], p: Prep, *,

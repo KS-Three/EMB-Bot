@@ -1199,6 +1199,53 @@ def _resample(pts: list[tuple[float, float]], n: int) -> list[tuple[float, float
     return [(p.x, p.y) for p in (line.interpolate(line.length * i / (n - 1)) for i in range(n))]
 
 
+def _resample_by_pitch(pts: list[tuple[float, float]], leans: list[float],
+                       spacing_mm: float) -> list[tuple[float, float]]:
+    """`pts` re-stationed so that consecutive crosses, each leaning
+    `leans[i]` off the perpendicular, sit `spacing_mm` apart MEASURED ACROSS
+    THE THREADS -- the constant-perpendicular-pitch rule (Pulse, expired;
+    `docs/stitch-angle-convention-2026-09-03.md` item 4).
+
+    Two crosses `s` apart along the spine and leaning by `lean` are
+    `s * cos(lean)` apart perpendicular to the thread, so holding the SPINE
+    spacing at 0.4 mm under a 30 deg lean packs thread at 0.35 mm, and at
+    the 48 deg the old bisector put on an N, at 0.27 -- the "pile" seen on
+    enthusiast_logo. The compensated arc `∫ cos(lean) ds` is what the
+    stations are spread evenly along, so the along-spine step becomes
+    `spacing / cos(lean)` and the perpendicular pitch stays the spacing the
+    constant already means. This changes NO physical constant; it makes the
+    existing one hold under lean (ROADMAP gate 1 untouched).
+
+    Keeps both ends, like `_resample`. With every lean 0 the compensated arc
+    is the arc, and the caller skips this entirely so the no-house path
+    stays byte-identical.
+    """
+    n = len(pts)
+    if n < 2:
+        return list(pts)
+    cum = [0.0]
+    for i in range(1, n):
+        w = 0.5 * (max(math.cos(leans[i - 1]), _LEAN_COS_FLOOR)
+                   + max(math.cos(leans[i]), _LEAN_COS_FLOOR))
+        cum.append(cum[-1] + math.dist(pts[i - 1], pts[i]) * w)
+    total = cum[-1]
+    if total <= 0.0:
+        return list(pts)
+    steps = max(2, int(math.ceil(total / spacing_mm)))
+    out: list[tuple[float, float]] = []
+    j = 1
+    for k in range(steps):
+        target = total * k / (steps - 1)
+        while j < n - 1 and cum[j] < target:
+            j += 1
+        seg = cum[j] - cum[j - 1]
+        t = 0.0 if seg <= 0.0 else min(1.0, max(0.0, (target - cum[j - 1]) / seg))
+        (x0, y0), (x1, y1) = pts[j - 1], pts[j]
+        out.append((x0 + (x1 - x0) * t, y0 + (y1 - y0) * t))
+    out[0], out[-1] = pts[0], pts[-1]       # both ends exactly, not to float dust
+    return out
+
+
 # --- The house angle for satin lettering (2026-08-26) ------------------------
 # Kent, on a sewn Becker Marine logo: *"When doing lettering, fill angle should
 # be the same (for almost every block style font like this). Why is the 'N'
@@ -1222,29 +1269,143 @@ def _resample(pts: list[tuple[float, float]], n: int) -> list[tuple[float, float
 # most of the area -- it is not evidence of horizontal crosses forced onto
 # horizontal strokes.
 #
-# The floor is 45 deg off the stroke axis because cross length grows as
-# 1/sin(d): 41% longer at 45 deg, and `_rail_points` already caps rails at
-# ~1.6x the local half-width, so 1.41x still fits under a cap that exists for
-# an unrelated reason. Below 45 the stitch gets long faster than it gets
-# useful.
-SATIN_HOUSE_MIN_SPAN_DEG = 45.0
+# HOW FAR A CROSS MAY LEAN, and what happens past that (2026-09-03, the
+# stitch-angle rule Kent adopted -- `docs/stitch-angle-convention-2026-09-03.md`).
+#
+# The floor below is a SPAN floor: a cross may sit at most (90 - floor) deg
+# off the perpendicular to its own stroke, which is a LEAN of 30 deg at 60.
+# Three independent sources agree on the band a professional leans a satin
+# column: the Becker Marine pro file (diagonals p50 16 deg, p75 26, p90 43),
+# the 86 shipped Ink/Stitch fonts (p50 18, diagonals-only 29.5) and neither
+# ever holds a bar's cross 45 deg off its perpendicular, which is exactly
+# where the previous floor (45) put every clamped stroke. 60 puts the cap
+# inside both bands; cross length at the cap is 1/sin(60) = 1.15x, well
+# under the ~1.6x `_rail_points` allows a rail for an unrelated reason.
+#
+# PAST the cap the old clamp snapped to the cap on whichever SIDE the folded
+# difference fell -- and for a bar running along the house's own axis that
+# side is decided by sub-degree tangent noise, so an E's three arms took
+# +30, -30 and +30 and the smoothing pass swept each one through the flip.
+# Rendered at house = 0 on Hotel Fremont the bars came out worse than with
+# no house angle at all (2026-09-02), which is why a 45 deg bisector was
+# tried and retired. What every font does with a bar is sew it
+# PERPENDICULAR (86 fonts: 3.0 deg), and perpendicular has no side. So past
+# the cap the lean FADES: linearly from the full cap at the cap's edge to
+# zero where the stroke runs along the house axis. Continuous everywhere,
+# no side to choose, and a true 45 deg diagonal still leans 22.5 deg
+# toward the house (fonts diagonals-only p50 29.5, pro p75 26).
+SATIN_HOUSE_MIN_SPAN_DEG = 60.0
 
 
 def _clamp_to_span(house: float, tangent: float) -> float:
-    """The house cross angle, rotated the least amount that still spans a
-    stroke running at `tangent`. Both radians; returns radians.
+    """The cross angle for a stroke running at `tangent` under `house`: the
+    house where the stroke can span it within the lean cap, a fading lean
+    toward the house past it, its own perpendicular where the house runs
+    along the stroke. Both radians; returns radians.
 
-    A cross perpendicular to the tangent spans best (d = 90 deg). d is folded
-    to [0, 90] because a cross sewn either way round is the same cross.
+    d is the signed house-to-perpendicular difference folded to (-90, 90]
+    because a cross sewn either way round is the same cross. |d| <= cap:
+    the house, exactly. Beyond: lean = cap * (90 - |d|) / (90 - cap), on
+    d's side -- the cap at |d| = cap, zero at |d| = 90, so the two sides of
+    the fold meet at the perpendicular instead of 2 * cap apart.
     """
     ideal = tangent + math.pi / 2.0
-    # Signed difference house->ideal, folded to (-90, 90]: rotating a cross by
-    # 180 deg is the same cross, so never rotate further than that.
     diff = (house - ideal + math.pi / 2.0) % math.pi - math.pi / 2.0
     limit = math.radians(90.0 - SATIN_HOUSE_MIN_SPAN_DEG)
     if abs(diff) <= limit:
         return house
-    return ideal + math.copysign(limit, diff)
+    lean = limit * (math.pi / 2.0 - abs(diff)) / (math.pi / 2.0 - limit)
+    return ideal + math.copysign(lean, diff)
+
+
+# COLUMNS UNDER ~0.6 mm LOSE CROSSES UNDER A HOUSE ANGLE, and no lean floor
+# fixes it (tried 2026-09-03, withdrawn the same hour). Hotel Fremont's 2.6 mm
+# "THE" has 0.40-0.45 mm bars and 0.52 mm stems; a perpendicular cross on
+# them is at or under `SATIN_MIN_CROSS_MM` (0.5) once the rails sit symmetric
+# at the nearer boundary hit and `place` dents one, so `satin_stroke` drops
+# it. The shipped default already loses THE's bars (its stems survive only
+# because the raster wander, ~19 deg, happens to lengthen the cross), and the
+# retired 45 deg bisector kept them by accident at 0.62 mm. Leaning such a
+# column as far as a target cross length demands -- acos(width / target),
+# per station from the boundary distance -- was built and measured: the
+# boundary distance collapses toward the caps, the lean fans 45-2-45 deg
+# over a 2.5 mm stem, and the crosses still come out 0.44-0.49 (H stems 0 of
+# 10 kept against the stock's 8-10). Lettering that small wants a different
+# tier (running stitch, or a bar sewn as a wide column), not a lean hack;
+# recorded as a limit, see `docs/stitch-angle-convention-2026-09-03.md` §7.
+#
+# No lean the rule produces exceeds the cap, so no compensation may divide by
+# less than its cosine: the lean is a difference of two separately unwrapped
+# sequences, and a spine turning ~60 deg between adjacent stations (nothing
+# `_smooth` + `_round_corners` + `_split_at_turns` deliver today) would push
+# the two unwraps a half-turn apart and the smoothed difference through 90 --
+# pitch x60, a 1.4 mm station gap, silently. A floor on the cosine makes that
+# impossible by construction (review, 2026-09-03).
+_LEAN_COS_FLOOR = math.cos(math.radians(90.0 - SATIN_HOUSE_MIN_SPAN_DEG))
+
+
+def _cross_angles(spine: list[tuple[float, float]], closed: bool,
+                  fallback_half_mm: float, angle_deg: float | None,
+                  ) -> tuple[list[float], list[float]]:
+    """(cross angle, lean) per station, both radians, the cross angles
+    unwrapped and smoothed exactly as `_rail_points` always laid them.
+
+    The lean is how far each station's cross sits from the cross this
+    stroke would carry with NO house angle -- the smoothed perpendicular --
+    folded to [0, 90 deg]. It is what the station spacing compensates for
+    (`_resample_by_pitch`) and what the outer-rail refinement targets. With
+    `angle_deg` None every lean is exactly 0.0 and the angles are the same
+    floats they were before this function existed.
+    """
+    n = len(spine)
+    # Tangent angles, unwrapped so a cross never flips direction mid-stroke.
+    # The tangent is measured across ONE STROKE WIDTH, not one sample. The
+    # spine is a raster staircase: over a ±1-sample baseline (a third of a
+    # millimetre here) its direction can only take the eight neighbour
+    # directions, so every cross inherits up to ±22.5 deg of quantisation
+    # noise. With ray-cast rails that noise was partly hidden — the two
+    # boundary hits smoothed it away — but a parallel-offset rail lays the
+    # cross exactly along the normal, so the path itself has to be honest. A
+    # satin column cannot resolve curvature finer than its own width, so
+    # measuring the direction over that distance discards nothing real.
+    seg = [math.dist(spine[i], spine[i + 1]) for i in range(n - 1)]
+    spacing = sorted(seg)[len(seg) // 2] if seg else 0.0
+    k = 1 if spacing <= 0 else max(1, round(fallback_half_mm * _TANGENT_WIDTHS / spacing))
+
+    raw: list[float] = []
+    for i in range(n):
+        a = spine[max(0, i - k)] if not closed else spine[(i - k) % n]
+        b = spine[min(n - 1, i + k)] if not closed else spine[(i + k) % n]
+        raw.append(math.atan2(b[1] - a[1], b[0] - a[0]) + math.pi / 2)
+
+    def settle(angles: list[float]) -> list[float]:
+        for i in range(1, n):
+            while angles[i] - angles[i - 1] > math.pi / 2:
+                angles[i] -= math.pi
+            while angles[i] - angles[i - 1] < -math.pi / 2:
+                angles[i] += math.pi
+        for _ in range(6):
+            prev = list(angles)
+            for i in range(1, n - 1):
+                angles[i] = (prev[i - 1] + prev[i] + prev[i + 1]) / 3.0
+        return angles
+
+    if angle_deg is None:
+        return settle(list(raw)), [0.0] * n
+
+    # The house angle: hold it where this stroke can span it, lean toward it
+    # where it cannot (`_clamp_to_span`). Applied BEFORE the unwrap and the
+    # smoothing so both still do their job -- a clamped sequence can still
+    # step, and the smoothing is what keeps that step from becoming a
+    # visible kink. The lean is read against the smoothed perpendicular the
+    # stroke would otherwise carry, not the raw one, so a bend's own
+    # smoothing does not count as lean.
+    house = math.radians(angle_deg)
+    plain = settle(list(raw))
+    housed = settle([_clamp_to_span(house, a - math.pi / 2.0) for a in raw])
+    leans = [abs((h - q + math.pi / 2.0) % math.pi - math.pi / 2.0)
+             for h, q in zip(housed, plain)]
+    return housed, leans
 
 
 def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
@@ -1268,45 +1429,7 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
     """
     n = len(spine)
     boundary = poly.boundary
-
-    # Tangent angles, unwrapped so a cross never flips direction mid-stroke.
-    # The tangent is measured across ONE STROKE WIDTH, not one sample. The
-    # spine is a raster staircase: over a ±1-sample baseline (a third of a
-    # millimetre here) its direction can only take the eight neighbour
-    # directions, so every cross inherits up to ±22.5 deg of quantisation
-    # noise. With ray-cast rails that noise was partly hidden — the two
-    # boundary hits smoothed it away — but a parallel-offset rail lays the
-    # cross exactly along the normal, so the path itself has to be honest. A
-    # satin column cannot resolve curvature finer than its own width, so
-    # measuring the direction over that distance discards nothing real.
-    seg = [math.dist(spine[i], spine[i + 1]) for i in range(n - 1)]
-    spacing = sorted(seg)[len(seg) // 2] if seg else 0.0
-    k = 1 if spacing <= 0 else max(1, round(fallback_half_mm * _TANGENT_WIDTHS / spacing))
-
-    angles: list[float] = []
-    for i in range(n):
-        a = spine[max(0, i - k)] if not closed else spine[(i - k) % n]
-        b = spine[min(n - 1, i + k)] if not closed else spine[(i + k) % n]
-        angles.append(math.atan2(b[1] - a[1], b[0] - a[0]) + math.pi / 2)
-
-    # The house angle, if one is set: hold it where this stroke can span it,
-    # rotate to the nearest spanning angle where it cannot. Applied BEFORE the
-    # unwrap and the smoothing below so both still do their job -- a clamped
-    # sequence can still step, and the smoothing is what keeps that step from
-    # becoming a visible kink.
-    if angle_deg is not None:
-        house = math.radians(angle_deg)
-        angles = [_clamp_to_span(house, a - math.pi / 2.0) for a in angles]
-
-    for i in range(1, n):
-        while angles[i] - angles[i - 1] > math.pi / 2:
-            angles[i] -= math.pi
-        while angles[i] - angles[i - 1] < -math.pi / 2:
-            angles[i] += math.pi
-    for _ in range(6):
-        prev = list(angles)
-        for i in range(1, n - 1):
-            angles[i] = (prev[i - 1] + prev[i] + prev[i + 1]) / 3.0
+    angles, leans = _cross_angles(spine, closed, fallback_half_mm, angle_deg)
 
     reach = max(fallback_half_mm * 4.0, 2.0)
     rail_a: list = []
@@ -1502,11 +1625,18 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
         near_cap = not closed and (i <= 2 or i >= n - 2) and not in_taper
         adv = max(math.dist(rail_a[i - 1], rail_a[i]),
                   math.dist(rail_b[i - 1], rail_b[i]))
-        if near_cap or adv <= spacing_mm * 1.3:
+        # Under a house angle the crosses may LEAN, and a leaned column's
+        # penetrations are further apart along the rail than its threads
+        # are apart across it, by 1/cos(lean) -- so the rail target here is
+        # the same perpendicular pitch `_resample_by_pitch` spaced the
+        # stations to, not the bare spacing. Lean 0 divides by exactly 1.0.
+        pitch = spacing_mm / max(math.cos(0.5 * (leans[i - 1] + leans[i])),
+                                 _LEAN_COS_FLOOR)
+        if near_cap or adv <= pitch * 1.3:
             ref_a.append(rail_a[i])
             ref_b.append(rail_b[i])
             continue
-        m = int(math.ceil(adv / spacing_mm))
+        m = int(math.ceil(adv / pitch))
         if in_taper:
             # In the taper zone the pieces must also stay ABOVE the guard
             # threshold: a bare ceil splits a 0.53 mm interval into 0.26 mm
@@ -2076,6 +2206,16 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
 
     steps = max(2, int(math.ceil(length / spacing_mm)))
     spine = _resample(spine, steps)
+    if angle_deg is not None:
+        # Density compensation for lean (2026-09-03): read how far each
+        # station's cross will lean off its perpendicular under the house
+        # angle, then re-station the spine so the pitch ACROSS the threads
+        # is `spacing_mm` -- see `_resample_by_pitch`. Skipped when nothing
+        # leans, so a column the house already runs square across keeps the
+        # stations `_resample` gave it.
+        _angles, leans = _cross_angles(spine, stroke.closed, half_mm, angle_deg)
+        if max(leans) > 1e-6:
+            spine = _resample_by_pitch(spine, leans, spacing_mm)
     rail_a, rail_b = _rail_points(poly, spine, stroke.closed, half_mm, field,
                                   spacing_mm, angle_deg)
     crosses = _short_stitch_guard(rail_a, rail_b)

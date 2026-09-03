@@ -38,10 +38,10 @@ from digitizer_core.stage6_satin import satin_shape
 from digitizer_core.textcluster import (
     SHAPE_CONTEXT_MAX_DIST,
     SATIN_ANGLE_RAYLEIGH_ALPHA,
-    SATIN_HOUSE_BISECTOR_DEG,
     SATIN_HOUSE_FOURFOLD_MIN_R,
     _cluster_house_angle_deg,
-    _bisector_deg,
+    _house_along_line_deg,
+    _line_of_text_deg,
     _fourfold_votes,
     _house_chains,
     _lettering_groups,
@@ -985,26 +985,26 @@ def test_raw_pixel_steps_carry_a_four_fold_grain_the_chord_removes():
     assert _cluster_house_angle_deg(bars, fourfold=True) is None
 
 
-def test_two_orthogonal_families_get_the_bisector():
+def test_two_orthogonal_families_get_the_stems_perpendicular():
     """Block lettering whose bars balance its stems has NO dominant direction
     in doubled-angle space -- a vertical votes at 180 deg, a horizontal at 0,
     and they cancel however much lettering there is. On Kent's Hotel Fremont
-    wordmark (twelve slab-serif capitals, 112 mm of vertical skeleton against
-    44 mm of horizontal) the doubled test read nR^2 = 4.7 against 6.9 and
-    rejected the whole word, so every bar sewed at its own angle.
+    wordmark (twelve slab-serif capitals) the doubled test read nR^2 = 4.7
+    against 6.9 and rejected the whole word, so every bar sewed at its own
+    angle.
 
     Four-fold space sees the structure the doubled space cancels: that same
     word reads nR4^2 = 53.1 on raw skeleton steps, 90 on the resampled votes
-    the reading ships on. The answer is the BISECTOR of the two families,
-    not the perpendicular to the stems: at 0 deg every horizontal is 90 deg
-    off the house and `_clamp_to_span` flips it to +/-45 on tangent noise,
-    which rendered worse than no house angle at all. At 45 deg nothing is
-    clamped and every stroke agrees.
+    the reading ships on. The answer is the perpendicular to the STEMS --
+    the stitch-angle rule (2026-09-03): the pro file and the 86 shipped
+    fonts both sew stems square and bars square, and the bars now get their
+    own perpendicular from `_clamp_to_span`'s fade instead of a +/-45 snap.
+    The 45 deg bisector this reading first shipped with is retired.
 
-    Fixture: a synthetic slab-serif row. Each glyph is a vertical stem with a
-    top bar and a bottom bar of comparable length -- an I-beam -- so vertical
-    and horizontal skeleton lengths are close and the doubled resultant is
-    near zero by construction."""
+    Fixture: a synthetic slab-serif row of I-beams whose BARS carry more
+    skeleton than their stems (8 : 6 mm per glyph) -- the case where "the
+    longer family" would answer wrong, as it did on THERMAL and on
+    enthusiast_logo. The stems are the family square to the line of text."""
     glyphs = []
     for i in range(6):
         cx = i * 8.0
@@ -1014,41 +1014,58 @@ def test_two_orthogonal_families_get_the_bisector():
         poly = stem.union(top).union(bottom)
         glyphs.append(Region(shape_id=f"I{i}", polygon=poly, thread_index=0,
                              thread_number="1", area_mm2=poly.area))
+    assert _cluster_house_angle_deg(glyphs) is None, "doubled reading fired"
     house = _cluster_house_angle_deg(glyphs, fourfold=True)
 
     assert house is not None, "two orthogonal families were not seen"
-    off = abs(_circ_delta_deg(SATIN_HOUSE_BISECTOR_DEG, house))
-    assert off < 3.0, f"expected the bisector, got {house:.1f} deg"
+    assert abs(_circ_delta_deg(0.0, house)) < 3.0, (
+        f"expected the stems' perpendicular, got {house:.1f} deg")
 
-    # And it TRACKS the artwork: rotate the row 20 deg and the bisector
-    # rotates with it, because both families rotated together.
+    # And it TRACKS the artwork: rotate the row 20 deg and the answer
+    # rotates with it, because both families and the line rotated together.
     turned = _rotated(glyphs, 20.0, origin=(0.0, 0.0))
     house_t = _cluster_house_angle_deg(turned, fourfold=True)
     assert house_t is not None
     assert abs(_circ_delta_deg(house + 20.0, house_t)) < 3.0, (house, house_t)
 
 
-def test_the_bisector_does_not_flip_when_the_axis_wraps_at_90():
+def test_the_stem_family_is_the_one_square_to_the_line_of_text():
     """The family axis is only defined mod 90, so 0.1 deg and 89.9 deg are
-    the same upright lettering -- and "axis + 45" would hand them 45 and 135,
-    mirror-image slants decided by which side of the wrap the tangent noise
-    fell. Measured on two real wordmarks the same day (2026-09-02): drone's
-    THERMAL read 0.1 -> 45.1, Hotel Fremont read 89.4 -> 134.4. The bisector
-    nearer the convention is the stable choice."""
-    assert abs(_circ_delta_deg(45.0, _bisector_deg(0.1))) < 0.2
-    assert abs(_circ_delta_deg(45.0, _bisector_deg(89.4))) < 1.0, _bisector_deg(89.4)
-    assert abs(_circ_delta_deg(45.0, _bisector_deg(89.9))) < 0.2
-    # A tilted word tracks its tilt on the same side of the convention.
-    assert abs(_circ_delta_deg(65.0, _bisector_deg(20.0))) < 1e-9
-    assert abs(_circ_delta_deg(25.0, _bisector_deg(70.0))) < 1e-9
+    the same upright lettering -- and the retired "axis + 45" handed them 45
+    and 135, mirror-image slants decided by which side of the wrap the
+    tangent noise fell (drone's THERMAL read 0.1 -> 45.1, Hotel Fremont
+    89.4 -> 134.4, measured 2026-09-02). Skeleton length cannot pick the
+    stems either: THERMAL's bars out-measure its stems 23 : 20 mm and
+    enthusiast_logo's 71 : 61 (2026-09-03). The line of text can: the house
+    is the family running along it, whichever way the axis rounds."""
+    for axis in (0.1, 89.9, 89.4, 45.0 + 44.9):
+        assert abs(_circ_delta_deg(0.0, _house_along_line_deg(axis, 179.8))) < 1.0, axis
+    # A tilted word: families at 20 and 110, the line at 20 -> house 20.
+    assert abs(_circ_delta_deg(20.0, _house_along_line_deg(20.0, 21.0))) < 1e-9
+    assert abs(_circ_delta_deg(20.0, _house_along_line_deg(110.0, 21.0))) < 1e-9
+
+    row = [Region(shape_id=f"R{i}", polygon=_rect(i * 8.0, 0.3 * (i % 2), 1.0, 6.0),
+                  thread_index=0, thread_number="1", area_mm2=6.0) for i in range(5)]
+    assert abs(_circ_delta_deg(0.0, _line_of_text_deg(row))) < 3.0
+    turned = _rotated(row, 35.0, origin=(0.0, 0.0))
+    assert abs(_circ_delta_deg(35.0, _line_of_text_deg(turned))) < 3.0
+    # No line: one glyph, or a 2 x 2 block of them, fails open.
+    assert _line_of_text_deg(row[:1]) is None
+    block = [Region(shape_id=f"B{i}", polygon=_rect(8.0 * (i % 2), 8.0 * (i // 2), 1.0, 6.0),
+                    thread_index=0, thread_number="1", area_mm2=6.0) for i in range(4)]
+    assert _line_of_text_deg(block) is None
 
 
 def test_the_four_fold_reading_is_opt_in():
-    """`config.satin_house_fourfold` defaults OFF (Kent's call, 2026-09-02):
-    it reds the chaining benchmark and piles the N on enthusiast_logo @ 93
-    mm. Off, a two-family word that the doubled reading rejects gets NO
-    angle -- byte-identical to before the reading existed -- and the
-    pipeline threads the flag through `set_lettering_house_angle`."""
+    """The FUNCTION default stays False so every caller that never mentions
+    it is byte-identical to before the reading existed; the pipeline threads
+    `config.satin_house_fourfold` through `set_lettering_house_angle`, and
+    THAT defaults ON since Kent's flip (2026-09-03, once the stitch-angle
+    rule's pass 1 un-piled the ENTHUSIAST N and the chaining benchmark read
+    4.09/1k). Off, a two-family word the doubled reading rejects gets NO
+    angle."""
+    from digitizer_core.config import PipelineConfig
+    assert PipelineConfig().satin_house_fourfold is True, "Kent's flip, 2026-09-03"
     glyphs = []
     for i in range(6):
         cx = i * 8.0
@@ -1064,11 +1081,11 @@ def test_the_four_fold_reading_is_opt_in():
     assert all("satin_angle_deg" in r.meta for r in glyphs)
 
 
-def test_one_dominant_direction_still_wins_over_the_bisector():
+def test_one_dominant_direction_still_wins_over_the_four_fold_reading():
     """The doubled reading is tried FIRST, so a stems-dominated word keeps
     the perpendicular-to-stems answer it always had: the four-fold reading
     never gets a say when the first one is significant. Vertical stems ->
-    a horizontal (0 deg) cross, not a 45 deg one."""
+    a horizontal (0 deg) cross, from the first reading."""
     regions = _row("S", 6)
     house = _cluster_house_angle_deg(regions, fourfold=True)
     assert house is not None

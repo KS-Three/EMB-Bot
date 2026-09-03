@@ -3497,3 +3497,32 @@ the exposed-stitch weight stays 2.0 (five cuts for 196 mm less visible
 travel on Fremont accepted). `logo_whitebg` goldens re-pinned (flat lane via
 the recapture tool with the pre-change worktree, machine OK, control OK;
 pushcomp `left_chest` 2166 → 2162); `towel` unchanged, still the known red.
+
+## 2026-09-03 — stitch-angle rule pass 1 built: fading lean, 30° cap, density under lean; the bisector deleted; "longer family" corrected to the line of text
+
+Kent adopted the rule and the 30° cap and chose pass 1 first. Built:
+`_clamp_to_span` holds the house within the cap and past it fades the lean
+linearly to zero at the house axis (a bar along the axis is perpendicular
+with no side; a 45° diagonal leans 22.5°); `SATIN_HOUSE_MIN_SPAN_DEG` 45 → 60;
+`_cross_angles` + `_resample_by_pitch` space stations by ∫cos(lean) so the
+thread pitch stays 0.20 mm under lean. Measured (`tools/satin_lean.py`):
+Fremont four-fold on, thread pitch 0.152 → 0.198 mm, crosses 885 → 812,
+lean p50 45 → 20 (stock floor 19), past 45° 50% → 3%; ENTHUSIAST @ 93
+0.152 → 0.200, chaining benchmark with the flag on 4.62 → 4.09/1k (ceiling
+4.1; flag off unchanged 2.43); THERMAL 0.175 → 0.195; Becker 4529 → 4524 st.
+No-house fixtures md5-identical (whitebg, alpha, ribbon, Fremont flag off).
+The four-fold answer is now the stems' perpendicular, stems = the family
+square to the line of text (`_line_of_text_deg`): "the longer family" was
+wrong on THERMAL (20 : 23 mm) and ENTHUSIAST (61 : 71). `_bisector_deg` and
+`SATIN_HOUSE_BISECTOR_DEG` deleted. `satin_house_fourfold` still OFF. Two
+findings recorded, not fixed: rail dents (`place` shrinks one whole rail 15%
+on a rotated stock bar — 1.22–1.27 vs 1.44–1.46 mm) and hairline columns
+under 0.6 mm losing crosses to the 0.5 mm minimum under any house angle (a
+lean floor was built, fanned, withdrawn). `docs/stitch-angle-convention-2026-09-03.md` §7.
+
+## 2026-09-03 (addendum) — Kent flips `satin_house_fourfold` ON
+
+On the pass-1 numbers (ENTHUSIAST benchmark 4.09/1k under 4.1, the N at
+0.200 mm pitch). Fremont 6385 → 6343 st and THERMAL 8872 → 8856 move; eleven
+other committed fixtures md5-identical with the flag on, digitize time
+unchanged, no golden moves. The function default stays False.

@@ -94,19 +94,24 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   spends its 4% on the eyes. *(re-measured 2026-08-26)*
 
 - **The satin stitch angle is DERIVED from the art, never chosen: house =
-  perpendicular to the dominant stem family (the longer family where two
-  balance — never the bisector); a stroke that cannot span it takes its own
-  perpendicular; diagonals lean toward the house by at most 30°
-  (`SATIN_HOUSE_MIN_SPAN_DEG` 45 → 60); station spacing / cos(lean) so the
-  0.4 mm pitch holds across the thread; ≥ 45° corners get the Goldman
-  through-member + butt-join.** Measured on the pro file (axial columns
+  perpendicular to the dominant stem family (where two balance, the stems
+  are the family square to the LINE OF TEXT — never the bisector, and NOT
+  "the longer family": THERMAL and ENTHUSIAST measure their bars longer);
+  a stroke that cannot span it takes its own perpendicular, the lean fading
+  to zero along the house axis rather than snapping to a side; diagonals
+  lean toward the house by at most 30° (`SATIN_HOUSE_MIN_SPAN_DEG` 45 → 60);
+  station spacing / cos(lean) so the 0.4 mm pitch holds across the thread;
+  ≥ 45° corners get the Goldman through-member + butt-join.** Measured on the pro file (axial columns
   4.7–7.9° off perpendicular, diagonals 15.9°, p90 43°), 86 shipped fonts
   (stems 1.8°, bars 3.0°, diagonals 18°, one-angle-per-glyph in 5 of 64) and
-  two expired patents. The 45° bisector `satin_house_fourfold` shipped OFF is
+  two expired patents. The 45° bisector `satin_house_fourfold` first shipped is
   what none of them do — it was a workaround for the ±45 side flip, and at
   fixed spine spacing it is 1.41× density (the ENTHUSIAST N pile). Do not
-  re-open 45 vs 135. *(ruled 2026-09-03 — Kent, both the rule and the 30°
-  cap; `docs/stitch-angle-convention-2026-09-03.md`)*
+  re-open 45 vs 135. Pass 1 (fade, cap, density) built the same day: thread
+  pitch on leaned columns 0.152 → 0.20 mm, and Kent flipped
+  `satin_house_fourfold` ON on those numbers; the join is pass 2. *(ruled
+  2026-09-03 — Kent, both the rule and the 30° cap; built and the line-of-
+  text correction measured 2026-09-03; `docs/stitch-angle-convention-2026-09-03.md` §7)*
 - **The 3 Arabic fonts can never work, engine or not:** they carry ONLY base-block
   letters and zero presentation forms. *(measured 2026-08-22 — font.json blocks)*
 - **We do not rework font data to make it importable.** A candidate is either

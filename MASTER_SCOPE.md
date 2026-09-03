@@ -141,19 +141,22 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
     `coverage_max`; [notes](docs/scorecard-baseline-attribution-2026-09-02.md))*
 
 21. **Fill travel is laid OVER columns already sewn — FIXED, DEFAULT ON
-    (Kent's flip 2026-09-03)** (`cfg.fill_travel_under_cover`, PR #323). His *"in-fill
-    doesn't look clean"* was the stitches, not the render. The column order
-    prefers a next column reachable over unsewn ground (`_reorder_for_cover`,
-    scored cuts × 25 + travel + exposed × 2, never accepted worse) and an
-    exposed bridge routes through unsewn ground. ON, fill-phase exposed
-    travel: Fremont **286 → 90 mm** (trims 47 → 52), gaulke 204 → 8 (24 → 26),
-    drone 546 → 89 (86 → 91), sunset 711 → 344 (**53 → 42**), meadow 691 → 324
-    (33 → 35); OFF md5-identical to main. Cost +7–11% time on logos, +49–67%
-    on the 263-run photo fill. The 2 : 25 exposed-vs-cut weight is Kent's.
-    *(measured 2026-09-03 — `docs/fill-travel-under-cover-2026-09-03.md`)*
+    (Kent's flip 2026-09-03)** (`cfg.fill_travel_under_cover`, PR #323). The
+    column order prefers a next column reachable over unsewn ground
+    (`_reorder_for_cover`, cuts × 25 + travel + exposed × 2, never worse) and
+    an exposed bridge routes through unsewn ground. Fill-phase exposed travel:
+    Fremont **286 → 90 mm** (trims 47 → 52), gaulke 204 → 8, drone 546 → 89,
+    sunset 711 → 344 (**53 → 42**), meadow 691 → 324; OFF md5-identical. Cost +7–11%
+    on logos, +49–67% on the 263-run photo fill; 2 : 25 is Kent's. *(measured 2026-09-03 — `docs/fill-travel-under-cover-2026-09-03.md`)*
 
 22. **Small curves sew as polygons** — `simplify_tol_mm` 0.2 makes a 2.4 mm
     counter a **9-gon, ±0.25 mm** (Kent: *"this O is not round"*); Kent's call. *(measured 2026-09-02 — same doc)*
+
+23. **Rail dents — one rail of a rotated satin column sits 15% short of the art**:
+    `place` shrinks a rail to 0.85× on a float-dust `covers` miss; a stock 3 mm bar at 25° has one whole rail at **1.22–1.27 mm** vs 1.44–1.46. In every satin golden. *(measured 2026-09-03 — area 1)*
+
+24. **Hairline columns (< 0.6 mm) lose crosses to the 0.5 mm minimum under any house
+    angle** — Fremont's 2.6 mm "THE" loses every bar (the shipped default already does). A lean floor was built, fanned 45→2→45°, withdrawn; wants a small-lettering tier. *(measured 2026-09-03 — area 1)*
 
 ### Closed — kept numbered, because ten other docs cite them by number
 
@@ -177,10 +180,8 @@ these are pointers, not status.
 
 ## Latent — gated OFF, DO NOT FLIP without rebuilding its instrument
 
-Safe only because it ships off; a live defect the moment someone flips a flag
-that reads like an optimisation. **A green suite is not evidence** — on
-chaining one concealed it. Entry 2 is the other failure mode: a flag that LEFT
-this list without the list noticing, for two weeks.
+Safe only because it ships off. **A green suite is not evidence** — on chaining
+one concealed it; entry 2 is a flag that LEFT this list unnoticed for two weeks.
 
 1. **`chain_links` — sews needle-down thread on bare fabric.** 16.15 mm exposed
    over 17 links, stock preset, green suite. Both shipped instruments were
@@ -199,9 +200,8 @@ this list without the list noticing, for two weeks.
    per-class default cannot be confirmed from a dataclass line.** Ratified
    2026-09-02, left gate 3; cost is defect 20. *(`pipeline.py:92`)*
 
-*(section added 2026-08-17 — `docs/project-review-2026-08-16.md` §1.6: chaining
-was absent from the live-defect list entirely, so a good-faith flip would have
-shipped visible thread on bare fabric with no warning in this dashboard.)*
+*(added 2026-08-17 — `docs/project-review-2026-08-16.md` §1.6: chaining was absent
+here, so a good-faith flip would have shipped bare-fabric thread unwarned.)*
 
 ---
 
@@ -334,12 +334,11 @@ its own merits.
    08-31 mechanical fixes (`start_near`, the re-snap rehome) are merged and
    unaffected. *(measured 2026-09-02 — `sequence_census.py`, 26 fixtures; tabled 2026-09-02 — Kent)*
 
-13. **RESOLVED 2026-09-03 — the stitch-angle rule is ADOPTED, lean cap 30°.**
-    Kent's ruling on the research (DOCTRINE, standing rulings): house = stems'
-    perpendicular, perpendicular fallback, diagonals lean ≤ 30°, spacing /
-    cos(lean), Goldman butt-join. Build order: density compensation first.
-    The bisector is retired; `satin_house_fourfold` stays OFF until the rule
-    is built and rendered. *(ruled 2026-09-03 — Kent)*
+13. **RESOLVED 2026-09-03 — the stitch-angle rule is ADOPTED (cap 30°), pass 1
+    BUILT:** fading lean, cap, spacing / cos(lean); bisector deleted; stems =
+    the family square to the line of text. Leaned-column thread pitch 0.152 →
+    0.20 mm; ENTHUSIAST benchmark with the flag on 4.62 → 4.09/1k (ceiling 4.1).
+    **`satin_house_fourfold` FLIPPED ON by Kent on those numbers. Next: the Goldman join (pass 2).** *(built + flipped 2026-09-03 — area 1)*
 
 ## Cross-cutting issues
 
@@ -458,10 +457,8 @@ lane runs from a fresh checkout. It carries **zero customer artwork**, so
 `prep_both.py`'s real lane — the one behind the 42.5 baseline — still needs the
 Drive copy. *(corrected 2026-08-18 — prep_both from the zip fails 0/15)*
 
-**Area 1 is deliberately NOT split into "image analysis" + "stitch planning"**,
-and the four capability gaps an external review named all have owners in code.
-Both arguments live in [area 1](docs/scope/1-auto-digitizing-quality.md).
-*(moved 2026-08-21 — rule 5)*
+**Area 1 is deliberately NOT split into "image analysis" + "stitch planning"**, and
+the four gaps an external review named have owners in code — [area 1](docs/scope/1-auto-digitizing-quality.md). *(moved 2026-08-21 — rule 5)*
 
 ### Research backlog — competitive and open-source leads
 
@@ -563,14 +560,13 @@ three (`detect_text_clusters`' candidate gating, the coherence floor, and the
 [area 1](docs/scope/1-auto-digitizing-quality.md).
 *(fixed 2026-08-27 — PRs #282/#283, mutation-checked; renders in the #283 body)*
 **And it was NOT FIRING on slab-serif lettering — a FOURTH miscalibrated
-threshold; fix BUILT, DEFAULT OFF, Kent's call (PR #321).** Fremont's capitals
-cancel in doubled-angle space (nR² 4.7 vs 6.9), so Kent's *"E heavy on top and
-bottom"* / *"T left side drops"* — corner fans the house angle cures — sewed
-per-stroke. `satin_house_fourfold` admits two orthogonal families at the 45°
-bisector: Fremont and THERMAL sew at one angle, eight fixtures byte-identical,
-and `enthusiast_logo` @ 93 mm angles ENTHUSIAST at 48°, piles the N's diagonal
-and reds the chaining benchmark 2.43 → 4.62/1k. Off, byte-identical. Waiting
-on Kent, entry 13. *(measured 2026-09-02 — `docs/hotel-fremont-fine-details-2026-09-02.md`)*
+threshold; fix BUILT (PR #321), the angle rule's pass 1 on top (2026-09-03).** Fremont's capitals cancel in doubled-angle space (nR² 4.7 vs
+6.9). `satin_house_fourfold` admits two orthogonal families and sets the STEMS'
+perpendicular (stems = the family square to the line of text; the 45° bisector
+is deleted); a bar takes its own perpendicular with the lean fading to zero, a
+diagonal leans ≤ 30°, stations spread by cos(lean): thread pitch Fremont
+**0.152 → 0.198 mm**, ENTHUSIAST 0.152 → 0.200, chaining benchmark **4.62 →
+4.09/1k** (ceiling 4.1). **DEFAULT ON, Kent's flip**; Fremont and THERMAL move, 11 fixtures identical. *(measured 2026-09-03 — area 1)*
 
 **Mechanism 2 — pull comp's min-feature guard scoped to `poly.interiors` —
 PROTOTYPED AND COSTED, not shipped.** An exterior-pocket branch holds 15 real
