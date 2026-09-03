@@ -233,8 +233,20 @@ def rail_overhang(art: Polygon, pts) -> float:
 # engine ("2d173fc202dd3105b5f6", 3259, 10352 before AND after here) and
 # stays un-re-pinned for the reason above; both `ribbon_curve` entries
 # reproduce.
+# RE-PINNED 2026-09-03, `left_chest` ONLY, for FILL_ROW_MM 0.40 -> 0.15 (Kent's
+# ruling that day, DOCTRINE standing rulings): every fill row in the design is
+# now one of 2.67x as many, 1982 -> 4558 stitches, and the DST is 6521 ->
+# 14255 bytes. Earned the same way as the two pins above: the pre-change tree
+# (main at 1679e7d, FILL_ROW_MM 0.40) reproduces ("2fddf0de165cb560bc25",
+# 1982, 6521) byte-for-byte on this machine, so what moved is the engine.
+# Both `ribbon_curve` entries are satin-only and reproduce unchanged before
+# and after — the control that says the change is confined to fills. `towel`
+# stays un-re-pinned for the standing reason: the pre-change tree returns
+# ("6f13f5f4cc0274427618", 2997, 9566) here, not the committed tuple, so this
+# machine may not write it (the new engine gives ("35efa20c9dfed33ca4c9",
+# 6167, 19079) here, recorded for whoever re-pins it where it reproduces).
 GOLDEN_FLAG_OFF = {
-    ("logo_whitebg.png", "left_chest"): ("2fddf0de165cb560bc25", 1982, 6521),
+    ("logo_whitebg.png", "left_chest"): ("6265b3856d27f635bc0b", 4558, 14255),
     ("logo_whitebg.png", "towel"): ("98c918e7c1576e46f623", 3258, 10349),
     ("ribbon_curve.png", "left_chest"): ("59dfa86e875344fcb491", 999, 3521),
     ("ribbon_curve.png", "hat_front"): ("7ffa3be910eae7c0cbe2", 1001, 3527),

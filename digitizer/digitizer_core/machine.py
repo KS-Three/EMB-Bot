@@ -44,9 +44,37 @@ FILL_STITCH_MM = 3.0
 # a tatami row at all (coverage 1.8-2.3 matches a satin reading, not a fill
 # one) — but 43 commissioned cap-logo files sew a genuine ~0.19 mm area-fill
 # row pitch (traverse spans 6-54 mm with 3-17 penetrations each rule out
-# satin or a fan column). Which population our own fills should match is
-# still unresolved, so 0.40 stands pending sew-out card block 2.
-FILL_ROW_MM = 0.40
+# satin or a fan column). Which population our own fills should match was
+# unresolved until 2026-09-03.
+#
+# SETTLED BY KENT, 2026-09-03 — the professional's pitch, 0.15 mm. Two pieces
+# of evidence, one of them cloth: his first stitch-out (2026-09-01, this
+# engine at 0.40) showed fabric between every fill row, which another reading
+# of the macro photos named the dominant visual problem; and the commissioned
+# files in `Embroidery Files.zip`, read as ROWS by `tools/row_pitch_union.py`
+# (the union of every pass — what the cloth sees), lay their fills at 0.141 mm
+# (Hotel Fremont patch ground, ONE pass, 52 rows in 8 mm), 0.169 and 0.166
+# (both Becker letter bodies). The corpus's own ~0.19 commissioned population
+# above is the same number read a third way. `tools/fill_pitch.py` had read
+# those same files at 0.37-0.40 per pass because its autocorrelation locks
+# onto a tatami's penetration cycle (3 x 0.14 = 0.42), not its rows — see
+# scope-history 2026-09-03.
+#
+# Physical consequences, all deliberate: fill stitch counts rise ~2.7x, the
+# coverage grader's thresholds below are re-based in fill LAYERS so a plain
+# fill still grades clean, the blend tier's bands (FILL_ROW_MM * n) keep
+# their union at this pitch, and fabric presets still scale it
+# (`density_adjust`: pile at 0.85-0.90 sews tighter still). Underlay has its
+# own constants (UNDERLAY_ZIGZAG_MM, UNDERLAY_LATTICE_MM) and does not move.
+# The two-pass density boost below is now superseded (it would land at
+# 0.075) and stays opt-in. Stiffness and pucker on light fabrics are the risk
+# Kent accepted; sew-out card block 2 now VERIFIES this rather than deciding it.
+FILL_ROW_MM = 0.15
+
+# The pitch this engine sewed until 2026-09-03, kept as a named number because
+# every coverage figure recorded before that date was measured against it and
+# the grader's re-basing below is stated in terms of it.
+FILL_ROW_MM_BEFORE_2026_09_03 = 0.40
 
 # Penetrations realign every Nth row. Without a stagger, every row starts its
 # stitches at the same offset and the needle holes line up into visible
@@ -231,6 +259,19 @@ CONTOUR_MIN_RING_AREA_MM2 = 0.1
 # invisible next to a healthy disc's own centre, all measured before the same
 # day's terminal-refine + finishing-pass shrink above).
 CONTOUR_BARE_CORE_MM = 0.13
+
+# The ring tier's default spacing. Until 2026-09-03 this was simply FILL_ROW_MM
+# ("contour rings are the same 0.40 mm apart as tatami rows"), and every
+# figure the bare-circle instrument above is calibrated on — the structural
+# centre dot, the starved line, the fixture readings in test_barecircle.py —
+# was measured at that 0.40. When FILL_ROW_MM moved to 0.15 (Kent's ruling,
+# DOCTRINE standing rulings) the contour tier did NOT follow: it is gated OFF
+# (MASTER_SCOPE, "Latent — gated OFF, DO NOT FLIP without rebuilding its
+# instrument"), and whether its rings should sit at the professional's fill
+# pitch is exactly the instrument rebuild that gate asks for. Held here at
+# the old value so the tier and its instrument stay byte-identical and
+# calibrated; `PipelineConfig.contour_spacing_mm` still overrides per job.
+CONTOUR_RING_MM = 0.40
 
 # Mitre limit on the inward offset. The reference implementations use 10, which
 # lets a sharp corner throw a long spike the needle has to chase out and back.
@@ -726,6 +767,18 @@ COVERAGE_CELL_MM = 1.0
 # phase or moire artifact against the cell grid.
 COVERAGE_SUBSAMPLE_MM = 0.1
 
+# Samples ACROSS the ribbon's width, each owning an equal strip of it. Was 2
+# (one per half-ribbon, at +-0.1 mm of the centreline) while every pitch in
+# play was 0.40: rows at 0.40 put those samples on an exact 0.2 mm lattice,
+# five per cell, and one fill read 1.000. At FILL_ROW_MM 0.15 the same two
+# samples landed 13 in one cell and 14 in the next, so one plain fill read
+# 2.4 / 2.8 cell to cell where the truth is 2.667 — a 7% instrument artifact
+# that a stacking threshold would have graded. Eight strips of 0.05 mm sit
+# on a lattice that 0.15, 0.20 and 0.40 all divide, so a fill at any of
+# those pitches reads its true value to within one strip (+-1%). Set
+# 2026-09-03 with the ruling that moved the pitch.
+COVERAGE_ACROSS_SAMPLES = 8
+
 # Law 27's own stack arithmetic: "the safe classic stack is underlay + fill +
 # satin detail ~= 2.5 units. Never more than two full-density fills stacked."
 # Both numbers are tagged [D] in the playbook (our own derivation, medium
@@ -763,7 +816,20 @@ COVERAGE_SUBSAMPLE_MM = 0.1
 # max 1.59. Typical output sits well under 2.5 either side of the change;
 # nothing that was clean before now grazes the line, and nothing that should
 # warn is newly silenced by it.
-COVERAGE_WARN_UNITS = 2.5
+#
+# RE-BASED 2026-09-03 with FILL_ROW_MM's move to the professional's 0.15 mm.
+# The unit is still physical (one tiled layer of 0.40 mm ribbon), so a single
+# plain fill now reads 0.40 / 0.15 = 2.67 units — law 27's whole stack, on
+# its own, before underlay or a border. The law's arithmetic was written in
+# FILL LAYERS ("underlay + fill + satin detail", "never more than two full-
+# density fills"), so the thresholds are now stated that way: the old 2.5 and
+# 3.5 were multiples of a fill that read 1.0, and they stay the same
+# multiples of a fill that reads COVERAGE_FILL_LAYER_UNITS. Nothing about the
+# stacks the grader condemns has changed; what one fill costs has. Every
+# coverage number recorded before this date is in the old base and is 2.67x
+# smaller than the same stack reads today.
+COVERAGE_FILL_LAYER_UNITS = COVERAGE_THREAD_W_MM / FILL_ROW_MM
+COVERAGE_WARN_UNITS = 2.5 * COVERAGE_FILL_LAYER_UNITS
 
 # COVERAGE_BLOCK_UNITS = 3.5 — left EXACTLY as-is, 2026-08-05. Per
 # docs/machine-physics-playbook-2026-07-31.md line ~84 this line (unlike
@@ -778,7 +844,7 @@ COVERAGE_WARN_UNITS = 2.5
 # untouched pending Kent's physical test — moving it on desk math alone
 # would be exactly the self-fit mistake WARN's recalibration was trying to
 # get away from.
-COVERAGE_BLOCK_UNITS = 3.5
+COVERAGE_BLOCK_UNITS = 3.5 * COVERAGE_FILL_LAYER_UNITS   # re-based 2026-09-03, see COVERAGE_WARN_UNITS
 
 
 # --- Chaining: the needle-down link between two shapes (laws 59-62) ---------

@@ -1163,6 +1163,17 @@ def _fill_row_advance_mm(plan: StitchPlan) -> tuple[float | None, float | None]:
     for _b, run in plan.iter_runs():
         if run.kind != stitches.FILL:
             continue
+        # A blend-tier shade layer (stage6_blend stamps `shade_thread_index`
+        # on every run it emits) sews its rows at FILL_ROW_MM * n by
+        # construction and interleaves with its n-1 siblings, so the UNION is
+        # the target and the per-run advance is n times it. Judging those
+        # runs here read a pure four-shade ramp as "4.0x sparse" the day the
+        # row moved to 0.15 (2026-09-03; at 0.40 the 1.6 mm advances had
+        # fallen outside what this reader takes for rows). The layer's own
+        # advance is the tier doing what it said; blend_fill's plain-tatami
+        # fallback runs carry no stamp and are still measured.
+        if run.shade_thread_index is not None:
+            continue
         pts = run.points
         if len(pts) < 3:
             continue
@@ -1471,7 +1482,9 @@ def _coverage_map(plan: StitchPlan,
     ny = int(math.ceil((float(seg[:, :, 1].max()) + thread_w - y0) / cell_mm)) + 1
 
     # Sample each ribbon on a lattice: along the stitch at a quarter thread
-    # width, and twice across it (each sample owning half the ribbon width).
+    # width, and `machine.COVERAGE_ACROSS_SAMPLES` times across it, each sample
+    # owning an equal strip of the ribbon width (see that constant for why two
+    # strips misread a 0.15 mm fill by 7%).
     n = np.maximum(1, np.ceil(ln / machine.COVERAGE_SUBSAMPLE_MM).astype(np.int64))
     idx = np.repeat(np.arange(len(seg)), n)
     starts = np.concatenate([[0], np.cumsum(n)[:-1]])
@@ -1479,11 +1492,13 @@ def _coverage_map(plan: StitchPlan,
     px = seg[idx, 0, 0] + d[idx, 0] * t
     py = seg[idx, 0, 1] + d[idx, 1] * t
     ux, uy = -d[idx, 1] / ln[idx], d[idx, 0] / ln[idx]      # unit normal
-    # Thread area this sample carries, halved because two samples share it.
-    area = (ln[idx] / n[idx]) * thread_w * w[idx] / 2.0
+    # Thread area this sample carries, split evenly over the strips across.
+    across = max(1, int(machine.COVERAGE_ACROSS_SAMPLES))
+    area = (ln[idx] / n[idx]) * thread_w * w[idx] / across
 
     grid = np.zeros(ny * nx, np.float64)
-    for off in (-0.25 * thread_w, 0.25 * thread_w):
+    for k in range(across):
+        off = ((k + 0.5) / across - 0.5) * thread_w
         cx = ((px + ux * off - x0) / cell_mm).astype(np.int64)
         cy = ((py + uy * off - y0) / cell_mm).astype(np.int64)
         np.clip(cx, 0, nx - 1, out=cx)

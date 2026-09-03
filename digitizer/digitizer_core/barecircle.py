@@ -158,7 +158,7 @@ def starved_threshold_mm(spacing_mm: float) -> float:
         fix and its own before/after measurements) — the bare dot every
         healthy shape leaves at its own centre, MEASURED with this
         instrument at the shipped 0.40 mm spacing. The `(spacing -
-        FILL_ROW_MM)` term carries the one part of that residue that scales
+        CONTOUR_RING_MM)` term carries the one part of that residue that scales
         with density — the gap between the dropped terminal ring and the
         last sewn one — so an opened-up ring tier is allowed a
         proportionally wider centre.
@@ -173,7 +173,8 @@ def starved_threshold_mm(spacing_mm: float) -> float:
     new `CONTOUR_BARE_CORE_MM`, not just the constant swapped in). Current
     calibration against measured ground truth (`tests/test_barecircle.py`
     reproduces all of these): tatami's worst bare spot on the fixture logo
-    is 0.090 mm — still under this line but no longer an order of magnitude
+    was 0.090 mm at the 0.40 fill row (0.000 since FILL_ROW_MM moved to 0.15
+    on 2026-09-03; the ring tier itself is held at CONTOUR_RING_MM) — still under this line but no longer an order of magnitude
     under it, since a healthy contour fixture is now close to tatami's own
     floor (discs 0.067-0.070 mm, dumbbell 0.129 mm — all comfortably silent).
     For history, the shapes the old area gate false-fired on (whitebg
@@ -186,5 +187,5 @@ def starved_threshold_mm(spacing_mm: float) -> float:
     pre-shrink) and still fires, at 34 % past the current 0.33 mm line.
     """
     return (machine.CONTOUR_BARE_CORE_MM
-            + (spacing_mm - machine.FILL_ROW_MM)
+            + (spacing_mm - machine.CONTOUR_RING_MM)
             + spacing_mm / 2.0)
