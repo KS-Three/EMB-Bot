@@ -37,7 +37,7 @@ the textbook. Those were the useful part.
 | 3 | Does this object need underlay | Python laid a center run under every satin stroke, sub-mm letters included | `stage7_sequence.py` satin branch | **built** (§4) |
 | 4 | Enlarge, never close, the counters | Bold adds 0.3 mm to pull comp with no counter guard | `digitize.js` | **built** after PR #331 (§9) |
 | 5 | Recognise the letters, then re-set them | Convert-to-text only saw rescued small shapes; ordinary wordmarks never got the badge | `textcluster.py` _candidates | **built** (§6) |
-| 6 | Corners and tight bowls are where it fails | No short-stitch handling in the font path | `satinplay.js` | open, needs width gating |
+| 6 | Corners and tight bowls are where it fails | No short-stitch handling in the font path | `satinplay.js` | **built** after PR #332 (§10) |
 | 7 | Small text wants more open density | Fixed 0.4 mm pitch in both engines | `machine.py` | gate 1 — card block 5 |
 
 ### Where the piece is wrong for this project
@@ -58,8 +58,9 @@ Asked which gaps to take on: **1, 2 and 5**, all three. Asked whether the
 Python engine should adopt the JS engine's 5 mm underlay rung (item 3): **gate
 it now**, using the existing number rather than a new one. Item 6 (short
 stitches in the font path) and item 7 (density) were not chosen and are
-unchanged. Item 4 (a counter guard on Bold's widening) was Kent's pick for
-the follow-up once PR #331 merged, and is §9.
+unchanged at first. Item 4 (a counter guard on Bold's widening) was Kent's
+pick for the follow-up once PR #331 merged (§9), and item 6 (short stitches)
+his pick after that (§10). Item 7 stays gate 1.
 
 One thing went a step past the approved wording, and is flagged here and in
 the PR: the font-path guards were approved as *"warn only, no clamp"*, and
@@ -397,3 +398,75 @@ throughout; normal and thin untouched, weight reported on the fabric);
 `test/digitize.test.js` +1 (geneva "Kent" at 2.6 mm caps holds, stitch count
 within 1% of unguarded, thin and normal identical with the guard off).
 Engine and Studio suites green; the run-font pins did not move.
+
+## 10. Item 6 — short stitches on the inside of bends (follow-up, Kent's pick after PR #332)
+
+**Mechanism.** On the inside of a bend the rail is shorter than the
+centerline, so the penetrations along it land closer together than the
+station spacing; under a few tenths of a millimetre the needle re-enters the
+hole it just made and the edge frays. Every digitizing package handles this
+("short stitches"), Law 53 records their numbers, and the Python engine has
+had it since 2026-08-07 (`_short_stitch_guard` / `_pull_short`); the font
+path had nothing. Law 53's warning is the reason it was not built earlier:
+Melco documents that the same feature *"can inadvertently generate
+excessively small stitches in detailed areas like narrow lettering"*, so it
+had to ship width-gated or not at all.
+
+**What ships.** `emitZigzag` mirrors the Python guard with its numbers
+(`SHORT_STITCH_AT_MM` 0.3, `_PULL` 0.35, `_MAX_MM` 0.6 — mirrors of
+`machine.py`'s, move both or neither): on every other station, a penetration
+that landed under 0.3 mm from the previous one on its rail is pulled back
+along the cross by 0.35 of it, at most 0.6 mm (two same-hole radii — uncapped,
+0.35 of a 2.78 mm cross moved a point 0.97 mm and read as two 1 mm same-rail
+gaps), and never past the point where the cross would fall under the cross
+floor (1.01×, so rounding cannot hand it to the drop check). That last bound
+IS the width gate: the pull fades to nothing as the column narrows toward
+0.5 mm, so narrow lettering never gets a stitch under the floor out of it.
+The comparison is against the previous station as placed (even stations are
+never pulled) and the second rail is pulled toward the first rail's
+already-pulled point, exactly as the Python code reads its lists. On with the
+cross floor and never without it (`crossFloor: false`, the legacy stream, is
+byte-identical); `shortStitch: false` turns it off alone for pins and
+measurement. `lettering.shortStitches` counts the pulls. No Studio note.
+
+**Measured**, geneva_simple at a 10.8 mm cap, the Python engine's own
+yardstick (share of same-rail advances under the 0.3 mm trip; its test bar is
+5%):
+
+| glyph | pulls | under 0.3 mm, before → after | in the 0.3–0.5 band |
+|---|---|---|---|
+| S | 29 | 43.1% → **0.0%** | 16.9% → 16.2% |
+| C | 12 | 21.6% → 0.9% | 67.2% → 67.2% |
+| O | 8 | 12.9% → 0.8% | 87.1% → 87.1% |
+| I | 0 | 0.0% → 0.0% | 100% → 100% |
+| FRITSCH | 57 | 13.5% → 0.1% | 76.7% → 76.8% |
+
+Pulls measure 0.38–0.60 mm (median at the cap). Library sweep, "Fritsch" in
+every shipped font: **stitch counts identical on and off** at both sizes (the
+guard moves penetrations, it never adds or drops one); at 25 mm 59 of 83
+fonts get a short stitch, 3,265 pulls, the mean under-trip share 5.6% →
+3.5%; at 50 mm 3,817 pulls, 2.7% → 1.0%. What remains is the width gate
+doing its job: the worst residual bunching sits on faces whose columns are
+at the floor at a 5.5 mm cap — jersey_15 28.2% unchanged, pixel10 28.3% →
+22.1%, mai_en_fleur 19.2% → 19.5% — where a pull would have made a stitch
+under the floor, which is the trap Law 53 names. At 50 mm the same faces
+read 8.8% → 1.3% (pixel10) and 9.7% → 9.2% (mai_en_fleur, still mostly
+hairline).
+
+**Two tests had to change their yardstick, not their claim.** The underlay
+placement tests rebuild a column's rails from the satin's own penetrations,
+and a short stitch deliberately moves a penetration off its rail — the
+centre run read as t = 0.769 off-axis and an edge-run point as outside the
+column (t = 0). The underlay is its own run and never moved; those tests now
+read the rails from the same layout with the guard off, run for run.
+
+**Tests.** `test/satinplay.test.js` +3 (a 1 mm inner-radius bend: odd
+stations pulled by the 0.6 mm cap, cleared of the previous hole, the outer
+rail and even stations untouched, no cross under the floor, count matches;
+a straight column and a gentle bend byte-identical, the legacy stream blind
+to the option; the width gate on a 0.55 mm bent column — every cross stays
+at 1.01× the floor, and a column at the floor is untouched);
+`test/satinfont.test.js` +1 (S / C / O bunching to ≤ 2%, I identical, no
+stitch added or dropped, crossFloor:false blind to it); `test/digitize.test.js`
++1 (stitch count identical, every moved penetration ≤ 0.6 mm). The "AB"
+snapshot (701 stitches, first and last stitch) did not move.

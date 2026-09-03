@@ -1004,3 +1004,24 @@ test("buildLetteringDesign: the counter guard holds bold where a real font's cou
   assert.strictEqual(normal.lettering.weightMm, 0);
   assert.strictEqual(normal.lettering.counterHeld, 0);
 });
+
+test("buildLetteringDesign: short stitches move penetrations on the inside of bends and never change the stitch count", () => {
+  const garment = { widthIn: 8, heightIn: 8 };
+  const font = require("../test/fixtures/fonts/geneva_simple.json");
+  const base = { garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false, targetWidthMm: 30 };
+  const on = DG.buildLetteringDesign(font, "SOC", base);
+  const off = DG.buildLetteringDesign(font, "SOC", { ...base, shortStitch: false });
+  assert.strictEqual(on.stitchCount, off.stitchCount);
+  assert.ok(on.lettering.shortStitches > 0);
+  assert.strictEqual(off.lettering.shortStitches, 0);
+  assert.notDeepStrictEqual(on.stitches, off.stitches);
+  // Every penetration the guard moved travelled at most 0.6 mm (6 DST units).
+  let moved = 0;
+  for (let i = 0; i < on.stitches.length; i++) {
+    const a = on.stitches[i], b = off.stitches[i];
+    if (a.type !== "stitch") continue;
+    const d = Math.hypot(a.x - b.x, a.y - b.y);
+    if (d > 0) { moved++; assert.ok(d <= 6 + 1, `a short stitch moved ${d / 10} mm, over the 0.6 mm cap`); }
+  }
+  assert.ok(moved > 0 && moved <= on.lettering.shortStitches + 2);
+});

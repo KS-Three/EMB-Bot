@@ -52,6 +52,16 @@ against the engines. Full record: `docs/design-review-fine-lettering-2026-09-03.
   scripts the guard changes what bold IS: mai_en_fleur's connectors stay
   bean runs (1,393 stitches) instead of becoming dense satin (3,043).
 
+- **Short stitches in the font path (second follow-up PR).** The Python
+  `_short_stitch_guard` mirrored into `emitZigzag` with its numbers (0.3 /
+  0.35 / 0.6 mm), width-gated by the cross-floor bound (Law 53: Melco's
+  "excessively small stitches in narrow lettering" trap), on only with the
+  cross floor. geneva S: 43% → 0% of same-rail advances under the trip;
+  stitch counts never change. Faces at the floor at 5.5 mm caps keep their
+  bunching because the gate refuses the pull — that is the gate working.
+  Two underlay tests read rails off the satin's own penetrations and broke
+  on the moved points; they now read an unpulled reference layout.
+
 ## Traps hit
 
 - The JS "warn only" approval: a per-cross drop alone leaves the survivors
