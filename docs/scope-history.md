@@ -3545,3 +3545,19 @@ lettering logos. Review: closed rings had been opened at corners HEAD never
 cut (rotation-dependent on a hexagon) and the twig side depended on chain
 direction — both fixed before merge. Capitals measured; lowercase bowls join
 too and are unmeasured. `docs/stitch-angle-convention-2026-09-03.md` §9.
+
+## 2026-09-03 — round curves (defect 22) built OFF; fill-dust half-stitches found (defect 25)
+
+`PipelineConfig.curve_turn_deg` (None = today, byte-identical): each
+Douglas-Peucker edge is re-read against the raw contour arc it replaced and
+split at the arc's midpoint until the chord's sagitta is under min(0.2 mm,
+chord × turn/8), floored at one pixel; inserted vertices are a ±2 px mean.
+At 15°, Fremont's O counter goes 9 → 33 vertices and 47° → 17° per vertex,
+its sewn inner rail σ 0.038 → 0.026 mm; a rotated rectangle keeps 4
+vertices; Becker at 4 px/mm is unchanged. Max-deviation splitting was tried
+first and re-picks staircase corners (90° turns on a circle). Underneath:
+`split_long_moves` halves any fill step measuring 3.0000000000000004 —
+8–10% of the stitches on whitebg, Fremont and sunset are spurious 1.5 mm
+half-stitches, and any polygon change re-rolls which rows get them. One
+comparison fixes it; both it and the curve flip re-pin the fill goldens, so
+they are held for one round on Kent's word. `docs/round-curves-2026-09-03.md`.

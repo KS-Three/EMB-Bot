@@ -140,22 +140,24 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
     (`effective_split_tonal` ORs flag with class). *(2026-09-02 — bisect on
     `coverage_max`; [notes](docs/scorecard-baseline-attribution-2026-09-02.md))*
 
-21. **Fill travel is laid OVER columns already sewn — FIXED, DEFAULT ON
-    (Kent's flip 2026-09-03)** (`cfg.fill_travel_under_cover`, PR #323). The
-    column order prefers a next column reachable over unsewn ground
-    (`_reorder_for_cover`, cuts × 25 + travel + exposed × 2, never worse) and
-    an exposed bridge routes through unsewn ground. Fill-phase exposed travel:
-    Fremont **286 → 90 mm** (trims 47 → 52), gaulke 204 → 8, drone 546 → 89,
-    sunset 711 → 344 (**53 → 42**), meadow 691 → 324; OFF md5-identical. Cost +7–11%
-    on logos, +49–67% on the 263-run photo fill; 2 : 25 is Kent's. *(measured 2026-09-03 — `docs/fill-travel-under-cover-2026-09-03.md`)*
+21. **Fill travel is laid OVER columns already sewn — FIXED, DEFAULT ON (Kent's flip
+    2026-09-03)** (`cfg.fill_travel_under_cover`, PR #323): the column order prefers a next
+    column reachable over unsewn ground (`_reorder_for_cover`, cuts × 25 + travel + exposed × 2,
+    never worse) and an exposed bridge routes through unsewn ground. Fill-phase exposed travel
+    Fremont **286 → 90 mm** (trims 47 → 52), gaulke 204 → 8, drone 546 → 89, sunset 711 → 344
+    (**53 → 42**), meadow 691 → 324; OFF md5-identical; +7–11% time on logos, +49–67% on the 263-run photo fill. *(measured 2026-09-03 — `docs/fill-travel-under-cover-2026-09-03.md`)*
 
-22. **Small curves sew as polygons** — `simplify_tol_mm` 0.2 makes a 2.4 mm
-    counter a **9-gon, ±0.25 mm** (Kent: *"this O is not round"*); Kent's call. *(measured 2026-09-02 — same doc)*
+22. **Small curves sew as polygons — FIX BUILT, DEFAULT OFF, Kent's flip** (`curve_turn_deg`; None =
+    today): a turn-per-vertex bound re-reads each Douglas-Peucker edge against its raw arc, split at the
+    midpoint, floored at one pixel. Fremont's counter **9 → 33 vertices, 47° → 17°**, inner rail σ 0.038 → 0.026 mm; off md5-identical; the flip re-pins curved goldens. *(measured 2026-09-03 — `docs/round-curves-2026-09-03.md`)*
 
-23. **Rail dents — one rail of a rotated satin column sits 15% short of the art**:
-    `place` shrinks a rail to 0.85× on a float-dust `covers` miss; a stock 3 mm bar at 25° has one whole rail at **1.22–1.27 mm** vs 1.44–1.46. In every satin golden. *(measured 2026-09-03 — area 1)*
+23. **Rail dents — one rail of a rotated satin column sits 15% short of the art**: `place` shrinks a rail to 0.85× on a float-dust `covers` miss; a stock 3 mm bar at 25° has one whole rail at **1.22–1.27 mm** vs 1.44–1.46. In every satin golden. *(measured 2026-09-03 — area 1)*
 
 24. **Hairline columns (< 0.6 mm) lose crosses to the 0.5 mm minimum under any house angle** — Fremont's 2.6 mm "THE" loses every bar (the default already does); a lean floor fanned and was withdrawn; wants a small-lettering tier. *(measured 2026-09-03 — area 1)*
+
+25. **Fill stitches HALVED by float dust at the stitch-length threshold** — `split_long_moves(path,
+    stitch_mm)` splits a 3.0000000000000004 mm grid step into two 1.5s: **8.3% of whitebg's stitches, 9.0% of
+    Fremont's, 10.3% of sunset's** are unwanted penetrations, and any polygon change re-rolls which rows get it (the ±10% stitch-count noise). One-line fix; every fill golden re-pins. `tools/fill_dust.py`. *(measured 2026-09-03 — same doc)*
 
 ### Closed — kept numbered, because ten other docs cite them by number
 
@@ -333,10 +335,9 @@ its own merits.
    08-31 mechanical fixes (`start_near`, the re-snap rehome) are merged and
    unaffected. *(measured 2026-09-02 — `sequence_census.py`, 26 fixtures; tabled 2026-09-02 — Kent)*
 
-13. **RESOLVED 2026-09-03 — the stitch-angle rule is ADOPTED (cap 30°), pass 1
-    BUILT:** fading lean, cap, spacing / cos(lean); bisector deleted; stems =
-    the family square to the line of text. Leaned-column thread pitch 0.152 →
-    0.20 mm; ENTHUSIAST benchmark with the flag on 4.62 → 4.09/1k (ceiling 4.1).
+13. **RESOLVED 2026-09-03 — the stitch-angle rule is ADOPTED (cap 30°), pass 1 BUILT:**
+    fading lean, cap, spacing / cos(lean); bisector deleted; stems = the family square to the
+    line of text. Leaned-column thread pitch 0.152 → 0.20 mm; ENTHUSIAST benchmark 4.62 → 4.09/1k.
     **Flag FLIPPED ON by Kent; the Goldman join (pass 2) BUILT: trims flat, benchmark 3.81/1k, bare fabric drone 2.8 → 2.2%.** *(2026-09-03 — area 1)*
 
 ## Cross-cutting issues
@@ -558,16 +559,15 @@ three (`detect_text_clusters`' candidate gating, the coherence floor, and the
 7-of-11 lettering regions that sew as FILL) are in
 [area 1](docs/scope/1-auto-digitizing-quality.md).
 *(fixed 2026-08-27 — PRs #282/#283, mutation-checked; renders in the #283 body)*
-**And it was NOT FIRING on slab-serif lettering — a FOURTH miscalibrated
-threshold; fix BUILT (PR #321), the angle rule's pass 1 on top (2026-09-03).** Fremont's capitals cancel in doubled-angle space (nR² 4.7 vs
-6.9). `satin_house_fourfold` admits two orthogonal families and sets the STEMS'
-perpendicular (stems = the family square to the line of text; the 45° bisector
-is deleted); a bar takes its own perpendicular with the lean fading to zero, a
-diagonal leans ≤ 30°, stations spread by cos(lean): thread pitch Fremont
-**0.152 → 0.198 mm**, ENTHUSIAST 0.152 → 0.200, chaining benchmark **4.62 →
-4.09/1k** (ceiling 4.1). **DEFAULT ON, Kent's flip.** Pass 2, the Goldman corner join
-(≥ 45° turn + reflex boundary corner, joined inside ONE stroke): trims flat, benchmark
-3.81, bare fabric drone 2.8 → 2.2%, Becker 6.0 → 5.5%; capitals measured, lowercase not. *(measured 2026-09-03 — area 1)*
+**And it was NOT FIRING on slab-serif lettering — a FOURTH miscalibrated threshold; fix BUILT
+(PR #321), the angle rule's pass 1 and the Goldman join on top (2026-09-03).** Fremont's capitals
+cancel in doubled-angle space (nR² 4.7 vs 6.9). `satin_house_fourfold` (DEFAULT ON, Kent's flip)
+admits two orthogonal families and sets the STEMS' perpendicular (the family square to the line of
+text; bisector deleted); a bar takes its own perpendicular with the lean fading to zero, a diagonal
+leans ≤ 30°, stations spread by cos(lean); ≥ 45° corners butt-join inside one stroke. Thread pitch
+Fremont **0.152 → 0.198 mm**, ENTHUSIAST 0.152 → 0.200; benchmark **4.62 → 3.81/1k**; bare fabric
+drone 2.8 → 2.2%, Becker 6.0 → 5.5%; crosses past 45° off perpendicular drone 26 → 17%. Capitals
+measured, lowercase not. *(measured 2026-09-03 — area 1)*
 
 **Mechanism 2 — pull comp's min-feature guard scoped to `poly.interiors` —
 PROTOTYPED AND COSTED, not shipped.** An exterior-pocket branch holds 15 real

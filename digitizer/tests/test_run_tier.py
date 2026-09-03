@@ -312,3 +312,80 @@ def test_run_outline_is_a_closed_bean_circuit():
     d_runs, d_report = run_outline(dot, "S2", entry=None, trim_at_mm=3.0)
     assert d_report["empty"] and d_runs == [], \
         "below three bean stations there is nothing honest to sew"
+
+
+# --- curves sewn as curves: `curve_turn_deg` (2026-09-03, defect 22) --------
+
+
+def _disc_mask(radius_px: float, size: int) -> np.ndarray:
+    yy, xx = np.mgrid[0:size, 0:size]
+    return np.hypot(xx - size / 2.0, yy - size / 2.0) <= radius_px
+
+
+def _vertex_turns_deg(poly) -> np.ndarray:
+    pts = np.asarray(poly.exterior.coords[:-1], dtype=float)
+    v = np.roll(pts, -1, axis=0) - pts
+    ang = np.degrees(np.arctan2(v[:, 1], v[:, 0]))
+    return np.abs((np.diff(np.append(ang, ang[0])) + 180.0) % 360.0 - 180.0)
+
+
+def test_curve_turn_deg_none_is_byte_identical_to_douglas_peucker():
+    """The default has to be invisible: every golden is pinned to plain
+    Douglas-Peucker at `simplify_tol_mm`, so None must give the same
+    polygon, vertex for vertex."""
+    size = 400
+    mask = _disc_mask(75.0, size)          # a 2.4 mm-radius counter at 31 px/mm
+    p = Prep(rgb=np.zeros((size, size, 3), np.uint8), bg_mask=np.zeros((size, size), bool),
+             px_per_mm=31.25, art_bbox=(0, 0, size, size))
+    a, _ = vectorize([RegionMask.from_full(mask, layer=0)], [0], p,
+                     PipelineConfig(target_width_mm=999, min_detail_mm=0.01))
+    b, _ = vectorize([RegionMask.from_full(mask, layer=0)], [0], p,
+                     PipelineConfig(target_width_mm=999, min_detail_mm=0.01, curve_turn_deg=None))
+    assert list(a[0].polygon.exterior.coords) == list(b[0].polygon.exterior.coords)
+
+
+def test_curve_turn_deg_turns_a_9_gon_counter_into_a_curve():
+    """Kent: "this O is not round." At 0.2 mm tolerance a 2.4 mm-radius arc
+    is a polygon of ~45 deg corners (Hotel Fremont's counter: 9 vertices,
+    47 deg). With `curve_turn_deg=15` the same raster contour comes back
+    with no vertex turning more than ~2x the target and at least three
+    times the vertices, every one within a pixel and a half of the true
+    circle -- the raster's own limit, not the polygon's."""
+    size = 400
+    radius_px = 75.0                                     # 2.4 mm at 31.25 px/mm
+    mask = _disc_mask(radius_px, size)
+    p = Prep(rgb=np.zeros((size, size, 3), np.uint8), bg_mask=np.zeros((size, size), bool),
+             px_per_mm=31.25, art_bbox=(0, 0, size, size))
+    plain, _ = vectorize([RegionMask.from_full(mask, layer=0)], [0], p,
+                         PipelineConfig(target_width_mm=999, min_detail_mm=0.01))
+    curved, _ = vectorize([RegionMask.from_full(mask, layer=0)], [0], p,
+                          PipelineConfig(target_width_mm=999, min_detail_mm=0.01, curve_turn_deg=15.0))
+    n_plain = len(plain[0].polygon.exterior.coords) - 1
+    n_curve = len(curved[0].polygon.exterior.coords) - 1
+    assert n_plain <= 16, n_plain
+    assert n_curve >= 3 * n_plain, (n_plain, n_curve)
+    turns = _vertex_turns_deg(curved[0].polygon)
+    assert turns.max() <= 30.0, turns.max()
+    pts = np.asarray(curved[0].polygon.exterior.coords[:-1])
+    cx = cy = 0.0                                          # `_to_mm` centres on the art bbox
+    radial = np.hypot(pts[:, 0] - cx, pts[:, 1] - cy) - radius_px / 31.25
+    assert np.abs(radial).max() <= 1.5 / 31.25, np.abs(radial).max()
+
+
+def test_curve_turn_deg_leaves_straight_edges_alone():
+    """Only arcs gain vertices. A rotated rectangle's edges are staircases
+    under the one-pixel floor, so it stays a quadrilateral with the flag on
+    -- the polygon is not smoothed, it is re-read where it curved."""
+    import cv2
+
+    size = 400
+    img = np.zeros((size, size), np.uint8)
+    box = cv2.boxPoints(((size / 2, size / 2), (250.0, 80.0), 25.0)).astype(np.int32)
+    cv2.fillPoly(img, [box], 1)
+    p = Prep(rgb=np.zeros((size, size, 3), np.uint8), bg_mask=np.zeros((size, size), bool),
+             px_per_mm=12.0, art_bbox=(0, 0, size, size))
+    plain, _ = vectorize([RegionMask.from_full(img > 0, layer=0)], [0], p,
+                         PipelineConfig(target_width_mm=999, min_detail_mm=0.01))
+    curved, _ = vectorize([RegionMask.from_full(img > 0, layer=0)], [0], p,
+                          PipelineConfig(target_width_mm=999, min_detail_mm=0.01, curve_turn_deg=15.0))
+    assert len(plain[0].polygon.exterior.coords) == len(curved[0].polygon.exterior.coords)

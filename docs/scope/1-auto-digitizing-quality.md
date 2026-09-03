@@ -3577,3 +3577,22 @@ by rotation). Capitals measured; a lowercase bowl joins its stem corner too,
 unmeasured. Junction fans at 3-way nodes are
 not corners and are left to `_junction_entry_mm`; THERMAL's E arms remain
 pull-comp-sealed slots (gate 1). *(measured 2026-09-03 — `docs/stitch-angle-convention-2026-09-03.md` §9)*
+
+## Round curves (defect 22) built OFF, and the fill-dust half-stitches (defect 25) — 2026-09-03
+
+`stage4_vectorize._refine_curves` behind `PipelineConfig.curve_turn_deg`
+(default None, byte-identical): re-reads each Douglas-Peucker edge against
+its raw contour arc and splits at the arc midpoint until the sagitta is
+under min(`simplify_tol_mm`, chord × turn/8), floored at 1 px, inserted
+vertices a ±2 px mean. Fremont's O counter 9 → 33 vertices (47° → 17°),
+inner rail σ 0.038 → 0.026 mm. With the dust splitter masked the flag moves
+stitch counts ≤ 2% everywhere; `curve_fidelity` roughness ribbon 9.45 →
+8.72, drone 9.32 → 9.11, ENTHUSIAST 10.59 → 11.42 (half-pixel jitter at
+11 px/mm — the resolution limit). Becker at 4 px/mm unchanged.
+
+Defect 25: `stitches.split_long_moves(path, stitch_mm)` halves grid steps
+that exceed 3.0 mm by float dust — `tools/fill_dust.py`: whitebg 180 of
+1520 fill steps (8.3% of the design), Fremont 576 of 2450 (9.0%), sunset
+1198 of 7102 (10.3%), alpha 5.0%, Becker 1.3%, drone 0.7%. Fix = a micron
+of tolerance; re-pins every fill golden. Held with the curve flip for one
+re-pin round. *(measured 2026-09-03 — `docs/round-curves-2026-09-03.md`)*
