@@ -16,6 +16,7 @@ is therefore sufficient; nested-shell handling is not needed at this depth.
 from __future__ import annotations
 
 import cv2
+import math
 import numpy as np
 from shapely.geometry import Polygon
 from shapely.validation import make_valid
@@ -96,6 +97,94 @@ def _polygon_parts(geom) -> list[Polygon]:
     return []
 
 
+# --- curve refinement (2026-09-03, `PipelineConfig.curve_turn_deg`) ---------
+#
+# The staircase a raster boundary carries is about half a pixel either side of
+# the true edge; a deviation under one pixel is the raster, not the curve.
+_CURVE_FLOOR_PX = 1.0
+# The sub-pixel estimate of a curve point: the mean of the raw contour points
+# within this many contour STEPS (one or root-two pixels each) of the arc's
+# midpoint.
+_CURVE_WINDOW_STEPS = 2
+
+
+def _refine_curves(raw: np.ndarray, simplified: np.ndarray, eps_px: float,
+                   turn_deg: float) -> np.ndarray:
+    """`simplified` (a Douglas-Peucker subset of the closed contour `raw`,
+    both in px) with every edge that spans an ARC of the raw contour split
+    at the arc's midpoint until each chord's sagitta is under
+    min(eps_px, chord * turn / 8) -- the small-angle sagitta of an arc that
+    turns `turn_deg` at one vertex -- floored at `_CURVE_FLOOR_PX`. Inserted
+    vertices are the mean of the raw points within `_CURVE_WINDOW_PX` of the
+    midpoint, a sub-pixel estimate of the curve instead of one staircase
+    pixel. Straight edges never split; a chord that spans no raw points
+    stays as it is. See `config.curve_turn_deg`.
+    """
+    n = len(raw)
+    if n < 4 or len(simplified) < 3 or turn_deg <= 0.0:
+        return simplified
+    frac = math.radians(turn_deg) / 8.0
+    # Map each simplified vertex back to its raw index by walking both rings
+    # in lockstep -- Douglas-Peucker keeps input points, in order, so the
+    # next vertex is the first exact match AHEAD of the last one. A nearest-
+    # point search would send the return leg of a one-pixel-wide feature
+    # (a hairline serif, a neck) to its outbound twin, since a
+    # CHAIN_APPROX_NONE contour visits such pixels twice with identical
+    # coordinates (review, 2026-09-03). Indices unwrap past n on the way
+    # round; a vertex that is not on the raw ring at all refuses the
+    # refinement rather than guessing.
+    idx: list[int] = []
+    k = -1
+    for q in simplified:
+        hits = np.flatnonzero((raw[:, 0] == q[0]) & (raw[:, 1] == q[1]))
+        if len(hits) == 0:
+            return simplified
+        if k < 0:
+            k = int(hits[0])
+        else:
+            ahead = hits[hits > (k % n)]
+            k = int(ahead[0]) + n * (k // n) if len(ahead) else int(hits[0]) + n * (k // n + 1)
+        idx.append(k)
+    if len(idx) < 3 or idx[-1] >= idx[0] + n:
+        return simplified
+    out: list[int] = []
+    est: dict[int, np.ndarray] = {}
+
+    def chord_dev(i: int, jj: int) -> tuple[float, float]:
+        seg = raw[[k % n for k in range(i + 1, jj)]]
+        a, b = raw[i % n], raw[jj % n]
+        ab = b - a
+        length = float(np.hypot(ab[0], ab[1]))
+        if len(seg) == 0:
+            return 0.0, length
+        if length < 1e-9:
+            dev = np.hypot(seg[:, 0] - a[0], seg[:, 1] - a[1])
+        else:
+            dev = np.abs((seg[:, 0] - a[0]) * ab[1] - (seg[:, 1] - a[1]) * ab[0]) / length
+        return float(dev.max()), length
+
+    stack: list[tuple[int, int]] = []
+    for a, b in zip(idx, idx[1:] + [idx[0] + n]):
+        stack.append((a, b))
+    # Iterative, in chord order: each accepted chord contributes its start.
+    for a, b in stack:
+        work = [(a, b)]
+        pieces: list[int] = []
+        while work:
+            i, jj = work.pop()
+            s, length = chord_dev(i, jj)
+            if jj - i <= 2 or s <= min(eps_px, max(_CURVE_FLOOR_PX, length * frac)):
+                pieces.append(i)
+                continue
+            m = (i + jj) // 2
+            lo, hi = max(i, m - _CURVE_WINDOW_STEPS), min(jj, m + _CURVE_WINDOW_STEPS)
+            est[m % n] = raw[[k % n for k in range(lo, hi + 1)]].mean(axis=0)
+            work.append((m, jj))       # popped second: keeps chain order
+            work.append((i, m))
+        out.extend(pieces)
+    return np.array([est[i % n] if (i % n) in est else raw[i % n] for i in out], dtype=np.float64)
+
+
 def vectorize(
     region_masks: list[RegionMask],
     thread_indices: list[int],
@@ -129,6 +218,8 @@ def vectorize(
     x0, y0, x1, y1 = p.art_bbox
     cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
     eps_px = max(0.5, cfg.simplify_tol_mm * p.px_per_mm)
+    # `curve_turn_deg`: None, 0 and negatives all mean "today's polygon".
+    curve_turn = cfg.curve_turn_deg if (cfg.curve_turn_deg or 0.0) > 0.0 else None
     min_area_mm2 = (cfg.min_detail_mm ** 2) * 0.25  # a sliver after simplification
     min_detail_px2 = (cfg.min_detail_mm * p.px_per_mm) ** 2
 
@@ -152,7 +243,8 @@ def vectorize(
         padded = np.zeros((rm.crop.shape[0] + 2, rm.crop.shape[1] + 2), np.uint8)
         padded[1:-1, 1:-1] = rm.crop
         contours, hierarchy = cv2.findContours(
-            padded, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE,
+            padded, cv2.RETR_CCOMP,
+            cv2.CHAIN_APPROX_NONE if curve_turn else cv2.CHAIN_APPROX_SIMPLE,
             offset=(x0 - 1, y0 - 1),
         )
         if not contours or hierarchy is None:
@@ -178,6 +270,9 @@ def vectorize(
         if len(shell_px) < 3:
             note_drop(rm)
             continue
+        if curve_turn and not sub_detail:
+            shell_px = _refine_curves(contours[outer].reshape(-1, 2).astype(np.float64),
+                                      shell_px.astype(np.float64), eps, curve_turn)
         shell = _to_mm(shell_px, cx, cy, p.px_per_mm)
 
         holes = []
@@ -187,6 +282,9 @@ def vectorize(
             h_px = cv2.approxPolyDP(contours[i], eps, True).reshape(-1, 2)
             if len(h_px) < 3:
                 continue
+            if curve_turn and not sub_detail:
+                h_px = _refine_curves(contours[i].reshape(-1, 2).astype(np.float64),
+                                      h_px.astype(np.float64), eps, curve_turn)
             ring = _to_mm(h_px, cx, cy, p.px_per_mm)
             if Polygon(ring).area >= min_area_mm2:
                 holes.append(ring)

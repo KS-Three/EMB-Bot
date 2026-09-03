@@ -301,6 +301,11 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 - **Size-proportional `simplify_tol_mm`** — the fixed 0.2 mm constant is correct
   as-is; Ember's scaling equivalent is not a like-for-like comparison. No change
   made, and the investigation is closed rather than open. *(measured 2026-08-07 — `docs/scope/research-backlog.md`)*
+  **The curve question is a second knob, not this one:** `curve_turn_deg`
+  bounds the TURN at a vertex and leaves the 0.2 mm deviation alone; it is
+  built OFF (2026-09-03, `docs/round-curves-2026-09-03.md`). Splitting a
+  Douglas-Peucker edge at its max-deviation point with a near-pixel tolerance
+  re-picks staircase corners — split at the arc's midpoint instead.
 - **Raising `SATIN_MAX_WIDTH_MM` 5.0 → 7.0 — BOTH coherent routes break
   something measured, and neither failure is golden churn.** Prompted by an
   80 mm Instagram icon whose two white ring bands (5.31 / 5.32 mm ribbon width,
