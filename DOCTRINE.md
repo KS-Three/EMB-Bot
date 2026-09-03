@@ -747,3 +747,16 @@ its hedge as it is copied forward** — is why this file is split.
   (`_CURVE_MIN_PX_PER_MM`).** A verdict with a margin needs a memory, and a
   classifier that does not rasterize is a different construction — both
   Kent's call. *(2026-09-03 — `docs/classifier-stability-2026-09-03.md`)*
+
+- **"Rail points more than 0.1 mm inside the art" is geometry, not
+  coverage — score satin coverage as bare area.** The number (17–23% of
+  lettering rail points) was read as the far rail stopping short; every
+  one of Becker's 670 was instrumented and none was that: 353 were the
+  short-stitch guard's retractions on bends (by design), 115 corridor caps
+  at junctions, 129 corners and oblique edges where the rail is on the
+  edge along its own normal, 48 tip zones. A rail change that put thread
+  on a quarter of the bare area moved that metric by one point. **Rule:
+  a coverage claim is measured as the artwork outside a thread's width of
+  the sewn crosses (`tools/rail_edge.py --bare`), never as a distance from
+  a penetration to the nearest boundary.** *(2026-09-03 —
+  `docs/rail-dents-2026-09-03.md` §7)*

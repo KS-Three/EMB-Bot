@@ -1563,3 +1563,39 @@ def test_the_micron_is_what_closes_the_dent(ang, monkeypatch):
     assert sum(1 for g in bare if g > 0.1) > 0, "no dent without the tolerance -- the test lost its teeth"
     micron = _bar_rails(ang, 1e-6, monkeypatch)
     assert sum(1 for g in micron if g > 0.1) == 0, "the micron did not close the dent"
+
+
+# --- each rail reaches its own edge (defect 23's open half, 2026-09-03) ---
+
+
+@pytest.mark.parametrize("ang", [0.0, 25.0])
+def test_the_far_rail_reaches_the_far_edge_when_the_spine_is_off_centre(ang):
+    """A raster skeleton is never dead centre, and the symmetric rail model
+    placed BOTH rails at the nearer edge's distance -- so the far rail sat
+    inside the art by the offset, on every station of every column. Here
+    the spine of a 3 mm bar runs 0.3 mm off centre: the near rail is on its
+    edge as before, and the far rail now reaches ITS edge (1.8 mm out) at
+    every interior station instead of stopping at 1.2. Off (the default) both
+    rails sit at 1.2, byte-identical to before the flag existed."""
+    from shapely import affinity
+
+    bar = affinity.rotate(Polygon([(-15, -1.5), (15, -1.5), (15, 1.5), (-15, 1.5)]),
+                          ang, origin=(0, 0))
+    c, s = math.cos(math.radians(ang)), math.sin(math.radians(ang))
+    off = 0.3
+    spine = [((-15 + i * 0.4) * c - off * s, (-15 + i * 0.4) * s + off * c) for i in range(76)]
+    # The stroke's own half-width is what the DT reads at an off-centre
+    # spine: the NEAR distance (1.2), which is also what the taper-zone rule
+    # is measured against.
+    rail_a, rail_b = stage6_satin._rail_points(bar, spine, False, 1.2, follow_edge=True)
+    bnd = bar.boundary
+    gaps = [bnd.distance(Point(p)) for p in rail_a[10:-10] + rail_b[10:-10]]
+    assert max(gaps) < 0.05, f"a rail point sits {max(gaps):.3f} mm inside the art"
+    # And the crosses really are asymmetric about the spine: one half ~1.2, the other ~1.8.
+    half_a = [math.dist(p, q) for p, q in zip(rail_a[10:-10], spine[10:-10])]
+    half_b = [math.dist(p, q) for p, q in zip(rail_b[10:-10], spine[10:-10])]
+    lo, hi = sorted((sum(half_a) / len(half_a), sum(half_b) / len(half_b)))
+    assert abs(lo - 1.2) < 0.05 and abs(hi - 1.8) < 0.05, (lo, hi)
+    off_a, off_b = stage6_satin._rail_points(bar, spine, False, 1.2)
+    far = max(bnd.distance(Point(p)) for p in off_a[10:-10] + off_b[10:-10])
+    assert abs(far - 0.6) < 0.05, f"with the flag off the far rail should still stop 0.6 mm short, got {far:.3f}"

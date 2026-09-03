@@ -17,6 +17,14 @@ penetrations stripped first):
   0.85x reads ~0.05 here, a rail on the edge ~0.005) and the same-rail
   intervals over 2 x SATIN_SPACING (`holes`, the starburst test's metric).
 
+- **bare area** (`--bare`) -- the share of each satin shape's artwork that
+  lies outside a thread's width of every sewn cross, unioned per shape.
+  This is coverage; the rail-to-edge reading is not (an oblique edge or a
+  corner reads "inside" even when the rail is on the edge along its own
+  normal, and the short-stitch guard's retractions on bends dominate it by
+  design). Behind `PipelineConfig.satin_rails_follow_edge` (2026-09-03):
+  Becker 8.6 -> 5.8%, ENTHUSIAST 5.7 -> 4.4%, drone 6.1 -> 4.6%.
+
 `--ladders` adds the census that found the real mechanism: every containment
 miss inside `_rail_points`, bucketed by how far outside the art the rail at
 the smoothed width sat on its FIRST miss, and how many misses it took to fit
@@ -24,7 +32,7 @@ the smoothed width sat on its FIRST miss, and how many misses it took to fit
 were under 50 um -- a pixel or less -- and three quarters took the 15% step;
 on the fixed tree a body station never ladders (it goes onto the edge).
 
-    .venv/bin/python tools/rail_edge.py [case ...] [--ladders]
+    .venv/bin/python tools/rail_edge.py [case ...] [--ladders] [--bare] [--follow-edge]
 
 Cases: fremont, enthusiast (93 mm, left_chest), drone, becker, ribbon, alpha,
 whitebg, gaulke, or a path under `testdata/`.
@@ -40,7 +48,8 @@ ROOT = HERE.parent
 sys.path.insert(0, str(ROOT))
 
 import numpy as np  # noqa: E402
-from shapely.geometry import Point  # noqa: E402
+from shapely.geometry import LineString, Point  # noqa: E402
+from shapely.ops import unary_union  # noqa: E402
 
 from digitizer_core import PipelineConfig, digitize, machine  # noqa: E402
 from digitizer_core import stage6_satin  # noqa: E402
@@ -97,8 +106,30 @@ def _ladder_census(proxies) -> tuple[list[int], dict[int, int]]:
     return first, steps
 
 
+def bare_area(polys: dict, plan) -> tuple[float, float]:
+    """-> (bare mm2, satin art mm2): per shape, the artwork outside a
+    thread's width of the union of its sewn crosses."""
+    thread = getattr(machine, "COVERAGE_THREAD_W_MM", 0.4)
+    by_shape: dict[str, list] = {}
+    for _b, run in plan.iter_runs():
+        if run.kind == "satin" and run.shape_id in polys:
+            by_shape.setdefault(run.shape_id, []).extend(strip_splits(strip_ties(list(run.points))))
+    num = den = 0.0
+    for sid, pts in by_shape.items():
+        crosses = [LineString([pts[i], pts[i + 1]]) for i in range(0, len(pts) - 1, 2)
+                   if math.dist(pts[i], pts[i + 1]) > 1e-6]
+        if not crosses:
+            continue
+        sewn = unary_union([c.buffer(thread / 2.0, cap_style=2) for c in crosses])
+        den += polys[sid].area
+        num += polys[sid].difference(sewn).area
+    return num, den
+
+
 def main(argv: list[str]) -> None:
     ladders = "--ladders" in argv
+    bare = "--bare" in argv
+    follow = "--follow-edge" in argv
     names = [a for a in argv if not a.startswith("--")] or list(CASES)
     proxies: list[_Census] = []
     if ladders:
@@ -113,7 +144,10 @@ def main(argv: list[str]) -> None:
     for name in names:
         rel, kw = CASES.get(name, (name, dict(target_width_mm=80.0)))
         proxies.clear()
-        result, plan = digitize(ROOT / "testdata" / rel, PipelineConfig(**kw))
+        cfg = dict(kw)
+        if follow:
+            cfg["satin_rails_follow_edge"] = True
+        result, plan = digitize(ROOT / "testdata" / rel, PipelineConfig(**cfg))
         polys = {r.shape_id: r.polygon for r in result.regions}
         gaps, steps, jitter, crosses, holes = [], [], [], [], 0
         for _b, run in plan.iter_runs():
@@ -148,6 +182,9 @@ def main(argv: list[str]) -> None:
             print(f"  smoothness    jitter p50={np.median(j):.4f} p90={np.percentile(j, 90):.4f}  "
                   f"same-rail p50={np.median(steps):.3f} holes(>{2 * machine.SATIN_SPACING_MM:.1f}mm)={holes}  "
                   f"med_cross={np.median(c):.3f} thread={c.sum():.0f}mm")
+        if bare:
+            num, den = bare_area(polys, plan)
+            print(f"  bare area     {100 * num / max(den, 1e-9):.2f}% of {den:.0f} mm2 satin art (thread width {getattr(machine, 'COVERAGE_THREAD_W_MM', 0.4)} mm)")
         if ladders:
             first, taken = _ladder_census(proxies)
             tot = sum(first) or 1

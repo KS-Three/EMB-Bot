@@ -23,5 +23,10 @@ Full record: `docs/rail-dents-2026-09-03.md`.
 - **Numbers.** Jitter p50 Fremont 0.012 → 0.0045, Becker 0.061 → 0.038;
   holes 11 → 5 / 72 → 63; crosses wider; Becker −81 st (fewer refinement
   stations, the zig-zag was inflating the outer-rail advance).
-- **Open.** Tips (exact-edge rails bunch on a converging tip); the rail
-  model's inside gaps on lettering — Kent's call.
+- **The open half, BUILT 2026-09-03 as `satin_rails_follow_edge` (OFF, Kent's
+  flip).** The inside-gap metric was NOT the rail model (Becker: 353/670
+  guard retractions, 115 corridor caps, 129 corners, 48 tips); coverage is
+  bare satin area (`rail_edge.py --bare`): Becker 8.6 → 5.8%, ENTHUSIAST
+  5.7 → 4.4%, drone 6.1 → 4.6% for +10–17% thread and +50% rail jitter.
+  Sew-out question (pull comp tuned with the far rail short).
+- **Open.** Tips (exact-edge rails bunch on a converging tip).

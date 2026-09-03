@@ -182,3 +182,51 @@ vacuously). The starburst test pins the tip unchanged.
   clamp with a re-tuned guard is a sew-out question (tip density).
 - **The rail model's inside gaps** (section 3) — the larger half of what a
   digitizer would call "the satin doesn't reach the edge".
+
+## 7. The open half, built (2026-09-03, Kent's pick after #333) — `satin_rails_follow_edge`, default OFF
+
+Kent picked "rails follow the edge" once the classifier item closed. Built
+as a flag: each rail carries its own filtered edge profile (the same median
+and smoothing passes as the symmetric width, the same corridor caps) and is
+placed at the larger of the symmetric width and its own profile; the cross
+angle is untouched, so this is not per-station edge following. Taper zones
+and terminal stations keep the symmetric width. Off is byte-identical.
+
+**What the inside metric was counting.** `tools/rail_edge.py` reports rail
+points more than 0.1 mm from the nearest boundary; on the shipped engine
+that is 17–23% of lettering rail points. Instrumenting every station shows
+what they are on Becker (670 of 3116 with the flag on): 353 are the
+short-stitch guard's retractions on bends, 115 sit at the corridor cap
+(junctions), 48 are taper or cap zones, 129 are corners and oblique edges
+where the rail IS on the edge along its own normal, and 25 are the side
+profile's smoothing under-reading a bulge. None of those is a rail
+stopping short of a straight edge, which is why the per-side profile moved
+that number by a point (22.8 → 21.5%) — the metric is geometry, not
+coverage.
+
+**Coverage, measured as bare area** (`tools/rail_edge.py --bare`: the
+artwork of each satin shape outside a thread's width of the union of its
+sewn crosses):
+
+| fixture | bare satin area, off → on | stitches | thread | rail jitter p50 | same-rail holes |
+|---|---|---|---|---|---|
+| Becker | **8.63 → 5.84%** | 4340 → 4517 | 3496 → 3936 mm | 0.038 → 0.061 | 63 → 79 |
+| ENTHUSIAST @ 93 | **5.70 → 4.36%** | 2955 → 3083 | 1542 → 1798 | 0.024 → 0.038 | 41 → 59 |
+| drone | **6.07 → 4.59%** | 8653 → 8863 | 2636 → 3032 | 0.026 → 0.033 | 67 → 108 |
+| Fremont | **8.60 → 6.94%** | 5805 → 5809 | 918 → 958 | 0.005 → 0.003 | 6 → 9 |
+| ribbon_curve | 1.11 → 1.08% | 999 → 1001 | 700 → 715 | 0.007 → 0.005 | 0 → 0 |
+
+A quarter to a third of the bare satin area goes, and thread is +10–17%
+on lettering because the crosses now span both edges. The costs: each rail
+is only as smooth as its own edge (jitter p50 +50%, still under a fifth of
+a thread width), the outer rail on a bend runs further so the refinement
+inserts more stations and the short-stitch guard retracts more inner
+penetrations (the "holes" metric counts those retractions), and the pull
+compensation was tuned with the far rail stopping short. A wider per-side
+filter (median 9/13, 6/8 passes) trades a little of each back with no knee
+(Becker bare 5.84 → 6.30 → 6.72%, jitter 0.061 → 0.059 → 0.058), so the
+flag uses the width's own filter and adds no constant.
+
+Whether the extra thread and the far-side compensation read right on cloth
+is a sew-out question; the flag is OFF until Kent flips it. Renders of
+Becker's columns off vs on are on the artifact page.
