@@ -340,8 +340,27 @@ SATIN_ZIGZAG_ABOVE_MM = 2.5
 
 # A cross shorter than this is degenerate — the two rails have pinched
 # together (shared tips, stroke ends) and sewing it would pile thread on a
-# point. Dropped during emission, exactly as the browser engine does.
+# point. Dropped during emission. The browser lettering engine applies the
+# same floor since 2026-09-03 (`src/satinfont.js` SATIN_MIN_CROSS_MM, a
+# mirror of this constant) — before that its only guard was 0.3 design
+# PIXELS, so "exactly as the browser engine does" was a claim, not a fact.
+# A STRETCH of a stroke under this floor — three bean stations or more — is a
+# hairline and sews as a bean run along its spine
+# (`stage6_satin._hairline_stretches`) instead of vanishing.
 SATIN_MIN_CROSS_MM = 0.5
+
+# --- Small lettering (2026-09-03) -------------------------------------------
+# Law 50's first rung — "lettering with heights under 5 mm should not have
+# underlay" — as the browser lettering engine has sewn it since its underlay
+# ladder landed (`src/satinfont.js` UNDERLAY_CAP_MIN_MM). A satin shape whose
+# ARTWORK extent is under this sews its columns bare: a centre run under a
+# 3 mm letter is thread in the one place there is no room for it, and the
+# Hotel Fremont fixture carried one under 0.53-0.98 mm columns (measured
+# 2026-08-20). Judged on the artwork polygon, like the satin/fill call, so a
+# heavy fabric's compensation cannot flip a letter's structure. NOT a new
+# physical constant: the same published number the other engine already
+# applies, mirrored — move both or neither.
+SATIN_UNDERLAY_MIN_EXTENT_MM = 5.0
 
 # --- Satin entry/exit point (Laws 27-29) ------------------------------------
 # Scored on 291 real professional decisions: entering at a stroke's FREE end

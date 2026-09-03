@@ -79,7 +79,8 @@ from .warnings_codes import (BLEND_NO_REGIONS_DECOMPOSED, BORDER_LIGHTENED,
                              CONTOUR_DIRECTIONAL_COMP_UNSEWN,
                              CONTOUR_RING_UNREACHABLE, EDGE_CAP_APPLIED,
                              EDGE_CAP_EMPTY,
-                             EDGE_CAP_LIGHTENED, LONG_JUMPS_TRIMMED,
+                             EDGE_CAP_LIGHTENED, HAIRLINE_STROKES_AS_RUN,
+                             LONG_JUMPS_TRIMMED,
                              SHAPE_NOT_STITCHED, SHAPE_TOO_THIN_TO_FILL,
                              SMALL_SHAPES_AS_RUN, warn)
 
@@ -1426,6 +1427,7 @@ def sequence(
     brick = technique == "brick"
 
     thin = empty = jumps = as_run = 0
+    hairline_runs = hairline_shapes = 0
     bordered = lightened = border_narrow = 0
     rings_skipped = starved = 0
     # Blend-tier outcome, counted across the whole design so the warning can
@@ -1578,10 +1580,16 @@ def sequence(
                 satin_angle_deg = p.region.meta.get("satin_angle_deg")
                 if satin_angle_deg is None:
                     satin_angle_deg = cfg.satin_angle_deg
+                # Law 50's first rung (machine.SATIN_UNDERLAY_MIN_EXTENT_MM,
+                # 2026-09-03): small lettering sews bare. Judged on the
+                # ARTWORK extent, the same reason the satin/fill call is —
+                # a heavy fabric's compensation must not flip it.
+                ax0, ay0, ax1, ay1 = p.region.polygon.bounds
+                small = max(ax1 - ax0, ay1 - ay0) < machine.SATIN_UNDERLAY_MIN_EXTENT_MM
                 runs, report = satin_shape(
                     p.polygon,
                     p.shape_id,
-                    underlay_style=satin_underlay,
+                    underlay_style="none" if small else satin_underlay,
                     trim_at_mm=trim_at,
                     start_near=entry,
                     split_above_mm=split_above,
@@ -1589,10 +1597,22 @@ def sequence(
                     use_shapefield=use_shapefield,
                     spacing_mm=satin_spacing_mm,
                     angle_deg=satin_angle_deg,
+                    # A hairline sews as a bean only where the ART has ink:
+                    # `p.polygon` is the compensated outline, and pull comp
+                    # grows a vectorization needle into a "stroke". The
+                    # floor is the boundary tolerance stage 4 simplified to.
+                    art_poly=p.region.polygon,
+                    hairline_floor_mm=cfg.simplify_tol_mm,
                 )
                 # A ribbon the skeleton could not resolve still has to sew:
                 # fall through to fill rather than silently dropping artwork.
                 if not report["empty"]:
+                    # Hairline strokes sewn as runs inside this satin shape
+                    # (`stage6_satin._hairline_stretches`) — counted here, not in
+                    # the satin report, whose key set stage 7 shares with
+                    # the fill tier.
+                    report["hairline_runs"] = sum(
+                        1 for r in runs if r.kind == stitches.RUN)
                     return runs, report, False
             # The ring tier. Tried first when it is on, and only when it is:
             # every golden in the suite is pinned to tatami, and the branch is
@@ -2059,6 +2079,9 @@ def sequence(
             thin += int(filled and report["too_thin"])
             jumps += report["jumps"]
             as_run += report.get("as_run", 0)
+            if report.get("hairline_runs"):
+                hairline_runs += report["hairline_runs"]
+                hairline_shapes += 1
             bordered += report.get("bordered", 0)
             lightened += report.get("lightened", 0)
             border_narrow += report.get("border_narrow", 0)
@@ -2281,6 +2304,19 @@ def sequence(
                 "to hold a fill or satin — or too narrow to satin safely — "
                 "and sewed as a light outline run instead.",
                 count=as_run,
+            )
+        )
+    if hairline_runs:
+        warnings.append(
+            warn(
+                HAIRLINE_STROKES_AS_RUN,
+                f"{hairline_runs} hairline stroke{'s' if hairline_runs != 1 else ''} "
+                f"in {hairline_shapes} satin shape{'s' if hairline_shapes != 1 else ''} "
+                f"{'were' if hairline_runs != 1 else 'was'} too narrow for a satin "
+                f"column (under {machine.SATIN_MIN_CROSS_MM:g} mm) and sewed as a "
+                "running stitch down the stroke instead.",
+                count=hairline_runs,
+                shapes=hairline_shapes,
             )
         )
     if blend_routed and not blend_decomposed:
