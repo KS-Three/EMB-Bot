@@ -302,8 +302,14 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   as-is; Ember's scaling equivalent is not a like-for-like comparison. No change
   made, and the investigation is closed rather than open. *(measured 2026-08-07 — `docs/scope/research-backlog.md`)*
   **The curve question is a second knob, not this one:** `curve_turn_deg`
-  bounds the TURN at a vertex and leaves the 0.2 mm deviation alone; it is
-  built OFF (2026-09-03, `docs/round-curves-2026-09-03.md`). Splitting a
+  bounds the TURN at a vertex and leaves the 0.2 mm deviation alone; built
+  OFF and then flipped ON the same day, gated to 20 px/mm (2026-09-03,
+  `docs/round-curves-2026-09-03.md`). One consequence for THIS ruling: the
+  "realized deviation is scale-invariant at 0.2 mm" evidence now belongs to
+  the OFF path -- above the line the default re-reads arcs and the realized
+  deviation drops to ~0.05 mm, which is the flip doing what Kent asked, not
+  the constant moving (the invariance test pins it with the flag off).
+  Splitting a
   Douglas-Peucker edge at its max-deviation point with a near-pixel tolerance
   re-picks staircase corners — split at the arc's midpoint instead.
 - **Raising `SATIN_MAX_WIDTH_MM` 5.0 → 7.0 — BOTH coherent routes break
@@ -708,3 +714,23 @@ its hedge as it is copied forward** — is why this file is split.
   with a per-shape tier diff on every fixture, paired by centroid, not by
   shape id (ids are content-derived and move with the polygon).**
   *(2026-09-03 — `docs/round-curves-2026-09-03.md`, "The flip")*
+
+- **The satin/fill classifier's boundary-detail sensitivity is intrinsic
+  to its thresholds — eight cures measured, all worse, do not rebuild.**
+  Five verdicts in 219 flip when only a polygon's boundary detail changes
+  (`tools/ribbon_stability.py`), four of them shapes sitting on a
+  threshold (cv 0.5, aspect 3, `explained` 0.80). Pruning skeleton spurs
+  at three strengths, the sewing spur rule, a hybrid that keeps the blob
+  detector on the full skeleton, morphological smoothing of the
+  classifier's raster at 1 and 2 px, and a margin band on the regularity
+  edge: flips 3–12 against 5, shipped verdicts changed 2–48, and the 2 px
+  smoothing turns the BAR and T archetypes into fill. The mechanism: on a
+  compact shape the spurs ARE the medial axis, so pruning collapses the
+  spine and the remainder reads *regular* — into satin through the
+  ordinary path, which has no elongation guard. **Rule: a classifier
+  robustness change is scored on shipped verdicts changed AND flips left,
+  on the real fixtures, before any threshold is touched; and the one
+  mitigation that works is not feeding it boundary detail
+  (`_CURVE_MIN_PX_PER_MM`).** A verdict with a margin needs a memory, and a
+  classifier that does not rasterize is a different construction — both
+  Kent's call. *(2026-09-03 — `docs/classifier-stability-2026-09-03.md`)*

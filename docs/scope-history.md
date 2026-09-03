@@ -3609,8 +3609,37 @@ replaced with a `nextafter` step and a two-cap case.
 (`tools/curve_tiers.py`) on all ten fixtures found what the stitch totals
 hid: below ~16 px/mm the 1-px floor reads raster texture as arcs (vertices
 +40–80%, roughness up on every such fixture) and two borderline ribbons
-changed tier through the DT classifier's skeleton (drone 19 px/mm,
-meadow 10); floors of 2–3 px halve the O's gain (33 → 17 vertices). Gate
+changed tier through the DT classifier's skeleton (drone 9.6 px/mm,
+meadow 9.8); floors of 2–3 px halve the O's gain (33 → 17 vertices). Gate
 `stage4_vectorize._CURVE_MIN_EPS_PX` = 4 (≥ 20 px/mm at 0.2 mm): Fremont's
 O 9 → 33 vertices, 47° → 17°, trims 52 → 45; every other fixture and every
 golden byte-identical. Tests for on-by-default, off-is-DP and the gate.
+
+## 2026-09-03 (addendum) — Kent: classifier robust to boundary detail — measured negative, no engine change
+
+`tools/ribbon_stability.py` (committed): five of 219 DT-judged shapes flip
+satin/fill when only their polygon's boundary detail changes (drone 2,
+gaulke 2, meadow 1), four of them on a threshold edge. Eight cures in five
+families (spur pruning ×3, the sewing spur rule, a hybrid, raster smoothing
+×2, a regularity margin band) leave 3–12 flips against 5 and change 2–48
+shipped verdicts; 2 px smoothing breaks two archetypes. The diagnosis that
+priced the item (spurs off the refined boundary inflate the spine) was the
+mechanism on one shape of five and no cure of it survived the census.
+Closed as a measured negative in DOCTRINE; the working mitigation stays
+`_CURVE_MIN_EPS_PX` (#330). `docs/classifier-stability-2026-09-03.md`.
+
+## 2026-09-03 (correction, review of #330) — the curve gate reads resolution; drone is 9.6 px/mm, not 19
+
+The #330 entry above has drone at 19 px/mm and whitebg/alpha/ribbon at 10:
+those are the frame's numbers, and stage 1 reads the art at 9.6 and
+8.4/8.4/8.8 (`px_per_mm = art_w_px / target_width_mm`). Every fixture but
+Fremont is under 16 px/mm, nothing sits between 16 and 31, and 20 is a
+line chosen inside that interval, not one the fixtures drew — every
+sub-Fremont fixture is closed under it, verified byte-identical. The gate
+now reads `px_per_mm` directly (`_CURVE_MIN_PX_PER_MM` = 20) instead of the
+tolerance in pixels, so a caller raising `simplify_tol_mm` at low
+resolution cannot open it for the wrong reason (gaulke at 0.25 mm: +51%
+vertices). Where the line falls in the app: 1200 px art refines at ≤ 60 mm
+and not at 61 — a cliff, Kent's to accept (MASTER_SCOPE 22). The
+simplify-tolerance invariance now belongs to the OFF path (DOCTRINE).
+
