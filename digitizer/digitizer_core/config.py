@@ -480,18 +480,17 @@ class PipelineConfig:
     # rule, 2026-09-03; the 45 deg bisector it first shipped with is
     # retired). See `textcluster._house_along_line_deg`.
     #
-    # Default OFF, Kent's call to flip (2026-09-02). ON it cures Hotel
-    # Fremont's serif corner fans and drone_render's THERMAL, byte-identical
-    # everywhere the first reading already fired -- and on `enthusiast_logo`
-    # @ 93 mm it angles the eleven ENTHUSIAST capitals at 48 deg, which
-    # clamps the N's diagonal to the span limit and piles thread at its
-    # junction, and costs trims: 19 -> 22 chaining off, 8 -> 15 chaining on,
-    # which is the chaining benchmark going 2.43 -> 4.62 per 1k against its
-    # 4.1 ceiling. A measured trim regression against a rendered fidelity
-    # gain on two wordmarks and a rendered LOSS on one diagonal -- the same
-    # shape as the parked exterior-notch guard, so the same disposition.
-    # Off, every plan is byte-identical to before the reading existed.
-    satin_house_fourfold: bool = False
+    # Built OFF (2026-09-02: at the 45 deg bisector it piled the ENTHUSIAST
+    # N at 1.41x density and redded the chaining benchmark 2.43 -> 4.62/1k),
+    # DEFAULT ON by Kent's flip (2026-09-03) once the stitch-angle rule's
+    # pass 1 landed: the N leans 25 deg at the compensated 0.200 mm thread
+    # pitch and the benchmark reads 4.09/1k under its 4.1 ceiling (off: 2.43,
+    # unchanged). ON, Hotel Fremont and drone_render's THERMAL sew at the
+    # stems' perpendicular; every other committed fixture is byte-identical
+    # (13 measured, `tools/satin_lean.py` + an md5 sweep, 2026-09-03), and
+    # digitize time does not move. The 4.1 margin is 0.01 -- a thin one, and
+    # the benchmark test is the tripwire that says so if the pipeline drifts.
+    satin_house_fourfold: bool = True
     # None = the fabric preset's fill underlay style. One of "none" |
     # "edge_run" | "center_run" | "edge_zigzag" | "edge_lattice" |
     # "double_lattice" | "zigzag" (fabrics.py's own vocabulary). Feeds the

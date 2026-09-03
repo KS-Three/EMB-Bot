@@ -311,3 +311,17 @@ every output measured. `_resample_by_pitch` snaps both ends exactly.
 What pass 1 does not do: sew a bar as a wide column at the house angle (the
 pro's way; new construction), join corners (Goldman, pass 2), or flip the
 four-fold flag — the numbers above are what the flip would buy.
+
+## 8. `satin_house_fourfold` DEFAULT ON — Kent's flip (2026-09-03, same session)
+
+On the pass-1 numbers Kent flipped the four-fold reading on. What moves:
+`logo_hotel_fremont` (6385 → 6343 st, trims 52) and `drone_render`'s
+THERMAL (8872 → 8856, trims 93). Byte-identical with the flag on: whitebg,
+alpha, ribbon_curve, becker, bg_uncertain, gaulke, summit_badge,
+region_blobs, fur_ramp, repro_gradient_white_icon, enthusiast @ 80 (the
+eleven-capital group fires at 93 mm, the chaining benchmark's pitch, where
+the benchmark reads 4.09/1k under 4.1). Digitize time unchanged on all
+thirteen. No golden moves: drone's golden pins stage 2 only, enthusiast's
+flat-lane entries are the platform reds CI already deselects. The function
+default in `set_lettering_house_angle` stays False. The 0.01 margin under
+the benchmark ceiling is thin and the test is the tripwire.

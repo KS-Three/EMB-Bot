@@ -338,7 +338,7 @@ its own merits.
     BUILT:** fading lean, cap, spacing / cos(lean); bisector deleted; stems =
     the family square to the line of text. Leaned-column thread pitch 0.152 →
     0.20 mm; ENTHUSIAST benchmark with the flag on 4.62 → 4.09/1k (ceiling 4.1).
-    **Open: flip `satin_house_fourfold`? Then the Goldman join (pass 2).** *(built 2026-09-03 — area 1)*
+    **`satin_house_fourfold` FLIPPED ON by Kent on those numbers. Next: the Goldman join (pass 2).** *(built + flipped 2026-09-03 — area 1)*
 
 ## Cross-cutting issues
 
@@ -560,14 +560,13 @@ three (`detect_text_clusters`' candidate gating, the coherence floor, and the
 [area 1](docs/scope/1-auto-digitizing-quality.md).
 *(fixed 2026-08-27 — PRs #282/#283, mutation-checked; renders in the #283 body)*
 **And it was NOT FIRING on slab-serif lettering — a FOURTH miscalibrated
-threshold; fix BUILT, DEFAULT OFF (PR #321), the angle rule's pass 1 on top
-(2026-09-03).** Fremont's capitals cancel in doubled-angle space (nR² 4.7 vs
+threshold; fix BUILT (PR #321), the angle rule's pass 1 on top (2026-09-03).** Fremont's capitals cancel in doubled-angle space (nR² 4.7 vs
 6.9). `satin_house_fourfold` admits two orthogonal families and sets the STEMS'
 perpendicular (stems = the family square to the line of text; the 45° bisector
 is deleted); a bar takes its own perpendicular with the lean fading to zero, a
 diagonal leans ≤ 30°, stations spread by cos(lean): thread pitch Fremont
 **0.152 → 0.198 mm**, ENTHUSIAST 0.152 → 0.200, chaining benchmark **4.62 →
-4.09/1k** (ceiling 4.1; off 2.43). Off, md5-identical. Flip: entry 13. *(measured 2026-09-03 — area 1)*
+4.09/1k** (ceiling 4.1). **DEFAULT ON, Kent's flip**; Fremont and THERMAL move, 11 fixtures identical. *(measured 2026-09-03 — area 1)*
 
 **Mechanism 2 — pull comp's min-feature guard scoped to `poly.interiors` —
 PROTOTYPED AND COSTED, not shipped.** An exterior-pocket branch holds 15 real

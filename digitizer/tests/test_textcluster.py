@@ -1057,11 +1057,15 @@ def test_the_stem_family_is_the_one_square_to_the_line_of_text():
 
 
 def test_the_four_fold_reading_is_opt_in():
-    """`config.satin_house_fourfold` defaults OFF (Kent's call, 2026-09-02):
-    it reds the chaining benchmark and piles the N on enthusiast_logo @ 93
-    mm. Off, a two-family word that the doubled reading rejects gets NO
-    angle -- byte-identical to before the reading existed -- and the
-    pipeline threads the flag through `set_lettering_house_angle`."""
+    """The FUNCTION default stays False so every caller that never mentions
+    it is byte-identical to before the reading existed; the pipeline threads
+    `config.satin_house_fourfold` through `set_lettering_house_angle`, and
+    THAT defaults ON since Kent's flip (2026-09-03, once the stitch-angle
+    rule's pass 1 un-piled the ENTHUSIAST N and the chaining benchmark read
+    4.09/1k). Off, a two-family word the doubled reading rejects gets NO
+    angle."""
+    from digitizer_core.config import PipelineConfig
+    assert PipelineConfig().satin_house_fourfold is True, "Kent's flip, 2026-09-03"
     glyphs = []
     for i in range(6):
         cx = i * 8.0

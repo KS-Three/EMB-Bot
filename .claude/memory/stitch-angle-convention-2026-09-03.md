@@ -1,6 +1,6 @@
 ---
 name: stitch-angle-convention-2026-09-03
-description: the trade's stitch-angle rule, measured and ADOPTED by Kent (cap 30°), pass 1 BUILT same day — fading lean past the cap (no side flip), spacing/cos(lean) (thread pitch 0.152 → 0.20 on every leaned column), stems = the four-fold family square to the LINE OF TEXT ("longer family" was wrong on THERMAL and ENTHUSIAST); bisector deleted; four-fold flag still OFF; rail-dent defect found in `place`; Goldman corner join is pass 2
+description: the trade's stitch-angle rule, measured and ADOPTED by Kent (cap 30°), pass 1 BUILT same day — fading lean past the cap (no side flip), spacing/cos(lean) (thread pitch 0.152 → 0.20 on every leaned column), stems = the four-fold family square to the LINE OF TEXT ("longer family" was wrong on THERMAL and ENTHUSIAST); bisector deleted; four-fold flag FLIPPED ON by Kent on the numbers; rail-dent defect found in `place`; Goldman corner join is pass 2
 metadata:
   type: reference
 ---
@@ -59,6 +59,8 @@ Kent adopted the rule and the 30° cap, chose pass 1 first. Built:
   the other way. Stems are the family square to the **line of text**
   (`_line_of_text_deg`, principal axis of member centroids); right on all
   four groups, agrees with the doubled reading on Becker. Bisector deleted.
+- **Flag ON (Kent, same session):** Fremont and THERMAL move, eleven other
+  fixtures md5-identical, no golden moves, time unchanged.
 - **Not this pass:** the Goldman join (corners still sweep 90° over the
   smoothing width — Becker 40% of crosses past 45° vs a 24% stock floor),
   wide-column bars, the four-fold flip (Kent's).

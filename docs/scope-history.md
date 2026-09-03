@@ -3519,3 +3519,10 @@ findings recorded, not fixed: rail dents (`place` shrinks one whole rail 15%
 on a rotated stock bar — 1.22–1.27 vs 1.44–1.46 mm) and hairline columns
 under 0.6 mm losing crosses to the 0.5 mm minimum under any house angle (a
 lean floor was built, fanned, withdrawn). `docs/stitch-angle-convention-2026-09-03.md` §7.
+
+## 2026-09-03 (addendum) — Kent flips `satin_house_fourfold` ON
+
+On the pass-1 numbers (ENTHUSIAST benchmark 4.09/1k under 4.1, the N at
+0.200 mm pitch). Fremont 6385 → 6343 st and THERMAL 8872 → 8856 move; eleven
+other committed fixtures md5-identical with the flag on, digitize time
+unchanged, no golden moves. The function default stays False.

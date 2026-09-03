@@ -104,11 +104,12 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   ≥ 45° corners get the Goldman through-member + butt-join.** Measured on the pro file (axial columns
   4.7–7.9° off perpendicular, diagonals 15.9°, p90 43°), 86 shipped fonts
   (stems 1.8°, bars 3.0°, diagonals 18°, one-angle-per-glyph in 5 of 64) and
-  two expired patents. The 45° bisector `satin_house_fourfold` shipped OFF is
+  two expired patents. The 45° bisector `satin_house_fourfold` first shipped is
   what none of them do — it was a workaround for the ±45 side flip, and at
   fixed spine spacing it is 1.41× density (the ENTHUSIAST N pile). Do not
   re-open 45 vs 135. Pass 1 (fade, cap, density) built the same day: thread
-  pitch on leaned columns 0.152 → 0.20 mm; the join is pass 2. *(ruled
+  pitch on leaned columns 0.152 → 0.20 mm, and Kent flipped
+  `satin_house_fourfold` ON on those numbers; the join is pass 2. *(ruled
   2026-09-03 — Kent, both the rule and the 30° cap; built and the line-of-
   text correction measured 2026-09-03; `docs/stitch-angle-convention-2026-09-03.md` §7)*
 - **The 3 Arabic fonts can never work, engine or not:** they carry ONLY base-block
