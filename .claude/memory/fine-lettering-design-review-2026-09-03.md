@@ -51,6 +51,8 @@ against the engines. Full record: `docs/design-review-fine-lettering-2026-09-03.
   thread, wrong word for a note, so there is no Studio line. On hairline
   scripts the guard changes what bold IS: mai_en_fleur's connectors stay
   bean runs (1,393 stitches) instead of becoming dense satin (3,043).
+  **Kent saw the render and ruled 2026-09-03: keep it as built** — no
+  hairline exemption, no user switch (DOCTRINE standing ruling).
 
 - **Short stitches in the font path (second follow-up PR).** The Python
   `_short_stitch_guard` mirrored into `emitZigzag` with its numbers (0.3 /

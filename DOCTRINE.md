@@ -34,6 +34,19 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Standing rulings — decided, do not re-litigate
 
+- **Bold never closes a counter, hairline faces included — the guard stays
+  as built.** The font path's Bold widening is held per rail wherever a rail
+  faces another across a gap the 0.5 mm cross floor cannot spare (PR #332),
+  and on a hairline script at a small cap that leaves the word as satin
+  fragments and runs where the old unguarded Bold read as a solid blob on
+  screen with 0.06 mm gaps. Kent looked at the picture
+  (`docs/renders/fine-lettering-2026-09-03/font_mai_en_fleur_bold_25mm.png`)
+  and ruled: keep it. Neither version sews at that cap, the lettering note
+  says so, and the screen must show the true state rather than a false
+  solid. **Do not exempt hairline columns from the hold, and do not add a
+  "let Bold close gaps" switch.** *(Kent's call 2026-09-03 — review doc §9
+  and §11; PR #335)*
+
 - **"Is this a photograph" lives in ONE place (`config.is_photographic`), and is
   DECLARED today only because nothing is wired to answer it yet.** Stage 0's
   COLOUR signals cannot: real photographs are the LOWEST `unique_color_mass`

@@ -569,5 +569,7 @@ thin lines. Neither is a sewable design; the lettering note on this element
 says 99% of it is under 0.5 mm wide at this size and to size up or pick a
 bolder face. The difference is that the old picture hid that and the new
 one does not. Whether Bold should still be allowed to close the gaps on a
-face this fine — the option declined at §9's merge — is now a question with
-a picture attached.
+face this fine — the option declined at §9's merge — was put to Kent with
+this picture. **Ruled 2026-09-03: keep the guard as built.** Neither version
+sews at this cap; the screen shows the true state and the note says what to
+do. Recorded in `DOCTRINE.md`'s standing rulings so it is not re-raised.
