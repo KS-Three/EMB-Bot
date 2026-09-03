@@ -109,7 +109,10 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   fixed spine spacing it is 1.41× density (the ENTHUSIAST N pile). Do not
   re-open 45 vs 135. Pass 1 (fade, cap, density) built the same day: thread
   pitch on leaned columns 0.152 → 0.20 mm, and Kent flipped
-  `satin_house_fourfold` ON on those numbers; the join is pass 2. *(ruled
+  `satin_house_fourfold` ON on those numbers; the Goldman join (pass 2)
+  built the same session — a corner is a ≥ 45° spine turn WITH a reflex
+  boundary corner, joined inside one stroke, never a split into strokes
+  (a split costs a trim per piece). *(ruled
   2026-09-03 — Kent, both the rule and the 30° cap; built and the line-of-
   text correction measured 2026-09-03; `docs/stitch-angle-convention-2026-09-03.md` §7)*
 - **The 3 Arabic fonts can never work, engine or not:** they carry ONLY base-block

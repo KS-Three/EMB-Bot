@@ -62,7 +62,7 @@ from __future__ import annotations
 
 import heapq
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import cv2
 import numpy as np
@@ -98,6 +98,27 @@ _WELD_MAX_DOT = -0.5
 # rail fan while the short-stitch guard protects the inside. Splitting is the
 # fallback for corners so sharp the column would fold back over itself.
 _SPLIT_TURN_DEG = 90.0
+# THE GOLDMAN CORNER JOIN (2026-09-03, the stitch-angle rule's pass 2; Kent's
+# call, `docs/stitch-angle-convention-2026-09-03.md` §5 item 5). Two straight
+# members meeting at 45 deg or more are NOT a bend to sew round: the expired
+# Goldman/SoftSight disclosure (US6804573B2) breaks the column there -- one
+# member runs THROUGH and is extended to the outer edge, the other is
+# shortened and BUTTS into it -- and that is the mitre the Wilcom guide draws.
+# What the fan did instead: a merged arm-to-slab chain on Hotel Fremont's
+# slab serifs turned its cross 90 deg across ~±1.5 mm of a 5 mm arm, which is
+# Kent's "E heavy on top and bottom", "L heavy on the bottom", "T's left side
+# drops". The 1,436 : 18 corpus statistic behind `_SPLIT_TURN_DEG` is about
+# a column turning round a BEND, and a bend keeps sewing through: a cut here
+# needs both the spine turning >= `_JOIN_TURN_DEG` over one half-width AND
+# the ARTWORK turning >= `_CORNER_BOUNDARY_TURN_DEG` within a
+# `_CORNER_BOUNDARY_WINDOW_MM` stretch of its boundary near the apex -- a
+# corner has a vertex there (pull comp rounds a convex one into a ~0.5 mm
+# arc, and leaves the reflex one sharp), a bend has neither. Measured before
+# building: whitebg, alpha and ribbon_curve carry no spine turn over 40 deg
+# at 80 mm, Fremont's twelve capitals carry 13 corners at 48-62.
+_JOIN_TURN_DEG = 45.0
+_CORNER_BOUNDARY_TURN_DEG = 45.0
+_CORNER_BOUNDARY_WINDOW_MM = 1.0
 # A free end is a TAPERED TIP (not a square cap) when the ray-measured
 # corridor ONE STATION IN is already narrower than this fraction of the
 # stroke's half-width. Square caps read 0.85-0.94 there (BAR 0.851 is the
@@ -132,6 +153,13 @@ class Stroke:
     # a whole bar to clear and reads the blob, exactly as before.
     tuck_under_start: float | None = None
     tuck_under_end: float | None = None
+    # Goldman corner joins INSIDE this stroke (2026-09-03): (index into
+    # `spine` of the apex, True if the member BEFORE the apex owns the corner
+    # -- runs through and is extended -- and the member after it butts in).
+    # The stroke stays one stroke for sequencing, underlay and the travel
+    # web; only `satin_stroke` reads this, sewing the members as separate
+    # columns joined end to end. See `_split_sharp_corners`.
+    corners: list = field(default_factory=list)
 
 
 @dataclass
@@ -996,17 +1024,85 @@ def _prune_spurs(mask: np.ndarray, spur_len_px: float) -> None:
             return
 
 
-def _split_sharp_corners(strokes: list[Stroke], half_mm: float) -> list[Stroke]:
+def _boundary_corner_near(poly: Polygon, at: tuple[float, float],
+                          reach_mm: float) -> bool:
+    """Does the artwork turn a REFLEX corner of `_CORNER_BOUNDARY_TURN_DEG`
+    within `_CORNER_BOUNDARY_WINDOW_MM` of boundary arc, somewhere within
+    `reach_mm` of `at`? Two members meeting always make one on the inside of
+    the meeting (the crotch of an L, the underside of a slab serif), and pull
+    comp leaves a reflex vertex sharp where it rounds a convex one into a
+    ~0.5 mm arc. A bend has no sharp reflex vertex, and neither does a
+    TAPERED TIP -- whose point is convex, and which the first draft of this
+    test cut 1.6 mm from the ribbon_curve golden's end.
+
+    Rings are read with the material on the LEFT (exterior counter-clockwise,
+    holes clockwise), so a right turn is a reflex corner of the material.
+    """
+    half_win = 0.5 * _CORNER_BOUNDARY_WINDOW_MM
+    r2 = reach_mm * reach_mm
+    for ring, hole in ((poly.exterior, False), *((r, True) for r in poly.interiors)):
+        pts = list(ring.coords)
+        if len(pts) < 4:
+            continue
+        if pts[0] == pts[-1]:
+            pts = pts[:-1]
+        n = len(pts)
+        if n < 3:
+            continue
+        # material on the left: exterior CCW, hole CW
+        if ring.is_ccw == hole:
+            pts = list(reversed(pts))
+        near = [i for i, q in enumerate(pts)
+                if (q[0] - at[0]) ** 2 + (q[1] - at[1]) ** 2 <= r2]
+        if not near:
+            continue
+        reflex = [0.0] * n
+        for i in range(n):
+            a, b, c = pts[i - 1], pts[i], pts[(i + 1) % n]
+            d1 = math.atan2(b[1] - a[1], b[0] - a[0])
+            d2 = math.atan2(c[1] - b[1], c[0] - b[0])
+            signed = math.degrees((d2 - d1 + math.pi) % (2 * math.pi) - math.pi)
+            reflex[i] = -signed if signed < 0 else 0.0      # right turns only
+        for i in near:
+            total = reflex[i]
+            for step in (1, -1):
+                walked = 0.0
+                j = i
+                while True:
+                    k = (j + step) % n
+                    walked += math.dist(pts[j], pts[k])
+                    if walked > half_win or k == i:
+                        break
+                    total += reflex[k]
+                    j = k
+            if total >= _CORNER_BOUNDARY_TURN_DEG:
+                return True
+    return False
+
+
+def _split_sharp_corners(strokes: list[Stroke], half_mm: float,
+                         poly: Polygon | None = None,
+                         field: _WidthField | None = None) -> list[Stroke]:
     """Cut stroke spines at concentrated corners so each piece sews as its own
-    column, meeting its neighbour in a mitred overlap at the joint.
+    column -- and JOIN the pieces the Goldman way: at every cut the longer
+    piece owns the corner (its cut end is a capped free end, so
+    `_extend_to_cap` runs its column out to the artwork edge and covers the
+    corner square), and the other piece butts into it (its cut end is a
+    junction-style end tucking under the owner's own corridor,
+    `Stroke.tuck_under_*`, exactly as a T's stem tucks under its bar).
+
+    Two cut rules, in order of strength. A turn of `_SPLIT_TURN_DEG` (90) over
+    one half-width is a FOLD and is cut wherever it occurs -- the column would
+    otherwise sew back over itself. A turn of `_JOIN_TURN_DEG` (45) is cut
+    only where `poly` says the artwork itself has a corner there
+    (`_boundary_corner_near`): a bend of the same angle keeps sewing through,
+    which is what the corpus counts pros doing 1,436 times to 18. Without
+    `poly` only the fold rule runs, byte-identical to before the join.
 
     The turn at each sample is measured over a baseline of one half-width per
-    side — the same resolution the crosses themselves have — so a smooth curve
-    (turn spread over many widths, like the C fixture's 13 mm radius) never
-    trips it, while the N's diagonal junctions, a star's points and a hexagon
-    border's corners all do. Cut ends become free ends: the existing cap
-    machinery extends each piece to the boundary, which is exactly the overlap
-    a mitred satin joint wants.
+    side -- the same resolution the crosses themselves have -- so a smooth
+    curve (turn spread over many widths, like the C fixture's 13 mm radius)
+    never trips either rule.
     """
     if half_mm <= 0:
         return strokes
@@ -1025,65 +1121,154 @@ def _split_sharp_corners(strokes: list[Stroke], half_mm: float) -> list[Stroke]:
             continue
 
         # Turns are measured on a SMOOTHED copy of the spine (cuts are applied
-        # to the original — indices align). The raw medial axis dips toward the
+        # to the original -- indices align). The raw medial axis dips toward the
         # stem at every junction weld, and over a one-half-width baseline that
-        # raster dip reads ~36 deg — the T fixture's bar was being cut at a
+        # raster dip reads ~36 deg -- the T fixture's bar was being cut at a
         # corner the artwork does not have. Smoothing flattens the dip; a real
         # corner (N diagonal 56 deg, hexagon 60, star point 100+) survives it.
         sm = _smooth(pts, 3, st.closed)
         idx = range(n) if st.closed else range(k, n - k)
         turns: list[tuple[float, int]] = []
+        turn_at: dict[int, float] = {}
         for i in idx:
             a, b, c = sm[(i - k) % n], sm[i], sm[(i + k) % n]
             d1 = math.atan2(b[1] - a[1], b[0] - a[0])
             d2 = math.atan2(c[1] - b[1], c[0] - b[0])
             turn = abs(math.degrees((d2 - d1 + math.pi) % (2 * math.pi) - math.pi))
             turns.append((turn, i))
+            turn_at[i] = turn
 
         # Strongest corners first, and no second cut within a baseline of one
-        # already made — a corner is one apex, not every sample on its shoulder.
+        # already made -- a corner is one apex, not every sample on its shoulder.
+        #
+        # A corner is where two MEMBERS meet, and a member is at least one
+        # column width long and ends at a CAP, not a point. A join-rule apex
+        # closer than a column width to a free end of an open stroke is a
+        # tapered tip curling (the ribbon_curve golden, cut 1.6 mm from its
+        # point): left to the cap machinery. And a free-ended piece whose tip
+        # has no corridor -- the distance transform there under
+        # `_FORK_TIP_FRAC` of the half-width -- is a corner TWIG the skeleton
+        # welded onto a stem, the very geometry `_corner_forks` removes at a
+        # node (THERMAL's H: a 2.3 mm 45 deg arm into the crossbar corner,
+        # which then tilted the stem's cap 45 deg): it is cut off and DROPPED,
+        # and the stem it hijacked is capped square over the corner instead.
+        # The fold rule still cuts anywhere, as it always did.
+        reach = 2.0 * half_mm + 0.5
+        member = 2.0 * half_mm
+        cum = [0.0]
+        for a, b in zip(pts, pts[1:]):
+            cum.append(cum[-1] + math.dist(a, b))
+        # No join on a HAIRLINE: a column under the minimum cross (plus the
+        # 20% the rails lose to the nearer-hit symmetry and `place`) sews no
+        # crosses at all, and `satin_shape` reports it empty so stage 7
+        # falls back to fill. Joining its corner rescued a 0.5 mm-wide,
+        # 3.4 mm^2 squiggle on drone_render into four satin points and 79%
+        # bare fabric (2026-09-03). Below this width the fold rule alone
+        # runs; the lettering the join exists for is 0.7 mm and up.
+        joinable = 2.0 * half_mm >= 1.2 * machine.SATIN_MIN_CROSS_MM
         cuts: list[int] = []
+        twigs: set[int] = set()          # cut indices whose short side is a twig
         for turn, i in sorted(turns, reverse=True):
-            if turn < _SPLIT_TURN_DEG:
+            if turn < _JOIN_TURN_DEG:
                 break
+            twig = False
+            if turn < _SPLIT_TURN_DEG:
+                if not joinable:
+                    continue
+                if poly is None or not _boundary_corner_near(poly, pts[i], reach):
+                    continue            # a bend, not a corner: sew through it
+                if not st.closed:
+                    for free, tip, short in ((st.free_start, pts[0], cum[i] < member),
+                                             (st.free_end, pts[-1], cum[-1] - cum[i] < member)):
+                        if not free or not short:
+                            continue                # a member, whatever its tip
+                        if field is not None and \
+                                field.half_at(tip) < _FORK_TIP_FRAC * half_mm:
+                            twig = True             # short AND a point: a twig
+                        else:
+                            twig = None             # short with a cap: a tip
+                    if twig is None:
+                        continue
             gap = (min(abs(i - j), n - abs(i - j)) for j in cuts) if st.closed \
                 else (abs(i - j) for j in cuts)
             if all(g > 2 * k for g in gap):
                 cuts.append(i)
+                if twig:
+                    twigs.add(i)
         if not cuts:
             out.append(st)
             continue
         cuts.sort()
 
+        def length(piece: list[tuple[float, float]]) -> float:
+            return sum(math.dist(a, b) for a, b in zip(piece, piece[1:]))
+
         def keep(piece: list[tuple[float, float]]) -> bool:
-            return len(piece) >= 3 and \
-                sum(math.dist(a, b) for a, b in zip(piece, piece[1:])) >= 0.6 * half_mm
+            return len(piece) >= 3 and length(piece) >= 0.6 * half_mm
 
         if st.closed:
+            # A closed spine is opened at every cut, fold or join alike, into
+            # free-ended pieces that meet in mitred caps: a ring's corners
+            # (a square counter) were sewn that way before the join existed
+            # and the sequencing cost of the extra strokes is the same as it
+            # always was. The join proper is for open chains, where a cut
+            # would otherwise multiply strokes and hops.
             ring = cuts + [cuts[0] + n]
             for s0, s1 in zip(ring, ring[1:]):
                 piece = [pts[j % n] for j in range(s0, s1 + 1)]
                 if keep(piece):
                     out.append(Stroke(spine=piece, free_start=True,
                                       free_end=True, closed=False))
-        else:
-            bounds = [0, *cuts, n - 1]
-            for bi, (s0, s1) in enumerate(zip(bounds, bounds[1:])):
-                piece = pts[s0:s1 + 1]
-                if not keep(piece):
-                    continue
-                out.append(Stroke(
-                    spine=piece,
-                    free_start=st.free_start if bi == 0 else True,
-                    free_end=st.free_end if s1 == n - 1 else True,
-                    closed=False,
-                    # A cut end is a mitre joint, never a letterform corner —
-                    # only the original ends keep whatever they were.
-                    capped_start=st.capped_start if bi == 0 else False,
-                    capped_end=st.capped_end if s1 == n - 1 else False,
-                    tuck_under_start=st.tuck_under_start if bi == 0 else None,
-                    tuck_under_end=st.tuck_under_end if s1 == n - 1 else None,
-                ))
+            continue
+
+        # Open chain. Twig cuts drop their twig and cap the survivor; fold
+        # cuts split the chain into separate strokes (both sides capped, the
+        # mitred overlap the fold rule always made); join cuts stay INSIDE the
+        # stroke as `Stroke.corners`, so the chain sews as one stroke whose
+        # members `satin_stroke` joins the Goldman way.
+        lo, hi = 0, n - 1
+        free_start, capped_start, tuck_start = st.free_start, st.capped_start, st.tuck_under_start
+        free_end, capped_end, tuck_end = st.free_end, st.capped_end, st.tuck_under_end
+        inner: list[int] = []
+        for i in cuts:
+            if i in twigs:
+                # the twig is the short side; the survivor is capped at i
+                if st.free_end and cum[-1] - cum[i] < member and (
+                        not st.free_start or cum[i] >= member or cum[-1] - cum[i] <= cum[i]):
+                    hi = min(hi, i)
+                    free_end, capped_end, tuck_end = True, True, None
+                else:
+                    lo = max(lo, i)
+                    free_start, capped_start, tuck_start = True, True, None
+            else:
+                inner.append(i)
+        inner = [i for i in inner if lo < i < hi]
+        if hi - lo < 2:
+            continue
+        fold_cuts = [i for i in inner if turn_at[i] >= _SPLIT_TURN_DEG]
+        bounds = [lo, *fold_cuts, hi]
+        for bi, (s0, s1) in enumerate(zip(bounds, bounds[1:])):
+            piece = pts[s0:s1 + 1]
+            if not keep(piece):
+                continue
+            joins = [i - s0 for i in inner if s0 < i < s1 and turn_at[i] < _SPLIT_TURN_DEG]
+            corners: list[tuple[int, bool]] = []
+            edges_ = [0, *joins, len(piece) - 1]
+            for ci, j in enumerate(joins):
+                left = piece[edges_[ci]:j + 1]
+                right = piece[j:edges_[ci + 2] + 1]
+                corners.append((j, length(left) >= length(right)))
+            out.append(Stroke(
+                spine=piece,
+                free_start=free_start if bi == 0 else True,
+                free_end=free_end if s1 == hi else True,
+                closed=False,
+                capped_start=capped_start if bi == 0 else False,
+                capped_end=capped_end if s1 == hi else False,
+                tuck_under_start=tuck_start if bi == 0 else None,
+                tuck_under_end=tuck_end if s1 == hi else None,
+                corners=corners,
+            ))
     return out
 
 
@@ -1156,7 +1341,7 @@ def extract_strokes(poly: Polygon, *,
             tuck_under_start=e.get("tuck_under_start"),
             tuck_under_end=e.get("tuck_under_end"),
         ))
-    strokes = _split_sharp_corners(strokes, half_px / scale)
+    strokes = _split_sharp_corners(strokes, half_px / scale, poly, field)
     strokes.sort(key=lambda s: -sum(math.dist(a, b) for a, b in zip(s.spine, s.spine[1:])))
     return strokes, half_px / scale, field
 
@@ -2087,6 +2272,69 @@ def strip_splits(points: list[tuple[float, float]]) -> list[tuple[float, float]]
     return out
 
 
+def _member_corridor(piece: list[tuple[float, float]], from_start: bool,
+                     field: _WidthField | None, half_mm: float) -> float:
+    """A member's own half-width just past the corner blob: the median
+    corridor between one and three half-widths in from its corner end;
+    `half_mm` when the member is too short to read or there is no field."""
+    if field is None:
+        return half_mm
+    seq = piece if from_start else list(reversed(piece))
+    line = LineString(seq)
+    lo, hi = half_mm, min(3.0 * half_mm, line.length)
+    if hi <= lo:
+        return half_mm
+    vals = [field.half_at((q.x, q.y)) for q in
+            (line.interpolate(lo + (hi - lo) * t / 6.0) for t in range(7))]
+    return sorted(vals)[len(vals) // 2] or half_mm
+
+
+def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
+                  field: _WidthField | None, split_above_mm: float | None,
+                  end_cutback_mm: float, spacing_mm: float,
+                  angle_deg: float | None) -> list[tuple[float, float]]:
+    """A stroke with Goldman corners (`Stroke.corners`) -> its members sewn as
+    separate columns and laid end to end in chain order.
+
+    At each corner the OWNER's end is a capped free end -- `_extend_to_cap`
+    runs its column out to the artwork edge, over the corner square -- and
+    the other member's end is a junction-style end tucking under the owner's
+    own corridor (`tuck_under_*`), the way a T's stem tucks under its bar.
+    The hop between consecutive members is the corner itself: from the first
+    member's last cross to the second's first, inside the corner square,
+    under the owner's column when the butting member sews first and lapped
+    over its cap when the owner does -- both are corners the trade sews.
+    """
+    pts = stroke.spine
+    edges_ = [0, *[c[0] for c in stroke.corners], len(pts) - 1]
+    owners = [c[1] for c in stroke.corners]
+    out: list[tuple[float, float]] = []
+    for m, (s0, s1) in enumerate(zip(edges_, edges_[1:])):
+        piece = pts[s0:s1 + 1]
+        if len(piece) < 2:
+            continue
+        if m == 0:
+            free_s, capped_s, tuck_s = stroke.free_start, stroke.capped_start, stroke.tuck_under_start
+        elif owners[m - 1]:                    # the member before owns
+            free_s, capped_s = False, False
+            tuck_s = _member_corridor(pts[edges_[m - 1]:s0 + 1], False, field, half_mm)
+        else:
+            free_s, capped_s, tuck_s = True, True, None
+        if m == len(edges_) - 2:
+            free_e, capped_e, tuck_e = stroke.free_end, stroke.capped_end, stroke.tuck_under_end
+        elif owners[m]:                        # this member owns
+            free_e, capped_e, tuck_e = True, True, None
+        else:
+            free_e, capped_e = False, False
+            tuck_e = _member_corridor(pts[s1:edges_[m + 2] + 1], True, field, half_mm)
+        member = Stroke(spine=piece, free_start=free_s, free_end=free_e, closed=False,
+                        capped_start=capped_s, capped_end=capped_e,
+                        tuck_under_start=tuck_s, tuck_under_end=tuck_e)
+        out.extend(satin_stroke(poly, member, half_mm, field, split_above_mm,
+                                end_cutback_mm, spacing_mm, angle_deg))
+    return out
+
+
 def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  field: _WidthField | None = None,
                  split_above_mm: float | None = None,
@@ -2121,6 +2369,10 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
     Zero is the shipped behaviour; stage 7 supplies the number when
     `PipelineConfig.directional_comp` is on.
     """
+    if stroke.corners:
+        return _satin_joined(poly, stroke, half_mm, field, split_above_mm,
+                             end_cutback_mm, spacing_mm, angle_deg)
+
     spine = _smooth(stroke.spine, 3, stroke.closed)
     spine = _round_corners(spine, half_mm, stroke.closed)
 
