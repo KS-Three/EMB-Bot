@@ -3591,3 +3591,14 @@ the micron alone moved 4 stitches on Fremont. The 8–24% of rail points
 recorded open. Goldens re-pinned under the pre-change-tree discipline:
 alpha and ribbon flat-lane keys, both ribbon pushcomp entries; whitebg the
 byte-identical control. `docs/rail-dents-2026-09-03.md`.
+
+## 2026-09-03 (addendum) — #328 review: the near-floor guard is per ring
+
+Shell-only gating left Fremont's guarded letters falling to fill under the
+flag anyway: their background's letter-shaped holes were refined and stage 5
+reshaped each letter against its hole (24 → 0 satin crosses on `S54b55cf1`).
+Each ring is now judged on its own (`stage4_vectorize`), invalid rings
+repaired before measuring; Fremont ON vs OFF: 28/16 → 28/16 satin
+penetrations, tiers identical. Test added. The dust test's 35° step measured
+exactly 3.0 on the review machine (never entered the fixed branch) —
+replaced with a `nextafter` step and a two-cap case.

@@ -682,3 +682,13 @@ its hedge as it is copied forward** — is why this file is split.
   a defect does not get "in every golden" until it has been measured on a
   golden, and a fix is priced on the fixture census, not the probe.**
   *(2026-09-03 — `docs/rail-dents-2026-09-03.md`)*
+
+- **A per-shape gate in stage 4 is not per shape — a small letter is also
+  its background's HOLE, and stage 5 reshapes it against that hole.** The
+  near-floor curve guard skipped Fremont's 0.4 mm letters correctly (their
+  polygons byte-identical flag on/off) and they fell to fill anyway,
+  because the background's letter-shaped holes were refined and
+  `resolve_overlaps` re-cut the letters against them. Anything in stage 4
+  that treats one shape differently has to make the same decision for every
+  ring that shape appears as, holes included. *(2026-09-03 — review of
+  PR #328; `docs/round-curves-2026-09-03.md`)*

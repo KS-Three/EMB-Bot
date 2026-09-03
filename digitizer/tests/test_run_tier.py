@@ -450,3 +450,42 @@ def test_curve_refinement_maps_vertices_in_ring_order_across_a_hairline_neck():
         assert len(pos) >= len(ring_a) - 2, (len(pos), len(ring_a))
         rolled = pos[pos.index(min(pos)):] + pos[:pos.index(min(pos))]
         assert rolled == sorted(rolled), rolled
+
+
+def test_near_floor_holes_keep_their_polygon_while_the_shell_is_refined():
+    """Kent's ruling (2026-09-03): near-floor lettering is not refined. The
+    letters of a small line are also HOLES of the background they sit in,
+    and stage 5 reshapes a letter against its background's hole -- so the
+    guard has to judge every ring on its own. Review of PR #328 measured the
+    shell-only guard leaving Fremont's `S54b55cf1` (0.47 mm strokes) with 0
+    satin crosses under the flag because its hole in the background was
+    refined; per-ring gating keeps all 24. Here: a disc background with a
+    0.45 mm bar hole and a 1.3 mm disc hole -- the shell and the wide hole
+    gain vertices, the bar hole is byte-identical to the flag-off polygon."""
+    size = 400
+    px_per_mm = 31.25
+    yy, xx = np.mgrid[:size, :size]
+    mask = (xx - 200) ** 2 + (yy - 200) ** 2 <= 150.0 ** 2          # 4.8 mm disc
+    bar = (np.abs(xx - 200) <= 47) & (np.abs(yy - 120) <= 7)         # 3.0 x 0.45 mm bar
+    disc = (xx - 200) ** 2 + (yy - 270) ** 2 <= 40.0 ** 2            # 1.3 mm radius hole
+    mask = mask & ~bar & ~disc
+    p = Prep(rgb=np.zeros((size, size, 3), np.uint8), bg_mask=np.zeros((size, size), bool),
+             px_per_mm=px_per_mm, art_bbox=(0, 0, size, size))
+    off, _ = vectorize([RegionMask.from_full(mask, layer=0)], [0], p,
+                       PipelineConfig(target_width_mm=999, min_detail_mm=0.01))
+    on, _ = vectorize([RegionMask.from_full(mask, layer=0)], [0], p,
+                      PipelineConfig(target_width_mm=999, min_detail_mm=0.01, curve_turn_deg=15.0))
+    assert len(off) == 1 and len(on) == 1
+    assert len(on[0].polygon.exterior.coords) > len(off[0].polygon.exterior.coords), "shell not refined"
+
+    def rings(poly):
+        out = {}
+        for ring in poly.interiors:
+            c = Polygon(ring).centroid
+            out["bar" if c.y < 0 else "disc"] = list(ring.coords)
+        return out
+
+    r_off, r_on = rings(off[0].polygon), rings(on[0].polygon)
+    assert set(r_off) == {"bar", "disc"} == set(r_on)
+    assert r_on["bar"] == r_off["bar"], "the near-floor bar hole was refined"
+    assert len(r_on["disc"]) > len(r_off["disc"]), "the wide disc hole was not refined"

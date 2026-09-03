@@ -47,7 +47,7 @@ SHORT = {
                    dict(target_width_mm=93.0, garment_id="left_chest")),
     "sunset": ("photo/photo_sunset_backlit.png", {}),
 }
-DUST_MM = 1e-6
+DUST_MM = stitches.SPLIT_TOLERANCE_MM   # one constant; preflight carries the same micron
 
 
 def census(rel: str, kw: dict) -> dict:

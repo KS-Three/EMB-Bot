@@ -32,6 +32,10 @@ Full record: `docs/round-curves-2026-09-03.md`.
   trim moves, whitebg/alpha goldens re-pinned with the pre-change tree),
   hold the curve flip, and exempt near-floor lettering (ribbon width within
   20% of the minimum cross) from the refinement.
+- **The guard is per ring (review of #328).** Shell-only gating skipped the
+  letters and they still fell to fill: they are holes of the background,
+  the holes were refined, stage 5 reshaped the letter against its hole.
+  Every ring judged on its own; Fremont ON vs OFF 28/16 → 28/16 satin.
 - **The 13% stitch swing was float dust, not the flag.** `split_long_moves`
   halves any fill step that measures 3.0000000000000004 — 576 of Fremont's
   2450 fill steps, 1198 on sunset (10% of the design). Instrument
