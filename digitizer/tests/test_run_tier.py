@@ -483,8 +483,8 @@ def test_near_floor_holes_keep_their_polygon_while_the_shell_is_refined():
     and stage 5 reshapes a letter against its background's hole -- so the
     guard has to judge every ring on its own. Review of PR #328 measured the
     shell-only guard leaving Fremont's `S54b55cf1` (0.47 mm strokes) with 0
-    satin crosses under the flag because its hole in the background was
-    refined; per-ring gating keeps all 24. Here: a disc background with a
+    satin penetrations under the flag (24 flag-off, pre-change tree) because
+    its hole in the background was refined; per-ring gating keeps all 24. Here: a disc background with a
     0.45 mm bar hole and a 1.3 mm disc hole -- the shell and the wide hole
     gain vertices, the bar hole is byte-identical to the flag-off polygon."""
     size = 400

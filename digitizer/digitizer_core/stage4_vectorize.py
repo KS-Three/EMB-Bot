@@ -317,8 +317,9 @@ def vectorize(
         # in: gating the shell alone (the first cut) refined the background's
         # letter-shaped holes, and stage 5 then reshaped the letter against
         # its refined hole and dropped it to fill anyway (review of PR #328,
-        # measured on Fremont: 24 -> 0 satin crosses on `S54b55cf1` with the
-        # shell-only guard, 24 with per-ring gating).
+        # measured on Fremont: 24 -> 0 satin penetrations on `S54b55cf1` with the
+        # shell-only guard on the pre-change tree, 24 -> 24 with per-ring
+        # gating; 28 either way once the rail fix added two crosses).
         refine = curve_turn and not sub_detail and _wide_enough_to_refine(shell_px, p.px_per_mm)
         if refine:
             shell_px = _refine_curves(contours[outer].reshape(-1, 2).astype(np.float64),

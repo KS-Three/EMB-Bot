@@ -207,8 +207,9 @@ staircase.
 The emb-bot-reviewer measured the shipped guard on Fremont under
 `curve_turn_deg=15`: the two near-floor letters (`S54b55cf1` 0.47 mm,
 `S9bac9a3c` 0.39 mm) were correctly skipped — their own polygons byte-identical
-OFF vs ON — and they **still fell to fill** (24 → 0 satin crosses on the
-first). The letters are also HOLES of the background region they sit in
+OFF vs ON — and they **still fell to fill** (24 → 0 satin penetrations on
+the first, on the pre-change tree; 28 at HEAD after the rail fix added two
+crosses). The letters are also HOLES of the background region they sit in
 (`S78e6cd01`, 22 holes); the shell-only guard refined those holes, and
 stage 5's overlap resolution reshapes a letter against its background's
 hole. Forcing the guard off everywhere restored satin, so the coupling is

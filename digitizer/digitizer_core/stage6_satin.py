@@ -1818,9 +1818,12 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
             return q
         # The smoothed width overshoots the edge here. Put the rail ON the
         # edge along its own normal -- the nearest boundary crossing between
-        # the station and the overshooting point, skipping the station's own
-        # boundary contact at a cap exactly as `hit` does -- instead of
-        # stepping the whole rail in by 15%. Measured on the pre-change tree
+        # the station and the overshooting point -- instead of stepping the
+        # whole rail in by 15%. No 50 um skip here, unlike `hit`: a body
+        # station is never on the boundary, and a crossing that close means
+        # the station hugs an edge, where the honest answer is the degenerate
+        # cross the minimum-cross rule drops, not the next crossing beyond a
+        # gap (which would bridge outside the art). Review of PR #329. Measured on the pre-change tree
         # (defect 23, `tools/rail_edge.py --ladders`): 250-1000 overshoots
         # per design, half of Fremont's under 10 um and 70-90% under a pixel
         # on every fixture, and three quarters of them retreated 0.15 w --
@@ -1832,7 +1835,7 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
             for c in ([(g.x, g.y)] if g.geom_type == "Point"
                       else [(c[0], c[1]) for c in g.coords]):
                 d2 = (c[0] - px) ** 2 + (c[1] - py) ** 2
-                if d2 > 0.0025 and (best is None or d2 < best[0]):
+                if d2 > 0.0 and (best is None or d2 < best[0]):
                     best = (d2, c)
         if best is not None and inside.covers(SPoint(best[1])):
             return best[1]

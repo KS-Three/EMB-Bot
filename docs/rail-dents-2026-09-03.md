@@ -79,7 +79,15 @@ step being 15% no matter how small the overshoot.
   read a 1.005 mm same-rail interval at cross 3 — rails placed exactly on a
   converging edge spread by 1/cos(taper) and hand the guard a bunched
   station. The tip's width cap, refinement floor and guard are calibrated to
-  the ladder; with the scoping the head is byte-identical to before. **The
+  the ladder; with the scoping the head is byte-identical to before. Byte-identical
+  at the `_rail_points` level, that is: the review of PR #329 measured the
+  EMITTED tips and found the first or last cross moved on 18 + 13 of
+  Fremont's runs (worst 0.157 mm), 7 + 12 of drone's (worst 0.411 mm),
+  and the ribbon's tail by 0.457 mm (its head byte-identical) — the
+  short-stitch guard fires on odd-indexed crosses, so a changed cross
+  count upstream flips its parity for the rest of the run, and its pull
+  depends on the now-moved body neighbour. The ribbon tail's 0.19 mm crawl
+  is gone in the process (0.544/0.199/0.614 → 0.544/0.71/0.436 mm). **The
   tip is its own question**, below.
 
 Not a physical constant (a micron is under any raster or machine quantum;
@@ -125,7 +133,9 @@ holes = same-rail intervals over 0.8 mm, the starburst test's metric):
 
 The rail jitter halves or better on every fixture — the zig-zag between the
 full width and 0.85× was most of it — and the crosses are wider because
-they reach the edge.
+they reach the edge. The jitter p90 is flat to slightly UP on ENTHUSIAST
+(0.550 → 0.565) and drone (0.362 → 0.368): the tail of the distribution is
+the short-stitch guard on bends, the open half below, not the ladder.
 
 Time: one boundary intersection per overshoot, 250–1000 per design, against
 the two the width measurement already casts per station — Fremont 13.9 →
@@ -166,7 +176,9 @@ vacuously). The starburst test pins the tip unchanged.
 
 - **Tips.** Exact-edge rails at a converging tip bunch on the pinched side
   and spread on the open side; the tip machinery (taper cap, refinement
-  floor, guard) is calibrated to the ladder. Whether the tip should get the
+  floor, guard) is calibrated to the ladder — and the guard's odd/even
+  parity means a tip still moves whenever the body's cross count does
+  (§2), so "the tip is byte-identical" holds only at the rail level. Whether the tip should get the
   clamp with a re-tuned guard is a sew-out question (tip density).
 - **The rail model's inside gaps** (section 3) — the larger half of what a
   digitizer would call "the satin doesn't reach the edge".

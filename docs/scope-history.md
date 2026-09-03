@@ -3596,7 +3596,7 @@ byte-identical control. `docs/rail-dents-2026-09-03.md`.
 
 Shell-only gating left Fremont's guarded letters falling to fill under the
 flag anyway: their background's letter-shaped holes were refined and stage 5
-reshaped each letter against its hole (24 → 0 satin crosses on `S54b55cf1`).
+reshaped each letter against its hole (24 → 0 satin penetrations on `S54b55cf1`, pre-change tree).
 Each ring is now judged on its own (`stage4_vectorize`), invalid rings
 repaired before measuring; Fremont ON vs OFF: 28/16 → 28/16 satin
 penetrations, tiers identical. Test added. The dust test's 35° step measured

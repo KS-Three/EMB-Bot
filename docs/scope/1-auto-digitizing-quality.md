@@ -3633,8 +3633,8 @@ pre-change tree (main at 70df648); whitebg byte-identical.
 The shell-only guard skipped Fremont's near-floor letters correctly and
 they fell to fill anyway: the letters are holes of the background region,
 those holes were refined, and stage 5 reshapes a letter against its
-background's hole (24 → 0 satin crosses on `S54b55cf1` under
-`curve_turn_deg=15`). `stage4_vectorize` now gates every ring on its own
+background's hole (24 → 0 satin penetrations on `S54b55cf1` under
+`curve_turn_deg=15`, pre-change tree). `stage4_vectorize` now gates every ring on its own
 ribbon width and repairs an invalid ring before measuring it. Fremont ON
 vs OFF: `S54b55cf1` 28 → 28 satin penetrations, `S9bac9a3c` 16 → 16, 19
 satin / 5 fill shapes either way, trims 52 → 45. Open: a ring letter at
