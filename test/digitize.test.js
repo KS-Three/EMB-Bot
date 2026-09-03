@@ -980,3 +980,27 @@ test("buildLetteringDesign: cap garment's bottom-up sew order follows where line
   assert.deepStrictEqual([capPlain.colors[0].r, capPlain.colors[0].g, capPlain.colors[0].b], [10, 20, 30], "no mirror: bottom line VVV (base color) sews first");
   assert.deepStrictEqual([capMirY.colors[0].r, capMirY.colors[0].g, capMirY.colors[0].b], [200, 0, 0], "mirrorY: AAA (red) is now the bottom line and sews first");
 });
+
+test("buildLetteringDesign: the counter guard holds bold where a real font's counters and junctions would close, and thin is untouched by it", () => {
+  const garment = { widthIn: 8, heightIn: 8 };
+  const font = require("../test/fixtures/fonts/geneva_simple.json");
+  const base = { garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false, targetWidthMm: 8 };
+  // 2.6 mm caps: the counters of e, n and t are under or near the 0.5 mm
+  // floor once bold's 0.3 mm is asked for. The guard holds rail stations,
+  // the stitch count barely moves (the crosses are shorter, not fewer).
+  const bold = DG.buildLetteringDesign(font, "Kent", { ...base, weightPreset: "bold" });
+  const boldOff = DG.buildLetteringDesign(font, "Kent", { ...base, weightPreset: "bold", counterGuard: false });
+  assert.ok(bold.lettering.counterHeld > 0, "expected held stations on 2.6 mm bold lettering");
+  assert.strictEqual(bold.lettering.weightMm, 0.3);
+  assert.ok(Math.abs(bold.stitchCount - boldOff.stitchCount) <= Math.ceil(0.01 * boldOff.stitchCount));
+  assert.notDeepStrictEqual(bold.stitches, boldOff.stitches, "the guard must actually move rails");
+  // Thin narrows; nothing to hold, and the guard flag changes nothing.
+  const thin = DG.buildLetteringDesign(font, "Kent", { ...base, weightPreset: "thin" });
+  const thinOff = DG.buildLetteringDesign(font, "Kent", { ...base, weightPreset: "thin", counterGuard: false });
+  assert.deepStrictEqual(thin, thinOff);
+  assert.strictEqual(thin.lettering.counterHeld, 0);
+  // Normal never reports a weight or a hold.
+  const normal = DG.buildLetteringDesign(font, "Kent", base);
+  assert.strictEqual(normal.lettering.weightMm, 0);
+  assert.strictEqual(normal.lettering.counterHeld, 0);
+});

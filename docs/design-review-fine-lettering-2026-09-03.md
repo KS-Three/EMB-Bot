@@ -35,7 +35,7 @@ the textbook. Those were the useful part.
 | 1 | Stitch type can change within one letter | A hairline stroke inside a satin letter lost every cross under the floor and was dropped; only a whole shape fell back to fill or run | `stage6_satin.py` satin_stroke | **built, both engines** (§3, §5) |
 | 2 | Is this column wide enough for satin at all | Font path had no width floor; the only guard was 0.3 design pixels | `satinplay.js` emitZigzag | **built** (§5) |
 | 3 | Does this object need underlay | Python laid a center run under every satin stroke, sub-mm letters included | `stage7_sequence.py` satin branch | **built** (§4) |
-| 4 | Enlarge, never close, the counters | Bold adds 0.3 mm to pull comp with no counter guard | `digitize.js` | open |
+| 4 | Enlarge, never close, the counters | Bold adds 0.3 mm to pull comp with no counter guard | `digitize.js` | **built** after PR #331 (§9) |
 | 5 | Recognise the letters, then re-set them | Convert-to-text only saw rescued small shapes; ordinary wordmarks never got the badge | `textcluster.py` _candidates | **built** (§6) |
 | 6 | Corners and tight bowls are where it fails | No short-stitch handling in the font path | `satinplay.js` | open, needs width gating |
 | 7 | Small text wants more open density | Fixed 0.4 mm pitch in both engines | `machine.py` | gate 1 — card block 5 |
@@ -56,9 +56,10 @@ the textbook. Those were the useful part.
 
 Asked which gaps to take on: **1, 2 and 5**, all three. Asked whether the
 Python engine should adopt the JS engine's 5 mm underlay rung (item 3): **gate
-it now**, using the existing number rather than a new one. Item 4 (a counter
-guard on Bold's pull comp), item 6 (short stitches in the font path) and
-item 7 (density) were not chosen and are unchanged.
+it now**, using the existing number rather than a new one. Item 6 (short
+stitches in the font path) and item 7 (density) were not chosen and are
+unchanged. Item 4 (a counter guard on Bold's widening) was Kent's pick for
+the follow-up once PR #331 merged, and is §9.
 
 One thing went a step past the approved wording, and is flagged here and in
 the PR: the font-path guards were approved as *"warn only, no clamp"*, and
@@ -317,3 +318,82 @@ seeds an empty text box and MARINE-class reads (89–96) would seed a guess.
 - Renders: `fremont_pair.png` / `fremont_post_pair.png` /
   `drone_pair.png` in the session scratchpad; the crops described in §3 were
   read, not inferred.
+
+## 9. Item 4 — the Bold counter guard (follow-up, Kent's pick after PR #331)
+
+**Mechanism.** The Bold weight preset widens every column by pushing its
+rails apart — `WEIGHT_OFFSET_MM.bold`, 0.3 mm, folded into `pullCompMm`
+and applied by `emitZigzag` as one shared offset. A counter in a satin-column
+font is nothing but the gap between two rails that face each other (the eye
+of an e, the slot between two stems, a script connector beside its stroke),
+so bold closed every counter by the same 0.3 mm it added to the strokes:
+at 0.72 mm a counter went to 0.42, under the width at which two rails pile
+thread on a point, and at 0.36 mm to 0.06 — gone. The Python engine's pull
+comp already holds a HOLE open when shrinking it would take it under the
+detail floor (`stage5_overlap`, `hole_floor`); the font path had nothing,
+and its own comment said so: *"if a different font's tightest glyph
+collapses a counter at bold, shrink `WEIGHT_OFFSET_MM.bold`"* — a global
+answer to a local problem.
+
+**What ships.** The weight travels apart from the fabric's pull comp
+(`weightMm`, pre-divided by the fit scale like everything else; the sum is
+what it was, so normal and thin are byte-identical). `routeGlyph` samples
+every rail of the glyph into a cloud with outward normals
+(`satinplay.railCloud`, at the station spacing), and per station each rail
+asks what faces it straight ahead (`counterGap`: the nearest rail whose
+normal points back, within 1.5 stations to either side; Infinity on an
+outside edge, since a column's own far rail is behind it). `stationPush`
+then gives each rail the fabric's pull in full — that is physics, gate 1's
+— plus the weight: whole on an open edge; across a counter no more than the
+gap can spare after the pull with the floor kept, half per side; nothing at
+all where the gap is already under the floor at normal weight. The floor is
+`SATIN_MIN_CROSS_MM` — two rails 0.5 mm apart pile thread whether they are
+one column's or two neighbours' — so no new constant. `splitByCrossFloor`
+classifies with the same per-station widening, so a stretch it calls satin
+keeps its crosses. `lettering.counterHeld` counts held rail stations and
+`lettering.weightMm` the weight on the fabric; there is no Studio note,
+because the count also includes near-touching junctions (a bar's end
+0.2 mm from a bowl), where holding the weight is right but "counters" would
+be the wrong word. Only the glyph's own columns are in the cloud: the gap to
+the next letter is letter spacing's business.
+
+**Measured on the two-stem probe** (1.8 mm stems, 0.3 mm weight, no pull):
+
+| counter at normal weight | bold, unguarded | bold, guarded | outside edge |
+|---|---|---|---|
+| 1.44 mm | 1.14 | 1.14 (nothing held) | +0.30 |
+| 0.72 mm | 0.42 | **0.50** (the floor) | +0.30 |
+| 0.36 mm | 0.06 | **0.36** (untouched) | +0.30 |
+
+**Measured on the library**, "Fritsch" in every shipped font, bold with and
+without the guard:
+
+| | fonts with a hold | stitches bold guarded / unguarded / normal |
+|---|---|---|
+| 25 mm | 60 of 83 | 70,162 / 73,183 / 67,276 |
+| 50 mm | 54 of 83 | 108,506 / 109,950 / 106,169 |
+
+Two things the sweep shows that a counter-only reading would miss. Decorative
+faces hold at large caps (initials_XL, 35 mm cap, 725 stations) — those are
+junctions and ornaments nearly touching, not counters, and the weight simply
+stops short of a neighbouring column. And on hairline faces the guard
+changes what bold IS: unguarded bold on mai_en_fleur at 25 mm took 1,222
+stitches to 3,043 by widening every hairline connector past the cross
+floor into a dense satin column, closing the gaps it wove through; guarded,
+the connectors that sit between strokes keep their gaps, stay under the
+floor and sew as bean runs (18 hairline spans against 0), and bold lands at
+1,393. Bold now means "thicker where there is room", which is what a type
+designer's bold does too. Whether a user reaching for Bold on a hairline
+script wanted the closed-gap version is a taste question this doc records
+rather than settles; `counterGuard: false` is one flag away, measurement
+only, not a UI setting.
+
+**Tests.** `test/satinplay.test.js` +3 (the facing-gap query on an outside
+edge and across a gap; the per-station push whole / capped / withheld, pull
+comp never held, legacy one-number identity; `weightMm` + `pullCompMm`
+byte-identical to the folded number for bold and thin);
+`test/satinfont.test.js` +2 (the three-gap table above, outer width +0.3
+throughout; normal and thin untouched, weight reported on the fabric);
+`test/digitize.test.js` +1 (geneva "Kent" at 2.6 mm caps holds, stitch count
+within 1% of unguarded, thin and normal identical with the guard off).
+Engine and Studio suites green; the run-font pins did not move.

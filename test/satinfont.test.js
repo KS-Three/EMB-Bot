@@ -891,3 +891,65 @@ test("width guards: buildLetteringDesign carries the report out, and the 0.5 mm 
   assert.ok(tiny.lettering.hairlineSpans >= 2, `at 5 mm the L and the K's thin half are hairlines: ${JSON.stringify(tiny.lettering)}`);
   assert.ok(tiny.lettering.capMm < 4, `and the cap is under the 4 mm floor: ${tiny.lettering.capMm}`);
 });
+
+// ---- Counter guard (fine-lettering review item 4, 2026-09-03) --------------
+
+function pairFont(gapUnits) {
+  // Two 10-unit stems (1.8 mm at 0.18 mm/unit), inner rails `gapUnits` apart.
+  const stem = (x0) => ({ railA: [[x0, 60], [x0, 0]], railB: [[x0 + 10, 60], [x0 + 10, 0]], rungs: [] });
+  return { name: "PairFont", license: "OFL", unitsPerEm: 100, sizeMm: 20, advDefault: 40,
+    glyphs: { N: { adv: 40, cols: [stem(0), stem(10 + gapUnits)], runs: [] } } };
+}
+function pairGapMm(lay) {
+  // Narrowest x distance between the two stems' satin points over the middle
+  // third of the height (clear of the caps), in mm at 10 px/mm.
+  const pts = lay.runs.filter((r) => r.kind === "satin").flatMap((r) => r.pts);
+  const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+  const mid = (Math.min(...xs) + Math.max(...xs)) / 2, y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const band = pts.filter((p) => p.y > y0 + (y1 - y0) / 3 && p.y < y1 - (y1 - y0) / 3);
+  const L = band.filter((p) => p.x < mid), R = band.filter((p) => p.x >= mid);
+  return (Math.min(...R.map((p) => p.x)) - Math.max(...L.map((p) => p.x))) / 10;
+}
+function pairWidthMm(lay) {
+  const xs = lay.runs.filter((r) => r.kind === "satin").flatMap((r) => r.pts).map((p) => p.x);
+  return (Math.max(...xs) - Math.min(...xs)) / 10;
+}
+const PAIR_OPTS = { emMm: 18, pxPerMm: 10, spacingMm: 0.4, pullCompMm: 0, letterSpacingMm: 0, underlay: false };
+const near = (a, b, tol = 0.011) => Math.abs(a - b) <= tol;
+
+test("counter guard: bold widens the outside of every stroke by the full weight, and the counter between two stems only as far as the floor allows", () => {
+  // Wide counter (1.44 mm): the gap can spare the whole 0.3 mm.
+  const wide = SF.layoutText(pairFont(8), "N", { ...PAIR_OPTS, weightMm: 0.3 });
+  assert.ok(near(pairGapMm(wide), 1.14), `1.44 - 0.3 = 1.14, got ${pairGapMm(wide)}`);
+  assert.ok(near(pairWidthMm(wide), 5.04 + 0.3), `outer width +0.3, got ${pairWidthMm(wide)}`);
+  assert.strictEqual(wide.lettering.counterHeld, 0);
+  // Tight counter (0.72 mm): stops at the 0.5 mm floor instead of 0.42.
+  const tight = SF.layoutText(pairFont(4), "N", { ...PAIR_OPTS, weightMm: 0.3 });
+  assert.ok(near(pairGapMm(tight), 0.5), `held at the floor, got ${pairGapMm(tight)}`);
+  assert.ok(near(pairWidthMm(tight), 4.32 + 0.3), "the outside still takes the full weight");
+  assert.ok(tight.lettering.counterHeld > 0);
+  const tightOff = SF.layoutText(pairFont(4), "N", { ...PAIR_OPTS, weightMm: 0.3, counterGuard: false });
+  assert.ok(near(pairGapMm(tightOff), 0.42), `unguarded it closes to 0.42, got ${pairGapMm(tightOff)}`);
+  // Counter already under the floor (0.36 mm): bold leaves it exactly alone.
+  const closed = SF.layoutText(pairFont(2), "N", { ...PAIR_OPTS, weightMm: 0.3 });
+  assert.ok(near(pairGapMm(closed), 0.36), `never close: got ${pairGapMm(closed)}`);
+  assert.ok(near(pairWidthMm(closed), 3.96 + 0.3));
+  const closedOff = SF.layoutText(pairFont(2), "N", { ...PAIR_OPTS, weightMm: 0.3, counterGuard: false });
+  assert.ok(near(pairGapMm(closedOff), 0.06), `unguarded it would all but vanish, got ${pairGapMm(closedOff)}`);
+});
+
+test("counter guard: normal and thin weights are untouched, and the report carries the weight on the fabric", () => {
+  for (const gap of [8, 4, 2]) {
+    const normal = SF.layoutText(pairFont(gap), "N", PAIR_OPTS);
+    const normalSplit = SF.layoutText(pairFont(gap), "N", { ...PAIR_OPTS, weightMm: 0 });
+    assert.deepStrictEqual(normalSplit.runs, normal.runs);
+    assert.strictEqual(normal.lettering.counterHeld, 0);
+    assert.strictEqual(normal.lettering.weightMm, 0);
+    const thin = SF.layoutText(pairFont(gap), "N", { ...PAIR_OPTS, pullCompMm: 0.2, weightMm: -0.15 });
+    const thinOff = SF.layoutText(pairFont(gap), "N", { ...PAIR_OPTS, pullCompMm: 0.2, weightMm: -0.15, counterGuard: false });
+    assert.deepStrictEqual(thin.runs, thinOff.runs, "a negative weight opens counters; the guard has nothing to hold");
+    assert.strictEqual(thin.lettering.counterHeld, 0);
+  }
+  const bold = SF.layoutText(pairFont(8), "N", { ...PAIR_OPTS, weightMm: 0.3, fitScale: 0.5 });
+  assert.ok(near(bold.lettering.weightMm, 0.15), "weightMm is reported on the fabric: layout mm x fitScale");
+});
