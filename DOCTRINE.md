@@ -93,6 +93,20 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   shape in a heavy rim so the bird reads as a cut-out, while `significant`
   spends its 4% on the eyes. *(re-measured 2026-08-26)*
 
+- **The satin stitch angle is DERIVED from the art, never chosen: house =
+  perpendicular to the dominant stem family (the longer family where two
+  balance — never the bisector); a stroke that cannot span it takes its own
+  perpendicular; diagonals lean toward the house by at most 30°
+  (`SATIN_HOUSE_MIN_SPAN_DEG` 45 → 60); station spacing / cos(lean) so the
+  0.4 mm pitch holds across the thread; ≥ 45° corners get the Goldman
+  through-member + butt-join.** Measured on the pro file (axial columns
+  4.7–7.9° off perpendicular, diagonals 15.9°, p90 43°), 86 shipped fonts
+  (stems 1.8°, bars 3.0°, diagonals 18°, one-angle-per-glyph in 5 of 64) and
+  two expired patents. The 45° bisector `satin_house_fourfold` shipped OFF is
+  what none of them do — it was a workaround for the ±45 side flip, and at
+  fixed spine spacing it is 1.41× density (the ENTHUSIAST N pile). Do not
+  re-open 45 vs 135. *(ruled 2026-09-03 — Kent, both the rule and the 30°
+  cap; `docs/stitch-angle-convention-2026-09-03.md`)*
 - **The 3 Arabic fonts can never work, engine or not:** they carry ONLY base-block
   letters and zero presentation forms. *(measured 2026-08-22 — font.json blocks)*
 - **We do not rework font data to make it importable.** A candidate is either
