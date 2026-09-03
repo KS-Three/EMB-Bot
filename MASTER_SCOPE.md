@@ -406,6 +406,9 @@ question all wait on it — and that doc already specifies four hoopings that
 would settle nine open geometric questions at once. **Kent accepted this as-is
 2026-08-21:** not a queued action; scores under it read `pending sew-out`
 permanently. Do not re-raise it as the highest-leverage next action.
+One specific question is now queued behind it with the code change already
+measured both ways: whether a split, underlaid 5.3 mm satin column is sound —
+see DOCTRINE, "Raising `SATIN_MAX_WIDTH_MM`". *(2026-09-02 — reverted branch)*
 
 ### Evaluation corpus & harness — real gap, newly tracked here
 

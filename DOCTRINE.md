@@ -293,6 +293,45 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 - **Size-proportional `simplify_tol_mm`** — the fixed 0.2 mm constant is correct
   as-is; Ember's scaling equivalent is not a like-for-like comparison. No change
   made, and the investigation is closed rather than open. *(measured 2026-08-07 — `docs/scope/research-backlog.md`)*
+- **Raising `SATIN_MAX_WIDTH_MM` 5.0 → 7.0 — BOTH coherent routes break
+  something measured, and neither failure is golden churn.** Prompted by an
+  80 mm Instagram icon whose two white ring bands (5.31 / 5.32 mm ribbon width,
+  dt_cv 0.014 / 0.017 — as regular as ribbons get) miss the 5.0 cap by 0.3 mm
+  and fall to single-angle tatami, so the rows run straight through the curves.
+  Built and measured both ways against a same-machine baseline of 3 failures:
+  - **Coupled** (move the one constant): **18 failures**. It also moves
+    `_rail_points`' per-station guard (`SATIN_MAX_WIDTH_MM / 2`, 2.5 → 3.5 mm)
+    — the 2026-08-05 fix for crosses that physically overlap, measured then at
+    2580 crossing rail-to-rail pairs and a 9.57-layer coverage spike. Breaks
+    `test_satin_crosses_do_not_self_overlap_across_a_wide_junction`,
+    `test_promotion_cannot_reopen_the_width_cap` (whose fixture is a 40×5.5 mm
+    bar chosen precisely to sit over 5.0) and four preflight density tests.
+  - **Split** (new classifier constant, emitter pinned at 5.0): **13
+    failures**. Restores all six safety tests, but the classifier then admits
+    bands the emitter refuses to cover — `_rail_points` will not lay a cross
+    past 5.0 mm — and `test_a_clean_fixture_leaves_no_artwork_uncovered` goes
+    `uncovered_worst_mm2` 0.0 → 0.2 against a fixture whose promise is zero. A
+    genuinely 7 mm band would sew ~2 mm bare.
+  This is `one-directional satin/fill gate tuning` (above) demonstrated
+  mechanically rather than cited: the classifier ceiling and the emitter guard
+  are deliberately ONE number (`_rail_points`: "a flat per-station cap at that
+  ceiling, not a new number"), so they cannot be moved independently, and
+  moving them together reopens a fixed defect. **Any route past 5.0 needs the
+  overlap guard rebuilt on real local geometry — better discrimination, not a
+  bigger number.** Reverted whole; nothing shipped.
+  *(measured 2026-09-02 — branch `claude/satin-width-cap-7mm`, reverted)*
+- **`SATIN_MAX_WIDTH_MM = 5.0` is NOT the industry ceiling, and the gap is the
+  open question, not the answer.** Wilcom's published guidance is "ideal
+  maximum around 12 mm, stay within 10 mm", naming Auto Split — which this
+  engine already applies above `SPLIT_SATIN_ABOVE_MM` — as the answer to
+  snagging; practitioner guidance for wearables is ~7 mm. So 5.0 is roughly
+  half the industry's working ceiling and measured what 19 sampled files
+  happened to contain, not what thread can take. **This does NOT clear ROADMAP
+  gate 1** — a web citation is not fabric, and the gate names satin width
+  explicitly. It makes the sew-out worth doing, nothing more. Note also
+  `docs/corpus-laws-round3-2026-08-01.md` flags its own >7.0 mm bucket as 82%
+  non-ribbon junk, so 7.0 sits on that edge.
+  *(researched 2026-09-02 — wilcom.com, "Mastering Satin Stitch and Tatami Stitch")*
 
 ---
 
@@ -380,6 +419,22 @@ its hedge as it is copied forward** — is why this file is split.
 
 ## Gotchas — cost someone a session once
 
+- **`machine.SATIN_MAX_WIDTH_MM` is load-bearing in FOUR places, not one.
+  Changing it to move the satin/fill decision silently moves three other
+  things.** Enumerated 2026-09-02 after a 5.0 → 7.0 edit took the suite from 3
+  failures to 18:
+  1. the satin/fill classifier — `stage5_overlap` and `stage7_sequence`, both
+     via `cfg.satin_max_width_mm or SATIN_MAX_WIDTH_MM` (the intended one);
+  2. `stage6_satin._rail_points`' per-station width cap, `/ 2` — the guard
+     against crosses that physically overlap each other;
+  3. `_stroke_underlay`'s oversize trigger;
+  4. `_stroke_underlay`'s leg clamp, `× 0.82`.
+  Roles 1 and 2 are the SAME ceiling on purpose — `_rail_points` says so
+  outright ("a flat per-station cap at that ceiling, not a new number") — so
+  splitting them is not a tidy-up, it decouples the classifier from what the
+  emitter can actually sew and leaves artwork bare. Read all four before
+  touching the constant, and check whether a fifth has appeared.
+  *(measured 2026-09-02 — branch `claude/satin-width-cap-7mm`, reverted)*
 - **A shipped `.embf` answers more than it looks like it can — decode it before
   asking Kent for source files.** The 26-dead-glyph item sat in the queue for
   six days marked "needs YOUR MACHINE", because telling `stripRunParamsIfSatin`
