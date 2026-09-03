@@ -3614,3 +3614,16 @@ meadow 10); floors of 2–3 px halve the O's gain (33 → 17 vertices). Gate
 `stage4_vectorize._CURVE_MIN_EPS_PX` = 4 (≥ 20 px/mm at 0.2 mm): Fremont's
 O 9 → 33 vertices, 47° → 17°, trims 52 → 45; every other fixture and every
 golden byte-identical. Tests for on-by-default, off-is-DP and the gate.
+
+## 2026-09-03 (addendum) — Kent: classifier robust to boundary detail — measured negative, no engine change
+
+`tools/ribbon_stability.py` (committed): five of 219 DT-judged shapes flip
+satin/fill when only their polygon's boundary detail changes (drone 2,
+gaulke 2, meadow 1), four of them on a threshold edge. Eight cures in five
+families (spur pruning ×3, the sewing spur rule, a hybrid, raster smoothing
+×2, a regularity margin band) leave 3–12 flips against 5 and change 2–48
+shipped verdicts; 2 px smoothing breaks two archetypes. The diagnosis that
+priced the item (spurs off the refined boundary inflate the spine) was the
+mechanism on one shape of five and no cure of it survived the census.
+Closed as a measured negative in DOCTRINE; the working mitigation stays
+`_CURVE_MIN_EPS_PX` (#330). `docs/classifier-stability-2026-09-03.md`.

@@ -708,3 +708,23 @@ its hedge as it is copied forward** — is why this file is split.
   with a per-shape tier diff on every fixture, paired by centroid, not by
   shape id (ids are content-derived and move with the polygon).**
   *(2026-09-03 — `docs/round-curves-2026-09-03.md`, "The flip")*
+
+- **The satin/fill classifier's boundary-detail sensitivity is intrinsic
+  to its thresholds — eight cures measured, all worse, do not rebuild.**
+  Five verdicts in 219 flip when only a polygon's boundary detail changes
+  (`tools/ribbon_stability.py`), four of them shapes sitting on a
+  threshold (cv 0.5, aspect 3, `explained` 0.80). Pruning skeleton spurs
+  at three strengths, the sewing spur rule, a hybrid that keeps the blob
+  detector on the full skeleton, morphological smoothing of the
+  classifier's raster at 1 and 2 px, and a margin band on the regularity
+  edge: flips 3–12 against 5, shipped verdicts changed 2–48, and the 2 px
+  smoothing turns the BAR and T archetypes into fill. The mechanism: on a
+  compact shape the spurs ARE the medial axis, so pruning collapses the
+  spine and the remainder reads *regular* — into satin through the
+  ordinary path, which has no elongation guard. **Rule: a classifier
+  robustness change is scored on shipped verdicts changed AND flips left,
+  on the real fixtures, before any threshold is touched; and the one
+  mitigation that works is not feeding it boundary detail
+  (`_CURVE_MIN_EPS_PX`).** A verdict with a margin needs a memory, and a
+  classifier that does not rasterize is a different construction — both
+  Kent's call. *(2026-09-03 — `docs/classifier-stability-2026-09-03.md`)*

@@ -157,6 +157,8 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
     `split_long_moves` split a 3.0000000000000004 mm grid step into two 1.5s; a micron of tolerance
     (`stitches.SPLIT_TOLERANCE_MM`) removes them: whitebg 2162 → **1982** st, Fremont 6365 → **5789**, sunset 11614 → **10416**, no row or trim moves. Goldens re-pinned (whitebg, alpha; pre-change tree). `tools/fill_dust.py`. *(fixed 2026-09-03 — same doc)*
 
+26. **Satin/fill classifier flips borderline shapes under boundary detail — MEASURED NEGATIVE on eight cures, intrinsic to the thresholds (2026-09-03).** 5 of 219 DT-judged verdicts flip when only the polygon's detail changes (4 on a threshold edge: cv 0.5, aspect 3, `explained` 0.80); spur pruning ×3, the sewing spur rule, a hybrid, raster smoothing ×2 and a regularity band leave 3–12 flips and change 2–48 shipped verdicts, so nothing ships; the mitigation is `_CURVE_MIN_EPS_PX`. Open only as a different construction (a margin with memory, or a polygon-native width profile) — Kent's call. `tools/ribbon_stability.py`. *(measured 2026-09-03 — `docs/classifier-stability-2026-09-03.md`)*
+
 ### Closed — kept numbered, because ten other docs cite them by number
 
 Full text moved to [`docs/scope-history.md`](docs/scope-history.md) 2026-08-27;
