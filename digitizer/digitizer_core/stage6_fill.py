@@ -648,7 +648,16 @@ def travel_path(poly: Polygon, ring, a: tuple[float, float],
                 length = sum(math.dist(route[i - 1], route[i]) for i in range(1, len(route)))
                 if length > budget:
                     continue
-                if not inside.covers(LineString(route)):
+                line = LineString(route)
+                if not inside.covers(line):
+                    continue
+                # `inside` may be the unsewn ground plus an allowance around
+                # each end; the shape itself is never negotiable. Reviewed
+                # 2026-09-03: without this, a route through the unsewn rings
+                # could leave the polygon by up to one travel stitch at either
+                # end (measured 1.48 mm across a 1.5 mm slot), and the scorer
+                # rewarded it as a bridge instead of a cut.
+                if inside is not cover and not cover.covers(line):
                     continue
                 out: list[tuple[float, float]] = []
                 cur = a
@@ -679,8 +688,8 @@ def travel_path(poly: Polygon, ring, a: tuple[float, float],
         # `a` is the last penetration of the column just sewn, so it lies
         # inside `sewn` by construction and a route can only LEAVE the unsewn
         # ground at its two ends; allow one travel stitch around each.
-        inside = unsewn.buffer(0.01).union(pa.buffer(_EXPOSED_TOLERANCE_MM)) \
-                       .union(pb.buffer(_EXPOSED_TOLERANCE_MM))
+        inside = unsewn.buffer(0.01).union(cover.intersection(
+            pa.buffer(_EXPOSED_TOLERANCE_MM).union(pb.buffer(_EXPOSED_TOLERANCE_MM))))
         stale = cache.get("unsewn_rings") if cache is not None else None
         if stale:
             near = sorted(stale, key=lambda r: max(r.distance(pa), r.distance(pb)))

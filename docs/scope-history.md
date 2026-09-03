@@ -3473,3 +3473,19 @@ Flag off is md5-identical to main on becker, drone, enthusiast, Fremont. Time:
 re-pinned (flat lane + pushcomp left_chest, 2166 → 2162 travel penetrations)
 with the pre-change worktree reproducing the old pins first; towel unchanged
 and still the known red. `docs/fill-travel-under-cover-2026-09-03.md`.
+
+## 2026-09-03 (addendum) — fill travel under cover: review fix, default OFF
+
+The entry above is left as written; two corrections from the adversarial
+review the same hour. (1) The endpoint allowance in the unsewn-route
+containment test was unclipped, so a covered route could leave the shape by
+up to one travel stitch near either end (1.48 mm across a 1.5 mm slot,
+measured) and the scorer rewarded it as a bridge; fixed with the disc clipped
+to the shape and a hard shape-containment test on every covered route, pinned
+by `test_covered_routing_never_leaves_the_shape`. The exposure wins survive,
+a few cuts return: Fremont 286 → 90 mm exposed at trims 47 → 52, gaulke
+204 → 8 at 24 → 26, drone 546 → 89 at 86 → 91, sunset 711 → 344 at 53 → 42,
+meadow 691 → 324 at 33 → 35. (2) The flag ships **default OFF**: Kent picked
+the work item, not the default, and a new engine option defaults to today's
+output until he flips it — so the `logo_whitebg` re-pins were reverted; the
+ON pins are recorded in the field doc for the flip.

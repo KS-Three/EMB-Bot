@@ -700,7 +700,16 @@ class PipelineConfig:
     # is smooth through the same renderer because a pro hides travel under
     # fill still to come. False is byte-identical to before the flag existed.
     # Sequencing, no fabric constant — ROADMAP gate 1 does not reach it.
-    fill_travel_under_cover: bool = True
+    #
+    # Default OFF pending Kent's word (2026-09-03): he picked the work item,
+    # not the default, and the convention here is that a new engine option
+    # defaults to today's output until he flips it (`borders_last` took the
+    # same path). Measured ON: Hotel Fremont's fill-phase exposed travel
+    # 286 -> 92 mm, gaulke_roofing 209 -> 8, photo_sunset_backlit trims
+    # 53 -> 30; cost +7-11% digitize time on logos, +49% on sunset's 263-run
+    # fill. Flipping it moves the `logo_whitebg` goldens by their travel
+    # (2166 -> 2162 penetrations) -- re-pin per the recapture doctrine.
+    fill_travel_under_cover: bool = False
 
     # Task A2 (2026-08-14, tools/pro_parity): the corpus's professional
     # SOLID fill elements sew at roughly double a single ordinary pass's

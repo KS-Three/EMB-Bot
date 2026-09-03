@@ -3466,41 +3466,46 @@ rules out redundancy without proving independence. Instrument only, no engine
 change. *(measured 2026-08-27 — PR #281;
 `docs/curve-fidelity-from-the-stitch-path-2026-08-27.md`)*
 
-## Fill travel under cover — defect 21 FIXED, default ON (2026-09-03)
+## Fill travel under cover — defect 21 FIX BUILT, default OFF pending Kent (2026-09-03)
 
 Kent's *"the in-fill stitching doesn't look clean"* (Hotel Fremont, 2026-09-02)
 was 22 of 27 fill-phase travel runs, 286 of 450 mm, laid on top of columns
 already sewn. Two mechanisms in `stage6_fill`, behind
-`PipelineConfig.fill_travel_under_cover` (default True; False is byte-identical
-to before — md5 on becker, drone, enthusiast, Fremont):
+`PipelineConfig.fill_travel_under_cover` (default False — Kent picked the work
+item, not the default; False is md5-identical to main on becker, drone,
+enthusiast, Fremont):
 
 - `travel_path(..., sewn=...)`: straight only if straight crosses unsewn
   ground; else the inset rings of the UNSEWN remainder (`cover − sewn`, half-
-  row inset, either way round, endpoints allowed one travel stitch); else the
-  shape's rings both ways; else the exposed route it always took.
+  row inset, either way round, endpoints allowed one travel stitch — clipped
+  to the shape, and every covered route is hard-tested against the shape);
+  else the shape's rings both ways; else the exposed route it always took.
 - `_reorder_for_cover`: the nearest-first column walk prefers a next column
   whose straight bridge is inside the shape and off the fill laid so far;
-  scored by `_order_cost` (cuts × 25 + travel + exposed travel × 2) against
-  the incoming order and kept only when cheaper; last path pinned.
+  scored by `_order_cost` (cuts × 25 + travel + exposed travel × 2 — the 2.0
+  is an unanchored judgement, unlike the 25 Kent set) against the incoming
+  order and kept only when cheaper; last path pinned.
 
-Measured (fill-phase travel over sewn footprint, one-stitch tolerance):
+Measured ON (fill-phase travel over the sewn footprint, one-stitch tolerance;
+`tools/fill_exposure.py`):
 
 | fixture | exposed before → after | stitches | trims |
 |---|---|---|---|
-| `logo_hotel_fremont` | 286 → 92 mm | 6473 → 6394 | 47 → 47 |
-| `logo_gaulke_roofing` | 209 → 8 mm | 3954 → 3885 | 24 → 21 |
-| `becker_marine_logo` | 27 → 14 mm | 4557 → 4531 | 28 → 28 |
-| `drone_render` | 546 → 61 mm | 9317 → 8724 | 86 → 90 |
-| `photo_dof_meadow` | 691 → 301 mm | 10116 → 9679 | 33 → 27 |
-| `photo_sunset_backlit` | 711 → 291 mm | 12345 → 11779 | 53 → 30 |
+| `logo_hotel_fremont` | 286 → 90 mm | 6473 → 6385 | 47 → 52 |
+| `logo_gaulke_roofing` | 204 → 8 mm | 3954 → 3863 | 24 → 26 |
+| `becker_marine_logo` | 30 → 14 mm | 4557 → 4529 | 28 → 28 |
+| `drone_render` | 546 → 89 mm | 9317 → 8753 | 86 → 91 |
+| `photo_dof_meadow` | 691 → 324 mm | 10116 → 9667 | 33 → 35 |
+| `photo_sunset_backlit` | 711 → 344 mm | 12345 → 11620 | 53 → 42 |
 
 Routing alone was measured first and moved nothing (Fremont 286 → 286): the
 inset ring runs through sewn columns, and by the time a bridge is built the
 exposure is already decided by the order. Cost: digitize +7–11% on logos,
-+49% on sunset's 263-run blend fill after two optimisations (`_ring_route`
++49–67% on sunset's 263-run blend fill after two optimisations (`_ring_route`
 rebuilt its arc table per call — 34.8 s of a 90 s profile — now cached; the
 unsewn rings are reused across bridges and re-checked against the current
-unsewn ground). What remains exposed on Fremont is the field's own topology:
-hauls between regions the letters cut it into. `logo_whitebg` goldens
-re-pinned (2166 → 2162, travel only) with the pre-change worktree reproducing
-the old pins first. *(measured 2026-09-03 — `docs/fill-travel-under-cover-2026-09-03.md`)*
+unsewn ground). The trims that return with the flag are the score buying
+hidden travel with cuts at 2 : 25; whether that is the right price is Kent's.
+Flipping ON moves the `logo_whitebg` goldens by their travel (2166 → 2162
+penetrations) — re-pin per the recapture doctrine with the pre-change tree.
+*(measured 2026-09-03 — `docs/fill-travel-under-cover-2026-09-03.md`)*

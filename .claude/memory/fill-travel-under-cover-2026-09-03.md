@@ -1,6 +1,6 @@
 ---
 name: fill-travel-under-cover-2026-09-03
-description: defect 21 fixed default-on (`fill_travel_under_cover`) — routing alone did nothing, the ORDER decides exposure; cover-aware column order + routing through the unsewn remainder took Fremont's fill-phase exposed travel 286 → 92 mm, gaulke 209 → 8, sunset trims 53 → 30; two diagnostic traps (footprint slivers, containment at the bridge start), one profiling find (`_ring_route` rebuilt its arc table per call), goldens re-pinned via the pre-change worktree
+description: defect 21 fix built, DEFAULT OFF pending Kent (`fill_travel_under_cover`) — routing alone did nothing, the ORDER decides exposure; cover-aware column order + routing through the unsewn remainder took Fremont's fill-phase exposed travel 286 → 90 mm at 5 more trims, gaulke 204 → 8, sunset trims 53 → 42; two diagnostic traps (footprint slivers, containment at the bridge start), one review catch (unclipped endpoint allowance let routes leave the shape), one profiling find (`_ring_route` rebuilt its arc table per call); goldens untouched with the default off, the re-pin procedure proven
 metadata:
   type: reference
 ---
@@ -39,16 +39,25 @@ before this change existed. Cached per ring (`_ring_arc`, lru on the
 geometry). Sunset still costs +49% with the flag on (33.6 → 50 s; the covered
 scoring pass twice per shape); logos +7–11%.
 
-## Numbers to quote
+## The review catch, and the default
 
-Fremont 286 → 92 mm (stitches 6473 → 6394, trims 47 flat); gaulke 209 → 8
-(trims 24 → 21); drone 546 → 61 (stitches −6%, trims 86 → 90 — the score
-bought 570 fewer travel stitches for 4 cuts); sunset 711 → 291, trims 53 →
-30; meadow 691 → 301, trims 33 → 27. Flag off md5-identical to main.
-Goldens: `logo_whitebg` 2166 → 2162 (travel only), re-pinned with
-`recapture_flat_lane_key.py --pre-change-tree` (machine OK, control OK) and
-`GOLDEN_FLAG_OFF[left_chest]`; `towel` unchanged by this engine, still the
-known red. Suite failure set: the three platform goldens only.
+The endpoint allowance around a covered route's ends was unioned in
+UNCLIPPED — a route could leave the shape by up to 2.5 mm and the scorer
+rewarded it as a bridge (1.48 mm across a 1.5 mm slot, measured). Clipped +
+hard shape containment on every covered route. A few cuts came back.
+
+**Default OFF** — Kent picked the item, not the default; convention is
+today's output until he flips (`borders_last` precedent). The whitebg
+re-pins were done, proven, and reverted; the field doc has the flip
+procedure.
+
+## Numbers to quote (after the clip fix, flag ON)
+
+Fremont 286 → 90 mm (st 6473 → 6385, trims 47 → 52); gaulke 204 → 8 (24 →
+26); drone 546 → 89 (86 → 91); sunset 711 → 344 (trims 53 → 42); meadow 691
+→ 324 (33 → 35). The returning trims are the 2 : 25 exposed-vs-cut weight
+buying hidden travel — the 2.0 is unanchored, Kent's to price. Flag off
+md5-identical to main; suite failure set the three platform goldens only.
 
 See also [[hotel-fremont-fine-details-2026-09-02]], [[real-artwork-trim-truth]]
 (the trim-side framing), [[first-physical-sewout-2026-09-01]] (travel over

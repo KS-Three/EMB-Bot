@@ -791,8 +791,11 @@ def _fill_exposed_mm(runs, row_mm=0.4):
 
 
 def test_travel_path_without_sewn_is_the_route_it_always_was():
-    """`sewn=None` is the old signature: same straight run, same shorter way
-    round, so every caller that does not opt in is byte-identical."""
+    """`sewn=None` and the positional call are the same code path (both take
+    the pre-change branch), so this pins that the two spellings agree; the
+    evidence that the branch itself is unchanged is the flag-off md5 identity
+    to main recorded in `docs/fill-travel-under-cover-2026-09-03.md`, and
+    the goldens."""
     ring = _inset_ring(RING, machine.TRAVEL_INSET_MM)
     for a, b in (((-11, 0), (11, 0)), ((5, 5), (30, 15))):
         poly = RING if a == (-11, 0) else RECT
@@ -873,3 +876,30 @@ def test_reorder_for_cover_pins_the_exit_point():
     assert out[-1][-1] == paths[-1][-1]
     assert sorted(map(tuple, (p for path in out for p in path))) == \
         sorted(map(tuple, (p for path in paths for p in path)))
+
+
+def test_covered_routing_never_leaves_the_shape():
+    """Review finding, 2026-09-03: the endpoint allowance around a covered
+    route's ends was unioned in unclipped, so a route through the unsewn
+    rings could leave the polygon by up to one travel stitch at either end --
+    1.48 mm across a 1.5 mm slot, measured -- and `_order_cost` scored it as
+    a bridge instead of the cut it should be. A field cut by a slot the width
+    of a letter stroke, left side sewn, needle at the slot, next column on
+    the right: plain routing has no ring holding both ends and lifts the
+    needle; covered routing must do the same, never stitch across the slot."""
+    field = Polygon([(0, 0), (40, 0), (40, 10), (0, 10)]).difference(
+        Polygon([(19.25, -1), (20.75, -1), (20.75, 11), (19.25, 11)]))
+    ring = _inset_ring(field, machine.TRAVEL_INSET_MM)
+    sewn = Polygon([(0, 0), (19.25, 0), (19.25, 10), (0, 10)])
+    a, b = (18.9, 5.0), (21.1, 5.0)
+    plain = travel_path(field, ring, a, b, None, None)
+    covered = travel_path(field, ring, a, b, None, sewn)
+    assert plain is None, "fixture must be unroutable without leaving the shape"
+    assert covered is None, covered
+    # And a covered route that does exist stays inside the shape everywhere.
+    poly = Polygon([(0, 0), (40, 0), (40, 10), (0, 10)])
+    sewn2 = Polygon([(21, 0), (40, 0), (40, 8), (21, 8)])
+    route = travel_path(poly, _inset_ring(poly, machine.TRAVEL_INSET_MM),
+                        (20.5, 4.0), (39.0, 9.5), None, sewn2)
+    assert route is not None
+    assert poly.buffer(0.01).covers(LineString([(20.5, 4.0)] + route))

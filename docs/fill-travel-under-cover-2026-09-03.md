@@ -1,4 +1,4 @@
-# Fill travel under cover — defect 21, fixed default ON (2026-09-03)
+# Fill travel under cover — defect 21, fix built, default OFF pending Kent (2026-09-03)
 
 Kent's note 1 on the Hotel Fremont screenshot: *"The in-fill stitching doesn't
 look clean, not sure if it's the stitch out or the stitch rendering."* Traced
@@ -10,8 +10,8 @@ border covers. Kent picked this as the next item on 2026-09-03.
 
 ## The instrument
 
-`scratchpad/exposure.py`, kept as the test helper `_fill_exposed_mm` in
-`tests/test_fill.py`: walk a shape's runs in sew order, accumulate the
+`tools/fill_exposure.py` (committed), and the test helper `_fill_exposed_mm`
+in `tests/test_fill.py`: walk a shape's runs in sew order, accumulate the
 footprint of each fill path (a full-row buffer of a half-row-simplified copy),
 and for each fill-phase travel run measure how much of it lies over that
 footprint beyond a one-travel-stitch tolerance (`_EXPOSED_TOLERANCE_MM` =
@@ -48,27 +48,47 @@ The exposed-stitch weight, 2.0, is a judgement about how a design LOOKS
 haul across finished tatami weighs 16 against a cut's 25, so a cut is never
 bought to hide a short hop. Not a fabric constant.
 
+## Review fix, same hour — a covered route could leave the shape
+
+The endpoint allowance (one travel stitch around each end of a covered
+route, needed because the bridge starts inside the column it just finished)
+was unioned into the containment region UNCLIPPED, so a route through the
+unsewn rings could leave the polygon by up to 2.5 mm near either end —
+1.48 mm across a 1.5 mm slot, measured — and `_order_cost` scored it as a
+bridge instead of the cut it should be. Fixed: the discs are clipped to the
+shape and every covered route is hard-tested against the shape as well
+(`test_covered_routing_never_leaves_the_shape`). The wins survive; a few cuts
+return. All numbers below are after the fix.
+
 ## Measured, flag on vs off (fill-phase travel over the sewn footprint)
 
-| fixture | exposed | fill-phase travel | stitches | trims |
-|---|---|---|---|---|
-| `logo_hotel_fremont` @ 80 (Kent's settings) | **286 → 92 mm** (22 → 6 runs) | 450 → 209 mm | 6473 → 6394 | 47 → 47 |
-| `logo_gaulke_roofing` | **209 → 8 mm** (15 → 1) | 370 → 196 | 3954 → 3885 | 24 → 21 |
-| `becker_marine_logo` | 27 → 14 mm | 77 → 55 | 4557 → 4531 | 28 → 28 |
-| `logo_whitebg` | 10 → 10 mm | 30 → 21 | 2166 → 2162 | 6 → 6 |
-| `drone_render` (blend tier) | **546 → 61 mm** (32 → 9) | 1269 → 352 | 9317 → 8724 | 86 → 90 |
-| `photo_dof_meadow` | 691 → 301 mm | 1130 → 683 | 10116 → 9679 | 33 → 27 |
-| `photo_sunset_backlit` | **711 → 291 mm** | 1316 → 936 | 12345 → 11779 | **53 → 30** |
+| fixture | exposed | stitches | trims |
+|---|---|---|---|
+| `logo_hotel_fremont` @ 80 (Kent's settings) | **286 → 90 mm** (22 → 6 runs) | 6473 → 6385 | 47 → **52** |
+| `logo_gaulke_roofing` | **204 → 8 mm** (9 → 1) | 3954 → 3863 | 24 → 26 |
+| `becker_marine_logo` | 30 → 14 mm | 4557 → 4529 | 28 → 28 |
+| `logo_whitebg` | 10 → 10 mm | 2166 → 2162 | 6 → 6 |
+| `drone_render` (blend tier) | **546 → 89 mm** (32 → 13) | 9317 → 8753 | 86 → 91 |
+| `photo_dof_meadow` | 691 → 324 mm | 10116 → 9667 | 33 → 35 |
+| `photo_sunset_backlit` | **711 → 344 mm** | 12345 → 11620 | **53 → 42** |
 
 Flag off is md5-identical to `origin/main` on becker, drone, enthusiast and
 Fremont. `enthusiast_logo` has no fill travel at all and is untouched either
-way. Drone's four extra trims are the score buying 570 fewer travel stitches
-for 100 stitch-equivalents of cuts — a legitimate trade by the rule above,
-recorded because defect 4 counts trims.
+way. The trims that come back are the score buying hidden travel with cuts
+at 2 : 25 — the 2.0 exposed-stitch weight is an unanchored judgement (unlike
+`_TRIM_STITCH_EQUIVALENT`'s 25, which Kent set), and whether five more cuts
+on Fremont are worth 196 mm less visible travel is his call.
 
-Whole-design render (all travel, every tier): Fremont exposed **564 → 303 mm**,
-30 → 20 runs; the long diagonals across the lower field are gone, what remains
-is hauls between the regions the letters cut the field into.
+Two instruments, do not mix them: the fill-phase figure above counts travel
+inside fill-tier shapes against their own sewn footprint with a one-stitch
+tolerance; the 2026-09-02 "39 runs, 570 mm" and the render's "30 runs,
+564 mm" count every travel run in the design against a half-row footprint
+with no tolerance. Same defect, different denominators.
+
+Whole-design render (every tier, half-row footprint): Fremont exposed
+**564 → 303 mm**, 30 → 20 runs; the long diagonals across the lower field are
+gone, what remains is hauls between the regions the letters cut the field
+into.
 
 ## Cost
 
@@ -77,8 +97,8 @@ is hauls between the regions the letters cut the field into.
 | Fremont | 10.9 s | 12.1 s |
 | gaulke | 38.0 s | 40.5 s |
 | drone | 22.8 s | 24.5 s |
-| meadow | 14.3 s | 17.5 s |
-| sunset (263 fill runs) | 33.6 s | **50.0 s** |
+| meadow | 14.3 s | 19.4 s |
+| sunset (263 fill runs) | 33.6 s | **50–56 s** |
 
 Two optimisations landed on the way, both behaviour-preserving: `_ring_route`
 rebuilt its cumulative arc table on every call — **34.8 s of a 90 s profile**
@@ -86,20 +106,25 @@ on sunset, the hottest function in stage 6 before this change existed — and is
 now cached per ring; and the unsewn-ground rings are reused across
 consecutive bridges, re-checked against the CURRENT unsewn ground, before the
 inset buffer is rebuilt. What remains on sunset is the covered scoring pass
-itself (`_order_cost` with routing, twice per shape, 15.6 s) and the shapely
-set operations behind it. Not optimised further here; the service's 60 s job
-budget in tests is on small fixtures and unaffected.
+itself (`_order_cost` with routing, twice per shape) and the shapely set
+operations behind it; the cost is superlinear in fill-run count. The app's
+poll budget is 300 s and the 60 s budget in `tests/test_service.py` is on
+small fixtures, so it ships un-gated; the cheapest next step is to reuse the
+winning `_order_cost` pass's bridges in `emit`.
 
-## Goldens
+## Default OFF, and the goldens
 
-`logo_whitebg` moved by exactly its travel (2166 → 2162 penetrations; region
-ids, areas, warnings unmoved) and was re-pinned in `flat_lane_golden.json`
-(`tools/recapture_flat_lane_key.py --pre-change-tree <worktree at origin/main
-baf702c> --control ribbon_curve.png`: machine OK, control OK) and in
-`test_pushcomp.GOLDEN_FLAG_OFF` for `left_chest` (the pre-change tree
-reproduces the old tuple here; `towel` is unchanged by this engine and stays
-the known red). The full local suite's failure set is the three platform
-goldens CI deselects and nothing else.
+Kent picked the work item, not the default; a new engine option defaults to
+today's output until he flips it (`borders_last` took the same path). With
+the flag off nothing moves and the goldens are main's. When it is flipped:
+`logo_whitebg` moves by exactly its travel (2166 → 2162 penetrations;
+region ids, areas, warnings unmoved) — re-pin `flat_lane_golden.json` via
+`tools/recapture_flat_lane_key.py logo_whitebg.png --pre-change-tree
+<worktree at the pre-flip commit> --control ribbon_curve.png` and
+`test_pushcomp.GOLDEN_FLAG_OFF[("logo_whitebg.png", "left_chest")]` to the
+tuple the pre-flip tree fails to reproduce; `towel` is unchanged by this
+engine and stays the known red. Done once already on 2026-09-03 (machine OK,
+control OK) and reverted with the default; the procedure is proven.
 
 ## What this does not do
 
