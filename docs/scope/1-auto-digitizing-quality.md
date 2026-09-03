@@ -3640,3 +3640,17 @@ vs OFF: `S54b55cf1` 28 → 28 satin penetrations, `S9bac9a3c` 16 → 16, 19
 satin / 5 fill shapes either way, trims 52 → 45. Open: a ring letter at
 the floor is measured by its shell alone (no fixture has one).
 *(measured 2026-09-03 — `docs/round-curves-2026-09-03.md`, review follow-up)*
+
+## Round curves — the flip (2026-09-03): `curve_turn_deg` = 15 by default, gated to four pixels
+
+Per-shape tier diff over every fixture (`tools/curve_tiers.py`, shapes
+paired by centroid): ungated, Fremont (31 px/mm) counter 9 → 33 vertices,
+roughness 3.19 → 2.91, trims 52 → 45, no tier change; drone (19) roughness
+7.51 → 7.36 but a 12 × 3 mm ribbon fell satin → fill (`explained` 0.83 →
+0.70: the 1-px skeleton grew 17% more spurs off the refined boundary);
+gaulke (16), ENTHUSIAST (15), sunset, meadow, whitebg/alpha/ribbon (10)
+all ROUGHER with 40–80% more vertices, meadow a 2.4 mm blob fill → satin
+(cv 0.53 → 0.48). Floors of 2–3 px cost half the O (17 vertices, 27°).
+Gate at four pixels of tolerance (`_CURVE_MIN_EPS_PX`): only Fremont among
+the fixtures refines; everything else byte-identical, no golden moves.
+*(measured 2026-09-03 — `docs/round-curves-2026-09-03.md`, "The flip")*

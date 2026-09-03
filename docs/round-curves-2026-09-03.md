@@ -231,3 +231,63 @@ shapes are 0.69–0.74 mm with their holes). A with-holes width would close it.
 Also from the review: the dust test's 35° case measured exactly 3.0 on the
 review machine and never entered the fixed branch — replaced with a
 `math.nextafter` step (old engine 3 points, new 2) plus the two-cap case.
+
+## The flip (2026-09-03, Kent's call after #329) — ON at 15°, where the tolerance has four pixels
+
+Kent picked the flip once the per-ring guard was verified. The evidence the
+#327 review asked for — a per-shape tier diff on every fixture — is
+`tools/curve_tiers.py` (shapes paired across the flag by id, then by
+centroid, because shape ids are content-derived and move with the polygon).
+Run ungated first, at the 1 px floor, on every fixture:
+
+| fixture | px/mm | stitches | trims | vertices | roughness | tier changes |
+|---|---|---|---|---|---|---|
+| Fremont | 31 | 5795 → 5790 | 52 → **45** | 762 → 1501 | 3.19 → **2.91** | none |
+| drone | 19 | 8666 → 8781 | 93 → 96 | 1318 → 2044 | 7.51 → 7.36 | **1**: a 12 × 3 mm ribbon satin → fill |
+| gaulke | 16 | 3867 → 3950 | 26 → 20 | 1076 → 1521 | 8.90 → 9.10 | none |
+| ENTHUSIAST @ 93 | 15 | 2955 → 2898 | 25 → 19 | 599 → 652 | 9.01 → 9.86 | none |
+| whitebg / alpha / ribbon | 10 | −16 / −4 / −10 | same | +26 / +21 / +2 | same / same / 2.54 → 2.48 | none |
+| sunset | 10 | 10416 → 10945 | 42 → 40 | 2441 → 4350 | 16.10 → 16.54 | none |
+| meadow | 10 | 9514 → 9373 | 35 → 38 | 1479 → 2509 | 15.20 → 16.50 | **2**: a 2.4 mm blob fill → satin; a 0.9 mm² run shape gone |
+| Becker | 4 | unchanged | | | | none |
+
+Two things the design-level numbers could not have shown:
+
+- **The tier changes are the DT classifier reading boundary detail.** The
+  drone ribbon (12 × 3 mm, width 1.07 mm, aspect 12.7) is `dt_irregular`
+  either way (cv 0.60) and lives on the promotion path; its `explained`
+  (area / (skeleton length × width)) fell 0.83 → 0.70 because the 1-px
+  thinning of the refined polygon grew 17% more skeleton — spurs off the
+  new vertices — and 0.80 is the promotion floor. The meadow blob (2.4 mm
+  wide, aspect 3.5, at the 3.0 aspect edge) crossed the regularity gate the
+  other way (cv 0.53 → 0.48). Neither shape got a different artwork; the
+  classifier's skeleton did.
+- **Below ~16 px/mm the refinement traces raster texture, not arcs.** The
+  sagitta floor is one pixel whatever the resolution; at 10 px/mm the
+  tolerance is two pixels, so any bump over half the tolerance — antialiasing,
+  JPEG, a scan's edge — earns a vertex, and the ±2-step mean does not smooth
+  it away. Vertices +40–80% and roughness UP on every fixture at 10–16 px/mm;
+  DOWN on Fremont (31) and drone (19).
+
+**Floors do not fix it — they cost the O.** `_CURVE_FLOOR_PX` swept on
+Fremont's O: 1 px → counter 33 vertices / 17° turns; 2 px → 17 / 27°;
+3 px → 16 / 27°. Half the O's gain lives under two pixels at 31 px/mm.
+
+**The gate: `_CURVE_MIN_EPS_PX` = 4.** The refinement runs only where the
+tolerance is at least four pixels (20 px/mm at 0.2 mm) — the line the
+fixtures draw between reading arcs and reading texture. A raster quantity,
+not a physical one; below it the default is byte-identical to
+Douglas-Peucker, pinned by
+`tests/test_run_tier.py::test_curve_refinement_needs_four_pixels_of_tolerance`.
+Of the fixtures only Fremont (31 px/mm) is over the line; a phone scan or a
+print-resolution logo is, a 600–1200 px web logo at 80 mm is not.
+
+GATED_TABLE
+
+Tests: `test_curve_turn_deg_is_on_by_default` (a fresh config refines the
+2.4 mm disc at 31 px/mm), `test_curve_turn_deg_off_is_byte_identical_to_
+douglas_peucker` (None, 0 and a negative all give plain DP), the four-pixel
+gate above; the simplify-tolerance invariance test now isolates the flag
+(with it on, the realized deviation drops UNDER the tolerance — 0.13 mm at
+8 px/mm — which is the flag doing its job, not the tolerance moving).
+

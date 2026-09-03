@@ -232,9 +232,14 @@ def test_simplify_tol_mm_realized_deviation_is_px_per_mm_invariant():
         # sub-detail rescue path (that path's own fixed 0.5 px floor is a
         # different mechanism — see the config.py docstring — and would
         # confound this measurement of simplify_tol_mm in isolation).
-        cfg_tol = PipelineConfig(target_width_mm=999, min_detail_mm=0.01)
+        # curve_turn_deg off for the same reason: since the flip (2026-09-03)
+        # the default re-reads every arc against the raw contour, which pulls
+        # the realized deviation UNDER the tolerance (0.13 mm at 8 px/mm) --
+        # that is the flag doing its job, and a different measurement.
+        cfg_tol = PipelineConfig(target_width_mm=999, min_detail_mm=0.01,
+                                 curve_turn_deg=None)
         cfg_raw = PipelineConfig(target_width_mm=999, min_detail_mm=0.01,
-                                  simplify_tol_mm=1e-6)
+                                 simplify_tol_mm=1e-6, curve_turn_deg=None)
         regions_tol, _ = vectorize([RegionMask.from_full(mask, layer=0)], [0], p, cfg_tol)
         regions_raw, _ = vectorize([RegionMask.from_full(mask, layer=0)], [0], p, cfg_raw)
         poly_tol = regions_tol[0].polygon
@@ -329,19 +334,39 @@ def _vertex_turns_deg(poly) -> np.ndarray:
     return np.abs((np.diff(np.append(ang, ang[0])) + 180.0) % 360.0 - 180.0)
 
 
-def test_curve_turn_deg_none_is_byte_identical_to_douglas_peucker():
-    """The default has to be invisible: every golden is pinned to plain
-    Douglas-Peucker at `simplify_tol_mm`, so None must give the same
-    polygon, vertex for vertex."""
+def test_curve_turn_deg_off_is_byte_identical_to_douglas_peucker():
+    """Off has to mean off: None, 0 and a negative all give plain
+    Douglas-Peucker at `simplify_tol_mm`, vertex for vertex -- the polygon
+    every golden was pinned to before the flip (2026-09-03)."""
     size = 400
     mask = _disc_mask(75.0, size)          # a 2.4 mm-radius counter at 31 px/mm
     p = Prep(rgb=np.zeros((size, size, 3), np.uint8), bg_mask=np.zeros((size, size), bool),
              px_per_mm=31.25, art_bbox=(0, 0, size, size))
-    a, _ = vectorize([RegionMask.from_full(mask, layer=0)], [0], p,
-                     PipelineConfig(target_width_mm=999, min_detail_mm=0.01))
-    b, _ = vectorize([RegionMask.from_full(mask, layer=0)], [0], p,
-                     PipelineConfig(target_width_mm=999, min_detail_mm=0.01, curve_turn_deg=None))
-    assert list(a[0].polygon.exterior.coords) == list(b[0].polygon.exterior.coords)
+    ref, _ = vectorize([RegionMask.from_full(mask, layer=0)], [0], p,
+                       PipelineConfig(target_width_mm=999, min_detail_mm=0.01, curve_turn_deg=None))
+    for off in (0.0, -5.0):
+        b, _ = vectorize([RegionMask.from_full(mask, layer=0)], [0], p,
+                         PipelineConfig(target_width_mm=999, min_detail_mm=0.01, curve_turn_deg=off))
+        assert list(ref[0].polygon.exterior.coords) == list(b[0].polygon.exterior.coords), off
+    assert len(ref[0].polygon.exterior.coords) - 1 <= 16
+
+
+def test_curve_turn_deg_is_on_by_default():
+    """Kent's flip (2026-09-03): a fresh PipelineConfig refines curves at
+    15 deg, so the 2.4 mm disc comes back a curve without anyone asking."""
+    assert PipelineConfig().curve_turn_deg == 15.0
+    size = 400
+    mask = _disc_mask(75.0, size)
+    p = Prep(rgb=np.zeros((size, size, 3), np.uint8), bg_mask=np.zeros((size, size), bool),
+             px_per_mm=31.25, art_bbox=(0, 0, size, size))
+    default, _ = vectorize([RegionMask.from_full(mask, layer=0)], [0], p,
+                           PipelineConfig(target_width_mm=999, min_detail_mm=0.01))
+    off, _ = vectorize([RegionMask.from_full(mask, layer=0)], [0], p,
+                       PipelineConfig(target_width_mm=999, min_detail_mm=0.01, curve_turn_deg=None))
+    n_off = len(off[0].polygon.exterior.coords) - 1
+    n_default = len(default[0].polygon.exterior.coords) - 1
+    assert n_off <= 16 and n_default >= 2 * n_off, (n_off, n_default)
+    assert _vertex_turns_deg(default[0].polygon).max() <= 30.0
 
 
 def test_curve_turn_deg_turns_a_9_gon_counter_into_a_curve():
@@ -357,7 +382,7 @@ def test_curve_turn_deg_turns_a_9_gon_counter_into_a_curve():
     p = Prep(rgb=np.zeros((size, size, 3), np.uint8), bg_mask=np.zeros((size, size), bool),
              px_per_mm=31.25, art_bbox=(0, 0, size, size))
     plain, _ = vectorize([RegionMask.from_full(mask, layer=0)], [0], p,
-                         PipelineConfig(target_width_mm=999, min_detail_mm=0.01))
+                         PipelineConfig(target_width_mm=999, min_detail_mm=0.01, curve_turn_deg=None))
     curved, _ = vectorize([RegionMask.from_full(mask, layer=0)], [0], p,
                           PipelineConfig(target_width_mm=999, min_detail_mm=0.01, curve_turn_deg=15.0))
     n_plain = len(plain[0].polygon.exterior.coords) - 1
@@ -387,7 +412,7 @@ def test_curve_turn_deg_leaves_straight_edges_alone():
     p = Prep(rgb=np.zeros((size, size, 3), np.uint8), bg_mask=np.zeros((size, size), bool),
              px_per_mm=12.0, art_bbox=(0, 0, size, size))
     plain, _ = vectorize([RegionMask.from_full(img > 0, layer=0)], [0], p,
-                         PipelineConfig(target_width_mm=999, min_detail_mm=0.01))
+                         PipelineConfig(target_width_mm=999, min_detail_mm=0.01, curve_turn_deg=None))
     curved, _ = vectorize([RegionMask.from_full(img > 0, layer=0)], [0], p,
                           PipelineConfig(target_width_mm=999, min_detail_mm=0.01, curve_turn_deg=15.0))
     assert len(plain[0].polygon.exterior.coords) == len(curved[0].polygon.exterior.coords)
@@ -434,7 +459,7 @@ def test_curve_refinement_maps_vertices_in_ring_order_across_a_hairline_neck():
     p = Prep(rgb=np.zeros((size, size, 3), np.uint8), bg_mask=np.zeros((size, size), bool),
              px_per_mm=20.0, art_bbox=(0, 0, size, size))
     plain, _ = vectorize([RegionMask.from_full(img > 0, layer=0)], [0], p,
-                         PipelineConfig(target_width_mm=999, min_detail_mm=0.01))
+                         PipelineConfig(target_width_mm=999, min_detail_mm=0.01, curve_turn_deg=None))
     curved, _ = vectorize([RegionMask.from_full(img > 0, layer=0)], [0], p,
                           PipelineConfig(target_width_mm=999, min_detail_mm=0.01, curve_turn_deg=15.0))
     assert len(curved) == len(plain)
@@ -472,7 +497,7 @@ def test_near_floor_holes_keep_their_polygon_while_the_shell_is_refined():
     p = Prep(rgb=np.zeros((size, size, 3), np.uint8), bg_mask=np.zeros((size, size), bool),
              px_per_mm=px_per_mm, art_bbox=(0, 0, size, size))
     off, _ = vectorize([RegionMask.from_full(mask, layer=0)], [0], p,
-                       PipelineConfig(target_width_mm=999, min_detail_mm=0.01))
+                       PipelineConfig(target_width_mm=999, min_detail_mm=0.01, curve_turn_deg=None))
     on, _ = vectorize([RegionMask.from_full(mask, layer=0)], [0], p,
                       PipelineConfig(target_width_mm=999, min_detail_mm=0.01, curve_turn_deg=15.0))
     assert len(off) == 1 and len(on) == 1
@@ -489,3 +514,23 @@ def test_near_floor_holes_keep_their_polygon_while_the_shell_is_refined():
     assert set(r_off) == {"bar", "disc"} == set(r_on)
     assert r_on["bar"] == r_off["bar"], "the near-floor bar hole was refined"
     assert len(r_on["disc"]) > len(r_off["disc"]), "the wide disc hole was not refined"
+
+
+def test_curve_refinement_needs_four_pixels_of_tolerance():
+    """The one-pixel sagitta floor reads raster texture as arcs once the
+    tolerance is only a pixel or two (every 10-16 px/mm fixture got rougher
+    on the flip, and two borderline ribbons changed tier through the DT
+    classifier), so under `_CURVE_MIN_EPS_PX` the default is byte-identical
+    to Douglas-Peucker. The same disc at 10 px/mm: untouched; at 31 px/mm:
+    a curve."""
+    size = 400
+    mask = _disc_mask(75.0, size)
+    for ppm, refined in ((10.0, False), (31.25, True)):
+        p = Prep(rgb=np.zeros((size, size, 3), np.uint8), bg_mask=np.zeros((size, size), bool),
+                 px_per_mm=ppm, art_bbox=(0, 0, size, size))
+        default, _ = vectorize([RegionMask.from_full(mask, layer=0)], [0], p,
+                               PipelineConfig(target_width_mm=999, min_detail_mm=0.01))
+        off, _ = vectorize([RegionMask.from_full(mask, layer=0)], [0], p,
+                           PipelineConfig(target_width_mm=999, min_detail_mm=0.01, curve_turn_deg=None))
+        same = list(default[0].polygon.exterior.coords) == list(off[0].polygon.exterior.coords)
+        assert same == (not refined), (ppm, len(default[0].polygon.exterior.coords), len(off[0].polygon.exterior.coords))
