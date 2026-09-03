@@ -314,27 +314,19 @@ its own merits.
    on it. See the font-licence entry.
 
 12. **Merge a tiny cone into an ADJACENT SHADE — a colour call, and the
-   COMMITTED corpus can now pose it.** The sew-out's b4/b7 class: post-08-31
-   sequencing fixes, cutting such a cone further means sewing its patches in
-   a neighbouring shade's thread — a colour step for a stop, quality not
-   gate-1 physics. "Unmeasurable, needs Kent's PNG" was wrong twice over:
-   `sequence_census.py` reported no colour at all until 2026-09-02 (it does
-   now), and committed art carries defensible pairs — ΔE **1.41**
-   (`screenshot_phone_ui_golke`, 62st → 79st), **1.78** (`logo_bridge_bar`,
-   197st → 444st), **2.65** (`drone_render`, 338st → 1560st). The repro
-   genuinely has none: its closest two cones are 33.4 ΔE apart. Real artwork
-   also runs 15–18 cones, so the tiny-cone population is not rare.
+   COMMITTED corpus can now pose it.** The sew-out's b4/b7 class: cutting such
+   a cone further means sewing its patches in a neighbouring shade's thread —
+   a colour step for a stop, quality not gate-1 physics. `sequence_census.py`
+   reports colour since 2026-09-02, and committed art carries defensible
+   pairs — ΔE **1.41** (`screenshot_phone_ui_golke`, 62st → 79st), **1.78**
+   (`logo_bridge_bar`, 197st → 444st), **2.65** (`drone_render`, 338st →
+   1560st); the repro has none (closest cones 33.4 ΔE). Real artwork runs
+   15–18 cones, so the population is not rare.
    **TABLED — Kent, 2026-09-02:** *"I'm honestly not concerned about the
-   hopping idea, we can table this one for a further discussion."* Not
-   resolved, parked — do not build the shade-merge (or further
-   hopping/sequencing polish beyond what already shipped) until he reopens
-   it. The ΔE pairs above stay ready for that discussion. The two mechanical
-   causes fixed 2026-08-31 (`start_near`, the re-snap rehome) are merged and
-   unaffected by this tabling.
-   *(measured 2026-09-02 — `sequence_census.py` per-cone, 26 fixtures;
-   tabled 2026-09-02 — Kent, in session)*
-
----
+   hopping idea, we can table this one for a further discussion."* Do not
+   build the shade-merge or further hopping polish until he reopens it; the
+   08-31 mechanical fixes (`start_near`, the re-snap rehome) are merged and
+   unaffected. *(measured 2026-09-02 — `sequence_census.py`, 26 fixtures; tabled 2026-09-02 — Kent)*
 
 13. **Adopt the stitch-angle rule, then flip `satin_house_fourfold` with the
     BISECTOR REPLACED.** Pro file, 86 fonts and two expired patents agree:
