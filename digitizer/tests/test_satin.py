@@ -1515,3 +1515,45 @@ def test_a_tapered_tip_is_not_a_corner():
     taper = _P([(0, -1.0), (12.0, -1.0), (16.0, 0.3), (12.0, 1.0), (0, 1.0)])
     strokes, _half, _field = extract_strokes(taper)
     assert not any(s.corners for s in strokes)
+
+
+# --- defect 23: rail dents from a float-boundary containment miss (2026-09-03)
+
+
+def _bar_rails(ang_deg: float, tol: float | None, monkeypatch):
+    """Rails of a 30 x 3 mm bar rotated `ang_deg`, cast from an exact centre
+    spine, with `_COVERS_TOL_MM` overridden when `tol` is given."""
+    from shapely import affinity
+
+    if tol is not None:
+        monkeypatch.setattr(stage6_satin, "_COVERS_TOL_MM", tol)
+    bar = affinity.rotate(Polygon([(-15, -1.5), (15, -1.5), (15, 1.5), (-15, 1.5)]),
+                          ang_deg, origin=(0, 0))
+    c, s = math.cos(math.radians(ang_deg)), math.sin(math.radians(ang_deg))
+    spine = [((-15 + i * 0.4) * c, (-15 + i * 0.4) * s) for i in range(76)]
+    rail_a, rail_b = stage6_satin._rail_points(bar, spine, False, 1.5)
+    bnd = bar.boundary
+    # Interior stations only: the caps and taper logic own the ends.
+    return [bnd.distance(Point(p)) for p in rail_a[10:-10] + rail_b[10:-10]]
+
+
+@pytest.mark.parametrize("ang", [10.0, 25.0, 45.0])
+def test_rails_of_a_rotated_bar_reach_the_artwork_edge(ang, monkeypatch):
+    """A rail cast to the measured half-width lands ON the boundary, and
+    `covers` on a point an ulp outside it is a coin flip: `place` shrank the
+    losers to 0.85x, so one rail of a rotated column stopped ~0.2 mm short
+    of the art (a 3 mm bar at 25 deg: one whole rail at 1.22-1.27 mm against
+    1.44-1.46). Containment is now tested against the artwork grown by a
+    micron, and every interior rail point sits on the edge."""
+    gaps = _bar_rails(ang, None, monkeypatch)
+    worst = max(gaps)
+    assert worst < 0.01, f"a rail point sits {worst:.3f} mm inside the art"
+
+
+def test_the_micron_is_what_closes_the_dent(monkeypatch):
+    """The guard above must fail without the tolerance, or it pins nothing:
+    with `_COVERS_TOL_MM` forced to zero the same bar dents a fifth or more
+    of its stations (29-54% measured across 10/25/45 deg)."""
+    gaps = _bar_rails(25.0, 0.0, monkeypatch)
+    dented = sum(1 for g in gaps if g > 0.1) / len(gaps)
+    assert dented >= 0.2, f"only {dented:.0%} dented with no tolerance -- the test lost its teeth"

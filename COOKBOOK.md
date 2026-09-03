@@ -341,7 +341,9 @@ hand-rolling it in JS.
   (how far satin crosses lean off their own perpendicular and off the house
   angle, and the thread pitch across the column; `--stock` for the instrument's
   own floor on unhoused columns), `digitizer/tools/fill_dust.py` (fill steps
-  halved by float dust at the stitch-length threshold), `digitizer/tools/recapture_flat_lane_key.py`
+  halved by float dust at the stitch-length threshold), `digitizer/tools/rail_edge.py`
+  (where satin rails sit against the artwork edge, rail jitter and same-rail
+  holes; `--ladders` for the containment-miss census), `digitizer/tools/recapture_flat_lane_key.py`
   (the only sanctioned way to move a golden: pre-change tree + control fixture).
   Run each from `digitizer/` with `.venv/bin/python`.
 - **Acceptance A/B contact sheet** (`digitizer/tools/acceptance_ab.py`, pure

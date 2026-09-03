@@ -3574,3 +3574,20 @@ enthusiast stay the platform reds). The curve refinement now skips shapes
 whose ribbon width is within 20% of the satin minimum cross (the 2.6 mm
 letters keep the inflated polygon that keeps them satin); the flag stays
 OFF for the flip round.
+
+## 2026-09-03 (addendum) — Kent: rail dents (defect 23) FIXED; the diagnosis corrected on the way
+
+`stage6_satin._rail_points`: an overshooting rail is placed on the artwork
+edge along its own normal instead of stepped in by 15% (`_COVERS_TOL_MM`
+micron on containment with it; taper zones and terminal stations keep the
+ladder). Rail jitter p50 halves on every fixture (Fremont 0.012 → 0.0045 mm,
+Becker 0.061 → 0.038), same-rail holes Fremont 11 → 5, Becker 72 → 63,
+median rail 0.02–0.08 mm further out, nothing further outside the art, trims
+unchanged; Becker 4421 → 4340 st with every column's median cross wider.
+Measured negative: the recorded "one whole rail 15% short in every golden"
+was the synthetic bar; on real art the ulp case is 1–11% of retreats and
+the micron alone moved 4 stitches on Fremont. The 8–24% of rail points
+> 0.1 mm inside the art on lettering are the symmetric-offset rail model,
+recorded open. Goldens re-pinned under the pre-change-tree discipline:
+alpha and ribbon flat-lane keys, both ribbon pushcomp entries; whitebg the
+byte-identical control. `docs/rail-dents-2026-09-03.md`.
