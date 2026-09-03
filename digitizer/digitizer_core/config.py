@@ -701,15 +701,14 @@ class PipelineConfig:
     # fill still to come. False is byte-identical to before the flag existed.
     # Sequencing, no fabric constant — ROADMAP gate 1 does not reach it.
     #
-    # Default OFF pending Kent's word (2026-09-03): he picked the work item,
-    # not the default, and the convention here is that a new engine option
-    # defaults to today's output until he flips it (`borders_last` took the
-    # same path). Measured ON: Hotel Fremont's fill-phase exposed travel
-    # 286 -> 92 mm, gaulke_roofing 209 -> 8, photo_sunset_backlit trims
-    # 53 -> 30; cost +7-11% digitize time on logos, +49% on sunset's 263-run
-    # fill. Flipping it moves the `logo_whitebg` goldens by their travel
-    # (2166 -> 2162 penetrations) -- re-pin per the recapture doctrine.
-    fill_travel_under_cover: bool = False
+    # Default ON -- Kent's flip, 2026-09-03, with the 2:25 exposed-vs-cut
+    # weight ratified the same day. Measured ON: Hotel Fremont's fill-phase
+    # exposed travel 286 -> 90 mm at 5 more trims, gaulke_roofing 204 -> 8,
+    # photo_sunset_backlit trims 53 -> 42; cost +7-11% digitize time on
+    # logos, +49-67% on sunset's 263-run fill. The `logo_whitebg` goldens
+    # moved by their travel (2166 -> 2162 penetrations) and were re-pinned
+    # per the recapture doctrine.
+    fill_travel_under_cover: bool = True
 
     # Task A2 (2026-08-14, tools/pro_parity): the corpus's professional
     # SOLID fill elements sew at roughly double a single ordinary pass's

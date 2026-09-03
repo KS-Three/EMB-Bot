@@ -1,6 +1,6 @@
 ---
 name: fill-travel-under-cover-2026-09-03
-description: defect 21 fix built, DEFAULT OFF pending Kent (`fill_travel_under_cover`) — routing alone did nothing, the ORDER decides exposure; cover-aware column order + routing through the unsewn remainder took Fremont's fill-phase exposed travel 286 → 90 mm at 5 more trims, gaulke 204 → 8, sunset trims 53 → 42; two diagnostic traps (footprint slivers, containment at the bridge start), one review catch (unclipped endpoint allowance let routes leave the shape), one profiling find (`_ring_route` rebuilt its arc table per call); goldens untouched with the default off, the re-pin procedure proven
+description: defect 21 FIXED, default ON by Kent's flip (`fill_travel_under_cover`), 2:25 weight ratified — routing alone did nothing, the ORDER decides exposure; cover-aware column order + routing through the unsewn remainder took Fremont's fill-phase exposed travel 286 → 90 mm at 5 more trims, gaulke 204 → 8, sunset trims 53 → 42; two diagnostic traps (footprint slivers, containment at the bridge start), one review catch (unclipped endpoint allowance let routes leave the shape), one profiling find (`_ring_route` rebuilt its arc table per call); goldens untouched with the default off, the re-pin procedure proven
 metadata:
   type: reference
 ---
@@ -46,10 +46,10 @@ UNCLIPPED — a route could leave the shape by up to 2.5 mm and the scorer
 rewarded it as a bridge (1.48 mm across a 1.5 mm slot, measured). Clipped +
 hard shape containment on every covered route. A few cuts came back.
 
-**Default OFF** — Kent picked the item, not the default; convention is
-today's output until he flips (`borders_last` precedent). The whitebg
-re-pins were done, proven, and reverted; the field doc has the flip
-procedure.
+**Built OFF, flipped ON the same session by Kent** on the numbers below,
+weight 2.0 ratified. The whitebg re-pins were done, reverted with the OFF
+default, then redone for the flip — the recapture tool's pre-change guard
+passed both times.
 
 ## Numbers to quote (after the clip fix, flag ON)
 

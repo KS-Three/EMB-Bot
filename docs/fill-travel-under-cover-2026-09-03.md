@@ -1,4 +1,4 @@
-# Fill travel under cover — defect 21, fix built, default OFF pending Kent (2026-09-03)
+# Fill travel under cover — defect 21, fixed, default ON by Kent's flip (2026-09-03)
 
 Kent's note 1 on the Hotel Fremont screenshot: *"The in-fill stitching doesn't
 look clean, not sure if it's the stitch out or the stitch rendering."* Traced
@@ -112,19 +112,18 @@ poll budget is 300 s and the 60 s budget in `tests/test_service.py` is on
 small fixtures, so it ships un-gated; the cheapest next step is to reuse the
 winning `_order_cost` pass's bridges in `emit`.
 
-## Default OFF, and the goldens
+## Default ON — Kent's flip, and the goldens
 
-Kent picked the work item, not the default; a new engine option defaults to
-today's output until he flips it (`borders_last` took the same path). With
-the flag off nothing moves and the goldens are main's. When it is flipped:
-`logo_whitebg` moves by exactly its travel (2166 → 2162 penetrations;
-region ids, areas, warnings unmoved) — re-pin `flat_lane_golden.json` via
-`tools/recapture_flat_lane_key.py logo_whitebg.png --pre-change-tree
-<worktree at the pre-flip commit> --control ribbon_curve.png` and
-`test_pushcomp.GOLDEN_FLAG_OFF[("logo_whitebg.png", "left_chest")]` to the
-tuple the pre-flip tree fails to reproduce; `towel` is unchanged by this
-engine and stays the known red. Done once already on 2026-09-03 (machine OK,
-control OK) and reverted with the default; the procedure is proven.
+Built default OFF (Kent picked the work item, not the default); flipped ON
+the same session on the numbers above, with the 2 : 25 exposed-vs-cut
+weight ratified. `logo_whitebg` moved by exactly its travel (2166 → 2162
+penetrations; region ids, areas, warnings unmoved) and is re-pinned in
+`flat_lane_golden.json` via `tools/recapture_flat_lane_key.py
+logo_whitebg.png --pre-change-tree <worktree at origin/main f4009a6>
+--control ribbon_curve.png` (machine OK, control OK) and in
+`test_pushcomp.GOLDEN_FLAG_OFF[("logo_whitebg.png", "left_chest")]` (the
+pre-change tree reproduces the old tuple here); `towel` is unchanged by this
+engine and stays the known red.
 
 ## What this does not do
 

@@ -793,6 +793,8 @@ def _order_cost(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
 # still never bought to hide a short hop, while a long visible line is worth a
 # longer hidden route. A judgement about how a design LOOKS, like
 # `_TRIM_STITCH_EQUIVALENT` is about how long it takes; not a fabric constant.
+# Ratified by Kent 2026-09-03 on the measured trade: five cuts for 196 mm
+# less visible travel on the Hotel Fremont field.
 _EXPOSED_STITCH_WEIGHT = 2.0
 
 

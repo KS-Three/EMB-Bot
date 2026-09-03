@@ -3489,3 +3489,11 @@ meadow 691 → 324 at 33 → 35. (2) The flag ships **default OFF**: Kent picked
 the work item, not the default, and a new engine option defaults to today's
 output until he flips it — so the `logo_whitebg` re-pins were reverted; the
 ON pins are recorded in the field doc for the flip.
+
+## 2026-09-03 (addendum) — Kent flips fill travel under cover ON, ratifies the 2 : 25 weight
+
+In session, on the numbers above: `fill_travel_under_cover` defaults True;
+the exposed-stitch weight stays 2.0 (five cuts for 196 mm less visible
+travel on Fremont accepted). `logo_whitebg` goldens re-pinned (flat lane via
+the recapture tool with the pre-change worktree, machine OK, control OK;
+pushcomp `left_chest` 2166 → 2162); `towel` unchanged, still the known red.

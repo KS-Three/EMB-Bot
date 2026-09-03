@@ -3466,13 +3466,13 @@ rules out redundancy without proving independence. Instrument only, no engine
 change. *(measured 2026-08-27 — PR #281;
 `docs/curve-fidelity-from-the-stitch-path-2026-08-27.md`)*
 
-## Fill travel under cover — defect 21 FIX BUILT, default OFF pending Kent (2026-09-03)
+## Fill travel under cover — defect 21 FIXED, default ON by Kent's flip (2026-09-03)
 
 Kent's *"the in-fill stitching doesn't look clean"* (Hotel Fremont, 2026-09-02)
 was 22 of 27 fill-phase travel runs, 286 of 450 mm, laid on top of columns
 already sewn. Two mechanisms in `stage6_fill`, behind
-`PipelineConfig.fill_travel_under_cover` (default False — Kent picked the work
-item, not the default; False is md5-identical to main on becker, drone,
+`PipelineConfig.fill_travel_under_cover` (built False, flipped True by Kent
+the same session; False is md5-identical to main on becker, drone,
 enthusiast, Fremont):
 
 - `travel_path(..., sewn=...)`: straight only if straight crosses unsewn
@@ -3483,7 +3483,7 @@ enthusiast, Fremont):
 - `_reorder_for_cover`: the nearest-first column walk prefers a next column
   whose straight bridge is inside the shape and off the fill laid so far;
   scored by `_order_cost` (cuts × 25 + travel + exposed travel × 2 — the 2.0
-  is an unanchored judgement, unlike the 25 Kent set) against the incoming
+  ratified by Kent 2026-09-03 alongside the flip) against the incoming
   order and kept only when cheaper; last path pinned.
 
 Measured ON (fill-phase travel over the sewn footprint, one-stitch tolerance;
@@ -3505,7 +3505,7 @@ exposure is already decided by the order. Cost: digitize +7–11% on logos,
 rebuilt its arc table per call — 34.8 s of a 90 s profile — now cached; the
 unsewn rings are reused across bridges and re-checked against the current
 unsewn ground). The trims that return with the flag are the score buying
-hidden travel with cuts at 2 : 25; whether that is the right price is Kent's.
-Flipping ON moves the `logo_whitebg` goldens by their travel (2166 → 2162
-penetrations) — re-pin per the recapture doctrine with the pre-change tree.
+hidden travel with cuts at 2 : 25, Kent's price. The `logo_whitebg` goldens
+moved by their travel (2166 → 2162 penetrations) and are re-pinned per the
+recapture doctrine with the pre-change tree.
 *(measured 2026-09-03 — `docs/fill-travel-under-cover-2026-09-03.md`)*
