@@ -3430,3 +3430,22 @@ size the eleven ENTHUSIAST capitals clear the four-fold gate at 48°, the N's
 diagonal is clamped to the span limit and piles thread (rendered), and
 chaining loses seven covered routes. Same shape as the exterior-notch guard,
 same disposition. Off, all ten fixtures are md5-identical to main.
+
+## 2026-09-03 — the stitch-angle convention, measured instead of chosen
+
+Kent declined to pick 45 vs 135 for the house-angle bisector and asked for a
+rule derived per design. `docs/stitch-angle-convention-2026-09-03.md`:
+
+- Pro file, five `becker_*.dst`, satin zigzags only: axial columns 4.7–7.9°
+  off the advance perpendicular, diagonal columns 15.9° (p75 26, p90 43).
+- 86 shipped fonts via their authors' rungs: stems 1.8°, bars 3.0° off
+  perpendicular, diagonals 18° (N A V K M W X Y Z 29.5°, 58% toward the stems'
+  cross); one angle per glyph in 5 of 64 fonts.
+- Goldman (expired): ≥45° corners → through-member + butt-join, diagonal runs
+  through. Pulse (expired): perpendicular pitch constant under lean — at fixed
+  spine spacing a 45° lean is 1.41× density, which is the ENTHUSIAST N pile
+  and the whole 45° Fremont render.
+- Rule proposed: house = stems' perpendicular (longer family, never the
+  bisector); perpendicular fallback instead of the ±45 side flip; lean cap;
+  spacing/cos θ; Goldman join. Fill: lettering inherits, other shapes G3.
+  Waiting on Kent 13 rewritten. No engine change.

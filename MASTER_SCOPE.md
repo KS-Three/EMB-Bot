@@ -336,9 +336,13 @@ its own merits.
 
 ---
 
-13. **Flip `satin_house_fourfold` on?** Cures Fremont's and THERMAL's
-    per-stroke lettering; reds the chaining benchmark (2.43 → 4.62/1k @ 93 mm)
-    and piles the N's diagonal. Needs a diagonal ruling first. *(built 2026-09-02 — PR #321)*
+13. **Adopt the stitch-angle rule, then flip `satin_house_fourfold` with the
+    BISECTOR REPLACED.** Pro file, 86 fonts and two expired patents agree:
+    house = stems' perpendicular; a stroke that cannot span it takes its own
+    perpendicular; diagonals lean ≤ 30–45°; spacing/cos(lean) (the N's pile
+    is 1.41× density); Goldman butt-join at ≥45° corners. Nobody sews the
+    bisector. Decide: adopt; lean cap 30 vs 45; build order.
+    *(measured 2026-09-03 — `docs/stitch-angle-convention-2026-09-03.md`)*
 
 ## Cross-cutting issues
 
