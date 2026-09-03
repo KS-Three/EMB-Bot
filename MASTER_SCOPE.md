@@ -328,13 +328,12 @@ its own merits.
    08-31 mechanical fixes (`start_near`, the re-snap rehome) are merged and
    unaffected. *(measured 2026-09-02 — `sequence_census.py`, 26 fixtures; tabled 2026-09-02 — Kent)*
 
-13. **Adopt the stitch-angle rule, then flip `satin_house_fourfold` with the
-    BISECTOR REPLACED.** Pro file, 86 fonts and two expired patents agree:
-    house = stems' perpendicular; a stroke that cannot span it takes its own
-    perpendicular; diagonals lean ≤ 30–45°; spacing/cos(lean) (the N's pile
-    is 1.41× density); Goldman butt-join at ≥45° corners. Nobody sews the
-    bisector. Decide: adopt; lean cap 30 vs 45; build order.
-    *(measured 2026-09-03 — `docs/stitch-angle-convention-2026-09-03.md`)*
+13. **RESOLVED 2026-09-03 — the stitch-angle rule is ADOPTED, lean cap 30°.**
+    Kent's ruling on the research (DOCTRINE, standing rulings): house = stems'
+    perpendicular, perpendicular fallback, diagonals lean ≤ 30°, spacing /
+    cos(lean), Goldman butt-join. Build order: density compensation first.
+    The bisector is retired; `satin_house_fourfold` stays OFF until the rule
+    is built and rendered. *(ruled 2026-09-03 — Kent)*
 
 ## Cross-cutting issues
 

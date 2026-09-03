@@ -3449,3 +3449,11 @@ rule derived per design. `docs/stitch-angle-convention-2026-09-03.md`:
   bisector); perpendicular fallback instead of the ±45 side flip; lean cap;
   spacing/cos θ; Goldman join. Fill: lettering inherits, other shapes G3.
   Waiting on Kent 13 rewritten. No engine change.
+
+## 2026-09-03 (addendum) — Kent adopts the angle rule, lean cap 30°, next item fill travel
+
+Ruled in session: the rule in `docs/stitch-angle-convention-2026-09-03.md` is
+adopted (DOCTRINE standing ruling), the diagonal lean cap is 30°
+(`SATIN_HOUSE_MIN_SPAN_DEG` 45 → 60 when built), density compensation is
+built first. The 45 vs 135 question is closed as moot. Next engineering item
+by Kent's pick: fill travel under cover (defect 21).
