@@ -516,16 +516,16 @@ def test_near_floor_holes_keep_their_polygon_while_the_shell_is_refined():
     assert len(r_on["disc"]) > len(r_off["disc"]), "the wide disc hole was not refined"
 
 
-def test_curve_refinement_needs_four_pixels_of_tolerance():
+def test_curve_refinement_needs_twenty_px_per_mm():
     """The one-pixel sagitta floor reads raster texture as arcs once the
     tolerance is only a pixel or two (every 10-16 px/mm fixture got rougher
     on the flip, and two borderline ribbons changed tier through the DT
-    classifier), so under `_CURVE_MIN_EPS_PX` the default is byte-identical
-    to Douglas-Peucker. The same disc at 10 px/mm: untouched; at 31 px/mm:
-    a curve."""
+    classifier), so under `_CURVE_MIN_PX_PER_MM` the default is byte-identical
+    to Douglas-Peucker. The same disc at 19 px/mm: untouched; at 21: a curve
+    -- both sides of the line, so a gate at 3 or 5 px could not pass this."""
     size = 400
     mask = _disc_mask(75.0, size)
-    for ppm, refined in ((10.0, False), (31.25, True)):
+    for ppm, refined in ((19.0, False), (21.0, True), (10.0, False), (31.25, True)):
         p = Prep(rgb=np.zeros((size, size, 3), np.uint8), bg_mask=np.zeros((size, size), bool),
                  px_per_mm=ppm, art_bbox=(0, 0, size, size))
         default, _ = vectorize([RegionMask.from_full(mask, layer=0)], [0], p,

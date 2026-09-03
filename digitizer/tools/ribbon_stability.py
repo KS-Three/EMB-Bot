@@ -5,7 +5,7 @@ candidate cures do to it.
 The instrument behind the classifier-robustness item (2026-09-03,
 `docs/classifier-stability-2026-09-03.md`). For every fixture it digitizes
 twice -- the shipped polygons, and the same art with the curve refinement
-ungated (`stage4_vectorize._CURVE_MIN_EPS_PX` = 0, `curve_turn_deg` = 15),
+ungated (`stage4_vectorize._CURVE_MIN_PX_PER_MM` = 0, `curve_turn_deg` = 15),
 which is the strongest boundary-detail change the engine can make without
 touching the artwork -- pairs the shapes by id then centroid, and reports,
 over the population the DT gates actually judge (past the width cap and the
@@ -163,14 +163,14 @@ def main(argv: list[str]) -> None:
     for name in names or list(curve_tiers.CASES):
         rel, kw = curve_tiers.CASES[name]
         runs = {}
-        for tag, gate, turn in (("off", 4.0, 0.0), ("refined", 0.0, 15.0)):
-            s4._CURVE_MIN_EPS_PX = gate
+        for tag, gate, turn in (("off", 20.0, 0.0), ("refined", 0.0, 15.0)):
+            s4._CURVE_MIN_PX_PER_MM = gate
             cfg = dict(target_width_mm=80.0)
             cfg.update(kw)
             cfg["curve_turn_deg"] = turn
             result, plan = digitize(ROOT / "testdata" / rel, PipelineConfig(**cfg))
             runs[tag] = (result, curve_tiers.shapes(result, plan))
-        s4._CURVE_MIN_EPS_PX = 4.0
+        s4._CURVE_MIN_PX_PER_MM = 20.0
         (res_off, sh_off), (res_ref, sh_ref) = runs["off"], runs["refined"]
         dc = res_off.design_class
         polys_off = {r.shape_id: r.polygon for r in res_off.regions}

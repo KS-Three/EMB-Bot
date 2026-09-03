@@ -3717,12 +3717,12 @@ the floor is measured by its shell alone (no fixture has one).
 Per-shape tier diff over every fixture (`tools/curve_tiers.py`, shapes
 paired by centroid): ungated, Fremont (31 px/mm) counter 9 → 33 vertices,
 roughness 3.19 → 2.91, trims 52 → 45, no tier change; drone (19) roughness
-7.51 → 7.36 but a 12 × 3 mm ribbon fell satin → fill (`explained` 0.83 →
+7.51 → 7.36 (drone is 9.6 px/mm in the pipeline, not the 19 of its frame — review of #330) but a 12 × 3 mm ribbon fell satin → fill (`explained` 0.83 →
 0.70: the 1-px skeleton grew 17% more spurs off the refined boundary);
 gaulke (16), ENTHUSIAST (15), sunset, meadow, whitebg/alpha/ribbon (10)
 all ROUGHER with 40–80% more vertices, meadow a 2.4 mm blob fill → satin
 (cv 0.53 → 0.48). Floors of 2–3 px cost half the O (17 vertices, 27°).
-Gate at four pixels of tolerance (`_CURVE_MIN_EPS_PX`): only Fremont among
+Gate at 20 px/mm (`_CURVE_MIN_PX_PER_MM`, four pixels of tolerance at 0.2 mm): only Fremont among
 the fixtures refines; everything else byte-identical, no golden moves.
 *(measured 2026-09-03 — `docs/round-curves-2026-09-03.md`, "The flip")*
 

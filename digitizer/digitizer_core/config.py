@@ -444,13 +444,16 @@ class PipelineConfig:
     # Douglas-Peucker's inflation kept as satin fell to fill once its
     # polygon was honest, so a ring within 20% of the minimum cross is not
     # refined -- judged per ring, holes included, because a letter is also
-    # its background's hole (`docs/round-curves-2026-09-03.md`). Every
-    # fixture with a curve moved on the flip and the goldens were re-pinned
-    # with it; None or 0 is the pre-flip polygon, byte for byte. It also
-    # stays byte-identical wherever the tolerance is under four pixels
-    # (`stage4_vectorize._CURVE_MIN_EPS_PX`: under 20 px/mm at 0.2 mm) --
-    # there the one-pixel floor reads raster texture as arcs, measured as
-    # rougher paths and tier flips on every 10-16 px/mm fixture.
+    # its background's hole (`docs/round-curves-2026-09-03.md`). Ungated,
+    # every fixture with a curve moved; gated (below) only Fremont does and
+    # no golden moved on the flip. None or 0 is the pre-flip polygon, byte
+    # for byte, and so is anything under 20 px/mm
+    # (`stage4_vectorize._CURVE_MIN_PX_PER_MM`) -- there the one-pixel
+    # floor reads raster texture as arcs, measured as +40-80% vertices and
+    # two classifier tier flips on every 8-16 px/mm fixture. Where the line
+    # falls in the app: 1200 px art refines at <= 60 mm and not at 61, 2000
+    # px at <= 100 mm -- a cliff a 1 mm width nudge can cross, changing
+    # every curve's polygon (review of PR #330; Kent's to accept).
     curve_turn_deg: float | None = 15.0
 
     # Stage 5 — sew order, underlap, pull compensation

@@ -302,8 +302,14 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   as-is; Ember's scaling equivalent is not a like-for-like comparison. No change
   made, and the investigation is closed rather than open. *(measured 2026-08-07 — `docs/scope/research-backlog.md`)*
   **The curve question is a second knob, not this one:** `curve_turn_deg`
-  bounds the TURN at a vertex and leaves the 0.2 mm deviation alone; it is
-  built OFF (2026-09-03, `docs/round-curves-2026-09-03.md`). Splitting a
+  bounds the TURN at a vertex and leaves the 0.2 mm deviation alone; built
+  OFF and then flipped ON the same day, gated to 20 px/mm (2026-09-03,
+  `docs/round-curves-2026-09-03.md`). One consequence for THIS ruling: the
+  "realized deviation is scale-invariant at 0.2 mm" evidence now belongs to
+  the OFF path -- above the line the default re-reads arcs and the realized
+  deviation drops to ~0.05 mm, which is the flip doing what Kent asked, not
+  the constant moving (the invariance test pins it with the flag off).
+  Splitting a
   Douglas-Peucker edge at its max-deviation point with a near-pixel tolerance
   re-picks staircase corners — split at the arc's midpoint instead.
 - **Raising `SATIN_MAX_WIDTH_MM` 5.0 → 7.0 — BOTH coherent routes break
@@ -725,6 +731,6 @@ its hedge as it is copied forward** — is why this file is split.
   robustness change is scored on shipped verdicts changed AND flips left,
   on the real fixtures, before any threshold is touched; and the one
   mitigation that works is not feeding it boundary detail
-  (`_CURVE_MIN_EPS_PX`).** A verdict with a margin needs a memory, and a
+  (`_CURVE_MIN_PX_PER_MM`).** A verdict with a margin needs a memory, and a
   classifier that does not rasterize is a different construction — both
   Kent's call. *(2026-09-03 — `docs/classifier-stability-2026-09-03.md`)*

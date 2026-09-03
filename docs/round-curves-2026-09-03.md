@@ -244,12 +244,12 @@ Run ungated first, at the 1 px floor, on every fixture:
 | fixture | px/mm | stitches | trims | vertices | roughness | tier changes |
 |---|---|---|---|---|---|---|
 | Fremont | 31 | 5795 → 5790 | 52 → **45** | 762 → 1501 | 3.19 → **2.91** | none |
-| drone | 19 | 8666 → 8781 | 93 → 96 | 1318 → 2044 | 7.51 → 7.36 | **1**: a 12 × 3 mm ribbon satin → fill |
+| drone | 9.6 | 8666 → 8781 | 93 → 96 | 1318 → 2044 | 7.51 → 7.36 | **1**: a 12 × 3 mm ribbon satin → fill |
 | gaulke | 16 | 3867 → 3950 | 26 → 20 | 1076 → 1521 | 8.90 → 9.10 | none |
 | ENTHUSIAST @ 93 | 15 | 2955 → 2898 | 25 → 19 | 599 → 652 | 9.01 → 9.86 | none |
-| whitebg / alpha / ribbon | 10 | −16 / −4 / −10 | same | +26 / +21 / +2 | same / same / 2.54 → 2.48 | none |
+| whitebg / alpha / ribbon | 8.4 / 8.4 / 8.8 | −16 / −4 / −10 | same | +26 / +21 / +2 | same / same / 2.54 → 2.48 | none |
 | sunset | 10 | 10416 → 10945 | 42 → 40 | 2441 → 4350 | 16.10 → 16.54 | none |
-| meadow | 10 | 9514 → 9373 | 35 → 38 | 1479 → 2509 | 15.20 → 16.50 | **2**: a 2.4 mm blob fill → satin; a 0.9 mm² run shape gone |
+| meadow | 9.8 | 9514 → 9373 | 35 → 38 | 1479 → 2509 | 15.20 → 16.50 | **2**: a 2.4 mm blob fill → satin; a 0.9 mm² run shape gone |
 | Becker | 4 | unchanged | | | | none |
 
 Two things the design-level numbers could not have shown:
@@ -263,12 +263,17 @@ Two things the design-level numbers could not have shown:
   wide, aspect 3.5, at the 3.0 aspect edge) crossed the regularity gate the
   other way (cv 0.53 → 0.48). Neither shape got a different artwork; the
   classifier's skeleton did.
-- **Below ~16 px/mm the refinement traces raster texture, not arcs.** The
-  sagitta floor is one pixel whatever the resolution; at 10 px/mm the
-  tolerance is two pixels, so any bump over half the tolerance — antialiasing,
+- **Under 16 px/mm the refinement traces raster texture, not arcs.** The
+  sagitta floor is one pixel whatever the resolution; at 8–10 px/mm the
+  tolerance is two pixels, so any bump over half of it — antialiasing,
   JPEG, a scan's edge — earns a vertex, and the ±2-step mean does not smooth
-  it away. Vertices +40–80% and roughness UP on every fixture at 10–16 px/mm;
-  DOWN on Fremont (31) and drone (19).
+  it away. Vertices +40–80% on every sub-line fixture; roughness UP on four
+  of them (sunset, meadow, gaulke, ENTHUSIAST), DOWN on two (ribbon 8.8,
+  drone 9.6) and flat on two — so the roughness direction does not sort by
+  resolution below 16; the vertex inflation and the two classifier flips do.
+  (Review of PR #330 corrected drone from the 19 px/mm of its frame to the
+  9.6 px/mm of the art stage 1 actually reads; whitebg/alpha/ribbon are
+  8.4/8.4/8.8, not 10.)
 
 **Floors do not fix it — they cost the O.** `_CURVE_FLOOR_PX` swept on
 Fremont's O: 1 px → counter 33 vertices / 17° turns; 2 px → 17 / 27°;
@@ -279,9 +284,13 @@ And a 1.5 px floor over all ten fixtures still reads texture below 20 px/mm
 drops to 1278 Fremont vertices — the floor moves both costs and gains
 together; only the gate separates them.
 
-**The gate: `_CURVE_MIN_EPS_PX` = 4.** The refinement runs only where the
-tolerance is at least four pixels (20 px/mm at 0.2 mm) — the line the
-fixtures draw between reading arcs and reading texture. A raster quantity,
+**The gate: `_CURVE_MIN_PX_PER_MM` = 20.** The refinement runs only where the
+resolution is at least 20 px/mm (`_CURVE_MIN_PX_PER_MM`; review of PR
+#330 moved the gate from tolerance-in-pixels to resolution, so a caller
+raising `simplify_tol_mm` cannot open it for the wrong reason). Nothing was
+measured between 16 and 31 px/mm, so 20 is a line chosen inside an
+unmeasured interval — every sub-Fremont fixture is closed under it,
+verified byte-identical — not one the fixtures drew. A raster quantity,
 not a physical one; below it the default is byte-identical to
 Douglas-Peucker, pinned by
 `tests/test_run_tier.py::test_curve_refinement_needs_four_pixels_of_tolerance`.
@@ -293,7 +302,7 @@ With the gate, the same tier diff over all ten fixtures:
 | fixture | px/mm | stitches | trims | vertices | roughness | tier changes |
 |---|---|---|---|---|---|---|
 | Fremont | 31 | 5795 → 5790 | 52 → **45** | 762 → 1501 | 3.19 → **2.91** | none (19 satin, 5 fill, 1 run either way) |
-| drone, gaulke, ENTHUSIAST, whitebg, alpha, ribbon, sunset, meadow, Becker | 4–19 | byte-identical | | | | none |
+| drone, gaulke, ENTHUSIAST, whitebg, alpha, ribbon, sunset, meadow, Becker | 4–16 | byte-identical | | | | none |
 
 No golden moves: whitebg, alpha and ribbon (10 px/mm) and ENTHUSIAST (15)
 sit under the line, so the flat-lane, pushcomp and photo-segment goldens

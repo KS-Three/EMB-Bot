@@ -77,7 +77,7 @@ move by ~0.05–0.1 when the boundary gains detail, and a shape within that
 of a threshold flips. Every cure that changed the statistics changed
 shipped verdicts on 2–48 shapes for a flip count of 3–12 against 5. The one
 mitigation that works is the one already shipped: not feeding the
-classifier boundary detail (`_CURVE_MIN_EPS_PX`, #330).
+classifier boundary detail (`_CURVE_MIN_PX_PER_MM`, #330).
 
 What would work is a different construction, not a tuning: a verdict with a
 margin (e.g. a shape within ±0.05 of the regularity edge takes the tier of
