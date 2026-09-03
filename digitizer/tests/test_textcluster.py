@@ -46,11 +46,21 @@ from digitizer_core.textcluster import (
     _house_chains,
     _lettering_groups,
     _candidates,
+    _letter_candidates,
+    _skeleton_stroke_stats,
     _stroke_stats_mm,
+    LETTER_HEIGHT_RATIO,
+    LETTER_MAX_HEIGHT_MM,
+    LETTER_MIN_HEIGHT_MM,
+    LETTER_STROKE_CV_MAX,
+    SIMILARITY_RATIO,
+    STROKE_CV_MAX,
+    TEXT_CLUSTER_DELTA_E_MAX,
     detect_text_clusters,
     regularize_text_clusters,
     set_lettering_house_angle,
 )
+from digitizer_core import threads
 
 # Fixtures in this file are bare rectangles standing in for letters (see
 # module docstring) -- geometrically fine for the SKELETON-BUFFER layer this
@@ -188,8 +198,18 @@ def test_clusters_of_clearly_different_scale_stay_separate():
 
 
 def test_non_rescued_neighbor_is_not_swept_into_the_cluster():
-    """A region with no `rescued_small_shape` key was never a candidate —
-    geometric closeness to a real cluster must not pull it in."""
+    """Geometric closeness to a real cluster must not pull a bystander in.
+
+    **The reason this passes changed on 2026-09-03 and the docstring has to
+    say so.** It used to hold because a region without `rescued_small_shape`
+    was never a candidate at all. Detection now has a second door
+    (`_letter_candidates`), and the bystander below walks through it -- what
+    keeps it out of THIS cluster is that the rescued door is clustered first
+    and on its own, so an ordinary glyph can never join a rescued cluster,
+    and a lone ordinary glyph has no cluster of its own to be in. A test
+    whose stated reason has quietly stopped being the real one is the kind
+    that stops being able to fail, so it now asserts BOTH: that the
+    bystander IS eligible, and that eligibility alone tags nothing."""
     regions = _row("C", 4)
     bystander = Region(
         shape_id="Bystander", polygon=_rect(2.3 * 4, 0.0, 0.9, 1.8),
@@ -197,9 +217,13 @@ def test_non_rescued_neighbor_is_not_swept_into_the_cluster():
     regions.append(bystander)
     detect_text_clusters(regions, _P)
 
-    assert bystander.meta == {}, "never a candidate -> meta untouched entirely"
+    assert bystander.shape_id in {c.region.shape_id for c in _letter_candidates(regions)}, (
+        "precondition: the bystander IS eligible post-widening -- if this ever "
+        "goes false the test has stopped exercising what it claims to")
+    assert bystander.meta == {}, "eligible but alone -> meta untouched entirely"
     cluster = [r for r in regions if r.shape_id != "Bystander"]
     assert all(r.meta.get("text_candidate") is True for r in cluster)
+    assert all(r.meta.get("text_cluster_all_rescued") is True for r in cluster)
 
 
 def test_determinism_regardless_of_input_order():
@@ -1118,3 +1142,211 @@ def test_a_fill_angle_already_set_on_a_shape_is_not_overwritten():
     assert regions[1].meta["satin_angle_deg"] != 33.0
     others = {r.meta["fill_angle_deg"] for r in regions if r is not regions[1]}
     assert len(others) == 1 and 33.0 not in others
+
+
+# --- The letter door (2026-09-03) --------------------------------------------
+#
+# `detect_text_clusters` used to see only `rescued_small_shape` regions, so
+# ordinary lettering -- anything big enough to survive segmentation on its
+# own -- could never be a text cluster, and the Studio's "looks like text"
+# badge and Convert-to-text were dead on real wordmarks (0 candidates on
+# `becker_marine_logo.png`, 0 clusters on `drone_render.png`; measured
+# 2026-08-26). First built as `10ae9cc` and reverted the same day; the three
+# reasons it was reverted are each pinned below or in the e2e spec.
+
+
+def _word(prefix: str, n: int, *, x0: float = 0.0, y: float = 0.0,
+          w: float = 1.0, h: float = 6.0, spacing: float | None = None,
+          thread_index: int = 0) -> list[Region]:
+    """A row of `n` ORDINARY (un-rescued) letters, big enough to have been
+    segmented on their own -- the population the letter door exists for."""
+    step = spacing if spacing is not None else w + 0.5
+    out = []
+    for i in range(n):
+        r = _letter(f"{prefix}{i}", x0 + i * step, y, w=w, h=h, rescued=False)
+        r.thread_index = thread_index
+        out.append(r)
+    return out
+
+
+def test_a_row_of_ordinary_letters_now_clusters():
+    """The capability the widening exists for."""
+    regions = _word("N", 5)
+    detect_text_clusters(regions, _P)
+
+    assert all(r.meta.get("text_candidate") is True for r in regions)
+    assert len({r.meta["text_cluster_id"] for r in regions}) == 1
+    assert all(r.meta.get("text_cluster_all_rescued") is False for r in regions)
+
+
+def test_the_rescued_population_keeps_its_tighter_stroke_cv():
+    """Widening added a SECOND door; it must not have widened the first.
+
+    A 0.9 x 1.8 rect measures stroke CV ~0.42 -- above `STROKE_CV_MAX` (0.32)
+    and below `LETTER_STROKE_CV_MAX` (0.55). So the same geometry must be
+    refused at the rescued door and admitted at the letter door. That
+    asymmetry is the whole safety argument for the change: every measurement
+    behind this module was taken on the rescued population, and this proves
+    that population still sees the bound it was calibrated with."""
+    shape = _rect(0.0, 0.0, 0.9, 1.8)
+    as_rescued = Region(shape_id="R", polygon=shape, thread_index=0,
+                        thread_number="1", area_mm2=shape.area,
+                        meta={"rescued_small_shape": True})
+    as_ordinary = Region(shape_id="O", polygon=shape, thread_index=0,
+                         thread_number="1", area_mm2=shape.area, meta={})
+
+    stats = _skeleton_stroke_stats(as_rescued)
+    assert stats is not None and STROKE_CV_MAX < stats.cv <= LETTER_STROKE_CV_MAX, (
+        f"fixture must sit BETWEEN the two bounds to discriminate; cv={stats and stats.cv}")
+
+    assert [c.region.shape_id for c in _candidates([as_rescued])] == []
+    assert [c.region.shape_id for c in _letter_candidates([as_rescued])] == []
+    assert [c.region.shape_id for c in _candidates([as_ordinary])] == []
+    assert [c.region.shape_id for c in _letter_candidates([as_ordinary])] == ["O"]
+
+
+def test_the_letter_door_has_a_sewability_floor_and_a_cost_ceiling():
+    """Neither bound is a definition of a letter: under `LETTER_MIN_HEIGHT_MM`
+    a glyph cannot carry a satin column, and over `LETTER_MAX_HEIGHT_MM` a
+    background-sized region is not worth skeletonizing on the chance."""
+    tiny = _word("T", 4, w=0.2, h=LETTER_MIN_HEIGHT_MM - 0.1)
+    huge = _word("H", 4, w=12.0, h=LETTER_MAX_HEIGHT_MM + 1.0, spacing=20.0)
+    fine = _word("F", 4)
+    assert _letter_candidates(tiny) == []
+    assert _letter_candidates(huge) == []
+    assert len(_letter_candidates(fine)) == 4
+
+
+def test_a_rescued_cluster_is_computed_before_ordinary_lettering_can_touch_it():
+    """The two doors are clustered in two ROUNDS, rescued first and alone, so
+    a cluster that regularizes today has exactly the members it had
+    yesterday -- byte-identity for the measured population by construction.
+
+    Four rescued letters and four ordinary ones of the SAME size, stroke and
+    ink, sitting on one baseline at one spacing: one round of clustering
+    would make them a single eight-member cluster, and the rescued four would
+    then be redrawn against a median that includes glyphs they were never
+    measured with. Instead: two clusters, and only the rescued one redraws."""
+    rescued = _row("R", 4)                                   # 0.3 x 1.8, x 0..6.9
+    ordinary = _word("O", 4, x0=2.3 * 4, w=0.3, h=1.8, spacing=2.3)
+    regions = rescued + ordinary
+    detect_text_clusters(regions, _P)
+
+    ids_r = {r.meta.get("text_cluster_id") for r in rescued}
+    ids_o = {r.meta.get("text_cluster_id") for r in ordinary}
+    assert len(ids_r) == 1 and None not in ids_r
+    assert len(ids_o) == 1 and None not in ids_o
+    assert ids_r != ids_o, "the ordinary row must not be folded into the rescued cluster"
+    assert all(r.meta["text_cluster_all_rescued"] is True for r in rescued)
+    assert all(r.meta["text_cluster_all_rescued"] is False for r in ordinary)
+
+
+def test_a_widened_cluster_is_tagged_but_never_redrawn():
+    """Detection widened; regularization deliberately did not follow.
+
+    `regularize_text_clusters` REPLACES a member's polygon, and every
+    measurement justifying that -- the stroke-variance drop, the
+    SHAPE_CONTEXT_MAX_DIST calibration, the OCR-confidence gate -- was taken
+    on rescued small shapes, where apparent stroke weight is unreliable.
+    Ordinary lettering is usually already the right width."""
+    regions = _word("W", 5, w=0.3, h=1.8, spacing=2.3)
+    before = [r.polygon.wkt for r in regions]
+
+    detect_text_clusters(regions, _P)
+    regularize_text_clusters(regions, _P)
+
+    assert all(r.meta.get("text_candidate") is True for r in regions)
+    assert [r.polygon.wkt for r in regions] == before, "polygons must be untouched"
+    assert all(r.meta.get("text_cluster_regularize_skip_reason")
+               == "cluster_not_all_rescued" for r in regions)
+
+
+def test_a_rescued_leftover_may_join_ordinary_lettering_but_is_not_redrawn():
+    """A rescued glyph that found no rescued cluster of its own (the thin
+    "I" of an otherwise ordinary word, say) is still a letter of that word.
+    It joins the ordinary cluster in round 2 -- and because that cluster is
+    not all-rescued, nothing in it is redrawn, the leftover included."""
+    word = _word("L", 4, w=1.0, h=6.0)
+    lone = _letter("I", 4 * 1.5, 0.0, w=0.6, h=6.0, rescued=True)
+    regions = word + [lone]
+    before = lone.polygon.wkt
+
+    detect_text_clusters(regions, _P)
+    regularize_text_clusters(regions, _P)
+
+    assert lone.meta.get("text_cluster_id") == word[0].meta.get("text_cluster_id")
+    assert lone.meta.get("text_cluster_all_rescued") is False
+    assert lone.polygon.wkt == before
+
+
+def test_two_lines_of_ordinary_lettering_at_different_sizes_stay_apart():
+    """One text cluster becomes ONE text element, and one element is one
+    line at one size -- so ordinary glyphs link on `LETTER_HEIGHT_RATIO`
+    (0.8, the house-angle bound), not `SIMILARITY_RATIO` (0.5). Two lines
+    whose heights sit between the two ratios are two clusters at the letter
+    door and, the SAME geometry rescued, still one cluster at the rescued
+    door -- the measured population keeps the bound it was calibrated with.
+    (`becker_marine_logo.png`: MARINE 16.2 mm under the arched BECKER at
+    25-33 mm, one cluster at 0.5, two at 0.8.)"""
+    ratio = 4.0 / 6.0
+    assert SIMILARITY_RATIO < ratio < LETTER_HEIGHT_RATIO, "fixture must sit between the two bounds"
+
+    big = _word("B", 4, y=0.0, w=1.0, h=6.0, spacing=1.5)
+    small = _word("S", 4, y=7.0, w=0.67, h=4.0, spacing=1.5)
+    detect_text_clusters(big + small, _P)
+    ids_big = {r.meta.get("text_cluster_id") for r in big}
+    ids_small = {r.meta.get("text_cluster_id") for r in small}
+    assert len(ids_big) == 1 and None not in ids_big
+    assert len(ids_small) == 1 and None not in ids_small
+    assert ids_big != ids_small
+
+    big_r = _word("B", 4, y=0.0, w=1.0, h=6.0, spacing=1.5)
+    small_r = _word("S", 4, y=7.0, w=0.67, h=4.0, spacing=1.5)
+    for r in big_r + small_r:
+        r.meta["rescued_small_shape"] = True
+    detect_text_clusters(big_r + small_r, _P)
+    assert len({r.meta.get("text_cluster_id") for r in big_r + small_r}) == 1, (
+        "rescued glyphs still cluster at SIMILARITY_RATIO -- the first door is unchanged")
+
+
+def test_a_glyph_in_another_ink_is_not_a_letter_of_the_word():
+    """The shield-star false positive (`enthusiast_logo.png`, 2026-08-26):
+    the star inside the red shield is glyph-shaped, star-sized (5.4 mm
+    against 6.5 mm caps) and 7 mm from the "E" of ENTHUSIAST, and one round
+    of clustering made it the word's eleventh letter. Converting would have
+    dragged a graphic into the text element. What separates it is INK: the
+    letters are 0134 Smoky, the star 1720 Not Quite Red.
+
+    Thread IDENTITY is the wrong test and is disproven -- `drone_render`'s
+    23 letters come out of quantization on six near-identical greys and
+    oranges -- so the link is a CIEDE2000 tolerance. Both sides pinned here:
+    a neighbour one quantization step away (0142 Sterling beside 0145
+    Skylight, dE 9.2) stays a letter; the star (dE 34.2) does not."""
+    chart = threads.CHART
+    assert chart.delta_e(14, 149) > TEXT_CLUSTER_DELTA_E_MAX, "Smoky vs Not Quite Red"
+    assert chart.delta_e(16, 17) < TEXT_CLUSTER_DELTA_E_MAX, "Sterling vs Skylight"
+
+    word = _word("E", 5, thread_index=14)
+    star = _letter("Star", 5 * 1.5, 0.0, w=1.0, h=6.0, rescued=False)
+    star.thread_index = 149
+    detect_text_clusters(word + [star], _P)
+    assert all(r.meta.get("text_candidate") is True for r in word)
+    assert "text_cluster_id" not in star.meta, "another ink is another object"
+
+    word = _word("E", 5, thread_index=17)
+    shaded = _letter("Shaded", 5 * 1.5, 0.0, w=1.0, h=6.0, rescued=False)
+    shaded.thread_index = 16
+    detect_text_clusters(word + [shaded], _P)
+    assert shaded.meta.get("text_cluster_id") == word[0].meta.get("text_cluster_id"), (
+        "one quantization step is still one ink")
+
+
+def test_the_ink_link_is_no_evidence_when_the_chart_cannot_place_a_thread():
+    """A thread index the chart does not have is NOT a refusal -- geometry
+    alone decides, which is exactly what every cluster did before the link
+    existed. Fails open, like every guard in this module."""
+    word = _word("E", 5, thread_index=0)
+    odd = _letter("Odd", 5 * 1.5, 0.0, w=1.0, h=6.0, rescued=False)
+    odd.thread_index = 10 ** 6
+    detect_text_clusters(word + [odd], _P)
+    assert odd.meta.get("text_cluster_id") == word[0].meta.get("text_cluster_id")

@@ -1293,6 +1293,13 @@ const WARNING_TEXT = {
     plural(w.count || 0,
       "One area was too narrow to fill with stitches. Satin usually catches these — check it's on.",
       "{n} areas were too narrow to fill with stitches. Satin usually catches these — check it's on."),
+  // Info, not a fault: the stitch type changed inside a letter, the way a
+  // digitizer does by hand — a hairline arm or bar the satin column could not
+  // carry sewed as a running stitch instead of vanishing (2026-09-03).
+  HAIRLINE_STROKES_AS_RUN: (w) =>
+    plural(w.count || 0,
+      "One stroke was too fine for satin and sews as a running stitch instead.",
+      "{n} strokes were too fine for satin and sew as running stitches instead."),
   SHAPE_NOT_STITCHED: (w) =>
     plural(w.count || 0,
       "One shape couldn't be stitched and was left out.",

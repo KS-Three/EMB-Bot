@@ -3319,6 +3319,77 @@ against **~0.4 mm** between letters — but a bound tight enough to exclude it
 risks splitting "ENTERPRISES INC" at its word space, so it needs measuring
 across fixtures, not tuning on one. *(measured 2026-08-26)*
 
+### Text clustering — RESUMED and SHIPPED 2026-09-03 (third attempt)
+
+Each of the three reasons above is answered, not argued past. Full record:
+`docs/design-review-fine-lettering-2026-09-03.md` §6.
+
+- **The e2e contract** now reads the converted bar's own "N shapes" count and
+  asserts per cluster (the other cluster's badges stay, `unstitched` grows by
+  exactly N, Undo restores exactly N). The fixture carries two clusters —
+  the rescued "ENTERPRISES INC." subline and the 6.5 mm "ENTHUSIAST".
+- **The star** is out on a ONE-INK link, `textcluster._same_ink`: CIEDE2000 on
+  the job's chart, `TEXT_CLUSTER_DELTA_E_MAX = 20`. Measured: the letters
+  (0134 Smoky) are 34.2 from the star (1720 Not Quite Red); drone's PRECISION
+  greys need chain links ≤ 16.4 (pairwise max 25.3) to stay one word; grey
+  vs orange lines ≥ 27.7. The inter-glyph GAP proposed above is measured
+  dead — the star sits 0.97 heights from its word, ENTERPRISES INC's own word
+  space is 1.56 heights. Thread identity stays disproven.
+- **Cost, measured directly** on a quiet box: enthusiast @ 90 `run_stages`
+  7.9 → 8.8 s (detect +0.4 s, OCR +1.4 s for 10 more glyphs at ~0.13 s each,
+  house angle −0.9 s from memoizing `_skeleton_stroke_stats` on the polygon —
+  three passes were skeletonizing the same regions); drone @ 80 25.9 → 28.8 s;
+  becker @ 100 2.0 → 3.4 s. The service test that timed out on CI runs in
+  12.4 s solo against its 60 s budget. It DID time out again under a
+  saturated box (`-n auto` with a probe and two renders alongside, 27:42 for
+  a 9–10 minute suite) — the loaded-box artifact, and the test to watch.
+  **A thread pool over pytesseract is a measured negative** (3.3 → 21.8 s:
+  four tesseract processes each open an OpenMP team and thrash four cores);
+  OCR stays serial, with the numbers in the code. **The same OpenMP teams are
+  why the service test times out under `-n auto`:** pre vs post under three
+  CPU hogs 19.3 vs 32.7 s (idle 11.1 vs 11.9). The tesseract child is now
+  pinned to one thread (`_one_tesseract_thread`): 12.1 s under the same hogs,
+  faster than the pre-change tree and immune to contention — the likeliest
+  root cause of the `10ae9cc` CI timeout, fixed at the source.
+
+**The structure is the safety argument.** `_candidates` (the rescued door) is
+unchanged and clustered FIRST, alone, with its original bounds, so every
+cluster that `regularize_text_clusters` redraws is computed by exactly the
+code that computed it yesterday. Then `_letter_candidates` (10ae9cc's letter
+door: aspect, 1.5–60 mm, CV ≤ 0.55) plus any rescued leftover is clustered at
+`LETTER_HEIGHT_RATIO` = `SATIN_ANGLE_HEIGHT_RATIO` (0.8 — one text element
+is one line at one size: MARINE and the arched BECKER were one cluster at
+0.5 and are two at 0.8; drone's three lines were one 23-member cluster) with
+the ink link; those clusters carry `text_cluster_all_rescued = False` and are
+never redrawn (`cluster_not_all_rescued`). Results: becker 0 → 11 tagged in 2,
+drone 0 → 21 in 3 (10 greys, 4 oranges, 7 Whale), enthusiast 14 → 24 in 2
+with the subline's cluster id unchanged, Fremont 13 + 5 + three rope
+fragments. `_lettering_groups` (the house angle) is untouched.
+*(measured 2026-09-03 — `tests/test_textcluster.py` +9)*
+
+### Defect 24's mechanism — FIXED 2026-09-03 (the tier stays open)
+
+A stretch of stations under `SATIN_MIN_CROSS_MM` used to leave the zigzag to
+hop from the last survivor to the next, and the art between sewed nothing:
+Fremont @ 92.5 lost 41 of 282 strokes and 83.5 mm of spine, the T's bar both
+halves while its junction crosses survived (Goldman-joined members keep their
+junction crosses, so a whole-stroke fallback never fires — the split is per
+station). `satin_stroke` now hands `satin_shape` PARTS per stroke — satin /
+bean run / satin — and a hairline stretch of ≥ three bean stations of spine
+sews as a 3-pass bean along it (`_hairline_stretches`, `_bean_along`); stage 7
+reports `HAIRLINE_STROKES_AS_RUN`. Shorter stretches stay dropped (a 0.45 mm
+rail dent was becoming a bean tail: chaining 3.8 → 5.0/1k, back to 3.81 with
+the floor). **Only where the ART has ink:** pull comp grows a 0.04 mm
+vectorization needle into a 0.44 mm "stroke" (Fremont: a dark tick above the
+hexagon band), so a stretch is trimmed while the cross measured in the
+UNCOMPENSATED polygon is under `simplify_tol_mm` (`_trim_to_art`) — Fremont
+went from +276 stitches to +12 with it. No satin underlay under a 5 mm extent
+(`SATIN_UNDERLAY_MIN_EXTENT_MM`, the JS `UNDERLAY_CAP_MIN_MM`): Fremont's
+underlay 446 → 408, drone 1101 → 993. Enthusiast and becker byte-identical.
+The JS font path got the same stretch split (`satinplay.splitByCrossFloor`),
+area 2. *(measured 2026-09-03 — `tests/test_small_lettering.py`, 9 tests;
+`docs/design-review-fine-lettering-2026-09-03.md` §3–§4)*
+
 ### The angle policy's prerequisite is not free
 
 `detect_text_clusters` (`textcluster.py:618`, wired at `pipeline.py:564`)

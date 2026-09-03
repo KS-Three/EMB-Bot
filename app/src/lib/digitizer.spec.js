@@ -1341,6 +1341,17 @@ test("describeWarnings translates pipeline codes to customer language, with coun
   expect(out[2].text).toBe("The thread gets cut 2 times where it has to travel a long way.");
 });
 
+test("describeWarnings explains a hairline stroke sewn as a run as what happened, not a fault", async () => {
+  stubStorage({});
+  const { describeWarnings } = await import("./digitizer.js");
+  const out = describeWarnings([
+    { code: "HAIRLINE_STROKES_AS_RUN", message: "engine prose", count: 1, shapes: 1 },
+    { code: "HAIRLINE_STROKES_AS_RUN", message: "engine prose", count: 4, shapes: 3 },
+  ]);
+  expect(out[0].text).toBe("One stroke was too fine for satin and sews as a running stitch instead.");
+  expect(out[1].text).toBe("4 strokes were too fine for satin and sew as running stitches instead.");
+});
+
 test("describeWarnings puts the design-edge cap's bill in the user's language", async () => {
   stubStorage({});
   const { describeWarnings } = await import("./digitizer.js");

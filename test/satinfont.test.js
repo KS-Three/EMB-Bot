@@ -747,7 +747,11 @@ test("underlay:false emits ZERO underlay runs at EVERY size, and travel is tagge
     assert.strictEqual(lay.cap.underlay, null);
     assert.ok(k.satin > 0, "but still emits satin");
     assert.ok(k.underpath > 0, "and still emits needle-down travel, now tagged underpath");
-    for (const r of lay.runs) assert.ok(r.kind === "satin" || r.kind === "underpath", `unexpected kind ${r.kind}`);
+    // "run" is the hairline fallback (2026-09-03): a satin span with no cross
+    // over the 0.5 mm floor sews as a bean run. It is a top stitch, never
+    // underlay, so it is allowed here; the small caps in this loop are exactly
+    // where it fires.
+    for (const r of lay.runs) assert.ok(r.kind === "satin" || r.kind === "underpath" || r.kind === "run", `unexpected kind ${r.kind}`);
   }
 });
 
@@ -783,4 +787,107 @@ test("underlay ladder: default-on is a real, intended output change — pinned d
   const tinyOff = DG.buildLetteringDesign(font, "AB", { ...base, targetWidthMm: 8, underlay: false });
   assert.deepStrictEqual(tinyOn, tinyOff, "an 8mm-wide AB fits to a 4.4mm cap — under the floor, so no underlay at all");
   assert.strictEqual(tinyOn.stitchCount, 189);
+});
+
+// ---- Width guards (2026-09-03): cross floor, hairline fallback, report ------
+//
+// A synthetic font in a frame where the arithmetic is readable: unitsPerEm
+// 100 and emMm 18, so one font unit is 0.18 mm. Three glyphs, each one
+// straight vertical column 60 units (10.8 mm) tall:
+//   H  10 units wide  (1.8 mm)  — satin, and the cap-height reference
+//   L   2 units wide  (0.36 mm) — a hairline, under the 0.5 mm floor
+//   K  10 units for the lower half, 2 units for the upper — a stroke that
+//      changes weight, the script-connector case
+function guardFont() {
+  const col = (w0, w1) => ({
+    railA: [[-w0 / 2, 60], [-w0 / 2, 30], [-w1 / 2, 30], [-w1 / 2, 0]],
+    railB: [[w0 / 2, 60], [w0 / 2, 30], [w1 / 2, 30], [w1 / 2, 0]],
+    rungs: [],
+  });
+  return {
+    name: "GuardFont", license: "OFL", unitsPerEm: 100, sizeMm: 20, advDefault: 40,
+    glyphs: {
+      H: { adv: 40, cols: [col(10, 10)], runs: [] },
+      L: { adv: 40, cols: [col(2, 2)], runs: [] },
+      K: { adv: 40, cols: [col(10, 2)], runs: [] },
+    },
+  };
+}
+const GUARD_OPTS = { emMm: 18, pxPerMm: 10, spacingMm: 0.4, pullCompMm: 0, letterSpacingMm: 0, underlay: false };
+const kindsOf = (lay) => lay.runs.reduce((k, r) => { k[r.kind] = (k[r.kind] || 0) + 1; return k; }, {});
+
+test("width guards: a hairline glyph sews as a bean run, not as sub-floor satin — and crossFloor:false is the legacy stream", () => {
+  const lay = SF.layoutText(guardFont(), "L", GUARD_OPTS);
+  const k = kindsOf(lay);
+  assert.ok(k.run >= 1, `expected a run, got ${JSON.stringify(k)}`);
+  assert.strictEqual(k.satin, undefined, "a 0.36 mm column must not sew as satin");
+  assert.strictEqual(lay.lettering.hairlineSpans, 1);
+  const legacy = SF.layoutText(guardFont(), "L", { ...GUARD_OPTS, crossFloor: false });
+  const kl = kindsOf(legacy);
+  assert.ok(kl.satin >= 1 && kl.run === undefined, `legacy must still zigzag the hairline: ${JSON.stringify(kl)}`);
+  assert.strictEqual(legacy.lettering.hairlineSpans, 0);
+});
+
+test("width guards: a satin glyph is byte-identical with and without the floor when no cross is under it", () => {
+  const a = SF.layoutText(guardFont(), "H", GUARD_OPTS);
+  const b = SF.layoutText(guardFont(), "H", { ...GUARD_OPTS, crossFloor: false });
+  assert.deepStrictEqual(a.runs, b.runs);
+  assert.strictEqual(kindsOf(a).run, undefined);
+});
+
+test("width guards: a stroke that changes weight sews satin where it is wide and run where it is thin, with NO chord between them", () => {
+  const lay = SF.layoutText(guardFont(), "K", GUARD_OPTS);
+  const k = kindsOf(lay);
+  assert.ok(k.satin >= 1 && k.run >= 1, `expected both kinds, got ${JSON.stringify(k)}`);
+  // The needle must never leave the column between parts: consecutive runs
+  // meet within one column width (1.8 mm = 18 px). This is the chord
+  // regression — on an outline face a dropped stretch used to hand the next
+  // run a straight stitch across the letter's interior.
+  for (let i = 1; i < lay.runs.length; i++) {
+    const a = lay.runs[i - 1].pts[lay.runs[i - 1].pts.length - 1], b = lay.runs[i].pts[0];
+    const gap = Math.hypot(a.x - b.x, a.y - b.y);
+    assert.ok(gap <= 18 + 1e-6, `run ${i} starts ${gap.toFixed(1)} px from where run ${i - 1} ended`);
+  }
+  // and the run part sits on the THIN half (y < 30 units in font space, i.e.
+  // the lower half of the glyph in design px — font y is y-down)
+  const runPts = lay.runs.filter((r) => r.kind === "run").flatMap((r) => r.pts);
+  const satinPts = lay.runs.filter((r) => r.kind === "satin").flatMap((r) => r.pts);
+  const meanY = (pts) => pts.reduce((s, p) => s + p.y, 0) / pts.length;
+  assert.ok(meanY(runPts) < meanY(satinPts), "the run must be on the thin half, the satin on the wide half");
+});
+
+test("width guards: the lettering report measures cap and stroke length in FINAL mm and honours the fit scale", () => {
+  const lay = SF.layoutText(guardFont(), "HLK", GUARD_OPTS);
+  const l = lay.lettering;
+  assert.strictEqual(l.columns, 3);
+  closeTo(l.capMm, 10.8, 1e-6, "cap from the H's rails");
+  closeTo(l.strokeMm, 3 * 10.8, 0.05, "three 10.8 mm columns");
+  closeTo(l.hairlineMm, 10.8 + 5.4, 0.3, "the L plus the thin half of the K");
+  closeTo(l.thinMm, 10.8 + 5.4, 0.3, "nothing here sits between 0.5 and 1 mm");
+  assert.strictEqual(l.hairlineSpans, 2);
+  assert.strictEqual(l.capFloorMm, 4);
+  assert.strictEqual(l.crossFloorMm, 0.5);
+  assert.strictEqual(l.columnFloorMm, 1);
+  // Fit scale 0.25: the same layout sewn at a quarter size. Cap and lengths
+  // scale down; the H (1.8 -> 0.45 mm) now falls under the floor too.
+  const small = SF.layoutText(guardFont(), "HLK", { ...GUARD_OPTS, fitScale: 0.25 });
+  closeTo(small.lettering.capMm, 2.7, 1e-6);
+  closeTo(small.lettering.strokeMm, 3 * 2.7, 0.05);
+  closeTo(small.lettering.hairlineMm, 3 * 2.7, 0.1, "every column is a hairline at a quarter size");
+  assert.ok(small.lettering.hairlineSpans >= 3);
+});
+
+test("width guards: buildLetteringDesign carries the report out, and the 0.5 mm floor is measured on the fabric, not in layout space", () => {
+  const d = DG.buildLetteringDesign(guardFont(), "HLK", { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 10, targetWidthMm: 60 });
+  assert.ok(d.lettering && d.lettering.columns === 3);
+  assert.ok(d.lettering.capMm > 0);
+  // Sized to 60 mm wide the layout is scaled by ~2.7x; the L's 0.36 mm hairline
+  // becomes ~1 mm ON THE FABRIC and must therefore sew as satin — the floor
+  // follows the fit, not the nominal em.
+  assert.strictEqual(d.lettering.hairlineSpans, 0, `at 60 mm nothing is a hairline: ${JSON.stringify(d.lettering)}`);
+  // 5 mm wide: the ink span is 90 units = 16.2 mm nominal, so the fit is
+  // ~0.31x — the L's hairline lands at ~0.11 mm and the cap at ~3.3 mm.
+  const tiny = DG.buildLetteringDesign(guardFont(), "HLK", { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 10, targetWidthMm: 5 });
+  assert.ok(tiny.lettering.hairlineSpans >= 2, `at 5 mm the L and the K's thin half are hairlines: ${JSON.stringify(tiny.lettering)}`);
+  assert.ok(tiny.lettering.capMm < 4, `and the cap is under the 4 mm floor: ${tiny.lettering.capMm}`);
 });

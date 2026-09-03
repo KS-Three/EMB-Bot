@@ -181,6 +181,24 @@ test("text cluster: badge appears, convert to text, undo -- through the real ser
   await expect(clusterBar).toBeVisible();
   await expect(clusterBar).toContainText("Convert to text");
 
+  // How many rows THIS cluster owns. Every assertion below that used to be
+  // page-wide ("zero badges remain", "unstitched grew by badgeCountBefore")
+  // was true only while a design had exactly ONE cluster -- and on
+  // 2026-09-03 detection widened to ordinary lettering, so this fixture now
+  // carries two: the rescued "ENTERPRISES INC." subline and the 6.5 mm
+  // "ENTHUSIAST" wordmark above it. Converting one must leave the other's
+  // badges alone. The bar's own label is the per-cluster count (the same
+  // `textClusterMembers` read the click handler uses), so read it from
+  // there rather than re-deriving membership client-side. That the
+  // page-wide assertions were the reason the first widening (10ae9cc) was
+  // reverted is recorded in docs/scope/1-auto-digitizing-quality.md.
+  const barLabel = await clusterBar.innerText();
+  const memberMatch = barLabel.match(/·\s*(\d+)\s+shapes?/);
+  expect(memberMatch, `cluster bar label should carry a member count: ${barLabel}`).not.toBeNull();
+  const memberCount = Number(memberMatch[1]);
+  expect(memberCount).toBeGreaterThanOrEqual(3);
+  expect(memberCount).toBeLessThanOrEqual(badgeCountBefore);
+
   // ---- click Convert to text -- synchronous, client-side only -------------
   // Confirmed by reading App.svelte's onConvertClusterToText: it calls
   // addSeededTextElement + patches shapeOverrides in one synchronous
@@ -238,9 +256,10 @@ test("text cluster: badge appears, convert to text, undo -- through the real ser
   // The converted cluster's member rows no longer show the badge (they've
   // moved to DigitizePanel's "unstitched" row branch, which renders no
   // per-row badges at all) and the unstitched-row count grew by exactly the
-  // number of members that were converted.
-  await expect(page.locator(".dgp-lbadge", { hasText: "looks like text" })).toHaveCount(0);
-  await expect(page.locator(".dgp-layer.unstitched")).toHaveCount(unstitchedBefore + badgeCountBefore);
+  // number of members that were converted. Every OTHER cluster's rows keep
+  // their badges: the action is per cluster, never page-wide.
+  await expect(page.locator(".dgp-lbadge", { hasText: "looks like text" })).toHaveCount(badgeCountBefore - memberCount);
+  await expect(page.locator(".dgp-layer.unstitched")).toHaveCount(unstitchedBefore + memberCount);
 
   // ---- a converted cluster member must never look restorable ---------------
   // Regression coverage for the interaction between this feature and the
@@ -256,7 +275,7 @@ test("text cluster: badge appears, convert to text, undo -- through the real ser
   ).toHaveCount(unstitchedBefore);
   await expect(
     page.locator(".dgp-layer.unstitched").getByText("hidden — converted to text")
-  ).toHaveCount(badgeCountBefore);
+  ).toHaveCount(memberCount);
   if (unstitchedBefore > 0) {
     await expect(page.locator(".dgp-enclosed-banner")).toContainText(`Sew all ${unstitchedBefore}`);
   } else {

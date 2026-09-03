@@ -197,6 +197,42 @@ export function generateElement(element, garment, runtime) {
 // error. Exported (and tested) rather than inlined in the component, matching
 // hoopFitNote — message wording is logic, and logic in a .svelte file is logic
 // nobody unit-tests.
+// The width-guard note for a text element, from buildLetteringDesign's
+// `lettering` report (see satinfont.layoutText). One line, the most useful
+// fact first: a cap under the 4 mm floor is the CAUSE of everything below it,
+// so it wins; then a font that is mostly hairline at this size (below its own
+// band — the fix is size or font, not a tweak); then what the engine did about
+// the odd hairline (sewn as running stitch, not dropped); then lettering that
+// is mostly under the needle minimum. Empty string when there is nothing to
+// say, so callers can `{#if}` on it like the hoop and unsupported notes.
+//
+// The two SHARE thresholds are UI policy, not physics: "mostly" means half
+// the stroke length, and the thin note stays quiet under a quarter because
+// nearly every authored column tapers through 1 mm at its tips, so a lower
+// bar would print on almost every design and mean nothing. Every mm figure
+// quoted comes from the report itself, so the note can never drift from the
+// constant the engine actually applied. Exported and tested for the same
+// reason charList is: wording is logic.
+export function letteringNote(l) {
+  if (!l || !(l.strokeMm > 0)) return "";
+  const share = (mm) => mm / l.strokeMm;
+  const pct = (mm) => Math.round(100 * share(mm));
+  if (l.capMm > 0 && l.capMm < l.capFloorMm) {
+    return `Letters ${l.capMm.toFixed(1)} mm tall — under the ${l.capFloorMm} mm floor, thin strokes will shred`;
+  }
+  if (share(l.hairlineMm) >= 0.5) {
+    return `${pct(l.hairlineMm)}% of this lettering is under ${l.crossFloorMm} mm wide at this size and sews as running stitch — size up or pick a bolder font`;
+  }
+  if (l.hairlineSpans > 0) {
+    const n = l.hairlineSpans;
+    return `${n} hairline stroke${n === 1 ? "" : "s"} under ${l.crossFloorMm} mm sewn as running stitch`;
+  }
+  if (share(l.thinMm) >= 0.25) {
+    return `${pct(l.thinMm)}% of this lettering is under ${l.columnFloorMm} mm wide — size up for crisp letters`;
+  }
+  return "";
+}
+
 export function charList(chars, max = 6) {
   const list = (chars || []).filter((c) => typeof c === "string" && c.length);
   if (!list.length) return "";

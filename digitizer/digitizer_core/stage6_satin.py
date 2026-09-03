@@ -2368,7 +2368,10 @@ def _member_corridor(piece: list[tuple[float, float]], from_start: bool,
 def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                   field: _WidthField | None, split_above_mm: float | None,
                   end_cutback_mm: float, spacing_mm: float,
-                  angle_deg: float | None) -> list[tuple[float, float]]:
+                  angle_deg: float | None,
+                  parts: list | None = None,
+                  art_poly: Polygon | None = None,
+                  hairline_floor_mm: float = 0.0) -> list[tuple[float, float]]:
     """A stroke with Goldman corners (`Stroke.corners`) -> its members sewn as
     separate columns and laid end to end in chain order.
 
@@ -2385,6 +2388,7 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
     edges_ = [0, *[c[0] for c in stroke.corners], len(pts) - 1]
     owners = [c[1] for c in stroke.corners]
     out: list[tuple[float, float]] = []
+    n_start_joined = len(parts) if parts is not None else 0
     for m, (s0, s1) in enumerate(zip(edges_, edges_[1:])):
         piece = pts[s0:s1 + 1]
         if len(piece) < 2:
@@ -2406,14 +2410,36 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
         member = Stroke(spine=piece, free_start=free_s, free_end=free_e, closed=False,
                         capped_start=capped_s, capped_end=capped_e,
                         tuck_under_start=tuck_s, tuck_under_end=tuck_e)
+        n_before = len(parts) if parts is not None else 0
         pts_m = satin_stroke(poly, member, half_mm, field, split_above_mm,
-                             end_cutback_mm, spacing_mm, angle_deg)
+                             end_cutback_mm, spacing_mm, angle_deg, parts=parts,
+                             art_poly=art_poly, hairline_floor_mm=hairline_floor_mm)
+        above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
+        if parts is not None and len(parts) > n_before and n_before > n_start_joined:
+            # The join stays ONE stroke in `parts` as well: this member's
+            # first part is merged into the previous member's last when both
+            # are satin, with the same seam hop the flat list gets below, so a
+            # joined stroke with no hairline stretch is exactly one part
+            # whose points are the flat return. Only a hairline splits it.
+            kind, ppts, ppiece, _s, _e = parts[n_before]
+            pkind, ppts_prev, ppiece_prev, p_start, _pe = parts[n_before - 1]
+            if kind == stitches.SATIN and pkind == stitches.SATIN and ppts and ppts_prev:
+                seam = _split_points(ppts_prev[-1], ppts[0], 0, above)
+                parts[n_before - 1] = (stitches.SATIN, ppts_prev + seam + ppts,
+                                       ppiece_prev + ppiece, p_start, False)
+                del parts[n_before]
         if out and pts_m:
             # The seam hop across the corner is a stitch like any other and
             # splits like its neighbours when it is over the length cap.
-            above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
             out.extend(_split_points(out[-1], pts_m[0], 0, above))
         out.extend(pts_m)
+    if parts is not None and len(parts) > n_start_joined:
+        # The first and last parts of the JOINED stroke are its ends; an
+        # inner corner seam is neither free nor a cap.
+        first, last = n_start_joined, len(parts) - 1
+        for j in range(first, last + 1):
+            kind, ppts, ppiece, _s, _e = parts[j]
+            parts[j] = (kind, ppts, ppiece, j == first, j == last)
     return out
 
 
@@ -2422,8 +2448,34 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  split_above_mm: float | None = None,
                  end_cutback_mm: float = 0.0,
                  spacing_mm: float = machine.SATIN_SPACING_MM,
-                 angle_deg: float | None = None) -> list[tuple[float, float]]:
+                 angle_deg: float | None = None,
+                 parts: list | None = None,
+                 art_poly: Polygon | None = None,
+                 hairline_floor_mm: float = 0.0) -> list[tuple[float, float]]:
     """One stroke -> flat zigzag points (A1, B1, A2, B2, ...).
+
+    `parts` (2026-09-03), when a list is passed, additionally receives the
+    stroke as PARTS in station order: `(kind, points, spine_slice, at_start,
+    at_end)` — `stitches.SATIN` for each stretch of stations whose crosses
+    clear `SATIN_MIN_CROSS_MM`, `stitches.RUN` for each HAIRLINE stretch that
+    does not, sewn as a bean run along those stations' spine
+    (`_hairline_stretches`, `_bean_along`). A stroke with no hairline stretch
+    is one satin part whose points ARE the flat return. The flat return
+    itself never changes: it is the satin of every kept station, exactly as
+    it always was, so every caller that does not ask for parts is untouched.
+
+    `art_poly` + `hairline_floor_mm` (2026-09-03): a hairline stretch earns a
+    bean only where the ARTWORK has ink. `poly` is the compensated polygon
+    stage 5 grew, and pull compensation turns a vectorization needle -- a
+    0.04 mm sliver the outline tolerance never promised -- into a 0.4 mm
+    "stroke" whose spine then sews as a visible tick (Hotel Fremont at
+    92.5 mm: a 1 mm needle on a black sliver of the hexagon band). So a
+    stretch is trimmed at both ends while the cross measured in `art_poly`
+    (the region's own uncompensated polygon) is under the floor -- the
+    vectorizer's boundary tolerance, `config.simplify_tol_mm`, the width
+    below which two rails are inside each other's error band. A dip INSIDE
+    a stretch is left alone: the bean follows the spine across it. Both
+    default off, so every direct caller and every test is byte-identical.
 
     `angle_deg` is the house cross angle for satin lettering (2026-08-26).
     None -- the default, and what every caller that never mentions it gets --
@@ -2453,7 +2505,8 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
     """
     if stroke.corners:
         return _satin_joined(poly, stroke, half_mm, field, split_above_mm,
-                             end_cutback_mm, spacing_mm, angle_deg)
+                             end_cutback_mm, spacing_mm, angle_deg, parts=parts,
+                             art_poly=art_poly, hairline_floor_mm=hairline_floor_mm)
 
     spine = _smooth(stroke.spine, 3, stroke.closed)
     spine = _round_corners(spine, half_mm, stroke.closed)
@@ -2555,12 +2608,67 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
     crosses = _short_stitch_guard(rail_a, rail_b)
     above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
 
+    # HAIRLINE STRETCHES (2026-09-03). A cross under SATIN_MIN_CROSS_MM is
+    # dropped, as it always was. What used to happen next is the defect: a
+    # RUN of dropped stations — an E's arm, a T's bar, the thin half of a
+    # stroke that changes weight — left the zigzag to hop from the last
+    # survivor to the next, and the artwork between them sewed nothing
+    # (defect 24; Hotel Fremont at 92.5 mm lost 41 of 282 strokes and
+    # 83.5 mm of spine that way, the corner-joined bar of a T losing both
+    # halves while its junction crosses survived). A stretch of at least
+    # `min_seg` stations under the floor is now a hairline and, when the
+    # caller asks for `parts`, sews as a bean run along its own spine
+    # stations — the stitch type changing within the letter, the way a
+    # digitizer changes it by hand. Short dips stay as they were.
+    thin = [math.dist(pa, pb) < machine.SATIN_MIN_CROSS_MM for pa, pb in crosses]
+    stretches: list[tuple[int, int]] = []
+    if parts is not None and any(thin):
+        min_seg = max(2, int(math.ceil(machine.BEAN_STITCH_MM / spacing_mm)))
+        stretches = _hairline_stretches(thin, min_seg)
+        if art_poly is not None and hairline_floor_mm > 0:
+            stretches = _trim_to_art(stretches, rail_a, rail_b, art_poly, hairline_floor_mm)
+    bean_at = {i0: (i0, i1) for i0, i1 in stretches}
+    in_bean = {i for i0, i1 in stretches for i in range(i0, i1 + 1)}
+    last_station = len(crosses) - 1
+    n_start = len(parts) if parts is not None else 0
+
     out: list[tuple[float, float]] = []
     prev_kept: tuple | None = None
     kept = 0
+    # The satin part under construction (only when `parts` is asked for):
+    # its points, its first station and its own stagger phase. The at_start /
+    # at_end flags are settled after the loop: the FIRST and LAST part this
+    # call appends are the stroke's ends, whatever station they begin on.
+    cur: list[tuple[float, float]] = []
+    cur_i0 = 0
+    cur_kept = 0
+
+    def flush(i_last: int) -> None:
+        nonlocal cur, cur_kept
+        if parts is not None and cur:
+            parts.append((stitches.SATIN, cur, spine[cur_i0:i_last + 1], False, False))
+        cur, cur_kept = [], 0
+
     for i, (pa, pb) in enumerate(crosses):
-        if math.dist(pa, pb) < machine.SATIN_MIN_CROSS_MM:
-            continue  # rails pinched together: shared tip or degenerate cap
+        if i in bean_at:
+            i0, i1 = bean_at[i]
+            piece = spine[i0:i1 + 1]
+            length = sum(math.dist(a, b) for a, b in zip(piece, piece[1:]))
+            # A stretch sews as a bean only past the run tier's own floor —
+            # three bean stations of spine, under which the needle re-enters
+            # its own holes. Shorter, it is a tip or a dip the rail placement
+            # dented (measured on ENTHUSIAST at 80 mm: one 0.8 mm dip inside a
+            # letter), not a feature, and stays dropped exactly as it always
+            # was: the zigzag hops the gap along the spine, and the satin
+            # part is NOT split around it.
+            bean = (_bean_along(piece)
+                    if len(piece) >= 2 and length >= 2.0 * machine.BEAN_STITCH_MM
+                    else [])
+            if len(bean) >= 2:
+                flush(i0 - 1)
+                parts.append((stitches.RUN, bean, piece, False, False))
+        if i in in_bean or thin[i]:
+            continue  # rails pinched together: shared tip, degenerate cap, or a hairline stretch sewn as a run above
         # Corridor capping at a junction can leave consecutive crosses nearly
         # coincident — both penetrations landing in the previous needle holes.
         if prev_kept is not None and \
@@ -2589,6 +2697,108 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
         out.extend(_split_points(pa, pb, kept, above))
         out.append(pb)
         kept += 1
+        if parts is not None:
+            if cur:
+                cur.extend(_split_points(cur[-1], pa, cur_kept, above))
+            else:
+                cur_i0 = i
+            cur.append(pa)
+            cur.extend(_split_points(pa, pb, cur_kept, above))
+            cur.append(pb)
+            cur_kept += 1
+    flush(last_station)
+    if parts is not None and len(parts) > n_start:
+        first, last = n_start, len(parts) - 1
+        for j in range(first, last + 1):
+            kind, ppts, ppiece, _s, _e = parts[j]
+            parts[j] = (kind, ppts, ppiece, j == first, j == last)
+    return out
+
+
+def _bean_along(pts: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """A HAIRLINE stretch of a stroke's spine sewn as a bean run: `BEAN_PASSES`
+    laps at `BEAN_STITCH_MM`, the corpus-measured light tier
+    `stage6_border.run_outline` sews — no new physical constant. An odd pass
+    count ends at the far end, where the column's next station is.
+    """
+    length = sum(math.dist(a, b) for a, b in zip(pts, pts[1:]))
+    if length <= 0 or len(pts) < 2:
+        return []
+    lap = _resample(pts, max(2, int(round(length / machine.BEAN_STITCH_MM)) + 1))
+    out = list(lap)
+    for p in range(1, machine.BEAN_PASSES):
+        leg = list(reversed(lap)) if p % 2 == 1 else list(lap)
+        out.extend(leg[1:])
+    return out
+
+
+def _hairline_stretches(thin: list[bool], min_seg: int) -> list[tuple[int, int]]:
+    """The station runs of a stroke to sew as a bean, as (first, last) pairs.
+
+    `thin[i]` says station i's cross fell under `SATIN_MIN_CROSS_MM`. Runs of
+    either kind shorter than `min_seg` stations are absorbed into their longer
+    neighbour until every run clears it — so a single wobble under the floor
+    stays satin (that one cross is dropped, a hop one station long along the
+    spine, as it always was) and a lone surviving cross inside a hairline
+    stays part of the run. What is left thin is a real stretch of stroke the
+    satin cannot carry.
+    """
+    runs: list[list] = []
+    for i, t in enumerate(thin):
+        if runs and runs[-1][0] == t:
+            runs[-1][2] = i
+        else:
+            runs.append([t, i, i])
+
+    def count(r: list) -> int:
+        return r[2] - r[1] + 1
+
+    while len(runs) > 1:
+        short = [i for i, r in enumerate(runs) if count(r) < min_seg]
+        if not short:
+            break
+        idx = min(short, key=lambda i: (count(runs[i]), i))
+        prev = runs[idx - 1] if idx > 0 else None
+        nxt = runs[idx + 1] if idx + 1 < len(runs) else None
+        into = prev if prev is not None and (nxt is None or count(prev) >= count(nxt)) else nxt
+        runs[idx][0] = into[0]
+        merged: list[list] = []
+        for r in runs:
+            if merged and merged[-1][0] == r[0]:
+                merged[-1][2] = r[2]
+            else:
+                merged.append(list(r))
+        runs = merged
+    return [(r[1], r[2]) for r in runs if r[0]]
+
+
+def _art_width_mm(a: tuple[float, float], b: tuple[float, float], art_poly: Polygon) -> float:
+    """How much ARTWORK the cross a-b actually spans: the length of that
+    cross inside the region's own uncompensated polygon. Zero where the cross
+    sits entirely in compensation."""
+    if a == b:
+        return 0.0
+    try:
+        hit = LineString([a, b]).intersection(art_poly)
+    except Exception:  # a degenerate art polygon is no evidence either way
+        return math.dist(a, b)
+    return float(hit.length) if not hit.is_empty else 0.0
+
+
+def _trim_to_art(stretches: list[tuple[int, int]], rail_a: list, rail_b: list,
+                 art_poly: Polygon, floor_mm: float) -> list[tuple[int, int]]:
+    """Trim each hairline stretch at both ends while the cross there spans
+    less than `floor_mm` of artwork (`_art_width_mm`). What pull compensation
+    grew out of nothing is not a stroke; what is left, if anything, still has
+    to clear the run tier's own length floor in `satin_stroke`."""
+    out: list[tuple[int, int]] = []
+    for i0, i1 in stretches:
+        while i0 <= i1 and _art_width_mm(rail_a[i0], rail_b[i0], art_poly) < floor_mm:
+            i0 += 1
+        while i1 >= i0 and _art_width_mm(rail_a[i1], rail_b[i1], art_poly) < floor_mm:
+            i1 -= 1
+        if i0 <= i1:
+            out.append((i0, i1))
     return out
 
 
@@ -2885,9 +3095,17 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 use_shapefield: bool = False,
                 spacing_mm: float = machine.SATIN_SPACING_MM,
                 angle_deg: float | None = None,
+                art_poly: Polygon | None = None,
+                hairline_floor_mm: float = 0.0,
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
     contract `stitch_shape` uses, so stage 7 can treat the two identically.
+
+    `art_poly` / `hairline_floor_mm` are forwarded to `satin_stroke` (see
+    there): the region's own uncompensated polygon and the vectorizer's
+    boundary tolerance, so a hairline stretch sews as a bean only where the
+    artwork has ink. Stage 7 passes both; a caller that passes neither keeps
+    today's output exactly.
 
     `start_near` is where the needle is when this shape's turn comes.
     `split_above_mm` caps the stitch length before crosses split (None =
@@ -2928,37 +3146,70 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     # stroke-length hop between them, once per stroke. Reversing an
     # alternating zigzag keeps it an alternating zigzag, so orientation is
     # free to choose.
-    kept: list[tuple[Stroke, list]] = []
-    for st in strokes:
-        pts = satin_stroke(poly, st, half_mm, field, split_above_mm,
-                           end_cutback_mm, spacing_mm, angle_deg)
-        if len(pts) >= 4:
-            kept.append((st, pts))
+    # Per stroke, one or more PARTS (2026-09-03): a satin column for each
+    # stretch of stations whose crosses clear the floor, a bean run along the
+    # spine for each HAIRLINE stretch that does not — see `satin_stroke`'s
+    # `parts`. A stroke with no hairline stretch is one satin part, its
+    # points exactly the flat return, so it sews byte-for-byte as before.
+    kept: list[dict] = []
+    for si, st in enumerate(strokes):
+        parts: list = []
+        satin_stroke(poly, st, half_mm, field, split_above_mm,
+                     end_cutback_mm, spacing_mm, angle_deg, parts=parts,
+                     art_poly=art_poly, hairline_floor_mm=hairline_floor_mm)
+        mixed = len(parts) > 1
+        for kind, pts, piece, at_start, at_end in parts:
+            if kind == stitches.SATIN and len(pts) < 4:
+                continue
+            if kind == stitches.RUN and len(pts) < 2:
+                continue
+            kept.append({"si": si, "st": st, "pts": pts, "kind": kind,
+                         # the spine slice, only for a part of a MIXED stroke:
+                         # a whole-stroke satin keeps the legacy underlay call
+                         "piece": piece if mixed else None,
+                         "free_start": st.free_start and at_start,
+                         "free_end": st.free_end and at_end})
     if not kept:
         report["empty"] = True
         return [], report
 
     # The travel graph spans only strokes that will actually sew — a leg over
-    # a stub the emitter skipped would never be covered by anything.
-    nodes, g_edges, g_adj = _build_travel_graph([st for st, _ in kept])
+    # a stub the emitter skipped would never be covered by anything. A stroke
+    # sewn in several parts is one set of spine legs, sewn once its LAST part
+    # is down.
+    order = list(dict.fromkeys(k["si"] for k in kept))
+    gmap = {si: gi for gi, si in enumerate(order)}
+    nodes, g_edges, g_adj = _build_travel_graph([strokes[si] for si in order])
+    last_part = {k["si"]: ki for ki, k in enumerate(kept)}
     sewn: set[int] = set()
 
     runs: list[StitchRun] = []
-    for ki, (st, pts) in enumerate(kept):
-        # Wide columns carry zigzag underlay or their crosses float — every
-        # wide-satin file in the corpus shows the support passes.
-        if field is not None and st.spine:
-            step = max(1, len(st.spine) // 8)
-            halves = [field.half_at(p) for p in st.spine[::step]]
-            stroke_w = 2.0 * (sum(halves) / len(halves)) if halves else 2.0 * half_mm
+    for ki, k in enumerate(kept):
+        st, pts, kind, gi = k["st"], k["pts"], k["kind"], gmap[k["si"]]
+        if kind == stitches.RUN:
+            # A hairline gets no underlay: Law 50's ladder puts nothing under
+            # a stroke this size, and the run IS the light tier.
+            stroke_runs = [StitchRun(points=stitches.split_long_moves(pts),
+                                     kind=stitches.RUN, shape_id=shape_id)]
         else:
-            stroke_w = 2.0 * half_mm
-        eff_style = "zigzag" if (underlay_style != "none"
-                                 and stroke_w > machine.SATIN_ZIGZAG_ABOVE_MM) \
-            else underlay_style
-
-        stroke_runs = [*_stroke_underlay(poly, st, eff_style, shape_id, field),
-                       StitchRun(points=pts, kind=stitches.SATIN, shape_id=shape_id)]
+            # Wide columns carry zigzag underlay or their crosses float —
+            # every wide-satin file in the corpus shows the support passes.
+            if field is not None and st.spine:
+                step = max(1, len(st.spine) // 8)
+                halves = [field.half_at(p) for p in st.spine[::step]]
+                stroke_w = 2.0 * (sum(halves) / len(halves)) if halves else 2.0 * half_mm
+            else:
+                stroke_w = 2.0 * half_mm
+            eff_style = "zigzag" if (underlay_style != "none"
+                                     and stroke_w > machine.SATIN_ZIGZAG_ABOVE_MM) \
+                else underlay_style
+            # Underlay under THIS part only when the stroke is mixed — a
+            # centre run under its hairline stretch would be thread under a
+            # run, which Law 50 puts nothing under.
+            under = st if k["piece"] is None else Stroke(
+                spine=k["piece"], free_start=False, free_end=False, closed=False)
+            stroke_runs = [*_stroke_underlay(poly, under, eff_style, shape_id, field),
+                           StitchRun(points=pts, kind=stitches.SATIN, shape_id=shape_id)]
         first_of_stroke = True
         for run in stroke_runs:
             cursor = runs[-1].points[-1] if runs else start_near
@@ -2971,8 +3222,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 # its orientation is already tuned to avoid extra hops
                 # between strokes (see the loop's own note below).
                 if run.kind == stitches.SATIN:
-                    if _choose_stroke_entry(cursor, run.points[0], st.free_start,
-                                            run.points[-1], st.free_end):
+                    if _choose_stroke_entry(cursor, run.points[0], k["free_start"],
+                                            run.points[-1], k["free_end"]):
                         run.points.reverse()
                 elif math.dist(cursor, run.points[-1]) < math.dist(cursor, run.points[0]):
                     run.points.reverse()
@@ -2980,7 +3231,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 # Between strokes, walk the unsewn web instead of lifting.
                 direct = math.dist(cursor, run.points[0])
                 if direct >= machine.TINY_STITCH_MM:
-                    path = _graph_travel(cursor, run.points[0], sewn, {ki},
+                    path = _graph_travel(cursor, run.points[0], sewn, {gi},
                                          nodes, g_edges, g_adj,
                                          trim_at_mm=trim_at_mm)
                     if path is not None and len(path) >= 2:
@@ -2994,9 +3245,14 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                                                   shape_id=shape_id))
             first_of_stroke = False
             runs.append(run)
-        sewn.add(ki)
+        if last_part[k["si"]] == ki:
+            sewn.add(gi)
 
-    if not any(r.kind == stitches.SATIN for r in runs):
+    # Satin OR a hairline run counts as sewn: a shape whose strokes are all
+    # hairlines sews as runs on their spines rather than falling through to
+    # fill (which cannot hold a 0.4 mm stroke either) and then to an outline
+    # rescue that traces both edges of a stroke narrower than the thread.
+    if not any(r.kind in (stitches.SATIN, stitches.RUN) for r in runs):
         report["empty"] = True
         return [], report
 

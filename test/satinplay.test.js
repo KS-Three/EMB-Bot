@@ -169,3 +169,116 @@ test("centerRun (previously dead code) now walks 2 repeats at the requested step
   assert.ok(same(pts[0], pts[pts.length - 1]), "ends where it began");
   assert.deepStrictEqual(pts, centerUnderlayFromGeom(columnGeom(railA, railB, [], 12), 0, 1, { stepMm: 3, pxPerMm: PPM }));
 });
+
+// ---- Width guards (2026-09-03): the cross floor, the span split, the bean ---
+//
+// Every number below is in px at pxPerMm 10, so "5 px" is the 0.5 mm floor.
+// The columns are synthetic and straight; what is under test is the floor's
+// arithmetic and the split's run-length logic, not correspondence.
+
+// A straight column whose width goes linearly from w0 to w1 over its length.
+function taperedColumn(lengthPx, w0, w1, n) {
+  const railA = [], railB = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n, y = t * lengthPx, w = w0 + (w1 - w0) * t;
+    railA.push({ x: -w / 2, y });
+    railB.push({ x: w / 2, y });
+  }
+  return { railA, railB };
+}
+function crossLengths(pts) {
+  const out = [];
+  for (let i = 0; i + 1 < pts.length; i += 2) out.push(Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y));
+  return out;
+}
+
+test("emitZigzag: minCrossMm absent or 0 is byte-identical to the legacy 0.3 px guard", () => {
+  const { railA, railB } = taperedColumn(400, 30, 0, 40);
+  const geom = columnGeom(railA, railB, [], 12);
+  const legacy = satinFromGeom(geom, 0, 1, { spacingMm: 0.4, pxPerMm: 10 });
+  const zero = satinFromGeom(geom, 0, 1, { spacingMm: 0.4, pxPerMm: 10, minCrossMm: 0 });
+  assert.deepStrictEqual(zero, legacy);
+  // and the legacy stream really does carry sub-floor crosses at the taper
+  assert.ok(crossLengths(legacy).some((c) => c < 5), "the fixture tapers under 0.5 mm, or this test proves nothing");
+});
+
+test("emitZigzag: minCrossMm 0.5 drops every cross under the floor and keeps every cross over it", () => {
+  const { railA, railB } = taperedColumn(400, 30, 0, 40);
+  const geom = columnGeom(railA, railB, [], 12);
+  const legacy = satinFromGeom(geom, 0, 1, { spacingMm: 0.4, pxPerMm: 10 });
+  const floored = satinFromGeom(geom, 0, 1, { spacingMm: 0.4, pxPerMm: 10, minCrossMm: 0.5 });
+  const kept = crossLengths(floored);
+  assert.ok(kept.length > 0);
+  assert.ok(kept.every((c) => c >= 5 - 1e-9), `a cross under 0.5 mm survived: ${Math.min(...kept)}`);
+  const over = crossLengths(legacy).filter((c) => c >= 5 - 1e-9).length;
+  assert.strictEqual(kept.length, over, "the floor must drop only what is under it");
+});
+
+test("splitByCrossFloor: with no floor a span is one satin segment", () => {
+  const { railA, railB } = taperedColumn(400, 30, 0, 40);
+  const geom = columnGeom(railA, railB, [], 12);
+  assert.deepStrictEqual(satinplay.splitByCrossFloor(geom, 0, 1, { spacingMm: 0.4, pxPerMm: 10 }), [{ f0: 0, f1: 1, thin: false }]);
+  assert.deepStrictEqual(satinplay.splitByCrossFloor(geom, 0.2, 0.7, { spacingMm: 0.4, pxPerMm: 10, minCrossMm: 0 }), [{ f0: 0.2, f1: 0.7, thin: false }]);
+});
+
+test("splitByCrossFloor: a column that narrows from 2 mm to 0.3 mm halfway splits into satin then hairline at the step", () => {
+  // 2 mm wide for the first half, 0.3 mm for the second — a stroke that
+  // changes weight, the script-connector case.
+  const railA = [], railB = [];
+  for (let i = 0; i <= 200; i++) {
+    const y = i * 2, w = i < 100 ? 20 : 3;
+    railA.push({ x: -w / 2, y }); railB.push({ x: w / 2, y });
+  }
+  const geom = columnGeom(railA, railB, [], 12);
+  const segs = satinplay.splitByCrossFloor(geom, 0, 1, { spacingMm: 0.4, pxPerMm: 10, minCrossMm: 0.5 });
+  assert.strictEqual(segs.length, 2, JSON.stringify(segs));
+  assert.strictEqual(segs[0].thin, false);
+  assert.strictEqual(segs[1].thin, true);
+  assert.strictEqual(segs[0].f0, 0);
+  assert.strictEqual(segs[1].f1, 1);
+  assert.strictEqual(segs[0].f1, segs[1].f0, "segments must tile the span");
+  assert.ok(Math.abs(segs[0].f1 - 0.5) < 0.03, `boundary at ${segs[0].f1}, expected ~0.5`);
+});
+
+test("splitByCrossFloor: pull compensation counts — a 0.3 mm column under 0.3 mm of comp is satin", () => {
+  const { railA, railB } = taperedColumn(400, 3, 3, 40);
+  const geom = columnGeom(railA, railB, [], 12);
+  const bare = satinplay.splitByCrossFloor(geom, 0, 1, { spacingMm: 0.4, pxPerMm: 10, minCrossMm: 0.5 });
+  const comped = satinplay.splitByCrossFloor(geom, 0, 1, { spacingMm: 0.4, pxPerMm: 10, minCrossMm: 0.5, pullCompMm: 0.3 });
+  assert.deepStrictEqual(bare, [{ f0: 0, f1: 1, thin: true }]);
+  assert.deepStrictEqual(comped, [{ f0: 0, f1: 1, thin: false }]);
+});
+
+test("splitByCrossFloor: a one-station wobble under the floor stays satin, and a lone wide station inside a hairline stays a run", () => {
+  const dip = [], bump = [];
+  for (let i = 0; i <= 400; i++) {
+    const y = i; // 1 px per rail point, so a one-point feature is well under one 4 px station
+    const wd = i === 200 ? 2 : 20, wb = i === 200 ? 20 : 2;
+    dip.push([{ x: -wd / 2, y }, { x: wd / 2, y }]);
+    bump.push([{ x: -wb / 2, y }, { x: wb / 2, y }]);
+  }
+  const g1 = columnGeom(dip.map((p) => p[0]), dip.map((p) => p[1]), [], 12);
+  const g2 = columnGeom(bump.map((p) => p[0]), bump.map((p) => p[1]), [], 12);
+  const opts = { spacingMm: 0.4, pxPerMm: 10, minCrossMm: 0.5 };
+  assert.deepStrictEqual(satinplay.splitByCrossFloor(g1, 0, 1, opts), [{ f0: 0, f1: 1, thin: false }]);
+  assert.deepStrictEqual(satinplay.splitByCrossFloor(g2, 0, 1, opts), [{ f0: 0, f1: 1, thin: true }]);
+});
+
+test("beanFromGeom: three passes over the span, ending at f1, every stitch at or over the minimum", () => {
+  const { railA, railB } = taperedColumn(100, 3, 3, 10);   // a 10 mm hairline
+  const geom = columnGeom(railA, railB, [], 12);
+  const pts = satinplay.beanFromGeom(geom, 0, 1, { pxPerMm: 10, stepMm: 0.73, passes: 3, minStitchMm: 0.5 });
+  assert.ok(pts.length >= 4);
+  const start = pts[0], end = pts[pts.length - 1];
+  assert.ok(Math.abs(start.y - 0) < 1e-6 && Math.abs(end.y - 100) < 1e-6, "an odd pass count ends at the far end");
+  let path = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const d = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+    assert.ok(d >= 5 - 1e-9, `stitch ${i} is ${d} px, under the 0.5 mm minimum`);
+    path += d;
+  }
+  assert.ok(Math.abs(path - 300) < 1e-6, `three passes over 100 px should walk 300 px, walked ${path}`);
+  // traversal order is honoured: f1 -> f0 ends at f0
+  const back = satinplay.beanFromGeom(geom, 1, 0, { pxPerMm: 10, stepMm: 0.73, passes: 3, minStitchMm: 0.5 });
+  assert.ok(Math.abs(back[back.length - 1].y - 0) < 1e-6);
+});
