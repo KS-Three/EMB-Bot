@@ -122,6 +122,20 @@ The full account, with the two-stem table, is §9 of
 `docs/design-review-fine-lettering-2026-09-03.md`.
 *(measured 2026-09-03 — `test/satinplay.test.js` +3, `test/satinfont.test.js` +2, `test/digitize.test.js` +1)*
 
+**Short stitches on the inside of bends (2026-09-03, review item 6, Law 53,
+Kent's pick).** The Python engine's `_short_stitch_guard`, mirrored with its
+numbers (`SHORT_STITCH_AT_MM` 0.3 / `_PULL` 0.35 / `_MAX_MM` 0.6 — move both
+or neither): on every other station a penetration under 0.3 mm from the
+last on its rail is pulled back along the cross, at most 0.6 mm and never
+under the cross floor — the bound that gates it off on a narrow column, the
+trap Law 53 names. On with the cross floor only, so the legacy stream is
+untouched. geneva "S": 43% of same-rail advances under the trip → 0%;
+library sweep at 25 mm: 59 of 83 fonts pulled somewhere, stitch counts
+identical, mean under-trip share 5.6% → 3.5% (50 mm: 2.7% → 1.0%); faces at
+the floor at a 5.5 mm cap (jersey_15, pixel10, mai_en_fleur) keep most of
+their bunching because the gate refuses the pull. §10 of the review doc.
+*(measured 2026-09-03 — `test/satinplay.test.js` +3, `test/satinfont.test.js` +1, `test/digitize.test.js` +1)*
+
 ## Licence position
 
 **ShareAlike is permanently closed, and NC/ND/GPL are excluded.**

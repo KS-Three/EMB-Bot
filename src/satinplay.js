@@ -232,9 +232,36 @@
     return { a: pullPx / 2 + wa / 2, b: pullPx / 2 + wb / 2, apply: true };
   }
 
+  // ---- Short stitches (Law 53; fine-lettering review item 6, 2026-09-03) --
+  // On the inside of a bend the rail is shorter than the centerline, so the
+  // penetrations along it bunch up closer than the station spacing; under
+  // `atPx` the needle starts re-entering the hole it just made and the edge
+  // frays. Every OTHER cross has its crowded penetration pulled back along
+  // the cross toward the far rail — the Python engine's `_short_stitch_guard`
+  // and `_pull_short`, mirrored with its numbers: a fraction of the cross
+  // (0.35) capped at an absolute distance (0.6 mm — clearing a hole takes the
+  // same few tenths whatever the column width; uncapped, 0.35 of a 2.78 mm
+  // cross moved a point 0.97 mm and read as two 1 mm same-rail gaps), and
+  // never past the point where the cross itself would fall under the cross
+  // floor (1.01x, so float rounding cannot hand it to the drop check). That
+  // last bound is the width gate Law 53 demands: the pull fades to nothing
+  // as the column narrows toward the floor, so narrow lettering — Melco's
+  // own documented trap for this feature — never gets an "excessively small
+  // stitch" out of it. Off (no `opts.shortStitch`) is byte-identical.
+  function pullShort(p, toward, ss, minCrossPx) {
+    const cross = Math.hypot(toward.x - p.x, toward.y - p.y);
+    let f = ss.pull;
+    if (cross > 1e-9) {
+      if (ss.maxPx > 0) f = Math.min(f, ss.maxPx / cross);
+      f = Math.min(f, Math.max(0, 1 - 1.01 * minCrossPx / cross));
+    }
+    return { x: p.x + (toward.x - p.x) * f, y: p.y + (toward.y - p.y) * f };
+  }
+
   // Turn corresponded pairs into zig-zag satin at the given density.
   // opts = { spacingMm, pxPerMm, pullCompMm=0, weightMm=0, slantDeg=0,
-  //          minCrossMm=0, counterGuard=null }.
+  //          minCrossMm=0, counterGuard=null, shortStitch=null }.
+  // `shortStitch` = { atMm, pull, maxMm, stats } — see pullShort above.
   // `weightMm` is the bold/thin preset's share of the widening, kept apart
   // from `pullCompMm` so the counter guard can hold it back per rail while
   // the fabric's pull comp stays whole; absent, the two were one number and
@@ -256,6 +283,13 @@
     const pullPx = (opts.pullCompMm || 0) * (opts.pxPerMm || 1);
     const weightPx = (opts.weightMm || 0) * (opts.pxPerMm || 1);
     const guard = weightPx > 0 && opts.counterGuard && opts.counterGuard.cloud ? opts.counterGuard : null;
+    const ss = opts.shortStitch && opts.shortStitch.atMm > 0 ? {
+      atPx: opts.shortStitch.atMm * (opts.pxPerMm || 1),
+      pull: opts.shortStitch.pull == null ? 0.35 : opts.shortStitch.pull,
+      maxPx: (opts.shortStitch.maxMm || 0) * (opts.pxPerMm || 1),
+      stats: opts.shortStitch.stats || null,
+    } : null;
+    let prevA = null, prevB = null;
     // Cross floor (Law 47 / 51, 2026-09-03). A cross shorter than
     // `opts.minCrossMm` is not a satin stitch: the two rails have pinched
     // together (a tapered tip, a hairline stroke) and sewing it piles thread
@@ -297,7 +331,18 @@
         let vx = ax - bx, vy = ay - by; const L = Math.hypot(vx, vy) || 1; vx /= L; vy /= L;
         ax += vx * push.a; ay += vy * push.a; bx -= vx * push.b; by -= vy * push.b;
       }
-      const pA = { x: ax, y: ay }, pB = { x: bx, y: by };
+      let pA = { x: ax, y: ay }, pB = { x: bx, y: by };
+      // Short stitches: on every other station, a penetration that landed
+      // under `atPx` from the previous one on its rail is pulled back along
+      // the cross. The comparison is against the previous station AS PLACED
+      // (even stations are never pulled), the same way the Python guard
+      // reads its unpulled rail lists; and the second rail is pulled toward
+      // the first rail's already-pulled point, as there.
+      if (ss && prevA && t % 2 === 1) {
+        if (Math.hypot(pA.x - prevA.x, pA.y - prevA.y) < ss.atPx) { pA = pullShort(pA, pB, ss, minCrossPx); if (ss.stats) ss.stats.shortStitches += 1; }
+        if (Math.hypot(pB.x - prevB.x, pB.y - prevB.y) < ss.atPx) { pB = pullShort(pB, pA, ss, minCrossPx); if (ss.stats) ss.stats.shortStitches += 1; }
+      }
+      prevA = { x: ax, y: ay }; prevB = { x: bx, y: by };
       if (Math.hypot(pA.x - pB.x, pA.y - pB.y) < minCrossPx) continue;
       if (t % 2 === 0) { out.push(pA, pB); } else { out.push(pB, pA); }
     }
@@ -696,6 +741,6 @@
   return {
     satinFromRails, centerRun, correspond, columnGeom, satinFromGeom, centerFromGeom,
     centerUnderlayFromGeom, edgeUnderlayFromGeom, beanFromGeom, splitByCrossFloor,
-    railCloud, counterGap, stationPush,
+    railCloud, counterGap, stationPush, pullShort,
   };
 });

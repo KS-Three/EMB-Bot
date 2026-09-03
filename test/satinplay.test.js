@@ -342,3 +342,79 @@ test("emitZigzag: weightMm adds to pullCompMm exactly as when they were one numb
   const thinSplit = satinplay.satinFromGeom(g, 0, 1, { spacingMm: 0.4, pxPerMm: 10, pullCompMm: 0.2, weightMm: -0.15 });
   assert.deepStrictEqual(thinSplit, thinOne);
 });
+
+// ---- Short stitches (Law 53; fine-lettering review item 6, 2026-09-03) ----
+// On the inside of a bend the rail is shorter than the centerline, so its
+// penetrations bunch under the station spacing. Every other crowded
+// penetration is pulled back along the cross: 0.35 of it, at most 0.6 mm,
+// never under the cross floor. The Python engine's _short_stitch_guard,
+// mirrored with its numbers.
+
+function bentColumn(rIn, rOut, ppm = 10) {
+  // A 180-degree bend, inner radius rIn mm, outer rOut mm, sampled finely.
+  const A = [], B = [];
+  for (let i = 0; i <= 90; i++) {
+    const th = Math.PI * i / 90;
+    A.push({ x: rIn * ppm * Math.cos(th), y: rIn * ppm * Math.sin(th) });
+    B.push({ x: rOut * ppm * Math.cos(th), y: rOut * ppm * Math.sin(th) });
+  }
+  return satinplay.columnGeom(A, B, [], 12);
+}
+// JS zigzag order alternates (A,B then B,A): station t has its rail-A point at
+// index 2t + (t % 2) and its rail-B point at 2t + 1 - (t % 2).
+function railsOf(pts) { const A = [], B = []; for (let t = 0; 2 * t + 1 < pts.length; t++) { A.push(pts[2 * t + (t % 2)]); B.push(pts[2 * t + 1 - (t % 2)]); } return { A, B }; }
+const SS = { atMm: 0.3, pull: 0.35, maxMm: 0.6 };
+
+test("short stitches: on a tight bend the inner rail's crowded penetrations are pulled back on every other station, never under 0.3 mm from the last, never under the floor, and the outer rail is untouched", () => {
+  const g = bentColumn(1.0, 3.0);          // 2 mm wide; inner rail steps 0.2 mm per 0.4 mm station
+  const base = { spacingMm: 0.4, pxPerMm: 10, minCrossMm: 0.5 };
+  const off = satinplay.satinFromGeom(g, 0, 1, base);
+  const stats = { shortStitches: 0 };
+  const on = satinplay.satinFromGeom(g, 0, 1, { ...base, shortStitch: { ...SS, stats } });
+  assert.strictEqual(on.length, off.length, "the guard moves penetrations, it never adds or drops any");
+  const ro = railsOf(off), rn = railsOf(on);
+  let pulled = 0;
+  for (let t = 0; t < rn.A.length; t++) {
+    const dA = Math.hypot(rn.A[t].x - ro.A[t].x, rn.A[t].y - ro.A[t].y);
+    assert.ok(Math.hypot(rn.B[t].x - ro.B[t].x, rn.B[t].y - ro.B[t].y) < 1e-9, `outer rail station ${t} must not move`);
+    if (t % 2 === 0) { assert.ok(dA < 1e-9, `even station ${t} must not move`); continue; }
+    if (dA > 1e-9) {
+      pulled++;
+      assert.ok(Math.abs(dA - 6.0) < 1e-6, `pull is the 0.6 mm cap on a 2 mm cross, got ${dA / 10} mm`);
+      assert.ok(Math.hypot(rn.A[t].x - rn.A[t - 1].x, rn.A[t].y - rn.A[t - 1].y) >= 3.0, "the pulled penetration clears the previous hole by 0.3 mm");
+    }
+    assert.ok(Math.hypot(rn.A[t].x - rn.B[t].x, rn.A[t].y - rn.B[t].y) >= 5.0, "no cross ends up under the floor");
+  }
+  assert.ok(pulled >= 7, `a 6.3 mm centerline is 16 stations, 8 of them odd; expected them all pulled, got ${pulled}`);
+  assert.strictEqual(stats.shortStitches, pulled);
+});
+
+test("short stitches: a straight column and a gentle bend are byte-identical with the guard on, and the legacy stream (no option) never sees it", () => {
+  const straight = satinplay.columnGeom([{ x: 0, y: 0 }, { x: 0, y: 100 }], [{ x: 20, y: 0 }, { x: 20, y: 100 }], [], 12);
+  const gentle = bentColumn(6.0, 8.0);   // inner rail steps 0.34 mm per station, over the 0.3 mm trip
+  for (const g of [straight, gentle]) {
+    const base = { spacingMm: 0.4, pxPerMm: 10, minCrossMm: 0.5 };
+    assert.deepStrictEqual(satinplay.satinFromGeom(g, 0, 1, { ...base, shortStitch: SS }), satinplay.satinFromGeom(g, 0, 1, base));
+  }
+  const legacy = satinplay.satinFromGeom(bentColumn(1.0, 3.0), 0, 1, { spacingMm: 0.4, pxPerMm: 10 });
+  assert.deepStrictEqual(legacy, satinplay.satinFromGeom(bentColumn(1.0, 3.0), 0, 1, { spacingMm: 0.4, pxPerMm: 10, shortStitch: null }));
+});
+
+test("short stitches: the width gate — on a column near the cross floor the pull fades to nothing rather than making a stitch under it (Law 53)", () => {
+  // 0.55 mm wide, bent tightly: the inner rail bunches, but a 0.35 pull
+  // would take the cross to 0.36 mm, under the 0.5 floor. The bound keeps it
+  // at 1.01 x the floor, so the pull is 0.045 mm instead of 0.19.
+  const g = bentColumn(0.6, 1.15);
+  const base = { spacingMm: 0.4, pxPerMm: 10, minCrossMm: 0.5 };
+  const off = satinplay.satinFromGeom(g, 0, 1, base);
+  const on = satinplay.satinFromGeom(g, 0, 1, { ...base, shortStitch: SS });
+  assert.strictEqual(on.length, off.length);
+  const rn = railsOf(on);
+  for (let t = 0; t < rn.A.length; t++) {
+    const cross = Math.hypot(rn.A[t].x - rn.B[t].x, rn.A[t].y - rn.B[t].y);
+    assert.ok(cross >= 5.05 - 1e-6, `cross ${t} must stay at or above 1.01 x the floor, got ${cross / 10} mm`);
+  }
+  // And a column AT the floor is not touched at all.
+  const atFloor = bentColumn(0.6, 1.1);
+  assert.deepStrictEqual(satinplay.satinFromGeom(atFloor, 0, 1, { ...base, shortStitch: SS }), satinplay.satinFromGeom(atFloor, 0, 1, base));
+});

@@ -626,14 +626,29 @@ test("underlay ladder: a 4mm cap gets none, an 8mm cap gets a center run, a 12mm
   assert.strictEqual(SF.underlayModeForCapMm(10.01), "edge");
 });
 
+// The two underlay-placement tests below rebuild a column's RAILS from the
+// satin's own penetrations (`railsOfSatin`). Since the short-stitch guard
+// (Law 53, 2026-09-03) every other penetration on the inside of a bend is
+// deliberately pulled off its rail, so that yardstick would read the
+// underlay as off-axis (t = 0.769 on a centre run) or outside the column
+// (t = 0). The underlay itself never moves — it is its own run — so the
+// rails are read from the same layout with the guard off, which is the same
+// stations, unpulled, run for run.
+function unpulled(text, opts) {
+  return SF.layoutText(font, text, { ...opts, shortStitch: false });
+}
+
 test("underlay ladder: center rides the column axis, edge rides both rails at 0.4mm inset", () => {
   for (const [capMm, mode] of [[8, "center"], [12, "edge"]]) {
-    const lay = SF.layoutText(font, "FRITSCH", { ...UL_OPTS, emMm: emForCap(capMm), underlay: true });
+    const opts = { ...UL_OPTS, emMm: emForCap(capMm), underlay: true };
+    const lay = SF.layoutText(font, "FRITSCH", opts);
+    const ref = unpulled("FRITSCH", opts);
     assert.strictEqual(lay.cap.underlay, mode);
+    assert.strictEqual(ref.runs.length, lay.runs.length);
     const ts = [];
     for (let i = 0; i < lay.runs.length; i++) {
       if (lay.runs[i].kind !== "underlay") continue;
-      const sat = lay.runs[i + 1];
+      const sat = ref.runs[i + 1];
       const { A, B } = railsOfSatin(sat.pts);
       if (A.length < 2) continue;
       for (const p of lay.runs[i].pts) ts.push(acrossColumn(p, A, B).t);
@@ -654,7 +669,10 @@ test("underlay ladder: center rides the column axis, edge rides both rails at 0.
 });
 
 test("underlay lies INSIDE its column and is sewn BEFORE the satin that covers it", () => {
-  const lay = SF.layoutText(font, "Hamburgefonstiv Fritsch", { ...UL_OPTS, emMm: emForCap(12), underlay: true });
+  const opts = { ...UL_OPTS, emMm: emForCap(12), underlay: true };
+  const lay = SF.layoutText(font, "Hamburgefonstiv Fritsch", opts);
+  const ref = unpulled("Hamburgefonstiv Fritsch", opts);
+  assert.strictEqual(ref.runs.length, lay.runs.length);
   let checked = 0;
   for (let i = 0; i < lay.runs.length; i++) {
     const r = lay.runs[i];
@@ -662,7 +680,7 @@ test("underlay lies INSIDE its column and is sewn BEFORE the satin that covers i
     const sat = lay.runs[i + 1];
     assert.ok(sat && sat.kind === "satin", `underlay run ${i} must be immediately followed by its satin`);
     assert.strictEqual(r.charIdx, sat.charIdx, "and belong to the same source glyph");
-    const { A, B } = railsOfSatin(sat.pts);
+    const { A, B } = railsOfSatin(ref.runs[i + 1].pts);
     if (A.length < 2) continue;
     for (const p of r.pts) {
       const { d, t } = acrossColumn(p, A, B);
@@ -952,4 +970,39 @@ test("counter guard: normal and thin weights are untouched, and the report carri
   }
   const bold = SF.layoutText(pairFont(8), "N", { ...PAIR_OPTS, weightMm: 0.3, fitScale: 0.5 });
   assert.ok(near(bold.lettering.weightMm, 0.15), "weightMm is reported on the fabric: layout mm x fitScale");
+});
+
+// ---- Short stitches (Law 53; review item 6, 2026-09-03) --------------------
+function railsOfZigzag(pts) { const A = [], B = []; for (let t = 0; 2 * t + 1 < pts.length; t++) { A.push(pts[2 * t + (t % 2)]); B.push(pts[2 * t + 1 - (t % 2)]); } return [A, B]; }
+function bunchedShare(lay) {
+  // Share of same-rail advances under the 0.3 mm trip — the Python engine's
+  // own yardstick for this guard (tests/test_satin.py), read the same way.
+  const adv = [];
+  for (const r of lay.runs) {
+    if (r.kind !== "satin") continue;
+    for (const rail of railsOfZigzag(r.pts)) for (let i = 1; i < rail.length; i++) adv.push(Math.hypot(rail[i].x - rail[i - 1].x, rail[i].y - rail[i - 1].y) / 10);
+  }
+  const real = adv.filter((d) => d > 1e-9);
+  return real.filter((d) => d < 0.3).length / real.length;
+}
+const SS_OPTS = { emMm: 18, pxPerMm: 10, spacingMm: 0.4, pullCompMm: 0, letterSpacingMm: 0, underlay: false };
+
+test("short stitches: a bowl's inside rail stops bunching (S: 43% of same-rail advances under 0.3 mm -> 0), a straight stem is untouched, and the report counts the pulls", () => {
+  for (const [ch, before] of [["S", 0.40], ["C", 0.20], ["O", 0.12]]) {
+    const on = SF.layoutText(font, ch, SS_OPTS), off = SF.layoutText(font, ch, { ...SS_OPTS, shortStitch: false });
+    assert.ok(bunchedShare(off) >= before, `${ch}: precondition, the bowl bunches without the guard (${(100 * bunchedShare(off)).toFixed(0)}%)`);
+    assert.ok(bunchedShare(on) <= 0.02, `${ch}: at most 2% under the trip with the guard, got ${(100 * bunchedShare(on)).toFixed(1)}%`);
+    assert.ok(on.lettering.shortStitches > 0);
+    assert.strictEqual(on.runs.length, off.runs.length);
+    for (let i = 0; i < on.runs.length; i++) assert.strictEqual(on.runs[i].pts.length, off.runs[i].pts.length, "no stitch added or dropped");
+  }
+  const i0 = SF.layoutText(font, "I", SS_OPTS), i1 = SF.layoutText(font, "I", { ...SS_OPTS, shortStitch: false });
+  assert.deepStrictEqual(i0.runs, i1.runs);
+  assert.strictEqual(i0.lettering.shortStitches, 0);
+  // The legacy stream never sees it: crossFloor:false is the pre-2026-09-03
+  // zigzag, short stitches included in what it lacks.
+  const legacyA = SF.layoutText(font, "S", { ...SS_OPTS, crossFloor: false });
+  const legacyB = SF.layoutText(font, "S", { ...SS_OPTS, crossFloor: false, shortStitch: true });
+  assert.deepStrictEqual(legacyA.runs, legacyB.runs);
+  assert.strictEqual(legacyA.lettering.shortStitches, 0);
 });

@@ -79,6 +79,16 @@
   const BEAN_PASSES = 3;
   const COLUMN_FLOOR_MM = 1.0;
   const CAP_FLOOR_MM = 4.0;
+  // Short stitches on the inside of bends (Law 53). All three mirror
+  // digitizer_core/machine.py — SATIN_SHORT_STITCH_AT_MM, _PULL, _PULL_MAX_MM
+  // — move both or neither. Under 0.3 mm between penetrations on one rail
+  // the needle chews the hole it just made; every other cross is pulled
+  // back by 0.35 of its length, at most 0.6 mm (two same-hole radii), and
+  // never under the cross floor — which is what gates it off on a narrow
+  // column, the trap Melco documents for this feature on small lettering.
+  const SHORT_STITCH_AT_MM = 0.3;
+  const SHORT_STITCH_PULL = 0.35;
+  const SHORT_STITCH_MAX_MM = 0.6;
 
   // Width profile of a corresponded column, accumulated into `report` as
   // centerline LENGTH (px) — total, under the thin floor, under the hairline
@@ -365,6 +375,9 @@
     // absent means no guard, the one-number legacy offset.
     const weightMm = opts.weightMm || 0;
     const counterFloorMm = opts.counterFloorMm > 0 ? opts.counterFloorMm : 0;
+    // Short stitches on the inside of bends (Law 53) — resolved by layoutText,
+    // null when off or on the legacy stream.
+    const shortStitch = opts.shortStitch && opts.shortStitch.atMm > 0 ? opts.shortStitch : null;
     const beanOpts = minCrossMm > 0 ? {
       pxPerMm,
       stepMm: opts.beanStepMm == null ? BEAN_STITCH_MM : opts.beanStepMm,
@@ -403,7 +416,7 @@
       windowPx: 1.5 * spacingMm * pxPerMm,
       stats: report,
     } : null;
-    const satinOpts = { spacingMm, pxPerMm, pullCompMm, weightMm, slantDeg, minCrossMm, counterGuard };
+    const satinOpts = { spacingMm, pxPerMm, pullCompMm, weightMm, slantDeg, minCrossMm, counterGuard, shortStitch };
     const ws = G.map((g) => g.w).sort((a, b) => a - b);
     const medW = ws[ws.length >> 1] || 4;
     const mergeR = Math.max(2, 1.3 * medW);
@@ -656,6 +669,8 @@
       // Rail stations where the counter guard held the weight back (both
       // rails of a station count separately). Zero at normal weight.
       counterHeld: 0,
+      // Penetrations the short-stitch guard pulled back off a crowded rail.
+      shortStitches: 0,
       // The floors in THIS layout's px: final mm -> caller mm (/ fitScale)
       // -> px (* pxPerMm), the same conversion spacingMm rides.
       floorsPx: [(SATIN_MIN_CROSS_MM / fitScale) * pxPerMm, (COLUMN_FLOOR_MM / fitScale) * pxPerMm],
@@ -672,6 +687,16 @@
     // neighbours' across a counter. Not a new number (gate 1).
     guardOpts.weightMm = weightMm;
     guardOpts.counterFloorMm = counterGuardOn ? SATIN_MIN_CROSS_MM / fitScale : 0;
+    // Short stitches (Law 53), on with the cross floor and never without it:
+    // the floor is what gates the pull off on a narrow column, and the
+    // legacy stream (`crossFloor: false`) stays byte-identical.
+    // `o.shortStitch === false` turns it off alone — pins and measurement.
+    guardOpts.shortStitch = (crossFloor && o.shortStitch !== false) ? {
+      atMm: SHORT_STITCH_AT_MM / fitScale,
+      pull: SHORT_STITCH_PULL,
+      maxMm: SHORT_STITCH_MAX_MM / fitScale,
+      stats: report,
+    } : null;
     // Two-line circular badge layout (Lettering parity round). Falsy (absent/
     // false/null) = today's behavior byte-identical (snapshot-pinned). Truthy:
     //   - The FIRST line arcs along the TOP of a circle (arch up, exactly the
@@ -1039,6 +1064,7 @@
       // guard held it back (rail stations). Both 0 at normal weight.
       weightMm: weightMm * fitScale,
       counterHeld: report.counterHeld,
+      shortStitches: report.shortStitches,
       columnFloorMm: COLUMN_FLOOR_MM,
       crossFloorMm: SATIN_MIN_CROSS_MM,
     };
@@ -1056,6 +1082,6 @@
 
   return {
     layoutText, capHeightMm, underlayModeForCapMm,
-    LETTERING_GUARDS: { SATIN_MIN_CROSS_MM, BEAN_STITCH_MM, BEAN_PASSES, COLUMN_FLOOR_MM, CAP_FLOOR_MM },
+    LETTERING_GUARDS: { SATIN_MIN_CROSS_MM, BEAN_STITCH_MM, BEAN_PASSES, COLUMN_FLOOR_MM, CAP_FLOOR_MM, SHORT_STITCH_AT_MM, SHORT_STITCH_PULL, SHORT_STITCH_MAX_MM },
   };
 });
