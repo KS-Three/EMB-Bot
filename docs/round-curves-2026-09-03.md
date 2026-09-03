@@ -273,6 +273,11 @@ Two things the design-level numbers could not have shown:
 **Floors do not fix it — they cost the O.** `_CURVE_FLOOR_PX` swept on
 Fremont's O: 1 px → counter 33 vertices / 17° turns; 2 px → 17 / 27°;
 3 px → 16 / 27°. Half the O's gain lives under two pixels at 31 px/mm.
+And a 1.5 px floor over all ten fixtures still reads texture below 20 px/mm
+(gaulke 8.90 → 9.21, ENTHUSIAST 9.01 → 9.36, meadow 15.20 → 15.72, drone
+7.51 → 7.73 with two tier changes, the meadow run shape gone) while the O
+drops to 1278 Fremont vertices — the floor moves both costs and gains
+together; only the gate separates them.
 
 **The gate: `_CURVE_MIN_EPS_PX` = 4.** The refinement runs only where the
 tolerance is at least four pixels (20 px/mm at 0.2 mm) — the line the
@@ -283,7 +288,17 @@ Douglas-Peucker, pinned by
 Of the fixtures only Fremont (31 px/mm) is over the line; a phone scan or a
 print-resolution logo is, a 600–1200 px web logo at 80 mm is not.
 
-GATED_TABLE
+With the gate, the same tier diff over all ten fixtures:
+
+| fixture | px/mm | stitches | trims | vertices | roughness | tier changes |
+|---|---|---|---|---|---|---|
+| Fremont | 31 | 5795 → 5790 | 52 → **45** | 762 → 1501 | 3.19 → **2.91** | none (19 satin, 5 fill, 1 run either way) |
+| drone, gaulke, ENTHUSIAST, whitebg, alpha, ribbon, sunset, meadow, Becker | 4–19 | byte-identical | | | | none |
+
+No golden moves: whitebg, alpha and ribbon (10 px/mm) and ENTHUSIAST (15)
+sit under the line, so the flat-lane, pushcomp and photo-segment goldens
+stay pinned as they are and this flip re-pins nothing — the census of the
+golden-bearing test files is green with CI's three platform deselects.
 
 Tests: `test_curve_turn_deg_is_on_by_default` (a fresh config refines the
 2.4 mm disc at 31 px/mm), `test_curve_turn_deg_off_is_byte_identical_to_
