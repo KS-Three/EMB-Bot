@@ -104,6 +104,24 @@ is under 0.5 mm there, which is what the note now says.
 *(measured 2026-09-03 — commit `0a67171`; `test/satinplay.test.js`,
 `test/satinfont.test.js`, `app/src/lib/generate.spec.js`)*
 
+**The Bold counter guard (2026-09-03, review item 4, Kent's pick).** Bold
+widened every column by pushing its rails 0.3 mm apart and closed every
+counter by the same amount — a 0.72 mm eye went to 0.42, a 0.36 mm one to
+0.06. The weight now travels apart from the fabric's pull comp
+(`weightMm`) and is held per rail station where the rail faces another rail
+of the same glyph across a gap: whole on an outside edge, across a counter
+only what the gap can spare with `SATIN_MIN_CROSS_MM` kept, nothing where
+the gap is already under that floor (`satinplay.railCloud` /
+`counterGap` / `stationPush`). Pull comp is never held. Normal and thin are
+byte-identical; `lettering.counterHeld` / `weightMm` report it; no Studio
+note, because junctions that nearly touch hold too. Library sweep, "Fritsch"
+bold at 25 mm: 60 of 83 fonts hold somewhere, 70,162 stitches guarded
+against 73,183 unguarded and 67,276 normal; mai_en_fleur's hairline
+connectors stay bean runs instead of becoming dense satin (1,393 vs 3,043).
+The full account, with the two-stem table, is §9 of
+`docs/design-review-fine-lettering-2026-09-03.md`.
+*(measured 2026-09-03 — `test/satinplay.test.js` +3, `test/satinfont.test.js` +2, `test/digitize.test.js` +1)*
+
 ## Licence position
 
 **ShareAlike is permanently closed, and NC/ND/GPL are excluded.**

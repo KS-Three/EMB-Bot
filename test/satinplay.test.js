@@ -282,3 +282,63 @@ test("beanFromGeom: three passes over the span, ending at f1, every stitch at or
   const back = satinplay.beanFromGeom(geom, 1, 0, { pxPerMm: 10, stepMm: 0.73, passes: 3, minStitchMm: 0.5 });
   assert.ok(Math.abs(back[back.length - 1].y - 0) < 1e-6);
 });
+
+// ---- Counter guard (fine-lettering review item 4, 2026-09-03) --------------
+// Bold widens a column by pushing its rails apart. Where two rails face each
+// other across a counter, the guard holds the weight so the gap never goes
+// under the cross floor, and holds it entirely where the gap is already under
+// the floor: enlarge, never close. Outside edges always get the full weight.
+
+function twoStems(gapPx, wPx = 18, hPx = 60) {
+  // Two vertical columns `wPx` wide, inner rails `gapPx` apart, in px.
+  const col = (x0) => satinplay.columnGeom(
+    [{ x: x0, y: 0 }, { x: x0, y: hPx }],
+    [{ x: x0 + wPx, y: 0 }, { x: x0 + wPx, y: hPx }], [], 12);
+  return [col(0), col(wPx + gapPx)];
+}
+
+test("counterGap: a rail sees the rail that faces it across the gap, and nothing on an outside edge", () => {
+  const geoms = twoStems(10);
+  const cloud = satinplay.railCloud(geoms, 4);
+  // Left column's inner rail (x = 18, outward normal +x) faces the right
+  // column's inner rail at x = 28: gap 10 px.
+  assert.ok(Math.abs(satinplay.counterGap(18, 30, 1, 0, cloud, 6) - 10) < 1e-6);
+  // Its outer rail (x = 0, outward normal -x) faces nothing.
+  assert.strictEqual(satinplay.counterGap(0, 30, -1, 0, cloud, 6), Infinity);
+  // The right column's inner rail sees the same gap from the other side.
+  assert.ok(Math.abs(satinplay.counterGap(28, 30, -1, 0, cloud, 6) - 10) < 1e-6);
+});
+
+test("stationPush: the weight is whole on an open edge, capped at the floor across a counter, and withheld where the counter is already under it", () => {
+  const cloud = satinplay.railCloud(twoStems(10), 4);
+  const guard = { cloud, floorPx: 5, windowPx: 6, stats: { counterHeld: 0 } };
+  // Left column, a station at y = 30: rail A is the inner rail (x = 18), B the outer (x = 0).
+  const wide = satinplay.stationPush(18, 30, 0, 30, 0, 3, guard, true);        // gap 10 px, weight 3 px, floor 5
+  assert.ok(Math.abs(wide.a - 1.5) < 1e-9 && Math.abs(wide.b - 1.5) < 1e-9, "10 px can spare 3: full half-weight on both rails");
+  assert.strictEqual(guard.stats.counterHeld, 0);
+  const tight = { cloud: satinplay.railCloud(twoStems(6), 4), floorPx: 5, windowPx: 6, stats: { counterHeld: 0 } };
+  const capped = satinplay.stationPush(18, 30, 0, 30, 0, 3, tight, true);       // gap 6 px: only 1 px to spare
+  assert.ok(Math.abs(capped.a - 0.5) < 1e-9, `inner rail takes half of the 1 px the gap can spare, got ${capped.a}`);
+  assert.ok(Math.abs(capped.b - 1.5) < 1e-9, "outer rail still takes the full half-weight");
+  assert.strictEqual(tight.stats.counterHeld, 1);
+  const closed = { cloud: satinplay.railCloud(twoStems(4), 4), floorPx: 5, windowPx: 6, stats: { counterHeld: 0 } };
+  const held = satinplay.stationPush(18, 30, 0, 30, 0, 3, closed, true);        // gap 4 px < floor: nothing toward it
+  assert.strictEqual(held.a, 0, "a counter already under the floor gets no weight at all");
+  assert.ok(Math.abs(held.b - 1.5) < 1e-9);
+  // Fabric pull comp is never held: it rides whole on both rails.
+  const pulled = satinplay.stationPush(18, 30, 0, 30, 2, 3, closed, false);
+  assert.ok(Math.abs(pulled.a - 1) < 1e-9 && Math.abs(pulled.b - 2.5) < 1e-9, `pull 2 px -> 1 px each rail, weight held on the inner one; got ${pulled.a}, ${pulled.b}`);
+  // No guard: one shared offset, the legacy stream.
+  const legacy = satinplay.stationPush(18, 30, 0, 30, 2, 3, null, true);
+  assert.deepStrictEqual(legacy, { a: 2.5, b: 2.5, apply: true });
+});
+
+test("emitZigzag: weightMm adds to pullCompMm exactly as when they were one number, so the legacy stream is byte-identical", () => {
+  const [g] = twoStems(10);
+  const one = satinplay.satinFromGeom(g, 0, 1, { spacingMm: 0.4, pxPerMm: 10, pullCompMm: 0.5 });
+  const split = satinplay.satinFromGeom(g, 0, 1, { spacingMm: 0.4, pxPerMm: 10, pullCompMm: 0.2, weightMm: 0.3 });
+  assert.deepStrictEqual(split, one);
+  const thinOne = satinplay.satinFromGeom(g, 0, 1, { spacingMm: 0.4, pxPerMm: 10, pullCompMm: 0.05 });
+  const thinSplit = satinplay.satinFromGeom(g, 0, 1, { spacingMm: 0.4, pxPerMm: 10, pullCompMm: 0.2, weightMm: -0.15 });
+  assert.deepStrictEqual(thinSplit, thinOne);
+});

@@ -358,7 +358,13 @@
     // like spacingMm; absent means the legacy 0.3 px guard in emitZigzag and
     // NO fallback, so a caller that never asks is byte-identical.
     const minCrossMm = opts.minCrossMm > 0 ? opts.minCrossMm : 0;
-    const satinOpts = { spacingMm, pxPerMm, pullCompMm, slantDeg, minCrossMm };
+    // The weight preset's share of the widening (bold +, thin −), kept apart
+    // from the fabric's pull comp so the counter guard below can hold it
+    // back per rail. `counterFloorMm` is the gap a counter may not be pushed
+    // under — SATIN_MIN_CROSS_MM, pre-divided like everything else; 0 or
+    // absent means no guard, the one-number legacy offset.
+    const weightMm = opts.weightMm || 0;
+    const counterFloorMm = opts.counterFloorMm > 0 ? opts.counterFloorMm : 0;
     const beanOpts = minCrossMm > 0 ? {
       pxPerMm,
       stepMm: opts.beanStepMm == null ? BEAN_STITCH_MM : opts.beanStepMm,
@@ -386,6 +392,18 @@
       if (report) accumulateWidths(geom, report);
     }
     if (!G.length) return [];
+    // Counter guard (review item 4): every rail of this glyph, sampled with
+    // its outward normal, so emitZigzag can see what faces each station
+    // across a counter before it widens toward it. Built once per glyph;
+    // only the glyph's own columns count — the gap to the next letter is
+    // letter spacing's business, not the weight's.
+    const counterGuard = (weightMm > 0 && counterFloorMm > 0) ? {
+      cloud: satinplay.railCloud(G.map((g) => g.geom), spacingMm * pxPerMm),
+      floorPx: counterFloorMm * pxPerMm,
+      windowPx: 1.5 * spacingMm * pxPerMm,
+      stats: report,
+    } : null;
+    const satinOpts = { spacingMm, pxPerMm, pullCompMm, weightMm, slantDeg, minCrossMm, counterGuard };
     const ws = G.map((g) => g.w).sort((a, b) => a - b);
     const medW = ws[ws.length >> 1] || 4;
     const mergeR = Math.max(2, 1.3 * medW);
@@ -586,6 +604,13 @@
     const pxPerMm = o.pxPerMm || 10;
     const spacingMm = o.spacingMm || 0.4;
     const pullCompMm = o.pullCompMm || 0;
+    // `o.weightMm`: the bold/thin preset's widening, pre-divided by the fit
+    // scale like pullCompMm (digitize.js used to fold it INTO pullCompMm;
+    // the sum is unchanged, the split is what lets the counter guard act on
+    // the weight alone). `o.counterGuard === false` turns the guard off —
+    // measurement and the byte-identity pins, not a user setting.
+    const weightMm = o.weightMm || 0;
+    const counterGuardOn = o.counterGuard !== false;
     const slantDeg = o.slantDeg || 0;
     const arcDeg = o.arcDeg || 0;
     // ---- Structural underlay: Law 50's ladder, decided HERE (layoutText is
@@ -628,6 +653,9 @@
     const crossFloor = o.crossFloor !== false;
     const report = {
       columns: 0, strokePx: 0, thinPx: 0, hairlinePx: 0, hairlineSpans: 0,
+      // Rail stations where the counter guard held the weight back (both
+      // rails of a station count separately). Zero at normal weight.
+      counterHeld: 0,
       // The floors in THIS layout's px: final mm -> caller mm (/ fitScale)
       // -> px (* pxPerMm), the same conversion spacingMm rides.
       floorsPx: [(SATIN_MIN_CROSS_MM / fitScale) * pxPerMm, (COLUMN_FLOOR_MM / fitScale) * pxPerMm],
@@ -639,6 +667,11 @@
       minStitchMm: UNDERLAY_MIN_STITCH_MM / fitScale,
       report,
     } : { report };
+    // The counter floor is the same constant as the cross floor: two rails
+    // this close pile thread on a point whether they are one column's or two
+    // neighbours' across a counter. Not a new number (gate 1).
+    guardOpts.weightMm = weightMm;
+    guardOpts.counterFloorMm = counterGuardOn ? SATIN_MIN_CROSS_MM / fitScale : 0;
     // Two-line circular badge layout (Lettering parity round). Falsy (absent/
     // false/null) = today's behavior byte-identical (snapshot-pinned). Truthy:
     //   - The FIRST line arcs along the TOP of a circle (arch up, exactly the
@@ -1002,6 +1035,10 @@
       thinMm: pxToMm(report.thinPx),
       hairlineMm: pxToMm(report.hairlinePx),
       hairlineSpans: report.hairlineSpans,
+      // The weight preset's widening on the fabric, and how often the counter
+      // guard held it back (rail stations). Both 0 at normal weight.
+      weightMm: weightMm * fitScale,
+      counterHeld: report.counterHeld,
       columnFloorMm: COLUMN_FLOOR_MM,
       crossFloorMm: SATIN_MIN_CROSS_MM,
     };
