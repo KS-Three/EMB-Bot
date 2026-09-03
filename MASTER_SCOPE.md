@@ -155,8 +155,7 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
 23. **Rail dents — one rail of a rotated satin column sits 15% short of the art**:
     `place` shrinks a rail to 0.85× on a float-dust `covers` miss; a stock 3 mm bar at 25° has one whole rail at **1.22–1.27 mm** vs 1.44–1.46. In every satin golden. *(measured 2026-09-03 — area 1)*
 
-24. **Hairline columns (< 0.6 mm) lose crosses to the 0.5 mm minimum under any house
-    angle** — Fremont's 2.6 mm "THE" loses every bar (the shipped default already does). A lean floor was built, fanned 45→2→45°, withdrawn; wants a small-lettering tier. *(measured 2026-09-03 — area 1)*
+24. **Hairline columns (< 0.6 mm) lose crosses to the 0.5 mm minimum under any house angle** — Fremont's 2.6 mm "THE" loses every bar (the default already does); a lean floor fanned and was withdrawn; wants a small-lettering tier. *(measured 2026-09-03 — area 1)*
 
 ### Closed — kept numbered, because ten other docs cite them by number
 
@@ -338,7 +337,7 @@ its own merits.
     BUILT:** fading lean, cap, spacing / cos(lean); bisector deleted; stems =
     the family square to the line of text. Leaned-column thread pitch 0.152 →
     0.20 mm; ENTHUSIAST benchmark with the flag on 4.62 → 4.09/1k (ceiling 4.1).
-    **`satin_house_fourfold` FLIPPED ON by Kent on those numbers. Next: the Goldman join (pass 2).** *(built + flipped 2026-09-03 — area 1)*
+    **Flag FLIPPED ON by Kent; the Goldman join (pass 2) BUILT: trims flat, benchmark 3.81/1k, bare fabric drone 2.8 → 2.2%.** *(2026-09-03 — area 1)*
 
 ## Cross-cutting issues
 
@@ -566,7 +565,9 @@ perpendicular (stems = the family square to the line of text; the 45° bisector
 is deleted); a bar takes its own perpendicular with the lean fading to zero, a
 diagonal leans ≤ 30°, stations spread by cos(lean): thread pitch Fremont
 **0.152 → 0.198 mm**, ENTHUSIAST 0.152 → 0.200, chaining benchmark **4.62 →
-4.09/1k** (ceiling 4.1). **DEFAULT ON, Kent's flip**; Fremont and THERMAL move, 11 fixtures identical. *(measured 2026-09-03 — area 1)*
+4.09/1k** (ceiling 4.1). **DEFAULT ON, Kent's flip.** Pass 2, the Goldman corner join
+(≥ 45° turn + reflex boundary corner, joined inside ONE stroke): trims flat, benchmark
+3.81, bare fabric drone 2.8 → 2.2%, Becker 6.0 → 5.5%; capitals measured, lowercase not. *(measured 2026-09-03 — area 1)*
 
 **Mechanism 2 — pull comp's min-feature guard scoped to `poly.interiors` —
 PROTOTYPED AND COSTED, not shipped.** An exterior-pocket branch holds 15 real

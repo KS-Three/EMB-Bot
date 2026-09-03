@@ -3526,3 +3526,22 @@ On the pass-1 numbers (ENTHUSIAST benchmark 4.09/1k under 4.1, the N at
 0.200 mm pitch). Fremont 6385 → 6343 st and THERMAL 8872 → 8856 move; eleven
 other committed fixtures md5-identical with the flag on, digitize time
 unchanged, no golden moves. The function default stays False.
+
+## 2026-09-03 — stitch-angle rule pass 2: the Goldman corner join
+
+A corner is a spine turn ≥ 45° over one half-width AND a reflex boundary
+corner ≥ 45° within 1 mm of arc near the apex (bends and tapered tips have
+none). Joined INSIDE one stroke (`Stroke.corners`, `_satin_joined`): the
+longer member's column is capped over the corner square, the other tucks
+under its corridor. A first draft split corners into separate strokes and
+bought a trim per piece (Becker 28 → 50, benchmark 4.09 → 5.03/1k) — the
+sequencer enters columns at their free caps — withdrawn the same hour.
+Shipped: trims flat on all four lettering fixtures, ENTHUSIAST benchmark
+4.09 → 3.81/1k, bare fabric drone 2.8 → 2.2% and Becker 6.0 → 5.5%,
+crosses past 45° off their perpendicular drone 26 → 17%, Becker 40 → 27%;
+whitebg, alpha, ribbon_curve md5-identical. Welded corner twigs dropped
+(THERMAL H), hairlines under 0.6 mm never join. +8–11% digitize time on
+lettering logos. Review: closed rings had been opened at corners HEAD never
+cut (rotation-dependent on a hexagon) and the twig side depended on chain
+direction — both fixed before merge. Capitals measured; lowercase bowls join
+too and are unmeasured. `docs/stitch-angle-convention-2026-09-03.md` §9.

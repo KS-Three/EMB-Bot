@@ -3550,3 +3550,30 @@ fanned 45→2→45° on a 2.5 mm stem, withdrawn), and `place` dents one whole
 rail of a rotated stock bar by 15% (1.22–1.27 vs 1.44–1.46 mm on a 3 mm bar)
 — pre-existing, in every golden, its own PR.
 *(measured 2026-09-03 — `docs/stitch-angle-convention-2026-09-03.md` §7)*
+
+## Stitch-angle rule, pass 2 — the Goldman corner join (2026-09-03)
+
+`stage6_satin._split_sharp_corners` finds JOIN corners (spine turn ≥
+`_JOIN_TURN_DEG` 45° over a half-width, with a reflex boundary corner ≥ 45°
+within a 1 mm arc window near the apex, `_boundary_corner_near`) and records
+them on the stroke (`Stroke.corners`) instead of splitting it; `satin_stroke`
+→ `_satin_joined` sews the members as separate columns end to end, the
+longer one capped over the corner square, the other tucked under the
+owner's corridor. Fold cuts (≥ 90°) split as before; welded corner twigs are
+dropped and the stem capped square; tapered tips and hairlines (< 0.6 mm)
+never join. Why one stroke: a split bought an underlay hop and a trim per
+piece (Becker 28 → 50 trims, benchmark 4.09 → 5.03/1k).
+
+| fixture | corners joined | stitches | trims | bare fabric | crosses > 45° off perpendicular |
+|---|---|---|---|---|---|
+| Fremont | 10 | 6343 → 6365 | 52 → 52 | 3.4 → 3.2% | 3 → 3% |
+| drone | 18 | 8856 → 8729 | 93 → 93 | 2.8 → 2.2% | 26 → 17% |
+| Becker | 21 | 4524 → 4479 | 28 → 28 | 6.0 → 5.5% | 40 → 27% |
+| ENTHUSIAST @ 93 | 8 | 3005 → 2959 | 25 → 25 | 1.8 → 1.8% | 31 → 21% |
+
+Benchmark 4.09 → 3.81/1k. Goldens untouched. Closed rings keep the fold rule
+(review: the join had opened a hexagon at two, three, two or one of six corners
+by rotation). Capitals measured; a lowercase bowl joins its stem corner too,
+unmeasured. Junction fans at 3-way nodes are
+not corners and are left to `_junction_entry_mm`; THERMAL's E arms remain
+pull-comp-sealed slots (gate 1). *(measured 2026-09-03 — `docs/stitch-angle-convention-2026-09-03.md` §9)*

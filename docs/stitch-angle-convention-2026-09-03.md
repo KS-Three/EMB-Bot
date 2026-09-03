@@ -325,3 +325,87 @@ thirteen. No golden moves: drone's golden pins stage 2 only, enthusiast's
 flat-lane entries are the platform reds CI already deselects. The function
 default in `set_lettering_house_angle` stays False. The 0.01 margin under
 the benchmark ceiling is thin and the test is the tripwire.
+
+## 9. Pass 2 BUILT — the Goldman corner join (2026-09-03, same session)
+
+Kent picked the join next. Built in `stage6_satin._split_sharp_corners`,
+`_boundary_corner_near`, `Stroke.corners` and `_satin_joined`.
+
+**What a corner is.** The spine turns ≥ 45° (`_JOIN_TURN_DEG`) over one
+half-width **and** the artwork has a **reflex** corner of ≥ 45° within a 1 mm
+stretch of its boundary near the apex. Two members meeting always make one
+on the inside of the meeting (the crotch of an L, the underside of a slab
+serif) and pull comp leaves it sharp where it rounds the convex corner into
+a ~0.5 mm arc. A bend has none, and neither does a tapered tip — whose point
+is convex, and which the first draft cut 1.6 mm from the ribbon_curve
+golden's end (1001 → 987; the reflex test restored it). The fold rule (≥ 90°,
+cut anywhere) is unchanged, so every stroke without a join is byte-identical:
+whitebg, alpha, ribbon_curve md5-identical.
+
+**What the join does.** The corner is NOT a split into two strokes. The first
+draft split, and every extra stroke bought an underlay hop and a trim
+(Becker 28 → 50 trims, the ENTHUSIAST benchmark 4.09 → 5.03/1k): the
+sequencer enters a satin column at its free cap (Laws 27/29) and the pieces'
+free ends pointed away from each other. So the chain stays **one stroke**
+for sequencing, underlay and the travel web, and carries `Stroke.corners`
+(apex index, which member owns). `satin_stroke` hands it to `_satin_joined`,
+which sews each member as its own column and lays them end to end: the
+owner — the longer member — gets a capped free end at the corner and
+`_extend_to_cap` runs its column over the corner square to the artwork
+edge; the other member gets a junction-style end tucking under the owner's
+own corridor (`_member_corridor`, the median half-width one to three
+half-widths in), exactly as a T's stem tucks under its bar. The hop between
+members is the corner itself, under the owner's column when the butting
+member sews first and lapped over its cap when the owner does — both are
+corners the trade sews. Trims: Becker 28 → 28, Fremont 52 → 52, drone
+93 → 93, ENTHUSIAST 25 → 25; benchmark **4.09 → 3.81/1k**.
+
+**Twigs and hairlines.** A short (< 2·half) free-ended side whose tip has no
+corridor (distance transform under `_FORK_TIP_FRAC` of the half-width) is a
+corner twig the skeleton welded onto a stem — THERMAL's H carried a 2.3 mm
+45° arm into its crossbar corner and its stem's cap tilted 45° with it
+(the letterform memory's #2). It is cut off and dropped and the stem is
+capped square. A short side with a cap is a tapered tip: no cut. Columns
+under 1.2 × `SATIN_MIN_CROSS_MM` never join: the join rescued a 0.5 mm-wide
+3.4 mm² squiggle on drone into four satin points and 79% bare fabric where
+`satin_shape` had reported it empty and stage 7 had sewn it as fill.
+
+**Measured** (`tools/satin_lean.py`; bare = polygon area outside a 0.2 mm
+thread buffer of the satin runs):
+
+| fixture | corners joined | stitches | trims | bare fabric | crosses > 45° off own perpendicular |
+|---|---|---|---|---|---|
+| Fremont, flag on | 10 in 6 letters | 6343 → 6365 | 52 → 52 | 3.4 → 3.2% | 3 → 3% |
+| drone (THERMAL, PRECISION) | 18 in 13 | 8856 → 8729 | 93 → 93 | 2.8 → **2.2%** | 26 → **17%** |
+| Becker | 21 in 4 | 4524 → 4479 | 28 → 28 | 6.0 → **5.5%** | 40 → **27%** |
+| ENTHUSIAST @ 93 | 8 in 5 | 3005 → 2959 | 25 → 25 | 1.8 → 1.8% | 31 → 21% |
+
+Digitize time +8–11% on lettering logos (`_boundary_corner_near` walks the
+polygon rings per candidate apex), drone unchanged. Rendered: Fremont's E
+arms and L foot meet their slabs in a butt instead of a fan; THERMAL's H
+stem caps square where its cap tilted into the corner; the corners still
+visible are junction fans (arm to stem at a 3-way node), which the join
+does not touch — that is the `_junction_entry_mm` machinery's, and the
+E's arms on THERMAL are pull-comp-sealed slots (letterform memory #1),
+gate 1.
+
+**Review (emb-bot-reviewer), applied the same hour.** (1) Closed rings were
+being opened at 45–90° corners HEAD never cut, and which of a hexagon's six
+identical corners fired depended on rotation (two, three, two, one of six):
+rings now keep the fold rule, byte-identical to before. (2) The twig side was
+chosen by length arithmetic that depended on chain direction and could drop
+a tapered tip while keeping the twig; the pointed side is now recorded at
+detection. (3) A short side against a junction (not free) no longer joins —
+trimmed at both ends it would sew doubled. (4) The seam hop across a corner
+splits like its neighbours when over `SPLIT_SATIN_ABOVE_MM`. (5) The boundary
+walk runs after the gap check. **Unmeasured surface, named:** every fixture
+in the table is capitals; a synthetic lowercase "b" joins its bowl-to-stem
+corner at every size (the artwork has the reflex vertex), and no lowercase
+fixture has been rendered — the numbers above are for capitals.
+
+Tests (four): `test_an_L_corner_is_one_stroke_with_one_goldman_corner`,
+`test_a_bend_of_the_same_angle_is_not_a_corner`,
+`test_the_joined_corner_has_no_fan_and_no_bare_corner_square` (the L's
+corner square < 10% bare, no square cross within a column width of the
+apex more than 20° off its member's perpendicular — the un-joined corner
+fans ≥ 3), `test_a_tapered_tip_is_not_a_corner`.

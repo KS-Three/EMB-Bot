@@ -1401,3 +1401,117 @@ def test_resample_by_pitch_keeps_both_ends_and_spreads_by_cos_lean():
     assert _resample_by_pitch([(1.0, 1.0)], [0.0], spacing) == [(1.0, 1.0)]
     assert _resample_by_pitch([(1.0, 1.0), (1.0, 1.0)], [0.0, 0.0], spacing) == \
         [(1.0, 1.0), (1.0, 1.0)]
+
+
+# --- the Goldman corner join (2026-09-03, stitch-angle rule pass 2) --------
+
+
+def _L_shape(stem_w=1.2, foot_w=1.2, height=10.0, width=6.0):
+    from shapely.geometry import Polygon as _P
+    stem = _P([(0, 0), (stem_w, 0), (stem_w, height), (0, height)])
+    foot = _P([(0, 0), (width, 0), (width, foot_w), (0, foot_w)])
+    return stem.union(foot)
+
+
+def test_an_L_corner_is_one_stroke_with_one_goldman_corner():
+    """Two straight members meeting at 90 deg with a sharp inside corner: the
+    skeleton walks stem and foot as one chain that turns ~90 deg at the apex.
+    Before the join that turn was under `_SPLIT_TURN_DEG` and sewed as a
+    fan; now it is a `Stroke.corners` entry -- the chain stays ONE stroke
+    (sequencing, underlay and the travel web see what they always saw) with
+    the longer member (the stem) owning the corner."""
+    from digitizer_core.stage6_satin import extract_strokes
+
+    strokes, half, _field = extract_strokes(_L_shape())
+    joined = [st for st in strokes if st.corners]
+    assert len(joined) == 1, [(len(s.spine), s.corners) for s in strokes]
+    st = joined[0]
+    assert len(st.corners) == 1
+    apex_i, before_owns = st.corners[0]
+    # the longer member owns: whichever side of the apex is the 10 mm stem
+    import math
+    left = sum(math.dist(a, b) for a, b in zip(st.spine[:apex_i + 1], st.spine[1:apex_i + 1]))
+    right = sum(math.dist(a, b) for a, b in zip(st.spine[apex_i:], st.spine[apex_i + 1:]))
+    assert before_owns == (left >= right)
+
+
+def test_a_bend_of_the_same_angle_is_not_a_corner():
+    """The 1,436 : 18 corpus rule: a column turning round a BEND keeps sewing
+    through. Same 90 deg of turn as the L, spread round an arc with no
+    reflex vertex on the boundary -- no corner, no cut, one plain stroke."""
+    import math
+
+    from shapely.geometry import LineString
+    from digitizer_core.stage6_satin import extract_strokes
+
+    arc = [(8.0 * math.cos(t), 8.0 * math.sin(t))
+           for t in [math.pi / 2 * i / 30 for i in range(31)]]
+    bend = LineString(arc).buffer(0.6, cap_style=2, join_style=1)
+    strokes, _half, _field = extract_strokes(bend)
+    assert len(strokes) == 1 and not strokes[0].corners, \
+        [(len(s.spine), s.corners) for s in strokes]
+
+
+def test_the_joined_corner_has_no_fan_and_no_bare_corner_square():
+    """What the join is for. Rendered as thread, the corner square of the L
+    (the stem_w x foot_w square at the apex) is covered by the owner's
+    column, and every cross within a column width of the apex sits within
+    20 deg of ITS OWN member's perpendicular -- the fan that swept the old
+    corner through 90 deg over ~±1.5 mm is gone. The stock (pre-join)
+    behaviour is reproduced for the comparison by clearing the corner."""
+    import math
+
+    import numpy as np
+    from shapely.geometry import LineString, Polygon as _P
+    from shapely.ops import unary_union
+    from digitizer_core.stage6_satin import extract_strokes, satin_stroke, strip_splits
+
+    poly = _L_shape()
+    strokes, half, field = extract_strokes(poly)
+    st = next(s for s in strokes if s.corners)
+
+    def crosses(points):
+        # Rails alternate A, B, A, B: even segments are the square crosses,
+        # odd ones the return legs that lean one spacing forward (~20 deg on
+        # a 1.2 mm column) -- only the crosses say where the column points.
+        pts = np.asarray(strip_splits(list(points)), dtype=float)
+        vec = pts[1:] - pts[:-1]
+        length = np.hypot(vec[:, 0], vec[:, 1])
+        keep = (length > 0.6) & (np.arange(len(vec)) % 2 == 0)
+        mids = (pts[:-1] + pts[1:])[keep] / 2.0
+        ang = np.degrees(np.arctan2(vec[keep, 1], vec[keep, 0])) % 180.0
+        return mids, ang
+
+    def fan_count(points):
+        mids, ang = crosses(points)
+        apex = np.array([half, half])
+        near = np.hypot(mids[:, 0] - apex[0], mids[:, 1] - apex[1]) < 2.0 * half + 0.5
+        # a stem cross is horizontal (0), a foot cross vertical (90)
+        off = np.minimum(np.abs((ang[near] + 90) % 180 - 90),
+                         np.abs((ang[near] - 90 + 90) % 180 - 90))
+        return int((off > 20.0).sum()), int(near.sum())
+
+    joined = satin_stroke(poly, st, half, field)
+    from dataclasses import replace
+    fanned = satin_stroke(poly, replace(st, corners=[]), half, field)
+    fan_j, n_j = fan_count(joined)
+    fan_f, n_f = fan_count(fanned)
+    assert fan_f >= 3, f"the un-joined corner should fan ({fan_f} of {n_f})"
+    assert fan_j == 0, f"joined corner still fans: {fan_j} of {n_j} crosses off-axis"
+
+    square = _P([(0, 0), (1.2, 0), (1.2, 1.2), (0, 1.2)])
+    thread = unary_union([LineString(joined).buffer(0.2, cap_style=1, join_style=1)])
+    bare = square.difference(thread).area / square.area
+    assert bare < 0.10, f"corner square {100 * bare:.0f}% bare"
+
+
+def test_a_tapered_tip_is_not_a_corner():
+    """ribbon_curve's golden: a taper curls in its last millimetre and its
+    point is a convex vertex. The join's reflex-corner test must not fire,
+    or the golden moves (it did, 1001 -> 987, in the first draft)."""
+    from shapely.geometry import Polygon as _P
+    from digitizer_core.stage6_satin import extract_strokes
+
+    taper = _P([(0, -1.0), (12.0, -1.0), (16.0, 0.3), (12.0, 1.0), (0, 1.0)])
+    strokes, _half, _field = extract_strokes(taper)
+    assert not any(s.corners for s in strokes)
