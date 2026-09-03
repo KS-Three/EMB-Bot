@@ -470,3 +470,104 @@ at 1.01× the floor, and a column at the floor is untouched);
 stitch added or dropped, crossFloor:false blind to it); `test/digitize.test.js`
 +1 (stitch count identical, every moved penetration ≤ 0.6 mm). The "AB"
 snapshot (701 stitches, first and last stitch) did not move.
+
+## 11. Render pass — the three PRs in one look (Kent's pick after PR #334)
+
+Everything merged: #331 (Python hairline runs, the art floor, the 5 mm
+underlay rung, text clusters; JS cross floor and run fallback), #332 (the
+Bold counter guard) and #334 (short stitches). Crops live in
+`docs/renders/fine-lettering-2026-09-03/` — the first render images
+committed under `docs/`, 0.9 MB in all, JPEG for the thread renders and PNG
+for the small crops. Read the two baselines carefully, because they differ:
+
+- **Real logos** are rendered at `5edfb91`, the commit #331 actually merged
+  onto, against `main`. The review's §3 numbers were measured against
+  `e2aa965`, and between the two the other lane landed #327–#330 (curve
+  refinement on by default, rails onto the artwork edge, fill dust): Fremont
+  went 10,185 → 9,989 on those alone. The crops below isolate the three
+  review PRs, and on the Python side that is #331.
+- **Font pairs** are rendered at `e2aa965` against `main`: no other lane
+  touched `src/`, so those isolate all three PRs at once.
+
+### Real logos (`digitize()` + the engine renderer, 10 px/mm)
+
+| fixture | stitches, 5edfb91 → main | trims |
+|---|---|---|
+| Hotel Fremont 92.5 mm, patch | 9,989 → 9,990 | 112 → **104** |
+| drone_render 80 mm, left chest | 8,666 → 8,653 | 93 → 93 |
+| Becker Marine 100 mm, left chest | 6,459 → 6,459 | 37 → 37 |
+
+![Hotel Fremont, the 2.6 mm THE](renders/fine-lettering-2026-09-03/fremont_the.png)
+
+*Fremont, "THE" at 2.6 mm caps, 4×.* Before, the E had no arms and the word
+read "T H ."; after, the arms sew as bean runs and it reads THE. This is
+item 1, the whole of what it does on real art at this size.
+
+![Hotel Fremont, the hexagon band](renders/fine-lettering-2026-09-03/fremont_band.png)
+
+*Fremont, the black band where the needle was, 3×.* Nothing changed, which is
+the point: §3's vectorization needle would have sewn as a tick here without
+the art floor. Eight fewer trims on the design come from the 5 mm rung (no
+centre run under the small lettering, so fewer separate underlay runs).
+
+![drone_render, the three lettering rows](renders/fine-lettering-2026-09-03/drone_lettering.jpg)
+
+*drone_render, the lettering rows at 1×.* To the eye, unchanged. The 2.9 mm
+"AND DRONX" row lost its centre-run underlay (rung 1), and the two hairline
+stretches the fallback found were compensation-grown and trimmed by the art
+floor — hence −13 stitches and no new runs.
+
+![Becker Marine, the lower half](renders/fine-lettering-2026-09-03/becker_lower.jpg)
+
+*Becker Marine, MARINE and the mark above it, 1×.* The control: Becker is a
+byte-identical golden through all of this, and this is what unchanged looks
+like in the renderer.
+
+![Hotel Fremont, whole design](renders/fine-lettering-2026-09-03/fremont_full.jpg)
+![Becker Marine, whole design](renders/fine-lettering-2026-09-03/becker_full.jpg)
+
+### Font pairs (`buildLetteringDesign`, "Fritsch" unless stated, underlay on)
+
+| font, text, width | stitches, e2aa965 → main | what moved |
+|---|---|---|
+| cooper_marif, 50 mm (11.2 mm cap) | 2,079 → 1,268 | 23 hairline spans sew as runs; 11 short stitches |
+| medium_font "Kent" **bold**, 25 mm (6.3 mm cap) | 390 → 390 | 32 rail stations held at counters; 17 short stitches |
+| pacificlo "SOC", 50 mm (19.9 mm cap) | 845 → 845 | 67 short stitches, nothing else |
+| mai_en_fleur **bold**, 25 mm (5.6 mm cap) | 3,043 → 1,393 | 1,731 stations held; 18 hairline spans; 396 short stitches |
+
+![cooper_marif at 50 mm](renders/fine-lettering-2026-09-03/font_cooper_marif_50mm.png)
+
+*cooper_marif.* Before, the outline face sewed as a spiky sub-floor zigzag
+along every edge; after, it is one clean line — the hairline stretches as
+bean runs, the chords gone.
+
+![medium_font Kent bold, the e](renders/fine-lettering-2026-09-03/font_medium_bold_e_25mm.png)
+
+*medium_font "Kent" bold, the e at 48 px/mm.* Before on the left. The
+difference is a tenth of a millimetre at the eye and the bar: bold's 0.3 mm
+now stops short of the counter on both sides and lands on the outside of the
+bowl instead. Small, and exactly the size the guard was built to be.
+
+![medium_font Kent bold, whole word](renders/fine-lettering-2026-09-03/font_medium_bold_kent_25mm.png)
+
+![pacificlo S lower bowl](renders/fine-lettering-2026-09-03/font_pacificlo_s_bowl_50mm.png)
+
+*pacificlo "S", the lower bowl at 32 px/mm.* Before, the inside rail's
+penetrations bunch under the 0.3 mm trip along the whole bend; after, every
+other one is pulled back along the cross and the inner edge reads as
+alternating long and short stitches — the classic short-stitch pattern.
+
+![mai_en_fleur bold at 25 mm](renders/fine-lettering-2026-09-03/font_mai_en_fleur_bold_25mm.png)
+
+*mai_en_fleur "Fritsch" bold at a 5.6 mm cap.* **This is the one to look at
+before trusting the numbers.** Before, unguarded bold turned every hairline
+connector into satin and the word reads as a solid blob on screen — with
+gaps of 0.06 mm between its strokes, which on cloth is thread on thread.
+After, the guard holds the weight at every gap, the connectors stay under
+the floor and sew as runs, and the word breaks into satin fragments and
+thin lines. Neither is a sewable design; the lettering note on this element
+says 99% of it is under 0.5 mm wide at this size and to size up or pick a
+bolder face. The difference is that the old picture hid that and the new
+one does not. Whether Bold should still be allowed to close the gaps on a
+face this fine — the option declined at §9's merge — is now a question with
+a picture attached.
