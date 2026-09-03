@@ -108,6 +108,22 @@ _CURVE_FLOOR_PX = 1.0
 _CURVE_WINDOW_STEPS = 2
 
 
+# A shape this close to the satin minimum cross is not refined -- see the
+# note at the call site. 1.2 x SATIN_MIN_CROSS_MM = 0.6 mm.
+_REFINE_MIN_RIBBON_MM = 1.2 * machine.SATIN_MIN_CROSS_MM
+
+
+def _wide_enough_to_refine(shell_px: np.ndarray, px_per_mm: float) -> bool:
+    """Ribbon-width proxy on the simplified shell, 2 x area / perimeter (exact
+    on a ribbon, an over-estimate on a blob): True when the shape's strokes
+    are comfortably above the satin minimum cross."""
+    poly = Polygon(shell_px)
+    if not poly.is_valid or poly.length <= 0.0:
+        return True
+    width_mm = 2.0 * poly.area / poly.length / px_per_mm
+    return width_mm >= _REFINE_MIN_RIBBON_MM
+
+
 def _refine_curves(raw: np.ndarray, simplified: np.ndarray, eps_px: float,
                    turn_deg: float) -> np.ndarray:
     """`simplified` (a Douglas-Peucker subset of the closed contour `raw`,
@@ -270,7 +286,15 @@ def vectorize(
         if len(shell_px) < 3:
             note_drop(rm)
             continue
-        if curve_turn and not sub_detail:
+        # Near-floor lettering keeps today's polygon (Kent's ruling,
+        # 2026-09-03): Douglas-Peucker at 0.2 mm inflates a 2.6 mm letter by
+        # ~14%, and that inflation is what has kept its 0.38-0.47 mm strokes
+        # above `SATIN_MIN_CROSS_MM` -- refined honestly, the letter drops
+        # every satin cross and falls to fill. A shape whose ribbon width
+        # (2 x area / perimeter, exact on a ribbon) is within 20% of the
+        # minimum cross is not refined, at either ring.
+        refine = curve_turn and not sub_detail and _wide_enough_to_refine(shell_px, p.px_per_mm)
+        if refine:
             shell_px = _refine_curves(contours[outer].reshape(-1, 2).astype(np.float64),
                                       shell_px.astype(np.float64), eps, curve_turn)
         shell = _to_mm(shell_px, cx, cy, p.px_per_mm)
@@ -282,7 +306,7 @@ def vectorize(
             h_px = cv2.approxPolyDP(contours[i], eps, True).reshape(-1, 2)
             if len(h_px) < 3:
                 continue
-            if curve_turn and not sub_detail:
+            if refine:
                 h_px = _refine_curves(contours[i].reshape(-1, 2).astype(np.float64),
                                       h_px.astype(np.float64), eps, curve_turn)
             ring = _to_mm(h_px, cx, cy, p.px_per_mm)

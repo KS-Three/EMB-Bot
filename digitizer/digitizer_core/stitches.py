@@ -240,6 +240,11 @@ def iter_machine_commands(plan: StitchPlan):
             last = run.points[-1]
 
 
+# How far past `max_mm` a step has to be before `split_long_moves` splits
+# it. See the note inside; a micron, not a stitch quantity.
+SPLIT_TOLERANCE_MM = 1e-6
+
+
 def split_long_moves(points: list[tuple[float, float]],
                      max_mm: float = machine.MAX_STITCH_MM) -> list[tuple[float, float]]:
     """Subdivide any step longer than the machine can encode.
@@ -252,8 +257,18 @@ def split_long_moves(points: list[tuple[float, float]],
     out = [points[0]]
     for prev, cur in zip(points, points[1:]):
         d = math.dist(prev, cur)
-        if d > max_mm:
-            steps = math.ceil(d / max_mm)
+        # A step that measures 3.0000000000000004 mm against a 3.0 mm cap is
+        # a 3.0 mm step: the fill grid is laid at exactly `stitch_mm` in the
+        # row frame and comes back through the rotation a few ulp either
+        # side, and splitting the ones that land above halved 8-10% of a
+        # fill-heavy design's stitches (whitebg 180 of 1520 fill steps,
+        # Fremont 576 of 2450, sunset 1198 of 7102) -- which rows got it
+        # depended on the row angle's cosine, so any polygon change re-rolled
+        # the count. A micron of tolerance is far under any raster or
+        # machine quantum and above every float artefact (measured excess:
+        # 2e-15 to 4e-15 mm). Defect 25, 2026-09-03, `tools/fill_dust.py`.
+        if d > max_mm + SPLIT_TOLERANCE_MM:
+            steps = math.ceil((d - SPLIT_TOLERANCE_MM) / max_mm)
             for s in range(1, steps):
                 t = s / steps
                 out.append((prev[0] + (cur[0] - prev[0]) * t,

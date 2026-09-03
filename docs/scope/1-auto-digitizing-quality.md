@@ -3590,9 +3590,13 @@ stitch counts ≤ 2% everywhere; `curve_fidelity` roughness ribbon 9.45 →
 8.72, drone 9.32 → 9.11, ENTHUSIAST 10.59 → 11.42 (half-pixel jitter at
 11 px/mm — the resolution limit). Becker at 4 px/mm unchanged.
 
-Defect 25: `stitches.split_long_moves(path, stitch_mm)` halves grid steps
-that exceed 3.0 mm by float dust — `tools/fill_dust.py`: whitebg 180 of
+Defect 25 — FIXED the same day (Kent's ruling; `stitches.SPLIT_TOLERANCE_MM`,
+a micron): `split_long_moves(path, stitch_mm)` halved grid steps that exceed
+3.0 mm by float dust — `tools/fill_dust.py`: whitebg 180 of
 1520 fill steps (8.3% of the design), Fremont 576 of 2450 (9.0%), sunset
-1198 of 7102 (10.3%), alpha 5.0%, Becker 1.3%, drone 0.7%. Fix = a micron
-of tolerance; re-pins every fill golden. Held with the curve flip for one
-re-pin round. *(measured 2026-09-03 — `docs/round-curves-2026-09-03.md`)*
+1198 of 7102 (10.3%), alpha 5.0%, Becker 1.3%, drone 0.7%. After the fix:
+whitebg 2162 → 1982 st, alpha 2072 → 1968, Fremont 6365 → 5789, sunset
+11614 → 10416, drone 8729 → 8670, Becker 4479 → 4421; no row, trim or region
+moves; whitebg and alpha goldens re-pinned with the pre-change tree. The
+curve flip is held; near-floor lettering (ribbon width within 20% of the
+minimum cross) is not refined, Kent's ruling. *(measured 2026-09-03 — `docs/round-curves-2026-09-03.md`)*

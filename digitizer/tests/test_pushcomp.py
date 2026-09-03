@@ -114,6 +114,14 @@ def rail_overhang(art: Polygon, pts) -> float:
 
 # --- the flag is off, and off means nothing moved --------------------------
 
+# 2026-09-03 (defect 25): `logo_whitebg.png` / `left_chest` re-pinned
+# 2162 -> 1982 penetrations after `stitches.split_long_moves` stopped halving
+# fill steps that measure 3.0000000000000004 mm against the 3.0 mm cap — 180
+# of whitebg's 1520 fill steps were those halves. The pre-change tree (main at
+# e2aa965) reproduced the old tuple on this machine first; region ids, areas
+# and warnings are unmoved. `towel` moves the same way but its tuple is the
+# original machine's (the platform red CI deselects) and is left as it was.
+
 # Pinned from the pre-change tree: these are `git show HEAD` of config.py,
 # machine.py, stage5_overlap.py, stage6_satin.py and stage7_sequence.py run
 # through the same script, over 4 fixtures x 4 garments. All 16 matched.
@@ -219,7 +227,7 @@ def rail_overhang(art: Polygon, pts) -> float:
 # stays un-re-pinned for the reason above; both `ribbon_curve` entries
 # reproduce.
 GOLDEN_FLAG_OFF = {
-    ("logo_whitebg.png", "left_chest"): ("97316210b2accf82f696", 2162, 7061),
+    ("logo_whitebg.png", "left_chest"): ("2fddf0de165cb560bc25", 1982, 6521),
     ("logo_whitebg.png", "towel"): ("98c918e7c1576e46f623", 3258, 10349),
     ("ribbon_curve.png", "left_chest"): ("1c3f5ad1d0de847c149a", 1001, 3527),
     ("ribbon_curve.png", "hat_front"): ("d982b1c0fe21b0ed1b5f", 1005, 3539),

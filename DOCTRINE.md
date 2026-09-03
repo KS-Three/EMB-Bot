@@ -652,3 +652,21 @@ its hedge as it is copied forward** — is why this file is split.
   COMPUTED styles in a real browser on the app's non-white grounds, and was
   **not** re-run against those three. *(2026-08-25 — theme.css; moved here and
   half re-run 2026-09-02)*
+
+- **A ±10% stitch-count swing with nothing visibly moved can be a threshold
+  sitting on a float boundary, not geometry.** `stitches.split_long_moves`
+  split any step over the cap with a bare `>`, and a fill step laid at
+  exactly the cap measures `3.0000000000000004` mm as often as
+  `2.9999999999999996` once the row is rotated back — so which rows got
+  half-stitches depended on the row angle's cosine, and a change that moved
+  nothing visible (a vertex, an angle rule) swung `logo_whitebg` 8% and
+  `photo_sunset_backlit` 10% while every row, angle, trim and region stayed
+  put. A session chased that swing as a curve-refinement effect for most of
+  a day. Closed with `SPLIT_TOLERANCE_MM = 1e-6` (defect 25, PR #328). Two
+  standing rules. **A count delta with no row/angle/trim/region delta is a
+  comparison at a boundary until proven otherwise** — go find the `>` before
+  theorising about the geometry. **And a count from any tree before PR #328
+  is not comparable to one after it** — `tools/fill_dust.py` run on the old
+  tree says how much of that fixture's count was dust (whitebg 180, Fremont
+  576, sunset 1198), subtract it first. *(2026-09-03 — defect 25;
+  `docs/round-curves-2026-09-03.md`)*

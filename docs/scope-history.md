@@ -3561,3 +3561,16 @@ first and re-picks staircase corners (90° turns on a circle). Underneath:
 half-stitches, and any polygon change re-rolls which rows get them. One
 comparison fixes it; both it and the curve flip re-pin the fill goldens, so
 they are held for one round on Kent's word. `docs/round-curves-2026-09-03.md`.
+
+## 2026-09-03 (addendum) — Kent: fix the fill dust now, hold the curve flip, guard near-floor lettering
+
+`stitches.SPLIT_TOLERANCE_MM` = 1e-6 mm: `split_long_moves` no longer halves
+a fill step that measures 3.0000000000000004 against the 3.0 cap. whitebg
+2162 → 1982 st, alpha 2072 → 1968, Fremont 6365 → 5789, sunset 11614 →
+10416, drone 8729 → 8670, Becker 4479 → 4421; not one row, trim or region
+moves. Goldens re-pinned under the pre-change-tree discipline (whitebg and
+alpha flat-lane keys, pushcomp whitebg/left_chest 2162 → 1982; towel and
+enthusiast stay the platform reds). The curve refinement now skips shapes
+whose ribbon width is within 20% of the satin minimum cross (the 2.6 mm
+letters keep the inflated polygon that keeps them satin); the flag stays
+OFF for the flip round.

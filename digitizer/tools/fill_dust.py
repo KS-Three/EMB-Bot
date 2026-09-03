@@ -15,9 +15,11 @@ stitch-count noise on fill-heavy fixtures, and every one of those half
 stitches is a needle penetration the design did not want.
 
 Counts, per fixture: the fill/travel steps that pass through the splitter,
-how many exceed the threshold by less than a micron (`dust`), how many by
-more (`real`, the long bridges the splitter exists for), and what the dust
-costs as a share of the design's stitches.
+how many exceed the threshold by less than a micron (`dust` -- the steps
+that were halved before `stitches.SPLIT_TOLERANCE_MM` existed, and are
+counted the same way after it so the before/after is one number), how many
+by more (`real`, the long bridges the splitter exists for), and what the
+dust cost as a share of the design's stitches.
 
     .venv/bin/python tools/fill_dust.py [fixture ...]
 """

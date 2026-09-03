@@ -1,6 +1,6 @@
 ---
 name: round-curves-2026-09-03
-description: defect 22 ("this O is not round") built OFF as `curve_turn_deg` — a turn-per-vertex bound applied by re-reading each Douglas-Peucker edge against the raw arc and splitting at the arc MIDPOINT (max-deviation splitting re-picks staircase corners), floored at one pixel; Fremont's counter 9 → 33 vertices, 47° → 17°; found underneath it defect 25, fill stitches halved by float dust at the stitch-length threshold (8–10% of the stitches on whitebg, Fremont, sunset) — one-line fix, moves every fill golden, Kent's call
+description: defect 22 ("this O is not round") built OFF as `curve_turn_deg` — a turn-per-vertex bound applied by re-reading each Douglas-Peucker edge against the raw arc and splitting at the arc MIDPOINT (max-deviation splitting re-picks staircase corners), floored at one pixel; Fremont's counter 9 → 33 vertices, 47° → 17°; found underneath it defect 25, fill stitches halved by float dust at the stitch-length threshold (8–10% of the stitches on whitebg, Fremont, sunset) — FIXED the same day on Kent's word (a micron of tolerance; whitebg −8%, Fremont −9%, sunset −10% stitches, nothing else moves; goldens re-pinned); near-floor lettering exempt from the refinement; the curve flip held
 metadata:
   type: reference
 ---
@@ -27,6 +27,11 @@ Full record: `docs/round-curves-2026-09-03.md`.
   out of near-floor lettering vs routing it to a run tier is Kent's call.
 - **Vertex mapping must walk both rings in lockstep**: a nearest-point map
   sends a hairline's return-leg vertices to their outbound twins.
+- **Kent's rulings the same day:** fix the dust now (done: `SPLIT_TOLERANCE_MM`,
+  whitebg 2162 → 1982, Fremont 6365 → 5789, sunset 11614 → 10416, no row or
+  trim moves, whitebg/alpha goldens re-pinned with the pre-change tree),
+  hold the curve flip, and exempt near-floor lettering (ribbon width within
+  20% of the minimum cross) from the refinement.
 - **The 13% stitch swing was float dust, not the flag.** `split_long_moves`
   halves any fill step that measures 3.0000000000000004 — 576 of Fremont's
   2450 fill steps, 1198 on sunset (10% of the design). Instrument
