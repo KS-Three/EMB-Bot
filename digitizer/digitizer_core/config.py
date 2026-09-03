@@ -475,8 +475,10 @@ class PipelineConfig:
     # dominant direction in doubled-angle space -- slab-serif and block faces
     # whose horizontals balance their stems cancel there (Hotel Fremont:
     # nR^2 4.7 against the 6.9 bar, so nothing fired) -- look for TWO
-    # orthogonal families in four-fold space and set the 45 deg bisector.
-    # See `textcluster.SATIN_HOUSE_BISECTOR_DEG` for the measurements.
+    # orthogonal families in four-fold space and set the cross perpendicular
+    # to the STEMS -- the family square to the line of text (the stitch-angle
+    # rule, 2026-09-03; the 45 deg bisector it first shipped with is
+    # retired). See `textcluster._house_along_line_deg`.
     #
     # Default OFF, Kent's call to flip (2026-09-02). ON it cures Hotel
     # Fremont's serif corner fans and drone_render's THERMAL, byte-identical

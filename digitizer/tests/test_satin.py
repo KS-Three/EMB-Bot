@@ -1227,9 +1227,9 @@ def test_the_house_angle_actually_moves_the_crosses():
 def test_the_clamp_never_lets_a_cross_run_along_its_own_stroke():
     """THE load-bearing guard. A satin cross has to SPAN its column; forced
     parallel to the stroke it would lie along it and the column collapses.
-    `_clamp_to_span` holds the house angle where the stroke allows and rotates
-    to the nearest spanning angle where it does not -- so no orientation,
-    anywhere in 180 deg, may come out under the floor."""
+    `_clamp_to_span` holds the house angle where the stroke allows and leans
+    toward it, capped, where it does not -- so no orientation, anywhere in
+    180 deg, may come out under the floor."""
     import math
 
     from digitizer_core.stage6_satin import (SATIN_HOUSE_MIN_SPAN_DEG,
@@ -1244,13 +1244,160 @@ def test_the_clamp_never_lets_a_cross_run_along_its_own_stroke():
 
 
 def test_a_stroke_that_can_span_the_house_angle_gets_it_exactly():
-    """"Held loosely" is not "approximately". Where the stroke can span it,
-    the house angle is passed through untouched -- the clamp only ever engages
-    on the strokes that would degenerate."""
+    """"Held loosely" is not "approximately". Where the stroke can span it
+    within the lean cap, the house angle is passed through untouched -- the
+    lean only ever engages on the strokes that would degenerate. A cross is
+    the same cross 180 deg round, so compare mod 180."""
     import math
 
     from digitizer_core.stage6_satin import _clamp_to_span
 
-    for axis in (90, 75, 60, 46):          # all >= the 45 deg floor from 0
-        assert abs(_clamp_to_span(0.0, math.radians(axis))) < 1e-9, (
+    for axis in (90, 75, 61):          # all >= the 60 deg floor from 0
+        out = math.degrees(_clamp_to_span(0.0, math.radians(axis))) % 180.0
+        assert min(out, 180.0 - out) < 1e-9, (
             f"house angle was moved on a {axis} deg stroke that could span it")
+
+
+def test_a_bar_along_the_house_axis_takes_its_own_perpendicular_with_no_side():
+    """The stitch-angle rule (2026-09-03). A bar running ALONG the house's
+    axis -- an E's arm under a horizontal house -- cannot lean toward the
+    house on either side without that side being chosen by tangent noise:
+    the old clamp gave 89.9 deg and 90.1 deg bars +45 and -45, and the
+    smoothing swept the arm through the flip. Every font sews such a bar
+    perpendicular (86 fonts: 3.0 deg off), and perpendicular has no side."""
+    import math
+
+    from digitizer_core.stage6_satin import _clamp_to_span
+
+    def off_perp(axis_deg: float) -> float:
+        out = math.degrees(_clamp_to_span(0.0, math.radians(axis_deg)))
+        return abs((out - (axis_deg + 90.0) + 90.0) % 180.0 - 90.0)
+
+    assert off_perp(90.0) < 1e-9
+    assert off_perp(89.9) < 0.1 and off_perp(90.1) < 0.1, (
+        off_perp(89.9), off_perp(90.1))
+    assert off_perp(0.0) < 1e-9, "a stem square to the house is the house"
+
+
+def test_the_lean_fades_continuously_from_the_cap_to_the_perpendicular():
+    """No orientation may see a JUMP in its cross angle: a stroke that bends
+    from 50 to 70 deg under a 0 deg house must sweep its cross, not snap it.
+    Sweep every axis in twentieth-degree steps and bound the step in the
+    output at 0.2 deg (the fade's own slope is 1.5 deg per deg, so 0.075) --
+    and pin the shape of the fade: full cap at the cap, 22.5 on a true
+    45 deg diagonal (inside the pro's p75 26 and the fonts' 29.5), zero
+    along the house axis."""
+    import math
+
+    from digitizer_core.stage6_satin import (SATIN_HOUSE_MIN_SPAN_DEG,
+                                             _clamp_to_span)
+
+    cap = 90.0 - SATIN_HOUSE_MIN_SPAN_DEG
+    prev = None
+    for tenth in range(0, 3600):
+        axis = tenth / 20.0
+        out = math.degrees(_clamp_to_span(0.0, math.radians(axis))) % 180.0
+        if prev is not None:
+            step = abs((out - prev + 90.0) % 180.0 - 90.0)
+            assert step < 0.2, f"cross jumped {step:.2f} deg at axis {axis}"
+        prev = out
+
+    def lean(axis_deg: float) -> float:
+        out = math.degrees(_clamp_to_span(0.0, math.radians(axis_deg)))
+        return abs((out - (axis_deg + 90.0) + 90.0) % 180.0 - 90.0)
+
+    assert abs(lean(90.0 - cap) - cap) < 1e-6      # the cap's edge: full cap
+    assert abs(lean(45.0) - cap * 0.75) < 1e-6     # a 45 deg diagonal: 22.5
+    assert lean(90.0) < 1e-9                        # along the axis: none
+
+
+def test_a_leaned_column_keeps_its_perpendicular_pitch():
+    """Density compensation for lean (2026-09-03, Pulse's rule). An upright
+    bar under a house 25 deg off its perpendicular holds the house exactly,
+    so every cross leans 25 deg. Stationed at the bare spacing along the
+    spine those threads would sit cos(25) = 10% too close across the column
+    -- and at the 48 deg the retired bisector put on an N, 33% too close:
+    the "pile" measured on enthusiast_logo (thread pitch 0.152 mm against
+    the 0.200 an unleaned column lays; Fremont's bars the same).
+
+    Measure the pitch ACROSS the threads: it must be what the stock
+    (unhoused) column gets -- HALF the station spacing, because a zigzag
+    lays two threads per station, out and back -- and the housed column
+    must carry FEWER crosses by about cos(lean), not the same count. The
+    count is held to 10%, not 1%: a leaned cross meets the boundary on a
+    different float path from the ray that measured it, and `place`'s
+    containment fallback then dents a few rails 15% and the outer-rail
+    refinement re-inserts a station there (a pre-existing dent -- a ROTATED
+    stock bar shows it on one whole rail -- recorded as its own defect)."""
+    import math
+
+    import numpy as np
+    from shapely.geometry import Polygon as _P
+    from digitizer_core import machine
+    from digitizer_core.stage6_satin import satin_shape
+
+    lean = 25.0
+    bar = _P([(0, 0), (3, 0), (3, 40), (0, 40)])
+
+    def perpendicular_pitch(runs) -> float:
+        pts = np.asarray([p for r in runs for p in r.points], dtype=float)
+        # Every full-length segment is a thread across the column (out and
+        # back); the gap between consecutive threads, measured square to
+        # the thread, is the pitch the fabric sees.
+        mids = (pts[:-1] + pts[1:]) / 2.0
+        vec = pts[1:] - pts[:-1]
+        full = np.hypot(vec[:, 0], vec[:, 1]) > 2.0
+        mids, vec = mids[full], vec[full]
+        vec /= np.hypot(vec[:, 0], vec[:, 1])[:, None]
+        nrm = np.stack([-vec[:, 1], vec[:, 0]], axis=1)
+        gaps = np.abs(np.einsum("ij,ij->i", mids[1:] - mids[:-1], nrm[:-1]))
+        gaps = gaps[(gaps > 0.1) & (gaps < 1.0)]
+        return float(np.median(gaps))
+
+    stock, _ = satin_shape(bar, "s", underlay_style="none", trim_at_mm=99.0)
+    housed, _ = satin_shape(bar, "s", underlay_style="none", trim_at_mm=99.0,
+                            angle_deg=90.0 - lean)
+    thread_pitch = machine.SATIN_SPACING_MM / 2.0
+    p_stock = perpendicular_pitch(stock)
+    p_house = perpendicular_pitch(housed)
+    assert abs(p_stock - thread_pitch) < 0.02, p_stock
+    assert abs(p_house - thread_pitch) < 0.02, (
+        f"leaned column packs thread at {p_house:.3f} mm, not {thread_pitch}")
+    n_stock = sum(len(r.points) for r in stock)
+    n_house = sum(len(r.points) for r in housed)
+    expect = n_stock * math.cos(math.radians(lean))
+    assert n_house < n_stock, "the leaned column did not shed any crosses"
+    assert abs(n_house - expect) < 0.10 * n_stock, (n_stock, n_house, expect)
+
+
+def test_resample_by_pitch_keeps_both_ends_and_spreads_by_cos_lean():
+    """`_resample_by_pitch` on its own: ends kept (open and closed), the
+    along-spine step is spacing / cos(lean) inside the cap, a zero-lean
+    spine gets `_resample`'s station count, and degenerate inputs come back
+    unchanged."""
+    import math
+
+    from digitizer_core.stage6_satin import _resample, _resample_by_pitch
+
+    spacing = 0.4
+    line = [(0.0, 0.0), (20.0, 0.0)]
+    n = max(2, int(math.ceil(20.0 / spacing)))            # satin_stroke's own count
+    zero = _resample_by_pitch(_resample(line, n), [0.0] * n, spacing)
+    assert len(zero) == n and zero[0] == (0.0, 0.0) and zero[-1] == (20.0, 0.0)
+
+    lean = math.radians(30.0)
+    leaned = _resample_by_pitch(_resample(line, n), [lean] * n, spacing)
+    steps = [math.dist(a, b) for a, b in zip(leaned, leaned[1:])]
+    assert leaned[0] == (0.0, 0.0) and leaned[-1] == (20.0, 0.0)
+    assert abs(max(steps) - spacing / math.cos(lean)) < 0.02, max(steps)
+    assert abs(min(steps) - spacing / math.cos(lean)) < 0.02, min(steps)
+
+    ring = [(5.0 * math.cos(t), 5.0 * math.sin(t))
+            for t in [2 * math.pi * i / 80 for i in range(81)]]   # closed: last == first
+    out = _resample_by_pitch(ring, [lean] * 81, spacing)
+    assert out[0] == ring[0] and out[-1] == ring[-1]
+    assert len(out) < 81, "a leaned ring should shed stations"
+
+    assert _resample_by_pitch([(1.0, 1.0)], [0.0], spacing) == [(1.0, 1.0)]
+    assert _resample_by_pitch([(1.0, 1.0), (1.0, 1.0)], [0.0, 0.0], spacing) == \
+        [(1.0, 1.0), (1.0, 1.0)]

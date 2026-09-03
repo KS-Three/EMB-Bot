@@ -1,6 +1,6 @@
 ---
 name: stitch-angle-convention-2026-09-03
-description: the trade's stitch-angle rule, measured — stems perpendicular (pro 4.7°, 86 fonts 1.8°), bars perpendicular in fonts / wide columns in the pro file, diagonals leaned 15–30° toward the house and rarely past 45°; the 45° bisector is what nobody does; Goldman's expired rule for ≥45° corners (through-member + butt-join) and Pulse's density-under-lean (spacing/cos θ) explain the ENTHUSIAST pile
+description: the trade's stitch-angle rule, measured and ADOPTED by Kent (cap 30°), pass 1 BUILT same day — fading lean past the cap (no side flip), spacing/cos(lean) (thread pitch 0.152 → 0.20 on every leaned column), stems = the four-fold family square to the LINE OF TEXT ("longer family" was wrong on THERMAL and ENTHUSIAST); bisector deleted; four-fold flag still OFF; rail-dent defect found in `place`; Goldman corner join is pass 2
 metadata:
   type: reference
 ---
@@ -42,20 +42,38 @@ needed: the angle comes from the art.
   45° Hotel Fremont render included. Spacing/cos θ keeps the constant's meaning
   without touching it (gate 1 clean).
 
-## The rule proposed to Kent
+## The rule, as adopted and built (pass 1, same day)
 
-House = perpendicular to the dominant stem family (longer family in the
-two-family case; never the bisector) → a stroke that cannot span it takes its
-own perpendicular → diagonals lean toward the house, capped (30° inside both
-bands; 45° is the pro's p90) → spacing/cos(lean) → ≥45° corners get the Goldman
-through-member + butt-join, which is NOT the withdrawn `_SPLIT_TURN_DEG` 90→70
-(that splits into two capped columns). Fill: lettering inherits; other shapes
-→ fragment-count minimisation (G3), not 45° and not PCA. Photos: direction
-field, already.
+Kent adopted the rule and the 30° cap, chose pass 1 first. Built:
 
-Decisions left to Kent: adopt; lean cap 30 vs 45; build order (density comp
-first — small and fixes the pile alone; Goldman join is the corner work the
-letterform memory has circled since 08-26).
+- **Fade, not snap.** Past the cap the lean fades linearly to zero at the
+  house axis (`lean = cap·(90−|d|)/(90−cap)`), so a bar along the axis is
+  perpendicular with no side and a 45° diagonal leans 22.5°. Items 2 and 3
+  contradicted each other at the boundary; this is the reconciliation.
+- **Density compensation** (`_cross_angles` + `_resample_by_pitch`): thread
+  pitch on leaned columns **0.152 → 0.198–0.201 mm** (Fremont, ENTHUSIAST);
+  Fremont crosses 885 → 812, ENTHUSIAST chaining benchmark with the flag on
+  4.62 → **4.09/1k** (ceiling 4.1). Gate 1 untouched: no constant moved.
+- **CORRECTION to item 1 — "the longer family" is wrong.** Trimmed-chain
+  lengths: Fremont stems 84 : 72, but THERMAL 20 : 23 and ENTHUSIAST 61 : 71
+  the other way. Stems are the family square to the **line of text**
+  (`_line_of_text_deg`, principal axis of member centroids); right on all
+  four groups, agrees with the doubled reading on Becker. Bisector deleted.
+- **Not this pass:** the Goldman join (corners still sweep 90° over the
+  smoothing width — Becker 40% of crosses past 45° vs a 24% stock floor),
+  wide-column bars, the four-fold flip (Kent's).
+- **Tried and withdrawn: a lean floor for hairline columns.** THE (2.6 mm,
+  0.40–0.52 mm columns) loses its bars under the rule — the shipped default
+  already does; the bisector kept them by accident. A per-station floor from
+  the boundary distance fans 45→2→45° over a 2.5 mm stem and still lands
+  crosses at 0.44–0.49. Small lettering wants its own tier, not a lean hack.
+- **Found, recorded, not fixed: rail dents.** `place` shrinks a rail 15%
+  when the full-width point misses `covers` by float dust; a STOCK 3 mm bar
+  rotated 25° has one whole rail at 1.22–1.27 vs 1.44–1.46 mm. Every satin
+  golden carries it; a fix is its own PR.
+
+Instrument: `digitizer/tools/satin_lean.py` (lean and cross-vs-house
+histograms, thread pitch; `--stock` for the floor).
 
 See also [[hotel-fremont-fine-details-2026-09-02]], [[letterform-fidelity-2026-08-26]],
 [[thresholds-on-the-wrong-population-2026-08-28]].

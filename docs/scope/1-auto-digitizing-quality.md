@@ -3509,3 +3509,44 @@ hidden travel with cuts at 2 : 25, Kent's price. The `logo_whitebg` goldens
 moved by their travel (2166 → 2162 penetrations) and are re-pinned per the
 recapture doctrine with the pre-change tree.
 *(measured 2026-09-03 — `docs/fill-travel-under-cover-2026-09-03.md`)*
+
+## Stitch-angle rule, pass 1 — fading lean, 30° cap, density under lean (2026-09-03)
+
+Kent's ruling (DOCTRINE) built in `stage6_satin` and `textcluster`, flag
+`satin_house_fourfold` still OFF; every fixture without a house angle
+md5-identical. Full record `docs/stitch-angle-convention-2026-09-03.md` §7.
+
+- `_clamp_to_span`: house held within the lean cap (`SATIN_HOUSE_MIN_SPAN_DEG`
+  60, a 30° lean); past it the lean fades linearly to zero at the house axis
+  — a bar along the axis takes its own perpendicular with no side to choose,
+  a 45° diagonal leans 22.5°. Continuous, pinned in twentieth-degree steps.
+- `_cross_angles` (factored out of `_rail_points`, byte-identical with no
+  house) returns each station's lean against the smoothed perpendicular;
+  `_resample_by_pitch` spreads the stations along ∫cos(lean) ds and the
+  outer-rail refinement targets the same pitch, so the thread pitch across
+  the column stays 0.20 mm however far the cross leans. Cosine floored at
+  cos(cap) by construction.
+- Four-fold reading: the bisector is replaced by the stems' perpendicular,
+  stems = the family square to the line of text (`_line_of_text_deg`, the
+  principal axis of member centroids; `_house_along_line_deg`). "Longer
+  family" was measured wrong on THERMAL and ENTHUSIAST.
+
+| housed lettering (`tools/satin_lean.py`) | thread pitch | crosses | stitches | trims |
+|---|---|---|---|---|
+| Fremont, flag on, house 44° → 0° | **0.152 → 0.198 mm** | 885 → 812 | 6405 → 6343 | 52 → 52 |
+| ENTHUSIAST @ 93, flag on, 48° → 3° | **0.152 → 0.200** | 1096 → 1001 | 3072 → 3005 | 22 → 25 |
+| THERMAL, flag on, 45° → 0° | 0.175 → 0.195 | 1829 → 1859 | 8791 → 8856 | 91 → 93 |
+| Becker MARINE (doubled reading) | 0.193 → 0.186 | 694 → 724 | 4529 → 4524 | 28 → 28 |
+
+Lean off each cross's own perpendicular on Fremont: p50 45 → 20°, past 45°
+50% → 3%, against a stock floor of p50 19°, 1% (raster wander). The
+chaining benchmark with the flag on: 4.62 → 4.09/1k against 4.1 (off: 2.43,
+unchanged). Corners still sweep (a merged stem-to-bar chain turns its cross
+90° across the smoothing width; Becker 40% past 45° vs 24% stock) — the
+Goldman join, pass 2. Two limits found: hairline columns under ~0.6 mm lose
+crosses to the 0.5 mm minimum under any house angle (Fremont's 2.6 mm
+"THE"; the shipped default already loses its bars; a lean floor was built,
+fanned 45→2→45° on a 2.5 mm stem, withdrawn), and `place` dents one whole
+rail of a rotated stock bar by 15% (1.22–1.27 vs 1.44–1.46 mm on a 3 mm bar)
+— pre-existing, in every golden, its own PR.
+*(measured 2026-09-03 — `docs/stitch-angle-convention-2026-09-03.md` §7)*

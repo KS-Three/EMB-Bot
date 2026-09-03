@@ -334,6 +334,15 @@ hand-rolling it in JS.
   request, so after changing machine state a cached job embedded (repairing
   the SAM2 venv, say) restart the service or you get the pre-repair result
   back at 0.0s and believe it.
+- **Stitch-geometry instruments, one per quality claim (2026-09-03).** A number
+  in a PR body or MASTER_SCOPE is not evidence unless a committed script
+  re-produces it: `digitizer/tools/fill_exposure.py` (fill travel laid over
+  columns already sewn, `--off` for the before), `digitizer/tools/satin_lean.py`
+  (how far satin crosses lean off their own perpendicular and off the house
+  angle, and the thread pitch across the column; `--stock` for the instrument's
+  own floor on unhoused columns), `digitizer/tools/recapture_flat_lane_key.py`
+  (the only sanctioned way to move a golden: pre-change tree + control fixture).
+  Run each from `digitizer/` with `.venv/bin/python`.
 - **Acceptance A/B contact sheet** (`digitizer/tools/acceptance_ab.py`, pure
   logic in `digitizer_core/tools_acceptance.py`): the phase-4 eyeball loop.
   Runs every image in the gitignored `digitizer/testdata/photo/acceptance/`
