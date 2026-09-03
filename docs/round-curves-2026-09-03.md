@@ -1,4 +1,4 @@
-# Round curves — defect 22, built OFF for Kent's flip; and the fill-dust defect found under it (2026-09-03)
+# Round curves — defect 22, built OFF for Kent's flip; and the fill-dust defect found under it, FIXED (2026-09-03)
 
 Kent's note 4 on the Hotel Fremont screenshot: *"This 'O' is not round."*
 Traced 2026-09-02 (`docs/hotel-fremont-fine-details-2026-09-02.md` note 4):
@@ -148,6 +148,41 @@ round.
 - Non-positive values mean off; `_CURVE_WINDOW_STEPS` is a step count, not
   pixels; the dead variable is gone. Cost measured: Fremont 0.05 s over 55
   calls, sunset 0.18 s over 28, against a 56 s pipeline.
+
+## Kent's rulings, and what shipped on them (same day)
+
+1. **Fix the dust now, hold the curve flip.** `stitches.SPLIT_TOLERANCE_MM`
+   (1e-6 mm): `split_long_moves` splits a step only when it exceeds the cap by
+   more than a micron. A micron is far under any raster or machine quantum
+   and above every measured artefact (excess 2e-15 to 4e-15 mm). Measured,
+   whole designs:
+
+   | fixture | stitches before → after | trims |
+   |---|---|---|
+   | `logo_whitebg` | 2162 → **1982** (−8.3%) | 6 → 6 |
+   | `logo_alpha` | 2072 → **1968** (−5.0%) | 6 → 6 |
+   | `becker_marine` | 4479 → 4421 (−1.3%) | 28 → 28 |
+   | `logo_hotel_fremont` | 6365 → **5789** (−9.0%) | 52 → 52 |
+   | `drone_render` | 8729 → 8670 (−0.7%) | 93 → 93 |
+   | `photo_sunset_backlit` | 11614 → **10416** (−10.3%) | 42 → 42 |
+   | `photo_dof_meadow` | 9667 → 9516 (−1.6%) | 35 → 35 |
+   | `ribbon_curve`, `enthusiast_logo` @ 93 | unchanged (no dust) | |
+
+   Not one row, angle, trim or region moves — the same rows sew with the
+   stitch length they were laid at. Goldens re-pinned under the
+   pre-change-tree discipline: `logo_whitebg` and `logo_alpha` flat-lane
+   keys via `tools/recapture_flat_lane_key.py --pre-change-tree <main at
+   e2aa965> --control ribbon_curve.png` (machine OK, control OK, every
+   other key untouched); `test_pushcomp.GOLDEN_FLAG_OFF[whitebg,
+   left_chest]` 2162 → 1982 (the pre-change tree reproduced the old tuple
+   first); `towel` and `enthusiast` stay the platform reds. A unit test pins
+   the dust step, the exact step and the genuinely long step.
+2. **Near-floor lettering keeps today's polygon.** `_wide_enough_to_refine`:
+   a shape whose ribbon width (2 × area / perimeter on the simplified shell)
+   is within 20% of `SATIN_MIN_CROSS_MM` is not refined at either ring, so
+   the 2.6 mm letters keep the inflated Douglas-Peucker polygon that has
+   been sewing all along and stay satin. Built into the flag; the flag stays
+   OFF until the flip round.
 
 ## Tests
 

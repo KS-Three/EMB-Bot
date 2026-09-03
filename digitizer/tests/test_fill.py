@@ -903,3 +903,32 @@ def test_covered_routing_never_leaves_the_shape():
                         (20.5, 4.0), (39.0, 9.5), None, sewn2)
     assert route is not None
     assert poly.buffer(0.01).covers(LineString([(20.5, 4.0)] + route))
+
+
+# --- defect 25: fill stitches halved by float dust (2026-09-03) --------------
+
+
+def test_split_long_moves_does_not_halve_a_step_that_is_over_by_float_dust():
+    """The fill grid is laid at exactly `stitch_mm` in the row frame and comes
+    back through the rotation a few ulp either side of it; a 3.0000000000000004
+    mm step against a 3.0 mm cap is a 3.0 mm step, not two 1.5s. Before the
+    tolerance, 8-10% of a fill-heavy design's stitches were these halves
+    (`tools/fill_dust.py`: whitebg 180 of 1520 fill steps, Fremont 576 of
+    2450, sunset 1198 of 7102). A step genuinely over the cap still splits."""
+    import math
+
+    from digitizer_core import machine
+    from digitizer_core.stitches import SPLIT_TOLERANCE_MM, split_long_moves
+
+    cap = machine.FILL_STITCH_MM
+    # A rotated grid step: 3.0 mm at 35 deg, which rounds a few ulp over.
+    ang = math.radians(35.0)
+    dust = [(0.0, 0.0), (cap * math.cos(ang), cap * math.sin(ang))]
+    assert math.dist(*dust) >= cap - 1e-12
+    assert split_long_moves(dust, cap) == dust, "a dust-over step was halved"
+    exact = [(0.0, 0.0), (cap, 0.0)]
+    assert split_long_moves(exact, cap) == exact
+    over = [(0.0, 0.0), (cap + 10 * SPLIT_TOLERANCE_MM, 0.0)]
+    assert len(split_long_moves(over, cap)) == 3, "a genuinely long step must still split"
+    long = [(0.0, 0.0), (2.5 * cap, 0.0)]
+    assert len(split_long_moves(long, cap)) == 4

@@ -31,6 +31,17 @@ DST export are unchanged (verified separately in
 `tests/test_stages.py`/`tests/test_pushcomp.py`) — only the NEW region's
 own bookkeeping entries moved.
 
+**Fourth exception, TAKEN (2026-09-03, defect 25):** the `logo_whitebg.png`
+and `logo_alpha.png` entries were re-captured after `stitches.split_long_moves`
+gained a micron of tolerance — it had been halving every fill step that
+measured 3.0000000000000004 mm against the 3.0 mm cap (180 of whitebg's 1520
+fill steps, 104 of alpha's), so `stitch_count` 2162 → 1982 and 2072 → 1968.
+Region ids, areas and warnings unmoved; `ribbon_curve.png` (no fill) is the
+untouched control and reproduced; the pre-change tree (main at e2aa965)
+reproduced both old entries on this machine before the capture
+(`tools/recapture_flat_lane_key.py --pre-change-tree`). `enthusiast_logo`
+stays the platform red.
+
 **Third exception, TAKEN (2026-09-03):** the `logo_whitebg.png` entry was
 re-captured for fill travel under cover (`PipelineConfig.fill_travel_under_
 cover`, default ON by Kent's flip): the fill's column order now prefers a

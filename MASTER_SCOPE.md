@@ -149,15 +149,15 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
 
 22. **Small curves sew as polygons — FIX BUILT, DEFAULT OFF, Kent's flip** (`curve_turn_deg`; None =
     today): a turn-per-vertex bound re-reads each Douglas-Peucker edge against its raw arc, split at the
-    midpoint, floored at one pixel. Fremont's counter **9 → 33 vertices, 47° → 17°**, inner rail σ 0.038 → 0.026 mm; off md5-identical. **The flip re-pins curved goldens AND drops Fremont's 2.6 mm hairline letters satin → fill** (DP's 14% inflation had kept them at the 0.5 mm floor) — Kent's call. *(measured 2026-09-03 — `docs/round-curves-2026-09-03.md`)*
+    midpoint, floored at one pixel. Fremont's counter **9 → 33 vertices, 47° → 17°**, inner rail σ 0.038 → 0.026 mm; off md5-identical. Near-floor lettering (ribbon width within 20% of the 0.5 mm minimum cross) is not refined, Kent's ruling — DP's 14% inflation is what keeps those letters satin. **The flip re-pins curved goldens; held.** *(measured 2026-09-03 — `docs/round-curves-2026-09-03.md`)*
 
 23. **Rail dents — one rail of a rotated satin column sits 15% short of the art**: `place` shrinks a rail to 0.85× on a float-dust `covers` miss; a stock 3 mm bar at 25° has one whole rail at **1.22–1.27 mm** vs 1.44–1.46. In every satin golden. *(measured 2026-09-03 — area 1)*
 
 24. **Hairline columns (< 0.6 mm) lose crosses to the 0.5 mm minimum under any house angle** — Fremont's 2.6 mm "THE" loses every bar (the default already does); a lean floor fanned and was withdrawn; wants a small-lettering tier. *(measured 2026-09-03 — area 1)*
 
-25. **Fill stitches HALVED by float dust at the stitch-length threshold** — `split_long_moves(path,
-    stitch_mm)` splits a 3.0000000000000004 mm grid step into two 1.5s: **8.3% of whitebg's stitches, 9.0% of
-    Fremont's, 10.3% of sunset's** are unwanted penetrations, and any polygon change re-rolls which rows get it (the ±10% stitch-count noise). One-line fix; every fill golden re-pins. `tools/fill_dust.py`. *(measured 2026-09-03 — same doc)*
+25. **Fill stitches HALVED by float dust at the stitch-length threshold — FIXED (Kent, 2026-09-03).**
+    `split_long_moves` split a 3.0000000000000004 mm grid step into two 1.5s; a micron of tolerance
+    (`stitches.SPLIT_TOLERANCE_MM`) removes them: whitebg 2162 → **1982** st, Fremont 6365 → **5789**, sunset 11614 → **10416**, no row or trim moves. Goldens re-pinned (whitebg, alpha; pre-change tree). `tools/fill_dust.py`. *(fixed 2026-09-03 — same doc)*
 
 ### Closed — kept numbered, because ten other docs cite them by number
 
