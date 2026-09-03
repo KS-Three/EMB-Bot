@@ -60,6 +60,13 @@ against the engines. Full record: `docs/design-review-fine-lettering-2026-09-03.
   four cores — enthusiast's 24-glyph OCR pass went 3.3 s → 21.8 s. Serially
   `OMP_THREAD_LIMIT=1` changes nothing (129 vs 132 ms/glyph). Left serial
   with the numbers in the comment.
+- **Tesseract's OpenMP team is why the 60 s service test dies under
+  `-n auto`.** Pre vs post under three CPU hogs: 19.3 vs 32.7 s (idle 11.1
+  vs 11.9) — ten extra spawns cost 13 s because each child's four spinning
+  threads fight for the cores. `OMP_THREAD_LIMIT=1` on the child alone:
+  **12.1 s under the same hogs**, faster than pre-change and immune. The
+  likeliest root cause of 10ae9cc's CI timeout. Measure under CONTENTION,
+  not just idle — idle showed +0.8 s and hid a 13 s problem.
 - Memoizing `_skeleton_stroke_stats` on the (immutable, bytes-hashed)
   polygon made the house-angle pass 2.0 → 0.9 s on enthusiast: three passes
   were skeletonizing the same regions.

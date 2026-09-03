@@ -255,13 +255,23 @@ four-thread pool over pytesseract was tried and took enthusiast's 24-glyph
 pass from 3.3 s to **21.8 s** — each tesseract process opens its own OpenMP
 team and four of them thrash four cores (serially, `OMP_THREAD_LIMIT=1`
 measures 129 vs 132 ms, no difference). Measured negative, recorded in the
-code. `test_review_payload_carries_text_cluster_fields_over_http` runs in
-**12.4 s** solo against its 60 s budget. It timed out at `running` twice in
-this session, both times under a saturated box (`-n auto` with a probe and
-two renders alongside, 27:42 for a 9–10 minute suite; then `-n 3` with a
-render), which is the loaded-box artifact — but it is the test to watch on
-CI, and the +0.9 s above is the number to argue from if it goes red there
-with nothing else running.
+code.
+
+**The contention story, which is the one that matters for CI.**
+`test_review_payload_carries_text_cluster_fields_over_http` runs in
+**12.4 s** solo against its 60 s budget — and timed out at `running` three
+times in this session under `-n auto`, including a quiet full run (this box
+takes 26:20 for the suite, 2.5× the reference machine). Measured pre vs
+post under three CPU hogs: idle 11.1 vs 11.9 s, hogs **19.3 vs 32.7 s** —
+ten extra tesseract spawns cost 13 s under contention, ten times their idle
+price. Tesseract opens an OpenMP team per process and OpenMP workers
+spin-wait, so every glyph fights the other workers for the cores. With the
+child pinned to one thread (`_one_tesseract_thread`, `OMP_THREAD_LIMIT=1`
+on the live `os.environ` pytesseract hands to the child, restored after) the
+same test under three hogs takes **12.1 s** — faster than the pre-change
+tree under the same load, and immune to it. That is the likeliest root cause
+of the `10ae9cc` CI timeout (four concurrent runs), and it is fixed at the
+source rather than by raising the budget.
 
 **The Studio.** No code change. The e2e spec
 (`app/e2e/text-cluster-convert.spec.js`) reads the converted bar's own

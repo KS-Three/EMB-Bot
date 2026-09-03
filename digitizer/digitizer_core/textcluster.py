@@ -336,7 +336,9 @@ from __future__ import annotations
 
 import hashlib
 import math
+import os
 from bisect import bisect_left
+from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import lru_cache
 
@@ -1737,6 +1739,36 @@ def _ocr_raster(poly: Polygon) -> Image.Image | None:
     return Image.fromarray(255 - canvas)  # mask: 255=ink -> invert to black-on-white
 
 
+@contextmanager
+def _one_tesseract_thread():
+    """Run the tesseract CHILD PROCESS on one thread.
+
+    Tesseract opens an OpenMP team per process, and OpenMP workers spin-wait.
+    On an idle box that costs nothing measurable (129 vs 132 ms per glyph);
+    under contention it is the whole story. Measured 2026-09-03 on the
+    service test that digitizes enthusiast_logo @ 90 mm (24 glyphs after the
+    letter door, 14 before): idle 11.9 s post vs 11.1 s pre, but under three
+    CPU hogs **32.7 s vs 19.3 s** — ten extra tesseract spawns cost 13 s,
+    ten times their idle price, because four spinning threads per process
+    fight the hogs for four cores. That is also the likeliest reason CI's
+    digitizer job (`-n auto`, four concurrent runs) timed this test out on
+    10ae9cc. pytesseract passes `os.environ` itself to the child (its
+    `subprocess_args`), so the limit is set on the live mapping for the
+    duration of one call and restored after; OCR is serial, so nothing else
+    reads it meanwhile. Only the child is affected: this process's own numpy
+    and OpenCV threading is untouched.
+    """
+    prev = os.environ.get("OMP_THREAD_LIMIT")
+    os.environ["OMP_THREAD_LIMIT"] = "1"
+    try:
+        yield
+    finally:
+        if prev is None:
+            os.environ.pop("OMP_THREAD_LIMIT", None)
+        else:
+            os.environ["OMP_THREAD_LIMIT"] = prev
+
+
 def _ocr_glyph_guess(poly: Polygon) -> tuple[str | None, float | None]:
     """-> `(character, confidence)` for `poly`'s own rasterized crop.
 
@@ -1762,8 +1794,9 @@ def _ocr_glyph_guess(poly: Polygon) -> tuple[str | None, float | None]:
     if img is None:
         return None, None
     try:
-        data = pytesseract.image_to_data(
-            img, config=f"--psm {_OCR_PSM}", output_type=pytesseract.Output.DICT)
+        with _one_tesseract_thread():
+            data = pytesseract.image_to_data(
+                img, config=f"--psm {_OCR_PSM}", output_type=pytesseract.Output.DICT)
     except Exception:
         return None, None
     confs = [float(c) for c in data["conf"] if float(c) >= 0]

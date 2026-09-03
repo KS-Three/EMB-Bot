@@ -3345,7 +3345,12 @@ Each of the three reasons above is answered, not argued past. Full record:
   a 9–10 minute suite) — the loaded-box artifact, and the test to watch.
   **A thread pool over pytesseract is a measured negative** (3.3 → 21.8 s:
   four tesseract processes each open an OpenMP team and thrash four cores);
-  OCR stays serial, with the numbers in the code.
+  OCR stays serial, with the numbers in the code. **The same OpenMP teams are
+  why the service test times out under `-n auto`:** pre vs post under three
+  CPU hogs 19.3 vs 32.7 s (idle 11.1 vs 11.9). The tesseract child is now
+  pinned to one thread (`_one_tesseract_thread`): 12.1 s under the same hogs,
+  faster than the pre-change tree and immune to contention — the likeliest
+  root cause of the `10ae9cc` CI timeout, fixed at the source.
 
 **The structure is the safety argument.** `_candidates` (the rescued door) is
 unchanged and clustered FIRST, alone, with its original bounds, so every
