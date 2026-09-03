@@ -757,3 +757,55 @@ test("charList caps a long list instead of printing a paragraph", async () => {
   expect(out).not.toContain("“G”");
   expect(charList(many, 2)).toBe("“A”, “B” and 8 more");
 });
+
+// ---- letteringNote (width guards, 2026-09-03) ------------------------------
+// Wording is logic. The report shape is buildLetteringDesign's `lettering`;
+// every number the note quotes has to come from it.
+function report(over = {}) {
+  return {
+    capMm: 12, capFloorMm: 4, columns: 10, strokeMm: 100, thinMm: 0, hairlineMm: 0,
+    hairlineSpans: 0, columnFloorMm: 1, crossFloorMm: 0.5, ...over,
+  };
+}
+
+test("letteringNote is silent on a healthy report, a null report, and an empty one", async () => {
+  const { letteringNote } = await import("./generate.js");
+  expect(letteringNote(report())).toBe("");
+  expect(letteringNote(null)).toBe("");
+  expect(letteringNote(report({ strokeMm: 0, columns: 0 }))).toBe("");
+});
+
+test("letteringNote: a cap under the 4 mm floor wins over everything else", async () => {
+  const { letteringNote } = await import("./generate.js");
+  const n = letteringNote(report({ capMm: 3.24, hairlineMm: 90, hairlineSpans: 5, thinMm: 100 }));
+  expect(n).toBe("Letters 3.2 mm tall — under the 4 mm floor, thin strokes will shred");
+});
+
+test("letteringNote: lettering that is mostly hairline at this size says so, with the share", async () => {
+  const { letteringNote } = await import("./generate.js");
+  const n = letteringNote(report({ hairlineMm: 61, thinMm: 80, hairlineSpans: 7 }));
+  expect(n).toBe("61% of this lettering is under 0.5 mm wide at this size and sews as running stitch — size up or pick a bolder font");
+});
+
+test("letteringNote: the odd hairline stroke is reported as what the engine did about it", async () => {
+  const { letteringNote } = await import("./generate.js");
+  expect(letteringNote(report({ hairlineMm: 4, thinMm: 6, hairlineSpans: 1 }))).toBe("1 hairline stroke under 0.5 mm sewn as running stitch");
+  expect(letteringNote(report({ hairlineMm: 8, thinMm: 12, hairlineSpans: 3 }))).toBe("3 hairline strokes under 0.5 mm sewn as running stitch");
+});
+
+test("letteringNote: thin lettering warns at a quarter of the stroke length and not below", async () => {
+  const { letteringNote } = await import("./generate.js");
+  expect(letteringNote(report({ thinMm: 30 }))).toBe("30% of this lettering is under 1 mm wide — size up for crisp letters");
+  expect(letteringNote(report({ thinMm: 20 }))).toBe("");
+});
+
+test("generateElement: a text element's design carries the lettering report", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const d = generateElement(textElement({ text: "AB" }), garment, {});
+  expect(d.lettering).toBeTruthy();
+  expect(d.lettering.capMm).toBeGreaterThan(0);
+  expect(d.lettering.strokeMm).toBeGreaterThan(0);
+  expect(d.lettering.crossFloorMm).toBe(0.5);
+});

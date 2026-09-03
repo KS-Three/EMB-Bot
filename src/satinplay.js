@@ -177,6 +177,16 @@
   function emitZigzag(A, B, opts) {
     const denom = (opts.spacingMm || 0.4) * (opts.pxPerMm || 1);
     const offset = ((opts.pullCompMm || 0) * (opts.pxPerMm || 1)) / 2;
+    // Cross floor (Law 47 / 51, 2026-09-03). A cross shorter than
+    // `opts.minCrossMm` is not a satin stitch: the two rails have pinched
+    // together (a tapered tip, a hairline stroke) and sewing it piles thread
+    // on a point — the Python engine drops the same cross at
+    // `machine.SATIN_MIN_CROSS_MM`. Before this option existed the only guard
+    // was 0.3 DESIGN PIXELS (0.04 mm at the lettering default), so the browser
+    // path sewed every pinched cross the other engine refuses. Absent or 0
+    // keeps exactly that legacy guard, so every caller that never asks is
+    // byte-identical; satinfont passes the floor pre-divided by the fit scale.
+    const minCrossPx = Math.max(0.3, (opts.minCrossMm || 0) * (opts.pxPerMm || 1));
     const slantRad = ((opts.slantDeg || 0) * Math.PI) / 180;
     const M = A.length;
     if (M < 2) return [];
@@ -208,10 +218,93 @@
         ax += vx * offset; ay += vy * offset; bx -= vx * offset; by -= vy * offset;
       }
       const pA = { x: ax, y: ay }, pB = { x: bx, y: by };
-      if (Math.hypot(pA.x - pB.x, pA.y - pB.y) < 0.3) continue;
+      if (Math.hypot(pA.x - pB.x, pA.y - pB.y) < minCrossPx) continue;
       if (t % 2 === 0) { out.push(pA, pB); } else { out.push(pB, pA); }
     }
     return out;
+  }
+
+  // Split a satin span [lo,hi] (fractions, lo < hi) into SATIN and HAIRLINE
+  // segments by the cross length at each zigzag station — the same stations,
+  // the same pull-comp widening and the same floor emitZigzag applies, so a
+  // segment classed satin here keeps its crosses there.
+  //
+  // Why a split and not a per-cross drop: on a column that hovers around the
+  // floor (a hand-authored outline face, a script's thick-thin stroke) the
+  // crosses that survive a per-cross drop are SCATTERED, and the zigzag joins
+  // survivor to survivor with a straight chord — across the glyph's interior
+  // on an outline letter (measured 2026-09-03 on cooper_marif: a diagonal
+  // through the F). Classing whole stretches instead sews the thick parts as
+  // satin and the thin stretches as a run, which is what a digitizer does by
+  // hand with a stroke that changes weight.
+  //
+  // Minimum segment: two stations (`minSeg`), or one bean stitch if that is
+  // longer. A run shorter than that is absorbed into its longer neighbour
+  // until every segment clears it, so a single wobble under the floor stays
+  // satin (emitZigzag drops that one cross — a chord ONE station long, along
+  // the column) and a lone surviving cross inside a hairline stays a run.
+  //
+  // Returns [{ f0, f1, thin }] in lo -> hi order, covering [lo,hi] exactly.
+  // With no floor (`opts.minCrossMm` absent/0) it is one satin segment, so
+  // legacy callers see no change.
+  function splitByCrossFloor(geom, lo, hi, opts) {
+    const o = opts || {};
+    const one = [{ f0: lo, f1: hi, thin: false }];
+    if (!geom || !(geom.total > EPS) || !(hi > lo)) return one;
+    const pxPerMm = o.pxPerMm || 1;
+    const minCrossPx = (o.minCrossMm || 0) * pxPerMm;
+    if (!(minCrossPx > 0)) return one;
+    const spacingPx = (o.spacingMm || 0.4) * pxPerMm;
+    const compPx = (o.pullCompMm || 0) * pxPerMm;   // emitZigzag pushes each rail out by half of this
+    const s0 = lo * geom.total, len = (hi - lo) * geom.total;
+    if (!(len > EPS)) return one;
+    const steps = Math.max(2, Math.ceil(len / (spacingPx > 0 ? spacingPx : 4)));
+    let runs = [];
+    for (let t = 0; t <= steps; t++) {
+      const s = s0 + (t / steps) * len;
+      const a = interpAt(geom.A, geom.cum, s), b = interpAt(geom.B, geom.cum, s);
+      const thin = Math.hypot(a.x - b.x, a.y - b.y) + compPx < minCrossPx;
+      const last = runs[runs.length - 1];
+      if (last && last.thin === thin) last.end = t; else runs.push({ thin, start: t, end: t });
+    }
+    const beanPx = (o.beanStepMm || 0.73) * pxPerMm;
+    const minSeg = Math.max(2, Math.ceil(beanPx / (spacingPx > 0 ? spacingPx : 4)));
+    // A hairline run sews as a bean only past the run tier's own floor —
+    // three bean stations of centerline, under which the needle re-enters
+    // its own holes. Shorter, it is a tapered tip or a dip, and it stays
+    // what the floor alone makes it: dropped, the zigzag hopping the gap
+    // along the column. (A satin island inside a hairline only has to
+    // clear minSeg to stay satin; under that it joins the run.)
+    const beanSeg = Math.max(minSeg, Math.ceil((2 * beanPx) / (spacingPx > 0 ? spacingPx : 4)));
+    const count = (r) => r.end - r.start + 1;
+    const need = (i) => (runs[i].thin ? beanSeg : minSeg);
+    // Absorb the shortest under-length run into its longer neighbour, then
+    // coalesce, until every run clears its floor (or one run remains).
+    while (runs.length > 1) {
+      let idx = -1, best = Infinity;
+      for (let i = 0; i < runs.length; i++) if (count(runs[i]) < need(i) && count(runs[i]) < best) { best = count(runs[i]); idx = i; }
+      if (idx < 0) break;
+      const prev = runs[idx - 1], next = runs[idx + 1];
+      const into = prev && (!next || count(prev) >= count(next)) ? idx - 1 : idx + 1;
+      runs[idx].thin = runs[into].thin;
+      const merged = [];
+      for (const r of runs) {
+        const last = merged[merged.length - 1];
+        if (last && last.thin === r.thin) last.end = r.end; else merged.push({ thin: r.thin, start: r.start, end: r.end });
+      }
+      runs = merged;
+    }
+    // One run left: the whole span is satin, or the whole span is a hairline
+    // — which still has to clear the three-station floor to sew as one.
+    if (runs.length === 1) return [{ f0: lo, f1: hi, thin: runs[0].thin && count(runs[0]) >= beanSeg }];
+    // Segment boundaries sit halfway between the last station of one run and
+    // the first of the next; the outer ends are the span's own.
+    const at = (t) => lo + (t / steps) * (hi - lo);
+    return runs.map((r, i) => ({
+      f0: i === 0 ? lo : at(r.start - 0.5),
+      f1: i === runs.length - 1 ? hi : at(r.end + 0.5),
+      thin: r.thin,
+    }));
   }
 
   // Precompute a column's corresponded rails + centerline + arc-length table, so
@@ -408,6 +501,25 @@
     return cullShort(out, (o.minStitchMm == null ? 0.5 : o.minStitchMm) * pxPerMm);
   }
 
+  // BEAN RUN over traversal span f0 -> f1 of a precomputed columnGeom: the
+  // light tier for a span whose satin came back empty under the cross floor
+  // (every cross under `minCrossMm` — a hairline stroke). Walks the
+  // centerline `passes` times, alternating direction, at `stepMm`; an ODD
+  // pass count ends at f1, where the glyph's traversal continues, so the
+  // fallback costs no extra travel. Same generator as the center-walk
+  // underlay — a bean IS a center walk, sewn as the visible stitch instead of
+  // under one — kept under its own name so a reader of the router does not
+  // have to know that. The constants (0.73 mm, 3 passes) come from satinfont,
+  // which mirrors the Python engine's corpus-measured run tier.
+  // opts = { stepMm, passes=3, minStitchMm=0.5, pxPerMm=1 }.
+  function beanFromGeom(geom, f0, f1, opts) {
+    const o = opts || {};
+    return centerUnderlayFromGeom(geom, f0, f1, {
+      pxPerMm: o.pxPerMm, stepMm: o.stepMm, minStitchMm: o.minStitchMm,
+      repeats: o.passes == null ? 3 : o.passes,
+    });
+  }
+
   // Move each corresponded rail pair inward along its OWN cross-line by
   // `insetPx`. Because A[i] and B[i] are the two ends of one cross-stitch, an
   // offset along A->B is "inset N mm per side" measured across the column,
@@ -497,6 +609,6 @@
 
   return {
     satinFromRails, centerRun, correspond, columnGeom, satinFromGeom, centerFromGeom,
-    centerUnderlayFromGeom, edgeUnderlayFromGeom,
+    centerUnderlayFromGeom, edgeUnderlayFromGeom, beanFromGeom, splitByCrossFloor,
   };
 });
