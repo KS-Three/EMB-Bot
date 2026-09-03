@@ -1550,10 +1550,16 @@ def test_rails_of_a_rotated_bar_reach_the_artwork_edge(ang, monkeypatch):
     assert worst < 0.01, f"a rail point sits {worst:.3f} mm inside the art"
 
 
-def test_the_micron_is_what_closes_the_dent(monkeypatch):
-    """The guard above must fail without the tolerance, or it pins nothing:
-    with `_COVERS_TOL_MM` forced to zero the same bar dents a fifth or more
-    of its stations (29-54% measured across 10/25/45 deg)."""
-    gaps = _bar_rails(25.0, 0.0, monkeypatch)
-    dented = sum(1 for g in gaps if g > 0.1) / len(gaps)
-    assert dented >= 0.2, f"only {dented:.0%} dented with no tolerance -- the test lost its teeth"
+@pytest.mark.parametrize("ang", [10.0, 25.0, 45.0])
+def test_the_micron_is_what_closes_the_dent(ang, monkeypatch):
+    """The guard above must fail without the tolerance, or it pins nothing.
+    With `_COVERS_TOL_MM` forced to zero the bar still dents (the boundary
+    crossing `place` now lands on fails `covers` by an ulp as often as the
+    old point did -- 5-33% of stations across 10/25/45 deg, the exact share
+    being libm's); with the micron, none. Both halves, every angle, so the
+    test cannot pass vacuously on a machine whose cos/sin round the other
+    way (review of PR #329)."""
+    bare = _bar_rails(ang, 0.0, monkeypatch)
+    assert sum(1 for g in bare if g > 0.1) > 0, "no dent without the tolerance -- the test lost its teeth"
+    micron = _bar_rails(ang, 1e-6, monkeypatch)
+    assert sum(1 for g in micron if g > 0.1) == 0, "the micron did not close the dent"

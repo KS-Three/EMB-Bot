@@ -106,6 +106,18 @@ _CURVE_FLOOR_PX = 1.0
 # within this many contour STEPS (one or root-two pixels each) of the arc's
 # midpoint.
 _CURVE_WINDOW_STEPS = 2
+# The refinement only runs where the tolerance has room to work with: the
+# sagitta floor is one pixel whatever the resolution, so at 10 px/mm
+# (eps = 2 px) it can insert a vertex for anything over half the tolerance
+# and reads raster texture -- antialiasing, JPEG, a scan's edge -- as arcs.
+# Measured on the flip (2026-09-03, `tools/curve_tiers.py`): every fixture
+# at 10-16 px/mm got ROUGHER (sunset 16.1 -> 16.5, meadow 15.2 -> 16.5,
+# gaulke 8.9 -> 9.1, ENTHUSIAST 9.0 -> 9.9) with 40-80% more vertices, and
+# two borderline ribbons changed tier through the DT classifier's skeleton
+# (drone 19 px/mm, meadow); Fremont at 31 px/mm (eps 6.25 px) is where the
+# O went 9 -> 33 vertices and the roughness fell. Four pixels of tolerance
+# is the line the fixtures draw: a raster quantity, not a physical one.
+_CURVE_MIN_EPS_PX = 4.0
 
 
 # A shape this close to the satin minimum cross is not refined -- see the
@@ -239,8 +251,11 @@ def vectorize(
     x0, y0, x1, y1 = p.art_bbox
     cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
     eps_px = max(0.5, cfg.simplify_tol_mm * p.px_per_mm)
-    # `curve_turn_deg`: None, 0 and negatives all mean "today's polygon".
+    # `curve_turn_deg`: None, 0 and negatives all mean "today's polygon", and
+    # so does a tolerance under `_CURVE_MIN_EPS_PX` pixels (see there).
     curve_turn = cfg.curve_turn_deg if (cfg.curve_turn_deg or 0.0) > 0.0 else None
+    if curve_turn is not None and eps_px < _CURVE_MIN_EPS_PX:
+        curve_turn = None
     min_area_mm2 = (cfg.min_detail_mm ** 2) * 0.25  # a sliver after simplification
     min_detail_px2 = (cfg.min_detail_mm * p.px_per_mm) ** 2
 
@@ -302,8 +317,9 @@ def vectorize(
         # in: gating the shell alone (the first cut) refined the background's
         # letter-shaped holes, and stage 5 then reshaped the letter against
         # its refined hole and dropped it to fill anyway (review of PR #328,
-        # measured on Fremont: 24 -> 0 satin crosses on `S54b55cf1` with the
-        # shell-only guard, 24 with per-ring gating).
+        # measured on Fremont: 24 -> 0 satin penetrations on `S54b55cf1` with the
+        # shell-only guard on the pre-change tree, 24 -> 24 with per-ring
+        # gating; 28 either way once the rail fix added two crosses).
         refine = curve_turn and not sub_detail and _wide_enough_to_refine(shell_px, p.px_per_mm)
         if refine:
             shell_px = _refine_curves(contours[outer].reshape(-1, 2).astype(np.float64),

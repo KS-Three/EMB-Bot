@@ -32,6 +32,11 @@ Full record: `docs/round-curves-2026-09-03.md`.
   trim moves, whitebg/alpha goldens re-pinned with the pre-change tree),
   hold the curve flip, and exempt near-floor lettering (ribbon width within
   20% of the minimum cross) from the refinement.
+- **FLIPPED ON 2026-09-03 (Kent), gated to four pixels of tolerance.**
+  The per-shape tier diff found the 1-px floor reading raster texture at
+  10–16 px/mm (rougher everywhere, two classifier tier flips via skeleton
+  spurs); floors cost the O; `_CURVE_MIN_EPS_PX` = 4 keeps the O and leaves
+  every golden byte-identical. `tools/curve_tiers.py`.
 - **The guard is per ring (review of #328).** Shell-only gating skipped the
   letters and they still fell to fill: they are holes of the background,
   the holes were refined, stage 5 reshaped the letter against its hole.

@@ -438,13 +438,20 @@ class PipelineConfig:
     # vertices at 15 deg -- so the O it was built for is the best case,
     # and a 600-1200 px logo at 80 mm sits at 7.5-15 px/mm. NOT a physical
     # constant (no fabric quantity; the floor is a raster quantity like
-    # SATIN_HOUSE_CHORD_PX). Every fixture with a curve moves when this is
-    # on, so the goldens re-pin on the flip; built OFF for Kent's flip --
-    # and the flip has a known cost, hairline lettering (a 2.6 mm letter
-    # whose true width sits at SATIN_MIN_CROSS_MM) that Douglas-Peucker's
-    # inflation kept as satin drops to fill once its polygon is honest
-    # (`docs/round-curves-2026-09-03.md`, review finding 1).
-    curve_turn_deg: float | None = None
+    # SATIN_HOUSE_CHORD_PX). DEFAULT ON at 15 deg -- Kent's flip, 2026-09-03,
+    # after the one known cost was closed: hairline lettering (a 2.6 mm
+    # letter whose true width sits at SATIN_MIN_CROSS_MM) that
+    # Douglas-Peucker's inflation kept as satin fell to fill once its
+    # polygon was honest, so a ring within 20% of the minimum cross is not
+    # refined -- judged per ring, holes included, because a letter is also
+    # its background's hole (`docs/round-curves-2026-09-03.md`). Every
+    # fixture with a curve moved on the flip and the goldens were re-pinned
+    # with it; None or 0 is the pre-flip polygon, byte for byte. It also
+    # stays byte-identical wherever the tolerance is under four pixels
+    # (`stage4_vectorize._CURVE_MIN_EPS_PX`: under 20 px/mm at 0.2 mm) --
+    # there the one-pixel floor reads raster texture as arcs, measured as
+    # rougher paths and tier flips on every 10-16 px/mm fixture.
+    curve_turn_deg: float | None = 15.0
 
     # Stage 5 — sew order, underlap, pull compensation
     # Which garment/fabric the design is going on. The fabric preset supplies

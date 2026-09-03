@@ -3596,9 +3596,21 @@ byte-identical control. `docs/rail-dents-2026-09-03.md`.
 
 Shell-only gating left Fremont's guarded letters falling to fill under the
 flag anyway: their background's letter-shaped holes were refined and stage 5
-reshaped each letter against its hole (24 → 0 satin crosses on `S54b55cf1`).
+reshaped each letter against its hole (24 → 0 satin penetrations on `S54b55cf1`, pre-change tree).
 Each ring is now judged on its own (`stage4_vectorize`), invalid rings
 repaired before measuring; Fremont ON vs OFF: 28/16 → 28/16 satin
 penetrations, tiers identical. Test added. The dust test's 35° step measured
 exactly 3.0 on the review machine (never entered the fixed branch) —
 replaced with a `nextafter` step and a two-cap case.
+
+## 2026-09-03 (addendum) — Kent: the curve flip (defect 22) — ON at 15°, gated to four pixels of tolerance
+
+`curve_turn_deg` defaults to 15. The per-shape tier diff
+(`tools/curve_tiers.py`) on all ten fixtures found what the stitch totals
+hid: below ~16 px/mm the 1-px floor reads raster texture as arcs (vertices
++40–80%, roughness up on every such fixture) and two borderline ribbons
+changed tier through the DT classifier's skeleton (drone 19 px/mm,
+meadow 10); floors of 2–3 px halve the O's gain (33 → 17 vertices). Gate
+`stage4_vectorize._CURVE_MIN_EPS_PX` = 4 (≥ 20 px/mm at 0.2 mm): Fremont's
+O 9 → 33 vertices, 47° → 17°, trims 52 → 45; every other fixture and every
+golden byte-identical. Tests for on-by-default, off-is-DP and the gate.

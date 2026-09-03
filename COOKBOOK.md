@@ -343,7 +343,9 @@ hand-rolling it in JS.
   own floor on unhoused columns), `digitizer/tools/fill_dust.py` (fill steps
   halved by float dust at the stitch-length threshold), `digitizer/tools/rail_edge.py`
   (where satin rails sit against the artwork edge, rail jitter and same-rail
-  holes; `--ladders` for the containment-miss census), `digitizer/tools/recapture_flat_lane_key.py`
+  holes; `--ladders` for the containment-miss census), `digitizer/tools/curve_tiers.py`
+  (per-shape tier diff for `curve_turn_deg` off vs on, shapes paired by
+  centroid — the flip evidence a stitch total cannot give), `digitizer/tools/recapture_flat_lane_key.py`
   (the only sanctioned way to move a golden: pre-change tree + control fixture).
   Run each from `digitizer/` with `.venv/bin/python`.
 - **Acceptance A/B contact sheet** (`digitizer/tools/acceptance_ab.py`, pure

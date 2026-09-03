@@ -692,3 +692,19 @@ its hedge as it is copied forward** — is why this file is split.
   that treats one shape differently has to make the same decision for every
   ring that shape appears as, holes included. *(2026-09-03 — review of
   PR #328; `docs/round-curves-2026-09-03.md`)*
+
+- **A sub-pixel refinement below a few pixels of tolerance reads raster
+  texture as geometry, and the damage shows up in the CLASSIFIER, not the
+  polygon.** The curve refinement (defect 22) is floored at one pixel; at
+  10–16 px/mm that is half the tolerance, so antialiasing and JPEG edges
+  earned vertices, every such fixture got rougher, and two borderline
+  ribbons changed tier because the DT classifier's 1-px skeleton grew
+  spurs off the new vertices (`explained` 0.83 → 0.70 on a 12 × 3 mm
+  ribbon that is satin by any eye). Raising the floor costs the thing the
+  feature exists for (Fremont's O: 33 → 17 vertices at 2 px). The cure
+  was a gate on tolerance-in-pixels, and the instrument that found all of
+  it was a PER-SHAPE tier diff (`tools/curve_tiers.py`) — a design-level
+  stitch count saw none of it. **Rule: any stage-4 geometry change flips
+  with a per-shape tier diff on every fixture, paired by centroid, not by
+  shape id (ids are content-derived and move with the polygon).**
+  *(2026-09-03 — `docs/round-curves-2026-09-03.md`, "The flip")*
