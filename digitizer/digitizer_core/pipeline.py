@@ -583,8 +583,11 @@ def build_generation(
 
     # Same ordering rationale as `tag_enclosed_background` immediately above:
     # a computed FACT re-derived every generation, so it belongs before shape
-    # identity edits/overrides run, not after.
-    detect_text_clusters(regions, p)
+    # identity edits/overrides run, not after. The chart is for the one-ink
+    # link between ordinary glyphs (`textcluster._same_ink`): a word is sewn
+    # in one colour, and the regions' `thread_index` values name THIS job's
+    # chart, not the default one.
+    detect_text_clusters(regions, p, chart=chart_for(cfg))
 
     # Regularization (Step 5): a genuine geometry change, not metadata, so it
     # runs immediately after tagging and still before shape identity edits —
