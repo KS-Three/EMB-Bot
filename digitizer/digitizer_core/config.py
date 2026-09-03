@@ -530,6 +530,21 @@ class PipelineConfig:
     # digitize time does not move. The 4.1 margin is 0.01 -- a thin one, and
     # the benchmark test is the tripwire that says so if the pipeline drifts.
     satin_house_fourfold: bool = True
+    # Each satin rail reaches ITS OWN edge (defect 23's open half, built
+    # 2026-09-03 for Kent's flip). The rail model places both rails at the
+    # NEARER edge's distance from a smoothed spine, so on every raster
+    # skeleton -- never dead centre -- and every serif or taper on one side,
+    # the far rail stops short of the art by the offset: 17-23% of lettering
+    # rail points more than 0.1 mm inside on Becker/ENTHUSIAST/drone. On,
+    # each side carries its own filtered profile (same median and smoothing
+    # as the symmetric width, same corridor caps) and the cross angle is
+    # untouched. Bare satin area Becker 8.6 -> 5.8%, ENTHUSIAST 5.7 -> 4.4%,
+    # drone 6.1 -> 4.6%, Fremont 8.6 -> 6.9%; cost: rail jitter p50 +50%
+    # (a rail is only as smooth as its edge), more short-stitch retractions
+    # on bends, +10-17% thread, +4-7% stitches, and the pull compensation
+    # was tuned with the far rail stopping short -- a sew-out question, so
+    # OFF until Kent flips it; off is byte-identical.
+    satin_rails_follow_edge: bool = False
     # None = the fabric preset's fill underlay style. One of "none" |
     # "edge_run" | "center_run" | "edge_zigzag" | "edge_lattice" |
     # "double_lattice" | "zigzag" (fabrics.py's own vocabulary). Feeds the

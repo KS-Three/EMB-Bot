@@ -1620,7 +1620,8 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
                  fallback_half_mm: float,
                  field: _WidthField | None = None,
                  spacing_mm: float = machine.SATIN_SPACING_MM,
-                 angle_deg: float | None = None) -> tuple[list, list]:
+                 angle_deg: float | None = None,
+                 follow_edge: bool = False) -> tuple[list, list]:
     """Cast the smoothed, unwrapped normals both ways to find the two rails.
 
     Each rail is capped at ~1.6x the LOCAL medial half-width: at a branch
@@ -1655,6 +1656,8 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
     rail_b: list = []
     norms: list[tuple[float, float]] = []
     raw: list[float] = []
+    side_a: list[float] = []
+    side_b: list[float] = []
     floors: list[float] = []
     for i, (px, py) in enumerate(spine):
         nx, ny = math.cos(angles[i]), math.sin(angles[i])
@@ -1702,6 +1705,8 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
         # arm reports a distance belonging to a different part of the shape, and
         # it is always the longer of the pair.
         raw.append(min(math.dist((px, py), pa), math.dist((px, py), pb)))
+        side_a.append(math.dist((px, py), pa))
+        side_b.append(math.dist((px, py), pb))
         floors.append(max(field.half_at((px, py)), 0.75 * fallback_half_mm)
                       if field is not None else fallback_half_mm)
 
@@ -1762,6 +1767,45 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
     # updated fixture comment.
     for i in range(n):
         width[i] = min(width[i], floors[i] * 1.6 + 0.2, machine.SATIN_MAX_WIDTH_MM / 2)
+
+    # --- each rail reaches its own edge ------------------------------------
+    #
+    # The symmetric profile above is the NEARER edge at every station, so on
+    # a column whose spine sits off-centre -- every raster skeleton, every
+    # letter with a serif or a taper on one side -- the far rail stops short
+    # of the art by the difference: 8-24% of lettering rail points sat more
+    # than 0.1 mm inside the artwork (Becker 22.8%, `tools/rail_edge.py`,
+    # defect 23's open half, Kent's call 2026-09-03). Each side now carries
+    # its own profile, filtered exactly as the symmetric one (median, then
+    # the smoothing passes, then the corridor caps), and a rail is placed at
+    # the LARGER of the symmetric width and its own side's profile. The
+    # cross angle is untouched -- the normal is still the smoothed one, so
+    # this is not per-station edge following (the spray the smoothed model
+    # exists to stop); only the length of each half of the cross follows its
+    # edge, and `place` still clamps any overshoot onto the boundary.
+    # Measured (2026-09-03, `tools/rail_edge.py --bare`): bare satin area
+    # Becker 8.6 -> 5.8%, ENTHUSIAST 5.7 -> 4.4%, drone 6.1 -> 4.6%, Fremont
+    # 8.6 -> 6.9%; the cost is rail smoothness (jitter p50 +50%, each rail
+    # is now only as smooth as its own edge), more short-stitch retractions
+    # on bends, and +10-17% thread. Whether that reads right on cloth --
+    # and whether the pull compensation, tuned with the far rail stopping
+    # short, still does -- is a sew-out question, so `follow_edge` is a
+    # flag (`PipelineConfig.satin_rails_follow_edge`), default OFF, and off
+    # is byte-identical: both rails at the symmetric width.
+    if follow_edge:
+        off_a = _median_filter(side_a, _WIDTH_MEDIAN_WINDOW)
+        off_b = _median_filter(side_b, _WIDTH_MEDIAN_WINDOW)
+        for _ in range(_WIDTH_SMOOTH_PASSES):
+            pa_, pb_ = list(off_a), list(off_b)
+            for i in range(1, n - 1):
+                off_a[i] = (pa_[i - 1] + pa_[i] + pa_[i + 1]) / 3.0
+                off_b[i] = (pb_[i - 1] + pb_[i] + pb_[i + 1]) / 3.0
+        for i in range(n):
+            cap = min(floors[i] * 1.6 + 0.2, machine.SATIN_MAX_WIDTH_MM / 2)
+            off_a[i] = max(width[i], min(off_a[i], cap))
+            off_b[i] = max(width[i], min(off_b[i], cap))
+    else:
+        off_a, off_b = list(width), list(width)
 
     # --- taper zones at free ends ------------------------------------------
     #
@@ -1849,8 +1893,11 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
         nx, ny = norms[i]
         body = closed or (0 < i < n - 1 and not (zs and i <= zs)
                           and not (ze and i >= n - 1 - ze))
-        rail_a.append(place(px, py, nx, ny, width[i], body))
-        rail_b.append(place(px, py, -nx, -ny, width[i], body))
+        # Taper zones and the terminal stations keep the symmetric width:
+        # their machinery (the taper cap, the refinement floor, the guard)
+        # is calibrated to it, and a tip's far edge is the cap face.
+        rail_a.append(place(px, py, nx, ny, off_a[i] if body else width[i], body))
+        rail_b.append(place(px, py, -nx, -ny, off_b[i] if body else width[i], body))
 
     # --- outer-rail density -----------------------------------------------
     #
@@ -1910,10 +1957,14 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
             px = spine[i - 1][0] * (1 - t) + spine[i][0] * t
             py = spine[i - 1][1] * (1 - t) + spine[i][1] * t
             ang = angles[i - 1] * (1 - t) + angles[i] * t   # unwrapped: lerp-safe
-            w = width[i - 1] * (1 - t) + width[i] * t
             nx, ny = math.cos(ang), math.sin(ang)
-            ref_a.append(place(px, py, nx, ny, w, not in_taper))
-            ref_b.append(place(px, py, -nx, -ny, w, not in_taper))
+            if in_taper:
+                wa = wb = width[i - 1] * (1 - t) + width[i] * t
+            else:
+                wa = off_a[i - 1] * (1 - t) + off_a[i] * t
+                wb = off_b[i - 1] * (1 - t) + off_b[i] * t
+            ref_a.append(place(px, py, nx, ny, wa, not in_taper))
+            ref_b.append(place(px, py, -nx, -ny, wb, not in_taper))
         ref_a.append(rail_a[i])
         ref_b.append(rail_b[i])
     return ref_a, ref_b
@@ -2371,7 +2422,8 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                   angle_deg: float | None,
                   parts: list | None = None,
                   art_poly: Polygon | None = None,
-                  hairline_floor_mm: float = 0.0) -> list[tuple[float, float]]:
+                  hairline_floor_mm: float = 0.0,
+                  rails_follow_edge: bool = False) -> list[tuple[float, float]]:
     """A stroke with Goldman corners (`Stroke.corners`) -> its members sewn as
     separate columns and laid end to end in chain order.
 
@@ -2413,7 +2465,8 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
         n_before = len(parts) if parts is not None else 0
         pts_m = satin_stroke(poly, member, half_mm, field, split_above_mm,
                              end_cutback_mm, spacing_mm, angle_deg, parts=parts,
-                             art_poly=art_poly, hairline_floor_mm=hairline_floor_mm)
+                             art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
+                             rails_follow_edge=rails_follow_edge)
         above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
         if parts is not None and len(parts) > n_before and n_before > n_start_joined:
             # The join stays ONE stroke in `parts` as well: this member's
@@ -2451,7 +2504,8 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  angle_deg: float | None = None,
                  parts: list | None = None,
                  art_poly: Polygon | None = None,
-                 hairline_floor_mm: float = 0.0) -> list[tuple[float, float]]:
+                 hairline_floor_mm: float = 0.0,
+                 rails_follow_edge: bool = False) -> list[tuple[float, float]]:
     """One stroke -> flat zigzag points (A1, B1, A2, B2, ...).
 
     `parts` (2026-09-03), when a list is passed, additionally receives the
@@ -2506,7 +2560,8 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
     if stroke.corners:
         return _satin_joined(poly, stroke, half_mm, field, split_above_mm,
                              end_cutback_mm, spacing_mm, angle_deg, parts=parts,
-                             art_poly=art_poly, hairline_floor_mm=hairline_floor_mm)
+                             art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
+                             rails_follow_edge=rails_follow_edge)
 
     spine = _smooth(stroke.spine, 3, stroke.closed)
     spine = _round_corners(spine, half_mm, stroke.closed)
@@ -2604,7 +2659,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
         if max(leans) > 1e-6:
             spine = _resample_by_pitch(spine, leans, spacing_mm)
     rail_a, rail_b = _rail_points(poly, spine, stroke.closed, half_mm, field,
-                                  spacing_mm, angle_deg)
+                                  spacing_mm, angle_deg, follow_edge=rails_follow_edge)
     crosses = _short_stitch_guard(rail_a, rail_b)
     above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
 
@@ -3096,6 +3151,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 spacing_mm: float = machine.SATIN_SPACING_MM,
                 angle_deg: float | None = None,
                 art_poly: Polygon | None = None,
+                rails_follow_edge: bool = False,
                 hairline_floor_mm: float = 0.0,
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
@@ -3156,7 +3212,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
         parts: list = []
         satin_stroke(poly, st, half_mm, field, split_above_mm,
                      end_cutback_mm, spacing_mm, angle_deg, parts=parts,
-                     art_poly=art_poly, hairline_floor_mm=hairline_floor_mm)
+                     art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
+                     rails_follow_edge=rails_follow_edge)
         mixed = len(parts) > 1
         for kind, pts, piece, at_start, at_end in parts:
             if kind == stitches.SATIN and len(pts) < 4:

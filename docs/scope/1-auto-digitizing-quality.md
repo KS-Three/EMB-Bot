@@ -3739,3 +3739,18 @@ at 1/1.5/2× the junction radius: flips 8/4/3, shipped verdicts changed
 adopted. The classifier depends on the whole skeleton to see a blob, and
 its thresholds are knife edges on statistics that move ~0.05–0.1 with
 boundary detail. *(measured 2026-09-03 — `docs/classifier-stability-2026-09-03.md`)*
+
+## Rails follow the edge — `satin_rails_follow_edge`, built OFF (2026-09-03)
+
+Per-side rail profiles behind a flag. The 17–23% of lettering rail points
+> 0.1 mm inside the art (rail-dents record §3) are not the symmetric model:
+instrumented on Becker, 353 of 670 are short-stitch guard retractions on
+bends, 115 corridor caps, 129 corners/oblique edges, 48 tip zones, 25
+smoothing under-reads. Coverage measured as bare satin area
+(`tools/rail_edge.py --bare`): Becker 8.63 → 5.84%, ENTHUSIAST 5.70 →
+4.36%, drone 6.07 → 4.59%, Fremont 8.60 → 6.94%, ribbon 1.11 → 1.08%.
+Costs: thread +10–17% on lettering, stitches +4–7%, rail jitter p50 +50%
+(0.038 → 0.061 mm on Becker), same-rail holes (guard retractions) 63 → 79
+Becker, 67 → 108 drone; wider per-side filters trade back with no knee.
+Pull comp was tuned with the far rail stopping short — sew-out question,
+Kent's flip. *(measured 2026-09-03 — `docs/rail-dents-2026-09-03.md` §7)*

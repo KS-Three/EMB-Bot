@@ -343,7 +343,8 @@ hand-rolling it in JS.
   own floor on unhoused columns), `digitizer/tools/fill_dust.py` (fill steps
   halved by float dust at the stitch-length threshold), `digitizer/tools/rail_edge.py`
   (where satin rails sit against the artwork edge, rail jitter and same-rail
-  holes; `--ladders` for the containment-miss census), `digitizer/tools/curve_tiers.py`
+  holes; `--ladders` for the containment-miss census, `--bare` for coverage as
+  bare satin area, `--follow-edge` for the rail flag), `digitizer/tools/curve_tiers.py`
   (per-shape tier diff for `curve_turn_deg` off vs on, shapes paired by
   centroid — the flip evidence a stitch total cannot give), `digitizer/tools/ribbon_stability.py`
   (how many satin/fill verdicts flip when only the polygon's boundary detail

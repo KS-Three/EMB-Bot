@@ -1597,6 +1597,7 @@ def sequence(
                     use_shapefield=use_shapefield,
                     spacing_mm=satin_spacing_mm,
                     angle_deg=satin_angle_deg,
+                    rails_follow_edge=cfg.satin_rails_follow_edge,
                     # A hairline sews as a bean only where the ART has ink:
                     # `p.polygon` is the compensated outline, and pull comp
                     # grows a vectorization needle into a "stroke". The

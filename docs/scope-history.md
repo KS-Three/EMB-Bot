@@ -3643,3 +3643,17 @@ vertices). Where the line falls in the app: 1200 px art refines at ≤ 60 mm
 and not at 61 — a cliff, Kent's to accept (MASTER_SCOPE 22). The
 simplify-tolerance invariance now belongs to the OFF path (DOCTRINE).
 
+## 2026-09-03 (addendum) — Kent: rails follow the edge — BUILT as `satin_rails_follow_edge`, default OFF, Kent's flip
+
+Each rail carries its own filtered edge profile (the width's own median
+and smoothing, the same corridor caps), placed at the larger of the
+symmetric width and its own profile; cross angle untouched; taper zones and
+caps symmetric; off byte-identical. The "> 0.1 mm inside" number that
+priced the item was not the rail model (Becker: 353 of 670 guard
+retractions, 115 corridor caps, 129 corners/oblique edges, 48 tip zones,
+25 smoothing) — coverage is measured as bare satin area now
+(`tools/rail_edge.py --bare`): Becker 8.6 → 5.8%, ENTHUSIAST 5.7 → 4.4%,
+drone 6.1 → 4.6%, Fremont 8.6 → 6.9%; cost +10–17% thread, rail jitter
+p50 +50%, more guard retractions on bends; pull comp tuned with the far
+rail short. Sew-out question; flag OFF. Off-centre bar test pins both
+states.
